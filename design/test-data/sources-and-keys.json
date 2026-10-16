@@ -1,0 +1,78 @@
+{
+  "_note": "Synthetic key and budget state for 12l Catalogues & keys and 12j first run. Keys are never stored or shown here.",
+  "sources": [
+    {
+      "source": "BrickLink",
+      "key": "configured",
+      "saved": "2026-10-16",
+      "budget_used": 412,
+      "budget_limit": 5000,
+      "last_success": "2026-10-16T09:12",
+      "last_error": null,
+      "enabled": true,
+      "key_fields": [
+        "consumer_key",
+        "consumer_secret",
+        "token",
+        "token_secret"
+      ]
+    },
+    {
+      "source": "Rebrickable",
+      "key": "configured",
+      "saved": "2026-10-02",
+      "budget_used": 88,
+      "budget_limit": 1000,
+      "last_success": "2026-10-16T08:40",
+      "last_error": null,
+      "enabled": true,
+      "key_fields": [
+        "api_key",
+        "user_token"
+      ]
+    },
+    {
+      "source": "Brickset",
+      "key": "not set",
+      "budget_used": 0,
+      "budget_limit": 100,
+      "last_success": null,
+      "last_error": null,
+      "enabled": false,
+      "key_fields": [
+        "api_key"
+      ]
+    },
+    {
+      "source": "Brickognize",
+      "key": "no key needed",
+      "budget_used": 31,
+      "budget_limit": 500,
+      "last_success": "2026-10-15T21:03",
+      "last_error": null,
+      "enabled": true
+    }
+  ],
+  "states": {
+    "rejected": {
+      "source": "BrickLink",
+      "reason": "TOKEN_VALUE_MISMATCH"
+    },
+    "budget_used_up": {
+      "source": "BrickLink",
+      "budget_used": 5000,
+      "resets": "00:00"
+    },
+    "catalogue": {
+      "types_loaded": 8,
+      "names": 98412,
+      "colours": 222
+    }
+  },
+  "freshness_days": {
+    "bricklink_prices": 14,
+    "rebrickable_inventories": 90,
+    "brickset_sets": 180,
+    "brickognize": null
+  }
+}

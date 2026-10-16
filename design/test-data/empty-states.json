@@ -1,0 +1,102 @@
+{
+  "_note": "Names of the empty/zero-data situations to design, with the data condition that triggers each.",
+  "states": [
+    {
+      "screen": "Sets",
+      "trigger": "no sets in collection",
+      "next_action": "Add your first set"
+    },
+    {
+      "screen": "Sets",
+      "trigger": "filters match nothing",
+      "next_action": "Clear filters"
+    },
+    {
+      "screen": "Wishlist",
+      "trigger": "no wishes",
+      "next_action": "Add a set to wish for"
+    },
+    {
+      "screen": "Wishlist",
+      "trigger": "no price yet",
+      "next_action": "Fetch prices"
+    },
+    {
+      "screen": "Orders",
+      "trigger": "no orders pasted",
+      "next_action": "Paste a BrickLink confirmation"
+    },
+    {
+      "screen": "Orders",
+      "trigger": "order has unmatched lines",
+      "next_action": "Match lines"
+    },
+    {
+      "screen": "Problems (missing/damaged)",
+      "trigger": "nothing missing",
+      "next_action": null,
+      "note": "Good news state: celebrate quietly"
+    },
+    {
+      "screen": "Checker",
+      "trigger": "set has no inventory yet",
+      "next_action": "Refresh from Rebrickable"
+    },
+    {
+      "screen": "Part to Inventory",
+      "trigger": "no photo yet",
+      "next_action": "Take or choose a photo"
+    },
+    {
+      "screen": "Part to Inventory",
+      "trigger": "nothing identified",
+      "next_action": "Retake photo / add by number"
+    },
+    {
+      "screen": "Statistics",
+      "trigger": "fewer than 3 sets",
+      "next_action": "Charts need more data"
+    },
+    {
+      "screen": "Instructions",
+      "trigger": "no PDF for set",
+      "next_action": "Look it up"
+    },
+    {
+      "screen": "Admin",
+      "trigger": "integrity check clean",
+      "next_action": null
+    },
+    {
+      "screen": "Any",
+      "trigger": "Rebrickable unreachable",
+      "next_action": "Retry"
+    },
+    {
+      "screen": "Any",
+      "trigger": "first launch, no API key",
+      "next_action": "Add Rebrickable key"
+    },
+    {
+      "screen": "Sets",
+      "trigger": "first run: no keys, no catalogues, no sets",
+      "id": "firstRun",
+      "next_action": "Set up your keys, then load catalogues, then add"
+    },
+    {
+      "screen": "Storage",
+      "trigger": "no storages",
+      "next_action": "Add storage"
+    },
+    {
+      "screen": "Storage",
+      "trigger": "storage is empty",
+      "next_action": "Move items here"
+    },
+    {
+      "screen": "API tokens",
+      "trigger": "no tokens",
+      "next_action": "Create token"
+    }
+  ]
+}

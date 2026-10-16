@@ -1,0 +1,303 @@
+[
+  {
+    "id": 0,
+    "name": "Black",
+    "rgb": "#05131D",
+    "transparent": false,
+    "parts_in_catalog": 847965
+  },
+  {
+    "id": 1,
+    "name": "Blue",
+    "rgb": "#0055BF",
+    "transparent": false,
+    "parts_in_catalog": 209801
+  },
+  {
+    "id": 2,
+    "name": "Green",
+    "rgb": "#237841",
+    "transparent": false,
+    "parts_in_catalog": 92795
+  },
+  {
+    "id": 3,
+    "name": "Dark Turquoise",
+    "rgb": "#008F9B",
+    "transparent": false,
+    "parts_in_catalog": 24063
+  },
+  {
+    "id": 4,
+    "name": "Red",
+    "rgb": "#C91A09",
+    "transparent": false,
+    "parts_in_catalog": 325469
+  },
+  {
+    "id": 6,
+    "name": "Brown",
+    "rgb": "#583927",
+    "transparent": false,
+    "parts_in_catalog": 9560
+  },
+  {
+    "id": 7,
+    "name": "Light Gray",
+    "rgb": "#9BA19D",
+    "transparent": false,
+    "parts_in_catalog": 92855
+  },
+  {
+    "id": 8,
+    "name": "Dark Gray",
+    "rgb": "#6D6E5C",
+    "transparent": false,
+    "parts_in_catalog": 22453
+  },
+  {
+    "id": 10,
+    "name": "Bright Green",
+    "rgb": "#4B9F4A",
+    "transparent": false,
+    "parts_in_catalog": 28644
+  },
+  {
+    "id": 14,
+    "name": "Yellow",
+    "rgb": "#F2CD37",
+    "transparent": false,
+    "parts_in_catalog": 218762
+  },
+  {
+    "id": 15,
+    "name": "White",
+    "rgb": "#FFFFFF",
+    "transparent": false,
+    "parts_in_catalog": 525066
+  },
+  {
+    "id": 19,
+    "name": "Tan",
+    "rgb": "#E4CD9E",
+    "transparent": false,
+    "parts_in_catalog": 200518
+  },
+  {
+    "id": 25,
+    "name": "Orange",
+    "rgb": "#FE8A18",
+    "transparent": false,
+    "parts_in_catalog": 55736
+  },
+  {
+    "id": 27,
+    "name": "Lime",
+    "rgb": "#BBE90B",
+    "transparent": false,
+    "parts_in_catalog": 46795
+  },
+  {
+    "id": 28,
+    "name": "Dark Tan",
+    "rgb": "#958A73",
+    "transparent": false,
+    "parts_in_catalog": 75587
+  },
+  {
+    "id": 30,
+    "name": "Medium Lavender",
+    "rgb": "#AC78BA",
+    "transparent": false,
+    "parts_in_catalog": 10363
+  },
+  {
+    "id": 33,
+    "name": "Trans-Dark Blue",
+    "rgb": "#0020A0",
+    "transparent": true,
+    "parts_in_catalog": 10726
+  },
+  {
+    "id": 34,
+    "name": "Trans-Green",
+    "rgb": "#84B68D",
+    "transparent": true,
+    "parts_in_catalog": 5454
+  },
+  {
+    "id": 36,
+    "name": "Trans-Red",
+    "rgb": "#C91A09",
+    "transparent": true,
+    "parts_in_catalog": 20662
+  },
+  {
+    "id": 41,
+    "name": "Trans-Light Blue",
+    "rgb": "#AEEFEC",
+    "transparent": true,
+    "parts_in_catalog": 33254
+  },
+  {
+    "id": 46,
+    "name": "Trans-Yellow",
+    "rgb": "#F5CD2F",
+    "transparent": true,
+    "parts_in_catalog": 13435
+  },
+  {
+    "id": 47,
+    "name": "Trans-Clear",
+    "rgb": "#FCFCFC",
+    "transparent": true,
+    "parts_in_catalog": 47868
+  },
+  {
+    "id": 70,
+    "name": "Reddish Brown",
+    "rgb": "#582A12",
+    "transparent": false,
+    "parts_in_catalog": 182174
+  },
+  {
+    "id": 71,
+    "name": "Light Bluish Gray",
+    "rgb": "#A0A5A9",
+    "transparent": false,
+    "parts_in_catalog": 526766
+  },
+  {
+    "id": 72,
+    "name": "Dark Bluish Gray",
+    "rgb": "#6C6E68",
+    "transparent": false,
+    "parts_in_catalog": 378862
+  },
+  {
+    "id": 73,
+    "name": "Medium Blue",
+    "rgb": "#5A93DB",
+    "transparent": false,
+    "parts_in_catalog": 13325
+  },
+  {
+    "id": 78,
+    "name": "Light Nougat",
+    "rgb": "#F6D7B3",
+    "transparent": false,
+    "parts_in_catalog": 12142
+  },
+  {
+    "id": 84,
+    "name": "Medium Nougat",
+    "rgb": "#AA7D55",
+    "transparent": false,
+    "parts_in_catalog": 45300
+  },
+  {
+    "id": 158,
+    "name": "Yellowish Green",
+    "rgb": "#DFEEA5",
+    "transparent": false,
+    "parts_in_catalog": 3967
+  },
+  {
+    "id": 179,
+    "name": "Flat Silver",
+    "rgb": "#898788",
+    "transparent": false,
+    "parts_in_catalog": 23278
+  },
+  {
+    "id": 182,
+    "name": "Trans-Orange",
+    "rgb": "#F08F1C",
+    "transparent": true,
+    "parts_in_catalog": 16036
+  },
+  {
+    "id": 191,
+    "name": "Bright Light Orange",
+    "rgb": "#F8BB3D",
+    "transparent": false,
+    "parts_in_catalog": 30684
+  },
+  {
+    "id": 272,
+    "name": "Dark Blue",
+    "rgb": "#0A3463",
+    "transparent": false,
+    "parts_in_catalog": 54616
+  },
+  {
+    "id": 297,
+    "name": "Pearl Gold",
+    "rgb": "#AA7F2E",
+    "transparent": false,
+    "parts_in_catalog": 56426
+  },
+  {
+    "id": 308,
+    "name": "Dark Brown",
+    "rgb": "#352100",
+    "transparent": false,
+    "parts_in_catalog": 25538
+  },
+  {
+    "id": 320,
+    "name": "Dark Red",
+    "rgb": "#720E0F",
+    "transparent": false,
+    "parts_in_catalog": 51125
+  },
+  {
+    "id": 321,
+    "name": "Dark Azure",
+    "rgb": "#078BC9",
+    "transparent": false,
+    "parts_in_catalog": 17719
+  },
+  {
+    "id": 322,
+    "name": "Medium Azure",
+    "rgb": "#36AEBF",
+    "transparent": false,
+    "parts_in_catalog": 31604
+  },
+  {
+    "id": 326,
+    "name": "Olive Green",
+    "rgb": "#9B9A5A",
+    "transparent": false,
+    "parts_in_catalog": 12213
+  },
+  {
+    "id": 378,
+    "name": "Sand Green",
+    "rgb": "#A0BCAC",
+    "transparent": false,
+    "parts_in_catalog": 26360
+  },
+  {
+    "id": 484,
+    "name": "Dark Orange",
+    "rgb": "#A95500",
+    "transparent": false,
+    "parts_in_catalog": 28876
+  },
+  {
+    "id": 1103,
+    "name": "Pearl Titanium",
+    "rgb": "#3E3C39",
+    "transparent": false,
+    "parts_in_catalog": 7898
+  },
+  {
+    "id": 9999,
+    "name": "[No Color/Any Color]",
+    "rgb": "#05131D",
+    "transparent": false,
+    "parts_in_catalog": 10703
+  }
+]

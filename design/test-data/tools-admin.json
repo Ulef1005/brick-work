@@ -1,0 +1,307 @@
+{
+  "configuration": [
+    {
+      "name": "BK_REBRICKABLE_API_KEY",
+      "value": "••••••••••••••••3f9a",
+      "type": "secret",
+      "static": true,
+      "note": "Required"
+    },
+    {
+      "name": "BK_DATABASE_PATH",
+      "value": "/data/app.db",
+      "type": "path",
+      "static": true,
+      "note": ""
+    },
+    {
+      "name": "BK_USE_REMOTE_IMAGES",
+      "value": "false",
+      "type": "bool",
+      "static": false,
+      "note": "Serve images from the Rebrickable CDN"
+    },
+    {
+      "name": "BK_DEFAULT_TABLE_PER_PAGE",
+      "value": "25",
+      "type": "int",
+      "static": false,
+      "note": ""
+    },
+    {
+      "name": "BK_TIMEZONE",
+      "value": "Europe/Berlin",
+      "type": "string",
+      "static": false,
+      "note": ""
+    },
+    {
+      "name": "BK_HIDE_WISHES",
+      "value": "false",
+      "type": "bool",
+      "static": false,
+      "note": ""
+    },
+    {
+      "name": "BK_HIDE_ADMIN",
+      "value": "false",
+      "type": "bool",
+      "static": false,
+      "note": ""
+    },
+    {
+      "name": "BK_INDEPENDENT_ACCORDIONS",
+      "value": "true",
+      "type": "bool",
+      "static": false,
+      "note": ""
+    },
+    {
+      "name": "BK_SHOW_GRID_FILTERS",
+      "value": "true",
+      "type": "bool",
+      "static": false,
+      "note": ""
+    },
+    {
+      "name": "BK_BRICKLINK_LINK_PART_PATTERN",
+      "value": "https://www.bricklink.com/v2/catalog/catalogitem.page?P={number}",
+      "type": "string",
+      "static": false,
+      "note": ""
+    }
+  ],
+  "database": {
+    "file": "app.db",
+    "size_mb": 38.4,
+    "schema_version": 27,
+    "latest_version": 28,
+    "upgrade_available": true,
+    "tables": {
+      "rebrickable_sets": 19,
+      "bricktracker_sets": 19,
+      "rebrickable_parts": 4417,
+      "bricktracker_parts": 6031,
+      "rebrickable_minifigures": 74,
+      "bricktracker_wishes": 6,
+      "bricktracker_individual_parts": 212
+    }
+  },
+  "migrations": [
+    {
+      "version": 28,
+      "name": "add_part_resolutions",
+      "applied_at": null
+    },
+    {
+      "version": 27,
+      "name": "checked_flag_on_parts",
+      "applied_at": "2026-09-30"
+    },
+    {
+      "version": 26,
+      "name": "individual_part_lots",
+      "applied_at": "2026-08-02"
+    },
+    {
+      "version": 25,
+      "name": "minifig_missing",
+      "applied_at": "2026-07-11"
+    },
+    {
+      "version": 24,
+      "name": "price_slots_v3",
+      "applied_at": "2026-06-20"
+    }
+  ],
+  "integrity": {
+    "checked_at": "2026-10-12T03:00:00Z",
+    "ok": false,
+    "findings": [
+      {
+        "kind": "orphan",
+        "table": "bricktracker_parts",
+        "count": 3,
+        "detail": "rows whose set copy no longer exists"
+      },
+      {
+        "kind": "orphan",
+        "table": "bricktracker_set_tags",
+        "count": 1,
+        "detail": "tag removed but still referenced"
+      },
+      {
+        "kind": "ok",
+        "table": "bricktracker_minifigures",
+        "count": 0,
+        "detail": "consistent"
+      }
+    ]
+  },
+  "image_cache": {
+    "sets": 19,
+    "parts": 3844,
+    "minifigures": 74,
+    "size_mb": 212.7,
+    "missing_images": 11,
+    "last_update": "2026-10-11T02:00:00Z"
+  },
+  "retired_sets": [
+    {
+      "set": "7286-1",
+      "retired": "2013-12-31",
+      "in_collection": true
+    },
+    {
+      "set": "1592-1",
+      "retired": "1983-12-31",
+      "in_collection": true
+    },
+    {
+      "set": "6085-1",
+      "retired": "1990-12-31",
+      "in_collection": true
+    },
+    {
+      "set": "10497-1",
+      "retired": null,
+      "in_collection": true
+    }
+  ],
+  "instructions": [
+    {
+      "set": "7286-1",
+      "file": "7286-1.pdf",
+      "pages": 28,
+      "size_mb": 6.1,
+      "source": "LEGO"
+    },
+    {
+      "set": "1592-1",
+      "file": "1592-1.pdf",
+      "pages": 12,
+      "size_mb": 3.4,
+      "source": "Peeron scan"
+    },
+    {
+      "set": "6085-1",
+      "file": null,
+      "pages": null,
+      "size_mb": null,
+      "source": null
+    }
+  ],
+  "exports": [
+    {
+      "label": "Missing parts",
+      "formats": [
+        "BrickLink XML",
+        "LEGO CSV",
+        "Rebrickable CSV"
+      ],
+      "rows": 12
+    },
+    {
+      "label": "All parts (sets)",
+      "formats": [
+        "BrickLink XML",
+        "LEGO CSV",
+        "Rebrickable CSV"
+      ],
+      "rows": 6031
+    },
+    {
+      "label": "All parts (individual)",
+      "formats": [
+        "BrickLink XML",
+        "LEGO CSV",
+        "Rebrickable CSV"
+      ],
+      "rows": 212
+    },
+    {
+      "label": "Sets",
+      "formats": [
+        "Rebrickable CSV"
+      ],
+      "rows": 19
+    }
+  ],
+  "fetch_log": [
+    {
+      "at": "2026-10-12T07:00:00Z",
+      "source": "brickset",
+      "set": "76139-1",
+      "ok": true,
+      "detail": "3 slots"
+    },
+    {
+      "at": "2026-10-12T07:00:00Z",
+      "source": "bricklink",
+      "set": "75313-1",
+      "ok": false,
+      "detail": "429 Too Many Requests"
+    },
+    {
+      "at": "2026-10-12T06:00:00Z",
+      "source": "bricklink",
+      "set": "10307-1",
+      "ok": true,
+      "detail": "sold=18 min=589.00"
+    },
+    {
+      "at": "2026-10-12T03:00:00Z",
+      "source": "brickset",
+      "set": "42143-1",
+      "ok": true,
+      "detail": "3 slots"
+    },
+    {
+      "at": "2026-10-11T06:00:00Z",
+      "source": "bricklink",
+      "set": "75313-1",
+      "ok": false,
+      "detail": "429 Too Many Requests"
+    },
+    {
+      "at": "2026-10-11T05:00:00Z",
+      "source": "rebrickable",
+      "set": "71741-1",
+      "ok": true,
+      "detail": "inventory refreshed"
+    },
+    {
+      "at": "2026-10-10T06:00:00Z",
+      "source": "bricklink",
+      "set": "6086-1",
+      "ok": true,
+      "detail": "no new listings"
+    }
+  ],
+  "bulk_refresh_queue": [
+    {
+      "set": "7286-1",
+      "state": "done"
+    },
+    {
+      "set": "1592-1",
+      "state": "done"
+    },
+    {
+      "set": "6085-1",
+      "state": "running"
+    },
+    {
+      "set": "40567-1",
+      "state": "queued"
+    },
+    {
+      "set": "21325-1",
+      "state": "queued"
+    },
+    {
+      "set": "75192-1",
+      "state": "failed – timeout"
+    }
+  ]
+}

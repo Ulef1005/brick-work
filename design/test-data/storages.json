@@ -1,0 +1,94 @@
+{
+  "_note": "Synthetic storages for 12c (Workbench). Counts are bare.",
+  "storages": [
+    {
+      "name": "Box 3",
+      "type": "Box",
+      "inside": "Shelf B",
+      "sets": 4,
+      "figures": 6,
+      "part_lots": 18
+    },
+    {
+      "name": "Drawer 12",
+      "type": "Drawer",
+      "inside": "Cabinet A",
+      "sets": 0,
+      "figures": 0,
+      "part_lots": 42
+    },
+    {
+      "name": "Shelf B",
+      "type": "Shelf",
+      "inside": "Office",
+      "sets": 11,
+      "figures": 0,
+      "part_lots": 0
+    },
+    {
+      "name": "Box 5",
+      "type": "Box",
+      "inside": "Shelf B",
+      "sets": 0,
+      "figures": 0,
+      "part_lots": 0,
+      "state": "empty"
+    },
+    {
+      "name": "Bag 07",
+      "type": "Bag",
+      "inside": "Box 3",
+      "sets": 1,
+      "figures": 0,
+      "part_lots": 2
+    },
+    {
+      "name": "Drawer 8",
+      "type": "Drawer",
+      "inside": "Cabinet A",
+      "sets": 0,
+      "figures": 0,
+      "part_lots": 27
+    },
+    {
+      "name": "Display case",
+      "type": "Shelf",
+      "inside": "Living room",
+      "sets": 3,
+      "figures": 12,
+      "part_lots": 0
+    }
+  ],
+  "purchase_locations": [
+    {
+      "name": "Steinreich-Bricks",
+      "kind": "BrickLink store",
+      "orders": 9,
+      "last_used": "2026-09-28"
+    },
+    {
+      "name": "Kloetzchen-Kiste",
+      "kind": "BrickLink store",
+      "orders": 4,
+      "last_used": "2026-09-21"
+    },
+    {
+      "name": "Brick Corner Graz",
+      "kind": "Shop",
+      "orders": 3,
+      "last_used": "2026-09-09"
+    },
+    {
+      "name": "Flohmarkt Lend",
+      "kind": "Market",
+      "orders": 2,
+      "last_used": "2026-06-14"
+    },
+    {
+      "name": "Plattenbau Parts",
+      "kind": "BrickLink store",
+      "orders": 6,
+      "last_used": "2026-08-30"
+    }
+  ]
+}

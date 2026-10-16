@@ -1,0 +1,118 @@
+{
+  "_note": "Deliberately awkward records. Invented names unless marked real. Use them to test truncation, wrapping and empty values.",
+  "sets": [
+    {
+      "set": "99001-1",
+      "name": "The Extraordinarily Long Named Set of Medieval Castle Architecture, Siege Engines, Mounted Knights and Assorted Livestock (Collector’s Edition, Limited)",
+      "year": 2024,
+      "theme": "Icons",
+      "parts": 4321,
+      "image": null,
+      "issue": "long name, no image"
+    },
+    {
+      "set": "99002-1",
+      "name": "Ü-Wagen „Größe & Gewicht“ – Bäckerei 日本語",
+      "year": 1978,
+      "theme": "Classic Town",
+      "parts": 212,
+      "image": null,
+      "issue": "non-ASCII, umlauts, CJK"
+    },
+    {
+      "set": "99003-1",
+      "name": "Sticker Sheet",
+      "year": 2019,
+      "theme": "Promotional",
+      "parts": 0,
+      "image": null,
+      "issue": "0 parts: progress cannot divide"
+    },
+    {
+      "set": "99004-1",
+      "name": "Gift Set",
+      "year": 2020,
+      "theme": "Classic",
+      "parts": 12,
+      "purchase_price": 0.0,
+      "issue": "price 0.00 = gift, not missing"
+    },
+    {
+      "set": "71741-1",
+      "name": "NINJAGO City Gardens",
+      "parts": 5710,
+      "minifigures": 66,
+      "issue": "REAL: 66 minifigures in one set"
+    },
+    {
+      "set": "10307-1",
+      "name": "Eiffel Tower",
+      "parts": 10001,
+      "issue": "REAL: largest part count, 5-digit number in header"
+    }
+  ],
+  "parts": [
+    {
+      "part": "3001",
+      "quantity": 1,
+      "issue": "single piece"
+    },
+    {
+      "part": "3024",
+      "quantity": 842,
+      "issue": "very large quantity, plate 1x1"
+    },
+    {
+      "part": "973c26h01pr0391",
+      "name": "Torso with printed pattern",
+      "issue": "long printed-part number"
+    },
+    {
+      "part": "3957a",
+      "issue": "letter suffix"
+    },
+    {
+      "part": "x1234",
+      "issue": "non-numeric prefix, no catalog image"
+    },
+    {
+      "color": "Trans-Clear",
+      "issue": "transparent colour on white card; swatch needs a checker/outline"
+    },
+    {
+      "color": "Glow In Dark Opaque",
+      "issue": "colour with a similar neighbour (Glow In Dark Trans)"
+    }
+  ],
+  "quantities": {
+    "checked_of_total": [
+      "0/1",
+      "1/1",
+      "0/2",
+      "1/2",
+      "2/2",
+      "7/12",
+      "12/12",
+      "0/842",
+      "421/842",
+      "842/842"
+    ],
+    "missing_damaged": [
+      "1 missing",
+      "3 missing, 1 damaged",
+      "0 missing, 2 damaged"
+    ]
+  },
+  "money": [
+    "EUR 0.00",
+    "EUR 3.99",
+    "EUR 849.99",
+    "EUR 1,299.00",
+    "– (no price)"
+  ],
+  "dates": [
+    "2026-10-12",
+    "1999-01-01",
+    null
+  ]
+}

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="tokens-v2.css">
+<style>body{margin:0}a{color:oklch(0.54 0.17 42)}a:hover{opacity:.7}button{font-family:inherit;cursor:pointer}svg use{--ic:currentColor}</style>
+</helmet>
+<div class="{{ themeClass }}" style="height:100vh;display:flex;flex-direction:column;background:var(--tw-bg);color:var(--tw-text);font-family:var(--tw-font);overflow:hidden">
+  <div style="height:56px;flex:none;display:flex;align-items:center;gap:24px;padding:0 20px;border-bottom:0.5px solid var(--tw-divider)">
+    <div style="display:flex;align-items:center;gap:10px;min-width:212px"><span style="width:24px;height:24px;border-radius:6px;background:var(--tw-accent);display:inline-block"></span><span style="font:600 17px var(--tw-font);letter-spacing:-.2px">Brick Work frames</span></div>
+    <div style="display:flex;align-items:center;gap:8px"><span style="font:500 11px var(--tw-font);letter-spacing:.1em;text-transform:uppercase;color:var(--tw-text-muted)">Size</span>
+      <div style="display:flex;background:var(--tw-surface-2);border-radius:10px;padding:2px">
+        <sc-for list="{{ devices }}" as="d" hint-placeholder-count="5"><button onClick="{{ d.go }}" style="height:36px;min-width:56px;padding:0 12px;border:0;border-radius:8px;background:{{ d.bg }};color:{{ d.color }};font:500 13px var(--tw-font)">{{ d.label }}</button></sc-for>
+      </div></div>
+    <div style="display:flex;align-items:center;gap:8px"><span style="font:500 11px var(--tw-font);letter-spacing:.1em;text-transform:uppercase;color:var(--tw-text-muted)">Theme</span>
+      <div style="display:flex;background:var(--tw-surface-2);border-radius:10px;padding:2px">
+        <sc-for list="{{ themes }}" as="t" hint-placeholder-count="2"><button onClick="{{ t.go }}" style="height:36px;min-width:64px;padding:0 12px;border:0;border-radius:8px;background:{{ t.bg }};color:{{ t.color }};font:500 13px var(--tw-font)">{{ t.label }}</button></sc-for>
+      </div></div>
+    <div style="flex:1"></div>
+    <a href="{{ pageHref }}" target="_blank" style="font:500 14px var(--tw-font);text-decoration:none">Open {{ pageName }} page</a>
+  </div>
+  <div style="flex:1;min-height:0;display:flex">
+    <div style="width:244px;flex:none;border-right:0.5px solid var(--tw-divider);overflow:auto;padding:16px 12px;display:flex;flex-direction:column;gap:16px;box-sizing:border-box">
+      <sc-for list="{{ groups }}" as="g" hint-placeholder-count="5">
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <div style="font:500 11px/14px var(--tw-font);letter-spacing:.1em;text-transform:uppercase;color:var(--tw-text-muted);padding:0 8px 6px">{{ g.name }}</div>
+          <sc-for list="{{ g.subs }}" as="s" hint-placeholder-count="4">
+            <button onClick="{{ s.go }}" style="display:flex;align-items:center;gap:8px;height:36px;padding:0 8px;border:0;border-radius:10px;background:{{ s.bg }};color:{{ s.color }};font:500 14px var(--tw-font);text-align:left"><span style="flex:1">{{ s.label }}</span><span style="font:400 12px var(--tw-mono);color:var(--tw-text-muted)">{{ s.count }}</span></button>
+          </sc-for>
+        </div>
+      </sc-for>
+    </div>
+    <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+      <div style="flex:none;display:flex;align-items:center;gap:6px;padding:12px 20px;border-bottom:0.5px solid var(--tw-divider);flex-wrap:wrap">
+        <sc-for list="{{ chips }}" as="c" hint-placeholder-count="3"><button onClick="{{ c.go }}" style="height:36px;display:inline-flex;align-items:center;gap:8px;padding:0 14px;border:0.5px solid {{ c.bd }};border-radius:999px;background:{{ c.bg }};color:{{ c.color }};font:500 13px var(--tw-font);white-space:nowrap"><span style="font:500 12px var(--tw-mono);color:var(--tw-accent-text)">{{ c.id }}</span>{{ c.label }}</button></sc-for>
+      </div>
+      <div ref="{{ scrollRef }}" style="flex:1;min-height:0;overflow:auto;background:{{ frameBg }}">
+        <div style="padding:12px 24px 0;font:400 13px var(--tw-font);color:var(--tw-text-muted)">{{ status }}</div>
+        <div ref="{{ hostRef }}" style="padding:16px 24px 48px"></div>
+      </div>
+      <iframe ref="{{ frameRef }}" src="{{ src }}" onLoad="{{ onLoad }}" style="position:absolute;left:-10000px;top:0;width:1800px;height:900px;border:0;visibility:hidden"></iframe>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = (() => { let s = {}; try { s = JSON.parse(localStorage.getItem('bw-nav') || '{}'); } catch (e) {} return { group: s.group || 'Collection', sub: s.sub || 'Sets', sec: s.sec || '', dev: s.dev || 'All', theme: s.theme || 'light', status: 'Loading frames…' }; })();
+  frame = null; host = null; scroller = null; cache = {};
+  TREE = {
+    Guide: { file: 'Guide', subs: { Principles: [['g1', 'Principles'], ['g2', 'Colour'], ['g3', 'Tokens and type'], ['g4', 'Navigation pages']], Language: [['1a', 'Data-type language']], 'Shell and devices': [['1b', 'App shell'], ['9a', 'Devices'], ['6a', 'Icons']] } },
+    Collection: { file: 'Collection', subs: { Sets: [['1c', 'Sets'], ['1d', 'Set detail'], ['12g', 'Minifigures in a set'], ['1e', 'Edit sheet'], ['12i', 'Filters: Select, Group'], ['7b', 'Copy chooser, delete'], ['12j', 'First run without keys']], Minifigures: [['12f', 'Minifigure detail'], ['2a', 'Phone (v1.2)']], Parts: [['2b', 'Part detail'], ['2d', 'Part lot']], 'Instructions and boxes': [['2c', 'Instruction and box']], 'Lists and states': [['12h', 'Pager'], ['7a', 'Item lists'], ['8a', 'Grid, select, problems'], ['8c', 'Lots, progress, sheets'], ['11a', 'Capabilities'], ['2e', 'Module states']] } },
+    Workbench: { file: 'Workbench', subs: { 'Part to Inventory': [['3f', 'Full flow']], 'Check Set Parts': [['3b', 'Set list'], ['12a', 'Check this copy'], ['3e', 'Checker'], ['12d', 'Include spare parts?'], ['12e', 'Check figure parts']], 'Part Picker': [['3c', 'Part Picker']], Matcher: [['3a', 'Matcher']], Orders: [['12b', 'Orders, desktop and iPad'], ['5a', 'Orders'], ['7d', 'Detail, review, history'], ['11b', 'Capabilities']], Storage: [['12c', 'Storage, desktop and iPad'], ['5d', 'Storage']] } },
+    Planning: { file: 'Planning', subs: { Wishlist: [['4a', 'Wishlist'], ['12k', 'Max price currency']], Prices: [['4b', 'Prices'], ['11c', 'Watch']], 'Complete sets': [['4c', 'Complete sets'], ['7c', 'Pins, settings, export']] } },
+    Manage: { file: 'Manage', subs: { Add: [['4d', 'Add'], ['12o', 'Scan a barcode']], Sync: [['12n', 'Collection sync']], 'Tools and admin': [['12l', 'Catalogues and keys'], ['12m', 'API tokens'], ['5b', 'Tools & Admin'], ['7e', 'Admin pages'], ['7f', 'System pages'], ['8b', 'Forms, theme picker'], ['11d', 'Jobs, maintenance']], Statistics: [['5c', 'Statistics']] } },
+  };
+  readHash() {
+    const h = decodeURIComponent((location.hash || '').replace(/^#\/?/, '')); if (!h) return null;
+    const [path, q] = h.split('?'); const p = path.split('/'); const o = {};
+    if (this.TREE[p[0]]) { o.group = p[0]; o.sub = this.TREE[p[0]].subs[p[1]] ? p[1] : Object.keys(this.TREE[p[0]].subs)[0]; o.sec = p[2] || ''; }
+    else if (p[0]) { for (const g in this.TREE) for (const sb in this.TREE[g].subs) if (this.TREE[g].subs[sb].some(x => x[0] === p[0])) Object.assign(o, { group: g, sub: sb, sec: p[0] }); }
+    new URLSearchParams(q || '').forEach((v, k) => { if (k === 'w' && ['All', '390', '768', '1024', '1440'].includes(v)) o.dev = v; if (k === 't' && (v === 'light' || v === 'dark')) o.theme = v; });
+    return o;
+  }
+  writeHash() { const s = this.state; const h = '#/' + [s.group, this.secs().sub, this.cur()].map(encodeURIComponent).join('/') + '?w=' + s.dev + '&t=' + s.theme; try { if (location.hash !== h) history.replaceState(null, '', h); } catch (e) {} }
+  componentDidMount() { const o = this.readHash(); if (o) this.setState(o, () => this.writeHash()); else this.writeHash(); this.onHash = () => { const o = this.readHash(); if (o) this.setState(o, () => this.paint()); }; window.addEventListener('hashchange', this.onHash); }
+  componentWillUnmount() { window.removeEventListener('hashchange', this.onHash); }
+  save(p) { this.setState(p, () => { const s = this.state; try { localStorage.setItem('bw-nav', JSON.stringify({ group: s.group, sub: s.sub, sec: s.sec, dev: s.dev, theme: s.theme })); } catch (e) {} this.writeHash(); if (this.scroller) this.scroller.scrollTop = 0; this.paint(); }); }
+  secs() { const subs = this.TREE[this.state.group].subs; const sub = subs[this.state.sub] ? this.state.sub : Object.keys(subs)[0]; return { sub, list: subs[sub] }; }
+  cur() { const { list } = this.secs(); const ids = list.map(x => x[0]); return ids.includes(this.state.sec) ? this.state.sec : ids[0]; }
+  harvest() {
+    const f = this.frame; const d = f && f.contentDocument; if (!d) return false;
+    const root = d.querySelector('.tw-light,.tw-dark'); if (!root || !root.querySelector('section')) return false;
+    const sprite = Array.from(d.querySelectorAll('svg')).find(s => s.querySelector('symbol'));
+    const secs = {}; Array.from(root.querySelectorAll(':scope > section')).forEach(s => { secs[s.id] = s.outerHTML; });
+    this.cache[this.TREE[this.state.group].file] = { sprite: sprite ? sprite.outerHTML : '', secs };
+    return true;
+  }
+  paint() {
+    const file = this.TREE[this.state.group].file; const c = this.cache[file]; const h = this.host; if (!h) return;
+    if (!c) { h.innerHTML = ''; if (this.state.status !== 'Loading frames…') this.setState({ status: 'Loading frames…' }); return; }
+    const id = this.cur(); const html = c.secs[id]; const dk = this.state.theme === 'dark';
+    h.style.setProperty('--bw-g', dk ? 'oklch(0.76 0.10 215)' : 'oklch(0.50 0.10 215)'); h.style.setProperty('--bw-i', dk ? '#1A1816' : '#FAFAF8');
+    h.innerHTML = '<div style="position:absolute;width:0;height:0;overflow:hidden">' + c.sprite + '</div>' + (html || '');
+    const sec = h.querySelector('section'); let shown = 0, total = 0;
+    if (sec) {
+      const dev = this.state.dev; const ok = w => dev === 'All' || (dev === '390' && w <= 430) || (dev === '768' && w > 430 && w <= 900) || (dev === '1024' && w > 900 && w < 1200) || (dev === '1440' && w >= 1200);
+      const frames = Array.from(sec.querySelectorAll('[data-screen-label]')); total = frames.length;
+      frames.forEach(el => { const w = parseInt(el.style.width) || 0; el.parentElement.style.display = ok(w) ? '' : 'none'; if (ok(w)) shown++; });
+      sec.querySelectorAll('div').forEach(row => { if (row.style.display === 'flex' && row.querySelector('[data-screen-label]') && !row.hasAttribute('data-screen-label')) { const any = Array.from(row.querySelectorAll('[data-screen-label]')).some(e => e.parentElement.style.display !== 'none'); if (!any) row.style.display = 'none'; } });
+    }
+    const status = !html ? 'Section ' + id + ' is not on the ' + file + ' page yet.' : (this.state.dev === 'All' ? total + ' frames' : shown ? shown + ' of ' + total + ' frames at ' + this.state.dev : 'No frames at ' + this.state.dev + ' in this section. Pick another size.');
+    if (status !== this.state.status) this.setState({ status });
+  }
+  componentDidUpdate(pp, ps) { if (ps.group !== this.state.group) this.paint(); }
+  renderVals() {
+    const s = this.state, dark = s.theme === 'dark';
+    const { sub, list } = this.secs(); const cur = this.cur();
+    const seg = (on) => ({ bg: on ? 'var(--tw-bg)' : 'transparent', color: on ? 'var(--tw-accent-text)' : 'var(--tw-text-2)' });
+    const file = this.TREE[s.group].file;
+    return {
+      themeClass: dark ? 'tw-dark' : 'tw-light', frameBg: dark ? '#121110' : '#ECE8DF', status: s.status,
+      devices: ['All', '390', '768', '1024', '1440'].map(d => ({ label: d, ...seg(s.dev === d), go: () => this.save({ dev: d }) })),
+      themes: [['Light', 'light'], ['Dark', 'dark']].map(t => ({ label: t[0], ...seg(s.theme === t[1]), go: () => this.save({ theme: t[1] }) })),
+      groups: Object.keys(this.TREE).map(g => ({ name: g, subs: Object.keys(this.TREE[g].subs).map(n => { const on = g === s.group && n === sub; return { label: n, count: this.TREE[g].subs[n].length, bg: on ? 'var(--tw-accent-soft)' : 'transparent', color: on ? 'var(--tw-accent-text)' : 'var(--tw-text-2)', go: () => this.save({ group: g, sub: n, sec: '' }) }; }) })),
+      chips: list.map(x => { const on = x[0] === cur; return { id: x[0], label: x[1], bg: on ? 'var(--tw-accent-soft)' : 'var(--tw-surface)', color: on ? 'var(--tw-accent-text)' : 'var(--tw-text)', bd: on ? 'var(--tw-accent)' : 'transparent', go: () => this.save({ sec: x[0] }) }; }),
+      src: 'BW ' + file + '.dc.html', pageHref: 'BW ' + file + '.dc.html', pageName: file,
+      frameRef: el => { this.frame = el; }, hostRef: el => { if (el && el !== this.host) { this.host = el; el.addEventListener('error', e => { const i = e.target; if (i.tagName !== 'IMG' || i.dataset.fb) return; i.dataset.fb = '1'; const s = i.getAttribute('src') || ''; i.src = 'assets/data/placeholders/' + (s.includes('/minifigs/') ? 'missing-minifigure.jpg' : s.includes('/parts/') ? 'missing-part.jpg' : 'missing-set.jpg'); }, true); this.paint(); } }, scrollRef: el => { this.scroller = el; },
+      onLoad: () => { let n = 0; const tick = () => { if (this.harvest()) this.paint(); else if (n++ < 40) setTimeout(tick, 250); }; setTimeout(tick, 300); },
+    };
+  }
+}
+</script>
+</body>
+</html>

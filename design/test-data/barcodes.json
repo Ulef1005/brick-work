@@ -1,0 +1,35 @@
+{
+  "_note": "Synthetic EAN codes for 12o barcode scan. Not real product barcodes.",
+  "codes": [
+    {
+      "ean": "5702014601234",
+      "set": "7286-1"
+    },
+    {
+      "ean": "5702010608012",
+      "set": "6080-1"
+    },
+    {
+      "ean": "5702016912345",
+      "set": "21325-1"
+    },
+    {
+      "ean": "4006592123456",
+      "set": null,
+      "state": "no match"
+    },
+    {
+      "ean": "5702010608999",
+      "sets": [
+        "6080-1",
+        "10305-1"
+      ],
+      "state": "several sets"
+    }
+  ],
+  "conditions": [
+    "Sealed",
+    "New",
+    "Used"
+  ]
+}

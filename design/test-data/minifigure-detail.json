@@ -1,0 +1,63 @@
+{
+  "_note": "Synthetic copy state for the minifigure detail (12f) and the set minifigure module (12g).",
+  "figure": {
+    "bricklink": "cty0001",
+    "rebrickable": "fig-005119",
+    "name": "Police Officer",
+    "theme": "City · Police",
+    "year": 2011
+  },
+  "parts": [
+    {
+      "role": "Head",
+      "part": "3626cpr1580",
+      "colour": "Yellow"
+    },
+    {
+      "role": "Torso",
+      "part": "973c03h01pr0040",
+      "colour": "Black"
+    },
+    {
+      "role": "Legs",
+      "part": "970c03",
+      "colour": "Black"
+    },
+    {
+      "role": "Accessory",
+      "part": "3899",
+      "colour": "Red"
+    }
+  ],
+  "loose": [
+    {
+      "condition": "Used",
+      "storage": "Box 3 · Shelf B"
+    }
+  ],
+  "in_sets": [
+    {
+      "set": "7286-1",
+      "copy": "Set 1",
+      "state": "2 parts missing",
+      "missing": [
+        "Torso",
+        "Legs"
+      ]
+    },
+    {
+      "set": "7286-1",
+      "copy": "Set 2",
+      "state": "present"
+    },
+    {
+      "set": "60198-1",
+      "copy": "Set 1",
+      "state": "missing"
+    }
+  ],
+  "wish": {
+    "max_price": 4,
+    "max_price_currency": "EUR"
+  }
+}

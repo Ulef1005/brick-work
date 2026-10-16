@@ -1,0 +1,742 @@
+[
+  {
+    "set": "76139-1",
+    "number": "76139",
+    "version": 1,
+    "name": "1989 Batmobile",
+    "year": 2019,
+    "theme_id": 698,
+    "theme": "UCS",
+    "theme_path": "Super Heroes DC / Batman / UCS",
+    "parts": 3310,
+    "image": "images/sets/76139-1.jpg",
+    "image_url": "https://cdn.rebrickable.com/media/sets/76139-1.jpg",
+    "rebrickable_url": "https://rebrickable.com/sets/76139-1/",
+    "max_price": 249.99,
+    "condition": "new",
+    "below_max_price": true,
+    "price_tracking": {
+      "origin": "wanted",
+      "last_fetch_at": "2026-10-12T06:12:00Z",
+      "last_error": null
+    },
+    "prices": {
+      "new": {
+        "price": 218.17,
+        "source": "brickset",
+        "observed_at": "2026-10-12"
+      },
+      "used": {
+        "price": 170.17,
+        "source": "bricklink",
+        "observed_at": "2026-10-12"
+      },
+      "bricklink_new": {
+        "price": 205.08,
+        "sold": 14,
+        "min": 178.9,
+        "max": 239.99,
+        "source": "bricklink_stock",
+        "observed_at": "2026-10-12"
+      },
+      "bricklink_used": {
+        "price": 170.17,
+        "sold": 31,
+        "min": 119.12,
+        "max": 204.2,
+        "source": "bricklink_stock",
+        "observed_at": "2026-10-12"
+      }
+    },
+    "price_history": [
+      {
+        "observed_at": "2025-10-17",
+        "slot": "new",
+        "price": 258.1,
+        "source": "bricklink"
+      },
+      {
+        "observed_at": "2025-11-16",
+        "slot": "new",
+        "price": 256.13,
+        "source": "brickset"
+      },
+      {
+        "observed_at": "2025-12-16",
+        "slot": "new",
+        "price": 249.81,
+        "source": "bricklink"
+      },
+      {
+        "observed_at": "2026-01-15",
+        "slot": "new",
+        "price": 241.86,
+        "source": "brickset"
+      },
+      {
+        "observed_at": "2026-02-14",
+        "slot": "new",
+        "price": 233.99,
+        "source": "bricklink"
+      },
+      {
+        "observed_at": "2026-03-16",
+        "slot": "new",
+        "price": 232.43,
+        "source": "brickset"
+      },
+      {
+        "observed_at": "2026-04-15",
+        "slot": "new",
+        "price": 223.67,
+        "source": "bricklink"
+      },
+      {
+        "observed_at": "2026-05-15",
+        "slot": "new",
+        "price": 227.28,
+        "source": "brickset"
+      },
+      {
+        "observed_at": "2026-06-14",
+        "slot": "new",
+        "price": 232.73,
+        "source": "bricklink"
+      },
+      {
+        "observed_at": "2026-07-14",
+        "slot": "new",
+        "price": 225.67,
+        "source": "brickset"
+      },
+      {
+        "observed_at": "2026-08-13",
+        "slot": "new",
+        "price": 223.52,
+        "source": "bricklink"
+      },
+      {
+        "observed_at": "2026-09-12",
+        "slot": "new",
+        "price": 218.17,
+        "source": "brickset"
+      }
+    ]
+  },
+  {
+    "set": "75313-1",
+    "number": "75313",
+    "version": 1,
+    "name": "AT-AT",
+    "year": 2021,
+    "theme_id": 171,
+    "theme": "Ultimate Collector Series",
+    "theme_path": "Star Wars / Ultimate Collector Series",
+    "parts": 6785,
+    "image": "images/sets/75313-1.jpg",
+    "image_url": "https://cdn.rebrickable.com/media/sets/75313-1.jpg",
+    "rebrickable_url": "https://rebrickable.com/sets/75313-1/",
+    "max_price": 649.99,
+    "condition": "new",
+    "below_max_price": true,
+    "price_tracking": {
+      "origin": "wanted",
+      "last_fetch_at": "2026-10-12T06:12:00Z",
+      "last_error": "BrickLink 429 – retry later"
+    },
+    "prices": {
+      "new": {
+        "price": 583.47,
+        "source": "brickset",
+        "observed_at": "2026-10-12"
+      },
+      "used": {
+        "price": 455.11,
+        "source": "bricklink",
+        "observed_at": "2026-10-12"
+      },
+      "bricklink_new": {
+        "price": 548.46,
+        "sold": 14,
+        "min": 478.45,
+        "max": 641.82,
+        "source": "bricklink_stock",
+        "observed_at": "2026-10-12"
+      },
+      "bricklink_used": {
+        "price": 455.11,
+        "sold": 31,
+        "min": 318.58,
+        "max": 546.13,
+        "source": "bricklink_stock",
+        "observed_at": "2026-10-12"
+      }
+    },
+    "price_history": [
+      {
+        "observed_at": "2025-10-17",
+        "slot": "new",
+        "price": 672.62,
+        "source": "bricklink"
+      },
+      {
+        "observed_at": "2025-11-16",
+        "slot": "new",
+        "price": 654.9,
+        "source": "brickset"
+      },
+      {
+        "observed_at": "2025-12-16",
+        "slot": "new",
+        "price": 662.57,
+        "source": "bricklink"
+      },
+      {
+        "observed_at": "2026-01-15",
+        "slot": "new",
+        "price": 640.2,
+        "source": "brickset"
+      },
+      {
+        "observed_at": "2026-02-14",
+        "slot": "new",
+        "price": 638.82,
+        "source": "bricklink"
+      },
+      {
+        "observed_at": "2026-03-16",
+        "slot": "new",
+        "price": 624.09,
+        "source": "brickset"
+      },
+      {
+        "observed_at": "2026-04-15",
+        "slot": "new",
+        "price": 628.47,
+        "source": "bricklink"
+      },
+      {
+        "observed_at": "2026-05-15",
+        "slot": "new",
+        "price": 609.31,
+        "source": "brickset"
+      },
+      {
+        "observed_at": "2026-06-14",
+        "slot": "new",
+        "price": 587.99,
+        "source": "bricklink"
+      },
+      {
+        "observed_at": "2026-07-14",
+        "slot": "new",
+        "price": 565.05,
+        "source": "brickset"
+      },
+      {
+        "observed_at": "2026-08-13",
+        "slot": "new",
+        "price": 578.16,
+        "source": "bricklink"
+      },
+      {
+        "observed_at": "2026-09-12",
+        "slot": "new",
+        "price": 583.47,
+        "source": "brickset"
+      }
+    ]
+  },
+  {
+    "set": "10307-1",
+    "number": "10307",
+    "version": 1,
+    "name": "Eiffel Tower",
+    "year": 2022,
+    "theme_id": 721,
+    "theme": "Icons",
+    "theme_path": "Icons",
+    "parts": 10001,
+    "image": "images/sets/10307-1.jpg",
+    "image_url": "https://cdn.rebrickable.com/media/sets/10307-1.jpg",
+    "rebrickable_url": "https://rebrickable.com/sets/10307-1/",
+    "max_price": 629.99,
+    "condition": "new",
+    "below_max_price": false,
+    "price_tracking": {
+      "origin": "wanted",
+      "last_fetch_at": "2026-10-12T06:12:00Z",
+      "last_error": null
+    },
+    "prices": {
+      "new": {
+        "price": 703.38,
+        "source": "brickset",
+        "observed_at": "2026-10-12"
+      },
+      "used": {
+        "price": 548.64,
+        "source": "bricklink",
+        "observed_at": "2026-10-12"
+      },
+      "bricklink_new": {
+        "price": 661.18,
+        "sold": 14,
+        "min": 576.77,
+        "max": 773.72,
+        "source": "bricklink_stock",
+        "observed_at": "2026-10-12"
+      },
+      "bricklink_used": {
+        "price": 548.64,
+        "sold": 31,
+        "min": 384.05,
+        "max": 658.37,
+        "source": "bricklink_stock",
+        "observed_at": "2026-10-12"
+      }
+    },
+    "price_history": [
+      {
+        "observed_at": "2025-10-17",
+        "slot": "new",
+        "price": 711.83,
+        "source": "bricklink"
+      },
+      {
+        "observed_at": "2025-11-16",
+        "slot": "new",
+        "price": 723.52,
+        "source": "brickset"
+      },
+      {
+        "observed_at": "2025-12-16",
+        "slot": "new",
+        "price": 718.67,
+        "source": "bricklink"
+      },
+      {
+        "observed_at": "2026-01-15",
+        "slot": "new",
+        "price": 730.97,
+        "source": "brickset"
+      },
+      {
+        "observed_at": "2026-02-14",
+        "slot": "new",
+        "price": 731.02,
+        "source": "bricklink"
+      },
+      {
+        "observed_at": "2026-03-16",
+        "slot": "new",
+        "price": 730.09,
+        "source": "brickset"
+      },
+      {
+        "observed_at": "2026-04-15",
+        "slot": "new",
+        "price": 711.97,
+        "source": "bricklink"
+      },
+      {
+        "observed_at": "2026-05-15",
+        "slot": "new",
+        "price": 713.97,
+        "source": "brickset"
+      },
+      {
+        "observed_at": "2026-06-14",
+        "slot": "new",
+        "price": 713.61,
+        "source": "bricklink"
+      },
+      {
+        "observed_at": "2026-07-14",
+        "slot": "new",
+        "price": 721.94,
+        "source": "brickset"
+      },
+      {
+        "observed_at": "2026-08-13",
+        "slot": "new",
+        "price": 718.24,
+        "source": "bricklink"
+      },
+      {
+        "observed_at": "2026-09-12",
+        "slot": "new",
+        "price": 703.38,
+        "source": "brickset"
+      }
+    ]
+  },
+  {
+    "set": "42143-1",
+    "number": "42143",
+    "version": 1,
+    "name": "Ferrari Daytona SP3",
+    "year": 2022,
+    "theme_id": 1,
+    "theme": "Technic",
+    "theme_path": "Technic",
+    "parts": 3778,
+    "image": "images/sets/42143-1.jpg",
+    "image_url": "https://cdn.rebrickable.com/media/sets/42143-1.jpg",
+    "rebrickable_url": "https://rebrickable.com/sets/42143-1/",
+    "max_price": 399.99,
+    "condition": "new",
+    "below_max_price": false,
+    "price_tracking": {
+      "origin": "wanted",
+      "last_fetch_at": "2026-10-12T06:12:00Z",
+      "last_error": null
+    },
+    "prices": {
+      "new": {
+        "price": 451.3,
+        "source": "brickset",
+        "observed_at": "2026-10-12"
+      },
+      "used": {
+        "price": 352.01,
+        "source": "bricklink",
+        "observed_at": "2026-10-12"
+      },
+      "bricklink_new": {
+        "price": 424.22,
+        "sold": 14,
+        "min": 370.07,
+        "max": 496.43,
+        "source": "bricklink_stock",
+        "observed_at": "2026-10-12"
+      },
+      "bricklink_used": {
+        "price": 352.01,
+        "sold": 31,
+        "min": 246.41,
+        "max": 422.41,
+        "source": "bricklink_stock",
+        "observed_at": "2026-10-12"
+      }
+    },
+    "price_history": [
+      {
+        "observed_at": "2025-10-17",
+        "slot": "new",
+        "price": 455.0,
+        "source": "bricklink"
+      },
+      {
+        "observed_at": "2025-11-16",
+        "slot": "new",
+        "price": 450.67,
+        "source": "brickset"
+      },
+      {
+        "observed_at": "2025-12-16",
+        "slot": "new",
+        "price": 460.09,
+        "source": "bricklink"
+      },
+      {
+        "observed_at": "2026-01-15",
+        "slot": "new",
+        "price": 453.02,
+        "source": "brickset"
+      },
+      {
+        "observed_at": "2026-02-14",
+        "slot": "new",
+        "price": 439.55,
+        "source": "bricklink"
+      },
+      {
+        "observed_at": "2026-03-16",
+        "slot": "new",
+        "price": 444.14,
+        "source": "brickset"
+      },
+      {
+        "observed_at": "2026-04-15",
+        "slot": "new",
+        "price": 443.18,
+        "source": "bricklink"
+      },
+      {
+        "observed_at": "2026-05-15",
+        "slot": "new",
+        "price": 447.94,
+        "source": "brickset"
+      },
+      {
+        "observed_at": "2026-06-14",
+        "slot": "new",
+        "price": 449.69,
+        "source": "bricklink"
+      },
+      {
+        "observed_at": "2026-07-14",
+        "slot": "new",
+        "price": 453.74,
+        "source": "brickset"
+      },
+      {
+        "observed_at": "2026-08-13",
+        "slot": "new",
+        "price": 458.87,
+        "source": "bricklink"
+      },
+      {
+        "observed_at": "2026-09-12",
+        "slot": "new",
+        "price": 451.3,
+        "source": "brickset"
+      }
+    ]
+  },
+  {
+    "set": "10276-1",
+    "number": "10276",
+    "version": 1,
+    "name": "Colosseum",
+    "year": 2020,
+    "theme_id": 721,
+    "theme": "Icons",
+    "theme_path": "Icons",
+    "parts": 9036,
+    "image": "images/sets/10276-1.jpg",
+    "image_url": "https://cdn.rebrickable.com/media/sets/10276-1.jpg",
+    "rebrickable_url": "https://rebrickable.com/sets/10276-1/",
+    "max_price": 380.0,
+    "condition": "any",
+    "below_max_price": false,
+    "price_tracking": {
+      "origin": "wanted",
+      "last_fetch_at": "2026-10-12T06:12:00Z",
+      "last_error": null
+    },
+    "prices": {
+      "new": {
+        "price": 390.39,
+        "source": "brickset",
+        "observed_at": "2026-10-12"
+      },
+      "used": {
+        "price": 304.5,
+        "source": "bricklink",
+        "observed_at": "2026-10-12"
+      },
+      "bricklink_new": {
+        "price": 366.97,
+        "sold": 14,
+        "min": 320.12,
+        "max": 429.43,
+        "source": "bricklink_stock",
+        "observed_at": "2026-10-12"
+      },
+      "bricklink_used": {
+        "price": 304.5,
+        "sold": 31,
+        "min": 213.15,
+        "max": 365.4,
+        "source": "bricklink_stock",
+        "observed_at": "2026-10-12"
+      }
+    },
+    "price_history": [
+      {
+        "observed_at": "2025-10-17",
+        "slot": "new",
+        "price": 393.89,
+        "source": "bricklink"
+      },
+      {
+        "observed_at": "2025-11-16",
+        "slot": "new",
+        "price": 400.44,
+        "source": "brickset"
+      },
+      {
+        "observed_at": "2025-12-16",
+        "slot": "new",
+        "price": 406.88,
+        "source": "bricklink"
+      },
+      {
+        "observed_at": "2026-01-15",
+        "slot": "new",
+        "price": 408.17,
+        "source": "brickset"
+      },
+      {
+        "observed_at": "2026-02-14",
+        "slot": "new",
+        "price": 413.67,
+        "source": "bricklink"
+      },
+      {
+        "observed_at": "2026-03-16",
+        "slot": "new",
+        "price": 408.78,
+        "source": "brickset"
+      },
+      {
+        "observed_at": "2026-04-15",
+        "slot": "new",
+        "price": 395.65,
+        "source": "bricklink"
+      },
+      {
+        "observed_at": "2026-05-15",
+        "slot": "new",
+        "price": 401.19,
+        "source": "brickset"
+      },
+      {
+        "observed_at": "2026-06-14",
+        "slot": "new",
+        "price": 402.61,
+        "source": "bricklink"
+      },
+      {
+        "observed_at": "2026-07-14",
+        "slot": "new",
+        "price": 409.18,
+        "source": "brickset"
+      },
+      {
+        "observed_at": "2026-08-13",
+        "slot": "new",
+        "price": 399.08,
+        "source": "bricklink"
+      },
+      {
+        "observed_at": "2026-09-12",
+        "slot": "new",
+        "price": 390.39,
+        "source": "brickset"
+      }
+    ]
+  },
+  {
+    "set": "6086-1",
+    "number": "6086",
+    "version": 1,
+    "name": "Black Knight's Castle",
+    "year": 1992,
+    "theme_id": 188,
+    "theme": "Black Knights",
+    "theme_path": "Castle / Black Knights",
+    "parts": 590,
+    "image": "images/sets/6086-1.jpg",
+    "image_url": "https://cdn.rebrickable.com/media/sets/6086-1.jpg",
+    "rebrickable_url": "https://rebrickable.com/sets/6086-1/",
+    "max_price": 90.0,
+    "condition": "used",
+    "below_max_price": true,
+    "price_tracking": {
+      "origin": "wanted",
+      "last_fetch_at": "2026-10-12T06:12:00Z",
+      "last_error": null
+    },
+    "prices": {
+      "new": null,
+      "used": {
+        "price": 79.14,
+        "source": "bricklink",
+        "observed_at": "2026-10-12"
+      },
+      "bricklink_new": {
+        "price": 95.37,
+        "sold": 14,
+        "min": 83.2,
+        "max": 111.61,
+        "source": "bricklink_stock",
+        "observed_at": "2026-10-12"
+      },
+      "bricklink_used": {
+        "price": 79.14,
+        "sold": 31,
+        "min": 55.4,
+        "max": 94.97,
+        "source": "bricklink_stock",
+        "observed_at": "2026-10-12"
+      }
+    },
+    "price_history": [
+      {
+        "observed_at": "2025-10-17",
+        "slot": "new",
+        "price": 122.15,
+        "source": "bricklink"
+      },
+      {
+        "observed_at": "2025-11-16",
+        "slot": "new",
+        "price": 123.07,
+        "source": "brickset"
+      },
+      {
+        "observed_at": "2025-12-16",
+        "slot": "new",
+        "price": 119.5,
+        "source": "bricklink"
+      },
+      {
+        "observed_at": "2026-01-15",
+        "slot": "new",
+        "price": 117.96,
+        "source": "brickset"
+      },
+      {
+        "observed_at": "2026-02-14",
+        "slot": "new",
+        "price": 118.97,
+        "source": "bricklink"
+      },
+      {
+        "observed_at": "2026-03-16",
+        "slot": "new",
+        "price": 115.96,
+        "source": "brickset"
+      },
+      {
+        "observed_at": "2026-04-15",
+        "slot": "new",
+        "price": 112.22,
+        "source": "bricklink"
+      },
+      {
+        "observed_at": "2026-05-15",
+        "slot": "new",
+        "price": 112.12,
+        "source": "brickset"
+      },
+      {
+        "observed_at": "2026-06-14",
+        "slot": "new",
+        "price": 108.94,
+        "source": "bricklink"
+      },
+      {
+        "observed_at": "2026-07-14",
+        "slot": "new",
+        "price": 105.02,
+        "source": "brickset"
+      },
+      {
+        "observed_at": "2026-08-13",
+        "slot": "new",
+        "price": 101.54,
+        "source": "bricklink"
+      },
+      {
+        "observed_at": "2026-09-12",
+        "slot": "new",
+        "price": 101.46,
+        "source": "brickset"
+      }
+    ]
+  }
+]

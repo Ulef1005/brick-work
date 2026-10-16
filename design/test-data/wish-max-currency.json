@@ -1,0 +1,42 @@
+{
+  "_note": "Synthetic wish maximums with their own currency (12k). Never mix currencies: a max in another currency than the price gets no verdict.",
+  "app_currency": "EUR",
+  "wishes": [
+    {
+      "set": "6085-1",
+      "condition": "Used",
+      "max_price": 160,
+      "max_price_currency": "EUR",
+      "price_now": 142,
+      "price_currency": "EUR",
+      "verdict": "under max"
+    },
+    {
+      "set": "6074-1",
+      "condition": "Used",
+      "max_price": 95,
+      "max_price_currency": "EUR",
+      "price_now": 118.5,
+      "price_currency": "EUR",
+      "verdict": "over max"
+    },
+    {
+      "set": "10294-1",
+      "condition": "New",
+      "max_price": 550,
+      "max_price_currency": "USD",
+      "price_now": 612,
+      "price_currency": "EUR",
+      "verdict": "not comparable"
+    },
+    {
+      "set": "21318-1",
+      "condition": "New",
+      "max_price": 220,
+      "max_price_currency": "EUR",
+      "price_now": 201,
+      "price_currency": "EUR",
+      "verdict": "under max"
+    }
+  ]
+}

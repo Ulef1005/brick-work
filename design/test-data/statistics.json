@@ -1,0 +1,153 @@
+{
+  "totals": {
+    "copies": 19,
+    "distinct_sets": 18,
+    "pieces": 39102,
+    "minifigures": 101,
+    "spent_eur": 3177.32,
+    "wishlist": 6,
+    "missing_pieces": 11
+  },
+  "by_theme": {
+    "Police": 2,
+    "LEGO Ideas and CUUSOO": 2,
+    "Icons": 2,
+    "Classic Town": 1,
+    "Black Knights": 1,
+    "Promotional": 1,
+    "DOTS": 1,
+    "Ultimate Collector Series": 1,
+    "Lion Knights": 1,
+    "Black Falcons": 1,
+    "Creator 3-in-1": 1,
+    "Trains": 1,
+    "Botanicals": 1,
+    "Technic": 1,
+    "Samsonite": 1,
+    "Ninjago": 1
+  },
+  "by_year": {
+    "1971": 1,
+    "1980": 1,
+    "1984": 1,
+    "1986": 1,
+    "1988": 1,
+    "2011": 2,
+    "2017": 1,
+    "2018": 1,
+    "2019": 1,
+    "2020": 1,
+    "2021": 5,
+    "2022": 2,
+    "2023": 1
+  },
+  "by_storage": {
+    "Box 3 (attic)": 5,
+    "Display case": 5,
+    "Shelf A2 – Town": 3,
+    "Shelf A1 – Castle": 3,
+    "Parts drawer unit": 1,
+    "Technic crate": 1,
+    "Kellerregal Ü2": 1
+  },
+  "spend_by_year": {
+    "2020": 6.0,
+    "2021": 508.98,
+    "2022": 199.98,
+    "2023": 1108.89,
+    "2024": 1160.97,
+    "2025": 192.5
+  },
+  "top_colours_in_checked_sets": [
+    {
+      "id": 71,
+      "name": "Light Bluish Gray",
+      "rgb": "#A0A5A9",
+      "pieces": 3495
+    },
+    {
+      "id": 72,
+      "name": "Dark Bluish Gray",
+      "rgb": "#6C6E68",
+      "pieces": 1878
+    },
+    {
+      "id": 0,
+      "name": "Black",
+      "rgb": "#05131D",
+      "pieces": 1691
+    },
+    {
+      "id": 70,
+      "name": "Reddish Brown",
+      "rgb": "#582A12",
+      "pieces": 724
+    },
+    {
+      "id": 28,
+      "name": "Dark Tan",
+      "rgb": "#958A73",
+      "pieces": 537
+    },
+    {
+      "id": 15,
+      "name": "White",
+      "rgb": "#FFFFFF",
+      "pieces": 436
+    },
+    {
+      "id": 19,
+      "name": "Tan",
+      "rgb": "#E4CD9E",
+      "pieces": 406
+    },
+    {
+      "id": 1,
+      "name": "Blue",
+      "rgb": "#0055BF",
+      "pieces": 394
+    },
+    {
+      "id": 7,
+      "name": "Light Gray",
+      "rgb": "#9BA19D",
+      "pieces": 274
+    },
+    {
+      "id": 4,
+      "name": "Red",
+      "rgb": "#C91A09",
+      "pieces": 207
+    },
+    {
+      "id": 14,
+      "name": "Yellow",
+      "rgb": "#F2CD37",
+      "pieces": 197
+    },
+    {
+      "id": 320,
+      "name": "Dark Red",
+      "rgb": "#720E0F",
+      "pieces": 149
+    },
+    {
+      "id": 378,
+      "name": "Sand Green",
+      "rgb": "#A0BCAC",
+      "pieces": 94
+    },
+    {
+      "id": 272,
+      "name": "Dark Blue",
+      "rgb": "#0A3463",
+      "pieces": 84
+    }
+  ],
+  "completeness_buckets": {
+    "unchecked": 3,
+    "in progress": 1,
+    "complete": 2,
+    "complete with missing": 1
+  }
+}

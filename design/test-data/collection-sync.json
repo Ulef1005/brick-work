@@ -1,0 +1,98 @@
+{
+  "_note": "Synthetic sync state for 12n Collection sync.",
+  "links": [
+    {
+      "source": "Rebrickable",
+      "linked_to": "Set list · My collection",
+      "scopes": [
+        "sets",
+        "minifigures",
+        "parts"
+      ],
+      "last_pulled": "2026-10-14T21:10",
+      "last_sent": "2026-10-02T18:44",
+      "changes_here": 12,
+      "new_there": 3
+    },
+    {
+      "source": "Brickset",
+      "linked_to": "Owned and wanted sets",
+      "scopes": [
+        "sets"
+      ],
+      "last_pulled": "2026-10-15T08:02",
+      "last_sent": "2026-10-15T08:03",
+      "changes_here": 0,
+      "new_there": 0,
+      "wanted_goes_to": "wishlist"
+    },
+    {
+      "source": "BrickLink",
+      "linked_to": null,
+      "scopes": [
+        "minifigures",
+        "parts"
+      ],
+      "note": "Store inventory as loose minifigures and parts"
+    }
+  ],
+  "pull_preview": {
+    "total": 230,
+    "new_there": 14,
+    "different": 4,
+    "only_here": 6,
+    "same": 206
+  },
+  "send_review": [
+    {
+      "kind": "add",
+      "id": "21318-1",
+      "qty": 1
+    },
+    {
+      "kind": "add",
+      "id": "10294-1",
+      "qty": 1
+    },
+    {
+      "kind": "quantity",
+      "id": "6080-1",
+      "from": 1,
+      "to": 2
+    },
+    {
+      "kind": "quantity",
+      "id": "7286-1",
+      "from": 2,
+      "to": 3
+    },
+    {
+      "kind": "part_list",
+      "id": "3062b",
+      "colour": "Yellow",
+      "add": 4
+    },
+    {
+      "kind": "remove",
+      "id": "6085-1",
+      "ticked": false
+    }
+  ],
+  "conflicts": [
+    {
+      "id": "6080-1",
+      "here": "2 copies",
+      "there": "1"
+    },
+    {
+      "id": "7286-1",
+      "here": "3 copies",
+      "there": "2"
+    },
+    {
+      "id": "60198-1",
+      "here": "1 copy · Incomplete",
+      "there": "1 · marked complete"
+    }
+  ]
+}

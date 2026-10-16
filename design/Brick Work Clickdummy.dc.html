@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="tokens-v2.css">
+<style>body{margin:0;background:#ECE8DF}a{color:oklch(0.54 0.17 42)}a:hover{opacity:.7}button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;text-align:inherit}</style>
+</helmet>
+<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute" aria-hidden="true" xmlns:c2pa="http://c2pa.org/manifest"><metadata><c2pa:manifest>AAAWgmp1bWIAAAAeanVtZGMycGEAEQAQgAAAqgA4m3EDYzJwYQAAABZcanVtYgAAAEdqdW1kYzJtYQARABCAAACqADibcQN1cm46YzJwYTowNjM0OGJkYS1lNGE4LTQ0OWItYWYzZS0wNTk3ZmEyNDdiNmMAAAADl2p1bWIAAAApanVtZGMyYXMAEQAQgAAAqgA4m3EDYzJwYS5hc3NlcnRpb25zAAAAALxqdW1iAAAARGp1bWRjYm9yABEAEIAAAKoAOJtxE2MycGEuaW5ncmVkaWVudC52MwAAAAAYYzJzaGQO5iWCD00QwooNSJJ7edsAAABwY2JvcqNpZGM6Zm9ybWF0bWltYWdlL3N2Zyt4bWxqaW5zdGFuY2VJRHgseG1wOmlpZDpmN2Y3MzQ2My0xOTlkLTQ3NjQtYWM1MS0xMDhhODFiOGY5NDlscmVsYXRpb25zaGlwaHBhcmVudE9mAAAB4mp1bWIAAABBanVtZGNib3IAEQAQgAAAqgA4m3ETYzJwYS5hY3Rpb25zLnYyAAAAABhjMnNowKhw+QmIMA/XUVE5sEJUZAAAAZljYm9yomdhY3Rpb25zgqJmYWN0aW9ua2MycGEub3BlbmVkanBhcmFtZXRlcnOha2luZ3JlZGllbnRzgaJjdXJseC1zZWxmI2p1bWJmPWMycGEuYXNzZXJ0aW9ucy9jMnBhLmluZ3JlZGllbnQudjNkaGFzaFggkvzMQtbApM2BlJ1b9rKNmo+cHijRf05eNxtukP2mbbukZmFjdGlvbngdY29tLmFudGhyb3BpYy5jbGF1ZGUucHJvdmlkZWRqcGFyYW1ldGVyc6F4H2NvbS5hbnRocm9waWMub3JpZ2luLWNvbmZpZGVuY2VndW5rbm93bmtkZXNjcmlwdGlvbnhmQ2xhdWRlIHByb3ZpZGVkIHRoaXMgZmlsZSBhdCB0aGUgcmVxdWVzdCBvZiBhIHVzZXIgYW5kIG1heSBoYXZlIGNyZWF0ZWQgb3IgbW9kaWZpZWQgdGhlIGZpbGUgY29udGVudHMubXNvZnR3YXJlQWdlbnShZG5hbWVmQ2xhdWRlcmFsbEFjdGlvbnNJbmNsdWRlZPUAAADIanVtYgAAAEBqdW1kY2JvcgARABCAAACqADibcRNjMnBhLmhhc2guZGF0YQAAAAAYYzJzaBPcX4+YgSeM+ZVJc2RLlO0AAACAY2JvcqVjYWxnZnNoYTI1NmNwYWRNAAAAAAAAAAAAAAAAAGRoYXNoWCCP7suIlfX5h/7GeBzXxt3lbjSJLgcazrAOuii7snjJ8WRuYW1lbmp1bWJmIG1hbmlmZXN0amV4Y2x1c2lvbnOBomVzdGFydBh8Zmxlbmd0aBkeBAAAAj5qdW1iAAAAJ2p1bWRjMmNsABEAEIAAAKoAOJtxA2MycGEuY2xhaW0udjIAAAACD2Nib3KlY2FsZ2ZzaGEyNTZpc2lnbmF0dXJleE1zZWxmI2p1bWJmPS9jMnBhL3VybjpjMnBhOjA2MzQ4YmRhLWU0YTgtNDQ5Yi1hZjNlLTA1OTdmYTI0N2I2Yy9jMnBhLnNpZ25hdHVyZWppbnN0YW5jZUlEeCx4bXA6aWlkOjkwNzUwOTA2LTMwZTctNDdhYS05OTA4LWZlNmJlZjEzZjExMXJjcmVhdGVkX2Fzc2VydGlvbnODomN1cmx4LXNlbGYjanVtYmY9YzJwYS5hc3NlcnRpb25zL2MycGEuaW5ncmVkaWVudC52M2RoYXNoWCCS/MxC1sCkzYGUnVv2so2aj5weKNF/Tl43G26Q/aZtu6JjdXJseCpzZWxmI2p1bWJmPWMycGEuYXNzZXJ0aW9ucy9jMnBhLmFjdGlvbnMudjJkaGFzaFggaIfg+fGWJjuLWhL6SPFuGHuQQOXANMzBNMf2i416Ln+iY3VybHgpc2VsZiNqdW1iZj1jMnBhLmFzc2VydGlvbnMvYzJwYS5oYXNoLmRhdGFkaGFzaFgg7YSjniXAQ5KYznIgjPPxFbztfvmBrY65MQwMkcrY6JB0Y2xhaW1fZ2VuZXJhdG9yX2luZm+jZG5hbWVvQW50aHJvcGljIEZpbGVzZ3ZlcnNpb25lMS4wLjBrc3BlY1ZlcnNpb25lMi40LjAAABA4anVtYgAAAChqdW1kYzJjcwARABCAAACqADibcQNjMnBhLnNpZ25hdHVyZQAAABAIY2JvctKEWQISogEmGCFZAgowggIGMIIBjaADAgECAhRA5aAK7sI50L64g/oGQgU9Z1UTADAKBggqhkjOPQQDAzBJMRcwFQYDVQQKEw5BbnRocm9waWMsIFBCQzEuMCwGA1UEAxMlQW50aHJvcGljIENvbnRlbnQgQ3JlZGVudGlhbHMgUm9vdCBDQTAeFw0yNjA4MDcxODQzNTZaFw0yODA4MDYxOTQzNTZaMEQxFzAVBgNVBAoTDkFudGhyb3BpYywgUEJDMSkwJwYDVQQDEyBBbnRocm9waWMgQ2xhdWRlIENvbnRlbnQgU2lnbmluZzBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABJh6CmvLUBgFFNU0vUKlOVtE6djd17L5SuwX0LemFisBM3dkd/3cyjxFA3Qo5S46fX0/ihY0VZ7mfb9KF703t5OjWDBWMA4GA1UdDwEB/wQEAwIHgDAVBgNVHSUEDjAMBgorBgEEAYPoXgIBMAwGA1UdEwEB/wQCMAAwHwYDVR0jBBgwFoAUzlHiBIFOZFsj+OPEz5o+nMHXXMIwCgYIKoZIzj0EAwMDZwAwZAIwMXMdFJ4BetLLVY7ORuE9noqbbAZOZn/aArXyTwFAZfKrPzxF2vPoJNf1+UCdg1XGAjBwX1zd9WGqYkqmL5SFqw1QySjr1zJfpJM9+1rdDwSPLMOPOjKuiXjoU/pUUeG9RwmhY3BhZFkNngAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPZYQJfiXnA/G637TB3HtinSeFpXbrr+bk7Du0SF9tm0hPicO3AoRJldRaLhzovyntsMaSpcVNKp9z3DLEv8uOjZlnY=</c2pa:manifest></metadata>
+<symbol id="bw-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4"></path></symbol>
+<symbol id="bw-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"></path></symbol>
+<symbol id="bw-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 3.5v17"></path><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor"></path></symbol>
+<symbol id="bw-sets" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="9" rx="2"></rect><path d="M8 10V7.5M12 10V7.5M16 10V7.5"></path></symbol>
+<symbol id="bw-minifig" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7" r="3"></circle><path d="M6 20v-3a6 6 0 0 1 12 0v3z"></path></symbol>
+<symbol id="bw-parts" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7.5 4.2v9.6L12 21l-7.5-4.2V7.2z"></path><circle cx="12" cy="12" r="2.5"></circle></symbol>
+<symbol id="bw-instr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5h8l4 4V20.5H6z"></path><path d="M14 3.5v4h4M9 12.5h6M9 16h4"></path></symbol>
+<symbol id="bw-box" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 8L12 4l8.5 4v9L12 21l-8.5-4z"></path><path d="M3.5 8L12 12l8.5-4M12 12v9"></path></symbol>
+<symbol id="bw-scan" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V5h3M17 5h3v3M20 16v3h-3M7 19H4v-3M7 12h10"></path></symbol>
+<symbol id="bw-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 7l1.8 1.8L9.5 5.5M4.5 16l1.8 1.8 3.2-3.3M13 7.5h6.5M13 16.5h6.5"></path></symbol>
+<symbol id="bw-pick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6-5.2-6-10a6 6 0 0 1 12 0c0 4.8-6 10-6 10z"></path><path d="M12 8.5v5M9.5 11h5"></path></symbol>
+<symbol id="bw-match" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="9" height="9" rx="2"></rect><rect x="11" y="11" width="9" height="9" rx="2"></rect></symbol>
+<symbol id="bw-orders" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 6.5h10v9h-10zM13.5 9.5h4l3 3v3h-7z"></path><circle cx="7" cy="17.5" r="1.3"></circle><circle cx="16.5" cy="17.5" r="1.3"></circle></symbol>
+<symbol id="bw-storage" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5h16v5H4zM4 13.5h16v5H4zM10 8h4M10 16h4"></path></symbol>
+<symbol id="bw-wish" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10v16l-5-3.8L7 20z"></path></symbol>
+<symbol id="bw-price" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 12.5V4.5h8l9 9-8 8z"></path><circle cx="8" cy="9" r="1"></circle></symbol>
+<symbol id="bw-done" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"></circle><path d="M8.2 12.2l2.6 2.6 5-5.6"></path></symbol>
+<symbol id="bw-add" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"></path></symbol>
+<symbol id="bw-tools" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h9M17 7h3M4 17h3M11 17h9M15 5v4M9 15v4"></path></symbol>
+<symbol id="bw-cog" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"></path></symbol>
+<symbol id="bw-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"></circle><path d="M20 20l-4.5-4.5"></path></symbol>
+<symbol id="bw-filter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5h16M7 12h10M10 17.5h4"></path></symbol>
+<symbol id="bw-sort" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4.5v15M5 16.5l3 3 3-3M16 19.5v-15M13 7.5l3-3 3 3"></path></symbol>
+<symbol id="bw-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 6l6 6-6 6"></path></symbol>
+<symbol id="bw-chevd" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9.5l6 6 6-6"></path></symbol>
+<symbol id="bw-back" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 6l-6 6 6 6"></path></symbol>
+<symbol id="bw-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"></path></symbol>
+<symbol id="bw-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 19.5h4L19 9l-4-4L4.5 15.5z"></path></symbol>
+<symbol id="bw-ext" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4.5h6.5V11M19.5 4.5L11 13M17.5 14.5v5h-12v-12h5"></path></symbol>
+<symbol id="bw-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5"></rect><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"></rect><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"></rect><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"></rect></symbol>
+<symbol id="bw-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5h16M4 12h16M4 17.5h16"></path></symbol>
+<symbol id="bw-minus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 12h12"></path></symbol>
+<symbol id="bw-tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></symbol>
+</svg>
+<div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;gap:16px;padding:24px 16px;box-sizing:border-box;font-family:var(--tw-font)">
+  <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;justify-content:center">
+    <div style="display:flex;background:#F2EFE9;border-radius:10px;padding:2px;gap:2px">
+      <button onClick="{{ setPhone }}" style="height:36px;padding:0 16px;border-radius:8px;font:500 14px var(--tw-font);background:{{ phoneBg }};color:#1A1816">Phone</button>
+      <button onClick="{{ setDesk }}" style="height:36px;padding:0 16px;border-radius:8px;font:500 14px var(--tw-font);background:{{ deskBg }};color:#1A1816">Desktop</button>
+    </div>
+    <span style="font:400 13px var(--tw-font);color:#45413B">Click-dummy · sample data · Check Set Parts runs end to end from Sets → 7286-1 → Check parts</span>
+  </div>
+
+  <div class="{{ themeClass }}" style="width:{{ frameW }};height:{{ frameH }};max-width:100%;background:var(--tw-bg);color:var(--tw-text);border:0.5px solid var(--tw-divider-strong);border-radius:24px;overflow:hidden;position:relative;display:flex;box-sizing:border-box">
+
+    <sc-if value="{{ isDesk }}" hint-placeholder-val="{{ false }}">
+      <div style="width:208px;flex:none;border-right:0.5px solid var(--tw-divider);padding:16px 10px;display:flex;flex-direction:column;gap:12px;box-sizing:border-box;overflow:auto">
+        <div style="display:flex;align-items:center;gap:10px;padding:0 8px;height:32px"><img src="{{ markSrc }}" width="24" height="24" style="display:block"><span style="font:600 17px var(--tw-font);letter-spacing:-.2px">Brick Work</span></div>
+        <sc-for list="{{ rail }}" as="g" hint-placeholder-count="4"><div style="display:flex;flex-direction:column;gap:2px">
+          <div style="font:500 11px/14px var(--tw-font);letter-spacing:.1em;text-transform:uppercase;color:var(--tw-text-muted);padding:0 8px 4px">{{ g.g }}</div>
+          <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="5"><button onClick="{{ it.go }}" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:10px;background:{{ it.bg }};color:{{ it.color }}"><svg width="20" height="20" viewBox="0 0 24 24"><use href="#bw-{{ it.ic }}"></use></svg><span style="font:500 14px var(--tw-font)">{{ it.label }}</span></button></sc-for>
+        </div></sc-for>
+        <div style="margin-top:auto;display:flex;background:var(--tw-surface);border-radius:10px;padding:2px;gap:2px">
+          <sc-for list="{{ themeOpts }}" as="o" hint-placeholder-count="3"><button onClick="{{ o.go }}" aria-label="{{ o.label }}" style="flex:1;height:40px;display:grid;place-items:center;border-radius:8px;background:{{ o.bg }};color:{{ o.color }}"><svg width="20" height="20" viewBox="0 0 24 24"><use href="#bw-{{ o.ic }}"></use></svg></button></sc-for>
+        </div>
+      </div>
+    </sc-if>
+
+    <div style="flex:1;min-width:0;display:flex;flex-direction:column;position:relative">
+
+      <sc-if value="{{ showTop }}" hint-placeholder-val="{{ true }}">
+        <div style="height:56px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 8px 0 20px;border-bottom:0.5px solid var(--tw-divider)">
+          <div style="display:flex;align-items:center;gap:10px"><img src="{{ markSrc }}" width="24" height="24" style="display:block"><span style="font:600 17px var(--tw-font);letter-spacing:-.2px">Brick Work</span></div>
+          <div style="display:flex">
+            <button onClick="{{ goAdd }}" aria-label="Add" style="width:44px;height:44px;display:grid;place-items:center;color:var(--tw-accent-text)"><svg width="24" height="24" viewBox="0 0 24 24"><use href="#bw-add"></use></svg></button>
+            <button onClick="{{ openJump }}" aria-label="Jump" style="width:44px;height:44px;display:grid;place-items:center;color:var(--tw-text-2)"><svg width="22" height="22" viewBox="0 0 24 24"><use href="#bw-search"></use></svg></button>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ showSub }}" hint-placeholder-val="{{ false }}">
+        <div style="height:44px;flex:none;display:flex;gap:4px;overflow:auto;padding:0 12px;border-bottom:0.5px solid var(--tw-divider)">
+          <sc-for list="{{ subnav }}" as="s" hint-placeholder-count="5"><button onClick="{{ s.go }}" style="flex:none;display:flex;align-items:center;padding:0 12px;font:500 14px var(--tw-font);color:{{ s.color }};border-bottom:2px solid {{ s.bd }};box-sizing:border-box">{{ s.label }}</button></sc-for>
+        </div>
+      </sc-if>
+
+      <div style="flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column">
+
+        <sc-if value="{{ isSets }}" hint-placeholder-val="{{ true }}">
+          <div style="padding:20px 20px 0;display:flex;gap:12px;align-items:flex-start">
+            <div style="flex:1;display:flex;flex-direction:column;gap:4px"><div style="font:600 22px/28px var(--tw-font);letter-spacing:-.2px">{{ setsTitle }}</div><div style="font:400 14px/20px var(--tw-font);color:var(--tw-text-muted)">{{ setsSub }}</div></div>
+            <button onClick="{{ goAdd }}" style="height:44px;padding:0 18px;border-radius:10px;background:var(--tw-accent);color:#1A1816;display:inline-flex;align-items:center;gap:6px;font:600 15px var(--tw-font)"><svg width="18" height="18" viewBox="0 0 24 24"><use href="#bw-add"></use></svg>Add</button>
+          </div>
+          <div style="padding:12px 20px 0;display:flex;gap:8px;overflow:auto">
+            <sc-for list="{{ chips }}" as="c" hint-placeholder-count="5"><button onClick="{{ c.go }}" style="flex:none;height:44px;padding:0 14px;border-radius:10px;background:{{ c.bg }};color:{{ c.color }};display:inline-flex;align-items:center;gap:8px;font:500 14px var(--tw-font)"><span style="width:8px;height:8px;border-radius:50%;background:{{ c.dot }}"></span>{{ c.label }}<span style="font:400 13px var(--tw-mono)">{{ c.n }}</span></button></sc-for>
+          </div>
+          <div style="padding:8px 20px 4px;display:flex;align-items:center;gap:8px">
+            <button onClick="{{ openFilters }}" style="height:44px;padding:0 14px;border-radius:10px;background:var(--tw-surface);color:var(--tw-text-2);display:inline-flex;align-items:center;gap:8px;font:500 14px var(--tw-font)"><svg width="18" height="18" viewBox="0 0 24 24"><use href="#bw-filter"></use></svg>Filters</button>
+            <button onClick="{{ openSort }}" style="height:44px;padding:0 14px;border-radius:10px;background:var(--tw-surface);color:var(--tw-text-2);display:inline-flex;align-items:center;gap:8px;font:500 14px var(--tw-font)"><svg width="18" height="18" viewBox="0 0 24 24"><use href="#bw-sort"></use></svg>{{ sortLabel }}</button>
+            <span style="flex:1"></span>
+            <div style="display:flex;background:var(--tw-surface);border-radius:10px;padding:2px">
+              <button onClick="{{ setGrid }}" aria-label="Grid" style="width:44px;height:36px;display:grid;place-items:center;border-radius:8px;background:{{ gridBg }};color:{{ gridColor }}"><svg width="18" height="18" viewBox="0 0 24 24"><use href="#bw-grid"></use></svg></button>
+              <button onClick="{{ setList }}" aria-label="List" style="width:44px;height:36px;display:grid;place-items:center;border-radius:8px;background:{{ listBg }};color:{{ listColor }}"><svg width="18" height="18" viewBox="0 0 24 24"><use href="#bw-list"></use></svg></button>
+            </div>
+          </div>
+          <div style="padding:8px 20px 24px;display:grid;grid-template-columns:{{ gridCols }};gap:{{ gridGap }}">
+            <sc-for list="{{ shownSets }}" as="c" hint-placeholder-count="6">
+              <button onClick="{{ c.go }}" style="display:flex;flex-direction:{{ c.dir }};gap:{{ c.gap }};min-width:0;align-items:{{ c.align }};border-bottom:{{ c.bb }};padding:{{ c.pad }}">
+                <div style="width:{{ c.imgW }};aspect-ratio:{{ c.ratio }};flex:none;background:var(--tw-surface-2);border-radius:10px;display:grid;place-items:center;font:400 12px var(--tw-mono);color:var(--tw-text-muted)">{{ c.imgTxt }}</div>
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px;width:100%">
+                  <span style="font:400 12px/16px var(--tw-mono);color:var(--tw-text-muted)">{{ c.id }}</span>
+                  <span style="font:600 15px/20px var(--tw-font)">{{ c.name }}</span>
+                  <span style="font:400 13px/18px var(--tw-font);color:var(--tw-text-muted)">{{ c.meta }}</span>
+                  <div style="display:flex;justify-content:space-between;align-items:center;gap:6px"><span style="display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:999px;background:{{ c.sbg }};border:{{ c.sbd }};font:500 12px var(--tw-font)"><span style="width:7px;height:7px;border-radius:50%;background:{{ c.dot }}"></span>{{ c.status }}</span><span style="font:500 13px var(--tw-mono)">{{ c.price }}</span></div>
+                </div>
+              </button>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isDetail }}" hint-placeholder-val="{{ false }}">
+          <button onClick="{{ toSets }}" style="height:44px;display:flex;align-items:center;gap:2px;padding:0 12px;color:var(--tw-accent-text);font:500 15px var(--tw-font)"><svg width="20" height="20" viewBox="0 0 24 24"><use href="#bw-back"></use></svg>Sets</button>
+          <div style="display:flex;flex-direction:{{ detailDir }};gap:24px;padding:0 20px 24px">
+            <div style="width:{{ heroW }};flex:none;display:flex;flex-direction:column;gap:16px">
+              <div style="aspect-ratio:4/3;background:#FFFFFF;border:0.5px solid var(--tw-divider-strong);border-radius:10px;display:grid;place-items:center;font:400 12px var(--tw-mono);color:#8A847A">{{ cur.id }}</div>
+              <div style="display:flex;flex-direction:column;gap:6px"><span style="font:400 12px/16px var(--tw-mono);color:var(--tw-text-muted)">{{ cur.id }} · {{ cur.meta }}</span><span style="font:600 28px/34px var(--tw-font);letter-spacing:-.3px">{{ cur.name }}</span>
+                <div style="display:flex;gap:8px;flex-wrap:wrap"><span style="display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:999px;background:{{ cur.sbg }};border:{{ cur.sbd }};font:500 12px var(--tw-font)"><span style="width:7px;height:7px;border-radius:50%;background:{{ cur.dot }}"></span>{{ cur.status }}</span><sc-if value="{{ checkedFlag }}"><span style="display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:999px;background:var(--tw-success-soft);font:500 12px var(--tw-font)"><span style="width:7px;height:7px;border-radius:50%;background:var(--tw-success)"></span>Checked</span></sc-if></div></div>
+            </div>
+            <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:16px">
+              <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px"><div style="display:flex;flex-direction:column;gap:4px"><div style="font:600 22px/28px var(--tw-font);letter-spacing:-.2px">{{ detailTitle }}</div><div style="font:400 14px/20px var(--tw-font);color:var(--tw-text-muted)">{{ detailSub }}</div></div></div>
+              <button onClick="{{ startCheck }}" style="height:56px;border-radius:10px;background:var(--tw-accent);color:#1A1816;display:grid;place-items:center;font:600 16px var(--tw-font)">{{ checkLabel }}</button>
+              <sc-for list="{{ missCards }}" as="m" hint-placeholder-count="3">
+                <div style="background:var(--tw-surface);border-radius:16px;padding:16px;display:flex;gap:16px">
+                  <div style="width:80px;height:80px;border-radius:10px;background:#FFFFFF;border:0.5px solid var(--tw-divider-strong);flex:none;display:grid;place-items:center;font:400 11px var(--tw-mono);color:#8A847A">{{ m.num }}</div>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px">
+                    <span style="display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:6px;background:{{ m.hex }};color:{{ m.ink }};border:0.5px solid var(--tw-divider-strong);font:500 12px var(--tw-font);width:fit-content">{{ m.colour }}</span>
+                    <span style="font:600 15px/20px var(--tw-font)">{{ m.name }} <span style="font:400 12px var(--tw-mono);color:var(--tw-text-muted)">{{ m.num }}</span></span>
+                    <span style="font:500 13px var(--tw-mono)">needs {{ m.qty }} · −{{ m.miss }}</span>
+                    <sc-if value="{{ m.canTake }}"><div style="display:flex;gap:8px;align-items:center"><button onClick="{{ m.dec }}" aria-label="Fewer" style="width:56px;height:56px;border-radius:10px;background:var(--tw-bg);color:var(--tw-accent-text);display:grid;place-items:center"><svg width="22" height="22" viewBox="0 0 24 24"><use href="#bw-minus"></use></svg></button><button onClick="{{ m.takeNow }}" style="flex:1;height:56px;border-radius:10px;background:var(--tw-accent);color:#1A1816;font:600 15px var(--tw-font);display:grid;place-items:center">{{ m.takeLabel }}</button><button onClick="{{ m.inc }}" aria-label="More" style="width:56px;height:56px;border-radius:10px;background:var(--tw-bg);color:var(--tw-accent-text);display:grid;place-items:center"><svg width="22" height="22" viewBox="0 0 24 24"><use href="#bw-add"></use></svg></button></div></sc-if>
+                    <sc-if value="{{ m.cannotTake }}"><span style="font:400 13px var(--tw-font);color:var(--tw-text-muted)">None in loose stock</span></sc-if>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isCheck }}" hint-placeholder-val="{{ false }}">
+          <div style="height:56px;flex:none;display:flex;align-items:center;gap:4px;padding:0 4px">
+            <button onClick="{{ exitCheck }}" aria-label="Close" style="width:44px;height:44px;display:grid;place-items:center;color:var(--tw-text-2)"><svg width="22" height="22" viewBox="0 0 24 24"><use href="#bw-close"></use></svg></button>
+            <div style="flex:1;display:flex;flex-direction:column"><span style="font:400 12px/16px var(--tw-mono);color:var(--tw-text-muted)">{{ cur.id }} · Set 1</span><span style="font:600 14px/18px var(--tw-font)">{{ cur.name }}</span></div>
+            <span style="font:400 13px var(--tw-mono);color:var(--tw-text-2);padding-right:12px">{{ posLabel }}</span>
+          </div>
+          <div style="padding:0 20px 16px;display:flex;flex-direction:column;gap:6px">
+            <div style="display:flex;height:8px;gap:2px"><div style="flex:{{ sFound }};background:var(--tw-viz-4);border-radius:4px 0 0 4px"></div><div style="flex:{{ sMiss }};background:var(--tw-warning)"></div><div style="flex:{{ sSkip }};border:1.5px solid var(--tw-viz-4);box-sizing:border-box"></div><div style="flex:{{ sRest }};background:var(--tw-viz-n1);border-radius:0 4px 4px 0"></div></div>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;font:400 12px/16px var(--tw-mono);color:var(--tw-text-2)"><span>{{ nFound }} found</span><span>{{ nMiss }} missing</span><span>{{ nSkip }} skipped</span><span>{{ nRest }} to go</span></div>
+          </div>
+          <div style="display:flex;flex-direction:{{ checkDir }};gap:20px;padding:0 20px 24px">
+            <div style="width:{{ checkImgW }};flex:none;display:flex;flex-direction:column;gap:12px">
+              <div style="aspect-ratio:4/3;background:#FFFFFF;border:0.5px solid var(--tw-divider-strong);border-radius:16px;display:grid;place-items:center;font:400 12px var(--tw-mono);color:#8A847A">{{ part.num }}</div>
+              <div style="height:96px;border-radius:12px;background:{{ part.hex }};border:0.5px solid var(--tw-divider-strong);display:flex;align-items:flex-end;padding:12px 16px;box-sizing:border-box"><span style="font:600 26px/32px var(--tw-font);color:{{ part.ink }}">{{ part.colour }}</span></div>
+            </div>
+            <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:12px">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px"><div style="display:flex;flex-direction:column;gap:2px"><span style="font:600 22px/28px var(--tw-font);letter-spacing:-.2px">{{ part.name }}</span><span style="font:400 13px var(--tw-mono);color:var(--tw-text-muted)">{{ part.num }}</span></div><span style="font:500 28px/32px var(--tw-mono)">{{ part.qty }}×</span></div>
+              <span style="font:500 14px/20px var(--tw-font);color:var(--tw-text-2)">{{ stateLine }}</span>
+              <div style="display:flex;gap:8px"><button onClick="{{ cntDec }}" aria-label="Fewer" style="width:56px;height:56px;border-radius:10px;background:var(--tw-surface);color:var(--tw-accent-text);display:grid;place-items:center"><svg width="22" height="22" viewBox="0 0 24 24"><use href="#bw-minus"></use></svg></button><button onClick="{{ saveFound }}" style="flex:1;height:56px;border-radius:10px;background:var(--tw-accent);color:#1A1816;font:600 16px var(--tw-font);display:grid;place-items:center">{{ foundLabel }}</button><button onClick="{{ cntInc }}" aria-label="More" style="width:56px;height:56px;border-radius:10px;background:var(--tw-surface);color:var(--tw-accent-text);display:grid;place-items:center"><svg width="22" height="22" viewBox="0 0 24 24"><use href="#bw-add"></use></svg></button></div>
+              <button onClick="{{ saveMissing }}" style="height:56px;border-radius:10px;border:0.5px solid var(--tw-accent);color:var(--tw-accent-text);display:grid;place-items:center;font:500 15px var(--tw-font)">None found · all missing</button>
+              <div style="display:flex;justify-content:space-between"><button onClick="{{ goBack }}" style="height:44px;padding:0 12px;color:var(--tw-accent-text);font:500 14px var(--tw-font)">Back</button><button onClick="{{ skipPart }}" style="height:44px;padding:0 12px;color:var(--tw-accent-text);font:500 14px var(--tw-font)">Skip for later</button><button onClick="{{ undo }}" style="height:44px;padding:0 12px;color:var(--tw-accent-text);font:500 14px var(--tw-font)">Undo</button></div>
+              <sc-if value="{{ hasMissList }}"><div style="display:flex;flex-direction:column;border-top:0.5px solid var(--tw-divider);padding-top:12px"><span style="font:500 11px/14px var(--tw-font);letter-spacing:.1em;text-transform:uppercase;color:var(--tw-text-muted);padding-bottom:6px">Missing so far · {{ missSoFar.length }}</span>
+                <sc-for list="{{ missSoFar }}" as="m" hint-placeholder-count="2"><div style="display:flex;align-items:center;gap:12px;min-height:56px;border-top:0.5px solid var(--tw-divider)"><div style="flex:1;display:flex;flex-direction:column;gap:3px"><span style="display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:6px;background:{{ m.hex }};color:{{ m.ink }};border:0.5px solid var(--tw-divider-strong);font:500 12px var(--tw-font);width:fit-content">{{ m.colour }}</span><span style="font:400 13px var(--tw-font);color:var(--tw-text-2)">{{ m.name }} <span style="font:400 12px var(--tw-mono);color:var(--tw-text-muted)">{{ m.num }}</span></span></div><span style="font:500 14px var(--tw-mono)">−{{ m.miss }} of {{ m.qty }}</span></div></sc-for></div></sc-if>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isFinish }}" hint-placeholder-val="{{ false }}">
+          <div style="height:56px;flex:none;display:flex;align-items:center;padding:0 4px"><button onClick="{{ goBackFromFinish }}" aria-label="Back" style="width:44px;height:44px;display:grid;place-items:center;color:var(--tw-text-2)"><svg width="22" height="22" viewBox="0 0 24 24"><use href="#bw-back"></use></svg></button><div style="flex:1;display:flex;flex-direction:column"><span style="font:400 12px/16px var(--tw-mono);color:var(--tw-text-muted)">{{ cur.id }} · Set 1</span><span style="font:600 14px/18px var(--tw-font)">{{ cur.name }}</span></div></div>
+          <div style="padding:8px 20px 24px;display:flex;flex-direction:column;gap:16px;max-width:640px">
+            <div style="font:600 22px/28px var(--tw-font);letter-spacing:-.2px">{{ finishTitle }}</div>
+            <div style="display:flex;flex-direction:column"><sc-for list="{{ missSoFar }}" as="m" hint-placeholder-count="3"><div style="display:flex;align-items:center;gap:12px;min-height:64px;border-top:0.5px solid var(--tw-divider)"><div style="flex:1;display:flex;flex-direction:column;gap:3px"><span style="display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:6px;background:{{ m.hex }};color:{{ m.ink }};border:0.5px solid var(--tw-divider-strong);font:500 12px var(--tw-font);width:fit-content">{{ m.colour }}</span><span style="font:400 13px var(--tw-font);color:var(--tw-text-2)">{{ m.name }} <span style="font:400 12px var(--tw-mono);color:var(--tw-text-muted)">{{ m.num }}</span></span></div><span style="font:500 14px var(--tw-mono)">−{{ m.miss }} of {{ m.qty }}</span></div></sc-for></div>
+            <div style="background:var(--tw-surface);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:8px"><div style="display:flex;justify-content:space-between;align-items:center"><span style="font:600 15px var(--tw-font)">Set is checked</span><button onClick="{{ toggleChecked }}" aria-label="Set is checked" style="width:51px;height:31px;border-radius:16px;background:{{ togBg }};position:relative"><span style="position:absolute;top:2px;left:{{ togLeft }};width:27px;height:27px;border-radius:50%;background:#FAFAF8"></span></button></div><span style="font:400 13px/18px var(--tw-font);color:var(--tw-text-muted)">{{ confirmNote }}</span></div>
+            <button onClick="{{ finishDone }}" style="height:56px;border-radius:10px;background:var(--tw-accent);color:#1A1816;display:grid;place-items:center;font:600 16px var(--tw-font)">Done</button>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isWork }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:24px 20px 8px;font:600 22px/28px var(--tw-font);letter-spacing:-.2px">Workbench</div>
+          <div style="padding:8px 20px 24px;display:grid;grid-template-columns:{{ sixCols }};gap:12px"><sc-for list="{{ six }}" as="s" hint-placeholder-count="6"><button onClick="{{ s.go }}" style="height:96px;border-radius:16px;background:var(--tw-surface);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:{{ s.color }}"><svg width="26" height="26" viewBox="0 0 24 24"><use href="#bw-{{ s.ic }}"></use></svg><span style="font:500 14px var(--tw-font);color:var(--tw-text)">{{ s.label }}</span></button></sc-for></div>
+        </sc-if>
+
+        <sc-if value="{{ isManage }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:24px 20px 8px;font:600 22px/28px var(--tw-font);letter-spacing:-.2px">Manage</div>
+          <div style="padding:0 20px;display:flex;flex-direction:column">
+            <button onClick="{{ goAdd }}" style="display:flex;align-items:center;gap:16px;min-height:64px;border-bottom:0.5px solid var(--tw-divider)"><svg width="22" height="22" viewBox="0 0 24 24" style="color:var(--tw-accent-text)"><use href="#bw-add"></use></svg><span style="flex:1;font:500 16px var(--tw-font)">Add</span><svg width="18" height="18" viewBox="0 0 24 24" style="color:var(--tw-text-muted)"><use href="#bw-chev"></use></svg></button>
+            <button onClick="{{ goTools }}" style="display:flex;align-items:center;gap:16px;min-height:64px;border-bottom:0.5px solid var(--tw-divider)"><svg width="22" height="22" viewBox="0 0 24 24" style="color:var(--tw-text-2)"><use href="#bw-tools"></use></svg><span style="flex:1;font:500 16px var(--tw-font)">Tools &amp; Admin</span><svg width="18" height="18" viewBox="0 0 24 24" style="color:var(--tw-text-muted)"><use href="#bw-chev"></use></svg></button>
+            <div style="padding:28px 0 8px;font:500 11px/14px var(--tw-font);letter-spacing:.1em;text-transform:uppercase;color:var(--tw-text-muted)">Appearance</div>
+            <div style="display:flex;background:var(--tw-surface);border-radius:10px;padding:2px;gap:2px"><sc-for list="{{ themeOpts }}" as="o" hint-placeholder-count="3"><button onClick="{{ o.go }}" aria-label="{{ o.label }}" style="flex:1;height:44px;display:grid;place-items:center;border-radius:8px;background:{{ o.bg }};color:{{ o.color }}"><svg width="22" height="22" viewBox="0 0 24 24"><use href="#bw-{{ o.ic }}"></use></svg></button></sc-for></div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isScan }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:20px 20px 0;display:flex;align-items:flex-end;justify-content:space-between;gap:12px"><div style="display:flex;flex-direction:column;gap:2px"><div style="font:600 22px/28px var(--tw-font);letter-spacing:-.2px">Part to Inventory</div><div style="font:400 14px/20px var(--tw-font);color:var(--tw-text-muted)">Photograph a piece, confirm part and colour</div></div></div>
+          <div style="padding:12px 20px 0;display:flex;align-items:center;gap:12px"><span style="flex:1;font:500 15px var(--tw-font)">Add inventory to Brick Work</span><button onClick="{{ toggleInv }}" aria-label="Add inventory" style="width:51px;height:31px;border-radius:16px;background:{{ invBg }};position:relative;flex:none"><span style="position:absolute;top:2px;left:{{ invLeft }};width:27px;height:27px;border-radius:50%;background:#FAFAF8"></span></button></div>
+          <div style="padding:4px 20px 0;font:400 14px/20px var(--tw-font);color:var(--tw-text-2)">{{ invNote }}</div>
+          <div style="margin:16px 20px 0;display:flex;background:var(--tw-surface);border-radius:10px;padding:2px;gap:2px"><sc-for list="{{ sTabs }}" as="t" hint-placeholder-count="4"><button onClick="{{ t.go }}" style="flex:1;height:44px;display:flex;align-items:center;justify-content:center;gap:5px;border-radius:8px;background:{{ t.bg }};color:{{ t.color }};font:500 13px var(--tw-font)">{{ t.label }}<span style="font:400 11px var(--tw-mono)">{{ t.n }}</span></button></sc-for></div>
+
+          <sc-if value="{{ tabCapture }}"><div style="padding:16px 20px 24px;display:flex;flex-direction:column;gap:12px">
+            <div style="aspect-ratio:4/3;background:var(--tw-surface-2);border-radius:16px;position:relative;max-width:520px"><div style="position:absolute;inset:20px;border:1.5px dashed var(--tw-divider-strong);border-radius:10px"></div><span style="position:absolute;left:12px;top:12px;height:32px;padding:0 12px;border-radius:8px;background:var(--tw-text);color:var(--tw-bg);display:flex;align-items:center;font:500 16px var(--tw-mono)">Piece {{ nextPiece }}</span></div>
+            <div style="font:400 12px/16px var(--tw-font);color:var(--tw-text-muted)">Photos go to api.brickognize.com. Keep each piece in its numbered tray slot.</div>
+            <button onClick="{{ takePic }}" style="height:56px;border-radius:10px;background:{{ picBg }};color:{{ picColor }};font:600 16px var(--tw-font);display:grid;place-items:center;max-width:520px">{{ picLabel }}</button>
+            <button onClick="{{ toReview }}" style="height:44px;width:fit-content;padding:0 12px;color:var(--tw-accent-text);font:500 14px var(--tw-font)">Review {{ queueN }} queued</button>
+          </div></sc-if>
+
+          <sc-if value="{{ tabQueue }}"><div style="padding:8px 20px 24px;display:flex;flex-direction:column;max-width:640px">
+            <sc-for list="{{ queue }}" as="q" hint-placeholder-count="3"><div style="display:flex;align-items:center;gap:12px;min-height:72px;border-top:0.5px solid var(--tw-divider)"><div style="width:56px;height:56px;border-radius:10px;background:var(--tw-surface-2);flex:none"></div><span style="font:500 17px var(--tw-mono);width:28px">{{ q.n }}</span><span style="flex:1"></span><span style="display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:999px;background:{{ q.bg }};font:500 12px var(--tw-font)"><span style="width:7px;height:7px;border-radius:50%;background:{{ q.dot }}"></span>{{ q.label }}</span></div></sc-for>
+            <sc-if value="{{ queueEmpty }}"><div style="font:400 14px var(--tw-font);color:var(--tw-text-muted);padding:16px 0">No pictures yet. Take one to start.</div></sc-if>
+            <button onClick="{{ toReview }}" style="margin-top:16px;height:56px;border-radius:10px;background:var(--tw-accent);color:#1A1816;font:600 16px var(--tw-font);display:grid;place-items:center">Start reviewing</button>
+            <button onClick="{{ emptyQueue }}" style="height:44px;width:fit-content;padding:0 12px;color:var(--tw-accent-text);font:500 14px var(--tw-font)">Empty queue</button>
+          </div></sc-if>
+
+          <sc-if value="{{ tabReview }}">
+            <sc-if value="{{ hasPiece }}"><div style="padding:12px 20px 24px;display:flex;flex-direction:column;gap:16px;max-width:640px">
+              <div style="font:600 18px/24px var(--tw-font)">Piece {{ pieceNo }} of {{ queueN }}</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div style="display:flex;flex-direction:column;gap:6px"><span style="font:500 11px/14px var(--tw-font);letter-spacing:.1em;text-transform:uppercase;color:var(--tw-text-muted)">Your photo</span><div style="aspect-ratio:1;background:var(--tw-surface-2);border-radius:10px"></div></div><div style="display:flex;flex-direction:column;gap:6px"><span style="font:500 11px/14px var(--tw-font);letter-spacing:.1em;text-transform:uppercase;color:var(--tw-text-muted)">Reference</span><div style="aspect-ratio:1;background:#FFFFFF;border:0.5px solid var(--tw-divider-strong);border-radius:10px"></div></div></div>
+              <div style="display:flex;flex-direction:column;gap:2px"><span style="font:500 11px/14px var(--tw-font);letter-spacing:.1em;text-transform:uppercase;color:var(--tw-text-muted);padding-bottom:4px">Is this your part?</span>
+                <sc-for list="{{ cands }}" as="c" hint-placeholder-count="3"><button onClick="{{ c.go }}" style="display:flex;align-items:center;gap:12px;min-height:64px;border-radius:10px;padding:0 12px;background:{{ c.bg }}"><div style="width:48px;height:48px;border-radius:8px;background:#FFFFFF;border:0.5px solid var(--tw-divider-strong);flex:none"></div><div style="flex:1;display:flex;flex-direction:column"><span style="font:600 14px var(--tw-font)">{{ c.name }}</span><span style="font:400 12px var(--tw-mono);color:var(--tw-text-muted)">{{ c.num }}</span></div><span style="font:400 12px var(--tw-mono);color:var(--tw-text-2)">{{ c.score }}</span></button></sc-for></div>
+              <div style="display:flex;flex-direction:column;gap:8px"><span style="font:500 11px/14px var(--tw-font);letter-spacing:.1em;text-transform:uppercase;color:var(--tw-text-muted)">Colour · you choose</span><div style="display:flex;flex-wrap:wrap;gap:8px"><sc-for list="{{ colours }}" as="c" hint-placeholder-count="6"><button onClick="{{ c.go }}" style="height:56px;padding:0 16px;border-radius:10px;display:inline-flex;align-items:center;gap:8px;background:{{ c.hex }};color:{{ c.ink }};border:0.5px solid var(--tw-divider-strong);outline:{{ c.outline }};outline-offset:2px;font:600 15px var(--tw-font)">{{ c.colour }}</button></sc-for></div></div>
+              <div style="display:flex;align-items:center;justify-content:space-between"><span style="font:500 11px/14px var(--tw-font);letter-spacing:.1em;text-transform:uppercase;color:var(--tw-text-muted)">Quantity</span><div style="display:flex;border-radius:10px;background:var(--tw-surface);color:var(--tw-accent-text)"><button onClick="{{ qtyDec }}" aria-label="Fewer" style="width:56px;height:56px;display:grid;place-items:center"><svg width="22" height="22" viewBox="0 0 24 24"><use href="#bw-minus"></use></svg></button><span style="width:56px;height:56px;display:grid;place-items:center;font:500 20px var(--tw-mono);color:var(--tw-text)">{{ rvQty }}</span><button onClick="{{ qtyInc }}" aria-label="More" style="width:56px;height:56px;display:grid;place-items:center"><svg width="22" height="22" viewBox="0 0 24 24"><use href="#bw-add"></use></svg></button></div></div>
+              <button onClick="{{ saveLabel }}" style="height:56px;border-radius:10px;background:{{ saveBg }};color:{{ saveColor }};font:600 16px var(--tw-font);display:grid;place-items:center">{{ saveText }}</button>
+              <button onClick="{{ skipPiece }}" style="height:44px;width:fit-content;padding:0 12px;color:var(--tw-accent-text);font:500 14px var(--tw-font)">Send to manual sorting</button>
+            </div></sc-if>
+            <sc-if value="{{ noPiece }}"><div style="padding:16px 20px;font:400 14px var(--tw-font);color:var(--tw-text-muted)">Nothing ready to review.</div></sc-if>
+          </sc-if>
+
+          <sc-if value="{{ tabResults }}"><div style="padding:8px 20px 24px;display:flex;flex-direction:column;max-width:640px">
+            <sc-for list="{{ results }}" as="r" hint-placeholder-count="2"><div style="display:flex;align-items:center;gap:12px;min-height:72px;border-top:0.5px solid var(--tw-divider)"><div style="flex:1;display:flex;flex-direction:column;gap:3px"><span style="display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:6px;background:{{ r.hex }};color:{{ r.ink }};border:0.5px solid var(--tw-divider-strong);font:500 12px var(--tw-font);width:fit-content">{{ r.colour }}</span><span style="font:400 13px var(--tw-font);color:var(--tw-text-2)">{{ r.name }} <span style="font:400 12px var(--tw-mono);color:var(--tw-text-muted)">{{ r.num }}</span></span></div><span style="font:500 15px var(--tw-mono)">×{{ r.qty }}</span></div></sc-for>
+            <sc-if value="{{ resultsEmpty }}"><div style="font:400 14px var(--tw-font);color:var(--tw-text-muted);padding:16px 0">No pieces reviewed yet.</div></sc-if>
+            <sc-if value="{{ addedMsg }}"><div style="margin-top:12px;padding:12px;border-radius:10px;background:var(--tw-success-soft);font:500 14px var(--tw-font)">{{ addedText }}</div></sc-if>
+            <button onClick="{{ openBatch }}" style="margin-top:16px;height:56px;border-radius:10px;background:{{ batchBg }};color:{{ batchColor }};font:600 16px var(--tw-font);display:grid;place-items:center">Review inventory batch</button>
+          </div></sc-if>
+        </sc-if>
+
+        <sc-if value="{{ isPick }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:20px 20px 0;display:flex;flex-direction:column;gap:2px"><div style="font:600 22px/28px var(--tw-font);letter-spacing:-.2px">Part Picker</div><div style="font:400 14px/20px var(--tw-font);color:var(--tw-text-muted)">7286-1 Prisoner Transport · {{ pkLeft }} parts still to find</div></div>
+          <div style="padding:16px 20px 0;display:flex;flex-direction:column;gap:8px"><span style="font:500 11px/14px var(--tw-font);letter-spacing:.1em;text-transform:uppercase;color:var(--tw-text-muted)">When found</span><div style="display:flex;background:var(--tw-surface);border-radius:10px;padding:2px;gap:2px"><sc-for list="{{ pkDests }}" as="d" hint-placeholder-count="3"><button onClick="{{ d.go }}" style="flex:1;height:44px;display:grid;place-items:center;border-radius:8px;background:{{ d.bg }};color:{{ d.color }};font:500 13px var(--tw-font)">{{ d.label }}</button></sc-for></div></div>
+          <div style="padding:12px 20px 24px;display:flex;flex-direction:column;gap:12px;max-width:720px">
+            <sc-for list="{{ pkRows }}" as="m" hint-placeholder-count="3"><div style="background:var(--tw-surface);border-radius:16px;padding:16px;display:flex;gap:16px"><div style="width:80px;height:80px;border-radius:10px;background:#FFFFFF;border:0.5px solid var(--tw-divider-strong);flex:none;display:grid;place-items:center;font:400 11px var(--tw-mono);color:#8A847A">{{ m.num }}</div><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px"><span style="display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:6px;background:{{ m.hex }};color:{{ m.ink }};border:0.5px solid var(--tw-divider-strong);font:500 12px var(--tw-font);width:fit-content">{{ m.colour }}</span><span style="font:600 15px/20px var(--tw-font)">{{ m.name }} <span style="font:400 12px var(--tw-mono);color:var(--tw-text-muted)">{{ m.num }}</span></span><span style="font:500 13px var(--tw-mono)">needs {{ m.qty }} · −{{ m.left }}</span>
+              <sc-if value="{{ m.open }}"><div style="display:flex;gap:8px"><button onClick="{{ m.dec }}" aria-label="Fewer" style="width:56px;height:56px;border-radius:10px;background:var(--tw-bg);color:var(--tw-accent-text);display:grid;place-items:center"><svg width="22" height="22" viewBox="0 0 24 24"><use href="#bw-minus"></use></svg></button><button onClick="{{ m.save }}" style="flex:1;height:56px;border-radius:10px;background:var(--tw-accent);color:#1A1816;font:600 15px var(--tw-font);display:grid;place-items:center">{{ m.label }}</button><button onClick="{{ m.inc }}" aria-label="More" style="width:56px;height:56px;border-radius:10px;background:var(--tw-bg);color:var(--tw-accent-text);display:grid;place-items:center"><svg width="22" height="22" viewBox="0 0 24 24"><use href="#bw-add"></use></svg></button></div></sc-if>
+              <sc-if value="{{ m.hasLog }}"><span style="font:400 13px/18px var(--tw-font);color:var(--tw-text-2)">{{ m.log }}</span></sc-if></div></div></sc-for>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isStub }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:24px 20px 8px;font:600 22px/28px var(--tw-font);letter-spacing:-.2px">{{ stubTitle }}</div>
+          <div style="padding:0 20px;font:400 15px/22px var(--tw-font);color:var(--tw-text-2);max-width:480px">Not wired in this click-dummy. The screen exists as a frame on the canvas ({{ stubRef }}).</div>
+        </sc-if>
+      </div>
+
+      <sc-if value="{{ showBottom }}" hint-placeholder-val="{{ true }}">
+        <div style="flex:none;border-top:0.5px solid var(--tw-divider);display:grid;grid-template-columns:repeat(4,1fr);padding:6px 0 20px;box-sizing:border-box">
+          <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="4"><button onClick="{{ t.go }}" style="display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px 0;color:{{ t.color }}"><svg width="24" height="24" viewBox="0 0 24 24"><use href="#bw-{{ t.ic }}"></use></svg><span style="font:500 11px/12px var(--tw-font)">{{ t.label }}</span></button></sc-for>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ batchOpen }}" hint-placeholder-val="{{ false }}">
+        <button onClick="{{ closeBatch }}" aria-label="Close" style="position:absolute;inset:0;background:var(--tw-scrim);z-index:6"></button>
+        <div style="position:absolute;left:0;right:0;bottom:0;z-index:7;background:var(--tw-sheet-bg);border-top:0.5px solid var(--tw-divider-strong);border-radius:16px 16px 0 0;padding:8px 20px 28px;display:flex;flex-direction:column;gap:8px">
+          <div style="width:36px;height:4px;border-radius:2px;background:var(--tw-divider-strong);align-self:center;margin-bottom:8px"></div>
+          <span style="font:600 18px/24px var(--tw-font)">{{ batchTitle }}</span>
+          <span style="font:400 14px/20px var(--tw-font);color:var(--tw-text-muted)">{{ batchSub }}</span>
+          <sc-for list="{{ results }}" as="r" hint-placeholder-count="2"><div style="display:flex;align-items:center;gap:12px;min-height:56px;border-top:0.5px solid var(--tw-divider)"><span style="display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:6px;background:{{ r.hex }};color:{{ r.ink }};border:0.5px solid var(--tw-divider-strong);font:500 12px var(--tw-font)">{{ r.colour }}</span><span style="flex:1;font:400 13px var(--tw-font);color:var(--tw-text-2)">{{ r.name }}</span><span style="font:500 14px var(--tw-mono)">+{{ r.qty }}</span></div></sc-for>
+          <button onClick="{{ addBatch }}" style="height:56px;border-radius:10px;background:{{ addBg }};color:{{ addColor }};font:600 16px var(--tw-font);display:grid;place-items:center">Add reviewed batch</button>
+          <button onClick="{{ closeBatch }}" style="height:44px;color:var(--tw-accent-text);font:500 14px var(--tw-font);text-align:center">Cancel</button>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ jumpOpen }}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute;inset:0;background:var(--tw-bg);z-index:5;display:flex;flex-direction:column;gap:12px;padding:12px 20px;overflow:auto">
+          <div style="display:flex;align-items:center;gap:8px"><div style="flex:1;height:48px;border-radius:10px;background:var(--tw-surface);outline:2px solid var(--tw-accent);display:flex;align-items:center;gap:10px;padding:0 14px;box-sizing:border-box"><svg width="20" height="20" viewBox="0 0 24 24" style="color:var(--tw-text-muted)"><use href="#bw-search"></use></svg><input value="{{ jumpQ }}" onInput="{{ onJump }}" placeholder="Jump to a set" style="flex:1;min-width:0;border:0;background:none;outline:none;font:400 16px var(--tw-font);color:var(--tw-text)"></div><button onClick="{{ closeJump }}" style="height:44px;padding:0 4px;color:var(--tw-accent-text);font:500 15px var(--tw-font)">Cancel</button></div>
+          <div style="font:500 11px/14px var(--tw-font);letter-spacing:.1em;text-transform:uppercase;color:var(--tw-text-muted);padding:8px 0 0">Sets</div>
+          <sc-for list="{{ jumpHits }}" as="c" hint-placeholder-count="3"><button onClick="{{ c.go }}" style="display:flex;align-items:center;gap:12px;min-height:56px;border-bottom:0.5px solid var(--tw-divider)"><div style="flex:1;display:flex;flex-direction:column"><span style="font:400 12px var(--tw-mono);color:var(--tw-text-muted)">{{ c.id }}</span><span style="font:600 15px var(--tw-font)">{{ c.name }}</span></div></button></sc-for>
+          <sc-if value="{{ noHits }}"><div style="font:400 14px var(--tw-font);color:var(--tw-text-muted)">No match.</div></sc-if>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ sheetOpen }}" hint-placeholder-val="{{ false }}">
+        <button onClick="{{ closeSheet }}" aria-label="Close" style="position:absolute;inset:0;background:var(--tw-scrim);z-index:6"></button>
+        <div style="position:absolute;left:0;right:0;bottom:0;z-index:7;background:var(--tw-sheet-bg);--tw-surface:var(--tw-surface-2);border-top:0.5px solid var(--tw-divider-strong);border-radius:16px 16px 0 0;padding:8px 20px 28px;display:flex;flex-direction:column;gap:8px">
+          <div style="width:36px;height:4px;border-radius:2px;background:var(--tw-divider-strong);align-self:center;margin-bottom:8px"></div>
+          <span style="font:600 18px/24px var(--tw-font);padding-bottom:4px">{{ sheetTitle }}</span>
+          <sc-for list="{{ sheetOpts }}" as="o" hint-placeholder-count="5"><button onClick="{{ o.go }}" style="height:52px;display:flex;align-items:center;justify-content:space-between;border-top:0.5px solid var(--tw-divider);color:{{ o.color }};font:500 15px var(--tw-font)">{{ o.label }}<svg width="20" height="20" viewBox="0 0 24 24" style="opacity:{{ o.op }}"><use href="#bw-tick"></use></svg></button></sc-for>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { device: 'phone', theme: 'auto', group: 'Collection', view: 'sets', filter: 'All', sort: 'Number', layout: 'grid', setId: '7286-1', idx: 0, ans: {}, cnt: 6, take: {}, checked: {}, jump: false, jumpQ: '', sheet: null, stub: '' };
+  SETS = [
+    ['10305-1', "Lion Knights' Castle", 'Icons · 2022', 'Sealed', '€314.84', 2022],
+    ['10497-1', 'Galaxy Explorer', 'Icons · 2022', 'Sealed', '€82.39', 2022],
+    ['10732-1', "Guido and Luigi's Pit Stop", 'Juniors / Cars · 2017', 'Incomplete', '€7.92', 2017],
+    ['1592-1', 'Town Square - Castle Scene', 'Town · 1980', 'Complete', '€69.99', 1980],
+    ['165-1', 'Cargo Station', 'Train · 1978', 'Incomplete', '€150.00', 1978],
+    ['1789-1', 'Star Hawk II', 'Space · 1995', 'Incomplete', '€179.17', 1995],
+    ['2260-1', 'Ice Dragon Attack', 'Ninjago · 2011', 'Incomplete', '€82.85', 2011],
+    ['7286-1', 'Prisoner Transport', 'City / Police · 2011', 'Incomplete', '€8.53', 2011],
+    ['200-1', 'Family', 'Building Set with People · 1974', 'Not checked', '€12.04', 1974],
+  ].map(a => ({ id: a[0], name: a[1], meta: a[2], status: a[3], price: a[4], year: a[5] }));
+  PARTS = [
+    { name: 'Plate 2 x 4', num: '3020', colour: 'Light Bluish Gray', hex: '#A0A5A9', ink: '#1A1816', qty: 6, loose: 4 },
+    { name: 'Brick 1 x 2', num: '3004', colour: 'Black', hex: '#05131D', ink: '#FAFAF8', qty: 8, loose: 3 },
+    { name: 'Tile 1 x 2', num: '3069b', colour: 'White', hex: '#FFFFFF', ink: '#1A1816', qty: 4, loose: 0 },
+    { name: 'Brick 2 x 4', num: '3001', colour: 'Tan', hex: '#E4CD9E', ink: '#1A1816', qty: 4, loose: 2 },
+    { name: 'Plate 2 x 2', num: '3022', colour: 'Dark Brown', hex: '#352100', ink: '#FAFAF8', qty: 2, loose: 0 },
+    { name: 'Slope 45 2 x 2', num: '3039', colour: 'Red', hex: '#C91A09', ink: '#FAFAF8', qty: 3, loose: 1 },
+  ];
+  ST = { Complete: ['var(--tw-success)', 'var(--tw-success-soft)', '0.5px solid transparent'], Incomplete: ['var(--tw-warning)', 'var(--tw-warning-soft)', '0.5px solid transparent'], Sealed: ['var(--tw-info)', 'var(--tw-info-soft)', '0.5px solid transparent'], 'Not checked': ['var(--tw-text-muted)', 'transparent', '0.5px dashed var(--tw-text-muted)'] };
+  NAV = { Collection: [['Sets', 'sets'], ['Minifigures', 'minifig'], ['Parts', 'parts'], ['Instructions', 'instr'], ['Boxes', 'box']], Workbench: [['Part to Inventory', 'scan'], ['Check Set Parts', 'check'], ['Part Picker', 'pick'], ['Matcher', 'match'], ['Orders', 'orders'], ['Storage', 'storage']], Planning: [['Wishlist', 'wish'], ['Prices', 'price'], ['Complete sets', 'done']], Manage: [['Add', 'add'], ['Tools & Admin', 'tools']] };
+  GI = { Collection: 'sets', Workbench: 'tools', Planning: 'price', Manage: 'manage' };
+  set = o => this.setState(o);
+  goItem = (g, label) => {
+    if (g === 'Collection' && label === 'Sets') return this.set({ group: g, view: 'sets', stub: '' });
+    if (g === 'Workbench' && label === 'Check Set Parts') return this.startCheck();
+    if (g === 'Workbench' && label === 'Part to Inventory') return this.set({ group: g, view: 'scan' });
+    if (g === 'Workbench' && label === 'Part Picker') return this.set({ group: g, view: 'pick' });
+    if (g === 'Manage' && label === 'Tools & Admin') return this.set({ group: g, view: 'stub', stub: label });
+    this.set({ group: g, view: 'stub', stub: label });
+  };
+  goGroup = g => {
+    if (g === 'Collection') return this.set({ group: g, view: 'sets' });
+    if (g === 'Workbench') return this.set({ group: g, view: 'work' });
+    if (g === 'Manage') return this.set({ group: g, view: 'manage' });
+    this.set({ group: g, view: 'stub', stub: 'Wishlist' });
+  };
+  startCheck = () => this.set({ group: 'Workbench', view: 'check', idx: 0, ans: {}, cnt: this.PARTS[0].qty });
+  curPart = () => this.PARTS[Math.min(this.state.idx, this.PARTS.length - 1)];
+  advance = (rec) => {
+    const s = this.state, ans = { ...s.ans, [s.idx]: rec }, n = s.idx + 1;
+    if (n >= this.PARTS.length) return this.set({ ans, view: 'finish' });
+    this.set({ ans, idx: n, cnt: this.PARTS[n].qty });
+  };
+  isDark() { return this.state.theme === 'dark' || (this.state.theme === 'auto' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches); }
+  extraVals(desk, ACT, ACTT) {
+    const s = this.state, P = this.PARTS, view = s.view;
+    const sq = s.sq || [], sres = s.sres || [], rvI = s.rvI || 0, tab = s.stab || 'capture';
+    const set = o => this.setState(o);
+    const piece = sq[rvI], cand = s.rvCand || 0, colour = s.rvColour, qty = s.rvQty || 1;
+    const chosen = piece != null ? P[(piece + cand) % 6] : P[0];
+    const dis = ['var(--tw-surface-2)', 'var(--tw-text-muted)'], on = ['var(--tw-accent)', '#1A1816'];
+    const full = sq.length >= 6;
+    const nextPiece = Math.min(sq.length + 1, 6);
+    const res = sres.map(r => r);
+    const tabs = [['capture', 'Capture', ''], ['queue', 'Queue', sq.length], ['review', 'Review', ''], ['results', 'Results', sres.length]];
+    const pkDone = s.pkDone || {}, pkCnt = s.pkCnt || {}, dest = s.pkDest || 'set';
+    const DLAB = { set: 'to the set', loose: 'to loose parts', list: 'to the pick list' };
+    const pkRows = [[0, 4], [1, 5], [2, 3]].map(([i, miss]) => {
+      const p = P[i], got = (pkDone[i] || { n: 0 }).n, left = miss - got, n = Math.min(pkCnt[i] == null ? left : pkCnt[i], left);
+      const setN = v => set({ pkCnt: { ...pkCnt, [i]: Math.max(1, Math.min(left, v)) } });
+      return { ...p, left, open: left > 0, label: 'Found ' + n, dec: () => setN(n - 1), inc: () => setN(n + 1),
+        save: () => set({ pkDone: { ...pkDone, [i]: { n: got + n, log: 'Found ' + (got + n) + ', added ' + DLAB[dest] } }, pkCnt: { ...pkCnt, [i]: null } }),
+        hasLog: got > 0, log: got > 0 ? pkDone[i].log + (left === 0 ? ' · done' : '') : '' };
+    });
+    return {
+      isScan: view === 'scan', isPick: view === 'pick',
+      sTabs: tabs.map(([k, l, n]) => ({ label: l, n, bg: tab === k ? ACT : 'transparent', color: tab === k ? ACTT : 'var(--tw-text-2)', go: () => set({ stab: k, rvI: k === 'review' ? sres.length : rvI }) })),
+      tabCapture: tab === 'capture', tabQueue: tab === 'queue', tabReview: tab === 'review', tabResults: tab === 'results',
+      invBg: s.sinv ? 'var(--tw-accent)' : 'var(--tw-viz-n1)', invLeft: s.sinv ? '22px' : '2px', toggleInv: () => set({ sinv: !s.sinv }),
+      invNote: s.sinv ? 'Confirmed pieces are added to loose parts after you review the batch.' : 'Labels only. Nothing is written to the inventory.',
+      nextPiece, queueN: sq.length, picLabel: full ? 'Queue full · review the pictures' : 'Take picture', picBg: full ? dis[0] : on[0], picColor: full ? dis[1] : on[1],
+      takePic: () => { if (!full) set({ sq: [...sq, (sq.length * 2 + 1) % 6] }); },
+      toReview: () => set({ stab: 'review', rvI: sres.length }), emptyQueue: () => set({ sq: [], sres: [], rvI: 0, stab: 'capture', sadded: false }),
+      queue: sq.map((p, i) => ({ n: i + 1, label: i < sres.length ? 'Confirmed' : 'Ready', bg: i < sres.length ? 'var(--tw-info-soft)' : 'var(--tw-success-soft)', dot: i < sres.length ? 'var(--tw-info)' : 'var(--tw-success)' })), queueEmpty: sq.length === 0,
+      hasPiece: piece != null && rvI < sq.length, noPiece: !(piece != null && rvI < sq.length), pieceNo: rvI + 1,
+      cands: [0, 1, 2].map(k => { const p = P[((piece || 0) + k) % 6]; return { name: p.name, num: p.num, score: ['0.92', '0.04', '0.02'][k], bg: cand === k ? ACT : 'transparent', go: () => set({ rvCand: k }) }; }),
+      colours: P.map(p => ({ colour: p.colour, hex: p.hex, ink: p.ink, outline: colour === p.colour ? '3px solid var(--tw-accent)' : 'none', go: () => set({ rvColour: p.colour }) })),
+      rvQty: qty, qtyDec: () => set({ rvQty: Math.max(1, qty - 1) }), qtyInc: () => set({ rvQty: Math.min(999, qty + 1) }),
+      saveText: colour ? 'Save label · ' + colour + ' ×' + qty : 'Choose a colour', saveBg: colour ? on[0] : dis[0], saveColor: colour ? on[1] : dis[1],
+      saveLabel: () => { if (!colour) return; const c = P.find(p => p.colour === colour); const n = rvI + 1; set({ sres: [...sres, { name: chosen.name, num: chosen.num, colour, hex: c.hex, ink: c.ink, qty }], rvI: n, rvColour: null, rvQty: 1, rvCand: 0, stab: n >= sq.length ? 'results' : 'review' }); },
+      skipPiece: () => { const n = rvI + 1; set({ rvI: n, rvColour: null, rvQty: 1, rvCand: 0, stab: n >= sq.length ? 'results' : 'review' }); },
+      results: res, resultsEmpty: res.length === 0, addedMsg: !!s.sadded, addedText: 'Added ' + (s.sadded || 0) + ' pieces to loose parts.',
+      batchBg: res.length ? on[0] : dis[0], batchColor: res.length ? on[1] : dis[1],
+      openBatch: () => { if (res.length) set({ sbatch: true }); }, closeBatch: () => set({ sbatch: false }), batchOpen: !!s.sbatch,
+      batchTitle: s.sinv ? 'Add ' + res.length + ' pieces to loose parts?' : 'Save ' + res.length + ' labels?', batchSub: s.sinv ? 'Reviewed pieces are written to the inventory.' : 'Labels only; the inventory switch is off.',
+      addBg: on[0], addColor: on[1], addBatch: () => set({ sbatch: false, sadded: res.reduce((n, r) => n + r.qty, 0), sres: [], sq: [], rvI: 0 }),
+      pkRows, pkLeft: pkRows.reduce((n, r) => n + r.left, 0),
+      pkDests: [['set', 'Add to set'], ['loose', 'Loose parts'], ['list', 'Pick list']].map(([k, l]) => ({ label: l, bg: dest === k ? ACT : 'transparent', color: dest === k ? ACTT : 'var(--tw-text-2)', go: () => set({ pkDest: k }) })),
+    };
+  }
+  renderVals() {
+    const s = this.state, desk = s.device === 'desktop', dark = this.isDark();
+    const cur = this.SETS.find(x => x.id === s.setId) || this.SETS[7];
+    const decor = c => { const t = this.ST[c.status]; return { dot: t[0], sbg: t[1], sbd: t[2] }; };
+    const full = c => ({ ...c, ...decor(c) });
+    const ACT = 'var(--tw-accent-soft)', ACTT = 'var(--tw-accent-text)';
+    // sets
+    let shown = this.SETS.filter(c => s.filter === 'All' || c.status === s.filter);
+    shown = [...shown].sort((a, b) => s.sort === 'Name' ? a.name.localeCompare(b.name) : s.sort === 'Year' ? a.year - b.year : a.id.localeCompare(b.id, undefined, { numeric: true }));
+    const grid = s.layout === 'grid';
+    const cols = desk ? 4 : 2;
+    const shownSets = shown.map(c => ({ ...full(c), go: () => this.set({ setId: c.id, view: 'detail', group: 'Collection' }),
+      dir: grid ? 'column' : 'row', gap: grid ? '6px' : '12px', align: grid ? 'stretch' : 'center', bb: grid ? 'none' : '0.5px solid var(--tw-divider)', pad: grid ? '0' : '12px 0',
+      imgW: grid ? '100%' : '56px', ratio: grid ? '4/3' : '1', imgTxt: grid ? c.id : '' }));
+    const chipDefs = [['All', 'var(--tw-text-muted)'], ['Sealed', 'var(--tw-info)'], ['Complete', 'var(--tw-success)'], ['Incomplete', 'var(--tw-warning)'], ['Not checked', 'var(--tw-text-muted)']];
+    const chips = chipDefs.map(([l, d]) => ({ label: l, dot: d, n: l === 'All' ? this.SETS.length : this.SETS.filter(c => c.status === l).length, bg: s.filter === l ? ACT : 'var(--tw-surface)', color: s.filter === l ? ACTT : 'var(--tw-text)', go: () => this.set({ filter: l }) }));
+    // detail
+    const missing = cur.status === 'Incomplete';
+    const detMiss = missing ? [[0, 4], [1, 5], [2, 3]].map(([i, miss]) => {
+      const p = this.PARTS[i], cap = Math.min(miss, p.loose), n = Math.min(s.take[cur.id + i] == null ? cap : s.take[cur.id + i], cap);
+      const key = cur.id + i, setT = v => this.set({ take: { ...s.take, [key]: Math.max(0, Math.min(cap, v)) } });
+      return { ...p, miss, canTake: cap > 0, cannotTake: cap === 0, takeLabel: 'Take ' + n, dec: () => setT(n - 1), inc: () => setT(n + 1), takeNow: () => setT(0) };
+    }) : [];
+    const isChecked = !!s.checked[cur.id];
+    // check
+    const part = this.curPart(), rec = s.ans[s.idx];
+    const vals = Object.keys(s.ans).map(k => ({ k: +k, r: s.ans[k] }));
+    const nFound = vals.filter(v => v.r.t === 'ok').length, nMiss = vals.filter(v => v.r.t === 'miss').length, nSkip = vals.filter(v => v.r.t === 'skip').length;
+    const nRest = this.PARTS.length - nFound - nMiss - nSkip;
+    const missSoFar = vals.filter(v => v.r.t === 'miss').sort((a, b) => a.k - b.k).map(v => ({ ...this.PARTS[v.k], miss: v.r.miss }));
+    const stateLine = rec ? (rec.t === 'ok' ? 'Recorded: ' + rec.found + ' found' + (rec.miss ? ', ' + rec.miss + ' missing' : '') : rec.t === 'miss' ? 'Recorded: all missing' : 'Skipped for later') : 'Not answered yet';
+    const finishGaps = missSoFar.length > 0, skipped = nSkip > 0;
+    const isOn = !!s.checked[cur.id];
+    const view = s.view, six = this.NAV.Workbench;
+    const sheetOpts = s.sheet === 'sort' ? ['Number', 'Name', 'Year'].map(o => ({ label: o, color: s.sort === o ? ACTT : 'var(--tw-text)', op: s.sort === o ? 1 : 0, go: () => this.set({ sort: o, sheet: null }) }))
+      : chipDefs.map(([l]) => ({ label: l === 'All' ? 'All statuses' : l, color: s.filter === l ? ACTT : 'var(--tw-text)', op: s.filter === l ? 1 : 0, go: () => this.set({ filter: l, sheet: null }) }));
+    const q = s.jumpQ.trim().toLowerCase();
+    const hits = this.SETS.filter(c => !q || c.id.toLowerCase().includes(q) || c.name.toLowerCase().includes(q)).slice(0, 6);
+    const themeIcons = [['auto', 'System'], ['sun', 'Light'], ['moon', 'Dark']];
+    const themeOpts = themeIcons.map(([ic, label], i) => { const v = ['auto', 'light', 'dark'][i]; return { ic, label, go: () => this.set({ theme: v }), bg: s.theme === v ? ACT : 'transparent', color: s.theme === v ? ACTT : 'var(--tw-text-2)' }; });
+    const rail = Object.keys(this.NAV).map(g => ({ g, items: this.NAV[g].map(([label, ic]) => { const on = (view === 'sets' || view === 'detail') ? label === 'Sets' : (view === 'check' || view === 'finish') ? label === 'Check Set Parts' : (view === 'stub' && s.stub === label) || (view === 'manage' && false); return { label, ic, go: () => this.goItem(g, label), bg: on ? ACT : 'transparent', color: on ? ACTT : 'var(--tw-text-2)' }; }) }));
+    const tabs = Object.keys(this.NAV).map(g => ({ label: g, ic: this.GI[g], go: () => this.goGroup(g), color: s.group === g ? ACTT : 'var(--tw-text-muted)' }));
+    const subnav = this.NAV[s.group === 'Planning' ? 'Planning' : s.group].map(([label]) => ({ label, go: () => this.goItem(s.group, label), color: ((view === 'sets' || view === 'detail') && label === 'Sets') ? ACTT : 'var(--tw-text-2)', bd: ((view === 'sets' || view === 'detail') && label === 'Sets') ? 'var(--tw-accent)' : 'transparent' }));
+    const inFlow = view === 'check' || view === 'finish';
+    return {
+      ...this.extraVals(desk, ACT, ACTT),
+      isDesk: desk, phoneBg: desk ? 'transparent' : '#ECE8DF', deskBg: desk ? '#ECE8DF' : 'transparent',
+      setPhone: () => this.set({ device: 'phone' }), setDesk: () => this.set({ device: 'desktop' }),
+      themeClass: dark ? 'tw-dark' : 'tw-light', markSrc: dark ? 'assets/brick-work/mark-dark.svg' : 'assets/brick-work/mark.svg',
+      frameW: desk ? '1180px' : '390px', frameH: desk ? '760px' : '844px',
+      rail, tabs, subnav, themeOpts,
+      showTop: !inFlow, showSub: !desk && !inFlow && (view === 'sets' || view === 'detail' || view === 'stub') && s.group === 'Collection', showBottom: !desk && !inFlow,
+      goAdd: () => this.set({ group: 'Manage', view: 'stub', stub: 'Add' }), goTools: () => this.set({ group: 'Manage', view: 'stub', stub: 'Tools & Admin' }),
+      openJump: () => this.set({ jump: true, jumpQ: '' }), closeJump: () => this.set({ jump: false }), jumpOpen: s.jump,
+      onJump: e => this.set({ jumpQ: e.target.value }),
+      jumpHits: hits.map(c => ({ ...c, go: () => this.set({ jump: false, setId: c.id, view: 'detail', group: 'Collection' }) })), noHits: hits.length === 0, jumpQ: s.jumpQ,
+      isSets: view === 'sets', isDetail: view === 'detail', isCheck: view === 'check', isFinish: view === 'finish', isWork: view === 'work', isManage: view === 'manage', isStub: view === 'stub',
+      setsTitle: s.filter === 'All' ? '84 of 183 sets incomplete' : shown.length + ' ' + s.filter.toLowerCase() + ' in this sample',
+      setsSub: 'Click-dummy shows ' + this.SETS.length + ' of 183 sets · prices are used averages',
+      chips, shownSets, sortLabel: s.sort, gridCols: grid ? 'repeat(' + cols + ',minmax(0,1fr))' : '1fr', gridGap: grid ? '24px 12px' : '0',
+      openFilters: () => this.set({ sheet: 'filters' }), openSort: () => this.set({ sheet: 'sort' }),
+      setGrid: () => this.set({ layout: 'grid' }), setList: () => this.set({ layout: 'list' }),
+      gridBg: grid ? ACT : 'transparent', gridColor: grid ? ACTT : 'var(--tw-text-2)', listBg: grid ? 'transparent' : ACT, listColor: grid ? 'var(--tw-text-2)' : ACTT,
+      sheetOpen: !!s.sheet, closeSheet: () => this.set({ sheet: null }), sheetTitle: s.sheet === 'sort' ? 'Sort' : 'Filter by status', sheetOpts,
+      cur: full(cur), toSets: () => this.set({ view: 'sets' }), detailDir: desk ? 'row' : 'column', heroW: desk ? '320px' : '100%',
+      checkedFlag: isChecked,
+      detailTitle: missing ? '15 parts missing, 9 in loose stock' : cur.status === 'Complete' ? 'Nothing missing' : cur.status === 'Sealed' ? 'Sealed, nothing to check' : 'Not checked yet',
+      detailSub: missing ? 'Sample parts · take from loose stock or order' : 'Sample data',
+      checkLabel: isChecked ? 'Check parts again' : 'Check parts', startCheck: () => this.startCheck(), missCards: detMiss,
+      exitCheck: () => this.set({ view: 'detail', group: 'Collection' }),
+      posLabel: (Math.min(s.idx, this.PARTS.length - 1) + 1) + ' of ' + this.PARTS.length,
+      sFound: nFound || 0.001, sMiss: nMiss || 0.001, sSkip: nSkip || 0.001, sRest: nRest || 0.001, nFound, nMiss, nSkip, nRest,
+      checkDir: desk ? 'row' : 'column', checkImgW: desk ? '360px' : '100%',
+      part, stateLine, foundLabel: 'Found ' + s.cnt,
+      cntDec: () => this.set({ cnt: Math.max(0, s.cnt - 1) }), cntInc: () => this.set({ cnt: Math.min(part.qty, s.cnt + 1) }),
+      saveFound: () => this.advance({ t: 'ok', found: s.cnt, miss: part.qty - s.cnt }),
+      saveMissing: () => this.advance({ t: 'miss', found: 0, miss: part.qty }),
+      skipPart: () => this.advance({ t: 'skip' }),
+      goBack: () => s.idx > 0 ? this.set({ idx: s.idx - 1, cnt: this.PARTS[s.idx - 1].qty }) : this.set({ view: 'detail', group: 'Collection' }),
+      undo: () => { const a = { ...s.ans }; const last = Math.max(-1, ...Object.keys(a).map(Number)); if (last >= 0) { delete a[last]; this.set({ ans: a, idx: last, cnt: this.PARTS[last].qty }); } },
+      hasMissList: missSoFar.length > 0, missSoFar,
+      finishTitle: finishGaps ? missSoFar.reduce((n, m) => n + m.miss, 0) + ' parts missing across ' + missSoFar.length + ' different parts' : skipped ? nSkip + ' parts still unchecked' : 'Nothing missing',
+      goBackFromFinish: () => this.set({ view: 'check', idx: this.PARTS.length - 1, cnt: this.PARTS[this.PARTS.length - 1].qty, ans: (() => { const a = { ...s.ans }; delete a[this.PARTS.length - 1]; return a; })() }),
+      togBg: isOn ? 'var(--tw-accent)' : 'var(--tw-viz-n1)', togLeft: isOn ? '22px' : '2px',
+      toggleChecked: () => { if (skipped) return; this.set({ checked: { ...s.checked, [cur.id]: !isOn } }); },
+      confirmNote: skipped ? 'Available after the skipped parts are answered.' : finishGaps ? 'Inspect the build and figures first. With gaps, the set stays Incomplete.' : 'Inspect the build and figures first. Confirming marks the set Complete.',
+      finishDone: () => this.set({ view: 'detail', group: 'Collection' }),
+      six: six.map(([label, ic]) => ({ label, ic, go: () => this.goItem('Workbench', label), color: label === 'Check Set Parts' ? ACTT : 'var(--tw-text-2)' })), sixCols: desk ? 'repeat(3,1fr)' : 'repeat(2,1fr)',
+      stubTitle: s.stub, stubRef: s.stub === 'Add' ? 'section 4a' : s.stub === 'Tools & Admin' ? 'section 8a' : s.stub === 'Wishlist' ? 'section 5a' : 'see the index',
+    };
+  }
+}
+</script>
+</body>
+</html>

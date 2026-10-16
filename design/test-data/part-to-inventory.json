@@ -1,0 +1,802 @@
+{
+  "_note": "Fixtures for the Part to Inventory flow (7 steps in checker-and-scanner/HANDOFF). Photos are SYNTHETIC trays composed from catalog part photos (see README); positions are pixel centres in the 1600x1200 photo.",
+  "photos": [
+    {
+      "file": "images/photos/tray-01-sorted.jpg",
+      "situation": "Twelve parts laid out; 4 of them are missing in set 1592-1 #a"
+    },
+    {
+      "file": "images/photos/tray-02-pile.jpg",
+      "situation": "Dense overlapping pile, 36 parts: stress test for the queue and bulk review"
+    },
+    {
+      "file": "images/photos/tray-03-dim-light.jpg",
+      "situation": "Poor photo: dark, soft focus. Should trigger a \"retake?\" hint"
+    },
+    {
+      "file": "images/photos/tray-04-single-part.jpg",
+      "situation": "One part, close up: the single-piece review step"
+    }
+  ],
+  "session": {
+    "id": "ident-2026-10-12-0001",
+    "created_at": "2026-10-12T19:42:11Z",
+    "camera": "iPad mini (rear)",
+    "setup": {
+      "target": "set",
+      "copy": "inventories/1592-1-copy-a.json",
+      "storage": null
+    }
+  },
+  "pieces": [
+    {
+      "id": "piece-01",
+      "photo": "images/photos/tray-01-sorted.jpg",
+      "position_px": {
+        "x": 185,
+        "y": 203
+      },
+      "situation": "confident",
+      "quantity_detected": 2,
+      "missing_in_owned_sets": [
+        {
+          "copy_id": "eaacf51c-1b63-58ff-b1a9-a2ea287565fc",
+          "set": "1592-1",
+          "set_name": "Town Square - Castle Scene",
+          "missing": 1
+        }
+      ],
+      "candidates": [
+        {
+          "part": "3010",
+          "name": "Brick 1 x 4",
+          "color": {
+            "id": 0,
+            "name": "Black",
+            "rgb": "#05131D",
+            "transparent": false
+          },
+          "image": "images/parts/3010__0.jpg",
+          "confidence": 0.91
+        },
+        {
+          "part": "22886pr0007",
+          "name": "Brick 1 x 2 x 3 with White Blueprint Lines on Dark Blue Background print",
+          "color": {
+            "id": 0,
+            "name": "Black",
+            "rgb": "#05131D",
+            "transparent": false
+          },
+          "image": null,
+          "confidence": 0.5
+        },
+        {
+          "part": "2465pr0002",
+          "name": "Brick 1 x 16 with Wings Green/Orange/Blue Print",
+          "color": {
+            "id": 0,
+            "name": "Black",
+            "rgb": "#05131D",
+            "transparent": false
+          },
+          "image": null,
+          "confidence": 0.36
+        }
+      ],
+      "color_candidates": [
+        {
+          "id": 0,
+          "name": "Black",
+          "rgb": "#05131D",
+          "transparent": false
+        }
+      ],
+      "ambiguous": false
+    },
+    {
+      "id": "piece-02",
+      "photo": "images/photos/tray-01-sorted.jpg",
+      "position_px": {
+        "x": 606,
+        "y": 207
+      },
+      "situation": "confident",
+      "quantity_detected": 1,
+      "missing_in_owned_sets": [
+        {
+          "copy_id": "eaacf51c-1b63-58ff-b1a9-a2ea287565fc",
+          "set": "1592-1",
+          "set_name": "Town Square - Castle Scene",
+          "missing": 1
+        }
+      ],
+      "candidates": [
+        {
+          "part": "3062b",
+          "name": "Brick Round 1 x 1 Open Stud",
+          "color": {
+            "id": 0,
+            "name": "Black",
+            "rgb": "#05131D",
+            "transparent": false
+          },
+          "image": "images/parts/3062b__0.jpg",
+          "confidence": 0.95
+        },
+        {
+          "part": "20952pr0004",
+          "name": "Brick Round 1.5 x 1.5 Dome Top with BB-8 Print",
+          "color": {
+            "id": 0,
+            "name": "Black",
+            "rgb": "#05131D",
+            "transparent": false
+          },
+          "image": null,
+          "confidence": 0.52
+        },
+        {
+          "part": "20952pr0002",
+          "name": "Brick Round 1.5 x 1.5 Dome Top with Metallic Pink Spots print",
+          "color": {
+            "id": 0,
+            "name": "Black",
+            "rgb": "#05131D",
+            "transparent": false
+          },
+          "image": null,
+          "confidence": 0.38
+        }
+      ],
+      "color_candidates": [
+        {
+          "id": 0,
+          "name": "Black",
+          "rgb": "#05131D",
+          "transparent": false
+        }
+      ],
+      "ambiguous": false
+    },
+    {
+      "id": "piece-03",
+      "photo": "images/photos/tray-01-sorted.jpg",
+      "position_px": {
+        "x": 972,
+        "y": 219
+      },
+      "situation": "confident",
+      "quantity_detected": 1,
+      "missing_in_owned_sets": [
+        {
+          "copy_id": "eaacf51c-1b63-58ff-b1a9-a2ea287565fc",
+          "set": "1592-1",
+          "set_name": "Town Square - Castle Scene",
+          "missing": 1
+        }
+      ],
+      "candidates": [
+        {
+          "part": "3788",
+          "name": "Wheel Arch, Mudguard 2 x 4 Studded",
+          "color": {
+            "id": 0,
+            "name": "Black",
+            "rgb": "#05131D",
+            "transparent": false
+          },
+          "image": "images/parts/3788__0.jpg",
+          "confidence": 0.89
+        },
+        {
+          "part": "28326",
+          "name": "Wheel Arch, Mudguard 3 x 4 with 2 x 2 Plate",
+          "color": {
+            "id": 0,
+            "name": "Black",
+            "rgb": "#05131D",
+            "transparent": false
+          },
+          "image": null,
+          "confidence": 0.49
+        },
+        {
+          "part": "2513pr0003",
+          "name": "Wheel Arch, Mudguard, Slope 3 x 4 with Dual Headlights Print",
+          "color": {
+            "id": 0,
+            "name": "Black",
+            "rgb": "#05131D",
+            "transparent": false
+          },
+          "image": null,
+          "confidence": 0.36
+        }
+      ],
+      "color_candidates": [
+        {
+          "id": 0,
+          "name": "Black",
+          "rgb": "#05131D",
+          "transparent": false
+        }
+      ],
+      "ambiguous": false
+    },
+    {
+      "id": "piece-04",
+      "photo": "images/photos/tray-01-sorted.jpg",
+      "position_px": {
+        "x": 1385,
+        "y": 229
+      },
+      "situation": "confident",
+      "quantity_detected": 2,
+      "missing_in_owned_sets": [
+        {
+          "copy_id": "eaacf51c-1b63-58ff-b1a9-a2ea287565fc",
+          "set": "1592-1",
+          "set_name": "Town Square - Castle Scene",
+          "missing": 1
+        }
+      ],
+      "candidates": [
+        {
+          "part": "4079",
+          "name": "Seat / Chair 2 x 2",
+          "color": {
+            "id": 1,
+            "name": "Blue",
+            "rgb": "#0055BF",
+            "transparent": false
+          },
+          "image": "images/parts/4079__1.jpg",
+          "confidence": 0.95
+        },
+        {
+          "part": "4079b",
+          "name": "Seat / Chair 2 x 2 with Center Sprue Mark",
+          "color": {
+            "id": 1,
+            "name": "Blue",
+            "rgb": "#0055BF",
+            "transparent": false
+          },
+          "image": null,
+          "confidence": 0.52
+        }
+      ],
+      "color_candidates": [
+        {
+          "id": 1,
+          "name": "Blue",
+          "rgb": "#0055BF",
+          "transparent": false
+        }
+      ],
+      "ambiguous": false
+    },
+    {
+      "id": "piece-05",
+      "photo": "images/photos/tray-01-sorted.jpg",
+      "position_px": {
+        "x": 219,
+        "y": 599
+      },
+      "situation": "ambiguous-shape",
+      "quantity_detected": 1,
+      "missing_in_owned_sets": [],
+      "candidates": [
+        {
+          "part": "3063b",
+          "name": "Brick Round Corner 2 x 2 Macaroni with Stud Notch",
+          "color": {
+            "id": 0,
+            "name": "Black",
+            "rgb": "#05131D",
+            "transparent": false
+          },
+          "image": "images/parts/3063b__0.jpg",
+          "confidence": 0.62
+        },
+        {
+          "part": "17485pr0004",
+          "name": "Brick Round 2 x 2, Pin Holes with Suit, Tie, Azure Lapels, Waffle print",
+          "color": {
+            "id": 0,
+            "name": "Black",
+            "rgb": "#05131D",
+            "transparent": false
+          },
+          "image": null,
+          "confidence": 0.34
+        },
+        {
+          "part": "17485pr0009",
+          "name": "Brick Round 2 x 2, Pin Holes with Gold Lapels, Dark Orange Trim, and White Undershirt Print",
+          "color": {
+            "id": 0,
+            "name": "Black",
+            "rgb": "#05131D",
+            "transparent": false
+          },
+          "image": null,
+          "confidence": 0.25
+        }
+      ],
+      "color_candidates": [
+        {
+          "id": 0,
+          "name": "Black",
+          "rgb": "#05131D",
+          "transparent": false
+        }
+      ],
+      "ambiguous": true
+    },
+    {
+      "id": "piece-06",
+      "photo": "images/photos/tray-01-sorted.jpg",
+      "position_px": {
+        "x": 580,
+        "y": 608
+      },
+      "situation": "colour-unsure",
+      "quantity_detected": 1,
+      "missing_in_owned_sets": [],
+      "candidates": [
+        {
+          "part": "92947",
+          "name": "Brick Round 2 x 2 [Grill]",
+          "color": {
+            "id": 71,
+            "name": "Light Bluish Gray",
+            "rgb": "#A0A5A9",
+            "transparent": false
+          },
+          "image": "images/parts/92947__71.jpg",
+          "confidence": 0.86
+        },
+        {
+          "part": "20952pr0048",
+          "name": "Brick Round 1.5 x 1.5 Dome Top with Porg with Short Forehead Feathers Print",
+          "color": {
+            "id": 71,
+            "name": "Light Bluish Gray",
+            "rgb": "#A0A5A9",
+            "transparent": false
+          },
+          "image": null,
+          "confidence": 0.47
+        },
+        {
+          "part": "15395",
+          "name": "Brick Round 2 x 2 Dome Bottom [Open Stud]",
+          "color": {
+            "id": 71,
+            "name": "Light Bluish Gray",
+            "rgb": "#A0A5A9",
+            "transparent": false
+          },
+          "image": null,
+          "confidence": 0.34
+        }
+      ],
+      "color_candidates": [
+        {
+          "id": 71,
+          "name": "Light Bluish Gray",
+          "rgb": "#A0A5A9",
+          "transparent": false
+        },
+        {
+          "id": 1040,
+          "name": "Modulex Foil Dark Gray",
+          "rgb": "#595D60",
+          "transparent": false
+        },
+        {
+          "id": 1041,
+          "name": "Modulex Foil Light Gray",
+          "rgb": "#9C9C9C",
+          "transparent": false
+        }
+      ],
+      "color_confidence": 0.52,
+      "ambiguous": false
+    },
+    {
+      "id": "piece-07",
+      "photo": "images/photos/tray-01-sorted.jpg",
+      "position_px": {
+        "x": 1001,
+        "y": 614
+      },
+      "situation": "first-guess-wrong",
+      "quantity_detected": 2,
+      "missing_in_owned_sets": [],
+      "candidates": [
+        {
+          "part": "33ac01",
+          "name": "Door 1 x 2 x 3 Right, Solid Stud, Fixed Glass",
+          "color": {
+            "id": 15,
+            "name": "White",
+            "rgb": "#FFFFFF",
+            "transparent": false
+          },
+          "image": null,
+          "confidence": 0.48
+        },
+        {
+          "part": "58381",
+          "name": "Door 1 x 3 x 4 Left - Open Between Top and Bottom Hinge",
+          "color": {
+            "id": 15,
+            "name": "White",
+            "rgb": "#FFFFFF",
+            "transparent": false
+          },
+          "image": "images/parts/58381__15.jpg",
+          "confidence": 0.41
+        },
+        {
+          "part": "3821pr0001",
+          "name": "Door 1 x 3 x 1 Right with Safari Stripes Print",
+          "color": {
+            "id": 15,
+            "name": "White",
+            "rgb": "#FFFFFF",
+            "transparent": false
+          },
+          "image": null,
+          "confidence": 0.19
+        }
+      ],
+      "color_candidates": [
+        {
+          "id": 15,
+          "name": "White",
+          "rgb": "#FFFFFF",
+          "transparent": false
+        }
+      ],
+      "ambiguous": false
+    },
+    {
+      "id": "piece-08",
+      "photo": "images/photos/tray-01-sorted.jpg",
+      "position_px": {
+        "x": 1375,
+        "y": 615
+      },
+      "situation": "confident",
+      "quantity_detected": 1,
+      "missing_in_owned_sets": [],
+      "candidates": [
+        {
+          "part": "6014b",
+          "name": "Wheel 11 x 12 with Hole Notched for Wheels Holder Pin",
+          "color": {
+            "id": 71,
+            "name": "Light Bluish Gray",
+            "rgb": "#A0A5A9",
+            "transparent": false
+          },
+          "image": "images/parts/6014b__71.jpg",
+          "confidence": 0.94
+        },
+        {
+          "part": "50944pr0002",
+          "name": "Wheel 11 x 6 with 5 Spokes with Gold Outline Print",
+          "color": {
+            "id": 71,
+            "name": "Light Bluish Gray",
+            "rgb": "#A0A5A9",
+            "transparent": false
+          },
+          "image": null,
+          "confidence": 0.52
+        },
+        {
+          "part": "93595pr0003",
+          "name": "Wheel 11 x 6 with 8 'Y' Spokes and Black Outline",
+          "color": {
+            "id": 71,
+            "name": "Light Bluish Gray",
+            "rgb": "#A0A5A9",
+            "transparent": false
+          },
+          "image": null,
+          "confidence": 0.38
+        }
+      ],
+      "color_candidates": [
+        {
+          "id": 71,
+          "name": "Light Bluish Gray",
+          "rgb": "#A0A5A9",
+          "transparent": false
+        }
+      ],
+      "ambiguous": false
+    },
+    {
+      "id": "piece-09",
+      "photo": "images/photos/tray-01-sorted.jpg",
+      "position_px": {
+        "x": 189,
+        "y": 973
+      },
+      "situation": "confident",
+      "quantity_detected": 1,
+      "missing_in_owned_sets": [],
+      "candidates": [
+        {
+          "part": "3062b",
+          "name": "Brick Round 1 x 1 Open Stud",
+          "color": {
+            "id": 25,
+            "name": "Orange",
+            "rgb": "#FE8A18",
+            "transparent": false
+          },
+          "image": "images/parts/3062b__25.jpg",
+          "confidence": 0.96
+        },
+        {
+          "part": "17485pr0006",
+          "name": "Brick Round 2 x 2, Pin Holes with Gold Lapels and Magenta Undershirt Print",
+          "color": {
+            "id": 25,
+            "name": "Orange",
+            "rgb": "#FE8A18",
+            "transparent": false
+          },
+          "image": null,
+          "confidence": 0.53
+        },
+        {
+          "part": "1871pr0003",
+          "name": "Brick Round Curved 1 x 1 x 1 1/3 Quarter Dome with Black Eye, Nougat Fur print",
+          "color": {
+            "id": 25,
+            "name": "Orange",
+            "rgb": "#FE8A18",
+            "transparent": false
+          },
+          "image": null,
+          "confidence": 0.38
+        }
+      ],
+      "color_candidates": [
+        {
+          "id": 25,
+          "name": "Orange",
+          "rgb": "#FE8A18",
+          "transparent": false
+        }
+      ],
+      "ambiguous": false
+    },
+    {
+      "id": "piece-10",
+      "photo": "images/photos/tray-01-sorted.jpg",
+      "position_px": {
+        "x": 598,
+        "y": 1013
+      },
+      "situation": "confident",
+      "quantity_detected": 2,
+      "missing_in_owned_sets": [],
+      "candidates": [
+        {
+          "part": "3659",
+          "name": "Brick Arch 1 x 4",
+          "color": {
+            "id": 14,
+            "name": "Yellow",
+            "rgb": "#F2CD37",
+            "transparent": false
+          },
+          "image": "images/parts/3659__14.jpg",
+          "confidence": 0.95
+        },
+        {
+          "part": "12939",
+          "name": "Brick Arch 1 x 6 x 2 - Very Thin Top without Reinforced Underside",
+          "color": {
+            "id": 14,
+            "name": "Yellow",
+            "rgb": "#F2CD37",
+            "transparent": false
+          },
+          "image": null,
+          "confidence": 0.52
+        },
+        {
+          "part": "4490pr0027",
+          "name": "Brick Arch 1 x 3 with Yellow Flames print",
+          "color": {
+            "id": 14,
+            "name": "Yellow",
+            "rgb": "#F2CD37",
+            "transparent": false
+          },
+          "image": null,
+          "confidence": 0.38
+        }
+      ],
+      "color_candidates": [
+        {
+          "id": 14,
+          "name": "Yellow",
+          "rgb": "#F2CD37",
+          "transparent": false
+        }
+      ],
+      "ambiguous": false
+    },
+    {
+      "id": "piece-11",
+      "photo": "images/photos/tray-01-sorted.jpg",
+      "position_px": {
+        "x": 1012,
+        "y": 1024
+      },
+      "situation": "confident",
+      "quantity_detected": 1,
+      "missing_in_owned_sets": [],
+      "candidates": [
+        {
+          "part": "4071",
+          "name": "Door Frame 2 x 6 x 7",
+          "color": {
+            "id": 0,
+            "name": "Black",
+            "rgb": "#05131D",
+            "transparent": false
+          },
+          "image": "images/parts/4071__0.jpg",
+          "confidence": 0.91
+        },
+        {
+          "part": "4130",
+          "name": "Door Frame 2 x 4 x 5",
+          "color": {
+            "id": 0,
+            "name": "Black",
+            "rgb": "#05131D",
+            "transparent": false
+          },
+          "image": null,
+          "confidence": 0.5
+        },
+        {
+          "part": "33227",
+          "name": "Door Frame Arched 1 x 8 x 12",
+          "color": {
+            "id": 0,
+            "name": "Black",
+            "rgb": "#05131D",
+            "transparent": false
+          },
+          "image": null,
+          "confidence": 0.36
+        }
+      ],
+      "color_candidates": [
+        {
+          "id": 0,
+          "name": "Black",
+          "rgb": "#05131D",
+          "transparent": false
+        }
+      ],
+      "ambiguous": false
+    },
+    {
+      "id": "piece-12",
+      "photo": "images/photos/tray-01-sorted.jpg",
+      "position_px": {
+        "x": 1417,
+        "y": 997
+      },
+      "situation": "confident",
+      "quantity_detected": 1,
+      "missing_in_owned_sets": [],
+      "candidates": [
+        {
+          "part": "2412b",
+          "name": "Tile Special 1 x 2 Grille with Bottom Groove",
+          "color": {
+            "id": 0,
+            "name": "Black",
+            "rgb": "#05131D",
+            "transparent": false
+          },
+          "image": "images/parts/2412b__0.jpg",
+          "confidence": 0.95
+        },
+        {
+          "part": "11203pr0024",
+          "name": "Tile Special 2 x 2 Inverted with Computer Screen, Bright Light Blue Sphere on Black Background print",
+          "color": {
+            "id": 0,
+            "name": "Black",
+            "rgb": "#05131D",
+            "transparent": false
+          },
+          "image": null,
+          "confidence": 0.52
+        },
+        {
+          "part": "11203pr0018",
+          "name": "Tile Special 2 x 2 Inverted with Gold LEGO print",
+          "color": {
+            "id": 0,
+            "name": "Black",
+            "rgb": "#05131D",
+            "transparent": false
+          },
+          "image": null,
+          "confidence": 0.38
+        }
+      ],
+      "color_candidates": [
+        {
+          "id": 0,
+          "name": "Black",
+          "rgb": "#05131D",
+          "transparent": false
+        }
+      ],
+      "ambiguous": false
+    },
+    {
+      "id": "piece-13",
+      "photo": "images/photos/tray-01-sorted.jpg",
+      "position_px": {
+        "x": 1480,
+        "y": 1120
+      },
+      "situation": "no-match",
+      "quantity_detected": 1,
+      "missing_in_owned_sets": [],
+      "candidates": [],
+      "color_candidates": [],
+      "note": "Something unidentifiable (a sticker sheet corner). The screen needs an explicit \"no match\" path."
+    }
+  ],
+  "queue_states": [
+    "waiting",
+    "identifying",
+    "identified",
+    "needs-review",
+    "added",
+    "skipped",
+    "failed"
+  ],
+  "added_actions": [
+    {
+      "kind": "set",
+      "piece": "piece-01",
+      "copy_id": "eaacf51c-1b63-58ff-b1a9-a2ea287565fc",
+      "quantity": 1,
+      "at": "2026-10-12T19:50:03Z"
+    },
+    {
+      "kind": "loose",
+      "piece": "piece-09",
+      "storage": "Parts drawer unit",
+      "quantity": 2,
+      "at": "2026-10-12T19:51:44Z"
+    }
+  ],
+  "export_formats": [
+    "BrickLink wanted list XML",
+    "Rebrickable CSV",
+    "LEGO Pick-a-Brick CSV"
+  ]
+}

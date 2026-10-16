@@ -1,0 +1,36 @@
+{
+  "_note": "Synthetic API tokens for 12m. The token value is fake and only shown in the \"shown once\" frame.",
+  "tokens": [
+    {
+      "name": "Toni house agent",
+      "scopes": [
+        "read",
+        "write"
+      ],
+      "created": "2026-10-02",
+      "last_used": "2026-10-16T07:30",
+      "from_environment": false
+    },
+    {
+      "name": "Spreadsheet export",
+      "scopes": [
+        "read"
+      ],
+      "created": "2026-09-11",
+      "last_used": "2026-10-14T22:10",
+      "from_environment": false
+    },
+    {
+      "name": "Install environment",
+      "scopes": [
+        "read",
+        "write",
+        "admin"
+      ],
+      "created": null,
+      "last_used": "2026-10-16T09:00",
+      "from_environment": true
+    }
+  ],
+  "shown_once_example": "bw_tk_7Qm2xR9vLp4sN8cW1yH6dF3jK0aZ5eTb"
+}

@@ -1,0 +1,461 @@
+[
+  {
+    "id": "bricklink-4812201",
+    "store": "Steinreich-Bricks",
+    "date": "2026-09-28",
+    "status": "ordered",
+    "tracking": "DHL 00340434161094842395",
+    "currency": "EUR",
+    "shipping": 3.9,
+    "total": 11.7,
+    "lines": [
+      {
+        "text": "Brick 2 x 4",
+        "condition": "New",
+        "quantity": 40,
+        "unit_price": 0.09,
+        "line_total": 3.6,
+        "color": {
+          "id": 0,
+          "name": "Black",
+          "rgb": "#05131D",
+          "transparent": false
+        },
+        "match": "matched",
+        "part": "3001",
+        "part_name": "Brick 2 x 4",
+        "candidates": [],
+        "received": 0,
+        "image": "images/parts/3001__0.jpg"
+      },
+      {
+        "text": "Plate 1 x 2",
+        "condition": "New",
+        "quantity": 60,
+        "unit_price": 0.03,
+        "line_total": 1.8,
+        "color": {
+          "id": 0,
+          "name": "Black",
+          "rgb": "#05131D",
+          "transparent": false
+        },
+        "match": "matched",
+        "part": "3023",
+        "part_name": "Plate 1 x 2",
+        "candidates": [],
+        "received": 0,
+        "image": "images/parts/3023__0.jpg"
+      },
+      {
+        "text": "Slope 45 2 x 2",
+        "condition": "Used",
+        "quantity": 18,
+        "unit_price": 0.05,
+        "line_total": 0.9,
+        "color": {
+          "id": 1,
+          "name": "Blue",
+          "rgb": "#0055BF",
+          "transparent": false
+        },
+        "match": "matched",
+        "part": "3039",
+        "part_name": "Brick Sloped 45° 2 x 2",
+        "candidates": [],
+        "received": 0,
+        "image": "images/parts/3039__1.jpg"
+      },
+      {
+        "text": "Tile 2 x 2 with Groove",
+        "condition": "New",
+        "quantity": 25,
+        "unit_price": 0.06,
+        "line_total": 1.5,
+        "color": {
+          "id": 15,
+          "name": "White",
+          "rgb": "#FFFFFF",
+          "transparent": false
+        },
+        "match": "matched",
+        "part": "3068b",
+        "part_name": "Tile 2 x 2 with Groove",
+        "candidates": [],
+        "received": 0,
+        "image": "images/parts/3068b__15.jpg"
+      }
+    ],
+    "confirmation_mail_text": "* Batch #1 (submitted 2026-09-28 18:10:07)\n[New] Brick 2 x 4 (x40) ..... EUR 0.09 each = EUR 3.60\n[New] Plate 1 x 2 (x60) ..... EUR 0.03 each = EUR 1.80\n[Used] Slope 45 2 x 2 (x18) ..... EUR 0.05 each = EUR 0.90\n[New] Tile 2 x 2 with Groove (x25) ..... EUR 0.06 each = EUR 1.50"
+  },
+  {
+    "id": "bricklink-4790377",
+    "store": "BrickBazaar_DE",
+    "date": "2026-09-14",
+    "status": "arrived",
+    "tracking": "DHL 00340434161094712305",
+    "currency": "EUR",
+    "shipping": 4.5,
+    "total": 8.34,
+    "lines": [
+      {
+        "text": "Minifigure, Helmet Castle with Chin-Guard",
+        "condition": "Used",
+        "quantity": 4,
+        "unit_price": 0.55,
+        "line_total": 2.2,
+        "color": {
+          "id": 0,
+          "name": "Black",
+          "rgb": "#05131D",
+          "transparent": false
+        },
+        "match": "unmatched",
+        "part": null,
+        "part_name": null,
+        "candidates": [],
+        "received": 4
+      },
+      {
+        "text": "Minifigure, Shield Triangular",
+        "condition": "Used",
+        "quantity": 4,
+        "unit_price": 0.35,
+        "line_total": 1.4,
+        "color": {
+          "id": 1,
+          "name": "Blue",
+          "rgb": "#0055BF",
+          "transparent": false
+        },
+        "match": "ambiguous",
+        "part": null,
+        "part_name": null,
+        "candidates": [
+          {
+            "part": "3846",
+            "name": "Shield Triangular",
+            "image": "images/parts/3846__1.jpg"
+          },
+          {
+            "part": "3846pr0021",
+            "name": "Shield Triangular with Batlord Print",
+            "image": null
+          },
+          {
+            "part": "3846pr0018",
+            "name": "Shield Triangular with Wolfpack Print",
+            "image": null
+          }
+        ],
+        "received": 4
+      },
+      {
+        "text": "Plate, Modified 1 x 2 with Handle on Side",
+        "condition": "New",
+        "quantity": 6,
+        "unit_price": 0.14,
+        "line_total": 0.84,
+        "color": {
+          "id": 0,
+          "name": "Black",
+          "rgb": "#05131D",
+          "transparent": false
+        },
+        "match": "ambiguous",
+        "part": null,
+        "part_name": null,
+        "candidates": [
+          {
+            "part": "18649",
+            "name": "Plate Special 1 x 2 with Handles on Ends",
+            "image": "images/parts/18649__0.jpg"
+          },
+          {
+            "part": "60478",
+            "name": "Plate Special 1 x 2 with Handle on End [Closed Ends]",
+            "image": "images/parts/60478__0.jpg"
+          },
+          {
+            "part": "3839a",
+            "name": "Plate Special 1 x 2 with Handles [Round Ends, Mid Attachment]",
+            "image": "images/parts/3839a__0.jpg"
+          }
+        ],
+        "received": 6
+      }
+    ],
+    "confirmation_mail_text": "* Batch #2 (submitted 2026-09-14 18:11:07)\n[Used] Minifigure, Helmet Castle with Chin-Guard (x4) ..... EUR 0.55 each = EUR 2.20\n[Used] Minifigure, Shield Triangular (x4) ..... EUR 0.35 each = EUR 1.40\n[New] Plate, Modified 1 x 2 with Handle on Side (x6) ..... EUR 0.14 each = EUR 0.84"
+  },
+  {
+    "id": "bricklink-4755120",
+    "store": "castle-parts-hh",
+    "date": "2026-08-30",
+    "status": "arrived",
+    "tracking": "Hermes H1022840937",
+    "currency": "EUR",
+    "shipping": 4.5,
+    "total": 8.88,
+    "lines": [
+      {
+        "text": "Brick 1 x 3",
+        "condition": "Used",
+        "quantity": 6,
+        "unit_price": 0.06,
+        "line_total": 0.36,
+        "color": {
+          "id": 0,
+          "name": "Black",
+          "rgb": "#05131D",
+          "transparent": false
+        },
+        "match": "matched",
+        "part": "3622",
+        "part_name": "Brick 1 x 3",
+        "candidates": [],
+        "received": 6,
+        "image": "images/parts/3622__0.jpg"
+      },
+      {
+        "text": "Plate 4 x 6",
+        "condition": "Used",
+        "quantity": 2,
+        "unit_price": 0.21,
+        "line_total": 0.42,
+        "color": {
+          "id": 5,
+          "name": "Dark Pink",
+          "rgb": "#C870A0",
+          "transparent": false
+        },
+        "match": "matched",
+        "part": "3032",
+        "part_name": "Plate 4 x 6",
+        "candidates": [],
+        "received": 2,
+        "image": "images/parts/3032__5.jpg"
+      },
+      {
+        "text": "Horse",
+        "condition": "Used",
+        "quantity": 3,
+        "unit_price": 1.4,
+        "line_total": 4.2,
+        "color": {
+          "id": 0,
+          "name": "Black",
+          "rgb": "#05131D",
+          "transparent": false
+        },
+        "match": "unmatched",
+        "part": null,
+        "part_name": null,
+        "candidates": [],
+        "received": 3
+      }
+    ],
+    "confirmation_mail_text": "* Batch #3 (submitted 2026-08-30 18:12:07)\n[Used] Brick 1 x 3 (x6) ..... EUR 0.06 each = EUR 0.36\n[Used] Plate 4 x 6 (x2) ..... EUR 0.21 each = EUR 0.42\n[Used] Horse (x3) ..... EUR 1.40 each = EUR 4.20"
+  },
+  {
+    "id": "bricklink-4701988",
+    "store": "oldtimerlego",
+    "date": "2026-07-19",
+    "status": "partly",
+    "tracking": "DHL 00340434160981120042",
+    "currency": "EUR",
+    "shipping": 3.9,
+    "total": 7.64,
+    "lines": [
+      {
+        "text": "Window 1 x 2 x 2 Flat Front",
+        "condition": "Used",
+        "quantity": 8,
+        "unit_price": 0.11,
+        "line_total": 0.88,
+        "color": {
+          "id": 1,
+          "name": "Blue",
+          "rgb": "#0055BF",
+          "transparent": false
+        },
+        "match": "ambiguous",
+        "part": null,
+        "part_name": null,
+        "candidates": [
+          {
+            "part": "90195",
+            "name": "Window 1 x 2 x 2 Castle",
+            "image": "images/parts/90195__1.jpg"
+          },
+          {
+            "part": "3582",
+            "name": "Window 1 x 2 x 2 Shutter",
+            "image": "images/parts/3582__1.jpg"
+          },
+          {
+            "part": "60592",
+            "name": "Window 1 x 2 x 2 Flat Front",
+            "image": "images/parts/60592__1.jpg"
+          }
+        ],
+        "received": 4
+      },
+      {
+        "text": "Door Frame 1 x 4 x 6",
+        "condition": "Used",
+        "quantity": 2,
+        "unit_price": 0.9,
+        "line_total": 1.8,
+        "color": {
+          "id": 2,
+          "name": "Green",
+          "rgb": "#237841",
+          "transparent": false
+        },
+        "match": "ambiguous",
+        "part": null,
+        "part_name": null,
+        "candidates": [
+          {
+            "part": "30179",
+            "name": "Door Frame 1 x 4 x 6 Type 1",
+            "image": "images/parts/30179__2.jpg"
+          },
+          {
+            "part": "60596",
+            "name": "Door Frame 1 x 4 x 6 Type 2",
+            "image": "images/parts/60596__2.jpg"
+          }
+        ],
+        "received": 1
+      },
+      {
+        "text": "Flag 2 x 2 Square",
+        "condition": "Used",
+        "quantity": 1,
+        "unit_price": 0.5,
+        "line_total": 0.5,
+        "color": {
+          "id": 4,
+          "name": "Red",
+          "rgb": "#C91A09",
+          "transparent": false
+        },
+        "match": "matched",
+        "part": "11055",
+        "part_name": "Flag 2 x 2 Square, Flat Clip Edge [Thick Clips]",
+        "candidates": [],
+        "received": 0,
+        "image": "images/parts/11055__4.jpg"
+      },
+      {
+        "text": "Plate 2 x 2",
+        "condition": "Used",
+        "quantity": 14,
+        "unit_price": 0.04,
+        "line_total": 0.56,
+        "color": {
+          "id": 0,
+          "name": "Black",
+          "rgb": "#05131D",
+          "transparent": false
+        },
+        "match": "matched",
+        "part": "3022",
+        "part_name": "Plate 2 x 2",
+        "candidates": [],
+        "received": 7,
+        "image": "images/parts/3022__0.jpg"
+      }
+    ],
+    "confirmation_mail_text": "* Batch #4 (submitted 2026-07-19 18:13:07)\n[Used] Window 1 x 2 x 2 Flat Front (x8) ..... EUR 0.11 each = EUR 0.88\n[Used] Door Frame 1 x 4 x 6 (x2) ..... EUR 0.90 each = EUR 1.80\n[Used] Flag 2 x 2 Square (x1) ..... EUR 0.50 each = EUR 0.50\n[Used] Plate 2 x 2 (x14) ..... EUR 0.04 each = EUR 0.56"
+  },
+  {
+    "id": "bricklink-4620044",
+    "store": "LEGO-Teile-Kiel",
+    "date": "2026-05-02",
+    "status": "arrived",
+    "tracking": null,
+    "currency": "EUR",
+    "shipping": 4.5,
+    "total": 5.51,
+    "lines": [
+      {
+        "text": "Plate 1 x 8",
+        "condition": "Used",
+        "quantity": 4,
+        "unit_price": 0.12,
+        "line_total": 0.48,
+        "color": {
+          "id": 0,
+          "name": "Black",
+          "rgb": "#05131D",
+          "transparent": false
+        },
+        "match": "matched",
+        "part": "3460",
+        "part_name": "Plate 1 x 8",
+        "candidates": [],
+        "received": 4,
+        "image": "images/parts/3460__0.jpg"
+      },
+      {
+        "text": "Plate 1 x 6",
+        "condition": "New",
+        "quantity": 2,
+        "unit_price": 0.09,
+        "line_total": 0.18,
+        "color": {
+          "id": 15,
+          "name": "White",
+          "rgb": "#FFFFFF",
+          "transparent": false
+        },
+        "match": "matched",
+        "part": "3666",
+        "part_name": "Plate 1 x 6",
+        "candidates": [],
+        "received": 2,
+        "image": "images/parts/3666__15.jpg"
+      },
+      {
+        "text": "Brick 1 x 6",
+        "condition": "Used",
+        "quantity": 5,
+        "unit_price": 0.09,
+        "line_total": 0.45,
+        "color": {
+          "id": 0,
+          "name": "Black",
+          "rgb": "#05131D",
+          "transparent": false
+        },
+        "match": "matched",
+        "part": "3009",
+        "part_name": "Brick 1 x 6",
+        "candidates": [],
+        "received": 5,
+        "image": "images/parts/3009__0.jpg"
+      },
+      {
+        "text": "Technic, Axle 3",
+        "condition": "New",
+        "quantity": 10,
+        "unit_price": 0.05,
+        "line_total": 0.5,
+        "color": {
+          "id": 0,
+          "name": "Black",
+          "rgb": "#05131D",
+          "transparent": false
+        },
+        "match": "unmatched",
+        "part": null,
+        "part_name": null,
+        "candidates": [],
+        "received": 10
+      }
+    ],
+    "confirmation_mail_text": "* Batch #5 (submitted 2026-05-02 18:14:07)\n[Used] Plate 1 x 8 (x4) ..... EUR 0.12 each = EUR 0.48\n[New] Plate 1 x 6 (x2) ..... EUR 0.09 each = EUR 0.18\n[Used] Brick 1 x 6 (x5) ..... EUR 0.09 each = EUR 0.45\n[New] Technic, Axle 3 (x10) ..... EUR 0.05 each = EUR 0.50"
+  }
+]

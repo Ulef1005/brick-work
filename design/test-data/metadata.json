@@ -1,0 +1,129 @@
+{
+  "owners": [
+    {
+      "id": "0965c389-30aa-5fed-add0-2c1a8f00c6b3",
+      "name": "Alex"
+    },
+    {
+      "id": "13cd1006-c23e-5db3-be3a-f0de983a5093",
+      "name": "Sam"
+    },
+    {
+      "id": "1d883773-5bb3-598a-8848-e44a6b549cba",
+      "name": "Shared"
+    }
+  ],
+  "storages": [
+    {
+      "id": "2ece0cae-f67b-555f-8402-038eb10a5fec",
+      "name": "Shelf A1 – Castle"
+    },
+    {
+      "id": "f23e88f8-017f-52be-aea8-5afb00aac124",
+      "name": "Shelf A2 – Town"
+    },
+    {
+      "id": "44ed1cb9-f808-5562-97fd-67dc3d2a94d6",
+      "name": "Box 3 (attic)"
+    },
+    {
+      "id": "602f5c58-81aa-5f8b-b580-dc378786effd",
+      "name": "Display case"
+    },
+    {
+      "id": "17bc40ae-f2bd-5231-817d-9f2d11e141dc",
+      "name": "Technic crate"
+    },
+    {
+      "id": "5fe79d54-1961-504b-8b34-1a541b6c8cdc",
+      "name": "Kellerregal Ü2"
+    },
+    {
+      "id": "ccc5d044-b8eb-5e66-aa95-1bd244883123",
+      "name": "Parts drawer unit"
+    }
+  ],
+  "purchase_locations": [
+    {
+      "id": "d33582b5-8da4-5d58-94c2-9a76e8bdd97f",
+      "name": "LEGO Store Hamburg"
+    },
+    {
+      "id": "82da6d49-c0c6-56b7-809c-8e77424833c3",
+      "name": "BrickLink"
+    },
+    {
+      "id": "c052e617-0ae2-5eef-b11d-198fd73fac50",
+      "name": "Amazon.de"
+    },
+    {
+      "id": "a1e7bced-a3b2-5f8e-934a-23eff65600e8",
+      "name": "Flohmarkt Mauerpark"
+    },
+    {
+      "id": "ad412a10-7b7d-5bc0-9415-1e73060ea8eb",
+      "name": "Kleinanzeigen"
+    },
+    {
+      "id": "5f7c7ffa-4b48-5763-8302-b57669994703",
+      "name": "Gift"
+    }
+  ],
+  "statuses": [
+    {
+      "id": "sealed",
+      "name": "Sealed",
+      "displayed_on_grid": true
+    },
+    {
+      "id": "built",
+      "name": "Built",
+      "displayed_on_grid": true
+    },
+    {
+      "id": "displayed",
+      "name": "On display",
+      "displayed_on_grid": false
+    },
+    {
+      "id": "in-pieces",
+      "name": "In pieces",
+      "displayed_on_grid": true
+    },
+    {
+      "id": "needs-check",
+      "name": "Needs check",
+      "displayed_on_grid": true
+    }
+  ],
+  "tags": [
+    {
+      "id": "56ce4dc3-c9c3-56cb-afcd-f7a5f2c0bf1a",
+      "name": "Castle"
+    },
+    {
+      "id": "1bd66df0-652e-5f46-bf7b-afc5be8c5551",
+      "name": "Retired"
+    },
+    {
+      "id": "d99037b8-5e02-5029-a972-03f5e27edf99",
+      "name": "Gift"
+    },
+    {
+      "id": "e478711a-b66f-5f46-a2ca-5e744a356cef",
+      "name": "Ideas"
+    },
+    {
+      "id": "b2e4351d-dbcb-55c4-ade2-31f9e5b68bcc",
+      "name": "Technic"
+    },
+    {
+      "id": "cb0d3fec-edcb-507e-81fa-12d0d94da3b7",
+      "name": "Vintage"
+    },
+    {
+      "id": "0e6df025-dcab-525b-aad0-5e8de5880def",
+      "name": "Display"
+    }
+  ]
+}

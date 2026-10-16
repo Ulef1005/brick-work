@@ -1,0 +1,545 @@
+{
+  "_note": "Each scenario names the fixture it is built from and the exact values the screen shows. The checker walks rows in the order of `parts` in the inventory file (colour name, then part number).",
+  "start": {
+    "copy": "inventories/7286-1-copy-a.json",
+    "set": "Prisoner Transport",
+    "rows": 93,
+    "pieces": 173,
+    "minifigures": 2,
+    "checked_rows": 0,
+    "first_part": {
+      "figure": null,
+      "part": "32028",
+      "name": "Plate Special 1 x 2 with Door Rail",
+      "color": {
+        "id": 0,
+        "name": "Black",
+        "rgb": "#05131D",
+        "transparent": false
+      },
+      "quantity": 3,
+      "checked": 0,
+      "missing": 0,
+      "damaged": 0,
+      "image": "images/parts/32028__0.jpg",
+      "element": "4107761"
+    },
+    "actions": [
+      "Start checking",
+      "Start with spare parts",
+      "Open set"
+    ]
+  },
+  "part": {
+    "copy": "inventories/1592-1-copy-a.json",
+    "position": 54,
+    "of": 113,
+    "current": {
+      "figure": null,
+      "part": "3004",
+      "name": "Brick 1 x 2",
+      "color": {
+        "id": 4,
+        "name": "Red",
+        "rgb": "#C91A09",
+        "transparent": false
+      },
+      "quantity": 8,
+      "checked": 4,
+      "missing": 0,
+      "damaged": 0,
+      "image": "images/parts/3004__4.jpg",
+      "element": "300421"
+    },
+    "previous": {
+      "figure": null,
+      "part": "609pr0001",
+      "name": "Baseplate 32 x 32 with 9-Stud Curve and Road Print",
+      "color": {
+        "id": 7,
+        "name": "Light Gray",
+        "rgb": "#9BA19D",
+        "transparent": false
+      },
+      "quantity": 1,
+      "checked": 1,
+      "missing": 0,
+      "damaged": 0,
+      "image": "images/parts/609pr0001__7.jpg",
+      "element": null
+    },
+    "next": {
+      "figure": null,
+      "part": "3005",
+      "name": "Brick 1 x 1",
+      "color": {
+        "id": 4,
+        "name": "Red",
+        "rgb": "#C91A09",
+        "transparent": false
+      },
+      "quantity": 6,
+      "checked": 3,
+      "missing": 0,
+      "damaged": 0,
+      "image": "images/parts/3005__4.jpg",
+      "element": "300521"
+    },
+    "progress": {
+      "pieces_checked": 204,
+      "pieces": 484,
+      "missing": 5
+    }
+  },
+  "count": {
+    "copy": "inventories/1592-1-copy-a.json",
+    "current": {
+      "figure": null,
+      "part": "3004",
+      "name": "Brick 1 x 2",
+      "color": {
+        "id": 4,
+        "name": "Red",
+        "rgb": "#C91A09",
+        "transparent": false
+      },
+      "quantity": 8,
+      "checked": 4,
+      "missing": 0,
+      "damaged": 0,
+      "image": "images/parts/3004__4.jpg",
+      "element": "300421"
+    },
+    "counted": 2,
+    "of": 8,
+    "note": "Row with quantity >= 4, two already counted: the stepper state."
+  },
+  "skipped": {
+    "copy": "inventories/1592-1-copy-a.json",
+    "skipped_rows": [
+      {
+        "figure": null,
+        "part": "3038",
+        "name": "Brick Sloped 45° 2 x 3",
+        "color": {
+          "id": 4,
+          "name": "Red",
+          "rgb": "#C91A09",
+          "transparent": false
+        },
+        "quantity": 8,
+        "checked": 0,
+        "missing": 0,
+        "damaged": 0,
+        "image": "images/parts/3038__4.jpg",
+        "element": "4195081"
+      },
+      {
+        "figure": null,
+        "part": "3039",
+        "name": "Brick Sloped 45° 2 x 2",
+        "color": {
+          "id": 4,
+          "name": "Red",
+          "rgb": "#C91A09",
+          "transparent": false
+        },
+        "quantity": 6,
+        "checked": 0,
+        "missing": 0,
+        "damaged": 0,
+        "image": "images/parts/3039__4.jpg",
+        "element": "303921"
+      },
+      {
+        "figure": null,
+        "part": "3040a",
+        "name": "Brick Sloped 45° 2 x 1 without Bottom Pin",
+        "color": {
+          "id": 4,
+          "name": "Red",
+          "rgb": "#C91A09",
+          "transparent": false
+        },
+        "quantity": 2,
+        "checked": 0,
+        "missing": 0,
+        "damaged": 0,
+        "image": "images/parts/3040a__4.jpg",
+        "element": null
+      },
+      {
+        "figure": null,
+        "part": "3041",
+        "name": "Brick Sloped 45° 2 x 4 Double",
+        "color": {
+          "id": 4,
+          "name": "Red",
+          "rgb": "#C91A09",
+          "transparent": false
+        },
+        "quantity": 1,
+        "checked": 0,
+        "missing": 0,
+        "damaged": 0,
+        "image": "images/parts/3041__4.jpg",
+        "element": "304121"
+      }
+    ],
+    "note": "Rows the user skipped to come back to; shown as a list before Finish."
+  },
+  "figure": {
+    "copy": "inventories/1592-1-copy-a.json",
+    "figures_total": 8,
+    "figures_done": 3,
+    "current": {
+      "figure": "fig-008732",
+      "name": "Chef, Red Neckerchief, White Legs, Top Hat",
+      "quantity": 1,
+      "parts": 4,
+      "image": "images/minifigs/fig-008732.jpg",
+      "image_url": "https://cdn.rebrickable.com/media/sets/fig-008732.jpg"
+    },
+    "parts_of_current": [
+      {
+        "figure": "fig-008732",
+        "part": "3626apr0001",
+        "name": "Minifig Head Standard Grin Print [Solid Stud]",
+        "color": {
+          "id": 14,
+          "name": "Yellow",
+          "rgb": "#F2CD37",
+          "transparent": false
+        },
+        "quantity": 1,
+        "checked": 0,
+        "missing": 0,
+        "damaged": 0,
+        "image": "images/parts/3626apr0001__14.jpg",
+        "element": null
+      },
+      {
+        "figure": "fig-008732",
+        "part": "3878",
+        "name": "Top Hat",
+        "color": {
+          "id": 0,
+          "name": "Black",
+          "rgb": "#05131D",
+          "transparent": false
+        },
+        "quantity": 1,
+        "checked": 0,
+        "missing": 0,
+        "damaged": 0,
+        "image": "images/parts/3878__0.jpg",
+        "element": "4569092"
+      },
+      {
+        "figure": "fig-008732",
+        "part": "970c27",
+        "name": "Hips and White Legs",
+        "color": {
+          "id": 15,
+          "name": "White",
+          "rgb": "#FFFFFF",
+          "transparent": false
+        },
+        "quantity": 1,
+        "checked": 0,
+        "missing": 0,
+        "damaged": 0,
+        "image": "images/parts/970c27__15.jpg",
+        "element": "6551364"
+      },
+      {
+        "figure": "fig-008732",
+        "part": "973c27h01pr0003",
+        "name": "Torso Chef with 6 Buttons, Short Red Neckerchief Print, White Arms, Yellow Hands",
+        "color": {
+          "id": 15,
+          "name": "White",
+          "rgb": "#FFFFFF",
+          "transparent": false
+        },
+        "quantity": 1,
+        "checked": 0,
+        "missing": 0,
+        "damaged": 0,
+        "image": "images/parts/973c27h01pr0003__15.jpg",
+        "element": null
+      }
+    ]
+  },
+  "spares": {
+    "copy": "inventories/6085-1-copy-a.json",
+    "spare_rows": [
+      {
+        "figure": null,
+        "part": "87693",
+        "name": "Headwear Accessory Plume / Feather Small with Pin",
+        "color": {
+          "id": 4,
+          "name": "Red",
+          "rgb": "#C91A09",
+          "transparent": false
+        },
+        "quantity": 2,
+        "checked": 2,
+        "missing": 0,
+        "damaged": 0,
+        "image": "images/parts/87693__4.jpg",
+        "element": "6020800"
+      },
+      {
+        "figure": null,
+        "part": "87694",
+        "name": "Headwear Accessory Plume / Feather Large with Pin",
+        "color": {
+          "id": 4,
+          "name": "Red",
+          "rgb": "#C91A09",
+          "transparent": false
+        },
+        "quantity": 2,
+        "checked": 2,
+        "missing": 0,
+        "damaged": 0,
+        "image": "images/parts/87694__4.jpg",
+        "element": "450221"
+      },
+      {
+        "figure": null,
+        "part": "87693",
+        "name": "Headwear Accessory Plume / Feather Small with Pin",
+        "color": {
+          "id": 14,
+          "name": "Yellow",
+          "rgb": "#F2CD37",
+          "transparent": false
+        },
+        "quantity": 2,
+        "checked": 2,
+        "missing": 0,
+        "damaged": 0,
+        "image": "images/parts/87693__14.jpg",
+        "element": null
+      },
+      {
+        "figure": null,
+        "part": "87694",
+        "name": "Headwear Accessory Plume / Feather Large with Pin",
+        "color": {
+          "id": 14,
+          "name": "Yellow",
+          "rgb": "#F2CD37",
+          "transparent": false
+        },
+        "quantity": 2,
+        "checked": 2,
+        "missing": 0,
+        "damaged": 0,
+        "image": "images/parts/87694__14.jpg",
+        "element": "450224"
+      }
+    ]
+  },
+  "finish_with_problems": {
+    "copy": "inventories/40567-1-copy-a.json",
+    "summary": {
+      "rows": 86,
+      "pieces": 258,
+      "rows_checked": 86,
+      "pieces_checked": 252,
+      "pieces_missing": 6,
+      "pieces_damaged": 2,
+      "spare_rows": 12,
+      "minifigures": 2
+    },
+    "missing": [
+      {
+        "figure": null,
+        "part": "3710",
+        "name": "Plate 1 x 4",
+        "color": {
+          "id": 0,
+          "name": "Black",
+          "rgb": "#05131D",
+          "transparent": false
+        },
+        "quantity": 2,
+        "checked": 1,
+        "missing": 1,
+        "damaged": 0,
+        "image": "images/parts/3710__0.jpg",
+        "element": "371026"
+      },
+      {
+        "figure": null,
+        "part": "78258",
+        "name": "Bar 2L with Stop in Center",
+        "color": {
+          "id": 0,
+          "name": "Black",
+          "rgb": "#05131D",
+          "transparent": false
+        },
+        "quantity": 2,
+        "checked": 1,
+        "missing": 1,
+        "damaged": 0,
+        "image": "images/parts/78258__0.jpg",
+        "element": "6371584"
+      },
+      {
+        "figure": null,
+        "part": "92950",
+        "name": "Brick Arch 1 x 6 Raised Arch",
+        "color": {
+          "id": 0,
+          "name": "Black",
+          "rgb": "#05131D",
+          "transparent": false
+        },
+        "quantity": 2,
+        "checked": 1,
+        "missing": 1,
+        "damaged": 0,
+        "image": "images/parts/92950__0.jpg",
+        "element": "4620763"
+      },
+      {
+        "figure": null,
+        "part": "6141",
+        "name": "Plate Round 1 x 1 with Solid Stud",
+        "color": {
+          "id": 297,
+          "name": "Pearl Gold",
+          "rgb": "#AA7F2E",
+          "transparent": false
+        },
+        "quantity": 2,
+        "checked": 1,
+        "missing": 1,
+        "damaged": 0,
+        "image": "images/parts/6141__297.jpg",
+        "element": "4523159"
+      },
+      {
+        "figure": null,
+        "part": "4499",
+        "name": "Weapon Bow and Arrow [Large]",
+        "color": {
+          "id": 70,
+          "name": "Reddish Brown",
+          "rgb": "#582A12",
+          "transparent": false
+        },
+        "quantity": 1,
+        "checked": 0,
+        "missing": 1,
+        "damaged": 0,
+        "image": "images/parts/4499__70.jpg",
+        "element": "4507139"
+      },
+      {
+        "figure": null,
+        "part": "6020",
+        "name": "Bar 7 x 3 with Double Clips (Ladder) [Straight Clips]",
+        "color": {
+          "id": 70,
+          "name": "Reddish Brown",
+          "rgb": "#582A12",
+          "transparent": false
+        },
+        "quantity": 1,
+        "checked": 0,
+        "missing": 1,
+        "damaged": 0,
+        "image": "images/parts/6020__70.jpg",
+        "element": "4541278"
+      }
+    ],
+    "damaged": [
+      {
+        "figure": null,
+        "part": "30357",
+        "name": "Plate Round Corner 3 x 3",
+        "color": {
+          "id": 0,
+          "name": "Black",
+          "rgb": "#05131D",
+          "transparent": false
+        },
+        "quantity": 2,
+        "checked": 2,
+        "missing": 0,
+        "damaged": 1,
+        "image": "images/parts/30357__0.jpg",
+        "element": "4227392"
+      },
+      {
+        "figure": null,
+        "part": "6233",
+        "name": "Cone 3 x 3 x 2",
+        "color": {
+          "id": 0,
+          "name": "Black",
+          "rgb": "#05131D",
+          "transparent": false
+        },
+        "quantity": 1,
+        "checked": 1,
+        "missing": 0,
+        "damaged": 1,
+        "image": "images/parts/6233__0.jpg",
+        "element": "4193529"
+      }
+    ],
+    "actions": [
+      "Mark set complete",
+      "Export missing as BrickLink wanted list",
+      "Back to last part"
+    ]
+  },
+  "finish_clean": {
+    "copy": "inventories/6085-1-copy-a.json",
+    "summary": {
+      "rows": 150,
+      "pieces": 661,
+      "rows_checked": 150,
+      "pieces_checked": 661,
+      "pieces_missing": 0,
+      "pieces_damaged": 0,
+      "spare_rows": 4,
+      "minifigures": 6
+    }
+  },
+  "resume": {
+    "copy": "inventories/1592-1-copy-a.json",
+    "last_checked_part": {
+      "figure": null,
+      "part": "609pr0001",
+      "name": "Baseplate 32 x 32 with 9-Stud Curve and Road Print",
+      "color": {
+        "id": 7,
+        "name": "Light Gray",
+        "rgb": "#9BA19D",
+        "transparent": false
+      },
+      "quantity": 1,
+      "checked": 1,
+      "missing": 0,
+      "damaged": 0,
+      "image": "images/parts/609pr0001__7.jpg",
+      "element": null
+    },
+    "message": "You stopped at part 54 of 113."
+  },
+  "stress_large": {
+    "copy": "inventories/75192-1-copy-a.json",
+    "rows": 706,
+    "pieces": 7534,
+    "note": "Tests the progress strip with 1,400+ rows and the list view at length."
+  }
+}

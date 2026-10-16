@@ -1,0 +1,17 @@
+.DS_Store
+Thumbs.db
+node_modules/
+dist/
+build/
+.env
+.env.*
+*.log
+.vscode/
+.idea/
+
+# Third-party imagery: supply your own, do not commit
+design/assets/data/parts/
+design/assets/data/sets/
+design/assets/data/minifigs/
+design/assets/data/photos/
+uploads/

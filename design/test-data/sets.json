@@ -1,0 +1,772 @@
+[
+  {
+    "id": "56325b99-16bc-549b-bb98-f7be2ab38829",
+    "copy_label": "7286-1 #a",
+    "set": "7286-1",
+    "number": "7286",
+    "version": 1,
+    "name": "Prisoner Transport",
+    "year": 2011,
+    "theme_id": 61,
+    "theme": "Police",
+    "theme_path": "City / Police",
+    "parts": 173,
+    "image": "images/sets/7286-1.jpg",
+    "image_url": "https://cdn.rebrickable.com/media/sets/7286-1.jpg",
+    "rebrickable_url": "https://rebrickable.com/sets/7286-1/",
+    "description": null,
+    "status": [
+      "sealed"
+    ],
+    "owners": [
+      "Alex"
+    ],
+    "tags": [
+      "Retired"
+    ],
+    "storage": "Box 3 (attic)",
+    "purchase_location": "Kleinanzeigen",
+    "purchase_price": 24.0,
+    "purchase_date": "2025-03-09",
+    "checked_progress": "unchecked",
+    "has_inventory_fixture": true,
+    "summary": {
+      "rows": 93,
+      "pieces": 173,
+      "rows_checked": 0,
+      "pieces_checked": 0,
+      "pieces_missing": 0,
+      "pieces_damaged": 0,
+      "spare_rows": 9,
+      "minifigures": 2
+    },
+    "minifigures_total": 2,
+    "grid": {
+      "checked_pct": 0.0,
+      "missing": 0,
+      "damaged": 0
+    },
+    "inventory_file": "inventories/7286-1-copy-a.json"
+  },
+  {
+    "id": "eaacf51c-1b63-58ff-b1a9-a2ea287565fc",
+    "copy_label": "1592-1 #a",
+    "set": "1592-1",
+    "number": "1592",
+    "version": 1,
+    "name": "Town Square - Castle Scene",
+    "year": 1980,
+    "theme_id": 67,
+    "theme": "Classic Town",
+    "theme_path": "Town / Classic Town",
+    "parts": 496,
+    "image": "images/sets/1592-1.jpg",
+    "image_url": "https://cdn.rebrickable.com/media/sets/1592-1.jpg",
+    "rebrickable_url": "https://rebrickable.com/sets/1592-1/",
+    "description": null,
+    "status": [
+      "in-pieces",
+      "needs-check"
+    ],
+    "owners": [
+      "Alex"
+    ],
+    "tags": [
+      "Vintage",
+      "Castle"
+    ],
+    "storage": "Shelf A2 – Town",
+    "purchase_location": "Flohmarkt Mauerpark",
+    "purchase_price": 35.0,
+    "purchase_date": "2024-06-22",
+    "checked_progress": "in_progress",
+    "has_inventory_fixture": true,
+    "summary": {
+      "rows": 145,
+      "pieces": 484,
+      "rows_checked": 54,
+      "pieces_checked": 204,
+      "pieces_missing": 5,
+      "pieces_damaged": 0,
+      "spare_rows": 0,
+      "minifigures": 8
+    },
+    "minifigures_total": 11,
+    "grid": {
+      "checked_pct": 42.1,
+      "missing": 5,
+      "damaged": 0
+    },
+    "inventory_file": "inventories/1592-1-copy-a.json"
+  },
+  {
+    "id": "ff25ae37-7a6c-5804-92aa-bb3a03e64cac",
+    "copy_label": "6085-1 #a",
+    "set": "6085-1",
+    "number": "6085",
+    "version": 1,
+    "name": "Black Monarch's Castle",
+    "year": 1988,
+    "theme_id": 188,
+    "theme": "Black Knights",
+    "theme_path": "Castle / Black Knights",
+    "parts": 688,
+    "image": "images/sets/6085-1.jpg",
+    "image_url": "https://cdn.rebrickable.com/media/sets/6085-1.jpg",
+    "rebrickable_url": "https://rebrickable.com/sets/6085-1/",
+    "description": null,
+    "status": [
+      "built",
+      "displayed"
+    ],
+    "owners": [
+      "Alex"
+    ],
+    "tags": [
+      "Castle",
+      "Vintage"
+    ],
+    "storage": "Display case",
+    "purchase_location": "BrickLink",
+    "purchase_price": 119.9,
+    "purchase_date": "2023-11-18",
+    "checked_progress": "complete",
+    "has_inventory_fixture": true,
+    "summary": {
+      "rows": 150,
+      "pieces": 661,
+      "rows_checked": 150,
+      "pieces_checked": 661,
+      "pieces_missing": 0,
+      "pieces_damaged": 0,
+      "spare_rows": 4,
+      "minifigures": 6
+    },
+    "minifigures_total": 12,
+    "grid": {
+      "checked_pct": 100.0,
+      "missing": 0,
+      "damaged": 0
+    },
+    "inventory_file": "inventories/6085-1-copy-a.json"
+  },
+  {
+    "id": "4fcedaaf-0c28-5203-9058-7044daabce23",
+    "copy_label": "40567-1 #a",
+    "set": "40567-1",
+    "number": "40567",
+    "version": 1,
+    "name": "Forest Hideout",
+    "year": 2022,
+    "theme_id": 598,
+    "theme": "Promotional",
+    "theme_path": "Promotional",
+    "parts": 258,
+    "image": "images/sets/40567-1.jpg",
+    "image_url": "https://cdn.rebrickable.com/media/sets/40567-1.jpg",
+    "rebrickable_url": "https://rebrickable.com/sets/40567-1/",
+    "description": null,
+    "status": [
+      "built",
+      "needs-check"
+    ],
+    "owners": [
+      "Sam",
+      "Shared"
+    ],
+    "tags": [
+      "Gift"
+    ],
+    "storage": "Shelf A1 – Castle",
+    "purchase_location": "LEGO Store Hamburg",
+    "purchase_price": 0.0,
+    "purchase_date": "2022-10-29",
+    "checked_progress": "missing",
+    "has_inventory_fixture": true,
+    "summary": {
+      "rows": 86,
+      "pieces": 258,
+      "rows_checked": 86,
+      "pieces_checked": 252,
+      "pieces_missing": 6,
+      "pieces_damaged": 2,
+      "spare_rows": 12,
+      "minifigures": 2
+    },
+    "minifigures_total": 2,
+    "grid": {
+      "checked_pct": 97.7,
+      "missing": 6,
+      "damaged": 2
+    },
+    "inventory_file": "inventories/40567-1-copy-a.json"
+  },
+  {
+    "id": "5eb577dc-f82c-59a1-bce7-bb3b6316a4ae",
+    "copy_label": "30637-1 #a",
+    "set": "30637-1",
+    "number": "30637",
+    "version": 1,
+    "name": "Animal Tray and Bag Tag",
+    "year": 2023,
+    "theme_id": 688,
+    "theme": "DOTS",
+    "theme_path": "DOTS",
+    "parts": 94,
+    "image": "images/sets/30637-1.jpg",
+    "image_url": "https://cdn.rebrickable.com/media/sets/30637-1.jpg",
+    "rebrickable_url": "https://rebrickable.com/sets/30637-1/",
+    "description": null,
+    "status": [
+      "sealed"
+    ],
+    "owners": [
+      "Sam"
+    ],
+    "tags": [],
+    "storage": "Parts drawer unit",
+    "purchase_location": "Amazon.de",
+    "purchase_price": 3.99,
+    "purchase_date": "2024-02-11",
+    "checked_progress": "unchecked",
+    "has_inventory_fixture": true,
+    "summary": {
+      "rows": 27,
+      "pieces": 94,
+      "rows_checked": 0,
+      "pieces_checked": 0,
+      "pieces_missing": 0,
+      "pieces_damaged": 0,
+      "spare_rows": 12,
+      "minifigures": 0
+    },
+    "minifigures_total": 0,
+    "grid": {
+      "checked_pct": 0.0,
+      "missing": 0,
+      "damaged": 0
+    },
+    "inventory_file": "inventories/30637-1-copy-a.json"
+  },
+  {
+    "id": "d75848ba-5ca4-555c-9e9a-5ea8ba1daa43",
+    "copy_label": "21325-1 #a",
+    "set": "21325-1",
+    "number": "21325",
+    "version": 1,
+    "name": "Medieval Blacksmith",
+    "year": 2021,
+    "theme_id": 576,
+    "theme": "LEGO Ideas and CUUSOO",
+    "theme_path": "LEGO Ideas and CUUSOO",
+    "parts": 2164,
+    "image": "images/sets/21325-1.jpg",
+    "image_url": "https://cdn.rebrickable.com/media/sets/21325-1.jpg",
+    "rebrickable_url": "https://rebrickable.com/sets/21325-1/",
+    "description": "Built over two Christmas evenings 2021. Trees are the worst; every leaf piece is counted twice.",
+    "status": [
+      "displayed"
+    ],
+    "owners": [
+      "Alex",
+      "Sam"
+    ],
+    "tags": [
+      "Ideas",
+      "Castle",
+      "Display"
+    ],
+    "storage": "Display case",
+    "purchase_location": "LEGO Store Hamburg",
+    "purchase_price": 169.99,
+    "purchase_date": "2021-12-24",
+    "checked_progress": "complete",
+    "has_inventory_fixture": true,
+    "summary": {
+      "rows": 455,
+      "pieces": 2164,
+      "rows_checked": 455,
+      "pieces_checked": 2164,
+      "pieces_missing": 0,
+      "pieces_damaged": 0,
+      "spare_rows": 62,
+      "minifigures": 4
+    },
+    "minifigures_total": 4,
+    "grid": {
+      "checked_pct": 100.0,
+      "missing": 0,
+      "damaged": 0
+    },
+    "inventory_file": "inventories/21325-1-copy-a.json"
+  },
+  {
+    "id": "975cc0f8-ca83-5d9b-a325-3af6c0eab7ed",
+    "copy_label": "75192-1 #a",
+    "set": "75192-1",
+    "number": "75192",
+    "version": 1,
+    "name": "Millennium Falcon",
+    "year": 2017,
+    "theme_id": 171,
+    "theme": "Ultimate Collector Series",
+    "theme_path": "Star Wars / Ultimate Collector Series",
+    "parts": 7541,
+    "image": "images/sets/75192-1.jpg",
+    "image_url": "https://cdn.rebrickable.com/media/sets/75192-1.jpg",
+    "rebrickable_url": "https://rebrickable.com/sets/75192-1/",
+    "description": null,
+    "status": [
+      "sealed"
+    ],
+    "owners": [
+      "Alex"
+    ],
+    "tags": [
+      "Display"
+    ],
+    "storage": "Box 3 (attic)",
+    "purchase_location": "LEGO Store Hamburg",
+    "purchase_price": 849.99,
+    "purchase_date": "2023-05-04",
+    "checked_progress": "unchecked",
+    "has_inventory_fixture": true,
+    "summary": {
+      "rows": 706,
+      "pieces": 7534,
+      "rows_checked": 0,
+      "pieces_checked": 0,
+      "pieces_missing": 0,
+      "pieces_damaged": 0,
+      "spare_rows": 54,
+      "minifigures": 9
+    },
+    "minifigures_total": 10,
+    "grid": {
+      "checked_pct": 0.0,
+      "missing": 0,
+      "damaged": 0
+    },
+    "inventory_file": "inventories/75192-1-copy-a.json"
+  },
+  {
+    "id": "c9743b0c-d28d-5727-85d1-f8cddde6f83f",
+    "copy_label": "7286-1 #b",
+    "set": "7286-1",
+    "number": "7286",
+    "version": 1,
+    "name": "Prisoner Transport",
+    "year": 2011,
+    "theme_id": 61,
+    "theme": "Police",
+    "theme_path": "City / Police",
+    "parts": 173,
+    "image": "images/sets/7286-1.jpg",
+    "image_url": "https://cdn.rebrickable.com/media/sets/7286-1.jpg",
+    "rebrickable_url": "https://rebrickable.com/sets/7286-1/",
+    "description": "Second copy, bought for the minifigures. Box is crushed on one corner; manual is missing.",
+    "status": [
+      "built"
+    ],
+    "owners": [
+      "Shared"
+    ],
+    "tags": [
+      "Retired"
+    ],
+    "storage": "Shelf A2 – Town",
+    "purchase_location": "Kleinanzeigen",
+    "purchase_price": 18.5,
+    "purchase_date": "2025-08-30",
+    "checked_progress": null,
+    "has_inventory_fixture": false,
+    "minifigures_total": 2,
+    "grid": null,
+    "inventory_file": null
+  },
+  {
+    "id": "3468979f-c25d-5170-acde-e0f26b9a7c40",
+    "copy_label": "6080-1 #a",
+    "set": "6080-1",
+    "number": "6080",
+    "version": 1,
+    "name": "King's Castle",
+    "year": 1984,
+    "theme_id": 199,
+    "theme": "Lion Knights",
+    "theme_path": "Castle / Lion Knights",
+    "parts": 679,
+    "image": "images/sets/6080-1.jpg",
+    "image_url": "https://cdn.rebrickable.com/media/sets/6080-1.jpg",
+    "rebrickable_url": "https://rebrickable.com/sets/6080-1/",
+    "description": null,
+    "status": [
+      "displayed"
+    ],
+    "owners": [
+      "Alex"
+    ],
+    "tags": [
+      "Castle",
+      "Vintage"
+    ],
+    "storage": "Display case",
+    "purchase_location": "BrickLink",
+    "purchase_price": 139.0,
+    "purchase_date": "2023-09-02",
+    "checked_progress": null,
+    "has_inventory_fixture": false,
+    "minifigures_total": 12,
+    "grid": null,
+    "inventory_file": null
+  },
+  {
+    "id": "528d1c92-92dc-574d-a5d9-832787205b60",
+    "copy_label": "6074-1 #a",
+    "set": "6074-1",
+    "number": "6074",
+    "version": 1,
+    "name": "Black Falcon's Fortress",
+    "year": 1986,
+    "theme_id": 187,
+    "theme": "Black Falcons",
+    "theme_path": "Castle / Black Falcons",
+    "parts": 430,
+    "image": "images/sets/6074-1.jpg",
+    "image_url": "https://cdn.rebrickable.com/media/sets/6074-1.jpg",
+    "rebrickable_url": "https://rebrickable.com/sets/6074-1/",
+    "description": null,
+    "status": [
+      "in-pieces"
+    ],
+    "owners": [
+      "Alex"
+    ],
+    "tags": [
+      "Castle",
+      "Vintage"
+    ],
+    "storage": "Shelf A1 – Castle",
+    "purchase_location": "Flohmarkt Mauerpark",
+    "purchase_price": 42.0,
+    "purchase_date": "2024-04-13",
+    "checked_progress": null,
+    "has_inventory_fixture": false,
+    "minifigures_total": 6,
+    "grid": null,
+    "inventory_file": null
+  },
+  {
+    "id": "ad96bb8e-7a63-59f4-9f34-816308f8713d",
+    "copy_label": "31120-1 #a",
+    "set": "31120-1",
+    "number": "31120",
+    "version": 1,
+    "name": "Medieval Castle",
+    "year": 2021,
+    "theme_id": 672,
+    "theme": "Creator 3-in-1",
+    "theme_path": "Creator / Creator 3-in-1",
+    "parts": 1426,
+    "image": "images/sets/31120-1.jpg",
+    "image_url": "https://cdn.rebrickable.com/media/sets/31120-1.jpg",
+    "rebrickable_url": "https://rebrickable.com/sets/31120-1/",
+    "description": null,
+    "status": [
+      "built"
+    ],
+    "owners": [
+      "Sam"
+    ],
+    "tags": [
+      "Castle"
+    ],
+    "storage": "Shelf A1 – Castle",
+    "purchase_location": "Amazon.de",
+    "purchase_price": 99.99,
+    "purchase_date": "2022-03-15",
+    "checked_progress": null,
+    "has_inventory_fixture": false,
+    "minifigures_total": 4,
+    "grid": null,
+    "inventory_file": null
+  },
+  {
+    "id": "1f40c519-0d0d-5e01-baa0-09c6724011b5",
+    "copy_label": "10497-1 #a",
+    "set": "10497-1",
+    "number": "10497",
+    "version": 1,
+    "name": "Galaxy Explorer",
+    "year": 2022,
+    "theme_id": 721,
+    "theme": "Icons",
+    "theme_path": "Icons",
+    "parts": 1254,
+    "image": "images/sets/10497-1.jpg",
+    "image_url": "https://cdn.rebrickable.com/media/sets/10497-1.jpg",
+    "rebrickable_url": "https://rebrickable.com/sets/10497-1/",
+    "description": null,
+    "status": [
+      "displayed"
+    ],
+    "owners": [
+      "Alex"
+    ],
+    "tags": [
+      "Display"
+    ],
+    "storage": "Display case",
+    "purchase_location": "LEGO Store Hamburg",
+    "purchase_price": 99.99,
+    "purchase_date": "2022-12-03",
+    "checked_progress": null,
+    "has_inventory_fixture": false,
+    "minifigures_total": 4,
+    "grid": null,
+    "inventory_file": null
+  },
+  {
+    "id": "a35bce36-1a05-5a6c-b76b-b7c6223462b6",
+    "copy_label": "60198-1 #a",
+    "set": "60198-1",
+    "number": "60198",
+    "version": 1,
+    "name": "Cargo Train",
+    "year": 2018,
+    "theme_id": 66,
+    "theme": "Trains",
+    "theme_path": "City / Trains",
+    "parts": 1226,
+    "image": "images/sets/60198-1.jpg",
+    "image_url": "https://cdn.rebrickable.com/media/sets/60198-1.jpg",
+    "rebrickable_url": "https://rebrickable.com/sets/60198-1/",
+    "description": null,
+    "status": [
+      "built"
+    ],
+    "owners": [
+      "Shared"
+    ],
+    "tags": [
+      "Gift"
+    ],
+    "storage": "Shelf A2 – Town",
+    "purchase_location": "Gift",
+    "purchase_price": 0.0,
+    "purchase_date": "2019-12-24",
+    "checked_progress": null,
+    "has_inventory_fixture": false,
+    "minifigures_total": 6,
+    "grid": null,
+    "inventory_file": null
+  },
+  {
+    "id": "7c7f4701-0415-54b2-a9cc-7f760a4825b8",
+    "copy_label": "10281-1 #a",
+    "set": "10281-1",
+    "number": "10281",
+    "version": 1,
+    "name": "Bonsai Tree",
+    "year": 2021,
+    "theme_id": 769,
+    "theme": "Botanicals",
+    "theme_path": "Botanicals",
+    "parts": 878,
+    "image": "images/sets/10281-1.jpg",
+    "image_url": "https://cdn.rebrickable.com/media/sets/10281-1.jpg",
+    "rebrickable_url": "https://rebrickable.com/sets/10281-1/",
+    "description": null,
+    "status": [
+      "displayed"
+    ],
+    "owners": [
+      "Sam"
+    ],
+    "tags": [
+      "Display"
+    ],
+    "storage": "Display case",
+    "purchase_location": "LEGO Store Hamburg",
+    "purchase_price": 49.99,
+    "purchase_date": "2021-05-20",
+    "checked_progress": null,
+    "has_inventory_fixture": false,
+    "minifigures_total": 0,
+    "grid": null,
+    "inventory_file": null
+  },
+  {
+    "id": "a4ef85f3-8a51-5534-905d-65a2b8eedd06",
+    "copy_label": "42115-1 #a",
+    "set": "42115-1",
+    "number": "42115",
+    "version": 1,
+    "name": "Lamborghini Sián FKP 37",
+    "year": 2020,
+    "theme_id": 1,
+    "theme": "Technic",
+    "theme_path": "Technic",
+    "parts": 3696,
+    "image": "images/sets/42115-1.jpg",
+    "image_url": "https://cdn.rebrickable.com/media/sets/42115-1.jpg",
+    "rebrickable_url": "https://rebrickable.com/sets/42115-1/",
+    "description": null,
+    "status": [
+      "sealed"
+    ],
+    "owners": [
+      "Alex"
+    ],
+    "tags": [
+      "Technic"
+    ],
+    "storage": "Technic crate",
+    "purchase_location": "Amazon.de",
+    "purchase_price": 289.0,
+    "purchase_date": "2021-01-12",
+    "checked_progress": null,
+    "has_inventory_fixture": false,
+    "minifigures_total": 0,
+    "grid": null,
+    "inventory_file": null
+  },
+  {
+    "id": "08b525fe-518e-58ef-89b5-a13687ef7d60",
+    "copy_label": "21318-1 #a",
+    "set": "21318-1",
+    "number": "21318",
+    "version": 1,
+    "name": "Tree House",
+    "year": 2019,
+    "theme_id": 576,
+    "theme": "LEGO Ideas and CUUSOO",
+    "theme_path": "LEGO Ideas and CUUSOO",
+    "parts": 3037,
+    "image": "images/sets/21318-1.jpg",
+    "image_url": "https://cdn.rebrickable.com/media/sets/21318-1.jpg",
+    "rebrickable_url": "https://rebrickable.com/sets/21318-1/",
+    "description": null,
+    "status": [
+      "in-pieces"
+    ],
+    "owners": [
+      "Shared"
+    ],
+    "tags": [
+      "Ideas"
+    ],
+    "storage": "Box 3 (attic)",
+    "purchase_location": "Kleinanzeigen",
+    "purchase_price": 150.0,
+    "purchase_date": "2025-01-18",
+    "checked_progress": null,
+    "has_inventory_fixture": false,
+    "minifigures_total": 4,
+    "grid": null,
+    "inventory_file": null
+  },
+  {
+    "id": "cf3acba2-dba8-5bad-9da8-1bdfb6ef002b",
+    "copy_label": "1-1 #a",
+    "set": "1-1",
+    "number": "1",
+    "version": 1,
+    "name": "Mini-Wheel Model Maker No. 1",
+    "year": 1971,
+    "theme_id": 756,
+    "theme": "Samsonite",
+    "theme_path": "System / Samsonite",
+    "parts": 87,
+    "image": "images/sets/1-1.jpg",
+    "image_url": "https://cdn.rebrickable.com/media/sets/1-1.jpg",
+    "rebrickable_url": "https://rebrickable.com/sets/1-1/",
+    "description": null,
+    "status": [
+      "built"
+    ],
+    "owners": [
+      "Alex"
+    ],
+    "tags": [
+      "Vintage"
+    ],
+    "storage": "Kellerregal Ü2",
+    "purchase_location": "Flohmarkt Mauerpark",
+    "purchase_price": 6.0,
+    "purchase_date": "2020-07-04",
+    "checked_progress": null,
+    "has_inventory_fixture": false,
+    "minifigures_total": 0,
+    "grid": null,
+    "inventory_file": null
+  },
+  {
+    "id": "a9b6c8b3-014c-56eb-892a-85c0bb195fc4",
+    "copy_label": "10294-1 #a",
+    "set": "10294-1",
+    "number": "10294",
+    "version": 1,
+    "name": "Titanic",
+    "year": 2021,
+    "theme_id": 721,
+    "theme": "Icons",
+    "theme_path": "Icons",
+    "parts": 9092,
+    "image": "images/sets/10294-1.jpg",
+    "image_url": "https://cdn.rebrickable.com/media/sets/10294-1.jpg",
+    "rebrickable_url": "https://rebrickable.com/sets/10294-1/",
+    "description": null,
+    "status": [
+      "sealed"
+    ],
+    "owners": [
+      "Alex"
+    ],
+    "tags": [
+      "Display"
+    ],
+    "storage": "Box 3 (attic)",
+    "purchase_location": "LEGO Store Hamburg",
+    "purchase_price": 679.99,
+    "purchase_date": "2024-09-14",
+    "checked_progress": null,
+    "has_inventory_fixture": false,
+    "minifigures_total": 0,
+    "grid": null,
+    "inventory_file": null
+  },
+  {
+    "id": "dc50a26d-42af-5ec6-8909-d15e39eda718",
+    "copy_label": "71741-1 #a",
+    "set": "71741-1",
+    "number": "71741",
+    "version": 1,
+    "name": "NINJAGO City Gardens",
+    "year": 2021,
+    "theme_id": 435,
+    "theme": "Ninjago",
+    "theme_path": "Ninjago",
+    "parts": 5710,
+    "image": "images/sets/71741-1.jpg",
+    "image_url": "https://cdn.rebrickable.com/media/sets/71741-1.jpg",
+    "rebrickable_url": "https://rebrickable.com/sets/71741-1/",
+    "description": null,
+    "status": [
+      "sealed"
+    ],
+    "owners": [
+      "Shared"
+    ],
+    "tags": [],
+    "storage": "Box 3 (attic)",
+    "purchase_location": "Amazon.de",
+    "purchase_price": 399.99,
+    "purchase_date": "2024-12-01",
+    "checked_progress": null,
+    "has_inventory_fixture": false,
+    "minifigures_total": 22,
+    "grid": null,
+    "inventory_file": null
+  }
+]

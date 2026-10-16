@@ -32,6 +32,9 @@ assignees: ''
 
 ## Proposed design
 
+## UI design
+<!-- New UI design required? yes / no. If yes: the screens affected, new components or states, and links to the signed-off frames (phone, desktop and tablet; light and dark) before building starts. If no: which existing screens and components it reuses. -->
+
 ## Facts still to confirm
 
 ## Out of scope

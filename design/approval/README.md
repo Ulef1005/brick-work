@@ -12,3 +12,4 @@ Captures from the test instance (`lego-test`) of the app, for approval on the tr
 | [24-12m-api-tokens](24-12m-api-tokens/) | #24 N1 | New API tokens page (12m): list, create with the token shown once, revoke with Undo |
 | [23-r2-storage](23-r2-storage/) | #23 R2 | Storage rebuilt to 12c: table and contents, Select and move, purchase locations. Type, parent and note wait for decision #46 |
 | [23-r3-part-to-inventory](23-r3-part-to-inventory/) | #23 R3 | Part to Inventory rebuilt to 3f: camera row, recognition switch, viewfinder, review, queue, batch sheet |
+| [24-p6-tools-admin](24-p6-tools-admin/) | #24 P6 | Old breadcrumb gone everywhere; Tools & Admin hub as grouped rows (5b); subpage headers (7e, 11d); database check on a button; 404 page (7f) |

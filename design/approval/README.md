@@ -13,3 +13,4 @@ Captures from the test instance (`test instance`) of the app, for approval on th
 | [23-r2-storage](23-r2-storage/) | #23 R2 | Storage rebuilt to 12c: table and contents, Select and move, purchase locations. Type, parent and note wait for decision #46 |
 | [23-r3-part-to-inventory](23-r3-part-to-inventory/) | #23 R3 | Part to Inventory rebuilt to 3f: camera row, recognition switch, viewfinder, review, queue, batch sheet |
 | [24-p6-tools-admin](24-p6-tools-admin/) | #24 P6 | Old breadcrumb gone everywhere; Tools & Admin hub as grouped rows (5b); subpage headers (7e, 11d); database check on a button; 404 page (7f) |
+| [24-4b-prices](24-4b-prices/) | #24 (speed) | Prices rebuilt for speed: light page, 15 rows per page with the Collection pager, Details load on open; thumbnails |

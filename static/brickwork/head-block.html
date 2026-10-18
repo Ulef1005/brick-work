@@ -1,0 +1,41 @@
+<!-- Brick Work: paste into <head>. Paths assume the files in this folder are served from /brand/. -->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="application-name" content="Brick Work">
+<meta name="apple-mobile-web-app-title" content="Brick Work">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<!-- default: content runs under the status bar and takes the page colour; safe-area insets (env(safe-area-inset-*)) pad the app bars -->
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#FAFAF8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1A1816" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="light dark">
+
+<link rel="manifest" href="/brand/manifest.webmanifest">
+<link rel="icon" href="/brand/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/brand/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="/brand/favicon-16.png" sizes="16x16" type="image/png">
+<link rel="icon" href="/brand/favicon.ico" sizes="48x48">
+<!-- iPad mini 5 (primary touch device) -->
+<link rel="apple-touch-icon" sizes="152x152" href="/brand/icons/icon-152.png">
+<!-- iPhone 16 (rare) -->
+<link rel="apple-touch-icon" sizes="180x180" href="/brand/icons/icon-180.png">
+
+<!-- Startup images. iPad mini 5: 768 x 1024 pt, ratio 2 -->
+<link rel="apple-touch-startup-image" href="/brand/splash/splash-ipad-portrait-1536x2048-light.png"
+  media="(device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait) and (prefers-color-scheme: light)">
+<link rel="apple-touch-startup-image" href="/brand/splash/splash-ipad-portrait-1536x2048-dark.png"
+  media="(device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait) and (prefers-color-scheme: dark)">
+<link rel="apple-touch-startup-image" href="/brand/splash/splash-ipad-landscape-2048x1536-light.png"
+  media="(device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape) and (prefers-color-scheme: light)">
+<link rel="apple-touch-startup-image" href="/brand/splash/splash-ipad-landscape-2048x1536-dark.png"
+  media="(device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape) and (prefers-color-scheme: dark)">
+<!-- iPhone 16: 393 x 852 pt, ratio 3 -->
+<link rel="apple-touch-startup-image" href="/brand/splash/splash-iphone16-1179x2556-light.png"
+  media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: light)">
+<link rel="apple-touch-startup-image" href="/brand/splash/splash-iphone16-1179x2556-dark.png"
+  media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: dark)">
+
+<!-- Brand surfaces only; self-host Patrick Hand (OFL). Product UI uses Inter and Geist Mono. -->
+<style>
+  @font-face { font-family: "Patrick Hand"; src: url("/fonts/PatrickHand-Regular.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+</style>

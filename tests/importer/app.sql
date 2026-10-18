@@ -1,0 +1,27 @@
+-- Legacy column shapes only; synthetic tests populate invented records.
+CREATE TABLE "bricktracker_individual_minifigure_parts" ("id" TEXT,"part" TEXT,"color" INTEGER,"spare" BOOLEAN,"quantity" INTEGER,"element" INTEGER,"rebrickable_inventory" INTEGER,"missing" INTEGER,"damaged" INTEGER,"checked" BOOLEAN);
+CREATE TABLE "bricktracker_individual_minifigures" ("id" TEXT,"figure" TEXT,"quantity" INTEGER,"description" TEXT,"storage" TEXT,"purchase_date" REAL,"purchase_location" TEXT,"purchase_price" REAL);
+CREATE TABLE "bricktracker_individual_part_lots" ("id" TEXT,"name" TEXT,"description" TEXT,"created_date" REAL,"storage" TEXT,"purchase_location" TEXT,"purchase_date" REAL,"purchase_price" REAL);
+CREATE TABLE "bricktracker_individual_parts" ("id" TEXT,"part" TEXT,"color" INTEGER,"quantity" INTEGER,"description" TEXT,"storage" TEXT,"purchase_date" REAL,"purchase_location" TEXT,"purchase_price" REAL,"missing" INTEGER,"damaged" INTEGER,"checked" BOOLEAN,"lot_id" TEXT);
+CREATE TABLE "bricktracker_metadata_owners" ("id" TEXT,"name" TEXT);
+CREATE TABLE "bricktracker_metadata_purchase_locations" ("id" TEXT,"name" TEXT);
+CREATE TABLE "bricktracker_metadata_statuses" ("id" TEXT,"name" TEXT,"displayed_on_grid" BOOLEAN);
+CREATE TABLE "bricktracker_metadata_storages" ("id" TEXT,"name" TEXT);
+CREATE TABLE "bricktracker_metadata_tags" ("id" TEXT,"name" TEXT);
+CREATE TABLE "bricktracker_minifigures" ("id" TEXT,"figure" TEXT,"quantity" INTEGER);
+CREATE TABLE "bricktracker_parts" ("id" TEXT,"figure" TEXT,"part" TEXT,"color" INTEGER,"spare" BOOLEAN,"quantity" INTEGER,"element" INTEGER,"rebrickable_inventory" INTEGER,"missing" INTEGER,"damaged" INTEGER,"checked" BOOLEAN);
+CREATE TABLE "bricktracker_set_owners" ("id" TEXT,"owner_invented" INTEGER);
+CREATE TABLE "bricktracker_set_statuses" ("id" TEXT,"status_invented" INTEGER);
+CREATE TABLE "bricktracker_set_tags" ("id" TEXT,"tag_invented" INTEGER);
+CREATE TABLE "bricktracker_sets" ("id" TEXT,"set" TEXT,"description" TEXT,"storage" TEXT,"purchase_date" REAL,"purchase_location" TEXT,"purchase_price" REAL);
+CREATE TABLE "bricktracker_wish_owners" ("set" TEXT,"owner_invented" INTEGER);
+CREATE TABLE "bricktracker_wishes" ("set" TEXT,"name" TEXT,"year" INTEGER,"theme_id" INTEGER,"number_of_parts" INTEGER,"image" TEXT,"url" TEXT);
+CREATE TABLE "inventory_old" ("set_num" TEXT,"id" INTEGER,"part_num" TEXT,"name" TEXT,"part_img_url" TEXT,"part_img_url_id" TEXT,"color_id" INTEGER,"color_name" TEXT,"quantity" INTEGER,"is_spare" BOOLEAN,"element_id" INTEGER,"u_id" TEXT);
+CREATE TABLE "minifigures_old" ("fig_num" TEXT,"set_num" TEXT,"name" TEXT,"quantity" INTEGER,"set_img_url" TEXT,"u_id" TEXT);
+CREATE TABLE "missing_old" ("set_num" TEXT,"id" INTEGER,"part_num" TEXT,"part_img_url_id" TEXT,"color_id" INTEGER,"quantity" INTEGER,"element_id" INTEGER,"u_id" TEXT);
+CREATE TABLE "rebrickable_colors" ("color_id" INTEGER,"name" TEXT,"rgb" TEXT,"is_trans" BOOLEAN,"bricklink_color_id" INTEGER,"bricklink_color_name" TEXT);
+CREATE TABLE "rebrickable_minifigures" ("figure" TEXT,"number" INTEGER,"name" TEXT,"image" TEXT,"number_of_parts" INTEGER);
+CREATE TABLE "rebrickable_parts" ("part" TEXT,"color_id" INTEGER,"color_name" TEXT,"color_rgb" TEXT,"color_transparent" BOOLEAN,"name" TEXT,"category" INTEGER,"image" TEXT,"image_id" TEXT,"url" TEXT,"print" INTEGER,"bricklink_color_id" INTEGER,"bricklink_color_name" TEXT,"bricklink_part_num" TEXT);
+CREATE TABLE "rebrickable_sets" ("set" TEXT,"number" TEXT,"version" INTEGER,"name" TEXT,"year" INTEGER,"theme_id" INTEGER,"number_of_parts" INTEGER,"image" TEXT,"url" TEXT,"last_modified" TEXT);
+CREATE TABLE "sets_old" ("set_num" TEXT,"name" TEXT,"year" INTEGER,"theme_id" INTEGER,"num_parts" INTEGER,"set_img_url" TEXT,"set_url" TEXT,"last_modified_dt" TEXT,"mini_col" BOOLEAN,"set_check" BOOLEAN,"set_col" BOOLEAN,"u_id" TEXT);
+CREATE TABLE "wishlist_old" ("set_num" TEXT,"name" TEXT,"year" INTEGER,"theme_id" INTEGER,"num_parts" INTEGER,"set_img_url" TEXT,"set_url" TEXT,"last_modified_dt" TEXT);

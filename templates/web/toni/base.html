@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en" data-web-ui="toni" data-theme-default="{{ 'dark' if config.get('DARK_MODE') in [True, 'True', 'true'] else 'system' }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Brick Work{% block title %}{% endblock %}</title>
+  <script src="{{ bw_static('web/toni/theme.js') }}"></script>
+  <link rel="stylesheet" href="{{ bw_static('web/toni/tokens-v2.css') }}">
+  <link rel="stylesheet" href="{{ bw_static('web/toni/toni.css') }}">
+  <link rel="stylesheet" href="{{ bw_static('web/toni/remaining.css') }}">
+  <script src="{{ bw_static('web/toni/remaining.js') }}" defer></script>
+  {% include 'web/toni/pwa-head.html' %}
+  <link rel="stylesheet" href="{{ bw_static('brickwork/brick-work.css') }}">
+
+  <script src="{{ bw_static('web/toni/pwa.js') }}" defer></script>
+  <script src="{{ bw_static('web/toni/shell.js') }}" defer></script>
+<script src="{{ bw_static('web/toni/images.js') }}" defer></script>
+<script src="{{ bw_static('web/toni/formatting.js') }}" defer></script>
+{% block page_assets %}{% endblock %}
+  <link rel="stylesheet" href="{{ bw_static('web/toni/shell.css') }}">
+</head>
+<body>
+  {# Behaviour contract: navbarSupportedContent remains the Workbench dialog id
+     for compatibility. No upstream shell scripts are loaded.
+     password id/name and form action/next remain the upstream login contract.
+     theme, navigation, data-open/data-close bind only the web shell adapter. #}
+  <a class="button skip" href="#content">Skip to content</a>
+  {% from 'web/toni/shell-components.html' import theme_picker with context %}
+  <header class="header">
+    <a class="brand" href="{{ url_for('web.bw_sets') }}"><img class="brand-mark" src="{{ url_for('static', filename='brickwork/mark.svg') }}" data-light="{{ url_for('static', filename='brickwork/mark.svg') }}" data-dark="{{ url_for('static', filename='brickwork/mark-dark.svg') }}" width="24" height="24" alt=""><span>Brick Work</span></a>
+    <button class="jump-trigger" data-open="global-jump" aria-controls="global-jump" aria-expanded="false" aria-label="Jump to a set, copy, figure or part">{{ toni_icon('search') }}<span>Jump to a set, copy, figure or part</span><kbd>⌘K</kbd></button>
+    {% if not config.get('HIDE_ADD_SET') %}<a class="button primary shell-add" href="{{ url_for('web.bw_add') }}" aria-label="Add">{{ toni_icon('add') }}<span>Add</span></a>{% endif %}
+  </header>
+  {% macro nav_link(link, rail=false) %}<a href="{{ link.url }}" title="{{ link.title }}" {% if rail %}aria-label="{{ link.title }}{% if link.count is not none %}, {{ link.count }}{% endif %}"{% endif %}{% if link.get('chooser') %} data-open="global-jump" data-jump-check="true" aria-controls="global-jump" aria-expanded="false"{% endif %} {% if link.active %}aria-current="page"{% endif %}>{{ toni_icon(link.icon) }}<span class="nav-title">{{ link.title }}</span>{% if rail and link.count is not none %}<span class="nav-count">{{ link.count }}</span>{% endif %}</a>{% endmacro %}
+  {% macro appearance_button() %}<button data-open="appearance" aria-controls="appearance" aria-expanded="false">{{ toni_icon('sun') }}<span class="nav-title">Appearance</span></button>{% endmacro %}
+  <nav class="group-items" aria-label="Group items">
+    {% for group, links in toni_navigation %}<div data-group-panel="{{ group }}" {% if group != toni_active_group %}hidden{% endif %}>{% for link in links %}{{ nav_link(link) }}{% endfor %}{% if group == 'Manage' %}{{ appearance_button() }}{% endif %}</div>{% endfor %}
+  </nav>
+  <div class="layout">
+    <aside class="rail"><nav aria-label="Main">
+    {% for group, links in toni_navigation %}<div class="navgroup" data-rail-group="{{ group }}"><p class="label secondary">{{ group }}</p>{% for link in links %}{{ nav_link(link, true) }}{% endfor %}</div>{% endfor %}
+    </nav><div class="rail-theme">{{ theme_picker() }}</div></aside>
+    <main id="content" tabindex="-1" class="{% block content_class %}standard{% endblock %}">
+      {% for category,message in get_flashed_messages(with_categories=true) %}<p class="notice" role="status">{{ message }}</p>{% endfor %}
+      {% block main %}{% endblock %}
+    </main>
+  </div>
+  <footer class="footer">
+    <span>Brick Work ({{ g.version }})</span>
+    {% if g.login.is_enabled() %}<a href="{{ url_for('login.logout') if g.login.is_authenticated() else url_for('login.login', next=request.path) }}">{{ 'Authenticated · admin' if g.login.is_authenticated() else 'Read-only · Log in' }}</a>{% else %}<span>Authentication disabled</span>{% endif %}
+    <span>Set and part data from Rebrickable · {{ g.request_time() }}{% if config['DEBUG'] and g.database_stats %} · {{ g.database_stats.print() }}{% endif %}</span>
+  </footer>
+  <div class="navigation-scrim" data-nav-scrim hidden></div>
+  {% for group, links in toni_navigation %}
+  {% set sheet_id = 'navbarSupportedContent' if group == 'Workbench' else 'navigation-' ~ group|lower %}
+  <dialog id="{{ sheet_id }}" class="workbench-sheet" data-nav-sheet="{{ group }}" aria-labelledby="{{ sheet_id }}-title" tabindex="-1">
+    <div class="actions sheet-header"><h2 id="{{ sheet_id }}-title">{{ group }}</h2></div>
+    <nav class="workbench-grid" aria-label="{{ group }} items">{% for link in links %}{{ nav_link(link) }}{% endfor %}{% if group == 'Manage' %}{{ appearance_button() }}{% endif %}</nav>
+  </dialog>
+  {% endfor %}
+  <dialog id="appearance" aria-labelledby="appearance-title"><div class="stack"><div class="actions"><h2 id="appearance-title">Appearance</h2><button data-close aria-label="Close appearance">{{ toni_icon('close') }}</button></div>{{ theme_picker() }}</div></dialog>
+  <nav class="mobile-bottom" aria-label="Navigation groups">
+    {% set group_icons = {'Collection':'sets','Workbench':'tools','Planning':'price','Manage':'manage'} %}
+    {% for group, links in toni_navigation %}<a href="{{ links[0].url }}" data-nav-group="{{ group }}" aria-controls="{{ 'navbarSupportedContent' if group == 'Workbench' else 'navigation-' ~ group|lower }}" aria-haspopup="dialog" aria-expanded="false" aria-current="{{ 'true' if group == toni_active_group else 'false' }}">{{ toni_icon(group_icons[group]) }}<span>{{ group }}</span></a>{% endfor %}
+  </nav>
+  <dialog id="global-jump" class="dialog-wide" aria-label="Jump to a set, copy, figure or part" data-url="{{ url_for('web.bw_collection_jump') }}">
+    <div class="stack">
+      <div class="jump-search-row"><div class="jump-search-field">{{ toni_icon('search') }}<input id="jump-query" type="search" aria-label="Set number, name or item ID" placeholder="Jump to a set, copy, figure or part" maxlength="100" autocomplete="off" autofocus aria-controls="jump-results"></div><button data-close class="jump-cancel">Cancel</button></div>
+      <p id="jump-message" class="secondary" role="status"></p>
+      <a class="jump-whatis" href="{{ url_for('web.bw_what_is_this') }}">{{ toni_icon('scan') }}What is this? · identify a part by photo</a>
+      <div id="jump-results" class="stack"></div>
+    </div>
+  </dialog>
+  <script src="{{ bw_static('web/toni/jump.js') }}" defer></script>
+</body>
+</html>

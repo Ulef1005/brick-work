@@ -1,0 +1,52 @@
+{% extends 'web/toni/base.html' %}
+{% block title %} · API tokens{% endblock %}
+{% block breadcrumb_row %}{% endblock %}
+{% block page_assets %}
+<link rel="stylesheet" href="{{ bw_static('web/toni/bw-tokens.css') }}">
+<script src="{{ bw_static('web/toni/bw-tokens.js') }}" defer></script>
+{% endblock %}
+{% macro chips(scopes) %}<div class="bw-tk-chips">{% for scope in scopes %}<span class="bw-tk-chip">{{ scope }}</span>{% endfor %}</div>{% endmacro %}
+{% macro name_cell(row) %}<div class="bw-tk-name"><strong>{{ row.name }}</strong>{% if row.note %}<span class="bw-tk-sub">{{ row.note }}</span>{% endif %}</div>{% endmacro %}
+{% macro revoke_link(row) %}<a class="bw-tk-quiet" href="{{ url_for('web.bw_tokens', revoke=row.id) }}" data-token-revoke="{{ row.id }}" data-name="{{ row.name }}" aria-label="Revoke {{ row.name }}">Revoke</a>{% endmacro %}
+{% macro create_button() %}{% if can_edit %}<a class="bw-tk-primary" href="{{ url_for('web.bw_tokens', create=1) }}" data-token-create-open>{{ toni_icon('add') }}Create token</a>{% endif %}{% endmacro %}
+{% block main %}
+<a class="bw-back" href="{{ url_for('web.bw_tools') }}">{{ toni_icon('chevron-left') }}Tools &amp; Admin</a>
+<div class="bw-tokens" data-tokens data-base="{{ url_for('web.bw_tokens') }}">
+{% if error %}<p class="notice" role="alert">{{ error }}</p><a class="button" href="{{ url_for('web.bw_tokens') }}">Try again</a>
+{% else %}
+<div class="bw-tokens-head"><div><h1>API tokens</h1><p>For scripts and agents that talk to this install. Each token has its own scopes.</p></div>{% if stored %}{{ create_button() }}{% endif %}</div>
+{% if not can_edit %}<p class="bw-tk-error" role="status">Changes are switched off on this instance. Tokens can be viewed, not created or revoked.</p>{% endif %}
+{% if form_error %}<p class="bw-tk-error" role="alert">{{ form_error }}</p>{% endif %}
+{% if revoked_name %}<div class="bw-tk-banner" role="status"><p>{{ revoked_name }} revoked. Calls with it now fail.</p>{% if can_edit and revoked_undo %}<form method="post" action="{{ url_for('web.bw_tokens') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="undo"><input type="hidden" name="event" value="{{ revoked_event }}"><button class="bw-tk-outline">Undo</button></form>{% endif %}</div>{% endif %}
+{% if not stored %}<div class="bw-tk-empty"><h2>No tokens yet.</h2><p>Create one for each script or agent, with only the scopes it needs.</p><div>{{ create_button() }}</div></div>{% endif %}
+{% if stored or environment %}
+{% set all_rows = stored + environment %}
+<div class="bw-tk-table" role="table" aria-label="API tokens">
+<div class="bw-tk-th" role="columnheader">Name</div><div class="bw-tk-th" role="columnheader">Scopes</div><div class="bw-tk-th" role="columnheader">Created</div><div class="bw-tk-th" role="columnheader">Last used</div><div class="bw-tk-th" role="columnheader"></div>
+{% for row in all_rows %}<div class="bw-tk-td">{{ name_cell(row) }}</div><div class="bw-tk-td">{{ chips(row.scopes) }}</div><div class="bw-tk-td"><span class="bw-tk-date">{{ row.created }}</span></div><div class="bw-tk-td"><span class="bw-tk-date">{{ row.last_used }}</span></div><div class="bw-tk-td end">{% if row.environment %}<span class="bw-tk-env">Environment</span>{% elif can_edit %}{{ revoke_link(row) }}{% endif %}</div>{% endfor %}
+</div>
+<div class="bw-tk-cards">{% for row in all_rows %}<div class="bw-tk-card"><div class="bw-tk-card-top">{{ name_cell(row) }}<span class="bw-tk-grow"></span>{% if row.environment %}<span class="bw-tk-env">Environment</span>{% elif can_edit %}{{ revoke_link(row) }}{% endif %}</div>{{ chips(row.scopes) }}<span class="bw-tk-date">created {{ row.created }} · last used {{ row.last_used }}</span></div>{% endfor %}</div>
+{% endif %}
+{% if can_edit %}
+<dialog class="bw-tk-dialog" data-token-create aria-labelledby="tk-create-title" {% if show_create %}open{% endif %}>
+<form method="post" action="{{ url_for('web.bw_tokens') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="create"><input type="hidden" name="form_id" value="{{ form_id }}">
+<div class="bw-tk-dialog-head"><h2 id="tk-create-title">Create token</h2><a class="bw-tk-x" href="{{ url_for('web.bw_tokens') }}" data-token-close aria-label="Close">{{ toni_icon('close') }}</a></div>
+<label class="bw-tk-field"><span>Name</span><input name="name" required maxlength="80" autocomplete="off" value="{{ form_name }}"></label>
+<fieldset class="bw-tk-scopes"><legend class="bw-tk-legend">Scopes</legend>{% for scope, help in scope_help %}<label class="bw-tk-scope"><input type="checkbox" name="scopes" value="{{ scope }}" {% if scope in form_scopes %}checked{% endif %}><span><b>{{ scope }}</b><small>{{ help }}</small></span></label>{% endfor %}</fieldset>
+<div class="bw-tk-grow"></div>
+<div class="bw-tk-actions"><a class="bw-tk-quiet" href="{{ url_for('web.bw_tokens') }}" data-token-close>Cancel</a><button class="bw-tk-primary">Create token</button></div></form></dialog>
+<dialog class="bw-tk-dialog is-centre" data-token-confirm aria-labelledby="tk-confirm-title" {% if confirm_row %}open{% endif %}>
+<form method="post" action="{{ url_for('web.bw_tokens') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="revoke"><input type="hidden" name="id" value="{{ confirm_row.id if confirm_row else '' }}">
+<h2 id="tk-confirm-title" data-token-confirm-title style="margin:0;font:600 18px var(--tw-font)">{% if confirm_row %}Revoke {{ confirm_row.name }}?{% endif %}</h2>
+<p class="bw-tk-note">Scripts using it stop working at once. You can undo for a short while.</p>
+<div class="bw-tk-actions"><a class="bw-tk-quiet" href="{{ url_for('web.bw_tokens') }}" data-token-close>Cancel</a><button class="bw-tk-primary">Revoke</button></div></form></dialog>
+{% if created %}<dialog class="bw-tk-dialog" data-token-shown aria-labelledby="tk-shown-title" open>
+<div class="bw-tk-dialog-head"><h2 id="tk-shown-title">Your new token</h2><a class="bw-tk-x" href="{{ url_for('web.bw_tokens') }}" data-token-close aria-label="Close">{{ toni_icon('close') }}</a></div>
+<p class="bw-tk-note">Copy it now. It cannot be shown again.</p>
+<div class="bw-tk-secret"><code data-token-value>{{ created.secret }}</code><button type="button" class="bw-tk-outline" data-token-copy>Copy</button></div>
+<div class="bw-tk-meta"><small>Name</small><span>{{ created.token.name }}</span></div>{{ chips(created.token.scopes) }}
+<div class="bw-tk-grow"></div><div class="bw-tk-actions"><a class="bw-tk-primary" href="{{ url_for('web.bw_tokens') }}" data-token-close>Done</a></div></dialog>{% endif %}
+{% endif %}
+{% endif %}
+</div>
+{% endblock %}

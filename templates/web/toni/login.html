@@ -1,0 +1,14 @@
+{% extends 'web/toni/base.html' %}
+{% block title %} - Login{% endblock %}
+{% block main %}
+<section class="panel stack login-panel">
+  <h1>{{ toni_icon('login') }} Login</h1>
+  {% if wait %}<div class="notice warning" role="alert" id="login-error"><h2>Too many attempts</h2><p>Try again in {{ wait }} s.</p></div>
+  {% elif wrong_password %}<div class="notice warning" role="alert" id="login-error"><h2>Wrong password</h2><p>The password you submitted is incorrect.</p></div>{% endif %}
+  {# Behaviour contract: password id/name, POST endpoint and next query preserved. #}
+  <form class="stack" action="{{ url_for('login.do_login', next=next) }}" method="post">
+    <div class="field"><label for="password">Password</label><input type="password" id="password" name="password" autocomplete="current-password" required {% if wrong_password or wait %}aria-invalid="true" aria-describedby="login-error"{% endif %}></div>
+    <div class="actions"><button class="primary" type="submit">Login</button></div>
+  </form>
+</section>
+{% endblock %}

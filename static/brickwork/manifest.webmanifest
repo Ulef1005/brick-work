@@ -1,0 +1,58 @@
+{
+  "id": "/",
+  "name": "Brick Work",
+  "short_name": "Brick Work",
+  "description": "Collection workbench: sets, parts, checks, orders and prices.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#FAFAF8",
+  "theme_color": "#FAFAF8",
+  "categories": [
+    "utilities",
+    "productivity"
+  ],
+  "icons": [
+    {
+      "src": "/static/brickwork/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/brickwork/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/brickwork/icons/icon-1024.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/brickwork/icons/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/static/brickwork/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Part to Inventory",
+      "url": "/workbench/part-to-inventory"
+    },
+    {
+      "name": "Add",
+      "url": "/manage/add"
+    }
+  ]
+}

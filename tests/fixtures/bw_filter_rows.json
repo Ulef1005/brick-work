@@ -1,0 +1,353 @@
+{
+  "rows": [
+    {
+      "id": "1",
+      "number": "1",
+      "name": "Synthetic 1",
+      "type": "P",
+      "quantity": 1,
+      "missing": 1,
+      "damaged": 1,
+      "year": 2021,
+      "condition": [
+        "U"
+      ],
+      "status": [
+        "I"
+      ],
+      "flags": [
+        "Checked"
+      ],
+      "duplicates": false,
+      "price": [
+        "EUR",
+        "1"
+      ]
+    },
+    {
+      "id": "2",
+      "number": "2",
+      "name": "Synthetic 2",
+      "type": "M",
+      "quantity": 2,
+      "missing": 2,
+      "damaged": 0,
+      "year": 2022,
+      "condition": [
+        "N"
+      ],
+      "status": [
+        "C"
+      ],
+      "flags": [
+        "Checked"
+      ],
+      "duplicates": true,
+      "price": [
+        "EUR",
+        "2"
+      ]
+    },
+    {
+      "id": "3",
+      "number": "0",
+      "name": "Synthetic 3",
+      "type": "I",
+      "quantity": 3,
+      "missing": 0,
+      "damaged": 1,
+      "year": 2023,
+      "condition": [
+        "U"
+      ],
+      "status": [
+        "I"
+      ],
+      "flags": [
+        "Checked"
+      ],
+      "duplicates": false,
+      "price": null
+    },
+    {
+      "id": "4",
+      "number": "1",
+      "name": "Synthetic 4",
+      "type": "S",
+      "quantity": 4,
+      "missing": 1,
+      "damaged": 0,
+      "year": 2024,
+      "condition": [
+        "N"
+      ],
+      "status": [
+        "C"
+      ],
+      "flags": [
+        "Checked"
+      ],
+      "duplicates": true,
+      "price": [
+        "EUR",
+        "4"
+      ]
+    },
+    {
+      "id": "5",
+      "number": "2",
+      "name": "Synthetic 5",
+      "type": "P",
+      "quantity": 5,
+      "missing": 2,
+      "damaged": 1,
+      "year": 2025,
+      "condition": [
+        "U"
+      ],
+      "status": [
+        "I"
+      ],
+      "flags": [
+        "Checked"
+      ],
+      "duplicates": false,
+      "price": [
+        "EUR",
+        "5"
+      ]
+    },
+    {
+      "id": "6",
+      "number": "0",
+      "name": "Synthetic 6",
+      "type": "M",
+      "quantity": 6,
+      "missing": 0,
+      "damaged": 0,
+      "year": 2026,
+      "condition": [
+        "N"
+      ],
+      "status": [
+        "C"
+      ],
+      "flags": [
+        "Checked"
+      ],
+      "duplicates": true,
+      "price": null
+    },
+    {
+      "id": "7",
+      "number": "1",
+      "name": "Synthetic 7",
+      "type": "I",
+      "quantity": 7,
+      "missing": 1,
+      "damaged": 1,
+      "year": 2027,
+      "condition": [
+        "U"
+      ],
+      "status": [
+        "I"
+      ],
+      "flags": [
+        "Checked"
+      ],
+      "duplicates": false,
+      "price": [
+        "EUR",
+        "7"
+      ]
+    },
+    {
+      "id": "8",
+      "number": "2",
+      "name": "Synthetic 8",
+      "type": "S",
+      "quantity": 8,
+      "missing": 2,
+      "damaged": 0,
+      "year": 2028,
+      "condition": [
+        "N"
+      ],
+      "status": [
+        "C"
+      ],
+      "flags": [
+        "Checked"
+      ],
+      "duplicates": true,
+      "price": [
+        "EUR",
+        "8"
+      ]
+    },
+    {
+      "id": "9",
+      "number": "0",
+      "name": "Synthetic 9",
+      "type": "P",
+      "quantity": 9,
+      "missing": 0,
+      "damaged": 1,
+      "year": 2029,
+      "condition": [
+        "U"
+      ],
+      "status": [
+        "I"
+      ],
+      "flags": [
+        "Checked"
+      ],
+      "duplicates": false,
+      "price": null
+    }
+  ],
+  "cases": [
+    {
+      "query": "",
+      "filters": {},
+      "sort": "number",
+      "direction": "asc"
+    },
+    {
+      "query": "",
+      "filters": {},
+      "sort": "number",
+      "direction": "desc"
+    },
+    {
+      "query": "",
+      "filters": {},
+      "sort": "name",
+      "direction": "asc"
+    },
+    {
+      "query": "",
+      "filters": {},
+      "sort": "name",
+      "direction": "desc"
+    },
+    {
+      "query": "",
+      "filters": {},
+      "sort": "year",
+      "direction": "asc"
+    },
+    {
+      "query": "",
+      "filters": {},
+      "sort": "year",
+      "direction": "desc"
+    },
+    {
+      "query": "",
+      "filters": {},
+      "sort": "quantity",
+      "direction": "asc"
+    },
+    {
+      "query": "",
+      "filters": {},
+      "sort": "quantity",
+      "direction": "desc"
+    },
+    {
+      "query": "",
+      "filters": {},
+      "sort": "missing",
+      "direction": "asc"
+    },
+    {
+      "query": "",
+      "filters": {},
+      "sort": "missing",
+      "direction": "desc"
+    },
+    {
+      "query": "",
+      "filters": {},
+      "sort": "damaged",
+      "direction": "asc"
+    },
+    {
+      "query": "",
+      "filters": {},
+      "sort": "damaged",
+      "direction": "desc"
+    },
+    {
+      "query": "",
+      "filters": {},
+      "sort": "used_price",
+      "direction": "asc"
+    },
+    {
+      "query": "",
+      "filters": {},
+      "sort": "used_price",
+      "direction": "desc"
+    },
+    {
+      "query": "",
+      "filters": {
+        "condition": "used"
+      },
+      "sort": "number",
+      "direction": "asc"
+    },
+    {
+      "query": "",
+      "filters": {
+        "status": "complete"
+      },
+      "sort": "number",
+      "direction": "asc"
+    },
+    {
+      "query": "",
+      "filters": {
+        "inventory": "parts"
+      },
+      "sort": "number",
+      "direction": "asc"
+    },
+    {
+      "query": "",
+      "filters": {
+        "inventory": "figures"
+      },
+      "sort": "number",
+      "direction": "asc"
+    },
+    {
+      "query": "",
+      "filters": {
+        "problem": "missing"
+      },
+      "sort": "number",
+      "direction": "asc"
+    },
+    {
+      "query": "",
+      "filters": {
+        "duplicates": "true"
+      },
+      "sort": "number",
+      "direction": "asc"
+    },
+    {
+      "query": "",
+      "filters": {
+        "tag": "Checked"
+      },
+      "sort": "number",
+      "direction": "asc"
+    }
+  ]
+}

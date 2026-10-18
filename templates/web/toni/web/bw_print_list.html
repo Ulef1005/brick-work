@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Brick Work · {{ title }}</title>
+<link rel="stylesheet" href="{{ bw_static('web/toni/tokens-v2.css') }}">
+<link rel="stylesheet" href="{{ bw_static('web/toni/bw-print.css') }}">
+<script src="{{ bw_static('web/toni/bw-print.js') }}" defer></script>
+</head>
+<body class="pr-page">
+<div class="pr-tools" role="toolbar" aria-label="Print options">
+<a href="{{ back_url }}" class="pr-btn pr-quiet">Back</a>
+<a class="pr-btn pr-quiet" href="{{ toggle_url }}">{{ 'Hide pictures' if pictures else 'Show pictures' }}</a>
+<a class="pr-btn pr-quiet" href="{{ csv_url }}">Download CSV</a>
+<button type="button" class="pr-btn pr-primary" data-pr-print>Print</button>
+</div>
+<header class="pr-head"><h1>{{ title }}</h1><p>{{ rows|length }} {{ 'line' if rows|length == 1 else 'lines' }} · {{ total }} {{ 'piece' if total == 1 else 'pieces' }}{% if copies %} · {{ copies|length }} {{ 'set' if copies|length == 1 else 'sets' }}{% endif %} · {{ today }}</p></header>
+{% if error %}<p class="pr-error" role="alert">{{ error }}</p>
+{% elif not rows %}<p class="pr-empty">Nothing on this list.</p>
+{% else %}
+<table class="pr-table{{ ' pr-pictures' if pictures else '' }}">
+<thead><tr>{% if kind == 'picker' %}<th class="pr-num">#</th>{% endif %}{% if pictures %}<th aria-label="Picture"></th>{% endif %}<th>Item</th><th>Colour</th>{% if kind == 'missing' %}<th>Condition</th>{% elif kind == 'picker' %}<th>Sets · Storage</th>{% else %}<th>List · Condition</th>{% endif %}<th class="pr-num">Qty</th><th class="pr-tick" aria-label="Done"></th></tr></thead>
+<tbody>
+{% for r in rows %}{% set image = images.get((r.item_type, r.item_no, r.color_id)) or images.get((r.item_type, r.item_no, none)) %}
+<tr>{% if kind == 'picker' %}<td class="pr-num">{{ r.rank }}</td>{% endif %}{% if pictures %}<td class="pr-pic">{% if image %}<img {{ bw_picture_attrs(image, '48px') }} alt="" loading="eager">{% endif %}</td>{% endif %}
+<td><span class="pr-no">{{ r.item_no }}</span><span class="pr-name">{{ r.name or 'Name not recorded' }}</span>{% if r.unresolved %}<span class="pr-muted">Not matched yet</span>{% endif %}</td>
+<td>{% if r.color_id is not none %}<span class="pr-colour">{{ r.colour or 'Colour ' ~ r.color_id }}</span><span class="pr-no">{{ r.color_id }}</span>{% else %}<span class="pr-muted">No colour</span>{% endif %}</td>
+<td>{% if kind == 'missing' %}{{ {'N':'New','U':'Used'}.get(r.condition, r.condition or '') }}{% elif kind == 'picker' %}<span class="pr-no">{{ r.sets }}</span>{% if r.storage %}<span class="pr-muted">{{ r.storage }}</span>{% endif %}{% else %}{{ r.list_name }}{% if r.condition %} · {{ r.condition|capitalize }}{% endif %}{% if r.max_price %}<span class="pr-muted">max {{ r.max_price }} {{ r.max_price_currency or '' }}</span>{% endif %}{% endif %}</td>
+<td class="pr-num pr-qty">{{ r.quantity }}</td><td class="pr-tick"><span class="pr-box" aria-hidden="true"></span></td></tr>
+{% endfor %}
+</tbody></table>
+{% endif %}
+</body>
+</html>

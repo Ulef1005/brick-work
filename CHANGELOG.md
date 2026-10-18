@@ -1,0 +1,142 @@
+# Changelog
+
+## Brick Work 2.0.0-dev (unreleased)
+
+- Migration proof: the reviewed collection counts are re-pinned for the cutover (two set price lookups since the review added two items with their price, source and search rows).
+- Item pages: Update price queues a market price refresh for that item (every colour it is used in) and says so. It opened the bulk refresh page, which lists stale prices only and so showed 0 for an item never priced.
+- Storage: the selected storage is an inset, rounded band rather than a flush strip, and the list count no longer counts the Not stored row, so it matches the header (2 storages, not 3).
+- Part Picker: the set list shows 15 sets a page with the Collection pager (#52). Ticked sets on other pages stay chosen.
+- Tools & Admin: every option carries one short sentence on what you can do there.
+- The app footer no longer carries the upstream credit; the README credits the upstream project in its closing Acknowledgements section.
+- Wishlist management restyled after BrickLink's Wanted Lists: the lists as chips with counts, one row of outline actions (Manage lists, Export, Print, Download CSV), Export and Manage lists as sheets, and a selection bar with Move and Copy that shows while wishes are ticked.
+- Part-out value: shown only when at least 90% of a set's lines have a price. With fewer, the price card says "Not enough prices yet" and offers Fetch part prices, which queues a market price refresh for the parts without one. It used to sum whatever few lines were priced (4 of 54 lines gave €0.18).
+- Check Set Parts, running check: the header follows frame 3e (set line, name, progress). The bordered Choose another copy button is gone (it belongs to the Check this copy step, as a link) and the status pill shows at the finish only.
+- Documentation site for GitHub Pages (`scripts/build_site.py`, `.github/workflows/pages.yml`): the README, the API reference from the OpenAPI contract, and a new MCP guide whose tool lists are generated from the server. A settings reference in the README lists all 38 settings. `tests/test_docs_drift.py` fails when the docs name a setting, a command or a link the code does not have, or the code reads a setting the reference does not list.
+- Check Set Parts, *Largest first*: orders by the part's physical size (from its name and category: a baseplate, then a 2 x 4 brick, then a 2 x 4 plate, then a 1 x 1 plate), then by count and colour. It ordered by count alone, so twenty 1 x 1 plates came before the baseplate.
+- Review follow-ups for #62 to #68: the add page's photo upload keeps its 8 MB; money such as -2.00 stays a number in CSV exports; the plan receipt search runs only for a plan file marked applied without a marker, and keeps the event id; the CLI says how to fix an unwritable data folder (and the README chowns it before setup); the session key file appears whole or not at all and a damaged one is replaced; the token form id is kept in the database.
+- Small web defects (#68): query arguments named like url_for's own options (`_external`, `_anchor`, `kind`) no longer give a 500 or a link to another host; purchase places and collection sync show the usual notice before setup; reloading the page that showed a new token's secret does not create a second token; a read-only instance exports without writing an event; the embedded job drainer cannot miss a job queued while it stops.
+- Sessions (#66): changing the password ends every open session; a cross-site link cannot log you out (logout also takes POST); `BW_SECURE_COOKIES=1` sends the session cookie only over HTTPS; every response carries `X-Content-Type-Options`, `X-Frame-Options` and `Referrer-Policy`; the navigation counts no longer show before login.
+- Container (#65): runs as uid 1000 with the code read-only, writes only to `/app/data`, has a health check on `/api/v1/health`, and stops with the fix when `data/` is not writable (**after an upgrade from a root image: `sudo chown -R 1000:1000 data`**). Gunicorn's timeout is 120 s. `compose.local.yaml` publishes on `127.0.0.1`.
+- CSV exports (lists, orders, wishlists) open as text in a spreadsheet (#67): a cell starting with `=`, `+`, `-`, `@`, a tab or a carriage return gets a leading apostrophe.
+- Review follow-ups for #59 to #64: a warning when forwarded headers arrive with `BW_TRUSTED_PROXIES=0`; the check API returns the checker's own event and its Undo link again, and a repeated operation from another token is answered, not a 500; `brickwork mcp --transport http` also refuses an open install; browser uploads get their own caps (8 MB identification, 2 MB add list, 1 MB order files, 15 MB photos, 20 MB PDFs); the session key file is created once even with two workers; plans applied before this release are recognised by their receipt, markers are pruned after three days, and a repeated apply says so instead of repeating the counts.
+- A sync pull or an import plan applies once (#64): two submits, or a crash between the commit and the plan file, applied it twice. The applied state is now a database row written in the same transaction.
+- `POST /api/v1/copies/{id}/check` works after its first call (#63): it failed with 500 on any store that has the "Set is checked" flag. Its events now record `via='api'` and the token name, and the response's `event_id` names the API operation.
+- Request bodies are capped before they are read (#62): 4 MB for JSON and forms, 8 MB for identification photos, the import limit (`BW_IMPORT_MAX_MB`, default 200) for other uploads; larger bodies answer 413.
+- The legacy import's "Build a new database instead" form (#61): the browser form only reads and writes inside the data folder; `brickwork migrate` keeps taking any path.
+- First run (#60): an empty `BW_AUTHENTICATION_KEY` no longer breaks every page; a session key is generated into `data/session.key`. **The server refuses to start without `BW_AUTHENTICATION_PASSWORD` unless `BW_ALLOW_NO_LOGIN=1`**, and `compose.yaml` publishes the port on `127.0.0.1` only.
+- Forwarded headers are trusted only with `BW_TRUSTED_PROXIES` set (#59): a client reaching the app directly can no longer pick its own address to escape the login and token back-off. **Behind a reverse proxy, set `BW_TRUSTED_PROXIES=1`.** MCP over HTTP counts each client on its own.
+- Release files: README status, privacy, repository and trademark sections; `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md` (Contributor Covenant 3.0), `THIRD_PARTY_NOTICES.md` and the Patrick Hand licence; issue templates; a CI workflow running `scripts/check.sh` with read-only permissions and pinned actions; Dependabot; `scripts/public_snapshot.py`, which exports the public tree without internal build notes and checks it for private material and secrets.
+- Remaining upstream code replaced: one settings module (13 settings) and one `.env` loader, login in `web/auth.py`, unused packages and Socket.IO hooks removed, upstream user docs and screenshots removed, upstream history moved to `docs/upstream-CHANGELOG.md`.
+- Settings no longer read (setting them does nothing): `BW_UI`, `BW_TIMEZONE`, `BW_HIDE_MISSING_PARTS` (use `BW_HIDE_ALL_PROBLEMS_PARTS`), `BW_HIDE_TABLE_CHECKED_PARTS`, `BW_BRICKLINK_LINKS` and the other upstream `BW_*` display, pagination, folder and socket settings.
+
+## 4.6d-1 · Collection design comparison (partial)
+
+- Capture the Collection design frames and deployed app; record differences, approved deviations and blocked visual checks.
+- Align open cards, compact detail heroes, identity order, mobile module order, Info facts, Prices typography, status dots and edit segments with the kit.
+- Keep existing database reads, transactions, events and Undo; post-change screenshots and remaining component differences are still outstanding.
+
+## 4.5v · list cost and quiet name refresh
+
+- Select list pictures by source priority and recency without filesystem checks; keep containment and missing-file checks on the image route.
+- Refresh only changed names and source properties, and report changed identities rather than every catalogue match.
+- Label wishlist quantities “wanted”; reserve “missing” for collection defects.
+
+## 4.5u · names, colours and identity
+
+- Map catalogue names into migrated items with Rebrickable fallback and property provenance; refresh held names on later catalogue loads.
+- Load validated BrickLink colour RGB in Catalogues & keys and show colour coverage.
+- Show identity numbers once, omit absent names and leading separators, and share unsigned defect labels between templates and browser rows.
+- Restore versioned PWA assets offline, focused-button keyboard activation, missing-asset URL fallback and the Part to Inventory shortcut.
+
+- Fix review findings: start Planning refresh after commit, require login for all Planning actions, classify migrated/reference pictures consistently, preserve merged stock defects and tolerate later receipt quantities.
+- Preserve Planning export selection and Collection row/image nodes across filtering and sorting, restore keyboard actions after button focus, show batch expiry and bulk picture failure reasons, and version Brick Work assets by deployed file mtime.
+- Make Settings SQL tracing and navigation-count tests measure the actual paths; document the manifest shortcut blocked by the task's path allowlist.
+
+- Suppress cooperative yields during SQLite transactions; materialize inventory per copy and yield after commit.
+- Recover same-pid import owners that this process did not claim, without a schema change.
+- Poll future budget waits at their earliest deadline, capped at 60 seconds; require editable mode and CSRF for selective and all-failed-step Retry.
+
+- Yield between picture identities and other import work units so gevent can serve requests during long jobs.
+- Start checkpoint recovery at app startup and retain the existing atomic process-owner claims.
+- Show interrupted import jobs with Resume; preserve completed work and budget deadlines.
+- Batch Import jobs step reads and test fixture yield timing, restart, concurrent claims and CLI operation without gevent.
+
+- Replace the Settings picture identity payload with a small SQL count matrix. Skip picture file checks on page loads; retain exact confirmation selection and report queued counts that differ from the dialog estimate.
+
+- Keep the rail theme picker below an independently scrolling navigation list at iPad landscape and desktop sizes.
+
+- Share picture-kind classification between existing-file imports and pipeline downloads: only Rebrickable parts are renders, so refreshing imported set and minifigure photos replaces the same kind.
+
+- Add Settings picture refresh: source choice, missing/replace scope, colour-specific counts, budgeted import progress and searchable findings. Verify and copy existing BrickTracker cache files using migrated identity evidence; preserve originals and picture priority.
+
+- Fix Planning phone rows: put wish edits and copy actions in separate flowing blocks, hide closed/hidden controls and empty feedback, and show row prices with at most two decimals while preserving stored precision.
+
+- Add Planning Wishlist, Prices and Complete sets on brickwork.db, with shared cached prices, audited pins/settings, loose-stock repair estimates and BrickLink XML export. Queue market-price refreshes through the budgeted pipeline. Share missing/damaged gaps with Workbench and move mobile footer clearance into the shell. Report the missing wish-currency and alert-storage contracts before enabling wanted-watch comparisons.
+
+- Speed up Collection lists with SQL reads scoped to the listed kind and identities; clear the bottom tab bar in every shared list. Merge colliding loose-stock edits by item, colour, condition, lot and storage, retaining minifigures separately, per-row events and exact receipt Undo. Show the remaining stock row after a merge.
+
+- Rebuild Collection and the home Sets list on brickwork.db: bulk-decorated item lists, shared Info/Prices/Matching/Consists of details, canonical jump links, colour-specific wishes, copy editing and archive Undo, local photos/captions/lightbox, lots, grouping and purchase-location totals. Share bounded matching and reversible transfers into loose-minifigure part gaps. Preserve the previous home at `/house/collection-legacy-home`.
+
+- Schema 3.2 adds storage archival. Delete shows copy/entry/piece counts and either requires an empty location or explicitly moves live contents to Not stored atomically. Hide archived locations in pickers and lists; guarded Undo restores contents, and creation Undo archives the new location. Include the NULL archive column in migration mapping and proof.
+
+- Merge loose-stock additions by live item, colour, condition, lot and storage across Add, Part to Inventory and Orders; keep figures separate and guard quantity Undo with audited before/after receipts. Identification IDs stay independent; photos follow the stock row.
+
+- Rebuild Part to Inventory on brickwork.db: camera/saved-photo capture, audited Brickognize parts and figures, colour-confirmed queue, atomic loose-stock/lot batches, own photos and receipt Undo. Local model remains unavailable.
+- Add v3 Orders review/import, receipt counting, explicit copy/stock allocation, holds, reconciliation and audited Undo; add Storage counts, location detail/edit and atomic moves. Rebuild navigation. Location archive and creation Undo are available with schema 3.2.
+
+- Fix checker phone layout: consolidate Saved/Undo above the copy and part headings, remove the floating toast and sticky answer overlap, show colour/name/number once, and replace the wrapped “to go” label with “remaining”.
+
+- Brick Work 4.2e: schema 3.1 wishlist row ids, colour and quantity, live-key uniqueness and row-id flags. Preserve XML colour/quantity and user notes; explicitly add duplicate quantities with exact Undo. Migrate deterministic wish ids/flags and checksum colour/quantity; include wishes in price colour discovery and live navigation counts.
+
+- Share derived completeness between checker and workbench: damaged non-spare parts block Complete. Validate booklet batches against catalogue instructions with explicit unknown/ambiguous line errors, index exact stock matches and picker gap counts, and validate transfers only against their requested source and gap.
+
+- Clear process-global metadata caches when shell test fixtures finish, preventing picker/matcher tests from leaking wish-owner columns into fresh capture databases.
+
+- Add Part Picker and Matcher on `brickwork.db`: copy selection, completion ranking, colour grids and found receipts, exact loose-stock Take/Give for parts, whole figures, physical booklets and boxes, bulk booklet entry, atomic history/events and guarded Undo.
+
+- Add Manage → Add on `brickwork.db`: all eight BrickLink types, local catalogue search, paste/XML/CSV review, budgeted Brickognize candidates, explicit confirmation, duplicate choices, audited collection receipts and Undo, durable per-item imports and batch progress. Skip hidden AppleDouble files during catalogue loading.
+
+- Fix Check Set Parts to use the migrated “Set is checked” status flag for Finish, Undo, derived completeness and chooser defaults. Return save deltas without inventory-wide picture lookups.
+
+- Rebuild Check Set Parts on `brickwork.db`: copy chooser, immediate audited counts, figure and spare passes, full miss history, Found 1 recovery, derived-only finish, Undo and an ordered offline queue.
+
+- Add Manage → Tools & Admin on `brickwork.db`: source keys and catalogues, durable refresh jobs, unresolved identity review, statistics, values, database export/checks, settings, theme and identification history. Keep the retired tools routes reachable.
+
+- Add the Toni v2 Brick Work shell: four navigation groups, responsive rails and bottom tabs, read-only counts, local brand assets, system pages and Home Screen installation with a shell-only offline fallback.
+
+- Pin production dependencies and Python 3.14.8; build the local Brick Work image reproducibly.
+
+Fork work since upstream `8b0b85f`:
+
+### House data store and API
+
+- Add an independent Rebrickable side catalogue and house SQLite store with idempotent migrations, collection tracking and price history.
+- Add authenticated house API and CLI workflows for capture, copy/wishlist editing, missing parts, loose inventory, identification history, minifigure resolution and BrickLink XML import/export.
+- Add physical box/booklet tracking, manual completeness, reviewed database maintenance and receipt-protected loose-stock transfers with reconciliation after split commits.
+
+### Toni UI
+
+- Add selectable toni/upstream UI modes, local light/dark/system themes, responsive navigation and global item jump.
+- Rebuild collection lists, item and copy details, inventory tabs, parts checking, editing, statistics, jobs and administration; improve sorting, filters, repeated-figure grouping and mobile controls.
+- Add enlarged pictures, booklet reference images, direct found-count saving and a full-width checker Found action.
+- Brand the fork surfaces as Brick Work while retaining upstream credits and technical names.
+
+### Prices and orders
+
+- Add paced Brickset fetching, BrickLink price slots, condition-aware valuations, settings, colour maps, offline catalogue indexing and part-price observations with due keys.
+- Add completion ranking, repair pricing, email/XML/Store API order import, receipt-ledger review, reconciliation and received/reviewed allocation.
+- Normalize price formatting and numeric sorting, and provide bounded authenticated BrickLink image caching and fallbacks.
+
+### Scanner and matcher
+
+- Add Workbench parts scanning and matching, conservative colour/name matching, mould/alternate resolution and manual figure mappings.
+- Resolve scanner-added pictures with authoritative part mappings and exact-colour sources; show owned sets needing loose stock and support reviewed inventory transfers.
+
+### Tests
+
+- Add offline Python coverage for stores, API, migrations, imports, prices, matching and UI contracts, plus Node runtime harnesses for toni interactions.
+- Add the repository check gate and synthetic order fixtures with invented order, set and catalogue identities.
+
+## Upstream history
+
+Releases 1.4.2 and older come from the upstream BrickTracker project: see [docs/upstream-CHANGELOG.md](docs/upstream-CHANGELOG.md).

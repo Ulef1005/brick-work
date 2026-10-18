@@ -1,0 +1,7 @@
+/* Brick Work secondary accent. Identity surfaces only: logo, app icon, splash, lockup, small brand touch in the app shell. Never on controls, data or charts. */
+:root{--bw-accent:oklch(0.50 0.10 215);--bw-accent-soft:oklch(0.89 0.045 215);--bw-on-accent:#FAFAF8}
+.tw-dark{--bw-accent:oklch(0.76 0.10 215);--bw-accent-soft:oklch(0.35 0.065 215);--bw-on-accent:#1A1816}
+
+@font-face{font-family:"Patrick Hand";src:url("/static/fonts/PatrickHand-Regular.woff2") format("woff2");font-weight:400;font-display:swap}
+@media(prefers-color-scheme:dark){:root:not(.tw-light){--bw-accent:oklch(0.76 0.10 215);--bw-accent-soft:oklch(0.35 0.065 215);--bw-on-accent:#1A1816}}
+.bw-wordmark{font-family:"Patrick Hand",cursive;font-weight:400}

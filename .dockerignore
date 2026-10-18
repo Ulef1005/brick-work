@@ -1,0 +1,31 @@
+# Docker
+Dockerfile
+compose.yaml
+
+# Local data directories
+local/
+data/
+
+# Documentation
+docs/
+# API and MCP both read the OpenAPI contract at runtime
+!docs/brickwork/openapi-v1.yaml
+LICENSE
+*.md
+*.sample
+.code-workspace
+
+# Temporary
+*.csv
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+
+# Python
+**/__pycache__
+*.pyc
+
+# Hidden directories
+.?*

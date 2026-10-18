@@ -1,0 +1,9 @@
+{"keys": [["Plate 1 x 2", "1x2"], ["Plate 2 x 1", "1x2"], ["Brick 1 x 2 x 3", "1x2x3"], ["Brick 2x4", "2x4"],
+          ["Tile 1 1/2 x 2", "1.5x2"], ["Plate 6 x 6", "6x6"], ["Technic Axle 3", null], ["Minifigure, Torso", null],
+          ["Wheel 18mm D. x 14mm", null], ["Slope 45 2 x 2", "2x2"]],
+ "queries": [["1x2", "1x2", null, ""], ["2x1", "1x2", null, ""], ["1 2", "1x2", null, ""], ["1*2", "1x2", null, ""],
+             ["1×2", "1x2", null, ""], ["1 x 2 x 3", "1x2x3", null, ""], ["plate 2x1 red", "1x2", null, "plate red"],
+             ["x2", null, "2", ""], ["2x", null, "2", ""], ["slope x2", null, "2", "slope"], ["x1435", null, null, "x1435"],
+             ["3001", null, null, "3001"], ["brick", null, null, "brick"]],
+ "matches": [["2x1", "Plate 1 x 2", true], ["2x1", "Plate 2 x 2", false], ["x2", "Slope 45 2 x 2", true],
+             ["x2", "Plate 6 x 6", false], ["1 x 2 x 3", "Brick 1 x 2 x 3", true], ["1x2", "Brick 1 x 2 x 3", false]]}

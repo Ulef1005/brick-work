@@ -1,0 +1,48 @@
+/* Wishlist management (Planning → Wishlist): the lists row, the action row, the sheets and the selection bar.
+   Built from kit parts: filter chips, outline buttons, bc-sheet, bc-segments and the Sets list's selection bar. */
+.wl-root { display:flex;flex-direction:column;gap:12px;margin:8px 0 16px; }
+.wl-head { display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:12px 24px; }
+.wl-lists { flex:1 1 360px;min-width:0; }
+.wl-lists .button { height:44px;padding:0 14px;border-radius:10px;background:var(--tw-surface);border:0;font:500 14px var(--tw-font);color:var(--tw-text);gap:8px;text-decoration:none; }
+.wl-lists .button .mono { color:var(--tw-text-muted);font-size:13px; }
+.wl-lists .button[aria-current=page] { background:var(--tw-accent-soft);color:var(--tw-accent-text); }
+.wl-lists .button[aria-current=page] .mono { color:var(--tw-accent-text); }
+/* One action row: grouped outline buttons, clay text, no fill (BrickLink's Edit · Download · Upload · Setup). */
+.wl-toolbar { gap:8px;flex:none; }
+.wl-toolbar>button,.wl-toolbar>.button { height:44px;padding:0 14px;border-radius:10px;background:transparent;border:0.5px solid var(--tw-accent);color:var(--tw-accent-text);font:500 14px var(--tw-font);text-decoration:none; }
+.wl-toolbar>button:hover,.wl-toolbar>.button:hover { background:var(--tw-accent-soft); }
+.wl-feedback { display:flex;align-items:center;gap:12px;min-height:0; }
+.wl-feedback p:empty { display:none; }
+.wl-feedback p { margin:0;font:500 14px var(--tw-font);color:var(--tw-text-2); }
+.wl-feedback [data-wl-undo] { height:36px;min-height:36px;padding:0 12px;border-radius:8px; }
+/* Sheets: a head row, then one block per list that opens to edit it. */
+.wl-sheet { display:flex;flex-direction:column;gap:16px; }
+.wl-sheet:not([open]) { display:none; }
+.wl-sheet-head { justify-content:space-between;align-items:center; }
+.wl-sheet-head h2 { margin:0;font:600 22px/28px var(--tw-font); }
+.wl-sheet form>label,.wl-move>label { display:flex;flex-direction:column;gap:6px;font:500 13px var(--tw-font);color:var(--tw-text-2); }
+.wl-sheet input:not([type=radio]),.wl-sheet select,.wl-move select { height:44px;border-radius:10px;background:var(--tw-bg);border:0.5px solid var(--tw-divider-strong);padding:0 12px;box-sizing:border-box;font:400 15px var(--tw-font);color:var(--tw-text);width:100%; }
+.wl-sheet form>.actions>button { flex:1; }
+.wl-hint { margin:0;font-size:13px;line-height:18px; }
+.wl-entry { border-top:0.5px solid var(--tw-divider); }
+.wl-entry>summary { display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:56px;list-style:none;font:500 16px var(--tw-font); }
+.wl-entry>summary::-webkit-details-marker { display:none; }
+.wl-entry>summary .mono { color:var(--tw-text-muted); }
+.wl-entry[open]>summary { color:var(--tw-accent-text); }
+.wl-entry form { display:flex;flex-direction:column;gap:12px;padding:0 0 16px; }
+.wl-entry form p { margin:0; }
+.wl-new>summary { color:var(--tw-accent-text); }
+.wl-archive { border-top:0.5px dashed var(--tw-divider); padding-top:12px!important; }
+/* Selection bar: the Sets list's sticky bar, shown while wishes are selected. */
+.wl-selection { margin-top:16px;border-radius:12px; }
+.wl-selection [data-wl-count] { font-weight:500;margin-right:auto; }
+.wl-target { display:flex;align-items:center;gap:8px;font:500 13px var(--tw-font);color:var(--tw-text-2); }
+.wl-target select { height:44px;border-radius:10px;background:var(--tw-bg);border:0.5px solid var(--tw-divider-strong);padding:0 12px;font:400 15px var(--tw-font);color:var(--tw-text); }
+/* The item page: move or copy one wish. */
+.wl-move { display:flex;flex-direction:column;gap:12px; }
+@media (max-width:767px) {
+  .wl-head { flex-direction:column;align-items:stretch; }
+  .wl-toolbar { flex-wrap:wrap; }
+  .wl-toolbar>button,.wl-toolbar>.button { flex:1 1 auto; }
+  .wl-selection [data-wl-count] { flex-basis:100%; }
+}

@@ -1,0 +1,16 @@
+services:
+  brickwork:
+    container_name: brickwork
+    restart: unless-stopped
+    build: .
+    image: brickwork:local
+    # The image runs as uid 1000; to use another user, set user: and make ./data writable for it.
+    # user: "1000:1000"
+    ports:
+      # This computer only. To reach the app from your network, set a password first, then use "3333:3333".
+      - "127.0.0.1:3333:3333"
+    volumes:
+      - ./data:/app/data/
+    # Settings go in data/.env; environment variables win over it.
+    # A .env in the project root is the fallback:
+    # env_file: ".env"

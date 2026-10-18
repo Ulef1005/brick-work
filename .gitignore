@@ -1,14 +1,47 @@
+# Application
+.env
+*.db
+*.db-shm
+*.db-wal
+
+# Python specifics
+__pycache__/
+*.pyc
+
+# IDE
+.vscode/
+*.code-workspace
+
+# Temporary
+*.csv
+/local/
+settings.local.json
+
+# Apple idiocy
 .DS_Store
+
+# Local data
+data/
+
+# Hidden folders
+.?*
+!.github/
+!.gitignore
+!.gitleaksignore
+!.dockerignore
+!.env.sample
+
+# The built documentation site
+_site/
+
+# Kept from the GitHub repo's first commits
 Thumbs.db
 node_modules/
 dist/
 build/
-.env
 .env.*
 *.log
-.vscode/
 .idea/
-
 # Third-party imagery: supply your own, do not commit
 design/assets/data/parts/
 design/assets/data/sets/

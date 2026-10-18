@@ -1,0 +1,9 @@
+{# Add page supplies import_job_id and attaches BrickImportProgress to its socket. #}
+<div class="bw-import-progress" data-picture-refresh="{{ 'true' if import_bulk|default(false) else 'false' }}" data-import-job="{{ import_job_id|default('') }}" data-import-state="{{ import_state|default('queued') }}" data-import-snapshot="{{ import_snapshot|default([])|tojson|forceescape }}">
+  <div data-import-bar role="progressbar" aria-label="Import progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"
+       style="height:8px;background:var(--tw-viz-n1);overflow:hidden;border-radius:2px">
+    <div data-import-fill style="width:0%;height:100%;background:var(--tw-clay,var(--tw-accent,#a65d45))"></div>
+  </div>
+  <p data-import-message role="status" aria-live="polite" style="margin:8px 0;color:var(--tw-text-muted)">Waiting to import</p>
+  <button type="button" data-import-retry hidden style="min-height:44px;color:var(--tw-clay,var(--tw-accent,#a65d45))">Retry</button>
+</div>

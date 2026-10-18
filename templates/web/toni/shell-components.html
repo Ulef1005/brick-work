@@ -1,0 +1,4 @@
+{% macro theme_picker() %}
+<div class="theme-segments" role="group" aria-label="Appearance">{% for mode, icon, label in [('system','auto','Automatic theme'),('light','sun','Light theme'),('dark','moon','Dark theme')] %}<button type="button" data-theme-mode="{{ mode }}" aria-label="{{ label }}" title="{{ label }}" aria-pressed="false">{{ toni_icon(icon) }}</button>{% endfor %}</div>
+{% endmacro %}
+{% macro page_head(title, sub='', back=true) %}<header class="bw-page-head">{% if back %}<a class="bw-back" href="{{ url_for('web.bw_tools') }}">{{ toni_icon('chevron-left') }}Tools &amp; Admin</a>{% endif %}<h1>{{ title }}</h1>{% if sub %}<p>{{ sub }}</p>{% endif %}</header>{% endmacro %}

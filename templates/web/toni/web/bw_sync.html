@@ -1,0 +1,115 @@
+{% extends 'web/toni/base.html' %}
+{% from 'web/toni/shell-components.html' import page_head with context %}
+{% from 'web/toni/web/bw_first_run.html' import needs_key %}
+{% block title %} · {{ title }}{% endblock %}{% block content_class %}standard bw-admin-page bw-sync-page{% endblock %}
+{% block page_assets %}
+<link rel="stylesheet" href="{{ bw_static('web/toni/bw-admin.css') }}">
+<link rel="stylesheet" href="{{ bw_static('web/toni/bw-sync.css') }}">
+<script src="{{ bw_static('web/toni/bw-sync.js') }}" defer></script>
+{% endblock %}
+{% macro pill(tone, text) %}<span class="bk-pill bk-{{ tone }}"><span class="bk-dot"></span><span>{{ text }}</span></span>{% endmacro %}
+{% macro csrf() %}<input type="hidden" name="csrf_token" value="{{ csrf_token }}">{% endmacro %}
+{% macro flashes() %}{% for tone, text in messages %}<p class="bk-banner bk-{{ 'warning' if tone == 'warning' else 'success' }}" role="{{ 'alert' if tone == 'warning' else 'status' }}">{{ text }}</p>{% endfor %}{% endmacro %}
+{% macro counts(r) %}<span class="mono sy-counts">there {{ r.remote or 0 }} · here {{ r.here or 0 }}</span>{% endmacro %}
+{% block main %}
+{% if screen == 'sources' %}
+{{ page_head(title, 'Bring a collection in from Rebrickable or Brickset, work on it here, then send the changes back.') }}
+{{ flashes() }}
+{% if request.args.get('pulled') and can_edit %}<form method="post" class="sy-undo" action="{{ url_for('web.bw_sync_write', source='rebrickable', action='undo') }}">{{ csrf() }}<input type="hidden" name="event" value="{{ request.args.get('pulled') }}"><button class="bk-btn bk-quiet">Undo this pull</button></form>{% endif %}
+<div class="sy-sources">
+{% for c in cards %}
+<section class="bk-card sy-card" data-sync-source="{{ c.source }}">
+<div class="bk-card-head"><h2 class="sy-name">{{ c.label }}</h2>{% if c.key_gap %}{{ pill('unknown', 'Key not set') }}{% elif not c.user %}{{ pill('unknown', 'Not linked') }}{% elif c.waiting %}{{ pill('warning', 'Changes waiting') }}{% elif c.last_pull %}{{ pill('success', 'In sync') }}{% else %}{{ pill('unknown', 'Not pulled yet') }}{% endif %}</div>
+{% if c.key_gap %}<p class="bk-text">{{ 'Set lists from your account: owned sets and one wishlist list.' if c.source == 'rebrickable' else 'Owned and wanted sets. Wanted sets go to the wishlist.' }}</p>{{ needs_key(c.source, c.key_gap) }}<div class="bk-actions"><button class="bk-btn bk-outline" disabled aria-disabled="true">Link a collection</button></div>
+{% elif not c.user %}<p class="bk-text">Not linked yet. Connect your account there, choose what to sync, then pull it in.</p><div class="bk-actions"><a class="bk-btn bk-primary" href="{{ url_for('web.bw_sync_link', source=c.source) }}">Link a collection</a></div>
+{% else %}
+<p class="sy-linked"><span class="bk-eyebrow">Linked to</span><span>{% if c.source == 'rebrickable' %}{% set o = c.link.get('owned') or [] %}{{ (o|length ~ ' owned set ' ~ ('list' if o|length == 1 else 'lists')) if o else 'All set lists' }}{% if c.link.get('wishlist') %} · wishlist list{% endif %}{% else %}Owned and wanted sets{% endif %}</span></p>
+<div class="sy-scopes" aria-label="What syncs"><span class="sy-scope">Sets</span><span class="sy-scope">Wishlist</span></div>
+<dl class="sy-dates"><div><dt>Last pulled</dt><dd class="mono">{{ stamp(c.last_pull.at) if c.last_pull else 'Never' }}</dd></div><div><dt>Last sent</dt><dd class="mono">{{ stamp(c.last_send.at) if c.last_send else 'Never' }}</dd></div></dl>
+{% if c.waiting %}<p class="bk-text">{{ c.waiting }} {{ 'row' if c.waiting == 1 else 'rows' }} from the last send still waiting</p>{% endif %}
+{% if can_edit %}<div class="bk-actions sy-actions"><form method="post" action="{{ url_for('web.bw_sync_write', source=c.source, action='pull') }}" data-sy-busy>{{ csrf() }}<button class="bk-btn bk-primary" data-busy-label="Checking {{ c.label }}">Pull</button></form><form method="post" action="{{ url_for('web.bw_sync_write', source=c.source, action='send') }}" data-sy-busy>{{ csrf() }}<button class="bk-btn bk-outline" data-busy-label="Checking {{ c.label }}">Review and send</button></form><a class="bk-btn bk-quiet" href="{{ url_for('web.bw_sync_link', source=c.source) }}">Link</a></div>{% endif %}
+{% endif %}
+</section>
+{% endfor %}
+</div>
+<section class="sy-log" aria-labelledby="sy-log-title"><h2 class="bk-eyebrow" id="sy-log-title">Sync log</h2>
+{% if log %}<div class="sy-log-head" aria-hidden="true"><span>When</span><span>Source</span><span>Direction</span><span>What</span><span></span></div>
+{% for r in log %}<div class="sy-log-row"><span class="mono">{{ stamp(r.at) }}</span><span>{{ r.source|capitalize if r.source else '' }}</span><span>{{ r.direction }}</span><span>{{ r.what }}</span><span>{% if r.state == 'Done' %}{{ pill('success', 'Done') }}{% else %}{{ pill('warning', r.state) }}{% endif %}</span></div>{% endfor %}
+{% else %}<p class="bk-text">Nothing pulled or sent yet.</p>{% endif %}</section>
+<section class="bk-card sy-how"><h2 class="bk-eyebrow">How sync works</h2><p class="bk-text">Pull never deletes anything here. Items that are only here are listed for you to decide. Send always shows the changes first and asks before it removes anything there.</p><p class="bk-text">The collection here is the one you work on. Each source keeps its own link. Each run uses the source's daily budget (<a href="{{ url_for('web.bw_admin', page='catalogues') }}">Catalogues &amp; keys</a>).</p></section>
+
+{% elif screen == 'link' %}
+<header class="bw-page-head"><a class="bw-back" href="{{ url_for('web.bw_sync') }}">{{ toni_icon('chevron-left') }}Collection sync</a><h1>{{ title }}</h1><p>Choose what to link on {{ label }}. You can change it later.</p></header>
+{{ flashes() }}
+{% if key_gap %}{{ needs_key(source, key_gap) }}
+{% else %}
+<section class="bk-card sy-account"><div class="bk-card-head"><h2 class="bk-eyebrow">Your {{ label }} account</h2>{% if user %}{{ pill('success', 'Connected') }}{% else %}{{ pill('unknown', 'Not connected') }}{% endif %}</div>
+{% if user %}<p class="bk-text">A {{ 'user token' if source == 'rebrickable' else 'user hash' }} is stored encrypted. It is never shown again.</p>
+{% if can_edit %}<div class="bk-actions"><form method="post" action="{{ url_for('web.bw_sync_write', source=source, action='test') }}">{{ csrf() }}<button class="bk-btn bk-quiet">Test</button></form><form method="post" action="{{ url_for('web.bw_sync_write', source=source, action='remove') }}">{{ csrf() }}<button class="bk-btn bk-quiet">Remove</button></form></div>{% endif %}
+{% elif can_edit %}
+<form method="post" class="sy-connect" action="{{ url_for('web.bw_sync_write', source=source, action='connect') }}" autocomplete="off">{{ csrf() }}
+<p class="bk-text">Your username and password go straight to {{ label }} once. Brick Work keeps only the {{ 'token' if source == 'rebrickable' else 'hash' }} {{ label }} returns, never the password.</p>
+<div class="bk-fields"><label class="bk-field">Username or email<input name="username" autocomplete="username" required></label><label class="bk-field">Password<input name="password" type="password" autocomplete="current-password" required></label></div>
+<div class="bk-actions"><button class="bk-btn bk-primary">Connect</button></div></form>
+<details class="bk-more sy-paste"><summary>Paste a {{ 'user token' if source == 'rebrickable' else 'user hash' }} instead</summary><form method="post" action="{{ url_for('web.bw_sync_write', source=source, action='paste') }}" autocomplete="off">{{ csrf() }}<label class="bk-field">{{ 'User token' if source == 'rebrickable' else 'User hash' }}<input name="value" type="password" minlength="8" maxlength="256" required></label><div class="bk-actions"><button class="bk-btn bk-outline">Save</button></div></form></details>
+{% endif %}</section>
+{% if user %}
+<form method="post" class="bk-card sy-choose" action="{{ url_for('web.bw_sync_write', source=source, action='link') }}" data-sy-busy>{{ csrf() }}
+<h2 class="bk-eyebrow">What to link</h2>
+{% if source == 'rebrickable' %}
+{% if list_error %}<p class="bk-banner bk-warning" role="alert">{{ list_error }}</p>{% endif %}
+{% set owned = status.link.get('owned') or [] %}
+<fieldset class="sy-lists"><legend>Owned sets</legend><p class="bk-text">Tick the set lists that hold sets you own. None ticked means every list except the wishlist list.</p>
+{% for l in lists %}<label class="sy-option"><input type="checkbox" name="owned" value="{{ l.id }}" {% if l.id in owned %}checked{% endif %}><span>{{ l.name or ('List ' ~ l.id) }}</span><span class="mono">{{ l.sets if l.sets is not none else '' }} {{ 'set' if l.sets == 1 else 'sets' }}</span></label>{% else %}<p class="bk-text">No set lists on Rebrickable yet.</p>{% endfor %}</fieldset>
+<label class="bk-field">Wanted sets · go to the wishlist<select name="wishlist"><option value="">No wishlist list</option>{% for l in lists %}<option value="{{ l.id }}" {% if status.link.get('wishlist') == l.id %}selected{% endif %}>{{ l.name or ('List ' ~ l.id) }}</option>{% endfor %}</select></label>
+<label class="bk-field">Send changes to<select name="send_to"><option value="">The only owned list</option>{% for l in lists %}<option value="{{ l.id }}" {% if status.link.get('send_to') == l.id %}selected{% endif %}>{{ l.name or ('List ' ~ l.id) }}</option>{% endfor %}</select></label>
+{% else %}
+<div class="sy-fixed"><span>Owned sets</span><span class="bk-text">with their quantities</span></div><div class="sy-fixed"><span>Wanted sets</span><span class="bk-text">go to the wishlist</span></div>
+{% endif %}
+<label class="bk-field">Wishlist here<select name="wish_list">{% for w in wish_lists %}<option value="{{ w.id }}" {% if (status.link.get('wish_list') or 'default') == w.id %}selected{% endif %}>{{ w.name }}</option>{% endfor %}</select></label>
+<div class="sy-fixed"><span>When both sides differ</span><span class="bk-text">Ask me each time</span></div>
+<div class="bk-actions"><a class="bk-btn bk-quiet" href="{{ url_for('web.bw_sync') }}">Cancel</a>{% if can_edit %}<button class="bk-btn bk-primary" data-busy-label="Checking {{ label }}">Link and preview pull</button>{% endif %}</div>
+</form>
+{% endif %}
+{% endif %}
+
+{% else %}
+{% set pull = screen == 'pull' %}
+{% set rows = plan.rows %}
+{% set conflicts = rows|selectattr('state','equalto','conflict')|list %}
+{% set main_rows = rows|rejectattr('state','equalto','conflict')|list %}
+<header class="bw-page-head"><a class="bw-back" href="{{ url_for('web.bw_sync') }}">{{ toni_icon('chevron-left') }}Collection sync</a><h1>{{ title }}</h1><p class="mono">{{ rows|length + plan.summary.owned.same + plan.summary.wanted.same }} sets compared · checked {{ stamp(plan.created_at) }}{% if not pull and status.last_send %} · last sent {{ stamp(status.last_send.at) }}{% endif %}</p></header>
+{{ flashes() }}
+{% if results %}{% set counted = {} %}{% for k, v in results.items() %}{% set _ = counted.update({v.result: counted.get(v.result, 0) + 1}) %}{% endfor %}
+{% if counted.get('key_rejected') %}<p class="bk-banner bk-danger sy-result" role="alert">{{ label }} rejected the key or user token. {{ counted.get('sent', 0) + counted.get('unchanged', 0) }} sent before that; nothing more was sent. <a href="{{ url_for('web.bw_sync_link', source=source) }}">Link</a> · <a href="{{ url_for('web.bw_admin', page='catalogues') }}">Catalogues &amp; keys</a></p>
+{% elif counted.get('paused') %}<p class="bk-banner bk-warning sy-result" role="alert">{{ label }} paused the sync: the daily budget is used up. {{ counted.get('sent', 0) + counted.get('unchanged', 0) }} of {{ results|length }} sent; the rest wait.</p>
+{% else %}<p class="bk-banner bk-success sy-result" role="status">Sent {{ counted.get('sent', 0) + counted.get('unchanged', 0) }} {{ 'change' if counted.get('sent', 0) + counted.get('unchanged', 0) == 1 else 'changes' }} to {{ label }}{% if counted.get('failed') %} · {{ counted.failed }} failed{% endif %}. <a href="{{ url_for('web.bw_sync') }}#sy-log-title">Open sync log</a></p>{% endif %}
+{% endif %}
+{% if pull %}<p class="bk-text sy-promise">Nothing here is deleted by a pull. Choose what happens to each difference, then pull.</p>{% endif %}
+<form method="post" class="sy-plan" data-sy-plan data-sy-direction="{{ screen }}" action="{{ url_for('web.bw_sync_write', source=source, action='apply' if pull else 'send_apply') }}" data-sy-busy>{{ csrf() }}<input type="hidden" name="plan_id" value="{{ plan.id }}">
+{% if pull %}{% set tabs = [('all','All',main_rows|length),('add','New there',main_rows|selectattr('state','equalto','add')|list|length),('differs','Different',main_rows|selectattr('state','equalto','differs')|list|length),('only_here','Only here',main_rows|selectattr('state','equalto','only_here')|list|length)] %}
+{% else %}{% set tabs = [('all','All',main_rows|length),('add','Add there',main_rows|selectattr('state','equalto','add')|list|length),('change','Quantity',main_rows|selectattr('state','equalto','change')|list|length),('remove','Removes there',main_rows|selectattr('state','equalto','remove')|list|length)] %}{% endif %}
+{% if plan.unmatched or main_rows|selectattr('state','equalto','unmatched')|list %}{% set tabs = tabs + [('unmatched','Not matched',(plan.unmatched|length) + main_rows|selectattr('state','equalto','unmatched')|list|length)] %}{% endif %}
+<div class="sy-tabs" role="group" aria-label="Show">{% for value, text, n in tabs %}<button type="button" data-sy-tab="{{ value }}" aria-pressed="{{ 'true' if value == 'all' else 'false' }}">{{ text }} <span class="mono">{{ n }}</span></button>{% endfor %}</div>
+<label class="sy-search"><span class="bc-visually-hidden">Search</span>{{ toni_icon('search') }}<input type="search" data-sy-search placeholder="Number or name" aria-label="Search sets"></label>
+<div class="sy-rows">
+{% for r in main_rows %}{% set tick = r.action is not none and not results.get(r.key) %}
+<div class="sy-row" data-sy-row data-state="{{ r.state }}" data-name="{{ r.item_no }} {{ r.name or '' }} {{ r.remote_no or '' }}">
+<div class="sy-id"><span class="mono">{{ r.item_no }}{% if r.remote_no and r.remote_no != r.item_no %} · {{ label }} {{ r.remote_no }}{% endif %}</span><strong>{{ r.name or 'Name not recorded' }}</strong><span class="sy-kind">{{ 'Wishlist' if r.kind == 'wanted' else 'Owned' }}</span></div>
+<div class="sy-state">{% if pull %}{{ pill('info' if r.state == 'add' else 'warning' if r.state == 'differs' else 'unknown', {'add':'New there','differs':'Different','only_here':'Only here'}.get(r.state, r.state)) }}{% else %}{{ pill('danger' if r.state == 'remove' else 'info' if r.state == 'add' else 'unknown' if r.state == 'unmatched' else 'warning', {'add':'Add there','change':'Change quantity','remove':'Removes there','unmatched':'Not on ' ~ label}.get(r.state, r.state)) }}{% endif %}{{ counts(r) }}</div>
+<div class="sy-do">{% if results.get(r.key) %}{% set res = results[r.key].result %}<span class="sy-result-chip sy-{{ res }}">{{ {'sent':'Sent','unchanged':'Already so','failed':'Failed','paused':'Waiting','key_rejected':'Not sent'}[res] }}</span>{% if results[r.key].detail and res == 'failed' %}<small>{{ results[r.key].detail }}</small>{% endif %}{% if res not in ('sent','unchanged') and r.tickable %}<label class="sy-tick"><input type="checkbox" name="tick" value="{{ r.key }}" {% if res in ('paused','key_rejected') or r.action %}checked{% endif %} data-sy-tick><span>Retry</span></label>{% endif %}
+{% elif r.tickable %}<label class="sy-tick"><input type="checkbox" name="tick" value="{{ r.key }}" {% if tick %}checked{% endif %} data-sy-tick><span>{% if pull %}Add {{ r.count }} here{% elif r.state == 'remove' %}Remove from {{ label }}{% elif r.state == 'add' %}Add {{ r.send }} there{% else %}Quantity {{ r.remote }} to {{ r.send }}{% endif %}</span></label>
+{% else %}<span class="sy-muted">{% if r.reason %}{{ r.reason }}{% elif pull %}Keep here{% else %}Nothing to send{% endif %}</span>{% endif %}</div>
+</div>
+{% endfor %}
+{% for u in plan.unmatched %}<div class="sy-row" data-sy-row data-state="unmatched" data-name="{{ u.remote_no }}"><div class="sy-id"><span class="mono">{{ label }} {{ u.remote_no }}</span><strong>Not matched</strong><span class="sy-kind">{{ 'Wishlist' if u.kind == 'wanted' else 'Owned' }}</span></div><div class="sy-state">{{ pill('unknown', 'Not matched') }}<span class="mono sy-counts">there {{ u.remote }}</span></div><div class="sy-do"><span class="sy-muted">{{ u.reason }}</span></div></div>{% endfor %}
+{% if not main_rows and not plan.unmatched %}<p class="bk-text">Nothing differs. Here and {{ label }} agree.</p>{% endif %}
+</div>
+{% if conflicts %}<section class="bk-card sy-conflicts" aria-labelledby="sy-both"><h2 id="sy-both">Changed in both places</h2><p class="bk-text">{{ conflicts|length }} {{ 'item' if conflicts|length == 1 else 'items' }} changed here and on {{ label }} since the last {{ 'pull' if pull else 'sync' }}{% if status.last_pull %} on {{ stamp(status.last_pull.at)[:6] }}{% endif %}. Nothing happens to these unless you tick them.</p>
+{% for r in conflicts %}<div class="sy-row sy-conflict" data-sy-row data-state="conflict" data-name="{{ r.item_no }} {{ r.name or '' }}"><div class="sy-id"><span class="mono">{{ r.item_no }}</span><strong>{{ r.name or 'Name not recorded' }}</strong></div><div class="sy-both"><span>Here <span class="mono">{{ r.here }}</span></span><span>{{ label }} <span class="mono">{{ r.remote }}</span></span></div><div class="sy-do">{% if r.tickable %}<label class="sy-tick"><input type="checkbox" name="tick" value="{{ r.key }}" data-sy-tick><span>{% if pull %}Take {{ label }}: add {{ r.count }} here{% else %}Send {{ r.send }} there{% endif %}</span></label>{% else %}<span class="sy-muted">Keep here</span>{% endif %}</div></div>{% endfor %}
+<p class="bk-text">Checks, storage and notes stay here either way; only quantities are compared.</p></section>{% endif %}
+{% if not pull %}<section class="bk-card sy-before"><h2 class="bk-eyebrow">Before you send</h2><p class="bk-text">{{ label }} has no undo, and Brick Work's Undo cannot take a sent change back. Removals are unticked until you tick them.</p><dl class="sy-dates"><div><dt>Requests</dt><dd class="mono">about <span data-sy-requests>{{ rows|selectattr('action')|list|length }}</span></dd></div>{% if budget %}<div><dt>Budget today</dt><dd class="mono">{{ budget.used }} / {{ budget.budget }}</dd></div>{% endif %}</dl></section>{% endif %}
+<div class="sy-footer">{% if can_edit and (pull and not plan.applied or not pull) %}<button class="bk-btn bk-primary bk-lg" data-sy-submit data-sy-verb="{{ 'Pull' if pull else ('Retry' if results else 'Send') }}" data-busy-label="{{ 'Pulling' if pull else 'Sending to ' ~ label }}">{{ 'Pull' if pull else ('Retry' if results else 'Send') }}</button>{% endif %}<a class="bk-btn bk-quiet" href="{{ url_for('web.bw_sync') }}">{{ 'Done' if plan.applied or results else 'Cancel' }}</a><p class="mono sy-total" data-sy-total role="status" aria-live="polite"></p></div>
+</form>
+{% endif %}
+{% endblock %}

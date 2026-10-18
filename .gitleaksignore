@@ -1,0 +1,10 @@
+# Public Brickset analytics data-key attribute inside saved Brickset HTML test fixtures; not a secret.
+ea5e60b6f8158ea1a262c7547171737a7367ecfe:tests_house/fixtures/99999-1.html:generic-api-key:78
+ea5e60b6f8158ea1a262c7547171737a7367ecfe:tests_house/fixtures/6081-1.html:generic-api-key:78
+ea5e60b6f8158ea1a262c7547171737a7367ecfe:tests_house/fixtures/10305-1.html:generic-api-key:78
+ea5e60b6f8158ea1a262c7547171737a7367ecfe:tests_house/fixtures/6285-1.html:generic-api-key:78
+ea5e60b6f8158ea1a262c7547171737a7367ecfe:tests_house/fixtures/6390-1.html:generic-api-key:78
+# Invented wrong password in the login back-off test (#48); not a secret.
+4217e460ce07bfd6839f3180ad200b9af779813e:tests/test_bw_throttle.py:generic-api-key:61
+# Same test, matched by path for scans of the public snapshot and of commits after it.
+tests/test_bw_throttle.py:generic-api-key:61

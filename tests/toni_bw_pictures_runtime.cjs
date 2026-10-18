@@ -1,0 +1,21 @@
+const assert=require('node:assert/strict');
+const fs=require('node:fs');const vm=require('node:vm');const path=require('node:path');
+const source=fs.readFileSync(path.join(__dirname,'../static/web/toni/bw-pictures.js'),'utf8');
+const context={window:{},document:{addEventListener(){}}};vm.runInNewContext(source,context);
+const cell=(count,unresolved=0,unknown_colour=0)=>({count,unresolved,unknown_colour});
+const matrix={S:{missing:cell(1),all:cell(1)},P:{missing:cell(1,0,1),all:cell(2,0,1)},'?':{missing:cell(1,1),all:cell(1,1)}};
+assert.equal(context.window.BrickPictureCount(matrix,['S','P'],'missing').count,3);
+assert.equal(context.window.BrickPictureCount(matrix,['P','P'],'all').count,3);
+assert.equal(context.window.BrickPictureCount(matrix,['P'],'all').unknown_colour,1);
+assert.equal(context.window.BrickPictureCount(matrix,[],'all').count,0);
+let ready;const handlers={};const counter={};const expected={};const submit={};const opener={addEventListener(event,fn){handlers.open=fn;},focus(){this.focused=true;}};
+const data={types:['S'],scope:'missing'};
+const form={querySelector(s){return s==='[data-picture-count]'?counter:s==='[data-picture-expected]'?expected:submit;},addEventListener(event,fn){handlers[event]=fn;}};
+const close={addEventListener(event,fn){handlers.cancel=fn;}};
+const dialog={querySelector(s){return s==='form'?form:close;},addEventListener(event,fn){handlers.close=fn;},showModal(){this.open=true;},close(){this.open=false;handlers.close();}};
+const integration={window:{},FormData:class{getAll(){return data.types;}get(){return data.scope;}},document:{
+ addEventListener(event,fn){ready=fn;},querySelector(s){return s==='[data-picture-dialog]'?dialog:s==='[data-picture-open]'?opener:{textContent:JSON.stringify(matrix)};}}};
+vm.runInNewContext(source,integration);ready();handlers.open();assert(dialog.open);assert.equal(counter.textContent,'2 picture identities will be queued · 1 unresolved · 0 unknown colour will be skipped');
+assert.equal(expected.value,2);data.scope='all';data.types=['P'];handlers.change();assert.equal(expected.value,3);
+data.types=[];handlers.change();assert(submit.disabled);handlers.cancel();assert(!dialog.open);assert(opener.focused);
+console.log('Brick Work pictures dialog runtime passed');

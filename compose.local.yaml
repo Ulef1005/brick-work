@@ -1,0 +1,16 @@
+services:
+  brickwork:
+    container_name: brickwork
+    restart: unless-stopped
+    # image: brickwork:local
+    build: .
+    ports:
+      # Debug output shows tracebacks: keep it on this computer.
+      - "127.0.0.1:3334:3333"
+    volumes:
+      - ./local:/app/data  # Local data stays in ./local, apart from the ./data of compose.yaml
+    environment:
+      - BW_DEBUG=true
+    # Settings go in local/.env, which the app reads as data/.env.
+    # A .env in the project root is the fallback:
+    # env_file: .env

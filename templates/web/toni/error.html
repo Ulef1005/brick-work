@@ -1,0 +1,8 @@
+{% extends 'web/toni/base.html' %}
+{% set missing = status|default(500) == 404 %}
+{% block title %} · {{ 'Page not found' if missing else 'Something went wrong' }}{% endblock %}
+{% block main %}<section class="system-page" role="alert">
+{% if missing %}<h1>That page is not here</h1><p class="system-lead">The link may be old. Go back to your sets.</p><div class="actions"><a class="button primary" href="{{ url_for('web.bw_sets') }}">Back to sets</a></div>
+{% else %}<h1>Something went wrong</h1><p class="system-lead">Your data is safe. Try again.</p><div class="actions"><a class="button primary" href="{{ request.path }}">Try again</a><a class="button" href="{{ url_for('web.bw_tools') }}">Tools &amp; Admin</a></div>{% endif %}
+<p class="system-code">{{ error }}{% if status %} · {{ status }}{% endif %}</p>
+{% if trace %}<pre class="system-trace">{{ trace }}</pre>{% endif %}</section>{% endblock %}

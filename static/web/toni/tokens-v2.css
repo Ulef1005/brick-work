@@ -1,0 +1,163 @@
+/* Toni's World — design tokens · v2 (2026-09)
+   v1 variables are unchanged in name and value. Everything below "v2 additions" is new.
+
+   Dark-mode mechanism:
+   1. Default is light.
+   2. prefers-color-scheme: dark switches to dark unless .tw-light is set on <html>.
+   3. .tw-dark / .tw-light on any element force that mode for its subtree (override wins both ways).
+   Persist the user's choice ('system' | 'light' | 'dark') in localStorage and apply the class on <html> before first paint.
+
+   Standalone chrome (Home Screen app):
+   <meta name="apple-mobile-web-app-capable" content="yes">
+   <meta name="apple-mobile-web-app-status-bar-style" content="default">
+   <meta name="theme-color" content="#FAFAF8" media="(prefers-color-scheme: light)">
+   <meta name="theme-color" content="#1A1816" media="(prefers-color-scheme: dark)">
+   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+   Content runs under the status bar; fixed bars pad with --tw-safe-top / --tw-safe-bottom. */
+
+
+:root {
+  /* ── v1: light ── */
+  --tw-bg:           #FAFAF8;
+  --tw-surface:      #F2EFE9;
+  --tw-surface-2:    #ECE8DF;
+  --tw-divider:      #E7E2D7;
+  --tw-text:         #1A1816;
+  --tw-text-2:       #45413B;
+  --tw-text-muted:   #8A847A;
+  --tw-text-faint:   #B5AFA3;
+  --tw-accent:       oklch(0.66 0.17 45);
+  --tw-accent-soft:  oklch(0.93 0.04 55);
+  --tw-accent-text:  oklch(0.54 0.17 42);
+  --tw-danger:       oklch(0.62 0.18 25);
+
+  --tw-font:    'Inter', -apple-system, system-ui, sans-serif;
+  --tw-font-alt:'Geist', -apple-system, system-ui, sans-serif;
+  --tw-mono:    'Geist Mono', ui-monospace, SFMono-Regular, monospace;
+
+  --tw-fs-display: 34px;  --tw-lh-display: 40px;
+  --tw-fs-h1:      28px;  --tw-lh-h1:      34px;
+  --tw-fs-h2:      22px;  --tw-lh-h2:      28px;
+  --tw-fs-h3:      18px;  --tw-lh-h3:      24px;
+  --tw-fs-body:    17px;  --tw-lh-body:    27px;
+  --tw-fs-small:   14px;  --tw-lh-small:   20px;
+  --tw-fs-label:   11px;  --tw-lh-label:   14px;
+  --tw-tracking-label: 0.10em;
+
+  --tw-s-0: 0; --tw-s-1: 4px; --tw-s-2: 8px; --tw-s-3: 12px; --tw-s-4: 16px;
+  --tw-s-5: 20px; --tw-s-6: 24px; --tw-s-7: 32px; --tw-s-8: 40px; --tw-s-9: 56px;
+
+  --tw-r-1: 6px; --tw-r-2: 10px; --tw-r-3: 16px;
+
+  /* ── v2 additions ── */
+
+  /* Status: semantic signals, never decoration. Muted, ink-like; lower chroma than the accent
+     so clay stays the only colour the eye latches onto. -soft is for pill/tile grounds only. */
+  --tw-success:      oklch(0.55 0.08 150);
+  --tw-success-soft: oklch(0.94 0.025 150);
+  --tw-warning:      oklch(0.64 0.10 80);
+  --tw-warning-soft: oklch(0.94 0.035 85);
+  --tw-info:         oklch(0.54 0.06 245);
+  --tw-info-soft:    oklch(0.94 0.015 245);
+  --tw-danger-soft:  oklch(0.94 0.03 25);
+
+  /* Stronger hairline for overlay edges and control outlines */
+  --tw-divider-strong: #D8D1C3;
+
+  /* Touch */
+  --tw-hit:    44px;   /* minimum hit area, every tappable thing */
+  --tw-hit-lg: 56px;   /* primary actions, scale-picker cells */
+
+  /* Motion */
+  --tw-ease:      cubic-bezier(0.2, 0.6, 0.2, 1);
+  --tw-dur-fast:  120ms;  /* state changes, pressed */
+  --tw-dur-base:  240ms;  /* sheets, drawers, pushes */
+
+  /* Overlays without shadows: scrim + surface step + hairline edge */
+  --tw-scrim:        rgba(20, 15, 5, 0.30);
+  --tw-sheet-bg:     var(--tw-bg);
+  --tw-sheet-edge:   0.5px solid var(--tw-divider-strong);
+  --tw-sheet-radius: var(--tw-r-3);
+  --tw-toast-bg:     var(--tw-text);      /* inverted ink — separates by contrast, not elevation */
+  --tw-toast-fg:     var(--tw-bg);
+
+  /* Focus: accent, 2px, 2px offset */
+  --tw-focus-width:  2px;
+  --tw-focus-offset: 2px;
+  --tw-focus-color:  var(--tw-accent);
+
+  /* Data viz: sequential clay ramp (light → deep) + two neutrals.
+     One series: --tw-viz-4. Two series: primary --tw-viz-4 solid, comparison --tw-viz-n2 dashed.
+     Never two clays side by side as separate series. Thresholds/ratings use status tokens. */
+  --tw-viz-1:  oklch(0.92 0.04 55);
+  --tw-viz-2:  oklch(0.83 0.09 52);
+  --tw-viz-3:  oklch(0.73 0.14 47);
+  --tw-viz-4:  oklch(0.62 0.16 43);
+  --tw-viz-5:  oklch(0.48 0.13 40);
+  --tw-viz-n1: #DDD7CB;   /* track, gridlines */
+  --tw-viz-n2: #8A847A;   /* comparison series, axis labels */
+
+  /* Safe areas (standalone) */
+  --tw-safe-top:    env(safe-area-inset-top, 0px);
+  --tw-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --tw-tabbar-h:    49px;
+  --tw-topbar-h:    52px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.tw-light) {
+    --tw-bg: #1A1816; --tw-surface: #232020; --tw-surface-2: #2C2826; --tw-divider: #2F2B27;
+    --tw-text: #F1ECE3; --tw-text-2: #C8C2B6; --tw-text-muted: #8C857A; --tw-text-faint: #5F5A52;
+    --tw-accent: oklch(0.78 0.16 55); --tw-accent-soft: oklch(0.32 0.07 45);
+    --tw-accent-text: oklch(0.84 0.15 58); --tw-danger: oklch(0.72 0.16 25);
+    --tw-success: oklch(0.76 0.09 150); --tw-success-soft: oklch(0.30 0.04 150);
+    --tw-warning: oklch(0.80 0.10 82);  --tw-warning-soft: oklch(0.31 0.045 80);
+    --tw-info:    oklch(0.76 0.06 245); --tw-info-soft:    oklch(0.30 0.03 245);
+    --tw-danger-soft: oklch(0.31 0.06 25);
+    --tw-divider-strong: #403A34;
+    --tw-scrim: rgba(0, 0, 0, 0.45);
+    --tw-sheet-bg: var(--tw-surface);
+    --tw-viz-1: oklch(0.34 0.06 45); --tw-viz-2: oklch(0.48 0.10 48); --tw-viz-3: oklch(0.62 0.14 52);
+    --tw-viz-4: oklch(0.76 0.15 55); --tw-viz-5: oklch(0.86 0.11 60);
+    --tw-viz-n1: #36312C; --tw-viz-n2: #8C857A;
+  }
+}
+
+.tw-light {
+  --tw-bg: #FAFAF8; --tw-surface: #F2EFE9; --tw-surface-2: #ECE8DF; --tw-divider: #E7E2D7;
+  --tw-text: #1A1816; --tw-text-2: #45413B; --tw-text-muted: #8A847A; --tw-text-faint: #B5AFA3;
+  --tw-accent: oklch(0.66 0.17 45); --tw-accent-soft: oklch(0.93 0.04 55);
+  --tw-accent-text: oklch(0.54 0.17 42); --tw-danger: oklch(0.62 0.18 25);
+  --tw-success: oklch(0.55 0.08 150); --tw-success-soft: oklch(0.94 0.025 150);
+  --tw-warning: oklch(0.64 0.10 80);  --tw-warning-soft: oklch(0.94 0.035 85);
+  --tw-info:    oklch(0.54 0.06 245); --tw-info-soft:    oklch(0.94 0.015 245);
+  --tw-danger-soft: oklch(0.94 0.03 25);
+  --tw-divider-strong: #D8D1C3;
+  --tw-scrim: rgba(20, 15, 5, 0.30);
+  --tw-sheet-bg: var(--tw-bg);
+  --tw-viz-1: oklch(0.92 0.04 55); --tw-viz-2: oklch(0.83 0.09 52); --tw-viz-3: oklch(0.73 0.14 47);
+  --tw-viz-4: oklch(0.62 0.16 43); --tw-viz-5: oklch(0.48 0.13 40);
+  --tw-viz-n1: #DDD7CB; --tw-viz-n2: #8A847A;
+}
+
+.tw-dark {
+  --tw-bg: #1A1816; --tw-surface: #232020; --tw-surface-2: #2C2826; --tw-divider: #2F2B27;
+  --tw-text: #F1ECE3; --tw-text-2: #C8C2B6; --tw-text-muted: #8C857A; --tw-text-faint: #5F5A52;
+  --tw-accent: oklch(0.78 0.16 55); --tw-accent-soft: oklch(0.32 0.07 45);
+  --tw-accent-text: oklch(0.84 0.15 58); --tw-danger: oklch(0.72 0.16 25);
+  --tw-success: oklch(0.76 0.09 150); --tw-success-soft: oklch(0.30 0.04 150);
+  --tw-warning: oklch(0.80 0.10 82);  --tw-warning-soft: oklch(0.31 0.045 80);
+  --tw-info:    oklch(0.76 0.06 245); --tw-info-soft:    oklch(0.30 0.03 245);
+  --tw-danger-soft: oklch(0.31 0.06 25);
+  --tw-divider-strong: #403A34;
+  --tw-scrim: rgba(0, 0, 0, 0.45);
+  --tw-sheet-bg: var(--tw-surface);
+  --tw-viz-1: oklch(0.34 0.06 45); --tw-viz-2: oklch(0.48 0.10 48); --tw-viz-3: oklch(0.62 0.14 52);
+  --tw-viz-4: oklch(0.76 0.15 55); --tw-viz-5: oklch(0.86 0.11 60);
+  --tw-viz-n1: #36312C; --tw-viz-n2: #8C857A;
+}
+
+:focus-visible {
+  outline: var(--tw-focus-width) solid var(--tw-focus-color);
+  outline-offset: var(--tw-focus-offset);
+}

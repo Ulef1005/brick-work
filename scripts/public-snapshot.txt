@@ -1,0 +1,14 @@
+# Paths left out of the public snapshot (scripts/public_snapshot.py). One glob per line, matched against
+# the tracked path; a line starting with ! keeps a path that an earlier line left out. Internal build
+# history (run reports, design diffs, migration runbooks) stays in the private history archive.
+docs/web-ui/**
+docs/brickwork/**
+!docs/brickwork/api-v1.md
+!docs/brickwork/mcp.md
+!docs/brickwork/openapi-v1.yaml
+!docs/brickwork/pipeline.md
+!docs/brickwork/schema-notes.md
+!docs/brickwork/sources.md
+!docs/brickwork/sync.md
+!docs/brickwork/wishlists.md
+!docs/brickwork/cutover-4.11j.md

@@ -1,0 +1,10 @@
+#!/bin/sh
+set -eu
+cd "$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+# In the container the CLI also runs without the entrypoint (docker compose run --entrypoint brickwork).
+if [ -d /app/data ] && [ "$(pwd)" = /app ] && [ ! -w /app/data ]; then
+    echo "Brick Work cannot write to /app/data (it runs as uid $(id -u))." >&2
+    echo "On the host: sudo chown -R $(id -u):$(id -g) ./data   (the folder mounted at /app/data)" >&2
+    exit 1
+fi
+exec python -m brickwork.web.cli "$@"

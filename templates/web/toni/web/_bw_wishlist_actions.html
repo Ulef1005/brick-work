@@ -1,0 +1,28 @@
+<div class="wl-root" data-wl-root data-wl-url="{{ url_for('web.bw_wishlists_write',action='ACTION') }}" data-csrf="{{ csrf_token }}">
+<div class="wl-feedback"><p data-wl-message role="status" aria-live="polite"></p><button type="button" data-wl-undo hidden>Undo</button></div>
+{% if detail is defined and detail.wish %}
+{% if can_edit %}<form class="wl-move" data-wl-action="transfer" data-wl-ids="{{ [detail.wish.id]|tojson }}"><label>Wishlist<select name="list_id">{% for l in choices.wishlists %}<option value="{{ l.id }}" {% if l.id==detail.wish.list_id %}selected{% endif %}>{{ l.name }}</option>{% endfor %}</select></label><div class="actions"><button name="copy" value="false">Move wish</button><button name="copy" value="true">Copy wish</button></div></form>{% endif %}
+{% else %}
+{# Lists and list actions, as BrickLink's Wanted Lists: the lists as chips with counts, then one action row. #}
+<div class="wl-head">
+<nav class="bc-filter-chips wl-lists" aria-label="Wishlists"><a class="button" href="{{ url_for('web.bw_planning',screen='wishlist') }}" {% if list_id=='all' %}aria-current="page"{% endif %}>All lists<span class="mono">{{ wishlists|rejectattr('archived_at')|sum(attribute='count') }}</span></a>{% for l in wishlists if not l.archived_at %}<a class="button" href="{{ url_for('web.bw_planning',screen='wishlist',list=l.id) }}" {% if list_id==l.id %}aria-current="page"{% endif %}>{{ l.name }}<span class="mono">{{ l.count }}</span></a>{% endfor %}</nav>
+<div class="actions wl-toolbar" role="toolbar" aria-label="{{ 'All lists' if list_id=='all' else 'This list' }}">{% if can_edit %}<button type="button" data-wl-open="bw-manage-wishlists">Manage lists</button>{% endif %}<button type="button" data-wl-open="bw-export-wishlist">Export</button><a class="button" href="{{ url_for('web.bw_list_print', kind='wishlist', list=list_id) }}">Print</a><a class="button" href="{{ url_for('web.bw_list_csv', kind='wishlist', list=list_id) }}">Download CSV</a></div>
+</div>
+
+<dialog id="bw-export-wishlist" class="bc-sheet wl-sheet" aria-labelledby="bw-export-wishlist-title"><div class="actions wl-sheet-head"><h2 id="bw-export-wishlist-title">Export {{ 'all lists' if list_id=='all' else 'this list' }}</h2><button type="button" data-wl-close>Close</button></div>
+<form data-wl-export data-wl-export-url="{{ url_for('web.bw_wishlists_export',identifier=list_id,format='FORMAT') }}">
+<fieldset class="bc-segments"><legend>Format</legend><div><label><input type="radio" name="format" value="xml" checked><span>BrickLink XML</span></label><label><input type="radio" name="format" value="csv"><span>Rebrickable CSV</span></label></div></fieldset>
+<fieldset class="bc-segments" data-wl-kind hidden><legend>Rebrickable list of</legend><div><label><input type="radio" name="kind" value="parts" checked><span>Parts</span></label><label><input type="radio" name="kind" value="sets"><span>Sets</span></label></div></fieldset>
+<p class="secondary wl-hint">BrickLink XML uploads into a BrickLink wanted list. The Rebrickable CSV imports into a Rebrickable set or part list.</p>
+<details data-wl-summary hidden><summary>Export summary</summary><div data-wl-summary-content></div></details>
+<div class="actions"><button class="primary bw-primary">Export</button></div></form></dialog>
+
+{% if can_edit %}<dialog id="bw-manage-wishlists" class="bc-sheet wl-sheet" aria-labelledby="bw-manage-wishlists-title"><div class="actions wl-sheet-head"><h2 id="bw-manage-wishlists-title">Wishlists</h2><button type="button" data-wl-close>Close</button></div>
+<details class="wl-entry wl-new"><summary><span>New list</span></summary><form data-wl-action="save"><label>Name<input name="name" required maxlength="120"></label><label>Note<input name="note"></label><label>BrickLink wanted list id<input name="bricklink_id" inputmode="numeric" pattern="[0-9]+"></label><div class="actions"><button class="primary bw-primary">Create list</button></div></form></details>
+{% for l in wishlists %}<details class="wl-entry"><summary><span>{{ l.name }}</span>{% if l.archived_at %}<span class="bc-status">Archived</span>{% else %}<span class="mono">{{ l.count }}</span>{% endif %}</summary>
+{% if l.archived_at %}<form data-wl-action="restore" data-wl-id="{{ l.id }}"><div class="actions"><button>Restore list</button></div></form>{% else %}
+<form data-wl-action="save" data-wl-id="{{ l.id }}"><label>Name<input name="name" required maxlength="120" value="{{ l.name }}"></label><label>Note<input name="note" value="{{ l.note or '' }}"></label><label>BrickLink wanted list id<input name="bricklink_id" inputmode="numeric" pattern="[0-9]+" value="{{ l.bricklink_id or '' }}"></label><div class="actions"><button>Save list</button></div></form>
+<form data-wl-action="archive" data-wl-id="{{ l.id }}" class="wl-archive"><p class="secondary">Archiving the list archives its wishes. Undo restores them.</p><div class="actions"><button>Archive list</button></div></form>{% endif %}</details>{% endfor %}
+</dialog>{% endif %}
+{% endif %}
+</div>

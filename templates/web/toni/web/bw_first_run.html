@@ -1,0 +1,14 @@
+{# UI-12j: first run without keys, and the "needs a key" note for gated actions. #}
+{% macro first_run_path(first_run, can_edit) %}{% set catalogues = url_for('web.bw_admin', page='catalogues') %}
+<section class="fr" data-first-run aria-labelledby="fr-title"><div class="fr-head"><h2 id="fr-title">Nothing here yet.</h2><p>Three steps and the collection opens up. Keys first: without them, names and prices stay empty.</p></div>
+<ol class="fr-steps">
+{% for title, text, label, href, link_state in [
+  ('Set up your keys', 'BrickLink, Rebrickable and Brickset keys. Stored encrypted on this install.', 'Catalogues & keys', catalogues, first_run.steps[0]),
+  ('Load catalogues', 'Part, set and figure names from local files, colours from BrickLink.', 'Load catalogues', catalogues ~ '#catalogues', first_run.steps[1]),
+  ('Add your first set', 'By number, by photo, or from an order.', 'Add a set', url_for('web.bw_add'), first_run.steps[2]),
+  ('Or import from BrickTracker', 'Already use BrickTracker? Bring its app.db over, any version, with a preview first.', 'Import app.db', url_for('web.bw_import_legacy'), first_run.steps[3])] %}
+<li class="fr-step" data-step="{{ loop.index }}" data-state="{{ link_state }}"><span class="fr-num mono" aria-hidden="true">{{ loop.index }}</span><div class="fr-text"><h3>{{ title }}</h3><p>{{ text }}</p></div>
+{% if link_state == 'done' %}<span class="fr-done">Done</span>{% elif link_state == 'waiting' %}<button type="button" class="fr-btn" disabled aria-disabled="true">{{ label }}<span class="fr-sr"> · {{ 'finish step ' ~ (2 if loop.index == 4 else loop.index - 1) ~ ' first' }}</span></button>{% else %}<a class="button fr-btn {{ 'primary' if loop.index == 1 or link_state == 'current' and loop.index == 3 else 'fr-outline' }}" href="{{ href }}">{{ label }}</a>{% endif %}</li>{% endfor %}</ol>
+<p class="fr-note">You can add a set without keys. It keeps its number until names load.</p></section>{% endmacro %}
+
+{% macro needs_key(source, label) %}{% if label %}<p class="key-need" data-needs-key="{{ source }}"><strong>Needs a {{ label }} key</strong><a href="{{ url_for('web.bw_admin', page='catalogues') }}">{{ toni_icon('chevron-right') }}Catalogues &amp; keys</a></p>{% endif %}{% endmacro %}

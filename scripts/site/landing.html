@@ -1,52 +1,345 @@
-<section class="hero">
-<p class="eyebrow">Self-hosted · open source · MIT</p>
-<h1>The workbench for your brick collection.</h1>
-<p class="lead">Every app does inventory. Brick Work also helps at the table: check a set's parts, pull the missing ones from your loose stock, and see which unfinished sets that stock can complete.</p>
-<p class="cta"><a class="button primary" href="demo/">Try the demo</a> <a class="button" href="docs/">Install and read the docs</a> <a class="button" href="https://github.com/{repository}">View on GitHub</a></p>
-<p class="note">The demo runs the real interface on an invented collection; changes are not saved. Pre-1.0 and used daily by its maintainer. Your data stays on your machine; there is no account and no telemetry.</p>
-</section>
 
-<section>
-<h2>Why Brick Work</h2>
-<div class="cards">
-<article><h3>Made for the work at the table</h3><p>Check Set Parts, Part Picker and Matcher turn the inventory into progress: "142 of 380", the parts to pull, the sets you can finish.</p><a href="workflows/">See the workflows</a></article>
-<article><h3>Everything is an item</h3><p>Sets, minifigures, loose parts, instructions and boxes share the same modules: notes, storage location, prices, history and Undo.</p></article>
-<article><h3>Yours</h3><p>Self-hosted with Docker Compose. Your database and photos live in one folder you back up. Catalogue data comes from your own BrickLink, Rebrickable and Brickset keys.</p><a href="docs/">Install it</a></article>
-<article><h3>Installable on any screen</h3><p>A web app you add to the Home Screen from the browser, with no app store: iPhone and iPad in Safari, desktop in a Chromium browser. It needs HTTPS to install.</p></article>
-<article><h3>Scriptable</h3><p>A versioned REST API over the whole collection with scoped tokens, an OpenAPI contract, idempotent writes and an audit event with an Undo link for every change, plus an admin CLI.</p><a href="api/">API reference</a></article>
-<article><h3>Ready for AI assistants</h3><p>A built-in MCP server lets an assistant read your collection and, only if you allow it, change it. It uses the same API, scopes and Undo as any other client.</p><a href="mcp/">MCP guide</a></article>
+<section class="hero layout-1">
+<div class="layout-2">
+<div class="layout-3">
+<span class="layout-4">Self-hosted · open source · MIT</span>
+<span class="layout-5">Pre-1.0</span>
+</div>
+<h1 class="layout-6">Finish the sets you started.</h1>
+<p class="layout-7">Brick Work is the workbench for your brick collection. Check a set's parts, pull the missing ones from loose stock, and see which unfinished sets that stock can complete.</p>
+<div class="layout-8">
+<a class="layout-9" href="demo/">Try the demo</a>
+<a class="layout-10" href="#install">Install</a>
+<a class="layout-11" href="https://github.com/Ulef1005/brick-work">View on GitHub</a>
+</div>
+<p class="layout-12">The demo runs the real interface on an invented collection; nothing is saved. Pre-1.0, used daily by its maintainer on about 200 set copies.</p>
+</div>
+<div class="layout-13">
+<picture class="layout-14"><source media="(prefers-color-scheme: dark)" srcset="assets/img/1c-sets-desktop-1440-dark.png"/><img alt="Brick Work on desktop: set overview" decoding="async" height="900" loading="lazy" src="assets/img/1c-sets-desktop-1440-light.png" width="1440"/></picture><picture class="layout-15"><source media="(prefers-color-scheme: dark)" srcset="assets/img/3c-picker-pick-phone-390-dark.png"/><img alt="Brick Work on phone: Part Picker" decoding="async" height="1688" loading="lazy" src="assets/img/3c-picker-pick-phone-390-light.png" width="780"/></picture>
 </div>
 </section>
-
-<section>
-<h2>Three flows that finish sets</h2>
-<ol class="flow">
-<li><strong>Check Set Parts</strong><span>Pick a copy, go through its parts against the inventory and keep a running count of what is missing.</span></li>
-<li><strong>Part Picker</strong><span>Tick several sets and get the missing parts you can pull from your sorted loose stock, in your own sort order.</span></li>
-<li><strong>Matcher</strong><span>See which incomplete copies your loose stock can finish, then decide what to build or buy.</span></li>
-</ol>
-<p><a href="workflows/">How each flow works</a> · <a href="use-cases/">Use cases</a></p>
+<section class="who-it-is-for layout-16">
+<div class="layout-17">
+<div class="layout-18">
+<span class="layout-19">Who it is for</span>
+<h2 class="layout-20">A real, messy collection that should help you finish it.</h2>
+</div>
+<p class="layout-21">Built and boxed sets, bags of sorted and unsorted parts, a few sets you know are short, a wishlist. Already tracked in a spreadsheet or two other sites, and tired of typing it all in again.</p>
+</div>
+<div class="layout-22">
+<div class="layout-23">
+<h3 class="layout-24">You rebuild used and vintage sets</h3>
+<p class="layout-25">“I want to know exactly what is missing from each set.”</p>
+<div class="layout-26">
+<span class="layout-27"><strong class="layout-28">Today</strong> · Check Set Parts, then export the gaps as BrickLink XML.</span>
+<span class="layout-29"><span class="layout-30">Planned</span>A fair sale price for a used copy.</span>
+</div></div>
+<div class="layout-23">
+<h3 class="layout-24">You build from sorted bulk</h3>
+<p class="layout-25">“Do I have it, how many, and which drawer?”</p>
+<div class="layout-26">
+<span class="layout-27"><strong class="layout-28">Today</strong> · Storage per item, Part Picker, Matcher.</span>
+</div></div>
+<div class="layout-23">
+<h3 class="layout-24">You collect minifigures</h3>
+<p class="layout-25">“Which figures can I put together from parts?”</p>
+<div class="layout-26">
+<span class="layout-27"><strong class="layout-28">Today</strong> · Loose figures with their parts and photo capture.</span>
+<span class="layout-29"><span class="layout-30">Planned</span>Complete or part out, side by side.</span>
+</div></div>
+<div class="layout-23">
+<h3 class="layout-24">You were handed a collection</h3>
+<p class="layout-25">“What is in this box, and what do I do with it?”</p>
+<div class="layout-26">
+<span class="layout-27"><strong class="layout-28">Today</strong> · One place for sets, copies and boxes, with storage.</span>
+<span class="layout-29"><span class="layout-30">Planned</span>Pile check by photo.</span>
+</div></div>
+<div class="layout-23">
+<h3 class="layout-24">You script things at home</h3>
+<p class="layout-25">“I want Claude to talk to my collection.”</p>
+<div class="layout-26">
+<span class="layout-27"><strong class="layout-28">Today</strong> · REST API, CLI and an MCP server over your own data.</span>
+</div></div>
+</div>
+<div class="layout-31">
+<span class="layout-19">Not built for</span>
+<span class="layout-32">Sealed-box investors who need market forecasts, BrickLink stores that need order fulfilment, and anyone looking for a social profile. Other tools serve them well.</span>
+</div>
 </section>
+<section class="three-flows layout-33">
+<div class="layout-34">
+<h2 class="layout-20">Every app does inventory. Brick Work helps at the table.</h2>
+<p class="layout-21">Three workflows turn a list of what you own into progress: a running count, a pick list, the sets you can finish today.</p>
+</div>
+<div class="layout-35">
+<a class="layout-36" href="workflows/#check-set-parts">
+<div class="layout-37">
+<div class="layout-38">142 of 380</div>
+<h3 class="layout-39">Check Set Parts</h3>
+<p class="layout-40">Go through a copy part by part against its inventory and keep a running count of what is missing.</p>
+</div>
+<div class="layout-41">
+<picture class="layout-42"><source media="(prefers-color-scheme: dark)" srcset="assets/img/3e-part-phone-390-dark.png"/><img alt="Check Set Parts" decoding="async" height="1688" loading="lazy" src="assets/img/3e-part-phone-390-light.png" width="780"/></picture>
+</div>
+<div class="layout-43">Walk through it · 5 steps</div>
+</a>
+<a class="layout-36" href="workflows/#part-picker">
+<div class="layout-37">
+<div class="layout-38">pick 4</div>
+<h3 class="layout-39">Part Picker</h3>
+<p class="layout-40">Tick several sets and get the missing parts you can pull from your sorted loose stock, in your own order.</p>
+</div>
+<div class="layout-41">
+<picture class="layout-42"><source media="(prefers-color-scheme: dark)" srcset="assets/img/3c-picker-sets-phone-390-dark.png"/><img alt="Part Picker" decoding="async" height="1688" loading="lazy" src="assets/img/3c-picker-sets-phone-390-light.png" width="780"/></picture>
+</div>
+<div class="layout-43">Walk through it · 4 steps</div>
+</a>
+<a class="layout-36" href="workflows/#matcher">
+<div class="layout-37">
+<div class="layout-38">covers 2 of 2 missing</div>
+<h3 class="layout-39">Matcher</h3>
+<p class="layout-40">See which incomplete copies your loose stock can finish, then decide what to build or buy.</p>
+</div>
 
-<section>
-<h2>Made for scripts and assistants</h2>
-<p>Create a scoped token, call the API, or connect an assistant over MCP. Write tools are off unless you enable them.</p>
-<pre><code>docker compose exec brickwork brickwork token create --name assistant --scope read
-brickwork mcp --in-process --token-file data/mcp-token</code></pre>
-<p><a href="api/">API reference</a> · <a href="mcp/">MCP guide</a></p>
+<div class="layout-43">Walk through it · 2 steps</div>
+</a>
+</div>
 </section>
+<section class="more-advantages layout-44">
+<h2 class="layout-45">Why collectors stay</h2>
+<div class="layout-35">
+<div class="layout-46">
+<h3 class="layout-39">One place instead of five tools</h3>
+<p class="layout-47">Sets, minifigures, parts, instructions, boxes, storage, prices, wishlist and orders share the same modules. Several copies of a set stay apart, so you never buy one twice.</p>
+<div class="layout-48">
+<span class="layout-49">Copies</span>
+<span class="layout-49">Storage</span>
+<span class="layout-49">Importer</span>
+</div>
+</div>
+<div class="layout-46">
+<h3 class="layout-39">Your data stays yours</h3>
+<p class="layout-47">Self-hosted, in one folder you back up. Everything that needs no catalogue key works offline.</p>
+<div class="layout-48">
+<span class="layout-49">No account</span>
+<span class="layout-49">No telemetry</span>
+<span class="layout-49">Docker</span>
+</div>
+</div>
+<div class="layout-46">
+<h3 class="layout-39">Every change can be undone</h3>
+<p class="layout-47">Each write records an event with an Undo link, including changes from the API or an assistant.</p>
+<div class="layout-48">
+<span class="layout-49">History</span>
+<span class="layout-49">Undo</span>
+</div>
+</div>
+<div class="layout-46">
+<h3 class="layout-39">Installable on any screen</h3>
+<p class="layout-47">Add it to the Home Screen from the browser. No app store. Installing needs HTTPS.</p>
+<div class="layout-48">
+<span class="layout-49">iPhone</span>
+<span class="layout-49">iPad</span>
+<span class="layout-49">Desktop</span>
+</div>
+</div>
+<div class="layout-46">
+<h3 class="layout-39">Prices in your currency</h3>
+<p class="layout-47">BrickLink price guide with your region and currency, through your own key.</p>
+<div class="layout-48">
+<span class="layout-49">Region</span>
+<span class="layout-49">Currency</span>
+</div>
+</div>
+<div class="layout-46">
+<h3 class="layout-39">Open source, MIT</h3>
+<p class="layout-47">Read it, run it, change it.</p>
+<div class="layout-48">
+<span class="layout-49">MIT</span>
+<span class="layout-49">GitHub</span>
+</div>
+</div>
+</div>
+</section>
+<section class="scriptable-and-ai-ready layout-33">
+<div class="layout-50">
+<div class="layout-51">
+<span class="layout-19">What sets it apart</span>
+<h2 class="layout-20">Scriptable, and ready for your assistant.</h2>
+<p class="layout-21">The whole collection sits behind a versioned REST API. A built-in MCP server lets an assistant read it and, only if you allow it, change it.</p>
+<div class="layout-52">
+<div class="layout-53">
+<span class="layout-54">REST API</span>
+<span class="layout-55">Scoped tokens, an OpenAPI contract, idempotent writes.</span>
+</div>
+<div class="layout-53">
+<span class="layout-54">MCP</span>
+<span class="layout-55">Same API, scopes and Undo as any other client. Write tools stay off until you enable them.</span>
+</div>
+<div class="layout-53">
+<span class="layout-54">Undo</span>
+<span class="layout-55">Every change leaves an audit event with an Undo link, whoever made it.</span>
+</div>
+<div class="layout-53">
+<span class="layout-54">CLI</span>
+<span class="layout-55">An admin CLI for tokens, setup and migration.</span>
+</div>
+</div>
+<div class="layout-56">
+<a href="api/">API reference</a>
+<a href="mcp/">MCP guide</a>
+</div>
+</div>
+<div class="layout-57">
+<div class="layout-58">
+<div class="layout-59">Terminal</div>
+<pre class="layout-60"><span class="layout-61">$</span> docker compose exec brickwork brickwork token create --name assistant --scope read
+<span class="layout-61">$</span> brickwork mcp --in-process --token-file data/mcp-token</pre>
+</div>
+<div class="layout-62">
+<div class="layout-63">Assistant · connected over MCP · read scope</div>
+<div class="layout-64">Which unfinished sets can I complete from my loose parts?</div>
+<div class="layout-65">
+<span>One, right now: <strong class="layout-66">10732-1 Guido and Luigi's Pit Stop</strong>. Your loose stock covers both missing parts.</span>
+<span>Three more get closer. Ice Dragon Attack would be one part short.</span>
+<span class="layout-67">Read 4 copies · nothing changed</span>
+</div>
+</div>
+<span class="layout-68">Illustrative exchange on the demo collection.</span>
+</div>
+</div>
+</section>
+<section class="integrations layout-69">
+<div class="layout-70">
+<div class="layout-18">
+<span class="layout-19">Works with the sites you already use</span>
+<h2 class="layout-20">BrickLink, Rebrickable, Brickset. Keep your inventory where you like.</h2>
+</div>
+<p class="layout-21">Brick Work uses your own keys for catalogue data and prices, and bundles none of their data. It does not replace these sites; it works next to them.</p>
+</div>
+<div class="layout-71">
+<div class="layout-72">
+<div class="layout-73"><span class="layout-74">Available</span><h3 class="layout-75">Move over from another app</h3><p class="layout-76">Run <code class="layout-77">brickwork migrate</code> on your old tracker. It imports read-only and shows row-count and checksum proof. The old database is never changed.</p></div>
+<div class="layout-73"><span class="layout-74">Available</span><h3 class="layout-75">Work alongside BrickLink</h3><p class="layout-76">Import orders from your account, a confirmation email or the order XML. Export the missing parts of any copy as BrickLink XML for your next order.</p></div>
+<div class="layout-73"><span class="layout-78">Planned</span><h3 class="layout-75">Sync your existing collection</h3><p class="layout-76">Pull your collection from Rebrickable, Brickset or BrickLink, work on it here, then send the changes back. Pull never deletes; send always shows the changes first.</p></div>
+</div>
 
-<section>
-<h2>Start in five commands</h2>
-<pre><code>mkdir -p data &amp;&amp; sudo chown 1000:1000 data
-cp .env.sample data/.env   # set BW_AUTHENTICATION_PASSWORD
+</div>
+<div class="layout-81">
+<div class="layout-82"><span>Service</span><span>Catalogue</span><span>Orders</span><span>Sync</span></div>
+<div class="layout-83"><span class="layout-84">BrickLink</span><span class="layout-74">Available</span><span class="layout-74">Available</span><span class="layout-78">Planned</span></div>
+<div class="layout-83"><span class="layout-84">Rebrickable</span><span class="layout-74">Available</span><span class="layout-85">—</span><span class="layout-78">Planned</span></div>
+<div class="layout-86"><span class="layout-84">Brickset</span><span class="layout-74">Available</span><span class="layout-85">—</span><span class="layout-78">Planned</span></div>
+<p class="layout-87">Catalogue data and prices use your own API keys. Brick Work is not affiliated with these services.</p>
+</div>
+</section>
+<section class="how-it-compares layout-16">
+<div class="layout-88">
+<div class="layout-18">
+<span class="layout-19">How it compares</span>
+<h2 class="layout-89">Not a replacement for the sites you use.</h2>
+<p class="layout-21">They are where the catalogue and the market live. Brick Work is where your own copies, parts and drawers live.</p>
+</div>
+<div class="layout-90">
+<div class="layout-91">
+<div class="layout-92"><span class="layout-93">Rebrickable</span><span class="layout-27">Hosted, large community, Build Engine and shopping lists</span></div>
+<span class="layout-94">Brick Work runs on your machine, works offline, and adds the table workflows, Undo, an API and MCP over your own data.</span></div>
+<div class="layout-91">
+<div class="layout-92"><span class="layout-93">Brickset</span><span class="layout-27">The big catalogue and collection site</span></div>
+<span class="layout-94">Your data stays at home, and the work happens at part level.</span></div>
+<div class="layout-91">
+<div class="layout-92"><span class="layout-93">BrickTracker</span><span class="layout-27">The self-hosted tracker Brick Work grew from</span></div>
+<span class="layout-94">Brick Work keeps its idea and adds the workbench flows, an API, MCP and a redesigned interface.</span></div>
+<div class="layout-91">
+<div class="layout-92"><span class="layout-93">BrickStore, BrickEconomy, phone scanners</span><span class="layout-27">A BrickLink desktop tool, a value tracker, set scanners</span></div>
+<span class="layout-94">Different jobs. Use them alongside.</span></div>
+</div>
+</div>
+</section>
+<section class="how-it-fits-together layout-16">
+<h2 class="layout-95">How it fits together</h2>
+<p class="layout-96">Four areas in the app. Sets, minifigures, parts, instructions and boxes are all items with the same notes, storage, prices, history and Undo.</p>
+<div class="layout-97">
+<div class="layout-98">
+<span class="layout-99">Collection</span>
+<span class="layout-55">Sets, minifigures, parts, instructions, boxes</span>
+</div>
+<div class="layout-98">
+<span class="layout-99">Workbench</span>
+<span class="layout-55">Check Set Parts, Part Picker, Matcher, Orders, Storage</span>
+</div>
+<div class="layout-98">
+<span class="layout-99">Planning</span>
+<span class="layout-55">Wishlist, prices, complete sets</span>
+</div>
+<div class="layout-98">
+<span class="layout-99">Manage</span>
+<span class="layout-55">Add, tools and admin</span>
+</div>
+</div>
+<div class="layout-100">
+<span class="layout-19">Integration edge</span>
+<span class="layout-101">REST API · CLI · MCP server</span>
+</div>
+</section>
+<section class="questions layout-16">
+<h2 class="layout-95">Questions collectors ask</h2>
+<div class="layout-102">
+<div class="layout-103"><h3 class="layout-24">I do not run servers.</h3><p class="layout-76">The demo needs no install. To keep your own, you need a computer at home or a NAS, and one Docker Compose path.</p></div>
+<div class="layout-103"><h3 class="layout-24">Is it safe to let an assistant into my data?</h3><p class="layout-76">Tokens are read-only by default. Write tools stay off unless you enable them, scopes limit what a token can do, and every change has an Undo link.</p></div>
+<div class="layout-103"><h3 class="layout-24">What if the project disappears?</h3><p class="layout-76">It is open source under MIT. Your data is a plain database file in one folder, plus exports.</p></div>
+<div class="layout-103"><h3 class="layout-24">Does it replace Rebrickable or BrickLink?</h3><p class="layout-76">No. It uses your own keys for catalogue data and prices, and bundles none of their data.</p></div>
+<div class="layout-103"><h3 class="layout-24">Is it finished?</h3><p class="layout-76">No. It is pre-1.0 and used daily by its maintainer on about 200 set copies. Planned work is labelled planned on the roadmap.</p></div>
+</div>
+</section>
+<section class="install layout-104" id="install">
+<div class="layout-18">
+<h2 class="layout-105">Start in five commands</h2>
+<p class="layout-21">Docker Compose on your own machine. Then open <code class="layout-106">http://localhost:3333</code>. Moving an old collection over? <code class="layout-106">brickwork migrate</code> imports it read-only.</p>
+<a class="layout-107" href="docs/">Full install guide</a>
+</div>
+<pre class="layout-108">mkdir -p data &amp;&amp; sudo chown 1000:1000 data
+cp .env.sample data/.env   <span class="layout-61"># set BW_AUTHENTICATION_PASSWORD</span>
 docker compose build
 docker compose run --rm --entrypoint brickwork brickwork setup
-docker compose up -d</code></pre>
-<p>Then open <code>http://localhost:3333</code>. Moving an old collection over? <code>brickwork migrate</code> imports it read-only. The full guide is in the <a href="docs/">documentation</a>.</p>
+docker compose up -d</pre>
 </section>
-
-<section>
-<h2>Planned, not built yet</h2>
-<p>The order is the promise; there are no dates. Buildable sets (which catalogue sets your stock can build), syncing your collection with Rebrickable, BrickLink and Brickset, importers for more sources, and a pile check by photo are on the <a href="https://github.com/users/Ulef1005/projects/3">public roadmap</a>. Vote with a thumbs-up on the issue you want.</p>
+<section class="planned layout-16">
+<div class="layout-109">
+<h2 class="layout-105">Planned, not built yet</h2>
+</div>
+<p class="layout-110">The order is the promise; there are no dates. Vote with a thumbs-up on the issue you want.</p>
+<div class="layout-111">
+<div class="layout-112">
+<span class="layout-113">Planned</span>
+<span class="layout-93">Buildable sets</span>
+<span class="layout-55">Which catalogue sets your stock can build.</span>
+</div>
+<div class="layout-112">
+<span class="layout-113">Planned</span>
+<span class="layout-93">Collection sync</span>
+<span class="layout-55">With Rebrickable, BrickLink and Brickset.</span>
+</div>
+<div class="layout-112">
+<span class="layout-113">Planned</span>
+<span class="layout-93">Pile check by photo</span>
+<span class="layout-55">What is in a mixed bin, and what it is worth.</span>
+</div>
+<div class="layout-112">
+<span class="layout-113">Planned</span>
+<span class="layout-93">Sale price for a used copy</span>
+<span class="layout-55">A fair price that accounts for missing parts.</span>
+</div>
+<div class="layout-112">
+<span class="layout-113">Planned</span>
+<span class="layout-93">Complete or part out</span>
+<span class="layout-55">For minifigures and sets, side by side.</span>
+</div>
+<div class="layout-112">
+<span class="layout-113">Planned</span>
+<span class="layout-93">One shopping list</span>
+<span class="layout-55">Missing parts across all copies, cheapest first.</span>
+</div>
+</div>
+<a class="layout-114" href="https://github.com/users/Ulef1005/projects/3">Public roadmap</a>
 </section>

@@ -1,14 +1,54 @@
+<!-- site:skip -->
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="static/brickwork/lockup-stacked-dark.png">
+    <img src="static/brickwork/lockup-stacked-light.png" alt="Brick Work" width="320">
+  </picture>
+</p>
+
+<p align="center"><strong>The workbench for your brick collection.</strong></p>
+
+<p align="center">
+  <a href="https://ulef1005.github.io/brick-work/">Website</a> ·
+  <a href="https://ulef1005.github.io/brick-work/docs/">Docs</a> ·
+  <a href="https://ulef1005.github.io/brick-work/workflows/">Workflows</a> ·
+  <a href="https://ulef1005.github.io/brick-work/api/">API</a> ·
+  <a href="https://ulef1005.github.io/brick-work/mcp/">MCP</a> ·
+  <a href="https://github.com/users/Ulef1005/projects/3">Roadmap</a>
+</p>
+<!-- /site:skip -->
+
 # Brick Work
 
-Brick Work is a standalone Flask app for a LEGO collection: sets and loose stock, part checks, missing pieces, storage, wishes, prices and orders. The browser, API, CLI and MCP server share the v3 core and `brickwork.db`. Catalogue identities come from BrickLink. Source imports enrich those identities; they do not invent them.
+Brick Work is a self-hosted web app for a brick collection: sets and loose stock, part checks, missing pieces, storage, wishes, prices and orders. Every app does inventory. Brick Work also helps at the table: it checks a set's parts, pulls the missing ones from your loose stock and shows which unfinished sets that stock can complete. The browser, API, CLI and MCP server share one core and one database file, `brickwork.db`; catalogue identities come from BrickLink, and source imports enrich them without inventing new ones.
 
-## Status
+## Where we stand
 
-Brick Work is pre-1.0. Its maintainer uses it daily for a collection of about 200 set copies, but the schema and the API can still change between minor versions; read the [CHANGELOG](CHANGELOG.md) before upgrading. It is self-hosted, single-user and meant for a home network or a VPN, not the open internet.
+Brick Work is pre-1.0. Its maintainer uses it daily for a collection of about 200 set copies, but the schema and the API can still change between minor versions; read the [CHANGELOG](CHANGELOG.md) before upgrading.
 
-**What it does beyond inventory:** check a copy's parts against its inventory, pick missing parts from your sorted loose stock, see which incomplete sets your stock can finish, value copies against BrickLink prices, receive orders into stock, and keep storage locations, wishlists and instructions together. Everything is reachable from the browser (as an installable app), a versioned REST API with scoped tokens and Undo, an admin CLI, and an MCP server for AI assistants.
+- **Shipped:** the Collection, Workbench (Check Set Parts, Part Picker, Matcher, Orders), Planning and Manage screens; an installable web app; a versioned REST API with scoped tokens and Undo; an admin CLI; an MCP server; a read-only importer for an older tracker database.
+- **In progress:** the live demo with sample data, and a synthetic dataset for the screenshots.
+- **Planned, not built:** Buildable sets, collection sync with Rebrickable, BrickLink and Brickset, and a pile check by photo. The [public roadmap](https://github.com/users/Ulef1005/projects/3) keeps the order; there are no dates.
 
-**What it contacts:** nothing until you add keys. With your own keys it calls BrickLink, Rebrickable and Brickset for catalogue data, inventories, pictures and prices; photo identification sends the photo you choose to Brickognize. There is no telemetry and no account with this project.
+It is self-hosted, single-user and meant for a home network or a VPN, not the open internet.
+
+## Who it is for
+
+Private collectors who want the collection to help them finish what they started: people with a shelf of built sets, boxes of sorted loose parts and a list of sets that are nearly complete. It is not a shop tool, and it is not a hosted service. Your data stays in one folder on your machine.
+
+## Use cases
+
+- **Finish the set you started.** Check a copy against its inventory and see how far along it is.
+- **Build from your bulk.** Tick several unfinished sets, get the missing parts you can pull from your sorted stock in your own sort order, and see which sets the stock can finish outright.
+- **Receive a parts order.** Import it from your BrickLink account, an email or an XML file, count the parts as they arrive and allocate them to sets.
+- **Decide what to buy.** Compare prices, wishlists and completion before you order.
+- **Let a script or an assistant help.** Use the REST API, the CLI or the MCP server, with scoped tokens and an Undo link on every change.
+
+The [workflows](https://ulef1005.github.io/brick-work/workflows/) and [use cases](https://ulef1005.github.io/brick-work/use-cases/) pages walk through each one.
+
+## What it contacts
+
+Nothing until you add keys. nothing until you add keys. With your own keys it calls BrickLink, Rebrickable and Brickset for catalogue data, inventories, pictures and prices; photo identification sends the photo you choose to Brickognize. There is no telemetry and no account with this project.
 
 ## Standalone installation with Docker
 

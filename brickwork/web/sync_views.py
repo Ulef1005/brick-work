@@ -158,7 +158,8 @@ def _message(exc, source):
         return LABELS[source] + ' is paused: the daily budget is used up. Try again after ' + (exc.retry_at or 'midnight UTC')[:16].replace('T', ' ') + '.'
     if isinstance(exc, SourceNotConfigured):
         return str(exc) + '.'
-    return str(exc)
+    from .safe_errors import public
+    return public(exc, LABELS[source] + ' could not be reached · nothing was changed. Try again.')
 
 
 @web_page.post('/manage/sync/<source>/<action>')

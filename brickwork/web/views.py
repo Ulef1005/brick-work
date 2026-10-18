@@ -4,6 +4,8 @@ import sqlite3
 import time
 from xml.etree import ElementTree as ET
 from werkzeug.exceptions import HTTPException
+
+from .safe_errors import public
 from flask import Blueprint, abort, current_app, g, flash, jsonify, redirect, render_template, request, session, url_for
 from flask_login import login_required
 
@@ -554,7 +556,7 @@ def bw_add_search():
         with database(brickwork_path(), read_only=True) as db:
             result = search(db, request.args.get('type', 'S'), request.args.get('q', '')[:100], request.args.get('sort', 'number'))
     except (ValueError, sqlite3.Error, OSError) as error:
-        return jsonify(error=str(error) if isinstance(error, ValueError) else 'Catalogue is not available'), 400
+        return jsonify(error=public(error, 'Catalogue is not available')), 400
     response = jsonify(result)
     response.headers['Cache-Control'] = 'no-store'
     return response
@@ -614,7 +616,7 @@ def bw_add_review():
                 owner=bw_add_token(), photo=base64.b64encode(photo).decode() if photo else None, mode=mode))
         return jsonify(**proposal, token=token, candidates=mode == 'photo')
     except (ValueError, SourceError, sqlite3.Error, OSError, UnicodeError, json.JSONDecodeError, ET.ParseError) as error:
-        return jsonify(error=str(error) if isinstance(error, (ValueError, SourceError)) else 'Could not read this input'), 400
+        return jsonify(error=public(error, 'Could not read this input')), 400
 
 
 @web_page.post('/manage/add/confirm')
@@ -658,7 +660,7 @@ def bw_add_confirm():
         if saved:
             bw_start_worker()
         message = (f'{len(saved)} items added · try again to finish this review' if saved else
-                   str(error) if isinstance(error, ValueError) else 'Could not add · check the review and try again')
+                   public(error, 'Could not add · check the review and try again'))
         return jsonify(error=message, receipts=saved), 400
 
 
@@ -859,7 +861,7 @@ def bw_check_save(copy_id, figure=None):
         with database(path) as db:
             state = checker.write(db, copy_id, payload, _media(path), figure)
     except (ValueError, sqlite3.Error, OSError) as error:
-        message = str(error) if isinstance(error, ValueError) else 'The answer could not be saved. Retry.'
+        message = public(error, 'The answer could not be saved. Retry.')
         if not request.is_json:
             flash(message, 'bw-checker')
             return redirect(url_for('web.bw_check_figure', copy_id=copy_id, minifig_type=figure[0], minifig_no=figure[1]) if figure else url_for('web.bw_check_copy', copy_id=copy_id))
@@ -912,7 +914,7 @@ def bw_inventory():
         with database(brickwork_path(), read_only=True) as db:
             data = options(db)
     except (ValueError, sqlite3.Error) as exc:
-        error = str(exc) if isinstance(exc, ValueError) else 'Brick Work database is not available. Check BW_DB_PATH and try again.'
+        error = public(exc, 'Brick Work database is not available. Check BW_DB_PATH and try again.')
     response = current_app.make_response(render_template('web/toni/web/bw_inventory.html', **data, error=error, csrf_token=bw_add_token()))
     response.headers['Cache-Control'] = 'no-store'
     return response
@@ -941,7 +943,7 @@ def bw_orders():
         with database(brickwork_path(), read_only=True) as db:
             rows = orders.listing(db)
     except (ValueError, sqlite3.Error) as exc:
-        error = str(exc) if isinstance(exc, ValueError) else 'Brick Work database is not available. Check BW_DB_PATH and try again.'
+        error = public(exc, 'Brick Work database is not available. Check BW_DB_PATH and try again.')
     response = current_app.make_response(render_template('web/toni/web/bw_orders.html', rows=rows, detail=None, error=error, csrf_token=bw_add_token()))
     response.headers['Cache-Control'] = 'no-store'
     return response
@@ -1026,7 +1028,7 @@ def bw_inventory_detect():
         proposal = dict(id=uuid.uuid4().hex, owner=bw_add_token(), candidates=choices, photo=base64.b64encode(photo).decode())
         return jsonify(candidates=choices, unresolved=unresolved, token=bw_add_signer().dumps(proposal))
     except (ValueError, sqlite3.Error, OSError) as exc:
-        return jsonify(error=str(exc) if isinstance(exc, ValueError) else 'Could not recognise this photo'), 400
+        return jsonify(error=public(exc, 'Could not recognise this photo')), 400
 
 
 @web_page.post('/workbench/part-to-inventory/save')
@@ -1080,7 +1082,7 @@ def bw_inventory_undo():
             undo(db, int(data.get('event', 0)))
         return jsonify(message='Undone')
     except (ValueError, TypeError, sqlite3.Error) as exc:
-        return jsonify(error=str(exc) if isinstance(exc, ValueError) else 'Nothing was saved · review the values and try again'), 400
+        return jsonify(error=public(exc, 'Nothing was saved · review the values and try again')), 400
 @web_page.post('/workbench/orders/action/<action>')
 @login_required
 def bw_orders_action(action):
@@ -1122,7 +1124,7 @@ def bw_orders_action(action):
                 abort(404)
         return jsonify(message='Saved', event_id=event)
     except (ValueError, KeyError, TypeError, sqlite3.Error, SourceError, UnicodeError) as exc:
-        return jsonify(message=str(exc) if isinstance(exc, (ValueError, SourceError)) else 'Nothing was saved · review the values and try again'), 400
+        return jsonify(message=public(exc, 'Nothing was saved · review the values and try again')), 400
 
 
 @web_page.get('/workbench/orders/<int:order_id>/short.xml')
@@ -1162,7 +1164,7 @@ def bw_storages(identifier=None):
                 detail = ledger.storage_view(db, places[0]['id'], rows)
             history = ledger.history(db, actions=('storage', 'move', 'archive'))
     except (ValueError, sqlite3.Error) as exc:
-        error = str(exc) if isinstance(exc, ValueError) else 'Brick Work database is not available. Check BW_DB_PATH and try again.'
+        error = public(exc, 'Brick Work database is not available. Check BW_DB_PATH and try again.')
     response = current_app.make_response(render_template('web/toni/web/bw_storage.html', rows=rows, detail=detail, explicit=explicit, history=history, error=error, csrf_token=bw_add_token(),
         storage_types=_ledger().STORAGE_TYPES))
     response.headers['Cache-Control'] = 'no-store'
@@ -1196,7 +1198,7 @@ def bw_storage_action(action):
                 abort(404)
         return jsonify(message='Saved', event_id=event)
     except (ValueError, KeyError, TypeError, sqlite3.Error) as exc:
-        return jsonify(message=str(exc) if isinstance(exc, ValueError) else 'Nothing was saved · review the values and try again'), 400
+        return jsonify(message=public(exc, 'Nothing was saved · review the values and try again')), 400
 
 
 @web_page.get('/collection/sets')
@@ -1223,7 +1225,7 @@ def bw_collection(kind):
             rows = collection.listing(db, kind)
             choices = collection.options(db)
     except (sqlite3.Error, OSError, ValueError) as exc:
-        error = str(exc)
+        error = public(exc, 'Brick Work database is not available. Check BW_DB_PATH and try again.')
     response = current_app.make_response(render_template('web/toni/web/bw_collection.html',
         title=collection.TYPES[kind], kind=kind, rows=rows, records=ui.bw_collection_records(rows), choices=choices, error=error,
         csrf_token=bw_add_token(), can_edit=bw_collection_editable(), detail=None,
@@ -1284,7 +1286,7 @@ def bw_collection_wishes():
         with database(brickwork_path(), read_only=True) as db:
             rows, choices = collection.listing(db, 'S', wishes=True), collection.options(db)
     except (sqlite3.Error, OSError, ValueError) as exc:
-        error = str(exc)
+        error = public(exc, 'Brick Work database is not available. Check BW_DB_PATH and try again.')
     response = current_app.make_response(render_template('web/toni/web/bw_collection.html',
         title='Wishlist', kind='wish', rows=rows, records=ui.bw_collection_records(rows), choices=choices, error=error, csrf_token=bw_add_token(),
         can_edit=bw_collection_editable(), detail=None))
@@ -1391,7 +1393,7 @@ def bw_collection_write(action):
                 message='Caption saved'
             else: abort(404)
     except (ValueError,KeyError,TypeError,sqlite3.Error,OSError) as exc:
-        return jsonify(message=str(exc)),400
+        return jsonify(message=public(exc, 'Nothing was saved · review the values and try again')),400
     return jsonify(event_id=event,message=message,**result)
 
 
@@ -1424,7 +1426,7 @@ def bw_collection_jump():
             rows.append(row)
         result['results']=rows
     except (sqlite3.Error,OSError,ValueError) as exc:
-        return jsonify(message=str(exc)),503
+        return jsonify(message=public(exc, 'Brick Work database is not available · try again')),503
     response=jsonify(result);response.headers['Cache-Control']='no-store';return response
 
 
@@ -1452,7 +1454,7 @@ def bw_planning(screen):
                 available_types=[r[0] for r in db.execute('SELECT DISTINCT item_type FROM price_current')]
             else:
                 data=planning.ranking(db);rows=data['rows'];settings=data['settings']
-    except (ValueError,sqlite3.Error,OSError) as exc: error=str(exc)
+    except (ValueError,sqlite3.Error,OSError) as exc: error=public(exc, 'Brick Work database is not available. Check BW_DB_PATH and try again.')
     response=current_app.make_response(render_template('web/toni/web/bw_prices.html' if screen=='prices' else 'web/toni/web/bw_planning.html',
         screen=screen,title={'wishlist':'Wishlist','prices':'Prices','complete-sets':'Complete sets'}[screen],
         rows=rows,settings=settings,error=error,kind=kind,types=collection.TYPES,available_types=available_types, wishlists=lists, list_id=list_id,
@@ -1472,7 +1474,7 @@ def bw_prices_records():
     try:
         with database(brickwork_path(),read_only=True) as db:
             result=planning.price_records(planning.priced_items(db))
-    except (ValueError,sqlite3.Error,OSError) as exc: return jsonify(message=str(exc)),503
+    except (ValueError,sqlite3.Error,OSError) as exc: return jsonify(message=public(exc, 'Brick Work database is not available · try again')),503
     response=current_app.response_class(json.dumps(result,separators=(',',':'),ensure_ascii=False),mimetype='application/json')
     response.headers['Cache-Control']='no-store'
     return response
@@ -1493,7 +1495,7 @@ def bw_prices_details():
     try:
         with database(brickwork_path(),read_only=True) as db:
             result=planning.price_details(db,kind,number,colour)
-    except (ValueError,sqlite3.Error,OSError) as exc: return jsonify(message=str(exc)),503
+    except (ValueError,sqlite3.Error,OSError) as exc: return jsonify(message=public(exc, 'Brick Work database is not available · try again')),503
     if result is None: abort(404)
     response=jsonify(result);response.headers['Cache-Control']='no-store';return response
 
@@ -1535,7 +1537,7 @@ def bw_planning_write(action):
                 return jsonify(message='Price refresh queued · budgets checked by the worker',jobs=jobs)
             if action=='undo': planning.undo(db,int(data['event_id']));event=None
             else: event=planning.save(db,action,data)
-    except (ValueError,KeyError,TypeError,sqlite3.Error,OSError) as exc: return jsonify(message=str(exc)),400
+    except (ValueError,KeyError,TypeError,sqlite3.Error,OSError) as exc: return jsonify(message=public(exc, 'Nothing was saved · review the values and try again')),400
     return jsonify(message='Undone' if action=='undo' else 'Saved',event_id=event)
 
 
@@ -1560,7 +1562,7 @@ def bw_wishlists_write(action):
             else: abort(404)
         return jsonify(message='Copied' if data.get('copy') else 'Saved', event_id=event)
     except (ValueError,sqlite3.Error) as exc:
-        return jsonify(message=str(exc)),400
+        return jsonify(message=public(exc, 'Nothing was saved · review the values and try again')),400
 
 
 @web_page.get('/planning/wishlists/<identifier>/export.<format>')
@@ -1578,7 +1580,7 @@ def bw_wishlists_export(identifier,format):
         response.headers['Content-Disposition']='attachment; filename='+result['filename']
         return response
     except (ValueError,sqlite3.Error) as exc:
-        return jsonify(message=str(exc)),400
+        return jsonify(message=public(exc, 'Nothing was saved · review the values and try again')),400
 
 from . import sync_views  # noqa: E402,F401 — 12n Collection sync pages
 

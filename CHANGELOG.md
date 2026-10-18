@@ -2,6 +2,7 @@
 
 ## Brick Work 2.0.0-dev (unreleased)
 
+- Error responses no longer carry database, file-system or other internal error text (#76): messages written for people still show, anything else is logged on the server and replaced by the handler's plain message.
 - Tools & Admin → About: version, licence, source link, data credits, the LEGO disclaimer and BrickLink's required notice (also in THIRD_PARTY_NOTICES).
 - What is this?: Enable camera opens a live preview with a guide, as in Part to Inventory; the next press (or Space) takes the picture and identifies it. A saved photo stays the quiet alternative, and the Part/Minifigure switch is a kit segment.
 - README: how to get BrickLink, Rebrickable and Brickset keys and the limits each service sets; the install starts with the clone and asks for the password before the first start (found by a fresh-machine test).

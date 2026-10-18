@@ -9,6 +9,7 @@ import sqlite3
 import uuid
 
 from flask import abort, current_app, flash, get_flashed_messages, redirect, render_template, request, url_for
+from .safe_errors import public
 from flask_login import login_required
 
 from .views import web_page, bw_add_csrf, bw_add_token, bw_collection_editable
@@ -127,7 +128,7 @@ def bw_import_apply(plan_id):
             with audit_origin('app'):
                 result = bricktracker.apply(db, plan_id, decisions)
         except (ValueError, sqlite3.Error) as exc:
-            flash(str(exc), 'warning')
+            flash(public(exc, 'The import could not run · nothing was changed'), 'warning')
             return redirect(url_for('web.bw_import_plan', plan_id=plan_id))
     c = result['counts']
     if result.get('already_applied'):
@@ -152,7 +153,7 @@ def bw_import_undo():
             bricktracker.undo(db, int(event))
             flash('Import undone.', 'success')
         except (ValueError, sqlite3.Error) as exc:
-            flash(str(exc), 'warning')
+            flash(public(exc, 'The import could not run · nothing was changed'), 'warning')
     return redirect(url_for('web.bw_import_legacy'))
 
 

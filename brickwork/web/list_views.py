@@ -4,6 +4,7 @@ from datetime import date
 import sqlite3
 
 from flask import abort, current_app, render_template, request, url_for
+from .safe_errors import public
 from flask_login import login_required
 
 from .views import web_page
@@ -56,7 +57,7 @@ def bw_list_print(kind):
     try:
         rows, copies = _rows(kind)
     except (ValueError, sqlite3.Error) as exc:
-        error = str(exc)
+        error = public(exc, 'Brick Work database is not available · try again')
     pictures = request.args.get('pictures', '1') != '0'
     images = _images(rows) if pictures and rows else {}
     from .ui import passthrough_args
@@ -82,7 +83,7 @@ def bw_list_csv(kind):
     try:
         rows, _ = _rows(kind)
     except (ValueError, sqlite3.Error) as exc:
-        return current_app.response_class(str(exc), status=400, mimetype='text/plain')
+        return current_app.response_class(public(exc, 'Could not build this list · try again'), status=400, mimetype='text/plain')
     response = current_app.response_class(list_exports.to_csv(kind, rows), mimetype='text/csv')
     response.headers['Content-Disposition'] = f'attachment; filename=brickwork-{kind}-{date.today().isoformat()}.csv'
     response.headers['Cache-Control'] = 'no-store'
@@ -102,7 +103,7 @@ def bw_orders_export():
             data = order_exports.rows(db, kind, request.args.get('from') or None, request.args.get('to') or None,
                                       request.args.get('store') or None)
     except (ValueError, sqlite3.Error) as exc:
-        return current_app.response_class(str(exc), status=400, mimetype='text/plain')
+        return current_app.response_class(public(exc, 'Could not build this list · try again'), status=400, mimetype='text/plain')
     response = current_app.response_class(order_exports.to_csv(kind, data), mimetype='text/csv')
     response.headers['Content-Disposition'] = f'attachment; filename=brickwork-orders-{kind}-{date.today().isoformat()}.csv'
     response.headers['Cache-Control'] = 'no-store'

@@ -2,7 +2,7 @@
 
 Catalogue facts (set, part, colour and minifigure names and numbers) come from the design test data,
 which took them from a public catalogue snapshot. The collection itself is invented: copies, storage,
-purchases, check state, loose stock and every price. Owners get invented names. No pictures are
+purchases, check state, loose stock, owners and every price. No pictures are
 stored, so every item shows the app's missing-picture tile, and nothing here calls a network.
 """
 import json
@@ -12,7 +12,6 @@ from pathlib import Path
 from ..core.connect import connect
 
 DATA = Path(__file__).resolve().parents[2] / 'design' / 'test-data'
-OWNERS = {'Alex': 'Alex', 'Sam': 'Sam'}  # invented names for the demo
 STAMP = '2026-10-12T08:00:00+00:00'
 
 
@@ -77,7 +76,7 @@ def fill(db, data):
         flags[('tag', tag['name'])] = 'tag-' + slug(tag['name'])
         db.execute('INSERT INTO flags(id,name,kind,shown_on_grid) VALUES(?,?,?,?)', ('tag-' + slug(tag['name']), tag['name'], 'tag', 0))
     for owner in meta['owners']:
-        name = OWNERS.get(owner['name'], owner['name'])
+        name = owner['name']
         flags[('owner', owner['name'])] = 'owner-' + slug(name)
         db.execute('INSERT INTO flags(id,name,kind,shown_on_grid) VALUES(?,?,?,?)', ('owner-' + slug(name), name, 'owner', 0))
 

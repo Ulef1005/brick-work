@@ -2,7 +2,9 @@
 import re
 from pathlib import Path
 
-FORBIDDEN = ('test instance', '192.168.', '/Users/', 'op://')
+from brickwork.demo.privacy import pattern
+
+PRIVATE = pattern()  # generic, plus the maintainer's own from BW_PRIVATE_PATTERNS_FILE
 
 
 def test_the_site_pages_link_and_stay_clean(tmp_path):
@@ -11,8 +13,8 @@ def test_the_site_pages_link_and_stay_clean(tmp_path):
     for name in ('index.html', 'use-cases/index.html', 'workflows/index.html', 'docs/index.html'):
         page = site / name
         text = page.read_text()
-        for word in FORBIDDEN:
-            assert word not in text, f'{name}: {word}'
+        hit = PRIVATE.search(text)
+        assert not hit, f'{name}: {hit.group(0) if hit else ""}'
         assert not re.search(r'<img[^>]+src="https?://', text), f'{name}: external image'
         for target in re.findall(r'(?:href|src)="([^"#]+)"', text):
             if re.match(r'^[a-z][a-z0-9+.-]*:', target):

@@ -2,6 +2,7 @@
 
 ## Brick Work 2.0.0-dev (unreleased)
 
+- Publication review: the design test data uses invented owner names, and the private-material scans keep only generic patterns in the repository; a maintainer's own patterns come from `BW_PRIVATE_PATTERNS_FILE`.
 - Static demo: `scripts/build_demo.py OUT --base /brick-work/demo/` renders the Sets, Minifigures and Parts lists, set and part pages, Check Set Parts, Part Picker, Part to Inventory, Wishlist, Prices, Complete sets and Storage with the real templates on an invented collection (no pictures, no network). Writes say "Demo with sample data: changes are not saved".
 - The public snapshot keeps executable files executable (`scripts/check.sh`, `bin/brickwork`, `entrypoint.sh` had lost the bit in the first snapshot).
 - Migration proof: the reviewed collection counts are re-pinned for the cutover (two set price lookups since the review added two items with their price, source and search rows).

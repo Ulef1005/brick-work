@@ -1,6 +1,6 @@
 # Design audit: screens for approval
 
-Captures from the test instance (`test instance`) of the app, for approval on the tracking issues. Each file is named `<frame>-<view>-<device>-<width>-<theme>.png`, the same pattern as `design/frames/`. Long pages are clipped to their first 3,000 px.
+Captures from the test instance of the app, for approval on the tracking issues. Each file is named `<frame>-<view>-<device>-<width>-<theme>.png`, the same pattern as `design/frames/`. Long pages are clipped to their first 3,000 px.
 
 | Folder | Issue | What changed |
 |---|---|---|

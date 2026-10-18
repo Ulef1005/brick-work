@@ -138,6 +138,7 @@ Every setting is an environment variable, read from `data/.env` when it is not s
 | `BW_IMPORT_MAX_MB` | `200` | Largest upload, in MB, for a database import; also the cap for any request. |
 | `BW_API_TOKEN` | none | A bootstrap API token with admin scope. Optional: stored tokens are created in the app or with `brickwork token create`. |
 | `BW_MCP_WRITE` | off | `1` allows the MCP server's write tools (as `--allow-write`). |
+| `BW_PRIVATE_PATTERNS_FILE` | none | Development only: a file of extra regular expressions (one per line) that the private-material scans of the source tree, the demo and the Pages site also reject, such as your own host names. |
 
 ## API and MCP
 

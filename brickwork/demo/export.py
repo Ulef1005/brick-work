@@ -16,6 +16,7 @@ from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlsplit
 
 from . import dataset
+from .privacy import pattern
 
 ROOT = Path(__file__).resolve().parents[2]
 NOTE = 'Demo with sample data: changes are not saved'
@@ -35,7 +36,6 @@ LIMIT = 120
 ATTRIBUTE = re.compile(r'(\s(?:href|src|action|poster|content|data-[\w-]+)=")([^"]*)(")')
 # Links a visitor may follow (the app's catalogue links); nothing outside is ever loaded (src).
 LINKS_OK = re.compile(r'^https://(github\.com/Ulef1005/brick-work|(www\.)?bricklink\.com/|brickset\.com/|rebrickable\.com/)')
-PRIVATE = re.compile(r'example-home\.test|192\.168\.\d+\.\d+|/Users/[A-Za-z]|/home/[a-z]|op://|\btest instance\b', re.I)
 
 
 def key_of(url, base):
@@ -154,11 +154,11 @@ def rewrite(text, base, pages):
 
 def check(out):
     """Private patterns and outside URLs in src/href attributes; returns the findings."""
-    findings = []
+    findings, private = [], pattern()
     for path in sorted(out.rglob('*.html')) + [out / 'demo-shim.js']:
         text = path.read_text(encoding='utf-8')
         for number, line in enumerate(text.splitlines(), 1):
-            if PRIVATE.search(line):
+            if private.search(line):
                 findings.append(f'{path.relative_to(out)}:{number}: private pattern')
         for url in re.findall(r'\ssrc="(https?://[^"]+)"', text):
             findings.append(f'{path.relative_to(out)}: loads from outside {url}')

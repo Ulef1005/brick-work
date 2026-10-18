@@ -17,10 +17,13 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 RULES = ROOT / 'scripts' / 'public-snapshot.txt'
-# Private material that must never reach the public tree. The scan skips this file and its rules.
-PRIVATE = re.compile(r'example-home\.test|192\.168\.\d+\.\d+|/Users/[A-Za-z]|/home/[a-z]|op://|\btest instance\b',
-                     re.IGNORECASE)
-SKIP_SCAN = {'scripts/public_snapshot.py', 'tests/test_public_snapshot.py'}
+sys.path.insert(0, str(ROOT))
+from brickwork.demo.privacy import pattern  # noqa: E402
+
+# Private material that must never reach the public tree (generic patterns plus the maintainer's own,
+# from BW_PRIVATE_PATTERNS_FILE). The scan skips this file and its rules.
+PRIVATE = pattern()
+SKIP_SCAN = {'scripts/public_snapshot.py', 'tests/test_public_snapshot.py', 'brickwork/demo/privacy.py'}
 
 
 def rules(text):

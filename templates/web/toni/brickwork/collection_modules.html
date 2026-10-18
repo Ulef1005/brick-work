@@ -61,6 +61,7 @@
 <div class="bc-wanted-condition"><span class="bc-wanted-label">Wanted condition</span><div class="bc-wanted-segments" data-bc-save-group aria-label="Wanted condition">
 {% for value,label in [('new','New'),('used','Used'),('any','Any')] %}<form data-bc-action="save" data-identity='{{ {"entity":"wish","ids":[s.id]}|tojson }}'><input type="hidden" name="condition" value="{{ value }}"><button type="submit" aria-pressed="{{ 'true' if s.condition==value else 'false' }}" {% if not can_edit %}disabled{% endif %}>{{ label }}</button><span data-bc-form-message role="status"></span></form>{% endfor %}
 </div>{% if not s.condition %}<span class="secondary">Condition not recorded</span>{% endif %}</div>
+{% if row.wish %}{% include 'web/toni/web/_bw_wishlist_actions.html' %}{% endif %}
 </section>
 <details class="bc-module kit-disclosure bc-wish-facts"><summary>Wish details</summary><p class="mono">{{ s.quantity }} wanted · {{ s.condition or 'Condition not recorded' }}</p><p>{{ ('Max in '+s.max_price_currency) if s.max_price_currency else 'Currency not recorded' }} · Age not recorded</p>{% if s.note %}<p class="bc-note">{{ s.note }}</p>{% endif %}{{ source_details(row) }}</details>
 {% endmacro %}

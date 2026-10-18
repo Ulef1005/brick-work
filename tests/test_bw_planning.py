@@ -908,3 +908,20 @@ def test_wishlist_management_follows_wanted_lists(app,bw):
     assert bar and bar['data-wl-action']=='transfer'
     assert [b.get_text(strip=True) for b in bar.select('button')]==['Move','Copy','Clear']
     assert 'bw-wishlists.css' in str(soup.head or soup)
+
+
+def test_wish_page_moves_and_copies_from_the_wanted_module(app, bw):
+    # Frame 7b: no form above the page; a quiet action in the Wanted module opens a sheet with the
+    # other active lists as segments, Move as the one primary.
+    with admin.database(bw) as db:
+        with db:
+            db.execute("INSERT INTO wishlists(id,name,sort,created_at) VALUES('gifts','Gifts',1,'2026-10-18')")
+        wish = db.execute('SELECT id FROM wishlist ORDER BY id LIMIT 1').fetchone()[0]
+    soup = BeautifulSoup(logged_in(app).get(f'/collection/wishes/{wish}').data, 'html.parser')
+    module = soup.select_one('[data-module=wanted]')
+    assert module.select_one('button.wl-quiet[data-wl-open=bw-move-wish]').get_text(strip=True) == 'Move or copy to another list'
+    sheet = module.select_one('dialog#bw-move-wish.bc-sheet')
+    assert [i['value'] for i in sheet.select('.bc-segments input[name=list_id]')] == ['gifts']
+    assert [b.get_text(strip=True) for b in sheet.select('form[data-wl-action=transfer] .actions button')] == ['Move', 'Copy']
+    assert sheet.select('.primary') == sheet.select('button.primary.bw-primary')
+    assert not soup.select('.wl-move') and soup.select_one('[data-wl-undo]')['class'] == ['wl-quiet']

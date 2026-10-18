@@ -14,7 +14,6 @@
 .wl-feedback { display:flex;align-items:center;gap:12px;min-height:0; }
 .wl-feedback p:empty { display:none; }
 .wl-feedback p { margin:0;font:500 14px var(--tw-font);color:var(--tw-text-2); }
-.wl-feedback [data-wl-undo] { height:36px;min-height:36px;padding:0 12px;border-radius:8px; }
 /* Sheets: a head row, then one block per list that opens to edit it. */
 .wl-sheet { display:flex;flex-direction:column;gap:16px; }
 .wl-sheet:not([open]) { display:none; }
@@ -46,3 +45,9 @@
   .wl-toolbar>button,.wl-toolbar>.button { flex:1 1 auto; }
   .wl-selection [data-wl-count] { flex-basis:100%; }
 }
+/* Quiet actions (frame 7b "Remove from wishlist"): clay text, 44 px, no frame. */
+.wl-quiet { height:44px;min-height:44px;padding:0 12px;border:0;background:transparent;color:var(--tw-accent-text);font:500 14px var(--tw-font);justify-content:flex-start; }
+.wl-quiet:hover { background:transparent;text-decoration:underline; }
+.bc-wanted .wl-root { margin:0;gap:4px; }
+.bc-wanted .wl-root>.wl-quiet { align-self:flex-start;margin-left:-12px; }
+.wl-field { display:flex;flex-direction:column;gap:6px;font:500 13px var(--tw-font);color:var(--tw-text-2); }

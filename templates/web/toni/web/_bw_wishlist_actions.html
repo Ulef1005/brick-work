@@ -1,7 +1,12 @@
 <div class="wl-root" data-wl-root data-wl-url="{{ url_for('web.bw_wishlists_write',action='ACTION') }}" data-csrf="{{ csrf_token }}">
-<div class="wl-feedback"><p data-wl-message role="status" aria-live="polite"></p><button type="button" data-wl-undo hidden>Undo</button></div>
+<div class="wl-feedback"><p data-wl-message role="status" aria-live="polite"></p><button type="button" class="wl-quiet" data-wl-undo hidden>Undo</button></div>
 {% if detail is defined and detail.wish %}
-{% if can_edit %}<form class="wl-move" data-wl-action="transfer" data-wl-ids="{{ [detail.wish.id]|tojson }}"><label>Wishlist<select name="list_id">{% for l in choices.wishlists %}<option value="{{ l.id }}" {% if l.id==detail.wish.list_id %}selected{% endif %}>{{ l.name }}</option>{% endfor %}</select></label><div class="actions"><button name="copy" value="false">Move wish</button><button name="copy" value="true">Copy wish</button></div></form>{% endif %}
+{# In the Wanted module (frame 7b): a quiet action opens a sheet with the other lists as segments. #}
+{% set others = choices.wishlists|rejectattr('archived_at')|rejectattr('id','equalto',detail.wish.list_id)|list %}
+{% if can_edit and others %}<button type="button" class="wl-quiet" data-wl-open="bw-move-wish">Move or copy to another list</button>
+<dialog id="bw-move-wish" class="bc-sheet wl-sheet" aria-labelledby="bw-move-wish-title"><div class="actions wl-sheet-head"><h2 id="bw-move-wish-title">Move or copy this wish</h2><button type="button" class="wl-quiet" data-wl-close>Close</button></div>
+<form data-wl-action="transfer" data-wl-ids="{{ [detail.wish.id]|tojson }}">{% if others|length <= 4 %}<fieldset class="bc-segments"><legend>To list</legend><div>{% for l in others %}<label><input type="radio" name="list_id" value="{{ l.id }}" {% if loop.first %}checked{% endif %}><span>{{ l.name }}</span></label>{% endfor %}</div></fieldset>{% else %}<label class="wl-field">To list<select name="list_id">{% for l in others %}<option value="{{ l.id }}">{{ l.name }}</option>{% endfor %}</select></label>{% endif %}
+<div class="actions"><button class="primary bw-primary" name="copy" value="false">Move</button><button name="copy" value="true">Copy</button></div></form></dialog>{% endif %}
 {% else %}
 {# Lists and list actions, as BrickLink's Wanted Lists: the lists as chips with counts, then one action row. #}
 <div class="wl-head">

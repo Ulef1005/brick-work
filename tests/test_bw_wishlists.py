@@ -206,7 +206,7 @@ def test_render_list_switcher_manage_detail_export_and_readonly(app,bw,empty):
     if not empty:
         with closing(connect(bw)) as db: identifier=db.execute('SELECT id FROM wishlist WHERE archived_at IS NULL LIMIT 1').fetchone()[0]
         detail=client.get('/collection/wishes/'+str(identifier))
-        assert 'Move wish' in detail.text and 'Copy wish' in detail.text
+        assert 'Move or copy to another list' in detail.text and 'Holiday' in detail.text  # frame 7b: quiet action, list sheet
     app.config['BW_READ_ONLY']=True
     readonly=client.get('/planning/wishlist')
     assert 'Manage lists' not in readonly.text and 'data-wl-export ' in readonly.text

@@ -2,6 +2,7 @@
 
 ## Brick Work 2.0.0-dev (unreleased)
 
+- Kit controls: no control falls back to the grey bordered look any more. The off-design secondaries (Print missing parts, Pin, Take, the Matcher's help links, the ledger Filters) are the kit's outline clay, the Manage pages use the kit's neutral secondary, the value chips are filter chips, and every `.primary` is the kit's clay primary. The wish page follows frame 7b: Move or copy to another list is a quiet action in the Wanted module that opens a sheet with the lists as segments, and Undo is a quiet action.
 - Error responses no longer carry database, file-system or other internal error text (#76): messages written for people still show, anything else is logged on the server and replaced by the handler's plain message.
 - Tools & Admin → About: version, licence, source link, data credits, the LEGO disclaimer and BrickLink's required notice (also in THIRD_PARTY_NOTICES).
 - What is this?: Enable camera opens a live preview with a guide, as in Part to Inventory; the next press (or Space) takes the picture and identifies it. A saved photo stays the quiet alternative, and the Part/Minifigure switch is a kit segment.

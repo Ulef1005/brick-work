@@ -108,8 +108,8 @@ main a.bw-hub-row{display:flex;align-items:center;gap:16px;min-height:64px;paddi
 main a.bw-hub-row:hover .bw-hub-title,main a.bw-hub-row:focus-visible .bw-hub-title{color:var(--tw-accent-text)}
 @media(min-width:900px){.bw-hub{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .bw-chips{display:flex;flex-wrap:wrap;gap:8px}
-main .bw-chips a{display:inline-flex;align-items:center;height:36px;min-height:36px;padding:0 14px;border-radius:999px;border:.5px solid var(--tw-divider-strong);background:none;color:var(--tw-text-2);font:500 14px var(--tw-font);text-decoration:none}
-main .bw-chips a[aria-current=page]{background:var(--tw-accent-soft);border-color:var(--tw-accent);color:var(--tw-accent-text)}
+main .bw-chips a{display:inline-flex;align-items:center;height:44px;min-height:44px;padding:0 14px;border-radius:10px;border:0;background:var(--tw-surface);color:var(--tw-text);font:500 14px var(--tw-font);text-decoration:none}
+main .bw-chips a[aria-current=page]{background:var(--tw-accent-soft);color:var(--tw-accent-text)}
 .bw-seg{display:inline-flex;flex-wrap:wrap;gap:2px;padding:2px;border-radius:10px;background:var(--tw-surface-2);max-width:100%;box-sizing:border-box}
 .bw-seg label{position:relative;display:inline-flex}
 .bw-seg input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}
@@ -120,7 +120,9 @@ main .bw-chips a[aria-current=page]{background:var(--tw-accent-soft);border-colo
 .bw-picture-dialog fieldset{border:0;padding:0;margin:16px 0;display:flex;flex-direction:column;gap:8px}
 .bw-picture-dialog legend{padding:0 0 8px}
 /* Kit buttons and fields on the plain admin pages; catalogues keep their own bk- controls. */
-:where(.bw-admin-page,.bw-picture-dialog) :where(button,a.button):not([class*=bk-]):not(.bw-hub-row){display:inline-flex;align-items:center;justify-content:center;gap:6px;height:44px;min-height:44px;padding:0 16px;border-radius:10px;border:.5px solid var(--tw-divider-strong);background:var(--tw-surface-2);color:var(--tw-text);font:500 14px var(--tw-font);text-decoration:none;cursor:pointer;box-sizing:border-box}
+/* Manage pages: the kit's neutral secondary (frame 12l "Save", "Remove"): surface-2, ink, no border; .primary is the clay primary. */
+:where(.bw-admin-page,.bw-picture-dialog) :where(button,a.button):not([class*=bk-]):not(.bw-hub-row):not(.bw-chips a){display:inline-flex;align-items:center;justify-content:center;gap:6px;height:44px;min-height:44px;padding:0 16px;border-radius:10px;border:.5px solid transparent;background:var(--tw-surface-2);color:var(--tw-text);font:500 14px var(--tw-font);text-decoration:none;cursor:pointer;box-sizing:border-box}
+:where(.bw-admin-page,.bw-picture-dialog) :where(button,a.button).primary:not([class*=bk-]){background:var(--tw-accent);border-color:var(--tw-accent);color:var(--bw-action-ink,#1A1816);font-weight:600}
 :where(.bw-admin-page,.bw-picture-dialog) :where(button.primary):not([class*=bk-]){background:var(--tw-accent);border-color:var(--tw-accent);color:#1A1816;font-weight:600}
 :where(.bw-admin-page,.bw-picture-dialog) button:disabled:not([class*=bk-]){opacity:.4;border-style:solid}
 :where(.bw-admin-page,.bw-picture-dialog) input:not([type=checkbox]):not([type=radio]):not([class*=bk-]):not([type=hidden]):not([type=file]),:where(.bw-admin-page,.bw-picture-dialog) select{height:44px;border-radius:10px;border:.5px solid var(--tw-divider-strong);background:var(--tw-bg);padding:0 12px;font-size:15px}

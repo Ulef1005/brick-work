@@ -3,7 +3,7 @@ pytest==9.1.1
 PyYAML>=6,<7
 jsonschema>=4,<5
 # The documentation site (scripts/build_site.py)
-markdown==3.10.2
+markdown==3.11.1
 # HTML parsing in the test suite only
 beautifulsoup4==4.15.0
 bs4==0.0.2

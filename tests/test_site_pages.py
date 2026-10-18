@@ -123,7 +123,13 @@ def test_walkthroughs_and_no_js_content(site):
         assert 'data-step-status' in section
         if name == 'matcher':
             assert '<img' not in section and 'not in the demo yet' in section
-    assert 'data-device="phone"' in text and 'data-device="desktop"' in text
+    for removed in ('desktop-frame', 'device-switch', 'data-device', 'desktop-1440'):
+        assert removed not in text
+    assert text.count('class="phone-frame"') == 9
+    screenshots = [attrs for tag, attrs in Elements(text).elements
+                   if tag in ('img', 'source') and '/img/' in attrs.get('src', attrs.get('srcset', ''))]
+    assert len(screenshots) == 18
+    assert all('-phone-' in attrs.get('src', attrs.get('srcset', '')) for attrs in screenshots)
     assert text.count('data-walkthrough') == 3
     assert 'hidden' not in text  # JavaScript alone hides inactive screenshots.
 
@@ -136,6 +142,16 @@ def test_use_cases_have_eight_cards_in_three_groups(site):
     assert 'Planned' in text
     order = text.split('Receive a parts order', 1)[1].split('</article>', 1)[0]
     assert '<img' not in order
+
+
+def test_desktop_screenshots_are_only_kept_for_other_pages(site):
+    pages = [(site / name).read_text() for name in ('index.html', 'use-cases/index.html')]
+    referenced = {Path(attrs[attr]).name for text in pages for tag, attrs in Elements(text).elements
+                  for attr in ('src', 'srcset') if tag in ('img', 'source')
+                  and 'desktop-' in attrs.get(attr, '')}
+    assert len(referenced) == 4
+    assert {p.name for p in (ROOT / 'scripts/site/img').glob('*desktop*.png')} == referenced
+    assert {p.name for p in (site / 'assets/img').glob('*desktop*.png')} == referenced
 
 
 def test_images_are_local_small_and_dimensioned(site):
@@ -162,17 +178,38 @@ def test_shared_chrome_and_theme_script(site):
         text = (site / name).read_text()
         assert 'data-theme-toggle' in text
         assert re.search(r'<script src="(?:../)?assets/site.js" defer>', text)
-        assert 'lockup-horizontal-dark.svg' in text and 'lockup-horizontal.svg' in text
+        elements = Elements(text).elements
+        logos = [attrs for tag, attrs in elements
+                 if tag == 'img' and attrs.get('alt') == 'Brick Work']
+        assert len(logos) == 2  # Header and footer use the same rendered wordmark.
+        for logo in logos:
+            assert logo['src'].endswith('assets/lockup-horizontal-light.png')
+            dimensions = struct.unpack('>II', local_target(site, site / name, logo['src']).read_bytes()[16:24])
+            assert dimensions == (int(logo['width']), int(logo['height']))
+            assert dimensions[0] >= 2 * 160
+        sources = [attrs for tag, attrs in elements if tag == 'source'
+                   and attrs.get('srcset', '').endswith('assets/lockup-horizontal-dark.png')]
+        assert len(sources) == 2
+        assert all(source['media'] == '(prefers-color-scheme: dark)' for source in sources)
         for label in ('Demo', 'Docs', 'API reference', 'MCP', 'GitHub'):
             assert f'>{label}</a>' in text
+    for theme in ('light', 'dark'):
+        name = f'lockup-horizontal-{theme}.png'
+        assert (site / 'assets' / name).read_bytes() == (ROOT / 'static/brickwork' / name).read_bytes()
+        assert struct.unpack('>II', (site / 'assets' / name).read_bytes()[16:24]) == dimensions
+    assert not list((site / 'assets').glob('lockup*.svg'))
     script = (site / 'assets/site.js').read_text()
+    css = (site / 'assets/site.css').read_text()
+    for removed in ('device-switch', 'desktop-device', 'desktop-frame', 'data-device'):
+        assert removed not in script + css
+    assert '.phone-frame{max-width:340px;margin:auto}' in css
     assert 'localStorage.getItem' in script and 'localStorage.setItem' in script
     assert 'try {' in script and 'catch' in script
     assert 'prefers-color-scheme: dark' in script
     assert (site / 'demo/demo-manifest.json').is_file()
 
 
-def test_javascript_theme_device_and_step_state():
+def test_javascript_theme_and_step_state():
     """Exercise the actual script with a tiny DOM, including storage being blocked."""
     import shutil
     import subprocess
@@ -197,7 +234,6 @@ for (const blocked of [false, true]) {
     contains(k) { return classes.has(k); }, add(k) { classes.add(k); }
   }};
   const toggle = new Element(), source = new Element();
-  const devices = ['phone', 'desktop'].map(device => Object.assign(new Element(), {dataset:{device}}));
   const back = new Element(), next = new Element(), status = new Element();
   const steps = ['Pick a copy', 'Choose an order', 'Count each part'].map(title => {
     const step = new Element();
@@ -212,7 +248,7 @@ for (const blocked of [false, true]) {
   const document = {
     documentElement:root, createElement:() => new Element(),
     querySelector:() => toggle,
-    querySelectorAll:selector => ({'picture source':[source], '[data-device]':devices, '[data-walkthrough]':[flow]}[selector])
+    querySelectorAll:selector => ({'picture source':[source], '[data-walkthrough]':[flow]}[selector])
   };
   let saved = 'dark';
   const storage = {
@@ -230,9 +266,6 @@ for (const blocked of [false, true]) {
   next.click(); assert.match(status.textContent, /Step 2 of 3/);
   back.click(); back.click(); assert.match(status.textContent, /Step 3 of 3/);
   steps[0].children[0].click(); assert.match(status.textContent, /Pick a copy/);
-  devices[1].click(); assert.equal(classes.has('desktop-device'), true);
-  assert.equal(devices[1].attrs['aria-pressed'], 'true');
-  devices[0].click(); assert.equal(classes.has('desktop-device'), false);
   if (blocked) {
     preference.matches = true; preference.change(); assert.equal(classes.has('tw-dark'), true);
   }

@@ -12,6 +12,7 @@ import html
 import os
 import re
 import shutil
+import struct
 import sys
 from pathlib import Path
 from urllib.parse import unquote
@@ -90,8 +91,10 @@ def page(title, body, depth, *, current, head='', main='doc'):
 
 
 def lockup(up):
-    return (f'<picture><source media="(prefers-color-scheme: dark)" srcset="{up}assets/lockup-horizontal-dark.svg">'
-            f'<img src="{up}assets/lockup-horizontal.svg" alt="Brick Work" width="450" height="104" '
+    width, height = struct.unpack(
+        '>II', (ROOT / 'static/brickwork/lockup-horizontal-light.png').read_bytes()[16:24])
+    return (f'<picture><source media="(prefers-color-scheme: dark)" srcset="{up}assets/lockup-horizontal-dark.png">'
+            f'<img src="{up}assets/lockup-horizontal-light.png" alt="Brick Work" width="{width}" height="{height}" '
             'loading="lazy" decoding="async"></picture>')
 
 
@@ -148,7 +151,7 @@ def build(out):
     for font in (static / 'web/toni/fonts').glob('*'):
         shutil.copy(font, out / 'assets/fonts' / font.name)
     for name in ('app-icon.svg', 'favicon.svg', 'favicon.ico', 'favicon-16.png', 'favicon-32.png',
-                 'lockup-horizontal.svg', 'lockup-horizontal-dark.svg'):
+                 'lockup-horizontal-light.png', 'lockup-horizontal-dark.png'):
         shutil.copy(static / 'brickwork' / name, out / 'assets' / name)
     shutil.copy(static / 'brickwork/icons/icon-180.png', out / 'assets/apple-touch-icon.png')
     brand_css = (static / 'brickwork/brick-work.css').read_text().replace(

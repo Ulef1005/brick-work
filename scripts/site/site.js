@@ -26,14 +26,6 @@
     try { localStorage.setItem('bw-site-theme', choice); } catch (_) { /* Optional. */ }
     theme();
   });
-  document.querySelectorAll('[data-device]').forEach(button => {
-    button.addEventListener('click', () => {
-      root.classList.toggle('desktop-device', button.dataset.device === 'desktop');
-      document.querySelectorAll('[data-device]').forEach(other => {
-        other.setAttribute('aria-pressed', String(other === button));
-      });
-    });
-  });
   document.querySelectorAll('[data-walkthrough]').forEach(flow => {
     const steps = [...flow.querySelectorAll('.steps li')];
     const frames = [...flow.querySelectorAll('[data-frame]')];

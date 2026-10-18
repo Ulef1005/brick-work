@@ -53,19 +53,21 @@ Nothing until you add keys. With your own keys it calls BrickLink, Rebrickable a
 
 ## Standalone installation with Docker
 
-From this checkout, with Docker Compose installed:
+With Git and Docker Compose installed:
 
 ```sh
+git clone https://github.com/Ulef1005/brick-work.git
+cd brick-work
 mkdir -p data
-sudo chown 1000:1000 data   # the container runs as uid 1000
+sudo chown 1000:1000 data   # the container runs as uid 1000; as root, leave out sudo
 cp .env.sample data/.env
-# Edit data/.env before starting.
+# Edit data/.env: set BW_AUTHENTICATION_PASSWORD (or BW_ALLOW_NO_LOGIN=1 on a single trusted computer).
 docker compose build
 docker compose run --rm --entrypoint brickwork brickwork setup
 docker compose up -d
 ```
 
-Set `BW_AUTHENTICATION_PASSWORD` in `data/.env` first (see below), then open `http://localhost:3333`. The container runs as uid 1000 and writes only to `data/`; if an older image (which ran as root) created that folder, run `sudo chown -R 1000:1000 data` once. The `data` volume holds the database, local catalogue index, photos, PDFs and job state. Back it up together with your environment configuration. No separate application or service is required. The offline smoke test covers a fresh installation without source credentials.
+Then open `http://localhost:3333` and sign in with that password; an empty install greets you with Add your first set. The container runs as uid 1000 and writes only to `data/`; if an older image (which ran as root) created that folder, run `sudo chown -R 1000:1000 data` once. The `data` volume holds the database, local catalogue index, photos, PDFs and job state. Back it up together with your environment configuration. No separate application or service is required. The offline smoke test covers a fresh installation without source credentials.
 
 Environment variables override `data/.env`; a root `.env` is the fallback. See [.env.sample](.env.sample). Set `BW_AUTHENTICATION_PASSWORD`: without one the server refuses to start, because anyone who can reach it could edit the collection, export the database and create API tokens. To run without login on purpose (a single trusted computer), set `BW_ALLOW_NO_LOGIN=1`. The session key is generated into `data/session.key` on first start unless you set `BW_AUTHENTICATION_KEY`. `compose.yaml` publishes the port on this computer only (`127.0.0.1:3333`); change that to `3333:3333` to reach the app from your network once a password is set. `BW_DB_PATH` defaults to `data/brickwork.db`; `BW_HOST`, `BW_PORT` and `BW_READ_ONLY` control serving and editing.
 

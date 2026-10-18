@@ -2,7 +2,7 @@
 
 ## Brick Work 2.0.0-dev (unreleased)
 
-- README: how to get BrickLink, Rebrickable and Brickset keys and the limits each service sets.
+- README: how to get BrickLink, Rebrickable and Brickset keys and the limits each service sets; the install starts with the clone and asks for the password before the first start (found by a fresh-machine test).
 - Demo: four copies hold a running set check made with the app's own checker at build time (first part, about 40 % answered, finished with six missing, finished clean), so Start, Resume and the finish screens show real states.
 - Demo: the missing-picture tiles keep the item number and say where pictures come from: a set's picture from BrickLink when the set is added; part and figure pictures from Rebrickable or BrickLink with Refresh pictures.
 - Publication review: the design test data uses invented owner names, and the private-material scans keep only generic patterns in the repository; a maintainer's own patterns come from `BW_PRIVATE_PATTERNS_FILE`.

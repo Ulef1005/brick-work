@@ -678,7 +678,7 @@ def bw_add_undo():
         with database(brickwork_path()) as db:
             undo(db, data['batch'])
     except ValueError as exc:
-        return jsonify(error=str(exc)), 400
+        return jsonify(error=public(exc, 'Could not undo · try again')), 400
     return jsonify(message='Undone')
 
 
@@ -897,7 +897,7 @@ def bw_workbench_save(action):
         return jsonify(message='Saved',event_id=event)
     except ValueError as error:
         if action == 'booklets':
-            return jsonify(message=str(error)),400
+            return jsonify(message=public(error, 'Nothing was saved · review the values and try again')),400
         return jsonify(message='Nothing was saved · stock or missing count may have changed. Review and try again.'),400
     except (KeyError,TypeError,sqlite3.Error):
         return jsonify(message='Nothing was saved · stock or missing count may have changed. Review and try again.'),400

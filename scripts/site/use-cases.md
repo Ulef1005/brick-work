@@ -17,7 +17,7 @@
 <div class="layout-123">
 <article class="layout-124">
 <div class="layout-125">
-<picture class="layout-126"><source media="(prefers-color-scheme: dark)" srcset="../assets/img/3e-finish-gaps-phone-390-dark.png"/><img alt="Finish the set you started" decoding="async" height="1688" loading="lazy" src="../assets/img/3e-finish-gaps-phone-390-light.png" width="780"/></picture>
+<picture class="layout-126"><source media="(prefers-color-scheme: dark)" srcset="../assets/img/3e-finish-gaps-phone-390-dark.png" width="391" height="870"><img alt="Finish the set you started" decoding="async" loading="lazy" src="../assets/img/3e-finish-gaps-phone-390-light.png" width="392" height="874"></picture>
 </div>
 <div class="layout-127">
 <h3 class="layout-39">Finish the set you started</h3>
@@ -31,7 +31,7 @@
 </article>
 <article class="layout-124">
 <div class="layout-125">
-<picture class="layout-126"><source media="(prefers-color-scheme: dark)" srcset="../assets/img/3c-picker-sets-phone-390-dark.png"/><img alt="Build from your bulk" decoding="async" height="1688" loading="lazy" src="../assets/img/3c-picker-sets-phone-390-light.png" width="780"/></picture>
+<picture class="layout-126"><source media="(prefers-color-scheme: dark)" srcset="../assets/img/3c-picker-sets-phone-390-dark.png" width="391" height="771"><img alt="Build from your bulk" decoding="async" loading="lazy" src="../assets/img/3c-picker-sets-phone-390-light.png" width="392" height="775"></picture>
 </div>
 <div class="layout-127">
 <h3 class="layout-39">Build from your bulk</h3>
@@ -45,7 +45,9 @@
 </div>
 </article>
 <article class="layout-124">
-
+<div class="layout-125">
+<picture class="layout-132"><source media="(prefers-color-scheme: dark)" srcset="../assets/img/12b-count-what-arrived-desktop-1440-dark.png" width="1441" height="1047"><img src="../assets/img/12b-count-what-arrived-desktop-1440-light.png" alt="Receive a parts order" loading="lazy" decoding="async" width="1441" height="1047"></picture>
+</div>
 <div class="layout-127">
 <h3 class="layout-39">Receive a parts order</h3>
 <p class="layout-128">A BrickLink order arrives.</p>
@@ -65,7 +67,7 @@
 <div class="layout-123">
 <article class="layout-124">
 <div class="layout-125">
-<picture class="layout-126"><source media="(prefers-color-scheme: dark)" srcset="../assets/img/4c-complete-sets-phone-390-dark.png"/><img alt="Decide what to buy" decoding="async" height="1688" loading="lazy" src="../assets/img/4c-complete-sets-phone-390-light.png" width="780"/></picture>
+<picture class="layout-126"><source media="(prefers-color-scheme: dark)" srcset="../assets/img/4c-complete-sets-phone-390-dark.png" width="392" height="751"><img alt="Decide what to buy" decoding="async" loading="lazy" src="../assets/img/4c-complete-sets-phone-390-light.png" width="392" height="751"></picture>
 </div>
 <div class="layout-127">
 <h3 class="layout-39">Decide what to buy</h3>
@@ -80,7 +82,7 @@
 </article>
 <article class="layout-124">
 <div class="layout-125">
-<picture class="layout-132"><source media="(prefers-color-scheme: dark)" srcset="../assets/img/12c-list-and-detail-desktop-1440-dark.png"/><img alt="Know where everything is" decoding="async" height="900" loading="lazy" src="../assets/img/12c-list-and-detail-desktop-1440-light.png" width="1440"/></picture>
+<picture class="layout-132"><source media="(prefers-color-scheme: dark)" srcset="../assets/img/12c-list-and-detail-desktop-1440-dark.png" width="1441" height="1302"><img alt="Know where everything is" decoding="async" loading="lazy" src="../assets/img/12c-list-and-detail-desktop-1440-light.png" width="1441" height="1302"></picture>
 </div>
 <div class="layout-127">
 <h3 class="layout-39">Know where everything is</h3>

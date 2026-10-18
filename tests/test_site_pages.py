@@ -121,14 +121,15 @@ def test_walkthroughs_and_no_js_content(site):
         assert section.count('<li>') == count
         assert 'data-back' in section and 'data-next' in section
         assert 'data-step-status' in section
-        if name == 'matcher':
-            assert '<img' not in section and 'not in the demo yet' in section
+        assert section.count('<figure data-frame=') == count
+        assert section.count('<img') == count
+        assert 'not in the demo yet' not in section
     for removed in ('desktop-frame', 'device-switch', 'data-device', 'desktop-1440'):
         assert removed not in text
-    assert text.count('class="phone-frame"') == 9
+    assert text.count('class="phone-frame"') == 11
     screenshots = [attrs for tag, attrs in Elements(text).elements
                    if tag in ('img', 'source') and '/img/' in attrs.get('src', attrs.get('srcset', ''))]
-    assert len(screenshots) == 18
+    assert len(screenshots) == 22
     assert all('-phone-' in attrs.get('src', attrs.get('srcset', '')) for attrs in screenshots)
     assert text.count('data-walkthrough') == 3
     assert 'hidden' not in text  # JavaScript alone hides inactive screenshots.
@@ -140,8 +141,8 @@ def test_use_cases_have_eight_cards_in_three_groups(site):
     for group in ('uc-table', 'uc-plan', 'uc-scripts'):
         assert f'id="{group}"' in text
     assert 'Planned' in text
-    order = text.split('Receive a parts order', 1)[1].split('</article>', 1)[0]
-    assert '<img' not in order
+    order = next(card for card in text.split('<article') if '<h3 class="layout-39">Receive a parts order' in card)
+    assert '12b-count-what-arrived-desktop-1440-light.png' in order
 
 
 def test_desktop_screenshots_are_only_kept_for_other_pages(site):
@@ -149,9 +150,51 @@ def test_desktop_screenshots_are_only_kept_for_other_pages(site):
     referenced = {Path(attrs[attr]).name for text in pages for tag, attrs in Elements(text).elements
                   for attr in ('src', 'srcset') if tag in ('img', 'source')
                   and 'desktop-' in attrs.get(attr, '')}
-    assert len(referenced) == 4
+    assert len(referenced) == 6
     assert {p.name for p in (ROOT / 'scripts/site/img').glob('*desktop*.png')} == referenced
     assert {p.name for p in (site / 'assets/img').glob('*desktop*.png')} == referenced
+
+
+@pytest.mark.parametrize('page,stems', [
+    ('index.html', [
+        '1c-sets-desktop-1440', '3a-matcher-phone-390',
+        '3e-part-phone-390', '3c-picker-sets-phone-390', '3a-matcher-phone-390',
+        '12n-sources-phone-390',
+    ]),
+    ('use-cases/index.html', [
+        '3e-finish-gaps-phone-390', '3c-picker-sets-phone-390',
+        '12b-count-what-arrived-desktop-1440', '4c-complete-sets-phone-390',
+        '12c-list-and-detail-desktop-1440',
+    ]),
+    ('workflows/index.html', [
+        '3b-check-set-parts-phone-390', '3e-start-phone-390', '3e-part-phone-390',
+        '3e-finish-gaps-phone-390', '3e-resume-phone-390',
+        '3c-picker-sets-phone-390', '3c-picker-sort-phone-390',
+        '3c-picker-pick-phone-390', '3c-picker-selector-phone-390',
+        '3a-matcher-phone-390', '1d-set-detail-phone-390',
+    ]),
+])
+def test_design_kit_frame_placements(site, page, stems):
+    elements = Elements((site / page).read_text()).elements
+    images = [Path(attrs['src']).name for tag, attrs in elements
+              if tag == 'img' and '/img/' in attrs.get('src', '')]
+    sources = [Path(attrs['srcset']).name for tag, attrs in elements
+               if tag == 'source' and '/img/' in attrs.get('srcset', '')]
+    assert images == [f'{stem}-light.png' for stem in stems]
+    assert sources == [f'{stem}-dark.png' for stem in stems]
+    if page == 'index.html':
+        assert 'Planned · design preview, not built yet' in (site / page).read_text()
+
+
+def test_no_unreferenced_screenshots_are_shipped(site):
+    referenced = {Path(attrs[attr]).name
+                  for name in ('index.html', 'use-cases/index.html', 'workflows/index.html')
+                  for tag, attrs in Elements((site / name).read_text()).elements
+                  for attr in ('src', 'srcset') if tag in ('img', 'source')
+                  and '/img/' in attrs.get(attr, '')}
+    assert len(referenced) == 32
+    assert {p.name for p in (ROOT / 'scripts/site/img').glob('*')} == referenced
+    assert {p.name for p in (site / 'assets/img').glob('*')} == referenced
 
 
 def test_images_are_local_small_and_dimensioned(site):
@@ -160,6 +203,9 @@ def test_images_are_local_small_and_dimensioned(site):
     for name in ('index.html', 'use-cases/index.html', 'workflows/index.html'):
         text = (site / name).read_text()
         for tag, attrs in Elements(text).elements:
+            if tag == 'source' and '/img/' in attrs.get('srcset', ''):
+                dimensions = struct.unpack('>II', local_target(site, site / name, attrs['srcset']).read_bytes()[16:24])
+                assert dimensions == (int(attrs['width']), int(attrs['height']))
             if tag != 'img':
                 continue
             assert attrs.get('loading') == 'lazy' and attrs.get('decoding') == 'async'

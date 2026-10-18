@@ -249,3 +249,9 @@ button{font:500 14px/1.4 var(--tw-font);cursor:pointer;min-height:var(--tw-hit);
 html{color-scheme:light dark}
 html.tw-light{color-scheme:light}
 html.tw-dark{color-scheme:dark}
+
+/* The mock labels the sources screen as a future design preview. */
+.sync-preview{background:var(--tw-surface);border-radius:var(--tw-r-3);padding:var(--tw-s-5) var(--tw-s-5) 0;display:flex;flex-direction:column;align-items:center;gap:var(--tw-s-4);overflow:hidden}
+.sync-preview>span{align-self:flex-start}
+.sync-preview-crop{height:540px;overflow:hidden;width:100%;display:flex;justify-content:center}
+.sync-preview picture{display:block;width:100%;max-width:320px;align-self:flex-start;border-radius:var(--tw-r-3) var(--tw-r-3) 0 0;overflow:hidden}

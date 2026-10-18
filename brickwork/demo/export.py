@@ -35,7 +35,7 @@ FOLLOW = [re.compile(p) for p in (
 LIMIT = 120
 ATTRIBUTE = re.compile(r'(\s(?:href|src|action|poster|content|data-[\w-]+)=")([^"]*)(")')
 # Links a visitor may follow (the app's catalogue links); nothing outside is ever loaded (src).
-LINKS_OK = re.compile(r'^https://(github\.com/Ulef1005/brick-work|(www\.)?bricklink\.com/|brickset\.com/|rebrickable\.com/)')
+LINKS_OK = re.compile(r'^https://(github\.com/Ulef1005/brick-work|ulef1005\.github\.io/brick-work/\Z|(www\.)?bricklink\.com/|brickset\.com/|rebrickable\.com/)')
 
 
 def key_of(url, base):

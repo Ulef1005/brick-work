@@ -37,6 +37,9 @@
     const link = document.createElement('a');
     link.href = 'https://github.com/Ulef1005/brick-work'; link.textContent = 'Brick Work on GitHub'; link.style.color = 'inherit';
     bar.append(link);
+    const website = document.createElement('a');
+    website.href = 'https://ulef1005.github.io/brick-work/'; website.textContent = 'Website'; website.style.color = 'inherit';
+    bar.append(' · ', website);
     document.body.prepend(bar);
   });
 

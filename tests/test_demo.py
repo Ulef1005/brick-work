@@ -74,6 +74,10 @@ def test_shim_answers_writes_and_carries_the_manifest(site):
     shim = (out / 'demo-shim.js').read_text()
     assert '/*MANIFEST*/null' not in shim and json.dumps(manifest['base']) in shim
     assert export.NOTE in shim and "method !== 'GET'" in shim and 'serviceWorker' in shim
+    banner = shim.split('// The banner:', 1)[1].split('const realFetch', 1)[0]
+    assert "website.href = 'https://ulef1005.github.io/brick-work/'; website.textContent = 'Website'; website.style.color = 'inherit';" in banner
+    assert banner.index('bar.append(link);') < banner.index("bar.append(' · ', website);")
+    assert 'target' not in banner
     # Missing-picture tiles say where the app gets pictures (checked against the pipeline's pictures step).
     assert 'Loads from BrickLink when you add the set' in shim and 'Loads from Rebrickable or BrickLink with Refresh pictures' in shim
 
@@ -84,6 +88,15 @@ def test_keys_and_files():
     assert export.key_of('/collection/sets', BASE) is None and export.key_of('https://example.test' + BASE, BASE) is None
     assert export.file_of('/collection/sets') == 'collection/sets/index.html'
     assert export.file_of('/collection/item/P/3001?colour=4') == 'collection/item/P/3001/_colour-4/index.html'
+
+
+@pytest.mark.parametrize('suffix', ['', 'other/', '?query=1', '#fragment', '\n'])
+def test_export_allows_only_the_exact_website_url(tmp_path, suffix):
+    url = 'https://ulef1005.github.io/brick-work/' + suffix
+    (tmp_path / 'index.html').write_text(f'<a href="{url}">Website</a>')
+    (tmp_path / 'demo-shim.js').write_text('')
+    findings = export.check(tmp_path)
+    assert findings == ([] if not suffix else [f'index.html: outside link {url}'])
 
 
 def test_export_refuses_an_existing_folder_and_a_bad_base(tmp_path):

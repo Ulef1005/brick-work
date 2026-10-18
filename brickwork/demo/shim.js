@@ -89,5 +89,40 @@
     navigator.serviceWorker.register = () => Promise.resolve({unregister: () => Promise.resolve(true)});
     navigator.serviceWorker.getRegistrations?.().then(list => list.forEach(r => r.unregister())).catch(() => {});
   }
+  // Missing-picture tiles: the demo has no pictures (they belong to others), so each tile says where the
+  // app gets them. Verified in the app: adding a set loads the set's picture (BrickLink, then Rebrickable);
+  // part and minifigure pictures load with Tools & Admin > Refresh pictures (Rebrickable, then BrickLink).
+  const PICTURE_NOTE = {
+    set: 'Loads from BrickLink when you add the set',
+    other: 'Loads from Rebrickable or BrickLink with Refresh pictures',
+  };
+  const setNumber = /^\d+[A-Za-z]?-\d+$/;
+  function pictureNote(span) {
+    const tile = span.closest('[data-item-no],[data-kind],.bc-picture,.bw-picture,.check-picture,.scan-tile') || span.parentElement;
+    const kind = tile && tile.dataset ? tile.dataset.kind : null;
+    const number = (tile && tile.dataset && tile.dataset.itemNo) || (tile && tile.querySelector('.mono')?.textContent) || '';
+    const isSet = kind ? kind === 'S' : setNumber.test(number.trim());
+    span.textContent = isSet ? PICTURE_NOTE.set : PICTURE_NOTE.other;
+    span.classList.add('bw-demo-picture-note');
+  }
+  function notePictures(root) {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const found = [];
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      if (node.nodeValue.trim() === 'No image' && node.parentElement) found.push(node.parentElement);
+    }
+    found.forEach(pictureNote);
+  }
+  document.addEventListener('DOMContentLoaded', () => {
+    const style = document.createElement('style');
+    style.textContent = '.bw-demo-picture-note{font-size:11px;line-height:14px;text-align:center;padding:0 6px;color:var(--tw-text-muted,#6b6660)}';
+    document.head.append(style);
+    notePictures(document.body);
+    new MutationObserver(records => records.forEach(r => r.addedNodes.forEach(n => {
+      if (n.nodeType === 1) notePictures(n);
+      else if (n.nodeType === 3 && n.nodeValue.trim() === 'No image' && n.parentElement) pictureNote(n.parentElement);
+    }))).observe(document.body, {childList: true, subtree: true});
+  });
+
   window.BrickWorkDemo = {keyOf, toast, note: demo.note};
 })();

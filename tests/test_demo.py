@@ -69,6 +69,8 @@ def test_shim_answers_writes_and_carries_the_manifest(site):
     shim = (out / 'demo-shim.js').read_text()
     assert '/*MANIFEST*/null' not in shim and json.dumps(manifest['base']) in shim
     assert export.NOTE in shim and "method !== 'GET'" in shim and 'serviceWorker' in shim
+    # Missing-picture tiles say where the app gets pictures (checked against the pipeline's pictures step).
+    assert 'Loads from BrickLink when you add the set' in shim and 'Loads from Rebrickable or BrickLink with Refresh pictures' in shim
 
 
 def test_keys_and_files():

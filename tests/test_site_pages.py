@@ -29,3 +29,10 @@ def test_the_landing_page_says_the_tagline_and_marks_planned_work(tmp_path):
     assert 'The workbench for your brick collection' in text
     assert 'Planned, not built yet' in text
     assert 'LEGO' not in text.split('<footer')[0]
+
+
+def test_the_demo_is_part_of_the_site_and_linked(tmp_path):
+    from scripts.build_site import build
+    site = build(tmp_path / 'site')
+    assert (site / 'demo/index.html').is_file() and (site / 'demo/demo-manifest.json').is_file()
+    assert 'href="demo/"' in (site / 'index.html').read_text()

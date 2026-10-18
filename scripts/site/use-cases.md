@@ -1,6 +1,6 @@
 # Use cases
 
-Brick Work is for private collectors who want the collection to help them finish what they started. Each case below says what you do and which part of the app does it. For the steps, see the [workflows](../workflows/).
+Brick Work is for private collectors who want the collection to help them finish what they started. Each case below says what you do and which part of the app does it. For the steps, see the [workflows](../workflows/), or try them in the [demo](../demo/).
 
 ## Finish the set you started
 

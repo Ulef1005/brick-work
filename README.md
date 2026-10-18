@@ -10,6 +10,7 @@
 
 <p align="center">
   <a href="https://ulef1005.github.io/brick-work/">Website</a> ·
+  <a href="https://ulef1005.github.io/brick-work/demo/">Demo</a> ·
   <a href="https://ulef1005.github.io/brick-work/docs/">Docs</a> ·
   <a href="https://ulef1005.github.io/brick-work/workflows/">Workflows</a> ·
   <a href="https://ulef1005.github.io/brick-work/api/">API</a> ·
@@ -27,7 +28,7 @@ Brick Work is a self-hosted web app for a brick collection: sets and loose stock
 Brick Work is pre-1.0. Its maintainer uses it daily for a collection of about 200 set copies, but the schema and the API can still change between minor versions; read the [CHANGELOG](CHANGELOG.md) before upgrading.
 
 - **Shipped:** the Collection, Workbench (Check Set Parts, Part Picker, Matcher, Orders), Planning and Manage screens; an installable web app; a versioned REST API with scoped tokens and Undo; an admin CLI; an MCP server; a read-only importer for an older tracker database.
-- **In progress:** the live demo with sample data, and a synthetic dataset for the screenshots.
+- **Live demo:** the real interface on an invented collection, in your browser, with changes not saved: [ulef1005.github.io/brick-work/demo/](https://ulef1005.github.io/brick-work/demo/).
 - **Planned, not built:** Buildable sets, collection sync with Rebrickable, BrickLink and Brickset, and a pile check by photo. The [public roadmap](https://github.com/users/Ulef1005/projects/3) keeps the order; there are no dates.
 
 It is self-hosted, single-user and meant for a home network or a VPN, not the open internet.
@@ -183,7 +184,7 @@ The check script includes the naming gate, a standalone smoke test with sockets 
 
 ## Documentation
 
-The documentation site (published on GitHub Pages with the first public release) shows this README, the API reference rendered from [openapi-v1.yaml](docs/brickwork/openapi-v1.yaml), and the [MCP guide](docs/brickwork/mcp.md). The [API guide](docs/brickwork/api-v1.md) covers authentication, conventions and examples. Build the site locally with `python scripts/build_site.py _site`.
+The documentation site (published on GitHub Pages) shows this README, the API reference rendered from [openapi-v1.yaml](docs/brickwork/openapi-v1.yaml), and the [MCP guide](docs/brickwork/mcp.md). The [API guide](docs/brickwork/api-v1.md) covers authentication, conventions and examples. Build the site locally with `python scripts/build_site.py _site`.
 
 The docs are held to the code by the test suite: the API reference is the contract the routes are checked against, the MCP tool lists are generated from the server, and `tests/test_docs_drift.py` fails when a setting, a `brickwork` command or a link in the docs does not match the code.
 

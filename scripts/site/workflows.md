@@ -1,6 +1,6 @@
 # Workflows
 
-Brick Work groups its screens by what you are doing: **Collection** (browse and edit what you own), **Workbench** (work on the pile), **Planning** (decide what to buy and finish) and **Manage** (put things in and keep it healthy). These are the Workbench flows and the planning screens that finish sets.
+Brick Work groups its screens by what you are doing: **Collection** (browse and edit what you own), **Workbench** (work on the pile), **Planning** (decide what to buy and finish) and **Manage** (put things in and keep it healthy). The [demo](../demo/) lets you open each one on sample data. These are the Workbench flows and the planning screens that finish sets.
 
 ## Check Set Parts
 

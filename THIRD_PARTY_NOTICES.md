@@ -22,4 +22,6 @@ Brick Work bundles no catalogue data or images from BrickLink, Rebrickable or Br
 
 ## Trademarks
 
-LEGO® is a trademark of the LEGO Group of companies, which does not sponsor, authorize or endorse this project. BrickLink is a trademark of the LEGO Group; Rebrickable and Brickset are trademarks of their owners.
+LEGO® is a trademark of the LEGO Group of companies, which does not sponsor, authorize or endorse this project. Rebrickable and Brickset are trademarks of their owners.
+
+The term 'BrickLink' is a trademark of the LEGO Group BrickLink. This application uses the BrickLink API but is not endorsed or certified by LEGO BrickLink, Inc. (BrickLink API terms; the same notice is in the app under Tools & Admin → About.)

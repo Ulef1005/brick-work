@@ -80,14 +80,14 @@ def bw_admin(page):
     titles = {'hub': 'Tools & Admin', 'catalogues': 'Catalogues & keys', 'jobs': 'Jobs',
               'refresh': 'Bulk refresh prices', 'unresolved': 'Unresolved figures',
               'statistics': 'Statistics', 'values': 'Values', 'database': 'Database',
-              'settings': 'Settings', 'appearance': 'Appearance', 'history': 'Identify history',
+              'settings': 'Settings', 'appearance': 'Appearance', 'about': 'About', 'history': 'Identify history',
               'instructions': 'Instruction files'}
     if page not in titles:
         abort(404)
     group = request.args.get('group', 'owners')
     error, data = None, None
     try:
-        if page != 'appearance':
+        if page not in ('appearance', 'about'):
             data = admin_ops.tools_read(page, group)
             from ..core.admin import display
             data = display(data)

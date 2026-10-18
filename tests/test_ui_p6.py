@@ -5,9 +5,9 @@ from bs4 import BeautifulSoup
 from tests.web_fixtures import app, apps, logged_in
 from tests.test_bw_admin import bw  # noqa: F401  (fixture)
 
-PAGES = ['tools', 'catalogues', 'jobs', 'refresh', 'unresolved', 'statistics', 'values',
+PAGES = ['tools', 'about', 'catalogues', 'jobs', 'refresh', 'unresolved', 'statistics', 'values',
          'database', 'settings', 'appearance', 'history', 'instructions', 'tokens']
-HUB_TARGETS = ['/manage/refresh', '/manage/catalogues', '/manage/jobs', '/manage/instructions',
+HUB_TARGETS = ['/manage/about', '/manage/refresh', '/manage/catalogues', '/manage/jobs', '/manage/instructions',
                '/manage/history', '/manage/unresolved', '/manage/statistics', '/manage/values',
                '/manage/tokens', '/manage/database', '/manage/settings', '/manage/appearance']
 
@@ -96,3 +96,13 @@ def test_hub_rows_say_what_each_option_does(app, bw):
     notes = [r.select_one('.bw-hub-note') for r in rows]
     assert all(n and n.get_text(strip=True).endswith('.') for n in notes)
     assert all(len(n.get_text().split()) <= 16 for n in notes)
+
+
+def test_about_carries_the_notices(app, bw):
+    # BrickLink's API terms want its notice on the application, verbatim; the LEGO disclaimer as in the README.
+    soup = soup_of(logged_in(app), '/manage/about')
+    assert soup.select_one('[data-about-bricklink]').get_text() == (
+        "The term 'BrickLink' is a trademark of the LEGO Group BrickLink. This application uses the BrickLink API "
+        "but is not endorsed or certified by LEGO BrickLink, Inc.")
+    assert soup.select_one('[data-about-lego]').get_text().startswith('LEGO® is a trademark of the LEGO Group of companies')
+    assert soup.select_one('a[href="https://github.com/Ulef1005/brick-work"]')

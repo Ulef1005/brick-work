@@ -160,7 +160,7 @@ Scope `none` means no token. Every path is relative to `/api/v1`. Write rows are
 
 | Operation | What it does | Scope | Backing today |
 |---|---|---|---|
-| `GET /health` | Liveness, schema and API version. No token. | none | core.api_reads.health (core database only) |
+| `GET /health` | Liveness, app, schema and API version. No token. | none | core.api_reads.health (core database only) |
 | `GET /version` | Build, API and schema versions, enabled features. | read | **NEW** (reads schema_meta, __version__) |
 | `GET /openapi.yaml` | This contract as OpenAPI 3.1 YAML. No token. | none | **NEW** (serves docs/brickwork/openapi-v1.yaml) |
 | `GET /me` | The calling token: name, scopes, expiry. | read | **NEW** |

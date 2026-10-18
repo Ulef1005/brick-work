@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- `GET /api/v1/health` also returns the app version (`app`), so monitors and update checks need one call.
+
 ## Brick Work 0.5.0 (first public release) · 2026-10-18
 
 The first public release: a self-hosted web app for a brick collection that helps at the table, not only in the inventory. It is pre-1.0; the schema and the API can still change between minor versions.

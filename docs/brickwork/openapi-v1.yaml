@@ -6179,6 +6179,9 @@ components:
             - "degraded"
         api:
           type: "string"
+        app:
+          type: "string"
+          description: "The running Brick Work version, as in /version."
         schema:
           type: "string"
         catalogue_loaded:

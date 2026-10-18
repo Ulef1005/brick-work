@@ -55,6 +55,20 @@ def scan(root, paths):
     return hits
 
 
+def tree_modes(listing):
+    """Map each path of `git ls-tree -r -z` output to its mode; symbolic links and submodules are refused."""
+    modes = {}
+    for entry in listing.decode().split('\0'):
+        if not entry:
+            continue
+        meta, path = entry.split('\t', 1)
+        mode = meta.split(' ', 1)[0]
+        if mode not in ('100644', '100755'):
+            raise SystemExit(f'{path}: mode {mode} is not a regular file; export it by hand')
+        modes[path] = mode
+    return modes
+
+
 def git(*args):
     return subprocess.run(['git', '-C', str(ROOT), '-c', 'core.fsmonitor=false', *args],
                           check=True, capture_output=True).stdout
@@ -69,13 +83,16 @@ def main(argv=None):
     if out.exists():
         parser.error(f'{out} exists; give a new directory')
     patterns = rules(RULES.read_text())
-    paths = [p for p in git('ls-tree', '-r', '-z', '--name-only', options.ref).decode().split('\0') if p]
+    modes = tree_modes(git('ls-tree', '-r', '-z', options.ref))
+    paths = list(modes)
     kept = [p for p in paths if included(p, patterns)]
     out.mkdir(parents=True)
     for relative in kept:
         target = out / relative
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(git('show', f'{options.ref}:{relative}'))
+        if modes[relative] == '100755':
+            target.chmod(0o755)  # the gate script, the CLI and the entrypoint stay executable
     print(f'{len(kept)} of {len(paths)} tracked files exported to {out} ({len(paths) - len(kept)} left out)')
     hits = scan(out, kept)
     for hit in hits:

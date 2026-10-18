@@ -30,3 +30,4 @@ templates/web/toni/web/bw_first_run.html	\bbricktracker\b|\b(?:post_)?imports?[-
 tests/test_bw_import_ui.py	\bbricktracker\b|\b(?:post_)?imports?[-_]bricktracker\b|BrickTracker	Tests of the Import from BrickTracker pages.
 THIRD_PARTY_NOTICES.md	\[BrickTracker\]\(https://gitea\.baerentsen\.space/FrederikBaerentsen/BrickTracker\)	Upstream credit next to the kept MIT notice.
 scripts/build_site.py	inspired by BrickTracker	Upstream credit in the documentation site footer.
+design/test-data/tools-admin.json	BK_[A-Z_]+|bricktracker_[a-z_]+	Design export test data (design/ is not edited here); the old setting and table names describe the legacy import screen.

@@ -2,6 +2,7 @@
 
 ## Brick Work 2.0.0-dev (unreleased)
 
+- The public snapshot keeps executable files executable (`scripts/check.sh`, `bin/brickwork`, `entrypoint.sh` had lost the bit in the first snapshot).
 - Migration proof: the reviewed collection counts are re-pinned for the cutover (two set price lookups since the review added two items with their price, source and search rows).
 - Item pages: Update price queues a market price refresh for that item (every colour it is used in) and says so. It opened the bulk refresh page, which lists stale prices only and so showed 0 for an item never priced.
 - Storage: the selected storage is an inset, rounded band rather than a flush strip, and the list count no longer counts the Not stored row, so it matches the header (2 storages, not 3).

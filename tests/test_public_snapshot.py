@@ -1,5 +1,7 @@
 """The public snapshot rules: what is left out, what is kept, and what the private scan catches."""
-from scripts.public_snapshot import PRIVATE, included, rules
+import pytest
+
+from scripts.public_snapshot import PRIVATE, included, rules, tree_modes
 
 RULES = rules("""
 # comment
@@ -33,3 +35,11 @@ def test_rules_file_keeps_the_api_contract():
     for path in ('docs/brickwork/api-v1.md', 'docs/brickwork/openapi-v1.yaml', 'docs/brickwork/cutover-4.11j.md'):
         assert included(path, shipped), path
     assert not included('docs/web-ui/readme.md', shipped)
+
+
+def test_tree_modes_keep_executables_and_refuse_links():
+    # The first snapshot lost the exec bit of scripts/check.sh, bin/brickwork and entrypoint.sh.
+    listing = b'100644 blob aa\tREADME.md\x00100755 blob bb\tscripts/check.sh\x00'
+    assert tree_modes(listing) == {'README.md': '100644', 'scripts/check.sh': '100755'}
+    with pytest.raises(SystemExit):
+        tree_modes(b'120000 blob cc\tlink\x00')

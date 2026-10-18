@@ -18,9 +18,9 @@ A BrickLink order arrives. Import it from your BrickLink account, paste the conf
 
 Open **Wishlist**, **Prices** and **Complete sets** to see which sets are worth finishing. Part-out values show only when at least 90% of a set's lines have a price, and one action fetches prices for the parts that lack one.
 
-## Move from BrickTracker
+## Bring an old collection over
 
-Run the read-only importer, review the row-count and checksum proof, then point Brick Work at the new database. The old database is never changed.
+Run the read-only importer on your previous tracker database, review the row-count and checksum proof, then point Brick Work at the new database. The old database is never changed.
 
 ## Keep it in one place
 

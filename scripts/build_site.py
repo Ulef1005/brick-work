@@ -2,7 +2,7 @@
 
     python scripts/build_site.py OUT_DIR
 
-Pages: `/` the landing page, `/use-cases/` and `/workflows/` (Markdown in scripts/site), `/docs/` the README, `/api/` the OpenAPI contract as one reference page (Redoc), `/mcp/` the MCP
+Pages: `/` the landing page, `/use-cases/` and `/workflows/` (Markdown in scripts/site), `/docs/` the README, `/demo/` the static demo (scripts/build_demo.py), `/api/` the OpenAPI contract as one reference page (Redoc), `/mcp/` the MCP
 guide with the tool and resource tables generated from the server itself. No site generator: Markdown
 is rendered with Python-Markdown, styled with the app's own design tokens and fonts. Links to files in
 the repository point at them on GitHub. The output is static and needs no server.
@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 SITE = ROOT / 'scripts/site'
 REDOC = 'https://cdn.jsdelivr.net/npm/redoc@2.5.0/bundles/redoc.standalone.js'
-PAGES = (('Home', ''), ('Use cases', 'use-cases/'), ('Workflows', 'workflows/'), ('Docs', 'docs/'),
+PAGES = (('Home', ''), ('Use cases', 'use-cases/'), ('Workflows', 'workflows/'), ('Demo', 'demo/'), ('Docs', 'docs/'),
          ('API reference', 'api/'), ('MCP', 'mcp/'))
 
 
@@ -70,11 +70,12 @@ def page(title, body, depth, *, current, head='', main='doc'):
 <meta name="description" content="Brick Work: the workbench for your brick collection: self-hosted, with a REST API and an MCP server.">
 <link rel="icon" href="{up}assets/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="{up}assets/tokens-v2.css">
+<link rel="stylesheet" href="{up}assets/brick-work.css">
 <link rel="stylesheet" href="{up}assets/site.css">
 {head}
 </head>
 <body>
-<header class="site-head"><a class="brand" href="{up}"><img src="{up}assets/app-icon.svg" alt="" width="28" height="28"><span>Brick Work</span></a>
+<header class="site-head"><a class="brand" href="{up}"><img src="{up}assets/app-icon.svg" alt="" width="28" height="28"><span class="bw-wordmark">Brick Work</span></a>
 <nav aria-label="Documentation">{nav}<a href="https://github.com/{repository()}">GitHub</a></nav></header>
 <main class="{main}">{body}</main>
 <footer class="site-foot"><p>Brick Work is MIT-licensed and inspired by BrickTracker. LEGO® is a trademark of the LEGO Group of companies, which does not sponsor, authorize or endorse this project.</p></footer>
@@ -117,6 +118,8 @@ def build(out):
         shutil.copy(font, out / 'assets/fonts' / font.name)
     for name in ('app-icon.svg', 'favicon.svg'):
         shutil.copy(static / 'brickwork' / name, out / 'assets' / name)
+    shutil.copy(static / 'brickwork/brick-work.css', out / 'assets/brick-work.css')
+    shutil.copy(static / 'fonts/PatrickHand-Regular.woff2', out / 'assets/fonts/PatrickHand-Regular.woff2')
     shutil.copy(ROOT / 'scripts/site/site.css', out / 'assets/site.css')
 
     readme = re.sub(r'<!-- site:skip -->.*?<!-- /site:skip -->\n*', '', (ROOT / 'README.md').read_text(), flags=re.S)
@@ -142,6 +145,8 @@ def build(out):
             'document.getElementById("redoc"))</script>')
     (out / 'api/index.html').write_text(page('API reference', body, 1, current='API reference').replace(
         '<main class="doc">', '<main class="doc api">'))
+    from scripts.build_demo import build_demo
+    build_demo(out / 'demo', f'/{repository().split("/")[1]}/demo/')
     (out / '.nojekyll').write_text('')
     return out
 

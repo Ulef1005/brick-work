@@ -48,7 +48,7 @@ The [workflows](https://ulef1005.github.io/brick-work/workflows/) and [use cases
 
 ## What it contacts
 
-Nothing until you add keys. nothing until you add keys. With your own keys it calls BrickLink, Rebrickable and Brickset for catalogue data, inventories, pictures and prices; photo identification sends the photo you choose to Brickognize. There is no telemetry and no account with this project.
+Nothing until you add keys. With your own keys it calls BrickLink, Rebrickable and Brickset for catalogue data, inventories, pictures and prices; photo identification sends the photo you choose to Brickognize. There is no telemetry and no account with this project.
 
 ## Standalone installation with Docker
 

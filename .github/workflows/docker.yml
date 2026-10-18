@@ -1,0 +1,61 @@
+name: docker
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docker-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-latest
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          platforms: ${{ matrix.platform }}
+          push: false
+          load: true
+          tags: brickwork:ci
+          cache-from: type=gha,scope=${{ matrix.platform }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.platform }}
+      - name: Smoke test fresh installation
+        shell: bash
+        run: |
+          set -euo pipefail
+          trap 'status=$?; if [ "$status" -ne 0 ]; then docker logs bw || true; fi' EXIT
+          DATA=$(mktemp -d)
+          cp .env.sample "$DATA/.env"
+          sudo chown -R 1000:1000 "$DATA"
+          docker run --rm --entrypoint brickwork \
+            -e BW_ALLOW_NO_LOGIN=1 -v "$DATA:/app/data" brickwork:ci setup
+          docker run -d --name bw -p 3333:3333 \
+            -e BW_ALLOW_NO_LOGIN=1 -v "$DATA:/app/data" brickwork:ci
+          timeout 60s bash -c '
+            until [ "$(curl --silent --output /dev/null --write-out "%{http_code}" \
+              --max-time 2 http://127.0.0.1:3333/api/v1/health || true)" = 200 ]; do
+              sleep 1
+            done
+          '
+      - name: Stop container
+        if: always()
+        run: docker rm -f bw || true

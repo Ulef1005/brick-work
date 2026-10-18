@@ -90,3 +90,25 @@ def test_runtime_files_in_docker_context():
     assert all((ROOT / name).is_file() for name in required)
     excluded = sorted(name for name in required if docker_ignored(name, source))
     assert not excluded, 'Runtime files excluded from Docker context: ' + ', '.join(excluded)
+
+
+def test_docker_base_is_digest_pinned():
+    base = (ROOT / 'Dockerfile').read_text().splitlines()[0]
+    assert re.fullmatch(r'FROM python:[^@\s]+@sha256:[0-9a-f]{64}', base)
+
+
+def test_docker_workflow_builds_without_publishing():
+    import yaml
+
+    source = (ROOT / '.github/workflows/docker.yml').read_text()
+    workflow = yaml.safe_load(source)
+    assert workflow['permissions'] == {'contents': 'read'}
+    steps = workflow['jobs']['build']['steps']
+    actions = [step['uses'] for step in steps if 'uses' in step]
+    assert actions
+    assert all(re.fullmatch(r'[\w.-]+/[\w.-]+@[0-9a-f]{40}', action) for action in actions)
+    assert 'push: false' in source
+    assert 'push: true' not in source
+    build = next(step for step in steps if step.get('uses', '').startswith('docker/build-push-action@'))
+    assert build['with']['push'] is False
+    assert build['with']['load'] is True

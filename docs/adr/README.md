@@ -20,3 +20,4 @@ One file per decision that binds future work: the API contract, the data model, 
 | [0011](0011-part-list-rule.md) | Part-list rule | accepted | 2026-10-15 |
 | [0012](0012-licence-mit.md) | Licence: MIT | accepted | 2026-10-16 |
 | [0013](0013-item-detail-pages.md) | Item detail pages | accepted | 2026-10-16 |
+| [0014](0014-github-canonical.md) | GitHub is the canonical repository, starting from a snapshot | accepted | 2026-10-18 |

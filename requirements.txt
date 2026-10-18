@@ -23,7 +23,7 @@ Werkzeug==3.1.9
 zope.event==6.2
 zope.interface==8.6
 
-cryptography>=46.0.0,<47
+cryptography>=50.0.2,<51
 
 mcp>=1.30,<2
 PyYAML>=6,<7

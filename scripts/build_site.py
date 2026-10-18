@@ -119,7 +119,8 @@ def build(out):
         shutil.copy(static / 'brickwork' / name, out / 'assets' / name)
     shutil.copy(ROOT / 'scripts/site/site.css', out / 'assets/site.css')
 
-    readme = rewrite_links((ROOT / 'README.md').read_text(), '.', 1)
+    readme = re.sub(r'<!-- site:skip -->.*?<!-- /site:skip -->\n*', '', (ROOT / 'README.md').read_text(), flags=re.S)
+    readme = rewrite_links(readme, '.', 1)
     (out / 'docs/index.html').write_text(page('Documentation', render(readme), 1, current='Docs'))
 
     landing = (SITE / 'landing.html').read_text().replace('{repository}', repository())

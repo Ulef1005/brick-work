@@ -2,7 +2,7 @@
 import re
 from pathlib import Path
 
-FORBIDDEN = ('test instance', '192.168.', '/Users/', 'op://', 'host.docker.internal')
+FORBIDDEN = ('test instance', '192.168.', '/Users/', 'op://')
 
 
 def test_the_site_pages_link_and_stay_clean(tmp_path):

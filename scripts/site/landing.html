@@ -43,7 +43,7 @@ cp .env.sample data/.env   # set BW_AUTHENTICATION_PASSWORD
 docker compose build
 docker compose run --rm --entrypoint brickwork brickwork setup
 docker compose up -d</code></pre>
-<p>Then open <code>http://localhost:3333</code>. Coming from BrickTracker? <code>brickwork migrate</code> imports your old database read-only. The full guide is in the <a href="docs/">documentation</a>.</p>
+<p>Then open <code>http://localhost:3333</code>. Moving an old collection over? <code>brickwork migrate</code> imports it read-only. The full guide is in the <a href="docs/">documentation</a>.</p>
 </section>
 
 <section>

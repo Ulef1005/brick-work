@@ -1,6 +1,23 @@
 # Changelog
 
-## Brick Work 2.0.0-dev (unreleased)
+## Brick Work 0.5.0 (first public release) · 2026-10-18
+
+The first public release: a self-hosted web app for a brick collection that helps at the table, not only in the inventory. It is pre-1.0; the schema and the API can still change between minor versions.
+
+- **Collection:** sets, minifigures, parts, instructions and boxes, with copies, storage, purchase details, statuses, tags and notes, in one SQLite file. Every list is searchable, filterable and sortable.
+- **Check Set Parts:** count a copy's parts at the table, in inventory, colour or largest-first order, with a missing pass, Undo and resume.
+- **Part Picker:** choose unfinished sets and get the parts you can pull from your sorted loose stock; **Complete sets** shows which sets that stock can finish.
+- **Matcher, Part to Inventory and What is this?:** match loose stock to the sets that need it, and identify parts and minifigures from a photo (Brickognize) with what you already own of them.
+- **Orders:** import a BrickLink order, an email or an XML file, count what arrived and allocate it to sets or loose stock.
+- **Planning:** wishlists with a maximum price per wish, named lists and BrickLink XML or Rebrickable CSV export; prices from BrickLink, Rebrickable and Brickset with your own keys, including a part-out value.
+- **Storage, printable lists, statistics** and an installable web app with light and dark themes.
+- **For scripts and assistants:** a versioned REST API with scoped tokens and an Undo link on every change, an admin CLI and an MCP server.
+- **Import** an existing collection from an older tracker database, read-only.
+- **Self-hosted with Docker Compose.** No telemetry and no account with this project; no catalogue data or images are bundled, each install uses its owner's keys.
+
+Source and compose files only; there is no container image for this release. Install: see the README.
+
+### All changes in this release
 
 - Kit controls: no control falls back to the grey bordered look any more. The off-design secondaries (Print missing parts, Pin, Take, the Matcher's help links, the ledger Filters) are the kit's outline clay, the Manage pages use the kit's neutral secondary, the value chips are filter chips, and every `.primary` is the kit's clay primary. The wish page follows frame 7b: Move or copy to another list is a quiet action in the Wanted module that opens a sheet with the lists as segments, and Undo is a quiet action.
 - Error responses no longer carry database, file-system or other internal error text (#76): messages written for people still show, anything else is logged on the server and replaced by the handler's plain message.

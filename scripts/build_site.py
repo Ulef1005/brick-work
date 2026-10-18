@@ -69,6 +69,10 @@ def page(title, body, depth, *, current, head='', main='doc'):
 <title>{html.escape(title) + " · Brick Work" if title != "Brick Work" else "Brick Work"}</title>
 <meta name="description" content="Brick Work: the workbench for your brick collection: self-hosted, with a REST API and an MCP server.">
 <link rel="icon" href="{up}assets/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="{up}assets/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="{up}assets/favicon-16.png" sizes="16x16" type="image/png">
+<link rel="icon" href="{up}assets/favicon.ico" sizes="48x48">
+<link rel="apple-touch-icon" href="{up}assets/apple-touch-icon.png">
 <link rel="stylesheet" href="{up}assets/tokens-v2.css">
 <link rel="stylesheet" href="{up}assets/brick-work.css">
 <link rel="stylesheet" href="{up}assets/site.css">
@@ -143,8 +147,10 @@ def build(out):
     shutil.copy(static / 'web/toni/tokens-v2.css', out / 'assets/tokens-v2.css')
     for font in (static / 'web/toni/fonts').glob('*'):
         shutil.copy(font, out / 'assets/fonts' / font.name)
-    for name in ('app-icon.svg', 'favicon.svg', 'lockup-horizontal.svg', 'lockup-horizontal-dark.svg'):
+    for name in ('app-icon.svg', 'favicon.svg', 'favicon.ico', 'favicon-16.png', 'favicon-32.png',
+                 'lockup-horizontal.svg', 'lockup-horizontal-dark.svg'):
         shutil.copy(static / 'brickwork' / name, out / 'assets' / name)
+    shutil.copy(static / 'brickwork/icons/icon-180.png', out / 'assets/apple-touch-icon.png')
     brand_css = (static / 'brickwork/brick-work.css').read_text().replace(
         '/static/fonts/PatrickHand-Regular.woff2', 'fonts/PatrickHand-Regular.woff2')
     (out / 'assets/brick-work.css').write_text(brand_css)

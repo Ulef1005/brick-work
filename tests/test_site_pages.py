@@ -77,6 +77,31 @@ def test_every_page_and_asset_resolves_without_external_requests(site):
             assert local_target(site, css, url).is_file(), f'{css}: {url}'
 
 
+def test_every_documentation_page_links_the_complete_favicon_set(site):
+    from scripts.build_site import PAGES
+
+    for _, href in PAGES:
+        if href == 'demo/':  # The demo uses the app's own icon links.
+            continue
+        page = site / href / 'index.html'
+        up = '../' * len(Path(href).parts)
+        icons = [attrs for tag, attrs in Elements(page.read_text()).elements
+                 if tag == 'link' and attrs.get('rel') in ('icon', 'apple-touch-icon')]
+        assert icons == [
+            {'rel': 'icon', 'href': f'{up}assets/favicon.svg', 'type': 'image/svg+xml'},
+            {'rel': 'icon', 'href': f'{up}assets/favicon-32.png', 'sizes': '32x32', 'type': 'image/png'},
+            {'rel': 'icon', 'href': f'{up}assets/favicon-16.png', 'sizes': '16x16', 'type': 'image/png'},
+            {'rel': 'icon', 'href': f'{up}assets/favicon.ico', 'sizes': '48x48'},
+            {'rel': 'apple-touch-icon', 'href': f'{up}assets/apple-touch-icon.png'},
+        ], href
+        for icon in icons:
+            assert local_target(site, page, icon['href']).is_file()
+
+    for name in ('favicon.svg', 'favicon-32.png', 'favicon-16.png', 'favicon.ico', 'apple-touch-icon.png'):
+        source = 'icons/icon-180.png' if name == 'apple-touch-icon.png' else name
+        assert (site / 'assets' / name).read_bytes() == (ROOT / 'static/brickwork' / source).read_bytes()
+
+
 def test_landing_sections_and_copy(site):
     text = (site / 'index.html').read_text()
     sections = [attrs['class'].split()[0] for tag, attrs in Elements(text).elements if tag == 'section']

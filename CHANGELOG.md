@@ -2,6 +2,7 @@
 
 ## Brick Work 2.0.0-dev (unreleased)
 
+- Demo: four copies hold a running set check made with the app's own checker at build time (first part, about 40 % answered, finished with six missing, finished clean), so Start, Resume and the finish screens show real states.
 - Demo: the missing-picture tiles keep the item number and say where pictures come from: a set's picture from BrickLink when the set is added; part and figure pictures from Rebrickable or BrickLink with Refresh pictures.
 - Publication review: the design test data uses invented owner names, and the private-material scans keep only generic patterns in the repository; a maintainer's own patterns come from `BW_PRIVATE_PATTERNS_FILE`.
 - Static demo: `scripts/build_demo.py OUT --base /brick-work/demo/` renders the Sets, Minifigures and Parts lists, set and part pages, Check Set Parts, Part Picker, Part to Inventory, Wishlist, Prices, Complete sets and Storage with the real templates on an invented collection (no pictures, no network). Writes say "Demo with sample data: changes are not saved".

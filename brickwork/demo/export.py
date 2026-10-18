@@ -15,7 +15,7 @@ import tempfile
 from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlsplit
 
-from . import dataset
+from . import checks, dataset
 from .privacy import pattern
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -178,6 +178,8 @@ def export(out, base='/brick-work/demo/', data=dataset.DATA):
     with tempfile.TemporaryDirectory() as scratch:
         store = Path(scratch) / 'brickwork.db'
         counts = dataset.build(store, data)
+        from ..core.media import root_for
+        counts['checks'] = checks.stage(store, root_for(store))
         saved_env = {k: os.environ.get(k) for k in ('BW_DB_PATH', 'BW_EMBEDDED_WORKER', 'BW_ALLOW_NO_LOGIN', 'BW_AUTHENTICATION_PASSWORD')}
         try:
             client = make_app(store).test_client()

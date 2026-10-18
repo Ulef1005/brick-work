@@ -46,6 +46,11 @@ def test_agreed_routes_are_exported(site):
     assert any(k.startswith('/workbench/part-picker?copy=') for k in pages)  # Continue opens the picking view
     assert not any(k.startswith('/manage') for k in pages)
     assert manifest['skipped'] == {} and manifest['gets']['/planning/prices/records']
+    # Running checks made with the app's own checker: first part, half done, at the end.
+    checks = manifest['counts']['checks']
+    assert checks['56325b99-16bc-549b-bb98-f7be2ab38829'][0] == 0
+    assert 0 < checks['eaacf51c-1b63-58ff-b1a9-a2ea287565fc'][0] < checks['eaacf51c-1b63-58ff-b1a9-a2ea287565fc'][1]
+    assert all(c == n for c, n in (checks['4fcedaaf-0c28-5203-9058-7044daabce23'], checks['ff25ae37-7a6c-5804-92aa-bb3a03e64cac']))
     assert json.loads((out / 'demo-manifest.json').read_text())['base'] == BASE
 
 

@@ -107,11 +107,11 @@ def test_the_site_builds_with_every_tool(tmp_path):
     from scripts.build_site import build
     from brickwork.core.mcp import Adapter
     site = build(tmp_path / 'site')
-    for page in ('index.html', 'api/index.html', 'api/openapi-v1.yaml', 'mcp/index.html', 'assets/site.css', '.nojekyll'):
+    for page in ('index.html', 'docs/index.html', 'use-cases/index.html', 'workflows/index.html', 'api/index.html', 'api/openapi-v1.yaml', 'mcp/index.html', 'assets/site.css', '.nojekyll'):
         assert (site / page).is_file(), page
     mcp = (site / 'mcp/index.html').read_text()
     for name in Adapter(client=None).tools:
         assert f'<code>{name}</code>' in mcp, name
-    index = (site / 'index.html').read_text()
-    assert 'href="api/"' in index and 'href="../api/"' not in index
+    index = (site / 'docs/index.html').read_text()
+    assert 'href="../api/"' in index and 'href="api/"' not in index
     assert 'Settings reference' in index

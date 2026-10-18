@@ -2,7 +2,7 @@
 
     python scripts/build_site.py OUT_DIR
 
-Pages: `/` the README, `/api/` the OpenAPI contract as one reference page (Redoc), `/mcp/` the MCP
+Pages: `/` the landing page, `/use-cases/` and `/workflows/` (Markdown in scripts/site), `/docs/` the README, `/api/` the OpenAPI contract as one reference page (Redoc), `/mcp/` the MCP
 guide with the tool and resource tables generated from the server itself. No site generator: Markdown
 is rendered with Python-Markdown, styled with the app's own design tokens and fonts. Links to files in
 the repository point at them on GitHub. The output is static and needs no server.
@@ -19,8 +19,10 @@ import markdown
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+SITE = ROOT / 'scripts/site'
 REDOC = 'https://cdn.jsdelivr.net/npm/redoc@2.5.0/bundles/redoc.standalone.js'
-PAGES = (('Home', ''), ('API reference', 'api/'), ('MCP', 'mcp/'))
+PAGES = (('Home', ''), ('Use cases', 'use-cases/'), ('Workflows', 'workflows/'), ('Docs', 'docs/'),
+         ('API reference', 'api/'), ('MCP', 'mcp/'))
 
 
 def repository():
@@ -41,7 +43,7 @@ def rewrite_links(text, base, depth=0):
         path, _, anchor = target.partition('#')
         resolved = os.path.normpath(os.path.join(base, path)).replace(os.sep, '/')
         up = '../' * depth
-        local = {'README.md': up or './', 'docs/brickwork/mcp.md': up + 'mcp/', 'docs/brickwork/openapi-v1.yaml': up + 'api/'}
+        local = {'README.md': up + 'docs/', 'docs/brickwork/mcp.md': up + 'mcp/', 'docs/brickwork/openapi-v1.yaml': up + 'api/'}
         if resolved in local:
             url = local[resolved]
         else:
@@ -55,7 +57,7 @@ def render(text):
                              extension_configs={'toc': {'permalink': False}})
 
 
-def page(title, body, depth, *, current, head=''):
+def page(title, body, depth, *, current, head='', main='doc'):
     up = '../' * depth
     nav = ''.join(f'<a href="{up}{href}"{" aria-current=\"page\"" if name == current else ""}>{name}</a>'
                   for name, href in PAGES)
@@ -64,8 +66,8 @@ def page(title, body, depth, *, current, head=''):
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{html.escape(title)} · Brick Work</title>
-<meta name="description" content="Brick Work: a self-hosted workbench for your LEGO® collection, with a REST API and an MCP server.">
+<title>{html.escape(title) + " · Brick Work" if title != "Brick Work" else "Brick Work"}</title>
+<meta name="description" content="Brick Work: the workbench for your brick collection: self-hosted, with a REST API and an MCP server.">
 <link rel="icon" href="{up}assets/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="{up}assets/tokens-v2.css">
 <link rel="stylesheet" href="{up}assets/site.css">
@@ -74,7 +76,7 @@ def page(title, body, depth, *, current, head=''):
 <body>
 <header class="site-head"><a class="brand" href="{up}"><img src="{up}assets/app-icon.svg" alt="" width="28" height="28"><span>Brick Work</span></a>
 <nav aria-label="Documentation">{nav}<a href="https://github.com/{repository()}">GitHub</a></nav></header>
-<main class="doc">{body}</main>
+<main class="{main}">{body}</main>
 <footer class="site-foot"><p>Brick Work is MIT-licensed and inspired by BrickTracker. LEGO® is a trademark of the LEGO Group of companies, which does not sponsor, authorize or endorse this project.</p></footer>
 </body>
 </html>
@@ -106,7 +108,8 @@ def build(out):
     if out.exists():
         shutil.rmtree(out)
     (out / 'assets' / 'fonts').mkdir(parents=True)
-    (out / 'api').mkdir()
+    for sub in ('api', 'docs', 'use-cases', 'workflows'):
+        (out / sub).mkdir()
     (out / 'mcp').mkdir()
     static = ROOT / 'static'
     shutil.copy(static / 'web/toni/tokens-v2.css', out / 'assets/tokens-v2.css')
@@ -116,8 +119,14 @@ def build(out):
         shutil.copy(static / 'brickwork' / name, out / 'assets' / name)
     shutil.copy(ROOT / 'scripts/site/site.css', out / 'assets/site.css')
 
-    readme = rewrite_links((ROOT / 'README.md').read_text(), '.', 0)
-    (out / 'index.html').write_text(page('Documentation', render(readme), 0, current='Home'))
+    readme = rewrite_links((ROOT / 'README.md').read_text(), '.', 1)
+    (out / 'docs/index.html').write_text(page('Documentation', render(readme), 1, current='Docs'))
+
+    landing = (SITE / 'landing.html').read_text().replace('{repository}', repository())
+    (out / 'index.html').write_text(page('Brick Work', landing, 0, current='Home', main='landing'))
+    for name, title, current in (('use-cases', 'Use cases', 'Use cases'), ('workflows', 'Workflows', 'Workflows')):
+        text = (SITE / f'{name}.md').read_text()
+        (out / name / 'index.html').write_text(page(title, render(text), 1, current=current))
 
     guide = rewrite_links((ROOT / 'docs/brickwork/mcp.md').read_text(), 'docs/brickwork', 1) + mcp_tables()
     (out / 'mcp/index.html').write_text(page('MCP server', render(guide), 1, current='MCP'))

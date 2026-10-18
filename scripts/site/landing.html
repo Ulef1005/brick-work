@@ -1,0 +1,52 @@
+<section class="hero">
+<p class="eyebrow">Self-hosted · open source · MIT</p>
+<h1>The workbench for your brick collection.</h1>
+<p class="lead">Every app does inventory. Brick Work also helps at the table: check a set's parts, pull the missing ones from your loose stock, and see which unfinished sets that stock can complete.</p>
+<p class="cta"><a class="button primary" href="docs/">Install and read the docs</a> <a class="button" href="https://github.com/{repository}">View on GitHub</a></p>
+<p class="note">Pre-1.0 and used daily by its maintainer. Your data stays on your machine; there is no account and no telemetry.</p>
+</section>
+
+<section>
+<h2>Why Brick Work</h2>
+<div class="cards">
+<article><h3>Made for the work at the table</h3><p>Check Set Parts, Part Picker and Matcher turn the inventory into progress: "142 of 380", the parts to pull, the sets you can finish.</p><a href="workflows/">See the workflows</a></article>
+<article><h3>Everything is an item</h3><p>Sets, minifigures, loose parts, instructions and boxes share the same modules: notes, storage location, prices, history and Undo.</p></article>
+<article><h3>Yours</h3><p>Self-hosted with Docker Compose. Your database and photos live in one folder you back up. Catalogue data comes from your own BrickLink, Rebrickable and Brickset keys.</p><a href="docs/">Install it</a></article>
+<article><h3>Installable on any screen</h3><p>A web app you add to the Home Screen from the browser, with no app store: iPhone and iPad in Safari, desktop in a Chromium browser. It needs HTTPS to install.</p></article>
+<article><h3>Scriptable</h3><p>A versioned REST API over the whole collection with scoped tokens, an OpenAPI contract, idempotent writes and an audit event with an Undo link for every change, plus an admin CLI.</p><a href="api/">API reference</a></article>
+<article><h3>Ready for AI assistants</h3><p>A built-in MCP server lets an assistant read your collection and, only if you allow it, change it. It uses the same API, scopes and Undo as any other client.</p><a href="mcp/">MCP guide</a></article>
+</div>
+</section>
+
+<section>
+<h2>Three flows that finish sets</h2>
+<ol class="flow">
+<li><strong>Check Set Parts</strong><span>Pick a copy, go through its parts against the inventory and keep a running count of what is missing.</span></li>
+<li><strong>Part Picker</strong><span>Tick several sets and get the missing parts you can pull from your sorted loose stock, in your own sort order.</span></li>
+<li><strong>Matcher</strong><span>See which incomplete copies your loose stock can finish, then decide what to build or buy.</span></li>
+</ol>
+<p><a href="workflows/">How each flow works</a> · <a href="use-cases/">Use cases</a></p>
+</section>
+
+<section>
+<h2>Made for scripts and assistants</h2>
+<p>Create a scoped token, call the API, or connect an assistant over MCP. Write tools are off unless you enable them.</p>
+<pre><code>docker compose exec brickwork brickwork token create --name assistant --scope read
+brickwork mcp --in-process --token-file data/mcp-token</code></pre>
+<p><a href="api/">API reference</a> · <a href="mcp/">MCP guide</a></p>
+</section>
+
+<section>
+<h2>Start in five commands</h2>
+<pre><code>mkdir -p data &amp;&amp; sudo chown 1000:1000 data
+cp .env.sample data/.env   # set BW_AUTHENTICATION_PASSWORD
+docker compose build
+docker compose run --rm --entrypoint brickwork brickwork setup
+docker compose up -d</code></pre>
+<p>Then open <code>http://localhost:3333</code>. Coming from BrickTracker? <code>brickwork migrate</code> imports your old database read-only. The full guide is in the <a href="docs/">documentation</a>.</p>
+</section>
+
+<section>
+<h2>Planned, not built yet</h2>
+<p>The order is the promise; there are no dates. Buildable sets (which catalogue sets your stock can build), syncing your collection with Rebrickable, BrickLink and Brickset, importers for more sources, and a pile check by photo are on the <a href="https://github.com/users/Ulef1005/projects/3">public roadmap</a>. Vote with a thumbs-up on the issue you want.</p>
+</section>

@@ -1,11 +1,20 @@
 /* #45 What is this? */
-.wi-actions { display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:0 0 8px; }
-.wi-primary { display:inline-flex;align-items:center;gap:8px;min-height:56px;padding:0 20px;border-radius:12px;background:var(--tw-accent);color:#1A1816;font:600 16px var(--tw-font);cursor:pointer; }
-.wi-switch { display:inline-flex;border-radius:10px;background:var(--tw-surface);padding:2px; }
-.wi-switch label { display:inline-flex; } .wi-switch input { position:absolute;opacity:0; }
-.wi-switch span { display:inline-flex;align-items:center;min-height:40px;padding:0 14px;border-radius:8px;font:500 14px var(--tw-font);cursor:pointer; }
-.wi-switch input:checked + span { background:var(--tw-bg);box-shadow:0 0 0 .5px var(--tw-divider-strong); }
+.wi-capture { display:flex;flex-direction:column;gap:12px;max-width:640px; }
+/* Segments as in the kit: 44 px, the chosen one on clay-soft, no shadow. */
+.wi-switch { display:flex;border-radius:10px;background:var(--tw-surface);padding:2px;gap:2px;align-self:flex-start; }
+.wi-switch label { display:flex;flex:1; } .wi-switch input { position:absolute;opacity:0; }
+.wi-switch span { display:inline-flex;align-items:center;justify-content:center;flex:1;min-height:44px;padding:0 16px;border-radius:8px;font:500 14px var(--tw-font);color:var(--tw-text-2);cursor:pointer; }
+.wi-switch input:checked + span { background:var(--tw-accent-soft);color:var(--tw-accent-text); }
 .wi-switch input:focus-visible + span { outline:2px solid var(--tw-accent); }
+.wi-viewfinder { position:relative;aspect-ratio:4/3;background:var(--tw-surface-2);border-radius:16px;overflow:hidden; }
+.wi-viewfinder[hidden] { display:none; }
+.wi-viewfinder video { position:absolute;inset:0;width:100%;height:100%;object-fit:contain; }
+.wi-guide { position:absolute;inset:20px;border:1.5px dashed var(--tw-divider-strong);border-radius:10px;pointer-events:none; }
+.wi-primary { display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:56px;padding:0 20px;border-radius:10px;border:0;background:var(--tw-accent);color:#1A1816;font:600 16px var(--tw-font);cursor:pointer; }
+.wi-primary svg { width:20px;height:20px; }
+.wi-split { display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap; }
+.wi-link { min-height:44px;padding:0 12px;margin-left:-12px;display:inline-flex;align-items:center;color:var(--tw-accent-text);font:500 14px var(--tw-font);cursor:pointer; }
+.wi-link:focus-within { outline:2px solid var(--tw-accent);outline-offset:2px; }
 .wi-note { margin:0 0 12px;font-size:13px; }
 .wi-status { min-height:20px;font:500 14px var(--tw-font); }
 .wi-results { display:flex;flex-direction:column;gap:12px; }

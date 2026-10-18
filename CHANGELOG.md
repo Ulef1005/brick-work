@@ -2,6 +2,7 @@
 
 ## Brick Work 2.0.0-dev (unreleased)
 
+- What is this?: Enable camera opens a live preview with a guide, as in Part to Inventory; the next press (or Space) takes the picture and identifies it. A saved photo stays the quiet alternative, and the Part/Minifigure switch is a kit segment.
 - README: how to get BrickLink, Rebrickable and Brickset keys and the limits each service sets; the install starts with the clone and asks for the password before the first start (found by a fresh-machine test).
 - Demo: four copies hold a running set check made with the app's own checker at build time (first part, about 40 % answered, finished with six missing, finished clean), so Start, Resume and the finish screens show real states.
 - Demo: the missing-picture tiles keep the item number and say where pictures come from: a set's picture from BrickLink when the set is added; part and figure pictures from Rebrickable or BrickLink with Refresh pictures.

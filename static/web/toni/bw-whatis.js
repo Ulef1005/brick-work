@@ -49,6 +49,35 @@
       data.candidates.forEach(c => results.append(card(c)));
     } catch (error) { status.textContent = error.message || 'Could not recognise this photo · try again'; }
   }
-  file.addEventListener('change', () => { if (file.files && file.files[0]) identify(file.files[0]); });
-  window.BrickWhatIs = {card};
+  file.addEventListener('change', () => { if (file.files && file.files[0]) identify(file.files[0]); file.value = ''; });
+
+  // Live camera (as Part to Inventory): the first press asks for the camera, then each press takes a picture.
+  const capture = root.querySelector('[data-wi-capture]'), label = root.querySelector('[data-wi-capture-label]');
+  const finder = root.querySelector('[data-wi-viewfinder]'), video = root.querySelector('[data-wi-video]');
+  const media = typeof navigator !== 'undefined' && navigator.mediaDevices && navigator.mediaDevices.getUserMedia && (typeof window.isSecureContext === 'undefined' || window.isSecureContext);
+  let stream = null;
+  const live = () => !!(stream && stream.active);
+  function stop() { if (stream) stream.getTracks().forEach(t => t.stop()); stream = null; if (finder) finder.hidden = true; if (label) label.textContent = 'Enable camera'; }
+  async function start() {
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({video: {facingMode: 'environment'}, audio: false});
+      video.srcObject = stream; finder.hidden = false; label.textContent = 'Take picture';
+      status.textContent = 'Place one part or minifigure inside the guide';
+    } catch (error) { stream = null; status.textContent = 'No camera · allow camera access or choose a saved photo'; }
+  }
+  function shoot() {
+    if (!video.videoWidth) { status.textContent = 'The camera is starting · try again'; return; }
+    const canvas = document.createElement('canvas'); canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    canvas.toBlob(blob => { if (blob) identify(new File([blob], 'photo.jpg', {type: 'image/jpeg'})); else status.textContent = 'This photo could not be read · try again'; }, 'image/jpeg', 0.9);
+  }
+  if (capture && media) {
+    capture.addEventListener('click', () => (live() ? shoot() : start()));
+    document.addEventListener('keydown', e => { if (e.code === 'Space' && live() && !/INPUT|TEXTAREA|SELECT|BUTTON/.test(e.target.tagName)) { e.preventDefault(); shoot(); } });
+    window.addEventListener('pagehide', stop);
+  } else if (capture) {
+    // No camera API here (an insecure page or an old browser): the saved photo is the way in.
+    capture.hidden = true;
+  }
+  window.BrickWhatIs = {card, start, shoot, stop, live};
 })();

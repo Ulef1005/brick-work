@@ -4,8 +4,12 @@
 {% block main %}
 <header class="bw-page-head"><h1>What is this?</h1><p>Take or choose a photo of one part or minifigure. Brick Work names it and shows what you already have of it.</p></header>
 <section class="wi-capture" data-wi-root data-url="{{ detect_url }}" data-csrf="{{ csrf_token }}">
-<div class="wi-actions"><label class="button primary wi-primary" for="wi-file">{{ toni_icon('scan') }}Take or choose a photo</label><input class="bc-visually-hidden" id="wi-file" type="file" accept="image/*" capture="environment" data-wi-file>
-<div class="wi-switch" role="radiogroup" aria-label="Recognise"><label><input type="radio" name="wi-endpoint" value="parts" checked><span>Part</span></label><label><input type="radio" name="wi-endpoint" value="figs"><span>Minifigure</span></label></div></div>
+{# Capture as Part to Inventory (frame 3f): a live preview with a guide, one primary that enables the camera
+   and then takes the picture, and a saved photo as the quiet alternative. #}
+<div class="wi-switch" role="radiogroup" aria-label="Recognise"><label><input type="radio" name="wi-endpoint" value="parts" checked><span>Part</span></label><label><input type="radio" name="wi-endpoint" value="figs"><span>Minifigure</span></label></div>
+<div class="wi-viewfinder" data-wi-viewfinder hidden><video data-wi-video autoplay muted playsinline></video><span class="wi-guide" aria-hidden="true"></span></div>
+<button type="button" class="wi-primary" data-wi-capture>{{ toni_icon('scan') }}<span data-wi-capture-label>Enable camera</span></button>
+<div class="wi-split"><label class="wi-link"><input class="bc-visually-hidden" id="wi-file" type="file" accept="image/*" data-wi-file>Choose a saved photo</label><span class="mono secondary">Space · take picture</span></div>
 <p class="wi-note secondary">Uses one Brickognize request from the daily budget. The colour is not recognised from a photo; your colours of that part are listed instead.</p>
 <p class="wi-status" data-wi-status role="status" aria-live="polite"></p>
 <div class="wi-results" data-wi-results></div>

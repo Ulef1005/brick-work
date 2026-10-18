@@ -42,4 +42,9 @@ def test_page_jump_link_and_script(bw, apps):
     page = BeautifulSoup(client.get('/workbench/what-is-this').data, 'html.parser')
     root = page.select_one('[data-wi-root]')
     assert root['data-url'] == '/workbench/part-to-inventory/detect' and root.select_one('input[type=file][accept="image/*"]')
+    # Frame 3f capture: live preview with a guide, one primary that enables the camera, a saved photo as the quiet way in.
+    assert root.select_one('[data-wi-viewfinder][hidden] video[playsinline]') and root.select_one('[data-wi-viewfinder] .wi-guide')
+    assert root.select_one('button.wi-primary[data-wi-capture]').get_text(strip=True) == 'Enable camera'
+    assert root.select_one('label.wi-link').get_text(strip=True) == 'Choose a saved photo'
+    assert not root.select_one('input[capture]')  # the live camera replaces the picker's capture hint
     assert page.select_one('#global-jump a.jump-whatis')['href'] == '/workbench/what-is-this'

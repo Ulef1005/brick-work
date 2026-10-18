@@ -1,0 +1,25 @@
+/* #43 printable lists: A4 portrait, black-and-white safe (colour names always printed). */
+.pr-page{margin:0;padding:24px 16px 48px;background:var(--tw-bg,#fff);color:var(--tw-text,#1A1816);font:400 14px/20px var(--tw-font,Inter,system-ui,sans-serif);max-width:960px;margin-inline:auto}
+.pr-tools{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 24px}
+.pr-btn{display:inline-flex;align-items:center;height:44px;padding:0 16px;border-radius:10px;border:.5px solid var(--tw-divider-strong,#ccc);background:var(--tw-surface-2,#f4f2ee);color:var(--tw-text,#1A1816);font:500 14px var(--tw-font,inherit);text-decoration:none;cursor:pointer}
+.pr-primary{background:var(--tw-accent,#c96f4a);border-color:var(--tw-accent,#c96f4a);color:#1A1816;font-weight:600}
+.pr-head h1{font:600 22px/28px var(--tw-font,inherit);margin:0}.pr-head p{margin:4px 0 16px;font:400 13px var(--tw-mono,ui-monospace,monospace);color:var(--tw-text-2,#555)}
+.pr-table{width:100%;border-collapse:collapse}
+.pr-table th{text-align:left;font:500 11px/14px var(--tw-font,inherit);letter-spacing:.08em;text-transform:uppercase;color:var(--tw-text-muted,#666);padding:6px 8px;border-bottom:.5px solid #999}
+.pr-table td{padding:6px 8px;border-bottom:.5px solid #ccc;vertical-align:middle;break-inside:avoid}
+.pr-table tr{break-inside:avoid}
+.pr-no{display:block;font:400 12px var(--tw-mono,ui-monospace,monospace);color:var(--tw-text-2,#555)}
+.pr-name{display:block;font:500 14px/18px var(--tw-font,inherit)}
+.pr-colour{display:block;font:500 13px var(--tw-font,inherit)}
+.pr-muted{display:block;font:400 12px var(--tw-font,inherit);color:var(--tw-text-muted,#666)}
+.pr-num{text-align:right;font-variant-numeric:tabular-nums;font-family:var(--tw-mono,ui-monospace,monospace)}
+.pr-qty{font-size:16px;font-weight:600}
+.pr-pic{width:56px}.pr-pic img{width:48px;height:48px;object-fit:contain;background:#fff;display:block}
+.pr-tick{width:28px}.pr-box{display:inline-block;width:16px;height:16px;border:1px solid #666;border-radius:3px}
+.pr-error{padding:12px;border-radius:10px;background:var(--tw-warning-soft,#fbe9c8)}
+@media print{
+ @page{size:A4 portrait;margin:14mm 12mm}
+ .pr-page{padding:0;max-width:none;background:#fff;color:#000}
+ .pr-tools{display:none}
+ .pr-head p,.pr-no,.pr-muted,.pr-table th{color:#333}
+}

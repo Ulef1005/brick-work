@@ -1,0 +1,2273 @@
+{
+  "operations": [
+    {
+      "action": "create",
+      "endpoint": "post_wishlists",
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/wishlists",
+      "required": true,
+      "resource": "wishlists",
+      "schema": {
+        "$ref": "#/components/schemas/WishlistCreate"
+      },
+      "shape": "Wishlist"
+    },
+    {
+      "action": "patch",
+      "endpoint": "patch_wishlists_id",
+      "if_match": false,
+      "method": "PATCH",
+      "multipart": false,
+      "path": "/wishlists/{id}",
+      "required": true,
+      "resource": "wishlists",
+      "schema": {
+        "$ref": "#/components/schemas/WishlistPatch"
+      },
+      "shape": "Wishlist"
+    },
+    {
+      "action": "archive",
+      "endpoint": "delete_wishlists_id",
+      "if_match": false,
+      "method": "DELETE",
+      "multipart": false,
+      "path": "/wishlists/{id}",
+      "required": true,
+      "resource": "wishlists",
+      "schema": null,
+      "shape": "Wishlist"
+    },
+    {
+      "action": "restore",
+      "endpoint": "post_wishlists_id_restore",
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/wishlists/{id}/restore",
+      "required": true,
+      "resource": "wishlists",
+      "schema": null,
+      "shape": "Wishlist"
+    },
+    {
+      "action": "transfer",
+      "endpoint": "post_wishlists_id_transfer",
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/wishlists/{id}/transfer",
+      "required": true,
+      "resource": "wishlists",
+      "schema": {
+        "$ref": "#/components/schemas/WishlistTransfer"
+      },
+      "shape": "Receipt"
+    },
+    {
+      "action": "create",
+      "endpoint": "post_copies",
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/copies",
+      "required": true,
+      "resource": "copies",
+      "schema": {
+        "$ref": "#/components/schemas/CopyCreate"
+      },
+      "shape": "Created"
+    },
+    {
+      "action": "patch",
+      "endpoint": "patch_copies_by_id",
+      "if_match": true,
+      "method": "PATCH",
+      "multipart": false,
+      "path": "/copies/{id}",
+      "required": false,
+      "resource": "copies",
+      "schema": {
+        "$ref": "#/components/schemas/CopyPatch"
+      },
+      "shape": "Copy"
+    },
+    {
+      "action": "archive",
+      "endpoint": "delete_copies_by_id",
+      "if_match": true,
+      "method": "DELETE",
+      "multipart": false,
+      "path": "/copies/{id}",
+      "required": false,
+      "resource": "copies",
+      "schema": null,
+      "shape": "Copy"
+    },
+    {
+      "action": "restore",
+      "endpoint": "post_copies_by_id_restore",
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/copies/{id}/restore",
+      "required": false,
+      "resource": "copies",
+      "schema": null,
+      "shape": "Copy"
+    },
+    {
+      "action": "flags",
+      "endpoint": "put_copies_by_id_flags",
+      "if_match": false,
+      "method": "PUT",
+      "multipart": false,
+      "path": "/copies/{id}/flags",
+      "required": false,
+      "resource": "copies",
+      "schema": {
+        "$ref": "#/components/schemas/FlagSet"
+      },
+      "shape": "Copy"
+    },
+    {
+      "action": "pin",
+      "endpoint": "put_copies_by_id_pin",
+      "if_match": false,
+      "method": "PUT",
+      "multipart": false,
+      "path": "/copies/{id}/pin",
+      "required": false,
+      "resource": "copies",
+      "schema": {
+        "$ref": "#/components/schemas/Pin"
+      },
+      "shape": "Copy"
+    },
+    {
+      "action": "checked",
+      "endpoint": "put_copies_by_id_checked",
+      "if_match": false,
+      "method": "PUT",
+      "multipart": false,
+      "path": "/copies/{id}/checked",
+      "required": false,
+      "resource": "copies",
+      "schema": {
+        "$ref": "#/components/schemas/Checked"
+      },
+      "shape": "Completeness"
+    },
+    {
+      "action": "take",
+      "endpoint": "post_copies_by_id_take",
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/copies/{id}/take",
+      "required": true,
+      "resource": "copies",
+      "schema": {
+        "$ref": "#/components/schemas/Take"
+      },
+      "shape": "Receipt"
+    },
+    {
+      "action": "part",
+      "endpoint": "patch_copies_by_id_parts_by_part_id",
+      "if_match": false,
+      "method": "PATCH",
+      "multipart": false,
+      "path": "/copies/{id}/parts/{part_id}",
+      "required": false,
+      "resource": "copies",
+      "schema": {
+        "$ref": "#/components/schemas/CopyPartPatch"
+      },
+      "shape": "CopyPart"
+    },
+    {
+      "action": "bulk",
+      "endpoint": "post_copies_by_id_parts_bulk",
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/copies/{id}/parts/bulk",
+      "required": true,
+      "resource": "copies",
+      "schema": {
+        "$ref": "#/components/schemas/CopyPartBulk"
+      },
+      "shape": "BulkResult"
+    },
+    {
+      "action": "figure",
+      "endpoint": "patch_copies_by_id_figures_by_type_by_no",
+      "if_match": false,
+      "method": "PATCH",
+      "multipart": false,
+      "path": "/copies/{id}/figures/{type}/{no}",
+      "required": false,
+      "resource": "copies",
+      "schema": {
+        "$ref": "#/components/schemas/CopyFigurePatch"
+      },
+      "shape": "CopyFigure"
+    },
+    {
+      "action": "create",
+      "endpoint": "post_stock",
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/stock",
+      "required": true,
+      "resource": "stock",
+      "schema": {
+        "$ref": "#/components/schemas/StockCreate"
+      },
+      "shape": "Created"
+    },
+    {
+      "action": "patch",
+      "endpoint": "patch_stock_by_id",
+      "if_match": true,
+      "method": "PATCH",
+      "multipart": false,
+      "path": "/stock/{id}",
+      "required": false,
+      "resource": "stock",
+      "schema": {
+        "$ref": "#/components/schemas/StockPatch"
+      },
+      "shape": "Stock"
+    },
+    {
+      "action": "archive",
+      "endpoint": "delete_stock_by_id",
+      "if_match": true,
+      "method": "DELETE",
+      "multipart": false,
+      "path": "/stock/{id}",
+      "required": false,
+      "resource": "stock",
+      "schema": null,
+      "shape": "Stock"
+    },
+    {
+      "action": "restore",
+      "endpoint": "post_stock_by_id_restore",
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/stock/{id}/restore",
+      "required": false,
+      "resource": "stock",
+      "schema": null,
+      "shape": "Stock"
+    },
+    {
+      "action": "flags",
+      "endpoint": "put_stock_by_id_flags",
+      "if_match": false,
+      "method": "PUT",
+      "multipart": false,
+      "path": "/stock/{id}/flags",
+      "required": false,
+      "resource": "stock",
+      "schema": {
+        "$ref": "#/components/schemas/FlagSet"
+      },
+      "shape": "Stock"
+    },
+    {
+      "action": "parts",
+      "endpoint": "patch_stock_by_id_parts",
+      "if_match": false,
+      "method": "PATCH",
+      "multipart": false,
+      "path": "/stock/{id}/parts",
+      "required": false,
+      "resource": "stock",
+      "schema": {
+        "$ref": "#/components/schemas/LooseFigurePartPatch"
+      },
+      "shape": "LooseFigureParts"
+    },
+    {
+      "action": "give",
+      "endpoint": "post_stock_by_id_give",
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/stock/{id}/give",
+      "required": true,
+      "resource": "stock",
+      "schema": {
+        "$ref": "#/components/schemas/Give"
+      },
+      "shape": "Receipt"
+    },
+    {
+      "action": "create",
+      "endpoint": "post_stock_booklets",
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/stock/booklets",
+      "required": true,
+      "resource": "booklets",
+      "schema": {
+        "$ref": "#/components/schemas/Booklets"
+      },
+      "shape": "Receipt"
+    },
+    {
+      "action": "create",
+      "endpoint": "post_found",
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/found",
+      "required": true,
+      "resource": "found",
+      "schema": {
+        "$ref": "#/components/schemas/Found"
+      },
+      "shape": "Receipt"
+    },
+    {
+      "action": "create",
+      "endpoint": "post_instruction_files",
+      "if_match": false,
+      "method": "POST",
+      "multipart": true,
+      "path": "/instruction-files",
+      "required": false,
+      "resource": "instruction-files",
+      "schema": {
+        "$ref": "#/components/schemas/InstructionUpload"
+      },
+      "shape": "InstructionFile"
+    },
+    {
+      "action": "patch",
+      "endpoint": "patch_instruction_files_by_id",
+      "if_match": false,
+      "method": "PATCH",
+      "multipart": false,
+      "path": "/instruction-files/{id}",
+      "required": false,
+      "resource": "instruction-files",
+      "schema": {
+        "$ref": "#/components/schemas/InstructionPatch"
+      },
+      "shape": "InstructionFile"
+    },
+    {
+      "action": "archive",
+      "endpoint": "delete_instruction_files_by_id",
+      "if_match": false,
+      "method": "DELETE",
+      "multipart": false,
+      "path": "/instruction-files/{id}",
+      "required": false,
+      "resource": "instruction-files",
+      "schema": null,
+      "shape": "Deleted"
+    },
+    {
+      "action": "prices",
+      "endpoint": "post_items_by_type_by_no_prices",
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/items/{type}/{no}/prices",
+      "required": true,
+      "resource": "items",
+      "schema": {
+        "$ref": "#/components/schemas/PriceCreate"
+      },
+      "shape": "PriceObservation"
+    },
+    {
+      "action": "create",
+      "endpoint": "post_prices_observations",
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/prices/observations",
+      "required": true,
+      "resource": "prices",
+      "schema": {
+        "$ref": "#/components/schemas/PriceBatch"
+      },
+      "shape": "BulkResult"
+    },
+    {
+      "action": "create",
+      "endpoint": "post_wishes",
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/wishes",
+      "required": true,
+      "resource": "wishes",
+      "schema": {
+        "$ref": "#/components/schemas/WishCreate"
+      },
+      "shape": "Created"
+    },
+    {
+      "action": "patch",
+      "endpoint": "patch_wishes_by_id",
+      "if_match": true,
+      "method": "PATCH",
+      "multipart": false,
+      "path": "/wishes/{id}",
+      "required": false,
+      "resource": "wishes",
+      "schema": {
+        "$ref": "#/components/schemas/WishPatch"
+      },
+      "shape": "Wish"
+    },
+    {
+      "action": "archive",
+      "endpoint": "delete_wishes_by_id",
+      "if_match": true,
+      "method": "DELETE",
+      "multipart": false,
+      "path": "/wishes/{id}",
+      "required": false,
+      "resource": "wishes",
+      "schema": null,
+      "shape": "Wish"
+    },
+    {
+      "action": "restore",
+      "endpoint": "post_wishes_by_id_restore",
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/wishes/{id}/restore",
+      "required": false,
+      "resource": "wishes",
+      "schema": null,
+      "shape": "Wish"
+    },
+    {
+      "action": "flags",
+      "endpoint": "put_wishes_by_id_flags",
+      "if_match": false,
+      "method": "PUT",
+      "multipart": false,
+      "path": "/wishes/{id}/flags",
+      "required": false,
+      "resource": "wishes",
+      "schema": {
+        "$ref": "#/components/schemas/FlagSet"
+      },
+      "shape": "Wish"
+    },
+    {
+      "action": "to-owned",
+      "endpoint": "post_wishes_by_id_to_owned",
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/wishes/{id}/to-owned",
+      "required": true,
+      "resource": "wishes",
+      "schema": {
+        "$ref": "#/components/schemas/WishToOwned"
+      },
+      "shape": "Created"
+    },
+    {
+      "action": "create",
+      "endpoint": "post_storages",
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/storages",
+      "required": false,
+      "resource": "storages",
+      "schema": {
+        "$ref": "#/components/schemas/StorageInput"
+      },
+      "shape": "Storage"
+    },
+    {
+      "action": "patch",
+      "endpoint": "patch_storages_by_id",
+      "if_match": false,
+      "method": "PATCH",
+      "multipart": false,
+      "path": "/storages/{id}",
+      "required": false,
+      "resource": "storages",
+      "schema": {
+        "$ref": "#/components/schemas/StorageInput"
+      },
+      "shape": "Storage"
+    },
+    {
+      "action": "archive",
+      "endpoint": "delete_storages_by_id",
+      "if_match": false,
+      "method": "DELETE",
+      "multipart": false,
+      "path": "/storages/{id}",
+      "required": false,
+      "resource": "storages",
+      "schema": null,
+      "shape": "Storage"
+    },
+    {
+      "action": "contents",
+      "endpoint": "post_storages_by_id_contents",
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/storages/{id}/contents",
+      "required": true,
+      "resource": "storages",
+      "schema": {
+        "$ref": "#/components/schemas/StorageMove"
+      },
+      "shape": "Receipt"
+    },
+    {
+      "action": "create",
+      "endpoint": "post_lots",
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/lots",
+      "required": true,
+      "resource": "lots",
+      "schema": {
+        "$ref": "#/components/schemas/LotCreate"
+      },
+      "shape": "Lot"
+    },
+    {
+      "action": "patch",
+      "endpoint": "patch_lots_by_id",
+      "if_match": false,
+      "method": "PATCH",
+      "multipart": false,
+      "path": "/lots/{id}",
+      "required": false,
+      "resource": "lots",
+      "schema": {
+        "$ref": "#/components/schemas/LotPatch"
+      },
+      "shape": "Lot"
+    },
+    {
+      "action": "archive",
+      "endpoint": "delete_lots_by_id",
+      "if_match": false,
+      "method": "DELETE",
+      "multipart": false,
+      "path": "/lots/{id}",
+      "required": false,
+      "resource": "lots",
+      "schema": null,
+      "shape": "Lot"
+    },
+    {
+      "action": "create",
+      "endpoint": "post_places",
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/places",
+      "required": false,
+      "resource": "places",
+      "schema": {
+        "$ref": "#/components/schemas/NameInput"
+      },
+      "shape": "Place"
+    },
+    {
+      "action": "patch",
+      "endpoint": "patch_places_by_id",
+      "if_match": false,
+      "method": "PATCH",
+      "multipart": false,
+      "path": "/places/{id}",
+      "required": false,
+      "resource": "places",
+      "schema": {
+        "$ref": "#/components/schemas/NameInput"
+      },
+      "shape": "Place"
+    },
+    {
+      "action": "archive",
+      "endpoint": "delete_places_by_id",
+      "if_match": false,
+      "method": "DELETE",
+      "multipart": false,
+      "path": "/places/{id}",
+      "required": false,
+      "resource": "places",
+      "schema": null,
+      "shape": "Deleted"
+    },
+    {
+      "action": "create",
+      "endpoint": "post_flags",
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/flags",
+      "required": false,
+      "resource": "flags",
+      "schema": {
+        "$ref": "#/components/schemas/FlagInput"
+      },
+      "shape": "Flag"
+    },
+    {
+      "action": "patch",
+      "endpoint": "patch_flags_by_id",
+      "if_match": false,
+      "method": "PATCH",
+      "multipart": false,
+      "path": "/flags/{id}",
+      "required": false,
+      "resource": "flags",
+      "schema": {
+        "$ref": "#/components/schemas/NameInput"
+      },
+      "shape": "Flag"
+    },
+    {
+      "action": "archive",
+      "endpoint": "delete_flags_by_id",
+      "if_match": false,
+      "method": "DELETE",
+      "multipart": false,
+      "path": "/flags/{id}",
+      "required": false,
+      "resource": "flags",
+      "schema": null,
+      "shape": "Deleted"
+    },
+    {
+      "action": "documents",
+      "endpoint": "post_orders_documents",
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/orders/documents",
+      "required": true,
+      "resource": "orders",
+      "schema": {
+        "$ref": "#/components/schemas/OrderImport"
+      },
+      "shape": "OrderImportResult"
+    },
+    {
+      "action": "{line_id}",
+      "endpoint": "patch_orders_by_id_lines_by_line_id",
+      "if_match": false,
+      "method": "PATCH",
+      "multipart": false,
+      "path": "/orders/{id}/lines/{line_id}",
+      "required": false,
+      "resource": "orders",
+      "schema": {
+        "$ref": "#/components/schemas/OrderLineMatch"
+      },
+      "shape": "Receipt"
+    },
+    {
+      "action": "hold",
+      "endpoint": "put_orders_by_id_lines_by_line_id_hold",
+      "if_match": false,
+      "method": "PUT",
+      "multipart": false,
+      "path": "/orders/{id}/lines/{line_id}/hold",
+      "required": false,
+      "resource": "orders",
+      "schema": {
+        "$ref": "#/components/schemas/Hold"
+      },
+      "shape": "Receipt"
+    },
+    {
+      "action": "phase",
+      "endpoint": "post_orders_by_id_documents_by_doc_id_phase",
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/orders/{id}/documents/{doc_id}/phase",
+      "required": false,
+      "resource": "orders",
+      "schema": {
+        "$ref": "#/components/schemas/OrderPhase"
+      },
+      "shape": "Receipt"
+    },
+    {
+      "action": "received",
+      "endpoint": "post_orders_by_id_received",
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/orders/{id}/received",
+      "required": false,
+      "resource": "orders",
+      "schema": {
+        "$ref": "#/components/schemas/OrderReceived"
+      },
+      "shape": "Receipt"
+    },
+    {
+      "action": "allocate",
+      "endpoint": "post_orders_by_id_allocate",
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/orders/{id}/allocate",
+      "required": true,
+      "resource": "orders",
+      "schema": {
+        "$ref": "#/components/schemas/OrderAllocate"
+      },
+      "shape": "Receipt"
+    },
+    {
+      "action": "reconcile",
+      "endpoint": "post_orders_by_id_reconcile",
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/orders/{id}/reconcile",
+      "required": false,
+      "resource": "orders",
+      "schema": null,
+      "shape": "Receipt"
+    },
+    {
+      "action": "retry",
+      "endpoint": "post_orders_by_id_allocations_retry",
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/orders/{id}/allocations/retry",
+      "required": true,
+      "resource": "orders",
+      "schema": {
+        "$ref": "#/components/schemas/OrderAllocate"
+      },
+      "shape": "Receipt"
+    },
+    {
+      "action": "photos",
+      "endpoint": "post_copies_id_photos",
+      "if_match": false,
+      "method": "POST",
+      "multipart": true,
+      "path": "/copies/{id}/photos",
+      "required": false,
+      "resource": "copies",
+      "schema": {
+        "additionalProperties": false,
+        "properties": {
+          "caption": {
+            "type": "string"
+          },
+          "file": {
+            "format": "binary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "type": "object"
+      },
+      "shape": "Copy"
+    },
+    {
+      "action": "photos",
+      "endpoint": "post_stock_id_photos",
+      "if_match": false,
+      "method": "POST",
+      "multipart": true,
+      "path": "/stock/{id}/photos",
+      "required": false,
+      "resource": "stock",
+      "schema": {
+        "additionalProperties": false,
+        "properties": {
+          "caption": {
+            "type": "string"
+          },
+          "file": {
+            "format": "binary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "type": "object"
+      },
+      "shape": "Stock"
+    },
+    {
+      "action": "restore",
+      "endpoint": "post_storages_by_id_restore",
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/storages/{id}/restore",
+      "required": false,
+      "resource": "storages",
+      "schema": null,
+      "shape": "Storage"
+    },
+    {
+      "action": "restore",
+      "endpoint": "post_lots_by_id_restore",
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/lots/{id}/restore",
+      "required": false,
+      "resource": "lots",
+      "schema": null,
+      "shape": "Lot"
+    },
+    {
+      "action": "restore",
+      "endpoint": "post_places_by_id_restore",
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/places/{id}/restore",
+      "required": false,
+      "resource": "places",
+      "schema": null,
+      "shape": "Place"
+    },
+    {
+      "action": "restore",
+      "endpoint": "post_flags_by_id_restore",
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/flags/{id}/restore",
+      "required": false,
+      "resource": "flags",
+      "schema": null,
+      "shape": "Flag"
+    },
+    {
+      "action": "restore",
+      "endpoint": "post_instruction_files_by_id_restore",
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/instruction-files/{id}/restore",
+      "required": false,
+      "resource": "instruction-files",
+      "schema": null,
+      "shape": "InstructionFile"
+    }
+  ],
+  "schemas": {
+    "Booklets": {
+      "properties": {
+        "quantity": {
+          "type": "integer"
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "type": "object"
+    },
+    "Checked": {
+      "additionalProperties": false,
+      "properties": {
+        "checked": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "checked"
+      ],
+      "type": "object"
+    },
+    "CopyCreate": {
+      "properties": {
+        "completeness": {
+          "enum": [
+            "sealed",
+            "complete",
+            "incomplete"
+          ],
+          "type": "string"
+        },
+        "condition": {
+          "enum": [
+            "new",
+            "used"
+          ],
+          "type": "string"
+        },
+        "decision": {
+          "enum": [
+            "another",
+            "skip"
+          ],
+          "type": "string"
+        },
+        "item_no": {
+          "type": "string"
+        },
+        "purchase_currency": {
+          "pattern": "^[A-Z]{3,8}$",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "purchase_date": {
+          "description": "ISO-8601 date or date-time, as stored.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "purchase_location_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "purchase_price": {
+          "description": "Decimal string, never a float.",
+          "pattern": "^[0-9]+(\\.[0-9]+)?$",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "quantity": {
+          "type": "integer"
+        },
+        "storage_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "item_no"
+      ],
+      "type": "object"
+    },
+    "CopyFigurePatch": {
+      "additionalProperties": false,
+      "properties": {
+        "missing": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "missing"
+      ],
+      "type": "object"
+    },
+    "CopyPartBulk": {
+      "additionalProperties": false,
+      "properties": {
+        "dry_run": {
+          "default": false,
+          "type": "boolean"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/components/schemas/CopyPartBulkItem"
+          },
+          "maxItems": 500,
+          "minItems": 1,
+          "type": "array"
+        },
+        "mode": {
+          "default": "set",
+          "enum": [
+            "set",
+            "add"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "type": "object"
+    },
+    "CopyPartBulkItem": {
+      "additionalProperties": false,
+      "properties": {
+        "color_id": {
+          "type": "integer"
+        },
+        "item_no": {
+          "type": "string"
+        },
+        "missing": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "item_no",
+        "color_id",
+        "missing"
+      ],
+      "type": "object"
+    },
+    "CopyPartPatch": {
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "checked": {
+          "type": "boolean"
+        },
+        "damaged": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "missing": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "CopyPatch": {
+      "description": "Only these fields; at least one. null clears.",
+      "properties": {
+        "completeness": {
+          "enum": [
+            "sealed",
+            "complete",
+            "incomplete"
+          ],
+          "type": "string"
+        },
+        "completeness_source": {
+          "enum": [
+            "manual",
+            "derived"
+          ],
+          "type": "string"
+        },
+        "condition": {
+          "enum": [
+            "new",
+            "used"
+          ],
+          "type": "string"
+        },
+        "current_value": {
+          "description": "Decimal string, never a float.",
+          "pattern": "^[0-9]+(\\.[0-9]+)?$",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "current_value_currency": {
+          "pattern": "^[A-Z]{3,8}$",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "purchase_currency": {
+          "pattern": "^[A-Z]{3,8}$",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "purchase_date": {
+          "description": "ISO-8601 date or date-time, as stored.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "purchase_location_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "purchase_price": {
+          "description": "Decimal string, never a float.",
+          "pattern": "^[0-9]+(\\.[0-9]+)?$",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "storage_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "FlagInput": {
+      "properties": {
+        "kind": {
+          "enum": [
+            "status",
+            "tag",
+            "owner"
+          ],
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "kind"
+      ],
+      "type": "object"
+    },
+    "FlagSet": {
+      "properties": {
+        "flags": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "flags"
+      ],
+      "type": "object"
+    },
+    "Found": {
+      "properties": {
+        "assignments": {},
+        "color_id": {
+          "type": "integer"
+        },
+        "destination": {
+          "enum": [
+            "set",
+            "loose",
+            "list"
+          ],
+          "type": "string"
+        },
+        "item_no": {
+          "type": "string"
+        },
+        "item_type": {
+          "enum": [
+            "P"
+          ],
+          "type": "string"
+        },
+        "quantity": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "item_type",
+        "item_no",
+        "color_id",
+        "destination",
+        "quantity"
+      ],
+      "type": "object"
+    },
+    "Give": {
+      "properties": {
+        "copy_id": {
+          "type": "string"
+        },
+        "quantity": {
+          "type": "integer"
+        },
+        "target": {
+          "enum": [
+            "part",
+            "figure",
+            "stock-part",
+            "instructions",
+            "box"
+          ],
+          "type": "string"
+        },
+        "target_id": {}
+      },
+      "required": [
+        "copy_id",
+        "target",
+        "target_id",
+        "quantity"
+      ],
+      "type": "object"
+    },
+    "Hold": {
+      "properties": {
+        "held": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "held"
+      ],
+      "type": "object"
+    },
+    "InstructionPatch": {
+      "properties": {
+        "label": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "label"
+      ],
+      "type": "object"
+    },
+    "InstructionUpload": {
+      "description": "multipart/form-data; file is a PDF of at most 20 MB.",
+      "properties": {
+        "file": {
+          "type": "string"
+        },
+        "item_no": {
+          "type": "string"
+        },
+        "item_type": {
+          "enum": [
+            "S",
+            "M",
+            "P",
+            "I",
+            "O",
+            "G",
+            "B",
+            "C",
+            "?"
+          ],
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "label": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "item_type",
+        "item_no",
+        "label",
+        "file"
+      ],
+      "type": "object"
+    },
+    "LooseFigurePartKey": {
+      "additionalProperties": false,
+      "properties": {
+        "checked": {
+          "type": "boolean"
+        },
+        "color_id": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "damaged": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "item_no": {
+          "type": "string"
+        },
+        "item_type": {
+          "default": "P",
+          "enum": [
+            "P",
+            "M",
+            "S",
+            "I",
+            "O",
+            "G",
+            "B",
+            "C",
+            "?"
+          ],
+          "type": "string"
+        },
+        "missing": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "spare": {
+          "description": "Exact stored spare key; null and zero are distinct.",
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "item_no",
+        "color_id",
+        "spare"
+      ],
+      "type": "object"
+    },
+    "LooseFigurePartPatch": {
+      "additionalProperties": false,
+      "properties": {
+        "parts": {
+          "items": {
+            "$ref": "#/components/schemas/LooseFigurePartKey"
+          },
+          "maxItems": 500,
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": [
+        "parts"
+      ],
+      "type": "object"
+    },
+    "LotCreate": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "stock_ids": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "storage_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "stock_ids",
+        "name"
+      ],
+      "type": "object"
+    },
+    "LotPatch": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "purchase_currency": {
+          "pattern": "^[A-Z]{3,8}$",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "purchase_date": {
+          "description": "ISO-8601 date or date-time, as stored.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "purchase_location_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "purchase_price": {
+          "description": "Decimal string, never a float.",
+          "pattern": "^[0-9]+(\\.[0-9]+)?$",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "storage_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "NameInput": {
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "OrderAllocate": {
+      "additionalProperties": false,
+      "properties": {
+        "chosen": {
+          "items": {
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "target_type": {
+                      "const": "copy"
+                    }
+                  }
+                },
+                "then": {
+                  "required": [
+                    "copy_id",
+                    "target",
+                    "target_id"
+                  ]
+                }
+              }
+            ],
+            "properties": {
+              "copy_id": {
+                "type": "string"
+              },
+              "line_id": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "lot_id": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "quantity": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "storage_id": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "target": {
+                "enum": [
+                  "part",
+                  "figure",
+                  "instructions",
+                  "box"
+                ]
+              },
+              "target_id": {
+                "type": [
+                  "integer",
+                  "string"
+                ]
+              },
+              "target_type": {
+                "enum": [
+                  "copy",
+                  "stock"
+                ]
+              }
+            },
+            "required": [
+              "line_id",
+              "target_type",
+              "quantity"
+            ],
+            "type": "object"
+          },
+          "maxItems": 1000,
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": [
+        "chosen"
+      ],
+      "type": "object"
+    },
+    "OrderImport": {
+      "properties": {
+        "choice": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "number": {
+          "type": "string"
+        },
+        "source": {
+          "enum": [
+            "email",
+            "xml",
+            "api"
+          ],
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "source"
+      ],
+      "type": "object"
+    },
+    "OrderLineMatch": {
+      "properties": {
+        "color_id": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "item_no": {
+          "type": "string"
+        },
+        "item_type": {
+          "enum": [
+            "S",
+            "M",
+            "P",
+            "I",
+            "O",
+            "G",
+            "B",
+            "C",
+            "?"
+          ],
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "item_type",
+        "item_no"
+      ],
+      "type": "object"
+    },
+    "OrderPhase": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "enum": [
+            "review",
+            "reopen",
+            "save"
+          ],
+          "type": "string"
+        },
+        "pairs": {
+          "additionalProperties": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "minProperties": 1,
+          "propertyNames": {
+            "pattern": "[0-9]{1,12}"
+          },
+          "type": "object"
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "type": "object"
+    },
+    "OrderReceived": {
+      "additionalProperties": false,
+      "properties": {
+        "counts": {
+          "additionalProperties": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "minProperties": 1,
+          "propertyNames": {
+            "pattern": "[0-9]{1,12}"
+          },
+          "type": "object"
+        }
+      },
+      "required": [
+        "counts"
+      ],
+      "type": "object"
+    },
+    "Pin": {
+      "properties": {
+        "pinned": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "pinned"
+      ],
+      "type": "object"
+    },
+    "PriceBatch": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/components/schemas/PriceBatchItem"
+          },
+          "maxItems": 500,
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "type": "object"
+    },
+    "PriceBatchItem": {
+      "additionalProperties": false,
+      "properties": {
+        "color_id": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "condition": {
+          "enum": [
+            "new",
+            "used"
+          ],
+          "type": "string"
+        },
+        "currency": {
+          "pattern": "^[A-Z]{3,8}$",
+          "type": "string"
+        },
+        "guide": {
+          "enum": [
+            "manual",
+            "valuation"
+          ],
+          "type": "string"
+        },
+        "item_no": {
+          "type": "string"
+        },
+        "item_type": {
+          "enum": [
+            "S",
+            "M",
+            "P",
+            "I",
+            "O",
+            "G",
+            "B",
+            "C"
+          ],
+          "type": "string"
+        },
+        "observed_at": {
+          "format": "date-time",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "price": {
+          "description": "Decimal string, never a float.",
+          "pattern": "^[0-9]+(\\.[0-9]+)?$",
+          "type": "string"
+        },
+        "slot": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "item_type",
+        "item_no",
+        "condition",
+        "guide",
+        "price",
+        "currency"
+      ],
+      "type": "object"
+    },
+    "PriceCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "color_id": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "condition": {
+          "enum": [
+            "new",
+            "used"
+          ],
+          "type": "string"
+        },
+        "currency": {
+          "pattern": "^[A-Z]{3,8}$",
+          "type": "string"
+        },
+        "guide": {
+          "enum": [
+            "manual",
+            "valuation"
+          ],
+          "type": "string"
+        },
+        "observed_at": {
+          "format": "date-time",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "price": {
+          "description": "Decimal string, never a float.",
+          "pattern": "^[0-9]+(\\.[0-9]+)?$",
+          "type": "string"
+        },
+        "slot": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "condition",
+        "guide",
+        "price",
+        "currency"
+      ],
+      "type": "object"
+    },
+    "StockCreate": {
+      "properties": {
+        "color_id": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "condition": {
+          "enum": [
+            "new",
+            "used",
+            "damaged"
+          ],
+          "type": "string"
+        },
+        "item_no": {
+          "type": "string"
+        },
+        "item_type": {
+          "enum": [
+            "S",
+            "M",
+            "P",
+            "I",
+            "O",
+            "G",
+            "B",
+            "C",
+            "?"
+          ],
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lot_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "quantity": {
+          "type": "integer"
+        },
+        "storage_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "item_type",
+        "item_no",
+        "quantity"
+      ],
+      "type": "object"
+    },
+    "StockPatch": {
+      "properties": {
+        "condition": {
+          "enum": [
+            "new",
+            "used",
+            "damaged"
+          ],
+          "type": "string"
+        },
+        "lot_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "purchase_currency": {
+          "pattern": "^[A-Z]{3,8}$",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "purchase_date": {
+          "description": "ISO-8601 date or date-time, as stored.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "purchase_location_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "purchase_price": {
+          "description": "Decimal string, never a float.",
+          "pattern": "^[0-9]+(\\.[0-9]+)?$",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "storage_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "StorageInput": {
+      "description": "type, parent_id and note are optional; a field left out keeps its value. parent_id is another live storage, never this one or one inside it.",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "parent_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "type": {
+          "enum": [
+            "Box",
+            "Shelf",
+            "Drawer",
+            "Bin",
+            "Bag",
+            "Case",
+            "Cabinet",
+            "Room",
+            "Other",
+            null
+          ],
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "StorageMove": {
+      "properties": {
+        "selections": {
+          "items": {
+            "$ref": "#/components/schemas/StorageSelection"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "selections"
+      ],
+      "type": "object"
+    },
+    "StorageSelection": {
+      "properties": {
+        "entity": {
+          "enum": [
+            "copy",
+            "stock",
+            "lot"
+          ],
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity",
+        "id"
+      ],
+      "type": "object"
+    },
+    "Take": {
+      "description": "A part (P) needs its colour; a whole minifigure (M) has none (omit color_id or send null).",
+      "properties": {
+        "color_id": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "item_no": {
+          "type": "string"
+        },
+        "item_type": {
+          "enum": [
+            "P",
+            "M"
+          ],
+          "type": "string"
+        },
+        "quantity": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "item_type",
+        "item_no",
+        "quantity"
+      ],
+      "type": "object"
+    },
+    "WishCreate": {
+      "properties": {
+        "color_id": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "condition": {
+          "enum": [
+            "new",
+            "used",
+            "any"
+          ],
+          "type": "string"
+        },
+        "decision": {
+          "enum": [
+            "another",
+            "skip"
+          ],
+          "type": "string"
+        },
+        "item_no": {
+          "type": "string"
+        },
+        "item_type": {
+          "enum": [
+            "S",
+            "M",
+            "P",
+            "I",
+            "O",
+            "G",
+            "B",
+            "C",
+            "?"
+          ],
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "list_id": {
+          "description": "Target wishlist id; defaults to default on create.",
+          "type": "string"
+        },
+        "max_price": {
+          "description": "Decimal string, never a float.",
+          "pattern": "^[0-9]+(\\.[0-9]+)?$",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "max_price_currency": {
+          "pattern": "^[A-Z]{3,8}$",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "quantity": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "item_type",
+        "item_no"
+      ],
+      "type": "object"
+    },
+    "WishPatch": {
+      "properties": {
+        "color_id": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "condition": {
+          "enum": [
+            "new",
+            "used",
+            "any"
+          ],
+          "type": "string"
+        },
+        "list_id": {
+          "description": "Target wishlist id; defaults to default on create.",
+          "type": "string"
+        },
+        "max_price": {
+          "description": "Decimal string, never a float.",
+          "pattern": "^[0-9]+(\\.[0-9]+)?$",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "max_price_currency": {
+          "pattern": "^[A-Z]{3,8}$",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "qty_filled_manual": {
+          "description": "Override the filled quantity; null goes back to the derived count.",
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "quantity": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "WishToOwned": {
+      "properties": {
+        "completeness": {
+          "enum": [
+            "sealed",
+            "complete",
+            "incomplete"
+          ],
+          "type": "string"
+        },
+        "condition": {
+          "enum": [
+            "new",
+            "used"
+          ],
+          "type": "string"
+        },
+        "quantity": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "WishlistCreate": {
+      "properties": {
+        "bricklink_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sort": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "WishlistPatch": {
+      "minProperties": 1,
+      "properties": {
+        "bricklink_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sort": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "WishlistTransfer": {
+      "properties": {
+        "copy": {
+          "default": false,
+          "type": "boolean"
+        },
+        "ids": {
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 500,
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": [
+        "ids"
+      ],
+      "type": "object"
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{% extends 'web/toni/base.html' %}
+{% from 'web/toni/brickwork/collection_modules.html' import list_controls with context %}
+{% block title %} · {{ title }}{% endblock %}
+{% block breadcrumb_row %}{% endblock %}
+{% block page_assets %}<link rel="stylesheet" href="{{ bw_static('web/toni/bw-collection.css') }}"><link rel="stylesheet" href="{{ bw_static('web/toni/bw-planning.css') }}"><script src="{{ bw_static('web/toni/bw-prices.js') }}" defer></script>{% endblock %}
+{# The rows are not rendered here. bw-prices.js loads the compact records once, shows 15 rows per page, and loads a row's observations when its Details opens. #}
+{% block main %}
+<div id="bw-planning" data-screen="prices" data-csrf="{{ csrf_token }}" data-editable="{{ 'true' if can_edit else 'false' }}" data-kind="{{ kind or '' }}"
+ data-save-url="{{ url_for('web.bw_planning_write',action='ACTION') }}" data-collection-url="{{ url_for('web.bw_collection_write',action='ACTION') }}" data-records-url="{{ url_for('web.bw_prices_records') }}" data-details-url="{{ url_for('web.bw_prices_details') }}"
+ data-item-base="{{ url_for('web.bw_collection_item',kind='TYPE',number='NUMBER') }}" data-image-base="{{ url_for('web.bw_image',image_id=0) }}" data-unresolved-url="{{ url_for('web.bw_admin',page='unresolved') }}"
+ data-types='{{ types|tojson }}'>
+<h1 data-bp-title>{{ title }}</h1><p class="bp-subtitle" data-bp-subtitle>Retail and market prices, shown separately</p>
+<p role="status" aria-live="polite" data-bp-message></p><button type="button" data-bp-undo hidden>Undo</button>
+{% if error %}<p role="alert">{{ error }}</p><a href="{{ url_for('web.bw_admin',page='database') }}">Open Tools &amp; Admin</a>{% else %}
+<form data-bp-lookup class="bp-lookup"><label><span class="bc-visually-hidden">Look up any number</span>{{ toni_icon("search") }}<input type="search" data-bp-lookup-query placeholder="Look up any number" aria-label="Look up any number" required></label><button class="bp-lookup-action">Look up</button></form>
+<div class="bc-filter-chips bp-visible-chips" aria-label="Price filters" data-bp-chip-row>
+<button type="button" data-bp-chip="all" aria-pressed="true">All</button><button type="button" data-bp-chip="stale" aria-pressed="false" disabled>Stale<span class="bp-chip-count mono" data-bp-stale-count></span></button>
+{% for code,name in types.items() %}{% if code in available_types %}<button type="button" data-bp-chip="type" data-value="{{ code }}" aria-pressed="false">{{ name }}</button>{% endif %}{% endfor %}
+<button type="button" data-bp-chip="collection" data-value="owned" aria-pressed="false" disabled>Owned</button><button type="button" data-bp-chip="collection" data-value="wanted" aria-pressed="false" disabled>Wanted</button></div>
+{{ list_controls('bp',title,[('number','Number'),('name','Name'),('age','Age, oldest first')],full=false,show_options=true) }}
+<div data-bp-chips class="actions"></div><div id="bp-filters" class="bc-filter-panel" hidden><div class="actions"><h2>Filters</h2><button type="button" data-bp-reset>Reset</button><button type="button" data-bp-filters>Close</button></div>
+<label>Type<select data-bp-filter="type"><option value="">All</option>{% for code,name in types.items() %}<option value="{{ code }}">{{ name }}</option>{% endfor %}</select></label>
+<label>Age<select data-bp-filter="stale"><option value="">All</option><option value="true">Stale</option><option value="false">Fresh or age not recorded</option></select></label>
+<label>Collection<select data-bp-filter="collection"><option value="">All</option><option value="owned">Owned</option><option value="wanted">Wanted</option></select></label></div>
+<div class="actions">{% if can_edit %}<button class="primary bw-primary" data-bp-refresh-all disabled>Refresh results</button><a href="{{ url_for('web.bw_admin',page='jobs') }}">Import jobs · progress and budgets</a>{% endif %}</div>
+<div class="bp-price-columns secondary" aria-hidden="true"><span>Item</span><span>Kind</span><span>Price</span><span>Age</span></div>
+<div data-bp-rows class="bp-list bp-prices" data-view="grid" aria-busy="true"></div>
+<p data-bp-empty hidden>Nothing here yet.</p><p data-bp-loading>Loading prices</p>
+<noscript><p>Prices need JavaScript to list.</p></noscript>
+{% endif %}</div>{% endblock %}

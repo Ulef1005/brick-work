@@ -1,0 +1,22 @@
+/* #45 What is this? */
+.wi-actions { display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:0 0 8px; }
+.wi-primary { display:inline-flex;align-items:center;gap:8px;min-height:56px;padding:0 20px;border-radius:12px;background:var(--tw-accent);color:#1A1816;font:600 16px var(--tw-font);cursor:pointer; }
+.wi-switch { display:inline-flex;border-radius:10px;background:var(--tw-surface);padding:2px; }
+.wi-switch label { display:inline-flex; } .wi-switch input { position:absolute;opacity:0; }
+.wi-switch span { display:inline-flex;align-items:center;min-height:40px;padding:0 14px;border-radius:8px;font:500 14px var(--tw-font);cursor:pointer; }
+.wi-switch input:checked + span { background:var(--tw-bg);box-shadow:0 0 0 .5px var(--tw-divider-strong); }
+.wi-switch input:focus-visible + span { outline:2px solid var(--tw-accent); }
+.wi-note { margin:0 0 12px;font-size:13px; }
+.wi-status { min-height:20px;font:500 14px var(--tw-font); }
+.wi-results { display:flex;flex-direction:column;gap:12px; }
+.wi-card { display:grid;grid-template-columns:96px minmax(0,1fr);gap:16px;padding:12px;border-radius:16px;background:var(--tw-surface); }
+.wi-pic { width:96px;height:96px;border-radius:10px;background:#fff;display:grid;place-items:center;overflow:hidden; }
+.wi-pic img { width:100%;height:100%;object-fit:contain; }
+.wi-number { font-size:12px;color:var(--tw-text-muted); } .wi-name { font:600 16px/22px var(--tw-font);margin:2px 0 6px; }
+.wi-owned { margin:0 0 8px;font:500 14px/20px var(--tw-font); } .wi-none { color:var(--tw-text-2); }
+.wi-colours { list-style:none;margin:0 0 8px;padding:0;display:flex;flex-direction:column;gap:6px; }
+.wi-colours li { display:grid;grid-template-columns:auto 40px minmax(0,1fr);gap:8px;align-items:center;font:400 13px var(--tw-font); }
+.wi-chip { display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:6px;background:var(--tw-surface-2);font:500 12px var(--tw-font);border:.5px solid var(--tw-divider); }
+.wi-card-actions { display:flex;flex-wrap:wrap;gap:8px; }
+.wi-card-actions .button { min-height:44px; }
+@media(max-width:480px){ .wi-card { grid-template-columns:72px minmax(0,1fr); } .wi-pic { width:72px;height:72px; } }

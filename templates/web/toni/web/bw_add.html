@@ -1,0 +1,44 @@
+{% extends 'web/toni/base.html' %}
+{% block title %} · Add{% endblock %}
+{% block breadcrumb_row %}{% endblock %}
+{% block page_assets %}
+<link rel="stylesheet" href="{{ bw_static('web/toni/bw-add.css') }}">
+<script src="{{ bw_static('web/toni/import-progress.js') }}" defer></script>
+<script src="{{ bw_static('web/toni/bw-add.js') }}" defer></script>
+{% endblock %}
+{% block main %}
+<div id="bw-add" class="stack" data-url="{{ url_for('web.bw_add') }}" data-csrf="{{ csrf_token }}" data-colours="{{ colours|tojson|forceescape }}" data-wishlists="{{ wishlists|tojson|forceescape }}">
+  <header><h1>Add</h1><p class="secondary">One page for everything. Nothing is saved before you confirm.</p></header>
+  {% if error %}<p class="notice" role="alert">{{ error }}</p>{% endif %}
+  {% set initial_type = request.args.get('type') if request.args.get('type') in types else 'S' %}
+  {% set initial_where = request.args.get('where') if request.args.get('where') in ['owned','loose','wishlist'] else 'owned' %}
+  <div data-intake class="stack">
+    <div class="bw-add-choices">
+      <fieldset><legend class="label">What</legend><div class="bw-add-segments" data-types>{% for key, name in types.items() %}<label><input type="radio" name="type" value="{{ key }}"{% if key == initial_type %} checked{% endif %}><span>{{ name }}</span></label>{% endfor %}</div></fieldset>
+      <fieldset><legend class="label">Where</legend><div class="bw-add-segments bw-add-continuous">{% for key, name in [('owned','Owned'),('loose','Loose'),('wishlist','Wishlist')] %}<label><input type="radio" name="where" value="{{ key }}"{% if key == initial_where %} checked{% endif %}><span>{{ name }}</span></label>{% endfor %}</div></fieldset>
+    </div>
+    <label>Wishlist destination<select data-wishlist-target>{% for l in wishlists %}<option value="{{ l.id }}" {% if request.args.get('list')==l.id %}selected{% endif %}>{{ l.name }}</option>{% endfor %}</select></label><label class="check-field"><input data-map-wanted type="checkbox" checked>Use BrickLink wanted list ids from the file · create unmatched lists on confirm</label>
+    <fieldset aria-label="How"><div class="bw-add-segments bw-add-continuous">{% for key, name in [('search','Search'),('paste','Paste'),('file','File'),('photo','Photo')] %}<label><input type="radio" name="mode" value="{{ key }}"{% if key == ('paste' if request.args.get('number') else 'search') %} checked{% endif %}><span>{{ name }}</span></label>{% endfor %}</div></fieldset>
+    <section data-mode="search" class="stack" aria-label="Catalogue search">
+      <div class="bw-add-search-field">{{ toni_icon('search') }}<input data-search type="search" aria-label="Number or name" placeholder="Number or name" maxlength="100" autocomplete="off"></div>
+      <div data-chips class="actions" aria-label="Active filters" hidden></div><p data-result-count class="mono" role="status" hidden>Search the local BrickLink catalogue</p><label class="bw-add-result-sort" hidden>Sort<select data-sort><option value="number">Number</option><option value="name">Name</option></select></label><div data-results class="stack"></div>
+    </section>
+    <section data-mode="paste" hidden><label class="field">One per line, number and optional quantity<textarea data-paste rows="6" placeholder="10305-1&#10;2260-1 x2">{{ request.args.get("number","") }}</textarea></label></section>
+    <section data-mode="file" hidden><label class="bw-add-drop">Choose a file<input data-file type="file" accept=".xml,.csv"><span class="secondary">BrickLink XML · Rebrickable CSV</span></label></section>
+    <section data-mode="photo" hidden><label class="bw-add-drop">Choose a photo<input data-photo type="file" accept="image/*" capture="environment"><span class="secondary">Brickognize · sets, minifigures and parts</span></label><label class="check-field"><input data-keep type="checkbox">Keep photo</label><p class="secondary">Choose a candidate by hand. Your photo is saved only when you add and tick Keep photo.</p></section>
+    <p data-queued class="mono" role="status">0 items in the list</p><button data-review type="button" class="button primary">Review 0 items</button>
+  </div>
+  <p data-message role="status" aria-live="polite"></p>
+  <section data-candidates hidden class="stack"><h2>Choose a candidate</h2><div class="actions"><label>Search candidates<input data-candidate-search type="search"></label><label>Filter<select data-candidate-filter><option value="">All types</option><option value="S">Sets</option><option value="M">Minifigures</option><option value="P">Parts</option></select></label><label>Sort<select data-candidate-sort><option value="score">Match</option><option value="number">Number</option><option value="name">Name</option></select></label></div><div data-candidate-chips class="actions"></div><p data-candidate-count class="mono" role="status"></p><div data-candidate-list class="stack"></div></section>
+  <section data-unresolved hidden><h2>Unresolved</h2><p>These lines are kept here for Ulf to resolve. They are left out of this add.</p><div class="actions"><label>Search unresolved<input data-unresolved-search type="search"></label><label>Filter<select data-unresolved-filter><option value="">All reasons</option><option value="catalogue">Catalogue</option><option value="matching">Matching</option></select></label><label>Sort<select data-unresolved-sort><option value="number">Number</option><option value="reason">Reason</option></select></label></div><div data-unresolved-chips class="actions"></div><p data-unresolved-count class="mono" role="status"></p><ul data-unresolved-list></ul><a href="{{ url_for('web.bw_admin', page='unresolved') }}">Tools &amp; Admin · Unresolved figures</a></section>
+  <section data-review-panel hidden class="stack">
+    <h2>Review</h2><div class="actions"><label>Search review<input data-review-search type="search"></label><label>Filter<select data-review-filter><option value="">All items</option><option value="duplicates">Already owned or wished</option>{% for key,name in types.items() %}<option value="{{ key }}">{{ name }}</option>{% endfor %}</select></label><label>Sort<select data-review-sort><option value="number">Number</option><option value="name">Name</option></select></label><button data-review-clear type="button">Clear filters</button></div><div data-review-chips class="actions"></div><p data-review-count class="mono"></p>
+    <div class="bw-add-table"><table><thead><tr><th>Item</th><th>Type</th><th>Quantity</th><th>Where</th><th>Condition</th><th>Completeness</th><th>Choice</th></tr></thead><tbody data-review-rows></tbody></table></div>
+    <p class="secondary">Owned sets become copies. Other owned items go to loose stock. Completeness you choose is manual; leave it unknown to derive it from checks.</p>
+    <div class="actions"><button data-back type="button">Back</button><button data-confirm type="button" class="button primary">Add 0 items</button></div>
+  </section>
+  <section data-jobs hidden class="stack"><h2>Importing</h2><div data-overall hidden>{% include 'web/toni/components/import_progress.html' %}</div><div data-job-list class="stack"></div><div class="actions"><button data-undo type="button">Undo</button><a href="{{ url_for('web.bw_admin',page='jobs') }}">Jobs</a><button data-again type="button">Add more</button></div><p class="secondary">You can leave this page while imports run. Jobs keeps their progress and Retry.</p></section>
+  <dialog data-colour-dialog aria-labelledby="bw-add-colour-title"><div class="stack"><div class="actions"><h2 id="bw-add-colour-title">Choose a colour</h2><button data-colour-close type="button" aria-label="Close colours">Close</button></div><label>Search colours<input data-colour-search type="search"></label><div class="actions"><label>Filter<select data-colour-filter><option value="">All colours</option><option value="rgb">With colour data</option></select></label><label>Sort<select data-colour-sort><option value="name">Name</option><option value="id">Number</option></select></label></div><div data-colour-chips class="actions"></div><p data-colour-count class="mono" role="status"></p><div data-colour-list class="bw-add-palette"></div></div></dialog>
+  <template data-progress-template>{% include 'web/toni/components/import_progress.html' %}</template>
+</div>
+{% endblock %}

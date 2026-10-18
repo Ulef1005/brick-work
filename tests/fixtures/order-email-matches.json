@@ -1,0 +1,545 @@
+{
+ "source": "Synthetic order-email-example.txt and offline demo catalogue; no real order data.",
+ "counts": {
+  "matched": 46,
+  "check": 11,
+  "by_hand": 4,
+  "instructions": 3
+ },
+ "note": "Lines with a split-off remark are \"check\": one of them is a wrong match (Slope, Curved 4 x 1 + remark \"Inverted\").",
+ "rows": [
+  {
+   "state": "matched",
+   "colour": "Black",
+   "colour_id": 11,
+   "item_no": "demo-0027",
+   "name_prefix": "Bar   8L with Stop Rings and Pin (Technic, Figure Acces",
+   "remark": "",
+   "image": "https://img.bricklink.com/ItemImage/PN/11/demo-0027.png"
+  },
+  {
+   "state": "matched",
+   "colour": "Black",
+   "colour_id": 11,
+   "item_no": "demo-0068",
+   "name_prefix": "Brick 1 x 1 x 3",
+   "remark": "",
+   "image": "https://img.bricklink.com/ItemImage/PN/11/demo-0068.png"
+  },
+  {
+   "state": "matched",
+   "colour": "Black",
+   "colour_id": 11,
+   "item_no": "demo-0042",
+   "name_prefix": "Hose, Flexible  8.5L with (Same Color) Tabless Ends",
+   "remark": "",
+   "image": "https://img.bricklink.com/ItemImage/PN/11/demo-0042.png"
+  },
+  {
+   "state": "matched",
+   "colour": "Black",
+   "colour_id": 11,
+   "item_no": "demo-0074",
+   "name_prefix": "Minifigure Armor Rock Shoulder Pads with 2 Back Studs",
+   "remark": "",
+   "image": "https://img.bricklink.com/ItemImage/PN/11/demo-0074.png"
+  },
+  {
+   "state": "matched",
+   "colour": "Black",
+   "colour_id": 11,
+   "item_no": "demo-0062",
+   "name_prefix": "Minifigure, Head Alien with Red Eyes and White Fangs Pa",
+   "remark": "",
+   "image": "https://img.bricklink.com/ItemImage/PN/11/demo-0062.png"
+  },
+  {
+   "state": "matched",
+   "colour": "Black",
+   "colour_id": 11,
+   "item_no": "demo-0029",
+   "name_prefix": "Pane for Window 1 x 2 x 2 2/3 Lattice Diamond with Roun",
+   "remark": "",
+   "image": "https://img.bricklink.com/ItemImage/PN/11/demo-0029.png"
+  },
+  {
+   "state": "matched",
+   "colour": "Black",
+   "colour_id": 11,
+   "item_no": "demo-0028",
+   "name_prefix": "Plate, Modified 2 x 2 with Pin Holes",
+   "remark": "",
+   "image": "https://img.bricklink.com/ItemImage/PN/11/demo-0028.png"
+  },
+  {
+   "state": "matched",
+   "colour": "Black",
+   "colour_id": 11,
+   "item_no": "demo-0067",
+   "name_prefix": "Slope 45 2 x 1 Double / Inverted without Bottom Tube or",
+   "remark": "",
+   "image": "https://img.bricklink.com/ItemImage/PN/11/demo-0067.png"
+  },
+  {
+   "state": "check",
+   "colour": "Black",
+   "colour_id": 11,
+   "item_no": "demo-0055",
+   "name_prefix": "Slope, Curved 4 x 1",
+   "remark": "Inverted",
+   "image": "https://img.bricklink.com/ItemImage/PN/11/demo-0055.png"
+  },
+  {
+   "state": "matched",
+   "colour": "Black",
+   "colour_id": 11,
+   "item_no": "demo-0053",
+   "name_prefix": "String with End Studs (30L Overall) with (Same Color) S",
+   "remark": "",
+   "image": "https://img.bricklink.com/ItemImage/PN/11/demo-0053.png"
+  },
+  {
+   "state": "matched",
+   "colour": "Bright Light Orange",
+   "colour_id": 110,
+   "item_no": "demo-0049",
+   "name_prefix": "Wedge, Plate 3 x 2 Right",
+   "remark": "",
+   "image": "https://img.bricklink.com/ItemImage/PN/110/demo-0049.png"
+  },
+  {
+   "state": "matched",
+   "colour": "Brown",
+   "colour_id": 8,
+   "item_no": "demo-0032",
+   "name_prefix": "Technic, Axle  4L",
+   "remark": "",
+   "image": "https://img.bricklink.com/ItemImage/PN/8/demo-0032.png"
+  },
+  {
+   "state": "matched",
+   "colour": "Brown",
+   "colour_id": 8,
+   "item_no": "demo-0024",
+   "name_prefix": "Wedge, Plate 3 x 3 Cut Corner",
+   "remark": "",
+   "image": "https://img.bricklink.com/ItemImage/PN/8/demo-0024.png"
+  },
+  {
+   "state": "check",
+   "colour": "Brown",
+   "colour_id": 8,
+   "item_no": "demo-0052",
+   "name_prefix": "Wheel Wagon Large 33mm D., Hole Round for Wheels Holder",
+   "remark": "sample wear",
+   "image": "https://img.bricklink.com/ItemImage/PN/8/demo-0052.png"
+  },
+  {
+   "state": "matched",
+   "colour": "Chrome Silver",
+   "colour_id": 22,
+   "item_no": "demo-0043",
+   "name_prefix": "Minifigure, Weapon Knife",
+   "remark": "",
+   "image": "https://img.bricklink.com/ItemImage/PN/22/demo-0043.png"
+  },
+  {
+   "state": "matched",
+   "colour": "Dark Bluish Gray",
+   "colour_id": 85,
+   "item_no": "demo-0043",
+   "name_prefix": "Minifigure, Weapon Knife",
+   "remark": "",
+   "image": "https://img.bricklink.com/ItemImage/PN/85/demo-0043.png"
+  },
+  {
+   "state": "matched",
+   "colour": "Dark Bluish Gray",
+   "colour_id": 85,
+   "item_no": "demo-0064",
+   "name_prefix": "Slope 75 2 x 1 x 3 - Hollow Stud",
+   "remark": "",
+   "image": "https://img.bricklink.com/ItemImage/PN/85/demo-0064.png"
+  },
+  {
+   "state": "matched",
+   "colour": "Dark Bluish Gray",
+   "colour_id": 85,
+   "item_no": "demo-0046",
+   "name_prefix": "Technic, Pin Connector Plate 1 x 2 x 1 2/3 with 2 Holes",
+   "remark": "",
+   "image": "https://img.bricklink.com/ItemImage/PN/85/demo-0046.png"
+  },
+  {
+   "state": "matched",
+   "colour": "Dark Brown",
+   "colour_id": 120,
+   "item_no": "demo-0075",
+   "name_prefix": "Minifigure, Headgear Hat, Conical Asian with Raised Cen",
+   "remark": "",
+   "image": "https://img.bricklink.com/ItemImage/PN/120/demo-0075.png"
+  },
+  {
+   "state": "matched",
+   "colour": "Dark Brown",
+   "colour_id": 120,
+   "item_no": "demo-0034",
+   "name_prefix": "Plate, Round 2 x 2 with Axle Hole",
+   "remark": "",
+   "image": "https://img.bricklink.com/ItemImage/PN/120/demo-0034.png"
+  },
+  {
+   "state": "matched",
+   "colour": "Dark Brown",
+   "colour_id": 120,
+   "item_no": "demo-0056",
+   "name_prefix": "Plate, Round 4 x 4 with Hole",
+   "remark": "",
+   "image": "https://img.bricklink.com/ItemImage/PN/120/demo-0056.png"
+  },
+  {
+   "state": "matched",
+   "colour": "Dark Brown",
+   "colour_id": 120,
+   "item_no": "demo-0065",
+   "name_prefix": "Pneumatic Hose Connector with Axle Connector",
+   "remark": "",
+   "image": "https://img.bricklink.com/ItemImage/PN/120/demo-0065.png"
+  },
+  {
+   "state": "matched",
+   "colour": "Dark Brown",
+   "colour_id": 120,
+   "item_no": "demo-0031",
+   "name_prefix": "Slope, Inverted 45 2 x 2 with Flat Bottom Pin",
+   "remark": "",
+   "image": "https://img.bricklink.com/ItemImage/PN/120/demo-0031.png"
+  },
+  {
+   "state": "matched",
+   "colour": "Dark Red",
+   "colour_id": 59,
+   "item_no": "demo-0070",
+   "name_prefix": "Wedge 16 x 4 Triple Curved with Reinforcements with Gol",
+   "remark": "",
+   "image": "https://img.bricklink.com/ItemImage/PN/59/demo-0070.png"
+  },
+  {
+   "state": "matched",
+   "colour": "Light Bluish Gray",
+   "colour_id": 86,
+   "item_no": "demo-0041",
+   "name_prefix": "Arch 1 x 4 x 2",
+   "remark": "",
+   "image": "https://img.bricklink.com/ItemImage/PN/86/demo-0041.png"
+  },
+  {
+   "state": "check",
+   "colour": "Light Bluish Gray",
+   "colour_id": 86,
+   "item_no": "demo-0061",
+   "name_prefix": "Minifigure, Shield Oval with Gold Lion on Red and White",
+   "remark": "sample wear",
+   "image": "https://img.bricklink.com/ItemImage/PN/86/demo-0061.png"
+  },
+  {
+   "state": "matched",
+   "colour": "Light Bluish Gray",
+   "colour_id": 86,
+   "item_no": "demo-0044",
+   "name_prefix": "Rat / Mouse",
+   "remark": "",
+   "image": "https://img.bricklink.com/ItemImage/PN/86/demo-0044.png"
+  },
+  {
+   "state": "check",
+   "colour": "Light Bluish Gray",
+   "colour_id": 86,
+   "item_no": "demo-0036",
+   "name_prefix": "Tile, Round 2 x 2",
+   "remark": "sample scuffs",
+   "image": "https://img.bricklink.com/ItemImage/PN/86/demo-0036.png"
+  },
+  {
+   "state": "matched",
+   "colour": "Light Gray",
+   "colour_id": 9,
+   "item_no": "demo-0047",
+   "name_prefix": "Minifigure, Headgear Helmet Ninja / Samurai with Clip a",
+   "remark": "",
+   "image": "https://img.bricklink.com/ItemImage/PN/9/demo-0047.png"
+  },
+  {
+   "state": "check",
+   "colour": "Light Gray",
+   "colour_id": 9,
+   "item_no": "demo-0050",
+   "name_prefix": "Panel 1 x 2 x 3 - Hollow Studs",
+   "remark": "sample scuffs",
+   "image": "https://img.bricklink.com/ItemImage/PN/9/demo-0050.png"
+  },
+  {
+   "state": "check",
+   "colour": "Light Gray",
+   "colour_id": 9,
+   "item_no": "demo-0051",
+   "name_prefix": "Panel 1 x 2 x 3 - Solid Studs",
+   "remark": "sample wear marks",
+   "image": "https://img.bricklink.com/ItemImage/PN/9/demo-0051.png"
+  },
+  {
+   "state": "matched",
+   "colour": "Light Gray",
+   "colour_id": 9,
+   "item_no": "demo-0048",
+   "name_prefix": "Plate, Modified 1 x 1 with U Clip Thin (Vertical Grip)",
+   "remark": "",
+   "image": "https://img.bricklink.com/ItemImage/PN/9/demo-0048.png"
+  },
+  {
+   "state": "matched",
+   "colour": "Light Gray",
+   "colour_id": 9,
+   "item_no": "demo-0039",
+   "name_prefix": "Plate, Modified 1 x 2 with Long Stud Holder (Space Wing",
+   "remark": "",
+   "image": "https://img.bricklink.com/ItemImage/PN/9/demo-0039.png"
+  },
+  {
+   "state": "check",
+   "colour": "Pearl Dark Gray",
+   "colour_id": 77,
+   "item_no": "demo-0076",
+   "name_prefix": "Minifigure Armor Breastplate, Very Angular, High Back C",
+   "remark": "sample light wear",
+   "image": "https://img.bricklink.com/ItemImage/PN/77/demo-0076.png"
+  },
+  {
+   "state": "check",
+   "colour": "Pearl Light Gray",
+   "colour_id": 66,
+   "item_no": "demo-0023",
+   "name_prefix": "Minifigure, Headgear Helmet Motorcycle (Standard)",
+   "remark": "sample fading",
+   "image": "https://img.bricklink.com/ItemImage/PN/66/demo-0023.png"
+  },
+  {
+   "state": "matched",
+   "colour": "Red",
+   "colour_id": 5,
+   "item_no": "demo-0025",
+   "name_prefix": "Brick 1 x 2 x 5",
+   "remark": "",
+   "image": "https://img.bricklink.com/ItemImage/PN/5/demo-0025.png"
+  },
+  {
+   "state": "matched",
+   "colour": "Red",
+   "colour_id": 5,
+   "item_no": "demo-0037",
+   "name_prefix": "Cone 2 x 2 x 2 - Open Stud",
+   "remark": "",
+   "image": "https://img.bricklink.com/ItemImage/PN/5/demo-0037.png"
+  },
+  {
+   "state": "matched",
+   "colour": "Red",
+   "colour_id": 5,
+   "item_no": "demo-0058",
+   "name_prefix": "Minifigure, Plume Feather Triple Compact / Flame / Wate",
+   "remark": "",
+   "image": "https://img.bricklink.com/ItemImage/PN/5/demo-0058.png"
+  },
+  {
+   "state": "matched",
+   "colour": "Red",
+   "colour_id": 5,
+   "item_no": "demo-0033",
+   "name_prefix": "Window 1 x 1 x 1",
+   "remark": "",
+   "image": "https://img.bricklink.com/ItemImage/PN/5/demo-0033.png"
+  },
+  {
+   "state": "matched",
+   "colour": "Reddish Brown",
+   "colour_id": 88,
+   "item_no": "demo-0026",
+   "name_prefix": "Minifigure, Weapon Crossbow",
+   "remark": "",
+   "image": "https://img.bricklink.com/ItemImage/PN/88/demo-0026.png"
+  },
+  {
+   "state": "matched",
+   "colour": "Reddish Brown",
+   "colour_id": 88,
+   "item_no": "demo-0057",
+   "name_prefix": "Window 1 x 2 x 2 Flat Front",
+   "remark": "",
+   "image": "https://img.bricklink.com/ItemImage/PN/88/demo-0057.png"
+  },
+  {
+   "state": "matched",
+   "colour": "Sand Green",
+   "colour_id": 48,
+   "item_no": "demo-0063",
+   "name_prefix": "Plate, Modified 1 x 2 with Clip with Center Cut on Top",
+   "remark": "",
+   "image": "https://img.bricklink.com/ItemImage/PN/48/demo-0063.png"
+  },
+  {
+   "state": "matched",
+   "colour": "Sand Green",
+   "colour_id": 48,
+   "item_no": "demo-0060",
+   "name_prefix": "Tile 1 x 3",
+   "remark": "",
+   "image": "https://img.bricklink.com/ItemImage/PN/48/demo-0060.png"
+  },
+  {
+   "state": "matched",
+   "colour": "Sand Green",
+   "colour_id": 48,
+   "item_no": "demo-0071",
+   "name_prefix": "Tile, Modified 2 x 3 Pentagonal",
+   "remark": "",
+   "image": "https://img.bricklink.com/ItemImage/PN/48/demo-0071.png"
+  },
+  {
+   "state": "matched",
+   "colour": "Sand Green",
+   "colour_id": 48,
+   "item_no": "demo-0073",
+   "name_prefix": "Wedge 2 x 1 x 2/3 Left",
+   "remark": "",
+   "image": "https://img.bricklink.com/ItemImage/PN/48/demo-0073.png"
+  },
+  {
+   "state": "matched",
+   "colour": "Sand Green",
+   "colour_id": 48,
+   "item_no": "demo-0072",
+   "name_prefix": "Wedge 2 x 1 x 2/3 Right",
+   "remark": "",
+   "image": "https://img.bricklink.com/ItemImage/PN/48/demo-0072.png"
+  },
+  {
+   "state": "matched",
+   "colour": "Tan",
+   "colour_id": 2,
+   "item_no": "demo-0069",
+   "name_prefix": "Minifigure, Headgear Helmet Snake Skull",
+   "remark": "",
+   "image": "https://img.bricklink.com/ItemImage/PN/2/demo-0069.png"
+  },
+  {
+   "state": "matched",
+   "colour": "Tan",
+   "colour_id": 2,
+   "item_no": "demo-0038",
+   "name_prefix": "Technic, Axle and Pin Connector Perpendicular 3L with C",
+   "remark": "",
+   "image": "https://img.bricklink.com/ItemImage/PN/2/demo-0038.png"
+  },
+  {
+   "state": "matched",
+   "colour": "Trans-Neon Orange",
+   "colour_id": 18,
+   "item_no": "demo-0058",
+   "name_prefix": "Minifigure, Plume Feather Triple Compact / Flame / Wate",
+   "remark": "",
+   "image": "https://img.bricklink.com/ItemImage/PN/18/demo-0058.png"
+  },
+  {
+   "state": "matched",
+   "colour": "White",
+   "colour_id": 1,
+   "item_no": "demo-0066",
+   "name_prefix": "Bracket 1 x 2 - 2 x 2 Inverted",
+   "remark": "",
+   "image": "https://img.bricklink.com/ItemImage/PN/1/demo-0066.png"
+  },
+  {
+   "state": "matched",
+   "colour": "White",
+   "colour_id": 1,
+   "item_no": "demo-0040",
+   "name_prefix": "Castle Turret Top 4 x 8 x 2 1/3",
+   "remark": "",
+   "image": "https://img.bricklink.com/ItemImage/PN/1/demo-0040.png"
+  },
+  {
+   "state": "check",
+   "colour": "White",
+   "colour_id": 1,
+   "item_no": "demo-0022",
+   "name_prefix": "Minifigure, Utensil Goblet",
+   "remark": "sample handling",
+   "image": "https://img.bricklink.com/ItemImage/PN/1/demo-0022.png"
+  },
+  {
+   "state": "check",
+   "colour": "White",
+   "colour_id": 1,
+   "item_no": "demo-0045",
+   "name_prefix": "Panel 3 x 3 x 6 Corner Wall with Red Bricks Scattered P",
+   "remark": "sample handling, sample tint",
+   "image": "https://img.bricklink.com/ItemImage/PN/1/demo-0045.png"
+  },
+  {
+   "state": "matched",
+   "colour": "White",
+   "colour_id": 1,
+   "item_no": "demo-0059",
+   "name_prefix": "Slope, Curved 10 x 1",
+   "remark": "",
+   "image": "https://img.bricklink.com/ItemImage/PN/1/demo-0059.png"
+  },
+  {
+   "state": "matched",
+   "colour": "White",
+   "colour_id": 1,
+   "item_no": "demo-0054",
+   "name_prefix": "Technic, Axle Connector 2L (Smooth with x Hole + Orient",
+   "remark": "",
+   "image": "https://img.bricklink.com/ItemImage/PN/1/demo-0054.png"
+  },
+  {
+   "state": "matched",
+   "colour": "Yellow",
+   "colour_id": 3,
+   "item_no": "demo-0030",
+   "name_prefix": "Arch 1 x 6",
+   "remark": "",
+   "image": "https://img.bricklink.com/ItemImage/PN/3/demo-0030.png"
+  },
+  {
+   "state": "check",
+   "colour": "Yellow",
+   "colour_id": 3,
+   "item_no": "demo-0035",
+   "name_prefix": "Window 1 x 2 x 3 Train",
+   "remark": "sample wear, sample scuffs",
+   "image": "https://img.bricklink.com/ItemImage/PN/3/demo-0035.png"
+  },
+  {
+   "state": "match by hand",
+   "colour": "Dark Red",
+   "text": "Flag 2 x 2 Trapezoid with Black and Gold Diamonds Pattern Model Left Side (Sticker) - Set 990004"
+  },
+  {
+   "state": "match by hand",
+   "colour": "Sand Blue",
+   "text": "Minifigure, Head Dual Sided Alien with Yellow Eyes, Dark Purple Rock Teeth, Smile / Angry Pattern"
+  },
+  {
+   "state": "match by hand",
+   "colour": "Sand Green",
+   "text": "Plate, Modified 2 x 2 x 2/3 with 2 Studs on Side"
+  },
+  {
+   "state": "match by hand",
+   "colour": "White",
+   "text": "Flag 2 x 2 Square with Crossed Cannons over Red Stripes, Black Outline Pattern sample wear"
+  }
+ ]
+}

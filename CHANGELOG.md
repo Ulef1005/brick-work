@@ -2,6 +2,7 @@
 
 ## Brick Work 2.0.0-dev (unreleased)
 
+- Static demo: `scripts/build_demo.py OUT --base /brick-work/demo/` renders the Sets, Minifigures and Parts lists, set and part pages, Check Set Parts, Part Picker, Part to Inventory, Wishlist, Prices, Complete sets and Storage with the real templates on an invented collection (no pictures, no network). Writes say "Demo with sample data: changes are not saved".
 - The public snapshot keeps executable files executable (`scripts/check.sh`, `bin/brickwork`, `entrypoint.sh` had lost the bit in the first snapshot).
 - Migration proof: the reviewed collection counts are re-pinned for the cutover (two set price lookups since the review added two items with their price, source and search rows).
 - Item pages: Update price queues a market price refresh for that item (every colour it is used in) and says so. It opened the bulk refresh page, which lists stale prices only and so showed 0 for an item never priced.

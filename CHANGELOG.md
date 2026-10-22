@@ -3,6 +3,8 @@
 ## Unreleased
 
 - `GET /api/v1/health` also returns the app version (`app`), so monitors and update checks need one call.
+- Error responses never carry database or operating-system error text (#76).
+- **Security:** `certifi` 2026.10.19, outside the range of the emSign root CA advisory (#81).
 
 ## Brick Work 0.5.0 (first public release) · 2026-10-18
 

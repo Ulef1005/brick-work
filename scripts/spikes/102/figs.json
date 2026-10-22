@@ -1,0 +1,113 @@
+{
+ "rb_figs_with_inventory": 17293,
+ "rb_composition_unique": 17289,
+ "rb_composition_groups_shared": 2,
+ "largest_shared_group": 2,
+ "sample": 100,
+ "result": {
+  "differs": 49,
+  "identical": 51
+ },
+ "ex_differences": [
+  {
+   "rb_only": [
+    "?970c17/9"
+   ],
+   "bl_only": [
+    "970c00/9"
+   ]
+  },
+  {
+   "rb_only": [
+    "?970c28/11"
+   ],
+   "bl_only": [
+    "970c07/11"
+   ]
+  },
+  {
+   "rb_only": [
+    "?970c03/5"
+   ],
+   "bl_only": [
+    "970c11/5"
+   ]
+  },
+  {
+   "rb_only": [
+    "?970c28/11"
+   ],
+   "bl_only": [
+    "970c07/11"
+   ]
+  },
+  {
+   "rb_only": [
+    "?970c26/2"
+   ],
+   "bl_only": [
+    "970c00/2"
+   ]
+  },
+  {
+   "rb_only": [
+    "?970c32/42"
+   ],
+   "bl_only": [
+    "970c00/42"
+   ]
+  },
+  {
+   "rb_only": [
+    "?970c32/42"
+   ],
+   "bl_only": [
+    "970c00/42"
+   ]
+  },
+  {
+   "rb_only": [
+    "4073/86",
+    "4589b/98",
+    "973pb0577c01/86",
+    "?970c14/4"
+   ],
+   "bl_only": [
+    "970c86/4",
+    "973pb0577c02/86"
+   ]
+  },
+  {
+   "rb_only": [
+    "?970c03/11"
+   ],
+   "bl_only": [
+    "970c00/11"
+   ]
+  },
+  {
+   "rb_only": [
+    "?970c28/7"
+   ],
+   "bl_only": [
+    "970c00/7"
+   ]
+  },
+  {
+   "rb_only": [
+    "?970c03/7"
+   ],
+   "bl_only": [
+    "970c11/7"
+   ]
+  },
+  {
+   "rb_only": [
+    "?970c03/11"
+   ],
+   "bl_only": [
+    "970c00/11"
+   ]
+  }
+ ]
+}

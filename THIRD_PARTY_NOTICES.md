@@ -18,7 +18,7 @@ Installed from PyPI at build time, not bundled: see `requirements.txt` and `requ
 
 ## Catalogue data and images
 
-Brick Work bundles no catalogue data or images from BrickLink, Rebrickable or Brickset. Each install loads its own BrickLink catalogue files and uses its own API keys; pictures are fetched by the install and stored locally.
+Brick Work bundles no catalogue data or images from BrickLink or Brickset, and no pictures from any of them. The mapping files in `brickwork/catalogue/mappings/` are derived from data of [Rebrickable](https://rebrickable.com) (its downloadable dump and the external ids of its API); Rebrickable allows free use with acknowledgement, which this entry gives. They map Rebrickable's colours, parts and themes to BrickLink and LEGO identifiers and carry no BrickLink catalogue data. Each install loads its own BrickLink and Rebrickable catalogue files and uses its own API keys; pictures are fetched by the install and stored locally.
 
 ## Trademarks
 

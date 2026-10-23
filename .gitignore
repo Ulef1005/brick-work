@@ -14,6 +14,8 @@ __pycache__/
 
 # Temporary
 *.csv
+# The shipped catalogue mappings (Rebrickable-derived) are source, not scratch data
+!brickwork/catalogue/mappings/*.csv
 /local/
 settings.local.json
 

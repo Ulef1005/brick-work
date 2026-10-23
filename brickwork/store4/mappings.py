@@ -41,21 +41,32 @@ def read_mapping(path):
 _LEGS = re.compile(r'Hips and (.+?) Legs(?: \[Plain\])?')
 
 
-def leg_rule(parts, colors):
+def _colour_key(name):
+    return ' '.join(w for w in name.lower().split() if w != 'the')
+
+
+def leg_rule(parts, colors, external=None):
     """Yield the leg-rule rows (design 3.2, decision E) in parts.csv columns, as dicts.
 
     `parts` is an iterable of (rb_part_num, name) from the dump; `colors` is an iterable of colors.csv rows (dicts with
     rb_color_id, rb_name, provider, provider_key, inverse_preferred). For a part `970cNN` named "Hips and <Colour> Legs"
     (a trailing " [Plain]" is ignored) the legs colour is the Rebrickable colour of that name, B its BrickLink colour id. Two
     rows: scoped to the legs colour -> BrickLink `970c00` (one-colour legs), and unscoped -> `970c{B:02d}` (any other hip
-    colour). Printed variants (`970c01pat03`, `...pr1258`) and names not of this form are skipped, as are legs colours with
-    no unique Rebrickable colour or no BrickLink id.
+    colour). Colour names compare case-insensitively and without "the" ("Glow In The Dark White" is "Glow in Dark White").
+    Printed variants (`970c01pat03`, `...pr1258`) and names not of this form are skipped, as are legs colours with no unique
+    Rebrickable colour or no BrickLink id.
 
-    The builder (M.2) loads these with origin 'rule'. A row here and an `external_ids` row of parts.csv with the same unscoped
-    key are the same link; the builder keeps one."""
+    `external` maps a Rebrickable part number to the BrickLink keys its `external_ids` give (parts.csv). A row is `matched`
+    only when Rebrickable confirms its exact key, else `inferred`: the convention "NN = the legs' BrickLink colour id" is
+    Rebrickable's, and for newer colours BrickLink has no `970cNN` item at all (33 of 67 keys on the 2026-10-23 data,
+    checked privately in M.4), so an unconfirmed key is a guess for M.4 and the local layer to correct (design § 9).
+
+    The builder (M.2) loads these with origin 'rule' and, for a part this yields rows for, loads no `external_ids` row of
+    parts.csv: Rebrickable lists both `970c00` and `970cNN` unscoped there, which in any colour but the legs' own would
+    make `970c00` a second candidate (resolve_inverse would find two parts for `970c00` in Red)."""
     by_name, bricklink = {}, {}
     for c in colors:
-        by_name.setdefault(c['rb_name'], set()).add(c['rb_color_id'])
+        by_name.setdefault(_colour_key(c['rb_name']), set()).add(c['rb_color_id'])
         if c['provider'] == 'bricklink':
             bricklink.setdefault(c['rb_color_id'], []).append(c)
     for num, name in parts:
@@ -64,13 +75,14 @@ def leg_rule(parts, colors):
         m = _LEGS.fullmatch(name)
         if not m:
             continue
-        ids = by_name.get(m.group(1), ())
+        ids = by_name.get(_colour_key(m.group(1)), ())
         if len(ids) != 1:
             continue
         color_id = next(iter(ids))
         links = bricklink.get(color_id, [])
         if len({k['provider_key'] for k in links}) != 1:
             continue  # no BrickLink id, or the colour has several and the choice is not ours
-        base = dict(rb_part_num=num, provider='bricklink', provider_kind='P', status='matched', method='leg_rule', preferred='1')
-        yield dict(base, rb_color_id=color_id, provider_key='970c00')
-        yield dict(base, rb_color_id='', provider_key=f"970c{int(links[0]['provider_key']):02d}")
+        confirmed = (external or {}).get(num, set())
+        base = dict(rb_part_num=num, provider='bricklink', provider_kind='P', method='leg_rule', preferred='1')
+        for scope, key in ((color_id, '970c00'), ('', f"970c{int(links[0]['provider_key']):02d}")):
+            yield dict(base, rb_color_id=scope, provider_key=key, status='matched' if key in confirmed else 'inferred')

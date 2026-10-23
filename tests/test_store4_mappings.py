@@ -82,16 +82,19 @@ def test_leg_rule_example():
              ('970c99', 'Hips and Mauve Legs'), ('3023', 'Plate 1 x 2'), ('970c98', 'Torso')]
     rows = [(r['rb_part_num'], r['rb_color_id'], r['provider_key']) for r in leg_rule(parts, colors)]
     assert rows == [('970c03', '0', '970c00'), ('970c03', '', '970c11'), ('970c22', '4', '970c00'), ('970c22', '', '970c05')]
-    first = next(leg_rule(parts, colors))
+    first = next(leg_rule(parts, colors, {'970c03': {'970c00', '970c11'}}))
     assert (first['provider'], first['provider_kind'], first['status'], first['method']) == ('bricklink', 'P', 'matched', 'leg_rule')
 
 
 def test_leg_rule_on_shipped_colours(colors):
     parts = [('970c03', 'Hips and Black Legs'), ('970c12', 'Hips and Dark Bluish Gray Legs'), ('970c75', 'Hips and Pearl Titanium Legs [Plain]'),
-             ('970c88', 'Hips and Invented Legs')]
+             ('970c61', 'Hips and Glow In The Dark White Legs'), ('970c88', 'Hips and Invented Legs')]
     got = {(r['rb_part_num'], r['rb_color_id']): r['provider_key'] for r in leg_rule(parts, colors)}
+    status = {(r['rb_part_num'], r['provider_key']): r['status'] for r in leg_rule(parts, colors, {'970c03': {'970c00', '970c11'}, '970c61': {'970c00'}})}
+    assert status[('970c03', '970c11')] == status[('970c03', '970c00')] == status[('970c61', '970c00')] == 'matched'
+    assert status[('970c61', '970c159')] == status[('970c12', '970c85')] == 'inferred'     # not confirmed by Rebrickable: a guess
     assert got == {('970c03', '0'): '970c00', ('970c03', ''): '970c11', ('970c12', '72'): '970c00', ('970c12', ''): '970c85',
-                   ('970c75', '1103'): '970c00', ('970c75', ''): '970c77'}
+                   ('970c75', '1103'): '970c00', ('970c75', ''): '970c77', ('970c61', '1000'): '970c00', ('970c61', ''): '970c159'}
 
 
 def test_read_mapping_refusals(tmp_path):

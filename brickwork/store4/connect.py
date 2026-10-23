@@ -93,23 +93,30 @@ def _create(path, schema, meta, *, exclusive):
 
 def _attach(db, catalogue):
     db.execute('ATTACH DATABASE ? AS catalogue', (_uri(catalogue, 'ro'),))
+    check_compatible(db, catalogue)
+
+
+def check_compatible(db, label='the attached catalogue'):
+    """Do the collection and the attached catalogue belong together? The id binding, every build the collection activated,
+    and the high-water marks. Called at attach, and again by activation and reconcile inside their write transaction: a
+    connection opened before a rebuild keeps the old file, which another connection may have moved past."""
     cat = _meta(db, 'catalogue')
     if cat is None or cat.get('schema_version') != CATALOGUE_VERSION:
-        raise CatalogueError(f'{catalogue} is not a Brick Work catalogue ({CATALOGUE_VERSION}); {FIX}')
+        raise CatalogueError(f'{label} is not a Brick Work catalogue ({CATALOGUE_VERSION}); {FIX}')
     mode = db.execute('PRAGMA catalogue.journal_mode').fetchone()[0]
     if mode != 'delete':
-        raise CatalogueError(f'{catalogue} has journal_mode={mode}, not delete (a read-only attach needs no -shm); {FIX}')
+        raise CatalogueError(f'{label} has journal_mode={mode}, not delete (a read-only attach needs no -shm); {FIX}')
     coll = _meta(db)
     bound = coll.get('catalogue_id')
     if bound is not None and bound != cat.get('catalogue_id'):
-        raise CatalogueMismatch(f'{catalogue} is another catalogue than the one this collection is bound to; {FIX}')
+        raise CatalogueMismatch(f'{label} is another catalogue than the one this collection is bound to; {FIX}')
     have = {r[0] for r in db.execute('SELECT id FROM catalogue.build')}
     missing = sorted(r[0] for r in db.execute('SELECT id FROM main.catalogue_build') if r[0] not in have)
     if missing:
-        raise CatalogueMismatch(f'this collection activated catalogue builds {missing} that {catalogue} lacks; {FIX}')
+        raise CatalogueMismatch(f'this collection activated catalogue builds {missing} that {label} lacks; {FIX}')
     for mine, theirs in (('catalogue_item_high_water', 'item_high_water'), ('catalogue_color_high_water', 'color_high_water')):
         if int(coll.get(mine) or 0) > int(cat.get(theirs) or 0):
-            raise CatalogueMismatch(f'{catalogue} is older than this collection ({theirs} {cat.get(theirs) or 0} < {coll[mine]}); {FIX}')
+            raise CatalogueMismatch(f'{label} is older than this collection ({theirs} {cat.get(theirs) or 0} < {coll[mine]}); {FIX}')
 
 
 def has_catalogue(db):

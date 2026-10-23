@@ -214,7 +214,10 @@ def test_inverse_ambiguity_raises_with_the_candidates(db):
 
 def test_inverse_colour_shared_without_a_preferred_one_raises(db):
     identity.project_color(db, 6)
-    identity.project_color(db, 7)
+    identity.project_color(db, 7)                                             # colour 6 holds '72' already: 7 is projected without that link
+    assert db.execute("SELECT count(*) FROM main.color_link WHERE color_id=7 AND provider_key='72'").fetchone()[0] == 0
+    db.execute("INSERT INTO main.color_link(color_id, provider, provider_key, status, method, catalogue_build_id, decided_at) "
+               "VALUES(7, 'bricklink', '72', 'matched', 'external_ids', 1, ?)", (NOW,))      # reconcile would add it, under its guard
     db.execute("UPDATE main.color_link SET inverse_preferred=0")              # the collection's rows hide the catalogue's flag
     with pytest.raises(AmbiguousIdentity, match=r'colours \[6, 7\]') as err:
         identity.resolve_inverse(db, 'P', '3023', '72')

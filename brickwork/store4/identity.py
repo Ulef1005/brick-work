@@ -67,7 +67,16 @@ def project(db, item_id):
 FIXED_COLORS = (1, 2)                                      # "no colour" and "unknown": rows exist from setup, links come with the catalogue
 
 
-def project_color(db, color_id):
+def held_colour_keys(db):
+    """{(provider, provider_key): colours holding it through a manual or matched collection link} - the protected state
+    project_color measures against; activation takes it once, before it projects anything."""
+    held = {}
+    for provider, key, colour in db.execute("SELECT provider, provider_key, color_id FROM main.color_link WHERE status IN ('manual', 'matched')"):
+        held.setdefault((provider, key), set()).add(colour)
+    return held
+
+
+def project_color(db, color_id, held=None):
     """Copy a catalogue colour and its colour links; idempotent. Like project(), inside the caller's transaction."""
     exists = db.execute('SELECT 1 FROM main.color WHERE id=?', (color_id,)).fetchone()
     if exists and (color_id not in FIXED_COLORS or not has_catalogue(db) or
@@ -82,6 +91,13 @@ def project_color(db, color_id):
     links = db.execute('SELECT * FROM catalogue.color_link WHERE color_id=? ORDER BY id', (color_id,)).fetchall()
     _activated(db, [row['build_id']] + [k['build_id'] for k in links], f'colour {color_id}')
     stamp = now()
+    # One colour holds the inverse preference of a provider key (color_link_inverse). If the collection's holder differs
+    # from the catalogue's, the new row is projected without the flag: reconcile reports the move, never applies it.
+    taken = {(r[0], r[1]) for r in db.execute('SELECT provider, provider_key FROM main.color_link WHERE inverse_preferred=1')}
+    # A provider colour key another collection colour already holds through a manual or matched link is not taken over here:
+    # the colour is projected without that link, and reconcile inserts it under its resolution guard (or reports it).
+    held = held_colour_keys(db) if held is None else held
+    links = [k for k in links if not held.get((k['provider'], k['provider_key']), set()) - {color_id}]
     _savepoint(db, 'project_color')
     try:
         if not exists:
@@ -91,7 +107,7 @@ def project_color(db, color_id):
         db.executemany('''INSERT INTO main.color_link(color_id, provider, provider_key, provider_name, status, method, inverse_preferred,
                           catalogue_build_id, decided_at) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)''',
                        [(color_id, k['provider'], k['provider_key'], k['provider_name'], k['status'], k['method'],
-                         k['inverse_preferred'], k['build_id'], stamp) for k in links])
+                         int(bool(k['inverse_preferred']) and (k['provider'], k['provider_key']) not in taken), k['build_id'], stamp) for k in links])
     except BaseException:
         db.execute('ROLLBACK TO project_color')
         raise
@@ -100,19 +116,46 @@ def project_color(db, color_id):
     return color_id
 
 
-def resolve(db, item_id, color_id, provider='bricklink'):
-    """Which provider key and colour is the item in this colour? (design 3.2) -> (kind, key, colour key) or None."""
-    rows = db.execute(f'''SELECT provider_kind, provider_key, color_id, preferred, status FROM main.item_link
-                          WHERE item_id=? AND provider=? AND status IN ({_IN})''', (item_id, provider, *CONFIRMED)).fetchall()
+def item_link_order(preferred, status, provider_kind, provider_key):
+    """The sort key of an item link among its rivals: preferred, status, key, and the kind only as the last tie-breaker."""
+    return -preferred, _RANK[status], provider_key, provider_kind
+
+
+def color_link_order(status, provider_key):
+    return _RANK[status], provider_key
+
+
+def best_item_link(rows, color_id):
+    """The one ranking of item links: among the confirmed rows (dicts with provider_kind, provider_key, color_id, preferred,
+    status), those scoped to the colour, else the unscoped ones, ordered by `item_link_order`. resolve(), reconcile's
+    resolution guard and the catalogue builder's bl_digest all use it, so they can never disagree. None if nothing applies."""
     scoped = [r for r in rows if color_id is not None and r['color_id'] == color_id]
     pool = scoped or [r for r in rows if r['color_id'] is None]
-    if not pool:
+    return min(pool, key=lambda r: item_link_order(r['preferred'], r['status'], r['provider_kind'], r['provider_key'])) if pool else None
+
+
+def best_color_link(rows):
+    """The one ranking of a colour's links of one provider (confirmed rows): status, then key."""
+    return min(rows, key=lambda r: color_link_order(r['status'], r['provider_key'])) if rows else None
+
+
+def confirmed_item_links(db, item_id, provider):
+    return [dict(r) for r in db.execute(f'''SELECT provider_kind, provider_key, color_id, preferred, status FROM main.item_link
+                                         WHERE item_id=? AND provider=? AND status IN ({_IN})''', (item_id, provider, *CONFIRMED))]
+
+
+def confirmed_color_links(db, color_id, provider):
+    return [dict(r) for r in db.execute(f'''SELECT provider_key, status FROM main.color_link WHERE color_id=? AND provider=? AND status IN ({_IN})''',
+                                        (color_id, provider, *CONFIRMED))]
+
+
+def resolve(db, item_id, color_id, provider='bricklink'):
+    """Which provider key and colour is the item in this colour? (design 3.2) -> (kind, key, colour key) or None."""
+    best = best_item_link(confirmed_item_links(db, item_id, provider), color_id)
+    if best is None:
         return None
-    best = min(pool, key=lambda r: (-r['preferred'], _RANK[r['status']], r['provider_key']))
-    colour = db.execute(f'''SELECT provider_key FROM main.color_link WHERE color_id=? AND provider=? AND status IN ({_IN})
-                            ORDER BY CASE status WHEN 'manual' THEN 0 WHEN 'matched' THEN 1 ELSE 2 END, provider_key''',
-                        (color_id, provider, *CONFIRMED)).fetchone()
-    return best['provider_kind'], best['provider_key'], colour[0] if colour else None
+    colour = best_color_link(confirmed_color_links(db, color_id, provider))
+    return best['provider_kind'], best['provider_key'], colour['provider_key'] if colour else None
 
 
 def _inverse_color(db, provider, key):
@@ -124,7 +167,10 @@ def _inverse_color(db, provider, key):
     for rank, store in enumerate(stores):
         # The catalogue answers only for colours whose links the collection does not hold: a collection link,
         # whatever its status, overrides the catalogue's links of that colour.
-        owned = '' if store == 'main' else f"AND color_id NOT IN (SELECT color_id FROM main.color_link WHERE provider=?)"
+        # A projected colour is the collection's: its links, or their absence, override the catalogue's (the fixed colours 1 and 2
+        # exist from setup, and are the collection's only once they hold links).
+        owned = '' if store == 'main' else (f"AND color_id NOT IN (SELECT color_id FROM main.color_link WHERE provider=?) "
+                                            f"AND color_id NOT IN (SELECT id FROM main.color WHERE id NOT IN ({','.join(map(str, FIXED_COLORS))}))")
         args = (provider, str(key), *CONFIRMED) + (() if store == 'main' else (provider,))
         for color_id, flag in db.execute(f'''SELECT color_id, inverse_preferred FROM {store}.color_link
                                              WHERE provider=? AND provider_key=? AND status IN ({_IN}) {owned}''', args):

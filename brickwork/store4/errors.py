@@ -39,3 +39,7 @@ class DumpError(Store4Error):
 
 class BuildBusy(Store4Error):
     """Another catalogue build holds the lock on this target."""
+
+
+class NotActivated(CatalogueError):
+    """The attached catalogue has builds this collection has not activated; run activation first."""

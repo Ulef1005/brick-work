@@ -15,6 +15,7 @@ import json
 from pathlib import Path
 
 from .bldigest import bl_digest
+from .identity import color_link_order, item_link_order
 from .mappings import COLUMNS, MAPPINGS_DIR, leg_rule, read_mapping
 
 RANK = {'matched': 0, 'inferred': 1}
@@ -188,13 +189,13 @@ def bl_digests(db, ctx):
                         f" WHERE provider='bricklink' AND status IN ({','.join('?' * len(CONFIRMED))})", CONFIRMED):
         pools[(r[0], r[1])].append(r)
     for (item_id, color_id), rows in pools.items():
-        best = min(rows, key=lambda r: (-r[5], RANK[r[4]], r[3]))
+        best = min(rows, key=lambda r: item_link_order(r[5], r[4], r[2], r[3]))
         (unscoped if color_id is None else scoped)[(item_id, color_id) if color_id is not None else item_id] = (best[2], best[3])
     colour = {}
     for color_id, key, status in db.execute(f"SELECT color_id, provider_key, status FROM color_link WHERE provider='bricklink'"
                                             f" AND status IN ({','.join('?' * len(CONFIRMED))})", CONFIRMED):
-        if color_id not in colour or (RANK[status], key) < colour[color_id][0]:
-            colour[color_id] = ((RANK[status], key), key)
+        if color_id not in colour or color_link_order(status, key) < colour[color_id][0]:
+            colour[color_id] = (color_link_order(status, key), key)
     colour = {c: v[1] for c, v in colour.items()}
     no_colour = ctx.color_ids.get('9999')
 

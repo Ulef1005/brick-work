@@ -31,3 +31,11 @@ class AmbiguousIdentity(Store4Error):
     def __init__(self, message, items):
         super().__init__(message)
         self.items = tuple(items)
+
+
+class DumpError(Store4Error):
+    """A Rebrickable dump directory that is incomplete or not in the expected shape."""
+
+
+class BuildBusy(Store4Error):
+    """Another catalogue build holds the lock on this target."""

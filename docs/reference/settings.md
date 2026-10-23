@@ -27,7 +27,7 @@ On/off settings take `1` for on. Where a setting accepts more spellings, the tab
 |---|---|---|
 | `BW_HOST` | `0.0.0.0` | Address the server listens on (inside the container). |
 | `BW_PORT` | `3333` | Port the server listens on. |
-| `BW_READ_ONLY` | off | `1` (or `true`, `yes`, `on`) refuses every change, in the browser, the API and the CLI. |
+| `BW_READ_ONLY` | off | `1` (or `true`, `yes`, `on`) refuses changes in the browser and the API. In the CLI it covers the `token` and `wishlist` commands and the database export; other CLI commands, such as `settings set`, still write. |
 | `BW_DEBUG` | off | `1` shows the exception and traceback on error pages and logs at debug level. Never on a reachable install. |
 | `BW_DARK_MODE` | off | `1` makes dark the default theme; each browser can still choose. |
 | `BW_IMPORT_MAX_MB` | `200` | Largest database import upload, in MB. It is also the cap for any request body; smaller per-upload limits (photos, PDFs, order files) stay as they are. |

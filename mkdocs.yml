@@ -15,4 +15,4 @@ theme:
   favicon: assets/favicon.svg
   logo: assets/app-icon.svg
   features: [navigation.sections, navigation.indexes, search.highlight]
-markdown_extensions: [admonition, tables, toc, attr_list]
+markdown_extensions: [admonition, tables, toc, attr_list, pymdownx.highlight, pymdownx.superfences]

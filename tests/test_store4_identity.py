@@ -232,3 +232,65 @@ def test_a_projected_collection_stays_consistent(db):
     assert list(db.execute('PRAGMA foreign_key_check')) == []
     assert db.execute('PRAGMA integrity_check').fetchone()[0] == 'ok'
     assert identity.resolve(db, 11, 5) == ('P', '3023', '1')
+
+
+def test_project_without_a_begin_follows_the_callers_rollback(db):
+    with pytest.raises(RuntimeError):
+        with db:                                                   # a with-block issues no BEGIN of its own
+            identity.project(db, 12)
+            identity.project_color(db, 5)
+            raise RuntimeError('caller fails')
+    assert db.execute('SELECT count(*) FROM main.item').fetchone()[0] == 0
+    assert db.execute('SELECT count(*) FROM main.color WHERE id=5').fetchone()[0] == 0
+
+
+def test_inverse_never_falls_back_to_the_catalogue_for_a_projected_item(db):
+    projected(db, 12)
+    identity.project_color(db, 3)
+    db.execute("INSERT INTO main.item_link(item_id, color_id, provider, provider_kind, provider_key, status, method, origin, decided_at)"
+               " VALUES(12, 3, 'bricklink', 'P', '970c99', 'manual', 'manual', 'user', ?)", (NOW,))
+    assert identity.resolve_inverse(db, 'P', '970c11', '5') is None          # the Red override hides 970c11 in Red
+    assert identity.resolve_inverse(db, 'P', '970c99', '5') == (12, 3)
+    db.execute("UPDATE main.item_link SET status='to_check' WHERE item_id=12 AND provider_key='970c00'")
+    assert identity.resolve_inverse(db, 'P', '970c00', '11') is None         # disputed in the collection: not resurrected
+
+
+def test_inverse_colour_never_falls_back_for_a_colour_the_collection_holds(db):
+    identity.project_color(db, 6)
+    db.execute("UPDATE main.color_link SET status='to_check' WHERE color_id=6")
+    assert identity.resolve_inverse(db, 'P', '3023', '72') == (11, 7)        # colour 6 is disputed; only Maersk Blue remains
+
+
+def _catalogue_rows(cat, *statements):
+    with closing(sqlite3.connect(cat)) as raw:
+        for sql in statements:
+            raw.execute(sql)
+        raw.commit()
+
+
+def test_fixed_colours_and_lego_links_are_projected(tmp_path):
+    col, cat = pair(tmp_path)
+    _catalogue_rows(cat, "INSERT INTO color_link(color_id, provider, provider_key, provider_name, status, method, origin, build_id)"
+                         " VALUES(1, 'bricklink', '0', '(Not Applicable)', 'matched', 'external_ids', 'shipped', 2)",
+                    "INSERT INTO color_link(color_id, provider, provider_key, provider_name, status, method, origin, build_id)"
+                    " VALUES(3, 'lego', '21', 'Bright Red', 'matched', 'external_ids', 'shipped', 2)")
+    with closing(connect(col, cat)) as db:
+        identity.project_color(db, 1)
+        identity.project_color(db, 3)
+        db.commit()
+        assert db.execute("SELECT provider_key FROM main.color_link WHERE color_id=1").fetchall()[0][0] == '0'
+        assert db.execute("SELECT provider_key FROM main.color_link WHERE color_id=3 AND provider='lego'").fetchone()[0] == '21'
+        projected(db, 11)
+        assert identity.resolve(db, 11, 1) == ('P', '3023', '0')
+        identity.project_color(db, 1)                                          # idempotent once the links are in
+        assert db.execute("SELECT count(*) FROM main.color_link WHERE color_id=1").fetchone()[0] == 1
+
+
+def test_project_color_refuses_a_colour_from_an_unactivated_build(tmp_path):
+    col, cat = pair(tmp_path)
+    _catalogue_rows(cat, "INSERT INTO build(id, kind, started_at, app_version, files_json, counts_json)"
+                         " VALUES(3, 'rebrickable_dump', '2026-10-23', '4.0', '[]', '{}')",
+                    "INSERT INTO color VALUES(8, 'Olive', NULL, 0, 'rebrickable', '326', 3, NULL)")
+    with closing(connect(col, cat)) as db:
+        with pytest.raises(CatalogueError, match=r'\[3\].*not activated'):
+            identity.project_color(db, 8)

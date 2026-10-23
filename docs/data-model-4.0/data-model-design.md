@@ -227,7 +227,7 @@ The "unresolved" list reads `item_link WHERE status='to_check'` together with `i
 
 The rules carried over from `Rebrickable.match()` (`sources/rebrickable.py:66-69`) still hold: an automatic refresh never replaces `manual` and never downgrades `matched`.
 
-`color_link (color_id NOT NULL, provider, provider_key, provider_name, status, method, inverse_preferred)`. `inverse_preferred` marks the one Rebrickable colour that a BrickLink colour id resolves to when two Rebrickable colours share it (BrickLink 72 and 77, spike `report.json`; § 3.7).
+`color_link (color_id NOT NULL, provider, provider_key, provider_name, status, method, inverse_preferred)`. `inverse_preferred` marks the one Rebrickable colour that a BrickLink colour id resolves to when two Rebrickable colours share it (BrickLink 72 and 77, spike `report.json`; § 3.7). The providers are `bricklink` and `lego` (LEGO's own colour numbers, from Rebrickable's colour `external_ids`); both are rows of the collection's `source` table (amended 2026-10-23 at the M.1 review, Ulf).
 
 ### 3.3 Mapping layers and precedence
 

@@ -1,5 +1,6 @@
 """Two-file connection of the 4.0 store: initialisation, refusals and the binding checks, with invented files."""
 from contextlib import closing
+import os
 import sqlite3
 import uuid
 
@@ -193,3 +194,20 @@ def test_projected_item_is_readable_without_the_catalogue(tmp_path):
         with pytest.raises(CatalogueError, match='not attached'):
             identity.project(db, 11)
         assert identity.project(db, 12) == 12                    # already projected: no catalogue needed
+
+
+def test_a_concurrent_first_opener_keeps_the_winners_file(tmp_path, monkeypatch):
+    target = tmp_path / 'brickwork.db'
+    real_link = os.link
+
+    def racing_link(src, dst):                                   # another opener finishes first, then this one links
+        monkeypatch.setattr('os.link', real_link)
+        with closing(connect(target, tmp_path / 'catalogue.db')) as winner:
+            winner.execute("INSERT INTO meta VALUES('winner', '1')")
+            winner.commit()
+        real_link(src, dst)
+
+    monkeypatch.setattr('os.link', racing_link)
+    with closing(connect(target, tmp_path / 'catalogue.db')) as db:
+        assert db.execute("SELECT value FROM meta WHERE key='winner'").fetchone()[0] == '1'
+    assert not [p.name for p in tmp_path.iterdir() if p.name.endswith('.new')]   # the loser's temporary file is gone

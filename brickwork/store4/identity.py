@@ -19,10 +19,18 @@ def _activated(db, builds, what):
         raise CatalogueError(f'{what} comes from catalogue builds {sorted(builds - have)} that this collection has not activated')
 
 
+def _savepoint(db, name):
+    # A savepoint outside a transaction would commit on release: open the caller's transaction first.
+    if not db.in_transaction:
+        db.execute('BEGIN')
+    db.execute(f'SAVEPOINT {name}')
+
+
 def project(db, item_id):
     """Copy a catalogue item, its links and the colours they name into the collection (design 6.3).
 
-    Idempotent; writes inside the caller's transaction (a savepoint, so a refusal leaves nothing half-copied)."""
+    Idempotent; writes inside the caller's transaction, opening one if none is open, so the caller's commit or rollback
+    decides (a savepoint inside it, so a refusal leaves nothing half-copied)."""
     if db.execute('SELECT 1 FROM main.item WHERE id=?', (item_id,)).fetchone():
         return item_id
     _need_catalogue(db, f'projecting item {item_id}')
@@ -34,7 +42,7 @@ def project(db, item_id):
     links = db.execute('SELECT * FROM catalogue.item_link WHERE item_id=? ORDER BY id', (item_id,)).fetchall()
     _activated(db, [row['build_id']] + [k['build_id'] for k in links], f'item {item_id}')
     stamp = now()
-    db.execute('SAVEPOINT project')
+    _savepoint(db, 'project')
     try:
         for color_id in sorted({k['color_id'] for k in links if k['color_id'] is not None}):
             project_color(db, color_id)
@@ -56,22 +64,30 @@ def project(db, item_id):
     return item_id
 
 
+FIXED_COLORS = (1, 2)                                      # "no colour" and "unknown": rows exist from setup, links come with the catalogue
+
+
 def project_color(db, color_id):
-    """Copy a catalogue colour and its colour links; idempotent (colours 1 and 2 exist from setup)."""
-    if db.execute('SELECT 1 FROM main.color WHERE id=?', (color_id,)).fetchone():
+    """Copy a catalogue colour and its colour links; idempotent. Like project(), inside the caller's transaction."""
+    exists = db.execute('SELECT 1 FROM main.color WHERE id=?', (color_id,)).fetchone()
+    if exists and (color_id not in FIXED_COLORS or not has_catalogue(db) or
+                   db.execute('SELECT 1 FROM main.color_link WHERE color_id=?', (color_id,)).fetchone()):
         return color_id
     _need_catalogue(db, f'projecting colour {color_id}')
     row = db.execute('SELECT * FROM catalogue.color WHERE id=?', (color_id,)).fetchone()
     if row is None:
+        if exists:
+            return color_id
         raise NotInCatalogue(f'colour {color_id} is not in the catalogue')
     links = db.execute('SELECT * FROM catalogue.color_link WHERE color_id=? ORDER BY id', (color_id,)).fetchall()
-    _activated(db, [k['build_id'] for k in links], f'colour {color_id}')
+    _activated(db, [row['build_id']] + [k['build_id'] for k in links], f'colour {color_id}')
     stamp = now()
-    db.execute('SAVEPOINT project_color')
+    _savepoint(db, 'project_color')
     try:
-        db.execute('''INSERT INTO main.color(id, origin, name, rgb, is_trans, born_provider, born_key, created_at, updated_at)
-                      VALUES(?, 'catalogue', ?, ?, ?, ?, ?, ?, ?)''',
-                   (color_id, row['name'], row['rgb'], row['is_trans'], row['born_provider'], row['born_key'], stamp, stamp))
+        if not exists:
+            db.execute('''INSERT INTO main.color(id, origin, name, rgb, is_trans, born_provider, born_key, created_at, updated_at)
+                          VALUES(?, 'catalogue', ?, ?, ?, ?, ?, ?, ?)''',
+                       (color_id, row['name'], row['rgb'], row['is_trans'], row['born_provider'], row['born_key'], stamp, stamp))
         db.executemany('''INSERT INTO main.color_link(color_id, provider, provider_key, provider_name, status, method, inverse_preferred,
                           catalogue_build_id, decided_at) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)''',
                        [(color_id, k['provider'], k['provider_key'], k['provider_name'], k['status'], k['method'],
@@ -106,9 +122,13 @@ def _inverse_color(db, provider, key):
     found = {}
     stores = ['main'] + (['catalogue'] if has_catalogue(db) else [])
     for rank, store in enumerate(stores):
+        # The catalogue answers only for colours whose links the collection does not hold: a collection link,
+        # whatever its status, overrides the catalogue's links of that colour.
+        owned = '' if store == 'main' else f"AND color_id NOT IN (SELECT color_id FROM main.color_link WHERE provider=?)"
+        args = (provider, str(key), *CONFIRMED) + (() if store == 'main' else (provider,))
         for color_id, flag in db.execute(f'''SELECT color_id, inverse_preferred FROM {store}.color_link
-                                             WHERE provider=? AND provider_key=? AND status IN ({_IN})''', (provider, str(key), *CONFIRMED)):
-            found.setdefault(color_id, (flag, rank))       # a collection row hides the catalogue's row of the same colour
+                                             WHERE provider=? AND provider_key=? AND status IN ({_IN}) {owned}''', args):
+            found.setdefault(color_id, (flag, rank))
     if not found:
         return None
     preferred = sorted((rank, c) for c, (flag, rank) in found.items() if flag)
@@ -122,14 +142,16 @@ def _inverse_color(db, provider, key):
 def resolve_inverse(db, provider_kind, provider_key, provider_color_key, provider='bricklink'):
     """Which (item, colour) does a provider key stand for? The inverse of resolve; None if nothing links to it.
 
-    Searches the collection's links, then the catalogue's. A link scoped to the colour wins over an unscoped one, and an
+    Searches the collection's links, then the catalogue's for items not projected (a projected item's links are the
+    collection's: an override or a to_check there is never undone by the catalogue's copy). A link scoped to the colour wins over an unscoped one, and an
     unscoped link does not apply when its item has a link scoped to that colour (the leg rule). Several items -> AmbiguousIdentity."""
     colour = _inverse_color(db, provider, provider_color_key)
     if colour is None:
         return None
     for store in ['main'] + (['catalogue'] if has_catalogue(db) else []):
+        owned = '' if store == 'main' else 'AND item_id NOT IN (SELECT id FROM main.item)'
         rows = db.execute(f'''SELECT item_id, color_id FROM {store}.item_link
-                              WHERE provider=? AND provider_kind=? AND provider_key=? AND status IN ({_IN})''',
+                              WHERE provider=? AND provider_kind=? AND provider_key=? AND status IN ({_IN}) {owned}''',
                           (provider, provider_kind, provider_key, *CONFIRMED)).fetchall()
         items = sorted({
             r['item_id'] for r in rows

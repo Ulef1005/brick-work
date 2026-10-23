@@ -1,5 +1,6 @@
 """Two-file connection: the collection (WAL) with the catalogue attached read-only as `catalogue`."""
 from datetime import datetime, timezone
+import os
 from pathlib import Path
 import sqlite3
 import uuid
@@ -44,35 +45,50 @@ def _meta(db, schema='main'):
 def connect(path='brickwork.db', catalogue='catalogue.db', *, read_only=False):
     check_environment()
     path, catalogue = Path(path), Path(catalogue)
-    new = not path.exists() and not read_only
+    if not read_only and not path.exists():
+        _create(path, 'brickwork.sql', [('schema_version', SCHEMA_VERSION), ('install_id', str(uuid.uuid4()))], exclusive=False)
     db = sqlite3.connect(_uri(path, 'ro' if read_only else None), uri=True)
     db.row_factory = sqlite3.Row
     try:
         db.execute('PRAGMA foreign_keys=ON')
-        if not new:
-            # Check the version before any pragma that writes: a refused file is left exactly as it was.
-            version = (_meta(db) or {}).get('schema_version')
-            if version != SCHEMA_VERSION:
-                raise SchemaMismatch(f'{path} is not a Brick Work {SCHEMA_VERSION} collection (schema_version={version!r}); '
-                                     'a 3.3 file must be migrated, never opened')
+        # Check the version before any pragma that writes: a refused file is left exactly as it was.
+        version = (_meta(db) or {}).get('schema_version')
+        if version != SCHEMA_VERSION:
+            raise SchemaMismatch(f'{path} is not a Brick Work {SCHEMA_VERSION} collection (schema_version={version!r}); '
+                                 'a 3.3 file must be migrated, never opened')
         if read_only:
             db.execute('PRAGMA query_only=ON')
         else:
             db.execute('PRAGMA journal_mode=WAL')
-        if new:
-            db.executescript('BEGIN;\n' + (HERE / 'brickwork.sql').read_text())
-            db.executemany('INSERT INTO meta(key, value) VALUES(?, ?)',
-                           [('schema_version', SCHEMA_VERSION), ('install_id', str(uuid.uuid4())), ('created_at', now())])
-            db.commit()
         if catalogue.exists():
             _attach(db, catalogue)
         return db
     except BaseException:
         db.close()
-        if new:
-            for suffix in ('', '-wal', '-shm'):
-                Path(str(path) + suffix).unlink(missing_ok=True)
         raise
+
+
+def _create(path, schema, meta, *, exclusive):
+    """Build a new file beside `path` and hard-link it into place, so a concurrent first opener either wins or
+    finds the finished file; a failure removes only the temporary file. `exclusive`: an existing `path` is an error."""
+    tmp = path.with_name(f'.{path.name}.{uuid.uuid4().hex}.new')
+    try:
+        db = sqlite3.connect(tmp)
+        try:
+            db.execute('PRAGMA foreign_keys=ON')
+            db.executescript('BEGIN;\n' + (HERE / schema).read_text())
+            db.executemany('INSERT INTO meta(key, value) VALUES(?, ?)', meta + [('created_at', now())])
+            db.commit()
+        finally:
+            db.close()
+        try:
+            os.link(tmp, path)
+        except FileExistsError:
+            if exclusive:
+                raise
+    finally:
+        for suffix in ('', '-journal'):
+            Path(str(tmp) + suffix).unlink(missing_ok=True)
 
 
 def _attach(db, catalogue):
@@ -106,16 +122,8 @@ def create_catalogue(path):
     path = Path(path)
     if path.exists():
         raise FileExistsError(path)
+    _create(path, 'catalogue.sql', [('schema_version', CATALOGUE_VERSION)], exclusive=True)
     db = sqlite3.connect(path)
     db.row_factory = sqlite3.Row
-    try:
-        db.execute('PRAGMA foreign_keys=ON')
-        db.execute('PRAGMA journal_mode=DELETE')
-        db.executescript('BEGIN;\n' + (HERE / 'catalogue.sql').read_text())
-        db.executemany('INSERT INTO meta(key, value) VALUES(?, ?)', [('schema_version', CATALOGUE_VERSION), ('created_at', now())])
-        db.commit()
-        return db
-    except BaseException:
-        db.close()
-        path.unlink(missing_ok=True)
-        raise
+    db.execute('PRAGMA foreign_keys=ON')
+    return db

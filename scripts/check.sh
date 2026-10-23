@@ -29,4 +29,16 @@ fi
 
 "$python" scripts/check_api_contract.py
 
+# The docs check in report mode over the commits not yet landed (CI passes the pushed range);
+# the blocking check is the commit hook in .githooks/ (App Standard, Repo & checks).
+range=${DOCS_RANGE:-}
+if [[ -z $range ]] && git rev-parse --verify --quiet '@{upstream}' >/dev/null; then
+  range='@{upstream}..HEAD'
+fi
+if [[ -n $range ]]; then
+  python3 scripts/check_docs.py range "$range"
+else
+  echo 'NOTE: no upstream and no DOCS_RANGE; docs check skipped'
+fi
+
 "$python" -m scripts.generate_api_writes

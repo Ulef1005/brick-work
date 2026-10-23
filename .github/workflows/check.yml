@@ -40,3 +40,5 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: scripts/check.sh
         run: APP_VENV=.venv bash scripts/check.sh
+        env:
+          DOCS_RANGE: ${{ github.event_name == 'push' && format('{0}..{1}', github.event.before, github.sha) || format('{0}..{1}', github.event.pull_request.base.sha, github.sha) }}

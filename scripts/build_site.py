@@ -2,10 +2,11 @@
 
     python scripts/build_site.py OUT_DIR
 
-Pages: `/` the landing page, `/use-cases/` and `/workflows/` (Markdown in scripts/site), `/docs/` the README, `/demo/` the static demo (scripts/build_demo.py), `/api/` the OpenAPI contract as one local reference page, `/mcp/` the MCP
-guide with the tool and resource tables generated from the server itself. No site generator: Markdown
-is rendered with Python-Markdown, styled with the app's own design tokens and fonts. Links to files in
-the repository point at them on GitHub. The output is static and needs no server.
+Pages: `/` the landing page, `/use-cases/` and `/workflows/` (Markdown in scripts/site), `/docs/` the user docs, `/demo/` the static demo (scripts/build_demo.py), `/api/` the OpenAPI contract as one local reference page, `/mcp/` the MCP
+guide with the tool and resource tables generated from the server itself. The user docs are built by
+Zensical from docs/ and mkdocs.yml (App Standard, Maintenance § Rules, User docs); the other pages are
+Markdown rendered with Python-Markdown, styled with the app's own design tokens and fonts. Links to files
+in the repository point at them on GitHub. The output is static and needs no server.
 """
 import argparse
 import html
@@ -13,7 +14,9 @@ import os
 import re
 import shutil
 import struct
+import subprocess
 import sys
+import tempfile
 from pathlib import Path
 from urllib.parse import unquote
 
@@ -44,7 +47,7 @@ def rewrite_links(text, base, depth=0):
         path, _, anchor = target.partition('#')
         resolved = os.path.normpath(os.path.join(base, path)).replace(os.sep, '/')
         up = '../' * depth
-        local = {'README.md': up + 'docs/', 'docs/brickwork/mcp.md': up + 'mcp/', 'docs/brickwork/openapi-v1.yaml': up + 'api/'}
+        local = {'docs/brickwork/mcp.md': up + 'mcp/', 'docs/brickwork/openapi-v1.yaml': up + 'api/'}
         if resolved in local:
             url = local[resolved]
         else:
@@ -138,12 +141,30 @@ def mcp_tables():
     return text + '\n'
 
 
+def build_docs(out):
+    """Zensical takes its output directory only from the config and keeps it inside the project root,
+    so build into a temporary directory in the repo and copy the result out."""
+    import yaml
+    zensical = Path(sys.executable).with_name('zensical')
+    with tempfile.TemporaryDirectory(prefix='.build-site-', dir=ROOT) as tmp:
+        config = yaml.safe_load((ROOT / 'mkdocs.yml').read_text())
+        config['site_dir'] = str(Path(tmp) / 'site')
+        path = ROOT / f'{Path(tmp).name}.yml'
+        path.write_text(yaml.safe_dump(config, sort_keys=False, allow_unicode=True))
+        try:
+            subprocess.run((str(zensical) if zensical.exists() else 'zensical', 'build', '--strict', '--clean',
+                            '--config-file', str(path)), check=True)
+        finally:
+            path.unlink()
+        shutil.copytree(Path(tmp) / 'site', out)
+
+
 def build(out):
     out = Path(out)
     if out.exists():
         shutil.rmtree(out)
     (out / 'assets' / 'fonts').mkdir(parents=True)
-    for sub in ('api', 'docs', 'use-cases', 'workflows'):
+    for sub in ('api', 'use-cases', 'workflows'):
         (out / sub).mkdir()
     (out / 'mcp').mkdir()
     static = ROOT / 'static'
@@ -162,9 +183,7 @@ def build(out):
     shutil.copy(SITE / 'site.js', out / 'assets/site.js')
     shutil.copytree(SITE / 'img', out / 'assets/img')
 
-    readme = re.sub(r'<!-- site:skip -->.*?<!-- /site:skip -->\n*', '', (ROOT / 'README.md').read_text(), flags=re.S)
-    readme = rewrite_links(readme, '.', 1)
-    (out / 'docs/index.html').write_text(page('Documentation', render(readme), 1, current='Docs'))
+    build_docs(out / 'docs')
 
     landing = (SITE / 'landing.html').read_text().replace('{repository}', repository())
     (out / 'index.html').write_text(page('Brick Work', landing, 0, current='Home', main='marketing landing'))

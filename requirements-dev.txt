@@ -2,8 +2,16 @@
 pytest==9.1.1
 PyYAML>=6,<7
 jsonschema>=4,<5
-# The documentation site (scripts/build_site.py)
-markdown==3.10.2
+# The documentation site (scripts/build_site.py): Python-Markdown for the marketing pages, Zensical for the user docs
+zensical==0.0.71
+deepmerge==3.0.1
+Jinja2==3.1.6
+Markdown==3.11.2
+MarkupSafe==3.0.4
+pathspec==1.1.1
+pymdown-extensions==12.3
+Pygments==2.21.0
+tomli==2.5.0
 # HTML parsing in the test suite only
 beautifulsoup4==4.15.0
 bs4==0.0.2

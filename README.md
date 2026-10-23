@@ -170,39 +170,7 @@ The embedded worker drains queued imports by default. For a headless worker, set
 
 ## Settings reference
 
-Every setting is an environment variable, read from `data/.env` when it is not set in the environment. A test checks that this table and the code name the same settings.
-
-| Setting | Default | What it does |
-|---|---|---|
-| `BW_AUTHENTICATION_PASSWORD` | none | The browser login password. Required unless `BW_ALLOW_NO_LOGIN=1`. |
-| `BW_ALLOW_NO_LOGIN` | off | `1` runs without a password on purpose: anyone who can reach the app can edit it. |
-| `BW_AUTHENTICATION_KEY` | generated | Signs browser sessions. Generated into `data/session.key` when empty; changing it ends every session. |
-| `BW_SECURE_COOKIES` | off | `1` sends the session cookie only over HTTPS. Set it behind HTTPS. |
-| `BW_TRUSTED_PROXIES` | `0` | Reverse proxies in front of the app whose `X-Forwarded-*` headers are trusted. Usually `1` behind a proxy. |
-| `BW_LOGIN_MAX_FAILURES` | `5` | Failed logins or token checks per client before the back-off starts. |
-| `BW_LOGIN_MAX_DELAY` | `300` | Longest back-off in seconds. |
-| `BW_HOST` | `0.0.0.0` | Address the server listens on inside the container. |
-| `BW_PORT` | `3333` | Port the server listens on. |
-| `BW_DB_PATH` | `data/brickwork.db` | The database file. |
-| `BW_MEDIA_PATH` | the database folder | Where pictures, thumbnails and PDFs live (under its `data/`). |
-| `BW_READ_ONLY` | off | `1` refuses every change, in the browser and the API. |
-| `BW_DEBUG` | off | `1` shows tracebacks on errors. Never on a reachable install. |
-| `BW_DARK_MODE` | off | `1` makes dark the default theme (each browser can still choose). |
-| `BW_HIDE_ADD_SET`, `BW_HIDE_ALL_SETS`, `BW_HIDE_ALL_MINIFIGURES`, `BW_HIDE_ALL_PARTS`, `BW_HIDE_ALL_PROBLEMS_PARTS`, `BW_HIDE_ALL_STORAGES`, `BW_HIDE_WISHES` | off | `1` hides that entry from the navigation. |
-| `BW_SECRET_KEY` | none | Fernet key that encrypts source keys stored in the app. Without it, keys come from the environment only. |
-| `BW_BRICKLINK_CONSUMER_KEY`, `BW_BRICKLINK_CONSUMER_SECRET`, `BW_BRICKLINK_TOKEN_VALUE`, `BW_BRICKLINK_TOKEN_SECRET` | none | BrickLink Store API credentials; a complete set overrides the stored one. |
-| `BW_REBRICKABLE_API_KEY` | none | Rebrickable API key. |
-| `BW_BRICKSET_API_KEY` | none | Brickset API key. |
-| `BW_REBRICKABLE_USER_TOKEN`, `BW_BRICKSET_USER_HASH` | none | Your Rebrickable and Brickset accounts for collection sync, instead of connecting them in the app. |
-| `BW_BRICKLINK_DAILY_BUDGET` | `4400` | BrickLink API calls per day (BrickLink allows 5,000; the rest is a margin for other tools on the same key). |
-| `BW_REBRICKABLE_DAILY_BUDGET` | `1000` | Rebrickable API calls per day. |
-| `BW_BRICKOGNIZE_DAILY_BUDGET` | `100` | Photo identifications per day. |
-| `BW_PRICE_SETTINGS_LOCK` | on | Refuses changes to the BrickLink region and currency, which every stored price depends on; `0` allows them. |
-| `BW_EMBEDDED_WORKER` | on | `0` leaves queued imports to `brickwork worker` (headless installs). |
-| `BW_IMPORT_MAX_MB` | `200` | Largest upload, in MB, for a database import; also the cap for any request. |
-| `BW_API_TOKEN` | none | A bootstrap API token with admin scope. Optional: stored tokens are created in the app or with `brickwork token create`. |
-| `BW_MCP_WRITE` | off | `1` allows the MCP server's write tools (as `--allow-write`). |
-| `BW_PRIVATE_PATTERNS_FILE` | none | Development only: a file of extra regular expressions (one per line) that the private-material scans of the source tree, the demo and the Pages site also reject, such as your own host names. |
+Every setting is an environment variable, read from `data/.env` when it is not set in the environment. The full table, with defaults and accepted values, is in the user docs: [Settings](docs/reference/settings.md).
 
 ## API and MCP
 

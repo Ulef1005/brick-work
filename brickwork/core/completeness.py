@@ -1,6 +1,7 @@
 """The shared derived-copy completeness rule; callers own writes and receipts."""
 
 
+# User docs: docs/reference/metrics.md#completeness
 def derived_state(db, copy_id):
     row = db.execute('SELECT completeness_source FROM copies WHERE id=?', (copy_id,)).fetchone()
     if not row or row['completeness_source'] != 'derived':

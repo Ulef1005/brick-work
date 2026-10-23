@@ -1,0 +1,18 @@
+# The user docs (App Standard, Maintenance § Rules, User docs): Zensical reads this file unchanged.
+# No nav: the four Diátaxis sections under docs/ appear on their own, each section's index.md first.
+site_name: Brick Work
+docs_dir: docs
+exclude_docs: |
+  adr/
+  brickwork/
+  img/
+  milestones/
+  pitch/
+  upstream-CHANGELOG.md
+theme:
+  name: material
+  font: false  # system fonts: the site makes no external requests
+  favicon: assets/favicon.svg
+  logo: assets/app-icon.svg
+  features: [navigation.sections, navigation.indexes, search.highlight]
+markdown_extensions: [admonition, tables, toc, attr_list]

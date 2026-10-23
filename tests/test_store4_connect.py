@@ -45,6 +45,18 @@ def test_refuses_a_33_file_and_other_versions(tmp_path):
         connect(odd, tmp_path / 'catalogue.db')
 
 
+def test_a_refused_file_keeps_its_journal_mode(tmp_path):
+    plain = tmp_path / 'plain.db'
+    with closing(sqlite3.connect(plain)) as raw:
+        raw.execute('CREATE TABLE schema_meta(version TEXT)')
+        raw.execute("INSERT INTO schema_meta VALUES('3.3')")
+        raw.commit()
+    with pytest.raises(SchemaMismatch):
+        connect(plain, tmp_path / 'catalogue.db')
+    with closing(sqlite3.connect(plain)) as raw:
+        assert raw.execute('PRAGMA journal_mode').fetchone()[0] == 'delete'
+
+
 def test_environment_is_checked(tmp_path, monkeypatch):
     monkeypatch.setattr(sqlite3, 'sqlite_version_info', (3, 36, 1))
     monkeypatch.setattr(sqlite3, 'sqlite_version', '3.36.1')

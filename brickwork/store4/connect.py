@@ -49,6 +49,12 @@ def connect(path='brickwork.db', catalogue='catalogue.db', *, read_only=False):
     db.row_factory = sqlite3.Row
     try:
         db.execute('PRAGMA foreign_keys=ON')
+        if not new:
+            # Check the version before any pragma that writes: a refused file is left exactly as it was.
+            version = (_meta(db) or {}).get('schema_version')
+            if version != SCHEMA_VERSION:
+                raise SchemaMismatch(f'{path} is not a Brick Work {SCHEMA_VERSION} collection (schema_version={version!r}); '
+                                     'a 3.3 file must be migrated, never opened')
         if read_only:
             db.execute('PRAGMA query_only=ON')
         else:
@@ -58,11 +64,6 @@ def connect(path='brickwork.db', catalogue='catalogue.db', *, read_only=False):
             db.executemany('INSERT INTO meta(key, value) VALUES(?, ?)',
                            [('schema_version', SCHEMA_VERSION), ('install_id', str(uuid.uuid4())), ('created_at', now())])
             db.commit()
-        else:
-            version = (_meta(db) or {}).get('schema_version')
-            if version != SCHEMA_VERSION:
-                raise SchemaMismatch(f'{path} is not a Brick Work {SCHEMA_VERSION} collection (schema_version={version!r}); '
-                                     'a 3.3 file must be migrated, never opened')
         if catalogue.exists():
             _attach(db, catalogue)
         return db

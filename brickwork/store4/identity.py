@@ -67,13 +67,20 @@ def project_color(db, color_id):
     links = db.execute('SELECT * FROM catalogue.color_link WHERE color_id=? ORDER BY id', (color_id,)).fetchall()
     _activated(db, [k['build_id'] for k in links], f'colour {color_id}')
     stamp = now()
-    db.execute('''INSERT INTO main.color(id, origin, name, rgb, is_trans, born_provider, born_key, created_at, updated_at)
-                  VALUES(?, 'catalogue', ?, ?, ?, ?, ?, ?, ?)''',
-               (color_id, row['name'], row['rgb'], row['is_trans'], row['born_provider'], row['born_key'], stamp, stamp))
-    db.executemany('''INSERT INTO main.color_link(color_id, provider, provider_key, provider_name, status, method, inverse_preferred,
-                      catalogue_build_id, decided_at) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-                   [(color_id, k['provider'], k['provider_key'], k['provider_name'], k['status'], k['method'],
-                     k['inverse_preferred'], k['build_id'], stamp) for k in links])
+    db.execute('SAVEPOINT project_color')
+    try:
+        db.execute('''INSERT INTO main.color(id, origin, name, rgb, is_trans, born_provider, born_key, created_at, updated_at)
+                      VALUES(?, 'catalogue', ?, ?, ?, ?, ?, ?, ?)''',
+                   (color_id, row['name'], row['rgb'], row['is_trans'], row['born_provider'], row['born_key'], stamp, stamp))
+        db.executemany('''INSERT INTO main.color_link(color_id, provider, provider_key, provider_name, status, method, inverse_preferred,
+                          catalogue_build_id, decided_at) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                       [(color_id, k['provider'], k['provider_key'], k['provider_name'], k['status'], k['method'],
+                         k['inverse_preferred'], k['build_id'], stamp) for k in links])
+    except BaseException:
+        db.execute('ROLLBACK TO project_color')
+        raise
+    finally:
+        db.execute('RELEASE project_color')
     return color_id
 
 
@@ -101,8 +108,15 @@ def _inverse_color(db, provider, key):
     for rank, store in enumerate(stores):
         for color_id, flag in db.execute(f'''SELECT color_id, inverse_preferred FROM {store}.color_link
                                              WHERE provider=? AND provider_key=? AND status IN ({_IN})''', (provider, str(key), *CONFIRMED)):
-            found.setdefault(color_id, (-flag, rank))      # a collection row hides the catalogue's row of the same colour
-    return min(found, key=lambda c: (*found[c], c)) if found else None
+            found.setdefault(color_id, (flag, rank))       # a collection row hides the catalogue's row of the same colour
+    if not found:
+        return None
+    preferred = sorted((rank, c) for c, (flag, rank) in found.items() if flag)
+    if preferred:
+        return preferred[0][1]
+    if len(found) > 1:                                     # shared provider colour, none marked: never guess (design 3.2)
+        raise AmbiguousIdentity(f'{provider} colour {key} names colours {sorted(found)}, none marked inverse_preferred', sorted(found))
+    return next(iter(found))
 
 
 def resolve_inverse(db, provider_kind, provider_key, provider_color_key, provider='bricklink'):

@@ -212,6 +212,15 @@ def test_inverse_ambiguity_raises_with_the_candidates(db):
     assert err.value.items == (11, 16)
 
 
+def test_inverse_colour_shared_without_a_preferred_one_raises(db):
+    identity.project_color(db, 6)
+    identity.project_color(db, 7)
+    db.execute("UPDATE main.color_link SET inverse_preferred=0")              # the collection's rows hide the catalogue's flag
+    with pytest.raises(AmbiguousIdentity, match=r'colours \[6, 7\]') as err:
+        identity.resolve_inverse(db, 'P', '3023', '72')
+    assert err.value.items == (6, 7)
+
+
 def test_a_projected_collection_stays_consistent(db):
     projected(db, 10, 11, 12, 14)
     identity.project_color(db, 5)

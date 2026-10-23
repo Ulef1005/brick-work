@@ -29,13 +29,16 @@ def main(argv):
         sys.exit('BW_REBRICKABLE_API_KEY is not set (run under op run)')
     out = Path(argv[1])
     (out / 'dump').mkdir(parents=True, exist_ok=True)
+    # fetched.json marks a complete set: drop it first, so an interrupted run never passes for a finished one.
+    (out / 'fetched.json').unlink(missing_ok=True)
     for name in DUMP_FILES:
         req = urllib.request.Request(f'https://cdn.rebrickable.com/media/downloads/{name}.csv.gz', headers=UA)
         with urllib.request.urlopen(req, timeout=300) as r:
             (out / 'dump' / f'{name}.csv.gz').write_bytes(r.read())
             print(name, r.headers.get('Last-Modified'), flush=True)
-    calls = 0
-    with open(out / 'external_ids.jsonl', 'w') as f:
+    calls, counts = 0, {}
+    partial = out / 'external_ids.jsonl.partial'
+    with open(partial, 'w') as f:
         for kind, url, id_field in ENDPOINTS:
             n = 0
             while url:
@@ -49,8 +52,11 @@ def main(argv):
                 n += len(page['results'])
                 url = page['next']
                 time.sleep(1.1)
+            counts[kind] = n
             print(kind, n, flush=True)
-    (out / 'fetched.json').write_text(json.dumps({'fetched_at': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()), 'api_calls': calls}))
+    partial.replace(out / 'external_ids.jsonl')
+    (out / 'fetched.json').write_text(json.dumps({'fetched_at': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
+                                                  'api_calls': calls, 'counts': counts}))
     print('calls', calls)
 
 

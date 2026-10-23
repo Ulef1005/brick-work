@@ -95,8 +95,13 @@ def main(argv=None):
     a = ap.parse_args(argv)
     inputs, out = Path(a.inputs), Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
-    fetched = json.loads((inputs / 'fetched.json').read_text())['fetched_at']
+    manifest = json.loads((inputs / 'fetched.json').read_text())
+    fetched = manifest['fetched_at']
     external = [json.loads(line) for line in (inputs / 'external_ids.jsonl').read_text(encoding='utf-8').splitlines() if line]
+    # Refuse an incomplete fetch: the manifest is written last and names how many rows each kind had.
+    found = {kind: sum(1 for x in external if x['kind'] == kind) for kind in ('color', 'part')}
+    if manifest.get('counts') != found:
+        sys.exit(f'external_ids.jsonl has {found}, fetched.json says {manifest.get("counts")}: incomplete fetch, run it again')
     header = [f'mapping_version: {a.version}', f'dump_date: {a.dump_date}', f'external_ids_fetched: {fetched}', f'source: {SOURCE}']
     colors, shared = color_rows(inputs, external)
     parts = part_rows(inputs, external)

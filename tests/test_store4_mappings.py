@@ -134,7 +134,8 @@ def make_inputs(root):
            {'kind': 'part', 'id': '2339', 'name': 'Brick', 'external_ids': {}},
            {'kind': 'part', 'id': '9001', 'name': 'Odd', 'external_ids': {}}]
     (root / 'external_ids.jsonl').write_text(''.join(json.dumps(e) + '\n' for e in ext))
-    (root / 'fetched.json').write_text(json.dumps({'fetched_at': '2026-10-23T17:52:26Z', 'api_calls': 2}))
+    (root / 'fetched.json').write_text(json.dumps({'fetched_at': '2026-10-23T17:52:26Z', 'api_calls': 2,
+                                                   'counts': {'color': 4, 'part': 5}}))
 
 
 def test_build_is_deterministic(tmp_path):
@@ -158,3 +159,12 @@ def test_build_is_deterministic(tmp_path):
                      ('3023', '3023', 'matched', 'external_ids', '0'),
                      ('9001', '777', 'inferred', 'element', '0'), ('9001', '778', 'inferred', 'element', '0'),
                      ('970c03', '970c03', 'matched', 'external_ids', '1'), ('970c03', '970c11', 'matched', 'external_ids', '0')]
+
+
+def test_build_refuses_an_incomplete_fetch(tmp_path):
+    build = load_build()
+    make_inputs(tmp_path / 'in')
+    lines = (tmp_path / 'in' / 'external_ids.jsonl').read_text().splitlines(keepends=True)
+    (tmp_path / 'in' / 'external_ids.jsonl').write_text(''.join(lines[:-2]))      # a run cut short after two pages
+    with pytest.raises(SystemExit, match='incomplete fetch'):
+        build.main([str(tmp_path / 'in'), str(tmp_path / 'out'), '--version', '1', '--dump-date', '2026-10-23'])

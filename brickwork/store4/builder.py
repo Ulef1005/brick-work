@@ -16,10 +16,12 @@ import uuid
 from ..core.size_search import name_key as size_key_of
 from .connect import _uri, create_catalogue, now as clock
 from .dump import Dump
-from .errors import BuildBusy, CatalogueMismatch, DumpError
-from .layers import DEFAULT_LAYERS, shipped_version
+from .errors import DumpError
+from .bricklink_list import carry_lists
+from .layers import DEFAULT_LAYERS, FTS_INSERT, shipped_version
 from .mappings import MAPPINGS_DIR, read_mapping
 from .seeds import FIXED_COLORS, LOCAL_BASE, CollectionSeed, OldCatalogue, Seeds
+from .swap import build_lock, check_new, new_path, publish, recheck_merged, remove_new
 
 ITEM_COLS = ('id', 'kind', 'kind_source', 'name', 'name_key', 'size_key', 'year', 'num_parts', 'theme_id', 'category_id', 'material',
              'img_url', 'born_provider', 'born_namespace', 'born_key', 'adopted', 'build_id', 'digest', 'retired_at')
@@ -28,14 +30,17 @@ BUILD_COLS = ('id', 'kind', 'seeded_from', 'started_at', 'finished_at', 'app_ver
               'job_id', 'note')
 NAMESPACE_KIND = {'sets': 'set', 'parts': 'part', 'minifigs': 'minifigure'}
 BUILD_KINDS = ('rebrickable_dump', 'mapping', 'bricklink_list', 'bricklink_colors')
-LAYERS = list(DEFAULT_LAYERS)   # callables layer(db, ctx), run after the raw tables are loaded; M.2d adds the BrickLink lists
+# callables layer(db, ctx), run after the raw tables are loaded. The BrickLink lists of the file being replaced are carried before
+# bl_digest: the list's upgrades and kind corrections decide which links the digests project through.
+LAYERS = [*DEFAULT_LAYERS[:-1], carry_lists, DEFAULT_LAYERS[-1]]
 
 
 class Context:
     """What a mapping layer needs after the raw tables are loaded."""
 
     def __init__(self, build_id, item_ids, color_ids, retired, *, parts=(), set_ids=(), incomplete_inventories=(),
-                 mappings_dir=MAPPINGS_DIR, local_dir=None):
+                 mappings_dir=MAPPINGS_DIR, local_dir=None, old=None):
+        self.old = old                                        # the file being replaced (OldCatalogue) or None
         self.build_id, self.item_ids, self.color_ids, self.retired = build_id, item_ids, color_ids, retired   # every row of the new file
         self.parts = list(parts)                              # (part_num, name) of every part in the file, retired too: the leg rule's input
         self.part_num = {i: k[1] for k, i in self.item_ids.items() if k[0] == 'parts'}
@@ -58,14 +63,6 @@ def _sort_color_key(key):
         return (0, int(key), key)
     except ValueError:
         return (1, 0, key)
-
-
-def _fsync(path, directory=False):
-    fd = os.open(path, os.O_RDONLY | (os.O_DIRECTORY if directory else 0))
-    try:
-        os.fsync(fd)
-    finally:
-        os.close(fd)
 
 
 def _stamp(now):
@@ -123,20 +120,12 @@ def build(dump_dir, target, *, collection=None, app_version, now=None, mappings_
 
     `mappings_dir` holds the shipped mapping files; `local_dir` (optional, data/mappings/) the install's own layer."""
     target = Path(target)
-    lock = open(target.with_name(target.name + '.lock'), 'a')
-    try:
-        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    except BlockingIOError:
-        lock.close()
-        raise BuildBusy(f'another catalogue build is running on {target}; nothing was touched') from None
-    try:
+    with build_lock(target):
         return _build_locked(dump_dir, target, collection, app_version, now, mappings_dir, local_dir)
-    finally:
-        lock.close()                                          # closing releases the flock
 
 
 def _build_locked(dump_dir, target, collection, app_version, now, mappings_dir, local_dir):
-    new, prev = target.with_name(target.name + '.new'), target.with_name(target.name + '.prev')
+    new, prev = new_path(target), target.with_name(target.name + '.prev')
     started = time.monotonic()
     started_at = _stamp(now)
     dump = Dump(dump_dir)
@@ -144,48 +133,24 @@ def _build_locked(dump_dir, target, collection, app_version, now, mappings_dir, 
     try:
         coll = CollectionSeed(collection) if collection else None
         seeds = Seeds(old, coll)
-        for p in (new, new.with_name(new.name + '-journal')):
-            p.unlink(missing_ok=True)
+        remove_new(new)
         try:
             try:
                 report = _build_new(dump, new, old, coll, seeds, app_version, started_at, now, mappings_dir, local_dir)
             except ValueError as exc:
                 raise DumpError(f'the dump holds a value the builder cannot read: {exc}') from exc
             if coll:
-                _recheck_merged(new, collection)
+                recheck_merged(new, collection)
             report['seconds'] = round(time.monotonic() - started, 1)
         except BaseException:
-            for p in (new, new.with_name(new.name + '-journal')):
-                p.unlink(missing_ok=True)
+            remove_new(new)
             raise
-        _fsync(new)
-        if old:
-            # .prev is a hard link of the target, so the target stays in place until the one rename that publishes the new file.
-            link = target.with_name(f'{target.name}.prev.{uuid.uuid4().hex}')
-            os.link(target, link)
-            os.replace(link, prev)
-        os.replace(new, target)
-        _fsync(target.parent, directory=True)
+        publish(new, target, keep_previous=bool(old))
     finally:
         if old:
             old.close()
     report.update(target=str(target), previous=str(prev) if old else None, bytes=target.stat().st_size)
     return report
-
-
-def _recheck_merged(new, collection):
-    """Refuse to publish when the collection merged away an id that the new file has live: a merge committed while the build
-    ran (the build lock keeps out other builders only). Invariant 4: no catalogue row ever names a merged id."""
-    with closing(sqlite3.connect(_uri(collection, 'ro'), uri=True)) as db:
-        merged = [r[0] for r in db.execute('SELECT id FROM item WHERE merged_into IS NOT NULL')]
-    if not merged:
-        return
-    with closing(sqlite3.connect(_uri(new, 'ro'), uri=True)) as db:
-        db.execute('CREATE TEMP TABLE merged(id INTEGER PRIMARY KEY)')
-        db.executemany('INSERT INTO temp.merged VALUES(?)', [(i,) for i in merged])
-        live = [r[0] for r in db.execute('SELECT id FROM main.item WHERE retired_at IS NULL AND id IN (SELECT id FROM temp.merged) ORDER BY id')]
-    if live:
-        raise CatalogueMismatch(f'items {live[:5]} were merged in the collection while the catalogue was being built; run the build again')
 
 
 def _build_new(dump, new, old, coll, seeds, app_version, started_at, now, mappings_dir, local_dir):
@@ -197,15 +162,7 @@ def _build_new(dump, new, old, coll, seeds, app_version, started_at, now, mappin
         db.execute('BEGIN')
         report = _load(db, dump, old, coll, seeds, app_version, started_at, now, mappings_dir, local_dir)
         db.execute('COMMIT')
-        db.execute('PRAGMA foreign_keys=ON')
-        found = db.execute('PRAGMA foreign_key_check').fetchall()
-        if found:
-            raise CatalogueMismatch(f'the new catalogue breaks foreign keys: {[tuple(r) for r in found[:5]]} ({len(found)} in all)')
-        verdict = db.execute('PRAGMA integrity_check').fetchall()
-        if [tuple(r) for r in verdict] != [('ok',)]:
-            raise CatalogueMismatch(f'the new catalogue fails its integrity check: {[tuple(r) for r in verdict[:5]]}')
-        if db.execute('PRAGMA journal_mode=DELETE').fetchone()[0] != 'delete':
-            raise CatalogueMismatch('the new catalogue could not be set to journal_mode=DELETE')
+        check_new(db)
         return report
     finally:
         db.close()
@@ -502,22 +459,19 @@ def _load(db, dump, old, coll, seeds, app_version, started_at, now, mappings_dir
     db.executemany('INSERT INTO part_relationship VALUES(?,?,?)', sorted(relations))
     db.executemany('INSERT INTO picture_url VALUES(?,?,?)', sorted((p, c, u) for (p, c), u in pictures.items()))
     ctx = Context(build_id, item_ids, color_ids, {k for k, i in items.items() if i['retired_at']}, parts=[(k[1], items[k]['name']) for k in item_ids if k[0] == 'parts'],
-                  set_ids=[(k[1], i) for k, i in item_ids.items() if k[0] == 'sets' and items[k]['kind'] == 'set'],
+                  set_ids=[(k[1], i) for k, i in item_ids.items() if k[0] == 'sets' and items[k]['kind'] == 'set'
+                           and not (items[k]['kind_source'] == 'bricklink' and items[k]['num_parts'] == 0)],   # a list-corrected zero-part set has no rule link, only its same_number candidate
                   # A carried version the old file gave no bl_digest stays without one: the file keeps no record of why (a
                   # line lost to a missing item, or an unmapped one), and its lines may be truncated, so never risk a false match.
                   incomplete_inventories=incomplete | {row['id'] for row, *_ in carried if row.get('bl_digest') is None},
-                  mappings_dir=mappings_dir, local_dir=local_dir)
+                  mappings_dir=mappings_dir, local_dir=local_dir, old=old)
     for layer in LAYERS:
         layer(db, ctx)
     if ctx.report:
         counts.update(ctx.report)
         mapping_version = shipped_version(ctx.mappings_dir)
         db.execute('UPDATE build SET counts_json=?, mapping_version=? WHERE id=?', (json.dumps(counts), mapping_version, build_id))
-    # keys: the born key plus every linked provider key (all statuses: a to_check candidate is searchable too)
-    db.execute("""INSERT INTO item_fts(item_id, kind, name, keys)
-                  SELECT i.id, i.kind, i.name, i.born_key || coalesce(' ' || (SELECT group_concat(k, ' ') FROM
-                      (SELECT DISTINCT provider_key AS k FROM item_link l WHERE l.item_id=i.id ORDER BY provider_key)), '')
-                  FROM item i WHERE i.retired_at IS NULL""")
+    db.execute(FTS_INSERT)
     db.executemany('INSERT OR REPLACE INTO meta(key, value) VALUES(?, ?)', [
         ('catalogue_id', catalogue_id), ('item_high_water', str(item_hw)), ('color_high_water', str(color_hw)), ('created_at', finished_at)])
     return dict(build_id=build_id, catalogue_id=catalogue_id, seeded_from=seeded_from, item_high_water=item_hw, color_high_water=color_hw,

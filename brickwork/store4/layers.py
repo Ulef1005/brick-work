@@ -241,3 +241,10 @@ def bl_digests(db, ctx):
 
 
 DEFAULT_LAYERS = [colour_links, item_links, bl_digests]
+
+# FTS keys: the born key plus every linked provider key (all statuses: a to_check candidate is searchable too). The builder
+# fills it for every live item; the BrickLink list import refreshes the rows of the items it changed (`AND i.id IN (...)`).
+FTS_INSERT = """INSERT INTO item_fts(item_id, kind, name, keys)
+                SELECT i.id, i.kind, i.name, i.born_key || coalesce(' ' || (SELECT group_concat(k, ' ') FROM
+                    (SELECT DISTINCT provider_key AS k FROM item_link l WHERE l.item_id=i.id ORDER BY provider_key)), '')
+                FROM item i WHERE i.retired_at IS NULL"""

@@ -3,6 +3,7 @@
 Writes only the collection, in one transaction, an event per change under one operation key. What would override a
 user's decision or drop a line is reported and left alone."""
 from collections import defaultdict
+import hashlib
 import json
 import sqlite3
 
@@ -10,6 +11,7 @@ from .audit import Events, need_catalogue, transaction
 from .connect import check_compatible, now
 from .errors import AmbiguousIdentity, NotActivated
 from . import identity
+from .bricklink_list import TYPE_OF_KIND, same_number_key
 from .identity import project_color
 
 PROVIDER = 'bricklink'
@@ -38,6 +40,7 @@ def reconcile(db, *, via='cli', actor=None):
         _colours(run, report)
         _colour_links(run, report)
         _same_number_pass(run, report)
+        _bricklink_names(run, report)
         _merge_report(run, report)
         _inventory_report(run, report)
         report['coverage'] = _coverage(db)
@@ -60,9 +63,79 @@ class _Run:
         self.events.write(*args)
 
 
+
+def _list_loaded(db):
+    return db.execute('SELECT 1 FROM catalogue.bricklink_item LIMIT 1').fetchone() is not None
+
+
 def _same_number_pass(run, report):
-    """Hook for M.2d: the `same_number` candidate pass (Q20) against the BrickLink list, when one is loaded."""
-    report['same_number'] = None
+    """The `same_number` candidate pass (design 6.4, Q20, decision 8), when the catalogue has a BrickLink list: every projected
+    Rebrickable-born item that has no BrickLink link of any status, and whose born key is a BrickLink number of the type for its
+    kind, gets a `to_check` link. Never `matched`. The catalogue's own pass has done this for its items already (their links
+    were mirrored above); this one reaches the rest, such as a local item the dump does not number yet."""
+    db = run.db
+    if not _list_loaded(db):
+        report['same_number'] = None
+        return
+    list_build = db.execute("SELECT max(id) FROM catalogue.build WHERE kind='bricklink_list'").fetchone()[0]
+    added = []
+    for r in db.execute("""SELECT m.id, m.kind, m.born_namespace, m.born_key FROM main.item m
+                           WHERE m.born_provider='rebrickable' AND m.merged_into IS NULL AND m.catalogue_retired_at IS NULL
+                             AND NOT EXISTS(SELECT 1 FROM main.item_link l WHERE l.item_id=m.id AND l.provider=?) ORDER BY m.id""", (PROVIDER,)).fetchall():
+        item_type = TYPE_OF_KIND[r['kind']]
+        number = same_number_key(item_type, r['born_namespace'], r['born_key'])      # the same rule as the catalogue's own pass
+        if number is None or not db.execute('SELECT 1 FROM catalogue.bricklink_item WHERE item_type=? AND item_no=?', (item_type, number)).fetchone():
+            continue
+        link_id = db.execute("""INSERT INTO main.item_link(item_id, provider, provider_kind, provider_key, status, method, origin, preferred,
+                                evidence_digest, catalogue_build_id, decided_at, decided_by) VALUES(?, ?, ?, ?, 'to_check', 'same_number',
+                                'bricklink_list', 0, ?, ?, ?, ?) RETURNING id""",
+                             (r['id'], PROVIDER, item_type, number, _evidence('same_number', item_type, number), list_build,
+                              run.stamp, run.events.actor)).fetchone()[0]
+        run.event('item_link', link_id, 'inserted', None, dict(item_id=r['id'], provider=PROVIDER, provider_kind=item_type,
+                                                               provider_key=number, status='to_check', method='same_number'))
+        added.append(r['id'])
+    if added:
+        run.changes['same_number_added'] = len(added)
+    report['same_number'] = dict(list_build=list_build, added=sorted(added))
+
+
+def _evidence(*fields):
+    return hashlib.sha256('\x1f'.join(str(f) for f in fields).encode()).hexdigest()
+
+
+def _bricklink_names(run, report):
+    """BrickLink's name of every item whose links resolve (design 3.2, unscoped) to a BrickLink list entry, as
+    item_property(key='name', source='bricklink'); added, and refreshed when the list's name changes."""
+    db = run.db
+    if not _list_loaded(db):
+        report['bricklink_names'] = None
+        return
+    rows = defaultdict(list)
+    for r in db.execute(f"""SELECT l.item_id, l.provider_kind, l.provider_key, l.color_id, l.preferred, l.status FROM main.item_link l
+                            JOIN main.item m ON m.id=l.item_id WHERE m.merged_into IS NULL AND l.provider=? AND l.status IN ({','.join('?' * len(identity.CONFIRMED))})
+                            ORDER BY l.item_id""", (PROVIDER, *identity.CONFIRMED)):
+        rows[r['item_id']].append(dict(r))
+    unresolved = 0
+    for item_id, links in sorted(rows.items()):
+        best = identity.best_item_link(links, None)
+        named = db.execute('SELECT name FROM catalogue.bricklink_item WHERE item_type=? AND item_no=?',
+                           (best['provider_kind'], best['provider_key'])).fetchone() if best else None
+        if named is None:
+            unresolved += 1
+            continue
+        old = db.execute("SELECT value FROM main.item_property WHERE item_id=? AND key='name' AND source=?", (item_id, PROVIDER)).fetchone()
+        if old is None:
+            db.execute("INSERT INTO main.item_property(item_id, key, source, value, fetched_at) VALUES(?, 'name', ?, ?, ?)",
+                       (item_id, PROVIDER, named[0], run.stamp))
+            run.changes['bricklink_names_added'] += 1
+        elif old[0] != named[0]:
+            db.execute("UPDATE main.item_property SET value=?, fetched_at=? WHERE item_id=? AND key='name' AND source=?",
+                       (named[0], run.stamp, item_id, PROVIDER))
+            run.changes['bricklink_names_refreshed'] += 1
+        else:
+            continue
+        run.event('item', item_id, 'property.name.bricklink', old and old[0], named[0])
+    report['bricklink_names'] = dict(unresolved=unresolved)
 
 
 # ---------- adoption (rule 5) ----------

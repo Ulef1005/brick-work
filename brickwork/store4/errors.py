@@ -43,3 +43,7 @@ class BuildBusy(Store4Error):
 
 class NotActivated(CatalogueError):
     """The attached catalogue has builds this collection has not activated; run activation first."""
+
+
+class BrickLinkListError(Store4Error):
+    """A BrickLink catalogue XML directory that is not a complete, well-formed set of item lists."""

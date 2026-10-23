@@ -5,6 +5,7 @@ docs_dir: docs
 exclude_docs: |
   adr/
   brickwork/
+  data-model-4.0/
   img/
   milestones/
   pitch/

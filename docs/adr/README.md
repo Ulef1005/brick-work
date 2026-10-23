@@ -22,3 +22,4 @@ One file per decision that binds future work: the API contract, the data model, 
 | [0013](0013-item-detail-pages.md) | Item detail pages | accepted | 2026-10-16 |
 | [0014](0014-github-canonical.md) | GitHub is the canonical repository, starting from a snapshot | accepted | 2026-10-18 |
 | [0015](0015-post-go-live-plan-on-github.md) | The post-go-live plan lives in GitHub milestones | accepted | 2026-10-22 |
+| [0016](0016-data-model-4.md) | Data model 4.0: Brick Work ids, a catalogue from the Rebrickable dump, one migration | accepted | 2026-10-23 |

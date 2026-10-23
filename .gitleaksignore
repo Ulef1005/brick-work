@@ -8,3 +8,8 @@ ea5e60b6f8158ea1a262c7547171737a7367ecfe:tests_house/fixtures/6390-1.html:generi
 4217e460ce07bfd6839f3180ad200b9af779813e:tests/test_bw_throttle.py:generic-api-key:61
 # Same test, matched by path for scans of the public snapshot and of commits after it.
 tests/test_bw_throttle.py:generic-api-key:61
+# Placeholder bearer tokens (YOUR_ADMIN_TOKEN, YOUR_TOKEN) in curl examples of the user docs; not secrets.
+514648ced20bfada7886d2c146a0c366bf1fabbc:docs/how-to/back-up-and-restore.md:curl-auth-header:28
+514648ced20bfada7886d2c146a0c366bf1fabbc:docs/how-to/undo-a-change.md:curl-auth-header:41
+docs/how-to/back-up-and-restore.md:curl-auth-header:28
+docs/how-to/undo-a-change.md:curl-auth-header:41

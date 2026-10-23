@@ -15,15 +15,16 @@ from brickwork.store4.builder import build
 from brickwork.store4.connect import connect, now
 from brickwork.store4.dump import HEADERS
 from brickwork.store4.errors import BuildBusy, CatalogueMismatch, DumpError
-from tests.store4_dump import INVENTORIES, default, write_dump
+from tests.store4_dump import INVENTORIES, default, write_dump, write_mappings
 
 STAMP = '2026-10-23T12:00:00.000Z'
 
 
-def run(tmp_path, name='d1', *, collection=None, target=None, **tables):
+def run(tmp_path, name='d1', *, collection=None, target=None, mappings=None, local_dir=None, **tables):
     dump = write_dump(tmp_path / name, **tables)
     target = target or tmp_path / 'catalogue.db'
-    return build(dump, target, collection=collection, app_version='4.0.test', now=STAMP), target
+    mappings = mappings or (tmp_path / 'maps' if (tmp_path / 'maps').exists() else write_mappings(tmp_path / 'maps'))
+    return build(dump, target, collection=collection, app_version='4.0.test', now=STAMP, mappings_dir=mappings, local_dir=local_dir), target
 
 
 def leftovers(tmp_path):
@@ -77,7 +78,7 @@ def test_first_build_is_reproducible_and_shaped(tmp_path):
     assert meta['schema_version'] == 'catalogue-4.0' and meta['item_high_water'] == '11' and meta['color_high_water'] == '6'
     assert str(uuid.UUID(meta['catalogue_id'])) == meta['catalogue_id'] and meta['created_at'] == STAMP
     b = rows(cat, 'SELECT * FROM build')[0]
-    assert (b['kind'], b['seeded_from'], b['mapping_version'], b['app_version']) == ('rebrickable_dump', 'none', None, '4.0.test')
+    assert (b['kind'], b['seeded_from'], b['mapping_version'], b['app_version']) == ('rebrickable_dump', 'none', '2099.1.1.1', '4.0.test')
     files = json.loads(b['files_json'])
     assert [f['name'] for f in files] == [f'{n}.csv.gz' for n in HEADERS]
     assert all(len(f['sha256']) == 64 and f['bytes'] > 0 for f in files)
@@ -451,6 +452,7 @@ def test_a_merged_local_item_is_never_adopted(tmp_path):
 def merge_away(col, cat, key, into='6081-1'):
     with closing(connect(col, cat)) as db:
         db.execute("UPDATE item SET catalogue_retired_at=? WHERE born_key=?", (STAMP, key))
+        db.execute("DELETE FROM item_link WHERE item_id=(SELECT id FROM item WHERE born_key=?)", (key,))    # the merge moved its links
         db.execute("UPDATE item SET merged_into=(SELECT id FROM item WHERE born_key=?) WHERE born_key=?", (into, key))
         db.commit()
 

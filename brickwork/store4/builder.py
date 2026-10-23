@@ -17,6 +17,7 @@ from ..core.size_search import name_key as size_key_of
 from .connect import _uri, create_catalogue, now as clock
 from .dump import Dump
 from .errors import BuildBusy, CatalogueMismatch, DumpError
+from .layers import DEFAULT_LAYERS, shipped_version
 from .mappings import MAPPINGS_DIR, read_mapping
 from .seeds import FIXED_COLORS, LOCAL_BASE, CollectionSeed, OldCatalogue, Seeds
 
@@ -27,14 +28,21 @@ BUILD_COLS = ('id', 'kind', 'seeded_from', 'started_at', 'finished_at', 'app_ver
               'job_id', 'note')
 NAMESPACE_KIND = {'sets': 'set', 'parts': 'part', 'minifigs': 'minifigure'}
 BUILD_KINDS = ('rebrickable_dump', 'mapping', 'bricklink_list', 'bricklink_colors')
-LAYERS = []   # M.2b: callables layer(db, ctx) that load item_link / color_link rows and set inventory.bl_digest; none yet
+LAYERS = list(DEFAULT_LAYERS)   # callables layer(db, ctx), run after the raw tables are loaded; M.2d adds the BrickLink lists
 
 
 class Context:
     """What a mapping layer needs after the raw tables are loaded."""
 
-    def __init__(self, build_id, item_ids, color_ids, retired):
-        self.build_id, self.item_ids, self.color_ids, self.retired = build_id, item_ids, color_ids, retired
+    def __init__(self, build_id, item_ids, color_ids, retired, *, parts=(), set_ids=(), incomplete_inventories=(),
+                 mappings_dir=MAPPINGS_DIR, local_dir=None):
+        self.build_id, self.item_ids, self.color_ids, self.retired = build_id, item_ids, color_ids, retired   # every row of the new file
+        self.parts = list(parts)                              # (part_num, name) of every part in the file, retired too: the leg rule's input
+        self.part_num = {i: k[1] for k, i in self.item_ids.items() if k[0] == 'parts'}
+        self.set_ids = list(set_ids)                          # (set_num, id) of items of kind 'set', retired too: the set-number rule's input
+        self.incomplete_inventories = set(incomplete_inventories)   # new inventory ids that lost a dump line: no bl_digest
+        self.mappings_dir, self.local_dir = Path(mappings_dir), Path(local_dir) if local_dir else None
+        self.report = {}                                      # what the layers add to counts_json
 
 
 def _digest(fields):
@@ -64,9 +72,9 @@ def _stamp(now):
     return now() if callable(now) else (now or clock())
 
 
-def theme_kinds():
+def theme_kinds(mappings_dir=MAPPINGS_DIR):
     """{rb theme id: kind} from the shipped theme_kinds.csv."""
-    _, rows = read_mapping(MAPPINGS_DIR / 'theme_kinds.csv')
+    _, rows = read_mapping(Path(mappings_dir) / 'theme_kinds.csv')
     return {int(r['rb_theme_id']): r['kind'] for r in rows}
 
 
@@ -107,11 +115,13 @@ def _insert(db, table, cols, rows):
     db.executemany(f"INSERT INTO {table}({','.join(cols)}) VALUES({','.join(':' + c for c in cols)})", rows)
 
 
-def build(dump_dir, target, *, collection=None, app_version, now=None):
+def build(dump_dir, target, *, collection=None, app_version, now=None, mappings_dir=MAPPINGS_DIR, local_dir=None):
     """Build `target` (normally catalogue.db) from a Rebrickable dump directory and return the report dict.
 
     Seeds ids by born key from the existing `target` (the file being replaced) and from `collection` (read-only). The new
-    file is built as `<target>.new`, checked, and swapped in; the replaced file stays as `<target>.prev`."""
+    file is built as `<target>.new`, checked, and swapped in; the replaced file stays as `<target>.prev`.
+
+    `mappings_dir` holds the shipped mapping files; `local_dir` (optional, data/mappings/) the install's own layer."""
     target = Path(target)
     lock = open(target.with_name(target.name + '.lock'), 'a')
     try:
@@ -120,12 +130,12 @@ def build(dump_dir, target, *, collection=None, app_version, now=None):
         lock.close()
         raise BuildBusy(f'another catalogue build is running on {target}; nothing was touched') from None
     try:
-        return _build_locked(dump_dir, target, collection, app_version, now)
+        return _build_locked(dump_dir, target, collection, app_version, now, mappings_dir, local_dir)
     finally:
         lock.close()                                          # closing releases the flock
 
 
-def _build_locked(dump_dir, target, collection, app_version, now):
+def _build_locked(dump_dir, target, collection, app_version, now, mappings_dir, local_dir):
     new, prev = target.with_name(target.name + '.new'), target.with_name(target.name + '.prev')
     started = time.monotonic()
     started_at = _stamp(now)
@@ -138,7 +148,7 @@ def _build_locked(dump_dir, target, collection, app_version, now):
             p.unlink(missing_ok=True)
         try:
             try:
-                report = _build_new(dump, new, old, coll, seeds, app_version, started_at, now)
+                report = _build_new(dump, new, old, coll, seeds, app_version, started_at, now, mappings_dir, local_dir)
             except ValueError as exc:
                 raise DumpError(f'the dump holds a value the builder cannot read: {exc}') from exc
             if coll:
@@ -178,14 +188,14 @@ def _recheck_merged(new, collection):
         raise CatalogueMismatch(f'items {live[:5]} were merged in the collection while the catalogue was being built; run the build again')
 
 
-def _build_new(dump, new, old, coll, seeds, app_version, started_at, now):
+def _build_new(dump, new, old, coll, seeds, app_version, started_at, now, mappings_dir, local_dir):
     db = create_catalogue(new)
     db.isolation_level = None
     try:
         db.execute('PRAGMA foreign_keys=OFF')
         db.execute('PRAGMA synchronous=OFF')
         db.execute('BEGIN')
-        report = _load(db, dump, old, coll, seeds, app_version, started_at, now)
+        report = _load(db, dump, old, coll, seeds, app_version, started_at, now, mappings_dir, local_dir)
         db.execute('COMMIT')
         db.execute('PRAGMA foreign_keys=ON')
         found = db.execute('PRAGMA foreign_key_check').fetchall()
@@ -201,7 +211,7 @@ def _build_new(dump, new, old, coll, seeds, app_version, started_at, now):
         db.close()
 
 
-def _load(db, dump, old, coll, seeds, app_version, started_at, now):
+def _load(db, dump, old, coll, seeds, app_version, started_at, now, mappings_dir, local_dir):
     # ---- build history ----
     build_rows = [dict(r) for r in old.builds] if old else []
     if coll:
@@ -219,7 +229,7 @@ def _load(db, dump, old, coll, seeds, app_version, started_at, now):
     retired_at_default = started_at
 
     # ---- themes and part categories ----
-    kinds = theme_kinds()
+    kinds = theme_kinds(mappings_dir)
     themes = {}
     for r in dump.rows('themes'):
         themes[int(r[0])] = dict(id=int(r[0]), name=r[1], parent_id=int(r[2]) if r[2] else None, item_kind=kinds.get(int(r[0])),
@@ -369,12 +379,15 @@ def _load(db, dump, old, coll, seeds, app_version, started_at, now):
                                  rb_inventory_id=rb_id, build_id=build_id, digest=None, bl_digest=None, part_lines=0, figure_lines=0,
                                  set_lines=0, retired_at=None))
     skipped = defaultdict(int)
+    incomplete = set()                                        # live inventories that lost a line to a missing item or colour
     lines = {}
     pictures = {}
     for r in dump.rows('inventory_parts'):
         inv, part, col = rb_to_new.get(int(r[0])), live_ids.get(('parts', r[1])), live_color_ids.get(r[2])
         if inv is None or part is None or col is None:
             skipped['inventory_parts'] += 1
+            if inv is not None:
+                incomplete.add(inv)
             continue
         k = (inv, part, col, int(r[4] == 'True'))
         lines[k] = lines.get(k, 0) + int(r[3])
@@ -386,6 +399,8 @@ def _load(db, dump, old, coll, seeds, app_version, started_at, now):
             inv, item = rb_to_new.get(int(r[0])), live_ids.get((ns, r[1]))
             if inv is None or item is None:
                 skipped[name] += 1
+                if inv is not None:
+                    incomplete.add(inv)
                 continue
             target_lines[(inv, item)] = target_lines.get((inv, item), 0) + int(r[2])
     per = defaultdict(list)
@@ -486,10 +501,23 @@ def _load(db, dump, old, coll, seeds, app_version, started_at, now):
     db.executemany('INSERT INTO element VALUES(?,?,?,?)', sorted(elements))
     db.executemany('INSERT INTO part_relationship VALUES(?,?,?)', sorted(relations))
     db.executemany('INSERT INTO picture_url VALUES(?,?,?)', sorted((p, c, u) for (p, c), u in pictures.items()))
-    ctx = Context(build_id, item_ids, color_ids, {k for k, i in items.items() if i['retired_at']})
+    ctx = Context(build_id, item_ids, color_ids, {k for k, i in items.items() if i['retired_at']}, parts=[(k[1], items[k]['name']) for k in item_ids if k[0] == 'parts'],
+                  set_ids=[(k[1], i) for k, i in item_ids.items() if k[0] == 'sets' and items[k]['kind'] == 'set'],
+                  # A carried version the old file gave no bl_digest stays without one: the file keeps no record of why (a
+                  # line lost to a missing item, or an unmapped one), and its lines may be truncated, so never risk a false match.
+                  incomplete_inventories=incomplete | {row['id'] for row, *_ in carried if row.get('bl_digest') is None},
+                  mappings_dir=mappings_dir, local_dir=local_dir)
     for layer in LAYERS:
         layer(db, ctx)
-    db.execute("INSERT INTO item_fts(item_id, kind, name, keys) SELECT id, kind, name, born_key FROM item WHERE retired_at IS NULL")
+    if ctx.report:
+        counts.update(ctx.report)
+        mapping_version = shipped_version(ctx.mappings_dir)
+        db.execute('UPDATE build SET counts_json=?, mapping_version=? WHERE id=?', (json.dumps(counts), mapping_version, build_id))
+    # keys: the born key plus every linked provider key (all statuses: a to_check candidate is searchable too)
+    db.execute("""INSERT INTO item_fts(item_id, kind, name, keys)
+                  SELECT i.id, i.kind, i.name, i.born_key || coalesce(' ' || (SELECT group_concat(k, ' ') FROM
+                      (SELECT DISTINCT provider_key AS k FROM item_link l WHERE l.item_id=i.id ORDER BY provider_key)), '')
+                  FROM item i WHERE i.retired_at IS NULL""")
     db.executemany('INSERT OR REPLACE INTO meta(key, value) VALUES(?, ?)', [
         ('catalogue_id', catalogue_id), ('item_high_water', str(item_hw)), ('color_high_water', str(color_hw)), ('created_at', finished_at)])
     return dict(build_id=build_id, catalogue_id=catalogue_id, seeded_from=seeded_from, item_high_water=item_hw, color_high_water=color_hw,

@@ -51,3 +51,18 @@ def write_dump(directory, **tables):
             writer.writerow(header.split(','))
             writer.writerows(padded(name, r) for r in data[name])
     return directory
+
+
+def write_mappings(directory, *, colors=(), parts=(), exceptions=(), theme_kinds=None, version='2099.1.1.1'):
+    """Tiny shipped-style mapping files (rows as tuples in each file's columns). theme_kinds defaults to the real two rows."""
+    directory.mkdir(parents=True, exist_ok=True)
+    head = f'# mapping_version: {version}\n# dump_date: 2099-01-01\n# source: invented\n'
+    heads = {'colors.csv': 'rb_color_id,rb_name,provider,provider_key,provider_name,inverse_preferred,rb_num_parts',
+             'parts.csv': 'rb_part_num,rb_color_id,provider,provider_kind,provider_key,status,method,preferred',
+             'set_exceptions.csv': 'rb_set_num,provider_kind,provider_key,note',
+             'theme_kinds.csv': 'rb_theme_id,theme_name,kind'}
+    rows = {'colors.csv': colors, 'parts.csv': parts, 'set_exceptions.csv': exceptions,
+            'theme_kinds.csv': theme_kinds if theme_kinds is not None else [('501', 'Gear', 'gear'), ('497', 'Books', 'book')]}
+    for name, header in heads.items():
+        (directory / name).write_text(head + header + '\n' + ''.join(','.join(map(str, r)) + '\n' for r in rows[name]))
+    return directory

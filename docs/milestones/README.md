@@ -7,6 +7,7 @@ The decks are Slides artifacts on claude.ai (private to the owner); the PDFs her
 | Milestone | Goal in one line | Rough duration | Deck | PDF |
 |---|---|---|---|---|
 | 0 — Planning on GitHub | The post-go-live plan lives on GitHub; Ulf passes the gate | under 1 week (done 22 Oct) | [deck](https://claude.ai/artifact/RoWGLs5g4t18pGes93DyQx) | [status report PDF](0-planning-on-github.pdf) |
+| 4.0 — Data model | Prod runs on schema 4.0: Brick Work ids, the catalogue from the Rebrickable dump, the collection migrated from 3.3 with a proof, API v2 | 18–22 weeks, before A | [deck](https://claude.ai/artifact/Jw4j5TdsHf7dYma9andG9R) | [PDF](4.0-data-model.pdf) |
 | A — Onboarding | A new user goes from a fresh install to their own collection through one guided flow, with a local catalogue that holds set part lists | 5–6 weeks | [deck](https://claude.ai/artifact/MF6FaLNA1kdaKsu5a1LBZY) | [PDF](a-onboarding.pdf) |
 | B — Set up and test | The real collection is set up on test through onboarding and every workflow passes on it | 2–3 weeks | [deck](https://claude.ai/artifact/RtsxYVusN2F7dTWefzDGC6) | [PDF](b-set-up-and-test.pdf) |
 | 1.0 — Stability release | Stable schema, tested upgrades from 0.5.x, published image | 2–3 weeks | [deck](https://claude.ai/artifact/HNUr6aVaeDdsXbAwxZMyfp) | [PDF](1.0-stability-release.pdf) |

@@ -112,7 +112,7 @@ def _insert(db, table, cols, rows):
     db.executemany(f"INSERT INTO {table}({','.join(cols)}) VALUES({','.join(':' + c for c in cols)})", rows)
 
 
-def build(dump_dir, target, *, collection=None, app_version, now=None, mappings_dir=MAPPINGS_DIR, local_dir=None):
+def build(dump_dir, target, *, collection=None, app_version, now=None, mappings_dir=MAPPINGS_DIR, local_dir=None, locked=False):
     """Build `target` (normally catalogue.db) from a Rebrickable dump directory and return the report dict.
 
     Seeds ids by born key from the existing `target` (the file being replaced) and from `collection` (read-only). The new
@@ -120,6 +120,8 @@ def build(dump_dir, target, *, collection=None, app_version, now=None, mappings_
 
     `mappings_dir` holds the shipped mapping files; `local_dir` (optional, data/mappings/) the install's own layer."""
     target = Path(target)
+    if locked:                                              # the caller holds `swap.build_lock(target)` already (one flock per process)
+        return _build_locked(dump_dir, target, collection, app_version, now, mappings_dir, local_dir)
     with build_lock(target):
         return _build_locked(dump_dir, target, collection, app_version, now, mappings_dir, local_dir)
 

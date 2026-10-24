@@ -15,4 +15,4 @@ tomli==2.5.0
 # HTML parsing in the test suite only
 beautifulsoup4==4.15.0
 bs4==0.0.2
-soupsieve==2.10
+soupsieve==3.0.3

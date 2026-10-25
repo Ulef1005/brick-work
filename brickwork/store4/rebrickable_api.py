@@ -47,6 +47,28 @@ class NotFound(FetchError):
     """Rebrickable has no such set (job error code `not_found`)."""
 
 
+class KeyRefused(FetchError):
+    """The source refused the key (HTTP 401/403; job error code `source_not_configured`)."""
+
+
+class InvalidReply(FetchError):
+    """A call that succeeded with a reply the fetch cannot use (job error code `invalid_reply`): another try gives the same."""
+
+
+class Throttled(FetchError):
+    """HTTP 429: wait `retry_seconds` (60 when the reply names none) before the next call; a rate wait, not the daily budget."""
+
+    def __init__(self, message, retry_seconds=None):
+        super().__init__(message, 429)
+        self.retry_seconds = retry_seconds if retry_seconds else 60
+
+
+def throttle_seconds(body):
+    """Seconds named by a throttle reply ("Expected available in 25 seconds."), clamped to 1 s .. 1 day; None when it names none."""
+    match = re.search(r'available in ([0-9]+) seconds?', str(body.get('detail', '')) if isinstance(body, dict) else '', re.IGNORECASE)
+    return max(1, min(86400, int(match[1]))) if match else None
+
+
 class SetInCatalogue(Store4Error):
     """The catalogue (or the collection, as a catalogue item) already holds the set: use the catalogue's list."""
 
@@ -119,11 +141,13 @@ def fetch_set_replies(set_num, *, http=None, catalogue_has_figure, headers=None)
         if status == 404:
             raise NotFound(f'Rebrickable has no {path}', 404)
         if status in (401, 403):
-            raise FetchError('Rebrickable refused the key', status)
+            raise KeyRefused('Rebrickable refused the key', status)
         if status == 429:
-            raise FetchError('Rebrickable throttled the call', 429)
-        if status != 200 or not isinstance(body, dict):
+            raise Throttled('Rebrickable throttled the call', throttle_seconds(body))
+        if status != 200:
             raise FetchError(f'Rebrickable answered {status} for {path}', status)
+        if not isinstance(body, dict):
+            raise InvalidReply(f'Rebrickable answered {path} with no JSON object', status)
         return body
 
     def one(path, query=''):
@@ -133,14 +157,14 @@ def fetch_set_replies(set_num, *, http=None, catalogue_has_figure, headers=None)
         url, pages = f'{BASE}{path}?page_size={PAGE_SIZE}{query}', []
         while url:
             if len(pages) >= MAX_PAGES:
-                raise FetchError(f'Rebrickable paged {path} more than {MAX_PAGES} times')
+                raise InvalidReply(f'Rebrickable paged {path} more than {MAX_PAGES} times')
             page = get(url, path)
             if not isinstance(page.get('results'), list):
-                raise FetchError(f'Rebrickable answered {path} without a results list')
+                raise InvalidReply(f'Rebrickable answered {path} without a results list')
             pages.append(page)
             url = page.get('next')
             if url is not None and (not isinstance(url, str) or not url.startswith(BASE + '/')):
-                raise FetchError(f'Rebrickable sent an unexpected next link for {path}')
+                raise InvalidReply(f'Rebrickable sent an unexpected next link for {path}')
         replies.pages[path] = pages
 
     one(f'/sets/{set_num}/')

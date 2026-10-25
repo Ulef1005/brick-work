@@ -1,4 +1,5 @@
-"""`python -m brickwork.store4 catalogue download|import|rebuild|reconcile|status` (design 6.1, 6.2, 6.6; issue #104, M.2e).
+"""`python -m brickwork.store4 catalogue download|import|rebuild|reconcile|status` (design 6.1, 6.2, 6.6; issue #104, M.2e)
+and `fetch bricklink|rebrickable <set-number>`, `jobs`, `jobs drain` (the job runner, issue #107, M.5d).
 
 Separate from the app's `brickwork catalogue` CLI, which runs the 3.3 code until M.8. `--data DIR` holds `brickwork.db`,
 `catalogue.db`, `catalogue-src/rebrickable/<date>/` (the downloads), `mappings/` (the local layer, optional) and
@@ -16,10 +17,11 @@ import sys
 import time
 import urllib.request
 
+from . import jobs
 from .activate import activate
 from .builder import build
 from .bricklink_list import import_bricklink
-from .connect import _uri, connect
+from .connect import _uri, connect, has_catalogue
 from .dump import HEADERS
 from .errors import BuildBusy, Store4Error
 from .mappings import MAPPINGS_DIR
@@ -291,7 +293,78 @@ def summary(rec):
                 coverage=rec.get('coverage', {}), events=rec.get('events'))
 
 
+# ---------- fetch and jobs ----------
+
+def find_set(db, number):
+    """The collection's or the catalogue's set with this Rebrickable number (a local Rebrickable-born set included), else None."""
+    for schema in ('main', 'catalogue'):
+        if schema == 'catalogue' and not has_catalogue(db):
+            continue
+        row = db.execute(f"SELECT id FROM {schema}.item WHERE kind='set' AND born_provider='rebrickable' AND born_namespace='sets' "
+                         'AND born_key=?', (number,)).fetchone()
+        if row:
+            return row[0]
+    return None
+
+
+def open_pair(paths):
+    for what, path in (('collection', paths.collection), ('catalogue', paths.catalogue)):
+        if not path.exists():
+            raise Store4Error(f'{path} does not exist; run `catalogue import` first (the {what} is needed to fetch a list)')
+    return closing(connect(paths.collection, paths.catalogue))
+
+
+def do_fetch(paths, source, number, *, http=None, clock=None):
+    """Queue the fetch job for a set, run it now, and return the run's result (a `jobs.run` dict)."""
+    with open_pair(paths) as db:
+        item_id = find_set(db, number)
+        if source == 'bricklink':
+            if item_id is None:
+                raise Store4Error(f'set {number} is in neither the collection nor the catalogue; fetch it from Rebrickable first')
+            job = jobs.queue(db, 'bricklink_subsets', item_id=item_id, payload=number, via='cli', now=clock)
+        else:
+            local = item_id if item_id is not None and db.execute("SELECT 1 FROM main.item WHERE id=? AND origin='local'", (item_id,)).fetchone() else None
+            job = jobs.queue(db, 'rebrickable_set', item_id=local, payload=number, via='cli', now=clock)
+        return jobs.run(db, job, http=http, now=clock)
+
+
+def do_jobs(paths):
+    with open_pair(paths) as db:
+        return dict(jobs=jobs.list_jobs(db))
+
+
+def do_drain(paths, *, http=None, clock=None, limit=100):
+    with open_pair(paths) as db:
+        return dict(ran=jobs.drain(db, limit=limit, now=clock, http=http))
+
+
 # ---------- output ----------
+
+def show_job(r, say):
+    step = r['step'] or {}
+    ran = '' if r.get('ran', True) else ' (not run now)'
+    say(f"job {r['id']} {r['kind']} {r['number']}: {r['state']}{ran}, attempt {r['attempts']}, {step.get('count', 0)} call(s)")
+    if r['state'] == 'done' and r.get('result'):
+        x = r['result']
+        if r['kind'] == 'bricklink_subsets':
+            say(f"  list {x['seq']}: {x['required_lines']} required ({x['required_total']} pieces), {x['spare_lines']} spare lines "
+                f"({x['spare_total']}), {x['figure_lines']} figure lines")
+            say(f"  local items created: {_counts(x['local_items_created'])}; ambiguous settled by the set {x['ambiguous_by_context']}, made local {x['ambiguous_made_local']}")
+            say('  digest matches catalogue version ' + str(x['matches_version']) if x['bl_digest_matches'] else '  digest matches no catalogue version')
+        else:
+            say(f"  list {x['seq']}: {x['part_lines']} part lines ({x['part_total']} pieces), {x['spare_lines']} spare lines ({x['spare_total']}), "
+                f"{x['figure_lines']} figure lines, {len(x['figure_lists'])} figure list(s) fetched")
+            say(f"  local items created: {_counts(x['local_items_created'])}")
+            say('  digest matches catalogue version ' + str(x['matches_version']) if x['matches_version'] else '  digest matches no catalogue version')
+    elif r['state'] != 'done':
+        say(f"  {r['error_code'] or '-'}: {r['error'] or ''}" + (f"; next try {r['retry_at']}" if r['retry_at'] else ''))
+
+
+def _counts(counts):
+    return ', '.join(f'{k} {v}' for k, v in counts.items() if v) or 'none'
+
+
+# ---------- output (catalogue) ----------
 
 def show_summary(s, say):
     """`s` is a summary() result."""
@@ -365,20 +438,34 @@ def build_parser():
     reb.add_argument('--src')
     cat.add_parser('reconcile', help='activate if needed, then reconcile')
     cat.add_parser('status')
-    for parser in (bl, *cat.choices.values()):
+    fetch = commands.add_parser('fetch', help='queue a fetch job for a set and run it now').add_subparsers(dest='command', required=True)
+    fetchers = [fetch.add_parser('bricklink', help='BrickLink subsets list for a set the catalogue or collection holds (1 call)'),
+                fetch.add_parser('rebrickable', help='Rebrickable list for a set newer than the catalogue (3 + n calls)')]
+    for parser in fetchers:
+        parser.add_argument('number', help='the set number, e.g. 6081-1')
+    jobs_cmd = commands.add_parser('jobs', help='list the jobs')
+    jobs_cmd.set_defaults(group='jobs')
+    jobs_sub = jobs_cmd.add_subparsers(dest='command')
+    drain = jobs_sub.add_parser('drain', help='run the jobs that may run now')
+    drain.add_argument('--limit', type=int, default=100)
+    for parser in (bl, *cat.choices.values(), *fetchers, jobs_cmd, drain):
         parser.add_argument('--json', action='store_true', default=argparse.SUPPRESS, help='print the result as JSON')
         parser.add_argument('--data', default=argparse.SUPPRESS, help='as before the command')
     return root
 
 
-def main(argv=None, *, fetch=http_fetch, mappings_dir=MAPPINGS_DIR, now=None, out=None):
+def main(argv=None, *, fetch=http_fetch, mappings_dir=MAPPINGS_DIR, now=None, out=None, http=None, clock=None):
     args = build_parser().parse_args(argv)
     out = out or sys.stdout
     paths = Paths(args.data)
     say = (lambda *a: None) if args.json else (lambda *a: print(*a, file=out, flush=True))
     command = args.command
     try:
-        if command == 'download':
+        if args.group == 'fetch':
+            result = do_fetch(paths, command, args.number, http=http, clock=clock)
+        elif args.group == 'jobs':
+            result = do_drain(paths, http=http, clock=clock, limit=args.limit) if command == 'drain' else do_jobs(paths)
+        elif command == 'download':
             result = download(paths, day=args.date, force=args.force, fetch=fetch, say=lambda *a: print(*a, file=sys.stderr if args.json else out, flush=True))
         elif command == 'import' and args.source == 'bricklink':
             result = do_import_bricklink(paths, args.directory, now=now)
@@ -395,6 +482,13 @@ def main(argv=None, *, fetch=http_fetch, mappings_dir=MAPPINGS_DIR, now=None, ou
         return 1
     if args.json:
         print(json.dumps(result, indent=1, sort_keys=True, default=str), file=out)
+    elif args.group == 'fetch':
+        show_job(result, say)
+    elif args.group == 'jobs':
+        for r in result.get('jobs') or result.get('ran') or []:
+            show_job(r, say)
+        if not (result.get('jobs') or result.get('ran')):
+            say('no jobs' if 'jobs' in result else 'no job was due')
     else:
         show(result, command, say)
-    return 0
+    return 1 if args.group == 'fetch' and result['state'] != 'done' else 0

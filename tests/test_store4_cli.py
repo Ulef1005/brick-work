@@ -1,6 +1,7 @@
 """`python -m brickwork.store4 catalogue ...` (M.2e, design 6.1, 6.2, 6.6, Q14): download with an injected fetch, import, rebuild,
 reconcile and status on invented dumps and XML. No network."""
 from contextlib import closing
+from datetime import timedelta
 import hashlib
 import json
 import subprocess
@@ -404,3 +405,77 @@ def test_module_help_runs():
 def test_module_exits_non_zero_without_a_traceback(tmp_path):
     done = subprocess.run([sys.executable, '-m', 'brickwork.store4', '--data', str(tmp_path), 'catalogue', 'import'], capture_output=True, text=True)
     assert done.returncode == 1 and 'Traceback' not in done.stderr and done.stderr.startswith('error:')
+
+
+# ---------- fetch and jobs (M.5d) ----------
+
+@pytest.fixture
+def fetching(tmp_path, monkeypatch):
+    from tests.store4_fixtures import pair
+    from tests.test_store4_jobs import KEYS
+    for name, value in KEYS.items():
+        monkeypatch.setenv(name, value)
+    for name in ('BW_BRICKLINK_DAILY_BUDGET', 'BW_REBRICKABLE_DAILY_BUDGET'):
+        monkeypatch.delenv(name, raising=False)
+    pair(tmp_path)
+    return tmp_path
+
+
+def fetch_cli(data, capsys, *args, http, expect=0, json_out=False):
+    code = cli.main(['--data', str(data), *(['--json'] if json_out else []), *args], http=http, clock=T_FETCH)
+    captured = capsys.readouterr()
+    assert code == expect, captured.err + captured.out
+    return json.loads(captured.out) if json_out else captured
+
+
+def T_FETCH():
+    from tests.test_store4_jobs import T0
+    return T0
+
+
+def test_fetch_bricklink_queues_runs_and_prints_the_summary(fetching, capsys):
+    from tests.test_store4_jobs import Net
+    out = fetch_cli(fetching, capsys, 'fetch', 'bricklink', '6081-1', http=Net()).out
+    assert 'job 1 bricklink_subsets 6081-1: done, attempt 1, 1 call(s)' in out
+    assert '2 required (11 pieces), 1 spare lines (3), 0 figure lines' in out and 'digest matches no catalogue version' in out
+    with closing(connect(fetching / 'brickwork.db', fetching / 'catalogue.db')) as db:
+        assert [tuple(r) for r in db.execute('SELECT job_id, source FROM main.fetched_inventory')] == [(1, 'bricklink')]
+
+
+def test_fetch_rebrickable_prints_the_summary_and_json_is_the_run_result(fetching, capsys):
+    from tests.test_store4_jobs import Net, rebrickable
+    out = fetch_cli(fetching, capsys, 'fetch', 'rebrickable', 'NEW-1', http=Net(rb=rebrickable()), json_out=True)
+    assert (out['state'], out['kind'], out['step']['count']) == ('done', 'rebrickable_set', 5)
+    assert out['result']['part_lines'] == 2 and len(out['result']['figure_lists']) == 2
+
+
+def test_fetch_that_does_not_finish_prints_why_and_exits_1(fetching, capsys):
+    from tests.test_store4_jobs import Net
+    out = fetch_cli(fetching, capsys, 'fetch', 'bricklink', '6081-1', http=Net(bl=(404, {})), expect=1).out
+    assert 'failed' in out and 'not_found' in out
+
+
+def test_fetch_for_a_set_nobody_holds_or_one_the_catalogue_has_is_an_error(fetching, capsys):
+    from tests.test_store4_jobs import Net
+    err = fetch_cli(fetching, capsys, 'fetch', 'bricklink', 'NEW-1', http=Net(), expect=1).err
+    assert 'fetch it from Rebrickable first' in err
+    err = fetch_cli(fetching, capsys, 'fetch', 'rebrickable', '6081-1', http=Net(), expect=1).err
+    assert 'catalogue already has set 6081-1' in err
+
+
+def test_fetch_without_a_collection_is_an_error(tmp_path, capsys):
+    assert cli.main(['--data', str(tmp_path), 'fetch', 'bricklink', '6081-1']) == 1
+    assert 'catalogue import' in capsys.readouterr().err
+
+
+def test_jobs_lists_and_drain_runs_what_is_due(fetching, capsys, monkeypatch):
+    from tests.test_store4_jobs import Net
+    monkeypatch.setenv('BW_BRICKLINK_DAILY_BUDGET', '1')
+    fetch_cli(fetching, capsys, 'fetch', 'bricklink', '6081-1', http=Net())
+    fetch_cli(fetching, capsys, 'fetch', 'bricklink', '6081-1', http=Net(), expect=1)              # budget used: waits
+    listed = fetch_cli(fetching, capsys, 'jobs', http=Net()).out
+    assert 'job 1 bricklink_subsets 6081-1: done' in listed and 'job 2 bricklink_subsets 6081-1: waiting_for_budget' in listed
+    assert 'no job was due' in fetch_cli(fetching, capsys, 'jobs', 'drain', http=Net()).out
+    code = cli.main(['--data', str(fetching), 'jobs', 'drain'], http=Net(), clock=lambda: T_FETCH() + timedelta(days=1))
+    assert code == 0 and 'job 2 bricklink_subsets 6081-1: done' in capsys.readouterr().out
+    assert fetch_cli(fetching, capsys, 'jobs', http=Net(), json_out=True)['jobs'][1]['state'] == 'done'

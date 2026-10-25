@@ -185,18 +185,22 @@ def _inverse_color(db, provider, key):
     return next(iter(found))
 
 
-def resolve_inverse(db, provider_kind, provider_key, provider_color_key, provider='bricklink'):
+def resolve_inverse(db, provider_kind, provider_key, provider_color_key, provider='bricklink', *, exhaustive=False):
     """Which (item, colour) does a provider key stand for? The inverse of resolve; None if nothing links to it.
 
     Searches the collection's links, then the catalogue's for items not projected (a projected item's links are the
     collection's: an override or a to_check there is never undone by the catalogue's copy). A link scoped to the colour wins over an unscoped one, and an
-    unscoped link does not apply when its item has a link scoped to that colour (the leg rule). Several items -> AmbiguousIdentity."""
+    unscoped link does not apply when its item has a link scoped to that colour (the leg rule). Several items -> AmbiguousIdentity.
+
+    `exhaustive` pools the collection's and the catalogue's candidates instead of stopping at the collection's: projecting one
+    of several candidates must not make the key unambiguous for the next list. A collection `manual` link still decides alone."""
     colour = _inverse_color(db, provider, provider_color_key)
     if colour is None:
         return None
+    pooled = set()
     for store in ['main'] + (['catalogue'] if has_catalogue(db) else []):
         owned = '' if store == 'main' else 'AND item_id NOT IN (SELECT id FROM main.item)'
-        rows = db.execute(f'''SELECT item_id, color_id FROM {store}.item_link
+        rows = db.execute(f'''SELECT item_id, color_id, status FROM {store}.item_link
                               WHERE provider=? AND provider_kind=? AND provider_key=? AND status IN ({_IN}) {owned}''',
                           (provider, provider_kind, provider_key, *CONFIRMED)).fetchall()
         items = sorted({
@@ -204,8 +208,17 @@ def resolve_inverse(db, provider_kind, provider_key, provider_color_key, provide
             if r['color_id'] == colour or (r['color_id'] is None and not db.execute(
                 f'''SELECT 1 FROM {store}.item_link WHERE item_id=? AND provider=? AND color_id=? AND status IN ({_IN})''',
                 (r['item_id'], provider, colour, *CONFIRMED)).fetchone())})
+        if exhaustive:
+            # The user's word in the collection decides alone: automatic candidates beside it are no rivals.
+            manual = sorted({r['item_id'] for r in rows if r['status'] == 'manual' and r['item_id'] in items}) if store == 'main' else []
+            if not manual:
+                pooled.update(items)
+                continue
+            items = manual
         if len(items) > 1:
             raise AmbiguousIdentity(f'{provider} {provider_kind} {provider_key} (colour {provider_color_key}) names items {items}', items)
         if items:
             return items[0], colour
-    return None
+    if len(pooled) > 1:
+        raise AmbiguousIdentity(f'{provider} {provider_kind} {provider_key} (colour {provider_color_key}) names items {sorted(pooled)}', sorted(pooled))
+    return (next(iter(pooled)), colour) if pooled else None

@@ -5,6 +5,7 @@
 - `GET /api/v1/health` also returns the app version (`app`), so monitors and update checks need one call.
 - Error responses never carry database or operating-system error text (#76).
 - **Security:** `certifi` 2026.10.19, outside the range of the emSign root CA advisory (#81).
+- An API write that queues a catalogue import (adding a set, part or wish, or moving a wish to owned) now starts the import worker; before, the import waited until something in the web app started it (#121).
 
 ## Brick Work 0.5.0 (first public release) · 2026-10-18
 

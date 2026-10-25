@@ -39,6 +39,19 @@ def validate(value, schema):
         if not re.fullmatch(schema['pattern'],value): raise errors.ValidationFailed('Invalid field value')
 
 
+def wake_worker():
+    """A write may have queued a catalogue import (#121: adding a copy, stock or a wish, a wish moved to owned): start the
+    embedded drainer when a job is due, as `operations.answer` does for 202s and the web views do after their writes.
+    The write has committed by then, so a failure here is logged and never replaces its response."""
+    from flask import current_app
+    from ..core.pipeline import poll_delay
+    from .operations import start_worker
+    try:
+        if poll_delay(database()) is not None: start_worker()
+    except Exception:
+        current_app.logger.exception('the import worker did not start after an API write; queued jobs wait for the next start')
+
+
 def install():
     for op in SPEC['operations']:
         def handler(op=op, **values):
@@ -88,6 +101,7 @@ def install():
             result,status = runner(database(),method=request.method,path=request.path,body=hashed,
                 key=request.headers.get('Idempotency-Key'),required=op['required'],token_name=g.api_identity['name'],
                 action=action,serialize=lambda data: public(data,op['shape']))
+            if 200<=status<300 and not result.get('idempotent_replay'): wake_worker()
             return jsonify(result),status
         route = re.sub(r'\{(\w+)\}', lambda m: '<int:'+m[1]+'>' if m[1] in ('part_id','line_id','doc_id') or m[1]=='id' and op['resource'] in ('wishes','instruction-files','orders') else '<'+m[1]+'>', op['path'])
         api.add_url_rule(route,op['endpoint'],handler,methods=[op['method']])

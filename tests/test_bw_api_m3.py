@@ -173,6 +173,15 @@ def test_event_page_150000(populated,monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def spawned(monkeypatch):
+    """API writes now wake the embedded drainer when a job is due (#121); keep its thread out of these tests."""
+    from brickwork.api import operations
+    started = []
+    monkeypatch.setattr(operations, 'spawn', started.append)
+    return started
+
+
+@pytest.fixture(autouse=True)
 def complete_synthetic_catalogue(populated):
     import sqlite3
     from pathlib import Path
@@ -509,3 +518,24 @@ def test_non_json_api_event_before_read_indexes():
             assert row['undoable'] is (row['id'] == 2)
         assert api_reads.events(db, 1)[0]['undoable'] is False
         assert [r['id'] for r in api_pages.page(db, 'events', {'undoable':'true'})['data']] == [2]
+
+
+@pytest.mark.parametrize('path,body',[('/copies',{'item_no':'100-1','decision':'another'}),('/wishes/1/to-owned',{'quantity':1})])
+def test_a_write_that_queues_a_catalogue_import_wakes_the_worker(populated, spawned, path, body):
+    """#121: a wish moved to owned through the API queued import job 1602 and nothing drained it."""
+    result=write(populated,path,body=body,key='synthetic-wake')
+    assert result.status_code in (200,201),result.text
+    with closing(connect(os.environ['BW_DB_PATH'])) as db:
+        assert db.execute("SELECT count(*) FROM jobs WHERE source='import' AND state='queued'").fetchone()[0]>=1
+    assert len(spawned)==1
+    populated.extensions['bw_import_worker_active']=False
+    assert write(populated,path,body=body,key='synthetic-wake').json['idempotent_replay'] is True and len(spawned)==1
+
+
+def test_a_worker_that_cannot_start_does_not_turn_a_committed_write_into_an_error(populated, monkeypatch):
+    from brickwork.api import operations
+    def refuse(target): raise RuntimeError("can't start new thread")
+    monkeypatch.setattr(operations, 'spawn', refuse)
+    result=write(populated,'/copies',body={'item_no':'100-1','decision':'another'},key='synthetic-no-thread')
+    assert result.status_code==201,result.text
+    assert populated.extensions.get('bw_import_worker_active') is False

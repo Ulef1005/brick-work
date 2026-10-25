@@ -4,6 +4,9 @@ its figure lines and its part lines under one receipt.
 `part_list_choices` is read-only. `build_target` turns a choice into the line set the copy should carry, with no write at all; it
 is the first step of § 4.4 too, so the in-place switch (M.6b) builds its target with the same function. `create_copy` writes.
 
+`switch_part_list` is § 4.4, the in-place switch under one receipt; `preview_switch` computes the same plan without writing;
+`undo_switch` restores a switch from its receipt.
+
 A choice is a dict: `{'source': 'rebrickable', 'version': n}` (`version` None = the catalogue's latest), `{'source': 'bricklink'}`
 (the latest fetched BrickLink list) or `{'source': 'rebrickable_api'}` (the latest fetched Rebrickable list, for a set newer than
 the catalogue). Nothing here touches the network."""
@@ -243,3 +246,266 @@ def create_copy(db, set_item_id, choice, *, via, actor=None, condition=None, com
         events = Events(db, via, actor)
         events.write('copy', copy_id, 'add', new=receipt)
     return receipt
+
+
+# ---------- the in-place switch (design 4.4; issue #108, M.6b) ----------
+
+class NothingToSwitch(Store4Error):
+    """The copy already carries the chosen list exactly: no line, figure or copy column would change."""
+
+
+class SwitchUndoRefused(Store4Error):
+    """The switch cannot be undone: it was undone already, or a row it touched has changed since."""
+
+
+FIGURE_COLUMNS = ['id', 'item_id', 'inventory_source', 'inventory_version', 'fetched_inventory_id', 'inventory_digest', 'quantity',
+                  'missing', 'retired_at', 'updated_at']
+LINE_COLUMNS = ['id', 'copy_figure_id', 'item_id', 'color_id', 'is_spare', 'quantity', 'missing', 'damaged', 'checked', 'retired_at']
+COPY_COLUMNS = ['inventory_source', 'inventory_version', 'fetched_inventory_id', 'inventory_digest', 'materialised_at',
+                'inventory_pending', 'pending_job_id', 'completeness', 'completeness_source', 'updated_at']
+                                                 # completeness_source: a manual choice made after the switch refuses its undo
+FIELD, UNDO_FIELD = 'part_list_switch', 'part_list_switch_undo'
+
+
+def _row(row, columns):
+    return [row[c] for c in columns]
+
+
+def _order(key):
+    return tuple(-1 if x is None else x for x in key)
+
+
+def _plan(db, copy, target, stamp):
+    """Steps 2-5 and 7 of § 4.4 as data, reading only: the figure and line operations the switch needs and the lines whose
+    state does not carry over. `preview_switch` and `switch_part_list` both run this, so they cannot disagree.
+
+    An operation is `{'op': 'update'|'insert'|'retire', 'before': dict|None, 'after': dict}`; an insert's `after` has no id yet."""
+    copy_id = copy['id']
+    wanted = target.lines()
+    wanted_figs = {f.item_id: f for f in target.figures}
+    have_figs = {r['item_id']: r for r in db.execute('SELECT * FROM main.copy_figure WHERE copy_id=?', (copy_id,))}
+    have_lines = {(r['fig_item'], r['item_id'], r['color_id'], r['is_spare']): r for r in db.execute(
+        '''SELECT p.*, f.item_id AS fig_item FROM main.copy_part p LEFT JOIN main.copy_figure f ON f.id=p.copy_figure_id
+           WHERE p.copy_id=?''', (copy_id,))}
+    figures, lines, retired, capped = [], [], [], []
+
+    def detail(kind, key, before, after):
+        figure, item, colour, spare = key
+        return {'kind': kind, 'id': before['id'], 'figure_item': figure, 'item_id': item, 'color_id': colour, 'is_spare': spare,
+                'quantity': [before['quantity'], after['quantity']], 'missing': [before['missing'], after['missing']],
+                'damaged': [before['damaged'], after['damaged']] if kind == 'part' else None,
+                'checked': before['checked'] if kind == 'part' else None}
+
+    for item, fig in sorted(wanted_figs.items()):
+        new = {'item_id': item, 'inventory_source': fig.source, 'inventory_version': fig.version,
+               'fetched_inventory_id': fig.fetched_inventory_id, 'inventory_digest': fig.digest, 'quantity': fig.quantity,
+               'retired_at': None}
+        old = have_figs.get(item)
+        if old is None:
+            figures.append({'op': 'insert', 'before': None, 'after': {**new, 'missing': 0, 'updated_at': stamp}})
+            continue
+        after = {**dict(old), **new, 'missing': min(old['missing'], fig.quantity)}
+        if any(after[c] != old[c] for c in FIGURE_COLUMNS if c != 'updated_at'):
+            figures.append({'op': 'update', 'before': dict(old), 'after': {**after, 'updated_at': stamp}})
+            if after['missing'] < old['missing']:
+                capped.append(detail('figure', (item, None, None, None), old, after))
+    for item, old in sorted(have_figs.items()):
+        if item not in wanted_figs and old['retired_at'] is None:
+            figures.append({'op': 'retire', 'before': dict(old), 'after': {**dict(old), 'retired_at': stamp, 'updated_at': stamp}})
+            if old['missing']:
+                retired.append(detail('figure', (item, None, None, None), old, old))
+
+    for key in sorted(wanted, key=_order):
+        old, quantity = have_lines.get(key), wanted[key]
+        if old is None:
+            lines.append({'op': 'insert', 'before': None, 'key': key, 'after': {
+                'copy_figure_id': None, 'item_id': key[1], 'color_id': key[2], 'is_spare': key[3], 'quantity': quantity,
+                'missing': 0, 'damaged': 0, 'checked': 0, 'retired_at': None}})
+            continue
+        after = {**dict(old), 'quantity': quantity, 'missing': min(old['missing'], quantity), 'damaged': min(old['damaged'], quantity),
+                 'retired_at': None}
+        if any(after[c] != old[c] for c in LINE_COLUMNS):
+            lines.append({'op': 'update', 'before': dict(old), 'after': after, 'key': key})
+            if after['missing'] < old['missing'] or after['damaged'] < old['damaged']:
+                capped.append(detail('part', key, old, after))
+    for key, old in sorted(have_lines.items(), key=lambda kv: _order(kv[0])):
+        if key not in wanted and old['retired_at'] is None:
+            lines.append({'op': 'retire', 'before': dict(old), 'after': {**dict(old), 'retired_at': stamp}, 'key': key})
+            if old['missing'] or old['damaged'] or old['checked']:
+                retired.append(detail('part', key, old, old))
+    return {'figures': figures, 'lines': lines, 'not_carried_over': {'retired': retired, 'capped': capped}}
+
+
+def _same_list(copy, target):
+    return (copy['inventory_source'], copy['inventory_version'], copy['fetched_inventory_id'], copy['inventory_digest']) == \
+           (target.source, target.version, target.fetched_inventory_id, target.digest) and copy['inventory_pending'] is None
+
+
+def _counts(plan):
+    return {f'{what}_{op}': sum(1 for o in plan[what] if o['op'] == op)
+            for what in ('figures', 'lines') for op in ('update', 'insert', 'retire')}
+
+
+def _copy_row(db, copy_id):
+    copy = db.execute('SELECT * FROM main.copy WHERE id=?', (copy_id,)).fetchone()
+    if copy is None:
+        raise Store4Error(f'no copy {copy_id}')
+    return copy
+
+
+def preview_switch(db, copy_id, choice):
+    """What a switch to `choice` would do, without writing: `{'same_list': bool, 'counts': {...}, 'not_carried_over':
+    {'retired': [...], 'capped': [...]}}`, the very lists the real receipt will hold. M.6c's "switch now?" offer reads it.
+    `same_list` is True when `switch_part_list` would refuse with `NothingToSwitch`."""
+    if has_catalogue(db):
+        check_compatible(db)
+    copy = _copy_row(db, copy_id)
+    target = build_target(db, copy['item_id'], choice)
+    plan = _plan(db, copy, target, now())
+    return {'same_list': not plan['figures'] and not plan['lines'] and _same_list(copy, target),
+            'counts': _counts(plan), 'not_carried_over': plan['not_carried_over']}
+
+
+def derived_completeness(db, copy_id):
+    """The 3.3 rule (`core/completeness.py`) on 4.0 tables: 'complete' when the copy has the status flag "Set is checked" and no
+    live, non-spare, non-figure line is missing or damaged and no live figure line is missing, else 'incomplete'. Retired rows
+    are not lines of the copy. None unless the copy's completeness is derived."""
+    copy = _copy_row(db, copy_id)
+    if copy['completeness_source'] != 'derived':
+        return None
+    checked = db.execute('''SELECT 1 FROM main.copy_flag cf JOIN main.flag f ON f.id=cf.flag_id AND f.archived_at IS NULL
+                            WHERE cf.copy_id=? AND f.kind='status' AND f.name='Set is checked' ''', (copy_id,)).fetchone()
+    defects = db.execute('''SELECT 1 FROM main.copy_part WHERE copy_id=? AND retired_at IS NULL AND is_spare=0 AND copy_figure_id IS NULL
+                            AND (missing>0 OR damaged>0)
+                            UNION ALL SELECT 1 FROM main.copy_figure WHERE copy_id=? AND retired_at IS NULL AND missing>0''',
+                         (copy_id, copy_id)).fetchone()
+    return 'complete' if checked and not defects else 'incomplete'
+
+
+def switch_part_list(db, copy_id, choice, *, via, actor=None):
+    """Design 4.4: move a copy to another part list in place, in one transaction under ONE receipt event (`copy`, the copy id,
+    field `part_list_switch`, `new_value` = the receipt). Nothing is deleted: rows of lines that left the list get `retired_at`,
+    rows of lines that came back are re-activated under the same id, so Take/Give, allocation and check-session references stay
+    valid. Returns the receipt, with `event_id`.
+
+    A switch to the list the copy already carries (same source, version or fetched list, digest, no pending) that would change
+    no row is refused with `NothingToSwitch`: an empty receipt could not be told from an error."""
+    with transaction(db, 'switching a part list'):
+        if has_catalogue(db):
+            check_compatible(db)
+        copy = _copy_row(db, copy_id)
+        target = build_target(db, copy['item_id'], choice)
+        stamp = now()
+        plan = _plan(db, copy, target, stamp)
+        if not plan['figures'] and not plan['lines'] and _same_list(copy, target):
+            raise NothingToSwitch(f'copy {copy_id} already carries this part list')
+        _project(db, target)
+        figure_ids = {r['item_id']: r['id'] for r in db.execute('SELECT id, item_id FROM main.copy_figure WHERE copy_id=?', (copy_id,))}
+        figure_ops = []
+        for op in plan['figures']:
+            after = op['after']
+            if op['op'] == 'insert':
+                after['id'] = figure_ids[after['item_id']] = db.execute(
+                    '''INSERT INTO main.copy_figure(copy_id, item_id, inventory_source, inventory_version, fetched_inventory_id,
+                       inventory_digest, quantity, missing, updated_at) VALUES(?, ?, ?, ?, ?, ?, ?, 0, ?)''',
+                    (copy_id, after['item_id'], after['inventory_source'], after['inventory_version'], after['fetched_inventory_id'],
+                     after['inventory_digest'], after['quantity'], stamp)).lastrowid
+            else:
+                db.execute('''UPDATE main.copy_figure SET inventory_source=?, inventory_version=?, fetched_inventory_id=?,
+                              inventory_digest=?, quantity=?, missing=?, retired_at=?, updated_at=? WHERE id=?''',
+                           (after['inventory_source'], after['inventory_version'], after['fetched_inventory_id'], after['inventory_digest'],
+                            after['quantity'], after['missing'], after['retired_at'], after['updated_at'], after['id']))
+            figure_ops.append([op['op'], None if op['before'] is None else _row(op['before'], FIGURE_COLUMNS), _row(after, FIGURE_COLUMNS)])
+        line_ops = []
+        for op in plan['lines']:
+            after = op['after']
+            if op['op'] == 'insert':
+                figure = op['key'][0]
+                after['copy_figure_id'] = None if figure is None else figure_ids[figure]
+                after['id'] = db.execute('''INSERT INTO main.copy_part(copy_id, copy_figure_id, item_id, color_id, is_spare, quantity)
+                                            VALUES(?, ?, ?, ?, ?, ?)''', (copy_id, after['copy_figure_id'], after['item_id'],
+                                                                         after['color_id'], after['is_spare'], after['quantity'])).lastrowid
+            else:
+                db.execute('UPDATE main.copy_part SET quantity=?, missing=?, damaged=?, retired_at=? WHERE id=?',
+                           (after['quantity'], after['missing'], after['damaged'], after['retired_at'], after['id']))
+            line_ops.append([op['op'], None if op['before'] is None else _row(op['before'], LINE_COLUMNS), _row(after, LINE_COLUMNS)])
+        db.execute('''UPDATE main.copy SET inventory_source=?, inventory_version=?, fetched_inventory_id=?, inventory_digest=?,
+                      materialised_at=?, inventory_pending=NULL, pending_job_id=NULL, updated_at=? WHERE id=?''',
+                   (target.source, target.version, target.fetched_inventory_id, target.digest, stamp, stamp, copy_id))
+        completeness = derived_completeness(db, copy_id)
+        if completeness is not None:
+            db.execute('UPDATE main.copy SET completeness=? WHERE id=?', (completeness, copy_id))
+        receipt = {'choice': choice, 'counts': _counts(plan),
+                   'copy': {'columns': COPY_COLUMNS, 'before': _row(copy, COPY_COLUMNS),
+                            'after': _row(_copy_row(db, copy_id), COPY_COLUMNS)},
+                   'figures': {'columns': FIGURE_COLUMNS, 'ops': figure_ops},
+                   'parts': {'columns': LINE_COLUMNS, 'ops': line_ops},
+                   'not_carried_over': plan['not_carried_over']}
+        Events(db, via, actor).write('copy', copy_id, FIELD, new=receipt)
+        receipt['event_id'] = db.execute('SELECT last_insert_rowid()').fetchone()[0]
+    return receipt
+
+
+def undo_switch(db, event_id, *, via, actor=None):
+    """Restore what the switch of `event_id` changed, from its receipt, in one transaction; writes its own event (field
+    `part_list_switch_undo`) and the `event_undo` row.
+
+    "Exactly" holds as follows. Every row the switch updated or retired is put back column for column (quantity, missing, damaged,
+    checked, retired_at, the figure's list columns), so the copy's live line set and figure set, their counts and flags, and the
+    copy's source, version, fetched list, digest, pending job and completeness are the old ones, under the old row ids; a derived
+    completeness is recomputed instead, since lines the switch did not touch may have been marked since. Rows the
+    switch INSERTED cannot be deleted (a Take, allocation or check session may refer to them since); they are retired, so they are
+    absent from every live read and a later switch back to that list re-activates them under the same id. `copy.updated_at` and
+    `copy_figure.updated_at` are set to the undo's time, not restored.
+
+    Refused (`SwitchUndoRefused`) when the event is not a switch, was undone already, or any row it touched differs from the
+    receipt's after-state (any other change since: a Take, a check mark, a later switch not yet undone)."""
+    with transaction(db, 'undoing a part list switch'):
+        event = db.execute('SELECT * FROM main.event WHERE id=?', (event_id,)).fetchone()
+        if event is None or event['entity_kind'] != 'copy' or event['field'] != FIELD:
+            raise SwitchUndoRefused(f'event {event_id} is not a part list switch')
+        if db.execute('SELECT 1 FROM main.event_undo WHERE event_id=?', (event_id,)).fetchone():
+            raise SwitchUndoRefused(f'event {event_id} was undone already')
+        copy_id, receipt, stamp = event['entity_id'], json.loads(event['new_value']), now()
+        copy = _copy_row(db, copy_id)
+
+        def without_stamp(columns, row):
+            return [v for c, v in zip(columns, row) if c != 'updated_at']
+
+        c_cols = receipt['copy']['columns']
+        if without_stamp(c_cols, _row(copy, c_cols)) != without_stamp(c_cols, receipt['copy']['after']):
+            raise SwitchUndoRefused(f'copy {copy_id} changed after the switch')
+        for table, key in (('copy_figure', 'figures'), ('copy_part', 'parts')):
+            columns = receipt[key]['columns']
+            for op, before, after in receipt[key]['ops']:
+                row = db.execute(f'SELECT {", ".join(columns)} FROM main.{table} WHERE id=?', (after[0],)).fetchone()
+                if row is None or without_stamp(columns, list(row)) != without_stamp(columns, after):
+                    raise SwitchUndoRefused(f'{table} row {after[0]} changed after the switch')
+        for op, before, after in receipt['figures']['ops']:
+            if op == 'insert':
+                db.execute('UPDATE main.copy_figure SET retired_at=?, updated_at=? WHERE id=?', (stamp, stamp, after[0]))
+            else:
+                old = dict(zip(receipt['figures']['columns'], before))
+                db.execute('''UPDATE main.copy_figure SET inventory_source=?, inventory_version=?, fetched_inventory_id=?,
+                              inventory_digest=?, quantity=?, missing=?, retired_at=?, updated_at=? WHERE id=?''',
+                           (old['inventory_source'], old['inventory_version'], old['fetched_inventory_id'], old['inventory_digest'],
+                            old['quantity'], old['missing'], old['retired_at'], stamp, old['id']))
+        for op, before, after in receipt['parts']['ops']:
+            if op == 'insert':
+                db.execute('UPDATE main.copy_part SET retired_at=? WHERE id=?', (stamp, after[0]))
+            else:
+                old = dict(zip(receipt['parts']['columns'], before))
+                db.execute('UPDATE main.copy_part SET quantity=?, missing=?, damaged=?, checked=?, retired_at=? WHERE id=?',
+                           (old['quantity'], old['missing'], old['damaged'], old['checked'], old['retired_at'], old['id']))
+        old = dict(zip(c_cols, receipt['copy']['before']))
+        db.execute('''UPDATE main.copy SET inventory_source=?, inventory_version=?, fetched_inventory_id=?, inventory_digest=?,
+                      materialised_at=?, inventory_pending=?, pending_job_id=?, completeness=?, updated_at=? WHERE id=?''',
+                   (old['inventory_source'], old['inventory_version'], old['fetched_inventory_id'], old['inventory_digest'],
+                    old['materialised_at'], old['inventory_pending'], old['pending_job_id'], old['completeness'], stamp, copy_id))
+        completeness = derived_completeness(db, copy_id)    # lines the switch did not touch may have changed since: recompute
+        if completeness is not None:
+            db.execute('UPDATE main.copy SET completeness=? WHERE id=?', (completeness, copy_id))
+        Events(db, via, actor).write('copy', copy_id, UNDO_FIELD, new={'undoes': event_id, 'counts': receipt['counts']})
+        undo_id = db.execute('SELECT last_insert_rowid()').fetchone()[0]
+        db.execute('INSERT INTO main.event_undo(event_id, undo_event_id) VALUES(?, ?)', (event_id, undo_id))
+    return {'event_id': undo_id, 'undoes': event_id, 'counts': receipt['counts']}

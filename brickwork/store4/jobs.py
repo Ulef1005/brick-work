@@ -94,33 +94,41 @@ def in_catalogue(db, number):
 def queue(db, kind, *, item_id=None, payload, via, actor=None, now=None):
     """Queue a fetch job and return its id; while one for the same item (else the same number) is queued, running, waiting or
     waiting for a retry, that job's id is returned instead."""
+    with transaction(db, 'queueing a job'):
+        return queue_in(db, kind, item_id=item_id, payload=payload, via=via, actor=actor, now=now)[0]
+
+
+def queue_in(db, kind, *, item_id=None, payload, via, actor=None, now=None):
+    """`queue` inside the caller's open write transaction (M.6c: a copy and its pending job commit or roll back together).
+    Returns `(job id, created)`; `created` is False when an open job for the same item was returned instead."""
     if kind not in KINDS:
         raise Store4Error(f'unknown job kind {kind!r}')
     number = _check_number(payload)
+    if not db.in_transaction:
+        raise Store4Error('queue_in needs the caller\'s open write transaction; use queue()')
     t = _now(now)
-    with transaction(db, 'queueing a job'):
-        if kind == 'bricklink_subsets':
-            if item_id is None:
-                raise Store4Error('a BrickLink subsets job needs the set item')
-            identity.project(db, item_id)                               # a catalogue set joins the collection; the job names it
-        elif item_id is None and in_catalogue(db, number):
-            raise SetInCatalogue(f'the catalogue already has set {number}; use the catalogue\'s part list instead of fetching one')
-        if item_id is not None:
-            row = db.execute('SELECT kind FROM main.item WHERE id=?', (item_id,)).fetchone()
-            if row is None or row['kind'] != 'set':
-                raise Store4Error(f'item {item_id} is not a set in the collection')
-        where, args = ('item_id=?', (item_id,)) if item_id is not None else ('item_id IS NULL AND payload=?', (json.dumps({'number': number}),))
-        found = db.execute(f'SELECT id FROM job WHERE kind=? AND {ACTIVE} AND {where} ORDER BY id', (kind, *args)).fetchone()
-        if found:
-            return found[0]
-        source, stamp = KINDS[kind], _stamp(t)
-        job = db.execute('''INSERT INTO job(source, kind, item_id, state, payload, via, actor, created_at, updated_at)
-                            VALUES(?, ?, ?, 'queued', ?, ?, ?, ?, ?)''',
-                         (source, kind, item_id, json.dumps({'number': number}), via, actor, stamp, stamp)).lastrowid
-        db.execute('''INSERT INTO job_step(job_id, name, position, sources, source, total, updated_at) VALUES(?, ?, 0, ?, ?, ?, ?)''',
-                   (job, STEP, json.dumps([source]), source, MINIMUM_CALLS[kind], stamp))
-        Events(db, via, actor).write('job', job, 'created', new={'kind': kind, 'item_id': item_id, 'number': number})
-        return job
+    if kind == 'bricklink_subsets':
+        if item_id is None:
+            raise Store4Error('a BrickLink subsets job needs the set item')
+        identity.project(db, item_id)                                   # a catalogue set joins the collection; the job names it
+    elif item_id is None and in_catalogue(db, number):
+        raise SetInCatalogue(f'the catalogue already has set {number}; use the catalogue\'s part list instead of fetching one')
+    if item_id is not None:
+        row = db.execute('SELECT kind FROM main.item WHERE id=?', (item_id,)).fetchone()
+        if row is None or row['kind'] != 'set':
+            raise Store4Error(f'item {item_id} is not a set in the collection')
+    where, args = ('item_id=?', (item_id,)) if item_id is not None else ('item_id IS NULL AND payload=?', (json.dumps({'number': number}),))
+    found = db.execute(f'SELECT id FROM job WHERE kind=? AND {ACTIVE} AND {where} ORDER BY id', (kind, *args)).fetchone()
+    if found:
+        return found[0], False
+    source, stamp = KINDS[kind], _stamp(t)
+    job = db.execute('''INSERT INTO job(source, kind, item_id, state, payload, via, actor, created_at, updated_at)
+                        VALUES(?, ?, ?, 'queued', ?, ?, ?, ?, ?)''',
+                     (source, kind, item_id, json.dumps({'number': number}), via, actor, stamp, stamp)).lastrowid
+    db.execute('''INSERT INTO job_step(job_id, name, position, sources, source, total, updated_at) VALUES(?, ?, 0, ?, ?, ?, ?)''',
+               (job, STEP, json.dumps([source]), source, MINIMUM_CALLS[kind], stamp))
+    Events(db, via, actor).write('job', job, 'created', new={'kind': kind, 'item_id': item_id, 'number': number})
+    return job, True
 
 
 # ---------- reading ----------
@@ -299,7 +307,7 @@ def run(db, job_id, *, http=None, now=None):
     run stored a list). The job's state tells the outcome: `done`, `waiting_for_budget` (see `retry_at`), `failed`."""
     job = _claim(db, job_id, now)
     if job is None:
-        return {**status(db, job_id), 'ran': False, 'result': None}
+        return _settled(db, {**status(db, job_id), 'ran': False, 'result': None})
     source, number = job['source'], json.loads(job['payload'])['number']
     calls = _Calls(db, job, _transport(source, http), now)
     result = None
@@ -357,7 +365,26 @@ def run(db, job_id, *, http=None, now=None):
         raise
     finally:
         _CLAIMED.discard((os.getpid(), _path(db), job_id))
-    return {**status(db, job_id), 'ran': True, 'result': result.as_dict() if result else None}
+    return _settled(db, {**status(db, job_id), 'ran': True, 'result': result.as_dict() if result else None})
+
+
+def _settled(db, out):
+    """Copies waiting for a finished BrickLink job are settled now (M.6c): switched when unmarked, offered when marked, released
+    when the job failed for good. Adds `settled` (one entry per copy) to the run's result when there was any. The import is
+    here because `pending` imports this module."""
+    from . import pending
+    settled = pending.settle_pending(db, out['id'], via=out['via'], actor=out['actor'])
+    return {**out, 'settled': settled} if settled else out
+
+
+def _settle_leftovers(db):
+    """Copies still pending on a job that already finished (the process stopped between the job's commit and `_settled`) are
+    settled before `drain` looks for new work, since a finished job is never run again."""
+    from . import pending
+    for row in db.execute('''SELECT DISTINCT j.id, j.via, j.actor FROM main.copy c JOIN main.job j ON j.id=c.pending_job_id
+                             WHERE c.inventory_pending='bricklink' AND (j.state='done' OR (j.state='failed' AND j.retry_at IS NULL))
+                             ORDER BY j.id''').fetchall():
+        pending.settle_pending(db, row['id'], via=row['via'], actor=row['actor'])
 
 
 def _settle(db, job_id, now, state, code, error, retry_at=None):
@@ -378,6 +405,7 @@ def _transient(db, job_id, now, error):
 def drain(db, *, limit=100, now=None, http=None):
     """Run the jobs that may run now, oldest first: queued ones, those whose claim died, waiting ones whose `retry_at` has passed and
     failed ones whose retry is due; at most `limit` are looked at. Returns the `run()` results of the jobs this call ran."""
+    _settle_leftovers(db)
     stamp = _stamp(_now(now))
     ids = [r[0] for r in db.execute('''SELECT id FROM job WHERE state IN ('queued','running')
                                        OR (state IN ('waiting_for_budget','failed') AND retry_at IS NOT NULL AND retry_at<=?)

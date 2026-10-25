@@ -217,12 +217,6 @@ def test_the_latest_fetched_bricklink_list_is_used_and_nothing_is_queued(db, key
     assert q(db, 'SELECT count(*) FROM job') == [(0,)]
 
 
-def test_bricklink_with_nothing_fetched_is_refused_for_now_and_writes_nothing(db, key):
-    with pytest.raises(copies.BrickLinkPending):
-        add(db, {'source': 'bricklink'})
-    assert q(db, 'SELECT (SELECT count(*) FROM copy), (SELECT count(*) FROM event), (SELECT count(*) FROM job)') == [(0, 0, 0)]
-
-
 def test_bricklink_is_refused_without_a_key(db):
     fetch(db, SET, 'bricklink', [(11, 3, 0, 5)])
     with pytest.raises(Store4Error, match='key'):

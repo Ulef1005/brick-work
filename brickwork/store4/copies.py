@@ -28,7 +28,8 @@ class NoPartList(Store4Error):
 
 
 class BrickLinkPending(Store4Error):
-    """BrickLink's list was chosen but none is fetched yet: queueing the job and the pending state are M.6c (decision F)."""
+    """BrickLink's list was chosen but none is fetched yet. `build_target` raises it; `create_copy` answers it with decision F's
+    pending state (Rebrickable's list now, a queued job), a switch has nothing to switch to and lets it through."""
 
 
 @dataclass
@@ -185,7 +186,7 @@ def build_target(db, set_item_id, choice):
         row = _latest_fetched(db, set_item_id, source)
         if row is None:
             if source == 'bricklink':
-                raise BrickLinkPending(f'no BrickLink list is fetched for set {set_item_id}; queueing one is not built yet (M.6c)')
+                raise BrickLinkPending(f'no BrickLink list is fetched for set {set_item_id}; `create_copy` queues one')
             raise NoPartList(f'no fetched Rebrickable list for set {set_item_id}')
         fetched_id = row['id']
         digest, parts, figures = _fetched_lines(db, fetched_id)
@@ -207,22 +208,51 @@ def _project(db, target):
 PART_COLUMNS = ['id', 'copy_figure_id', 'item_id', 'color_id', 'is_spare', 'quantity']
 
 
+def _pending_base(db, set_item_id):
+    """The Rebrickable list a copy gets while BrickLink's is pending (design 4.3, decision F): the set's pinned version when its
+    preference names one the catalogue has, else the catalogue's latest. Pending sits on a catalogue version only (CHECK)."""
+    if not has_catalogue(db):
+        raise NoPartList(f'set {set_item_id} has no Rebrickable list to use while BrickLink\'s is pending: the catalogue is not attached')
+    pref = db.execute('SELECT inventory_source, inventory_version FROM main.set_preference WHERE item_id=?', (set_item_id,)).fetchone()
+    if pref and pref['inventory_source'] == 'rebrickable' and pref['inventory_version'] is not None and any(
+            v['version'] == pref['inventory_version'] for v in _versions(db, set_item_id)):
+        return {'source': 'rebrickable', 'version': pref['inventory_version']}
+    if not any(v['is_latest'] for v in _versions(db, set_item_id)):
+        raise NoPartList(f'set {set_item_id} has no Rebrickable list in the catalogue to use while BrickLink\'s is pending')
+    return {'source': 'rebrickable'}
+
+
 def create_copy(db, set_item_id, choice, *, via, actor=None, condition=None, completeness=None, note=None):
     """Add one copy of a set: the copy, its figure lines and its part lines, in one transaction under ONE receipt event
     (`copy`, the new id, field `add`, `new_value` = the rows written). Returns the receipt, with the copy's `id`.
 
     The copy id is a uuid (design 3.1: collection rows keep uuid text ids). The copy's digest, and each figure line's, is the
-    source list's own."""
+    source list's own.
+
+    BrickLink chosen with no list fetched (decision F): the copy gets Rebrickable's list at once (`_pending_base`) with
+    `inventory_pending='bricklink'`, and `pending_job_id` is a `bricklink_subsets` job queued in this same transaction
+    (`jobs.queue_in`; an open job for the set is reused, not doubled). The receipt then carries `pending` = `{'source',
+    'job_id', 'job_reused'}`. `pending.settle_pending` takes it from there."""
     with transaction(db, 'adding a copy'):
         if has_catalogue(db):
             check_compatible(db)                            # a connection opened before a rebuild keeps the old file
-        target = build_target(db, set_item_id, choice)
+        pending = None
+        try:
+            target = build_target(db, set_item_id, choice)
+        except BrickLinkPending:
+            target = build_target(db, set_item_id, _pending_base(db, set_item_id))
+            pending = True
         _project(db, target)
         stamp, copy_id = now(), str(uuid.uuid4())
+        if pending:
+            number = db.execute('SELECT born_key FROM main.item WHERE id=?', (set_item_id,)).fetchone()['born_key']
+            job, created = jobs.queue_in(db, 'bricklink_subsets', item_id=set_item_id, payload=number, via=via, actor=actor)
+            pending = {'source': 'bricklink', 'job_id': job, 'job_reused': not created}
         db.execute('''INSERT INTO main.copy(id, item_id, inventory_source, inventory_version, fetched_inventory_id, inventory_digest,
-                      materialised_at, condition, completeness, completeness_source, note, created_at, updated_at)
-                      VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-                   (copy_id, set_item_id, target.source, target.version, target.fetched_inventory_id, target.digest, stamp, condition,
+                      materialised_at, inventory_pending, pending_job_id, condition, completeness, completeness_source, note,
+                      created_at, updated_at) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                   (copy_id, set_item_id, target.source, target.version, target.fetched_inventory_id, target.digest, stamp,
+                    pending and 'bricklink', pending and pending['job_id'], condition,
                     completeness, 'manual' if completeness else None, note, stamp, stamp))
         figure_rows = []
         figure_ids = {}
@@ -243,12 +273,23 @@ def create_copy(db, set_item_id, choice, *, via, actor=None, condition=None, com
                             'fetched_inventory_id': target.fetched_inventory_id, 'inventory_digest': target.digest,
                             'materialised_at': stamp, 'condition': condition, 'completeness': completeness, 'note': note},
                    'figures': figure_rows, 'parts': {'columns': PART_COLUMNS, 'rows': part_rows}}
+        if pending:
+            receipt['copy'].update(inventory_pending='bricklink', pending_job_id=pending['job_id'])
+            receipt['pending'] = pending
         events = Events(db, via, actor)
         events.write('copy', copy_id, 'add', new=receipt)
     return receipt
 
 
 # ---------- the in-place switch (design 4.4; issue #108, M.6b) ----------
+
+class CopyMarked(Store4Error):
+    """An automatic switch found the copy checked or marked (decision F as amended): it is left for the user."""
+
+
+class PendingChanged(Store4Error):
+    """A switch for a pending copy found it no longer waiting on that job (cancelled or settled meanwhile)."""
+
 
 class NothingToSwitch(Store4Error):
     """The copy already carries the chosen list exactly: no line, figure or copy column would change."""
@@ -382,18 +423,37 @@ def derived_completeness(db, copy_id):
     return 'complete' if checked and not defects else 'incomplete'
 
 
-def switch_part_list(db, copy_id, choice, *, via, actor=None):
+def has_marks(db, copy_id):
+    """Anything on the copy checked or marked: a live line with `checked`, `missing` or `damaged` above 0, or a live figure line
+    with `missing` above 0. Decision F as amended: such a copy is never switched without the user."""
+    return db.execute(
+        '''SELECT 1 FROM main.copy_part WHERE copy_id=? AND retired_at IS NULL AND (checked>0 OR missing>0 OR damaged>0)
+           UNION ALL SELECT 1 FROM main.copy_figure WHERE copy_id=? AND retired_at IS NULL AND missing>0''',
+        (copy_id, copy_id)).fetchone() is not None
+
+
+def switch_part_list(db, copy_id, choice, *, via, actor=None, trigger=None, unless_marked=False, while_pending_on=None):
     """Design 4.4: move a copy to another part list in place, in one transaction under ONE receipt event (`copy`, the copy id,
     field `part_list_switch`, `new_value` = the receipt). Nothing is deleted: rows of lines that left the list get `retired_at`,
     rows of lines that came back are re-activated under the same id, so Take/Give, allocation and check-session references stay
     valid. Returns the receipt, with `event_id`.
 
+    `trigger` (M.6c) says why, kept in the receipt as `trigger` when given: `{'automatic': True, 'job_id': n}` for the switch a
+    finished pending job makes by itself, `{'accepted': True, 'job_id': n}` for the user accepting the offer; a plain switch has none.
+
     A switch to the list the copy already carries (same source, version or fetched list, digest, no pending) that would change
-    no row is refused with `NothingToSwitch`: an empty receipt could not be told from an error."""
+    no row is refused with `NothingToSwitch`: an empty receipt could not be told from an error. `unless_marked` (the automatic
+    switch) refuses with `CopyMarked` when the copy has marks, checked inside this transaction so a mark made meanwhile counts.
+    `while_pending_on` (a job id: the automatic switch and the accepted offer) refuses with `PendingChanged` unless the copy still
+    waits on that job, so a cancel committed meanwhile is not overridden."""
     with transaction(db, 'switching a part list'):
         if has_catalogue(db):
             check_compatible(db)
         copy = _copy_row(db, copy_id)
+        if while_pending_on is not None and (copy['inventory_pending'] != 'bricklink' or copy['pending_job_id'] != while_pending_on):
+            raise PendingChanged(f'copy {copy_id} no longer waits for job {while_pending_on}')
+        if unless_marked and has_marks(db, copy_id):
+            raise CopyMarked(f'copy {copy_id} is checked or marked; it switches only when the user says so')
         target = build_target(db, copy['item_id'], choice)
         stamp = now()
         plan = _plan(db, copy, target, stamp)
@@ -441,6 +501,8 @@ def switch_part_list(db, copy_id, choice, *, via, actor=None):
                    'figures': {'columns': FIGURE_COLUMNS, 'ops': figure_ops},
                    'parts': {'columns': LINE_COLUMNS, 'ops': line_ops},
                    'not_carried_over': plan['not_carried_over']}
+        if trigger:
+            receipt['trigger'] = trigger
         Events(db, via, actor).write('copy', copy_id, FIELD, new=receipt)
         receipt['event_id'] = db.execute('SELECT last_insert_rowid()').fetchone()[0]
     return receipt
@@ -509,3 +571,65 @@ def undo_switch(db, event_id, *, via, actor=None):
         undo_id = db.execute('SELECT last_insert_rowid()').fetchone()[0]
         db.execute('INSERT INTO main.event_undo(event_id, undo_event_id) VALUES(?, ?)', (event_id, undo_id))
     return {'event_id': undo_id, 'undoes': event_id, 'counts': receipt['counts']}
+
+
+# ---------- preferences (design 4.3; issue #108, M.6c) ----------
+
+class BadPreference(Store4Error):
+    """The preference asked for is not one the schema or the catalogue allows."""
+
+
+def part_list_preference(db, set_item_id):
+    """The set's own preference as `{'source', 'version'}`, None when it has none."""
+    row = db.execute('SELECT inventory_source, inventory_version FROM main.set_preference WHERE item_id=?', (set_item_id,)).fetchone()
+    return None if row is None else {'source': row['inventory_source'], 'version': row['inventory_version']}
+
+
+def set_part_list_preference(db, set_item_id, choice, *, via, actor=None):
+    """"Use this part list for new copies of this set": write (or, with `choice` None, clear) the set's `set_preference` in one
+    transaction with one event (`set_preference`, the item id, field `preference`, old and new as `{'source', 'version'}`).
+    `choice` is `{'source': 'bricklink'}` or `{'source': 'rebrickable', 'version': n or None}` (None = always the latest); a
+    version the catalogue does not hold is refused. Setting what is already set writes nothing. Returns the new preference
+    (None when cleared). The Add picker's preselection (`part_list_choices`) reads exactly this row."""
+    if choice is not None:
+        source, version = choice.get('source'), choice.get('version')
+        if source not in ('rebrickable', 'bricklink') or (source == 'bricklink' and version is not None):
+            raise BadPreference(f'{choice!r} is not a part list preference: a Rebrickable version (or the latest) or BrickLink')
+        if source == 'rebrickable' and version is not None and (isinstance(version, bool) or not isinstance(version, int)
+                                                                or not any(v['version'] == version for v in _versions(db, set_item_id))):
+            raise BadPreference(f'the catalogue has no version {version!r} of set {set_item_id}')
+        new = {'source': source, 'version': version}
+    else:
+        new = None
+    with transaction(db, 'setting a part list preference'):
+        identity.project(db, set_item_id)
+        kind = db.execute('SELECT kind FROM main.item WHERE id=?', (set_item_id,)).fetchone()['kind']
+        if kind != 'set':
+            raise BadPreference(f'item {set_item_id} is not a set')
+        old = part_list_preference(db, set_item_id)
+        if old == new:
+            return new
+        if new is None:
+            db.execute('DELETE FROM main.set_preference WHERE item_id=?', (set_item_id,))
+        else:
+            db.execute('INSERT OR REPLACE INTO main.set_preference(item_id, inventory_source, inventory_version, decided_at) VALUES(?, ?, ?, ?)',
+                       (set_item_id, new['source'], new['version'], now()))
+        Events(db, via, actor).write('set_preference', set_item_id, 'preference', old=old, new=new)
+    return new
+
+
+def set_prefer_bricklink(db, enabled, *, via, actor=None):
+    """The global switch `setting prefer_bricklink_inventory` (Q13): `'true'` when enabled, no row when not. One event (`setting`,
+    the key, field `value`). It only takes effect with a BrickLink key, as the picker applies it. Returns whether it is on."""
+    key, new = 'prefer_bricklink_inventory', 'true' if enabled else None
+    with transaction(db, 'setting the BrickLink preference'):
+        row = db.execute('SELECT value FROM main.setting WHERE key=?', (key,)).fetchone()
+        old = row['value'] if row else None
+        if old == new:
+            return bool(enabled)
+        if new is None:
+            db.execute('DELETE FROM main.setting WHERE key=?', (key,))
+        else:
+            db.execute('INSERT OR REPLACE INTO main.setting(key, value) VALUES(?, ?)', (key, new))
+        Events(db, via, actor).write('setting', key, 'value', old=old, new=new)
+    return bool(enabled)

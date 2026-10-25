@@ -17,6 +17,7 @@ from ..core.size_search import name_key as size_key_of
 from .connect import _uri, create_catalogue, now as clock
 from .dump import Dump
 from .errors import DumpError
+from .bldigest import inventory_digest
 from .bricklink_list import carry_lists
 from .layers import DEFAULT_LAYERS, FTS_INSERT, shipped_version
 from .mappings import MAPPINGS_DIR, read_mapping
@@ -362,18 +363,16 @@ def _load(db, dump, old, coll, seeds, app_version, started_at, now, mappings_dir
                     incomplete.add(inv)
                 continue
             target_lines[(inv, item)] = target_lines.get((inv, item), 0) + int(r[2])
-    per = defaultdict(list)
+    per_p, per_f, per_s = defaultdict(list), defaultdict(list), defaultdict(list)
     for (i, p, c, s), q in lines.items():
-        per[i].append(('p', p, c, s, q))
+        per_p[i].append((p, c, s, q))
     for (i, f), q in fig_lines.items():
-        per[i].append(('f', f, 0, 0, q))
+        per_f[i].append((f, q))
     for (i, s), q in set_lines.items():
-        per[i].append(('s', s, 0, 0, q))
+        per_s[i].append((s, q))
     for row in inv_rows:
-        ls = sorted(per.get(row['id'], []))
-        row['digest'] = hashlib.sha256(repr(ls).encode()).hexdigest()
-        for tag, col in (('p', 'part_lines'), ('f', 'figure_lines'), ('s', 'set_lines')):
-            row[col] = sum(1 for l in ls if l[0] == tag)
+        row['digest'] = inventory_digest(per_p.get(row['id'], []), per_f.get(row['id'], []), per_s.get(row['id'], []))
+        row['part_lines'], row['figure_lines'], row['set_lines'] = (len(per.get(row['id'], [])) for per in (per_p, per_f, per_s))
     latest_live = {r['item_id'] for r in inv_rows if r['is_latest']}
     carried = []                                              # vanished versions of the old file, with their lines
     # A key whose id changed (a merged id, catalogue or adopted local, came back under a fresh id): what the old file said
@@ -389,8 +388,7 @@ def _load(db, dump, old, coll, seeds, app_version, started_at, now, mappings_dir
         pl = [(remap.get(i, i), *rest) for i, *rest in pl]
         fl = [(remap.get(i, i), q) for i, q in fl]
         sl = [(remap.get(i, i), q) for i, q in sl]
-        digest = hashlib.sha256(repr(sorted([('p', *l) for l in pl] + [('f', i, 0, 0, q) for i, q in fl]
-                                            + [('s', i, 0, 0, q) for i, q in sl])).encode()).hexdigest()
+        digest = inventory_digest(pl, fl, sl)
         carried.append((dict(row, id=inv_id, item_id=item_id, digest=digest,
                              is_latest=int(bool(row['is_latest']) and item_id not in latest_live),
                              retired_at=row['retired_at'] or retired_at_default), pl, fl, sl))

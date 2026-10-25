@@ -5,7 +5,8 @@ its figure lines and its part lines under one receipt.
 is the first step of § 4.4 too, so the in-place switch (M.6b) builds its target with the same function. `create_copy` writes.
 
 `switch_part_list` is § 4.4, the in-place switch under one receipt; `preview_switch` computes the same plan without writing;
-`undo_switch` restores a switch from its receipt.
+`undo_switch` restores a switch from its receipt. `part_list_changes` (M.6d) reads which live copies and figure lines carry a list
+that is no longer the catalogue's (or the newest fetched one); it writes nothing and switches nothing.
 
 A choice is a dict: `{'source': 'rebrickable', 'version': n}` (`version` None = the catalogue's latest), `{'source': 'bricklink'}`
 (the latest fetched BrickLink list) or `{'source': 'rebrickable_api'}` (the latest fetched Rebrickable list, for a set newer than
@@ -633,3 +634,122 @@ def set_prefer_bricklink(db, enabled, *, via, actor=None):
             db.execute('INSERT OR REPLACE INTO main.setting(key, value) VALUES(?, ?)', (key, new))
         Events(db, via, actor).write('setting', key, 'value', old=old, new=new)
     return bool(enabled)
+
+
+# ---------- "part list changed" (design 4.4 last paragraph, 4.2; issue #108, M.6d) ----------
+
+CHANGED, GONE, OFFERED, NEWER = 'changed', 'gone', 'offered', 'newer_list'
+
+
+def _current_choice(source, version):
+    """The choice that re-takes the copy's own list (and every figure's list, `build_target` reads them afresh)."""
+    if source == 'rebrickable':
+        return {'source': 'rebrickable', 'version': version}
+    return {'source': source} if source in ('bricklink', 'rebrickable_api') else None
+
+
+def _adopted_join(owner, fetched):
+    """The catalogue list an acquired Rebrickable list is compared with: the version the reply named when the catalogue has it
+    live, else the catalogue's latest. `owner` is the alias of the row holding the item id, `fetched` that of fetched_inventory."""
+    return (f'JOIN catalogue.inventory i ON i.id = COALESCE('
+            f'(SELECT id FROM catalogue.inventory WHERE item_id={owner}.item_id AND version={fetched}.provider_version AND retired_at IS NULL), '
+            f'(SELECT id FROM catalogue.inventory WHERE item_id={owner}.item_id AND is_latest=1 AND retired_at IS NULL))')
+
+
+def part_list_changes(db, copy_id=None):
+    """Which live copies, and which figure lines of them, carry a part list that no longer matches (read-only; nothing switches,
+    design 4.4: "Nothing switches without the user"). One SQL pass per case, joined to the catalogue, so it is cheap after a
+    re-download whatever the number of copies; `copy_id` narrows it to one copy.
+
+    Returns a list of entries (ordered by copy, set line before figure lines), each a dict:
+    `copy_id`, `item_id` (the set), `figure_item_id`/`figure_id` (None for the set's own list), `kind`, `source`, `version`,
+    `fetched_inventory_id` (what the line carries now), `current_digest`, `catalogue_digest` (the list it would move to; None for
+    `gone`), `choice` (pass it to `preview_switch` / `switch_part_list`; None when no automatic choice exists) and `pending`.
+
+    - `changed`: a `rebrickable` copy whose digest differs from the catalogue's for the same `(set, version)`; a figure line
+      whose figure's latest catalogue list is another version or digest, or a `none` figure line whose figure now has a list.
+      Choice: the copy's own list again, which re-takes the figure lists too.
+    - `gone`: that version is no longer in the catalogue (missing or retired). `choice` is None: a screen shows "this part list
+      is no longer available" and sends the user to the picker (`part_list_choices`), a switch that carries the checks over.
+    - `offered` (4.2): a `rebrickable_api` copy or figure line whose item the catalogue now has (a dump adopted it) with a
+      different digest. Choice: the catalogue's version of the set (a figure line: the copy's own choice, which takes the
+      figure's catalogue list). The same digest is not reported: the copy simply keeps its fetched list.
+    - `newer_list`: a `bricklink` copy whose set has a newer fetched BrickLink list (`is_latest` moved) with another digest.
+      Choice: BrickLink again, i.e. the latest fetched list; `newer_fetched_inventory_id` names it. Needs no catalogue.
+
+    A figure line's `choice` is the copy's current choice; it is None when the copy's own list is `gone` (the picker first), or
+    the copy is `migrated`/`none`."""
+    out = []
+    where = 'AND c.id=?' if copy_id else ''
+    args = (copy_id,) if copy_id else ()
+
+    def add(row, kind, source, choice, catalogue_digest, version=None, fetched=None, figure=False):
+        out.append({'copy_id': row['copy_id'], 'item_id': row['set_item'], 'figure_item_id': row['item_id'] if figure else None,
+                    'figure_id': row['id'] if figure else None, 'kind': kind, 'source': source, 'version': version,
+                    'fetched_inventory_id': fetched, 'current_digest': row['digest'], 'catalogue_digest': catalogue_digest,
+                    'choice': choice, 'pending': row['pending']})
+
+    if has_catalogue(db):
+        cols = 'c.id AS copy_id, c.item_id AS set_item, c.inventory_pending AS pending'
+        for r in db.execute(f"""SELECT {cols}, c.item_id AS item_id, c.id AS id, c.inventory_version AS version,
+                                c.inventory_digest AS digest, i.digest AS cat, i.id IS NULL OR i.retired_at IS NOT NULL AS gone
+                                FROM main.copy c LEFT JOIN catalogue.inventory i ON i.item_id=c.item_id AND i.version=c.inventory_version
+                                WHERE c.archived_at IS NULL AND c.inventory_source='rebrickable' {where}
+                                AND (i.id IS NULL OR i.retired_at IS NOT NULL OR i.digest IS NOT c.inventory_digest)""", args):
+            if r['gone']:
+                add(r, GONE, 'rebrickable', None, None, version=r['version'])
+            else:
+                add(r, CHANGED, 'rebrickable', _current_choice('rebrickable', r['version']), r['cat'], version=r['version'])
+        for r in db.execute(f"""SELECT {cols}, c.item_id AS item_id, c.id AS id, c.fetched_inventory_id AS fetched,
+                                c.inventory_digest AS digest, i.digest AS cat, i.version AS cat_version
+                                FROM main.copy c JOIN main.fetched_inventory f ON f.id=c.fetched_inventory_id
+                                {_adopted_join('c', 'f')}
+                                WHERE c.archived_at IS NULL AND c.inventory_source='rebrickable_api' {where}
+                                AND i.digest IS NOT c.inventory_digest""", args):
+            add(r, OFFERED, 'rebrickable_api', {'source': 'rebrickable', 'version': r['cat_version']}, r['cat'], fetched=r['fetched'])
+        figure_cols = 'c.id AS copy_id, c.item_id AS set_item, c.inventory_pending AS pending, cf.item_id AS item_id, cf.id AS id'
+        # A figure line always carries its figure's LATEST catalogue list (4.5), so it is compared with that one: a new version,
+        # a changed digest, or a figure that had no list ('none') and now has one are all "changed".
+        for r in db.execute(f"""SELECT {figure_cols}, cf.inventory_version AS version, cf.inventory_digest AS digest, i.digest AS cat,
+                                i.id IS NULL AS gone, c.inventory_source AS cs, c.inventory_version AS cv
+                                FROM main.copy_figure cf JOIN main.copy c ON c.id=cf.copy_id
+                                LEFT JOIN catalogue.inventory i ON i.item_id=cf.item_id AND i.is_latest=1 AND i.retired_at IS NULL
+                                WHERE c.archived_at IS NULL AND cf.retired_at IS NULL {where}
+                                AND ((cf.inventory_source='rebrickable' AND (i.id IS NULL OR i.version IS NOT cf.inventory_version
+                                                                             OR i.digest IS NOT cf.inventory_digest))
+                                     OR (cf.inventory_source='none' AND i.id IS NOT NULL))""", args):
+            choice = _current_choice(r['cs'], r['cv'])
+            if r['gone']:
+                add(r, GONE, 'rebrickable', choice, None, version=r['version'], figure=True)
+            else:
+                add(r, CHANGED, 'rebrickable', choice, r['cat'], version=r['version'], figure=True)
+        for r in db.execute(f"""SELECT {figure_cols}, cf.fetched_inventory_id AS fetched, cf.inventory_digest AS digest, i.digest AS cat,
+                                c.inventory_source AS cs, c.inventory_version AS cv
+                                FROM main.copy_figure cf JOIN main.copy c ON c.id=cf.copy_id
+                                JOIN catalogue.inventory i ON i.item_id=cf.item_id AND i.is_latest=1 AND i.retired_at IS NULL
+                                                                     -- a figure takes its latest list (4.5), not the reply's version
+                                WHERE c.archived_at IS NULL AND cf.retired_at IS NULL AND cf.inventory_source='rebrickable_api' {where}
+                                AND i.digest IS NOT cf.inventory_digest""", args):
+            add(r, OFFERED, 'rebrickable_api', _current_choice(r['cs'], r['cv']), r['cat'], fetched=r['fetched'], figure=True)
+    for r in db.execute(f"""SELECT c.id AS copy_id, c.item_id AS set_item, c.item_id AS item_id, c.id AS id, c.inventory_pending AS pending,
+                            c.inventory_digest AS digest, c.fetched_inventory_id AS fetched, l.id AS newer, l.digest AS cat
+                            FROM main.copy c JOIN main.fetched_inventory l ON l.item_id=c.item_id AND l.source='bricklink' AND l.is_latest=1
+                            WHERE c.archived_at IS NULL AND c.inventory_source='bricklink' AND l.id != c.fetched_inventory_id
+                            AND l.digest != c.inventory_digest {where}""", args):
+        add(r, NEWER, 'bricklink', {'source': 'bricklink'}, r['cat'], fetched=r['fetched'])
+        out[-1]['newer_fetched_inventory_id'] = r['newer']
+    gone = {e['copy_id'] for e in out if e['kind'] == GONE and e['figure_id'] is None}
+    for e in out:
+        if e['figure_id'] is not None and e['copy_id'] in gone:
+            e['choice'] = None
+    out.sort(key=lambda e: (e['copy_id'], e['figure_id'] is not None, e['figure_item_id'] or 0))
+    return out
+
+
+def summarise_changes(changes):
+    """`{'copies': n, 'entries': n, 'gone': copies whose list is gone, 'by_kind': {...}}` for a status line."""
+    kinds = {}
+    for e in changes:
+        kinds[e['kind']] = kinds.get(e['kind'], 0) + 1
+    return {'copies': len({e['copy_id'] for e in changes}), 'entries': len(changes),
+            'gone': len({e['copy_id'] for e in changes if e['kind'] == GONE}), 'by_kind': kinds}

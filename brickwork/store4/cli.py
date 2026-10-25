@@ -1,5 +1,6 @@
 """`python -m brickwork.store4 catalogue download|import|rebuild|reconcile|status` (design 6.1, 6.2, 6.6; issue #104, M.2e)
-and `fetch bricklink|rebrickable <set-number>`, `jobs`, `jobs drain` (the job runner, issue #107, M.5d).
+and `fetch bricklink|rebrickable <set-number>`, `jobs`, `jobs drain` (the job runner, issue #107, M.5d), and
+`copy add|show|switch|undo|pending|settle|changes|preference|prefer-bricklink` (copies and their part lists, issue #108, M.6d).
 
 Separate from the app's `brickwork catalogue` CLI, which runs the 3.3 code until M.8. `--data DIR` holds `brickwork.db`,
 `catalogue.db`, `catalogue-src/rebrickable/<date>/` (the downloads), `mappings/` (the local layer, optional) and
@@ -17,7 +18,7 @@ import sys
 import time
 import urllib.request
 
-from . import jobs
+from . import copies, jobs, pending
 from .activate import activate
 from .builder import build
 from .bricklink_list import import_bricklink
@@ -276,6 +277,7 @@ def do_status(paths):
             out['collection'] = dict(path=str(paths.collection), catalogue_id=meta.get('catalogue_id'), activated_builds=activated,
                                      item_high_water=meta.get('catalogue_item_high_water'), color_high_water=meta.get('catalogue_color_high_water'),
                                      last_reconcile=summary(rec) if rec else None)
+        out['collection']['part_lists'] = part_list_summary(paths)
     else:
         out['collection'] = None
     found = newest_download(paths)
@@ -286,6 +288,18 @@ def do_status(paths):
     else:
         out['download'] = None
     return out
+
+
+def part_list_summary(paths):
+    """How many copies carry a part list that changed (`copies.part_list_changes`), read-only; None without both files, or
+    `{'error': text}` when the pair does not fit together (status must not fail for that)."""
+    if not (paths.collection.exists() and paths.catalogue.exists()):
+        return None
+    try:
+        with closing(connect(paths.collection, paths.catalogue, read_only=True)) as db:
+            return copies.summarise_changes(copies.part_list_changes(db))
+    except Store4Error as exc:
+        return dict(error=str(exc))
 
 
 def summary(rec):
@@ -338,6 +352,205 @@ def do_drain(paths, *, http=None, clock=None, limit=100):
         return dict(ran=jobs.drain(db, limit=limit, now=clock, http=http))
 
 
+# ---------- copies ----------
+
+def parse_choice(text):
+    """`rebrickable` (the latest version), `rebrickable:N`, `bricklink` or `rebrickable-api` as a part list choice."""
+    t = text.strip().lower().replace('-', '_')
+    if t in ('bricklink', 'rebrickable_api'):
+        return {'source': t}
+    if t == 'rebrickable':
+        return {'source': 'rebrickable', 'version': None}
+    if t.startswith('rebrickable:') and t[12:].isdigit() and int(t[12:]) > 0:
+        return {'source': 'rebrickable', 'version': int(t[12:])}
+    raise Store4Error(f'{text!r} is not a part list choice: rebrickable, rebrickable:N, bricklink or rebrickable-api')
+
+
+def need_set(db, number):
+    item_id = find_set(db, number)
+    if item_id is None:
+        raise Store4Error(f'set {number} is in neither the collection nor the catalogue')
+    return item_id
+
+
+def find_copy(db, ref):
+    """A copy id, or a prefix of one that names exactly one copy."""
+    rows = [r[0] for r in db.execute('SELECT id FROM main.copy WHERE id=? OR substr(id, 1, length(?))=? LIMIT 2', (ref, ref, ref))]
+    if ref in rows:
+        return ref
+    if not rows:
+        raise Store4Error(f'no copy {ref}')
+    if len(rows) > 1:
+        raise Store4Error(f'{ref} names more than one copy; give more of the id')
+    return rows[0]
+
+
+def copy_facts(db, copy_id):
+    """The `copy show` result: source, version, digest, pending state and the line counts."""
+    c = db.execute('SELECT c.*, i.born_key AS number, i.name AS set_name FROM main.copy c JOIN main.item i ON i.id=c.item_id '
+                   'WHERE c.id=?', (copy_id,)).fetchone()
+
+    def count(table, live):
+        return db.execute(f'SELECT count(*) FROM main.{table} WHERE copy_id=? AND retired_at IS {"" if live else "NOT "}NULL',
+                          (copy_id,)).fetchone()[0]
+
+    offer = pending.pending_offer(db, copy_id)
+    if offer and offer.get('preview'):                              # the full preview is long; the counts are what the CLI shows
+        p = offer['preview']
+        offer = {**offer, 'preview': dict(counts=p['counts'], not_carried_over={k: len(v) for k, v in p['not_carried_over'].items()})}
+    return dict(id=c['id'], set=c['number'], name=c['set_name'], source=c['inventory_source'], version=c['inventory_version'],
+                fetched_inventory_id=c['fetched_inventory_id'], digest=c['inventory_digest'], materialised_at=c['materialised_at'],
+                condition=c['condition'], completeness=c['completeness'], archived_at=c['archived_at'],
+                pending=offer, marked=copies.has_marks(db, copy_id),
+                lines=dict(live=count('copy_part', True), retired=count('copy_part', False)),
+                figures=dict(live=count('copy_figure', True), retired=count('copy_figure', False)),
+                figure_lists={r[0]: r[1] for r in db.execute(
+                    'SELECT inventory_source, count(*) FROM main.copy_figure WHERE copy_id=? AND retired_at IS NULL GROUP BY 1', (copy_id,))},
+                changes=copies.part_list_changes(db, copy_id))
+
+
+def receipt_counts(receipt):
+    return dict(counts=receipt['counts'], not_carried_over={k: len(v) for k, v in receipt['not_carried_over'].items()},
+                event_id=receipt['event_id'])
+
+
+def add_choice(args):
+    if args.rebrickable is not None:
+        return {'source': 'rebrickable', 'version': args.rebrickable or None}
+    return {'source': 'bricklink'} if args.bricklink else {'source': 'rebrickable_api'} if args.rebrickable_api else None
+
+
+def do_copy(paths, args):
+    """Run one `copy` command; the result carries `what` (the command) for the printer."""
+    with open_pair(paths) as db:
+        c = args.command
+        if c == 'add':
+            item_id = need_set(db, args.number)
+            choice = add_choice(args) or copies.part_list_choices(db, item_id)['preselected']
+            if choice is None:
+                raise copies.NoPartList(f'set {args.number} has no part list to build a copy from')
+            r = copies.create_copy(db, item_id, choice, via='cli')
+            copy = r['copy']
+            return dict(what='add', id=copy['id'], set=args.number, source=copy['inventory_source'], version=copy['inventory_version'],
+                        digest=copy['inventory_digest'], figures=len(r['figures']), lines=len(r['parts']['rows']), pending=r.get('pending'))
+        if c == 'show':
+            return dict(what='show', **copy_facts(db, find_copy(db, args.copy)))
+        if c == 'switch':
+            copy_id, choice = find_copy(db, args.copy), parse_choice(args.choice)
+            if args.preview:
+                p = copies.preview_switch(db, copy_id, choice)
+                return dict(what='switch', preview=True, id=copy_id, same_list=p['same_list'], counts=p['counts'],
+                            not_carried_over={k: len(v) for k, v in p['not_carried_over'].items()})
+            return dict(what='switch', preview=False, id=copy_id, **receipt_counts(copies.switch_part_list(db, copy_id, choice, via='cli')))
+        if c == 'undo':
+            r = copies.undo_switch(db, args.event, via='cli')
+            return dict(what='undo', event_id=r['event_id'], undoes=r['undoes'], counts=r['counts'])
+        if c == 'pending':
+            words = args.args
+            if len(words) > 2 or (len(words) == 2 and words[0] not in ('accept', 'cancel')):
+                raise Store4Error('usage: copy pending [accept|cancel] <copy-id>')
+            if not words:
+                ids = [r[0] for r in db.execute('SELECT id FROM main.copy WHERE inventory_pending IS NOT NULL ORDER BY created_at, id')]
+                offers = [(i, pending.pending_offer(db, i)) for i in ids]          # None: settled or cancelled meanwhile
+                return dict(what='pending-list', copies=[dict(id=i, state=o['state']) for i, o in offers if o is not None])
+            copy_id = find_copy(db, words[-1])
+            if words[0] == 'accept':
+                return dict(what='pending-accept', id=copy_id, **receipt_counts(pending.accept_pending(db, copy_id, via='cli')))
+            if words[0] == 'cancel':
+                return dict(what='pending-cancel', id=copy_id, **pending.cancel_pending(db, copy_id, via='cli'))
+            return dict(what='pending-show', id=copy_id, pending=copy_facts(db, copy_id)['pending'])
+        if c == 'settle':
+            return dict(what='settle', settled=pending.settle_pending(db, via='cli'))
+        if c == 'changes':
+            found = copies.part_list_changes(db, find_copy(db, args.copy) if args.copy else None)
+            return dict(what='changes', summary=copies.summarise_changes(found), changes=found)
+        if c == 'preference':
+            item_id = need_set(db, args.number)
+            choice = None if args.choice == 'clear' else parse_choice(args.choice)
+            return dict(what='preference', set=args.number, preference=copies.set_part_list_preference(db, item_id, choice, via='cli'))
+        return dict(what='prefer-bricklink', on=copies.set_prefer_bricklink(db, args.state == 'on', via='cli'))
+
+
+def show_choice(choice):
+    if not choice:
+        return 'none (choose a part list)'
+    return choice['source'] + (f":{choice['version']}" if choice.get('version') else '')
+
+
+def change_line(e, with_copy):
+    what = f"figure {e['figure_item_id']}" if e['figure_id'] is not None else 'set list'
+    return ((e['copy_id'][:8] + ' ' if with_copy else '') + f"{e['kind']}: {what} on {e['source']}"
+            + (f" version {e['version']}" if e['version'] else '') + f", {(e['current_digest'] or '-')[:12]} -> {(e['catalogue_digest'] or '-')[:12]}"
+            + f"; switch to {show_choice(e['choice'])}")
+
+
+def show_offer(p, say):
+    if not p:
+        return
+    line = f"  BrickLink list {p['state']} (job {p['job']['id']}, {p['job']['state']})"
+    if p['state'] == 'ready':
+        nco = p['preview']['not_carried_over']
+        line += f", switch now? not carried over: retired {nco['retired']}, capped {nco['capped']}" + (', copy is marked' if p['marked'] else '')
+    say(line)
+
+
+def show_copy(r, say):
+    what = r['what']
+    if what == 'add':
+        say(f"copy {r['id']}: set {r['set']} from {r['source']}" + (f" version {r['version']}" if r['version'] else '')
+            + f", {r['figures']} figure line(s), {r['lines']} part line(s), digest {(r['digest'] or '-')[:12]}")
+        if r['pending']:
+            say(f"  BrickLink list pending: job {r['pending']['job_id']}" + (' (reused)' if r['pending']['job_reused'] else '') + ' (run `jobs drain`)')
+    elif what == 'show':
+        say(f"copy {r['id']}: set {r['set']} {r['name']}")
+        say(f"  part list: {r['source']}" + (f" version {r['version']}" if r['version'] else '')
+            + (f", fetched list {r['fetched_inventory_id']}" if r['fetched_inventory_id'] else '')
+            + f", digest {(r['digest'] or '-')[:12]}, materialised {r['materialised_at']}")
+        say(f"  lines: {r['lines']['live']} live, {r['lines']['retired']} retired; figures: {r['figures']['live']} live, "
+            f"{r['figures']['retired']} retired" + ('; ' + ', '.join(f'{k} {v}' for k, v in sorted(r['figure_lists'].items())) if r['figure_lists'] else ''))
+        say(f"  completeness {r['completeness'] or '-'}, condition {r['condition'] or '-'}, {'marked' if r['marked'] else 'no marks'}"
+            + (f", archived {r['archived_at']}" if r['archived_at'] else ''))
+        show_offer(r['pending'], say)
+        for e in r['changes']:
+            say('  ' + change_line(e, False))
+    elif what == 'switch':
+        say(('would switch' if r['preview'] else 'switched') + f" copy {r['id']}" + ('' if r['preview'] else f", event {r['event_id']}")
+            + (' (already carries this list)' if r.get('same_list') else ''))
+        say('  ' + (', '.join(f'{k} {v}' for k, v in r['counts'].items() if v) or 'no row changes'))
+        say('  not carried over: ' + (', '.join(f'{k} {v}' for k, v in r['not_carried_over'].items() if v) or 'none'))
+    elif what == 'undo':
+        say(f"undid event {r['undoes']} (undo event {r['event_id']})")
+    elif what == 'pending-list':
+        for x in r['copies']:
+            say(f"{x['id']}: {x['state']}")
+        if not r['copies']:
+            say('no copy is waiting for a BrickLink list')
+    elif what == 'pending-show':
+        if r['pending']:
+            show_offer(r['pending'], say)
+        else:
+            say(f"copy {r['id']} is not waiting for a BrickLink list")
+    elif what == 'pending-accept':
+        say(f"accepted: copy {r['id']} switched to BrickLink's list, event {r['event_id']}")
+        say('  not carried over: ' + (', '.join(f'{k} {v}' for k, v in r['not_carried_over'].items() if v) or 'none'))
+    elif what == 'pending-cancel':
+        say(f"cancelled the pending BrickLink list of copy {r['id']}; it stays on {r['inventory_source']} version {r['inventory_version']}")
+    elif what == 'settle':
+        for x in r['settled']:
+            say(f"copy {x['copy_id']}: {x['outcome']}" + (f" ({x['error']})" if x.get('error') else ''))
+        if not r['settled']:
+            say('nothing to settle')
+    elif what == 'changes':
+        s = r['summary']
+        say(f"{s['copies']} copies with a changed part list ({s['entries']} entries)")
+        for e in r['changes']:
+            say('  ' + change_line(e, True))
+    elif what == 'preference':
+        say(f"preference for {r['set']}: " + (show_choice(r['preference']) if r['preference'] else 'cleared'))
+    else:
+        say('prefer BrickLink: ' + ('on' if r['on'] else 'off'))
+
+
 # ---------- output ----------
 
 def show_job(r, say):
@@ -374,6 +587,16 @@ def show_summary(s, say):
         say(f"  coverage {kind}: " + ', '.join(f'{k} {v}' for k, v in c.items()))
 
 
+def show_part_lists(x, say):
+    if x is None:
+        return
+    if 'error' in x:
+        say(f"  copies with a changed part list: not checked ({x['error']})")
+    else:
+        kinds = ', '.join(f'{k} {v}' for k, v in sorted(x['by_kind'].items()))
+        say(f"  {x['copies']} copies with a changed part list" + (f" ({kinds}; {x['gone']} copies whose list is gone)" if x['copies'] else ''))
+
+
 def show(result, command, say):
     if command == 'status':
         cat, coll, dl = result['catalogue'], result['collection'], result['download']
@@ -396,6 +619,7 @@ def show(result, command, say):
             if coll['last_reconcile']:
                 say('  last reconcile:')
                 show_summary(coll['last_reconcile'], lambda t: say('  ' + t))
+            show_part_lists(coll.get('part_lists'), say)
         else:
             say('collection: none')
         say(f"newest download: {dl['directory']} ({dl['age_days']} days old)" if dl else 'newest download: none')
@@ -416,6 +640,7 @@ def show(result, command, say):
     say(f"activated builds {a['builds'] or 'none new'}, {a['colours']} colours, {a['colour_links']} colour links")
     say('reconcile:')
     show_summary(summary(result['reconcile']), say)
+    show_part_lists(result.get('part_lists'), say)
 
 
 # ---------- entry ----------
@@ -448,7 +673,32 @@ def build_parser():
     jobs_sub = jobs_cmd.add_subparsers(dest='command')
     drain = jobs_sub.add_parser('drain', help='run the jobs that may run now')
     drain.add_argument('--limit', type=int, default=100)
-    for parser in (bl, *cat.choices.values(), *fetchers, jobs_cmd, drain):
+    copy = commands.add_parser('copy', help='add, show and switch copies and their part lists').add_subparsers(dest='command', required=True)
+    add = copy.add_parser('add', help="add a copy of a set (default part list: the picker's preselection)")
+    add.add_argument('number', help='the set number, e.g. 6081-1')
+    pick = add.add_mutually_exclusive_group()
+    pick.add_argument('--rebrickable', nargs='?', type=int, const=0, metavar='VERSION', help="Rebrickable's list (the latest without VERSION)")
+    pick.add_argument('--bricklink', action='store_true', help="BrickLink's list (fetched later when none is stored; needs a key)")
+    pick.add_argument('--rebrickable-api', action='store_true', help='the fetched Rebrickable list')
+    show_c = copy.add_parser('show', help="a copy's part list, pending state, counts and changes")
+    show_c.add_argument('copy', help='the copy id or a unique start of it')
+    switch = copy.add_parser('switch', help='switch a copy to another part list in place')
+    switch.add_argument('copy')
+    switch.add_argument('choice', help='rebrickable, rebrickable:N, bricklink or rebrickable-api')
+    switch.add_argument('--preview', action='store_true', help='show what would change, write nothing')
+    undo = copy.add_parser('undo', help='undo a part list switch by its event id')
+    undo.add_argument('event', type=int)
+    pend = copy.add_parser('pending', help="copies waiting for BrickLink's list; `pending accept|cancel <copy>`, `pending <copy>`")
+    pend.add_argument('args', nargs='*', metavar='[accept|cancel] COPY')
+    copy.add_parser('settle', help='settle the copies waiting on finished jobs')
+    changes = copy.add_parser('changes', help='copies and figure lines whose part list changed (read-only)')
+    changes.add_argument('copy', nargs='?')
+    pref = copy.add_parser('preference', help='the part list new copies of a set use')
+    pref.add_argument('number')
+    pref.add_argument('choice', help='rebrickable, rebrickable:N, bricklink or clear')
+    pb = copy.add_parser('prefer-bricklink', help="the global switch: prefer BrickLink's list when a key exists")
+    pb.add_argument('state', choices=('on', 'off'))
+    for parser in (bl, *cat.choices.values(), *fetchers, jobs_cmd, drain, *copy.choices.values()):
         parser.add_argument('--json', action='store_true', default=argparse.SUPPRESS, help='print the result as JSON')
         parser.add_argument('--data', default=argparse.SUPPRESS, help='as before the command')
     return root
@@ -461,7 +711,9 @@ def main(argv=None, *, fetch=http_fetch, mappings_dir=MAPPINGS_DIR, now=None, ou
     say = (lambda *a: None) if args.json else (lambda *a: print(*a, file=out, flush=True))
     command = args.command
     try:
-        if args.group == 'fetch':
+        if args.group == 'copy':
+            result = do_copy(paths, args)
+        elif args.group == 'fetch':
             result = do_fetch(paths, command, args.number, http=http, clock=clock)
         elif args.group == 'jobs':
             result = do_drain(paths, http=http, clock=clock, limit=args.limit) if command == 'drain' else do_jobs(paths)
@@ -477,11 +729,15 @@ def main(argv=None, *, fetch=http_fetch, mappings_dir=MAPPINGS_DIR, now=None, ou
             result = do_reconcile(paths)
         else:
             result = do_status(paths)
+        if args.group == 'catalogue' and command in ('import', 'rebuild', 'reconcile'):
+            result['part_lists'] = part_list_summary(paths)
     except (Store4Error, OSError, ValueError, sqlite3.Error) as exc:
         print(json.dumps(dict(error=str(exc))) if args.json else f'error: {exc}', file=out if args.json else sys.stderr)
         return 1
     if args.json:
         print(json.dumps(result, indent=1, sort_keys=True, default=str), file=out)
+    elif args.group == 'copy':
+        show_copy(result, say)
     elif args.group == 'fetch':
         show_job(result, say)
     elif args.group == 'jobs':

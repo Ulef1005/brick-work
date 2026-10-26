@@ -1,0 +1,20 @@
+# mapping_version: 2026.10.23.1
+# dump_date: 2026-10-23
+# external_ids_fetched: 2026-10-23T17:52:26Z
+# source: Rebrickable (https://rebrickable.com), data free to use with acknowledgement
+rb_part_num,rb_color_id,provider,provider_kind,provider_key,status,method,preferred
+003402,,bricklink,P,310.3stk01,matched,external_ids,0
+003402,,bricklink,P,311.1stk01,matched,external_ids,0
+003402,,bricklink,P,312.3stk01,matched,external_ids,0
+2071pr0001,,bricklink,P,2071c01pb01,matched,external_ids,0
+3001,,bricklink,P,3001,matched,external_ids,0
+3023,,bricklink,P,3023,matched,external_ids,0
+3626apr0001,,bricklink,P,3626ap01,matched,external_ids,0
+3901,,bricklink,P,3901,matched,external_ids,0
+970c03,,bricklink,P,970c00,matched,external_ids,0
+970c03,,bricklink,P,970c11,matched,external_ids,0
+970c22,,bricklink,P,970c00,matched,external_ids,0
+970c22,,bricklink,P,970c05,matched,external_ids,0
+973c27h01,,bricklink,P,973c001,matched,external_ids,0
+dupupn0105c01,,bricklink,P,x1718c01,matched,external_ids,0
+dupupn0123,,bricklink,P,dupphonec01,matched,external_ids,0

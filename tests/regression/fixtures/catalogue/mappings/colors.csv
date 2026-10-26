@@ -1,0 +1,26 @@
+# mapping_version: 2026.10.23.1
+# dump_date: 2026-10-23
+# external_ids_fetched: 2026-10-23T17:52:26Z
+# source: Rebrickable (https://rebrickable.com), data free to use with acknowledgement
+rb_color_id,rb_name,provider,provider_key,provider_name,inverse_preferred,rb_num_parts
+-1,[Unknown],lego,125,Light Orange,0,17
+-1,[Unknown],lego,158,Tr. Flu. Red,0,17
+0,Black,bricklink,11,Black,0,848422
+0,Black,lego,26,Black,0,848422
+0,Black,lego,342,CONDUCT. BLACK,0,848422
+4,Red,bricklink,5,Red,0,325687
+4,Red,lego,21,Bright red,0,325687
+6,Brown,bricklink,8,Brown,0,9560
+6,Brown,lego,25,Earth Orange,0,9560
+14,Yellow,bricklink,3,Yellow,0,219002
+14,Yellow,lego,24,Bright yellow,0,219002
+15,White,bricklink,1,White,0,525390
+15,White,lego,1,White,0,525390
+148,Pearl Dark Gray,bricklink,77,Pearl Dark Gray,0,534
+148,Pearl Dark Gray,lego,148,Mettalic Dark Grey,0,534
+313,Maersk Blue,bricklink,72,Maersk Blue,0,469
+1051,Pastel Blue,bricklink,72,Maersk Blue,1,734
+1051,Pastel Blue,lego,11,Pastel Blue,0,734
+1103,Pearl Titanium,bricklink,77,Pearl Dark Gray,1,7900
+1103,Pearl Titanium,lego,316,Titanium Metallic,0,7900
+9999,[No Color/Any Color],bricklink,0,(Not Applicable),0,10976

@@ -185,6 +185,31 @@ def _inverse_color(db, provider, key):
     return next(iter(found))
 
 
+def candidate_items(db, provider_kind, provider_key, color_id, provider='bricklink'):
+    """Every item a provider key stands for in a Brick Work colour (the exhaustive inverse of design 3.2), sorted by id.
+
+    Pools the collection's links and the catalogue's (for items not projected, as resolve_inverse does). A link scoped to the colour
+    applies; an unscoped link applies only when its item has no link scoped to that colour (the leg rule). A collection `manual` link
+    decides alone. `color_id` is a colour id, not a provider key, so a colour the provider keys do not know (a local one) still
+    finds the unscoped links. resolve_inverse(exhaustive=True) is this plus the colour lookup and the ambiguity error."""
+    pooled = set()
+    for store in ['main'] + (['catalogue'] if has_catalogue(db) else []):
+        owned = '' if store == 'main' else 'AND item_id NOT IN (SELECT id FROM main.item)'
+        rows = db.execute(f'''SELECT item_id, color_id, status FROM {store}.item_link
+                              WHERE provider=? AND provider_kind=? AND provider_key=? AND status IN ({_IN}) {owned}''',
+                          (provider, provider_kind, provider_key, *CONFIRMED)).fetchall()
+        items = sorted({
+            r['item_id'] for r in rows
+            if r['color_id'] == color_id or (r['color_id'] is None and not db.execute(
+                f'''SELECT 1 FROM {store}.item_link WHERE item_id=? AND provider=? AND color_id=? AND status IN ({_IN})''',
+                (r['item_id'], provider, color_id, *CONFIRMED)).fetchone())})
+        manual = sorted({r['item_id'] for r in rows if r['status'] == 'manual' and r['item_id'] in items}) if store == 'main' else []
+        if manual:
+            return manual
+        pooled.update(items)
+    return sorted(pooled)
+
+
 def resolve_inverse(db, provider_kind, provider_key, provider_color_key, provider='bricklink', *, exhaustive=False):
     """Which (item, colour) does a provider key stand for? The inverse of resolve; None if nothing links to it.
 
@@ -197,7 +222,11 @@ def resolve_inverse(db, provider_kind, provider_key, provider_color_key, provide
     colour = _inverse_color(db, provider, provider_color_key)
     if colour is None:
         return None
-    pooled = set()
+    if exhaustive:
+        items = candidate_items(db, provider_kind, provider_key, colour, provider)
+        if len(items) > 1:
+            raise AmbiguousIdentity(f'{provider} {provider_kind} {provider_key} (colour {provider_color_key}) names items {items}', items)
+        return (items[0], colour) if items else None
     for store in ['main'] + (['catalogue'] if has_catalogue(db) else []):
         owned = '' if store == 'main' else 'AND item_id NOT IN (SELECT id FROM main.item)'
         rows = db.execute(f'''SELECT item_id, color_id, status FROM {store}.item_link
@@ -208,17 +237,8 @@ def resolve_inverse(db, provider_kind, provider_key, provider_color_key, provide
             if r['color_id'] == colour or (r['color_id'] is None and not db.execute(
                 f'''SELECT 1 FROM {store}.item_link WHERE item_id=? AND provider=? AND color_id=? AND status IN ({_IN})''',
                 (r['item_id'], provider, colour, *CONFIRMED)).fetchone())})
-        if exhaustive:
-            # The user's word in the collection decides alone: automatic candidates beside it are no rivals.
-            manual = sorted({r['item_id'] for r in rows if r['status'] == 'manual' and r['item_id'] in items}) if store == 'main' else []
-            if not manual:
-                pooled.update(items)
-                continue
-            items = manual
         if len(items) > 1:
             raise AmbiguousIdentity(f'{provider} {provider_kind} {provider_key} (colour {provider_color_key}) names items {items}', items)
         if items:
             return items[0], colour
-    if len(pooled) > 1:
-        raise AmbiguousIdentity(f'{provider} {provider_kind} {provider_key} (colour {provider_color_key}) names items {sorted(pooled)}', sorted(pooled))
-    return (next(iter(pooled)), colour) if pooled else None
+    return None

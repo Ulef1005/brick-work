@@ -16,6 +16,8 @@ __pycache__/
 *.csv
 # The shipped catalogue mappings (Rebrickable-derived) are source, not scratch data
 !brickwork/catalogue/mappings/*.csv
+# The fixture catalogue's CSVs (real Rebrickable dump rows and mapping rows; the catalogue itself is built at test time)
+!tests/regression/fixtures/catalogue/**/*.csv
 /local/
 settings.local.json
 

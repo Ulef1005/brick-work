@@ -614,3 +614,35 @@ def test_the_candidate_helper_agrees_with_resolve_inverse(world):
         found = identity.candidate_items(db, 'P', key, identity._inverse_color(db, 'bricklink', str(bl)))
         resolved = identity.resolve_inverse(db, 'P', key, str(bl), exhaustive=True)
         assert found == ([resolved[0]] if resolved else [])
+
+
+# ---------- rule 6: type_crossed (a part BrickLink files as gear, book, ...) ----------
+
+def test_a_part_filed_as_gear_is_crossed_to_the_part_in_the_sets_list(world):
+    """BrickLink files some parts of a set under another type (G for the Chima cards); the catalogue links them under P. A G row in a
+    part table is looked up as P, in the holder's catalogue list: one hit carries the line as that part, and no local gear item is made."""
+    s, db = world
+    c = s.copy('2070-1')
+    s.part(c, 'G', '2071c01pb01', None)
+    r = mint(s.db, db)
+    t = r.target('G', '2071c01pb01', None, holder=('S', '2070-1', None))
+    assert t.item_id == part(db, '2071pr0001') and t.color_id == 1
+    d = r.items[('G', '2071c01pb01', None)]
+    assert (d.rule, d.kind, d.crossed) == (6, 'part', True) and d.holders[('S', '2070-1', None)].rule == 6
+    assert r.local_items == []                                            # no local gear item for a key whose only rows were carried
+    header, rows = r.crossed_rows()
+    assert [(x[0], x[1], x[3], x[5]) for x in rows] == [('G', '2071c01pb01', 'S:2070-1', part(db, '2071pr0001'))]
+    assert r.counts()['type_crossed holders'] == 1 and r.check_injective() == []
+
+
+def test_a_crossed_line_without_context_support_stays_a_gear_item(world):
+    s, db = world
+    c = s.copy('2070-1')
+    s.part(c, 'G', '3001', None)                                          # P 3001 exists, but 2070-1's list does not hold it
+    r = mint(s.db, db)
+    d = r.items[('G', '3001', None)]
+    t = r.target('G', '3001', None, holder=('S', '2070-1', None))
+    assert d.holders[('S', '2070-1', None)].rule == 5 and t.item_id >= LOCAL_BASE
+    [item] = r.local_items
+    assert (item.kind, item.born_provider, item.born_namespace, item.born_key) == ('gear', 'bricklink', 'G', '3001')
+    assert r.counts()['type_crossed holders without context support'] == 1

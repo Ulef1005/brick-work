@@ -132,7 +132,7 @@ class ItemDecision:
     row lands on the key-level answer."""
     key: tuple
     kind: str
-    rule: int                                              # 1, 3, 4 (several candidates: decided per holder) or 5 (none)
+    rule: int                                              # 1, 3, 4 (several candidates: decided per holder), 5 (none) or 6 (type_crossed)
     item_id: int = None                                    # catalogue id, or the planned local id
     origin: str = 'catalogue'
     candidates: tuple = ()                                 # item ids found by rule 2
@@ -143,7 +143,8 @@ class ItemDecision:
     plan_key: tuple = None                                 # the local item behind a local target
     colour_id: int = None
     free_rows: int = 0                                     # rows without a holder
-    holders: dict = field(default_factory=dict)            # holder mint key -> Outcome (rule 4 keys only)
+    holders: dict = field(default_factory=dict)            # holder mint key -> Outcome (rule 4 and 6 keys)
+    crossed: bool = False                                  # rule 6: a G/B/C/I/O key in a part table, looked up as BrickLink type P
 
 
 @dataclass
@@ -167,6 +168,7 @@ class Target:
 
 
 # Tables whose rows have a holder (the set or figure whose list is the context) per kind of key; every other table is context-free.
+PART_TABLES = ('copy_parts', 'loose_minifig_parts')       # tables whose rows are parts of a set or figure
 HOLDER_TABLES = {'part': ('copy_parts', 'loose_minifig_parts'), 'minifigure': ('copy_minifigs',)}
 
 
@@ -222,7 +224,7 @@ class MintResult:
         """[(sorted keys)] of every 4.0 target (item, colour) that two or more different 3.3 keys land on, any holder."""
         groups = defaultdict(set)
         for key, d in self.items.items():
-            colour = d.colour_id if key[0] in ('P', '?P') else None
+            colour = d.colour_id if d.kind == 'part' else None
             for o in [*d.holders.values(), *([d] if d.item_id is not None else [])]:
                 groups[(o.item_id, colour)].add(key)
         return [tuple(sorted(keys, key=_key_sort)) for _, keys in sorted(groups.items(), key=lambda g: str(g[0])) if len(keys) > 1]
@@ -241,7 +243,7 @@ class MintResult:
         resolved_h = sum(1 for o in holders if o.rule == 4)
         per_key = Counter('all resolved' if all(o.rule == 4 for o in d.holders.values()) and d.holders else
                           'none resolved' if not any(o.rule == 4 for o in d.holders.values()) else 'some resolved' for d in multi)
-        out = {'keys': len(self.items), **{f'rule {r}': by_rule.get(r, 0) for r in (1, 3, 4, 5)},
+        out = {'keys': len(self.items), **{f'rule {r}': by_rule.get(r, 0) for r in (1, 3, 4, 5, 6)},
                'placeholders resolved': sum(1 for d in placeholders if d.origin == 'catalogue'),
                'placeholders local': sum(1 for d in placeholders if d.origin == 'local'),
                'rule 4 holders': len(holders), 'rule 4 holders resolved': resolved_h, 'rule 4 holders tied': len(holders) - resolved_h,
@@ -250,6 +252,8 @@ class MintResult:
                'rule 4 keys with context-free rows': sum(1 for d in multi if d.free_rows),
                'collisions': len(self.collisions), 'unresolved collisions': len(self.unresolved),
                'local items': len(self.local_items), 'local colours': len(self.local_colours), 'colours': len(self.colours)}
+        out['type_crossed holders'] = sum(1 for d in self.items.values() if d.crossed for o in d.holders.values() if o.rule == 6)
+        out['type_crossed holders without context support'] = sum(1 for d in self.items.values() if d.crossed for o in d.holders.values() if o.rule != 6)
         for reason, n in sorted(Counter(r for i in self.local_items for r in i.reasons).items()):
             out[f'local items ({reason})'] = n         # an item can carry several reasons: one BrickLink number, several colours
         return out
@@ -272,6 +276,15 @@ class MintResult:
             if not d.holders or d.item_id is not None:
                 rows.append((key[0], key[1], blank, '', d.kind, d.free_rows if d.holders else d.rows, ' '.join(d.tables),
                              5 if d.holders else d.rule, d.collision or '', d.item_id, d.origin, colour, cands, d.note))
+        return header, rows
+
+    def crossed_rows(self):
+        """Rule 6 (type_crossed): a part-table row filed under BrickLink type G/B/C/I/O, carried as the Rebrickable part of the same number
+        that the holder's catalogue list holds. One row per (key, holder)."""
+        header = ('item_type', 'item_no', 'bl_color_id', 'holder', 'rows', 'part_item_id', 'part')
+        rows = [(*key[:2], '' if key[2] is None else key[2], holder_label(h), o.rows, o.item_id, self.names.get(o.item_id, ''))
+                for key, d in sorted(self.items.items(), key=lambda kv: _key_sort(kv[0])) if d.crossed
+                for h, o in sorted(d.holders.items(), key=lambda kv: holder_label(kv[0])) if o.rule == 6]
         return header, rows
 
     def collision_rows(self):
@@ -472,6 +485,14 @@ def mint(src, db):
                 item.provider_status.add(('bricklink', 'to_check', 'migration'))
                 d.origin, d.plan_key = 'local', item.plan_key
             continue
+        if item_type not in ('P', 'M') and set(tables) <= set(PART_TABLES):
+            # rule 6: BrickLink files some parts of a set as gear/book/...; the catalogue has them as parts linked under type P
+            crossed = tuple(_candidates(db, cat, 'P', item_no, 'part', result.colour_for(color)))
+            if crossed:
+                d.kind, d.rule, d.candidates, d.crossed = 'part', 6, crossed, True
+                d.free_rows = rows - sum(by_table.get(t, 0) for t in HOLDER_TABLES['part'])
+                pending.append(d)
+                continue
         d.candidates = tuple(_candidates(db, cat, item_type, item_no, kind, result.colour_for(color)))
         if len(d.candidates) == 1:                         # rule 3
             d.rule, d.item_id = 3, d.candidates[0]
@@ -486,13 +507,22 @@ def mint(src, db):
         # Rule 4 per holder: exactly one candidate in the holder's context -> that item for the rows under it; else the local item.
         for holder, n in contexts.holders(d).items():
             found = [c for c in d.candidates if c in contexts.items_of(d, holder)]
-            if len(found) == 1:
+            if len(found) == 1 and d.crossed:
+                d.holders[holder] = Outcome(6, n, found[0], note=f'type_crossed: P {d.key[1]} in the context of {holder_label(holder)}')
+            elif d.crossed:
+                o = d.holders[holder] = Outcome(5, n, note=f'type_crossed: {len(found)} of {len(d.candidates)} P candidates in the context of {holder_label(holder)}')
+                item = bl_born(d.key[0], d.key[1], 'no_context')
+                o.origin, o.plan_key, o.item_id = 'local', item.plan_key, None
+            elif len(found) == 1:
                 d.holders[holder] = Outcome(4, n, found[0], note='context: ' + holder_label(holder))
             else:
                 o = d.holders[holder] = Outcome(5, n, note=f'{len(d.candidates)} candidates, {len(found)} in the context of {holder_label(holder)}')
                 land_local(o, d)
         d.origin, d.item_id = 'local', None                # the key-level answer, for rows without a holder
-        if d.free_rows:
+        if d.free_rows and d.crossed:
+            item = bl_born(d.key[0], d.key[1], 'no_context')
+            d.origin, d.plan_key, d.item_id = 'local', item.plan_key, None
+        elif d.free_rows:
             land_local(d, d)
             d.note = f'{len(d.candidates)} candidates, no context for the {d.free_rows} row(s) without a holder'
         else:
@@ -510,7 +540,7 @@ def mint(src, db):
     groups = defaultdict(list)
     for key, holder in entries:
         o = outcome(key, holder)
-        groups[(o.item_id if o.origin == 'catalogue' else o.plan_key, (result.items[key].colour_id if key[0] in ('P', '?P') else None))].append((key, holder))
+        groups[(o.item_id if o.origin == 'catalogue' else o.plan_key, (result.items[key].colour_id if result.items[key].kind == 'part' else None))].append((key, holder))
     for (target, colour), members in sorted(groups.items(), key=lambda g: _key_sort(min((m[0] for m in g[1]), key=_key_sort))):
         keys = sorted({k for k, _ in members}, key=_key_sort)
         if len(keys) < 2:

@@ -563,7 +563,8 @@ CREATE TABLE setting(key TEXT PRIMARY KEY NOT NULL, value TEXT) STRICT;
 -- Preferences only (design § 5.2): bricklink_region, bricklink_currency, incomplete_discount_pct,
 -- repair_shipping, repair_fees, repair_min_order, repair_use_loose_stock, retail_country,
 -- display_currency, source_priority (incl. the picture source order, Q17), import_order:<kind>,
--- prefer_bricklink_inventory ('true'/'false', Q13), maintenance:database_check.
+-- prefer_bricklink_inventory ('true'/'false', Q13). Also maintenance:database_check, the stored result of
+-- the last database check (not a preference, not migrated).
 
 CREATE TABLE job(
  id INTEGER PRIMARY KEY, source TEXT NOT NULL REFERENCES source(id), kind TEXT NOT NULL,

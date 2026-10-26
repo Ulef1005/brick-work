@@ -454,7 +454,7 @@ Words are stored and served:
 |---|---|
 | `source` | Seeded rows include `import`, the pipeline's job source, which `pipeline.py:106` inserts at runtime today. Its absence made the journey's job insert fail (finding 8). |
 | `source_budget` | API call counters per source and day. No row for the dump download (Q14: tell, don't block). |
-| `setting` | Preferences only: `bricklink_region`, `bricklink_currency`, `incomplete_discount_pct`, `repair_shipping`, `repair_fees`, `repair_min_order`, `repair_use_loose_stock` (`price_settings.py:9-11`), `retail_country`, `display_currency`, `source_priority` (including the picture source order, Q17), `import_order:<kind>`, the new `prefer_bricklink_inventory` (Q13), and `maintenance:database_check`. |
+| `setting` | Preferences only: `bricklink_region`, `bricklink_currency`, `incomplete_discount_pct`, `repair_shipping`, `repair_fees`, `repair_min_order`, `repair_use_loose_stock` (`price_settings.py:9-11`), `retail_country`, `display_currency`, `source_priority` (including the picture source order, Q17), `import_order:<kind>`, the new `prefer_bricklink_inventory` (Q13). Besides the preferences it holds `maintenance:database_check`, the stored result of the last database check (not a preference; not migrated, § 8.10). |
 | `sync_state` | `link_json` (migrated, decision D); baseline and last pull/send start empty. |
 | `source_record` | Raw API replies only (decision 9). The catalogue builds hold digests of their input files in `build.files_json`. Unique over `(source, kind, key, digest)`, so two replies for one key both stay (two BrickLink fetches). |
 | `event` | Starts fresh at 4.0. Pre-4.0 events stay in the 3.3 file (scope). The initial design's `schema_generation` is dropped. |
@@ -744,6 +744,7 @@ The digest of `summary.md` and `proof.json` goes into `meta.migrated_from` and t
 - **`import_order:<type>`** → `import_order:<kind>`, with BrickLink type codes translated to kinds.
 - **`source_priority`:** the `pictures` order (Q17), `metadata` and `market_price` are carried, with type codes translated. The `identity`, `inventory` and `matching` steps change meaning in 4.0 (no `bricklink:local` identity, no `bricklink:subsets` default), so they take 4.0 defaults. Any non-default 3.3 value there is listed.
 - **`prefer_bricklink_inventory`** starts `false`.
+- **`maintenance:database_check`** is not carried: it is the stored result of the last check of the 3.3 file, which does not describe the new one. The 4.0 app writes its own on its first check (Ulf, 2026-10-26).
 
 ### 8.11 Fixtures and what to measure on prod before cutover
 

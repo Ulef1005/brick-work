@@ -40,6 +40,11 @@ NAMESPACE = {'set': 'sets', 'part': 'parts', 'minifigure': 'minifigs'}
 NO_COLOUR = 1                                              # "no colour" (design 3.7)
 _IN = ','.join('?' * len(CONFIRMED))
 PLACEHOLDER = re.compile(r'rebrickable:(.+)')
+COLOURLESS = ('S', 'M', '?S', '?M')                       # sets and figures have no colour: BrickLink 0 ("not applicable") is NULL
+
+
+def _key_colour(item_type, color_id):
+    return None if item_type in COLOURLESS else color_id
 
 # (table, SELECT of type, number, colour, rows; the kind a `?` placeholder in it stands for, None = decided by the number)
 SWEEP = (
@@ -199,14 +204,15 @@ class MintResult:
     @staticmethod
     def key_of(item_type, item_no, color_id=None, kind=None):
         """The mint key of a 3.3 row's item; `kind` ('set', 'part', 'minifigure') is required for a `?` placeholder."""
-        return ('?' + KIND_LETTER[kind] if item_type == '?' else item_type, item_no, color_id)
+        item_type = '?' + KIND_LETTER[kind] if item_type == '?' else item_type
+        return (item_type, item_no, _key_colour(item_type, color_id))
 
     def target(self, item_type, item_no, color_id=None, kind=None, holder=None):
         """The 4.0 (item, colour) of a 3.3 row. `holder` is the mint key (see `key_of`) of the set or figure holding the row: the
         copy's set for a copy line or a figure row, the loose figure for its parts, and for a part of a figure inside a copy the pair
         `(figure mint key, set mint key)`, because the figure's own outcome can differ per set. It matters only for a key with several
         candidates (rule 4) and is None for a row with no holder (loose stock, wishes, prices...)."""
-        d = self.items[self.key_of(item_type, item_no, color_id, kind)]
+        d = self.items[key := self.key_of(item_type, item_no, color_id, kind)]
         if d.holders and holder is not None:
             if holder not in d.holders:
                 raise LookupError(f'{d.key} was not seen under holder {holder}')
@@ -215,7 +221,7 @@ class MintResult:
             raise LookupError(f'{d.key} has several candidates and every row of it has a holder: pass the holder')
         else:
             o = d
-        return Target(o.item_id, self.colour_for(color_id))
+        return Target(o.item_id, self.colour_for(key[2]))
 
     def colour_for(self, bl_color):
         return self.colours[bl_color].color_id
@@ -354,7 +360,7 @@ def _sweep(src):
         for item_type, item_no, color, n in src.execute(sql):
             if item_type == '?':
                 item_type = '?' + KIND_LETTER[kind or _kind_by_number(item_no)]
-            row = refs.setdefault((item_type, item_no, color), [0, [], {}])
+            row = refs.setdefault((item_type, item_no, _key_colour(item_type, color)), [0, [], {}])
             row[0] += n
             if table not in row[1]:
                 row[1].append(table)
@@ -657,17 +663,19 @@ class _Contexts:
             return self._holders[d.key]
         item_type, item_no, color = d.key
         raw = item_type[0] if item_type.startswith('?') else item_type
+        # a colourless key (a set line crossed by rule 6) stands for the rows with colour NULL and 0 alike (see _key_colour)
+        same_colour = 'coalesce(p.color_id, 0) = coalesce(?, 0)' if item_type in COLOURLESS else 'p.color_id IS ?'
         out = Counter()
         if d.kind == 'part':
             for t, n, pt, pn, k in self.src.execute(
                     'SELECT c.item_type, c.set_no, p.parent_minifig_type, p.parent_minifig, count(*) FROM copy_parts p JOIN copies c '
-                    'ON c.id=p.copy_id WHERE p.item_type=? AND p.item_no=? AND p.color_id IS ? GROUP BY 1, 2, 3, 4', (raw, item_no, color)):
+                    'ON c.id=p.copy_id WHERE p.item_type=? AND p.item_no=? AND ' + same_colour + ' GROUP BY 1, 2, 3, 4', (raw, item_no, color)):
                 set_key = (_typed(t, n, 'S'), n, None)
                 out[((_typed(pt, pn, 'M'), pn, None), set_key) if pn is not None else set_key] += k
             for t, n, c, k in self.src.execute(
                     'SELECT s.item_type, s.item_no, s.color_id, count(*) FROM loose_minifig_parts p JOIN loose_stock s ON s.id=p.stock_id '
-                    'WHERE p.item_type=? AND p.item_no=? AND p.color_id IS ? GROUP BY 1, 2, 3', (raw, item_no, color)):
-                out[(_typed(t, n, 'M'), n, c)] += k
+                    'WHERE p.item_type=? AND p.item_no=? AND ' + same_colour + ' GROUP BY 1, 2, 3', (raw, item_no, color)):
+                out[(_typed(t, n, 'M'), n, _key_colour(_typed(t, n, 'M'), c))] += k
         elif d.kind == 'minifigure':
             for t, n, k in self.src.execute('SELECT c.item_type, c.set_no, count(*) FROM copy_minifigs m JOIN copies c ON c.id=m.copy_id '
                                             'WHERE m.item_type=? AND m.minifig_no=? GROUP BY 1, 2', (raw, item_no)):

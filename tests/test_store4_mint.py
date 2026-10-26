@@ -646,3 +646,32 @@ def test_a_crossed_line_without_context_support_stays_a_gear_item(world):
     [item] = r.local_items
     assert (item.kind, item.born_provider, item.born_namespace, item.born_key) == ('gear', 'bricklink', 'G', '3001')
     assert r.counts()['type_crossed holders without context support'] == 1
+
+
+def test_a_figure_or_set_key_has_no_colour_brick_link_0_is_null(world):
+    """Prod rehearsal (M.7d): a BrickLink figure line in copy_parts carries colour 0 ("not applicable") beside the copy_minifigs row of
+    the same figure with NULL. They are one BrickLink item, so one key: no collision, no second local figure."""
+    s, db = world
+    c = s.copy('2070-1')
+    s.part(c, 'M', 'syn-fig-1', 0)
+    s.figure(c, 'M', 'syn-fig-1')
+    s.stock('M', 'syn-fig-1', 0)
+    r = mint(s.db, db)
+    assert [k for k in r.items if k[1] == 'syn-fig-1'] == [('M', 'syn-fig-1', None)]
+    assert r.collisions == [] and r.unresolved == []
+    assert r.target('M', 'syn-fig-1', 0) == r.target('M', 'syn-fig-1', None)
+    assert r.key_of('M', 'syn-fig-1', 0) == ('M', 'syn-fig-1', None) and r.key_of('P', '3001', 0) == ('P', '3001', 0)
+
+
+def test_a_crossed_set_line_with_colour_0_keeps_its_holder(world):
+    """Codex on the colour fix: a set key crossed by rule 6 is colourless, but its rows carry 0 or NULL; both find their holder."""
+    s, db = world
+    c = s.copy('2070-1')
+    s.part(c, 'S', '2071c01pb01', 0)
+    s.part(s.copy('2070-1'), 'S', '2071c01pb01', None)
+    r = mint(s.db, db)
+    d = r.items[('S', '2071c01pb01', None)]
+    set_key = r.key_of('S', '2070-1', None, 'set')
+    assert d.crossed and set_key in d.holders
+    assert r.target('S', '2071c01pb01', 0, holder=set_key) == r.target('S', '2071c01pb01', None, holder=set_key)
+    assert d.holders[set_key].rows == 2

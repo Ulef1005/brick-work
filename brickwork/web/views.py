@@ -1214,6 +1214,7 @@ def bw_collection(kind):
     from .admin_ops import brickwork_path
     from ..core.admin import database
     from ..core import collection
+    from ..core.connect import NoCatalogue
     from . import setup_state
     kind = kind.upper()
     if kind not in collection.TYPES:
@@ -1221,9 +1222,12 @@ def bw_collection(kind):
     error = None
     rows, choices = [], dict(storages=[], places=[], lots=[], flags=[], colours=[])
     try:
-        with database(brickwork_path(), read_only=True) as db:
-            rows = collection.listing(db, kind)
-            choices = collection.options(db)
+        if brickwork_path().is_file():                                 # no file yet: the first-run page, as with no catalogue
+            with database(brickwork_path(), read_only=True) as db:
+                rows = collection.listing(db, kind)
+                choices = collection.options(db)
+    except NoCatalogue:
+        pass                                                           # first run: the page says how to get a catalogue
     except (sqlite3.Error, OSError, ValueError) as exc:
         error = public(exc, 'Brick Work database is not available. Check BW_DB_PATH and try again.')
     response = current_app.make_response(render_template('web/toni/web/bw_collection.html',
@@ -1240,30 +1244,72 @@ def bw_collection_editable():
     return not read_only() and LoginManager.is_authenticated()
 
 
-@web_page.get('/collection/item/<kind>/<path:number>')
+@web_page.get('/collection/item/<int:item_id>')
 @login_required
-def bw_collection_item(kind, number):
+def bw_collection_item(item_id):
     from .admin_ops import brickwork_path
     from ..core.admin import database
     from ..core import collection
-    kind = kind.upper()
+    from ..store4.connect import has_catalogue
     try:
         colour_arg = request.args.get('colour')
-        colour = int(colour_arg) if colour_arg and colour_arg != 'none' else None
         with database(brickwork_path(), read_only=True) as db:
-            colour_choices = collection.part_colours(db, number) if kind=='P' and not colour_arg else []
-            if len(colour_choices)==1:
+            moved = db.execute('SELECT new_id FROM item_redirect WHERE old_id=?', (item_id,)).fetchone()
+            if moved:                                                      # a merged item answers with the item it was merged into (design 3.6)
                 from .ui import passthrough_args
-                args = passthrough_args('kind', 'number')
-                args['colour'] = colour_choices[0]['color_id'] if colour_choices[0]['color_id'] is not None else 'none'
-                return redirect(url_for('web.bw_collection_item', kind=kind, number=number, **args))
-            detail = collection.detail(db, kind, number, colour=colour,
-                copy_id=request.args.get('copy'), stock_id=request.args.get('stock'))
-            detail['colour_choices'] = colour_choices if len(colour_choices)>1 else []
+                return redirect(url_for('web.bw_collection_item', item_id=moved[0], **passthrough_args('item_id')), 301)
+            try:
+                colour = (collection.NO_COLOUR if colour_arg == 'none' else int(colour_arg)) if colour_arg else None   # 3.3's "no colour" is colour 1
+            except ValueError:
+                abort(404, 'Colour is unavailable')
+            row = db.execute('SELECT kind FROM item WHERE id=?', (item_id,)).fetchone() or (
+                db.execute('SELECT kind FROM catalogue.item WHERE id=?', (item_id,)).fetchone() if has_catalogue(db) else None)
+            if row is None:
+                abort(404, 'Item is unavailable')
+            letter = collection.type_of(row['kind'])
+            g.bw_nav_type = letter
+            colour_choices = collection.part_colours(db, item_id) if row['kind'] == 'part' and colour is None else []
+            if len(colour_choices) == 1:
+                from .ui import passthrough_args
+                args = passthrough_args('item_id')
+                args['colour'] = colour_choices[0]['color_id']
+                return redirect(url_for('web.bw_collection_item', item_id=item_id, **args))
+            detail = collection.detail(db, item_id, colour=colour, copy_id=request.args.get('copy'), stock_id=request.args.get('stock'))
+            detail['colour_choices'] = colour_choices if len(colour_choices) > 1 else []
             choices = collection.options(db)
     except ValueError as exc:
         abort(404, str(exc))
-    return bw_collection_detail_response(detail, choices, collection.TYPES.get(kind, 'Collection'))
+    return bw_collection_detail_response(detail, choices, collection.TYPES.get(letter, 'Collection'))
+
+
+@web_page.get('/collection/item/<kind>/<path:number>')
+@login_required
+def bw_collection_item_by_number(kind, number):
+    """Number URLs of earlier versions (and a pasted number): the item the number names, through `core.items.find`. The colour of
+    a part is a BrickLink colour number there, and means the colour that number stands for."""
+    from .admin_ops import brickwork_path
+    from .ui import passthrough_args
+    from ..core.admin import database
+    from ..core import items
+    from ..store4 import identity
+    kind_word = items.kind_of_type(kind.upper()) if len(kind) == 1 and kind.upper() in items.KIND_TYPE.values() else kind if kind in items.KINDS else None
+    if kind_word is None:
+        abort(404, 'Item is unavailable')
+    args = passthrough_args('kind', 'number', 'item_id')            # item_id is the destination's own parameter
+    with database(brickwork_path(), read_only=True) as db:
+        found = items.find(db, kind_word, number, limit=1)
+        if not found:
+            abort(404, 'Item is unavailable')
+        item_id = found[0]['item_id']
+        if kind_word == 'part' and 'colour' in args:
+            old = args.pop('colour')[0]
+            try:
+                resolved = identity.resolve_inverse(db, items.type_of_kind(kind_word), number, None if old == 'none' else str(old))
+            except Exception:                                              # an ambiguous or unknown colour: the part, and its colour chooser
+                resolved = None
+            if resolved:
+                item_id, args['colour'] = resolved[0], resolved[1]
+    return redirect(url_for('web.bw_collection_item', item_id=item_id, **args), 301)
 
 
 def bw_collection_detail_response(detail, choices, title):
@@ -1294,18 +1340,20 @@ def bw_collection_wishes():
     return response
 
 
-@web_page.get('/collection/wishes/<int:identifier>')
+@web_page.get('/collection/wishes/<identifier>')
 @login_required
 def bw_collection_wish(identifier):
     from .admin_ops import brickwork_path
     from ..core.admin import database
     from ..core import collection
     with database(brickwork_path(), read_only=True) as db:
-        wish=db.execute('SELECT * FROM wishlist WHERE id=? AND archived_at IS NULL',(identifier,)).fetchone()
+        wish = db.execute('SELECT * FROM wish WHERE id=? AND archived_at IS NULL', (identifier,)).fetchone()
         if not wish: abort(404)
-        detail=collection.detail(db,wish['item_type'],wish['item_no'],colour=wish['color_id'],wish_id=identifier)
-        choices=collection.options(db, include_wishlists=True)
-    return bw_collection_detail_response(detail,choices,'Wishlist')
+        try:
+            detail = collection.detail(db, wish['item_id'], colour=wish['color_id'], wish_id=identifier)
+        except ValueError as exc: abort(404, str(exc))
+        choices = collection.options(db, include_wishlists=True)
+    return bw_collection_detail_response(detail, choices, 'Wishlist')
 
 
 @web_page.get('/collection/lots/<identifier>')
@@ -1365,7 +1413,7 @@ def bw_collection_write(action):
                         result['merged_ids'] = [r['id'] for r in merged]
                         if len(merged)==1:
                             r=merged[0]
-                            result['url'] = url_for('web.bw_collection_item',kind=r['item_type'],number=r['item_no'],colour=r['color_id'],stock=r['id'])
+                            result['url'] = url_for('web.bw_collection_item',item_id=r['item_id'],stock=r['id'],**({'colour':r['color_id']} if r['color_id'] is not None else {}))
             elif action=='wish':
                 event=collection.want_placeholder(db,data.get('item_no'))
                 message='Added to wishlist'
@@ -1410,11 +1458,11 @@ def bw_collection_jump():
         for r in result['results']:
             kind=r['item_type']
             row=dict(kind='wanted' if r.get('entity')=='wish' else {'S':'set','M':'minifigure','P':'part'}.get(kind,'item'),
-                item_type=kind,type_label=collection.TYPES[kind],number=r['item_no'],name=r['name'],
+                item_type=kind,type_label=collection.TYPES[kind],number=r['number_text'] or r['name'],name=r['name'],
                 quantity=r.get('quantity'),color=r.get('color_id'),color_name=r['color_name'],
                 image=url_for('web.bw_image',image_id=r['image'],w=320) if r['image'] else None)
-            params=dict(kind=kind,number=r['item_no'])
-            if r.get('color_id') is not None: params['colour']=r['color_id']
+            params=dict(item_id=r['item_id'])
+            if r.get('color_id') is not None and kind=='P': params['colour']=r['color_id']
             if row['kind']=='wanted': row['url']=url_for('web.bw_collection_wish',identifier=r['id'])
             elif row['kind']=='set':
                 row['copies']=[dict(id=c['id'],condition=c['condition'],completeness=c['completeness'],

@@ -1,4 +1,4 @@
-"""Display-only selection and history from recorded v3 observations."""
+"""Display-only selection and history from recorded price observations (conditions are words, design 5.1)."""
 import calendar
 import json
 from functools import lru_cache
@@ -9,7 +9,8 @@ from .sources.base import now
 
 
 def priority(db):
-    row = db.execute("SELECT value FROM settings WHERE key='source_priority'").fetchone()
+    """The market-price source order per kind (`setting.source_priority`); a kind is a kind word, `*` is every other."""
+    row = db.execute("SELECT value FROM setting WHERE key='source_priority'").fetchone()
     return json.loads(row[0]).get('market_price', {}) if row else {}
 
 
@@ -48,11 +49,11 @@ def choose(rows, kind, priorities, condition=None, *, prefer_sold=False):
 
 def condition_rows(rows, kind, priorities):
     market = [r for r in rows if r['guide'] in ('sold', 'stock') and r.get('slot') != 'boxed']
-    return [p for condition in ('U', 'N') if (p := choose(market, kind, priorities, condition, prefer_sold=True))]
+    return [p for condition in ('used', 'new') if (p := choose(market, kind, priorities, condition, prefer_sold=True))]
 
 
 def history(rows, selected):
-    if not selected or selected['condition'] != 'U' or selected['guide'] != 'sold':
+    if not selected or selected['condition'] != 'used' or selected['guide'] != 'sold':
         return None
     end = now()
     month = (end.year * 12 + end.month - 1) - 6

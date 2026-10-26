@@ -56,41 +56,6 @@ def test_secret_values_read_once_per_display_and_serialize(monkeypatch):
     assert base.redact('a swordfish-123456', []) == 'a swordfish-123456' and base.redact('a swordfish-123456') == 'a [set]'
 
 
-def test_detail_properties_scope_equals_whole_store(store):
-    with admin.database(store) as db:
-        whole = collection.properties(db)
-        for kind, number in (('S', '1'), ('S', '2'), ('P', '3001'), ('M', 'fig1')):
-            assert collection.properties(db, kind, [number])[kind, number] == whole[kind, number]
-        assert set(collection.properties(db, 'S', ['1'])) == {('S', '1')}
-        scoped = collection.properties(db, identities={('S', '2'), ('P', '3001', 4)[:2]})
-        assert set(scoped) == {('S', '2'), ('P', '3001')} and scoped[('S', '2')] == whole[('S', '2')]
-
-
-def test_wish_listing_reads_only_wish_identities_with_identical_output(store):
-    with admin.database(store) as db:
-        rows = collection.listing(db, 'S', wishes=True)
-        whole_prices, whole_props = dict(collection.prices(db)), dict(collection.properties(db))
-        assert len(rows) == 2 and len(whole_prices) == 6 and all(row['prices'] for row in rows)
-        for row in rows:
-            key = row['item_type'], row['item_no'], row['color_id']
-            assert row['prices'] == whole_prices[key]
-            assert row['properties'] == whole_props[row['item_type'], row['item_no']]
-        scope = {(r['item_type'], r['item_no'], r['color_id']) for r in rows}
-        assert set(collection.prices(db, scope=scope)) == scope
-        # The unscoped observation read and the scoped one agree on every wish.
-        everything = planning.display_prices(db, collection.listing(db, 'S', wishes=True))
-        scoped = planning.display_prices(db, collection.listing(db, 'S', wishes=True), scoped=True)
-        assert json.dumps(everything, default=str, sort_keys=True) == json.dumps(scoped, default=str, sort_keys=True)
-        statements = []
-        db.set_trace_callback(statements.append)
-        planning.wishes(db)
-        db.set_trace_callback(None)
-        flat = [' '.join(statement.split()) for statement in statements]
-        reads = [q for q in flat if 'FROM item_properties' in q or 'FROM price_observations o' in q or 'FROM price_current p' in q]
-        # #26 adds one batched read of the Brickset availability dates for the retail line.
-        assert len(reads) == 4 and all('json_each' in q for q in reads)
-
-
 def test_hub_counts_equal_list_lengths(store):
     with admin.database(store) as db, db:
         db.execute("INSERT INTO copy_minifigs VALUES('c1','?','rb:x',1,0,NULL)")

@@ -6,7 +6,9 @@ Brick Work keeps apart what a thing *is* and the thing *you own*. These are the 
 
 ## Catalogue item
 
-A catalogue item is a thing that exists in the Lego world: a set, a minifigure, a part, an instruction booklet, a box, gear, a book or a catalog. It has a number, a name and, for sets and figures, an inventory of what goes in it. A catalogue item says nothing about whether you own it. (How items are identified across BrickLink, Rebrickable and Brickset is being redesigned and is not described here.)
+A catalogue item is a thing that exists in the Lego world: a set, a minifigure, a part, an instruction booklet, a box, gear, a book or a catalog. It has a number, a name and, for sets and figures, an inventory of what goes in it. A catalogue item says nothing about whether you own it.
+
+On screen an item shows its Rebrickable number first, and its BrickLink number beside it where the two differ (`970c03 · BrickLink 970c11`). An item that exists only on BrickLink, because you added it by its BrickLink number, shows that number marked *BrickLink*. An item with no number from any catalogue, such as a part you added from a photo before it was identified, is *Unidentified*: it shows its name, and it works like any other item in your lists, copies and stock. Search takes either number.
 
 ## Set and copy
 

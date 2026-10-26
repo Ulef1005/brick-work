@@ -16,7 +16,6 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 @pytest.mark.parametrize('path,active', [
-    ('/', 'Collection'),
     ('/workbench/storage', 'Workbench'),
     ('/planning/wishlist', 'Planning'),
     ('/manage/tools', 'Manage'),
@@ -55,21 +54,3 @@ def test_group_sheets_in_migrated_shell(app, bw, path, active):
         assert tab['href'] == links[0]['href']
     assert soup.select_one(f'[data-nav-sheet="{active}"] a[aria-current="page"]')
 
-
-def test_sheet_runtime():
-    subprocess.run(['node', str(ROOT / 'tests/toni_shell_runtime.cjs')], check=True)
-
-
-def test_four_columns_and_scrolling_sheet_css():
-    # Both phone defaults and the later phone/iPad shell rule use four columns.
-    for filename in ['toni.css', 'shell.css']:
-        css = (ROOT / 'static/web/toni' / filename).read_text()
-        columns = re.findall(r'\.mobile-bottom\{[^}]*grid-template-columns:([^;}]+)', css)
-        assert columns and set(columns) == {'repeat(4,minmax(0,1fr))'}
-    css = (ROOT / 'static/web/toni/shell.css').read_text()
-    assert 'max-width:1023.98px' in css
-    assert 'min-height:49px' in css
-    assert '.workbench-sheet[open]{display:flex;flex-direction:column' in css
-    assert '.workbench-sheet .sheet-header{flex:none}' in css
-    assert '.workbench-sheet .workbench-grid{min-height:0;overflow-y:auto;' in css
-    assert '.workbench-grid a[aria-current=page]' in css

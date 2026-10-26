@@ -12,6 +12,7 @@ Every screen and writer that used to say `(item_type, item_no)` says an item id 
 An item is read from the collection when it is projected there, else from the catalogue. Nothing here writes except `ensure`, which writes
 inside the caller's transaction (see `store4.identity.project`)."""
 from dataclasses import asdict, dataclass
+import json
 import sqlite3
 
 from ..store4 import identity
@@ -115,16 +116,78 @@ class Label:
         return asdict(self) | {'text': self.text}
 
 
+def _label(row, found, color_id):
+    number, source = row['born_key'], row['born_provider']
+    also = found[1] if found and source == REBRICKABLE and found[1] != number else None
+    return Label(item_id=row['id'], kind=row['kind'], name=row['name'], number=number, source=source, also=also,
+                 bricklink=found, unidentified=number is None, color_id=color_id)
+
+
 def label(db, item_id, color_id=None):
     """What to show for an item (and colour). Raises NotFound for an id neither file knows."""
     row, store = _row(db, item_id)
     if row is None:
         raise errors.NotFound(f'No item {item_id}')
-    found = _resolve(db, row, store, color_id)
-    number, source = row['born_key'], row['born_provider']
-    also = found[1] if found and source == REBRICKABLE and found[1] != number else None
-    return Label(item_id=row['id'], kind=row['kind'], name=row['name'], number=number, source=source, also=also,
-                 bricklink=found, unidentified=number is None, color_id=color_id)
+    return _label(row, _resolve(db, row, store, color_id), color_id)
+
+
+def _colour_keys(db, color_ids):
+    """`{colour id: BrickLink colour number or None}` for many colours: the same answers as `_colour_key`, in two queries."""
+    wanted = sorted({c for c in color_ids if c is not None})
+    keys = dict.fromkeys(wanted)
+    if not wanted:
+        return keys
+    packed = json.dumps(wanted)
+    projected = {r[0] for r in db.execute('SELECT id FROM main.color WHERE id IN (SELECT value FROM json_each(?))', (packed,))}
+    found, stores = {}, _stores(db)
+    for store in stores:
+        for r in db.execute(f"""SELECT color_id, provider_key, status FROM {store}.color_link WHERE provider='bricklink' AND status IN ({_IN})
+                                AND color_id IN (SELECT value FROM json_each(?))""", (*CONFIRMED, packed)):
+            found.setdefault((store, r['color_id']), []).append(dict(r))
+    for colour in wanted:
+        for store in stores:
+            if store == 'catalogue' and colour in projected:
+                break                                           # a projected colour is the collection's: no links there means none
+            best = identity.best_color_link(found.get((store, colour), []))
+            if best:
+                keys[colour] = best['provider_key']
+                break
+    return keys
+
+
+def labels(db, pairs):
+    """`{(item_id, color_id): Label}` for many pairs at once (list screens): the same answers as `label`, in a handful of queries
+    (items, links, colours). A pair whose item neither file knows is left out."""
+    pairs = {(item_id, color_id) for item_id, color_id in pairs}
+    if not pairs:
+        return {}
+    stores = _stores(db)
+    wanted = {item_id for item_id, _ in pairs}
+    rows = {}
+    for store in stores:                                          # the collection's row wins over the catalogue's
+        missing = sorted(wanted - rows.keys())
+        if not missing:
+            break
+        for r in db.execute(f'SELECT id, kind, name, born_provider, born_namespace, born_key FROM {store}.item WHERE id IN (SELECT value FROM json_each(?))', (json.dumps(missing),)):
+            rows[r['id']] = (r, store)
+    links = {}
+    for store in stores:
+        ids = sorted(i for i, (_, s) in rows.items() if s == store)
+        if not ids:
+            continue
+        for r in db.execute(f"""SELECT item_id, provider_kind, provider_key, color_id, preferred, status FROM {store}.item_link
+                                WHERE provider='bricklink' AND status IN ({_IN}) AND item_id IN (SELECT value FROM json_each(?))""", (*CONFIRMED, json.dumps(ids))):
+            links.setdefault(r['item_id'], []).append(dict(r))
+    found = {}
+    for item_id, color_id in pairs:
+        if item_id not in rows:
+            continue
+        row, _ = rows[item_id]
+        best = identity.best_item_link(links.get(item_id, []), color_id)
+        found[item_id, color_id] = (best['provider_kind'], best['provider_key']) if best else (
+            (row['born_namespace'], row['born_key']) if row['born_provider'] == BRICKLINK and row['born_key'] is not None else None)
+    colours = _colour_keys(db, [c for (i, c), f in found.items() if f is not None])
+    return {(i, c): _label(rows[i][0], (*f, colours.get(c)) if f else None, c) for (i, c), f in found.items()}
 
 
 def bricklink_key(db, item_id, color_id=None):

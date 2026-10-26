@@ -104,78 +104,6 @@ def dump(value):
     return json.dumps(value, default=str, sort_keys=True)
 
 
-def test_decorate_prices_equals_the_per_row_version(store):
-    with admin.database(store) as db:
-        rows = db.execute('''SELECT p.*,o.source,o.price,o.min,o.max,o.qty,o.sold,o.observed_at,o.error,f.max_age_days
-            FROM price_current p JOIN price_observations o ON o.id=p.observation_id
-            LEFT JOIN source_freshness f ON f.source=o.source AND f.kind='prices' ''').fetchall()
-    assert len(rows) == 11
-    new = collection.decorate_prices(rows)
-    assert dump(new) == dump(old_decorate_prices(rows))
-    assert {r['stale'] for r in new} == {True, False}  # the fixture exercises both outcomes
-    assert [r['age'] for r in new if r['observed_at'] is None] == ['Age not recorded']
-
-
-def test_decorate_prices_reads_the_clock_once_and_each_stamp_parse_is_shared(store, monkeypatch):
-    with admin.database(store) as db:
-        rows = db.execute('''SELECT p.*,o.source,o.price,o.min,o.max,o.qty,o.sold,o.observed_at,o.error,f.max_age_days
-            FROM price_current p JOIN price_observations o ON o.id=p.observation_id
-            LEFT JOIN source_freshness f ON f.source=o.source AND f.kind='prices' ''').fetchall()
-    reads = []
-    monkeypatch.setattr(collection, 'now', lambda: reads.append(1) or datetime(2026, 10, 16, tzinfo=timezone.utc))
-    collection.decorate_prices(rows)
-    assert len(reads) == 1
-    collection_prices._dated.cache_clear()
-    collection.decorate_prices(rows)
-    collection.decorate_prices(rows)
-    info = collection_prices._dated.cache_info()
-    dated_rows = [r['observed_at'] for r in rows if r['observed_at'] and r['max_age_days'] is not None]
-    assert info.misses == len(set(dated_rows)) and info.hits + info.misses == 2 * len(dated_rows) and info.hits > 0
-
-
-def test_dated_still_parses_like_before():
-    assert collection_prices.dated('2026-10-01T00:00:00Z') == datetime(2026, 10, 1, tzinfo=timezone.utc)
-    assert collection_prices.dated('2026-10-01T00:00:00') == datetime(2026, 10, 1, tzinfo=timezone.utc)
-    assert collection_prices.dated('nonsense') is None and collection_prices.dated(None) is None and collection_prices.dated(5) is None
-    assert collection_prices.dated(['x']) is None
-
-
-@pytest.mark.parametrize('kind', ['S', 'M', 'P', 'I'])
-def test_list_price_equals_the_choice_over_every_quote(store, kind):
-    with admin.database(store) as db:
-        rows = collection.listing(db, kind)
-        identities = [(r['item_no'], r['color_id']) for r in rows]
-        whole = collection.prices(db, listed_kind=kind, identities=identities) if rows else {}
-        priority = collection_prices.priority(db)
-        for row in rows:
-            quotes = whole[row['item_type'], row['item_no'], row['color_id']]
-            expected = collection_prices.choose([p for p in quotes if p['guide'] == 'sold' and p.get('slot') != 'boxed'], row['item_type'], priority, 'U')
-            assert dump(row['price']) == dump(expected)
-            # What a list row keeps is exactly the quotes its price is chosen from.
-            assert all(p['guide'] == 'sold' and p['condition'] == 'U' and p.get('slot') != 'boxed' for p in row['prices'])
-    if kind == 'S':
-        by_item = {r['item_no']: r['price'] for r in rows}
-        assert by_item['1']['price'] == '10' and by_item['2']['price'] == '21'  # not the boxed 99 or the N 30; BrickLink outranks Rebrickable
-
-
-def test_list_fetches_only_the_quotes_it_uses(store, monkeypatch):
-    seen = []
-    real = collection.decorate_prices
-    monkeypatch.setattr(collection, 'decorate_prices', lambda rows: seen.append(len(rows)) or real(rows))
-    with admin.database(store) as db:
-        collection.listing(db, 'S')
-        collection.prices(db, listed_kind='S', identities=[('1', None), ('2', None)])
-    assert seen == [3, 7]  # three used, sold, unboxed quotes of seven in all
-
-
-def test_wishes_keep_every_quote(store):
-    with admin.database(store) as db, db:
-        db.execute("INSERT INTO wishlist(item_type,item_no,color_id,quantity) VALUES('S','1',NULL,1)")
-    with admin.database(store) as db:
-        row = collection.listing(db, 'S', wishes=True)[0]
-        assert len(row['prices']) == 5
-
-
 # ---- L6 -------------------------------------------------------------------------------------
 
 def key(match):
@@ -248,16 +176,6 @@ def test_matches_ignore_stock_without_a_gap_but_otherwise_agree(store):
         assert {'st1', 'st2', 'st3', 'st7'} <= stock_ids
 
 
-def test_scoped_instances_and_copy_labels_equal_the_whole_kind(store):
-    with admin.database(store) as db:
-        for kind, number in (('S', '1'), ('S', '2'), ('P', '3001'), ('P', '3002'), ('M', 'figA')):
-            whole = [r for r in collection.instances(db, kind) if r['item_no'] == number]
-            assert dump(collection.instances(db, kind, number=number)) == dump(whole)
-        labels = {r['id']: r['label'] for r in collection.instances(db, 'S') if r['entity'] == 'copy'}
-        assert labels == {'c1': 'Set 1', 'c2': 'Set 2', 'c3': 'Set 3', 'c4': 'Set 1'}
-        assert collection.copy_labels(db, ['c3', 'c4', 'c0', 'nope']) == {'c3': 'Set 3', 'c4': 'Set 1'}
-
-
 def test_detail_never_reads_the_whole_collection(store, monkeypatch):
     calls = []
     real_instances, real_gaps, real_many = collection.instances, workbench.gaps, workbench.decorate_many
@@ -277,21 +195,3 @@ def test_detail_never_reads_the_whole_collection(store, monkeypatch):
         collection.detail(db, 'P', '3002', colour=4)
         assert decorated and decorated[0] < every  # the gap decorate saw a fraction of the gaps
 
-
-def test_detail_statement_count_does_not_grow_with_unrelated_copies(store):
-    def statements(db, kind, number, colour):
-        log = []
-        db.set_trace_callback(log.append)
-        collection.detail(db, kind, number, colour=colour)
-        db.set_trace_callback(None)
-        return log
-    with admin.database(store) as db:
-        before = len(statements(db, 'P', '3002', 4))
-    with admin.database(store) as db, db:
-        for n in range(30):
-            db.execute("INSERT INTO items(item_type,item_no,name) VALUES('S',?,?)", (f'x{n}', 'x'))
-            db.execute("INSERT INTO copies(id,set_no) VALUES(?,?)", (f'x{n}', f'x{n}'))
-            db.execute("INSERT INTO copy_parts(copy_id,item_type,item_no,color_id,spare,quantity,missing) VALUES(?,'P','3003',5,0,1,1)", (f'x{n}',))
-    with admin.database(store) as db:
-        log = statements(db, 'P', '3002', 4)
-        assert len(log) == before

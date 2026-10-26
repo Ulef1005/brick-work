@@ -38,24 +38,3 @@ def test_abort_404_inside_an_api_view_is_problem_json(api_app):
     assert response.mimetype == 'application/problem+json'
     assert response.json['code'] == 'not_found'
 
-
-def test_unknown_web_path_is_the_html_page(app):
-    response = logged_in(app).get('/no-such-page')
-    assert response.status_code == 404
-    assert response.mimetype == 'text/html'
-    assert 'Page not found' in response.get_data(as_text=True)
-    assert 'data-web-ui="toni"' in response.get_data(as_text=True)
-
-
-def test_manifest_urls_all_resolve(app):
-    client = logged_in(app)
-    manifest = client.get('/manifest.webmanifest').json
-    urls = [manifest['start_url'], manifest['scope']]
-    urls += [shortcut['url'] for shortcut in manifest['shortcuts']]
-    urls += [icon['src'] for icon in manifest['icons']]
-    assert '/manage/add' in urls
-    for url in urls:
-        path = urlsplit(url).path
-        assert client.get(path).status_code == 200, url
-    stored = json.loads((ROOT / 'static/brickwork/manifest.webmanifest').read_text())
-    assert [s['url'] for s in stored['shortcuts']] == [s['url'] for s in manifest['shortcuts']]

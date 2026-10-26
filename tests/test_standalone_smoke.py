@@ -1,7 +1,9 @@
 """Standalone installation contract on the 4.0 store: real app and CLI, a fixture catalogue built offline, no sockets (M.8a, #110).
 
-What renders without ported modules: `/` and `/collection/sets` (the first-run page on an empty collection), the install files and the
-login page; every other browser screen answers 503 until its piece ports it. API v1 answers 410, except `/api/v1/health`."""
+What renders without ported modules: the install files, the login page and (M.8b) the collection's read side: `/` and the collection lists
+(the first-run page on an empty collection), the item page by id, the wish, lot and purchase-place pages, the jump search. Every other browser
+screen answers 503 until its piece ports it. API v1 answers 410, except `/api/v1/health`."""
+from contextlib import closing
 import os
 from pathlib import Path
 import secrets
@@ -17,6 +19,7 @@ from brickwork.core.connect import OldStore, connect
 from brickwork.core.errors import API_V1_RETIRED
 from brickwork.version import __version__
 from brickwork.web.cli import main
+from tests.app4 import Coll, build_world, make_pair
 from tests.legacy33 import create_33
 from tests.store4_mint_fixtures import build_catalogue
 
@@ -117,4 +120,49 @@ def test_a_3_3_collection_is_refused_with_the_fix_named(tmp_path, monkeypatch, o
         make_app(path, monkeypatch)                                                # the app does not boot on it
     assert main(['setup']) == 1                                                     # BW_DB_PATH names it: setup refuses too
     assert path.read_bytes() == before                                              # refused means untouched
+    assert offline == []
+
+
+def test_the_collection_read_side_shows_what_is_owned(tmp_path, monkeypatch, offline):
+    """The workflow of docs/concepts/collection-model.md on a fixture pair: sets and their copies, loose stock, lots, wishes, the numbers
+    on screen (Rebrickable first, BrickLink beside it, a local BrickLink-born item marked), an unidentified item, and the old number URL."""
+    path = make_pair(tmp_path, rich=True)
+    with closing(connect(path)) as db:
+        w = build_world(Coll(db))
+    client = make_app(path, monkeypatch).test_client()
+    for route in ('/', '/collection/sets', '/collection/M', '/collection/P', '/collection/I', '/collection/G', '/collection/wishes', '/collection/purchase-places'):
+        response = client.get(route)
+        assert response.status_code == 200, route
+        assert 'data-first-run' not in response.get_data(as_text=True)
+    sets = client.get('/collection/sets').get_data(as_text=True)
+    assert '1000-1' in sets and 'Syn Castle Keep' in sets and 'data-type="S"' in sets
+    parts = client.get('/collection/P').get_data(as_text=True)
+    assert 'Only on BrickLink' in parts and 'x999' in parts
+    # the item page of a set: the copy asked for, its numbers, its states in words
+    page = client.get(f'/collection/item/{w.keep}?copy={w.copy_a}')
+    html = page.get_data(as_text=True)
+    assert page.status_code == 200 and 'Syn Castle Keep' in html and 'Incomplete' in html and 'Used' in html and '1 missing' in html
+    assert client.get(f'/collection/item/{w.keep}?copy=nothing').status_code == 404
+    # a part in a colour, a figure, a local BrickLink-born item and an unidentified one
+    assert client.get(f'/collection/item/{w.brick}?colour={w.red}').status_code == 200
+    one_colour = client.get(f'/collection/item/{w.brick}')                                   # one colour held: straight to it
+    assert one_colour.status_code == 302 and f'colour={w.red}' in one_colour.headers['Location']
+    assert client.get(f'/collection/item/{w.figure}?stock={w.stock_figure}').status_code == 200
+    local = client.get(f'/collection/item/{w.local_part}?stock={w.stock_local}&colour={w.red}').get_data(as_text=True)
+    assert 'x999 (BrickLink)' in local
+    mystery = client.get(f'/collection/item/{w.mystery}?stock={w.stock_mystery}').get_data(as_text=True)
+    assert 'Mystery thing' in mystery and 'Unidentified' in mystery
+    # a wish and a lot
+    assert client.get(f'/collection/wishes/{w.wish_part}').status_code == 200
+    lot = client.get(f'/collection/lots/{w.bag}')
+    assert lot.status_code == 200 and 'Bag' in lot.get_data(as_text=True)
+    # the old number URL and the jump search take either number
+    moved = client.get('/collection/item/S/1000-1')
+    assert moved.status_code == 301 and moved.headers['Location'].startswith(f'/collection/item/{w.keep}')
+    assert client.get('/collection/item/S/no-such-set').status_code == 404
+    found = client.get('/collection/jump?q=x999').json['results']
+    assert [r['name'] for r in found] == ['Only on BrickLink']
+    assert client.get('/collection/jump?q=1000-1').json['results'][0]['kind'] == 'set'
+    # what is not on the 4.0 store yet still says so
+    assert client.get('/workbench/matcher').status_code == 503
     assert offline == []

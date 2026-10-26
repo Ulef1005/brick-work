@@ -1,4 +1,4 @@
-"""App shell, read-only rail and Home Screen contracts."""
+"""App shell, read-only rail and Home Screen contracts, on a 4.0 collection (M.8b, issue #110)."""
 import json
 import re
 from urllib.parse import urlsplit
@@ -8,14 +8,13 @@ import pytest
 from flask import render_template
 
 from brickwork.web.ui import navigation, navigation_counts
-from tests.test_bw_collection import bw
-from tests.importer.test_importer import legacy
-from tests.web_fixtures import app, apps, logged_in
+from tests.app4 import app4, client, coll, pair, read, world
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_groups_order_and_copy_chooser(app, bw):
+def test_groups_order_and_copy_chooser(app4, client, world):
+    app = app4
     with app.test_request_context('/sets/'):
         from flask import session
         session['_user_id'] = 'admin'
@@ -25,22 +24,23 @@ def test_groups_order_and_copy_chooser(app, bw):
         app.preprocess_request()
         groups = navigation()
         assert [(name, [link['title'] for link in links]) for name, links in groups] == [
-            ('Collection', ['Sets', 'Minifigures', 'Parts', 'Instructions', 'Boxes', 'Gear', 'Unresolved items']),
+            ('Collection', ['Sets', 'Minifigures', 'Parts', 'Instructions', 'Boxes', 'Gear']),
             ('Workbench', ['Part to Inventory', 'Check Set Parts', 'Part Picker', 'Matcher', 'Orders', 'Storage']),
             ('Planning', ['Wishlist', 'Prices', 'Complete sets']),
             ('Manage', ['Add', 'Tools & Admin'])]
         check = groups[1][1][1]
         assert not check.get('chooser') and check['endpoint'] == 'web.bw_check_parts'
         assert check['url'] == '/workbench/check-parts'
-    data = logged_in(app).get('/collection/jump?q=new-set').json
-    assert data['results'][0]['copies'][0]['check_url'] == '/workbench/check-parts/copy'
+    first = client.get('/collection/jump?q=1000-1').json['results'][0]['copies'][0]
+    assert first['check_url'] == '/workbench/check-parts/' + first['id']
     app.config['HIDE_ALL_SETS'] = True
     with app.test_request_context('/tools'):
         app.preprocess_request()
         assert not any(link['title'] in ('Sets', 'Check Set Parts') for _, links in navigation() for link in links)
 
 
-def test_counts_read_only_one_query_per_request(app, bw, monkeypatch):
+def test_counts_read_only_one_query_per_request(app4, world, monkeypatch):
+    app = app4
     from contextlib import contextmanager
     from brickwork.core import admin
     original = admin.database
@@ -54,15 +54,17 @@ def test_counts_read_only_one_query_per_request(app, bw, monkeypatch):
     with app.test_request_context('/'):
         app.preprocess_request()
         first = navigation_counts()
-        assert first['Sets'] == 1 and first['Minifigures'] == 2 and first['Parts'] == 3 and first['Wishlist'] == 1
-        assert first['Gear'] == 1 and first['Unresolved items'] == 2
+        # 4.0 tables: sets are distinct items with a live copy, loose kinds add their quantities, gear counts items, wishes are rows.
+        assert first['Sets'] == 2 and first['Minifigures'] == 1 and first['Parts'] == 12 and first['Instructions'] == 1 and first['Wishlist'] == 2
+        assert first['Gear'] == 1 and 'Boxes' not in first and 'Unresolved items' not in first
         assert navigation_counts() is first
         navigation()
-        assert len(statements) == 1 and statements[0].lstrip().startswith('WITH owned')
+        assert len(statements) == 1 and statements[0].lstrip().startswith("SELECT 'Sets'")
 
 
 @pytest.mark.parametrize('theme,color', [('', '#FAFAF8'), ('?theme=dark', '#1A1816')])
-def test_manifest_fields_and_assets(app, theme, color):
+def test_manifest_fields_and_assets(app4, theme, color):
+    app = app4
     response = app.test_client().get('/manifest.webmanifest' + theme)
     assert response.status_code == 200 and response.mimetype == 'application/manifest+json'
     data = response.json
@@ -74,7 +76,8 @@ def test_manifest_fields_and_assets(app, theme, color):
         assert app.test_client().get(icon['src']).status_code == 200
 
 
-def test_service_worker_exclusions_and_precache(app):
+def test_service_worker_exclusions_and_precache(app4):
+    app = app4
     response = app.test_client().get('/sw.js')
     assert response.status_code == 200 and response.headers['Service-Worker-Allowed'] == '/'
     assert response.headers['Cache-Control'] == 'no-cache'
@@ -138,8 +141,8 @@ def test_service_worker_cache_version_tracks_asset_bytes(tmp_path, monkeypatch):
     assert cache_name(start_app()) == changed
 
 
-def test_system_pages_in_shell(app):
-    client = logged_in(app)
+def test_system_pages_in_shell(app4, client):
+    app = app4
     missing = client.get('/missing')
     assert missing.status_code == 404
     html = missing.get_data(as_text=True)
@@ -153,13 +156,14 @@ def test_system_pages_in_shell(app):
     assert 'data-web-ui="toni"' in html and 'id="global-jump"' in html
 
 
-def test_worker_and_manifest_routes_are_installed(app):
+def test_worker_and_manifest_routes_are_installed(app4):
+    app = app4
     assert 'web.web_manifest' in app.view_functions
     assert 'web.shell_worker' in app.view_functions
 
 
-def test_home_screen_head_and_local_token_source(app):
-    html = logged_in(app).get('/tools').get_data(as_text=True)
+def test_home_screen_head_and_local_token_source(client):
+    html = client.get('/').get_data(as_text=True)
     assert 'apple-mobile-web-app-capable" content="yes"' in html
     assert 'apple-mobile-web-app-status-bar-style" content="default"' in html
     assert 'viewport-fit=cover' in html
@@ -175,7 +179,8 @@ def test_home_screen_head_and_local_token_source(app):
     assert 'var(--tw-safe-top)' in css and 'var(--tw-safe-bottom)' in css
 
 
-def test_checker_link_keeps_permissions(app):
+def test_checker_link_keeps_permissions(app4):
+    app = app4
     from flask import session
     with app.test_request_context('/tools'):
         app.preprocess_request()

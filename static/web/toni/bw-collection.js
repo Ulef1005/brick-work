@@ -2,15 +2,15 @@
 (() => {
   'use strict';
   const nowrapTail = window.BrickFormatting.nowrapTail;
+  // The Rebrickable number first, the BrickLink number beside it where it differs, a local BrickLink-born item marked (core/items.py).
+  function numberLabel(r){return !r.number?'':r.source==='bricklink'?r.number+' (BrickLink)':r.also?r.number+' · BrickLink '+r.also:r.number;}
   function filterRows(rows, query='', filters={}, sort='number', direction='asc', group='') {
     // #41: a size in the query ("2x1", "1 2", "1*2", "x2") matches by size key; other words as text.
     const size=(typeof window!=='undefined'&&window.BrickSize)?window.BrickSize.parse(query):{full:null,partial:null,rest:query};
     const sized=size.full||size.partial,term=(sized?size.rest:query).trim().toLocaleLowerCase();
-    const text=r=>[r.name,r.number,r.colour,r.category,r.theme,r.year].join(' ').toLocaleLowerCase();
+    const text=r=>[r.name,r.number,r.also,r.colour,r.category,r.theme,r.year].join(' ').toLocaleLowerCase();
     const matches=rows.filter(r => (!sized || window.BrickSize.matches(r.name,size)) && (!term || (sized?term.split(/\s+/).every(w=>text(r).includes(w)):text(r).includes(term))) && Object.entries(filters).every(([key,value]) => {
       if (!value) return true;
-      if(key==='condition')value=({new:'N',used:'U',damaged:'D'})[value]||value;
-      if(key==='status')value=({sealed:'S',complete:'C',incomplete:'I'})[value]||value;
       if (key==='inventory') return (value==='parts'?!['M','?','I','O'].includes(r.type):value==='figures'?['M','?'].includes(r.type):['I','O'].includes(r.type));
       if (key==='status' && value==='unknown') return (r.status||[]).includes('');
       if (key==='tag' || key==='has') return (r.flags||[]).includes(value);
@@ -37,7 +37,7 @@
     const gaps=rows.flatMap(r=>{
       const parts=Number(r.missing_parts||0),figures=Number(r.missing_figures||0);
       const labels=[parts?parts+' '+(parts===1?'part':'parts'):'',figures?figures+' '+(figures===1?'fig':'figs'):''].filter(Boolean);
-      return labels.length?[labels.join(', ')+' in '+r.number]:[];
+      return labels.length?[labels.join(', ')+' in '+(numberLabel(r)||r.name)]:[];
     });
     // Kit 1c shows a short line: the first few sets, then a bare count of the rest.
     const shown=gaps.slice(0,3),more=gaps.length-shown.length;
@@ -71,7 +71,7 @@
   function buildRow(r, config, selecting, changed) {
     const el=(tag,cls,text)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=String(text);return n;};
     const name=r.type==='P'?window.BrickFormatting.partName(r.name):r.name;
-    const displayName=name||r.number;
+    const label=numberLabel(r),displayName=name||label||'Unidentified item';
     const row=el('article','bc-card');row.dataset.bcRow='';row.tabIndex=0;
     if(config.editable==='true' && r.ids.length){
       const label=el('label','bc-selection'),check=el('input');label.hidden=!selecting;check.type='checkbox';check.dataset.bcSelected='';check.checked=r.selected;
@@ -79,19 +79,19 @@
     }
     const picture=el('div','bc-picture');picture.dataset.itemNo=r.number;
     if(r.image){const button=el('button'),img=el('img');button.type='button';button.dataset.bwLightbox=config.imageBase.replace(/0$/,r.image);button.dataset.caption=displayName+(r.colour?' · '+r.colour:'');button.setAttribute('aria-label','View '+displayName);const full=button.dataset.bwLightbox;img.src=full+'?w=320';img.srcset=full+'?w=320 320w, '+full+'?w=640 640w';img.sizes='160px';img.dataset.full=full;img.alt=button.dataset.caption;img.loading='lazy';button.append(img);picture.append(button);button.addEventListener('click',()=>openPicture(button));}
-    else picture.append(el('span','mono',r.number),el('span','','No image'));
+    else picture.append(...(label?[el('span','mono',label)]:[]),el('span','','No image'));
     row.append(picture);
     const link=el('a'),identity=el('div','bc-identity');link.dataset.bcItemLink='';
-    link.href=r.entity==='wish'?config.wishBase.replace(/0$/,r.ids[0]):config.itemBase.replace('TYPE',encodeURIComponent(r.type)).replace('NUMBER',encodeURIComponent(r.number))+(r.color_id!=null?'?colour='+encodeURIComponent(r.color_id):'');
-    if(r.type==='P'){const top=el('span','bc-identity-top'),colour=el('span','bc-colour',r.colour||'Unknown colour');if(/^[0-9a-f]{6}$/i.test(r.rgb||'')){colour.style.background='#'+r.rgb;colour.style.color=r.ink;}top.append(colour,el('span','mono',r.number));identity.append(top);}
-    else identity.append(el('span','mono',r.number));
+    link.href=r.entity==='wish'?config.wishBase.replace(/0$/,r.ids[0]):config.itemBase.replace(/0$/,r.item_id)+(r.type==='P'&&r.color_id!=null?'?colour='+encodeURIComponent(r.color_id):'');
+    if(r.type==='P'){const top=el('span','bc-identity-top'),colour=el('span','bc-colour',r.colour||'Unknown colour');if(/^[0-9a-f]{6}$/i.test(r.rgb||'')){colour.style.background='#'+r.rgb;colour.style.color=r.ink;}top.append(colour,...(label?[el('span','mono',label)]:[]));identity.append(top);}
+    else if(label)identity.append(el('span','mono',label));
     if(r.name)identity.append(el('strong','',nowrapTail(name)));
     // Sets name the theme and sub-theme before the year ("Castle / Lion Knights · 1984").
     const secondary=[[r.theme||r.category,r.type==='S'&&r.entity!=='wish'?r.subtheme:''].filter(Boolean).join(' / '),r.year].filter(Boolean).join(' · ');
     if(secondary)identity.append(el('span','secondary',secondary));
-    if(r.unresolved)identity.append(el('span','status',r.type==='?'?'Placeholder':'To check'));
+    if(r.unresolved)identity.append(el('span','status',r.number?'To check':'Unidentified'));
     link.append(identity);row.append(link);
-    if(r.unresolved){const unresolved=el('a','','Unresolved figures');unresolved.href=config.unresolvedUrl;row.append(unresolved);}
+    if(r.unresolved){const unresolved=el('a','','Unresolved items');unresolved.href=config.unresolvedUrl;row.append(unresolved);}
     if(r.entity==='wish'){const max=el('div','bc-wish-max');max.append(el('span','bc-wish-max-label','Your max price'),el('strong','mono',r.max_price||'Not recorded'));row.append(max);}
     const foot=el('div','bc-card-foot');
     if(r.entity==='wish'){
@@ -142,7 +142,7 @@
     if(!prices.length)return '';
     const bases=new Set(prices.map(p=>p.slice(0,2).join(':'))),sources=[...new Set(prices.map(p=>p[2]).filter(Boolean))];
     const names={bricklink:'BrickLink',brickset:'Brickset',rebrickable:'Rebrickable'};
-    const labels={U:'used',N:'new'},guide={sold:'averages',stock:'listings'};
+    const labels={used:'used',new:'new'},guide={sold:'averages',stock:'listings'};
     const basis=bases.size===1&&labels[prices[0][0]]&&guide[prices[0][1]]?'prices are '+labels[prices[0][0]]+' '+guide[prices[0][1]]:'prices have mixed bases';
     return ' · '+basis+(sources.length===1?' from '+(names[sources[0]]||sources[0]):' from mixed sources');
   }
@@ -395,7 +395,7 @@
     const bulkField=list.querySelector('[data-bc-bulk-field]'),bulkValue=list.querySelector('[data-bc-bulk-value]');
     bulkField?.addEventListener('change',()=>{
       const data=JSON.parse(list.querySelector('[data-bc-bulk-options]').textContent);let choices;
-      if(bulkField.value==='condition')choices=[{value:'N',label:'New'},{value:'U',label:'Used'}];
+      if(bulkField.value==='condition')choices=[{value:'new',label:'New'},{value:'used',label:'Used'}];
       else choices=[{value:'',label:bulkField.value==='lot_id'?'No lot':'Not stored'},...(bulkField.value==='lot_id'?data.lots:data.storages).map(r=>({value:r.id,label:r.name||r.id}))];
       bulkValue.replaceChildren();choices.forEach(c=>{const o=document.createElement('option');o.value=c.value;o.textContent=c.label;bulkValue.append(o);});
     });

@@ -1,4 +1,5 @@
-"""Shared collection filtering and stable keyset pagination, without database reads."""
+"""Shared collection filtering and stable keyset pagination, without database reads. Conditions and statuses are words (design 5.1);
+a search takes the Rebrickable number and the BrickLink number (`also`)."""
 import base64
 from functools import cmp_to_key
 from decimal import Decimal
@@ -58,10 +59,10 @@ def filter_rows(rows, query='', filters=None, sort='number', direction='asc', gr
         if full or partial:
             if not size_matches(r.get('name') or '', full, partial):
                 return False
-            text = ' '.join(str(r.get(k) or '') for k in ('name', 'number', 'colour', 'category', 'theme', 'year')).casefold()
+            text = ' '.join(str(r.get(k) or '') for k in ('name', 'number', 'also', 'colour', 'category', 'theme', 'year')).casefold()
             if any(word.casefold() not in text for word in rest.split()):
                 return False
-        elif query.strip().casefold() not in ' '.join(str(r.get(k) or '') for k in ('name', 'number', 'colour', 'category', 'theme', 'year')).casefold():
+        elif query.strip().casefold() not in ' '.join(str(r.get(k) or '') for k in ('name', 'number', 'also', 'colour', 'category', 'theme', 'year')).casefold():
             return False
         for key, v in filters.items():
             if v is None or v == '':
@@ -98,8 +99,7 @@ def filter_rows(rows, query='', filters=None, sort='number', direction='asc', gr
                 target = 'flags' if key in ('tag', 'has') else 'flag_ids' if key == 'flag' else 'number' if key == 'item_no' else 'type' if key == 'item_type' else key
                 actual = r.get(target, '')
                 actual = actual if isinstance(actual, list) else [actual]
-                value = {'new': 'N', 'used': 'U', 'damaged': 'D'}.get(value, value) if key == 'condition' else value
-                value = {'sealed': 'S', 'complete': 'C', 'incomplete': 'I', 'unknown': ''}.get(value, value) if key == 'status' else value
+                value = '' if key == 'status' and value == 'unknown' else value               # words are stored and served (design 5.1)
                 if value not in [str(x) for x in actual]: return False
         return filters.get('archived') in ('include', 'only') or not r.get('archived_at')
     return sorted(filter(matches, rows), key=cmp_to_key(comparator(sort, direction, group)))

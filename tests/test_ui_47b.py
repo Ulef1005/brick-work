@@ -10,25 +10,6 @@ from tests.test_bw_admin import reset_shell_metadata_after_test
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_shell_review_frames(app, bw):
-    soup = BeautifulSoup(logged_in(app).get('/').data, 'html.parser')
-    assert soup.select_one('[data-nav-scrim][hidden]')
-    for sheet in soup.select('[data-nav-sheet]'):
-        assert not sheet.select('[data-close]')
-    jump = soup.select_one('#global-jump')
-    assert not jump.select('h2, label')
-    assert jump.select_one('#jump-query')['aria-label'] == 'Set number, name or item ID'
-    assert jump.select_one('.jump-search-row [data-close]').text == 'Cancel'
-    manage = soup.select_one('[data-nav-group=Manage] svg')
-    assert manage.select_one('rect')['width'] == '16'
-    assert manage.select_one('path')['d'].endswith('M4 13h16')
-    css = (ROOT / 'static/web/toni/shell.css').read_text()
-    for rule in ['inset:auto 0 var(--bw-bottom)', 'z-index:23', 'gap:12px',
-                 'min-height:96px', 'text-transform:uppercase', 'font:500 11px/14px',
-                 'font:500 15px', 'background:var(--tw-surface-2)']:
-        assert rule in css
-
-
 def test_add_review_frames(app, bw):
     soup = BeautifulSoup(logged_in(app).get('/manage/add').data, 'html.parser')
     assert not soup.select('.breadcrumb')

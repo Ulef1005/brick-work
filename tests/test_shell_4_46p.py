@@ -1,0 +1,73 @@
+"""Every bottom tab opens its server-rendered group sheet (ported from test_shell_46p, M.8b).
+
+One ported screen stands for each group: home (Collection), the purchase places (Workbench, current "Storage") and the wish list
+(Planning, current "Wishlist"). The Manage group (`/manage/tools`, M.8i) stays in `test_shell_46p.py`."""
+from pathlib import Path
+import re
+import subprocess
+
+from bs4 import BeautifulSoup
+import pytest
+
+from tests.app4 import app4, client, coll, pair, read, world
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+@pytest.mark.parametrize('path,active', [
+    ('/', 'Collection'),
+    ('/collection/purchase-places', 'Workbench'),
+    ('/collection/wishes', 'Planning'),
+])
+def test_group_sheets_in_migrated_shell(client, world, path, active):
+    response = client.get(path)
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.data, 'html.parser')
+    tabs = soup.select('.mobile-bottom [data-nav-group]')
+    sheets = soup.select('dialog[data-nav-sheet]')
+    assert [tab['data-nav-group'] for tab in tabs] == [
+        'Collection', 'Workbench', 'Planning', 'Manage']
+    assert len(sheets) == len(tabs)
+    assert len({tag['id'] for tag in soup.select('[id]')}) == len(soup.select('[id]'))
+    assert [tab['data-nav-group'] for tab in tabs if tab['aria-current'] == 'true'] == [active]
+    assert [row['data-group-panel'] for row in soup.select('[data-group-panel]') if not row.has_attr('hidden')] == [active]
+    assert len(soup.select('[autofocus]')) <= 1
+    assert soup.select_one('#jump-query[autofocus]')
+    assert soup.select_one('[data-nav-sheet=Manage] .workbench-grid [data-open=appearance]')
+    for tab, sheet in zip(tabs, sheets):
+        group = tab['data-nav-group']
+        assert sheet['id'] == tab['aria-controls']
+        assert sheet['data-nav-sheet'] == group
+        assert sheet['tabindex'] == '-1'
+        assert soup.select_one(f'.rail nav [data-rail-group="{group}"] a')
+        assert sheet.select_one('h2').text == group
+        assert sheet['aria-labelledby'] == sheet.select_one('h2')['id']
+        assert not sheet.select_one('[data-close]')
+        assert not sheet.select('[autofocus]')
+        assert tab['aria-haspopup'] == 'dialog' and tab['aria-expanded'] == 'false'
+        links = sheet.select('.workbench-grid a, .workbench-grid button')
+        row = soup.select_one(f'[data-group-panel="{group}"]')
+        assert [(a.get('href'), a.get('data-open'), a.text, a.get('aria-current')) for a in links] == [
+            (a.get('href'), a.get('data-open'), a.text, a.get('aria-current')) for a in row.select('a, button')]
+        assert all(a.select_one('svg') for a in links)
+        assert tab['href'] == links[0]['href']
+    assert soup.select_one(f'[data-nav-sheet="{active}"] a[aria-current="page"]')
+
+
+def test_sheet_runtime():
+    subprocess.run(['node', str(ROOT / 'tests/toni_shell_runtime.cjs')], check=True)
+
+
+def test_four_columns_and_scrolling_sheet_css():
+    # Both phone defaults and the later phone/iPad shell rule use four columns.
+    for filename in ['toni.css', 'shell.css']:
+        css = (ROOT / 'static/web/toni' / filename).read_text()
+        columns = re.findall(r'\.mobile-bottom\{[^}]*grid-template-columns:([^;}]+)', css)
+        assert columns and set(columns) == {'repeat(4,minmax(0,1fr))'}
+    css = (ROOT / 'static/web/toni/shell.css').read_text()
+    assert 'max-width:1023.98px' in css
+    assert 'min-height:49px' in css
+    assert '.workbench-sheet[open]{display:flex;flex-direction:column' in css
+    assert '.workbench-sheet .sheet-header{flex:none}' in css
+    assert '.workbench-sheet .workbench-grid{min-height:0;overflow-y:auto;' in css
+    assert '.workbench-grid a[aria-current=page]' in css

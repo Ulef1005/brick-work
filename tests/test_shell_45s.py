@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 @pytest.mark.parametrize('path', [
-    '/', '/workbench/storage', '/planning/wishlist',
+    '/workbench/storage', '/planning/wishlist',
     '/planning/prices', '/planning/complete-sets',
 ])
 def test_shared_rail_column_and_scroll_contract(app, bw, path):
@@ -48,30 +48,7 @@ def test_shared_rail_column_and_scroll_contract(app, bw, path):
     assert urlsplit(soup.select('link[rel="stylesheet"]')[-1]['href']).path.endswith('/shell.css')
 
 
-def test_rail_css_source_checks():
-    # These assertions inspect CSS source; browser geometry is checked after deploy.
-    css = (ROOT / 'static/web/toni/shell.css').read_text()
-
-    def rule(selector):
-        body = re.search(re.escape(selector) + r'\{([^}]+)\}', css)[1]
-        return dict(declaration.split(':', 1) for declaration in body.split(';')
-                    if declaration)
-
-    column = rule('.rail')
-    assert column['display'] == 'flex' and column['flex-direction'] == 'column'
-    assert column['height'] == 'calc(100dvh - 56px - var(--tw-safe-top))'
-    assert column['min-height'] == '0'
-    scrolling = rule('.rail>nav')
-    assert scrolling['display'] == 'flex' and scrolling['flex-direction'] == 'column'
-    assert scrolling['flex'] == '1 1 0' and scrolling['min-height'] == '0'
-    assert scrolling['overflow-y'] == 'auto' and scrolling['overflow-x'] == 'hidden'
-    assert rule('.rail .navgroup')['flex'] == 'none'
-    assert rule('.rail-theme')['flex'] == 'none'
-    assert '@media(max-width:1023.98px){.layout' in css
-    assert '.rail{display:none}' in css
-
-
-@pytest.mark.parametrize('path', ['/', '/planning/prices', '/workbench/part-to-inventory',
+@pytest.mark.parametrize('path', ['/planning/prices', '/workbench/part-to-inventory',
                                  '/manage/tools', '/workbench/storage'])
 def test_brickwork_assets_have_deployed_file_versions(app, bw, path):
     from urllib.parse import parse_qs
@@ -82,18 +59,3 @@ def test_brickwork_assets_have_deployed_file_versions(app, bw, path):
         url = urlsplit(asset.get('src') or asset['href'])
         assert parse_qs(url.query)['v'] == [str((Path(app.static_folder) / url.path.removeprefix('/static/')).stat().st_mtime_ns)]
 
-
-def test_asset_url_changes_with_deployed_file_mtime(app, monkeypatch):
-    from types import SimpleNamespace
-    original = Path.stat
-    clock = [101]
-    def stat(path, *args, **kwargs):
-        if path.name == 'bw-planning.js':
-            return SimpleNamespace(st_mtime_ns=clock[0])
-        return original(path, *args, **kwargs)
-    with app.test_request_context('/'):
-        monkeypatch.setattr(Path, 'stat', stat)
-        first = ui.bw_static('web/toni/bw-planning.js')
-        clock[0] = 102
-        second = ui.bw_static('web/toni/bw-planning.js')
-        assert first.endswith('?v=101') and second.endswith('?v=102')

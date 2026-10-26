@@ -33,7 +33,7 @@ function makeList(count,pageSize,{missing=0,saved=null}={}){
  list.groups={'[data-bc-filter]':[colourFilter]};
  const missingSection=new Node(),presentSection=new Node(),missingRows=new Node(),presentRows=new Node(),summary=new Node();
  if(missing){Object.assign(list.nodes,{'[data-bc-missing]':missingSection,'[data-bc-present]':presentSection,'[data-bc-missing-rows]':missingRows,'[data-bc-present-rows]':presentRows,'[data-bc-present-summary]':summary});}
- const root=new Node();root.dataset={bcCollectionList:'',saveUrl:'/x/ACTION',csrf:'c',type:'P',editable:'false',itemBase:'/i/TYPE/NUMBER',imageBase:'/img/0',lotBase:'/l/LOT'};root.groups={'[data-bc-list]':[list]};
+ const root=new Node();root.dataset={bcCollectionList:'',saveUrl:'/x/ACTION',csrf:'c',type:'P',editable:'false',itemBase:'/i/0',imageBase:'/img/0',lotBase:'/l/LOT'};root.groups={'[data-bc-list]':[list]};
  doc=new Node();doc.querySelector=s=>s==='#bw-collection'?root:null;doc.createElement=tag=>{const n=new Node();n.tagName=tag.toUpperCase();return n;};
  const stored=new Map();if(saved)stored.set('bw-collection-list:/collection/P:0',JSON.stringify(saved));
  const context={window:{addEventListener(){},scrollY:0,scrollTo(x,y){this.scrolled.push(y);},scrolled:[],history:{replaceState(){}}},document:doc,sessionStorage:{getItem:k=>stored.get(k)||null,setItem:(k,v)=>stored.set(k,v),removeItem:k=>stored.delete(k)},location:{pathname:'/collection/P',search:'',reload(){}},URLSearchParams,requestAnimationFrame:f=>f(),fetch:async()=>({})};

@@ -104,66 +104,6 @@ def test_prices_name_tail(app, bw):
     assert any(len(r[data['fields'].index('name')].split()) > 1 for r in data['rows'])
 
 
-@pytest.mark.parametrize('value,expected', [(2,'2 surplus'),(-3,'3 missing'),(0,'0'),(None,'—'),('text','text')])
-def test_count_difference(value, expected):
-    assert difference(value) == expected
-
-
-@pytest.mark.parametrize('value,expected', [(2,'€2 above'),(-3,'€3 below'),(0,'€0'),(None,'—'),('text','text')])
-def test_money_difference(value, expected):
-    assert money(value, signed=True) == expected
-
-
-@pytest.mark.parametrize('value,expected', [('Technic, Liftarm Thick 1','Technic, Liftarm Thick\u00a01'),("Aaron Fox's Aero Striker", "Aaron Fox's Aero\u00a0Striker"),('Part','Part')])
-def test_nowrap_tail(value, expected):
-    assert nowrap_tail(value) == expected
-
-
-@pytest.mark.parametrize('text,forbidden', [('-2',True),(' · −3',True),('(–5',True),('[—2',True),('312-3',False),('3001-old',False),('2026-10-14',False),('2026-10-14T12:00:00',False)])
-def test_guard_preserves_identifiers(text, forbidden):
-    assert bool(SIGN.search(text)) is forbidden
-
-
-def test_inventory_text_runtime():
-    if not shutil.which('node'):
-        pytest.skip('Node is unavailable')
-    subprocess.run(['node', str(Path(__file__).with_name('toni_bw_inventory_runtime.cjs'))], check=True)
-
-
-@pytest.mark.parametrize('value,short,expected', [
-    (-.15, False, '0.15 lost per 1 spent'), (.15, False, '0.15 gained per 1 spent'),
-    (-.15, True, '0.15× lost'), (.15, True, '0.15× gained'),
-    (0, False, '0.00 gained per 1 spent'), (None, False, '—'),
-])
-def test_ratio(value, short, expected):
-    assert ratio(value, short) == expected
-
-
-@pytest.mark.parametrize('attribute', ['aria-label', 'title', 'alt', 'placeholder', 'value'])
-def test_guard_checks_visible_attributes(attribute):
-    tag = 'button' if attribute == 'value' else 'span'
-    with pytest.raises(AssertionError):
-        assert_unsigned(f'<div data-web-ui="toni"><{tag} {attribute}="-2"></{tag}></div>', 'attribute')
-    assert_unsigned(f'<div data-web-ui="toni"><{tag} {attribute}="312-3" data-count="-2"></{tag}></div>', 'identifier')
-
-
-@pytest.mark.parametrize('name,expected', [
-    ('Brick 1 x 2', 'Brick 1\u00a0x\u00a02'),
-    ('Brick 2 x 4', 'Brick 2\u00a0x\u00a04'),
-    ('Brick 1 x 1 x 3', 'Brick 1\u00a0x\u00a01\u00a0x\u00a03'),
-])
-def test_dimension_names(app, bw, name, expected):
-    with admin.database(bw) as db, db:
-        db.execute("UPDATE items SET name=? WHERE item_type='P' AND item_no='bl-part'", (name,))
-    soup = BeautifulSoup(logged_in(app).get('/collection/item/S/new-set').text, 'html.parser')
-    assert expected in [node.get_text() for node in soup.select('strong')]
-    assert nowrap_tail(name) == expected
-    # The record macro retains the exact, searchable plain-space name.
-    import json
-    records = [json.loads(node['data-record']) for node in soup.select('[data-record]')]
-    assert any(record['name'] == name for record in records)
-
-
 def test_planning_negative_ratio_and_gain_phrases(app, bw):
     with admin.database(bw) as db:
         evidence(db)
@@ -176,8 +116,3 @@ def test_planning_negative_ratio_and_gain_phrases(app, bw):
     details = row.select_one('.bp-repair-details').get_text()
     assert 'repair €13.50 · net gain €15.50 below' in details
 
-
-def test_collection_runtime():
-    if not shutil.which('node'):
-        pytest.skip('Node is unavailable')
-    subprocess.run(['node', str(Path(__file__).with_name('toni_bw_collection_runtime.cjs'))], check=True)

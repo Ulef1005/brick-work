@@ -18,7 +18,7 @@ PREFIX = 'web/toni/'
 
 
 def bw_price_order(prices):
-    return sorted(prices, key=lambda p: {'U': 0, 'N': 1}.get(p.get('condition'), 2))
+    return sorted(prices, key=lambda p: {'used': 0, 'new': 1}.get(p.get('condition'), 2))
 
 
 def install(app):
@@ -153,7 +153,9 @@ def navigation():
     elif endpoint.startswith('web.bw_collection_wish'):
         current = 'Wishlist'
     elif endpoint in ('web.bw_collection','web.bw_collection_item'):
-        current = {'S':'Sets','M':'Minifigures','P':'Parts','I':'Instructions','O':'Boxes','G':'Gear','B':'Books','C':'Catalogs','?':'Unresolved items'}.get((request.view_args or {}).get('kind','').upper(),'Sets')
+        from flask import g
+        letter = (request.view_args or {}).get('kind') or g.get('bw_nav_type') or 'S'
+        current = {'S':'Sets','M':'Minifigures','P':'Parts','I':'Instructions','O':'Boxes','G':'Gear','B':'Books','C':'Catalogs'}.get(letter.upper(),'Sets')
     elif endpoint in ('web.bw_sets','index.index','web.collection_legacy_home'):
         current = 'Sets'
     elif endpoint in ('web.bw_collection_lot','web.bw_collection_places'):
@@ -191,7 +193,7 @@ def navigation():
     # Nothing about the collection shows before login (#66).
     counts = navigation_counts() if LoginManager.is_authenticated() else {}
     from flask import current_app
-    for title,kind in [('Gear','G'),('Books','B'),('Catalogs','C'),('Unresolved items','?')]:
+    for title,kind in [('Gear','G'),('Books','B'),('Catalogs','C')]:
         if counts.get(title):
             groups[0][1].append((title,'web.bw_collection','parts',(),{'kind':kind}))
     result = []
@@ -224,19 +226,13 @@ def navigation_counts():
     if path.is_file():
         try:
             with database(path, read_only=True) as db:
-                counts = dict(db.execute("""WITH owned AS (
-                    SELECT item_type,item_no FROM loose_stock WHERE archived_at IS NULL
-                    UNION SELECT p.item_type,p.item_no FROM copy_parts p JOIN copies c ON c.id=p.copy_id WHERE c.archived_at IS NULL
-                    UNION SELECT m.item_type,m.minifig_no FROM copy_minifigs m JOIN copies c ON c.id=m.copy_id WHERE c.archived_at IS NULL
-                    UNION SELECT item_type,set_no FROM copies WHERE archived_at IS NULL)
-                    SELECT 'Sets',count(DISTINCT set_no) FROM copies WHERE archived_at IS NULL AND item_type='S'
-                    UNION ALL SELECT CASE item_type WHEN 'M' THEN 'Minifigures' WHEN 'P' THEN 'Parts'
-                    WHEN 'I' THEN 'Instructions' WHEN 'O' THEN 'Boxes' END,sum(quantity)
-                    FROM loose_stock WHERE archived_at IS NULL AND item_type IN ('M','P','I','O') GROUP BY item_type
-                    UNION ALL SELECT CASE item_type WHEN 'G' THEN 'Gear' WHEN 'B' THEN 'Books'
-                    WHEN 'C' THEN 'Catalogs' WHEN '?' THEN 'Unresolved items' END,count(*)
-                    FROM owned WHERE item_type IN ('G','B','C','?') GROUP BY item_type
-                    UNION ALL SELECT 'Wishlist',count(*) FROM wishlist WHERE archived_at IS NULL"""))
+                counts = dict(db.execute("""SELECT 'Sets',count(DISTINCT item_id) FROM copy WHERE archived_at IS NULL
+                    UNION ALL SELECT CASE kind WHEN 'minifigure' THEN 'Minifigures' WHEN 'part' THEN 'Parts'
+                    WHEN 'instructions' THEN 'Instructions' WHEN 'box' THEN 'Boxes' END,sum(quantity)
+                    FROM stock WHERE archived_at IS NULL AND kind IN ('minifigure','part','instructions','box') GROUP BY kind
+                    UNION ALL SELECT CASE kind WHEN 'gear' THEN 'Gear' WHEN 'book' THEN 'Books' WHEN 'catalog' THEN 'Catalogs' END,count(DISTINCT item_id)
+                    FROM stock WHERE archived_at IS NULL AND kind IN ('gear','book','catalog') GROUP BY kind
+                    UNION ALL SELECT 'Wishlist',count(*) FROM wish WHERE archived_at IS NULL"""))
         except (sqlite3.Error, OSError, ValueError):
             pass
     g._toni_nav_counts = counts

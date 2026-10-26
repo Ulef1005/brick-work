@@ -3,6 +3,7 @@
 ## Unreleased
 
 - `main` is the 4.0 line: the app runs on the 4.0 store; API v1 answers 410 (except `/api/v1/health`) until API v2 (M.11).
+- The collection lists, the item page, the wish, lot and purchase-place pages and the jump search run on the 4.0 store. An item page is `/collection/item/<id>`; the old number URLs redirect to it. Screens show the Rebrickable number first with the BrickLink number beside it where it differs, a BrickLink-only item marked, and an unidentified item by its name; search takes both numbers. Conditions and completeness are words on every screen.
 - `GET /api/v1/health` also returns the app version (`app`), so monitors and update checks need one call.
 - Error responses never carry database or operating-system error text (#76).
 - **Security:** `certifi` 2026.10.19, outside the range of the emSign root CA advisory (#81).

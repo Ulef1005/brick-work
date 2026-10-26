@@ -18,12 +18,12 @@ class Node {
  async trigger(n='click',extra={}){if(n==='error')doc.events.error?.({target:this});return this.events[n]?.({preventDefault(){},currentTarget:this,target:this,...extra});}
 }
 const message=new Node(),undo=new Node(),form=new Node(),formStatus=new Node(),save=new Node();
-form.dataset={bcAction:'save',identity:JSON.stringify({entity:'copy',ids:['copy']})};form.values={note:'A private note',condition:'U'};form.nodes={'[data-bc-form-message]':formStatus};form.groups={button:[save]};
+form.dataset={bcAction:'save',identity:JSON.stringify({entity:'copy',ids:['copy']})};form.values={note:'A private note',condition:'used'};form.nodes={'[data-bc-form-message]':formStatus};form.groups={button:[save]};
 const list=new Node(),container=new Node(),search=new Node(),sort=new Node(),direction=new Node(),count=new Node(),loaded=new Node(),more=new Node(),panel=new Node(),chips=new Node(),filters=new Node(),reset=new Node();sort.value='number';direction.value='asc';panel.hidden=true;
-const records=Array.from({length:130},(_,i)=>({type:'P',name:'Part '+i,number:String(i),quantity:i,colour:i%2?'Black':'White',entity:'stock',ids:i===0?['first','second']:['id-'+i],condition:['U'],status:['I'],storage:['null'],place:['null'],flags:['Checked'],lot:['null'],category:'Plate',theme:'City',year:2020,stock:['loose'],image:i===1?7:null}));
+const records=Array.from({length:130},(_,i)=>({type:'P',name:'Part '+i,number:String(i),quantity:i,colour:i%2?'Black':'White',entity:'stock',ids:i===0?['first','second']:['id-'+i],condition:['used'],status:['incomplete'],storage:['null'],place:['null'],flags:['Checked'],lot:['null'],category:'Plate',theme:'City',year:2020,stock:['loose'],image:i===1?7:null}));
 const source=new Node(),fields=Object.keys(records[0]);source.textContent=JSON.stringify({fields,rows:records.map(r=>Object.fromEntries(fields.map((k,i)=>[i,r[k]])))});
 list.nodes={'[data-bc-rows]':container,'[data-bc-records]':source,'[data-bc-search]':search,'[data-bc-sort]':sort,'[data-bc-direction]':direction,'[data-bc-count]':count,'[data-bc-panel]':panel,'[data-bc-chips]':chips,'[data-bc-more]':more,'[data-bc-loaded]':loaded,'[data-bc-reset]':reset};list.groups={'[data-bc-filters]':[filters]};
-const controlValues={type:'P',condition:'U',status:'I',storage:'null',place:'null',flags:'Checked',lot:'null',duplicates:'false',stock:'loose',category:'Plate',theme:'City',year:'2020',colour:'Black',problem:'damaged'};
+const controlValues={type:'P',condition:'used',status:'incomplete',storage:'null',place:'null',flags:'Checked',lot:'null',duplicates:'false',stock:'loose',category:'Plate',theme:'City',year:'2020',colour:'Black',problem:'damaged'};
 const controls=Object.entries(controlValues).map(([field,value])=>{const c=new Node();c.dataset.bcFilter=field;c.parentElement={firstChild:{textContent:field}};c.options=[{value:'',textContent:'All'},{value,textContent:value},{value:'nonmatching',textContent:'nonmatching'}];return c;});list.groups['[data-bc-filter]']=controls;
 const bulkSave=new Node(),bulkField=new Node(),bulkValue=new Node(),select=new Node(),bar=new Node(),group=new Node(),view=new Node();view.dataset.bcView='list';
 bulkField.value='storage_id';bulkValue.value='store';
@@ -38,14 +38,14 @@ const conditionForms=['new','used','any'].map(value=>{
  const button=new Node();button.tagName='BUTTON';f.append(button);conditionGroup.append(f);return f;
 });
 const conditionButtons=conditionGroup.querySelectorAll('button');
-const root=new Node();root.dataset={bcCollectionList:'',saveUrl:'/collection/save/ACTION',csrf:'csrf',type:'P',editable:'true',itemBase:'/collection/item/TYPE/NUMBER',wishBase:'/collection/wishes/0',imageBase:'/manage/images/0',lotBase:'/collection/lot/LOT',unresolvedUrl:'/manage/unresolved',backUrl:'/collection/sets'};root.nodes={'[data-bc-message]':message,'[data-bc-undo]':undo};root.groups={'[data-bc-photo-file]':[photoInput],'form[data-bc-action]':[form,...conditionForms],'[data-bc-list]':[list]};
+const root=new Node();root.dataset={bcCollectionList:'',saveUrl:'/collection/save/ACTION',csrf:'csrf',type:'P',editable:'true',itemBase:'/collection/item/0',wishBase:'/collection/wishes/0',imageBase:'/manage/images/0',lotBase:'/collection/lot/LOT',unresolvedUrl:'/manage/unresolved',backUrl:'/collection/sets'};root.nodes={'[data-bc-message]':message,'[data-bc-undo]':undo};root.groups={'[data-bc-photo-file]':[photoInput],'form[data-bc-action]':[form,...conditionForms],'[data-bc-list]':[list]};
 doc.querySelector=s=>s==='#bw-collection'?root:null;doc.createElement=tag=>{const n=new Node();n.tagName=tag.toUpperCase();return n;};
 let observe;
 let tabUrl='';
 let calls=[],fail=false,reloads=0,stored=new Map(),merged=false;
 const context={IntersectionObserver:class{constructor(callback){observe=callback;}observe(){}},window:{history:{replaceState(state,title,url){tabUrl=url;}},IntersectionObserver:true,addEventListener(){},scrollY:0,scrollTo(...args){this.scrolled=args;},innerHeight:900},document:doc,sessionStorage:{getItem:k=>stored.get(k)||null,setItem:(k,v)=>stored.set(k,v),removeItem:k=>stored.delete(k)},location:{pathname:'/collection/P',search:'',reload(){reloads++;}},URLSearchParams,FormData:class {constructor(f){this.entries=Object.entries(f.values);} [Symbol.iterator](){return this.entries[Symbol.iterator]();}},requestAnimationFrame:f=>f(),fetch:async(url,options)=>{calls.push({url,data:JSON.parse(options.body)});return {ok:!fail,json:async()=>fail?{message:'Not saved'}:(merged?{event_id:56,message:'Merged into existing stock',url:'/collection/item/P/bl-part?colour=11&stock=destination'}:{event_id:55,message:'Saved'})};}};
 const sortOpen=new Node(),sortPanel=new Node(),statusAll=new Node(),statusIncomplete=new Node();
-statusAll.dataset.bcStatus='';statusIncomplete.dataset.bcStatus='I';sortPanel.hidden=true;
+statusAll.dataset.bcStatus='';statusIncomplete.dataset.bcStatus='incomplete';sortPanel.hidden=true;
 list.nodes['[data-bc-sort-panel]']=sortPanel;list.groups['[data-bc-sort-open]']=[sortOpen];list.groups['[data-bc-status]']=[statusAll,statusIncomplete];
 const inventoryList=new Node(),inventoryRows=new Node(),inventoryCount=new Node(),inventoryExtras=new Node(),inventoryPanel=new Node();inventoryExtras.hidden=true;
 const figureHeading=new Node(),partProgress=new Node(),inventoryMissing=new Node(),inventoryPresent=new Node(),missingFigureRows=new Node(),presentFigureRows=new Node(),presentSummary=new Node();
@@ -97,10 +97,10 @@ for(const type of ['S','wish','P']){
 const priced=api.buildRow({...records[1],price:['EUR','12.5144','2026-10-08',true,'€12.51','8 Oct'],lot_links:[]},root.dataset,false,()=>{});
 assert.ok(texts(priced).includes('€12.51'));assert.ok(texts(priced).includes('8 Oct · stale'));
 assert.equal(api.filterRows([{type:'P'},{type:'M'},{type:'?'},{type:'I'},{type:'O'}],'',{inventory:'figures'}).length,2);
-assert.equal(api.filterRows([{status:['']},{status:['C']}],'',{status:'unknown'}).length,1);
-const sample=[{name:'Plate',number:'3020',colour:'Black',quantity:12,missing:2,condition:['N','U'],storage:['null'],duplicates:true},{name:'Brick',number:'3004',colour:'White',quantity:4,damaged:1,condition:['U'],duplicates:false}];
+assert.equal(api.filterRows([{status:['']},{status:['complete']}],'',{status:'unknown'}).length,1);
+const sample=[{name:'Plate',number:'3020',colour:'Black',quantity:12,missing:2,condition:['new','used'],storage:['null'],duplicates:true},{name:'Brick',number:'3004',colour:'White',quantity:4,damaged:1,condition:['used'],duplicates:false}];
 assert.equal(api.filterRows(sample,'black').length,1);
-assert.equal(api.filterRows(sample,'',{condition:'N',storage:'null'})[0].number,'3020');
+assert.equal(api.filterRows(sample,'',{condition:'new',storage:'null'})[0].number,'3020');
 assert.equal(api.filterRows(sample,'',{duplicates:'true'}).length,1);
 assert.equal(api.filterRows(sample,'',{problem:'damaged'})[0].number,'3004');
 assert.equal(api.filterRows(sample,'',{},'quantity','desc')[0].quantity,12);
@@ -128,7 +128,7 @@ assert.equal(count.textContent,'130 parts');assert.equal(loaded.textContent,'Loa
  await inventoryTabs[2].trigger();assert.equal(inventoryCount.textContent,'2 minifigures');assert.equal(inventoryExtras.hidden,false);assert.equal(inventoryPanel.hidden,true);assert.equal(inventoryTabs[2]['aria-pressed'],'true');assert.ok(tabUrl.endsWith('?inventory=extras'));await inventoryTabs[0].trigger();assert.equal(inventoryExtras.hidden,true);assert.equal(inventoryPanel.hidden,false);assert.equal(inventoryCount.textContent,'1 parts');
 
  await sortOpen.trigger();assert.equal(sortPanel.hidden,false);await sortOpen.trigger();assert.equal(sortPanel.hidden,true);
- await statusIncomplete.trigger();assert.equal(controls.find(c=>c.dataset.bcFilter==='status').value,'I');assert.equal(statusIncomplete['aria-pressed'],'true');
+ await statusIncomplete.trigger();assert.equal(controls.find(c=>c.dataset.bcFilter==='status').value,'incomplete');assert.equal(statusIncomplete['aria-pressed'],'true');
  await statusAll.trigger();assert.equal(controls.find(c=>c.dataset.bcFilter==='status').value,'');
  const cached=container.querySelectorAll('[data-bc-row]')[1],image=cached.querySelector('img'),check=cached.querySelector('[data-bc-selected]');
  check.focus();search.value='Black';await search.trigger('input');
@@ -149,17 +149,17 @@ assert.equal(count.textContent,'130 parts');assert.equal(loaded.textContent,'Loa
  sort.value='quantity';direction.value='desc';await direction.trigger('change');group.value='';await group.trigger('change');assert.equal(container.querySelector('[data-bc-item-link]').children[0].children[1].textContent,'Part\u00a0129');
  await more.trigger();await view.trigger();const state=JSON.parse(stored.get('bw-collection-list:/collection/P:0'));assert.equal(state.limit,120);assert.equal(state.sort,'quantity');assert.equal(state.direction,'desc');assert.equal(state.view,'list');
  container.replaceChildren();
- state.query='White';state.filters={condition:'U'};state.scroll=321;stored.set('bw-collection-list:/collection/P:0',JSON.stringify(state));
+ state.query='White';state.filters={condition:'used'};state.scroll=321;stored.set('bw-collection-list:/collection/P:0',JSON.stringify(state));
  vm.runInNewContext((fs.readFileSync('static/web/toni/formatting.js','utf8')+fs.readFileSync('static/web/toni/bw-collection.js','utf8')),context);assert.equal(search.value,'White');assert.equal(count.textContent,'65 parts');assert.equal(container.querySelectorAll('[data-bc-row]').length,65);assert.equal(context.window.scrolled[1],321);
- assert.equal(controls.find(c=>c.dataset.bcFilter==='condition').value,'U');
+ assert.equal(controls.find(c=>c.dataset.bcFilter==='condition').value,'used');
  await reset.trigger();
  for(const c of controls){c.value='nonmatching';await c.trigger('change');assert.equal(count.textContent,'0 parts',c.dataset.bcFilter);assert.equal(chips.children[0].textContent,c.dataset.bcFilter+': nonmatching ×');await chips.children[0].trigger();assert.equal(count.textContent,'130 parts');}
  const visible=container.querySelectorAll('[data-bc-row]');await visible[0].trigger('keydown',{key:'ArrowDown'});assert.equal(visible[1].focused,true);
  const unsafe=api.decodeRecords({fields:['type','number','name'],rows:[{0:'P',1:'x',2:'<img src=x onerror=alert(1)>'}]})[0];
  const escaped=api.buildRow(unsafe,root.dataset,false,()=>{});assert.equal(escaped.querySelector('[data-bc-item-link]').children[0].children[1].textContent,api.nowrapTail(unsafe.name));assert.equal(escaped.querySelectorAll('img').length,0);
  const withImage=api.buildRow({...unsafe,image:4},root.dataset,false,()=>{}),img=withImage.querySelector('img');assert.equal(img.src,'/manage/images/4?w=320');await img.trigger('error');assert.equal(withImage.querySelector('.bc-picture').children[1].textContent,'No image');await withImage.querySelector('.bc-picture').children[2].trigger();assert.equal(withImage.querySelector('img'),img);
- for(const [field,value] of Object.entries({type:'P',condition:'N',status:'C',storage:'null',place:'null',flags:'Checked',lot:'null',duplicates:'true',stock:'loose',category:'Plate',theme:'City',year:'2020',colour:'Black'})){
-   const r={...sample[0],type:'P',status:['C'],place:['null'],flags:['Checked'],lot:['null'],stock:['loose'],category:'Plate',theme:'City',year:2020};assert.equal(api.filterRows([r],'',{[field]:value}).length,1,field);assert.equal(api.filterRows([r],'',{[field]:'nonmatching'}).length,0,field);
+ for(const [field,value] of Object.entries({type:'P',condition:'new',status:'complete',storage:'null',place:'null',flags:'Checked',lot:'null',duplicates:'true',stock:'loose',category:'Plate',theme:'City',year:'2020',colour:'Black'})){
+   const r={...sample[0],type:'P',status:['complete'],place:['null'],flags:['Checked'],lot:['null'],stock:['loose'],category:'Plate',theme:'City',year:2020};assert.equal(api.filterRows([r],'',{[field]:value}).length,1,field);assert.equal(api.filterRows([r],'',{[field]:'nonmatching'}).length,0,field);
  }
  let wide=true,resize;
  inventoryList.hasAttribute=()=>false;
@@ -174,7 +174,7 @@ assert.equal(count.textContent,'130 parts');assert.equal(loaded.textContent,'Loa
  root.groups['[data-bc-list]']=[inventoryList];
  const inventorySearch=inventoryList.nodes['[data-bc-search]'],inventorySort=inventoryList.nodes['[data-bc-sort]'],inventoryDirection=inventoryList.nodes['[data-bc-direction]'];
  const inventoryFilters=new Node(),inventoryFilterPanel=new Node(),inventoryControl=new Node(),inventoryGroup=new Node(),inventoryMore=new Node();
- inventoryControl.tagName='SELECT';inventoryControl.dataset.bcFilter='condition';inventoryControl.value='U';inventoryFilterPanel.append(inventoryControl);inventoryFilterPanel.hidden=true;
+ inventoryControl.tagName='SELECT';inventoryControl.dataset.bcFilter='condition';inventoryControl.value='used';inventoryFilterPanel.append(inventoryControl);inventoryFilterPanel.hidden=true;
  inventoryList.nodes['[data-bc-panel]']=inventoryFilterPanel;inventoryList.nodes['[data-bc-group]']=inventoryGroup;inventoryList.nodes['[data-bc-more]']=inventoryMore;
  inventoryList.groups['[data-bc-filters]']=[inventoryFilters];inventoryList.groups['[data-bc-filter]']=[inventoryControl];
  context.location.pathname='/collection/item/S/review';context.location.search='?stock=copy&tag=a&tag=b';context.location.hash='#inventory';
@@ -231,18 +231,18 @@ assert.equal(count.textContent,'130 parts');assert.equal(loaded.textContent,'Loa
  console.log('Brick Work collection runtime passed');
 // Run 2: data claims follow the actual displayed records, including filtering.
 assert.equal(api.priceBasis([]),'');
-assert.equal(api.priceBasis([{price:['EUR','12'],price_basis:['U','sold','bricklink']}]),' · prices are used averages from BrickLink');
-assert.equal(api.priceBasis([{price:[],price_basis:['N','stock','bricklink']}]),' · prices are new listings from BrickLink');
-assert.equal(api.priceBasis([{price:[],price_basis:['U','sold','bricklink']},{price:[],price_basis:['U','sold','rebrickable']}]),' · prices are used averages from mixed sources');
+assert.equal(api.priceBasis([{price:['EUR','12'],price_basis:['used','sold','bricklink']}]),' · prices are used averages from BrickLink');
+assert.equal(api.priceBasis([{price:[],price_basis:['new','stock','bricklink']}]),' · prices are new listings from BrickLink');
+assert.equal(api.priceBasis([{price:[],price_basis:['used','sold','bricklink']},{price:[],price_basis:['used','sold','rebrickable']}]),' · prices are used averages from mixed sources');
 const gaps=api.inventorySections([{number:'damaged',missing:0,damaged:2},{number:'missing',missing:1},{number:'present',missing:0},{number:'unchecked'}]);
-assert.equal(api.priceBasis([{price:[],price_basis:['U','sold','bricklink']},{price:[],price_basis:['N','sold','bricklink']}]),' · prices have mixed bases from BrickLink');
+assert.equal(api.priceBasis([{price:[],price_basis:['used','sold','bricklink']},{price:[],price_basis:['new','sold','bricklink']}]),' · prices have mixed bases from BrickLink');
 assert.deepEqual(Array.from(gaps.missing,r=>r.number),['damaged','missing']);
 assert.deepEqual(Array.from(api.inventorySections([{missing:0},{missing:null}]).missing),[]);
 assert.equal(api.filterRows([{flags:['Display','Box present']},{flags:['Display']}],'',{tag:'Display',has:'Box present'}).length,1);
 assert.equal(api.filterRows([{number:'damaged',damaged:2},{number:'missing',missing:1}],'',{},'missing')[0].number,'damaged');
 
 // Real button listeners map kit chips onto the same canonical select state.
-const run2Picks=['condition','status','tag','has'].map((key,i)=>{const n=new Node();n.dataset={bcPick:key,value:['U','I','Display','Box present'][i]};return n;});
+const run2Picks=['condition','status','tag','has'].map((key,i)=>{const n=new Node();n.dataset={bcPick:key,value:['used','incomplete','Display','Box present'][i]};return n;});
 for(const key of ['tag','has']){
  const c=new Node();c.dataset.bcFilter=key;c.parentElement={firstChild:{textContent:key}};
  c.options=[{value:'',textContent:'All'},{value:key==='tag'?'Display':'Box present',textContent:key}];controls.push(c);

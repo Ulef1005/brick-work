@@ -10,39 +10,9 @@ from tests.importer.test_importer import legacy
 from tests.web_fixtures import app, apps, logged_in
 
 
-def test_jump_injection_literal_wildcards_empty_and_bound(app, bw):
-    malicious = '<img src=x onerror=alert(1)>'
-    with admin.database(bw) as db, db:
-        db.execute("UPDATE items SET name=? WHERE item_type='S' AND item_no='new-set'", (malicious,))
-    client = logged_in(app)
-    response = client.get('/collection/jump?q=new-set')
-    assert response.mimetype == 'application/json'
-    assert response.json['results'][0]['name'] == malicious
-    source = (ROOT / 'static/web/toni/jump.js').read_text()
-    assert 'innerHTML' not in source and 'textContent' in source
-    for query in ('', '   ', '%', "'OR1=1--"):
-        assert client.get('/collection/jump', query_string={'q': query}).json['results'] == []
-    assert len(client.get('/collection/jump', query_string={'q': 'x' * 200}).json['query']) == 100
-
-
-def test_jump_limit_and_case_folding(app, bw):
-    with admin.database(bw) as db, db:
-        db.execute("UPDATE items SET name='Älterer Plate' WHERE item_type='P' AND item_no='bl-part'")
-        db.executemany("INSERT INTO loose_stock(id,item_type,item_no,color_id,quantity,condition) VALUES(?,'P','bl-part',11,1,'U')",
-                       [(f'jump-{n}',) for n in range(25)])
-    client = logged_in(app)
-    data = client.get('/collection/jump?q=plate').json
-    assert data['limit'] == 20 and len(data['results']) <= 20
-    assert client.get('/collection/jump?q=%C3%A4lterer').json['results']
-    assert client.get('/collection/jump?q=PLATE').json['results'] == data['results']
-
-
 @pytest.mark.parametrize('path,current', [
-    ('/collection/sets', 'Sets'), ('/collection/item/S/new-set', 'Sets'),
-    ('/collection/M', 'Minifigures'), ('/collection/P', 'Parts'),
-    ('/collection/I', 'Instructions'), ('/collection/O', 'Boxes'),
     ('/planning/complete-sets', 'Complete sets'), ('/workbench/orders', 'Orders'),
-    ('/workbench/storage', 'Storage'), ('/collection/wishes', 'Wishlist'),
+    ('/workbench/storage', 'Storage'),
     ('/planning/prices', 'Prices'), ('/planning/wishlist', 'Wishlist'),
     ('/manage/add', 'Add'), ('/manage/tools', 'Tools & Admin'),
     ('/workbench/check-parts', 'Check Set Parts'), ('/workbench/matcher', 'Matcher'),

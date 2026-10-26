@@ -26,6 +26,8 @@ from .connect import _uri, connect, has_catalogue
 from .dump import HEADERS
 from .errors import BuildBusy, Store4Error
 from .mappings import MAPPINGS_DIR
+from .migrate import MigrationError, NeedsDecision
+from .migrate_run import Refused, run as run_migration
 from .reconcile import reconcile
 from .swap import build_lock
 
@@ -698,15 +700,65 @@ def build_parser():
     pref.add_argument('choice', help='rebrickable, rebrickable:N, bricklink or clear')
     pb = copy.add_parser('prefer-bricklink', help="the global switch: prefer BrickLink's list when a key exists")
     pb.add_argument('state', choices=('on', 'off'))
+    mig = commands.add_parser('migrate', help='migrate a 3.3 collection file into a new 4.0 file: write, prove, report, publish only on PASS')
+    mig.add_argument('--in', dest='src', required=True, help='the 3.3 collection file (read-only; the 3.3 app must be stopped, or this a copy)')
+    mig.add_argument('--catalogue', required=True, help='the catalogue.db the mint resolves against')
+    mig.add_argument('--mappings', required=True, help='the mappings directory the catalogue was built with (every file is hashed)')
+    mig.add_argument('--out', required=True, help='the 4.0 file to create (must not exist)')
+    mig.add_argument('--report', required=True, help='the report folder (new or empty)')
+    mig.add_argument('--pin', help='proof.json or summary.md of an earlier run: refuse unless the catalogue and the mapping files are identical')
+    mig.add_argument('--json', action='store_true', default=argparse.SUPPRESS, help='print the result as JSON')
     for parser in (bl, *cat.choices.values(), *fetchers, jobs_cmd, drain, *copy.choices.values()):
         parser.add_argument('--json', action='store_true', default=argparse.SUPPRESS, help='print the result as JSON')
         parser.add_argument('--data', default=argparse.SUPPRESS, help='as before the command')
     return root
 
 
+# exit codes of `migrate` (argparse keeps 2 for a usage error, 1 is any other failure)
+EXIT_PASS, EXIT_FAILED_PROOF, EXIT_REFUSED, EXIT_NEEDS_DECISION = 0, 10, 11, 12
+
+
+def attach_line(counts, kind, label):
+    c = counts.get(kind, {'attached': 0, 'total': 0})
+    return f'{label} {c["attached"]}/{c["total"]}' + (f' ({100 * c["attached"] / c["total"]:.1f}%)' if c['total'] else '')
+
+
+def do_migrate(args, out):
+    """Exit codes: 0 PASS and published; 10 the proof FAILED (report written, no output); 11 refused before writing (pin, existing output,
+    report folder in use, a 3.3 file with a WAL); 12 3.3 rows need a decision (listed); 1 any other failure."""
+    try:
+        res = run_migration(args.src, args.catalogue, args.mappings, args.out, args.report, pin=args.pin)
+    except NeedsDecision as exc:
+        print(f'needs a decision: {exc}', file=sys.stderr)
+        for row in exc.rows[:20]:
+            print(f'  {row.get("why")}', file=sys.stderr)
+        return EXIT_NEEDS_DECISION
+    except (Refused, FileExistsError) as exc:
+        print(f'refused: {exc}', file=sys.stderr)
+        return EXIT_REFUSED
+    except (Store4Error, OSError, ValueError, sqlite3.Error) as exc:
+        print(f'error: {exc}', file=sys.stderr)
+        return 1
+    counts = res.migration.attach_counts()
+    parts = {n: p['result'] for n, p in res.proof['parts'].items()}
+    if getattr(args, 'json', False):
+        print(json.dumps(dict(result=res.result, published=res.published, out=str(res.out), report=str(res.report), digest=res.digest, proof=parts,
+                              attach=counts, rows=res.migration.counts(), seconds=round(res.seconds, 1)), indent=1, sort_keys=True), file=out)
+    else:
+        rows = res.migration.counts()
+        print(f'proof {res.result}: ' + ', '.join(f'{n} {v}' for n, v in parts.items()), file=out)
+        print('rows: ' + ', '.join(f'{k} {rows[k]}' for k in ('copy', 'copy_figure', 'copy_part', 'stock', 'stock_part', 'wish', 'price_observation') if k in rows), file=out)
+        print('attached: ' + ', '.join(attach_line(counts, k, label) for k, label in (('copy', 'copies'), ('figure', 'figure lines'), ('loose_figure', 'loose figures'))), file=out)
+        print(f'report: {res.report} (digest {res.digest[:16]})', file=out)
+        print(f'{res.out} published' if res.published else 'NOT published', file=out)
+    return EXIT_PASS if res.result == 'PASS' else EXIT_FAILED_PROOF
+
+
 def main(argv=None, *, fetch=http_fetch, mappings_dir=MAPPINGS_DIR, now=None, out=None, http=None, clock=None):
     args = build_parser().parse_args(argv)
     out = out or sys.stdout
+    if args.group == 'migrate':
+        return do_migrate(args, out)
     paths = Paths(args.data)
     say = (lambda *a: None) if args.json else (lambda *a: print(*a, file=out, flush=True))
     command = args.command

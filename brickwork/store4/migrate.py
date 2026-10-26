@@ -35,7 +35,7 @@ import uuid
 from . import identity
 from .activate import apply_activation
 from .audit import Events, transaction
-from .bldigest import inventory_digest
+from .bldigest import bl_digest, inventory_digest
 from .connect import connect, now
 from .errors import Store4Error
 from .mint import NO_COLOUR, TYPE_KIND, MintResult, _kind_by_number, mint
@@ -135,6 +135,7 @@ class MigrationResult:
     unmatched: list = field(default_factory=list)
     wish_ids: dict = field(default_factory=dict)             # 3.3 integer wish id -> 4.0 uuid
     price_current: dict = field(default_factory=dict)        # recomputed vs 3.3
+    attach: list = field(default_factory=list)               # 8.6: one record per copy, figure line and loose figure: attached or migrated, and why
     foreign_key_check: list = field(default_factory=list)
     integrity_check: str = None
     inputs_unchanged: bool = None
@@ -142,6 +143,18 @@ class MigrationResult:
 
     def counts(self):
         return {t['to']: t['rows_40'] for t in self.tables}
+
+    def attach_counts(self):
+        """{kind: {'total', 'attached', 'reasons': {reason: n}}} over the attach records (kinds copy, figure, loose_figure)."""
+        out = {}
+        for a in self.attach:
+            c = out.setdefault(a['kind'], {'total': 0, 'attached': 0, 'reasons': {}})
+            c['total'] += 1
+            if a['status'] == 'attached':
+                c['attached'] += 1
+            else:
+                c['reasons'][a['reason']] = c['reasons'].get(a['reason'], 0) + 1
+        return out
 
 
 def sha256_file(path):
@@ -335,6 +348,10 @@ class _Writer:
         self.projected = set()
         self._kinds = {}
         self.currency = None
+        self.bl_figure_lines = {}                             # (copy, figure item) -> its component lines in BrickLink space
+        self.bl_copy_lines = {}                               # copy -> its lines in BrickLink space
+        self.bl_stock_lines = {}                              # stock id -> a loose figure's component lines in BrickLink space
+        self.figure_rows = {}                                 # (copy, figure item) -> copy_figure id, own digest, 3.3 reference
 
     # ---- driver ----
 
@@ -354,6 +371,7 @@ class _Writer:
             self._wishlists()
             self._copies()
             self._stock()
+            self._attach()
             self._flags()
             self._wishes()
             self._photos_instructions()
@@ -592,13 +610,18 @@ class _Writer:
             else:
                 figure_parts[(line['copy_id'], line['figure_item'])].append(line)
         # M lines of a BrickLink list in copy_parts are figure lines in 4.0
+        bl_other = defaultdict(list)                          # BrickLink-space lines of rows copy_part cannot hold (they keep a copy from attaching)
+        bl_figure_other = defaultdict(list)
         for copy_id, lines in list(set_parts.items()):
             kept = []
             for line in lines:
                 if line['kind'] == 'minifigure':
                     self._figure_from_part(figures, line)
+                    if line['spare']:
+                        bl_other[copy_id].append(self._bl_line(line))
                 elif line['kind'] != 'part':
                     r.non_part_lines.append(self._describe(line, f'a {line["kind"]} line: copy_part holds parts only'))
+                    bl_other[copy_id].append(self._bl_line(line))
                 else:
                     kept.append(line)
             set_parts[copy_id] = kept
@@ -608,6 +631,7 @@ class _Writer:
                 for l in figure_parts[key]:
                     if l['kind'] != 'part':
                         r.non_part_lines.append(self._describe(l, f'a {l["kind"]} line inside a figure: copy_part holds parts only'))
+                        bl_figure_other[key].append(self._bl_line(l))
                     else:
                         kept.append(l)
                 figure_parts[key] = kept
@@ -619,6 +643,8 @@ class _Writer:
             lines = set_parts.get(c['id'], [])
             digest = inventory_digest([(l['item_id'], l['color_id'], l['spare'], l['quantity']) for l in lines if l['quantity'] > 0],
                                       [(i, f['quantity']) for (cid, i), f in figures.items() if cid == c['id'] and f['quantity'] > 0])
+            self.bl_copy_lines[c['id']] = ([self._bl_line(l) for l in lines] + bl_other.get(c['id'], [])
+                                           + [self._bl_figure_line(f, i) for (cid, i), f in sorted(figures.items()) if cid == c['id']])
             price, currency = self.money('copy.purchase', c['id'], c['purchase_price'], c['purchase_currency'])
             value, value_currency = self.money('copy.current_value', c['id'], c['current_value'], c['current_value_currency'])
             created = self.stamp_event_first('copy.created_at', 'copy', c['id'], c['updated_at'])
@@ -630,7 +656,7 @@ class _Writer:
                              'materialised_at', 'inventory_pending', 'pending_job_id', 'condition', 'completeness', 'completeness_source',
                              'storage_id', 'place_id', 'purchase_date', 'purchase_price', 'purchase_currency', 'note', 'current_value',
                              'current_value_currency', 'pinned', 'created_at', 'updated_at', 'archived_at'], copy_rows)
-        self.note('copies', 'copy', len(copies), "all 'migrated' (M.7c attaches them to Rebrickable versions)")
+        self.note('copies', 'copy', len(copies), "'migrated', then attached to Rebrickable versions where equal in BrickLink space (_attach)")
         # figure lines
         ids = {}
         for (copy_id, item_id) in sorted(figures):
@@ -640,6 +666,9 @@ class _Writer:
             ids[(copy_id, item_id)] = self.db.execute(
                 '''INSERT INTO main.copy_figure(copy_id, item_id, inventory_source, inventory_digest, quantity, missing, updated_at)
                    VALUES(?, ?, 'migrated', ?, ?, ?, ?)''', (copy_id, item_id, inventory_digest(comp), f['quantity'], f['missing'], updated)).lastrowid
+            self.figure_rows[(copy_id, item_id)] = {'id': ids[(copy_id, item_id)], 'own_digest': inventory_digest(comp), 'old': f['old']}
+            self.bl_figure_lines[(copy_id, item_id)] = ([self._bl_line(l) for l in figure_parts.get((copy_id, item_id), [])]
+                                                        + bl_figure_other.get((copy_id, item_id), []))
         self.note('copy_minifigs', 'copy_figure', src.execute('SELECT count(*) FROM copy_minifigs').fetchone()[0],
                   f'{len(r.figure_lines_from_parts)} more from copy_parts lines of a minifigure')
         rows = []
@@ -656,6 +685,33 @@ class _Writer:
                     (row[:-1] for row in rows))
         self.note('copy_parts', 'copy_part', src.execute('SELECT count(*) FROM copy_parts').fetchone()[0],
                   'Q7 sums, extras corrected, colour NULL -> 1, element_id and source_ref dropped')
+
+    # ---- BrickLink space (design 8.6) ----
+
+    def _bl_key(self, item_id, color_id):
+        """The BrickLink (type, number) the catalogue's own links give an item: what the catalogue's bl_digest projects it to."""
+        best = identity.best_item_link(identity.confirmed_item_links(self.db, item_id, 'bricklink'), color_id)
+        return None if best is None else (best['provider_kind'], best['provider_key'])
+
+    def _bl_line(self, line):
+        """A part-table line of 3.3 as BrickLink lists it: `(type, number, colour, is_spare, quantity)`, the line shape of `bldigest`.
+        Colour NULL and 0 are both "no colour". A gear/book/... line the mint carried as a part (`type_crossed`) is a `P` line, because that
+        is how the catalogue lists it; a line copy_part cannot hold keeps its own type, so its copy never equals a catalogue list. A `?`
+        placeholder is projected through the catalogue's link of the item it resolved to; without one the line is type `?`."""
+        t = line['item_type']
+        colour = None if line['bl_color'] in (None, 0) else str(line['bl_color'])
+        if t == '?':
+            key = self._bl_key(line['item_id'], line['color_id'])
+            return (key[0] if key else '?', key[1] if key else line['item_no'], colour, line['spare'], line['quantity'])
+        return ('P' if line['kind'] == 'part' else t, line['item_no'], colour, line['spare'], line['quantity'])
+
+    def _bl_figure_line(self, f, item_id):
+        """A copy's figure line as the catalogue lists a figure in a set: `('M', number, None, 0, quantity)`."""
+        t, no = f['old'][1], f['old'][2]
+        if t == '?':
+            key = self._bl_key(item_id, None)
+            return (key[0] if key else '?', key[1] if key else no, None, 0, f['quantity'])
+        return (t, no, None, 0, f['quantity'])
 
     def _describe(self, line, why):
         return {'copy_id': line['copy_id'], 'copy_part_ids': line['ids'], 'item_type': line['item_type'], 'item_no': line['item_no'],
@@ -790,6 +846,9 @@ class _Writer:
             quantity, missing, damaged = self.counts('loose_minifig_parts', ref, p['quantity'], p['missing'], p['damaged'])
             t = self.tgt(p['item_type'], p['item_no'], p['color_id'], 'part' if p['item_type'] == '?' else None, holder)
             spare = p['spare'] or 0
+            self.bl_stock_lines.setdefault(p['stock_id'], []).append(self._bl_line(
+                {'item_type': p['item_type'], 'item_no': p['item_no'], 'bl_color': p['color_id'], 'color_id': t.color_id, 'item_id': t.item_id,
+                 'spare': spare, 'quantity': quantity, 'kind': self.item_kind(t.item_id)}))
             if self.item_kind(t.item_id) != 'part':
                 r.non_part_lines.append({'table': 'loose_minifig_parts', 'stock_id': p['stock_id'], 'item_type': p['item_type'], 'item_no': p['item_no'],
                                          'color_id': p['color_id'], 'spare': spare, 'quantity': quantity, 'missing': missing, 'damaged': damaged,
@@ -846,6 +905,71 @@ class _Writer:
                                            'quantity': l['quantity'], 'missing': l['missing'], 'damaged': l['damaged'], 'checked': l['checked']})
         self.insert('stock_part', ['stock_id', 'item_id', 'color_id', 'is_spare', 'quantity', 'missing', 'damaged', 'checked'], out)
         self.note('loose_minifig_parts', 'stock_part', src.execute('SELECT count(*) FROM loose_minifig_parts').fetchone()[0])
+
+    # ---- attaching lists (design 8.6, Q12) ----
+
+    def _versions(self, item_id, latest_only=False):
+        """The catalogue's part lists of a set or figure, newest first (latest, then the highest version)."""
+        return self.db.execute(
+            'SELECT version, digest, bl_digest, is_latest FROM catalogue.inventory WHERE item_id=? AND retired_at IS NULL'
+            + (' AND is_latest=1' if latest_only else '') + ' ORDER BY is_latest DESC, version DESC', (item_id,)).fetchall()
+
+    def _compare(self, kind, row, ref, label, item_id, lines, own_digest, *, latest_only=False):
+        """Does a migrated list equal a Rebrickable list in BrickLink space? Returns the record and the matching (version, digest) or None.
+        Every record says why a list stayed `migrated`: no_catalogue_list (a local item, or the catalogue has no list of it),
+        no_bl_digest (none of its lists has a BrickLink-space digest), placeholder_without_bricklink_key (a `?` line the catalogue cannot
+        project), digest_differs, ids_differ (equal in BrickLink space, but lines on other 4.0 items than the catalogue list's)."""
+        lines = [l for l in lines if l[4] > 0]
+        record = {'kind': kind, 'row': row, 'ref': ref, 'label': label, 'item_id': item_id, 'lines': len(lines), 'status': 'migrated', 'reason': None,
+                  'version': None, 'versions_tried': 0, 'bl_digest': None, 'catalogue_digest': None, 'ids_equal': None}
+        versions = self._versions(item_id, latest_only) if item_id < LOCAL_BASE else []
+        record['versions_tried'] = len(versions)
+        if not versions:
+            record['reason'] = 'no_catalogue_list'
+        elif any(l[0] == '?' for l in lines):
+            record['reason'] = 'placeholder_without_bricklink_key'
+        else:
+            record['bl_digest'] = want = bl_digest(lines)
+            usable = [v for v in versions if v['bl_digest'] is not None]
+            hits = [v for v in usable if v['bl_digest'] == want]
+            exact = next((v for v in hits if v['digest'] == own_digest), None)
+            if exact is not None:
+                record.update(status='attached', version=exact['version'], catalogue_digest=exact['digest'], ids_equal=True)
+            elif hits:
+                # equal in BrickLink space, but some lines sit on other 4.0 items (a rule-4 tie made them local): a `rebrickable` list
+                # must hold the catalogue list's own lines, or change detection and the switch see a list that is not the catalogue's
+                record.update(reason='ids_differ', version=hits[0]['version'], catalogue_digest=hits[0]['digest'], ids_equal=False)
+            else:
+                record['reason'] = 'digest_differs' if usable else 'no_bl_digest'
+        self.r.attach.append(record)
+        return record
+
+    def _attach(self):
+        """Design 8.6: a migrated list that equals a Rebrickable list in BrickLink space becomes that list (`rebrickable`, its version and
+        digest); the lines stay as written, so check state is untouched. Everything else stays `migrated`. Runs inside the migration's
+        transaction. A copy is compared with every version of its set; a figure line and a loose figure with the figure's latest list."""
+        db, r = self.db, self.r
+        for c in db.execute('SELECT c.id, c.item_id, c.inventory_digest FROM main.copy c ORDER BY c.id').fetchall():
+            rec = self._compare('copy', c['id'], c['id'], self.mint_label(c['item_id']), c['item_id'], self.bl_copy_lines.get(c['id'], []), c['inventory_digest'])
+            if rec['status'] == 'attached':
+                db.execute("UPDATE main.copy SET inventory_source='rebrickable', inventory_version=?, inventory_digest=? WHERE id=?",
+                           (rec['version'], rec['catalogue_digest'], c['id']))
+        for (copy_id, item_id), f in sorted(self.figure_rows.items()):
+            rec = self._compare('figure', f['id'], f'{copy_id} {f["old"][1]}:{f["old"][2]}', self.mint_label(item_id), item_id,
+                                self.bl_figure_lines.get((copy_id, item_id), []), f['own_digest'], latest_only=True)
+            if rec['status'] == 'attached':
+                db.execute("UPDATE main.copy_figure SET inventory_source='rebrickable', inventory_version=?, inventory_digest=? WHERE id=?",
+                           (rec['version'], rec['catalogue_digest'], f['id']))
+        for s in db.execute("SELECT id, item_id, inventory_digest FROM main.stock WHERE kind='minifigure' ORDER BY id").fetchall():
+            rec = self._compare('loose_figure', s['id'], s['id'], self.mint_label(s['item_id']), s['item_id'], self.bl_stock_lines.get(s['id'], []),
+                                s['inventory_digest'], latest_only=True)
+            if rec['status'] == 'attached':
+                db.execute("UPDATE main.stock SET inventory_source='rebrickable', inventory_version=?, inventory_digest=? WHERE id=?",
+                           (rec['version'], rec['catalogue_digest'], s['id']))
+
+    def mint_label(self, item_id):
+        row = self.db.execute('SELECT born_namespace, born_key FROM main.item WHERE id=?', (item_id,)).fetchone()
+        return f'{row[0]}:{row[1]}' if row else ''
 
     # ---- flags, wishes ----
 

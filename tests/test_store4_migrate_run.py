@@ -12,7 +12,7 @@ import sqlite3
 
 import pytest
 
-from brickwork.core.connect import connect as connect33
+from tests.legacy33 import regression_33
 from brickwork.store4 import cli, migrate_run
 from brickwork.store4.connect import connect
 from brickwork.store4.migrate import MigrationError, NeedsDecision
@@ -190,8 +190,7 @@ def test_the_proof_passes_on_the_synthetic_store(tmp_path, attach_33, catalogue,
 @pytest.mark.parametrize('fixture', REGRESSION, ids=lambda p: p.name)
 def test_the_proof_passes_on_every_regression_fixture(fixture, tmp_path, catalogue, mappings):
     src = tmp_path / 'bw33.db'
-    shutil.copy(fixture, src)
-    connect33(src).close()
+    regression_33(fixture, src)
     with sqlite3.connect(src) as db:
         db.execute('PRAGMA journal_mode=DELETE')
     res = go(tmp_path, src, catalogue, mappings)

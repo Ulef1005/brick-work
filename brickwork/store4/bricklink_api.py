@@ -2,12 +2,12 @@
 
 One signed GET, `/items/SET/{no}/subsets?break_minifigs=false` (figures stay figure lines, as the design's `M` lines expect), made
 through an injectable `http(url, headers) -> (status, json)`, the same seam as the Rebrickable client. Signing is the 3.3 code
-(`core.sources.bricklink.signed_request`); the four credentials come from the environment, never from a file or a log line.
+(`core.sources.bricklink.signed_request`); the four credentials come from the environment (or `keys.set_key_provider`), never from a file or a log line.
 The reply is returned whole: `bricklink_subsets.load_subsets` validates and stores it."""
-import os
 import re
 
 from ..core.sources.bricklink import signed_request
+from . import keys
 from .errors import Store4Error
 from .rebrickable_api import FetchError, InvalidReply, KeyRefused, NotFound, Throttled, UrllibHttp
 
@@ -19,7 +19,7 @@ IP_MISMATCH = 'BrickLink token IP mismatch (the public IP changed? Register the 
 
 def credentials():
     """The four values in signing order, else a Store4Error naming only the missing variable names."""
-    values = [os.environ.get(name) for name in KEY_ENVS]
+    values = [keys.get(name) for name in KEY_ENVS]
     missing = [name for name, v in zip(KEY_ENVS, values) if not v]
     if missing:
         raise Store4Error('BrickLink key is not configured: ' + ', '.join(missing) + ' not set')
@@ -27,7 +27,7 @@ def credentials():
 
 
 def key_configured():
-    return all(os.environ.get(name) for name in KEY_ENVS)
+    return all(keys.get(name) for name in KEY_ENVS)
 
 
 def fetch_subsets(number, *, http=None, creds=None):

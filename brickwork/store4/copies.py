@@ -235,50 +235,68 @@ def create_copy(db, set_item_id, choice, *, via, actor=None, condition=None, com
     (`jobs.queue_in`; an open job for the set is reused, not doubled). The receipt then carries `pending` = `{'source',
     'job_id', 'job_reused'}`. `pending.settle_pending` takes it from there."""
     with transaction(db, 'adding a copy'):
-        if has_catalogue(db):
-            check_compatible(db)                            # a connection opened before a rebuild keeps the old file
-        pending = None
-        try:
-            target = build_target(db, set_item_id, choice)
-        except BrickLinkPending:
-            target = build_target(db, set_item_id, _pending_base(db, set_item_id))
-            pending = True
-        _project(db, target)
-        stamp, copy_id = now(), str(uuid.uuid4())
-        if pending:
-            number = db.execute('SELECT born_key FROM main.item WHERE id=?', (set_item_id,)).fetchone()['born_key']
-            job, created = jobs.queue_in(db, 'bricklink_subsets', item_id=set_item_id, payload=number, via=via, actor=actor)
-            pending = {'source': 'bricklink', 'job_id': job, 'job_reused': not created}
-        db.execute('''INSERT INTO main.copy(id, item_id, inventory_source, inventory_version, fetched_inventory_id, inventory_digest,
-                      materialised_at, inventory_pending, pending_job_id, condition, completeness, completeness_source, note,
-                      created_at, updated_at) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-                   (copy_id, set_item_id, target.source, target.version, target.fetched_inventory_id, target.digest, stamp,
-                    pending and 'bricklink', pending and pending['job_id'], condition,
-                    completeness, 'manual' if completeness else None, note, stamp, stamp))
-        figure_rows = []
-        figure_ids = {}
-        for fig in target.figures:
-            figure_ids[fig.item_id] = db.execute('''INSERT INTO main.copy_figure(copy_id, item_id, inventory_source, inventory_version,
-                fetched_inventory_id, inventory_digest, quantity, updated_at) VALUES(?, ?, ?, ?, ?, ?, ?, ?)''',
-                (copy_id, fig.item_id, fig.source, fig.version, fig.fetched_inventory_id, fig.digest, fig.quantity, stamp)).lastrowid
-            figure_rows.append({'id': figure_ids[fig.item_id], 'item_id': fig.item_id, 'inventory_source': fig.source,
-                                'inventory_version': fig.version, 'fetched_inventory_id': fig.fetched_inventory_id,
-                                'inventory_digest': fig.digest, 'quantity': fig.quantity})
-        part_rows = []
-        for (figure, item, colour, spare), quantity in sorted(target.lines().items(), key=lambda kv: tuple(-1 if x is None else x for x in kv[0])):
-            figure_id = None if figure is None else figure_ids[figure]
-            part_id = db.execute('''INSERT INTO main.copy_part(copy_id, copy_figure_id, item_id, color_id, is_spare, quantity)
-                                    VALUES(?, ?, ?, ?, ?, ?)''', (copy_id, figure_id, item, colour, spare, quantity)).lastrowid
-            part_rows.append([part_id, figure_id, item, colour, spare, quantity])
-        receipt = {'copy': {'id': copy_id, 'item_id': set_item_id, 'inventory_source': target.source, 'inventory_version': target.version,
-                            'fetched_inventory_id': target.fetched_inventory_id, 'inventory_digest': target.digest,
-                            'materialised_at': stamp, 'condition': condition, 'completeness': completeness, 'note': note},
-                   'figures': figure_rows, 'parts': {'columns': PART_COLUMNS, 'rows': part_rows}}
-        if pending:
-            receipt['copy'].update(inventory_pending='bricklink', pending_job_id=pending['job_id'])
-            receipt['pending'] = pending
-        events = Events(db, via, actor)
-        events.write('copy', copy_id, 'add', new=receipt)
+        return create_copy_in(db, set_item_id, choice, via=via, actor=actor, condition=condition, completeness=completeness, note=note)
+
+
+def create_copy_in(db, set_item_id, choice, *, via, actor=None, condition=None, completeness=None, note=None):
+    """Add one copy of a set: the copy, its figure lines and its part lines, in one transaction under ONE receipt event
+    (`copy`, the new id, field `add`, `new_value` = the rows written). Returns the receipt, with the copy's `id`.
+
+    The copy id is a uuid (design 3.1: collection rows keep uuid text ids). The copy's digest, and each figure line's, is the
+    source list's own.
+
+    BrickLink chosen with no list fetched (decision F): the copy gets Rebrickable's list at once (`_pending_base`) with
+    `inventory_pending='bricklink'`, and `pending_job_id` is a `bricklink_subsets` job queued in this same transaction
+    (`jobs.queue_in`; an open job for the set is reused, not doubled). The receipt then carries `pending` = `{'source',
+    'job_id', 'job_reused'}`. `pending.settle_pending` takes it from there.
+
+    `create_copy` inside the caller's open write transaction (it opens none and commits nothing)."""
+    if not db.in_transaction:
+        raise Store4Error('create_copy_in needs the caller\'s open write transaction; use create_copy()')
+    if has_catalogue(db):
+        check_compatible(db)                            # a connection opened before a rebuild keeps the old file
+    pending = None
+    try:
+        target = build_target(db, set_item_id, choice)
+    except BrickLinkPending:
+        target = build_target(db, set_item_id, _pending_base(db, set_item_id))
+        pending = True
+    _project(db, target)
+    stamp, copy_id = now(), str(uuid.uuid4())
+    if pending:
+        number = db.execute('SELECT born_key FROM main.item WHERE id=?', (set_item_id,)).fetchone()['born_key']
+        job, created = jobs.queue_in(db, 'bricklink_subsets', item_id=set_item_id, payload=number, via=via, actor=actor)
+        pending = {'source': 'bricklink', 'job_id': job, 'job_reused': not created}
+    db.execute('''INSERT INTO main.copy(id, item_id, inventory_source, inventory_version, fetched_inventory_id, inventory_digest,
+                  materialised_at, inventory_pending, pending_job_id, condition, completeness, completeness_source, note,
+                  created_at, updated_at) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+               (copy_id, set_item_id, target.source, target.version, target.fetched_inventory_id, target.digest, stamp,
+                pending and 'bricklink', pending and pending['job_id'], condition,
+                completeness, 'manual' if completeness else None, note, stamp, stamp))
+    figure_rows = []
+    figure_ids = {}
+    for fig in target.figures:
+        figure_ids[fig.item_id] = db.execute('''INSERT INTO main.copy_figure(copy_id, item_id, inventory_source, inventory_version,
+            fetched_inventory_id, inventory_digest, quantity, updated_at) VALUES(?, ?, ?, ?, ?, ?, ?, ?)''',
+            (copy_id, fig.item_id, fig.source, fig.version, fig.fetched_inventory_id, fig.digest, fig.quantity, stamp)).lastrowid
+        figure_rows.append({'id': figure_ids[fig.item_id], 'item_id': fig.item_id, 'inventory_source': fig.source,
+                            'inventory_version': fig.version, 'fetched_inventory_id': fig.fetched_inventory_id,
+                            'inventory_digest': fig.digest, 'quantity': fig.quantity})
+    part_rows = []
+    for (figure, item, colour, spare), quantity in sorted(target.lines().items(), key=lambda kv: tuple(-1 if x is None else x for x in kv[0])):
+        figure_id = None if figure is None else figure_ids[figure]
+        part_id = db.execute('''INSERT INTO main.copy_part(copy_id, copy_figure_id, item_id, color_id, is_spare, quantity)
+                                VALUES(?, ?, ?, ?, ?, ?)''', (copy_id, figure_id, item, colour, spare, quantity)).lastrowid
+        part_rows.append([part_id, figure_id, item, colour, spare, quantity])
+    receipt = {'copy': {'id': copy_id, 'item_id': set_item_id, 'inventory_source': target.source, 'inventory_version': target.version,
+                        'fetched_inventory_id': target.fetched_inventory_id, 'inventory_digest': target.digest,
+                        'materialised_at': stamp, 'condition': condition, 'completeness': completeness, 'note': note},
+               'figures': figure_rows, 'parts': {'columns': PART_COLUMNS, 'rows': part_rows}}
+    if pending:
+        receipt['copy'].update(inventory_pending='bricklink', pending_job_id=pending['job_id'])
+        receipt['pending'] = pending
+    events = Events(db, via, actor)
+    events.write('copy', copy_id, 'add', new=receipt)
     return receipt
 
 
@@ -448,64 +466,85 @@ def switch_part_list(db, copy_id, choice, *, via, actor=None, trigger=None, unle
     `while_pending_on` (a job id: the automatic switch and the accepted offer) refuses with `PendingChanged` unless the copy still
     waits on that job, so a cancel committed meanwhile is not overridden."""
     with transaction(db, 'switching a part list'):
-        if has_catalogue(db):
-            check_compatible(db)
-        copy = _copy_row(db, copy_id)
-        if while_pending_on is not None and (copy['inventory_pending'] != 'bricklink' or copy['pending_job_id'] != while_pending_on):
-            raise PendingChanged(f'copy {copy_id} no longer waits for job {while_pending_on}')
-        if unless_marked and has_marks(db, copy_id):
-            raise CopyMarked(f'copy {copy_id} is checked or marked; it switches only when the user says so')
-        target = build_target(db, copy['item_id'], choice)
-        stamp = now()
-        plan = _plan(db, copy, target, stamp)
-        if not plan['figures'] and not plan['lines'] and _same_list(copy, target):
-            raise NothingToSwitch(f'copy {copy_id} already carries this part list')
-        _project(db, target)
-        figure_ids = {r['item_id']: r['id'] for r in db.execute('SELECT id, item_id FROM main.copy_figure WHERE copy_id=?', (copy_id,))}
-        figure_ops = []
-        for op in plan['figures']:
-            after = op['after']
-            if op['op'] == 'insert':
-                after['id'] = figure_ids[after['item_id']] = db.execute(
-                    '''INSERT INTO main.copy_figure(copy_id, item_id, inventory_source, inventory_version, fetched_inventory_id,
-                       inventory_digest, quantity, missing, updated_at) VALUES(?, ?, ?, ?, ?, ?, ?, 0, ?)''',
-                    (copy_id, after['item_id'], after['inventory_source'], after['inventory_version'], after['fetched_inventory_id'],
-                     after['inventory_digest'], after['quantity'], stamp)).lastrowid
-            else:
-                db.execute('''UPDATE main.copy_figure SET inventory_source=?, inventory_version=?, fetched_inventory_id=?,
-                              inventory_digest=?, quantity=?, missing=?, retired_at=?, updated_at=? WHERE id=?''',
-                           (after['inventory_source'], after['inventory_version'], after['fetched_inventory_id'], after['inventory_digest'],
-                            after['quantity'], after['missing'], after['retired_at'], after['updated_at'], after['id']))
-            figure_ops.append([op['op'], None if op['before'] is None else _row(op['before'], FIGURE_COLUMNS), _row(after, FIGURE_COLUMNS)])
-        line_ops = []
-        for op in plan['lines']:
-            after = op['after']
-            if op['op'] == 'insert':
-                figure = op['key'][0]
-                after['copy_figure_id'] = None if figure is None else figure_ids[figure]
-                after['id'] = db.execute('''INSERT INTO main.copy_part(copy_id, copy_figure_id, item_id, color_id, is_spare, quantity)
-                                            VALUES(?, ?, ?, ?, ?, ?)''', (copy_id, after['copy_figure_id'], after['item_id'],
-                                                                         after['color_id'], after['is_spare'], after['quantity'])).lastrowid
-            else:
-                db.execute('UPDATE main.copy_part SET quantity=?, missing=?, damaged=?, retired_at=? WHERE id=?',
-                           (after['quantity'], after['missing'], after['damaged'], after['retired_at'], after['id']))
-            line_ops.append([op['op'], None if op['before'] is None else _row(op['before'], LINE_COLUMNS), _row(after, LINE_COLUMNS)])
-        db.execute('''UPDATE main.copy SET inventory_source=?, inventory_version=?, fetched_inventory_id=?, inventory_digest=?,
-                      materialised_at=?, inventory_pending=NULL, pending_job_id=NULL, updated_at=? WHERE id=?''',
-                   (target.source, target.version, target.fetched_inventory_id, target.digest, stamp, stamp, copy_id))
-        completeness = derived_completeness(db, copy_id)
-        if completeness is not None:
-            db.execute('UPDATE main.copy SET completeness=? WHERE id=?', (completeness, copy_id))
-        receipt = {'choice': choice, 'counts': _counts(plan),
-                   'copy': {'columns': COPY_COLUMNS, 'before': _row(copy, COPY_COLUMNS),
-                            'after': _row(_copy_row(db, copy_id), COPY_COLUMNS)},
-                   'figures': {'columns': FIGURE_COLUMNS, 'ops': figure_ops},
-                   'parts': {'columns': LINE_COLUMNS, 'ops': line_ops},
-                   'not_carried_over': plan['not_carried_over']}
-        if trigger:
-            receipt['trigger'] = trigger
-        Events(db, via, actor).write('copy', copy_id, FIELD, new=receipt)
-        receipt['event_id'] = db.execute('SELECT last_insert_rowid()').fetchone()[0]
+        return switch_part_list_in(db, copy_id, choice, via=via, actor=actor, trigger=trigger, unless_marked=unless_marked, while_pending_on=while_pending_on)
+
+
+def switch_part_list_in(db, copy_id, choice, *, via, actor=None, trigger=None, unless_marked=False, while_pending_on=None):
+    """Design 4.4: move a copy to another part list in place, in one transaction under ONE receipt event (`copy`, the copy id,
+    field `part_list_switch`, `new_value` = the receipt). Nothing is deleted: rows of lines that left the list get `retired_at`,
+    rows of lines that came back are re-activated under the same id, so Take/Give, allocation and check-session references stay
+    valid. Returns the receipt, with `event_id`.
+
+    `trigger` (M.6c) says why, kept in the receipt as `trigger` when given: `{'automatic': True, 'job_id': n}` for the switch a
+    finished pending job makes by itself, `{'accepted': True, 'job_id': n}` for the user accepting the offer; a plain switch has none.
+
+    A switch to the list the copy already carries (same source, version or fetched list, digest, no pending) that would change
+    no row is refused with `NothingToSwitch`: an empty receipt could not be told from an error. `unless_marked` (the automatic
+    switch) refuses with `CopyMarked` when the copy has marks, checked inside this transaction so a mark made meanwhile counts.
+    `while_pending_on` (a job id: the automatic switch and the accepted offer) refuses with `PendingChanged` unless the copy still
+    waits on that job, so a cancel committed meanwhile is not overridden.
+
+    `switch_part_list` inside the caller's open write transaction (it opens none and commits nothing)."""
+    if not db.in_transaction:
+        raise Store4Error('switch_part_list_in needs the caller\'s open write transaction; use switch_part_list()')
+    if has_catalogue(db):
+        check_compatible(db)
+    copy = _copy_row(db, copy_id)
+    if while_pending_on is not None and (copy['inventory_pending'] != 'bricklink' or copy['pending_job_id'] != while_pending_on):
+        raise PendingChanged(f'copy {copy_id} no longer waits for job {while_pending_on}')
+    if unless_marked and has_marks(db, copy_id):
+        raise CopyMarked(f'copy {copy_id} is checked or marked; it switches only when the user says so')
+    target = build_target(db, copy['item_id'], choice)
+    stamp = now()
+    plan = _plan(db, copy, target, stamp)
+    if not plan['figures'] and not plan['lines'] and _same_list(copy, target):
+        raise NothingToSwitch(f'copy {copy_id} already carries this part list')
+    _project(db, target)
+    figure_ids = {r['item_id']: r['id'] for r in db.execute('SELECT id, item_id FROM main.copy_figure WHERE copy_id=?', (copy_id,))}
+    figure_ops = []
+    for op in plan['figures']:
+        after = op['after']
+        if op['op'] == 'insert':
+            after['id'] = figure_ids[after['item_id']] = db.execute(
+                '''INSERT INTO main.copy_figure(copy_id, item_id, inventory_source, inventory_version, fetched_inventory_id,
+                   inventory_digest, quantity, missing, updated_at) VALUES(?, ?, ?, ?, ?, ?, ?, 0, ?)''',
+                (copy_id, after['item_id'], after['inventory_source'], after['inventory_version'], after['fetched_inventory_id'],
+                 after['inventory_digest'], after['quantity'], stamp)).lastrowid
+        else:
+            db.execute('''UPDATE main.copy_figure SET inventory_source=?, inventory_version=?, fetched_inventory_id=?,
+                          inventory_digest=?, quantity=?, missing=?, retired_at=?, updated_at=? WHERE id=?''',
+                       (after['inventory_source'], after['inventory_version'], after['fetched_inventory_id'], after['inventory_digest'],
+                        after['quantity'], after['missing'], after['retired_at'], after['updated_at'], after['id']))
+        figure_ops.append([op['op'], None if op['before'] is None else _row(op['before'], FIGURE_COLUMNS), _row(after, FIGURE_COLUMNS)])
+    line_ops = []
+    for op in plan['lines']:
+        after = op['after']
+        if op['op'] == 'insert':
+            figure = op['key'][0]
+            after['copy_figure_id'] = None if figure is None else figure_ids[figure]
+            after['id'] = db.execute('''INSERT INTO main.copy_part(copy_id, copy_figure_id, item_id, color_id, is_spare, quantity)
+                                        VALUES(?, ?, ?, ?, ?, ?)''', (copy_id, after['copy_figure_id'], after['item_id'],
+                                                                     after['color_id'], after['is_spare'], after['quantity'])).lastrowid
+        else:
+            db.execute('UPDATE main.copy_part SET quantity=?, missing=?, damaged=?, retired_at=? WHERE id=?',
+                       (after['quantity'], after['missing'], after['damaged'], after['retired_at'], after['id']))
+        line_ops.append([op['op'], None if op['before'] is None else _row(op['before'], LINE_COLUMNS), _row(after, LINE_COLUMNS)])
+    db.execute('''UPDATE main.copy SET inventory_source=?, inventory_version=?, fetched_inventory_id=?, inventory_digest=?,
+                  materialised_at=?, inventory_pending=NULL, pending_job_id=NULL, updated_at=? WHERE id=?''',
+               (target.source, target.version, target.fetched_inventory_id, target.digest, stamp, stamp, copy_id))
+    completeness = derived_completeness(db, copy_id)
+    if completeness is not None:
+        db.execute('UPDATE main.copy SET completeness=? WHERE id=?', (completeness, copy_id))
+    receipt = {'choice': choice, 'counts': _counts(plan),
+               'copy': {'columns': COPY_COLUMNS, 'before': _row(copy, COPY_COLUMNS),
+                        'after': _row(_copy_row(db, copy_id), COPY_COLUMNS)},
+               'figures': {'columns': FIGURE_COLUMNS, 'ops': figure_ops},
+               'parts': {'columns': LINE_COLUMNS, 'ops': line_ops},
+               'not_carried_over': plan['not_carried_over']}
+    if trigger:
+        receipt['trigger'] = trigger
+    Events(db, via, actor).write('copy', copy_id, FIELD, new=receipt)
+    receipt['event_id'] = db.execute('SELECT last_insert_rowid()').fetchone()[0]
     return receipt
 
 
@@ -524,53 +563,74 @@ def undo_switch(db, event_id, *, via, actor=None):
     Refused (`SwitchUndoRefused`) when the event is not a switch, was undone already, or any row it touched differs from the
     receipt's after-state (any other change since: a Take, a check mark, a later switch not yet undone)."""
     with transaction(db, 'undoing a part list switch'):
-        event = db.execute('SELECT * FROM main.event WHERE id=?', (event_id,)).fetchone()
-        if event is None or event['entity_kind'] != 'copy' or event['field'] != FIELD:
-            raise SwitchUndoRefused(f'event {event_id} is not a part list switch')
-        if db.execute('SELECT 1 FROM main.event_undo WHERE event_id=?', (event_id,)).fetchone():
-            raise SwitchUndoRefused(f'event {event_id} was undone already')
-        copy_id, receipt, stamp = event['entity_id'], json.loads(event['new_value']), now()
-        copy = _copy_row(db, copy_id)
+        return undo_switch_in(db, event_id, via=via, actor=actor)
 
-        def without_stamp(columns, row):
-            return [v for c, v in zip(columns, row) if c != 'updated_at']
 
-        c_cols = receipt['copy']['columns']
-        if without_stamp(c_cols, _row(copy, c_cols)) != without_stamp(c_cols, receipt['copy']['after']):
-            raise SwitchUndoRefused(f'copy {copy_id} changed after the switch')
-        for table, key in (('copy_figure', 'figures'), ('copy_part', 'parts')):
-            columns = receipt[key]['columns']
-            for op, before, after in receipt[key]['ops']:
-                row = db.execute(f'SELECT {", ".join(columns)} FROM main.{table} WHERE id=?', (after[0],)).fetchone()
-                if row is None or without_stamp(columns, list(row)) != without_stamp(columns, after):
-                    raise SwitchUndoRefused(f'{table} row {after[0]} changed after the switch')
-        for op, before, after in receipt['figures']['ops']:
-            if op == 'insert':
-                db.execute('UPDATE main.copy_figure SET retired_at=?, updated_at=? WHERE id=?', (stamp, stamp, after[0]))
-            else:
-                old = dict(zip(receipt['figures']['columns'], before))
-                db.execute('''UPDATE main.copy_figure SET inventory_source=?, inventory_version=?, fetched_inventory_id=?,
-                              inventory_digest=?, quantity=?, missing=?, retired_at=?, updated_at=? WHERE id=?''',
-                           (old['inventory_source'], old['inventory_version'], old['fetched_inventory_id'], old['inventory_digest'],
-                            old['quantity'], old['missing'], old['retired_at'], stamp, old['id']))
-        for op, before, after in receipt['parts']['ops']:
-            if op == 'insert':
-                db.execute('UPDATE main.copy_part SET retired_at=? WHERE id=?', (stamp, after[0]))
-            else:
-                old = dict(zip(receipt['parts']['columns'], before))
-                db.execute('UPDATE main.copy_part SET quantity=?, missing=?, damaged=?, checked=?, retired_at=? WHERE id=?',
-                           (old['quantity'], old['missing'], old['damaged'], old['checked'], old['retired_at'], old['id']))
-        old = dict(zip(c_cols, receipt['copy']['before']))
-        db.execute('''UPDATE main.copy SET inventory_source=?, inventory_version=?, fetched_inventory_id=?, inventory_digest=?,
-                      materialised_at=?, inventory_pending=?, pending_job_id=?, completeness=?, updated_at=? WHERE id=?''',
-                   (old['inventory_source'], old['inventory_version'], old['fetched_inventory_id'], old['inventory_digest'],
-                    old['materialised_at'], old['inventory_pending'], old['pending_job_id'], old['completeness'], stamp, copy_id))
-        completeness = derived_completeness(db, copy_id)    # lines the switch did not touch may have changed since: recompute
-        if completeness is not None:
-            db.execute('UPDATE main.copy SET completeness=? WHERE id=?', (completeness, copy_id))
-        Events(db, via, actor).write('copy', copy_id, UNDO_FIELD, new={'undoes': event_id, 'counts': receipt['counts']})
-        undo_id = db.execute('SELECT last_insert_rowid()').fetchone()[0]
-        db.execute('INSERT INTO main.event_undo(event_id, undo_event_id) VALUES(?, ?)', (event_id, undo_id))
+def undo_switch_in(db, event_id, *, via, actor=None):
+    """Restore what the switch of `event_id` changed, from its receipt, in one transaction; writes its own event (field
+    `part_list_switch_undo`) and the `event_undo` row.
+
+    "Exactly" holds as follows. Every row the switch updated or retired is put back column for column (quantity, missing, damaged,
+    checked, retired_at, the figure's list columns), so the copy's live line set and figure set, their counts and flags, and the
+    copy's source, version, fetched list, digest, pending job and completeness are the old ones, under the old row ids; a derived
+    completeness is recomputed instead, since lines the switch did not touch may have been marked since. Rows the
+    switch INSERTED cannot be deleted (a Take, allocation or check session may refer to them since); they are retired, so they are
+    absent from every live read and a later switch back to that list re-activates them under the same id. `copy.updated_at` and
+    `copy_figure.updated_at` are set to the undo's time, not restored.
+
+    Refused (`SwitchUndoRefused`) when the event is not a switch, was undone already, or any row it touched differs from the
+    receipt's after-state (any other change since: a Take, a check mark, a later switch not yet undone).
+
+    `undo_switch` inside the caller's open write transaction (it opens none and commits nothing)."""
+    if not db.in_transaction:
+        raise Store4Error('undo_switch_in needs the caller\'s open write transaction; use undo_switch()')
+    event = db.execute('SELECT * FROM main.event WHERE id=?', (event_id,)).fetchone()
+    if event is None or event['entity_kind'] != 'copy' or event['field'] != FIELD:
+        raise SwitchUndoRefused(f'event {event_id} is not a part list switch')
+    if db.execute('SELECT 1 FROM main.event_undo WHERE event_id=?', (event_id,)).fetchone():
+        raise SwitchUndoRefused(f'event {event_id} was undone already')
+    copy_id, receipt, stamp = event['entity_id'], json.loads(event['new_value']), now()
+    copy = _copy_row(db, copy_id)
+
+    def without_stamp(columns, row):
+        return [v for c, v in zip(columns, row) if c != 'updated_at']
+
+    c_cols = receipt['copy']['columns']
+    if without_stamp(c_cols, _row(copy, c_cols)) != without_stamp(c_cols, receipt['copy']['after']):
+        raise SwitchUndoRefused(f'copy {copy_id} changed after the switch')
+    for table, key in (('copy_figure', 'figures'), ('copy_part', 'parts')):
+        columns = receipt[key]['columns']
+        for op, before, after in receipt[key]['ops']:
+            row = db.execute(f'SELECT {", ".join(columns)} FROM main.{table} WHERE id=?', (after[0],)).fetchone()
+            if row is None or without_stamp(columns, list(row)) != without_stamp(columns, after):
+                raise SwitchUndoRefused(f'{table} row {after[0]} changed after the switch')
+    for op, before, after in receipt['figures']['ops']:
+        if op == 'insert':
+            db.execute('UPDATE main.copy_figure SET retired_at=?, updated_at=? WHERE id=?', (stamp, stamp, after[0]))
+        else:
+            old = dict(zip(receipt['figures']['columns'], before))
+            db.execute('''UPDATE main.copy_figure SET inventory_source=?, inventory_version=?, fetched_inventory_id=?,
+                          inventory_digest=?, quantity=?, missing=?, retired_at=?, updated_at=? WHERE id=?''',
+                       (old['inventory_source'], old['inventory_version'], old['fetched_inventory_id'], old['inventory_digest'],
+                        old['quantity'], old['missing'], old['retired_at'], stamp, old['id']))
+    for op, before, after in receipt['parts']['ops']:
+        if op == 'insert':
+            db.execute('UPDATE main.copy_part SET retired_at=? WHERE id=?', (stamp, after[0]))
+        else:
+            old = dict(zip(receipt['parts']['columns'], before))
+            db.execute('UPDATE main.copy_part SET quantity=?, missing=?, damaged=?, checked=?, retired_at=? WHERE id=?',
+                       (old['quantity'], old['missing'], old['damaged'], old['checked'], old['retired_at'], old['id']))
+    old = dict(zip(c_cols, receipt['copy']['before']))
+    db.execute('''UPDATE main.copy SET inventory_source=?, inventory_version=?, fetched_inventory_id=?, inventory_digest=?,
+                  materialised_at=?, inventory_pending=?, pending_job_id=?, completeness=?, updated_at=? WHERE id=?''',
+               (old['inventory_source'], old['inventory_version'], old['fetched_inventory_id'], old['inventory_digest'],
+                old['materialised_at'], old['inventory_pending'], old['pending_job_id'], old['completeness'], stamp, copy_id))
+    completeness = derived_completeness(db, copy_id)    # lines the switch did not touch may have changed since: recompute
+    if completeness is not None:
+        db.execute('UPDATE main.copy SET completeness=? WHERE id=?', (completeness, copy_id))
+    Events(db, via, actor).write('copy', copy_id, UNDO_FIELD, new={'undoes': event_id, 'counts': receipt['counts']})
+    undo_id = db.execute('SELECT last_insert_rowid()').fetchone()[0]
+    db.execute('INSERT INTO main.event_undo(event_id, undo_event_id) VALUES(?, ?)', (event_id, undo_id))
     return {'event_id': undo_id, 'undoes': event_id, 'counts': receipt['counts']}
 
 
@@ -592,6 +652,20 @@ def set_part_list_preference(db, set_item_id, choice, *, via, actor=None):
     `choice` is `{'source': 'bricklink'}` or `{'source': 'rebrickable', 'version': n or None}` (None = always the latest); a
     version the catalogue does not hold is refused. Setting what is already set writes nothing. Returns the new preference
     (None when cleared). The Add picker's preselection (`part_list_choices`) reads exactly this row."""
+    with transaction(db, 'setting a part list preference'):
+        return set_part_list_preference_in(db, set_item_id, choice, via=via, actor=actor)
+
+
+def set_part_list_preference_in(db, set_item_id, choice, *, via, actor=None):
+    """"Use this part list for new copies of this set": write (or, with `choice` None, clear) the set's `set_preference` in one
+    transaction with one event (`set_preference`, the item id, field `preference`, old and new as `{'source', 'version'}`).
+    `choice` is `{'source': 'bricklink'}` or `{'source': 'rebrickable', 'version': n or None}` (None = always the latest); a
+    version the catalogue does not hold is refused. Setting what is already set writes nothing. Returns the new preference
+    (None when cleared). The Add picker's preselection (`part_list_choices`) reads exactly this row.
+
+    `set_part_list_preference` inside the caller's open write transaction (it opens none and commits nothing)."""
+    if not db.in_transaction:
+        raise Store4Error('set_part_list_preference_in needs the caller\'s open write transaction; use set_part_list_preference()')
     if choice is not None:
         source, version = choice.get('source'), choice.get('version')
         if source not in ('rebrickable', 'bricklink') or (source == 'bricklink' and version is not None):
@@ -602,37 +676,48 @@ def set_part_list_preference(db, set_item_id, choice, *, via, actor=None):
         new = {'source': source, 'version': version}
     else:
         new = None
-    with transaction(db, 'setting a part list preference'):
-        identity.project(db, set_item_id)
-        kind = db.execute('SELECT kind FROM main.item WHERE id=?', (set_item_id,)).fetchone()['kind']
-        if kind != 'set':
-            raise BadPreference(f'item {set_item_id} is not a set')
-        old = part_list_preference(db, set_item_id)
-        if old == new:
-            return new
-        if new is None:
-            db.execute('DELETE FROM main.set_preference WHERE item_id=?', (set_item_id,))
-        else:
-            db.execute('INSERT OR REPLACE INTO main.set_preference(item_id, inventory_source, inventory_version, decided_at) VALUES(?, ?, ?, ?)',
-                       (set_item_id, new['source'], new['version'], now()))
-        Events(db, via, actor).write('set_preference', set_item_id, 'preference', old=old, new=new)
+
+    identity.project(db, set_item_id)
+    kind = db.execute('SELECT kind FROM main.item WHERE id=?', (set_item_id,)).fetchone()['kind']
+    if kind != 'set':
+        raise BadPreference(f'item {set_item_id} is not a set')
+    old = part_list_preference(db, set_item_id)
+    if old == new:
+        return new
+    if new is None:
+        db.execute('DELETE FROM main.set_preference WHERE item_id=?', (set_item_id,))
+    else:
+        db.execute('INSERT OR REPLACE INTO main.set_preference(item_id, inventory_source, inventory_version, decided_at) VALUES(?, ?, ?, ?)',
+                   (set_item_id, new['source'], new['version'], now()))
+    Events(db, via, actor).write('set_preference', set_item_id, 'preference', old=old, new=new)
     return new
 
 
 def set_prefer_bricklink(db, enabled, *, via, actor=None):
     """The global switch `setting prefer_bricklink_inventory` (Q13): `'true'` when enabled, no row when not. One event (`setting`,
     the key, field `value`). It only takes effect with a BrickLink key, as the picker applies it. Returns whether it is on."""
-    key, new = 'prefer_bricklink_inventory', 'true' if enabled else None
     with transaction(db, 'setting the BrickLink preference'):
-        row = db.execute('SELECT value FROM main.setting WHERE key=?', (key,)).fetchone()
-        old = row['value'] if row else None
-        if old == new:
-            return bool(enabled)
-        if new is None:
-            db.execute('DELETE FROM main.setting WHERE key=?', (key,))
-        else:
-            db.execute('INSERT OR REPLACE INTO main.setting(key, value) VALUES(?, ?)', (key, new))
-        Events(db, via, actor).write('setting', key, 'value', old=old, new=new)
+        return set_prefer_bricklink_in(db, enabled, via=via, actor=actor)
+
+
+def set_prefer_bricklink_in(db, enabled, *, via, actor=None):
+    """The global switch `setting prefer_bricklink_inventory` (Q13): `'true'` when enabled, no row when not. One event (`setting`,
+    the key, field `value`). It only takes effect with a BrickLink key, as the picker applies it. Returns whether it is on.
+
+    `set_prefer_bricklink` inside the caller's open write transaction (it opens none and commits nothing)."""
+    if not db.in_transaction:
+        raise Store4Error('set_prefer_bricklink_in needs the caller\'s open write transaction; use set_prefer_bricklink()')
+    key, new = 'prefer_bricklink_inventory', 'true' if enabled else None
+
+    row = db.execute('SELECT value FROM main.setting WHERE key=?', (key,)).fetchone()
+    old = row['value'] if row else None
+    if old == new:
+        return bool(enabled)
+    if new is None:
+        db.execute('DELETE FROM main.setting WHERE key=?', (key,))
+    else:
+        db.execute('INSERT OR REPLACE INTO main.setting(key, value) VALUES(?, ?)', (key, new))
+    Events(db, via, actor).write('setting', key, 'value', old=old, new=new)
     return bool(enabled)
 
 

@@ -10,7 +10,7 @@ import json
 from pathlib import Path
 import sqlite3
 
-from brickwork.core.connect import connect
+from tests.legacy33 import create_33
 
 BL_LINE = 466                                                 # inventory_lines.id of the BrickLink line the Rebrickable source_ref equals
 
@@ -22,7 +22,7 @@ def ins(db, table, **columns):
 
 def build_33(path):
     path = Path(path)
-    db = connect(path)
+    db = create_33(path)
     db.row_factory = sqlite3.Row
 
     def item(item_type, item_no, name=None, category=None, year=None):

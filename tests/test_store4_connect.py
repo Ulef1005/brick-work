@@ -6,7 +6,7 @@ import uuid
 
 import pytest
 
-from brickwork.core.connect import connect as connect33
+from tests.legacy33 import create_33
 from brickwork.store4 import identity
 from brickwork.store4.connect import connect, create_catalogue, has_catalogue
 from brickwork.store4.errors import CatalogueError, CatalogueMismatch, SchemaMismatch, Unsupported
@@ -30,7 +30,7 @@ def test_new_file_gets_the_schema_and_meta(tmp_path):
 
 def test_refuses_a_33_file_and_other_versions(tmp_path):
     old = tmp_path / 'old.db'
-    with closing(connect33(old)):
+    with closing(create_33(old)):
         pass
     with pytest.raises(SchemaMismatch, match='3.3 file must be migrated'):
         connect(old, tmp_path / 'catalogue.db')

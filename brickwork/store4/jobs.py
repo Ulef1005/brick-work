@@ -29,7 +29,7 @@ import json
 import os
 import re
 
-from . import bricklink_api, bricklink_subsets, identity, rebrickable_api
+from . import bricklink_api, bricklink_subsets, identity, keys, rebrickable_api
 from .audit import Events, transaction
 from .errors import Store4Error
 from .fetched import InventoryError
@@ -42,10 +42,15 @@ BUDGET = {'bricklink': ('BW_BRICKLINK_DAILY_BUDGET', 4400), 'rebrickable': ('BW_
 MAX_ATTEMPTS = 5
 RETRY_MINUTES = (1, 5, 15, 60)                                          # after attempt 1, 2, 3, 4
 NUMBER = re.compile('[A-Za-z0-9-]{1,64}')
+OWN_KINDS = '(' + ', '.join(f"'{k}'" for k in KINDS) + ')'              # SQL list of the kinds this module runs; any other job is not its own
 ACTIVE = "(state IN ('queued','running','waiting_for_budget') OR (state='failed' AND retry_at IS NOT NULL))"
 
 _CLAIMED = set()                                                        # (pid, collection path, job) this process is working on
 _DEFAULT_HTTP = {}                                                      # one transport per source: its spacing lasts across jobs
+
+
+class ForeignKind(Store4Error):
+    """The job is of a kind this module does not run (the app's pipeline jobs share the `job` table)."""
 
 
 class BudgetWait(Store4Error):
@@ -143,7 +148,7 @@ def _row(db, job_id):
 def status(db, job_id):
     """The job and its step as plain dicts (`number` unpacked from the payload)."""
     job = dict(_row(db, job_id))
-    job['number'] = json.loads(job['payload'])['number']
+    job['number'] = (json.loads(job['payload'] or '{}') or {}).get('number')       # a foreign job's payload has its own shape
     step = db.execute('SELECT * FROM job_step WHERE job_id=? AND name=?', (job_id, STEP)).fetchone()
     job['step'] = dict(step) if step else None
     return job
@@ -231,7 +236,7 @@ def _safe(text):
     """An error text with every configured key value masked; messages are static, this is the belt for the braces."""
     text = str(text)
     for name in (*bricklink_api.KEY_ENVS, rebrickable_api.KEY_ENV):
-        value = os.environ.get(name)
+        value = keys.get(name)
         if value:
             text = text.replace(value, '[set]')
     return text
@@ -253,6 +258,8 @@ def _claim(db, job_id, now):
     stamp = _stamp(t)
     with transaction(db, 'claiming a job'):
         job = _row(db, job_id)
+        if job['kind'] not in KINDS:
+            raise ForeignKind(f'job {job_id} is a {job["kind"]!r} job; store4.jobs runs only {", ".join(KINDS)}')
         due = job['retry_at'] is not None and job['retry_at'] <= stamp
         if not (job['state'] in ('queued', 'running') or job['state'] in ('waiting_for_budget', 'failed') and due):
             return None
@@ -285,7 +292,7 @@ def _claim(db, job_id, now):
 
 
 def _configured(source):
-    return bricklink_api.key_configured() if source == 'bricklink' else bool(os.environ.get(rebrickable_api.KEY_ENV))
+    return bricklink_api.key_configured() if source == 'bricklink' else bool(keys.get(rebrickable_api.KEY_ENV))
 
 
 def _bricklink_number(db, job):
@@ -381,8 +388,8 @@ def _settle_leftovers(db):
     """Copies still pending on a job that already finished (the process stopped between the job's commit and `_settled`) are
     settled before `drain` looks for new work, since a finished job is never run again."""
     from . import pending
-    for row in db.execute('''SELECT DISTINCT j.id, j.via, j.actor FROM main.copy c JOIN main.job j ON j.id=c.pending_job_id
-                             WHERE c.inventory_pending='bricklink' AND (j.state='done' OR (j.state='failed' AND j.retry_at IS NULL))
+    for row in db.execute(f'''SELECT DISTINCT j.id, j.via, j.actor FROM main.copy c JOIN main.job j ON j.id=c.pending_job_id
+                             WHERE c.inventory_pending='bricklink' AND j.kind IN {OWN_KINDS} AND (j.state='done' OR (j.state='failed' AND j.retry_at IS NULL))
                              ORDER BY j.id''').fetchall():
         pending.settle_pending(db, row['id'], via=row['via'], actor=row['actor'])
 
@@ -404,11 +411,12 @@ def _transient(db, job_id, now, error):
 
 def drain(db, *, limit=100, now=None, http=None):
     """Run the jobs that may run now, oldest first: queued ones, those whose claim died, waiting ones whose `retry_at` has passed and
-    failed ones whose retry is due; at most `limit` are looked at. Returns the `run()` results of the jobs this call ran."""
+    failed ones whose retry is due; at most `limit` are looked at. Returns the `run()` results of the jobs this call ran.
+    Only the kinds in `KINDS` are looked at: other jobs in the table (the app's pipeline) are left untouched."""
     _settle_leftovers(db)
     stamp = _stamp(_now(now))
-    ids = [r[0] for r in db.execute('''SELECT id FROM job WHERE state IN ('queued','running')
-                                       OR (state IN ('waiting_for_budget','failed') AND retry_at IS NOT NULL AND retry_at<=?)
+    ids = [r[0] for r in db.execute(f'''SELECT id FROM job WHERE kind IN {OWN_KINDS} AND (state IN ('queued','running')
+                                       OR (state IN ('waiting_for_budget','failed') AND retry_at IS NOT NULL AND retry_at<=?))
                                        ORDER BY id LIMIT ?''', (stamp, limit))]
     results = [run(db, i, http=http, now=now) for i in ids]
     return [r for r in results if r['ran']]

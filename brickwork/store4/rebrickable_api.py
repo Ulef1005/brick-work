@@ -14,13 +14,12 @@ written for the new local items; the next dump that holds them adopts the local 
 from dataclasses import asdict, dataclass, field
 import http.client
 import json
-import os
 import re
 import time
 import urllib.error
 import urllib.request
 
-from . import fetched, identity
+from . import fetched, identity, keys
 from .connect import has_catalogue
 from .errors import Store4Error
 from .fetched import InventoryError
@@ -122,7 +121,7 @@ class UrllibHttp:
 
 
 def _headers():
-    key = os.environ.get(KEY_ENV)
+    key = keys.get(KEY_ENV)
     if not key:
         raise FetchError(f'{KEY_ENV} is not set; a Rebrickable key is needed to fetch a set')
     return {'Authorization': f'key {key}', 'Accept': 'application/json'}

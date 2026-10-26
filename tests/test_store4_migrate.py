@@ -11,7 +11,7 @@ import sqlite3
 
 import pytest
 
-from brickwork.core.connect import connect as connect33
+from tests.legacy33 import regression_33
 from brickwork.store4.connect import connect
 from brickwork.store4.errors import SchemaMismatch
 from brickwork.store4.migrate import MigrationError, Migration, NeedsDecision, migrate
@@ -54,8 +54,7 @@ def one(m, sql, *args):
 def test_every_regression_fixture_migrates(fixture, tmp_path, catalogue):
     """Each frozen store (a 3.2 one is upgraded to 3.3 first, as the app does on open) goes through the writer."""
     src = tmp_path / 'bw33.db'
-    shutil.copy(fixture, src)
-    connect33(src).close()                                    # the 3.3 upgrade on open
+    regression_33(fixture, src)                               # the fixture as the 3.3 upgrade on open leaves it
     with sqlite3.connect(src) as db:
         db.execute('PRAGMA journal_mode=DELETE')
         want = {t: db.execute(f'SELECT count(*) FROM {t}').fetchone()[0]

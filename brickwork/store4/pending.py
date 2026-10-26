@@ -66,14 +66,22 @@ def pending_offer(db, copy_id):
 def accept_pending(db, copy_id, *, via, actor=None):
     """The user accepts the offer: the M.6b switch to BrickLink's fetched list, receipt `trigger` `{'accepted': True, 'job_id'}`.
     Refused (`NotPending`, `NotReady`) unless the copy is pending and its job is done with a list stored. Returns the receipt."""
+    with transaction(db, 'accepting a pending BrickLink list'):
+        return accept_pending_in(db, copy_id, via=via, actor=actor)
+
+
+def accept_pending_in(db, copy_id, *, via, actor=None):
+    """`accept_pending` inside the caller's open write transaction (it opens none and commits nothing)."""
+    if not db.in_transaction:
+        raise Store4Error('accept_pending_in needs the caller\'s open write transaction; use accept_pending()')
     copy = copies._copy_row(db, copy_id)
     if copy['inventory_pending'] is None:
         raise NotPending(f'copy {copy_id} is not waiting for a BrickLink list')
     job = _job(db, copy['pending_job_id'])
     if job['state'] != 'done' or _fetched(db, copy['item_id']) is None:
         raise NotReady(f'the BrickLink list for copy {copy_id} is not fetched yet (job {job["id"]} is {job["state"]})')
-    return copies.switch_part_list(db, copy_id, BRICKLINK, via=via, actor=actor, while_pending_on=job['id'],
-                                   trigger={'accepted': True, 'job_id': job['id']})
+    return copies.switch_part_list_in(db, copy_id, BRICKLINK, via=via, actor=actor, while_pending_on=job['id'],
+                                      trigger={'accepted': True, 'job_id': job['id']})
 
 
 def cancel_pending(db, copy_id, *, via, actor=None):
@@ -81,7 +89,18 @@ def cancel_pending(db, copy_id, *, via, actor=None):
     field `pending_cancel`). Rebrickable's lines are not touched. The job is left alone: `jobs` has no cancel path and no state
     for one, and a fetched list is useful to the set's next copy anyway. Returns the event's `new_value`."""
     with transaction(db, 'cancelling a pending BrickLink list'):
-        return _release(db, copy_id, CANCEL, via, actor, why=None)
+        return cancel_pending_in(db, copy_id, via=via, actor=actor)
+
+
+def cancel_pending_in(db, copy_id, *, via, actor=None):
+    """The user declines (or gives up waiting): pending and its job id are cleared in one transaction with one event (`copy`,
+    field `pending_cancel`). Rebrickable's lines are not touched. The job is left alone: `jobs` has no cancel path and no state
+    for one, and a fetched list is useful to the set's next copy anyway. Returns the event's `new_value`.
+
+    `cancel_pending` inside the caller's open write transaction (it opens none and commits nothing)."""
+    if not db.in_transaction:
+        raise Store4Error('cancel_pending_in needs the caller\'s open write transaction; use cancel_pending()')
+    return _release(db, copy_id, CANCEL, via, actor, why=None)
 
 
 def _release(db, copy_id, field, via, actor, *, why, job_id=None):

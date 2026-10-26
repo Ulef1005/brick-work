@@ -8,42 +8,13 @@ JavaScript mirrors this in static/web/toni/size-search.js (tested against the sa
 """
 import re
 
-NUM = r'(?:\d+\s+\d+/\d+|\d+/\d+|\d+(?:\.\d+)?)'
-SEP = r'\s*[x×*]\s*'
-IN_NAME = re.compile(rf'(?<![\w./])({NUM}){SEP}({NUM})(?:{SEP}({NUM}))?(?![\w/])', re.I)
+from ..store4.sizekey import IN_NAME, NUM, SEP, _fmt, _number, key_of, name_key  # noqa: F401 — moved to store4 (M.8a)
+
 FULL = re.compile(rf'(?<![\w./])({NUM}){SEP}({NUM})(?:{SEP}({NUM}))?(?![\w/])', re.I)
 BARE = re.compile(rf'^\s*({NUM})\s+({NUM})(?:\s+({NUM}))?\s*$')
 # A partial size is one or two digits (or a fraction): "x1435" stays a part number, not a size.
 SMALL = r'(?:\d{1,2}(?:\s+\d/\d|/\d|\.\d+)?)'
 PARTIAL = re.compile(rf'(?<![\w./])(?:[x×*]\s*({SMALL})|({SMALL})\s*[x×*])(?![\w/])', re.I)
-
-
-def _number(text):
-    text = text.strip()
-    if '/' in text:
-        whole, _, fraction = text.rpartition(' ')
-        a, b = fraction.split('/')
-        value = (float(whole) if whole else 0.0) + float(a) / float(b)
-    else:
-        value = float(text)
-    return value
-
-
-def _fmt(value):
-    return str(int(value)) if value == int(value) else format(value, 'g')
-
-
-def key_of(dims):
-    try:
-        return 'x'.join(_fmt(v) for v in sorted(_number(d) for d in dims if d))
-    except (ValueError, ZeroDivisionError):
-        return None
-
-
-def name_key(name):
-    """The size key of a catalogue name, or None."""
-    match = IN_NAME.search(name or '')
-    return key_of(match.groups()) if match else None
 
 
 def parse(query):

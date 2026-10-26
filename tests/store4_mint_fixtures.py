@@ -14,7 +14,7 @@ from brickwork.store4.connect import connect
 from brickwork.store4.dump import HEADERS
 
 FIXTURES = Path(__file__).resolve().parent / 'regression' / 'fixtures' / 'catalogue'
-SCHEMA_33 = Path(__file__).resolve().parent.parent / 'brickwork' / 'core' / 'schema.sql'
+SCHEMA_33 = Path(__file__).resolve().parent / 'legacy33' / 'schema-3.3.sql'
 STAMP = '2026-10-23T12:00:00.000Z'
 
 

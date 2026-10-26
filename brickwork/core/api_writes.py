@@ -5,7 +5,7 @@ import json
 import re
 import uuid
 
-from . import add, admin, api_reads as read, collection, errors, identify, keys, ledger, planning, source_ops, tokens, workbench, checker, manual_prices, part_inventory
+from . import add, admin, api_reads as read, collection, errors, ledger, planning, workbench, checker, manual_prices
 from .sources.base import now
 from .receipts import is_receipt
 from .transaction import transaction
@@ -249,74 +249,3 @@ def mutate(db, resource, identifier, action, data, expect=None, content=None, va
     else: value = dict(message='Saved')
     if action=='archive': value['archived']=True
     return value,201 if action=='create' and resource not in ('found','booklets') else 200
-
-
-def undo_receipt(db, receipt, identifier):
-    entity=receipt['entity']
-    if not is_receipt(receipt) and not (entity.startswith('checker:') and receipt['field'].startswith('checker:')):
-        raise errors.NotUndoable()
-    if entity.startswith('part_inventory:'): part_inventory.undo(db,identifier,receipt=receipt)
-    elif entity.startswith('checker:'): checker.write(db,None,dict(action='undo_event',event_id=identifier,receipt=receipt),read.root(db))
-    elif entity=='bw_collection': collection.undo(db,identifier,receipt=receipt)
-    elif entity=='bw_workbench': workbench.undo(db,identifier,receipt=receipt)
-    elif entity=='bw_ledger': ledger.undo(db,identifier,receipt=receipt)
-    elif entity=='bw_planning': planning.undo(db,identifier,receipt=receipt)
-    elif entity=='bw_manual_prices': manual_prices.undo(db,receipt)
-    elif entity.startswith('source_key:'): keys.undo(db,identifier,receipt)
-    elif entity.startswith('source:'): source_ops.undo_toggle(db,identifier,receipt)
-    elif entity.startswith('identification:'): identify.undo(db,identifier,receipt)
-    elif entity=='bw_sync':
-        from . import sync
-        sync.undo(db,identifier,receipt=json.loads(receipt['new_value']))
-    elif entity=='bw_import':
-        from .importer import bricktracker
-        bricktracker.undo(db,identifier,receipt=json.loads(receipt['new_value']))
-    elif entity=='bw_add':
-        value=json.loads(receipt['new_value'])
-        add.undo(db,value['batch'],saved_receipts=[value])
-    else: raise errors.NotUndoable()
-
-
-ADMIN_ENTITIES = ('bw_token', 'source_key:', 'source:', 'bw_import')
-
-
-def _admin_entity(entity):
-    return any(entity==e if not e.endswith(':') else entity.startswith(e) for e in ADMIN_ENTITIES)
-
-
-def _needs_admin(db, event, identifier):
-    """Undoing a token, key or source change needs the admin scope, as making it did; so does an API
-    event that bundles one of them."""
-    if _admin_entity(event['entity']): return True
-    if event['entity']!='bw_api': return False
-    row=db.execute('SELECT new_value FROM events WHERE id=?',(identifier,)).fetchone()
-    try: receipts=json.loads(row[0]).get('receipts') or []
-    except (TypeError, ValueError, AttributeError): return False
-    return any(isinstance(r,dict) and _admin_entity(str(r.get('entity',''))) for r in receipts)
-
-
-def undo_event(db, identifier, identity, operation):
-    event = read.events(db,identifier)
-    if not event: raise errors.NotFound()
-    event = event[0]
-    if _needs_admin(db,event,identifier) and not tokens.permits(identity,'admin'): raise errors.Forbidden()
-    if not event['undoable'] and not event['undone']: raise errors.NotUndoable()
-    if event['undone']:
-        result = dict(undone_event_id=identifier,already_undone=True)
-        admin.audit(db,'bw_api','undo',new=result)
-        return result
-    try:
-        if event['entity']=='bw_token':
-            result,_,_ = tokens.undo(db,identifier,operation)
-            return result
-        elif event['entity']=='bw_api':
-            raw=json.loads(db.execute('SELECT new_value FROM events WHERE id=?',(identifier,)).fetchone()[0])
-            for receipt in reversed(raw['receipts']): undo_receipt(db,receipt,identifier)
-        else:
-            raw=dict(db.execute('SELECT * FROM events WHERE id=?',(identifier,)).fetchone())
-            undo_receipt(db,raw,identifier)
-    except errors.BrickWorkError: raise
-    except ValueError as exc: raise errors.UndoBlocked(str(exc)) from None
-    result = dict(undone_event_id=identifier,already_undone=False)
-    admin.audit(db,'bw_api','undo',new=result)
-    return result

@@ -7,7 +7,8 @@ from decimal import Decimal
 from uuid import uuid4
 from xml.etree import ElementTree as ET
 
-from . import collection, errors, upgrade
+from . import collection, errors
+from .currency import configured_currency
 from .sources.base import now
 from .transaction import transaction
 
@@ -124,7 +125,7 @@ def export(db, identifier='all', *, format='bricklink', kind='parts'):
     from . import wish_progress
     wish_progress.annotate(db, rows)
     summary = dict(exported=0, omitted=[], notes=[])
-    currency = upgrade.configured_currency(db)
+    currency = configured_currency(db)
     if format == 'bricklink':
         root = ET.Element('INVENTORY')
         for r in rows:

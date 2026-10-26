@@ -417,16 +417,16 @@ def bw_start_worker():
 
 
 def bw_resume_imports(app):
-    """Resume durable imports when the standalone app starts."""
+    """Resume durable fetch jobs when the standalone app starts (a refused file, such as a 3.3 one, stops the start with its message)."""
     from .admin_ops import brickwork_path
     from ..core.admin import database
     with app.app_context():
         path = brickwork_path()
         if not path.is_file():
             return
-        with database(path, read_only=True) as db:
-            pending = db.execute("""SELECT 1 FROM jobs WHERE source='import'
-                AND state IN ('queued','running','waiting_for_budget') LIMIT 1""").fetchone()
+        from ..core import drainer
+        with database(path, read_only=True, require_catalogue=False) as db:
+            pending = drainer.pending(db)
         if pending:
             bw_start_worker()
 

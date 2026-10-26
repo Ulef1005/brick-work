@@ -149,14 +149,9 @@ def main(argv=None):
     operation = args.pop('operation')
     as_json = args.pop('json')
     if operation == 'mcp':
-        from ..core.errors import BrickWorkError
-        from ..core.mcp.server import run
-        try:
-            run(**args)
-        except BrickWorkError as error:
-            print(f'MCP error: {error}', file=sys.stderr)
-            return 1
-        return 0
+        from ..core.errors import API_V1_RETIRED
+        print(f'MCP error: the MCP server talks API v1. {API_V1_RETIRED}', file=sys.stderr)
+        return 1
     if operation.startswith('wishlist_'):
         from contextlib import closing
         from ..core import wishlists, collection
@@ -228,16 +223,10 @@ def main(argv=None):
             print(f'Token error: {redact(error)}', file=sys.stderr)
             return 1
     if operation == 'migrate':
-        try:
-            result = admin_ops.migrate(**args)
-            if as_json:
-                print(json.dumps(result, indent=2))
-            else:
-                _human(result)
-            return 0
-        except Exception as error:
-            print(f'Migration error: {error}', file=sys.stderr)
-            return 1
+        print('Migration error: this BrickTracker-era command is gone on the 4.0 line (M.8a). To move a 3.3 collection to 4.0 run '
+              '`python -m brickwork.store4 migrate --in <3.3 file> --catalogue <catalogue.db> --mappings <dir> --out <4.0 file> --report <dir>`.',
+              file=sys.stderr)
+        return 1
     if operation == 'import_bricktracker' and bool(args.get('source')) == bool(args.get('plan_id')):
         parser.error('give either an app.db or --apply PLAN')
     if args.get('limit') is not None and args['limit'] < 0:

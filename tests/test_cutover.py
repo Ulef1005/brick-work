@@ -36,6 +36,5 @@ def test_static_shell_contains_only_live_assets(app):
     assert assets
     for path in assets:
         assert app.test_client().get(path).status_code == 200, path
-    page = logged_in(app).get('/manage/add').text
-    assert 'socket.io' not in page
-    assert 'bw-add.js' in page and 'import-progress.js' in page
+    # The Add page checks (no socket.io; bw-add.js present) return with the Add screen in M.8c.
+    assert 'socket.io' not in logged_in(app).get('/manage/add').text

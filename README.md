@@ -109,10 +109,12 @@ Nothing until you add keys. With your own keys it calls BrickLink, Rebrickable a
 
 ## Standalone installation with Docker
 
+> **`main` is the Brick Work 4.0 development line and is not installable yet.** It opens only a 4.0 collection (with `catalogue.db` beside it), most screens answer 503 until they are moved over, and API v1 answers 410. For a working install use the released line: `git clone --branch release/0.5 …` below.
+
 With Git and Docker Compose installed:
 
 ```sh
-git clone https://github.com/Ulef1005/brick-work.git
+git clone --branch release/0.5 https://github.com/Ulef1005/brick-work.git
 cd brick-work
 mkdir -p data
 sudo chown 1000:1000 data   # the container runs as uid 1000; as root, leave out sudo

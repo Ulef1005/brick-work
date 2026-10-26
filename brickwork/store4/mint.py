@@ -28,7 +28,7 @@ from dataclasses import dataclass, field
 import csv
 import re
 
-from ..core import csv_safe
+from . import csv_safe
 from .connect import has_catalogue
 from .errors import AmbiguousIdentity, CatalogueError, Store4Error
 from .identity import CONFIRMED, _inverse_color, best_item_link, candidate_items

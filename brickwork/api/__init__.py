@@ -29,8 +29,21 @@ def database():
         path = db_path()
         if not path.is_file():
             raise errors.NotSetUp("Run 'brickwork setup' first")
-        g.api_db = connect(path)
+        # Health reads the collection alone, read-only: it answers on a first run before the catalogue is there and never writes.
+        g.api_db = connect(path, read_only=request.endpoint == HEALTH, require_catalogue=request.endpoint != HEALTH)
     return g.api_db
+
+
+HEALTH = 'brickwork_api.get_health'
+
+
+@api.before_request
+def retired():
+    """API v1 answers 410 Gone on the 4.0 line (M.8a, decision 1): v1 cannot represent local or unidentified items; v2 comes with M.11.
+    The one exception is GET /health, which release tracking and the container health check read. The route table stays, so the
+    contract checks keep describing what v2 inherits."""
+    if request.endpoint != HEALTH:
+        raise errors.ApiRetired(errors.API_V1_RETIRED)
 
 
 @api.before_request
@@ -126,7 +139,8 @@ def register(app):
     previous_404 = app.error_handler_spec.get(None, {}).get(404, {}).get(NotFound)
     def routing_error(error):
         if request.path == '/api/v1' or request.path.startswith('/api/v1/'):
-            return problem(error)
+            # Every v1 path is gone, whether or not a route is still registered for it (health excepted).
+            return problem(error if request.path == '/api/v1/health' else errors.ApiRetired(errors.API_V1_RETIRED))
         if error.code == 404 and previous_404:
             return previous_404(error)
         return error
@@ -186,10 +200,10 @@ def delete_tokens_by_id(id):
 def post_events_by_id_undo(id):
     if request.get_data():
         raise errors.BadRequest('Undo accepts no request body')
-    from ..core import api_writes as service
+    from ..core import api_writes as service, undo
     from .serializers import public
     def action():
-        return service.undo_event(database(), id, g.api_identity, request.headers.get('Idempotency-Key')), 200
+        return undo.undo_event(database(), id, via='api', actor=g.api_identity['name'], identity=g.api_identity), 200
     result,status = service.execute(database(),method=request.method,path=request.path,body={},
         key=request.headers.get('Idempotency-Key'),required=True,token_name=g.api_identity['name'],
         action=action,serialize=lambda value: public(value,'UndoResult'))

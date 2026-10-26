@@ -15,6 +15,7 @@ from xml.etree import ElementTree as ET
 from . import add, admin, checker, collection, completeness, errors, ledger, orders, planning
 from . import collection_prices, workbench
 from .secrets import secret_values
+from .undo import undoable_sql, undone_sql  # noqa: F401 — moved to core/undo.py (M.8a); event pages embed them
 from .sources.base import budget_used, now, redact
 
 
@@ -302,45 +303,6 @@ def job(db, identifier):
     live = owner_pid_alive(owner[0], path=db.execute('PRAGMA database_list').fetchone()['file'], job=identifier) if owner else False
     value['interrupted'] = (value['state'] == 'running' or value['state'] == 'waiting_for_budget' and owner is not None) and not live
     return value
-
-
-def undone_sql(alias='e'):
-    """One indexed predicate shared by event pages and the Undo dispatcher.
-
-    The bw_api branch matches the expression index ``events_api_undone`` exactly. The ``+0``
-    drops the INTEGER affinity of ``id``: compared bare, SQLite applies that affinity to the
-    indexed expression and refuses the index.
-    """
-    return f"""(CASE WHEN json_valid({alias}.new_value) THEN (EXISTS(SELECT 1 FROM events u WHERE u.entity={alias}.entity AND u.field='undo'
-        AND u.new_value=CAST({alias}.id AS TEXT)) OR
-        EXISTS(SELECT 1 FROM events u WHERE u.entity='bw_api'
-        AND json_valid(u.new_value) AND json_extract(u.new_value,'$.undone_event_id')=({alias}.id+0)) OR
-        ({alias}.entity='bw_add' AND EXISTS(SELECT 1 FROM events u WHERE u.entity='bw_add'
-        AND u.field='undo' AND (u.old_value=json_quote(json_extract({alias}.new_value,'$.batch'))
-        OR u.old_value=json_quote(json_extract({alias}.new_value,'$.batch')||'#'||json_extract({alias}.new_value,'$.index'))))) OR
-        ({alias}.entity='bw_manual_prices' AND {alias}.field='receipt' AND EXISTS(SELECT 1 FROM events u
-        WHERE u.entity='bw_manual_prices' AND u.field='undo' AND u.new_value={alias}.new_value)) OR
-        ({alias}.entity='bw_token' AND EXISTS(SELECT 1 FROM events u WHERE u.entity='bw_token'
-        AND u.field LIKE 'undo:%' AND json_extract(CASE WHEN json_valid(u.new_value) THEN u.new_value END,'$.event_id')={alias}.id)) OR
-        ({alias}.entity LIKE 'checker:%' AND {alias}.field LIKE 'checker:%' AND EXISTS(SELECT 1 FROM events u
-          WHERE u.entity={alias}.entity AND u.field LIKE 'checker:%'
-          AND u.old_value={alias}.new_value AND u.new_value={alias}.old_value)) OR
-        ({alias}.entity LIKE 'part_inventory:%' AND EXISTS(SELECT 1 FROM events u
-        WHERE u.entity={alias}.entity AND u.field='undo' AND u.id>{alias}.id))) ELSE 0 END)"""
-
-
-def undoable_sql(alias='e'):
-    from .receipts import receipt_sql
-    return f"""(CASE WHEN json_valid({alias}.new_value) THEN (
-        {receipt_sql(alias+'.entity', alias+'.field')} OR
-        ({alias}.entity='bw_token' AND {alias}.field IN ('create','revoke')) OR
-        ({alias}.entity LIKE 'checker:%' AND {alias}.field LIKE 'checker:%' AND EXISTS(SELECT 1 FROM json_each({alias}.new_value,'$.session.undo') j WHERE j.value={alias}.id)) OR
-        ({alias}.entity='bw_api' AND json_type({alias}.new_value,'$.receipts')='array'
-          AND json_array_length({alias}.new_value,'$.receipts')>0
-          AND json_type({alias}.new_value,'$.undone_event_id') IS NULL
-          AND NOT EXISTS(SELECT 1 FROM json_each({alias}.new_value,'$.receipts') r
-            WHERE NOT coalesce(({receipt_sql("json_extract(r.value,'$.entity')", "json_extract(r.value,'$.field')")}),0)))
-        ) ELSE 0 END)"""
 
 
 def event_values(values):

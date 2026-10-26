@@ -37,6 +37,7 @@ def setup_app(app: Flask) -> None:
                 logging.warning('Requests carry X-Forwarded-* headers, but BW_TRUSTED_PROXIES is 0: behind a reverse '
                                 'proxy, set BW_TRUSTED_PROXIES=1, or browser writes are refused and all clients share one back-off.')
     from .web.views import web_page, bw_sets, web_manifest, shell_worker
+    from .web import ported
     from .web.auth import login_page
     app.register_blueprint(web_page)
     app.register_blueprint(login_page)
@@ -61,12 +62,30 @@ def setup_app(app: Flask) -> None:
     from .api import register
     register(app)
 
+    from .core import admin as core_admin, keys as core_keys
+    from .core.connect import connect as open_collection
+    from .core.pipeline import database_path
+    # The 4.0 fetchers read credentials through the app's key store: the environment first, then `source_key` (M.8a).
+    core_keys.install(database_path)
+    # A collection that is not a 4.0 file stops the start with the fix named. Read-only and without the catalogue, so a first
+    # run (no catalogue yet) still boots; a missing file is the setup page's business. Inside the app context, so a path set in
+    # the app's config (BRICKWORK_DB_PATH) is the one checked.
+    with app.app_context():
+        startup_path = database_path()
+    if startup_path.is_file():
+        open_collection(startup_path, read_only=True, require_catalogue=False).close()
+
     @app.before_request
     def before_request():
+        core_admin.begin_operation()      # every event of this request shares one operation key
         g.login = LoginManager
         g.request_start_time = time.monotonic()
         g.request_time = lambda: f'{(time.monotonic() - g.request_start_time) * 1000:.0f}ms'
         g.version = __version__
+
+    @app.teardown_request
+    def end_operation(error):
+        core_admin.end_operation()
 
     @app.after_request
     def security_headers(response):
@@ -84,6 +103,8 @@ def setup_app(app: Flask) -> None:
             response.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
             response.bw_static_immutable = True
         return response
+
+    ported.install(app)      # screens not yet ported to the 4.0 store answer 503 (M.8a); after the request setup above, which it renders with
 
     from flask.sessions import SecureCookieSessionInterface
 

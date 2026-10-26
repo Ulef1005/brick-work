@@ -13,7 +13,7 @@ import sqlite3
 import time
 import uuid
 
-from ..core.size_search import name_key as size_key_of
+from .sizekey import name_key as size_key_of
 from .connect import _uri, create_catalogue, now as clock
 from .dump import Dump
 from .errors import DumpError

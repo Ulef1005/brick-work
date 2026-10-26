@@ -384,14 +384,21 @@ def _settled(db, out):
     return {**out, 'settled': settled} if settled else out
 
 
+LEFTOVERS = (f"FROM main.copy c JOIN main.job j ON j.id=c.pending_job_id WHERE c.inventory_pending='bricklink' "
+             f"AND j.kind IN {OWN_KINDS} AND (j.state='done' OR (j.state='failed' AND j.retry_at IS NULL))")
+
+
 def _settle_leftovers(db):
     """Copies still pending on a job that already finished (the process stopped between the job's commit and `_settled`) are
     settled before `drain` looks for new work, since a finished job is never run again."""
     from . import pending
-    for row in db.execute(f'''SELECT DISTINCT j.id, j.via, j.actor FROM main.copy c JOIN main.job j ON j.id=c.pending_job_id
-                             WHERE c.inventory_pending='bricklink' AND j.kind IN {OWN_KINDS} AND (j.state='done' OR (j.state='failed' AND j.retry_at IS NULL))
-                             ORDER BY j.id''').fetchall():
+    for row in db.execute(f'SELECT DISTINCT j.id, j.via, j.actor {LEFTOVERS} ORDER BY j.id').fetchall():
         pending.settle_pending(db, row['id'], via=row['via'], actor=row['actor'])
+
+
+def has_leftovers(db):
+    """Copies wait on a job that already finished: `drain` settles them first, so a start-up must run it even with no active job."""
+    return db.execute(f'SELECT 1 {LEFTOVERS} LIMIT 1').fetchone() is not None
 
 
 def _settle(db, job_id, now, state, code, error, retry_at=None):

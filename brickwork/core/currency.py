@@ -7,6 +7,7 @@ keep their per-currency behaviour. Converted figures are always shown marked (â‰
 """
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 import re
+import sqlite3
 from urllib.request import Request
 from xml.etree import ElementTree as ET
 
@@ -31,6 +32,15 @@ def upgrade(db):
             return False
         db.execute(DDL)
     return True
+
+
+def configured_currency(db):
+    """The BrickLink currency preference of the collection (`setting.bricklink_currency`), else the documented default EUR."""
+    try:
+        row = db.execute("SELECT value FROM setting WHERE key='bricklink_currency'").fetchone()
+    except sqlite3.OperationalError:  # no setting table: the documented default applies
+        row = None
+    return (row[0] if row and row[0] else 'EUR')
 
 
 def display_currency(db):

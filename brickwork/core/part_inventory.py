@@ -48,7 +48,7 @@ def save(db, pieces, *, batch, condition='U', lot_id=None, new_lot=None, keep_ph
         raise ValueError('Name the new lot')
     with db:
         db.execute('BEGIN IMMEDIATE')
-        from .api_reads import undone_sql
+        from .undo import undone_sql
         # An undone receipt (web undo event, or an API undo naming it) counts as absent.
         old = db.execute("SELECT e.id FROM events e WHERE e.entity=? AND e.field='receipt' AND NOT " + undone_sql('e') +
                          " ORDER BY e.id DESC LIMIT 1", ('part_inventory:' + batch,)).fetchone()
@@ -121,7 +121,7 @@ def undo(db, event, *, receipt=None):
         if not row:
             raise ValueError('Choose a batch receipt')
         # One predicate with save: a newer web undo event, or an API undo naming this receipt.
-        from .api_reads import undone_sql
+        from .undo import undone_sql
         if db.execute('SELECT ' + undone_sql('e') + ' FROM events e WHERE e.id=?', (row['id'],)).fetchone()[0]:
             return
         receipt = json.loads(row['new_value'])

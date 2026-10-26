@@ -12,7 +12,8 @@ from pathlib import Path
 from uuid import uuid4
 from urllib.parse import quote, urlencode
 
-from . import add, stock, workbench, collection_prices, upgrade, errors
+from . import add, stock, workbench, collection_prices, errors
+from .currency import configured_currency
 from .admin import audit
 from .completeness import derived_state
 from .sources.base import now
@@ -672,7 +673,7 @@ def save(db, entity, ids, data, *, archive=False, expect=None):
                 elif currency is None:
                     # Keep the currency the wishes already share; otherwise the configured one.
                     shared = {r['max_price_currency'] for r in old}
-                    currency = shared.pop() if len(shared)==1 and None not in shared else upgrade.configured_currency(db)
+                    currency = shared.pop() if len(shared)==1 and None not in shared else configured_currency(db)
             else:
                 if currency is None or any(r['max_price'] is None for r in old): raise ValueError('Enter a max price before its currency')
             if currency is not None or ('max_price' in edits and edits['max_price'] is None):

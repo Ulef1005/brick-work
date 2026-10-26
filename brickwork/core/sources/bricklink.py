@@ -13,27 +13,11 @@ from urllib.request import Request
 
 from .base import Source, SourceError, KeyRejected, ColourCodeError, item, observation, property_value, write, now, record_change
 
-BASE = 'https://api.bricklink.com/api/store/v1'
 TYPE_NAMES = dict(S='SET', P='PART', M='MINIFIG', G='GEAR', B='BOOK', C='CATALOG', I='INSTRUCTION', O='ORIGINAL_BOX')
 TYPE_IDS = {value: key for key, value in TYPE_NAMES.items()}
 
 
-def q(value):
-    return quote(str(value), safe='~')
-
-
-def signed_request(path, params, credentials, *, timestamp=None, nonce=None):
-    url = BASE + path
-    ck, cs, tv, ts = credentials
-    oauth = dict(oauth_consumer_key=ck, oauth_token=tv, oauth_signature_method='HMAC-SHA1',
-                 oauth_timestamp=str(int(time.time()) if timestamp is None else timestamp),
-                 oauth_nonce=nonce or uuid.uuid4().hex, oauth_version='1.0')
-    pairs = sorted({**params, **oauth}.items())
-    base = '&'.join(['GET', q(url), q('&'.join(f'{q(k)}={q(v)}' for k, v in pairs))])
-    key = q(cs) + '&' + q(ts)
-    oauth['oauth_signature'] = base64.b64encode(hmac.new(key.encode(), base.encode(), hashlib.sha1).digest()).decode()
-    auth = 'OAuth ' + ','.join(f'{k}="{q(v)}"' for k, v in oauth.items())
-    return Request(url + ('?' + urlencode(params) if params else ''), headers={'Authorization': auth})
+from ...store4.bricklink_sign import BASE, q, signed_request  # noqa: E402,F401 — moved to store4 (M.8a)
 
 
 class BrickLink(Source):

@@ -1,0 +1,117 @@
+"""The tests that wait for their module's port to the 4.0 store (M.8a, issue #110).
+
+From M.8a the app opens only a 4.0 collection. A test file that still builds the 3.3 store (or imports a module no piece has ported yet)
+cannot run; it is listed here with the piece that ports it (the #110 scope comment: M.8b to M.8j, and M.11 for the v1 API, whose
+routes answer 410 until v2). `conftest.py` skips these files (`collect_ignore`); `scripts/check.sh` prints how many are left.
+
+The list can only shrink: a piece removes its files here in the commit that rewrites them on 4.0 fixtures and turns them green
+(`tests/test_quarantine.py` freezes the baseline). Nothing is deleted from this list by being forgotten: a file that exists and is not
+listed runs.
+"""
+
+QUARANTINE = {
+    # M.8b: collection read side, item page by id
+    'tests/test_app_factory.py': 'M.8b',
+    'tests/test_bw_49a.py': 'M.8b',
+    'tests/test_bw_49b.py': 'M.8b',
+    'tests/test_bw_collection.py': 'M.8b',
+    'tests/test_bw_collection_47d.py': 'M.8b',
+    'tests/test_bw_collection_48d.py': 'M.8b',
+    'tests/test_bw_first_run_60.py': 'M.8b',
+    'tests/test_bw_list_cost.py': 'M.8b',
+    'tests/test_bw_listspeed.py': 'M.8b',
+    'tests/test_bw_perf.py': 'M.8b',
+    'tests/test_bw_size_search_41.py': 'M.8b',
+    'tests/test_bw_ui_12f.py': 'M.8b',
+    'tests/test_bw_ui_1d.py': 'M.8b',
+    'tests/test_bw_ui_3332.py': 'M.8b',
+    'tests/test_bw_ui_lists.py': 'M.8b',
+    'tests/test_jump_and_rail.py': 'M.8b',
+    'tests/test_shell_41a.py': 'M.8b',
+    'tests/test_shell_45s.py': 'M.8b',
+    'tests/test_shell_46p.py': 'M.8b',
+    'tests/test_shell_49f.py': 'M.8b',
+    'tests/test_toni_shell.py': 'M.8b',
+    'tests/test_ui_47b.py': 'M.8b',
+    'tests/test_web_unsigned_text.py': 'M.8b',
+    # M.8c: Add, stock merge, pipeline on job/job_step, both job runners
+    'tests/test_brickwork_pipeline.py': 'M.8c',
+    'tests/test_brickwork_schema.py': 'M.8c',
+    'tests/test_bw_add.py': 'M.8c',
+    'tests/test_bw_small_68.py': 'M.8c',
+    'tests/test_bw_stock.py': 'M.8c',
+    # M.8d: Check Set Parts on part_check, collection writes, flags, photos
+    'tests/test_bw_48a.py': 'M.8d',
+    'tests/test_bw_checker.py': 'M.8d',
+    'tests/test_bw_core_fixes.py': 'M.8d',
+    'tests/test_bw_media_27.py': 'M.8d',
+    # M.8e: workbench, ledger, part inventory, lists
+    'tests/test_bw_48c.py': 'M.8e',
+    'tests/test_bw_lists_43.py': 'M.8e',
+    'tests/test_bw_part_inventory.py': 'M.8e',
+    'tests/test_bw_storage_46.py': 'M.8e',
+    'tests/test_bw_storage_archive.py': 'M.8e',
+    'tests/test_bw_storage_ui.py': 'M.8e',
+    'tests/test_bw_workbench.py': 'M.8e',
+    # M.8f: sources, pictures, prices on provider_key, keys
+    'tests/test_brickwork_rebrickable.py': 'M.8f',
+    'tests/test_brickwork_sources.py': 'M.8f',
+    'tests/test_bw_api_m5_web.py': 'M.8f',
+    'tests/test_bw_pictures.py': 'M.8f',
+    'tests/test_bw_prices.py': 'M.8f',
+    'tests/test_bw_retail_26.py': 'M.8f',
+    'tests/test_bw_thumbnails.py': 'M.8f',
+    'tests/test_bw_ui_12j.py': 'M.8f',
+    'tests/test_bw_ui_12l.py': 'M.8f',
+    'tests/test_secret_redaction.py': 'M.8f',
+    # M.8g: planning, partout, wishlists, money
+    'tests/test_bw_currency_39.py': 'M.8g',
+    'tests/test_bw_partout_38.py': 'M.8g',
+    'tests/test_bw_planning.py': 'M.8g',
+    'tests/test_bw_wish_currency.py': 'M.8g',
+    'tests/test_bw_wish_progress_35.py': 'M.8g',
+    'tests/test_bw_wishlists.py': 'M.8g',
+    # M.8h: orders, identify
+    'tests/test_bw_orders_design.py': 'M.8h',
+    'tests/test_bw_orders_export_44.py': 'M.8h',
+    'tests/test_bw_orders_storage.py': 'M.8h',
+    'tests/test_bw_ownership_45.py': 'M.8h',
+    # M.8i: identity admin, merge/unmerge, settings, CLI, maintenance
+    'tests/test_admin_ops.py': 'M.8i',
+    'tests/test_bw_admin.py': 'M.8i',
+    'tests/test_bw_admin_csrf.py': 'M.8i',
+    'tests/test_bw_ui_12m.py': 'M.8i',
+    'tests/test_bw_ui_5049.py': 'M.8i',
+    'tests/test_safe_errors.py': 'M.8i',
+    'tests/test_ui_p6.py': 'M.8i',
+    # M.8j: sync, BrickTracker rewrite, demo, the two guards
+    'tests/importer/test_bricktracker_import.py': 'M.8j',
+    'tests/importer/test_importer.py': 'M.8j',
+    'tests/test_bw_import_ui.py': 'M.8j',
+    'tests/test_bw_migrate_paths_61.py': 'M.8j',
+    'tests/test_bw_sync.py': 'M.8j',
+    'tests/test_bw_sync_ui.py': 'M.8j',
+    'tests/test_demo.py': 'M.8j',
+    'tests/test_import_polling.py': 'M.8j',
+    # M.11: API v2 and clients: the v1 API, MCP and contract tests
+    'tests/test_bw_api_47.py': 'M.11',
+    'tests/test_bw_api_jobs_followup.py': 'M.11',
+    'tests/test_bw_api_m0.py': 'M.11',
+    'tests/test_bw_api_m1.py': 'M.11',
+    'tests/test_bw_api_m1_contract.py': 'M.11',
+    'tests/test_bw_api_m2.py': 'M.11',
+    'tests/test_bw_api_m3.py': 'M.11',
+    'tests/test_bw_api_m4.py': 'M.11',
+    'tests/test_bw_api_m5.py': 'M.11',
+    'tests/test_bw_api_m6.py': 'M.11',
+    'tests/test_bw_api_m7.py': 'M.11',
+    'tests/test_bw_api_parity.py': 'M.11',
+    'tests/test_bw_api_take_figure.py': 'M.11',
+    'tests/test_bw_body_limits_62.py': 'M.11',
+    'tests/test_bw_check_api_63.py': 'M.11',
+    'tests/test_bw_review_followups.py': 'M.11',
+    'tests/test_bw_security.py': 'M.11',
+    'tests/test_bw_throttle.py': 'M.11',
+    'tests/test_bw_wishlists_api.py': 'M.11',
+    'tests/test_runtime_contract.py': 'M.11',
+}

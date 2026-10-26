@@ -534,9 +534,14 @@ def jobs_worker():
 
 
 def setup():
-    from ..core.connect import connect
+    """Create a fresh 4.0 collection (an existing 4.0 file is left as it is; a 3.3 file is refused) and say where the catalogue goes."""
+    from ..core.connect import GET_CATALOGUE, catalogue_path, connect
     path = brickwork_path()
     path.parent.mkdir(parents=True, exist_ok=True)
-    with closing(connect(path)):
+    with closing(connect(path, require_catalogue=False)):
         pass
-    return {'setup': 'ok', 'database': str(path)}
+    catalogue = catalogue_path(path)
+    result = {'setup': 'ok', 'database': str(path), 'catalogue': str(catalogue) if catalogue.is_file() else 'missing'}
+    if not catalogue.is_file():
+        result['next'] = f'Get the catalogue, which belongs beside the collection as {catalogue}: {GET_CATALOGUE}'
+    return result

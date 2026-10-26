@@ -52,16 +52,16 @@ def test_usage_errors_and_removed_commands(argv, monkeypatch):
     context.assert_not_called()
 
 
-def test_migrate(monkeypatch, capsys):
+def test_migrate_is_gone_and_names_the_4_0_command(monkeypatch, capsys):
+    # The old importer's `brickwork migrate` is removed on the 4.0 line (M.8a); it must not call its old service.
     monkeypatch.setattr(cli, 'application_context', Mock(side_effect=AssertionError('must not initialize')))
-    service = Mock(return_value={'ok': True})
+    service = Mock(side_effect=AssertionError('must not run'))
     monkeypatch.setattr(cli.admin_ops, 'migrate', service)
     assert cli.main(['migrate', '--app', 'app.db', '--extras', 'extras.db',
                      '--decisions', 'decisions.json', '--catalogue', 'DIR',
-                     '--out', 'brickwork.db', '--report', 'REPORT', '--replace']) == 0
-    service.assert_called_once_with(app='app.db', extras='extras.db', decisions='decisions.json',
-                                    catalogue='DIR', out='brickwork.db', report='REPORT', catalogue_src=None, replace=True)
-    assert capsys.readouterr().out == 'ok: True\n'
+                     '--out', 'brickwork.db', '--report', 'REPORT', '--replace']) == 1
+    service.assert_not_called()
+    assert 'python -m brickwork.store4 migrate' in capsys.readouterr().err
 
 
 def test_operation_error_and_secret(monkeypatch, capsys):

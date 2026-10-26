@@ -36,7 +36,7 @@ def insert(db, changes, table, values):
 
 def history(db, *, actions=None, limit=200, **context):
     """Filter receipt context in SQLite before decoding the bounded web history."""
-    from .api_reads import undone_sql, undoable_sql
+    from .undo import undone_sql, undoable_sql
     predicates, parameters = [], []
     for key, value in context.items():
         if not re.fullmatch(r'[a-z_]+', key):
@@ -69,9 +69,9 @@ def history(db, *, actions=None, limit=200, **context):
 
 def undo_history(db, event_id):
     """Web history uses the API dispatcher, including bundled receipts and guards."""
-    from . import api_writes
+    from . import undo as undo_module
     with transaction(db):
-        result = api_writes.undo_event(db, event_id, {'scopes': ['write']}, None)
+        result = undo_module.undo_event(db, event_id)
         if result['already_undone']:
             raise ValueError('This save has already been undone')
 

@@ -8,6 +8,8 @@
 docker compose exec brickwork brickwork <command> ...
 ```
 
+> **On `main` (the 4.0 development line):** `setup` creates a 4.0 collection and says where `catalogue.db` goes, `mcp` is refused until API v2, and `migrate` below is gone: a 3.3 collection moves with `python -m brickwork.store4 migrate`. This page otherwise describes release 0.5.
+
 Every command takes `--json` to print its result as JSON instead of plain lines, and `-h` for its usage. A command that fails prints the reason on standard error and exits with status 1. With `BW_READ_ONLY` on, the `token` and `wishlist` commands that change something are refused.
 
 ## setup

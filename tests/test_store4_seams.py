@@ -81,6 +81,20 @@ def test_settle_leftovers_still_settles_its_own(db, key):
     assert q(db, 'SELECT inventory_pending FROM copy WHERE id=?', cid) == [(None,)]
 
 
+
+def test_a_copy_left_pending_by_a_stop_counts_as_work_at_start_up(db, key):
+    """Codex on M.8a: a stop between a job's commit and its settling leaves the copy pending on a finished job; the start-up check
+    must see it, or no drain ever runs `_settle_leftovers`. `poll_delay` must not, or a copy offered the switch keeps the worker
+    polling forever."""
+    from brickwork.core import drainer
+    cid = add_pending(db)['copy']['id']
+    own = q(db, 'SELECT pending_job_id FROM copy WHERE id=?', cid)[0][0]
+    with db:
+        db.execute("UPDATE job SET state='failed', retry_at=NULL, error_code='not_found' WHERE id=?", (own,))
+    assert jobs.has_leftovers(db) and drainer.pending(db) and drainer.poll_delay(db) is None
+    jobs._settle_leftovers(db)
+    assert not jobs.has_leftovers(db) and not drainer.pending(db)
+
 # ---------- credentials ----------
 
 def test_the_environment_is_the_default(monkeypatch):

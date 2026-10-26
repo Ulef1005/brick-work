@@ -59,6 +59,20 @@ secrets() {
   return $rc
 }
 
+quarantine() {
+  # Tests that wait for their module's port to the 4.0 store (tests/quarantine.py; the list can only shrink). Importing them to
+  # count would need the 3.3 store, so the tests are counted statically: every `def test_*`, parametrised cases not expanded.
+  "$python" - <<'PY'
+import ast
+import sys
+sys.path.insert(0, '.')
+from tests.quarantine import QUARANTINE
+tests = sum(isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name.startswith('test_')
+            for name in QUARANTINE for n in ast.walk(ast.parse(open(name).read())))
+print(f'quarantined: {len(QUARANTINE)} files / {tests} tests (def test_ counted, parametrised cases not expanded)')
+PY
+}
+
 docs() {
   # The docs check in report mode over the commits not yet landed (CI passes the pushed range);
   # the blocking check is the commit hook in .githooks/ (App Standard, Repo & checks).
@@ -76,6 +90,7 @@ docs() {
 step names "$python" scripts/check_names.py
 step smoke "$python" -m pytest tests/test_standalone_smoke.py -q
 step pytest "$python" -m pytest tests/ -q
+step quarantine quarantine
 step runtimes runtimes
 step secrets secrets
 step api-contract "$python" scripts/check_api_contract.py

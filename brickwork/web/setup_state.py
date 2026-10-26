@@ -12,7 +12,7 @@ from ..core import keys
 def _database():
     from ..core.admin import database
     from .admin_ops import brickwork_path
-    return database(brickwork_path(), read_only=True)
+    return database(brickwork_path(), read_only=True, require_catalogue=False)
 
 
 def key_states():
@@ -36,9 +36,10 @@ def key_missing(source):
 
 
 def catalogue_loaded():
-    from .admin_ops import catalogue_status
+    from ..core.connect import catalogue_path
+    from .admin_ops import brickwork_path
     try:
-        return bool(catalogue_status()['bricklink'].get('available'))
+        return catalogue_path(brickwork_path()).is_file()
     except (sqlite3.Error, OSError, ValueError):
         return False
 

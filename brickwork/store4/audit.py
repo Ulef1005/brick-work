@@ -27,6 +27,12 @@ def transaction(db, what):
         raise
 
 
+def value_text(v):
+    """How an event stores a value: None as NULL, a string as it is, a dict or list as sorted JSON, anything else as str(). The one
+    rule for every writer of `event` (store4's `Events` and the app's `core.admin.audit`), so readers never guess the encoding."""
+    return v if v is None or isinstance(v, str) else json.dumps(v, sort_keys=True) if isinstance(v, (dict, list)) else str(v)
+
+
 class Events:
     """Writes events for one run; every event of the run shares the operation key."""
 
@@ -36,8 +42,7 @@ class Events:
         self.count = 0
 
     def write(self, entity_kind, entity_id, field, old=None, new=None):
-        def text(v):
-            return v if v is None or isinstance(v, str) else json.dumps(v, sort_keys=True) if isinstance(v, (dict, list)) else str(v)
+        text = value_text
         self.db.execute('''INSERT INTO event(at, via, actor, entity_kind, entity_id, field, old_value, new_value, operation_key)
                            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)''',
                         (now(), self.via, self.actor, entity_kind, None if entity_id is None else str(entity_id), field,

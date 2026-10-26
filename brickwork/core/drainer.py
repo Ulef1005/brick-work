@@ -4,21 +4,58 @@ import os
 import threading
 import time
 
+from datetime import datetime, timezone
+
+from ..store4 import jobs
+from .admin import begin_operation, end_operation
 from .connect import connect
-from .pipeline import poll_delay, worker
 from .sources.base import audit_origin
+
+# M.8a: the drainer runs `store4.jobs.drain` only (the two fetch kinds). The pipeline runner comes back in M.8c with the Add flow.
+PENDING_SQL = f'SELECT state, retry_at FROM job WHERE kind IN {jobs.OWN_KINDS} AND {jobs.ACTIVE}'
+
+
+def poll_delay(db):
+    """None when nothing is queued, running, waiting or due for a retry; else seconds to the next look (at most 60)."""
+    rows = db.execute(PENDING_SQL).fetchall()
+    if not rows:
+        return None   # not jobs.has_leftovers: a copy offered the switch stays pending on a done job until the user answers
+    if any(r['state'] in ('queued', 'running') for r in rows):
+        return 1
+    now = datetime.now(timezone.utc)
+    waits = []
+    for r in rows:
+        if r['retry_at']:
+            due = datetime.strptime(r['retry_at'], '%Y-%m-%dT%H:%M:%S.%fZ').replace(tzinfo=timezone.utc)
+            waits.append(max(0, (due - now).total_seconds()))
+    return min(60, min(waits)) if waits else 60
+
+
+def pending(db):
+    """Is there work for the drainer at start-up: an active job, or copies still pending on a finished one (`jobs.has_leftovers`;
+    the process stopped before settling them). One drain settles what can be settled, then `poll_delay` lets the worker stop."""
+    return db.execute(PENDING_SQL + ' LIMIT 1').fetchone() is not None or jobs.has_leftovers(db)
+
+
+def drain_once(path):
+    with closing(connect(path)) as db:
+        return jobs.drain(db)
 
 
 def loop(path, sleep, *, stop=None):
     """Drain due jobs, then sleep until the next deadline; return when nothing is pending."""
     with audit_origin('app'):
-        while stop is None or not stop.is_set():
-            worker(path=path)
-            with closing(connect(path)) as db:
-                delay = poll_delay(db)
-            if delay is None:
-                return
-            sleep(delay)
+        begin_operation()
+        try:
+            while stop is None or not stop.is_set():
+                drain_once(path)
+                with closing(connect(path)) as db:
+                    delay = poll_delay(db)
+                if delay is None:
+                    return
+                sleep(delay)
+        finally:
+            end_operation()
 
 
 def spawn(target):
@@ -53,7 +90,7 @@ def start(app, path, fallback=None):
         app.extensions['bw_import_worker_active'] = True
     launch = fallback or spawn
 
-    def pending():
+    def pending_work():
         with closing(connect(path)) as db:
             return poll_delay(db) is not None
 
@@ -63,7 +100,7 @@ def start(app, path, fallback=None):
                 while True:
                     loop(path, sleep)
                     with LOCK:
-                        if not pending():
+                        if not pending_work():
                             app.extensions['bw_import_worker_active'] = False
                             return
         except BaseException:

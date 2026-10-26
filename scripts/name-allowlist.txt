@@ -9,8 +9,6 @@ templates/web/toni/web/bw_import.html	Import from BrickTracker|\bbricktracker\b|
 templates/web/toni/web/bw_admin.html	Import from BrickTracker	Tools & Admin link to the retained importer.
 docs/brickwork/api-v1.md	Import from BrickTracker|\bbricktracker\b|\b(?:post_)?imports?[-_]bricktracker\b|BrickTracker	Retained importer name.
 docs/brickwork/cutover-4.11j.md	(?m)(?<=`)/house(?=/)	Old-path column documenting the requested URL migration; not an active route.
-brickwork/core/schema.sql	\bhouse-api\b	Historical 3.2 initialization DDL retained for unchanged migration proofs.
-brickwork/core/upgrade_api.py	\bhouse-api\b	Required 3.2-to-3.3 data conversion; live events use api.
 tests/test_bw_api_m0.py	\bhouse-api\b	Regression coverage proving historical origins upgrade to api.
 scripts/name-allowlist.txt	[\s\S]*	Naming exceptions must spell the retained vocabulary.
 scripts/check_names.py	(?m)^\ \ \ \ r'bricktracker\|brick_tracker\|\(\?<!\[a\-z\]\)BK_\|\(\?<!\[a\-z\]\)HOUSE_\|\\bhouse\-api\\b\|\\bhouse_\|\\bhouse\\\.\|\\bhouse/\|\\bhapi\\b\|host\\\.docker\\\.internal',$	Literal forbidden vocabulary implementing the requested gate.
@@ -28,6 +26,8 @@ brickwork/web/setup_state.py	\bbricktracker\b|\b(?:post_)?imports?[-_]bricktrack
 brickwork/web/views.py	\bbricktracker\b|\b(?:post_)?imports?[-_]bricktracker\b|BrickTracker	Import from BrickTracker module registration.
 templates/web/toni/web/bw_first_run.html	\bbricktracker\b|\b(?:post_)?imports?[-_]bricktracker\b|BrickTracker	First-run step: Import from BrickTracker.
 tests/test_bw_import_ui.py	\bbricktracker\b|\b(?:post_)?imports?[-_]bricktracker\b|BrickTracker	Tests of the Import from BrickTracker pages.
+tests/quarantine.py	bricktracker|BrickTracker	Names the quarantined importer test files and the piece that rewrites them.
+tests/test_quarantine.py	bricktracker	The frozen baseline of the quarantine names the same importer test file.
 THIRD_PARTY_NOTICES.md	\[BrickTracker\]\(https://gitea\.baerentsen\.space/FrederikBaerentsen/BrickTracker\)	Upstream credit next to the kept MIT notice.
 scripts/build_site.py	inspired by BrickTracker	Upstream credit in the documentation site footer.
 design/test-data/tools-admin.json	BK_[A-Z_]+|bricktracker_[a-z_]+	Design export test data (design/ is not edited here); the old setting and table names describe the legacy import screen.

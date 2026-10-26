@@ -1,75 +1,45 @@
-"""Connections to the new store, never to either legacy database."""
-import os
+"""The app's one way to open the collection: the 4.0 store (M.8a, issue #110).
+
+`connect(path)` keeps its name and signature so the ~40 call sites stay; it opens the 4.0 collection at `path` through
+`store4.connect` with `catalogue.db` beside it attached read-only. A 3.2/3.3 file is refused with the fix named, never opened."""
 from pathlib import Path
-import sqlite3
-import time
-from threading import RLock
 
-_INITIALIZE_LOCK = RLock()
+from ..store4 import connect as store4_connect
+from ..store4.errors import CatalogueError, SchemaMismatch
+from . import errors
 
-# Paths whose upgrade could not be written -> (monotonic time, mtime_ns) of the failed attempt.
-# A failing upgrade is not retried per request: only after RETRY_SECONDS or when the file changes.
-_FAILED = {}
-RETRY_SECONDS = 300
+CATALOGUE_NAME = 'catalogue.db'
+MIGRATE = ('run `python -m brickwork.store4 migrate --in <3.3 file> --catalogue <catalogue.db> --mappings <dir> --out <4.0 file> '
+           '--report <dir>`; the 3.3 file is only read (a `brickwork migrate4` alias comes with M.8i)')
+GET_CATALOGUE = '`python -m brickwork.store4 --data <the folder of brickwork.db> catalogue download` (or `catalogue import`)'
 
 
-def connect(path='brickwork.db', *, read_only=False):
-    from . import upgrade
+class OldStore(errors.NotSetUp):
+    """The file at BW_DB_PATH is a 3.2/3.3 collection (or not a Brick Work file at all)."""
+
+
+class NoCatalogue(errors.CatalogueNotLoaded):
+    """There is no catalogue.db beside the collection."""
+
+
+def catalogue_path(path='brickwork.db'):
+    """The catalogue that belongs to the collection at `path`: `catalogue.db` in the same folder."""
+    return Path(path).with_name(CATALOGUE_NAME)
+
+
+def connect(path='brickwork.db', *, read_only=False, require_catalogue=True):
+    """Open the 4.0 collection at `path` with its catalogue attached read-only.
+
+    Without the catalogue file `require_catalogue` decides: True (the default) refuses with the way to get one; False opens the
+    collection alone (setup, and the first-run page that tells the user to get a catalogue)."""
     path = Path(path)
-    needs_lock = not path.exists()
-    if not needs_lock:
-        # Probe without the process lock; ordinary current-store requests never take it.
-        probe = sqlite3.connect(path.resolve().as_uri() + '?mode=ro', uri=True)
-        try:
-            has_schema = probe.execute("SELECT 1 FROM sqlite_master WHERE name='schema_meta'").fetchone()
-            needs_lock = not has_schema or upgrade.pending(probe, writable=os.access(path, os.W_OK))
-        finally:
-            probe.close()
-    if needs_lock:
-        with _INITIALIZE_LOCK:
-            # _connect checks file existence and pending upgrades again under the lock.
-            return _connect(path, read_only=read_only)
-    # The probe above already found nothing pending: do not scan for it a second time.
-    return _connect(path, read_only=read_only, probed=True)
-
-
-def _connect(path, *, read_only=False, probed=False):
-    """Open a WAL connection with enforced foreign keys; initialize new files."""
-    path = Path(path)
-    new = not path.exists()
-    db = sqlite3.connect(path.resolve().as_uri() + '?mode=ro', uri=True) if read_only else sqlite3.connect(path)
-    db.row_factory = sqlite3.Row
+    catalogue = catalogue_path(path)
+    if require_catalogue and not catalogue.is_file():
+        raise NoCatalogue(f'No catalogue at {catalogue}. First run: get one with {GET_CATALOGUE}, then restart.')
     try:
-        db.execute('PRAGMA foreign_keys=ON')
-        if read_only:
-            db.execute('PRAGMA query_only=ON')
-        else:
-            db.execute('PRAGMA journal_mode=WAL')
-        if new and not read_only:
-            db.executescript(Path(__file__).with_name('schema.sql').read_text())
-        elif not new:
-            from . import upgrade
-            if not probed and upgrade.pending(db, writable=os.access(path, os.W_OK)):
-                if read_only:
-                    # A read-only handle cannot upgrade: do it once on a short writable handle, then reopen.
-                    # If that is impossible (locked or unwritable file) readers still work without the column.
-                    key, mtime = str(path.resolve()), path.stat().st_mtime_ns
-                    failed = _FAILED.get(key)
-                    if failed and failed[1] == mtime and time.monotonic() - failed[0] < RETRY_SECONDS:
-                        return db
-                    try:
-                        upgrade.upgrade(path)
-                    except sqlite3.Error:
-                        _FAILED[key] = (time.monotonic(), path.stat().st_mtime_ns)
-                        return db
-                    _FAILED.pop(key, None)
-                    db.close()
-                    return connect(path, read_only=True)
-                upgrade.upgrade_connection(db)
-        if new and not read_only:
-            from . import upgrade
-            upgrade.upgrade_connection(db)
-        return db
-    except BaseException:
-        db.close()
-        raise
+        return store4_connect.connect(path, catalogue, read_only=read_only)
+    except SchemaMismatch as exc:
+        raise OldStore(f'{path} is not a Brick Work 4.0 collection. A 3.2/3.3 file must be migrated, never opened: {MIGRATE}. '
+                       f'({exc})') from None
+    except CatalogueError as exc:
+        raise NoCatalogue(str(exc)) from None

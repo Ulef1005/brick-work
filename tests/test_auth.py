@@ -24,11 +24,11 @@ def test_wrong_and_empty_password_are_refused(app):
 
 def test_login_then_logout(app):
     client = app.test_client()
-    response = client.post('/login?next=/manage/tools', data={'password': PASSWORD})
-    assert response.status_code == 302 and response.location.endswith('/manage/tools')
-    assert client.get('/manage/tools').status_code == 200
+    response = client.post('/login?next=/collection/sets', data={'password': PASSWORD})
+    assert response.status_code == 302 and response.location.endswith('/collection/sets')
+    assert client.get('/collection/sets').status_code == 200
     assert client.get('/logout').status_code == 302
-    after = client.get('/manage/tools')
+    after = client.get('/collection/sets')
     assert after.status_code == 302 and '/login' in after.location
 
 
@@ -46,7 +46,7 @@ def test_editable_follows_the_login_state(app):
         anonymous.get('/login')
         assert not bw_collection_editable()
     with logged_in(app) as client:
-        client.get('/manage/tools')
+        client.get('/collection/sets')
         assert bw_collection_editable()
 
 

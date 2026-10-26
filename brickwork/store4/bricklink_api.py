@@ -2,11 +2,11 @@
 
 One signed GET, `/items/SET/{no}/subsets?break_minifigs=false` (figures stay figure lines, as the design's `M` lines expect), made
 through an injectable `http(url, headers) -> (status, json)`, the same seam as the Rebrickable client. Signing is the 3.3 code
-(`core.sources.bricklink.signed_request`); the four credentials come from the environment (or `keys.set_key_provider`), never from a file or a log line.
+(`bricklink_sign.signed_request`); the four credentials come from the environment (or `keys.set_key_provider`), never from a file or a log line.
 The reply is returned whole: `bricklink_subsets.load_subsets` validates and stores it."""
 import re
 
-from ..core.sources.bricklink import signed_request
+from .bricklink_sign import signed_request
 from . import keys
 from .errors import Store4Error
 from .rebrickable_api import FetchError, InvalidReply, KeyRefused, NotFound, Throttled, UrllibHttp

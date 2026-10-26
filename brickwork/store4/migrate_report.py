@@ -8,14 +8,14 @@ subtracts exactly these from the comparison: `type-crossed.csv`, `figure-lines-f
 `non-part-lines.csv`, `value-fixes.csv`, `money-fills.csv`, `money-currency-dropped.csv`, `count-fixes.csv`, `timestamp-rules.csv`,
 `tables.csv` (3.3 rows to 4.0 rows per table) and `wish-ids.csv` (the integer wish ids and their uuids).
 
-Every cell goes through `core.csv_safe`. The report digest is the sha256 over the bytes of `summary.md` followed by the bytes of
+Every cell goes through `csv_safe`. The report digest is the sha256 over the bytes of `summary.md` followed by the bytes of
 `proof.json`."""
 import csv
 import hashlib
 import json
 from pathlib import Path
 
-from ..core import csv_safe
+from . import csv_safe
 from . import mint as mint_module
 
 

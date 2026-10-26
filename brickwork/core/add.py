@@ -190,9 +190,10 @@ def resolve(db, rows, where, *, rb_client=None, list_id='default', map_wanted_id
         raise ValueError('Choose where to add')
     if not isinstance(rows, list) or len(rows) > 500:
         raise ValueError('Review up to 500 items at a time')
-    from . import wishlists, upgrade
+    from . import wishlists
+    from .currency import configured_currency
     from ..web.formatting import money
-    currency = upgrade.configured_currency(db)
+    currency = configured_currency(db)
     lists = wishlists.listing(db)
     linked = {l['bricklink_id']: l for l in lists if l['bricklink_id']}
     if where == 'wishlist': wishlists.require(db, list_id)

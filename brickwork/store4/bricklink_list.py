@@ -21,7 +21,7 @@ from types import SimpleNamespace
 import time
 from xml.etree import ElementTree as ET
 
-from ..core.size_search import name_key as size_key_of
+from .sizekey import name_key as size_key_of
 from .connect import _uri, now as clock
 from .errors import BrickLinkListError, CatalogueError
 from .layers import FTS_INSERT, bl_digests

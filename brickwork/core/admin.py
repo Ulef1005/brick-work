@@ -1,6 +1,7 @@
 """New-store admin queries and atomic, app-audited mutations. No legacy adapters."""
 from .transaction import transaction
 from contextlib import contextmanager
+from contextvars import ContextVar
 from datetime import datetime, timezone
 import json
 from pathlib import Path
@@ -8,6 +9,8 @@ import re
 import uuid
 
 from .connect import connect
+from ..store4.audit import value_text
+from ..store4.connect import now as store4_now
 from .importer.projection import PRIORITY
 from .pipeline import Pipeline, TYPES, validate_priority
 from .sources.base import now, redact
@@ -20,11 +23,11 @@ COLLECTION = {'copies', 'copy_parts', 'copy_minifigs', 'loose_stock',
 
 
 @contextmanager
-def database(path, *, read_only=False):
+def database(path, *, read_only=False, require_catalogue=True):
     # An absent production store is a setup error, never a silently empty collection.
     if not Path(path).is_file():
         raise ValueError('Brick Work database is not available')
-    db = connect(path, read_only=read_only)
+    db = connect(path, read_only=read_only, require_catalogue=require_catalogue)
     try:
         yield db
     finally:
@@ -38,7 +41,44 @@ def origin():
     return via, AUDIT_ACTOR.get() if via == 'api' else None
 
 
+OPERATION_KEY = ContextVar('brickwork_operation_key', default=None)
+
+
+def begin_operation(key=None):
+    """Start a new operation in this context (a web request, a CLI command, a worker pass) and return its key.
+
+    Every event written after this call shares the key (`event.operation_key`, design 5.2). Call it once at the entry point;
+    `end_operation()` clears it. Code with no operation (a test, a script) writes events with a NULL key."""
+    key = key or uuid.uuid4().hex
+    OPERATION_KEY.set(key)
+    return key
+
+
+def end_operation():
+    OPERATION_KEY.set(None)
+
+
+@contextmanager
+def operation(key=None):
+    """`begin_operation` for the length of a block; the previous key is restored on exit."""
+    token = OPERATION_KEY.set(key or uuid.uuid4().hex)
+    try:
+        yield OPERATION_KEY.get()
+    finally:
+        OPERATION_KEY.reset(token)
+
+
+def split_entity(entity):
+    """The 3.3-style entity string as the 4.0 pair: split at the first colon (`copy:<id>` -> ('copy', '<id>')); no colon, or
+    nothing after it, gives an entity_id of None."""
+    kind, _, ident = str(entity).partition(':')
+    return kind, ident or None
+
+
 def audit(db, entity, field, old=None, new=None, *, via=None, actor=None):
+    """Write one event on the 4.0 `event` table. The signature is the 3.3 one; `entity` is split into `entity_kind` and
+    `entity_id` (`split_entity`), `operation_key` is the current operation's. `old`/`new` are stored by `store4.audit.value_text`, the one rule every event writer
+    uses (None as NULL, strings as they are, dicts and lists as sorted JSON)."""
     from .audit_bundle import CAPTURE
     captured = CAPTURE.get()
     if captured is not None:
@@ -51,8 +91,11 @@ def audit(db, entity, field, old=None, new=None, *, via=None, actor=None):
     if via not in ('app', 'cli', 'api', 'import', 'migration'):
         raise ValueError('invalid audit origin')
     actor = actor if via == 'api' else None
-    db.execute('INSERT INTO events(entity,field,old_value,new_value,at,via,actor) VALUES(?,?,?,?,?,?,?)',
-               (entity, field, redact(json.dumps(old)), redact(json.dumps(new)), now().isoformat(), via, actor))
+    kind, ident = split_entity(entity)
+    db.execute('INSERT INTO event(at,via,actor,entity_kind,entity_id,field,old_value,new_value,operation_key) VALUES(?,?,?,?,?,?,?,?,?)',
+               (store4_now(), via, actor, kind, ident, field,
+                None if old is None else redact(value_text(old)), None if new is None else redact(value_text(new)),
+                OPERATION_KEY.get()))
 
 
 def item_references(db):

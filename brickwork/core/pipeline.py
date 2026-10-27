@@ -1,40 +1,88 @@
-"""Durable, independent import steps over the v3 source layer.
+"""The import pipeline on the 4.0 store (M.8c, issue #110; design 5.2, 6.5, 3.8): one `pipeline` job per Add, six steps.
 
-Callers create canonical catalogue items here; collection writes remain separate.
-A Pipeline owns its connection's transactions (do not wrap it in a transaction).
+A job is a row of `job` (source `import`, kind `item`, `item_id` the item) with one `job_step` per step name; the order and the
+step names come from the setting `import_order:<kind>` (the migration carries it, kind words), default `STEPS`. The job survives a
+restart and is run by `core.drainer` beside `store4.jobs` (which runs only its own two fetch kinds and ignores this one).
+
+What a step does until the source handlers return (M.8f):
+
+- `identity`, `inventory`, `matching` finish locally from the catalogue and the collection; no network. A step that finds nothing to
+  work with ends `done` with the code `unidentified` (the item has no number from any provider, or no BrickLink number for
+  `matching`) or `not_found` (an identified set or figure with no part list); a finding is not a failure, so the job finishes.
+- `pictures`, `metadata` and `market_price` need a source handler. Handlers are registered with `register(step, source, handler)`
+  (M.8f does that). A step with no handler for any of its sources ends `done` with `error` = `SKIPPED`, count 0 and no source, so
+  the job finishes and a screen can say the step was skipped; it is not `failed` and `queue_retry` leaves it alone. A handler
+  registered later runs for new jobs; steps already skipped stay skipped (a pictures refresh is queued explicitly).
+
+A handler is `handler(db, job, step)`; it returns normally (step done), raises `StepDone(code, message)` (done with a finding, such as
+`unidentified` for an item with no number the source knows), `StepWait(retry_at, why)` (waiting for budget) or `StepFailed(code, message)`
+(failed). The job is `done` when no step failed or waits, `waiting_for_budget` with the earliest
+`retry_at` while one waits, else `failed`; `queue_retry` puts failed steps back.
 """
 from contextlib import closing
 import json
 import os
 from pathlib import Path
 import re
-import sqlite3
 
+from ..store4.audit import Events
+from ..store4.connect import has_catalogue, now
+from . import items
 from .connect import connect
-from .importer.projection import PRIORITY
-from .sources import base, images
-from .sources.base import CatalogueNotLoaded, SourceDisabled, SourceError, WaitingForBudget, item, write
-from .sources.bricklink import BrickLink
-from .sources.bricklink_catalogue import BrickLinkCatalogue
-from .sources.brickset import Brickset
-from .sources.rebrickable import Rebrickable
+from .transaction import transaction
 
-STEPS = tuple(PRIORITY)
-EVENT = 'import_progress'
-TYPES = set('SPMGBCIO')
-LABELS = {'identity': 'Fetching identity', 'inventory': 'Fetching parts',
-          'matching': 'Matching ids', 'pictures': 'Downloading images',
-          'metadata': 'Fetching set metadata', 'market_price': 'Fetching market price'}
-NAMES = {'bricklink': 'BrickLink', 'bricklink:api': 'BrickLink',
-         'bricklink:subsets': 'BrickLink', 'bricklink:local': 'BrickLink catalogue',
-         'rebrickable': 'Rebrickable', 'brickset': 'Brickset', 'picture_refresh': 'Pictures'}
+STEPS = ('identity', 'inventory', 'matching', 'pictures', 'metadata', 'market_price')
+TYPES = set(items.KINDS)                        # the keys of `import_order:<kind>` and of the per-kind source lists
+KIND, SOURCE = 'item', 'import'                  # design 5.2 and the user journey: `job(source=import, kind=item, item_id)` + six `job_step`
+LOCAL = ('identity', 'inventory', 'matching')
+SKIPPED = 'skipped: no source handler on the 4.0 store yet (comes back with the sources piece, M.8f)'
+DEFAULT_PRIORITY = {
+    'pictures': {'part': ['rebrickable_dump', 'bricklink'], '*': ['bricklink', 'rebrickable_api']},
+    'metadata': {'set': ['brickset']}, 'market_price': {'*': ['bricklink']},
+}
+LABELS = {'identity': 'Checking identity', 'inventory': 'Checking the part list', 'matching': 'Matching ids',
+          'pictures': 'Downloading images', 'metadata': 'Fetching set metadata', 'market_price': 'Fetching market price'}
+NAMES = {'bricklink': 'BrickLink', 'rebrickable': 'Rebrickable', 'rebrickable_dump': 'Rebrickable', 'rebrickable_api': 'Rebrickable',
+         'brickset': 'Brickset', 'catalogue': 'Catalogue', 'picture_refresh': 'Pictures'}
+HANDLERS = {}                                   # (step, source) -> handler(db, job, step); filled by M.8f
+_CLAIMED_JOBS = set()                           # (pid, path, job) this process is running
+
+
+class StepWait(Exception):
+    """Raised by a handler: the step waits for a budget or a rate pause until `retry_at` (an ISO stamp)."""
+
+    def __init__(self, retry_at, why='waiting for budget'):
+        super().__init__(why)
+        self.retry_at, self.why = retry_at, why
+
+
+class StepDone(Exception):
+    """Raised by a handler that found nothing to work with: the step ends done with the finding (`unidentified`, `not_found`)."""
+
+    def __init__(self, code, message):
+        super().__init__(message)
+        self.code, self.message = code, message
+
+
+class StepFailed(Exception):
+    """Raised by a handler: the step failed with one of the job_step error codes."""
+
+    def __init__(self, code, message):
+        super().__init__(message)
+        self.code, self.message = code, message
+
+
+def register(step, source, handler):
+    """Run `handler(db, job, step)` for `step` when `source` is the one being tried (M.8f)."""
+    if step not in STEPS:
+        raise ValueError(f'{step!r} is not a pipeline step')
+    HANDLERS[step, source] = handler
 
 
 def yield_worker(db):
     """Never switch greenlets while this connection holds a transaction."""
     if db.in_transaction:
         return
-    # wsgi.py patches before the app is imported; the CLI is never patched.
     import sys
     monkey = sys.modules.get('gevent.monkey')
     if monkey and monkey.is_module_patched('time'):
@@ -48,10 +96,6 @@ def cooperative(db, rows):
             yield row
         finally:
             yield_worker(db)
-
-
-# Include pid so a fork cannot inherit ownership, and path to distinguish databases.
-_CLAIMED_JOBS = set()
 
 
 def owner_pid_alive(pid, *, path=None, job=None):
@@ -70,12 +114,13 @@ def owner_pid_alive(pid, *, path=None, job=None):
 
 
 def validate_priority(value):
-    if not isinstance(value, dict) or set(value) != set(STEPS):
-        raise ValueError('source_priority must define all six steps')
-    for step, types in value.items():
-        if not isinstance(types, dict) or not types or any(t not in TYPES | {'*'} for t in types):
-            raise ValueError('invalid priority item type')
-        for sources in types.values():
+    """A `source_priority` value: some of the six steps, each `{kind or '*': [source ids]}`."""
+    if not isinstance(value, dict) or not set(value) <= set(STEPS):
+        raise ValueError('source_priority names only the pipeline steps')
+    for step, kinds in value.items():
+        if not isinstance(kinds, dict) or not kinds or any(k not in TYPES | {'*'} for k in kinds):
+            raise ValueError('invalid item kind')
+        for sources in kinds.values():
             if (not isinstance(sources, list) or not sources
                     or any(not isinstance(s, str) or not re.fullmatch('[a-z][a-z0-9_:]*', s) for s in sources)
                     or len(sources) != len(set(sources))):
@@ -83,467 +128,243 @@ def validate_priority(value):
     return value
 
 
+def _setting(db, key):
+    row = db.execute('SELECT value FROM main.setting WHERE key=?', (key,)).fetchone()
+    return row[0] if row else None
+
+
+def order_for(db, kind):
+    """The steps to run for an item of `kind`: `import_order:<kind>`, else every step in `STEPS` order."""
+    raw = _setting(db, 'import_order:' + kind)
+    order = json.loads(raw) if raw else list(STEPS)
+    if not isinstance(order, list) or len(order) != len(STEPS) or set(order) != set(STEPS):
+        raise ValueError('Check the import order in Tools & Admin')
+    return order
+
+
+def sources_for(db, step, kind):
+    """The source ids a step tries, in order: the local steps use the catalogue; the others the kind's list of `source_priority`
+    (the setting when it names the step, else `DEFAULT_PRIORITY`)."""
+    if step in LOCAL:
+        return ['catalogue']
+    stored = _setting(db, 'source_priority')
+    table = json.loads(stored).get(step) if stored else None
+    table = table or DEFAULT_PRIORITY.get(step) or {}
+    return list(table.get(kind, table.get('*', [])))
+
+
 class Pipeline:
-    def __init__(self, db, *, root=None, catalogue=None, http=None, image_http=None,
-                 emit=None, handlers=None):
+    def __init__(self, db, *, handlers=None):
         self.db = db
-        path = Path(db.execute('PRAGMA database_list').fetchone()['file'])
-        self.path = path
-        from .media import root_for
-        self.root = Path(root) if root is not None else root_for(path)
-        self.catalogue = Path(catalogue) if catalogue else path.with_name('bricklink-catalog.db')
-        self.image_http = image_http
-        self.emit = emit or (lambda event, payload: None)
-        # An extension supplies (step, source) -> handler(pipeline, job, step).
-        self.handlers = handlers or {}
-        self.clients = {c.source: c(db, http=http) for c in (BrickLink, Rebrickable, Brickset)}
-        from .transaction import transaction, schema
-        with transaction(db):
-            schema(db, Path(__file__).with_name('import.sql').read_text())
-            if 'error_code' not in {r[1] for r in db.execute('PRAGMA table_info(import_steps)')}:
-                # Additive: the stable code of a failed step (source_not_configured, source_disabled, ...).
-                db.execute('ALTER TABLE import_steps ADD COLUMN error_code TEXT')
-            write(db, "INSERT OR IGNORE INTO sources(source,name,kind) VALUES('import','Import pipeline','manual')")
-            write(db, 'INSERT OR IGNORE INTO settings VALUES(?,?)', ('source_priority', json.dumps(PRIORITY)))
-            for kind in sorted(TYPES):
-                write(db, 'INSERT OR IGNORE INTO settings VALUES(?,?)', ('import_order:' + kind, json.dumps(STEPS)))
+        self.path = Path(db.execute('PRAGMA database_list').fetchone()['file'])
+        self.handlers = handlers or {}            # per instance, tried before the module registry
 
-    def status(self, job):
-        row = self.db.execute("SELECT * FROM jobs WHERE id=? AND source='import'", (job,)).fetchone()
-        if not row:
-            raise ValueError('unknown import job')
-        return {**dict(row), 'steps': [dict(s) for s in self.db.execute(
-            'SELECT * FROM import_steps WHERE job_id=? ORDER BY position', (job,))]}
+    # ---- queue ----
 
-    def queue_steps(self, item_type, item_no, steps, *, via='app', sources=None, reference_image=None):
-        """Queue a selective refresh without resetting an existing import.
-
-        The worker uses the same durable step handlers and budget checkpoints.
-        This method participates in the caller's transaction.
-        """
-        if (item_type not in TYPES or not re.fullmatch('[A-Za-z0-9-]{1,32}', item_no)) and not (reference_image and steps == ('pictures',) and item_type == '?'):
-            raise ValueError('invalid BrickLink item key')
-        if not steps or any(s not in STEPS for s in steps) or via not in ('app', 'cli', 'api'):
+    def queue_steps(self, item_id, steps=None, *, via, actor=None):
+        """Queue a job for the item and return its id. Writes inside the caller's open write transaction (Add's)."""
+        if not self.db.in_transaction:
+            raise ValueError('queue_steps needs the caller\'s open write transaction')
+        if via not in ('app', 'cli', 'api', 'import'):
+            raise ValueError('invalid import origin')
+        items.ensure(self.db, item_id)
+        kind = self.db.execute('SELECT kind FROM main.item WHERE id=?', (item_id,)).fetchone()['kind']
+        steps = list(steps) if steps is not None else order_for(self.db, kind)
+        if not steps or any(s not in STEPS for s in steps) or len(set(steps)) != len(steps):
             raise ValueError('invalid refresh steps')
-        priority = validate_priority(json.loads(self.db.execute(
-            "SELECT value FROM settings WHERE key='source_priority'").fetchone()[0]))
-        from .sources.base import AUDIT_ACTOR
-        stamp = base.now().isoformat()
-        job = self.db.execute('''INSERT INTO jobs(source,kind,item_type,item_no,state,payload,created_at,updated_at)
-            VALUES('import','refresh',?,?,'queued',?,?,?)''',
-            (item_type, item_no, json.dumps({'via': via, **({'actor': AUDIT_ACTOR.get()} if via=='api' else {}), **({'reference_image': reference_image} if reference_image else {})}), stamp, stamp)).lastrowid
+        stamp, actor = now(), actor if via == 'api' else None
+        job = self.db.execute('''INSERT INTO main.job(source, kind, item_id, state, payload, via, actor, created_at, updated_at)
+                                 VALUES(?, ?, ?, 'queued', ?, ?, ?, ?, ?)''',
+                              (SOURCE, KIND, item_id, json.dumps({'steps': steps}), via, actor, stamp, stamp)).lastrowid
         for position, step in enumerate(steps):
-            order = sources or priority[step].get(item_type, priority[step].get('*', []))
-            self.db.execute('''INSERT INTO import_steps(job_id,name,position,sources,updated_at)
-                VALUES(?,?,?,?,?)''', (job, step, position, json.dumps(order), stamp))
-        from .admin import audit
-        from .sources.base import AUDIT_ACTOR
-        audit(self.db, 'job:' + str(job), 'queued', new=list(steps), via=via, actor=AUDIT_ACTOR.get())
+            self.db.execute('INSERT INTO main.job_step(job_id, name, position, sources, total, updated_at) VALUES(?, ?, ?, ?, 1, ?)',
+                            (job, step, position, json.dumps(sources_for(self.db, step, kind)), stamp))
+        Events(self.db, via, actor).write('job', job, 'queued', new={'kind': KIND, 'item_id': item_id, 'steps': steps})
         return job
 
+    def status(self, job):
+        row = self.db.execute('SELECT * FROM main.job WHERE id=? AND kind=?', (job, KIND)).fetchone()
+        if not row:
+            raise ValueError('unknown import job')
+        return {**dict(row), 'steps': [dict(s) for s in self.db.execute('SELECT * FROM main.job_step WHERE job_id=? ORDER BY position', (job,))]}
+
     def list_jobs(self, failed=False):
-        return [self.status(row[0]) for row in self.db.execute(
-            "SELECT id FROM jobs WHERE source='import' AND (?=0 OR state='failed' OR EXISTS "
-            "(SELECT 1 FROM import_steps WHERE job_id=jobs.id AND state='failed')) ORDER BY id DESC", (int(failed),))]
-
-    def update_step(self, job, step, state, *, source=None, error=None, retry_at=None, count=0, total=1, error_code=None):
-        with self.db:
-            write(self.db, '''UPDATE import_steps SET state=?,source=?,error=?,retry_at=?,count=?,total=?,updated_at=?,error_code=?
-                WHERE job_id=? AND name=?''', (state, source, error, retry_at, count, total, base.now().isoformat(), error_code, job, step))
-
-    def progress(self, job, step, state, *, source=None, count=0, total=1, error=None):
-        snapshot = self.status(job)
-        steps = snapshot['steps']
-        done = sum(s['state'] == 'done' for s in steps)
-        label = NAMES.get(source, source or '')
-        bulk = snapshot['kind'] == 'picture_refresh'
-        if bulk:
-            saved = steps[0]
-            count, total = saved['count'], saved['total']
-        if step is None:
-            message = ('Import complete' if state == 'done' else
-                       f'{label} · Waiting for budget' + (f' · {error}' if error else '') if state == 'waiting' and label else
-                       'Waiting for budget' if state == 'waiting' else
-                       f'{label} failed · {error}' if error else 'Import needs attention')
-        elif state == 'failed':
-            message = f'{label or "Import"} failed · {error}'
-        elif state == 'waiting':
-            message = f'{label} · Waiting for budget'
-        else:
-            message = f'{LABELS[step]} from {label}'
-            if state == 'progress':
-                message += f' · {count} of {total}'
-        if bulk:
-            message = f'Downloading images · {count} of {total}' + (' · waiting for budget' if state == 'waiting' else ' · complete' if state == 'done' else f' · failed · {error or "Import needs attention"}' if state == 'failed' else '')
-        payload = dict(job_id=job, item_type=snapshot['item_type'], item_no=snapshot['item_no'],
-                       step=step, source=source, state=state, count=count, total=total,
-                       completed_steps=done, total_steps=len(steps), job_state=snapshot['state'],
-                       message=base.redact(message), error=base.redact(error) if error else None,
-                       retry=state == 'failed' and step is not None)
-        try:
-            self.emit(EVENT, payload)
-        except Exception:
-            # A disconnected observer must never change durable import results.
-            pass
-
-    def import_item(self, item_type, item_no, *, via):
-        if item_type not in TYPES or not isinstance(item_no, str) or not re.fullmatch('[A-Za-z0-9-]{1,32}', item_no):
-            raise ValueError('invalid BrickLink item key')
-        if via not in ('app', 'cli', 'api', 'order', 'part-to-inventory'):
-            raise ValueError('invalid import origin')
-        with self.db:
-            self.db.execute('BEGIN IMMEDIATE')
-            existing = self.db.execute("SELECT id FROM jobs WHERE source='import' AND item_type=? AND item_no=? ORDER BY id DESC LIMIT 1",
-                                       (item_type, item_no)).fetchone()
-            if existing:
-                job = existing[0]
-            else:
-                settings = dict(self.db.execute('SELECT key,value FROM settings'))
-                priority = validate_priority(json.loads(settings['source_priority']))
-                order = json.loads(settings['import_order:' + item_type])
-                if not isinstance(order, list) or any(not isinstance(s, str) for s in order) or len(order) != len(STEPS) or set(order) != set(STEPS):
-                    raise ValueError('import order must contain all six steps once')
-                item(self.db, item_type, item_no)
-                job = write(self.db, '''INSERT INTO jobs(source,kind,item_type,item_no,state,payload,created_at,updated_at)
-                    VALUES('import','item',?,?,'queued',?,?,?)''',
-                    (item_type, item_no, json.dumps({'via': via}), base.now().isoformat(), base.now().isoformat())).lastrowid
-                for position, step in enumerate(order):
-                    sources = priority[step].get(item_type, priority[step].get('*', []))
-                    write(self.db, '''INSERT INTO import_steps(job_id,name,position,sources,updated_at)
-                        VALUES(?,?,?,?,?)''', (job, step, position, json.dumps(sources), base.now().isoformat()))
-        return self.run(job)
-
-    def call(self, job, step, operation, invoke):
-        """Persist per-call checkpoints, including the exact waiting source job."""
-        saved = self.db.execute('SELECT * FROM import_calls WHERE job_id=? AND step=? AND operation=?',
-                                (job, step, operation)).fetchone()
-        if saved and saved['result'] is not None:
-            return json.loads(saved['result'])
-        try:
-            result = invoke(saved['request_job'] if saved else None)
-        except WaitingForBudget as waiting:
-            with self.db:
-                write(self.db, '''INSERT INTO import_calls(job_id,step,operation,request_job) VALUES(?,?,?,?)
-                    ON CONFLICT(job_id,step,operation) DO UPDATE SET request_job=excluded.request_job''',
-                      (job, step, operation, waiting.job_id))
-            raise
-        except Exception:
-            if saved and saved['request_job'] is not None:
-                with self.db:
-                    write(self.db, 'UPDATE import_calls SET request_job=NULL WHERE job_id=? AND step=? AND operation=?',
-                          (job, step, operation))
-            raise
-        with self.db:
-            write(self.db, '''INSERT INTO import_calls(job_id,step,operation,result) VALUES(?,?,?,?)
-                ON CONFLICT(job_id,step,operation) DO UPDATE SET result=excluded.result,request_job=NULL''',
-                  (job, step, operation, json.dumps(result)))
-        return result
-
-    def owner_alive(self, job):
-        owner = self.db.execute('SELECT pid FROM import_owners WHERE job_id=?', (job,)).fetchone()
-        return owner_pid_alive(owner[0] if owner else None, path=self.path, job=job)
-
-    def run(self, job):
-        options=json.loads(self.status(job)['payload'] or '{}')
-        if options.get('via')=='api':
-            with base.audit_origin('api',actor=options.get('actor')):
-                return self._run(job)
-        return self._run(job)
-
-    def _run(self, job):
-        # Atomic claim prevents two workers importing the same item concurrently.
-        with self.db:
-            self.db.execute('BEGIN IMMEDIATE')
-            snapshot = self.status(job)
-            state = snapshot['state']
-            if state == 'done' or self.owner_alive(job):
-                return self.status(job)
-            write(self.db, 'INSERT OR REPLACE INTO import_owners(job_id,pid) VALUES(?,?)', (job, os.getpid()))
-            write(self.db, "UPDATE jobs SET state='running',attempts=attempts+1,updated_at=? WHERE id=?",
-                  (base.now().isoformat(), job))
-        _CLAIMED_JOBS.add((os.getpid(), str(self.path.resolve()), job))
-        for saved in cooperative(self.db, snapshot['steps']):
-            step = saved['name']
-            if saved['state'] in ('done', 'failed'):
-                continue
-            if saved['state'] == 'waiting_for_budget' and saved['retry_at'] and saved['retry_at'] > base.now().isoformat():
-                continue
-            sources = json.loads(saved['sources'])
-            if not self.applicable(snapshot['item_type'], step):
-                sources = []
-            for index in cooperative(self.db, range(saved['source_index'], len(sources))):
-                source = sources[index]
-                with self.db:
-                    write(self.db, 'UPDATE import_steps SET source_index=? WHERE job_id=? AND name=?', (index, job, step))
-                self.update_step(job, step, 'running', source=source,
-                                 count=saved['count'] if snapshot['kind'] == 'picture_refresh' else 0,
-                                 total=saved['total'] if snapshot['kind'] == 'picture_refresh' else 1)
-                self.progress(job, step, 'started', source=source)
-                try:
-                    handler = self.handlers.get((step, source))
-                    if handler:
-                        handler(self, snapshot, step)
-                    else:
-                        self.perform(snapshot, step, source)
-                    if step == 'inventory' and snapshot['item_type'] == 'S':
-                        from .add import materialize
-                        materialize(self.db, snapshot['item_type'], snapshot['item_no'])
-                except WaitingForBudget as waiting:
-                    child = self.db.execute('SELECT retry_at FROM jobs WHERE id=?', (waiting.job_id,)).fetchone()
-                    current = self.status(job)['steps'][saved['position']]
-                    self.update_step(job, step, 'waiting_for_budget', source=source, retry_at=child[0], count=current['count'], total=current['total'])
-                    self.progress(job, step, 'waiting', source=source)
-                    break
-                except Exception as error:
-                    # Source errors are safe; arbitrary failures must not leak URLs/keys.
-                    message = base.redact(error) if isinstance(error, SourceError) else 'Import step could not be completed'
-                    self.update_step(job, step, 'failed', source=source, error=message,
-                                     error_code=(getattr(error, 'code', None) or 'source_error') if isinstance(error, SourceError) else None)
-                    self.progress(job, step, 'failed', source=source, error=message)
-                    if index + 1 < len(sources):
-                        continue
-                    break
-                else:
-                    total = saved['total'] if snapshot['kind'] == 'picture_refresh' else 1
-                    self.update_step(job, step, 'done', source=source, count=total, total=total)
-                    self.progress(job, step, 'done', source=source, count=total, total=total)
-                    break
-            else:
-                self.update_step(job, step, 'done', count=1)
-                self.progress(job, step, 'done', count=1)
-        steps = self.status(job)['steps']
-        waits = [s['retry_at'] for s in steps if s['state'] == 'waiting_for_budget' and s['retry_at']]
-        failures = [s for s in steps if s['state'] == 'failed']
-        state = 'waiting_for_budget' if waits else 'failed' if failures else 'done'
-        with self.db:
-            write(self.db, 'UPDATE jobs SET state=?,error=?,retry_at=?,updated_at=? WHERE id=?',
-                  (state, failures[0]['error'] if failures else None, min(waits) if waits else None, base.now().isoformat(), job))
-            write(self.db, 'DELETE FROM import_owners WHERE job_id=?', (job,))
-        _CLAIMED_JOBS.discard((os.getpid(), str(self.path.resolve()), job))
-        blocked = next((s for s in steps if s['state'] == 'waiting_for_budget'), None)
-        failed = failures[0] if failures else None
-        error = failed['error'] if failed else None
-        if waits and failed:
-            error = f"{NAMES.get(failed['source'], failed['source'])} failed · {error}"
-        self.progress(job, None, 'waiting' if waits else state,
-                      source=blocked['source'] if blocked else failed['source'] if failed else None, error=error)
-        return self.status(job)
-
-    @staticmethod
-    def applicable(kind, step):
-        return not (step == 'inventory' and kind not in ('S', 'M') or step == 'metadata' and kind != 'S')
+        return [self.status(r[0]) for r in self.db.execute(
+            "SELECT id FROM main.job WHERE kind=? AND (?=0 OR state='failed' OR EXISTS "
+            "(SELECT 1 FROM main.job_step WHERE job_id=job.id AND state='failed')) ORDER BY id DESC", (KIND, int(failed)))]
 
     def queue_retry(self, job, step=None):
-        from .transaction import transaction
+        """Put the failed steps (or the named failed step) back to queued, and the job with them."""
         with transaction(self.db):
             snapshot = self.status(job)
             if self.owner_alive(job):
                 raise ValueError('import job is running')
             if step is not None and step not in {s['name'] for s in snapshot['steps']}:
                 raise ValueError('unknown import step')
+            stamp = now()
             for saved in snapshot['steps']:
                 if saved['state'] != 'failed' or step is not None and saved['name'] != step:
                     continue
-                write(self.db, '''UPDATE import_steps SET state='queued',source_index=0,error=NULL,error_code=NULL,retry_at=NULL,updated_at=?
-                    WHERE job_id=? AND name=?''', (base.now().isoformat(), job, saved['name']))
-            write(self.db, "UPDATE jobs SET state='queued',error=NULL,retry_at=NULL,updated_at=? WHERE id=?",
-                  (base.now().isoformat(), job))
+                self.db.execute('''UPDATE main.job_step SET state='queued', source_index=0, error=NULL, error_code=NULL, retry_at=NULL,
+                                   updated_at=? WHERE job_id=? AND name=?''', (stamp, job, saved['name']))
+            self.db.execute("UPDATE main.job SET state='queued', error=NULL, error_code=NULL, retry_at=NULL, updated_at=? WHERE id=?", (stamp, job))
         return job
 
     def retry(self, job, step=None):
         self.queue_retry(job, step)
         return self.run(job)
 
-    def drain(self, limit=100):
-        jobs = [r[0] for r in self.db.execute("""SELECT id FROM jobs WHERE source='import'
-            AND (state IN ('queued','running') OR state='waiting_for_budget' AND retry_at<=?) ORDER BY id LIMIT ?""",
-            (base.now().isoformat(), limit))]
-        results = [self.run(job) for job in cooperative(self.db, jobs) if not self.owner_alive(job)]
-        if results:
-            try:
-                self.db.execute('PRAGMA optimize')  # cheap: re-analyses only tables whose size changed a lot
-            except sqlite3.Error:
-                pass
-        return results
+    # ---- run ----
 
-    def match_id(self, kind, number=None, color=None):
-        # Migrated part matches may carry colour evidence as well as a part id.
-        clause = 'color_id IS ?' if kind == 'color' else 'item_type=? AND item_no=?'
-        values = (color,) if kind == 'color' else ({'part': 'P', 'minifigure': 'M', 'set': 'S'}[kind], number)
-        rows = self.db.execute("SELECT DISTINCT source_id FROM id_match WHERE source='rebrickable' AND kind=? AND " +
-                               clause + " AND status IN ('matched','manual','inferred')", (kind, *values)).fetchall()
-        if len(rows) != 1:
-            raise SourceError('Rebrickable id needs manual matching')
-        return rows[0][0]
+    def owner_alive(self, job):
+        owner = self.db.execute('SELECT pid FROM main.job_owner WHERE job_id=?', (job,)).fetchone()
+        return owner_pid_alive(owner[0] if owner else None, path=self.path, job=job)
 
-    def resolution(self, number):
+    def _claim(self, job):
+        """Take the job if it may run now: its snapshot, or None (not runnable, finished, or another process has it)."""
+        with transaction(self.db):
+            snapshot = self.status(job)
+            due = snapshot['state'] in ('waiting_for_budget', 'failed') and snapshot['retry_at'] and snapshot['retry_at'] <= now()
+            if not (snapshot['state'] in ('queued', 'running') or due) or self.owner_alive(job):
+                return None
+            stamp = now()
+            self.db.execute('INSERT OR REPLACE INTO main.job_owner(job_id, pid, claimed_at) VALUES(?, ?, ?)', (job, os.getpid(), stamp))
+            self.db.execute("UPDATE main.job SET state='running', attempts=attempts+1, retry_at=NULL, updated_at=? WHERE id=?", (stamp, job))
+            _CLAIMED_JOBS.add((os.getpid(), str(self.path.resolve()), job))
+            return self.status(job)
+
+    def _put(self, job, step, state, *, source=None, error=None, code=None, retry_at=None, count=0, total=1):
+        with transaction(self.db):
+            self.db.execute('''UPDATE main.job_step SET state=?, source=?, error=?, error_code=?, retry_at=?, count=?, total=?, updated_at=?
+                               WHERE job_id=? AND name=?''', (state, source, error, code, retry_at, count, total, now(), job, step))
+
+    def run(self, job):
+        snapshot = self._claim(job)
+        if snapshot is None:
+            return self.status(job)
         try:
-            return self.match_id('part', number)
-        except SourceError:
-            pass
-        raw = self.db.execute("SELECT payload FROM source_records WHERE source='rebrickable' AND kind='part_resolutions' AND source_id=?",
-                              (number,)).fetchone()
-        if raw is None:
-            raise SourceError('Part resolution needs manual matching')
-        records = json.loads(raw[0])['records']
-        candidates = set()
-        for entry in records:
-            record = entry['record']
-            if record['bricklink'] != number:
-                raise SourceError('Part resolution evidence mismatch')
-            candidates.update(row['part_num'] for row in json.loads(record['parts']))
-        if len(candidates) != 1:
-            raise SourceError('Part resolution needs manual matching')
-        source_id = next(iter(candidates))
-        old = self.db.execute("SELECT item_type,item_no,status FROM id_match WHERE source='rebrickable' AND kind='part' AND source_id=?",
-                              (source_id,)).fetchone()
-        if old and (old['status'] in ('manual', 'matched', 'inferred') or old['item_type'] == '?'):
-            raise SourceError('Part resolution needs manual matching')
-        with self.db:
-            write(self.db, "INSERT INTO id_match(source,kind,source_id,item_type,item_no,method,status,evidence_json,decided_at) "
-                  "VALUES('rebrickable','part',?,'P',?,'part_resolutions','inferred',?,?) "
-                  "ON CONFLICT(source,kind,source_id) DO UPDATE SET item_type='P',item_no=excluded.item_no,"
-                  "method=excluded.method,status=excluded.status,evidence_json=excluded.evidence_json,decided_at=excluded.decided_at",
-                  (source_id, number, base.redact(raw[0]), base.now().isoformat()))
-        return source_id
+            for saved in cooperative(self.db, snapshot['steps']):
+                if saved['state'] in ('done', 'failed'):
+                    continue
+                if saved['state'] == 'waiting_for_budget' and saved['retry_at'] and saved['retry_at'] > now():
+                    continue
+                self._step(snapshot, saved)
+            steps = self.status(job)['steps']
+            waits = [s['retry_at'] for s in steps if s['state'] == 'waiting_for_budget' and s['retry_at']]
+            failures = [s for s in steps if s['state'] == 'failed']
+            state = 'waiting_for_budget' if waits else 'failed' if failures else 'done'
+            with transaction(self.db):
+                self.db.execute('UPDATE main.job SET state=?, error=?, error_code=?, retry_at=?, updated_at=? WHERE id=?',
+                                (state, failures[0]['error'] if failures else None, failures[0]['error_code'] if failures else None,
+                                 min(waits) if waits else None, now(), job))
+        except BaseException:
+            if self.db.in_transaction:
+                self.db.rollback()
+            with transaction(self.db):                       # an interrupted job waits for the next pass
+                self.db.execute("UPDATE main.job SET state='queued', updated_at=? WHERE id=? AND state='running'", (now(), job))
+            raise
+        finally:
+            if self.db.in_transaction:
+                self.db.rollback()
+            with transaction(self.db):
+                self.db.execute('DELETE FROM main.job_owner WHERE job_id=?', (job,))
+            _CLAIMED_JOBS.discard((os.getpid(), str(self.path.resolve()), job))
+        return self.status(job)
 
-    def colors(self, kind, number):
-        if kind != 'P':
-            return [None]
-        return [r[0] for r in self.db.execute('''SELECT color_id FROM inventory_lines
-            WHERE child_item_type='P' AND child_item_no=? AND color_id IS NOT NULL
-            UNION SELECT color_id FROM loose_stock WHERE item_type='P' AND item_no=? AND color_id IS NOT NULL
-            UNION SELECT color_id FROM copy_parts WHERE item_type='P' AND item_no=? AND color_id IS NOT NULL
-            UNION SELECT color_id FROM wishlist WHERE item_type='P' AND item_no=? AND archived_at IS NULL AND color_id IS NOT NULL''',
-            (number, number, number, number))] or [None]
-
-    def perform(self, job, step, source):
-        if step == 'pictures' and source == 'picture_refresh':
-            from .pictures import run
-            with base.audit_origin(json.loads(job['payload']).get('via', 'app'), actor=json.loads(job['payload']).get('actor')):
-                return run(self, job)
-        provider = source.split(':')[0]
-        enabled = self.db.execute('SELECT enabled FROM sources WHERE source=?', (provider,)).fetchone()
-        if enabled and not enabled[0]:
-            raise SourceDisabled(NAMES.get(provider, provider) + ' is disabled', source=provider)
-        jid, kind, number = job['id'], job['item_type'], job['item_no']
-        options = json.loads(job['payload'] or '{}')
-        def call(key, fn):
-            return self.call(jid, step, options.get('picture_prefix', '') + source + ':' + key, fn)
-        reference = options.get('reference_image')
-        if step == 'pictures' and source == 'rebrickable' and reference:
-            call('reference_download', lambda _: images.download(self.db, self.root, source, kind, number,
-                 reference, http=self.image_http, image_kind=images.picture_kind(source, kind)))
+    def _step(self, job, saved):
+        name, sources = saved['name'], json.loads(saved['sources'])
+        self._put(job['id'], name, 'running', source=sources[saved['source_index']] if saved['source_index'] < len(sources) else None)
+        if name in LOCAL:
+            with transaction(self.db):                                   # the step's own writes and its state commit together
+                code, message = LOCAL_STEPS[name](self.db, job['item_id'])
+                self._put(job['id'], name, 'done', source='catalogue', error=message, code=code, count=1, total=1)
             return
-        if step == 'identity' and source == 'bricklink:local':
-            if not self.catalogue.is_file():
-                raise CatalogueNotLoaded('BrickLink catalogue unavailable')
-            with closing(sqlite3.connect(self.catalogue.resolve().as_uri() + '?mode=ro', uri=True)) as catalogue:
-                columns = {r[1] for r in catalogue.execute('PRAGMA table_info(items)')}
-                row = catalogue.execute('SELECT name,category,' + ('year' if 'year' in columns else 'NULL') +
-                                        ' FROM items WHERE item_type=? AND item_no=?', (kind, number)).fetchone()
-            if not row:
-                raise SourceError('BrickLink catalogue item missing')
-            with self.db:
-                BrickLinkCatalogue(self.db).register()
-                item(self.db, kind, number, row[0])
-                base.property_value(self.db, 'bricklink', kind, number, 'name', row[0])
-                write(self.db, 'UPDATE items SET category=?,year=coalesce(?,year) WHERE item_type=? AND item_no=?', (row[1], row[2], kind, number))
-            return
-        if step == 'identity' and source in ('bricklink', 'bricklink:api'):
-            return call('item', lambda child: self.clients['bricklink'].item_info(kind, number, job_id=child))
-        if step == 'inventory' and source in ('bricklink', 'bricklink:subsets'):
-            rows = call('subsets', lambda child: self.clients['bricklink'].subsets(kind, number, job_id=child))
-            for count in cooperative(self.db, range(1, len(rows) + 1)):
-                self.progress(jid, step, 'progress', source=source, count=count, total=len(rows))
-            return
-        if step == 'matching':
-            if kind != 'P':
-                return  # BL inventory/identity does not require foreign identifiers.
-            if source in ('part_resolutions', 'manual'):
-                if source == 'part_resolutions':
-                    self.resolution(number)
-                self.match_id('part', number)
+        failed = None                                                   # the last provider failure, kept if no later source handles it
+        for index in range(saved['source_index'], len(sources)):
+            source = sources[index]
+            handler = self.handlers.get((name, source)) or HANDLERS.get((name, source))
+            if handler is None:
+                continue
+            with transaction(self.db):
+                self.db.execute('UPDATE main.job_step SET source_index=? WHERE job_id=? AND name=?', (index, job['id'], name))
+            try:
+                handler(self.db, job, saved)
+            except StepDone as finding:
+                self._put(job['id'], name, 'done', source=source, error=finding.message, code=finding.code, count=1, total=1)
                 return
-            if source == 'rebrickable':
-                try:
-                    self.match_id('part', number)
-                except SourceError:
-                    call('part', lambda child: self.clients[source].find_part(number, job_id=child))
-                for color in cooperative(self.db, self.colors(kind, number)):
-                    if color is None:
-                        continue
-                    try:
-                        self.match_id('color', color=color)
-                    except SourceError:
-                        page = 1
-                        while True:
-                            def consume(reply):
-                                for row in cooperative(self.db, reply['results']):
-                                    ids = row.get('external_ids', {}).get('BrickLink', {})
-                                    ids = ids.get('ext_ids', []) if isinstance(ids, dict) else ids
-                                    canonical = int(ids[0]) if len(ids) == 1 else None
-                                    self.clients[source].match('color', row, canonical=canonical)
-                                return bool(reply.get('next'))
-                            more = call('colors:' + str(page), lambda child: self.clients[source].call(
-                                '/colors/', {'page': page, 'page_size': 1000}, normalize=consume, job_id=child))
-                            if not more:
-                                break
-                            page += 1
-                            yield_worker(self.db)
-                        self.match_id('color', color=color)
+            except StepWait as wait:
+                self._put(job['id'], name, 'waiting_for_budget', source=source, error=wait.why, code='budget', retry_at=wait.retry_at)
                 return
-        if step == 'pictures' and source in ('bricklink', 'rebrickable'):
-            colors = [options['picture_color']] if 'picture_color' in options else self.colors(kind, number)
-            for color in cooperative(self.db, colors):
-                if source == 'bricklink':
-                    url = f'https://img.bricklink.com/ItemImage/{kind}N/{color or 0}/{number}.png'
-                else:
-                    if kind == 'P':
-                        rb = self.match_id('part', number)
-                        if color is not None:
-                            rb_color = int(self.match_id('color', color=color))
-                            url = call('url:' + str(color), lambda child: self.clients[source].part_image(rb, rb_color, job_id=child))
-                        else:
-                            row = call('part_image', lambda child: self.clients[source].part(rb, canonical=number, job_id=child))
-                            url = row.get('part_img_url')
-                    elif kind in ('S', 'M'):
-                        rb = number if kind == 'S' else self.match_id('minifigure', number)
-                        row = call('image', lambda child: self.clients[source].minifigure(rb, canonical=number, job_id=child)
-                                   if kind == 'M' else self.clients[source].call('/sets/' + rb + '/', job_id=child))
-                        url = row.get('set_img_url')
-                    else:
-                        raise SourceError('Rebrickable has no image for this item type')
-                if not url:
-                    raise SourceError(source + ' image unavailable')
-                def fetch(child):
-                    reservation = self.clients[source].reserve('picture', {'type': kind, 'number': number, 'color': color}, job_id=child) if 'picture_prefix' in options else None
-                    try:
-                        result = images.download(self.db, self.root, source, kind, number, url,
-                            color=color, image_kind=images.picture_kind(source, kind), http=self.image_http)
-                    except SourceError:
-                        if reservation is not None:
-                            with self.db:
-                                write(self.db, "UPDATE jobs SET state='failed',error='Image could not be downloaded',updated_at=? WHERE id=?", (base.now().isoformat(), reservation))
-                        raise
-                    if reservation is not None:
-                        with self.db:
-                            write(self.db, "UPDATE jobs SET state='done',updated_at=? WHERE id=?", (base.now().isoformat(), reservation))
-                    return result
-                call('download:' + str(color), fetch)
+            except StepFailed as failure:
+                self._put(job['id'], name, 'failed', source=source, error=failure.message, code=failure.code)
+                failed = failure
+                if index + 1 < len(sources):
+                    continue
+                return
+            self._put(job['id'], name, 'done', source=source, count=1, total=1)
             return
-        if step == 'metadata' and source == 'brickset':
-            result = call('metadata', lambda child: self.clients[source].refresh([number], job_id=child))
-            if number not in result:
-                raise SourceError('Brickset set metadata missing')
-            return
-        if step == 'market_price' and source == 'bricklink':
-            for color in cooperative(self.db, self.colors(kind, number)):
-                for condition in cooperative(self.db, ('N', 'U')):
-                    call(f'price:{color}:{condition}', lambda child: self.clients[source].price(kind, number, color, condition, job_id=child))
-            return
-        raise SourceError('Import source has no handler for this step')
+        if failed is not None:                                          # a fallback without a handler does not erase the failure
+            return                                                      # the step stays failed, so Retry offers it
+        self._put(job['id'], name, 'done', error=SKIPPED, count=0, total=0)
 
+    def drain(self, limit=100):
+        """Run the pipeline jobs that may run now: queued ones, claims that died, and waiting or failed ones whose retry is due."""
+        ids = [r[0] for r in self.db.execute('''SELECT id FROM main.job WHERE kind=? AND (state IN ('queued','running')
+            OR (state IN ('waiting_for_budget','failed') AND retry_at IS NOT NULL AND retry_at<=?)) ORDER BY id LIMIT ?''',
+                                             (KIND, now(), limit))]
+        return [self.run(job) for job in cooperative(self.db, ids) if not self.owner_alive(job)]
+
+
+# ---- the local steps: each returns (error code, message) for a finished step, (None, None) when all is well ----
+
+def _item(db, item_id):
+    row = db.execute('SELECT id, kind, born_provider, born_key FROM main.item WHERE id=?', (item_id,)).fetchone()
+    if row is None:
+        raise ValueError(f'item {item_id} is not in the collection')
+    return row
+
+
+def _identity(db, item_id):
+    if _item(db, item_id)['born_key'] is None:
+        return 'unidentified', 'The item has no number from any provider'
+    return None, None
+
+
+def _inventory(db, item_id):
+    row = _item(db, item_id)
+    if row['kind'] not in ('set', 'minifigure'):
+        return None, None
+    if row['born_key'] is None:
+        return 'unidentified', 'The item has no number from any provider, so no part list is known'
+    lists = ['SELECT 1 FROM main.fetched_inventory WHERE item_id=:i']
+    if has_catalogue(db):
+        lists.append('SELECT 1 FROM catalogue.inventory WHERE item_id=:i AND retired_at IS NULL')
+    if db.execute(' UNION ALL '.join(lists) + ' LIMIT 1', {'i': item_id}).fetchone():
+        return None, None
+    return 'not_found', 'No part list is known for this item'
+
+
+def _matching(db, item_id):
+    """The item has a confirmed BrickLink number, or the collection records that none is known (`item_provider_status`, design 3.8) and
+    the step ends `unidentified`: prices, exports and order matching skip the item."""
+    row = _item(db, item_id)
+    try:
+        items.bricklink_key(db, item_id)
+    except items.Unidentified:
+        if row['born_key'] is not None:
+            evidence = json.dumps({row['born_provider']: row['born_key']}, sort_keys=True)
+            db.execute("""INSERT INTO main.item_provider_status(item_id, provider, status, reason, evidence_json, checked_at)
+                          VALUES(?, 'bricklink', 'unmatched', 'no_match', ?, ?)
+                          ON CONFLICT(item_id, provider, reason) DO UPDATE SET evidence_json=excluded.evidence_json, checked_at=excluded.checked_at""",
+                       (item_id, evidence, now()))
+        return 'unidentified', 'The item has no BrickLink number, so prices and exports skip it'
+    return None, None
+
+
+LOCAL_STEPS = {'identity': _identity, 'inventory': _inventory, 'matching': _matching}
+
+
+# ---- module-level seams the app and the drainer use ----
 
 def database_path(path=None):
     if path is not None:
@@ -558,9 +379,9 @@ def database_path(path=None):
     return Path('data/brickwork.db')
 
 
-def import_item(item_type, item_no, *, via, path=None, **options):
-    with closing(connect(database_path(path))) as db:
-        return Pipeline(db, **options).import_item(item_type, item_no, via=via)
+def drain(db, limit=100):
+    """Run the pipeline jobs that may run now; the results of the jobs this call ran."""
+    return Pipeline(db).drain(limit)
 
 
 def retry(job, step=None, *, path=None, **options):
@@ -573,47 +394,11 @@ def status(job, *, path=None):
         return Pipeline(db).status(job)
 
 
-def poll_delay(db):
-    """Stop when empty; wait for the earliest budget deadline, at most 60s."""
-    rows = db.execute("""SELECT state,retry_at FROM jobs WHERE source='import'
-        AND state IN ('queued','running','waiting_for_budget')""").fetchall()
-    if not rows:
-        return None
-    now = base.now()
-    if any(row['state'] != 'waiting_for_budget' or
-           row['retry_at'] and row['retry_at'] <= now.isoformat() for row in rows):
-        return 1
-    from datetime import datetime
-    deadlines = [datetime.fromisoformat(row['retry_at']) for row in rows if row['retry_at']]
-    return min(60, max(0, (min(deadlines) - now).total_seconds())) if deadlines else 60
-
-
-def worker(*, path=None, limit=100, stop=None, poll_seconds=1, **options):
-    """Drain once, or poll until a threading.Event is set for automatic resumes."""
-    if limit < 1 or poll_seconds <= 0:
-        raise ValueError('worker limit and poll interval must be positive')
-    with closing(connect(database_path(path))) as db:
-        pipeline = Pipeline(db, **options)
-        if stop is None:
-            return pipeline.drain(limit)
-        while not stop.is_set():
-            pipeline.drain(limit)
-            stop.wait(poll_seconds)
-        return []
-
-
-def queue_new_items(db, items):
-    """Queue the normal catalogue import for items that are new to this store, as Add does."""
-    settings = dict(db.execute("SELECT key,value FROM settings WHERE key LIKE 'import_order:%'").fetchall())
-    pipeline, jobs = Pipeline(db), []
-    for kind, number in sorted(items):
-        if kind not in ('S', 'M') or 'import_order:' + kind not in settings:
+def queue_new_items(db, item_ids):
+    """Queue the normal import for items that are new to this store and have no job yet (Add's rule, for imports and sync)."""
+    pipeline, queued = Pipeline(db), []
+    for item_id in sorted(set(item_ids)):
+        if db.execute('SELECT 1 FROM main.job WHERE item_id=? AND kind=? LIMIT 1', (item_id, KIND)).fetchone():
             continue
-        if db.execute('SELECT 1 FROM jobs WHERE item_type=? AND item_no=? LIMIT 1', (kind, number)).fetchone():
-            continue
-        order = json.loads(settings['import_order:' + kind])
-        if len(order) != len(STEPS) or set(order) != set(STEPS):
-            continue
-        from .sources.base import AUDIT_ORIGIN
-        jobs.append(pipeline.queue_steps(kind, number, order, via=AUDIT_ORIGIN.get() if AUDIT_ORIGIN.get() in ('api', 'cli') else 'app'))
-    return jobs
+        queued.append(pipeline.queue_steps(item_id, via='app'))
+    return queued

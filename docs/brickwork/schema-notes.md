@@ -174,16 +174,12 @@ fails visibly; unrelated absent colours still fail the final FK proof.
 Run 2 passes all table counts/checksums, integrity and foreign-key checks and
 publishes the new database.
 
-## 4.2c additive import runtime DDL
+## 4.2c additive import runtime DDL (3.x; replaced in 4.0)
 
-`brickwork/core/import.sql` adds `import_steps`, `import_calls` and
-`import_owners` when the pipeline is initialized. The first tracks the six steps,
-the second checkpoints successful calls and waiting source jobs, and the third
-prevents simultaneous local workers while allowing dead-process recovery. Every
-foreign key has an index. `jobs.source='import'` is the parent job. No migrated
-table definition, mapping or proof expectation changes. Priority continues to
-live in `settings.source_priority`; `import_order:TYPE` adds per-type step order.
-See the [pipeline contract](pipeline.md) for states, events and worker operation.
+The 3.x import pipeline added `import_steps`, `import_calls` and `import_owners` to the 3.3 file. In 4.0 the same jobs live in `job`,
+`job_step`, `job_call` and `job_owner` of the collection file (design § 5.2), and the 3.x tables are not migrated. Priority continues to
+live in the setting `source_priority`; `import_order:<kind>` adds the per-kind step order. See the [pipeline](pipeline.md) for states,
+events and worker operation.
 
 ## 4.3d Orders and Storage
 
@@ -220,22 +216,14 @@ same shape as `purchase_currency` and `current_value_currency`). It is the only 
 no table, index or other column moves, and `schema_meta` stays `3.2` (its CHECK is an
 exact-version constraint; this is an additive column, not a new schema generation).
 
-- **Fresh outputs.** `schema.sql` declares the column. The legacy projection fills it
+- **Fresh outputs.** The 3.3 schema declared the column. The legacy projection filled it
   for every migrated wish that has a `max_price` with the configured BrickLink currency
   (`bricklink_currency` from the legacy price settings, default `EUR`) and leaves it
   NULL for wishes without a max, so the read-back proof covers it and byte
   determinism holds.
-- **Existing outputs.** `brickwork/core/upgrade.py` (`upgrade_wish_currency`)
-  adds the column and applies the backfill rule below. `connect()` runs it
-  automatically when a file opened for writing lacks the column or holds a limit without
-  a currency; a read-only open performs the same upgrade once on a short writable
-  handle and reopens; if that write fails (read-only file or deployment, locked
-  database) the failure is remembered per path for 300 seconds or until the file
-  changes, readers keep working without the column, and **a read-only deployment must
-  run the command below once**. The column check happens inside the write lock and a
-  concurrent upgrader's "duplicate column" is treated as already added. It can also be
-  run by hand:
-  `python -m brickwork.core.upgrade data/brickwork.db`.
+- **Existing outputs.** A 3.x upgrade step (`upgrade_wish_currency`) added the column and applied the backfill rule below on connect.
+  That code is gone in 4.0: a 3.2/3.3 file is never opened, it is migrated (`python -m brickwork.store4 migrate`), and the migration carries
+  the maximum price with its currency (`wish.max_price_currency`).
 - **Backfill rule.** Every wish with a `max_price` and no currency receives the
   `bricklink_currency` setting of that database (`EUR` when the setting is absent or
   empty). Wishes without a max stay NULL. The step is re-runnable: the column is added

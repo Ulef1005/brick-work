@@ -401,6 +401,20 @@ def has_leftovers(db):
     return db.execute(f'SELECT 1 {LEFTOVERS} LIMIT 1').fetchone() is not None
 
 
+def requeue(db, job_id, *, now=None):
+    """Queue a failed fetch job again (the Retry button): its error is cleared and its attempts start over. Only this runner's kinds,
+    only a failed job; a copy it released stays released (the user re-chooses BrickLink's list for it)."""
+    with transaction(db, 'requeueing a job'):
+        row = _row(db, job_id)
+        if row['kind'] not in KINDS:
+            raise ForeignKind(f"job {job_id} is a {row['kind']!r} job; store4.jobs runs {', '.join(sorted(KINDS))}")
+        if row['state'] != 'failed':
+            raise ValueError(f"job {job_id} is {row['state']}, only a failed job is retried")
+        db.execute("UPDATE main.job SET state='queued', error=NULL, error_code=NULL, retry_at=NULL, attempts=0, updated_at=? WHERE id=?",
+                   (_stamp(_now(now)), job_id))
+    return status(db, job_id)
+
+
 def _settle(db, job_id, now, state, code, error, retry_at=None):
     with transaction(db, 'settling a job'):
         _put(db, job_id, state, _now(now), code=code, error=error, retry_at=retry_at)

@@ -1,331 +1,566 @@
-"""Add on a real v3 migrated collection; all transports are offline."""
+"""Add on the 4.0 store (M.8c, issue #110): search, review, confirm, undo and the jobs an Add queues. Invented data, no network.
+
+The fixture catalogue is `tests/app4.py`'s rich one: sets 1000-1 (two figures, a spare), 1000-2 and 2070-1 (two versions), parts 3001 and
+3023, the figure fig-000004 (BrickLink M syn-fig-0004), a gear item. A BrickLink key is a fake one and BrickLink's reply a fake transport."""
 from contextlib import closing
 import io
 import json
-from pathlib import Path
-import shutil
 import sqlite3
+import shutil
 
+from bs4 import BeautifulSoup
+from flask import Flask
 import pytest
 
-from brickwork.core import add
+from brickwork.app import setup_app
+from brickwork.core import add, drainer, pipeline
 from brickwork.core.connect import connect
-from brickwork.core.importer.migrate import migrate
-from brickwork.core.pipeline import Pipeline
-from brickwork.core.sources import base
-from brickwork.core.sources.bricklink_catalogue import load
-from tests.importer.test_importer import legacy
-from tests.web_fixtures import app, logged_in
-from tests.web_fixtures import apps
-
-FIXTURES = Path(__file__).parent / 'fixtures/brickwork'
+from brickwork.store4 import bricklink_api, copies, jobs, rebrickable_api
+from tests.app4 import BROWSER_PASSWORD, app4, client, coll, pair, read, world  # noqa: F401 (fixtures)
+from tests.store4_mint_fixtures import build_catalogue
+from tests.test_store4_bricklink_subsets import entry, reply
+from tests.web_fixtures import ROOT, logged_in
 
 
 @pytest.fixture
-def bw(app, legacy, monkeypatch):
-    migrate(**legacy)
-    path = legacy['out_db']
-    monkeypatch.setenv('BW_DB_PATH', str(path))
-    monkeypatch.setattr('brickwork.web.views.bw_start_worker', lambda: None)
-    with closing(connect(path)) as db, db:
-        load(FIXTURES, path.with_name('bricklink-catalog.db'), db)
-        db.execute("UPDATE colors SET rgb='ABCDEF' WHERE color_id=11")
-    # Synthetic catalogue identities match the migration fixture's canonical keys.
-    with sqlite3.connect(path.with_name('bricklink-catalog.db')) as cat, cat:
-        cat.executemany('INSERT OR IGNORE INTO items VALUES(?,?,?,?,?,NULL)',
-            [(k,n,name,name.lower(),None) for k,n,name in [('S','new-set','Synthetic set'),('P','bl-part','Synthetic part'),('M','bl-figure','Synthetic figure')]])
-    return path
-
-
-def client_token(app):
-    client = logged_in(app)
-    response = client.get('/manage/add')
-    assert response.status_code == 200
+def csrf(client):
+    assert client.get('/manage/add').status_code == 200
     with client.session_transaction() as session:
-        token = session['bw_add_csrf']
-    return client, token, response
+        return session['bw_add_csrf']
 
 
-def preview(client, csrf, **data):
-    return client.post('/manage/add/review', json=dict(csrf_token=csrf,type='S',where='owned',mode='paste',text='new-set',**data))
+@pytest.fixture
+def key(monkeypatch):
+    for name in bricklink_api.KEY_ENVS:
+        monkeypatch.setenv(name, 'x')
 
 
-def post_confirm(client, csrf, review, **extra):
-    return client.post('/manage/add/confirm',json=dict(csrf_token=csrf,token=review['token'],items=review['items'],**extra))
+def review(client, csrf, text='1000-1', **data):
+    return client.post('/manage/add/review', json=dict(csrf_token=csrf, type=data.pop('type', 'set'), where=data.pop('where', 'owned'),
+                                                        mode=data.pop('mode', 'paste'), text=text, **data))
 
 
-def counts(path):
-    with closing(connect(path, read_only=True)) as db:
-        return {t:db.execute('SELECT count(*) FROM '+t).fetchone()[0] for t in ('items','copies','loose_stock','wishlist','events')}
+def confirm(client, csrf, proposal, **edits):
+    items = json.loads(json.dumps(proposal['items']))
+    for item in items:
+        item.update(edits)
+    return client.post('/manage/add/confirm', json=dict(csrf_token=csrf, token=proposal['token'], items=items))
 
 
-def test_shell_search_eight_types_and_no_preview_writes(app,bw):
-    client,csrf,response = client_token(app)
-    html=response.get_data(as_text=True)
-    assert 'data-web-ui="toni"' in html and 'One page for everything. Nothing is saved before you confirm.' in html
-    assert 'href="/manage/add"' in html
-    assert 'Keep photo' in html and 'Catalog' in html and 'Gear' in html and 'Book' in html
-    assert response.headers['Cache-Control']=='no-store'
-    before=counts(bw)
-    for kind in add.TYPES:
-        result=client.get('/manage/add/search',query_string={'type':kind,'sort':'name'})
-        assert result.status_code==200 and result.json['count']>=1
-        assert all(r['item_type']==kind for r in result.json['items'])
-    result=client.get('/manage/add/search',query_string={'type':'S','q':'synthetic'})
-    assert any(r['item_no']=='new-set' for r in result.json['items'])
-    review=preview(client,csrf).json
-    assert review['items'][0]['owned']==1
-    assert counts(bw)==before
-    assert client.post('/manage/add/confirm',json={'csrf_token':csrf,'items':review['items']}).status_code==400
-    assert counts(bw)==before
+def undo(client, csrf, batch):
+    return client.post('/manage/add/undo', json=dict(csrf_token=csrf, batch=batch))
 
 
-def test_paste_duplicate_notice_confirm_pipeline_and_undo(app,bw):
-    client,csrf,_=client_token(app)
-    review=client.post('/manage/add/review',json={'csrf_token':csrf,'type':'S','where':'owned','mode':'paste','text':'new-set x2\nunknown\ninvalid!'}).json
-    assert len(review['unresolved'])==2 and review['items'][0]['quantity']==2
-    assert post_confirm(client,csrf,review).status_code==400
-    review['items'][0]['decision']='another'
-    review['items'][0]['completeness']='C'
-    result=post_confirm(client,csrf,review)
-    assert result.status_code==200
-    receipt=result.json['receipts'][0]
-    assert len(receipt['copies'])==2
-    with closing(connect(bw)) as db:
-        job=Pipeline(db).status(receipt['job_id'])
-        assert len(job['steps'])==6 and job['state']=='queued'
-        assert db.execute("SELECT via FROM events WHERE entity='bw_add' AND field='receipt'").fetchone()[0]=='app'
-        for identifier in receipt['copies']:
-            assert db.execute('SELECT completeness,completeness_source FROM copies WHERE id=?',(identifier,)).fetchone()[:]==('C','manual')
-            assert db.execute('SELECT count(*) FROM copy_parts WHERE copy_id=?',(identifier,)).fetchone()[0]==0
+def counts(read):
+    with read() as db:
+        return {t: db.execute(f'SELECT count(*) FROM {t}').fetchone()[0] for t in ('item', 'copy', 'stock', 'wish', 'event', 'job')}
+
+
+def app_on(tmp_path, monkeypatch, name):
+    monkeypatch.setenv('BW_EMBEDDED_WORKER', '0')
+    monkeypatch.setenv('BW_AUTHENTICATION_PASSWORD', BROWSER_PASSWORD)
+    monkeypatch.setenv('BW_DB_PATH', str(tmp_path / 'brickwork.db'))
+    app = Flask(name, template_folder=str(ROOT / 'templates'), static_folder=str(ROOT / 'static'))
+    setup_app(app)
+    app.config.update(TESTING=True, SECRET_KEY='synthetic-session')
+    return logged_in(app)
+
+
+# ---------- the page and the search ----------
+
+def test_the_page_and_searches_write_nothing(world, client, csrf, read):
+    html = client.get('/manage/add')
+    soup = BeautifulSoup(html.get_data(as_text=True), 'html.parser')
+    text = soup.get_text()
+    assert 'Nothing is saved before you confirm' in text and html.headers['Cache-Control'] == 'no-store'
+    assert [i['value'] for i in soup.select('input[name=type]')] == list(add.KIND_NAMES)
+    assert 'Photo' not in text and 'Keep photo' not in text                       # Brickognize returns with Identify (M.8h)
+    assert soup.select_one('input[name=type][value=set]').has_attr('checked')
+    assert BeautifulSoup(client.get('/manage/add?type=P&where=loose').get_data(as_text=True), 'html.parser').select_one('input[name=type][value=part]').has_attr('checked')
+    before = counts(read)
+    for kind in add.KIND_NAMES:
+        result = client.get('/manage/add/search', query_string={'type': kind, 'sort': 'name'})
+        assert result.status_code == 200 and all(r['kind'] == kind for r in result.json['items'])
+    assert client.get('/manage/add/search', query_string={'type': 'gear'}).json['count'] == 1
+    assert review(client, csrf).status_code == 200
+    assert counts(read) == before
+
+
+def test_search_takes_both_numbers_names_sizes_and_local_items(world, client, coll):
+    def found(kind, q, sort='number'):
+        result = client.get('/manage/add/search', query_string={'type': kind, 'q': q, 'sort': sort}).json
+        return [r['number'] for r in result['items']], result['count']
+    assert found('part', '3001') == (['3001'], 1)
+    assert found('part', '310.3stk01') == (['003402'], 1)                        # a BrickLink number finds the Rebrickable-born part
+    assert found('part', 'brick 2 x 4') == (['3001'], 1)                         # a size is its size key in any order, the words name prefixes
+    assert found('part', '4x2') == (['3001'], 1)
+    assert found('part', 'x2')[1] == 3                                           # a partial size: any part with that dimension (2x4, 2x2x4, 1x2)
+    assert found('set', 'castle') == (['1000-1', '1000-2'], 2)
+    assert found('set', 'castle', 'name')[0] == ['1000-2', '1000-1']             # Gate before Keep
+    assert found('part', 'only on bricklink') == (['x999'], 1)                   # a local BrickLink-born item is found by its name
+    assert found('part', 'x999') == (['x999'], 1) and found('set', 'zzzz') == ([], 0)
+    gear = client.get('/manage/add/search', query_string={'type': 'gear', 'q': 'mystery'}).json['items']
+    assert (gear[0]['name'], gear[0]['number'], gear[0]['unidentified'], gear[0]['label']) == ('Mystery thing', None, True, 'Mystery thing')
+    row = client.get('/manage/add/search', query_string={'type': 'set', 'q': '1000-1'}).json['items'][0]
+    assert (row['owned'], row['wished'], row['to_check'], row['type_name'], row['label']) == (2, False, False, 'Set', '1000-1')
+    part = client.get('/manage/add/search', query_string={'type': 'part', 'q': '973c27h01'}).json['items'][0]
+    assert (part['number'], part['also'], part['label']) == ('973c27h01', '973c001', '973c27h01 · BrickLink 973c001')
+    assert client.get('/manage/add/search', query_string={'type': 'X'}).status_code == 400
+
+
+def test_a_wished_and_a_to_check_row_are_marked(world, client, coll):
+    row = client.get('/manage/add/search', query_string={'type': 'set', 'q': '1000-2'}).json['items'][0]
+    assert row['wished'] and row['wished_by_list'] == {'default': [None]}
+    coll.link(world.mystery, 'x-mystery', kind='G', status='to_check')
+    assert client.get('/manage/add/search', query_string={'type': 'gear', 'q': 'mystery'}).json['items'][0]['to_check'] is True
+
+
+# ---------- no activated catalogue ----------
+
+def test_a_collection_with_no_active_catalogue_names_the_fix(tmp_path, monkeypatch):
+    (tmp_path / 'cat').mkdir()
+    shutil.copy(build_catalogue(tmp_path / 'cat'), tmp_path / 'catalogue.db')
+    with closing(connect(tmp_path / 'brickwork.db', require_catalogue=False)):
+        pass                                                                  # a fresh `setup` file; the catalogue is hand-copied, never activated
+    client = app_on(tmp_path, monkeypatch, 'no-activation')
+    page = client.get('/manage/add')
+    assert page.status_code == 200 and 'python -m brickwork.store4 catalogue reconcile' in page.get_data(as_text=True)
+    with client.session_transaction() as session:
+        csrf = session['bw_add_csrf']
+    for result in (client.get('/manage/add/search', query_string={'type': 'set', 'q': 'x'}), review(client, csrf)):
+        assert result.status_code == 400 and 'catalogue reconcile' in result.json['error']
+
+
+def test_a_collection_with_no_catalogue_file_says_where_to_get_one(tmp_path, monkeypatch):
+    with closing(connect(tmp_path / 'brickwork.db', require_catalogue=False)):
+        pass
+    page = app_on(tmp_path, monkeypatch, 'no-catalogue').get('/manage/add')
+    assert page.status_code == 200 and 'catalogue download' in page.get_data(as_text=True)
+
+
+# ---------- a set becomes copies ----------
+
+def test_a_set_becomes_copies_with_the_preselected_list_and_undo_archives_them(world, client, csrf, read):
+    proposal = review(client, csrf, '1000-1 x2\n2070-1').json
+    assert proposal['unresolved'] == [] and [r['quantity'] for r in proposal['items']] == [2, 1]
+    assert proposal['items'][0]['import_notes'] == ['Part list: Rebrickable version 1 of 1, latest']
+    assert confirm(client, csrf, proposal).status_code == 400                     # both are owned already: choose another copy or skip
+    items = proposal['items']
+    items[0].update(decision='another', completeness='complete')
+    items[1].update(decision='another', condition='new')
+    result = client.post('/manage/add/confirm', json=dict(csrf_token=csrf, token=proposal['token'], items=items))
+    assert result.status_code == 200
+    first, second = result.json['receipts']
+    assert len(first['copies']) == 2 and len(second['copies']) == 1 and first['stock'] is None
+    with read() as db:
+        new = db.execute('SELECT * FROM copy WHERE id IN (?, ?)', first['copies']).fetchall()
+        assert {(c['inventory_source'], c['completeness'], c['completeness_source'], c['condition']) for c in new} == {('rebrickable', 'complete', 'manual', 'used')}
+        duplo = db.execute('SELECT * FROM copy WHERE id=?', (second['copies'][0],)).fetchone()
+        latest = db.execute('SELECT version FROM catalogue.inventory WHERE item_id=? AND is_latest=1', (world.duplo,)).fetchone()[0]
+        assert (duplo['inventory_source'], duplo['inventory_version'], duplo['condition']) == ('rebrickable', latest, 'new')
+        live = lambda cid: db.execute('SELECT count(*) FROM copy_part WHERE copy_id=? AND retired_at IS NULL', (cid,)).fetchone()[0]
+        assert live(first['copies'][0]) == live(world.copy_a) > 0                 # materialised in the same transaction as the copy
+        receipts = db.execute("SELECT * FROM event WHERE entity_kind='add' AND field='receipt' AND entity_id=? ORDER BY id", (result.json['batch'],)).fetchall()
+        assert len(receipts) == 2 and receipts[0]['via'] == 'app' and json.loads(receipts[0]['new_value'])['copies'] == first['copies']
+        job = pipeline.Pipeline(db).status(first['job_id'])
+        assert (job['state'], [s['name'] for s in job['steps']], job['item_id']) == ('queued', list(pipeline.STEPS), world.keep)
     # A lost response cannot create a second batch.
-    assert post_confirm(client,csrf,review).json==result.json
-    result=client.post('/manage/add/undo',json={'csrf_token':csrf,'batch':result.json['batch']})
-    assert result.json['message']=='Undone'
-    with closing(connect(bw)) as db:
-        assert all(db.execute('SELECT archived_at FROM copies WHERE id=?',(i,)).fetchone()[0] for i in receipt['copies'])
-        before=db.execute('SELECT count(*) FROM events').fetchone()[0]
-    client.post('/manage/add/undo',json={'csrf_token':csrf,'batch':receipt['batch']})
-    with closing(connect(bw)) as db:
-        assert db.execute('SELECT count(*) FROM events').fetchone()[0]==before
+    again = client.post('/manage/add/confirm', json=dict(csrf_token=csrf, token=proposal['token'], items=items))
+    assert [r['copies'] for r in again.json['receipts']] == [first['copies'], second['copies']]
+    with read() as db:
+        assert db.execute('SELECT count(*) FROM copy').fetchone()[0] == 3 + 3
+    assert undo(client, csrf, result.json['batch']).json['message'] == 'Undone'
+    with read() as db:
+        assert db.execute('SELECT count(*) FROM copy WHERE archived_at IS NULL').fetchone()[0] == 3
+        assert db.execute("SELECT count(*) FROM event_undo u JOIN event e ON e.id=u.event_id WHERE e.entity_kind='add'").fetchone()[0] == 2
+        before = db.execute('SELECT count(*) FROM event').fetchone()[0]
+    assert undo(client, csrf, result.json['batch']).json['message'] == 'Undone'
+    with read() as db:
+        assert db.execute('SELECT count(*) FROM event').fetchone()[0] == before
 
 
-def test_materializes_inventory_once_and_retry_snapshot(app,bw,monkeypatch):
-    client,csrf,_=client_token(app)
-    review=preview(client,csrf).json
-    review['items'][0]['decision']='another'
-    receipt=post_confirm(client,csrf,review).json['receipts'][0]
-    from tests.test_brickwork_pipeline import assert_safe_yields
-    with closing(connect(bw)) as db, base.audit_origin('app'), app.app_context():
-        turns = assert_safe_yields(monkeypatch, db)
-        p=Pipeline(db)
-        p.handlers={(s,source):lambda *args:None for s in ('identity','inventory','matching','pictures','metadata','market_price') for source in ('bricklink:local','bricklink:api','bricklink:subsets','bricklink','rebrickable','brickset','part_resolutions','manual')}
-        with db:
-            db.execute("INSERT INTO inventory_lines(parent_item_type,parent_item_no,child_item_type,child_item_no,color_id,quantity,extra_quantity,source) VALUES('S','new-set','P','bl-part',11,2,1,'bricklink')")
-        assert p.run(receipt['job_id'])['state']=='done'
-        rows=db.execute('SELECT spare,quantity,checked FROM copy_parts WHERE copy_id=?',(receipt['copies'][0],)).fetchall()
-        assert [r[:] for r in rows]==[(0,2,0),(1,1,0)]
-        add.materialize(db,'S','new-set')
-        assert turns
-        assert db.execute('SELECT count(*) FROM copy_parts WHERE copy_id=?',(receipt['copies'][0],)).fetchone()[0]==2
-    response=client.get('/manage/add/jobs/'+str(receipt['job_id']))
-    assert response.json['events'][-1]['message']=='Import complete'
-    assert 'payload' not in response.get_data(as_text=True)
+def test_the_preselection_follows_the_pinned_version_and_a_set_with_no_list_gets_none(world, client, csrf, coll, read):
+    versions = [r['version'] for r in coll.db.execute('SELECT version FROM catalogue.inventory WHERE item_id=? ORDER BY version', (world.duplo,))]
+    assert len(versions) == 2
+    copies.set_part_list_preference(coll.db, world.duplo, {'source': 'rebrickable', 'version': versions[0]}, via='cli')
+    proposal = review(client, csrf, '2070-1').json
+    assert proposal['items'][0]['import_notes'][0].startswith('Part list: Rebrickable version 1 of 2')
+    receipt = confirm(client, csrf, proposal, decision='another').json['receipts'][0]
+    with read() as db:
+        assert db.execute('SELECT inventory_version FROM copy WHERE id=?', (receipt['copies'][0],)).fetchone()[0] == versions[0]
+    # An unidentified set has no part list at all.
+    receipt = confirm(client, csrf, review(client, csrf, '99999-9').json, decision='unidentified').json['receipts'][0]
+    with read() as db:
+        copy = db.execute('SELECT * FROM copy WHERE id=?', (receipt['copies'][0],)).fetchone()
+        assert (copy['inventory_source'], copy['inventory_digest'], db.execute('SELECT count(*) FROM copy_part WHERE copy_id=?', (copy['id'],)).fetchone()[0]) == ('none', None, 0)
 
 
-def test_xml_csv_unresolved_colour_and_loose(app,bw,monkeypatch):
-    client,csrf,_=client_token(app)
-    xml=b'<INVENTORY><ITEM><ITEMTYPE>P</ITEMTYPE><ITEMID>bl-part</ITEMID><COLOR>11</COLOR><QTY>3</QTY></ITEM><ITEM><ITEMTYPE>M</ITEMTYPE><ITEMID>unknown</ITEMID></ITEM></INVENTORY>'
-    result=client.post('/manage/add/review',data={'csrf_token':csrf,'mode':'file','where':'loose','type':'P','file':(io.BytesIO(xml),'inventory.xml')})
-    assert result.status_code==200 and len(result.json['unresolved'])==1
-    review=result.json
-    review['items'][0]['decision']='another'
-    assert review['items'][0]['color_id']==11
-    receipt=post_confirm(client,csrf,review).json['receipts'][0]
-    with closing(connect(bw)) as db:
-        assert db.execute('SELECT color_id,quantity FROM loose_stock WHERE id=?',(receipt['stock'][0],)).fetchone()[:]==(11,6)
-        assert receipt['stock_changes'][0]['old'][0]['quantity'] == 3
-        assert receipt['stock_changes'][0]['quantity'] == 3
-    csv=b'part_num,color_id,quantity\nrb-part,71,4\nrb-new,71,2\n'
-    monkeypatch.setattr('brickwork.core.sources.rebrickable.Rebrickable.part',lambda self,n: {'part_num':n,'external_ids':{'BrickLink':['bl-part','other-part']}})
-    result=client.post('/manage/add/review',data={'csrf_token':csrf,'mode':'file','where':'loose','type':'P','file':(io.BytesIO(csv),'parts.csv')})
-    assert result.status_code==200
-    assert result.json['items'][0]['item_no']=='bl-part' and result.json['items'][0]['color_id']==11
-    assert result.json['unresolved'][0]['number']=='rb-new'
-    assert add.file_rows(b'<INVENTORY><ITEM><ITEMTYPE>S</ITEMTYPE><ITEMID>new-set</ITEMID><MINQTY>2</MINQTY></ITEM></INVENTORY>','wanted.xml','P')[0]['quantity']==2
+def test_a_marked_copy_cannot_be_undone(world, client, csrf, coll, read):
+    batch = confirm(client, csrf, review(client, csrf, '1000-2').json, decision='another').json
+    copy_id = batch['receipts'][0]['copies'][0]
+    coll.mark(copy_id, '3001', '4', missing=1)
+    refused = undo(client, csrf, batch['batch'])
+    assert refused.status_code == 400 and 'undo the later save first' in refused.json['error']
+    with read() as db:
+        assert db.execute('SELECT archived_at FROM copy WHERE id=?', (copy_id,)).fetchone()[0] is None
+        assert db.execute("SELECT count(*) FROM event_undo u JOIN event e ON e.id=u.event_id WHERE e.entity_kind='add'").fetchone()[0] == 0
 
 
-def test_photo_candidates_explicit_choice_keep_and_source_audit(app,bw,monkeypatch):
-    client,csrf,_=client_token(app)
-    calls=[]
-    def http(request):
-        calls.append(request)
-        return {'items':[{'type':'set','id':'new-set','score':.9},{'type':'part','id':'bl-part','score':.6}]}
-    monkeypatch.setattr(base,'transport',http)
-    before=counts(bw)
-    response=client.post('/manage/add/review',data={'csrf_token':csrf,'mode':'photo','where':'loose','type':'S','file':(io.BytesIO((FIXTURES/'import-image.png').read_bytes()),'photo.png')})
-    assert response.status_code==200 and response.json['candidates']
-    review=response.json
-    assert review['items'][0]['score']==.9
-    assert counts(bw)['loose_stock']==before['loose_stock']
-    assert post_confirm(client,csrf,review).status_code==400
-    review['items']=[review['items'][0]]
-    review['items'][0]['decision']='another'
-    receipt=post_confirm(client,csrf,review,candidate=0,keep_photo=True).json['receipts'][0]
-    assert calls[0].full_url=='https://api.brickognize.com/predict/'
-    with closing(connect(bw)) as db:
-        image=db.execute("SELECT * FROM item_images WHERE kind='own'").fetchone()
-        assert image['stock_id']==receipt['stock'][0]
-        assert (bw.parent/image['local_path']).is_file()
-        assert db.execute("SELECT count(*) FROM source_records WHERE source='brickognize' AND kind='predict'").fetchone()[0]==1
-        assert db.execute("SELECT count(*) FROM events WHERE entity='source:source_records' AND via='app'").fetchone()[0]>=1
-    assert client.get('/manage/images/'+str(image['id'])).status_code==200
+# ---------- BrickLink's list, pending, settled through the Add flow ----------
+
+def test_bricklink_pending_settles_end_to_end_through_add(world, client, csrf, key, coll, read, pair, monkeypatch):
+    coll.setting('prefer_bricklink_inventory', 'true')
+    proposal = review(client, csrf, '1000-2').json
+    assert "Part list: BrickLink's" in proposal['items'][0]['import_notes'][0]
+    confirmed = confirm(client, csrf, proposal, decision='another').json['receipts'][0]
+    copy_id = confirmed['copies'][0]
+    assert [p['copy_id'] for p in confirmed['pending']] == [copy_id]
+    with read() as db:
+        copy = db.execute('SELECT * FROM copy WHERE id=?', (copy_id,)).fetchone()
+        assert (copy['inventory_source'], copy['inventory_pending']) == ('rebrickable', 'bricklink')
+        assert db.execute('SELECT kind FROM job WHERE id=?', (copy['pending_job_id'],)).fetchone()[0] == 'bricklink_subsets'
+        assert drainer.pending(db) and drainer.poll_delay(db) == 1
+    served = []
+    monkeypatch.setitem(jobs._DEFAULT_HTTP, 'bricklink', lambda url, headers: (served.append(url), (200, reply(entry('3001', 5, 2), entry('3023', 1, 1))))[1])
+    drainer.drain_once(pair)                                                # both runners: the fetch job, then the pipeline job
+    assert len(served) == 1
+    with read() as db:
+        copy = db.execute('SELECT * FROM copy WHERE id=?', (copy_id,)).fetchone()
+        assert (copy['inventory_source'], copy['inventory_pending']) == ('bricklink', None)       # settled: switched automatically (unmarked)
+        assert {r['state'] for r in db.execute('SELECT state FROM job')} == {'done'}
+        assert db.execute("SELECT count(*) FROM job WHERE kind='item' AND state='done'").fetchone()[0] == 1
+        assert drainer.poll_delay(db) is None and not drainer.pending(db)
+    assert undo(client, csrf, confirmed['batch']).json['message'] == 'Undone'
+    with read() as db:
+        assert db.execute('SELECT archived_at IS NOT NULL FROM copy WHERE id=?', (copy_id,)).fetchone()[0] == 1
 
 
-def test_guard_tamper_csrf_and_atomic_event_rollback(app,bw):
-    client,csrf,_=client_token(app)
-    assert client.post('/manage/add/review',json={'text':'new-set'}).status_code==400
-    review=preview(client,csrf).json
-    assert post_confirm(client,csrf,{**review,'token':review['token']+'tamper'}).status_code==400
-    review['items'][0]['decision']='another'
-    before=counts(bw)
-    with closing(connect(bw)) as db, db:
-        db.execute("CREATE TRIGGER reject_add BEFORE INSERT ON events WHEN NEW.entity='bw_add' BEGIN SELECT RAISE(ABORT,'no'); END")
-    assert post_confirm(client,csrf,review).status_code==400
-    after=counts(bw)
-    assert all(after[k]==before[k] for k in ('items','copies','loose_stock','wishlist'))
+def test_undo_before_the_fetch_ends_clears_the_pending_state(world, client, csrf, key, coll, read):
+    coll.setting('prefer_bricklink_inventory', 'true')
+    batch = confirm(client, csrf, review(client, csrf, '1000-2').json, decision='another').json
+    assert undo(client, csrf, batch['batch']).json['message'] == 'Undone'
+    with read() as db:
+        copy = db.execute('SELECT * FROM copy WHERE id=?', (batch['receipts'][0]['copies'][0],)).fetchone()
+        assert copy['archived_at'] and copy['inventory_pending'] is None and copy['pending_job_id'] is None
 
 
-def test_catalogue_skips_hidden_appledouble(tmp_path):
-    directory=tmp_path/'catalogue';shutil.copytree(FIXTURES,directory)
-    (directory/'._Sets.xml').write_bytes(b'not xml')
-    (directory/'.hidden.xml').write_text('<invalid/>')
-    with closing(connect(tmp_path/'brickwork.db')) as db:
-        metadata=load(directory,tmp_path/'bricklink-catalog.db',db)
-        assert set(metadata['counts'])==set(add.TYPES)
-        assert not any(row['name'].startswith('.') for row in metadata['sources'])
+# ---------- loose stock, figures, wishes ----------
+
+def test_loose_parts_merge_and_undo_restores_the_quantity(world, client, csrf, read):
+    proposal = review(client, csrf, '3001 x4', type='part', where='loose').json
+    assert proposal['items'][0]['kind'] == 'part' and proposal['items'][0]['color_id'] is None
+    assert confirm(client, csrf, proposal).status_code == 400                    # a part needs a colour
+    result = confirm(client, csrf, proposal, color_id=world.red, condition='used', decision='another')
+    assert result.status_code == 200
+    stock_id = result.json['receipts'][0]['stock']
+    with read() as db:
+        row = db.execute('SELECT * FROM stock WHERE id=?', (stock_id,)).fetchone()
+        assert (row['kind'], row['quantity'], row['storage_id'], row['lot_id']) == ('part', 4, None, None)     # the world's used row has a lot: another key
+        assert row['id'] != world.stock_brick
+    again = confirm(client, csrf, review(client, csrf, '3001 x2', type='part', where='loose').json, color_id=world.red, condition='used', decision='another').json
+    assert again['receipts'][0]['stock'] == stock_id
+    with read() as db:
+        assert db.execute('SELECT quantity FROM stock WHERE id=?', (stock_id,)).fetchone()[0] == 6
+        assert db.execute('SELECT count(*) FROM stock WHERE archived_at IS NULL AND item_id=? AND color_id=?', (world.brick, world.red)).fetchone()[0] == 3
+    refused = undo(client, csrf, result.json['batch'])                            # the later add onto the same row is still there
+    assert refused.status_code == 400 and 'Stock changed since this save' in refused.json['error']
+    assert undo(client, csrf, again['batch']).status_code == 200
+    with read() as db:
+        assert db.execute('SELECT quantity, archived_at FROM stock WHERE id=?', (stock_id,)).fetchone()[:] == (4, None)
+    assert undo(client, csrf, result.json['batch']).status_code == 200
+    with read() as db:
+        assert db.execute('SELECT archived_at IS NOT NULL FROM stock WHERE id=?', (stock_id,)).fetchone()[0] == 1
 
 
-def test_wishlist_duplicate_skip_and_quantity_preserved(app,bw):
-    client,csrf,_=client_token(app)
-    review=client.post('/manage/add/review',json={'csrf_token':csrf,'type':'G','where':'wishlist','mode':'paste','text':'123-1 x3'}).json
-    result=post_confirm(client,csrf,review)
-    assert result.status_code==200
-    with closing(connect(bw)) as db:
-        assert db.execute("SELECT quantity,note FROM wishlist WHERE item_type='G' AND item_no='123-1'").fetchone()[:]==(3,None)
-    duplicate=client.post('/manage/add/review',json={'csrf_token':csrf,'type':'G','where':'wishlist','mode':'paste','text':'123-1'}).json
-    assert duplicate['items'][0]['wished']
-    assert post_confirm(client,csrf,duplicate).status_code==400
-    duplicate['items'][0]['decision']='skip'
-    assert post_confirm(client,csrf,duplicate).json['receipts']==[]
-    client.post('/manage/add/undo',json={'csrf_token':csrf,'batch':result.json['batch']})
-    with closing(connect(bw)) as db:
-        assert db.execute("SELECT archived_at FROM wishlist WHERE item_type='G' AND item_no='123-1'").fetchone()[0]
+def test_a_figure_added_loose_carries_its_part_list_times_the_quantity(world, client, csrf, read):
+    receipt = confirm(client, csrf, review(client, csrf, 'fig-000004 x2', type='minifigure', where='loose').json, decision='another').json['receipts'][0]
+    with read() as db:
+        row = db.execute('SELECT * FROM stock WHERE id=?', (receipt['stock'],)).fetchone()
+        latest = db.execute('SELECT id, version, digest FROM catalogue.inventory WHERE item_id=? AND is_latest=1', (world.figure,)).fetchone()
+        assert (row['kind'], row['quantity'], row['inventory_source'], row['inventory_version'], row['inventory_digest']) == ('minifigure', 2, 'rebrickable', latest['version'], latest['digest'])
+        parts = {(p['item_id'], p['color_id'], p['is_spare']): p['quantity'] for p in db.execute('SELECT * FROM stock_part WHERE stock_id=?', (receipt['stock'],))}
+        want = {(p['item_id'], p['color_id'], p['is_spare']): p['quantity'] * 2 for p in db.execute('SELECT * FROM catalogue.inventory_part WHERE inventory_id=?', (latest['id'],))}
+        assert parts == want and parts
+    second = confirm(client, csrf, review(client, csrf, 'fig-000004', type='minifigure', where='loose').json, decision='another').json
+    assert second['receipts'][0]['stock'] != receipt['stock']                    # a figure never merges
+    assert undo(client, csrf, second['batch']).status_code == 200
+    with read() as db:
+        assert db.execute('SELECT archived_at IS NOT NULL FROM stock WHERE id=?', (second['receipts'][0]['stock'],)).fetchone()[0] == 1
 
 
-def test_part_colour_guard_search_confirmation_and_jobs_retry(app,bw):
-    client,csrf,_=client_token(app)
-    review=client.post('/manage/add/review',json={'csrf_token':csrf,'type':'P','where':'loose','mode':'search','items':[{'item_type':'P','item_no':'123-1','name':'Forged name'}]}).json
-    assert review['items'][0]['name']!='Forged name'
-    assert post_confirm(client,csrf,review).status_code==400
-    review['items'][0]['color_id']=11
-    response=post_confirm(client,csrf,review)
-    assert response.status_code==200
-    job=response.json['receipts'][0]['job_id']
-    with closing(connect(bw)) as db, db:
-        db.execute("UPDATE jobs SET state='failed' WHERE id=?",(job,))
-        db.execute("UPDATE import_steps SET state='failed',error='Fixture failure' WHERE job_id=? AND name='pictures'",(job,))
-    result=client.get(f'/manage/add/jobs/{job}')
-    assert any(e['retry'] for e in result.json['events'] if e['step'])
-    assert client.post(f'/manage/add/jobs/{job}/retry',json={'csrf_token':csrf,'step':'pictures'}).status_code==200
-    with closing(connect(bw)) as db:
-        assert db.execute("SELECT state FROM import_steps WHERE job_id=? AND name='pictures'",(job,)).fetchone()[0]=='queued'
+def test_a_gear_item_added_as_owned_goes_to_stock_without_a_colour(world, client, csrf, read):
+    unknown = review(client, csrf, 'bag-7', type='gear').json
+    receipt = confirm(client, csrf, unknown, decision='unidentified', condition='new').json['receipts'][0]
+    with read() as db:
+        row = db.execute('SELECT * FROM stock WHERE id=?', (receipt['stock'],)).fetchone()
+        assert (row['kind'], row['color_id'], row['condition'], row['quantity']) == ('gear', None, 'new', 1)
+        assert db.execute('SELECT name, born_key FROM item WHERE id=?', (row['item_id'],)).fetchone()[:] == ('bag-7', None)
 
 
-def test_photo_budget_and_not_keep(app,bw,monkeypatch):
-    client,csrf,_=client_token(app)
-    monkeypatch.setattr(base,'transport',lambda request:{'items':[{'type':'set','id':'new-set','score':.9},{'type':'part','id':'not-in-catalogue','score':.4}]})
-    photo=(FIXTURES/'import-image.png').read_bytes()
-    def photo_review():
-        return client.post('/manage/add/review',data={'csrf_token':csrf,'mode':'photo','where':'loose','type':'S','file':(io.BytesIO(photo),'photo.png')})
-    review=photo_review().json
-    assert review['unresolved'][0]['number']=='not-in-catalogue'
-    review['items'][0]['decision']='another'
-    response=post_confirm(client,csrf,review,candidate=0,keep_photo=False)
-    assert response.status_code==200
-    with closing(connect(bw)) as db:
-        assert db.execute("SELECT count(*) FROM item_images WHERE kind='own'").fetchone()[0]==0
-    monkeypatch.setenv('BW_BRICKOGNIZE_DAILY_BUDGET','1')
-    assert photo_review().status_code==400
-    with closing(connect(bw)) as db:
-        assert db.execute("SELECT state FROM jobs WHERE source='brickognize' ORDER BY id DESC LIMIT 1").fetchone()[0]=='waiting_for_budget'
+def test_a_wish_is_added_raised_and_undone(world, client, csrf, read):
+    proposal = review(client, csrf, '2070-1', where='wishlist').json
+    assert proposal['items'][0]['condition'] == 'used'
+    batch = confirm(client, csrf, proposal, condition='any', decision='another').json
+    wish_id = batch['receipts'][0]['wish']
+    with read() as db:
+        wish = db.execute('SELECT * FROM wish WHERE id=?', (wish_id,)).fetchone()
+        assert (wish['kind'], wish['condition'], wish['quantity'], wish['wishlist_id']) == ('set', 'any', 1, 'default')
+    again = review(client, csrf, '2070-1 x2', where='wishlist').json
+    assert confirm(client, csrf, again).status_code == 400                       # already on the wishlist: choose
+    raised = confirm(client, csrf, again, decision='another').json
+    assert raised['receipts'][0]['wish'] == wish_id
+    with read() as db:
+        assert db.execute('SELECT quantity FROM wish WHERE id=?', (wish_id,)).fetchone()[0] == 3
+    assert undo(client, csrf, raised['batch']).status_code == 200
+    with read() as db:
+        assert db.execute('SELECT quantity, archived_at FROM wish WHERE id=?', (wish_id,)).fetchone()[:] == (1, None)
+    assert undo(client, csrf, batch['batch']).status_code == 200
+    with read() as db:
+        assert db.execute('SELECT archived_at IS NOT NULL FROM wish WHERE id=?', (wish_id,)).fetchone()[0] == 1
 
 
-def test_partial_batch_retry_does_not_repeat_committed_item(app,bw):
-    client,csrf,_=client_token(app)
-    review=client.post('/manage/add/review',json={'csrf_token':csrf,'type':'S','where':'loose','mode':'paste','text':'123-1\nnew-set'}).json
-    review['items'][1]['decision']='another'
-    with closing(connect(bw)) as db, db:
-        db.execute("CREATE TRIGGER reject_second BEFORE INSERT ON loose_stock WHEN NEW.item_no='new-set' BEGIN SELECT RAISE(ABORT,'fixture'); END")
-    before=counts(bw)['loose_stock']
-    assert post_confirm(client,csrf,review).status_code==400
-    assert counts(bw)['loose_stock']==before+1
-    with closing(connect(bw)) as db, db:
-        db.execute('DROP TRIGGER reject_second')
-    result=post_confirm(client,csrf,review)
-    assert result.status_code==200 and len(result.json['receipts'])==2
-    assert counts(bw)['loose_stock']==before+2
+def test_a_wanted_list_file_resolves_creates_lists_and_undoes(world, client, csrf, read):
+    xml = ('<INVENTORY><ITEM><ITEMTYPE>P</ITEMTYPE><ITEMID>3001</ITEMID><COLOR>5</COLOR><MINQTY>3</MINQTY><CONDITION>N</CONDITION>'
+           '<MAXPRICE>0.5000</MAXPRICE><WANTEDLISTID>777</WANTEDLISTID></ITEM><ITEM><ITEMTYPE>Q</ITEMTYPE><ITEMID>1</ITEMID></ITEM></INVENTORY>')
+    response = client.post('/manage/add/review', data=dict(csrf_token=csrf, type='part', where='wishlist', mode='file', list_id='default',
+                                                           file=(io.BytesIO(xml.encode()), 'wanted.xml')), content_type='multipart/form-data')
+    proposal = response.json
+    row = proposal['items'][0]
+    assert (row['kind'], row['color_id'], row['quantity'], row['condition'], row['list_id']) == ('part', world.red, 3, 'new', 'new-bl:777')
+    assert row['max_price'] == '0.5000' and len(proposal['unresolved']) == 1 and 'item type' in proposal['unresolved'][0]['reason']
+    batch = confirm(client, csrf, proposal, decision='another').json            # 3001 red is in stock already: a wish for more is a choice
+    with read() as db:
+        listing = db.execute("SELECT * FROM wishlist WHERE bricklink_id='777'").fetchone()
+        wish = db.execute('SELECT * FROM wish WHERE id=?', (batch['receipts'][0]['wish'],)).fetchone()
+        assert listing['name'] == 'BrickLink 777' and (wish['wishlist_id'], wish['color_id'], wish['max_price']) == (listing['id'], world.red, '0.5000')
+    assert undo(client, csrf, batch['batch']).status_code == 200
+    with read() as db:
+        assert db.execute("SELECT archived_at IS NOT NULL FROM wishlist WHERE bricklink_id='777'").fetchone()[0] == 1
 
 
-def test_part_wishlist_preserves_colour_condition_and_restores_archive(app,bw):
-    client,csrf,_=client_token(app)
-    with closing(connect(bw)) as db, db:
-        db.execute("INSERT OR IGNORE INTO items(item_type,item_no,name) VALUES('P','123-1','Part')")
-        db.execute("INSERT INTO wishlist(item_type,item_no,color_id,quantity,note,condition,archived_at,updated_at) VALUES('P','123-1',11,7,'Keep this note','any','2020-01-01','2020-01-01')")
-    review=client.post('/manage/add/review',json={'csrf_token':csrf,'type':'P','where':'wishlist','mode':'paste','text':'123-1 x2'}).json
-    review['items'][0].update(color_id=11,condition='N')
-    result=post_confirm(client,csrf,review)
-    assert result.status_code==200
-    with closing(connect(bw)) as db:
-        wish=db.execute("SELECT * FROM wishlist WHERE item_type='P' AND item_no='123-1'").fetchone()
-        assert wish['condition']=='new' and wish['archived_at'] is None
-        assert wish['note']=='Keep this note'
-        assert wish['color_id']==11 and wish['quantity']==2
-    client.post('/manage/add/undo',json={'csrf_token':csrf,'batch':result.json['batch']})
-    with closing(connect(bw)) as db:
-        assert db.execute("SELECT note,condition,archived_at,quantity FROM wishlist WHERE item_type='P' AND item_no='123-1'").fetchone()[:]==('Keep this note','any','2020-01-01',7)
+def test_a_rebrickable_csv_resolves_by_born_numbers_and_colour_ids(world, client, csrf):
+    csv_text = 'part_num,color_id,quantity\n3023,15,4\n9999x,15,1\n'
+    response = client.post('/manage/add/review', data=dict(csrf_token=csrf, type='part', where='loose', mode='file',
+                                                           file=(io.BytesIO(csv_text.encode()), 'parts.csv')), content_type='multipart/form-data')
+    proposal = response.json
+    assert [(r['number'], r['color_id'], r['quantity']) for r in proposal['items'] if not r.get('unknown')] == [('3023', world.white, 4)]
+    assert [r['number'] for r in proposal['items'] if r.get('unknown')] == ['9999x']
+    # a known colour stays with an unknown part, so Add as unidentified needs no second choice (Codex on M.8c)
+    assert [r['color_id'] for r in proposal['items'] if r.get('unknown')] == [world.white]
 
 
-def test_part_wish_xml_quantity_duplicates_colour_and_undo(app,bw):
-    client,csrf,_=client_token(app)
-    xml=b'<WANTEDLIST><ITEM><ITEMTYPE>P</ITEMTYPE><ITEMID>123-1</ITEMID><COLOR>11</COLOR><MINQTY>3</MINQTY></ITEM></WANTEDLIST>'
-    review=client.post('/manage/add/review',data={'csrf_token':csrf,'type':'P','where':'wishlist','mode':'file','file':(io.BytesIO(xml),'wanted.xml')}).json
-    review['items'][0]['note']='User note'
-    first=post_confirm(client,csrf,review)
-    assert first.status_code==200
-    duplicate=client.post('/manage/add/review',data={'csrf_token':csrf,'type':'P','where':'wishlist','mode':'file','file':(io.BytesIO(xml),'wanted.xml')}).json
-    assert duplicate['items'][0]['wished']
-    assert post_confirm(client,csrf,duplicate).status_code==400
-    duplicate['items'][0]['decision']='another'
-    second=post_confirm(client,csrf,duplicate)
-    assert second.status_code==200
-    with closing(connect(bw)) as db:
-        assert db.execute("SELECT color_id,quantity,note FROM wishlist WHERE item_no='123-1'").fetchone()[:] == (11,6,'User note')
-        assert Pipeline(db).colors('P','123-1')==[11]
-    assert client.post('/manage/add/undo',json={'csrf_token':csrf,'batch':second.json['batch']}).status_code==200
-    different=client.post('/manage/add/review',json={'csrf_token':csrf,'type':'P','where':'wishlist','mode':'search','items':[{'item_type':'P','item_no':'123-1','color_id':0,'quantity':2}]}).json
-    assert not different['items'][0]['wished']
-    assert post_confirm(client,csrf,different).status_code==200
-    with closing(connect(bw)) as db:
-        assert [tuple(r) for r in db.execute("SELECT color_id,quantity,note FROM wishlist WHERE item_no='123-1' ORDER BY id")] == [(11,3,'User note'),(0,2,None)]
-        assert all(r[0]=='app' for r in db.execute("SELECT via FROM events WHERE field IN ('added','undo_add')"))
-    with app.test_request_context('/'):
-        from brickwork.web.ui import navigation_counts
-        assert navigation_counts()['Wishlist']==3  # legacy migrated set plus two colours
+# ---------- an unknown number: both offers ----------
+
+def test_an_unknown_set_number_offers_fetch_and_unidentified(world, client, csrf, read, monkeypatch):
+    monkeypatch.delenv(rebrickable_api.KEY_ENV, raising=False)
+    proposal = review(client, csrf, '99999-9 x2').json
+    row = proposal['items'][0]
+    assert (row['unknown'], row['item_id'], row['number'], row['kind']) == (True, None, '99999-9', 'set')
+    assert row['offers']['unidentified'] is True and row['offers']['fetch'] == {'available': False, 'why': 'Add a Rebrickable key in Tools & Admin first'}
+    assert 'add a Rebrickable key' in row['offers']['help']
+    before = counts(read)
+    assert confirm(client, csrf, proposal).status_code == 400                    # an unknown number needs a choice
+    assert confirm(client, csrf, proposal, decision='fetch').status_code == 400   # fetching needs a key
+    assert counts(read) == before
 
 
-def test_49e_add_search_has_no_chip_count_or_sort_caption(app, bw):
-    from bs4 import BeautifulSoup
-    soup = BeautifulSoup(client_token(app)[2].get_data(as_text=True), 'html.parser')
-    for selector in ['[data-chips]', '[data-result-count]', '.bw-add-result-sort']:
-        assert soup.select_one('[data-mode=search] ' + selector).has_attr('hidden')
+def test_fetch_from_rebrickable_queues_the_job_and_add_as_unidentified_makes_a_local_item(world, client, csrf, read, monkeypatch):
+    monkeypatch.setenv(rebrickable_api.KEY_ENV, 'x')
+    row = review(client, csrf, '99999-9').json['items'][0]
+    assert row['offers']['fetch'] == {'available': True, 'why': None} and 'fetch it from Rebrickable' in row['offers']['help']
+    batch = confirm(client, csrf, review(client, csrf, '99999-9').json, decision='fetch').json
+    receipt = batch['receipts'][0]
+    assert receipt['fetch_job'] and receipt['job_id'] is None and receipt['copies'] == []
+    with read() as db:
+        job = jobs.status(db, receipt['fetch_job'])
+        assert (job['kind'], job['state'], job['number'], job['item_id']) == ('rebrickable_set', 'queued', '99999-9', None)
+        assert db.execute('SELECT count(*) FROM copy').fetchone()[0] == 3 and drainer.pending(db)
+    assert undo(client, csrf, batch['batch']).status_code == 200                  # nothing to archive yet
+    # Add as unidentified: a local set named as typed, the typed number a to_check BrickLink link, a copy with no list.
+    batch = confirm(client, csrf, review(client, csrf, '99999-9 x2').json, decision='unidentified').json
+    receipt = batch['receipts'][0]
+    assert len(receipt['copies']) == 2
+    with read() as db:
+        item = db.execute('SELECT * FROM item WHERE id=?', (receipt['item_id'],)).fetchone()
+        assert (item['origin'], item['kind'], item['name'], item['born_key'], item['id'] >= 1_000_000_000) == ('local', 'set', '99999-9', None, True)
+        links = db.execute('SELECT * FROM item_link WHERE item_id=?', (item['id'],)).fetchall()
+        assert [(l['provider'], l['provider_kind'], l['provider_key'], l['status']) for l in links] == [('bricklink', 'S', '99999-9', 'to_check')]
+    assert client.get(f'/collection/item/{item["id"]}').status_code == 200        # it works on every screen
+    # The same typed number is the same item again.
+    again = confirm(client, csrf, review(client, csrf, '99999-9').json, decision='unidentified').json['receipts'][0]
+    assert again['item_id'] == receipt['item_id']
+    assert undo(client, csrf, batch['batch']).status_code == 200
+    with read() as db:
+        assert db.execute('SELECT count(*) FROM copy WHERE item_id=? AND archived_at IS NULL', (receipt['item_id'],)).fetchone()[0] == 1
+
+
+def test_a_dotted_unknown_set_number_offers_only_unidentified(world, client, csrf):
+    # Rebrickable cannot have a dotted set number: no fetch offer, and no TypeError on the missing one (Codex on M.8c)
+    row = review(client, csrf, 'custom.1').json['items'][0]
+    assert (row['unknown'], row['offers']['fetch'], row['offers']['help']) == (True, None, 'Not in the catalogue · add it as unidentified')
+    assert confirm(client, csrf, review(client, csrf, 'custom.1').json, decision='unidentified').status_code == 200
+
+
+def test_a_failed_fetch_job_is_retried_from_add(world, client, csrf, read, monkeypatch, pair):
+    # Retry dispatches by the job's kind: a Fetch from Rebrickable job is store4's, not the pipeline's (Codex on M.8c)
+    monkeypatch.setenv(rebrickable_api.KEY_ENV, 'x')
+    monkeypatch.setattr('brickwork.web.views.bw_start_worker', lambda: None)
+    job = confirm(client, csrf, review(client, csrf, '99999-9').json, decision='fetch').json['receipts'][0]['fetch_job']
+    with closing(sqlite3.connect(pair)) as db, db:
+        db.execute("UPDATE job SET state='failed', error='down', error_code='source_error', attempts=3 WHERE id=?", (job,))
+    assert client.post(f'/manage/add/jobs/{job}/retry', json=dict(csrf_token=csrf)).json == {'message': 'Queued'}
+    with read() as db:
+        assert tuple(db.execute('SELECT state, error, attempts FROM job WHERE id=?', (job,)).fetchone()) == ('queued', None, 0)
+
+
+def test_an_unknown_part_offers_only_unidentified_and_a_part_needs_a_colour(world, client, csrf):
+    proposal = review(client, csrf, 'zzz1', type='part', where='wishlist').json
+    row = proposal['items'][0]
+    assert row['offers']['fetch'] is None and row['offers']['help'] == 'Not in the catalogue · add it as unidentified'
+    assert confirm(client, csrf, proposal, decision='unidentified').status_code == 400
+    assert confirm(client, csrf, proposal, decision='unidentified', color_id=world.red).status_code == 200
+
+
+def test_several_matches_are_never_guessed(world, client, csrf, coll):
+    coll.link(world.brick, 'dup-key', kind='P')
+    coll.link(world.plate, 'dup-key', kind='P')
+    proposal = review(client, csrf, 'dup-key', type='part', where='loose').json
+    assert proposal['items'] == [] and 'matches 2 items' in proposal['unresolved'][0]['reason']
+
+
+# ---------- the review is checked, not trusted ----------
+
+def test_edits_are_validated_and_skip_adds_nothing(world, client, csrf, read):
+    proposal = review(client, csrf, '2070-1').json
+    before = counts(read)
+    for bad in (dict(where='nowhere'), dict(condition='mint'), dict(completeness='perfect'), dict(quantity='0'), dict(storage_id='nope')):
+        assert confirm(client, csrf, proposal, decision='another', **bad).status_code == 400, bad
+    assert counts(read) == before
+    skipped = confirm(client, csrf, proposal, decision='skip')
+    assert skipped.status_code == 200 and skipped.json['receipts'] == [] and counts(read) == before
+    forged = dict(csrf_token=csrf, token=proposal['token'] + 'x', items=proposal['items'])
+    assert client.post('/manage/add/confirm', json=forged).status_code == 400
+    assert client.post('/manage/add/review', json=dict(type='set', where='owned', mode='paste', text='1000-1')).status_code == 400   # no CSRF token
+    assert review(client, csrf, '', mode='photo').status_code == 400
+
+
+def test_a_review_sent_again_after_a_row_was_saved_changes_nothing_for_it(world, client, csrf, read):
+    proposal = review(client, csrf, '1000-2\n2070-1').json
+    items = proposal['items']
+    for item in items:
+        item['decision'] = 'another'
+    first = client.post('/manage/add/confirm', json=dict(csrf_token=csrf, token=proposal['token'], items=items))
+    again = client.post('/manage/add/confirm', json=dict(csrf_token=csrf, token=proposal['token'], items=items))
+    assert first.status_code == again.status_code == 200
+    assert [r['copies'] for r in again.json['receipts']] == [r['copies'] for r in first.json['receipts']]
+    assert counts(read)['copy'] == 3 + 2
+
+
+# ---------- the jobs the Add queued ----------
+
+def test_the_job_endpoint_reports_steps_without_payloads_and_retry_requeues(world, client, csrf, read, pair):
+    receipt = confirm(client, csrf, review(client, csrf, '1000-2').json, decision='another').json['receipts'][0]
+    events = client.get(f'/manage/add/jobs/{receipt["job_id"]}').json['events']
+    assert [e['step'] for e in events] == [*pipeline.STEPS, None] and events[-1]['message'] == 'Import queued'
+    assert client.get('/manage/add/jobs/99999').status_code == 404
+    drainer.drain_once(pair)
+    events = client.get(f'/manage/add/jobs/{receipt["job_id"]}').json['events']
+    assert events[-1]['state'] == 'done' and events[-1]['message'] == 'Import complete'
+    assert {e['step']: e['message'] for e in events}['pictures'].startswith('skipped')
+    assert client.post(f'/manage/add/jobs/{receipt["job_id"]}/retry', json=dict(csrf_token=csrf)).json == {'message': 'Queued'}
+
+
+# ---------- the page's frames, links into it and the shell ----------
+
+def page(client, route):
+    response = client.get(route)
+    assert response.status_code == 200
+    return BeautifulSoup(response.data, 'html.parser')
+
+
+def test_the_wanted_link_of_a_figure_uses_the_review_confirm_and_undo(world, client, csrf, coll, monkeypatch):
+    monkeypatch.setattr('brickwork.web.views.bw_start_worker', lambda: None)
+    route = f'/collection/item/{world.figure}'
+    link = page(client, route).select_one('[data-module=wanted] a')
+    assert link['href'] == '/manage/add?type=minifigure&where=wishlist&number=fig-000004'
+    target = page(client, link['href'])
+    assert target.select_one('input[name=type][checked]')['value'] == 'minifigure'
+    assert target.select_one('input[name=where][checked]')['value'] == 'wishlist'
+    assert target.select_one('input[name=mode][checked]')['value'] == 'paste'
+    assert target.select_one('[data-paste]').get_text() == 'fig-000004'
+    proposal = review(client, csrf, 'fig-000004', type='minifigure', where='wishlist').json
+    assert len(proposal['items']) == 1
+    confirmed = confirm(client, csrf, proposal, decision='another')            # one is in stock already: a wish for more is a choice
+    assert confirmed.status_code == 200, confirmed.json
+    wanted = lambda: page(client, route).select_one('[data-module=wanted]').get_text()
+    assert 'On the wishlist' in wanted()
+    coll.sql("UPDATE wish SET max_price='11408.95', max_price_currency='EUR' WHERE item_id=?", (world.figure,))
+    assert '€11,408.95' in wanted()
+    # A later edit of the wish blocks the Undo of the add; it never restores over the edit.
+    blocked = undo(client, csrf, confirmed.json['batch'])
+    assert blocked.status_code == 400 and 'undo the later save first' in blocked.json['error']
+    assert '€11,408.95' in wanted()
+    coll.sql("UPDATE wish SET max_price=NULL, max_price_currency=NULL WHERE item_id=?", (world.figure,))
+    assert undo(client, csrf, confirmed.json['batch']).status_code == 200
+    assert 'Not on the wishlist' in wanted()
+
+
+@pytest.mark.parametrize('query', ['type=X', 'type=X&where=X', 'type=&where=', 'type=zzz'])
+def test_add_invalid_initial_radios_fall_back(world, client, query):
+    soup = page(client, '/manage/add?' + query)
+    assert [r['value'] for r in soup.select('input[name=type][checked]')] == ['set']
+    assert [r['value'] for r in soup.select('input[name=where][checked]')] == ['owned']
+
+
+def test_add_review_frames(world, client):
+    soup = page(client, '/manage/add')
+    assert not soup.select('.breadcrumb')
+    root = soup.select_one('#bw-add')
+    assert root.select_one('header h1').text == 'Add'
+    where = root.select_one('input[name=where]').find_parent('div')
+    assert 'bw-add-continuous' in where['class']
+    assert [i['value'] for i in where.select('input')] == ['owned', 'loose', 'wishlist']
+    assert not root.select('[data-filters], [data-filter-panel], [data-type-filter]')
+    assert root.select_one('fieldset[aria-label=How]') and not root.select_one('fieldset[aria-label=How] legend')
+    assert [i['value'] for i in root.select('fieldset[aria-label=How] input')] == ['search', 'paste', 'file']
+    assert root.select_one('.bw-add-search-field input[aria-label]')
+    assert not root.select('[data-candidates]')
+
+
+def test_the_rail_marks_add_current(world, client, app4):
+    from brickwork.web.ui import navigation
+    with app4.test_request_context('/manage/add'):
+        from flask import session
+        from brickwork.web.auth import SESSION_PASSWORD, password_mark
+        session['_user_id'] = 'admin'
+        session['_fresh'] = True
+        session[SESSION_PASSWORD] = password_mark(app4.config['AUTHENTICATION_PASSWORD'])
+        app4.preprocess_request()
+        links = [link for _, links in navigation() for link in links]
+        assert [link['title'] for link in links if link['active']] == ['Add']
+    html = client.get('/manage/add').get_data(as_text=True)
+    assert 'id="global-jump"' in html and 'aria-current="page"' in html
+
+
+def test_a_collection_that_is_not_set_up_shows_the_notice(tmp_path, monkeypatch):
+    (tmp_path / 'not-set-up').mkdir()
+    client = app_on(tmp_path / 'not-set-up', monkeypatch, 'not-set-up')
+    page_ = client.get('/manage/add')
+    assert page_.status_code == 200 and 'database is not available' in page_.get_data(as_text=True)
+    assert client.get('/manage/add/search', query_string={'type': 'set', 'q': 'x'}).status_code == 400
+
+
+def test_a_row_is_all_or_nothing(world, client, csrf, coll, read):
+    """The copy, its figure and part lines, the pipeline job and the receipt commit together: a receipt that cannot be written leaves none."""
+    proposal = review(client, csrf, '1000-1\n2070-1').json
+    before = counts(read)
+    with coll.db:
+        coll.db.execute("CREATE TRIGGER reject_receipt BEFORE INSERT ON event WHEN NEW.entity_kind='add' AND NEW.field='receipt' BEGIN SELECT RAISE(ABORT,'receipt rejected'); END")
+    refused = confirm(client, csrf, proposal, decision='another')
+    assert refused.status_code == 400 and refused.json['receipts'] == []
+    with read() as db:
+        assert counts(read) == before
+        assert db.execute('PRAGMA foreign_key_check').fetchall() == []
+    with coll.db:
+        coll.db.execute('DROP TRIGGER reject_receipt')
+    assert confirm(client, csrf, proposal, decision='another').status_code == 200

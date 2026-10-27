@@ -7,12 +7,14 @@ import time
 from datetime import datetime, timezone
 
 from ..store4 import jobs
+from . import pipeline
 from .admin import begin_operation, end_operation
 from .connect import connect
 from .sources.base import audit_origin
 
-# M.8a: the drainer runs `store4.jobs.drain` only (the two fetch kinds). The pipeline runner comes back in M.8c with the Add flow.
-PENDING_SQL = f'SELECT state, retry_at FROM job WHERE kind IN {jobs.OWN_KINDS} AND {jobs.ACTIVE}'
+# Two runners share the `job` table and each ignores the other's kinds: `store4.jobs` runs the two fetch kinds, `core.pipeline` the
+# app's own `item` jobs (M.8c). Both are looked at here: one poll, one stop.
+PENDING_SQL = f"SELECT state, retry_at FROM job WHERE (kind IN {jobs.OWN_KINDS} OR kind='{pipeline.KIND}') AND {jobs.ACTIVE}"
 
 
 def poll_delay(db):
@@ -38,8 +40,9 @@ def pending(db):
 
 
 def drain_once(path):
+    """One pass of both runners. The fetch jobs go first: a BrickLink or Rebrickable list a pipeline job looks for may have landed."""
     with closing(connect(path)) as db:
-        return jobs.drain(db)
+        return jobs.drain(db) + pipeline.drain(db)
 
 
 def loop(path, sleep, *, stop=None):

@@ -1,4 +1,4 @@
-"""Global jump safety and bounds, rail current-state and tools coverage on the core store."""
+"""Global jump safety and bounds, rail current-state and tools coverage on the core store (M.8i: the rail walks every screen; Add's own rail test is in `test_bw_add.py`, M.8c)."""
 import re
 
 import pytest
@@ -14,7 +14,7 @@ from tests.web_fixtures import app, apps, logged_in
     ('/planning/complete-sets', 'Complete sets'), ('/workbench/orders', 'Orders'),
     ('/workbench/storage', 'Storage'),
     ('/planning/prices', 'Prices'), ('/planning/wishlist', 'Wishlist'),
-    ('/manage/add', 'Add'), ('/manage/tools', 'Tools & Admin'),
+    ('/manage/tools', 'Tools & Admin'),
     ('/workbench/check-parts', 'Check Set Parts'), ('/workbench/matcher', 'Matcher'),
     ('/workbench/part-picker', 'Part Picker'), ('/workbench/part-to-inventory', 'Part to Inventory')])
 def test_rail_destinations_and_current_state(app, bw, path, current):

@@ -10,23 +10,14 @@ listed runs.
 """
 
 QUARANTINE = {
-    # M.8c: Add, stock merge, pipeline on job/job_step, both job runners
-    'tests/test_brickwork_pipeline.py': 'M.8c',
-    'tests/test_brickwork_schema.py': 'M.8c',
-    'tests/test_bw_add.py': 'M.8c',
-    'tests/test_bw_collection.py': 'M.8c',
-    'tests/test_bw_size_search_41.py': 'M.8c',
-    'tests/test_bw_small_68.py': 'M.8c',
-    'tests/test_bw_stock.py': 'M.8c',
-    'tests/test_bw_ui_12f.py': 'M.8c',
-    'tests/test_jump_and_rail.py': 'M.8c',
-    'tests/test_ui_47b.py': 'M.8c',
-    'tests/test_web_unsigned_text.py': 'M.8c',
     # M.8d: Check Set Parts on part_check, collection writes, flags, photos
     'tests/test_bw_48a.py': 'M.8d',
     'tests/test_bw_checker.py': 'M.8d',
+    'tests/test_bw_collection.py': 'M.8d',
     'tests/test_bw_core_fixes.py': 'M.8d',
     'tests/test_bw_media_27.py': 'M.8d',
+    'tests/test_bw_ui_12f.py': 'M.8d',
+    'tests/test_ui_47b.py': 'M.8d',
     # M.8e: workbench, ledger, part inventory, lists
     'tests/test_bw_48c.py': 'M.8e',
     'tests/test_bw_49a.py': 'M.8e',
@@ -39,7 +30,9 @@ QUARANTINE = {
     'tests/test_bw_workbench.py': 'M.8e',
     'tests/test_shell_45s.py': 'M.8e',
     'tests/test_toni_shell.py': 'M.8e',
+    'tests/test_web_unsigned_text.py': 'M.8e',
     # M.8f: sources, pictures, prices on provider_key, keys
+    'tests/test_brickwork_pipeline.py': 'M.8f',
     'tests/test_brickwork_rebrickable.py': 'M.8f',
     'tests/test_brickwork_sources.py': 'M.8f',
     'tests/test_bw_api_m5_web.py': 'M.8f',
@@ -68,8 +61,10 @@ QUARANTINE = {
     'tests/test_admin_ops.py': 'M.8i',
     'tests/test_bw_admin.py': 'M.8i',
     'tests/test_bw_admin_csrf.py': 'M.8i',
+    'tests/test_bw_small_68.py': 'M.8i',
     'tests/test_bw_ui_12m.py': 'M.8i',
     'tests/test_bw_ui_5049.py': 'M.8i',
+    'tests/test_jump_and_rail.py': 'M.8i',
     'tests/test_safe_errors.py': 'M.8i',
     'tests/test_shell_46p.py': 'M.8i',
     'tests/test_ui_p6.py': 'M.8i',
@@ -81,7 +76,6 @@ QUARANTINE = {
     'tests/test_bw_sync.py': 'M.8j',
     'tests/test_bw_sync_ui.py': 'M.8j',
     'tests/test_demo.py': 'M.8j',
-    'tests/test_import_polling.py': 'M.8j',
     # M.11: API v2 and clients: the v1 API, MCP and contract tests
     'tests/test_app_factory.py': 'M.11',
     'tests/test_bw_api_47.py': 'M.11',

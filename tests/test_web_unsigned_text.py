@@ -1,4 +1,6 @@
-"""4.6r: every migrated screen uses words for visible numeric differences."""
+"""4.6r: every migrated screen uses words for visible numeric differences (M.8e/M.8g: workbench, planning, prices and orders screens).
+
+The ported screens are checked in `test_ported_screens_text.py`; each piece adds its routes there when it ports its screens."""
 import re
 import shutil
 import subprocess

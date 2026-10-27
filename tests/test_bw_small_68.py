@@ -1,11 +1,12 @@
-"""#68: small web defects."""
+"""#68: small web defects (M.8i: lists print, sync pages, tokens and the export).
+
+The drainer re-check moved to `test_pipeline_jobs.py` and the not-set-up notice for Add to `test_bw_add.py` (M.8c)."""
 from contextlib import closing
 import os
 import re
 
 import pytest
 
-from brickwork.core import drainer
 from brickwork.core.connect import connect
 from tests.web_fixtures import app, apps, logged_in  # noqa: F401
 
@@ -19,7 +20,7 @@ def test_print_list_ignores_url_for_keywords(app, query):  # noqa: F811
     assert 'evil.example' not in response.get_data(as_text=True)
 
 
-@pytest.mark.parametrize('path', ['/collection/purchase-places', '/manage/sync', '/manage/sync/rebrickable/link'])
+@pytest.mark.parametrize('path', ['/manage/sync', '/manage/sync/rebrickable/link'])
 def test_pages_before_setup_show_the_notice(app, path, tmp_path, monkeypatch):  # noqa: F811
     monkeypatch.setenv('BW_DB_PATH', str(tmp_path / 'not-set-up' / 'brickwork.db'))
     response = logged_in(app).get(path)
@@ -50,20 +51,3 @@ def test_read_only_export_writes_no_event(app, monkeypatch):  # noqa: F811
     assert response.status_code == 200
     with closing(connect(os.environ['BW_DB_PATH'])) as db:
         assert db.execute('SELECT count(*) FROM events').fetchone()[0] == before
-
-
-def test_drainer_rechecks_before_it_stops(tmp_path, monkeypatch):
-    from flask import Flask
-    monkeypatch.setenv('BW_EMBEDDED_WORKER', '1')
-    app = Flask('drain')
-    rounds, pending = [], [True, False]
-    monkeypatch.setattr(drainer, 'loop', lambda path, sleep: rounds.append(1))
-    monkeypatch.setattr(drainer, 'poll_delay', lambda db: 0 if pending.pop(0) else None)
-    monkeypatch.setattr(drainer, 'connect', lambda path: __import__('sqlite3').connect(':memory:'))
-    started = []
-    assert drainer.start(app, tmp_path / 'x.db', fallback=lambda run: started.append(run))
-    assert drainer.start(app, tmp_path / 'x.db', fallback=lambda run: started.append(run))  # already active
-    assert len(started) == 1
-    started[0]()
-    assert len(rounds) == 2  # a job found at the final check runs another round
-    assert not app.extensions['bw_import_worker_active']

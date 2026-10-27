@@ -43,22 +43,3 @@ def matches(name, full, partial):
     if partial:
         return key is not None and partial in key.split('x')
     return True
-
-
-def ensure_column(path):
-    """Add and fill the indexed size_key column on an older catalogue file, once. False when read-only."""
-    import sqlite3
-    from contextlib import closing
-    try:
-        with closing(sqlite3.connect(path)) as db:
-            columns = {r[1] for r in db.execute('PRAGMA table_info(items)')}
-            if 'size_key' in columns:
-                return True
-            with db:
-                db.create_function('size_key', 1, name_key, deterministic=True)
-                db.execute('ALTER TABLE items ADD COLUMN size_key TEXT')
-                db.execute('UPDATE items SET size_key=size_key(name)')
-                db.execute('CREATE INDEX IF NOT EXISTS items_size ON items(size_key)')
-            return True
-    except sqlite3.Error:
-        return False

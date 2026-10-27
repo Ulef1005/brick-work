@@ -1,6 +1,6 @@
 """#41 size-aware part search on the collection lists: one table for Python and JavaScript, and the list filter (M.8b).
 
-The catalogue-search backfill test of the old BrickLink catalogue (`size_search.ensure_column`, used by Add search) stays with M.8c."""
+Add's catalogue search by size is in `test_bw_size_search_41.py` (M.8c); the 3.3 backfill of the size column is gone, the 4.0 builder fills it."""
 import json
 from pathlib import Path
 import subprocess

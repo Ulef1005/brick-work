@@ -1,6 +1,6 @@
 """Standalone installation contract on the 4.0 store: real app and CLI, a fixture catalogue built offline, no sockets (M.8a, #110).
 
-What renders without ported modules: the install files, the login page and (M.8b) the collection's read side: `/` and the collection lists
+What renders without ported modules: the install files, the login page, Add (M.8c) and (M.8b) the collection's read side: `/` and the collection lists
 (the first-run page on an empty collection), the item page by id, the wish, lot and purchase-place pages, the jump search. Every other browser
 screen answers 503 until its piece ports it. API v1 answers 410, except `/api/v1/health`."""
 from contextlib import closing
@@ -22,6 +22,7 @@ from brickwork.web.cli import main
 from tests.app4 import Coll, build_world, make_pair
 from tests.legacy33 import create_33
 from tests.store4_mint_fixtures import build_catalogue
+from tests.web_fixtures import logged_in
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -165,4 +166,62 @@ def test_the_collection_read_side_shows_what_is_owned(tmp_path, monkeypatch, off
     assert client.get('/collection/jump?q=1000-1').json['results'][0]['kind'] == 'set'
     # what is not on the 4.0 store yet still says so
     assert client.get('/workbench/matcher').status_code == 503
+    assert offline == []
+
+
+def test_the_add_workflow_adds_checks_and_undoes_every_kind(tmp_path, monkeypatch, offline):
+    """The Add journeys of docs/data-model-4.0/user-journey.md on a fixture pair, offline: a set (and BrickLink's list pending, settled
+    through a fake transport), loose parts and a loose figure, a wish, an unknown number, and Undo of each."""
+    from brickwork.core import drainer
+    from brickwork.store4 import bricklink_api, jobs
+    from tests.test_store4_bricklink_subsets import entry, reply
+    path = make_pair(tmp_path, rich=True)
+    with closing(connect(path)) as db:
+        coll = Coll(db)
+        sets, brick, red, figure = coll.item('sets', '1000-1'), coll.item('parts', '3001'), coll.colour('4'), coll.item('minifigs', 'fig-000004')
+    monkeypatch.setenv('BW_AUTHENTICATION_PASSWORD', 'synthetic-password')
+    client = logged_in(make_app(path, monkeypatch))
+    client.get('/manage/add')
+    with client.session_transaction() as session:
+        csrf = session['bw_add_csrf']
+
+    def add(text, kind, where='owned', **edits):
+        proposal = client.post('/manage/add/review', json=dict(csrf_token=csrf, type=kind, where=where, mode='paste', text=text)).json
+        for row in proposal['items']:
+            row.update(edits)
+        done = client.post('/manage/add/confirm', json=dict(csrf_token=csrf, token=proposal['token'], items=proposal['items']))
+        assert done.status_code == 200, done.json
+        return done.json
+
+    def rows(sql, *args):
+        with closing(connect(path, read_only=True)) as db:
+            return [tuple(r) for r in db.execute(sql, args)]
+
+    batches = [add('1000-1 x2', 'set', completeness='sealed'), add('3001 x4', 'part', 'loose', color_id=red, condition='new'),
+               add('fig-000004', 'minifigure', 'loose'), add('1000-2', 'set', 'wishlist'), add('99999-9', 'set', decision='unidentified')]
+    assert rows('SELECT count(*), sum(completeness=?) FROM copy WHERE archived_at IS NULL', 'sealed') == [(3, 2)]                       # two sealed copies of 1000-1 and the unidentified set's one
+    assert rows('SELECT quantity FROM stock WHERE item_id=? AND color_id=? AND condition=?', brick, red, 'new') == [(4,)]
+    assert rows('SELECT count(*) FROM stock_part WHERE stock_id=?', batches[2]['receipts'][0]['stock'])[0][0] > 0
+    assert rows("SELECT count(*) FROM job WHERE kind='item'") == [(5,)]
+    drainer.drain_once(path)
+    assert rows("SELECT DISTINCT state FROM job") == [('done',)]
+    assert rows("SELECT name FROM job_step WHERE state='done' AND error LIKE 'skipped%' GROUP BY name ORDER BY name") == [('market_price',), ('metadata',), ('pictures',)]
+    # BrickLink's list for a new copy: pending, then settled when the fake transport answers
+    for name in bricklink_api.KEY_ENVS:
+        monkeypatch.setenv(name, 'x')
+    with closing(connect(path)) as db:
+        Coll(db).setting('prefer_bricklink_inventory', 'true')
+    pending = add('1000-2', 'set', decision='another')['receipts'][0]
+    assert rows('SELECT inventory_source, inventory_pending FROM copy WHERE id=?', pending['copies'][0]) == [('rebrickable', 'bricklink')]
+    monkeypatch.setitem(jobs._DEFAULT_HTTP, 'bricklink', lambda url, headers: (200, reply(entry('3001', 5, 2))))
+    drainer.drain_once(path)
+    assert rows('SELECT inventory_source, inventory_pending FROM copy WHERE id=?', pending['copies'][0]) == [('bricklink', None)]
+    # Undo takes everything back, last first
+    for batch in reversed([*batches, {'batch': pending['batch']}]):
+        assert client.post('/manage/add/undo', json=dict(csrf_token=csrf, batch=batch['batch'])).json == {'message': 'Undone'}
+    assert rows('SELECT count(*) FROM copy WHERE archived_at IS NULL') == [(0,)]
+    assert rows('SELECT count(*) FROM stock WHERE archived_at IS NULL') == [(0,)]
+    assert rows('SELECT count(*) FROM wish WHERE archived_at IS NULL') == [(0,)]
+    with closing(connect(path)) as db:
+        assert db.execute('PRAGMA foreign_key_check').fetchall() == [] and db.execute('PRAGMA integrity_check').fetchone()[0] == 'ok'
     assert offline == []

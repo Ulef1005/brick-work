@@ -526,22 +526,34 @@ def bw_add_csrf(data):
         abort(400, 'Invalid CSRF token')
 
 
+def _add_database(read_only=False):
+    """The collection for the Add screens. Opened without insisting on a catalogue, so a missing or inactive one is answered with the fix
+    (`add.require_catalogue`) instead of a failed request."""
+    from .admin_ops import brickwork_path
+    from ..core.admin import database
+    return database(brickwork_path(), read_only=read_only, require_catalogue=False)
+
+
 @web_page.get('/manage/add')
 @login_required
 def bw_add():
-    from .admin_ops import brickwork_path
-    from ..core.admin import database
     from ..core import add
-    error, colours, wishlists = None, [], []
+    from ..core.errors import CatalogueNotLoaded
+    error, colours, lists = None, [], []
     try:
-        with database(brickwork_path(), read_only=True) as db:
-            colours = add.colors(db)
-            from ..core.wishlists import listing
-            wishlists = listing(db)
+        with _add_database(read_only=True) as db:
+            colours, lists = add.colors(db), add.wishlists(db)
+            try:
+                add.require_catalogue(db)
+            except CatalogueNotLoaded as exc:
+                error = str(exc)
     except (ValueError, sqlite3.Error, OSError):
         error = 'Brick Work database is not available. Check BW_DB_PATH and try again.'
-    response = current_app.make_response(render_template('web/toni/web/bw_add.html',
-        types=add.TYPES, colours=colours, wishlists=wishlists, error=error, csrf_token=bw_add_token()))
+    from ..core import items
+    asked = request.args.get('type', '')
+    asked = items.TYPE_KIND.get(asked, asked) if len(asked) == 1 else asked          # old links carry the BrickLink letter
+    response = current_app.make_response(render_template('web/toni/web/bw_add.html', initial_kind=asked if asked in add.KIND_NAMES else 'set',
+        kinds=add.KIND_NAMES, colours=colours, wishlists=lists, error=error, csrf_token=bw_add_token()))
     response.headers['Cache-Control'] = 'no-store'
     return response
 
@@ -549,12 +561,10 @@ def bw_add():
 @web_page.get('/manage/add/search')
 @login_required
 def bw_add_search():
-    from .admin_ops import brickwork_path
-    from ..core.admin import database
     from ..core.add import search
     try:
-        with database(brickwork_path(), read_only=True) as db:
-            result = search(db, request.args.get('type', 'S'), request.args.get('q', '')[:100], request.args.get('sort', 'number'))
+        with _add_database(read_only=True) as db:
+            result = search(db, request.args.get('type', 'set'), request.args.get('q', '')[:100], request.args.get('sort', 'number'))
     except (ValueError, sqlite3.Error, OSError) as error:
         return jsonify(error=public(error, 'Catalogue is not available')), 400
     response = jsonify(result)
@@ -565,23 +575,18 @@ def bw_add_search():
 @web_page.post('/manage/add/review')
 @login_required
 def bw_add_review():
-    import base64
     import json
     import uuid
-    from .admin_ops import brickwork_path
-    from ..core.admin import database
     from ..core import add
     from ..core.sources.base import audit_origin, SourceError
-    from ..core.sources.brickognize import Brickognize, photo_bytes
     data = request.get_json(silent=True) if request.is_json else request.form
     data = data or {}
     bw_add_csrf(data)
-    kind, where, mode = data.get('type', 'S'), data.get('where', 'owned'), data.get('mode', 'paste')
-    if kind not in add.TYPES:
+    kind, where, mode = data.get('type', 'set'), data.get('where', 'owned'), data.get('mode', 'paste')
+    if kind not in add.KIND_NAMES:
         abort(400, 'Choose an item type')
     try:
-        with database(brickwork_path()) as db, audit_origin('app'):
-            photo = None
+        with _add_database() as db, audit_origin('app'):
             if mode == 'paste':
                 rows = add.paste(data.get('text', '')[:100000], kind)
             elif mode == 'file':
@@ -592,40 +597,35 @@ def bw_add_review():
                 if len(raw) > 2 * 1024 * 1024:
                     raise ValueError('Choose a file smaller than 2 MB')
                 rows = add.file_rows(raw, upload.filename or '', kind)
-            elif mode == 'photo':
-                upload = request.files.get('file')
-                if not upload:
-                    raise ValueError('Choose a photo')
-                photo = photo_bytes(upload.read(8 * 1024 * 1024 + 1))
-                candidates = Brickognize(db).predict(photo)
-                rows = [{**candidate, 'quantity': 1} for candidate in candidates]
-                if not rows:
-                    raise ValueError('Nothing identified · try another photo')
             elif mode == 'search':
                 rows = data.get('items', [])
                 if not isinstance(rows, list):
                     raise ValueError('Choose items from the search')
+            elif mode == 'photo':
+                raise ValueError('Photo recognition returns with the Identify screen · search or paste a number for now')
             else:
                 raise ValueError('Choose how to add')
-            proposal = add.resolve(db, rows, where, list_id=data.get('list_id') or 'default', map_wanted_ids=data.get('map_wanted_ids', 'true') not in (False, 'false'))
-            if photo:
-                scores = {(r['item_type'], r['item_no']): r['score'] for r in rows}
-                for row in proposal['items']:
-                    row['score'] = scores[row['item_type'], row['item_no']]
-            token = bw_add_signer().dumps(dict(**proposal, batch=uuid.uuid4().hex,
-                owner=bw_add_token(), photo=base64.b64encode(photo).decode() if photo else None, mode=mode))
-        return jsonify(**proposal, token=token, candidates=mode == 'photo')
+            proposal = add.resolve(db, rows, where, list_id=data.get('list_id') or 'default',
+                                   map_wanted_ids=data.get('map_wanted_ids', 'true') not in (False, 'false'))
+            token = bw_add_signer().dumps(dict(**proposal, batch=uuid.uuid4().hex, owner=bw_add_token(), mode=mode))
+        return jsonify(**proposal, token=token, candidates=False)
     except (ValueError, SourceError, sqlite3.Error, OSError, UnicodeError, json.JSONDecodeError, ET.ParseError) as error:
         return jsonify(error=public(error, 'Could not read this input')), 400
+
+
+def _add_receipt_view(receipt):
+    """What the page needs of a receipt: no row snapshots."""
+    keys = ('batch', 'index', 'item_id', 'kind', 'where', 'quantity', 'name', 'label', 'copies', 'job_id', 'fetch_job', 'pending', 'event_id')
+    view = {k: receipt.get(k) for k in keys}
+    view['stock'] = (receipt.get('stock') or {}).get('id')
+    view['wish'] = (receipt.get('wish') or {}).get('id')
+    return view
 
 
 @web_page.post('/manage/add/confirm')
 @login_required
 def bw_add_confirm():
-    import base64
     from itsdangerous import BadSignature
-    from .admin_ops import brickwork_path
-    from ..core.admin import database
     from ..core import add
     from ..core.sources.base import audit_origin
     data = request.get_json(silent=True) or {}
@@ -635,25 +635,17 @@ def bw_add_confirm():
         proposal = bw_add_signer().loads(data.get('token', ''), max_age=3600)
         if proposal['owner'] != bw_add_token():
             raise ValueError('Review this input again')
-        original = proposal['items']
-        if proposal['mode'] == 'photo':
-            selected = data.get('candidate')
-            if type(selected) is not int or not 0 <= selected < len(original):
-                raise ValueError('Choose a photo candidate first')
-            original = [original[selected]]
-        with database(brickwork_path()) as db, audit_origin('app'):
-            rows = add.validate_edits(db, original, data.get('items'), batch=proposal['batch'])
-            receipts = add.confirm(db, rows, batch=proposal['batch'],
-                photo=base64.b64decode(proposal['photo']) if proposal['photo'] else None,
-                keep_photo=data.get('keep_photo') is True)
+        with _add_database() as db, audit_origin('app'):
+            rows = add.validate_edits(db, proposal['items'], data.get('items'), batch=proposal['batch'])
+            receipts = add.confirm(db, rows, batch=proposal['batch'])
         if receipts:
             bw_start_worker()
-        return jsonify(receipts=receipts, batch=proposal['batch'])
+        return jsonify(receipts=[_add_receipt_view(r) for r in receipts], batch=proposal['batch'])
     except (BadSignature, ValueError, sqlite3.Error, OSError, TypeError, KeyError) as error:
         saved = []
         if proposal and proposal.get('owner') == bw_add_token():
             try:
-                with database(brickwork_path(), read_only=True) as db:
+                with _add_database(read_only=True) as db:
                     saved = add.receipts(db, proposal['batch'])
             except (ValueError, sqlite3.Error, OSError):
                 pass
@@ -661,21 +653,19 @@ def bw_add_confirm():
             bw_start_worker()
         message = (f'{len(saved)} items added · try again to finish this review' if saved else
                    public(error, 'Could not add · check the review and try again'))
-        return jsonify(error=message, receipts=saved), 400
+        return jsonify(error=message, receipts=[_add_receipt_view(r) for r in saved]), 400
 
 
 @web_page.post('/manage/add/undo')
 @login_required
 def bw_add_undo():
-    from .admin_ops import brickwork_path
-    from ..core.admin import database
     from ..core.add import undo
     data = request.get_json(silent=True) or {}
     bw_add_csrf(data)
     if not isinstance(data.get('batch'), str):
         abort(400)
     try:
-        with database(brickwork_path()) as db:
+        with _add_database() as db:
             undo(db, data['batch'])
     except ValueError as exc:
         return jsonify(error=public(exc, 'Could not undo · try again')), 400
@@ -685,13 +675,11 @@ def bw_add_undo():
 @web_page.get('/manage/add/jobs/<int:job>')
 @login_required
 def bw_add_job(job):
-    from .admin_ops import brickwork_path
-    from ..core.admin import database
-    with database(brickwork_path(), read_only=True) as db:
-        snapshot = db.execute("SELECT state FROM jobs WHERE id=? AND source='import'", (job,)).fetchone()
+    with _add_database(read_only=True) as db:
+        snapshot = db.execute('SELECT state FROM job WHERE id=?', (job,)).fetchone()
         if snapshot is None:
             abort(404)
-        steps = db.execute('SELECT * FROM import_steps WHERE job_id=? ORDER BY position', (job,)).fetchall()
+        steps = db.execute('SELECT * FROM job_step WHERE job_id=? ORDER BY position', (job,)).fetchall()
     # Only the safe step contract is returned; raw payloads and source keys stay server-side.
     done = sum(s['state'] == 'done' for s in steps)
     # The progress widget speaks started/progress/waiting/failed/done.
@@ -699,7 +687,7 @@ def bw_add_job(job):
     events = [dict(job_id=job, step=s['name'], state=shown.get(s['state'], s['state']),
         completed_steps=done, total_steps=len(steps), count=s['count'], total=s['total'],
         job_state=snapshot['state'], retry=s['state'] == 'failed',
-        message=s['error'] if s['state'] == 'failed' else 'Waiting for budget' if s['state'] == 'waiting_for_budget' else 'Importing · ' + s['name']) for s in steps]
+        message=s['error'] if s['state'] == 'failed' or (s['state'] == 'done' and s['error']) else 'Waiting for budget' if s['state'] == 'waiting_for_budget' else 'Importing · ' + s['name']) for s in steps]
     events.append(dict(job_id=job, step=None, state=snapshot['state'], completed_steps=done,
         total_steps=len(steps), message='Import complete' if snapshot['state'] == 'done' else 'Import needs attention' if snapshot['state'] == 'failed' else 'Waiting for budget' if snapshot['state'] == 'waiting_for_budget' else 'Import queued'))
     response = jsonify(events=events)
@@ -710,15 +698,18 @@ def bw_add_job(job):
 @web_page.post('/manage/add/jobs/<int:job>/retry')
 @login_required
 def bw_add_retry(job):
-    from .admin_ops import brickwork_path
-    from ..core.admin import database
     from ..core.pipeline import Pipeline
     from ..core.sources.base import audit_origin
     data = request.get_json(silent=True) or {}
     bw_add_csrf(data)
     try:
-        with database(brickwork_path()) as db, audit_origin('app'):
-            Pipeline(db).queue_retry(job, data.get('step'))
+        from ..store4 import jobs as fetch_jobs
+        with _add_database() as db, audit_origin('app'):
+            row = db.execute('SELECT kind FROM main.job WHERE id=?', (job,)).fetchone()
+            if row is not None and row['kind'] in fetch_jobs.KINDS:      # a fetch job of store4's runner (Fetch from Rebrickable)
+                fetch_jobs.requeue(db, job)
+            else:
+                Pipeline(db).queue_retry(job, data.get('step'))
         bw_start_worker()
         return jsonify(message='Queued')
     except ValueError:

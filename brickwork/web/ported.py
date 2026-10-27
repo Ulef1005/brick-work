@@ -10,7 +10,9 @@ PORTED = {'web.web_manifest', 'web.shell_worker'}
 # M.8b: the collection's read side. The jump search is a read; writes from these screens (`web.bw_collection_write`) are M.8d.
 PORTED |= {'index.index', 'web.bw_sets', 'web.bw_collection', 'web.bw_collection_item', 'web.bw_collection_item_by_number',
            'web.bw_collection_wishes', 'web.bw_collection_wish', 'web.bw_collection_lot', 'web.bw_collection_places', 'web.bw_collection_jump'}
-PIECE = 'M.8c to M.8j'
+# M.8c: Add (search, review, confirm, undo) and the progress of the jobs it queues.
+PORTED |= {'web.bw_add', 'web.bw_add_search', 'web.bw_add_review', 'web.bw_add_confirm', 'web.bw_add_undo', 'web.bw_add_job', 'web.bw_add_retry'}
+PIECE = 'M.8d to M.8j'
 
 
 def holding(what=None):

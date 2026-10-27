@@ -1,4 +1,4 @@
-"""Review 5 frame contracts on the migrated database fixture."""
+"""Review 5 frame contracts on the migrated database fixture (M.8d: the instruction screens). The Add frames moved to `test_bw_add.py` (M.8c)."""
 from pathlib import Path
 from bs4 import BeautifulSoup
 from tests.test_bw_collection import bw
@@ -8,20 +8,6 @@ from tests.web_fixtures import apps
 from tests.test_bw_admin import reset_shell_metadata_after_test
 
 ROOT = Path(__file__).resolve().parents[1]
-
-
-def test_add_review_frames(app, bw):
-    soup = BeautifulSoup(logged_in(app).get('/manage/add').data, 'html.parser')
-    assert not soup.select('.breadcrumb')
-    page = soup.select_one('#bw-add')
-    assert page.select_one('header h1').text == 'Add'
-    where = page.select_one('input[name=where]').find_parent('div')
-    assert 'bw-add-continuous' in where['class']
-    assert [i['value'] for i in where.select('input')] == ['owned', 'loose', 'wishlist']
-    assert not page.select('[data-filters], [data-filter-panel], [data-type-filter]')
-    assert page.select_one('fieldset[aria-label=How]')
-    assert not page.select_one('fieldset[aria-label=How] legend')
-    assert page.select_one('.bw-add-search-field input[aria-label]')
 
 
 def test_instruction_review_header_and_upload(app, bw):

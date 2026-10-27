@@ -42,6 +42,17 @@ def _meta(db, schema='main'):
         return None
 
 
+AUTOINCREMENT_TABLES = ('item_link', 'picture')      # integer keys a RowLog deletes from: a freed id must never be handed out again (#124)
+
+
+def check_ids_never_reused(db, path):
+    """Refuse a 4.0 file made before #124, whose `item_link` and `picture` ids were not AUTOINCREMENT: an undo of a merge or a kind move
+    could be refused falsely there. No such file is in production; the migration builds a new one."""
+    found = dict(db.execute("SELECT name, sql FROM main.sqlite_master WHERE type='table' AND name IN (?, ?)", AUTOINCREMENT_TABLES).fetchall())
+    if any('AUTOINCREMENT' not in (found.get(name) or '').upper() for name in AUTOINCREMENT_TABLES):
+        raise SchemaMismatch(f'{path} predates #124 (made before 2026-10-27): re-run the 3.3 \u2192 4.0 migration to rebuild it')
+
+
 def connect(path='brickwork.db', catalogue='catalogue.db', *, read_only=False):
     check_environment()
     path, catalogue = Path(path), Path(catalogue)
@@ -56,6 +67,7 @@ def connect(path='brickwork.db', catalogue='catalogue.db', *, read_only=False):
         if version != SCHEMA_VERSION:
             raise SchemaMismatch(f'{path} is not a Brick Work {SCHEMA_VERSION} collection (schema_version={version!r}); '
                                  'a 3.3 file must be migrated, never opened')
+        check_ids_never_reused(db, path)
         if read_only:
             db.execute('PRAGMA query_only=ON')
         else:

@@ -95,3 +95,51 @@ def test_a_kind_move_with_copies_undoes_after_a_new_copy_took_the_freed_rowid(co
     db.commit()
     assert db.execute("SELECT count(*) FROM main.copy WHERE id IN ('promo-copy','later-copy')").fetchone()[0] == 2
     assert before['stock'] == table_digest(db)['stock']
+
+
+def test_a_price_row_without_a_declared_key_is_found_by_its_unique_key(coll, world):
+    """`price_current` has no primary key, only a unique index; a price refresh after a merge takes the freed hidden rowid."""
+    db = coll.db
+    local, brick, red = coll.local('part', 'Local P', born_key='p1'), world.brick, world.red
+    coll.price(brick, '0.40', colour=red, condition='used', key='P:3001/5')                       # the survivor's row, the older one
+    coll.price(local, '1.00', colour=red, condition='used', key='P:p1/5')                         # the loser's meets it on the key: deleted
+    freed = db.execute('SELECT max(rowid) FROM main.price_current').fetchone()[0]
+    result = moves.merge(db, local, brick, via='cli')
+    assert db.execute('SELECT count(*) FROM main.price_current WHERE item_id=?', (local,)).fetchone()[0] == 0
+    coll.price(world.plate, '0.10', colour=world.white, condition='used', key='P:3023/1')         # the refresh: takes the freed rowid
+    assert db.execute('SELECT rowid FROM main.price_current WHERE item_id=?', (world.plate,)).fetchone()[0] == freed
+    moves.unmerge(db, result['merge_id'], via='cli')
+    assert db.execute('SELECT count(*) FROM main.price_current WHERE item_id=?', (local,)).fetchone()[0] == 1
+    assert db.execute('SELECT count(*) FROM main.price_current WHERE item_id=?', (world.plate,)).fetchone()[0] == 1
+
+
+def test_a_price_watch_row_moved_by_a_merge_is_moved_back(coll, world):
+    db = coll.db
+    local = coll.local('part', 'Local W', born_key='w1')
+    coll.sql("INSERT INTO price_watch(item_id,color_id,condition,origin) VALUES(?,?,'used','test')", (local, world.white))
+    result = moves.merge(db, local, world.brick, via='cli')
+    assert db.execute('SELECT count(*) FROM main.price_watch WHERE item_id=?', (world.brick,)).fetchone()[0] == 1
+    moves.unmerge(db, result['merge_id'], via='cli')
+    assert db.execute('SELECT count(*) FROM main.price_watch WHERE item_id=?', (local,)).fetchone()[0] == 1
+
+
+def test_a_fresh_file_opens_and_a_file_made_before_the_fix_is_refused(tmp_path):
+    import sqlite3
+    from contextlib import closing
+    from brickwork.store4.connect import connect
+    from brickwork.store4.errors import SchemaMismatch
+    from brickwork.store4.seeds import CollectionSeed
+    fresh, old = tmp_path / 'fresh.db', tmp_path / 'old.db'
+    connect(fresh).close()
+    connect(fresh, read_only=True).close()
+    CollectionSeed(fresh)
+    with closing(sqlite3.connect(fresh)) as source, closing(sqlite3.connect(old)) as target:
+        source.backup(target)
+        for name in ('item_link', 'picture'):
+            sql = target.execute("SELECT sql FROM sqlite_master WHERE name=?", (name,)).fetchone()[0]
+            target.execute('PRAGMA writable_schema=ON')
+            target.execute("UPDATE sqlite_master SET sql=? WHERE name=?", (sql.replace(' AUTOINCREMENT', ''), name))
+        target.commit()
+    for opener in (lambda: connect(old), lambda: connect(old, read_only=True), lambda: CollectionSeed(old)):
+        with pytest.raises(SchemaMismatch, match='predates #124.*re-run the 3.3'):
+            opener()

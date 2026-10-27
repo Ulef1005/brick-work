@@ -5,6 +5,8 @@ None}`; a row is the dict of its stored columns (generated columns left out) plu
 declared key at all; issue #124). `verify` says whether the
 database still holds every `a` (and still lacks every deleted row), which is the "nothing moved since" test of Undo; `restore` puts
 the `b` rows back in the reverse order, byte for byte. The log is plain JSON, so it is the receipt."""
+import re
+
 from .errors import Store4Error
 
 
@@ -32,20 +34,47 @@ class RowLog:
             self._cache['pk', table] = [name for _, name in rows]
         return self._cache['pk', table]
 
+    def unique_key(self, table):
+        """The stored columns of the table's first unique index, for a table with no declared primary key (`price_current`, `price_watch`),
+        else []. A generated key column (`color_key` = coalesce(color_id, 0)) stands for the stored columns its expression names."""
+        if ('unique', table) not in self._cache:
+            columns = []
+            for index in self.db.execute(f'PRAGMA main.index_list("{table}")'):
+                if index['unique'] and index['origin'] == 'c':
+                    stored = set(self.cols(table))
+                    sql = self.db.execute("SELECT sql FROM main.sqlite_master WHERE type='table' AND name=?", (table,)).fetchone()[0]
+                    for part in self.db.execute(f'PRAGMA main.index_xinfo("{index["name"]}")'):
+                        if not part['key'] or part['name'] is None:
+                            continue
+                        if part['name'] in stored:
+                            names = [part['name']]
+                        else:
+                            expression = re.search(rf'"?{re.escape(part["name"])}"?\s+\w+\s+GENERATED ALWAYS AS\s*\((.*?)\)\s*VIRTUAL', sql, re.S)
+                            names = [c for c in self.cols(table) if expression and re.search(rf'\b{re.escape(c)}\b', expression.group(1))]
+                        columns += [n for n in names if n not in columns]
+                    break
+            self._cache['unique', table] = columns
+        return self._cache['unique', table]
+
+    def key_columns(self, table):
+        """The columns that say which row this is when the rowid does not: the declared primary key, else the unique index."""
+        return self.pk(table) or self.unique_key(table)
+
     def rowid_key(self, table):
-        """Is the rowid the row's real key? Yes for an INTEGER PRIMARY KEY (it is the rowid) and for a table with no declared key. A table
-        with another declared key (a uuid, a composite) is located by that key: its hidden rowid is reused by SQLite after a delete and
-        renumbered by VACUUM, so it says nothing about which row this is (issue #124)."""
+        """Is the rowid the row's real key? Yes for an INTEGER PRIMARY KEY (it is the rowid) and for a table with neither a declared key nor
+        a unique index. Any other table is located by its key columns: a hidden rowid is reused by SQLite after a delete and renumbered by
+        VACUUM, so it says nothing about which row this is (issue #124)."""
         if ('rowid_key', table) not in self._cache:
             info = [r for r in self.db.execute(f'PRAGMA main.table_info("{table}")') if r['pk']]
-            self._cache['rowid_key', table] = self.has_rowid(table) and (not info or (len(info) == 1 and info[0]['type'].upper() == 'INTEGER'))
+            self._cache['rowid_key', table] = self.has_rowid(table) and (
+                (len(info) == 1 and info[0]['type'].upper() == 'INTEGER') or (not info and not self.unique_key(table)))
         return self._cache['rowid_key', table]
 
     def locator(self, table, row):
         if self.rowid_key(table):
             return 'rowid=?', [row['_rowid']]
-        pk = self.pk(table)
-        return ' AND '.join(f'"{c}"=?' for c in pk), [row[c] for c in pk]
+        key = self.key_columns(table)
+        return ' AND '.join(f'"{c}" IS ?' for c in key), [row[c] for c in key]
 
     def _same(self, table, found, expected):
         """Rows compare without a `_rowid` that is not the key (an older receipt carries one for every table with a rowid)."""
@@ -69,7 +98,7 @@ class RowLog:
         where, args = self.locator(table, row)
         marks = ', '.join(f'"{k}"=?' for k in sets)
         self.db.execute(f'UPDATE main."{table}" SET {marks} WHERE {where}', (*sets.values(), *args))
-        key = row if self.rowid_key(table) else {**row, **{c: sets[c] for c in self.pk(table) if c in sets}}
+        key = row if self.rowid_key(table) else {**row, **{c: sets[c] for c in self.key_columns(table) if c in sets}}
         after = self.get(table, key)
         if after is None:
             raise Store4Error(f'{table} row vanished during an update')
@@ -101,7 +130,7 @@ class RowLog:
         row = change['a'] if change['a'] is not None else change['b']
         if self.rowid_key(change['t']):
             return change['t'], row['_rowid']
-        return (change['t'], *[row[c] for c in self.pk(change['t'])])
+        return (change['t'], *[row[c] for c in self.key_columns(change['t'])])
 
     def verify(self):
         """The first change whose after-state is not what the database holds now, else None. A row changed twice (or deleted and its

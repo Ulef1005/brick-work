@@ -16,6 +16,7 @@ One task per page, for someone who already knows the app.
 - [Manage wishlists](manage-wishlists.md)
 - [Know where things are](storage.md)
 - [Pictures, prices and where they come from](pictures-and-prices.md)
+- [Links and the preferred number](links-and-preferred-numbers.md)
 - [Resolve unresolved items and merge items](merge-items.md)
 - [Sync with Rebrickable and Brickset](sync-collection.md)
 - [Import from BrickTracker](import-from-bricktracker.md)

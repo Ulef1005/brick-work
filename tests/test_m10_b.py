@@ -3,8 +3,9 @@ Unresolved items list. One test per screen state of design/approval/112-m10-b. I
 import re
 
 from bs4 import BeautifulSoup
+import pytest
 
-from brickwork.core import identity_admin
+from brickwork.core import errors, identity_admin
 from tests.app4 import STAMP, app4, client, coll, csrf, pair, read, world  # noqa: F401  (the fixtures)
 
 
@@ -98,6 +99,74 @@ def test_m10b3_merge_pick_preview_and_confirm_with_undo(coll, client, world):
     assert coll.db.execute('SELECT merged_into FROM main.item WHERE id=?', (local,)).fetchone()[0] is None
 
 
+def test_m10b3_the_preview_says_busy_when_the_database_is_locked(coll, client, world, pair, monkeypatch):
+    import sqlite3
+    from contextlib import closing
+    local = tie(coll, world)
+    monkeypatch.setattr(identity_admin, 'PREVIEW_WAIT_MS', 50)
+    with closing(sqlite3.connect(pair, isolation_level=None)) as other:
+        other.execute('BEGIN IMMEDIATE')                                   # a sync holding the write lock
+        soup = page(client, f'/collection/item/{local}/merge?target={world.brick}')
+        other.execute('ROLLBACK')
+    text = soup.select_one('.bi-preview').get_text(' ', strip=True)
+    assert 'Busy, try again' in text and 'sync or a job' in text and not soup.select_one('input[name=action][value=merge]')
+    assert soup.select_one('.bi-preview a.bi-btn')['href'].endswith(f'target={world.brick}')
+    assert 'What moves' in page(client, f'/collection/item/{local}/merge?target={world.brick}').get_text()      # and it works again once the lock is gone
+
+
+def test_m10b3_the_merge_page_is_closed_on_a_read_only_instance(coll, client, world, app4):
+    local = tie(coll, world)
+    app4.config['BW_READ_ONLY'] = True
+    response = client.get(f'/collection/item/{local}/merge')
+    assert response.status_code == 403 and b'Changes are switched off on this instance' in response.data
+
+
+def test_m10b2_set_preferred_every_branch(coll, world):
+    sheet = coll.item('parts', '003402')
+    coll.add_stock('part', sheet, colour=world.white, quantity=1)
+    db = coll.db
+    ids = {r['provider_key']: r['id'] for r in db.execute("SELECT id, provider_key FROM main.item_link WHERE item_id=? AND provider='bricklink'", (sheet,))}
+    # all colours: the chosen unscoped link is preferred, nothing else
+    result = identity_admin.set_preferred(db, ids['311.1stk01'])
+    assert [r['provider_key'] for r in db.execute('SELECT provider_key FROM main.item_link WHERE item_id=? AND preferred=1', (sheet,))] == ['311.1stk01']
+    # choosing another moves the mark
+    identity_admin.set_preferred(db, ids['312.3stk01'])
+    assert [r['provider_key'] for r in db.execute('SELECT provider_key FROM main.item_link WHERE item_id=? AND preferred=1', (sheet,))] == ['312.3stk01']
+    from tests.app4 import table_digest
+    before = table_digest(db)
+    # one colour: a scoped manual row of the user's own, the unscoped choice stays
+    event = identity_admin.set_preferred(db, ids['310.3stk01'], world.white)['event_id']
+    scoped = db.execute('SELECT status, method, origin, preferred, provider_key FROM main.item_link WHERE item_id=? AND color_id=?', (sheet, world.white)).fetchall()
+    assert [tuple(r) for r in scoped] == [('manual', 'user', 'user', 1, '310.3stk01')]
+    assert db.execute('SELECT preferred FROM main.item_link WHERE id=?', (ids['312.3stk01'],)).fetchone()[0] == 1
+    from brickwork.core import undo
+    undo.undo_event(db, event)                                                            # Undo restores exactly
+    assert table_digest(db) == before
+    assert db.execute('SELECT count(*) FROM main.item_link WHERE item_id=? AND color_id IS NOT NULL', (sheet,)).fetchone()[0] == 0
+    assert [r['provider_key'] for r in db.execute('SELECT provider_key FROM main.item_link WHERE item_id=? AND preferred=1', (sheet,))] == ['312.3stk01']
+    with pytest.raises(errors.ValidationFailed):                                           # a one-colour link cannot be preferred for all colours
+        identity_admin.set_preferred(db, _scoped(coll, world))
+    with pytest.raises(errors.NotFound):                                                   # a link that does not exist
+        identity_admin.set_preferred(db, 999999)
+    coll.link(world.brick, '3001q', kind='P', status='to_check')
+    with pytest.raises(errors.Conflict):                                                   # an unconfirmed link must be confirmed first
+        identity_admin.set_preferred(db, db.execute("SELECT id FROM main.item_link WHERE provider_key='3001q'").fetchone()[0])
+
+
+def _scoped(coll, world):
+    coll.link(world.brick, '3001s', kind='P', colour=world.red, status='matched')
+    return coll.db.execute("SELECT id FROM main.item_link WHERE provider_key='3001s'").fetchone()[0]
+
+
+def test_m10b2_a_link_that_does_not_belong_to_the_item_is_refused(coll, client, world):
+    sheet = coll.item('parts', '003402')
+    coll.add_stock('part', sheet, colour=world.white, quantity=1)
+    other = coll.db.execute("SELECT id FROM main.item_link WHERE item_id=? AND provider='bricklink' LIMIT 1", (world.brick,)).fetchone()
+    response = post(client, sheet, action='prefer', link=str(other['id']))
+    assert response.status_code == 302 and 'done=' not in response.headers['Location']
+    assert coll.db.execute('SELECT preferred FROM main.item_link WHERE id=?', (other['id'],)).fetchone()[0] == 0
+
+
 def test_m10b3_the_refusals_in_plain_words(coll, client, world):
     soup = page(client, f'/collection/item/{world.brick}/merge')                       # a live catalogue item cannot be merged away
     assert 'part of the catalogue' in soup.select_one('.bi-refusal').get_text()
@@ -116,8 +185,8 @@ def test_m10b3_the_refusals_in_plain_words(coll, client, world):
 def test_m10b4_a_merged_item_and_the_refusal_to_unmerge(coll, client, world):
     clean, changed = tie(coll, world), coll.local('part', 'Brick, old entry', born_key='3001-old')
     coll.add_stock('part', changed, colour=world.white, quantity=3, condition='new')
-    identity_admin.merge_item(coll.db, changed, world.brick)           # first: a later merge reuses the row ids this one freed, so it cannot be undone any more
-    identity_admin.merge_item(coll.db, clean, world.brick)
+    identity_admin.merge_item(coll.db, clean, world.brick)             # in either order: a freed row id is no longer reused (#124)
+    identity_admin.merge_item(coll.db, changed, world.brick)
     coll.sql('UPDATE main.stock SET quantity=quantity+1 WHERE item_id=? AND color_id=? AND condition=?', (world.brick, world.white, 'new'))
     redirect = client.get(f'/collection/item/{clean}')
     assert redirect.status_code == 301
@@ -160,6 +229,7 @@ def test_m10b5_unresolved_confirm_and_reject_rows(coll, client, world):
 
 def test_m10b6_the_unidentified_item_explains_and_offers_two_ways(coll, client, world):
     soup = page(client, f'/collection/item/{world.mystery}')
+    assert not soup.select('[data-module=matching] [data-bc-search]')                       # no empty search over 0 results
     card = soup.select_one('[data-identity-module=unidentified]').get_text(' ', strip=True)
     assert 'Not identified yet' in card and 'Price updates skip it' in card and 'BrickLink export' in card
     assert soup.select_one('[data-identity-module=unidentified] input[name=number]') and soup.select_one('[data-identity-module=unidentified] a[href$="/merge"]')

@@ -428,7 +428,7 @@ def identity_write(db, *, action, item=None, target=None, number=None, link=None
     if action == 'link':
         return identity.add_link(db, int(item), number)
     if action == 'prefer':
-        return identity.set_preferred(db, int(link), int(colour) if colour else None)
+        return identity.set_preferred(db, int(link), int(colour) if colour else None, int(item) if item else None)
     if action == 'unmerge':
         return identity.unmerge_item(db, int(merge))
     if action == 'settle':

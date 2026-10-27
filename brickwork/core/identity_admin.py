@@ -14,6 +14,7 @@ An item that nothing references and that has no candidate is not listed (a catal
 Add's leftover). Every decision is one transaction and one event with a receipt, and has an Undo (`core/undo`)."""
 import json
 import re
+import sqlite3
 
 from ..store4 import merge as moves
 from ..store4.connect import has_catalogue, now
@@ -269,16 +270,19 @@ def add_link(db, item_id, number):
     return _in(db, action)
 
 
-def set_preferred(db, link_id, color_id=None):
+def set_preferred(db, link_id, color_id=None, item_id=None):
     """Make a link the preferred one of its item and provider: for every colour (`color_id` None; the link must hold for every colour), or for
     one colour (design 3.2: a new colour-scoped `manual` row, or the item's scoped row of that key made preferred). The previous preferred link
-    of that scope loses the mark. One logged change, Undo puts every row back."""
+    of that scope loses the mark. `item_id`, when given, must be the link's item (the item page names its own). One logged change, Undo puts
+    every row back."""
     def action(db, *, via, actor, operation_key):
         log = RowLog(db)
         rows = log.select('item_link', 'id=?', (link_id,))
         if not rows:
             raise errors.NotFound(f'No link {link_id}')
         link = rows[0]
+        if item_id is not None and link['item_id'] != item_id:
+            raise errors.NotFound(f'Link {link_id} does not belong to item {item_id}')
         if link['status'] == 'to_check':
             raise errors.Conflict('Confirm this link before choosing it')
         scope = color_id if color_id is not None else link['color_id']
@@ -375,6 +379,7 @@ TABLE_WORDS = {'copy': 'copies', 'copy_figure': 'figure lines', 'copy_part': 'pa
                'fetched_inventory_part': 'fetched part list lines', 'fetched_inventory_figure': 'fetched figure lines', 'fetched_inventory': 'fetched part lists',
                'set_preference': 'part list choices', 'identification_action': 'identification notes', 'stock_transfer': 'stock transfers'}
 CONFIRMED_STATUS = ('manual', 'matched', 'inferred')
+PREVIEW_WAIT_MS = 1500
 
 
 def _store_of(db, item_id):
@@ -489,8 +494,19 @@ def merge_preview(db, loser, survivor):
     `dict(ok, refusal, rows, dropped, counts)`: `rows` = `[(table words, rows changed)]` biggest first; `dropped` = rows the survivor already
     has (kept as they are, the loser's go); `refusal` = plain-words reason, or None."""
     via, actor = origin()
-    out = dict(ok=False, refusal=None, rows=[], dropped=0, counts={})
-    db.execute('BEGIN IMMEDIATE')
+    out = dict(ok=False, refusal=None, busy=False, rows=[], dropped=0, counts={})
+    wait = db.execute('PRAGMA busy_timeout').fetchone()[0]
+    db.execute(f'PRAGMA busy_timeout={PREVIEW_WAIT_MS}')            # a screen must not hang behind a sync or a job that holds the write lock
+    try:
+        db.execute('BEGIN IMMEDIATE')
+    except sqlite3.OperationalError as exc:
+        if 'locked' not in str(exc) and 'busy' not in str(exc):
+            raise
+        out['busy'] = True
+        out['refusal'] = 'Brick Work is busy with something else, such as a sync or a job. Try again in a moment.'
+        return out
+    finally:
+        db.execute(f'PRAGMA busy_timeout={wait}')
     try:
         try:
             counts = moves.merge_in(db, int(loser), int(survivor), via=via, actor=actor, operation_key=None)['counts']

@@ -24,6 +24,8 @@ To change a storage later, select it in the list and press **Edit**, change the 
 
 The page's facts then show where it is. A part [lot](../concepts/collection-model.md) has its own page; editing its storage applies to the whole lot.
 
+If the edit gives a loose item the same item, colour, condition, lot and storage as another line of loose stock, the two lines merge into one and the notice says **Merged into existing stock**. Press **Undo** to split them again.
+
 ## Give many things a place
 
 On any **Collection** list:

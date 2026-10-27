@@ -571,7 +571,8 @@ def test_shared_figure_parts(coll, client, read, checked):
     if checked:
         assert all(t.startswith('1 part missing') for t in pills)
         assert not soup.select('a.bc-figure-status')
-        assert {a['href'] for a in soup.select('a.bc-check-figure')} == {f'/workbench/check-parts/{cid}/figure/M/{f}' for f in figures}
+        lines = {r[0] for r in coll.db.execute('SELECT id FROM copy_figure WHERE copy_id=?', (cid,))}
+        assert {a['href'] for a in soup.select('a.bc-check-figure')} == {f'/workbench/check-parts/{cid}/figure/{n}' for n in lines}
     else:
         assert all(t.startswith('Present') for t in pills)
         assert soup.select_one('[aria-label="Copy progress"] h3').get_text() == 'Parts not checked'

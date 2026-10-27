@@ -20,6 +20,8 @@ Go through one [copy](../concepts/collection-model.md) of a set part by part and
 
 Every answer saves as you go. You can close the page and come back later: the copy shows under **In progress** and its start screen offers **Resume check**. **Start over** starts a new pass.
 
+Checks that were in progress before the move to the 4.0 data model (Brick Work 4.0) are not carried over: the copy shows as **Not checked** and you start again. The counts you recorded stay. Switching a copy to another part list keeps a check in progress and its answers for every line the two lists share.
+
 Keyboard: **F** found all, **M** missing, **1 to 9** count, **S** skip, **Z** undo, **←** back, **→** or **Enter** next.
 
 ## What the check changes

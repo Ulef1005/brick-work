@@ -1,16 +1,19 @@
 """Standalone installation contract on the 4.0 store: real app and CLI, a fixture catalogue built offline, no sockets (M.8a, #110).
 
-What renders without ported modules: the install files, the login page, Add (M.8c) and (M.8b) the collection's read side: `/` and the collection lists
+What renders without ported modules: the install files, the login page, Add (M.8c), Check Set Parts and the collection's writes (M.8d) and (M.8b)
+the collection's read side: `/` and the collection lists
 (the first-run page on an empty collection), the item page by id, the wish, lot and purchase-place pages, the jump search. Every other browser
 screen answers 503 until its piece ports it. API v1 answers 410, except `/api/v1/health`."""
 from contextlib import closing
 import os
 from pathlib import Path
+import json
 import secrets
 import shutil
 import socket
 import sqlite3
 
+from bs4 import BeautifulSoup
 import pytest
 from flask import Flask
 
@@ -222,6 +225,77 @@ def test_the_add_workflow_adds_checks_and_undoes_every_kind(tmp_path, monkeypatc
     assert rows('SELECT count(*) FROM copy WHERE archived_at IS NULL') == [(0,)]
     assert rows('SELECT count(*) FROM stock WHERE archived_at IS NULL') == [(0,)]
     assert rows('SELECT count(*) FROM wish WHERE archived_at IS NULL') == [(0,)]
+    with closing(connect(path)) as db:
+        assert db.execute('PRAGMA foreign_key_check').fetchall() == [] and db.execute('PRAGMA integrity_check').fetchone()[0] == 'ok'
+    assert offline == []
+
+
+def test_the_checker_and_the_collection_writes_check_edit_and_undo(tmp_path, monkeypatch, offline):
+    """The check-set-parts and storage how-tos on a fixture pair, offline: check one copy's parts (missing, damaged-free, a figure, a spare),
+    Undo, then edit a copy (storage, condition, flags), archive and restore, merge loose stock by an edit, and Undo each."""
+    path = make_pair(tmp_path, rich=True)
+    with closing(connect(path)) as db:
+        w = build_world(Coll(db))
+    monkeypatch.setenv('BW_AUTHENTICATION_PASSWORD', 'synthetic-password')
+    client = logged_in(make_app(path, monkeypatch))
+    client.get('/workbench/check-parts')
+    with client.session_transaction() as session:
+        csrf = session['bw_add_csrf']
+
+    def rows(sql, *args):
+        with closing(connect(path, read_only=True)) as db:
+            return [tuple(r) for r in db.execute(sql, args)]
+
+    # Check Set Parts: choose the copy, start, answer every step, say yes to the spare, finish as checked
+    url = f'/workbench/check-parts/{w.copy_b}'
+    assert client.get('/workbench/check-parts').status_code == 200 and 'Start a check' in client.get(url).get_data(as_text=True)
+    assert client.post(url, data=dict(csrf_token=csrf, action='start', order='largest')).status_code == 302
+
+    def send(**payload):
+        reply = client.post(url, json=dict(csrf_token=csrf, operation=secrets.token_hex(8), **payload))
+        assert reply.status_code == 200, reply.json
+        return reply.json['state']
+    state = json.loads(BeautifulSoup(client.get(url + '?run=1').get_data(as_text=True), 'html.parser').select_one('script[data-check-state]').text)
+    session_id = state['session']['id']
+    order = state['session']['order']
+    tokens = {r['token']: r for r in state['rows']}
+    assert [tokens[t]['kind'] for t in order] == ['part', 'part', 'figure']
+    missing_token, found_token, figure_token = order
+    send(action='answer', session=session_id, token=missing_token, found=tokens[missing_token]['quantity'] - 1)          # one missing
+    send(action='answer', session=session_id, token=found_token, found=tokens[found_token]['quantity'])
+    send(action='answer', session=session_id, token=figure_token, found=tokens[figure_token]['quantity'])
+    assert send(action='spares', session=session_id, include=True)['session']['spares'] == 'yes'
+    spare = next(r for r in state['rows'] if r['kind'] == 'spare')['token']
+    send(action='answer', session=session_id, token=spare, found=0)                                                       # a missing spare is not a gap
+    done = send(action='finish', session=session_id, checked=True)
+    assert done['copy']['set_checked'] is True and done['session']['finished']
+    assert rows('SELECT missing, checked FROM copy_part WHERE id=?', int(missing_token[2:])) == [(1, 1)]
+    assert rows("SELECT count(*) FROM copy_flag cf JOIN flag f ON f.id=cf.flag_id WHERE cf.copy_id=? AND f.name='Set is checked'", w.copy_b) == [(1,)]
+    assert rows('SELECT completeness FROM copy WHERE id=?', w.copy_b) == [('sealed',)]                                    # a manual value stays
+    # Undo steps back through finish and the spare answer
+    send(action='undo', session=session_id)
+    send(action='undo', session=session_id)
+    assert rows("SELECT count(*) FROM copy_flag WHERE copy_id=?", w.copy_b) == [(0,)]
+    # the figure's own parts are a check of their own
+    figure_line = rows('SELECT id FROM copy_figure WHERE copy_id=?', w.copy_b)[0][0]
+    assert client.get(f'{url}/figure/{figure_line}').status_code == 200
+    # the collection's writes: edit a copy (storage, condition, flags), see it, Undo
+    saved = client.post('/collection/save/save', json=dict(csrf_token=csrf, entity='copy', ids=[w.copy_b], values=dict(storage_id=w.shelf, condition='used', flags=[w.tag], note='Checked')))
+    assert saved.status_code == 200, saved.json
+    assert rows('SELECT storage_id, condition, note FROM copy WHERE id=?', w.copy_b) == [(w.shelf, 'used', 'Checked')]
+    page = client.get(f'/collection/item/{w.keep}?copy={w.copy_b}').get_data(as_text=True)
+    assert 'Shelf A' in page and 'Used' in page
+    assert client.post('/collection/save/undo', json=dict(csrf_token=csrf, event_id=saved.json['event_id'])).json['message'] == 'Undone'
+    assert rows('SELECT storage_id, condition, note FROM copy WHERE id=?', w.copy_b) == [(None, 'new', None)]
+    # archive and restore through the same receipt, then a stock edit that merges into another line, and Undo
+    gone = client.post('/collection/save/archive', json=dict(csrf_token=csrf, entity='copy', ids=[w.copy_b], values={}))
+    assert gone.json['message'] == 'Set deleted' and client.get(f'/workbench/check-parts/{w.copy_b}').status_code == 404
+    assert client.post('/collection/save/undo', json=dict(csrf_token=csrf, event_id=gone.json['event_id'])).status_code == 200
+    merged = client.post('/collection/save/save', json=dict(csrf_token=csrf, entity='stock', ids=[w.stock_brick_new], values=dict(condition='used', storage_id=w.shelf, lot_id=w.bag)))
+    assert merged.json['message'] == 'Merged into existing stock'
+    assert rows('SELECT quantity FROM stock WHERE id=?', w.stock_brick) == [(5,)] and rows('SELECT archived_at IS NOT NULL FROM stock WHERE id=?', w.stock_brick_new) == [(1,)]
+    assert client.post('/collection/save/undo', json=dict(csrf_token=csrf, event_id=merged.json['event_id'])).status_code == 200
+    assert rows('SELECT quantity FROM stock WHERE id=?', w.stock_brick) == [(3,)] and rows('SELECT archived_at IS NULL FROM stock WHERE id=?', w.stock_brick_new) == [(1,)]
     with closing(connect(path)) as db:
         assert db.execute('PRAGMA foreign_key_check').fetchall() == [] and db.execute('PRAGMA integrity_check').fetchone()[0] == 'ok'
     assert offline == []

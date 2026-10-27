@@ -103,6 +103,12 @@ BASELINE = frozenset((
     'tests/test_ui_47b.py',
     'tests/test_ui_p6.py',
     'tests/test_web_unsigned_text.py',
+    # M.8d split these out of files it ported (tests that belong to a later piece moved, none was added): out of test_bw_collection.py
+    # the Matching / Take and Give tests (M.8e) and the colours action (M.8i), out of test_bw_core_fixes.py the part inventory (M.8e) and API (M.11) tests.
+    'tests/test_bw_collection_colours.py',
+    'tests/test_bw_collection_matching.py',
+    'tests/test_bw_core_fixes_api.py',
+    'tests/test_bw_core_fixes_part_inventory.py',
 ))
 
 

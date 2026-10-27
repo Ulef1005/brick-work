@@ -162,7 +162,7 @@
     let mode='part', count=null, current=null, undoStates=[], slowTimer, savedTimer;
     const stage=root.querySelector('[data-stage]'), history=root.querySelector('[data-history]'), body=root.querySelector('[data-check-body]'), status=root.querySelector('[data-save-status]'), retry=root.querySelector('[data-retry]'), saveUndo=root.querySelector('[data-save-undo]');
     const figureMode=!!state.figure;
-    const storageKey='bw-checker:'+state.copy.id+(figureMode?':fig:'+state.figure.item_type+':'+state.figure.item_no:'')+':'+state.session.id;
+    const storageKey='bw-checker:'+state.copy.id+(figureMode?':fig:'+state.figure.id:'')+':'+state.session.id;
     const stateKey=storageKey+':state';
     const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};
     const button=(label,action,token,primary=false)=>{const b=el('button',label,primary?'primary bw-primary':'');b.dataset.action=action;if(token)b.dataset.token=token;return b;};
@@ -209,7 +209,7 @@
       const s=state.session, copyStatus=root.querySelector('[data-copy-status]');
       if(copyStatus){
         const pill=el('span',undefined,'check-pill'),dot=el('span','●');dot.setAttribute('aria-hidden','true');pill.dataset.status=state.copy.completeness||'unknown';
-        pill.append(dot,el('span',({C:'Complete',I:'Incomplete',S:'Sealed'})[state.copy.completeness]||'Not checked'));copyStatus.replaceChildren(pill);
+        pill.append(dot,el('span',({complete:'Complete',incomplete:'Incomplete',sealed:'Sealed'})[state.copy.completeness]||'Not checked'));copyStatus.replaceChildren(pill);
         // 3e: a running check shows the set line, the name and the progress; the status pill returns at the finish.
         copyStatus.hidden=!(s&&s.finished);
       }
@@ -275,7 +275,7 @@
       const actions=el('div',undefined,'check-answer-nav');actions.append(button('Back','back'),button('Skip for later','skip',r.token),button('Undo','undo'));identity.append(actions);
       if(r.kind==='figure') {
         if(r.parts_missing>0)identity.append(el('p',r.parts_missing+(r.parts_missing===1?' part missing':' parts missing'),'check-figure-parts'));
-        if(r.parts_lines&&root.dataset.figureUrl){const link=el('a','Check figure parts','button');link.href=root.dataset.figureUrl.replace('TYPE',encodeURIComponent(r.item_type)).replace('NUMBER',encodeURIComponent(r.item_no));identity.append(link);}
+        if(r.parts_lines&&root.dataset.figureUrl){const link=el('a','Check figure parts','button');link.href=root.dataset.figureUrl.replace(/\/0$/,'/'+encodeURIComponent(r.id));identity.append(link);}
       }
       if(r.quantity===null)identity.append(el('p','Required count unavailable · resolve the inventory first.'));
       layout.append(identity);stage.append(layout);

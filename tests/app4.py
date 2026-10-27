@@ -323,3 +323,15 @@ def app4(pair, monkeypatch):
 @pytest.fixture
 def client(app4):
     return logged_in(app4)
+
+
+def csrf(client):
+    """The session's CSRF token (a page render sets it); what the browser scripts send back."""
+    client.get('/collection/sets')
+    with client.session_transaction() as session:
+        return session['bw_add_csrf']
+
+
+def post(client, token, action, **data):
+    """A write of the collection screens: `/collection/save/<action>` as the script sends it."""
+    return client.post('/collection/save/' + action, json=dict(csrf_token=token, **data))

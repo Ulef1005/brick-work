@@ -88,4 +88,5 @@ def _undo_switch(db, event, via, actor):
 register('copy', 'part_list_switch', _undo_switch)
 
 
-from . import add  # noqa: E402,F401 — registers the Add receipt's undoer (add imports this module first when it is the entry)
+# Each module below registers the undoers of what it writes (they import this module first when they are the entry).
+from . import add, checker, collection  # noqa: E402,F401

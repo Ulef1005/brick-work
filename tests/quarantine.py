@@ -11,14 +11,9 @@ listed runs.
 
 QUARANTINE = {
     # M.8d: Check Set Parts on part_check, collection writes, flags, photos
-    'tests/test_bw_48a.py': 'M.8d',
-    'tests/test_bw_checker.py': 'M.8d',
-    'tests/test_bw_collection.py': 'M.8d',
-    'tests/test_bw_core_fixes.py': 'M.8d',
-    'tests/test_bw_media_27.py': 'M.8d',
-    'tests/test_bw_ui_12f.py': 'M.8d',
-    'tests/test_ui_47b.py': 'M.8d',
     # M.8e: workbench, ledger, part inventory, lists
+    'tests/test_bw_collection_matching.py': 'M.8e',
+    'tests/test_bw_core_fixes_part_inventory.py': 'M.8e',
     'tests/test_bw_48c.py': 'M.8e',
     'tests/test_bw_49a.py': 'M.8e',
     'tests/test_bw_lists_43.py': 'M.8e',
@@ -60,10 +55,12 @@ QUARANTINE = {
     # M.8i: identity admin, merge/unmerge, settings, CLI, maintenance
     'tests/test_admin_ops.py': 'M.8i',
     'tests/test_bw_admin.py': 'M.8i',
+    'tests/test_bw_collection_colours.py': 'M.8i',
     'tests/test_bw_admin_csrf.py': 'M.8i',
     'tests/test_bw_small_68.py': 'M.8i',
     'tests/test_bw_ui_12m.py': 'M.8i',
     'tests/test_bw_ui_5049.py': 'M.8i',
+    'tests/test_ui_47b.py': 'M.8i',
     'tests/test_jump_and_rail.py': 'M.8i',
     'tests/test_safe_errors.py': 'M.8i',
     'tests/test_shell_46p.py': 'M.8i',
@@ -93,6 +90,8 @@ QUARANTINE = {
     'tests/test_bw_api_take_figure.py': 'M.11',
     'tests/test_bw_body_limits_62.py': 'M.11',
     'tests/test_bw_check_api_63.py': 'M.11',
+    'tests/test_bw_core_fixes_api.py': 'M.11',
+    'tests/test_bw_media_27.py': 'M.11',
     'tests/test_bw_review_followups.py': 'M.11',
     'tests/test_bw_security.py': 'M.11',
     'tests/test_bw_throttle.py': 'M.11',

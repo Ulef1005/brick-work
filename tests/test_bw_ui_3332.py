@@ -53,8 +53,9 @@ def test_figure_lines_and_image(coll, client, state):
     if missing:
         assert fig.select_one('.bc-check-figure')['title'] == 'Whole figure missing'
     else:
-        # The checker itself is the Check Set Parts screen: it answers once M.8d ports it, so only the link is pinned here.
-        assert fig.select_one('.bc-check-figure')['href'] == f'/workbench/check-parts/{copy}/figure/M/{figure}'
+        # The link names the figure line (`copy_figure.id`); the screen itself is tested in test_bw_checker.py.
+        line = coll.db.execute('SELECT id FROM copy_figure WHERE copy_id=? AND item_id=?', (copy, figure)).fetchone()[0]
+        assert fig.select_one('.bc-check-figure')['href'] == f'/workbench/check-parts/{copy}/figure/{line}'
         if state == 'parts-missing':
             assert fig.select_one('.bc-figure-parts').get_text() == torso
         else:

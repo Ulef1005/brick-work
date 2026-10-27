@@ -1,9 +1,8 @@
 """Collection projections and guarded receipts on the 4.0 store.
 
 The read side (M.8b, issue #110) is on the 4.0 collection: items are ids (`core/items.py` names them for a screen), copies and stock
-carry words (design 5.1), and a retired line (`retired_at`) is never a line of anything (design 4.4). The write side below it
-(`save`, `undo`, `photo`, `restore`, `new_lot`, `want_placeholder`) still speaks the 3.3 tables and waits for M.8d: its routes answer
-503 until then.
+carry words (design 5.1), and a retired line (`retired_at`) is never a line of anything (design 4.4). The write side (M.8d) is `save`,
+`new_lot`, `restore`, `photo`, `caption` and `want`: each makes ONE receipt event and `undo` reverses it (see "writes" below).
 """
 from .transaction import on_rollback, transaction
 from collections import defaultdict
@@ -17,17 +16,18 @@ from uuid import uuid4
 from urllib.parse import quote, urlencode
 
 from . import add, stock, collection_prices, errors, items
+from . import undo as undoing
 from .currency import configured_currency
-from .admin import audit
+from .admin import audit, origin
 from .completeness import derived_state
 from .sources.base import now
-from ..store4.connect import has_catalogue
+from ..store4 import identity
+from ..store4.connect import has_catalogue, now as stamp_now
 
 TYPES = {'S': 'Sets', 'M': 'Minifigures', 'P': 'Parts', 'I': 'Instructions',
          'O': 'Boxes', 'G': 'Gear', 'B': 'Books', 'C': 'Catalogs'}
 TYPE_KIND = {'S': 'set', 'M': 'minifigure', 'P': 'part', 'I': 'instructions', 'O': 'box', 'G': 'gear', 'B': 'book', 'C': 'catalog'}
 KIND_TYPE = {kind: letter for letter, kind in TYPE_KIND.items()}
-TABLES = {'copy': 'copies', 'stock': 'loose_stock', 'wish': 'wishlist', 'lot': 'lots'}      # the write side, until M.8d
 NO_COLOUR = 1                                                                                 # colour 1 is "no colour" (design 3.7)
 
 
@@ -639,7 +639,7 @@ def instruction_files(db, item_ids):
 def _used_in(db, item_id, colour, kind):
     """The live copies that hold the item: a part by its set lines and figure components, a figure by its figure lines."""
     if kind == 'minifigure':
-        found = db.execute('''SELECT c.id AS copy_id,c.item_id AS set_id,f.quantity,f.missing,0 AS damaged,NULL AS color_id
+        found = db.execute('''SELECT c.id AS copy_id,c.item_id AS set_id,f.id AS copy_figure_id,f.quantity,f.missing,0 AS damaged,NULL AS color_id
             FROM copy_figure f JOIN copy c ON c.id=f.copy_id WHERE f.item_id=? AND f.retired_at IS NULL AND c.archived_at IS NULL ORDER BY c.item_id,c.created_at,c.id''', (item_id,))
     else:
         found = db.execute('''SELECT c.id AS copy_id,c.item_id AS set_id,sum(p.quantity) AS quantity,sum(p.missing) AS missing,sum(p.damaged) AS damaged,p.color_id
@@ -818,149 +818,250 @@ def search(db, query, limit=20):
     return dict(query=query, results=rows[:limit], limit=limit, truncated=len(rows) > limit)
 
 
+# ---------- writes (M.8d): one receipt event per request, undone by one registered undoer ----------
+#
+# A request that changes the collection writes ONE event `(collection, -, <field>)` (field `save`, `archive`, `restore`, `photo` or
+# `caption`) whose `old_value` and `new_value` list the changed tables with the rows before and after (`receipt`). Undo
+# (`_undo_collection`, registered below) refuses unless every row still equals its `new_value`, then puts the `old_value` rows back
+# (a row the request created is archived) and writes `event_undo`. Row ids and columns are the 4.0 ones; a generated column is never
+# part of a receipt.
+
+LINK_TABLES = {'copy_flag': 'copy_id', 'stock_flag': 'stock_id', 'wish_flag': 'wish_id'}      # a flag link has no id: its owner column keys it
+ENTITY_FLAGS = {'copy': 'copy_flag', 'stock': 'stock_flag', 'wish': 'wish_flag'}
+RECEIPT_TABLES = {'copy', 'stock', 'wish', 'lot', 'wishlist', 'flag', 'storage', 'place', 'instruction_file', 'photo', *LINK_TABLES}
+RESTORABLE = {'copy', 'stock', 'wish', 'lot', 'wishlist', 'flag', 'storage', 'place', 'instruction_file', 'photo'}
+FIELDS = {
+    'copy': {'condition', 'storage_id', 'place_id', 'purchase_date', 'purchase_price', 'purchase_currency', 'note', 'completeness',
+             'completeness_source', 'current_value', 'current_value_currency'},
+    'stock': {'condition', 'storage_id', 'place_id', 'purchase_date', 'purchase_price', 'purchase_currency', 'note', 'lot_id'},
+    'wish': {'quantity', 'color_id', 'condition', 'max_price', 'max_price_currency', 'note', 'wishlist_id', 'qty_filled_manual'},
+    'lot': {'name', 'note', 'storage_id', 'place_id', 'purchase_date', 'purchase_price', 'purchase_currency'},
+}
+CONDITIONS = {'copy': (None, 'new', 'used'), 'stock': (None, 'new', 'used', 'damaged'), 'wish': (None, 'new', 'used', 'any'), 'lot': (None,)}
+PAIRS = (('purchase_price', 'purchase_currency'), ('current_value', 'current_value_currency'), ('max_price', 'max_price_currency'))
+STAMPED = ('copy', 'stock', 'wish', 'lot')                      # tables with `updated_at`
+
+
+def columns(db, table):
+    """The stored columns of a table (a generated column is derived, so it is neither kept in a receipt nor written back)."""
+    if table not in RECEIPT_TABLES:
+        raise ValueError('Unsupported record')
+    return [r['name'] for r in db.execute(f'PRAGMA main.table_xinfo({table})') if r['hidden'] == 0]
+
+
 def snapshot(db, table, ids):
-    return [dict(r) for r in db.execute('SELECT * FROM '+table+' WHERE id IN ('+','.join('?' for _ in ids)+') ORDER BY id', ids)]
+    names = ','.join(columns(db, table))
+    ids = [str(i) if table != 'instruction_file' else int(i) for i in ids]
+    return [dict(r) for r in db.execute(f'SELECT {names} FROM main.{table} WHERE id IN (SELECT value FROM json_each(?)) ORDER BY id', (json.dumps(ids),))]
 
 
-def receipt(db, changes, action):
-    audit(db, 'bw_collection', action, [dict(table=t, rows=old) for t,old,new in changes], [dict(table=t, rows=new) for t,old,new in changes])
+def links(db, table, owner):
+    owner_column = LINK_TABLES[table]
+    return [dict(r) for r in db.execute(f'SELECT * FROM main.{table} WHERE {owner_column}=? ORDER BY flag_id', (owner,))]
+
+
+def receipt(db, changes, field):
+    """Write the one event of a request: `changes` is `[(table, rows before, rows after)]`. Returns the event id."""
+    audit(db, 'collection', field, [dict(table=t, rows=old) for t, old, new in changes], [dict(table=t, rows=new) for t, old, new in changes])
     return db.execute('SELECT last_insert_rowid()').fetchone()[0]
 
 
-def want_placeholder(db, number):
-    """Keep unresolved identities wishable without sending them to a catalogue importer."""
-    with transaction(db):
-        from . import wishlists
-        wishlists.require(db)
-        if not db.execute("SELECT 1 FROM items WHERE item_type='?' AND item_no=?", (number,)).fetchone():
-            raise ValueError('Placeholder is unavailable')
-        if db.execute("SELECT 1 FROM wishlist WHERE item_type='?' AND item_no=? AND archived_at IS NULL", (number,)).fetchone():
-            raise ValueError('Already on the wishlist')
-        stamp = now().isoformat()
-        identifier = db.execute("""INSERT INTO wishlist(item_type,item_no,quantity,condition,added_at,updated_at)
-            VALUES('?',?,1,'any',?,?)""", (number, stamp, stamp)).lastrowid
-        return receipt(db, [('wishlist', [], snapshot(db, 'wishlist', [identifier]))], 'save')
+def _need_live(db, table, value, what):
+    if value is not None and not db.execute(f'SELECT 1 FROM main.{table} WHERE id=? AND archived_at IS NULL', (value,)).fetchone():
+        raise ValueError('Choose an active ' + what)
 
 
-def save(db, entity, ids, data, *, archive=False, expect=None):
-    table = TABLES.get(entity)
-    if not table or not isinstance(ids, list) or not ids or len(ids)>2000 or len(set(ids)) != len(ids):
+def _price(value, what='price'):
+    try:
+        number = Decimal(str(value))
+    except InvalidOperation:
+        raise ValueError(f'Enter a {what} of zero or more') from None
+    if not number.is_finite() or number < 0:
+        raise ValueError(f'Enter a {what} of zero or more')
+    return format(number, 'f')
+
+
+def _currency(value):
+    value = str(value).strip().upper()
+    if not re.fullmatch(r'[A-Z]{3,8}', value):
+        raise ValueError('Enter a currency of 3 to 8 letters')
+    return value
+
+
+def _pairs(db, edits, old):
+    """Money is decimal text with its currency, both or neither (design 2.4 invariant 12): clearing a price clears its currency, a price
+    with no currency takes the one the rows share, else the configured one, and a currency alone needs a price already there."""
+    for price, currency in PAIRS:
+        if price not in edits and currency not in edits:
+            continue
+        named = _currency(edits[currency]) if edits.get(currency) is not None else None
+        if price in edits:
+            if edits[price] is None:
+                if named is not None and price == 'max_price':
+                    raise ValueError('Enter a max price or clear the currency')
+                edits[currency] = None                           # a cleared price takes its currency with it
+            else:
+                edits[price] = _price(edits[price], 'max price' if price == 'max_price' else 'price')
+                shared = {r[currency] for r in old}
+                edits[currency] = named or (shared.pop() if len(shared) == 1 and None not in shared else configured_currency(db))
+        elif named is None:
+            raise ValueError('Enter a price or clear the currency')
+        elif any(r[price] is None for r in old):
+            raise ValueError('Enter a price before its currency')
+        else:
+            edits[currency] = named
+
+
+def save(db, entity, ids, data, *, archive=False):
+    """Edit or archive collection rows (copies, loose stock, wishes, lots), with their flags, under one receipt. Returns the event id.
+
+    `data` holds the column values to set (an empty string clears a column) and, for one row, `flags` (the flag ids the row should
+    have among the live flags; links to archived flags are left alone). Stock that ends up with another live row's merge key merges into
+    it (`stock.plan_edit`), and the receipt keeps both rows."""
+    table = entity if entity in FIELDS else None
+    if not table or not isinstance(ids, list) or not ids or len(ids) > 2000 or len(set(ids)) != len(ids):
         raise ValueError('Choose collection instances')
-    fields = {'condition','storage_id','purchase_location_id','purchase_date','purchase_price','purchase_currency','note'}
-    if entity == 'copy': fields |= {'completeness','completeness_source','current_value','current_value_currency'}
-    if entity == 'stock': fields |= {'lot_id'}
-    if entity == 'wish': fields = {'quantity','color_id','condition','max_price','max_price_currency','note','list_id','qty_filled_manual'}
-    if entity == 'lot': fields = {'name','note','storage_id','purchase_location_id','purchase_date','purchase_price','purchase_currency'}
-    if not isinstance(data,dict): raise ValueError('Choose fields to save')
-    edits = {k: (v if v != '' else None) for k,v in data.items() if k in fields}
+    if not isinstance(data, dict):
+        raise ValueError('Choose fields to save')
+    edits = {k: (v if v != '' else None) for k, v in data.items() if k in FIELDS[table]}
+    if 'list_id' in data and table == 'wish':                      # the 3.3 name of the wish's list, still sent by older pages
+        edits['wishlist_id'] = data['list_id'] or None
     if not edits and not archive and 'flags' not in data:
         raise ValueError('Choose a change to save')
     with transaction(db):
-        if expect is not None:
-            from .api_reads import entity_etag
-            from .errors import PreconditionFailed
-            if len(ids) != 1 or entity_etag(db, entity, ids[0]) not in expect and '*' not in expect:
-                raise PreconditionFailed()
         old = snapshot(db, table, ids)
         if len(old) != len(ids) or any(r['archived_at'] for r in old):
             raise ValueError('Instance is unavailable')
-        allowed_conditions = (None,'new','used','any') if entity=='wish' else ((None,'N','U','D') if entity=='stock' else (None,'N','U'))
-        if edits.get('condition') not in allowed_conditions:
+        if 'condition' in edits and edits['condition'] not in CONDITIONS[table]:
             raise ValueError('Choose a condition')
-        if edits.get('completeness') not in (None,'S','C','I') or edits.get('completeness_source') not in (None,'manual','derived'):
+        if edits.get('completeness') not in (None, 'sealed', 'complete', 'incomplete') or edits.get('completeness_source') not in (None, 'manual', 'derived'):
             raise ValueError('Choose completeness and its source')
-        for key, ref in [('storage_id','storages'),('purchase_location_id','purchase_locations'),('lot_id','lots')]:
-            value = edits.get(key)
-            if value is not None:
-                live = ' AND archived_at IS NULL'
-                if not db.execute('SELECT 1 FROM '+ref+' WHERE id=?'+live,(value,)).fetchone():
-                    raise ValueError('Choose an active '+key.replace('_id',''))
-        if 'qty_filled_manual' in edits and edits['qty_filled_manual'] is not None:
-            try: filled = int(str(edits['qty_filled_manual']))
-            except ValueError: raise ValueError('Enter how many you have as a whole number') from None
-            if filled < 0 or filled > 99999: raise ValueError('Enter how many you have as a whole number')
+        for key, ref, what in (('storage_id', 'storage', 'storage'), ('place_id', 'place', 'place'), ('lot_id', 'lot', 'lot')):
+            _need_live(db, ref, edits.get(key), what)
+        if edits.get('qty_filled_manual') is not None:
+            try:
+                filled = int(str(edits['qty_filled_manual']))
+            except ValueError:
+                raise ValueError('Enter how many you have as a whole number') from None
+            if not 0 <= filled <= 99999:
+                raise ValueError('Enter how many you have as a whole number')
             edits['qty_filled_manual'] = filled
-        for key in ('purchase_price','current_value','max_price'):
-            if edits.get(key) is not None:
-                try: value = Decimal(str(edits[key]))
-                except InvalidOperation: raise ValueError('Enter a price of zero or more') from None
-                if not value.is_finite() or value<0: raise ValueError('Enter a price of zero or more')
-                edits[key] = format(value,'f')
-        if entity=='wish' and ('max_price' in edits or 'max_price_currency' in edits):
-            currency = edits.get('max_price_currency')
-            if currency is not None:
-                currency = str(currency).strip().upper()
-                if not re.fullmatch(r'[A-Z]{3,8}', currency): raise ValueError('Enter a currency of 3 to 8 letters')
-            if 'max_price' in edits:
-                if edits['max_price'] is None:
-                    if currency is not None: raise ValueError('Enter a max price or clear the currency')
-                elif currency is None:
-                    # Keep the currency the wishes already share; otherwise the configured one.
-                    shared = {r['max_price_currency'] for r in old}
-                    currency = shared.pop() if len(shared)==1 and None not in shared else configured_currency(db)
-            else:
-                if currency is None or any(r['max_price'] is None for r in old): raise ValueError('Enter a max price before its currency')
-            if currency is not None or ('max_price' in edits and edits['max_price'] is None):
-                edits['max_price_currency'] = currency
-            else:
-                edits.pop('max_price_currency', None)
         if 'purchase_date' in edits and edits['purchase_date'] and any(r['purchase_date'] != edits['purchase_date'] for r in old):
-            try: datetime.fromisoformat(edits['purchase_date'].replace('Z','+00:00'))
-            except ValueError: raise ValueError('Enter a valid purchase date') from None
-        if entity=='wish':
-            if 'quantity' in edits: edits['quantity'] = add.quantity(edits['quantity'])
-            if 'color_id' in edits:
-                edits['color_id'] = int(edits['color_id']) if edits['color_id'] is not None else None
-                for row in old:
-                    if row['item_type']=='P' and not db.execute('SELECT 1 FROM colors WHERE color_id=?',(edits['color_id'],)).fetchone():
-                        raise ValueError('Choose a colour')
-                    if row['item_type']!='P' and edits['color_id'] is not None: raise ValueError('Only part wishes have a colour')
-        if entity == 'wish' and ('list_id' in edits or 'color_id' in edits):
-            from . import wishlists
-            if 'list_id' in edits: wishlists.require(db, edits['list_id'])
-            keys = [(edits.get('list_id',r['list_id']),r['item_type'],r['item_no'],edits.get('color_id',r['color_id'])) for r in old]
-            if len(set(keys)) != len(keys): raise errors.Conflict('Selected wishes repeat an item and colour')
-            for row in old: wish_collision(db, 'wishlist', dict(row, **edits))
-        flag_changes = None
+            try:
+                datetime.fromisoformat(edits['purchase_date'].replace('Z', '+00:00'))
+            except ValueError:
+                raise ValueError('Enter a valid purchase date') from None
+        _pairs(db, edits, old)
+        if table == 'wish':
+            _check_wish_edits(db, ids, old, edits)
+        if table == 'lot' and 'name' in edits and (edits['name'] is None or len(str(edits['name']).strip()) > 200):
+            raise ValueError('Name the lot')
+        changes = []
+        flag_change = None
         if 'flags' in data:
-            if entity not in ('copy','stock','wish') or len(ids)!=1 or not isinstance(data['flags'],list):
+            if table not in ENTITY_FLAGS or len(ids) != 1 or not isinstance(data['flags'], list):
                 raise ValueError('Edit flags on one instance')
-            flag_ids = set(data['flags'])
-            known = {r[0] for r in db.execute('SELECT id FROM flags WHERE archived_at IS NULL')}
-            if not flag_ids <= known: raise ValueError('Unknown flag')
-            flag_entity = 'wishlist' if entity=='wish' else entity
-            before = [dict(r) for r in db.execute('SELECT * FROM item_flags WHERE entity_type=? AND entity_id=? ORDER BY flag_id',(flag_entity,str(ids[0])))]
-            db.execute('DELETE FROM item_flags WHERE entity_type=? AND entity_id=?',(flag_entity,str(ids[0])))
-            db.executemany('INSERT INTO item_flags VALUES(?,?,?)',[(flag_entity,str(ids[0]),f) for f in sorted(flag_ids)])
-            after = [dict(r) for r in db.execute('SELECT * FROM item_flags WHERE entity_type=? AND entity_id=? ORDER BY flag_id',(flag_entity,str(ids[0])))]
-            flag_changes = ('item_flags',before,after)
-        if archive: edits['archived_at'] = now().isoformat()
-        if entity!='lot': edits['updated_at'] = now().isoformat()
-        if edits:
-            db.execute('UPDATE '+table+' SET '+','.join(k+'=?' for k in edits)+' WHERE id IN ('+','.join('?' for _ in ids)+')',(*edits.values(),*ids))
-        if entity=='copy':
-            # A manually chosen value remains manual unless the user explicitly chooses derived.
-            if data.get('completeness') and edits.get('completeness_source') not in ('manual','derived'):
-                db.execute('UPDATE copies SET completeness_source=\'manual\' WHERE id IN ('+','.join('?' for _ in ids)+')',ids)
-            if 'completeness' in data or 'completeness_source' in data or 'flags' in data:
-                if len(ids)!=1: raise ValueError('Edit completeness on one copy')
-                state = derived_state(db,ids[0])
-                if state is not None: db.execute('UPDATE copies SET completeness=? WHERE id=?',(state,ids[0]))
-        after = snapshot(db,table,ids)
-        if entity=='stock' and not archive:
-            old = stock.merge_edited(db, old, after)
-            ids = [r['id'] for r in old]
-            after = snapshot(db,table,ids)
-        changes = [(table,old,after)]
-        if flag_changes: changes.append(flag_changes)
-        return receipt(db,changes,'archive' if archive else 'save')
+            flag_change = _set_flags(db, table, str(ids[0]), set(data['flags']))
+        stamp = stamp_now()
+        written = dict(edits)
+        if archive:
+            written['archived_at'] = stamp
+        if table in STAMPED:
+            written['updated_at'] = stamp
+        everything = old
+        if table == 'stock' and edits and not archive:
+            plan = stock.plan_edit(db, old, edits)
+            everything = old + snapshot(db, 'stock', [t for _, t in plan if t is not None and t not in ids])
+            stock.apply_edit(db, old, edits, plan, stamp=stamp)
+        elif written:
+            if table == 'copy' and edits.get('completeness') is not None and len(ids) == 1 and 'completeness_source' not in edits:
+                row = old[0]
+                if row['completeness'] != edits['completeness'] or row['completeness_source'] != 'derived':
+                    written['completeness_source'] = 'manual'    # a value the user chose stays theirs; the same value of a derived copy stays derived
+            db.execute(f'UPDATE main.{table} SET ' + ','.join(f'{k}=?' for k in written) + ' WHERE id IN (SELECT value FROM json_each(?))', (*written.values(), json.dumps(ids)))
+        if table == 'copy':
+            if archive:
+                _release_pending(db, old)
+            if any(k in data for k in ('completeness', 'completeness_source', 'flags')):
+                if len(ids) != 1:
+                    raise ValueError('Edit completeness on one copy')
+                state = derived_state(db, ids[0])
+                if state is not None:
+                    db.execute('UPDATE main.copy SET completeness=? WHERE id=?', (state, ids[0]))
+        changes.append((table, everything, snapshot(db, table, [r['id'] for r in everything])))
+        if flag_change:
+            changes.append(flag_change)
+        return receipt(db, changes, 'archive' if archive else 'save')
+
+
+def _check_wish_edits(db, ids, old, edits):
+    if 'quantity' in edits:
+        edits['quantity'] = add.quantity(edits['quantity'])
+    if 'color_id' in edits:
+        colour = int(edits['color_id']) if edits['color_id'] is not None else None
+        edits['color_id'] = colour
+        for row in old:
+            if row['kind'] == 'part':
+                if colour is None:
+                    raise ValueError('Choose a colour')
+                try:
+                    identity.project_color(db, colour)
+                except Exception:
+                    raise ValueError('Choose a colour') from None
+            elif colour is not None:
+                raise ValueError('Only part wishes have a colour')
+    if 'wishlist_id' in edits:
+        _need_live(db, 'wishlist', edits['wishlist_id'], 'wishlist')
+        if edits['wishlist_id'] is None:
+            raise ValueError('Choose a wishlist')
+    if 'wishlist_id' in edits or 'color_id' in edits:
+        keys = [(edits.get('wishlist_id', r['wishlist_id']), r['item_id'], edits.get('color_id', r['color_id'])) for r in old]
+        if len(set(keys)) != len(keys):
+            raise errors.Conflict('Selected wishes repeat an item and colour')
+        for row in old:
+            wish_collision(db, 'wish', dict(row, **{k: v for k, v in edits.items() if k in ('wishlist_id', 'color_id')}))
+
+
+def _set_flags(db, table, owner, wanted):
+    """Make the live flags on a row exactly `wanted`. Returns the receipt change for the link table, or None when nothing changed."""
+    link = ENTITY_FLAGS[table]
+    live = {r[0] for r in db.execute('SELECT id FROM main.flag WHERE archived_at IS NULL')}
+    if not wanted <= live:
+        raise ValueError('Unknown flag')
+    before = links(db, link, owner)
+    held = {r['flag_id'] for r in before}
+    column = LINK_TABLES[link]
+    for flag in sorted((held & live) - wanted):
+        db.execute(f'DELETE FROM main.{link} WHERE {column}=? AND flag_id=?', (owner, flag))
+    for flag in sorted(wanted - held):
+        db.execute(f'INSERT INTO main.{link}({column}, flag_id) VALUES(?, ?)', (owner, flag))
+    after = links(db, link, owner)
+    return (link, before, after) if before != after else None
+
+
+def _release_pending(db, old):
+    """An archived copy no longer waits for a BrickLink list (the cancel is its own event, as the Add undo makes it)."""
+    from ..store4 import pending
+    via, actor = origin()
+    for row in old:
+        if row['inventory_pending']:
+            pending.cancel_pending_in(db, row['id'], via=via, actor=actor)
+
+
+def wish_collision(db, table, row):
+    """Refuse, with a clear message, a wish write that would duplicate another live wish of the same list, item and colour."""
+    if table != 'wish' or row.get('archived_at') is not None:
+        return
+    if db.execute('SELECT 1 FROM main.wish WHERE archived_at IS NULL AND id!=? AND wishlist_id=? AND item_id=? AND color_id IS ?',
+                  (row['id'], row['wishlist_id'], row['item_id'], row['color_id'])).fetchone():
+        raise errors.Conflict('Another live wish for this item and colour exists · archive or edit it first')
 
 
 def merge_result(db, event_id=None, *, receipt=None):
-    """Expose destinations from the committed receipt, without changing save's API."""
-    event = receipt if receipt is not None else db.execute('SELECT old_value,new_value FROM events WHERE id=?',(event_id,)).fetchone()
+    """The live stock rows a save merged other rows into, read from its committed receipt (empty when nothing merged)."""
+    event = receipt if receipt is not None else db.execute('SELECT old_value,new_value FROM main.event WHERE id=?', (event_id,)).fetchone()
     before, after = json.loads(event['old_value']), json.loads(event['new_value'])
-    if before[0]['table'] != 'loose_stock':
+    if before[0]['table'] != 'stock':
         return []
     old = {r['id']: r for r in before[0]['rows']}
     rows = after[0]['rows']
@@ -968,87 +1069,130 @@ def merge_result(db, event_id=None, *, receipt=None):
     return [r for r in rows if not r['archived_at'] and stock.merge_key(r) in keys]
 
 
-def undo(db, event_id, *, receipt=None):
-    with transaction(db):
-        event = receipt if receipt is not None else db.execute("SELECT * FROM events WHERE id=? AND entity='bw_collection' AND field IN ('save','archive','restore','photo','caption','attach','label')",(event_id,)).fetchone()
-        if not event: raise ValueError('Save is unavailable')
-        if db.execute("SELECT 1 FROM events WHERE entity='bw_collection' AND field='undo' AND new_value=?",(json.dumps(int(event_id)),)).fetchone():
-            return
-        before, after = json.loads(event['old_value']),json.loads(event['new_value'])
-        # Receipts written before named lists implicitly belong to the default list.
-        for change in before + after:
-            if change['table'] == 'wishlist':
-                for row in change['rows']: row.setdefault('list_id', 'default')
-        restored_lists = {r['id'] for change in before if change['table']=='wishlists' for r in change['rows'] if r['archived_at'] is None}
-        active_lists = {r[0] for r in db.execute('SELECT id FROM wishlists WHERE archived_at IS NULL')} if any(c['table']=='wishlist' for c in before) else set()
-        for change in before:
-            if change['table']=='wishlist' and any(r['archived_at'] is None and r.get('list_id','default') not in active_lists | restored_lists for r in change['rows']):
-                raise ValueError('Restore the destination wishlist before Undo')
-        for old,new in zip(before,after):
-            table = new['table']
-            if table == 'wishlists' and not old['rows']:
-                if db.execute('SELECT 1 FROM wishlist WHERE list_id=? AND archived_at IS NULL', (new['rows'][0]['id'],)).fetchone():
-                    raise ValueError('Wishlist changed · undo its wishes first')
-            if table not in {*TABLES.values(),'item_flags','item_images','flags','purchase_locations','storages','instruction_files','wishlists'}: raise ValueError('Unsupported receipt')
-            if table=='item_flags':
-                sample = (new['rows'] or old['rows'])[0] if new['rows'] or old['rows'] else None
-                current = [dict(r) for r in db.execute('SELECT * FROM item_flags WHERE entity_type=? AND entity_id=? ORDER BY flag_id',(sample['entity_type'],sample['entity_id']))] if sample else []
-            else: current = snapshot(db,table,[r['id'] for r in new['rows']])
-            if current != new['rows']: raise ValueError('Item changed · undo the later save first')
-        for old,new in reversed(list(zip(before,after))):
-            table = old['table']
-            if table=='item_flags':
-                sample = (new['rows'] or old['rows'])[0] if new['rows'] or old['rows'] else None
-                if sample:
-                    db.execute('DELETE FROM item_flags WHERE entity_type=? AND entity_id=?',(sample['entity_type'],sample['entity_id']))
-                    db.executemany('INSERT INTO item_flags(entity_type,entity_id,flag_id) VALUES(?,?,?)',[(r['entity_type'],r['entity_id'],r['flag_id']) for r in old['rows']])
-            elif not old['rows']:
-                # Images have no archive field. Undo detaches the association; the local bytes remain.
-                if table=='item_images':
-                    db.execute('DELETE FROM item_images WHERE id=?',(new['rows'][0]['id'],))
-                elif table in {*TABLES.values(), 'flags', 'purchase_locations', 'storages', 'instruction_files','wishlists'}:
-                    db.executemany('UPDATE '+table+' SET archived_at=? WHERE id=?',[(now().isoformat(),r['id']) for r in new['rows']])
-                else: raise ValueError('Unsupported created record')
-            else:
-                for r in old['rows']:
+# ---------- undo ----------
+
+def _undo_collection(db, event, via, actor):
+    """Put every row of a receipt back as it was. Refused whole when any row differs from what the request left (undo the later save
+    first); a row the request created is archived, a flag link set is replaced."""
+    before, after = json.loads(event['old_value']), json.loads(event['new_value'])
+    changed = 'Item changed · undo the later save first'
+    pairs = list(zip(before, after))
+    for old, new in pairs:
+        table = new['table']
+        if table not in RECEIPT_TABLES:
+            raise ValueError('Unsupported receipt')
+        if table in LINK_TABLES:
+            sample = (new['rows'] or old['rows'])[0] if new['rows'] or old['rows'] else None
+            current = links(db, table, sample[LINK_TABLES[table]]) if sample else []
+        else:
+            current = snapshot(db, table, [r['id'] for r in new['rows']])
+        if current != new['rows']:
+            raise ValueError(changed)
+        if table == 'wishlist' and not old['rows'] and db.execute('SELECT 1 FROM main.wish WHERE wishlist_id=? AND archived_at IS NULL', (new['rows'][0]['id'],)).fetchone():
+            raise ValueError('Wishlist changed · undo its wishes first')
+    restored_lists = {r['id'] for old, new in pairs if old['table'] == 'wishlist' for r in old['rows'] if r['archived_at'] is None}
+    for old, new in pairs:
+        if old['table'] == 'wish':
+            for r in old['rows']:
+                if r['archived_at'] is None and r['wishlist_id'] not in restored_lists and not db.execute(
+                        'SELECT 1 FROM main.wishlist WHERE id=? AND archived_at IS NULL', (r['wishlist_id'],)).fetchone():
+                    raise ValueError('Restore the destination wishlist before Undo')
+    stamp = stamp_now()
+    try:
+        _put_back(db, pairs, stamp)
+    except sqlite3.IntegrityError:                                      # a row that would now duplicate a live one (stock key, wish key)
+        raise ValueError(changed) from None
+    audit(db, 'collection', 'undo', None, dict(undoes=event['id']), via=via, actor=actor)
+    undo_id = db.execute('SELECT last_insert_rowid()').fetchone()[0]
+    db.execute('INSERT INTO main.event_undo(event_id, undo_event_id) VALUES(?, ?)', (event['id'], undo_id))
+    return {'event_id': undo_id}
+
+
+def _put_back(db, pairs, stamp):
+    for old, new in reversed(pairs):
+        table = old['table']
+        if table in LINK_TABLES:
+            sample = (new['rows'] or old['rows'])[0] if new['rows'] or old['rows'] else None
+            if sample:
+                column = LINK_TABLES[table]
+                db.execute(f'DELETE FROM main.{table} WHERE {column}=?', (sample[column],))
+                db.executemany(f'INSERT INTO main.{table}({column}, flag_id) VALUES(?, ?)', [(r[column], r['flag_id']) for r in old['rows']])
+        elif not old['rows']:                                           # created by the request: archived, never deleted
+            names = columns(db, table)
+            if 'archived_at' not in names:
+                raise ValueError('Unsupported created record')
+            sets = 'archived_at=?' + (', updated_at=?' if 'updated_at' in names else '')
+            db.executemany(f'UPDATE main.{table} SET {sets} WHERE id=?', [((stamp, stamp, r['id']) if 'updated_at' in names else (stamp, r['id'])) for r in new['rows']])
+        else:
+            names = [c for c in columns(db, table) if c != 'id']
+            for r in old['rows']:
+                if table == 'wish':
                     wish_collision(db, table, r)
-                    db.execute('UPDATE '+table+' SET '+','.join(k+'=?' for k in r if k!='id')+' WHERE id=?',(*[v for k,v in r.items() if k!='id'],r['id']))
-        audit(db,'bw_collection','undo',int(event_id),int(event_id))
+                db.execute(f'UPDATE main.{table} SET ' + ','.join(f'{c}=?' for c in names) + ' WHERE id=?', (*[r[c] for c in names], r['id']))
+
+
+for _field in ('save', 'archive', 'restore', 'photo', 'caption'):
+    undoing.register('collection', _field, _undo_collection)
+
+
+def undo(db, event_id, *, receipt=None):
+    """Undo a collection receipt (or any event with a registered undoer) by its event id; a second Undo of the same event does nothing."""
+    via, actor = origin()
+    return undoing.undo_event(db, int(event_id), via=via, actor=actor)
+
+
+# ---------- photos, lots, restore, wishes ----------
+
+def _photo_id():
+    """A photo id is a hex text that is never all digits, so `/manage/images/<id>` can tell it from a picture's number."""
+    while True:
+        identifier = uuid4().hex
+        if not identifier.isdigit():
+            return identifier
 
 
 def photo(db, root, entity, identifier, content, caption):
+    """Keep an own photo of a copy or loose stock row: the file under data/images/own, the row in `photo`. Undo archives the row; the
+    file stays (it is the user's)."""
     from io import BytesIO
     from PIL import Image, UnidentifiedImageError
-    if entity not in ('copy','stock'): raise ValueError('Choose an owned instance')
-    if not content or len(content)>15*1024*1024: raise ValueError('Choose a photo up to 15 MB')
+    if entity not in ('copy', 'stock'):
+        raise ValueError('Choose an owned instance')
+    if not content or len(content) > 15 * 1024 * 1024:
+        raise ValueError('Choose a photo up to 15 MB')
     try:
-        image = Image.open(BytesIO(content)); image.verify()
+        image = Image.open(BytesIO(content))
+        image.verify()
         image = Image.open(BytesIO(content))
     except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError):
         raise ValueError('Choose a readable photo') from None
-    # The header gives the size: refuse an oversized photo before decoding it into memory.
-    if image.width*image.height>30_000_000: raise ValueError('Choose a smaller photo')
+    if image.width * image.height > 30_000_000:                          # the header gives the size: refuse before decoding into memory
+        raise ValueError('Choose a smaller photo')
     try:
         image.load()
     except (OSError, ValueError, Image.DecompressionBombError):
         raise ValueError('Choose a readable photo') from None
     root = Path(root).resolve()
-    relative = 'data/images/own/'+uuid4().hex+'.jpg'
-    target = root/relative
-    if not target.resolve().is_relative_to(root/'data/images'):
+    photo_id = _photo_id()
+    relative = 'data/images/own/' + photo_id + '.jpg'
+    target = root / relative
+    if not target.resolve().is_relative_to(root / 'data/images'):
         raise ValueError('Photo storage is unavailable')
     with transaction(db):
-        row = snapshot(db,TABLES[entity],[identifier])
-        if not row or row[0]['archived_at']: raise ValueError('Instance is unavailable')
-        r=row[0]
-        target.parent.mkdir(parents=True,exist_ok=True)
-        if not target.resolve().is_relative_to(root/'data/images'): raise ValueError('Photo storage is unavailable')
+        row = snapshot(db, entity, [identifier])
+        if not row or row[0]['archived_at']:
+            raise ValueError('Instance is unavailable')
+        owner = row[0]
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if not target.resolve().is_relative_to(root / 'data/images'):
+            raise ValueError('Photo storage is unavailable')
         try:
-            image.convert('RGB').save(target,'JPEG',quality=90)
-            on_rollback(db,lambda: target.unlink(missing_ok=True))
-            cur=db.execute('''INSERT INTO item_images(item_type,item_no,color_id,source,kind,local_path,width,height,fetched_at,copy_id,stock_id,caption,taken_at)
-                VALUES(?,?,?,'manual','own',?,?,?,?,?,?,?,?)''',(r['item_type'],r.get('set_no',r.get('item_no')),r.get('color_id'),relative,image.width,image.height,now().isoformat(),identifier if entity=='copy' else None,identifier if entity=='stock' else None,caption,None))
-            return receipt(db,[('item_images',[],snapshot(db,'item_images',[cur.lastrowid]))],'photo')
+            image.convert('RGB').save(target, 'JPEG', quality=90)
+            on_rollback(db, lambda: target.unlink(missing_ok=True))
+            db.execute('''INSERT INTO main.photo(id,item_id,color_id,copy_id,stock_id,local_path,width,height,caption,taken_at,created_at)
+                          VALUES(?,?,?,?,?,?,?,?,?,NULL,?)''', (photo_id, owner['item_id'], owner.get('color_id'), identifier if entity == 'copy' else None,
+                                                                 identifier if entity == 'stock' else None, relative, image.width, image.height, caption or None, stamp_now()))
+            return receipt(db, [('photo', [], snapshot(db, 'photo', [photo_id]))], 'photo')
         except BaseException:
             target.unlink(missing_ok=True)
             raise
@@ -1056,30 +1200,82 @@ def photo(db, root, entity, identifier, content, caption):
 
 def caption(db, identifier, value):
     with transaction(db):
-        old=snapshot(db,'item_images',[identifier])
-        if not old or old[0]['kind']!='own': raise ValueError('Own photo is unavailable')
-        db.execute('UPDATE item_images SET caption=? WHERE id=?',(value,identifier))
-        return receipt(db,[('item_images',old,snapshot(db,'item_images',[identifier]))],'caption')
+        old = snapshot(db, 'photo', [identifier])
+        if not old or old[0]['archived_at']:
+            raise ValueError('Own photo is unavailable')
+        db.execute('UPDATE main.photo SET caption=? WHERE id=?', (str(value).strip() or None, identifier))
+        return receipt(db, [('photo', old, snapshot(db, 'photo', [identifier]))], 'caption')
 
 
 def new_lot(db, ids, data):
-    """Assign existing stock to a new lot, without changing its quantities."""
-    if not isinstance(ids,list) or not ids or len(ids)>2000 or len(set(ids))!=len(ids):
+    """Assign existing loose stock to a new lot, without changing its quantities; rows that then share a merge key merge."""
+    if not isinstance(ids, list) or not ids or len(ids) > 2000 or len(set(ids)) != len(ids):
         raise ValueError('Select loose stock for this lot')
-    name=str(data.get('name','')).strip()
-    if not name or len(name)>200: raise ValueError('Name the lot')
-    storage=data.get('storage_id') or None
+    name = str(data.get('name', '')).strip()
+    if not name or len(name) > 200:
+        raise ValueError('Name the lot')
+    storage = data.get('storage_id') or None
     with transaction(db):
-        old=snapshot(db,'loose_stock',ids)
-        if len(old)!=len(ids) or any(r['archived_at'] for r in old): raise ValueError('Stock is unavailable')
-        if storage and not db.execute('SELECT 1 FROM storages WHERE id=? AND archived_at IS NULL',(storage,)).fetchone():
-            raise ValueError('Choose active storage')
-        identifier=uuid4().hex
-        db.execute('INSERT INTO lots(id,name,note,created_date,storage_id) VALUES(?,?,?,?,?)',
-            (identifier,name,data.get('note'),now().isoformat(),storage))
-        db.execute('UPDATE loose_stock SET lot_id=?,updated_at=? WHERE id IN ('+','.join('?' for _ in ids)+')',
-            (identifier,now().isoformat(),*ids))
-        return receipt(db,[('lots',[],snapshot(db,'lots',[identifier])),('loose_stock',old,snapshot(db,'loose_stock',ids))],'save')
+        old = snapshot(db, 'stock', ids)
+        if len(old) != len(ids) or any(r['archived_at'] for r in old):
+            raise ValueError('Stock is unavailable')
+        _need_live(db, 'storage', storage, 'storage')
+        identifier = uuid4().hex
+        stamp = stamp_now()
+        db.execute('INSERT INTO main.lot(id,name,note,storage_id,created_at,updated_at) VALUES(?,?,?,?,?,?)', (identifier, name, data.get('note') or None, storage, stamp, stamp))
+        edits = {'lot_id': identifier}
+        plan = stock.plan_edit(db, old, edits)
+        everything = old + snapshot(db, 'stock', [t for _, t in plan if t is not None and t not in ids])
+        stock.apply_edit(db, old, edits, plan, stamp=stamp)
+        return receipt(db, [('lot', [], snapshot(db, 'lot', [identifier])), ('stock', everything, snapshot(db, 'stock', [r['id'] for r in everything]))], 'save')
+
+
+def restore(db, table, identifier):
+    """Restore an archived collection or location row under a receipt. A wish or stock row that would now duplicate a live one is refused."""
+    if table not in RESTORABLE:
+        raise ValueError('Unsupported record')
+    with transaction(db):
+        before = snapshot(db, table, [identifier])
+        if not before:
+            raise ValueError('Record is unavailable')
+        row = before[0]
+        if row['archived_at'] is None:
+            raise ValueError('Record is already active')
+        if table == 'wish':
+            _need_live(db, 'wishlist', row['wishlist_id'], 'wishlist')
+            wish_collision(db, table, dict(row, archived_at=None))
+        if table == 'stock' and row['kind'] != 'minifigure' and stock_key_taken(db, row):
+            raise errors.Conflict('Another live stock line has the same item, colour, condition, lot and storage · edit that line instead')
+        names = columns(db, table)
+        db.execute(f'UPDATE main.{table} SET archived_at=NULL' + (', updated_at=?' if 'updated_at' in names else '') + ' WHERE id=?',
+                   ((stamp_now(), identifier) if 'updated_at' in names else (identifier,)))
+        return receipt(db, [(table, before, snapshot(db, table, [identifier]))], 'restore')
+
+
+def stock_key_taken(db, row):
+    return db.execute('''SELECT 1 FROM main.stock WHERE archived_at IS NULL AND kind!='minifigure' AND id!=? AND item_id=? AND color_key=coalesce(?, 0)
+                         AND condition_key=coalesce(?, '') AND lot_key=coalesce(?, '') AND storage_key=coalesce(?, '')''',
+                      (row['id'], row['item_id'], row['color_id'], row['condition'], row['lot_id'], row['storage_id'])).fetchone() is not None
+
+
+def want(db, item_id, colour=None):
+    """Put an existing item (an unidentified figure, say) on the default wishlist under a receipt. A part needs its colour."""
+    with transaction(db):
+        item = db.execute('SELECT id,kind FROM main.item WHERE id=? AND merged_into IS NULL', (item_id,)).fetchone()
+        if item is None:
+            raise ValueError('Item is unavailable')
+        if item['kind'] == 'part' and colour is None:
+            raise ValueError('Choose a colour')
+        if item['kind'] != 'part':
+            colour = None
+        row = dict(wishlist_id='default', item_id=item['id'], color_id=colour)
+        if db.execute('SELECT 1 FROM main.wish WHERE archived_at IS NULL AND wishlist_id=? AND item_id=? AND color_id IS ?', tuple(row.values())).fetchone():
+            raise errors.Conflict('Already on the wishlist')
+        stamp = stamp_now()
+        identifier = uuid4().hex
+        db.execute('''INSERT INTO main.wish(id,wishlist_id,kind,item_id,color_id,quantity,condition,added_at,updated_at) VALUES(?,?,?,?,?,1,'any',?,?)''',
+                   (identifier, 'default', item['kind'], item['id'], colour, stamp, stamp))
+        return receipt(db, [('wish', [], snapshot(db, 'wish', [identifier]))], 'save')
 
 
 def matching_headline(matches):
@@ -1103,28 +1299,3 @@ def defects(missing=0, damaged=0):
     """One unsigned defect label for server-rendered and materialized rows."""
     return ' · '.join(f'{count} {label}' for count, label in
                       ((missing, 'missing'), (damaged, 'damaged')) if count)
-
-
-def wish_collision(db, table, row):
-    """Refuse, with a clear message, a wish write that would duplicate another live wish."""
-    if table != 'wishlist' or row.get('archived_at') is not None:
-        return
-    if db.execute('SELECT 1 FROM wishlist WHERE archived_at IS NULL AND id!=? AND item_type=? AND item_no=? AND color_id IS ? AND list_id=?',
-                  (row['id'], row['item_type'], row['item_no'], row['color_id'], row.get('list_id','default'))).fetchone():
-        raise errors.Conflict('Another live wish for this item and colour exists · archive or edit it first')
-
-
-def restore(db, table, identifier):
-    """Restore an archived collection or location row with a guarded receipt."""
-    if table not in {*TABLES.values(), 'flags', 'purchase_locations', 'storages', 'instruction_files'}:
-        raise ValueError('Unsupported record')
-    with transaction(db):
-        before = snapshot(db, table, [identifier])
-        if not before: raise ValueError('Record is unavailable')
-        if before[0]['archived_at'] is None: raise ValueError('Record is already active')
-        if table == 'wishlist':
-            from . import wishlists
-            wishlists.require(db, before[0]['list_id'])
-        wish_collision(db, table, dict(before[0], archived_at=None))
-        db.execute('UPDATE '+table+' SET archived_at=NULL WHERE id=?', (identifier,))
-        return receipt(db, [(table,before,snapshot(db,table,[identifier]))], 'restore')

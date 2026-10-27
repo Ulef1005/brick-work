@@ -447,17 +447,26 @@ def bw_export():
 
 
 @web_page.get('/manage/images/<int:image_id>')
+@web_page.get('/manage/images/<image_id>')
 @login_required
 def bw_image(image_id):
+    """A picture of an item (`picture`, a cache: a number) or an own photo (`photo`: a hex text that is never all digits), by file.
+
+    Catalogue pictures are fetched by jobs (M.8f) and nothing is cached before that: a number with no row answers 404, like a row whose file is gone."""
     from .admin_ops import brickwork_path
     from ..core.admin import database
+    from ..core.media import root_for
     from flask import send_file
     path = brickwork_path()
+    image_id = str(image_id)
+    own = not image_id.isdigit()
+    if own and not re.fullmatch(r'[0-9a-f]{32}', image_id):
+        abort(404)
     with database(path, read_only=True) as db:
-        row = db.execute('SELECT local_path FROM item_images WHERE id=?', (image_id,)).fetchone()
+        row = (db.execute('SELECT local_path FROM photo WHERE id=? AND archived_at IS NULL', (image_id,)) if own
+               else db.execute('SELECT local_path FROM picture WHERE id=?', (int(image_id),))).fetchone()
     if not row:
         abort(404)
-    from ..core.media import root_for
     root = root_for(path)
     target = (root / row[0]).resolve()
     if not target.is_relative_to(root / 'data/images') or not target.is_file():
@@ -468,7 +477,10 @@ def bw_image(image_id):
         from ..core import thumbnails
         if width not in {str(w) for w in thumbnails.WIDTHS}:
             abort(400)
-        target, mimetype = thumbnails.lookup(root, image_id, int(width), target)
+        if own:                                                         # the original of an own photo is what is shown, at any width
+            width = None
+    if width is not None:
+        target, mimetype = thumbnails.lookup(root, int(image_id), int(width), target)
     response = send_file(target, mimetype=mimetype, max_age=86400)
     response.cache_control.public = None
     response.cache_control.private = True
@@ -480,13 +492,13 @@ def bw_image(image_id):
 def bw_instruction_download(identifier):
     from .admin_ops import brickwork_path
     from ..core.admin import database
+    from ..core.media import root_for
     from flask import send_file
     path = brickwork_path()
     with database(path, read_only=True) as db:
-        row = db.execute('SELECT path FROM instruction_files WHERE id=? AND archived_at IS NULL', (identifier,)).fetchone()
+        row = db.execute('SELECT path FROM instruction_file WHERE id=? AND archived_at IS NULL', (identifier,)).fetchone()
     if not row:
         abort(404)
-    from ..core.media import root_for
     root = root_for(path)
     target = (root / row[0]).resolve()
     if not target.is_relative_to(root / 'data/instructions') or not target.is_file():
@@ -722,11 +734,10 @@ def bw_check_parts():
     from .admin_ops import brickwork_path
     from ..core import checker
     from ..core.admin import database
-    path = brickwork_path()
     error, copies = None, []
     try:
-        with database(path, read_only=True) as db:
-            copies = checker.choices(db, _media(path))
+        with database(brickwork_path(), read_only=True) as db:
+            copies = checker.choices(db)
     except (ValueError, sqlite3.Error, OSError):
         error = 'Brick Work database is not available. Check BW_DB_PATH and try again.'
     response = current_app.make_response(render_template('web/toni/web/bw_checker.html', copies=copies, state=None, error=error, csrf_token=bw_add_token()))
@@ -740,10 +751,9 @@ def bw_check_copy(copy_id):
     from .admin_ops import brickwork_path
     from ..core import checker
     from ..core.admin import database
-    path = brickwork_path()
     try:
-        with database(path, read_only=True) as db:
-            state = checker.view(db, copy_id, _media(path))
+        with database(brickwork_path(), read_only=True) as db:
+            state = checker.view(db, copy_id)
     except ValueError as error:
         abort(404, str(error))
     response = current_app.make_response(render_template('web/toni/web/bw_checker.html', state=state, error=None, csrf_token=bw_add_token()))
@@ -751,17 +761,16 @@ def bw_check_copy(copy_id):
     return response
 
 
-@web_page.get('/workbench/check-parts/<copy_id>/figure/<minifig_type>/<minifig_no>')
+@web_page.get('/workbench/check-parts/<copy_id>/figure/<int:copy_figure_id>')
 @login_required
-def bw_check_figure(copy_id, minifig_type, minifig_no):
-    """Check figure parts: one whole figure's own parts inside a copy (4.8a)."""
+def bw_check_figure(copy_id, copy_figure_id):
+    """Check figure parts: one whole figure line's own parts inside a copy (4.8a)."""
     from .admin_ops import brickwork_path
     from ..core import checker
     from ..core.admin import database
-    path = brickwork_path()
     try:
-        with database(path, read_only=True) as db:
-            state = checker.figure_view(db, copy_id, _media(path), minifig_type, minifig_no)
+        with database(brickwork_path(), read_only=True) as db:
+            state = checker.figure_view(db, copy_id, copy_figure_id)
     except ValueError as error:
         abort(404, str(error))
     response = current_app.make_response(render_template('web/toni/web/bw_checker.html', state=state, error=None, csrf_token=bw_add_token()))
@@ -824,10 +833,10 @@ def bw_check_write(copy_id):
     return bw_check_save(copy_id)
 
 
-@web_page.post('/workbench/check-parts/<copy_id>/figure/<minifig_type>/<minifig_no>')
+@web_page.post('/workbench/check-parts/<copy_id>/figure/<int:copy_figure_id>')
 @login_required
-def bw_check_figure_write(copy_id, minifig_type, minifig_no):
-    return bw_check_save(copy_id, (minifig_type, minifig_no))
+def bw_check_figure_write(copy_id, copy_figure_id):
+    return bw_check_save(copy_id, copy_figure_id)
 
 
 def bw_check_save(copy_id, figure=None):
@@ -838,7 +847,6 @@ def bw_check_save(copy_id, figure=None):
     origin = request.headers.get('Origin')
     if (origin and origin.rstrip('/') != request.host_url.rstrip('/')) or request.headers.get('Sec-Fetch-Site') == 'cross-site':
         abort(403)
-    path = brickwork_path()
     payload = request.get_json(silent=True) if request.is_json else dict(request.form)
     if not isinstance(payload, dict):
         return jsonify(error='Choose a checker action'), 400
@@ -848,17 +856,18 @@ def bw_check_save(copy_id, figure=None):
         payload['operation'] = uuid.uuid4().hex
         if payload.get('action') not in ('start', 'restart'):
             abort(400)
+    back = url_for('web.bw_check_figure', copy_id=copy_id, copy_figure_id=figure) if figure else url_for('web.bw_check_copy', copy_id=copy_id)
     try:
-        with database(path) as db:
-            state = checker.write(db, copy_id, payload, _media(path), figure)
+        with database(brickwork_path()) as db:
+            state = checker.write(db, copy_id, payload, figure)
     except (ValueError, sqlite3.Error, OSError) as error:
         message = public(error, 'The answer could not be saved. Retry.')
         if not request.is_json:
             flash(message, 'bw-checker')
-            return redirect(url_for('web.bw_check_figure', copy_id=copy_id, minifig_type=figure[0], minifig_no=figure[1]) if figure else url_for('web.bw_check_copy', copy_id=copy_id))
+            return redirect(back)
         return jsonify(error=message), 409
     if not request.is_json:
-        return redirect(url_for('web.bw_check_figure', copy_id=copy_id, minifig_type=figure[0], minifig_no=figure[1]) if figure else url_for('web.bw_check_copy', copy_id=copy_id, run=1))
+        return redirect(back if figure else url_for('web.bw_check_copy', copy_id=copy_id, run=1))
     response = jsonify(state=state)
     response.headers['Cache-Control'] = 'no-store'
     return response
@@ -1304,6 +1313,8 @@ def bw_collection_item_by_number(kind, number):
 
 
 def bw_collection_detail_response(detail, choices, title):
+    for photo in detail.get('photos', ()):                                 # an own photo is served by the image route, by its text id
+        photo['url'] = url_for('web.bw_image', image_id=photo['id'])
     response = current_app.make_response(render_template('web/toni/web/bw_collection_detail.html',
         title=title, detail=detail, choices=choices, csrf_token=bw_add_token(), can_edit=bw_collection_editable()))
     response.headers['Cache-Control'] = 'no-store'
@@ -1386,12 +1397,14 @@ def bw_collection_places():
 def bw_collection_write(action):
     from .admin_ops import brickwork_path
     from ..core.admin import database
-    from ..core import collection, workbench
+    from ..core import collection
     if not bw_collection_editable(): abort(403,'Changes are switched off on this instance')
     data = request.get_json(silent=True) if request.is_json else request.form.to_dict()
     if not isinstance(data,dict): abort(400,'Choose a change')
     bw_add_csrf(data)
     result = {}
+    if action in ('transfer', 'take'):                           # Take and Give are the workbench's (M.8e)
+        return jsonify(message='Take and Give come back with the workbench · nothing was saved'), 503
     try:
         with database(brickwork_path()) as db:
             if action in ('save','archive'):
@@ -1406,20 +1419,12 @@ def bw_collection_write(action):
                             r=merged[0]
                             result['url'] = url_for('web.bw_collection_item',item_id=r['item_id'],stock=r['id'],**({'colour':r['color_id']} if r['color_id'] is not None else {}))
             elif action=='wish':
-                event=collection.want_placeholder(db,data.get('item_no'))
+                event=collection.want(db,int(data['item_id']),data.get('color_id'))
                 message='Added to wishlist'
             elif action=='undo':
                 event=int(data['event_id'])
-                row=db.execute('SELECT entity FROM events WHERE id=?',(event,)).fetchone()
-                if row and row[0]=='bw_workbench': workbench.undo(db,event)
-                else: collection.undo(db,event)
+                collection.undo(db,event)
                 message='Undone'
-            elif action=='transfer':
-                event=workbench.transfer(db,data['source_id'],data['copy_id'],data['target'],data['target_id'],data['quantity'])
-                message='Saved'
-            elif action=='take':
-                event=workbench.take_for_gap(db,data['copy_id'],data['item_type'],data['item_no'],data['color_id'],data['quantity'])
-                message='Took '+str(int(data['quantity']))
             elif action=='photo':
                 upload=request.files.get('photo')
                 event=collection.photo(db,_media(brickwork_path()),data['entity'],data['identifier'],upload.read(15*1024*1024+1) if upload else b'',data.get('caption',''))
@@ -1428,7 +1433,7 @@ def bw_collection_write(action):
                 event=collection.new_lot(db,data['ids'],data)
                 message='Lot created'
             elif action=='caption':
-                event=collection.caption(db,int(data['identifier']),data.get('caption',''))
+                event=collection.caption(db,str(data['identifier']),data.get('caption',''))
                 message='Caption saved'
             else: abort(404)
     except (ValueError,KeyError,TypeError,sqlite3.Error,OSError) as exc:

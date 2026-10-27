@@ -83,7 +83,7 @@ def test_six_figure_states(coll, figure_world, client, state):
         row = used_row(soup, w.copy_a)
         assert row.select_one('.bc-used-identity>.mono').get_text() == '1000-1 · Set 1'
         check = row.select_one('a.bc-check-figure')
-        assert check['href'] == f'/workbench/check-parts/{w.copy_a}/figure/M/{item}'
+        assert check['href'] == '/workbench/check-parts/%s/figure/%s' % (w.copy_a, coll.db.execute('SELECT id FROM copy_figure WHERE copy_id=? AND item_id=?', (w.copy_a, item)).fetchone()[0])
     if state == 'parts-missing':
         assert used_row(soup, w.copy_a).select_one('[data-figure-state=parts-missing]').get_text() == '1 part missing'
         assert used_row(soup, w.copy_b).select_one('[data-figure-state=present]').get_text() == 'Present'

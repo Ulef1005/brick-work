@@ -6,6 +6,7 @@ from xml.etree import ElementTree as ET
 from werkzeug.exceptions import HTTPException
 
 from .safe_errors import public
+from ..store4.errors import Store4Error
 from flask import Blueprint, abort, current_app, g, flash, jsonify, redirect, render_template, request, session, url_for
 from flask_login import login_required
 
@@ -630,6 +631,19 @@ def bw_add_search():
     response = jsonify(result)
     response.headers['Cache-Control'] = 'no-store'
     return response
+
+
+@web_page.get('/manage/add/picture-known')
+@login_required
+def bw_add_picture_known():
+    """The review's picture warning for a part in a colour the person just chose (design 6.8)."""
+    from ..core.add import picture_warning
+    try:
+        row = dict(kind='part', item_id=int(request.args['item_id']), color_id=int(request.args['color_id']))
+        with _add_database(read_only=True) as db:
+            return jsonify(no_picture=picture_warning(db, row))
+    except (KeyError, ValueError, sqlite3.Error, OSError):
+        return jsonify(error='Choose a part and a colour'), 400
 
 
 @web_page.post('/manage/add/review')
@@ -1587,10 +1601,64 @@ def bw_collection_write(action):
             elif action=='caption':
                 event=collection.caption(db,str(data['identifier']),data.get('caption',''))
                 message='Caption saved'
+            elif action in ('part-list','part-list-cancel','part-list-accept'):
+                event,message=_part_list_write(db,action,data)
             else: abort(404)
+    except Store4Error as exc:
+        return jsonify(message=str(exc)),400
     except (ValueError,KeyError,TypeError,sqlite3.Error,OSError) as exc:
         return jsonify(message=public(exc, 'Nothing was saved · review the values and try again')),400
     return jsonify(event_id=event,message=message,**result)
+
+
+def _part_list_write(db,action,data):
+    """The copy page's Part list writes (design 4.4, decision F): switch a copy in place (with "use this for new copies of this set" when
+    asked), cancel a pending BrickLink switch, accept a ready one. Returns `(event id or None, message)`; only a switch can be undone."""
+    from ..core.admin import origin
+    from ..store4 import copies, pending, part_list_read
+    via,actor=origin()
+    copy_id=str(data['copy_id'])
+    if action=='part-list-cancel':
+        pending.cancel_pending(db,copy_id,via=via,actor=actor)
+        return None,"Cancelled · the copy keeps Rebrickable's list"
+    if action=='part-list-accept':
+        receipt=pending.accept_pending(db,copy_id,via=via,actor=actor)
+        return receipt['event_id'],"Switched to BrickLink's list"
+    choice=part_list_read.parse_choice(data.get('choice',''))
+    if choice['source']=='bricklink':                                       # at once with a fetched list, else the copy waits on a queued job
+        done=pending.request_bricklink(db,copy_id,via=via,actor=actor)
+        receipt=done.get('receipt')
+    else:
+        receipt=copies.switch_part_list(db,copy_id,choice,via=via,actor=actor)
+    if receipt is None:
+        message="Fetching BrickLink's list · the copy switches when it arrives"
+    else:
+        counts=receipt.get('counts') or {}
+        message='Part list switched · %d added, %d retired'%(counts.get('lines_insert',0),counts.get('lines_retire',0))
+    if data.get('preference') in (True,'true','on'):
+        set_item=db.execute('SELECT item_id FROM main.copy WHERE id=?',(copy_id,)).fetchone()[0]
+        newest=next((v['is_latest'] for v in copies.part_list_choices(db,set_item)['rebrickable'] if v['version']==choice.get('version')),False)
+        copies.set_part_list_preference(db,set_item,{'source':choice['source'],'version':None if newest else choice.get('version')},via=via,actor=actor)
+        message+=' · used for new copies of this set'
+    return (receipt['event_id'] if receipt else None),message
+
+
+@web_page.get('/collection/copy/<copy_id>/part-list')
+@login_required
+def bw_copy_part_list(copy_id):
+    """The Switch sheet's body for one copy (design 4.4), loaded when the sheet opens: the choices and, for each, what it would change."""
+    from .admin_ops import brickwork_path
+    from ..core.admin import database
+    from ..core import collection
+    if not bw_collection_editable(): abort(403,'Changes are switched off on this instance')
+    try:
+        with database(brickwork_path(),read_only=True) as db:
+            sheet=collection.part_list_sheet(db,copy_id,choose=request.args.get('choose'))
+    except (Store4Error,ValueError) as exc:
+        abort(404,str(exc))
+    response=current_app.make_response(render_template('web/toni/brickwork/part_list_sheet.html',sheet=sheet,copy_id=copy_id,csrf_token=bw_add_token()))
+    response.headers['Cache-Control']='no-store'
+    return response
 
 
 @web_page.get('/collection/jump')

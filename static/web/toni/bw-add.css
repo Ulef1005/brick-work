@@ -46,5 +46,46 @@
 .bw-add-search-field:focus-within{outline:2px solid var(--tw-accent)}
 .bw-add-search-field .icon{width:18px;height:18px;flex:none;color:var(--tw-text-muted)}
 #bw-add [data-search]{flex:1;width:100%;min-width:0;min-height:0;background:none;border:0;padding:0;font:400 16px var(--tw-font)}
-/* A missing picture: the number, clipped, on a dashed surface tile. */
+/* M.10 A · the Part list picker and the picture warning in the review (design 4.3, 6.8). */
+.bw-add-part-list{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.bw-add-part-list label{display:flex;flex-direction:column;gap:4px}
+.bw-add-part-list .check-field{flex-direction:row;align-items:center;gap:8px;min-height:44px}
+.bw-add-part-list .check-field input{min-height:0;width:20px;height:20px;accent-color:var(--tw-accent)}
+.bw-add-part-list p{margin:0;font-size:13px;line-height:18px}
+#bw-add .bw-add-no-picture{margin:6px 0 0;padding:6px 10px;border-radius:8px;background:var(--tw-warning-soft);color:var(--tw-text);font-size:13px;line-height:18px}
+#bw-add .bw-add-sub td{padding-top:0;height:auto}
+#bw-add tr.has-sub td{border-bottom:0}
+#bw-add .bw-add-sub .bw-add-part-list{max-width:520px;margin:0}
+@media(max-width:1279px){
+ #bw-add .bw-add-table thead{display:none}
+ #bw-add .bw-add-table table,#bw-add .bw-add-table tbody,#bw-add .bw-add-table tr,#bw-add .bw-add-table td{display:block;width:100%;box-sizing:border-box}
+ #bw-add .bw-add-table tr{padding:12px 0;border-bottom:.5px solid var(--tw-divider)}
+ #bw-add .bw-add-table td{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 12px;border:0;padding:6px 0;height:auto;min-height:44px}
+ #bw-add .bw-add-table td::before{content:attr(data-label);flex:none;min-width:96px;font:500 11px/14px var(--tw-font);letter-spacing:.1em;text-transform:uppercase;color:var(--tw-text-2)}
+ #bw-add .bw-add-table td:first-child::before,#bw-add .bw-add-sub td::before{content:none}
+ #bw-add .bw-add-table td>select,#bw-add .bw-add-table td>input{flex:1;min-width:0}
+ #bw-add .bw-add-table td[data-label=Choice]>*{flex:1 1 100%;margin:0}
+ #bw-add .bw-add-table tr.has-sub{border-bottom:0;padding-bottom:0}
+ #bw-add .bw-add-table tr.bw-add-sub{padding-top:0}
+}
+/* No-image tile: the number, clipped. Selects take their natural width and the Item column gives way. */
 .bw-add-no-image{padding:0 4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;line-height:56px;border:.5px dashed var(--tw-divider-strong)}
+#bw-add .identity .mono{white-space:nowrap}
+@media(min-width:1280px){
+ #bw-add .bw-add-table table{width:100%}
+ #bw-add .bw-add-table td:not(:first-child),#bw-add .bw-add-table th:not(:first-child){width:1%;white-space:nowrap}
+ #bw-add .bw-add-table td:first-child{width:auto;min-width:220px}
+ #bw-add .bw-add-table td select{width:auto;max-width:none}
+ #bw-add .bw-add-table td[data-label=Choice]{white-space:normal;min-width:230px}
+}
+/* Choice chips for a number not in the catalogue. */
+.bw-add-choice-chips{display:flex;flex-wrap:wrap;gap:8px}
+#bw-add .bw-add-choice{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:2px;min-height:44px;padding:6px 14px;border-radius:10px;border:.5px solid var(--tw-divider-strong);background:var(--tw-surface);color:var(--tw-text);font:500 14px var(--tw-font);text-align:left}
+#bw-add .bw-add-choice small{font-size:12px;line-height:16px}
+#bw-add .bw-add-choice[aria-pressed=true]{border:1.5px solid var(--tw-accent);background:var(--tw-accent-soft);color:var(--tw-accent-text)}
+#bw-add .bw-add-choice:disabled{opacity:.6;cursor:not-allowed}
+#bw-add button:disabled{opacity:.45;cursor:not-allowed}
+@media(max-width:1279px){#bw-add .bw-add-choice{flex:1 1 100%}}
+/* Completeness does not apply to a part: a muted dash in the table, nothing in the cards. */
+#bw-add td.bw-add-na::after{content:'\2014';color:var(--tw-text-muted)}
+@media(max-width:1279px){#bw-add td.bw-add-na{display:none!important}}

@@ -774,9 +774,53 @@ main .key-need a:not(.button) { min-height:44px;display:inline-flex;align-items:
 [data-module=prices]>[data-bc-fetch-status]:empty { display:none; }
 [data-module=prices]>[data-bc-fetch-status] { margin:4px 0 0;font-size:13px; }
 .bc-partout-hint { margin:4px 0 0;font:500 13px var(--tw-font);color:var(--tw-text); }
+/* M.10 A · the Part list control, its notes, the retired lines and the Switch sheet (design 4.2 to 4.5). */
+#bw-collection .bc-part-source { display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0;font:500 15px/22px var(--tw-font); }
+#bw-collection .bc-part-list>.mono { margin:0; }
+#bw-collection .bc-part-note { display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:12px 14px;border-radius:10px;border:.5px solid var(--tw-divider-strong);background:var(--tw-warning-soft);color:var(--tw-text); }
+#bw-collection .bc-part-note[data-kind^=pending] { background:var(--tw-info-soft); }
+#bw-collection .bc-part-note>strong { font:500 14px/20px var(--tw-font); }
+#bw-collection .bc-part-note p { margin:0;font-size:14px;line-height:20px;color:var(--tw-text-2); }
+#bw-collection .bc-part-note .actions { gap:8px; }
+#bw-collection .bc-part-note button,#bw-collection .bc-part-list>.actions>button { min-height:var(--tw-hit); }
+#bw-collection .bc-figure-source { font-size:13px;line-height:18px;color:var(--tw-text-2); }
+#bw-collection .bc-figure-row>.bc-figure-change { flex:1 1 100%; }
+#bw-collection .bc-retired { margin:0 0 12px;padding:4px 20px 12px;border-radius:16px;background:var(--tw-surface); }
+#bw-collection .bc-retired>summary { cursor:pointer;min-height:var(--tw-hit);display:flex;align-items:center;font:500 14px/20px var(--tw-font);color:var(--tw-text-2); }
+#bw-collection .bc-retired-row { display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 12px;padding:10px 0;border-top:.5px solid var(--tw-divider); }
+#bw-collection .bc-retired-row .bc-identity { display:flex!important;flex-direction:row!important;flex-wrap:wrap;align-items:center;gap:6px 10px;min-width:0; }
+#bw-collection .bc-retired-row .bc-identity>* { margin:0; }
+#bw-collection .bc-retired-row p { margin:0;font-size:13px; }
+#bw-collection .bc-retired-row[data-marked="1"] p { color:var(--tw-text); }
+.bc-part-sheet { display:flex;flex-direction:column;gap:16px; }
+.bc-part-sheet h3 { margin:0;font:500 11px/14px var(--tw-font);letter-spacing:.1em;text-transform:uppercase;color:var(--tw-text-2); }
+.bc-part-sheet p { margin:0; }
+.bc-part-sheet .bc-lists { border:0;margin:0;padding:0;min-width:0;display:flex;flex-direction:column; }
+.bc-part-sheet .bc-lists legend { padding:0 0 8px;font:500 11px/14px var(--tw-font);letter-spacing:.1em;text-transform:uppercase;color:var(--tw-text-2); }
+#bw-collection .bc-part-sheet .bc-list-choice { display:flex;flex-direction:row!important;align-items:center;justify-content:flex-start;gap:12px;min-height:var(--tw-hit);padding:10px 0;border-bottom:.5px solid var(--tw-divider);cursor:pointer;font-size:14px;line-height:20px;letter-spacing:normal;text-transform:none;color:var(--tw-text); }
+.bc-part-sheet .bc-list-choice input { flex:none;width:20px;height:20px;min-height:0;margin:0;accent-color:var(--tw-accent); }
+.bc-part-sheet .bc-list-choice>span { display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;min-width:0; }
+.bc-part-sheet .bc-list-choice small { flex-basis:100%;font-size:13px;line-height:18px; }
+.bc-part-sheet .bc-list-choice[data-current="1"],.bc-part-sheet .bc-list-choice:has(input:disabled) { cursor:default; }
+.bc-part-sheet .bc-change { display:flex;flex-direction:column;gap:12px;padding:14px;border-radius:10px;background:var(--tw-surface-2); }
+.bc-part-sheet .bc-change[hidden] { display:none; }
+.bc-part-sheet .bc-change-counts { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0; }
+.bc-part-sheet .bc-change-counts div { display:flex;flex-direction:column;gap:2px;min-width:0; }
+.bc-part-sheet .bc-change-counts dt { font-size:12px;line-height:16px;color:var(--tw-text-2); }
+.bc-part-sheet .bc-change-counts dd { margin:0;font:500 20px/26px var(--tw-mono); }
+.bc-part-sheet .bc-lost { list-style:none;margin:0;padding:0;display:flex;flex-direction:column; }
+.bc-part-sheet .bc-lost li { display:flex;flex-wrap:wrap;align-items:center;gap:2px 8px;padding:8px 0;border-top:.5px solid var(--tw-divider-strong);font-size:14px;line-height:20px; }
+.bc-part-sheet .bc-lost li .mono:last-child { flex-basis:100%;font-size:13px;color:var(--tw-text-2); }
+.bc-part-sheet .bc-preference { padding-block:8px;border-bottom:.5px solid var(--tw-divider); }
+.bc-part-sheet .bc-preference input { width:20px;height:20px;accent-color:var(--tw-accent); }
+/* The Switch sheet scrolls inside the viewport; its actions stay in reach. */
+#bc-part-list { max-height:100dvh;overflow:auto; }
+.bc-part-sheet>.actions:last-child { position:sticky;bottom:-24px;margin:0 -24px -24px;padding:12px 24px 24px;background:var(--tw-sheet-bg,var(--tw-surface));border-top:.5px solid var(--tw-divider); }
 /* A missing picture is a quiet surface tile in both themes: the number, clipped; the words only on tiles big enough to hold them. */
 #bw-collection .bc-picture.bc-no-image { background:var(--tw-surface-2)!important;border:.5px dashed var(--tw-divider-strong)!important;color:var(--tw-text-2);min-width:0; }
 #bw-collection .bc-picture.bc-no-image>.mono { display:block!important;max-width:100%;box-sizing:border-box;padding:0 4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;line-height:16px; }
 #bw-collection .bc-picture.bc-no-image>span:not(.mono) { display:none; }
 #bw-collection .bc-picture.bc-no-image.bc-hero-picture>span:not(.mono),#bw-collection .bc-card>.bc-picture.bc-no-image>span:not(.mono) { display:block; }
 #bw-collection .bc-picture.bc-no-image.bc-hero-picture>.mono { font-size:13px; }
+/* From a tablet down the copy page is one column, as on a phone: the cards need the width. */
+@media(max-width:1023px) { #bw-collection .bc-detail-layout { grid-template-columns:minmax(0,1fr); }#bw-collection .bc-detail-layout>.bc-detail-aside,#bw-collection .bc-detail-layout>.bc-detail-main { grid-column:1;grid-row:auto; } }

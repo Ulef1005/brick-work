@@ -79,9 +79,9 @@ vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../static/web/toni/bw-ad
  // An unknown number shows both offers and is not added until one is chosen; nothing is auto-chosen.
  await nodes.back.trigger();responseMode='unknown';nodes['review-search'].value='';await nodes.review.trigger();assert.equal(nodes['review-panel'].hidden,false);assert.equal(confirmCalls,1);
  let row=nodes['review-rows'].children[0].children;let choice=row.at(-1);assert.ok(choice.children[0].textContent.startsWith('Not in the catalogue'));
- const options=choice.children.find(c=>c.tagName==='SELECT').children.map(o=>o.textContent);assert.deepEqual(options,['Choose','Add as unidentified','Fetch from Rebrickable (needs a key)','Skip']);
- assert.ok(choice.children.at(-1).textContent.includes('Rebrickable key'));assert.equal(nodes.confirm.disabled,true);
- const select=choice.children.find(c=>c.tagName==='SELECT');select.value='unidentified';await select.trigger('change');assert.equal(nodes.confirm.disabled,false);
+ const chipBox=choice.children.at(-1);assert.deepEqual(chipBox.children.map(b=>b.children[0].textContent),['Fetch from Rebrickable','Add as unidentified','Skip']);
+ assert.equal(chipBox.children[0].disabled,true);assert.equal(chipBox.children[0].children[1].textContent,'needs a Rebrickable key');assert.equal(nodes.confirm.disabled,true);
+ await chipBox.children[1].trigger();assert.equal(chipBox.children[1].attributes['aria-pressed'],'true');assert.equal(nodes.confirm.disabled,false);
  await nodes.confirm.trigger();assert.equal(confirmCalls,2);assert.equal(requests.filter(r=>r.url.endsWith('/confirm')).at(-1).body.items[0].decision,'unidentified');
  // A photo offers candidates and none is auto-accepted, even when there is only one; the choice and Keep photo travel with the confirm.
  await nodes.back.trigger();responseMode='photo';await nodes.review.trigger();assert.equal(nodes.candidates.hidden,false);assert.equal(confirmCalls,2);

@@ -9,6 +9,7 @@ One task per page, for someone who already knows the app.
 - [Find sets your loose stock can finish](match-stock-to-sets.md)
 - [Decide which set to repair first](plan-repairs.md)
 - [Identify a minifigure from a photo](identify-a-minifigure.md)
+- [Choose and switch a part list](part-lists.md)
 
 ## Keeping the collection
 

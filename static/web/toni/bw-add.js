@@ -43,7 +43,7 @@
   const text = el('div', undefined, 'identity');
   const colour = colours.find(c => String(c.color_id) === String(row.color_id));
   if (colour) {const chip = el('span', colour.name || 'Unknown colour', 'bw-add-colour'); chip.style.background = /^[0-9a-f]{6}$/i.test(colour.rgb || '') ? '#' + colour.rgb : 'var(--tw-surface-2)'; chip.style.color = ink(colour.rgb); text.append(chip);}
-  text.append(el('span',row.label || row.number,'mono'), el('strong',window.BrickFormatting.nowrapTail(row.name)));
+  text.append(el('span',row.label || row.number,'mono'), el('strong',window.BrickFormatting.nowrapTail(row.unknown ? 'Not in the catalogue' : row.name)));
   if (row.to_check) {const a = el('a','To check · Unresolved figures'); a.href = '/manage/unresolved'; text.append(a);}
   wrap.append(text); return wrap;
  };
@@ -83,12 +83,21 @@
   if(filter)chip($('colour-chips'),'With colour data',()=>{$('colour-filter').value='';renderColours();});
   selected.forEach(c=>{const chosen=String(colourRow?.color_id)===String(c.color_id);const button=el('button',`${c.name || 'Unknown colour · '+c.color_id}${chosen?' · ✓':''}`,'bw-add-colour-choice');button.type='button';button.setAttribute('aria-pressed',String(chosen));
    button.style.background=/^[0-9a-f]{6}$/i.test(c.rgb || '')?'#'+c.rgb:'var(--tw-surface-2)';button.style.color=ink(c.rgb);
-   button.addEventListener('click',()=>{colourRow.color_id=c.color_id;$('colour-dialog').close();renderReview();$('review-panel').querySelector('h2').focus();});$('colour-list').append(button);
+   button.addEventListener('click',async()=>{const target=colourRow;target.color_id=c.color_id;target.no_picture=false;$('colour-dialog').close();try{const known=await api(`/picture-known?item_id=${target.item_id}&color_id=${c.color_id}`);target.no_picture=known.no_picture;}catch(_){}renderReview();$('review-panel').querySelector('h2').focus();});$('colour-list').append(button);
   });
  };
  ['colour-search','colour-filter','colour-sort'].forEach(name=>$(name).addEventListener(name==='colour-search'?'input':'change',renderColours));
  $('colour-close').addEventListener('click',()=>$('colour-dialog').close());
  $('colour-dialog').addEventListener('close',()=>colourOpener?.focus());
+const chips=(row,offers)=>{
+  const wrap=el('div',undefined,'bw-add-choice-chips');wrap.setAttribute('role','group');wrap.setAttribute('aria-label',`Choice for ${row.label || row.number}`);
+  const options=[['fetch','Fetch from Rebrickable',offers.fetch ? (offers.fetch.available ? '' : 'needs a Rebrickable key') : null],['unidentified','Add as unidentified',''],['skip','Skip','']].filter(o=>o[2]!==null);
+  const buttons=[];options.forEach(([key,label,hint])=>{
+   const b=el('button',undefined,'bw-add-choice');b.type='button';b.append(el('span',label));if(hint){b.append(el('small',hint,'secondary'));b.disabled=true;}
+   b.setAttribute('aria-pressed',String(row.decision===key));
+   b.addEventListener('click',()=>{row.decision=row.decision===key?'':key;buttons.forEach((x,i)=>x.setAttribute('aria-pressed',String(row.decision===options[i][0])));confirmCount();});buttons.push(b);wrap.append(b);
+  });return wrap;
+ };
  const renderReview = () => {
   $('review-rows').replaceChildren();
   const seen=new Set(); rows.forEach(r=>{const key=JSON.stringify([r.item_id ?? r.number,r.color_id ?? null,r.where==='wishlist' ? r.list_id || 'default' : null]);r.batchDuplicate=seen.has(key);seen.add(key);if(r.wished_by_list && r.where==='wishlist')r.wished=(r.wished_by_list[r.list_id || 'default'] || []).includes(r.color_id ?? null);else if(r.wished_colors)r.wished=r.wished_colors.includes(r.color_id ?? null);});
@@ -99,11 +108,21 @@
   if(query) chip($('review-chips'),query,() => {$('review-search').value='';renderReview();});
   if(type) chip($('review-chips'),type,() => {$('review-filter').value='';renderReview();});
   visible.forEach(row => {
-   const tr=el('tr');const cell=content => {const td=el('td');if(typeof content==='string') td.textContent=content;else td.append(content);tr.append(td);return td;};
-   const id=identity(row);
+   const tr=el('tr'),labels=['Item','Type','Quantity','Where','Condition','Completeness','Choice'];const cell=content => {const td=el('td');td.dataset.label=labels[tr.children.length] || '';if(typeof content==='string') td.textContent=content;else td.append(content);tr.append(td);return td;};
+   const id=identity(row);let picker=null;
    if(row.kind==='part') {
     const button=el('button',row.color_id == null ? 'Choose a colour' : 'Change colour');button.type='button';button.className='bw-add-colour';
     button.addEventListener('click',()=>{colourRow=row;colourOpener=button;renderColours();$('colour-dialog').showModal();$('colour-search').focus();});id.append(button);
+   }
+   if(row.kind==='part' && row.no_picture)picker=el('p','No picture known for this colour','notice bw-add-no-picture');
+   if(row.kind==='set' && row.where==='owned' && row.part_list){
+    const pre=row.part_list.preselected,current=row.part_list_choice || pre,wrap=el('div',undefined,'bw-add-part-list');
+    const label=el('label');label.append(el('span','Part list','label'),choose(row.part_list.options.map(o=>[o.key,o.label]),current,`Part list for ${row.label || row.number}`,v=>{row.part_list_choice=v;if(v===pre)row.use_for_new=false;renderReview();}));wrap.append(label);
+    const note=row.part_list.options.find(o=>o.key===current)?.note;if(note)wrap.append(el('p',note,'secondary'));
+    const preLabel=row.part_list.options.find(o=>o.key===pre)?.label;
+    wrap.append(el('p',current===pre ? `Preselected: ${preLabel} · ${row.part_list.why}` : `Changed from ${preLabel} (preselected: ${row.part_list.why})`,'secondary'));
+    if(current!==pre){const use=el('label',undefined,'check-field'),box=el('input');box.type='checkbox';box.checked=row.use_for_new===true;box.addEventListener('change',()=>{row.use_for_new=box.checked;});use.append(box,'Use this for new copies of this set');wrap.append(use);}
+    picker=wrap;
    }
    cell(id);cell(row.type_name);
    const qty=el('input');qty.type='number';qty.min='1';qty.max='9999';qty.value=row.quantity;qty.setAttribute('aria-label',`Quantity for ${row.label || row.number}`);qty.addEventListener('input',()=>{row.quantity=qty.value;});cell(qty);
@@ -116,13 +135,13 @@
     if(row.note)id.append(el('p',row.note,'secondary'));
    }
    cell(choose(row.where==='wishlist'?[['used','Used'],['new','New'],['any','Any']]:row.where==='loose'?[['used','Used'],['new','New'],['damaged','Damaged']]:[['used','Used'],['new','New']],row.condition,`Condition for ${row.label || row.number}`,v=>{row.condition=v;}));
-   if(row.kind==='set' && row.where==='owned')cell(choose([['','Unknown · from checks'],['sealed','Sealed'],['complete','Complete'],['incomplete','Incomplete']],row.completeness,`Completeness for ${row.label || row.number}`,v=>{row.completeness=v;}));else cell('·');
+   if(row.kind==='set' && row.where==='owned')cell(choose([['','Unknown · from checks'],['sealed','Sealed'],['complete','Complete'],['incomplete','Incomplete']],row.completeness,`Completeness for ${row.label || row.number}`,v=>{row.completeness=v;}));else cell('').className='bw-add-na';
    const offers=row.offers;
-   const choice=cell(choose(offers ? [['','Choose'],['unidentified','Add as unidentified'],...(offers.fetch ? [['fetch','Fetch from Rebrickable' + (offers.fetch.available ? '' : ' (needs a key)')]] : []),['skip','Skip']]
-    : [['','Choose'],['another',row.where==='wishlist' ? 'Add to the wished quantity' : 'Add another copy'],['skip','Skip']],row.decision,`Choice for ${row.label || row.number}`,v=>{row.decision=v;confirmCount();}));
-   if(offers){choice.prepend(el('p',offers.help,'notice'));if(offers.fetch && !offers.fetch.available)choice.append(el('p',offers.fetch.why,'secondary'));}
+   const choice=offers ? cell(chips(row,offers)) : cell(choose([['','Choose'],['another',row.where==='wishlist' ? 'Add to the wished quantity' : 'Add another copy'],['skip','Skip']],row.decision,`Choice for ${row.label || row.number}`,v=>{row.decision=v;confirmCount();}));
+   if(offers)choice.prepend(el('p',offers.help,'notice'));
    if(row.owned || row.wished || row.batchDuplicate)choice.prepend(el('p',`${row.owned ? `Already owned · ${row.owned}` : ''}${row.owned && row.wished ? ' · ' : ''}${row.wished ? 'Already on Wishlist' : ''}${row.batchDuplicate ? ' · Repeated in this list' : ''}`,'notice'));
    $('review-rows').append(tr);
+   if(picker){const sub=el('tr',undefined,'bw-add-sub'),td=el('td');td.colSpan=7;td.append(picker);sub.append(td);$('review-rows').append(sub);tr.classList.add('has-sub');}
   }); confirmCount();
  };
  const showReview = selected => {

@@ -23,7 +23,7 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
-from ..store4 import copies, fetched, identity, jobs, pending
+from ..store4 import copies, fetched, identity, jobs, part_list_read, pending
 from ..store4.audit import Events
 from ..store4.connect import has_catalogue, now
 from ..store4.errors import AmbiguousIdentity, Store4Error
@@ -424,9 +424,45 @@ def resolve(db, rows, where, *, list_id='default', map_wanted_ids=True):
             else:
                 resolved.append(decorate(db, {**base, 'item_id': item_id}))
                 resolved[-1]['import_notes'] += _list_note(db, resolved[-1], where)
+                resolved[-1]['part_list'] = part_list_options(db, item_id) if resolved[-1]['kind'] == 'set' else None
+                resolved[-1]['no_picture'] = picture_warning(db, resolved[-1])
         except (ValueError, Store4Error, TypeError, KeyError) as error:
             unresolved.append({'number': original.get('unresolved') or original.get('number') or original.get('item_id'), 'reason': str(error)})
     return dict(items=resolved, unresolved=unresolved)
+
+
+def part_list_options(db, set_item_id):
+    """The Add review's *Part list* picker for a set (design 4.3): None unless there is a choice, else `{'options': [{'key', 'label',
+    'note'}], 'preselected': key}` in the order of the design's preselection (`copies.part_list_choices`)."""
+    picked = copies.part_list_choices(db, set_item_id)
+    if not picked['needs_choice']:
+        return None
+    options = [dict(key=part_list_read.choice_key({'source': 'rebrickable', 'version': v['version']}), label=v['label'], note=None) for v in picked['rebrickable']]
+    if picked['rebrickable_api']:
+        options.append(dict(key='rebrickable_api', label='Fetched from Rebrickable', note=None))
+    if picked['bricklink']:
+        fetched_already = picked['bricklink']['fetched_inventory_id'] is not None
+        options.append(dict(key='bricklink', label="BrickLink's list",
+                            note=None if fetched_already else "Fetched after you add · the copy uses Rebrickable's list meanwhile"))
+    chosen = part_list_read.choice_key(picked['preselected'])
+    pref = copies.part_list_preference(db, set_item_id)
+    if pref and (chosen == 'bricklink' if pref['source'] == 'bricklink' else chosen.startswith('rebrickable:')):
+        why = 'your saved choice for this set'
+    elif picked['preselected'] and picked['preselected']['source'] == 'bricklink':
+        why = 'the BrickLink preference in Settings'
+    else:
+        why = 'the latest Rebrickable list'
+    return dict(options=options, preselected=chosen, why=why)
+
+
+def picture_warning(db, row):
+    """True when no picture is known for a part row in its colour (design 6.8): the review warns before confirming."""
+    if row.get('kind') != 'part' or row.get('color_id') in (None, '') or row.get('item_id') is None:
+        return False
+    try:
+        return not pictures.picture_known(db, row['item_id'], int(row['color_id']))
+    except (errors.NotFound, Store4Error, ValueError):
+        return False
 
 
 def _list_note(db, row, where):
@@ -459,7 +495,7 @@ def validate_edits(db, proposal, edits, *, batch=None):
             result.append(original)
             continue
         row = {**original, **{k: edit.get(k, original.get(k)) for k in
-                              ('quantity', 'where', 'color_id', 'condition', 'completeness', 'decision', 'note', 'list_id', 'storage_id', 'lot_id')}}
+                              ('quantity', 'where', 'color_id', 'condition', 'completeness', 'decision', 'note', 'list_id', 'storage_id', 'lot_id', 'part_list_choice', 'use_for_new')}}
         row['quantity'] = quantity(row['quantity'])
         row['completeness'] = row['completeness'] or ''
         if row['where'] not in WHERE or row['condition'] not in CONDITIONS[row['where']] or row['completeness'] not in COMPLETENESS:
@@ -473,6 +509,14 @@ def validate_edits(db, proposal, edits, *, batch=None):
                 raise ValueError('Choose a colour for each part')
         else:
             row['color_id'] = None
+        picker = original.get('part_list')
+        if row['kind'] == 'set' and picker:
+            row['part_list_choice'] = row.get('part_list_choice') or picker['preselected']
+            if row['part_list_choice'] not in [o['key'] for o in picker['options']]:
+                raise ValueError('Choose a part list from the list')
+            row['use_for_new'] = row.get('use_for_new') is True and row['part_list_choice'] != picker['preselected']
+        else:
+            row['part_list_choice'], row['use_for_new'] = None, False
         for key, table in (('storage_id', 'storage'), ('lot_id', 'lot')):
             if row.get(key) is not None and not db.execute(f'SELECT 1 FROM main.{table} WHERE id=? AND archived_at IS NULL', (row[key],)).fetchone():
                 raise ValueError('Choose an active ' + key.replace('_id', ''))
@@ -534,6 +578,8 @@ def _unidentified_item(db, kind, number, via, actor):
 def _add_copy(db, row, via, actor):
     """One copy of a set with design 4.3's preselection; a set with no part list at all gets a copy with `inventory_source='none'`."""
     choice = copies.part_list_choices(db, row['item_id'])['preselected']
+    if row.get('part_list_choice'):                                 # the review's picker (design 4.3); absent: the preselection
+        choice = part_list_read.parse_choice(row['part_list_choice'])
     condition, completeness = row['condition'], row['completeness'] or None
     if choice is not None:
         receipt = copies.create_copy_in(db, row['item_id'], choice, via=via, actor=actor, condition=condition, completeness=completeness, note=row.get('note'))
@@ -628,6 +674,11 @@ def _confirm_row(db, pipeline, row, batch, index, via, actor, photo=None):
     if row['where'] == 'wishlist':
         _add_wish(db, {**row, 'kind': live['kind']}, receipt, via, actor)
     elif live['kind'] == 'set':
+        if row.get('use_for_new') and row.get('part_list_choice') not in (None, 'rebrickable_api'):        # "use this for new copies of this set"
+            picked = part_list_read.parse_choice(row['part_list_choice'])
+            newest = any(v['is_latest'] and v['version'] == picked.get('version') for v in copies.part_list_choices(db, row['item_id'])['rebrickable'])
+            copies.set_part_list_preference_in(db, row['item_id'], {'source': picked['source'], 'version': None if newest else picked.get('version')},
+                                               via=via, actor=actor)
         for _ in range(row['quantity']):
             copy_id, waiting = _add_copy(db, row, via, actor)
             receipt['copies'].append(copy_id)

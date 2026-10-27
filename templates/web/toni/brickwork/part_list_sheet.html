@@ -1,0 +1,22 @@
+{% from 'web/toni/brickwork/collection_modules.html' import colour_chip with context %}
+{% set s=sheet %}{% set limit=8 %}
+<form class="bc-part-sheet" data-bc-part-form data-copy="{{ copy_id }}" data-csrf="{{ csrf_token }}">
+<div class="actions"><h2 id="bc-part-list-title">Switch part list</h2><button type="button" data-bw-close>Close</button></div>
+<p class="secondary">{{ s.label }} uses <strong>{{ s.info.label }}</strong>. Checks, missing and damaged marks move with the lines both lists share.</p>
+<fieldset class="bc-lists"><legend>Use</legend>
+{% for o in s.options %}<label class="bc-list-choice" data-current="{{ 1 if o.current else 0 }}"><input type="radio" name="choice" value="{{ o.key }}"{% if o.key==s.chosen %} checked{% endif %}{% if o.current or not o.available %} disabled{% endif %}><span><strong>{{ o.label }}</strong>{% if o.latest %}<span class="bc-status">latest</span>{% endif %}{% if o.current %}<span class="secondary"> · in use</span>{% endif %}{% if o.note %}<small class="secondary">{{ o.note }}</small>{% endif %}</span></label>{% endfor %}
+</fieldset>
+{% for o in s.options if o.preview %}
+<section class="bc-change" data-bc-change="{{ o.key }}"{% if o.key!=s.chosen %} hidden{% endif %} aria-label="What changes for {{ o.label }}">
+<h3>What changes</h3>
+<dl class="bc-change-counts"><div><dt>Lines added</dt><dd class="mono">{{ o.counts.lines_insert }}</dd></div><div><dt>Lines retired</dt><dd class="mono">{{ o.counts.lines_retire }}</dd></div><div><dt>Quantities capped</dt><dd class="mono">{{ o.capped|length }}</dd></div>{% if o.counts.figures_insert or o.counts.figures_retire %}<div><dt>Minifigures added</dt><dd class="mono">{{ o.counts.figures_insert }}</dd></div><div><dt>Minifigures retired</dt><dd class="mono">{{ o.counts.figures_retire }}</dd></div>{% endif %}</dl>
+{% if o.retired or o.capped %}<h3>Marks that will not carry over</h3>
+<ul class="bc-lost">{% for r in (o.retired|list)[:limit] %}<li>{% if r.item_type=='P' %}{{ colour_chip(r) }}{% endif %}<span class="mono">{{ r.number_text }}</span> <strong>{{ toni_nowrap_tail(toni_part_name(r.name) if r.item_type=='P' else (r.name or r.number_text)) }}</strong><span class="mono"> · retires{% if r.missing[1] %} · {{ r.missing[1] }} missing{% endif %}{% if r.damaged and r.damaged[1] %} · {{ r.damaged[1] }} damaged{% endif %}{% if r.checked %} · checked{% endif %}</span></li>{% endfor %}
+{% for r in (o.capped|list)[:limit-(o.retired|length if o.retired|length<limit else limit)] %}<li>{% if r.item_type=='P' %}{{ colour_chip(r) }}{% endif %}<span class="mono">{{ r.number_text }}</span> <strong>{{ toni_nowrap_tail(toni_part_name(r.name) if r.item_type=='P' else (r.name or r.number_text)) }}</strong><span class="mono"> · quantity {{ r.quantity[0] }} to {{ r.quantity[1] }}{% if r.missing[0]!=r.missing[1] %} · missing {{ r.missing[0] }} to {{ r.missing[1] }}{% endif %}{% if r.damaged and r.damaged[0]!=r.damaged[1] %} · damaged {{ r.damaged[0] }} to {{ r.damaged[1] }}{% endif %}</span></li>{% endfor %}</ul>
+{% set total=o.retired|length+o.capped|length %}{% if total>limit %}<p class="secondary mono">and {{ total-limit }} more</p>{% endif %}
+{% else %}<p class="secondary">Every mark carries over.</p>{% endif %}
+</section>{% endfor %}
+<label class="bc-check bc-preference"><span>Use this for new copies of this set</span><input type="checkbox" name="preference"></label>
+<p data-bc-form-message role="status"></p>
+<div class="actions"><button type="button" data-bw-close>Cancel</button><button type="submit" class="primary"{% if not s.chosen %} disabled{% endif %}>Switch</button></div>
+</form>

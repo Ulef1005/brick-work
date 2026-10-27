@@ -10,7 +10,7 @@ Nothing is added to the schema: the state is read from the copy and its job (Ulf
 
 Every write is its own transaction with one event on the copy: `part_list_switch` (receipt `trigger`), `pending_failed` or
 `pending_cancel`."""
-from . import copies
+from . import copies, identity, jobs
 from .audit import Events, transaction
 from .connect import now
 from .errors import Store4Error
@@ -82,6 +82,42 @@ def accept_pending_in(db, copy_id, *, via, actor=None):
         raise NotReady(f'the BrickLink list for copy {copy_id} is not fetched yet (job {job["id"]} is {job["state"]})')
     return copies.switch_part_list_in(db, copy_id, BRICKLINK, via=via, actor=actor, while_pending_on=job['id'],
                                       trigger={'accepted': True, 'job_id': job['id']})
+
+
+def request_bricklink(db, copy_id, *, via, actor=None):
+    """A copy that already exists moves to BrickLink's list (design 4.3 decision F, for an existing copy): with a fetched BrickLink
+    list for the set it switches at once (`switch_part_list`, one receipt); without one it queues the `bricklink_subsets` job the way
+    Add does for a new copy and waits (`inventory_pending='bricklink'`, `pending_job_id`, one `pending_request` event), staying on its
+    Rebrickable list until `settle_pending` switches it. Needs a BrickLink key. Returns `{'switched': True, 'receipt': ...}` or
+    `{'switched': False, 'pending': {'source', 'job_id', 'job_reused'}}`. A copy already waiting, or not on a Rebrickable list, is refused."""
+    with transaction(db, 'requesting BrickLink\'s list'):
+        return request_bricklink_in(db, copy_id, via=via, actor=actor)
+
+
+def request_bricklink_in(db, copy_id, *, via, actor=None):
+    """`request_bricklink` inside the caller's open write transaction (it opens none and commits nothing)."""
+    if not db.in_transaction:
+        raise Store4Error('request_bricklink_in needs the caller\'s open write transaction; use request_bricklink()')
+    copy = copies._copy_row(db, copy_id)
+    if copy['archived_at'] is not None:
+        raise Store4Error(f'copy {copy_id} is archived')
+    if not jobs._configured('bricklink'):
+        raise Store4Error("BrickLink's list is not offered without a BrickLink key")
+    if copy['inventory_pending'] is not None:
+        raise Store4Error(f'copy {copy_id} is already waiting for a BrickLink list')
+    if copy['inventory_source'] == 'bricklink':
+        raise copies.NothingToSwitch(f'copy {copy_id} already uses BrickLink\'s list')
+    if _fetched(db, copy['item_id']) is not None:
+        return {'switched': True, 'receipt': copies.switch_part_list_in(db, copy_id, BRICKLINK, via=via, actor=actor)}
+    if copy['inventory_source'] != 'rebrickable':
+        raise Store4Error(f'copy {copy_id} is not on a Rebrickable list, which a copy waiting for BrickLink\'s list stays on')
+    identity.project(db, copy['item_id'])
+    number = db.execute('SELECT born_key FROM main.item WHERE id=?', (copy['item_id'],)).fetchone()['born_key']
+    job, created = jobs.queue_in(db, 'bricklink_subsets', item_id=copy['item_id'], payload=number, via=via, actor=actor)
+    db.execute('UPDATE main.copy SET inventory_pending=\'bricklink\', pending_job_id=?, updated_at=? WHERE id=?', (job, now(), copy_id))
+    Events(db, via, actor).write('copy', copy_id, 'pending_request', old={'inventory_pending': None, 'pending_job_id': None},
+                                 new={'inventory_pending': 'bricklink', 'pending_job_id': job, 'job_reused': not created})
+    return {'switched': False, 'pending': {'source': 'bricklink', 'job_id': job, 'job_reused': not created}}
 
 
 def cancel_pending(db, copy_id, *, via, actor=None):

@@ -31,6 +31,8 @@ ALLOWED = {
     ('brickwork/store4/copies.py', '_plan'): 'the switch itself (design 4.4): it matches the wanted lines to every existing row, retired ones too, and re-activates a line that came back',
     ('brickwork/store4/copies.py', 'switch_part_list_in'): 'the switch itself (design 4.4): it retires and re-activates lines',
     ('brickwork/store4/merge.py', '_refuse_double_lines'): "the unique key of a line spans retired rows, so a merge must see them: a retired line of the other item would collide",
+    ('brickwork/store4/part_list_read.py', 'retired_counts'): 'the copy page counts the retired lines it keeps (design 4.4), which are the retired rows by definition',
+    ('brickwork/store4/part_list_read.py', 'retired_lines'): 'the copy page lists the retired lines it keeps (design 4.4), which are the retired rows by definition',
     ('brickwork/store4/migrate_proof.py', '_Proof.attach'): 'the migration proof reads the file it just wrote, where nothing is retired yet',
 }
 

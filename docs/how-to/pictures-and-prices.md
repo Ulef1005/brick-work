@@ -27,6 +27,10 @@ The first two need no key and make no API call. Add your keys under **Tools & Ad
 
 Change the order under **Source priority** in **Manage → Tools & Admin → Settings** (the page's **Pictures** card shows what is covered, and **Refresh pictures** queues the missing ones or all of them); the setting applies to jobs queued afterwards. **Catalogues & keys** shows the same order on its **Pictures** card. Updating from 3.3 keeps your order: the default becomes the one above, and a changed order keeps its sequence with Rebrickable split into the catalogue and then the API.
 
+### A part with no known picture
+
+Before you confirm, the Add review warns **No picture known for this colour** on a part row when no source can serve it: the catalogue has no picture for that colour, BrickLink has no number for the part, and no Rebrickable key is set. The part is still added; a key, or a link to a BrickLink number, lets the picture step find one later.
+
 ## Prices and budgets
 
 Prices are fetched for every colour a part is held in, new and used, as BrickLink's sold average (or the listings when nothing sold). **Update price** on an item page and **Update** on the Prices screen queue the same step for that item. Each price remembers the BrickLink number and colour it was asked for.
@@ -34,6 +38,8 @@ Prices are fetched for every colour a part is held in, new and used, as BrickLin
 Calls count against a daily budget per source (`BW_BRICKLINK_DAILY_BUDGET` and `BW_REBRICKABLE_DAILY_BUDGET` set the limits; Brickset allows 100 a day). When a day's budget is used up, or a source asks you to slow down, the job waits and carries on by itself; a price that already arrived is not asked for again.
 
 ## Fetch from Rebrickable
+
+A number that is in neither the catalogue nor your collection shows **Not in the catalogue** on its Add row with two ways out, side by side: **Fetch from Rebrickable** (greyed with "needs a Rebrickable key" when no key is set) and **Add as unidentified**, plus **Skip**. Nothing is added until you choose one; the row never guesses. An unidentified item is a local item with the name you typed and works on every screen; link it to a BrickLink number or merge it into a catalogue item later.
 
 Add a set Brick Work does not know yet (newer than your catalogue), and the row offers **Fetch from Rebrickable** when a Rebrickable key is set. It queues one job: the set, its parts and its figures (three calls and one more for each figure the catalogue lacks).
 

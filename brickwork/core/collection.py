@@ -21,7 +21,7 @@ from .currency import configured_currency
 from .admin import audit, origin
 from .completeness import derived_state
 from .sources.base import now
-from ..store4 import identity
+from ..store4 import copies as store_copies, identity, part_list_read
 from ..store4.connect import has_catalogue, now as stamp_now
 
 TYPES = {'S': 'Sets', 'M': 'Minifigures', 'P': 'Parts', 'I': 'Instructions',
@@ -515,7 +515,7 @@ def _consists(db, item_id, kind, selected):
         for f in db.execute('SELECT * FROM copy_figure WHERE copy_id=? AND retired_at IS NULL ORDER BY id', (cid,)):
             parts = components[f['id']]
             line = _line(f['item_id'], None, f['quantity'], id=f['id'], missing=f['missing'], damaged=0, figure=True)
-            line.update(parts_lines=len(parts), parts_missing=sum(p['missing'] for p in parts), parts_damaged=sum(p['damaged'] for p in parts),
+            line.update(part_source=part_list_read.figure_source(db, f), part_source_kind=f['inventory_source'], parts_lines=len(parts), parts_missing=sum(p['missing'] for p in parts), parts_damaged=sum(p['damaged'] for p in parts),
                         missing_part_ids=[p['item_id'] for p in parts if p['missing']])
             figures.append(line)
         return lines + figures, spare
@@ -526,6 +526,66 @@ def _consists(db, item_id, kind, selected):
         parts, figures = _catalogue_lines(db, item_id)
         return parts + (figures if kind == 'set' else []), 0
     return [], 0
+
+
+def retired_lines(db, copy_id):
+    """The lines a switch retired, named for the page (design 4.4: kept, excluded from every count, ids still valid): decorated like
+    any line, each with its marks."""
+    rows = part_list_read.retired_lines(db, copy_id)
+    names = _names(db, [r['item_id'] for r in rows] + [r['figure_item_id'] for r in rows if r['figure_item_id']])
+    out = decorate(db, [dict(r, name=(names.get(r['item_id']) or {}).get('name')) for r in rows])
+    for r in out:
+        r['figure_name'] = (names.get(r['figure_item_id']) or {}).get('name') if r.get('figure_item_id') else None
+        r['marked'] = bool(r.get('checked') or r.get('missing') or r.get('damaged'))
+    return out
+
+
+SHEET_LIST_LIMIT = 8
+
+
+def _sheet_lines(db, details):
+    """The lines of a preview's `not_carried_over`, decorated, as `[{..., 'rows': n shown, 'more': n left}]` pairs of retired and capped."""
+    wanted = [dict(item_id=d['item_id'] if d['kind'] == 'part' else d['figure_item'], color_id=d['color_id'], detail=d) for d in details]
+    named = decorate(db, wanted)
+    return [dict(n, line_kind=n['detail']['kind'], **{k: n['detail'][k] for k in ('quantity', 'missing', 'damaged', 'checked')}) for n in named]
+
+
+def part_list_sheet(db, copy_id, *, choose=None):
+    """The Switch sheet's data (design 4.4): one option per list the copy could move to, each with what the switch would do, read
+    from `preview_switch` (the lists the real receipt will hold). `choose` (a choice key) preselects an option; the default is the
+    first that is not the copy's own list. A BrickLink list that is not fetched yet cannot be switched to in place, so it is shown
+    unavailable. Read-only."""
+    info = part_list_read.copy_part_list(db, copy_id)
+    copy = store_copies._copy_row(db, copy_id)
+    picker, options = info['choices'], []
+
+    def option(choice, label, *, latest=False, note=None, available=True, preview=True):
+        entry = dict(key=part_list_read.choice_key(choice), label=label, latest=latest, note=note, available=available, current=False,
+                     preview=None, retired=[], capped=[], counts={})
+        if available and preview:
+            shown = store_copies.preview_switch(db, copy_id, choice)
+            entry.update(current=shown['same_list'], counts=shown['counts'])
+            if not shown['same_list']:
+                detail = shown['not_carried_over']
+                entry.update(retired=_sheet_lines(db, detail['retired']), capped=_sheet_lines(db, detail['capped']), preview=True)
+        options.append(entry)
+
+    for v in picker['rebrickable']:
+        option({'source': 'rebrickable', 'version': v['version']}, f'Rebrickable · version {v["ordinal"]} of {v["of"]}', latest=v['is_latest'])
+    if picker['rebrickable_api']:
+        option({'source': 'rebrickable_api'}, 'Rebrickable · fetched', latest=True)
+    if picker['bricklink'] is None:
+        option({'source': 'bricklink'}, "BrickLink's list", note='needs a BrickLink key', available=False)
+    elif picker['bricklink']['fetched_inventory_id'] is not None:
+        option({'source': 'bricklink'}, "BrickLink's list")
+    elif copy['inventory_source'] == 'rebrickable' and not info['pending']:           # not fetched yet: the copy waits on a queued job (decision F)
+        option({'source': 'bricklink'}, "BrickLink's list", note="Fetches BrickLink's list; the copy switches when it arrives", preview=False)
+    else:
+        option({'source': 'bricklink'}, "BrickLink's list", note='Not available while the copy waits for a list or is not on a Rebrickable list', available=False)
+    live = [o for o in options if o['available'] and not o['current']]
+    chosen = choose if any(o['key'] == choose and o['available'] and not o['current'] for o in options) else (
+        next((o['key'] for o in live if o['latest']), live[0]['key'] if live else None))
+    return dict(info=info, options=options, chosen=chosen, set_item_id=copy['item_id'], label=copy_labels(db, [copy_id]).get(copy_id, 'This set'))
 
 
 def detail(db, item_id, *, colour=None, copy_id=None, stock_id=None, wish_id=None):
@@ -606,6 +666,13 @@ def detail(db, item_id, *, colour=None, copy_id=None, stock_id=None, wish_id=Non
         entry['can_take'] = 0
     row.update(_matching(db, item_id, kind, colour, selected, all_instances, consists))
     row['consists'] = consists
+    row['part_list'] = row['retired_lines'] = None
+    if kind == 'set' and selected and selected['entity'] == 'copy':
+        row['part_list'] = part_list_read.copy_part_list(db, selected['id'])
+        for entry in consists:
+            if entry.get('minifig_no'):
+                entry['part_list_change'] = row['part_list']['figure_changes'].get(entry['id'])
+        row['retired_lines'] = retired_lines(db, selected['id'])
     required = [p for p in consists if p['item_type'] != 'M' and not p.get('minifig_no') and not p['spare']]
     flag_names = [f['name'] for f in (selected or {}).get('flags', []) if f['kind'] == 'status']
     check_recorded = bool(selected and selected['entity'] == 'copy' and (

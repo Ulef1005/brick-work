@@ -33,9 +33,9 @@
  };
  const countQueue = () => { $('queued').textContent = `${words(queued.length)} in the list`; $('review').textContent = `Review ${words(value('mode') === 'search' ? queued.length : value('mode') === 'paste' ? $('paste').value.split('\n').filter(l => l.trim()).length : 0)}`; };
  const picture = row => {
-  if (!row.image) return el('span', 'No image', 'bw-add-picture bw-add-no-image');
+  if (!row.image) return el('span', row.label || row.number || '', 'bw-add-picture bw-add-no-image');
   const img = el('img', undefined, 'bw-add-picture'); const full = `/manage/images/${row.image}`; img.src = full + '?w=320'; img.srcset = `${full}?w=320 320w, ${full}?w=640 640w`; img.sizes = '160px'; img.dataset.full = full; img.alt = row.name; img.loading = 'lazy';
-  img.addEventListener('error', () => img.replaceWith(el('span','No image','bw-add-picture bw-add-no-image')), {once:true});
+  img.addEventListener('error', () => img.replaceWith(el('span',row.label || row.number || '','bw-add-picture bw-add-no-image')), {once:true});
   return img;
  };
  const identity = row => {

@@ -774,3 +774,9 @@ main .key-need a:not(.button) { min-height:44px;display:inline-flex;align-items:
 [data-module=prices]>[data-bc-fetch-status]:empty { display:none; }
 [data-module=prices]>[data-bc-fetch-status] { margin:4px 0 0;font-size:13px; }
 .bc-partout-hint { margin:4px 0 0;font:500 13px var(--tw-font);color:var(--tw-text); }
+/* A missing picture is a quiet surface tile in both themes: the number, clipped; the words only on tiles big enough to hold them. */
+#bw-collection .bc-picture.bc-no-image { background:var(--tw-surface-2)!important;border:.5px dashed var(--tw-divider-strong)!important;color:var(--tw-text-2);min-width:0; }
+#bw-collection .bc-picture.bc-no-image>.mono { display:block!important;max-width:100%;box-sizing:border-box;padding:0 4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;line-height:16px; }
+#bw-collection .bc-picture.bc-no-image>span:not(.mono) { display:none; }
+#bw-collection .bc-picture.bc-no-image.bc-hero-picture>span:not(.mono),#bw-collection .bc-card>.bc-picture.bc-no-image>span:not(.mono) { display:block; }
+#bw-collection .bc-picture.bc-no-image.bc-hero-picture>.mono { font-size:13px; }

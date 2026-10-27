@@ -1,12 +1,15 @@
-"""Order export (#44): one row per saved order line, or one summary row per order, as CSV.
+"""Order export on the 4.0 store (#44, M.8h): one row per saved order line, or one summary row per order, as CSV.
 
 Totals are never summed across currencies. BrickLink's shipping, insurance and fees are not stored
-separately (only the order's grand total in `orders.cost`), so the summary shows the grand total and
+separately (only the order's grand total in `purchase_order.cost`), so the summary shows the grand total and
 the difference to the line totals as "Other costs" rather than inventing a split.
+
+A line is named the way BrickLink names it (type letter, number, colour number: `items.label(...).bricklink`), the colour by its
+Brick Work name. A saved line always has an item; a draft's lines are not exported.
 """
 import csv
 
-from . import csv_safe
+from . import csv_safe, items
 from decimal import Decimal, InvalidOperation
 import io
 import re
@@ -46,18 +49,24 @@ def rows(db, kind='lines', date_from=None, date_to=None, store=None):
     where, params = _filters(date_from, date_to, store)
     lines = [dict(r) for r in db.execute(f'''SELECT o.id AS order_id,coalesce(o.bricklink_order_id,'O-'||o.id) AS label,
             substr(coalesce(o.date_ordered,o.created_at),1,10) AS date,o.store,o.seller,o.status,o.cost,o.currency,
-            l.item_type,l.item_no,coalesce(i.name,l.name) AS name,coalesce(c.name,l.colour_name) AS colour,l.color_id,
+            l.item_id,l.color_id,i.name,i.kind,c.name AS colour,l.raw_item_type,l.raw_item_no,l.raw_color_id,
             l.condition,l.qty,l.unit_price,l.line_total
-        FROM orders o JOIN order_lines l ON l.order_id=o.id JOIN order_documents d ON d.id=l.document_id
-        LEFT JOIN items i ON i.item_type=l.item_type AND i.item_no=l.item_no LEFT JOIN colors c ON c.color_id=l.color_id
+        FROM main.purchase_order o JOIN main.order_line l ON l.order_id=o.id JOIN main.order_document d ON d.id=l.document_id
+        JOIN main.item i ON i.id=l.item_id LEFT JOIN main.color c ON c.id=l.color_id
         WHERE d.phase='saved' AND l.paired_line_id IS NULL{where}
         ORDER BY date,o.id,l.document_id,l.line_no''', params)]
+    named = items.labels(db, {(r['item_id'], r['color_id']) for r in lines})
+    for line in lines:
+        label = named.get((line['item_id'], line['color_id']))
+        key = label.bricklink if label else None
+        line.update(item_type=key[0] if key else items.KIND_TYPE.get(line['kind']), item_no=key[1] if key else (label.number if label else None),
+                    color_key=key[2] if key else None)
     if kind == 'lines':
         return lines
     orders = {}
     for o in db.execute(f'''SELECT o.id AS order_id,coalesce(o.bricklink_order_id,'O-'||o.id) AS label,
             substr(coalesce(o.date_ordered,o.created_at),1,10) AS date,o.store,o.seller,o.status,o.cost,o.currency
-            FROM orders o WHERE 1=1{where} ORDER BY date,o.id''', params):
+            FROM main.purchase_order o WHERE 1=1{where} ORDER BY date,o.id''', params):
         orders[o['order_id']] = dict(o, lines=0, items=0, new=Decimal(0), used=Decimal(0), priced=True)
     for line in lines:
         o = orders[line['order_id']]
@@ -69,7 +78,7 @@ def rows(db, kind='lines', date_from=None, date_to=None, store=None):
             total = unit * (line['qty'] or 0) if unit is not None else None
         if total is None:
             o['priced'] = False
-        elif line['condition'] == 'N':
+        elif line['condition'] == 'new':
             o['new'] += total
         else:
             o['used'] += total
@@ -87,8 +96,8 @@ def to_csv(kind, data):
     if kind == 'lines':
         out.writerow(LINES)
         out.writerows([r['label'], r['date'], r['store'] or '', r['seller'] or '', r['item_type'] or '', r['item_no'] or '',
-                       r['name'] or '', r['colour'] or '', '' if r['color_id'] is None else r['color_id'],
-                       {'N': 'New', 'U': 'Used'}.get(r['condition'], r['condition'] or ''), r['qty'] or 0,
+                       r['name'] or '', r['colour'] or '', '' if r['color_key'] is None else r['color_key'],
+                       {'new': 'New', 'used': 'Used'}.get(r['condition'], r['condition'] or ''), r['qty'] or 0,
                        r['unit_price'] or '', r['line_total'] or '', r['currency'] or ''] for r in data)
     else:
         out.writerow(SUMMARY)
@@ -98,4 +107,4 @@ def to_csv(kind, data):
 
 
 def stores(db):
-    return [r[0] for r in db.execute("SELECT DISTINCT store FROM orders WHERE store IS NOT NULL AND trim(store)!='' ORDER BY lower(store)")]
+    return [r[0] for r in db.execute("SELECT DISTINCT store FROM main.purchase_order WHERE store IS NOT NULL AND trim(store)!='' ORDER BY lower(store)")]

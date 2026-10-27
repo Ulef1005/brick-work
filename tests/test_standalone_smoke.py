@@ -171,7 +171,7 @@ def test_the_collection_read_side_shows_what_is_owned(tmp_path, monkeypatch, off
     assert [r['name'] for r in found] == ['Only on BrickLink']
     assert client.get('/collection/jump?q=1000-1').json['results'][0]['kind'] == 'set'
     # what is not on the 4.0 store yet still says so
-    assert client.get('/workbench/orders').status_code == 503
+    assert client.get('/manage/tools').status_code == 503
     assert offline == []
 
 

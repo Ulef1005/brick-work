@@ -1,44 +1,31 @@
-"""#45 identification shows whether and where you own the part. Invented data."""
-from contextlib import closing
-import os
-
+"""#45 identification shows whether and where you own the part, on the 4.0 store (M.8h, issue #110). Invented data, no network."""
 from bs4 import BeautifulSoup
 
-from brickwork.core import ownership, part_inventory
-from brickwork.core.connect import connect
-from tests.test_bw_api_m1 import app  # noqa: F401
-from tests.test_bw_api_m2 import populated  # noqa: F401
-from tests.test_bw_collection import bw, legacy, reset_shell_metadata_after_test  # noqa: F401
-from tests.web_fixtures import apps, logged_in  # noqa: F401
+from brickwork.core import identify, ownership, part_inventory
+from tests.app4 import app4, client, coll, csrf, pair, read, world  # noqa: F401 (fixtures)
 
 
-def store():
-    return closing(connect(os.environ['BW_DB_PATH']))
+def test_summary_text_and_candidates(world, coll):
+    black = coll.colour('0')
+    coll.add_stock('part', world.brick, colour=black, quantity=14, storage=world.shelf)
+    db = coll.db
+    info = ownership.summary(db, [world.brick, world.local_part, 424242])
+    part = info[world.brick]
+    names = {c['color_id']: c['name'] for c in part['colours']}
+    assert part['total'] == 19 and [c['quantity'] for c in part['colours']] == [14, 5]                      # most held first
+    assert part['colours'][0]['storages'] == ['Shelf A'] and part['colours'][1]['storages'] == ['Shelf A']
+    assert part['needed_count'] == 1 and part['needed_by'][0]['set_no'] == '1000-1' and part['needed_by'][0]['gap'] == 1
+    assert ownership.text(part) == f"You have 19 in 2 colours: {names[black]} 14 (Shelf A), {names[world.red]} 5 (Shelf A)"
+    assert info[world.local_part]['total'] == 5 and info[424242]['total'] == 0
+    assert ownership.text(info[424242]) == ownership.text(None) == 'Not in your collection'
+    rows, unresolved = part_inventory.candidates(db, [dict(item_type='P', item_no='3001', score=.9), dict(item_type='P', item_no='nowhere', score=.4)])
+    assert [r['item_id'] for r in rows] == [world.brick] and rows[0]['owned_summary']['total'] == 19 and rows[0]['owned_summary']['text'].startswith('You have 19')
+    assert unresolved == [dict(item_type='P', item_no='nowhere', score=.4, reason='Unknown catalogue identity')]
+    same, _ = identify.candidates(db, [dict(item_type='P', item_no='3001', score=.9)])
+    assert same[0]['owned_summary']['total'] == 19
 
 
-def test_summary_text_and_candidates(populated):
-    with store() as db:
-        with db:
-            db.execute("INSERT INTO colors VALUES(11,'Synthetic black','Solid','111111')")
-            db.execute("INSERT INTO loose_stock(id,item_type,item_no,color_id,quantity,condition) VALUES('t2','P','3001',11,14,'U')")
-        info = ownership.summary(db, [('P', '3001'), ('P', 'nothing')])
-        part = info[('P', '3001')]
-        assert part['total'] == 23 and [c['name'] for c in part['colours']] == ['Synthetic black', 'Synthetic red']
-        assert part['colours'][1]['storages'] == ['Synthetic storage'] and part['needed_count'] == 1 and part['needed_by'][0]['set_no'] == '100-1'
-        assert ownership.text(part) == 'You have 23 in 2 colours: Synthetic black 14, Synthetic red 9 (Synthetic storage)'
-        assert info[('P', 'nothing')]['total'] == 0 and ownership.text(info[('P', 'nothing')]) == 'Not in your collection'
-        import sqlite3
-        from pathlib import Path
-        with sqlite3.connect(Path(os.environ['BW_DB_PATH']).with_name('bricklink-catalog.db')) as cat:
-            cat.execute("INSERT INTO items VALUES('P','3001','Synthetic brick','Synthetic',2025,'synthetic brick')")
-        with db:
-            db.execute("UPDATE id_match SET status='matched'")
-        rows, _ = part_inventory.candidates(db, [dict(item_type='P', item_no='3001', score=0.9)])
-        assert rows[0]['owned_summary']['total'] == 23 and rows[0]['owned_summary']['text'].startswith('You have 23')
-
-
-def test_page_jump_link_and_script(bw, apps):
-    client = logged_in(apps('toni'))
+def test_page_jump_link_and_script(world, client):
     page = BeautifulSoup(client.get('/workbench/what-is-this').data, 'html.parser')
     root = page.select_one('[data-wi-root]')
     assert root['data-url'] == '/workbench/part-to-inventory/detect' and root.select_one('input[type=file][accept="image/*"]')

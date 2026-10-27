@@ -1,7 +1,7 @@
 """Loose stock on the 4.0 store (M.8c, issue #110; design 2.4 invariant 9): the merge key, the audited add, the guarded undo of an add.
 
-The rest of the old file waits for its callers: the part-inventory, order-allocation and ledger paths that share `add_loose` are M.8e and
-M.8h; the edit-merge (`merge_edited`) is M.8d with the collection writes. Invented data, no network."""
+The rest of the old file waits for its callers: the part-inventory and ledger paths that share `add_loose` are M.8e, the order-allocation path is M.8h
+(`tests/test_bw_orders_storage.py`); the edit-merge (`merge_edited`) is M.8d with the collection writes. Invented data, no network."""
 from contextlib import closing
 import json
 import sqlite3

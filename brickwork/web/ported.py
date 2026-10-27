@@ -25,7 +25,11 @@ PORTED |= {'web.bw_planning', 'web.bw_prices_records', 'web.bw_prices_details', 
 # M.8g: the Wishlist and Complete sets screens (they share `web.bw_planning`) with their writes (pin, repair settings, export, Undo) and the
 # wishlist management and exports.
 PORTED |= {'web.bw_wishlists_write', 'web.bw_wishlists_export'}
-PIECE = 'M.8h to M.8j'
+# M.8h: Orders (import, review, count, allocate, reconcile, the short list, the CSV export) and Identify (the photo recognition of Part to Inventory
+# and What is this?; Add's photo mode runs through Add's own endpoints).
+PORTED |= {'web.bw_orders', 'web.bw_order', 'web.bw_orders_action', 'web.bw_order_short', 'web.bw_orders_export', 'web.bw_inventory_detect',
+           'web.bw_what_is_this'}
+PIECE = 'M.8i to M.8j'
 
 
 def holding(what=None):

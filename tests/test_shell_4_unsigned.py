@@ -2,7 +2,7 @@
 
 Ported here: the formatter and guard tests, the two node harnesses, the collection screens that read only the 4.0 collection (lists, item
 pages, wish pages, lots, purchase places), the jump search and the dimension names on the item page. Stay in `test_web_unsigned_text.py`:
-the Add, orders, workbench and planning screens (M.8c, M.8e, M.8g, M.8h)."""
+the Add, orders, workbench and planning screens (M.8c, M.8e, M.8g, M.8h); `test_ported_screens_text.py` walks them."""
 import re
 import shutil
 import subprocess

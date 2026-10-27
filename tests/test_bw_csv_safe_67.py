@@ -25,6 +25,6 @@ def test_list_export_escapes_a_formula_note():
 
 def test_order_export_escapes_a_formula_name():
     data = [dict(label='O1', date='2026-10-01', store='=x', seller=None, item_type='P', item_no='3001', name='@evil', colour=None,
-                 color_id=None, condition='N', qty=1, unit_price='0.10', line_total='0.10', currency='EUR')]
+                 color_key=None, condition='new', qty=1, unit_price='0.10', line_total='0.10', currency='EUR')]
     parsed = list(csv.reader(io.StringIO(order_exports.to_csv('lines', data))))
     assert parsed[1][2] == "'=x" and parsed[1][6] == "'@evil"

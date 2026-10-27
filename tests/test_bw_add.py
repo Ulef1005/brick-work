@@ -74,7 +74,7 @@ def test_the_page_and_searches_write_nothing(world, client, csrf, read):
     text = soup.get_text()
     assert 'Nothing is saved before you confirm' in text and html.headers['Cache-Control'] == 'no-store'
     assert [i['value'] for i in soup.select('input[name=type]')] == list(add.KIND_NAMES)
-    assert 'Photo' not in text and 'Keep photo' not in text                       # Brickognize returns with Identify (M.8h)
+    assert 'Photo' in text and 'Keep photo' in text                              # Brickognize's photo mode (M.8h)
     assert soup.select_one('input[name=type][value=set]').has_attr('checked')
     assert BeautifulSoup(client.get('/manage/add?type=P&where=loose').get_data(as_text=True), 'html.parser').select_one('input[name=type][value=part]').has_attr('checked')
     before = counts(read)
@@ -522,9 +522,9 @@ def test_add_review_frames(world, client):
     assert [i['value'] for i in where.select('input')] == ['owned', 'loose', 'wishlist']
     assert not root.select('[data-filters], [data-filter-panel], [data-type-filter]')
     assert root.select_one('fieldset[aria-label=How]') and not root.select_one('fieldset[aria-label=How] legend')
-    assert [i['value'] for i in root.select('fieldset[aria-label=How] input')] == ['search', 'paste', 'file']
+    assert [i['value'] for i in root.select('fieldset[aria-label=How] input')] == ['search', 'paste', 'file', 'photo']
     assert root.select_one('.bw-add-search-field input[aria-label]')
-    assert not root.select('[data-candidates]')
+    assert root.select_one('[data-candidates][hidden]') and root.select_one('[data-mode=photo][hidden] input[type=file][accept="image/*"]')       # the photo mode's candidates (M.8h)
 
 
 def test_the_rail_marks_add_current(world, client, app4):

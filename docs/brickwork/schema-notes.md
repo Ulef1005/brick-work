@@ -183,10 +183,12 @@ events and worker operation.
 
 ## 4.3d Orders and Storage
 
-The existing ledger tables support document review, line receipts and explicit
-copy/stock allocation without DDL changes. New app allocations are atomic and
-store reversible row snapshots in `events`, leaving historical ledger records
-as provenance. See [Orders and Storage](../web-ui/orders-storage-4.3d.md).
+On 4.0 (M.8h) the orders live in `purchase_order`, `order_document`, `order_line`, `line_receipt`, `line_receipt_log` and `allocation`
+(design § 5), empty after the migration (decision B). A line speaks item and colour ids and keeps the provider's words in `raw_*`; it is
+placed through `store4.identity.resolve_inverse(..., exhaustive=True)`, and a key that names several items stays unplaced with its candidates
+in `suggestions_json`. Every order save is one `orders:<order id>` event holding the rows it changed, before and after, and Undo
+(`core/orders.py`) deactivates a document rather than erasing it. The 3.3 tables and the `bw_ledger` receipt are gone. The storage part
+(the ledger) is `core/ledger.py`.
 
 Schema 3.2 (Ulf, 2026-10-13) adds nullable `storages.archived_at TEXT`.
 The approved archive-not-erase rule now covers storage locations, enabling

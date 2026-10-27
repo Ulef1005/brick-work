@@ -1,6 +1,7 @@
 (() => {
   'use strict';
   const nowrapTail = window.BrickFormatting.nowrapTail;
+  const KINDS = {S:'set',P:'part',M:'minifigure',I:'instructions',O:'box',G:'gear',B:'book',C:'catalog'}, TYPES = Object.fromEntries(Object.entries(KINDS).map(([letter,kind]) => [kind,letter]));
   const filterRows = (rows, query, filter, sort) => rows.filter(r => `${r.name || ''} ${r.number || ''} ${r.colour || ''}`.toLowerCase().includes(query.toLowerCase()) && (!filter || r.filterValue === filter)).sort((a,b) => sort === 'rank' ? a.rank-b.rank : sort === 'need' ? Number(b.need)-Number(a.need) : String(a[sort] || '').localeCompare(String(b[sort] || ''),undefined,{numeric:true}));
   const payload = (action, values, controls, context={}) => {
     const data = {...values,...context};
@@ -55,12 +56,13 @@
     const form=button.closest('form'), status=form.querySelector('[data-form-message]'), results=form.querySelector('[data-catalogue-results]');
     button.disabled=true;status.textContent='Searching';
     try {
-      const query=new URLSearchParams({type:form.elements.item_type.value,q:form.querySelector('[data-catalogue-query]').value,sort:'name'});
+      const query=new URLSearchParams({type:KINDS[form.elements.item_type.value] || 'part',q:form.querySelector('[data-catalogue-query]').value,sort:'name'});
       const response=await fetch(`${root.dataset.searchUrl}?${query}`);const data=await response.json();if(!response.ok)throw Error(data.error || 'Catalogue is not available');
       results.replaceChildren();status.textContent=window.BrickFormatting.resultCount(data.count)+' · choose an identity';
-      data.items.forEach(row=>{const pick=document.createElement('button');pick.type='button';pick.textContent=`${row.item_no} · ${nowrapTail(row.name)}`;pick.addEventListener('click',()=>{form.elements.item_no.value=row.item_no;form.elements.item_type.value=row.item_type;status.textContent='Identity chosen · choose the colour and match the line';results.replaceChildren();});results.append(pick);});
+      data.items.forEach(row=>{const pick=document.createElement('button');pick.type='button';pick.textContent=`${row.label || row.number} · ${nowrapTail(row.name)}`;pick.addEventListener('click',()=>{form.elements.item_id.value=row.item_id;form.elements.item_no.value=row.number || '';form.elements.item_type.value=TYPES[row.kind] || form.elements.item_type.value;status.textContent='Identity chosen · choose the colour and match the line';results.replaceChildren();});results.append(pick);});
     }catch(error){status.textContent=error.message || 'Catalogue is not available · try again';}finally{button.disabled=false;}
   }));
+  root.querySelectorAll('[data-candidates]').forEach(select=>select.addEventListener('change',()=>{select.closest('form').elements.item_id.value=select.value;}));
   root.querySelectorAll('form[data-action]').forEach(form=>form.addEventListener('submit',async e=>{
     e.preventDefault();if(busy)return;busy=true;
     const buttons=Array.from(form.querySelectorAll('button'));buttons.forEach(b=>{b.disabled=true;});form.setAttribute('aria-busy','true');

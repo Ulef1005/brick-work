@@ -15,11 +15,10 @@ QUARANTINE = {
     # first-run tests, the Statistics retail test (M.8i), the API speed tests (M.11). (The Wishlist retail test was ported by M.8g.)
     'tests/test_bw_api_m5_web.py': 'M.8i',
     'tests/test_bw_ui_12l.py': 'M.8i',
-    # M.8h: orders, identify
-    'tests/test_bw_orders_design.py': 'M.8h',
-    'tests/test_bw_orders_export_44.py': 'M.8h',
-    'tests/test_bw_orders_storage.py': 'M.8h',
-    'tests/test_bw_ownership_45.py': 'M.8h',
+    # M.8h split these out of files it ported (tests that belong to a later piece moved, none was added): out of test_bw_orders_storage.py and
+    # test_bw_orders_export_44.py the API receipts, history and export tests (M.11).
+    'tests/test_bw_orders_export_44_api.py': 'M.11',
+    'tests/test_bw_orders_storage_api.py': 'M.11',
     # M.8i: identity admin, merge/unmerge, settings, CLI, maintenance
     'tests/test_admin_ops.py': 'M.8i',
     'tests/test_bricklink_catalogue_xml.py': 'M.8i',

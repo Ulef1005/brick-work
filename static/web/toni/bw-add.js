@@ -17,7 +17,7 @@
  const colours = JSON.parse(root.dataset.colours);
  const value = name => root.querySelector(`input[name="${name}"]:checked`).value;
  const message = text => { $('message').textContent = text; };
- let queued = [], proposal = null, rows = [], token = '', batch = null, busy = false, searchTimer, searchVersion = 0, jobTimer, monitors = [];
+ let queued = [], proposal = null, rows = [], token = '', candidate = null, batch = null, busy = false, searchTimer, searchVersion = 0, jobTimer, monitors = [];
  const api = async (path, data) => {
   const options = data ? {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({...data, csrf_token:root.dataset.csrf})} : {};
   const response = await fetch(root.dataset.url + path, options);
@@ -127,7 +127,15 @@
  };
  const showReview = selected => {
   rows=selected.map(r=>({...r})); const seen=new Set();rows.forEach(r=>{const key=JSON.stringify([r.item_id ?? r.number,r.color_id ?? null,r.where==='wishlist' ? r.list_id || 'default' : null]);r.batchDuplicate=seen.has(key);seen.add(key);});
-  $('intake').hidden=true;$('review-panel').hidden=false; renderReview();$('review-panel').querySelector('h2').tabIndex=-1;$('review-panel').querySelector('h2').focus();
+  $('intake').hidden=true;$('candidates').hidden=true;$('review-panel').hidden=false; renderReview();$('review-panel').querySelector('h2').tabIndex=-1;$('review-panel').querySelector('h2').focus();
+ };
+ const renderCandidates=()=>{
+  const query=$('candidate-search').value,type=$('candidate-filter').value,sort=$('candidate-sort').value;
+  const selected=filterRows(proposal.items,query,type,sort==='name'?'name':'number');if(sort==='score')selected.sort((a,b)=>b.score-a.score);
+  $('candidate-count').textContent=`${selected.length} results`;$('candidate-list').replaceChildren();$('candidate-chips').replaceChildren();
+  if(query)chip($('candidate-chips'),query,()=>{$('candidate-search').value='';renderCandidates();});
+  if(type)chip($('candidate-chips'),type,()=>{$('candidate-filter').value='';renderCandidates();});
+  selected.forEach(row=>{const index=proposal.items.indexOf(row),wrap=identity(row);wrap.append(el('span',`${row.score} match`,'mono'));const b=el('button','Choose');b.type='button';b.addEventListener('click',()=>{candidate=index;showReview([row]);});wrap.append(b);$('candidate-list').append(wrap);});
  };
  const renderUnresolved=()=>{
   const query=$('unresolved-search').value.toLowerCase(),filter=$('unresolved-filter').value,sort=$('unresolved-sort').value;
@@ -137,20 +145,24 @@
   if(filter)chip($('unresolved-chips'),filter,()=>{$('unresolved-filter').value='';renderUnresolved();});
   selected.forEach(r=>$('unresolved-list').append(el('li',`${r.number} · ${r.reason}`)));
  };
+ ['candidate-search','candidate-filter','candidate-sort'].forEach(name=>$(name).addEventListener(name==='candidate-search'?'input':'change',renderCandidates));
  ['unresolved-search','unresolved-filter','unresolved-sort'].forEach(name=>$(name).addEventListener(name==='unresolved-search'?'input':'change',renderUnresolved));
  $('review').addEventListener('click',()=>guarded($('review'),async()=>{
   const mode=value('mode');const data={type:value('type'),where:value('where'),mode,list_id:root.querySelector('[data-wishlist-target]')?.value || 'default',map_wanted_ids:root.querySelector('[data-map-wanted]')?.checked!==false};
   if(mode==='search')data.items=queued;
   if(mode==='paste')data.text=$('paste').value;
   let result;
-  if(mode==='file') {
-   const file=$(mode).files[0];if(!file)throw Error('Choose a file');
+  if(mode==='file' || mode==='photo') {
+   const file=$(mode).files[0];if(!file)throw Error(mode==='photo'?'Choose a photo':'Choose a file');
    const form=new FormData();Object.entries({...data,csrf_token:root.dataset.csrf}).forEach(([k,v])=>form.append(k,v));form.append('file',file);
    const response=await fetch(root.dataset.url+'/review',{method:'POST',body:form});result=await response.json();if(!response.ok)throw Error(result.error || 'Could not read input');
   }else result=await api('/review',data);
-  proposal=result;token=result.token;
+  proposal=result;token=result.token;candidate=null;
   $('unresolved').hidden=!result.unresolved.length;renderUnresolved();
-  if(result.items.length)showReview(result.items);else message('No resolved items · check the unresolved lines');
+  if(result.candidates && result.items.length) {
+   $('candidate-list').replaceChildren();$('candidates').hidden=false;
+   renderCandidates();
+  }else if(result.items.length)showReview(result.items);else message('No resolved items · check the unresolved lines');
  }));
  const listeners=new Map();
  // HTTP snapshots repair missed broadcasts, including imports finished before connection.
@@ -166,7 +178,7 @@
  channel.on('import_progress',data=>{if(progress.has(data.job_id)){progress.set(data.job_id,data);updateOverall();}});
  const poll=async()=>{await Promise.all(monitors.map(async m=>{try{const result=await api(`/jobs/${m.jobId}`);result.events.forEach(e=>dispatch('import_progress',e));}catch{message('Progress could not be loaded · Jobs keeps the imports');}}));};
  $('confirm').addEventListener('click',()=>guarded($('confirm'),async()=>{
-  const result=await api('/confirm',{token,items:rows});batch=result.batch;
+  const result=await api('/confirm',{token,items:rows,candidate,keep_photo:$('keep').checked});batch=result.batch;
   $('review-panel').hidden=true;$('intake').hidden=true;$('jobs').hidden=false;$('job-list').replaceChildren();$('undo').disabled=false;$('undo').hidden=false;
   message(`Added ${words(result.receipts.length)}`);monitors.forEach(m=>m.destroy());monitors=[];progress.clear();
   result.receipts.forEach(r=>{

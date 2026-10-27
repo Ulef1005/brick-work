@@ -12,8 +12,8 @@ stock (`core.stock`); a wish becomes a `wish` row. The materialisation happens i
 Each row ends with one pipeline job (`core.pipeline`) and ONE receipt event `add:receipt` (entity id = the batch) which `undo`
 reverses by its registered undoer (`core.undo`): it archives what the row created and refuses when the rows changed since.
 
-A choice of part list (design 4.3's picker) has no screen yet (M.10): the preselection decides. Photo recognition (Brickognize) returns
-with the Identify screen (M.8h)."""
+A choice of part list (design 4.3's picker) has no screen yet (M.10): the preselection decides. Photo mode (M.8h) recognises a photo through
+`core/identify.py`, offers its candidates, and keeps the photo as the new item's own photo only when asked."""
 import csv
 import io
 import json
@@ -585,9 +585,10 @@ def _add_wish(db, row, receipt, via, actor):
     receipt['wish'] = dict(id=wish_id, created=before is None, before=before, after=after)
 
 
-def confirm(db, rows, *, batch, via=None, actor=None):
+def confirm(db, rows, *, batch, via=None, actor=None, photo=None, keep_photo=False):
     """Write the reviewed rows, one transaction each, and return their receipts (a row already saved under this batch returns its
-    saved receipt, so a lost response never doubles a row). A row that fails stops the batch; rows before it stay saved."""
+    saved receipt, so a lost response never doubles a row). A row that fails stops the batch; rows before it stay saved.
+    `photo` is the picture a photo-mode Add recognised; it is kept as the new item's own photo only with `keep_photo`."""
     if via is None:
         via, actor = origin()
     require_catalogue(db)
@@ -601,15 +602,15 @@ def confirm(db, rows, *, batch, via=None, actor=None):
                 result.append(saved)
                 continue
             try:
-                result.append(_confirm_row(db, pipeline, row, batch, index, via, actor))
+                result.append(_confirm_row(db, pipeline, row, batch, index, via, actor, photo if keep_photo else None))
             except Store4Error as error:
                 raise errors.ValidationFailed(str(error)) from None
     return result
 
 
-def _confirm_row(db, pipeline, row, batch, index, via, actor):
+def _confirm_row(db, pipeline, row, batch, index, via, actor, photo=None):
     receipt = dict(batch=batch, index=index, item_id=row.get('item_id'), kind=row['kind'], where=row['where'], quantity=row['quantity'],
-                   copies=[], guards={}, stock=None, wish=None, created_wishlist=None, created_item=None, fetch_job=None, job_id=None, pending=[])
+                   copies=[], guards={}, stock=None, wish=None, created_wishlist=None, created_item=None, fetch_job=None, job_id=None, pending=[], photos=[])
     if row.get('unknown'):
         if row['decision'] == 'fetch':
             job, created = jobs.queue_in(db, 'rebrickable_set', payload=row['number'], via=via, actor=actor)
@@ -636,6 +637,11 @@ def _confirm_row(db, pipeline, row, batch, index, via, actor):
     else:
         receipt['stock'] = stock.add_loose(db, item_id=row['item_id'], color_id=row['color_id'], quantity=row['quantity'], condition=row['condition'],
                                            lot_id=row.get('lot_id'), storage_id=row.get('storage_id'), note=row.get('note'), via=via, actor=actor)
+    if photo and row['where'] != 'wishlist' and (receipt['stock'] or receipt['copies']):
+        from . import part_inventory
+        from .media import media_root
+        receipt['photos'].append(part_inventory.keep_photo(db, media_root(db), row['item_id'], row['color_id'], photo,
+                                                           stock_id=(receipt['stock'] or {}).get('id'), copy_id=receipt['copies'][0] if receipt['copies'] else None))
     receipt['job_id'] = pipeline.queue_steps(row['item_id'], via=via, actor=actor)
     return _save_receipt(db, receipt, via, actor)
 
@@ -789,6 +795,8 @@ def _undo_receipt(db, event, via, actor):
         if r.get('created_wishlist') and not db.execute('SELECT 1 FROM main.wish WHERE wishlist_id=? AND archived_at IS NULL', (r['created_wishlist'],)).fetchone():
             db.execute('UPDATE main.wishlist SET archived_at=? WHERE id=?', (stamp, r['created_wishlist']))
             audit(db, 'wishlist:' + r['created_wishlist'], 'archived_at', None, stamp, via=via, actor=actor)
+    for photo_id in r.get('photos') or ():                             # the photo this row kept goes with it; the file stays the person's
+        db.execute('UPDATE main.photo SET archived_at=? WHERE id=? AND archived_at IS NULL', (stamp, photo_id))
     if r.get('stock'):
         stock.undo_added(db, r['stock'], via=via, actor=actor)
     for copy_id in reversed(r['copies']):
@@ -822,7 +830,7 @@ def undo(db, batch, *, via=None, actor=None):
     return len(ids)
 
 
-# ---------- readers of the 3.3 store, until the pieces that port their callers (M.8g planning, M.8h orders, M.11 API) ----------
+# ---------- readers of the 3.3 store, until the piece that ports their callers (M.11 API) ----------
 
 def catalogue_path(db):
     return Path(db.execute('PRAGMA database_list').fetchone()['file']).with_name('bricklink-catalog.db')

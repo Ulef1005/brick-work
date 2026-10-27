@@ -1,8 +1,7 @@
 """Part to Inventory on the 4.0 store (M.8e, issue #110): the page, the batch save and its Undo.
 
-The recognition call (`/workbench/part-to-inventory/detect`, Brickognize) is Identify's (M.8h) and still answers 503; a test builds the
-signed proposal the detect route would hand out (`proposal`). Gone with 3.3: the transport-mock and budget assertions
-(`test_figures_budget_*`, the detect validation of `test_validation_atomicity_*`), which belong to the source client (M.8f/M.8h).
+The recognition call (`/workbench/part-to-inventory/detect`, Brickognize) is Identify's (M.8h, `tests/test_bw_identify.py` covers it with a fake
+transport); here a test builds the signed proposal the detect route would hand out (`proposal`).
 """
 import base64
 import io
@@ -159,12 +158,6 @@ def test_candidates_come_from_typed_numbers_and_to_check_ones_are_listed_apart(w
     inventory.candidates(db, [dict(item_type='P', item_no='3001', score=.91)] * 9)
     db.set_trace_callback(None)
     assert len(queries) < 120
-
-
-def test_detect_is_identify_and_not_yet_here(world, client):
-    token = csrf(client)
-    response = client.post('/workbench/part-to-inventory/detect', data=dict(csrf_token=token, endpoint='parts', file=(io.BytesIO(photo()), 'piece.png')))
-    assert response.status_code == 503
 
 
 def test_lot_destination_and_expired_proposals(world, coll, app4, client, monkeypatch):

@@ -587,9 +587,11 @@ def bw_add_search():
 @web_page.post('/manage/add/review')
 @login_required
 def bw_add_review():
+    import base64
     import json
     import uuid
-    from ..core import add
+    from ..core import add, identify
+    from ..core.sources.brickognize import photo_bytes
     from ..core.sources.base import audit_origin, SourceError
     data = request.get_json(silent=True) if request.is_json else request.form
     data = data or {}
@@ -597,6 +599,7 @@ def bw_add_review():
     kind, where, mode = data.get('type', 'set'), data.get('where', 'owned'), data.get('mode', 'paste')
     if kind not in add.KIND_NAMES:
         abort(400, 'Choose an item type')
+    photo = None
     try:
         with _add_database() as db, audit_origin('app'):
             if mode == 'paste':
@@ -614,13 +617,26 @@ def bw_add_review():
                 if not isinstance(rows, list):
                     raise ValueError('Choose items from the search')
             elif mode == 'photo':
-                raise ValueError('Photo recognition returns with the Identify screen · search or paste a number for now')
+                upload = request.files.get('file')
+                if not upload:
+                    raise ValueError('Choose a photo')
+                photo = photo_bytes(upload.read(8 * 1024 * 1024 + 1))
+                choices, missed = identify.recognise(db, photo, kind if kind in ('part', 'minifigure') else None, kinds=('part', 'minifigure', 'set'))
+                if not choices:
+                    raise ValueError('Nothing identified · try another photo')
+                rows = [dict(item_id=c['item_id'], quantity=1, score=c['score']) for c in choices]
             else:
                 raise ValueError('Choose how to add')
             proposal = add.resolve(db, rows, where, list_id=data.get('list_id') or 'default',
                                    map_wanted_ids=data.get('map_wanted_ids', 'true') not in (False, 'false'))
-            token = bw_add_signer().dumps(dict(**proposal, batch=uuid.uuid4().hex, owner=bw_add_token(), mode=mode))
-        return jsonify(**proposal, token=token, candidates=False)
+            if photo:
+                scores = {r['item_id']: r['score'] for r in rows}
+                for row in proposal['items']:
+                    row['score'] = scores.get(row['item_id'])
+                proposal['unresolved'] += [dict(number=m['item_no'], reason=m['reason']) for m in missed]
+            token = bw_add_signer().dumps(dict(**proposal, batch=uuid.uuid4().hex, owner=bw_add_token(), mode=mode,
+                                               photo=base64.b64encode(photo).decode() if photo else None))
+        return jsonify(**proposal, token=token, candidates=mode == 'photo')
     except (ValueError, SourceError, sqlite3.Error, OSError, UnicodeError, json.JSONDecodeError, ET.ParseError) as error:
         return jsonify(error=public(error, 'Could not read this input')), 400
 
@@ -637,6 +653,7 @@ def _add_receipt_view(receipt):
 @web_page.post('/manage/add/confirm')
 @login_required
 def bw_add_confirm():
+    import base64
     from itsdangerous import BadSignature
     from ..core import add
     from ..core.sources.base import audit_origin
@@ -647,9 +664,16 @@ def bw_add_confirm():
         proposal = bw_add_signer().loads(data.get('token', ''), max_age=3600)
         if proposal['owner'] != bw_add_token():
             raise ValueError('Review this input again')
+        original = proposal['items']
+        if proposal.get('mode') == 'photo':                # a photo offers candidates; the person chooses one first
+            selected = data.get('candidate')
+            if type(selected) is not int or not 0 <= selected < len(original):
+                raise ValueError('Choose a photo candidate first')
+            original = [original[selected]]
         with _add_database() as db, audit_origin('app'):
-            rows = add.validate_edits(db, proposal['items'], data.get('items'), batch=proposal['batch'])
-            receipts = add.confirm(db, rows, batch=proposal['batch'])
+            rows = add.validate_edits(db, original, data.get('items'), batch=proposal['batch'])
+            receipts = add.confirm(db, rows, batch=proposal['batch'], photo=base64.b64decode(proposal['photo']) if proposal.get('photo') else None,
+                                   keep_photo=data.get('keep_photo') is True)
         if receipts:
             bw_start_worker()
         return jsonify(receipts=[_add_receipt_view(r) for r in receipts], batch=proposal['batch'])
@@ -959,36 +983,7 @@ def bw_order(order_id):
             data['destinations'] = orders.destinations(db, data['saved'])
             data['colours'] = add.colors(db)
             data['storages'] = ledger.storages(db)
-            data['lots'] = [dict(r) for r in db.execute('SELECT id,name FROM lots WHERE archived_at IS NULL ORDER BY name')]
-            # Resolve history targets in one batch; no query for each allocation.
-            targets = {row['id']: dict(row) for row in db.execute('''
-                SELECT a.id,c.set_no,s.name AS storage,l.name AS lot
-                FROM allocations a LEFT JOIN copies c ON c.id=coalesce(a.target_copy_id,a.copy_id)
-                LEFT JOIN loose_stock stock ON stock.id=a.target_stock_id
-                LEFT JOIN storages s ON s.id=stock.storage_id
-                LEFT JOIN lots l ON l.id=stock.lot_id WHERE a.order_id=?
-            ''', (order_id,))}
-            identities = {row['id']: row for row in data['lines']}
-            for allocation in data['allocations']:
-                allocation['identity'] = identities.get(allocation['line_id'])
-                target = targets.get(allocation['id']) or {}
-                copy_ref = allocation.get('target_copy_id') or allocation.get('copy_id')
-                if allocation['target_type'] == 'copy' or (allocation['target_type'] is None and copy_ref):
-                    name = target.get('set_no') or copy_ref
-                    allocation['target_label'] = 'Copy ' + str(name) if name else 'Target not recorded'
-                elif allocation['target_type'] == 'stock':
-                    allocation['target_label'] = (('Lot ' + target['lot'] if target.get('lot') else 'Loose stock') +
-                        (' · ' + target['storage'] if target.get('storage') else ''))
-                else:
-                    allocation['target_label'] = 'Target not recorded'
-            allocation_events = {}
-            for event in data['history']:
-                if event['undo_available'] and not event['undone']:
-                    for change in event['receipt'].get('changes', []):
-                        if change['table'] == 'allocations':
-                            allocation_events[change['key']['id']] = event['id']
-            for allocation in data['allocations']:
-                allocation['undo_event'] = allocation_events.get(allocation['id'])
+            data['lots'] = [dict(r) for r in db.execute('SELECT id,name FROM lot WHERE archived_at IS NULL ORDER BY name')]
     except (ValueError, sqlite3.Error):
         abort(404)
     order_view = request.args.get('view', 'detail')
@@ -1009,22 +1004,25 @@ def bw_inventory_detect():
     import uuid
     from .admin_ops import brickwork_path
     from ..core.admin import database
-    from ..core.part_inventory import candidates
-    from ..core.sources.brickognize import Brickognize, photo_bytes
-    from ..core.sources.base import audit_origin
+    from ..core import identify
+    from ..core.sources.brickognize import photo_bytes
+    from ..core.sources.base import audit_origin, SourceError
     bw_add_csrf(request.form)
     try:
         upload = request.files.get('file')
         if not upload:
             raise ValueError('Choose a photo')
         photo = photo_bytes(upload.read(8 * 1024 * 1024 + 1))
+        endpoint = request.form.get('endpoint', 'parts')
+        if endpoint not in ('parts', 'figs'):
+            raise ValueError('Choose parts or figures')
         with database(brickwork_path()) as db, audit_origin('app'):
-            choices, unresolved = candidates(db, Brickognize(db).predict(photo, request.form.get('endpoint', 'parts')))
+            choices, unresolved = identify.recognise(db, photo, {'parts': 'part', 'figs': 'minifigure'}[endpoint])
         if not choices:
             return jsonify(error='Nothing identified · try another photo', unresolved=unresolved), 400
         proposal = dict(id=uuid.uuid4().hex, owner=bw_add_token(), candidates=choices, photo=base64.b64encode(photo).decode())
         return jsonify(candidates=choices, unresolved=unresolved, token=bw_add_signer().dumps(proposal))
-    except (ValueError, sqlite3.Error, OSError) as exc:
+    except (ValueError, SourceError, sqlite3.Error, OSError) as exc:
         return jsonify(error=public(exc, 'Could not recognise this photo')), 400
 
 
@@ -1085,7 +1083,7 @@ def bw_inventory_undo():
 def bw_orders_action(action):
     from .admin_ops import brickwork_path
     from ..core.admin import database
-    from ..core import orders, ledger
+    from ..core import orders
     from ..core.sources.base import audit_origin, SourceError
     data = bw_ledger_payload()
     try:
@@ -1103,7 +1101,8 @@ def bw_orders_action(action):
                 result = orders.import_document(db, data['source'], text, choice=data.get('choice', 'new'), number=data.get('number'), label=upload.filename if upload else None)
                 return jsonify(**result, message='Already imported · open the existing order' if result['duplicate'] else 'Draft saved · review the lines', url=url_for('web.bw_order', order_id=result['order_id']))
             elif action == 'match':
-                event = orders.match(db, int(data['order_id']), int(data['line_id']), data['item_type'], data['item_no'], data.get('color_id'))
+                event = orders.match(db, int(data['order_id']), int(data['line_id']), item_id=int(data['item_id']) if data.get('item_id') not in (None, '') else None,
+                                     color_id=data.get('color_id'), item_type=data.get('item_type'), item_no=data.get('item_no'))
             elif action in ('review', 'reopen', 'save'):
                 event = orders.phase(db, int(data['order_id']), int(data['document_id']), action, data.get('pairs'))
             elif action == 'received':
@@ -1115,7 +1114,7 @@ def bw_orders_action(action):
             elif action == 'reconcile':
                 event = orders.reconcile(db, int(data['order_id']))
             elif action == 'undo':
-                ledger.undo_history(db, int(data['event_id']))
+                orders.undo_history(db, int(data['event_id']))
                 return jsonify(message='Undone')
             else:
                 abort(404)
@@ -1127,17 +1126,21 @@ def bw_orders_action(action):
 @web_page.get('/workbench/orders/<int:order_id>/short.xml')
 @login_required
 def bw_order_short(order_id):
+    import json
+    from urllib.parse import quote
     from .admin_ops import brickwork_path
     from ..core.admin import database
-    from ..core.orders import short_xml
+    from ..core.orders import short_export
     with database(brickwork_path(), read_only=True) as db:
         try:
-            text = short_xml(db, order_id)
+            result = short_export(db, order_id)
         except ValueError:
             abort(404)
-    response = current_app.response_class(text, mimetype='application/xml')
+    response = current_app.response_class(result['xml'], mimetype='application/xml')
     response.headers['Content-Disposition'] = 'attachment; filename="order-short.xml"'
     response.headers['Cache-Control'] = 'no-store'
+    if result['skipped']:                                  # a line BrickLink cannot name is left out and said so (M.8g's header)
+        response.headers['X-Bw-Skipped'] = quote(json.dumps(result['skipped'], separators=(',', ':')))
     return response
 
 

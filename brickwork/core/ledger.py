@@ -2,8 +2,7 @@
 
 A write is one `ledger` receipt event (`storage`, `place`, `move`, `archive`): the tables it changed, before and after, as
 `collection.receipt` writes them. Undo is the collection's generic undoer (refused unless every row still equals what the request left)
-behind the three storage guards of 3.3 (`undo_guard`). The order receipts (`finish`, `insert` over the 3.3 order tables) belong to the
-orders piece (M.8h) and are not here.
+behind the three storage guards of 3.3 (`undo_guard`). The order receipts are `core/orders.py`'s (M.8h): they use the same tracker.
 """
 import json
 from uuid import uuid4

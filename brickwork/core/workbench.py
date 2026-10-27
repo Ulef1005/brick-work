@@ -329,11 +329,18 @@ class Tracker:
         self.links = {}                # link table -> {owner id: rows before}
         self.extra = None
 
+    def snapshot(self, table, ids):
+        """The rows of `table` with these keys; a subclass adds tables (the orders' journal does)."""
+        return collection.snapshot(self.db, table, ids)
+
+    def key(self, table):
+        return 'id'
+
     def touch(self, table, *ids):
         seen = self.before.setdefault(table, {})
         new = [i for i in dict.fromkeys(ids) if i not in seen]
         if new:
-            rows = {r['id']: r for r in collection.snapshot(self.db, table, new)}
+            rows = {r[self.key(table)]: r for r in self.snapshot(table, new)}
             for identifier in new:
                 seen[identifier] = rows.get(identifier if table not in collection.INTEGER_IDS else int(identifier))
 
@@ -349,14 +356,15 @@ class Tracker:
     def entries(self):
         entries = []
         for table, seen in self.before.items():
-            now_rows = {r['id']: r for r in collection.snapshot(self.db, table, list(seen))}
+            key = self.key(table)
+            now_rows = {r[key]: r for r in self.snapshot(table, list(seen))}
             changed = [i for i, old in seen.items() if old is not None and now_rows.get(i) != old]
             if changed:
-                after = collection.snapshot(self.db, table, changed)
-                entries.append((table, [seen[r['id']] for r in after], after))
+                after = self.snapshot(table, changed)
+                entries.append((table, [seen[r[key]] for r in after], after))
             made = [i for i, old in seen.items() if old is None and i in now_rows]
             if made:
-                entries.append((table, [], collection.snapshot(self.db, table, made)))
+                entries.append((table, [], self.snapshot(table, made)))
         for table, owners in self.links.items():
             for owner, old in owners.items():
                 new = collection.links(self.db, table, owner)

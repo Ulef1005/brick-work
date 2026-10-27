@@ -1,6 +1,7 @@
 """Storage archive and guarded Undo on the 4.0 store (M.8e, issue #110).
 
-Moved to later pieces (their premise is theirs): the order allocation and `admin.value_write` parts of the 3.3 route test (M.8h, M.8i).
+Moved to later pieces (their premise is theirs): the `admin.value_write` part of the 3.3 route test (M.8i). Its order-allocation part is
+`test_allocated_stock_follows_a_storage_archive` in `tests/test_bw_orders_storage.py` (M.8h).
 """
 import json
 import sqlite3

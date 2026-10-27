@@ -133,6 +133,10 @@ BASELINE = frozenset((
     'tests/test_bw_partout_38_api.py',
     'tests/test_bw_wish_progress_35_api.py',
     'tests/test_shell_45s_tools.py',
+    # M.8h split these out of files it ported (tests that belong to a later piece moved, none was added): out of test_bw_orders_storage.py and
+    # test_bw_orders_export_44.py the API receipts, history and export tests (M.11).
+    'tests/test_bw_orders_export_44_api.py',
+    'tests/test_bw_orders_storage_api.py',
 ))
 
 

@@ -3,8 +3,8 @@
 A batch is one `part_inventory:<batch>` receipt event holding the stock changes `stock.add_loose` made (rows before and after), the lot
 it created, the photos it kept and the identification records it wrote; Undo (`core/undo.py`) takes the stock back, archives the lot,
 the photos and the records, and writes `event_undo`. It is refused when the stock changed since (undo the later save first).
-The recognition call itself (Brickognize, `/workbench/part-to-inventory/detect`) is the Identify piece (M.8h): `candidates` here turns
-its predictions into items.
+The recognition call itself (Brickognize, `/workbench/part-to-inventory/detect`) is Identify's (M.8h, `core/identify.py`): `candidates` here
+is its mapping of predictions to items.
 """
 import base64
 import io
@@ -12,7 +12,7 @@ import json
 import uuid
 from pathlib import Path
 
-from . import add, collection, items, stock
+from . import add, collection, identify, stock
 from . import undo as undoing
 from .admin import audit
 from .media import media_root
@@ -20,7 +20,6 @@ from .transaction import on_rollback, transaction
 from ..store4.connect import now as stamp_now
 
 CONDITIONS = {'U': 'used', 'N': 'new', 'used': 'used', 'new': 'new'}
-PREDICTED_KINDS = {'P': 'part', 'M': 'minifigure'}
 
 
 def options(db):
@@ -32,34 +31,14 @@ def options(db):
 
 
 def candidates(db, predictions):
-    """`(choices, unresolved)` for recognition predictions `[dict(item_type 'P'|'M', item_no, score)]`: each number is looked up as a
-    typed number (`items.find`: Rebrickable or BrickLink). A prediction that names nothing, or an item still to check, is listed apart."""
-    result, unresolved, named, looked = [], [], [], {}
-    for prediction in predictions[:9]:
-        kind = PREDICTED_KINDS.get(prediction['item_type'])
-        if kind is None:
-            continue
-        found = looked[kind, prediction['item_no']] = looked.get((kind, prediction['item_no'])) or items.find(db, kind, prediction['item_no'], limit=1)
-        if found:
-            named.append((prediction, found[0]['item_id']))
-        else:
-            unresolved.append(dict(**prediction, reason='Unknown catalogue identity'))
-    for (prediction, _), row in zip(named, collection.decorate(db, [dict(item_id=item_id, score=p['score']) for p, item_id in named])):
-        if row['unresolved']:
-            unresolved.append(dict(**prediction, reason='To check'))
-        else:
-            result.append(row)
-    # What you already hold of each candidate, across colours, and which copies need it.
-    from . import ownership
-    owned = ownership.summary(db, [r['item_id'] for r in result])
-    for row in result:
-        info = owned.get(row['item_id'])
-        row['owned_summary'] = dict(info, text=ownership.text(info)) if info else dict(total=0, colours=[], needed_by=[], needed_count=0, text=ownership.text(None))
-    return result, unresolved
+    """`(choices, unresolved)` for recognition predictions of parts and minifigures: `core/identify.py` maps each number to an item (never
+    guessing between several) and adds what you already hold of it."""
+    return identify.candidates(db, predictions)
 
 
-def _keep(db, root, item_id, color_id, stock_id, content):
-    """An own photo of the piece: the file under data/images/own, the row in `photo`. Returns the photo id."""
+def keep_photo(db, root, item_id, color_id, content, *, stock_id=None, copy_id=None):
+    """An own photo of the piece or set: the file under data/images/own, the row in `photo` (on the stock row or the copy). Returns the photo id.
+    Add's photo mode keeps its photo the same way."""
     from PIL import Image
     photo_id = collection._photo_id()
     relative = 'data/images/own/' + photo_id + '.jpg'
@@ -70,7 +49,7 @@ def _keep(db, root, item_id, color_id, stock_id, content):
         image.convert('RGB').save(target, 'JPEG', quality=90)
     on_rollback(db, lambda: target.unlink(missing_ok=True))
     db.execute('''INSERT INTO main.photo(id,item_id,color_id,copy_id,stock_id,local_path,width,height,caption,taken_at,created_at)
-                  VALUES(?,?,?,NULL,?,?,?,?,NULL,NULL,?)''', (photo_id, item_id, color_id, stock_id, relative, width, height, stamp_now()))
+                  VALUES(?,?,?,?,?,?,?,?,NULL,NULL,?)''', (photo_id, item_id, color_id, copy_id, stock_id, relative, width, height, stamp_now()))
     return photo_id
 
 
@@ -139,7 +118,7 @@ def save(db, pieces, *, batch, condition='used', lot_id=None, new_lot=None, keep
                        (identifier, stamp, identity['item_id'], colour, amount, change['id']))
             records.append(identifier)
             if keep_photos and piece.get('photo'):
-                photos.append(_keep(db, root, identity['item_id'], colour, change['id'], base64.b64decode(piece['photo'])))
+                photos.append(keep_photo(db, root, identity['item_id'], colour, base64.b64decode(piece['photo']), stock_id=change['id']))
         receipt = dict(batch=batch, stock=stock_changes, lot=created_lot, identifications=records, photos=photos)
         audit(db, 'part_inventory:' + batch, 'receipt', None, receipt)
         return db.execute('SELECT last_insert_rowid()').fetchone()[0]

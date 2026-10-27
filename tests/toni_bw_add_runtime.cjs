@@ -18,10 +18,10 @@ class Element {
  querySelector(selector) {if(selector==='h2')return this.heading ||= new Element('h2');if(selector==='.bw-import-progress')return this.progress ||= new Element();return this.children.find(c=>c.tagName===selector.toUpperCase()) || new Element();}
  async trigger(event='click') {const args={key:'',preventDefault(){}};for(const fn of this.events[event] || [])await fn(args);await flush();}
 }
-const names=['wishlist-target','map-wanted','unresolved-search','unresolved-filter','unresolved-sort','unresolved-chips','unresolved-count','colour-dialog','colour-search','colour-filter','colour-sort','colour-count','colour-list','colour-chips','colour-close','message','queued','review','search','sort','results','result-count','chips','review-rows','review-search','review-filter','review-sort','review-count','review-chips','confirm','intake','review-panel','unresolved','unresolved-list','paste','file','jobs','job-list','overall','progress-template','undo','back','again','review-clear'];
+const names=['wishlist-target','map-wanted','candidate-search','candidate-filter','candidate-sort','candidate-chips','candidate-count','unresolved-search','unresolved-filter','unresolved-sort','unresolved-chips','unresolved-count','colour-dialog','colour-search','colour-filter','colour-sort','colour-count','colour-list','colour-chips','colour-close','message','queued','review','search','sort','results','result-count','chips','review-rows','review-search','review-filter','review-sort','review-count','review-chips','confirm','intake','candidates','candidate-list','review-panel','unresolved','unresolved-list','paste','file','photo','keep','jobs','job-list','overall','progress-template','undo','back','again','review-clear'];
 const nodes=Object.fromEntries(names.map(n=>[n,new Element(n.includes('search')?'input':'div')]));
-nodes['wishlist-target'].value='gifts';nodes['map-wanted'].checked=true;nodes.sort.value='number';nodes['unresolved-sort'].value='number';nodes['review-sort'].value='number';nodes['progress-template'].content={cloneNode(){return new Element();}};
-const radios={type:['set','minifigure','part','instructions','box','gear','book','catalog'],where:['owned','loose','wishlist'],mode:['search','paste','file']};
+nodes['wishlist-target'].value='gifts';nodes['map-wanted'].checked=true;nodes.sort.value='number';nodes['candidate-sort'].value='score';nodes['unresolved-sort'].value='number';nodes['review-sort'].value='number';nodes['progress-template'].content={cloneNode(){return new Element();}};
+const radios={type:['set','minifigure','part','instructions','box','gear','book','catalog'],where:['owned','loose','wishlist'],mode:['search','paste','file','photo']};
 const groups=Object.fromEntries(Object.entries(radios).map(([k,list])=>[k,list.map((v,i)=>Object.assign(new Element('input'),{value:v,checked:i===0}))]));
 const root=new Element();root.dataset={wishlists:JSON.stringify([{id:'default',name:'Wishlist'},{id:'gifts',name:'Gifts'}]),url:'/manage/add',csrf:'csrf',colours:JSON.stringify([{color_id:11,name:'Synthetic blue',rgb:'ABCDEF'}]),socketPath:'/socket.io',socketNamespace:'/test'};
 root.querySelector=s=>{
@@ -39,7 +39,7 @@ const flush=()=>new Promise(resolve=>setImmediate(resolve));
 const fetch=async(url,opts={})=>{
  const body=opts.body?JSON.parse(opts.body):null;requests.push({url,body});
  if(url.includes('/search?'))return {ok:true,json:async()=>({count:searchCount,items:[{...item}]})};
- if(url.endsWith('/review'))return {ok:true,json:async()=>({token:'signed-review',items:responseMode==='unknown'?[{...unknown}]:[{...item}],unresolved:[]})};
+ if(url.endsWith('/review'))return {ok:true,json:async()=>({token:'signed-review',items:responseMode==='unknown'?[{...unknown}]:[{...item,score:.9}],unresolved:[],candidates:responseMode==='photo'})};
  if(url.endsWith('/confirm')){confirmCalls++;return {ok:true,json:async()=>({batch:'batch',receipts:[{job_id:42,label:item.label,name:item.name}]})};}
  if(url.endsWith('/retry')){retryCalls++;return {ok:true,json:async()=>({})};}
  if(url.endsWith('/undo'))return {ok:true,json:async()=>({message:'Undone'})};
@@ -83,6 +83,10 @@ vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../static/web/toni/bw-ad
  assert.ok(choice.children.at(-1).textContent.includes('Rebrickable key'));assert.equal(nodes.confirm.disabled,true);
  const select=choice.children.find(c=>c.tagName==='SELECT');select.value='unidentified';await select.trigger('change');assert.equal(nodes.confirm.disabled,false);
  await nodes.confirm.trigger();assert.equal(confirmCalls,2);assert.equal(requests.filter(r=>r.url.endsWith('/confirm')).at(-1).body.items[0].decision,'unidentified');
+ // A photo offers candidates and none is auto-accepted, even when there is only one; the choice and Keep photo travel with the confirm.
+ await nodes.back.trigger();responseMode='photo';await nodes.review.trigger();assert.equal(nodes.candidates.hidden,false);assert.equal(confirmCalls,2);
+ await nodes['candidate-list'].children[0].children.at(-1).trigger();assert.equal(nodes['review-panel'].hidden,false);assert.equal(confirmCalls,2);
+ nodes.keep.checked=true;await nodes.confirm.trigger();assert.equal(confirmCalls,3);const photoSent=requests.filter(r=>r.url.endsWith('/confirm')).at(-1).body;assert.equal(photoSent.candidate,0);assert.equal(photoSent.keep_photo,true);
  responseMode='search';nodes['review-search'].value='';item.kind='part';item.type_name='Part';item.name='Synthetic part';item.where='wishlist';item.wished_colors=[11];
  await nodes.review.trigger();const identity=nodes['review-rows'].children[0].children[0].children[0];await identity.children.at(-1).trigger();assert.equal(nodes['colour-dialog'].open,true);assert.equal(nodes['colour-list'].children.length,1);
  const colour=nodes['colour-list'].children[0];assert.equal(colour.textContent,'Synthetic blue');assert.equal(colour.style.background,'#ABCDEF');await colour.trigger();assert.equal(nodes['colour-dialog'].open,false);const choices=nodes['review-rows'].children[0].children.at(-1);assert.ok(choices.children[0].textContent.includes('Already on Wishlist'));assert.equal(choices.children.at(-1).children[1].textContent,'Add to the wished quantity');await nodes.confirm.trigger();assert.equal(requests.filter(r=>r.url.endsWith('/confirm')).at(-1).body.items[0].color_id,11);
@@ -97,12 +101,12 @@ vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../static/web/toni/bw-ad
  assert.equal(requests.filter(r=>r.url.endsWith('/review')).at(-1).body.list_id,'gifts');
  // Wishlist links open a prefilled paste intake without starting a search or a write.
  groups.mode.forEach(r=>r.checked=r.value==='paste');nodes.paste.value='bl-figure';
- const modePanels=['search','paste','file'].map(mode=>Object.assign(new Element(),{dataset:{mode}}));
+ const modePanels=['search','paste','file','photo'].map(mode=>Object.assign(new Element(),{dataset:{mode}}));
  const queryAll=root.querySelectorAll;root.querySelectorAll=s=>s==='[data-mode]'?modePanels:queryAll(s);
  const beforePrefill=requests.length;
  vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../static/web/toni/bw-add.js'),'utf8'),context);
  assert.equal(nodes.review.textContent,'Review 1 item');
- assert.deepEqual(modePanels.map(p=>p.hidden),[true,false,true]);
+ assert.deepEqual(modePanels.map(p=>p.hidden),[true,false,true,true]);
  assert.equal(requests.length,beforePrefill);
- console.log('Brick Work Add runtime: review guard, safe identity text, filters, the unknown-number offers, confirm and Undo passed');
+ console.log('Brick Work Add runtime: review guard, safe identity text, filters, the unknown-number offers, explicit photo choice, confirm and Undo passed');
 })().catch(error=>{console.error(error);process.exitCode=1;});

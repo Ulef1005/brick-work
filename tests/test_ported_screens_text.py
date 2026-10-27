@@ -3,7 +3,7 @@
 `ROUTES` lists the screens a piece has ported; each piece adds its own (M.8f added the Prices screen and the text its records and details carry;
 M.8g the Wishlist and Complete sets screens, with a repair of every kind: ranked, free, outside break-even and needing evidence). Item, lot, wish and Check Set Parts pages are walked from the data (M.8d: the chooser, every copy's
 check screen, running and not, and every figure line's; M.8e: the Part Picker and Matcher with each copy selected, the Storage screen of every
-storage, the printable lists and the Part to Inventory page)."""
+storage, the printable lists and the Part to Inventory page; M.8h: the Orders hub, What is this? and an order's four views, see below)."""
 import re
 
 from bs4 import BeautifulSoup
@@ -16,7 +16,8 @@ SIGN = re.compile(r'(?:^|[\s(\[·])[-−–—]\d')
 KINDS = ('sets', 'wishes', 'purchase-places', 'M', 'P', 'I', 'O', 'G', 'B', 'C')
 ROUTES = ['/collection/' + kind for kind in KINDS] + ['/manage/add', '/manage/add?type=part&where=wishlist&number=3001', '/workbench/check-parts'] + [
     '/workbench/part-picker', '/workbench/matcher', '/workbench/match', '/workbench/storage', '/workbench/storage/unstored', '/workbench/part-to-inventory',
-    '/lists/wishlist/print', '/lists/wishlist.csv', '/planning/prices', '/planning/prices?kind=P', '/planning/wishlist', '/planning/complete-sets']
+    '/lists/wishlist/print', '/lists/wishlist.csv', '/planning/prices', '/planning/prices?kind=P', '/planning/wishlist', '/planning/complete-sets',
+    '/workbench/orders', '/workbench/what-is-this']
 
 
 def assert_unsigned(html, route, shell=True):
@@ -126,3 +127,20 @@ def test_prices_name_tail(world, coll, client):
     coll.price(world.gate, '12.30', condition='new', guide='stock', minimum='10', maximum='15', sold=3)
     data = client.get('/planning/prices/records').get_json()
     assert any(len(r[data['fields'].index('name')].split()) > 1 for r in data['rows'])
+
+
+def test_the_orders_screens_use_words_for_numeric_differences(world, coll, client):
+    """An order in every state its page shows: a draft with an unplaced line, a saved line counted short, an allocation (M.8h)."""
+    from brickwork.core import orders
+    from tests.test_bw_orders_storage import inventory, line_of, saved
+    coll.mark(world.copy_a, '3001', '4', missing=2)
+    draft = orders.import_document(coll.db, 'xml', inventory(line_of('P', 'nowhere', colour=5), line_of('P', '3001', colour=5)))
+    oid, _, lid = saved(coll.db, inventory(line_of('P', '3001', colour=5, qty=4)))
+    orders.received(coll.db, oid, {lid: 3})
+    gap = next(g for g in orders.destinations(coll.db, orders.detail(coll.db, oid)['saved'])[lid] if g['copy_id'] == world.copy_a)
+    orders.allocate(coll.db, oid, [dict(line_id=lid, target_type='copy', copy_id=gap['copy_id'], target='part', target_id=gap['target_id'], quantity=2)])
+    routes = [f'/workbench/orders/{o}?view={view}' for o in (oid, draft['order_id']) for view in ('detail', 'count', 'allocation', 'history')]
+    for route in routes:
+        response = client.get(route)
+        assert response.status_code == 200, route
+        assert_unsigned(response.text, route)

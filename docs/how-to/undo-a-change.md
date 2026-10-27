@@ -9,6 +9,7 @@ Do this when you saved something by mistake: a wrong count, a copy archived too 
 Undo appears where you made the change:
 
 - **Right after a save.** The notice that confirms a save ends in **Undo** on item pages, in **Manage → Add**, in **Part to Inventory** and in **Check Set Parts**. On an item page the Undo stays offered while that browser tab is open, also after a reload.
+- **On the planning screens.** After a pin or a change to the repair settings on Complete sets, and after any change to the lists on the Wishlist, **Undo** appears next to the message at the top of the page.
 - **In a history list.** **Part Picker** and **Matcher** list **Recent saves**. A storage location's page has **History**, and an order has **Allocation history**. Each row that can still be undone has an **Undo** button; rows already undone say **Undone**.
 - **For tokens.** After you revoke an API token, the banner offers **Undo** for 10 minutes.
 

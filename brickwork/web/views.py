@@ -1482,9 +1482,6 @@ def bw_planning(screen):
     from ..core.admin import database
     from .admin_ops import brickwork_path
     if screen not in ('wishlist','prices','complete-sets'): abort(404)
-    if screen!='prices':
-        from .ported import holding
-        return holding()                       # the Wishlist and Complete sets are planning screens (M.8g); only Prices is on the 4.0 store
     error=None;rows=[];settings={};available_types=[];lists=[]
     list_id=request.args.get('list','all')
     kind=request.args.get('kind') or None
@@ -1551,38 +1548,56 @@ def bw_prices_details():
 @web_page.post('/planning/action/<action>')
 @login_required
 def bw_planning_write(action):
-    """The one planning write on the 4.0 store is the price refresh: `items` are item ids; each gets one `market_price` job unless it
-    has an unfinished pipeline job already. Export, the saves and their Undo are planning (M.8g)."""
+    """The planning writes: `refresh` queues one `market_price` job per item id (unless one is unfinished already), `pin` and `settings`
+    save one event each, `undo` reverses any receipt by its event id, `export` is the BrickLink XML of the chosen copies' repair lines (a
+    read: it stays available on a read-only instance). Lines with no BrickLink number are skipped and listed (`summary: true` answers
+    JSON with the list, else the file)."""
     import json
-    from ..core import items as core_items
+    from urllib.parse import quote
+    from ..core import items as core_items, planning
     from ..core.admin import database, live_import_job
     from ..core.pipeline import Pipeline
     from ..core.transaction import transaction
     from .admin_ops import brickwork_path
-    if action!='refresh':
-        from .ported import holding
-        return holding()
-    if not bw_collection_editable(): abort(403,'Changes are switched off on this instance')
+    if action not in ('refresh', 'export', 'pin', 'settings', 'undo'): abort(404)
+    if action!='export' and not bw_collection_editable(): abort(403,'Changes are switched off on this instance')
     data=request.get_json(silent=True)
     if not isinstance(data,dict): abort(400)
     bw_add_csrf(data)
     try:
-        identities=data.get('items')
-        if not isinstance(identities,list) or not identities or len(identities)>2000: raise ValueError('Choose priced items')
-        ids=[]
-        for identifier in identities:
-            if type(identifier) is not int or identifier<1: raise ValueError('Choose item identities')
-            if identifier not in ids: ids.append(identifier)
+        if action=='refresh':
+            identities=data.get('items')
+            if not isinstance(identities,list) or not identities or len(identities)>2000: raise ValueError('Choose priced items')
+            ids=[]
+            for identifier in identities:
+                if type(identifier) is not int or identifier<1: raise ValueError('Choose item identities')
+                if identifier not in ids: ids.append(identifier)
+            with database(brickwork_path()) as db:
+                try:
+                    if any(core_items.label(db,i).unidentified for i in ids): raise ValueError('Resolve items before refreshing')
+                except core_items.errors.NotFound: raise ValueError('Choose item identities') from None
+                pipeline=Pipeline(db)
+                with transaction(db):
+                    jobs=[pipeline.queue_steps(i,['market_price'],via='app') for i in ids if live_import_job(db,i) is None]
+            bw_start_worker()
+            return jsonify(message='Price refresh queued · budgets checked by the worker',jobs=jobs)
+        if action=='export':
+            with database(brickwork_path(),read_only=True) as db:
+                result=planning.export(db,data.get('ids'))
+            skipped=[dict(item_no=(r['name'] or ''),color=r['color_name'],quantity=r['quantity'],reason=r['why']) for r in result['skipped']]
+            if data.get('summary') is True:
+                return jsonify(content=result['xml'].decode('utf-8'),filename='missing-parts.xml',mimetype='application/xml',
+                               summary=dict(exported=len(result['lines']),skipped=skipped))
+            response=current_app.response_class(result['xml'],mimetype='application/xml')
+            response.headers['Content-Disposition']='attachment; filename="missing-parts.xml"'
+            response.headers['Cache-Control']='no-store'
+            response.headers['X-Bw-Skipped']=quote(json.dumps(skipped,separators=(',',':')))
+            return response
         with database(brickwork_path()) as db:
-            try:
-                if any(core_items.label(db,i).unidentified for i in ids): raise ValueError('Resolve items before refreshing')
-            except core_items.errors.NotFound: raise ValueError('Choose item identities') from None
-            pipeline=Pipeline(db)
-            with transaction(db):
-                jobs=[pipeline.queue_steps(i,['market_price'],via='app') for i in ids if live_import_job(db,i) is None]
-        bw_start_worker()
-        return jsonify(message='Price refresh queued · budgets checked by the worker',jobs=jobs)
+            if action=='undo': planning.undo(db,int(data['event_id']));event=None
+            else: event=planning.save(db,action,data)
     except (ValueError,KeyError,TypeError,sqlite3.Error,OSError) as exc: return jsonify(message=public(exc, 'Nothing was saved · review the values and try again')),400
+    return jsonify(message='Undone' if action=='undo' else 'Saved',event_id=event)
 
 
 @web_page.post('/planning/wishlists/<action>')
@@ -1605,7 +1620,7 @@ def bw_wishlists_write(action):
                 _,event=wishlists.save(db, data.get('id') or None, data.get('values',{}), action=action)
             else: abort(404)
         return jsonify(message='Copied' if data.get('copy') else 'Saved', event_id=event)
-    except (ValueError,sqlite3.Error) as exc:
+    except (ValueError,KeyError,TypeError,sqlite3.Error) as exc:
         return jsonify(message=public(exc, 'Nothing was saved · review the values and try again')),400
 
 

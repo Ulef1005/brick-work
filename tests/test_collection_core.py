@@ -214,7 +214,7 @@ def test_the_set_page_lists_its_copy_and_what_is_missing(world, read):
         assert d['figure_progress'] == {'total': 2, 'present': 2}
         assert [i['id'] for i in d['instances']] == [world.copy_a, world.copy_b]
         assert d['price_records'][0]['price'] == '30.00' and d['condition_prices'][0]['condition'] == 'used'
-        assert d['partout'] is None and [l['can_take'] for l in d['consists'] if not l.get('minifig_no')] == [1, 0]     # loose red 3001 could fill the gap
+        assert d['partout']['partout'] is None and (d['partout']['lines'], d['partout']['priced']) == (3, 0) and [l['can_take'] for l in d['consists'] if not l.get('minifig_no')] == [1, 0]     # loose red 3001 could fill the gap
         assert d['external_links'][0][0] == 'BrickLink' and d['external_links'][1][0] == 'Brickset'
 
 

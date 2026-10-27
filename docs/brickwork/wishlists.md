@@ -4,11 +4,11 @@ Planning → Wishlist has an All lists view and a picker for each active list, w
 
 Select wishes to move or copy them in bulk, or use Move wish / Copy wish on wish detail. A target collision rejects the entire operation with no partial changes. Copy retains quantity, condition, maximum and currency, colour, note and item flags. Undo detaches the copied flags while keeping the original ones. List writes, transfers and their Undo use collection receipts in one transaction. Undo checks for intervening changes and archives newly created rows rather than deleting them. Restoring a wish or undoing a move into an archived list requires restoring that list first.
 
-## Schema and upgrade
+## Schema
 
-`wishlists` contains `id TEXT PRIMARY KEY`, `name`, `note`, `sort`, `archived_at`, `created_at`, and optional `bricklink_id`. The last field stores a BrickLink wanted list id, never an inferred one. The default list has id `default` and name `Wishlist`.
+`wishlist` (the lists) contains `id TEXT PRIMARY KEY`, `name`, `note`, `sort`, `archived_at`, `created_at`, and optional `bricklink_id`. The last field stores a BrickLink wanted list id, never an inferred one. The default list has id `default` and name `Wishlist`; a new list gets a uuid.
 
-`wishlist.list_id TEXT NOT NULL DEFAULT 'default' REFERENCES wishlists(id)` attaches every existing and new wish to a list. The partial `wishlist_live_key` index now includes `list_id` before item type, number and nullable colour identity. Wishes in different lists may share an identity. `upgrade_wishlists` applies the table, backfill and replacement index atomically and is idempotent. Fresh databases and legacy migration projections use the same default. Upgrading requires a writable connection; a read-only SQLite handle cannot apply it. Normal upgraded stores remain readable through read-only handles.
+`wish` (the wishes) has a uuid `id`, `wishlist_id TEXT NOT NULL DEFAULT 'default' REFERENCES wishlist(id)`, a `kind` word, `item_id` and, for a part, `color_id`. The partial unique index `wish_live_key` is `(wishlist_id, item_id, color_key)` where `archived_at IS NULL`: wishes in different lists may share an item and colour. A maximum price and its currency are stored together or not at all (`max_price`, `max_price_currency`). A wish's flags are `wish_flag` rows. Nothing here is upgraded at run time: a 4.0 file has the tables from `setup` or the migration (`docs/data-model-4.0`).
 
 ## Import
 
@@ -28,7 +28,7 @@ BrickLink example, without an XML declaration:
 <INVENTORY><ITEM><ITEMTYPE>P</ITEMTYPE><ITEMID>3001</ITEMID><COLOR>4</COLOR><MINQTY>3</MINQTY><MAXPRICE>1.25</MAXPRICE><CONDITION>U</CONDITION><REMARKS>A &amp; B</REMARKS><NOTIFY>N</NOTIFY><WANTEDLISTID>1234</WANTEDLISTID></ITEM></INVENTORY>
 ```
 
-Ids and colours are BrickLink canonical values. `MAXPRICE` appears only for a positive maximum in the configured BrickLink currency. A zero or a different currency omits the limit and adds a summary note. `CONDITION` is N/U for new/used; any omits it. Notes are XML escaped. `WANTEDLISTID` appears only when explicitly linked on the list; otherwise it is left out for the user to set after downloading. `QTYFILLED` is not exported.
+Ids and colours are BrickLink canonical values, named through `core.items` (the preferred confirmed link, else a BrickLink-born number); a wish with no BrickLink number or colour is left out and listed in the summary. `MAXPRICE` appears only for a positive maximum in the configured BrickLink currency. A zero or a different currency omits the limit and adds a summary note. `CONDITION` is N/U for new/used; any omits it. Notes are XML escaped. `WANTEDLISTID` appears only when explicitly linked on the list; otherwise it is left out for the user to set after downloading. `QTYFILLED` is not exported.
 
 Rebrickable set-list CSV (CRLF records):
 

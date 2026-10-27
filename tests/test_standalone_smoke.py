@@ -2,7 +2,8 @@
 
 What renders without ported modules: the install files, the login page, Add (M.8c), Check Set Parts and the collection's writes (M.8d), the
 Workbench (Matcher, Part Picker, Take and Give, Storage, printable lists; M.8e), the sources (pictures, Brickset, BrickLink prices, the Prices
-screen and a set fetched from Rebrickable; M.8f) and (M.8b)
+screen and a set fetched from Rebrickable; M.8f), planning (Complete sets ranked, pinned and exported, the Wishlist with its lists, exports and Undo,
+the part-out value and manual prices; M.8g) and (M.8b)
 the collection's read side: `/` and the collection lists
 (the first-run page on an empty collection), the item page by id, the wish, lot and purchase-place pages, the jump search. Every other browser
 screen answers 503 until its piece ports it. API v1 answers 410, except `/api/v1/health`."""
@@ -419,6 +420,90 @@ def test_the_sources_fetch_pictures_prices_and_retail_and_a_fetched_set_makes_it
     assert client.get(f'/manage/add/jobs/{fetched["receipts"][0]["fetch_job"]}').json['events'][-1]['message'] == 'Fetched · 2 copies added'
     assert client.post('/manage/add/undo', json=dict(csrf_token=csrf, batch=fetched['batch'])).json == {'message': 'Undone'}
     assert rows('SELECT count(*) FROM copy c JOIN item i ON i.id=c.item_id WHERE i.born_key=? AND c.archived_at IS NULL', '99999-9') == [(0,)]
+    with closing(connect(path)) as db:
+        assert db.execute('PRAGMA foreign_key_check').fetchall() == [] and db.execute('PRAGMA integrity_check').fetchone()[0] == 'ok'
+    assert offline == []
+
+
+def test_planning_ranks_pins_exports_and_the_wishlists_move_export_and_undo(tmp_path, monkeypatch, offline):
+    """The planning how-tos on a fixture pair, offline: Complete sets ranks a copy with a gap from cached prices, a pin and the repair settings are
+    saved and undone, the repair list exports as BrickLink XML and the items without a number are named; the Wishlist moves, copies and exports
+    its wishes in both formats and every change is undone; a manual price is recorded and voided; the item page shows the part-out value."""
+    from brickwork.core import currency, manual_prices
+    from brickwork.core.sources.base import now
+    path = make_pair(tmp_path, rich=True)
+    with closing(connect(path)) as db:
+        w = build_world(Coll(db))
+        coll = Coll(db)
+        for key, value in dict(bricklink_region='eu', bricklink_currency='EUR', incomplete_discount_pct='30', repair_shipping='3', repair_fees='0.5',
+                               repair_min_order='10', repair_use_loose_stock='0').items():
+            coll.setting(key, value)
+        coll.sql('DELETE FROM price_current')
+        for item, value, colour in ((w.keep, '100', None), (w.brick, '2', w.red)):
+            coll.price(item, value, colour=colour, region='eu', currency='EUR', observed=now().isoformat(), sold=10, qty=10)
+    monkeypatch.setenv('BW_AUTHENTICATION_PASSWORD', 'synthetic-password')
+    client = logged_in(make_app(path, monkeypatch))
+    client.get('/planning/complete-sets')
+    with client.session_transaction() as session:
+        csrf = session['bw_add_csrf']
+
+    def rows(sql, *args):
+        with closing(connect(path, read_only=True)) as db:
+            return [tuple(r) for r in db.execute(sql, args)]
+
+    def post(url, **data):
+        return client.post(url, json=dict(csrf_token=csrf, **data))
+    # Complete sets: copy A (a red 3001 missing) is ranked from the cached quotes; B and C have no gap
+    page = BeautifulSoup(client.get('/planning/complete-sets').get_data(as_text=True), 'html.parser')
+    ranked = [json.loads(r['data-record']) for r in page.select('[data-bp-row]')]
+    assert [(r['id'], r['group'], r['rank']) for r in ranked] == [(w.copy_a, 'ranked', 1)]
+    assert page.h1.get_text(strip=True).startswith('Repair 1000-1 first')
+    # pin it, change the repair settings, undo both
+    pinned = post('/planning/action/pin', id=w.copy_a, pinned=True)
+    assert pinned.status_code == 200 and rows('SELECT pinned FROM copy WHERE id=?', w.copy_a) == [(1,)]
+    settings = post('/planning/action/settings', values=dict(repair_shipping='5', repair_fees='1', repair_min_order='0', repair_use_loose_stock='1', incomplete_discount_pct='20'))
+    assert settings.status_code == 200 and rows("SELECT value FROM setting WHERE key='repair_shipping'") == [('5',)]
+    assert post('/planning/action/undo', event_id=pinned.json['event_id']).json['message'] == 'Undone'
+    assert post('/planning/action/undo', event_id=settings.json['event_id']).json['message'] == 'Undone'
+    assert rows('SELECT pinned FROM copy WHERE id=?', w.copy_a) == [(0,)] and rows("SELECT value FROM setting WHERE key='repair_shipping'") == [('3',)]
+    # Export the gaps: BrickLink XML of the selected copy, an item with no number is named in the summary
+    exported = post('/planning/action/export', ids=[w.copy_a], summary=True).json
+    assert exported['summary'] == dict(exported=1, skipped=[]) and '<ITEMID>3001</ITEMID>' in exported['content']
+    assert post('/planning/action/export', ids=['no-such-copy']).status_code == 400
+    # the item page of the copy shows the part-out value once every line has a price: here it asks for the part prices
+    item_page = client.get(f'/collection/item/{w.keep}?copy={w.copy_a}').get_data(as_text=True)
+    assert 'Not enough prices yet' in item_page
+    # a manual price is recorded as source manual and voided by Undo
+    with closing(connect(path)) as db:
+        ids = manual_prices.record(db, [dict(item_id=w.gate, guide='manual', price='33.50', currency='EUR', condition='used')])
+        event = db.execute("SELECT id FROM event WHERE entity_kind='manual_prices' AND field='receipt'").fetchone()[0]
+    assert rows('SELECT source, price FROM price_current c JOIN price_observation o ON o.id=c.observation_id WHERE c.item_id=?', w.gate) == [('manual', '33.50')]
+    with closing(connect(path)) as db:
+        manual_prices.undo(db, event)
+    assert rows('SELECT count(*) FROM price_current WHERE item_id=?', w.gate) == [(0,)] and rows('SELECT voided_at IS NOT NULL FROM price_observation WHERE id=?', ids[0]) == [(1,)]
+    # exchange rates: a hand-entered rate converts a max in another currency, shown marked
+    with closing(connect(path)) as db:
+        currency.set_rate(db, 'USD', '1.17')
+        db.execute("UPDATE wish SET max_price='5.00', max_price_currency='USD' WHERE id=?", (w.wish_set,))
+        db.commit()
+        coll = Coll(db)
+        coll.price(w.gate, '4.00', region='eu', currency='EUR', observed=now().isoformat())
+    wishlist = BeautifulSoup(client.get('/planning/wishlist').get_data(as_text=True), 'html.parser')
+    gate_row = next(r for r in wishlist.select('[data-bp-row]') if json.loads(r['data-record'])['id'] == w.wish_set)
+    assert 'Price ≈ $4.68 at 1.17' in gate_row.get_text(' ') and json.loads(gate_row['data-record'])['under'] == 'under'
+    # Wishlist: a new list, move one wish, copy the other, export both ways, undo everything
+    made = post('/planning/wishlists/save', values=dict(name='Gifts', bricklink_id='555'))
+    target = rows("SELECT id FROM wishlist WHERE name='Gifts'")[0][0]
+    moved = post('/planning/wishlists/transfer', ids=[w.wish_part], list_id=target)
+    copied = post('/planning/wishlists/transfer', ids=[w.wish_set], list_id=target, copy=True)
+    assert moved.status_code == copied.status_code == 200 and rows('SELECT count(*) FROM wish WHERE wishlist_id=? AND archived_at IS NULL', target) == [(2,)]
+    xml = client.get(f'/planning/wishlists/{target}/export.xml?summary=true').json
+    assert xml['summary']['exported'] == 2 and '<WANTEDLISTID>555</WANTEDLISTID>' in xml['content']
+    parts = client.get(f'/planning/wishlists/all/export.csv?summary=true&kind=parts').json
+    assert parts['content'].splitlines() == ['Part,Color,Quantity', '3023,15,2'] and parts['summary']['exported'] == 1
+    for event_id in (copied.json['event_id'], moved.json['event_id'], made.json['event_id']):
+        assert post('/planning/wishlists/undo', event_id=event_id).status_code == 200
+    assert rows('SELECT wishlist_id FROM wish WHERE id=?', w.wish_part) == [('default',)] and rows("SELECT count(*) FROM wishlist WHERE archived_at IS NULL") == [(1,)]
     with closing(connect(path)) as db:
         assert db.execute('PRAGMA foreign_key_check').fetchall() == [] and db.execute('PRAGMA integrity_check').fetchone()[0] == 'ok'
     assert offline == []

@@ -572,7 +572,16 @@ def detail(db, item_id, *, colour=None, copy_id=None, stock_id=None, wish_id=Non
     if row['retail'] and selected and selected['entity'] == 'copy':
         from . import retail as retail_module
         row['retail_saving'] = retail_module.saving(selected.get('purchase_price'), selected.get('purchase_currency'), row['retail'], exchange_rates(db))
-    row['partout'] = None                                                  # parted-out value comes back with M.8g
+    row['partout'] = None
+    if kind == 'set' and selected and selected['entity'] == 'copy':
+        # #38: complete, as is and parted out for the shown copy.
+        from . import partout, planning
+        config, stamp = planning.configuration(db), now()
+        complete = planning.quote(row['prices'], selected.get('condition') or 'used', config, stamp)
+        override = selected.get('current_value')
+        as_is = (Decimal(str(override)) if override is not None and selected.get('current_value_currency') == config['bricklink_currency']
+                 else Decimal(str(complete['price'])) * (100 - config['incomplete_discount_pct']) / 100 if complete else None)
+        row['partout'] = partout.compare(dict(complete_quote=complete, current_value=as_is), partout.values(db, [selected['id']]).get(selected['id']))
     lines, spare_lines = _consists(db, item_id, kind, selected)
     names = _names(db, [l['item_id'] for l in lines] + [pid for l in lines for pid in l.get('missing_part_ids', [])])
     consists = []

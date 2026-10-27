@@ -1,13 +1,21 @@
-"""Planning projections on Brick Work, with bounded bulk reads and audited saves."""
+"""Planning on the 4.0 store (M.8f the Prices screen, M.8g the rest; issue #110; design 5 `copy.pinned`, `wish`, `price_*`, 3.8).
+
+Complete sets ranks the live copies that have gaps by what a repair gains per unit spent (`ranking`, from the Workbench's gaps, the
+cached BrickLink quotes and the repair settings in `setting`); the Wishlist screen reads the live wishes (`wishes`); Prices reads the
+priced items (`priced_items`). Everything is by item id (`core/items`): a copy is a set item, a gap line an (item, colour). A retired
+line is no line (design 4.4). Saves are audited events: a pin changes `copy.pinned`, the repair settings change `setting` rows, and
+Undo (`undo`, registered with `core/undo`) puts them back unless a later save touched the same thing. The BrickLink XML export of
+selected copies names every line through `core/gaps` (`items.bricklink_key`); a line with no confirmed BrickLink number is **skipped
+and listed**, never exported under a made-up number."""
 from .transaction import transaction
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation, ROUND_CEILING
 import json
-from xml.etree import ElementTree as ET
 
-from . import add, collection, errors, items, workbench, collection_prices
-from .admin import audit
+from . import collection, errors, gaps, items, workbench, collection_prices
+from . import undo as undoing
+from .admin import audit, origin
 from .sources.base import now
 
 REPAIR_KEYS = ('repair_shipping', 'repair_fees', 'repair_min_order',
@@ -120,11 +128,20 @@ def compute(copies, config, now):
     return dict(groups, settings=config, ratio_scale=scale)
 
 
+def _switch(value):
+    """A stored on/off setting as 0 or 1: '1', '0', 'true', 'false' (price_settings stores a number, an old save may say a word)."""
+    if isinstance(value, bool):
+        return int(value)
+    text = str(value).strip().lower()
+    return int(text == 'true') if text in ('true', 'false') else int(Decimal(text))
+
+
 def configuration(db):
+    """The repair and price settings from `setting`, with the documented defaults for what is not stored."""
     from .price_settings import DEFAULTS
-    config = {**DEFAULTS, **dict(db.execute('SELECT key,value FROM settings'))}
-    for key in ('incomplete_discount_pct', 'repair_use_loose_stock'):
-        config[key] = (int(Decimal(config[key])) if key=='repair_use_loose_stock' else Decimal(config[key])) if key in config else None
+    config = {**DEFAULTS, **{k: v for k, v in db.execute('SELECT key,value FROM setting') if k in DEFAULTS}}
+    config['incomplete_discount_pct'] = Decimal(str(config['incomplete_discount_pct']))
+    config['repair_use_loose_stock'] = _switch(config['repair_use_loose_stock'])
     return config
 
 
@@ -262,33 +279,32 @@ def price_details(db, item_id, colour=None):
                 groups=[g for g in groups if g['quotes']], empty=not records)
 
 
-def display_prices(db, rows, kind=None, number=None, *, scoped=False):
-    """One bulk observation read; use Collection's condition/source selection.
+def display_prices(db, rows):
+    """One bulk observation read for the identities of `rows` (items with `item_id`, `color_id`); Collection's condition/source selection.
 
-    `kind` (and `number`) narrow the read to one type or item; `scoped` reads only the
-    observations of the given rows' identities.
-    """
+    Every row gets `price_records` (its observations, newest first, a voided one never), `condition_prices` and `display_price`: the
+    price at the wish's condition when it names one, else the best overall."""
+    if not rows:
+        return rows
     priorities = collection_prices.priority(db)
     grouped = defaultdict(list)
-    observations = db.execute("""SELECT o.*,f.max_age_days FROM price_observations o
-        LEFT JOIN source_freshness f ON f.source=o.source AND f.kind='prices'""" +
-        (' WHERE o.item_type=?' + (' AND o.item_no=?' if number else '') if kind else
-         ' WHERE ' + collection.identity_filter('o') if scoped else '')
-        + ' ORDER BY o.observed_at DESC,o.id DESC',
-        ((kind, number) if number else (kind,)) if kind else
-        (json.dumps(sorted({(r['item_type'], r['item_no'], r['color_id']) for r in rows}, key=str)),) if scoped else ())
+    pairs = json.dumps(sorted({(r['item_id'], r.get('color_id') or 0) for r in rows}))
+    observations = db.execute("""SELECT o.*,i.kind,f.max_age_days FROM price_observation o JOIN item i ON i.id=o.item_id
+        LEFT JOIN source_freshness f ON f.source=o.source AND f.kind='prices'
+        WHERE o.voided_at IS NULL AND (o.item_id, coalesce(o.color_id,0)) IN (SELECT json_extract(value,'$[0]'), json_extract(value,'$[1]') FROM json_each(?))
+        ORDER BY o.observed_at DESC,o.id DESC""", (pairs,))
     for p in collection.decorate_prices(observations):
-        grouped[p['item_type'],p['item_no'],p['color_id']].append(p)
+        grouped[p['item_id'], p['color_id']].append(p)
     for row in rows:
-        records = grouped[row['item_type'],row['item_no'],row['color_id']]
+        records = grouped[row['item_id'], row.get('color_id')]
         row['price_records'] = records
-        row['condition_prices'] = collection_prices.condition_rows(records, row['item_type'], priorities)
-        condition = {'new':'N','used':'U'}.get(row.get('condition'))
-        row['display_price'] = collection_prices.choose(row['condition_prices'], row['item_type'], priorities, condition)
+        row['condition_prices'] = collection_prices.condition_rows(records, row['kind'], priorities)
+        condition = row.get('condition') if row.get('condition') in ('new', 'used') else None
+        row['display_price'] = collection_prices.choose(row['condition_prices'], row['kind'], priorities, condition)
         if not row['display_price']:
             row['display_price'] = collection_prices.choose(
                 [p for p in row['prices'] if p['guide'] in ('sold', 'stock') and p.get('slot') != 'boxed'],
-                row['item_type'], priorities, condition)
+                row['kind'], priorities, condition)
     return rows
 
 
@@ -321,18 +337,17 @@ def max_comparison(row, rates=None):
 
 
 def wishes(db):
-    from . import wish_progress
-    from . import currency
-    rows = display_prices(db, collection.listing(db, 'S', wishes=True), scoped=True)
+    """The live wishes of every active list, as Collection lists them, with the price shown, the comparison with the max, how much is
+    filled and the retail line of a set. Filled lines drop to the bottom (#35); the order within each part stays as listed."""
+    from . import currency, retail, wish_progress
+    rows = display_prices(db, collection.listing(db, 'S', wishes=True))
     table = currency.rates(db)
     for row in rows:
         row['max_state'], row['max_margin'] = max_comparison(row, table)
     wish_progress.annotate(db, rows)
-    from . import retail
-    info = retail.lookup(db, [r['item_no'] for r in rows if r['item_type'] == 'S'])
+    info = retail.lookup(db, [r['item_id'] for r in rows if r['kind'] == 'set'])
     for r in rows:
-        r['retail'] = info.get(r['item_no']) if r['item_type'] == 'S' else None
-    # #35: filled lines drop to the bottom; the order within each part stays as listed.
+        r['retail'] = info.get(r['item_id']) if r['kind'] == 'set' else None
     return sorted(rows, key=lambda r: r['filled'])
 
 
@@ -348,51 +363,53 @@ def quote(quotes, condition, config, stamp):
 
 
 def ranking(db):
+    """Complete sets: every live copy with a gap, grouped and ranked (`compute`), decorated for the screen: `rows` is the whole list in
+    screen order (ranked, free repairs, outside break-even, needs evidence) and `settings` the configuration used."""
     config = configuration(db)
-    required = ('bricklink_currency','bricklink_region', *REPAIR_KEYS)
-    if any(config.get(k) is None for k in required):
-        raise ValueError('Repair settings are missing · open Tools & Admin')
     stamp = now()
-    market = collection.prices(db)
-    rows = [dict(r, item_no=r['set_no'],color_id=None,items=[],set_num=r['set_no']) for r in db.execute('''SELECT c.*,i.name,i.category,i.year FROM copies c
-        JOIN items i ON (i.item_type,i.item_no)=(c.item_type,c.set_no) WHERE c.archived_at IS NULL ORDER BY c.set_no,c.id''')]
-    copies = {r['id']:r for r in rows}
-    labels = defaultdict(int)
+    rows = [dict(r) for r in db.execute('''SELECT c.*,i.year,i.theme_name AS theme,i.category_name AS category FROM copy c
+        JOIN item i ON i.id=c.item_id WHERE c.archived_at IS NULL ORDER BY c.item_id,c.created_at,c.id''')]
+    names = items.labels(db, {(r['item_id'], None) for r in rows})
     for c in rows:
-        labels[c['set_no']] += 1
-        c['label'] = 'Set '+str(labels[c['set_no']])
-        c['complete_quote'] = quote(market[c['item_type'],c['set_no'],None], c['condition'] or 'U',config,stamp)
+        label = names[c['item_id'], None]
+        c.update(color_id=None, items=[], name=label.name, set_num=label.number or str(c['item_id']))
+    copies = {r['id']: r for r in rows}
+    for copy_id, text in collection.copy_labels(db, list(copies)).items():
+        copies[copy_id]['label'] = text
+    gap_lines = [g for g in workbench.gaps(db) if g['target'] in ('part', 'figure') and g['copy_id'] in copies]
+    pairs = {(c['item_id'], None) for c in rows} | {g['key'] for g in gap_lines}
+    market = collection.prices(db, pairs=pairs)
+    named = items.labels(db, {g['key'] for g in gap_lines})
+    for c in rows:
+        c['complete_quote'] = quote(market[c['item_id'], None], c['condition'] or 'used', config, stamp)
     pool = defaultdict(int)
     if config['repair_use_loose_stock']:
-        pending = {(r[0],r[1]) for r in db.execute("SELECT item_type,item_no FROM id_match WHERE status='to_check'")}
-        defective = {r[0] for r in db.execute('SELECT DISTINCT stock_id FROM loose_minifig_parts WHERE coalesce(missing,0)>0 OR coalesce(damaged,0)>0')}
-        for r in db.execute("SELECT * FROM loose_stock WHERE archived_at IS NULL AND item_type='P'"):
-            pool[workbench.identity(r)] += workbench.available(db,r,unresolved_keys=pending,defective_figures=defective)
-        for r in db.execute("SELECT part_type,part,color,sum(qty) FROM allocations WHERE state='pending' AND kind='missing_part' GROUP BY part_type,part,color"):
-            key = tuple(r[:3]);pool[key] = max(0,pool[key]-(r[3] or 0))
-    gaps = workbench.gaps(db)
-    for gap in sorted(gaps,key=lambda g:(g['copy']['set_no'],g['copy_id'],g['item_no'],g['color_id'] or 0)):
-        if gap['target'] not in ('part','figure') or gap['copy_id'] not in copies:
-            continue
+        defective = workbench.defective_figures(db)
+        for r in db.execute("SELECT * FROM stock WHERE archived_at IS NULL AND kind='part'"):
+            pool[r["item_id"], r["color_id"]] += workbench.available(db, r, defective=defective)
+        for r in db.execute("SELECT item_id,color_id,sum(qty) FROM allocation WHERE state='pending' AND kind='missing_part' GROUP BY item_id,color_id"):
+            pool[r[0], r[1]] = max(0, pool[r[0], r[1]] - (r[2] or 0))
+    for gap in sorted(gap_lines, key=lambda g: (g['copy']['set_no'], g['copy_id'], g['item_no'], g['color_id'] or 0)):
         c = copies[gap['copy_id']]
-        need = gap['need']; key = workbench.identity(gap)
-        take = min(need,pool[key]) if not gap['unresolved'] and gap['item_type']=='P' else 0
+        need, key = gap['need'], gap['key']
+        take = min(need, pool[key]) if gap['item_type'] == 'P' else 0
         pool[key] -= take
+        label = named.get(key)
         # Keep zero-buy lines: free repairs still have evidence and an original gap.
-        c['items'].append(dict(gap,type=gap['item_type'],number=gap['item_no'],
-            missing=need-take,original_gap=need,stock_used=take,figure=None,
-            mapped=not gap['unresolved'],quote=None if gap['unresolved'] else quote(market[key],c['condition'] or 'U',config,stamp)))
-    data = compute(rows,config,stamp)
-    for group in ('ranked','needs_evidence','outside','free_repairs'):
+        c['items'].append(dict(gap, type=gap['item_type'], number=gap['number_text'] or gap['name'], missing=need - take, original_gap=need,
+                               stock_used=take, figure=None, mapped=bool(label and label.bricklink),
+                               quote=quote(market[key], c['condition'] or 'used', config, stamp)))
+    data = compute(rows, config, stamp)
+    for group in ('ranked', 'needs_evidence', 'outside', 'free_repairs'):
         for c in data[group]:
             c['missing_count'] = sum(r['missing'] for r in c['items'])
             c['original_gap'] = sum(r['original_gap'] for r in c['items'])
             c['stock_used'] = sum(r['stock_used'] for r in c['items'])
             c['group'] = group
-    decorated = add.decorate_many(db, [c for group in ('ranked','free_repairs','outside','needs_evidence') for c in data[group]])
+    decorated = collection.decorate(db, [c for group in ('ranked', 'free_repairs', 'outside', 'needs_evidence') for c in data[group]])
     top_ratio = max((r['ratio'] for r in data['ranked']), default=None)
     for row in decorated:
-        row['display_ratio_width'] = float(row['ratio'] / top_ratio * 100) if row['group']=='ranked' and top_ratio else None
+        row['display_ratio_width'] = float(row['ratio'] / top_ratio * 100) if row['group'] == 'ranked' and top_ratio else None
     # #38: part-out value per copy, one batch for the whole list.
     from . import partout
     values = partout.values(db, [row['id'] for row in decorated])
@@ -402,64 +419,98 @@ def ranking(db):
     return data
 
 
+# ---------- saves, Undo and the export ----------
+
+ENTITY = 'planning'
+LATER = 'Item changed · undo the later save first'
+
+
+def _written(db):
+    return db.execute('SELECT last_insert_rowid()').fetchone()[0]
+
+
+def _stored(db, keys):
+    """`{key: stored text or None}` for setting keys, in one read."""
+    found = dict(db.execute('SELECT key,value FROM setting WHERE key IN (SELECT value FROM json_each(?))', (json.dumps(sorted(keys)),)))
+    return {k: found.get(k) for k in keys}
+
+
 def save(db, action, data):
+    """`pin` (`id`, `pinned`: a boolean) sets `copy.pinned`; `settings` (`values`: all five repair settings) writes them to `setting`.
+    One audited event each; returns its id."""
     with transaction(db):
-        if action=='pin':
-            if type(data.get('pinned')) is not bool: raise ValueError('Choose pinned or unpinned')
-            old = collection.snapshot(db,'copies',[data.get('id')])
-            if not old or old[0]['archived_at']: raise ValueError('Copy is unavailable')
-            db.execute('UPDATE copies SET pinned=? WHERE id=?',(int(data['pinned']),data['id']))
-            before, after = old,collection.snapshot(db,'copies',[data['id']])
-        elif action=='settings':
+        if action == 'pin':
+            if type(data.get('pinned')) is not bool:
+                raise ValueError('Choose pinned or unpinned')
+            copy = db.execute('SELECT id,pinned,archived_at FROM copy WHERE id=?', (str(data.get('id')),)).fetchone()
+            if copy is None or copy['archived_at']:
+                raise ValueError('Copy is unavailable')
+            db.execute('UPDATE copy SET pinned=? WHERE id=?', (int(data['pinned']), copy['id']))
+            audit(db, f"{ENTITY}:{copy['id']}", 'pin', [dict(id=copy['id'], pinned=copy['pinned'])], [dict(id=copy['id'], pinned=int(data['pinned']))])
+        elif action == 'settings':
             values = data.get('values')
-            if not isinstance(values,dict) or set(values)!=set(REPAIR_KEYS): raise ValueError('Choose all repair settings')
-            for k,v in values.items():
-                try: n=Decimal(str(v))
-                except InvalidOperation as exc: raise ValueError('Use a non-negative number') from exc
-                if not n.is_finite() or n<0 or (k=='incomplete_discount_pct' and n>100) or (k=='repair_use_loose_stock' and n not in (0,1)):
+            if not isinstance(values, dict) or set(values) != set(REPAIR_KEYS):
+                raise ValueError('Choose all repair settings')
+            for k, v in values.items():
+                try:
+                    n = Decimal(str(v))
+                except InvalidOperation as exc:
+                    raise ValueError('Use a non-negative number') from exc
+                if not n.is_finite() or n < 0 or (k == 'incomplete_discount_pct' and n > 100) or (k == 'repair_use_loose_stock' and n not in (0, 1)):
                     raise ValueError('Repair setting is out of range')
-            before = [dict(r) for r in db.execute('SELECT * FROM settings WHERE key IN (SELECT value FROM json_each(?)) ORDER BY key',(json.dumps(REPAIR_KEYS),))]
-            if len(before)!=len(REPAIR_KEYS): raise ValueError('Repair settings are missing')
-            db.execute('UPDATE settings SET value=j.value FROM json_each(?) AS j WHERE settings.key=j.key',
-                       (json.dumps({k:str(v) for k,v in values.items()}),))
-            after = [dict(r) for r in db.execute('SELECT * FROM settings WHERE key IN (SELECT value FROM json_each(?)) ORDER BY key',(json.dumps(REPAIR_KEYS),))]
-        else: raise ValueError('Unknown planning action')
-        audit(db,'bw_planning',action,before,after)
-        return db.execute('SELECT last_insert_rowid()').fetchone()[0]
-
-
-def undo(db, identifier, *, receipt=None):
-    with transaction(db):
-        event=receipt if receipt is not None else db.execute("SELECT * FROM events WHERE id=? AND entity='bw_planning' AND field IN ('pin','settings')",(identifier,)).fetchone()
-        if not event: raise ValueError('Save is unavailable')
-        if db.execute("SELECT 1 FROM events WHERE entity='bw_planning' AND field='undo' AND new_value=?",(json.dumps(identifier),)).fetchone(): return
-        before,after=json.loads(event['old_value']),json.loads(event['new_value'])
-        if event['field']=='pin':
-            current=collection.snapshot(db,'copies',[after[0]['id']])
+            before = _stored(db, REPAIR_KEYS)
+            after = {k: str(v) for k, v in values.items()}
+            db.executemany('INSERT OR REPLACE INTO setting(key,value) VALUES(?,?)', sorted(after.items()))
+            audit(db, ENTITY, 'settings', before, after)
         else:
-            current=[dict(r) for r in db.execute('SELECT * FROM settings WHERE key IN (SELECT value FROM json_each(?)) ORDER BY key',(json.dumps([r['key'] for r in after]),))]
-        if current!=after: raise ValueError('Item changed · undo the later save first')
-        if event['field']=='pin': db.execute('UPDATE copies SET pinned=? WHERE id=?',(before[0]['pinned'],before[0]['id']))
-        else: db.execute('UPDATE settings SET value=j.value FROM json_each(?) AS j WHERE settings.key=j.key',
-                         (json.dumps({r['key']:r['value'] for r in before}),))
-        audit(db,'bw_planning','undo',after,identifier)
+            raise ValueError('Unknown planning action')
+        return _written(db)
+
+
+def _undo_save(db, event, via, actor):
+    """Put a pin or the repair settings back. Refused whole when a later save changed them since (undo that one first)."""
+    before, after = json.loads(event['old_value']), json.loads(event['new_value'])
+    if event['field'] == 'pin':
+        current = db.execute('SELECT id,pinned,archived_at FROM copy WHERE id=?', (after[0]['id'],)).fetchone()
+        if current is None or current['archived_at'] or current['pinned'] != after[0]['pinned']:
+            raise ValueError(LATER)
+        db.execute('UPDATE copy SET pinned=? WHERE id=?', (before[0]['pinned'], current['id']))
+    else:
+        current = _stored(db, list(after))
+        if current != after:
+            raise ValueError(LATER)
+        for key, value in before.items():
+            if value is None:
+                db.execute('DELETE FROM setting WHERE key=?', (key,))
+            else:
+                db.execute('INSERT OR REPLACE INTO setting(key,value) VALUES(?,?)', (key, value))
+    audit(db, ENTITY, 'undo', None, dict(undoes=event['id']), via=via, actor=actor)
+    undo_id = _written(db)
+    db.execute('INSERT INTO event_undo(event_id, undo_event_id) VALUES(?, ?)', (event['id'], undo_id))
+    return {'event_id': undo_id}
+
+
+for _field in ('pin', 'settings'):
+    undoing.register(ENTITY, _field, _undo_save)
+
+
+def undo(db, event_id):
+    """Undo a pin or a settings save by its event id; a second Undo of the same event does nothing."""
+    via, actor = origin()
+    return undoing.undo_event(db, int(event_id), via=via, actor=actor)
 
 
 def export(db, ids):
-    if not isinstance(ids,list) or not ids or len(ids)>2000 or len(set(ids))!=len(ids): raise ValueError('Choose copies to export')
-    data=ranking(db)
-    chosen=[r for r in data['rows'] if r['id'] in ids]
-    if len(chosen)!=len(ids): raise ValueError('Copy is unavailable')
-    lines=defaultdict(int)
+    """The BrickLink Wanted List of the chosen copies' repair lines: `dict(xml, lines, skipped)` as `gaps.export`, but the quantity of
+    a line is what is still to buy (the gap less the loose stock the repair settings let it use). A copy with no gap is not on the list."""
+    if not isinstance(ids, list) or not ids or len(ids) > 2000 or len(set(ids)) != len(ids):
+        raise ValueError('Choose copies to export')
+    chosen = [r for r in ranking(db)['rows'] if r['id'] in ids]
+    if len(chosen) != len(ids):
+        raise ValueError('Copy is unavailable')
+    total = defaultdict(int)
     for c in chosen:
         for r in c['items']:
-            if not r['missing']: continue
-            if r['unresolved'] or r['item_type']=='?' or (r['item_type']=='P' and r['color_id'] is None):
-                raise ValueError('Resolve figures and colours before exporting')
-            lines[r['item_type'],r['item_no'],r['color_id'],c['condition'] or 'U']+=r['missing']
-    root=ET.Element('INVENTORY')
-    for (kind,number,colour,condition),qty in sorted(lines.items(),key=lambda pair:str(pair[0])):
-        item=ET.SubElement(root,'ITEM')
-        for key,value in [('ITEMTYPE',kind),('ITEMID',number),('COLOR',colour),('MINQTY',qty),('CONDITION',condition)]:
-            if value is not None: ET.SubElement(item,key).text=str(value)
-    return ET.tostring(root,encoding='utf-8',xml_declaration=True)
+            if r['missing']:
+                total[r['item_id'], r['color_id'], gaps.CONDITION.get(c['condition'], 'U')] += r['missing']
+    return gaps.export_lines(db, total)

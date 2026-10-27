@@ -1,6 +1,6 @@
-"""Shared rail reserves theme space while all navigation remains scrollable, on the ported Workbench screens (M.8e, issue #110).
+"""Shared rail reserves theme space while all navigation remains scrollable, on the ported Workbench and planning screens (M.8e, M.8g; issue #110).
 
-The planning, prices and Tools and Admin paths of the 3.3 file are in `test_shell_45s_later.py` (M.8g)."""
+The Tools and Admin path of the 3.3 file is in `test_shell_45s_tools.py` (M.8i)."""
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
@@ -10,7 +10,8 @@ import pytest
 from brickwork.web import ui
 from tests.app4 import app4, client, coll, pair, read, world  # noqa: F401 (fixtures)
 
-PORTED = ['/workbench/storage', '/workbench/part-picker', '/workbench/matcher', '/workbench/part-to-inventory']
+PORTED = ['/workbench/storage', '/workbench/part-picker', '/workbench/matcher', '/workbench/part-to-inventory',
+          '/planning/wishlist', '/planning/prices', '/planning/complete-sets']
 
 
 @pytest.mark.parametrize('path', PORTED)
@@ -39,7 +40,7 @@ def test_shared_rail_column_and_scroll_contract(world, app4, client, path):
     assert urlsplit(soup.select('link[rel="stylesheet"]')[-1]['href']).path.endswith('/shell.css')
 
 
-@pytest.mark.parametrize('path', ['/workbench/part-to-inventory', '/workbench/storage'])
+@pytest.mark.parametrize('path', ['/workbench/part-to-inventory', '/workbench/storage', '/planning/prices', '/planning/wishlist', '/planning/complete-sets'])
 def test_brickwork_assets_have_deployed_file_versions(world, app4, client, path):
     soup = BeautifulSoup(client.get(path).data, 'html.parser')
     assets = soup.select('script[src],link[rel="stylesheet"]')

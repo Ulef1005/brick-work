@@ -222,10 +222,10 @@ def test_refresh_flow_queues_the_item_ids(coll, world, client, read):
     assert client.post('/planning/action/refresh', json=dict(csrf_token='wrong', items=[row['item_id']])).status_code in (400, 403)
 
 
-def test_the_other_planning_actions_and_screens_wait_for_their_piece(world, client):
-    assert client.get('/planning/wishlist').status_code == 503 and client.get('/planning/complete-sets').status_code == 503
+def test_the_planning_screens_and_actions_are_all_ported(world, client):
+    assert client.get('/planning/wishlist').status_code == 200 and client.get('/planning/complete-sets').status_code == 200
     token = csrf(client)
-    assert client.post('/planning/action/export', json=dict(csrf_token=token, ids=[])).status_code == 503
+    assert client.post('/planning/action/export', json=dict(csrf_token=token, ids=[])).status_code == 400      # a real answer, not "not on the 4.0 store yet"
     assert client.get('/planning/nothing').status_code == 404
 
 

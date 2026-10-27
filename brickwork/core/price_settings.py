@@ -1,4 +1,4 @@
-"""Price preferences in the v3 store; no legacy connection or Flask dependency."""
+"""Price preferences in the `setting` table of the 4.0 store (M.8g); no Flask dependency."""
 from decimal import Decimal, InvalidOperation
 import logging
 import os
@@ -43,7 +43,7 @@ def _stored_value(key, value):
 
 
 def _read(db):
-    values = dict(db.execute('SELECT key,value FROM settings'))
+    values = dict(db.execute('SELECT key,value FROM setting'))
     result, invalid = dict(DEFAULTS), set()
     for key in DEFAULTS.keys() & values.keys():
         try:
@@ -93,7 +93,7 @@ def save(db, data):
             raise ValidationFailed('repair_use_loose_stock must be true or false')
         if invalid.intersection(data) or any(new[k] != old[k] for k in data):
             new['changed_at'] = now().isoformat()
-            db.executemany('INSERT OR REPLACE INTO settings(key,value) VALUES(?,?)',
+            db.executemany('INSERT OR REPLACE INTO setting(key,value) VALUES(?,?)',
                            [(k, str(int(v)) if isinstance(v, bool) else str(v) if v is not None else None)
                             for k, v in new.items()])
             audit(db, 'settings', 'price', old, new)

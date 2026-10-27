@@ -7,7 +7,6 @@ keep their per-currency behaviour. Converted figures are always shown marked (â‰
 """
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 import re
-import sqlite3
 from urllib.request import Request
 from xml.etree import ElementTree as ET
 
@@ -17,48 +16,29 @@ from .transaction import transaction
 
 ECB_URL = 'https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml'
 CODE = re.compile(r'[A-Z]{3}')
-DDL = '''CREATE TABLE IF NOT EXISTS exchange_rates(currency TEXT PRIMARY KEY NOT NULL CHECK(length(currency)=3),
- per_eur TEXT NOT NULL, as_of TEXT NOT NULL, source TEXT NOT NULL CHECK(source IN ('manual','ecb')))'''
-
-
-def pending(db):
-    return not db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='exchange_rates'").fetchone()
-
-
-def upgrade(db):
-    with db:
-        db.execute('BEGIN IMMEDIATE')
-        if not pending(db):
-            return False
-        db.execute(DDL)
-    return True
 
 
 def configured_currency(db):
     """The BrickLink currency preference of the collection (`setting.bricklink_currency`), else the documented default EUR."""
-    try:
-        row = db.execute("SELECT value FROM setting WHERE key='bricklink_currency'").fetchone()
-    except sqlite3.OperationalError:  # no setting table: the documented default applies
-        row = None
+    row = db.execute("SELECT value FROM setting WHERE key='bricklink_currency'").fetchone()
     return (row[0] if row and row[0] else 'EUR')
 
 
 def display_currency(db):
-    row = db.execute("SELECT value FROM settings WHERE key='display_currency'").fetchone()
+    row = db.execute("SELECT value FROM setting WHERE key='display_currency'").fetchone()
     if row and row[0]:
         return row[0]
-    row = db.execute("SELECT value FROM settings WHERE key='bricklink_currency'").fetchone()
-    return row[0] if row and row[0] else 'EUR'
+    return configured_currency(db)
 
 
 def rates(db):
     """{currency: dict(per_eur=Decimal, as_of, source)} including EUR = 1."""
     out = {'EUR': dict(per_eur=Decimal(1), as_of=None, source='fixed')}
-    try:
-        for r in db.execute('SELECT currency,per_eur,as_of,source FROM exchange_rates'):
+    for r in db.execute('SELECT currency,per_eur,as_of,source FROM exchange_rate'):
+        try:
             out[r[0]] = dict(per_eur=Decimal(r[1]), as_of=r[2], source=r[3])
-    except Exception:  # a store without the table converts nothing
-        pass
+        except InvalidOperation:                                  # a rate that is no number converts nothing
+            continue
     return out
 
 
@@ -89,9 +69,9 @@ def set_rate(db, currency, per_eur):
     if not CODE.fullmatch(currency) or currency == 'EUR':
         raise errors.ValidationFailed('Enter a three-letter currency other than EUR (EUR is the base, 1)')
     with transaction(db):
-        before = db.execute('SELECT * FROM exchange_rates WHERE currency=?', (currency,)).fetchone()
+        before = db.execute('SELECT * FROM exchange_rate WHERE currency=?', (currency,)).fetchone()
         if per_eur in (None, ''):
-            db.execute('DELETE FROM exchange_rates WHERE currency=?', (currency,))
+            db.execute('DELETE FROM exchange_rate WHERE currency=?', (currency,))
         else:
             try:
                 value = Decimal(str(per_eur))
@@ -99,7 +79,7 @@ def set_rate(db, currency, per_eur):
                 raise errors.ValidationFailed('Enter the rate as a number') from None
             if not value.is_finite() or value <= 0:
                 raise errors.ValidationFailed('Enter a rate above zero')
-            db.execute('INSERT OR REPLACE INTO exchange_rates(currency,per_eur,as_of,source) VALUES(?,?,?,?)',
+            db.execute('INSERT OR REPLACE INTO exchange_rate(currency,per_eur,as_of,source) VALUES(?,?,?,?)',
                        (currency, format(value, 'f'), now().date().isoformat(), 'manual'))
         audit(db, 'exchange_rate:' + currency, 'save', dict(before) if before else None,
               dict(currency=currency, per_eur=None if per_eur in (None, '') else str(per_eur)))
@@ -112,9 +92,10 @@ def set_display(db, currency):
     if not CODE.fullmatch(currency):
         raise errors.ValidationFailed('Enter a three-letter currency')
     with transaction(db):
-        before = display_currency(db)
-        db.execute("INSERT OR REPLACE INTO settings(key,value) VALUES('display_currency',?)", (currency,))
-        audit(db, 'settings', 'display_currency', before, currency)
+        before = db.execute("SELECT value FROM setting WHERE key='display_currency'").fetchone()
+        before = before[0] if before else None
+        db.execute("INSERT OR REPLACE INTO setting(key,value) VALUES('display_currency',?)", (currency,))
+        audit(db, 'setting:display_currency', 'save', before, currency)
     return currency
 
 
@@ -144,10 +125,10 @@ def fetch_ecb(db, http=None):
     if not found or not day:
         raise errors.SourceError('The ECB reference rates were empty')
     with transaction(db):
-        manual = {r[0] for r in db.execute("SELECT currency FROM exchange_rates WHERE source='manual'")}
+        manual = {r[0] for r in db.execute("SELECT currency FROM exchange_rate WHERE source='manual'")}
         rows = [(c, v, day, 'ecb') for c, v in sorted(found.items()) if c not in manual]
-        db.executemany('INSERT OR REPLACE INTO exchange_rates(currency,per_eur,as_of,source) VALUES(?,?,?,?)', rows)
-        audit(db, 'exchange_rates', 'ecb', None, dict(as_of=day, currencies=len(rows), kept_manual=sorted(manual)))
+        db.executemany('INSERT OR REPLACE INTO exchange_rate(currency,per_eur,as_of,source) VALUES(?,?,?,?)', rows)
+        audit(db, 'exchange_rate', 'ecb', None, dict(as_of=day, currencies=len(rows), kept_manual=sorted(manual)))
     return dict(as_of=day, updated=len(rows), kept_manual=len(manual))
 
 

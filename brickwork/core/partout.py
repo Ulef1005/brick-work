@@ -13,48 +13,61 @@ from collections import defaultdict
 from decimal import Decimal
 import json
 
-from . import collection, planning
+from . import collection, items, planning
 from .sources.base import now
 
 COVERAGE = 0.9  # share of lines that need a price before a part-out total is shown
 
 
 def values(db, copy_ids):
+    """`{copy id: dict(value, currency, lines, priced, enough, unpriced, unpriced_count, unpriced_items)}` for live copies.
+
+    Lines are the copy's live set lines (a retired line is no line, spares and a figure's own parts excluded) and its live figure lines,
+    each as (item id, colour id): the quantity present is the quantity less the missing. `unpriced` names up to 50 lines
+    (`dict(item_id, color_id)`); `unpriced_items` is the item ids (up to 200) a price refresh could fetch, an unidentified item left out."""
     copy_ids = sorted(set(copy_ids))
     if not copy_ids:
         return {}
     packed = json.dumps(copy_ids)
     lines = defaultdict(list)
-    for r in db.execute('''SELECT copy_id,item_type,item_no,color_id,sum(coalesce(quantity,0)-coalesce(missing,0)) present
-            FROM copy_parts WHERE copy_id IN (SELECT value FROM json_each(?)) AND coalesce(spare,0)=0 AND parent_minifig IS NULL
-            GROUP BY 1,2,3,4''', (packed,)):
+    for r in db.execute('''SELECT copy_id,item_id,color_id,sum(quantity-missing) present FROM copy_part
+            WHERE copy_id IN (SELECT value FROM json_each(?)) AND is_spare=0 AND copy_figure_id IS NULL AND retired_at IS NULL
+            GROUP BY 1,2,3''', (packed,)):
         if r['present'] > 0:
-            lines[r['copy_id']].append((r['item_type'], r['item_no'], r['color_id'], r['present']))
-    for r in db.execute('''SELECT copy_id,item_type,minifig_no,sum(coalesce(quantity,0)-coalesce(missing,0)) present
-            FROM copy_minifigs WHERE copy_id IN (SELECT value FROM json_each(?)) GROUP BY 1,2,3''', (packed,)):
+            lines[r['copy_id']].append((r['item_id'], r['color_id'], r['present']))
+    for r in db.execute('''SELECT copy_id,item_id,sum(quantity-missing) present FROM copy_figure
+            WHERE copy_id IN (SELECT value FROM json_each(?)) AND retired_at IS NULL GROUP BY 1,2''', (packed,)):
         if r['present'] > 0:
-            lines[r['copy_id']].append((r['item_type'], r['minifig_no'], None, r['present']))
-    scope = {(t, n, c) for rows in lines.values() for t, n, c, _ in rows}
-    market = collection.prices(db, scope=scope) if scope else {}
+            lines[r['copy_id']].append((r['item_id'], None, r['present']))
+    scope = {(i, c) for rows in lines.values() for i, c, _ in rows}
+    market = collection.prices(db, pairs=scope) if scope else {}
     config, stamp = planning.configuration(db), now()
-    quotes = {key: planning.quote(market.get(key, []), 'U', config, stamp) for key in scope}
+    quotes = {key: planning.quote(market.get(key, []), 'used', config, stamp) for key in scope}
     result = {}
     for copy_id in copy_ids:
         total, priced, missing = Decimal(0), 0, []
-        for t, n, c, present in lines.get(copy_id, []):
-            q = quotes.get((t, n, c))
+        for item_id, colour, present in lines.get(copy_id, []):
+            q = quotes.get((item_id, colour))
             if q is None:
-                missing.append(dict(item_type=t, item_no=n, color_id=c))
+                missing.append(dict(item_id=item_id, color_id=colour))
                 continue
             total += Decimal(str(q['price'])) * present
             priced += 1
         count = len(lines.get(copy_id, []))
         enough = bool(count) and priced >= COVERAGE * count
-        items = sorted({(m['item_type'], m['item_no']) for m in missing})
+        wanted = sorted({m['item_id'] for m in missing})
         result[copy_id] = dict(value=str(total.quantize(Decimal('0.01'))) if enough else None, currency=config['bricklink_currency'],
                                lines=count, priced=priced, enough=enough, unpriced=missing[:50], unpriced_count=len(missing),
-                               unpriced_items=[list(key) for key in items[:200]])
+                               unpriced_items=_refreshable(db, wanted)[:200])
     return result
+
+
+def _refreshable(db, item_ids):
+    """The item ids of `item_ids` a price refresh can name for BrickLink: an unidentified item has no number to fetch by."""
+    if not item_ids:
+        return []
+    labels = items.labels(db, {(i, None) for i in item_ids})
+    return [i for i in item_ids if (i, None) in labels and not labels[i, None].unidentified]
 
 
 def compare(copy, partout, config=None):

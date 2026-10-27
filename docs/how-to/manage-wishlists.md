@@ -58,6 +58,8 @@ Undo is refused if something changed since, for example when a later save touche
 
 The file downloads, and **Export summary** says how many rows were exported and which were left out and why. Archived lists and wishes are never exported.
 
+A wish Brick Work cannot name in the format you chose is left out and listed, never exported under a made-up number: *No BrickLink number* or *No BrickLink colour* for the XML, *Missing or ambiguous Rebrickable mapping* for the CSV, *Outside selected export kind* for a set in a parts file and the other way round. The rest still exports.
+
 A few things to know about the files:
 
 - A maximum price goes into the BrickLink file only when it is above zero and in your BrickLink currency. Otherwise the limit is left out and the summary says so.

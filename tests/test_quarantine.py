@@ -125,6 +125,14 @@ BASELINE = frozenset((
     'tests/test_bw_retail_26_wishlist.py',
     'tests/test_bw_ui_12j_later.py',
     'tests/test_secret_redaction_cli_export.py',
+    # M.8g split these out of files it ported (tests that belong to a later piece moved, none was added): out of test_bw_currency_39.py the API
+    # (M.11) and Settings page (M.8i) tests, out of test_bw_partout_38.py and test_bw_wish_progress_35.py the API ones (M.11), out of
+    # test_shell_45s.py the Tools and Admin path (M.8i).
+    'tests/test_bw_currency_39_api.py',
+    'tests/test_bw_currency_39_settings.py',
+    'tests/test_bw_partout_38_api.py',
+    'tests/test_bw_wish_progress_35_api.py',
+    'tests/test_shell_45s_tools.py',
 ))
 
 

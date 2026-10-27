@@ -1,7 +1,7 @@
 """4.6r on the 4.0 store (M.8c, issue #110): every ported screen uses words for visible numeric differences.
 
-`ROUTES` lists the screens a piece has ported; each piece adds its own (the planning screens are still in
-`test_web_unsigned_text.py`, quarantined; M.8f added the Prices screen and the text its records and details carry). Item, lot, wish and Check Set Parts pages are walked from the data (M.8d: the chooser, every copy's
+`ROUTES` lists the screens a piece has ported; each piece adds its own (M.8f added the Prices screen and the text its records and details carry;
+M.8g the Wishlist and Complete sets screens, with a repair of every kind: ranked, free, outside break-even and needing evidence). Item, lot, wish and Check Set Parts pages are walked from the data (M.8d: the chooser, every copy's
 check screen, running and not, and every figure line's; M.8e: the Part Picker and Matcher with each copy selected, the Storage screen of every
 storage, the printable lists and the Part to Inventory page)."""
 import re
@@ -10,12 +10,13 @@ from bs4 import BeautifulSoup
 
 from brickwork.core import checker
 from tests.app4 import app4, client, coll, pair, read, world  # noqa: F401 (fixtures)
+from tests.test_bw_planning import evidence
 
 SIGN = re.compile(r'(?:^|[\s(\[·])[-−–—]\d')
 KINDS = ('sets', 'wishes', 'purchase-places', 'M', 'P', 'I', 'O', 'G', 'B', 'C')
 ROUTES = ['/collection/' + kind for kind in KINDS] + ['/manage/add', '/manage/add?type=part&where=wishlist&number=3001', '/workbench/check-parts'] + [
     '/workbench/part-picker', '/workbench/matcher', '/workbench/match', '/workbench/storage', '/workbench/storage/unstored', '/workbench/part-to-inventory',
-    '/lists/wishlist/print', '/lists/wishlist.csv', '/planning/prices', '/planning/prices?kind=P']
+    '/lists/wishlist/print', '/lists/wishlist.csv', '/planning/prices', '/planning/prices?kind=P', '/planning/wishlist', '/planning/complete-sets']
 
 
 def assert_unsigned(html, route, shell=True):
@@ -84,3 +85,44 @@ def test_the_prices_records_and_details_use_words_for_numeric_differences(world,
     for text in texts:
         assert not SIGN.search(text), text
         assert not re.search(r'\d[–—−]\d', text), text
+
+
+def test_planning_negative_ratio_and_gain_phrases(coll, client):
+    e = evidence(coll)
+    coll.sql("UPDATE copy SET current_value='102',current_value_currency='EUR' WHERE id=?", (e.copy,))
+    soup = assert_unsigned(client.get('/planning/complete-sets').text, 'negative ratio')
+    row = soup.select_one('[data-bp-row]')
+    assert '0.15 lost per 1 spent' in row.get_text()
+    assert 'net gain €15.50 below' in row.select_one('summary').get_text()
+    details = row.select_one('.bp-repair-details').get_text()
+    assert 'repair €13.50 · net gain €15.50 below' in details
+
+
+def test_every_kind_of_repair_row_uses_words(coll, client, read):
+    """Ranked, outside break-even (worth less repaired) and needing evidence (a part with no price), and a free repair (no shipping, no fees, loose
+    stock covers it): each row's text."""
+    from brickwork.core import planning
+    e = evidence(coll)
+    coll.setting('repair_use_loose_stock', '1')
+    outside = coll.add_copy('1000-1', condition='used', current_value='120', current_value_currency='EUR')       # worth more as is than complete
+    coll.mark(outside, '3001', '4', missing=1)
+    coll.add_stock('part', e.brick, colour=e.red, quantity=4, condition='used')
+    unpriced = coll.add_copy('1000-1', condition='used')
+    coll.mark(unpriced, '3023', '15', missing=1)                                                                  # no price for a white 3023
+    with read() as db:
+        groups = {r['group'] for r in planning.ranking(db)['rows']}
+    assert {'outside', 'needs_evidence'} <= groups
+    soup = assert_unsigned(client.get('/planning/complete-sets').text, 'every kind of repair row')
+    assert len(soup.select('[data-bp-row]')) == 3
+    for key, value in dict(repair_shipping='0', repair_fees='0', repair_min_order='0').items():
+        coll.setting(key, value)
+    with read() as db:
+        assert 'free_repairs' in {r['group'] for r in planning.ranking(db)['rows']}
+    assert_unsigned(client.get('/planning/complete-sets').text, 'free repair')
+
+
+def test_prices_name_tail(world, coll, client):
+    # Names are rendered by bw-prices.js from the records; the runtime harness asserts the non-breaking tail on its row markup.
+    coll.price(world.gate, '12.30', condition='new', guide='stock', minimum='10', maximum='15', sold=3)
+    data = client.get('/planning/prices/records').get_json()
+    assert any(len(r[data['fields'].index('name')].split()) > 1 for r in data['rows'])

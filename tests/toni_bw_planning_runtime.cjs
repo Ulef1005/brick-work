@@ -38,7 +38,7 @@ class Node {
 const message=new Node(),undo=new Node(),pin=new Node(),refresh=new Node(),archive=new Node(),search=new Node(),sort=new Node(),order=new Node(),panel=new Node(),toggle=new Node(),filterControl=new Node();
 filterControl.dataset.bpFilter='type';filterControl.closest=()=>({firstChild:{textContent:'Type'}});filterControl.selectedOptions=[{textContent:'Parts'}];
 search.closest=()=>null;sort.value='number';order.value='asc';panel.hidden=true;panel.nodes={'button, input, select':new Node()};
-pin.dataset={bpPin:'copy',pinned:'false'};refresh.dataset.bpRefresh='["P","3004"]';archive.dataset.bpArchive='7';
+pin.dataset={bpPin:'copy',pinned:'false'};refresh.dataset.bpRefresh='["P","3004"]';archive.dataset.bpArchive='w7';
 const root=new Node();root.dataset={csrf:'token',screen:'prices',saveUrl:'/planning/action/ACTION',collectionUrl:'/collection/save/ACTION'};
 const rows=[{type:'P',number:'3004',name:'Brick',colour:'Red',pinned:'0',rank:2,gap:4,cost:'12',max:'40',collection:['owned'],stale:'true'},{type:'S',number:'20',name:'Set',colour:'',pinned:'1',rank:4,gap:1,cost:'2',max:null,collection:['wanted'],stale:'false'}];
 const nodes=rows.map(r=>{const n=new Node();n.nodes={'[data-bp-selected]':Object.assign(new Node(),{checked:false})};n.tagName='ARTICLE';n.closest=()=>n;n.dataset.record=JSON.stringify(r);return n;});
@@ -112,7 +112,18 @@ assert.equal(api.filter(rows,'',{},'cost')[0].number,'20');
  search.value='red';await search.trigger('input');
  assert.equal(nodes[1].querySelector('[data-bp-selected]').checked,false);assert.equal(exportButton.disabled,true);assert.equal(exportButton.textContent,'Export selected \u00b7 BrickLink XML');
  search.value='';await search.trigger('input');
- await archive.trigger();assert.equal(calls.length,3);confirmed=true;await archive.trigger();await new Promise(setImmediate);assert.equal(calls[3].url,'/collection/save/archive');assert.equal(calls[3].data.ids[0],7);
+ await archive.trigger();assert.equal(calls.length,3);confirmed=true;await archive.trigger();await new Promise(setImmediate);assert.equal(calls[3].url,'/collection/save/archive');assert.equal(calls[3].data.ids[0],'w7');   // a wish id is text since 4.0
+ // Export asks for the summary, downloads the file, and says what was left out (an item BrickLink has no number for).
+ let downloaded=null;doc.createElement=()=>{downloaded=new Node();downloaded.click=()=>{downloaded.clicked=true;};return downloaded;};
+ context.Blob=class{constructor(parts,options){this.parts=parts;this.type=options.type;}};context.URL={createObjectURL:()=>'blob:export',revokeObjectURL(){}};context.setTimeout=f=>f();
+ const outcome={content:'<INVENTORY/>',mimetype:'application/xml',filename:'missing-parts.xml',summary:{exported:2,skipped:[{item_no:'Mystery plate',color:'Red',reason:'no BrickLink number'}]}};
+ context.fetch=async(url,options)=>{calls.push({url,data:JSON.parse(options.body)});return {ok:true,json:async()=>outcome};};
+ const ticked=nodes[0].querySelector('[data-bp-selected]');ticked.checked=true;nodes[0].value='copy-1';   // the harness's :checked group lists the row nodes
+ await exportButton.trigger();await new Promise(setImmediate);
+ assert.equal(calls.at(-1).url,'/planning/action/export');assert.deepEqual(calls.at(-1).data.ids,['copy-1']);assert.equal(calls.at(-1).data.summary,true);
+ assert.equal(downloaded.download,'missing-parts.xml');assert.equal(downloaded.clicked,true);assert.equal(message.textContent,'Exported \u00b7 1 left out: Mystery plate \u00b7 Red \u00b7 no BrickLink number');
+ outcome.summary.skipped=[];await exportButton.trigger();await new Promise(setImmediate);assert.equal(message.textContent,'Exported');
+ ticked.checked=false;
 // The same switch and session key used by Collection preserve other list state.
 const grid=new Node(),listView=new Node();grid.dataset.bpView='grid';listView.dataset.bpView='list';
 root.groups['[data-bp-view]']=[grid,listView];container.dataset.view='grid';

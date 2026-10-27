@@ -10,21 +10,11 @@ listed runs.
 """
 
 QUARANTINE = {
-    # M.8d: Check Set Parts on part_check, collection writes, flags, photos
-    'tests/test_web_unsigned_text.py': 'M.8g',
     # M.8f ported its files (sources, pictures, prices on provider_key, keys). Left here, re-labelled to the piece they belong to: the Catalogues & keys
     # screen tests (M.8i); split off by M.8f from files it ported: the 3.3 BrickLink XML loader, the CLI/export redaction, the Tools & Admin speed and
-    # first-run tests, the Statistics retail test (M.8i), the Wishlist retail test (M.8g), the API speed tests (M.11).
+    # first-run tests, the Statistics retail test (M.8i), the API speed tests (M.11). (The Wishlist retail test was ported by M.8g.)
     'tests/test_bw_api_m5_web.py': 'M.8i',
     'tests/test_bw_ui_12l.py': 'M.8i',
-    # M.8g: planning, partout, wishlists, money
-    'tests/test_bw_currency_39.py': 'M.8g',
-    'tests/test_bw_partout_38.py': 'M.8g',
-    'tests/test_bw_planning.py': 'M.8g',
-    'tests/test_bw_wish_currency.py': 'M.8g',
-    'tests/test_bw_wish_progress_35.py': 'M.8g',
-    'tests/test_bw_retail_26_wishlist.py': 'M.8g',
-    'tests/test_bw_wishlists.py': 'M.8g',
     # M.8h: orders, identify
     'tests/test_bw_orders_design.py': 'M.8h',
     'tests/test_bw_orders_export_44.py': 'M.8h',
@@ -38,10 +28,10 @@ QUARANTINE = {
     'tests/test_bw_ui_12j_later.py': 'M.8i',
     'tests/test_secret_redaction_cli_export.py': 'M.8i',
     'tests/test_bw_admin.py': 'M.8i',
+    'tests/test_bw_currency_39_settings.py': 'M.8i',
+    'tests/test_shell_45s_tools.py': 'M.8i',
     'tests/test_bw_collection_colours.py': 'M.8i',
     'tests/test_bw_lists_43_api.py': 'M.11',
-    'tests/test_bw_lists_43_later.py': 'M.8g',
-    'tests/test_shell_45s_later.py': 'M.8g',
     'tests/test_bw_admin_csrf.py': 'M.8i',
     'tests/test_bw_small_68.py': 'M.8i',
     'tests/test_bw_ui_12m.py': 'M.8i',
@@ -83,5 +73,8 @@ QUARANTINE = {
     'tests/test_bw_security.py': 'M.11',
     'tests/test_bw_throttle.py': 'M.11',
     'tests/test_bw_wishlists_api.py': 'M.11',
+    'tests/test_bw_currency_39_api.py': 'M.11',
+    'tests/test_bw_partout_38_api.py': 'M.11',
+    'tests/test_bw_wish_progress_35_api.py': 'M.11',
     'tests/test_runtime_contract.py': 'M.11',
 }

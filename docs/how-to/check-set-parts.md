@@ -43,8 +43,8 @@ On a figure's step, **Check figure parts** opens a check of that figure's own pa
 1. Open **Planning → Complete sets**. It lists your copies that have recorded gaps.
 2. Tick the copies you want.
 3. Choose one:
-   - **Export N · BrickLink XML** downloads `missing-parts.xml` for a BrickLink Wanted List. The export stops with "Resolve figures and colours before exporting" while any missing figure is unresolved or a part has no colour.
-   - **Print missing parts of N** opens a printable list. **Download CSV** on that page saves the same list as a CSV file (item type, number, name, colour, condition, quantity and a note for items not matched yet). Unresolved items stay on this list, marked.
+   - **Export N · BrickLink XML** downloads `missing-parts.xml` for a BrickLink Wanted List: every missing or damaged part and every missing figure of the ticked copies, by BrickLink number and colour, with the condition of the copy. Something Brick Work cannot name for BrickLink, because it has no BrickLink number or its colour has none, is left out of the file and named in the message; the rest still exports. With *Use loose stock* on in the repair settings, the quantities are what you still have to buy ([Decide which set to repair first](plan-repairs.md)).
+   - **Print missing parts of N** opens a printable list. **Download CSV** on that page saves the same list as a CSV file (item type, number, name, colour, condition, quantity and a note for items not matched yet). Items not matched yet stay on this list, marked.
 
 The REST API offers the same missing-parts lists as XML, CSV and JSON.
 

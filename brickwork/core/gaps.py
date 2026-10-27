@@ -4,7 +4,7 @@ A gap is what a copy lacks: a live set line's missing and damaged pieces (a reti
 are not set gaps) and a live figure line's missing figures. The export names every gap by the item's BrickLink number, type and colour
 number (`core.items.bricklink_key`, which goes through `store4.identity.resolve`). An item with no confirmed BrickLink number cannot be
 named in a wanted list: it is **skipped and listed**, never exported under a made-up number and never a reason to stop the export.
-The planning screen that calls this and the printable list are M.8g."""
+Its Planning route is `planning.export` (M.8g), which names a repair's remaining quantities through `export_lines`; the printable list is `list_exports`."""
 from collections import defaultdict
 import json
 from xml.etree import ElementTree as ET
@@ -41,6 +41,11 @@ def missing_lines(db, copy_ids):
     total = defaultdict(int)
     for gap in copy_gaps(db, copy_ids):
         total[gap['item_id'], gap['color_id'], CONDITION.get(gap['condition'], 'U')] += gap['quantity']
+    return named_lines(db, total)
+
+
+def named_lines(db, total):
+    """`missing_lines` for quantities already combined: `total` is `{(item id, colour id, 'N'|'U'): quantity}`."""
     names = {r['id']: r['name'] for r in db.execute('SELECT id,name FROM main.item WHERE id IN (SELECT value FROM json_each(?))', (json.dumps(sorted({k[0] for k in total})),))}
     colours = {r['id']: r['name'] for r in db.execute('SELECT id,name FROM main.color WHERE id IN (SELECT value FROM json_each(?))', (json.dumps(sorted({k[1] for k in total if k[1] is not None})),))}
     lines, skipped = [], []
@@ -60,7 +65,12 @@ def missing_lines(db, copy_ids):
 
 def export(db, copy_ids):
     """`dict(xml, lines, skipped)`: BrickLink Wanted List XML of the named lines, the lines in it and the ones left out (and why)."""
-    lines, skipped = missing_lines(db, copy_ids)
+    return export_lines(db, None, missing_lines(db, copy_ids))
+
+
+def export_lines(db, total, named=None):
+    """The same for quantities already combined (`total`, see `named_lines`), e.g. what a repair still has to buy."""
+    lines, skipped = named if named is not None else named_lines(db, total)
     root = ET.Element('INVENTORY')
     for line in lines:
         kind, number, colour = line['bricklink']

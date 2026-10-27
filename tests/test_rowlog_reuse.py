@@ -143,3 +143,9 @@ def test_a_fresh_file_opens_and_a_file_made_before_the_fix_is_refused(tmp_path):
     for opener in (lambda: connect(old), lambda: connect(old, read_only=True), lambda: CollectionSeed(old)):
         with pytest.raises(SchemaMismatch, match='predates #124.*re-run the 3.3'):
             opener()
+    # The app says only what applies: rebuild by migrating again, not "a 3.3 file must be migrated".
+    from brickwork.core import connect as app
+    with pytest.raises(Exception) as refused:
+        app.connect(old, read_only=True, require_catalogue=False)
+    assert str(refused.value).startswith(f'{old} predates #124') and 'is not a Brick Work 4.0 collection' not in str(refused.value)
+    assert 'python -m brickwork.store4 migrate' in str(refused.value)

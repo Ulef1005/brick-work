@@ -5,7 +5,7 @@ from pathlib import Path
 import sqlite3
 import uuid
 
-from .errors import CatalogueError, CatalogueMismatch, SchemaMismatch, Unsupported
+from .errors import CatalogueError, CatalogueMismatch, SchemaMismatch, StaleSchema, Unsupported
 
 MIN_SQLITE = (3, 37, 0)
 SCHEMA_VERSION = '4.0'
@@ -50,7 +50,7 @@ def check_ids_never_reused(db, path):
     could be refused falsely there. No such file is in production; the migration builds a new one."""
     found = dict(db.execute("SELECT name, sql FROM main.sqlite_master WHERE type='table' AND name IN (?, ?)", AUTOINCREMENT_TABLES).fetchall())
     if any('AUTOINCREMENT' not in (found.get(name) or '').upper() for name in AUTOINCREMENT_TABLES):
-        raise SchemaMismatch(f'{path} predates #124 (made before 2026-10-27): re-run the 3.3 \u2192 4.0 migration to rebuild it')
+        raise StaleSchema(f'{path} predates #124 (made before 2026-10-27): re-run the 3.3 \u2192 4.0 migration to rebuild it')
 
 
 def connect(path='brickwork.db', catalogue='catalogue.db', *, read_only=False):

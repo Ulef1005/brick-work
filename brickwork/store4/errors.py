@@ -13,6 +13,10 @@ class SchemaMismatch(Store4Error):
     """A collection file that is not a 4.0 collection."""
 
 
+class StaleSchema(SchemaMismatch):
+    """A 4.0 collection file made before a fix to the 4.0 DDL (#124): it is rebuilt by migrating again, not opened."""
+
+
 class CatalogueError(Store4Error):
     """A catalogue file that cannot be attached, or is needed and missing."""
 

@@ -173,7 +173,7 @@ def fetch(db, job, source, *, http=None, image_http=None, root=None):
     from .sources.rebrickable import Rebrickable
     item_id = job['item_id']
     row = _item(db, item_id)
-    if row['born_key'] is None:
+    if not items.identified(db, item_id):
         raise StepDone('unidentified', 'The item has no number from any provider, so no picture can be asked for')
     payload = json.loads(job['payload'] or '{}')
     root = root or media_root(db)
@@ -243,7 +243,7 @@ HELD = '''WITH held(item_id, color_id) AS (
 
 
 def _held(db):
-    return db.execute(HELD + '''SELECT h.item_id, h.color_id, i.kind, i.born_key IS NULL AS unidentified FROM held h JOIN main.item i ON i.id=h.item_id
+    return db.execute(HELD + f'''SELECT h.item_id, h.color_id, i.kind, NOT {items.identified_sql('i')} AS unidentified FROM held h JOIN main.item i ON i.id=h.item_id
                                 WHERE i.merged_into IS NULL ORDER BY h.item_id, h.color_id''').fetchall()
 
 

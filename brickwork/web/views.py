@@ -80,15 +80,12 @@ def bw_tools():
 def bw_admin(page):
     from . import admin_ops
     titles = {'hub': 'Tools & Admin', 'catalogues': 'Catalogues & keys', 'jobs': 'Jobs',
-              'refresh': 'Bulk refresh prices', 'unresolved': 'Unresolved figures',
+              'refresh': 'Bulk refresh prices', 'unresolved': 'Unresolved items',
               'statistics': 'Statistics', 'values': 'Values', 'database': 'Database',
               'settings': 'Settings', 'appearance': 'Appearance', 'about': 'About', 'history': 'Identify history',
               'instructions': 'Instruction files'}
     if page not in titles:
         abort(404)
-    if page == 'unresolved':                       # identity admin: M.8i part 2
-        from . import ported
-        return ported.holding('Unresolved figures', piece='M.8i part 2')
     group = request.args.get('group', 'owners')
     error, data = None, None
     try:
@@ -96,6 +93,8 @@ def bw_admin(page):
             data = admin_ops.tools_read(page, group)
             from ..core.admin import display
             data = display(data)
+            if page == 'unresolved':
+                data['done'] = identity_undo_offer(request.args.get('done', ''))
             if page == 'settings':
                 from ..core import currency
                 from ..core.admin import database
@@ -126,6 +125,20 @@ def bw_admin(page):
     return response
 
 
+def identity_undo_offer(text):
+    """`?done=<event id>` on the Unresolved screen: the id when that event is an identity decision that can still be undone, else None."""
+    from . import admin_ops, token_rows
+    from ..core import undo as undoing
+    from ..core.admin import database
+    identifier = token_rows.event_id(text)
+    if identifier is None:
+        return None
+    with database(admin_ops.brickwork_path(), read_only=True, require_catalogue=False) as db:
+        found = db.execute(f"SELECT 1 FROM main.event e WHERE e.id=? AND {undoing.undoable_sql('e')} AND NOT {undoing.undone_sql('e')} "
+                           "AND e.entity_kind IN ('item','item_link','item_provider_status')", (identifier,)).fetchone()
+    return identifier if found else None
+
+
 def settings_undo_offer(db, text):
     """`?saved=<event id>` on the Settings page: the id when that event is a settings save that can still be undone, else None."""
     from . import token_rows
@@ -152,7 +165,7 @@ def bw_admin_write(page):
         'catalogues': {'source': 'Source toggle', 'key_save': 'Source key', 'key_test_save': 'Source key', 'key_remove': 'Source key',
                        'key_undo': 'Source key', 'key_test': 'Source key test'}.get(action, 'Catalogues & keys'),
         'settings': 'Picture refresh' if action == 'pictures' else 'Settings',
-        'unresolved': 'Figure resolution',
+        'unresolved': 'Identity decision',
         'refresh': 'Price refresh',
         'jobs': 'Job resume' if action == 'resume' else 'Job retry',
         'values': 'Value ' + {'add': 'add', 'rename': 'rename', 'delete': 'delete'}.get(action, 'save'),
@@ -166,9 +179,21 @@ def bw_admin_write(page):
     bw_add_csrf(request.form)
     saved = None
     try:
-        if page == 'unresolved':                   # identity admin: M.8i part 2
-            from . import ported
-            return ported.holding('Unresolved figures', piece='M.8i part 2')
+        if page == 'unresolved':
+            if not bw_collection_editable():
+                abort(403, 'Changes are switched off on this instance')
+            fields = ('item', 'target', 'number', 'link', 'kind', 'provider', 'reason', 'event')
+            try:
+                result = admin_ops.tools_write('identity', action=request.form.get('action', ''),
+                                               **{k: request.form.get(k) or None for k in fields})
+            except (errors.BrickWorkError, ValueError, TypeError) as exc:
+                flash(failure_label + ' · ' + (str(exc) if isinstance(exc, errors.BrickWorkError) else 'Nothing was saved. Check the values and try again.'), 'error')
+                return redirect(url_for('web.bw_admin', page='unresolved'))
+            if request.form.get('action') == 'undo':
+                flash('Undone', 'success')
+                return redirect(url_for('web.bw_admin', page='unresolved'))
+            flash('Saved', 'success')
+            return redirect(url_for('web.bw_admin', page='unresolved', done=result.get('event_id') if isinstance(result, dict) else None))
         if page == 'instructions':
             if request.form['action'] == 'fetch_missing':
                 if not bw_collection_editable():

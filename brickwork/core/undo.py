@@ -89,4 +89,4 @@ register('copy', 'part_list_switch', _undo_switch)
 
 
 # Each module below registers the undoers of what it writes (they import this module first when they are the entry).
-from . import add, checker, collection, identify, keys, ledger, manual_prices, orders, part_inventory, planning, source_ops, workbench  # noqa: E402,F401
+from . import add, checker, collection, identify, identity_admin, keys, ledger, manual_prices, orders, part_inventory, planning, source_ops, workbench  # noqa: E402,F401

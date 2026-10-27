@@ -16,6 +16,7 @@ One task per page, for someone who already knows the app.
 - [Manage wishlists](manage-wishlists.md)
 - [Know where things are](storage.md)
 - [Pictures, prices and where they come from](pictures-and-prices.md)
+- [Resolve unresolved items and merge items](merge-items.md)
 - [Undo a change](undo-a-change.md)
 
 ## Running Brick Work

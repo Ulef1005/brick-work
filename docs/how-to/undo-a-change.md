@@ -12,7 +12,7 @@ Undo appears where you made the change:
 - **On the planning screens.** After a pin or a change to the repair settings on Complete sets, and after any change to the lists on the Wishlist, **Undo** appears next to the message at the top of the page.
 - **In a history list.** **Part Picker** and **Matcher** list **Recent saves**. A storage location's page has **History**, and an order has **Allocation history**. Each row that can still be undone has an **Undo** button; rows already undone say **Undone**.
 - **For tokens.** After you revoke an API token, the banner offers **Undo** for 10 minutes.
-- **In Tools & Admin.** After **Save settings** the page offers **Undo**, and after you remove a source key the key's card does.
+- **In Tools & Admin.** After **Save settings** the page offers **Undo**, and after you remove a source key the key's card does. **Unresolved items** offers it after each decision, a merge included ([Resolve unresolved items and merge items](merge-items.md)).
 
 Press **Undo**. The change is reversed and recorded as a new event. An Undo cannot be undone itself; make the change again instead.
 

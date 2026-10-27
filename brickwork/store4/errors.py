@@ -47,3 +47,7 @@ class NotActivated(CatalogueError):
 
 class BrickLinkListError(Store4Error):
     """A BrickLink catalogue XML directory that is not a complete, well-formed set of item lists."""
+
+
+class MergeRefused(Store4Error):
+    """A merge, an unmerge or a kind move the rules (design 3.5, 3.6) do not allow, or that would lose data; the message says why."""

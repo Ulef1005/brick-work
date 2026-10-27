@@ -16,7 +16,7 @@ from brickwork.core import secrets
 from brickwork.core.sources import base
 from tests.app4 import app4, client, coll, csrf, pair, read, world  # noqa: F401  (the fixtures)
 
-PAGES = ['tools', 'catalogues', 'jobs', 'refresh', 'statistics', 'values', 'database', 'settings', 'appearance', 'history', 'instructions', 'about', 'tokens']
+PAGES = ['tools', 'catalogues', 'jobs', 'refresh', 'unresolved', 'statistics', 'values', 'database', 'settings', 'appearance', 'history', 'instructions', 'about', 'tokens']
 BL_ENV = ('BW_BRICKLINK_CONSUMER_KEY', 'BW_BRICKLINK_CONSUMER_SECRET', 'BW_BRICKLINK_TOKEN_VALUE', 'BW_BRICKLINK_TOKEN_SECRET')
 
 

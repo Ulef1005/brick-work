@@ -14,9 +14,6 @@ QUARANTINE = {
     # test_bw_orders_export_44.py the API receipts, history and export tests (M.11).
     'tests/test_bw_orders_export_44_api.py': 'M.11',
     'tests/test_bw_orders_storage_api.py': 'M.11',
-    # M.8i part 1 ported settings, Tools & Admin, Catalogues & keys, tokens, maintenance and the CLI. What is left under M.8i is part 2 (identity admin,
-    # merge/unmerge, the kind move), split off by part 1 from the files it ported.
-    'tests/test_bw_admin_identity.py': 'M.8i',
     'tests/test_bw_lists_43_api.py': 'M.11',
     # M.8j: sync, BrickTracker rewrite, demo, the two guards
     'tests/importer/test_bricktracker_import.py': 'M.8j',

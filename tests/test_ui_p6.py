@@ -1,16 +1,15 @@
 """UI-P6 on the 4.0 store (M.8i part 1, issue #110): Tools & Admin shell, hub tiles, system pages, no old breadcrumb.
 
-The Import from BrickTracker page header (M.8j) moved to `test_ui_p6_import.py`; the Unresolved figures page (M.8i part 2) is not in the lists
-below and comes back with its own."""
+The Import from BrickTracker page header (M.8j) moved to `test_ui_p6_import.py`."""
 import pytest
 from bs4 import BeautifulSoup
 
 from tests.app4 import app4, client, coll, pair, read, world  # noqa: F401  (the fixtures)
 
-PAGES = ['tools', 'about', 'catalogues', 'jobs', 'refresh', 'statistics', 'values',
+PAGES = ['tools', 'about', 'catalogues', 'jobs', 'refresh', 'unresolved', 'statistics', 'values',
          'database', 'settings', 'appearance', 'history', 'instructions', 'tokens']
 HUB_TARGETS = ['/manage/about', '/manage/refresh', '/manage/catalogues', '/manage/jobs', '/manage/instructions',
-               '/manage/history', '/manage/statistics', '/manage/values',
+               '/manage/history', '/manage/unresolved', '/manage/statistics', '/manage/values',
                '/manage/tokens', '/manage/database', '/manage/settings', '/manage/appearance']
 
 

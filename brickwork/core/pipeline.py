@@ -331,7 +331,7 @@ def _item(db, item_id):
 
 
 def _identity(db, item_id):
-    if _item(db, item_id)['born_key'] is None:
+    if not items.identified(db, item_id):
         return 'unidentified', 'The item has no number from any provider'
     return None, None
 

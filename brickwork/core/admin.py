@@ -5,7 +5,6 @@ from contextvars import ContextVar
 from datetime import datetime, timezone
 import json
 from pathlib import Path
-import re
 import uuid
 
 from .connect import connect
@@ -17,8 +16,6 @@ from .sources.base import now, redact
 VALUES = {'owners': ('flag', 'owner'), 'statuses': ('flag', 'status'),
           'tags': ('flag', 'tag'), 'storages': ('storage', None),
           'purchase-places': ('place', None)}
-COLLECTION = {'copies', 'copy_parts', 'copy_minifigs', 'loose_stock',                # 3.3 table names, for the identity admin (part 2)
-              'loose_minifig_parts', 'inventory_lines', 'wishlist'}
 
 
 @contextmanager
@@ -97,162 +94,16 @@ def audit(db, entity, field, old=None, new=None, *, via=None, actor=None):
                 OPERATION_KEY.get()))
 
 
-# ---------- identity admin: the queries down to `resolve` are still the 3.3 ones; M.8i part 2 rewrites them with the identity pieces ----------
+# ---------- identity admin (M.8i part 2): the list and the decisions are in `core/identity_admin.py` ----------
 
-def item_references(db):
-    """Discover every composite item foreign key, including inventory parents."""
-    for row in db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"):
-        table = row[0]
-        keys = {}
-        for fk in db.execute(f'PRAGMA foreign_key_list("{table}")'):
-            if fk['table'] == 'items':
-                keys.setdefault(fk['id'], {})[fk['to']] = fk['from']
-        for key in keys.values():
-            if set(key) == {'item_type', 'item_no'}:
-                yield table, key['item_type'], key['item_no']
-
-
-def reference_count(db, key, collection_only=False):
-    return sum(db.execute(f'SELECT count(*) FROM "{t}" WHERE "{a}"=? AND "{b}"=?', key).fetchone()[0]
-               for t, a, b in item_references(db) if not collection_only or t in COLLECTION)
-
-
-def candidates(evidence, kind):
-    """Normalize current pipeline evidence and the v3 migration envelopes."""
-    found = {}
-    def walk(value):
-        if isinstance(value, list):
-            for child in value:
-                walk(child)
-        elif isinstance(value, dict):
-            number = value.get('bricklink_item_no') or value.get('bricklink_id') or value.get('item_no') or (value.get('bricklink') if isinstance(value.get('bricklink'), str) else None)
-            target = value.get('target')
-            item_type = value.get('item_type') or ('M' if kind == 'minifigure' else 'P')
-            if isinstance(target, list) and len(target) == 2:
-                item_type, number = target
-            if number and item_type in TYPES:
-                found[item_type, str(number)] = dict(item_type=item_type, item_no=str(number),
-                    name=value.get('name') or str(number), score=value.get('score', value.get('confidence')))
-            links = value.get('bricklink')
-            if isinstance(links, list):
-                for n in links:
-                    if isinstance(n, str):
-                        found.setdefault((item_type, n), dict(item_type=item_type, item_no=n, name=n, score=None))
-            # inventory-child evidence contains the whole parent JSON and its ordinal.
-            record = value.get('record', {})
-            if 'ordinal' in value and isinstance(record, dict) and 'parts_json' in record:
-                walk(json.loads(record['parts_json'])[value['ordinal']])
-                return
-            for child in value.values():
-                if isinstance(child, (dict, list)):
-                    walk(child)
-    walk(evidence)
-    return list(found.values())
-
-
-def local_image(db, kind, number):
-    row = db.execute('SELECT id FROM item_images WHERE item_type=? AND item_no=? ORDER BY fetched_at DESC,id DESC LIMIT 1',
-                     (kind, number)).fetchone()
-    return row[0] if row else None
-
-
-UNRESOLVED_STATUS = "status IN ('to_check','unmatched')"
+def unresolved(db):
+    from . import identity_admin
+    return identity_admin.unresolved(db)
 
 
 def count_unresolved(db):
-    """Count what unresolved() lists, without reading payloads or evidence."""
-    exists = ' OR '.join(f'EXISTS(SELECT 1 FROM "{t}" WHERE "{a}"=m.item_type AND "{b}"=m.item_no)'
-                         for t, a, b in item_references(db) if t in COLLECTION)
-    if not exists:
-        return 0
-    return db.execute(f"SELECT count(*) FROM id_match m WHERE {UNRESOLVED_STATUS} AND m.item_type IS NOT NULL AND m.item_type!='' AND ({exists})").fetchone()[0]
-
-
-def unresolved(db):
-    result = []
-    # Discover FK paths once, then aggregate every referenced identity in bulk.
-    references = {}
-    for table, a, b in item_references(db):
-        if table not in COLLECTION:
-            continue
-        for r in db.execute(f'SELECT "{a}","{b}",count(*) FROM "{table}" GROUP BY 1,2'):
-            references[r[0], r[1]] = references.get((r[0], r[1]), 0) + r[2]
-    names = {(r[0], r[1]): r[2] for r in db.execute('SELECT item_type,item_no,name FROM items')}
-    images = {(r[0], r[1]): r[2] for r in db.execute('SELECT item_type,item_no,id FROM item_images ORDER BY fetched_at,id')}
-    matches = [row for row in db.execute(f"SELECT * FROM id_match WHERE {UNRESOLVED_STATUS} ORDER BY kind,source_id")
-               if row['item_type'] and references.get((row['item_type'], row['item_no']))]
-    # Payloads are large: read only the records of the matches that will be shown.
-    wanted = json.dumps([[row['source'], row['source_id']] for row in matches])
-    records = {(r[0], r[1]): r[2] for r in db.execute(
-        """SELECT source,source_id,payload FROM source_records
-           WHERE (source,source_id) IN (SELECT json_extract(value,'$[0]'),json_extract(value,'$[1]') FROM json_each(?))
-           ORDER BY fetched_at""", (wanted,))}
-    for row in matches:
-        key = row['item_type'], row['item_no']
-        value = dict(row)
-        choices = candidates(json.loads(row['evidence_json']), row['kind'])
-        for choice in choices:
-            choice['image'] = images.get((choice['item_type'], choice['item_no']))
-        value['candidates'] = choices
-        value['name'] = names.get(key) or row['source_id']
-        raw = records.get((row['source'], row['source_id']))
-        value['reference_url'] = None
-        if raw:
-            def read_identity(payload):
-                if isinstance(payload, dict):
-                    value['name'] = payload.get('name') or value['name']
-                    value['reference_url'] = payload.get('set_img_url') or payload.get('part_img_url') or payload.get('image') or value['reference_url']
-                    for child in payload.values():
-                        if isinstance(child, (dict, list)):
-                            read_identity(child)
-                elif isinstance(payload, list):
-                    for child in payload:
-                        read_identity(child)
-            try:
-                read_identity(json.loads(raw))
-            except ValueError:
-                pass
-        value['image'] = images.get(key)
-        value['references'] = references[key]
-        result.append(value)
-    return result
-
-
-def resolve(db, source, kind, source_id, selected=None):
-    with transaction(db):
-        row = db.execute('SELECT * FROM id_match WHERE source=? AND kind=? AND source_id=?',
-                         (source, kind, source_id)).fetchone()
-        if not row or row['status'] not in ('to_check', 'unmatched'):
-            raise ValueError('This match is no longer unresolved')
-        old = row['item_type'], row['item_no']
-        if selected is None:
-            db.execute("UPDATE id_match SET status='to_check' WHERE source=? AND kind=? AND source_id=?", (source, kind, source_id))
-            audit(db, 'match:' + source_id, 'leave', row['status'], 'to_check')
-            return
-        allowed = {(c['item_type'], c['item_no']) for c in candidates(json.loads(row['evidence_json']), kind)}
-        if selected not in allowed or not reference_count(db, old, True):
-            raise ValueError('Choose a recorded candidate')
-        db.execute('INSERT OR IGNORE INTO items(item_type,item_no) VALUES(?,?)', selected)
-        wish_flags = db.execute("SELECT entity_id,flag_id FROM item_flags WHERE entity_type='wishlist' AND entity_id IN (SELECT CAST(id AS TEXT) FROM wishlist WHERE item_type=? AND item_no=?)", old).fetchall()
-        db.execute("DELETE FROM item_flags WHERE entity_type='wishlist' AND entity_id IN (SELECT CAST(id AS TEXT) FROM wishlist WHERE item_type=? AND item_no=?)", old)
-        # Updates cover all FK paths. Unmergeable uniqueness conflicts fail atomically.
-        for table, a, b in item_references(db):
-            if table == 'id_match':
-                continue
-            if table == 'copy_minifigs':
-                for previous in db.execute('SELECT * FROM copy_minifigs WHERE item_type=? AND minifig_no=?', old).fetchall():
-                    exists = db.execute('SELECT 1 FROM copy_minifigs WHERE copy_id=? AND item_type=? AND minifig_no=?',
-                                        (previous['copy_id'], *selected)).fetchone()
-                    if exists:
-                        db.execute('UPDATE copy_minifigs SET quantity=coalesce(quantity,0)+?,missing=coalesce(missing,0)+? WHERE copy_id=? AND item_type=? AND minifig_no=?',
-                                   (previous['quantity'] or 0, previous['missing'] or 0, previous['copy_id'], *selected))
-                        db.execute('DELETE FROM copy_minifigs WHERE copy_id=? AND item_type=? AND minifig_no=?', (previous['copy_id'], *old))
-            db.execute(f'UPDATE "{table}" SET "{a}"=?,"{b}"=? WHERE "{a}"=? AND "{b}"=?', (*selected, *old))
-        for flag in wish_flags:
-            db.execute("INSERT INTO item_flags VALUES('wishlist',?,?)", (flag['entity_id'], flag['flag_id']))
-        db.execute("UPDATE id_match SET item_type=?,item_no=?,status='manual',method='manual',decided_at=? WHERE item_type=? AND item_no=?",
-                   (*selected, now().isoformat(), *old))
-        audit(db, 'match:' + source_id, 'identity', old, selected)
+    from . import identity_admin
+    return identity_admin.count_unresolved(db)
 
 
 # ---------- values (Tools & Admin → Values; M.8i) ----------
@@ -507,7 +358,7 @@ def stale_prices(db):
         (SELECT item_id, NULL color_id, condition FROM main.copy WHERE archived_at IS NULL
          UNION SELECT item_id, color_id, condition FROM main.stock WHERE archived_at IS NULL AND kind!='minifigure'
          UNION SELECT item_id, color_id, CASE condition WHEN 'any' THEN NULL ELSE condition END FROM main.wish WHERE archived_at IS NULL) w
-        ON w.item_id=i.id WHERE i.merged_into IS NULL AND i.born_key IS NOT NULL ORDER BY i.id, w.color_id, w.condition''').fetchall()
+        ON w.item_id=i.id WHERE i.merged_into IS NULL AND ''' + items.identified_sql('i') + ''' ORDER BY i.id, w.color_id, w.condition''').fetchall()
     priority = collection_prices.priority(db)
     rules = {(r['source'], r['kind']): r['max_age_days'] for r in db.execute('SELECT source, kind, max_age_days FROM main.source_freshness')}
     enabled = dict(db.execute('SELECT id, enabled FROM main.source'))

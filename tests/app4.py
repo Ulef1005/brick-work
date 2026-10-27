@@ -335,3 +335,23 @@ def csrf(client):
 def post(client, token, action, **data):
     """A write of the collection screens: `/collection/save/<action>` as the script sends it."""
     return client.post('/collection/save/' + action, json=dict(csrf_token=token, **data))
+
+
+def table_digest(db, skip=('event', 'event_undo', 'item_merge')):
+    """`{table: 'hash:rows'}` over every stored column of every collection table but `skip`: two digests are equal exactly when the tables hold the
+    same rows byte for byte (merge and unmerge, the kind move and every Undo are held to it)."""
+    import hashlib
+    import json
+    digest = {}
+    for (table,) in db.execute("SELECT name FROM main.sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY 1").fetchall():
+        if table in skip:
+            continue
+        columns = [r[1] for r in db.execute(f'PRAGMA main.table_xinfo("{table}")') if r[6] == 0]
+        names = ','.join(f'"{c}"' for c in columns)
+        order = ','.join(str(i + 1) for i in range(len(columns)))
+        hasher, count = hashlib.sha256(), 0
+        for row in db.execute(f'SELECT {names} FROM main."{table}" ORDER BY {order}'):
+            hasher.update(json.dumps(list(row), default=str).encode())
+            count += 1
+        digest[table] = f'{hasher.hexdigest()[:12]}:{count}'
+    return digest

@@ -1,5 +1,5 @@
 """Admin POST protection on a 4.0 collection (M.8i part 1, issue #110): every write form carries the shell's CSRF token and no write is reached
-without it. The identity admin's own CSRF cases (Unresolved figures) moved to `test_bw_admin_identity.py` with part 2."""
+without it. The identity admin's own CSRF cases (Unresolved items) are in `test_bw_admin_identity.py`."""
 from io import BytesIO
 import sqlite3
 

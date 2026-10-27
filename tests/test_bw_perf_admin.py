@@ -1,6 +1,6 @@
 """Speed fixes of Tools & Admin on the 4.0 store (M.8i part 1, issue #110): the hub counts and the database check.
 
-The unresolved list's tests (the hub count and the records it reads) moved to `test_bw_admin_identity.py` with part 2."""
+The unresolved list's tests (the hub count) are in `test_bw_admin_identity.py`."""
 from bs4 import BeautifulSoup
 import pytest
 

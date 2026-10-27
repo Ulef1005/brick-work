@@ -191,6 +191,18 @@ def labels(db, pairs):
     return {(i, c): _label(rows[i][0], (*f, colours.get(c)) if f else None, c) for (i, c), f in found.items()}
 
 
+def identified_sql(alias='i'):
+    """SQL predicate on `main.item` aliased `alias`: the item has a number from some provider (a born key) or a confirmed BrickLink link
+    (design 3.8: resolving an unidentified item is adding a link; born keys never change). What the Unresolved list, picture fetch and bulk
+    refresh call "not unidentified"."""
+    return (f"({alias}.born_key IS NOT NULL OR EXISTS(SELECT 1 FROM main.item_link k WHERE k.item_id={alias}.id AND k.provider='bricklink' "
+            f"AND k.status IN ({','.join(repr(s) for s in CONFIRMED)})))")
+
+
+def identified(db, item_id):
+    return db.execute(f'SELECT {identified_sql("i")} FROM main.item i WHERE i.id=?', (item_id,)).fetchone()[0] == 1
+
+
 def bricklink_key(db, item_id, color_id=None):
     """(BrickLink type, number, colour number) of an item in a colour, or `Unidentified` when no confirmed link names it."""
     row, store = _row(db, item_id)

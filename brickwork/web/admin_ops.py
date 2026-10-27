@@ -363,6 +363,8 @@ def tools_read(page, group=None):
             return dict(total=admin.count_jobs(db), jobs=[
                 {**job, 'interrupted': (job['state'] == 'running' or job['state'] == 'waiting_for_budget' and job['id'] in owners)
                  and not live.get(job['id'], False)} for job in jobs])
+        if page == 'unresolved':
+            return dict(items=admin.unresolved(db))
         if page == 'history':
             return admin.history(db)
         if page == 'instructions':
@@ -375,7 +377,7 @@ def tools_read(page, group=None):
                 sources.append({**source_ops.view(db, source), 'last_error': dict(last) if last else None})
             settings = admin.settings(db)
             return dict(sources=sources, catalogue=catalogue_card(db), freshness=settings['freshness'], priority=settings['priority'])
-        return dict(stale=len({r['item_id'] for r in admin.stale_prices(db)}), jobs=admin.count_jobs(db),
+        return dict(stale=len({r['item_id'] for r in admin.stale_prices(db)}), jobs=admin.count_jobs(db), unresolved=admin.count_unresolved(db),
                     instructions=db.execute('SELECT count(*) FROM instruction_file WHERE archived_at IS NULL').fetchone()[0])
 
 
@@ -410,6 +412,28 @@ def catalogue_card(db):
     return card
 
 
+def identity_write(db, *, action, item=None, target=None, number=None, link=None, kind=None, provider=None, reason=None, event=None):
+    """One decision of the Unresolved screen (`core/identity_admin`); returns the result, which carries the event id for Undo."""
+    from ..core import errors, identity_admin as identity, undo
+    if action == 'undo':
+        return undo.undo_event(db, int(event))
+    if action == 'merge':
+        item = int(item)
+        survivor = int(target) if target else identity.find_target(db, item, number)
+        return identity.merge_item(db, item, survivor)
+    if action == 'confirm':
+        return identity.confirm_link(db, int(link))
+    if action == 'reject':
+        return identity.reject_link(db, int(link))
+    if action == 'link':
+        return identity.add_link(db, int(item), number)
+    if action == 'settle':
+        return identity.settle_status(db, int(item), provider, reason)
+    if action == 'move_kind':
+        return identity.move_item_kind(db, int(item), kind)
+    raise errors.ValidationFailed('Unknown action')
+
+
 def tools_write(operation, **args):
     from ..core.sources.base import audit_origin
     with audit_origin('app'):
@@ -437,6 +461,8 @@ def _tools_write(operation, **args):
             return undo.undo_event(db, args['event'])
         if operation == 'database_check':
             return admin.run_check(db)
+        if operation == 'identity':
+            return identity_write(db, **args)
         if operation == 'refresh':
             return admin.queue_refresh(db, admin.stale_prices(db))
         if operation == 'source':

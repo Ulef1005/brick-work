@@ -1,8 +1,7 @@
 """Tools & Admin on the 4.0 store (M.8i part 1, issue #110): the routes and their data, values with Undo, settings with Undo, the stale-price
 refresh, the instruction files and the Identify history. Invented data only, no network.
 
-The identity admin that used to share this file (Unresolved figures, resolving a match, the images queue) is part 2 of M.8i and moved to
-`tests/test_bw_admin_identity.py`."""
+The identity admin that used to share this file (Unresolved items, resolving a link, merging) is in `tests/test_bw_admin_identity.py`."""
 from contextlib import closing
 import io
 import json
@@ -17,7 +16,7 @@ from brickwork.core.connect import connect
 from brickwork.web import admin_ops
 from tests.app4 import app4, client, coll, csrf, pair, read, world  # noqa: F401  (the fixtures)
 
-PAGES = ['tools', 'catalogues', 'jobs', 'refresh', 'statistics', 'values', 'database', 'settings', 'appearance', 'history', 'instructions', 'about']
+PAGES = ['tools', 'catalogues', 'jobs', 'refresh', 'unresolved', 'statistics', 'values', 'database', 'settings', 'appearance', 'history', 'instructions', 'about']
 
 
 def token(client):
@@ -46,13 +45,6 @@ def test_routes_in_shell_no_keys(client, world, keyed, page):
     assert 'data-web-ui="toni"' in html and 'Tools &amp; Admin' in html
     assert 'private-fixture-key' not in html
     assert result.headers['Cache-Control'] == 'no-store'
-
-
-def test_unresolved_figures_wait_for_part_two(client, world):
-    result = client.get('/manage/unresolved')
-    assert result.status_code == 503 and 'M.8i part 2' in result.get_data(as_text=True)
-    assert client.post('/manage/unresolved', data={'csrf_token': token(client), 'action': 'leave'}).status_code == 503
-    assert '/manage/unresolved' not in client.get('/manage/tools').get_data(as_text=True)
 
 
 def test_value_audit_and_rollback(coll):

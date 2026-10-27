@@ -39,7 +39,7 @@ For a running app, follow the Docker steps in the [README](README.md).
 
 - One change per pull request, with tests, and `scripts/check.sh` green.
 - Schema changes (4.0 line) go in `brickwork/store4/brickwork.sql` (the collection) or `catalogue.sql`, with a migration test; the app opens only a 4.0 collection (`core/connect.py`), and there is no in-place upgrade code.
-- Keep the API contract (`docs/brickwork/api-v1.md`, `openapi-v1.yaml`) in step with any API change; the contract checks enforce it.
+- Keep the API contract (`docs/brickwork/api-v2.md`, `openapi-v2.yaml`; v1's files stay as the reference) in step with any API change; the contract checks enforce it.
 - Write commit messages that say what changed and why.
 
 ## Licence of contributions

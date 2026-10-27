@@ -145,6 +145,9 @@ BASELINE = frozenset((
     'tests/test_bw_small_68_sync.py',
     # M.8j split this out of a file it ported (the API test, M.11): out of test_bw_sync.py.
     'tests/test_bw_sync_api.py',
+    # M.11a split these out of files it ported to API v2 (the MCP tests, M.11e): out of test_bw_throttle.py and test_runtime_contract.py.
+    'tests/test_bw_throttle_mcp.py',
+    'tests/test_runtime_contract_mcp.py',
 ))
 
 

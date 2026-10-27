@@ -1,37 +1,22 @@
 """Brick Work v1 transport. The legacy web API remains independently mounted."""
-from contextlib import ExitStack
 import os
-from pathlib import Path
-import sqlite3
 
-from flask import Blueprint, current_app, g, jsonify, request, send_file
-from werkzeug.exceptions import HTTPException, NotFound
+from flask import Blueprint, g, jsonify, request, send_file
+from werkzeug.exceptions import NotFound
 
 from ..core import errors, meta, tokens
-from ..core.connect import connect
 from ..core.contract import contract_path
 from ..core.listing import filter_rows, paginate
-from ..core.sources.base import WaitingForBudget, audit_origin, redact
 
 api = Blueprint('brickwork_api', __name__, url_prefix='/api/v1')
 
 
-def read_only():
-    return current_app.config.get('BW_READ_ONLY', False) or os.environ.get('BW_READ_ONLY', '').lower() in ('1', 'true', 'yes', 'on')
-
-
-def db_path():
-    return Path(os.environ.get('BW_DB_PATH') or current_app.config.get('BRICKWORK_DB_PATH') or 'data/brickwork.db')
+from . import transport                                  # noqa: E402 — the pieces both API lines share
+from .transport import db_path, problem, read_only        # noqa: E402,F401 — kept importable from here
 
 
 def database():
-    if 'api_db' not in g:
-        path = db_path()
-        if not path.is_file():
-            raise errors.NotSetUp("Run 'brickwork setup' first")
-        # Health reads the collection alone, read-only: it answers on a first run before the catalogue is there and never writes.
-        g.api_db = connect(path, read_only=request.endpoint == HEALTH, require_catalogue=request.endpoint != HEALTH)
-    return g.api_db
+    return transport.database(HEALTH)
 
 
 HEALTH = 'brickwork_api.get_health'
@@ -46,88 +31,24 @@ def retired():
         raise errors.ApiRetired(errors.API_V1_RETIRED)
 
 
+ADMIN = ('brickwork_api.get_tokens', 'brickwork_api.post_tokens', 'brickwork_api.delete_tokens_by_id', 'brickwork_api.get_database_check', 'brickwork_api.get_database_export', 'brickwork_api.patch_sources_by_source', 'brickwork_api.post_catalogue_import', 'brickwork_api.post_colors_sync', 'brickwork_api.put_sources_source_key', 'brickwork_api.delete_sources_source_key', 'brickwork_api.post_sources_source_key_test', 'brickwork_api.post_imports_bricktracker', 'brickwork_api.post_imports_by_id_apply', 'brickwork_api.post_sync_by_source_send_apply', 'brickwork_api.post_sources_source_user_connect', 'brickwork_api.put_sources_source_user', 'brickwork_api.delete_sources_source_user', 'brickwork_api.post_sources_source_user_test', 'brickwork_api.patch_settings', 'brickwork_api.put_exchange_rates_by_code', 'brickwork_api.post_exchange_rates_ecb')
+
+
 @api.before_request
 def authorize():
-    g.api_stack = ExitStack()
+    transport.authorize(health=HEALTH, open_endpoints=('brickwork_api.get_health', 'brickwork_api.get_openapi_yaml'),
+                        scope_of=lambda endpoint, method: 'admin' if endpoint in ADMIN else ('read' if method == 'GET' else 'write'))
     if request.endpoint in ('brickwork_api.get_health', 'brickwork_api.get_openapi_yaml'):
-        if request.method != 'GET' and read_only():
-            raise errors.ReadOnlyInstance()
         return
-    header = request.headers.get('Authorization', '')
-    supplied = header[7:] if header.startswith('Bearer ') else ''
-    from ..core.throttle import API
-    client = request.remote_addr
-    wait = API.wait(client)
-    if wait:
-        raise errors.TooManyAttempts('Too many failed token checks · try again in ' + str(wait) + ' s', retry_after=wait)
-    try:
-        g.api_identity = tokens.authenticate(database(), supplied, os.environ.get('BW_API_TOKEN', ''))
-    except errors.Unauthorized:
-        API.fail(client)
-        raise
-    API.succeed(client)
-    if request.method != 'GET' and read_only():
-        raise errors.ReadOnlyInstance()
-    scope = 'admin' if request.endpoint in ('brickwork_api.get_tokens', 'brickwork_api.post_tokens', 'brickwork_api.delete_tokens_by_id', 'brickwork_api.get_database_check', 'brickwork_api.get_database_export', 'brickwork_api.patch_sources_by_source', 'brickwork_api.post_catalogue_import', 'brickwork_api.post_colors_sync', 'brickwork_api.put_sources_source_key', 'brickwork_api.delete_sources_source_key', 'brickwork_api.post_sources_source_key_test', 'brickwork_api.post_imports_bricktracker', 'brickwork_api.post_imports_by_id_apply', 'brickwork_api.post_sync_by_source_send_apply', 'brickwork_api.post_sources_source_user_connect', 'brickwork_api.put_sources_source_user', 'brickwork_api.delete_sources_source_user', 'brickwork_api.post_sources_source_user_test', 'brickwork_api.patch_settings', 'brickwork_api.put_exchange_rates_by_code', 'brickwork_api.post_exchange_rates_ecb') else ('read' if request.method == 'GET' else 'write')
-    if not tokens.permits(g.api_identity, scope):
-        raise errors.Forbidden()
     if request.method != 'GET' and 'If-Match' in request.headers:
         from .writes import SPEC
         if not any(op['if_match'] and request.endpoint == 'brickwork_api.' + op['endpoint'] for op in SPEC['operations']):
             raise errors.BadRequest('If-Match is not supported on this operation')
-    g.api_stack.enter_context(audit_origin('api', actor=g.api_identity['name']))
+    transport.audited()
 
 
-@api.after_request
-def private_response(response):
-    response.headers['Cache-Control'] = 'no-store'
-    return response
-
-
-@api.teardown_request
-def close_database(error):
-    stack = g.pop('api_stack', None)
-    if stack: stack.close()
-    db = g.pop('api_db', None)
-    if db is not None: db.close()
-
-
-def problem(error):
-    extra, headers = {}, {}
-    if isinstance(error, errors.BrickWorkError):
-        code, status, detail = error.code, error.status, redact(error)
-        if isinstance(error, WaitingForBudget):
-            extra.update(retry_after=error.retry_after(), job_id=error.job_id)
-            headers['Retry-After'] = str(extra['retry_after'])
-        if error.context.get('source'):
-            extra['source'] = error.context['source']
-        if error.code == 'too_many_attempts':
-            extra['retry_after'] = error.context['retry_after']
-            headers['Retry-After'] = str(error.context['retry_after'])
-    elif isinstance(error, sqlite3.Error):
-        code, status, detail = 'db_unavailable', 503, 'Database unavailable'
-    elif isinstance(error, HTTPException):
-        status = error.code
-        code = {400: 'bad_request', 401: 'unauthorized', 403: 'forbidden',
-                404: 'not_found', 405: 'method_not_allowed', 409: 'conflict',
-                413: 'payload_too_large', 415: 'unsupported_media_type'}.get(
-                    status, 'bad_request' if 400 <= status < 500 else 'internal_error')
-        detail = code.replace('_', ' ').capitalize()
-    elif isinstance(error, ValueError):
-        code, status, detail = 'validation_failed', 422, redact(error)
-    else:
-        code, status, detail = 'internal_error', 500, 'Internal error'
-    response = jsonify(type='urn:brickwork:error:' + code, title=code.replace('_', ' ').capitalize(), status=status, code=code, detail=detail, instance=request.path, **extra)
-    response.status_code = status
-    response.headers.extend(headers)
-    response.content_type = 'application/problem+json'
-    if status == 401: response.headers['WWW-Authenticate'] = 'Bearer'
-    if status == 405 and isinstance(error, HTTPException):
-        allow = error.get_response().headers.get('Allow')
-        if allow is not None: response.headers['Allow'] = allow
-    return response
-
-
+api.after_request(transport.private_response)
+api.teardown_request(transport.close_database)
 api.register_error_handler(Exception, problem)
 
 

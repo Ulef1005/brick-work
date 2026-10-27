@@ -4,8 +4,10 @@
 docs/web-ui/**
 docs/brickwork/**
 !docs/brickwork/api-v1.md
+!docs/brickwork/api-v2.md
 !docs/brickwork/mcp.md
 !docs/brickwork/openapi-v1.yaml
+!docs/brickwork/openapi-v2.yaml
 !docs/brickwork/pipeline.md
 !docs/brickwork/schema-notes.md
 !docs/brickwork/sources.md

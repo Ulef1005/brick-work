@@ -17,8 +17,12 @@ QUARANTINE = {
     'tests/test_bw_lists_43_api.py': 'M.11',
     # M.8j split this out of a file it ported (the test that belongs to a later piece moved, none was added): out of test_bw_sync.py the API test (M.11).
     'tests/test_bw_sync_api.py': 'M.11',
+    # M.11a (issue #113) ported to API v2 the transport tests of test_app_factory.py, test_bw_body_limits_62.py, test_bw_throttle.py and
+    # test_runtime_contract.py (all four are live again) and the contract tests of test_bw_api_m0.py (now tests/test_api2_contract.py; what is
+    # left of it is the 3.3 core: upgrade, secrets, price settings). Split out of them, none added: the MCP tests (M.11e).
+    'tests/test_bw_throttle_mcp.py': 'M.11',
+    'tests/test_runtime_contract_mcp.py': 'M.11',
     # M.11: API v2 and clients: the v1 API, MCP and contract tests
-    'tests/test_app_factory.py': 'M.11',
     'tests/test_bw_api_47.py': 'M.11',
     'tests/test_bw_api_jobs_followup.py': 'M.11',
     'tests/test_bw_api_m0.py': 'M.11',
@@ -32,17 +36,14 @@ QUARANTINE = {
     'tests/test_bw_api_m7.py': 'M.11',
     'tests/test_bw_api_parity.py': 'M.11',
     'tests/test_bw_api_take_figure.py': 'M.11',
-    'tests/test_bw_body_limits_62.py': 'M.11',
     'tests/test_bw_check_api_63.py': 'M.11',
     'tests/test_bw_core_fixes_api.py': 'M.11',
     'tests/test_bw_media_27.py': 'M.11',
     'tests/test_bw_perf_api.py': 'M.11',
     'tests/test_bw_review_followups.py': 'M.11',
     'tests/test_bw_security.py': 'M.11',
-    'tests/test_bw_throttle.py': 'M.11',
     'tests/test_bw_wishlists_api.py': 'M.11',
     'tests/test_bw_currency_39_api.py': 'M.11',
     'tests/test_bw_partout_38_api.py': 'M.11',
     'tests/test_bw_wish_progress_35_api.py': 'M.11',
-    'tests/test_runtime_contract.py': 'M.11',
 }

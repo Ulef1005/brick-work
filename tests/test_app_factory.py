@@ -1,40 +1,31 @@
-"""Error routing and install metadata through the real application factory."""
-import json
-from pathlib import Path
-from urllib.parse import urlsplit
+"""Error routing through the real application factory (M.11a, issue #113: API v2 on the 4.0 fixtures).
 
-import pytest
-
-from brickwork.core.connect import connect
-from tests.web_fixtures import app, apps, logged_in
-
-ROOT = Path(__file__).resolve().parents[1]
+A path under /api/v2 that does not exist or takes no such method is problem+json, not the web's HTML error page; the web keeps its own."""
+from tests.api2 import PREFIX, call, v2  # noqa: F401
+from tests.app4 import app4, coll, pair  # noqa: F401
 
 
-@pytest.fixture
-def api_app(app, monkeypatch):
-    monkeypatch.setenv('BW_API_TOKEN', 'synthetic-bootstrap')
-    from brickwork.web.admin_ops import setup
-    with app.app_context():
-        setup()
-    return app
-
-
-def bearer():
-    return {'Authorization': 'Bearer synthetic-bootstrap'}
-
-
-def test_unknown_api_path_is_problem_json(api_app):
+def test_an_unknown_path_is_problem_json_not_the_web_error_page(v2):
     for method in ('get', 'post'):
-        response = getattr(api_app.test_client(), method)('/api/v1/does-not-exist', headers=bearer())
+        response = call(v2, '/does-not-exist', method)
         assert response.mimetype == 'application/problem+json', method
         assert response.json['code'] in ('not_found', 'method_not_allowed')
-    assert api_app.test_client().get('/api/v1/does-not-exist', headers=bearer()).json['code'] == 'not_found'
+    assert call(v2, '/does-not-exist').json['code'] == 'not_found'
+    assert call(v2, '/does-not-exist', token=None).json['code'] == 'not_found'      # routing happens before authentication
 
 
-def test_abort_404_inside_an_api_view_is_problem_json(api_app):
-    response = api_app.test_client().delete('/api/v1/tokens/bootstrap', headers=bearer())
-    assert response.status_code == 404
-    assert response.mimetype == 'application/problem+json'
-    assert response.json['code'] == 'not_found'
+def test_a_wrong_method_lists_what_is_allowed(v2):
+    response = call(v2, '/me', 'post')
+    assert response.status_code == 405 and response.json['code'] == 'method_not_allowed'
+    assert 'GET' in response.headers['Allow']
 
+
+def test_the_web_keeps_its_own_404_page(v2):
+    assert v2.get('/not-an-api-path').status_code == 404
+    assert v2.get('/not-an-api-path').mimetype == 'text/html'
+
+
+def test_an_item_id_that_is_not_a_number_is_a_problem_404(v2):
+    for bad in ('abc', '0', '-1', '1.5', '9' * 30):
+        response = call(v2, '/items/' + bad)
+        assert response.status_code == 404 and response.json['code'] == 'not_found', bad

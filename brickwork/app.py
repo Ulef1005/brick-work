@@ -61,6 +61,8 @@ def setup_app(app: Flask) -> None:
     # The API chains to this handler for non-API paths, so it is registered first.
     from .api import register
     register(app)
+    from .api2 import register as register_v2
+    register_v2(app)
 
     from .core import admin as core_admin, keys as core_keys
     from .core.connect import connect as open_collection

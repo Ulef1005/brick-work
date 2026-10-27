@@ -78,6 +78,7 @@ def test_runtime_files_in_docker_context():
     tracked = subprocess.check_output(['git', 'ls-files', '-z'], cwd=ROOT).decode().split('\0')
     required = {
         'docs/brickwork/openapi-v1.yaml',
+        'docs/brickwork/openapi-v2.yaml',
         'brickwork/api/write_contract.json',
         'brickwork/store4/brickwork.sql',
         'brickwork/store4/catalogue.sql',

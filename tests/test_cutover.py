@@ -26,7 +26,7 @@ def test_route_manifest_and_retired_paths(app):
         assert response.status_code == 404, (path, response.status_code)
         assert 'Location' not in response.headers
     assert client.get('/api/v1/health').json['code'] == 'not_set_up'
-    assert set(app.blueprints) == {'web', 'login', 'brickwork_api'}
+    assert set(app.blueprints) == {'web', 'login', 'brickwork_api', 'brickwork_api2'}
 
 
 def test_static_shell_contains_only_live_assets(app):

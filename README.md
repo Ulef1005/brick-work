@@ -176,7 +176,7 @@ Every setting is an environment variable, read from `data/.env` when it is not s
 
 ## API and MCP
 
-The sole API is `/api/v1`: [contract](docs/brickwork/api-v1.md), [OpenAPI](docs/brickwork/openapi-v1.yaml). Use `Authorization: Bearer TOKEN`. Set `BW_API_TOKEN` for a bootstrap admin token, or create scoped stored tokens after setup:
+The API is `/api/v2` on the 4.0 line (v1 answers `410 Gone`): [contract](docs/brickwork/api-v2.md), [OpenAPI](docs/brickwork/openapi-v2.yaml); its operations land piece by piece with M.11 and answer `501` until then. The v1 contract is [api-v1.md](docs/brickwork/api-v1.md). Use `Authorization: Bearer TOKEN`. Set `BW_API_TOKEN` for a bootstrap admin token, or create scoped stored tokens after setup:
 
 ```sh
 docker compose exec brickwork brickwork token create --name client --scope read,write --expires 90d

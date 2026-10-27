@@ -8,6 +8,8 @@ tests/importer/*	\bbricktracker(?:_[a-z0-9_]*)?\b|\bhouse_loose_transfers\b	Impo
 templates/web/toni/web/bw_import.html	Import from BrickTracker|\bbricktracker\b|\b(?:post_)?imports?[-_]bricktracker\b|BrickTracker	Retained importer name.
 templates/web/toni/web/bw_admin.html	Import from BrickTracker	Tools & Admin link to the retained importer.
 docs/brickwork/api-v1.md	Import from BrickTracker|\bbricktracker\b|\b(?:post_)?imports?[-_]bricktracker\b|BrickTracker	Retained importer name.
+docs/brickwork/openapi-v2.yaml	\bbricktracker\b|\b(?:post_)?imports?[-_]bricktracker\b|BrickTracker	BrickTracker import operations.
+docs/brickwork/api-v2.md	Import from BrickTracker|\bbricktracker\b|\b(?:post_)?imports?[-_]bricktracker\b|BrickTracker	Retained importer name.
 docs/brickwork/cutover-4.11j.md	(?m)(?<=`)/house(?=/)	Old-path column documenting the requested URL migration; not an active route.
 tests/test_bw_api_m0.py	\bhouse-api\b	Regression coverage proving historical origins upgrade to api.
 scripts/name-allowlist.txt	[\s\S]*	Naming exceptions must spell the retained vocabulary.

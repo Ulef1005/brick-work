@@ -360,7 +360,7 @@ for _entity, _field in (('item_link', 'confirm'), ('item_link', 'reject'), ('ite
 
 # ---------- reads for the item page (design 3.2, 3.6, 3.8; M.10 batch B) ----------
 
-PROVIDERS = (('bricklink', 'BrickLink'), ('rebrickable', 'Rebrickable'), ('lego', 'LEGO'))
+PROVIDERS = (('bricklink', 'BrickLink'), ('rebrickable', 'Rebrickable'))      # LEGO numbers matter for colours only; item links of that provider stay in the data, not on the page
 STATUS_WORDS = {'matched': 'matched', 'inferred': 'inferred', 'manual': 'manual', 'to_check': 'to check', 'born': 'catalogue number', 'own': 'own number'}
 REASON_WORDS = {'no_match': 'No match found', 'no_candidate': 'To check · no candidate', 'kind_differs': 'To check · the kind differs',
                 'migration': 'To check · from the migration'}
@@ -436,7 +436,7 @@ def links(db, item_id, colour=None):
         result.append(dict(provider=provider, label=label, links=entries, choose=len(unscoped) > 1,
                            statuses=[dict(s, word=REASON_WORDS[s['reason']], note=REASON_NOTES[s['reason']], to=_evidence(s).get('to'))
                                      for s in statuses if s['provider'] == provider]))
-    shown = [p for p in result if p['links'] or p['statuses'] or p['provider'] != 'lego']
+    shown = result
     return dict(item_id=item_id, kind=item['kind'], editable=store == 'main', colour=colour, colour_name=(colours.get(colour) or {}).get('name'),
                 providers=shown, to_check=sum(1 for r in rows if r['status'] == 'to_check') + sum(1 for s in statuses if s['status'] == 'to_check'),
                 local=origin_of == 'local', unidentified=not _identified(db, item_id, store, item), merge_blocker=merge_blocker(db, item_id))

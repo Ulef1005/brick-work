@@ -1,6 +1,6 @@
 """M.10 batch B frames (issue #112): identity on the item page, merge and unmerge, Unresolved items, the unidentified item.
 
-    /Users/adminuser/Workspace/brick-work/.venv/bin/python design/approval/112-m10-b/build_frames.py [--no-capture]
+    python design/approval/112-m10-b/build_frames.py [--no-capture]
 
 Builds an invented 4.0 pair (the fixture catalogue of tests/app4.py plus local items made here), starts the real app on 127.0.0.1, signs the
 browser in with a session cookie, writes JOBS.json and runs scripts/capture_screens.cjs. Re-runnable: everything lives in a fresh temp folder.
@@ -58,7 +58,8 @@ def build(tmp):
         coll.link(w.brick, '3001a', kind='P', status='inferred')
         coll.link(w.brick, '3001b', kind='P', colour=red, status='manual', preferred=1)
         coll.link(w.brick, '3001-old', kind='parts', provider='rebrickable', status='to_check')
-        coll.sql("INSERT INTO item_provider_status(item_id,provider,status,reason,evidence_json,checked_at) VALUES(?,'lego','unmatched','no_match',NULL,?)", (w.brick, STAMP))
+        # a BrickLink-only part: Rebrickable has nothing under its number
+        coll.sql("INSERT INTO item_provider_status(item_id,provider,status,reason,evidence_json,checked_at) VALUES(?,'rebrickable','unmatched','no_match',NULL,?)", (w.local_part, STAMP))
         # merge: a BrickLink-born part that is the catalogue brick (rule-4 tie) with rows of its own
         tied = coll.local('part', 'Brick 2 x 4 (from BrickLink)', born_key='3001')
         coll.link(tied, '3001', kind='P', status='matched')
@@ -147,6 +148,7 @@ def main():
     frames = [
         ('m10b1', 'links-leg-rule', item(ids['leg'], colour=ids['black']), None, '[data-identity-module=links]'),
         ('m10b1', 'links-statuses', item(ids['brick'], colour=ids['red']), None, '[data-identity-module=links]'),
+        ('m10b1', 'links-no-key', item(ids['local_part'], colour=ids['red']), None, '[data-identity-module=links]'),
         ('m10b2', 'prefer-sheet', item(ids['sheet'], colour=ids['white'], done=''), open_sheet, '[data-identity-module=links]'),
         ('m10b2', 'prefer-done', item(ids['sheet'], colour=ids['white'], done=prefer_event), None, '[data-identity-module=links]'),
         ('m10b3', 'merge-pick', f"{base}/collection/item/{ids['tied']}/merge", None, '.bi-merge'),

@@ -7,7 +7,7 @@
 .bi-to-check{background:var(--tw-warning-soft)}.bi-to-check .bi-dot{background:var(--tw-warning)}
 .bi-unmatched{background:transparent;border:.5px dashed var(--tw-text-muted)}
 .bi-tag{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:6px;border:.5px solid var(--tw-divider-strong);font:500 12px var(--tw-font);color:var(--tw-text-2);white-space:nowrap;box-sizing:border-box}
-.bi-tag-use{border-color:var(--tw-accent);color:var(--tw-accent-text)}
+.bi-tag-use{background:var(--tw-info-soft);border-color:transparent;color:var(--tw-text)}
 .bi-tag-ok{background:var(--tw-success-soft);border-color:transparent;color:var(--tw-text)}
 .bi-lead{font:400 14px/20px var(--tw-font);color:var(--tw-text-2);margin:0;max-width:640px;text-wrap:pretty}
 .bi-note{font:400 13px/18px var(--tw-font);color:var(--tw-text-muted);margin:0;text-wrap:pretty}

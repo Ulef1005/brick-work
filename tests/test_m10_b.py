@@ -37,11 +37,17 @@ def test_m10b1_every_status_pill_and_the_rows_without_a_key(coll, client, world)
     coll.link(world.brick, '3001a', kind='P', status='inferred')
     coll.link(world.brick, '3001b', kind='P', colour=red, status='manual', preferred=1)
     coll.link(world.brick, '3001-old', kind='parts', provider='rebrickable', status='to_check')
-    coll.sql("INSERT INTO item_provider_status(item_id,provider,status,reason,evidence_json,checked_at) VALUES(?,'lego','unmatched','no_match',NULL,?)", (world.brick, STAMP))
     soup = page(client, f'/collection/item/{world.brick}?colour={red}')
     text = links_text(soup)
-    for word in ('matched', 'inferred', 'manual', 'to check', 'Preferred', 'Used for Red', 'No LEGO number', 'No match found', 'catalogue number'):
+    assert 'LEGO' not in text
+    for word in ('matched', 'inferred', 'manual', 'to check', 'Preferred', 'Used for Red', 'catalogue number'):
         assert word in text, word
+
+
+def test_m10b1_a_provider_row_without_a_key(coll, client, world):
+    coll.sql("INSERT INTO item_provider_status(item_id,provider,status,reason,evidence_json,checked_at) VALUES(?,'rebrickable','unmatched','no_match',NULL,?)", (world.local_part, STAMP))
+    text = links_text(page(client, f'/collection/item/{world.local_part}?colour={world.red}'))
+    assert 'No Rebrickable number' in text and 'No match found' in text and 'own number' in text and 'LEGO' not in text
 
 
 def test_m10b2_choosing_the_preferred_link_for_all_colours_or_one(coll, client, world):

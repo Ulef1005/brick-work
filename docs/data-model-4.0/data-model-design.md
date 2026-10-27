@@ -539,7 +539,7 @@ Reconcile then mirrors this for projected items and adds BrickLink names as `ite
 
 The order is the existing setting `source_priority.pictures` (`importer/projection.py:24`, per kind), editable in Settings (Q17) and migrated (decision D). In 4.0 its sources are:
 
-- `rebrickable_dump`: the catalogue's `picture_url`, a plain download. The builder fills it for parts in colours some inventory uses (from the dump's `inventory_parts`); it stores none for sets and figures, so they fall through to BrickLink (found in M.8f; the dump's `sets.csv` / `minifigs.csv` carry an `img_url` the builder could add later);
+- `rebrickable_dump`: the catalogue's `picture_url`, a plain download. The builder fills it for parts in colours some inventory uses (from the dump's `inventory_parts`); sets and figures are served by the item's own `img_url` from the dump's `sets.csv` / `minifigs.csv` (found in M.8f, served since #122);
 - `bricklink`: `img.bricklink.com` by the resolved BrickLink key and colour (§ 3.2), a plain download, no key;
 - `rebrickable_api`: `GET /parts/{num}/colors/{id}/`, needs a key and is budgeted (today's path, `pipeline.py:506`).
 

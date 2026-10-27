@@ -325,3 +325,17 @@ def test_a_suffix_on_a_picture_source_means_nothing_in_the_order_and_in_the_queu
     assert pictures.order(coll.db, 'set') == ['bricklink', 'rebrickable_dump']
     job = Pipeline(coll.db).status(queue(coll, world.keep))
     assert json.loads({s['name']: s for s in job['steps']}['pictures']['sources']) == ['bricklink', 'rebrickable_dump']
+
+
+def test_the_dump_serves_a_set_or_figure_by_its_img_url(coll, world, pair):
+    # #122: a set or a figure has no colour; the dump's own `img_url` of the item serves it.
+    import sqlite3
+    from contextlib import closing
+    url = 'https://cdn.rebrickable.com/media/sets/1000-1.jpg'
+    with closing(sqlite3.connect(pair.with_name('catalogue.db'))) as db, db:
+        db.execute('UPDATE item SET img_url=? WHERE id=?', (url, world.keep))
+    net = Pictures()
+    assert pictures.fetch(coll.db, job_of(world.keep), 'rebrickable_dump', image_http=net) == 1
+    assert net.asked == [url] and stored(coll, world.keep) == [(None, 'rebrickable_dump', 'photo')]
+    assert pictures.can_serve(coll.db, world.keep, None, 'rebrickable_dump')
+    assert not pictures.can_serve(coll.db, world.gate, None, 'rebrickable_dump')        # no img_url: the order falls through

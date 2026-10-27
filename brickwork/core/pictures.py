@@ -4,7 +4,8 @@ Three sources, in the order of the setting `source_priority.pictures` (per kind,
 translates 3.3's):
 
 - `rebrickable_dump`: the catalogue's `picture_url` for (item, colour), a plain download. The dump carries one for a part in a colour some
-  inventory uses; sets and figures have none, and a part in another colour has none (the order then falls through).
+  inventory uses, and a set or figure (no colour) is served by the item's own dump `img_url` (#122); a part in another colour has none
+  (the order then falls through).
 - `bricklink`: `img.bricklink.com` by the resolved BrickLink key and colour (`items.bricklink_key`), a plain download, no key.
 - `rebrickable_api`: `GET /parts/{num}/colors/{id}/` (sets and figures: their own record), needs a key and is budgeted.
 
@@ -82,6 +83,9 @@ def dump_url(db, item_id, color_id):
     if not has_catalogue(db):
         raise NoPicture('no catalogue is attached')
     row = db.execute('SELECT url FROM catalogue.picture_url WHERE item_id=? AND color_id=?', (item_id, NO_COLOUR if color_id is None else color_id)).fetchone()
+    if row is None and color_id is None:
+        # #122: a set or a figure has no colour; the dump's `img_url` of the item itself serves it.
+        row = db.execute('SELECT img_url FROM catalogue.item WHERE id=? AND img_url IS NOT NULL', (item_id,)).fetchone()
     if row is None:
         raise NoPicture('the catalogue has no picture for this colour')
     return row[0]

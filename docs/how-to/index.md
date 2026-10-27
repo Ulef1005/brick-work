@@ -14,6 +14,7 @@ One task per page, for someone who already knows the app.
 - [Receive a parts order](receive-an-order.md)
 - [Manage wishlists](manage-wishlists.md)
 - [Know where things are](storage.md)
+- [Pictures, prices and where they come from](pictures-and-prices.md)
 - [Undo a change](undo-a-change.md)
 
 ## Running Brick Work

@@ -756,7 +756,7 @@ CREATE TABLE source(
  kind TEXT NOT NULL CHECK(kind IN ('api','file','manual')),
  enabled INTEGER NOT NULL DEFAULT 1 CHECK(enabled IN (0,1))) STRICT;
 INSERT INTO source VALUES('rebrickable','Rebrickable','api',1),('bricklink','BrickLink','api',1),('brickset','Brickset','api',1),
- ('brickognize','Brickognize','api',1),('rebrickable_dump','Rebrickable dump','file',1),('bricklink_list','BrickLink item lists','file',1),
+ ('brickognize','Brickognize','api',1),('rebrickable_dump','Rebrickable dump','file',1),('rebrickable_api','Rebrickable API','api',1),('bricklink_list','BrickLink item lists','file',1),
  ('mapping','Mappings','file',1),('manual','Manual','manual',1),('own','Own photos','manual',1),('migration','Migration','manual',1),
  ('import','Import pipeline','manual',1),('lego','LEGO colour numbers','file',1);   -- 'import': the pipeline's job source (pipeline.py:106, review finding 8)
 

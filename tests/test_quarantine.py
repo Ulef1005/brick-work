@@ -114,6 +114,17 @@ BASELINE = frozenset((
     'tests/test_bw_lists_43_api.py',
     'tests/test_bw_lists_43_later.py',
     'tests/test_shell_45s_later.py',
+    # M.8f split these out of files it ported (tests that belong to a later piece moved, none was added): out of test_brickwork_sources.py the 3.3
+    # BrickLink XML loader (M.8i), out of test_bw_retail_26.py the Wishlist line (M.8g) and the Statistics page (M.8i), out of test_bw_perf.py the
+    # Tools & Admin tests (M.8i) and the API ones (M.11), out of test_bw_ui_12j.py the bulk-refresh and Catalogues & keys test (M.8i), out of
+    # test_secret_redaction.py the CLI error and the export (M.8i).
+    'tests/test_bricklink_catalogue_xml.py',
+    'tests/test_bw_perf_admin.py',
+    'tests/test_bw_perf_api.py',
+    'tests/test_bw_retail_26_statistics.py',
+    'tests/test_bw_retail_26_wishlist.py',
+    'tests/test_bw_ui_12j_later.py',
+    'tests/test_secret_redaction_cli_export.py',
 ))
 
 

@@ -485,11 +485,33 @@ def test_source_priority_keeps_three_steps_with_kinds(world):
     m, _ = world
     kept = json.loads(one(m, "SELECT value FROM setting WHERE key='source_priority'"))
     assert set(kept) == {'pictures', 'metadata', 'market_price'}
-    assert kept['pictures'] == {'part': ['rebrickable'], 'minifigure': ['bricklink'], '*': ['bricklink']}
+    assert kept['pictures'] == {'part': ['rebrickable_dump', 'rebrickable_api'], 'minifigure': ['bricklink'], '*': ['bricklink']}      # 3.3's rebrickable: the dump first, then the API
     assert kept['metadata'] == {'set': ['brickset']}
     note = next(s for s in m.result.settings if s['key'] == 'source_priority')['note']
     assert 'identity' in note and 'was the 3.3 default' in note                      # identity (bricklink:local) takes the 4.0 default, listed
     assert 'inventory' in note and 'NON-DEFAULT' in note                              # the changed inventory step is flagged
+    assert 'pictures: NON-DEFAULT 3.3 order for *, M, P translated' in note and 'rebrickable_dump, rebrickable_api' in note
+
+
+def test_the_3_3_default_picture_order_becomes_the_4_0_default_and_a_changed_one_is_translated(tmp_path, catalogue):
+    from brickwork.store4.migrate import PICTURES_40, PRIORITY_33, translate_pictures
+    src = tmp_path / 'bw33-default.db'
+    build_33(src)
+    import sqlite3
+    with sqlite3.connect(src) as db:
+        value = json.dumps({'pictures': PRIORITY_33['pictures'], 'metadata': {'S': ['brickset']}})
+        db.execute("UPDATE settings SET value=? WHERE key='source_priority'", (value,))
+    with Migration(src, catalogue, tmp_path / 'out2' / 'brickwork-4.db') as m:
+        m.write()
+        kept = json.loads(one(m, "SELECT value FROM setting WHERE key='source_priority'"))
+        note = next(s for s in m.result.settings if s['key'] == 'source_priority')['note']
+    assert kept['pictures'] == {'part': ['rebrickable_dump', 'bricklink', 'rebrickable_api'], '*': ['bricklink', 'rebrickable_dump']} == PICTURES_40
+    assert 'pictures: the 3.3 default became the 4.0 default (design 6.8)' in note
+    # a changed order keeps its sequence; every rebrickable becomes the dump and then the API, once
+    assert translate_pictures('part', ['bricklink', 'rebrickable'], False) == ['bricklink', 'rebrickable_dump', 'rebrickable_api']
+    assert translate_pictures('set', ['rebrickable', 'bricklink', 'rebrickable'], False) == ['rebrickable_dump', 'rebrickable_api', 'bricklink']
+    assert translate_pictures('gear', ['bricklink'], False) == ['bricklink']
+    assert translate_pictures('set', PRIORITY_33['pictures']['*'], True) == ['bricklink', 'rebrickable_dump']
 
 
 def test_the_sync_link_moves_to_sync_state(world):

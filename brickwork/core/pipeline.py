@@ -35,16 +35,17 @@ STEPS = ('identity', 'inventory', 'matching', 'pictures', 'metadata', 'market_pr
 TYPES = set(items.KINDS)                        # the keys of `import_order:<kind>` and of the per-kind source lists
 KIND, SOURCE = 'item', 'import'                  # design 5.2 and the user journey: `job(source=import, kind=item, item_id)` + six `job_step`
 LOCAL = ('identity', 'inventory', 'matching')
-SKIPPED = 'skipped: no source handler on the 4.0 store yet (comes back with the sources piece, M.8f)'
-DEFAULT_PRIORITY = {
-    'pictures': {'part': ['rebrickable_dump', 'bricklink'], '*': ['bricklink', 'rebrickable_api']},
+SKIPPED = 'skipped: no source handler is registered for this step'
+DEFAULT_PRIORITY = {                            # design 6.8 for the pictures; `core.pictures.DEFAULT_ORDER` is the same table
+    'pictures': {'part': ['rebrickable_dump', 'bricklink', 'rebrickable_api'], '*': ['bricklink', 'rebrickable_dump']},
     'metadata': {'set': ['brickset']}, 'market_price': {'*': ['bricklink']},
 }
 LABELS = {'identity': 'Checking identity', 'inventory': 'Checking the part list', 'matching': 'Matching ids',
           'pictures': 'Downloading images', 'metadata': 'Fetching set metadata', 'market_price': 'Fetching market price'}
 NAMES = {'bricklink': 'BrickLink', 'rebrickable': 'Rebrickable', 'rebrickable_dump': 'Rebrickable', 'rebrickable_api': 'Rebrickable',
          'brickset': 'Brickset', 'catalogue': 'Catalogue', 'picture_refresh': 'Pictures'}
-HANDLERS = {}                                   # (step, source) -> handler(db, job, step); filled by M.8f
+LEGACY_PICTURE_SOURCES = {'rebrickable': ('rebrickable_dump', 'rebrickable_api')}
+HANDLERS = {}                                   # (step, source) -> handler(db, job, step); filled by `core.source_ops.register_handlers`
 _CLAIMED_JOBS = set()                           # (pid, path, job) this process is running
 
 
@@ -150,7 +151,11 @@ def sources_for(db, step, kind):
     stored = _setting(db, 'source_priority')
     table = json.loads(stored).get(step) if stored else None
     table = table or DEFAULT_PRIORITY.get(step) or {}
-    return list(table.get(kind, table.get('*', [])))
+    wanted = list(table.get(kind, table.get('*', [])))
+    if step == 'pictures':                                          # 3.3's `rebrickable` in a file written before the migration translated it
+        wanted = [s.split(':')[0] for s in wanted]                  # a suffix means nothing for a picture source (`core.pictures.order` drops it too)
+        wanted = list(dict.fromkeys(n for s in wanted for n in LEGACY_PICTURE_SOURCES.get(s, (s,))))
+    return wanted
 
 
 class Pipeline:
@@ -161,8 +166,9 @@ class Pipeline:
 
     # ---- queue ----
 
-    def queue_steps(self, item_id, steps=None, *, via, actor=None):
-        """Queue a job for the item and return its id. Writes inside the caller's open write transaction (Add's)."""
+    def queue_steps(self, item_id, steps=None, *, via, actor=None, refresh=False):
+        """Queue a job for the item and return its id. Writes inside the caller's open write transaction (Add's). `refresh` asks the
+        steps to fetch again what they already have (a picture refresh of every held item)."""
         if not self.db.in_transaction:
             raise ValueError('queue_steps needs the caller\'s open write transaction')
         if via not in ('app', 'cli', 'api', 'import'):
@@ -175,7 +181,7 @@ class Pipeline:
         stamp, actor = now(), actor if via == 'api' else None
         job = self.db.execute('''INSERT INTO main.job(source, kind, item_id, state, payload, via, actor, created_at, updated_at)
                                  VALUES(?, ?, ?, 'queued', ?, ?, ?, ?, ?)''',
-                              (SOURCE, KIND, item_id, json.dumps({'steps': steps}), via, actor, stamp, stamp)).lastrowid
+                              (SOURCE, KIND, item_id, json.dumps({'steps': steps, **({'refresh': True} if refresh else {})}), via, actor, stamp, stamp)).lastrowid
         for position, step in enumerate(steps):
             self.db.execute('INSERT INTO main.job_step(job_id, name, position, sources, total, updated_at) VALUES(?, ?, ?, ?, 1, ?)',
                             (job, step, position, json.dumps(sources_for(self.db, step, kind)), stamp))
@@ -279,7 +285,7 @@ class Pipeline:
                 code, message = LOCAL_STEPS[name](self.db, job['item_id'])
                 self._put(job['id'], name, 'done', source='catalogue', error=message, code=code, count=1, total=1)
             return
-        failed = None                                                   # the last provider failure, kept if no later source handles it
+        failed = None                                                   # (failure, source): the most telling provider failure so far
         for index in range(saved['source_index'], len(sources)):
             source = sources[index]
             handler = self.handlers.get((name, source)) or HANDLERS.get((name, source))
@@ -296,16 +302,16 @@ class Pipeline:
                 self._put(job['id'], name, 'waiting_for_budget', source=source, error=wait.why, code='budget', retry_at=wait.retry_at)
                 return
             except StepFailed as failure:
-                self._put(job['id'], name, 'failed', source=source, error=failure.message, code=failure.code)
-                failed = failure
-                if index + 1 < len(sources):
-                    continue
-                return
+                if failed is None or failure.code != 'not_found':       # a source that only cannot name the item never hides a real error
+                    failed = (failure, source)
+                continue
             self._put(job['id'], name, 'done', source=source, count=1, total=1)
             return
         if failed is not None:                                          # a fallback without a handler does not erase the failure
-            return                                                      # the step stays failed, so Retry offers it
-        self._put(job['id'], name, 'done', error=SKIPPED, count=0, total=0)
+            failure, source = failed
+            self._put(job['id'], name, 'failed', source=source, error=failure.message, code=failure.code)
+            return
+        self._put(job['id'], name, 'done', error=SKIPPED if sources else 'skipped: no source is set for this step and kind', count=0, total=0)
 
     def drain(self, limit=100):
         """Run the pipeline jobs that may run now: queued ones, claims that died, and waiting or failed ones whose retry is due."""

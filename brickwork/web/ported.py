@@ -20,7 +20,10 @@ PORTED |= {'web.bw_check_parts', 'web.bw_check_copy', 'web.bw_check_figure', 'we
 # save and Undo; the photo recognition behind it is Identify, M.8h) and the printable lists and their CSV.
 PORTED |= {'web.bw_picker', 'web.bw_matcher', 'web.bw_workbench_save', 'web.bw_storages', 'web.bw_storage_action',
            'web.bw_inventory', 'web.bw_inventory_save', 'web.bw_inventory_undo', 'web.bw_list_print', 'web.bw_list_csv'}
-PIECE = 'M.8f to M.8j'
+# M.8f: the Prices screen (shell, records, details, the price refresh behind its Update buttons and the item page's). The Wishlist and Complete
+# sets screens share the planning endpoints and stay on hold (M.8g): the views answer them with `holding()` themselves.
+PORTED |= {'web.bw_planning', 'web.bw_prices_records', 'web.bw_prices_details', 'web.bw_planning_write'}
+PIECE = 'M.8g to M.8j'
 
 
 def holding(what=None):

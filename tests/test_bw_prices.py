@@ -1,19 +1,19 @@
-"""Prices screen: a light shell, compact records, observations on demand, one projection per request."""
+"""Prices screen on the 4.0 store (M.8f, issue #110): a light shell, compact records, observations on demand, one projection per request,
+and the refresh behind its Update buttons. Items are addressed by id. Invented data."""
+from contextlib import closing
+from datetime import timedelta
 import json
+from pathlib import Path
 import shutil
 import subprocess
-from datetime import timedelta
-from pathlib import Path
 
 from bs4 import BeautifulSoup
 import pytest
 
-from brickwork.core import admin, collection, planning
+from brickwork.core import collection_prices, planning
+from brickwork.core.connect import connect
 from brickwork.core.sources.base import now
-from tests.test_bw_collection import bw, token
-from tests.importer.test_importer import legacy
-from tests.test_bw_admin import reset_shell_metadata_after_test
-from tests.web_fixtures import app, apps, logged_in
+from tests.app4 import app4, client, coll, csrf, pair, read, world  # noqa: F401 (fixtures)
 
 ROOT = Path(__file__).parents[1]
 
@@ -23,18 +23,21 @@ def records(client):
     return [dict(zip(data['fields'], row)) for row in data['rows']]
 
 
-def add_price(db, kind, number, *, colour=None, condition='U', guide='sold', source='bricklink', price='10', observed=None, current=True, slot=None, error=None):
-    db.execute("INSERT OR IGNORE INTO items(item_type,item_no,name) VALUES(?,?,?)", (kind, number, 'Item ' + number))
-    identifier = db.execute("""INSERT INTO price_observations(item_type,item_no,color_id,condition,guide,slot,region,currency,price,source,observed_at,error)
-        VALUES(?,?,?,?,?,?,'eu','EUR',?,?,?,?)""", (kind, number, colour, condition, guide, slot, price, source, observed or now().isoformat(), error)).lastrowid
+def add_price(coll, item, *, colour=None, condition='used', guide='sold', source='bricklink', price='10', observed=None, current=True, slot=None,
+              error=None, voided=None, region='eu'):
+    """An observation; with `current` also the `price_current` row that makes it the one shown for its key."""
+    coll.project(item)
+    stamp = observed or now().isoformat()
+    identifier = coll.db.execute('''INSERT INTO price_observation(item_id,color_id,condition,guide,slot,region,currency,price,source,observed_at,error,voided_at)
+        VALUES(?,?,?,?,?,?,'EUR',?,?,?,?,?)''', (item, colour, condition, guide, slot, region, price, source, stamp, error, voided)).lastrowid
     if current:
-        db.execute("""INSERT OR REPLACE INTO price_current(item_type,item_no,color_id,condition,guide,slot,region,currency,observation_id)
-            VALUES(?,?,?,?,?,?,'eu','EUR',?)""", (kind, number, colour, condition, guide, slot, identifier))
+        coll.db.execute('''INSERT OR REPLACE INTO price_current(item_id,color_id,condition,guide,slot,region,currency,observation_id) VALUES(?,?,?,?,?,?,'EUR',?)''',
+                        (item, colour, condition, guide, slot, region, identifier))
+    coll.db.commit()
     return identifier
 
 
-def test_shell_has_no_rows_and_stays_light(app, bw):
-    client = logged_in(app)
+def test_shell_has_no_rows_and_stays_light(coll, world, client):
     response = client.get('/planning/prices')
     assert response.status_code == 200 and response.headers['Cache-Control'] == 'no-store'
     soup = BeautifulSoup(response.data, 'html.parser')
@@ -44,7 +47,7 @@ def test_shell_has_no_rows_and_stays_light(app, bw):
     assert any('bw-prices.js' in s for s in scripts) and not any('bw-collection.js' in s for s in scripts)
     root = soup.select_one('#bw-planning')
     assert root['data-records-url'] == '/planning/prices/records' and root['data-details-url'] == '/planning/prices/details'
-    assert root['data-item-base'].endswith('/TYPE/NUMBER') and root['data-editable'] == 'true'
+    assert root['data-item-base'] == '/collection/item/0' and root['data-editable'] == 'true'
     for name in ('[data-bp-lookup]', '[data-bp-search]', '[data-bp-sort]', '[data-bp-refresh-all]', '[data-bp-chip=stale]', '[data-bp-chip=collection]', '#bp-filters [data-bp-filter=stale]'):
         assert soup.select_one(name), name
     assert soup.select_one('a[href="/manage/jobs"]')
@@ -53,134 +56,136 @@ def test_shell_has_no_rows_and_stays_light(app, bw):
     assert '[data-bp-rows][aria-busy=true] { min-height:100dvh; }' in (ROOT / 'static/web/toni/bw-planning.css').read_text()
     assert client.get('/planning/prices?kind=Z').status_code == 400
     assert BeautifulSoup(client.get('/planning/prices?kind=P').data, 'html.parser').select_one('#bw-planning')['data-kind'] == 'P'
+    types = [b['data-value'] for b in soup.select('[data-bp-chip=type]')]
+    assert types == ['S', 'M', 'P']                                            # only the kinds that have a price (world prices a set, a figure and a part)
 
 
-def test_records_are_compact_positional_and_complete(app, bw):
-    client = logged_in(app)
-    with admin.database(bw) as db, db:
-        add_price(db, 'S', 'rec-1', price='1234.5', observed=(now() - timedelta(days=1)).isoformat())
-        add_price(db, 'S', 'rec-2', guide='stock', condition='N', price='7')
+def test_records_are_compact_positional_and_complete(coll, world, client):
+    add_price(coll, world.gate, price='1234.5', observed=(now() - timedelta(days=1)).isoformat())
+    add_price(coll, world.duplo, guide='stock', condition='new', price='7')
     response = client.get('/planning/prices/records')
     assert response.status_code == 200 and response.mimetype == 'application/json' and response.headers['Cache-Control'] == 'no-store'
     data = response.get_json()
-    assert data['fields'] == planning.PRICE_FIELDS and all(len(row) == len(data['fields']) for row in data['rows'])
-    with admin.database(bw, read_only=True) as db:
-        identities = db.execute('SELECT count(*) FROM (SELECT DISTINCT item_type,item_no,color_id FROM price_current)').fetchone()[0]
+    assert data['fields'] == planning.PRICE_FIELDS and data['fields'][-1] == 'item_id' and all(len(row) == len(data['fields']) for row in data['rows'])
+    identities = coll.db.execute('SELECT count(*) FROM (SELECT DISTINCT item_id, color_id FROM price_current)').fetchone()[0]
     assert len(data['rows']) == identities
-    rows = {r['number']: r for r in records(client)}
-    assert rows['rec-1']['price'] == '€1,234.50' and not rows['rec-1']['listings'] and rows['rec-1']['age'] and not rows['rec-1']['price_stale']
-    assert rows['rec-2']['price'] == '€7.00' and rows['rec-2']['listings']
+    rows = {r['item_id']: r for r in records(client)}
+    assert rows[world.gate]['price'] == '€1,234.50' and not rows[world.gate]['listings'] and rows[world.gate]['age'] and not rows[world.gate]['price_stale']
+    assert rows[world.duplo]['price'] == '€7.00' and rows[world.duplo]['listings']
+    assert rows[world.gate]['number'] == '1000-2' and rows[world.gate]['type'] == 'S' and rows[world.brick]['colour'] == 'Red'
     # Only display text reaches the browser: no observation lists, no raw numbers.
     assert 'price_records' not in response.get_data(as_text=True) and '1234.5"' not in response.get_data(as_text=True)
 
 
-def test_records_state_owned_wanted_stale_and_refresh_capability(app, bw):
-    with admin.database(bw) as db, db:
-        add_price(db, 'S', 'old-set', observed=(now() - timedelta(days=900)).isoformat())
-        add_price(db, '?', 'odd-1')
-        db.execute("INSERT INTO source_freshness(source,kind,max_age_days) VALUES('bricklink','prices',30) ON CONFLICT(source,kind) DO UPDATE SET max_age_days=30")
-        owned = db.execute("SELECT set_no FROM copies WHERE item_type='S' AND archived_at IS NULL LIMIT 1").fetchone()[0]
-        add_price(db, 'S', owned, price='3')
-        wish = db.execute("SELECT item_type,item_no FROM wishlist WHERE archived_at IS NULL LIMIT 1").fetchone()
-        add_price(db, wish[0], wish[1], price='4')
-    rows = {r['number']: r for r in records(logged_in(app))}
-    assert rows['old-set']['stale'] and rows['old-set']['price_stale'] and 'stale' not in rows['old-set']['age']
-    assert rows[owned]['owned']
-    assert rows[wish[1]]['wanted']
-    assert rows['odd-1']['unresolved']  # these rows get no Update button: the client offers refresh to resolved rows only
+def test_records_state_owned_wanted_stale_and_refresh_capability(coll, world, client):
+    coll.sql("INSERT OR REPLACE INTO source_freshness(source,kind,max_age_days) VALUES('bricklink','prices',30)")
+    old = coll.item('sets', '2070-1')
+    add_price(coll, old, observed=(now() - timedelta(days=900)).isoformat())
+    add_price(coll, world.mystery, price='3')
+    rows = {r['item_id']: r for r in records(client)}
+    assert rows[old]['stale'] and rows[old]['price_stale'] and 'stale' not in rows[old]['age'] and rows[old]['owned']
+    assert rows[world.keep]['owned'] and not rows[world.keep]['wanted']
+    add_price(coll, world.gate, price='4')
+    assert {r['item_id']: r for r in records(client)}[world.gate]['wanted']
+    assert rows[world.mystery]['unresolved'] and rows[world.mystery]['name'] == 'Mystery thing'      # no Update button for these rows
 
 
 @pytest.mark.parametrize('age_days, stale', [(29, False), (30, False), (31, True)])
-def test_stale_follows_the_source_freshness_in_whole_days(bw, age_days, stale):
-    with admin.database(bw) as db, db:
-        db.execute("INSERT INTO source_freshness(source,kind,max_age_days) VALUES('bricklink','prices',30) ON CONFLICT(source,kind) DO UPDATE SET max_age_days=30")
-        add_price(db, 'S', 'edge', observed=(now() - timedelta(days=age_days, hours=1)).isoformat())
-        row = next(r for r in planning.priced_items(db) if r['item_no'] == 'edge')
+def test_stale_follows_the_source_freshness_in_whole_days(coll, world, read, age_days, stale):
+    coll.sql("INSERT OR REPLACE INTO source_freshness(source,kind,max_age_days) VALUES('bricklink','prices',30)")
+    item = coll.item('sets', '2070-1')
+    add_price(coll, item, observed=(now() - timedelta(days=age_days, hours=1)).isoformat())
+    with read() as db:
+        row = next(r for r in planning.priced_items(db) if r['item_id'] == item)
     # More than max_age whole days old is stale: 31 days and an hour is 31 whole days, 30 days and an hour is 30.
     assert row['stale'] is stale and row['display_price']['stale'] is stale
 
 
-def test_display_price_matches_the_all_observation_selection(bw):
-    """The lean projection must choose what the full-history selection chooses."""
-    with admin.database(bw) as db, db:
-        add_price(db, 'S', 'sel', source='rebrickable', price='99', observed='2026-10-09T10:00:00+00:00')
-        add_price(db, 'S', 'sel', source='bricklink', price='12', observed='2026-10-08T10:00:00+00:00', current=False)
-        add_price(db, 'S', 'sel', source='bricklink', price='10', observed='2026-10-01T10:00:00+00:00', current=False)
-        add_price(db, 'S', 'sel', condition='N', guide='stock', price='20', observed='2026-10-07T10:00:00+00:00')
-        add_price(db, 'S', 'sel', condition='N', guide='sold', price='21', observed='2026-10-06T10:00:00+00:00', current=False)
-        add_price(db, 'S', 'sel', condition='N', guide='sold', slot='boxed', price='500', observed='2026-10-10T10:00:00+00:00')
-        add_price(db, 'S', 'sel', condition='N', guide='sold', price='600', observed='2026-10-11T10:00:00+00:00', error='blocked', current=False)
-        add_price(db, 'S', 'only-stock', condition=None, guide='stock', price='5')
-        add_price(db, 'S', 'only-retail', condition='N', guide='retail', source='brickset', price='50')
-        fast = {(r['item_type'], r['item_no'], r['color_id']): r for r in planning.priced_items(db)}
-        market = collection.prices(db)  # the old projection's fallback reads the current market quotes
-        slow_input = [dict(item_type=k[0], item_no=k[1], color_id=k[2], prices=market[k]) for k in fast]
-        slow = {(r['item_type'], r['item_no'], r['color_id']): r for r in planning.display_prices(db, slow_input)}
-    assert len(fast) > 3
-    ident = lambda p: (p or {}).get('id') or (p or {}).get('observation_id')  # the old fallback returns a price_current row
-    mismatches = [(k, ident(fast[k]['display_price']), ident(slow[k]['display_price'])) for k in fast
-                  if ident(fast[k]['display_price']) != ident(slow[k]['display_price'])]
-    assert not mismatches
-    assert fast['S', 'sel', None]['display_price']['price'] == '12'  # priority, then freshest: not rebrickable's 99
-    assert fast['S', 'only-retail', None]['display_price'] is None and fast['S', 'only-stock', None]['display_price']['price'] == '5'
+def test_display_price_is_what_the_full_history_selection_chooses(coll, world, read):
+    """The lean projection must choose what the full-history selection (the details of the same identity) chooses."""
+    item = coll.item('parts', '3023')
+    red = coll.colour('4')
+    add_price(coll, item, colour=red, source='rebrickable', price='99', observed='2026-10-09T10:00:00+00:00')
+    add_price(coll, item, colour=red, source='bricklink', price='12', observed='2026-10-08T10:00:00+00:00', current=False)
+    add_price(coll, item, colour=red, source='bricklink', price='10', observed='2026-10-01T10:00:00+00:00', current=False)
+    add_price(coll, item, colour=red, condition='new', guide='stock', price='20', observed='2026-10-07T10:00:00+00:00')
+    add_price(coll, item, colour=red, condition='new', guide='sold', price='21', observed='2026-10-06T10:00:00+00:00', current=False)
+    add_price(coll, item, colour=red, condition='new', guide='sold', slot='boxed', price='500', observed='2026-10-10T10:00:00+00:00')
+    add_price(coll, item, colour=red, condition='new', guide='sold', price='600', observed='2026-10-11T10:00:00+00:00', error='blocked', current=False)
+    add_price(coll, item, colour=red, condition='new', guide='sold', price='700', observed='2026-10-12T10:00:00+00:00', voided='2026-10-13T00:00:00.000Z', current=False)
+    only_stock, white = coll.item('parts', '3901'), coll.colour('15')
+    add_price(coll, only_stock, colour=white, condition=None, guide='stock', price='5')
+    only_retail = coll.item('sets', '2070-1')
+    add_price(coll, only_retail, condition='new', guide='retail', source='brickset', price='50')
+    from brickwork.core import collection
+    with read() as db:
+        fast = {(r['item_id'], r['color_id']): r for r in planning.priced_items(db)}
+        priorities = collection_prices.priority(db)
+        history = collection.decorate_prices(db.execute('''SELECT o.*, i.kind, f.max_age_days FROM price_observation o JOIN item i ON i.id=o.item_id
+            LEFT JOIN source_freshness f ON f.source=o.source AND f.kind='prices' WHERE o.item_id=? AND o.color_id IS ? AND o.voided_at IS NULL
+            ORDER BY o.observed_at DESC, o.id DESC''', (item, red)))
+        oracle = collection_prices.choose(collection_prices.condition_rows(history, 'part', priorities), 'part', priorities)
+        assert len(fast) > 3 and fast[item, red]['display_price']['id'] == oracle['id']
+        assert fast[item, red]['display_price']['price'] == '12'                  # priority, then freshest: not rebrickable's 99, not the voided 700
+        assert fast[only_retail, None]['display_price'] is None and fast[only_stock, white]['display_price']['price'] == '5'
 
 
 def details(client, **query):
     return client.get('/planning/prices/details', query_string=query)
 
 
-def test_details_are_scoped_to_one_identity(app, bw):
-    client = logged_in(app)
-    with admin.database(bw) as db, db:
-        db.execute('INSERT OR IGNORE INTO colors(color_id,name) VALUES(11,?),(5,?)', ('Black', 'Red'))
-        add_price(db, 'P', 'det-1', colour=11, price='1.5')
-        add_price(db, 'P', 'det-1', colour=11, price='1.2', observed='2026-09-01T00:00:00+00:00', current=False)
-        add_price(db, 'P', 'det-1', colour=5, price='8.25')
-        add_price(db, 'P', 'det-2', colour=11, price='77')
-    black = details(client, kind='P', number='det-1', colour=11)
-    assert black.status_code == 200 and black.headers['Cache-Control'] == 'no-store'
-    text = json.dumps(black.get_json(), ensure_ascii=False)
-    assert '€1.50' in text and '€1.20' in text and '€8.25' not in text and '€77' not in text
-    body = black.get_json()
+def test_details_are_scoped_to_one_identity(coll, world, client):
+    item, other = coll.item('parts', '3023'), coll.item('parts', '3001')
+    red, white = coll.colour('4'), coll.colour('15')
+    add_price(coll, item, colour=red, price='1.5')
+    add_price(coll, item, colour=red, price='1.2', observed='2026-09-01T00:00:00+00:00', current=False)
+    add_price(coll, item, colour=white, price='8.25')
+    add_price(coll, other, colour=red, price='77')
+    add_price(coll, item, colour=red, price='99', voided='2026-10-01T00:00:00.000Z', current=False)
+    first = details(client, item_id=item, colour=red)
+    assert first.status_code == 200 and first.headers['Cache-Control'] == 'no-store'
+    text = json.dumps(first.get_json(), ensure_ascii=False)
+    assert '€1.50' in text and '€1.20' in text and '€8.25' not in text and '€77' not in text and '€99' not in text
+    body = first.get_json()
     assert set(body) == {'context', 'selected', 'conditions', 'groups', 'empty'} and not body['empty']
     assert body['groups'][0]['label'] == 'Market · BrickLink' and len(body['groups'][0]['quotes']) == 2
-    assert '€8.25' in json.dumps(details(client, kind='P', number='det-1', colour=5).get_json(), ensure_ascii=False)
+    assert '€8.25' in json.dumps(details(client, item_id=item, colour=white).get_json(), ensure_ascii=False)
     # Without a colour only colourless observations belong to the identity.
-    assert details(client, kind='P', number='det-1').get_json()['empty'] is True
+    assert details(client, item_id=item).get_json()['empty'] is True
 
 
 @pytest.mark.parametrize('query, status', [
-    (dict(), 400), (dict(kind='P'), 400), (dict(kind='Z', number='1'), 400), (dict(kind='P', number='1', colour='red'), 400),
-    (dict(kind='P', number='missing'), 404), (dict(kind='P', number='1', colour='9'*30), 400), (dict(kind='P', number='1', colour='-1'), 400)])
-def test_details_reject_bad_requests(app, bw, query, status):
-    assert details(logged_in(app), **query).status_code == status
+    (dict(), 400), (dict(item_id='x'), 400), (dict(item_id='0'), 400), (dict(item_id='1', colour='red'), 400),
+    (dict(item_id='999999'), 404), (dict(item_id='1', colour='9' * 30), 400), (dict(item_id='1', colour='-1'), 400), (dict(kind='S', number='1000-1'), 400)])
+def test_details_reject_bad_requests(coll, client, query, status):
+    assert details(client, **query).status_code == status
 
 
-def test_new_routes_require_login_and_do_not_write(app, bw):
-    anonymous = app.test_client()
-    for path in ('/planning/prices/records', '/planning/prices/details?kind=S&number=x'):
+def test_new_routes_require_login_and_do_not_write(coll, world, app4, client, read):
+    anonymous = app4.test_client()
+    for path in ('/planning/prices/records', f'/planning/prices/details?item_id={world.keep}'):
         response = anonymous.get(path)
         assert response.status_code == 401 or (response.status_code == 302 and '/login' in response.location)
     assert anonymous.post('/planning/prices/records').status_code in (302, 401, 405)
-    client = logged_in(app)
-    with admin.database(bw, read_only=True) as db:
-        before = [db.execute(f'SELECT count(*) FROM {t}').fetchone()[0] for t in ('events', 'jobs', 'price_observations', 'settings')]
-    client.get('/planning/prices'); client.get('/planning/prices/records'); details(client, kind='S', number='new-set')
-    with admin.database(bw, read_only=True) as db:
-        assert before == [db.execute(f'SELECT count(*) FROM {t}').fetchone()[0] for t in ('events', 'jobs', 'price_observations', 'settings')]
+    tables = ('event', 'job', 'price_observation', 'setting')
+    with read() as db:
+        before = [db.execute(f'SELECT count(*) FROM {t}').fetchone()[0] for t in tables]
+    client.get('/planning/prices'); client.get('/planning/prices/records'); details(client, item_id=world.keep)
+    with read() as db:
+        assert before == [db.execute(f'SELECT count(*) FROM {t}').fetchone()[0] for t in tables]
 
 
-def test_read_only_database_serves_the_records(app, bw, monkeypatch):
-    bw.chmod(0o444)
+def test_a_read_only_database_serves_the_records(world, client, pair):
+    pair.chmod(0o444)
     try:
-        assert logged_in(app).get('/planning/prices/records').status_code == 200
+        assert client.get('/planning/prices/records').status_code == 200
     finally:
-        bw.chmod(0o644)
+        pair.chmod(0o644)
 
 
-def test_statement_counts_stay_flat_as_prices_grow(app, bw, monkeypatch):
-    client = logged_in(app)
+def test_statement_counts_stay_flat_as_prices_grow(coll, world, client, monkeypatch):
     statements = []
+    from brickwork.core import admin
     original = admin.connect
 
     def traced(*args, **kwargs):
@@ -193,23 +198,35 @@ def test_statement_counts_stay_flat_as_prices_grow(app, bw, monkeypatch):
         statements.clear()
         assert client.get(path).status_code == 200
         return len([s for s in statements if s.lstrip().upper().startswith('SELECT')])
-    small = (count('/planning/prices'), count('/planning/prices/records'), count('/planning/prices/details?kind=S&number=new-set'))
-    with admin.database(bw) as db, db:
-        for i in range(60):
-            add_price(db, 'S', f'grow-{i}', price=str(i + 1))
-            add_price(db, 'S', f'grow-{i}', condition='N', price=str(i + 2), observed='2026-10-01T00:00:00+00:00', current=False)
-    assert (count('/planning/prices'), count('/planning/prices/records'), count('/planning/prices/details?kind=S&number=new-set')) == small
+    small = (count('/planning/prices'), count('/planning/prices/records'), count(f'/planning/prices/details?item_id={world.keep}'))
+    for i in range(12):
+        item = coll.local('set', f'Grow {i}', born_key=f'grow-{i}')
+        add_price(coll, item, price=str(i + 1))
+        add_price(coll, item, condition='new', price=str(i + 2), observed='2026-10-01T00:00:00+00:00', current=False)
+    assert (count('/planning/prices'), count('/planning/prices/records'), count(f'/planning/prices/details?item_id={world.keep}')) == small
 
 
-def test_refresh_flow_still_queues_the_row_identity(app, bw):
-    client = logged_in(app)
-    csrf = token(client)
-    row = next(r for r in records(client) if not r['unresolved'] and r['type'] != '?')
-    response = client.post('/planning/action/refresh', json=dict(csrf_token=csrf, items=[[row['type'], row['number']]]))
-    assert response.status_code == 200 and response.get_json()['jobs']
-    assert 'queued' in response.get_json()['message']
-    assert client.post('/planning/action/refresh', json=dict(csrf_token=csrf, items=[['?', 'x']])).status_code == 400
-    assert client.post('/planning/action/refresh', json=dict(csrf_token='wrong', items=[[row['type'], row['number']]])).status_code in (400, 403)
+def test_refresh_flow_queues_the_item_ids(coll, world, client, read):
+    token = csrf(client)
+    row = next(r for r in records(client) if not r['unresolved'])
+    response = client.post('/planning/action/refresh', json=dict(csrf_token=token, items=[row['item_id']]))
+    assert response.status_code == 200 and len(response.get_json()['jobs']) == 1 and 'queued' in response.get_json()['message']
+    with read() as db:
+        job = db.execute('SELECT kind, item_id, state, via FROM job WHERE id=?', (response.get_json()['jobs'][0],)).fetchone()
+        steps = [r[0] for r in db.execute('SELECT name FROM job_step WHERE job_id=?', (response.get_json()['jobs'][0],))]
+    assert tuple(job) == ('item', row['item_id'], 'queued', 'app') and steps == ['market_price']
+    again = client.post('/planning/action/refresh', json=dict(csrf_token=token, items=[row['item_id']]))
+    assert again.status_code == 200 and again.get_json()['jobs'] == []                  # an unfinished job is not doubled
+    for bad in ([], ['x'], [[row['item_id'], 'x']], [0], [999999], [world.mystery], list(range(1, 2002))):
+        assert client.post('/planning/action/refresh', json=dict(csrf_token=token, items=bad)).status_code == 400, bad
+    assert client.post('/planning/action/refresh', json=dict(csrf_token='wrong', items=[row['item_id']])).status_code in (400, 403)
+
+
+def test_the_other_planning_actions_and_screens_wait_for_their_piece(world, client):
+    assert client.get('/planning/wishlist').status_code == 503 and client.get('/planning/complete-sets').status_code == 503
+    token = csrf(client)
+    assert client.post('/planning/action/export', json=dict(csrf_token=token, ids=[])).status_code == 503
+    assert client.get('/planning/nothing').status_code == 404
 
 
 @pytest.mark.skipif(shutil.which('node') is None, reason='Node is not installed')
@@ -226,23 +243,30 @@ def test_prices_assets_are_precached_and_pager_css_is_shared():
     assert ':is(#bw-collection,#bw-planning,#bw-workbench) .bc-pager' in css and ':is(#bw-collection,#bw-planning,#bw-workbench) .bc-pager .bc-page-number[aria-current=page]' in css
 
 
-def test_no_condition_fallback_uses_current_quotes_only(bw):
-    with admin.database(bw) as db, db:
-        old = add_price(db, 'P', 'nocond', condition=None, source='bricklink', price='5',
-                        observed=(now() - timedelta(days=150)).isoformat(), current=False)
-        current = add_price(db, 'P', 'nocond', condition=None, source='manual', price='7')
-    with admin.database(bw) as db:
-        row = next(r for r in planning.priced_items(db) if r['item_no'] == 'nocond')
+def test_no_condition_fallback_uses_current_quotes_only(coll, world, read):
+    item = coll.item('parts', '3023')
+    red = coll.colour('4')
+    old = add_price(coll, item, colour=red, condition=None, source='bricklink', price='5', observed=(now() - timedelta(days=150)).isoformat(), current=False)
+    current = add_price(coll, item, colour=red, condition=None, source='manual', price='7')
+    with read() as db:
+        row = next(r for r in planning.priced_items(db) if r['item_id'] == item and r['color_id'] == red)
         assert row['display_price']['id'] == current and row['display_price']['id'] != old
-        assert planning.price_details(db, 'P', 'nocond')['selected'].endswith('€7.00') or '7' in planning.price_details(db, 'P', 'nocond')['selected']
+        assert planning.price_details(db, item, red)['selected'].endswith('€7.00')
 
 
-def test_duplicate_source_prefixes_rank_by_first_occurrence(bw):
-    with admin.database(bw) as db, db:
-        db.execute("INSERT OR REPLACE INTO settings VALUES('source_priority',?)",
-                   (json.dumps({'market_price': {'*': ['bricklink:sold', 'manual', 'bricklink:stock']}}),))
-        bl = add_price(db, 'P', 'dup', source='bricklink', price='3')
-        add_price(db, 'P', 'dup', source='manual', price='4', guide='sold', condition='N')
-    with admin.database(bw) as db:
-        row = next(r for r in planning.priced_items(db) if r['item_no'] == 'dup')
-        assert row['display_price']['id'] == bl
+def test_duplicate_source_prefixes_rank_by_first_occurrence(coll, world, read):
+    coll.setting('source_priority', json.dumps({'market_price': {'*': ['bricklink:sold', 'manual', 'bricklink:stock']}}))
+    item = coll.item('parts', '3023')
+    red = coll.colour('4')
+    bricklink = add_price(coll, item, colour=red, source='bricklink', price='3')
+    add_price(coll, item, colour=red, source='manual', price='4', guide='sold', condition='new')
+    with read() as db:
+        row = next(r for r in planning.priced_items(db) if r['item_id'] == item and r['color_id'] == red)
+        assert row['display_price']['id'] == bricklink
+
+
+def test_a_voided_price_is_not_listed_or_chosen(coll, world, client):
+    item = coll.item('sets', '2070-1')
+    add_price(coll, item, price='9', voided='2026-10-01T00:00:00.000Z')
+    assert item not in {r['item_id'] for r in records(client)}
+    assert details(client, item_id=item).get_json()['empty'] is True

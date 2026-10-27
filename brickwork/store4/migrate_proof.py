@@ -39,6 +39,21 @@ from .mint import TYPE_KIND, MintResult, _kind_by_number
 
 FIRST = 20                                                    # differences kept per part
 
+# 3.3's default picture orders by type code, and 4.0's by kind (design 6.8): restated here so the proof does not lean on the writer's table.
+_PICTURES_33 = {'P': ['rebrickable', 'bricklink'], '*': ['bricklink', 'rebrickable']}
+_PICTURES_40 = {'part': ['rebrickable_dump', 'bricklink', 'rebrickable_api'], '*': ['bricklink', 'rebrickable_dump']}
+
+
+def _pictures_40(kind, code, order):
+    """What a 3.3 picture order of one type must be in 4.0: its default becomes the 4.0 default, any other order replaces each
+    `rebrickable` by `rebrickable_dump, rebrickable_api` and keeps the rest in sequence."""
+    if _PICTURES_33.get(code) == order:
+        return _PICTURES_40.get(kind, _PICTURES_40['*'])
+    out = []
+    for source in order:
+        out += [x for x in (['rebrickable_dump', 'rebrickable_api'] if source == 'rebrickable' else [source]) if x not in out]
+    return out
+
 
 class Part:
     def __init__(self, name, what):
@@ -395,7 +410,8 @@ class _Proof:
                     data = json.loads(values[key])
                 except ValueError:
                     continue
-                kept = {step: {TYPE_KIND.get(t, t): v for t, v in types.items()} for step, types in data.items() if step in CARRIED_PRIORITY_STEPS}
+                kept = {step: {TYPE_KIND.get(t, t): (v if step != 'pictures' else _pictures_40(TYPE_KIND.get(t, t), t, v)) for t, v in types.items()}
+                        for step, types in data.items() if step in CARRIED_PRIORITY_STEPS}
                 if kept:
                     want[key] = kept
         got = dict(db.execute('SELECT key, value FROM main.setting').fetchall())

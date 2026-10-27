@@ -1,270 +1,306 @@
-"""Bulk picture refresh over canonical, colour-specific collection identities."""
+"""Pictures and their source order on the 4.0 store (M.8f, issue #110; design 6.8, 3.2).
+
+Three sources, in the order of the setting `source_priority.pictures` (per kind, `*` for the rest; Settings edits it, the migration
+translates 3.3's):
+
+- `rebrickable_dump`: the catalogue's `picture_url` for (item, colour), a plain download. The dump carries one for a part in a colour some
+  inventory uses; sets and figures have none, and a part in another colour has none (the order then falls through).
+- `bricklink`: `img.bricklink.com` by the resolved BrickLink key and colour (`items.bricklink_key`), a plain download, no key.
+- `rebrickable_api`: `GET /parts/{num}/colors/{id}/` (sets and figures: their own record), needs a key and is budgeted.
+
+Defaults: parts `rebrickable_dump`, `bricklink`, `rebrickable_api`; everything else `bricklink`, `rebrickable_dump`.
+
+The pipeline's `pictures` step runs one handler per source in that order (`handler(source)`); each serves the colours of the item that
+still have no picture and raises `StepFailed` when some remain, so the next source gets a go. A colour is served by a `picture` row of
+the item with that colour or none. `picture_known` answers what the Add review asks before confirming (design 6.8, last paragraph).
+
+The bulk refresh (Settings, Tools & Admin) is `state`, `selection` and `queue`: one `pictures` job per held item that lacks a picture
+(scope `missing`) or every held item (scope `all`)."""
 from collections import defaultdict
-from datetime import datetime, timezone
 import json
-from pathlib import Path
 
-from . import admin
-from .pipeline import Pipeline, TYPES, cooperative
+from ..store4 import keys as store_keys
+from ..store4.connect import has_catalogue
+from . import errors, items, pipeline
+from .media import media_root
+from .pipeline import StepDone, StepFailed, StepWait
 from .sources import base, images
+from .transaction import transaction
 
-TYPE_LABELS = dict(S='Sets', M='Minifigures', P='Parts', I='Instructions', O='Boxes',
-                   G='Gear', B='Books', C='Catalogs')
-SOURCES = {'priority', 'bricklink', 'rebrickable', 'existing'}
+SOURCES = images.SOURCES
+DEFAULT_ORDER = {'part': ['rebrickable_dump', 'bricklink', 'rebrickable_api'], '*': ['bricklink', 'rebrickable_dump']}
+BRICKLINK_IMAGE = 'https://img.bricklink.com/ItemImage/{type}N/{colour}/{number}.png'
+API_PATH = {'parts': 'part', 'sets': 'set', 'minifigs': 'minifigure'}
+KIND_LABELS = {'set': 'Sets', 'minifigure': 'Minifigures', 'part': 'Parts', 'instructions': 'Instructions', 'box': 'Boxes',
+               'gear': 'Gear', 'book': 'Books', 'catalog': 'Catalogs'}
+NO_COLOUR = 1                                       # the colour of "[No Color/Any Color]"; a part with none takes the dump's row of this colour
 
 
-# Shared deduplicated holdings, including colour-specific parts and placeholders.
-HELD = '''WITH held(item_type,item_no,color_id) AS (
-        SELECT item_type,set_no,NULL FROM copies WHERE archived_at IS NULL
-        UNION SELECT p.item_type,p.item_no,p.color_id FROM copy_parts p JOIN copies c ON c.id=p.copy_id WHERE c.archived_at IS NULL
-        UNION SELECT m.item_type,m.minifig_no,NULL FROM copy_minifigs m JOIN copies c ON c.id=m.copy_id WHERE c.archived_at IS NULL
-        UNION SELECT item_type,item_no,color_id FROM loose_stock WHERE archived_at IS NULL
-        UNION SELECT p.item_type,p.item_no,p.color_id FROM loose_minifig_parts p JOIN loose_stock s ON s.id=p.stock_id WHERE s.archived_at IS NULL
-        UNION SELECT item_type,item_no,color_id FROM wishlist WHERE archived_at IS NULL)
+class NoPicture(Exception):
+    """This source has no picture for the item and colour (the reason is the message): the order moves on."""
+
+
+# ---------- the order ----------
+
+def order(db, kind):
+    """The picture sources to try for an item of `kind`, in order: the stored setting (`kind`, else `*`), else design 6.8's default.
+    A source this module does not know is ignored, so an old value never breaks a job."""
+    row = db.execute("SELECT value FROM main.setting WHERE key='source_priority'").fetchone()
+    try:
+        stored = (json.loads(row[0]) if row else {}).get('pictures') or {}
+    except (TypeError, ValueError):
+        stored = {}
+    wanted = stored.get(kind) or stored.get('*') or DEFAULT_ORDER.get(kind, DEFAULT_ORDER['*'])
+    names = (n for s in wanted for n in (pipeline.LEGACY_PICTURE_SOURCES.get(str(s).split(':')[0]) or (str(s).split(':')[0],)))
+    return [s for s in dict.fromkeys(names) if s in SOURCES]
+
+
+# ---------- what an item's pictures are for ----------
+
+def _item(db, item_id):
+    row = db.execute('SELECT id, kind, name, born_provider, born_namespace, born_key FROM main.item WHERE id=?', (item_id,)).fetchone()
+    if row is None:
+        row = db.execute('SELECT id, kind, name, born_provider, born_namespace, born_key FROM catalogue.item WHERE id=?', (item_id,)).fetchone() \
+            if has_catalogue(db) else None
+    if row is None:
+        raise errors.NotFound(f'No item {item_id}')
+    return row
+
+
+colours_of = items.colours_held
+
+
+def served(db, item_id, color_id):
+    """A picture of the item for this colour exists: one of that colour, or one with no colour (it serves every colour)."""
+    return db.execute('SELECT 1 FROM main.picture WHERE item_id=? AND (color_id IS NULL OR color_id=?) LIMIT 1', (item_id, color_id)).fetchone() is not None
+
+
+# ---------- what each source can name ----------
+
+def dump_url(db, item_id, color_id):
+    """The catalogue's picture URL for (item, colour); a part with no colour takes the "no colour" row. Raises NoPicture."""
+    if not has_catalogue(db):
+        raise NoPicture('no catalogue is attached')
+    row = db.execute('SELECT url FROM catalogue.picture_url WHERE item_id=? AND color_id=?', (item_id, NO_COLOUR if color_id is None else color_id)).fetchone()
+    if row is None:
+        raise NoPicture('the catalogue has no picture for this colour')
+    return row[0]
+
+
+def bricklink_url(db, item_id, color_id):
+    """`img.bricklink.com` for the item's resolved BrickLink key and colour. Raises NoPicture without a confirmed BrickLink number."""
+    try:
+        letter, number, colour = items.bricklink_key(db, item_id, color_id)
+    except items.Unidentified:
+        raise NoPicture('the item has no BrickLink number') from None
+    if letter == 'P' and color_id is not None and color_id != NO_COLOUR and colour is None:
+        raise NoPicture('the colour has no BrickLink number')
+    return BRICKLINK_IMAGE.format(type=letter, colour=colour if letter == 'P' and colour is not None else 0, number=number)
+
+
+def api_target(db, item_id, color_id):
+    """(path, key in the answer) for the Rebrickable API picture of the item, or NoPicture: only a Rebrickable-born item has a number
+    there, and a colour is asked by its Rebrickable colour number (a local, BrickLink-born colour has none)."""
+    row = _item(db, item_id)
+    if row['born_provider'] != 'rebrickable' or row['born_namespace'] not in API_PATH:
+        raise NoPicture('the item has no Rebrickable number')
+    number = row['born_key']
+    if row['born_namespace'] == 'sets':
+        return f'/sets/{number}/', 'set_img_url'
+    if row['born_namespace'] == 'minifigs':
+        return f'/minifigs/{number}/', 'set_img_url'
+    if color_id is None or color_id == NO_COLOUR:
+        return f'/parts/{number}/', 'part_img_url'
+    colour = colour_row(db, color_id)
+    if colour is None or colour['born_provider'] != 'rebrickable' or colour['born_key'] == '-1':
+        raise NoPicture('Rebrickable has no number for this colour')
+    return f'/parts/{number}/colors/{colour["born_key"]}/', 'part_img_url'
+
+
+def colour_row(db, color_id):
+    for store in ('main', 'catalogue'):
+        if store == 'catalogue' and not has_catalogue(db):
+            break
+        row = db.execute(f'SELECT id, born_provider, born_key FROM {store}.color WHERE id=?', (color_id,)).fetchone()
+        if row is not None:
+            return row
+    return None
+
+
+def can_serve(db, item_id, color_id, source):
+    """Could `source` serve this item and colour right now? (a URL it can name; for the API also a key, since it is a budgeted call)"""
+    try:
+        if source == 'rebrickable_dump':
+            dump_url(db, item_id, color_id)
+        elif source == 'bricklink':
+            bricklink_url(db, item_id, color_id)
+        elif source == 'rebrickable_api':
+            api_target(db, item_id, color_id)
+            return bool(store_keys.get('BW_REBRICKABLE_API_KEY'))
+        else:
+            return False
+    except (NoPicture, errors.NotFound):
+        return False
+    return True
+
+
+def picture_known(db, item_id, color_id=None):
+    """Is a picture of this item in this colour stored, or could one source of the order fetch it? The Add review warns "no picture
+    known for this colour" when not (design 6.8): no `picture_url`, no resolvable BrickLink key and no Rebrickable key."""
+    if served(db, item_id, color_id):
+        return True
+    return any(can_serve(db, item_id, color_id, s) for s in order(db, _item(db, item_id)['kind']))
+
+
+# ---------- the pipeline step ----------
+
+def _failure(error):
+    """(StepFailed code, message) of a source failure."""
+    if isinstance(error, (base.SourceNotConfigured, base.SourceDisabled, base.KeyRejected)):
+        return 'source_not_configured', str(error)
+    if isinstance(error, NoPicture):
+        return 'not_found', str(error)
+    if isinstance(error, base.NotFoundAtSource):
+        return 'not_found', str(error)
+    if isinstance(error, base.InvalidReply):
+        return 'invalid_reply', str(error)
+    return 'source_error', str(error)
+
+
+def fetch(db, job, source, *, http=None, image_http=None, root=None):
+    """Serve the item's colours that have no picture from `source`. Returns the number of pictures stored; raises `StepDone`
+    (`unidentified`: nothing can picture an item that has no number), `StepWait` (budget) or `StepFailed` (some colours remain)."""
+    from .sources.rebrickable import Rebrickable
+    item_id = job['item_id']
+    row = _item(db, item_id)
+    if row['born_key'] is None:
+        raise StepDone('unidentified', 'The item has no number from any provider, so no picture can be asked for')
+    payload = json.loads(job['payload'] or '{}')
+    root = root or media_root(db)
+    tracked = job['id'] is not None and db.execute("SELECT 1 FROM main.job_step WHERE job_id=? AND name='pictures'", (job['id'],)).fetchone() is not None
+    refreshed = {r[0] for r in db.execute("SELECT operation FROM main.job_call WHERE job_id=? AND step='pictures'", (job['id'],))} if tracked else set()
+    # a refresh fetches each colour once per job: after a budget wait it resumes with the colours not yet refreshed
+    todo = [c for c in colours_of(db, item_id)
+            if (f'picture:{c or 0}' not in refreshed if payload.get('refresh') else not served(db, item_id, c))]
+    stored, failed = 0, []
+    for color_id in todo:
+        try:
+            if source == 'rebrickable_dump':
+                url = dump_url(db, item_id, color_id)
+            elif source == 'bricklink':
+                url = bricklink_url(db, item_id, color_id)
+            elif source == 'rebrickable_api':
+                path, key = api_target(db, item_id, color_id)
+                url = Rebrickable(db, http=http).picture_url(path, key, item_id=item_id, job_id=job['id'])
+            else:
+                raise NoPicture(f'{source} is not a picture source')
+            images.download(db, root, source, item_id, row['kind'], url, color_id=color_id, http=image_http)
+            stored += 1
+            if tracked:
+                with transaction(db):
+                    db.execute("INSERT OR REPLACE INTO main.job_call(job_id, step, operation, result) VALUES(?, 'pictures', ?, ?)",
+                               (job['id'], f'picture:{color_id or 0}', json.dumps({'source': source})))
+        except base.WaitingForBudget as wait:
+            raise StepWait(wait.retry_at, 'waiting for budget') from None
+        except (NoPicture, base.SourceError) as error:
+            failed.append((color_id, error))
+    if failed:
+        code, message = _failure(failed[0][1])
+        raise StepFailed(code, message if len(todo) == 1 else f'{len(failed)} of {len(todo)} colours have no picture: {message}')
+    return stored
+
+
+def handler(source, *, http=None, image_http=None, root=None):
+    """The pipeline handler `(db, job, step)` of one picture source; `http` and `image_http` are the test seams for the API and the
+    image downloads."""
+    def run(db, job, step):
+        with base.audit_origin(job['via'], job.get('actor')):
+            fetch(db, job, source, http=http, image_http=image_http, root=root)
+    return run
+
+
+def handlers(**options):
+    """`{('pictures', source): handler}` for the three sources."""
+    return {('pictures', source): handler(source, **options) for source in SOURCES}
+
+
+def register(**options):
+    for (step, source), function in handlers(**options).items():
+        pipeline.register(step, source, function)
+
+
+# ---------- the bulk refresh (Settings) ----------
+
+# Every (item, colour) the collection holds or wants: set copies, their lines, loose stock, loose figures' parts and wishes.
+HELD = '''WITH held(item_id, color_id) AS (
+    SELECT c.item_id, NULL FROM main.copy c WHERE c.archived_at IS NULL
+    UNION SELECT p.item_id, p.color_id FROM main.copy_part p JOIN main.copy c ON c.id=p.copy_id WHERE c.archived_at IS NULL AND p.retired_at IS NULL
+    UNION SELECT f.item_id, NULL FROM main.copy_figure f JOIN main.copy c ON c.id=f.copy_id WHERE c.archived_at IS NULL AND f.retired_at IS NULL
+    UNION SELECT item_id, color_id FROM main.stock WHERE archived_at IS NULL
+    UNION SELECT p.item_id, p.color_id FROM main.stock_part p JOIN main.stock s ON s.id=p.stock_id WHERE s.archived_at IS NULL AND p.retired_at IS NULL
+    UNION SELECT item_id, color_id FROM main.wish WHERE archived_at IS NULL)
 '''
 
 
+def _held(db):
+    return db.execute(HELD + '''SELECT h.item_id, h.color_id, i.kind, i.born_key IS NULL AS unidentified FROM held h JOIN main.item i ON i.id=h.item_id
+                                WHERE i.merged_into IS NULL ORDER BY h.item_id, h.color_id''').fetchall()
+
+
 def state(db):
-    """Coverage from database rows only (cache rows estimate presence without file I/O)."""
-    # The holdings union is the expensive part: evaluate it once and aggregate in Python.
-    held = db.execute(HELD + 'SELECT h.item_type,h.item_no,h.color_id FROM held h JOIN items i USING(item_type,item_no)').fetchall()
-    unresolved_ids = {(r[0], r[1]) for r in db.execute(
-        "SELECT DISTINCT item_type,item_no FROM id_match WHERE status IN ('to_check','unmatched')")}
-    # A picture without a colour serves every colour of the identity.
+    """Coverage from database rows only (no file is opened): per kind how many held (item, colour) pairs have a picture, which
+    sources they came from, and how many are unidentified (no source can name them)."""
     stored = defaultdict(set)
-    for r in db.execute("""SELECT DISTINCT item_type,item_no,color_id,source FROM item_images
-            WHERE copy_id IS NULL AND stock_id IS NULL AND local_path IS NOT NULL"""):
-        stored[r[0], r[1]].add((r[2], r[3]))
+    for r in db.execute('SELECT item_id, color_id, source FROM main.picture'):
+        stored[r['item_id']].add((r['color_id'], r['source']))
     totals = defaultdict(lambda: defaultdict(int))
-    source_found = set()
-    for kind, number, colour in held:
-        matching = [source for found, source in stored.get((kind, number), ()) if found is None or found == colour]
-        present = bool(matching)
-        unresolved = kind == '?' or (kind, number) in unresolved_ids
-        unknown = kind == 'P' and colour is None and not unresolved
+    sources = defaultdict(lambda: defaultdict(set))
+    for item_id, color_id, kind, unidentified in _held(db):
+        found = [s for c, s in stored.get(item_id, ()) if c is None or c == color_id]
         t = totals[kind]
         t['total'] += 1
-        t['with_picture'] += present
-        t['missing'] += not present
-        t['unresolved'] += unresolved
-        t['missing_unresolved'] += unresolved and not present
-        t['unknown_colour'] += unknown
-        t['missing_unknown_colour'] += unknown and not present
-        source_found.update((kind, number, colour, source) for source in matching)
-    aggregates = [dict(item_type=kind, **t) for kind, t in totals.items()]
-    source_counts = defaultdict(dict)
-    counted = defaultdict(int)
-    for kind, _, _, source in source_found:
-        counted[kind, source] += 1
-    for (kind, source), total in counted.items():
-        source_counts[kind][source] = total
-    matrix = {kind: {scope: dict(count=0, unresolved=0, unknown_colour=0)
-                     for scope in ('missing', 'all')} for kind in (*TYPE_LABELS, '?')}
-    by_kind = {row['item_type']: row for row in aggregates}
-    summary = []
-    for kind, scopes in matrix.items():
-        row = by_kind.get(kind, {})
-        for scope, counts in scopes.items():
-            prefix = 'missing_' if scope == 'missing' else ''
-            counts.update(count=row.get('missing' if scope == 'missing' else 'total', 0),
-                          unresolved=row.get(prefix + 'unresolved', 0),
-                          unknown_colour=row.get(prefix + 'unknown_colour', 0))
-        if kind in TYPE_LABELS:
-            summary.append(dict(kind=kind, label=TYPE_LABELS[kind],
-                total=row.get('total', 0), with_picture=row.get('with_picture', 0),
-                missing=row.get('missing', 0),
-                sources={**dict(bricklink=0, rebrickable=0), **source_counts[kind]}))
-    return dict(matrix=matrix, summary=summary,
-                unresolved=sum(row['unresolved'] for row in aggregates))
+        t['with_picture'] += bool(found)
+        t['missing'] += not found
+        t['unidentified'] += bool(unidentified)
+        for s in found:
+            sources[kind][s].add((item_id, color_id))
+    summary = [dict(kind=kind, label=label, total=totals[kind]['total'], with_picture=totals[kind]['with_picture'],
+                    missing=totals[kind]['missing'], unidentified=totals[kind]['unidentified'],
+                    sources={s: len(sources[kind].get(s, ())) for s in SOURCES})
+               for kind, label in KIND_LABELS.items()]
+    return dict(summary=summary, unidentified=sum(t['unidentified'] for t in totals.values()))
 
 
-def selection(db, source, scope, types):
-    types = sorted(set(types))
-    if source not in SOURCES or scope not in ('missing', 'all') or not types or set(types) - TYPES:
-        raise ValueError('Choose a source, scope and item types')
-    rows = [dict(r) for r in db.execute(HELD + '''
-        SELECT h.*,i.name,c.name AS color_name FROM held h JOIN items i USING(item_type,item_no)
-        LEFT JOIN colors c USING(color_id) ORDER BY h.item_type,h.item_no,h.color_id''')]
-    from .media import media_root
-    root = media_root(db)
-    cached = defaultdict(set)
-    for image in db.execute('SELECT item_type,item_no,color_id,source,local_path FROM item_images WHERE copy_id IS NULL AND stock_id IS NULL AND local_path IS NOT NULL'):
-        path = (root / image['local_path']).resolve()
-        if path.is_relative_to(root / 'data/images') and path.is_file():
-            cached[image['item_type'], image['item_no'], image['color_id']].add(image['source'])
-    unresolved = {(r[0], r[1]) for r in db.execute("SELECT item_type,item_no FROM id_match WHERE status IN ('to_check','unmatched')")}
-    for row in rows:
-        key = row['item_type'], row['item_no'], row['color_id']
-        row['sources'] = sorted(cached[key] | cached[key[:2] + (None,)])
-        row['unresolved'] = row['item_type'] == '?' or key[:2] in unresolved
-    # Keep the physical-file selection and job snapshot unchanged at confirmation.
-    return [r for r in rows if (r['item_type'] in types or r['item_type'] == '?')
-            and (scope == 'all' or not r['sources'])]
+def selection(db, scope, kinds):
+    """The items a refresh would queue: one entry per item (not per colour) of the chosen kinds, `missing` those with a colour that has
+    no picture, `all` every held item. Unidentified items are left out (no source can name them) and counted separately."""
+    kinds = sorted(set(kinds))
+    if scope not in ('missing', 'all') or not kinds or set(kinds) - set(KIND_LABELS):
+        raise ValueError('Choose a scope and item kinds')
+    stored = defaultdict(set)
+    for r in db.execute('SELECT item_id, color_id FROM main.picture'):
+        stored[r['item_id']].add(r['color_id'])
+    per_item = {}
+    for item_id, color_id, kind, unidentified in _held(db):
+        if kind not in kinds:
+            continue
+        entry = per_item.setdefault(item_id, dict(unidentified=bool(unidentified), missing=False))
+        have = stored.get(item_id, set())
+        entry['missing'] |= not (None in have or color_id in have)
+    ids = [i for i, e in per_item.items() if not e['unidentified'] and (scope == 'all' or e['missing'])]
+    return dict(item_ids=ids, unidentified=sum(e['unidentified'] for e in per_item.values()))
 
 
-def queue(db, source, scope, types, expected_count=None, via='app'):
-    from .transaction import transaction
-    pipeline = Pipeline(db)
+def queue(db, scope, kinds, expected_count=None, via='app', actor=None):
+    """Queue a `pictures` job for each selected item that has no live pictures job. Returns `(job ids, selected count)`; with
+    `expected_count` the call refuses when the estimate on the page no longer matches, so a confirmation is never a surprise."""
+    pipe = pipeline.Pipeline(db)
     with transaction(db):
-        rows = selection(db, source, scope, types)
-        priority = admin.settings(db)['priority']['pictures']
-        payload = dict(via=via, **({'actor': base.AUDIT_ACTOR.get()} if via == 'api' else {}), source=source, scope=scope, types=sorted(set(types)),
-                       identities=rows, priority=priority)
-        if expected_count is not None:
-            payload['expected_count'] = int(expected_count)
-        # A repeated confirmation must not duplicate active work.
-        for active in db.execute("SELECT id,payload FROM jobs WHERE kind='picture_refresh' AND state IN ('queued','running','waiting_for_budget')"):
-            previous = json.loads(active['payload'])
-            previous.pop('expected_count', None)
-            work = {k: v for k, v in payload.items() if k != 'expected_count'}
-            if previous == work:
-                return active['id'], len(rows)
-        stamp = base.now().isoformat()
-        job = db.execute('''INSERT INTO jobs(source,kind,state,payload,created_at,updated_at)
-            VALUES('import','picture_refresh','queued',?,?,?)''', (json.dumps(payload), stamp, stamp)).lastrowid
-        db.execute('''INSERT INTO import_steps(job_id,name,position,sources,total,updated_at)
-            VALUES(?,'pictures',0,'["picture_refresh"]',?,?)''', (job, len(rows), stamp))
-        admin.audit(db, 'job:' + str(job), 'queued', None, payload)
-        return job, len(rows)
-
-
-def legacy_files(db, root):
-    """Use old RebrickableImage.id and bl_images.image_path conventions.
-
-    Part names are opaque image_id values, never parsed into guessed identities.
-    The migration's retained envelopes and matches supply the colour bridge.
-    """
-    from .importer import is_set_envelope
-    matches = {(r['kind'], r['source_id']): dict(r) for r in db.execute(
-        "SELECT * FROM id_match WHERE source='rebrickable' AND status IN ('matched','manual','inferred')")}
-    known = {(r[0], r[1]) for r in db.execute('SELECT item_type,item_no FROM items')}
-    mapping = defaultdict(set)
-    for source in db.execute("SELECT kind,payload FROM source_records WHERE source='rebrickable' AND kind IN ('rebrickable_sets','rebrickable_parts','rebrickable_minifigures')"):
-        for envelope in cooperative(db, json.loads(source['payload']).get('records', [])):
-            row = envelope.get('record', {})
-            table = envelope.get('table')
-            if is_set_envelope(table):
-                folder, name, kind, foreign = 'sets', row.get('set'), 'set', row.get('set')
-            elif table == 'rebrickable_minifigures':
-                folder, name, kind, foreign = 'minifigures', row.get('figure'), 'minifigure', row.get('figure')
-            elif table == 'rebrickable_parts':
-                folder, name, kind, foreign = 'parts', row.get('image_id'), 'part', row.get('part')
-            else:
-                continue
-            if not name or Path(str(name)).name != name or not row.get('image'):
-                continue
-            match = matches.get((kind, str(foreign) + '/' + str(row.get('color_id')))) or matches.get((kind, foreign))
-            key = (match['item_type'], match['item_no']) if match else ('S', foreign) if kind == 'set' and ('S', foreign) in known else None
-            color = None
-            if key and key[0] == 'P':
-                bridge = matches.get(('color', str(row.get('color_id'))))
-                color = bridge['color_id'] if bridge else match['color_id'] if match else None
-                if color is None:
-                    continue
-            if key and key[0] != '?':
-                mapping[folder + '/' + name + '.jpg'].add((*key, color, 'rebrickable'))
-    result = defaultdict(list)
-    issues = []
-    # The deployed DB and old cache folders share data/. Fixture roots may contain data/.
-    data_root = root if any((root / folder).is_dir() for folder in ('sets', 'parts', 'minifigures', 'bl-images')) else root / 'data'
-    for folder in ('sets', 'parts', 'minifigures', 'bl-images'):
-        directory = data_root / folder
-        if directory.is_dir() and not directory.resolve().is_relative_to(data_root.resolve()):
-            issues.append(dict(name=folder, reason='Folder is outside the cache'))
-            continue
-        for path in cooperative(db, directory.rglob('*') if directory.is_dir() else []):
-            if not path.is_file() or path.suffix.lower() not in ('.jpg', '.jpeg', '.png', '.gif', '.webp'):
-                continue
-            relative = path.relative_to(data_root).as_posix()
-            if path.is_symlink() or not path.resolve().is_relative_to(directory.resolve()):
-                issues.append(dict(name=relative, reason='File is outside the cache'))
-                continue
-            candidates = mapping.get(relative, set())
-            if folder == 'bl-images':
-                pieces = path.relative_to(directory).parts
-                kind = pieces[0]
-                if kind in TYPES and (kind, path.stem) in known:
-                    if kind == 'P' and len(pieces) == 3 and pieces[1].isdigit():
-                        candidates = {(kind, path.stem, int(pieces[1]), 'bricklink')}
-                    elif kind != 'P' and len(pieces) == 2:
-                        candidates = {(kind, path.stem, None, 'bricklink')}
-            if len(candidates) != 1:
-                issues.append(dict(name=relative, reason='No unambiguous identity'))
-                continue
-            kind, number, color, provenance = next(iter(candidates))
-            result[kind, number, color].append((path, provenance))
-    return result, issues
-
-
-def run(pipeline, job):
-    """Checkpoint each identity, resume budget waits, retain a durable issue list."""
-    db = pipeline.db
-    payload = json.loads(job['payload'])
-    rows = payload['identities']
-    local, issues = legacy_files(db, pipeline.root) if payload['source'] == 'existing' else ({}, [])
-    successes = 0
-    checkpoints = {r['operation']: json.loads(r['result']) for r in db.execute(
-        "SELECT operation,result FROM import_calls WHERE job_id=? AND step='pictures' AND result IS NOT NULL", (job['id'],))}
-    for index, row in cooperative(db, enumerate(rows)):
-        operation = 'picture_identity:' + str(index)
-        saved = operation in checkpoints
-        if saved:
-            outcome = checkpoints[operation]
-        else:
-            outcome = dict(ok=False, name=row['item_no'], color_name=row['color_name'], file_issues=[])
-            if row['unresolved']:
-                outcome['reason'] = 'Unresolved identity · Tools & Admin → Unresolved figures'
-            elif row['item_type'] == 'P' and row['color_id'] is None:
-                outcome['reason'] = 'Unknown colour · no picture requested'
-            elif payload['source'] == 'existing':
-                candidates = local.get((row['item_type'], row['item_no'], row['color_id']), [])
-                outcome['reason'] = 'No matching existing file'
-                for path, provenance in cooperative(db, candidates):
-                    try:
-                        if path.stat().st_size > images.MAX_BYTES:
-                            raise base.SourceError('Image is too large')
-                        images.store(db, pipeline.root, provenance, row['item_type'], row['item_no'],
-                                     path.read_bytes(), color=row['color_id'], image_kind=images.picture_kind(provenance, row['item_type']),
-                                     fetched_at=datetime.fromtimestamp(path.stat().st_mtime, timezone.utc).isoformat())
-                        outcome['ok'] = True
-                    except (OSError, base.SourceError):
-                        outcome['file_issues'].append(dict(name=path.relative_to(pipeline.root).as_posix(), reason='Image could not be verified'))
-                if not outcome['ok'] and candidates:
-                    outcome['reason'] = 'Image could not be verified'
-            else:
-                order = payload['priority'].get(row['item_type'], payload['priority'].get('*', [])) if payload['source'] == 'priority' else [payload['source']]
-                for source in cooperative(db, order):
-                    failure_key = operation + ':failed:' + source
-                    if failure_key in checkpoints:
-                        outcome['reason'] = checkpoints[failure_key]
-                        continue
-                    child = {**job, 'item_type': row['item_type'], 'item_no': row['item_no'],
-                             'payload': json.dumps({'picture_color': row['color_id'], 'picture_prefix': str(index) + ':'})}
-                    try:
-                        pipeline.perform(child, 'pictures', source)
-                        outcome['ok'] = True
-                        break
-                    except base.WaitingForBudget:
-                        pipeline.update_step(job['id'], 'pictures', 'running', count=index, total=len(rows))
-                        raise
-                    except base.SourceError as error:
-                        outcome['reason'] = base.redact(error)
-                        with db:
-                            base.write(db, 'INSERT OR REPLACE INTO import_calls(job_id,step,operation,result) VALUES(?,?,?,?)',
-                                       (job['id'], 'pictures', failure_key, json.dumps(outcome['reason'])))
-                outcome.setdefault('reason', 'No picture source configured')
-            with db:
-                base.write(db, 'INSERT OR REPLACE INTO import_calls(job_id,step,operation,result) VALUES(?,?,?,?)',
-                           (job['id'], 'pictures', operation, json.dumps(outcome)))
-        issues.extend(outcome.get('file_issues', []))
-        successes += outcome['ok']
-        if not outcome['ok']:
-            issues.append(outcome)
-        if saved:
-            continue
-        pipeline.update_step(job['id'], 'pictures', 'running', source='picture_refresh', count=index + 1, total=len(rows))
-        pipeline.progress(job['id'], 'pictures', 'progress', source='picture_refresh', count=index + 1, total=len(rows))
-    with db:
-        current = {**payload, 'issues': issues, 'stored': successes}
-        base.write(db, 'UPDATE jobs SET payload=? WHERE id=?', (json.dumps(current), job['id']))
-    return len(rows)
+        chosen = selection(db, scope, kinds)['item_ids']
+        if expected_count is not None and int(expected_count) != len(chosen):
+            raise ValueError(f'{len(chosen)} items now match, not {int(expected_count)} · review the count and confirm again')
+        busy = {r[0] for r in db.execute("""SELECT DISTINCT j.item_id FROM main.job j JOIN main.job_step s ON s.job_id=j.id
+            WHERE j.kind=? AND s.name='pictures' AND s.state IN ('queued','running','waiting_for_budget') AND j.state IN ('queued','running','waiting_for_budget')""",
+                                  (pipeline.KIND,))}
+        jobs = [pipe.queue_steps(i, ['pictures'], via=via, actor=actor, refresh=scope == 'all') for i in chosen if i not in busy]
+    return jobs, len(chosen)

@@ -5,6 +5,7 @@ Every screen and writer that used to say `(item_type, item_no)` says an item id 
 - `label(db, item_id, color_id=None)`: what to show for an item (decision 3 of the #110 scope: the Rebrickable born number first, the
   preferred BrickLink number beside it where it differs; a local BrickLink-born item shows its BrickLink number, marked BrickLink).
 - `find(db, kind, number)`: items for a number a person typed or pasted: born key, then the catalogue's search index, then BrickLink links.
+- `colours_held(db, item_id)`: the colours a part is held in, for the per-colour source steps.
 - `ensure(db, item_id)`: the item (and its links and colours) in the collection, projected from the catalogue when it is not yet.
 - `bricklink_key(db, item_id, color_id)`: the BrickLink type, number and colour number, or `Unidentified`.
 - the kind vocabulary and the BrickLink type letter <-> kind mapping, which belong to the borders (imports, exports, BrickLink calls) only.
@@ -199,6 +200,22 @@ def bricklink_key(db, item_id, color_id=None):
     if found is None:
         raise Unidentified(f'Item {item_id} ({row["name"]}) has no BrickLink number')
     return found
+
+
+def colours_held(db, item_id):
+    """The colours a part is held or wanted in (copy lines, loose stock and loose figures' parts, wishes), ascending; `[None]` for a part
+    held in none and for every item that is not a part. What a per-colour source step (pictures, prices) iterates."""
+    row, _ = _row(db, item_id)
+    if row is None:
+        raise errors.NotFound(f'No item {item_id}')
+    if row['kind'] != 'part':
+        return [None]
+    found = [r[0] for r in db.execute('''SELECT color_id FROM main.copy_part WHERE item_id=:i AND retired_at IS NULL
+        UNION SELECT color_id FROM main.stock WHERE item_id=:i AND archived_at IS NULL AND color_id IS NOT NULL
+        UNION SELECT color_id FROM main.stock_part WHERE item_id=:i AND retired_at IS NULL
+        UNION SELECT color_id FROM main.wish WHERE item_id=:i AND archived_at IS NULL AND color_id IS NOT NULL
+        ORDER BY 1''', {'i': item_id})]
+    return found or [None]
 
 
 def ensure(db, item_id):

@@ -35,7 +35,7 @@ def test_queue_makes_one_job_with_the_six_steps_in_the_settings_order(coll):
     assert [s['name'] for s in status['steps']] == list(pipeline.STEPS)
     assert json.loads(steps(pl, job)['identity']['sources']) == ['catalogue']
     assert json.loads(steps(pl, job)['metadata']['sources']) == ['brickset'] and json.loads(steps(pl, job)['market_price']['sources']) == ['bricklink']
-    assert json.loads(steps(pl, job)['pictures']['sources']) == ['bricklink', 'rebrickable_api']
+    assert json.loads(steps(pl, job)['pictures']['sources']) == ['bricklink', 'rebrickable_dump']          # design 6.8: everything but parts
     event = db.execute("SELECT * FROM event WHERE entity_kind='job' AND entity_id=?", (str(job),)).fetchone()
     assert (event['field'], json.loads(event['new_value'])['steps']) == ('queued', list(pipeline.STEPS))
     # The migrated settings decide: the order of the kind, the picture sources.

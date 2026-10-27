@@ -20,7 +20,7 @@ Undo puts back the state from before your save, so it first checks that nothing 
 
 ### What Undo can't take back
 
-- Import jobs, price lookups and pictures already stored. Picture refresh says so: **No Undo for picture refresh**.
+- Import jobs, price lookups and pictures already stored. Picture refresh says so: **No Undo for picture refresh**. The copies a **Fetch from Rebrickable** made are the exception: Undo on the Add page takes them back like any other Add row.
 - Requests already spent from a source's daily budget, such as Brickognize identifications.
 - Changes sent to Rebrickable or Brickset with collection sync. Undo in Brick Work cannot reach the other site.
 - A database check, and an Undo itself.

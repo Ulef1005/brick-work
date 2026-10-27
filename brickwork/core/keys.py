@@ -12,6 +12,7 @@ import re
 import sqlite3
 
 from . import errors, secrets
+from . import undo as undoing
 from .transaction import transaction
 
 # Environment variable names per keyed source, in the order the clients use them.
@@ -189,37 +190,47 @@ def archive(db, source, receipt=None):
     return state(db, source)
 
 
-def undo(db, identifier, receipt):
-    """Reverse one save or archive receipt; later changes to the key block it."""
-    entity, field = receipt['entity'], receipt['field']
-    source = entity.split(':', 1)[1]
-    value = json.loads(receipt['new_value'])
+def _undo_key(db, event, via, actor):
+    """Reverse one save or archive event (`undo.register('source_key', ...)`); a later change to the key blocks it."""
+    source, field = event['entity_id'], event['field']
+    value = json.loads(event['new_value'])
     if source not in ENV and source not in USER_ENV or value.get('source') != source:
         raise errors.NotUndoable()
-    with transaction(db):
-        row = _stored(db, source, live=False)
-        if row is None:
+    row = _stored(db, source, live=False)
+    if row is None:
+        raise ValueError('Item changed · undo the later save first')
+    if field == 'archive':
+        if row['archived_at'] != value['archived_at'] or row['saved_at'] != value['saved_at']:
             raise ValueError('Item changed · undo the later save first')
-        if field == 'archive':
-            if row['archived_at'] != value['archived_at'] or row['saved_at'] != value['saved_at']:
-                raise ValueError('Item changed · undo the later save first')
-            db.execute('UPDATE source_key SET archived_at=NULL WHERE source=?', (source,))
-        elif field == 'save':
-            if row['archived_at'] is not None or row['saved_at'] != value['saved_at']:
-                raise ValueError('Item changed · undo the later save first')
-            previous = db.execute('SELECT * FROM source_key_previous WHERE source=?', (source,)).fetchone()
-            if value['previous'] is None:
-                db.execute('UPDATE source_key SET archived_at=? WHERE source=?', (_now(), source))
-            elif previous is None or previous['saved_at'] != value['previous']['saved_at']:
-                raise ValueError('The earlier key is no longer available')
-            else:
-                db.execute('UPDATE source_key SET ciphertext=?,saved_at=?,archived_at=? WHERE source=?',
-                           (previous['ciphertext'], previous['saved_at'], previous['archived_at'], source))
-                db.execute('DELETE FROM source_key_previous WHERE source=?', (source,))
+        db.execute('UPDATE source_key SET archived_at=NULL WHERE source=?', (source,))
+    elif field == 'save':
+        if row['archived_at'] is not None or row['saved_at'] != value['saved_at']:
+            raise ValueError('Item changed · undo the later save first')
+        previous = db.execute('SELECT * FROM source_key_previous WHERE source=?', (source,)).fetchone()
+        if value['previous'] is None:
+            db.execute('UPDATE source_key SET archived_at=? WHERE source=?', (_now(), source))
+        elif previous is None or previous['saved_at'] != value['previous']['saved_at']:
+            raise ValueError('The earlier key is no longer available')
         else:
-            raise errors.NotUndoable()
-        from .admin import audit
-        audit(db, entity, 'undo', new=identifier)
+            db.execute('UPDATE source_key SET ciphertext=?,saved_at=?,archived_at=? WHERE source=?',
+                       (previous['ciphertext'], previous['saved_at'], previous['archived_at'], source))
+            db.execute('DELETE FROM source_key_previous WHERE source=?', (source,))
+    else:
+        raise errors.NotUndoable()
+    from .admin import audit
+    audit(db, 'source_key:' + source, 'undo', new=event['id'], via=via, actor=actor)
+    undo_id = db.execute('SELECT last_insert_rowid()').fetchone()[0]
+    db.execute('INSERT INTO event_undo(event_id, undo_event_id) VALUES(?, ?)', (event['id'], undo_id))
+    return {'event_id': undo_id}
+
+
+undoing.register('source_key', 'save', _undo_key, admin=True)
+undoing.register('source_key', 'archive', _undo_key, admin=True)
+
+
+def undo(db, event_id, **options):
+    """Reverse one save or archive receipt by its event id (`core.undo.undo_event`)."""
+    return undoing.undo_event(db, event_id, **options)
 
 
 def provider(path):

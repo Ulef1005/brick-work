@@ -7,7 +7,7 @@
 {% block main %}
 <div id="bw-planning" data-screen="prices" data-csrf="{{ csrf_token }}" data-editable="{{ 'true' if can_edit else 'false' }}" data-kind="{{ kind or '' }}"
  data-save-url="{{ url_for('web.bw_planning_write',action='ACTION') }}" data-collection-url="{{ url_for('web.bw_collection_write',action='ACTION') }}" data-records-url="{{ url_for('web.bw_prices_records') }}" data-details-url="{{ url_for('web.bw_prices_details') }}"
- data-item-base="{{ url_for('web.bw_collection_item',kind='TYPE',number='NUMBER') }}" data-image-base="{{ url_for('web.bw_image',image_id=0) }}" data-unresolved-url="{{ url_for('web.bw_admin',page='unresolved') }}"
+ data-item-base="{{ url_for('web.bw_collection_item',item_id=0) }}" data-image-base="{{ url_for('web.bw_image',image_id=0) }}" data-unresolved-url="{{ url_for('web.bw_admin',page='unresolved') }}"
  data-types='{{ types|tojson }}'>
 <h1 data-bp-title>{{ title }}</h1><p class="bp-subtitle" data-bp-subtitle>Retail and market prices, shown separately</p>
 <p role="status" aria-live="polite" data-bp-message></p><button type="button" data-bp-undo hidden>Undo</button>

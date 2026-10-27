@@ -6,7 +6,7 @@ from decimal import Decimal, InvalidOperation, ROUND_CEILING
 import json
 from xml.etree import ElementTree as ET
 
-from . import add, collection, workbench, collection_prices
+from . import add, collection, errors, items, workbench, collection_prices
 from .admin import audit
 from .sources.base import now
 
@@ -129,107 +129,111 @@ def configuration(db):
 
 
 def priced_items(db, kind=None):
-    """Lean Prices projection: one row per priced identity, no observation lists.
+    """Lean Prices projection (M.8f): one row per priced (item, colour), no observation lists.
 
-    Four bounded reads, none of them per row. The row's stale flag is true when any current
-    quote is past its source's freshness; the display price is chosen from each (condition,
-    source, guide)'s freshest successful observation with Collection's own selection rules.
-    The full observation list of one identity is `price_details`, loaded on demand.
-    """
-    args = (kind,) if kind else ()
-    identities = db.execute("""SELECT p.item_type,p.item_no,p.color_id,
+    Four bounded reads, none of them per row. The row's stale flag is true when any current quote is past its source's freshness; the
+    display price is chosen from each (condition, source, guide)'s freshest successful observation with Collection's own selection rules.
+    The full observation list of one identity is `price_details`, loaded on demand. `kind` is a screen letter (S, P, M, ...): only
+    that kind's items. Voided observations never show."""
+    word = None
+    if kind:
+        try:
+            word = items.kind_of_type(kind)
+        except errors.BrickWorkError:
+            return []                                           # '?' (a placeholder) is not a kind on 4.0: nothing is priced as one
+    args = (word,) if word else ()
+    where_kind = ' AND i.kind=?' if word else ''
+    identities = db.execute("""SELECT p.item_id, p.color_id,
         max(coalesce(f.max_age_days IS NOT NULL AND coalesce(o.observed_at,'')!='' AND
             julianday(?)-julianday(o.observed_at) >= f.max_age_days+1,0)) AS stale
-        FROM price_current p JOIN price_observations o ON o.id=p.observation_id
+        FROM price_current p JOIN price_observation o ON o.id=p.observation_id JOIN item i ON i.id=p.item_id
         LEFT JOIN source_freshness f ON f.source=o.source AND f.kind='prices'
-        """ + ('WHERE p.item_type=? ' if kind else '') + 'GROUP BY p.item_type,p.item_no,p.color_id',
-        (now().isoformat(), *args)).fetchall()
-    # One filtered scan of successful market observations picks each identity's best U and N quote and
-    # best overall with Collection's own order (source priority, sold before listings, freshest, newest id);
-    # only the winners become dicts, so history depth costs one pass and nothing per row after it.
+        WHERE o.voided_at IS NULL""" + where_kind + ' GROUP BY p.item_id, p.color_id', (now().isoformat(), *args)).fetchall()
+    # One filtered scan of successful market observations picks each identity's best used and new quote and best overall with
+    # Collection's own order (source priority, sold before listings, freshest, newest id); only the winners become dicts, so history
+    # depth costs one pass and nothing per row after it.
     priorities = collection_prices.priority(db)
     ranks, best = {}, {}
     floor = datetime.min.replace(tzinfo=timezone.utc).timestamp()
     cursor = db.cursor()
     cursor.row_factory = None  # plain tuples: this loop runs once per observation
-    cursor.execute("""SELECT id,item_type,item_no,color_id,condition,guide,source,observed_at FROM price_observations o
-        WHERE guide IN ('sold','stock') AND coalesce(slot,'')!='boxed' AND coalesce(error,'')='' AND price IS NOT NULL""" +
-        (' AND item_type=?' if kind else ''), args)
+    cursor.execute("""SELECT o.id, i.kind, o.item_id, o.color_id, o.condition, o.guide, o.source, o.observed_at FROM price_observation o
+        JOIN item i ON i.id=o.item_id WHERE o.guide IN ('sold','stock') AND coalesce(o.slot,'')!='boxed' AND coalesce(o.error,'')=''
+        AND o.voided_at IS NULL AND o.price IS NOT NULL""" + where_kind, args)
     dated = collection_prices.dated
-    # A quote with no recorded condition (migrated data) is a fallback only, and only from the current quotes,
-    # as Collection's choice works on price_current; superseded or errored history never stands in for it.
-    current = {r[0] for r in db.execute('SELECT observation_id FROM price_current' + (' WHERE item_type=?' if kind else ''), args)}
+    # A quote with no recorded condition (migrated data) is a fallback only, and only from the current quotes, as Collection's choice
+    # works on price_current; superseded or errored history never stands in for it.
+    current = {r[0] for r in db.execute('SELECT observation_id FROM price_current' + (' WHERE item_id IN (SELECT id FROM item WHERE kind=?)' if word else ''), args)}
     for r in cursor:
-        if r[4] not in ('U', 'N') and r[0] not in current:
+        if r[4] not in ('used', 'new') and r[0] not in current:
             continue
         order, missing = ranks.get(r[1]) or ranks.setdefault(r[1], (lambda o: ({x: o.index(x) for x in o}, len(o)))(
             [x.split(':')[0] for x in priorities.get(r[1], priorities.get('*', ['bricklink']))]))
         moment = dated(r[7])
-        base = (order.get(r[6], missing), -(moment.timestamp() if moment else floor), -r[0])
-        slots = best.get((r[1], r[2], r[3]))
+        rank = (order.get(r[6], missing), -(moment.timestamp() if moment else floor), -r[0])
+        slots = best.get((r[2], r[3]))
         if slots is None:
-            slots = best[r[1], r[2], r[3]] = [None, None, None]
-        # Index 2 holds a quote with no recorded condition; it is read only when there is no U or N quote.
-        index = 0 if r[4] == 'U' else 1 if r[4] == 'N' else 2
-        candidate = (base[0], r[5] != 'sold') + base[1:] if index < 2 else base
+            slots = best[r[2], r[3]] = [None, None, None]
+        # Index 2 holds a quote with no recorded condition; it is read only when there is no used or new quote.
+        index = 0 if r[4] == 'used' else 1 if r[4] == 'new' else 2
+        candidate = (rank[0], r[5] != 'sold') + rank[1:] if index < 2 else rank
         if slots[index] is None or candidate < slots[index][0]:
-            slots[index] = (candidate, base, r[0])
-    names = {(r['item_type'], r['item_no']): dict(r) for r in db.execute('SELECT * FROM items' + (' WHERE item_type=?' if kind else ''), args)}
-    owned = {(r[0], r[1]) for r in db.execute("""SELECT item_type,set_no FROM copies WHERE archived_at IS NULL
-        UNION SELECT item_type,item_no FROM loose_stock WHERE archived_at IS NULL""")}
-    wanted = {(r[0], r[1]) for r in db.execute('SELECT item_type,item_no FROM wishlist WHERE archived_at IS NULL')}
+            slots[index] = (candidate, rank, r[0])
+    owned = {r[0] for r in db.execute("""SELECT item_id FROM copy WHERE archived_at IS NULL
+        UNION SELECT item_id FROM stock WHERE archived_at IS NULL""")}
+    wanted = {r[0] for r in db.execute('SELECT item_id FROM wish WHERE archived_at IS NULL')}
     rows = []
     for r in identities:
-        key = (r['item_type'], r['item_no'], r['color_id'])
+        key = (r['item_id'], r['color_id'])
         slots = best.get(key, [None, None, None])
         conditions = [s for s in slots[:2] if s]
         pick = min(conditions, key=lambda s: s[1]) if conditions else slots[2]
-        rows.append(dict(names[key[:2]], color_id=key[2], stale=bool(r['stale']), owned=key[:2] in owned,
-                         wanted=key[:2] in wanted, display_price=pick[2] if pick else None))
+        rows.append(dict(item_id=key[0], color_id=key[1], stale=bool(r['stale']), owned=key[0] in owned, wanted=key[0] in wanted,
+                         display_price=pick[2] if pick else None))
     # Winners only become full observation rows, in one read.
-    full = {r['id']: dict(r) for r in db.execute("""SELECT o.*,f.max_age_days FROM price_observations o
+    full = {r['id']: dict(r) for r in db.execute("""SELECT o.*, i.kind, f.max_age_days FROM price_observation o JOIN item i ON i.id=o.item_id
         LEFT JOIN source_freshness f ON f.source=o.source AND f.kind='prices'
         WHERE o.id IN (SELECT value FROM json_each(?))""", (json.dumps([r['display_price'] for r in rows if r['display_price']]),))}
     for row in rows:
         row['display_price'] = full[row['display_price']] if row['display_price'] else None
-    rows = add.decorate_many(db, rows)
+    rows = collection.decorate(db, rows)
     for row in rows:
         if row['display_price']:
             row['display_price'] = collection.decorate_prices([row['display_price']])[0]
     return rows
 
 
-PRICE_FIELDS = 'type number name colour color_id rgb ink image unresolved owned wanted stale price listings age observed price_stale'.split()
+PRICE_FIELDS = 'type number name colour color_id rgb ink image unresolved owned wanted stale price listings age observed price_stale item_id'.split()
 
 
 def price_records(rows):
-    """Compact positional Prices rows (see `PRICE_FIELDS`): identity, kind, owned/wanted, the display
-    price as text with its age and stale flag. Refresh is available to every row that is not unresolved."""
+    """Compact positional Prices rows (see `PRICE_FIELDS`): identity, kind, owned/wanted, the display price as text with its age and
+    stale flag, and the item id the page links and refreshes by. Refresh is available to every row that is not unresolved."""
     from ..web.formatting import money, short_age
     records = []
     for r in rows:
         p = r['display_price']
-        records.append([r['item_type'], r['item_no'], r.get('name') or r['item_no'], r.get('color_name') or '', r['color_id'],
-                        r.get('rgb'), r.get('ink'), r.get('image'), bool(r.get('unresolved')), bool(r['owned']), bool(r['wanted']),
+        records.append([r['item_type'], r.get('number_text') or r.get('name') or '', r.get('name') or r.get('number_text') or '', r.get('color_name') or '',
+                        r['color_id'], r.get('rgb'), r.get('ink'), r.get('image'), bool(r.get('unresolved')), bool(r['owned']), bool(r['wanted']),
                         bool(r['stale']), money(p['price'], p.get('currency') or '', fixed=True) if p else None,
                         bool(p and p['guide'] == 'stock'), short_age(p['age']) if p else '',
-                        (p['observed_at'] or '')[:10] if p else '', bool(p and p['stale'])])
+                        (p['observed_at'] or '')[:10] if p else '', bool(p and p['stale']), r['item_id']])
     return dict(fields=PRICE_FIELDS, rows=records)
 
 
-def price_details(db, kind, number, colour=None):
+def price_details(db, item_id, colour=None):
     """One identity's observation list for the Prices Details disclosure, display text only."""
     from ..web.formatting import money, short_age
-    item = db.execute('SELECT * FROM items WHERE item_type=? AND item_no=?', (kind, number)).fetchone()
+    item = db.execute('SELECT id, kind, category_name, year FROM item WHERE id=?', (item_id,)).fetchone()
     if item is None:
         return None
-    records = collection.decorate_prices(db.execute("""SELECT o.*,f.max_age_days FROM price_observations o
+    kind = item['kind']
+    records = collection.decorate_prices(db.execute("""SELECT o.*, i.kind, f.max_age_days FROM price_observation o JOIN item i ON i.id=o.item_id
         LEFT JOIN source_freshness f ON f.source=o.source AND f.kind='prices'
-        WHERE o.item_type=? AND o.item_no=? AND o.color_id IS ? ORDER BY o.observed_at DESC,o.id DESC""", (kind, number, colour)))
+        WHERE o.item_id=? AND o.color_id IS ? AND o.voided_at IS NULL ORDER BY o.observed_at DESC, o.id DESC""", (item_id, colour)))
     priorities = collection_prices.priority(db)
     by_condition = collection_prices.condition_rows(records, kind, priorities)
-    current = {r[0] for r in db.execute('SELECT observation_id FROM price_current WHERE item_type=? AND item_no=? AND color_id IS ?',
-                                        (kind, number, colour))}
+    current = {r[0] for r in db.execute('SELECT observation_id FROM price_current WHERE item_id=? AND color_id IS ?', (item_id, colour))}
     chosen = collection_prices.choose(by_condition, kind, priorities) or collection_prices.choose(
         [p for p in records if p['id'] in current and p['guide'] in ('sold', 'stock') and p.get('slot') != 'boxed'], kind, priorities)
     amount = lambda value, currency: money(value, currency or '', fixed=True)
@@ -252,7 +256,7 @@ def price_details(db, kind, number, colour=None):
     groups = [dict(label=label, quotes=[quote(p) for p in records if test(p)]) for label, test in (
         ('Market · BrickLink', market), ('Retail · Brickset', retail),
         ('Other valuations', lambda p: not market(p) and not retail(p)))]
-    return dict(context=' · '.join(str(x) for x in (item['category'], item['year']) if x),
+    return dict(context=' · '.join(str(x) for x in (item['category_name'], item['year']) if x),
                 selected=(f"{chosen['label']}{' · avg' if chosen['guide'] == 'sold' else ''} · {amount(chosen['price'], chosen['currency'])}" if chosen else None),
                 conditions=[f"{p['label']} · {amount(p['price'], p['currency'])} · {age(p)}" for p in by_condition],
                 groups=[g for g in groups if g['quotes']], empty=not records)

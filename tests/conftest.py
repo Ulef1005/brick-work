@@ -16,3 +16,14 @@ def _fresh_login_throttle():
     throttle.LOGIN.clients.clear()
     throttle.API.clients.clear()
     yield
+
+
+@pytest.fixture(autouse=True)
+def _pipeline_handlers_restored():
+    """Starting a drainer registers the source handlers process-wide (`core.source_ops.register_handlers`); a test must not leave them
+    for the next one, whose pipeline would then call real sources."""
+    from brickwork.core import pipeline
+    saved = dict(pipeline.HANDLERS)
+    yield
+    pipeline.HANDLERS.clear()
+    pipeline.HANDLERS.update(saved)

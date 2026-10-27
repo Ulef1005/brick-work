@@ -53,6 +53,21 @@ PRIORITY_33 = {'identity': {'*': ['bricklink:local', 'bricklink:api']}, 'invento
                'matching': {'*': ['rebrickable', 'part_resolutions', 'manual']}, 'pictures': {'P': ['rebrickable', 'bricklink'], '*': ['bricklink', 'rebrickable']},
                'metadata': {'S': ['brickset']}, 'market_price': {'*': ['bricklink']}}
 CARRIED_PRIORITY_STEPS = ('pictures', 'metadata', 'market_price')    # the other steps change meaning in 4.0 (design 8.10)
+# The 4.0 picture sources (design 6.8) and their defaults per kind. 3.3 had two: `rebrickable` (the API, for parts and sets) and `bricklink`.
+PICTURES_40 = {'part': ['rebrickable_dump', 'bricklink', 'rebrickable_api'], '*': ['bricklink', 'rebrickable_dump']}
+
+
+def translate_pictures(kind, order, was_default):
+    """A 3.3 picture order for one kind in 4.0's source names (M.8f): the 3.3 default becomes the 4.0 default of that kind; any other
+    order keeps its sequence with `rebrickable` replaced by `rebrickable_dump` and `rebrickable_api` (the dump first, at its place)."""
+    if was_default:
+        return list(PICTURES_40[kind if kind in PICTURES_40 else '*'])
+    out = []
+    for source in order:
+        for new in (['rebrickable_dump', 'rebrickable_api'] if source == 'rebrickable' else [source]):
+            if new not in out:
+                out.append(new)
+    return out
 CARRIED_SETTINGS = re.compile(r'bricklink_region|bricklink_currency|incomplete_discount_pct|repair_\w+|retail_country|display_currency')
 # A 3.3 event names its row as `<table>:<id>` or, from the 3.2 import, `<table>:{"id": ...}`.
 EVENT_KINDS = {'copy': 'copy', 'copies': 'copy', 'stock': 'stock', 'loose_stock': 'stock', 'flags': 'flag', 'flag': 'flag',
@@ -1164,7 +1179,12 @@ class _Writer:
             return {}, ['not valid JSON: dropped']
         kept, listed = {}, []
         for step, types in data.items():
-            if step in CARRIED_PRIORITY_STEPS:
+            if step == 'pictures':
+                kept[step] = {kinds.get(t, t): translate_pictures(kinds.get(t, t), v, PRIORITY_33['pictures'].get(t) == v) for t, v in types.items()}
+                changed = [t for t, v in types.items() if PRIORITY_33['pictures'].get(t) != v]
+                listed.append('pictures: ' + ('the 3.3 default became the 4.0 default (design 6.8)' if not changed else
+                              f'NON-DEFAULT 3.3 order for {", ".join(sorted(changed))} translated: rebrickable -> rebrickable_dump, rebrickable_api'))
+            elif step in CARRIED_PRIORITY_STEPS:
                 kept[step] = {kinds.get(t, t): v for t, v in types.items()}
             else:
                 default = PRIORITY_33.get(step) == types

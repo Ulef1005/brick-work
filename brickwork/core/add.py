@@ -27,7 +27,7 @@ from ..store4 import copies, fetched, identity, jobs, pending
 from ..store4.audit import Events
 from ..store4.connect import has_catalogue, now
 from ..store4.errors import AmbiguousIdentity, Store4Error
-from . import errors, items, size_search, stock
+from . import errors, items, pictures, size_search, stock
 from . import undo as undoing
 from .admin import audit, origin
 from .pipeline import Pipeline
@@ -44,7 +44,7 @@ LIMIT = 100
 CAP = 5000                                      # hits ordered for a name search; the count stays exact beyond it
 FIX = 'python -m brickwork.store4 catalogue reconcile'
 UNKNOWN_DECISIONS = ('unidentified', 'fetch', 'skip')
-PICTURE_ORDER = ['rebrickable_dump', 'bricklink', 'rebrickable_api']
+ASK_KEYS = ('number', 'where', 'quantity', 'condition', 'completeness', 'note', 'list_id', 'max_price', 'max_price_currency', 'qty_filled')
 
 
 # ---------- the catalogue ----------
@@ -165,10 +165,8 @@ def _require_wishlist(db, identifier):
 # ---------- decorating rows ----------
 
 def picture_order(db, kind):
-    """The picture source order for a kind: the setting `source_priority.pictures` (design 6.8), else the default."""
-    row = db.execute("SELECT value FROM main.setting WHERE key='source_priority'").fetchone()
-    order = (json.loads(row[0]) if row else {}).get('pictures', {})
-    return [s.split(':')[0] for s in order.get(kind, order.get('*', PICTURE_ORDER))]
+    """The picture source order for a kind: the setting `source_priority.pictures` (design 6.8), else the default (`core.pictures.order`)."""
+    return pictures.order(db, kind)
 
 
 def decorate_rows(db, rows):
@@ -615,7 +613,8 @@ def _confirm_row(db, pipeline, row, batch, index, via, actor):
     if row.get('unknown'):
         if row['decision'] == 'fetch':
             job, created = jobs.queue_in(db, 'rebrickable_set', payload=row['number'], via=via, actor=actor)
-            receipt.update(fetch_job=job, name=row['number'], label=row['number'], job_reused=not created)
+            receipt.update(fetch_job=job, name=row['number'], label=row['number'], job_reused=not created,
+                           ask={k: row.get(k) for k in ASK_KEYS})            # what to create when the job is done (`settle_fetches`)
             return _save_receipt(db, receipt, via, actor)
         row = {**row, 'item_id': _unidentified_item(db, row['kind'], row['number'], via, actor)}
         receipt.update(item_id=row['item_id'], created_item=row['item_id'])
@@ -644,6 +643,107 @@ def _confirm_row(db, pipeline, row, batch, index, via, actor):
 def _save_receipt(db, receipt, via, actor):
     event = _event(db, 'add:' + receipt['batch'], 'receipt', None, receipt, via, actor)
     return {**receipt, 'event_id': event}
+
+
+# ---------- Fetch from Rebrickable: the copies its receipt asked for (M.8f) ----------
+
+UNSETTLED = f"""FROM main.event e WHERE e.entity_kind='add' AND e.field='receipt' AND json_extract(e.new_value, '$.fetch_job') IS NOT NULL
+    AND NOT EXISTS(SELECT 1 FROM main.event_undo u WHERE u.event_id=e.id)
+    AND NOT EXISTS(SELECT 1 FROM main.event f WHERE f.entity_kind='add' AND f.entity_id=e.entity_id AND f.field IN ('fetched', 'fetch_failed')
+                   AND json_extract(f.new_value, '$.receipt')=e.id)"""
+
+
+def has_unsettled_fetches(db):
+    """A fetch job of an Add receipt is done (or finally failed) and the receipt has not been settled yet: the next drain settles it."""
+    return any(_settleable(db, r) for r in db.execute(f'SELECT e.id, e.new_value {UNSETTLED}'))
+
+
+def _settleable(db, event):
+    job = db.execute('SELECT state, item_id FROM main.job WHERE id=?', (json.loads(event['new_value'])['fetch_job'],)).fetchone()
+    return job is not None and job['state'] == 'done' and job['item_id'] is not None
+
+
+def settle_fetches(db, *, via=None, actor=None):
+    """Create what the receipts of a finished `rebrickable_set` job asked for, once each: the quantity of copies of the fetched set (with
+    the latest Rebrickable list, the same preselection as any Add), or its wish, and the set's own pipeline job. Each is one
+    `add:fetched` event, undoable like the receipt's rows; rows that cannot be made are recorded as `add:fetch_failed` and not tried
+    again. A job that failed leaves its receipt with nothing to create (the job view says so; Retry queues the job again and a later
+    run settles it). Returns the number of receipts settled."""
+    settled = 0
+    for candidate in [r[0] for r in db.execute(f'SELECT e.id {UNSETTLED} ORDER BY e.id').fetchall()]:
+        with transaction(db):                                       # the write lock first, then the checks: another worker or an Undo may have got there
+            event = db.execute(f'SELECT e.id, e.via, e.actor, e.entity_id, e.new_value {UNSETTLED} AND e.id=?', (candidate,)).fetchone()
+            if event is None:                                       # settled by another process, or undone, since the list was read
+                continue
+            receipt = json.loads(event['new_value'])
+            job = db.execute('SELECT state, item_id FROM main.job WHERE id=?', (receipt['fetch_job'],)).fetchone()
+            if job is None or job['state'] != 'done' or job['item_id'] is None:
+                continue
+            settled += 1
+            try:
+                if not isinstance(receipt.get('ask'), dict):
+                    raise ValueError('this row was added before fetch follow-ups existed, so it did not record what to create')
+                _create_fetched(db, event, receipt, job['item_id'], via or event['via'], actor if via else event['actor'])
+            except Exception as error:                              # one receipt never stops the drain or the others; it is recorded and not tried again
+                audit(db, 'add:' + event['entity_id'], 'fetch_failed', None, dict(receipt=event['id'], fetch_job=receipt['fetch_job'], error=str(error)),
+                      via=via or event['via'], actor=actor if via else event['actor'])
+    return settled
+
+
+def _create_fetched(db, event, receipt, item_id, via, actor):
+    """The rows of one settled fetch, inside the caller's transaction; a refusal rolls its savepoint back and is recorded by the caller."""
+    ask = receipt.get('ask') or {}
+    row = dict(ask, item_id=item_id, kind='set', color_id=None, decision='another', quantity=ask.get('quantity') or 1)
+    made = dict(batch=receipt['batch'], index=receipt['index'], receipt=event['id'], fetch_job=receipt['fetch_job'], item_id=item_id,
+                kind='set', where=ask.get('where'), quantity=row['quantity'], copies=[], guards={}, stock=None, wish=None, created_wishlist=None,
+                pending=[], job_id=None, name=receipt.get('name'), label=receipt.get('label'))
+    db.execute('SAVEPOINT fetched')
+    try:
+        items.ensure(db, item_id)
+        live = decorate(db, row)
+        made.update(name=live['name'], label=live['label'])
+        if ask.get('where') == 'wishlist':
+            _add_wish(db, row, made, via, actor)
+        else:
+            for _ in range(row['quantity']):
+                copy_id, waiting = _add_copy(db, row, via, actor)
+                made['copies'].append(copy_id)
+                made['guards'][copy_id] = dict(db.execute('SELECT * FROM main.copy WHERE id=?', (copy_id,)).fetchone())
+                if waiting:
+                    made['pending'].append(dict(waiting, copy_id=copy_id))
+        made['job_id'] = Pipeline(db).queue_steps(item_id, via=via, actor=actor)
+        _event(db, 'add:' + receipt['batch'], 'fetched', None, made, via, actor)
+    except BaseException:
+        db.execute('ROLLBACK TO fetched')
+        raise
+    finally:
+        db.execute('RELEASE fetched')
+
+
+def fetch_outcome(db, job_id):
+    """What became of the Add row that fetched this job's set, for the Add page: `{'state', 'message', 'copies'}`. `state` is `added`
+    (rows made), `waiting` (the job is not done), `failed` (the job failed: nothing was added), `refused` (the fetch worked but the
+    rows could not be made) or `unsettled` (done, rows follow with the next drain)."""
+    job = db.execute('SELECT state FROM main.job WHERE id=?', (job_id,)).fetchone()
+    receipt = db.execute("""SELECT id, entity_id FROM main.event WHERE entity_kind='add' AND field='receipt'
+                            AND json_extract(new_value, '$.fetch_job')=? ORDER BY id DESC LIMIT 1""", (job_id,)).fetchone()
+    if job is None or receipt is None:
+        return None
+    if job['state'] == 'failed':
+        return dict(state='failed', copies=0, message='Fetch failed · nothing was added')
+    if job['state'] != 'done':
+        return dict(state='waiting', copies=0, message='Fetching from Rebrickable')
+    done = db.execute("""SELECT f.field, f.new_value FROM main.event f WHERE f.entity_kind='add' AND f.entity_id=? AND f.field IN ('fetched', 'fetch_failed')
+                         AND json_extract(f.new_value, '$.receipt')=? ORDER BY f.id DESC LIMIT 1""", (receipt['entity_id'], receipt['id'])).fetchone()
+    if done is None:
+        return dict(state='unsettled', copies=0, message='Fetched · adding it now')
+    value = json.loads(done['new_value'])
+    if done['field'] == 'fetch_failed':
+        return dict(state='refused', copies=0, message='Fetched, but nothing was added · ' + str(value.get('error') or 'review the set'))
+    if value.get('wish'):
+        return dict(state='added', copies=0, message='Fetched · added to the wishlist')
+    count = len(value.get('copies') or [])
+    return dict(state='added', copies=count, message=f'Fetched · {count} {"copy" if count == 1 else "copies"} added')
 
 
 # ---------- undo ----------
@@ -707,6 +807,7 @@ def _undo_receipt(db, event, via, actor):
 
 
 undoing.register('add', 'receipt', _undo_receipt)
+undoing.register('add', 'fetched', _undo_receipt)           # the copies a finished Fetch from Rebrickable made: the same rows, the same refusal
 
 
 def undo(db, batch, *, via=None, actor=None):
@@ -714,8 +815,8 @@ def undo(db, batch, *, via=None, actor=None):
     if via is None:
         via, actor = origin()
     with transaction(db):
-        ids = [r[0] for r in db.execute(f"""SELECT e.id FROM main.event e WHERE e.entity_kind='add' AND e.field='receipt' AND e.entity_id=?
-                                            AND NOT {undoing.undone_sql('e')} ORDER BY e.id DESC""", (batch,))]
+        ids = [r[0] for r in db.execute(f"""SELECT e.id FROM main.event e WHERE e.entity_kind='add' AND e.field IN ('receipt', 'fetched')
+                                            AND e.entity_id=? AND NOT {undoing.undone_sql('e')} ORDER BY e.id DESC""", (batch,))]
         for event_id in ids:
             undoing.undo_event(db, event_id, via=via, actor=actor)
     return len(ids)

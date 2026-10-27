@@ -2,10 +2,11 @@
 // against a minimal DOM with a fake fetch. Run from the repository root: node tests/toni_bw_prices_runtime.cjs
 const assert = require('node:assert/strict'), fs = require('node:fs'), vm = require('node:vm');
 const script = fs.readFileSync('static/web/toni/bw-prices.js', 'utf8'), formatting = fs.readFileSync('static/web/toni/formatting.js', 'utf8');
-const FIELDS = 'type number name colour color_id rgb ink image unresolved owned wanted stale price listings age observed price_stale'.split(' ');
+const FIELDS = 'type number name colour color_id rgb ink image unresolved owned wanted stale price listings age observed price_stale item_id'.split(' ');
+let seq = 1000;                                                    // item ids of records that name none: their number, else a counter
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const types = {S: 'Sets', M: 'Minifigures', P: 'Parts', '?': 'Placeholders'};
-const record = (o = {}) => FIELDS.map(f => (f in o ? o[f] : ({type: 'S', number: '1', name: 'Name', colour: '', color_id: null, rgb: null, ink: null, image: null, unresolved: false,
+const record = (o = {}) => FIELDS.map(f => (f in o ? o[f] : f === 'item_id' ? (Number.parseInt(o.number ?? '1', 10) || ++seq) : ({type: 'S', number: '1', name: 'Name', colour: '', color_id: null, rgb: null, ink: null, image: null, unresolved: false,
   owned: false, wanted: false, stale: false, price: '€1.00', listings: false, age: '8 Oct', observed: '2026-10-08', price_stale: false})[f]));
 
 // ---- pure functions: the script is loaded with no #bw-planning, so it only exports its helpers ----
@@ -35,16 +36,16 @@ const B = pure();
   assert.equal(B.filterRows(rows, {stale: 'false'}).length, 3);
   deq(B.filterRows(rows, {collection: 'owned'}).map(r => r.number), ['10']);
   deq(B.filterRows(rows, {collection: 'wanted', type: '?'}).map(r => r.number), ['x?']);
-  const cfg = {types, itemBase: '/collection/item/TYPE/NUMBER', imageBase: '/manage/images/0', unresolvedUrl: '/manage/unresolved', editable: true};
+  const cfg = {types, itemBase: '/collection/item/0', imageBase: '/manage/images/0', unresolvedUrl: '/manage/unresolved', editable: true};
   const html = rows.map(r => B.rowHtml(cfg, r));
   // The row keeps the five blocks the CSS grid expects, in reading order.
   assert.match(html[0], /^<article class="bp-row" tabindex="0" data-bp-row data-key="[^"]+"><div class="bp-identity">.*<div class="bp-kind">.*<div class="bp-values">.*<div class="bp-ages mono secondary">/s);
   assert.match(html[0], /<span class="bc-status">Sets<\/span><span class="bc-status">Owned<\/span>/);
-  assert.match(html[0], /data-bp-refresh='\[&quot;S&quot;,&quot;10&quot;\]'>Update<\/button>/);
+  assert.match(html[0], /data-bp-refresh='10'>Update<\/button>/);
   assert.match(html[0], /<summary>Details<\/summary>/); assert.doesNotMatch(html[0], /<details[^>]* open/);
   assert.match(html[0], /<span class="bp-desktop-age">8 Oct<\/span>/);
-  assert.match(html[0], /href="\/collection\/item\/S\/10"/);
-  assert.match(html[1], /href="\/collection\/item\/P\/9\?colour=5"/); assert.match(html[1], /class="bc-colour" style="background:#C91A09;color:#FAFAF8">Red/);
+  assert.match(html[0], /href="\/collection\/item\/10"/);
+  assert.match(html[1], /href="\/collection\/item\/9\?colour=5"/); assert.match(html[1], /class="bc-colour" style="background:#C91A09;color:#FAFAF8">Red/);
   // No price: "no sales", no age. Unresolved: no refresh button, the unresolved link instead; placeholder wording.
   assert.match(html[2], /<span>no sales<\/span>/); assert.doesNotMatch(html[2], /bp-desktop-age|bp-short-price/);
   assert.doesNotMatch(html[3], /data-bp-refresh/); assert.match(html[3], /href="\/manage\/unresolved">Unresolved figures/); assert.match(html[3], /Placeholder/);
@@ -81,7 +82,7 @@ class El {
 function page({rows, kind = '', editable = true, stored = null, fetcher}) {
   const nodes = {};
   const make = (sel, tag, dataset) => nodes[sel] = new El(tag, dataset);
-  const root = new El('DIV', {screen: 'prices', types: JSON.stringify(types), itemBase: '/collection/item/TYPE/NUMBER', imageBase: '/manage/images/0', unresolvedUrl: '/manage/unresolved', editable: String(editable),
+  const root = new El('DIV', {screen: 'prices', types: JSON.stringify(types), itemBase: '/collection/item/0', imageBase: '/manage/images/0', unresolvedUrl: '/manage/unresolved', editable: String(editable),
     kind, saveUrl: '/planning/action/ACTION', recordsUrl: '/planning/prices/records', detailsUrl: '/planning/prices/details', csrf: 'tok'});
   const container = make('[data-bp-rows]'), search = make('[data-bp-search]', 'INPUT'), sort = make('[data-bp-sort]', 'SELECT'), order = make('[data-bp-order]', 'SELECT');
   sort.value = 'number'; order.value = 'asc';
@@ -163,18 +164,18 @@ const keys = html => [...html.matchAll(/data-key="([^"]+)"/g)].map(m => m[1]);
   const body = new El(); const before = p.calls.length;
   await p.container.fire('toggle', {target: open});
   assert.equal(p.calls.length, before + 1); const url = new URL('http://x' + p.calls.at(-1)[0]); assert.equal(url.pathname, '/planning/prices/details');
-  assert.equal(url.searchParams.get('kind'), 'P'); assert.equal(url.searchParams.get('number'), '101'); assert.equal(url.searchParams.get('colour'), '5');
+  assert.equal(url.searchParams.get('item_id'), '101'); assert.equal(url.searchParams.get('kind'), null); assert.equal(url.searchParams.get('colour'), '5');
   assert.match(body.innerHTML, /Selected price · Used · €1\.00/); assert.equal(open.dataset.loaded, '1');
   await p.container.fire('toggle', {target: open}); assert.equal(p.calls.length, before + 1);
   await p.container.fire('toggle', {target: {...open, open: false, dataset: {}}}); assert.equal(p.calls.length, before + 1);
   // Per-row refresh posts the one identity with the token; the bulk button posts each unique, resolved identity of the filtered rows.
-  const button = new El('BUTTON', {bpRefresh: JSON.stringify(['S', '100'])});
+  const button = new El('BUTTON', {bpRefresh: JSON.stringify(100)});
   await p.container.fire('click', {target: Object.assign(button, {closest: s => s === '[data-bp-refresh]' ? button : null})}); await sleep(5);
-  let post = p.calls.at(-1); assert.equal(post[0], '/planning/action/refresh'); deq(JSON.parse(post[1].body), {items: [['S', '100']], csrf_token: 'tok'});
+  let post = p.calls.at(-1); assert.equal(post[0], '/planning/action/refresh'); deq(JSON.parse(post[1].body), {items: [100], csrf_token: 'tok'});
   assert.equal(p.nodes['[data-bp-message]'].textContent, 'Price refresh queued'); assert.equal(button.disabled, false);
   await p.nodes['[data-bp-refresh-all]'].fire('click'); await sleep(5);
   post = p.calls.at(-1); const sent = JSON.parse(post[1].body).items;
-  assert.equal(sent.length, 40); assert.ok(!sent.some(i => i[0] === '?')); assert.equal(new Set(sent.map(i => i.join('|'))).size, 40);
+  assert.equal(sent.length, 40); assert.ok(sent.every(i => Number.isInteger(i))); assert.equal(new Set(sent).size, 40);
   await p.chips[1].fire('click'); await p.nodes['[data-bp-refresh-all]'].fire('click'); await sleep(5);
   assert.equal(JSON.parse(p.calls.at(-1)[1].body).items.length, 7);
   // Without edit rights the page has no refresh buttons in rows.

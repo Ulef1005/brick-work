@@ -171,7 +171,7 @@
   message(`Added ${words(result.receipts.length)}`);monitors.forEach(m=>m.destroy());monitors=[];progress.clear();
   result.receipts.forEach(r=>{
    const section=el('section',undefined,'panel');section.append(el('h3',`${r.label || r.name}${r.label && r.name && r.label !== r.name ? ' · ' + r.name : ''}`));
-   if(r.fetch_job)section.append(el('p','Fetching this set from Rebrickable · add it again when the job is done','secondary'));
+   if(r.fetch_job)section.append(el('p','Fetching this set from Rebrickable · the copy is added when the job is done','secondary'));
    const cloned=$('progress-template').content.cloneNode(true);section.append(cloned);$('job-list').append(section);
    const jobId=r.job_id || r.fetch_job;progress.set(jobId,{completed_steps:0,total_steps:r.fetch_job ? 1 : 6});
    const monitor=new window.BrickImportProgress(section.querySelector('.bw-import-progress'),channel,{jobId,retry:(job,step)=>{

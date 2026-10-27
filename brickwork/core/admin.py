@@ -392,94 +392,92 @@ def save_settings(db, country, priority, freshness):
 
 
 def stale_prices(db):
-    # Latest successful market observations per source, condition and colour.
-    rows = db.execute('''SELECT i.item_type,i.item_no,i.name,w.color_id,w.condition FROM items i
-        JOIN (SELECT item_type,set_no item_no,NULL color_id,condition FROM copies WHERE archived_at IS NULL
-              UNION SELECT item_type,item_no,color_id,condition FROM loose_stock WHERE archived_at IS NULL
-              UNION SELECT item_type,item_no,color_id,CASE condition WHEN 'new' THEN 'N' WHEN 'used' THEN 'U' END FROM wishlist WHERE archived_at IS NULL) w
-        ON w.item_type=i.item_type AND w.item_no=i.item_no WHERE i.item_type!='?' ''').fetchall()
-    config = settings(db)['priority']['market_price']
-    rules = {(r['source'], r['kind']): r['max_age_days'] for r in db.execute('SELECT * FROM source_freshness')}
-    enabled_sources = dict(db.execute('SELECT source,enabled FROM sources'))
-    observed_dates = {}
-    for r in db.execute('''SELECT item_type,item_no,color_id,condition,source,max(observed_at) observed
-        FROM price_observations WHERE guide IN ('sold','stock') AND error IS NULL GROUP BY 1,2,3,4,5'''):
-        observed_dates[tuple(r[:5])] = r['observed']
-        key = (r[0], r[1], r[2], None, r[4])
-        observed_dates[key] = max(observed_dates.get(key) or '', r['observed'] or '')
-    result = []
+    """The held or wanted (item, colour, condition) whose market price is not fresh from some enabled source of its kind's order.
+
+    One row per line the collection holds (a set copy, loose stock, a wish) with `item_id`, `color_id`, `condition` (words; None for
+    "any"), `name` and, for display, the BrickLink `item_type` letter and `item_no`. Fresh means a successful, unvoided sold or stock
+    observation younger than the source's `prices` freshness rule (7 days when there is none)."""
+    from . import collection_prices, items
+    rows = db.execute('''SELECT i.id AS item_id, i.name, i.kind, w.color_id, w.condition FROM main.item i JOIN
+        (SELECT item_id, NULL color_id, condition FROM main.copy WHERE archived_at IS NULL
+         UNION SELECT item_id, color_id, condition FROM main.stock WHERE archived_at IS NULL AND kind!='minifigure'
+         UNION SELECT item_id, color_id, CASE condition WHEN 'any' THEN NULL ELSE condition END FROM main.wish WHERE archived_at IS NULL) w
+        ON w.item_id=i.id WHERE i.merged_into IS NULL AND i.born_key IS NOT NULL ORDER BY i.id, w.color_id, w.condition''').fetchall()
+    priority = collection_prices.priority(db)
+    rules = {(r['source'], r['kind']): r['max_age_days'] for r in db.execute('SELECT source, kind, max_age_days FROM main.source_freshness')}
+    enabled = dict(db.execute('SELECT id, enabled FROM main.source'))
+    observed = {}
+    for r in db.execute("""SELECT item_id, color_id, condition, source, max(observed_at) AS observed FROM main.price_observation
+                           WHERE guide IN ('sold','stock') AND error IS NULL AND voided_at IS NULL GROUP BY 1, 2, 3, 4"""):
+        observed[r['item_id'], r['color_id'], r['condition'], r['source']] = r['observed']
+        key = (r['item_id'], r['color_id'], None, r['source'])                   # a quote with no condition answers "any"
+        observed[key] = max(observed.get(key) or '', r['observed'] or '')
+    labels = items.labels(db, {(r['item_id'], r['color_id']) for r in rows})
+    moment, result = now(), []
     for row in rows:
-        sources = config.get(row['item_type'], config.get('*', []))
         stale = False
-        for source in sources:
-            source = source.split(':')[0]
-            if source in enabled_sources and not enabled_sources[source]:
+        for source in (s.split(':')[0] for s in priority.get(row['kind'], priority.get('*', ['bricklink']))):
+            if source in enabled and not enabled[source]:
                 continue
             days = rules.get((source, 'prices'), rules.get((source, 'price'), 7))
             if days is None:
                 continue
-            observed = observed_dates.get((row['item_type'], row['item_no'], row['color_id'], row['condition'], source))
+            stamp_found = observed.get((row['item_id'], row['color_id'], row['condition'], source))
             try:
-                stamp = datetime.fromisoformat(observed) if observed else None
-                if stamp is not None and stamp.tzinfo is None:
-                    stamp = stamp.replace(tzinfo=timezone.utc)
-                fresh = stamp is not None and (now() - stamp).total_seconds() < days * 86400
+                seen = datetime.fromisoformat(stamp_found.replace('Z', '+00:00')) if stamp_found else None
+                if seen is not None and seen.tzinfo is None:
+                    seen = seen.replace(tzinfo=timezone.utc)
+                fresh = seen is not None and (moment - seen).total_seconds() < days * 86400
             except ValueError:
                 fresh = False
             stale |= not fresh
         if stale:
-            result.append(dict(row))
+            label = labels.get((row['item_id'], row['color_id']))
+            result.append(dict(item_id=row['item_id'], color_id=row['color_id'], condition=row['condition'], name=row['name'],
+                               item_type=items.type_of_kind(row['kind']), item_no=(label.number if label else None) or ''))
     return result
 
 
-def live_import_job(db, item_type, item_no):
-    """Return an item's active pipeline job, including a budget wait."""
-    row = db.execute("SELECT id FROM jobs WHERE source='import' AND item_type=? AND item_no=? AND state IN ('queued','running','waiting_for_budget') ORDER BY id LIMIT 1",
-                     (item_type, item_no)).fetchone()
+def live_import_job(db, item_id):
+    """The id of an item's pipeline job that has not finished (queued, running or waiting for a budget), else None."""
+    row = db.execute("SELECT id FROM main.job WHERE kind='item' AND item_id=? AND state IN ('queued','running','waiting_for_budget') ORDER BY id LIMIT 1",
+                     (item_id,)).fetchone()
     return row[0] if row else None
 
 
-def queue_refresh(db, rows, steps=('market_price',), sources=None):
+def queue_refresh(db, rows, steps=('market_price',)):
+    """Queue `steps` for each item of `rows` (dicts with `item_id`) that has no unfinished pipeline job; returns the job ids."""
     pipeline = Pipeline(db)
     with transaction(db):
         jobs = []
-        for key in sorted({(r['item_type'], r['item_no']) for r in rows}):
-            if live_import_job(db, *key) is not None:
+        for item_id in sorted({r['item_id'] for r in rows}):
+            if live_import_job(db, item_id) is not None:
                 continue
-            jobs.append(pipeline.queue_steps(*key, steps, sources=sources))
+            jobs.append(pipeline.queue_steps(item_id, steps, via='app'))
         return jobs
 
 
 def queue_missing_booklets(db):
-    """Queue the existing identity step for booklet identities without a PDF.
-
-    The import pipeline has no instruction-PDF step, so this refreshes the
-    catalogue record only; it never downloads a PDF. Identities the pipeline
-    would reject are skipped and returned, so one bad number cannot undo the batch.
-    Returns (queued job ids, skipped item numbers).
-    """
-    rows = db.execute("""SELECT item_type,item_no FROM items i WHERE item_type='I' AND NOT EXISTS(
-        SELECT 1 FROM instruction_files f WHERE f.item_type='I' AND f.set_no=i.item_no)""").fetchall()
-    ok = lambda r: re.fullmatch('[A-Za-z0-9-]{1,32}', r['item_no'])
-    valid = [r for r in rows if ok(r)]
-    skipped = [r['item_no'] for r in rows if not ok(r)]
-    return queue_refresh(db, valid, steps=('identity',)), skipped
+    """Queue the identity step for instruction items without a PDF. The identity step is local in 4.0 and the pipeline has no
+    instruction-PDF step, so this checks the item's number only; it never downloads a PDF. Returns (queued job ids, skipped numbers)."""
+    rows = db.execute("""SELECT i.id, i.born_key FROM main.item i WHERE i.kind='instructions' AND i.merged_into IS NULL AND NOT EXISTS(
+        SELECT 1 FROM main.instruction_file f WHERE f.item_id=i.id AND f.archived_at IS NULL) ORDER BY i.id""").fetchall()
+    ok = [{'item_id': r['id']} for r in rows if r['born_key'] is not None]
+    skipped = [str(r['id']) for r in rows if r['born_key'] is None]
+    return queue_refresh(db, ok, steps=('identity',)), skipped
 
 
 def count_jobs(db):
-    return db.execute("SELECT count(*) FROM jobs WHERE source='import'").fetchone()[0]
+    return db.execute("SELECT count(*) FROM main.job").fetchone()[0]
 
 
 def jobs(db):
-    has_steps = db.execute("SELECT 1 FROM sqlite_master WHERE name='import_steps'").fetchone()
+    """Every job, newest first, each with its steps (the Jobs list): pipeline jobs and the two fetch kinds."""
     from collections import defaultdict
     steps = defaultdict(list)
-    if has_steps:
-        for row in db.execute("""SELECT s.* FROM import_steps s JOIN jobs j ON j.id=s.job_id
-                WHERE j.source='import' ORDER BY s.job_id,s.position"""):
-            steps[row['job_id']].append(dict(row))
-    return [{**dict(r), 'steps': steps[r['id']]}
-            for r in db.execute("SELECT * FROM jobs WHERE source='import' ORDER BY id DESC")]
+    for row in db.execute("SELECT * FROM main.job_step ORDER BY job_id, position"):
+        steps[row['job_id']].append(dict(row))
+    return [{**dict(r), 'steps': steps[r['id']]} for r in db.execute("SELECT * FROM main.job ORDER BY id DESC")]
 
 
 def statistics(db):

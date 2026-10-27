@@ -529,7 +529,7 @@ def brickwork_check():
 
 
 def jobs_worker():
-    from ..core.pipeline import worker
+    from ..core.drainer import worker
     return worker(path=brickwork_path())
 
 

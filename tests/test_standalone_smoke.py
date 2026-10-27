@@ -1,7 +1,8 @@
 """Standalone installation contract on the 4.0 store: real app and CLI, a fixture catalogue built offline, no sockets (M.8a, #110).
 
 What renders without ported modules: the install files, the login page, Add (M.8c), Check Set Parts and the collection's writes (M.8d), the
-Workbench (Matcher, Part Picker, Take and Give, Storage, printable lists; M.8e) and (M.8b)
+Workbench (Matcher, Part Picker, Take and Give, Storage, printable lists; M.8e), the sources (pictures, Brickset, BrickLink prices, the Prices
+screen and a set fetched from Rebrickable; M.8f) and (M.8b)
 the collection's read side: `/` and the collection lists
 (the first-run page on an empty collection), the item page by id, the wish, lot and purchase-place pages, the jump search. Every other browser
 screen answers 503 until its piece ports it. API v1 answers 410, except `/api/v1/health`."""
@@ -355,6 +356,69 @@ def test_the_workbench_gives_takes_moves_and_undoes(tmp_path, monkeypatch, offli
     # the printable missing-parts list names the gap
     printed = client.get(f'/lists/missing/print?copy={w.copy_a}').get_data(as_text=True)
     assert '3001' in printed and 'Red' in printed
+    with closing(connect(path)) as db:
+        assert db.execute('PRAGMA foreign_key_check').fetchall() == [] and db.execute('PRAGMA integrity_check').fetchone()[0] == 'ok'
+    assert offline == []
+
+
+def test_the_sources_fetch_pictures_prices_and_retail_and_a_fetched_set_makes_its_copies(tmp_path, monkeypatch, offline):
+    """The sources piece on a fixture pair, with fake transports and invented keys: Add a set and the pipeline fetches its picture, its Brickset
+    metadata and retail price and its BrickLink prices; the Prices screen and the item page show them; Fetch from Rebrickable makes the copies
+    the Add row asked for once the job is done; Undo takes them back."""
+    from brickwork.core import drainer, source_ops
+    from brickwork.store4 import jobs
+    from tests.sources4 import Pictures, Router, keyed, price_reply
+    from tests.test_add_fetch_followup import Rebrickable as FakeRebrickable
+    path = make_pair(tmp_path, rich=True)
+    monkeypatch.setenv('BW_AUTHENTICATION_PASSWORD', 'synthetic-password')
+    keyed(monkeypatch, 'bricklink', 'brickset', 'rebrickable')
+    brickset = {'status': 'success', 'matches': 1, 'sets': [{
+        'setID': 5001, 'number': '1000', 'numberVariant': 1, 'name': 'Syn Castle Keep', 'year': 1990, 'theme': 'Castle', 'pieces': 438,
+        'LEGOCom': {'DE': {'retailPrice': 79.99, 'dateFirstAvailable': '1990-01-01T00:00:00Z', 'dateLastAvailable': '2030-12-31T00:00:00Z'}}}]}
+    source_ops.register_handlers(http=Router({'/items/SET/1000-1/price': price_reply(average='12.5'), 'getSets': brickset}), image_http=Pictures())
+    monkeypatch.setitem(jobs._DEFAULT_HTTP, 'rebrickable', FakeRebrickable())
+    client = logged_in(make_app(path, monkeypatch))
+    client.get('/manage/add')
+    with client.session_transaction() as session:
+        csrf = session['bw_add_csrf']
+
+    def add(text, **edits):
+        proposal = client.post('/manage/add/review', json=dict(csrf_token=csrf, type='set', where='owned', mode='paste', text=text)).json
+        for row in proposal['items']:
+            row.update(edits)
+        done = client.post('/manage/add/confirm', json=dict(csrf_token=csrf, token=proposal['token'], items=proposal['items']))
+        assert done.status_code == 200, done.json
+        return done.json
+
+    def rows(sql, *args):
+        with closing(connect(path, read_only=True)) as db:
+            return [tuple(r) for r in db.execute(sql, args)]
+
+    added = add('1000-1', condition='used')
+    drainer.drain_once(path)
+    set_id = added['receipts'][0]['item_id']
+    assert rows('SELECT state FROM job WHERE id=?', added['receipts'][0]['job_id']) == [('done',)]
+    assert rows("SELECT name, state, source FROM job_step WHERE job_id=? AND name IN ('pictures', 'metadata', 'market_price') ORDER BY name", added['receipts'][0]['job_id']) == [
+        ('market_price', 'done', 'bricklink'), ('metadata', 'done', 'brickset'), ('pictures', 'done', 'bricklink')]
+    assert rows('SELECT source, kind FROM picture WHERE item_id=?', set_id) == [('bricklink', 'photo')]
+    assert rows("SELECT condition, provider_key, price FROM price_observation WHERE item_id=? AND guide='sold' ORDER BY condition", set_id) == [
+        ('new', 'S:1000-1', '12.5'), ('used', 'S:1000-1', '12.5')]
+    assert rows("SELECT price, currency, region FROM price_observation WHERE item_id=? AND guide='retail'", set_id) == [('79.99', 'EUR', 'DE')]
+    # the Prices screen and the item page show what was fetched
+    prices = client.get('/planning/prices/records').get_json()
+    record = dict(zip(prices['fields'], next(r for r in prices['rows'] if r[-1] == set_id)))
+    assert record['price'] == '€12.50' and record['number'] == '1000-1' and record['owned'] and not record['price_stale']
+    assert '€12.50' in json.dumps(client.get(f'/planning/prices/details?item_id={set_id}').get_json(), ensure_ascii=False)
+    page = client.get(f'/collection/item/{set_id}').get_data(as_text=True)
+    assert '€12.50' in page and 'Retail · DE' in page and '€79.99' in page and f'/manage/images/{rows("SELECT id FROM picture WHERE item_id=?", set_id)[0][0]}' in page
+    # an unknown number fetched from Rebrickable: the job finishes, the copies the row asked for appear, and Undo takes them back
+    fetched = add('99999-9', decision='fetch', quantity=2, condition='used')
+    assert rows('SELECT count(*) FROM copy c JOIN item i ON i.id=c.item_id WHERE i.born_key=?', '99999-9') == [(0,)]
+    drainer.drain_once(path)
+    assert rows('SELECT count(*), min(inventory_source) FROM copy c JOIN item i ON i.id=c.item_id WHERE i.born_key=? AND c.archived_at IS NULL', '99999-9') == [(2, 'rebrickable_api')]
+    assert client.get(f'/manage/add/jobs/{fetched["receipts"][0]["fetch_job"]}').json['events'][-1]['message'] == 'Fetched · 2 copies added'
+    assert client.post('/manage/add/undo', json=dict(csrf_token=csrf, batch=fetched['batch'])).json == {'message': 'Undone'}
+    assert rows('SELECT count(*) FROM copy c JOIN item i ON i.id=c.item_id WHERE i.born_key=? AND c.archived_at IS NULL', '99999-9') == [(0,)]
     with closing(connect(path)) as db:
         assert db.execute('PRAGMA foreign_key_check').fetchall() == [] and db.execute('PRAGMA integrity_check').fetchone()[0] == 'ok'
     assert offline == []

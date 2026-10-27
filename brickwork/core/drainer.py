@@ -7,7 +7,7 @@ import time
 from datetime import datetime, timezone
 
 from ..store4 import jobs
-from . import pipeline
+from . import add, pipeline, source_ops
 from .admin import begin_operation, end_operation
 from .connect import connect
 from .sources.base import audit_origin
@@ -36,13 +36,16 @@ def poll_delay(db):
 def pending(db):
     """Is there work for the drainer at start-up: an active job, or copies still pending on a finished one (`jobs.has_leftovers`;
     the process stopped before settling them). One drain settles what can be settled, then `poll_delay` lets the worker stop."""
-    return db.execute(PENDING_SQL + ' LIMIT 1').fetchone() is not None or jobs.has_leftovers(db)
+    return db.execute(PENDING_SQL + ' LIMIT 1').fetchone() is not None or jobs.has_leftovers(db) or add.has_unsettled_fetches(db)
 
 
 def drain_once(path):
-    """One pass of both runners. The fetch jobs go first: a BrickLink or Rebrickable list a pipeline job looks for may have landed."""
+    """One pass of both runners. The fetch jobs go first: a BrickLink or Rebrickable list a pipeline job looks for may have landed.
+    Then the copies a finished Fetch from Rebrickable asked for are made (`add.settle_fetches`); their pipeline job runs on the next pass."""
     with closing(connect(path)) as db:
-        return jobs.drain(db) + pipeline.drain(db)
+        ran = jobs.drain(db) + pipeline.drain(db)
+        add.settle_fetches(db)
+        return ran
 
 
 def loop(path, sleep, *, stop=None):
@@ -87,6 +90,7 @@ def start(app, path, fallback=None):
     """
     if not enabled():
         return False
+    source_ops.register_handlers()                  # the pipeline runs the source steps only where a worker runs (a test's pipeline skips them)
     with LOCK:
         if app.extensions.get('bw_import_worker_active'):
             return True
@@ -117,3 +121,9 @@ def start(app, path, fallback=None):
             app.extensions['bw_import_worker_active'] = False
         raise
     return True
+
+
+def worker(*, path, stop=None, poll_seconds=None):
+    """`brickwork worker`: drain the queue in this process until nothing is pending (the headless counterpart of the embedded drainer)."""
+    source_ops.register_handlers()
+    loop(path, sleep, stop=stop)

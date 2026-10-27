@@ -452,7 +452,7 @@ def bw_export():
 def bw_image(image_id):
     """A picture of an item (`picture`, a cache: a number) or an own photo (`photo`: a hex text that is never all digits), by file.
 
-    Catalogue pictures are fetched by jobs (M.8f) and nothing is cached before that: a number with no row answers 404, like a row whose file is gone."""
+    Pictures are fetched by the pipeline's `pictures` step (`core.pictures`): a number with no row answers 404, like a row whose file is gone."""
     from .admin_ops import brickwork_path
     from ..core.admin import database
     from ..core.media import root_for
@@ -692,6 +692,8 @@ def bw_add_job(job):
         if snapshot is None:
             abort(404)
         steps = db.execute('SELECT * FROM job_step WHERE job_id=? ORDER BY position', (job,)).fetchall()
+        from ..core import add
+        fetch = add.fetch_outcome(db, job)           # a Fetch from Rebrickable job says what became of the Add row that asked for it
     # Only the safe step contract is returned; raw payloads and source keys stay server-side.
     done = sum(s['state'] == 'done' for s in steps)
     # The progress widget speaks started/progress/waiting/failed/done.
@@ -701,7 +703,7 @@ def bw_add_job(job):
         job_state=snapshot['state'], retry=s['state'] == 'failed',
         message=s['error'] if s['state'] == 'failed' or (s['state'] == 'done' and s['error']) else 'Waiting for budget' if s['state'] == 'waiting_for_budget' else 'Importing · ' + s['name']) for s in steps]
     events.append(dict(job_id=job, step=None, state=snapshot['state'], completed_steps=done,
-        total_steps=len(steps), message='Import complete' if snapshot['state'] == 'done' else 'Import needs attention' if snapshot['state'] == 'failed' else 'Waiting for budget' if snapshot['state'] == 'waiting_for_budget' else 'Import queued'))
+        total_steps=len(steps), message=fetch['message'] if fetch and fetch['state'] != 'waiting' else 'Import complete' if snapshot['state'] == 'done' else 'Import needs attention' if snapshot['state'] == 'failed' else 'Waiting for budget' if snapshot['state'] == 'waiting_for_budget' else 'Import queued'))
     response = jsonify(events=events)
     response.headers['Cache-Control'] = 'no-store'
     return response
@@ -1480,6 +1482,9 @@ def bw_planning(screen):
     from ..core.admin import database
     from .admin_ops import brickwork_path
     if screen not in ('wishlist','prices','complete-sets'): abort(404)
+    if screen!='prices':
+        from .ported import holding
+        return holding()                       # the Wishlist and Complete sets are planning screens (M.8g); only Prices is on the 4.0 store
     error=None;rows=[];settings={};available_types=[];lists=[]
     list_id=request.args.get('list','all')
     kind=request.args.get('kind') or None
@@ -1494,7 +1499,7 @@ def bw_planning(screen):
                 rows=[r for r in planning.wishes(db) if list_id=='all' or r['list_id']==list_id]
             elif screen=='prices':
                 # Rows are not rendered here: the page loads compact records and each row's observations on demand.
-                available_types=[r[0] for r in db.execute('SELECT DISTINCT item_type FROM price_current')]
+                available_types=[collection.type_of(r[0]) for r in db.execute('SELECT DISTINCT i.kind FROM price_current p JOIN item i ON i.id=p.item_id')]
             else:
                 data=planning.ranking(db);rows=data['rows'];settings=data['settings']
     except (ValueError,sqlite3.Error,OSError) as exc: error=public(exc, 'Brick Work database is not available. Check BW_DB_PATH and try again.')
@@ -1530,14 +1535,14 @@ def bw_prices_details():
     from ..core import planning, collection
     from ..core.admin import database
     from .admin_ops import brickwork_path
-    kind,number=request.args.get('kind'),request.args.get('number')
-    if kind not in collection.TYPES or not number: abort(400)
-    try: colour=int(request.args['colour']) if request.args.get('colour') not in (None,'') else None
-    except ValueError: abort(400)
-    if colour is not None and not 0<=colour<2**31: abort(400)
+    try:
+        item_id=int(request.args['item_id'])
+        colour=int(request.args['colour']) if request.args.get('colour') not in (None,'') else None
+    except (KeyError,ValueError): abort(400)
+    if item_id<1 or colour is not None and not 0<colour<2**31: abort(400)
     try:
         with database(brickwork_path(),read_only=True) as db:
-            result=planning.price_details(db,kind,number,colour)
+            result=planning.price_details(db,item_id,colour)
     except (ValueError,sqlite3.Error,OSError) as exc: return jsonify(message=public(exc, 'Brick Work database is not available · try again')),503
     if result is None: abort(404)
     response=jsonify(result);response.headers['Cache-Control']='no-store';return response
@@ -1546,42 +1551,38 @@ def bw_prices_details():
 @web_page.post('/planning/action/<action>')
 @login_required
 def bw_planning_write(action):
+    """The one planning write on the 4.0 store is the price refresh: `items` are item ids; each gets one `market_price` job unless it
+    has an unfinished pipeline job already. Export, the saves and their Undo are planning (M.8g)."""
     import json
-    from ..core import planning
-    from ..core.admin import database
+    from ..core import items as core_items
+    from ..core.admin import database, live_import_job
     from ..core.pipeline import Pipeline
+    from ..core.transaction import transaction
     from .admin_ops import brickwork_path
-    if action!='export' and not bw_collection_editable(): abort(403,'Changes are switched off on this instance')
+    if action!='refresh':
+        from .ported import holding
+        return holding()
+    if not bw_collection_editable(): abort(403,'Changes are switched off on this instance')
     data=request.get_json(silent=True)
     if not isinstance(data,dict): abort(400)
     bw_add_csrf(data)
     try:
+        identities=data.get('items')
+        if not isinstance(identities,list) or not identities or len(identities)>2000: raise ValueError('Choose priced items')
+        ids=[]
+        for identifier in identities:
+            if type(identifier) is not int or identifier<1: raise ValueError('Choose item identities')
+            if identifier not in ids: ids.append(identifier)
         with database(brickwork_path()) as db:
-            if action=='export':
-                response=current_app.response_class(planning.export(db,data.get('ids')),mimetype='application/xml')
-                response.headers['Content-Disposition']='attachment; filename="missing-parts.xml"'
-                response.headers['Cache-Control']='no-store'
-                return response
-            if action=='refresh':
-                identities=data.get('items')
-                if not isinstance(identities,list) or not identities or len(identities)>2000: raise ValueError('Choose priced items')
-                keys=[];seen=set()
-                for key in identities:
-                    if not isinstance(key,list) or len(key)!=2 or not all(isinstance(v,str) for v in key): raise ValueError('Choose item identities')
-                    if tuple(key) not in seen:
-                        seen.add(tuple(key));keys.append(key)
-                valid={(r[0],r[1]) for r in db.execute('SELECT item_type,item_no FROM items WHERE (item_type,item_no) IN (SELECT json_extract(value,\'$[0]\'),json_extract(value,\'$[1]\') FROM json_each(?))',(json.dumps(keys),))}
-                if set(map(tuple,keys))!=valid or any(k[0]=='?' for k in keys): raise ValueError('Resolve items before refreshing')
-                pipeline=Pipeline(db)
-                with db:
-                    db.execute('BEGIN IMMEDIATE')
-                    jobs=[pipeline.queue_steps(*key,['market_price'],via='app') for key in keys]
-                bw_start_worker()
-                return jsonify(message='Price refresh queued · budgets checked by the worker',jobs=jobs)
-            if action=='undo': planning.undo(db,int(data['event_id']));event=None
-            else: event=planning.save(db,action,data)
+            try:
+                if any(core_items.label(db,i).unidentified for i in ids): raise ValueError('Resolve items before refreshing')
+            except core_items.errors.NotFound: raise ValueError('Choose item identities') from None
+            pipeline=Pipeline(db)
+            with transaction(db):
+                jobs=[pipeline.queue_steps(i,['market_price'],via='app') for i in ids if live_import_job(db,i) is None]
+        bw_start_worker()
+        return jsonify(message='Price refresh queued · budgets checked by the worker',jobs=jobs)
     except (ValueError,KeyError,TypeError,sqlite3.Error,OSError) as exc: return jsonify(message=public(exc, 'Nothing was saved · review the values and try again')),400
-    return jsonify(message='Undone' if action=='undo' else 'Saved',event_id=event)
 
 
 @web_page.post('/planning/wishlists/<action>')

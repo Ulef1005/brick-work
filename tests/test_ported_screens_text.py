@@ -1,7 +1,7 @@
 """4.6r on the 4.0 store (M.8c, issue #110): every ported screen uses words for visible numeric differences.
 
-`ROUTES` lists the screens a piece has ported; each piece adds its own (the planning and prices screens are still in
-`test_web_unsigned_text.py`, quarantined). Item, lot, wish and Check Set Parts pages are walked from the data (M.8d: the chooser, every copy's
+`ROUTES` lists the screens a piece has ported; each piece adds its own (the planning screens are still in
+`test_web_unsigned_text.py`, quarantined; M.8f added the Prices screen and the text its records and details carry). Item, lot, wish and Check Set Parts pages are walked from the data (M.8d: the chooser, every copy's
 check screen, running and not, and every figure line's; M.8e: the Part Picker and Matcher with each copy selected, the Storage screen of every
 storage, the printable lists and the Part to Inventory page)."""
 import re
@@ -15,7 +15,7 @@ SIGN = re.compile(r'(?:^|[\s(\[·])[-−–—]\d')
 KINDS = ('sets', 'wishes', 'purchase-places', 'M', 'P', 'I', 'O', 'G', 'B', 'C')
 ROUTES = ['/collection/' + kind for kind in KINDS] + ['/manage/add', '/manage/add?type=part&where=wishlist&number=3001', '/workbench/check-parts'] + [
     '/workbench/part-picker', '/workbench/matcher', '/workbench/match', '/workbench/storage', '/workbench/storage/unstored', '/workbench/part-to-inventory',
-    '/lists/wishlist/print', '/lists/wishlist.csv']
+    '/lists/wishlist/print', '/lists/wishlist.csv', '/planning/prices', '/planning/prices?kind=P']
 
 
 def assert_unsigned(html, route, shell=True):
@@ -59,3 +59,28 @@ def test_every_ported_screen(world, coll, client, read):
         if route.endswith('.csv'):
             continue
         assert_unsigned(response.text, route, shell=not route.startswith('/lists/'))        # a printable list is a page of its own, without the shell
+
+
+def test_the_prices_records_and_details_use_words_for_numeric_differences(world, coll, client, read):
+    """The Prices screen is drawn by script from two JSON answers: their display text is held to the same rule as a page."""
+    coll.price(world.gate, '12.30', condition='new', guide='stock', minimum='10', maximum='15', sold=3)
+    coll.price(world.keep, '25.00', condition='new', minimum='20', maximum='30', sold=5, source='bricklink', slot='bricklink_new', key='S:1000-1')
+    texts = []
+    data = client.get('/planning/prices/records').get_json()
+    for row in data['rows']:
+        texts += [str(v) for v in row if isinstance(v, str)]
+    with read() as db:
+        identities = [(r['item_id'], r['color_id']) for r in db.execute('SELECT DISTINCT item_id, color_id FROM price_current')]
+    assert len(identities) > 3
+    for item_id, colour in identities:
+        details = client.get('/planning/prices/details', query_string=dict(item_id=item_id, **({} if colour is None else {'colour': colour}))).get_json()
+        assert details is not None
+        texts += [str(details['context'] or ''), str(details['selected'] or ''), *details['conditions']]
+        for group in details['groups']:
+            texts.append(group['label'])
+            for quote in group['quotes']:
+                texts += [quote['label'], quote['head'], quote['meta'], quote.get('aria', ''), quote.get('min', ''), quote.get('max', '')]
+    assert any('€' in t for t in texts)
+    for text in texts:
+        assert not SIGN.search(text), text
+        assert not re.search(r'\d[–—−]\d', text), text

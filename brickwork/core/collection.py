@@ -15,7 +15,7 @@ from pathlib import Path
 from uuid import uuid4
 from urllib.parse import quote, urlencode
 
-from . import add, stock, collection_prices, errors, items
+from . import add, stock, collection_prices, errors, items, pictures
 from . import undo as undoing
 from .currency import configured_currency
 from .admin import audit, origin
@@ -77,7 +77,7 @@ def _priority(db, group, loaded=None):
 
 
 def _picture_rank(order, kind):
-    sources = [s.split(':')[0] for s in order.get(kind, order.get('*', ['bricklink', 'rebrickable']))]
+    sources = [s.split(':')[0] for s in order.get(kind) or order.get('*') or pictures.DEFAULT_ORDER.get(kind, pictures.DEFAULT_ORDER['*'])]
 
     def rank(source):
         for position, wanted in enumerate(sources):

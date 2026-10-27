@@ -522,9 +522,9 @@ def move_kind_in(db, item_id, new_kind, *, via, actor=None, operation_key=None):
                         log.update('photo', photo, copy_id=copy_id)
     else:
         for row in stock_rows:
-            log.insert('stock', **{**{c: row[c] for c in log.cols('stock')}, '_rowid': row['_rowid'], 'kind': new_kind})
+            log.insert('stock', **{**{c: row[c] for c in log.cols('stock')}, 'kind': new_kind})
     for row in wish_rows:
-        log.insert('wish', **{**{c: row[c] for c in log.cols('wish')}, '_rowid': row['_rowid'], 'kind': new_kind})
+        log.insert('wish', **{**{c: row[c] for c in log.cols('wish')}, 'kind': new_kind})
     _foreign_keys(db, log.tables())
     counts = {}
     for change in log.changes:

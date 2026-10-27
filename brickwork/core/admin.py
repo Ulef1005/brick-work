@@ -449,7 +449,7 @@ def count_jobs(db):
     return db.execute("SELECT count(*) FROM main.job").fetchone()[0]
 
 
-FETCH_HEADINGS = {'rebrickable_set': 'Rebrickable set', 'bricklink_subsets': 'BrickLink part list'}
+FETCH_HEADINGS = {'rebrickable_set': 'Rebrickable set', 'bricklink_subsets': 'BrickLink part list', 'reconcile': 'Reconcile with the catalogue'}
 
 
 def jobs(db, limit=300):

@@ -163,7 +163,7 @@ brickwork catalogue status
 brickwork catalogue import bricklink --from DIRECTORY
 ```
 
-`status` prints the catalogue's builds, the activations in the collection, the last reconcile and the newest Rebrickable download. `import bricklink` builds a new catalogue with the BrickLink item lists found in `DIRECTORY`, activates it and reconciles the collection with it. The Rebrickable download and build are `python -m brickwork.store4 --data DIR catalogue download` and `catalogue import`; a catalogue copied in by hand needs `catalogue reconcile` once.
+`status` prints the catalogue's builds, the activations in the collection, the last reconcile and the newest Rebrickable download. `import bricklink` builds a new catalogue with the BrickLink item lists found in `DIRECTORY`, activates it and reconciles the collection with it. The Rebrickable download and build are `python -m brickwork.store4 --data DIR catalogue download` and `catalogue import`; a catalogue copied in by hand needs `catalogue reconcile` once. **Tools & Admin → Catalogue** does the download, the build, the rebuild, the BrickLink lists and the reconcile from the browser ([Settings and maintenance](../how-to/settings-and-maintenance.md#catalogue)); the app also reconciles a catalogue that is not reconciled yet when it starts, and `brickwork worker` does the same.
 
 ## sources
 

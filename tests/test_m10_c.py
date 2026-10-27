@@ -261,3 +261,179 @@ def test_c6_migration_report_view_and_downloads(client, world, monkeypatch, tmp_
     assert client.get('/manage/migration/file/..%2Fbw33.db').status_code == 404
     assert client.get('/manage/migration/file/nothere.csv').status_code == 404
     assert client.get('/manage/migration/file/.migration-run').status_code == 404
+
+
+# ---------- the start-up reconcile (design 6.2) ----------
+
+def unreconcile(pair):
+    with closing(__import__('sqlite3').connect(pair)) as db:
+        db.execute('UPDATE catalogue_build SET reconciled_at=NULL')
+        db.commit()
+
+
+def jobs_of(pair, kind='reconcile'):
+    with closing(__import__('sqlite3').connect(pair)) as db:
+        return db.execute('SELECT id, state, error, via FROM job WHERE kind=? ORDER BY id', (kind,)).fetchall()
+
+
+def test_startup_reconcile_queues_nothing_when_reconciled_and_one_job_when_not(pair, coll, paths):
+    from brickwork.core.connect import connect
+    from brickwork.store4 import reconcile_job
+    catalogue_jobs.start(paths, 'reconcile', background=False)
+    with closing(connect(pair)) as db:
+        assert reconcile_job.queue_if_due(db) is None
+    assert jobs_of(pair) == []
+    unreconcile(pair)
+    with closing(connect(pair)) as db:
+        first = reconcile_job.queue_if_due(db)
+        again = reconcile_job.queue_if_due(db)                          # idempotent while one is open
+    assert first and first == again
+    assert jobs_of(pair) == [(first, 'queued', None, 'app')]
+
+
+def test_startup_reconcile_is_run_by_the_drainer_not_a_request(pair, coll, paths):
+    from brickwork.core import drainer
+    unreconcile(pair)
+    assert drainer.queue_startup_work(pair) is not None
+    assert jobs_of(pair)[0][1] == 'queued'
+    with closing(__import__('sqlite3').connect(pair)) as db:
+        assert db.execute('SELECT count(*) FROM catalogue_build WHERE reconciled_at IS NULL').fetchone()[0] == 1
+    drainer.drain_once(pair)
+    (job,) = jobs_of(pair)
+    assert job[1] == 'done' and job[2] is None
+    with closing(__import__('sqlite3').connect(pair)) as db:
+        assert db.execute('SELECT count(*) FROM catalogue_build WHERE reconciled_at IS NULL').fetchone()[0] == 0
+        assert db.execute('SELECT count(*) FROM job_owner').fetchone()[0] == 0
+    assert drainer.queue_startup_work(pair) is None                      # nothing due now
+
+
+def test_startup_reconcile_that_fails_says_why_and_is_tried_again_at_the_next_start(client, pair, coll, paths, monkeypatch):
+    from brickwork.core import drainer
+    from brickwork.store4 import reconcile_job
+    unreconcile(pair)
+    drainer.queue_startup_work(pair)
+    monkeypatch.setattr(reconcile_job, 'reconcile', lambda db, **kw: (_ for _ in ()).throw(RuntimeError('disk full')))
+    drainer.drain_once(pair)
+    (job,) = jobs_of(pair)
+    assert job[1] == 'failed' and 'disk full' in job[2]
+    html, soup = page(client, 'catalogue')
+    assert soup.find(attrs={'data-reconcile-failed': True}) and 'disk full' in text(soup)
+    second = drainer.queue_startup_work(pair)
+    assert second and second != job[0] and len(jobs_of(pair)) == 2
+
+
+def test_startup_reconcile_is_queued_when_the_app_starts_with_the_embedded_worker(pair, coll, paths, app4, monkeypatch):
+    from brickwork.core import drainer
+    from brickwork.web import views
+    unreconcile(pair)
+    monkeypatch.setenv('BW_EMBEDDED_WORKER', '1')
+    monkeypatch.setattr(drainer, 'spawn', lambda target: target())      # the drainer thread, run here
+    views.bw_resume_imports(app4)
+    (job,) = jobs_of(pair)
+    assert job[1] == 'done'
+    with closing(__import__('sqlite3').connect(pair)) as db:
+        assert db.execute('SELECT count(*) FROM catalogue_build WHERE reconciled_at IS NULL').fetchone()[0] == 0
+
+
+def test_the_headless_worker_queues_it_too(pair, coll, paths, monkeypatch):
+    from brickwork.core import drainer
+    unreconcile(pair)
+    drainer.worker(path=pair)
+    (job,) = jobs_of(pair)
+    assert job[1] == 'done'
+
+
+def test_a_queued_startup_reconcile_shows_on_the_catalogue_page_and_the_jobs_list(client, pair, coll, paths):
+    from brickwork.core import drainer
+    unreconcile(pair)
+    drainer.queue_startup_work(pair)
+    html, soup = page(client, 'catalogue')
+    assert 'reconciling it in the background' in text(soup)
+    html, soup = page(client, 'jobs')
+    assert 'Reconcile with the catalogue' in text(soup)
+
+
+# ---------- routes and writes ----------
+
+def wait_for_job(paths):
+    import time
+    for _ in range(200):
+        state = catalogue_jobs.read(paths)
+        if state and state['state'] != 'running':
+            return state
+        time.sleep(0.05)
+    raise AssertionError('the job did not finish')
+
+
+def test_the_job_route_reports_none_running_and_done(client, world, paths, served):
+    assert client.get('/manage/catalogue/job').get_json() == {'state': 'none'}
+    catalogue_jobs._write(paths, dict(kind='redownload', state='running', pid=os.getpid(), started_at='2026-10-27T09:00:00Z', finished_at=None,
+                                      step=2, folder=None, error=None, result=None))
+    r = client.get('/manage/catalogue/job')
+    state = r.get_json()
+    assert state['state'] == 'running' and state['step'] == 2 and len(state['steps']) == 3 and r.headers['Cache-Control'] == 'no-store'
+
+
+def test_post_redownload_starts_a_background_job_that_finishes(client, world, paths, served):
+    token = csrf(client)
+    r = client.post('/manage/catalogue', data={'csrf_token': token, 'action': 'redownload'})
+    assert r.status_code == 302 and r.headers['Location'].endswith('/manage/catalogue')
+    state = wait_for_job(paths)
+    assert state['state'] == 'done' and state['kind'] == 'redownload'
+    assert (paths.downloads / next(iter(sorted(p.name for p in paths.downloads.iterdir() if p.is_dir())))).is_dir()
+
+
+def test_post_rebuild_needs_a_download_and_then_runs(client, world, paths, served):
+    token = csrf(client)
+    html = client.post('/manage/catalogue', data={'csrf_token': token, 'action': 'rebuild'}, follow_redirects=True).get_data(as_text=True)
+    assert 'no complete Rebrickable download' in html and catalogue_jobs.read(paths) is None
+    assert catalogue_jobs.start(paths, 'redownload', background=False)['state'] == 'done'
+    r = client.post('/manage/catalogue', data={'csrf_token': token, 'action': 'rebuild'})
+    assert r.status_code == 302
+    state = wait_for_job(paths)
+    assert state['kind'] == 'rebuild' and state['state'] == 'done' and state['result']['moved_aside'].startswith('catalogue.db.damaged-')
+
+
+def test_post_load_lists_runs_the_job_through_the_route(client, world, paths):
+    write_xml(paths.lists / '2026-10-26')
+    token = csrf(client)
+    r = client.post('/manage/catalogue-lists', data={'csrf_token': token, 'action': 'load_lists', 'folder': '2026-10-26'})
+    assert r.status_code == 302
+    assert wait_for_job(paths)['kind'] == 'lists'
+    html, soup = page(client, 'catalogue-lists')
+    assert 'Loaded ·' in text(soup)
+
+
+def test_a_second_job_while_one_runs_is_refused_with_a_message(client, world, paths):
+    catalogue_jobs._write(paths, dict(kind='redownload', state='running', pid=os.getpid(), started_at='2026-10-27T09:00:00Z', finished_at=None,
+                                      step=0, folder=None, error=None, result=None))
+    token = csrf(client)
+    html = client.post('/manage/catalogue', data={'csrf_token': token, 'action': 'reconcile'}, follow_redirects=True).get_data(as_text=True)
+    assert 'is running already' in html
+
+
+def test_the_wrong_action_for_a_page_is_a_400(client, world):
+    token = csrf(client)
+    assert client.post('/manage/catalogue', data={'csrf_token': token, 'action': 'load_lists'}).status_code == 400
+    assert client.post('/manage/catalogue-lists', data={'csrf_token': token, 'action': 'rebuild'}).status_code == 400
+    assert client.post('/manage/catalogue-mappings', data={'csrf_token': token, 'action': 'reconcile'}).status_code == 400
+    assert client.post('/manage/migration', data={'csrf_token': token, 'action': 'reconcile'}).status_code == 400
+    assert client.post('/manage/catalogue', data={'csrf_token': token}).status_code == 400
+
+
+def test_a_read_only_instance_refuses_every_write_here(app4, client, world, paths):
+    token = csrf(client)
+    app4.config['BW_READ_ONLY'] = True
+    try:
+        for page_name, action in (('catalogue', 'redownload'), ('catalogue', 'rebuild'), ('catalogue', 'reconcile'), ('catalogue-lists', 'load_lists')):
+            assert client.post('/manage/' + page_name, data={'csrf_token': token, 'action': action}).status_code == 403
+        assert client.post('/manage/settings', data={'csrf_token': token, 'action': 'prefer_bricklink', 'value': 'on'}).status_code == 403
+    finally:
+        app4.config['BW_READ_ONLY'] = False
+    assert catalogue_jobs.read(paths) is None
+
+
+def test_the_switch_post_without_the_csrf_token_is_refused(client, world, monkeypatch):
+    monkeypatch.setattr(fetch_jobs, '_configured', lambda source: True)
+    page(client, 'settings')
+    assert client.post('/manage/settings', data={'action': 'prefer_bricklink', 'value': 'on'}).status_code == 400

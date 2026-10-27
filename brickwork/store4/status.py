@@ -40,7 +40,7 @@ def catalogue_build(paths):
     found = newest_download(paths)
     out['download_date'] = found[1].get('date', found[0].name) if found else None
     out['download_files'] = len(found[1].get('files', [])) if found else 0
-    out.update(reconciled_at=None, reconciled=None, builds_pending=0, last_reconcile=None, part_lists=None)
+    out.update(reconciled_at=None, reconciled=None, builds_pending=0, last_reconcile=None, part_lists=None, reconcile_job=None)
     if paths.collection.exists():
         with closing(_ro(paths.collection)) as db:
             builds = db.execute('SELECT id, reconciled_at, counts_json FROM catalogue_build ORDER BY id').fetchall()
@@ -54,6 +54,9 @@ def catalogue_build(paths):
         rec = _counts(last).get('reconcile') if last else None
         out['last_reconcile'] = summary(rec) if rec else None
         out['part_lists'] = part_list_summary(paths)
+        with closing(_ro(paths.collection)) as db:                  # the start-up reconcile job (reconcile_job.py), if one was queued
+            row = db.execute("SELECT state, error FROM job WHERE kind='reconcile' ORDER BY id DESC LIMIT 1").fetchone()
+            out['reconcile_job'] = dict(row) if row else None
     return out
 
 

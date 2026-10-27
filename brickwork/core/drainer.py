@@ -6,7 +6,7 @@ import time
 
 from datetime import datetime, timezone
 
-from ..store4 import jobs
+from ..store4 import jobs, reconcile_job
 from . import add, pipeline, source_ops
 from .admin import begin_operation, end_operation
 from .connect import connect
@@ -14,7 +14,8 @@ from .sources.base import audit_origin
 
 # Two runners share the `job` table and each ignores the other's kinds: `store4.jobs` runs the two fetch kinds, `core.pipeline` the
 # app's own `item` jobs (M.8c). Both are looked at here: one poll, one stop.
-PENDING_SQL = f"SELECT state, retry_at FROM job WHERE (kind IN {jobs.OWN_KINDS} OR kind='{pipeline.KIND}') AND {jobs.ACTIVE}"
+PENDING_SQL = (f"SELECT state, retry_at FROM job WHERE (kind IN {jobs.OWN_KINDS} OR kind IN ('{pipeline.KIND}', '{reconcile_job.KIND}')) "
+               f"AND {jobs.ACTIVE}")
 
 
 def poll_delay(db):
@@ -39,11 +40,19 @@ def pending(db):
     return db.execute(PENDING_SQL + ' LIMIT 1').fetchone() is not None or jobs.has_leftovers(db) or add.has_unsettled_fetches(db)
 
 
+def queue_startup_work(path):
+    """At start (the embedded drainer's and `brickwork worker`'s): a catalogue swapped in but not reconciled yet becomes one reconcile job
+    (design 6.2), run by the drain like any other. Returns the job id, or None when nothing is due."""
+    with closing(connect(path)) as db:
+        return reconcile_job.queue_if_due(db, via='app')
+
+
 def drain_once(path):
     """One pass of both runners. The fetch jobs go first: a BrickLink or Rebrickable list a pipeline job looks for may have landed.
     Then the copies a finished Fetch from Rebrickable asked for are made (`add.settle_fetches`); their pipeline job runs on the next pass."""
     with closing(connect(path)) as db:
         ran = jobs.drain(db) + pipeline.drain(db)
+        reconcile_job.drain(db)
         add.settle_fetches(db)
         return ran
 
@@ -126,4 +135,5 @@ def start(app, path, fallback=None):
 def worker(*, path, stop=None, poll_seconds=None):
     """`brickwork worker`: drain the queue in this process until nothing is pending (the headless counterpart of the embedded drainer)."""
     source_ops.register_handlers()
+    queue_startup_work(path)
     loop(path, sleep, stop=stop)

@@ -59,7 +59,8 @@ def catalogue_build(paths):
 
 def changed_copies(db, limit=12):
     """The copies whose part list changed against the catalogue (`copies.part_list_changes`), one row per copy with the set they are
-    of: `[{copy_id, item_id, number, name, entries, kinds}]`, at most `limit`, and the total as the second value."""
+    of: `[{copy_id, item_id, label, number, name, entries, kinds}]` (`label` is the copy's "Set N" as the set page's copy chooser numbers
+    it), at most `limit`, and the total as the second value."""
     from . import copies
     grouped = {}
     for e in copies.part_list_changes(db):
@@ -67,9 +68,17 @@ def changed_copies(db, limit=12):
         g['entries'] += 1
         g['kinds'].add(e['kind'])
     rows = []
-    for g in list(grouped.values())[:limit]:
+    shown = list(grouped.values())[:limit]
+    # "Set N": the copy's position among the live copies of its set, numbered as the set page's copy chooser numbers them
+    labels = {r[0]: f'Set {r[1]}' for r in db.execute('''SELECT c.id, (SELECT count(*) FROM main.copy d WHERE d.archived_at IS NULL AND d.item_id=c.item_id
+                                                       AND (d.created_at, d.id) <= (c.created_at, c.id)) FROM main.copy c
+                                                       WHERE c.archived_at IS NULL AND c.id IN (SELECT value FROM json_each(?))''',
+                                                    (json.dumps([g['copy_id'] for g in shown]),))}
+    for g in shown:
         item = db.execute('SELECT born_key, name FROM main.item WHERE id=?', (g['item_id'],)).fetchone()
-        rows.append(dict(g, kinds=sorted(g['kinds']), number=item['born_key'] if item else None, name=item['name'] if item else None))
+        rows.append(dict(g, kinds=sorted(g['kinds']), label=labels.get(g['copy_id'], 'Copy'), number=item['born_key'] if item else None,
+                         name=item['name'] if item else None))
+    rows.sort(key=lambda r: (r['number'] or '', r['label']))
     return rows, len(grouped)
 
 

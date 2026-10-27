@@ -94,6 +94,19 @@ def test_c2_a_finished_redownload_lists_what_changed_and_the_copies(client, worl
     assert 'Nothing switches on its own' in body or 'None. Every copy still matches' in body
 
 
+def test_c2_changed_copies_are_named_set_n_and_link_to_the_copy(client, world, paths, served, pair):
+    state = catalogue_jobs.start(paths, 'redownload', background=False)
+    assert state['state'] == 'done', state
+    with closing(__import__('sqlite3').connect(pair)) as db:
+        db.execute("UPDATE copy SET inventory_digest='stale' WHERE id=?", (world.copy_b,))
+        db.commit()
+    html, soup = page(client, 'catalogue')
+    row = soup.select_one('[data-catalogue-result] .bwc-row[href$="?copy=' + world.copy_b + '"]')
+    assert row and 'Set 2 · 1 list changed' in row.get_text(' ', strip=True)
+    assert row['href'].endswith('?copy=' + world.copy_b) and '/collection/item/' in row['href']
+    assert world.copy_b[:8] not in row.get_text()
+
+
 def test_c2_not_reconciled_yet_is_shown_and_reconcile_now_fixes_it(client, world, paths, pair, served):
     with closing(__import__('sqlite3').connect(pair)) as db:
         db.execute('UPDATE catalogue_build SET reconciled_at=NULL')
@@ -157,6 +170,9 @@ def test_c4_mappings_and_coverage(client, world, paths):
     catalogue_jobs.start(paths, 'reconcile', background=False)
     html, soup = page(client, 'catalogue-mappings')
     assert soup.find(attrs={'data-coverage': 'items'}).find(class_='bwc-bar')
+    assert 'Bars start at zero' not in text(soup)
+    kinds = [r.find('span').get_text() for r in soup.select('.bwc-bykind .bwc-trow')]
+    assert kinds and set(kinds) <= {'Sets', 'Minifigures', 'Parts', 'Instructions', 'Boxes', 'Gear', 'Books', 'Catalogues'}
     assert soup.find(attrs={'data-coverage': 'pictures'}).find(class_='bwc-bar')
 
 
@@ -235,6 +251,7 @@ def test_c6_migration_report_view_and_downloads(client, world, monkeypatch, tmp_
     body = text(soup)
     assert 'Proof passed' in body and 'matches the one recorded in your collection' in body
     assert soup.find(id='migration-proof').select('.bwc-proof') and 'Manual decisions' in body
+    assert soup.select_one('.bwc-proof-name .mono').get_text() and soup.select_one('.bwc-proof-name .bk-note').get_text().strip()
     names = [r.select_one('.bwc-fname .mono').get_text() for r in soup.select('.bwc-file')]
     assert 'summary.md' in names and 'proof.json' in names and 'manual-decisions.csv' in names
     link = soup.find('a', href='/manage/migration/file/mint.csv')

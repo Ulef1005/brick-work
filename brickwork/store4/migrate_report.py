@@ -186,7 +186,7 @@ def read_report(directory, *, expected_digest=None, decisions=12):
     source = re.search(r'3\.3 file `([^`]+)`', head)
     headline = dict(migrated_at=found.group(1) if found else None, seconds=found.group(2) if found else None, source=source.group(1) if source else None,
                     published='(published on PASS)' in head)
-    return dict(directory=str(directory), result=proof.get('result'), parts=[dict(name=k, **{f: v.get(f) for f in ('result', 'checked', 'differences')})
+    return dict(directory=str(directory), result=proof.get('result'), parts=[dict(name=k, **{f: v.get(f) for f in ('result', 'what', 'checked', 'differences')})
                                                                          for k, v in (proof.get('parts') or {}).items()],
                 headline=headline, title=lines[0].lstrip('# ') if lines else '', files=files, decisions=decided, decisions_total=total,
                 decision_columns=list(decided[0]) if decided else [], settings=settings, digest=digest,

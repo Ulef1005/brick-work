@@ -626,7 +626,7 @@ def catalogue_pages(page):
     from ..store4 import cli, status
     from .formatting import short_stamp
     paths = store4_paths()
-    out = dict(page=page)
+    out = dict(page=page, kind_names=dict(CATALOGUE_KINDS))
     job = catalogue_jobs.read(paths)
     if page in ('catalogue', 'catalogue-lists'):
         wanted = 'lists' if page == 'catalogue-lists' else None

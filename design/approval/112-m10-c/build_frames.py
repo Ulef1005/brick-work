@@ -105,6 +105,11 @@ def main():
     report = tmp / 'migration-report'
     shutil.copytree(res.report, report)
     (report / '.migration-run').unlink(missing_ok=True)
+    for name in ('manual-decisions.csv', 'to-check.csv'):       # the fixture's method label names a person: frames carry an invented one
+        path = report / name
+        path.write_text(path.read_text().replace('ulf-2026-10-12', 'owner-2026-10-12'))
+    for path in report.iterdir():
+        assert 'ulf' not in path.read_text().lower().replace('ulf-2026', '') or path.name == 'settings.csv', path.name
 
     app = Flask('m10c-frames', template_folder=str(ROOT / 'templates'), static_folder=str(ROOT / 'static'))
     setup_app(app)

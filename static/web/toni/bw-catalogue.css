@@ -31,7 +31,7 @@
 .bwc-table{display:flex;flex-direction:column}
 .bwc-trow{display:flex;justify-content:space-between;align-items:center;gap:4px 16px;flex-wrap:wrap;min-height:44px;padding:6px 0;border-top:.5px solid var(--tw-divider);font:400 14px/20px var(--tw-font)}
 .bwc-trow .mono{font-size:13px;font-variant-numeric:tabular-nums}.bwc-num{margin-left:auto;text-align:right}
-.bwc-proof>span:first-child{flex:1 1 120px;font-weight:600}
+.bwc-proof>.bwc-proof-name{flex:1 1 200px;display:flex;flex-direction:column;gap:2px;min-width:0}.bwc-proof-name .mono{font-size:13px}
 .bwc-file{min-height:56px}.bwc-fname{flex:1 1 180px;overflow-wrap:anywhere}
 .bwc-cover{display:flex;flex-direction:column;gap:8px;padding:8px 0 16px}
 .bwc-cover h3{font:600 17px/24px var(--tw-font);text-wrap:balance}
@@ -66,3 +66,4 @@
 }
 .bwc-bykind{margin-top:8px}.bwc-bykind h4{margin:0 0 4px;font-weight:500}
 .bwc-fact dt{display:flex;flex-direction:column;align-items:flex-start;gap:2px}.bwc-fact dt .bk-btn{margin-top:8px}.bwc-fact dd{align-items:flex-end}
+@media(min-width:900px){.bwc-facts.bwc-one{grid-template-columns:minmax(0,1fr)}}

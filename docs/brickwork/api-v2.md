@@ -1,6 +1,6 @@
 # Brick Work API v2: contract
 
-**Status:** the contract of the whole v2 surface, written for M.11a (issue #113, 2026-10-27). The transport, the meta endpoints and item addressing are implemented in M.11a; every other operation answers `501 not_implemented` until its piece (M.11b to M.11d) lands. The machine-readable twin is [openapi-v2.yaml](openapi-v2.yaml); the data model behind it is [data-model-design.md](../data-model-4.0/data-model-design.md) (sections 3.1, 3.2, 3.5, 3.6, 3.8 and 7).
+**Status:** the contract of the whole v2 surface, written for M.11a (issue #113, 2026-10-27). The transport, the meta endpoints and item addressing are implemented in M.11a, the reads in M.11b; every other operation answers `501 not_implemented` until its piece (M.11c, M.11d) lands. The machine-readable twin is [openapi-v2.yaml](openapi-v2.yaml); the data model behind it is [data-model-design.md](../data-model-4.0/data-model-design.md) (sections 3.1, 3.2, 3.5, 3.6, 3.8 and 7).
 
 **How to read this file.** v2 is v1 with the 4.0 identity, not a redesign ([api-v1.md](api-v1.md) is the v1 contract and stays as the reference for what v2 inherits). Section 1 says what changed and what did not. Section 2 holds the conventions, section 3 the resource catalogue with every v1 operation mapped to its v2 operation (or dropped, with the reason), section 4 the pieces and the 501 list. Each operation carries the piece that implements it: **M.11a** the contract, transport, meta and item addressing; **M.11b** the reads; **M.11c** the writes; **M.11d** orders, jobs, sources, keys, sync, imports, identifications, tokens and admin; **M.11e** the MCP regenerated from this file and the parity test (no operations of its own).
 
@@ -121,6 +121,20 @@ Optional members: `retry_after`, `job_id`, `source`, and in v2 `candidates` (wit
 ### 2.9 Authentication, scopes, tokens
 
 As v1: `Authorization: Bearer <token>`; `read` < `write` < `admin`; `BW_API_TOKEN` is a bootstrap admin token named `bootstrap`; stored tokens are hashed, scoped and may expire; with neither, `503 api_disabled`. `/health` and `/openapi.yaml` need no token. `BW_READ_ONLY` makes every non-`GET` `403 read_only_instance` whatever the scope. Failed token checks back off per client (`429 too_many_attempts`, `Retry-After`); forwarded addresses count only with `BW_TRUSTED_PROXIES`. **The scope of every v2 operation is the one its `security` entry in `openapi-v2.yaml` names**; the blueprint reads it from there, so the contract is the single place that says who may call what. Request bodies are refused unread over their cap (JSON 4 MB, uploads per route) with `413 payload_too_large`.
+
+### 2.10 Reads (M.11b)
+
+What the 57 read operations do beyond v1, and where the first contract text changed when they were built (each is also in `openapi-v2.yaml`).
+
+* **The query is the contract's.** A query name an operation does not declare is `400 unknown_filter`, a name given twice is `400 bad_request` unless the contract declares it an array (`copy_id` on the exports). `limit`, `direction`, `cursor` and `sort` are accepted where the operation lists them.
+* **Filters on an item or colour** take the provider space of decision 4: `number` (with `provider`, `bricklink` by default, `rebrickable`) finds the live items that number stands for in any kind, or in `kind`; `color` is read in the same `provider` space, and `provider=brickwork` is for `color` only (a Brick Work id is not a number: `number` with it is `422`). A filter that names nothing is an empty list; a colour that does not exist is `422`.
+* **Lists** are filtered and sorted over the rows the screens use, and paged with the cursor of v1: it holds the sort position, never an offset, so rows that arrive meanwhile never move a page. `page.total` is the exact count of the filtered rows (v1 left it null under `q` and `archived`); the SQL-paged histories (`/events`, `/items/{id}/prices/history`) give `total: null` (a long log is paged by its key, never counted), and `/catalogue/items` is paged in SQL with the exact count of the entries that match. `archived=true|include|only` as before; `status=unknown` is a copy with no recorded completeness; `storage`, `place`, `lot` take `null` for none.
+* **Rows that name an item or a colour carry the bodies of section 2.1**, built for a whole page in a fixed number of queries. The tie-break of every sort is the row's key, so a page is stable.
+* **`etag` is in the body** of a copy, stock line or wish on lists and single reads; the `ETag` header is on the single read. It is a hash of the stored row and its flag ids, so a change of the item's name does not move it.
+* **A merged id** is `307` on every `/items/{id}/...` path and on `GET /minifigures/{id}`; the `Location` keeps the rest of the path and the query.
+* **Corrections to the first contract text**, found by validating every answer against it: the id of an `Image` is the picture number or the 32-character hex id of an own photo (`/images/{id}/content` takes either); `Lot.created_date` is `created_at`; `StaleItem.source_table` is `copy`, `stock` or `wish` (the 4.0 tables); `ItemLink` says `color_scoped` and `brickwork_color_id` as the item body does; `ItemDetail` also carries `used_in`, `gaps` and `matches`; the unpriced lines of a copy's part-out value are `{item, color}`; `GET /export/missing.json` names its lines by item and colour body with the BrickLink type, number and colour number beside them, and lists the lines the XML must leave out under `skipped`; `GET /wishlists` pages like every list; the virtual location "Not stored" has the id `unstored` (`null` stays the filter spelling); `has_file` on `GET /instruction-files` is whether the PDF is on disk.
+* **Gaps** of a missing booklet or box name the copy's set as their item (`target` `instructions` or `box`, `target_id` the copy id); every other gap names the item that is missing.
+* **The catalogue** is the attached `catalogue.db`, not v1's BrickLink file. `GET /catalogue/items` finds a text by number (the Rebrickable number, then any linked BrickLink number) and by name; without the file the answer is `424 catalogue_not_loaded`.
 
 ---
 
@@ -495,15 +509,72 @@ Operations by piece: M.11a 9, M.11b 57, M.11c 65, M.11d 58 (189 in all). The two
 <!-- api2-implemented:start -->
 | Implemented operation | Piece | Backing |
 |---|---|---|
+| `GET /api/v2/catalogue/items` | M.11b | `brickwork.api2.catalogue.get_catalogue_items` |
+| `GET /api/v2/catalogue/items/{id}` | M.11b | `brickwork.api2.catalogue.get_catalogue_items_by_id` |
+| `GET /api/v2/catalogue/status` | M.11b | `brickwork.api2.catalogue.get_catalogue_status` |
+| `GET /api/v2/colors` | M.11b | `brickwork.api2.catalogue.get_colors` |
+| `GET /api/v2/colors/{color_id}` | M.11b | `brickwork.api2.catalogue.get_colors_by_color_id` |
+| `GET /api/v2/copies` | M.11b | `brickwork.api2.copies.get_copies` |
+| `GET /api/v2/copies/{id}` | M.11b | `brickwork.api2.copies.get_copies_by_id` |
+| `GET /api/v2/copies/{id}/check` | M.11b | `brickwork.api2.copies.get_copies_by_id_check` |
+| `GET /api/v2/copies/{id}/completeness` | M.11b | `brickwork.api2.copies.get_copies_by_id_completeness` |
+| `GET /api/v2/copies/{id}/figures` | M.11b | `brickwork.api2.copies.get_copies_by_id_figures` |
+| `GET /api/v2/copies/{id}/gaps` | M.11b | `brickwork.api2.copies.get_copies_by_id_gaps` |
+| `GET /api/v2/copies/{id}/matches` | M.11b | `brickwork.api2.copies.get_copies_by_id_matches` |
+| `GET /api/v2/copies/{id}/parts` | M.11b | `brickwork.api2.copies.get_copies_by_id_parts` |
+| `GET /api/v2/events` | M.11b | `brickwork.api2.history.get_events` |
+| `GET /api/v2/events/{id}` | M.11b | `brickwork.api2.history.get_events_by_id` |
+| `GET /api/v2/export/missing.csv` | M.11b | `brickwork.api2.ranking.get_export_missing_csv` |
+| `GET /api/v2/export/missing.json` | M.11b | `brickwork.api2.ranking.get_export_missing_json` |
+| `GET /api/v2/export/missing.xml` | M.11b | `brickwork.api2.ranking.get_export_missing_xml` |
+| `GET /api/v2/export/picker.csv` | M.11b | `brickwork.api2.ranking.get_export_picker_csv` |
+| `GET /api/v2/export/wishlist.csv` | M.11b | `brickwork.api2.ranking.get_export_wishlist_csv` |
+| `GET /api/v2/flags` | M.11b | `brickwork.api2.places.get_flags` |
+| `GET /api/v2/gaps` | M.11b | `brickwork.api2.loose.get_gaps` |
 | `GET /api/v2/health` | M.11a | `brickwork.api2.get_health` |
+| `GET /api/v2/images/{id}/content` | M.11b | `brickwork.api2.item_views.get_images_by_id_content` |
+| `GET /api/v2/instruction-files` | M.11b | `brickwork.api2.instructions.get_instruction_files` |
+| `GET /api/v2/instruction-files/{id}` | M.11b | `brickwork.api2.instructions.get_instruction_files_by_id` |
+| `GET /api/v2/instruction-files/{id}/content` | M.11b | `brickwork.api2.instructions.get_instruction_files_by_id_content` |
+| `GET /api/v2/items` | M.11b | `brickwork.api2.catalogue.get_items` |
 | `GET /api/v2/items/{id}` | M.11a | `brickwork.api2.items.get_items_by_id` |
+| `GET /api/v2/items/{id}/colors` | M.11b | `brickwork.api2.item_views.get_items_by_id_colors` |
+| `GET /api/v2/items/{id}/detail` | M.11b | `brickwork.api2.item_views.get_items_by_id_detail` |
+| `GET /api/v2/items/{id}/images` | M.11b | `brickwork.api2.item_views.get_items_by_id_images` |
+| `GET /api/v2/items/{id}/inventory` | M.11b | `brickwork.api2.item_views.get_items_by_id_inventory` |
+| `GET /api/v2/items/{id}/links` | M.11b | `brickwork.api2.item_views.get_items_by_id_links` |
+| `GET /api/v2/items/{id}/prices` | M.11b | `brickwork.api2.prices.get_items_by_id_prices` |
+| `GET /api/v2/items/{id}/prices/history` | M.11b | `brickwork.api2.prices.get_items_by_id_prices_history` |
+| `GET /api/v2/items/{id}/provider-status` | M.11b | `brickwork.api2.item_views.get_items_by_id_provider_status` |
+| `GET /api/v2/items/{id}/used-in` | M.11b | `brickwork.api2.item_views.get_items_by_id_used_in` |
+| `GET /api/v2/links` | M.11b | `brickwork.api2.item_views.get_links` |
 | `GET /api/v2/lookup` | M.11a | `brickwork.api2.items.get_lookup` |
+| `GET /api/v2/lots` | M.11b | `brickwork.api2.places.get_lots` |
+| `GET /api/v2/lots/{id}` | M.11b | `brickwork.api2.places.get_lots_by_id` |
+| `GET /api/v2/matches` | M.11b | `brickwork.api2.loose.get_matches` |
 | `GET /api/v2/me` | M.11a | `brickwork.api2.get_me` |
+| `GET /api/v2/minifigures` | M.11b | `brickwork.api2.loose.get_minifigures` |
 | `GET /api/v2/minifigures/by-number/{no}` | M.11a | `brickwork.api2.items.get_minifigures_by_number_by_no` |
+| `GET /api/v2/minifigures/{id}` | M.11b | `brickwork.api2.item_views.get_minifigures_by_id` |
 | `GET /api/v2/openapi.yaml` | M.11a | `brickwork.api2.get_openapi_yaml` |
 | `GET /api/v2/parts/by-number/{no}` | M.11a | `brickwork.api2.items.get_parts_by_number_by_no` |
+| `GET /api/v2/places` | M.11b | `brickwork.api2.places.get_places` |
+| `GET /api/v2/planning/ranking` | M.11b | `brickwork.api2.ranking.get_planning_ranking` |
+| `GET /api/v2/prices` | M.11b | `brickwork.api2.prices.get_prices` |
+| `GET /api/v2/prices/stale` | M.11b | `brickwork.api2.prices.get_prices_stale` |
 | `GET /api/v2/sets/by-number/{no}` | M.11a | `brickwork.api2.items.get_sets_by_number_by_no` |
+| `GET /api/v2/statistics` | M.11b | `brickwork.api2.history.get_statistics` |
+| `GET /api/v2/stock` | M.11b | `brickwork.api2.loose.get_stock` |
+| `GET /api/v2/stock/{id}` | M.11b | `brickwork.api2.loose.get_stock_by_id` |
+| `GET /api/v2/stock/{id}/parts` | M.11b | `brickwork.api2.loose.get_stock_by_id_parts` |
+| `GET /api/v2/storages` | M.11b | `brickwork.api2.places.get_storages` |
+| `GET /api/v2/storages/{id}` | M.11b | `brickwork.api2.places.get_storages_by_id` |
 | `GET /api/v2/version` | M.11a | `brickwork.api2.get_version` |
+| `GET /api/v2/wishes` | M.11b | `brickwork.api2.wishes.get_wishes` |
+| `GET /api/v2/wishes/{id}` | M.11b | `brickwork.api2.wishes.get_wishes_by_id` |
+| `GET /api/v2/wishlists` | M.11b | `brickwork.api2.wishes.get_wishlists` |
+| `GET /api/v2/wishlists/{id}/export.csv` | M.11b | `brickwork.api2.wishes.get_wishlists_by_id_export_csv` |
+| `GET /api/v2/wishlists/{id}/export.xml` | M.11b | `brickwork.api2.wishes.get_wishlists_by_id_export_xml` |
 <!-- api2-implemented:end -->
 
 ### Not implemented yet (answer `501`)
@@ -514,29 +585,16 @@ Operations by piece: M.11a 9, M.11b 57, M.11c 65, M.11d 58 (189 in all). The two
 | Operation (answers 501 until its piece lands) | Piece |
 |---|---|
 | `POST /api/v2/catalogue/import` | M.11d |
-| `GET /api/v2/catalogue/items` | M.11b |
-| `GET /api/v2/catalogue/items/{id}` | M.11b |
-| `GET /api/v2/catalogue/status` | M.11b |
-| `GET /api/v2/colors` | M.11b |
 | `POST /api/v2/colors/sync` | M.11d |
-| `GET /api/v2/colors/{color_id}` | M.11b |
-| `GET /api/v2/copies` | M.11b |
 | `POST /api/v2/copies` | M.11c |
 | `DELETE /api/v2/copies/{id}` | M.11c |
-| `GET /api/v2/copies/{id}` | M.11b |
 | `PATCH /api/v2/copies/{id}` | M.11c |
-| `GET /api/v2/copies/{id}/check` | M.11b |
 | `POST /api/v2/copies/{id}/check` | M.11c |
 | `PUT /api/v2/copies/{id}/checked` | M.11c |
-| `GET /api/v2/copies/{id}/completeness` | M.11b |
-| `GET /api/v2/copies/{id}/figures` | M.11b |
 | `PATCH /api/v2/copies/{id}/figures/{item_id}` | M.11c |
 | `PUT /api/v2/copies/{id}/flags` | M.11c |
-| `GET /api/v2/copies/{id}/gaps` | M.11b |
 | `POST /api/v2/copies/{id}/inventory` | M.11c |
 | `DELETE /api/v2/copies/{id}/inventory/pending` | M.11c |
-| `GET /api/v2/copies/{id}/matches` | M.11b |
-| `GET /api/v2/copies/{id}/parts` | M.11b |
 | `POST /api/v2/copies/{id}/parts/bulk` | M.11c |
 | `PATCH /api/v2/copies/{id}/parts/{part_id}` | M.11c |
 | `POST /api/v2/copies/{id}/photos` | M.11c |
@@ -545,55 +603,32 @@ Operations by piece: M.11a 9, M.11b 57, M.11c 65, M.11d 58 (189 in all). The two
 | `POST /api/v2/copies/{id}/take` | M.11c |
 | `GET /api/v2/database/check` | M.11d |
 | `GET /api/v2/database/export` | M.11d |
-| `GET /api/v2/events` | M.11b |
-| `GET /api/v2/events/{id}` | M.11b |
 | `POST /api/v2/events/{id}/undo` | M.11c |
 | `GET /api/v2/exchange-rates` | M.11d |
 | `POST /api/v2/exchange-rates/ecb` | M.11d |
 | `PUT /api/v2/exchange-rates/{code}` | M.11d |
-| `GET /api/v2/export/missing.csv` | M.11b |
-| `GET /api/v2/export/missing.json` | M.11b |
-| `GET /api/v2/export/missing.xml` | M.11b |
-| `GET /api/v2/export/picker.csv` | M.11b |
-| `GET /api/v2/export/wishlist.csv` | M.11b |
-| `GET /api/v2/flags` | M.11b |
 | `POST /api/v2/flags` | M.11c |
 | `DELETE /api/v2/flags/{id}` | M.11c |
 | `PATCH /api/v2/flags/{id}` | M.11c |
 | `POST /api/v2/flags/{id}/restore` | M.11c |
 | `POST /api/v2/found` | M.11c |
-| `GET /api/v2/gaps` | M.11b |
 | `GET /api/v2/identifications` | M.11d |
 | `POST /api/v2/identifications` | M.11d |
 | `DELETE /api/v2/identifications/{id}` | M.11d |
 | `GET /api/v2/identifications/{id}` | M.11d |
 | `GET /api/v2/identifications/{id}/thumb` | M.11d |
-| `GET /api/v2/images/{id}/content` | M.11b |
 | `POST /api/v2/imports/bricktracker` | M.11d |
 | `POST /api/v2/imports/{id}/apply` | M.11d |
-| `GET /api/v2/instruction-files` | M.11b |
 | `POST /api/v2/instruction-files` | M.11c |
 | `DELETE /api/v2/instruction-files/{id}` | M.11c |
-| `GET /api/v2/instruction-files/{id}` | M.11b |
 | `PATCH /api/v2/instruction-files/{id}` | M.11c |
-| `GET /api/v2/instruction-files/{id}/content` | M.11b |
 | `POST /api/v2/instruction-files/{id}/restore` | M.11c |
-| `GET /api/v2/items` | M.11b |
-| `GET /api/v2/items/{id}/colors` | M.11b |
-| `GET /api/v2/items/{id}/detail` | M.11b |
-| `GET /api/v2/items/{id}/images` | M.11b |
 | `POST /api/v2/items/{id}/import` | M.11d |
-| `GET /api/v2/items/{id}/inventory` | M.11b |
-| `GET /api/v2/items/{id}/links` | M.11b |
 | `PUT /api/v2/items/{id}/links` | M.11c |
 | `POST /api/v2/items/{id}/merge` | M.11c |
-| `GET /api/v2/items/{id}/prices` | M.11b |
 | `POST /api/v2/items/{id}/prices` | M.11c |
-| `GET /api/v2/items/{id}/prices/history` | M.11b |
 | `POST /api/v2/items/{id}/prices/refresh` | M.11d |
-| `GET /api/v2/items/{id}/provider-status` | M.11b |
 | `POST /api/v2/items/{id}/unmerge` | M.11c |
-| `GET /api/v2/items/{id}/used-in` | M.11b |
 | `GET /api/v2/jobs` | M.11d |
 | `POST /api/v2/jobs/drain` | M.11d |
 | `POST /api/v2/jobs/instruction-identities` | M.11d |
@@ -601,16 +636,10 @@ Operations by piece: M.11a 9, M.11b 57, M.11c 65, M.11d 58 (189 in all). The two
 | `GET /api/v2/jobs/{id}` | M.11d |
 | `POST /api/v2/jobs/{id}/resume` | M.11d |
 | `POST /api/v2/jobs/{id}/retry` | M.11d |
-| `GET /api/v2/links` | M.11b |
-| `GET /api/v2/lots` | M.11b |
 | `POST /api/v2/lots` | M.11c |
 | `DELETE /api/v2/lots/{id}` | M.11c |
-| `GET /api/v2/lots/{id}` | M.11b |
 | `PATCH /api/v2/lots/{id}` | M.11c |
 | `POST /api/v2/lots/{id}/restore` | M.11c |
-| `GET /api/v2/matches` | M.11b |
-| `GET /api/v2/minifigures` | M.11b |
-| `GET /api/v2/minifigures/{id}` | M.11b |
 | `GET /api/v2/orders` | M.11d |
 | `POST /api/v2/orders/documents` | M.11d |
 | `GET /api/v2/orders/export.csv` | M.11d |
@@ -626,16 +655,12 @@ Operations by piece: M.11a 9, M.11b 57, M.11c 65, M.11d 58 (189 in all). The two
 | `POST /api/v2/orders/{id}/received` | M.11d |
 | `POST /api/v2/orders/{id}/reconcile` | M.11d |
 | `GET /api/v2/orders/{id}/short.xml` | M.11d |
-| `GET /api/v2/places` | M.11b |
 | `POST /api/v2/places` | M.11c |
 | `DELETE /api/v2/places/{id}` | M.11c |
 | `PATCH /api/v2/places/{id}` | M.11c |
 | `POST /api/v2/places/{id}/restore` | M.11c |
-| `GET /api/v2/planning/ranking` | M.11b |
-| `GET /api/v2/prices` | M.11b |
 | `POST /api/v2/prices/observations` | M.11c |
 | `POST /api/v2/prices/refresh` | M.11d |
-| `GET /api/v2/prices/stale` | M.11b |
 | `GET /api/v2/settings` | M.11c |
 | `PATCH /api/v2/settings` | M.11c |
 | `GET /api/v2/sources` | M.11d |
@@ -647,23 +672,17 @@ Operations by piece: M.11a 9, M.11b 57, M.11c 65, M.11d 58 (189 in all). The two
 | `PUT /api/v2/sources/{source}/user` | M.11d |
 | `POST /api/v2/sources/{source}/user/connect` | M.11d |
 | `POST /api/v2/sources/{source}/user/test` | M.11d |
-| `GET /api/v2/statistics` | M.11b |
-| `GET /api/v2/stock` | M.11b |
 | `POST /api/v2/stock` | M.11c |
 | `POST /api/v2/stock/booklets` | M.11c |
 | `DELETE /api/v2/stock/{id}` | M.11c |
-| `GET /api/v2/stock/{id}` | M.11b |
 | `PATCH /api/v2/stock/{id}` | M.11c |
 | `PUT /api/v2/stock/{id}/flags` | M.11c |
 | `POST /api/v2/stock/{id}/give` | M.11c |
-| `GET /api/v2/stock/{id}/parts` | M.11b |
 | `PATCH /api/v2/stock/{id}/parts` | M.11c |
 | `POST /api/v2/stock/{id}/photos` | M.11c |
 | `POST /api/v2/stock/{id}/restore` | M.11c |
-| `GET /api/v2/storages` | M.11b |
 | `POST /api/v2/storages` | M.11c |
 | `DELETE /api/v2/storages/{id}` | M.11c |
-| `GET /api/v2/storages/{id}` | M.11b |
 | `PATCH /api/v2/storages/{id}` | M.11c |
 | `POST /api/v2/storages/{id}/contents` | M.11c |
 | `POST /api/v2/storages/{id}/restore` | M.11c |
@@ -677,20 +696,15 @@ Operations by piece: M.11a 9, M.11b 57, M.11c 65, M.11d 58 (189 in all). The two
 | `GET /api/v2/tokens` | M.11d |
 | `POST /api/v2/tokens` | M.11d |
 | `DELETE /api/v2/tokens/{id}` | M.11d |
-| `GET /api/v2/wishes` | M.11b |
 | `POST /api/v2/wishes` | M.11c |
 | `DELETE /api/v2/wishes/{id}` | M.11c |
-| `GET /api/v2/wishes/{id}` | M.11b |
 | `PATCH /api/v2/wishes/{id}` | M.11c |
 | `PUT /api/v2/wishes/{id}/flags` | M.11c |
 | `POST /api/v2/wishes/{id}/restore` | M.11c |
 | `POST /api/v2/wishes/{id}/to-owned` | M.11c |
-| `GET /api/v2/wishlists` | M.11b |
 | `POST /api/v2/wishlists` | M.11c |
 | `DELETE /api/v2/wishlists/{id}` | M.11c |
 | `PATCH /api/v2/wishlists/{id}` | M.11c |
-| `GET /api/v2/wishlists/{id}/export.csv` | M.11b |
-| `GET /api/v2/wishlists/{id}/export.xml` | M.11b |
 | `POST /api/v2/wishlists/{id}/restore` | M.11c |
 | `POST /api/v2/wishlists/{id}/transfer` | M.11c |
 <!-- api2-pending:end -->

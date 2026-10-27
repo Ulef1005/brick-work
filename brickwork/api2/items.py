@@ -39,7 +39,7 @@ def item_id(text):
 
 def moved(old, live):
     """The `307` of a merged id: where the survivor is, with the rest of the path and the query kept."""
-    location = request.full_path.rstrip('?').replace(f'/items/{old}', f'/items/{live}', 1)
+    location = re.sub(rf'(/(?:items|minifigures)/){old}(?=[/?]|$)', rf'\g<1>{live}', request.full_path.rstrip('?'), count=1)
     return errors.Moved(f'Item {old} was merged into item {live}', location=location, survivor=live)
 
 

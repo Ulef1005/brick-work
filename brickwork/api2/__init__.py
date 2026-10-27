@@ -15,7 +15,7 @@ NAME = 'brickwork_api2'
 PREFIX = '/api/v2'
 HEALTH = NAME + '.get_health'
 OPEN = (HEALTH, NAME + '.get_openapi_yaml')
-DONE = ('M.11a',)                                         # the pieces whose operations are implemented; a piece adds itself here
+DONE = ('M.11a', 'M.11b')                                       # the pieces whose operations are implemented; a piece adds itself here
 
 # (rule, method, view) collected by `route`, built into a blueprint by `blueprint()`. A view is named by its operationId.
 ROUTES = []
@@ -38,17 +38,21 @@ def _operations(path, stamp):
     with open(path) as handle:
         spec = yaml.safe_load(handle)
     result = {}
+    shared = spec.get('components', {}).get('parameters', {})
     for template, methods in spec['paths'].items():
         for method, operation in methods.items():
             if isinstance(operation, dict) and 'operationId' in operation:
                 security = operation.get('security', spec.get('security', []))
                 scope = security[0]['bearerAuth'][0] if security else None
-                result[operation['operationId']] = dict(method=method.upper(), path=template, scope=scope, piece=operation.get('x-piece'))
+                declared = [shared[p['$ref'].rsplit('/', 1)[1]] if '$ref' in p else p for p in operation.get('parameters', [])]
+                query = {p['name']: p.get('schema', {}).get('type') == 'array' for p in declared if p.get('in') == 'query'}
+                result[operation['operationId']] = dict(method=method.upper(), path=template, scope=scope, piece=operation.get('x-piece'), query=query)
     return result
 
 
 def operations():
-    """`{operationId: {method, path, scope, piece}}` of the v2 contract (cached per file version)."""
+    """`{operationId: {method, path, scope, piece, query}}` of the v2 contract (cached per file version); `query` maps each declared query
+    parameter to whether it may repeat."""
     path = contract.contract_v2_path()
     return _operations(path, path.stat().st_mtime_ns)
 
@@ -113,6 +117,7 @@ def register(app):
     from ..limits import install as install_body_limits
     install_body_limits(app)
     from . import items  # noqa: F401 — the routes of M.11a
+    from . import catalogue, copies, history, instructions, item_views, loose, places, prices, ranking, wishes  # noqa: F401 — the routes of M.11b
     app.register_blueprint(blueprint())
     previous = {404: _previous(app, 404), 405: _previous(app, 405)}
 

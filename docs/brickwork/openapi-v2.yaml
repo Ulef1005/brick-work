@@ -113,16 +113,20 @@ paths:
       operationId: get_wishlists
       x-mcp-tool: get_wishlists
       summary: get wishlists
+      description: The wishlists in their order (`sort`, name); `archived=true` includes the archived ones.
       tags:
       - Wishlist
       security:
       - bearerAuth:
         - read
       parameters:
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
       - name: archived
         in: query
         schema:
           type: boolean
+      - $ref: '#/components/parameters/Direction'
       responses:
         '200':
           description: OK
@@ -667,6 +671,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ListOfInventoryLine'
+        '307':
+          $ref: '#/components/responses/Moved'
         '404':
           $ref: '#/components/responses/NotFound'
         default:
@@ -694,6 +700,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ListOfUsedIn'
+        '307':
+          $ref: '#/components/responses/Moved'
         '404':
           $ref: '#/components/responses/NotFound'
         default:
@@ -721,6 +729,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ListOfColor'
+        '307':
+          $ref: '#/components/responses/Moved'
         '404':
           $ref: '#/components/responses/NotFound'
         default:
@@ -748,6 +758,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ListOfImage'
+        '307':
+          $ref: '#/components/responses/Moved'
         '404':
           $ref: '#/components/responses/NotFound'
         default:
@@ -804,7 +816,7 @@ paths:
       - bearerAuth:
         - read
       parameters:
-      - $ref: '#/components/parameters/Path_id_int'
+      - $ref: '#/components/parameters/Path_image_id'
       responses:
         '200':
           description: File.
@@ -1897,11 +1909,14 @@ paths:
     get:
       operationId: get_minifigures_by_id
       summary: 'One figure: sets, loose lines, missing, matches, prices.'
+      description: The item detail of a minifigure by its Brick Work id (`used_in` the sets, `stock` the loose lines, `gaps` and `matches`). A merged id is `307` to the survivor's `/minifigures/{id}`; an item that is not a figure is `404`.
       tags:
       - Minifigures
       security:
       - bearerAuth:
         - read
+      parameters:
+      - $ref: '#/components/parameters/Path_item_id'
       responses:
         '200':
           description: OK
@@ -1909,6 +1924,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OneItemDetail'
+        '307':
+          $ref: '#/components/responses/Moved'
         '404':
           $ref: '#/components/responses/NotFound'
         default:
@@ -2192,6 +2209,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OneItemPrices'
+        '307':
+          $ref: '#/components/responses/Moved'
         '404':
           $ref: '#/components/responses/NotFound'
         default:
@@ -2257,6 +2276,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ListOfPriceObservation'
+        '307':
+          $ref: '#/components/responses/Moved'
         '404':
           $ref: '#/components/responses/NotFound'
         default:
@@ -3357,6 +3378,7 @@ paths:
     get:
       operationId: get_export_missing_json
       summary: Aggregated missing items for chosen copies, using the XML export rules.
+      description: One line per item, colour and condition, each with the BrickLink type, number and colour number the XML names it by. A line with no confirmed BrickLink number is not in the XML; it is in `skipped` with the reason.
       security:
       - bearerAuth:
         - read
@@ -3392,20 +3414,18 @@ paths:
                     items:
                       type: object
                       required:
-                      - item_type
-                      - item_no
-                      - color_id
+                      - item
+                      - color
                       - quantity
                       - condition
+                      - bricklink
                       properties:
-                        item_type:
-                          type: string
-                        item_no:
-                          type: string
-                        color_id:
-                          type:
-                          - integer
-                          - 'null'
+                        item:
+                          $ref: '#/components/schemas/Item'
+                        color:
+                          oneOf:
+                          - $ref: '#/components/schemas/Color'
+                          - type: 'null'
                         quantity:
                           type: integer
                         condition:
@@ -3413,6 +3433,49 @@ paths:
                           - new
                           - used
                           - null
+                        bricklink:
+                          description: The BrickLink type, item number and colour number of the wanted-list line.
+                          type: object
+                          required:
+                          - type
+                          - 'no'
+                          - color_id
+                          properties:
+                            type:
+                              type: string
+                            'no':
+                              type: string
+                            color_id:
+                              type:
+                              - integer
+                              - 'null'
+                  skipped:
+                    description: Lines the XML leaves out because BrickLink cannot name them.
+                    type: array
+                    items:
+                      type: object
+                      required:
+                      - item
+                      - color
+                      - quantity
+                      - condition
+                      - why
+                      properties:
+                        item:
+                          $ref: '#/components/schemas/Item'
+                        color:
+                          oneOf:
+                          - $ref: '#/components/schemas/Color'
+                          - type: 'null'
+                        quantity:
+                          type: integer
+                        condition:
+                          enum:
+                          - new
+                          - used
+                          - null
+                        why:
+                          type: string
         default:
           $ref: '#/components/responses/Problem'
       x-v1: get_export_missing_json
@@ -6216,6 +6279,16 @@ components:
       required: true
       schema:
         type: integer
+    Path_image_id:
+      name: id
+      in: path
+      required: true
+      description: A cached provider picture's number, or an own photo's 32-character hex id (`Image.id`).
+      schema:
+        oneOf:
+        - type: integer
+        - type: string
+          pattern: ^[0-9a-f]{32}$
     Q_condition:
       name: condition
       in: query
@@ -6335,7 +6408,7 @@ components:
       in: query
       schema:
         type: string
-      description: true or false.
+      description: true to keep the file records whose PDF is on disk, false those whose PDF is missing from the media folder.
     Q_guide:
       name: guide
       in: query
@@ -6814,6 +6887,21 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ItemLink'
+        used_in:
+          description: The live copies that hold the item (a part or a figure), as `GET /items/{id}/used-in`.
+          type: array
+          items:
+            $ref: '#/components/schemas/UsedIn'
+        gaps:
+          description: The gaps on this item, and (for a set) the gaps of its copies, as `GET /gaps`.
+          type: array
+          items:
+            $ref: '#/components/schemas/Gap'
+        matches:
+          description: The loose stock that fills those gaps, as `GET /matches`.
+          type: array
+          items:
+            $ref: '#/components/schemas/Match'
       required:
       - item
     InventoryLine:
@@ -6864,7 +6952,10 @@ components:
       type: object
       properties:
         id:
-          type: integer
+          description: The picture number of a cached provider picture, the 32-character hex id of an own photo.
+          oneOf:
+          - type: integer
+          - type: string
         item:
           $ref: '#/components/schemas/Item'
         color:
@@ -7104,8 +7195,10 @@ components:
     CheckState:
       type: object
       properties:
-        session: {}
-        rows: {}
+        session:
+          description: The saved part-check session (id, order, cursor, answers, misses, undo, finished, sort, spares, saved_at), or null when none was started.
+        rows:
+          description: The sequence of the check. One entry per required part line (kind part), whole figure (figure) and spare line (spare) with token, id, item, name, color, quantity, missing, damaged, checked and image_id; a figure carries parts_lines and parts_missing.
     CheckAction:
       type: object
       properties:
@@ -7141,6 +7234,7 @@ components:
       required:
       - action
     Gap:
+      description: What a copy or a loose figure lacks. For a missing booklet or box (`instructions`, `box`) the item is the copy's set and `target_id` is the copy id; for a part, a figure or a loose figure's part it is the item missing and `target_id` the line id.
       type: object
       properties:
         copy_id:
@@ -7974,11 +8068,12 @@ components:
           - string
           - 'null'
         source_table:
+          description: Where the held or wanted line is, by table.
           type: string
           enum:
-          - copies
-          - loose_stock
-          - wishlist
+          - copy
+          - stock
+          - wish
     Wishlist:
       type: object
       properties:
@@ -8288,6 +8383,7 @@ components:
       type: object
       properties:
         id:
+          description: The storage id. The virtual location "Not stored" has the id `unstored` (in a filter, `null` means not stored).
           type:
           - string
           - 'null'
@@ -8415,7 +8511,7 @@ components:
           type:
           - string
           - 'null'
-        created_date:
+        created_at:
           type:
           - string
           - 'null'
@@ -9638,6 +9734,7 @@ components:
         page:
           $ref: '#/components/schemas/PageInfo'
     ListOfInstructionFile:
+      description: The file records (archived ones with `archived=include|only`). `coverage` counts the booklet identities (instructions items) and how many of them have a PDF through the set with their number.
       type: object
       required:
       - data
@@ -10808,18 +10905,17 @@ components:
             priced:
               type: integer
             unpriced:
+              description: Up to 50 lines without a usable quote.
               type: array
               items:
                 type: object
                 properties:
-                  item_type:
-                    type: string
-                  item_no:
-                    type: string
-                  color_id:
-                    type:
-                    - integer
-                    - 'null'
+                  item:
+                    $ref: '#/components/schemas/Item'
+                  color:
+                    oneOf:
+                    - $ref: '#/components/schemas/Color'
+                    - type: 'null'
             unpriced_count:
               type: integer
         id:
@@ -11226,6 +11322,8 @@ components:
       - type
       - 'no'
       - color_id
+      - color_scoped
+      - brickwork_color_id
       - status
       - preferred
       properties:
@@ -11236,6 +11334,15 @@ components:
         'no':
           type: string
         color_id:
+          description: The BrickLink colour id the link is scoped to; null for every colour, or for a scope that has no BrickLink colour (see `color_scoped`).
+          type:
+          - integer
+          - 'null'
+        color_scoped:
+          description: True when the link applies to one colour only.
+          type: boolean
+        brickwork_color_id:
+          description: The scope in Brick Work's own colour space; set exactly when `color_scoped`.
           type:
           - integer
           - 'null'

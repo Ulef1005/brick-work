@@ -127,5 +127,5 @@ def test_every_operation_of_a_later_piece_answers_501_with_its_piece(v2):
 
 def test_the_501_list_is_the_contract_minus_the_done_pieces():
     spec = operations()
-    assert {p for _, _, p in pending()} == {'M.11b', 'M.11c', 'M.11d'}
-    assert len(spec) - len(pending()) == 9
+    assert {p for _, _, p in pending()} == {'M.11c', 'M.11d'}
+    assert len(spec) - len(pending()) == 66

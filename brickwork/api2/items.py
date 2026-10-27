@@ -3,18 +3,36 @@
 All answer `200` with the same item body (design 7), so a client needs one round trip. A number that names several items is
 `409 ambiguous` with the candidates, one that names none is `404`, a merged id is `307` to the survivor on GET and `409 merged` on a
 write (`for_write`, used by the write pieces)."""
+from contextlib import contextmanager
+import re
+
 from flask import jsonify, request
 
 from ..core import errors
 from ..store4 import lookup
 from . import database, route, serializers
 
+@contextmanager
+def snapshot(db):
+    """One read snapshot for resolving an item and serialising it: a merge that commits in between must not mix two states in one answer.
+    In WAL the first read after BEGIN pins the snapshot; the connection is read-only here, so the transaction is rolled back."""
+    if db.in_transaction:
+        yield
+        return
+    db.execute('BEGIN')
+    try:
+        yield
+    finally:
+        db.rollback()
+
+
 DEFAULT_PROVIDER = 'bricklink'                            # decision 3: what every current client, order e-mail and the House API speak
 
 
 def item_id(text):
     """The integer of a path segment; an id that is not one names no item."""
-    if not str(text).isdigit() or int(text) < 1 or len(str(text)) > 18:
+    # Canonical only (no sign, no leading zero): a Location built from the id must differ from the URL it answers.
+    if not re.fullmatch(r'[1-9][0-9]{0,17}', str(text)):
         raise errors.NotFound('No such item')
     return int(text)
 
@@ -83,6 +101,12 @@ def resolve(db, provider, kind, key, color):
     return jsonify(data=body)
 
 
+def pinned_resolve(provider, kind, key, color):
+    db = database()
+    with snapshot(db):
+        return resolve(db, provider, kind, key, color)
+
+
 def numbered(kind):
     args = _arguments(('provider', 'color'))
     return args.get('provider', DEFAULT_PROVIDER), kind
@@ -91,25 +115,26 @@ def numbered(kind):
 @route('/items/<id>')
 def get_items_by_id(id):
     db = database()
-    return jsonify(data=serializers.item(db, live(db, id)))
+    with snapshot(db):
+        return jsonify(data=serializers.item(db, live(db, id)))
 
 
 @route('/sets/by-number/<no>')
 def get_sets_by_number_by_no(no):
     provider, kind = numbered('set')
-    return resolve(database(), provider, kind, no, request.args.get('color'))
+    return pinned_resolve(provider, kind, no, request.args.get('color'))
 
 
 @route('/parts/by-number/<no>')
 def get_parts_by_number_by_no(no):
     provider, kind = numbered('part')
-    return resolve(database(), provider, kind, no, request.args.get('color'))
+    return pinned_resolve(provider, kind, no, request.args.get('color'))
 
 
 @route('/minifigures/by-number/<no>')
 def get_minifigures_by_number_by_no(no):
     provider, kind = numbered('minifigure')
-    return resolve(database(), provider, kind, no, request.args.get('color'))
+    return pinned_resolve(provider, kind, no, request.args.get('color'))
 
 
 @route('/lookup')
@@ -117,4 +142,4 @@ def get_lookup():
     args = _arguments(('provider', 'kind', 'key', 'color'))
     if not args.get('kind') or not args.get('key'):
         raise errors.ValidationFailed('kind and key are required')
-    return resolve(database(), args.get('provider', DEFAULT_PROVIDER), args['kind'], args['key'], args.get('color'))
+    return pinned_resolve(args.get('provider', DEFAULT_PROVIDER), args['kind'], args['key'], args.get('color'))

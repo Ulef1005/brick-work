@@ -24,7 +24,7 @@ def test_a_catalogue_item_by_id_has_the_design_7_body(v2, coll):
     set_id = coll.item('sets', '2070-1')
     body = data(call(v2, f'/items/{set_id}'))
     assert body == {'id': set_id, 'kind': 'set', 'name': 'Ring Me Rabbit', 'unidentified': False,
-                    'bricklink': [{'type': 'S', 'no': '2070-1', 'color_id': None, 'preferred': True}], 'rebrickable': {'key': '2070-1'}}
+                    'bricklink': [{'type': 'S', 'no': '2070-1', 'color_id': None, 'color_scoped': False, 'brickwork_color_id': None, 'preferred': True}], 'rebrickable': {'key': '2070-1'}}
     # reading an item does not project it, and projecting it changes nothing the client sees
     assert coll.db.execute('SELECT 1 FROM main.item WHERE id=?', (set_id,)).fetchone() is None
     coll.project(set_id)
@@ -33,8 +33,8 @@ def test_a_catalogue_item_by_id_has_the_design_7_body(v2, coll):
 
 def test_a_figure_lists_its_bricklink_number_and_a_part_none_preferred(v2, coll):
     figure = data(call(v2, f"/items/{coll.item('minifigs', 'fig-000004')}"))
-    assert figure['kind'] == 'minifigure' and figure['bricklink'] == [{'type': 'M', 'no': 'syn-fig-0004', 'color_id': None, 'preferred': True}]
-    assert data(call(v2, f"/items/{coll.item('parts', '3001')}"))['bricklink'] == [{'type': 'P', 'no': '3001', 'color_id': None, 'preferred': False}]
+    assert figure['kind'] == 'minifigure' and figure['bricklink'] == [{'type': 'M', 'no': 'syn-fig-0004', 'color_id': None, 'color_scoped': False, 'brickwork_color_id': None, 'preferred': True}]
+    assert data(call(v2, f"/items/{coll.item('parts', '3001')}"))['bricklink'] == [{'type': 'P', 'no': '3001', 'color_id': None, 'color_scoped': False, 'brickwork_color_id': None, 'preferred': False}]
 
 
 def test_the_leg_rule_shows_as_colour_scoped_links_with_bricklink_colour_ids(v2, coll):
@@ -53,7 +53,7 @@ def test_a_bricklink_only_item_lists_its_born_number(v2, coll):
     local = coll.local('part', 'Only on BrickLink', born_key='x999')
     body = data(call(v2, f'/items/{local}'))
     assert body['unidentified'] is True and body['rebrickable'] is None
-    assert body['bricklink'] == [{'type': 'P', 'no': 'x999', 'color_id': None, 'preferred': True}]
+    assert body['bricklink'] == [{'type': 'P', 'no': 'x999', 'color_id': None, 'color_scoped': False, 'brickwork_color_id': None, 'preferred': True}]
 
 
 def test_an_unknown_id_is_404(v2):
@@ -220,3 +220,63 @@ def test_a_write_naming_a_merged_id_is_409_merged_naming_the_survivor(app4, coll
         response = transport.problem(raised.value)
     assert response.status_code == 409 and response.json['code'] == 'merged' and response.json['survivor'] == survivor
     assert response.mimetype == 'application/problem+json'
+
+
+# --- review round 1 (Codex findings, each written as a failing test first)
+def test_a_born_number_does_not_outvote_a_manual_link_given_a_colour(v2, coll):
+    born = coll.local('part', 'Born at x', born_key='bornx')
+    other = coll.item('parts', '3001')
+    coll.link(other, 'bornx', kind='P', colour=coll.colour('15'), status='manual')            # manual, scoped to white
+    found = call(v2, '/parts/by-number/bornx?color=1')                                       # BrickLink 1 is white
+    assert found.status_code == 200 and found.json['data']['id'] == other
+    assert call(v2, '/parts/by-number/bornx').status_code == 409                              # without a colour both still match
+    assert born != other
+
+
+def test_a_born_number_does_not_apply_in_a_colour_its_item_has_a_scoped_link_for(v2, coll):
+    born = coll.local('part', 'Born at y', born_key='borny')
+    coll.link(born, 'borny-white', kind='P', colour=coll.colour('15'))                         # the leg rule: scoped row overrides the unscoped one
+    assert call(v2, '/parts/by-number/borny?color=1').status_code == 404                       # white: the born number is overridden
+    assert data(call(v2, '/parts/by-number/borny?color=11'))['id'] == born                     # black: it holds
+    assert data(call(v2, '/parts/by-number/borny'))['id'] == born                              # no colour: it holds
+
+
+def test_a_link_scoped_to_a_colour_without_a_bricklink_id_never_reads_as_unscoped(v2, coll):
+    unknown = coll.colour('-1')                                                               # [Unknown]: no BrickLink colour
+    plate = coll.item('parts', '3023')
+    coll.link(plate, 'scoped-nobl', kind='P', colour=unknown)
+    coll.link(plate, 'open', kind='P')
+    links = {l['no']: l for l in data(call(v2, f'/items/{plate}'))['bricklink']}
+    assert links['scoped-nobl']['color_id'] is None and links['scoped-nobl']['color_scoped'] is True
+    assert links['scoped-nobl']['brickwork_color_id'] == unknown
+    assert links['open']['color_scoped'] is False and links['open']['brickwork_color_id'] is None
+    white = coll.colour('15')
+    coll.link(plate, 'scoped-white', kind='P', colour=white)
+    entry = {l['no']: l for l in data(call(v2, f'/items/{plate}'))['bricklink']}['scoped-white']
+    assert (entry['color_id'], entry['color_scoped'], entry['brickwork_color_id']) == (1, True, white)
+
+
+def test_resolution_and_body_are_one_snapshot(v2, coll, pair, monkeypatch):
+    from brickwork.store4 import lookup
+    loser = coll.local('part', 'Moving', born_key='mv1')
+    coll.link(loser, 'mv-link', kind='P')
+    survivor = coll.item('parts', '3001')
+    coll.project(survivor)
+    real = lookup.live_id
+
+    def live_then_merge(db, item_id):
+        result = real(db, item_id)
+        with closing(connect(pair)) as other:                                                 # a merge commits between the two reads
+            merge.merge(other, loser, survivor, via='cli')
+            other.commit()
+        return result
+    monkeypatch.setattr(lookup, 'live_id', live_then_merge)
+    body = data(call(v2, f'/items/{loser}'))
+    assert body['id'] == loser and 'mv-link' in [l['no'] for l in body['bricklink']]          # the state live_id saw, links included
+
+
+def test_ids_are_canonical_integers(v2, coll):
+    local = coll.local('part', 'Big id', born_key='big1')
+    assert call(v2, f'/items/{local}').status_code == 200
+    for bad in (f'0{local}', f'00{local}', '007', '+7', ' 7'):
+        assert call(v2, '/items/' + bad).status_code == 404, bad

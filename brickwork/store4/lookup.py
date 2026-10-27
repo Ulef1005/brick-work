@@ -84,8 +84,10 @@ def item_links(db, store, item_id):
     rows = db.execute(f'''SELECT provider_kind, provider_key, color_id, preferred, status FROM {store}.item_link
                           WHERE item_id=? AND provider='bricklink' AND status IN ({_IN})''', (item_id, *_CONFIRMED)).fetchall()
     rows = sorted(rows, key=lambda r: identity.item_link_order(r['preferred'], r['status'], r['provider_kind'], r['provider_key']))
+    # color_id is the BrickLink colour; a link scoped to a colour that has no BrickLink id reads color_id null with color_scoped true, never as
+    # "every colour" (brickwork_color_id names the scope in Brick Work's own space).
     return [{'type': r['provider_kind'], 'no': r['provider_key'], 'color_id': None if r['color_id'] is None else _bricklink_color(db, r['color_id']),
-             'preferred': bool(r['preferred'])} for r in rows]
+             'color_scoped': r['color_id'] is not None, 'brickwork_color_id': r['color_id'], 'preferred': bool(r['preferred'])} for r in rows]
 
 
 def item_body(db, item_id):
@@ -98,10 +100,10 @@ def item_body(db, item_id):
         return None
     store, row = found
     bricklink = item_links(db, store, item_id)
-    if row['born_provider'] == 'bricklink' and not any(l['type'] == row['born_namespace'] and l['no'] == row['born_key'] and l['color_id'] is None
+    if row['born_provider'] == 'bricklink' and not any(l['type'] == row['born_namespace'] and l['no'] == row['born_key'] and not l['color_scoped']
                                                        for l in bricklink):
-        bricklink.append({'type': row['born_namespace'], 'no': row['born_key'], 'color_id': None,
-                          'preferred': not any(l['color_id'] is None for l in bricklink)})
+        bricklink.append({'type': row['born_namespace'], 'no': row['born_key'], 'color_id': None, 'color_scoped': False, 'brickwork_color_id': None,
+                          'preferred': not any(not l['color_scoped'] for l in bricklink)})
     return {'id': row['id'], 'kind': row['kind'], 'name': row['name'],
             'unidentified': store == 'main' and row['origin'] == 'local' and row['born_provider'] != 'rebrickable',
             'bricklink': bricklink,
@@ -161,7 +163,16 @@ def find_items(db, provider, kind, key, color_id=None):
                 owned = '' if store == 'main' else 'AND item_id NOT IN (SELECT id FROM main.item)'
                 found.update(r[0] for r in db.execute(f'''SELECT item_id FROM {store}.item_link WHERE provider='bricklink' AND provider_kind=?
                                                           AND provider_key=? AND status IN ({_IN}) {owned}''', (letter, key, *_CONFIRMED)))
-        found.update(r[0] for r in db.execute("SELECT id FROM main.item WHERE born_provider='bricklink' AND born_namespace=? AND born_key=?", (letter, key)))
+        born = [r[0] for r in db.execute("SELECT id FROM main.item WHERE born_provider='bricklink' AND born_namespace=? AND born_key=?", (letter, key))]
+        if color_id is not None:
+            # A born number is an unscoped claim: a manual link for this number decides alone (design 3.2), and an item with a link scoped
+            # to the colour does not answer for it by its unscoped born number (the leg rule).
+            manual = db.execute(f"SELECT 1 FROM main.item_link WHERE provider='bricklink' AND provider_kind=? AND provider_key=? AND status='manual' "
+                                f"AND (color_id=? OR color_id IS NULL)", (letter, key, color_id)).fetchone()
+            born = [] if manual else [i for i in born if not db.execute(
+                f'SELECT 1 FROM main.item_link WHERE item_id=? AND provider=? AND color_id=? AND status IN ({_IN})',
+                (i, 'bricklink', color_id, *_CONFIRMED)).fetchone()]
+        found.update(born)
     live = set()
     for item_id in found:
         target = live_id(db, item_id)

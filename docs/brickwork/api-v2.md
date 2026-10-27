@@ -40,7 +40,7 @@ v1 answers `410 Gone` on the 4.0 line (its `/health` excepted) because it cannot
 
 | Thing | Address | Notes |
 |---|---|---|
-| Item | `/items/{id}`, integer | Catalogue ids are running numbers from the catalogue build (up to six digits today); local items (BrickLink-born, API-born, unidentified) start at 1,000,000,000. An item the collection has not projected yet is still addressable: the read falls back to the attached catalogue. |
+| Item | `/items/{id}`, a canonical integer (no sign, no leading zero; anything else is `404`, so a redirect's `Location` never equals the URL it answers) | Catalogue ids are running numbers from the catalogue build (up to six digits today); local items (BrickLink-born, API-born, unidentified) start at 1,000,000,000. An item the collection has not projected yet is still addressable: the read falls back to the attached catalogue. |
 | Item by number | `/sets/by-number/{no}`, `/parts/by-number/{no}`, `/minifigures/by-number/{no}`, `GET /lookup?provider=&kind=&key=` | Same item body as `/items/{id}`, answered with `200`, not a redirect, so a client needs one round trip. |
 | Colour | `color` query parameter or body member | In the provider's space (below). `GET /colors/{id}` takes a Brick Work colour id. |
 | Copy, stock line, lot, storage, place, flag | uuid text | As v1. |
@@ -54,6 +54,7 @@ v1 answers `410 Gone` on the 4.0 line (its `/health` excepted) because it cannot
 * `kind` is `set`, `part`, `minifigure`, `instructions`, `box`, `gear`, `book` or `catalog`; the three number paths fix it. Rebrickable has numbers only for sets, parts and minifigures; another kind with `provider=rebrickable` is `422`.
 * A BrickLink number resolves through the item's links (every confirmed link: `manual`, `matched`, `inferred`) and through a BrickLink-born local item's own number. A Rebrickable number resolves through the born key.
 * **Colour-scoped links.** With `color`, the colour is read in the provider's space (`bricklink`: a BrickLink colour id, `rebrickable`: a Rebrickable colour id) and the lookup is the inverse of the resolution function (data model 3.2): a link scoped to that colour applies, an unscoped link applies only when the item has none scoped to the colour (the leg rule), and a `manual` link decides alone. The answer then carries `data.color`, the resolved Brick Work colour, so a client can map provider colours. Without `color`, a link of any scope matches.
+* A BrickLink-born local item's own number is an unscoped claim that follows the same precedence: a `manual` link for the number decides alone, and the item does not answer by its born number in a colour it has a scoped link for. Across different items a colour-scoped link and an unscoped one both apply, so they are `409 ambiguous` together.
 * One match is `200` with the item body. Several is `409 ambiguous` with `candidates` (item bodies) and the problem fields; none is `404`. A merged item found by number is followed to its survivor silently.
 * Unknown query names are `400 unknown_filter`. A colour that names no colour, or a bad `kind` or `provider`, is `422 validation_failed`.
 
@@ -63,16 +64,17 @@ v1 answers `410 Gone` on the 4.0 line (its `/health` excepted) because it cannot
 
 ```json
 {"id": 15011, "kind": "set", "name": "...", "unidentified": false,
- "bricklink": [{"type": "S", "no": "6081-1", "color_id": null, "preferred": true}],
+ "bricklink": [{"type": "S", "no": "6081-1", "color_id": null, "color_scoped": false, "brickwork_color_id": null, "preferred": true}],
  "rebrickable": {"key": "6081-1"}}
 ```
 
-`bricklink` lists the confirmed BrickLink links, preferred first; a colour-scoped link names its BrickLink colour in `color_id`, an unscoped one has `null`. A BrickLink-born local item with no link of its own lists its born number. `rebrickable` is the born key or `null`. `unidentified` is true for a local item that is not born at Rebrickable (data model 3.8): no born key, or a BrickLink-only number. Every field of a row that names an item (`item`, `child`, `parent_minifig`, `part`, `figure`) carries this body, and every colour (`color`) the colour body `{id, name, rgb, bricklink_id, rebrickable_id}`.
+`bricklink` lists the confirmed BrickLink links, preferred first; a colour-scoped link names its BrickLink colour in `color_id` and has `color_scoped: true`, an unscoped one has `color_id: null` and `color_scoped: false`. A link scoped to a colour that has no BrickLink id also reads `color_id: null`, but with `color_scoped: true`: it never reads as "every colour", and `brickwork_color_id` (set exactly when `color_scoped`) names the scope in Brick Work's own space. (`color_scoped` and `brickwork_color_id` are additions to the design 7 shape, made for this case.) A BrickLink-born local item with no link of its own lists its born number. `rebrickable` is the born key or `null`. `unidentified` is true for a local item that is not born at Rebrickable (data model 3.8): no born key, or a BrickLink-only number. Every field of a row that names an item (`item`, `child`, `parent_minifig`, `part`, `figure`) carries this body, and every colour (`color`) the colour body `{id, name, rgb, bricklink_id, rebrickable_id}`.
 
 **Merged ids** (decision 5, amended 2026-10-27):
 
 * `GET` of a merged id (any `/items/{id}...` path) answers **`307 Temporary Redirect`** with `Location` to the same path under the survivor (the query string is kept), `Cache-Control: no-store` and a problem body (`code: moved`, `survivor`).
 * **This deviates from data model 3.6 and 7, which say `301`.** A merge can be undone exactly (unmerge restores every moved row), and a cached permanent `301` would keep sending the unmerged id to the old survivor. `307` also keeps the method, though only `GET` redirects.
+* Resolving an id and serialising its item are one read snapshot, so a merge that commits in between never mixes two states in one answer.
 * A write that names a merged id is `409 merged` with `survivor`; nothing is written, since a client that silently writes to a moved id would surprise. `POST /items/{id}/unmerge` is the one write that names a merged id on purpose.
 
 ### 2.2 Value formats

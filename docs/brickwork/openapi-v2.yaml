@@ -11124,6 +11124,8 @@ components:
       - type
       - 'no'
       - color_id
+      - color_scoped
+      - brickwork_color_id
       - preferred
       properties:
         type:
@@ -11144,7 +11146,16 @@ components:
           type:
           - integer
           - 'null'
-          description: BrickLink colour id the link is scoped to; null holds for every colour (design 3.2).
+          description: The BrickLink colour id the link is scoped to. Null with color_scoped false holds for every colour (design 3.2); null with color_scoped true
+            is a link scoped to a colour that has no BrickLink id (see brickwork_color_id), never "every colour".
+        color_scoped:
+          type: boolean
+          description: True when the link holds for one colour only.
+        brickwork_color_id:
+          type:
+          - integer
+          - 'null'
+          description: The Brick Work colour id the link is scoped to; null when color_scoped is false.
         preferred:
           type: boolean
     Item:

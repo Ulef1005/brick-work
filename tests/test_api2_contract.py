@@ -51,7 +51,7 @@ def test_the_item_and_colour_schemas_are_design_7():
     item, color = V2['components']['schemas']['Item'], V2['components']['schemas']['Color']
     assert item['required'] == ['id', 'kind', 'name', 'unidentified', 'bricklink', 'rebrickable']
     assert set(item['properties']) == {'id', 'kind', 'name', 'unidentified', 'bricklink', 'rebrickable', 'color'}
-    assert V2['components']['schemas']['ItemBrickLink']['required'] == ['type', 'no', 'color_id', 'preferred']
+    assert V2['components']['schemas']['ItemBrickLink']['required'] == ['type', 'no', 'color_id', 'color_scoped', 'brickwork_color_id', 'preferred']
     assert color['required'] == ['id', 'name', 'rgb', 'bricklink_id', 'rebrickable_id'] and set(color['properties']) == set(color['required'])
     assert V2['components']['schemas']['Wish']['properties']['id']['type'] == 'string'
     assert 'inventory' in V2['components']['schemas']['Copy']['properties']

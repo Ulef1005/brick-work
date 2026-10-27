@@ -182,7 +182,7 @@ def bw_admin_write(page):
         if page == 'unresolved':
             if not bw_collection_editable():
                 abort(403, 'Changes are switched off on this instance')
-            fields = ('item', 'target', 'number', 'link', 'kind', 'provider', 'reason', 'event')
+            fields = ('item', 'target', 'number', 'link', 'kind', 'provider', 'reason', 'event', 'colour', 'merge')
             try:
                 result = admin_ops.tools_write('identity', action=request.form.get('action', ''),
                                                **{k: request.form.get(k) or None for k in fields})
@@ -1305,6 +1305,7 @@ def bw_collection_item(item_id):
             moved = db.execute('SELECT new_id FROM item_redirect WHERE old_id=?', (item_id,)).fetchone()
             if moved:                                                      # a merged item answers with the item it was merged into (design 3.6)
                 from .ui import passthrough_args
+                session['bw_merged_from'] = item_id                        # the survivor's page says where the visitor came from, with Unmerge (M.10 B)
                 return redirect(url_for('web.bw_collection_item', item_id=moved[0], **passthrough_args('item_id')), 301)
             try:
                 colour = (collection.NO_COLOUR if colour_arg == 'none' else int(colour_arg)) if colour_arg else None   # 3.3's "no colour" is colour 1
@@ -1325,9 +1326,108 @@ def bw_collection_item(item_id):
             detail = collection.detail(db, item_id, colour=colour, copy_id=request.args.get('copy'), stock_id=request.args.get('stock'))
             detail['colour_choices'] = colour_choices if len(colour_choices) > 1 else []
             choices = collection.options(db)
+            from ..core import identity_admin
+            if not detail['colour_choices']:
+                detail['links'] = identity_admin.links(db, item_id, colour)
+            detail['merged_into'] = identity_admin.merged_into(db, item_id)
+            detail['merged_from'] = session.pop('bw_merged_from', None)
+            detail['identity_notice'] = identity_notice(db, request.args.get('done', ''))
     except ValueError as exc:
         abort(404, str(exc))
     return bw_collection_detail_response(detail, choices, collection.TYPES.get(letter, 'Collection'))
+
+
+def identity_notice(db, text):
+    """`?done=<event id>` on an item page: `dict(id, text, undo)` for the identity decision that was just made (`undo` when it can still be
+    undone), else None."""
+    import json
+    from . import token_rows
+    from ..core import undo as undoing
+    identifier = token_rows.event_id(text)
+    if identifier is None:
+        return None
+    event = db.execute("SELECT e.* FROM main.event e WHERE e.id=? AND e.entity_kind IN ('item','item_link','item_provider_status')", (identifier,)).fetchone()
+    if event is None:
+        return None
+    name = lambda item_id: (db.execute('SELECT name FROM main.item WHERE id=?', (item_id,)).fetchone() or ['that item'])[0] or 'that item'
+    if event['field'] == 'merge':
+        try:
+            moved = sum(sum(c.values()) for t, c in json.loads(event['new_value'])['counts'].items() if t != 'item')
+        except (ValueError, KeyError, TypeError):
+            moved = 0
+        words = f'Merged {name(int(event["old_value"]))} into this item' + (f' · {moved} {"row" if moved == 1 else "rows"} moved' if moved else '')
+    elif event['field'] == 'unmerge':
+        words = f'Unmerged {name(int(event["old_value"]))}'
+    elif event['field'] == 'prefer':
+        words = 'Preferred link saved'
+    elif event['field'] == 'add':
+        words = 'BrickLink number linked'
+    else:
+        words = 'Saved'
+    can = db.execute(f"SELECT 1 FROM main.event e WHERE e.id=? AND {undoing.undoable_sql('e')} AND NOT {undoing.undone_sql('e')}", (identifier,)).fetchone()
+    return dict(id=identifier, text=words, undo=bool(can))
+
+
+@web_page.get('/collection/item/<int:item_id>/merge')
+@login_required
+def bw_item_merge(item_id):
+    """Merge a local (or catalogue-retired) item into another: search for the survivor, see what moves and what refuses, then confirm."""
+    from .admin_ops import brickwork_path
+    from ..core.admin import database
+    from ..core import collection, identity_admin
+    if not bw_collection_editable():
+        abort(403, 'Changes are switched off on this instance')
+    query, target = request.args.get('q', '').strip()[:60], request.args.get('target')
+    try:
+        with database(brickwork_path(), require_catalogue=False) as db:
+            base = db.execute('SELECT * FROM main.item WHERE id=?', (item_id,)).fetchone()
+            if base is None:
+                abort(404, 'Item is unavailable')
+            if base['merged_into'] is not None:
+                return redirect(url_for('web.bw_collection_item', item_id=base['merged_into']))
+            loser = collection.decorate(db, [dict(item_id=item_id, name=base['name'], year=base['year'])])[0]
+            blocker = identity_admin.merge_blocker(db, item_id)
+            results = [] if blocker else identity_admin.survivors(db, item_id, query)
+            chosen = preview = None
+            if target and not blocker and target.isdigit():
+                chosen = collection.decorate(db, [dict(item_id=int(target))])[0]
+                preview = identity_admin.merge_preview(db, item_id, int(target))
+    except ValueError as exc:
+        abort(404, str(exc))
+    response = current_app.make_response(render_template('web/toni/web/bw_item_merge.html', title='Merge item', loser=loser, blocker=blocker, query=query,
+        results=results, chosen=chosen, preview=preview, csrf_token=bw_add_token(), can_edit=True))
+    response.headers['Cache-Control'] = 'no-store'
+    return response
+
+
+@web_page.post('/collection/item/<int:item_id>/identity')
+@login_required
+def bw_item_identity(item_id):
+    """A decision made on an item page: merge, unmerge, preferred link, BrickLink number, or Undo of the last one."""
+    from flask import flash
+    from ..core import errors
+    from . import admin_ops
+    origin = request.headers.get('Origin')
+    if (origin and origin.rstrip('/') != request.host_url.rstrip('/')) or request.headers.get('Sec-Fetch-Site') == 'cross-site':
+        abort(403)
+    bw_add_csrf(request.form)
+    if not bw_collection_editable():
+        abort(403, 'Changes are switched off on this instance')
+    action = request.form.get('action', '')
+    args = {k: request.form[k] for k in ('colour',) if request.form.get(k)}
+    fields = ('target', 'number', 'link', 'colour', 'merge', 'event')
+    back = url_for('web.bw_collection_item', item_id=item_id, **args)
+    try:
+        result = admin_ops.tools_write('identity', action=action, item=str(item_id), **{k: request.form.get(k) or None for k in fields})
+    except (errors.BrickWorkError, ValueError, TypeError) as exc:
+        flash('Not saved · ' + (str(exc) if isinstance(exc, errors.BrickWorkError) else 'Check the values and try again.'), 'error')
+        return redirect(url_for('web.bw_item_merge', item_id=item_id, target=request.form.get('target')) if action == 'merge' else back)
+    if action == 'undo':
+        flash('Undone', 'success')
+        return redirect(back)
+    if action == 'merge':
+        return redirect(url_for('web.bw_collection_item', item_id=int(request.form['target']), done=result['event_id']))
+    return redirect(url_for('web.bw_collection_item', item_id=item_id, done=result.get('event_id'), **args))
 
 
 @web_page.get('/collection/item/<kind>/<path:number>')

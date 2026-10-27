@@ -1,0 +1,27 @@
+{% extends 'web/toni/base.html' %}
+{% block title %} · {{ title }}{% endblock %}{% block content_class %}standard bi-page{% endblock %}
+{% block page_assets %}<link rel="stylesheet" href="{{ bw_static('web/toni/bw-collection.css') }}"><link rel="stylesheet" href="{{ bw_static('web/toni/bw-identity.css') }}">{% endblock %}
+{% macro tile(row, size='64px') %}<div class="bi-item">{% if row.image %}<img {{ bw_picture_attrs(row.image, size) }} alt="" width="64" height="64">{% else %}<span class="bi-noimg">No image</span>{% endif %}<div class="bi-item-text"><span class="mono">{{ row.number_text or 'No number' }}</span><strong>{{ row.name or 'Unnamed item' }}</strong>{% if row.year %}<span class="bi-sub">{{ row.year }}</span>{% endif %}</div></div>{% endmacro %}
+{% block main %}<div id="bw-collection" class="bi-merge">
+<a class="bc-detail-back" href="{{ url_for('web.bw_collection_item',item_id=loser.item_id) }}">{{ toni_icon("chevron-left") }}<span>{{ loser.name or loser.number_text or 'Item' }}</span></a>
+<header class="bi-head"><h1>Merge into another item</h1><p class="bi-lead">Everything you hold of this item moves onto the item you pick, and its old address leads there. You can unmerge it later while the moved rows are unchanged.</p></header>
+<div class="bi-layout">
+<div class="bi-col">
+<section class="bi-card"><h2 class="bw-label">This item</h2>{{ tile(loser) }}<p class="bi-note">{{ loser.kind|capitalize }} · {% if loser.number_source=='bricklink' %}added from BrickLink{% elif loser.number_source=='rebrickable' %}in the catalogue{% elif loser.unidentified %}not identified{% else %}added by you{% endif %}</p></section>
+{% if blocker %}<p class="bi-refusal" role="alert"><strong>This item cannot be merged.</strong> {{ blocker }}</p>
+{% else %}
+<section class="bi-card"><h2 class="bw-label">Merge into</h2>
+<form method="get" class="bi-search" role="search"><label class="bi-searchbox">{{ toni_icon('search') }}<span class="sr">Search for the item to keep</span><input type="search" name="q" value="{{ query }}" placeholder="Number or name" autocomplete="off" maxlength="60"></label><button class="bi-btn">Search</button></form>
+<p class="bi-note" role="status">{% if query %}{{ results|length }} {{ 'item' if results|length==1 else 'items' }} for “{{ query }}”{% else %}{{ results|length }} suggested · from the migration, or the same BrickLink number{% endif %}</p>
+<div class="bi-results">{% for r in results %}<a class="bi-result" href="{{ url_for('web.bw_item_merge',item_id=loser.item_id,target=r.item_id,q=query or none) }}"{% if chosen and chosen.item_id==r.item_id %} aria-current="true"{% endif %}>{{ tile(r) }}<span class="bi-tag">{{ {'to_check':'migration guess','same_number':'same BrickLink number','born':'same number','search':'found by number','bricklink':'BrickLink number'}.get(r.how, r.how) }}</span></a>{% else %}<p class="bi-note">{% if query %}No {{ loser.kind }} has that number. Check the number, or search for a name.{% else %}Nothing is suggested. Search for the item this one is.{% endif %}</p>{% endfor %}</div></section>
+{% endif %}
+</div>
+{% if chosen and preview %}<div class="bi-col"><section class="bi-card bi-preview" aria-labelledby="bi-preview-title"><h2 id="bi-preview-title">{{ 'Merge this into' if preview.ok else 'Not allowed' }}</h2>{{ tile(chosen) }}
+{% if preview.ok %}<h3 class="bw-label">What moves</h3>
+<div class="bi-moves">{% for label,n in preview.rows %}<div class="bi-move"><span>{{ label|capitalize }}</span><span class="mono">{{ n }}</span></div>{% else %}<p class="bi-note">No rows of yours refer to this item. Only its address and numbers move.</p>{% endfor %}</div>
+{% if preview.dropped %}<p class="bi-note"><span class="mono">{{ preview.dropped }}</span> rows the other item has already stay as they are; this item’s copies of them are dropped.</p>{% endif %}
+<p class="bi-note">Its own number stays findable: it becomes a link on the other item.</p>
+<form method="post" action="{{ url_for('web.bw_item_identity',item_id=loser.item_id) }}" class="bi-confirm"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="merge"><input type="hidden" name="target" value="{{ chosen.item_id }}"><button class="bi-btn bi-primary">Merge into {{ chosen.name or chosen.number_text }}</button><a class="bi-btn bi-quiet" href="{{ url_for('web.bw_collection_item',item_id=loser.item_id) }}">Cancel</a></form>
+{% else %}<p class="bi-refusal" role="alert"><strong>This merge is not allowed.</strong> {{ preview.refusal }}</p><a class="bi-btn" href="{{ url_for('web.bw_item_merge',item_id=loser.item_id,q=query or none) }}">Pick another item</a>{% endif %}
+</section></div>{% endif %}
+</div></div>{% endblock %}

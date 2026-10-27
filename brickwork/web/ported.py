@@ -12,6 +12,8 @@ PORTED |= {'index.index', 'web.bw_sets', 'web.bw_collection', 'web.bw_collection
            'web.bw_collection_wishes', 'web.bw_collection_wish', 'web.bw_collection_lot', 'web.bw_collection_places', 'web.bw_collection_jump'}
 # M.8c: Add (search, review, confirm, undo) and the progress of the jobs it queues.
 PORTED |= {'web.bw_add', 'web.bw_add_search', 'web.bw_add_review', 'web.bw_add_confirm', 'web.bw_add_undo', 'web.bw_add_job', 'web.bw_add_retry'}
+# M.10 B: merge, unmerge and the preferred link, from the item page.
+PORTED |= {'web.bw_item_merge', 'web.bw_item_identity'}
 # M.8d: Check Set Parts (chooser, copy, figure line; each with its write), the collection's writes (save, archive, Undo, photo, caption, lot,
 # wish) and the media handlers for own photos, pictures and instruction PDFs.
 PORTED |= {'web.bw_check_parts', 'web.bw_check_copy', 'web.bw_check_figure', 'web.bw_check_write', 'web.bw_check_figure_write',

@@ -13,6 +13,7 @@ The Unresolved screen lists items, each with why it is there:
 An item that nothing references and that has no candidate is not listed (a catalogue item with a `to_check` guess nobody owns, an undone
 Add's leftover). Every decision is one transaction and one event with a receipt, and has an Undo (`core/undo`)."""
 import json
+import re
 
 from ..store4 import merge as moves
 from ..store4.connect import has_catalogue, now
@@ -123,8 +124,10 @@ def _evidence(status):
 def unresolved(db):
     """The list the Unresolved screen shows: one dict per item, ordered by kind and name.
 
-    `item_id`, `kind`, `name`, `number_text`, `image`, `local`, `reasons`, `candidates` (with name, number and picture), `links` (the `to_check`
-    links to confirm or reject), `statuses` and `references` (collection rows that name the item)."""
+    `item_id`, `kind`, `name`, `number_text`, `image`, `local`, `reasons`, `facets` (what the screen filters by: the reasons, with `status` replaced by
+    the status reasons `no_candidate`, `kind_differs`, `migration`), `candidates` (with name, number, picture and `uses`: what the user's copies
+    hold of that candidate), `links` (the `to_check` links to confirm or reject), `statuses`, `references` (collection rows that name the item)
+    and `uses`."""
     scan = _scan(db)
     if not scan:
         return []
@@ -142,13 +145,28 @@ def unresolved(db):
         for c in e['candidates']:
             other = decorated.get(c['item_id'], {})
             candidates.append(dict(c, name=other.get('name'), number_text=other.get('number_text'), item_no=other.get('number_text') or '', image=other.get('image'),
-                                   lines=db.execute('SELECT count(*) FROM main.copy_part WHERE item_id=? AND retired_at IS NULL', (c['item_id'],)).fetchone()[0]))
+                                   lines=db.execute('SELECT count(*) FROM main.copy_part WHERE item_id=? AND retired_at IS NULL', (c['item_id'],)).fetchone()[0],
+                                   uses=uses(db, c['item_id'])))
         statuses = [dict(s, to=_evidence(s).get('to')) for s in e['statuses']]
         result.append(dict(item_id=item_id, kind=e['item']['kind'], name=row.get('name'), number_text=row.get('number_text'), item_no=row.get('number_text') or '',
                            image=row.get('image'), local=e['item']['origin'] == 'local', reasons=e['reasons'], candidates=candidates, links=e['links'], statuses=statuses,
-                           references=references.get(item_id, 0)))
+                           references=references.get(item_id, 0), uses=uses(db, item_id),
+                           facets=list(dict.fromkeys([r for r in e['reasons'] if r != 'status'] + [x['reason'] for x in statuses]))))
     result.sort(key=lambda r: (r['kind'], (r['name'] or '').lower(), r['item_id']))
     return result
+
+
+def uses(db, item_id):
+    """What the user's rows hold of an item: `dict(copies, lines, stock, wishes)` (copies that hold it, live part lines, loose stock rows, live wishes).
+
+    On a merge row's candidates this says which candidate the user's copies already use (the M.10 note: the migrated part lists name it)."""
+    one = lambda sql: db.execute(sql, (item_id,)).fetchone()[0]
+    return dict(copies=one('SELECT count(DISTINCT copy_id) FROM main.copy_part WHERE item_id=? AND retired_at IS NULL')
+                + one('SELECT count(*) FROM main.copy WHERE item_id=?'),
+                lines=one('SELECT count(*) FROM main.copy_part WHERE item_id=? AND retired_at IS NULL')
+                + one('SELECT count(*) FROM main.copy_figure WHERE item_id=? AND retired_at IS NULL'),
+                stock=one('SELECT count(*) FROM main.stock WHERE item_id=? AND archived_at IS NULL'),
+                wishes=one('SELECT count(*) FROM main.wish WHERE item_id=? AND archived_at IS NULL'))
 
 
 def find_target(db, loser, text):
@@ -251,6 +269,43 @@ def add_link(db, item_id, number):
     return _in(db, action)
 
 
+def set_preferred(db, link_id, color_id=None):
+    """Make a link the preferred one of its item and provider: for every colour (`color_id` None; the link must hold for every colour), or for
+    one colour (design 3.2: a new colour-scoped `manual` row, or the item's scoped row of that key made preferred). The previous preferred link
+    of that scope loses the mark. One logged change, Undo puts every row back."""
+    def action(db, *, via, actor, operation_key):
+        log = RowLog(db)
+        rows = log.select('item_link', 'id=?', (link_id,))
+        if not rows:
+            raise errors.NotFound(f'No link {link_id}')
+        link = rows[0]
+        if link['status'] == 'to_check':
+            raise errors.Conflict('Confirm this link before choosing it')
+        scope = color_id if color_id is not None else link['color_id']
+        if color_id is None and link['color_id'] is not None:
+            raise errors.ValidationFailed('This link holds for one colour only · choose it for that colour')
+        item = db.execute('SELECT id FROM main.item WHERE id=? AND merged_into IS NULL', (link['item_id'],)).fetchone()
+        if item is None:
+            raise errors.NotFound(f'No item {link["item_id"]}')
+        if scope is not None and not db.execute('SELECT 1 FROM main.color WHERE id=?', (scope,)).fetchone():
+            raise errors.ValidationFailed('Unknown colour')
+        same = [r for r in log.select('item_link', 'item_id=? AND provider=? AND coalesce(color_id,0)=?', (link['item_id'], link['provider'], scope or 0))]
+        for other in same:
+            if other['preferred'] and other['id'] != link_id:
+                log.update('item_link', other, preferred=0)
+        target = next((r for r in same if r['provider_kind'] == link['provider_kind'] and r['provider_key'] == link['provider_key']), None)
+        if target is not None:
+            if not target['preferred']:
+                log.update('item_link', target, preferred=1, decided_at=now(), decided_by='user')
+        else:
+            log.insert('item_link', item_id=link['item_id'], color_id=scope, provider=link['provider'], provider_kind=link['provider_kind'],
+                       provider_key=link['provider_key'], status='manual', method='user', origin='user', preferred=1, evidence_digest=None,
+                       evidence_json=None, catalogue_build_id=None, decided_at=now(), decided_by='user')
+        return dict(event_id=_logged(db, 'item_link', link['item_id'], 'prefer', None, dict(item=link['item_id'], key=link['provider_key'], colour=scope),
+                                     log, via=via, actor=actor, operation_key=operation_key), item_id=link['item_id'])
+    return _in(db, action)
+
+
 def settle_status(db, item_id, provider, reason):
     """The user looked and the item stays unmatched: a `to_check` status becomes `unmatched`."""
     def action(db, *, via, actor, operation_key):
@@ -299,5 +354,214 @@ def _undo_logged(db, event, via, actor):
 
 undoing.register('item', 'merge', _undo_merge)
 undoing.register('item', moves.KIND_FIELD, _undo_kind_move)
-for _entity, _field in (('item_link', 'confirm'), ('item_link', 'reject'), ('item_link', 'add'), ('item_provider_status', 'settle')):
+for _entity, _field in (('item_link', 'confirm'), ('item_link', 'reject'), ('item_link', 'add'), ('item_link', 'prefer'), ('item_provider_status', 'settle')):
     undoing.register(_entity, _field, _undo_logged)
+
+
+# ---------- reads for the item page (design 3.2, 3.6, 3.8; M.10 batch B) ----------
+
+PROVIDERS = (('bricklink', 'BrickLink'), ('rebrickable', 'Rebrickable'), ('lego', 'LEGO'))
+STATUS_WORDS = {'matched': 'matched', 'inferred': 'inferred', 'manual': 'manual', 'to_check': 'to check', 'born': 'catalogue number', 'own': 'own number'}
+REASON_WORDS = {'no_match': 'No match found', 'no_candidate': 'To check · no candidate', 'kind_differs': 'To check · the kind differs',
+                'migration': 'To check · from the migration'}
+REASON_NOTES = {'no_match': 'Looked, and the provider has nothing under this number.',
+                'no_candidate': 'Nothing could be placed for it yet. Add a link, or merge it into a catalogue item.',
+                'kind_differs': 'The catalogue and the provider disagree on what kind of item this is.',
+                'migration': 'Carried over from Brick Work 3 without a match. Add a link, or merge it into a catalogue item.'}
+TABLE_WORDS = {'copy': 'copies', 'copy_figure': 'figure lines', 'copy_part': 'part lines', 'stock': 'loose stock rows', 'stock_part': 'figure part lines',
+               'wish': 'wishes', 'price_observation': 'prices', 'price_current': 'current prices', 'price_watch': 'price watches', 'item_link': 'links',
+               'item_provider_status': 'provider notes', 'item_property': 'properties', 'picture': 'pictures', 'photo': 'photos',
+               'instruction_file': 'instruction files', 'order_line': 'order lines', 'allocation': 'allocations', 'job': 'jobs',
+               'fetched_inventory_part': 'fetched part list lines', 'fetched_inventory_figure': 'fetched figure lines', 'fetched_inventory': 'fetched part lists',
+               'set_preference': 'part list choices', 'identification_action': 'identification notes', 'stock_transfer': 'stock transfers'}
+CONFIRMED_STATUS = ('manual', 'matched', 'inferred')
+
+
+def _store_of(db, item_id):
+    return 'main' if db.execute('SELECT 1 FROM main.item WHERE id=?', (item_id,)).fetchone() else 'catalogue'
+
+
+def _colours(db, ids):
+    """`{colour id: dict(name, rgb, ink)}` from the collection's colours, else the catalogue's."""
+    from . import add
+    found = {}
+    for store in _stores(db):
+        left = [i for i in ids if i is not None and i not in found]
+        for r in db.execute(f'SELECT id, name, rgb FROM {store}.color WHERE id IN (SELECT value FROM json_each(?))', (json.dumps(left),)):
+            found.setdefault(r['id'], dict(name=r['name'], rgb=r['rgb'], ink=add.colour_ink(r['rgb'])))
+    return found
+
+
+def merge_blocker(db, item_id):
+    """Why an item cannot be merged away, in plain words, or None (design 3.6: a local item, or one the catalogue has retired)."""
+    row = db.execute('SELECT origin, catalogue_retired_at, merged_into FROM main.item WHERE id=?', (item_id,)).fetchone()
+    if row is None:
+        return 'This item is in the catalogue and not in your collection yet, so it stays as it is.'
+    if row['merged_into'] is not None:
+        return 'This item is merged into another one already.'
+    if row['origin'] == 'catalogue' and row['catalogue_retired_at'] is None:
+        return 'This item is part of the catalogue, so it stays. Only items you added yourself, or ones the catalogue has retired, can be merged into another.'
+    return None
+
+
+def links(db, item_id, colour=None):
+    """The Links card of an item page: per provider the keys with status, colour scope, preferred and which one answers for `colour`, plus the
+    provider status rows that have no key. `editable` is False for an item that is only in the catalogue (nothing to write to yet)."""
+    from ..store4 import identity as ident
+    store = _store_of(db, item_id)
+    item = db.execute(f'SELECT * FROM {store}.item WHERE id=?', (item_id,)).fetchone()
+    if item is None:
+        raise errors.NotFound(f'No item {item_id}')
+    origin_of = item['origin'] if 'origin' in item.keys() else 'catalogue'
+    rows = [dict(r) for r in db.execute(f'SELECT * FROM {store}.item_link WHERE item_id=? ORDER BY color_id IS NOT NULL, provider_key', (item_id,))]
+    statuses = [dict(r) for r in db.execute('SELECT * FROM main.item_provider_status WHERE item_id=? ORDER BY provider, reason', (item_id,))] if store == 'main' else []   # the catalogue file has no such table
+    colours = _colours(db, {r['color_id'] for r in rows} | {colour})
+    result = []
+    for provider, label in PROVIDERS:
+        mine = [r for r in rows if r['provider'] == provider]
+        confirmed = [r for r in mine if r['status'] in CONFIRMED_STATUS]
+        used = ident.best_item_link(confirmed, colour) if confirmed else None
+        entries = []
+        if item['born_provider'] == provider and item['born_key'] is not None and not any(r['provider_key'] == item['born_key'] for r in mine):
+            entries.append(dict(id=None, key=item['born_key'], kind=item['born_namespace'], status='born' if origin_of == 'catalogue' else 'own', preferred=False,
+                                color_id=None, scope=None, in_use=used is None))
+        for r in mine:
+            scope = dict(id=r['color_id'], **colours[r['color_id']]) if r['color_id'] is not None and r['color_id'] in colours else None
+            entries.append(dict(id=r['id'], key=r['provider_key'], kind=r['provider_kind'], status=r['status'], method=r['method'], origin=r['origin'],
+                                preferred=bool(r['preferred']), color_id=r['color_id'], scope=scope, in_use=used is not None and used['provider_key'] == r['provider_key']
+                                and used['color_id'] == r['color_id'] and used['provider_kind'] == r['provider_kind']))
+        for entry in entries:
+            entry['status_word'] = STATUS_WORDS[entry['status']]
+        unscoped = [e for e in entries if e['color_id'] is None and e['status'] in CONFIRMED_STATUS]
+        result.append(dict(provider=provider, label=label, links=entries, choose=len(unscoped) > 1,
+                           statuses=[dict(s, word=REASON_WORDS[s['reason']], note=REASON_NOTES[s['reason']], to=_evidence(s).get('to'))
+                                     for s in statuses if s['provider'] == provider]))
+    shown = [p for p in result if p['links'] or p['statuses'] or p['provider'] != 'lego']
+    return dict(item_id=item_id, kind=item['kind'], editable=store == 'main', colour=colour, colour_name=(colours.get(colour) or {}).get('name'),
+                providers=shown, to_check=sum(1 for r in rows if r['status'] == 'to_check') + sum(1 for s in statuses if s['status'] == 'to_check'),
+                local=origin_of == 'local', unidentified=not _identified(db, item_id, store, item), merge_blocker=merge_blocker(db, item_id))
+
+
+def _identified(db, item_id, store, item):
+    if item['born_key'] is not None:
+        return True
+    return bool(db.execute(f"SELECT 1 FROM {store}.item_link WHERE item_id=? AND provider='bricklink' AND status IN ('manual','matched','inferred')", (item_id,)).fetchone())
+
+
+def explain_refusal(db, text, loser=None, survivor=None):
+    """A `MergeRefused` message in plain words for the merge screen (the refusals of design 3.6)."""
+    def row_of(item_id):
+        for store in _stores(db):
+            row = db.execute(f'SELECT name, born_key, kind FROM {store}.item WHERE id=?', (item_id,)).fetchone()
+            if row:
+                return row
+        return None
+
+    def name(item_id):
+        row = row_of(item_id)
+        return (row['name'] or row['born_key'] or f'item {item_id}') if row else f'item {item_id}'
+    if 'live catalogue item' in text:
+        return f'{name(loser)} is part of the catalogue, so it cannot be merged into another item. Only items you added yourself, or ones the catalogue has retired, can be.'
+    if 'merged itself' in text:
+        return f'{name(survivor)} was merged into another item already. Pick the item it was merged into.'
+    if 'merged already' in text:
+        return f'{name(loser)} is merged into another item already.'
+    if 'into itself' in text:
+        return 'An item cannot be merged into itself. Pick another item.'
+    if ' is a ' in text and 'merges only into one of its own kind' in text:
+        a, b = row_of(loser), row_of(survivor)
+        return f'{name(loser)} is a {a["kind"]} and {name(survivor)} is a {b["kind"]}. An item merges only into one of its own kind; change the kind first.'
+    if 'still in flight' in text or 'in flight' in text:
+        return 'A job for one of these items is still running. Let it finish, or cancel it in Jobs, then merge.'
+    if ' holds ' in text and 'for both items' in text:
+        sentence = re.sub(r'^copy \S+ holds', 'One of your copies holds', text.split(' · ')[0])
+        sentence = re.sub(r'^loose figure \S+ holds', 'One of your loose figures holds', sentence)
+        sentence = re.sub(r'^fetched (part|figure) list \S+ holds', r'A fetched \1 list holds', sentence)
+        return sentence + '. Correct that line by hand first, then merge again.'
+    if 'dangling' in text:
+        return 'The merge would leave a row pointing at nothing, so nothing was changed.'
+    return text[0].upper() + text[1:]
+
+
+def merge_preview(db, loser, survivor):
+    """What `merge_in` would do, without doing it: runs the merge in a transaction and rolls it back (a write connection is needed).
+
+    `dict(ok, refusal, rows, dropped, counts)`: `rows` = `[(table words, rows changed)]` biggest first; `dropped` = rows the survivor already
+    has (kept as they are, the loser's go); `refusal` = plain-words reason, or None."""
+    via, actor = origin()
+    out = dict(ok=False, refusal=None, rows=[], dropped=0, counts={})
+    db.execute('BEGIN IMMEDIATE')
+    try:
+        try:
+            counts = moves.merge_in(db, int(loser), int(survivor), via=via, actor=actor, operation_key=None)['counts']
+        except MergeRefused as exc:
+            out['refusal'] = explain_refusal(db, str(exc), int(loser), int(survivor))
+        else:
+            rows = [(TABLE_WORDS.get(t, t.replace('_', ' ')), c.get('moved', 0) + c.get('inserted', 0)) for t, c in counts.items() if t != 'item']
+            out.update(ok=True, counts=counts, rows=sorted([r for r in rows if r[1]], key=lambda r: (-r[1], r[0])),
+                       dropped=sum(c.get('deleted', 0) for c in counts.values()))
+    finally:
+        db.execute('ROLLBACK')
+    return out
+
+
+def unmerge_blocker(db, merge_id):
+    """Why a merge cannot be taken back, in plain words, or None: the checks of `unmerge_in`, read-only."""
+    merge = db.execute('SELECT * FROM main.item_merge WHERE id=?', (merge_id,)).fetchone()
+    if merge is None or merge['undone_at'] is not None:
+        return 'This merge was undone already.'
+    loser, survivor = merge['merged_id'], merge['survivor_id']
+    row = db.execute('SELECT merged_into FROM main.item WHERE id=?', (loser,)).fetchone()
+    redirect = db.execute('SELECT new_id FROM main.item_redirect WHERE old_id=?', (loser,)).fetchone()
+    if row is None or row['merged_into'] != survivor or redirect is None or redirect['new_id'] != survivor:
+        return 'The item is not merged into this one any more.'
+    try:
+        moves._refuse_active_jobs(db, loser, survivor)
+    except MergeRefused:
+        return 'A job for one of these items is still running. Let it finish, or cancel it in Jobs, then unmerge.'
+    receipt = json.loads(merge['receipt_json'])
+    log = RowLog(db, receipt['changes'] if isinstance(receipt, dict) else receipt)
+    changed = log.verify()
+    if changed is not None:
+        return (f'The {TABLE_WORDS.get(changed["t"], changed["t"].replace("_", " "))} it moved changed after the merge, so they cannot be put back safely. '
+                'Undo the later change first, then unmerge.')
+    known = receipt.get('dependents', {}) if isinstance(receipt, dict) else {}
+    for table, keys in moves._dependents(db, log).items():
+        if set(keys) - set(known.get(table, ())):
+            return (f'New {TABLE_WORDS.get(table, table.replace("_", " "))} were added to rows the merge moved, so they cannot be put back safely. '
+                    'Undo the later change first, then unmerge.')
+    return None
+
+
+def merged_into(db, item_id):
+    """The merges still standing into an item: `[dict(merge_id, merged_id, name, number_text, at, via, blocker, counts)]`, newest first."""
+    result = []
+    for m in db.execute('SELECT * FROM main.item_merge WHERE survivor_id=? AND undone_at IS NULL ORDER BY id DESC', (item_id,)):
+        shown = collection.decorate(db, [dict(item_id=m['merged_id'])])[0]
+        counts = {}
+        try:
+            receipt = json.loads(m['receipt_json'])
+            for change in receipt['changes']:
+                counts[change['t']] = counts.get(change['t'], 0) + 1
+        except (ValueError, KeyError, TypeError):
+            pass
+        rows = sorted(((TABLE_WORDS.get(t, t), n) for t, n in counts.items() if t != 'item'), key=lambda r: (-r[1], r[0]))
+        result.append(dict(merge_id=m['id'], merged_id=m['merged_id'], name=shown.get('name'), number_text=shown.get('number_text'), image=shown.get('image'),
+                           at=m['at'], via=m['via'], blocker=unmerge_blocker(db, m['id']), rows=rows[:4]))
+    return result
+
+
+def survivors(db, loser, text, limit=12):
+    """Items the user may merge `loser` into: those a typed number finds, or (with no text) the candidates the Unresolved list names.
+    `[dict(item_id, name, number_text, image, kind, how)]`, same kind as the loser, never the loser."""
+    row = db.execute('SELECT * FROM main.item WHERE id=?', (loser,)).fetchone()
+    if row is None:
+        raise errors.NotFound(f'No item {loser}')
+    text = (text or '').strip()
+    if text:
+        found = [dict(item_id=f['item_id'], how=f['matched_by']) for f in items.find(db, row['kind'], text, limit=limit + 1) if f['item_id'] != loser][:limit]
+    else:
+        found = [dict(item_id=c['item_id'], how=c['how']) for c in _candidates(db, row)]
+    decorated = {r['item_id']: r for r in collection.decorate(db, [dict(item_id=f['item_id']) for f in found])}
+    return [dict(f, name=decorated[f['item_id']].get('name'), number_text=decorated[f['item_id']].get('number_text'), image=decorated[f['item_id']].get('image'),
+                 kind=decorated[f['item_id']].get('kind'), year=decorated[f['item_id']].get('year')) for f in found]

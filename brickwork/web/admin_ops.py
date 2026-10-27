@@ -412,7 +412,7 @@ def catalogue_card(db):
     return card
 
 
-def identity_write(db, *, action, item=None, target=None, number=None, link=None, kind=None, provider=None, reason=None, event=None):
+def identity_write(db, *, action, item=None, target=None, number=None, link=None, kind=None, provider=None, reason=None, event=None, colour=None, merge=None):
     """One decision of the Unresolved screen (`core/identity_admin`); returns the result, which carries the event id for Undo."""
     from ..core import errors, identity_admin as identity, undo
     if action == 'undo':
@@ -427,6 +427,10 @@ def identity_write(db, *, action, item=None, target=None, number=None, link=None
         return identity.reject_link(db, int(link))
     if action == 'link':
         return identity.add_link(db, int(item), number)
+    if action == 'prefer':
+        return identity.set_preferred(db, int(link), int(colour) if colour else None)
+    if action == 'unmerge':
+        return identity.unmerge_item(db, int(merge))
     if action == 'settle':
         return identity.settle_status(db, int(item), provider, reason)
     if action == 'move_kind':

@@ -20,257 +20,124 @@ def _media_root():
     return root_for(brickwork_path())
 
 
-def settings_show():
+def _settings_db(read_only=False):
     from ..core.connect import connect
-    from ..core.price_settings import read
-    with closing(connect(brickwork_path(), read_only=True)) as db:
-        return read(db)
+    return closing(connect(brickwork_path(), read_only=read_only, require_catalogue=False))
+
+
+def settings_show():
+    """Every preference with the value in force: the price preferences, retail country, display currency, source order, import order, freshness."""
+    with _settings_db(True) as db:
+        from ..core import admin
+        return admin.settings(db)
 
 
 def settings_set(key, value):
-    if key == 'source_priority' or key.startswith('import_order:'):
-        from ..core.connect import connect
-        from ..core.pipeline import validate_priority, STEPS, TYPES
-        from ..core.sources.base import write
-        import json
-        parsed = json.loads(value)
+    """`brickwork settings set <key> <value>`: a price preference, the retail country, the source priority or one import order."""
+    from ..core import admin
+    from ..core.pipeline import validate_priority, STEPS, TYPES
+    from ..core.sources.base import audit_origin
+    with _settings_db() as db, audit_origin('cli'):
         if key == 'source_priority':
+            parsed = json.loads(value)
             validate_priority(parsed)
-        elif (key.removeprefix('import_order:') not in TYPES or not isinstance(parsed, list)
-              or any(not isinstance(s, str) for s in parsed) or len(parsed) != len(STEPS) or set(parsed) != set(STEPS)):
-            raise ValueError('import order must contain all six steps once')
-        with closing(connect(brickwork_path())) as db, db:
-            write(db, 'INSERT OR REPLACE INTO settings VALUES(?,?)', (key, json.dumps(parsed)))
-        return {key: parsed}
-    if key not in ('retail_country', 'bricklink_region', 'bricklink_currency', 'incomplete_discount_pct'):
-        raise ValueError('unsupported setting')
-    if key == 'retail_country':
-        from ..core.connect import connect
-        from ..core.sources.base import write
-        from ..core.sources.brickset import CURRENCIES
-        if value not in CURRENCIES:
-            raise ValueError('unsupported retail country')
-        with closing(connect(brickwork_path())) as db, db:
-            write(db, 'INSERT OR REPLACE INTO settings VALUES(?,?)', (key, value))
-        return {key: value}
-    value = int(value) if key == 'incomplete_discount_pct' else value
-    from ..core.connect import connect
-    from ..core.price_settings import save
-    with closing(connect(brickwork_path())) as db:
-        return save(db, {key: value})
+            current = admin.settings(db)
+            admin.save_settings(db, current['retail_country'], parsed, [])
+            return {key: parsed}
+        if key.startswith('import_order:'):
+            kind = key.removeprefix('import_order:')
+            parsed = json.loads(value)
+            if kind not in TYPES or not isinstance(parsed, list) or any(not isinstance(s, str) for s in parsed) \
+                    or len(parsed) != len(STEPS) or set(parsed) != set(STEPS):
+                raise ValueError('import order must contain all six steps once')
+            admin.patch_settings(db, {'import_order': {kind: parsed}})
+            return {key: parsed}
+        if key not in ('retail_country', 'bricklink_region', 'bricklink_currency', 'incomplete_discount_pct'):
+            raise ValueError('unsupported setting')
+        if key == 'retail_country':
+            if value not in admin.COUNTRIES:
+                raise ValueError('unsupported retail country')
+            admin.save_settings(db, value, admin.settings(db)['priority'], [])
+            return {key: value}
+        from ..core.price_settings import save
+        return save(db, {key: int(value) if key == 'incomplete_discount_pct' else value})
 
 
-def migrate(app, decisions, catalogue, out, report, extras=None, replace=False, catalogue_src=None):
-    """Offline migration service; deliberately needs no Flask or live DB setup."""
-    from ..core.importer import import_collection as run
-    result = run(app, extras, decisions, catalogue, out, report, replace=replace, catalogue_src=catalogue_src)
-    return {'ok': result['ok'], 'proof': str(Path(report) / 'proof.md'),
-            'runtime_seconds': result['runtime_seconds'], 'output_bytes': result['output_bytes'],
-            'tables': {table: {key: row[key] for key in ('expected', 'actual', 'checksum_ok')}
-                       for table, row in result['tables'].items()},
-            'review_counts': result['review_counts'], 'unnamed_items': result['unnamed_items']}
-
-
-# New source commands operate only on brickwork.db and the rebuildable BL index.
 def brickwork_path():
     from ..core.pipeline import database_path
     return database_path()
 
 
+def store4_paths():
+    """store4's `Paths` for the collection this app opens: the catalogue, the downloads and the BrickLink lists sit beside it."""
+    from ..core.connect import catalogue_path
+    from ..store4.cli import Paths
+    path = brickwork_path()
+    paths = Paths(path.parent)
+    paths.collection, paths.catalogue = path, catalogue_path(path)
+    return paths
+
+
 def catalogue_status():
-    from ..core.sources.bricklink_catalogue import info
-    return {'bricklink': info(brickwork_path().with_name('bricklink-catalog.db'))}
+    """The catalogue and its activation as `python -m brickwork.store4 catalogue status` reports them."""
+    from ..store4.cli import do_status
+    return do_status(store4_paths())
 
 
 def catalogue_import_bricklink(directory):
+    """Build a catalogue with the BrickLink item lists of DIRECTORY, activate and reconcile (store4's `catalogue import bricklink`)."""
+    from ..store4.cli import do_import_bricklink
+    return do_import_bricklink(store4_paths(), directory)
+
+
+def migrate4(argv):
+    """`brickwork migrate4 ...`: store4's migration of a 3.3 collection into a new 4.0 file (the arguments are `store4 migrate`'s)."""
+    from ..store4 import cli as store4
+    return store4.main(['migrate', *argv])
+
+
+def _sets(db, numbers):
+    """The set items for typed numbers; with none, every identified set held or wanted."""
+    from ..core import items
+    if numbers:
+        found = []
+        for number in numbers:
+            matches = [m for m in items.find(db, 'set', number) if m['matched_by'] == 'born']
+            if len(matches) != 1:
+                raise ValueError(f'{number} is not a set Brick Work knows')
+            found.append(matches[0]['item_id'])
+        return list(dict.fromkeys(found))
+    return [r[0] for r in db.execute("""SELECT DISTINCT i.id FROM main.item i WHERE i.kind='set' AND i.born_key IS NOT NULL AND i.merged_into IS NULL AND (
+        EXISTS(SELECT 1 FROM main.copy c WHERE c.item_id=i.id AND c.archived_at IS NULL)
+        OR EXISTS(SELECT 1 FROM main.wish w WHERE w.item_id=i.id AND w.archived_at IS NULL)) ORDER BY i.id""")]
+
+
+def _run_steps(numbers, steps):
+    """Queue `steps` for each set and run the jobs here, in this process (the source handlers are registered for it)."""
+    from ..core import source_ops
     from ..core.connect import connect
-    from ..core.sources.bricklink_catalogue import load
-    with closing(connect(brickwork_path())) as db:
-        return load(directory, brickwork_path().with_name('bricklink-catalog.db'), db)
+    from ..core.pipeline import Pipeline
+    from ..core.sources.base import audit_origin
+    from ..core.transaction import transaction
+    source_ops.register_handlers()
+    with closing(connect(brickwork_path())) as db, audit_origin('cli'):
+        ids = _sets(db, numbers)
+        with transaction(db):
+            jobs = [Pipeline(db).queue_steps(i, steps, via='cli') for i in ids]
+        return [Pipeline(db).run(job) for job in jobs]
 
 
 def prices_refresh(set_num):
-    from ..core.connect import connect
-    from ..core.sources.bricklink import BrickLink
-    from ..core.sources.base import WaitingForBudget
-    with closing(connect(brickwork_path())) as db:
-        try:
-            result = BrickLink(db).price_slots('S', set_num)
-            return {'set_num': set_num, 'ok': True, 'slots': result}
-        except WaitingForBudget as error:
-            return {'set_num': set_num, 'state': 'waiting_for_budget', 'job_id': error.job_id}
+    """Fetch BrickLink prices for one set now (`market_price` step); the job is on the Jobs page."""
+    job, = _run_steps([set_num], ('market_price',))
+    return {'set_num': set_num, 'ok': job['state'] == 'done', 'state': job['state'], 'job': job['id']}
 
 
 def brickset_refresh(sets):
-    from ..core.connect import connect
-    from ..core.sources.brickset import Brickset
-    from ..core.sources.base import WaitingForBudget
-    with closing(connect(brickwork_path())) as db:
-        try:
-            return {'sets': Brickset(db).refresh(sets), 'state': 'done'}
-        except WaitingForBudget as error:
-            return {'state': 'waiting_for_budget', 'job_id': error.job_id}
-
-
-CATALOGUE_NAMES = {'bricklink_catalogue': 'BrickLink catalogue', 'import': 'Import pipeline'}
-KEY_LABELS = {'key': 'API key', 'token_value': 'Token'}
-PICTURE_ROWS = (('Sets and wishlist', 'S'), ('Minifigures', 'M'), ('Parts per colour', 'P'))
-
-
-def _field_label(name):
-    return KEY_LABELS.get(name) or name.replace('_', ' ').capitalize()
-
-
-def catalogues_view(data, key_fields, key_entry, result=None, replace=None):
-    """Everything the Catalogues & keys page shows, prepared once; no key value is ever read.
-
-    `result` is the one-shot outcome of the last key action ({source, state, message|event}).
-    """
-    from ..core.pipeline import NAMES
-    from .formatting import short_stamp
-    result = result or {}
-    refused = result.get('source') if result.get('state') == 'rejected' else None
-    # A refused replacement leaves the saved key as it was: only the card reports it.
-    rejected = None if result.get('replacement') else refused
-    restore_note = ' · The earlier key could not be restored; use Test key to check the stored key.' if result.get('restore_failed') else ''
-    sources, banners = [], []
-    for row in data['sources']:
-        source = row['source']
-        name = row['name'] if row.get('name') and row['name'] != source else CATALOGUE_NAMES.get(source, source.replace('_', ' ').capitalize())
-        keyed = source in key_fields
-        configured = bool((row.get('key_state') or {}).get('configured'))
-        if source == rejected:
-            pill = ('danger', 'Rejected')
-            banners.append(('danger', name + ' key rejected.' + (' Prices are not updating.' if source == 'bricklink' else '')))
-        elif not keyed:
-            pill = ('neutral', 'No key needed')
-        else:
-            pill = ('success', 'Configured') if configured else ('neutral', 'Not set')
-        used, budget = row.get('used_today') or 0, row.get('budget')
-        exhausted = budget is not None and budget > 0 and used >= budget
-        if exhausted and row.get('enabled'):
-            banners.append(('warning', name + ' budget used up for today. ' + ('Price updates' if source == 'bricklink' else 'Updates') + ' wait until 00:00 UTC.'))
-        error = row.get('last_error')
-        sources.append(dict(source=source, name=name, pill=pill, enabled=bool(row.get('enabled')), exhausted=exhausted,
-            budget=f"{used} / {budget if budget is not None else 'No cap'}", used=used,
-            success=short_stamp(row.get('last_success'), True) if row.get('last_success') else None,
-            error=(str(error['error']) + ' · ' + short_stamp(error['updated_at'])) if error else None))
-    keys = []
-    for source, fields in key_fields.items():
-        row = next((r for r in data['sources'] if r['source'] == source), {})
-        state = row.get('key_state') or {}
-        name = next((s['name'] for s in sources if s['source'] == source), source.capitalize())
-        card = dict(source=source, name=name, fields=[(f, _field_label(f)) for f in fields], message=None,
-                    saved=short_stamp(state.get('saved_at')) if state.get('saved_at') else None)
-        if result.get('source') == source and result.get('state') == 'removed':
-            card.update(mode='removed', pill=('neutral', 'Removed'), event=result.get('event'))
-        elif state.get('configured') and state.get('origin') == 'env':
-            card.update(mode='env', pill=('danger', 'Rejected') if source == rejected else ('success', 'Configured'),
-                        message=result.get('message') if source == refused else None)
-        elif state.get('configured') and not (replace == source and key_entry):
-            card.update(mode='stored', pill=('danger', 'Rejected') if source == rejected else ('success', 'Configured'),
-                        can_replace=bool(key_entry),
-                        message=(('New key rejected: ' + result.get('message') + ' · the saved key is unchanged')
-                                 if result.get('replacement') else result.get('message') + restore_note) if source == refused else None)
-        elif not key_entry:
-            card.update(mode='disabled', pill=('neutral', 'Not set'))
-        elif source == refused:
-            card.update(mode='entry', pill=('danger', 'Rejected'), message=result.get('message'))
-        else:
-            card.update(mode='entry', pill=('success', 'Configured') if state.get('configured') else ('neutral', 'Not set'),
-                        replacing=bool(state.get('configured')))
-        keys.append(card)
-    if not any(c['mode'] in ('env', 'stored') for c in keys):
-        banners.append(('warning', 'No keys yet. Names, prices and pictures need at least a Rebrickable key.'))
-    catalogue = data['catalogue']
-    loaded = bool(catalogue.get('available'))
-    counts = catalogue.get('counts') or {}
-    labels = (('S', 'Sets'), ('M', 'Minifigures'), ('P', 'Parts'), ('I', 'Instructions'), ('O', 'Boxes'), ('G', 'Gear'), ('B', 'Books'), ('C', 'Catalogues'))
-    colours = data['colours']
-    freshness = []
-    for rule in data['freshness']:
-        days = rule['max_age_days']
-        freshness.append(dict(label=CATALOGUE_NAMES.get(rule['source']) or NAMES.get(rule['source']) or rule['source'].capitalize(), kind=rule['kind'],
-                              days=None if days is None else f"{days} {'day' if days == 1 else 'days'}"))
-    order = (data.get('priority') or {}).get('pictures', {})
-    pictures = [(label, [NAMES.get(s, s) for s in order.get(kind, order.get('*', []))]) for label, kind in PICTURE_ROWS]
-    return dict(sources=sources, key_cards=keys, banners=banners, pictures=pictures, freshness=freshness,
-                catalogue=dict(loaded=loaded, stamp=short_stamp(catalogue.get('loaded_at')) if loaded else None,
-                               types=sum(1 for v in counts.values() if v), names=f"{sum(counts.values()):,}" if loaded else '0',
-                               colours=colours['total'], gap=colours['total'] - colours['with_rgb'], with_rgb=colours['with_rgb'],
-                               rows=[(label, f"{counts.get(t, 0):,}" if loaded else '0') for t, label in labels]))
-
-
-def key_test_save(db, source, values):
-    """Save a key, prove it with one budgeted call, and take it back only if the source refuses it.
-
-    Returns {tested, reason}. Only an authoritative refusal (KeyRejected) restores the earlier state,
-    using the receipt of this very save, and is re-raised with `replacement` saying whether a stored
-    key existed before. Any other failure (network, server, budget, disabled source) keeps the key.
-    """
-    from ..core import keys
-    from ..core.sources.base import KeyRejected, SourceDisabled, SourceError, WaitingForBudget, redact
-    replacement = keys.state(db, source)['origin'] == 'stored'
-    receipt = []
-    keys.save(db, source, values, receipt)
-    try:
-        keys.check(db, source)
-    except SourceDisabled:
-        return dict(tested=False, reason='the source is disabled')
-    except WaitingForBudget:
-        return dict(tested=False, reason='its daily budget is used up')
-    except KeyRejected as exc:
-        exc.replacement = replacement
-        exc.restore_failed = False
-        try:
-            if not receipt or receipt[0] is None:
-                raise ValueError('no receipt for this save')
-            row = db.execute('SELECT id,entity,field,new_value FROM events WHERE id=?', (receipt[0],)).fetchone()
-            keys.undo(db, row['id'], dict(row))
-        except Exception as failure:
-            # The refusal still stands; say that the earlier key could not be put back.
-            exc.restore_failed = True
-            logging.getLogger(__name__).error('key rollback failed for %s (%s)', source, type(failure).__name__)
-        raise
-    except SourceError as exc:
-        return dict(tested=False, reason=redact(exc))
-    return dict(tested=True, reason=None)
-
-
-def sources_status():
-    from ..core.sources.bricklink import BrickLink
-    from ..core.sources.brickset import Brickset
-    from ..core.sources.rebrickable import Rebrickable
-    from ..core.sources.bricklink_catalogue import BrickLinkCatalogue
-    from ..core.sources.base import budget_used
-    path = brickwork_path()
-    if not path.exists():
-        # Status must not create a database merely to report unset/unused keys.
-        result = {}
-        for client in (BrickLink, Brickset, BrickLinkCatalogue, Rebrickable):
-            instance = client(None)
-            result[client.source] = dict(key='set' if instance.configured() else 'unset',
-                key_state=instance.status_key(), budget=instance.daily_budget, used_today=0, last_success=None)
-        return result
-    from ..core.admin import database
-    with database(path, read_only=True) as db:
-        result = {cls.source: cls(db).status() for cls in (BrickLink, Brickset, BrickLinkCatalogue, Rebrickable)}
-        for row in db.execute('SELECT source FROM sources'):
-            source = row['source']
-            if source in result:
-                continue
-            budget = db.execute('SELECT value FROM settings WHERE key=?', ('source:budget:' + source,)).fetchone()
-            day = datetime.now(timezone.utc).date().isoformat()
-            used = budget_used(db, source, day)
-            last = db.execute("SELECT max(updated_at) FROM jobs WHERE source=? AND state='done'", (source,)).fetchone()[0]
-            result[source] = dict(key='unset', budget=int(budget[0]) if budget else None,
-                                  used_today=used, last_success=last)
-        return result
-
-
-def import_item(item_type, item_no, progress=None):
-    from ..core.pipeline import import_item as run
-    return run(item_type, item_no, via='cli', path=brickwork_path(), **({'emit': progress} if progress else {}))
+    """Fetch Brickset's properties and retail price (`metadata` step) for the given sets, or for every set held or wanted."""
+    jobs = _run_steps(sets, ('metadata',))
+    state = 'done' if all(j['state'] == 'done' for j in jobs) else next(j['state'] for j in jobs if j['state'] != 'done')
+    return {'sets': sets or [str(j['item_id']) for j in jobs], 'state': state, 'jobs': [j['id'] for j in jobs]}
 
 
 def import_bricktracker(source=None, plan_only=False, plan_id=None, decisions=None):
@@ -327,6 +194,39 @@ def sync_command(source, action, plan_id=None, tick=None, owned=None, wishlist=N
         return sync.plan_send(db, source)
 
 
+def sources_status():
+    from ..core import source_ops
+    if not brickwork_path().exists():
+        # Status must not create a database merely to report unset/unused keys.
+        result = {}
+        for source, client in source_ops.clients().items():
+            instance = client(None)
+            result[source] = dict(key='set' if instance.configured() else 'unset', key_state=instance.status_key(),
+                                  budget=instance.daily_budget, used_today=0, last_success=None)
+        return result
+    from ..core.admin import database
+    with database(brickwork_path(), read_only=True, require_catalogue=False) as db:
+        return {source: source_ops.view(db, source) for source in source_ops.clients()}
+
+
+def import_item(item_type, item_no, progress=None):
+    """Queue the normal import of an item (a BrickLink type letter and a number) and run it here."""
+    from ..core import items, source_ops
+    from ..core.connect import connect
+    from ..core.pipeline import Pipeline
+    from ..core.sources.base import audit_origin
+    from ..core.transaction import transaction
+    source_ops.register_handlers()
+    with closing(connect(brickwork_path())) as db, audit_origin('cli'):
+        found = items.find(db, items.kind_of_type(item_type), item_no)
+        born = [f for f in found if f['matched_by'] == 'born']
+        if len(born) != 1 and len(found) != 1:
+            raise ValueError(f'{item_no} is not one item Brick Work knows' if not found else f'{item_no} names several items · give the Rebrickable number')
+        with transaction(db):
+            job = Pipeline(db).queue_steps((born or found)[0]['item_id'], via='cli')
+        return Pipeline(db).run(job)
+
+
 def jobs_list(failed=False):
     from ..core.connect import connect
     from ..core.pipeline import Pipeline
@@ -335,19 +235,116 @@ def jobs_list(failed=False):
 
 
 def jobs_retry(job, step=None, progress=None):
+    from ..core import source_ops
     from ..core.pipeline import retry
-    return retry(job, step, path=brickwork_path(), **({'emit': progress} if progress else {}))
+    source_ops.register_handlers()
+    return retry(job, step, path=brickwork_path())
 
 
 # 4.1b: the web adapter and CLI share the new-store services.
+KEY_LABELS = {'key': 'API key', 'token_value': 'Token'}
+PICTURE_ROWS = (('Sets and wishlist', 'set'), ('Minifigures', 'minifigure'), ('Parts per colour', 'part'))
+PICTURE_NAMES = {'rebrickable_dump': 'Rebrickable catalogue', 'bricklink': 'BrickLink', 'rebrickable_api': 'Rebrickable API'}
+CATALOGUE_KINDS = (('set', 'Sets'), ('minifigure', 'Minifigures'), ('part', 'Parts'), ('instructions', 'Instructions'), ('box', 'Boxes'),
+                   ('gear', 'Gear'), ('book', 'Books'), ('catalog', 'Catalogues'))
+
+
+def _field_label(name):
+    return KEY_LABELS.get(name) or name.replace('_', ' ').capitalize()
+
+
+def catalogues_view(data, key_fields, key_entry, result=None, replace=None):
+    """Everything the Catalogues & keys page shows, prepared once; no key value is ever read.
+
+    `result` is the one-shot outcome of the last key action ({source, state, message|event}).
+    """
+    from ..core.pipeline import NAMES
+    from .formatting import short_stamp
+    result = result or {}
+    refused = result.get('source') if result.get('state') == 'rejected' else None
+    # A refused replacement leaves the saved key as it was: only the card reports it.
+    rejected = None if result.get('replacement') else refused
+    restore_note = ' · The earlier key could not be restored; use Test key to check the stored key.' if result.get('restore_failed') else ''
+    sources, banners = [], []
+    for row in data['sources']:
+        source = row['source']
+        name = row['name'] if row.get('name') and row['name'] != source else source.replace('_', ' ').capitalize()
+        keyed = source in key_fields
+        configured = bool((row.get('key_state') or {}).get('configured'))
+        if source == rejected:
+            pill = ('danger', 'Rejected')
+            banners.append(('danger', name + ' key rejected.' + (' Prices are not updating.' if source == 'bricklink' else '')))
+        elif not keyed:
+            pill = ('neutral', 'No key needed')
+        else:
+            pill = ('success', 'Configured') if configured else ('neutral', 'Not set')
+        used, budget = row.get('used_today') or 0, row.get('budget')
+        exhausted = budget is not None and budget > 0 and used >= budget
+        if exhausted and row.get('enabled'):
+            banners.append(('warning', name + ' budget used up for today. ' + ('Price updates' if source == 'bricklink' else 'Updates') + ' wait until 00:00 UTC.'))
+        error = row.get('last_error')
+        sources.append(dict(source=source, name=name, pill=pill, enabled=bool(row.get('enabled')), exhausted=exhausted,
+            budget=f"{used} / {budget if budget is not None else 'No cap'}", used=used,
+            success=short_stamp(row.get('last_success'), True) if row.get('last_success') else None,
+            error=(str(error['error']) + ' · ' + short_stamp(error['updated_at'])) if error else None))
+    keys = []
+    for source, fields in key_fields.items():
+        row = next((r for r in data['sources'] if r['source'] == source), {})
+        state = row.get('key_state') or {}
+        name = next((s['name'] for s in sources if s['source'] == source), source.capitalize())
+        card = dict(source=source, name=name, fields=[(f, _field_label(f)) for f in fields], message=None,
+                    saved=short_stamp(state.get('saved_at')) if state.get('saved_at') else None)
+        if result.get('source') == source and result.get('state') == 'removed':
+            card.update(mode='removed', pill=('neutral', 'Removed'), event=result.get('event'))
+        elif state.get('configured') and state.get('origin') == 'env':
+            card.update(mode='env', pill=('danger', 'Rejected') if source == rejected else ('success', 'Configured'),
+                        message=result.get('message') if source == refused else None)
+        elif state.get('configured') and not (replace == source and key_entry):
+            card.update(mode='stored', pill=('danger', 'Rejected') if source == rejected else ('success', 'Configured'),
+                        can_replace=bool(key_entry),
+                        message=(('New key rejected: ' + result.get('message') + ' · the saved key is unchanged')
+                                 if result.get('replacement') else result.get('message') + restore_note) if source == refused else None)
+        elif not key_entry:
+            card.update(mode='disabled', pill=('neutral', 'Not set'))
+        elif source == refused:
+            card.update(mode='entry', pill=('danger', 'Rejected'), message=result.get('message'))
+        else:
+            card.update(mode='entry', pill=('success', 'Configured') if state.get('configured') else ('neutral', 'Not set'),
+                        replacing=bool(state.get('configured')))
+        keys.append(card)
+    if not any(c['mode'] in ('env', 'stored') for c in keys):
+        banners.append(('warning', 'No keys yet. Names, prices and pictures need at least a Rebrickable key.'))
+    catalogue = data['catalogue']
+    counts = catalogue.get('counts') or {}
+    loaded = bool(catalogue.get('available'))
+    freshness = []
+    for rule in data['freshness']:
+        days = rule['max_age_days']
+        freshness.append(dict(label=NAMES.get(rule['source']) or rule['source'].capitalize(), kind=rule['kind'],
+                              days=None if days is None else f"{days} {'day' if days == 1 else 'days'}"))
+    order = (data.get('priority') or {}).get('pictures', {})
+    pictures = [(label, [PICTURE_NAMES.get(s.split(':')[0], s) for s in order.get(kind, order.get('*', []))]) for label, kind in PICTURE_ROWS]
+    if loaded and not catalogue['activated']:
+        banners.append(('warning', 'The catalogue is not activated yet. Run the command below once; nothing can be added until then.'))
+    return dict(sources=sources, key_cards=keys, banners=banners, pictures=pictures, freshness=freshness,
+                catalogue=dict(loaded=loaded, activated=catalogue['activated'], reconciled=catalogue['reconciled'],
+                               stamp=short_stamp(catalogue.get('last_built'), True) if catalogue.get('last_built') else None,
+                               reconciled_stamp=short_stamp(catalogue['last_reconciled'], True) if catalogue.get('last_reconciled') else None,
+                               types=sum(1 for v in counts.values() if v), names=f"{sum(counts.values()):,}" if loaded else '0',
+                               colours=catalogue['colours']['total'], gap=catalogue['colours']['total'] - catalogue['colours']['with_rgb'],
+                               with_rgb=catalogue['colours']['with_rgb'], bricklink_items=f"{catalogue['bricklink_items']:,}",
+                               bricklink_loaded=bool(catalogue['bricklink_items']), commands=catalogue['commands'], path=catalogue['path'],
+                               rows=[(label, f"{counts.get(kind, 0):,}" if loaded else '0') for kind, label in CATALOGUE_KINDS]))
+
+
 def tools_read(page, group=None):
     from ..core import admin
-    with admin.database(brickwork_path(), read_only=True) as db:
+    with admin.database(brickwork_path(), read_only=True, require_catalogue=False) as db:
         if page == 'values':
             return admin.value_rows(db, group)
         if page == 'settings':
-            from ..core.pictures import state
-            return {**admin.settings(db), 'pictures': state(db)}
+            from ..core import pictures
+            return {**admin.settings(db), 'pictures': {**pictures.state(db), 'matrix': pictures.matrix(db)}}
         if page == 'statistics':
             return admin.statistics(db)
         if page == 'database':
@@ -356,56 +353,61 @@ def tools_read(page, group=None):
             if last:
                 last['stamp'] = short_stamp(last.get('checked_at'), True)
             return {'last': last}
-        if page == 'unresolved':
-            return admin.unresolved(db)
         if page == 'refresh':
             return admin.stale_prices(db)
         if page == 'jobs':
-            import json
-            jobs = admin.jobs(db)
             from ..core.pipeline import owner_pid_alive
-            has_owners = db.execute("SELECT 1 FROM sqlite_master WHERE name='import_owners'").fetchone()
-            owners = dict(db.execute('SELECT job_id,pid FROM import_owners')) if has_owners else {}
+            owners = dict(db.execute('SELECT job_id,pid FROM job_owner'))
             live = {job: owner_pid_alive(pid, path=brickwork_path(), job=job) for job, pid in owners.items()}
-            return [{**job, 'interrupted': (job['state'] == 'running' or job['state'] == 'waiting_for_budget' and job['id'] in owners)
-                     and not live.get(job['id'], False),
-                     'picture_receipt': json.loads(job['payload'] or '{}') if job['kind'] == 'picture_refresh' else None} for job in jobs]
+            jobs = admin.jobs(db)
+            return dict(total=admin.count_jobs(db), jobs=[
+                {**job, 'interrupted': (job['state'] == 'running' or job['state'] == 'waiting_for_budget' and job['id'] in owners)
+                 and not live.get(job['id'], False)} for job in jobs])
         if page == 'history':
             return admin.history(db)
         if page == 'instructions':
-            # Count canonical booklet identities only. A set-level PDF does not
-            # establish how many booklets that set has or which ones it covers.
-            files = [dict(r) for r in db.execute('SELECT f.*,i.name FROM instruction_files f JOIN items i ON i.item_type=f.item_type AND i.item_no=f.set_no WHERE f.archived_at IS NULL ORDER BY set_no,id')]
-            images = {}
-            for number, identifier in db.execute("SELECT item_no,id FROM item_images WHERE item_type='I' AND copy_id IS NULL AND stock_id IS NULL ORDER BY fetched_at,id"):
-                images[number] = identifier
-            by_booklet = {}
-            for row in files:
-                if row['item_type'] == 'I':
-                    by_booklet.setdefault(row['set_no'], []).append(row)
-            # Every recorded booklet identity is listed, with or without a PDF.
-            booklets = [dict(number=r['item_no'], name=r['name'], image=images.get(r['item_no']), files=by_booklet.get(r['item_no'], []))
-                        for r in db.execute("SELECT item_no,name FROM items WHERE item_type='I' ORDER BY item_no")]
-            coverage = dict(total=len(booklets), covered=sum(1 for b in booklets if b['files']))
-            return dict(files=[r for r in files if r['item_type'] != 'I'], booklets=booklets, coverage=coverage)
+            return admin.instruction_overview(db)
         if page == 'catalogues':
-            status = sources_status()
-            sources = []
-            for row in db.execute('SELECT * FROM sources ORDER BY name'):
-                last = db.execute("SELECT error,updated_at FROM jobs WHERE source=? AND error IS NOT NULL ORDER BY updated_at DESC LIMIT 1", (row['source'],)).fetchone()
-                sources.append({**dict(row), **status.get(row['source'], {}),
-                                'last_error': dict(last) if last else None})
             from ..core import source_ops
-            for name in source_ops.clients():
-                if name not in {r['source'] for r in sources}:
-                    sources.append(dict(source=name, name=name, kind='api', enabled=1, last_error=None, **status.get(name, {})))
+            sources = []
+            for source in source_ops.clients():
+                last = db.execute("SELECT error,updated_at FROM job WHERE source=? AND error IS NOT NULL ORDER BY updated_at DESC LIMIT 1", (source,)).fetchone()
+                sources.append({**source_ops.view(db, source), 'last_error': dict(last) if last else None})
             settings = admin.settings(db)
-            return dict(sources=sources, catalogue=catalogue_status()['bricklink'],
-                        colours=dict(db.execute('SELECT count(*) AS total,count(rgb) AS with_rgb FROM colors').fetchone()),
-                        freshness=settings['freshness'], priority=settings['priority'])
-        return dict(stale=len({(r['item_type'], r['item_no']) for r in admin.stale_prices(db)}),
-                    unresolved=admin.count_unresolved(db), jobs=admin.count_jobs(db),
-                    instructions=db.execute('SELECT count(*) FROM instruction_files WHERE archived_at IS NULL').fetchone()[0])
+            return dict(sources=sources, catalogue=catalogue_card(db), freshness=settings['freshness'], priority=settings['priority'])
+        return dict(stale=len({r['item_id'] for r in admin.stale_prices(db)}), jobs=admin.count_jobs(db),
+                    instructions=db.execute('SELECT count(*) FROM instruction_file WHERE archived_at IS NULL').fetchone()[0])
+
+
+def catalogue_card(db):
+    """What the Catalogues & keys page says of the catalogue: whether it is attached and activated, when it was built and reconciled, what
+    it holds, the BrickLink item lists, and (when something is missing) the command that fixes it. Reads database rows and one directory
+    listing; it opens no download file."""
+    from ..core.connect import catalogue_path
+    from ..store4.connect import has_catalogue
+    path = brickwork_path()
+    data = path.resolve().parent
+    fix = f'python -m brickwork.store4 --data {data} '
+    card = dict(available=has_catalogue(db), path=str(catalogue_path(path)), builds=[], counts={}, colours=dict(total=0, with_rgb=0),
+                bricklink_items=0, activated=False, reconciled=False, last_built=None, last_reconciled=None, commands=[])
+    builds = [dict(r) for r in db.execute('SELECT id,kind,activated_at,reconciled_at FROM main.catalogue_build ORDER BY id')]
+    card.update(builds=builds, activated=bool(builds), reconciled=bool(builds) and all(b['reconciled_at'] for b in builds),
+                last_reconciled=max((b['reconciled_at'] for b in builds if b['reconciled_at']), default=None))
+    if not card['available']:
+        card['commands'] = [('Get the catalogue', fix + 'catalogue download'), ('Build it', fix + 'catalogue import')]
+        return card
+    card['last_built'] = db.execute('SELECT max(finished_at) FROM catalogue.build').fetchone()[0]
+    card['counts'] = dict(db.execute('SELECT kind,count(*) FROM catalogue.item WHERE retired_at IS NULL GROUP BY kind'))
+    card['colours'] = dict(db.execute('SELECT count(*) AS total,count(rgb) AS with_rgb FROM catalogue.color WHERE retired_at IS NULL').fetchone())
+    card['bricklink_items'] = db.execute('SELECT count(*) FROM catalogue.bricklink_item').fetchone()[0]
+    # A newer build the collection has not recorded yet (an update stopped before activation) needs the same command.
+    card['unactivated'] = [r[0] for r in db.execute('SELECT id FROM catalogue.build WHERE id NOT IN (SELECT id FROM main.catalogue_build) ORDER BY id')]
+    card['activated'] = card['activated'] and not card['unactivated']
+    if not card['activated']:
+        card['commands'] = [('Activate the catalogue', fix + 'catalogue reconcile')]
+    elif not card['reconciled']:
+        card['commands'] = [('Reconcile the collection with the catalogue', fix + 'catalogue reconcile')]
+    return card
 
 
 def tools_write(operation, **args):
@@ -416,7 +418,7 @@ def tools_write(operation, **args):
 
 def _tools_write(operation, **args):
     from ..core import admin
-    with admin.database(brickwork_path()) as db:
+    with admin.database(brickwork_path(), require_catalogue=False) as db:
         if operation == 'instruction_rename':
             return admin.instruction_rename(db, **args)
         if operation == 'instruction_upload':
@@ -425,52 +427,32 @@ def _tools_write(operation, **args):
             return admin.queue_missing_booklets(db)
         if operation == 'value':
             return admin.value_write(db, **args)
-        if operation == 'resolve':
-            return admin.resolve(db, **args)
         if operation == 'pictures':
             from ..core.pictures import queue
             return queue(db, **args)
         if operation == 'settings':
             return admin.save_settings(db, **args)
+        if operation == 'settings_undo':
+            from ..core import undo
+            return undo.undo_event(db, args['event'])
         if operation == 'database_check':
             return admin.run_check(db)
         if operation == 'refresh':
             return admin.queue_refresh(db, admin.stale_prices(db))
-        if operation == 'images':
-            match = next((r for r in admin.unresolved(db) if (r['source'], r['kind'], r['source_id']) ==
-                          (args['source'], args['kind'], args['source_id'])), None)
-            if not match:
-                raise ValueError('Match is no longer unresolved')
-            # Canonical candidates get only the existing pictures step, never a full import.
-            from ..core.pipeline import Pipeline
-            p = Pipeline(db)
-            with db:
-                db.execute('BEGIN IMMEDIATE')
-                queued = []
-                if match['reference_url'] and not match['image']:
-                    queued.append(p.queue_steps(match['item_type'], match['item_no'], ('pictures',),
-                        sources=['rebrickable'], reference_image=match['reference_url']))
-                for choice in match['candidates']:
-                    db.execute('INSERT OR IGNORE INTO items(item_type,item_no,name) VALUES(?,?,?)',
-                               (choice['item_type'], choice['item_no'], choice['name']))
-                    queued.append(p.queue_steps(choice['item_type'], choice['item_no'], ('pictures',), sources=['bricklink']))
-                admin.audit(db, 'match:' + match['source_id'], 'candidate_images', new=queued)
-            return queued
         if operation == 'source':
-            with db:
-                db.execute('BEGIN IMMEDIATE')
-                row = db.execute('SELECT enabled FROM sources WHERE source=?', (args['source'],)).fetchone()
-                if not row:
-                    raise ValueError('Unknown source')
-                db.execute('UPDATE sources SET enabled=? WHERE source=?', (int(args['enabled']), args['source']))
-                admin.audit(db, 'source:' + args['source'], 'enabled', row[0], int(args['enabled']))
-            return
+            from ..core import source_ops
+            return source_ops.toggle(db, args['source'], args['enabled'])
         if operation == 'retry_queue':
             from ..core.pipeline import Pipeline
+            from ..store4 import jobs as fetch_jobs
+            row = db.execute('SELECT kind FROM main.job WHERE id=?', (args['job'],)).fetchone()
+            if row is not None and row['kind'] in fetch_jobs.KINDS:          # a fetch job runs on store4's runner, as Retry on Add does
+                return fetch_jobs.requeue(db, args['job'])
             return Pipeline(db).queue_retry(args['job'], args.get('step'))
         if operation in ('key_save', 'key_remove', 'key_test', 'key_undo', 'key_test_save'):
             from ..core import errors, keys, source_ops
-            source_ops.ensure(db, keys.known(args['source']))
+            if operation != 'key_undo':
+                keys.known(args['source'])
             if operation in ('key_save', 'key_test_save') and keys.state(db, args['source'])['origin'] == 'env':
                 # The environment key wins, so a stored one would never be used or tested.
                 raise errors.ValidationFailed('This key comes from the environment. Change it there; a stored key would be ignored')
@@ -481,20 +463,49 @@ def _tools_write(operation, **args):
                 state = keys.archive(db, args['source'], receipt)
                 return dict(state, event=receipt[0] if receipt else None)
             if operation == 'key_undo':
-                row = db.execute('SELECT id,entity,field,new_value FROM events WHERE id=?', (args['event'],)).fetchone()
-                if row is None or row['entity'] != 'source_key:' + args['source'] or row['field'] != 'archive':
+                row = db.execute('SELECT id,entity_kind,entity_id,field FROM event WHERE id=?', (args['event'],)).fetchone()
+                if row is None or (row['entity_kind'], row['entity_id'], row['field']) != ('source_key', args['source'], 'archive'):
                     raise ValueError('Unknown key change')
-                return keys.undo(db, row['id'], dict(row))
+                return keys.undo(db, row['id'])
             if operation == 'key_test_save':
                 return key_test_save(db, args['source'], args['values'])
             return keys.check(db, args['source'])
-        if operation == 'colours':
-            from ..core.sources.bricklink import BrickLink
-            return BrickLink(db).sync_colors()
-        if operation == 'catalogue':
-            from ..core.sources.bricklink_catalogue import source_directory
-            return catalogue_import_bricklink(source_directory(brickwork_path()))
         raise ValueError('Unknown admin action')
+
+
+def key_test_save(db, source, values):
+    """Save a key, prove it with one budgeted call, and take it back only if the source refuses it.
+
+    Returns {tested, reason}. Only an authoritative refusal (KeyRejected) restores the earlier state,
+    using the receipt of this very save, and is re-raised with `replacement` saying whether a stored
+    key existed before. Any other failure (network, server, budget, disabled source) keeps the key.
+    """
+    from ..core import keys
+    from ..core.sources.base import KeyRejected, SourceDisabled, SourceError, WaitingForBudget, redact
+    replacement = keys.state(db, source)['origin'] == 'stored'
+    receipt = []
+    keys.save(db, source, values, receipt)
+    try:
+        keys.check(db, source)
+    except SourceDisabled:
+        return dict(tested=False, reason='the source is disabled')
+    except WaitingForBudget:
+        return dict(tested=False, reason='its daily budget is used up')
+    except KeyRejected as exc:
+        exc.replacement = replacement
+        exc.restore_failed = False
+        try:
+            if not receipt or receipt[0] is None:
+                raise ValueError('no receipt for this save')
+            keys.undo(db, receipt[0])
+        except Exception as failure:
+            # The refusal still stands; say that the earlier key could not be put back.
+            exc.restore_failed = True
+            logging.getLogger(__name__).error('key rollback failed for %s (%s)', source, type(failure).__name__)
+        raise
+    except SourceError as exc:
+        return dict(tested=False, reason=redact(exc))
+    return dict(tested=True, reason=None)
 
 
 def tools_export():
@@ -505,7 +516,7 @@ def tools_export():
     from ..api import read_only
     # A read-only instance writes nothing, not even this event (#68); the CLI has no app context.
     locked = read_only() if has_app_context() else os.environ.get('BW_READ_ONLY', '').lower() in ('1', 'true', 'yes', 'on')
-    with admin.database(brickwork_path(), read_only=locked) as db:
+    with admin.database(brickwork_path(), read_only=locked, require_catalogue=False) as db:
         if not locked:
             with db:
                 admin.audit(db, 'database', 'export')
@@ -524,7 +535,7 @@ def tools_export():
 
 def brickwork_check():
     from ..core import admin
-    with admin.database(brickwork_path(), read_only=True) as db:
+    with admin.database(brickwork_path(), read_only=True, require_catalogue=False) as db:
         return {'brickwork': admin.check(db)}
 
 
@@ -538,8 +549,9 @@ def setup():
     from ..core.connect import GET_CATALOGUE, catalogue_path, connect
     path = brickwork_path()
     path.parent.mkdir(parents=True, exist_ok=True)
-    with closing(connect(path, require_catalogue=False)):
-        pass
+    with closing(connect(path, require_catalogue=False)) as db:
+        from ..core import admin
+        admin.seed_freshness(db)                      # the freshness rules a fresh collection starts with (an existing collection keeps its own)
     catalogue = catalogue_path(path)
     result = {'setup': 'ok', 'database': str(path), 'catalogue': str(catalogue) if catalogue.is_file() else 'missing'}
     if not catalogue.is_file():

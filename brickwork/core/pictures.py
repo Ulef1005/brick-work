@@ -271,24 +271,43 @@ def state(db):
     return dict(summary=summary, unidentified=sum(t['unidentified'] for t in totals.values()))
 
 
+def _per_item(db):
+    """One entry per held item: its kind, whether it is unidentified and whether some colour of it has no picture."""
+    stored = defaultdict(set)
+    for r in db.execute('SELECT item_id, color_id FROM main.picture'):
+        stored[r['item_id']].add(r['color_id'])
+    per_item = {}
+    for item_id, color_id, kind, unidentified in _held(db):
+        entry = per_item.setdefault(item_id, dict(kind=kind, unidentified=bool(unidentified), missing=False))
+        have = stored.get(item_id, set())
+        entry['missing'] |= not (None in have or color_id in have)
+    return per_item
+
+
 def selection(db, scope, kinds):
     """The items a refresh would queue: one entry per item (not per colour) of the chosen kinds, `missing` those with a colour that has
     no picture, `all` every held item. Unidentified items are left out (no source can name them) and counted separately."""
     kinds = sorted(set(kinds))
     if scope not in ('missing', 'all') or not kinds or set(kinds) - set(KIND_LABELS):
         raise ValueError('Choose a scope and item kinds')
-    stored = defaultdict(set)
-    for r in db.execute('SELECT item_id, color_id FROM main.picture'):
-        stored[r['item_id']].add(r['color_id'])
-    per_item = {}
-    for item_id, color_id, kind, unidentified in _held(db):
-        if kind not in kinds:
-            continue
-        entry = per_item.setdefault(item_id, dict(unidentified=bool(unidentified), missing=False))
-        have = stored.get(item_id, set())
-        entry['missing'] |= not (None in have or color_id in have)
+    per_item = {i: e for i, e in _per_item(db).items() if e['kind'] in kinds}
     ids = [i for i, e in per_item.items() if not e['unidentified'] and (scope == 'all' or e['missing'])]
     return dict(item_ids=ids, unidentified=sum(e['unidentified'] for e in per_item.values()))
+
+
+def matrix(db):
+    """What the refresh dialog adds up (`bw-pictures.js`): per kind and scope how many items a refresh would queue, how many unidentified
+    ones it would leave out (`unresolved`), and `unknown_colour`, which 4.0 has none of. The dialog also asks for the kind `?`."""
+    empty = lambda: {scope: dict(count=0, unresolved=0, unknown_colour=0) for scope in ('missing', 'all')}
+    result = {kind: empty() for kind in KIND_LABELS}
+    result['?'] = empty()
+    for entry in _per_item(db).values():
+        for scope in ('missing', 'all'):
+            if entry['unidentified']:
+                result[entry['kind']][scope]['unresolved'] += 1
+            elif scope == 'all' or entry['missing']:
+                result[entry['kind']][scope]['count'] += 1
+    return result
 
 
 def queue(db, scope, kinds, expected_count=None, via='app', actor=None):

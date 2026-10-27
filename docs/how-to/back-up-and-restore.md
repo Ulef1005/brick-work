@@ -16,7 +16,7 @@ The export leaves out:
 
 - **Your source keys.** BrickLink, Rebrickable and Brickset keys never leave the app, not even encrypted. Keep your keys somewhere safe so you can enter them again.
 - **Media.** Pictures, thumbnails, your own photos, instruction PDFs and identification thumbnails are files, not database rows. See below.
-- **Other files in the database folder.** The local BrickLink catalogue (`bricklink-catalog.db`), the session key and import and sync plans are separate files beside the database.
+- **The catalogue.** Rebrickable's catalogue is the separate file `catalogue.db` beside the database. It can be built again from Rebrickable's download, so it is not part of the export; keep `data/catalogue-src/` (the downloaded files, so a rebuild works offline) and `data/mappings/` (your own mapping files, if you have any) with the media.
 
 Each export is recorded in the event log. On a read-only instance (`BW_READ_ONLY`) the export still works and records nothing.
 
@@ -33,7 +33,7 @@ If known credentials would still be in the copy, the API refuses with `409` inst
 
 ## Back up the media folder
 
-Media lives in a `data/` folder under the media root: `data/images`, `data/thumbs`, `data/instructions` and `data/identifications`. The media root is `BW_MEDIA_PATH` if you set it, otherwise the folder that holds the database (`BW_DB_PATH`).
+Media lives in a `data/` folder under the media root: `data/images`, `data/thumbs`, `data/instructions` and `data/identifications` (your own photos are under `data/images/own`). The media root is `BW_MEDIA_PATH` if you set it, otherwise the folder that holds the database (`BW_DB_PATH`).
 
 Copy those folders with your usual file backup. The database stores only relative paths, so the files must keep the same layout under `data/`.
 
@@ -44,7 +44,7 @@ Also keep your settings file (`data/.env`, or wherever you set your `BW_*` varia
 1. Open **Manage → Tools & Admin → Database**.
 2. Press **Run integrity check**.
 
-The check reads the whole file, so it runs only when you ask. Afterwards the page shows **Database checks passed** or **Database needs attention**, the time of the check, the integrity result, the number of foreign key findings and the rows in each table. The result stays on the page until the next check.
+The check reads the whole file, so it runs only when you ask. Afterwards the page shows **Database checks passed** or **Database needs attention**, the time of the check, the integrity result of the collection and of the catalogue file, the number of foreign key findings and the rows in each table. The result stays on the page until the next check.
 
 The same check is available elsewhere:
 

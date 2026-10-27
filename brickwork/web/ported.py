@@ -29,11 +29,14 @@ PORTED |= {'web.bw_wishlists_write', 'web.bw_wishlists_export'}
 # and What is this?; Add's photo mode runs through Add's own endpoints).
 PORTED |= {'web.bw_orders', 'web.bw_order', 'web.bw_orders_action', 'web.bw_order_short', 'web.bw_orders_export', 'web.bw_inventory_detect',
            'web.bw_what_is_this'}
+# M.8i (part 1): Tools & Admin (the hub, Catalogues & keys, Jobs, Bulk refresh, Statistics, Values, Database, Settings, Appearance, About, Identify
+# history, Instruction files), API tokens and the database export. Unresolved figures (identity admin) is part 2 and holds with its own piece.
+PORTED |= {'web.bw_tools', 'web.bw_admin', 'web.bw_admin_write', 'web.bw_tokens', 'web.bw_tokens_write', 'web.bw_export'}
 PIECE = 'M.8i to M.8j'
 
 
-def holding(what=None):
-    response = render_template('web/toni/web/ported_hold.html', piece=PIECE, what=what or request.path)
+def holding(what=None, piece=None):
+    response = render_template('web/toni/web/ported_hold.html', piece=piece or PIECE, what=what or request.path)
     return response, 503
 
 

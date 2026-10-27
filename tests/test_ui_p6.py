@@ -1,14 +1,16 @@
-"""UI-P6: Tools & Admin shell, hub tiles, system pages, no old breadcrumb."""
+"""UI-P6 on the 4.0 store (M.8i part 1, issue #110): Tools & Admin shell, hub tiles, system pages, no old breadcrumb.
+
+The Import from BrickTracker page header (M.8j) moved to `test_ui_p6_import.py`; the Unresolved figures page (M.8i part 2) is not in the lists
+below and comes back with its own."""
 import pytest
 from bs4 import BeautifulSoup
 
-from tests.web_fixtures import app, apps, logged_in
-from tests.test_bw_admin import bw  # noqa: F401  (fixture)
+from tests.app4 import app4, client, coll, pair, read, world  # noqa: F401  (the fixtures)
 
-PAGES = ['tools', 'about', 'catalogues', 'jobs', 'refresh', 'unresolved', 'statistics', 'values',
+PAGES = ['tools', 'about', 'catalogues', 'jobs', 'refresh', 'statistics', 'values',
          'database', 'settings', 'appearance', 'history', 'instructions', 'tokens']
 HUB_TARGETS = ['/manage/about', '/manage/refresh', '/manage/catalogues', '/manage/jobs', '/manage/instructions',
-               '/manage/history', '/manage/unresolved', '/manage/statistics', '/manage/values',
+               '/manage/history', '/manage/statistics', '/manage/values',
                '/manage/tokens', '/manage/database', '/manage/settings', '/manage/appearance']
 
 
@@ -19,8 +21,8 @@ def soup_of(client, path):
 
 
 @pytest.mark.parametrize('page', PAGES)
-def test_p6_pages_have_header_and_no_breadcrumb(app, bw, page):
-    soup = soup_of(logged_in(app), '/manage/' + page)
+def test_p6_pages_have_header_and_no_breadcrumb(client, world, page):
+    soup = soup_of(client, '/manage/' + page)
     assert not soup.select('.breadcrumb')
     assert soup.select_one('main h1')
     if page == 'tokens':
@@ -33,8 +35,8 @@ def test_p6_pages_have_header_and_no_breadcrumb(app, bw, page):
         assert head and head.select_one('a.bw-back[href="/manage/tools"]')
 
 
-def test_p6_hub_tiles_link_to_every_page(app, bw):
-    soup = soup_of(logged_in(app), '/manage/tools')
+def test_p6_hub_tiles_link_to_every_page(client, world):
+    soup = soup_of(client, '/manage/tools')
     hrefs = [a['href'] for a in soup.select('.bw-hub a.bw-hub-row')]
     for target in HUB_TARGETS:
         assert target in hrefs, target
@@ -44,16 +46,17 @@ def test_p6_hub_tiles_link_to_every_page(app, bw):
     assert ' stale' in soup.select_one('.bw-hub').get_text()
 
 
-def test_p6_settings_controls(app, bw):
-    soup = soup_of(logged_in(app), '/manage/settings')
+def test_p6_settings_controls(client, world):
+    soup = soup_of(client, '/manage/settings')
     assert not soup.select('select[name=retail_country]')
     assert soup.select('.bw-seg input[name=retail_country][value=DE]')
     assert soup.select('.bw-seg input[name=scope]')
     assert soup.select('input[type=checkbox][role=switch][name=types]')
+    assert not soup.select('.bw-seg input[name=source]')                                # a refresh follows the source order: no source to pick
 
 
-def test_p6_missing_page_system_page(app):
-    response = logged_in(app).get('/missing')
+def test_p6_missing_page_system_page(client):
+    response = client.get('/missing')
     assert response.status_code == 404
     soup = BeautifulSoup(response.get_data(as_text=True), 'html.parser')
     assert soup.select_one('.system-page h1').get_text() == 'That page is not here'
@@ -62,18 +65,17 @@ def test_p6_missing_page_system_page(app):
     assert not soup.select('.breadcrumb')
 
 
-def test_p6_error_system_page_and_exception_details(app):
-    @app.route('/boom')
+def test_p6_error_system_page_and_exception_details(app4, client):
+    @app4.route('/boom')
     def boom():
         raise KeyError('set 7286-1')
-    app.config['TESTING'] = False
-    app.config['PROPAGATE_EXCEPTIONS'] = False
-    client = logged_in(app)
+    app4.config['TESTING'] = False
+    app4.config['PROPAGATE_EXCEPTIONS'] = False
     soup = BeautifulSoup(client.get('/boom').get_data(as_text=True), 'html.parser')
     assert soup.select_one('.system-page h1').get_text() == 'Something went wrong'
     assert soup.select_one('.system-code').get_text() == 'server · 500'
     assert not soup.select('.system-trace') and 'KeyError' not in str(soup)
-    app.config['DEBUG'] = True
+    app4.config['DEBUG'] = True
     response = client.get('/boom')
     soup = BeautifulSoup(response.get_data(as_text=True), 'html.parser')
     assert response.status_code == 500
@@ -81,16 +83,9 @@ def test_p6_error_system_page_and_exception_details(app):
     assert 'Traceback' in soup.select_one('.system-trace').get_text()
 
 
-def test_p6_import_page_header(app, bw):
-    soup = soup_of(logged_in(app), '/manage/import-legacy')
-    assert not soup.select('.breadcrumb')
-    assert soup.select_one('.bw-page-head h1').get_text() == 'Import from BrickTracker'
-    assert soup.select_one('.bw-page-head a.bw-back[href="/manage/tools"]')
-
-
-def test_hub_rows_say_what_each_option_does(app, bw):
+def test_hub_rows_say_what_each_option_does(client, world):
     # Every Tools & Admin row has a title and one short sentence under it.
-    soup = soup_of(logged_in(app), '/manage/tools')
+    soup = soup_of(client, '/manage/tools')
     rows = soup.select('a.bw-hub-row')
     assert rows and all(r.select_one('.bw-hub-text>.bw-hub-title') for r in rows)
     notes = [r.select_one('.bw-hub-note') for r in rows]
@@ -98,9 +93,9 @@ def test_hub_rows_say_what_each_option_does(app, bw):
     assert all(len(n.get_text().split()) <= 16 for n in notes)
 
 
-def test_about_carries_the_notices(app, bw):
+def test_about_carries_the_notices(client, world):
     # BrickLink's API terms want its notice on the application, verbatim; the LEGO disclaimer as in the README.
-    soup = soup_of(logged_in(app), '/manage/about')
+    soup = soup_of(client, '/manage/about')
     assert soup.select_one('[data-about-bricklink]').get_text() == (
         "The term 'BrickLink' is a trademark of the LEGO Group BrickLink. This application uses the BrickLink API "
         "but is not endorsed or certified by LEGO BrickLink, Inc.")

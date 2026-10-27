@@ -1,13 +1,11 @@
-"""UI-12j on the Tools & Admin screens (bulk refresh and Catalogues & keys name the key they need): split out of test_bw_ui_12j.py by M.8f, waiting for M.8i.
-
-3.3 form."""
+"""UI-12j on the Tools & Admin screens (bulk refresh names the key it needs; Catalogues & keys has nothing to load that needs one), on the 4.0 store
+(M.8i part 1, issue #110)."""
 from bs4 import BeautifulSoup
 from cryptography.fernet import Fernet
 import pytest
 
 from brickwork.core import secrets
-from tests.test_bw_admin import bw
-from tests.web_fixtures import app, apps, logged_in
+from tests.app4 import app4, client, coll, pair, read, world  # noqa: F401  (the fixtures)
 
 BL_ENV = ('BW_BRICKLINK_CONSUMER_KEY', 'BW_BRICKLINK_CONSUMER_SECRET', 'BW_BRICKLINK_TOKEN_VALUE', 'BW_BRICKLINK_TOKEN_SECRET')
 
@@ -18,6 +16,8 @@ def no_keys(monkeypatch):
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setenv('BW_SECRET_KEY', Fernet.generate_key().decode())
     secrets.forget()
+    yield
+    secrets.forget()
 
 
 def soup(client, route):
@@ -26,12 +26,22 @@ def soup(client, route):
     return BeautifulSoup(response.get_data(as_text=True), 'html.parser')
 
 
-def test_bulk_refresh_and_load_colours_name_the_key(app, bw):
-    client = logged_in(app)
+def test_bulk_refresh_names_the_key(client, world):
     refresh = soup(client, '/manage/refresh')
     assert 'Needs a BrickLink key' in refresh.select_one('[data-needs-key=bricklink]').get_text()
     assert refresh.find('button', string=lambda t: t and t.startswith('Refresh all')).has_attr('disabled')
+    assert refresh.select_one('[data-needs-key=bricklink]').find('a')['href'] == '/manage/catalogues'
+
+
+def test_bulk_refresh_is_enabled_with_a_key(client, world, monkeypatch):
+    for name in BL_ENV:
+        monkeypatch.setenv(name, 'synthetic-value-123')
+    refresh = soup(client, '/manage/refresh')
+    assert not refresh.select('[data-needs-key]')
+    assert not refresh.find('button', string=lambda t: t and t.startswith('Refresh all')).has_attr('disabled')
+
+
+def test_catalogues_page_loads_nothing_from_bricklink(client, world):
+    """The colours and names come with the catalogue builds, not from a call: no button there waits for a key."""
     catalogues = soup(client, '/manage/catalogues')
-    assert catalogues.find('button', string='Load colours').has_attr('disabled')
-    assert catalogues.select_one('[data-needs-key=bricklink]').find('a')['href'] == '/manage/catalogues'
-    assert catalogues.find('button', string='Load catalogue') and not catalogues.find('button', string='Load catalogue').has_attr('disabled')
+    assert not catalogues.find('button', string='Load colours') and not catalogues.select('[data-needs-key]')

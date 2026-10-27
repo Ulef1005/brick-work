@@ -14,3 +14,4 @@ tests/test_bw_throttle.py:generic-api-key:61
 docs/how-to/back-up-and-restore.md:curl-auth-header:28
 docs/how-to/undo-a-change.md:curl-auth-header:41
 docs/how-to/undo-a-change.md:curl-auth-header:42
+docs/how-to/undo-a-change.md:curl-auth-header:43

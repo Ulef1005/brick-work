@@ -1,14 +1,14 @@
-"""Environment credentials stay private in the CLI error text and in the export: split out of test_secret_redaction.py by M.8f, waiting for M.8i.
+"""Environment credentials stay private in the CLI error text and in the export, on the 4.0 store (M.8i part 1, issue #110).
 
-3.3 form; the export and the CLI are the maintenance piece's (M.8i), which rewrites these on the 4.0 store."""
+Split out of test_secret_redaction.py by M.8f."""
 from contextlib import closing
 import sqlite3
 
 from flask import Flask
 import pytest
 
-from brickwork.core.connect import connect
 from brickwork.web import admin_ops, cli
+from tests.app4 import coll, pair  # noqa: F401  (the fixtures)
 
 
 @pytest.fixture(params=['OLD_REBRICKABLE_API_KEY', 'OTHER_SECRET', 'CUSTOM_TOKEN',
@@ -30,18 +30,14 @@ def test_cli_error_redacts_arbitrary_prefix(credential):
     assert result == '[set] ordinary-display-name [set]'
 
 
-def test_export_rejects_arbitrary_prefix(tmp_path, monkeypatch, credential):
-    path = tmp_path / 'brickwork.db'
-    monkeypatch.setenv('BW_DB_PATH', str(path))
-    with closing(connect(path)) as db, db:
-        db.execute("INSERT INTO items(item_type,item_no,name) VALUES('S','1',?)",
-                   ('ordinary-display-name',))
+def test_export_rejects_arbitrary_prefix(coll, pair, monkeypatch, credential):
+    monkeypatch.setenv('BW_DB_PATH', str(pair))
+    item = coll.local('part', 'ordinary-display-name', born_key='x1')
     # Non-secret environment values and empty credentials do not block exports.
     exported = admin_ops.tools_export()
     with closing(sqlite3.connect(':memory:')) as snapshot:
         snapshot.deserialize(exported)
-        assert snapshot.execute('SELECT name FROM items').fetchone()[0] == 'ordinary-display-name'
-    with closing(connect(path)) as db, db:
-        db.execute('UPDATE items SET name=?', (credential,))
+        assert snapshot.execute('SELECT name FROM item WHERE id=?', (item,)).fetchone()[0] == 'ordinary-display-name'
+    coll.sql('UPDATE item SET name=? WHERE id=?', (credential, item))
     with pytest.raises(ValueError, match='Export contains credential material'):
         admin_ops.tools_export()

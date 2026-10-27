@@ -81,7 +81,7 @@ def undoable(event):
 
 def revoked_event(db, identifier):
     """(name, undoable) for a revoke event; a neutral name when the payload has none; None for other events."""
-    found = db.execute("SELECT field,old_value,new_value,at FROM events WHERE id=? AND entity='bw_token' AND field='revoke'", (identifier,)).fetchone()
+    found = db.execute("SELECT field,old_value,new_value,at FROM main.event WHERE id=? AND entity_kind='bw_token' AND field='revoke'", (identifier,)).fetchone()
     if not found:
         return None
     payload = _object(found['new_value'])

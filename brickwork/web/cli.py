@@ -49,6 +49,14 @@ def build_parser():
     migration.add_argument('--extras', help='Optional legacy extras database (read-only)')
     migration.add_argument('--catalogue-src', help='Directory containing BrickLink XML files (Gear fallback)')
     migration.add_argument('--replace', action='store_true')
+    # The 3.3 -> 4.0 migration is store4's; this is the name the design gives it (`brickwork migrate4`, data-model-design 8.2).
+    migrate4 = parser(commands, 'migrate4', 'migrate4')
+    migrate4.add_argument('--in', dest='src', required=True, help='the 3.3 collection file (read-only; stop the 3.3 app or give a copy)')
+    migrate4.add_argument('--catalogue', required=True, help='the catalogue.db the mint resolves against')
+    migrate4.add_argument('--mappings', required=True, help='the mappings directory the catalogue was built with')
+    migrate4.add_argument('--out', required=True, help='the 4.0 file to create (must not exist)')
+    migrate4.add_argument('--report', required=True, help='the report folder (new or empty)')
+    migrate4.add_argument('--pin', help='proof.json or summary.md of an earlier run to pin the catalogue and mappings to')
     catalogue = parser(commands, 'catalogue').add_subparsers(required=True)
     parser(catalogue, 'status', 'catalogue_status')
     sources = parser(catalogue, 'import').add_subparsers(required=True)
@@ -87,7 +95,8 @@ def build_parser():
     settings = parser(commands, 'settings').add_subparsers(required=True)
     parser(settings, 'show', 'settings_show')
     sub = parser(settings, 'set', 'settings_set')
-    sub.add_argument('key', choices=SETTING_KEYS + ('source_priority',) + tuple('import_order:' + t for t in 'SPMGBCIO'))
+    from ..core.items import KINDS
+    sub.add_argument('key', choices=SETTING_KEYS + ('source_priority',) + tuple('import_order:' + kind for kind in KINDS))
     sub.add_argument('value')
     wishes = parser(commands, 'wishlist').add_subparsers(required=True)
     parser(wishes, 'list', 'wishlist_list').add_argument('--archived', action='store_true')
@@ -97,7 +106,7 @@ def build_parser():
         parser(wishes, action, 'wishlist_'+action).add_argument('list')
     for action in ('move','copy'):
         sub = parser(wishes, action, 'wishlist_'+action)
-        sub.add_argument('list'); sub.add_argument('ids', nargs='+', type=int)
+        sub.add_argument('list'); sub.add_argument('ids', nargs='+', help='wish ids (see the item page or `wishlist list`)')
     sub = parser(wishes, 'export', 'wishlist_export')
     sub.add_argument('list', help='Wishlist id, exact name, or all')
     sub.add_argument('--format', choices=('bricklink','rebrickable'), required=True)
@@ -116,10 +125,11 @@ def application_context(operation):
 
 def _safe_error(error):
     # Fetcher exceptions may contain credential-bearing URLs. Never echo keys.
-    from flask import current_app
+    from flask import current_app, has_app_context
     from ..core.secrets import secret_values
     message = str(error)
-    secrets = secret_values(current_app.config) + secret_values()
+    # The wishlist commands report after their application context has closed: the environment's secrets still apply.
+    secrets = (secret_values(current_app.config) if has_app_context() else []) + secret_values()
     for secret in sorted(secrets, key=len, reverse=True):
         message = message.replace(secret, '[set]')
     return message
@@ -222,9 +232,14 @@ def main(argv=None):
         except Exception as error:
             print(f'Token error: {redact(error)}', file=sys.stderr)
             return 1
+    if operation == 'migrate4':
+        argv = ['--in', args['src'], '--catalogue', args['catalogue'], '--mappings', args['mappings'], '--out', args['out'], '--report', args['report']]
+        argv += ['--pin', args['pin']] if args.get('pin') else []
+        return admin_ops.migrate4(argv + (['--json'] if as_json else []))
     if operation == 'migrate':
         print('Migration error: this BrickTracker-era command is gone on the 4.0 line (M.8a). To move a 3.3 collection to 4.0 run '
-              '`python -m brickwork.store4 migrate --in <3.3 file> --catalogue <catalogue.db> --mappings <dir> --out <4.0 file> --report <dir>`.',
+              '`brickwork migrate4 --in <3.3 file> --catalogue <catalogue.db> --mappings <dir> --out <4.0 file> --report <dir>` '
+              '(or `python -m brickwork.store4 migrate ...`, the same command).',
               file=sys.stderr)
         return 1
     if operation == 'import_bricktracker' and bool(args.get('source')) == bool(args.get('plan_id')):
@@ -258,7 +273,8 @@ def main(argv=None):
                 if operation in ('import_item', 'jobs_retry') and result['state'] == 'failed':
                     return 1
                 if operation in ('check', 'brickwork_check') and any(
-                        db['integrity_check'] != ['ok'] or db['foreign_key_check'] for db in result.values()):
+                        db['integrity_check'] != ['ok'] or db['foreign_key_check'] or db.get('catalogue_integrity_check', ['ok']) != ['ok']
+                        for db in result.values()):
                     return 1
                 if (
                         (operation == 'prices_refresh' and result.get('ok') is False) or

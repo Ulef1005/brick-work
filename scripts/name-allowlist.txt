@@ -34,3 +34,4 @@ design/test-data/tools-admin.json	BK_[A-Z_]+|bricktracker_[a-z_]+	Design export 
 scripts/site/landing.html	\[?BrickTracker\]?|BrickTracker	Comparison section names the self-hosted tracker Brick Work grew from.
 docs/reference/cli.md	\bbricktracker\b|\b(?:post_)?imports?[-_]bricktracker\b|BrickTracker	User docs: CLI command import-bricktracker.
 docs/data-model-4.0/*	BrickTracker importer|BrickTracker import|\bhouse-api/lego\.py\b	Data model 4.0 design: the retained importer, and the House API client that switches at the cutover.
+tests/test_ui_p6_import.py	Import from BrickTracker	Test of the retained importer page title (M.8j).

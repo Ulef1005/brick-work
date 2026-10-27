@@ -23,9 +23,9 @@ Three sources, tried in this order:
 - **For parts:** the Rebrickable catalogue (a plain image download for the colours the catalogue shows the part in), then BrickLink (a plain image download by the part's BrickLink number and colour), then the Rebrickable API.
 - **For everything else:** BrickLink, then the Rebrickable catalogue. The catalogue carries pictures of parts only, so a set or figure is pictured by BrickLink unless you add the Rebrickable API to its order.
 
-The first two need no key and make no API call. The Rebrickable API source needs your Rebrickable key and counts against the day's budget. A part in a colour the catalogue has no picture for falls through to BrickLink and then to the API. If no source can serve it, the step fails with the reason, and **Retry** on the job runs it again once something has changed.
+The first two need no key and make no API call. Add your keys under **Tools & Admin → Catalogues & keys**: it shows each source with its budget for the day, the last success and the last error, and a card per key where a key is entered write-only, tested once and stored encrypted. The Rebrickable API source needs your Rebrickable key and counts against the day's budget. A part in a colour the catalogue has no picture for falls through to BrickLink and then to the API. If no source can serve it, the step fails with the reason, and **Retry** on the job runs it again once something has changed.
 
-Change the order in **Tools & Admin → Settings**; the setting applies to jobs queued afterwards. Updating from 3.3 keeps your order: the default becomes the one above, and a changed order keeps its sequence with Rebrickable split into the catalogue and then the API.
+Change the order under **Source priority** in **Manage → Tools & Admin → Settings** (the page's **Pictures** card shows what is covered, and **Refresh pictures** queues the missing ones or all of them); the setting applies to jobs queued afterwards. **Catalogues & keys** shows the same order on its **Pictures** card. Updating from 3.3 keeps your order: the default becomes the one above, and a changed order keeps its sequence with Rebrickable split into the catalogue and then the API.
 
 ## Prices and budgets
 

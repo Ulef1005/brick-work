@@ -10,36 +10,14 @@ listed runs.
 """
 
 QUARANTINE = {
-    # M.8f ported its files (sources, pictures, prices on provider_key, keys). Left here, re-labelled to the piece they belong to: the Catalogues & keys
-    # screen tests (M.8i); split off by M.8f from files it ported: the 3.3 BrickLink XML loader, the CLI/export redaction, the Tools & Admin speed and
-    # first-run tests, the Statistics retail test (M.8i), the API speed tests (M.11). (The Wishlist retail test was ported by M.8g.)
-    'tests/test_bw_api_m5_web.py': 'M.8i',
-    'tests/test_bw_ui_12l.py': 'M.8i',
     # M.8h split these out of files it ported (tests that belong to a later piece moved, none was added): out of test_bw_orders_storage.py and
     # test_bw_orders_export_44.py the API receipts, history and export tests (M.11).
     'tests/test_bw_orders_export_44_api.py': 'M.11',
     'tests/test_bw_orders_storage_api.py': 'M.11',
-    # M.8i: identity admin, merge/unmerge, settings, CLI, maintenance
-    'tests/test_admin_ops.py': 'M.8i',
-    'tests/test_bricklink_catalogue_xml.py': 'M.8i',
-    'tests/test_bw_perf_admin.py': 'M.8i',
-    'tests/test_bw_retail_26_statistics.py': 'M.8i',
-    'tests/test_bw_ui_12j_later.py': 'M.8i',
-    'tests/test_secret_redaction_cli_export.py': 'M.8i',
-    'tests/test_bw_admin.py': 'M.8i',
-    'tests/test_bw_currency_39_settings.py': 'M.8i',
-    'tests/test_shell_45s_tools.py': 'M.8i',
-    'tests/test_bw_collection_colours.py': 'M.8i',
+    # M.8i part 1 ported settings, Tools & Admin, Catalogues & keys, tokens, maintenance and the CLI. What is left under M.8i is part 2 (identity admin,
+    # merge/unmerge, the kind move), split off by part 1 from the files it ported.
+    'tests/test_bw_admin_identity.py': 'M.8i',
     'tests/test_bw_lists_43_api.py': 'M.11',
-    'tests/test_bw_admin_csrf.py': 'M.8i',
-    'tests/test_bw_small_68.py': 'M.8i',
-    'tests/test_bw_ui_12m.py': 'M.8i',
-    'tests/test_bw_ui_5049.py': 'M.8i',
-    'tests/test_ui_47b.py': 'M.8i',
-    'tests/test_jump_and_rail.py': 'M.8i',
-    'tests/test_safe_errors.py': 'M.8i',
-    'tests/test_shell_46p.py': 'M.8i',
-    'tests/test_ui_p6.py': 'M.8i',
     # M.8j: sync, BrickTracker rewrite, demo, the two guards
     'tests/importer/test_bricktracker_import.py': 'M.8j',
     'tests/importer/test_importer.py': 'M.8j',
@@ -48,6 +26,8 @@ QUARANTINE = {
     'tests/test_bw_sync.py': 'M.8j',
     'tests/test_bw_sync_ui.py': 'M.8j',
     'tests/test_demo.py': 'M.8j',
+    'tests/test_ui_p6_import.py': 'M.8j',          # split off test_ui_p6.py by M.8i part 1
+    'tests/test_bw_small_68_sync.py': 'M.8j',      # split off test_bw_small_68.py by M.8i part 1
     # M.11: API v2 and clients: the v1 API, MCP and contract tests
     'tests/test_app_factory.py': 'M.11',
     'tests/test_bw_api_47.py': 'M.11',

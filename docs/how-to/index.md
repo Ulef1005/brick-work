@@ -20,5 +20,6 @@ One task per page, for someone who already knows the app.
 
 ## Running Brick Work
 
+- [Settings and maintenance](settings-and-maintenance.md)
 - [Back up and restore](back-up-and-restore.md)
 - [Connect an assistant](connect-an-assistant.md)

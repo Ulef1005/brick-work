@@ -137,6 +137,12 @@ BASELINE = frozenset((
     # test_bw_orders_export_44.py the API receipts, history and export tests (M.11).
     'tests/test_bw_orders_export_44_api.py',
     'tests/test_bw_orders_storage_api.py',
+    # M.8i part 1 split these out of files it ported (tests that belong to part 2 moved, none was added): out of test_bw_admin.py, test_bw_perf_admin.py
+    # and test_bw_admin_csrf.py the identity admin (Unresolved figures, resolving a match, loading candidate pictures).
+    'tests/test_bw_admin_identity.py',
+    # ... and out of test_ui_p6.py and test_bw_small_68.py the BrickTracker import page header and the Collection sync pages (M.8j).
+    'tests/test_ui_p6_import.py',
+    'tests/test_bw_small_68_sync.py',
 ))
 
 

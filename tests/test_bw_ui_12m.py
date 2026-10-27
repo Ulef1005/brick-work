@@ -1,4 +1,4 @@
-"""UI-12m: API tokens page. Shown-once secret, revoke with confirm and Undo, CSRF, read-only."""
+"""UI-12m on the 4.0 store (M.8i part 1, issue #110): API tokens page. Shown-once secret, revoke with confirm and Undo, CSRF, read-only."""
 import json
 import re
 import sqlite3
@@ -7,15 +7,25 @@ from bs4 import BeautifulSoup
 import pytest
 
 from brickwork.core import admin, tokens
-from tests.test_bw_admin import migrated_bw, reset_shell_metadata_after_test  # noqa: F401
-from tests.importer.test_importer import legacy  # noqa: F401
-from tests.web_fixtures import app, apps, logged_in  # noqa: F401
+from tests.app4 import app4, client, coll, pair, read, world  # noqa: F401  (the fixtures)
+from tests.web_fixtures import logged_in
 
 
 def csrf(client):
     client.get('/manage/tokens')
     with client.session_transaction() as session:
         return session['bw_add_csrf']
+
+
+@pytest.fixture
+def migrated_bw(pair):
+    """The collection file the tests below read and write (the name is from the 3.3 tests)."""
+    return pair
+
+
+@pytest.fixture
+def app(app4):
+    return app4
 
 
 def stored(db_path):
@@ -159,14 +169,14 @@ def test_revoke_confirm_state_then_revoke_and_undo(app, migrated_bw):
     with admin.database(migrated_bw) as db:
         with pytest.raises(Exception):
             tokens.authenticate(db, result['secret'])
-        event = db.execute("SELECT id FROM events WHERE entity='bw_token' AND field='revoke'").fetchone()[0]
+        event = db.execute("SELECT id FROM event WHERE entity_kind='bw_token' AND field='revoke'").fetchone()[0]
     undo = soup.select_one('.bw-tk-banner form')
     assert undo.select_one('input[name=event]')['value'] == str(event)
     back = client.post('/manage/tokens', data={'csrf_token': token, 'action': 'undo', 'event': str(event)})
     assert back.status_code == 302
     with admin.database(migrated_bw) as db:
         assert tokens.authenticate(db, result['secret'])['name'] == 'Spreadsheet export'
-        assert db.execute("SELECT count(*) FROM events WHERE entity='bw_token' AND field LIKE 'undo:%'").fetchone()[0] == 1
+        assert db.execute("SELECT count(*) FROM event WHERE entity_kind='bw_token' AND field='undo'").fetchone()[0] == 1
     page = client.get('/manage/tokens').get_data(as_text=True)
     assert 'Spreadsheet export' in page and 'bw-tk-banner' not in page
 
@@ -174,7 +184,7 @@ def test_revoke_confirm_state_then_revoke_and_undo(app, migrated_bw):
 def test_revoke_banner_is_only_for_revoke_events(app, migrated_bw):
     make(migrated_bw, 'A', ['read'])
     with admin.database(migrated_bw, read_only=True) as db:
-        create_event = db.execute("SELECT id FROM events WHERE entity='bw_token'").fetchone()[0]
+        create_event = db.execute("SELECT id FROM event WHERE entity_kind='bw_token'").fetchone()[0]
     client = logged_in(app)
     assert 'bw-tk-banner' not in client.get(f'/manage/tokens?revoked={create_event}').get_data(as_text=True)
     assert 'bw-tk-banner' not in client.get('/manage/tokens?revoked=junk').get_data(as_text=True)
@@ -256,7 +266,7 @@ def test_query_count_is_flat(app, migrated_bw):
         logged_in(app).get('/manage/tokens')
     finally:
         core_admin.database = original
-    selects = [s for s in statements if 'api_tokens' in s]
+    selects = [s for s in statements if 'api_token' in s]
     assert len(selects) == 1
 
 
@@ -270,7 +280,7 @@ def test_revoked_param_is_validated(app, migrated_bw):
 def test_dates_use_stored_value_without_conversion(app, migrated_bw):
     make(migrated_bw, 'Dated', ['read'])
     with admin.database(migrated_bw) as db, db:
-        db.execute("UPDATE api_tokens SET created_at='2026-10-02T23:30:00+00:00', last_used_at='2026-10-14T22:10:00+00:00'")
+        db.execute("UPDATE api_token SET created_at='2026-10-02T23:30:00+00:00', last_used_at='2026-10-14T22:10:00+00:00'")
     soup = BeautifulSoup(logged_in(app).get('/manage/tokens').get_data(as_text=True), 'html.parser')
     dates = [d.get_text() for d in soup.select('.bw-tk-table .bw-tk-date')]
     assert dates == ['2 Oct 2026', '14 Oct, 22:10']
@@ -280,7 +290,7 @@ def test_dates_use_stored_value_without_conversion(app, migrated_bw):
 def test_revoke_banner_survives_bad_event_payload(app, migrated_bw, payload):
     # Events are append-only, so a malformed payload is inserted as a new row.
     with admin.database(migrated_bw) as db, db:
-        event = db.execute("INSERT INTO events(entity,field,old_value,new_value,at,via,actor) VALUES('bw_token','revoke',NULL,?,'2026-10-16T00:00:00+00:00','app',NULL)", (payload,)).lastrowid
+        event = db.execute("INSERT INTO event(entity_kind,field,old_value,new_value,at,via,actor) VALUES('bw_token','revoke',NULL,?,'2026-10-16T00:00:00.000Z','app',NULL)", (payload,)).lastrowid
     response = logged_in(app).get(f'/manage/tokens?revoked={event}')
     html = response.get_data(as_text=True)
     assert response.status_code == 200 and 'not available' not in html
@@ -300,7 +310,7 @@ def test_missing_database_shows_error_page(app, migrated_bw):
 @pytest.mark.parametrize('payload', [None, 'null', '[1]', '{"id":"1"}', '{not json'])
 def test_forged_undo_of_unreadable_event_is_400(app, migrated_bw, payload):
     with admin.database(migrated_bw) as db, db:
-        event = db.execute("INSERT INTO events(entity,field,old_value,new_value,at,via,actor) VALUES('bw_token','revoke',NULL,?,'2026-10-16T00:00:00+00:00','app',NULL)", (payload,)).lastrowid
+        event = db.execute("INSERT INTO event(entity_kind,field,old_value,new_value,at,via,actor) VALUES('bw_token','revoke',NULL,?,'2026-10-16T00:00:00.000Z','app',NULL)", (payload,)).lastrowid
     client = logged_in(app)
     response = client.post('/manage/tokens', data={'csrf_token': csrf(client), 'action': 'undo', 'event': str(event)})
     assert response.status_code == 400
@@ -354,6 +364,6 @@ def test_second_undo_reports_already_undone(app, migrated_bw):
 def test_broken_expiry_value_does_not_hide_the_list(app, migrated_bw):
     result, _ = make(migrated_bw, 'Odd expiry', ['read'])
     with admin.database(migrated_bw) as db, db:
-        db.execute("UPDATE api_tokens SET expires_at='not a date' WHERE id=?", (result['token']['id'],))
+        db.execute("UPDATE api_token SET expires_at='not a date' WHERE id=?", (result['token']['id'],))
     html = logged_in(app).get('/manage/tokens').get_data(as_text=True)
     assert 'Odd expiry' in html and 'database is not available' not in html

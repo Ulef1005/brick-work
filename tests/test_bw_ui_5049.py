@@ -1,61 +1,71 @@
-"""#50 Manage and Workbench leftovers and #49 12i desktop Options menu: rendering contracts. Invented data."""
-from contextlib import closing
+"""Review 5 frame contracts on a 4.0 collection (M.8i part 1, issue #110): the instruction screens. The Add frames moved to `test_bw_add.py` (M.8c).
+
+A PDF belongs to a set; a booklet shows the files of the set with its number."""
+from io import BytesIO
 from pathlib import Path
 
 from bs4 import BeautifulSoup
 
-from brickwork.core.connect import connect
-from tests.web_fixtures import app, apps, logged_in  # noqa: F401
-from tests.test_bw_collection import bw, legacy, reset_shell_metadata_after_test  # noqa: F401
+from brickwork.core import admin
+from brickwork.web import admin_ops
+from tests.app4 import app4, client, coll, csrf, pair, read, world  # noqa: F401  (the fixtures)
 
 ROOT = Path(__file__).resolve().parents[1]
-KEYS = ('BW_BRICKLINK_CONSUMER_KEY', 'BW_BRICKLINK_CONSUMER_SECRET', 'BW_BRICKLINK_TOKEN_VALUE', 'BW_BRICKLINK_TOKEN_SECRET')
 
 
-def test_options_menu_on_the_sets_toolbar(app, bw):
-    soup = BeautifulSoup(logged_in(app).get('/collection/sets').data, 'html.parser')
-    toolbar = soup.select_one('.bc-toolbar')
-    button = toolbar.select_one('[data-bc-options-open]')
-    assert button.get_text(strip=True) == 'Options' and button['aria-haspopup'] == 'menu'
-    assert toolbar.select_one('[data-bc-options-menu]').has_attr('hidden')
-    # The View block (Group by, Select) still exists for the phone sheet; the menu drives it.
-    assert soup.select('.bc-view-group [data-bc-group-pick]') and soup.select_one('[data-bc-select][role=switch]')
-    assert soup.find('script', src=lambda s: s and 'bw-options-menu.js' in s)
-    css = (ROOT / 'static/web/toni/bw-collection.css').read_text()
-    assert '@media(min-width:1024px){ .bc-options { display:block; } .bc-filter-panel .bc-view-group { display:none; } }' in css
+def test_instruction_review_header_and_upload(client, coll, world, pair):
+    total = coll.db.execute("SELECT count(*) FROM item WHERE kind='instructions'").fetchone()[0]
+    soup = BeautifulSoup(client.get('/manage/instructions').data, 'html.parser')
+    assert soup.select_one('.bw-page-head h1').text == f'0 of {total} booklets have a PDF'
+    assert soup.select_one('.bw-page-head p').text == 'Fetch, upload or rename'
+    assert not soup.select('[data-bw-search], [data-bw-filter], [data-bw-sort]')
+    disclosure = soup.select_one('.bw-instructions-upload')
+    assert disclosure.name == 'details' and not disclosure.has_attr('open')
+    assert disclosure.select_one('summary').text == 'Upload a PDF'
+    assert {i['name'] for i in disclosure.select('[name]')} == {'csrf_token', 'action', 'item_type', 'item_no', 'label', 'file'}
+    token = disclosure.select_one('[name=csrf_token]')['value']
+    for label in ['Booklet one', 'Booklet two']:
+        result = client.post('/manage/instructions', data=dict(csrf_token=token, action='upload', item_type='I', item_no='1000-1', label=label,
+                                                             file=(BytesIO(b'%PDF-1.4\nreview fixture'), 'booklet.pdf')))
+        assert result.status_code == 302
+    identifier = coll.db.execute('SELECT id FROM instruction_file ORDER BY id').fetchone()[0]
+    assert coll.db.execute("SELECT count(*) FROM event WHERE field='attach' AND via='app'").fetchone()[0] == 2
+    result = client.post('/manage/instructions', data=dict(csrf_token=token, action='rename', id=identifier, label='Renamed booklet'))
+    assert result.status_code == 302
+    soup = BeautifulSoup(client.get('/manage/instructions').data, 'html.parser')
+    assert soup.select_one('.bw-page-head h1').text == f'1 of {total} booklets have a PDF'
+    # 4.9e: one row per booklet identity (both files sit under it).
+    assert len(soup.select('[data-bw-row]')) == total
+    assert soup.select_one(f'[name=id][value="{identifier}"]').find_parent('form').select_one('[name=label]')['value'] == 'Renamed booklet'
+    assert client.get(f'/manage/instructions/{identifier}/download').data.startswith(b'%PDF')
+    event = coll.db.execute("SELECT old_value,new_value,via FROM event WHERE field='label' ORDER BY id DESC LIMIT 1").fetchone()
+    assert tuple(event) == ('Booklet one', 'Renamed booklet', 'app')
 
 
-def test_placed_orders_need_a_bricklink_key(app, monkeypatch):
-    for name in KEYS:
-        monkeypatch.delenv(name, raising=False)
-    soup = BeautifulSoup(logged_in(app).get('/workbench/orders').data, 'html.parser')
-    card = soup.select_one('.order-import-card')
-    assert card.select_one('[data-load-orders]').has_attr('disabled')
-    assert card.select_one('[data-needs-key=bricklink]').strong.text == 'Needs a BrickLink key'
-    assert 'Needs a BrickLink key.' not in card.get_text()
+def test_instruction_long_list_and_bounded_queries(client, coll, world, pair, monkeypatch):
+    queries = []
+    original = admin.connect
 
-
-def test_placed_orders_enabled_with_a_key(app, bw, monkeypatch):
-    for name in KEYS:
-        monkeypatch.setenv(name, 'synthetic-value-123')
-    soup = BeautifulSoup(logged_in(app).get('/workbench/orders').data, 'html.parser')
-    assert not soup.select_one('[data-load-orders]').has_attr('disabled')
-    assert not soup.select_one('.order-import-card [data-needs-key]')
-
-
-def test_catalogue_load_has_a_busy_state(app, bw):
-    soup = BeautifulSoup(logged_in(app).get('/manage/catalogues').data, 'html.parser')
-    form = soup.select_one('form[data-busy-form]')
-    assert form.select_one('button[data-busy-label="Loading catalogue"]')
-    assert form.select_one('[data-busy-note][role=status]').has_attr('hidden')
-    assert "querySelectorAll('form[data-busy-form]')" in (ROOT / 'static/web/toni/bw-admin.js').read_text()
-
-
-def test_storage_set_pill_says_not_checked():
-    text = (ROOT / 'templates/web/toni/web/bw_storage.html').read_text()
-    assert ".get(row.completeness,'Not checked')" in text and ".get(row.completeness,'Unknown')" not in text
-
-
-def test_no_dead_breadcrumb_overrides():
-    for path in (ROOT / 'templates/web/toni/web').glob('*.html'):
-        assert '{% block breadcrumb %}' not in path.read_text(), path.name
+    def traced(*args, **kwargs):
+        db = original(*args, **kwargs)
+        db.set_trace_callback(queries.append)
+        return db
+    # Files of a set no booklet names are listed apart; there are 100, then 300.
+    coll.db.executemany("INSERT INTO instruction_file(item_id,path,label,added_at) VALUES(?,?,?,'2026-10-26T00:00:00.000Z')",
+                        [(world.gate, f'data/instructions/file-{n}.pdf', f'Booklet {n}') for n in range(100)])
+    coll.db.commit()
+    monkeypatch.setattr(admin, 'connect', traced)
+    small = admin_ops.tools_read('instructions')
+    count = len(queries)
+    assert len(small['files']) == 100 and small['coverage']['covered'] == 0
+    coll.db.executemany("INSERT INTO instruction_file(item_id,path,label,added_at) VALUES(?,?,?,'2026-10-26T00:00:00.000Z')",
+                        [(world.gate, f'data/instructions/file-{n}.pdf', f'Booklet {n}') for n in range(100, 300)])
+    coll.db.commit()
+    queries.clear()
+    large = admin_ops.tools_read('instructions')
+    assert len(queries) == count and count < 8
+    assert len(large['files']) == 300 and large['coverage'] == small['coverage']
+    soup = BeautifulSoup(client.get('/manage/instructions').data, 'html.parser')
+    assert soup.select_one('[data-bw-search]')['placeholder'] == 'Number or name'
+    assert not soup.select('[data-bw-filter], [data-bw-sort], .bw-toolbar')
+    assert len(soup.select('[data-bw-row]')) == 300 + large['coverage']['total']

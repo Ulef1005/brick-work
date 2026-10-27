@@ -86,6 +86,9 @@ def bw_admin(page):
               'instructions': 'Instruction files'}
     if page not in titles:
         abort(404)
+    if page == 'unresolved':                       # identity admin: M.8i part 2
+        from . import ported
+        return ported.holding('Unresolved figures', piece='M.8i part 2')
     group = request.args.get('group', 'owners')
     error, data = None, None
     try:
@@ -96,8 +99,9 @@ def bw_admin(page):
             if page == 'settings':
                 from ..core import currency
                 from ..core.admin import database
-                with database(admin_ops.brickwork_path(), read_only=True) as rdb:
+                with database(admin_ops.brickwork_path(), read_only=True, require_catalogue=False) as rdb:
                     data['currency'] = dict(display=currency.display_currency(rdb), rates=currency.listing(rdb))
+                    data['saved'] = settings_undo_offer(rdb, request.args.get('saved', ''))
             if page == 'catalogues':
                 from ..core import keys as key_store, secrets as key_secrets
                 data['view'] = admin_ops.catalogues_view(data, key_store.field_map(), key_secrets.entry_available(),
@@ -111,30 +115,44 @@ def bw_admin(page):
     except (ValueError, sqlite3.Error, OSError):
         error = 'Brick Work database is not available. Check BW_DB_PATH and try again.'
     from ..core.pipeline import STEPS, TYPES
+    from ..core.items import KIND_TYPE
+    from ..core.admin import SOURCE_STEPS
     from ..core import keys, secrets
     response = current_app.make_response(render_template('web/toni/web/bw_admin.html',
         page=page, title=titles[page], data=data, error=error, group=group,
-        steps=STEPS, item_types=sorted(TYPES), csrf_token=bw_add_token(), can_edit=bw_collection_editable(),
+        steps=SOURCE_STEPS, item_types=sorted(TYPES), type_letters=sorted(KIND_TYPE.values()), csrf_token=bw_add_token(), can_edit=bw_collection_editable(),
         key_fields=keys.field_map(), key_entry=secrets.entry_available()))
     response.headers['Cache-Control'] = 'no-store'
     return response
 
 
+def settings_undo_offer(db, text):
+    """`?saved=<event id>` on the Settings page: the id when that event is a settings save that can still be undone, else None."""
+    from . import token_rows
+    from ..core import undo as undoing
+    identifier = token_rows.event_id(text)
+    if identifier is None:
+        return None
+    found = db.execute(f"SELECT 1 FROM main.event e WHERE e.id=? AND e.entity_kind='settings' AND e.field='save' AND NOT {undoing.undone_sql('e')}",
+                       (identifier,)).fetchone()
+    return identifier if found else None
+
+
 @web_page.post('/manage/<page>')
 @login_required
 def bw_admin_write(page):
-    from ..core.sources.base import ColourCodeError, SourceError
+    from ..core import errors
+    from ..core.sources.base import SourceError
     from flask import flash
     from . import admin_ops
+    from ..core.admin import SOURCE_STEPS
     from ..core.pipeline import STEPS, TYPES
-    import json
     action = request.form.get('action', '')
     failure_label = {
-        'catalogues': {'load': 'Catalogue load', 'colours': 'Colour load', 'source': 'Source toggle',
-                       'key_save': 'Source key', 'key_test_save': 'Source key', 'key_remove': 'Source key',
+        'catalogues': {'source': 'Source toggle', 'key_save': 'Source key', 'key_test_save': 'Source key', 'key_remove': 'Source key',
                        'key_undo': 'Source key', 'key_test': 'Source key test'}.get(action, 'Catalogues & keys'),
         'settings': 'Picture refresh' if action == 'pictures' else 'Settings',
-        'unresolved': 'Picture load' if action == 'images' else 'Figure resolution',
+        'unresolved': 'Figure resolution',
         'refresh': 'Price refresh',
         'jobs': 'Job resume' if action == 'resume' else 'Job retry',
         'values': 'Value ' + {'add': 'add', 'rename': 'rename', 'delete': 'delete'}.get(action, 'save'),
@@ -146,7 +164,11 @@ def bw_admin_write(page):
     if request.headers.get('Sec-Fetch-Site') == 'cross-site':
         abort(403)
     bw_add_csrf(request.form)
+    saved = None
     try:
+        if page == 'unresolved':                   # identity admin: M.8i part 2
+            from . import ported
+            return ported.holding('Unresolved figures', piece='M.8i part 2')
         if page == 'instructions':
             if request.form['action'] == 'fetch_missing':
                 if not bw_collection_editable():
@@ -155,7 +177,7 @@ def bw_admin_write(page):
                 bw_start_worker()
                 note = f'Queued {len(queued)} identity refreshes'
                 if skipped:
-                    note += f', {len(skipped)} skipped (invalid number: {", ".join(skipped[:5])}{" ..." if len(skipped) > 5 else ""})'
+                    note += f', {len(skipped)} skipped (no number: {", ".join(skipped[:5])}{" ..." if len(skipped) > 5 else ""})'
                 flash(note + ' · This refreshes identities only; no PDFs are downloaded. Upload a PDF to attach one', 'info')
                 return redirect(url_for('web.bw_admin', page='instructions'))
             if request.form['action'] == 'rename':
@@ -172,10 +194,10 @@ def bw_admin_write(page):
                 # Read-only instance: check on a read-only connection and report; nothing is stored or audited.
                 from ..core import admin as core_admin
                 from ..core.admin import database
-                with database(admin_ops.brickwork_path(), read_only=True) as db:
+                with database(admin_ops.brickwork_path(), read_only=True, require_catalogue=False) as db:
                     result = core_admin.check(db)
                 findings = len(result['foreign_key_check'])
-                ok = result['integrity_check'] == ['ok'] and not findings
+                ok = core_admin.check_ok(result)
                 flash(('Database check: no problems found' if ok else
                        f"Database check: integrity {', '.join(result['integrity_check'][:3])} · {findings} foreign-key findings")
                       + ' · not stored, this instance is read-only', 'success' if ok else 'error')
@@ -186,19 +208,22 @@ def bw_admin_write(page):
         elif page == 'settings' and request.form.get('action') == 'pictures':
             if not bw_collection_editable():
                 abort(403, 'Changes are switched off on this instance')
-            job, count = admin_ops.tools_write('pictures', source=request.form['source'],
-                scope=request.form['scope'], types=request.form.getlist('types'),
-                expected_count=request.form.get('expected_count') or None)
+            try:
+                jobs, count = admin_ops.tools_write('pictures', scope=request.form['scope'], kinds=request.form.getlist('types'),
+                    expected_count=request.form.get('expected_count') or None)
+            except ValueError as exc:                   # written for people: "N items now match, not M"
+                flash('Picture refresh · ' + str(exc), 'error')
+                return redirect(url_for('web.bw_admin', page='settings') + '#pictures')
             bw_start_worker()
-            flash(f'{count} picture identities queued · No Undo for picture refresh; existing files are kept', 'success')
-            return redirect(url_for('web.bw_admin', page='jobs') + '#job-' + str(job))
+            flash(f'{len(jobs)} picture jobs queued for {count} items · No Undo for picture refresh; existing files are kept', 'success')
+            return redirect(url_for('web.bw_admin', page='jobs'))
         elif page == 'settings' and request.form.get('action') in ('display_currency', 'rate', 'ecb'):
             # #39: display currency and exchange rates; stored amounts never change.
             if not bw_collection_editable():
                 abort(403, 'Changes are switched off on this instance')
             from ..core import currency
             from ..core.admin import database
-            with database(admin_ops.brickwork_path()) as db:
+            with database(admin_ops.brickwork_path(), require_catalogue=False) as db:
                 if request.form['action'] == 'display_currency':
                     flash('Display currency ' + currency.set_display(db, request.form.get('display_currency')), 'success')
                 elif request.form['action'] == 'rate':
@@ -209,9 +234,19 @@ def bw_admin_write(page):
                     flash(f"ECB rates of {result['as_of']} · {result['updated']} currencies"
                           + (f" · {result['kept_manual']} entered by hand kept" if result['kept_manual'] else ''), 'success')
             return redirect(url_for('web.bw_admin', page='settings') + '#currencies')
+        elif page == 'settings' and request.form.get('action') == 'undo':
+            if not bw_collection_editable():
+                abort(403, 'Changes are switched off on this instance')
+            try:
+                admin_ops.tools_write('settings_undo', event=int(request.form['event']))
+            except errors.BrickWorkError as exc:
+                flash('Settings · ' + str(exc), 'error')
+            else:
+                flash('Settings restored', 'success')
+            return redirect(url_for('web.bw_admin', page='settings'))
         elif page == 'settings':
             priority = {}
-            for step in STEPS:
+            for step in SOURCE_STEPS:
                 priority[step] = {}
                 for kind in ['*', *sorted(TYPES)]:
                     value = request.form.get('priority:' + step + ':' + kind, '').strip()
@@ -219,15 +254,7 @@ def bw_admin_write(page):
                         priority[step][kind] = [s.strip() for s in value.split(',')]
             freshness = [(request.form['source:' + n], request.form['kind:' + n], request.form['days:' + n])
                          for n in request.form.getlist('freshness')]
-            admin_ops.tools_write('settings', country=request.form['retail_country'], priority=priority, freshness=freshness)
-        elif page == 'unresolved':
-            identity = {k: request.form[k] for k in ('source', 'kind', 'source_id')}
-            if request.form['action'] == 'images':
-                admin_ops.tools_write('images', **identity)
-                bw_start_worker()
-            else:
-                choice = json.loads(request.form['candidate']) if request.form['action'] == 'pick' else None
-                admin_ops.tools_write('resolve', **identity, selected=tuple(choice) if choice else None)
+            saved = admin_ops.tools_write('settings', country=request.form['retail_country'], priority=priority, freshness=freshness)
         elif page == 'refresh':
             admin_ops.tools_write('refresh')
             bw_start_worker()
@@ -236,14 +263,17 @@ def bw_admin_write(page):
                 abort(403, 'Changes are switched off on this instance')
             job = int(request.form['job'])
             step = request.form.get('step') or None
-            if step is not None and step not in STEPS:
+            if step is not None and step not in STEPS and step != 'fetch':
                 raise ValueError('Unknown step')
             # Queue Retry for the same worker used by refresh, without blocking the request.
             if request.form.get('action') == 'resume':
+                import json
                 from ..core.admin import database
-                with database(admin_ops.brickwork_path(), read_only=True) as db:
-                    saved = db.execute("SELECT state FROM jobs WHERE id=? AND source='import'", (job,)).fetchone()
-                    if saved is None or saved['state'] not in ('running', 'waiting_for_budget'):
+                from ..store4 import jobs as fetch_jobs
+                with database(admin_ops.brickwork_path(), read_only=True, require_catalogue=False) as db:
+                    saved_job = db.execute("SELECT state FROM job WHERE id=? AND (source='import' OR kind IN (SELECT value FROM json_each(?)))",
+                                           (job, json.dumps(sorted(fetch_jobs.KINDS)))).fetchone()
+                    if saved_job is None or saved_job['state'] not in ('running', 'waiting_for_budget'):
                         raise ValueError('Job is not interrupted')
             else:
                 admin_ops.tools_write('retry_queue', job=job, step=step)
@@ -251,7 +281,7 @@ def bw_admin_write(page):
         elif page == 'catalogues' and request.form['action'] in ('key_save', 'key_test_save', 'key_remove', 'key_test', 'key_undo'):
             if not bw_collection_editable():
                 abort(403, 'Changes are switched off on this instance')
-            from ..core import errors, keys
+            from ..core import keys
             from ..core.sources.base import redact, KeyRejected
             source = request.form.get('source', '')
             try:
@@ -283,17 +313,12 @@ def bw_admin_write(page):
                 flash(failure_label + ' · ' + redact(exc), 'error')
                 return redirect(url_for('web.bw_admin', page='catalogues'))
         elif page == 'catalogues':
-            if request.form['action'] == 'load':
-                admin_ops.tools_write('catalogue')
-                admin_ops.tools_write('colours')
-            elif request.form['action'] == 'colours':
-                admin_ops.tools_write('colours')
-            else:
+            if request.form['action'] == 'source':
                 admin_ops.tools_write('source', source=request.form['source'], enabled=request.form.get('enabled') == 'yes')
+            else:
+                abort(400)
         else:
             abort(404)
-    except ColourCodeError as exc:
-        flash(str(exc), 'error')
     except SourceError as exc:
         flash(failure_label + ' · ' + str(exc), 'error')
     except (ValueError, KeyError, TypeError, sqlite3.Error, OSError):
@@ -301,7 +326,8 @@ def bw_admin_write(page):
     else:
         flash('Saved', 'success')
     target = 'jobs' if page in ('refresh', 'jobs') else page
-    return redirect(url_for('web.bw_admin', page=target, **({'group': request.form.get('group', 'owners')} if page == 'values' else {})))
+    extra = {'group': request.form.get('group', 'owners')} if page == 'values' else {'saved': saved} if page == 'settings' and saved else {}
+    return redirect(url_for('web.bw_admin', page=target, **extra))
 
 
 def bw_tokens_render(*, created=None, revoked_event=None, form_error=None, form_name='', form_scopes=('read', 'write'),
@@ -314,7 +340,7 @@ def bw_tokens_render(*, created=None, revoked_event=None, form_error=None, form_
     from ..core.sources.base import now
     error, stored, environment, revoked_name, revoked_undo = None, [], [], None, False
     try:
-        with database(admin_ops.brickwork_path(), read_only=True) as db:
+        with database(admin_ops.brickwork_path(), read_only=True, require_catalogue=False) as db:
             stored, environment = token_rows.rows(tokens.listing(db), now())
             if revoked_event is not None:
                 revoked_name, revoked_undo = token_rows.revoked_event(db, revoked_event) or (None, False)
@@ -343,10 +369,9 @@ def bw_tokens():
 @web_page.post('/manage/tokens')
 @login_required
 def bw_tokens_write():
-    import uuid
     from . import admin_ops, token_rows
     from ..core import errors, tokens
-    from ..core.admin import database
+    from ..core.admin import database, operation
     from ..core.sources.base import audit_origin
     from flask import flash
     origin = request.headers.get('Origin')
@@ -361,26 +386,24 @@ def bw_tokens_write():
     if action not in ('create', 'revoke', 'undo'):
         abort(400)
     try:
-        with database(admin_ops.brickwork_path()) as db, audit_origin('app'):
+        with database(admin_ops.brickwork_path(), require_catalogue=False) as db, audit_origin('app'):
             if action == 'create':
                 scopes = request.form.getlist('scopes')
-                # Reloading the page that showed a secret resends this form: answer, do not create again (#68).
+                # Reloading the page that showed a secret resends this form: answer, do not create again (#68). The form id is the
+                # operation key of the request that created the token, so "already sent" is read from that token's event.
                 form_id = request.form.get('form_id', '')
                 if not re.fullmatch(r'[0-9a-f]{32}', form_id or ''):
                     form_id = ''
                 if form_id:
-                    db.execute("DELETE FROM settings WHERE key LIKE 'token_form:%' AND value<?", (str(time.time() - 86400),))
-                    if db.execute('SELECT 1 FROM settings WHERE key=?', ('token_form:' + form_id,)).fetchone():
+                    if db.execute("SELECT 1 FROM main.event WHERE entity_kind='bw_token' AND field='create' AND operation_key=?", (form_id,)).fetchone():
                         return bw_tokens_render(form_error='This form was already sent: the token exists, and its secret is shown only once.',
                                                 status=409)
                 try:
-                    created, _ = tokens.create(db, request.form.get('name', ''), scopes)
+                    with operation(form_id or None):
+                        created, _ = tokens.create(db, request.form.get('name', ''), scopes)
                 except errors.BrickWorkError as exc:
                     return bw_tokens_render(form_error=str(exc), form_name=request.form.get('name', ''), form_scopes=scopes,
                                             show_create=True, status=getattr(exc, 'status', 400))
-                if form_id:
-                    with db:
-                        db.execute('INSERT OR IGNORE INTO settings(key,value) VALUES(?,?)', ('token_form:' + form_id, str(time.time())))
                 return bw_tokens_render(created=created)
             if action == 'revoke':
                 _, event = tokens.revoke(db, request.form.get('id', ''))
@@ -388,12 +411,12 @@ def bw_tokens_write():
             identifier = token_rows.event_id(request.form.get('event', ''))
             if identifier is None:
                 abort(400, 'Invalid event')
-            found = db.execute("SELECT field,old_value,new_value,at FROM events WHERE id=? AND entity='bw_token' AND field IN ('create','revoke')", (identifier,)).fetchone()
+            found = db.execute("SELECT field,old_value,new_value,at FROM main.event WHERE id=? AND entity_kind='bw_token' AND field IN ('create','revoke')", (identifier,)).fetchone()
             if found and not token_rows.undoable(found):
                 abort(400, 'This token change cannot be undone')
             if found and not token_rows.recent(found):
                 abort(400, 'Undo is no longer available for this token change')
-            response, _, _ = tokens.undo(db, identifier, 'ui-' + uuid.uuid4().hex)
+            response, _, _ = tokens.undo(db, identifier)
             flash('Token restored' if found and found['field'] == 'revoke' and not response.get('already_undone') else response.get('message', 'Done'), 'success')
             return redirect(url_for('web.bw_tokens'))
     except (errors.BrickWorkError, ValueError) as exc:

@@ -1,16 +1,10 @@
-"""Every bottom tab opens its server-rendered group sheet."""
+"""Every bottom tab opens its server-rendered group sheet (on the 4.0 store: M.8i part 1)."""
 from pathlib import Path
-import re
-import subprocess
 
 from bs4 import BeautifulSoup
 import pytest
 
-from tests.test_bw_collection import bw
-from tests.importer.test_importer import legacy
-from tests.web_fixtures import app, logged_in
-from tests.web_fixtures import apps
-from tests.test_bw_admin import reset_shell_metadata_after_test
+from tests.app4 import app4, client, coll, pair, read, world  # noqa: F401  (the fixtures)
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -20,8 +14,8 @@ ROOT = Path(__file__).resolve().parents[1]
     ('/planning/wishlist', 'Planning'),
     ('/manage/tools', 'Manage'),
 ])
-def test_group_sheets_in_migrated_shell(app, bw, path, active):
-    response = logged_in(app).get(path)
+def test_group_sheets_in_migrated_shell(client, world, path, active):
+    response = client.get(path)
     assert response.status_code == 200
     soup = BeautifulSoup(response.data, 'html.parser')
     tabs = soup.select('.mobile-bottom [data-nav-group]')
@@ -53,4 +47,3 @@ def test_group_sheets_in_migrated_shell(app, bw, path, active):
         assert all(a.select_one('svg') for a in links)
         assert tab['href'] == links[0]['href']
     assert soup.select_one(f'[data-nav-sheet="{active}"] a[aria-current="page"]')
-

@@ -1,5 +1,11 @@
 # Brick Work v3.2 schema and migration definitions
 
+> **On `main` (the 4.0 line)** every screen runs on the 4.0 store ([design](../data-model-4.0/data-model-design.md)); the 3.x schema and the
+> `brickwork migrate` importer described below are history (the importer is gone, decision 4 of issue #110). A 3.3 collection moves to 4.0
+> with `brickwork migrate4` (design § 8), and the settings, freshness rules and maintenance screens are described in
+> [Settings and maintenance](../how-to/settings-and-maintenance.md). The sections that say "4.0" are current; the rest documents what the
+> 3.3 migration proved and is kept for the cutover.
+
 Retired screens continue using their existing stores. Add and Tools & Admin
 use the new store. The CLI migration runs without a Flask application
 context, network access, source schema initialization or legacy writers.
@@ -96,6 +102,8 @@ Retired legacy screens continue using their separate old stores.
    keys use expression indexes that distinguish NULL from empty text.
 
 ## Migration and proof contract
+
+*The 3.3 migration, as it was proved for 3.3. On `main` the command is `brickwork migrate4` (see the note at the top); `brickwork migrate` is gone.*
 
 `brickwork migrate --app APP --web WEB --decisions FILE
 --catalogue /path/to/bricklink-catalog.db --catalogue-src /path/to/xml

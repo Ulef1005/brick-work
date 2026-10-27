@@ -274,7 +274,7 @@ INSERT INTO color(id,origin,name,rgb,is_trans,born_provider,born_key,created_at,
 -- The collection's own links: seeded from the catalogue at projection, then owned here.
 -- manual never changes automatically; matched is never downgraded automatically.
 CREATE TABLE item_link(
- id INTEGER PRIMARY KEY,
+ id INTEGER PRIMARY KEY AUTOINCREMENT,
  item_id INTEGER NOT NULL REFERENCES item(id),
  color_id INTEGER REFERENCES color(id),               -- NULL: every colour; set: this colour only
  color_key INTEGER GENERATED ALWAYS AS (coalesce(color_id,0)) VIRTUAL,
@@ -390,7 +390,7 @@ CREATE TABLE item_property(                          -- fetched metadata (Bricks
 CREATE INDEX item_property_source ON item_property(source);
 
 CREATE TABLE picture(                                -- cached provider pictures: a cache
- id INTEGER PRIMARY KEY,
+ id INTEGER PRIMARY KEY AUTOINCREMENT,
  item_id INTEGER NOT NULL REFERENCES item(id), color_id INTEGER REFERENCES color(id),
  color_key INTEGER GENERATED ALWAYS AS (coalesce(color_id,0)) VIRTUAL,
  source TEXT NOT NULL REFERENCES source(id),

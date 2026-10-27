@@ -41,7 +41,7 @@ def test_p6_hub_tiles_link_to_every_page(client, world):
         assert target in hrefs, target
     assert any(h.endswith('/manage/import-legacy') or 'import' in h for h in hrefs)
     labels = [h.get_text() for h in soup.select('.bw-hub h2.bw-label')]
-    assert labels == ['Refresh', 'Instructions', 'Reports', 'Insight', 'Administration']
+    assert labels == ['Refresh', 'Catalogue', 'Instructions', 'Reports', 'Insight', 'Administration']
     assert ' stale' in soup.select_one('.bw-hub').get_text()
 
 

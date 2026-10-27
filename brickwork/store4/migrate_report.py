@@ -13,6 +13,7 @@ Every cell goes through `csv_safe`. The report digest is the sha256 over the byt
 import csv
 import hashlib
 import json
+import re
 from pathlib import Path
 
 from . import csv_safe
@@ -138,3 +139,55 @@ def _count(values):
     for v in values:
         out[v] = out.get(v, 0) + 1
     return out
+
+
+# ---------- reading a written report (the Tools & Admin view, design 8.8; M.10c) ----------
+
+def read_report(directory, *, expected_digest=None, decisions=12):
+    """What the migration report in `directory` says, read-only: the summary's headline lines, the proof (per part), every file with its row
+    count and size, the manual decisions (the first `decisions` rows of `manual-decisions.csv`, with the total) and the settings counts.
+    `expected_digest` (from `meta.migrated_from`) is compared with the digest of the files on disk. None when there is no report there.
+    Only files directly in `directory` are listed; a name is a plain file name, never a path."""
+    directory = Path(directory)
+    if not (directory / 'summary.md').is_file():
+        return None
+    try:
+        proof = json.loads((directory / 'proof.json').read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        proof = {}
+    files = []
+    for path in sorted(p for p in directory.iterdir() if p.is_file() and not p.name.startswith('.')):
+        rows = None
+        if path.suffix == '.csv':
+            with open(path, newline='', encoding='utf-8') as f:
+                rows = max(sum(1 for _ in csv.reader(f)) - 1, 0)
+        files.append(dict(name=path.name, rows=rows, bytes=path.stat().st_size))
+    decided, total = [], 0
+    path = directory / 'manual-decisions.csv'
+    if path.is_file():
+        with open(path, newline='', encoding='utf-8') as f:
+            for i, row in enumerate(csv.DictReader(f)):
+                total += 1
+                if i < decisions:
+                    decided.append(row)
+    settings = {}
+    path = directory / 'settings.csv'
+    if path.is_file():
+        with open(path, newline='', encoding='utf-8') as f:
+            for row in csv.DictReader(f):
+                settings[row['classification']] = settings.get(row['classification'], 0) + 1
+    try:
+        digest = report_digest(directory)
+    except OSError:
+        digest = None
+    lines = (directory / 'summary.md').read_text(encoding='utf-8').splitlines()
+    head = '\n'.join(lines[:8])
+    found = re.search(r'migrated at (\S+?)(?:, ([\d.]+) s)?\n', head)
+    source = re.search(r'3\.3 file `([^`]+)`', head)
+    headline = dict(migrated_at=found.group(1) if found else None, seconds=found.group(2) if found else None, source=source.group(1) if source else None,
+                    published='(published on PASS)' in head)
+    return dict(directory=str(directory), result=proof.get('result'), parts=[dict(name=k, **{f: v.get(f) for f in ('result', 'checked', 'differences')})
+                                                                         for k, v in (proof.get('parts') or {}).items()],
+                headline=headline, title=lines[0].lstrip('# ') if lines else '', files=files, decisions=decided, decisions_total=total,
+                decision_columns=list(decided[0]) if decided else [], settings=settings, digest=digest,
+                digest_matches=None if expected_digest is None or digest is None else digest == expected_digest)

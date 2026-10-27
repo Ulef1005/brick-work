@@ -84,13 +84,15 @@ def bw_admin(page):
               'refresh': 'Bulk refresh prices', 'unresolved': 'Unresolved items',
               'statistics': 'Statistics', 'values': 'Values', 'database': 'Database',
               'settings': 'Settings', 'appearance': 'Appearance', 'about': 'About', 'history': 'Identify history',
-              'instructions': 'Instruction files'}
+              'instructions': 'Instruction files', **admin_ops.CATALOGUE_PAGES}
     if page not in titles:
         abort(404)
     group = request.args.get('group', 'owners')
     error, data = None, None
     try:
-        if page not in ('appearance', 'about'):
+        if page in admin_ops.CATALOGUE_PAGES:
+            data = admin_ops.catalogue_pages(page)
+        elif page not in ('appearance', 'about'):
             data = admin_ops.tools_read(page, group)
             from ..core.admin import display
             data = display(data)
@@ -179,6 +181,8 @@ def bw_admin_write(page):
         abort(403)
     bw_add_csrf(request.form)
     saved = None
+    if page in admin_ops.CATALOGUE_PAGES:
+        return catalogue_write(page, action)
     try:
         if page == 'unresolved':
             if not bw_collection_editable():
@@ -260,6 +264,13 @@ def bw_admin_write(page):
                     flash(f"ECB rates of {result['as_of']} · {result['updated']} currencies"
                           + (f" · {result['kept_manual']} entered by hand kept" if result['kept_manual'] else ''), 'success')
             return redirect(url_for('web.bw_admin', page='settings') + '#currencies')
+        elif page == 'settings' and request.form.get('action') == 'prefer_bricklink':
+            if not bw_collection_editable():
+                abort(403, 'Changes are switched off on this instance')
+            if request.form.get('value') == 'on' and not admin_ops.tools_read('settings')['bricklink_list']['key']:
+                raise ValueError('No BrickLink key')
+            admin_ops.set_prefer_bricklink(request.form.get('value') == 'on')
+            return redirect(url_for('web.bw_admin', page='settings') + '#part-lists')
         elif page == 'settings' and request.form.get('action') == 'undo':
             if not bw_collection_editable():
                 abort(403, 'Changes are switched off on this instance')
@@ -354,6 +365,48 @@ def bw_admin_write(page):
     target = 'jobs' if page in ('refresh', 'jobs') else page
     extra = {'group': request.form.get('group', 'owners')} if page == 'values' else {'saved': saved} if page == 'settings' and saved else {}
     return redirect(url_for('web.bw_admin', page=target, **extra))
+
+
+def catalogue_write(page, action):
+    """POST of the catalogue lifecycle pages: start a job (Re-download, Rebuild, Reconcile, load the BrickLink lists)."""
+    from . import admin_ops, catalogue_jobs
+    from ..store4.errors import Store4Error
+    if not bw_collection_editable():
+        abort(403, 'Changes are switched off on this instance')
+    kind = {'redownload': 'redownload', 'rebuild': 'rebuild', 'reconcile': 'reconcile', 'load_lists': 'lists'}.get(action)
+    if kind is None or (kind == 'lists') != (page == 'catalogue-lists') or page in ('catalogue-mappings', 'migration'):
+        abort(400)
+    try:
+        catalogue_jobs.start(admin_ops.store4_paths(), kind, folder=request.form.get('folder') or None)
+    except Store4Error as exc:
+        flash(catalogue_jobs.KINDS[kind] + ' · ' + str(exc), 'error')
+    return redirect(url_for('web.bw_admin', page=page))
+
+
+@web_page.get('/manage/catalogue/job')
+@login_required
+def bw_catalogue_job():
+    """The running catalogue job as JSON for the progress bar on the page."""
+    from . import admin_ops, catalogue_jobs
+    state = catalogue_jobs.read(admin_ops.store4_paths())
+    response = jsonify(state or dict(state='none'))
+    response.headers['Cache-Control'] = 'no-store'
+    return response
+
+
+@web_page.get('/manage/migration/file/<name>')
+@login_required
+def bw_migration_file(name):
+    """One file of the migration report as a download: only a plain file name that is in the report folder."""
+    from pathlib import Path
+    from flask import send_from_directory
+    from . import admin_ops
+    folder = admin_ops.migration_report_dir()
+    if name != Path(name).name or name.startswith('.') or not (folder / name).is_file():
+        abort(404)
+    response = send_from_directory(folder, name, as_attachment=True)
+    response.headers['Cache-Control'] = 'no-store'
+    return response
 
 
 def bw_tokens_render(*, created=None, revoked_event=None, form_error=None, form_name='', form_scopes=('read', 'write'),

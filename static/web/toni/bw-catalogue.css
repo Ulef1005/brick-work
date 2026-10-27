@@ -1,0 +1,68 @@
+/* Tools & Admin · catalogue lifecycle pages and the Settings part-list and picture-order cards (M.10c). Built on the bk- controls of Catalogues & keys. */
+.bw-admin-page .bk-card{margin-bottom:16px}
+.bw-admin-page .bk-card h3{margin:4px 0 0}
+.bwc-facts{display:grid;grid-template-columns:minmax(0,1fr);gap:0;margin:0}
+.bwc-fact{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,auto);align-items:baseline;gap:4px 16px;padding:12px 0;border-top:.5px solid var(--tw-divider);min-width:0}
+.bwc-fact dt{font:400 14px/20px var(--tw-font);color:var(--tw-text-2);margin:0}
+.bwc-fact dd{max-width:100%;margin:0;display:flex;flex-direction:column;align-items:flex-end;gap:2px;min-width:0;text-align:right}
+.bwc-fact dd .mono{font:400 14px/20px var(--tw-mono);font-variant-numeric:tabular-nums}
+.bwc-fact dd .bk-btn{margin-top:8px}
+@media(min-width:900px){.bwc-facts{grid-template-columns:repeat(2,minmax(0,1fr));column-gap:40px}}
+.bwc-actions{display:grid;grid-template-columns:minmax(0,1fr);gap:20px}
+@media(min-width:900px){.bwc-actions{grid-template-columns:repeat(auto-fit,minmax(260px,1fr));align-items:start}}
+.bwc-action{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.bwc-action .bk-btn{max-width:100%}
+@media(max-width:767px){.bwc-action .bk-btn,.bwc-load>.bk-btn{width:100%}}
+.bwc-track{height:8px;background:var(--tw-viz-n1);overflow:hidden;border-radius:2px}
+.bwc-track>div{height:100%;background:var(--tw-accent);transition:width .4s}
+.bwc-job .bw-import-progress{margin:0}
+.bwc-steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;font:400 14px/20px var(--tw-font);color:var(--tw-text-muted)}
+.bwc-steps li{display:flex;gap:10px;align-items:center;min-height:28px}
+.bwc-steps .bwc-done{color:var(--tw-text-2)}.bwc-steps .bwc-now{color:var(--tw-text);font-weight:600}
+.bwc-mark{font-size:11px;width:14px;text-align:center}.bwc-now .bwc-mark{color:var(--tw-accent-text)}
+.bwc-list{display:flex;flex-direction:column}
+.bwc-row{display:flex;justify-content:space-between;align-items:center;gap:4px 16px;flex-wrap:wrap;min-height:56px;padding:8px 0;border-top:.5px solid var(--tw-divider);color:var(--tw-text);text-decoration:none}
+.bwc-row-text{display:flex;flex-direction:column;gap:2px;min-width:0}.bwc-row-name{font:600 15px/20px var(--tw-font);overflow-wrap:anywhere}
+.bwc-row .mono{font-size:12px;line-height:16px}
+.bwc-folders{display:flex;flex-direction:column;margin-bottom:16px}
+.bwc-folder{display:flex;align-items:center;gap:12px;min-height:56px;padding:8px 0;border-top:.5px solid var(--tw-divider);cursor:pointer}
+.bwc-folder input{width:20px;height:20px;accent-color:var(--tw-accent);flex:none;margin:0}
+.bwc-folder-text{display:flex;flex-direction:column;gap:2px}
+.bwc-table{display:flex;flex-direction:column}
+.bwc-trow{display:flex;justify-content:space-between;align-items:center;gap:4px 16px;flex-wrap:wrap;min-height:44px;padding:6px 0;border-top:.5px solid var(--tw-divider);font:400 14px/20px var(--tw-font)}
+.bwc-trow .mono{font-size:13px;font-variant-numeric:tabular-nums}.bwc-num{margin-left:auto;text-align:right}
+.bwc-proof>span:first-child{flex:1 1 120px;font-weight:600}
+.bwc-file{min-height:56px}.bwc-fname{flex:1 1 180px;overflow-wrap:anywhere}
+.bwc-cover{display:flex;flex-direction:column;gap:8px;padding:8px 0 16px}
+.bwc-cover h3{font:600 17px/24px var(--tw-font);text-wrap:balance}
+.bwc-count{margin:0;font:500 13px/18px var(--tw-mono);font-variant-numeric:tabular-nums;color:var(--tw-text-2)}
+.bwc-bar{height:12px;border:1px solid var(--tw-divider-strong);border-radius:2px;box-sizing:border-box;overflow:hidden;background:transparent}
+.bwc-bar>span{display:block;height:100%;background:var(--tw-accent)}
+.bwc-lines{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}.bwc-lines li{font-size:12px;line-height:18px;overflow-wrap:anywhere;color:var(--tw-text-2)}
+.bwc-decisions{display:flex;flex-direction:column}
+.bwc-decision{display:flex;flex-wrap:wrap;gap:2px 16px;justify-content:space-between;align-items:baseline;padding:10px 0;border-top:.5px solid var(--tw-divider)}
+.bwc-decision .mono{font-size:12px;overflow-wrap:anywhere}
+.bw-admin-page .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+/* Settings */
+.bwc-switch-form{display:flex;flex-direction:column;gap:12px;align-items:flex-start}
+.bwc-switch-form .bw-toggle-row{width:100%;justify-content:space-between;gap:16px;display:flex;align-items:center}
+.bwc-switch-text{display:flex;flex-direction:column;gap:4px;min-width:0}.bwc-switch-label{font:600 15px/20px var(--tw-font)}
+.bwc-switch-form .bk-switch input:disabled{cursor:not-allowed}.bwc-switch-form .bk-switch input:disabled+.bk-track{opacity:.5}
+.bwc-order-group{border:0;padding:0;margin:16px 0 0}.bwc-order-list{list-style:none;margin:8px 0 0;padding:0;counter-reset:order}
+.bwc-order-list li{display:flex;align-items:center;gap:12px;min-height:64px;padding:8px 0;border-top:.5px solid var(--tw-divider);counter-increment:order}
+.bwc-order-list li::before{content:counter(order);font:500 13px var(--tw-mono);color:var(--tw-text-muted);width:16px;text-align:right;flex:none}
+.bwc-order-list li.bwc-unused::before{content:"–"}
+.bwc-order-list li.bwc-unused .bwc-order-name{color:var(--tw-text-2)}
+.bwc-order-text{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}.bwc-order-name{font:600 15px/20px var(--tw-font)}
+.bwc-order-moves{display:flex;gap:4px;flex:none}.bwc-order-moves .bk-btn{width:44px;padding:0}.bwc-order-moves .bk-btn svg{width:18px;height:18px}
+.bwc-order-list li:first-child [data-order-up],.bwc-order-list li:last-child [data-order-down]{opacity:.35}
+.bw-card .bwc-order-group{border:0;border-radius:0;padding:0;margin:16px 0 0}
+.bwc-thead{display:flex;gap:16px;padding:0 0 6px;font:500 11px/14px var(--tw-font);letter-spacing:.1em;text-transform:uppercase;color:var(--tw-text-muted)}.bwc-thead>span:nth-child(2){flex:1}
+.bwc-file{flex-wrap:nowrap}.bwc-fname{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;overflow-wrap:anywhere}
+.bwc-trow .bwc-fname .mono:first-child{font-size:13px}
+@media(max-width:767px){
+.bwc-order-list li{flex-wrap:wrap;row-gap:4px}.bwc-order-text{display:contents}.bwc-order-name{order:1;flex:1}.bwc-order-moves{order:2}.bwc-order-text .bk-note{order:3;flex-basis:100%;padding-left:28px}
+.bwc-use{order:0}
+}
+.bwc-bykind{margin-top:8px}.bwc-bykind h4{margin:0 0 4px;font-weight:500}
+.bwc-fact dt{display:flex;flex-direction:column;align-items:flex-start;gap:2px}.bwc-fact dt .bk-btn{margin-top:8px}.bwc-fact dd{align-items:flex-end}

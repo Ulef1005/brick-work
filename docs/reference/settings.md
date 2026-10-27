@@ -47,6 +47,7 @@ The `BW_HIDE_*` settings only remove the entry; the pages still open from a link
 |---|---|---|
 | `BW_DB_PATH` | `data/brickwork.db` | The database file. The BrickLink catalogue (`bricklink-catalog.db`), the session key, import and sync plans live in the same folder. |
 | `BW_MEDIA_PATH` | the database folder | Where pictures, thumbnails, your own photos, identification thumbnails and instruction PDFs live, under its `data/` folder. Moving media means moving `data/images`, `data/thumbs`, `data/instructions` and `data/identifications` there; nothing in the database changes. |
+| `BW_MIGRATION_REPORT` | `migration-report/` beside the database | The folder Tools & Admin reads the migration report from (`summary.md`, `proof.json` and the CSV files a 3.3 to 4.0 migration writes). Read only; the report download links serve only files in this folder. |
 
 ## Sources and budgets
 

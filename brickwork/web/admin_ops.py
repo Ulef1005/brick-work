@@ -344,7 +344,7 @@ def tools_read(page, group=None):
             return admin.value_rows(db, group)
         if page == 'settings':
             from ..core import pictures
-            return {**admin.settings(db), 'pictures': {**pictures.state(db), 'matrix': pictures.matrix(db)}}
+            return {**admin.settings(db), 'pictures': {**pictures.state(db), 'matrix': pictures.matrix(db)}, 'bricklink_list': bricklink_list_switch(db)}
         if page == 'statistics':
             return admin.statistics(db)
         if page == 'database':
@@ -587,3 +587,84 @@ def setup():
     if not catalogue.is_file():
         result['next'] = f'Get the catalogue, which belongs beside the collection as {catalogue}: {GET_CATALOGUE}'
     return result
+
+
+CATALOGUE_PAGES = {'catalogue': 'Catalogue', 'catalogue-lists': 'BrickLink item lists', 'catalogue-mappings': 'Mappings and coverage',
+                   'migration': 'Migration report'}
+PICTURE_SOURCES = (('rebrickable_dump', 'Rebrickable catalogue', 'A picture address stored in your catalogue. Costs nothing and works offline once the catalogue is built.'),
+                   ('bricklink', 'BrickLink', "BrickLink's public picture for the part number and colour. No key needed."),
+                   ('rebrickable_api', 'Rebrickable API', 'Asks Rebrickable for the picture. Needs a Rebrickable key and uses its daily budget.'))
+
+
+def bricklink_list_switch(db):
+    """The "Prefer BrickLink's part list for new copies" switch (design 4.3): whether it is on and whether a BrickLink key is set. Read only."""
+    from ..store4 import jobs
+    row = db.execute("SELECT value FROM main.setting WHERE key='prefer_bricklink_inventory'").fetchone()
+    return dict(on=bool(row and row[0] == 'true'), key=bool(jobs._configured('bricklink')))
+
+
+def set_prefer_bricklink(enabled):
+    """Flip the switch through the core writer (one event, undoable like any setting event)."""
+    from contextlib import closing
+    from ..core.connect import connect
+    from ..store4 import copies
+    with closing(connect(brickwork_path())) as db:
+        return copies.set_prefer_bricklink(db, enabled, via='app')
+
+
+def migration_report_dir():
+    """The folder the migration report is read from: `BW_MIGRATION_REPORT` when set, else `migration-report/` beside the collection file."""
+    import os
+    from pathlib import Path
+    custom = os.environ.get('BW_MIGRATION_REPORT', '').strip()
+    return Path(custom) if custom else brickwork_path().resolve().parent / 'migration-report'
+
+
+def catalogue_pages(page):
+    """Everything the catalogue lifecycle pages show, prepared once (stamps formatted, nothing written)."""
+    from . import catalogue_jobs
+    from ..store4 import cli, status
+    from .formatting import short_stamp
+    paths = store4_paths()
+    out = dict(page=page)
+    job = catalogue_jobs.read(paths)
+    if page in ('catalogue', 'catalogue-lists'):
+        wanted = 'lists' if page == 'catalogue-lists' else None
+        out['job'] = job if job and (job['kind'] == 'lists') == (wanted == 'lists') else None
+        out['result'] = catalogue_jobs.result_view(paths, out['job'])
+        out['running'] = bool(job and job['state'] == 'running')
+        out['running_label'] = job['label'] if out['running'] else None
+        if job:
+            for key in ('started_at', 'finished_at'):
+                job[key + '_text'] = short_stamp(job.get(key), True)
+    if page == 'catalogue':
+        build = status.catalogue_build(paths)
+        if build:
+            build.update(built_text=short_stamp(build['built_at'], True), reconciled_text=short_stamp(build['reconciled_at'], True),
+                         download_text=short_stamp(build['download_date']) if build['download_date'] else None,
+                         megabytes=round(build['bytes'] / 1_000_000, 1))
+        out.update(build=build, can_rebuild=cli.newest_download(paths) is not None)
+    elif page == 'catalogue-lists':
+        lists = status.bricklink_lists(paths)
+        if lists['loaded']:
+            lists['loaded']['at_text'] = short_stamp(lists['loaded']['at'], True)
+        out['lists'] = lists
+    elif page == 'catalogue-mappings':
+        out.update(layers=status.mapping_layers(paths), coverage=status.coverage(paths))
+    elif page == 'migration':
+        from contextlib import closing
+        from ..core.connect import connect
+        from ..store4.migrate_report import read_report
+        expected = None
+        try:
+            with closing(connect(brickwork_path(), read_only=True, require_catalogue=False)) as db:
+                row = db.execute("SELECT value FROM main.meta WHERE key='migrated_from'").fetchone()
+                expected = json.loads(row[0]).get('report_digest') if row else None
+        except (ValueError, sqlite3.Error, OSError):
+            pass
+        out['report'] = read_report(migration_report_dir(), expected_digest=expected)
+        if out['report']:
+            out['report']['headline']['migrated_at_text'] = short_stamp(out['report']['headline']['migrated_at'], True)
+        out['report_dir'] = str(migration_report_dir()) if os.environ.get('BW_MIGRATION_REPORT', '').strip() else f'{migration_report_dir().parent.name}/{migration_report_dir().name}/'
+        out['migrated'] = expected is not None
+    return out

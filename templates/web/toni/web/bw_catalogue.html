@@ -1,0 +1,120 @@
+{# Tools & Admin · the catalogue lifecycle (design 6.1, 6.2, 6.6, 3.3, 8.8; M.10c): Catalogue, BrickLink item lists, Mappings and coverage, Migration report. Included by bw_admin.html. #}
+{% macro pill(tone, text) %}<span class="bk-pill bk-{{ tone }}"><span class="bk-dot"></span>{{ text }}</span>{% endmacro %}
+{% macro post(action) %}<input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="{{ action }}">{% endmacro %}
+{% macro n(value) %}{{ '{:,}'.format(value) if value is number else value }}{% endmacro %}
+{% macro fact(label, value, note='') %}<div class="bwc-fact"><dt>{{ label }}{% if note %}<span class="bk-note">{{ note }}</span>{% endif %}</dt><dd><span class="mono">{{ value }}</span></dd></div>{% endmacro %}
+{% macro bar(have, total, label) %}<div class="bwc-bar" role="img" aria-label="{{ label }}"><span style="width:{{ (100 * have / total)|round(1) if total else 0 }}%"></span></div>{% endmacro %}
+{% macro progress(job) %}
+<section class="bk-card bwc-job" data-catalogue-job data-job-url="{{ url_for('web.bw_catalogue_job') }}" data-job-state="{{ job.state }}" aria-live="polite">
+<div class="bk-card-head"><h2 class="bk-eyebrow">{{ job.label }}</h2>{{ pill('warning', 'Running') }}</div>
+<div class="bw-import-progress"><div class="bwc-track" data-import-bar role="progressbar" aria-label="{{ job.label }} progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ (100 * job.step / job.steps|length)|round|int }}"><div data-import-fill style="width:{{ (100 * job.step / job.steps|length)|round|int }}%"></div></div>
+<p class="bk-text" data-import-message role="status">{{ job.steps[job.step] }}</p></div>
+<ol class="bwc-steps">{% for step in job.steps %}<li data-step="{{ loop.index0 }}" class="{{ 'bwc-done' if loop.index0 < job.step else 'bwc-now' if loop.index0 == job.step else '' }}"><span class="bwc-mark" aria-hidden="true">{{ '●' if loop.index0 <= job.step else '○' }}</span>{{ step }}</li>{% endfor %}</ol>
+<p class="bk-note">Started <span class="mono">{{ job.started_at_text }}</span>. You can leave this page; the job keeps running and the page shows the result when you return.</p>
+</section>
+{% endmacro %}
+{% macro outcome(job, result) %}
+{% if job and job.state == 'failed' %}<section class="bk-card"><div class="bk-card-head"><h2 class="bk-eyebrow">{{ job.label }}</h2>{{ pill('danger', 'Failed') }}</div><p class="bk-error-box" role="alert">{{ job.error }}</p><p class="bk-note">The catalogue file that was in place before is still in place. Nothing was half written.</p></section>
+{% elif job and job.state == 'interrupted' %}<section class="bk-card"><div class="bk-card-head"><h2 class="bk-eyebrow">{{ job.label }}</h2>{{ pill('warning', 'Stopped') }}</div><p class="bk-error-box" role="alert">{{ job.error }}</p></section>
+{% elif job and job.state == 'done' and result %}{% set rec = result.reconcile %}{% set ch = rec.changes if rec else {} %}
+<section class="bk-card" data-catalogue-result><div class="bk-card-head"><h2 class="bk-eyebrow">{{ job.label }} · finished <span class="mono">{{ job.finished_at_text }}</span></h2>{{ pill('success', 'Done') }}</div>
+{% if result.download %}<p class="bk-text">{% if result.download.downloaded %}Downloaded <span class="mono">{{ result.download.files }}</span> files from Rebrickable.{% else %}Today's download was complete already, so nothing was fetched. The catalogue was built from it.{% endif %}</p>{% endif %}
+{% if result.moved_aside %}<p class="bk-note">The earlier catalogue file was kept as <span class="mono">{{ result.moved_aside }}</span>.</p>{% endif %}
+<dl class="bwc-facts">
+{% set b = result.build %}{% if b %}{{ fact('Items', n(b.live_items if b.live_items is defined else b.items), ('' ~ b.new_items ~ ' new') if b.new_items is defined and b.new_items else '') }}{{ fact('Colours', n(b.colours), ('' ~ b.new_colours ~ ' new') if b.new_colours is defined and b.new_colours else '') }}{{ fact('Retired, kept', n(b.retired_items|default(0)), 'with their ids') }}{% endif %}
+{% if result.lists %}{% set c = result.lists.counts %}{{ fact('BrickLink items', n(c.items|default(0))) }}{{ fact('Links upgraded', n(c.links_upgraded|default(0))) }}{{ fact('Candidates to check', n(c.same_number|default(0))) }}{{ fact('Kinds corrected', n(c.kinds_corrected|default(0))) }}{% endif %}
+{% if rec %}{{ fact('Names and properties refreshed', n(ch.items_refreshed|default(0))) }}{{ fact('Links upgraded in your collection', n(ch.links_upgraded|default(ch.link_upgrades|default(0)))) }}{{ fact('Kinds changed', n(ch.kinds_changed|default(0))) }}{% endif %}
+</dl>
+{% if rec and rec.not_applied %}<p class="bk-note">Left as they are, because you set them or they are already confirmed: {% for k, v in rec.not_applied.items() %}{{ k|replace('_',' ') }} <span class="mono">{{ v }}</span>{{ ', ' if not loop.last }}{% endfor %}.</p>{% endif %}
+<h3>Copies whose part list changed</h3>
+{% if result.copies %}<p class="bk-text">Nothing switches on its own. Open a set to see its copies and switch one.</p>
+<div class="bwc-list">{% for c in result.copies %}<a class="bwc-row" href="{{ url_for('web.bw_collection_item', item_id=c.item_id) }}"><span class="bwc-row-text"><span class="mono bk-2">{{ c.number }}</span><span class="bwc-row-name">{{ c.name }}</span></span><span class="mono bk-2">copy {{ c.copy_id[:8] }} · {{ c.entries }} {{ 'list' if c.entries == 1 else 'lists' }}</span></a>{% endfor %}</div>
+{% if result.copies_total > result.copies|length %}<p class="bk-note">Showing {{ result.copies|length }} of <span class="mono">{{ result.copies_total }}</span> copies.</p>{% endif %}
+{% else %}<p class="bk-text">None. Every copy still matches its part list in the catalogue.</p>{% endif %}
+</section>
+{% endif %}
+{% endmacro %}
+{% macro tabs(current) %}<nav class="bw-chips" aria-label="Catalogue">{% for key, label in [('catalogue','Build'),('catalogue-lists','BrickLink lists'),('catalogue-mappings','Mappings')] %}<a class="button" href="{{ url_for('web.bw_admin', page=key) }}" {% if current == key %}aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}</nav>{% endmacro %}
+
+{% if page == 'catalogue' %}{% set b = data.build %}{% set job = data.job %}
+{{ tabs(page) }}
+<p class="bk-lead">The catalogue is the file of Rebrickable's parts, sets and figures beside your collection. A new download brings new numbers and names; your collection is then brought up to date with it.</p>
+{% if job and job.state == 'running' %}{{ progress(job) }}{% else %}{{ outcome(job, data.result) }}{% endif %}
+{% if not b %}
+<section class="bk-card"><div class="bk-card-head"><h2 class="bk-eyebrow">Current build</h2>{{ pill('warning', 'Not built') }}</div><p class="bk-text">There is no catalogue file yet. Re-download fetches Rebrickable's twelve files (17 MB, no login) and builds it.</p></section>
+{% else %}
+{% if b.reconciled is false and not data.running %}<p class="bk-banner bk-warning" role="status" data-not-reconciled>Not reconciled yet. The new catalogue is in place, but your collection still shows names, links and part lists of the earlier build.</p>{% endif %}
+<section class="bk-card" id="current-build"><div class="bk-card-head"><h2 class="bk-eyebrow">Current build</h2>{% if b.reconciled %}{{ pill('success', 'Reconciled') }}{% elif b.reconciled is false %}{{ pill('warning', 'Not reconciled yet') }}{% else %}{{ pill('neutral', 'No collection') }}{% endif %}</div>
+<dl class="bwc-facts">{{ fact('Built', b.built_text) }}{{ fact('Rebrickable download', b.download_text or 'no download kept', (b.download_files ~ ' files') if b.download_files else '') }}{{ fact('Items', n(b['items'])) }}{{ fact('Colours', n(b.colours)) }}{{ fact('Retired, kept', n(b.retired_items), 'items that left the dump; their ids stay') }}{{ fact('Reconciled', b.reconciled_text if b.reconciled_at else 'not yet', 'collection brought up to date with this build') }}{{ fact('File', b.megabytes ~ ' MB', 'the earlier file is kept beside it' if b.previous else '') }}</dl>
+{% if b.part_lists and b.part_lists.copies is defined and b.part_lists.copies %}<p class="bk-text"><span class="mono">{{ b.part_lists.copies }}</span> {{ 'copy carries' if b.part_lists.copies == 1 else 'copies carry' }} a part list that changed.</p>{% endif %}
+</section>
+{% endif %}
+<section class="bk-card" id="catalogue-actions"><h2 class="bk-eyebrow">Update the catalogue</h2>
+<div class="bwc-actions">
+<form method="post" class="bwc-action">{{ post('redownload') }}<button class="bk-btn bk-primary bk-lg" {% if data.running or not can_edit %}disabled{% endif %}>Re-download</button><p class="bk-note">Fetches Rebrickable's files again and builds the catalogue from them. Rebrickable asks for at most one download a day. If today's files are on disk already, they are used.</p></form>
+<form method="post" class="bwc-action">{{ post('rebuild') }}<button class="bk-btn bk-outline bk-lg" {% if data.running or not can_edit or not data.can_rebuild %}disabled{% endif %}>Rebuild</button><p class="bk-note">{% if data.can_rebuild %}Builds the catalogue again from the files already downloaded, with no network. The current file is moved aside, never deleted.{% else %}Needs a download on disk. Run Re-download first.{% endif %}</p></form>
+{% if b and b.reconciled is false and not data.running %}<form method="post" class="bwc-action">{{ post('reconcile') }}<button class="bk-btn bk-outline bk-lg" {% if not can_edit %}disabled{% endif %}>Reconcile now</button><p class="bk-note">Brings your collection up to date with the catalogue. It only writes your collection.</p></form>{% endif %}
+</div>
+{% if data.running %}<p class="bk-note" data-busy-reason>{{ data.running_label }} is running. The buttons come back when it finishes.</p>{% endif %}
+</section>
+
+{% elif page == 'catalogue-lists' %}{% set l = data.lists %}{% set job = data.job %}
+{{ tabs(page) }}
+<p class="bk-lead">Optional. BrickLink's own catalogue lists confirm BrickLink numbers for sets, offer same-number candidates and correct the kind of zero-part sets. Loading them never adds an item.</p>
+{% if job and job.state == 'running' %}{{ progress(job) }}{% else %}{{ outcome(job, data.result) }}{% endif %}
+<section class="bk-card" id="last-load"><div class="bk-card-head"><h2 class="bk-eyebrow">Last load</h2>{% if l.loaded %}{{ pill('success', 'Loaded · ' ~ l.loaded.at_text) }}{% else %}{{ pill('neutral', 'Not loaded') }}{% endif %}</div>
+{% if l.loaded %}<dl class="bwc-facts">{{ fact('Items listed', n(l.loaded['items'])) }}{{ fact('Colours listed', n(l.loaded.colours)) }}{{ fact('Links upgraded', n(l.loaded.links_upgraded), 'inferred set numbers confirmed by the list') }}
+<div class="bwc-fact"><dt>Candidates to check<span class="bk-note">same number, never confirmed on their own</span>{% if l.loaded.candidates %}<a class="bk-btn bk-outline" href="{{ url_for('web.bw_admin', page='unresolved') }}">Open Unresolved items</a>{% endif %}</dt><dd><span class="mono">{{ n(l.loaded.candidates) }}</span></dd></div>
+{{ fact('Kinds corrected', n(l.loaded.kinds_corrected), (l.loaded.kinds_ambiguous ~ ' left, the list is ambiguous') if l.loaded.kinds_ambiguous else 'sets the theme had guessed wrong') }}</dl>
+<p class="bk-note">From <span class="mono">{{ l.loaded.files|join(' · ') }}</span></p>
+{% else %}<p class="bk-text">No BrickLink list is loaded. Brick Work works without one; the catalogue's own mappings give BrickLink numbers for most parts.</p>{% endif %}
+</section>
+<section class="bk-card" id="load-lists"><h2 class="bk-eyebrow">Load from a folder</h2>
+{% if not l.built %}<p class="bk-text">Build the catalogue first. The lists are added to it.</p>
+{% elif l.folders %}<p class="bk-text">Put BrickLink's catalogue XML files, all eight item types, in a folder under <span class="mono">{{ l.directory }}</span>. The newest folder is preselected.</p>
+<form method="post" class="bwc-load">{{ post('load_lists') }}<div class="bwc-folders" role="radiogroup" aria-label="Folder">{% for f in l.folders %}<label class="bwc-folder"><input type="radio" name="folder" value="{{ f.name }}" {% if f.name == l.newest %}checked{% endif %}><span class="bwc-folder-text"><span class="mono">{{ f.name }}</span><span class="bk-note">{{ f.files }} {{ 'file' if f.files == 1 else 'files' }} · {{ ((f.bytes / 1000000)|round(1) ~ ' MB') if f.bytes >= 1000000 else ((f.bytes / 1000)|round(0)|int ~ ' kB') }}</span></span></label>{% endfor %}</div>
+<button class="bk-btn bk-primary bk-lg" {% if data.running or not can_edit %}disabled{% endif %}>Load lists</button>{% if data.running %}<p class="bk-note">{{ data.running_label }} is running. Loading is possible again when it finishes.</p>{% endif %}</form>
+{% else %}<p class="bk-text">No folder of lists yet. Create a folder under <span class="mono">{{ l.directory }}</span> and put BrickLink's catalogue XML files in it, then come back here.</p>{% endif %}
+</section>
+
+{% elif page == 'catalogue-mappings' %}{% set ly = data.layers %}{% set cov = data.coverage %}
+{{ tabs(page) }}
+<p class="bk-lead">Where Brick Work's BrickLink numbers come from. Your own links come first, then the BrickLink lists, then your local files, then the files that ship with the app and the rules.</p>
+<section class="bk-card" id="mapping-files"><h2 class="bk-eyebrow">Mapping files</h2>
+<h3>Shipped with the app</h3>
+<div class="bwc-table"><div class="bwc-thead"><span>File</span><span>Mapping version</span><span class="bwc-num">Rows</span></div>{% for f in ly.shipped %}<div class="bwc-trow"><span class="mono">{{ f.name }}</span><span class="mono bk-2">{{ f.version }}</span><span class="mono bwc-num">{{ n(f.rows) }}</span></div>{% else %}<p class="bk-text">No shipped mapping files were found.</p>{% endfor %}</div>
+<h3>Local on this install</h3>
+{% if ly.local %}<div class="bwc-table"><div class="bwc-thead"><span>File</span><span>Mapping version</span><span class="bwc-num">Rows</span></div>{% for f in ly.local %}<div class="bwc-trow"><span class="mono">{{ f.name }}</span><span class="mono bk-2">{% if f.error %}<span class="bk-bad">unreadable</span>{% else %}{{ f.version }}{% endif %}</span><span class="mono bwc-num">{{ n(f.rows) }}</span></div>{% endfor %}</div>
+<p class="bk-note">A local row replaces the shipped row for the same item, kind and colour. Files are read from <span class="mono">{{ ly.local_dir }}</span>.</p>
+{% else %}<p class="bk-text">None. This install uses the shipped files only. Local files go in <span class="mono">{{ ly.local_dir }}</span>.</p>{% endif %}
+</section>
+<section class="bk-card" id="coverage"><h2 class="bk-eyebrow">Coverage</h2>
+{% set it = cov['items'] %}{% set pic = cov.pictures %}
+<div class="bwc-cover" data-coverage="items">{% if it and it.total %}<h3>{{ n(it.have) }} of {{ n(it.total) }} items have a BrickLink number</h3><p class="mono bwc-count">{{ n(it.have) }} / {{ n(it.total) }}</p>{{ bar(it.have, it.total, n(it.have) ~ ' of ' ~ n(it.total) ~ ' items') }}<p class="bk-note">Items in your collection with a confirmed, matched or inferred BrickLink number. Guesses to check are not counted. Bars start at zero.</p>
+{% if cov.by_kind %}<div class="bwc-bykind"><h4 class="bk-lab2">By kind</h4>{% for kind, c in cov.by_kind.items() %}{% set total = c.values()|sum %}{% set have = c.get('manual', 0) + c.get('matched', 0) + c.get('inferred', 0) %}<div class="bwc-trow"><span>{{ kind }}</span><span class="mono bwc-num">{{ have }} / {{ total }}</span></div>{% endfor %}</div>{% endif %}
+{% else %}<h3>Item coverage is not known yet</h3><p class="bk-text">It is counted when the collection is reconciled with the catalogue.</p>{% endif %}</div>
+<div class="bwc-cover" data-coverage="pictures">{% if pic and pic.total %}<h3>{{ n(pic.have) }} of {{ n(pic.total) }} part and colour pairs have a known picture</h3><p class="mono bwc-count">{{ n(pic.have) }} / {{ n(pic.total) }}</p>{{ bar(pic.have, pic.total, n(pic.have) ~ ' of ' ~ n(pic.total) ~ ' part and colour pairs') }}<p class="bk-note">Pairs in your copies and loose parts with a picture address in the catalogue. The rest are tried on BrickLink, then the Rebrickable API, in the order set in Settings.</p>
+{% elif pic %}<h3>No parts in your collection yet</h3><p class="bk-text">Pictures are counted for the part and colour pairs your copies and loose parts hold.</p>
+{% else %}<h3>Picture coverage is not known yet</h3><p class="bk-text">It needs the catalogue and the collection side by side.</p>{% endif %}</div>
+</section>
+
+{% elif page == 'migration' %}{% set r = data.report %}
+{% if not r %}<section class="bk-card"><div class="bk-card-head"><h2 class="bk-eyebrow">Migration report</h2>{{ pill('neutral', 'No report') }}</div><p class="bk-text">There is no migration report on this install. A migration from 3.3 writes one, and it shows here as soon as the folder below holds a <span class="mono">summary.md</span>.</p><p class="mono bk-2 bk-meta">{{ data.report_dir }}</p></section>
+{% else %}
+<p class="bk-lead">What the move from 3.3 to 4.0 did, and the proof that nothing was lost. The files are read from this install's report folder.</p>
+<section class="bk-card" id="migration-summary"><div class="bk-card-head"><h2 class="bk-eyebrow">Summary</h2>{% if r.result == 'PASS' %}{{ pill('success', 'Proof passed') }}{% elif r.result %}{{ pill('danger', 'Proof failed') }}{% else %}{{ pill('neutral', 'No proof') }}{% endif %}</div>
+<h3>{{ r.title or 'Migration' }}</h3>
+<dl class="bwc-facts">{{ fact('Migrated', r.headline.migrated_at_text) }}{{ fact('3.3 file', r.headline.source or 'unknown') }}{{ fact('New 4.0 file', 'published' if r.headline.published else 'not published', 'written only when the proof passes' if r.headline.published else 'the proof failed, so nothing was written') }}</dl>
+<p class="bk-note">Report digest <span class="mono">{{ r.digest[:16] if r.digest }}</span> · {% if r.digest_matches %}matches the one recorded in your collection{% elif r.digest_matches is false %}differs from the one recorded in your collection{% else %}not recorded in your collection{% endif %}</p>
+{% if r.settings %}<p class="bk-note">Settings: {% for k, v in r.settings.items() %}<span class="mono">{{ v }}</span> {{ k|replace('_',' ') }}{{ ', ' if not loop.last }}{% endfor %}</p>{% endif %}</section>
+<section class="bk-card" id="migration-proof"><h2 class="bk-eyebrow">Proof</h2><p class="bk-text">Each part is read back from the published file and compared with 3.3.</p>
+<div class="bwc-table">{% for p in r.parts %}<div class="bwc-trow bwc-proof"><span>{{ p.name }}</span><span>{{ pill('success' if p.result == 'PASS' else 'danger', 'Pass' if p.result == 'PASS' else 'Failed') }}</span><span class="mono bk-2">{{ n(p.checked) }} checked</span><span class="mono bwc-num">{{ p.differences }} {{ 'difference' if p.differences == 1 else 'differences' }}</span></div>{% endfor %}</div></section>
+<section class="bk-card" id="migration-decisions"><div class="bk-card-head"><h2 class="bk-eyebrow">Manual decisions</h2><span class="mono bk-2">{{ r.decisions_total }}</span></div>
+{% if r.decisions %}<p class="bk-text">Identity matches decided by hand in 3.3. They are carried over in full.</p>
+<div class="bwc-decisions">{% for d in r.decisions %}<div class="bwc-decision"><span class="bwc-row-text"><span class="mono bk-2">{{ d.get('source') }} · {{ d.get('kind') }}</span><span class="mono">{{ d.get('source_id') }}</span></span><span class="mono bk-2">{% if d.get('item_no') %}BrickLink {{ d.get('item_type') }} {{ d.get('item_no') }}{% else %}no BrickLink number{% endif %} · {{ d.get('method') or d.get('status') }}</span></div>{% endfor %}</div>
+{% if r.decisions_total > r.decisions|length %}<p class="bk-note">Showing {{ r.decisions|length }} of <span class="mono">{{ r.decisions_total }}</span>. The full list is in <span class="mono">manual-decisions.csv</span>.</p>{% endif %}
+{% else %}<p class="bk-text">No identity was decided by hand in 3.3, so nothing needs your attention here.</p>{% endif %}</section>
+<section class="bk-card" id="migration-files"><h2 class="bk-eyebrow">Report files</h2>
+<div class="bwc-table">{% for f in r.files %}<div class="bwc-trow bwc-file"><span class="bwc-fname"><span class="mono">{{ f.name }}</span><span class="mono bk-2">{% if f.rows is not none %}{{ n(f.rows) }} {{ 'row' if f.rows == 1 else 'rows' }}{% else %}{{ (f.bytes / 1000)|round(1) }} kB{% endif %}</span></span><a class="bk-btn bk-outline" href="{{ url_for('web.bw_migration_file', name=f.name) }}" download>Download<span class="sr"> {{ f.name }}</span></a></div>{% endfor %}</div></section>
+{% endif %}
+{% endif %}

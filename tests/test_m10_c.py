@@ -437,3 +437,14 @@ def test_the_switch_post_without_the_csrf_token_is_refused(client, world, monkey
     monkeypatch.setattr(fetch_jobs, '_configured', lambda source: True)
     page(client, 'settings')
     assert client.post('/manage/settings', data={'action': 'prefer_bricklink', 'value': 'on'}).status_code == 400
+
+
+def test_the_report_reads_a_csv_with_a_field_over_the_csv_module_limit(tmp_path):
+    # The real 26 Oct report's not-carried.csv carries a 1.9 MB samples field; the default csv limit is 131,072 characters.
+    from brickwork.store4.migrate_report import read_report
+    (tmp_path / 'summary.md').write_text('# Brick Work 3.3 to 4.0 migration: PASS\n')
+    (tmp_path / 'not-carried.csv').write_text('table,count,samples\nphoto,2,"' + 'x' * 200_000 + '"\nnote,1,y\n')
+    report = read_report(tmp_path)
+    assert [f['rows'] for f in report['files'] if f['name'] == 'not-carried.csv'] == [2]
+    import csv
+    assert csv.field_size_limit() == 131072                                  # the limit is raised for the read only

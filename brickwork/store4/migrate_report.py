@@ -10,6 +10,7 @@ subtracts exactly these from the comparison: `type-crossed.csv`, `figure-lines-f
 
 Every cell goes through `csv_safe`. The report digest is the sha256 over the bytes of `summary.md` followed by the bytes of
 `proof.json`."""
+from contextlib import contextmanager
 import csv
 import hashlib
 import json
@@ -143,6 +144,18 @@ def _count(values):
 
 # ---------- reading a written report (the Tools & Admin view, design 8.8; M.10c) ----------
 
+@contextmanager
+def _long_fields():
+    """The report's samples columns can exceed the csv module's 131,072-character field limit (the 26 Oct prod report's
+    not-carried.csv: 1.9 MB). Raise it for one read and put it back, since the limit is process-wide."""
+    before = csv.field_size_limit()
+    csv.field_size_limit(1 << 30)
+    try:
+        yield
+    finally:
+        csv.field_size_limit(before)
+
+
 def read_report(directory, *, expected_digest=None, decisions=12):
     """What the migration report in `directory` says, read-only: the summary's headline lines, the proof (per part), every file with its row
     count and size, the manual decisions (the first `decisions` rows of `manual-decisions.csv`, with the total) and the settings counts.
@@ -159,13 +172,13 @@ def read_report(directory, *, expected_digest=None, decisions=12):
     for path in sorted(p for p in directory.iterdir() if p.is_file() and not p.name.startswith('.')):
         rows = None
         if path.suffix == '.csv':
-            with open(path, newline='', encoding='utf-8') as f:
+            with open(path, newline='', encoding='utf-8') as f, _long_fields():
                 rows = max(sum(1 for _ in csv.reader(f)) - 1, 0)
         files.append(dict(name=path.name, rows=rows, bytes=path.stat().st_size))
     decided, total = [], 0
     path = directory / 'manual-decisions.csv'
     if path.is_file():
-        with open(path, newline='', encoding='utf-8') as f:
+        with open(path, newline='', encoding='utf-8') as f, _long_fields():
             for i, row in enumerate(csv.DictReader(f)):
                 total += 1
                 if i < decisions:

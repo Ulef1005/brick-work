@@ -4,7 +4,8 @@
 
 JOBS.json is {"headers": {...optional, e.g. Cookie}, "jobs": [{"url", "out", "width", "height"?, "theme": "light"|"dark",
 "wait"?: CSS selector, "script"?: JS run before the capture (open a sheet, tick a box), "max"?: px, default 3000}]}.
-The theme is the system preference (the app's default mode); long pages are clipped to their first `max` px. */
+The theme is the system preference (the app's default mode). A page is captured whole with the viewport grown to its height (fixed
+bars at its foot), clipped to its first `max` px; with a sheet open (`dialog[open]`) one viewport is captured, as the device shows it. */
 const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),{spawn}=require('node:child_process');
 const [chrome,jobsFile]=process.argv.slice(2);
 if(!chrome||!jobsFile){console.error('usage: node scripts/capture_screens.cjs CHROME JOBS.json');process.exit(2);}
@@ -35,8 +36,17 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
   await evaluate("document.fonts?document.fonts.ready.then(()=>true):true");
   if(job.script)await evaluate(`(async()=>{${job.script}})()`);
   await delay(250);
-  const full=await evaluate('Math.max(document.documentElement.scrollHeight,document.body.scrollHeight)');
-  const shot=await call('Page.captureScreenshot',{format:'png',captureBeyondViewport:true,clip:{x:0,y:0,width,height:Math.min(Math.max(full,height),max),scale:1}});
+  // An open sheet is shown as the device sees it (one viewport); a page is shown whole, with the viewport grown to its height so the
+  // fixed bars (phone tab bar, save bar) sit at its foot rather than across the middle of the capture.
+  const sheet=await evaluate("!!document.querySelector('dialog[open]')");
+  let shotHeight=height;
+  if(!sheet){
+   const full=await evaluate('Math.max(document.documentElement.scrollHeight,document.body.scrollHeight)');
+   shotHeight=Math.min(Math.max(full,height),max);
+   await call('Emulation.setDeviceMetricsOverride',{width,height:shotHeight,deviceScaleFactor:width<600?2:1,mobile:width<600});
+   await delay(250);
+  }
+  const shot=await call('Page.captureScreenshot',{format:'png',clip:{x:0,y:0,width,height:shotHeight,scale:1}});
   fs.mkdirSync(path.dirname(job.out),{recursive:true});
   fs.writeFileSync(job.out,Buffer.from(shot.data,'base64'));
   console.log(job.out);

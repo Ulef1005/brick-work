@@ -193,6 +193,26 @@ def seed_freshness(db):
         return len(rows)
 
 
+SYSTEM_FLAGS = ('Set is checked', 'Box present', 'Instructions present')     # the statuses the app itself reads (checker, workbench)
+
+
+def seed_new(db):
+    """What a fresh collection starts with (user journey § 1): the freshness rules, the three system status flags and the `database/setup`
+    event, in one transaction. Only on a fresh file (no freshness rules yet); returns whether it seeded. A flag of that name already live
+    (from an import) is kept as it is."""
+    with transaction(db):
+        if not seed_freshness(db):
+            return False
+        for name in SYSTEM_FLAGS:
+            if db.execute("SELECT 1 FROM main.flag WHERE archived_at IS NULL AND kind='status' AND name=?", (name,)).fetchone():
+                continue
+            flag = dict(id=uuid.uuid4().hex, name=name, kind='status', shown_on_grid=1, system=1, created_at=store4_now())
+            db.execute('INSERT INTO main.flag(id,name,kind,shown_on_grid,system,created_at) VALUES(:id,:name,:kind,:shown_on_grid,:system,:created_at)', flag)
+            audit(db, 'flag:' + flag['id'], 'record', None, flag, via='cli')
+        audit(db, 'database', 'setup', new='4.0', via='cli')
+        return True
+
+
 def effective_priority(raw):
     """The source order per step as the pipeline uses it: the stored `source_priority` where it names the step, else design 6.8's default."""
     from .pipeline import DEFAULT_PRIORITY, LEGACY_PICTURE_SOURCES

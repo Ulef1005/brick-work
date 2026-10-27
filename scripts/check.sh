@@ -91,6 +91,7 @@ step names "$python" scripts/check_names.py
 step smoke "$python" -m pytest tests/test_standalone_smoke.py -q
 step pytest "$python" -m pytest tests/ -q
 step quarantine quarantine
+step suite-size "$python" scripts/check_suite_size.py
 step runtimes runtimes
 step secrets secrets
 step api-contract "$python" scripts/check_api_contract.py

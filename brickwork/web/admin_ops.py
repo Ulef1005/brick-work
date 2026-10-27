@@ -577,7 +577,7 @@ def setup():
     path.parent.mkdir(parents=True, exist_ok=True)
     with closing(connect(path, require_catalogue=False)) as db:
         from ..core import admin
-        admin.seed_freshness(db)                      # the freshness rules a fresh collection starts with (an existing collection keeps its own)
+        admin.seed_new(db)                            # freshness rules, system flags, setup event; an existing collection keeps its own
     catalogue = catalogue_path(path)
     result = {'setup': 'ok', 'database': str(path), 'catalogue': str(catalogue) if catalogue.is_file() else 'missing'}
     if not catalogue.is_file():

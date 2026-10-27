@@ -173,6 +173,20 @@ def test_a_fresh_setup_seeds_the_freshness_rules_once(tmp_path, monkeypatch):
         assert db.execute("SELECT max_age_days FROM source_freshness WHERE source='bricklink' AND kind='prices'").fetchone()[0] == 7
 
 
+def test_a_fresh_setup_creates_the_system_flags_and_the_setup_event_once(tmp_path, monkeypatch):
+    # User journey § 1: the three statuses the app reads exist from the start, as system flags, so Box and Instructions can be marked.
+    from tests.app4 import make_pair
+    path = make_pair(tmp_path)
+    monkeypatch.setenv('BW_DB_PATH', str(path))
+    admin_ops.setup()
+    admin_ops.setup()
+    with closing(connect(path)) as db:
+        flags = sorted(tuple(r) for r in db.execute("SELECT name, kind, system FROM flag WHERE archived_at IS NULL"))
+        events = [tuple(r) for r in db.execute("SELECT entity_kind, field, via FROM event WHERE entity_kind='database'")]
+    assert flags == [('Box present', 'status', 1), ('Instructions present', 'status', 1), ('Set is checked', 'status', 1)]
+    assert events == [('database', 'setup', 'cli')]
+
+
 def test_queue_refresh_queues_each_item_once(coll, world):
     db = coll.db
     stale = admin.stale_prices(db)

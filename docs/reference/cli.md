@@ -16,7 +16,7 @@ Every command takes `--json` to print its result as JSON instead of plain lines,
 
 *Since 0.5.0.*
 
-Creates the database at `BW_DB_PATH` (and its folder) if it does not exist yet, with the freshness rules a new collection starts with (prices 30 days, metadata 365 days, pictures never). Run it once before the first start. Running it again changes nothing, and a database set up by an older version is refused with the fix named.
+Creates the database at `BW_DB_PATH` (and its folder) if it does not exist yet, with the freshness rules a new collection starts with (prices 30 days, metadata 365 days, pictures never) and the three statuses Brick Work itself reads: *Set is checked*, *Box present* and *Instructions present*, which cannot be renamed or archived. Run it once before the first start. Running it again changes nothing, and a database set up by an older version is refused with the fix named.
 
 ```text
 brickwork setup

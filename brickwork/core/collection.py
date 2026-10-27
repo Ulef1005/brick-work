@@ -588,7 +588,8 @@ def detail(db, item_id, *, colour=None, copy_id=None, stock_id=None, wish_id=Non
         entry['contexts'] = [dict(entry, contexts=None)]
         entry['missing_recorded'] = entry['missing'] is not None
         entry['deficit'] = 0 if entry['spare'] else part_gap(entry)
-        entry['can_take'] = 0                                              # the loose stock that could fill a gap is the Matcher's, M.8e
+        entry['can_take'] = 0
+    row.update(_matching(db, item_id, kind, colour, selected, all_instances, consists))
     row['consists'] = consists
     required = [p for p in consists if p['item_type'] != 'M' and not p.get('minifig_no') and not p['spare']]
     flag_names = [f['name'] for f in (selected or {}).get('flags', []) if f['kind'] == 'status']
@@ -596,7 +597,7 @@ def detail(db, item_id, *, colour=None, copy_id=None, stock_id=None, wish_id=Non
         any(r['checked'] or r['missing'] or r['damaged'] for r in consists if r['missing'] is not None) or 'Set is checked' in flag_names))
     row['progress'] = dict(
         total=sum(p['quantity'] or 0 for p in required), missing=sum(p['deficit'] for p in required),
-        checked=sum(p['quantity'] or 0 for p in required if p.get('checked')), can_take=None,
+        checked=sum(p['quantity'] or 0 for p in required if p.get('checked')), can_take=sum(p['can_take'] for p in required),
         different=len({(p['item_id'], p.get('color_id')) for p in required}),
         lines=len(required), checked_lines=sum(bool(p.get('checked')) for p in required),
         check_recorded=check_recorded, spare_lines=spare_lines)
@@ -623,6 +624,80 @@ def detail(db, item_id, *, colour=None, copy_id=None, stock_id=None, wish_id=Non
     if kind == 'minifigure':
         figure_detail(db, row)
     return row
+
+
+def _matching(db, item_id, kind, colour, selected, all_instances, consists):
+    """The Matching module of the item page (M.8e): the loose stock that could fill the gaps this page is about, and how many each
+    "consists of" line could take. Only the gaps that can reach this item's matches are read (`workbench.relevant`). Sets the `can_take`
+    of the lines in `consists` and returns `matches`, `matching_headline` (and, for a figure, its headline and groups)."""
+    from . import workbench
+    stock_ids = {r['id'] for r in all_instances if r['entity'] == 'stock'} if kind == 'minifigure' else set()
+    copy_ids = {selected['id']} if selected and selected['entity'] == 'copy' else set()
+    all_gaps = workbench.gaps(db, only=workbench.relevant(db, item_id, colour, kind, copy_ids=copy_ids, stock_ids=stock_ids))
+    found = workbench.matches(db, all_gaps=all_gaps)
+    loose_figure = bool(selected and selected['entity'] == 'stock' and kind == 'minifigure')
+    if loose_figure:
+        mine = [r for r in found if (r['target'] == 'stock-part' and r['copy_id'] == selected['id']) or r['key'] == (item_id, colour)]
+    elif kind == 'set' and selected and selected['entity'] == 'copy':
+        mine = [r for r in found if r['copy_id'] == selected['id']]
+    elif kind in ('instructions', 'box'):
+        number = workbench._booklet_numbers(db, [dict(item_id=item_id)]).get(item_id)
+        mine = [r for r in found if number is not None and r['key'] == (kind, number)]
+    else:
+        mine = [r for r in found if r['key'] == (item_id, colour)]
+    out = dict(matching_headline=matching_headline(mine))
+    if kind in ('part', 'minifigure'):
+        # The page says "Sorted by fewest parts left": completing matches first, then the destination copy with the fewest distinct
+        # required gaps left (stable otherwise).
+        left, _ = workbench.completion_context(db, all_gaps)
+        mine = sorted(mine, key=lambda r: (not r['completes'], sum(left[r['copy_id']].values()) if r['copy_id'] in left else 0))
+    mine = [dict(r, display_note=matching_note(r['source_note'])) for r in mine]
+    budget, by_gap = {}, defaultdict(list)
+    for match in mine:
+        by_gap[match['target'], str(match['target_id'])].append(match)
+        budget[match['source_id']] = match['have']
+    for entry in consists:
+        target = 'stock-part' if loose_figure else 'figure' if entry.get('minifig_no') else 'part'
+        need, take = entry['deficit'], 0
+        for match in by_gap.get((target, str(entry['id'])), []):
+            amount = min(need, match['suggested'], budget[match['source_id']])
+            take += amount
+            need -= amount
+            budget[match['source_id']] -= amount
+        entry['can_take'] = take
+    out['matches'] = mine
+    if kind == 'minifigure':
+        for match in mine:
+            match['display_item'] = match['copy']
+        out['matching_groups'] = [('Copies that need this figure', [r for r in mine if r['target'] != 'stock-part']),
+                                  ('Loose copies that could fill them', [r for r in mine if r['target'] == 'stock-part'])]
+        # Each loose copy is an independent candidate, with stock capped within that copy. Every gap counts, so partial coverage cannot
+        # count as complete.
+        loose_ids = {r['id'] for r in all_instances if r['entity'] == 'stock'}
+        candidates = defaultdict(list)
+        for match in found:
+            if match['target'] == 'stock-part' and match['copy_id'] in loose_ids:
+                candidates[match['copy_id']].append(match)
+        completed = 0
+        for identifier, rows in candidates.items():
+            remaining = {r['source_id']: r['have'] for r in rows}
+            by_target = defaultdict(list)
+            for match in rows:
+                by_target[str(match['target_id'])].append(match)
+            missing = 0
+            for gap in all_gaps:
+                if gap['target'] != 'stock-part' or gap['copy_id'] != identifier:
+                    continue
+                need = gap['need']
+                for match in by_target[str(gap['target_id'])]:
+                    take = min(need, remaining[match['source_id']])
+                    need -= take
+                    remaining[match['source_id']] -= take
+                missing += need
+            completed += missing == 0
+        fits = len({r['copy_id'] for r in mine if r['target'] != 'stock-part'})
+        out['figure_matching_headline'] = f"Fits {fits} {'set' if fits == 1 else 'sets'}, completes {completed} {'figure' if completed == 1 else 'figures'}"
+    return out
 
 
 def instruction_files(db, item_ids):
@@ -828,7 +903,9 @@ def search(db, query, limit=20):
 
 LINK_TABLES = {'copy_flag': 'copy_id', 'stock_flag': 'stock_id', 'wish_flag': 'wish_id'}      # a flag link has no id: its owner column keys it
 ENTITY_FLAGS = {'copy': 'copy_flag', 'stock': 'stock_flag', 'wish': 'wish_flag'}
-RECEIPT_TABLES = {'copy', 'stock', 'wish', 'lot', 'wishlist', 'flag', 'storage', 'place', 'instruction_file', 'photo', *LINK_TABLES}
+RECEIPT_TABLES = {'copy', 'stock', 'wish', 'lot', 'wishlist', 'flag', 'storage', 'place', 'instruction_file', 'photo', 'copy_part', 'copy_figure',
+                  'stock_part', *LINK_TABLES}                  # the last four are what Take and Give change (M.8e)
+INTEGER_IDS = {'instruction_file', 'copy_part', 'copy_figure', 'stock_part'}
 RESTORABLE = {'copy', 'stock', 'wish', 'lot', 'wishlist', 'flag', 'storage', 'place', 'instruction_file', 'photo'}
 FIELDS = {
     'copy': {'condition', 'storage_id', 'place_id', 'purchase_date', 'purchase_price', 'purchase_currency', 'note', 'completeness',
@@ -851,7 +928,7 @@ def columns(db, table):
 
 def snapshot(db, table, ids):
     names = ','.join(columns(db, table))
-    ids = [str(i) if table != 'instruction_file' else int(i) for i in ids]
+    ids = [int(i) if table in INTEGER_IDS else str(i) for i in ids]
     return [dict(r) for r in db.execute(f'SELECT {names} FROM main.{table} WHERE id IN (SELECT value FROM json_each(?)) ORDER BY id', (json.dumps(ids),))]
 
 
@@ -860,9 +937,10 @@ def links(db, table, owner):
     return [dict(r) for r in db.execute(f'SELECT * FROM main.{table} WHERE {owner_column}=? ORDER BY flag_id', (owner,))]
 
 
-def receipt(db, changes, field):
-    """Write the one event of a request: `changes` is `[(table, rows before, rows after)]`. Returns the event id."""
-    audit(db, 'collection', field, [dict(table=t, rows=old) for t, old, new in changes], [dict(table=t, rows=new) for t, old, new in changes])
+def receipt(db, changes, field, entity='collection'):
+    """Write the one event of a request: `changes` is `[(table, rows before, rows after)]`. Returns the event id. `entity` is the event's
+    kind: the workbench and the ledger write theirs under their own names and register the same undoer for them."""
+    audit(db, entity, field, [dict(table=t, rows=old) for t, old, new in changes], [dict(table=t, rows=new) for t, old, new in changes])
     return db.execute('SELECT last_insert_rowid()').fetchone()[0]
 
 
@@ -1076,7 +1154,7 @@ def _undo_collection(db, event, via, actor):
     first); a row the request created is archived, a flag link set is replaced."""
     before, after = json.loads(event['old_value']), json.loads(event['new_value'])
     changed = 'Item changed · undo the later save first'
-    pairs = list(zip(before, after))
+    pairs = [(old, new) for old, new in zip(before, after) if new['table'] != 'context']          # `context` says what a history row shows; it is no table
     for old, new in pairs:
         table = new['table']
         if table not in RECEIPT_TABLES:

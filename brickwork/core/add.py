@@ -721,7 +721,7 @@ def undo(db, batch, *, via=None, actor=None):
     return len(ids)
 
 
-# ---------- readers of the 3.3 store, until the pieces that port their callers (M.8e workbench, M.8h orders, M.11 API) ----------
+# ---------- readers of the 3.3 store, until the pieces that port their callers (M.8g planning, M.8h orders, M.11 API) ----------
 
 def catalogue_path(db):
     return Path(db.execute('PRAGMA database_list').fetchone()['file']).with_name('bricklink-catalog.db')

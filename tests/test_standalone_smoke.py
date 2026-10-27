@@ -1,6 +1,7 @@
 """Standalone installation contract on the 4.0 store: real app and CLI, a fixture catalogue built offline, no sockets (M.8a, #110).
 
-What renders without ported modules: the install files, the login page, Add (M.8c), Check Set Parts and the collection's writes (M.8d) and (M.8b)
+What renders without ported modules: the install files, the login page, Add (M.8c), Check Set Parts and the collection's writes (M.8d), the
+Workbench (Matcher, Part Picker, Take and Give, Storage, printable lists; M.8e) and (M.8b)
 the collection's read side: `/` and the collection lists
 (the first-run page on an empty collection), the item page by id, the wish, lot and purchase-place pages, the jump search. Every other browser
 screen answers 503 until its piece ports it. API v1 answers 410, except `/api/v1/health`."""
@@ -168,7 +169,7 @@ def test_the_collection_read_side_shows_what_is_owned(tmp_path, monkeypatch, off
     assert [r['name'] for r in found] == ['Only on BrickLink']
     assert client.get('/collection/jump?q=1000-1').json['results'][0]['kind'] == 'set'
     # what is not on the 4.0 store yet still says so
-    assert client.get('/workbench/matcher').status_code == 503
+    assert client.get('/workbench/orders').status_code == 503
     assert offline == []
 
 
@@ -296,6 +297,64 @@ def test_the_checker_and_the_collection_writes_check_edit_and_undo(tmp_path, mon
     assert rows('SELECT quantity FROM stock WHERE id=?', w.stock_brick) == [(5,)] and rows('SELECT archived_at IS NOT NULL FROM stock WHERE id=?', w.stock_brick_new) == [(1,)]
     assert client.post('/collection/save/undo', json=dict(csrf_token=csrf, event_id=merged.json['event_id'])).status_code == 200
     assert rows('SELECT quantity FROM stock WHERE id=?', w.stock_brick) == [(3,)] and rows('SELECT archived_at IS NULL FROM stock WHERE id=?', w.stock_brick_new) == [(1,)]
+    with closing(connect(path)) as db:
+        assert db.execute('PRAGMA foreign_key_check').fetchall() == [] and db.execute('PRAGMA integrity_check').fetchone()[0] == 'ok'
+    assert offline == []
+
+
+def test_the_workbench_gives_takes_moves_and_undoes(tmp_path, monkeypatch, offline):
+    """The pick-parts, match-stock-to-sets and storage how-tos on a fixture pair, offline: the Matcher offers loose stock for a gap, Give moves it
+    into the copy, Take does the same from the item page, a booklet goes in as stock, a storage is made and things are moved into it; each is
+    undone from its history list."""
+    path = make_pair(tmp_path, rich=True)
+    with closing(connect(path)) as db:
+        w = build_world(Coll(db))
+    monkeypatch.setenv('BW_AUTHENTICATION_PASSWORD', 'synthetic-password')
+    client = logged_in(make_app(path, monkeypatch))
+    client.get('/workbench/matcher')
+    with client.session_transaction() as session:
+        csrf = session['bw_add_csrf']
+
+    def rows(sql, *args):
+        with closing(connect(path, read_only=True)) as db:
+            return [tuple(r) for r in db.execute(sql, args)]
+
+    # Part Picker and Matcher show the gap of the world's first copy: one red 3001, and loose red 3001 to fill it
+    assert 'Start picking' in client.get(f'/workbench/part-picker?copy={w.copy_a}').get_data(as_text=True)
+    matcher = BeautifulSoup(client.get('/workbench/matcher').get_data(as_text=True), 'html.parser')
+    form = matcher.select_one(f'[data-copy-id="{w.copy_a}"] form[data-action=transfer]')
+    identity = json.loads(form['data-identity'])
+    assert identity['target'] == 'part' and identity['copy_id'] == w.copy_a and 'Give 1' in form.get_text()
+    # Give: the loose stock goes down, the missing count goes down, one receipt, one stock_transfer row
+    gave = client.post('/workbench/save/transfer', json=dict(csrf_token=csrf, quantity=1, **identity))
+    assert gave.status_code == 200, gave.json
+    assert rows('SELECT missing FROM copy_part WHERE id=?', identity['target_id']) == [(0,)]
+    assert rows('SELECT quantity FROM stock WHERE id=?', identity['source_id']) == [(identity['source_id'] == w.stock_brick and 2 or 1,)]
+    assert rows('SELECT kind, copy_id, quantity, event_id FROM stock_transfer') == [('part', w.copy_a, 1, gave.json['event_id'])]
+    assert 'transfer' in client.get('/workbench/matcher').get_data(as_text=True)                          # Recent saves
+    assert client.post('/workbench/save/undo', json=dict(csrf_token=csrf, event_id=gave.json['event_id'])).json['message'] == 'Undone'
+    assert rows('SELECT missing FROM copy_part WHERE id=?', identity['target_id']) == [(1,)]
+    # Take from the copy's page: the card offers it, the save is one event, Undo is on the page
+    page = BeautifulSoup(client.get(f'/collection/item/{w.keep}?copy={w.copy_a}').get_data(as_text=True), 'html.parser')
+    box = page.select_one('.bc-missing-card [data-bc-take]')
+    took = client.post('/collection/save/take', json=dict(csrf_token=csrf, quantity=1, **json.loads(box['data-identity'])))
+    assert took.json['message'] == 'Took 1' and rows('SELECT missing FROM copy_part WHERE id=?', identity['target_id']) == [(0,)]
+    assert client.post('/collection/save/undo', json=dict(csrf_token=csrf, event_id=took.json['event_id'])).json['message'] == 'Undone'
+    assert rows('SELECT missing FROM copy_part WHERE id=?', identity['target_id']) == [(1,)]
+    # the booklet the Matcher would give: the world has one, Give it to the first copy
+    booklet = client.post('/workbench/save/transfer', json=dict(csrf_token=csrf, source_id=w.stock_booklet, copy_id=w.copy_a, target='instructions', target_id=w.copy_a, quantity=1))
+    assert booklet.status_code == 200 and rows('SELECT quantity FROM stock WHERE id=?', w.stock_booklet) == [(0,)]
+    assert client.post('/workbench/save/undo', json=dict(csrf_token=csrf, event_id=booklet.json['event_id'])).status_code == 200
+    # Storage: make a drawer, move the copy into it, see it, Undo the move
+    drawer = client.post('/workbench/storage/action/save', json=dict(csrf_token=csrf, name='Drawer 1', type='Drawer')).json
+    moved = client.post('/workbench/storage/action/move', json=dict(csrf_token=csrf, storage_id=drawer['url'].rsplit('/', 1)[1], selections=[dict(entity='copy', id=w.copy_a)]))
+    assert moved.status_code == 200 and rows('SELECT name FROM storage WHERE id=(SELECT storage_id FROM copy WHERE id=?)', w.copy_a) == [('Drawer 1',)]
+    assert 'Syn Castle Keep' in client.get(drawer['url']).get_data(as_text=True)
+    assert client.post('/workbench/storage/action/undo', json=dict(csrf_token=csrf, event_id=moved.json['event_id'])).json['message'] == 'Undone'
+    assert rows('SELECT storage_id FROM copy WHERE id=?', w.copy_a) == [(w.shelf,)]
+    # the printable missing-parts list names the gap
+    printed = client.get(f'/lists/missing/print?copy={w.copy_a}').get_data(as_text=True)
+    assert '3001' in printed and 'Red' in printed
     with closing(connect(path)) as db:
         assert db.execute('PRAGMA foreign_key_check').fetchall() == [] and db.execute('PRAGMA integrity_check').fetchone()[0] == 'ok'
     assert offline == []

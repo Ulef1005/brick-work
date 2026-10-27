@@ -1,64 +1,53 @@
-"""4.9a: UI review run 6, set and part detail."""
-import re
-import sqlite3
-from pathlib import Path
+"""4.9a on the 4.0 store (M.8e, issue #110): the Matching module of the part and figure pages, its order and its headline.
 
+The 3.3 file also asserted set detail and part detail geometry from a CSS region; those pages are the collection's (M.8b) and their
+tests live with them. Here: the module itself.
+"""
 from bs4 import BeautifulSoup
-
-from brickwork.core import admin, collection
-from tests.test_bw_checker import bw, legacy, mutate  # noqa: F401
-from tests.test_bw_collection import reset_shell_metadata_after_test  # noqa: F401
-from tests.web_fixtures import app, logged_in
-from tests.web_fixtures import apps  # noqa: F401
-
-CSS = Path('static/web/toni/bw-collection.css').read_text()
-REGION = CSS.split('/* ===== 4.9a')[1].split('/* ===== end 4.9a')[0]
+from brickwork.core import collection
+from tests.app4 import app4, client, coll, pair, read, world  # noqa: F401 (fixtures)
 
 
-def page(app, route, **query):
-    response = logged_in(app).get(route, query_string=query)
+def page(client, url):
+    response = client.get(url)
     assert response.status_code == 200
     return BeautifulSoup(response.data, 'html.parser')
 
 
-def test_c6_c7_part_matching_has_no_toolbar_and_states_its_order(app, bw):
-    with admin.database(bw) as db, db:
-        db.execute("UPDATE copy_parts SET missing=1,damaged=0 WHERE item_type='P' AND item_no='bl-part' AND parent_minifig IS NULL")
-    soup = page(app, '/collection/item/P/bl-part', colour=11)
-    matching = soup.select_one('[data-module=matching]')
+def derived_copy(coll, checked=False):
+    copy = coll.add_copy('1000-1', condition='used', completeness='incomplete', completeness_source='derived')
+    for name in ('Instructions present', 'Box present') + (('Set is checked',) if checked else ()):
+        coll.tag('copy', copy, coll.flag(name, 'status'))
+    return copy
+
+
+def test_part_matching_has_no_toolbar_and_states_its_order(world, coll, client):
+    matching = page(client, f'/collection/item/{world.brick}?colour={world.red}').select_one('[data-module=matching]')
     assert not matching.select('.bc-toolbar, [data-bc-search], [data-bc-sort]')
     assert matching.select_one('.bc-matching-headline').get_text()
     assert matching.select_one('.bc-matching-sub').get_text() == 'Sorted by fewest parts left'
     assert matching.select_one('.bc-matching-headline').find_next_sibling() == matching.select_one('.bc-matching-sub')
     # Decision 16 (A): set detail has no Matching module; Take on the missing-part cards covers it.
-    assert not page(app, '/collection/item/S/new-set', copy='copy').select('[data-module=matching]')
+    assert not page(client, f'/collection/item/{world.keep}?copy={world.copy_a}').select('[data-module=matching]')
 
 
-def test_c7_matches_are_sorted_by_completion_then_fewest_parts_left(app, bw):
-    with admin.database(bw) as db, db:
-        db.execute("UPDATE copy_minifigs SET missing=0")
-        db.execute("UPDATE copy_parts SET missing=0")
-        original = dict(db.execute("SELECT * FROM copies WHERE id='copy'").fetchone())
-        for copy in ('a-many', 'z-one'):
-            db.execute('INSERT INTO copies(' + ','.join(original) + ') VALUES(' + ','.join('?' for _ in original) + ')', tuple(dict(original, id=copy).values()))
-        template = [dict(r) for r in db.execute("SELECT * FROM copy_parts WHERE copy_id='copy' AND item_type='P' AND item_no='bl-part' AND parent_minifig IS NULL")]
-        assert template
-        # Copy a-many lacks two distinct parts, z-one lacks one; alphabetical order would put a-many first.
-        for copy, extra in (('z-one', 0), ('a-many', 1)):
-            for line in template:
-                row = dict(line, id=None, copy_id=copy, missing=1, quantity=1)
-                db.execute('INSERT INTO copy_parts(' + ','.join(row) + ') VALUES(' + ','.join('?' for _ in row) + ')', tuple(row.values()))
-            for n in range(extra):
-                db.execute("INSERT OR IGNORE INTO items(item_type,item_no,name) VALUES('P',?,?)", (f'other-{n}', f'Other {n}'))
-                row = dict(template[0], id=None, copy_id=copy, item_no=f'other-{n}', missing=1, quantity=1)
-                db.execute('INSERT INTO copy_parts(' + ','.join(row) + ') VALUES(' + ','.join('?' for _ in row) + ')', tuple(row.values()))
-        detail = collection.detail(db, 'P', 'bl-part', colour=11)
+def test_matches_are_sorted_by_completion_then_fewest_parts_left(world, coll):
+    # Copy "many" lacks two distinct parts, "one" lacks one; creation order would put "many" first.
+    many = derived_copy(coll)
+    one = derived_copy(coll)
+    coll.mark(many, '3001', '4', missing=1)
+    coll.mark(many, '3023', '15', missing=1)
+    coll.mark(one, '3001', '4', missing=1)
+    detail = collection.detail(coll.db, world.brick, colour=world.red)
     order = [m['copy_id'] for m in detail['matches']]
-    assert order.index('z-one') < order.index('a-many')
+    assert order.index(one) < order.index(many)
 
 
-def test_c9_c10_figure_matching_headline_and_order(app, bw):
-    soup = page(app, '/collection/item/M/bl-figure')
+def test_figure_matching_headline_and_order(world, coll, client):
+    copy = derived_copy(coll, checked=True)
+    coll.mark_figure(copy, 'fig-000004', missing=1)
+    coll.add_stock('minifigure', coll.item('minifigs', 'fig-000004'), quantity=1, condition='new')
+    soup = page(client, f'/collection/item/{world.figure}')
     modules = [m['data-module'] for m in soup.select('[data-module]')]
     assert modules.index('consists') < modules.index('matching')
     matching = soup.select_one('[data-module=matching]')
@@ -67,29 +56,22 @@ def test_c9_c10_figure_matching_headline_and_order(app, bw):
     assert headline.startswith('Fits 1 set, completes '), headline
     assert matching.select_one('.bc-matching-sub').get_text() == 'Sorted by fewest parts left'
     # No remaining match: the figure module shows one empty-state line.
-    with admin.database(bw) as db, db:
-        db.execute("UPDATE copy_minifigs SET missing=0")
-    matching = page(app, '/collection/item/M/bl-figure').select_one('[data-module=matching]')
+    coll.sql('UPDATE copy_figure SET missing=0')
+    matching = page(client, f'/collection/item/{world.figure}').select_one('[data-module=matching]')
     assert not matching.select('.bc-matching-headline')
     assert 'Nothing to match yet' in matching.get_text()
 
 
-def test_matches_cost_no_query_per_match(app, bw):
+def test_matches_cost_no_query_per_match(world, coll):
     statements = []
-    with admin.database(bw) as db:
-        db.set_trace_callback(statements.append)
-        collection.detail(db, 'P', 'bl-part', colour=11)
-        few = len(statements)
-        statements.clear()
-        with db:
-            original = dict(db.execute("SELECT * FROM copies WHERE id='copy'").fetchone())
-            line = dict(db.execute("SELECT * FROM copy_parts WHERE copy_id='copy' AND item_no='bl-part' AND parent_minifig IS NULL").fetchone())
-            for n in range(150):
-                db.execute('INSERT INTO copies(' + ','.join(original) + ') VALUES(' + ','.join('?' for _ in original) + ')', tuple(dict(original, id=f'bulk{n}').values()))
-                row = dict(line, id=None, copy_id=f'bulk{n}', missing=1, quantity=1)
-                db.execute('INSERT INTO copy_parts(' + ','.join(row) + ') VALUES(' + ','.join('?' for _ in row) + ')', tuple(row.values()))
-        statements.clear()
-        collection.detail(db, 'P', 'bl-part', colour=11)
-        many = len(statements)
+    db = coll.db
+    db.set_trace_callback(statements.append)
+    collection.detail(db, world.brick, colour=world.red)
+    few = len(statements)
+    for _ in range(40):
+        coll.mark(derived_copy(coll), '3001', '4', missing=1)
+    statements.clear()
+    collection.detail(db, world.brick, colour=world.red)
+    many = len(statements)
+    db.set_trace_callback(None)
     assert many <= few + 20, (few, many)
-

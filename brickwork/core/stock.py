@@ -2,7 +2,7 @@
 
 The merge key of a live stock row is `(item, colour, condition, lot, storage)` with NULL equal to NULL, the unique index
 `stock_merge_key` (a loose minifigure never merges: it carries its own part list). Callers own the transaction and the write lock;
-`add_loose` raises when none is open. Editing and merging on edit (`plan_edit`, `apply_edit`) are the collection-writes piece (M.8d); the ledger is M.8e."""
+`add_loose` raises when none is open. Editing and merging on edit (`plan_edit`, `apply_edit`) are the collection-writes piece (M.8d); the ledger is `core/ledger.py` (M.8e)."""
 import json
 import uuid
 

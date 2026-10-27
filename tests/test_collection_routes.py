@@ -147,9 +147,9 @@ def test_the_shell_counts_what_is_owned_in_the_4_0_tables(world, app4):
 
 
 def test_the_unported_screens_still_say_so_and_the_ported_ones_do_not(world, client):
-    for held in ('/workbench/matcher', '/workbench/storage', '/planning/wishlist', '/manage/tools'):
+    for held in ('/workbench/orders', '/planning/wishlist', '/manage/tools'):
         assert client.get(held).status_code == 503, held
-    for served in ('/', '/collection/sets', f'/collection/item/{world.keep}', '/collection/jump?q=a'):
+    for served in ('/', '/collection/sets', f'/collection/item/{world.keep}', '/collection/jump?q=a', '/workbench/matcher', '/workbench/storage'):
         assert client.get(served).status_code != 503, served
 
 

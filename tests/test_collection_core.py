@@ -210,11 +210,11 @@ def test_the_set_page_lists_its_copy_and_what_is_missing(world, read):
         assert [(l['item_no'], l['quantity'], l['missing'], l['deficit']) for l in d['consists'] if not l.get('minifig_no')] == [('3001', 4, 1, 1), ('3023', 2, 0, 0)]
         figures = [l for l in d['consists'] if l.get('minifig_no')]
         assert [(f['item_no'], f['quantity'], f['missing'], f['parts_lines']) for f in figures] == [('fig-000004', 2, 0, 4)]
-        assert d['progress'] | {'can_take': None} == dict(total=6, missing=1, checked=0, can_take=None, different=2, lines=2, checked_lines=0, check_recorded=True, spare_lines=1, known=True)
+        assert d['progress'] == dict(total=6, missing=1, checked=0, can_take=1, different=2, lines=2, checked_lines=0, check_recorded=True, spare_lines=1, known=True)
         assert d['figure_progress'] == {'total': 2, 'present': 2}
         assert [i['id'] for i in d['instances']] == [world.copy_a, world.copy_b]
         assert d['price_records'][0]['price'] == '30.00' and d['condition_prices'][0]['condition'] == 'used'
-        assert d['partout'] is None and 'matches' not in d and all(l['can_take'] == 0 for l in d['consists'])
+        assert d['partout'] is None and [l['can_take'] for l in d['consists'] if not l.get('minifig_no')] == [1, 0]     # loose red 3001 could fill the gap
         assert d['external_links'][0][0] == 'BrickLink' and d['external_links'][1][0] == 'Brickset'
 
 

@@ -13,7 +13,7 @@ import xml.etree.ElementTree as ET
 from bs4 import BeautifulSoup
 import pytest
 
-from brickwork.core import collection, collection_prices, workbench
+from brickwork.core import collection, collection_prices
 from brickwork.store4 import fetched
 from tests.app4 import STAMP, app4, client, coll, pair, read  # noqa: F401  (fixtures)
 
@@ -391,7 +391,7 @@ def test_missing_inventory_projection_and_no_invented_progress(coll, client, rea
         clear_lines(coll, cid)
     d = detail(read, keep, copy_id=cid)
     assert d['progress']['known'] == (state not in ('unchecked', 'empty'))
-    assert d['progress']['can_take'] is None                                # the loose stock that covers a gap is the Matcher's (M.8e)
+    assert d['progress']['can_take'] == 0                                   # no loose stock here: nothing can be taken
     if state == 'missing':
         assert any(r['deficit'] == 2 for r in d['consists'])
     else:
@@ -407,7 +407,7 @@ def test_missing_inventory_projection_and_no_invented_progress(coll, client, rea
     else:
         assert progress.select_one('.bc-progress-subline').get_text() == f"{d['progress']['different']} different parts · all checked"
     if state == 'missing':
-        assert progress.h3.get_text() == f"{d['progress']['missing']} parts missing" and 'to order' not in progress.get_text()
+        assert progress.h3.get_text() == f"{d['progress']['missing']} parts missing, 0 in loose stock" and '2 to order' in progress.get_text()
         assert soup.select_one('.bc-missing-card') and soup.select_one('[data-bc-present]')
     else:
         assert not soup.select_one('.bc-missing-card')
@@ -444,12 +444,12 @@ def test_consists_text_and_reading_order(coll, client, read, checked):
     module = soup.select_one('[data-module=consists]')
     progress = module.select_one('[aria-label="Copy progress"]')
     p = d['progress']
-    assert p['can_take'] is None
-    assert progress.h3.get_text() == f"{p['missing']} parts missing"
+    assert p['can_take'] == 0
+    assert progress.h3.get_text() == f"{p['missing']} parts missing, 0 in loose stock"
     assert progress.select_one('.bc-progress-present').get_text() == f"{p['total'] - p['missing']} of {p['total']} parts present"
     assert progress.select_one('.bc-progress-subline').get_text() == f"{p['different']} different parts · " + ('all checked' if checked else '0 checked')
-    assert [n.get_text() for n in progress.select('.bc-progress-stats span')] == [f"{p['missing']} missing"]
-    stats = ' '.join(n.get_text() for n in progress.select('.bc-progress-stats span'))
+    assert [n.get_text() for n in progress.select_one('.bc-progress-stats').select('span')] == [f"{p['missing']} missing"]
+    stats = ' '.join(n.get_text() for n in progress.select_one('.bc-progress-stats').select('span'))
     assert not any(dash in stats for dash in ['-', '−', '–', '—'])
     assert 'checked' not in stats and 'or damaged' not in stats
     assert f"{p['checked']} checked" in module.select_one('.bc-inventory-details').get_text()
@@ -599,7 +599,7 @@ def test_required_card_counts_agree(coll, client, read, context):
     expected = int(context in ('direct', 'spare'))
     counted = (2, expected, expected, 1, 1) if expected else (0, 0, 0, 0, 0)
     assert (p['total'], p['missing'], p['different'], p['lines'], p['checked_lines']) == counted
-    assert p['can_take'] is None
+    assert p['can_take'] == 0
     required = [r for r in d['consists'] if r['item_type'] == 'P' and not r['spare']]
     assert sum(r['deficit'] for r in required) == p['missing']
     parts = [r for r in d['consists'] if r['item_type'] == 'P']
@@ -611,17 +611,16 @@ def test_required_card_counts_agree(coll, client, read, context):
         assert progress.h3.get_text() == 'Parts not checked'
         assert soup.select_one('.bc-tab-count, [data-bc-tab=parts] .bc-tab-count').get_text() == '0'
         return
-    assert progress.h3.get_text() == f'{expected} parts missing'
+    assert progress.h3.get_text() == f'{expected} parts missing, 0 in loose stock'
     assert progress.select_one('.bc-progress-subline').get_text() == '1 different parts · all checked'
-    assert [s.get_text() for s in progress.select('.bc-progress-stats span')] == [f'{expected} missing']
+    assert [s.get_text() for s in progress.select_one('.bc-progress-stats').select('span')] == [f'{expected} missing']
     part_cards = [c for c in soup.select('[data-bc-inventory-rows] > article') if c.select_one('.bc-missing-count') and 'needs 2' in c.get_text()]
     assert sum('bc-missing-card' in c.get('class', []) for c in part_cards) == expected == len(part_cards)
 
 
 @pytest.mark.parametrize('missing,stock', [(0, 0), (2, 0), (2, 1), (2, 20)])
-def test_inventory_counts_without_coverage(coll, client, read, missing, stock):
-    """The progress counts of a copy. What loose stock could cover of the gap (`.bc-coverage`, 'can be taken', 'to order') is M.8e:
-    until then the page shows none of it, whatever stock there is."""
+def test_inventory_counts_and_coverage(coll, client, read, missing, stock):
+    """The progress counts of a copy, and what loose stock could cover of the gap (`.bc-coverage`, 'can be taken', 'to order'; M.8e)."""
     keep = coll.item('sets', '1000-1')
     cid = coll.add_copy('1000-1')
     coll.sql('UPDATE copy_part SET missing=?,damaged=0,checked=1 WHERE copy_id=? AND copy_figure_id IS NULL AND is_spare=0', (missing, cid))
@@ -631,10 +630,15 @@ def test_inventory_counts_without_coverage(coll, client, read, missing, stock):
     soup = item_page(client, keep, copy=cid)
     assert soup.select_one('[data-bc-tab=parts] .bc-tab-count').get_text() == str(p['total']) == '6'
     assert not soup.select_one('[data-bc-tab=figures] .bc-tab-count')
-    assert p['missing'] == missing * 2 and p['can_take'] is None
-    assert not soup.select_one('.bc-coverage') and 'can be taken' not in soup.get_text() and 'to order' not in soup.get_text()
+    take = min(stock, missing)                                              # only the red 3001 line is in stock; it is missing `missing`
+    assert p['missing'] == missing * 2 and p['can_take'] == take
     if p['missing']:
         assert soup.select_one('.bc-progress:not(.bc-coverage) .bc-progress-outline')
+        coverage = soup.select_one('.bc-coverage')
+        assert coverage['aria-label'] == f"{take} in loose stock, {p['missing'] - take} to order"
+        assert f"{take} can be taken" in soup.get_text() and f"{p['missing'] - take} to order" in soup.get_text()
+    else:
+        assert not soup.select_one('.bc-coverage')
 
 
 # ---------- copy chips ----------
@@ -717,7 +721,7 @@ def test_part_facts_and_quantity(coll, client, read):
     soup = item_page(client, brick, colour=red)
     assert [n.get_text() for n in soup.select('[data-module=info] dt')][:4] == ['Condition', 'Damaged', 'Quantity', 'Storage']
     assert soup.select_one('.bc-quantity-pill:not(.bc-condition-pill)').get_text() == '×' + str(sum(r['quantity'] for r in d['instances'])) == '×5'
-    assert not soup.select_one('[data-module=matching]')                    # the Matching module is M.8e
+    assert soup.select_one('[data-module=matching]')                        # loose red 3001 is held and a copy misses one
 
 
 def test_matching_note_strips_the_scanner_event_prefix():
@@ -805,26 +809,12 @@ def test_picture_caption_and_alt_use_display_part_name(app4):
         assert moc.select_one('button')['data-caption'] == 'Set - 1 x 2'
 
 
-def test_partially_checked_merge_retains_recorded_defects():
-    rows = [dict(item_type='P', item_no='part', color_id=11, id=n, quantity=1,
-                 missing=1 if n == 0 else None, damaged=1 if n == 0 else None,
-                 checked=1 if n == 0 else 0, deficit=2 if n == 0 else 0, can_take=0)
-            for n in range(4)]
-    group, = workbench.merged_inventory(rows)
-    assert group['quantity'] == 4
-    assert group['missing'] == group['damaged'] == 1
-    assert group['deficit'] == 2
-    assert group['missing_recorded'] is False
-    assert group['checked'] == 0
-    assert len(group['contexts']) == 4
-
-
 def test_matching_leaves_set_detail_and_edit_panel_holds_instances_and_photos(coll, client):
     keep, brick, red = coll.item('sets', '1000-1'), coll.item('parts', '3001'), coll.colour('4')
     cid = coll.add_copy('1000-1')
     coll.add_stock('part', brick, colour=red, quantity=2)
     coll.add_stock('minifigure', coll.item('minifigs', 'fig-000004'), quantity=1)
-    assert not item_page(client, keep, copy=cid).select('[data-module=matching]')
+    assert not item_page(client, keep, copy=cid).select('[data-module=matching]'), 'a set copy has no Matching module: Take on the missing-part cards covers it'
     for path in (f'/collection/item/{keep}?copy={cid}', f'/collection/item/{brick}?colour={red}', f"/collection/item/{coll.item('minifigs', 'fig-000004')}"):
         soup = soup_of(client, path)
         layout = soup.select_one('.bc-detail-layout')

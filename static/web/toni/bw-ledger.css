@@ -3,7 +3,7 @@
 @media(max-width:600px){#bw-ledger .bw-card{display:grid;grid-template-columns:56px 1fr}#bw-ledger .bw-card>div:last-child{grid-column:1/-1}#bw-ledger .primary{min-height:56px}#bw-ledger section{padding:20px 0}.bw-toolbar{flex-wrap:wrap}#bw-ledger{padding-bottom:var(--tw-safe-bottom)}}
 @media(prefers-reduced-motion:reduce){#bw-ledger *{transition:none}}
 
-#bw-ledger .status::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;margin-right:6px;vertical-align:middle}#bw-ledger .state-C{background:var(--tw-success-soft)}#bw-ledger .state-I{background:var(--tw-warning-soft)}#bw-ledger .state-S{background:var(--tw-info-soft)}#bw-ledger .state-unknown{border-style:dashed}
+#bw-ledger .status::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;margin-right:6px;vertical-align:middle}#bw-ledger .state-complete{background:var(--tw-success-soft)}#bw-ledger .state-incomplete{background:var(--tw-warning-soft)}#bw-ledger .state-sealed{background:var(--tw-info-soft)}#bw-ledger .state-unknown{border-style:dashed}
 
 #bw-ledger form[data-action=archive] label{display:flex;align-items:center;gap:12px;min-height:44px}
 #bw-ledger .bw-archive{background:var(--tw-danger-soft);color:var(--tw-text);border:1px solid var(--tw-danger);min-height:44px}

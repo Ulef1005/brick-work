@@ -792,37 +792,32 @@ def bw_matcher():
 
 
 def bw_workbench_page(mode):
-    import json
     from .admin_ops import brickwork_path
     from ..core.admin import database
     from ..core import workbench
     rows, copies, history, selected, error = [], [], [], request.args.getlist('copy'), None
-    unresolved_rows = []
     match_groups = []
     ranking = request.args.getlist('rank') if request.args.get('ranked') else list(workbench.PICKER_DEFAULT)
     rank_keys = []
     try:
         with database(brickwork_path(), read_only=True) as db:
             all_gaps = workbench.gaps(db)
-            unresolved_rows = [r for r in all_gaps if r['unresolved']]
-            missing = [r for r in all_gaps if r['target'] == 'part']
             by_copy = {}
-            for row in missing:
-                copy = by_copy.setdefault(row['copy_id'],dict(row['copy'],missing=0))
+            for row in (r for r in all_gaps if r['target'] == 'part'):
+                copy = by_copy.setdefault(row['copy_id'], dict(row['copy'], missing=0))
                 copy['missing'] += row['need']
-            copies = workbench.decorate_many(db, [dict(c, item_no=c['set_no']) for c in by_copy.values()])
-            rows = workbench.picker(db,selected,ranking,all_gaps=all_gaps) if mode == 'picker' else workbench.matches(db, all_gaps=all_gaps)
+            copies = list(by_copy.values())
+            rows = workbench.picker(db, selected, ranking, all_gaps=all_gaps) if mode == 'picker' else workbench.matches(db, all_gaps=all_gaps)
             if mode == 'picker':
                 rank_keys = workbench.picker_keys(rows)
             if mode == 'matcher':
                 match_groups = workbench.group_matches(db, rows, all_gaps)
-            history = [dict(r) for r in db.execute("SELECT id,at,new_value FROM events WHERE entity='bw_workbench' AND field='receipt' AND id NOT IN (SELECT CAST(new_value AS INTEGER) FROM events WHERE entity='bw_workbench' AND field='undo') ORDER BY id DESC LIMIT 50")]
-            for row in history:
-                row['receipt'] = json.loads(row['new_value'])
-    except (ValueError,sqlite3.Error,OSError):
+            history = workbench.history(db)
+    except (ValueError, sqlite3.Error, OSError):
         error = 'Brick Work database is not available. Check BW_DB_PATH and try again.'
-    response = current_app.make_response(render_template('web/toni/web/bw_workbench.html',mode=mode,
-        rows=rows,ranking=ranking,rank_keys=rank_keys,picking=request.args.get('pick') == '1',match_groups=match_groups,copies=copies,selected=selected,history=history,unresolved_rows=unresolved_rows,error=error,csrf_token=bw_add_token()))
+    response = current_app.make_response(render_template('web/toni/web/bw_workbench.html', mode=mode,
+        rows=rows, ranking=ranking, rank_keys=rank_keys, picking=request.args.get('pick') == '1', match_groups=match_groups, copies=copies,
+        selected=selected, history=history, error=error, csrf_token=bw_add_token()))
     response.headers['Cache-Control'] = 'no-store'
     return response
 
@@ -886,7 +881,7 @@ def bw_workbench_save(action):
             if action == 'transfer':
                 event = workbench.transfer(db,data['source_id'],data['copy_id'],data['target'],data['target_id'],data['quantity'])
             elif action == 'found':
-                event = workbench.found(db,data['item_type'],data['item_no'],data['color_id'],data['destination'],data.get('assignments',{}),data['quantity'])
+                event = workbench.found(db,int(data['item_id']),data['color_id'],data['destination'],data.get('assignments',{}),data['quantity'])
             elif action == 'booklets':
                 event = workbench.booklets(db,data['text'],data['quantity'])
             elif action == 'undo':
@@ -1060,7 +1055,7 @@ def bw_inventory_save():
             event = part_inventory.save(db, pieces, batch=batch, condition=data.get('condition', 'U'), lot_id=data.get('lot_id'), new_lot=data.get('new_lot'), keep_photos=data.get('keep_photos', True) is True)
             created = None
             if data.get('new_lot'):
-                row = db.execute("SELECT l.id, l.name, l.created_date FROM events e JOIN lots l ON l.id = json_extract(e.new_value, '$.lot') WHERE e.id = ?", (event,)).fetchone()
+                row = db.execute("SELECT l.id, l.name, substr(l.created_at,1,10) AS created_date FROM main.event e JOIN main.lot l ON l.id = json_extract(e.new_value, '$.lot') WHERE e.id = ?", (event,)).fetchone()
                 created = dict(row) if row else None
         return jsonify(event=event, message='Receipts saved. Batch added.', lot=created)
     except SignatureExpired:
@@ -1397,14 +1392,12 @@ def bw_collection_places():
 def bw_collection_write(action):
     from .admin_ops import brickwork_path
     from ..core.admin import database
-    from ..core import collection
+    from ..core import collection, workbench
     if not bw_collection_editable(): abort(403,'Changes are switched off on this instance')
     data = request.get_json(silent=True) if request.is_json else request.form.to_dict()
     if not isinstance(data,dict): abort(400,'Choose a change')
     bw_add_csrf(data)
     result = {}
-    if action in ('transfer', 'take'):                           # Take and Give are the workbench's (M.8e)
-        return jsonify(message='Take and Give come back with the workbench · nothing was saved'), 503
     try:
         with database(brickwork_path()) as db:
             if action in ('save','archive'):
@@ -1421,6 +1414,12 @@ def bw_collection_write(action):
             elif action=='wish':
                 event=collection.want(db,int(data['item_id']),data.get('color_id'))
                 message='Added to wishlist'
+            elif action=='transfer':
+                event=workbench.transfer(db,data['source_id'],data['copy_id'],data['target'],data['target_id'],data['quantity'])
+                message='Saved'
+            elif action=='take':
+                event=workbench.take_for_gap(db,data['copy_id'],int(data['item_id']),data.get('color_id'),data['quantity'])
+                message='Took '+str(int(data['quantity']))
             elif action=='undo':
                 event=int(data['event_id'])
                 collection.undo(db,event)

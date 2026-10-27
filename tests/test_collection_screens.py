@@ -97,7 +97,7 @@ def test_purchase_places_in_shell(world, client):
 
 @pytest.mark.parametrize('kind', ['S', 'M', 'P', 'G', 'I', 'O', 'B', 'C'])
 def test_shared_detail_modules(world, coll, client, kind):
-    """Every kind's item page is built of the same modules (the Matching module is the Matcher's, M.8e)."""
+    """Every kind's item page is built of the same modules."""
     if kind in 'OBC':
         word = {'O': 'box', 'B': 'book', 'C': 'catalog'}[kind]
         item = coll.local(word, 'Fixture item', born_key='fixture-item')
@@ -110,8 +110,8 @@ def test_shared_detail_modules(world, coll, client, kind):
     assert r.status_code == 200, r.get_data(as_text=True)
     soup = soup_of(r)
     assert [x['data-module'] for x in soup.select('[data-module]')] == (
-        ['status', 'consists', 'used-in', 'prices', 'wanted', 'info'] if kind == 'M' else ['info', 'prices'] if kind == 'P' else
-        ['info', 'prices', 'consists'])
+        ['status', 'consists', 'used-in', 'prices', 'matching', 'wanted', 'info'] if kind == 'M' else ['info', 'prices', 'matching'] if kind == 'P' else
+        ['info', 'prices', 'consists'] if kind == 'S' else ['info', 'prices', 'consists', 'matching'])
     layout = soup.select_one('.bc-detail-layout')
     assert [child.name for child in layout.find_all(recursive=False)] == (['div', 'aside'] if kind == 'M' else ['aside', 'div'])
     assert layout.select_one('aside [data-module=info]')
@@ -127,7 +127,7 @@ def test_shared_detail_modules(world, coll, client, kind):
 def test_an_unidentified_item_has_the_shared_modules_and_says_so(world, client):
     """3.3's `?` placeholder page: the same item page, marked Unidentified and linked to the unresolved items."""
     soup = soup_of(client.get(f'/collection/item/{world.mystery}?stock={world.stock_mystery}'))
-    assert [x['data-module'] for x in soup.select('[data-module]')] == ['info', 'prices', 'consists']
+    assert [x['data-module'] for x in soup.select('[data-module]')] == ['info', 'prices', 'consists', 'matching']
     assert 'Unidentified' in soup.get_text() and 'Unresolved' in soup.get_text()
     assert soup.select_one('.bc-detail-hero h1').get_text().endswith('(unidentified)')
 
@@ -376,8 +376,7 @@ def test_review_collection_controls_and_source_disclosure(world, coll, client):
     assert soup.select_one('[data-module=consists] [aria-label="Copy progress"]')
     soup = soup_of(client.get(f'/collection/item/{world.brick}?colour={world.red}'))
     assert not soup.select('[data-module=consists]')
-    # 3.3 put the Matching module after the prices; it is the Matcher's now (M.8e)
-    assert [m['data-module'] for m in soup.select('[data-module]')] == ['info', 'prices']
+    assert [m['data-module'] for m in soup.select('[data-module]')] == ['info', 'prices', 'matching']
 
 
 @pytest.mark.parametrize('viewer', ['read_only', 'anonymous'])

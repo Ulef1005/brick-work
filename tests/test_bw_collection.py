@@ -550,11 +550,12 @@ def test_readonly_csrf_validation_and_receipt_rollback(world, coll, client, app4
     assert row(coll, 'copy', w.copy_a)['note'] == 'Flea market'
 
 
-def test_take_and_give_are_the_workbenchs_and_say_so(world, client):
+def test_take_and_give_are_the_workbenchs_and_refuse_an_incomplete_request(world, client):
+    # M.8e: the workbench does them (test_bw_48c.py, test_bw_workbench.py); here only that the collection's route hands them over.
     token = csrf(client)
     for action in ('transfer', 'take'):
         r = post(client, token, action, source_id='x')
-        assert r.status_code == 503 and 'workbench' in r.json['message']
+        assert r.status_code == 400 and r.json['message'].startswith('Nothing was saved')
     assert post(client, token, 'nothing').status_code == 404
 
 

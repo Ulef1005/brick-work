@@ -1,29 +1,14 @@
-"""Shell composition, login, theme and asset contracts on the standalone app."""
-import json
-import re
+"""Shell composition on the standalone app, on the ported Workbench screens (M.8e, issue #110).
 
-from flask import g, render_template
-from jinja2 import meta, nodes
+The 3.3 file imported a login/error rendering helper that no test used; the one test it had is the Workbench pages' shell helpers."""
 import pytest
 
-from brickwork.web.ui import PREFIX, ROOT
-from tests.test_bw_collection import bw
-from tests.importer.test_importer import legacy
-from tests.web_fixtures import app, apps, logged_in
-
-PAGES = ['web/toni/login.html', 'web/toni/error.html']
-
-
-def render(app, name, **context):
-    with app.test_request_context('/login'):
-        app.preprocess_request()
-        g.request_time = lambda: '0ms'
-        return render_template(name, **context)
+from tests.app4 import app4, client, coll, pair, read, world  # noqa: F401 (fixtures)
 
 
 @pytest.mark.parametrize('path', ['/workbench/part-picker', '/workbench/matcher'])
-def test_workbench_pages_have_shell_helpers(app, bw, path):
-    response = logged_in(app).get(path)
+def test_workbench_pages_have_shell_helpers(world, client, path):
+    response = client.get(path)
     html = response.get_data(as_text=True)
     assert response.status_code == 200
     assert 'data-web-ui="toni"' in html

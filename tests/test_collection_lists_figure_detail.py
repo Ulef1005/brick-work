@@ -70,8 +70,7 @@ def test_six_figure_states(coll, figure_world, client, state):
     elif state == 'no-picture':
         coll.sql('DELETE FROM picture WHERE item_id=?', (w.figure,))
     soup = page(client, item_url(item))
-    # The Matching module belongs to the workbench (M.8e): it is not on the page until then.
-    assert [m['data-module'] for m in soup.select('[data-module]')] == ['status', 'consists', 'used-in', 'prices', 'wanted', 'info']
+    assert [m['data-module'] for m in soup.select('[data-module]')] == ['status', 'consists', 'used-in', 'prices', 'matching', 'wanted', 'info']
     assert not soup.select('.bc-hero-status .bc-quantity-pill')
     assert 'Grouped by place' not in soup.get_text()
     assert 'rebrickable-translated' not in soup.select_one('[data-module=consists]').get_text()
@@ -221,7 +220,7 @@ def test_manual_figure_line_does_not_duplicate_used_copy(coll, figure_world, rea
 
 @pytest.mark.parametrize('many', [False, True])
 def test_headline_counts_each_loose_figure(coll, figure_world, read, client, many):
-    """The Matching headline ("completes 2 figures") belongs to the workbench (M.8e); what stays here is that every loose figure is counted."""
+    """Every loose figure is counted (the Matching headline of the page is tested with the workbench, test_bw_49a.py)."""
     w = figure_world
     second = coll.add_stock('minifigure', w.figure, quantity=1, condition='new')
     if many:

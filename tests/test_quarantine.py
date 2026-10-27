@@ -109,6 +109,11 @@ BASELINE = frozenset((
     'tests/test_bw_collection_matching.py',
     'tests/test_bw_core_fixes_api.py',
     'tests/test_bw_core_fixes_part_inventory.py',
+    # M.8e split these out of files it ported (tests that belong to a later piece moved, none was added): out of test_bw_lists_43.py the API
+    # exports (M.11) and the planning-screen entry points (M.8g), out of test_shell_45s.py the planning, prices and Tools and Admin paths (M.8g).
+    'tests/test_bw_lists_43_api.py',
+    'tests/test_bw_lists_43_later.py',
+    'tests/test_shell_45s_later.py',
 ))
 
 

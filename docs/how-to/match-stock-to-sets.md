@@ -23,7 +23,7 @@ Every move appears under **Recent saves**, with an **Undo** on each line.
 - Matches are candidates from current stock, not reservations. The same loose item can appear against several copies.
 - Within one copy, coverage counts each loose stock item once, so a lot of 2 does not cover two gaps of 2.
 - Damaged loose stock and loose minifigures with missing parts are not offered.
-- Items still waiting to be identified are not matched. They appear under **Needs a check**, with the copy and how many are missing.
+- A match is exact by the catalogue item, so an item that still says **To check** is matched like any other; the mark only tells you its BrickLink number is not settled. A loose item with no number, or a BrickLink-only item, never meets a catalogue part: merge it into the catalogue item first.
 - A copy becomes Complete only when **Set is checked** is set on it and no required part or minifigure is missing. If you set its completeness by hand, Matcher leaves it as it is.
 
 ## Narrow the list
@@ -36,7 +36,7 @@ Use search to find a copy by set number, name or the parts it needs. The filter 
 
 Booklets you own but have not recorded can be added from the Matcher page. They go into your loose stock, where Matcher can match them to a copy that lacks its booklet.
 
-1. Under **Add instruction booklets**, enter one catalogue booklet number per line in **Set numbers**. Use the full number when a set has several booklets.
+1. Under **Add instruction booklets**, enter one booklet number per line in **Set numbers**. A number works when you already hold that booklet or the BrickLink item list (once it is loaded) names it; a set's own number does not name its booklet. Use the full number when a set has several booklets.
 2. Set **Quantity per line**, or add a comma and a quantity to a line to override it.
 3. Select **Add booklets**.
 

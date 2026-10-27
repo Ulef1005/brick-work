@@ -16,7 +16,11 @@ PORTED |= {'web.bw_add', 'web.bw_add_search', 'web.bw_add_review', 'web.bw_add_c
 # wish) and the media handlers for own photos, pictures and instruction PDFs.
 PORTED |= {'web.bw_check_parts', 'web.bw_check_copy', 'web.bw_check_figure', 'web.bw_check_write', 'web.bw_check_figure_write',
            'web.bw_collection_write', 'web.bw_image', 'web.bw_instruction_download'}
-PIECE = 'M.8e to M.8j'
+# M.8e: the Workbench (Part Picker, Matcher, Found it, booklets, Take and Give, Undo), Storage with its history, Part to Inventory (the page, its
+# save and Undo; the photo recognition behind it is Identify, M.8h) and the printable lists and their CSV.
+PORTED |= {'web.bw_picker', 'web.bw_matcher', 'web.bw_workbench_save', 'web.bw_storages', 'web.bw_storage_action',
+           'web.bw_inventory', 'web.bw_inventory_save', 'web.bw_inventory_undo', 'web.bw_list_print', 'web.bw_list_csv'}
+PIECE = 'M.8f to M.8j'
 
 
 def holding(what=None):

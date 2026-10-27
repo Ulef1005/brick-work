@@ -3,6 +3,8 @@
 An item or colour is read from the collection when it is projected there, else from the attached catalogue, so every catalogue item is
 addressable before it is first used. Nothing here writes. `item_body` and `color_body` are the two bodies of design 7; `find_items`
 answers "which items does this provider number stand for?" and returns live ids only (a merged item is followed to its survivor)."""
+import json
+
 from . import identity
 from .connect import has_catalogue
 from .errors import AmbiguousIdentity
@@ -48,66 +50,109 @@ def _number(text):
     return int(text) if str(text).lstrip('-').isdigit() else text
 
 
+def _json(ids):
+    return json.dumps(sorted({i for i in ids if i is not None}))
+
+
+def bricklink_colors(db, color_ids):
+    """`{colour id: BrickLink colour id or None}`: the confirmed links of the first file that holds the colour (the collection's wins),
+    best first, else the BrickLink-born number. A fixed number of queries for any number of colours."""
+    wanted = {c for c in color_ids if c is not None}
+    found = dict.fromkeys(wanted)
+    for store in _stores(db):
+        packed = _json(wanted)
+        rows = {r['id']: r for r in db.execute(f'SELECT id, born_provider, born_key FROM {store}.color WHERE id IN (SELECT value FROM json_each(?))', (packed,))}
+        links = {}
+        for r in db.execute(f"""SELECT color_id, provider_key, status FROM {store}.color_link WHERE provider='bricklink' AND status IN ({_IN})
+                                AND color_id IN (SELECT value FROM json_each(?))""", (*_CONFIRMED, packed)):
+            links.setdefault(r['color_id'], []).append(dict(r))
+        for color_id, row in rows.items():
+            best = identity.best_color_link(links.get(color_id, []))
+            found[color_id] = _number(best['provider_key']) if best else _number(row['born_key']) if row['born_provider'] == 'bricklink' else None
+        wanted -= rows.keys()                                   # a colour is decided by the first file that has it
+    return found
+
+
 def _bricklink_color(db, color_id):
     """The BrickLink colour id of a Brick Work colour (confirmed links, best first), or None."""
+    return bricklink_colors(db, [color_id])[color_id]
+
+
+def color_bodies(db, color_ids):
+    """`{colour id: {id, name, rgb, bricklink_id, rebrickable_id}}` (design 7); an unknown colour is left out."""
+    wanted = {c for c in color_ids if c is not None}
+    rows = {}
     for store in _stores(db):
-        if db.execute(f'SELECT 1 FROM {store}.color WHERE id=?', (color_id,)).fetchone() is None:
-            continue
-        rows = [dict(r) for r in db.execute(f'''SELECT provider_key, status FROM {store}.color_link
-                                                WHERE color_id=? AND provider='bricklink' AND status IN ({_IN})''', (color_id, *_CONFIRMED))]
-        best = identity.best_color_link(rows)
-        if best:
-            return _number(best['provider_key'])
-        row = db.execute(f'SELECT born_provider, born_key FROM {store}.color WHERE id=?', (color_id,)).fetchone()
-        return _number(row['born_key']) if row['born_provider'] == 'bricklink' else None
-    return None
+        for r in db.execute(f'SELECT id, name, rgb, born_provider, born_key FROM {store}.color WHERE id IN (SELECT value FROM json_each(?))', (_json(wanted - rows.keys()),)):
+            rows.setdefault(r['id'], r)
+    numbers = bricklink_colors(db, rows)
+    return {i: {'id': i, 'name': r['name'], 'rgb': r['rgb'], 'bricklink_id': numbers[i],
+                'rebrickable_id': _number(r['born_key']) if r['born_provider'] == 'rebrickable' else None} for i, r in rows.items()}
 
 
 def color_body(db, color_id):
     """`{id, name, rgb, bricklink_id, rebrickable_id}` (design 7), or None for an unknown colour."""
-    for store in _stores(db):
-        row = db.execute(f'SELECT * FROM {store}.color WHERE id=?', (color_id,)).fetchone()
-        if row:
-            return {'id': row['id'], 'name': row['name'], 'rgb': row['rgb'], 'bricklink_id': _bricklink_color(db, color_id),
-                    'rebrickable_id': _number(row['born_key']) if row['born_provider'] == 'rebrickable' else None}
-    return None
+    return color_bodies(db, [color_id]).get(color_id)
 
 
 def colors(db):
     """Every colour body, by id (the collection's projected rows win over the catalogue's)."""
     ids = sorted({r[0] for store in _stores(db) for r in db.execute(f'SELECT id FROM {store}.color')})
-    return [color_body(db, i) for i in ids]
+    found = color_bodies(db, ids)
+    return [found[i] for i in ids]
 
 
 def item_links(db, store, item_id):
     """The confirmed BrickLink links of an item as `[{type, no, color_id, preferred}]` (BrickLink colour ids), best first."""
-    rows = db.execute(f'''SELECT provider_kind, provider_key, color_id, preferred, status FROM {store}.item_link
-                          WHERE item_id=? AND provider='bricklink' AND status IN ({_IN})''', (item_id, *_CONFIRMED)).fetchall()
-    rows = sorted(rows, key=lambda r: identity.item_link_order(r['preferred'], r['status'], r['provider_kind'], r['provider_key']))
-    # color_id is the BrickLink colour; a link scoped to a colour that has no BrickLink id reads color_id null with color_scoped true, never as
-    # "every colour" (brickwork_color_id names the scope in Brick Work's own space).
-    return [{'type': r['provider_kind'], 'no': r['provider_key'], 'color_id': None if r['color_id'] is None else _bricklink_color(db, r['color_id']),
-             'color_scoped': r['color_id'] is not None, 'brickwork_color_id': r['color_id'], 'preferred': bool(r['preferred'])} for r in rows]
+    return _links(db, {item_id: store})[item_id]
+
+
+def _links(db, stores):
+    """`{item id: [link entries]}` for items `{item id: store}`, best first; a fixed number of queries."""
+    rows = {i: [] for i in stores}
+    for store in set(stores.values()):
+        ids = _json(i for i, s in stores.items() if s == store)
+        for r in db.execute(f"""SELECT item_id, provider_kind, provider_key, color_id, preferred, status FROM {store}.item_link
+                                WHERE provider='bricklink' AND status IN ({_IN}) AND item_id IN (SELECT value FROM json_each(?))""", (*_CONFIRMED, ids)):
+            rows[r['item_id']].append(r)
+    numbers = bricklink_colors(db, {r['color_id'] for found in rows.values() for r in found})
+    out = {}
+    for item_id, found in rows.items():
+        found = sorted(found, key=lambda r: identity.item_link_order(r['preferred'], r['status'], r['provider_kind'], r['provider_key']))
+        # color_id is the BrickLink colour; a link scoped to a colour that has no BrickLink id reads color_id null with color_scoped true, never as
+        # "every colour" (brickwork_color_id names the scope in Brick Work's own space).
+        out[item_id] = [{'type': r['provider_kind'], 'no': r['provider_key'], 'color_id': None if r['color_id'] is None else numbers[r['color_id']],
+                         'color_scoped': r['color_id'] is not None, 'brickwork_color_id': r['color_id'], 'preferred': bool(r['preferred'])} for r in found]
+    return out
+
+
+def item_bodies(db, item_ids):
+    """`{item id: body}` (design 7) of live items, in a fixed number of queries; an id neither file holds is left out.
+
+    `{id, kind, name, unidentified, bricklink: [{type, no, color_id, color_scoped, brickwork_color_id, preferred}], rebrickable: {key} | None}`. An
+    unidentified item (design 3.8) is a local item that is not born at Rebrickable: no born key, or a BrickLink-only number. A BrickLink-born item
+    with no link of its own lists its born number, unscoped."""
+    rows = {}
+    for store in _stores(db):
+        for r in db.execute(f'SELECT * FROM {store}.item WHERE id IN (SELECT value FROM json_each(?))', (_json(set(item_ids) - rows.keys()),)):
+            rows[r['id']] = (store, r)
+    links = _links(db, {i: store for i, (store, _) in rows.items()})
+    out = {}
+    for item_id, (store, row) in rows.items():
+        bricklink = links[item_id]
+        if row['born_provider'] == 'bricklink' and not any(l['type'] == row['born_namespace'] and l['no'] == row['born_key'] and not l['color_scoped']
+                                                           for l in bricklink):
+            bricklink.append({'type': row['born_namespace'], 'no': row['born_key'], 'color_id': None, 'color_scoped': False, 'brickwork_color_id': None,
+                              'preferred': not any(not l['color_scoped'] for l in bricklink)})
+        out[item_id] = {'id': row['id'], 'kind': row['kind'], 'name': row['name'],
+                        'unidentified': store == 'main' and row['origin'] == 'local' and row['born_provider'] != 'rebrickable',
+                        'bricklink': bricklink, 'rebrickable': {'key': row['born_key']} if row['born_provider'] == 'rebrickable' else None}
+    return out
 
 
 def item_body(db, item_id):
-    """`{id, kind, name, unidentified, bricklink: [{type, no, color_id, preferred}], rebrickable: {key} | None}` (design 7) of a live item.
-
-    An unidentified item (design 3.8) is a local item that is not born at Rebrickable: no born key, or a BrickLink-only number. A
-    BrickLink-born item with no link of its own lists its born number, unscoped."""
-    found = item_row(db, item_id)
-    if found is None:
-        return None
-    store, row = found
-    bricklink = item_links(db, store, item_id)
-    if row['born_provider'] == 'bricklink' and not any(l['type'] == row['born_namespace'] and l['no'] == row['born_key'] and not l['color_scoped']
-                                                       for l in bricklink):
-        bricklink.append({'type': row['born_namespace'], 'no': row['born_key'], 'color_id': None, 'color_scoped': False, 'brickwork_color_id': None,
-                          'preferred': not any(not l['color_scoped'] for l in bricklink)})
-    return {'id': row['id'], 'kind': row['kind'], 'name': row['name'],
-            'unidentified': store == 'main' and row['origin'] == 'local' and row['born_provider'] != 'rebrickable',
-            'bricklink': bricklink,
-            'rebrickable': {'key': row['born_key']} if row['born_provider'] == 'rebrickable' else None}
+    """The item body of a live item id, or None."""
+    return item_bodies(db, [item_id]).get(item_id)
 
 
 def brickwork_color(db, provider, color):

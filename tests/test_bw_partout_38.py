@@ -1,6 +1,6 @@
 """#38 part-out value on the 4.0 store (M.8g, issue #110): present parts and whole figures at the used quote, with coverage. Invented data.
 
-The API's copy read (M.11) is in test_bw_partout_38_api.py, which waits for it."""
+The API's copy read is in tests/test_api2_read_collection.py (M.11b)."""
 from decimal import Decimal
 
 from bs4 import BeautifulSoup
@@ -144,3 +144,24 @@ def test_a_complete_copy_is_worth_its_complete_value_as_is(coll, client):
     coll.sql('UPDATE copy_figure SET missing=0')
     coll.sql("INSERT INTO copy_part(copy_id,item_id,color_id,quantity,missing,copy_figure_id) SELECT 'c1',?,?,1,1,id FROM copy_figure", (brick, coll.colour('14')))
     assert 'Complete €100.00 · as is €100.00' in card()
+
+
+def test_the_items_a_refresh_could_fetch_are_read_once_for_all_copies(coll, read):
+    """M.11b: the Complete sets list asks for the part-out value of every copy; it must not cost a read per copy."""
+    brick, red, figure = small_copy(coll)
+    coll.sql('UPDATE copy_figure SET missing=0')
+    for n in range(2, 8):
+        coll.sql("INSERT INTO copy(id,item_id,inventory_source,inventory_digest,condition,created_at,updated_at) VALUES(?,?,'migrated','d','used',?,?)",
+                 (f'c{n}', coll.item('sets', '1000-1'), STAMP, STAMP))
+        coll.sql('INSERT INTO copy_part(copy_id,item_id,color_id,quantity,missing) VALUES(?,?,?,4,1)', (f'c{n}', brick, red))
+    counted = []
+    with read() as db:
+        one = partout.values(db, ['c1'])
+        db.set_trace_callback(counted.append)
+        partout.values(db, ['c1'])
+        few = len(counted)
+        counted.clear()
+        many = partout.values(db, [f'c{n}' for n in range(1, 8)])
+        assert len(counted) == few
+    assert one['c1']['unpriced_items'] == many['c1']['unpriced_items'] == [brick, figure]
+    assert all(v['unpriced_items'] == [brick] for k, v in many.items() if k != 'c1')

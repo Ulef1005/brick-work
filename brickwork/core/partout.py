@@ -43,7 +43,7 @@ def values(db, copy_ids):
     market = collection.prices(db, pairs=scope) if scope else {}
     config, stamp = planning.configuration(db), now()
     quotes = {key: planning.quote(market.get(key, []), 'used', config, stamp) for key in scope}
-    result = {}
+    result, unpriced = {}, {}
     for copy_id in copy_ids:
         total, priced, missing = Decimal(0), 0, []
         for item_id, colour, present in lines.get(copy_id, []):
@@ -55,10 +55,12 @@ def values(db, copy_ids):
             priced += 1
         count = len(lines.get(copy_id, []))
         enough = bool(count) and priced >= COVERAGE * count
-        wanted = sorted({m['item_id'] for m in missing})
+        unpriced[copy_id] = sorted({m['item_id'] for m in missing})
         result[copy_id] = dict(value=str(total.quantize(Decimal('0.01'))) if enough else None, currency=config['bricklink_currency'],
-                               lines=count, priced=priced, enough=enough, unpriced=missing[:50], unpriced_count=len(missing),
-                               unpriced_items=_refreshable(db, wanted)[:200])
+                               lines=count, priced=priced, enough=enough, unpriced=missing[:50], unpriced_count=len(missing))
+    refreshable = set(_refreshable(db, sorted({i for ids in unpriced.values() for i in ids})))      # one read for every copy, not one per copy
+    for copy_id, wanted in unpriced.items():
+        result[copy_id]['unpriced_items'] = [i for i in wanted if i in refreshable][:200]
     return result
 
 

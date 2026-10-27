@@ -82,3 +82,38 @@ def test_brickwork_color_reads_each_provider_space(coll):
     for provider, color in (('bricklink', 9999), ('rebrickable', 99999), ('brickwork', 99999999), ('bricklink', 'x'), ('lego', 1)):
         with pytest.raises(ValueError):
             lookup.brickwork_color(coll.db, provider, color)
+
+
+def test_the_bodies_of_many_equal_the_body_of_each(coll):
+    """M.11b: a page of a list builds its bodies in a fixed number of queries; the answer is the one a single read gives."""
+    legs, mystery = coll.item('parts', '970c03'), coll.local('gear', 'No number')
+    local = coll.local('part', 'BrickLink only', born_key='q9')
+    coll.link(coll.item('parts', '3001'), 'x-3001', kind='P', colour=coll.colour('15'))
+    wanted = [coll.item('sets', '1000-1'), coll.item('parts', '3001'), legs, mystery, local, 987654321]
+    many = lookup.item_bodies(coll.db, wanted)
+    assert set(many) == set(wanted) - {987654321}
+    assert all(many[i] == lookup.item_body(coll.db, i) for i in many)
+    colours = [coll.colour(k) for k in ('4', '15', '0')] + [1, 2, 987654321, None]
+    bodies = lookup.color_bodies(coll.db, colours)
+    assert set(bodies) == {c for c in colours if c not in (987654321, None)}
+    assert all(bodies[i] == lookup.color_body(coll.db, i) for i in bodies)
+    assert lookup.bricklink_colors(coll.db, colours) == {i: bodies[i]['bricklink_id'] for i in bodies} | {987654321: None}
+    assert lookup.item_bodies(coll.db, []) == {} and lookup.color_bodies(coll.db, []) == {}
+
+
+def test_a_page_of_bodies_costs_the_same_however_many_items(coll):
+    sets, parts = coll.item('sets', '1000-1'), [coll.item('parts', k) for k in ('3001', '3023', '970c03', '970c22')]
+    colours = [coll.colour(k) for k in ('4', '15', '0', '6')]
+    queries = []
+    coll.db.set_trace_callback(queries.append)
+    lookup.item_bodies(coll.db, parts[:1])
+    one = len(queries)
+    queries.clear()
+    lookup.item_bodies(coll.db, [sets, *parts])
+    assert len(queries) == one
+    queries.clear()
+    lookup.color_bodies(coll.db, colours[:1])
+    one = len(queries)
+    queries.clear()
+    lookup.color_bodies(coll.db, colours)
+    assert len(queries) == one

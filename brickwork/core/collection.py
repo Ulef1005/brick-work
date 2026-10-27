@@ -269,24 +269,24 @@ _STOCK = '''SELECT s.*,i.name,i.year,i.theme_name AS theme,i.category_name AS ca
     LEFT JOIN storage t ON t.id=s.storage_id LEFT JOIN place p ON p.id=s.place_id LEFT JOIN lot l ON l.id=s.lot_id'''
 
 
-def instances(db, kind=None, *, include_archived=False, item_id=None):
+def instances(db, kind=None, *, include_archived=False, item_id=None, stock_only=False):
     """Bulk physical rows (copies, then stock); API archive reads opt in, web defaults stay live-only.
 
-    `kind` is a kind word (None for all); `item_id` scopes the read to one item: same rows, same labels, same order. Rows are
-    decorated (`decorate`), copies are labelled `Set N` in creation order, flags are on the rows."""
-    rows = _instances(db, kind, include_archived, item_id)
+    `kind` is a kind word (None for all); `item_id` scopes the read to one item: same rows, same labels, same order; `stock_only` leaves
+    the copies out (the API's stock list). Rows are decorated (`decorate`), copies are labelled `Set N` in creation order, flags are on the rows."""
+    rows = _instances(db, kind, include_archived, item_id, stock_only)
     out = decorate(db, rows)
     for row in out:
         row['flags'] = row.pop('_flags')
     return out
 
 
-def _instances(db, kind, include_archived, item_id):
+def _instances(db, kind, include_archived, item_id, stock_only=False):
     """`instances` before decoration: the rows with their flags in `_flags`."""
     one, params = (' AND c.item_id=?', [item_id]) if item_id is not None else ('', [])
     where = f'{_scope(include_archived, "c")}{one}'
     copies = []
-    if kind in (None, 'set'):
+    if kind in (None, 'set') and not stock_only:
         copies = [dict(r) for r in db.execute(f'{_COPY} WHERE {where} ORDER BY c.item_id,c.created_at,c.id', params)]
         counts = defaultdict(int)
         for row in copies:
@@ -298,7 +298,9 @@ def _instances(db, kind, include_archived, item_id):
     stock_where = f'{_scope(include_archived, "s")}' + (' AND s.item_id=?' if item_id is not None else '') + (' AND s.kind=?' if kind else '')
     stock_params = ([item_id] if item_id is not None else []) + ([kind] if kind else [])
     rows = [] if kind == 'set' else [dict(r) for r in db.execute(f'{_STOCK} WHERE {stock_where} ORDER BY s.item_id,s.color_id,s.created_at,s.id', stock_params)]
-    flags = _flags(db, {'copy': [r['id'] for r in copies], 'stock': [r['id'] for r in rows]} if item_id is not None or kind else {'copy': None, 'stock': None})
+    scoped = item_id is not None or kind
+    flags = _flags(db, {'stock': [r['id'] for r in rows] if scoped else None} if stock_only else
+                   {'copy': [r['id'] for r in copies], 'stock': [r['id'] for r in rows]} if scoped else {'copy': None, 'stock': None})
     for row in copies + rows:
         row['_flags'] = flags[row['entity'], row['id']]
     return copies + rows

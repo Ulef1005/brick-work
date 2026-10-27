@@ -99,6 +99,17 @@ def test_an_archived_copy_is_hidden_unless_asked_for(world, coll, read):
         assert collection.instance(db, 'copy', world.copy_b)['label'] == 'Set 2'                                   # an archived copy keeps its number
 
 
+def test_stock_only_leaves_the_copies_out_and_keeps_the_rest_as_it_was(world, read):
+    """M.11b: the API's stock list asks for loose stock alone."""
+    with read() as db:
+        everything = collection.instances(db, include_archived=True)
+        loose = collection.instances(db, include_archived=True, stock_only=True)
+        assert [r['id'] for r in loose] == [r['id'] for r in everything if r['entity'] == 'stock'] and {r['entity'] for r in loose} == {'stock'}
+        assert loose == [r for r in everything if r['entity'] == 'stock']
+        assert collection.instances(db, 'part', stock_only=True) == collection.instances(db, 'part') and collection.instances(db, 'set', stock_only=True) == []
+        assert [r['id'] for r in collection.instances(db, item_id=world.brick, stock_only=True)] == [r['id'] for r in collection.instances(db, item_id=world.brick)]
+
+
 def test_stock_rows_carry_their_columns_and_the_kind_filter_keeps_kinds_apart(world, read):
     with read() as db:
         every = collection.instances(db)

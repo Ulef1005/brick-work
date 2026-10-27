@@ -173,22 +173,6 @@ def test_token_list_query_count(app, monkeypatch):
     assert len(call(app, '/tokens?limit=200&cursor=' + cursor).json['data']) == 150
 
 
-def test_cursor_survives_insert():
-    rows = [{'id': str(i), 'number': str(i)} for i in (2, 4, 6)]
-    first = paginate(filter_rows(rows), limit=2)
-    rows += [{'id': '1', 'number': '1'}, {'id': '5', 'number': '5'}]
-    second = paginate(filter_rows(rows), cursor=first['page']['next_cursor'], limit=2)
-    assert [r['id'] for r in second['data']] == ['5', '6']
-
-
-def test_shared_js_fixtures():
-    fixture = json.loads(Path('tests/fixtures/bw_filter_rows.json').read_text())
-    script = """const fs=require('fs'),vm=require('vm');global.window={BrickFormatting:{nowrapTail:()=>{}}};global.document={querySelector:()=>null,querySelectorAll:()=>[],addEventListener:()=>{}};vm.runInThisContext(fs.readFileSync('static/web/toni/bw-collection.js','utf8'));const f=JSON.parse(fs.readFileSync('tests/fixtures/bw_filter_rows.json'));console.log(JSON.stringify(f.cases.map(c=>window.BrickCollection.filterRows(f.rows,c.query,c.filters,c.sort,c.direction).map(r=>r.id))));"""
-    result = subprocess.run(['node', '-e', script], check=True, capture_output=True, text=True)
-    python = [[r['id'] for r in filter_rows(fixture['rows'], **case)] for case in fixture['cases']]
-    assert python == json.loads(result.stdout)
-
-
 def test_cli_tokens(app, capsys):
     from brickwork.web.cli import main
     assert main(['token', 'create', '--name', 'synthetic-cli', '--scope', 'read,write', '--expires', '90d']) == 0
@@ -284,16 +268,6 @@ def test_stored_auth_without_bootstrap(app, monkeypatch):
 def test_invalid_token_fields(app, payload):
     assert call(app, '/tokens', 'post', json=payload).status_code == 422
     assert call(app, '/tokens').json['data'] == []
-
-
-def test_filter_extensions():
-    rows = [dict(id='a', number='1', archived_at=None, price=['EUR', '2'], max_price='3', created_at='2026-01-01', flag_ids=['flag-a']),
-            dict(id='b', number='2', archived_at='2026-01-01', price=['EUR', '4'], max_price='3', created_at='2026-02-01')]
-    assert [r['id'] for r in filter_rows(rows, filters={'flag': 'flag-a', 'under_max': 'true'})] == ['a']
-    assert [r['id'] for r in filter_rows(rows, filters={'archived': 'only', 'since': '2026-02-01'})] == ['b']
-    from brickwork.core.errors import UnknownFilter
-    with pytest.raises(UnknownFilter): filter_rows([], filters={'unknown': 'x'})
-    with pytest.raises(UnknownFilter): filter_rows([], filters={'archived': 'invalid'})
 
 
 def test_undo_nonreceipt(app, monkeypatch):

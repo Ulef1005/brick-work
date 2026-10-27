@@ -1,4 +1,7 @@
-"""#27 separate media folder: BW_MEDIA_PATH moves pictures, thumbnails and PDFs; the database stays. Invented data."""
+"""#27 separate media folder: BW_MEDIA_PATH moves pictures, thumbnails and PDFs; the database stays. Invented data.
+
+M.11b ported the reads of this file to API v2 (tests/test_api2_read_catalogue.py: the default folder, the folder of the environment, a link out of
+the folder); what is left writes a photo and a PDF through the API and waits for M.11c."""
 from contextlib import closing
 import io
 import os
@@ -6,7 +9,6 @@ from pathlib import Path
 
 from PIL import Image
 
-from brickwork.core import media
 from brickwork.core.connect import connect
 from tests.test_bw_api_m1 import app  # noqa: F401
 from tests.test_bw_api_m2 import populated  # noqa: F401
@@ -18,14 +20,6 @@ def png(size=(1200, 900)):
     out = io.BytesIO()
     Image.new('RGB', size, (200, 30, 30)).save(out, 'PNG')
     return out.getvalue()
-
-
-def test_default_is_beside_the_database(populated, monkeypatch):
-    monkeypatch.delenv('BW_MEDIA_PATH', raising=False)
-    store = Path(os.environ['BW_DB_PATH']).resolve()
-    assert media.root_for(store) == store.parent
-    with closing(connect(store)) as db:
-        assert media.media_root(db) == store.parent and media.store_dir(db) == store.parent
 
 
 def test_photo_pdf_and_thumbnail_go_to_the_media_folder(populated, monkeypatch, tmp_path):
@@ -50,16 +44,3 @@ def test_photo_pdf_and_thumbnail_go_to_the_media_folder(populated, monkeypatch, 
     from brickwork.core import thumbnails
     made = thumbnails.pregenerate(store)
     assert made >= 1 and list((target / 'data/thumbs').glob('*'))
-
-
-def test_a_link_out_of_the_media_folder_is_refused(populated, monkeypatch, tmp_path):
-    media_dir = tmp_path / 'nas'
-    monkeypatch.setenv('BW_MEDIA_PATH', str(media_dir))
-    store = Path(os.environ['BW_DB_PATH']).resolve()
-    (tmp_path / 'secret.png').write_bytes(png())
-    (media_dir / 'data/images/own').mkdir(parents=True)
-    (media_dir / 'data/images/own/escape.png').symlink_to(tmp_path / 'secret.png')
-    with closing(connect(store)) as db, db:
-        db.execute("INSERT INTO item_images(item_type,item_no,source,kind,local_path) SELECT 'S','100-1',source,'photo','data/images/own/escape.png' FROM item_images LIMIT 1")
-        image_id = db.execute('SELECT max(id) FROM item_images').fetchone()[0]
-    assert populated.test_client().get(f'/api/v1/images/{image_id}/content', headers=H).status_code == 404

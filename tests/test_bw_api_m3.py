@@ -141,37 +141,6 @@ def test_idempotency_required_conflict_scope(populated):
     assert saved['token_name']=='synthetic-writer'
 
 
-def test_event_page_150000(populated,monkeypatch):
-    with closing(connect(os.environ['BW_DB_PATH'])) as db,db:
-        db.executemany("INSERT INTO events(entity,field,new_value,at,via) VALUES('synthetic','change','null','2026-10-01T00:00:00+00:00','import')",[()]*150000)
-        admin.audit(db,'bw_collection','save',[],[])
-        queries=[];db.set_trace_callback(queries.append)
-        started=time.perf_counter()
-        result=api_pages.page(db,'events',{'limit':'1'})
-        elapsed=time.perf_counter()-started
-        assert len(result['data'])==1 and result['page']['next_cursor']
-        assert len(queries)==1
-        assert elapsed<1.5,elapsed  # Target 300 ms, generous CI margin.
-        print(f'150000-event page: {elapsed:.4f}s')
-        assert api_pages.page(db,'events',{'limit':'1','cursor':result['page']['next_cursor']})['data'][0]['id']<result['data'][0]['id']
-    import brickwork.api as api
-    statements=[];real_connect=api.connect
-    def traced(*a,**kw):
-        connection=real_connect(*a,**kw)
-        connection.set_trace_callback(statements.append)
-        return connection
-    monkeypatch.setattr(api,'connect',traced)
-    started=time.perf_counter()
-    response=call(populated,'/events?limit=1')
-    elapsed=time.perf_counter()-started
-    assert response.status_code==200,response.text
-    assert len(statements)==1
-    assert response.json['data'][0]['undoable'] is True
-    assert elapsed<1.5,elapsed
-    print(f'HTTP 150000-event page: {elapsed:.4f}s')
-
-
-
 @pytest.fixture(autouse=True)
 def spawned(monkeypatch):
     """API writes now wake the embedded drainer when a job is due (#121); keep its thread out of these tests."""
@@ -338,7 +307,7 @@ def test_receipt_ttl_and_read_scope(populated):
     assert write(populated,'/places',body={'name':'Synthetic'},token=token).status_code==403
 
 
-@pytest.mark.parametrize('resource',['jobs','prices'])
+@pytest.mark.parametrize('resource',['jobs'])
 def test_operational_pages_bounded(populated,resource):
     with closing(connect(os.environ['BW_DB_PATH'])) as db,db:
         if resource=='jobs':
@@ -469,55 +438,6 @@ def test_every_write_if_match(populated, path, method, op, tag):
         assert response.json['code'] == 'bad_request'
     if expected != 200:
         assert dbrows('events') == before
-
-
-def test_archived_instruction_content_and_list(populated):
-    assert call(populated, '/instruction-files/1/content').status_code == 200
-    with closing(connect(os.environ['BW_DB_PATH'])) as db, db:
-        db.execute("UPDATE instruction_files SET archived_at='2026-10-01' WHERE id=1")
-    assert call(populated, '/instruction-files/1/content').status_code == 404
-    assert call(populated, '/instruction-files').json['data'] == []
-    for archived in ('true', 'include', 'only'):
-        response = call(populated, '/instruction-files?archived=' + archived)
-        assert response.status_code == 200, response.text
-        assert [r['id'] for r in response.json['data']] == [1]
-
-
-@pytest.mark.parametrize('entity,field', [('bw_add','receipt'),
-                                        ('bw_token','create'), ('bw_collection','save')])
-def test_non_json_event_is_neither_undone_nor_undoable(populated, entity, field):
-    with closing(connect(os.environ['BW_DB_PATH'])) as db, db:
-        identifier = db.execute("INSERT INTO events(entity,field,new_value,at,via) VALUES(?,?,'not JSON','2026-10-01','app')",
-                                (entity, field)).lastrowid
-        # Exercise malformed JSON in both the event and the correlated Undo scans.
-        db.execute("INSERT INTO events(entity,field,new_value,at,via) VALUES('bw_token','undo:create','not JSON','2026-10-01','app')")
-        admin.audit(db, entity, 'undo', new=str(identifier))
-    response = call(populated, f'/events/{identifier}')
-    assert response.status_code == 200, response.text
-    assert response.json['data']['undone'] is False
-    assert response.json['data']['undoable'] is False
-    for query in ('', '?undoable=true', '?undoable=false', '?limit=1'):
-        response = call(populated, '/events' + query)
-        assert response.status_code == 200, response.text
-        if query == '?undoable=true':
-            assert identifier not in [r['id'] for r in response.json['data']]
-        if query == '?undoable=false':
-            assert identifier in [r['id'] for r in response.json['data']]
-
-
-def test_non_json_api_event_before_read_indexes():
-    # Historical rows can predate the expression index on bw_api receipts.
-    with closing(sqlite3.connect(':memory:')) as db:
-        db.row_factory = sqlite3.Row
-        db.execute('CREATE TABLE events(id INTEGER PRIMARY KEY, entity TEXT, field TEXT, old_value TEXT, new_value TEXT)')
-        db.execute("INSERT INTO events VALUES(1,'bw_api','receipt',NULL,'not JSON')")
-        db.execute("INSERT INTO events VALUES(2,'bw_collection','save',NULL,'[]')")
-        db.execute("INSERT INTO events VALUES(3,'bw_api','undo',NULL,'not JSON')")
-        for row in api_reads.events(db):
-            assert row['undone'] is False
-            assert row['undoable'] is (row['id'] == 2)
-        assert api_reads.events(db, 1)[0]['undoable'] is False
-        assert [r['id'] for r in api_pages.page(db, 'events', {'undoable':'true'})['data']] == [2]
 
 
 @pytest.mark.parametrize('path,body',[('/copies',{'item_no':'100-1','decision':'another'}),('/wishes/1/to-owned',{'quantity':1})])

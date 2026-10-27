@@ -172,74 +172,8 @@ def test_list_query_count(populated, monkeypatch, path, operation):
     assert len(queries) <= initial + 2, (path, initial, len(queries))
 
 
-def test_api_shared_browser_fixtures(app, monkeypatch):
-    """Actual HTTP filtering/sorting, Python and browser share the same fixtures."""
-    from urllib.parse import urlencode
-    from brickwork.core.listing import filter_rows
-    import subprocess
-    fixture = json.loads(Path('tests/fixtures/bw_filter_rows.json').read_text())
-    values = [dict(r, item_type=r['type'], item_no=r['number']) for r in fixture['rows']]
-    monkeypatch.setattr(api_reads, 'entities', lambda db, entity: values)
-    script = """const fs=require('fs'),vm=require('vm');global.window={BrickFormatting:{nowrapTail:()=>{}}};global.document={querySelector:()=>null,querySelectorAll:()=>[],addEventListener:()=>{}};vm.runInThisContext(fs.readFileSync('static/web/toni/bw-collection.js','utf8'));const f=JSON.parse(fs.readFileSync('tests/fixtures/bw_filter_rows.json'));console.log(JSON.stringify(f.cases.map(c=>window.BrickCollection.filterRows(f.rows,c.query,c.filters,c.sort,c.direction).map(r=>r.id))));"""
-    browser = json.loads(subprocess.run(['node','-e',script], check=True, capture_output=True, text=True).stdout)
-    for case, expected in zip(fixture['cases'], browser):
-        query = dict(q=case['query'], sort=case['sort'], direction=case['direction'], **case['filters'])
-        response = call(app, '/copies?' + urlencode(query))
-        assert response.status_code == 200, response.text
-        assert [r['id'] for r in response.json['data']] == expected
-        assert [r['id'] for r in filter_rows(fixture['rows'], **case)] == expected
-
-
-@pytest.mark.parametrize('sort,direction', [('number','asc'),('number','desc'),('name','asc'),('used_price','desc'),('missing','asc')])
-def test_http_cursor_stable_under_inserts(populated, sort, direction):
-    from urllib.parse import urlencode
-    dbpath = os.environ['BW_DB_PATH']
-    with closing(connect(dbpath)) as db, db:
-        for i in range(12):
-            db.execute("INSERT INTO copies(id,set_no,condition,completeness) VALUES(?,'100-1','U','I')", (f'copy-{i:02}',))
-    options = dict(limit=4, sort=sort, direction=direction)
-    first = call(populated, '/copies?' + urlencode(options)).json
-    seen = [r['id'] for r in first['data']]
-    with closing(connect(dbpath)) as db, db:
-        db.execute("INSERT INTO copies(id,set_no,condition,completeness) VALUES('before','100-1','U','I')")
-    cursor = first['page']['next_cursor']
-    while cursor:
-        response = call(populated, '/copies?' + urlencode(dict(options, cursor=cursor)))
-        assert response.status_code == 200, response.text
-        seen.extend(r['id'] for r in response.json['data'])
-        cursor = response.json['page']['next_cursor']
-    assert len(seen) == len(set(seen))
-    assert set(seen) >= {'c1', *(f'copy-{i:02}' for i in range(12))}
-    bad = call(populated, '/stock?' + urlencode(dict(options, cursor=first['page']['next_cursor'])))
-    assert bad.status_code == 400
-
-
-def test_archive_etags_and_enums(populated):
-    with closing(connect(os.environ['BW_DB_PATH'])) as db, db:
-        db.execute("UPDATE copies SET archived_at='2026-10-01T00:00:00+00:00' WHERE id='c1'")
-        db.execute("UPDATE loose_stock SET archived_at='2026-10-01T00:00:00+00:00' WHERE id='t1'")
-        db.execute("UPDATE wishlist SET archived_at='2026-10-01T00:00:00+00:00' WHERE id=1")
-        db.execute("UPDATE purchase_locations SET archived_at='2026-10-01T00:00:00+00:00' WHERE id='p1'")
-    assert call(populated, '/copies').json['data'] == []
-    assert call(populated, '/places').json['data'] == []
-    assert len(call(populated, '/copies?archived=only').json['data']) == 1
-    assert len(call(populated, '/places?archived=only').json['data']) == 1
-    for path in ('/copies/c1', '/stock/t1', '/wishes/1'):
-        response = call(populated, path)
-        assert response.status_code == 200
-        assert response.headers['ETag']
-        assert response.json['data']['condition'] == 'used'
-        assert response.json['data']['archived_at']
-
-
 @pytest.mark.parametrize('path,expected', [
-    ('/copies?condition=used&status=incomplete&storage=s1&place=p1&flag=f1&problem=damaged', ['c1']),
-    ('/stock?colour=4&lot=l1', ['t1']),
-    ('/wishes?condition=used&under_max=true', [1]),
-    ('/wishes?under_max=false', []),
     ('/jobs?failed=false&source=bricklink', [1]),
-    ('/instruction-files?has_file=true', [1]),
-    ('/copies/c1/parts?spare=false&parent=null', [1]),
 ])
 def test_resource_filters(populated, path, expected):
     response = call(populated, path)
@@ -247,16 +181,7 @@ def test_resource_filters(populated, path, expected):
     assert [r['id'] for r in response.json['data']] == expected
 
 
-def test_under_max_never_compares_currencies(populated):
-    with closing(connect(os.environ['BW_DB_PATH'])) as db, db:
-        db.execute("UPDATE wishlist SET max_price_currency='USD'")
-    assert call(populated, '/wishes?under_max=true').json['data'] == []
-    assert call(populated, '/wishes?under_max=false').json['data'] == []
-
-
-@pytest.mark.parametrize('path', ['/copies/absent', '/stock/absent', '/wishes/999', '/items/S/absent',
-    '/copies/absent/parts', '/copies/absent/gaps', '/jobs/999', '/events/999', '/orders/999',
-    '/instruction-files/999', '/colors/999', '/storages/absent', '/lots/absent', '/identifications/absent'])
+@pytest.mark.parametrize('path', ['/jobs/999', '/orders/999', '/identifications/absent'])
 def test_missing_records(populated, path):
     response = call(populated, path)
     assert response.status_code == 404, response.text
@@ -304,98 +229,12 @@ def test_sources_and_all_reads_hide_secrets(populated, monkeypatch):
         assert copy.execute('SELECT count(*) FROM source_keys').fetchone()[0] == 0
 
 
-def test_used_in_and_known_colors(populated):
-    response = call(populated, '/items/P/3001/used-in')
-    row = response.json['data'][0]
-    assert (row['copy_id'], row['quantity'], row['missing'], row['color_id']) == ('c1',4,2,4)
-    with closing(connect(os.environ['BW_DB_PATH'])) as db, db:
-        db.execute("INSERT INTO colors VALUES(5,'Synthetic blue','Solid','0000FF')")
-        db.execute("INSERT INTO copy_parts(copy_id,item_type,item_no,color_id,quantity,missing) VALUES('c1','P','3001',5,3,1)")
-    assert {r['color_id'] for r in call(populated, '/items/P/3001/colors').json['data']} == {4,5}
-    assert call(populated, '/items/P/3001/used-in').json['data'][0]['quantity'] == 7
-
-
-def test_etag_tracks_saved_fields_and_flags_only(populated):
-    before = call(populated, '/copies/c1').headers['ETag']
-    with closing(connect(os.environ['BW_DB_PATH'])) as db, db:
-        db.execute("UPDATE items SET name='Synthetic renamed set' WHERE item_type='S' AND item_no='100-1'")
-    assert call(populated, '/copies/c1').headers['ETag'] == before
-    with closing(connect(os.environ['BW_DB_PATH'])) as db, db:
-        db.execute("UPDATE copies SET note='Synthetic note' WHERE id='c1'")
-    assert call(populated, '/copies/c1').headers['ETag'] != before
-
-
 def test_missing_catalogue_and_read_scopes(app, populated):
     from tests.test_bw_api_m1 import create
-    Path(os.environ['BW_DB_PATH']).with_name('bricklink-catalog.db').unlink()
-    assert call(populated, '/catalogue/items').json['code'] == 'catalogue_not_loaded'
-    assert call(populated, '/catalogue/status').json['data']['loaded'] is False
     secret = create(populated).json['data']['secret']
     for path in ('/database/check','/database/export'):
         assert call(populated, path, token=secret).status_code == 403
     assert call(populated, '/sources', token=secret).status_code == 200
-
-
-def test_unrecorded_states_and_checked_boolean(populated):
-    with closing(connect(os.environ['BW_DB_PATH'])) as db, db:
-        db.execute("UPDATE copies SET condition=NULL,completeness=NULL,completeness_source=NULL WHERE id='c1'")
-        db.execute("UPDATE copy_parts SET checked=1 WHERE copy_id='c1'")
-        identifier = db.execute("INSERT INTO price_observations(item_type,item_no,color_id,condition,guide,currency,price,source) VALUES('P','3001',4,NULL,'retail','EUR','1.00','bricklink')").lastrowid
-        db.execute("INSERT INTO price_current(item_type,item_no,color_id,condition,guide,currency,observation_id) VALUES('P','3001',4,NULL,'retail','EUR',?)", (identifier,))
-    for path in ('/copies', '/copies/c1', '/copies/c1/parts'):
-        operation = CONTRACT['paths'][path.replace('c1','{id}')]['get']
-        response = call(populated, path)
-        validate(response.json, operation['responses']['200']['content']['application/json']['schema'])
-    assert call(populated, '/copies/c1/parts').json['data'][0]['checked'] is True
-    for path in ('/prices', '/items/P/3001/prices/history'):
-        response = call(populated, path)
-        template = path.replace('/P/3001/', '/{type}/{no}/')
-        validate(response.json, CONTRACT['paths'][template]['get']['responses']['200']['content']['application/json']['schema'])
-
-
-def test_archived_lot_keeps_detail_shape(populated):
-    before = call(populated, '/lots/l1').json['data']
-    with closing(connect(os.environ['BW_DB_PATH'])) as db, db:
-        db.execute("UPDATE lots SET archived_at='2026-10-01T00:00:00+00:00' WHERE id='l1'")
-    after = call(populated, '/lots/l1').json['data']
-    assert after['lot']['id'] == before['lot']['id'] and after['rows'] == before['rows']
-    assert after['lot']['archived_at']
-
-
-def test_colour_filter_keeps_name_for_search(populated):
-    response = call(populated, '/stock?colour=4&q=red')
-    assert response.status_code == 200
-    assert [r['id'] for r in response.json['data']] == ['t1']
-
-
-def test_match_cursor_distinguishes_sources_for_one_gap(populated, monkeypatch):
-    from urllib.parse import urlencode
-    values = [dict(id=7, item_type='P',item_no='3001',copy_id='c1', target='part',target_id=7,source_id=f'source-{i}') for i in range(12)]
-    monkeypatch.setattr(api_reads.workbench, 'matches', lambda db: values)
-    seen, cursor = [], None
-    while True:
-        response = call(populated, '/copies/c1/matches?' + urlencode(dict(limit=3, **({'cursor':cursor} if cursor else {}))))
-        assert response.status_code == 200, response.text
-        seen.extend(r['source_id'] for r in response.json['data'])
-        cursor = response.json['page']['next_cursor']
-        if not cursor: break
-    assert len(seen) == 12 and len(set(seen)) == 12
-
-
-def test_planning_preserves_core_rank_order_and_cursor(populated, monkeypatch):
-    from decimal import Decimal
-    from urllib.parse import urlencode
-    from brickwork.core import planning
-    values = [dict(id='a',item_type='S',item_no='100-1',set_num='100-1',name='Synthetic A',group='ranked',ratio=Decimal('1.5'),net_gain=Decimal('4'),unresolved_items=0,items=[]),
-              dict(id='z',item_type='S',item_no='900-1',set_num='900-1',name='Synthetic Z',group='ranked',ratio=Decimal('2.5'),net_gain=Decimal('8'),unresolved_items=0,items=[])]
-    monkeypatch.setattr(planning, 'ranking', lambda db: dict(rows=values, settings={}))
-    response = call(populated, '/planning/ranking?limit=1')
-    assert response.status_code == 200, response.text
-    assert response.json['data'][0]['id'] == 'z'
-    values.append(dict(values[0], id='before', ratio=Decimal('3.5')))
-    second = call(populated, '/planning/ranking?' + urlencode(dict(limit=1,cursor=response.json['page']['next_cursor'])))
-    assert second.json['data'][0]['id'] == 'a'
-    assert second.json['page']['next_cursor'] is None
 
 
 @pytest.mark.parametrize('path,operation', list_operations() + [('/tokens', CONTRACT['paths']['/tokens']['get'])],
@@ -433,20 +272,6 @@ def test_every_list_pages_without_losses(populated, path, operation):
     assert len(canonical(seen)) == len(set(canonical(seen))), path
 
 
-def test_item_summary_counts_copies_and_loose_excludes_archived(populated):
-    with closing(connect(os.environ['BW_DB_PATH'])) as db, db:
-        db.execute("INSERT INTO copies(id,set_no) VALUES('c2','100-1')")
-        db.execute("INSERT INTO copies(id,set_no,archived_at) VALUES('old-copy','100-1','2026-10-01')")
-        db.execute("INSERT INTO loose_stock(id,item_type,item_no,quantity) VALUES('loose-set','S','100-1',7)")
-        db.execute("INSERT INTO loose_stock(id,item_type,item_no,quantity,archived_at) VALUES('old-stock','S','100-1',99,'2026-10-01')")
-        db.execute("INSERT INTO wishlist(item_type,item_no,quantity) VALUES('S','100-1',3)")
-    response = call(populated, '/items/S/100-1')
-    assert response.json['data']['counts'] == dict(owned=9, wished=True)
-    with closing(connect(os.environ['BW_DB_PATH'])) as db, db:
-        db.execute("UPDATE wishlist SET archived_at='2026-10-01' WHERE item_type='S'")
-    assert call(populated, '/items/S/100-1').json['data']['counts'] == dict(owned=9, wished=False)
-
-
 def test_sources_retry_uses_enforced_counter(populated):
     from brickwork.core.sources.base import Source, budget_used, now
     class OfflineSource(Source):
@@ -463,18 +288,3 @@ def test_sources_retry_uses_enforced_counter(populated):
         assert expected == 2
     row = next(r for r in call(populated, '/sources').json['data'] if r['source'] == 'bricklink')
     assert row['used_today'] == expected
-
-
-def test_public_names_and_price_shape(populated):
-    item = call(populated, '/items/S/100-1').json['data']['item']
-    assert item['image_id'] == 1 and 'image' not in item
-    wish = call(populated, '/wishes/1').json['data']
-    assert wish['under_max'] is True and wish['current_price'] == '2.50'
-    assert not {'max_state', 'max_margin', 'display_price'} & wish.keys()
-    prices = call(populated, '/items/P/3001/prices').json['data']
-    assert set(prices) == {'current', 'records'}
-    assert prices['current'][0]['observation'] == prices['records'][0]
-    assert isinstance(prices['current'][0]['age_days'], (int, float))
-    with closing(connect(os.environ['BW_DB_PATH'])) as db, db:
-        db.execute("UPDATE wishlist SET max_price_currency='USD'")
-    assert call(populated, '/wishes/1').json['data']['under_max'] is None

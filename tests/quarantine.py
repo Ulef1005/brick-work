@@ -22,6 +22,10 @@ QUARANTINE = {
     # left of it is the 3.3 core: upgrade, secrets, price settings). Split out of them, none added: the MCP tests (M.11e).
     'tests/test_bw_throttle_mcp.py': 'M.11',
     'tests/test_runtime_contract_mcp.py': 'M.11',
+    # M.11b (issue #113) ported to API v2 the reads of test_bw_api_m1, test_bw_api_m2 and test_bw_api_m3 (tests/test_api2_read*.py; the generic
+    # contract tests over all GETs stay in test_bw_api_m2 for the operations of M.11d), all of test_bw_perf_api.py and test_bw_partout_38_api.py (both
+    # deleted), the reads of test_bw_wish_progress_35_api.py and of test_bw_media_27.py. What is left of them is writes or M.11d operations.
+    # test_bw_currency_39_api.py has no read of M.11b: its one test writes and reads exchange rates and settings (M.11c, M.11d).
     # M.11: API v2 and clients: the v1 API, MCP and contract tests
     'tests/test_bw_api_47.py': 'M.11',
     'tests/test_bw_api_jobs_followup.py': 'M.11',
@@ -39,11 +43,9 @@ QUARANTINE = {
     'tests/test_bw_check_api_63.py': 'M.11',
     'tests/test_bw_core_fixes_api.py': 'M.11',
     'tests/test_bw_media_27.py': 'M.11',
-    'tests/test_bw_perf_api.py': 'M.11',
     'tests/test_bw_review_followups.py': 'M.11',
     'tests/test_bw_security.py': 'M.11',
     'tests/test_bw_wishlists_api.py': 'M.11',
     'tests/test_bw_currency_39_api.py': 'M.11',
-    'tests/test_bw_partout_38_api.py': 'M.11',
     'tests/test_bw_wish_progress_35_api.py': 'M.11',
 }

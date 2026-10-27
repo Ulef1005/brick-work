@@ -579,8 +579,12 @@ def detail(db, item_id, *, colour=None, copy_id=None, stock_id=None, wish_id=Non
         config, stamp = planning.configuration(db), now()
         complete = planning.quote(row['prices'], selected.get('condition') or 'used', config, stamp)
         override = selected.get('current_value')
+        # #123: the incomplete-set discount only for a copy with a gap, by the completeness rule (spares and a figure's own parts are none).
+        gap = db.execute('''SELECT EXISTS(SELECT 1 FROM copy_part WHERE copy_id=? AND is_spare=0 AND copy_figure_id IS NULL AND retired_at IS NULL AND (missing>0 OR damaged>0))
+            OR EXISTS(SELECT 1 FROM copy_figure WHERE copy_id=? AND retired_at IS NULL AND missing>0)''', (selected['id'], selected['id'])).fetchone()[0]
+        discount = config['incomplete_discount_pct'] if gap else 0
         as_is = (Decimal(str(override)) if override is not None and selected.get('current_value_currency') == config['bricklink_currency']
-                 else Decimal(str(complete['price'])) * (100 - config['incomplete_discount_pct']) / 100 if complete else None)
+                 else Decimal(str(complete['price'])) * (100 - discount) / 100 if complete else None)
         row['partout'] = partout.compare(dict(complete_quote=complete, current_value=as_is), partout.values(db, [selected['id']]).get(selected['id']))
     lines, spare_lines = _consists(db, item_id, kind, selected)
     names = _names(db, [l['item_id'] for l in lines] + [pid for l in lines for pid in l.get('missing_part_ids', [])])

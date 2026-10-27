@@ -119,3 +119,28 @@ def test_pending_card_offers_fetch_part_prices(world, client, app4, monkeypatch)
     button = card.select_one('[data-bc-fetch-prices]')
     assert button.get_text() == 'Fetch part prices' and button['data-bc-fetch-prices'] == f'[{world.brick}, {world.plate}]'
     assert button['data-refresh-url'] == '/planning/action/refresh'
+
+
+def test_a_complete_copy_is_worth_its_complete_value_as_is(coll, client):
+    # #123: the incomplete-set discount applies only to a copy with a gap (a missing or damaged line, a missing figure).
+    brick, red, figure = small_copy(coll)
+    coll.sql('UPDATE copy_figure SET missing=0')
+    coll.sql('UPDATE copy_part SET missing=0')
+    coll.sql('INSERT INTO copy_part(copy_id,item_id,color_id,quantity,missing,is_spare) VALUES(?,?,?,1,1,1)', ('c1', brick, coll.colour('15')))  # a missing spare is no gap
+    quote(coll, brick, '2.50', colour=red)
+    quote(coll, figure, '8.00')
+    quote(coll, coll.item('sets', '1000-1'), '100.00')
+
+    def card():
+        page = BeautifulSoup(client.get(f'/collection/item/{coll.item("sets", "1000-1")}?copy=c1').data, 'html.parser')
+        return ' '.join(page.select_one('[data-bc-partout]').get_text(' ').split())
+    assert 'Complete €100.00 · as is €100.00' in card()
+    coll.sql("UPDATE copy_part SET damaged=1 WHERE is_spare=0")
+    assert 'Complete €100.00 · as is €70.00' in card()
+    coll.sql("UPDATE copy_part SET damaged=0")
+    coll.sql('UPDATE copy_figure SET missing=1')
+    assert 'Complete €100.00 · as is €70.00' in card()
+    # A figure's own part missing is no gap of the set, as in the completeness rule (Codex review).
+    coll.sql('UPDATE copy_figure SET missing=0')
+    coll.sql("INSERT INTO copy_part(copy_id,item_id,color_id,quantity,missing,copy_figure_id) SELECT 'c1',?,?,1,1,id FROM copy_figure", (brick, coll.colour('14')))
+    assert 'Complete €100.00 · as is €100.00' in card()

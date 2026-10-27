@@ -26,18 +26,20 @@ class ConnectRefused(errors.ValidationFailed):
     """The site refused the username or password. The message never names either."""
 
 
-def _day_counter(db, key, limit):
-    """Count one uncharged call per UTC day; refuse past `limit` until midnight."""
+def _day_counter(db, source, field, limit):
+    """Count one uncharged call per UTC day; refuse past `limit` until midnight.
+
+    The count is the day's `sync` events of that kind for the source (design 5.2 has no table for it, and `setting` holds preferences only):
+    each attempt writes one, which carries no credential."""
+    from ..admin import audit
+    from ..transaction import transaction
     day = now().date().isoformat()
-    setting = f'{key}:{day}'
-    with db:
-        db.execute('BEGIN IMMEDIATE')
-        row = db.execute('SELECT value FROM settings WHERE key=?', (setting,)).fetchone()
-        used = int(row[0]) if row else 0
+    with transaction(db):
+        used = db.execute("SELECT count(*) FROM main.event WHERE entity_kind='sync' AND entity_id=? AND field=? AND at>=?", (source, field, day)).fetchone()[0]
         if used >= limit:
             midnight = now().replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
             raise WaitingForBudget(None, midnight.isoformat())
-        db.execute('INSERT OR REPLACE INTO settings(key,value) VALUES(?,?)', (setting, str(used + 1)))
+        audit(db, 'sync:' + source, field, None, None)
 
 
 def _number(value):
@@ -92,7 +94,7 @@ class RebrickableUser(Rebrickable):
             return reply
         # The recorded job payload names the path template only, never the token.
         return self.request('user:' + method.lower() + ':' + re.sub(r'[0-9]+', 'N', path),
-                            dict(params, **({'form': {k: v for k, v in data.items()}} if data else {})),
+                            json.dumps(dict(params, **({'form': {k: v for k, v in data.items()}} if data else {})), sort_keys=True),
                             request, consume)
 
     def pages(self, path):
@@ -112,7 +114,7 @@ class RebrickableUser(Rebrickable):
     def connect(self, username, password):
         """Exchange username and password for a user token. Nothing is recorded."""
         self.ready()
-        _day_counter(self.db, 'sync:rebrickable:logins', LOGIN_PER_DAY)
+        _day_counter(self.db, 'rebrickable', 'login', LOGIN_PER_DAY)
         request = Request(REBRICKABLE_USERS + '/_token/', method='POST',
                           data=urlencode({'username': username, 'password': password}).encode(),
                           headers={'Authorization': 'key ' + self.credential_values()[0], 'User-Agent': USER_AGENT,
@@ -216,11 +218,11 @@ class BricksetUser(Brickset):
             return reply
         request = Request(BRICKSET + '/' + method, data=urlencode(body).encode(),
                           headers={'Content-Type': 'application/x-www-form-urlencoded'})
-        return self.request('user:' + method, payload, request, consume, charged=charged)
+        return self.request('user:' + method, json.dumps(payload, sort_keys=True), request, consume, charged=charged)
 
     def connect(self, username, password):
         self.ready()
-        _day_counter(self.db, 'sync:brickset:logins', LOGIN_PER_DAY)
+        _day_counter(self.db, 'brickset', 'login', LOGIN_PER_DAY)
         request = Request(BRICKSET + '/login', data=urlencode(dict(
             apiKey=self.credential_values()[0], username=username, password=password)).encode(),
             headers={'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': USER_AGENT})
@@ -285,7 +287,7 @@ class BricksetUser(Brickset):
         set_id = state['ids'].get(row['remote_no'])
         if set_id is None:
             raise errors.ValidationFailed('Brickset does not know this set number')
-        _day_counter(self.db, 'sync:brickset:writes', BRICKSET_WRITES_PER_DAY)
+        _day_counter(self.db, 'brickset', 'write', BRICKSET_WRITES_PER_DAY)
         if row['kind'] == 'wanted':
             params = {'want': 1 if row['send'] else 0}
         else:

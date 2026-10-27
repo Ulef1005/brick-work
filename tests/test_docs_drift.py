@@ -91,7 +91,7 @@ def test_inline_commands_name_real_subcommands():
     from brickwork.web.cli import build_parser
     commands = set(build_parser()._subparsers._group_actions[0].choices)
     for doc in PROSE + USER_DOCS:
-        for name in re.findall(r'`brickwork ([a-z][a-z-]*)', (ROOT / doc).read_text()):
+        for name in re.findall(r'`brickwork ([a-z][a-z0-9-]*)', (ROOT / doc).read_text()):
             assert name in commands, f'{doc}: brickwork {name}'
 
 

@@ -100,7 +100,10 @@ def test_standalone_smoke(tmp_path, monkeypatch, offline, capsys):
         assert 'data-first-run' in html and 'Nothing here yet.' in html and 'href="/manage/catalogues"' in html
         assert html.count('class="fr-step"') + html.count('class="fr-step ') == 4
     assert 'Cache-Control' in client.get('/').headers
-    # a screen that is not ported yet says so, in the app's own shell
+    # every screen is ported since M.8j; one that is not says so, in the app's own shell
+    assert client.get('/manage/sync').status_code == 200
+    from brickwork.web import ported
+    monkeypatch.setattr(ported, 'PORTED', ported.PORTED - {'web.bw_sync'})
     held = client.get('/manage/sync')
     assert held.status_code == 503 and 'not on the 4.0 store yet' in held.get_data(as_text=True)
     assert client.get('/manifest.webmanifest').status_code == 200
@@ -170,8 +173,8 @@ def test_the_collection_read_side_shows_what_is_owned(tmp_path, monkeypatch, off
     found = client.get('/collection/jump?q=x999').json['results']
     assert [r['name'] for r in found] == ['Only on BrickLink']
     assert client.get('/collection/jump?q=1000-1').json['results'][0]['kind'] == 'set'
-    # what is not on the 4.0 store yet still says so
-    assert client.get('/manage/sync').status_code == 503
+    # the Collection sync and the legacy import screens are served since M.8j
+    assert client.get('/manage/sync').status_code == 200 and client.get('/manage/import-legacy').status_code == 200
     assert client.get('/manage/tools').status_code == 200 and client.get('/manage/catalogues').status_code == 200
     assert offline == []
 

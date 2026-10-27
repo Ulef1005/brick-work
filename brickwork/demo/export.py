@@ -6,6 +6,7 @@ demo includes; links to anything else become "not part of the demo". The JSON th
 Prices records and their details) is saved beside them. A small script (shim.js), loaded first on
 every page, answers those reads from the saved files and every write with "not saved".
 """
+from contextlib import closing
 import html
 import json
 import os
@@ -20,13 +21,13 @@ from .privacy import pattern
 
 ROOT = Path(__file__).resolve().parents[2]
 NOTE = 'Demo with sample data: changes are not saved'
-SEEDS = ['/collection/sets', '/collection/M', '/collection/P', '/collection/item/P/3001?colour=4',
+SEEDS = ['/collection/sets', '/collection/M', '/collection/P',
          '/workbench/check-parts', '/workbench/part-picker', '/workbench/part-to-inventory',
          '/planning/wishlist', '/planning/prices', '/planning/complete-sets', '/workbench/storage']
 # Routes the crawl may follow from a seed (the agreed demo routes and their own sub-pages).
 FOLLOW = [re.compile(p) for p in (
     r'^/collection/(sets|M|P)$',
-    r'^/collection/item/S/[^/?]+$',
+    r'^/collection/item/[1-9][0-9]*(\?colour=[0-9]+)?$',
     r'^/workbench/check-parts(/[0-9a-f-]{36}(\?run=1)?)?$',
     r'^/workbench/(part-picker|part-to-inventory)$',
     r'^/planning/(wishlist|prices|complete-sets)$',
@@ -109,9 +110,9 @@ def reads(client, base):
         fields = data.get('fields') if isinstance(data, dict) else None
         for row in rows if isinstance(rows, list) else []:
             record = dict(zip(fields, row)) if fields and isinstance(row, list) else row
-            if not isinstance(record, dict) or 'type' not in record or 'number' not in record:
+            if not isinstance(record, dict) or not record.get('item_id'):
                 continue
-            query = [('kind', record['type']), ('number', record['number'])]
+            query = [('item_id', str(record['item_id']))]
             if record.get('color_id') is not None:
                 query.append(('colour', str(record['color_id'])))
             key = '/planning/prices/details?' + urlencode(sorted(query))
@@ -121,11 +122,18 @@ def reads(client, base):
     return out
 
 
-def render(client, base, data):
+def item_pages(store):
+    """The item pages the lists link to from rows their script builds: every owned set, and one part in one colour it is held in."""
+    from ..core.connect import connect
+    with closing(connect(store, read_only=True)) as db:
+        sets = ['/collection/item/%d' % r[0] for r in db.execute('SELECT DISTINCT item_id FROM copy WHERE archived_at IS NULL ORDER BY item_id')]
+        part = db.execute("SELECT item_id, color_id FROM stock WHERE kind='part' AND archived_at IS NULL ORDER BY item_id, color_id LIMIT 1").fetchone()
+    return sets + (['/collection/item/%d?colour=%d' % tuple(part)] if part else [])
+
+
+def render(client, base, data, store):
     with client:
-        # Every owned set's page too: the lists link to them from rows their script builds.
-        owned = dict.fromkeys('/collection/item/S/' + c['set'] for c in json.loads((data / 'sets.json').read_text(encoding='utf-8')))
-        pages, skipped = crawl(client, base, SEEDS + list(owned))
+        pages, skipped = crawl(client, base, SEEDS + item_pages(store))
         more, extra_skipped = crawl(client, base, follow_ups(pages))
         pages.update(more)
         skipped.update(extra_skipped)
@@ -178,12 +186,11 @@ def export(out, base='/brick-work/demo/', data=dataset.DATA):
     with tempfile.TemporaryDirectory() as scratch:
         store = Path(scratch) / 'brickwork.db'
         counts = dataset.build(store, data)
-        from ..core.media import root_for
-        counts['checks'] = checks.stage(store, root_for(store))
+        counts['checks'] = checks.stage(store)
         saved_env = {k: os.environ.get(k) for k in ('BW_DB_PATH', 'BW_EMBEDDED_WORKER', 'BW_ALLOW_NO_LOGIN', 'BW_AUTHENTICATION_PASSWORD')}
         try:
             client = make_app(store).test_client()
-            pages, skipped, saved = render(client, base, data)
+            pages, skipped, saved = render(client, base, data, store)
         finally:
             for k, v in saved_env.items():
                 if v is None:

@@ -8,6 +8,7 @@ from contextlib import closing
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import sqlite3
 from xml.etree import ElementTree as ET
@@ -17,6 +18,47 @@ from . import collection_prices, workbench
 from .secrets import secret_values
 from .undo import undoable_sql, undone_sql  # noqa: F401 — moved to core/undo.py (M.8a); event pages embed them
 from .sources.base import budget_used, now, redact
+
+
+
+def decorate_many(db, rows):
+    """API v1 only (moved here from core/add.py by M.8j; it reads the 3.3 tables and is rewritten with v2 in M.11): list-only identities, colours and local pictures, loaded in four queries.
+
+    Uses the same picture priority and exact-colour fallback as ``decorate``.
+    Collection counts are deliberately not part of this list projection.
+    """
+    priority = db.execute("SELECT value FROM settings WHERE key='source_priority'").fetchone()
+    order = json.loads(priority[0]).get('pictures', {}) if priority else {}
+    colors_by_id = {r['color_id']: dict(r) for r in db.execute('SELECT * FROM colors')}
+    identities = json.dumps(list({(r.get('item_type'), r.get('item_no')) for r in rows}))
+    scope = " (item_type,item_no) IN (SELECT json_extract(value,'$[0]'),json_extract(value,'$[1]') FROM json_each(?))"
+    unresolved = {(r[0],r[1]) for r in db.execute("SELECT item_type,item_no FROM id_match WHERE status='to_check' AND" + scope, (identities,))}
+    ranks = {}
+    for kind in {r.get('item_type') for r in rows}:
+        sources = [s.split(':')[0] for s in order.get(kind, order.get('*', ['bricklink', 'rebrickable']))]
+        ranks[kind] = ({source: sources.index(source) for source in sources}, len(sources))
+    pictures = {}
+    # v3 constrains local_path to data/images with no traversal. File existence
+    # and containment belong to bw_image, not a list projection.
+    for position, r in enumerate(db.execute('SELECT id,item_type,item_no,color_id,source FROM item_images WHERE' + scope + ' ORDER BY fetched_at DESC,id DESC', (identities,))):
+        sources, fallback = ranks[r['item_type']]
+        candidate = (sources.get(r['source'], fallback), position, r['id'])
+        key = r['item_type'], r['item_no'], r['color_id']
+        if key not in pictures or candidate < pictures[key]:
+            pictures[key] = candidate
+    result = []
+    for source in rows:
+        row = dict(source)
+        kind, number, color = row.get('item_type'), row.get('item_no'), row.get('color_id')
+        images = [pictures[key] for key in {(kind, number, None), (kind, number, color)} if key in pictures]
+        row['image'] = min(images)[2] if images else None
+        row['unresolved'] = kind=='?' or (kind,number) in unresolved
+        row['color_name'] = colors_by_id.get(color,{}).get('name') or row.get('colour_name')
+        rgb = colors_by_id.get(color,{}).get('rgb') or ''
+        row['rgb'] = rgb if re.fullmatch('[a-fA-F0-9]{6}',rgb) else None
+        row['ink'] = add.colour_ink(row['rgb'])
+        result.append(row)
+    return result
 
 
 def rows(db, sql, params=()):
@@ -112,7 +154,7 @@ def items(db):
         r['owned'] = owned.get((r['item_type'], r['item_no']), 0)
         r['properties'] = props[r['item_type'], r['item_no']]
         r['theme'] = r['properties'].get('theme', {}).get('value', '')
-    return add.decorate_many(db, values)
+    return decorate_many(db, values)
 
 
 def item(db, kind, number):
@@ -172,7 +214,7 @@ def entities(db, entity, identifier=None):
         r['price'] = collection_prices.choose([p for p in r['prices'] if p['guide'] == 'sold' and p.get('slot') != 'boxed'], r['item_type'], priority, 'U')
         r['duplicates'] = entity != 'wish' and counts[r['item_type'], r['item_no'], r.get('color_id')] > 1
         r['theme'] = props[r['item_type'], r['item_no']].get('theme', {}).get('value', '')
-    result = add.decorate_many(db, result)
+    result = decorate_many(db, result)
     if entity == 'wish':
         # The same quote selection and currency rule as the web's Under max.
         result = planning.display_prices(db, result, *(key[:2] if keyed else ()))

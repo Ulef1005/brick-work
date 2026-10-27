@@ -38,10 +38,6 @@ def test_rail_destinations_and_current_state(app4, client, world, path, current)
     assert re.search(r'aria-current="page">.*?' + re.escape(current).replace('&', '&amp;') + r'</span>.*?</a>', html, re.S)
 
 
-# The Collection sync and legacy import pages are M.8j's: they answer 503 until then.
-LATER = ('/manage/sync', '/manage/import-legacy')
-
-
 def test_tools_page_links_are_live(client, world):
     html = client.get('/manage/tools').get_data(as_text=True)
     assert 'id="global-jump"' in html and 'class="mobile-bottom"' in html
@@ -49,7 +45,4 @@ def test_tools_page_links_are_live(client, world):
     hrefs = {a['href'] for a in BeautifulSoup(html, 'html.parser').select('main a[href^="/"]')}
     assert hrefs
     for href in hrefs:
-        if href.startswith(LATER):
-            assert client.get(href).status_code == 503, href
-        else:
-            assert client.get(href).status_code in (200, 302), href
+        assert client.get(href).status_code in (200, 302), href

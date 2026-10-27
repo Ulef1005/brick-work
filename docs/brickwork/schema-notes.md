@@ -1,7 +1,10 @@
 # Brick Work v3.2 schema and migration definitions
 
 > **On `main` (the 4.0 line)** every screen runs on the 4.0 store ([design](../data-model-4.0/data-model-design.md)); the 3.x schema and the
-> `brickwork migrate` importer described below are history (the importer is gone, decision 4 of issue #110). A 3.3 collection moves to 4.0
+> `brickwork migrate` importer described below are history: the importer's identity matcher, projection, proof and migrate modules
+> (`core/importer/idmatch.py`, `projection.py`, `proof.py`, `migrate.py`), `core/names.py`, and the 3.x files `core/schema.sql`, `core/import.sql`,
+> `core/upgrade.py`, `core/upgrade_api.py` and `core/recompute.py` are deleted (decision 4 of issue #110; M.8a, M.8j). What remains of the
+> importer is the BrickTracker import of [how-to](../how-to/import-from-bricktracker.md), on Rebrickable numbers. A 3.3 collection moves to 4.0
 > with `brickwork migrate4` (design § 8), and the settings, freshness rules and maintenance screens are described in
 > [Settings and maintenance](../how-to/settings-and-maintenance.md). The sections that say "4.0" are current; the rest documents what the
 > 3.3 migration proved and is kept for the cutover.
@@ -61,7 +64,7 @@ Retired legacy screens continue using their separate old stores.
    agrees. Ambiguous template children use parent source identity plus JSON
    ordinal, retain every candidate, and reference distinct placeholder rows.
    Decisions are an external input, never a repository fixture or committed
-   collection record. Inventory matching calls `web.idmatch.match`; canonical
+   collection record. Inventory matching called `web.idmatch.match` (deleted in 4.0); canonical
    cache projections preserve existing bridges, rather than rematching them.
 
 3. **Local pictures and own photos.** `item_images` retains rows only for

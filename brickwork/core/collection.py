@@ -897,7 +897,7 @@ def search(db, query, limit=20):
     for row in rows:
         row['instances'] = [dict(i, flags=i.pop('_flags', [])) for i in row['instances']]
     numbers = {w for w in words}
-    rows.sort(key=lambda r: (r['item_type'] != 'S', r.get('entity') == 'wish', (r['number'] or '').casefold() not in numbers and (r['also'] or '').casefold() not in numbers,
+    rows.sort(key=lambda r: (r['kind'] != 'set', r.get('entity') == 'wish', (r['number'] or '').casefold() not in numbers and (r['also'] or '').casefold() not in numbers,
                              r['item_no'], str(r.get('id', ''))))
     return dict(query=query, results=rows[:limit], limit=limit, truncated=len(rows) > limit)
 

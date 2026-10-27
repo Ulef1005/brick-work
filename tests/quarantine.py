@@ -15,16 +15,8 @@ QUARANTINE = {
     'tests/test_bw_orders_export_44_api.py': 'M.11',
     'tests/test_bw_orders_storage_api.py': 'M.11',
     'tests/test_bw_lists_43_api.py': 'M.11',
-    # M.8j: sync, BrickTracker rewrite, demo, the two guards
-    'tests/importer/test_bricktracker_import.py': 'M.8j',
-    'tests/importer/test_importer.py': 'M.8j',
-    'tests/test_bw_import_ui.py': 'M.8j',
-    'tests/test_bw_migrate_paths_61.py': 'M.8j',
-    'tests/test_bw_sync.py': 'M.8j',
-    'tests/test_bw_sync_ui.py': 'M.8j',
-    'tests/test_demo.py': 'M.8j',
-    'tests/test_ui_p6_import.py': 'M.8j',          # split off test_ui_p6.py by M.8i part 1
-    'tests/test_bw_small_68_sync.py': 'M.8j',      # split off test_bw_small_68.py by M.8i part 1
+    # M.8j split this out of a file it ported (the test that belongs to a later piece moved, none was added): out of test_bw_sync.py the API test (M.11).
+    'tests/test_bw_sync_api.py': 'M.11',
     # M.11: API v2 and clients: the v1 API, MCP and contract tests
     'tests/test_app_factory.py': 'M.11',
     'tests/test_bw_api_47.py': 'M.11',

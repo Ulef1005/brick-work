@@ -10,7 +10,7 @@
 
 The sole API blueprint is `brickwork/api/`, mounted at `/api/v1`, and it reads and writes only `brickwork.db` through `core/connect.py`. The replaced web API, legacy screens, stores and external refresh integration were removed in 4.11j. Earlier ids do not carry over: copy ids are the UUIDs in `copies.id`.
 
-The browser, CLI and MCP use the same core functions listed below. Browser routes have no legacy prefix; [the cutover table](cutover-4.11j.md) records every changed path and its backing function. There are no redirects. The one retained legacy reader is `core/importer/`, exposed as **Import from BrickTracker** through Tools & Admin and `brickwork migrate --app ... [--extras ...]`. Inputs are read-only, output is a new file, and the established mapping and proof remain unchanged.
+The browser, CLI and MCP use the same core functions listed below. Browser routes have no legacy prefix; [the cutover table](cutover-4.11j.md) records every changed path and its backing function. There are no redirects. The one retained legacy reader is `core/importer/`, exposed as **Import from BrickTracker** through Tools & Admin and `brickwork import-bricktracker` (rewritten on Rebrickable numbers in M.8j; the old migrate command is gone). The input is read-only.
 
 Lists use the shared filter/paging service. API writes capture core receipts in one transaction and one event with `via=api` and the calling token name in `actor`. Schema 3.3, scoped tokens, encrypted keys, archive semantics and price preferences are implemented. The historical 3.2 initialization and upgrade mapping remain for existing databases and migration proofs.
 

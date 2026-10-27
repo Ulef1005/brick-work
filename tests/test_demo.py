@@ -21,31 +21,40 @@ def site(tmp_path_factory):
 
 
 def test_dataset_is_invented_and_consistent(tmp_path):
+    """The demo is a 4.0 collection on a catalogue built from the design test data (M.8j)."""
     counts = dataset.build(tmp_path / 'demo.db')
-    assert counts['copies'] == 19 and counts['copy_parts'] > 1000 and counts['wishlist'] == 6 and counts['loose_stock'] > 0
+    assert counts['copy'] == 19 and counts['copy_part'] > 1000 and counts['wish'] == 6 and counts['stock'] > 0
+    assert (tmp_path / 'catalogue.db').is_file() and len(counts['ids']) == 18                 # the catalogue is beside the collection; 7286-1 is held twice
     db = sqlite3.connect(tmp_path / 'demo.db')
+    db.execute('PRAGMA foreign_keys=ON')
     assert db.execute('PRAGMA integrity_check').fetchone()[0] == 'ok'
     assert not db.execute('PRAGMA foreign_key_check').fetchall()
-    owners = {r[0] for r in db.execute("SELECT name FROM flags WHERE kind='owner'")}
+    owners = {r[0] for r in db.execute("SELECT name FROM flag WHERE kind='owner'")}
     assert owners == {'Alex', 'Sam', 'Shared'}  # no real names
-    assert not db.execute('SELECT count(*) FROM item_images').fetchone()[0]  # no pictures of others
+    assert not db.execute('SELECT count(*) FROM picture').fetchone()[0]  # no pictures of others
+    assert not db.execute("SELECT count(*) FROM item WHERE origin='local'").fetchone()[0]    # every item is a catalogue item: nothing is unidentified
+    assert db.execute("SELECT count(*) FROM item i WHERE i.kind='set' AND NOT EXISTS(SELECT 1 FROM copy c WHERE c.item_id=i.id) AND NOT EXISTS(SELECT 1 FROM wish w WHERE w.item_id=i.id)").fetchone()[0] == 0
     with pytest.raises(FileExistsError):
         dataset.build(tmp_path / 'demo.db')
+    with pytest.raises(FileExistsError):
+        dataset.build(tmp_path / 'demo-2.db')                                                   # the catalogue.db beside the first one is not overwritten
 
 
 def test_agreed_routes_are_exported(site):
     out, manifest = site
     pages = manifest['pages']
-    for route in ('/collection/sets', '/collection/M', '/collection/P', '/collection/item/S/1592-1',
-                  '/collection/item/P/3001?colour=4', '/workbench/check-parts', '/workbench/part-picker',
-                  '/workbench/part-to-inventory', '/planning/wishlist', '/planning/prices',
-                  '/planning/complete-sets', '/workbench/storage'):
+    for route in ('/collection/sets', '/collection/M', '/collection/P', '/workbench/check-parts', '/workbench/part-picker',
+                  '/workbench/part-to-inventory', '/planning/wishlist', '/planning/prices', '/planning/complete-sets', '/workbench/storage'):
         assert route in pages, route
         assert (out / pages[route] / 'index.html').is_file()
+    items = [k for k in pages if re.fullmatch(r'/collection/item/[0-9]+', k)]
+    assert len(items) >= 18                                                                    # every owned set has its page, by item id
+    assert any(re.fullmatch(r'/collection/item/[0-9]+\?colour=[0-9]+', k) for k in pages)     # and one part in one colour
     assert any(k.startswith('/workbench/check-parts/') and k.endswith('?run=1') for k in pages)  # Start opens a running check
     assert any(k.startswith('/workbench/part-picker?copy=') for k in pages)  # Continue opens the picking view
     assert not any(k.startswith('/manage') for k in pages)
     assert manifest['skipped'] == {} and manifest['gets']['/planning/prices/records']
+    assert any(k.startswith('/planning/prices/details?item_id=') for k in manifest['gets'])
     # Running checks made with the app's own checker: first part, half done, at the end.
     checks = manifest['counts']['checks']
     assert checks['56325b99-16bc-549b-bb98-f7be2ab38829'][0] == 0

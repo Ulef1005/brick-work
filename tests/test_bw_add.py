@@ -564,3 +564,28 @@ def test_a_row_is_all_or_nothing(world, client, csrf, coll, read):
     with coll.db:
         coll.db.execute('DROP TRIGGER reject_receipt')
     assert confirm(client, csrf, proposal, decision='another').status_code == 200
+
+
+def test_undo_of_an_add_is_refused_when_a_loose_figure_gap_was_filled(world, coll, read):
+    """Review of M.8j: the same gap as the import's Undo: a Give changes only the figure's part lines."""
+    from brickwork.core import add, workbench
+    db = coll.db
+    figure = coll.item('minifigs', 'fig-000004')
+    row = dict(item_id=figure, kind='minifigure', where='loose', quantity=1, condition='used', color_id=None, decision='add', lot_id=None, storage_id=None)
+    with db:
+        db.execute('BEGIN IMMEDIATE')
+        change = __import__('brickwork.core.stock', fromlist=['x']).add_loose(db, item_id=figure, quantity=1, condition='used')
+    stock_id = change['id']
+    part = db.execute('SELECT * FROM stock_part WHERE stock_id=? AND is_spare=0 LIMIT 1', (stock_id,)).fetchone()
+    db.execute('UPDATE stock_part SET missing=1 WHERE id=?', (part['id'],))
+    db.commit()
+    with db:
+        db.execute('BEGIN IMMEDIATE')
+        change['after'] = dict(db.execute('SELECT * FROM stock WHERE id=?', (stock_id,)).fetchone())
+        change['parts'] = __import__('brickwork.core.stock', fromlist=['x']).part_digest(db, stock_id)
+    supplier = coll.add_stock('part', part['item_id'], colour=part['color_id'], quantity=2, condition=None)
+    workbench.transfer(db, supplier, stock_id, 'stock-part', part['id'], 1)
+    with pytest.raises(ValueError, match='changed since'):
+        with db:
+            db.execute('BEGIN IMMEDIATE')
+            __import__('brickwork.core.stock', fromlist=['x']).undo_added(db, change)

@@ -150,7 +150,7 @@ def import_bricktracker(source=None, plan_only=False, plan_id=None, decisions=No
         if plan_id is None:
             plan = bricktracker.plan(db, source)
             if plan_only:
-                return {key: plan[key] for key in ('id', 'schema', 'fresh', 'summary', 'unresolved')}
+                return {key: plan[key] for key in ('id', 'schema', 'fresh', 'summary', 'unplaced')}
             plan_id = plan['id']
         return bricktracker.apply(db, plan_id, choices)
 

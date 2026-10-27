@@ -31,6 +31,17 @@ def _figure_list(db, item_id, quantity):
     return columns, [(part, colour, spare, line * quantity) for (part, colour, spare), line in sorted(target.parts.items())]
 
 
+def part_digest(db, stock_id):
+    """The part lines of a loose figure as text (every column that a check, a Take or Give or a mark can change), for an Undo to compare."""
+    return json.dumps([list(r) for r in db.execute('''SELECT id, item_id, color_id, is_spare, quantity, missing, damaged, checked, retired_at FROM main.stock_part WHERE stock_id=? ORDER BY id''', (stock_id,))])
+
+
+def dependents(db, stock_id):
+    """Something made after the row was added that points at it or at its part lines: a Take or Give (into it, or out of it), an allocation."""
+    return db.execute('''SELECT 1 FROM main.stock_transfer WHERE stock_id=:s OR stock_part_id IN (SELECT id FROM main.stock_part WHERE stock_id=:s)
+                          UNION ALL SELECT 1 FROM main.allocation WHERE stock_id=:s LIMIT 1''', {'s': stock_id}).fetchone() is not None
+
+
 def add_loose(db, *, item_id, color_id=None, quantity, condition, lot_id=None, storage_id=None, note=None, via=None, actor=None):
     """Add `quantity` of an item to loose stock: onto the live row with the same merge key, else a new row. A part needs a colour
     and any other kind has none. Returns the change `{id, created, quantity, before, after}` (rows as dicts), which is what
@@ -73,22 +84,26 @@ def add_loose(db, *, item_id, color_id=None, quantity, condition, lot_id=None, s
                        [(stock_id, *line) for line in lines])
     after = dict(db.execute('SELECT * FROM main.stock WHERE id=?', (stock_id,)).fetchone())
     audit(db, 'stock:' + stock_id, 'increased' if before else 'created', before, after, via=via, actor=actor)
-    return dict(id=stock_id, created=before is None, quantity=quantity, before=before, after=after)
+    return dict(id=stock_id, created=before is None, quantity=quantity, before=before, after=after, parts=part_digest(db, stock_id) if kind == 'minifigure' else None)
 
 
 def undo_added(db, change, *, via=None, actor=None):
-    """Reverse one `add_loose` change: archive the row it created, or take its quantity back off the row it increased. Refused when
-    the row differs from what the add left (any later change: edit, merge, take, a later add onto it)."""
+    """Reverse one `add_loose` change: archive the row it created, or take its quantity (and the state it merged in) back off the row it
+    increased. Refused when the row differs from what the add left (any later change: edit, merge, take, a later add onto it), when a loose
+    figure's part lines differ from what the add left, or when a Take / Give or an allocation points at the row or its lines."""
     row = db.execute('SELECT * FROM main.stock WHERE id=?', (change['id'],)).fetchone()
     current = dict(row) if row else None
     if current != change['after']:
-        raise ValueError('Stock changed since this save · undo the later save first')
+        raise ValueError('Stock changed since this save · undo the later change first')
+    if change['created'] and (dependents(db, change['id']) or (change.get('parts') is not None and part_digest(db, change['id']) != change['parts'])):
+        raise ValueError('Stock changed since this save · undo the later change first')
     stamp = now()
     if change['created']:
         db.execute('UPDATE main.stock SET archived_at=?, updated_at=? WHERE id=?', (stamp, stamp, change['id']))
     else:
-        db.execute('UPDATE main.stock SET quantity=?, updated_at=? WHERE id=?',
-                   (current['quantity'] - change['quantity'], change['before']['updated_at'], change['id']))
+        old = change['before']
+        db.execute('UPDATE main.stock SET quantity=?, missing=?, damaged=?, checked=?, updated_at=? WHERE id=?',
+                   (current['quantity'] - change['quantity'], old['missing'], old['damaged'], old['checked'], old['updated_at'], change['id']))
     audit(db, 'stock:' + change['id'], 'undo', current, dict(db.execute('SELECT * FROM main.stock WHERE id=?', (change['id'],)).fetchone()),
           via=via, actor=actor)
 
@@ -132,6 +147,14 @@ def _columns(db):
 def _rows(db, ids):
     names = ','.join(_columns(db))
     return {r['id']: dict(r) for r in db.execute(f'SELECT {names} FROM main.stock WHERE id IN (SELECT value FROM json_each(?))', (json.dumps(sorted(ids)),))}
+
+
+def merge_state(before, new, quantity):
+    """The state of a pile a second pile was added onto: counts added (None only when neither has one), capped by the new quantity;
+    `checked` stays only when both were checked (the rule of a stock merge on edit)."""
+    cap = lambda v: None if v is None else min(v, quantity)
+    return dict(missing=cap(_sum(before['missing'], new.get('missing'))), damaged=cap(_sum(before['damaged'], new.get('damaged'))),
+                checked=1 if before['checked'] and new.get('checked') else before['checked'])
 
 
 def _sum(a, b):

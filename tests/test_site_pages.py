@@ -252,8 +252,7 @@ def test_shared_chrome_and_theme_script(site):
     assert 'localStorage.getItem' in script and 'localStorage.setItem' in script
     assert 'try {' in script and 'catch' in script
     assert 'prefers-color-scheme: dark' in script
-    # The demo is a placeholder until M.8j rebuilds it on 4.0 (its manifest check returns then).
-    assert (site / 'demo/index.html').is_file()
+    assert (site / 'demo/demo-manifest.json').is_file()
 
 
 def test_javascript_theme_and_step_state():

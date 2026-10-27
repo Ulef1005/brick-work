@@ -34,4 +34,12 @@ design/test-data/tools-admin.json	BK_[A-Z_]+|bricktracker_[a-z_]+	Design export 
 scripts/site/landing.html	\[?BrickTracker\]?|BrickTracker	Comparison section names the self-hosted tracker Brick Work grew from.
 docs/reference/cli.md	\bbricktracker\b|\b(?:post_)?imports?[-_]bricktracker\b|BrickTracker	User docs: CLI command import-bricktracker.
 docs/data-model-4.0/*	BrickTracker importer|BrickTracker import|\bhouse-api/lego\.py\b	Data model 4.0 design: the retained importer, and the House API client that switches at the cutover.
-tests/test_ui_p6_import.py	Import from BrickTracker	Test of the retained importer page title (M.8j).
+docs/how-to/import-from-bricktracker.md	BrickTracker|\bbricktracker\b|\bimport-bricktracker\b	User how-to for the retained importer: the source format's name.
+tests/test_retired_lines.py	brickwork/core/importer/bricktracker\.py	Names the importer module whose digest query is allowed to see retired lines.
+CHANGELOG.md	Import from BrickTracker|The BrickTracker import|BrickTracker's marks	Changelog entry of the rewritten BrickTracker import (M.8j): the source format's name.
+README.md	\bimport-bricktracker\b|BrickTracker (?:stores|version)|with BrickTracker's	README: the retained BrickTracker importer, its command and the source format's name.
+brickwork/core/undo.py	importer import bricktracker	Imports the importer module so that its undoer is registered.
+brickwork/web/ported.py	Import from BrickTracker	Comment naming the Import from BrickTracker screens.
+docs/brickwork/schema-notes.md	BrickTracker import|import-from-bricktracker	Points from the 3.x schema notes to the BrickTracker import how-to.
+docs/how-to/index.md	Import from BrickTracker|import-from-bricktracker	Index entry of the Import from BrickTracker how-to.
+tests/test_cli.py	BrickTracker-era	Docstring: the removed BrickTracker-era `brickwork migrate`.

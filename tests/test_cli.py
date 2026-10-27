@@ -55,15 +55,15 @@ def test_usage_errors_and_removed_commands(argv, monkeypatch):
     context.assert_not_called()
 
 
-def test_migrate_is_gone_and_names_the_4_0_command(monkeypatch, capsys):
-    # The old importer's `brickwork migrate` is removed on the 4.0 line (M.8a); it must not call its old service.
+def test_migrate_is_gone(monkeypatch, capsys):
+    """`brickwork migrate` (the BrickTracker-era importer) is removed (decision 4 of #110, M.8j): it is not a command, and `migrate4` is the one migration."""
     monkeypatch.setattr(cli, 'application_context', Mock(side_effect=AssertionError('must not initialize')))
-    assert not hasattr(cli.admin_ops, 'migrate')                                   # the old importer's service is gone
-    assert cli.main(['migrate', '--app', 'app.db', '--extras', 'extras.db',
-                     '--decisions', 'decisions.json', '--catalogue', 'DIR',
-                     '--out', 'brickwork.db', '--report', 'REPORT', '--replace']) == 1
+    assert not hasattr(cli.admin_ops, 'migrate')
+    with pytest.raises(SystemExit) as error:
+        cli.main(['migrate', '--app', 'app.db', '--out', 'brickwork.db'])
+    assert error.value.code == 2
     err = capsys.readouterr().err
-    assert 'python -m brickwork.store4 migrate' in err and 'brickwork migrate4' in err
+    assert "invalid choice: 'migrate'" in err and 'migrate4' in err
 
 
 def test_migrate4_is_store4s_migration_under_the_design_name(monkeypatch, capsys):
@@ -142,9 +142,9 @@ def test_executable_entry_points():
     import sys
     root = Path(__file__).resolve().parents[1]
     environment = dict(os.environ, PATH=str(Path(sys.executable).parent) + os.pathsep + os.environ['PATH'])
-    for command in ([str(root / 'bin/brickwork'), 'migrate'],
-                    [sys.executable, '-m', 'brickwork.web', 'migrate'],
-                    [sys.executable, '-m', 'brickwork.web.cli', 'migrate']):
+    for command in ([str(root / 'bin/brickwork'), 'migrate4'],
+                    [sys.executable, '-m', 'brickwork.web', 'migrate4'],
+                    [sys.executable, '-m', 'brickwork.web.cli', 'migrate4']):
         result = subprocess.run(command, cwd=root, env=environment, capture_output=True, text=True)
         assert result.returncode == 2
         assert result.stdout == ''

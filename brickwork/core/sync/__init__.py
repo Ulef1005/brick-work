@@ -1,22 +1,27 @@
-"""Collection sync with Rebrickable and Brickset (#10): owned sets and wanted sets, pull and send.
+"""Collection sync with Rebrickable and Brickset (#10) on the 4.0 store (M.8j, issue #110; design 3.5, 5.2): owned sets and wanted sets,
+pull and send.
 
-Pull imports what the site has and Brick Work lacks, row by row, in one undoable transaction; it never
-deletes here. Send writes counts there after a review; removals only when ticked; Brick Work's Undo
-cannot reverse a remote change. One copy here is one physical unit; the sites hold quantities.
-Condition, completeness, box, instructions and storage never leave Brick Work.
+Pull imports what the site has and Brick Work lacks, row by row, in one undoable transaction; it never deletes here. Send writes counts
+there after a review; removals only when ticked; Brick Work's Undo cannot reverse a remote change. One copy here is one physical unit;
+the sites hold quantities. Condition, completeness, box, instructions and storage never leave Brick Work.
 
-State per source lives in `settings` under `sync:<source>:…` (link, baseline, last pull, last send);
-plans are JSON files under data/sync/ and expire after 24 hours.
-"""
+Every row speaks an item id. A remote set number is a Rebrickable number (Brickset's `number-variant` is the same numbering): it is
+translated to an item by its born key, else by one confirmed BrickLink link, and an item is placed by its current kind (design 3.5): a
+set becomes a copy (design 4.3's preselection, as Add), every other kind becomes stock of that kind. Sending names an item by its born
+key or through `items.bricklink_key`; an item with no number at all is left out and listed as not on the site.
+
+State per source lives in `sync_state` (link, baseline, last pull, last send; the migration carries only the link, so the first sync
+after the cutover shows a full comparison and `_changed_both` has nothing to compare against). Plans are JSON files under data/sync/ and
+expire after 24 hours; whether a plan was applied is the `plan` table's (`core/plans.py`)."""
 import json
-import shutil
-from contextlib import closing
 from datetime import datetime, timedelta
 from pathlib import Path
-import sqlite3
 from uuid import uuid4
 
-from .. import errors, keys
+from ...store4 import pending
+from ...store4.connect import has_catalogue, now as store_now
+from .. import errors, items, keys, stock
+from .. import undo as undoing
 from ..admin import audit
 from ..sources.base import KeyRejected, SourceError, WaitingForBudget, now
 from ..transaction import transaction
@@ -26,6 +31,9 @@ SOURCES = ('rebrickable', 'brickset')
 LABELS = {'rebrickable': 'Rebrickable', 'brickset': 'Brickset'}
 USER = {'rebrickable': 'rebrickable_user', 'brickset': 'brickset_user'}
 PLAN_TTL = timedelta(hours=24)
+COLUMNS = {'link': 'link_json', 'baseline': 'baseline_json', 'last_pull': 'last_pull_json', 'last_send': 'last_send_json'}
+SETLIKE = tuple(kind for kind in items.KINDS if kind not in ('part', 'minifigure'))   # what a site's set list can hold
+_KINDS_SQL = ','.join(repr(k) for k in SETLIKE)
 
 
 def _source(source):
@@ -34,13 +42,16 @@ def _source(source):
     return source
 
 
-def _setting(db, key, default=None):
-    row = db.execute('SELECT value FROM settings WHERE key=?', (key,)).fetchone()
-    return json.loads(row[0]) if row else default
+def _setting(db, source, name, default=None):
+    row = db.execute(f'SELECT {COLUMNS[name]} FROM main.sync_state WHERE source=?', (source,)).fetchone()
+    return json.loads(row[0]) if row and row[0] is not None else default
 
 
-def _put(db, key, value):
-    db.execute('INSERT OR REPLACE INTO settings(key,value) VALUES(?,?)', (key, json.dumps(value, sort_keys=True)))
+def _put(db, source, name, value):
+    column = COLUMNS[name]
+    text = None if value is None else json.dumps(value, sort_keys=True)
+    db.execute(f'INSERT INTO main.sync_state(source, {column}, updated_at) VALUES(?, ?, ?) '
+               f'ON CONFLICT(source) DO UPDATE SET {column}=excluded.{column}, updated_at=excluded.updated_at', (source, text, store_now()))
 
 
 def _root(db):
@@ -102,7 +113,7 @@ def link(db, source, options):
     allowed = {'owned', 'wishlist', 'send_to', 'wish_list'} if source == 'rebrickable' else {'wish_list'}
     if set(options) - allowed:
         raise errors.ValidationFailed('Unknown link option: ' + ', '.join(sorted(set(options) - allowed)))
-    value = dict(_setting(db, f'sync:{source}:link', {}), **options)
+    value = dict(_setting(db, source, 'link', {}), **options)
     if source == 'rebrickable':
         owned = value.get('owned') or []
         if not isinstance(owned, list) or any(type(i) is not int or i <= 0 for i in owned):
@@ -117,8 +128,8 @@ def link(db, source, options):
     from .. import wishlists
     wishlists.require(db, value.get('wish_list') or 'default')
     with transaction(db):
-        before = _setting(db, f'sync:{source}:link')
-        _put(db, f'sync:{source}:link', value)
+        before = _setting(db, source, 'link')
+        _put(db, source, 'link', value)
         audit(db, 'sync:' + source, 'link', before, value)
     return status(db, source)
 
@@ -129,89 +140,82 @@ def lists(db, source, *, http=None):
 
 def status(db, source):
     _source(source)
-    last_send = _setting(db, f'sync:{source}:last_send')
+    last_send = _setting(db, source, 'last_send')
     waiting = [r for r in (last_send or {}).get('rows', []) if r['result'] in ('failed', 'paused', 'key_rejected')]
     return dict(source=source, label=LABELS[source], credentials=credential_state(db, source),
-                link=_setting(db, f'sync:{source}:link', {}), last_pull=_setting(db, f'sync:{source}:last_pull'),
+                link=_setting(db, source, 'link', {}), last_pull=_setting(db, source, 'last_pull'),
                 last_send=None if last_send is None else {k: v for k, v in last_send.items() if k != 'rows'},
                 waiting=len(waiting))
 
 
 # Translation ---------------------------------------------------------------------------------
 
-def _catalogue_sets(db, numbers):
-    """Which of these set numbers exist as BrickLink sets (catalogue file, else this store's items)."""
-    numbers = sorted(set(numbers))
+def _stores(db):
+    return ('main', 'catalogue') if has_catalogue(db) else ('main',)
+
+
+def translate(db, remote_numbers):
+    """Remote set number -> the item id it names, or None. A number is a Rebrickable number (Brickset's `number-variant` is the same
+    numbering): the item whose born key it is (a local BrickLink-born item counts by its BrickLink number), else the one item a confirmed
+    BrickLink link names; a number that names several items, or none, or only a part or figure, is None (the plan lists it as not matched)."""
+    numbers = sorted(set(remote_numbers))
     if not numbers:
-        return set()
-    from ..add import catalogue_path
-    path = catalogue_path(db)
-    if path.is_file():
-        with closing(sqlite3.connect(path.resolve().as_uri() + '?mode=ro', uri=True)) as cat:
-            return {r[0] for r in cat.execute(
-                "SELECT item_no FROM items WHERE item_type='S' AND item_no IN (SELECT value FROM json_each(?))",
-                (json.dumps(numbers),))}
-    return {r[0] for r in db.execute(
-        "SELECT item_no FROM items WHERE item_type='S' AND item_no IN (SELECT value FROM json_each(?))", (json.dumps(numbers),))}
-
-
-def _match_kind(source):
-    return 'set' if source == 'rebrickable' else 'set_number'
-
-
-def translate(db, source, remote_numbers):
-    """Remote set number -> BrickLink set number. A stored decision wins; otherwise the same number when
-    the BrickLink catalogue has it (the sites share LEGO's set numbering). Anything else is unmatched."""
-    decided = {}
-    for r in db.execute("SELECT source_id,item_no,status FROM id_match WHERE source=? AND kind=? AND item_type='S' "
-                        "AND source_id IN (SELECT value FROM json_each(?))",
-                        (source, _match_kind(source), json.dumps(sorted(set(remote_numbers))))):
-        if r['status'] in ('matched', 'manual', 'inferred') and r['item_no']:
-            decided.setdefault(r['source_id'], set()).add(r['item_no'])
-    known = _catalogue_sets(db, [n for n in remote_numbers if n not in decided])
+        return {}
+    born = {n: {} for n in numbers}                              # number -> {item id: born provider}
+    packed = json.dumps(numbers)
+    for store in _stores(db):
+        live = '' if store == 'main' else ' AND retired_at IS NULL AND id NOT IN (SELECT id FROM main.item)'
+        for row in db.execute(f'SELECT id, born_key, born_provider FROM {store}.item WHERE born_key IN (SELECT value FROM json_each(?)) AND kind IN ({_KINDS_SQL}){live}', (packed,)):
+            born[row['born_key']][items._merged_target(db, row['id'])] = row['born_provider']
     out = {}
-    for number in remote_numbers:
-        if number in decided:
-            out[number] = next(iter(decided[number])) if len(decided[number]) == 1 else None
-        else:
-            out[number] = number if number in known else None
+    for number, found in born.items():
+        rebrickable = [i for i, provider in found.items() if provider == 'rebrickable']
+        out[number] = (rebrickable or list(found))[0] if len(rebrickable or found) == 1 else None      # the number is a Rebrickable one: its item wins a local twin
+    rest = [n for n in numbers if not born[n]]
+    linked = {n: set() for n in rest}
+    for store in _stores(db):
+        live = '' if store == 'main' else ' AND i.retired_at IS NULL AND l.item_id NOT IN (SELECT id FROM main.item)'
+        for row in db.execute(f"""SELECT l.item_id, l.provider_key FROM {store}.item_link l JOIN {store}.item i ON i.id=l.item_id
+                                  WHERE l.provider='bricklink' AND l.provider_key IN (SELECT value FROM json_each(?)) AND l.status IN ({items._IN})
+                                  AND i.kind IN ({_KINDS_SQL}){live}""", (json.dumps(rest), *items.CONFIRMED)):
+            linked[row['provider_key']].add(items._merged_target(db, row['item_id']))
+    out.update({n: next(iter(ids)) if len(ids) == 1 else None for n, ids in linked.items()})
     return out
 
 
-def reverse(db, source, item_numbers):
-    """BrickLink set number -> remote set number, by the same rules in the other direction."""
-    decided = {}
-    for r in db.execute("SELECT source_id,item_no,status FROM id_match WHERE source=? AND kind=? AND item_type='S' "
-                        "AND item_no IN (SELECT value FROM json_each(?))",
-                        (source, _match_kind(source), json.dumps(sorted(set(item_numbers))))):
-        if r['status'] in ('matched', 'manual', 'inferred'):
-            decided.setdefault(r['item_no'], set()).add(r['source_id'])
-    return {n: (next(iter(decided[n])) if len(decided.get(n, ())) == 1 else None) if n in decided else n
-            for n in item_numbers}
+def reverse(db, item_ids):
+    """Item id -> the set number a site knows it by: the Rebrickable number of a Rebrickable-born item, else the BrickLink number
+    (`items.bricklink_key`; a local BrickLink-born item is its own). An item with no number at all is None: it is left out and listed."""
+    out = {}
+    for item_id in sorted(set(item_ids)):
+        label = items.label(db, item_id)
+        if label.source == 'rebrickable':
+            out[item_id] = label.number
+            continue
+        try:
+            out[item_id] = items.bricklink_key(db, item_id)[1]
+        except items.Unidentified:
+            out[item_id] = None
+    return out
 
 
 def _here(db, wish_list):
-    owned = {r[0]: r[1] for r in db.execute(
-        "SELECT set_no,count(*) FROM copies WHERE item_type='S' AND archived_at IS NULL GROUP BY set_no")}
+    """What this collection holds per item id: copies of sets plus loose stock of the other kinds; wishes of the linked list."""
+    owned = {r[0]: r[1] for r in db.execute('SELECT item_id, count(*) FROM main.copy WHERE archived_at IS NULL GROUP BY item_id')}
+    for item_id, quantity in db.execute(f'SELECT item_id, sum(quantity) FROM main.stock WHERE archived_at IS NULL AND kind IN ({_KINDS_SQL}) GROUP BY item_id'):
+        owned[item_id] = owned.get(item_id, 0) + quantity
     wanted = {r[0]: r[1] for r in db.execute(
-        "SELECT item_no,sum(quantity) FROM wishlist WHERE item_type='S' AND archived_at IS NULL AND list_id=? GROUP BY item_no",
-        (wish_list,))}
-    return dict(owned=owned, wanted=wanted)
+        f'SELECT item_id, sum(quantity) FROM main.wish WHERE archived_at IS NULL AND wishlist_id=? AND kind IN ({_KINDS_SQL}) GROUP BY item_id', (wish_list,))}
+    return dict(owned={k: v for k, v in owned.items() if v}, wanted=wanted)
 
 
-def _names(db, numbers):
-    from ..add import catalogue_path
-    numbers = sorted(set(numbers))
-    names = {r[0]: r[1] for r in db.execute(
-        "SELECT item_no,name FROM items WHERE item_type='S' AND item_no IN (SELECT value FROM json_each(?))", (json.dumps(numbers),))}
-    path = catalogue_path(db)
-    missing = [n for n in numbers if not names.get(n)]
-    if missing and path.is_file():
-        with closing(sqlite3.connect(path.resolve().as_uri() + '?mode=ro', uri=True)) as cat:
-            names.update({r[0]: r[1] for r in cat.execute(
-                "SELECT item_no,name FROM items WHERE item_type='S' AND item_no IN (SELECT value FROM json_each(?))",
-                (json.dumps(missing),))})
-    return names
+def _names(db, item_ids):
+    """`{item id: (born number or None, name)}` from the collection's row, else the catalogue's."""
+    out, packed = {}, json.dumps(sorted(set(item_ids)))
+    for store in _stores(db):
+        for r in db.execute(f'SELECT id, born_key, name FROM {store}.item WHERE id IN (SELECT value FROM json_each(?))', (packed,)):
+            out.setdefault(r['id'], (r['born_key'], r['name']))
+    return out
 
 
 # Plans -------------------------------------------------------------------------------------
@@ -250,18 +254,18 @@ def _store_plan(db, plan):
 
 def _fetch(db, source, http):
     client = adapters.adapter(db, source, http)
-    link_value = _setting(db, f'sync:{source}:link', {})
+    link_value = _setting(db, source, 'link', {})
     remote = client.fetch(link_value)
     return client, link_value, remote
 
 
 def _compare(db, source, link_value, remote):
-    """Rows per set and kind with remote, here and baseline counts; unmatched remote numbers kept apart."""
+    """Rows per item and kind with remote, here and baseline counts; unmatched remote numbers kept apart."""
     wish_list = link_value.get('wish_list') or 'default'
     here = _here(db, wish_list)
-    baseline = _setting(db, f'sync:{source}:baseline', {})
-    mapping = translate(db, source, list(set(remote['owned']) | set(remote['wanted'])))
-    names = _names(db, [n for n in mapping.values() if n] + list(here['owned']) + list(here['wanted']))
+    baseline = _setting(db, source, 'baseline', {})
+    mapping = translate(db, set(remote['owned']) | set(remote['wanted']))
+    names = _names(db, [i for i in mapping.values() if i] + list(here['owned']) + list(here['wanted']))
     rows, unmatched = [], []
     for kind in ('owned', 'wanted'):
         there = {}
@@ -269,17 +273,18 @@ def _compare(db, source, link_value, remote):
             target = mapping.get(number)
             if target is None:
                 unmatched.append(dict(key=f'{kind}:?{number}', kind=kind, remote_no=number, remote=quantity,
-                                      state='unmatched', reason='No unique BrickLink set for this number'))
+                                      state='unmatched', reason='No unique set in Brick Work for this number'))
                 continue
             entry = there.setdefault(target, [0, number])
             entry[0] += quantity
         base_remote = baseline.get('remote', {}).get(kind, {})
         base_here = baseline.get('here', {}).get(kind, {})
-        for item in sorted(set(there) | set(here[kind])):
-            r, remote_no = there.get(item, [0, None])
-            h = here[kind].get(item, 0)
-            rows.append(dict(key=f'{kind}:{item}', kind=kind, item_no=item, name=names.get(item), remote_no=remote_no,
-                             remote=r, here=h, baseline_remote=base_remote.get(item), baseline_here=base_here.get(item)))
+        for item_id in sorted(set(there) | set(here[kind])):
+            r, remote_no = there.get(item_id, [0, None])
+            number, name = names.get(item_id, (None, None))
+            rows.append(dict(key=f'{kind}:{item_id}', kind=kind, item_id=item_id, number=number or name, name=name, remote_no=remote_no,
+                             remote=r, here=here[kind].get(item_id, 0),
+                             baseline_remote=base_remote.get(str(item_id)), baseline_here=base_here.get(str(item_id))))
     return rows, unmatched, mapping
 
 
@@ -344,131 +349,151 @@ def _ticked(plan, ticked):
 
 def _flag(db, source, receipt):
     name = 'imported from ' + LABELS[source]
-    row = db.execute("SELECT id FROM flags WHERE kind='tag' AND lower(name)=lower(?)", (name,)).fetchone()
+    row = db.execute("SELECT id FROM main.flag WHERE kind='tag' AND lower(name)=lower(?) AND archived_at IS NULL", (name,)).fetchone()
     if row:
         return row[0]
     identifier = uuid4().hex
-    db.execute("INSERT INTO flags(id,name,kind,shown_on_grid) VALUES(?,?,'tag',0)", (identifier, name))
+    db.execute("INSERT INTO main.flag(id, name, kind, shown_on_grid, created_at) VALUES(?, ?, 'tag', 0, ?)", (identifier, name, store_now()))
     receipt['flag_created'] = identifier
     return identifier
 
 
-def apply_pull(db, plan_id, ticked=None):
-    """Create one copy per missing unit (flagged, condition and completeness unset) and the missing
-    wishes, in one transaction with one receipt. Never deletes or lowers anything here."""
-    from .. import plans
+def _placed_wish(db, wish_list, item_id, kind, count, via, actor):
+    """Raise the live wish of the item in the list by `count` (keeping its condition), or make one. Returns the receipt entry."""
+    from .. import add
+    old = db.execute('SELECT condition FROM main.wish WHERE wishlist_id=? AND item_id=? AND color_key=0 AND archived_at IS NULL', (wish_list, item_id)).fetchone()
+    scratch = {}
+    add._add_wish(db, dict(list_id=wish_list, item_id=item_id, kind=kind, color_id=None, quantity=count, decision='another',
+                           condition=old['condition'] if old else 'any'), scratch, via, actor)
+    return scratch['wish']
+
+
+def apply_pull(db, plan_id, ticked=None, *, via=None, actor=None):
+    """Place one copy per missing unit of a set (design 4.3's preselection; flagged, condition and completeness unset), loose stock of the
+    other kinds, and the missing wishes, in one transaction with one receipt. Never deletes or lowers anything here."""
+    from .. import add, plans
+    from ..admin import origin
+    from ..pipeline import queue_new_items
     plan = load_plan(db, plan_id, 'pull')
-    # The database marker decides; the plan file can say applied for a write that rolled back.
-    done = plans.applied(db, 'sync', plan_id, file_says_applied=bool(plan.get('applied')))
+    done = plans.applied(db, 'sync', plan_id)           # the database decides; the plan file can say applied for a write that rolled back
     if done:
         return dict(event_id=done['event_id'], already_applied=True, counts=done['counts'])
     rows = _ticked(plan, ticked)
-    source, stamp = plan['source'], now().isoformat()
+    if via is None:
+        via, actor = origin()
+    source, stamp = plan['source'], store_now()
     wish_list = plan['link'].get('wish_list') or 'default'
-    receipt = dict(plan=plan_id, source=source, items=[], wishes_added=[], wishes_changed=[], flag_created=None,
-                   baseline_before=None, guards={})
+    receipt = dict(plan=plan_id, source=source, copies=[], stock=[], wishes=[], pending=[], flag=None, flag_created=None, baseline_before=None,
+                   stock_flags=[], guards={}, jobs=[])
     from .. import wishlists
     with transaction(db):
-        # Checked again under the write lock: a second submit waits here and finds the first one's marker.
-        done = plans.applied(db, 'sync', plan_id, file_says_applied=bool(plan.get('applied')))
+        done = plans.applied(db, 'sync', plan_id)       # checked again under the write lock: a second submit waits here and finds the first one's marker
         if done:
             return dict(event_id=done['event_id'], already_applied=True, counts=done['counts'])
         wishlists.require(db, wish_list)
-        flag = _flag(db, source, receipt) if any(r['kind'] == 'owned' for r in rows) else None
-        names = _names(db, [r['item_no'] for r in rows])
-        known = {r[0] for r in db.execute("SELECT item_no FROM items WHERE item_type='S' AND item_no IN (SELECT value FROM json_each(?))",
-                                         (json.dumps([r['item_no'] for r in rows]),))}
-        wishes = {r['item_no']: dict(r) for r in db.execute(
-            "SELECT * FROM wishlist WHERE item_type='S' AND archived_at IS NULL AND list_id=? "
-            "AND item_no IN (SELECT value FROM json_each(?))", (wish_list, json.dumps([r['item_no'] for r in rows])))}
+        flag = receipt['flag'] = _flag(db, source, receipt) if any(r['kind'] == 'owned' for r in rows) else None
+        touched = set()
         for row in rows:
-            number = row['item_no']
-            if number not in known:
-                db.execute('INSERT INTO items(item_type,item_no,name,updated_at) VALUES(?,?,?,?)', ('S', number, names.get(number), stamp))
-                known.add(number)
-            if row['kind'] == 'owned':
-                created = [uuid4().hex for _ in range(row['count'])]
-                db.executemany("INSERT INTO copies(id,item_type,set_no,condition,completeness,completeness_source,updated_at) "
-                               "VALUES(?,'S',?,NULL,NULL,'derived',?)", [(c, number, stamp) for c in created])
-                db.executemany("INSERT INTO item_flags(entity_type,entity_id,flag_id) VALUES('copy',?,?)", [(c, flag) for c in created])
-                receipt['items'].append(dict(item_type='S', item_no=number, copies=created))
-            elif number in wishes:
-                old = wishes[number]
-                db.execute('UPDATE wishlist SET quantity=?,updated_at=? WHERE id=?', (old['quantity'] + row['count'], stamp, old['id']))
-                receipt['wishes_changed'].append(old)
+            item_id = row['item_id']
+            items.ensure(db, item_id)
+            kind = db.execute('SELECT kind FROM main.item WHERE id=?', (item_id,)).fetchone()[0]
+            touched.add(item_id)
+            if row['kind'] == 'wanted':
+                receipt['wishes'].append(_placed_wish(db, wish_list, item_id, kind, row['count'], via, actor))
+            elif kind == 'set':
+                for _ in range(row['count']):
+                    copy_id, waiting = add._add_copy(db, dict(item_id=item_id, condition=None, completeness=None, note=None), via, actor)
+                    receipt['copies'].append(copy_id)
+                    receipt['guards'][copy_id] = dict(db.execute('SELECT * FROM main.copy WHERE id=?', (copy_id,)).fetchone())
+                    db.execute('INSERT INTO main.copy_flag(copy_id, flag_id) VALUES(?, ?)', (copy_id, flag))
+                    if waiting:
+                        receipt['pending'].append(dict(waiting, copy_id=copy_id))
             else:
-                identifier = db.execute("INSERT INTO wishlist(item_type,item_no,quantity,condition,added_at,updated_at,list_id) "
-                                        "VALUES('S',?,?,'any',?,?,?)", (number, row['count'], stamp, stamp, wish_list)).lastrowid
-                receipt['wishes_added'].append(identifier)
-        copies = [c for item in receipt['items'] for c in item['copies']]
-        wish_ids = receipt['wishes_added'] + [w['id'] for w in receipt['wishes_changed']]
-        for table, ids in (('copies', copies), ('wishlist', wish_ids)):
-            if ids:
-                receipt['guards'][table] = [dict(r) for r in db.execute(
-                    f'SELECT * FROM {table} WHERE id IN (SELECT value FROM json_each(?)) ORDER BY id', (json.dumps(ids),))]
-        from ..pipeline import queue_new_items
-        receipt['jobs'] = queue_new_items(db, {('S', item['item_no']) for item in receipt['items']})
-        receipt['baseline_before'] = _setting(db, f'sync:{source}:baseline')
-        _put(db, f'sync:{source}:baseline', _baseline(db, plan, wish_list))
-        counts = dict(copies=len(copies), wishes_added=len(receipt['wishes_added']), wishes_changed=len(receipt['wishes_changed']))
+                change = stock.add_loose(db, item_id=item_id, quantity=row['count'], condition=None, via=via, actor=actor)
+                receipt['stock'].append(change)
+                if not db.execute('SELECT 1 FROM main.stock_flag WHERE stock_id=? AND flag_id=?', (change['id'], flag)).fetchone():
+                    db.execute('INSERT INTO main.stock_flag(stock_id, flag_id) VALUES(?, ?)', (change['id'], flag))
+                    receipt['stock_flags'].append([change['id'], flag])
+        receipt['jobs'] = queue_new_items(db, touched)
+        receipt['baseline_before'] = _setting(db, source, 'baseline')
+        _put(db, source, 'baseline', _baseline(db, plan, wish_list))
+        counts = dict(copies=len(receipt['copies']), stock=sum(c['quantity'] for c in receipt['stock']),
+                      wishes_added=sum(1 for w in receipt['wishes'] if w['created']),
+                      wishes_changed=sum(1 for w in receipt['wishes'] if not w['created']))
         receipt['counts'] = counts
-        _put(db, f'sync:{source}:last_pull', dict(at=stamp, plan=plan_id, counts=counts))
-        from ..audit_bundle import CAPTURE
-        bundled = CAPTURE.get() is not None
-        audit(db, 'bw_sync', 'receipt', None, receipt)
-        event = None if bundled else db.execute('SELECT last_insert_rowid()').fetchone()[0]
-        plans.mark(db, 'sync', plan_id, dict(event_id=event, counts=counts, at=stamp))
+        _put(db, source, 'last_pull', dict(at=stamp, plan=plan_id, counts=counts))
+        audit(db, 'sync:' + plan_id, 'receipt', None, receipt, via=via, actor=actor)
+        event = db.execute('SELECT last_insert_rowid()').fetchone()[0]
+        plans.mark(db, 'sync', plan_id, dict(event_id=event, counts=counts, at=stamp), source=source, created_at=plan['created_at'])
     plan['applied'] = dict(event_id=event, counts=counts, at=stamp)
     _store_plan(db, plan)
     return dict(event_id=event, already_applied=False, counts=counts)
 
 
 def _baseline(db, plan, wish_list):
-    """Remote counts as last seen and here counts now, per BrickLink set number."""
-    mapping = translate(db, plan['source'], list(set(plan['remote']['owned']) | set(plan['remote']['wanted'])))
+    """Remote counts as last seen and here counts now, per item id (as text: JSON keys)."""
+    mapping = translate(db, set(plan['remote']['owned']) | set(plan['remote']['wanted']))
     remote = {}
     for kind in ('owned', 'wanted'):
         remote[kind] = {}
         for number, quantity in plan['remote'][kind].items():
             if mapping.get(number):
-                remote[kind][mapping[number]] = remote[kind].get(mapping[number], 0) + quantity
-    return dict(at=now().isoformat(), remote=remote, here=_here(db, wish_list))
+                key = str(mapping[number])
+                remote[kind][key] = remote[kind].get(key, 0) + quantity
+    here = _here(db, wish_list)
+    return dict(at=now().isoformat(), remote=remote, here={k: {str(i): n for i, n in v.items()} for k, v in here.items()})
 
 
-def receipt_of(db, event_id):
-    row = db.execute("SELECT new_value FROM events WHERE id=? AND entity='bw_sync' AND field='receipt'", (event_id,)).fetchone()
-    if not row:
-        raise errors.NotFound('No sync receipt')
-    return json.loads(row[0])
-
-
-def undo(db, event_id, receipt=None):
-    """Reverse one pull exactly; refused when anything it wrote was changed since."""
-    receipt = receipt if receipt is not None else receipt_of(db, event_id)
-    with transaction(db):
-        if db.execute("SELECT 1 FROM events WHERE entity='bw_sync' AND field='undo' AND old_value=?", (json.dumps(event_id),)).fetchone():
-            return dict(undone_event_id=event_id, already_undone=True)
-        for table, saved in receipt['guards'].items():
-            current = [dict(r) for r in db.execute(f'SELECT * FROM {table} WHERE id IN (SELECT value FROM json_each(?)) ORDER BY id',
-                                                    (json.dumps([r['id'] for r in saved]),))]
-            if current != saved:
-                raise ValueError('Something from this sync has changed since · undo the later change first')
-        stamp = now().isoformat()
-        copies = [c for item in receipt['items'] for c in item['copies']]
-        db.execute('UPDATE copies SET archived_at=?,updated_at=? WHERE id IN (SELECT value FROM json_each(?))', (stamp, stamp, json.dumps(copies)))
-        db.execute("DELETE FROM item_flags WHERE entity_type='copy' AND entity_id IN (SELECT value FROM json_each(?))", (json.dumps(copies),))
-        db.execute('UPDATE wishlist SET archived_at=?,updated_at=? WHERE id IN (SELECT value FROM json_each(?))',
-                   (stamp, stamp, json.dumps(receipt['wishes_added'])))
-        for old in receipt['wishes_changed']:
-            db.execute('UPDATE wishlist SET quantity=?,updated_at=? WHERE id=?', (old['quantity'], old['updated_at'], old['id']))
-        if receipt['flag_created'] and not db.execute('SELECT 1 FROM item_flags WHERE flag_id=?', (receipt['flag_created'],)).fetchone():
-            db.execute('DELETE FROM flags WHERE id=?', (receipt['flag_created'],))
-        if receipt['baseline_before'] is None:
-            db.execute('DELETE FROM settings WHERE key=?', (f"sync:{receipt['source']}:baseline",))
+def _undo_pull(db, event, via, actor):
+    """Reverse one pull exactly: the wishes, the stock, the copies it made (each still untouched), its flag and the baseline. Refused whole when
+    anything it wrote was changed since."""
+    from .. import add
+    r = json.loads(event['new_value'])
+    stamp = store_now()
+    changed = 'Something from this sync has changed since · undo the later change first'
+    for entry in r['wishes']:
+        row = db.execute('SELECT * FROM main.wish WHERE id=?', (entry['id'],)).fetchone()
+        if row is None or dict(row) != entry['after']:
+            raise ValueError(changed)
+    for entry in reversed(r['wishes']):
+        row = db.execute('SELECT * FROM main.wish WHERE id=?', (entry['id'],)).fetchone()
+        if entry['created']:
+            db.execute('UPDATE main.wish SET archived_at=?, updated_at=? WHERE id=?', (stamp, stamp, entry['id']))
         else:
-            _put(db, f"sync:{receipt['source']}:baseline", receipt['baseline_before'])
-        audit(db, 'bw_sync', 'undo', event_id, None)
-    return dict(undone_event_id=event_id, already_undone=False)
+            b = entry['before']
+            db.execute('UPDATE main.wish SET quantity=?, updated_at=? WHERE id=?', (b['quantity'], b['updated_at'], entry['id']))
+        audit(db, 'wish:' + entry['id'], 'undo_sync', dict(row), dict(db.execute('SELECT * FROM main.wish WHERE id=?', (entry['id'],)).fetchone()), via=via, actor=actor)
+    flag = r.get('flag')
+    for change in reversed(r['stock']):
+        stock.undo_added(db, change, via=via, actor=actor)
+        if [change['id'], flag] in r.get('stock_flags', [[change['id'], flag]] if change['created'] else []):   # only a link this pull made
+            db.execute('DELETE FROM main.stock_flag WHERE stock_id=? AND flag_id=?', (change['id'], flag))
+    for copy_id in reversed(r['copies']):
+        row = db.execute('SELECT * FROM main.copy WHERE id=?', (copy_id,)).fetchone()
+        if row is not None and row['archived_at'] is not None:
+            continue
+        db.execute('DELETE FROM main.copy_flag WHERE copy_id=? AND flag_id=?', (copy_id, flag))
+        if not add._copy_untouched(db, copy_id, r['guards'][copy_id]):
+            raise ValueError(changed)
+        if row['inventory_pending']:
+            pending.cancel_pending_in(db, copy_id, via=via, actor=actor)
+        db.execute('UPDATE main.copy SET archived_at=?, updated_at=? WHERE id=?', (stamp, stamp, copy_id))
+        audit(db, 'copy:' + copy_id, 'archived_at', None, stamp, via=via, actor=actor)
+    if r.get('flag_created') and not any(db.execute(f'SELECT 1 FROM main.{t} WHERE flag_id=? LIMIT 1', (flag,)).fetchone() for t in ('copy_flag', 'stock_flag', 'wish_flag')):
+        db.execute('DELETE FROM main.flag WHERE id=?', (r['flag_created'],))
+    _put(db, r['source'], 'baseline', r['baseline_before'])
+    audit(db, 'sync:' + r['plan'], 'undo', None, {'undoes': event['id']}, via=via, actor=actor)
+    undo_id = db.execute('SELECT last_insert_rowid()').fetchone()[0]
+    db.execute('INSERT INTO main.event_undo(event_id, undo_event_id) VALUES(?, ?)', (event['id'], undo_id))
+    return {'event_id': undo_id}
+
+
+undoing.register('sync', 'receipt', _undo_pull)
+
+
+def undo(db, event_id):
+    """Reverse one pull exactly (`core.undo`); refused when anything it wrote was changed since."""
+    return undoing.undo_event(db, event_id)
 
 
 def plan_send(db, source, *, http=None):
@@ -476,13 +501,13 @@ def plan_send(db, source, *, http=None):
     _source(source)
     client, link_value, remote = _fetch(db, source, http)
     rows, unmatched, mapping = _compare(db, source, link_value, remote)
-    targets = reverse(db, source, [r['item_no'] for r in rows if r['remote_no'] is None])
+    targets = reverse(db, [r['item_id'] for r in rows if r['remote_no'] is None])
     out = []
     for row in rows:
         r, h = row['remote'], row['here']
         if r == h:
             continue
-        remote_no = row['remote_no'] or targets.get(row['item_no'])
+        remote_no = row['remote_no'] or targets.get(row['item_id'])
         if row['kind'] == 'wanted':
             send = 1 if h else 0
             if source == 'rebrickable':
@@ -496,7 +521,7 @@ def plan_send(db, source, *, http=None):
         out.append(dict(row, remote_no=remote_no, send=send, state='unmatched' if unmatched_here else state,
                         action='send' if state in ('add', 'change') and not unmatched_here else None,
                         tickable=not unmatched_here,
-                        reason='No set number on ' + LABELS[source] if unmatched_here else None))
+                        reason='No set number on ' + LABELS[source] + ' (the item has no number yet)' if unmatched_here else None))
     extra = {}
     if source == 'brickset':
         known = dict(remote.get('ids', {}))
@@ -557,12 +582,12 @@ def apply_send(db, plan_id, ticked=None, *, http=None):
     report = dict(at=stamp, plan=plan_id, counts=summary,
                   rows=[dict(key=k, result=v['result']) for k, v in results.items()])
     with transaction(db):
-        baseline = _setting(db, f'sync:{source}:baseline', {'remote': {'owned': {}, 'wanted': {}}, 'here': {'owned': {}, 'wanted': {}}})
+        baseline = _setting(db, source, 'baseline', {'remote': {'owned': {}, 'wanted': {}}, 'here': {'owned': {}, 'wanted': {}}})
         for row in sent:
-            baseline.setdefault('remote', {}).setdefault(row['kind'], {})[row['item_no']] = row['send']
-            baseline.setdefault('here', {}).setdefault(row['kind'], {})[row['item_no']] = row['here']
-        _put(db, f'sync:{source}:baseline', baseline)
-        _put(db, f'sync:{source}:last_send', report)
+            baseline.setdefault('remote', {}).setdefault(row['kind'], {})[str(row['item_id'])] = row['send']
+            baseline.setdefault('here', {}).setdefault(row['kind'], {})[str(row['item_id'])] = row['here']
+        _put(db, source, 'baseline', baseline)
+        _put(db, source, 'last_send', report)
         # A record, not an undoable receipt: remote changes cannot be taken back from here.
         audit(db, 'sync:' + source, 'send', None, dict(plan=plan_id, counts=summary))
     return dict(plan=plan_id, counts=summary, rows=[dict(key=k, **v) for k, v in results.items()],

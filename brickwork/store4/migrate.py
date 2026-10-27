@@ -48,7 +48,7 @@ STOCK_CONDITION = {'N': 'new', 'U': 'used', 'D': 'damaged'}
 COMPLETENESS = {'S': 'sealed', 'C': 'complete', 'I': 'incomplete'}
 STORAGE_TYPES = ('Box', 'Shelf', 'Drawer', 'Bin', 'Bag', 'Case', 'Cabinet', 'Room', 'Other')
 PLACE_KINDS = ('BrickLink store', 'Online shop', 'Shop', 'Market', 'Fair', 'Private', 'Other')
-# The 3.3 default of source_priority (importer/projection.py PRIORITY), to tell a default from a changed step in the report.
+# The 3.3 default of source_priority (`importer/projection.py` PRIORITY, deleted in M.8j), to tell a default from a changed step in the report.
 PRIORITY_33 = {'identity': {'*': ['bricklink:local', 'bricklink:api']}, 'inventory': {'*': ['bricklink:subsets']},
                'matching': {'*': ['rebrickable', 'part_resolutions', 'manual']}, 'pictures': {'P': ['rebrickable', 'bricklink'], '*': ['bricklink', 'rebrickable']},
                'metadata': {'S': ['brickset']}, 'market_price': {'*': ['bricklink']}}

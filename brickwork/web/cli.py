@@ -43,12 +43,6 @@ def build_parser():
     parser(commands, 'setup', 'setup')
     parser(commands, 'check', 'brickwork_check')
     parser(commands, 'worker', 'jobs_worker')
-    migration = parser(commands, 'migrate', 'migrate')
-    for option in ('app', 'decisions', 'catalogue', 'out', 'report'):
-        migration.add_argument('--' + option, required=True)
-    migration.add_argument('--extras', help='Optional legacy extras database (read-only)')
-    migration.add_argument('--catalogue-src', help='Directory containing BrickLink XML files (Gear fallback)')
-    migration.add_argument('--replace', action='store_true')
     # The 3.3 -> 4.0 migration is store4's; this is the name the design gives it (`brickwork migrate4`, data-model-design 8.2).
     migrate4 = parser(commands, 'migrate4', 'migrate4')
     migrate4.add_argument('--in', dest='src', required=True, help='the 3.3 collection file (read-only; stop the 3.3 app or give a copy)')
@@ -236,12 +230,6 @@ def main(argv=None):
         argv = ['--in', args['src'], '--catalogue', args['catalogue'], '--mappings', args['mappings'], '--out', args['out'], '--report', args['report']]
         argv += ['--pin', args['pin']] if args.get('pin') else []
         return admin_ops.migrate4(argv + (['--json'] if as_json else []))
-    if operation == 'migrate':
-        print('Migration error: this BrickTracker-era command is gone on the 4.0 line (M.8a). To move a 3.3 collection to 4.0 run '
-              '`brickwork migrate4 --in <3.3 file> --catalogue <catalogue.db> --mappings <dir> --out <4.0 file> --report <dir>` '
-              '(or `python -m brickwork.store4 migrate ...`, the same command).',
-              file=sys.stderr)
-        return 1
     if operation == 'import_bricktracker' and bool(args.get('source')) == bool(args.get('plan_id')):
         parser.error('give either an app.db or --apply PLAN')
     if args.get('limit') is not None and args['limit'] < 0:
@@ -265,7 +253,7 @@ def main(argv=None):
                     if not rows:
                         print('(none)')
                     for job in rows:
-                        key = ' '.join(str(job[field]) for field in ('item_type', 'item_no') if job.get(field))
+                        key = f"item {job['item_id']}" if job.get('item_id') else ''
                         state = job['state'].replace('_', ' ')
                         print(' · '.join(part for part in (f"Job {job.get('id', '?')}", key, state) if part))
                 else:

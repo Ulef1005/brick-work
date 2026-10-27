@@ -32,7 +32,10 @@ PORTED |= {'web.bw_orders', 'web.bw_order', 'web.bw_orders_action', 'web.bw_orde
 # M.8i: Tools & Admin (the hub, Catalogues & keys, Jobs, Bulk refresh, Statistics, Values, Database, Settings, Appearance, About, Identify
 # history, Instruction files, Unresolved items), API tokens and the database export.
 PORTED |= {'web.bw_tools', 'web.bw_admin', 'web.bw_admin_write', 'web.bw_tokens', 'web.bw_tokens_write', 'web.bw_export'}
-PIECE = 'M.8i to M.8j'
+# M.8j: Collection sync (sources, link, pull and send plans, their writes) and Import from BrickTracker (upload, plan, apply, Undo).
+PORTED |= {'web.bw_sync', 'web.bw_sync_link', 'web.bw_sync_plan', 'web.bw_sync_write', 'web.bw_import_legacy', 'web.bw_import_upload',
+           'web.bw_import_plan', 'web.bw_import_apply', 'web.bw_import_undo'}
+PIECE = 'M.11'
 
 
 def holding(what=None, piece=None):

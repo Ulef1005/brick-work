@@ -2,7 +2,7 @@
 
     python scripts/build_site.py OUT_DIR
 
-Pages: `/` the landing page, `/use-cases/` and `/workflows/` (Markdown in scripts/site), `/docs/` the user docs, `/demo/` a placeholder until the demo is rebuilt on 4.0 (scripts/build_demo.py, M.8j), `/api/` the OpenAPI contract as one local reference page, `/mcp/` the MCP
+Pages: `/` the landing page, `/use-cases/` and `/workflows/` (Markdown in scripts/site), `/docs/` the user docs, `/demo/` the static demo (scripts/build_demo.py), `/api/` the OpenAPI contract as one local reference page, `/mcp/` the MCP
 guide with the tool and resource tables generated from the server itself. The user docs are built by
 Zensical from docs/ and mkdocs.yml (App Standard, Maintenance § Rules, User docs); the other pages are
 Markdown rendered with Python-Markdown, styled with the app's own design tokens and fonts. Links to files
@@ -27,10 +27,6 @@ sys.path.insert(0, str(ROOT))
 SITE = ROOT / 'scripts/site'
 PAGES = (('Home', ''), ('Use cases', 'use-cases/'), ('Workflows', 'workflows/'), ('Demo', 'demo/'), ('Docs', 'docs/'),
          ('API reference', 'api/'), ('MCP', 'mcp/'))
-
-
-DEMO_PLACEHOLDER = ('<h1>Demo</h1><p>The interactive demo is being rebuilt on the new data model (Brick Work 4.0). '
-                    'It comes back with the 4.0 release. Until then, the <a href="../docs/">documentation</a> shows the screens.</p>')
 
 
 def repository():
@@ -202,9 +198,16 @@ def build(out):
     body = api_reference()
     (out / 'api/index.html').write_text(page('API reference', body, 1, current='API reference').replace(
         '<main class="doc">', '<main class="doc api">'))
-    # The demo builds a 3.3 store; it is rebuilt on 4.0 in M.8j (issue #110). Until then /demo/ is a placeholder page.
-    (out / 'demo').mkdir()
-    (out / 'demo/index.html').write_text(page('Demo', DEMO_PLACEHOLDER, 1, current='Demo', main='marketing'))
+    from scripts.build_demo import build_demo
+    demo_base = f'/{repository().split("/")[1]}/demo/'
+    build_demo(out / 'demo', demo_base)
+    # The app's absolute font paths need the same Pages prefix as its HTML assets.
+    for css in (out / 'demo').rglob('*.css'):
+        css.write_text(css.read_text().replace('/static/', demo_base + 'static/'))
+    # Static hosts decode URL paths before looking up files (including non-ASCII storage names).
+    for directory in sorted((out / 'demo').rglob('*'), key=lambda p: len(p.parts), reverse=True):
+        if directory.is_dir() and unquote(directory.name) != directory.name:
+            directory.rename(directory.with_name(unquote(directory.name)))
     (out / '.nojekyll').write_text('')
     return out
 

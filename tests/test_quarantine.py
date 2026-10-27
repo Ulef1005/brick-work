@@ -143,6 +143,8 @@ BASELINE = frozenset((
     # ... and out of test_ui_p6.py and test_bw_small_68.py the BrickTracker import page header and the Collection sync pages (M.8j).
     'tests/test_ui_p6_import.py',
     'tests/test_bw_small_68_sync.py',
+    # M.8j split this out of a file it ported (the API test, M.11): out of test_bw_sync.py.
+    'tests/test_bw_sync_api.py',
 ))
 
 

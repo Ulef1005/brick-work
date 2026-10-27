@@ -17,6 +17,8 @@ One task per page, for someone who already knows the app.
 - [Know where things are](storage.md)
 - [Pictures, prices and where they come from](pictures-and-prices.md)
 - [Resolve unresolved items and merge items](merge-items.md)
+- [Sync with Rebrickable and Brickset](sync-collection.md)
+- [Import from BrickTracker](import-from-bricktracker.md)
 - [Undo a change](undo-a-change.md)
 
 ## Running Brick Work

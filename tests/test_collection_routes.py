@@ -146,10 +146,12 @@ def test_the_shell_counts_what_is_owned_in_the_4_0_tables(world, app4):
         assert ui.navigation_counts() == {'Sets': 2, 'Minifigures': 1, 'Parts': 12, 'Instructions': 1, 'Gear': 1, 'Wishlist': 2}
 
 
-def test_the_unported_screens_still_say_so_and_the_ported_ones_do_not(world, client):
-    for held in ('/manage/sync', '/manage/import-legacy'):
-        assert client.get(held).status_code == 503, held
-    for served in ('/', '/collection/sets', f'/collection/item/{world.keep}', '/collection/jump?q=a', '/workbench/matcher', '/workbench/storage', '/planning/wishlist',
+def test_a_screen_that_is_not_ported_says_so_and_every_screen_is_ported_since_m8j(world, client, monkeypatch):
+    from brickwork.web import ported
+    with monkeypatch.context() as patch:
+        patch.setattr(ported, 'PORTED', ported.PORTED - {'web.bw_sync'})                    # the hold still works for a screen a later piece adds
+        assert client.get('/manage/sync').status_code == 503
+    for served in ('/manage/sync', '/manage/import-legacy', '/', '/collection/sets', f'/collection/item/{world.keep}', '/collection/jump?q=a', '/workbench/matcher', '/workbench/storage', '/planning/wishlist',
                    '/planning/prices', '/planning/complete-sets', '/workbench/orders', '/workbench/what-is-this', '/manage/tools', '/manage/unresolved', '/manage/catalogues', '/manage/settings',
                    '/manage/tokens', '/manage/database'):
         assert client.get(served).status_code != 503, served

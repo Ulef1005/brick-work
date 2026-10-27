@@ -76,7 +76,7 @@ Each is walked through, screen by screen, on the [workflows page](https://ulef10
 - **Receive a parts order.** Import a BrickLink order from your account, a confirmation email or the order XML (a line already imported is never added twice), count the parts as they arrive and allocate them to sets.
 - **Decide what to buy.** Wishlist, Prices and Complete sets rank repairs by value gained per euro.
 - **Know where everything is.** Every set, copy, part and box has a storage location.
-- **Bring your old collection over.** `brickwork migrate` imports an older tracker's database read-only, with row-count and checksum proof. The old database is never changed.
+- **Bring your old collection over.** Import from BrickTracker (Tools & Admin, or `brickwork import-bricktracker`) reads its database read-only, places every set, part and figure on the catalogue's Rebrickable numbers and can be undone as one step; a 3.3 collection of Brick Work moves to 4.0 with `brickwork migrate4`.
 - **Ask an assistant about your collection.** Connect over MCP with a read-only token; write tools stay off unless you enable them.
 - **Script your collection.** The versioned REST API with an OpenAPI contract; creates need an idempotency key, so a retried request cannot add twice.
 
@@ -198,15 +198,14 @@ Read tools are available by default. `--allow-write` enables write tools only wh
 
 ## Import an old collection
 
-**Tools & Admin → Import from BrickTracker** and `brickwork migrate` share one read-only importer. Supply the old `app.db`, identity decisions JSON, a BrickLink catalogue database and a new output path; `--extras` optionally supplies the old extras database. No extras database is needed for normal operation.
+**Tools & Admin → Import from BrickTracker** and `brickwork import-bricktracker` share one read-only importer. BrickTracker stores Rebrickable numbers, which are the catalogue's own, so nothing is translated: give the old `app.db` (any BrickTracker version), read the preview, tick what to add, and the import writes copies, loose stock, lots and wishes as Add does, with BrickTracker's missing / damaged / checked marks on the part lines. What the catalogue does not know is listed and left out. One import is one event; **Undo** takes it back.
 
 ```sh
-brickwork migrate --app old/app.db --extras old/extras.db \
-  --decisions decisions.json --catalogue bricklink-catalog.db \
-  --out data/brickwork.db --report import-proof
+brickwork import-bricktracker old/app.db --plan-only     # the plan and its summary
+brickwork import-bricktracker --apply PLAN_ID            # apply it once
 ```
 
-Omit `--extras` if unavailable. Use `--catalogue-src` for the XML folder when Gear decisions require it. Existing outputs are refused unless the CLI's explicit `--replace` is used; the browser always refuses replacement. Review the row-count/checksum proof, then point `BW_DB_PATH` at the imported file and restart. The importer preserves the established historical mapping; review unresolved identities in the app.
+A Brick Work 3.3 collection is moved to 4.0 with `brickwork migrate4` (design § 8), not with this import.
 
 ## Development checks
 

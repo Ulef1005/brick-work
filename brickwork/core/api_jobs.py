@@ -2,7 +2,7 @@
 import json
 from . import admin, api_reads as read, errors, pictures
 from .pipeline import STEPS, Pipeline
-from .importer.projection import PRIORITY
+from .pipeline import DEFAULT_PRIORITY as PRIORITY
 
 
 def existing(db, identifier):

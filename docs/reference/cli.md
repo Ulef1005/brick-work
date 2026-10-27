@@ -8,7 +8,7 @@
 docker compose exec brickwork brickwork <command> ...
 ```
 
-> **On `main` (the 4.0 development line):** `setup` creates a 4.0 collection and says where `catalogue.db` goes, `mcp` is refused until API v2, `migrate` below is gone (a 3.3 collection moves with `migrate4`), and `sync` and `import-bricktracker` come back with the Collection sync work. The catalogue itself is built with `python -m brickwork.store4` (see [catalogue](#catalogue)). This page otherwise describes release 0.5.
+> **On `main` (the 4.0 development line):** `setup` creates a 4.0 collection and says where `catalogue.db` goes, `mcp` is refused until API v2, `migrate` (the BrickTracker-era importer) is gone (a 3.3 collection moves with `migrate4`), and `sync` and `import-bricktracker` run on the 4.0 store. The catalogue itself is built with `python -m brickwork.store4` (see [catalogue](#catalogue)). This page otherwise describes release 0.5.
 
 Every command takes `--json` to print its result as JSON instead of plain lines, and `-h` for its usage. A command that fails prints the reason on standard error and exits with status 1. With `BW_READ_ONLY` on, the `token` and `wishlist` commands that change something are refused.
 
@@ -136,9 +136,9 @@ The exit status is 0 when the proof passed and the file was published, 10 when t
 
 ## import-bricktracker
 
-*Since 0.5.0.*
+*Since 0.5.0; on the 4.0 store since 4.0.*
 
-Imports a BrickTracker collection into the current database in two steps: make a plan, then apply it.
+Imports a BrickTracker collection into the current database in two steps: make a plan, then apply it. BrickTracker stores Rebrickable numbers, so every set, part, figure and colour the catalogue knows is placed exactly; the rest is listed in the plan as not placed. One import is one event that **Undo** takes back ([Import from BrickTracker](../how-to/import-from-bricktracker.md)).
 
 ```text
 brickwork import-bricktracker APP_DB [--plan-only] [--decisions DECISIONS_JSON]
@@ -147,10 +147,10 @@ brickwork import-bricktracker --apply PLAN_ID [--decisions DECISIONS_JSON]
 
 | Argument | Meaning |
 |---|---|
-| `APP_DB` | The BrickTracker `app.db`, opened read-only. Give either this or `--apply`. |
-| `--plan-only` | Make the plan and stop. |
+| `APP_DB` | The BrickTracker `app.db` of any version, opened read-only. Give either this or `--apply`. |
+| `--plan-only` | Make the plan and stop; it prints the plan id, the summary and what is not placed. |
 | `--apply PLAN_ID` | Apply a stored plan. A plan applies once. |
-| `--decisions` | A JSON file mapping row keys to `add` or `skip`. |
+| `--decisions` | A JSON file mapping row keys (`copy:ID`, `stock:ID`, `lot:ID`, `wish:N:SET`) to `add` or `skip`. |
 
 ## catalogue
 
@@ -231,9 +231,9 @@ brickwork settings set KEY VALUE
 
 ## sync
 
-*Since 0.5.0.*
+*Since 0.5.0; on the 4.0 store since 4.0.*
 
-This command changes with the 4.0 data model.
+Collection sync with Rebrickable and Brickset ([Sync with Rebrickable and Brickset](../how-to/sync-collection.md)). Row keys of a plan name an item: `owned:ITEM_ID` or `wanted:ITEM_ID`.
 
 ```text
 brickwork sync {rebrickable,brickset} {status,lists,link,pull,send,connect,paste,remove,test} [options]

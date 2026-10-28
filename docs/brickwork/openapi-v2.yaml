@@ -889,6 +889,12 @@ paths:
             schema:
               $ref: '#/components/schemas/CopyCreate'
       responses:
+        '200':
+          description: Skipped. The client asked for decision=skip and the item is already owned or wished; nothing was written, event_id is null.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WrittenSkipped'
         '201':
           description: Written. One transaction, one events row.
           content:
@@ -2468,6 +2474,12 @@ paths:
             schema:
               $ref: '#/components/schemas/WishCreate'
       responses:
+        '200':
+          description: Skipped. The client asked for decision=skip and the item is already owned or wished; nothing was written, event_id is null.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WrittenSkipped'
         '201':
           description: Written. One transaction, one events row.
           content:
@@ -9474,6 +9486,36 @@ components:
       required:
       - ids
       additionalProperties: false
+    WrittenSkipped:
+      type: object
+      required:
+      - data
+      - event_id
+      - idempotent_replay
+      properties:
+        data:
+          $ref: '#/components/schemas/Skipped'
+        event_id:
+          type: 'null'
+        undo_url:
+          type: 'null'
+        idempotent_replay:
+          type: boolean
+      additionalProperties: false
+    Skipped:
+      type: object
+      required:
+      - skipped
+      - existing
+      properties:
+        skipped:
+          type: boolean
+          enum:
+          - true
+        existing:
+          $ref: '#/components/schemas/Item'
+          description: The item that is already owned or wished.
+      additionalProperties: false
     WrittenCreated:
       type: object
       required:
@@ -11414,7 +11456,7 @@ components:
           description: BrickLink colour id to scope the link to; null for every colour.
         preferred:
           type: boolean
-          description: Make this the preferred link for its colour scope; the previous one stops being preferred.
+          description: 'Make this the preferred link for its colour scope; the previous one stops being preferred. false means no change to the preference: a preference is replaced by marking another link preferred, never cleared to none (there is always a resolver order).'
     ItemProviderStatus:
       type: object
       required:

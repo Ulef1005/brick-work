@@ -67,10 +67,20 @@ def column_edits(body, renames=None):
 
 # ---------- adding ----------
 
+class Skipped(Exception):
+    """`decision=skip` on something already owned or wished: the client asked for the skip, so it is an answer (200), not an error."""
+
+    def __init__(self, item_id):
+        self.item_id = item_id
+
+
+def skipped(db, error):
+    return Done({'skipped': True, 'existing': bodies(db, items=[error.item_id]).item(error.item_id)}, status=200)
+
+
 def add_rows(db, item_id, color_id, where, *, quantity=1, condition=None, note=None, list_id=None, max_price=None, completeness=None, decision=None,
              storage_id=None, lot_id=None):
-    """Add one reviewed row through the Add flow and return its receipt. `decision` is the API's: `skip` on something already owned or wished is
-    `409` (nothing is written), `another` adds anyway; none adds only what is new. The failures of the review are `422`, a duplicate `409`."""
+    """Add one reviewed row through the Add flow and return its receipt. `decision` is the API's: `skip` on something already owned or wished raises `Skipped` (nothing is written; the view answers `200`), `another` adds anyway; none adds only what is new. The failures of the review are `422`, a duplicate `409`."""
     row = {'item_id': item_id, 'color_id': color_id, 'quantity': quantity, 'condition': condition or ('any' if where == 'wishlist' else 'used'),
            'note': note, 'max_price': max_price}
     proposal = add.resolve(db, [row], where, list_id=list_id or 'default')
@@ -79,7 +89,7 @@ def add_rows(db, item_id, color_id, where, *, quantity=1, condition=None, note=N
     shown = proposal['items'][0]
     if decision == 'skip':
         if shown['owned'] or shown['wished']:
-            raise errors.Conflict('Already owned or wished · skipped, nothing was added')
+            raise Skipped(item_id)
         decision = 'another'
     edit = {k: v for k, v in {'quantity': quantity, 'completeness': completeness, 'decision': decision or '', 'storage_id': storage_id, 'lot_id': lot_id,
                               'note': note, 'list_id': list_id}.items() if v is not None}
@@ -107,8 +117,11 @@ def post_copies(db, body):
     item_id = item_of(db, body['item'])
     if (add.lookup(db, item_id) or {}).get('kind') != 'set':
         raise errors.ValidationFailed('A copy is a copy of a set · other items are loose stock')
-    made = add_rows(db, item_id, None, 'owned', quantity=body.get('quantity', 1), condition=body.get('condition'), completeness=body.get('completeness'),
-                    decision=body.get('decision'))
+    try:
+        made = add_rows(db, item_id, None, 'owned', quantity=body.get('quantity', 1), condition=body.get('condition'), completeness=body.get('completeness'),
+                        decision=body.get('decision'))
+    except Skipped as error:
+        return skipped(db, error)
     ids = made['copies']
     edits = column_edits({k: v for k, v in body.items() if k in ('storage_id', 'purchase_location_id', 'purchase_date', 'purchase_price', 'purchase_currency')})
     if edits:
@@ -131,8 +144,11 @@ def post_stock(db, body):
 @write
 def post_wishes(db, body):
     item_id, color_id = identified(db, body['item'], body.get('color'))
-    made = add_rows(db, item_id, color_id, 'wishlist', quantity=body.get('quantity', 1), condition=body.get('condition'), note=body.get('note'),
-                    list_id=body.get('list_id'), max_price=body.get('max_price'), decision=body.get('decision'))
+    try:
+        made = add_rows(db, item_id, color_id, 'wishlist', quantity=body.get('quantity', 1), condition=body.get('condition'), note=body.get('note'),
+                        list_id=body.get('list_id'), max_price=body.get('max_price'), decision=body.get('decision'))
+    except Skipped as error:
+        return skipped(db, error)
     wish_id = made['wish']['id']
     if body.get('max_price_currency') is not None:
         collection.save(db, 'wish', [wish_id], {'max_price_currency': body['max_price_currency']})            # a currency without a price is the core's refusal

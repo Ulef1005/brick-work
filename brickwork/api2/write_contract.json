@@ -88,7 +88,7 @@
     },
     {
       "endpoint": "post_copies",
-      "event_nullable": false,
+      "event_nullable": true,
       "if_match": false,
       "method": "POST",
       "multipart": false,
@@ -100,9 +100,10 @@
         "$ref": "#/components/schemas/CopyCreate"
       },
       "statuses": [
+        200,
         201
       ],
-      "undo_nullable": false
+      "undo_nullable": true
     },
     {
       "endpoint": "patch_copies_by_id",
@@ -546,7 +547,7 @@
     },
     {
       "endpoint": "post_wishes",
-      "event_nullable": false,
+      "event_nullable": true,
       "if_match": false,
       "method": "POST",
       "multipart": false,
@@ -558,9 +559,10 @@
         "$ref": "#/components/schemas/WishCreate"
       },
       "statuses": [
+        200,
         201
       ],
-      "undo_nullable": false
+      "undo_nullable": true
     },
     {
       "endpoint": "patch_wishes_by_id",
@@ -1673,7 +1675,7 @@
           "type": "string"
         },
         "preferred": {
-          "description": "Make this the preferred link for its colour scope; the previous one stops being preferred.",
+          "description": "Make this the preferred link for its colour scope; the previous one stops being preferred. false means no change to the preference: a preference is replaced by marking another link preferred, never cleared to none (there is always a resolver order).",
           "type": "boolean"
         },
         "provider": {

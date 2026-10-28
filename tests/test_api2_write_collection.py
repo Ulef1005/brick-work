@@ -134,11 +134,19 @@ def test_something_other_than_a_set_is_not_a_copy_and_a_set_is_not_stock(v2, wor
 
 def test_a_decision_skip_adds_nothing_when_the_set_is_owned_and_adds_when_it_is_new(v2, coll, world):
     skipped = write(v2, '/copies', body={'item': {'id': world.keep}, 'decision': 'skip'})
-    assert skipped.status_code == 409 and len(call(v2, '/copies').json['data']) == 3
-    added = write(v2, '/copies', body={'item': {'kind': 'set', 'key': '2070-1'}, 'decision': 'skip'})
-    assert added.status_code == 409                                                  # owned (copy C)
-    fresh = write(v2, '/wishes', body={'item': {'id': coll.local('gear', 'Unowned gear', born_key='g-1')}, 'decision': 'skip'})
+    assert skipped.status_code == 200 and len(call(v2, '/copies').json['data']) == 3                  # the client asked for the skip: an answer, not an error
+    validate(skipped, 'post_copies', '200')
+    assert skipped.json['data']['skipped'] is True and skipped.json['data']['existing']['id'] == world.keep and skipped.json['event_id'] is None
+    owned = write(v2, '/copies', body={'item': {'kind': 'set', 'key': '2070-1'}, 'decision': 'skip'})
+    assert owned.status_code == 200 and owned.json['data']['existing']['id'] == world.duplo               # owned (copy C)
+    assert write(v2, '/copies', body={'item': {'id': world.keep}}).status_code == 409                    # no decision: still a conflict
+    gear = coll.local('gear', 'Unowned gear', born_key='g-1')
+    fresh = write(v2, '/wishes', body={'item': {'id': gear}, 'decision': 'skip'})
     validate(fresh, 'post_wishes', '201')                                            # neither owned nor wished: skip adds it
+    wished = write(v2, '/wishes', body={'item': {'id': gear}, 'decision': 'skip'})
+    validate(wished, 'post_wishes', '200')
+    assert wished.json['data'] == {'skipped': True, 'existing': call(v2, f'/items/{gear}').json['data']} and wished.json['event_id'] is None
+    assert write(v2, '/wishes', body={'item': {'id': gear}}).status_code == 409
 
 
 def test_loose_stock_is_created_in_the_providers_colour_and_identical_lines_merge(v2, world):

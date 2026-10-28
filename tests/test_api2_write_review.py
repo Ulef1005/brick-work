@@ -102,3 +102,32 @@ def test_an_unexpected_exception_keeps_its_traceback_in_the_log(v2, world, caplo
         failed = write(v2, f'/copies/{world.copy_c}/check', body={'action': 'start'})
     assert failed.status_code == 500
     assert [r for r in caplog.records if r.exc_info and 'synthetic bug' in str(r.exc_info[1])]
+
+
+# ---------- follow-ups: preferred false, fingerprint version ----------
+
+def test_preferred_false_leaves_the_preference_alone_and_never_clears_it(v2, world):
+    path = f'/items/{world.brick}/links'
+    made = write(v2, path, 'put', {'provider': 'bricklink', 'type': 'P', 'no': '3001z', 'preferred': True})
+    assert made.json['data']['preferred'] is True
+    again = write(v2, path, 'put', {'provider': 'bricklink', 'type': 'P', 'no': '3001z', 'preferred': False})
+    assert again.status_code == 200 and again.json['data']['preferred'] is True and again.json['event_id'] is None
+    other = write(v2, path, 'put', {'provider': 'bricklink', 'type': 'P', 'no': '3001y', 'preferred': False})
+    assert other.json['data']['preferred'] is False
+    assert [l['no'] for l in call(v2, path).json['data'] if l['preferred']] == ['3001z']
+    swapped = write(v2, path, 'put', {'provider': 'bricklink', 'type': 'P', 'no': '3001y', 'preferred': True})
+    assert [l['no'] for l in call(v2, path).json['data'] if l['preferred']] == ['3001y'] and swapped.status_code == 200
+
+
+def test_a_receipt_keeps_the_version_of_its_fingerprint_and_replays_under_it(v2, world, pair, monkeypatch):
+    import json
+    from brickwork.api2 import writes
+    first = write(v2, '/wishlists', body={'name': 'Versioned'}, key='fp-1')
+    receipt = events(pair, "entity_kind='bw_api' AND field='op:fp-1'")[0]
+    assert json.loads(receipt['new_value'])['v'] == writes.FINGERPRINT == 1
+    # a later version hashes differently; the receipt of version 1 still replays and still conflicts on another body
+    monkeypatch.setattr(writes, 'DIGESTS', {**writes.DIGESTS, 2: lambda body, content: 'v2-' + writes.digest_v1(body, content)})
+    monkeypatch.setattr(writes, 'FINGERPRINT', 2)
+    again = write(v2, '/wishlists', body={'name': 'Versioned'}, key='fp-1')
+    assert again.status_code == first.status_code and again.json['idempotent_replay'] is True
+    assert write(v2, '/wishlists', body={'name': 'Other'}, key='fp-1').status_code == 409

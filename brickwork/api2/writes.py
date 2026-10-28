@@ -38,6 +38,7 @@ SPEC = {o['endpoint']: o for o in CONTRACT['operations']}
 SCHEMAS = CONTRACT['schemas']
 KEY = re.compile(r'[A-Za-z0-9-]{1,80}')
 UPLOAD_LIMITS = {'photos': 15, 'instruction': 20}                 # megabytes, by the operation's name
+FINGERPRINT = 1                                                     # the version of the idempotency fingerprint; a change to what it hashes bumps it
 PREFIX = 'api2:'                                                    # the operation key of every v2 write
 
 
@@ -233,20 +234,28 @@ def now_text(delta=timedelta()):
     return (datetime.now(timezone.utc) + delta).strftime('%Y-%m-%dT%H:%M:%S.000Z')
 
 
-def digest_of(body, content):
-    packed = json.dumps(dict(method=request.method, path=request.path, query=sorted(request.args.items(multi=True)), body=body,
+def digest_v1(body, content):
+    packed = json.dumps(dict(v=1, method=request.method, path=request.path, query=sorted(request.args.items(multi=True)), body=body,
                              file=hashlib.sha256(content).hexdigest() if content is not None else None),
                         sort_keys=True, separators=(',', ':'), default=str)
     return hashlib.sha256(packed.encode()).hexdigest()
 
 
-def replay_of(db, key, digest, actor):
-    """The stored answer to this key within 30 days (by this token), or None; another request under the key is `409`."""
+DIGESTS = {1: digest_v1}                                           # every version ever stored in a receipt: an old receipt keeps replaying under its own
+
+
+def digest_of(body, content, version=FINGERPRINT):
+    return DIGESTS[version](body, content)
+
+
+def replay_of(db, key, body, content, actor):
+    """The stored answer to this key within 30 days (by this token), or None; another request under the key is `409`. The request is
+    fingerprinted by the version its receipt was stored under (`v`, 1 when the receipt has none)."""
     since = now_text(timedelta(days=-30))
     for row in db.execute("SELECT actor, at, new_value FROM main.event WHERE entity_kind='bw_api' AND entity_id=? AND field=? ORDER BY id DESC", (key, 'op:' + key)):
         if row['actor'] == actor and row['at'] >= since:
             saved = json.loads(row['new_value'])
-            if saved['digest'] != digest:
+            if saved['digest'] != digest_of(body, content, saved.get('v', 1)):
                 raise errors.IdempotencyConflict()
             return saved
     return None
@@ -300,7 +309,7 @@ def execute(db, spec, function, values, body, content):
     preview = body.get('dry_run') is True
     with transaction(db):
         if key:
-            saved = replay_of(db, key, digest, actor)
+            saved = replay_of(db, key, body, content, actor)
             if saved:
                 return dict(saved['response'], idempotent_replay=True), saved['status'], saved.get('headers', {}), True
         before = db.execute('SELECT coalesce(max(id), 0) FROM main.event').fetchone()[0]
@@ -317,7 +326,7 @@ def execute(db, spec, function, values, body, content):
                 db.execute('RELEASE api_preview')
                 return result, status, done.headers, False
             if key:
-                admin.audit(db, 'bw_api:' + key, 'op:' + key, new=dict(digest=digest, status=status, response=result, headers=done.headers,
+                admin.audit(db, 'bw_api:' + key, 'op:' + key, new=dict(v=FINGERPRINT, digest=digest, status=status, response=result, headers=done.headers,
                                                                        method=request.method, path=request.path))
     return result, status, done.headers, False
 

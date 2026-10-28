@@ -188,13 +188,10 @@ def test_embedded_worker_flag_stops_every_path(app4, client, keyed, coll, world,
     with app4.test_request_context():
         assert views.bw_start_worker() is False
     views.bw_resume_imports(app4)
-    from brickwork.api import operations
-    started = []
-    monkeypatch.setattr(operations, 'spawn', started.append)
+    from brickwork.api2 import writes
     with app4.test_request_context():
-        assert operations.start_worker() is False
+        writes.wake_worker()                                   # an API write wakes the same drainer: also nothing while the flag says 0
     assert not spawned
-    assert not started
     monkeypatch.delenv('BW_EMBEDDED_WORKER')
     views.bw_resume_imports(app4)
     assert len(spawned) == 1

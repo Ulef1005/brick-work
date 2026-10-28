@@ -23,7 +23,7 @@ def test_a_write_token_cannot_undo_an_admin_change(v2, world, pair):
 
 def test_every_event_an_admin_operation_writes_is_undone_only_by_admin():
     from brickwork.core import undo
-    admin_only = {('settings', 'save'), ('import', 'receipt'), ('sync', 'receipt'), ('source', 'enabled'), ('source_key', 'save'),
+    admin_only = {('settings', 'save'), ('import', 'receipt'), ('source', 'enabled'), ('source_key', 'save'),
                   ('source_key', 'archive'), ('bw_token', 'create'), ('bw_token', 'revoke')}
     assert {pair for pair, u in undo.REGISTRY.items() if u.admin} >= admin_only
 

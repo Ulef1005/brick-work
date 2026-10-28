@@ -18,7 +18,7 @@ NAME = 'brickwork_api2'
 PREFIX = '/api/v2'
 HEALTH = NAME + '.get_health'
 OPEN = (HEALTH, NAME + '.get_openapi_yaml')
-DONE = ('M.11a', 'M.11b', 'M.11c')                                    # the pieces whose operations are implemented; a piece adds itself here
+DONE = ('M.11a', 'M.11b', 'M.11c', 'M.11d')                                    # the pieces whose operations are implemented; a piece adds itself here
 
 # (rule, method, view) collected by `route`, built into a blueprint by `blueprint()`. A view is named by its operationId.
 ROUTES = []
@@ -136,6 +136,7 @@ def register(app):
     from . import items  # noqa: F401 — the routes of M.11a
     from . import catalogue, copies, history, instructions, item_views, loose, places, prices, ranking, wishes  # noqa: F401 — the routes of M.11b
     from . import write_collection, write_identity, write_money, write_where  # noqa: F401 — the routes of M.11c
+    from . import identifications, jobs, orders, sources, sync, system  # noqa: F401 — the routes of M.11d
     app.register_blueprint(blueprint())
     previous = {404: _previous(app, 404), 405: _previous(app, 405)}
 
@@ -156,8 +157,10 @@ def get_health():
 
 @route('/version')
 def get_version():
-    from ..api.serializers import public
-    return jsonify(data=public(meta.version(database(), transport.read_only(), meta.API_V2), 'Version'))
+    from ..core.secrets import secret_values
+    from .read import clean
+    shown = meta.version(database(), transport.read_only(), meta.API_V2)
+    return jsonify(data=clean({key: shown[key] for key in ('api', 'app', 'schema', 'read_only', 'features') if key in shown}, secret_values()))
 
 
 @route('/me')

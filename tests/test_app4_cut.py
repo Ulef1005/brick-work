@@ -120,14 +120,10 @@ def test_audit_origin_actor_and_the_operation_key(db):
         admin.audit(db, 'copy:1', 'f', via='web')
 
 
-def test_audit_redacts_secrets_and_a_captured_bundle_passes_through(db, monkeypatch):
+def test_audit_redacts_secrets(db, monkeypatch):
     monkeypatch.setenv('BW_SOME_SECRET', 'sensitive-value-123')
     admin.audit(db, 'copy:1', 'f', new='x sensitive-value-123 y')
     assert 'sensitive-value-123' not in events(db)[0]['new_value'] and '[set]' in events(db)[0]['new_value']
-    from brickwork.core.audit_bundle import capture
-    with capture() as captured:
-        admin.audit(db, 'copy:1', 'g', new=1)
-    assert [c['field'] for c in captured] == ['g'] and len(events(db)) == 1
 
 
 def test_events_stay_append_only_through_the_adapter(db):

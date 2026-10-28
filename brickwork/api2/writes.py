@@ -31,13 +31,16 @@ from ..store4 import copies as copies_store, errors as store_errors, lookup, pen
 from . import database
 from .items import for_write
 from .read import clean, etag as etag_of
-from ..core.secrets import secret_values
+from ..core.secrets import fingerprint, secret_values
 
 CONTRACT = json.loads(Path(__file__).with_name('write_contract.json').read_text())
 SPEC = {o['endpoint']: o for o in CONTRACT['operations']}
 SCHEMAS = CONTRACT['schemas']
 KEY = re.compile(r'[A-Za-z0-9-]{1,80}')
-UPLOAD_LIMITS = {'photos': 15, 'instruction': 20}                 # megabytes, by the operation's name
+UPLOAD_LIMITS = {'photos': 15, 'instruction': 20, 'identification': 8}   # megabytes, by the operation's name
+CLAIM_SECONDS = 900                                                 # the claim of a network call that crashed expires after this
+SHOWN_ONCE = {'post_tokens': ('data', 'secret')}                  # members of an answer that are never kept in the replay record: the replay shows them as null
+KEYED = ('put_sources_by_source_key', 'put_sources_by_source_user', 'post_sources_by_source_user_connect')   # bodies that hold key material or a password
 FINGERPRINT = 1                                                     # the version of the idempotency fingerprint; a change to what it hashes bumps it
 PREFIX = 'api2:'                                                    # the operation key of every v2 write
 
@@ -53,14 +56,14 @@ def invalid(path, message):
     raise errors.ValidationFailed((path + ': ' if path else '') + message)
 
 
-def validate(value, schema, path=''):
-    """Fail with `422` unless `value` is what the schema says. Understands what the write contract uses: `$ref`, `allOf`, `oneOf`, `type`
-    (a list too), `enum`, `pattern`, `minimum`, `minItems`/`maxItems`/`minProperties`, `items`, `properties` with `required` (an object that
+def validate(value, schema, path='', loose=False):
+    """Fail with `422` unless `value` is what the schema says. Understands what the write contract uses: `$ref`, `allOf`, `oneOf`, `if`/`then`, `const`, `propertyNames`,
+    `type` (a list too), `enum`, `pattern`, `minimum`, `minItems`/`maxItems`/`minProperties`, `items`, `properties` with `required` (an object that
     lists properties is closed: an unknown member is refused), and `additionalProperties` as a schema."""
     if '$ref' in schema:
-        return validate(value, SCHEMAS[schema['$ref'].rsplit('/', 1)[-1]], path)
+        return validate(value, SCHEMAS[schema['$ref'].rsplit('/', 1)[-1]], path, loose)
     for part in schema.get('allOf', ()):
-        validate(value, part, path)
+        validate(value, part, path, loose)
     if 'oneOf' in schema:
         passed = 0
         for part in schema['oneOf']:
@@ -78,6 +81,16 @@ def validate(value, schema, path=''):
         invalid(path, 'expected ' + ' or '.join(types))
     if 'enum' in schema and value not in schema['enum']:
         invalid(path, 'expected one of ' + ', '.join(str(e) for e in schema['enum']))
+    if 'const' in schema and value != schema['const']:
+        invalid(path, f"expected {schema['const']}")
+    if 'if' in schema:                                              # a condition on the value: what `then` asks holds only where `if` does
+        try:
+            validate(value, schema['if'], path, loose=True)         # a condition looks at the members it names and leaves the others alone
+            holds = True
+        except errors.ValidationFailed:
+            holds = False
+        if holds and 'then' in schema:
+            validate(value, schema['then'], path)
     if kind in ('integer', 'number') and value < schema.get('minimum', value):
         invalid(path, f"must be at least {schema['minimum']}")
     if kind == 'string' and 'pattern' in schema and not re.search(schema['pattern'], value):
@@ -92,13 +105,17 @@ def validate(value, schema, path=''):
     if kind == 'object':
         if len(value) < schema.get('minProperties', 0):
             invalid(path, 'supply at least one field')
+        pattern = schema.get('propertyNames', {}).get('pattern')
+        if pattern is not None and any(not re.search(pattern, name) for name in value):
+            invalid(path, 'has a member with an invalid name')
         fields = schema.get('properties')
         if fields is not None:
             unknown = sorted(set(value) - set(fields))
-            if unknown:
+            if unknown and not loose:
                 invalid(path, 'unknown field ' + ', '.join(unknown))
             for name, member in value.items():
-                validate(member, fields[name], f'{path}.{name}' if path else name)
+                if name in fields:
+                    validate(member, fields[name], f'{path}.{name}' if path else name)
         missing = [r for r in schema.get('required', ()) if r not in value]
         if missing:
             invalid(path, 'missing ' + ', '.join(missing))
@@ -113,12 +130,14 @@ def read_body(spec):
     if spec['multipart']:
         if request.mimetype != 'multipart/form-data':
             raise errors.UnsupportedMediaType()
-        photo = 'photos' in spec['endpoint']
-        limit = UPLOAD_LIMITS['photos' if photo else 'instruction'] * 1024 * 1024
+        if spec['endpoint'] == 'post_imports_bricktracker':
+            return upload_database(spec)
+        kind = 'identification' if 'identifications' in spec['endpoint'] else 'photos' if 'photos' in spec['endpoint'] else 'instruction'
+        limit = UPLOAD_LIMITS[kind] * 1024 * 1024
         file = request.files.get('file')
         if file is None:
-            raise errors.ValidationFailed('Choose a photo' if photo else 'Choose a PDF')
-        if photo and not (file.mimetype or '').startswith('image/'):
+            raise errors.ValidationFailed('Choose a PDF' if kind == 'instruction' else 'Choose a photo')
+        if kind != 'instruction' and not (file.mimetype or '').startswith('image/'):
             raise errors.UnsupportedMediaType()
         content = file.read(limit + 1)
         if len(content) > limit:
@@ -132,6 +151,8 @@ def read_body(spec):
         validate(dict(form, file='upload'), spec['schema'])
         return form, content
     if spec['schema']:
+        if not request.get_data() and not spec['schema'].get('required') and not spec['schema'].get('minProperties'):
+            return {}, None                                         # a body whose members are all optional may be left out
         if request.mimetype != 'application/json':
             raise errors.UnsupportedMediaType()
         body = request.get_json(silent=True)
@@ -143,6 +164,46 @@ def read_body(spec):
     if request.get_data():
         raise errors.BadRequest('This action accepts no body')
     return {}, None
+
+
+class Upload:
+    """A BrickTracker database streamed to a private file, not held in memory: its path, the SHA-256 of its bytes and the name it came with.
+    `discard` removes the file (the request is done with it, whatever happened)."""
+
+    def __init__(self, path, sha256, name):
+        self.path, self.sha256, self.name = path, sha256, name
+
+    def discard(self):
+        for suffix in ('', '-wal', '-shm', '-journal'):                 # the plan opens the file: SQLite may leave its sidecars
+            self.path.with_name(self.path.name + suffix).unlink(missing_ok=True)
+
+
+def upload_database(spec):
+    """One SQLite file from a multipart request, streamed to a private file under the import plans' folder, up to `BW_IMPORT_MAX_MB`."""
+    import os
+    from ..core.importer import bricktracker
+    limit = int(os.environ.get('BW_IMPORT_MAX_MB', '200')) * 1024 * 1024
+    file = request.files.get('file')
+    if file is None or set(request.files) != {'file'}:
+        raise errors.ValidationFailed('Choose a BrickTracker database file (app.db)')
+    form = request.form.to_dict()
+    validate(dict(form, file='upload'), spec['schema'])
+    folder = bricktracker.plans_root(database()) / 'uploads'
+    folder.mkdir(parents=True, exist_ok=True)
+    target = folder / uuid.uuid4().hex
+    digest, size = hashlib.sha256(), 0
+    try:
+        with target.open('wb') as out:
+            while chunk := file.stream.read(1024 * 1024):
+                size += len(chunk)
+                if size > limit:
+                    raise errors.PayloadTooLarge()
+                digest.update(chunk)
+                out.write(chunk)
+    except BaseException:
+        target.unlink(missing_ok=True)
+        raise
+    return form, Upload(target, digest.hexdigest(), file.filename or 'app.db')
 
 
 # ---------- items in a request ----------
@@ -235,8 +296,10 @@ def now_text(delta=timedelta()):
 
 
 def digest_v1(body, content):
-    packed = json.dumps(dict(v=1, method=request.method, path=request.path, query=sorted(request.args.items(multi=True)), body=body,
-                             file=hashlib.sha256(content).hexdigest() if content is not None else None),
+    if request.endpoint.split('.', 1)[-1] in KEYED:                  # key material: a keyed fingerprint, never a plain hash of it
+        body = {'fingerprint': fingerprint(body)}
+    file = None if content is None else content.sha256 if isinstance(content, Upload) else hashlib.sha256(content).hexdigest()
+    packed = json.dumps(dict(v=1, method=request.method, path=request.path, query=sorted(request.args.items(multi=True)), body=body, file=file),
                         sort_keys=True, separators=(',', ':'), default=str)
     return hashlib.sha256(packed.encode()).hexdigest()
 
@@ -246,6 +309,15 @@ DIGESTS = {1: digest_v1}                                           # every versi
 
 def digest_of(body, content, version=FINGERPRINT):
     return DIGESTS[version](body, content)
+
+
+def receipt_of(spec, result):
+    """The answer as the replay record keeps it: without what is shown once (a token's secret)."""
+    hidden = SHOWN_ONCE.get(spec['endpoint'])
+    if hidden is None:
+        return result
+    kept = {**result, hidden[0]: {**result[hidden[0]], hidden[1]: None}}
+    return kept
 
 
 def replay_of(db, key, body, content, actor):
@@ -326,8 +398,54 @@ def execute(db, spec, function, values, body, content):
                 db.execute('RELEASE api_preview')
                 return result, status, done.headers, False
             if key:
-                admin.audit(db, 'bw_api:' + key, 'op:' + key, new=dict(v=FINGERPRINT, digest=digest, status=status, response=result, headers=done.headers,
+                admin.audit(db, 'bw_api:' + key, 'op:' + key, new=dict(v=FINGERPRINT, digest=digest, status=status, response=receipt_of(spec, result), headers=done.headers,
                                                                        method=request.method, path=request.path))
+    return result, status, done.headers, False
+
+
+def execute_detached(db, spec, function, values, body, content):
+    """Run a write whose work reaches the network (or is long) outside any transaction: the function opens its own short transactions
+    through the core writers, then the answer is stored in one more. A claim row keeps a concurrent duplicate of the same key from
+    running the call twice; a failed call releases it, so the key can be sent again and no receipt is stored."""
+    key = request.headers.get('Idempotency-Key')
+    if not key and spec['required']:
+        raise errors.IdempotencyKeyRequired()
+    if key is not None and not KEY.fullmatch(key):
+        raise errors.BadRequest('Invalid Idempotency-Key')
+    actor = g.api_identity['name']
+    claim = None
+    with transaction(db):
+        if key:
+            saved = replay_of(db, key, body, content, actor)
+            if saved:
+                return dict(saved['response'], idempotent_replay=True), saved['status'], saved.get('headers', {}), True
+            claim = f'api:claim:{actor}:{key}'
+            held = db.execute('SELECT value FROM main.setting WHERE key=?', (claim,)).fetchone()
+            if held and (datetime.now(timezone.utc) - datetime.strptime(held[0], '%Y-%m-%dT%H:%M:%S.000Z').replace(tzinfo=timezone.utc)).total_seconds() < CLAIM_SECONDS:
+                raise errors.IdempotencyConflict('This Idempotency-Key is still being processed')
+            db.execute('INSERT OR REPLACE INTO main.setting(key,value) VALUES(?,?)', (claim, now_text()))
+    try:
+        before = db.execute('SELECT coalesce(max(id), 0) FROM main.event').fetchone()[0]
+        with admin.operation(PREFIX + uuid.uuid4().hex):
+            extra = {'content': content} if spec['multipart'] else {}
+            outcome = function(db, body, **extra, **values)
+            with transaction(db):
+                # A function may return a callable: the network work is done, and the change itself runs here, in the one transaction that
+                # also stores the answer (an order import is whole or not at all).
+                done = outcome() if callable(outcome) else outcome
+                if not isinstance(done, Done):
+                    done = Done(done)
+                result, status = envelope(db, spec, done, before)
+                if key:
+                    admin.audit(db, 'bw_api:' + key, 'op:' + key, new=dict(v=FINGERPRINT, digest=digest_of(body, content), status=status, response=receipt_of(spec, result),
+                                                                           headers=done.headers, method=request.method, path=request.path))
+                if claim:
+                    db.execute('DELETE FROM main.setting WHERE key=?', (claim,))
+    except BaseException:
+        if claim:
+            with transaction(db):
+                db.execute('DELETE FROM main.setting WHERE key=?', (claim,))
+        raise
     return result, status, done.headers, False
 
 
@@ -343,8 +461,11 @@ def wake_worker():
         current_app.logger.exception('the import worker did not start after an API write; queued jobs wait for the next start')
 
 
-def write(function):
-    """A write view: the request is read and checked against the generated contract, the function runs once (or its stored answer replays)."""
+def write(function=None, *, detached=False):
+    """A write view: the request is read and checked against the generated contract, the function runs once (or its stored answer replays).
+    `@write(detached=True)` is for a call that reaches the network or runs long: it runs outside any transaction (`execute_detached`)."""
+    if function is None:
+        return lambda f: write(f, detached=detached)
     spec = SPEC[function.__name__]
 
     @wraps(function)
@@ -352,7 +473,11 @@ def write(function):
         db = database()
         arguments(spec)
         body, content = read_body(spec)
-        result, status, headers, replayed = execute(db, spec, function, values, body, content)
+        try:
+            result, status, headers, replayed = (execute_detached if detached else execute)(db, spec, function, values, body, content)
+        finally:
+            if isinstance(content, Upload):
+                content.discard()
         if not replayed:
             wake_worker()
         response = jsonify(result)

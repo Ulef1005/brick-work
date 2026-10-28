@@ -1,5 +1,5 @@
-"""Generate the request metadata of the write operations from the OpenAPI contracts: v1's (`brickwork/api/write_contract.json`, implemented M3, M4
-and M6 operations) and v2's (`brickwork/api2/write_contract.json`, the operations of the pieces in `V2_PIECES`).
+"""Generate the request metadata of the write operations of API v2 from its OpenAPI contract (`brickwork/api2/write_contract.json`, the operations of
+the pieces in `V2_PIECES`; v1's file went with v1's write transport in M.11d).
 
 The generated files are the write transports' only knowledge of the contract: which operations exist, whether they take If-Match, whether the
 Idempotency-Key is required, the request schema (with every schema it references) and what the answer may leave null."""
@@ -9,9 +9,7 @@ import sys
 from scripts.check_api_contract import load_yaml
 
 ROOT = Path(__file__).resolve().parents[1]
-# M5 photo uploads share the multipart write path; the rest of M5 has its own transport.
-PHOTOS = {'post_copies_id_photos', 'post_stock_id_photos'}
-V2_PIECES = ('M.11c',)                                   # the pieces of API v2 whose write operations the transport serves; M.11d adds itself
+V2_PIECES = ('M.11c', 'M.11d')                                   # the pieces of API v2 whose write operations the transport serves; M.11d added itself
 
 
 def collect(c, operations):
@@ -33,32 +31,6 @@ def collect(c, operations):
     for op in operations:
         include(op['schema'])
     return schemas
-
-
-def generated():
-    c = load_yaml((ROOT/'docs/brickwork/openapi-v1.yaml').read_text())
-    operations=[]
-    for path,methods in c['paths'].items():
-        for method,op in methods.items():
-            if not isinstance(op,dict) or not (op.get('x-milestone') in ('M3','M4','M6') or op.get('operationId') in PHOTOS):continue
-            if method=='get': continue
-            resource=path.split('/')[1]
-            action=('booklets' if path=='/stock/booklets' else path.rsplit('/',1)[-1] if path.count('/')>2 else {'post':'create','patch':'patch','delete':'archive'}[method])
-            if path=='/orders/documents': action='documents'
-            if path.endswith('/parts/{part_id}'): action='part'
-            elif '/figures/{type}/{no}' in path: action='figure'
-            if action=='booklets':resource='booklets';action='create'
-            if resource=='found':action='create'
-            content=op.get('requestBody',{}).get('content',{})
-            media=next(iter(content),None)
-            response=op['responses'].get('201',op['responses'].get('200'))
-            ref=response['content']['application/json']['schema']['$ref'].split('/')[-1]
-            operations.append(dict(path=path,method=method.upper(),endpoint=op['operationId'],resource=resource,action=action,
-                if_match=any(p.get('$ref')=='#/components/parameters/IfMatch' for p in op.get('parameters',[])),
-                schema=content.get(media,{}).get('schema'),multipart=media=='multipart/form-data',shape=ref.removeprefix('Written'),
-                required=any(p.get('$ref')=='#/components/parameters/IdempotencyKeyRequired' for p in op.get('parameters',[]))))
-    schemas=collect(c,operations)
-    return json.dumps(dict(operations=operations,schemas=schemas),indent=2,sort_keys=True)+'\n'
 
 
 def generated_v2():
@@ -89,7 +61,7 @@ def generated_v2():
     return json.dumps(dict(operations=operations, schemas=collect(c, operations)), indent=2, sort_keys=True) + '\n'
 
 
-TARGETS = ((ROOT/'brickwork/api/write_contract.json', generated), (ROOT/'brickwork/api2/write_contract.json', generated_v2))
+TARGETS = ((ROOT/'brickwork/api2/write_contract.json', generated_v2),)
 
 
 if __name__=='__main__':

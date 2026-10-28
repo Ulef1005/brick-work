@@ -75,11 +75,6 @@ def audit(db, entity, field, old=None, new=None, *, via=None, actor=None):
     """Write one event on the 4.0 `event` table. The signature is the 3.3 one; `entity` is split into `entity_kind` and
     `entity_id` (`split_entity`), `operation_key` is the current operation's. `old`/`new` are stored by `store4.audit.value_text`, the one rule every event writer
     uses (None as NULL, strings as they are, dicts and lists as sorted JSON)."""
-    from .audit_bundle import CAPTURE
-    captured = CAPTURE.get()
-    if captured is not None:
-        captured.append(dict(entity=entity,field=field,old_value=json.dumps(old),new_value=json.dumps(new)))
-        return
     from .sources.base import AUDIT_ORIGIN, AUDIT_ACTOR, AUDIT_EXPLICIT
     if via is None:
         via = AUDIT_ORIGIN.get() if AUDIT_EXPLICIT.get() else 'app'

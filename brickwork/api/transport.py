@@ -82,7 +82,8 @@ def close_database(error):
 def problem(error):
     extra, headers = {}, {}
     if isinstance(error, errors.BrickWorkError):
-        code, status, detail = error.code, error.status, redact(error)
+        code = error.code if error.code in errors.HTTP_STATUS else 'source_error'        # a provider's own code (an unusable reply) is a 502 to the caller
+        status, detail = errors.HTTP_STATUS[code], redact(error)
         if isinstance(error, WaitingForBudget):
             extra.update(retry_after=error.retry_after(), job_id=error.job_id)
             headers['Retry-After'] = str(extra['retry_after'])

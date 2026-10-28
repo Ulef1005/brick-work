@@ -68,11 +68,11 @@ def test_scopes_come_from_the_contract(v2, pair):
     assert refused.status_code == 403 and refused.json['code'] == 'forbidden'
     assert call(v2, '/copies', 'post', token=writer, json={}).status_code == 422                       # M.11c: the body is checked
     assert call(v2, '/jobs/drain', 'post', token=reader, json={}).status_code == 403
-    assert call(v2, '/jobs/drain', 'post', token=writer, json={}).status_code == 501
+    assert call(v2, '/jobs/drain', 'post', token=writer, json={}).status_code == 400                    # M.11d: this action accepts no body
     # admin operations need admin, even to read
-    for method, path in (('get', '/tokens'), ('get', '/database/check'), ('put', '/exchange-rates/EUR')):
+    for method, path, answer in (('get', '/tokens', 200), ('get', '/database/check', 200), ('put', '/exchange-rates/EUR', 422)):
         assert call(v2, path, method, token=writer, json={}).status_code == 403, path
-        assert call(v2, path, method, json={}).status_code == 501, path
+        assert call(v2, path, method, json={}).status_code == answer, path
     # the scope of every operation is the one the contract names
     spec = operations()
     assert spec['patch_settings']['scope'] == 'admin' and spec['get_copies']['scope'] == 'read' and spec['post_copies']['scope'] == 'write'
@@ -106,28 +106,19 @@ def test_read_only_refuses_every_write_whatever_the_scope(v2, app4):
         assert refused.status_code == 403 and refused.json['code'] == 'read_only_instance', path
 
 
-# --- the 501 placeholders
+# --- the 501 placeholder (every piece has landed: nothing answers it any more, the machinery stays for the next surface)
 def pending():
     return [(o['method'], o['path'], o['piece']) for o in operations().values() if o['piece'] not in api2.DONE]
 
 
-def test_every_operation_of_a_later_piece_answers_501_with_its_piece(v2):
-    wrong = []
-    for method, template, piece in pending():
-        path = template
-        for name in ('id', 'item_id', 'part_id', 'line_id', 'doc_id', 'color_id', 'source', 'code', 'no'):
-            path = path.replace('{' + name + '}', '1')
-        throttle.API.clients.clear()                                          # the unauthenticated probe below is a failed check
-        response = call(v2, path, method.lower(), json={} if method != 'GET' else None)
-        unauthenticated = call(v2, path, method.lower(), token=None)
-        ok = (response.status_code == 501 and response.mimetype == 'application/problem+json' and response.json['error'] == 'not_implemented'
-              and response.json['code'] == 'not_implemented' and response.json['piece'] == piece and unauthenticated.status_code == 401)
-        if not ok:
-            wrong.append((method, path, response.status_code))
-    assert not wrong, wrong
+def test_the_501_placeholder_is_a_problem_that_names_its_piece(app4):
+    with app4.test_request_context('/api/v2/nowhere'):
+        response = api2.not_implemented('M.99')()
+    assert response.status_code == 501 and response.mimetype == 'application/problem+json'
+    assert response.json['code'] == response.json['error'] == 'not_implemented' and response.json['piece'] == 'M.99'
 
 
-def test_the_501_list_is_the_contract_minus_the_done_pieces():
-    spec = operations()
-    assert {p for _, _, p in pending()} == {'M.11d'}
-    assert len(spec) - len(pending()) == 131
+def test_no_operation_is_left_to_the_501_placeholder(app4):
+    assert pending() == []
+    assert not [r.rule for r in app4.url_map.iter_rules() if hasattr(app4.view_functions[r.endpoint], 'piece')]
+    assert len(operations()) == 188

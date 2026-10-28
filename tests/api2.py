@@ -119,3 +119,77 @@ def row(pair, sql, params=()):
 def rows(pair, sql, params=()):
     with closing(connect(pair, read_only=True)) as db:
         return [dict(r) for r in db.execute(sql, params)]
+
+
+# ---- sources, network and keys (M.11d)
+import io
+import json
+import secrets as token_source
+from unittest.mock import Mock
+
+from cryptography.fernet import Fernet
+
+BL_ENV = ('BW_BRICKLINK_CONSUMER_KEY', 'BW_BRICKLINK_CONSUMER_SECRET', 'BW_BRICKLINK_TOKEN_VALUE', 'BW_BRICKLINK_TOKEN_SECRET')
+
+
+def fake(length=24):
+    """A key-shaped value nobody uses."""
+    return token_source.token_hex(length // 2)
+
+
+def bl(data):
+    return json.dumps({'meta': {'code': 200}, 'data': data})
+
+
+class Wire:
+    """Records every outbound request and answers from `replies` by URL fragment (a reply is a body, or a function of the request)."""
+
+    def __init__(self):
+        self.requests, self.replies = [], {}
+
+    def __call__(self, request):
+        self.requests.append(request)
+        for fragment, reply in self.replies.items():
+            if fragment in request.full_url:
+                return reply(request) if callable(reply) else reply
+        raise AssertionError('Unexpected outbound call ' + request.full_url.split('?')[0])
+
+
+@pytest.fixture
+def wire(monkeypatch):
+    """No network: the source clients' transport is this recorder, the image downloads are forbidden, sleeps are skipped and no key is set."""
+    from brickwork.core import secrets
+    from brickwork.core.sources import base, images
+    wire = Wire()
+    monkeypatch.setattr(base, 'transport', wire)
+    monkeypatch.setattr(images, 'transport', Mock(side_effect=AssertionError('network forbidden')))
+    monkeypatch.setattr(base.time, 'sleep', lambda _: None)
+    for name in (*BL_ENV, 'BW_REBRICKABLE_API_KEY', 'BW_BRICKSET_API_KEY', 'BW_SECRET_KEY', 'BW_BRICKOGNIZE_DAILY_BUDGET', 'BW_BRICKLINK_DAILY_BUDGET',
+                 'BW_REBRICKABLE_USER_TOKEN', 'BW_BRICKSET_USER_HASH'):
+        monkeypatch.delenv(name, raising=False)
+    secrets.forget()
+    return wire
+
+
+@pytest.fixture
+def secret(monkeypatch, wire):
+    """`BW_SECRET_KEY` set: key entry is enabled."""
+    value = Fernet.generate_key().decode()
+    monkeypatch.setenv('BW_SECRET_KEY', value)
+    return value
+
+
+def png(size=(64, 48), mode='RGB'):
+    from PIL import Image
+    out = io.BytesIO()
+    Image.new(mode, size, (200, 30, 30)).save(out, 'PNG')
+    return out.getvalue()
+
+
+def upload(client, path, content, name='x.png', mimetype='image/png', key=None, token=BOOTSTRAP, extra=None, method='post'):
+    """A multipart write: `content` as the `file` part (under an Idempotency-Key when `key` says)."""
+    headers = {'Authorization': 'Bearer ' + token}
+    if key:
+        headers['Idempotency-Key'] = key
+    return getattr(client, method)(PREFIX + path, headers=headers, content_type='multipart/form-data',
+                                   data={'file': (io.BytesIO(content), name, mimetype), **(extra or {})})

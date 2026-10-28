@@ -59,7 +59,7 @@ def test_web_form_over_the_cap_is_refused(app):  # noqa: F811
 def test_normal_bodies_still_pass(v2):  # noqa: F811
     assert call(v2, '/me').status_code == 200
     reached = v2.post('/api/v2/tokens', json={'name': 'limits', 'scopes': ['read']}, headers=AUTH)
-    assert reached.status_code == 501                                                  # past the size check: the operation arrives with M.11d
+    assert reached.status_code == 201                                                  # past the size check: the operation runs
 
 
 def test_limits_follow_the_import_setting(monkeypatch):

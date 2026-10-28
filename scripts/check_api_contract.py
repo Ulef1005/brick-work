@@ -122,7 +122,7 @@ def check_v2(write):
             continue
         endpoint, view = routes[key]
         piece = getattr(view, 'piece', None)
-        if op['x-piece'] in DONE:
+        if op['x-piece'] in DONE or piece is None:                  # a piece is done as a whole, or its operations land one by one (a real view)
             if piece is not None:
                 problems.append(f'{key[0]} {key[1]}: piece {op["x-piece"]} is done but the route is a 501 placeholder')
             implemented.append(f"| `{key[0]} /api/v2{key[1]}` | {op['x-piece']} | `{view.__module__}.{view.__name__}` |")

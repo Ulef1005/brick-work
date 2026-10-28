@@ -79,7 +79,7 @@ def test_runtime_files_in_docker_context():
     required = {
         'docs/brickwork/openapi-v1.yaml',
         'docs/brickwork/openapi-v2.yaml',
-        'brickwork/api/write_contract.json',
+        'brickwork/api2/write_contract.json',
         'brickwork/store4/brickwork.sql',
         'brickwork/store4/catalogue.sql',
         'app.py',

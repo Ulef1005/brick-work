@@ -35,7 +35,7 @@ def test_every_write_operation_of_the_pieces_done_has_a_view_and_a_spec():
     from tests.api2 import PREFIX
     for operation in writes.SPEC.values():
         assert operation['method'] == spec[operation['endpoint']]['method'] and operation['path'] == spec[operation['endpoint']]['path']
-    assert len(writes.SPEC) == 64
+    assert len(writes.SPEC) == 102                                  # M.11c 64 and M.11d 38
 
 
 def test_the_operations_that_need_an_idempotency_key_are_the_documented_ones():
@@ -45,7 +45,8 @@ def test_the_operations_that_need_an_idempotency_key_are_the_documented_ones():
         'post_copies', 'post_stock', 'post_wishes', 'post_found', 'post_stock_booklets', 'post_lots',
         'post_copies_by_id_take', 'post_stock_by_id_give', 'post_wishes_by_id_to_owned', 'post_storages_by_id_contents', 'post_copies_by_id_parts_bulk',
         'post_prices_observations', 'post_items_by_id_prices', 'post_events_by_id_undo',
-        'put_items_by_id_links', 'post_items_by_id_merge', 'post_items_by_id_unmerge', 'post_copies_by_id_inventory'}
+        'put_items_by_id_links', 'post_items_by_id_merge', 'post_items_by_id_unmerge', 'post_copies_by_id_inventory',
+        'post_orders_documents', 'post_orders_by_id_allocate', 'post_orders_by_id_allocations_retry'}
 
 
 def test_a_missing_key_is_428_where_the_contract_requires_it_and_nothing_is_written(v2, world, pair):

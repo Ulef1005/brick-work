@@ -4328,7 +4328,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/WrittenJob'
+                $ref: '#/components/schemas/WrittenJobList'
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
@@ -4428,36 +4428,6 @@ paths:
         default:
           $ref: '#/components/responses/Problem'
       x-v1: post_catalogue_import
-      x-piece: M.11d
-  /colors/sync:
-    post:
-      operationId: post_colors_sync
-      summary: Pull colours from BrickLink with the stored or environment key. One budgeted call; not undoable.
-      tags:
-      - Sources
-      security:
-      - bearerAuth:
-        - admin
-      parameters:
-      - $ref: '#/components/parameters/IdempotencyKey'
-      responses:
-        '200':
-          description: Done.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/WrittenColorSyncResult'
-        '409':
-          $ref: '#/components/responses/Conflict'
-        '422':
-          $ref: '#/components/responses/Invalid'
-        '424':
-          $ref: '#/components/responses/DependencyFailed'
-        '429':
-          $ref: '#/components/responses/BudgetExhausted'
-        default:
-          $ref: '#/components/responses/Problem'
-      x-v1: post_colors_sync
       x-piece: M.11d
   /sync/{source}:
     get:
@@ -6827,18 +6797,13 @@ components:
         token:
           $ref: '#/components/schemas/Token'
         secret:
-          type: string
+          type:
+          - string
+          - 'null'
       required:
       - token
       - secret
-      description: secret is returned once and never again.
-    ColorSyncResult:
-      type: object
-      properties:
-        colors:
-          type: integer
-        added:
-          type: integer
+      description: secret is returned once and never again; the answer a replay of the same request gets has it null (the replay record never holds it).
     CatalogueItem:
       type: object
       properties:
@@ -7015,25 +6980,21 @@ components:
       - id
     ImportRequest:
       type: object
+      additionalProperties: false
       properties:
         steps:
           type: array
-          items:
-            type: string
-        sources:
-          type: array
+          minItems: 1
           items:
             type: string
             enum:
-            - bricklink
-            - bricklink:local
-            - bricklink:api
-            - bricklink:subsets
-            - rebrickable
-            - part_resolutions
-            - manual
-            - brickset
-      description: Optional step subset; default is the stored import order for the type.
+            - identity
+            - inventory
+            - matching
+            - pictures
+            - metadata
+            - market_price
+      description: Optional step subset; default is the stored import order for the item's kind. The sources of a step are the stored order of its kind.
     CopyCreate:
       type: object
       properties:
@@ -8715,72 +8676,130 @@ components:
       properties:
         rows: {}
         settings: {}
+    OrderDocument:
+      type: object
+      additionalProperties: false
+      properties:
+        id: {type: integer}
+        order_id: {type: integer}
+        source: {type: string, enum: [email, xml, api]}
+        label: {type: [string, 'null']}
+        phase: {type: string, enum: [draft, reviewed, saved, undone]}
+        created_at: {type: string}
+        updated_at: {type: string}
+    OrderLine:
+      type: object
+      additionalProperties: false
+      properties:
+        id: {type: integer}
+        order_id: {type: integer}
+        document_id: {type: integer}
+        document_phase: {type: string, enum: [draft, reviewed, saved, undone]}
+        line_no: {type: integer}
+        state: {type: string, enum: [matched, by_hand, confirmed, held]}
+        item:
+          oneOf:
+          - {$ref: '#/components/schemas/Item'}
+          - {type: 'null'}
+          description: The item the line stands for; null while the importer could not place it (see raw and suggestions).
+        color:
+          oneOf:
+          - {$ref: '#/components/schemas/Color'}
+          - {type: 'null'}
+        unplaced: {type: boolean}
+        condition: {type: [string, 'null'], enum: [new, used, null]}
+        qty: {type: integer}
+        unit_price: {type: [string, 'null']}
+        line_total: {type: [string, 'null']}
+        remark: {type: [string, 'null']}
+        raw:
+          type: object
+          additionalProperties: false
+          description: The provider's own words, verbatim.
+          properties:
+            item_type: {type: [string, 'null']}
+            item_no: {type: [string, 'null']}
+            color_id: {type: [integer, 'null']}
+            color_name: {type: [string, 'null']}
+            name: {type: [string, 'null']}
+            text: {type: [string, 'null']}
+        received: {type: integer}
+        allocated: {type: integer}
+        paired_line_id: {type: [integer, 'null']}
+        suggestions:
+          type: array
+          description: The items a line that names several could be, for the person to choose from.
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              item: {$ref: '#/components/schemas/Item'}
+              label: {type: string}
+    OrderDestination:
+      type: object
+      additionalProperties: false
+      properties:
+        copy_id: {type: string}
+        target: {type: string, enum: [part, figure, instructions, box, stock-part]}
+        target_id: {type: [integer, string]}
+        need: {type: integer}
+        item: {$ref: '#/components/schemas/Item'}
+        color:
+          oneOf:
+          - {$ref: '#/components/schemas/Color'}
+          - {type: 'null'}
+        label: {type: [string, 'null']}
     Order:
       type: object
+      additionalProperties: false
+      required:
+      - id
       properties:
-        id:
-          type: integer
-        bricklink_order_id:
-          type:
-          - string
-          - 'null'
-        store:
-          type:
-          - string
-          - 'null'
-        seller:
-          type:
-          - string
-          - 'null'
+        id: {type: integer}
+        bricklink_order_id: {type: [string, 'null']}
+        store: {type: [string, 'null']}
+        seller: {type: [string, 'null']}
         date_ordered:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           description: ISO-8601 date or date-time, as stored.
-        status:
-          type:
-          - string
-          - 'null'
+        status: {type: [string, 'null']}
         cost:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           pattern: ^[0-9]+(\.[0-9]+)?$
           description: Decimal string, never a float.
         currency:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           pattern: ^[A-Z]{3,8}$
-        lines:
-          type: integer
-        received:
-          type: integer
-      required:
-      - id
+        phase:
+          type: string
+          enum: [Draft, Reviewed, Held, Reconciled, Allocated, Counting, Open]
+          description: Where the order stands, as the Orders page says it.
+        lines: {type: integer, description: Saved lines (lots), not counting a line paired to an earlier one.}
+        pieces: {type: integer}
+        received: {type: integer}
+        allocated: {type: integer}
+        held: {type: integer, description: Saved lines on hold.}
     OrderDetail:
       type: object
+      additionalProperties: false
       properties:
-        order:
-          $ref: '#/components/schemas/Order'
-        documents: {}
-        lines: {}
+        order: {$ref: '#/components/schemas/Order'}
+        documents:
+          type: array
+          items: {$ref: '#/components/schemas/OrderDocument'}
+        lines:
+          type: array
+          items: {$ref: '#/components/schemas/OrderLine'}
     OrderReview:
       type: object
       additionalProperties: false
       properties:
-        id:
-          type: integer
-        line:
-          type: object
-          additionalProperties: true
-        available:
-          type: integer
+        id: {type: integer, description: The saved line.}
+        line: {$ref: '#/components/schemas/OrderLine'}
+        available: {type: integer, description: Received and not yet allocated.}
         destinations:
           type: array
-          items:
-            type: object
-            additionalProperties: true
+          items: {$ref: '#/components/schemas/OrderDestination'}
     ListOfOrderReview:
       type: object
       properties:
@@ -8793,102 +8812,32 @@ components:
     Allocation:
       type: object
       additionalProperties: false
+      required: [id, order_id, line_id, qty, target_type, state]
       properties:
-        id:
-          type: integer
-        confirm_id:
-          type:
-          - string
-          - 'null'
-        order_id:
-          type: integer
-        line_id:
-          type: integer
-        qty:
-          type: integer
-        state:
-          enum:
-          - applied
-          - pending
-          - conflict
-          - undoing
-          - undone
-        target_type:
-          enum:
-          - copy
-          - stock
-          - null
-        kind:
-          type:
-          - string
-          - 'null'
-        copy_id:
-          type:
-          - string
-          - 'null'
-        target_copy_id:
-          type:
-          - string
-          - 'null'
-        target_stock_id:
-          type:
-          - string
-          - 'null'
-        part:
-          oneOf:
-          - $ref: '#/components/schemas/Item'
-          - type: 'null'
+        id: {type: integer}
+        confirm_id: {type: string}
+        order_id: {type: integer}
+        line_id: {type: integer}
+        qty: {type: integer}
+        state: {type: string, enum: [applied, pending, conflict, undoing, undone]}
+        target_type: {type: string, enum: [copy, stock]}
+        kind: {type: string, enum: [missing_part, missing_figure, instructions, box, loose_part, loose_figure, loose_other]}
+        copy_id: {type: [string, 'null']}
+        copy_part_id: {type: [integer, 'null']}
+        copy_figure_id: {type: [integer, 'null']}
+        stock_id: {type: [string, 'null']}
+        item: {$ref: '#/components/schemas/Item'}
         color:
           oneOf:
-          - $ref: '#/components/schemas/Color'
-          - type: 'null'
-        ref:
-          type:
-          - string
-          - 'null'
-        figure:
-          oneOf:
-          - $ref: '#/components/schemas/Item'
-          - type: 'null'
-        spare:
-          type:
-          - integer
-          - 'null'
-        intent_before:
-          type:
-          - integer
-          - 'null'
-        intent_after:
-          type:
-          - integer
-          - 'null'
-        created_at:
-          type:
-          - string
-          - 'null'
-        applied_at:
-          type:
-          - string
-          - 'null'
-        undone_at:
-          type:
-          - string
-          - 'null'
-        hold_reason:
-          type:
-          - string
-          - 'null'
-        error:
-          type:
-          - string
-          - 'null'
-      required:
-      - id
-      - order_id
-      - line_id
-      - qty
-      - target_type
-      - state
+          - {$ref: '#/components/schemas/Color'}
+          - {type: 'null'}
+        intent_before: {type: [integer, 'null']}
+        intent_after: {type: [integer, 'null']}
+        created_at: {type: [string, 'null']}
+        applied_at: {type: [string, 'null']}
+        undone_at: {type: [string, 'null']}
+        target_label: {type: [string, 'null']}
+        undo_event_id: {type: [integer, 'null'], description: The save that undoes this allocation, while it is the allocation's own.}
     ListOfAllocation:
       type: object
       properties:
@@ -8949,17 +8898,14 @@ components:
       - source
     OrderImportResult:
       type: object
+      additionalProperties: false
       properties:
-        order_id:
-          type: integer
-        document_id:
-          type: integer
-        duplicate:
-          type: boolean
-        event_id:
-          type:
-          - integer
-          - 'null'
+        order_id: {type: integer}
+        document_id: {type: integer}
+        duplicate: {type: boolean, description: The same document is already there; nothing was written.}
+        placed: {type: integer, description: Lines placed on an item.}
+        unplaced: {type: integer, description: Lines that wait for hand matching.}
+        event_id: {type: [integer, 'null']}
     OrderLineMatch:
       type: object
       properties:
@@ -9208,6 +9154,7 @@ components:
             type: string
     JobRetry:
       type: object
+      additionalProperties: false
       properties:
         step:
           type:
@@ -9215,21 +9162,26 @@ components:
           - 'null'
     PictureRefresh:
       type: object
+      additionalProperties: false
       properties:
-        source:
-          type: string
         scope:
           type: string
-        types:
+          enum:
+          - missing
+          - all
+          description: missing queues the held items that have a colour with no picture, all every held item.
+        kinds:
           type: array
+          minItems: 1
           items:
-            type: string
+            $ref: '#/components/schemas/Kind'
+          description: The item kinds to refresh; all kinds when left out.
         expected_count:
           type:
           - integer
           - 'null'
+          description: The number of items the caller saw; the call is refused (422) when the count has changed.
       required:
-      - source
       - scope
     Source:
       type: object
@@ -9308,32 +9260,51 @@ components:
           type: array
           items:
             type: string
+        catalogue_integrity_check:
+          type: array
+          items:
+            type: string
+          description: The attached catalogue file's own integrity check; absent without a catalogue.
         foreign_key_check: {}
         row_counts: {}
     Identification:
       type: object
+      additionalProperties: false
+      required: [id, created_at, has_thumb, candidates]
       properties:
-        id:
-          type: string
-        created_at:
-          type:
-          - string
-          - 'null'
-          format: date-time
-        has_thumb:
-          type: boolean
-        missing_count:
-          type:
-          - integer
-          - 'null'
-        archived_at:
-          type:
-          - string
-          - 'null'
-          format: date-time
+        id: {type: string}
+        created_at: {type: [string, 'null']}
+        has_thumb: {type: boolean}
+        missing_count: {type: [integer, 'null']}
+        archived_at: {type: [string, 'null']}
         candidates:
-          description: 'Recognition candidates; on POST each carries owned (#45): total, colours (with quantity and storages), needed_by, needed_count,
-            text.'
+          type: array
+          description: The items the photo may show, best first.
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              item:
+                oneOf:
+                - {$ref: '#/components/schemas/Item'}
+                - {type: 'null'}
+              score: {type: [number, 'null']}
+              name: {type: [string, 'null']}
+              owned:
+                type: [object, 'null']
+                additionalProperties: true
+                description: 'On the answer of the upload (#45): total held, colours with quantity and storages, needed_by, needed_count and a sentence.'
+        unresolved:
+          type: array
+          description: On the answer of the upload only; predictions that name no item, several, or one still to check.
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              kind: {type: string}
+              number: {type: string}
+              score: {type: [number, 'null']}
+              reason: {type: string}
     OneHealth:
       type: object
       required:
@@ -9888,7 +9859,9 @@ components:
         data:
           $ref: '#/components/schemas/JobList'
         event_id:
-          type: integer
+          type:
+          - integer
+          - 'null'
         undo_url:
           type:
           - string
@@ -10095,7 +10068,9 @@ components:
         data:
           $ref: '#/components/schemas/OrderImportResult'
         event_id:
-          type: integer
+          type:
+          - integer
+          - 'null'
         undo_url:
           type: string
         idempotent_replay:
@@ -10182,23 +10157,9 @@ components:
         data:
           $ref: '#/components/schemas/CatalogueStatus'
         event_id:
-          type: integer
-        undo_url:
           type:
-          - string
+          - integer
           - 'null'
-        idempotent_replay:
-          type: boolean
-    WrittenColorSyncResult:
-      type: object
-      required:
-      - data
-      - event_id
-      properties:
-        data:
-          $ref: '#/components/schemas/ColorSyncResult'
-        event_id:
-          type: integer
         undo_url:
           type:
           - string
@@ -10469,7 +10430,9 @@ components:
         data:
           $ref: '#/components/schemas/Job'
         event_id:
-          type: integer
+          type:
+          - integer
+          - 'null'
         undo_url:
           type:
           - string
@@ -10539,6 +10502,13 @@ components:
           type: object
         note:
           type: string
+        remote:
+          type: object
+          description: What the site holds, as read for this plan.
+        state:
+          type: object
+          description: On a send plan, the baseline the plan was made against.
+
     SyncApplied:
       type: object
       additionalProperties: false
@@ -10547,6 +10517,11 @@ components:
           type: boolean
         counts:
           type: object
+        event_id:
+          type:
+          - integer
+          - 'null'
+
     SyncSent:
       type: object
       additionalProperties: false
@@ -10775,7 +10750,9 @@ components:
         data:
           $ref: '#/components/schemas/KeyTest'
         event_id:
-          type: integer
+          type:
+          - integer
+          - 'null'
         undo_url:
           type:
           - string
@@ -10798,7 +10775,7 @@ components:
           type: boolean
         summary:
           type: object
-        unresolved:
+        unplaced:
           type: array
           items:
             type: object
@@ -10814,6 +10791,11 @@ components:
           type: boolean
         counts:
           type: object
+        event_id:
+          type:
+          - integer
+          - 'null'
+
     WrittenImportPlan:
       type: object
       additionalProperties: false
@@ -10826,7 +10808,9 @@ components:
         data:
           $ref: '#/components/schemas/ImportPlan'
         event_id:
-          type: integer
+          type:
+          - integer
+          - 'null'
         undo_url:
           type:
           - string
@@ -10845,7 +10829,9 @@ components:
         data:
           $ref: '#/components/schemas/ImportApplied'
         event_id:
-          type: integer
+          type:
+          - integer
+          - 'null'
         undo_url:
           type:
           - string
@@ -10864,7 +10850,9 @@ components:
         data:
           $ref: '#/components/schemas/Identification'
         event_id:
-          type: integer
+          type:
+          - integer
+          - 'null'
         undo_url:
           type: string
         idempotent_replay:

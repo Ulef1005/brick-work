@@ -291,9 +291,8 @@ def _now():
 
 def _audit(db, source, field, receipt):
     from .admin import audit
-    from .audit_bundle import CAPTURE
     audit(db, 'source_key:' + source, field, new=receipt)
-    return db.execute('SELECT last_insert_rowid()').fetchone()[0] if CAPTURE.get() is None else None
+    return db.execute('SELECT last_insert_rowid()').fetchone()[0]
 
 
 def strip(snapshot):

@@ -65,11 +65,11 @@ def test_every_v1_operation_is_carried_or_dropped_with_a_reason():
     carried = {o['x-v1'] for o in OPERATIONS.values() if 'x-v1' in o}
     dropped = v1_ids - carried
     assert carried <= v1_ids and len(carried) == len([o for o in OPERATIONS.values() if 'x-v1' in o])
-    assert dropped == {'get_unresolved', 'post_unresolved_resolve', 'get_id_matches'}
+    assert dropped == {'get_unresolved', 'post_unresolved_resolve', 'get_id_matches', 'post_colors_sync'}
     doc = (ROOT / 'docs/brickwork/api-v2.md').read_text().split('### 3.3 Dropped v1 operations')[1].split('## 4.')[0]
-    for path in ('/unresolved`', '/unresolved/resolve`', '/id-matches`'):
+    for path in ('/unresolved`', '/unresolved/resolve`', '/id-matches`', '/colors/sync`'):
         assert path in doc
-    assert (len(v1_ids), len(OPERATIONS), len(carried)) == (179, 189, 176)
+    assert (len(v1_ids), len(OPERATIONS), len(carried)) == (179, 188, 175)
 
 
 def test_every_operation_names_a_piece_a_scope_and_a_unique_id():
@@ -87,16 +87,21 @@ def test_every_operation_names_a_piece_a_scope_and_a_unique_id():
         '/health', '/version', '/openapi.yaml', '/me', '/items/{id}', '/sets/by-number/{no}', '/parts/by-number/{no}', '/minifigures/by-number/{no}', '/lookup'}
 
 
+# The operations v1 kept behind the admin scope (api/__init__.py before M.11d removed its route table), less the colour sync that has no 4.0 premise.
+V1_ADMIN = {'get_tokens', 'post_tokens', 'delete_tokens_by_id', 'get_database_check', 'get_database_export', 'patch_sources_by_source', 'post_catalogue_import',
+            'put_sources_source_key', 'delete_sources_source_key', 'post_sources_source_key_test', 'post_imports_bricktracker', 'post_imports_by_id_apply',
+            'post_sync_by_source_send_apply', 'post_sources_source_user_connect', 'put_sources_source_user', 'delete_sources_source_user',
+            'post_sources_source_user_test', 'patch_settings', 'put_exchange_rates_by_code', 'post_exchange_rates_ecb'}
+
+
 def test_admin_scopes_are_v1s():
-    from brickwork.api import ADMIN
-    admin_v1 = {x.split('.', 1)[1] for x in ADMIN}
     admin_v2 = {o['x-v1'] for o in OPERATIONS.values() if 'x-v1' in o and o['security'] and o['security'][0]['bearerAuth'][0] == 'admin'}
-    assert admin_v1 == admin_v2
+    assert V1_ADMIN == admin_v2
 
 
 def test_the_check_script_agrees_with_the_routes_and_the_doc(capsys):
     assert check_v2(False) == 0
-    assert 'API v2: 131 operations implemented, 58 answer 501' in capsys.readouterr().out
+    assert 'API v2: 188 operations implemented, 0 answer 501' in capsys.readouterr().out
 
 
 def test_the_audit_origin_of_a_request_is_api_and_the_token_name(v2, monkeypatch, coll):

@@ -11,18 +11,13 @@ docs/brickwork/api-v1.md	Import from BrickTracker|\bbricktracker\b|\b(?:post_)?i
 docs/brickwork/openapi-v2.yaml	\bbricktracker\b|\b(?:post_)?imports?[-_]bricktracker\b|BrickTracker	BrickTracker import operations.
 docs/brickwork/api-v2.md	Import from BrickTracker|\bbricktracker\b|\b(?:post_)?imports?[-_]bricktracker\b|BrickTracker	Retained importer name.
 docs/brickwork/cutover-4.11j.md	(?m)(?<=`)/house(?=/)	Old-path column documenting the requested URL migration; not an active route.
-tests/test_bw_api_m0.py	\bhouse-api\b	Regression coverage proving historical origins upgrade to api.
 scripts/name-allowlist.txt	[\s\S]*	Naming exceptions must spell the retained vocabulary.
 scripts/check_names.py	(?m)^\ \ \ \ r'bricktracker\|brick_tracker\|\(\?<!\[a\-z\]\)BK_\|\(\?<!\[a\-z\]\)HOUSE_\|\\bhouse\-api\\b\|\\bhouse_\|\\bhouse\\\.\|\\bhouse/\|\\bhapi\\b\|host\\\.docker\\\.internal',$	Literal forbidden vocabulary implementing the requested gate.
 tests/test_ui_p6.py	Import from BrickTracker	Test of the retained importer page title.
-brickwork/api/operations.py	\bbricktracker\b|\b(?:post_)?imports?[-_]bricktracker\b|BrickTracker	Import of a BrickTracker database: the source format's name.
-brickwork/api/__init__.py	\bbricktracker\b|\b(?:post_)?imports?[-_]bricktracker\b|BrickTracker	Admin scope for the BrickTracker import routes.
-brickwork/core/api_writes.py	\bbricktracker\b|\b(?:post_)?imports?[-_]bricktracker\b|BrickTracker	Undo of a BrickTracker import receipt.
 brickwork/web/admin_ops.py	\bbricktracker\b|\b(?:post_)?imports?[-_]bricktracker\b|BrickTracker	CLI service for the BrickTracker import.
 brickwork/web/cli.py	\bbricktracker\b|\b(?:post_)?imports?[-_]bricktracker\b|BrickTracker	CLI command import-bricktracker.
 docs/brickwork/openapi-v1.yaml	\bbricktracker\b|\b(?:post_)?imports?[-_]bricktracker\b|BrickTracker	BrickTracker import operations.
 docs/brickwork/mapping-4.2.md	\b(?:idx_)?bricktracker(?:_[a-z0-9_<>]*)?\b|BrickTracker	BrickTracker import mapping: upstream schema identifiers.
-tests/test_bw_api_m6.py	\bbricktracker(?:_import)?\b	Undo dispatcher test for the BrickTracker import receipt.
 brickwork/web/import_views.py	\bbricktracker\b|\b(?:post_)?imports?[-_]bricktracker\b|BrickTracker	Import from BrickTracker pages (#11): the source format's name.
 brickwork/web/setup_state.py	\bbricktracker\b|\b(?:post_)?imports?[-_]bricktracker\b|BrickTracker	First-run step: Import from BrickTracker.
 brickwork/web/views.py	\bbricktracker\b|\b(?:post_)?imports?[-_]bricktracker\b|BrickTracker	Import from BrickTracker module registration.
@@ -45,3 +40,8 @@ brickwork/web/ported.py	Import from BrickTracker	Comment naming the Import from 
 docs/brickwork/schema-notes.md	BrickTracker import|import-from-bricktracker	Points from the 3.x schema notes to the BrickTracker import how-to.
 docs/how-to/index.md	Import from BrickTracker|import-from-bricktracker	Index entry of the Import from BrickTracker how-to.
 tests/test_cli.py	BrickTracker-era	Docstring: the removed BrickTracker-era `brickwork migrate`.
+brickwork/api2/sync.py	\bbricktracker\b|\b(?:post_)?imports?[-_]bricktracker\b|BrickTracker	The BrickTracker import operations of API v2.
+brickwork/api2/writes.py	\bbricktracker\b|\b(?:post_)?imports?[-_]bricktracker\b|BrickTracker	The streamed upload of a BrickTracker database.
+brickwork/api2/write_contract.json	\bbricktracker\b|\b(?:post_)?imports?[-_]bricktracker\b|BrickTracker	Generated from the contract: the BrickTracker import operations.
+tests/test_api2_contract.py	\bbricktracker\b|\b(?:post_)?imports?[-_]bricktracker\b|BrickTracker	The admin operations of v1, among them the BrickTracker import.
+tests/test_api2_write_sync.py	\bbricktracker\b|\b(?:post_)?imports?[-_]bricktracker\b|BrickTracker	Tests of the BrickTracker import operations of API v2.

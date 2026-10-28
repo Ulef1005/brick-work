@@ -1,50 +1,25 @@
-"""Brick Work v1 transport. The legacy web API remains independently mounted."""
-import os
-
-from flask import Blueprint, g, jsonify, request, send_file
+"""Brick Work API v1: retired. Every path answers 410 Gone and names v2, except `GET /health` (release tracking and the container health check
+read it). The 4.0 line cannot represent local or unidentified items in v1's terms (M.8a, issue #110, decision 1); v2 is the API (`brickwork/api2`,
+`docs/brickwork/api-v2.md`). What v1 and v2 share is `transport.py` (read-only, the database per request, authentication, the problem+json handler)."""
+from flask import Blueprint, jsonify, request
 from werkzeug.exceptions import NotFound
 
-from ..core import errors, meta, tokens
-from ..core.contract import contract_path
-from ..core.listing import filter_rows, paginate
+from ..core import errors, meta
+from . import transport
+from .transport import db_path, problem, read_only  # noqa: F401 — kept importable from here (the web layer asks `read_only`)
 
 api = Blueprint('brickwork_api', __name__, url_prefix='/api/v1')
-
-
-from . import transport                                  # noqa: E402 — the pieces both API lines share
-from .transport import db_path, problem, read_only        # noqa: E402,F401 — kept importable from here
+HEALTH = 'brickwork_api.get_health'
 
 
 def database():
     return transport.database(HEALTH)
 
 
-HEALTH = 'brickwork_api.get_health'
-
-
 @api.before_request
 def retired():
-    """API v1 answers 410 Gone on the 4.0 line (M.8a, decision 1): v1 cannot represent local or unidentified items; v2 comes with M.11.
-    The one exception is GET /health, which release tracking and the container health check read. The route table stays, so the
-    contract checks keep describing what v2 inherits."""
     if request.endpoint != HEALTH:
         raise errors.ApiRetired(errors.API_V1_RETIRED)
-
-
-ADMIN = ('brickwork_api.get_tokens', 'brickwork_api.post_tokens', 'brickwork_api.delete_tokens_by_id', 'brickwork_api.get_database_check', 'brickwork_api.get_database_export', 'brickwork_api.patch_sources_by_source', 'brickwork_api.post_catalogue_import', 'brickwork_api.post_colors_sync', 'brickwork_api.put_sources_source_key', 'brickwork_api.delete_sources_source_key', 'brickwork_api.post_sources_source_key_test', 'brickwork_api.post_imports_bricktracker', 'brickwork_api.post_imports_by_id_apply', 'brickwork_api.post_sync_by_source_send_apply', 'brickwork_api.post_sources_source_user_connect', 'brickwork_api.put_sources_source_user', 'brickwork_api.delete_sources_source_user', 'brickwork_api.post_sources_source_user_test', 'brickwork_api.patch_settings', 'brickwork_api.put_exchange_rates_by_code', 'brickwork_api.post_exchange_rates_ecb')
-
-
-@api.before_request
-def authorize():
-    transport.authorize(health=HEALTH, open_endpoints=('brickwork_api.get_health', 'brickwork_api.get_openapi_yaml'),
-                        scope_of=lambda endpoint, method: 'admin' if endpoint in ADMIN else ('read' if method == 'GET' else 'write'))
-    if request.endpoint in ('brickwork_api.get_health', 'brickwork_api.get_openapi_yaml'):
-        return
-    if request.method != 'GET' and 'If-Match' in request.headers:
-        from .writes import SPEC
-        if not any(op['if_match'] and request.endpoint == 'brickwork_api.' + op['endpoint'] for op in SPEC['operations']):
-            raise errors.BadRequest('If-Match is not supported on this operation')
-    transport.audited()
 
 
 api.after_request(transport.private_response)
@@ -58,9 +33,10 @@ def register(app):
     app.register_blueprint(api)
     # Routing 404/405 happen before Flask knows the blueprint.
     previous_404 = app.error_handler_spec.get(None, {}).get(404, {}).get(NotFound)
+
     def routing_error(error):
         if request.path == '/api/v1' or request.path.startswith('/api/v1/'):
-            # Every v1 path is gone, whether or not a route is still registered for it (health excepted).
+            # Every v1 path is gone, whether or not a route is registered for it (health excepted).
             return problem(error if request.path == '/api/v1/health' else errors.ApiRetired(errors.API_V1_RETIRED))
         if error.code == 404 and previous_404:
             return previous_404(error)
@@ -72,71 +48,3 @@ def register(app):
 @api.get('/health')
 def get_health():
     return jsonify(data=meta.health(database()))
-
-
-@api.get('/version')
-def get_version():
-    from .serializers import public
-    return jsonify(data=public(meta.version(database(), read_only()), 'Version'))
-
-
-@api.get('/me')
-def get_me():
-    return jsonify(data={k: g.api_identity[k] for k in ('name', 'scopes', 'expires_at')})
-
-
-@api.get('/openapi.yaml')
-def get_openapi_yaml():
-    return send_file(contract_path(), mimetype='application/yaml')
-
-
-@api.get('/tokens')
-def get_tokens():
-    if set(request.args) - {'cursor', 'limit', 'direction'}:
-        raise errors.UnknownFilter()
-    direction = request.args.get('direction', 'asc')
-    rows = filter_rows(tokens.listing(database()), sort='name', direction=direction)
-    return jsonify(paginate(rows, cursor=request.args.get('cursor'), limit=request.args.get('limit', 50), sort='name', direction=direction, signature='/tokens'))
-
-
-def written(data, event, status=200):
-    return jsonify(data=data, event_id=event, undo_url=f'/api/v1/events/{event}/undo', idempotent_replay=False), status
-
-
-@api.post('/tokens')
-def post_tokens():
-    data = request.get_json(silent=True)
-    if not isinstance(data, dict): raise errors.BadRequest('Expected a JSON object')
-    if set(data) - {'name', 'scopes', 'expires_at'}: raise errors.ValidationFailed('Unknown token field')
-    result, event = tokens.create(database(), data.get('name'), data.get('scopes'), data.get('expires_at'))
-    return written(result, event, 201)
-
-
-@api.delete('/tokens/<id>')
-def delete_tokens_by_id(id):
-    return written(*tokens.revoke(database(), id))
-
-
-@api.post('/events/<int:id>/undo')
-def post_events_by_id_undo(id):
-    if request.get_data():
-        raise errors.BadRequest('Undo accepts no request body')
-    from ..core import api_writes as service, undo
-    from .serializers import public
-    def action():
-        return undo.undo_event(database(), id, via='api', actor=g.api_identity['name'], identity=g.api_identity), 200
-    result,status = service.execute(database(),method=request.method,path=request.path,body={},
-        key=request.headers.get('Idempotency-Key'),required=True,token_name=g.api_identity['name'],
-        action=action,serialize=lambda value: public(value,'UndoResult'))
-    result['undo_url'] = None
-    return jsonify(result),status
-
-
-
-from . import reads  # noqa: E402,F401 — install the read-only route manifest
-
-from . import writes  # noqa: E402,F401
-
-from . import operations  # noqa: E402,F401 — M5 jobs, sources, key store, identification
-
-from . import sync  # noqa: E402,F401 — collection sync with Rebrickable and Brickset

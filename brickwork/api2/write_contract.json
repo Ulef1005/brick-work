@@ -87,6 +87,24 @@
       "undo_nullable": false
     },
     {
+      "endpoint": "post_items_by_id_import",
+      "event_nullable": true,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/items/{id}/import",
+      "piece": "M.11d",
+      "query": [],
+      "required": false,
+      "schema": {
+        "$ref": "#/components/schemas/ImportRequest"
+      },
+      "statuses": [
+        202
+      ],
+      "undo_nullable": true
+    },
+    {
       "endpoint": "post_copies",
       "event_nullable": true,
       "if_match": false,
@@ -546,6 +564,40 @@
       "undo_nullable": true
     },
     {
+      "endpoint": "post_items_by_id_prices_refresh",
+      "event_nullable": true,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/items/{id}/prices/refresh",
+      "piece": "M.11d",
+      "query": [],
+      "required": false,
+      "schema": {
+        "$ref": "#/components/schemas/RefreshRequest"
+      },
+      "statuses": [
+        202
+      ],
+      "undo_nullable": true
+    },
+    {
+      "endpoint": "post_prices_refresh",
+      "event_nullable": true,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/prices/refresh",
+      "piece": "M.11d",
+      "query": [],
+      "required": false,
+      "schema": null,
+      "statuses": [
+        200
+      ],
+      "undo_nullable": true
+    },
+    {
       "endpoint": "post_wishes",
       "event_nullable": true,
       "if_match": false,
@@ -879,6 +931,148 @@
       "undo_nullable": false
     },
     {
+      "endpoint": "post_orders_documents",
+      "event_nullable": true,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/orders/documents",
+      "piece": "M.11d",
+      "query": [],
+      "required": true,
+      "schema": {
+        "$ref": "#/components/schemas/OrderImport"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "patch_orders_by_id_lines_by_line_id",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "PATCH",
+      "multipart": false,
+      "path": "/orders/{id}/lines/{line_id}",
+      "piece": "M.11d",
+      "query": [],
+      "required": false,
+      "schema": {
+        "$ref": "#/components/schemas/OrderLineMatch"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "put_orders_by_id_lines_by_line_id_hold",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "PUT",
+      "multipart": false,
+      "path": "/orders/{id}/lines/{line_id}/hold",
+      "piece": "M.11d",
+      "query": [],
+      "required": false,
+      "schema": {
+        "$ref": "#/components/schemas/Hold"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "post_orders_by_id_documents_by_doc_id_phase",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/orders/{id}/documents/{doc_id}/phase",
+      "piece": "M.11d",
+      "query": [],
+      "required": false,
+      "schema": {
+        "$ref": "#/components/schemas/OrderPhase"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "post_orders_by_id_received",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/orders/{id}/received",
+      "piece": "M.11d",
+      "query": [],
+      "required": false,
+      "schema": {
+        "$ref": "#/components/schemas/OrderReceived"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "post_orders_by_id_allocate",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/orders/{id}/allocate",
+      "piece": "M.11d",
+      "query": [],
+      "required": true,
+      "schema": {
+        "$ref": "#/components/schemas/OrderAllocate"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "post_orders_by_id_reconcile",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/orders/{id}/reconcile",
+      "piece": "M.11d",
+      "query": [],
+      "required": false,
+      "schema": null,
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "post_orders_by_id_allocations_retry",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/orders/{id}/allocations/retry",
+      "piece": "M.11d",
+      "query": [],
+      "required": true,
+      "schema": {
+        "$ref": "#/components/schemas/OrderAllocate"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
       "endpoint": "post_events_by_id_undo",
       "event_nullable": false,
       "if_match": false,
@@ -888,6 +1082,455 @@
       "piece": "M.11c",
       "query": [],
       "required": true,
+      "schema": null,
+      "statuses": [
+        200
+      ],
+      "undo_nullable": true
+    },
+    {
+      "endpoint": "post_jobs_by_id_retry",
+      "event_nullable": true,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/jobs/{id}/retry",
+      "piece": "M.11d",
+      "query": [],
+      "required": false,
+      "schema": {
+        "$ref": "#/components/schemas/JobRetry"
+      },
+      "statuses": [
+        202
+      ],
+      "undo_nullable": true
+    },
+    {
+      "endpoint": "post_jobs_by_id_resume",
+      "event_nullable": true,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/jobs/{id}/resume",
+      "piece": "M.11d",
+      "query": [],
+      "required": false,
+      "schema": null,
+      "statuses": [
+        202
+      ],
+      "undo_nullable": true
+    },
+    {
+      "endpoint": "post_jobs_drain",
+      "event_nullable": true,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/jobs/drain",
+      "piece": "M.11d",
+      "query": [],
+      "required": false,
+      "schema": null,
+      "statuses": [
+        200
+      ],
+      "undo_nullable": true
+    },
+    {
+      "endpoint": "post_jobs_instruction_identities",
+      "event_nullable": true,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/jobs/instruction-identities",
+      "piece": "M.11d",
+      "query": [],
+      "required": false,
+      "schema": null,
+      "statuses": [
+        202
+      ],
+      "undo_nullable": true
+    },
+    {
+      "endpoint": "post_jobs_pictures",
+      "event_nullable": true,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/jobs/pictures",
+      "piece": "M.11d",
+      "query": [],
+      "required": false,
+      "schema": {
+        "$ref": "#/components/schemas/PictureRefresh"
+      },
+      "statuses": [
+        202
+      ],
+      "undo_nullable": true
+    },
+    {
+      "endpoint": "patch_sources_by_source",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "PATCH",
+      "multipart": false,
+      "path": "/sources/{source}",
+      "piece": "M.11d",
+      "query": [],
+      "required": false,
+      "schema": {
+        "$ref": "#/components/schemas/SourceToggle"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "post_catalogue_import",
+      "event_nullable": true,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/catalogue/import",
+      "piece": "M.11d",
+      "query": [],
+      "required": false,
+      "schema": null,
+      "statuses": [
+        200
+      ],
+      "undo_nullable": true
+    },
+    {
+      "endpoint": "put_sync_by_source_link",
+      "event_nullable": true,
+      "if_match": false,
+      "method": "PUT",
+      "multipart": false,
+      "path": "/sync/{source}/link",
+      "piece": "M.11d",
+      "query": [],
+      "required": false,
+      "schema": {
+        "additionalProperties": false,
+        "properties": {
+          "owned": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "send_to": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "wish_list": {
+            "type": "string"
+          },
+          "wishlist": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": true
+    },
+    {
+      "endpoint": "post_sync_by_source_pull_plan",
+      "event_nullable": true,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/sync/{source}/pull/plan",
+      "piece": "M.11d",
+      "query": [],
+      "required": false,
+      "schema": null,
+      "statuses": [
+        201
+      ],
+      "undo_nullable": true
+    },
+    {
+      "endpoint": "post_sync_by_source_pull_apply",
+      "event_nullable": true,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/sync/{source}/pull/apply",
+      "piece": "M.11d",
+      "query": [],
+      "required": false,
+      "schema": {
+        "additionalProperties": false,
+        "properties": {
+          "plan_id": {
+            "type": "string"
+          },
+          "ticked": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "plan_id"
+        ],
+        "type": "object"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": true
+    },
+    {
+      "endpoint": "post_sync_by_source_send_plan",
+      "event_nullable": true,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/sync/{source}/send/plan",
+      "piece": "M.11d",
+      "query": [],
+      "required": false,
+      "schema": null,
+      "statuses": [
+        201
+      ],
+      "undo_nullable": true
+    },
+    {
+      "endpoint": "post_sync_by_source_send_apply",
+      "event_nullable": true,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/sync/{source}/send/apply",
+      "piece": "M.11d",
+      "query": [],
+      "required": false,
+      "schema": {
+        "additionalProperties": false,
+        "properties": {
+          "plan_id": {
+            "type": "string"
+          },
+          "ticked": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "plan_id"
+        ],
+        "type": "object"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": true
+    },
+    {
+      "endpoint": "put_sources_by_source_user",
+      "event_nullable": true,
+      "if_match": false,
+      "method": "PUT",
+      "multipart": false,
+      "path": "/sources/{source}/user",
+      "piece": "M.11d",
+      "query": [],
+      "required": false,
+      "schema": {
+        "additionalProperties": false,
+        "properties": {
+          "value": {
+            "maxLength": 256,
+            "minLength": 8,
+            "type": "string"
+          }
+        },
+        "required": [
+          "value"
+        ],
+        "type": "object"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": true
+    },
+    {
+      "endpoint": "delete_sources_by_source_user",
+      "event_nullable": true,
+      "if_match": false,
+      "method": "DELETE",
+      "multipart": false,
+      "path": "/sources/{source}/user",
+      "piece": "M.11d",
+      "query": [],
+      "required": false,
+      "schema": null,
+      "statuses": [
+        200
+      ],
+      "undo_nullable": true
+    },
+    {
+      "endpoint": "post_sources_by_source_user_connect",
+      "event_nullable": true,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/sources/{source}/user/connect",
+      "piece": "M.11d",
+      "query": [],
+      "required": false,
+      "schema": {
+        "additionalProperties": false,
+        "properties": {
+          "password": {
+            "format": "password",
+            "type": "string",
+            "writeOnly": true
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "username",
+          "password"
+        ],
+        "type": "object"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": true
+    },
+    {
+      "endpoint": "post_sources_by_source_user_test",
+      "event_nullable": true,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/sources/{source}/user/test",
+      "piece": "M.11d",
+      "query": [],
+      "required": false,
+      "schema": null,
+      "statuses": [
+        200
+      ],
+      "undo_nullable": true
+    },
+    {
+      "endpoint": "put_sources_by_source_key",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "PUT",
+      "multipart": false,
+      "path": "/sources/{source}/key",
+      "piece": "M.11d",
+      "query": [],
+      "required": false,
+      "schema": {
+        "$ref": "#/components/schemas/SourceKeyInput"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "delete_sources_by_source_key",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "DELETE",
+      "multipart": false,
+      "path": "/sources/{source}/key",
+      "piece": "M.11d",
+      "query": [],
+      "required": false,
+      "schema": null,
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "post_sources_by_source_key_test",
+      "event_nullable": true,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/sources/{source}/key/test",
+      "piece": "M.11d",
+      "query": [],
+      "required": false,
+      "schema": null,
+      "statuses": [
+        200
+      ],
+      "undo_nullable": true
+    },
+    {
+      "endpoint": "put_exchange_rates_by_code",
+      "event_nullable": true,
+      "if_match": false,
+      "method": "PUT",
+      "multipart": false,
+      "path": "/exchange-rates/{code}",
+      "piece": "M.11d",
+      "query": [],
+      "required": false,
+      "schema": {
+        "additionalProperties": false,
+        "properties": {
+          "per_eur": {
+            "type": [
+              "string",
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "per_eur"
+        ],
+        "type": "object"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": true
+    },
+    {
+      "endpoint": "post_exchange_rates_ecb",
+      "event_nullable": true,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/exchange-rates/ecb",
+      "piece": "M.11d",
+      "query": [],
+      "required": false,
       "schema": null,
       "statuses": [
         200
@@ -907,6 +1550,127 @@
       "schema": {
         "$ref": "#/components/schemas/SettingsPatch"
       },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "post_imports_bricktracker",
+      "event_nullable": true,
+      "if_match": false,
+      "method": "POST",
+      "multipart": true,
+      "path": "/imports/bricktracker",
+      "piece": "M.11d",
+      "query": [],
+      "required": false,
+      "schema": {
+        "additionalProperties": false,
+        "properties": {
+          "file": {
+            "format": "binary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "type": "object"
+      },
+      "statuses": [
+        201
+      ],
+      "undo_nullable": true
+    },
+    {
+      "endpoint": "post_imports_by_id_apply",
+      "event_nullable": true,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/imports/{id}/apply",
+      "piece": "M.11d",
+      "query": [],
+      "required": false,
+      "schema": {
+        "additionalProperties": false,
+        "properties": {
+          "decisions": {
+            "additionalProperties": {
+              "enum": [
+                "add",
+                "skip"
+              ],
+              "type": "string"
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": true
+    },
+    {
+      "endpoint": "post_identifications",
+      "event_nullable": true,
+      "if_match": false,
+      "method": "POST",
+      "multipart": true,
+      "path": "/identifications",
+      "piece": "M.11d",
+      "query": [],
+      "required": false,
+      "schema": {
+        "additionalProperties": false,
+        "properties": {
+          "file": {
+            "format": "binary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "type": "object"
+      },
+      "statuses": [
+        201
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "post_tokens",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/tokens",
+      "piece": "M.11d",
+      "query": [],
+      "required": false,
+      "schema": {
+        "$ref": "#/components/schemas/TokenCreate"
+      },
+      "statuses": [
+        201
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "delete_tokens_by_id",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "DELETE",
+      "multipart": false,
+      "path": "/tokens/{id}",
+      "piece": "M.11d",
+      "query": [],
+      "required": false,
+      "schema": null,
       "statuses": [
         200
       ],
@@ -969,6 +1733,22 @@
         ],
         "type": "object"
       },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "delete_identifications_by_id",
+      "event_nullable": true,
+      "if_match": false,
+      "method": "DELETE",
+      "multipart": false,
+      "path": "/identifications/{id}",
+      "piece": "M.11d",
+      "query": [],
+      "required": false,
+      "schema": null,
       "statuses": [
         200
       ],
@@ -1589,6 +2369,39 @@
       ],
       "type": "object"
     },
+    "Hold": {
+      "properties": {
+        "held": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "held"
+      ],
+      "type": "object"
+    },
+    "ImportRequest": {
+      "additionalProperties": false,
+      "description": "Optional step subset; default is the stored import order for the item's kind. The sources of a step are the stored order of its kind.",
+      "properties": {
+        "steps": {
+          "items": {
+            "enum": [
+              "identity",
+              "inventory",
+              "matching",
+              "pictures",
+              "metadata",
+              "market_price"
+            ],
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
     "InstructionPatch": {
       "properties": {
         "label": {
@@ -1703,6 +2516,18 @@
         "type",
         "no"
       ],
+      "type": "object"
+    },
+    "JobRetry": {
+      "additionalProperties": false,
+      "properties": {
+        "step": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
       "type": "object"
     },
     "Kind": {
@@ -1881,6 +2706,223 @@
       ],
       "type": "object"
     },
+    "OrderAllocate": {
+      "additionalProperties": false,
+      "properties": {
+        "chosen": {
+          "items": {
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "target_type": {
+                      "const": "copy"
+                    }
+                  }
+                },
+                "then": {
+                  "required": [
+                    "copy_id",
+                    "target",
+                    "target_id"
+                  ]
+                }
+              }
+            ],
+            "properties": {
+              "copy_id": {
+                "type": "string"
+              },
+              "line_id": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "lot_id": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "quantity": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "storage_id": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "target": {
+                "enum": [
+                  "part",
+                  "figure",
+                  "instructions",
+                  "box"
+                ]
+              },
+              "target_id": {
+                "type": [
+                  "integer",
+                  "string"
+                ]
+              },
+              "target_type": {
+                "enum": [
+                  "copy",
+                  "stock"
+                ]
+              }
+            },
+            "required": [
+              "line_id",
+              "target_type",
+              "quantity"
+            ],
+            "type": "object"
+          },
+          "maxItems": 1000,
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": [
+        "chosen"
+      ],
+      "type": "object"
+    },
+    "OrderImport": {
+      "properties": {
+        "choice": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "number": {
+          "type": "string"
+        },
+        "source": {
+          "enum": [
+            "email",
+            "xml",
+            "api"
+          ],
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "source"
+      ],
+      "type": "object"
+    },
+    "OrderLineMatch": {
+      "properties": {
+        "color": {
+          "description": "A colour in the provider space of the item key (decision 4): a BrickLink colour id with provider bricklink, a Rebrickable colour id with rebrickable, a Brick Work colour id when the item is named by id.",
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "item": {
+          "allOf": [
+            {
+              "$ref": "#/components/schemas/ItemKey"
+            }
+          ],
+          "description": "The item, by number (decision 3) or by id."
+        }
+      },
+      "required": [
+        "item"
+      ],
+      "type": "object"
+    },
+    "OrderPhase": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "enum": [
+            "review",
+            "reopen",
+            "save"
+          ],
+          "type": "string"
+        },
+        "pairs": {
+          "additionalProperties": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "minProperties": 1,
+          "propertyNames": {
+            "pattern": "[0-9]{1,12}"
+          },
+          "type": "object"
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "type": "object"
+    },
+    "OrderReceived": {
+      "additionalProperties": false,
+      "properties": {
+        "counts": {
+          "additionalProperties": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "minProperties": 1,
+          "propertyNames": {
+            "pattern": "[0-9]{1,12}"
+          },
+          "type": "object"
+        }
+      },
+      "required": [
+        "counts"
+      ],
+      "type": "object"
+    },
+    "PictureRefresh": {
+      "additionalProperties": false,
+      "properties": {
+        "expected_count": {
+          "description": "The number of items the caller saw; the call is refused (422) when the count has changed.",
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "kinds": {
+          "description": "The item kinds to refresh; all kinds when left out.",
+          "items": {
+            "$ref": "#/components/schemas/Kind"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "scope": {
+          "description": "missing queues the held items that have a colour with no picture, all every held item.",
+          "enum": [
+            "missing",
+            "all"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "scope"
+      ],
+      "type": "object"
+    },
     "Pin": {
       "properties": {
         "pinned": {
@@ -2028,6 +3070,12 @@
       ],
       "type": "object"
     },
+    "RefreshRequest": {
+      "additionalProperties": false,
+      "description": "Queue the shared market_price step for the whole item; variant selection belongs to the pipeline. No network call before queueing.",
+      "properties": {},
+      "type": "object"
+    },
     "SettingsPatch": {
       "properties": {
         "bricklink_currency": {
@@ -2074,6 +3122,54 @@
           "type": "object"
         }
       },
+      "type": "object"
+    },
+    "SourceKeyInput": {
+      "additionalProperties": false,
+      "description": "Write-only. One `key` for Rebrickable and Brickset; consumer_key, consumer_secret, token_value and token_secret for BrickLink. Values are never returned, logged or shown again.",
+      "properties": {
+        "consumer_key": {
+          "maxLength": 256,
+          "minLength": 8,
+          "type": "string",
+          "writeOnly": true
+        },
+        "consumer_secret": {
+          "maxLength": 256,
+          "minLength": 8,
+          "type": "string",
+          "writeOnly": true
+        },
+        "key": {
+          "maxLength": 256,
+          "minLength": 8,
+          "type": "string",
+          "writeOnly": true
+        },
+        "token_secret": {
+          "maxLength": 256,
+          "minLength": 8,
+          "type": "string",
+          "writeOnly": true
+        },
+        "token_value": {
+          "maxLength": 256,
+          "minLength": 8,
+          "type": "string",
+          "writeOnly": true
+        }
+      },
+      "type": "object"
+    },
+    "SourceToggle": {
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "enabled"
+      ],
       "type": "object"
     },
     "StockCreate": {
@@ -2289,6 +3385,40 @@
       "required": [
         "item",
         "quantity"
+      ],
+      "type": "object"
+    },
+    "TokenCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "expires_at": {
+          "format": "date-time",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name": {
+          "maxLength": 80,
+          "minLength": 1,
+          "type": "string"
+        },
+        "scopes": {
+          "items": {
+            "enum": [
+              "read",
+              "write",
+              "admin"
+            ],
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": [
+        "name",
+        "scopes"
       ],
       "type": "object"
     },

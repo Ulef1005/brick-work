@@ -1,5 +1,7 @@
 # Brick Work API v1: contract
 
+**Retired (M.11d, issue #113).** On the 4.0 line every v1 path answers `410 Gone` and names v2, except `GET /health`; the API is [api-v2.md](api-v2.md). This file stays as the reference for what v2 inherits. The modules it names as backing (`core.api_reads`, `core.api_writes`, `core.api_jobs`, `core.api_orders`, `core.api_pages`, `api/operations.py`, `api/reads.py`, `api/writes.py`, `api/sync.py`) are gone.
+
 **Status:** decisions accepted 2026-10-15; M0 foundations, M1 transport, M2 GET operations, M3 collection writes, M4 checker and manual-price writes, M5 jobs, sources, the encrypted key store and uploads, M6 orders and the full Undo dispatcher, and M7 MCP implemented in 4.11b–4.11i. M8 cutover and M9 standalone smoke shipped in 4.11j. The machine-readable twin is [openapi-v1.yaml](openapi-v1.yaml).
 
 **How to read this file.** Every claim about existing code names the file it came from (`brickwork/core/...`, `brickwork/web/...`; paths below drop the `brickwork/` prefix). **NEW** records an endpoint or helper introduced by the v1 plan; the implemented operation table and OpenAPI `x-milestone` markers show what is now implemented. "Backing" is the function an endpoint wraps. This contract records accepted behaviour; milestone entries distinguish implemented foundations from planned endpoints.

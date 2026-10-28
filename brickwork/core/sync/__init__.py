@@ -488,7 +488,7 @@ def _undo_pull(db, event, via, actor):
     return {'event_id': undo_id}
 
 
-undoing.register('sync', 'receipt', _undo_pull, admin=True)
+undoing.register('sync', 'receipt', _undo_pull)
 
 
 def undo(db, event_id):

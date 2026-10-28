@@ -158,8 +158,8 @@ const chips=(row,offers)=>{
    cell(choose(row.where==='wishlist'?[['used','Used'],['new','New'],['any','Any']]:row.where==='loose'?[['used','Used'],['new','New'],['damaged','Damaged']]:[['used','Used'],['new','New']],row.condition,`Condition for ${row.label || row.number}`,v=>{row.condition=v;}));
    if(row.kind==='set' && row.where==='owned')cell(choose([['','Unknown · from checks'],['sealed','Sealed'],['complete','Complete'],['incomplete','Incomplete']],row.completeness,`Completeness for ${row.label || row.number}`,v=>{row.completeness=v;}));else cell('').className='bw-add-na';
    const offers=row.offers;
-   const again=row.owned || row.wished || row.batchDuplicate;
-   const choice=offers ? cell(chips(row,offers)) : cell(choose(again ? [['','Choose: another or skip'],['another',row.where==='wishlist' ? 'Add to the wished quantity' : 'Add another copy'],['skip','Skip']] : [['','Add'],['skip','Skip']],row.decision,`Choice for ${row.label || row.number}`,v=>{row.decision=v;confirmCount();}));
+   const again=row.owned || row.wished || row.batchDuplicate;   // "another" stays offered: a changed colour can be held already (the server checks)
+   const choice=offers ? cell(chips(row,offers)) : cell(choose(again ? [['','Choose: another or skip'],['another',row.where==='wishlist' ? 'Add to the wished quantity' : 'Add another copy'],['skip','Skip']] : [['','Add'],['another',row.where==='wishlist' ? 'Add to the wished quantity' : 'Add another copy'],['skip','Skip']],row.decision,`Choice for ${row.label || row.number}`,v=>{row.decision=v;confirmCount();}));
    if(offers)choice.prepend(el('p',offers.help,'notice'));
    if(row.owned || row.wished || row.batchDuplicate)choice.prepend(el('p',`${row.owned ? `Already owned · ${row.owned}` : ''}${row.owned && row.wished ? ' · ' : ''}${row.wished ? 'Already on Wishlist' : ''}${row.batchDuplicate ? ' · Repeated in this list' : ''}`,'notice'));
    $('review-rows').append(tr);

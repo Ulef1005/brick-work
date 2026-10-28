@@ -75,8 +75,8 @@ const shown=()=>!R.querySelector('[data-review-panel]').hidden;
 # Add review with a set (the Part list picker), a part with no known picture and one with a picture; then the picker moved off its preselection.
 ADD_REVIEW = REVIEW + """
 const add=async(kind,text,expect)=>{R.querySelector(`input[name=type][value=${kind}]`).click();const i=R.querySelector('[data-search]');i.value=text;i.dispatchEvent(new Event('input',{bubbles:true}));
- await until(()=>{const f=R.querySelector('[data-results] .bw-add-item');return f&&f.textContent.includes(expect)&&[...f.querySelectorAll('button')].some(b=>b.textContent==='Add to list');});
- [...R.querySelector('[data-results] .bw-add-item').querySelectorAll('button')].find(b=>b.textContent==='Add to list').click();await pause(100);};
+ await until(()=>{const f=R.querySelector('[data-results] .bw-add-item');return f&&f.textContent.includes(expect)&&[...f.querySelectorAll('button')].some(b=>b.textContent==='Select');});
+ [...R.querySelector('[data-results] .bw-add-item').querySelectorAll('button')].find(b=>b.textContent==='Select').click();await pause(100);};
 await add('set','1000-1','Syn Castle Keep');await add('part','dupupn0123a','dupupn0123a');await add('part','3001','3001');
 R.querySelector('[data-review]').click();await until(shown);
 for(let n=0;n<2;n++){const b=[...R.querySelectorAll('[data-review-rows] button.bw-add-colour')].find(x=>x.textContent==='Choose a colour');b.click();

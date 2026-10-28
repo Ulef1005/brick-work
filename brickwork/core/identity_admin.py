@@ -578,11 +578,19 @@ def survivors(db, loser, text, limit=12):
         raise errors.NotFound(f'No item {loser}')
     text = (text or '').strip()
     if text:
-        if has_catalogue(db):                                       # the Add search: numbers (both catalogues) and names, local items included
-            hits = add.search(db, row['kind'], text)['items']
-            found = [dict(item_id=h['item_id'], how='search') for h in hits if h['item_id'] != loser][:limit]
-        else:
-            found = [dict(item_id=f['item_id'], how=f['matched_by']) for f in items.find(db, row['kind'], text, limit=limit + 1) if f['item_id'] != loser][:limit]
+        found = [dict(item_id=f['item_id'], how=f['matched_by']) for f in items.find(db, row['kind'], text, limit=limit + 1)]      # exact numbers first
+        try:                                                        # then the Add search: names and sizes (without an active catalogue it cannot run)
+            found += [dict(item_id=h['item_id'], how='search') for h in add.search(db, row['kind'], text)['items']]
+        except errors.CatalogueNotLoaded:
+            pass
+        tokens = re.findall(r'[^\W_]+', text.lower())              # local items by name or number, which the size search leaves out
+        if tokens:
+            clause = ' AND '.join("(lower(name) LIKE ? ESCAPE '\\' OR lower(coalesce(born_key, '')) LIKE ? ESCAPE '\\')" for _ in tokens)
+            args = [x for t in tokens for x in ('%' + add._escape(t) + '%',) * 2]
+            found += [dict(item_id=r[0], how='search') for r in db.execute(
+                f"SELECT id FROM main.item WHERE origin='local' AND kind=? AND merged_into IS NULL AND {clause} ORDER BY name, id LIMIT 20", (row['kind'], *args))]
+        seen = {loser}
+        found = [f for f in found if not (f['item_id'] in seen or seen.add(f['item_id']))][:limit]
     else:
         found = [dict(item_id=c['item_id'], how=c['how']) for c in _candidates(db, row)]
     decorated = {r['item_id']: r for r in collection.decorate(db, [dict(item_id=f['item_id']) for f in found])}

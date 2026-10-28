@@ -272,3 +272,22 @@ def test_review_3_the_merge_search_finds_items_by_name(coll, client, world):
     names = [a.select_one('strong').get_text() for a in soup.select('.bi-result')]
     assert 'Brick 2 x 4' in names and 'Only on BrickLink' not in names
     assert gear
+
+
+def test_review_4_a_local_number_that_looks_like_a_size_and_a_full_local_name_are_found(coll, client, world):
+    loser = coll.local('part', 'Some loose entry', born_key='dup-1')
+    target = coll.local('part', 'Brick 2 x 4 (from BrickLink)', born_key='x2')
+    names = lambda q: [a.select_one('strong').get_text() for a in page(client, f'/collection/item/{loser}/merge?q={q}').select('.bi-result')]
+    assert names('x2')[0] == 'Brick 2 x 4 (from BrickLink)'                      # the exact number first, then the size matches
+    assert 'Brick 2 x 4 (from BrickLink)' in names('Brick+2+x+4') and 'Brick 2 x 4' in names('Brick+2+x+4')
+    assert len(names('Brick+2+x+4')) == len(set(names('Brick+2+x+4')))
+    assert target
+
+
+def test_review_5_the_merge_page_survives_a_catalogue_that_is_not_activated(coll, client, world, monkeypatch):
+    from brickwork.core import add
+    local = tie(coll, world)
+    monkeypatch.setattr(add, 'require_catalogue', lambda db: (_ for _ in ()).throw(errors.CatalogueNotLoaded('No catalogue is active')))
+    response = client.get(f'/collection/item/{local}/merge?q=3001')
+    assert response.status_code == 200 and b'bi-results' in response.data
+    assert 'Brick 2 x 4' in [a.select_one('strong').get_text() for a in BeautifulSoup(response.data, 'html.parser').select('.bi-result')]

@@ -100,6 +100,7 @@ def test_a_catalogue_entry_says_how_much_is_owned_and_wished(v2, world):
     assert (gate['owned'], gate['wished']) == (0, True)
     brick = data(call(v2, f'/catalogue/items/{world.brick}'))
     assert brick['owned'] == 5 and brick['category'] == 'Bricks'                       # 3 used and 2 new loose
+    assert keep['theme'] == 'Castle' and brick['theme'] is None                         # a set's Rebrickable theme; a part has none
     assert data(call(v2, '/catalogue/items?q=3001'))[0] == brick
 
 

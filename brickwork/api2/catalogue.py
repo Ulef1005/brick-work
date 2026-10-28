@@ -92,12 +92,13 @@ def owned_counts(db, ids):
 def catalogue_rows(db, ids):
     """`CatalogueItem` bodies for catalogue item ids, in the order given (an id the catalogue does not hold live is left out)."""
     packed = json.dumps(sorted(set(ids)))
-    found = {r['id']: r for r in db.execute('''SELECT i.id, i.name, i.year, c.name AS category FROM catalogue.item i
-        LEFT JOIN catalogue.part_category c ON c.id=i.category_id WHERE i.retired_at IS NULL AND i.id IN (SELECT value FROM json_each(?))''', (packed,))}
+    found = {r['id']: r for r in db.execute('''SELECT i.id, i.name, i.year, c.name AS category, t.name AS theme FROM catalogue.item i
+        LEFT JOIN catalogue.part_category c ON c.id=i.category_id LEFT JOIN catalogue.theme t ON t.id=i.theme_id
+        WHERE i.retired_at IS NULL AND i.id IN (SELECT value FROM json_each(?))''', (packed,))}
     owned, wished = owned_counts(db, found)
     book = bodies(db, items=found)
     return [{'item': book.item(i), 'name': found[i]['name'], 'year': found[i]['year'], 'owned': owned.get(i, 0),
-             'wished': i in wished, 'category': found[i]['category']} for i in ids if i in found]
+             'wished': i in wished, 'category': found[i]['category'], 'theme': found[i]['theme']} for i in ids if i in found]
 
 
 def _escape(text):

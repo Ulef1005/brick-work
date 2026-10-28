@@ -6835,6 +6835,11 @@ components:
           type:
           - string
           - 'null'
+        theme:
+          type:
+          - string
+          - 'null'
+          description: The Rebrickable theme of a set or minifigure from the catalogue (a part has none). Item properties fetched later may name another.
       required:
       - item
     ItemDetail:

@@ -18,7 +18,7 @@ import sqlite3
 
 from ..store4 import merge as moves
 from ..store4.connect import has_catalogue, now
-from ..store4.errors import MergeRefused
+from ..store4.errors import CatalogueError, MergeRefused
 from ..store4.rowlog import RowLog
 from . import add, collection, errors, items
 from . import undo as undoing
@@ -192,6 +192,8 @@ def _run(db, function, *args, **kwargs):
             return function(db, *args, via=via, actor=actor, operation_key=OPERATION_KEY.get(), **kwargs)
     except MergeRefused as exc:
         raise errors.Conflict(str(exc)) from None
+    except CatalogueError:
+        raise errors.Conflict(NOT_ACTIVATED) from None
 
 
 def merge_item(db, loser, survivor):
@@ -383,6 +385,7 @@ TABLE_WORDS = {'copy': 'copies', 'copy_figure': 'figure lines', 'copy_part': 'pa
                'set_preference': 'part list choices', 'identification_action': 'identification notes', 'stock_transfer': 'stock transfers'}
 CONFIRMED_STATUS = ('manual', 'matched', 'inferred')
 PREVIEW_WAIT_MS = 1500
+NOT_ACTIVATED = "The catalogue isn't activated yet, so this item cannot be brought into your collection. Activate it in Tools & Admin › Catalogues & keys."
 
 
 def _store_of(db, item_id):
@@ -515,6 +518,8 @@ def merge_preview(db, loser, survivor):
             counts = moves.merge_in(db, int(loser), int(survivor), via=via, actor=actor, operation_key=None)['counts']
         except MergeRefused as exc:
             out['refusal'] = explain_refusal(db, str(exc), int(loser), int(survivor))
+        except CatalogueError:
+            out['refusal'] = NOT_ACTIVATED
         else:
             rows = [(TABLE_WORDS.get(t, t.replace('_', ' ')), c.get('moved', 0) + c.get('inserted', 0)) for t, c in counts.items() if t != 'item']
             out.update(ok=True, counts=counts, rows=sorted([r for r in rows if r[1]], key=lambda r: (-r[1], r[0])),
@@ -589,6 +594,9 @@ def survivors(db, loser, text, limit=12):
             args = [x for t in tokens for x in ('%' + add._escape(t) + '%',) * 2]
             found += [dict(item_id=r[0], how='search') for r in db.execute(
                 f"SELECT id FROM main.item WHERE origin='local' AND kind=? AND merged_into IS NULL AND {clause} ORDER BY name, id LIMIT 20", (row['kind'], *args))]
+        if not db.execute('SELECT 1 FROM main.catalogue_build LIMIT 1').fetchone():          # nothing can be projected: offer only what is in the collection
+            kept = {r[0] for r in db.execute('SELECT id FROM main.item WHERE id IN (SELECT value FROM json_each(?))', (json.dumps([f['item_id'] for f in found]),))}
+            found = [f for f in found if f['item_id'] in kept]
         seen = {loser}
         found = [f for f in found if not (f['item_id'] in seen or seen.add(f['item_id']))][:limit]
     else:

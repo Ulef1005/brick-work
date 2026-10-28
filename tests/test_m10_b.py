@@ -291,3 +291,18 @@ def test_review_5_the_merge_page_survives_a_catalogue_that_is_not_activated(coll
     response = client.get(f'/collection/item/{local}/merge?q=3001')
     assert response.status_code == 200 and b'bi-results' in response.data
     assert 'Brick 2 x 4' in [a.select_one('strong').get_text() for a in BeautifulSoup(response.data, 'html.parser').select('.bi-result')]
+
+
+def test_review_6_a_catalogue_only_target_without_an_activated_catalogue_is_not_a_500(coll, client, world):
+    local = coll.local('part', 'Legs (from BrickLink)', born_key='970c22-x')
+    hair = coll.item('parts', '970c22')                                                      # in the catalogue, not in the collection
+    assert not coll.db.execute('SELECT 1 FROM main.item WHERE id=?', (hair,)).fetchone()
+    coll.db.execute('PRAGMA foreign_keys=OFF')                                             # an activation that never happened
+    coll.sql('DELETE FROM catalogue_build')
+    names = [a.select_one('strong').get_text() for a in page(client, f'/collection/item/{local}/merge?q=970c22').select('.bi-result')]
+    assert 'Hips and Red Legs' not in names                                                       # offered only what can be merged into
+    soup = page(client, f'/collection/item/{local}/merge?target={hair}')
+    assert "catalogue isn't activated yet" in soup.select_one('.bi-refusal').get_text() and not soup.select_one('input[name=action][value=merge]')
+    response = post(client, local, action='merge', target=str(hair))                       # the confirm path says the same, not 500
+    assert response.status_code == 302 and 'done=' not in response.headers['Location']
+    assert coll.db.execute('SELECT merged_into FROM main.item WHERE id=?', (local,)).fetchone()[0] is None

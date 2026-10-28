@@ -26,7 +26,14 @@ brickwork setup
 
 *Since 0.5.0.*
 
-Checks the database: SQLite integrity and foreign keys of the collection, SQLite integrity of the catalogue file beside it, and the row count of every table. Opens the files read-only. Exits with status 1 when a check finds a problem. The **Database** page of Tools & Admin runs the same check and keeps its result; this command does not.
+Checks the database: SQLite integrity and foreign keys of the collection, SQLite integrity of the catalogue file beside it, and the row count of every table. It then checks that the two files belong together (*since 4.0*), one named check each:
+
+- `binding`: the collection is bound to this catalogue and every build it activated is in the catalogue file.
+- `born_keys`: every catalogue item and colour in the collection has the same id and born key in the catalogue.
+- `inventory_keys`: every part list the collection names (a set or figure and a version) exists in the catalogue.
+- `digests`: projected items agree with the catalogue row they came from (once the collection is reconciled), and the part lists the collection names agree with their own lines.
+
+A failed check prints what is wrong and the fix (restore the pair from one archive, or `catalogue rebuild`, or reconcile). A copy whose part list changed in the catalogue is counted, not a failure. Opens the files read-only. Exits with status 1 when a check finds a problem. The **Database** page of Tools & Admin runs the same check and keeps its result; this command does not.
 
 ```text
 brickwork check

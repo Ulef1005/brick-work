@@ -225,11 +225,13 @@ def bw_admin_write(page):
                 from ..core import admin as core_admin
                 from ..core.admin import database
                 with database(admin_ops.brickwork_path(), read_only=True, require_catalogue=False) as db:
-                    result = core_admin.check(db)
+                    result = core_admin.check_all(db)
                 findings = len(result['foreign_key_check'])
                 ok = core_admin.check_ok(result)
+                failed = [c['title'] for c in result['cross_checks'] if not c['ok']]
                 flash(('Database check: no problems found' if ok else
-                       f"Database check: integrity {', '.join(result['integrity_check'][:3])} · {findings} foreign-key findings")
+                       f"Database check: integrity {', '.join(result['integrity_check'][:3])} · {findings} foreign-key findings"
+                       + (f" · {', '.join(failed)} failed" if failed else ''))
                       + ' · not stored, this instance is read-only', 'success' if ok else 'error')
                 return redirect(url_for('web.bw_admin', page='database'))
             admin_ops.tools_write('database_check')

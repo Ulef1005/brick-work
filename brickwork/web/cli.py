@@ -147,6 +147,19 @@ def _human(result, indent=0):
                 print(' ' * indent + str(value))
 
 
+def _print_check(result):
+    """`brickwork check`: the SQLite results as before, then one line per cross-file check, a failure with its message and fix."""
+    for name, db in result.items():
+        cross = db.get('cross_checks', [])
+        print(name + ':')
+        _human({k: v for k, v in db.items() if k != 'cross_checks'}, 2)
+        if cross:
+            print('  cross_checks:')
+        for c in cross:
+            print(f"    {'ok  ' if c['ok'] else 'FAIL'} {c['name']} · {c['title']}")
+            print(f"         {c['message']}")
+
+
 def main(argv=None):
     parser = build_parser()
     args = vars(parser.parse_args(argv))
@@ -253,6 +266,8 @@ def main(argv=None):
                 result = service(**args)
                 if as_json:
                     print(json.dumps(result, indent=2))
+                elif operation == 'brickwork_check':
+                    _print_check(result)
                 elif operation in ('import_item', 'jobs_retry', 'jobs_list'):
                     rows = result if isinstance(result, list) else [result]
                     if not rows:
@@ -267,6 +282,7 @@ def main(argv=None):
                     return 1
                 if operation in ('check', 'brickwork_check') and any(
                         db['integrity_check'] != ['ok'] or db['foreign_key_check'] or db.get('catalogue_integrity_check', ['ok']) != ['ok']
+                        or not all(c['ok'] for c in db.get('cross_checks', ()))
                         for db in result.values()):
                     return 1
                 if (

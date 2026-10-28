@@ -518,13 +518,22 @@ def check(db):
     return result
 
 
+def check_all(db):
+    """`check` plus the cross-file checks of the pair (`store4.crosscheck`): what `brickwork check` and the Database page run. API v2's
+    `/database/check` stays `check`, so its response keeps its shape."""
+    from ..store4 import crosscheck
+    result = check(db)
+    result['cross_checks'] = crosscheck.run(db)
+    return result
+
+
 CHECK_KEY = 'maintenance:database_check'
 CHECK_FINDINGS_STORED = 200
 
 
 def check_ok(result):
     return result['integrity_check'] == ['ok'] and not result.get('foreign_key_total', len(result['foreign_key_check'])) and \
-        result.get('catalogue_integrity_check', ['ok']) == ['ok']
+        result.get('catalogue_integrity_check', ['ok']) == ['ok'] and all(c['ok'] for c in result.get('cross_checks', ()))
 
 
 def last_check(db):
@@ -539,7 +548,7 @@ def last_check(db):
 
 def run_check(db):
     """Run the full check, keep its result with a date (`setting` `maintenance:database_check`), and audit the run (one transaction, not undoable)."""
-    result = check(db)
+    result = check_all(db)
     result['foreign_key_total'] = len(result['foreign_key_check'])
     result['foreign_key_check'] = result['foreign_key_check'][:CHECK_FINDINGS_STORED]
     result['checked_at'] = store4_now()

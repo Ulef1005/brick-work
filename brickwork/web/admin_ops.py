@@ -564,9 +564,20 @@ def tools_export():
 
 
 def brickwork_check():
+    """The database check with the cross-file checks. A catalogue that does not belong to the collection is refused at attach: the check then
+    runs on the collection alone and reports that as the failed `binding` check, with the fix."""
     from ..core import admin
-    with admin.database(brickwork_path(), read_only=True, require_catalogue=False) as db:
-        return {'brickwork': admin.check(db)}
+    from ..core.connect import NoCatalogue
+    try:
+        with admin.database(brickwork_path(), read_only=True, require_catalogue=False) as db:
+            return {'brickwork': admin.check_all(db)}
+    except NoCatalogue as exc:
+        from ..store4 import connect as store4_connect
+        path = brickwork_path()
+        with closing(store4_connect.connect(path, path.with_name('no-catalogue-attached.db'), read_only=True)) as db:
+            result = admin.check(db)
+        result['cross_checks'] = [dict(name='binding', title='Collection and catalogue are a pair', ok=False, count=1, message=str(exc))]
+        return {'brickwork': result}
 
 
 def jobs_worker():

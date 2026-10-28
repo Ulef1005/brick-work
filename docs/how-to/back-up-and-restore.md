@@ -44,11 +44,11 @@ Also keep your settings file (`data/.env`, or wherever you set your `BW_*` varia
 1. Open **Manage → Tools & Admin → Database**.
 2. Press **Run integrity check**.
 
-The check reads the whole file, so it runs only when you ask. Afterwards the page shows **Database checks passed** or **Database needs attention**, the time of the check, the integrity result of the collection and of the catalogue file, the number of foreign key findings and the rows in each table. The result stays on the page until the next check.
+The check reads the whole file, so it runs only when you ask. Afterwards the page shows **Database checks passed** or **Database needs attention**, the time of the check, the integrity result of the collection and of the catalogue file, the number of foreign key findings, whether the two files belong together (**Collection and catalogue are a pair**, **Catalogue ids keep their born keys**, **Part lists exist in the catalogue**, **Digests agree**; a failure says what is wrong and the fix) and the rows in each table. The result stays on the page until the next check.
 
 The same check is available elsewhere:
 
-- On the server: `brickwork check` (with Docker: `docker compose exec brickwork brickwork check`). It exits with an error status when the check finds a problem.
+- On the server: `brickwork check` (with Docker: `docker compose exec brickwork brickwork check`). It prints the same checks and exits with an error status when one finds a problem. Run it after you restore: it shows that the collection and the catalogue file come from one archive.
 - Through the API: `GET /api/v1/database/check`, with an `admin` token.
 
 Only the check in the app keeps its result on the **Database** page. On a read-only instance **Run integrity check** is switched off; use `brickwork check` instead.

@@ -5,7 +5,6 @@ import re
 import sqlite3
 
 log = logging.getLogger('brickwork.store4')
-_UNDER = re.compile(r"the data folder/(?:[^\s'\"():,;]+/)*([^\s'\"():,;]*)")
 GENERIC = 'It stopped before it finished. The details are in the server log.'
 _PATH = re.compile(r"(?<![\w:])/(?:[^\s'\"():,;]+/)+([^\s'\"():,;]*)")
 
@@ -67,29 +66,53 @@ class MergeRefused(Store4Error):
 
 
 def _wraps_sqlite(exc):
-    """Does `exc` carry a SQLite error as its cause or context (a refusal that wraps one says the database's own words)?"""
-    seen = set()
-    while exc is not None and id(exc) not in seen:
-        seen.add(id(exc))
-        if isinstance(exc, sqlite3.Error):
+    """Does `exc` carry a SQLite error anywhere in its chain, on the cause branch or the context branch (a refusal that wraps one says the
+    database's own words)?"""
+    seen, stack = set(), [exc]
+    while stack:
+        item = stack.pop()
+        if item is None or id(item) in seen:
+            continue
+        seen.add(id(item))
+        if isinstance(item, sqlite3.Error):
             return True
-        exc = exc.__cause__ or exc.__context__
+        stack += [item.__cause__, item.__context__]
     return False
 
 
+_STOP = r"[^\s'\"():,;]"
+
+
 def _redact_known(text, known):
-    """Replace the paths this install knows (the data folder, the files in it, the home folder) exactly, longest first, before any pattern:
-    a folder becomes "the data folder" (or "~" for the home folder), a file its own name."""
-    items = []
-    for path in [*known, Path.home()]:
+    """Replace the paths this install knows in ONE pass over the original text (a replacement is never searched again): the data folder and
+    the home folder become "the data folder" and "~", a file its own name, and what lies below a known folder its last name. A relative path
+    ("data") is normalised to its absolute form and also matched as written, but only as the start of a longer path, so the word "data" in
+    prose is left alone. An absolute path matches only at a path boundary."""
+    home = Path.home()
+    forms = {}
+    for path in [*known, home]:
         path = Path(path)
         if str(path) in ('', '.', '/'):
             continue
-        for form in {str(path), str(path.resolve())}:
-            items.append((form, '~' if path == Path.home() else 'the data folder' if path.is_dir() else path.name))
-    for form, short in sorted(items, key=lambda i: -len(i[0])):
-        text = text.replace(form, short)
-    return text
+        short = '~' if path == home else 'the data folder' if path.is_dir() or not path.suffix else path.name
+        absolute = {str(path.absolute()), str(path.resolve())}
+        for form in absolute:
+            forms[form] = (short, False)
+        if not path.is_absolute():
+            forms.setdefault(str(path), (short, True))                  # as written: only as the start of a longer path
+    if not forms:
+        return text
+    ordered = sorted(forms, key=len, reverse=True)
+    pattern = re.compile('(?<![\\w/.~-])(?:' + '|'.join(re.escape(f) for f in ordered) + ')(?P<rest>(?:/' + _STOP + '+)*)(?![\\w-])')
+
+    def short(match):
+        form = match.group(0)[:len(match.group(0)) - len(match.group('rest'))]
+        name, needs_rest = forms[form]
+        rest = match.group('rest')
+        if needs_rest and not rest:
+            return match.group(0)
+        return rest.rsplit('/', 1)[-1] or name if rest else name
+    return pattern.sub(short, text)
 
 
 def public_text(exc, *, what='job', known=()):
@@ -99,6 +122,5 @@ def public_text(exc, *, what='job', known=()):
     log.warning('%s failed: %s: %s', what, type(exc).__name__, exc, exc_info=exc)
     if isinstance(exc, Store4Error) and not _wraps_sqlite(exc):
         text = _redact_known(str(exc), known)
-        text = _UNDER.sub(lambda m: m.group(1) or 'the data folder', text)          # a subfolder of a known folder: its last name only
         return _PATH.sub(lambda m: m.group(1) or 'a folder', text)[:300]
     return GENERIC

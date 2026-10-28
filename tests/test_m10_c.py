@@ -617,3 +617,33 @@ def test_e2_a_catalogue_job_error_redacts_the_data_folder(tmp_path, monkeypatch)
     monkeypatch.setattr(catalogue_jobs, '_reconcile', lambda p: (_ for _ in ()).throw(Store4Error(f'cannot open {folder}/catalogue.db')))
     state = catalogue_jobs.start(paths, 'reconcile', background=False)
     assert state['state'] == 'failed' and 'Private' not in state['error'] and str(tmp_path) not in state['error'] and 'catalogue.db' in state['error']
+
+
+# ---------- Codex review of the redaction pass ----------
+
+def test_p1_redaction_runs_once_over_the_original_text(tmp_path, monkeypatch):
+    from pathlib import Path
+    from brickwork.store4.errors import Store4Error, public_text
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / 'data').mkdir()
+    relative = Path('data')                                                          # the default relative data path
+    message = 'no file at data/bricklink-lists/private/items.xml; see the data in data/brickwork.db'
+    out = public_text(Store4Error(message), known=[relative, relative / 'brickwork.db'])
+    assert 'private' not in out and 'the the' not in out and 'folder folder' not in out
+    assert 'items.xml' in out and 'brickwork.db' in out and 'the data in' in out         # the word "data" in prose is left alone
+    absolute = str(tmp_path / 'data' / 'bricklink-lists' / 'private' / 'items.xml')
+    out = public_text(Store4Error(f'cannot read {absolute} (and {tmp_path}/data)'), known=[relative])
+    assert 'private' not in out and str(tmp_path) not in out
+
+
+def test_p2_every_branch_of_the_exception_chain_is_walked_for_sqlite():
+    import sqlite3
+    from brickwork.store4.errors import GENERIC, Store4Error, public_text
+    try:
+        try:
+            raise sqlite3.OperationalError('no such table: meta')
+        except sqlite3.Error:
+            raise Store4Error('catalogue.db cannot be read: no such table: meta') from ValueError('bad value')   # cause: ValueError; context: SQLite
+    except Store4Error as exc:
+        assert isinstance(exc.__cause__, ValueError) and isinstance(exc.__context__, sqlite3.Error)
+        assert public_text(exc) == GENERIC

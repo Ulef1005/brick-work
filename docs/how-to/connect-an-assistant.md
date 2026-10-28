@@ -35,7 +35,7 @@ By default the server offers read tools only, whatever the token's scopes:
 docker compose exec -T brickwork brickwork mcp --in-process --token-file /app/data/mcp-token
 ```
 
-`--in-process` uses the database directly through the same API routes, with no network. To talk to a running instance over HTTP instead, give its API address with `--api-url`, for example `--api-url http://127.0.0.1:3333/api/v1`.
+`--in-process` uses the database directly through the same API routes, with no network. To talk to a running instance over HTTP instead, give its API address with `--api-url`, for example `--api-url http://127.0.0.1:3333/api/v2`.
 
 You don't run this command yourself. The assistant starts it, as shown below.
 
@@ -88,6 +88,10 @@ brickwork mcp --transport http --host 127.0.0.1 --port 5000
 ```
 
 The endpoint is `/mcp`. Each request must carry its own token as `Authorization: Bearer YOUR_TOKEN`; the server never falls back to another token. It refuses to start when no login password is set, unless `BW_ALLOW_NO_LOGIN=1`. Put TLS in front of it before you expose it, and set `BW_TRUSTED_PROXIES` behind a reverse proxy.
+
+## How the assistant names things
+
+An assistant names a set or a part by number, with a provider (`bricklink` unless it says `rebrickable`), never by a Brick Work id. You can say "what is the price of 3001?" and it works. If a number fits more than one item, the assistant is told which, and nothing is changed. Your copies, stock lines and wishes keep their ids; the assistant reads them from the lists.
 
 ## What it shares
 

@@ -8,7 +8,7 @@
 docker compose exec brickwork brickwork <command> ...
 ```
 
-> **On `main` (the 4.0 development line):** `setup` creates a 4.0 collection and says where `catalogue.db` goes, `mcp` is refused until API v2, `migrate` (the BrickTracker-era importer) is gone (a 3.3 collection moves with `migrate4`), and `sync` and `import-bricktracker` run on the 4.0 store. The catalogue itself is built with `python -m brickwork.store4` (see [catalogue](#catalogue)). This page otherwise describes release 0.5.
+> **On `main` (the 4.0 development line):** `setup` creates a 4.0 collection and says where `catalogue.db` goes, `mcp` talks API v2 (`/api/v2`), `migrate` (the BrickTracker-era importer) is gone (a 3.3 collection moves with `migrate4`), and `sync` and `import-bricktracker` run on the 4.0 store. The catalogue itself is built with `python -m brickwork.store4` (see [catalogue](#catalogue)). This page otherwise describes release 0.5.
 
 Every command takes `--json` to print its result as JSON instead of plain lines, and `-h` for its usage. A command that fails prints the reason on standard error and exits with status 1. With `BW_READ_ONLY` on, the `token` and `wishlist` commands that change something are refused.
 
@@ -76,7 +76,7 @@ brickwork mcp [--transport stdio|http] [--in-process] [--api-url URL]
 |---|---|---|
 | `--transport` | `stdio` | `stdio` for a local assistant; `http` serves Streamable HTTP at `/mcp`. The HTTP server refuses to start without a login password, as the app does. |
 | `--in-process` | off | Use the local database directly through an in-process API instead of calling a running app. |
-| `--api-url URL` | `http://127.0.0.1:5000/api/v1` | The API to call when not in-process. For a default install, use `http://127.0.0.1:3333/api/v1`. |
+| `--api-url URL` | `http://127.0.0.1:5000/api/v2` | The API to call when not in-process. For a default install, use `http://127.0.0.1:3333/api/v2`. |
 | `--token-file FILE` | `BW_API_TOKEN` | A file holding the API token. Without it, the `BW_API_TOKEN` setting is used. |
 | `--allow-write` | off | Turns on write tools, as `BW_MCP_WRITE=1` does. |
 | `--host HOST` | `127.0.0.1` | Listen address for `--transport http`. |

@@ -108,9 +108,17 @@ def test_standalone_smoke(tmp_path, monkeypatch, offline, capsys):
     assert held.status_code == 503 and 'not on the 4.0 store yet' in held.get_data(as_text=True)
     assert client.get('/manifest.webmanifest').status_code == 200
     assert client.get('/login').status_code == 200
-    # the MCP server talks v1 and refuses with the same explanation
-    assert main(['mcp']) == 1
-    assert API_V1_RETIRED in capsys.readouterr().err
+    # the MCP server talks API v2: its tools answer from this collection, offline, and the command starts it on the v2 address
+    from brickwork.core.mcp import Adapter
+    from brickwork.core.mcp.client import InProcessClient
+    tools = Adapter(InProcessClient(app, bootstrap))
+    assert {t.name for t in tools.list_tools()} == {n for n, (m, _, _) in tools.tools.items() if m == 'GET'}
+    assert not tools.call_tool('list_storages').isError
+    assert tools.call_tool('get_item', {'kind': 'set', 'no': '2070-1'}).isError is False
+    from brickwork.core.mcp import server
+    started = []
+    monkeypatch.setattr(server, 'run', lambda **kwargs: started.append(kwargs))
+    assert main(['mcp']) == 0 and started[0]['api_url'] == 'http://127.0.0.1:5000/api/v2'
     assert {f.name for f in path.parent.glob('*.db')} == {'brickwork.db', 'catalogue.db'}
     assert offline == []
 

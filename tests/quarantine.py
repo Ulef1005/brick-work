@@ -11,21 +11,17 @@ listed runs.
 
 QUARANTINE = {
     # M.11a (issue #113) ported to API v2 the transport tests of test_app_factory.py, test_bw_body_limits_62.py, test_bw_throttle.py and
-    # test_runtime_contract.py; what was left of them is the MCP: M.11e.
-    'tests/test_bw_throttle_mcp.py': 'M.11',
-    'tests/test_runtime_contract_mcp.py': 'M.11',
-    # M.11b and M.11c ported the reads and the writes of the v1 tests (tests/test_api2_read*.py, tests/test_api2_write*.py).
-    # M.11d (issue #113) ported the rest, or deleted what had no 4.0 premise:
-    #   test_bw_api_47, test_bw_api_jobs_followup, test_bw_api_m5, test_bw_api_m6, test_bw_orders_export_44_api, test_bw_orders_storage_api, test_bw_sync_api,
-    #   test_bw_currency_39_api, test_bw_review_followups, test_bw_security -> tests/test_api2_write_{system,sources,jobs,orders,sync}.py,
-    #   tests/test_api2_reads_admin.py, tests/test_secrets.py, tests/test_web_security.py (the import-source and plan-marker cases of the 3.3 text are gone
-    #   with the 3.3 store; the colour sync with the 3.3 colour table; the receipt-kind registry of the bundle with the bundle: Undo is the event registry's);
-    #   test_bw_api_m0, test_bw_api_m1, test_bw_api_m2 -> tests/test_api2_{contract,transport,reads,write_system}.py, tests/test_secrets.py (what was
-    #   left of m0 tested the 3.3 upgrade, the 3.3 value lists and the v1 contract text; m2 was the generic GET sweep over the v1 contract).
-    # What waits for M.11e is the MCP (m7, the wishlist tools of wishlists_api), the v1 contract harness it generates tools from (m1_contract) and the
-    # parity test. They take `app`, `call` and the contract from tests/api2.py when they are ported; their old imports (test_bw_api_m1, m2, m3) are gone.
-    'tests/test_bw_api_m1_contract.py': 'M.11',
-    'tests/test_bw_api_m7.py': 'M.11',
-    'tests/test_bw_api_parity.py': 'M.11',
-    'tests/test_bw_wishlists_api.py': 'M.11',
+    # test_runtime_contract.py; M.11b and M.11c the reads and the writes of the v1 tests (tests/test_api2_read*.py, tests/test_api2_write*.py);
+    # M.11d the rest of them, or deleted what had no 4.0 premise (see the commit of M.11d).
+    # M.11e (issue #113) emptied the list: the MCP on API v2 and the v2 parity test. The six files that were left:
+    #   test_bw_api_m7 -> tests/test_api2_mcp.py (the generated surface, the gate, every tool's round trip, the resources, the transports, the CLI flags;
+    #     new: tools take numbers and a provider, never an item id); the cases on the v1 id spellings (`item_type`/`item_no`, `type`/`no` path
+    #     parameters, `color_id`) are gone with those spellings;
+    #   test_bw_throttle_mcp -> the same file (the in-process client carries the caller address);
+    #   test_bw_wishlists_api -> the same file (the wishlist tools and their exports);
+    #   test_bw_api_parity -> tests/test_api2_parity.py (every v2 operation routed and implemented, every tool one operation, the tool list is the
+    #     contract's);
+    #   test_bw_api_m1_contract -> tests/test_api2_parity.py (the strict loader and the closed schemas); its generated per-status cases ran the
+    #     v1 M1 table (tokens, events) against v1 routes: deleted, v2 answers are validated against the contract in every test since M.11b;
+    #   test_runtime_contract_mcp -> ported in place (the missing contract is now the v2 file).
 }

@@ -2472,7 +2472,8 @@
           "type": "string"
         }
       },
-      "type": "object"
+      "type": "object",
+      "x-mcp-item": "key"
     },
     "ItemLinkWrite": {
       "additionalProperties": false,

@@ -10,13 +10,15 @@ class InProcessClient:
     def request(self, method, path, *, query=None, body=None, headers=None):
         with self.app.test_client() as client:
             extra = {'environ_base': {'REMOTE_ADDR': self.remote_addr}} if self.remote_addr else {}
-            response = client.open('/api/v1' + path, method=method,
+            response = client.open('/api/v2' + path, method=method,
                 query_string=query, json=body, **extra,
                 headers={'Authorization': 'Bearer ' + self.token, **(headers or {})})
             return response.status_code, response.get_json(silent=True) if response.is_json else response.get_data(as_text=True)
 
 
 class HTTPClient:
+    """`base_url` is the API root, for a default install `http://127.0.0.1:3333/api/v2`."""
+
     def __init__(self, base_url, token):
         self.base_url, self.token = base_url.rstrip('/'), token
 

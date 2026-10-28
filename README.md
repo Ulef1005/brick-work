@@ -189,12 +189,12 @@ A created token secret is shown once; only its hash is stored. The bootstrap tok
 The MCP server uses the same API authorization and schemas. For stdio in a local install:
 
 ```sh
-brickwork mcp --api-url http://127.0.0.1:3333/api/v1 --token-file /path/to/token
+brickwork mcp --api-url http://127.0.0.1:3333/api/v2 --token-file /path/to/token
 # Or use the local database through an in-process API:
 brickwork mcp --in-process --token-file /path/to/token
 ```
 
-Read tools are available by default. `--allow-write` enables write tools only when the calling token has sufficient scope. `--transport http --host 127.0.0.1 --port 5000` serves the HTTP MCP transport. See [MCP details](docs/brickwork/api-v1.md#7-mcp-server).
+Read tools are available by default. `--allow-write` enables write tools only when the calling token has sufficient scope. `--transport http --host 127.0.0.1 --port 5000` serves the HTTP MCP transport. See [MCP details](docs/brickwork/mcp.md).
 
 ## Import an old collection
 

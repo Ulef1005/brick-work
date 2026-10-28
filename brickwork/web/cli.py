@@ -28,7 +28,7 @@ def build_parser():
     mcp = parser(commands, 'mcp', 'mcp')
     mcp.add_argument('--transport', choices=('stdio', 'http'), default='stdio')
     mcp.add_argument('--in-process', action='store_true')
-    mcp.add_argument('--api-url', default='http://127.0.0.1:5000/api/v1')
+    mcp.add_argument('--api-url', default='http://127.0.0.1:5000/api/v2')
     mcp.add_argument('--token-file')
     mcp.add_argument('--allow-write', action='store_true')
     mcp.add_argument('--host', default='127.0.0.1')
@@ -153,9 +153,14 @@ def main(argv=None):
     operation = args.pop('operation')
     as_json = args.pop('json')
     if operation == 'mcp':
-        from ..core.errors import API_V1_RETIRED
-        print(f'MCP error: the MCP server talks API v1. {API_V1_RETIRED}', file=sys.stderr)
-        return 1
+        from ..core.errors import BrickWorkError
+        from ..core.mcp.server import run
+        try:
+            run(**args)
+        except BrickWorkError as error:
+            print(f'MCP error: {error}', file=sys.stderr)
+            return 1
+        return 0
     if operation.startswith('wishlist_'):
         from contextlib import closing
         from ..core import wishlists, collection

@@ -128,16 +128,15 @@ def mcp_tables():
     rows = {'GET': [], 'write': []}
     for name, (method, path, op) in sorted(adapter.tools.items()):
         arguments = ', '.join(f'`{a}`' for a in adapter.schema(op)['properties']) or 'none'
-        line = f'| `{name}` | {html.escape(op.get("summary", "")).capitalize()} | {arguments} | `{method} /api/v1{path}` |'
+        line = f'| `{name}` | {html.escape(op.get("summary", "")).capitalize()} | {arguments} | `{method} /api/v2{path}` |'
         rows['GET' if method == 'GET' else 'write'].append(line)
     head = '| Tool | What it does | Arguments | API call |\n|---|---|---|---|'
-    resources = contract().get('x-mcp', {}).get('resources', [])
-    resource_rows = '\n'.join(f'| `{r.get("uri")}` | {html.escape(str(r.get("description") or r.get("reads") or ""))} |'
-                              for r in resources if isinstance(r, dict))
+    resources = contract().get('x-mcp', {}).get('resources', {})
+    resource_rows = '\n'.join(f'| `{uri}` | `{target if isinstance(target, str) else target["operation"]}` |' for uri, target in resources.items())
     text = (f'\n### Read tools ({len(rows["GET"])})\n\n{head}\n' + '\n'.join(rows['GET']) +
             f'\n\n### Write tools ({len(rows["write"])}, only with a write token and `--allow-write`)\n\n{head}\n' + '\n'.join(rows['write']))
     if resource_rows:
-        text += f'\n\n### Resources ({len(resources)})\n\n| URI | Reads |\n|---|---|\n{resource_rows}'
+        text += f'\n\n### Resources ({len(resources)})\n\n| URI | API operation |\n|---|---|\n{resource_rows}'
     return text + '\n'
 
 

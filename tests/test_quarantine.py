@@ -1,4 +1,4 @@
-"""The quarantine can only shrink and nothing live leans on it (M.8a, issue #110; tests/quarantine.py)."""
+"""The quarantine can only shrink and nothing live leans on it (M.8a, issue #110; tests/quarantine.py); empty since M.11e (issue #113)."""
 import ast
 from pathlib import Path
 
@@ -7,148 +7,13 @@ from tests.quarantine import QUARANTINE
 ROOT = Path(__file__).resolve().parents[1]
 PIECES = {'M.8b', 'M.8c', 'M.8d', 'M.8e', 'M.8f', 'M.8g', 'M.8h', 'M.8i', 'M.8j', 'M.11'}
 
-# Frozen at M.8a. A piece removes its files from tests/quarantine.py; it never adds one here or there.
-BASELINE = frozenset((
-    'tests/importer/test_bricktracker_import.py',
-    'tests/importer/test_importer.py',
-    'tests/test_admin_ops.py',
-    'tests/test_app_factory.py',
-    'tests/test_brickwork_pipeline.py',
-    'tests/test_brickwork_rebrickable.py',
-    'tests/test_brickwork_schema.py',
-    'tests/test_brickwork_sources.py',
-    'tests/test_bw_48a.py',
-    'tests/test_bw_48c.py',
-    'tests/test_bw_49a.py',
-    'tests/test_bw_49b.py',
-    'tests/test_bw_add.py',
-    'tests/test_bw_admin.py',
-    'tests/test_bw_admin_csrf.py',
-    'tests/test_bw_api_47.py',
-    'tests/test_bw_api_jobs_followup.py',
-    'tests/test_bw_api_m0.py',
-    'tests/test_bw_api_m1.py',
-    'tests/test_bw_api_m1_contract.py',
-    'tests/test_bw_api_m2.py',
-    'tests/test_bw_api_m3.py',
-    'tests/test_bw_api_m4.py',
-    'tests/test_bw_api_m5.py',
-    'tests/test_bw_api_m5_web.py',
-    'tests/test_bw_api_m6.py',
-    'tests/test_bw_api_m7.py',
-    'tests/test_bw_api_parity.py',
-    'tests/test_bw_api_take_figure.py',
-    'tests/test_bw_body_limits_62.py',
-    'tests/test_bw_check_api_63.py',
-    'tests/test_bw_checker.py',
-    'tests/test_bw_collection.py',
-    'tests/test_bw_collection_47d.py',
-    'tests/test_bw_collection_48d.py',
-    'tests/test_bw_core_fixes.py',
-    'tests/test_bw_currency_39.py',
-    'tests/test_bw_first_run_60.py',
-    'tests/test_bw_import_ui.py',
-    'tests/test_bw_list_cost.py',
-    'tests/test_bw_lists_43.py',
-    'tests/test_bw_listspeed.py',
-    'tests/test_bw_media_27.py',
-    'tests/test_bw_migrate_paths_61.py',
-    'tests/test_bw_orders_design.py',
-    'tests/test_bw_orders_export_44.py',
-    'tests/test_bw_orders_storage.py',
-    'tests/test_bw_ownership_45.py',
-    'tests/test_bw_part_inventory.py',
-    'tests/test_bw_partout_38.py',
-    'tests/test_bw_perf.py',
-    'tests/test_bw_pictures.py',
-    'tests/test_bw_planning.py',
-    'tests/test_bw_prices.py',
-    'tests/test_bw_retail_26.py',
-    'tests/test_bw_review_followups.py',
-    'tests/test_bw_security.py',
-    'tests/test_bw_size_search_41.py',
-    'tests/test_bw_small_68.py',
-    'tests/test_bw_stock.py',
-    'tests/test_bw_storage_46.py',
-    'tests/test_bw_storage_archive.py',
-    'tests/test_bw_storage_ui.py',
-    'tests/test_bw_sync.py',
-    'tests/test_bw_sync_ui.py',
-    'tests/test_bw_throttle.py',
-    'tests/test_bw_thumbnails.py',
-    'tests/test_bw_ui_12f.py',
-    'tests/test_bw_ui_12j.py',
-    'tests/test_bw_ui_12l.py',
-    'tests/test_bw_ui_12m.py',
-    'tests/test_bw_ui_1d.py',
-    'tests/test_bw_ui_3332.py',
-    'tests/test_bw_ui_5049.py',
-    'tests/test_bw_ui_lists.py',
-    'tests/test_bw_wish_currency.py',
-    'tests/test_bw_wish_progress_35.py',
-    'tests/test_bw_wishlists.py',
-    'tests/test_bw_wishlists_api.py',
-    'tests/test_bw_workbench.py',
-    'tests/test_demo.py',
-    'tests/test_import_polling.py',
-    'tests/test_jump_and_rail.py',
-    'tests/test_runtime_contract.py',
-    'tests/test_safe_errors.py',
-    'tests/test_secret_redaction.py',
-    'tests/test_shell_41a.py',
-    'tests/test_shell_45s.py',
-    'tests/test_shell_46p.py',
-    'tests/test_shell_49f.py',
-    'tests/test_toni_shell.py',
-    'tests/test_ui_47b.py',
-    'tests/test_ui_p6.py',
-    'tests/test_web_unsigned_text.py',
-    # M.8d split these out of files it ported (tests that belong to a later piece moved, none was added): out of test_bw_collection.py
-    # the Matching / Take and Give tests (M.8e) and the colours action (M.8i), out of test_bw_core_fixes.py the part inventory (M.8e) and API (M.11) tests.
-    'tests/test_bw_collection_colours.py',
-    'tests/test_bw_collection_matching.py',
-    'tests/test_bw_core_fixes_api.py',
-    'tests/test_bw_core_fixes_part_inventory.py',
-    # M.8e split these out of files it ported (tests that belong to a later piece moved, none was added): out of test_bw_lists_43.py the API
-    # exports (M.11) and the planning-screen entry points (M.8g), out of test_shell_45s.py the planning, prices and Tools and Admin paths (M.8g).
-    'tests/test_bw_lists_43_api.py',
-    'tests/test_bw_lists_43_later.py',
-    'tests/test_shell_45s_later.py',
-    # M.8f split these out of files it ported (tests that belong to a later piece moved, none was added): out of test_brickwork_sources.py the 3.3
-    # BrickLink XML loader (M.8i), out of test_bw_retail_26.py the Wishlist line (M.8g) and the Statistics page (M.8i), out of test_bw_perf.py the
-    # Tools & Admin tests (M.8i) and the API ones (M.11), out of test_bw_ui_12j.py the bulk-refresh and Catalogues & keys test (M.8i), out of
-    # test_secret_redaction.py the CLI error and the export (M.8i).
-    'tests/test_bricklink_catalogue_xml.py',
-    'tests/test_bw_perf_admin.py',
-    'tests/test_bw_perf_api.py',
-    'tests/test_bw_retail_26_statistics.py',
-    'tests/test_bw_retail_26_wishlist.py',
-    'tests/test_bw_ui_12j_later.py',
-    'tests/test_secret_redaction_cli_export.py',
-    # M.8g split these out of files it ported (tests that belong to a later piece moved, none was added): out of test_bw_currency_39.py the API
-    # (M.11) and Settings page (M.8i) tests, out of test_bw_partout_38.py and test_bw_wish_progress_35.py the API ones (M.11), out of
-    # test_shell_45s.py the Tools and Admin path (M.8i).
-    'tests/test_bw_currency_39_api.py',
-    'tests/test_bw_currency_39_settings.py',
-    'tests/test_bw_partout_38_api.py',
-    'tests/test_bw_wish_progress_35_api.py',
-    'tests/test_shell_45s_tools.py',
-    # M.8h split these out of files it ported (tests that belong to a later piece moved, none was added): out of test_bw_orders_storage.py and
-    # test_bw_orders_export_44.py the API receipts, history and export tests (M.11).
-    'tests/test_bw_orders_export_44_api.py',
-    'tests/test_bw_orders_storage_api.py',
-    # M.8i part 1 split these out of files it ported (tests that belong to part 2 moved, none was added): out of test_bw_admin.py, test_bw_perf_admin.py
-    # and test_bw_admin_csrf.py the identity admin (Unresolved figures, resolving a match, loading candidate pictures).
-    'tests/test_bw_admin_identity.py',
-    # ... and out of test_ui_p6.py and test_bw_small_68.py the BrickTracker import page header and the Collection sync pages (M.8j).
-    'tests/test_ui_p6_import.py',
-    'tests/test_bw_small_68_sync.py',
-    # M.8j split this out of a file it ported (the API test, M.11): out of test_bw_sync.py.
-    'tests/test_bw_sync_api.py',
-    # M.11a split these out of files it ported to API v2 (the MCP tests, M.11e): out of test_bw_throttle.py and test_runtime_contract.py.
-    'tests/test_bw_throttle_mcp.py',
-    'tests/test_runtime_contract_mcp.py',
-))
+# Frozen at M.8a: a list of 121 files. M.11e (issue #113) took the last of them out, so the baseline is 0 and stays 0: a file that cannot
+# run is fixed or deleted with its reason, never parked here again.
+BASELINE = frozenset()
+
+
+def test_the_quarantine_is_empty():
+    assert not QUARANTINE, f'the quarantine is at 0 since M.11e; listed: {sorted(QUARANTINE)}'
 
 
 def test_every_entry_exists_and_names_a_piece():

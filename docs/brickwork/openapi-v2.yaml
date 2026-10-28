@@ -105,8 +105,16 @@ x-mcp:
     brickwork://sources: get_sources
     brickwork://events/recent: get_events
     brickwork://openapi: get_openapi_yaml
-    brickwork://items/{provider}/{kind}/{no}: get_lookup
+    brickwork://items/{provider}/{kind}/{no}:
+      operation: get_lookup
+      query:
+        provider: '{provider}'
+        kind: '{kind}'
+        key: '{no}'
   tools-take: Numbers and a provider, never a Brick Work id (decision 7). Tool names stay where the v2 operation exists.
+  item-rule: A path parameter marked x-mcp-item is an item id. The tool takes provider (bricklink by default), kind and no instead and looks the item
+    up with GET /lookup before the call; a 404 or 409 ambiguous from the lookup is the tool's error. A schema marked x-mcp-item key is an ItemKey; the
+    tool takes it as provider, kind and key, never as id.
 paths:
   /wishlists:
     get:
@@ -1459,7 +1467,7 @@ paths:
         - write
       parameters:
       - $ref: '#/components/parameters/Path_id'
-      - $ref: '#/components/parameters/Path_item_id'
+      - $ref: '#/components/parameters/Path_figure_item_id'
       - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
@@ -6485,6 +6493,7 @@ components:
       name: id
       in: path
       required: true
+      x-mcp-item: true
       schema:
         type: integer
         minimum: 1
@@ -6493,6 +6502,7 @@ components:
       name: item_id
       in: path
       required: true
+      x-mcp-item: true
       schema:
         type: integer
         minimum: 1
@@ -11334,6 +11344,7 @@ components:
           description: 'Only on a by-number or lookup answer given a color: the resolved Brick Work colour.'
     ItemKey:
       type: object
+      x-mcp-item: key
       description: 'Names an item in a request: by id, or by provider number (decision 3: the default provider is bricklink). The colour next to it is in
         the same provider space.'
       properties:

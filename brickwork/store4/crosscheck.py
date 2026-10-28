@@ -50,10 +50,10 @@ def born_keys(db):
 
 
 def referenced_inventories(db):
-    """The distinct (item id, version) of every Rebrickable part list the collection names."""
+    """The distinct (item id, version) of every Rebrickable part list the collection names (a figure line that left its copy's list does not count)."""
     return [tuple(r) for r in db.execute('''
         SELECT item_id, inventory_version FROM main.copy WHERE inventory_source='rebrickable'
-        UNION SELECT item_id, inventory_version FROM main.copy_figure WHERE inventory_source='rebrickable'
+        UNION SELECT item_id, inventory_version FROM main.copy_figure WHERE inventory_source='rebrickable' AND retired_at IS NULL
         UNION SELECT item_id, inventory_version FROM main.stock WHERE inventory_source='rebrickable'
         UNION SELECT item_id, inventory_version FROM main.set_preference WHERE inventory_source='rebrickable' AND inventory_version IS NOT NULL
         ORDER BY 1, 2''')]

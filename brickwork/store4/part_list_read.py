@@ -1,7 +1,8 @@
 """Reads for the copy page's part list (design 4.2 to 4.5; issue #112, M.10 batch A): which list a copy carries and how to say so, the
 retired lines it keeps, where each figure line's parts came from, the pending BrickLink switch in words and the switch choices.
 Read-only: every write is `copies` and `pending`."""
-from . import copies, pending
+from . import copies, jobs, pending
+from .errors import Store4Error
 from .connect import has_catalogue, now
 
 
@@ -113,10 +114,14 @@ def copy_part_list(db, copy_id):
     if any(c['choice'] and c['kind'] == copies.CHANGED for c in changes):
         copy_row = copies._copy_row(db, copy_id)                                       # `_plan` is what the real switch runs: it counts the lines that differ
         own_choice = next(c['choice'] for c in changes if c['choice'] and c['kind'] == copies.CHANGED)
-        plan = copies._plan(db, copy_row, copies.build_target(db, copy_row['item_id'], own_choice), now())
+        try:                                                                           # reading a stored copy never needs credentials
+            plan = copies._plan(db, copy_row, copies.build_target(db, copy_row['item_id'], own_choice), now())
+        except Store4Error:
+            plan = None
     for c in changes:
         c['choice_key'] = choice_key(c['choice'])
         c['title'] = None
+        c['needs_key'] = bool(c['choice'] and c['choice']['source'] == 'bricklink' and not jobs._configured('bricklink'))
         if c['kind'] == copies.CHANGED and plan is not None:
             fig = c['figure_item_id']
             differ = sum(1 for o in plan['lines'] if (o['key'][0] if o.get('key') else None) == fig)

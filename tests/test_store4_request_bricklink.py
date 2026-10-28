@@ -62,3 +62,33 @@ def test_the_request_is_refused_without_a_key_when_waiting_or_already_on_it(db, 
         monkeypatch.delenv('BW_BRICKLINK_' + name)
     with pytest.raises(Store4Error, match='needs a BrickLink key|without a BrickLink key'):
         request(db, add(db)['copy']['id'])
+
+
+def test_remembering_rides_the_switch_and_its_undo_and_is_refused_before_a_write(db, key):
+    from brickwork.core import undo
+    cid = add(db, {'source': 'rebrickable', 'version': 2})['copy']['id']
+    receipt = copies.switch_part_list(db, cid, {'source': 'rebrickable', 'version': 1}, via='cli', remember=True)
+    assert copies.part_list_preference(db, SET) == {'source': 'rebrickable', 'version': 1}
+    assert receipt['preference'] == {'old': None, 'new': {'source': 'rebrickable', 'version': 1}}
+    undo.undo_event(db, receipt['event_id'], via='cli')
+    assert copies.part_list_preference(db, SET) is None and copy_row(db, cid)[1] == 2
+    with pytest.raises(copies.BadPreference):
+        copies.switch_part_list(db, cid, {'source': 'rebrickable_api'}, via='cli', remember=True)
+    assert copy_row(db, cid)[1] == 2 and events(db, cid)[-1] == ('part_list_switch_undo',)
+
+
+def test_a_pending_request_can_remember_bricklink_in_the_same_transaction(db, key):
+    cid = add(db)['copy']['id']
+    pending.request_bricklink(db, cid, via='cli', remember=True)
+    assert copies.part_list_preference(db, SET) == {'source': 'bricklink', 'version': None} and copy_row(db, cid)[3] == 'bricklink'
+
+
+def test_a_copy_on_bricklink_takes_a_newer_fetched_list(db, key):
+    first = fetch(db, SET, 'bricklink', [(11, 3, 0, 5)])
+    cid = add(db)['copy']['id']
+    request(db, cid)
+    assert copy_row(db, cid)[2] == first
+    second = fetch(db, SET, 'bricklink', [(11, 3, 0, 8)])
+    assert request(db, cid)['switched'] is True and copy_row(db, cid)[2] == second
+    with pytest.raises(copies.NothingToSwitch):
+        request(db, cid)

@@ -451,7 +451,7 @@ def has_marks(db, copy_id):
         (copy_id, copy_id)).fetchone() is not None
 
 
-def switch_part_list(db, copy_id, choice, *, via, actor=None, trigger=None, unless_marked=False, while_pending_on=None):
+def switch_part_list(db, copy_id, choice, *, via, actor=None, trigger=None, unless_marked=False, while_pending_on=None, remember=False):
     """Design 4.4: move a copy to another part list in place, in one transaction under ONE receipt event (`copy`, the copy id,
     field `part_list_switch`, `new_value` = the receipt). Nothing is deleted: rows of lines that left the list get `retired_at`,
     rows of lines that came back are re-activated under the same id, so Take/Give, allocation and check-session references stay
@@ -466,10 +466,11 @@ def switch_part_list(db, copy_id, choice, *, via, actor=None, trigger=None, unle
     `while_pending_on` (a job id: the automatic switch and the accepted offer) refuses with `PendingChanged` unless the copy still
     waits on that job, so a cancel committed meanwhile is not overridden."""
     with transaction(db, 'switching a part list'):
-        return switch_part_list_in(db, copy_id, choice, via=via, actor=actor, trigger=trigger, unless_marked=unless_marked, while_pending_on=while_pending_on)
+        return switch_part_list_in(db, copy_id, choice, via=via, actor=actor, trigger=trigger, unless_marked=unless_marked, while_pending_on=while_pending_on,
+                                   remember=remember)
 
 
-def switch_part_list_in(db, copy_id, choice, *, via, actor=None, trigger=None, unless_marked=False, while_pending_on=None):
+def switch_part_list_in(db, copy_id, choice, *, via, actor=None, trigger=None, unless_marked=False, while_pending_on=None, remember=False):
     """Design 4.4: move a copy to another part list in place, in one transaction under ONE receipt event (`copy`, the copy id,
     field `part_list_switch`, `new_value` = the receipt). Nothing is deleted: rows of lines that left the list get `retired_at`,
     rows of lines that came back are re-activated under the same id, so Take/Give, allocation and check-session references stay
@@ -482,7 +483,9 @@ def switch_part_list_in(db, copy_id, choice, *, via, actor=None, trigger=None, u
     no row is refused with `NothingToSwitch`: an empty receipt could not be told from an error. `unless_marked` (the automatic
     switch) refuses with `CopyMarked` when the copy has marks, checked inside this transaction so a mark made meanwhile counts.
     `while_pending_on` (a job id: the automatic switch and the accepted offer) refuses with `PendingChanged` unless the copy still
-    waits on that job, so a cancel committed meanwhile is not overridden.
+    waits on that job, so a cancel committed meanwhile is not overridden. `remember` also makes this list the set's `set_preference`
+    ("use this for new copies of this set") in the same transaction; a list the preference cannot hold is refused before anything is
+    written, and the receipt carries the old and new preference so Undo puts it back with the switch.
 
     `switch_part_list` inside the caller's open write transaction (it opens none and commits nothing)."""
     if not db.in_transaction:
@@ -490,6 +493,7 @@ def switch_part_list_in(db, copy_id, choice, *, via, actor=None, trigger=None, u
     if has_catalogue(db):
         check_compatible(db)
     copy = _copy_row(db, copy_id)
+    wanted_preference = remembered_choice(db, copy['item_id'], choice) if remember else None            # refused here, before any write
     if while_pending_on is not None and (copy['inventory_pending'] != 'bricklink' or copy['pending_job_id'] != while_pending_on):
         raise PendingChanged(f'copy {copy_id} no longer waits for job {while_pending_on}')
     if unless_marked and has_marks(db, copy_id):
@@ -541,6 +545,9 @@ def switch_part_list_in(db, copy_id, choice, *, via, actor=None, trigger=None, u
                'figures': {'columns': FIGURE_COLUMNS, 'ops': figure_ops},
                'parts': {'columns': LINE_COLUMNS, 'ops': line_ops},
                'not_carried_over': plan['not_carried_over']}
+    if remember:
+        old_preference = part_list_preference(db, copy['item_id'])
+        receipt['preference'] = {'old': old_preference, 'new': set_part_list_preference_in(db, copy['item_id'], wanted_preference, via=via, actor=actor)}
     if trigger:
         receipt['trigger'] = trigger
     Events(db, via, actor).write('copy', copy_id, FIELD, new=receipt)
@@ -628,6 +635,9 @@ def undo_switch_in(db, event_id, *, via, actor=None):
     completeness = derived_completeness(db, copy_id)    # lines the switch did not touch may have changed since: recompute
     if completeness is not None:
         db.execute('UPDATE main.copy SET completeness=? WHERE id=?', (completeness, copy_id))
+    remembered = receipt.get('preference')
+    if remembered and remembered['old'] != remembered['new'] and part_list_preference(db, copy['item_id']) == remembered['new']:
+        set_part_list_preference_in(db, copy['item_id'], remembered['old'], via=via, actor=actor)              # the switch's preference goes with it
     Events(db, via, actor).write('copy', copy_id, UNDO_FIELD, new={'undoes': event_id, 'counts': receipt['counts']})
     undo_id = db.execute('SELECT last_insert_rowid()').fetchone()[0]
     db.execute('INSERT INTO main.event_undo(event_id, undo_event_id) VALUES(?, ?)', (event_id, undo_id))
@@ -638,6 +648,17 @@ def undo_switch_in(db, event_id, *, via, actor=None):
 
 class BadPreference(Store4Error):
     """The preference asked for is not one the schema or the catalogue allows."""
+
+
+def remembered_choice(db, set_item_id, choice):
+    """The `set_preference` a switch or Add to `choice` would remember: a Rebrickable version (None for the latest) or BrickLink. A fetched
+    Rebrickable list (a set newer than the catalogue) cannot be remembered: `BadPreference`."""
+    if choice.get('source') == 'bricklink':
+        return {'source': 'bricklink', 'version': None}
+    if choice.get('source') == 'rebrickable':
+        newest = any(v['is_latest'] and v['version'] == choice.get('version') for v in _versions(db, set_item_id))
+        return {'source': 'rebrickable', 'version': None if newest else choice.get('version')}
+    raise BadPreference('this list cannot be remembered for new copies of the set')
 
 
 def part_list_preference(db, set_item_id):

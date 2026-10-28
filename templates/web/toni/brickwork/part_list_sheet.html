@@ -4,7 +4,7 @@
 <div class="actions"><h2 id="bc-part-list-title">Switch part list</h2><button type="button" data-bw-close>Close</button></div>
 <p class="secondary">{{ s.label }} uses <strong>{{ s.info.label }}</strong>. Checks, missing and damaged marks move with the lines both lists share.</p>
 <fieldset class="bc-lists"><legend>Use</legend>
-{% for o in s.options %}<label class="bc-list-choice" data-current="{{ 1 if o.current else 0 }}"><input type="radio" name="choice" value="{{ o.key }}"{% if o.key==s.chosen %} checked{% endif %}{% if o.current or not o.available %} disabled{% endif %}><span><strong>{{ o.label }}</strong>{% if o.latest %}<span class="bc-status">latest</span>{% endif %}{% if o.current %}<span class="secondary"> · in use</span>{% endif %}{% if o.note %}<small class="secondary">{{ o.note }}</small>{% endif %}</span></label>{% endfor %}
+{% for o in s.options %}<label class="bc-list-choice" data-current="{{ 1 if o.current else 0 }}"><input type="radio" name="choice" value="{{ o.key }}"{% if o.key==s.chosen %} checked{% endif %}{% if o.current or not o.available %} disabled{% endif %} data-remember="{{ 0 if o.key=='rebrickable_api' else 1 }}"><span><strong>{{ o.label }}</strong>{% if o.latest %}<span class="bc-status">latest</span>{% endif %}{% if o.current %}<span class="secondary"> · in use</span>{% endif %}{% if o.note %}<small class="secondary">{{ o.note }}</small>{% endif %}</span></label>{% endfor %}
 </fieldset>
 {% for o in s.options if o.preview %}
 <section class="bc-change" data-bc-change="{{ o.key }}"{% if o.key!=s.chosen %} hidden{% endif %} aria-label="What changes for {{ o.label }}">
@@ -16,7 +16,7 @@
 {% set total=o.retired|length+o.capped|length %}{% if total>limit %}<p class="secondary mono">and {{ total-limit }} more</p>{% endif %}
 {% else %}<p class="secondary">Every mark carries over.</p>{% endif %}
 </section>{% endfor %}
-<label class="bc-check bc-preference"><span>Use this for new copies of this set</span><input type="checkbox" name="preference"></label>
+<label class="bc-check bc-preference" data-bc-preference><span>Use this for new copies of this set</span><input type="checkbox" name="preference"></label>
 <p data-bc-form-message role="status"></p>
 <div class="actions"><button type="button" data-bw-close>Cancel</button><button type="submit" class="primary"{% if not s.chosen %} disabled{% endif %}>Switch</button></div>
 </form>

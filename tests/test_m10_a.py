@@ -242,3 +242,66 @@ def test_add_confirm_a_missing_choice_falls_back_to_the_preselection(client, w, 
     assert confirm_row(client, w).status_code == 200
     assert tuple(newest_copy_version(coll)) == ('rebrickable', 3)
     assert confirm_row(client, w, part_list_choice='').status_code == 200 and tuple(newest_copy_version(coll)) == ('rebrickable', 3)
+
+
+# ---------- Codex review: reading a copy needs no credentials, a BrickLink copy can take a newer list, a preference rides the switch ----------
+
+def drop_bricklink_key(monkeypatch):
+    for name in ('CONSUMER_KEY', 'CONSUMER_SECRET', 'TOKEN_VALUE', 'TOKEN_SECRET'):
+        monkeypatch.delenv('BW_BRICKLINK_' + name)
+
+
+def test_review1_a_copy_page_never_needs_a_key_to_say_a_list_changed(client, w, coll, monkeypatch):
+    coll.sql("UPDATE copy_figure SET inventory_digest='figure-digest-before' WHERE copy_id=?", (w.copy_b,))       # a BrickLink copy whose figure list changed
+    with_key = page(client, w, w.copy_b)
+    assert 'Rebrickable changed' in with_key and 'Switch to the current list' in with_key
+    drop_bricklink_key(monkeypatch)
+    response = client.get(f'/collection/item/{w.keep}?copy={w.copy_b}')
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    assert 'changed' in html and 'needs a BrickLink key' in html and 'Switch to the current list' not in html
+
+
+def test_review2_a_copy_on_bricklink_can_take_a_newer_fetched_list(client, w, coll):
+    from tests.m10a_data import fetch_bricklink
+    old = coll.db.execute('SELECT fetched_inventory_id FROM copy WHERE id=?', (w.copy_b,)).fetchone()[0]
+    newer = fetch_bricklink(coll, w.keep, [(w.brick, w.red, 0, 9)], [(w.figure, 1)])
+    html = page(client, w, w.copy_b)
+    assert 'A newer BrickLink list was fetched' in html and 'Switch to the current list' in html
+    answer = post(client, csrf(client), 'part-list', copy_id=w.copy_b, choice='bricklink')
+    assert answer.status_code == 200 and answer.get_json()['event_id'], answer.get_json()
+    assert coll.db.execute('SELECT fetched_inventory_id FROM copy WHERE id=?', (w.copy_b,)).fetchone()[0] == newer != old
+    again = post(client, csrf(client), 'part-list', copy_id=w.copy_b, choice='bricklink')
+    assert again.status_code == 400                                                                   # nothing newer now
+
+
+def api_list_copy(coll, w):
+    from tests.m10a_data import fetch_bricklink
+    from brickwork.store4 import fetched, identity
+    with coll.db:
+        identity.project(coll.db, w.gate)
+        identity.project(coll.db, w.brick)
+        identity.project_color(coll.db, w.red)
+        fetched.write_fetched(coll.db, w.gate, 'rebrickable_api', [(w.brick, w.red, 0, 3)], [])
+    return coll.add_copy('1000-2')
+
+
+def test_review3_a_list_that_cannot_be_remembered_is_refused_before_anything_changes(client, w, coll):
+    from brickwork.store4 import copies
+    copy = api_list_copy(coll, w)
+    before = coll.db.execute('SELECT inventory_source, inventory_digest FROM copy WHERE id=?', (copy,)).fetchone()[:]
+    html = sheet(client, w, copy)
+    assert 'value="rebrickable_api"' in html and 'data-remember="0"' in html and 'data-remember="1"' in html     # the box is not offered for it
+    refused = post(client, csrf(client), 'part-list', copy_id=copy, choice='rebrickable_api', preference=True)
+    assert refused.status_code == 400 and 'cannot be remembered' in refused.get_json()['message']
+    assert coll.db.execute('SELECT inventory_source, inventory_digest FROM copy WHERE id=?', (copy,)).fetchone()[:] == before
+    assert copies.part_list_preference(coll.db, w.gate) is None
+
+
+def test_review3_the_preference_is_part_of_the_switch_and_its_undo(client, w, coll):
+    from brickwork.store4 import copies
+    token = csrf(client)
+    done = post(client, token, 'part-list', copy_id=w.copy_c, choice='rebrickable:1', preference=True).get_json()
+    assert copies.part_list_preference(coll.db, w.keep) == {'source': 'rebrickable', 'version': 1}
+    undone = post(client, token, 'undo', event_id=done['event_id'])
+    assert undone.status_code == 200 and copies.part_list_preference(coll.db, w.keep) is None            # one receipt takes both back

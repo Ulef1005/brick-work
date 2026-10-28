@@ -27,9 +27,14 @@ The line under the picker says which one it started on. If you pick another list
 3. Read **Marks that will not carry over**. A line that is missing, damaged or checked and is not in the new list is retired with its marks; a quantity that is lower in the new list caps the marks on it.
 4. Press **Switch**. **Undo** takes the switch back, and the page says so.
 
+Ticking **Use this for new copies of this set** is part of the switch: it is remembered in the same step, and **Undo** takes both back. The box is not offered for a list fetched from Rebrickable (a set newer than your catalogue), which cannot be remembered.
+
 Nothing is deleted. A line that is not in the new list is **retired**: it stays with its marks and leaves every count and check. A note under the parts says "n retired lines kept · m with marks", and opens to list them. If you switch back to a list that has the line again, it comes back with its marks.
 
 ## BrickLink's list for a copy that is not on it
+
+A copy already on BrickLink's list switches to a newer fetched BrickLink list the same way.
+
 
 If BrickLink's list for the set was fetched before, the copy switches at once. If not, choosing it fetches the list: the sheet says "Fetches BrickLink's list; the copy switches when it arrives". The copy keeps working on its Rebrickable list, and its **Part list** card says **BrickLink list pending**.
 
@@ -41,4 +46,4 @@ Without a BrickLink key the choice is greyed with "needs a BrickLink key".
 
 ## When a list changed
 
-After a catalogue download, a copy whose list is no longer the one in the catalogue says "Rebrickable changed version 3 of 3 since this copy was built · n lines differ", for the copy and for each figure line. Nothing switches by itself. Press **Switch to the current list** to see what would change and decide.
+After a catalogue download, a copy whose list is no longer the one in the catalogue says "Rebrickable changed version 3 of 3 since this copy was built · n lines differ", for the copy and for each figure line. Nothing switches by itself. Press **Switch to the current list** to see what would change and decide. For a copy on BrickLink's list the note says "needs a BrickLink key" instead when no key is set; the page always opens without one.

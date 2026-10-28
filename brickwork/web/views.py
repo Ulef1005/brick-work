@@ -1625,20 +1625,18 @@ def _part_list_write(db,action,data):
         receipt=pending.accept_pending(db,copy_id,via=via,actor=actor)
         return receipt['event_id'],"Switched to BrickLink's list"
     choice=part_list_read.parse_choice(data.get('choice',''))
+    remember=data.get('preference') in (True,'true','on')
     if choice['source']=='bricklink':                                       # at once with a fetched list, else the copy waits on a queued job
-        done=pending.request_bricklink(db,copy_id,via=via,actor=actor)
+        done=pending.request_bricklink(db,copy_id,via=via,actor=actor,remember=remember)
         receipt=done.get('receipt')
     else:
-        receipt=copies.switch_part_list(db,copy_id,choice,via=via,actor=actor)
+        receipt=copies.switch_part_list(db,copy_id,choice,via=via,actor=actor,remember=remember)
     if receipt is None:
         message="Fetching BrickLink's list · the copy switches when it arrives"
     else:
         counts=receipt.get('counts') or {}
         message='Part list switched · %d added, %d retired'%(counts.get('lines_insert',0),counts.get('lines_retire',0))
-    if data.get('preference') in (True,'true','on'):
-        set_item=db.execute('SELECT item_id FROM main.copy WHERE id=?',(copy_id,)).fetchone()[0]
-        newest=next((v['is_latest'] for v in copies.part_list_choices(db,set_item)['rebrickable'] if v['version']==choice.get('version')),False)
-        copies.set_part_list_preference(db,set_item,{'source':choice['source'],'version':None if newest else choice.get('version')},via=via,actor=actor)
+    if remember:
         message+=' · used for new copies of this set'
     return (receipt['event_id'] if receipt else None),message
 

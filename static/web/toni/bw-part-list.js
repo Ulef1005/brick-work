@@ -27,6 +27,8 @@
   const sync = () => {
    const chosen = radios.find(r => r.checked);
    form.querySelectorAll('[data-bc-change]').forEach(s => { s.hidden = !chosen || s.dataset.bcChange !== chosen.value; });
+   const remember = form.querySelector('[data-bc-preference]');
+   if (remember) remember.hidden = !chosen || chosen.dataset.remember === '0';        // a fetched list cannot be remembered for new copies
    const go = form.querySelector('button[type=submit]');
    if (go) go.disabled = !chosen;
   };

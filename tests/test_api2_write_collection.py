@@ -484,7 +484,7 @@ def test_the_part_check_answers_through_the_checker_with_its_receipt_and_undo(v2
     assert again.json['idempotent_replay'] is True and again.json['event_id'] == started.json['event_id']
     other = stored(v2, pair)
     same = write(v2, f'/copies/{world.copy_c}/check', body={'action': 'start'}, key='chk-1', token=other)           # another token, the same key: its own request
-    assert same.status_code == 200 and same.json['event_id'] == started.json['event_id']
+    assert same.status_code == 200 and same.json['idempotent_replay'] is False and same.json['event_id'] is None         # the check is running: nothing to start
     assert write(v2, f'/copies/{world.copy_c}/check', body={'action': 'dance'}).status_code == 422
     assert write(v2, f'/copies/{world.copy_c}/check', body={'action': 'next', 'session': 'stale'}).status_code == 422
 

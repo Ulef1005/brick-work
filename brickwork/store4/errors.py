@@ -115,11 +115,16 @@ def _redact_known(text, known):
     return pattern.sub(short, text)
 
 
-def public_text(exc, *, what='job', known=()):
+def public_text(exc, *, what='job', known=(), refusal=False):
     """The words a page or a job row may show for `exc`: a store4 refusal written for people keeps its message, with the paths in `known`
     (and the home folder) replaced exactly and any other folder path cut to its last name; a refusal that wraps a SQLite error, and
-    anything else (the operating system, a bug), gives a fixed sentence. The full text goes to the server log only."""
-    log.warning('%s failed: %s: %s', what, type(exc).__name__, exc, exc_info=exc)
+    anything else (the operating system, a bug), gives a fixed sentence. The full text goes to the server log only: a refusal the caller marks
+    `refusal=True` (an API write mapping a handled refusal to its problem) as one info line, everything else as a warning with its traceback."""
+    expected = refusal and isinstance(exc, Store4Error) and not _wraps_sqlite(exc)       # a refusal written for people: one line, no traceback
+    if expected:
+        log.info('%s refused: %s: %s', what, type(exc).__name__, exc)
+    else:
+        log.warning('%s failed: %s: %s', what, type(exc).__name__, exc, exc_info=exc)
     if isinstance(exc, Store4Error) and not _wraps_sqlite(exc):
         text = _redact_known(str(exc), known)
         return _PATH.sub(lambda m: m.group(1) or 'a folder', text)[:300]

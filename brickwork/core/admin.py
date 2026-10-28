@@ -728,5 +728,5 @@ def instruction_archive(db, identifier):
 
 from . import undo as undoing  # noqa: E402  (the module imports admin through the pieces it registers; admin is complete by here)
 
-undoing.register('settings', 'save', _undo_settings)
+undoing.register('settings', 'save', _undo_settings, admin=True)
 

@@ -612,7 +612,7 @@ def _undo_import(db, event, via, actor):
     return {'event_id': undo_id}
 
 
-undoing.register('import', 'receipt', _undo_import)
+undoing.register('import', 'receipt', _undo_import, admin=True)
 
 
 def receipt_of(db, event_id):

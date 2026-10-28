@@ -192,11 +192,12 @@ def put_copies_by_id_checked(db, body, id):
 @route('/copies/<id>/check', 'POST')
 @write
 def post_copies_by_id_check(db, body, id):
-    from flask import request
     live_row(db, 'copy', id, 'copy')
-    operation = request.headers.get('Idempotency-Key') or uuid.uuid4().hex
+    # The checker's operation id is its own, never the Idempotency-Key: the API has answered a repeat of a key already (per token), and the
+    # checker scopes an id by copy only, so another token's equal key would have been answered with this token's receipt.
+    operation = uuid.uuid4().hex
     checker.write(db, id, dict(body, operation=operation))
-    # The checker answers a repeated operation from its own receipt and writes nothing then: the event is that receipt.
+    # No receipt when the call changed nothing (a start on a check that is running): the answer is the state and `event_id` is null.
     found = db.execute("SELECT id FROM main.event WHERE entity_kind='part_check' AND entity_id=? AND field IN ('save','undo') "
                        "AND json_extract(new_value,'$.operation')=? ORDER BY id LIMIT 1", (id, operation)).fetchone()
     return Done(check_state(db, id), found['id'] if found else None)

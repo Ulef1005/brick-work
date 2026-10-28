@@ -5,8 +5,10 @@ envelopes and problem+json errors are v1's, shared through `api/transport.py`. T
 `security`, so the contract is the one place that says who may call what. An operation whose piece has not landed (`DONE` below)
 answers `501 not_implemented` naming the piece; the contract check (`scripts/check_api_contract.py`) lists them."""
 from functools import lru_cache
+import sqlite3
 
-from flask import Blueprint, g, jsonify, request, send_file
+from flask import Blueprint, current_app, g, jsonify, request, send_file
+from werkzeug.exceptions import HTTPException
 
 from ..api import transport
 from ..core import contract, errors, meta
@@ -31,6 +33,14 @@ def route(rule, method='GET'):
 
 def database():
     return transport.database(HEALTH)
+
+
+def any_problem(error):
+    """Every other exception as its problem. A handled refusal (`BrickWorkError`, an HTTP error, a `ValueError`, a database that is away) is
+    the caller's answer and logs nothing here; anything else is a bug, so it keeps its traceback in the log before it becomes a `500`."""
+    if not isinstance(error, (errors.BrickWorkError, HTTPException, ValueError, sqlite3.Error)):
+        current_app.logger.error('API v2 %s %s failed', request.method, request.path, exc_info=error)
+    return transport.problem(error)
 
 
 def store4_problem(error):
@@ -99,7 +109,7 @@ def blueprint():
     api.before_request(authorize)
     api.after_request(transport.private_response)
     api.teardown_request(transport.close_database)
-    api.register_error_handler(Exception, transport.problem)
+    api.register_error_handler(Exception, any_problem)
     api.register_error_handler(Store4Error, store4_problem)          # a refusal of the 4.0 store is a problem, never a 500 (M.11c)
     taken = set()
     for rule, method, view in ROUTES:

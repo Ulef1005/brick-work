@@ -11,7 +11,7 @@ function inside one transaction that also records the answer, and builds the env
 * **One operation.** Every event of a request shares an `api2:` operation key. Undoing the event a write names undoes the write whole: the
   undoable events of the same operation up to it, newest first (`undo_operation`), in the one transaction of the Undo.
 * **Idempotency** (as v1, on the 4.0 log): the answer is stored as a `bw_api` event `op:<key>` in the transaction of the write, so a lost response
-  can be asked for again for 30 days; the same key with another body or path is `409 idempotency_conflict`, and another token's key is another key.
+  can be asked for again for 30 days; the same key with another body, path or query is `409 idempotency_conflict`, and another token's key is another key.
 * **Errors.** A `ValueError` is `422`, the contract's other failures are `core.errors`; a refusal of the 4.0 store (`Store4Error`) is mapped by
   `store4_problem`, so it never turns into a `500`."""
 from datetime import datetime, timedelta, timezone
@@ -234,7 +234,8 @@ def now_text(delta=timedelta()):
 
 
 def digest_of(body, content):
-    packed = json.dumps(dict(method=request.method, path=request.path, body=body, file=hashlib.sha256(content).hexdigest() if content is not None else None),
+    packed = json.dumps(dict(method=request.method, path=request.path, query=sorted(request.args.items(multi=True)), body=body,
+                             file=hashlib.sha256(content).hexdigest() if content is not None else None),
                         sort_keys=True, separators=(',', ':'), default=str)
     return hashlib.sha256(packed.encode()).hexdigest()
 
@@ -401,7 +402,7 @@ CONFLICTS = (copies_store.CopyMarked, copies_store.PendingChanged, copies_store.
 def store4_problem(error):
     """A refusal of the 4.0 store as the problem it is: a state that does not allow the change is `409`, a missing catalogue `424`, the rest
     `422`; the words are the refusal's own, with paths cut."""
-    text = store_errors.public_text(error, what='an API write')
+    text = store_errors.public_text(error, what='an API write', refusal=True)
     if isinstance(error, CONFLICTS):
         mapped = errors.Conflict(text)
     elif isinstance(error, store_errors.CatalogueError):

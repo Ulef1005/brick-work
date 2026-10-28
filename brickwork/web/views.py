@@ -383,6 +383,26 @@ def catalogue_write(page, action):
     return redirect(url_for('web.bw_admin', page=page))
 
 
+@web_page.post('/manage/first-run/catalogue')
+@login_required
+def bw_first_run_catalogue():
+    """Onboarding step 1 (design 6.1): the first-run page's button starts the first import, or activates a catalogue file that is there already.
+    Both are catalogue jobs; the page shows their progress."""
+    from . import admin_ops, catalogue_jobs
+    from ..store4.errors import Store4Error
+    bw_add_csrf(request.form)
+    if not bw_collection_editable():
+        abort(403, 'Changes are switched off on this instance')
+    kind = {'first': 'first', 'activate': 'reconcile'}.get(request.form.get('action'))
+    if kind is None:
+        abort(400)
+    try:
+        catalogue_jobs.start(admin_ops.store4_paths(), kind)
+    except Store4Error as exc:
+        flash(catalogue_jobs.KINDS[kind] + ' · ' + str(exc), 'error')
+    return redirect(url_for('web.bw_sets'))
+
+
 @web_page.get('/manage/catalogue/job')
 @login_required
 def bw_catalogue_job():

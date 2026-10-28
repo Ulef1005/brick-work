@@ -52,11 +52,11 @@ ASK_KEYS = ('number', 'where', 'quantity', 'condition', 'completeness', 'note', 
 def require_catalogue(db):
     """Add needs an activated catalogue build (design 6.1 step 3). Without one it says what to run; it never fails with a 500."""
     if not has_catalogue(db):
-        raise errors.CatalogueNotLoaded('There is no catalogue.db beside the collection. Get one with `python -m brickwork.store4 --data <the folder of '
-                                        f'brickwork.db> catalogue download` (or `catalogue import`), then run `{FIX}`; first-run onboarding comes with a later release.')
+        raise errors.CatalogueNotLoaded('There is no catalogue beside the collection yet. Open the first page (Sets) and press Download the catalogue, '
+                                        'or run `python -m brickwork.store4 --data <the folder of brickwork.db> catalogue download`.')
     if not db.execute('SELECT 1 FROM main.catalogue_build LIMIT 1').fetchone():
-        raise errors.CatalogueNotLoaded(f'No catalogue is active in this collection yet. Run `{FIX}` to activate the one beside it '
-                                        '(first-run onboarding comes with a later release), then search again.')
+        raise errors.CatalogueNotLoaded(f'No catalogue is active in this collection yet. Open the first page (Sets) and press Activate the catalogue, '
+                                        f'or run `{FIX}`, then search again.')
 
 
 def _escape(text):

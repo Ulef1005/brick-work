@@ -576,16 +576,14 @@ def jobs_worker():
 
 def setup():
     """Create a fresh 4.0 collection (an existing 4.0 file is left as it is; a 3.3 file is refused) and say where the catalogue goes."""
-    from ..core.connect import GET_CATALOGUE, catalogue_path, connect
+    from ..core import admin
+    from ..core.connect import GET_CATALOGUE, catalogue_path
     path = brickwork_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with closing(connect(path, require_catalogue=False)) as db:
-        from ..core import admin
-        admin.seed_new(db)                            # freshness rules, system flags, setup event; an existing collection keeps its own
+    admin.ensure_collection(path)                     # freshness rules, system flags, setup event; an existing collection keeps its own
     catalogue = catalogue_path(path)
     result = {'setup': 'ok', 'database': str(path), 'catalogue': str(catalogue) if catalogue.is_file() else 'missing'}
     if not catalogue.is_file():
-        result['next'] = f'Get the catalogue, which belongs beside the collection as {catalogue}: {GET_CATALOGUE}'
+        result['next'] = f'Open the app and press Download the catalogue on the first page, or from the command line: {GET_CATALOGUE}. It belongs beside the collection as {catalogue}.'
     return result
 
 

@@ -26,6 +26,8 @@ The **Catalogue** card says what the catalogue file beside your collection holds
 
 ## Catalogue
 
+**First run.** An empty install shows **Nothing here yet** on **Sets**. **Download the catalogue** there needs no key and no login: it fetches Rebrickable's twelve files (about 17 MB), builds the catalogue, creates your collection file if it is missing and switches the catalogue on, as a background job with a progress bar. Rebrickable asks for at most one download a day, so if today's files are on disk already the button reads **Build from today's files** and fetches nothing. When it is done, **Add a set** opens: add a set by its number and open **Check Set Parts**. Keys are optional; they bring prices and part lists for sets newer than the catalogue. A catalogue file that is beside the collection but not switched on yet shows **Activate the catalogue**.
+
 **Tools & Admin → Catalogue → Build** shows the current catalogue: when it was built, the date of the Rebrickable download it came from, how many items and colours it holds, how many retired items it keeps (items that left Rebrickable's files keep their ids), and when your collection was last reconciled with it.
 
 - **Re-download** fetches Rebrickable's twelve files again (about 17 MB, no login) and builds the catalogue from them, then reconciles your collection. Rebrickable asks for at most one download a day: if today's files are on disk already, they are used instead.

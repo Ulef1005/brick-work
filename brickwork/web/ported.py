@@ -39,6 +39,8 @@ PORTED |= {'web.bw_sync', 'web.bw_sync_link', 'web.bw_sync_plan', 'web.bw_sync_w
            'web.bw_import_plan', 'web.bw_import_apply', 'web.bw_import_undo'}
 # M.10 A: the copy page's Part list (the Switch sheet's body; its writes are `web.bw_collection_write`).
 PORTED |= {'web.bw_copy_part_list', 'web.bw_add_picture_known'}
+# M.12: onboarding step 1, the first-run page's catalogue button.
+PORTED |= {'web.bw_first_run_catalogue'}
 PIECE = 'M.11'
 
 

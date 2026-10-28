@@ -35,28 +35,27 @@ def steps(page):
     return {li['data-step']: li for li in page.select('[data-first-run] .fr-step')}
 
 
-def test_first_run_shows_three_steps_and_only_the_first_is_active(client):
+def test_first_run_needs_no_key_to_load_the_catalogue(client):
     page = soup(client, '/collection/sets')
     assert page.h1.get_text(strip=True) == 'Sets'
     assert '0 sets' in page.select_one('.bc-heading .secondary').get_text()
     assert page.select_one('[data-first-run] h2').get_text() == 'Nothing here yet.'
     found = steps(page)
-    assert [found[k]['data-state'] for k in '123'] == ['current', 'waiting', 'waiting']
+    assert [found[k]['data-state'] for k in '123'] == ['optional', 'current', 'waiting']       # M.12: keys are optional, the catalogue comes first
     first = found['1'].find('a')
     assert first.get_text(strip=True) == 'Catalogues & keys' and first['href'] == '/manage/catalogues'
-    for k in '23':
-        button = found[k].find('button')
-        assert button.has_attr('disabled') and not found[k].find('a')
+    assert found['2'].find('form')['action'] == '/manage/first-run/catalogue' and found['2'].find('button').get_text(strip=True) == 'Activate the catalogue'      # the fixture pair has the file; test_m12_onboarding covers an empty folder
+    button = found['3'].find('button')
+    assert button.has_attr('disabled') and not found['3'].find('a')
     assert 'without keys' in page.select_one('.fr-note').get_text()
     assert page.select_one('[data-bc-list]').has_attr('hidden')
 
 
-def test_first_run_unlocks_step_two_once_a_key_is_stored(client, monkeypatch):
+def test_first_run_marks_the_keys_step_done_once_a_key_is_stored(client, monkeypatch):
     monkeypatch.setenv('BW_REBRICKABLE_API_KEY', fake())
     found = steps(soup(client, '/collection/sets'))
     assert [found[k]['data-state'] for k in '123'] == ['done', 'current', 'waiting']
-    assert found['2'].find('a')['href'] == '/manage/catalogues#catalogues'
-    assert found['3'].find('button').has_attr('disabled')
+    assert found['2'].find('form') and found['3'].find('button').has_attr('disabled')
 
 
 def test_a_key_in_the_encrypted_store_counts_like_one_in_the_environment(client, coll):

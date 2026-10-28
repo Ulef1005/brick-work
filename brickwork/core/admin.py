@@ -206,6 +206,17 @@ def seed_new(db):
         return True
 
 
+def ensure_collection(path):
+    """The collection file at `path`, created and seeded when missing (an existing one keeps its own). It opens without a catalogue: onboarding
+    builds the catalogue next (design 6.1) and `brickwork setup` says where it goes."""
+    from contextlib import closing
+    from pathlib import Path
+    from .connect import connect
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    with closing(connect(path, require_catalogue=False)) as db:
+        return seed_new(db)
+
+
 def effective_priority(raw):
     """The source order per step as the pipeline uses it: the stored `source_priority` where it names the step, else design 6.8's default."""
     from .pipeline import DEFAULT_PRIORITY, LEGACY_PICTURE_SOURCES

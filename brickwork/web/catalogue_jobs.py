@@ -14,13 +14,15 @@ from pathlib import Path
 import itertools
 import threading
 
+from ..core import admin
 from ..store4 import cli, status
 from ..store4.connect import connect
 from ..store4.errors import Store4Error, public_text
 
 FILE = 'catalogue-job.json'
-KINDS = {'redownload': 'Re-download', 'rebuild': 'Rebuild', 'reconcile': 'Reconcile', 'lists': 'Load BrickLink item lists'}
-STEPS = {'redownload': ('Downloading the Rebrickable files', 'Building the catalogue', 'Reconciling the collection'),
+KINDS = {'first': 'First import', 'redownload': 'Re-download', 'rebuild': 'Rebuild', 'reconcile': 'Reconcile', 'lists': 'Load BrickLink item lists'}
+STEPS = {'first': ('Downloading the Rebrickable files', 'Building the catalogue', 'Setting up your collection'),
+         'redownload': ('Downloading the Rebrickable files', 'Building the catalogue', 'Reconciling the collection'),
          'rebuild': ('Rebuilding the catalogue from the downloaded files', 'Reconciling the collection'),
          'reconcile': ('Reconciling the collection',),
          'lists': ('Building the catalogue with the lists', 'Reconciling the collection')}
@@ -97,6 +99,8 @@ def start(paths, kind, *, folder=None, background=True, operation_key=None):
         directory = None
         if kind == 'rebuild' and cli.newest_download(paths) is None:
             raise Store4Error('there is no complete Rebrickable download to rebuild from; run Re-download first')
+        if kind == 'first' and paths.catalogue.exists():
+            raise Store4Error('there is a catalogue file already; use Re-download on Tools & Admin to update it')
         if kind == 'reconcile' and not paths.catalogue.exists():
             raise Store4Error('there is no catalogue file yet; run Re-download first')
         if kind == 'lists':
@@ -126,10 +130,11 @@ def _run(paths, state, directory, operation_key=None):
     kind = state['kind']
     try:
         result = {}
-        if kind == 'redownload':
+        if kind in ('first', 'redownload'):
             got = cli.download(paths, fetch=FETCH or cli.http_fetch, say=lambda *_: None)
             result['download'] = dict(downloaded=got['downloaded'], files=got['files'])
             _step(paths, state, 1)
+            admin.ensure_collection(paths.collection)             # a fresh install has no collection file yet; the build seeds its ids from it (design 6.1)
             source = cli.pick_source(paths, None)
             built = cli.build(source, paths.catalogue, collection=paths.collection_if_any(), app_version=cli.app_version(),
                               mappings_dir=cli.MAPPINGS_DIR, local_dir=paths.local_dir())
@@ -148,6 +153,7 @@ def _run(paths, state, directory, operation_key=None):
             _step(paths, state, 1)
             result['reconcile'] = _reconcile(paths, operation_key)
         else:
+            admin.ensure_collection(paths.collection)
             result['reconcile'] = _reconcile(paths, operation_key)
         state.update(state='done', result=result)
     except Exception as exc:                              # shown on the page in words; the details stay in the log

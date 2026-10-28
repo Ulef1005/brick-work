@@ -47,7 +47,7 @@ def rewrite_links(text, base, depth=0):
         path, _, anchor = target.partition('#')
         resolved = os.path.normpath(os.path.join(base, path)).replace(os.sep, '/')
         up = '../' * depth
-        local = {'docs/brickwork/mcp.md': up + 'mcp/', 'docs/brickwork/openapi-v1.yaml': up + 'api/'}
+        local = {'docs/brickwork/mcp.md': up + 'mcp/', 'docs/brickwork/openapi-v2.yaml': up + 'api/'}
         if resolved in local:
             url = local[resolved]
         else:
@@ -104,10 +104,10 @@ def lockup(up):
 def api_reference():
     """Render the complete contract locally, without a remote renderer or runtime requests."""
     import yaml
-    contract = yaml.safe_load((ROOT / 'docs/brickwork/openapi-v1.yaml').read_text())
-    chunks = ['<h1>API reference</h1><p>The REST API at <code>/api/v1</code>. '
-              '<a href="openapi-v1.yaml">Download the OpenAPI contract</a>. '
-              f'<a href="{blob("docs/brickwork/api-v1.md")}">Authentication and examples</a>.</p>']
+    contract = yaml.safe_load((ROOT / 'docs/brickwork/openapi-v2.yaml').read_text())
+    chunks = ['<h1>API reference</h1><p>The REST API at <code>/api/v2</code>. '
+              '<a href="openapi-v2.yaml">Download the OpenAPI contract</a>. '
+              f'<a href="{blob("docs/brickwork/api-v2.md")}">Authentication and examples</a>.</p>']
     for path, operations in contract['paths'].items():
         for method, operation in operations.items():
             if method not in ('get', 'post', 'put', 'patch', 'delete', 'head', 'options'):
@@ -193,7 +193,7 @@ def build(out):
     guide = rewrite_links((ROOT / 'docs/brickwork/mcp.md').read_text(), 'docs/brickwork', 1) + mcp_tables()
     (out / 'mcp/index.html').write_text(page('MCP server', render(guide), 1, current='MCP'))
 
-    shutil.copy(ROOT / 'docs/brickwork/openapi-v1.yaml', out / 'api/openapi-v1.yaml')
+    shutil.copy(ROOT / 'docs/brickwork/openapi-v2.yaml', out / 'api/openapi-v2.yaml')
     body = api_reference()
     (out / 'api/index.html').write_text(page('API reference', body, 1, current='API reference').replace(
         '<main class="doc">', '<main class="doc api">'))

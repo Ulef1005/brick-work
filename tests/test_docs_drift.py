@@ -12,7 +12,7 @@ import subprocess
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-PROSE = ('README.md', 'CONTRIBUTING.md', 'SECURITY.md', 'docs/brickwork/mcp.md', 'docs/brickwork/api-v1.md')
+PROSE = ('README.md', 'CONTRIBUTING.md', 'SECURITY.md', 'docs/brickwork/mcp.md', 'docs/brickwork/api-v2.md')
 # The user docs: their links are checked by Zensical's strict build, their settings and commands here.
 USER_DOCS = tuple(str(p.relative_to(ROOT)) for p in sorted((ROOT / 'docs').glob('*/*.md'))
                   if p.parts[-2] in ('tutorials', 'how-to', 'concepts', 'reference'))
@@ -109,8 +109,10 @@ def test_the_site_builds_with_every_tool(tmp_path):
     from scripts.build_site import build
     from brickwork.core.mcp import Adapter
     site = build(tmp_path / 'site')
-    for page in ('index.html', 'docs/index.html', 'use-cases/index.html', 'workflows/index.html', 'api/index.html', 'api/openapi-v1.yaml', 'mcp/index.html', 'assets/site.css', '.nojekyll'):
+    for page in ('index.html', 'docs/index.html', 'use-cases/index.html', 'workflows/index.html', 'api/index.html', 'api/openapi-v2.yaml', 'mcp/index.html', 'assets/site.css', '.nojekyll'):
         assert (site / page).is_file(), page
+    api = (site / 'api/index.html').read_text()   # the retired v1 contract is not what the site documents (#125)
+    assert '<code>/api/v2</code>' in api and 'GET /items/{id}' in api and 'openapi-v1' not in api
     mcp = (site / 'mcp/index.html').read_text()
     for name in Adapter(client=None).tools:
         assert f'<code>{name}</code>' in mcp, name

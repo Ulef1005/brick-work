@@ -77,7 +77,6 @@ def test_runtime_files_in_docker_context():
     # Tracked files only: bytecode and downloaded images are local/generated data.
     tracked = subprocess.check_output(['git', 'ls-files', '-z'], cwd=ROOT).decode().split('\0')
     required = {
-        'docs/brickwork/openapi-v1.yaml',
         'docs/brickwork/openapi-v2.yaml',
         'brickwork/api2/write_contract.json',
         'brickwork/store4/brickwork.sql',

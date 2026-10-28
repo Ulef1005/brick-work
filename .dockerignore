@@ -9,7 +9,6 @@ data/
 # Documentation
 docs/
 # API and MCP both read the OpenAPI contract at runtime
-!docs/brickwork/openapi-v1.yaml
 !docs/brickwork/openapi-v2.yaml
 LICENSE
 *.md

@@ -1,14 +1,15 @@
-"""Check the implemented operation tables against OpenAPI (v1 and v2); --write refreshes them.
+"""Check the implemented operation tables against OpenAPI v2; --write refreshes them.
 
 v2 (M.11a, issue #113): the contract `openapi-v2.yaml` against the routes of the `/api/v2` blueprint (every operation routed, exactly the
-pieces in `brickwork.api2.DONE` implemented, the rest answering 501), the error table, and the two generated tables in `api-v2.md`."""
+pieces in `brickwork.api2.DONE` implemented, the rest answering 501), the error table, and the two generated tables in `api-v2.md`.
+
+The v1 check is gone since the cutover (#125): v1 answers 410, so `openapi-v1.yaml` and `api-v1.md` are a frozen reference
+with no routes behind them, and `tests/test_api2_contract.py` still reads the v1 file for the v1-to-v2 mapping."""
 from pathlib import Path
 import sys
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-START = '<!-- api-m1:start -->'
-END = '<!-- api-m1:end -->'
 V2_TABLES = {'implemented': ('<!-- api2-implemented:start -->', '<!-- api2-implemented:end -->'),
              'pending': ('<!-- api2-pending:start -->', '<!-- api2-pending:end -->')}
 PIECES = ('M.11a', 'M.11b', 'M.11c', 'M.11d')
@@ -32,37 +33,6 @@ def load_yaml(text):
             return mapping
 
     return yaml.load(text, Loader=UniqueKeyLoader)
-
-
-def check_v1():
-    try:
-        import yaml
-        import jsonschema  # noqa: F401 — required by the generated contract harness
-    except ImportError as error:
-        print(f'API contract check blocked: install requirements-dev.txt ({error.name} missing).', file=sys.stderr)
-        return 2
-    try:
-        spec = load_yaml((ROOT / 'docs/brickwork/openapi-v1.yaml').read_text())
-    except yaml.YAMLError as error:
-        print(f'Invalid API contract YAML: {error}', file=sys.stderr)
-        return 1
-    rows = ['| Implemented operation | Backing |', '|---|---|']
-    for path, operations in spec['paths'].items():
-        for method, operation in operations.items():
-            if isinstance(operation, dict) and operation.get('x-milestone') in ('M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7'):
-                rows.append(f"| `{method.upper()} /api/v1{path}` | `{operation['x-backing']}` |")
-    generated = '\n'.join(rows)
-    doc = ROOT / 'docs/brickwork/api-v1.md'
-    text = doc.read_text()
-    before, remainder = text.split(START, 1)
-    existing, after = remainder.split(END, 1)
-    if '--write' in sys.argv:
-        doc.write_text(before + START + '\n' + generated + '\n' + END + after)
-    elif existing.strip() != generated:
-        print('API operation table differs from YAML; run scripts/check_api_contract.py --write.', file=sys.stderr)
-        return 1
-    print('API implemented operation table matches OpenAPI.')
-    return 0
 
 
 def v2_routes():
@@ -159,8 +129,13 @@ def check_v2(write):
 
 
 def main():
-    code = check_v1()
-    return check_v2('--write' in sys.argv) or code
+    try:
+        import yaml  # noqa: F401
+        import jsonschema  # noqa: F401 — required by the generated contract harness
+    except ImportError as error:
+        print(f'API contract check blocked: install requirements-dev.txt ({error.name} missing).', file=sys.stderr)
+        return 2
+    return check_v2('--write' in sys.argv)
 
 
 if __name__ == '__main__':

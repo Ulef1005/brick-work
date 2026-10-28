@@ -16,10 +16,10 @@ HTTP_STATUS = MappingProxyType({
 })
 
 
-# Said by the 410 guard of API v1 and by `brickwork mcp` (M.8a, issue #110, decision 1; names v2 since M.11a, issue #113).
+# Said by the 410 guard of API v1 (M.8a, issue #110, decision 1; names v2 since M.11a, issue #113; the 0.5 and MCP notes dropped
+# after the cutover, #125).
 API_V1_RETIRED = ('API v1 is retired on the 4.0 line: v1 cannot represent local or unidentified items. Use API v2 at /api/v2 '
-                  '(contract: docs/brickwork/api-v2.md and openapi-v2.yaml); the MCP server comes back with M.11e. '
-                  'Prod and the House API stay on the 0.5 release line.')
+                  '(contract: docs/brickwork/api-v2.md and openapi-v2.yaml), which the MCP server uses too.')
 
 
 class BrickWorkError(ValueError):

@@ -176,7 +176,7 @@ Every setting is an environment variable, read from `data/.env` when it is not s
 
 ## API and MCP
 
-The API is `/api/v2` on the 4.0 line (v1 answers `410 Gone`): [contract](docs/brickwork/api-v2.md), [OpenAPI](docs/brickwork/openapi-v2.yaml); its operations land piece by piece with M.11 and answer `501` until then. The v1 contract is [api-v1.md](docs/brickwork/api-v1.md). Use `Authorization: Bearer TOKEN`. Set `BW_API_TOKEN` for a bootstrap admin token, or create scoped stored tokens after setup:
+The API is `/api/v2` on the 4.0 line (v1 answers `410 Gone`): [contract](docs/brickwork/api-v2.md), [OpenAPI](docs/brickwork/openapi-v2.yaml). The v1 contract stays as [api-v1.md](docs/brickwork/api-v1.md), the reference for what v2 inherits. Use `Authorization: Bearer TOKEN`. Set `BW_API_TOKEN` for a bootstrap admin token, or create scoped stored tokens after setup:
 
 ```sh
 docker compose exec brickwork brickwork token create --name client --scope read,write --expires 90d
@@ -218,7 +218,7 @@ The check script includes the naming gate, a standalone smoke test with sockets 
 
 ## Documentation
 
-The documentation site (published on GitHub Pages) shows this README, the API reference rendered from [openapi-v1.yaml](docs/brickwork/openapi-v1.yaml), and the [MCP guide](docs/brickwork/mcp.md). The [API guide](docs/brickwork/api-v1.md) covers authentication, conventions and examples. Build the site locally with `python scripts/build_site.py _site`.
+The documentation site (published on GitHub Pages) shows this README, the API reference rendered from [openapi-v2.yaml](docs/brickwork/openapi-v2.yaml), and the [MCP guide](docs/brickwork/mcp.md). The [API guide](docs/brickwork/api-v2.md) covers authentication, conventions and examples. Build the site locally with `python scripts/build_site.py _site`.
 
 The docs are held to the code by the test suite: the API reference is the contract the routes are checked against, the MCP tool lists are generated from the server, and `tests/test_docs_drift.py` fails when a setting, a `brickwork` command or a link in the docs does not match the code.
 

@@ -342,9 +342,9 @@ def replay_of(db, key, body, content, actor):
 
 def undoable_events(db, after, operation=None):
     """The events written after `after` that a registered undoer takes and that nobody undid, oldest first: `[(id, operation_key)]`. With an
-    `operation` only that request's own events count: a detached write waits on the network outside any transaction, so another request may
-    commit meanwhile. (An ordinary write runs in one transaction, where the range holds nothing but its own events: some store writers key
-    their events themselves, so it passes no operation.)"""
+    `operation` only that request's own events count: every event of an API write carries the request's key (the store4 writers read it from
+    `store4.audit.OPERATION_KEY`, or take it as `operation_key=`), so another request that commits meanwhile, as it can while a detached write
+    waits on the network, is never named."""
     clause, params = ('AND e.operation_key=?', (after, operation)) if operation else ('', (after,))
     return [(r['id'], r['operation_key']) for r in db.execute(
         f"SELECT e.id, e.operation_key, {undoing.undoable_sql('e')} AS undoable, {undoing.undone_sql('e')} AS undone FROM main.event e "
@@ -416,7 +416,7 @@ def execute(db, spec, function, values, body, content):
             done = function(db, body, **extra, **values)
             if not isinstance(done, Done):
                 done = Done(done)
-            result, status = envelope(db, spec, done, before, preview=preview)
+            result, status = envelope(db, spec, done, before, operation, preview=preview)
             if preview:
                 db.execute('ROLLBACK TO api_preview')
                 db.execute('RELEASE api_preview')

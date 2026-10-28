@@ -614,7 +614,7 @@ def test_e2_a_catalogue_job_error_redacts_the_data_folder(tmp_path, monkeypatch)
     pair = make_pair(folder)
     paths = Paths(pair.parent)
     monkeypatch.setattr(catalogue_jobs.cli, 'do_reconcile', lambda p: None)
-    monkeypatch.setattr(catalogue_jobs, '_reconcile', lambda p: (_ for _ in ()).throw(Store4Error(f'cannot open {folder}/catalogue.db')))
+    monkeypatch.setattr(catalogue_jobs, '_reconcile', lambda p, *_: (_ for _ in ()).throw(Store4Error(f'cannot open {folder}/catalogue.db')))
     state = catalogue_jobs.start(paths, 'reconcile', background=False)
     assert state['state'] == 'failed' and 'Private' not in state['error'] and str(tmp_path) not in state['error'] and 'catalogue.db' in state['error']
 

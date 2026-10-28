@@ -184,10 +184,10 @@ def write_manifest(directory, entries, day):
 
 # ---------- build, activate, reconcile ----------
 
-def activate_and_reconcile(paths):
+def activate_and_reconcile(paths, operation_key=None):
     with closing(connect(paths.collection, paths.catalogue)) as db:
-        activated = activate(db, via='cli')
-        reconciled = reconcile(db, via='cli')
+        activated = activate(db, via='cli', operation_key=operation_key)
+        reconciled = reconcile(db, via='cli', operation_key=operation_key)
     return activated, reconciled
 
 

@@ -8,7 +8,7 @@ from pathlib import Path
 import uuid
 
 from .connect import connect
-from ..store4.audit import value_text
+from ..store4.audit import OPERATION_KEY, value_text
 from ..store4.connect import now as store4_now
 from .pipeline import Pipeline, TYPES, validate_priority
 from .sources.base import now, redact
@@ -37,9 +37,7 @@ def origin():
     return via, AUDIT_ACTOR.get() if via == 'api' else None
 
 
-OPERATION_KEY = ContextVar('brickwork_operation_key', default=None)
-
-
+# OPERATION_KEY lives in store4.audit (imported above), where the event writers read it.
 def begin_operation(key=None):
     """Start a new operation in this context (a web request, a CLI command, a worker pass) and return its key.
 

@@ -84,9 +84,10 @@ def _admission(paths):
         lock.close()                                          # closing releases the flock
 
 
-def start(paths, kind, *, folder=None, background=True):
+def start(paths, kind, *, folder=None, background=True, operation_key=None):
     """Start a job. Raises `Busy` while another one runs, `Store4Error` when its inputs are missing. With `background=False` it runs
-    here and returns the final state (tests); otherwise it returns the first state at once."""
+    here and returns the final state (tests); otherwise it returns the first state at once. `operation_key` (an API write's own) is carried
+    by the events the activation and the reconcile write."""
     if kind not in KINDS:
         raise Store4Error(f'unknown catalogue job {kind!r}')
     with _admission(paths):
@@ -111,8 +112,8 @@ def start(paths, kind, *, folder=None, background=True):
         state = dict(kind=kind, state='running', pid=os.getpid(), started_at=_now(), finished_at=None, step=0, folder=folder, error=None, result=None)
         _write(paths, state)
     if not background:
-        return _run(paths, state, directory)
-    threading.Thread(target=_run, args=(paths, state, directory), daemon=True, name='catalogue-job').start()
+        return _run(paths, state, directory, operation_key)
+    threading.Thread(target=_run, args=(paths, state, directory, operation_key), daemon=True, name='catalogue-job').start()
     return read(paths)
 
 
@@ -121,7 +122,7 @@ def _step(paths, state, index):
     _write(paths, state)
 
 
-def _run(paths, state, directory):
+def _run(paths, state, directory, operation_key=None):
     kind = state['kind']
     try:
         result = {}
@@ -134,7 +135,7 @@ def _run(paths, state, directory):
                               mappings_dir=cli.MAPPINGS_DIR, local_dir=paths.local_dir())
             result['build'] = _build(built)
             _step(paths, state, 2)
-            result['reconcile'] = _reconcile(paths)
+            result['reconcile'] = _reconcile(paths, operation_key)
         elif kind == 'rebuild':
             out = cli.do_rebuild(paths)
             result['build'] = _build(out['build'])
@@ -145,9 +146,9 @@ def _run(paths, state, directory):
             out = cli.import_bricklink(paths.catalogue, directory, collection=paths.collection_if_any(), app_version=cli.app_version())
             result['lists'] = dict(counts={k: v for k, v in out['counts'].items() if isinstance(v, (int, str))}, files=[f['name'] for f in out['files']])
             _step(paths, state, 1)
-            result['reconcile'] = _reconcile(paths)
+            result['reconcile'] = _reconcile(paths, operation_key)
         else:
-            result['reconcile'] = _reconcile(paths)
+            result['reconcile'] = _reconcile(paths, operation_key)
         state.update(state='done', result=result)
     except Exception as exc:                              # shown on the page in words; the details stay in the log
         state.update(state='failed', error=_words(exc, paths))
@@ -167,8 +168,8 @@ def _build(built):
                                    'retired_inventories', 'adopted', 'sets', 'parts', 'minifigs') if k in counts}
 
 
-def _reconcile(paths):
-    activated, reconciled = cli.activate_and_reconcile(paths)
+def _reconcile(paths, operation_key=None):
+    activated, reconciled = cli.activate_and_reconcile(paths, operation_key)
     return cli.summary(reconciled)
 
 

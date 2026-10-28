@@ -21,7 +21,7 @@ ITEM_FIELDS = (('name', 'name'), ('year', 'year'), ('num_parts', 'num_parts'), (
                ('size_key', 'size_key'))
 
 
-def reconcile(db, *, via='cli', actor=None):
+def reconcile(db, *, via='cli', actor=None, operation_key=None):
     """Run reconcile against the attached catalogue; every build of it must be activated first. Returns the report, which
     is also stored under `reconcile` in the newest activated build's counts_json. A second run changes nothing."""
     need_catalogue(db, 'reconcile')
@@ -31,7 +31,7 @@ def reconcile(db, *, via='cli', actor=None):
         missing = [r[0] for r in db.execute('SELECT id FROM catalogue.build ORDER BY id') if r[0] not in have]
         if missing:
             raise NotActivated(f'catalogue builds {missing} are not activated in this collection; activate first')
-        events = Events(db, via, actor)
+        events = Events(db, via, actor, operation_key)
         report = dict(operation_key=events.operation_key, changes=defaultdict(int), not_applied=defaultdict(list))
         run = _Run(db, events, report['changes'])
         _adopt(run, report)

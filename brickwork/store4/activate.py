@@ -8,7 +8,7 @@ from .identity import held_colour_keys, project_color
 HIGH_WATER = (('catalogue_item_high_water', 'item_high_water'), ('catalogue_color_high_water', 'color_high_water'))
 
 
-def activate(db, *, via='cli', actor=None):
+def activate(db, *, via='cli', actor=None, operation_key=None):
     """Record the attached catalogue's builds, bind its id, copy the high-water marks and project every catalogue colour
     with its links, in one transaction. Idempotent: a build that is active already changes nothing and writes no event.
 
@@ -18,7 +18,7 @@ def activate(db, *, via='cli', actor=None):
         report, changed = apply_activation(db)
         if changed:
             newest = db.execute('SELECT max(id) FROM catalogue.build').fetchone()[0]
-            Events(db, via, actor).write('catalogue_build', newest, 'activated', None, json.dumps(report, sort_keys=True))
+            Events(db, via, actor, operation_key).write('catalogue_build', newest, 'activated', None, json.dumps(report, sort_keys=True))
     return report
 
 

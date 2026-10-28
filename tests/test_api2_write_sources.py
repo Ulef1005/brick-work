@@ -9,6 +9,7 @@ import pytest
 
 from brickwork.core import keys, secrets
 from brickwork.core.connect import connect
+from brickwork.api2 import writes
 from brickwork.core.sources import base
 from tests.api2 import BL_ENV, bl, call, events, fake, row, rows, secret, stored_token, v2, validate, wire, write  # noqa: F401
 from tests.api2 import app4, coll, pair, world  # noqa: F401
@@ -245,7 +246,12 @@ def test_the_catalogue_import_loads_the_newest_folder_of_lists_and_answers_the_s
     data = response.json['data']
     assert data['loaded'] is True and data['items'] > 0 and data['builds'] and set(data['coverage']) == {'matched', 'inferred', 'manual', 'to_check'}
     assert data['last_reconcile'] is not None
-    assert write(v2, '/catalogue/import', key='cat-1').json['idempotent_replay'] is True
+    replay = write(v2, '/catalogue/import', key='cat-1')
+    assert replay.json['idempotent_replay'] is True
+    named = response.json['event_id']
+    assert named is not None and replay.json['event_id'] == named                                  # activation's event carries this request's key
+    row = events(pair, 'id=?', (named,))[0]
+    assert row['operation_key'].startswith(writes.PREFIX)                                           # an event of this request, not a stray key
     state = __import__('json').loads((pair.parent / 'catalogue-job.json').read_text())
     assert state['kind'] == 'lists' and state['state'] == 'done'
 

@@ -7,7 +7,7 @@ exhausted budget answers `429` with `Retry-After`. `POST /catalogue/import` load
 Admin page does (`web/catalogue_jobs.py`). `POST /colors/sync` is gone: the colours come with the catalogue builds (M.8f)."""
 from contextlib import closing
 
-from ..core import errors, keys, source_ops, sync
+from ..core import admin, errors, keys, source_ops, sync
 from ..core.sources.base import now
 from . import route
 from .read import arguments, page, reading, record, respond
@@ -124,7 +124,7 @@ def post_catalogue_import(db, body):
     """Load the newest folder of BrickLink item lists into the catalogue and reconcile the collection with it (the page's Load lists)."""
     from ..web import admin_ops, catalogue_jobs
     paths = admin_ops.store4_paths()
-    state = catalogue_jobs.start(paths, 'lists', background=False)
+    state = catalogue_jobs.start(paths, 'lists', background=False, operation_key=admin.OPERATION_KEY.get())
     if state['state'] != 'done':
         raise errors.ValidationFailed(state.get('error') or 'The lists could not be loaded')
     return Done(catalogue_status(paths))

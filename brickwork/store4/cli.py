@@ -469,7 +469,7 @@ def do_copy(paths, args):
         if c == 'preference':
             item_id = need_set(db, args.number)
             choice = None if args.choice == 'clear' else parse_choice(args.choice)
-            return dict(what='preference', set=args.number, preference=copies.set_part_list_preference(db, item_id, choice, via='cli'))
+            return dict(what='preference', set=args.number, preference=copies.set_part_list_preference(db, item_id, choice, via='cli', explicit=True))
         return dict(what='prefer-bricklink', on=copies.set_prefer_bricklink(db, args.state == 'on', via='cli'))
 
 

@@ -677,7 +677,7 @@ def _confirm_row(db, pipeline, row, batch, index, via, actor, photo=None):
         if row.get('use_for_new') and row.get('part_list_choice') not in (None, 'rebrickable_api'):        # "use this for new copies of this set"
             picked = part_list_read.parse_choice(row['part_list_choice'])
             newest = any(v['is_latest'] and v['version'] == picked.get('version') for v in copies.part_list_choices(db, row['item_id'])['rebrickable'])
-            copies.set_part_list_preference_in(db, row['item_id'], {'source': picked['source'], 'version': None if newest else picked.get('version')},
+            copies.remember_part_list_preference_in(db, row['item_id'], {'source': picked['source'], 'version': None if newest else picked.get('version')},
                                                via=via, actor=actor)
         for _ in range(row['quantity']):
             copy_id, waiting = _add_copy(db, row, via, actor)

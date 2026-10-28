@@ -27,7 +27,7 @@ The line under the picker says which one it started on. If you pick another list
 3. Read **Marks that will not carry over**. A line that is missing, damaged or checked and is not in the new list is retired with its marks; a quantity that is lower in the new list caps the marks on it.
 4. Press **Switch**. **Undo** takes the switch back, and the page says so.
 
-Ticking **Use this for new copies of this set** is part of the switch: it is remembered in the same step, and **Undo** takes both back. The box is not offered for a list fetched from Rebrickable (a set newer than your catalogue), which cannot be remembered.
+Ticking **Use this for new copies of this set** is part of the switch: it is remembered in the same step, and **Undo** takes both back. Saying the same choice again counts as a new decision, so an earlier Undo or Cancel leaves it alone. The box is not offered for a list fetched from Rebrickable (a set newer than your catalogue), which cannot be remembered.
 
 Nothing is deleted. A line that is not in the new list is **retired**: it stays with its marks and leaves every count and check. A note under the parts says "n retired lines kept · m with marks", and opens to list them. If you switch back to a list that has the line again, it comes back with its marks.
 

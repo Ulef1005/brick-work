@@ -674,7 +674,7 @@ def remember_part_list_preference_in(db, set_item_id, choice, *, via, actor=None
     """`set_part_list_preference_in` that returns the record Undo and Cancel decide by: `{'old', 'new', 'event_id'}`, `event_id` the
     `set_preference` event it wrote (None when it was already that and wrote nothing)."""
     old, before = part_list_preference(db, set_item_id), last_preference_event(db, set_item_id)
-    new = set_part_list_preference_in(db, set_item_id, choice, via=via, actor=actor)
+    new = set_part_list_preference_in(db, set_item_id, choice, via=via, actor=actor, explicit=True)
     after = last_preference_event(db, set_item_id)
     return {'old': old, 'new': new, 'event_id': after if after != before else None}
 
@@ -709,22 +709,24 @@ def part_list_preference(db, set_item_id):
     return None if row is None else {'source': row['inventory_source'], 'version': row['inventory_version']}
 
 
-def set_part_list_preference(db, set_item_id, choice, *, via, actor=None):
+def set_part_list_preference(db, set_item_id, choice, *, via, actor=None, explicit=False):
     """"Use this part list for new copies of this set": write (or, with `choice` None, clear) the set's `set_preference` in one
     transaction with one event (`set_preference`, the item id, field `preference`, old and new as `{'source', 'version'}`).
     `choice` is `{'source': 'bricklink'}` or `{'source': 'rebrickable', 'version': n or None}` (None = always the latest); a
     version the catalogue does not hold is refused. Setting what is already set writes nothing. Returns the new preference
     (None when cleared). The Add picker's preselection (`part_list_choices`) reads exactly this row."""
     with transaction(db, 'setting a part list preference'):
-        return set_part_list_preference_in(db, set_item_id, choice, via=via, actor=actor)
+        return set_part_list_preference_in(db, set_item_id, choice, via=via, actor=actor, explicit=explicit)
 
 
-def set_part_list_preference_in(db, set_item_id, choice, *, via, actor=None):
+def set_part_list_preference_in(db, set_item_id, choice, *, via, actor=None, explicit=False):
     """"Use this part list for new copies of this set": write (or, with `choice` None, clear) the set's `set_preference` in one
     transaction with one event (`set_preference`, the item id, field `preference`, old and new as `{'source', 'version'}`).
     `choice` is `{'source': 'bricklink'}` or `{'source': 'rebrickable', 'version': n or None}` (None = always the latest); a
     version the catalogue does not hold is refused. Setting what is already set writes nothing. Returns the new preference
-    (None when cleared). The Add picker's preselection (`part_list_choices`) reads exactly this row.
+    (None when cleared). The Add picker's preselection (`part_list_choices`) reads exactly this row. `explicit` is a person's own decision
+    (the sheet, Add, the command): it is always recorded, an event with old == new when the value did not change, so a later Undo or Cancel
+    can tell it was decided again.
 
     `set_part_list_preference` inside the caller's open write transaction (it opens none and commits nothing)."""
     if not db.in_transaction:
@@ -745,7 +747,7 @@ def set_part_list_preference_in(db, set_item_id, choice, *, via, actor=None):
     if kind != 'set':
         raise BadPreference(f'item {set_item_id} is not a set')
     old = part_list_preference(db, set_item_id)
-    if old == new:
+    if old == new and not explicit:
         return new
     if new is None:
         db.execute('DELETE FROM main.set_preference WHERE item_id=?', (set_item_id,))

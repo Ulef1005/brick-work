@@ -160,3 +160,35 @@ def test_cancel_knows_a_later_preference_decision_even_when_it_lands_on_the_same
     copies.set_part_list_preference(db, SET, {'source': 'rebrickable', 'version': 1}, via='cli')
     undo.undo_event(db, receipt['event_id'], via='cli')
     assert copies.part_list_preference(db, SET) == {'source': 'rebrickable', 'version': 1}
+
+
+# ---------- Codex review 4: an explicit preference choice is always recorded ----------
+
+def preference_events(db):
+    return q(db, "SELECT old_value, new_value FROM event WHERE entity_kind='set_preference' ORDER BY id")
+
+
+def test_an_explicit_reaffirmation_is_recorded_and_protects_the_choice_from_cancel_and_undo(db, key):
+    from brickwork.core import undo
+    copies.set_part_list_preference(db, SET, {'source': 'rebrickable', 'version': 1}, via='cli')
+    cid = add(db)['copy']['id']
+    pending.request_bricklink(db, cid, via='cli', remember=True)                           # rebrickable 1 -> BrickLink
+    before = len(preference_events(db))
+    copies.set_part_list_preference(db, SET, {'source': 'bricklink'}, via='cli', explicit=True)        # the user says BrickLink again
+    assert len(preference_events(db)) == before + 1                                        # recorded although the value did not change
+    pending.cancel_pending(db, cid, via='cli')
+    assert copies.part_list_preference(db, SET) == {'source': 'bricklink', 'version': None}
+    other = add(db, {'source': 'rebrickable', 'version': 2})['copy']['id']
+    receipt = copies.switch_part_list(db, other, {'source': 'rebrickable', 'version': 1}, via='cli', remember=True)    # BrickLink -> version 1
+    copies.set_part_list_preference(db, SET, {'source': 'rebrickable', 'version': 1}, via='cli', explicit=True)         # reaffirmed
+    undo.undo_event(db, receipt['event_id'], via='cli')
+    assert copies.part_list_preference(db, SET) == {'source': 'rebrickable', 'version': 1}
+
+
+def test_remembering_the_value_a_set_already_has_still_leaves_a_record(db, key):
+    copies.set_part_list_preference(db, SET, {'source': 'rebrickable', 'version': 1}, via='cli')
+    before = len(preference_events(db))
+    cid = add(db, {'source': 'rebrickable', 'version': 2})['copy']['id']
+    receipt = copies.switch_part_list(db, cid, {'source': 'rebrickable', 'version': 1}, via='cli', remember=True)
+    assert len(preference_events(db)) == before + 1 and receipt['preference']['event_id'] == copies.last_preference_event(db, SET)
+    assert receipt['preference']['old'] == receipt['preference']['new']

@@ -305,3 +305,13 @@ def test_review3_the_preference_is_part_of_the_switch_and_its_undo(client, w, co
     assert copies.part_list_preference(coll.db, w.keep) == {'source': 'rebrickable', 'version': 1}
     undone = post(client, token, 'undo', event_id=done['event_id'])
     assert undone.status_code == 200 and copies.part_list_preference(coll.db, w.keep) is None            # one receipt takes both back
+
+
+def test_review4_the_sheet_reaffirming_the_sets_choice_is_recorded(client, w, coll):
+    from brickwork.store4 import copies
+    token = csrf(client)
+    count = lambda: coll.db.execute("SELECT count(*) FROM event WHERE entity_kind='set_preference'").fetchone()[0]   # noqa: E731
+    assert post(client, token, 'part-list', copy_id=w.copy_c, choice='rebrickable:1', preference=True).status_code == 200
+    before = count()
+    assert post(client, token, 'part-list', copy_id=w.copy_a, choice='rebrickable:1', preference=True).status_code == 200      # the same choice, said again
+    assert count() == before + 1 and copies.part_list_preference(coll.db, w.keep) == {'source': 'rebrickable', 'version': 1}

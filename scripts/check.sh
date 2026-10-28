@@ -9,6 +9,10 @@ if [[ -n "${APP_VENV:-}" && -x "$APP_VENV/bin/python" ]]; then
   python="$APP_VENV/bin/python"
 elif [[ -x .venv/bin/python ]]; then
   python=.venv/bin/python
+elif common=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null) \
+    && [[ -x "$(dirname "$common")/.venv/bin/python" ]]; then
+  # a session or task worktree has no .venv of its own: use the canonical checkout's (app-template e6fc10b, 2026-10-28)
+  python="$(dirname "$common")/.venv/bin/python"
 fi
 echo "Using Python interpreter: $python"
 failed=()

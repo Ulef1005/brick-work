@@ -9,7 +9,8 @@ import os
 from .activate import activate
 from .audit import Events, transaction
 from .connect import has_catalogue
-from .jobs import ACTIVE, _alive, _now, _stamp
+from .errors import public_text
+from .jobs import ACTIVE, _CLAIMED, _alive, _now, _path, _stamp
 from .reconcile import reconcile
 
 KIND, SOURCE = 'reconcile', 'mapping'
@@ -54,6 +55,7 @@ def _claim(db, job_id, stamp):
             return False
         db.execute('INSERT OR REPLACE INTO main.job_owner(job_id, pid, claimed_at) VALUES(?, ?, ?)', (job_id, os.getpid(), stamp))
         db.execute("UPDATE main.job SET state='running', attempts=attempts+1, error=NULL, updated_at=? WHERE id=?", (stamp, job_id))
+        _CLAIMED.add((os.getpid(), _path(db), job_id))          # a second drainer in this process sees the owner alive, as for the fetch jobs
         return True
 
 
@@ -66,12 +68,15 @@ def drain(db, *, now=None):
             continue
         state, error = 'done', None
         try:
-            activate(db, via='app')
-            reconcile(db, via='app')
-        except Exception as exc:                          # the reason is shown on the job; the old state is untouched (reconcile is one transaction)
-            state, error = 'failed', str(exc)[:300]
-        with transaction(db, 'settling the reconcile'):
-            db.execute('UPDATE main.job SET state=?, error=?, updated_at=? WHERE id=?', (state, error, _stamp(_now(now)), job_id))
-            db.execute('DELETE FROM main.job_owner WHERE job_id=?', (job_id,))
+            try:
+                activate(db, via='app')
+                reconcile(db, via='app')
+            except Exception as exc:                      # the old state is untouched (reconcile is one transaction); the full text is logged only
+                state, error = 'failed', public_text(exc, what='the reconcile job')
+            with transaction(db, 'settling the reconcile'):
+                db.execute('UPDATE main.job SET state=?, error=?, updated_at=? WHERE id=?', (state, error, _stamp(_now(now)), job_id))
+                db.execute('DELETE FROM main.job_owner WHERE job_id=?', (job_id,))
+        finally:
+            _CLAIMED.discard((os.getpid(), _path(db), job_id))
         ran.append(dict(id=job_id, state=state, error=error))
     return ran

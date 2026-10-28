@@ -529,9 +529,8 @@ def bw_resume_imports(app):
         from ..core import drainer
         with database(path, read_only=True, require_catalogue=False) as db:
             pending = drainer.pending(db)
-        if not pending:
-            pending = drainer.queue_startup_work(path) is not None       # a catalogue not reconciled yet: one job for the drainer (design 6.2)
-        if pending:
+        queued = drainer.queue_startup_work(path) is not None            # a catalogue not reconciled yet: one job for the drainer (design 6.2)
+        if pending or queued:
             bw_start_worker()
 
 

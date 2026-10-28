@@ -315,9 +315,9 @@ def test_startup_reconcile_that_fails_says_why_and_is_tried_again_at_the_next_st
     monkeypatch.setattr(reconcile_job, 'reconcile', lambda db, **kw: (_ for _ in ()).throw(RuntimeError('disk full')))
     drainer.drain_once(pair)
     (job,) = jobs_of(pair)
-    assert job[1] == 'failed' and 'disk full' in job[2]
+    assert job[1] == 'failed' and 'disk full' not in job[2] and 'server log' in job[2]
     html, soup = page(client, 'catalogue')
-    assert soup.find(attrs={'data-reconcile-failed': True}) and 'disk full' in text(soup)
+    assert soup.find(attrs={'data-reconcile-failed': True}) and 'server log' in text(soup)
     second = drainer.queue_startup_work(pair)
     assert second and second != job[0] and len(jobs_of(pair)) == 2
 
@@ -448,3 +448,110 @@ def test_the_report_reads_a_csv_with_a_field_over_the_csv_module_limit(tmp_path)
     assert [f['rows'] for f in report['files'] if f['name'] == 'not-carried.csv'] == [2]
     import csv
     assert csv.field_size_limit() == 131072                                  # the limit is raised for the read only
+
+
+# ---------- Codex review findings ----------
+
+def test_r1_startup_reconcile_needs_no_catalogue_file(pair, coll, paths, app4, monkeypatch):
+    from brickwork.core import drainer
+    from brickwork.web import views
+    coll.db.close()
+    paths.catalogue.unlink()
+    assert drainer.queue_startup_work(pair) is None                         # nothing to reconcile without a catalogue, and no NoCatalogue
+    monkeypatch.setenv('BW_EMBEDDED_WORKER', '1')
+    monkeypatch.setattr(drainer, 'spawn', lambda target: None)
+    views.bw_resume_imports(app4)                                           # the app starts and can serve the first-run page
+    assert drainer.queue_startup_work(pair) is None and jobs_of(pair) == []
+
+
+def test_r2_startup_reconcile_is_queued_even_when_other_jobs_are_pending(pair, coll, paths, app4, monkeypatch):
+    from brickwork.core import drainer
+    from brickwork.web import views
+    unreconcile(pair)
+    with closing(__import__('sqlite3').connect(pair)) as db:
+        db.execute("INSERT INTO job(source, kind, state, via, created_at, updated_at) VALUES('import', 'item', 'queued', 'app', '2026-10-27T09:00:00.000Z', '2026-10-27T09:00:00.000Z')")
+        db.commit()
+    monkeypatch.setenv('BW_EMBEDDED_WORKER', '1')
+    monkeypatch.setattr(drainer, 'spawn', lambda target: None)
+    views.bw_resume_imports(app4)
+    assert [j[1] for j in jobs_of(pair)] == ['queued']
+
+
+def test_r3_admission_holds_a_lock_file_other_processes_see(client, world, paths, monkeypatch):
+    import fcntl
+    seen = []
+    real = catalogue_jobs.read
+
+    def spying(p):
+        try:
+            with open(paths.data / 'catalogue-job.lock', 'a') as other:      # another open file description: what a second process has
+                fcntl.flock(other, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            seen.append('free')
+        except BlockingIOError:
+            seen.append('held')
+        return real(p)
+    monkeypatch.setattr(catalogue_jobs, 'read', spying)
+    catalogue_jobs.start(paths, 'reconcile', background=False)
+    assert seen[0] == 'held'
+
+
+def test_r3_the_state_file_part_name_is_unique_per_writer(paths, monkeypatch):
+    names = []
+    real = os.replace
+    monkeypatch.setattr(os, 'replace', lambda a, b: (names.append(str(a)), real(a, b))[1])
+    catalogue_jobs._write(paths, dict(kind='reconcile', state='done'))
+    catalogue_jobs._write(paths, dict(kind='reconcile', state='done'))
+    assert len(set(names)) == 2 and all(n.endswith('.part') for n in names)
+
+
+def test_r4_a_running_reconcile_job_cannot_be_reclaimed_by_a_second_drainer(pair, coll, paths, monkeypatch):
+    from brickwork.core.connect import connect
+    from brickwork.store4 import reconcile_job
+    unreconcile(pair)
+    calls, inner = [], []
+
+    def nested(db, **kw):
+        calls.append(1)
+        if len(calls) == 1:
+            inner.append(reconcile_job.drain(db))                            # a second drainer in this process, mid-run
+    monkeypatch.setattr(reconcile_job, 'reconcile', nested)
+    with closing(connect(pair)) as db:
+        reconcile_job.queue_if_due(db)
+        reconcile_job.drain(db)
+    assert len(calls) == 1 and inner == [[]]
+    from brickwork.store4 import jobs as store4_jobs
+    assert not store4_jobs._CLAIMED
+
+
+def test_r5_raw_errors_never_reach_the_job_row_or_the_page(client, pair, coll, paths, tmp_path, monkeypatch, served):
+    served_files = served
+    from brickwork.core import drainer
+    from brickwork.store4 import reconcile_job
+    from brickwork.store4.errors import Store4Error
+    unreconcile(pair)
+    drainer.queue_startup_work(pair)
+    secret = str(tmp_path / 'private' / 'brickwork.db')
+    monkeypatch.setattr(reconcile_job, 'reconcile', lambda db, **kw: (_ for _ in ()).throw(RuntimeError(f'unable to open {secret}: SQL near "SELECT"')))
+    drainer.drain_once(pair)
+    (job,) = jobs_of(pair)
+    assert job[1] == 'failed' and 'private' not in job[2] and 'SELECT' not in job[2] and 'server log' in job[2]
+    html, soup = page(client, 'catalogue')
+    assert 'private' not in html and 'SELECT' not in html and 'server log' in html
+    # the page's own jobs: a store4 message that names a path keeps its words and loses the folders
+    catalogue_jobs.FETCH = lambda url: (_ for _ in ()).throw(Store4Error(f'no file at {secret} to read'))
+    try:
+        state = catalogue_jobs.start(paths, 'redownload', background=False)
+    finally:
+        catalogue_jobs.FETCH = None
+    assert state['state'] == 'failed'
+    html, soup = page(client, 'catalogue')
+    assert 'private' not in html and str(tmp_path) not in html
+    monkeypatch.setattr(catalogue_jobs.cli, 'build', lambda *a, **k: (_ for _ in ()).throw(RuntimeError(f'boom at {secret}')))
+    monkeypatch.setattr(catalogue_jobs, 'FETCH', None)
+    catalogue_jobs.FETCH = lambda url: (served_files[url.rsplit('/', 1)[1]], 'x')
+    try:
+        state = catalogue_jobs.start(paths, 'redownload', background=False)
+    finally:
+        catalogue_jobs.FETCH = None
+    html, soup = page(client, 'catalogue')
+    assert 'private' not in html and 'boom' not in html and 'server log' in html

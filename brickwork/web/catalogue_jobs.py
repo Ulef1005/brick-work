@@ -5,16 +5,18 @@ One job at a time per data folder, run on a thread of the web process through th
 file beside the collection (`catalogue-job.json`), so any worker of the app can show it and a restart cannot leave a running job showing
 forever: a state whose process is gone reads as interrupted. The builds hold their own file locks, so a second job from the command line
 is refused by the core, not by this file."""
-from contextlib import closing
+from contextlib import closing, contextmanager
 from datetime import datetime, timezone
+import fcntl
 import json
 import os
 from pathlib import Path
+import itertools
 import threading
 
 from ..store4 import cli, status
 from ..store4.connect import connect
-from ..store4.errors import Store4Error
+from ..store4.errors import Store4Error, public_text
 
 FILE = 'catalogue-job.json'
 KINDS = {'redownload': 'Re-download', 'rebuild': 'Rebuild', 'reconcile': 'Reconcile', 'lists': 'Load BrickLink item lists'}
@@ -22,7 +24,7 @@ STEPS = {'redownload': ('Downloading the Rebrickable files', 'Building the catal
          'rebuild': ('Rebuilding the catalogue from the downloaded files', 'Reconciling the collection'),
          'reconcile': ('Reconciling the collection',),
          'lists': ('Building the catalogue with the lists', 'Reconciling the collection')}
-_LOCK = threading.Lock()
+_PARTS = itertools.count()
 FETCH = None                                              # tests and frames put a fetch function here; None is the real download
 
 
@@ -65,9 +67,21 @@ def read(paths):
 
 def _write(paths, state):
     target = _path(paths)
-    part = target.with_name(FILE + '.part')
+    part = target.with_name(f'{FILE}.{os.getpid()}.{threading.get_ident()}.{next(_PARTS)}.part')      # one name per writer: two never share a file
     part.write_text(json.dumps(state, sort_keys=True), encoding='utf-8')
     os.replace(part, target)
+
+
+@contextmanager
+def _admission(paths):
+    """One admission at a time across processes: the check that no job runs and the write of the new state happen under `catalogue-job.lock`
+    (flock, so it also holds between threads of one process). The app runs one gunicorn worker today; the lock keeps that true if it changes."""
+    lock = open(Path(paths.data) / (FILE.removesuffix('.json') + '.lock'), 'a')
+    try:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        yield
+    finally:
+        lock.close()                                          # closing releases the flock
 
 
 def start(paths, kind, *, folder=None, background=True):
@@ -75,7 +89,7 @@ def start(paths, kind, *, folder=None, background=True):
     here and returns the final state (tests); otherwise it returns the first state at once."""
     if kind not in KINDS:
         raise Store4Error(f'unknown catalogue job {kind!r}')
-    with _LOCK:
+    with _admission(paths):
         current = read(paths)
         if current and current['state'] == 'running':
             raise Busy(f"{current['label']} is running already; wait for it to finish")
@@ -143,7 +157,7 @@ def _run(paths, state, directory):
 
 
 def _words(exc):
-    return str(exc) if isinstance(exc, Store4Error) else f'{type(exc).__name__}: {exc}'
+    return public_text(exc, what='the catalogue job')
 
 
 def _build(built):

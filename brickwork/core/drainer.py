@@ -43,7 +43,7 @@ def pending(db):
 def queue_startup_work(path):
     """At start (the embedded drainer's and `brickwork worker`'s): a catalogue swapped in but not reconciled yet becomes one reconcile job
     (design 6.2), run by the drain like any other. Returns the job id, or None when nothing is due."""
-    with closing(connect(path)) as db:
+    with closing(connect(path, require_catalogue=False)) as db:          # no catalogue file: nothing to reconcile, and the first-run page must still load
         return reconcile_job.queue_if_due(db, via='app')
 
 

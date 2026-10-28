@@ -31,7 +31,7 @@ The **Catalogue** card says what the catalogue file beside your collection holds
 - **Re-download** fetches Rebrickable's twelve files again (about 17 MB, no login) and builds the catalogue from them, then reconciles your collection. Rebrickable asks for at most one download a day: if today's files are on disk already, they are used instead.
 - **Rebuild** builds the catalogue again from the files already downloaded, with no network. The current file is moved aside as `catalogue.db.damaged-DATE`, never deleted. It is disabled until a download is on disk.
 
-Both run in the background. The page shows a progress bar and the step it is on, and you can leave it: the result is there when you come back. Only one job runs at a time; the buttons come back when it finishes. If a job fails, the page says why, and the catalogue that was in place before stays in place.
+Both run in the background. The page shows a progress bar and the step it is on, and you can leave it: the result is there when you come back. Only one job runs at a time; the buttons come back when it finishes. If a job fails, the page says why in plain words (folder names are cut to the file name, and an unexpected error says only that the details are in the server log), and the catalogue that was in place before stays in place.
 
 When a job is done the page lists what changed (items, colours, retired items kept, names refreshed, links upgraded) and the **copies whose part list changed** against the new catalogue, each as "Set 2 · 1 list changed" with a link to that copy. Nothing switches on its own: open the copy to see the change and switch it.
 

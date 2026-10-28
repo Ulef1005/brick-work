@@ -1,4 +1,10 @@
 """Errors of the 4.0 store."""
+import logging
+import re
+
+log = logging.getLogger('brickwork.store4')
+GENERIC = 'It stopped before it finished. The details are in the server log.'
+_PATH = re.compile(r"(?<![\w:])/(?:[^\s'\"():,;]+/)+([^\s'\"():,;]*)")
 
 
 class Store4Error(Exception):
@@ -55,3 +61,12 @@ class BrickLinkListError(Store4Error):
 
 class MergeRefused(Store4Error):
     """A merge, an unmerge or a kind move the rules (design 3.5, 3.6) do not allow, or that would lose data; the message says why."""
+
+
+def public_text(exc, *, what='job'):
+    """The words a page or a job row may show for `exc`: a store4 refusal keeps its message with every folder path cut to its last name;
+    anything else (SQLite, the operating system, a bug) is replaced by a fixed sentence. The full text goes to the server log only."""
+    log.warning('%s failed: %s: %s', what, type(exc).__name__, exc, exc_info=exc)
+    if isinstance(exc, Store4Error):
+        return _PATH.sub(lambda m: m.group(1) or 'a folder', str(exc))[:300]
+    return GENERIC

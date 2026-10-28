@@ -141,6 +141,15 @@ def test_a_colour_scoped_number_resolves_with_the_tools_colour(adapter, coll):
     assert seen == [('GET', '/lookup'), ('GET', f'/items/{one}/prices')]
 
 
+def test_record_price_takes_the_providers_colour_and_stores_the_brick_work_one(adapter, world, coll, pair):
+    # Decision 7: no tool takes a Brick Work id, colours included. The tool's colour is BrickLink's (the provider's); the lookup maps it.
+    made = adapter.call_tool('record_price', {'kind': 'part', 'no': '3001', 'color': RED, 'condition': 'used', 'guide': 'manual',
+                                              'price': '0.25', 'currency': 'EUR'})
+    assert not made.isError, payload(made)
+    stored = row(pair, "SELECT color_id FROM price_observation WHERE item_id=? AND guide='manual' ORDER BY id DESC", (world.brick,))
+    assert stored['color_id'] == coll.colour(4)
+
+
 def test_a_redirect_is_the_tools_error_not_an_empty_success(adapter, world):
     # The MCP clients never follow a redirect; a merged item's 307 between the lookup and the read is reported, not swallowed.
     moved = {'code': 'moved', 'status': 307, 'survivor': world.brick, 'detail': 'merged'}

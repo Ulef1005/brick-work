@@ -129,13 +129,18 @@ class Adapter:
         values = {key: arguments[key] for key in path_names if not item or key != item['name']}
         if item:
             # The number becomes the item's id here and nowhere else; the lookup's own refusal (404, 409 ambiguous) is the tool's.
-            # A BrickLink link can be colour-scoped, so the operation's own colour (same provider space) takes part in the lookup.
-            scoped = {'color': arguments['color']} if 'color' in arguments and any(p['in'] == 'query' and p['name'] == 'color' for p in parameters) else {}
+            # A BrickLink link can be colour-scoped, so the tool's colour (the provider's, like the number) takes part in the lookup.
+            body_colour = 'color' in op.get('requestBody', {}).get('content', {}).get('application/json', {}).get('schema', {}).get('properties', {})
+            query_colour = any(p['in'] == 'query' and p['name'] == 'color' for p in parameters)
+            scoped = {'color': arguments['color']} if arguments.get('color') is not None and (body_colour or query_colour) else {}
             status, found = self.client.request('GET', '/lookup', query={'provider': arguments.get('provider', 'bricklink'),
                                                                         'kind': arguments['kind'], 'key': arguments['no'], **scoped})
             if status != 200:
                 return self.result(status, found)
             values[item['name']] = found['data']['id']
+            if scoped and body_colour:
+                # On an /items/{id} path a body colour is Brick Work's (decision 4): the lookup's resolved colour, never the caller's number.
+                arguments = {**arguments, 'color': found['data']['color']['id']}
         for key, value in values.items():
             path = path.replace('{' + key + '}', quote(str(value), safe=''))
         for p in parameters:

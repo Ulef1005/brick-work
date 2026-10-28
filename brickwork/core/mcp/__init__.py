@@ -18,6 +18,9 @@ from ..contract import contract_v2_path
 
 PROVIDERS = ['bricklink', 'rebrickable']                # the providers a number can be looked up in (decision 3: bricklink by default)
 ITEM_FIELDS = ('provider', 'kind', 'no')
+# One wording for both names, so a model reads `no` (a tool that reads or prices an item) and `key` (an item a tool adds) as one thing.
+NUMBER = ("The item's number in that provider, such as 1000-1 or 3001. Tools that add something call it `key`, the others `no`: "
+          'the same number either way, never a Brick Work id.')
 
 @lru_cache(maxsize=1)
 def contract():
@@ -63,7 +66,7 @@ class Adapter:
         kind = self.spec['components']['schemas']['Kind']
         return {'provider': {'type': 'string', 'enum': PROVIDERS, 'default': 'bricklink',
                              'description': 'The provider whose number this is (bricklink unless named).'},
-                'kind': kind, 'key' if key else 'no': {'type': 'string', 'description': 'The item number in that provider.'}}
+                'kind': kind, 'key' if key else 'no': {'type': 'string', 'description': NUMBER}}
 
     def without_ids(self, schema):
         """`schema` with every item key (`x-mcp-item: key`) reduced to provider, kind and key: a tool never names an item by id."""

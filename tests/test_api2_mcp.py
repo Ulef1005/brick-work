@@ -102,6 +102,14 @@ def test_an_item_is_read_by_its_number_in_either_provider(adapter, world):
     assert refused.isError and payload(refused)['code'] == 'not_found'
 
 
+def test_no_and_key_are_described_as_one_number():
+    # A path item is `no`, a body item's member is `key` (the API's name); one description says they are the same number.
+    adapter = Adapter(None)
+    by_no = adapter.schema(DEFINITIONS['get_item'][2])['properties']['no']['description']
+    by_key = adapter.schema(DEFINITIONS['add_wish'][2])['properties']['item']['properties']['key']['description']
+    assert by_no == by_key and '`key`' in by_no and '`no`' in by_no
+
+
 def test_a_lookup_refusal_is_the_tools_error_unchanged(adapter, coll):
     missing = adapter.call_tool('get_item', {'kind': 'part', 'no': 'nope'})
     direct = adapter.client.request('GET', '/lookup', query={'provider': 'bricklink', 'kind': 'part', 'key': 'nope'})

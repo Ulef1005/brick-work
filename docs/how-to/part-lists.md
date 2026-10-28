@@ -1,6 +1,6 @@
 # Choose and switch a part list
 
-*Since 4.0.*
+*Since 0.6.0.*
 
 Do this when a set has more than one part list to build a copy from: several Rebrickable versions, or BrickLink's list. A copy carries the list it was built from, so a check, a gap and a count always say which one.
 

@@ -1,6 +1,6 @@
 # Settings and maintenance
 
-*Since 4.0.*
+*Since 0.6.0.*
 
 Do this to change how Brick Work behaves (the retail country, where pictures come from, how old a price may be), to look after the catalogue and your keys, and to keep the collection healthy. Everything is under **Manage → Tools & Admin**.
 

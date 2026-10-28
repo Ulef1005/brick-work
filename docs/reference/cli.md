@@ -26,7 +26,7 @@ brickwork setup
 
 *Since 0.5.0.*
 
-Checks the database: SQLite integrity and foreign keys of the collection, SQLite integrity of the catalogue file beside it, and the row count of every table. It then checks that the two files belong together (*since 4.0*), one named check each:
+Checks the database: SQLite integrity and foreign keys of the collection, SQLite integrity of the catalogue file beside it, and the row count of every table. It then checks that the two files belong together (*since 0.6.0*), one named check each:
 
 - `binding`: the collection is bound to this catalogue and every build it activated is in the catalogue file.
 - `born_keys`: every catalogue item and colour in the collection has the same id and born key in the catalogue.
@@ -121,7 +121,7 @@ brickwork wishlist undo EVENT_ID
 
 ## migrate4
 
-*Since 4.0.0.*
+*Since 0.6.0.*
 
 Builds a new 4.0 collection file from a 3.3 one. It is the command `python -m brickwork.store4 migrate`, under the name the design gives it. The 3.3 file is opened read-only and never changed; the new file is published only when the independent proof passes. Run it on a copy first.
 

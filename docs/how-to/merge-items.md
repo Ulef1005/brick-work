@@ -1,6 +1,6 @@
 # Resolve unresolved items and merge items
 
-*Since 4.0.*
+*Since 0.6.0.*
 
 Do this when Brick Work holds an item it cannot yet name: a part or figure the migration could not place, an item you added without a number, or a local item that is really a catalogue item under another number. Open **Manage → Tools & Admin → Unresolved items**. The list holds only what needs a decision: the hub row says how many. Use the search box to find an item, **Filters** to show one reason (merge candidates, links to check, no candidate, kind differs, from the migration, unidentified), **Sort** to order the rows, and the chips to remove a filter. The count above the rows follows.
 

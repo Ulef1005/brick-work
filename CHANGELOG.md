@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## Brick Work 0.6.0 (schema 4.0, API v2) · 2026-10-28
+
+The data-model release: the collection moves to schema 4.0 with a separate local catalogue, and the API to v2. **Breaking:** API v1 answers 410 except `/api/v1/health`; clients move to `/api/v2` ([API v2](docs/brickwork/api-v2.md)). A 0.5 collection is moved with `brickwork migrate4` on a copy first ([CLI](docs/reference/cli.md#migrate4)); the 3.3 file is never changed.
+
 - **Add** says what each step does: numbered steps (Find and select, Review and add, Added), **Select** instead of **Add to list** on a search result (tap again to unselect), a bar that keeps **Review** in view, and an Add button that names where the items go. An item you already own or wish waits for **Add another copy** or **Skip** before Add is offered; before, Add was offered and the save failed. The wishlist options show only for the wishlist, and the item types wrap on a phone.
 - The site's API reference shows API v2 (#125).
 - An order keeps its currency when its document has no total (M.12, #114). An order e-mail has only line prices, so its order now stores EUR and the line prices show it instead of **Currency not recorded**; a total still needs its currency. Orders stored before get the currency from their raw document when the app starts. See [Receive an order](docs/how-to/receive-an-order.md).

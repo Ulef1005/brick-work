@@ -1,6 +1,6 @@
 # See an item's links and choose the preferred number
 
-*Since 4.0.*
+*Since 0.6.0.*
 
 Every item page has a **Links** card: the numbers other catalogues use for the item. Brick Work uses them for prices, BrickLink exports and matching orders.
 

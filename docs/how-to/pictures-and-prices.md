@@ -1,6 +1,6 @@
 # Pictures, prices and where they come from
 
-*Since 4.0.*
+*Since 0.6.0.*
 
 Do this to understand why an item has a picture or a price, to change where pictures come from, or to fetch a set Brick Work does not know yet. Pictures and prices are cached copies: nothing in them is your data, and every one can be fetched again.
 

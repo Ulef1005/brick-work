@@ -24,7 +24,7 @@
 #bw-add .identity .mono {display:block;margin-bottom:4px}
 #bw-add button {color:var(--tw-accent-text)}
 #bw-add button.primary {color:#1A1816}
-@media(max-width:1023px){.bw-add-choices{grid-template-columns:1fr}.bw-add-segments{flex-wrap:nowrap;overflow:auto;padding:3px}.bw-add-segments label{flex:none}#bw-add [data-review],#bw-add [data-confirm]{min-height:56px;width:100%}}
+@media(max-width:1023px){.bw-add-choices{grid-template-columns:1fr}.bw-add-segments label{flex:none}#bw-add [data-review],#bw-add [data-confirm]{min-height:56px;flex:1}}
 @media(prefers-reduced-motion:reduce){#bw-add *{transition:none}}
 .bw-add-palette {display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;max-height:50vh;overflow:auto;padding:4px}
 #bw-add .bw-add-colour-choice {min-height:56px;border-radius:6px;border:1px solid var(--tw-divider-strong);padding:8px}
@@ -89,3 +89,17 @@
 /* Completeness does not apply to a part: a muted dash in the table, nothing in the cards. */
 #bw-add td.bw-add-na::after{content:'\2014';color:var(--tw-text-muted)}
 @media(max-width:1279px){#bw-add td.bw-add-na{display:none!important}}
+/* The steps, Select and the bar that keeps the next step in view (Ulf, 2026-10-28: "Add to list" read as adding to the collection). */
+.bw-add-steps{display:flex;flex-wrap:wrap;gap:6px 18px;margin:0;padding:0;list-style:none;counter-reset:bw-step;font:500 13px/20px var(--tw-font);color:var(--tw-text-muted)}
+.bw-add-steps li{counter-increment:bw-step;display:flex;align-items:center;gap:6px}
+.bw-add-steps li::before{content:counter(bw-step);display:grid;place-items:center;width:20px;height:20px;border-radius:50%;border:.5px solid var(--tw-divider-strong);font:500 11px var(--tw-mono)}
+.bw-add-steps li[aria-current=step]{color:var(--tw-text)}
+.bw-add-steps li[aria-current=step]::before{background:var(--tw-accent-soft);border-color:var(--tw-accent);color:var(--tw-accent-text)}
+#bw-add .bw-add-select{min-width:104px;border-radius:10px;border:1px solid var(--tw-accent);background:transparent;padding:0 14px}
+#bw-add .bw-add-select[aria-pressed=true]{background:var(--tw-accent-soft)}
+#bw-add .bw-add-select[aria-pressed=true]::before{content:'✓ '}
+.bw-add-bar{position:sticky;bottom:0;z-index:2;display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;padding:12px 0 calc(12px + env(safe-area-inset-bottom));background:var(--tw-bg);border-top:.5px solid var(--tw-divider)}
+.bw-add-bar p{margin:0;flex:1 1 auto}
+#bw-add .bw-add-bar [data-review]:disabled{opacity:.5}
+@media(max-width:1023px){.bw-add-bar{bottom:var(--bw-bottom);padding-bottom:12px}}
+@media(max-width:767px){.bw-add-bar p{flex-basis:100%}}

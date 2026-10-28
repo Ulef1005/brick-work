@@ -70,8 +70,13 @@ vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../static/web/toni/bw-ad
  searchCount=1;await nodes.chips.children.at(-1).trigger();assert.equal(nodes['result-count'].hidden,true);
  assert.equal(confirmCalls,0);
  const result=nodes.results.children[0];assert.equal(result.children[1].children[1].textContent,'Synthetic\u00a0<set>'); // Text, never HTML; last words kept together.
- await result.children.at(-1).trigger();assert.equal(nodes.review.textContent,'Review 1 item');
+ // Select is a toggle that only marks the item for review (Ulf, 2026-10-28: "Add to list" read as adding to the collection).
+ const select=result.children.at(-1);assert.equal(select.textContent,'Select');assert.equal(nodes.review.disabled,true);assert.equal(nodes.queued.textContent,'Nothing selected yet');
+ await select.trigger();assert.equal(select.textContent,'Selected');assert.equal(select.attributes['aria-pressed'],'true');assert.equal(nodes.queued.textContent,'1 selected');
+ await select.trigger();assert.equal(select.textContent,'Select');assert.equal(nodes.review.textContent,'Review 0 items');assert.equal(nodes.review.disabled,true);
+ await select.trigger();assert.equal(nodes.review.textContent,'Review 1 item');assert.equal(nodes.review.disabled,false);
  await nodes.review.trigger();assert.equal(confirmCalls,0);assert.equal(nodes['review-panel'].hidden,false);assert.equal(nodes['review-rows'].children.length,1);
+ assert.equal(nodes.confirm.textContent,'Add 1 item to the collection');
  // Filtering the view keeps the proposal; confirm still includes all reviewed rows.
  nodes['review-search'].value='no match';await nodes['review-search'].trigger('input');assert.equal(nodes['review-rows'].children.length,0);
  await nodes.confirm.trigger();assert.equal(confirmCalls,1);const sent=requests.find(r=>r.url.endsWith('/confirm')).body;assert.equal(sent.token,'signed-review');assert.equal(sent.items.length,1);assert.equal(sent.csrf_token,'csrf');assert.equal(nodes.jobs.hidden,false);
@@ -89,7 +94,8 @@ vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../static/web/toni/bw-ad
  nodes.keep.checked=true;await nodes.confirm.trigger();assert.equal(confirmCalls,3);const photoSent=requests.filter(r=>r.url.endsWith('/confirm')).at(-1).body;assert.equal(photoSent.candidate,0);assert.equal(photoSent.keep_photo,true);
  responseMode='search';nodes['review-search'].value='';item.kind='part';item.type_name='Part';item.name='Synthetic part';item.where='wishlist';item.wished_colors=[11];
  await nodes.review.trigger();const identity=nodes['review-rows'].children[0].children[0].children[0];await identity.children.at(-1).trigger();assert.equal(nodes['colour-dialog'].open,true);assert.equal(nodes['colour-list'].children.length,1);
- const colour=nodes['colour-list'].children[0];assert.equal(colour.textContent,'Synthetic blue');assert.equal(colour.style.background,'#ABCDEF');await colour.trigger();assert.equal(nodes['colour-dialog'].open,false);const choices=nodes['review-rows'].children[0].children.at(-1);assert.ok(choices.children[0].textContent.includes('Already on Wishlist'));assert.equal(choices.children.at(-1).children[1].textContent,'Add to the wished quantity');await nodes.confirm.trigger();assert.equal(requests.filter(r=>r.url.endsWith('/confirm')).at(-1).body.items[0].color_id,11);
+ const colour=nodes['colour-list'].children[0];assert.equal(colour.textContent,'Synthetic blue');assert.equal(colour.style.background,'#ABCDEF');await colour.trigger();assert.equal(nodes['colour-dialog'].open,false);const choices=nodes['review-rows'].children[0].children.at(-1);assert.ok(choices.children[0].textContent.includes('Already on Wishlist'));assert.equal(choices.children.at(-1).children[1].textContent,'Add to the wished quantity');assert.equal(nodes.confirm.disabled,true);assert.equal(nodes.confirm.textContent,'1 needs a choice');
+ const wishChoice=choices.children.at(-1);wishChoice.value='another';await wishChoice.trigger('change');assert.equal(nodes.confirm.disabled,false);assert.equal(nodes.confirm.textContent,'Add 1 item to the wishlist');await nodes.confirm.trigger();assert.equal(requests.filter(r=>r.url.endsWith('/confirm')).at(-1).body.items[0].color_id,11);
  // Changing lists recomputes duplicates in the preview; Any survives confirmation.
  item.list_id='default';item.color_id=11;item.condition='any';item.wished_by_list={default:[11]};
  await nodes.review.trigger();

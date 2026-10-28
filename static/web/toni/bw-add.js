@@ -31,7 +31,16 @@
   try { await action(); } catch (error) { message(error.message || 'Could not continue · try again'); }
   finally {busy = false; button.disabled = false; button.removeAttribute('aria-busy');}
  };
- const countQueue = () => { $('queued').textContent = `${words(queued.length)} in the list`; $('review').textContent = `Review ${words(value('mode') === 'search' ? queued.length : value('mode') === 'paste' ? $('paste').value.split('\n').filter(l => l.trim()).length : 0)}`; };
+ const countQueue = () => {
+  const mode = value('mode'), lines = $('paste').value.split('\n').filter(l => l.trim()).length;
+  $('queued').textContent = mode === 'search' ? (queued.length ? `${queued.length} selected` : 'Nothing selected yet') : mode === 'paste' ? `${words(lines)} pasted` : '';
+  $('review').textContent = mode === 'file' ? 'Review the file' : mode === 'photo' ? 'Review the photo' : `Review ${words(mode === 'search' ? queued.length : lines)}`;
+  $('review').disabled = (mode === 'search' && !queued.length) || (mode === 'paste' && !lines);
+ };
+ // The wishlist destination and the wanted-list ids apply only where they change something (Ulf, 2026-10-28).
+ const syncOptions = () => root.querySelectorAll('[data-where-only]').forEach(e => { e.hidden = e.dataset.whereOnly !== value('where') || (e.dataset.modeOnly && e.dataset.modeOnly !== value('mode')); });
+ const step = name => root.querySelectorAll('[data-step]').forEach(e => { if (e.dataset.step === name) e.setAttribute('aria-current', 'step'); else e.removeAttribute('aria-current'); });
+ const selectedKey = row => JSON.stringify([row.item_id, row.color_id ?? null]);
  const picture = row => {
   if (!row.image) return el('span', row.label || row.number || '', 'bw-add-picture bw-add-no-image');
   const img = el('img', undefined, 'bw-add-picture'); const full = `/manage/images/${row.image}`; img.src = full + '?w=320'; img.srcset = `${full}?w=320 320w, ${full}?w=640 640w`; img.sizes = '160px'; img.dataset.full = full; img.alt = row.name; img.loading = 'lazy';
@@ -65,7 +74,12 @@
    $('chips').replaceChildren();
    if (query) chip($('chips'),query,() => {$('search').value=''; runSearch();});
    chip($('chips'),value('type'),() => {root.querySelector('input[name=type][value=set]').checked=true;runSearch();});
-   result.items.forEach(row => { const wrap = identity(row); const button = el('button','Add to list'); button.type='button'; button.addEventListener('click',() => {queued.push({item_id:row.item_id,color_id:row.color_id ?? null,quantity:1}); countQueue(); button.textContent='Added';}); wrap.append(button); $('results').append(wrap); });
+   result.items.forEach(row => {
+    const wrap = identity(row); const button = el('button', undefined, 'bw-add-select'); button.type='button';
+    const show = () => { const on = queued.some(q => selectedKey(q) === selectedKey(row)); button.textContent = on ? 'Selected' : 'Select'; button.setAttribute('aria-pressed', String(on)); button.setAttribute('aria-label', `${on ? 'Selected' : 'Select'} ${row.label || row.number}`); };
+    button.addEventListener('click',() => { const on = queued.some(q => selectedKey(q) === selectedKey(row)); queued = on ? queued.filter(q => selectedKey(q) !== selectedKey(row)) : [...queued, {item_id:row.item_id,color_id:row.color_id ?? null,quantity:1}]; show(); countQueue(); });
+    show(); wrap.append(button); $('results').append(wrap);
+   });
   } catch (error) {if(version === searchVersion) message(error.message);}
  };
  const choose = (options, current, label, update) => {
@@ -73,7 +87,13 @@
   options.forEach(([key, name]) => {const option=el('option',name);option.value=key;select.append(option);});select.value=current == null ? '' : String(current);
   select.addEventListener('change',() => update(select.value));return select;
  };
- const confirmCount = () => {const n=rows.filter(r => r.decision !== 'skip' && !(r.offers && !r.decision)).length;$('confirm').textContent=`Add ${words(n)}`;$('confirm').disabled=n===0;};
+ const confirmCount = () => {
+  // An item already owned or wished needs Add another copy or Skip: the server refuses it otherwise, so Add waits for the choice.
+  const open=rows.filter(r => !r.decision && !r.offers && (r.owned || r.wished || r.batchDuplicate)).length;
+  const going=rows.filter(r => r.decision !== 'skip' && !(r.offers && !r.decision)), n=going.length, places=new Set(going.map(r => r.where));
+  const place=places.size===1 ? {owned:' to the collection',loose:' to loose stock',wishlist:' to the wishlist'}[[...places][0]] || '' : '';
+  $('confirm').textContent=open ? `${open} ${open === 1 ? 'needs' : 'need'} a choice` : `Add ${words(n)}${place}`;$('confirm').disabled=n===0 || open>0;
+ };
  let colourRow=null, colourOpener=null;
  const renderColours=()=>{
   const query=$('colour-search').value.toLowerCase(), filter=$('colour-filter').value;
@@ -104,6 +124,7 @@ const chips=(row,offers)=>{
   const query=$('review-search').value, type=$('review-filter').value;
   const visible=filterRows(rows,query,type,$('review-sort').value);
   $('review-count').textContent=`${visible.length} results · ${words(rows.length)} to review`;
+  root.querySelectorAll('[data-review-tools]').forEach(e=>{e.hidden=rows.length<6;});
   $('review-chips').replaceChildren();
   if(query) chip($('review-chips'),query,() => {$('review-search').value='';renderReview();});
   if(type) chip($('review-chips'),type,() => {$('review-filter').value='';renderReview();});
@@ -137,7 +158,8 @@ const chips=(row,offers)=>{
    cell(choose(row.where==='wishlist'?[['used','Used'],['new','New'],['any','Any']]:row.where==='loose'?[['used','Used'],['new','New'],['damaged','Damaged']]:[['used','Used'],['new','New']],row.condition,`Condition for ${row.label || row.number}`,v=>{row.condition=v;}));
    if(row.kind==='set' && row.where==='owned')cell(choose([['','Unknown · from checks'],['sealed','Sealed'],['complete','Complete'],['incomplete','Incomplete']],row.completeness,`Completeness for ${row.label || row.number}`,v=>{row.completeness=v;}));else cell('').className='bw-add-na';
    const offers=row.offers;
-   const choice=offers ? cell(chips(row,offers)) : cell(choose([['','Choose'],['another',row.where==='wishlist' ? 'Add to the wished quantity' : 'Add another copy'],['skip','Skip']],row.decision,`Choice for ${row.label || row.number}`,v=>{row.decision=v;confirmCount();}));
+   const again=row.owned || row.wished || row.batchDuplicate;
+   const choice=offers ? cell(chips(row,offers)) : cell(choose(again ? [['','Choose: another or skip'],['another',row.where==='wishlist' ? 'Add to the wished quantity' : 'Add another copy'],['skip','Skip']] : [['','Add'],['skip','Skip']],row.decision,`Choice for ${row.label || row.number}`,v=>{row.decision=v;confirmCount();}));
    if(offers)choice.prepend(el('p',offers.help,'notice'));
    if(row.owned || row.wished || row.batchDuplicate)choice.prepend(el('p',`${row.owned ? `Already owned · ${row.owned}` : ''}${row.owned && row.wished ? ' · ' : ''}${row.wished ? 'Already on Wishlist' : ''}${row.batchDuplicate ? ' · Repeated in this list' : ''}`,'notice'));
    $('review-rows').append(tr);
@@ -146,7 +168,7 @@ const chips=(row,offers)=>{
  };
  const showReview = selected => {
   rows=selected.map(r=>({...r})); const seen=new Set();rows.forEach(r=>{const key=JSON.stringify([r.item_id ?? r.number,r.color_id ?? null,r.where==='wishlist' ? r.list_id || 'default' : null]);r.batchDuplicate=seen.has(key);seen.add(key);});
-  $('intake').hidden=true;$('candidates').hidden=true;$('review-panel').hidden=false; renderReview();$('review-panel').querySelector('h2').tabIndex=-1;$('review-panel').querySelector('h2').focus();
+  $('intake').hidden=true;$('candidates').hidden=true;$('review-panel').hidden=false;step('review'); renderReview();$('review-panel').querySelector('h2').tabIndex=-1;$('review-panel').querySelector('h2').focus();
  };
  const renderCandidates=()=>{
   const query=$('candidate-search').value,type=$('candidate-filter').value,sort=$('candidate-sort').value;
@@ -198,7 +220,7 @@ const chips=(row,offers)=>{
  const poll=async()=>{await Promise.all(monitors.map(async m=>{try{const result=await api(`/jobs/${m.jobId}`);result.events.forEach(e=>dispatch('import_progress',e));}catch{message('Progress could not be loaded · Jobs keeps the imports');}}));};
  $('confirm').addEventListener('click',()=>guarded($('confirm'),async()=>{
   const result=await api('/confirm',{token,items:rows,candidate,keep_photo:$('keep').checked});batch=result.batch;
-  $('review-panel').hidden=true;$('intake').hidden=true;$('jobs').hidden=false;$('job-list').replaceChildren();$('undo').disabled=false;$('undo').hidden=false;
+  $('review-panel').hidden=true;$('intake').hidden=true;$('jobs').hidden=false;step('added');$('job-list').replaceChildren();$('undo').disabled=false;$('undo').hidden=false;
   message(`Added ${words(result.receipts.length)}`);monitors.forEach(m=>m.destroy());monitors=[];progress.clear();
   result.receipts.forEach(r=>{
    const section=el('section',undefined,'panel');section.append(el('h3',`${r.label || r.name}${r.label && r.name && r.label !== r.name ? ' · ' + r.name : ''}`));
@@ -211,9 +233,10 @@ const chips=(row,offers)=>{
   });$('overall').hidden=monitors.length<2;updateOverall();await poll();clearInterval(jobTimer);jobTimer=setInterval(poll,3000);
  }));
  $('undo').addEventListener('click',()=>guarded($('undo'),async()=>{const result=await api('/undo',{batch});message(result.message);$('undo').hidden=true;}));
- $('back').addEventListener('click',()=>{$('review-panel').hidden=true;$('intake').hidden=false;});
+ $('back').addEventListener('click',()=>{$('review-panel').hidden=true;$('intake').hidden=false;step('find');});
  $('again').addEventListener('click',()=>{location.href=root.dataset.url;});
- root.querySelectorAll('input[name=mode]').forEach(input=>input.addEventListener('change',()=>{root.querySelectorAll('[data-mode]').forEach(e=>e.hidden=e.dataset.mode!==value('mode'));countQueue();}));
+ root.querySelectorAll('input[name=mode]').forEach(input=>input.addEventListener('change',()=>{root.querySelectorAll('[data-mode]').forEach(e=>e.hidden=e.dataset.mode!==value('mode'));countQueue();syncOptions();}));
+ root.querySelectorAll('input[name=where]').forEach(input=>input.addEventListener('change',syncOptions));
  root.querySelectorAll('input[name=type]').forEach(input=>input.addEventListener('change',()=>{runSearch();}));
  $('search').addEventListener('input',()=>{clearTimeout(searchTimer);searchTimer=setTimeout(runSearch,120);});$('sort').addEventListener('change',runSearch);
  $('paste').addEventListener('input',countQueue);
@@ -226,6 +249,6 @@ const chips=(row,offers)=>{
  document.addEventListener('keydown',event=>{if(event.key==='/'&&!['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)){event.preventDefault();$('search').focus();}});
  window.addEventListener('pagehide',()=>{clearInterval(jobTimer);monitors.forEach(m=>m.destroy());});
  root.querySelectorAll('[data-mode]').forEach(e=>e.hidden=e.dataset.mode!==value('mode'));
- countQueue();
+ countQueue();syncOptions();
  if(value('mode')==='search')runSearch();
 })();

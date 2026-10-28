@@ -72,7 +72,7 @@ def test_the_page_and_searches_write_nothing(world, client, csrf, read):
     html = client.get('/manage/add')
     soup = BeautifulSoup(html.get_data(as_text=True), 'html.parser')
     text = soup.get_text()
-    assert 'Nothing is saved before you confirm' in text and html.headers['Cache-Control'] == 'no-store'
+    assert 'Nothing is saved before the last step' in text and html.headers['Cache-Control'] == 'no-store'
     assert [i['value'] for i in soup.select('input[name=type]')] == list(add.KIND_NAMES)
     assert 'Photo' in text and 'Keep photo' in text                              # Brickognize's photo mode (M.8h)
     assert soup.select_one('input[name=type][value=set]').has_attr('checked')

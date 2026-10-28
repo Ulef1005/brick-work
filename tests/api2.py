@@ -88,3 +88,34 @@ def add_files(coll, pair, world):
     coll.sql("INSERT INTO picture(item_id,color_id,source,kind,local_path,width,height,fetched_at) VALUES(?,NULL,'bricklink','photo','data/images/synthetic.png',4,3,?)",
              (world.keep, STAMP))
     coll.sql("INSERT INTO instruction_file(item_id,path,label,added_at) VALUES(?,'data/instructions/synthetic.pdf','Synthetic booklet',?)", (world.keep, STAMP))
+
+
+# ---- writes (M.11c)
+import uuid
+
+
+def write(client, path, method='post', body=None, key=True, token=BOOTSTRAP, headers=None, **kwargs):
+    """A write: JSON `body` (omitted: none) under an Idempotency-Key of its own (`key=False`: none; a text: that one)."""
+    headers = dict(headers or {})
+    if key:
+        headers['Idempotency-Key'] = key if isinstance(key, str) else 'k-' + uuid.uuid4().hex
+    if body is not None and 'data' not in kwargs:
+        kwargs['json'] = body
+    return call(client, path, method, token=token, headers=headers, **kwargs)
+
+
+def events(pair, where='1=1', params=()):
+    """The event rows of the collection (oldest first), for a test that checks what a write left."""
+    with closing(connect(pair, read_only=True)) as db:
+        return [dict(r) for r in db.execute(f'SELECT * FROM main.event WHERE {where} ORDER BY id', params)]
+
+
+def row(pair, sql, params=()):
+    with closing(connect(pair, read_only=True)) as db:
+        found = db.execute(sql, params).fetchone()
+        return None if found is None else dict(found)
+
+
+def rows(pair, sql, params=()):
+    with closing(connect(pair, read_only=True)) as db:
+        return [dict(r) for r in db.execute(sql, params)]

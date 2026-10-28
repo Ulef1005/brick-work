@@ -1,5 +1,5 @@
-"""#39 exchange rates and display currency through the API: split out of test_bw_currency_39.py in M.8g (issue #110); still the 3.3 text,
-waits for API v2 (M.11)."""
+"""#39 exchange rates through the API: split out of test_bw_currency_39.py in M.8g (issue #110); still the 3.3 text, waits for the exchange-rate
+operations of API v2 (M.11d). The settings half (the display currency) is tests/test_api2_write_money.py since M.11c."""
 from contextlib import closing
 import os
 
@@ -14,12 +14,10 @@ from tests.web_fixtures import apps, logged_in  # noqa: F401
 H = {'Authorization': 'Bearer synthetic-bootstrap'}
 
 
-def test_api_rates_and_settings(populated):
+def test_api_rates(populated):
     c = populated.test_client()
     put = c.put('/api/v1/exchange-rates/usd', json={'per_eur': '1.17'}, headers=dict(H, **{'Idempotency-Key': 'fx-1'}))
     assert put.status_code == 200, put.json
     listed = c.get('/api/v1/exchange-rates', headers=H).json
     assert listed['data'][0]['currency'] == 'USD' and listed['display_currency']
-    patched = c.patch('/api/v1/settings', json={'display_currency': 'USD'}, headers=dict(H, **{'Idempotency-Key': 'fx-2'}))
-    assert patched.status_code == 200 and patched.json['data']['display_currency'] == 'USD'
     assert c.put('/api/v1/exchange-rates/EUR', json={'per_eur': '1'}, headers=dict(H, **{'Idempotency-Key': 'fx-3'})).status_code == 422

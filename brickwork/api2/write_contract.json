@@ -1,0 +1,2518 @@
+{
+  "operations": [
+    {
+      "endpoint": "post_wishlists",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/wishlists",
+      "piece": "M.11c",
+      "query": [],
+      "required": true,
+      "schema": {
+        "$ref": "#/components/schemas/WishlistCreate"
+      },
+      "statuses": [
+        201
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "patch_wishlists_by_id",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "PATCH",
+      "multipart": false,
+      "path": "/wishlists/{id}",
+      "piece": "M.11c",
+      "query": [],
+      "required": true,
+      "schema": {
+        "$ref": "#/components/schemas/WishlistPatch"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "delete_wishlists_by_id",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "DELETE",
+      "multipart": false,
+      "path": "/wishlists/{id}",
+      "piece": "M.11c",
+      "query": [],
+      "required": true,
+      "schema": null,
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "post_wishlists_by_id_restore",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/wishlists/{id}/restore",
+      "piece": "M.11c",
+      "query": [],
+      "required": true,
+      "schema": null,
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "post_wishlists_by_id_transfer",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/wishlists/{id}/transfer",
+      "piece": "M.11c",
+      "query": [],
+      "required": true,
+      "schema": {
+        "$ref": "#/components/schemas/WishlistTransfer"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "post_copies",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/copies",
+      "piece": "M.11c",
+      "query": [],
+      "required": true,
+      "schema": {
+        "$ref": "#/components/schemas/CopyCreate"
+      },
+      "statuses": [
+        201
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "patch_copies_by_id",
+      "event_nullable": false,
+      "if_match": true,
+      "method": "PATCH",
+      "multipart": false,
+      "path": "/copies/{id}",
+      "piece": "M.11c",
+      "query": [],
+      "required": false,
+      "schema": {
+        "$ref": "#/components/schemas/CopyPatch"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "delete_copies_by_id",
+      "event_nullable": false,
+      "if_match": true,
+      "method": "DELETE",
+      "multipart": false,
+      "path": "/copies/{id}",
+      "piece": "M.11c",
+      "query": [],
+      "required": false,
+      "schema": null,
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "post_copies_by_id_restore",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/copies/{id}/restore",
+      "piece": "M.11c",
+      "query": [],
+      "required": false,
+      "schema": null,
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "put_copies_by_id_flags",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "PUT",
+      "multipart": false,
+      "path": "/copies/{id}/flags",
+      "piece": "M.11c",
+      "query": [],
+      "required": false,
+      "schema": {
+        "$ref": "#/components/schemas/FlagSet"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "put_copies_by_id_pin",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "PUT",
+      "multipart": false,
+      "path": "/copies/{id}/pin",
+      "piece": "M.11c",
+      "query": [],
+      "required": false,
+      "schema": {
+        "$ref": "#/components/schemas/Pin"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "put_copies_by_id_checked",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "PUT",
+      "multipart": false,
+      "path": "/copies/{id}/checked",
+      "piece": "M.11c",
+      "query": [],
+      "required": false,
+      "schema": {
+        "$ref": "#/components/schemas/Checked"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "post_copies_by_id_check",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/copies/{id}/check",
+      "piece": "M.11c",
+      "query": [],
+      "required": false,
+      "schema": {
+        "$ref": "#/components/schemas/CheckAction"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "post_copies_by_id_take",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/copies/{id}/take",
+      "piece": "M.11c",
+      "query": [],
+      "required": true,
+      "schema": {
+        "$ref": "#/components/schemas/Take"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "patch_copies_by_id_parts_by_part_id",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "PATCH",
+      "multipart": false,
+      "path": "/copies/{id}/parts/{part_id}",
+      "piece": "M.11c",
+      "query": [],
+      "required": false,
+      "schema": {
+        "$ref": "#/components/schemas/CopyPartPatch"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "post_copies_by_id_parts_bulk",
+      "event_nullable": true,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/copies/{id}/parts/bulk",
+      "piece": "M.11c",
+      "query": [],
+      "required": true,
+      "schema": {
+        "$ref": "#/components/schemas/CopyPartBulk"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": true
+    },
+    {
+      "endpoint": "patch_copies_by_id_figures_by_item_id",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "PATCH",
+      "multipart": false,
+      "path": "/copies/{id}/figures/{item_id}",
+      "piece": "M.11c",
+      "query": [],
+      "required": false,
+      "schema": {
+        "$ref": "#/components/schemas/CopyFigurePatch"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "post_stock",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/stock",
+      "piece": "M.11c",
+      "query": [],
+      "required": true,
+      "schema": {
+        "$ref": "#/components/schemas/StockCreate"
+      },
+      "statuses": [
+        201
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "patch_stock_by_id",
+      "event_nullable": false,
+      "if_match": true,
+      "method": "PATCH",
+      "multipart": false,
+      "path": "/stock/{id}",
+      "piece": "M.11c",
+      "query": [],
+      "required": false,
+      "schema": {
+        "$ref": "#/components/schemas/StockPatch"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "delete_stock_by_id",
+      "event_nullable": false,
+      "if_match": true,
+      "method": "DELETE",
+      "multipart": false,
+      "path": "/stock/{id}",
+      "piece": "M.11c",
+      "query": [],
+      "required": false,
+      "schema": null,
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "post_stock_by_id_restore",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/stock/{id}/restore",
+      "piece": "M.11c",
+      "query": [],
+      "required": false,
+      "schema": null,
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "put_stock_by_id_flags",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "PUT",
+      "multipart": false,
+      "path": "/stock/{id}/flags",
+      "piece": "M.11c",
+      "query": [],
+      "required": false,
+      "schema": {
+        "$ref": "#/components/schemas/FlagSet"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "patch_stock_by_id_parts",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "PATCH",
+      "multipart": false,
+      "path": "/stock/{id}/parts",
+      "piece": "M.11c",
+      "query": [],
+      "required": false,
+      "schema": {
+        "$ref": "#/components/schemas/LooseFigurePartPatch"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "post_stock_by_id_give",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/stock/{id}/give",
+      "piece": "M.11c",
+      "query": [],
+      "required": true,
+      "schema": {
+        "$ref": "#/components/schemas/Give"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "post_stock_booklets",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/stock/booklets",
+      "piece": "M.11c",
+      "query": [],
+      "required": true,
+      "schema": {
+        "$ref": "#/components/schemas/Booklets"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "post_found",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/found",
+      "piece": "M.11c",
+      "query": [],
+      "required": true,
+      "schema": {
+        "$ref": "#/components/schemas/Found"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "post_instruction_files",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "POST",
+      "multipart": true,
+      "path": "/instruction-files",
+      "piece": "M.11c",
+      "query": [],
+      "required": false,
+      "schema": {
+        "$ref": "#/components/schemas/InstructionUpload"
+      },
+      "statuses": [
+        201
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "patch_instruction_files_by_id",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "PATCH",
+      "multipart": false,
+      "path": "/instruction-files/{id}",
+      "piece": "M.11c",
+      "query": [],
+      "required": false,
+      "schema": {
+        "$ref": "#/components/schemas/InstructionPatch"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "delete_instruction_files_by_id",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "DELETE",
+      "multipart": false,
+      "path": "/instruction-files/{id}",
+      "piece": "M.11c",
+      "query": [],
+      "required": false,
+      "schema": null,
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "post_items_by_id_prices",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/items/{id}/prices",
+      "piece": "M.11c",
+      "query": [],
+      "required": true,
+      "schema": {
+        "$ref": "#/components/schemas/PriceCreate"
+      },
+      "statuses": [
+        201
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "post_prices_observations",
+      "event_nullable": true,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/prices/observations",
+      "piece": "M.11c",
+      "query": [],
+      "required": true,
+      "schema": {
+        "$ref": "#/components/schemas/PriceBatch"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": true
+    },
+    {
+      "endpoint": "post_wishes",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/wishes",
+      "piece": "M.11c",
+      "query": [],
+      "required": true,
+      "schema": {
+        "$ref": "#/components/schemas/WishCreate"
+      },
+      "statuses": [
+        201
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "patch_wishes_by_id",
+      "event_nullable": false,
+      "if_match": true,
+      "method": "PATCH",
+      "multipart": false,
+      "path": "/wishes/{id}",
+      "piece": "M.11c",
+      "query": [],
+      "required": false,
+      "schema": {
+        "$ref": "#/components/schemas/WishPatch"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "delete_wishes_by_id",
+      "event_nullable": false,
+      "if_match": true,
+      "method": "DELETE",
+      "multipart": false,
+      "path": "/wishes/{id}",
+      "piece": "M.11c",
+      "query": [],
+      "required": false,
+      "schema": null,
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "post_wishes_by_id_restore",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/wishes/{id}/restore",
+      "piece": "M.11c",
+      "query": [],
+      "required": false,
+      "schema": null,
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "put_wishes_by_id_flags",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "PUT",
+      "multipart": false,
+      "path": "/wishes/{id}/flags",
+      "piece": "M.11c",
+      "query": [],
+      "required": false,
+      "schema": {
+        "$ref": "#/components/schemas/FlagSet"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "post_wishes_by_id_to_owned",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/wishes/{id}/to-owned",
+      "piece": "M.11c",
+      "query": [],
+      "required": true,
+      "schema": {
+        "$ref": "#/components/schemas/WishToOwned"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "post_storages",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/storages",
+      "piece": "M.11c",
+      "query": [],
+      "required": false,
+      "schema": {
+        "$ref": "#/components/schemas/StorageInput"
+      },
+      "statuses": [
+        201
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "patch_storages_by_id",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "PATCH",
+      "multipart": false,
+      "path": "/storages/{id}",
+      "piece": "M.11c",
+      "query": [],
+      "required": false,
+      "schema": {
+        "$ref": "#/components/schemas/StorageInput"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "delete_storages_by_id",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "DELETE",
+      "multipart": false,
+      "path": "/storages/{id}",
+      "piece": "M.11c",
+      "query": [
+        "move_to_unstored"
+      ],
+      "required": false,
+      "schema": null,
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "post_storages_by_id_contents",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/storages/{id}/contents",
+      "piece": "M.11c",
+      "query": [],
+      "required": true,
+      "schema": {
+        "$ref": "#/components/schemas/StorageMove"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "post_lots",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/lots",
+      "piece": "M.11c",
+      "query": [],
+      "required": true,
+      "schema": {
+        "$ref": "#/components/schemas/LotCreate"
+      },
+      "statuses": [
+        201
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "patch_lots_by_id",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "PATCH",
+      "multipart": false,
+      "path": "/lots/{id}",
+      "piece": "M.11c",
+      "query": [],
+      "required": false,
+      "schema": {
+        "$ref": "#/components/schemas/LotPatch"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "delete_lots_by_id",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "DELETE",
+      "multipart": false,
+      "path": "/lots/{id}",
+      "piece": "M.11c",
+      "query": [],
+      "required": false,
+      "schema": null,
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "post_places",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/places",
+      "piece": "M.11c",
+      "query": [],
+      "required": false,
+      "schema": {
+        "$ref": "#/components/schemas/NameInput"
+      },
+      "statuses": [
+        201
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "patch_places_by_id",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "PATCH",
+      "multipart": false,
+      "path": "/places/{id}",
+      "piece": "M.11c",
+      "query": [],
+      "required": false,
+      "schema": {
+        "$ref": "#/components/schemas/NameInput"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "delete_places_by_id",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "DELETE",
+      "multipart": false,
+      "path": "/places/{id}",
+      "piece": "M.11c",
+      "query": [],
+      "required": false,
+      "schema": null,
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "post_flags",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/flags",
+      "piece": "M.11c",
+      "query": [],
+      "required": false,
+      "schema": {
+        "$ref": "#/components/schemas/FlagInput"
+      },
+      "statuses": [
+        201
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "patch_flags_by_id",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "PATCH",
+      "multipart": false,
+      "path": "/flags/{id}",
+      "piece": "M.11c",
+      "query": [],
+      "required": false,
+      "schema": {
+        "$ref": "#/components/schemas/NameInput"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "delete_flags_by_id",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "DELETE",
+      "multipart": false,
+      "path": "/flags/{id}",
+      "piece": "M.11c",
+      "query": [],
+      "required": false,
+      "schema": null,
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "post_events_by_id_undo",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/events/{id}/undo",
+      "piece": "M.11c",
+      "query": [],
+      "required": true,
+      "schema": null,
+      "statuses": [
+        200
+      ],
+      "undo_nullable": true
+    },
+    {
+      "endpoint": "patch_settings",
+      "event_nullable": true,
+      "if_match": false,
+      "method": "PATCH",
+      "multipart": false,
+      "path": "/settings",
+      "piece": "M.11c",
+      "query": [],
+      "required": false,
+      "schema": {
+        "$ref": "#/components/schemas/SettingsPatch"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "post_copies_by_id_photos",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "POST",
+      "multipart": true,
+      "path": "/copies/{id}/photos",
+      "piece": "M.11c",
+      "query": [],
+      "required": false,
+      "schema": {
+        "additionalProperties": false,
+        "properties": {
+          "caption": {
+            "type": "string"
+          },
+          "file": {
+            "format": "binary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "type": "object"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "post_stock_by_id_photos",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "POST",
+      "multipart": true,
+      "path": "/stock/{id}/photos",
+      "piece": "M.11c",
+      "query": [],
+      "required": false,
+      "schema": {
+        "additionalProperties": false,
+        "properties": {
+          "caption": {
+            "type": "string"
+          },
+          "file": {
+            "format": "binary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "type": "object"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "post_storages_by_id_restore",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/storages/{id}/restore",
+      "piece": "M.11c",
+      "query": [],
+      "required": false,
+      "schema": null,
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "post_lots_by_id_restore",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/lots/{id}/restore",
+      "piece": "M.11c",
+      "query": [],
+      "required": false,
+      "schema": null,
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "post_places_by_id_restore",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/places/{id}/restore",
+      "piece": "M.11c",
+      "query": [],
+      "required": false,
+      "schema": null,
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "post_flags_by_id_restore",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/flags/{id}/restore",
+      "piece": "M.11c",
+      "query": [],
+      "required": false,
+      "schema": null,
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "post_instruction_files_by_id_restore",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/instruction-files/{id}/restore",
+      "piece": "M.11c",
+      "query": [],
+      "required": false,
+      "schema": null,
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "put_items_by_id_links",
+      "event_nullable": true,
+      "if_match": false,
+      "method": "PUT",
+      "multipart": false,
+      "path": "/items/{id}/links",
+      "piece": "M.11c",
+      "query": [],
+      "required": true,
+      "schema": {
+        "$ref": "#/components/schemas/ItemLinkWrite"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "post_items_by_id_merge",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/items/{id}/merge",
+      "piece": "M.11c",
+      "query": [],
+      "required": true,
+      "schema": {
+        "$ref": "#/components/schemas/MergeRequest"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "post_items_by_id_unmerge",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/items/{id}/unmerge",
+      "piece": "M.11c",
+      "query": [],
+      "required": true,
+      "schema": {
+        "$ref": "#/components/schemas/UnmergeRequest"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "post_copies_by_id_inventory",
+      "event_nullable": false,
+      "if_match": true,
+      "method": "POST",
+      "multipart": false,
+      "path": "/copies/{id}/inventory",
+      "piece": "M.11c",
+      "query": [],
+      "required": true,
+      "schema": {
+        "$ref": "#/components/schemas/CopyInventorySwitch"
+      },
+      "statuses": [
+        200,
+        202
+      ],
+      "undo_nullable": false
+    },
+    {
+      "endpoint": "delete_copies_by_id_inventory_pending",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "DELETE",
+      "multipart": false,
+      "path": "/copies/{id}/inventory/pending",
+      "piece": "M.11c",
+      "query": [],
+      "required": false,
+      "schema": null,
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    }
+  ],
+  "schemas": {
+    "Booklets": {
+      "properties": {
+        "quantity": {
+          "type": "integer"
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "type": "object"
+    },
+    "CheckAction": {
+      "properties": {
+        "action": {
+          "enum": [
+            "start",
+            "answer",
+            "found_one",
+            "skip",
+            "select",
+            "back",
+            "next",
+            "spares",
+            "finish",
+            "undo"
+          ],
+          "type": "string"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "found": {
+          "type": "integer"
+        },
+        "include": {
+          "type": "boolean"
+        },
+        "order": {
+          "enum": [
+            "inventory",
+            "largest",
+            "colour"
+          ],
+          "type": "string"
+        },
+        "session": {
+          "type": "string"
+        },
+        "token": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "type": "object"
+    },
+    "Checked": {
+      "additionalProperties": false,
+      "properties": {
+        "checked": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "checked"
+      ],
+      "type": "object"
+    },
+    "CopyCreate": {
+      "properties": {
+        "completeness": {
+          "enum": [
+            "sealed",
+            "complete",
+            "incomplete"
+          ],
+          "type": "string"
+        },
+        "condition": {
+          "enum": [
+            "new",
+            "used"
+          ],
+          "type": "string"
+        },
+        "decision": {
+          "enum": [
+            "another",
+            "skip"
+          ],
+          "type": "string"
+        },
+        "item": {
+          "allOf": [
+            {
+              "$ref": "#/components/schemas/ItemKey"
+            }
+          ],
+          "description": "The item, by number (decision 3) or by id."
+        },
+        "purchase_currency": {
+          "pattern": "^[A-Z]{3,8}$",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "purchase_date": {
+          "description": "ISO-8601 date or date-time, as stored.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "purchase_location_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "purchase_price": {
+          "description": "Decimal string, never a float.",
+          "pattern": "^[0-9]+(\\.[0-9]+)?$",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "quantity": {
+          "type": "integer"
+        },
+        "storage_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "item"
+      ],
+      "type": "object"
+    },
+    "CopyFigurePatch": {
+      "additionalProperties": false,
+      "properties": {
+        "missing": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "missing"
+      ],
+      "type": "object"
+    },
+    "CopyInventorySwitch": {
+      "additionalProperties": false,
+      "properties": {
+        "remember": {
+          "description": "Also use this list for new copies of the set (the set's part-list preference), in the same event.",
+          "type": "boolean"
+        },
+        "source": {
+          "enum": [
+            "rebrickable",
+            "bricklink"
+          ],
+          "type": "string"
+        },
+        "version": {
+          "description": "With rebrickable: the version; default the latest.",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "source"
+      ],
+      "type": "object"
+    },
+    "CopyPartBulk": {
+      "additionalProperties": false,
+      "properties": {
+        "dry_run": {
+          "default": false,
+          "type": "boolean"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/components/schemas/CopyPartBulkItem"
+          },
+          "maxItems": 500,
+          "minItems": 1,
+          "type": "array"
+        },
+        "mode": {
+          "default": "set",
+          "enum": [
+            "set",
+            "add"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "type": "object"
+    },
+    "CopyPartBulkItem": {
+      "additionalProperties": false,
+      "properties": {
+        "color": {
+          "description": "A colour in the provider space of the item key (decision 4): a BrickLink colour id with provider bricklink, a Rebrickable colour id with rebrickable, a Brick Work colour id when the item is named by id.",
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "item": {
+          "allOf": [
+            {
+              "$ref": "#/components/schemas/ItemKey"
+            }
+          ],
+          "description": "The item, by number (decision 3) or by id."
+        },
+        "missing": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "item",
+        "color",
+        "missing"
+      ],
+      "type": "object"
+    },
+    "CopyPartPatch": {
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "checked": {
+          "type": "boolean"
+        },
+        "damaged": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "missing": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "CopyPatch": {
+      "description": "Only these fields; at least one. null clears.",
+      "properties": {
+        "completeness": {
+          "enum": [
+            "sealed",
+            "complete",
+            "incomplete"
+          ],
+          "type": "string"
+        },
+        "completeness_source": {
+          "enum": [
+            "manual",
+            "derived"
+          ],
+          "type": "string"
+        },
+        "condition": {
+          "enum": [
+            "new",
+            "used"
+          ],
+          "type": "string"
+        },
+        "current_value": {
+          "description": "Decimal string, never a float.",
+          "pattern": "^[0-9]+(\\.[0-9]+)?$",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "current_value_currency": {
+          "pattern": "^[A-Z]{3,8}$",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "purchase_currency": {
+          "pattern": "^[A-Z]{3,8}$",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "purchase_date": {
+          "description": "ISO-8601 date or date-time, as stored.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "purchase_location_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "purchase_price": {
+          "description": "Decimal string, never a float.",
+          "pattern": "^[0-9]+(\\.[0-9]+)?$",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "storage_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "FlagInput": {
+      "properties": {
+        "kind": {
+          "enum": [
+            "status",
+            "tag",
+            "owner"
+          ],
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "kind"
+      ],
+      "type": "object"
+    },
+    "FlagSet": {
+      "properties": {
+        "flags": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "flags"
+      ],
+      "type": "object"
+    },
+    "Found": {
+      "properties": {
+        "assignments": {},
+        "color": {
+          "description": "A colour in the provider space of the item key (decision 4): a BrickLink colour id with provider bricklink, a Rebrickable colour id with rebrickable, a Brick Work colour id when the item is named by id.",
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "destination": {
+          "enum": [
+            "set",
+            "loose",
+            "list"
+          ],
+          "type": "string"
+        },
+        "item": {
+          "allOf": [
+            {
+              "$ref": "#/components/schemas/ItemKey"
+            }
+          ],
+          "description": "The item, by number (decision 3) or by id."
+        },
+        "quantity": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "item",
+        "color",
+        "destination",
+        "quantity"
+      ],
+      "type": "object"
+    },
+    "Give": {
+      "properties": {
+        "copy_id": {
+          "type": "string"
+        },
+        "quantity": {
+          "type": "integer"
+        },
+        "target": {
+          "enum": [
+            "part",
+            "figure",
+            "stock-part",
+            "instructions",
+            "box"
+          ],
+          "type": "string"
+        },
+        "target_id": {}
+      },
+      "required": [
+        "copy_id",
+        "target",
+        "target_id",
+        "quantity"
+      ],
+      "type": "object"
+    },
+    "InstructionPatch": {
+      "properties": {
+        "label": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "label"
+      ],
+      "type": "object"
+    },
+    "InstructionUpload": {
+      "description": "multipart/form-data; file is a PDF of at most 20 MB.",
+      "properties": {
+        "file": {
+          "type": "string"
+        },
+        "item": {
+          "allOf": [
+            {
+              "$ref": "#/components/schemas/ItemKey"
+            }
+          ],
+          "description": "The item, by number (decision 3) or by id."
+        },
+        "label": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "item",
+        "label",
+        "file"
+      ],
+      "type": "object"
+    },
+    "ItemKey": {
+      "description": "Names an item in a request: by id, or by provider number (decision 3: the default provider is bricklink). The colour next to it is in the same provider space.",
+      "oneOf": [
+        {
+          "required": [
+            "id"
+          ]
+        },
+        {
+          "required": [
+            "kind",
+            "key"
+          ]
+        }
+      ],
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "key": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/components/schemas/Kind"
+        },
+        "provider": {
+          "default": "bricklink",
+          "enum": [
+            "bricklink",
+            "rebrickable"
+          ],
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "ItemLinkWrite": {
+      "additionalProperties": false,
+      "properties": {
+        "color_id": {
+          "description": "BrickLink colour id to scope the link to; null for every colour.",
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "no": {
+          "type": "string"
+        },
+        "preferred": {
+          "description": "Make this the preferred link for its colour scope; the previous one stops being preferred.",
+          "type": "boolean"
+        },
+        "provider": {
+          "default": "bricklink",
+          "enum": [
+            "bricklink"
+          ],
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "S",
+            "P",
+            "M",
+            "G",
+            "B",
+            "C",
+            "I",
+            "O"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "no"
+      ],
+      "type": "object"
+    },
+    "Kind": {
+      "description": "What the item is (design 3.5); stored words are served (Q8).",
+      "enum": [
+        "set",
+        "part",
+        "minifigure",
+        "instructions",
+        "box",
+        "gear",
+        "book",
+        "catalog"
+      ],
+      "type": "string"
+    },
+    "LooseFigurePartKey": {
+      "additionalProperties": false,
+      "properties": {
+        "checked": {
+          "type": "boolean"
+        },
+        "color": {
+          "description": "A colour in the provider space of the item key (decision 4): a BrickLink colour id with provider bricklink, a Rebrickable colour id with rebrickable, a Brick Work colour id when the item is named by id.",
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "damaged": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "item": {
+          "allOf": [
+            {
+              "$ref": "#/components/schemas/ItemKey"
+            }
+          ],
+          "description": "The item, by number (decision 3) or by id."
+        },
+        "missing": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "spare": {
+          "description": "Exact stored spare key; null and zero are distinct.",
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "item",
+        "color",
+        "spare"
+      ],
+      "type": "object"
+    },
+    "LooseFigurePartPatch": {
+      "additionalProperties": false,
+      "properties": {
+        "parts": {
+          "items": {
+            "$ref": "#/components/schemas/LooseFigurePartKey"
+          },
+          "maxItems": 500,
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": [
+        "parts"
+      ],
+      "type": "object"
+    },
+    "LotCreate": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "stock_ids": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "storage_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "stock_ids",
+        "name"
+      ],
+      "type": "object"
+    },
+    "LotPatch": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "purchase_currency": {
+          "pattern": "^[A-Z]{3,8}$",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "purchase_date": {
+          "description": "ISO-8601 date or date-time, as stored.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "purchase_location_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "purchase_price": {
+          "description": "Decimal string, never a float.",
+          "pattern": "^[0-9]+(\\.[0-9]+)?$",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "storage_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "MergeRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "survivor": {
+          "$ref": "#/components/schemas/ItemKey"
+        }
+      },
+      "required": [
+        "survivor"
+      ],
+      "type": "object"
+    },
+    "NameInput": {
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "Pin": {
+      "properties": {
+        "pinned": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "pinned"
+      ],
+      "type": "object"
+    },
+    "PriceBatch": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/components/schemas/PriceBatchItem"
+          },
+          "maxItems": 500,
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "type": "object"
+    },
+    "PriceBatchItem": {
+      "additionalProperties": false,
+      "properties": {
+        "color": {
+          "description": "A colour in the provider space of the item key (decision 4): a BrickLink colour id with provider bricklink, a Rebrickable colour id with rebrickable, a Brick Work colour id when the item is named by id.",
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "condition": {
+          "enum": [
+            "new",
+            "used"
+          ],
+          "type": "string"
+        },
+        "currency": {
+          "pattern": "^[A-Z]{3,8}$",
+          "type": "string"
+        },
+        "guide": {
+          "enum": [
+            "manual",
+            "valuation"
+          ],
+          "type": "string"
+        },
+        "item": {
+          "allOf": [
+            {
+              "$ref": "#/components/schemas/ItemKey"
+            }
+          ],
+          "description": "The item, by number (decision 3) or by id."
+        },
+        "observed_at": {
+          "format": "date-time",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "price": {
+          "description": "Decimal string, never a float.",
+          "pattern": "^[0-9]+(\\.[0-9]+)?$",
+          "type": "string"
+        },
+        "slot": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "item",
+        "condition",
+        "guide",
+        "price",
+        "currency"
+      ],
+      "type": "object"
+    },
+    "PriceCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "color": {
+          "description": "A colour in the provider space of the item key (decision 4): a BrickLink colour id with provider bricklink, a Rebrickable colour id with rebrickable, a Brick Work colour id when the item is named by id.",
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "condition": {
+          "enum": [
+            "new",
+            "used"
+          ],
+          "type": "string"
+        },
+        "currency": {
+          "pattern": "^[A-Z]{3,8}$",
+          "type": "string"
+        },
+        "guide": {
+          "enum": [
+            "manual",
+            "valuation"
+          ],
+          "type": "string"
+        },
+        "observed_at": {
+          "format": "date-time",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "price": {
+          "description": "Decimal string, never a float.",
+          "pattern": "^[0-9]+(\\.[0-9]+)?$",
+          "type": "string"
+        },
+        "slot": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "condition",
+        "guide",
+        "price",
+        "currency"
+      ],
+      "type": "object"
+    },
+    "SettingsPatch": {
+      "properties": {
+        "bricklink_currency": {
+          "pattern": "^[A-Z]{3,8}$",
+          "type": "string"
+        },
+        "bricklink_region": {
+          "type": "string"
+        },
+        "display_currency": {
+          "description": "Totals and comparisons across currencies convert into this (#39).",
+          "type": "string"
+        },
+        "freshness": {},
+        "import_order": {},
+        "incomplete_discount_pct": {
+          "type": "number"
+        },
+        "prefer_bricklink_inventory": {
+          "description": "New copies take BrickLink's part list when one exists (design 4.4).",
+          "type": "boolean"
+        },
+        "repair": {},
+        "retail_country": {
+          "enum": [
+            "DE",
+            "US",
+            "UK",
+            "CA"
+          ],
+          "type": "string"
+        },
+        "source_priority": {
+          "additionalProperties": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "type": "object"
+          },
+          "description": "Source order per step and item kind: `{step: {kind or \"*\": [source ids]}}`, the steps being `pictures` (design 6.8), `metadata` and `market_price`. A step that is sent replaces that step; a step that is left out keeps its order.",
+          "type": "object"
+        }
+      },
+      "type": "object"
+    },
+    "StockCreate": {
+      "properties": {
+        "color": {
+          "description": "A colour in the provider space of the item key (decision 4): a BrickLink colour id with provider bricklink, a Rebrickable colour id with rebrickable, a Brick Work colour id when the item is named by id.",
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "condition": {
+          "enum": [
+            "new",
+            "used",
+            "damaged"
+          ],
+          "type": "string"
+        },
+        "item": {
+          "allOf": [
+            {
+              "$ref": "#/components/schemas/ItemKey"
+            }
+          ],
+          "description": "The item, by number (decision 3) or by id."
+        },
+        "lot_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "quantity": {
+          "type": "integer"
+        },
+        "storage_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "item",
+        "quantity"
+      ],
+      "type": "object"
+    },
+    "StockPatch": {
+      "properties": {
+        "condition": {
+          "enum": [
+            "new",
+            "used",
+            "damaged"
+          ],
+          "type": "string"
+        },
+        "lot_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "purchase_currency": {
+          "pattern": "^[A-Z]{3,8}$",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "purchase_date": {
+          "description": "ISO-8601 date or date-time, as stored.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "purchase_location_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "purchase_price": {
+          "description": "Decimal string, never a float.",
+          "pattern": "^[0-9]+(\\.[0-9]+)?$",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "storage_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "StorageInput": {
+      "description": "type, parent_id and note are optional; a field left out keeps its value. parent_id is another live storage, never this one or one inside it.",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "parent_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "type": {
+          "enum": [
+            "Box",
+            "Shelf",
+            "Drawer",
+            "Bin",
+            "Bag",
+            "Case",
+            "Cabinet",
+            "Room",
+            "Other",
+            null
+          ],
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "StorageMove": {
+      "properties": {
+        "selections": {
+          "items": {
+            "$ref": "#/components/schemas/StorageSelection"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "selections"
+      ],
+      "type": "object"
+    },
+    "StorageSelection": {
+      "properties": {
+        "entity": {
+          "enum": [
+            "copy",
+            "stock",
+            "lot"
+          ],
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity",
+        "id"
+      ],
+      "type": "object"
+    },
+    "Take": {
+      "description": "A part (P) needs its colour; a whole minifigure (M) has none (omit color_id or send null).",
+      "properties": {
+        "color": {
+          "description": "A colour in the provider space of the item key (decision 4): a BrickLink colour id with provider bricklink, a Rebrickable colour id with rebrickable, a Brick Work colour id when the item is named by id.",
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "item": {
+          "allOf": [
+            {
+              "$ref": "#/components/schemas/ItemKey"
+            }
+          ],
+          "description": "The item, by number (decision 3) or by id."
+        },
+        "quantity": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "item",
+        "quantity"
+      ],
+      "type": "object"
+    },
+    "UnmergeRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "merge_id": {
+          "description": "The merge to undo; default the latest of this item.",
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "WishCreate": {
+      "properties": {
+        "color": {
+          "description": "A colour in the provider space of the item key (decision 4): a BrickLink colour id with provider bricklink, a Rebrickable colour id with rebrickable, a Brick Work colour id when the item is named by id.",
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "condition": {
+          "enum": [
+            "new",
+            "used",
+            "any"
+          ],
+          "type": "string"
+        },
+        "decision": {
+          "enum": [
+            "another",
+            "skip"
+          ],
+          "type": "string"
+        },
+        "item": {
+          "allOf": [
+            {
+              "$ref": "#/components/schemas/ItemKey"
+            }
+          ],
+          "description": "The item, by number (decision 3) or by id."
+        },
+        "list_id": {
+          "description": "Target wishlist id; defaults to default on create.",
+          "type": "string"
+        },
+        "max_price": {
+          "description": "Decimal string, never a float.",
+          "pattern": "^[0-9]+(\\.[0-9]+)?$",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "max_price_currency": {
+          "pattern": "^[A-Z]{3,8}$",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "quantity": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "item"
+      ],
+      "type": "object"
+    },
+    "WishPatch": {
+      "properties": {
+        "color": {
+          "description": "A colour in the provider space of the item key (decision 4): a BrickLink colour id with provider bricklink, a Rebrickable colour id with rebrickable, a Brick Work colour id when the item is named by id.",
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "condition": {
+          "enum": [
+            "new",
+            "used",
+            "any"
+          ],
+          "type": "string"
+        },
+        "list_id": {
+          "description": "Target wishlist id; defaults to default on create.",
+          "type": "string"
+        },
+        "max_price": {
+          "description": "Decimal string, never a float.",
+          "pattern": "^[0-9]+(\\.[0-9]+)?$",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "max_price_currency": {
+          "pattern": "^[A-Z]{3,8}$",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "qty_filled_manual": {
+          "description": "Override the filled quantity; null goes back to the derived count.",
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "quantity": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "WishToOwned": {
+      "properties": {
+        "completeness": {
+          "enum": [
+            "sealed",
+            "complete",
+            "incomplete"
+          ],
+          "type": "string"
+        },
+        "condition": {
+          "enum": [
+            "new",
+            "used"
+          ],
+          "type": "string"
+        },
+        "quantity": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "WishlistCreate": {
+      "properties": {
+        "bricklink_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sort": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "WishlistPatch": {
+      "minProperties": 1,
+      "properties": {
+        "bricklink_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sort": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "WishlistTransfer": {
+      "properties": {
+        "copy": {
+          "default": false,
+          "type": "boolean"
+        },
+        "ids": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 500,
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": [
+        "ids"
+      ],
+      "type": "object"
+    }
+  }
+}

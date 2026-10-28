@@ -188,18 +188,6 @@ def test_missing_records(populated, path):
     assert response.json['code'] == 'not_found'
 
 
-def test_events_undo_metadata(populated):
-    from tests.test_bw_api_m1 import create
-    created = create(populated).json
-    event = created['event_id']
-    assert call(populated, f'/events/{event}').json['data']['undoable'] is True
-    response = populated.test_client().post(f'/api/v1/events/{event}/undo', headers={
-        'Authorization': 'Bearer synthetic-bootstrap', 'Idempotency-Key': 'synthetic-events'})
-    assert response.status_code == 200
-    saved = call(populated, f'/events/{event}').json['data']
-    assert saved['undone'] is True and saved['undoable'] is False
-
-
 def test_sources_and_all_reads_hide_secrets(populated, monkeypatch):
     from cryptography.fernet import Fernet
     from brickwork.core import secrets

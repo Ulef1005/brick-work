@@ -507,6 +507,82 @@ def write(db, copy_id, payload, figure=None):
     return saved_view(db, copy_id, tokens, figure)
 
 
+# ---------- marks outside a check session (API v2, M.11c) ----------
+#
+# A person (or a client) sets a line's missing, damaged or checked count without walking a session, ticks a whole copy "checked", or sets the
+# counts of a loose figure's parts. Each is ONE receipt: a copy's marks and its checked flag are `part_check` events of the same shape a check
+# answer writes (`snapshot` before and after, so `_undo_save` takes them back and refuses when the touched rows changed since); a loose figure's
+# parts are a `collection` receipt over `stock_part`, which the collection's undoer reverses.
+
+def _record(db, copy_id, old, new):
+    via, actor = origin()
+    return db.execute('''INSERT INTO main.event(at,via,actor,entity_kind,entity_id,field,old_value,new_value,operation_key)
+                          VALUES(?,?,?,?,?,?,?,?,?)''', (now(), via, actor, 'part_check', entity_id(copy_id), 'save', value_text(old), value_text(new),
+                                                         OPERATION_KEY.get())).lastrowid
+
+
+def mark(db, copy_id, edits):
+    """Set counts on lines of a live copy: `edits` is `[(token, fields)]`, a token `p:<copy_part id>` or `f:<copy_figure id>` (a figure
+    line takes `missing` only) and fields among `missing`, `damaged` (each 0 to the line's quantity) and `checked`. One receipt; the derived
+    completeness follows. A token that is no live line of the copy is `NotFound`. Returns the event id."""
+    with transaction(db):
+        copy(db, copy_id)
+        tokens = [token for token, _ in edits]
+        old = snapshot(db, copy_id, tokens)
+        for token, fields in edits:
+            kind, _, identifier = token.partition(':')
+            table = {'p': 'copy_part', 'f': 'copy_figure'}[kind]
+            row = db.execute(f'SELECT * FROM main.{table} WHERE copy_id=? AND id=? AND retired_at IS NULL', (copy_id, int(identifier))).fetchone()
+            if row is None:
+                raise errors.NotFound('No such line in this copy')
+            if table == 'copy_figure' and set(fields) - {'missing'}:
+                raise errors.ValidationFailed('A whole figure has a missing count only')
+            mark_row(db, table, dict(id=row['id'], copy_id=copy_id), row, fields)
+        recompute(db, copy_id)
+        return _record(db, copy_id, old, snapshot(db, copy_id, tokens))
+
+
+def set_checked(db, copy_id, wanted):
+    """Set or clear the status flag "Set is checked" on a live copy (made when it does not exist yet and is wanted) and let the derived
+    completeness follow. One receipt, also when nothing changes. Returns the event id."""
+    with transaction(db):
+        copy(db, copy_id)
+        flag = checked_flag(db, create=bool(wanted))
+        old = snapshot(db, copy_id)
+        if flag:
+            db.execute('DELETE FROM main.copy_flag WHERE copy_id=? AND flag_id=?', (copy_id, flag))
+            if wanted:
+                db.execute('INSERT INTO main.copy_flag(copy_id,flag_id) VALUES(?,?)', (copy_id, flag))
+        recompute(db, copy_id)
+        return _record(db, copy_id, old, snapshot(db, copy_id))
+
+
+def mark_stock_parts(db, stock_id, edits):
+    """Set counts on the part lines of a live loose minifigure: `edits` is `[(item id, colour id, spare 0 or 1, fields)]` with fields among
+    `missing`, `damaged` (each 0 to the line's quantity) and `checked`. One `collection` receipt over `stock_part`. Returns the event id."""
+    from . import collection
+    with transaction(db):
+        figure = db.execute('SELECT * FROM main.stock WHERE id=? AND archived_at IS NULL', (stock_id,)).fetchone()
+        if figure is None:
+            raise errors.NotFound('No such stock line')
+        if figure['kind'] != 'minifigure':
+            raise errors.ValidationFailed('Only a loose minifigure has parts')
+        lines = []
+        for item_id, color_id, spare, fields in edits:
+            row = db.execute('SELECT * FROM main.stock_part WHERE stock_id=? AND item_id=? AND color_id=? AND is_spare=? AND retired_at IS NULL',
+                             (stock_id, item_id, color_id, spare)).fetchone()
+            if row is None:
+                raise errors.NotFound('This figure has no such part line')
+            lines.append((row, fields))
+        ids = [row['id'] for row, _ in lines]
+        if len(set(ids)) != len(ids):
+            raise errors.ValidationFailed('Name each part line once')
+        old = collection.snapshot(db, 'stock_part', ids)
+        for row, fields in lines:
+            mark_row(db, 'stock_part', dict(id=row['id'], stock_id=stock_id), row, fields)
+        return collection.receipt(db, [('stock_part', old, collection.snapshot(db, 'stock_part', ids))], 'save')
+
+
 def _undo_save(db, event, via, actor):
     """Undo one answer: refused when what it touched changed since; restores the old state and the old session."""
     copy_id, figure = _figure_of(event['entity_id'])

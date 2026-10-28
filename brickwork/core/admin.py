@@ -244,12 +244,13 @@ def patch_settings(db, data):
     """PATCH /settings (#47): any subset of the whitelisted settings, in one transaction.
 
     freshness: [{source, kind, max_age_days}] (as GET /settings returns it); import_order:
-    {item kind: [the six steps]}; repair: {shipping, fees, min_order, use_loose_stock}.
+    {item kind: [the six steps]}; repair: {shipping, fees, min_order, use_loose_stock}; prefer_bricklink_inventory: true or false (new
+    copies take BrickLink's part list, design 4.4).
     """
     from . import errors, price_settings
     from .pipeline import STEPS, TYPES
     allowed = {'retail_country', 'bricklink_region', 'bricklink_currency', 'incomplete_discount_pct',
-               'source_priority', 'import_order', 'freshness', 'repair', 'display_currency'}
+               'source_priority', 'import_order', 'freshness', 'repair', 'display_currency', 'prefer_bricklink_inventory'}
     if not isinstance(data, dict) or not data:
         raise errors.ValidationFailed('Send at least one setting')
     if set(data) - allowed:
@@ -284,6 +285,12 @@ def patch_settings(db, data):
         if 'display_currency' in data:
             from .currency import set_display
             set_display(db, data['display_currency'])
+        if 'prefer_bricklink_inventory' in data:
+            if type(data['prefer_bricklink_inventory']) is not bool:
+                raise errors.ValidationFailed('prefer_bricklink_inventory is true or false')
+            from ..store4 import copies
+            via, actor = origin()
+            copies.set_prefer_bricklink_in(db, data['prefer_bricklink_inventory'], via=via, actor=actor)
         if 'import_order' in data:
             orders = data['import_order']
             if not isinstance(orders, dict) or not orders:
@@ -574,12 +581,33 @@ def instruction_target(db, kind, number):
 
 def instruction_upload(db, root, kind, number, label, content, *, undoable=False):
     """Install immutable, content-addressed booklets; roll back a new file on failure."""
+    if not content.startswith(b'%PDF-') or len(content) > 20 * 1024 * 1024:
+        raise ValueError('Choose a PDF up to 20 MB')
+    if not label or len(label) > 120:
+        raise ValueError('Enter a label of up to 120 characters')
+    return attach_instruction(db, root, instruction_target(db, kind, number), label, content, undoable=undoable)
+
+
+def instruction_set_of(db, item_id):
+    """The set a PDF is attached to, from an item id (API v2): a set is its own target, a booklet names the set with its number (as
+    `instruction_target`); anything else cannot hold a PDF."""
+    row = db.execute('SELECT kind, born_key FROM main.item WHERE id=? AND merged_into IS NULL', (item_id,)).fetchone()
+    if row is None:
+        raise ValueError('Choose an existing item')
+    if row['kind'] == 'set':
+        return item_id
+    if row['kind'] == 'instructions' and row['born_key']:
+        return instruction_target(db, 'I', row['born_key'])
+    raise ValueError('A PDF belongs to a set · choose a set or a booklet')
+
+
+def attach_instruction(db, root, item_id, label, content, *, undoable=False):
+    """`instruction_upload` for a set already named by its id (the form names it by a typed number)."""
     from hashlib import sha256
     if not content.startswith(b'%PDF-') or len(content) > 20 * 1024 * 1024:
         raise ValueError('Choose a PDF up to 20 MB')
     if not label or len(label) > 120:
         raise ValueError('Enter a label of up to 120 characters')
-    item_id = instruction_target(db, kind, number)
     relative = Path('data/instructions') / (sha256(content).hexdigest() + '.pdf')
     target = Path(root) / relative
     target.parent.mkdir(parents=True, exist_ok=True)

@@ -57,13 +57,29 @@ def get_copies_by_id(db, id):
     return respond(copy_bodies(db, [row], single=True)[0], etag=etag_of(db, 'copy', id))
 
 
+def completeness_body(db, row):
+    """`Completeness` of a copy row: what is stored, what the lines derive, whether the set is checked and what is missing."""
+    return {'stored': row['completeness'], 'completeness_source': row['completeness_source'], 'derived': completeness.derived_state(db, row['id']),
+            'checked': checker.checked(db, row['id']), 'missing': row['missing'], 'damaged': row['damaged'], 'missing_figures': row['missing_figures']}
+
+
 @route('/copies/<id>/completeness')
 @reading
 def get_copies_by_id_completeness(db, id):
     arguments()
-    row = copy_row(db, id)
-    return respond({'stored': row['completeness'], 'completeness_source': row['completeness_source'], 'derived': completeness.derived_state(db, id),
-                    'checked': checker.checked(db, id), 'missing': row['missing'], 'damaged': row['damaged'], 'missing_figures': row['missing_figures']})
+    return respond(completeness_body(db, copy_row(db, id)))
+
+
+def check_state(db, copy_id):
+    """`CheckState`: the saved part-check session and the sequence of the check."""
+    view = checker.view(db, copy_id)
+    book = bodies(db, items=[r['item_id'] for r in view['rows']], colors=[r['color_id'] for r in view['rows']])
+    rows = [{'token': r['token'], 'kind': r['kind'], 'id': r['id'], 'item': book.item(r['item_id']), 'name': r['name'], 'color': book.color(r['color_id']),
+             'quantity': r['quantity'], 'missing': r['missing'], 'damaged': r['damaged'] if r['kind'] != 'figure' else None,
+             'checked': bool(r['checked']) if r['kind'] != 'figure' else None, 'image_id': r.get('image'),
+             'parts_lines': r.get('parts_lines'), 'parts_missing': r.get('parts_missing')} for r in view['rows']]
+    session = view['session']
+    return {'session': None if session is None else dict(session, saved_at=view['saved_at']), 'rows': rows}
 
 
 @route('/copies/<id>/check')
@@ -71,25 +87,28 @@ def get_copies_by_id_completeness(db, id):
 def get_copies_by_id_check(db, id):
     arguments()
     require_live(db, id)
-    view = checker.view(db, id)
-    book = bodies(db, items=[r['item_id'] for r in view['rows']], colors=[r['color_id'] for r in view['rows']])
-    rows = [{'token': r['token'], 'kind': r['kind'], 'id': r['id'], 'item': book.item(r['item_id']), 'name': r['name'], 'color': book.color(r['color_id']),
-             'quantity': r['quantity'], 'missing': r['missing'], 'damaged': r['damaged'] if r['kind'] != 'figure' else None,
-             'checked': bool(r['checked']) if r['kind'] != 'figure' else None, 'image_id': r.get('image'),
-             'parts_lines': r.get('parts_lines'), 'parts_missing': r.get('parts_missing')} for r in view['rows']]
-    session = view['session']
-    return respond({'session': None if session is None else dict(session, saved_at=view['saved_at']), 'rows': rows})
+    return respond(check_state(db, id))
 
 
 # ---------- the lines of a copy ----------
+
+LINES = '''SELECT p.*, f.item_id AS figure_item, i.name FROM main.copy_part p JOIN main.item i ON i.id=p.item_id
+    LEFT JOIN main.copy_figure f ON f.id=p.copy_figure_id WHERE p.copy_id=? AND p.retired_at IS NULL'''
+
+
+def part_body(book, copy_id, r):
+    """`CopyPart` of a line row of `LINES`."""
+    parent = book.item(r['figure_item']) if r['figure_item'] is not None else None
+    return {'id': r['id'], 'copy_id': copy_id, 'parent_minifig': parent, 'item': book.item(r['item_id']), 'name': r['name'], 'color': book.color(r['color_id']),
+            'spare': r['is_spare'], 'quantity': r['quantity'], 'missing': r['missing'], 'damaged': r['damaged'], 'checked': bool(r['checked'])}
+
 
 @route('/copies/<id>/parts')
 @reading
 def get_copies_by_id_parts(db, id):
     args = arguments()
     copy_row(db, id)
-    lines = [dict(r) for r in db.execute('''SELECT p.*, f.item_id AS figure_item, i.name FROM main.copy_part p JOIN main.item i ON i.id=p.item_id
-        LEFT JOIN main.copy_figure f ON f.id=p.copy_figure_id WHERE p.copy_id=? AND p.retired_at IS NULL ORDER BY p.id''', (id,))]
+    lines = [dict(r) for r in db.execute(LINES + ' ORDER BY p.id', (id,))]
     book = bodies(db, items=[r['item_id'] for r in lines] + [r['figure_item'] for r in lines], colors=[r['color_id'] for r in lines])
     colours = {r['id']: r['name'] for r in db.execute('SELECT id, name FROM main.color')}
     records = []
@@ -99,9 +118,20 @@ def get_copies_by_id_parts(db, id):
         records.append(record(r['id'], (body['rebrickable'] or {}).get('key') or '', also=also(body), name=r['name'], colour=colours.get(r['color_id'], ''),
                               spare=bool(r['is_spare']), missing=r['missing'], damaged=r['damaged'], quantity=r['quantity'],
                               parent=['null'] if parent is None else [(parent['rebrickable'] or {}).get('key') or '', *[l['no'] for l in parent['bricklink']]],
-                              _body={'id': r['id'], 'copy_id': id, 'parent_minifig': parent, 'item': body, 'name': r['name'], 'color': book.color(r['color_id']),
-                                     'spare': r['is_spare'], 'quantity': r['quantity'], 'missing': r['missing'], 'damaged': r['damaged'], 'checked': bool(r['checked'])}))
+                              _body=part_body(book, id, r)))
     return page(records, args, default_sort='index')
+
+
+FIGURES = '''SELECT f.*, i.name, coalesce(c.lines, 0) AS parts_lines, coalesce(c.missing, 0) AS parts_missing FROM main.copy_figure f
+    JOIN main.item i ON i.id=f.item_id
+    LEFT JOIN (SELECT copy_figure_id, count(*) AS lines, sum(missing) AS missing FROM main.copy_part
+               WHERE copy_id=? AND copy_figure_id IS NOT NULL AND retired_at IS NULL AND is_spare=0 GROUP BY copy_figure_id) c ON c.copy_figure_id=f.id
+    WHERE f.copy_id=? AND f.retired_at IS NULL'''
+
+
+def figure_body(body, r):
+    """`CopyFigure` of a row of `FIGURES` and the item body of its figure."""
+    return {'item': body, 'name': r['name'], 'quantity': r['quantity'], 'missing': r['missing'], 'parts_lines': r['parts_lines'], 'parts_missing': r['parts_missing']}
 
 
 @route('/copies/<id>/figures')
@@ -109,18 +139,13 @@ def get_copies_by_id_parts(db, id):
 def get_copies_by_id_figures(db, id):
     args = arguments()
     copy_row(db, id)
-    rows = db.execute('''SELECT f.*, i.name, coalesce(c.lines, 0) AS parts_lines, coalesce(c.missing, 0) AS parts_missing FROM main.copy_figure f
-        JOIN main.item i ON i.id=f.item_id
-        LEFT JOIN (SELECT copy_figure_id, count(*) AS lines, sum(missing) AS missing FROM main.copy_part
-                   WHERE copy_id=? AND copy_figure_id IS NOT NULL AND retired_at IS NULL AND is_spare=0 GROUP BY copy_figure_id) c ON c.copy_figure_id=f.id
-        WHERE f.copy_id=? AND f.retired_at IS NULL ORDER BY f.id''', (id, id)).fetchall()
+    rows = db.execute(FIGURES + ' ORDER BY f.id', (id, id)).fetchall()
     book = bodies(db, items=[r['item_id'] for r in rows])
     records = []
     for r in rows:
         body = book.item(r['item_id'])
         records.append(record(r['id'], (body['rebrickable'] or {}).get('key') or '', also=also(body), name=r['name'], quantity=r['quantity'], missing=r['missing'],
-                              _body={'item': body, 'name': r['name'], 'quantity': r['quantity'], 'missing': r['missing'], 'parts_lines': r['parts_lines'],
-                                     'parts_missing': r['parts_missing']}))
+                              _body=figure_body(body, r)))
     return page(records, args, default_sort='index')
 
 

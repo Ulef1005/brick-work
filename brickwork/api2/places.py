@@ -19,6 +19,18 @@ def storage_body(r):
             'parent_name': r['parent_name'], 'note': r['note'], 'archived_at': r.get('archived_at')}
 
 
+def storage_response(db, key):
+    """`Storage` of a live storage or an archived one (an archived storage holds nothing: its counts are zero), else `404`."""
+    live = next((r for r in ledger.storages(db) if r['id'] == key), None)
+    if live is not None:
+        return storage_body(live)
+    archived = db.execute('SELECT * FROM main.storage WHERE id=? AND archived_at IS NOT NULL', (key,)).fetchone() if key else None
+    if archived is None:
+        raise errors.NotFound('No such storage')
+    parent = db.execute('SELECT name FROM main.storage WHERE id=?', (archived['parent_id'],)).fetchone() if archived['parent_id'] else None
+    return storage_body(dict(archived, copies=0, entries=0, pieces=0, lots=0, figures=0, part_lots=0, parent_name=parent[0] if parent else None))
+
+
 @route('/storages')
 @reading
 def get_storages(db):
@@ -40,11 +52,7 @@ def get_storages_by_id(db, id):
         found = ledger.storage_detail(db, key, [live])
         location, rows = storage_body(found['location']), found['rows']
     else:
-        archived = db.execute('SELECT * FROM main.storage WHERE id=? AND archived_at IS NOT NULL', (key,)).fetchone() if key else None
-        if archived is None:
-            raise errors.NotFound('No such storage')
-        parent = db.execute('SELECT name FROM main.storage WHERE id=?', (archived['parent_id'],)).fetchone() if archived['parent_id'] else None
-        location = storage_body(dict(archived, copies=0, entries=0, pieces=0, lots=0, figures=0, part_lots=0, parent_name=parent[0] if parent else None))
+        location = storage_response(db, key)
         rows = collection.decorate(db, [dict(r, entity=t, kind=t) for t, r in ledger.storage_contents(db, key)])
     book = bodies(db, items=[r['item_id'] for r in rows], colors=[r['color_id'] for r in rows])
     return respond({'location': location,

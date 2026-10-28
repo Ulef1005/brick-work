@@ -96,7 +96,7 @@ def test_admin_scopes_are_v1s():
 
 def test_the_check_script_agrees_with_the_routes_and_the_doc(capsys):
     assert check_v2(False) == 0
-    assert 'API v2: 66 operations implemented, 123 answer 501' in capsys.readouterr().out
+    assert 'API v2: 131 operations implemented, 58 answer 501' in capsys.readouterr().out
 
 
 def test_the_audit_origin_of_a_request_is_api_and_the_token_name(v2, monkeypatch, coll):

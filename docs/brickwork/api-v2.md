@@ -103,7 +103,7 @@ As v1: copies, stock and wishes carry an `ETag`; `PATCH`, `PUT` and `DELETE` acc
 
 ### 2.7 Idempotency
 
-As v1: `Idempotency-Key: <1 to 80 characters of [A-Za-z0-9-]>`, stored in the one event row of the request; same key and body replays the stored response (`idempotent_replay: true`), another body is `409 idempotency_conflict`, a key is honoured for 30 days. **Required** on: creates (`POST /copies`, `/stock`, `/wishes`, `/found`, `/stock/booklets`, `/lots`), quantity moves (`/copies/{id}/take`, `/stock/{id}/give`, `/wishes/{id}/to-owned`, `/storages/{id}/contents`, `/copies/{id}/parts/bulk`), orders (`/orders/documents`, `/orders/{id}/allocate`, `/orders/{id}/allocations/retry`), prices (`/prices/observations`, `/items/{id}/prices`), `/events/{id}/undo`, and the v2 identity writes (`PUT /items/{id}/links`, `POST /items/{id}/merge`, `POST /items/{id}/unmerge`, `POST /copies/{id}/inventory`). A missing key is `428 idempotency_key_required`. Optional elsewhere.
+As v1: `Idempotency-Key: <1 to 80 characters of [A-Za-z0-9-]>`, stored in the one event row of the request; same key and body replays the stored response (`idempotent_replay: true`), another body is `409 idempotency_conflict`, a key is honoured for 30 days. **Required** on: creates (`POST /copies`, `/stock`, `/wishes`, `/found`, `/stock/booklets`, `/lots`, `/wishlists`) and the wishlist edits (`PATCH` and `DELETE /wishlists/{id}`, `POST /wishlists/{id}/restore` and `/transfer`), quantity moves (`/copies/{id}/take`, `/stock/{id}/give`, `/wishes/{id}/to-owned`, `/storages/{id}/contents`, `/copies/{id}/parts/bulk`), orders (`/orders/documents`, `/orders/{id}/allocate`, `/orders/{id}/allocations/retry`), prices (`/prices/observations`, `/items/{id}/prices`), `/events/{id}/undo`, and the v2 identity writes (`PUT /items/{id}/links`, `POST /items/{id}/merge`, `POST /items/{id}/unmerge`, `POST /copies/{id}/inventory`). A missing key is `428 idempotency_key_required`. Optional elsewhere.
 
 ### 2.8 Errors
 
@@ -122,9 +122,9 @@ Optional members: `retry_after`, `job_id`, `source`, and in v2 `candidates` (wit
 
 As v1: `Authorization: Bearer <token>`; `read` < `write` < `admin`; `BW_API_TOKEN` is a bootstrap admin token named `bootstrap`; stored tokens are hashed, scoped and may expire; with neither, `503 api_disabled`. `/health` and `/openapi.yaml` need no token. `BW_READ_ONLY` makes every non-`GET` `403 read_only_instance` whatever the scope. Failed token checks back off per client (`429 too_many_attempts`, `Retry-After`); forwarded addresses count only with `BW_TRUSTED_PROXIES`. **The scope of every v2 operation is the one its `security` entry in `openapi-v2.yaml` names**; the blueprint reads it from there, so the contract is the single place that says who may call what. Request bodies are refused unread over their cap (JSON 4 MB, uploads per route) with `413 payload_too_large`.
 
-### 2.10 Reads (M.11b)
+### 2.10 Reads (M.11b) and writes (M.11c)
 
-What the 57 read operations do beyond v1, and where the first contract text changed when they were built (each is also in `openapi-v2.yaml`).
+What the 57 read operations (M.11b) and the 65 write operations (M.11c, further down) do beyond v1, and where the first contract text changed when they were built (each is also in `openapi-v2.yaml`).
 
 * **The query is the contract's.** A query name an operation does not declare is `400 unknown_filter`, a name given twice is `400 bad_request` unless the contract declares it an array (`copy_id` on the exports). `limit`, `direction`, `cursor` and `sort` are accepted where the operation lists them.
 * **Filters on an item or colour** take the provider space of decision 4: `number` (with `provider`, `bricklink` by default, `rebrickable`) finds the live items that number stands for in any kind, or in `kind`; `color` is read in the same `provider` space, and `provider=brickwork` is for `color` only (a Brick Work id is not a number: `number` with it is `422`). A filter that names nothing is an empty list; a colour that does not exist is `422`.
@@ -135,6 +135,25 @@ What the 57 read operations do beyond v1, and where the first contract text chan
 * **Corrections to the first contract text**, found by validating every answer against it: the id of an `Image` is the picture number or the 32-character hex id of an own photo (`/images/{id}/content` takes either); `Lot.created_date` is `created_at`; `StaleItem.source_table` is `copy`, `stock` or `wish` (the 4.0 tables); `ItemLink` says `color_scoped` and `brickwork_color_id` as the item body does; `ItemDetail` also carries `used_in`, `gaps` and `matches`; the unpriced lines of a copy's part-out value are `{item, color}`; `GET /export/missing.json` names its lines by item and colour body with the BrickLink type, number and colour number beside them, and lists the lines the XML must leave out under `skipped`; `GET /wishlists` pages like every list; the virtual location "Not stored" has the id `unstored` (`null` stays the filter spelling); `has_file` on `GET /instruction-files` is whether the PDF is on disk.
 * **Gaps** of a missing booklet or box name the copy's set as their item (`target` `instructions` or `box`, `target_id` the copy id); every other gap names the item that is missing.
 * **The catalogue** is the attached `catalogue.db`, not v1's BrickLink file. `GET /catalogue/items` finds a text by number (the Rebrickable number, then any linked BrickLink number) and by name; without the file the answer is `424 catalogue_not_loaded`.
+
+**Writes (M.11c).** Every write calls the core writer that owns the change, in one transaction with its answer; a write that has no core writer got one beside the code it belongs to (`checker.mark`, `checker.set_checked`, `checker.mark_stock_parts`, `admin.attach_instruction`, the colour scope of `identity_admin.add_link`, the BrickLink preference in `admin.patch_settings`).
+
+* **The request is checked against `brickwork/api2/write_contract.json`,** generated from `openapi-v2.yaml` by `python -m scripts.generate_api_writes` (the gate fails when it differs). An object that lists properties is closed: an unknown member, a wrong type, a value out of its enum, pattern or range is `422 validation_failed` naming the member; wrong media type is `415`, a body that is not a JSON object `400`, a query name the operation does not declare `400 unknown_filter`. The Idempotency-Key is read after the body, so a malformed body is `422` before a missing key is `428`.
+* **An item in a body** is an `ItemKey`: by `id` (a merged id is `409 merged` with the `survivor`) or by `provider`, `kind` and `key` (`bricklink` unless named). A number that names no item, or an id that does not exist, is `422 unidentified`; one that names several is `409 ambiguous` with the `candidates` as item bodies; a kind Rebrickable has no numbers for is `422`. A colour next to it is read in the provider's space of the key and in Brick Work's own space when the item is named by id. On a path that names the item (`POST /items/{id}/prices`) and on `PATCH /wishes/{id}` the colour is a Brick Work colour id.
+* **Creating goes through the Add flow** (`add.resolve`, `validate_edits`, `confirm`), so an API copy has the part list the web would give it and its catalogue import is queued for the token that asked (the embedded worker is woken after the commit). `decision` is `another` (add although the set is owned or wished), `skip` or absent. Absent on something already owned or wished is `409 conflict`; `skip` on it is `409` as well and writes nothing, `skip` on something new adds it. Loose stock merges into an identical line (the answer lists that line's id); `POST /stock` of a set and `POST /copies` of anything but a set are `422`. A new wish for a list and an item and colour already wished adds to the wished quantity on `decision=another`.
+* **The envelope.** `event_id` is the last event of the write that a registered undoer takes (else its last event), `undo_url` is that event's Undo (left out when nothing takes it). Undoing that event undoes the write whole: the undoable events the same request made before it, newest first, in one transaction (so Undo of `POST /wishes/{id}/to-owned` takes the copies away and puts the wish back). A preview (`dry_run`) and a write that changed nothing have `event_id: null` where the contract allows it (`WrittenBulkResult`, and, since M.11c, `WrittenSettings` and `WrittenItemLink`).
+* **Idempotency** is stored as a `bw_api` event `op:<key>` in the transaction of the write, per token, for 30 days; a failed write leaves no record, so the same key can be sent again. The record is hidden from `/events` (no values). A preview stores nothing. The wishlist writes require the key as well (the contract says so; section 2.7 lists them since M.11c).
+* **`If-Match`** is checked in the write's transaction, after the `404` and before `409 archived`. A restore of a record that is not archived is `409`; every write to an archived record is `409 archived`.
+* **Marks of a copy's lines** (`PATCH /copies/{id}/parts/{part_id}`, `POST .../parts/bulk`, `PATCH .../figures/{item_id}`, `PUT .../checked`) are one `part_check` event of the shape a check answer writes; Undo is refused (`409 undo_blocked`) when the lines changed after it, so marks are undone in the order they were made. Each count is bounded 0 to the line's quantity on its own. A figure's own parts are `parts/{part_id}` too and never change the set's derived completeness; a whole missing figure does. `parts/bulk` names the set's non-spare lines by item and colour: `mode=set` replaces `missing`, `mode=add` adds to it (over the quantity is `422`, nothing written); a line that is not there, or a number that names no item or several, is listed under `skipped` with its `field` (`items[n]`) and `code` (`not_found`, `unidentified`, `ambiguous`); `dry_run` reports the same without writing. `PATCH /stock/{id}/parts` takes `spare` as 0 or 1 (null is 0); its event is a `collection` receipt over the loose figure's parts.
+* **`POST /copies/{id}/check`** takes the checker's `operation` id from the Idempotency-Key (a random one without it) and answers the full `CheckState`, as `GET` does; a repeated operation answers from the checker's own receipt, which is then the event.
+* **Take, Give, Found, booklets** answer a `Receipt` (`event_id`, `message`); Take of a whole minifigure with a colour is `422`; a stock or gap that changed is `409 stale_match`.
+* **Storages:** `DELETE` of a storage that holds things, or that other storages sit in, is `409 conflict` unless `move_to_unstored=true` (it never moves storages); the id `unstored` is the target of `POST /storages/unstored/contents`. **Flags:** the app's own status flags (`system`) are `409` to rename or archive. An archived place or flag keeps its references; restoring brings them back.
+* **PDFs.** `POST /instruction-files` is multipart with `item` as JSON text (`{"id": 15011}`), `label` and `file`; the PDF belongs to a set, a booklet names the set with its number. A photo (`POST /copies/{id}/photos`, `/stock/{id}/photos`) is an image up to 15 MB; the copy's or line's `image_id` stays the cached picture, the own photo is in `/items/{id}/images`.
+* **Settings.** `GET /settings` reads `admin.settings`; `source_priority` is `{step: {kind or "*": [source ids]}}` over `pictures`, `metadata` and `market_price` (a step that is sent replaces that step), `prefer_bricklink_inventory` is the global switch of design 4.4. A key outside the whitelist is `422 unsupported_setting`. Changing settings needs `admin`.
+* **Links, merge, unmerge.** `PUT /items/{id}/links` makes sure the item has the BrickLink link as a `manual` one (a link to check is confirmed; one scoped to a colour is its own row, in the BrickLink colour space) and, with `preferred: true`, makes it the preferred one of its scope; the BrickLink `type` must be the item's. It is idempotent per (type, number, colour): putting what is there writes nothing. `preferred: false` leaves a preference alone. `POST /items/{id}/merge` names the loser in the path and the survivor as an `ItemKey`; `Merge.receipt` is `{event_id, counts}`. `POST /items/{id}/unmerge` names the merged id in the path; `merge_id` is optional and must belong to it; an unmerge has no Undo (merge again). No M.11c operation writes provider status: a person resolves a to-check row by a link or a merge.
+* **The copy's part list.** `POST /copies/{id}/inventory` takes `source`, `version` (Rebrickable; default the latest) and, new in M.11c, `remember` (also the set's preference for new copies, in the same event). BrickLink's list without a key is `424 source_not_configured`; with no fetched list the answer is `202` with `Location: /api/v2/jobs/{id}` and the copy waits (`inventory.pending`); a copy already waiting, or already on that list, is `409`. `DELETE .../inventory/pending` cancels the wait and puts back the preference it remembered.
+* **Refusals of the 4.0 store** are problems: a state that does not allow the change (nothing to switch, a marked copy, a pending change, a refused merge) is `409`, a missing catalogue `424`, the rest `422`; the words are the refusal's own with folders cut.
+* **Corrections to the first contract text of the writes:** `WishlistTransfer.ids` are texts (wish ids are uuids); `Settings.source_priority` is nested as above; `CopyInventorySwitch` has `remember`; `WrittenSettings.event_id` and `WrittenItemLink.event_id` may be null; `InstructionUpload.item` is JSON text in the form; `PriceCreate.color` and `WishPatch.color` are Brick Work colour ids; `LooseFigurePartKey.spare` null reads as 0.
 
 ---
 
@@ -515,27 +534,52 @@ Operations by piece: M.11a 9, M.11b 57, M.11c 65, M.11d 58 (189 in all). The two
 | `GET /api/v2/colors` | M.11b | `brickwork.api2.catalogue.get_colors` |
 | `GET /api/v2/colors/{color_id}` | M.11b | `brickwork.api2.catalogue.get_colors_by_color_id` |
 | `GET /api/v2/copies` | M.11b | `brickwork.api2.copies.get_copies` |
+| `POST /api/v2/copies` | M.11c | `brickwork.api2.write_collection.post_copies` |
+| `DELETE /api/v2/copies/{id}` | M.11c | `brickwork.api2.write_collection.delete_copies_by_id` |
 | `GET /api/v2/copies/{id}` | M.11b | `brickwork.api2.copies.get_copies_by_id` |
+| `PATCH /api/v2/copies/{id}` | M.11c | `brickwork.api2.write_collection.patch_copies_by_id` |
 | `GET /api/v2/copies/{id}/check` | M.11b | `brickwork.api2.copies.get_copies_by_id_check` |
+| `POST /api/v2/copies/{id}/check` | M.11c | `brickwork.api2.write_collection.post_copies_by_id_check` |
+| `PUT /api/v2/copies/{id}/checked` | M.11c | `brickwork.api2.write_collection.put_copies_by_id_checked` |
 | `GET /api/v2/copies/{id}/completeness` | M.11b | `brickwork.api2.copies.get_copies_by_id_completeness` |
 | `GET /api/v2/copies/{id}/figures` | M.11b | `brickwork.api2.copies.get_copies_by_id_figures` |
+| `PATCH /api/v2/copies/{id}/figures/{item_id}` | M.11c | `brickwork.api2.write_collection.patch_copies_by_id_figures_by_item_id` |
+| `PUT /api/v2/copies/{id}/flags` | M.11c | `brickwork.api2.write_collection.put_copies_by_id_flags` |
 | `GET /api/v2/copies/{id}/gaps` | M.11b | `brickwork.api2.copies.get_copies_by_id_gaps` |
+| `POST /api/v2/copies/{id}/inventory` | M.11c | `brickwork.api2.write_identity.post_copies_by_id_inventory` |
+| `DELETE /api/v2/copies/{id}/inventory/pending` | M.11c | `brickwork.api2.write_identity.delete_copies_by_id_inventory_pending` |
 | `GET /api/v2/copies/{id}/matches` | M.11b | `brickwork.api2.copies.get_copies_by_id_matches` |
 | `GET /api/v2/copies/{id}/parts` | M.11b | `brickwork.api2.copies.get_copies_by_id_parts` |
+| `POST /api/v2/copies/{id}/parts/bulk` | M.11c | `brickwork.api2.write_collection.post_copies_by_id_parts_bulk` |
+| `PATCH /api/v2/copies/{id}/parts/{part_id}` | M.11c | `brickwork.api2.write_collection.patch_copies_by_id_parts_by_part_id` |
+| `POST /api/v2/copies/{id}/photos` | M.11c | `brickwork.api2.write_collection.post_copies_by_id_photos` |
+| `PUT /api/v2/copies/{id}/pin` | M.11c | `brickwork.api2.write_collection.put_copies_by_id_pin` |
+| `POST /api/v2/copies/{id}/restore` | M.11c | `brickwork.api2.write_collection.post_copies_by_id_restore` |
+| `POST /api/v2/copies/{id}/take` | M.11c | `brickwork.api2.write_collection.post_copies_by_id_take` |
 | `GET /api/v2/events` | M.11b | `brickwork.api2.history.get_events` |
 | `GET /api/v2/events/{id}` | M.11b | `brickwork.api2.history.get_events_by_id` |
+| `POST /api/v2/events/{id}/undo` | M.11c | `brickwork.api2.write_identity.post_events_by_id_undo` |
 | `GET /api/v2/export/missing.csv` | M.11b | `brickwork.api2.ranking.get_export_missing_csv` |
 | `GET /api/v2/export/missing.json` | M.11b | `brickwork.api2.ranking.get_export_missing_json` |
 | `GET /api/v2/export/missing.xml` | M.11b | `brickwork.api2.ranking.get_export_missing_xml` |
 | `GET /api/v2/export/picker.csv` | M.11b | `brickwork.api2.ranking.get_export_picker_csv` |
 | `GET /api/v2/export/wishlist.csv` | M.11b | `brickwork.api2.ranking.get_export_wishlist_csv` |
 | `GET /api/v2/flags` | M.11b | `brickwork.api2.places.get_flags` |
+| `POST /api/v2/flags` | M.11c | `brickwork.api2.write_where.post_flags` |
+| `DELETE /api/v2/flags/{id}` | M.11c | `brickwork.api2.write_where.delete_flags_by_id` |
+| `PATCH /api/v2/flags/{id}` | M.11c | `brickwork.api2.write_where.patch_flags_by_id` |
+| `POST /api/v2/flags/{id}/restore` | M.11c | `brickwork.api2.write_where.post_flags_by_id_restore` |
+| `POST /api/v2/found` | M.11c | `brickwork.api2.write_collection.post_found` |
 | `GET /api/v2/gaps` | M.11b | `brickwork.api2.loose.get_gaps` |
 | `GET /api/v2/health` | M.11a | `brickwork.api2.get_health` |
 | `GET /api/v2/images/{id}/content` | M.11b | `brickwork.api2.item_views.get_images_by_id_content` |
 | `GET /api/v2/instruction-files` | M.11b | `brickwork.api2.instructions.get_instruction_files` |
+| `POST /api/v2/instruction-files` | M.11c | `brickwork.api2.write_where.post_instruction_files` |
+| `DELETE /api/v2/instruction-files/{id}` | M.11c | `brickwork.api2.write_where.delete_instruction_files_by_id` |
 | `GET /api/v2/instruction-files/{id}` | M.11b | `brickwork.api2.instructions.get_instruction_files_by_id` |
+| `PATCH /api/v2/instruction-files/{id}` | M.11c | `brickwork.api2.write_where.patch_instruction_files_by_id` |
 | `GET /api/v2/instruction-files/{id}/content` | M.11b | `brickwork.api2.instructions.get_instruction_files_by_id_content` |
+| `POST /api/v2/instruction-files/{id}/restore` | M.11c | `brickwork.api2.write_where.post_instruction_files_by_id_restore` |
 | `GET /api/v2/items` | M.11b | `brickwork.api2.catalogue.get_items` |
 | `GET /api/v2/items/{id}` | M.11a | `brickwork.api2.items.get_items_by_id` |
 | `GET /api/v2/items/{id}/colors` | M.11b | `brickwork.api2.item_views.get_items_by_id_colors` |
@@ -543,14 +587,22 @@ Operations by piece: M.11a 9, M.11b 57, M.11c 65, M.11d 58 (189 in all). The two
 | `GET /api/v2/items/{id}/images` | M.11b | `brickwork.api2.item_views.get_items_by_id_images` |
 | `GET /api/v2/items/{id}/inventory` | M.11b | `brickwork.api2.item_views.get_items_by_id_inventory` |
 | `GET /api/v2/items/{id}/links` | M.11b | `brickwork.api2.item_views.get_items_by_id_links` |
+| `PUT /api/v2/items/{id}/links` | M.11c | `brickwork.api2.write_identity.put_items_by_id_links` |
+| `POST /api/v2/items/{id}/merge` | M.11c | `brickwork.api2.write_identity.post_items_by_id_merge` |
 | `GET /api/v2/items/{id}/prices` | M.11b | `brickwork.api2.prices.get_items_by_id_prices` |
+| `POST /api/v2/items/{id}/prices` | M.11c | `brickwork.api2.write_money.post_items_by_id_prices` |
 | `GET /api/v2/items/{id}/prices/history` | M.11b | `brickwork.api2.prices.get_items_by_id_prices_history` |
 | `GET /api/v2/items/{id}/provider-status` | M.11b | `brickwork.api2.item_views.get_items_by_id_provider_status` |
+| `POST /api/v2/items/{id}/unmerge` | M.11c | `brickwork.api2.write_identity.post_items_by_id_unmerge` |
 | `GET /api/v2/items/{id}/used-in` | M.11b | `brickwork.api2.item_views.get_items_by_id_used_in` |
 | `GET /api/v2/links` | M.11b | `brickwork.api2.item_views.get_links` |
 | `GET /api/v2/lookup` | M.11a | `brickwork.api2.items.get_lookup` |
 | `GET /api/v2/lots` | M.11b | `brickwork.api2.places.get_lots` |
+| `POST /api/v2/lots` | M.11c | `brickwork.api2.write_where.post_lots` |
+| `DELETE /api/v2/lots/{id}` | M.11c | `brickwork.api2.write_where.delete_lots_by_id` |
 | `GET /api/v2/lots/{id}` | M.11b | `brickwork.api2.places.get_lots_by_id` |
+| `PATCH /api/v2/lots/{id}` | M.11c | `brickwork.api2.write_where.patch_lots_by_id` |
+| `POST /api/v2/lots/{id}/restore` | M.11c | `brickwork.api2.write_where.post_lots_by_id_restore` |
 | `GET /api/v2/matches` | M.11b | `brickwork.api2.loose.get_matches` |
 | `GET /api/v2/me` | M.11a | `brickwork.api2.get_me` |
 | `GET /api/v2/minifigures` | M.11b | `brickwork.api2.loose.get_minifigures` |
@@ -559,22 +611,54 @@ Operations by piece: M.11a 9, M.11b 57, M.11c 65, M.11d 58 (189 in all). The two
 | `GET /api/v2/openapi.yaml` | M.11a | `brickwork.api2.get_openapi_yaml` |
 | `GET /api/v2/parts/by-number/{no}` | M.11a | `brickwork.api2.items.get_parts_by_number_by_no` |
 | `GET /api/v2/places` | M.11b | `brickwork.api2.places.get_places` |
+| `POST /api/v2/places` | M.11c | `brickwork.api2.write_where.post_places` |
+| `DELETE /api/v2/places/{id}` | M.11c | `brickwork.api2.write_where.delete_places_by_id` |
+| `PATCH /api/v2/places/{id}` | M.11c | `brickwork.api2.write_where.patch_places_by_id` |
+| `POST /api/v2/places/{id}/restore` | M.11c | `brickwork.api2.write_where.post_places_by_id_restore` |
 | `GET /api/v2/planning/ranking` | M.11b | `brickwork.api2.ranking.get_planning_ranking` |
 | `GET /api/v2/prices` | M.11b | `brickwork.api2.prices.get_prices` |
+| `POST /api/v2/prices/observations` | M.11c | `brickwork.api2.write_money.post_prices_observations` |
 | `GET /api/v2/prices/stale` | M.11b | `brickwork.api2.prices.get_prices_stale` |
 | `GET /api/v2/sets/by-number/{no}` | M.11a | `brickwork.api2.items.get_sets_by_number_by_no` |
+| `GET /api/v2/settings` | M.11c | `brickwork.api2.write_money.get_settings` |
+| `PATCH /api/v2/settings` | M.11c | `brickwork.api2.write_money.patch_settings` |
 | `GET /api/v2/statistics` | M.11b | `brickwork.api2.history.get_statistics` |
 | `GET /api/v2/stock` | M.11b | `brickwork.api2.loose.get_stock` |
+| `POST /api/v2/stock` | M.11c | `brickwork.api2.write_collection.post_stock` |
+| `POST /api/v2/stock/booklets` | M.11c | `brickwork.api2.write_collection.post_stock_booklets` |
+| `DELETE /api/v2/stock/{id}` | M.11c | `brickwork.api2.write_collection.delete_stock_by_id` |
 | `GET /api/v2/stock/{id}` | M.11b | `brickwork.api2.loose.get_stock_by_id` |
+| `PATCH /api/v2/stock/{id}` | M.11c | `brickwork.api2.write_collection.patch_stock_by_id` |
+| `PUT /api/v2/stock/{id}/flags` | M.11c | `brickwork.api2.write_collection.put_stock_by_id_flags` |
+| `POST /api/v2/stock/{id}/give` | M.11c | `brickwork.api2.write_collection.post_stock_by_id_give` |
 | `GET /api/v2/stock/{id}/parts` | M.11b | `brickwork.api2.loose.get_stock_by_id_parts` |
+| `PATCH /api/v2/stock/{id}/parts` | M.11c | `brickwork.api2.write_collection.patch_stock_by_id_parts` |
+| `POST /api/v2/stock/{id}/photos` | M.11c | `brickwork.api2.write_collection.post_stock_by_id_photos` |
+| `POST /api/v2/stock/{id}/restore` | M.11c | `brickwork.api2.write_collection.post_stock_by_id_restore` |
 | `GET /api/v2/storages` | M.11b | `brickwork.api2.places.get_storages` |
+| `POST /api/v2/storages` | M.11c | `brickwork.api2.write_where.post_storages` |
+| `DELETE /api/v2/storages/{id}` | M.11c | `brickwork.api2.write_where.delete_storages_by_id` |
 | `GET /api/v2/storages/{id}` | M.11b | `brickwork.api2.places.get_storages_by_id` |
+| `PATCH /api/v2/storages/{id}` | M.11c | `brickwork.api2.write_where.patch_storages_by_id` |
+| `POST /api/v2/storages/{id}/contents` | M.11c | `brickwork.api2.write_where.post_storages_by_id_contents` |
+| `POST /api/v2/storages/{id}/restore` | M.11c | `brickwork.api2.write_where.post_storages_by_id_restore` |
 | `GET /api/v2/version` | M.11a | `brickwork.api2.get_version` |
 | `GET /api/v2/wishes` | M.11b | `brickwork.api2.wishes.get_wishes` |
+| `POST /api/v2/wishes` | M.11c | `brickwork.api2.write_collection.post_wishes` |
+| `DELETE /api/v2/wishes/{id}` | M.11c | `brickwork.api2.write_collection.delete_wishes_by_id` |
 | `GET /api/v2/wishes/{id}` | M.11b | `brickwork.api2.wishes.get_wishes_by_id` |
+| `PATCH /api/v2/wishes/{id}` | M.11c | `brickwork.api2.write_collection.patch_wishes_by_id` |
+| `PUT /api/v2/wishes/{id}/flags` | M.11c | `brickwork.api2.write_collection.put_wishes_by_id_flags` |
+| `POST /api/v2/wishes/{id}/restore` | M.11c | `brickwork.api2.write_collection.post_wishes_by_id_restore` |
+| `POST /api/v2/wishes/{id}/to-owned` | M.11c | `brickwork.api2.write_collection.post_wishes_by_id_to_owned` |
 | `GET /api/v2/wishlists` | M.11b | `brickwork.api2.wishes.get_wishlists` |
+| `POST /api/v2/wishlists` | M.11c | `brickwork.api2.write_collection.post_wishlists` |
+| `DELETE /api/v2/wishlists/{id}` | M.11c | `brickwork.api2.write_collection.delete_wishlists_by_id` |
+| `PATCH /api/v2/wishlists/{id}` | M.11c | `brickwork.api2.write_collection.patch_wishlists_by_id` |
 | `GET /api/v2/wishlists/{id}/export.csv` | M.11b | `brickwork.api2.wishes.get_wishlists_by_id_export_csv` |
 | `GET /api/v2/wishlists/{id}/export.xml` | M.11b | `brickwork.api2.wishes.get_wishlists_by_id_export_xml` |
+| `POST /api/v2/wishlists/{id}/restore` | M.11c | `brickwork.api2.write_collection.post_wishlists_by_id_restore` |
+| `POST /api/v2/wishlists/{id}/transfer` | M.11c | `brickwork.api2.write_collection.post_wishlists_by_id_transfer` |
 <!-- api2-implemented:end -->
 
 ### Not implemented yet (answer `501`)
@@ -586,32 +670,11 @@ Operations by piece: M.11a 9, M.11b 57, M.11c 65, M.11d 58 (189 in all). The two
 |---|---|
 | `POST /api/v2/catalogue/import` | M.11d |
 | `POST /api/v2/colors/sync` | M.11d |
-| `POST /api/v2/copies` | M.11c |
-| `DELETE /api/v2/copies/{id}` | M.11c |
-| `PATCH /api/v2/copies/{id}` | M.11c |
-| `POST /api/v2/copies/{id}/check` | M.11c |
-| `PUT /api/v2/copies/{id}/checked` | M.11c |
-| `PATCH /api/v2/copies/{id}/figures/{item_id}` | M.11c |
-| `PUT /api/v2/copies/{id}/flags` | M.11c |
-| `POST /api/v2/copies/{id}/inventory` | M.11c |
-| `DELETE /api/v2/copies/{id}/inventory/pending` | M.11c |
-| `POST /api/v2/copies/{id}/parts/bulk` | M.11c |
-| `PATCH /api/v2/copies/{id}/parts/{part_id}` | M.11c |
-| `POST /api/v2/copies/{id}/photos` | M.11c |
-| `PUT /api/v2/copies/{id}/pin` | M.11c |
-| `POST /api/v2/copies/{id}/restore` | M.11c |
-| `POST /api/v2/copies/{id}/take` | M.11c |
 | `GET /api/v2/database/check` | M.11d |
 | `GET /api/v2/database/export` | M.11d |
-| `POST /api/v2/events/{id}/undo` | M.11c |
 | `GET /api/v2/exchange-rates` | M.11d |
 | `POST /api/v2/exchange-rates/ecb` | M.11d |
 | `PUT /api/v2/exchange-rates/{code}` | M.11d |
-| `POST /api/v2/flags` | M.11c |
-| `DELETE /api/v2/flags/{id}` | M.11c |
-| `PATCH /api/v2/flags/{id}` | M.11c |
-| `POST /api/v2/flags/{id}/restore` | M.11c |
-| `POST /api/v2/found` | M.11c |
 | `GET /api/v2/identifications` | M.11d |
 | `POST /api/v2/identifications` | M.11d |
 | `DELETE /api/v2/identifications/{id}` | M.11d |
@@ -619,16 +682,8 @@ Operations by piece: M.11a 9, M.11b 57, M.11c 65, M.11d 58 (189 in all). The two
 | `GET /api/v2/identifications/{id}/thumb` | M.11d |
 | `POST /api/v2/imports/bricktracker` | M.11d |
 | `POST /api/v2/imports/{id}/apply` | M.11d |
-| `POST /api/v2/instruction-files` | M.11c |
-| `DELETE /api/v2/instruction-files/{id}` | M.11c |
-| `PATCH /api/v2/instruction-files/{id}` | M.11c |
-| `POST /api/v2/instruction-files/{id}/restore` | M.11c |
 | `POST /api/v2/items/{id}/import` | M.11d |
-| `PUT /api/v2/items/{id}/links` | M.11c |
-| `POST /api/v2/items/{id}/merge` | M.11c |
-| `POST /api/v2/items/{id}/prices` | M.11c |
 | `POST /api/v2/items/{id}/prices/refresh` | M.11d |
-| `POST /api/v2/items/{id}/unmerge` | M.11c |
 | `GET /api/v2/jobs` | M.11d |
 | `POST /api/v2/jobs/drain` | M.11d |
 | `POST /api/v2/jobs/instruction-identities` | M.11d |
@@ -636,10 +691,6 @@ Operations by piece: M.11a 9, M.11b 57, M.11c 65, M.11d 58 (189 in all). The two
 | `GET /api/v2/jobs/{id}` | M.11d |
 | `POST /api/v2/jobs/{id}/resume` | M.11d |
 | `POST /api/v2/jobs/{id}/retry` | M.11d |
-| `POST /api/v2/lots` | M.11c |
-| `DELETE /api/v2/lots/{id}` | M.11c |
-| `PATCH /api/v2/lots/{id}` | M.11c |
-| `POST /api/v2/lots/{id}/restore` | M.11c |
 | `GET /api/v2/orders` | M.11d |
 | `POST /api/v2/orders/documents` | M.11d |
 | `GET /api/v2/orders/export.csv` | M.11d |
@@ -655,14 +706,7 @@ Operations by piece: M.11a 9, M.11b 57, M.11c 65, M.11d 58 (189 in all). The two
 | `POST /api/v2/orders/{id}/received` | M.11d |
 | `POST /api/v2/orders/{id}/reconcile` | M.11d |
 | `GET /api/v2/orders/{id}/short.xml` | M.11d |
-| `POST /api/v2/places` | M.11c |
-| `DELETE /api/v2/places/{id}` | M.11c |
-| `PATCH /api/v2/places/{id}` | M.11c |
-| `POST /api/v2/places/{id}/restore` | M.11c |
-| `POST /api/v2/prices/observations` | M.11c |
 | `POST /api/v2/prices/refresh` | M.11d |
-| `GET /api/v2/settings` | M.11c |
-| `PATCH /api/v2/settings` | M.11c |
 | `GET /api/v2/sources` | M.11d |
 | `PATCH /api/v2/sources/{source}` | M.11d |
 | `DELETE /api/v2/sources/{source}/key` | M.11d |
@@ -672,20 +716,6 @@ Operations by piece: M.11a 9, M.11b 57, M.11c 65, M.11d 58 (189 in all). The two
 | `PUT /api/v2/sources/{source}/user` | M.11d |
 | `POST /api/v2/sources/{source}/user/connect` | M.11d |
 | `POST /api/v2/sources/{source}/user/test` | M.11d |
-| `POST /api/v2/stock` | M.11c |
-| `POST /api/v2/stock/booklets` | M.11c |
-| `DELETE /api/v2/stock/{id}` | M.11c |
-| `PATCH /api/v2/stock/{id}` | M.11c |
-| `PUT /api/v2/stock/{id}/flags` | M.11c |
-| `POST /api/v2/stock/{id}/give` | M.11c |
-| `PATCH /api/v2/stock/{id}/parts` | M.11c |
-| `POST /api/v2/stock/{id}/photos` | M.11c |
-| `POST /api/v2/stock/{id}/restore` | M.11c |
-| `POST /api/v2/storages` | M.11c |
-| `DELETE /api/v2/storages/{id}` | M.11c |
-| `PATCH /api/v2/storages/{id}` | M.11c |
-| `POST /api/v2/storages/{id}/contents` | M.11c |
-| `POST /api/v2/storages/{id}/restore` | M.11c |
 | `GET /api/v2/sync/{source}` | M.11d |
 | `PUT /api/v2/sync/{source}/link` | M.11d |
 | `GET /api/v2/sync/{source}/lists` | M.11d |
@@ -696,17 +726,6 @@ Operations by piece: M.11a 9, M.11b 57, M.11c 65, M.11d 58 (189 in all). The two
 | `GET /api/v2/tokens` | M.11d |
 | `POST /api/v2/tokens` | M.11d |
 | `DELETE /api/v2/tokens/{id}` | M.11d |
-| `POST /api/v2/wishes` | M.11c |
-| `DELETE /api/v2/wishes/{id}` | M.11c |
-| `PATCH /api/v2/wishes/{id}` | M.11c |
-| `PUT /api/v2/wishes/{id}/flags` | M.11c |
-| `POST /api/v2/wishes/{id}/restore` | M.11c |
-| `POST /api/v2/wishes/{id}/to-owned` | M.11c |
-| `POST /api/v2/wishlists` | M.11c |
-| `DELETE /api/v2/wishlists/{id}` | M.11c |
-| `PATCH /api/v2/wishlists/{id}` | M.11c |
-| `POST /api/v2/wishlists/{id}/restore` | M.11c |
-| `POST /api/v2/wishlists/{id}/transfer` | M.11c |
 <!-- api2-pending:end -->
 
 ---

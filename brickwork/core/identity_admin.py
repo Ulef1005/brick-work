@@ -245,8 +245,10 @@ def reject_link(db, link_id):
     return _in(db, action)
 
 
-def add_link(db, item_id, number):
-    """Link an item to a typed BrickLink number (`manual`). Refused when the item has that number already, or another item holds it: that is a merge."""
+def add_link(db, item_id, number, color_id=None):
+    """Link an item to a typed BrickLink number (`manual`), for every colour or (`color_id`, a Brick Work colour) for one. Refused when the item has
+    that number in that scope already, or another item holds it (for one colour: holds it for that colour): that is a merge. (A number scoped to a
+    colour may sit beside another item's unscoped link of it: the lookup tells them apart by the colour, design 3.2.)"""
     number = (number or '').strip()
     if not number or len(number) > 40 or any(c.isspace() for c in number):
         raise errors.ValidationFailed('Type a BrickLink number without spaces')
@@ -255,20 +257,23 @@ def add_link(db, item_id, number):
         item = db.execute('SELECT * FROM main.item WHERE id=? AND merged_into IS NULL', (item_id,)).fetchone()
         if item is None:
             raise errors.NotFound(f'No item {item_id}')
+        if color_id is not None and not db.execute('SELECT 1 FROM main.color WHERE id=?', (color_id,)).fetchone():
+            raise errors.ValidationFailed('Unknown colour')
         letter = items.type_of_kind(item['kind'])
-        if db.execute("SELECT 1 FROM main.item_link WHERE item_id=? AND provider='bricklink' AND provider_kind=? AND provider_key=? AND color_id IS NULL",
-                      (item_id, letter, number)).fetchone():
+        if db.execute("SELECT 1 FROM main.item_link WHERE item_id=? AND provider='bricklink' AND provider_kind=? AND provider_key=? AND coalesce(color_id,0)=?",
+                      (item_id, letter, number, color_id or 0)).fetchone():
             raise errors.Conflict(f'The item has the BrickLink number {number} already')
+        scope = '' if color_id is None else ' AND coalesce(color_id,0)=?'              # an unscoped number is held by any link of it; a scoped one by that scope's
         others = [r['item_id'] for store in _stores(db) for r in db.execute(
-            f"SELECT item_id FROM {store}.item_link WHERE provider='bricklink' AND provider_kind=? AND provider_key=? AND status IN ('manual','matched','inferred') AND item_id!=?",
-            (letter, number, item_id))]
+            f"SELECT item_id FROM {store}.item_link WHERE provider='bricklink' AND provider_kind=? AND provider_key=? AND status IN ('manual','matched','inferred') "
+            f"AND item_id!=?{scope}", (letter, number, item_id, *([] if color_id is None else [color_id])))]
         if others:
             raise errors.Conflict(f'BrickLink {number} belongs to item {others[0]} already · merge into it instead')
         log = RowLog(db)
-        log.insert('item_link', item_id=item_id, color_id=None, provider='bricklink', provider_kind=letter, provider_key=number, status='manual',
+        log.insert('item_link', item_id=item_id, color_id=color_id, provider='bricklink', provider_kind=letter, provider_key=number, status='manual',
                    method='user', origin='user', preferred=0, evidence_digest=None, evidence_json=None, catalogue_build_id=None, decided_at=now(), decided_by='user')
-        return dict(event_id=_logged(db, 'item_link', item_id, 'add', None, dict(item=item_id, number=number), log, via=via, actor=actor,
-                                     operation_key=operation_key), item_id=item_id)
+        return dict(event_id=_logged(db, 'item_link', item_id, 'add', None, dict(item=item_id, number=number, **({'colour': color_id} if color_id is not None else {})),
+                                     log, via=via, actor=actor, operation_key=operation_key), item_id=item_id)
     return _in(db, action)
 
 

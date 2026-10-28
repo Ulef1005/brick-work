@@ -14,7 +14,6 @@ QUARANTINE = {
     # test_bw_orders_export_44.py the API receipts, history and export tests (M.11).
     'tests/test_bw_orders_export_44_api.py': 'M.11',
     'tests/test_bw_orders_storage_api.py': 'M.11',
-    'tests/test_bw_lists_43_api.py': 'M.11',
     # M.8j split this out of a file it ported (the test that belongs to a later piece moved, none was added): out of test_bw_sync.py the API test (M.11).
     'tests/test_bw_sync_api.py': 'M.11',
     # M.11a (issue #113) ported to API v2 the transport tests of test_app_factory.py, test_bw_body_limits_62.py, test_bw_throttle.py and
@@ -26,6 +25,12 @@ QUARANTINE = {
     # contract tests over all GETs stay in test_bw_api_m2 for the operations of M.11d), all of test_bw_perf_api.py and test_bw_partout_38_api.py (both
     # deleted), the reads of test_bw_wish_progress_35_api.py and of test_bw_media_27.py. What is left of them is writes or M.11d operations.
     # test_bw_currency_39_api.py has no read of M.11b: its one test writes and reads exchange rates and settings (M.11c, M.11d).
+    # M.11c (issue #113) ported to API v2 the writes of test_bw_api_m3 and test_bw_api_m4 (both deleted: every test in them was a write of M.11c),
+    # test_bw_api_take_figure, test_bw_check_api_63, test_bw_core_fixes_api, test_bw_lists_43_api (its reads were M.11b's), test_bw_media_27 and
+    # test_bw_wish_progress_35_api (all deleted), and the settings half of test_bw_currency_39_api, the writes and CLI of test_bw_wishlists_api and
+    # the check and upload-cap tests of test_bw_review_followups. What is left of those three is exchange rates (M.11d), the MCP (M.11e) and the
+    # plan markers of sync and import (M.11d). Split out, none added: the session key test of test_bw_review_followups (tests/test_session_key.py).
+    # The M.11d files below that took `write` and `dbrows` from test_bw_api_m3 take `write` and `rows` of tests/api2.py when they are ported.
     # M.11: API v2 and clients: the v1 API, MCP and contract tests
     'tests/test_bw_api_47.py': 'M.11',
     'tests/test_bw_api_jobs_followup.py': 'M.11',
@@ -33,19 +38,12 @@ QUARANTINE = {
     'tests/test_bw_api_m1.py': 'M.11',
     'tests/test_bw_api_m1_contract.py': 'M.11',
     'tests/test_bw_api_m2.py': 'M.11',
-    'tests/test_bw_api_m3.py': 'M.11',
-    'tests/test_bw_api_m4.py': 'M.11',
     'tests/test_bw_api_m5.py': 'M.11',
     'tests/test_bw_api_m6.py': 'M.11',
     'tests/test_bw_api_m7.py': 'M.11',
     'tests/test_bw_api_parity.py': 'M.11',
-    'tests/test_bw_api_take_figure.py': 'M.11',
-    'tests/test_bw_check_api_63.py': 'M.11',
-    'tests/test_bw_core_fixes_api.py': 'M.11',
-    'tests/test_bw_media_27.py': 'M.11',
     'tests/test_bw_review_followups.py': 'M.11',
     'tests/test_bw_security.py': 'M.11',
     'tests/test_bw_wishlists_api.py': 'M.11',
     'tests/test_bw_currency_39_api.py': 'M.11',
-    'tests/test_bw_wish_progress_35_api.py': 'M.11',
 }

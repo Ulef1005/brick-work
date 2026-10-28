@@ -8144,7 +8144,7 @@ components:
           minItems: 1
           maxItems: 500
           items:
-            type: integer
+            type: string
         copy:
           type: boolean
           default: false
@@ -10176,7 +10176,10 @@ components:
         data:
           $ref: '#/components/schemas/Settings'
         event_id:
-          type: integer
+          type:
+          - integer
+          - 'null'
+          description: The event of the change; null when every value sent was the one already stored.
         undo_url:
           type: string
         idempotent_replay:
@@ -11043,11 +11046,13 @@ components:
           type: number
         source_priority:
           type: object
-          description: Source order per kind of data; the pictures order is the key `pictures` (design 6.8).
+          description: 'Source order per step and item kind: `{step: {kind or "*": [source ids]}}`, the steps being `pictures` (design 6.8), `metadata` and `market_price`. A step that is sent replaces that step; a step that is left out keeps its order.'
           additionalProperties:
-            type: array
-            items:
-              type: string
+            type: object
+            additionalProperties:
+              type: array
+              items:
+                type: string
         import_order: {}
         freshness: {}
         repair: {}
@@ -11076,11 +11081,13 @@ components:
           type: number
         source_priority:
           type: object
-          description: Source order per kind of data; the pictures order is the key `pictures` (design 6.8).
+          description: 'Source order per step and item kind: `{step: {kind or "*": [source ids]}}`, the steps being `pictures` (design 6.8), `metadata` and `market_price`. A step that is sent replaces that step; a step that is left out keeps its order.'
           additionalProperties:
-            type: array
-            items:
-              type: string
+            type: object
+            additionalProperties:
+              type: array
+              items:
+                type: string
         import_order: {}
         freshness: {}
         repair: {}
@@ -11532,6 +11539,9 @@ components:
         version:
           type: integer
           description: 'With rebrickable: the version; default the latest.'
+        remember:
+          type: boolean
+          description: Also use this list for new copies of the set (the set's part-list preference), in the same event.
     CatalogueStatus:
       type: object
       required:
@@ -11630,7 +11640,10 @@ components:
         data:
           $ref: '#/components/schemas/ItemLink'
         event_id:
-          type: integer
+          type:
+          - integer
+          - 'null'
+          description: The event of the change; null when the link was there as asked (the call is idempotent per link).
         undo_url:
           type: string
         idempotent_replay:

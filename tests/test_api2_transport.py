@@ -63,12 +63,14 @@ def test_scopes_come_from_the_contract(v2, pair):
     reader = stored_token(pair, ['read'], 'reader')
     writer = stored_token(pair, ['read', 'write'], 'writer')
     assert call(v2, '/me', token=reader).status_code == 200
-    # a write operation needs write: 403 for read, then 501 (not yet implemented) once the scope passes
+    # a write operation needs write: 403 for read, then (once the scope passes) the write itself, or 501 where its piece has not landed
     refused = call(v2, '/copies', 'post', token=reader, json={})
     assert refused.status_code == 403 and refused.json['code'] == 'forbidden'
-    assert call(v2, '/copies', 'post', token=writer, json={}).status_code == 501
+    assert call(v2, '/copies', 'post', token=writer, json={}).status_code == 422                       # M.11c: the body is checked
+    assert call(v2, '/jobs/drain', 'post', token=reader, json={}).status_code == 403
+    assert call(v2, '/jobs/drain', 'post', token=writer, json={}).status_code == 501
     # admin operations need admin, even to read
-    for method, path in (('get', '/tokens'), ('get', '/database/check'), ('patch', '/settings')):
+    for method, path in (('get', '/tokens'), ('get', '/database/check'), ('put', '/exchange-rates/EUR')):
         assert call(v2, path, method, token=writer, json={}).status_code == 403, path
         assert call(v2, path, method, json={}).status_code == 501, path
     # the scope of every operation is the one the contract names
@@ -127,5 +129,5 @@ def test_every_operation_of_a_later_piece_answers_501_with_its_piece(v2):
 
 def test_the_501_list_is_the_contract_minus_the_done_pieces():
     spec = operations()
-    assert {p for _, _, p in pending()} == {'M.11c', 'M.11d'}
-    assert len(spec) - len(pending()) == 66
+    assert {p for _, _, p in pending()} == {'M.11d'}
+    assert len(spec) - len(pending()) == 131

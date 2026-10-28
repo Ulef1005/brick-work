@@ -10,12 +10,13 @@ from flask import Blueprint, g, jsonify, request, send_file
 
 from ..api import transport
 from ..core import contract, errors, meta
+from ..store4.errors import Store4Error
 
 NAME = 'brickwork_api2'
 PREFIX = '/api/v2'
 HEALTH = NAME + '.get_health'
 OPEN = (HEALTH, NAME + '.get_openapi_yaml')
-DONE = ('M.11a', 'M.11b')                                       # the pieces whose operations are implemented; a piece adds itself here
+DONE = ('M.11a', 'M.11b', 'M.11c')                                    # the pieces whose operations are implemented; a piece adds itself here
 
 # (rule, method, view) collected by `route`, built into a blueprint by `blueprint()`. A view is named by its operationId.
 ROUTES = []
@@ -30,6 +31,11 @@ def route(rule, method='GET'):
 
 def database():
     return transport.database(HEALTH)
+
+
+def store4_problem(error):
+    from .writes import store4_problem as problem
+    return problem(error)
 
 
 @lru_cache(maxsize=4)
@@ -94,6 +100,7 @@ def blueprint():
     api.after_request(transport.private_response)
     api.teardown_request(transport.close_database)
     api.register_error_handler(Exception, transport.problem)
+    api.register_error_handler(Store4Error, store4_problem)          # a refusal of the 4.0 store is a problem, never a 500 (M.11c)
     taken = set()
     for rule, method, view in ROUTES:
         api.add_url_rule(rule, view.__name__, view, methods=[method])
@@ -118,6 +125,7 @@ def register(app):
     install_body_limits(app)
     from . import items  # noqa: F401 — the routes of M.11a
     from . import catalogue, copies, history, instructions, item_views, loose, places, prices, ranking, wishes  # noqa: F401 — the routes of M.11b
+    from . import write_collection, write_identity, write_money, write_where  # noqa: F401 — the routes of M.11c
     app.register_blueprint(blueprint())
     previous = {404: _previous(app, 404), 405: _previous(app, 405)}
 

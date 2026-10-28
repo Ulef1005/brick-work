@@ -128,17 +128,19 @@ def respond(data=None, status=200, etag=None, **members):
 
 # ---------- identity filters ----------
 
-def item_ids_for(db, provider, number, kind=None):
+def item_ids_for(db, provider, number, kind=None, color_id=None):
     """The live item ids a provider number stands for (any kind unless `kind` says), for the `number` filter of a list."""
     if provider not in lookup.PROVIDERS:
         raise errors.ValidationFailed('number is given with provider bricklink or rebrickable (a Brick Work id is not a number)')
     if kind is not None and kind not in lookup.KINDS:
         raise errors.ValidationFailed('kind is one of ' + ', '.join(lookup.KINDS))
     kinds = [kind] if kind else [k for k in lookup.KINDS if provider == 'bricklink' or k in lookup.REBRICKABLE_NAMESPACE]
+    if kind in ('instructions', 'box') and 'set' not in kinds:
+        kinds = kinds + ['set']                      # a booklet's or box's number is its set's, and the Workbench's gaps name the set
     found = set()
     for each in kinds:
         try:
-            found.update(lookup.find_items(db, provider, each, number))
+            found.update(lookup.find_items(db, provider, each, number, color_id))
         except ValueError:
             if kind:
                 raise errors.ValidationFailed(f'Rebrickable has no numbers for kind {kind}') from None
@@ -159,13 +161,13 @@ def identity_filter(db, args):
     """`(item ids or None, colour id or None)` from the `number`, `provider` and `color` filters. A filter that names nothing that exists
     is an empty set (the list is empty), not an error; a malformed colour is `422`."""
     provider = args.get('provider', DEFAULT_PROVIDER)
-    items = None
-    if args.get('number') not in (None, ''):
-        items = item_ids_for(db, provider, args['number'], args.get('kind'))
     color = None
     if args.get('color') not in (None, ''):
-        color = color_id_for(db, provider, args['color'])
-    elif args.get('provider') not in (None, '') and provider not in lookup.COLOR_PROVIDERS:
+        color = color_id_for(db, provider, args['color'])         # first: a number is read in the colour (scoped links win, design 3.2)
+    items = None
+    if args.get('number') not in (None, ''):
+        items = item_ids_for(db, provider, args['number'], args.get('kind'), color)
+    if color is None and args.get('provider') not in (None, '') and provider not in lookup.COLOR_PROVIDERS:
         raise errors.ValidationFailed('provider is bricklink, rebrickable or brickwork')
     return items, color
 

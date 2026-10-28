@@ -397,3 +397,17 @@ def test_a_merged_figure_id_redirects_to_the_figure_path(v2, coll, world):
     response = call(v2, f'/minifigures/{loser}')
     assert response.status_code == 307 and response.headers['Location'] == f'{PREFIX}/minifigures/{world.figure}'
     assert call(v2, f'/minifigures/{world.figure}').status_code == 200
+
+
+def test_owned_true_leaves_out_an_item_whose_stock_sums_to_zero(v2, coll, world):
+    empty = coll.local('part', 'Used up', born_key='used-up')
+    coll.add_stock('part', empty, colour=world.red, quantity=0, condition='used')
+    assert empty in ids(call(v2, '/items?owned=false&limit=200')) and empty not in ids(call(v2, '/items?owned=true&limit=200'))
+
+
+def test_an_all_digit_photo_id_is_still_a_photo(v2, coll, pair, world):
+    photo = '1' * 32
+    (pair.parent / 'data/images/own').mkdir(parents=True)
+    (pair.parent / 'data/images/own/digits.png').write_bytes(b'\x89PNG\r\n\x1a\ndigits')
+    coll.sql("INSERT INTO photo(id,item_id,local_path,created_at) VALUES(?,?,'data/images/own/digits.png','2026-10-26T12:00:00.000Z')", (photo, world.keep))
+    assert call(v2, f'/images/{photo}/content').data.endswith(b'digits')

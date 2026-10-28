@@ -365,3 +365,21 @@ def test_a_loose_only_figure_is_a_row_too(v2, coll, world):
     rows = {r['item']['id']: r for r in data(call(v2, '/minifigures'))}
     assert rows[local]['quantity'] == 3 and rows[local]['in_sets'] == 0 and rows[local]['year'] == 2020 and rows[local]['item']['unidentified'] is True
     assert ids_of(call(v2, '/minifigures?year=2020')) == [local]
+
+
+# --- review round (Codex findings, each a failing test first)
+def test_a_number_filter_in_a_colour_follows_the_scoped_link_precedence(v2, coll, world):
+    legs = coll.item('parts', '970c03')                       # 970c11 unscoped, 970c00 scoped to black (BrickLink 11)
+    black = coll.colour('0')
+    coll.add_stock('part', legs, colour=black, quantity=2, condition='used', note='held in black')
+    assert len(ids(call(v2, '/stock?number=970c00&color=11'))) == 1
+    assert ids(call(v2, '/stock?number=970c11&color=11')) == []        # in black the scoped link overrides the unscoped one
+    coll.add_stock('part', legs, colour=world.red, quantity=1, condition='used')
+    assert len(ids(call(v2, '/stock?number=970c11&color=5'))) == 1
+
+
+def test_a_booklet_or_box_number_finds_the_gaps_and_matches_of_its_set(v2, coll, world):
+    for kind in ('instructions', 'box'):
+        found = data(call(v2, f'/gaps?kind={kind}&number=1000-1'))
+        assert found and {g['target'] for g in found} == {kind} and {g['copy_id'] for g in found} == {world.copy_a, world.copy_b}
+    assert {m['target'] for m in data(call(v2, '/matches?kind=instructions&number=1000-1'))} == {'instructions'}

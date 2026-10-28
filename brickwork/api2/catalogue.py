@@ -213,5 +213,5 @@ def get_items(db):
     # A text is also matched against the BrickLink numbers, which are in the bodies; without one only the page needs them.
     book = bodies(db, items=[r['id'] for r in rows]) if args.get('q') else None
     records = [record(r['id'], r['born_key'] or '', kind=r['kind'], name=r['name'], year=r['year'], theme=r['theme_name'] or '', category=r['category_name'] or '',
-                      owned=r['id'] in owned, also=also(book.item(r['id'])) if book else '', _id=r['id']) for r in rows]
+                      owned=owned.get(r['id'], 0) > 0, also=also(book.item(r['id'])) if book else '', _id=r['id']) for r in rows]
     return page(records, args, build=lambda chosen: [bodies(db, items=[r['_id'] for r in chosen]).item(r['_id']) for r in chosen])

@@ -174,8 +174,8 @@ def get_items_by_id_images(db, id):
 @reading
 def get_images_by_id_content(db, id):
     arguments()
-    own = not id.isdigit()
-    if (own and not (len(id) == 32 and all(c in '0123456789abcdef' for c in id))) or (not own and len(id) > 18):
+    own = len(id) == 32 and all(c in '0123456789abcdef' for c in id)         # first: an all-digit photo id is still a photo
+    if not own and not (id.isdigit() and len(id) <= 18):
         raise errors.NotFound('No such image')
     if own:
         row = db.execute('SELECT local_path FROM main.photo WHERE id=? AND archived_at IS NULL', (id,)).fetchone()

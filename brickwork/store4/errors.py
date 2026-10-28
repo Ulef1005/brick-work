@@ -99,7 +99,7 @@ def _redact_known(text, known):
         for form in absolute:
             forms[form] = (short, False)
         if not path.is_absolute():
-            forms.setdefault(str(path), (short, True))                  # as written: only as the start of a longer path
+            forms.setdefault(str(path), (short, len(path.parts) == 1))  # as written; a bare top folder ("data") only as the start of a longer path
     if not forms:
         return text
     ordered = sorted(forms, key=len, reverse=True)

@@ -647,3 +647,16 @@ def test_p2_every_branch_of_the_exception_chain_is_walked_for_sqlite():
     except Store4Error as exc:
         assert isinstance(exc.__cause__, ValueError) and isinstance(exc.__context__, sqlite3.Error)
         assert public_text(exc) == GENERIC
+
+
+def test_q1_exact_relative_known_paths_are_redacted_like_absolute_ones(tmp_path, monkeypatch):
+    from pathlib import Path
+    from brickwork.store4.errors import Store4Error, public_text
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / 'data' / 'catalogue-src' / 'rebrickable').mkdir(parents=True)
+    (tmp_path / 'data' / 'brickwork.db').write_text('')
+    known = [Path('data'), Path('data/catalogue-src/rebrickable'), Path('data/brickwork.db')]
+    out = public_text(Store4Error('another download is running on data/catalogue-src/rebrickable (busy); the file data/brickwork.db is fine'), known=known)
+    assert 'catalogue-src' not in out and 'rebrickable' not in out and 'data/' not in out
+    assert 'the data folder (busy)' in out and 'brickwork.db is fine' in out
+    assert public_text(Store4Error('all the data is kept'), known=known) == 'all the data is kept'          # prose is still left alone

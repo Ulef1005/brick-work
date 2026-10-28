@@ -92,3 +92,54 @@ def test_a_copy_on_bricklink_takes_a_newer_fetched_list(db, key):
     assert request(db, cid)['switched'] is True and copy_row(db, cid)[2] == second
     with pytest.raises(copies.NothingToSwitch):
         request(db, cid)
+
+
+# ---------- Codex review 2: Undo restores the stored preference as it was; a pending request keeps its old value ----------
+
+def test_undo_restores_a_preference_the_catalogue_no_longer_has(db, key):
+    from brickwork.core import undo
+    cid = add(db, {'source': 'rebrickable', 'version': 2})['copy']['id']
+    with db:
+        db.execute("INSERT INTO set_preference(item_id, inventory_source, inventory_version, decided_at) VALUES(?, 'rebrickable', 99, '2026-10-25T00:00:00Z')", (SET,))
+    receipt = copies.switch_part_list(db, cid, {'source': 'rebrickable', 'version': 1}, via='cli', remember=True)
+    assert copies.part_list_preference(db, SET) == {'source': 'rebrickable', 'version': 1}
+    undo.undo_event(db, receipt['event_id'], via='cli')                                    # version 99 left the catalogue; Undo must not mind
+    assert copies.part_list_preference(db, SET) == {'source': 'rebrickable', 'version': 99} and copy_row(db, cid)[1] == 2
+
+
+def test_a_pending_request_keeps_the_old_preference_for_the_switch_that_settles_it(db, key):
+    from brickwork.core import undo
+    copies.set_part_list_preference(db, SET, {'source': 'rebrickable', 'version': 1}, via='cli')
+    cid = add(db)['copy']['id']
+    pending.request_bricklink(db, cid, via='cli', remember=True)
+    assert copies.part_list_preference(db, SET) == {'source': 'bricklink', 'version': None}
+    r = run(db, job_of(db, cid), ok())
+    event = [s for s in r['settled'] if s['copy_id'] == cid][0]['event_id']
+    assert copy_row(db, cid)[0] == 'bricklink'
+    undo.undo_event(db, event, via='cli')                                                  # one Undo takes the switch and the preference back
+    assert copy_row(db, cid)[0] == 'rebrickable' and copies.part_list_preference(db, SET) == {'source': 'rebrickable', 'version': 1}
+
+
+def test_accepting_a_ready_offer_carries_the_old_preference_too(db, key):
+    from brickwork.core import undo
+    cid = add(db)['copy']['id']
+    with db:
+        db.execute('UPDATE copy_part SET checked=1 WHERE copy_id=? AND retired_at IS NULL AND is_spare=0 AND copy_figure_id IS NULL', (cid,))
+    pending.request_bricklink(db, cid, via='cli', remember=True)
+    run(db, job_of(db, cid), ok())                                                         # marked: stays pending, offered
+    receipt = pending.accept_pending(db, cid, via='cli')
+    undo.undo_event(db, receipt['event_id'], via='cli')
+    assert copies.part_list_preference(db, SET) is None
+
+
+def test_cancelling_a_pending_request_puts_the_old_preference_back(db, key):
+    copies.set_part_list_preference(db, SET, {'source': 'rebrickable', 'version': 1}, via='cli')
+    cid = add(db)['copy']['id']
+    pending.request_bricklink(db, cid, via='cli', remember=True)
+    pending.cancel_pending(db, cid, via='cli')
+    assert copies.part_list_preference(db, SET) == {'source': 'rebrickable', 'version': 1} and copy_row(db, cid)[3] is None
+    other = add(db)['copy']['id']                                                          # a preference changed since is left alone
+    pending.request_bricklink(db, other, via='cli', remember=True)
+    copies.set_part_list_preference(db, SET, {'source': 'rebrickable', 'version': 2}, via='cli')
+    pending.cancel_pending(db, other, via='cli')
+    assert copies.part_list_preference(db, SET) == {'source': 'rebrickable', 'version': 2}

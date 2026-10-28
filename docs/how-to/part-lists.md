@@ -40,7 +40,7 @@ If BrickLink's list for the set was fetched before, the copy switches at once. I
 
 - The card says what it is waiting for: the job running, today's BrickLink budget, or the network.
 - When the list arrives, a copy with no checks or marks switches by itself. A copy with marks stays pending and offers **Switch now** with what would not carry over.
-- **Cancel** stops waiting and leaves the copy on its Rebrickable list.
+- **Cancel** stops waiting and leaves the copy on its Rebrickable list. If you ticked **Use this for new copies of this set** with the request, Cancel puts the set's earlier choice back (unless you changed it since). When the list arrives and the copy switches, one **Undo** takes back the switch and the remembered choice together.
 
 Without a BrickLink key the choice is greyed with "needs a BrickLink key".
 

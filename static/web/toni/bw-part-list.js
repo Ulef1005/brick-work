@@ -28,7 +28,11 @@
    const chosen = radios.find(r => r.checked);
    form.querySelectorAll('[data-bc-change]').forEach(s => { s.hidden = !chosen || s.dataset.bcChange !== chosen.value; });
    const remember = form.querySelector('[data-bc-preference]');
-   if (remember) remember.hidden = !chosen || chosen.dataset.remember === '0';        // a fetched list cannot be remembered for new copies
+   if (remember) {                                                                      // a fetched list cannot be remembered for new copies
+    remember.hidden = !chosen || chosen.dataset.remember === '0';
+    const box = form.querySelector('[name=preference]');
+    if (remember.hidden && box) box.checked = false;                                   // a hidden box is never sent ticked
+   }
    const go = form.querySelector('button[type=submit]');
    if (go) go.disabled = !chosen;
   };
@@ -43,7 +47,8 @@
    buttons.forEach(b => { b.disabled = true; });
    if (status) status.textContent = 'Saving';
    try {
-    done(await send('part-list', {copy_id: form.dataset.copy, choice: chosen.value, preference: form.querySelector('[name=preference]').checked}));
+    const label = form.querySelector('[data-bc-preference]'), box = form.querySelector('[name=preference]');
+    done(await send('part-list', {copy_id: form.dataset.copy, choice: chosen.value, preference: Boolean(box && box.checked && !(label && label.hidden))}));
    } catch (error) {
     if (status) status.textContent = error.message + ' · Try again';
     buttons.forEach(b => { b.disabled = false; });

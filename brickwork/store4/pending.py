@@ -10,6 +10,8 @@ Nothing is added to the schema: the state is read from the copy and its job (Ulf
 
 Every write is its own transaction with one event on the copy: `part_list_switch` (receipt `trigger`), `pending_failed` or
 `pending_cancel`."""
+import json
+
 from . import copies, identity, jobs
 from .audit import Events, transaction
 from .connect import now
@@ -63,6 +65,16 @@ def pending_offer(db, copy_id):
     return {'state': 'waiting', 'job': job}
 
 
+def pending_preference(db, copy):
+    """The `{'old', 'new'}` preference a pending request remembered for this copy's waiting job, or None."""
+    for row in db.execute("""SELECT new_value FROM main.event WHERE entity_kind='copy' AND entity_id=? AND field='pending_request'
+                           ORDER BY id DESC""", (copy['id'],)):
+        value = json.loads(row['new_value'])
+        if value.get('pending_job_id') == copy['pending_job_id']:
+            return value.get('preference')
+    return None
+
+
 def accept_pending(db, copy_id, *, via, actor=None):
     """The user accepts the offer: the M.6b switch to BrickLink's fetched list, receipt `trigger` `{'accepted': True, 'job_id'}`.
     Refused (`NotPending`, `NotReady`) unless the copy is pending and its job is done with a list stored. Returns the receipt."""
@@ -81,7 +93,7 @@ def accept_pending_in(db, copy_id, *, via, actor=None):
     if job['state'] != 'done' or _fetched(db, copy['item_id']) is None:
         raise NotReady(f'the BrickLink list for copy {copy_id} is not fetched yet (job {job["id"]} is {job["state"]})')
     return copies.switch_part_list_in(db, copy_id, BRICKLINK, via=via, actor=actor, while_pending_on=job['id'],
-                                      trigger={'accepted': True, 'job_id': job['id']})
+                                      trigger={'accepted': True, 'job_id': job['id']}, carry_preference=pending_preference(db, copy))
 
 
 def request_bricklink(db, copy_id, *, via, actor=None, remember=False):
@@ -115,11 +127,14 @@ def request_bricklink_in(db, copy_id, *, via, actor=None, remember=False):
     number = db.execute('SELECT born_key FROM main.item WHERE id=?', (copy['item_id'],)).fetchone()['born_key']
     wanted = copies.remembered_choice(db, copy['item_id'], BRICKLINK) if remember else None
     job, created = jobs.queue_in(db, 'bricklink_subsets', item_id=copy['item_id'], payload=number, via=via, actor=actor)
-    if remember:
-        copies.set_part_list_preference_in(db, copy['item_id'], wanted, via=via, actor=actor)
+    kept = None
+    if remember:                                           # the old value stays with the request: the settling switch carries it, Cancel restores it
+        old_preference = copies.part_list_preference(db, copy['item_id'])
+        kept = {'old': old_preference, 'new': copies.set_part_list_preference_in(db, copy['item_id'], wanted, via=via, actor=actor)}
     db.execute('UPDATE main.copy SET inventory_pending=\'bricklink\', pending_job_id=?, updated_at=? WHERE id=?', (job, now(), copy_id))
     Events(db, via, actor).write('copy', copy_id, 'pending_request', old={'inventory_pending': None, 'pending_job_id': None},
-                                 new={'inventory_pending': 'bricklink', 'pending_job_id': job, 'job_reused': not created})
+                                 new={'inventory_pending': 'bricklink', 'pending_job_id': job, 'job_reused': not created,
+                                      **({'preference': kept} if kept else {})})
     return {'switched': False, 'pending': {'source': 'bricklink', 'job_id': job, 'job_reused': not created}}
 
 
@@ -147,6 +162,10 @@ def _release(db, copy_id, field, via, actor, *, why, job_id=None):
     if copy['inventory_pending'] is None or (job_id is not None and copy['pending_job_id'] != job_id):
         raise NotPending(f'copy {copy_id} is not waiting for a BrickLink list' + (f' from job {job_id}' if job_id else ''))
     job = _job(db, copy['pending_job_id'])
+    if field == CANCEL:                                    # cancelling puts back the preference the request remembered (unless it was changed since)
+        kept = pending_preference(db, copy)
+        if kept and copies.part_list_preference(db, copy['item_id']) == kept['new']:
+            copies.restore_part_list_preference_in(db, copy['item_id'], kept['old'], via=via, actor=actor)
     db.execute('UPDATE main.copy SET inventory_pending=NULL, pending_job_id=NULL, updated_at=? WHERE id=?', (now(), copy_id))
     new = {'job_id': job['id'], 'job_state': job['state'], 'inventory_source': copy['inventory_source'],
            'inventory_version': copy['inventory_version']}
@@ -181,7 +200,8 @@ def settle_pending(db, job_id=None, *, via, actor=None):
         if job['state'] == 'done' and _fetched(db, copy['item_id']) is not None:
             try:
                 receipt = copies.switch_part_list(db, copy_id, BRICKLINK, via=via, actor=actor, unless_marked=True,
-                                                  while_pending_on=job['id'], trigger={'automatic': True, 'job_id': job['id']})
+                                                  while_pending_on=job['id'], trigger={'automatic': True, 'job_id': job['id']},
+                                                  carry_preference=pending_preference(db, copy))
             except copies.PendingChanged:                           # cancelled or settled by another connection meanwhile
                 continue
             except copies.CopyMarked:

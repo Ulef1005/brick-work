@@ -451,7 +451,7 @@ def has_marks(db, copy_id):
         (copy_id, copy_id)).fetchone() is not None
 
 
-def switch_part_list(db, copy_id, choice, *, via, actor=None, trigger=None, unless_marked=False, while_pending_on=None, remember=False):
+def switch_part_list(db, copy_id, choice, *, via, actor=None, trigger=None, unless_marked=False, while_pending_on=None, remember=False, carry_preference=None):
     """Design 4.4: move a copy to another part list in place, in one transaction under ONE receipt event (`copy`, the copy id,
     field `part_list_switch`, `new_value` = the receipt). Nothing is deleted: rows of lines that left the list get `retired_at`,
     rows of lines that came back are re-activated under the same id, so Take/Give, allocation and check-session references stay
@@ -467,10 +467,11 @@ def switch_part_list(db, copy_id, choice, *, via, actor=None, trigger=None, unle
     waits on that job, so a cancel committed meanwhile is not overridden."""
     with transaction(db, 'switching a part list'):
         return switch_part_list_in(db, copy_id, choice, via=via, actor=actor, trigger=trigger, unless_marked=unless_marked, while_pending_on=while_pending_on,
-                                   remember=remember)
+                                   remember=remember, carry_preference=carry_preference)
 
 
-def switch_part_list_in(db, copy_id, choice, *, via, actor=None, trigger=None, unless_marked=False, while_pending_on=None, remember=False):
+def switch_part_list_in(db, copy_id, choice, *, via, actor=None, trigger=None, unless_marked=False, while_pending_on=None, remember=False,
+                        carry_preference=None):
     """Design 4.4: move a copy to another part list in place, in one transaction under ONE receipt event (`copy`, the copy id,
     field `part_list_switch`, `new_value` = the receipt). Nothing is deleted: rows of lines that left the list get `retired_at`,
     rows of lines that came back are re-activated under the same id, so Take/Give, allocation and check-session references stay
@@ -485,7 +486,8 @@ def switch_part_list_in(db, copy_id, choice, *, via, actor=None, trigger=None, u
     `while_pending_on` (a job id: the automatic switch and the accepted offer) refuses with `PendingChanged` unless the copy still
     waits on that job, so a cancel committed meanwhile is not overridden. `remember` also makes this list the set's `set_preference`
     ("use this for new copies of this set") in the same transaction; a list the preference cannot hold is refused before anything is
-    written, and the receipt carries the old and new preference so Undo puts it back with the switch.
+    written, and the receipt carries the old and new preference so Undo puts it back with the switch. `carry_preference` (the settling
+    switch of a pending request that remembered BrickLink) puts that already written `{'old', 'new'}` in the receipt without writing again.
 
     `switch_part_list` inside the caller's open write transaction (it opens none and commits nothing)."""
     if not db.in_transaction:
@@ -548,6 +550,8 @@ def switch_part_list_in(db, copy_id, choice, *, via, actor=None, trigger=None, u
     if remember:
         old_preference = part_list_preference(db, copy['item_id'])
         receipt['preference'] = {'old': old_preference, 'new': set_part_list_preference_in(db, copy['item_id'], wanted_preference, via=via, actor=actor)}
+    elif carry_preference:
+        receipt['preference'] = carry_preference
     if trigger:
         receipt['trigger'] = trigger
     Events(db, via, actor).write('copy', copy_id, FIELD, new=receipt)
@@ -637,7 +641,7 @@ def undo_switch_in(db, event_id, *, via, actor=None):
         db.execute('UPDATE main.copy SET completeness=? WHERE id=?', (completeness, copy_id))
     remembered = receipt.get('preference')
     if remembered and remembered['old'] != remembered['new'] and part_list_preference(db, copy['item_id']) == remembered['new']:
-        set_part_list_preference_in(db, copy['item_id'], remembered['old'], via=via, actor=actor)              # the switch's preference goes with it
+        restore_part_list_preference_in(db, copy['item_id'], remembered['old'], via=via, actor=actor)             # the switch's preference goes with it
     Events(db, via, actor).write('copy', copy_id, UNDO_FIELD, new={'undoes': event_id, 'counts': receipt['counts']})
     undo_id = db.execute('SELECT last_insert_rowid()').fetchone()[0]
     db.execute('INSERT INTO main.event_undo(event_id, undo_event_id) VALUES(?, ?)', (event_id, undo_id))
@@ -659,6 +663,22 @@ def remembered_choice(db, set_item_id, choice):
         newest = any(v['is_latest'] and v['version'] == choice.get('version') for v in _versions(db, set_item_id))
         return {'source': 'rebrickable', 'version': None if newest else choice.get('version')}
     raise BadPreference('this list cannot be remembered for new copies of the set')
+
+
+def restore_part_list_preference_in(db, set_item_id, stored, *, via, actor=None):
+    """Put a stored preference (`{'source', 'version'}` or None) back as it was, for Undo and Cancel: it is not checked against today's
+    catalogue (a version may have left it since), one `set_preference` event. Writes nothing when it already is that."""
+    if not db.in_transaction:
+        raise Store4Error('restore_part_list_preference_in needs the caller\'s open write transaction')
+    current = part_list_preference(db, set_item_id)
+    if current == stored:
+        return
+    if stored is None:
+        db.execute('DELETE FROM main.set_preference WHERE item_id=?', (set_item_id,))
+    else:
+        db.execute('INSERT OR REPLACE INTO main.set_preference(item_id, inventory_source, inventory_version, decided_at) VALUES(?, ?, ?, ?)',
+                   (set_item_id, stored['source'], stored['version'], now()))
+    Events(db, via, actor).write('set_preference', set_item_id, 'preference', old=current, new=stored)
 
 
 def part_list_preference(db, set_item_id):

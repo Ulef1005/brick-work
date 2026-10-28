@@ -548,8 +548,7 @@ def switch_part_list_in(db, copy_id, choice, *, via, actor=None, trigger=None, u
                'parts': {'columns': LINE_COLUMNS, 'ops': line_ops},
                'not_carried_over': plan['not_carried_over']}
     if remember:
-        old_preference = part_list_preference(db, copy['item_id'])
-        receipt['preference'] = {'old': old_preference, 'new': set_part_list_preference_in(db, copy['item_id'], wanted_preference, via=via, actor=actor)}
+        receipt['preference'] = remember_part_list_preference_in(db, copy['item_id'], wanted_preference, via=via, actor=actor)
     elif carry_preference:
         receipt['preference'] = carry_preference
     if trigger:
@@ -640,7 +639,7 @@ def undo_switch_in(db, event_id, *, via, actor=None):
     if completeness is not None:
         db.execute('UPDATE main.copy SET completeness=? WHERE id=?', (completeness, copy_id))
     remembered = receipt.get('preference')
-    if remembered and remembered['old'] != remembered['new'] and part_list_preference(db, copy['item_id']) == remembered['new']:
+    if remembered and remembered['old'] != remembered['new'] and preference_still_ours(db, copy['item_id'], remembered):
         restore_part_list_preference_in(db, copy['item_id'], remembered['old'], via=via, actor=actor)             # the switch's preference goes with it
     Events(db, via, actor).write('copy', copy_id, UNDO_FIELD, new={'undoes': event_id, 'counts': receipt['counts']})
     undo_id = db.execute('SELECT last_insert_rowid()').fetchone()[0]
@@ -663,6 +662,29 @@ def remembered_choice(db, set_item_id, choice):
         newest = any(v['is_latest'] and v['version'] == choice.get('version') for v in _versions(db, set_item_id))
         return {'source': 'rebrickable', 'version': None if newest else choice.get('version')}
     raise BadPreference('this list cannot be remembered for new copies of the set')
+
+
+def last_preference_event(db, set_item_id):
+    """The id of the latest `set_preference` event of the set, None when it has none."""
+    row = db.execute("SELECT max(id) FROM main.event WHERE entity_kind='set_preference' AND entity_id=?", (str(set_item_id),)).fetchone()
+    return row[0]
+
+
+def remember_part_list_preference_in(db, set_item_id, choice, *, via, actor=None):
+    """`set_part_list_preference_in` that returns the record Undo and Cancel decide by: `{'old', 'new', 'event_id'}`, `event_id` the
+    `set_preference` event it wrote (None when it was already that and wrote nothing)."""
+    old, before = part_list_preference(db, set_item_id), last_preference_event(db, set_item_id)
+    new = set_part_list_preference_in(db, set_item_id, choice, via=via, actor=actor)
+    after = last_preference_event(db, set_item_id)
+    return {'old': old, 'new': new, 'event_id': after if after != before else None}
+
+
+def preference_still_ours(db, set_item_id, record):
+    """Whether nobody has decided the set's preference since `record` (from `remember_part_list_preference_in`): the latest event is the
+    one it wrote. A record from before the event id was kept falls back to comparing the value."""
+    if 'event_id' in record:
+        return record['event_id'] is not None and last_preference_event(db, set_item_id) == record['event_id']
+    return part_list_preference(db, set_item_id) == record['new']
 
 
 def restore_part_list_preference_in(db, set_item_id, stored, *, via, actor=None):

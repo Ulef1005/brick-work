@@ -129,8 +129,7 @@ def request_bricklink_in(db, copy_id, *, via, actor=None, remember=False):
     job, created = jobs.queue_in(db, 'bricklink_subsets', item_id=copy['item_id'], payload=number, via=via, actor=actor)
     kept = None
     if remember:                                           # the old value stays with the request: the settling switch carries it, Cancel restores it
-        old_preference = copies.part_list_preference(db, copy['item_id'])
-        kept = {'old': old_preference, 'new': copies.set_part_list_preference_in(db, copy['item_id'], wanted, via=via, actor=actor)}
+        kept = copies.remember_part_list_preference_in(db, copy['item_id'], wanted, via=via, actor=actor)
     db.execute('UPDATE main.copy SET inventory_pending=\'bricklink\', pending_job_id=?, updated_at=? WHERE id=?', (job, now(), copy_id))
     Events(db, via, actor).write('copy', copy_id, 'pending_request', old={'inventory_pending': None, 'pending_job_id': None},
                                  new={'inventory_pending': 'bricklink', 'pending_job_id': job, 'job_reused': not created,
@@ -164,7 +163,7 @@ def _release(db, copy_id, field, via, actor, *, why, job_id=None):
     job = _job(db, copy['pending_job_id'])
     if field == CANCEL:                                    # cancelling puts back the preference the request remembered (unless it was changed since)
         kept = pending_preference(db, copy)
-        if kept and copies.part_list_preference(db, copy['item_id']) == kept['new']:
+        if kept and copies.preference_still_ours(db, copy['item_id'], kept):
             copies.restore_part_list_preference_in(db, copy['item_id'], kept['old'], via=via, actor=actor)
     db.execute('UPDATE main.copy SET inventory_pending=NULL, pending_job_id=NULL, updated_at=? WHERE id=?', (now(), copy_id))
     new = {'job_id': job['id'], 'job_state': job['state'], 'inventory_source': copy['inventory_source'],

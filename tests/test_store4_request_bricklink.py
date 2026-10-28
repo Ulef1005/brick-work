@@ -69,7 +69,8 @@ def test_remembering_rides_the_switch_and_its_undo_and_is_refused_before_a_write
     cid = add(db, {'source': 'rebrickable', 'version': 2})['copy']['id']
     receipt = copies.switch_part_list(db, cid, {'source': 'rebrickable', 'version': 1}, via='cli', remember=True)
     assert copies.part_list_preference(db, SET) == {'source': 'rebrickable', 'version': 1}
-    assert receipt['preference'] == {'old': None, 'new': {'source': 'rebrickable', 'version': 1}}
+    assert receipt['preference']['old'] is None and receipt['preference']['new'] == {'source': 'rebrickable', 'version': 1}
+    assert receipt['preference']['event_id'] == copies.last_preference_event(db, SET)
     undo.undo_event(db, receipt['event_id'], via='cli')
     assert copies.part_list_preference(db, SET) is None and copy_row(db, cid)[1] == 2
     with pytest.raises(copies.BadPreference):
@@ -143,3 +144,19 @@ def test_cancelling_a_pending_request_puts_the_old_preference_back(db, key):
     copies.set_part_list_preference(db, SET, {'source': 'rebrickable', 'version': 2}, via='cli')
     pending.cancel_pending(db, other, via='cli')
     assert copies.part_list_preference(db, SET) == {'source': 'rebrickable', 'version': 2}
+
+
+def test_cancel_knows_a_later_preference_decision_even_when_it_lands_on_the_same_value(db, key):
+    from brickwork.core import undo
+    cid = add(db)['copy']['id']
+    pending.request_bricklink(db, cid, via='cli', remember=True)                           # none -> BrickLink, by the request
+    copies.set_part_list_preference(db, SET, {'source': 'rebrickable', 'version': 1}, via='cli')
+    copies.set_part_list_preference(db, SET, {'source': 'bricklink'}, via='cli')           # the user's own, later decision
+    pending.cancel_pending(db, cid, via='cli')
+    assert copies.part_list_preference(db, SET) == {'source': 'bricklink', 'version': None}
+    other = add(db)['copy']['id']                                                          # the same for the undo of a remembering switch
+    receipt = copies.switch_part_list(db, other, {'source': 'rebrickable', 'version': 1}, via='cli', remember=True)
+    copies.set_part_list_preference(db, SET, {'source': 'rebrickable', 'version': 2}, via='cli')
+    copies.set_part_list_preference(db, SET, {'source': 'rebrickable', 'version': 1}, via='cli')
+    undo.undo_event(db, receipt['event_id'], via='cli')
+    assert copies.part_list_preference(db, SET) == {'source': 'rebrickable', 'version': 1}

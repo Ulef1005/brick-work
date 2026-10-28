@@ -61,21 +61,21 @@ def test_value_audit_and_rollback(coll):
 
 def test_value_changes_undo_and_system_values_stay(coll, world):
     db = coll.db
-    event = admin.value_write(db, 'owners', 'add', name='Ulf')
+    event = admin.value_write(db, 'owners', 'add', name='Robin')
     owner = admin.value_rows(db, 'owners')[0]
-    assert owner['name'] == 'Ulf'
-    rename = admin.value_write(db, 'owners', 'rename', identifier=owner['id'], name='Sandra')
-    assert admin.value_rows(db, 'owners')[0]['name'] == 'Sandra'
+    assert owner['name'] == 'Robin'
+    rename = admin.value_write(db, 'owners', 'rename', identifier=owner['id'], name='Alex')
+    assert admin.value_rows(db, 'owners')[0]['name'] == 'Alex'
     assert undo.undo_event(db, rename)['already_undone'] is False
-    assert admin.value_rows(db, 'owners')[0]['name'] == 'Ulf'
+    assert admin.value_rows(db, 'owners')[0]['name'] == 'Robin'
     with pytest.raises(ValueError, match='Confirm'):
         admin.value_write(db, 'owners', 'delete', identifier=owner['id'])
     gone = admin.value_write(db, 'owners', 'delete', identifier=owner['id'], confirmed=True)
     assert admin.value_rows(db, 'owners') == []
     undo.undo_event(db, gone)
-    assert [r['name'] for r in admin.value_rows(db, 'owners')] == ['Ulf']
+    assert [r['name'] for r in admin.value_rows(db, 'owners')] == ['Robin']
     undo.undo_event(db, event)                                                        # the creation is archived, never deleted
-    assert admin.value_rows(db, 'owners') == [] and db.execute("SELECT count(*) FROM flag WHERE name='Ulf'").fetchone()[0] == 1
+    assert admin.value_rows(db, 'owners') == [] and db.execute("SELECT count(*) FROM flag WHERE name='Robin'").fetchone()[0] == 1
     # A flag is counted by the copies, loose stock and wishes that carry it.
     tag = next(r for r in admin.value_rows(db, 'tags') if r['name'] == 'collection')
     assert tag['count'] == 1
@@ -201,8 +201,8 @@ def test_queue_refresh_queues_each_item_once(coll, world):
 
 
 def test_write_routes_and_export(client, coll, world):
-    assert post(client, 'values', group='owners', action='add', name='Ulf').status_code == 200
-    assert [r['name'] for r in admin.value_rows(coll.db, 'owners')] == ['Ulf']
+    assert post(client, 'values', group='owners', action='add', name='Robin').status_code == 200
+    assert [r['name'] for r in admin.value_rows(coll.db, 'owners')] == ['Robin']
     response = client.get('/manage/database/export')
     assert response.status_code == 200 and response.data.startswith(b'SQLite format 3')
     with closing(sqlite3.connect(':memory:')) as snapshot:

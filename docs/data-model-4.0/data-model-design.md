@@ -818,7 +818,7 @@ All of Q1–Q23 (c101) and A–F with the Q5, Q16, settings and BrickStore amend
 
 ## 12. Tests run in SQLite
 
-All in `/private/tmp/claude-502/-Users-adminuser-Workspace-ai-wiki/541107ab-907a-414d-ad52-0e812e714994/scratchpad/revise-4.0/`, SQLite 3.54.1 through python3 `sqlite3`, with `PRAGMA foreign_keys=ON`. Each half of `schema-4.0.sql` was loaded into its own database.
+All in a scratch folder outside the repository, SQLite 3.54.1 through python3 `sqlite3`, with `PRAGMA foreign_keys=ON`. Each half of `schema-4.0.sql` was loaded into its own database.
 
 | Script | What it covers | Result |
 |---|---|---|

@@ -235,3 +235,40 @@ def test_m10b6_the_unidentified_item_explains_and_offers_two_ways(coll, client, 
     assert soup.select_one('[data-identity-module=unidentified] input[name=number]') and soup.select_one('[data-identity-module=unidentified] a[href$="/merge"]')
     assert post(client, world.mystery, action='link', number='3001').status_code == 302
     assert page(client, f'/collection/item/{world.mystery}').select_one('[data-identity-module=unidentified]') is None
+
+
+# ---- review fixes (Codex, main..m10/frames-b)
+
+def _sheet(coll, world):
+    sheet = coll.item('parts', '003402')
+    coll.add_stock('part', sheet, colour=world.white, quantity=1)
+    return sheet, {r['provider_key']: r['id'] for r in coll.db.execute("SELECT id, provider_key FROM main.item_link WHERE item_id=? AND provider='bricklink'", (sheet,))}
+
+
+def test_review_1_saving_the_same_one_colour_choice_twice_keeps_it_preferred(coll, world):
+    sheet, ids = _sheet(coll, world)
+    identity_admin.set_preferred(coll.db, ids['311.1stk01'], world.white)
+    identity_admin.set_preferred(coll.db, ids['311.1stk01'], world.white)
+    rows = coll.db.execute('SELECT provider_key, preferred FROM main.item_link WHERE item_id=? AND color_id=?', (sheet, world.white)).fetchall()
+    assert [tuple(r) for r in rows] == [('311.1stk01', 1)]
+
+
+def test_review_2_a_scoped_row_that_was_only_a_guess_becomes_the_users_choice(coll, world):
+    sheet, ids = _sheet(coll, world)
+    coll.link(sheet, '311.1stk01', kind='P', colour=world.white, status='to_check')
+    identity_admin.set_preferred(coll.db, ids['311.1stk01'], world.white)
+    row = coll.db.execute('SELECT status, method, origin, preferred FROM main.item_link WHERE item_id=? AND color_id=?', (sheet, world.white)).fetchone()
+    assert tuple(row) == ('manual', 'user', 'user', 1)
+    from brickwork.store4 import identity
+    assert identity.resolve(coll.db, sheet, world.white)[1] == '311.1stk01'
+
+
+def test_review_3_the_merge_search_finds_items_by_name(coll, client, world):
+    local = coll.local('gear', 'Mystery bag')
+    gear = coll.local('gear', 'Mystery bag, labelled', born_key='g-77')
+    soup = page(client, f'/collection/item/{local}/merge?q=labelled')
+    assert [a.select_one('strong').get_text() for a in soup.select('.bi-result')] == ['Mystery bag, labelled']
+    soup = page(client, f'/collection/item/{world.local_part}/merge?q=Brick')
+    names = [a.select_one('strong').get_text() for a in soup.select('.bi-result')]
+    assert 'Brick 2 x 4' in names and 'Only on BrickLink' not in names
+    assert gear

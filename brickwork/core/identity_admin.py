@@ -20,7 +20,7 @@ from ..store4 import merge as moves
 from ..store4.connect import has_catalogue, now
 from ..store4.errors import MergeRefused
 from ..store4.rowlog import RowLog
-from . import collection, errors, items
+from . import add, collection, errors, items
 from . import undo as undoing
 from .admin import OPERATION_KEY, origin
 from .transaction import transaction
@@ -294,13 +294,16 @@ def set_preferred(db, link_id, color_id=None, item_id=None):
         if scope is not None and not db.execute('SELECT 1 FROM main.color WHERE id=?', (scope,)).fetchone():
             raise errors.ValidationFailed('Unknown colour')
         same = [r for r in log.select('item_link', 'item_id=? AND provider=? AND coalesce(color_id,0)=?', (link['item_id'], link['provider'], scope or 0))]
-        for other in same:
-            if other['preferred'] and other['id'] != link_id:
-                log.update('item_link', other, preferred=0)
         target = next((r for r in same if r['provider_kind'] == link['provider_kind'] and r['provider_key'] == link['provider_key']), None)
+        for other in same:
+            if other['preferred'] and (target is None or other['id'] != target['id']):
+                log.update('item_link', other, preferred=0)
         if target is not None:
-            if not target['preferred']:
-                log.update('item_link', target, preferred=1, decided_at=now(), decided_by='user')
+            sets = {} if target['preferred'] else dict(preferred=1, decided_at=now(), decided_by='user')
+            if scope is not None and (target['status'] != 'manual' or target['origin'] != 'user'):
+                sets.update(status='manual', method='user', origin='user', decided_at=now(), decided_by='user')       # the choice is the user's, as an insert's is
+            if sets:
+                log.update('item_link', target, **sets)
         else:
             log.insert('item_link', item_id=link['item_id'], color_id=scope, provider=link['provider'], provider_kind=link['provider_kind'],
                        provider_key=link['provider_key'], status='manual', method='user', origin='user', preferred=1, evidence_digest=None,
@@ -575,7 +578,11 @@ def survivors(db, loser, text, limit=12):
         raise errors.NotFound(f'No item {loser}')
     text = (text or '').strip()
     if text:
-        found = [dict(item_id=f['item_id'], how=f['matched_by']) for f in items.find(db, row['kind'], text, limit=limit + 1) if f['item_id'] != loser][:limit]
+        if has_catalogue(db):                                       # the Add search: numbers (both catalogues) and names, local items included
+            hits = add.search(db, row['kind'], text)['items']
+            found = [dict(item_id=h['item_id'], how='search') for h in hits if h['item_id'] != loser][:limit]
+        else:
+            found = [dict(item_id=f['item_id'], how=f['matched_by']) for f in items.find(db, row['kind'], text, limit=limit + 1) if f['item_id'] != loser][:limit]
     else:
         found = [dict(item_id=c['item_id'], how=c['how']) for c in _candidates(db, row)]
     decorated = {r['item_id']: r for r in collection.decorate(db, [dict(item_id=f['item_id']) for f in found])}

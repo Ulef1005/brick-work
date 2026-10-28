@@ -150,14 +150,15 @@ def _run(paths, state, directory):
             result['reconcile'] = _reconcile(paths)
         state.update(state='done', result=result)
     except Exception as exc:                              # shown on the page in words; the details stay in the log
-        state.update(state='failed', error=_words(exc))
+        state.update(state='failed', error=_words(exc, paths))
     state['finished_at'] = _now()
     _write(paths, state)
     return read(paths)
 
 
-def _words(exc):
-    return public_text(exc, what='the catalogue job')
+def _words(exc, paths):
+    known = [paths.data, paths.collection, paths.catalogue, paths.downloads, paths.lists, paths.mappings]
+    return public_text(exc, what='the catalogue job', known=known)
 
 
 def _build(built):

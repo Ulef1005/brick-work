@@ -555,3 +555,65 @@ def test_r5_raw_errors_never_reach_the_job_row_or_the_page(client, pair, coll, p
         catalogue_jobs.FETCH = None
     html, soup = page(client, 'catalogue')
     assert 'private' not in html and 'boom' not in html and 'server log' in html
+
+
+# ---------- Codex review of the error text ----------
+
+def test_e1_a_store4_error_that_wraps_sqlite_gives_the_generic_sentence():
+    import sqlite3
+    from brickwork.store4.errors import CatalogueError, GENERIC, SchemaMismatch, Store4Error, public_text
+    try:
+        try:
+            raise sqlite3.DatabaseError('no such table: meta')
+        except sqlite3.DatabaseError as inner:
+            raise CatalogueError('catalogue.db cannot be read as a catalogue: no such table: meta') from inner
+    except CatalogueError as exc:
+        assert public_text(exc) == GENERIC
+    try:
+        try:
+            raise sqlite3.OperationalError('near "SELECT": syntax error')
+        except sqlite3.Error:
+            raise SchemaMismatch('not a 4.0 file (near "SELECT": syntax error)') from None      # context kept even with `from None`
+    except SchemaMismatch as exc:
+        assert public_text(exc) == GENERIC
+    assert public_text(Store4Error('the catalogue has this set now; use its own part list')) == 'the catalogue has this set now; use its own part list'
+
+
+def test_e2_known_paths_are_redacted_exactly_even_with_spaces_and_parentheses(tmp_path):
+    from pathlib import Path
+    from brickwork.store4.errors import Store4Error, public_text
+    folder = tmp_path / 'Private Collection (old)'
+    folder.mkdir()
+    message = f'no catalogue at {folder}/catalogue.db; the collection {folder}/brickwork.db is in {folder} and {Path.home()}/dl'
+    text_out = public_text(Store4Error(message), known=[folder, folder / 'catalogue.db', folder / 'brickwork.db'])
+    assert 'Private' not in text_out and str(tmp_path) not in text_out and str(Path.home()) not in text_out
+    assert 'catalogue.db' in text_out and 'brickwork.db' in text_out and 'the data folder' in text_out
+
+
+def test_e2_the_reconcile_job_and_the_catalogue_page_redact_the_data_folder(tmp_path, monkeypatch):
+    from brickwork.core.connect import connect
+    from brickwork.store4 import reconcile_job
+    from brickwork.store4.errors import Store4Error
+    from tests.app4 import make_pair
+    folder = tmp_path / 'Private Collection (old)'
+    folder.mkdir()
+    pair = make_pair(folder)
+    unreconcile(pair)
+    monkeypatch.setattr(reconcile_job, 'reconcile', lambda db, **kw: (_ for _ in ()).throw(Store4Error(f'cannot open {folder}/brickwork.db in {folder}')))
+    with closing(connect(pair)) as db:
+        reconcile_job.queue_if_due(db)
+        (ran,) = reconcile_job.drain(db)
+    assert ran['state'] == 'failed' and 'Private' not in ran['error'] and str(tmp_path) not in ran['error'] and 'brickwork.db' in ran['error']
+
+
+def test_e2_a_catalogue_job_error_redacts_the_data_folder(tmp_path, monkeypatch):
+    from brickwork.store4.errors import Store4Error
+    from tests.app4 import make_pair
+    folder = tmp_path / 'Private Collection (old)'
+    folder.mkdir()
+    pair = make_pair(folder)
+    paths = Paths(pair.parent)
+    monkeypatch.setattr(catalogue_jobs.cli, 'do_reconcile', lambda p: None)
+    monkeypatch.setattr(catalogue_jobs, '_reconcile', lambda p: (_ for _ in ()).throw(Store4Error(f'cannot open {folder}/catalogue.db')))
+    state = catalogue_jobs.start(paths, 'reconcile', background=False)
+    assert state['state'] == 'failed' and 'Private' not in state['error'] and str(tmp_path) not in state['error'] and 'catalogue.db' in state['error']

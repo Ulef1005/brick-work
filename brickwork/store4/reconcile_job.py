@@ -16,6 +16,15 @@ from .reconcile import reconcile
 KIND, SOURCE = 'reconcile', 'mapping'
 
 
+def _known_paths(db):
+    """The files this connection has open (the collection and the catalogue) and their folders, for the error text."""
+    out = []
+    for row in db.execute('PRAGMA database_list'):
+        if row[2]:
+            out += [row[2], os.path.dirname(row[2])]
+    return out
+
+
 def reconcile_due(db):
     """Is a build activated in this collection still waiting for its reconcile, or a catalogue build not yet activated?"""
     if not has_catalogue(db):
@@ -72,7 +81,7 @@ def drain(db, *, now=None):
                 activate(db, via='app')
                 reconcile(db, via='app')
             except Exception as exc:                      # the old state is untouched (reconcile is one transaction); the full text is logged only
-                state, error = 'failed', public_text(exc, what='the reconcile job')
+                state, error = 'failed', public_text(exc, what='the reconcile job', known=_known_paths(db))
             with transaction(db, 'settling the reconcile'):
                 db.execute('UPDATE main.job SET state=?, error=?, updated_at=? WHERE id=?', (state, error, _stamp(_now(now)), job_id))
                 db.execute('DELETE FROM main.job_owner WHERE job_id=?', (job_id,))

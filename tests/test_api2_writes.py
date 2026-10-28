@@ -324,3 +324,59 @@ def test_an_upload_is_capped_just_above_its_own_limit(app4, path, megabytes):
         assert limits.body_limit() == megabytes * limits.MB + limits.FRAMING
     with app4.test_request_context(path, method='POST', content_type='application/json'):
         assert limits.body_limit() == limits.JSON_LIMIT
+
+
+# ---------- the review of M.11d: interleaved requests and omitted bodies ----------
+
+def meanwhile_request(send):
+    """Another request of the same instance, on a thread of its own (as a second worker would serve it), while this one waits on the network."""
+    import threading
+    box = {}
+    thread = threading.Thread(target=lambda: box.update(response=send()))
+    thread.start()
+    thread.join()
+    return box['response']
+
+
+def test_a_detached_write_never_names_the_event_of_a_request_that_ran_meanwhile(v2, world, pair, monkeypatch):
+    from brickwork.core import keys
+    seen = {}
+
+    def meanwhile(db, source):
+        other = meanwhile_request(lambda: write(v2, '/copies', body={'item': {'id': world.duplo}, 'decision': 'another'}, key='other-copy'))      # another request commits while this one waits on the network
+        assert other.status_code in (200, 201), other.json
+        seen['copy'] = other.json['event_id']
+        return {'ok': True}
+    monkeypatch.setattr(keys, 'check', meanwhile)
+    response = write(v2, '/sources/rebrickable/key/test', key='detached-1')
+    assert response.status_code == 200, response.json
+    assert seen['copy'] and response.json['event_id'] != seen['copy']
+    assert not str(response.json.get('undo_url') or '').endswith(f"/{seen['copy']}/undo")
+
+
+def test_an_empty_body_is_refused_where_the_contract_requires_members_and_accepted_where_all_are_optional(v2, world, pair):
+    before = digest(pair)
+    refused = write(v2, '/copies')                                                                  # POST /copies requires an item
+    assert refused.status_code == 422, refused.get_data(as_text=True)[:300]
+    assert 'item' in refused.json['detail']
+    assert digest(pair) == before
+    optional = [o for o in writes.CONTRACT['operations'] if o['schema'] and not o['multipart']
+                and not writes.resolved(o['schema']).get('required') and not writes.resolved(o['schema']).get('minProperties')]
+    assert 'patch_copies_by_id' in [o['endpoint'] for o in optional]                                 # a body of optional members only
+    omitted, empty = write(v2, f'/copies/{world.copy_a}', 'patch'), write(v2, f'/copies/{world.copy_a}', 'patch', {})
+    assert omitted.status_code == empty.status_code and omitted.json['code'] == empty.json['code'] != 'unsupported_media_type'     # ... may be left out: it is read as {}
+
+
+def test_an_ordinary_write_honours_an_active_claim_of_a_detached_write_with_the_same_key(v2, world, pair, monkeypatch):
+    from brickwork.core import keys
+    seen = {}
+
+    def meanwhile(db, source):
+        seen['same'] = meanwhile_request(lambda: write(v2, f'/copies/{world.copy_a}', 'patch', {'note': 'meanwhile'}, key='shared-key'))
+        return {'ok': True}
+    monkeypatch.setattr(keys, 'check', meanwhile)
+    response = write(v2, '/sources/rebrickable/key/test', key='shared-key')
+    assert response.status_code == 200, response.json
+    assert seen['same'].status_code == 409 and seen['same'].json['code'] == 'idempotency_conflict'
+    assert rows(pair, "SELECT 1 FROM event WHERE entity_kind='bw_api' AND field='op:shared-key'") != []
+    assert len(rows(pair, "SELECT 1 FROM event WHERE entity_kind='bw_api' AND field='op:shared-key'")) == 1

@@ -125,6 +125,13 @@ def validate(value, schema, path='', loose=False):
     return value
 
 
+def resolved(schema):
+    """The schema a `$ref` points at (followed through chains), else the schema itself."""
+    while '$ref' in schema:
+        schema = SCHEMAS[schema['$ref'].rsplit('/', 1)[-1]]
+    return schema
+
+
 def read_body(spec):
     """`(body, content)`: the checked JSON object (or the form fields of an upload) and the uploaded bytes, else `(None, None)`."""
     if spec['multipart']:
@@ -151,8 +158,8 @@ def read_body(spec):
         validate(dict(form, file='upload'), spec['schema'])
         return form, content
     if spec['schema']:
-        if not request.get_data() and not spec['schema'].get('required') and not spec['schema'].get('minProperties'):
-            return {}, None                                         # a body whose members are all optional may be left out
+        if not request.get_data():
+            return validate({}, spec['schema']), None               # a body may be left out only where an empty object is a valid one (else 422, naming what is missing)
         if request.mimetype != 'application/json':
             raise errors.UnsupportedMediaType()
         body = request.get_json(silent=True)
@@ -333,24 +340,28 @@ def replay_of(db, key, body, content, actor):
     return None
 
 
-def undoable_events(db, after):
-    """The events written after `after` that a registered undoer takes and that nobody undid, oldest first: `[(id, operation_key)]`."""
+def undoable_events(db, after, operation=None):
+    """The events written after `after` that a registered undoer takes and that nobody undid, oldest first: `[(id, operation_key)]`. With an
+    `operation` only that request's own events count: a detached write waits on the network outside any transaction, so another request may
+    commit meanwhile. (An ordinary write runs in one transaction, where the range holds nothing but its own events: some store writers key
+    their events themselves, so it passes no operation.)"""
+    clause, params = ('AND e.operation_key=?', (after, operation)) if operation else ('', (after,))
     return [(r['id'], r['operation_key']) for r in db.execute(
         f"SELECT e.id, e.operation_key, {undoing.undoable_sql('e')} AS undoable, {undoing.undone_sql('e')} AS undone FROM main.event e "
-        f"WHERE e.id>? AND e.entity_kind!='bw_api' ORDER BY e.id", (after,)) if r['undoable'] and not r['undone']]
+        f"WHERE e.id>? {clause} AND e.entity_kind!='bw_api' ORDER BY e.id", params) if r['undoable'] and not r['undone']]
 
 
-def newest_event(db, after):
-    row = db.execute("SELECT max(id) FROM main.event WHERE id>? AND entity_kind!='bw_api'", (after,)).fetchone()
-    return row[0]
+def newest_event(db, after, operation=None):
+    clause, params = ('AND operation_key=?', (after, operation)) if operation else ('', (after,))
+    return db.execute(f"SELECT max(id) FROM main.event WHERE id>? {clause} AND entity_kind!='bw_api'", params).fetchone()[0]
 
 
-def envelope(db, spec, done, before, preview=False):
+def envelope(db, spec, done, before, operation=None, preview=False):
     status = done.status or spec['statuses'][0]
     if preview:
         event = undo = None
     else:
-        undoable = [i for i, _ in undoable_events(db, before)]
+        undoable = [i for i, _ in undoable_events(db, before, operation)]
         if done.event is not None:
             event = done.event
             ok = db.execute(f"SELECT {undoing.undoable_sql('e')} AS undoable FROM main.event e WHERE e.id=?", (event,)).fetchone()
@@ -358,7 +369,7 @@ def envelope(db, spec, done, before, preview=False):
         elif undoable:
             event = undo = undoable[-1]
         else:
-            event, undo = newest_event(db, before), None
+            event, undo = newest_event(db, before, operation), None
     if event is None and not spec['event_nullable']:
         raise RuntimeError('Mutation did not emit an event')
     result = {'data': done.data, 'event_id': event, 'idempotent_replay': False}
@@ -367,6 +378,17 @@ def envelope(db, spec, done, before, preview=False):
     elif spec['undo_nullable']:
         result['undo_url'] = None
     return clean(result, secret_values()), status
+
+
+def claim_name(actor, key):
+    return f'api:claim:{actor}:{key}'
+
+
+def refuse_claimed(db, actor, key):
+    """`409` while a detached write of this token under this key is still out on the network (its claim has not expired)."""
+    held = db.execute('SELECT value FROM main.setting WHERE key=?', (claim_name(actor, key),)).fetchone()
+    if held and (datetime.now(timezone.utc) - datetime.strptime(held[0], '%Y-%m-%dT%H:%M:%S.000Z').replace(tzinfo=timezone.utc)).total_seconds() < CLAIM_SECONDS:
+        raise errors.IdempotencyConflict('This Idempotency-Key is still being processed')
 
 
 def execute(db, spec, function, values, body, content):
@@ -384,15 +406,17 @@ def execute(db, spec, function, values, body, content):
             saved = replay_of(db, key, body, content, actor)
             if saved:
                 return dict(saved['response'], idempotent_replay=True), saved['status'], saved.get('headers', {}), True
+            refuse_claimed(db, actor, key)
         before = db.execute('SELECT coalesce(max(id), 0) FROM main.event').fetchone()[0]
         if preview:
             db.execute('SAVEPOINT api_preview')
-        with admin.operation(PREFIX + uuid.uuid4().hex):
+        operation = PREFIX + uuid.uuid4().hex
+        with admin.operation(operation):
             extra = {'content': content} if spec['multipart'] else {}
             done = function(db, body, **extra, **values)
             if not isinstance(done, Done):
                 done = Done(done)
-            result, status = envelope(db, spec, done, before, preview)
+            result, status = envelope(db, spec, done, before, preview=preview)
             if preview:
                 db.execute('ROLLBACK TO api_preview')
                 db.execute('RELEASE api_preview')
@@ -419,14 +443,13 @@ def execute_detached(db, spec, function, values, body, content):
             saved = replay_of(db, key, body, content, actor)
             if saved:
                 return dict(saved['response'], idempotent_replay=True), saved['status'], saved.get('headers', {}), True
-            claim = f'api:claim:{actor}:{key}'
-            held = db.execute('SELECT value FROM main.setting WHERE key=?', (claim,)).fetchone()
-            if held and (datetime.now(timezone.utc) - datetime.strptime(held[0], '%Y-%m-%dT%H:%M:%S.000Z').replace(tzinfo=timezone.utc)).total_seconds() < CLAIM_SECONDS:
-                raise errors.IdempotencyConflict('This Idempotency-Key is still being processed')
+            refuse_claimed(db, actor, key)
+            claim = claim_name(actor, key)
             db.execute('INSERT OR REPLACE INTO main.setting(key,value) VALUES(?,?)', (claim, now_text()))
     try:
         before = db.execute('SELECT coalesce(max(id), 0) FROM main.event').fetchone()[0]
-        with admin.operation(PREFIX + uuid.uuid4().hex):
+        operation = PREFIX + uuid.uuid4().hex
+        with admin.operation(operation):
             extra = {'content': content} if spec['multipart'] else {}
             outcome = function(db, body, **extra, **values)
             with transaction(db):
@@ -435,7 +458,7 @@ def execute_detached(db, spec, function, values, body, content):
                 done = outcome() if callable(outcome) else outcome
                 if not isinstance(done, Done):
                     done = Done(done)
-                result, status = envelope(db, spec, done, before)
+                result, status = envelope(db, spec, done, before, operation)
                 if key:
                     admin.audit(db, 'bw_api:' + key, 'op:' + key, new=dict(v=FINGERPRINT, digest=digest_of(body, content), status=status, response=receipt_of(spec, result),
                                                                            headers=done.headers, method=request.method, path=request.path))

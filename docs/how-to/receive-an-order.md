@@ -16,7 +16,7 @@ The **Import an order** page offers three ways in.
 
 An order e-mail names colours and items by words, not numbers. Brick Work reads the BrickLink colour name and looks for an item with exactly that name; a name that fits several items (or none) leaves the line for you to match.
 
-An order keeps its total and currency together: a document that gives a total without a currency, or the reverse (an e-mail has only line prices), leaves the order without a total, and its line prices then say **Currency not recorded**.
+A total always comes with its currency: a document that gives a total without a currency leaves the order without a total. A currency can stand without a total: an e-mail has only line prices in EUR, so its order has the currency and no total, and the line prices show EUR. An order whose document names no currency at all shows **Currency not recorded** on its line prices. Orders stored by an earlier version get their currency from their document when Brick Work starts.
 
 Importing the same document a second time adds nothing: Brick Work answers **Already imported · open the existing order**. To add a second document to an order you already have, such as the email after the XML, open **Link to an existing order** and choose that order.
 

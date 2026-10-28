@@ -151,7 +151,7 @@ Each invariant names what enforces it. "Trigger" and "CHECK" mean the DDL; every
 9. **One live row per merge key, NULLs included.** `stock (item, colour, condition, lot, storage)` for non-figures and `wish (wishlist, item, colour)` are unique through generated `coalesce` columns, matching today's `IS` comparison (`stock.py:95-99`) (tests L7, L11).
 10. **Count bounds are today's.** `0 ≤ missing ≤ quantity` and `0 ≤ damaged ≤ quantity`, each on its own, as `checker.mark_row` bounds them (`checker.py:454-468`). The initial design's `missing + damaged ≤ quantity` was new semantics that prod rows may break (review finding 8). It is not taken (test L4).
 11. **Events are append-only** (triggers, as `schema.sql:105-106` today; test L12).
-12. **Money is decimal text with a currency.** Pairs are CHECKed on `copy`, `stock`, `lot`, `wish` and `purchase_order`. `price_observation` has no CHECK, because 931 migrated rows have no currency.
+12. **Money is decimal text with a currency.** Pairs are CHECKed on `copy`, `stock`, `lot` and `wish`; `purchase_order` is one-way (a cost needs its currency, a currency may exist without a cost, since an order e-mail has no total; #114). `price_observation` has no CHECK, because 931 migrated rows have no currency.
 
 ---
 

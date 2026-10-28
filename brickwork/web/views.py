@@ -548,7 +548,11 @@ def bw_resume_imports(app):
         path = brickwork_path()
         if not path.is_file():
             return
-        from ..core import drainer
+        from ..core import drainer, orders
+        from ..api import read_only
+        if not read_only():
+            with database(path, require_catalogue=False) as db:
+                orders.fill_currencies(db)                                 # orders stored before a currency could stand without a total (#114)
         with database(path, read_only=True, require_catalogue=False) as db:
             pending = drainer.pending(db)
         queued = drainer.queue_startup_work(path) is not None            # a catalogue not reconciled yet: one job for the drainer (design 6.2)

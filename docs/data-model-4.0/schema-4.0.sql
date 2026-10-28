@@ -652,7 +652,7 @@ CREATE INDEX stock_transfer_event ON stock_transfer(event_id);
 CREATE TABLE purchase_order(
  id INTEGER PRIMARY KEY, bricklink_order_id TEXT UNIQUE, store TEXT, seller TEXT, date_ordered TEXT,
  status TEXT, cost TEXT, currency TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
- CHECK((cost IS NULL) = (currency IS NULL))) STRICT;
+ CHECK(cost IS NULL OR currency IS NOT NULL)) STRICT;       -- a currency may exist without a total (an e-mail has none); a cost needs its currency
 
 CREATE TABLE order_document(
  id INTEGER PRIMARY KEY, order_id INTEGER NOT NULL REFERENCES purchase_order(id),

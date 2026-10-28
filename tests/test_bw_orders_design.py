@@ -136,7 +136,7 @@ def test_order_dates_keep_year_and_missing_currency_is_stated(world, client, col
     for url in ('/workbench/orders', f'/workbench/orders/{oid}'):
         text = client.get(url).text
         assert '9 Mar 2024' in text and '9 Mar<' not in text
-    # a price and its currency are stored together, so an order without a total has no currency: its line prices say so
+    # an order whose document named no currency has none: its line prices say so
     assert 'Currency not recorded' in client.get(f'/workbench/orders/{oid}').text
 
 

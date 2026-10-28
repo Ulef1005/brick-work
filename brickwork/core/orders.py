@@ -467,14 +467,14 @@ def import_document(db, source, text='', *, choice='new', number=None, label=Non
         journal = Journal(db)
         cost = price(header.get('cost'))
         if not header.get('currency'):
-            cost = None                                                       # a price and its currency are stored together
+            cost = None                                                       # a cost needs its currency; a currency may stand without a cost
         if choice == 'new':
             if number and db.execute('SELECT 1 FROM main.purchase_order WHERE bricklink_order_id=?', (number,)).fetchone():
                 raise ValueError('This BrickLink order exists · choose it in Link to order')
             order_id = db.execute('''INSERT INTO main.purchase_order(bricklink_order_id,store,seller,date_ordered,status,cost,currency,created_at,updated_at)
                                      VALUES(?,?,?,?,?,?,?,?,?)''',
                                   (number, header.get('store'), header.get('seller'), header.get('date_ordered'), header.get('status'), cost,
-                                   header.get('currency') if cost is not None else None, stamp, stamp)).lastrowid
+                                   header.get('currency'), stamp, stamp)).lastrowid
             journal.created('purchase_order', order_id)
         else:
             order_id = int(choice)
@@ -485,8 +485,10 @@ def import_document(db, source, text='', *, choice='new', number=None, label=Non
                 raise ValueError('The currencies differ · choose another order')
             supplied = dict(header, bricklink_order_id=number, cost=cost)
             updates = {key: value for key, value in supplied.items() if key in ('bricklink_order_id', 'store', 'seller', 'date_ordered', 'status') and value is not None and order[key] is None}
-            if order['cost'] is None and cost is not None and header.get('currency'):         # a price and its currency are stored together
-                updates.update(cost=cost, currency=header['currency'])
+            if header.get('currency') and order['currency'] is None:
+                updates['currency'] = header['currency']
+            if order['cost'] is None and cost is not None:                                      # a cost comes with a currency (same as the order's, or set just above)
+                updates['cost'] = cost
             if updates:
                 journal.touch('purchase_order', order_id)
                 db.execute('UPDATE main.purchase_order SET ' + ','.join(key + '=?' for key in updates) + ',updated_at=? WHERE id=?', (*updates.values(), stamp, order_id))
@@ -536,6 +538,38 @@ def import_document(db, source, text='', *, choice='new', number=None, label=Non
         journal.context(order_id=order_id, document_id=document_id, lines=len(raw), placed=placed, unplaced=unplaced)
         event = journal.write('import', order_id)
         return dict(order_id=order_id, document_id=document_id, duplicate=False, event_id=event, placed=placed, unplaced=unplaced)
+
+
+def _document_currency(db, source, payload):
+    """The currency a stored document names, read again from its raw payload (`source_record`), or None."""
+    try:
+        body = json.loads(payload)
+        if source == 'api':
+            return (body.get('header') or {}).get('currency')
+        return (parse_email(db, body['text']) if source == 'email' else parse_xml(body['text']))[1].get('currency')
+    except (ValueError, KeyError, TypeError, AttributeError):
+        return None
+
+
+def fill_currencies(db):
+    """Give a stored order the currency its raw documents name (`order_document.raw_record_id` -> `source_record`), when it has none and they
+    agree: orders stored before a currency could stand without a total. One audited, undoable event per order; an order with no document, none
+    that names a currency or two that differ is left as it is. Returns the ids filled. Safe to run again."""
+    done = []
+    for order_id in [r[0] for r in db.execute('SELECT id FROM main.purchase_order WHERE currency IS NULL ORDER BY id')]:
+        found = {_document_currency(db, source, payload) for source, payload in db.execute(
+            """SELECT d.source,r.payload FROM main.order_document d JOIN main.source_record r ON r.id=d.raw_record_id
+               WHERE d.order_id=? AND d.phase!='undone'""", (order_id,))} - {None, ''}
+        if len(found) != 1:
+            continue
+        with transaction(db):
+            journal = Journal(db)
+            journal.touch('purchase_order', order_id)
+            db.execute('UPDATE main.purchase_order SET currency=?,updated_at=? WHERE id=? AND currency IS NULL', (found.pop(), stamp_now(), order_id))
+            journal.context(order_id=order_id)
+            journal.write('currency', order_id)
+        done.append(order_id)
+    return done
 
 
 def match(db, order_id, line_id, *, item_id=None, color_id=None, item_type=None, item_no=None):

@@ -179,7 +179,7 @@ def test_a_second_document_links_to_an_order_and_undo_leaves_the_provenance(worl
     assert orders.import_document(db, 'xml', XML, choice=oid)['duplicate']
     text = '[Used] Mystery lot (x3) ... EUR 0.12 each = EUR 0.36'
     other = orders.import_document(db, 'email', text, choice=oid)
-    assert not other['duplicate'] and orders.get(db, oid)['currency'] is None            # a currency is stored with a price only
+    assert not other['duplicate'] and orders.get(db, oid)['currency'] == 'EUR'            # the e-mail has no total, and its currency stands (M.12)
     record = db.execute("SELECT payload FROM source_record WHERE kind='order_document:email'").fetchone()[0]
     assert json.loads(record)['text'] == text
     document = db.execute('SELECT * FROM order_document WHERE id=?', (other['document_id'],)).fetchone()

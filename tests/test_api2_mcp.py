@@ -123,8 +123,31 @@ def test_the_number_is_resolved_before_the_call_and_the_id_goes_in_the_path(adap
     real = adapter.client.request
     adapter.client.request = lambda method, path, **kwargs: (seen.append((method, path, kwargs.get('query'))), real(method, path, **kwargs))[1]
     adapter.call_tool('get_prices', {'kind': 'part', 'no': '3001', 'color': RED})
-    assert seen == [('GET', '/lookup', {'provider': 'bricklink', 'kind': 'part', 'key': '3001'}),
+    assert seen == [('GET', '/lookup', {'provider': 'bricklink', 'kind': 'part', 'key': '3001', 'color': RED}),
                     ('GET', f'/items/{world.brick}/prices', {'color': RED})]
+
+
+def test_a_colour_scoped_number_resolves_with_the_tools_colour(adapter, coll):
+    # BrickLink links can be colour-scoped (one number, a different item per colour), so the tool's colour takes part in the lookup.
+    one, two = coll.item('parts', '3001'), coll.item('parts', '3023')
+    coll.link(one, 'legs', colour=coll.colour(4))                  # Rebrickable red is BrickLink red (RED)
+    coll.link(two, 'legs', colour=coll.colour(15))                 # Rebrickable white is BrickLink white (WHITE)
+    assert payload(adapter.call_tool('get_prices', {'kind': 'part', 'no': 'legs'}))['code'] == 'ambiguous'
+    seen = []
+    real = adapter.client.request
+    adapter.client.request = lambda method, path, **kwargs: (seen.append((method, path)), real(method, path, **kwargs))[1]
+    red = adapter.call_tool('get_prices', {'kind': 'part', 'no': 'legs', 'color': RED})
+    assert not red.isError, payload(red)
+    assert seen == [('GET', '/lookup'), ('GET', f'/items/{one}/prices')]
+
+
+def test_a_redirect_is_the_tools_error_not_an_empty_success(adapter, world):
+    # The MCP clients never follow a redirect; a merged item's 307 between the lookup and the read is reported, not swallowed.
+    moved = {'code': 'moved', 'status': 307, 'survivor': world.brick, 'detail': 'merged'}
+    real = adapter.client.request
+    adapter.client.request = lambda method, path, **kwargs: (307, moved) if path.startswith('/items/') else real(method, path, **kwargs)
+    result = adapter.call_tool('get_prices', {'kind': 'part', 'no': '3001'})
+    assert result.isError and payload(result) == moved
 
 
 def test_prices_are_read_recorded_and_refreshed_by_number(adapter, world, pair):

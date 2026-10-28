@@ -129,8 +129,10 @@ class Adapter:
         values = {key: arguments[key] for key in path_names if not item or key != item['name']}
         if item:
             # The number becomes the item's id here and nowhere else; the lookup's own refusal (404, 409 ambiguous) is the tool's.
+            # A BrickLink link can be colour-scoped, so the operation's own colour (same provider space) takes part in the lookup.
+            scoped = {'color': arguments['color']} if 'color' in arguments and any(p['in'] == 'query' and p['name'] == 'color' for p in parameters) else {}
             status, found = self.client.request('GET', '/lookup', query={'provider': arguments.get('provider', 'bricklink'),
-                                                                        'kind': arguments['kind'], 'key': arguments['no']})
+                                                                        'kind': arguments['kind'], 'key': arguments['no'], **scoped})
             if status != 200:
                 return self.result(status, found)
             values[item['name']] = found['data']['id']
@@ -151,11 +153,12 @@ class Adapter:
 
     @staticmethod
     def result(status, value, write=False):
-        # Preserve receipts and page cursors; scalar/single reads return API data.
-        if status < 400 and not write and isinstance(value, dict) and 'page' not in value:
+        # Preserve receipts and page cursors; scalar/single reads return API data. Neither client follows a redirect, so a 3xx
+        # (a merged item's 307) is the tool's error with its problem body, never an empty success.
+        if status < 300 and not write and isinstance(value, dict) and 'page' not in value:
             value = value.get('data', value)
         return types.CallToolResult(content=[types.TextContent(type='text', text=json.dumps(value))],
-            structuredContent=value if isinstance(value, dict) else None, isError=status >= 400)
+            structuredContent=value if isinstance(value, dict) else None, isError=status >= 300)
 
     def read_resource(self, uri):
         for template, target in self.spec['x-mcp']['resources'].items():

@@ -58,7 +58,9 @@ A tool never asks for a Brick Work item id. Ids are per install, and an assistan
 
 `get_item`, `get_prices`, `record_price`, `refresh_price`, `import_item` and `set_figure_missing` take these three. Before the call, the server looks the number up (`lookup_item` does the same on its own). A number that names nothing is `not_found`. A number that names several items is `ambiguous`, and the answer lists them as `candidates`; nothing is written, so ask for a more exact number or the other provider.
 
-A tool that adds something (`add_copies`, `add_stock`, `add_wish`, `take_for_gap`) takes `item` as `{"provider": "bricklink", "kind": "set", "key": "1000-1"}`. `provider` can be left out. In `get_prices` the provider also says whose colour number `color` is.
+A tool that adds something (`add_copies`, `add_stock`, `add_wish`, `take_for_gap`) takes `item` as `{"provider": "bricklink", "kind": "set", "key": "1000-1"}`. `provider` can be left out. In `get_prices` the provider also says whose colour number `color` is, and the colour takes part in the lookup: some BrickLink numbers (legs, for example) name a different item in each colour.
+
+A merged item answers a read with `moved` and its `survivor`. The tool reports it as an error, so look the number up again.
 
 Copies, stock lines, wishes, wishlists, storages, lots, events, jobs and orders keep their ids. Take them from the `list_*` tools, which also filter by number and provider (`list_copies` with `number`, for example).
 

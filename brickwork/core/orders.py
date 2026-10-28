@@ -881,7 +881,7 @@ def _undo(db, event, via, actor):
     return collection._undo_collection(db, dict(event, old_value=json.dumps([o for o, _ in rest]), new_value=json.dumps([n for _, n in rest])), via, actor)
 
 
-for _field in ('import', 'match', 'review', 'reopen', 'save', 'received', 'allocate', 'hold', 'release', 'reconcile'):
+for _field in ('import', 'match', 'review', 'reopen', 'save', 'received', 'allocate', 'hold', 'release', 'reconcile', 'currency'):
     undoing.register(ENTITY, _field, _undo)
 
 

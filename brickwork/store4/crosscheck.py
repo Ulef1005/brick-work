@@ -28,6 +28,12 @@ def _named(rows):
 
 
 def binding(db):
+    title = 'Collection and catalogue are a pair'
+    bound = db.execute("SELECT value FROM main.meta WHERE key='catalogue_id'").fetchone()
+    if bound is None or bound[0] != db.execute("SELECT value FROM catalogue.meta WHERE key='catalogue_id'").fetchone()[0]:
+        why = 'is not bound to a catalogue' if bound is None else 'is bound to another catalogue'
+        return dict(name='binding', title=title, ok=False, count=1,
+                    message=f'The collection {why}. Activate this catalogue (Sets first-run page, or `catalogue reconcile`) if it is the right one; otherwise {FIX}.')
     try:
         check_compatible(db)
     except CatalogueError as exc:

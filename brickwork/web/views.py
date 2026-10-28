@@ -551,8 +551,11 @@ def bw_resume_imports(app):
         from ..core import drainer, orders
         from ..api import read_only
         if not read_only():
-            with database(path, require_catalogue=False) as db:
-                orders.fill_currencies(db)                                 # orders stored before a currency could stand without a total (#114)
+            try:
+                with database(path, require_catalogue=False) as db:
+                    orders.fill_currencies(db)                             # orders stored before a currency could stand without a total (#114)
+            except sqlite3.IntegrityError as exc:                          # a 4.0 file made with the old CHECK: the app still starts
+                current_app.logger.warning('order currency backfill skipped: purchase_order still has the old currency CHECK (%s)', exc)
         with database(path, read_only=True, require_catalogue=False) as db:
             pending = drainer.pending(db)
         queued = drainer.queue_startup_work(path) is not None            # a catalogue not reconciled yet: one job for the drainer (design 6.2)

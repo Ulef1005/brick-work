@@ -97,3 +97,51 @@ def test_the_app_fills_stored_currencies_when_it_starts(world, coll, app4):
     from brickwork.web.views import bw_resume_imports
     bw_resume_imports(app4)
     assert orders.get(coll.db, oid)['currency'] == 'EUR'
+
+
+def named_later(coll):
+    """An order imported with no currency whose stored document names one (the import is as an earlier version left it)."""
+    result = orders.import_document(coll.db, 'xml', XML)
+    payload = json.dumps(dict(text=XML.replace('</INVENTORY>', '<CURRENCY>GBP</CURRENCY></INVENTORY>')))
+    coll.sql("UPDATE source_record SET payload=? WHERE kind='order_document:xml'", (payload,))
+    return result
+
+
+def test_a_filled_currency_can_be_undone_and_then_the_import_too(world, coll):
+    result = named_later(coll)
+    oid = result['order_id']
+    assert orders.fill_currencies(coll.db) == [oid] and orders.get(coll.db, oid)['currency'] == 'GBP'
+    filled = coll.db.execute("SELECT id FROM event WHERE field='currency' ORDER BY id DESC LIMIT 1").fetchone()[0]
+    orders.undo(coll.db, filled)
+    assert orders.get(coll.db, oid)['currency'] is None
+    orders.undo(coll.db, result['event_id'])
+
+
+def test_a_filled_currency_does_not_block_the_imports_undo_until_it_is_undone_first(world, coll):
+    result = named_later(coll)
+    orders.fill_currencies(coll.db)
+    with pytest.raises(ValueError):
+        orders.undo(coll.db, result['event_id'])
+
+
+def test_the_binding_check_requires_the_binding_to_exist(coll):
+    from brickwork.store4 import crosscheck
+    assert crosscheck.binding(coll.db)['ok']
+    coll.sql("DELETE FROM main.meta WHERE key='catalogue_id'")
+    found = crosscheck.run(coll.db)
+    assert not found[0]['ok'] and found[0]['name'] == 'binding' and 'not bound' in found[0]['message'] and 'reconcile' in found[0]['message']
+
+
+def test_a_collection_with_the_old_check_still_starts(world, coll, app4, caplog):
+    import logging
+    oid = old_order(coll, world)
+    coll.db.execute('PRAGMA foreign_keys=OFF')
+    sql = coll.db.execute("SELECT sql FROM sqlite_master WHERE name='purchase_order'").fetchone()[0]
+    coll.db.execute('PRAGMA writable_schema=ON')
+    coll.db.execute("UPDATE sqlite_master SET sql=? WHERE name='purchase_order'", (sql.replace('CHECK(cost IS NULL OR currency IS NOT NULL)', 'CHECK((cost IS NULL) = (currency IS NULL))'),))
+    coll.db.commit()
+    coll.db.close()
+    from brickwork.web.views import bw_resume_imports
+    with caplog.at_level(logging.WARNING):
+        bw_resume_imports(app4)
+    assert 'currency' in caplog.text

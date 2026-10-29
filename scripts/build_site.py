@@ -178,6 +178,17 @@ def build_docs(out):
         shutil.copytree(Path(tmp) / 'site', out)
 
 
+def mermaid_to_link(text, resolved):
+    """The site loads no Mermaid renderer (it makes no external requests): a diagram links to the file on GitHub,
+    which draws it, and keeps its source folded underneath."""
+    def figure(match):
+        heading = re.findall(r'^#+ (.+)$', text[:match.start()], flags=re.M)
+        anchor = '#' + re.sub(r'[^\w\- ]', '', heading[-1].lower()).replace(' ', '-') if heading else ''   # GitHub's heading slug
+        return (f'\n<p class="diagram"><a href="{blob(resolved)}{anchor}">This diagram is drawn on GitHub</a>.</p>\n'
+                f'<details><summary>Diagram source</summary><pre><code>{html.escape(match.group(1))}</code></pre></details>\n')
+    return re.sub(r'^```mermaid\n(.*?)^```$', figure, text, flags=re.M | re.S)
+
+
 def build_design(out):
     """The changelog and the design documents, each rendered with links between them kept on the site."""
     pages = [('CHANGELOG.md', 'Changelog', 'Changelog')]
@@ -191,7 +202,7 @@ def build_design(out):
         target = site_page(resolved)
         depth = target.count('/')
         (out / target).mkdir(parents=True, exist_ok=True)
-        text = rewrite_links((ROOT / resolved).read_text(), os.path.dirname(resolved), depth)
+        text = mermaid_to_link(rewrite_links((ROOT / resolved).read_text(), os.path.dirname(resolved), depth), resolved)
         (out / target / 'index.html').write_text(page(title, render(text), depth, current=current))
     index = ('# Design\n\nHow Brick Work is built and why.\n\n'
              '- [Architecture Decision Records](adr/): one page per decision that binds future work.\n'

@@ -125,4 +125,6 @@ def test_the_site_builds_with_every_tool(tmp_path):
     assert (site / 'design/index.html').is_file()
     changelog = (site / 'changelog/index.html').read_text()
     assert 'Brick Work 0.6.0' in changelog and 'href="../docs/how-to/receive-an-order/"' in changelog
+    design = (site / 'design/data-model-4.0/data-model-design/index.html').read_text()   # no Mermaid renderer on the site
+    assert 'This diagram is drawn on GitHub' in design and 'language-mermaid' not in design
     assert 'href="../../design/adr/0016-data-model-4/"' in (site / 'design/data-model-4.0/index.html').read_text()

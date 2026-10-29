@@ -3,6 +3,7 @@
 What the app's ideas and numbers mean, in plain language.
 
 - [Sets, copies, lots and stock](collection-model.md)
+- [The data model: two files and one id per item](data-model.md)
 - [Completeness](completeness.md)
 
 <!-- One page per metric the app shows its users, with the sections

@@ -2,13 +2,13 @@
 
 *Since 0.6.0.*
 
-Brick Work keeps what anyone could download apart from what only you have. That split explains why a catalogue update never touches your collection, why a backup is one file, and why every item has a number of Brick Work's own.
+Brick Work keeps what anyone could download apart from what only you have. That split explains why a catalogue update never touches your collection, why the catalogue needs no backup, and why every item has a number of Brick Work's own.
 
 ## Two files
 
 **`catalogue.db`, the catalogue.** Rebrickable's catalogue: every set, part, minifigure and colour, the part lists of sets and figures, element ids and picture addresses. It also holds the mapping to BrickLink numbers and, if you load them, BrickLink's own item lists. It can be rebuilt at any time from Rebrickable's free download, and only the catalogue builder writes it.
 
-**`brickwork.db`, your collection.** Copies, loose stock, lots, storage, wishes, orders, prices, pictures you fetched, your own photos, your decisions about numbers, part lists that cost an API call, items that exist only in your collection, keys, tokens and settings. It cannot be rebuilt from anywhere else: this is the file you back up.
+**`brickwork.db`, your collection.** Copies, loose stock, lots, storage, wishes, orders, prices, your decisions about numbers, part lists that cost an API call, items that exist only in your collection, keys, tokens and settings. It cannot be rebuilt from anywhere else: this is the file you back up. Pictures, your own photos and instruction PDFs are files in the media folder (`data/images`, `data/thumbs`, `data/instructions`, `data/identifications`) that the database points to; back them up with it ([Back up the media folder](../how-to/back-up-and-restore.md#back-up-the-media-folder)).
 
 The two files are a pair. The collection file is bound to one catalogue, and the **Database** check in **Tools & Admin** confirms that they belong together ([Back up and restore](../how-to/back-up-and-restore.md#check-the-database)).
 
@@ -35,7 +35,7 @@ A **part list** is what goes into a set or a figure. A copy names the list it wa
 - a Rebrickable version from the catalogue (sets can have several versions), or
 - a list stored in your collection file: BrickLink's list for that set, or Rebrickable's list of a set newer than your catalogue.
 
-A copy's own lines (what is missing, what you checked, what you took from loose stock) belong to the copy, not to the catalogue. When you switch a copy to another list, or a new catalogue changes a list, the copy's lines are updated in place: lines that stay keep their marks, new lines are added and vanished lines are retired. Your check history therefore always points at real lines ([Choose and switch a part list](../how-to/part-lists.md)).
+A copy's own lines (what is missing, what you checked, what you took from loose stock) belong to the copy, not to the catalogue. When you switch a copy to another list, its lines are updated in place: lines that stay keep their marks, new lines are added and vanished lines are retired, so your check history always points at real lines. A new catalogue never switches a copy by itself. When it changes the list a copy was built from, the copy says so and offers **Switch to the current list**, and you decide ([Choose and switch a part list](../how-to/part-lists.md)).
 
 ## The collection on top
 

@@ -117,3 +117,12 @@ def test_the_site_builds_with_every_tool(tmp_path):
     for name in Adapter(client=None).tools:
         assert f'<code>{name}</code>' in mcp, name
     assert 'BW_AUTHENTICATION_PASSWORD' in (site / 'docs/reference/settings/index.html').read_text()
+    # The changelog and the design documents: every ADR but the template and every data-model page, linked to each other on the site.
+    from scripts.build_site import ROOT
+    for path in [*(ROOT / 'docs/adr').glob('[0-9]*.md'), *(ROOT / 'docs/data-model-4.0').glob('*.md')]:
+        stem = '' if path.name == 'README.md' else path.stem + '/'
+        assert (site / 'design' / path.parent.name / stem / 'index.html').is_file() != (path.name == '0000-template.md'), path
+    assert (site / 'design/index.html').is_file()
+    changelog = (site / 'changelog/index.html').read_text()
+    assert 'Brick Work 0.6.0' in changelog and 'href="../docs/how-to/receive-an-order/"' in changelog
+    assert 'href="../../design/adr/0016-data-model-4/"' in (site / 'design/data-model-4.0/index.html').read_text()

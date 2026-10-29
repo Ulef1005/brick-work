@@ -240,6 +240,8 @@ button{font:500 14px/1.4 var(--tw-font);cursor:pointer;min-height:var(--tw-hit);
 .step-controls p{font:400 13px/1.5 var(--tw-mono);text-align:center}
 .note{font-size:14px;color:var(--tw-text-2)}
 .doc{overflow-wrap:anywhere}
+/* In a table, `anywhere` lets the columns shrink below their words ("accept|ed", "000|1"); break-word wraps only what cannot fit. */
+.doc td,.doc th{overflow-wrap:break-word}
 .doc.api{max-width:1000px;padding:var(--tw-s-6) var(--tw-s-4)}
 .api-operation{border-top:1px solid var(--tw-divider);padding:var(--tw-s-4) 0}
 .api-operation pre{white-space:pre-wrap;overflow-wrap:anywhere}

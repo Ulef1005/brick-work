@@ -3,7 +3,8 @@
     python scripts/build_site.py OUT_DIR
 
 Pages: `/` the landing page, `/use-cases/` and `/workflows/` (Markdown in scripts/site), `/docs/` the user docs, `/demo/` the static demo (scripts/build_demo.py), `/api/` the OpenAPI contract as one local reference page, `/mcp/` the MCP
-guide with the tool and resource tables generated from the server itself. The user docs are built by
+guide with the tool and resource tables generated from the server itself, `/changelog/` CHANGELOG.md, and `/design/` the ADRs and the
+4.0 data-model design (docs/adr, docs/data-model-4.0), one page per file. The user docs are built by
 Zensical from docs/ and mkdocs.yml (App Standard, Maintenance § Rules, User docs); the other pages are
 Markdown rendered with Python-Markdown, styled with the app's own design tokens and fonts. Links to files
 in the repository point at them on GitHub. The output is static and needs no server.
@@ -26,7 +27,24 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 SITE = ROOT / 'scripts/site'
 PAGES = (('Home', ''), ('Use cases', 'use-cases/'), ('Workflows', 'workflows/'), ('Demo', 'demo/'), ('Docs', 'docs/'),
-         ('API reference', 'api/'), ('MCP', 'mcp/'))
+         ('API reference', 'api/'), ('MCP', 'mcp/'), ('Changelog', 'changelog/'), ('Design', 'design/'))
+# The design folders published under /design/<folder>/: README.md is the folder's index, each other .md file its own page.
+DESIGN = ('adr', 'data-model-4.0')
+DESIGN_SKIP = {'docs/adr/0000-template.md'}
+USER_DOCS = ('how-to', 'concepts', 'reference', 'tutorials')   # the Zensical sections under /docs/
+
+
+def site_page(resolved):
+    """The site path (from the root, with a trailing slash) of a repository file this site renders, or None."""
+    if resolved == 'CHANGELOG.md':
+        return 'changelog/'
+    section, _, name = resolved.removeprefix('docs/').partition('/')
+    if resolved.startswith('docs/') and section in USER_DOCS and name.endswith('.md') and '/' not in name:
+        return f'docs/{section}/' + ('' if name == 'index.md' else name.removesuffix('.md') + '/')
+    folder, _, name = resolved.removeprefix('docs/').partition('/')
+    if resolved.startswith('docs/') and folder in DESIGN and name.endswith('.md') and '/' not in name and resolved not in DESIGN_SKIP:
+        return f'design/{folder}/' + ('' if name == 'README.md' else name.removesuffix('.md') + '/')
+    return None
 
 
 def repository():
@@ -50,6 +68,8 @@ def rewrite_links(text, base, depth=0):
         local = {'docs/brickwork/mcp.md': up + 'mcp/', 'docs/brickwork/openapi-v2.yaml': up + 'api/'}
         if resolved in local:
             url = local[resolved]
+        elif site_page(resolved):
+            url = up + site_page(resolved)
         else:
             url = blob(resolved)
         return f'[{label}]({url}{"#" + anchor if anchor else ""})'
@@ -158,6 +178,27 @@ def build_docs(out):
         shutil.copytree(Path(tmp) / 'site', out)
 
 
+def build_design(out):
+    """The changelog and the design documents, each rendered with links between them kept on the site."""
+    pages = [('CHANGELOG.md', 'Changelog', 'Changelog')]
+    for folder in DESIGN:
+        for path in sorted((ROOT / 'docs' / folder).glob('*.md')):
+            resolved = path.relative_to(ROOT).as_posix()
+            if resolved not in DESIGN_SKIP:
+                title = next((l[2:].strip() for l in path.read_text().splitlines() if l.startswith('# ')), path.stem)
+                pages.append((resolved, title, 'Design'))
+    for resolved, title, current in pages:
+        target = site_page(resolved)
+        depth = target.count('/')
+        (out / target).mkdir(parents=True, exist_ok=True)
+        text = rewrite_links((ROOT / resolved).read_text(), os.path.dirname(resolved), depth)
+        (out / target / 'index.html').write_text(page(title, render(text), depth, current=current))
+    index = ('# Design\n\nHow Brick Work is built and why.\n\n'
+             '- [Architecture Decision Records](adr/): one page per decision that binds future work.\n'
+             '- [Data model 4.0](data-model-4.0/): the approved design of schema 4.0, its DDL, the user journey, the regression map and the estimate.\n')
+    (out / 'design/index.html').write_text(page('Design', render(index), 1, current='Design'))
+
+
 def build(out):
     out = Path(out)
     if out.exists():
@@ -197,6 +238,8 @@ def build(out):
     body = api_reference()
     (out / 'api/index.html').write_text(page('API reference', body, 1, current='API reference').replace(
         '<main class="doc">', '<main class="doc api">'))
+    build_design(out)
+
     from scripts.build_demo import build_demo
     demo_base = f'/{repository().split("/")[1]}/demo/'
     build_demo(out / 'demo', demo_base)

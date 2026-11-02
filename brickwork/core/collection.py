@@ -993,11 +993,14 @@ FIELDS = {
     'copy': {'condition', 'storage_id', 'place_id', 'purchase_date', 'purchase_price', 'purchase_currency', 'note', 'completeness',
              'completeness_source', 'current_value', 'current_value_currency'},
     'stock': {'condition', 'storage_id', 'place_id', 'purchase_date', 'purchase_price', 'purchase_currency', 'note', 'lot_id'},
-    'wish': {'quantity', 'color_id', 'condition', 'max_price', 'max_price_currency', 'note', 'wishlist_id', 'qty_filled_manual'},
+    'wish': {'quantity', 'color_id', 'condition', 'max_price', 'max_price_currency', 'max_price_boxed', 'max_price_boxed_currency', 'note',
+             'wishlist_id', 'qty_filled_manual'},
     'lot': {'name', 'note', 'storage_id', 'place_id', 'purchase_date', 'purchase_price', 'purchase_currency'},
 }
 CONDITIONS = {'copy': (None, 'new', 'used'), 'stock': (None, 'new', 'used', 'damaged'), 'wish': (None, 'new', 'used', 'any'), 'lot': (None,)}
-PAIRS = (('purchase_price', 'purchase_currency'), ('current_value', 'current_value_currency'), ('max_price', 'max_price_currency'))
+PAIRS = (('purchase_price', 'purchase_currency'), ('current_value', 'current_value_currency'), ('max_price', 'max_price_currency'),
+         ('max_price_boxed', 'max_price_boxed_currency'))
+MAXIMA = {'max_price': 'max price', 'max_price_boxed': 'max price with box'}   # a wish's limits: their own words in a refusal
 STAMPED = ('copy', 'stock', 'wish', 'lot')                      # tables with `updated_at`
 
 
@@ -1057,11 +1060,11 @@ def _pairs(db, edits, old):
         named = _currency(edits[currency]) if edits.get(currency) is not None else None
         if price in edits:
             if edits[price] is None:
-                if named is not None and price == 'max_price':
-                    raise ValueError('Enter a max price or clear the currency')
+                if named is not None and price in MAXIMA:
+                    raise ValueError(f'Enter a {MAXIMA[price]} or clear the currency')
                 edits[currency] = None                           # a cleared price takes its currency with it
             else:
-                edits[price] = _price(edits[price], 'max price' if price == 'max_price' else 'price')
+                edits[price] = _price(edits[price], MAXIMA.get(price, 'price'))
                 shared = {r[currency] for r in old}
                 edits[currency] = named or (shared.pop() if len(shared) == 1 and None not in shared else configured_currency(db))
         elif named is None:

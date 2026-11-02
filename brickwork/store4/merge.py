@@ -239,6 +239,8 @@ def _merge_wishes(db, log, loser, survivor, stamp):
             sets['qty_filled_manual'] = _sum(target['qty_filled_manual'], row['qty_filled_manual'])
         if target['max_price'] is None and row['max_price'] is not None:
             sets.update(max_price=row['max_price'], max_price_currency=row['max_price_currency'])
+        if target['max_price_boxed'] is None and row['max_price_boxed'] is not None:
+            sets.update(max_price_boxed=row['max_price_boxed'], max_price_boxed_currency=row['max_price_boxed_currency'])
         log.update('wish', target, **sets)
         log.update('wish', row, item_id=survivor, archived_at=stamp, updated_at=stamp)
 

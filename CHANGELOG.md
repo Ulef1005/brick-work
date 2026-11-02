@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **Schema 4.1.** A wish has a maximum price with box (#131). On a wish's page, **Edit** has **Max price with box** and its currency beside **Your max price**. The price card's footer shows **Your max price** and **Max with box**, each a button to its field, or *not set*. A set's price with box is compared with the max with box, or with your max price when that is empty. The API's Wish has `max_price_boxed`, `max_price_boxed_currency` and `under_max_boxed`. A 4.0 collection is upgraded in place the first time it is opened. The BrickLink wanted list has no such field, so the XML export and import leave it out. See [Collection model](docs/concepts/collection-model.md#wishes-and-wishlists).
+- **Set estimate** no longer looks like a link when it does nothing: without edit rights the footer label is plain text (#131).
+
 ## Brick Work 0.6.0 (schema 4.0, API v2) · 2026-10-28
 
 The data-model release: the collection moves to schema 4.0 with a separate local catalogue, and the API to v2. **Breaking:** API v1 answers 410 except `/api/v1/health`; clients move to `/api/v2` ([API v2](docs/brickwork/api-v2.md)). A 0.5 collection is moved with `brickwork migrate4` on a copy first ([CLI](docs/reference/cli.md#migrate4)); the 3.3 file is never changed.

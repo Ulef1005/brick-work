@@ -1,4 +1,5 @@
 """Two-file connection: the collection (WAL) with the catalogue attached read-only as `catalogue`."""
+from contextlib import closing
 from datetime import datetime, timezone
 import os
 from pathlib import Path
@@ -8,7 +9,14 @@ import uuid
 from .errors import CatalogueError, CatalogueMismatch, SchemaMismatch, StaleSchema, Unsupported
 
 MIN_SQLITE = (3, 37, 0)
-SCHEMA_VERSION = '4.0'
+SCHEMA_VERSION = '4.1'
+# In-place upgrades of an older collection, one step per version, each in its own write transaction: {from: (to, statements)}.
+# A step only adds; a fresh file from `brickwork.sql` has the same tables as an upgraded one (tests/test_store4_upgrade.py).
+UPGRADES = {
+    '4.0': ('4.1', (                                     # #131: a wish's max price with box, a price with its currency or neither
+        'ALTER TABLE wish ADD COLUMN max_price_boxed TEXT',
+        'ALTER TABLE wish ADD COLUMN max_price_boxed_currency TEXT CHECK((max_price_boxed IS NULL) = (max_price_boxed_currency IS NULL))')),
+}
 CATALOGUE_VERSION = 'catalogue-4.0'
 HERE = Path(__file__).parent
 FIX = ('restore brickwork.db and catalogue.db from the same archive, '
@@ -53,11 +61,48 @@ def check_ids_never_reused(db, path):
         raise StaleSchema(f'{path} predates #124 (made before 2026-10-27): re-run the 3.3 \u2192 4.0 migration to rebuild it')
 
 
+def upgrade(path):
+    """Bring an older collection at `path` to `SCHEMA_VERSION` in place, step by step (`UPGRADES`). Each step re-reads the version
+    inside its write transaction, so concurrent openers upgrade once; a failed step rolls back and leaves the file at its last version.
+    Returns the version the file is at; a version with no step (current, or unknown) is left alone for `connect` to judge."""
+    db = sqlite3.connect(_uri(path), uri=True, isolation_level=None)
+    try:
+        while True:
+            db.execute('BEGIN IMMEDIATE')
+            version = (_meta(db) or {}).get('schema_version')
+            if version not in UPGRADES:
+                db.execute('ROLLBACK')
+                return version
+            target, statements = UPGRADES[version]
+            try:
+                for statement in statements:
+                    db.execute(statement)
+                db.execute("UPDATE meta SET value=? WHERE key='schema_version'", (target,))
+                db.execute("INSERT OR REPLACE INTO meta(key, value) VALUES(?, ?)", (f'upgraded_to_{target}', now()))
+                db.execute('COMMIT')
+            except BaseException:
+                db.execute('ROLLBACK')
+                raise
+    finally:
+        db.close()
+
+
+def _version(path):
+    with closing(sqlite3.connect(_uri(path, 'ro'), uri=True)) as db:
+        return (_meta(db) or {}).get('schema_version')
+
+
 def connect(path='brickwork.db', catalogue='catalogue.db', *, read_only=False):
     check_environment()
     path, catalogue = Path(path), Path(catalogue)
     if not read_only and not path.exists():
         _create(path, 'brickwork.sql', [('schema_version', SCHEMA_VERSION), ('install_id', str(uuid.uuid4()))], exclusive=False)
+    if path.exists() and _version(path) in UPGRADES:
+        try:
+            upgrade(path)                                # also before a read-only open: the code reads only the current schema
+        except sqlite3.OperationalError as exc:
+            raise SchemaMismatch(f'{path} is a Brick Work {_version(path)} collection and could not be upgraded to {SCHEMA_VERSION} '
+                                 f'in place ({exc}); make it writable and open it again') from exc
     db = sqlite3.connect(_uri(path, 'ro' if read_only else None), uri=True)
     db.row_factory = sqlite3.Row
     try:

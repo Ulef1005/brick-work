@@ -33,7 +33,7 @@ import sqlite3
 
 from . import identity
 from .bldigest import bl_digest
-from .connect import connect
+from .connect import SCHEMA_VERSION, connect
 from .migrate import CONDITION, PLACE_KINDS, STOCK_CONDITION, STORAGE_TYPES, CARRIED_PRIORITY_STEPS, CARRIED_SETTINGS, COMPLETENESS, open_source
 from .mint import TYPE_KIND, MintResult, _kind_by_number
 
@@ -434,7 +434,7 @@ class _Proof:
                                               WHERE i.origin='catalogue' AND (c.id IS NULL OR c.born_provider IS NOT i.born_provider
                                                     OR c.born_key IS NOT i.born_key) LIMIT 5''')]
         part.eq('catalogue colours with the same born key', [], bad)
-        part.eq('schema_version', '4.0', db.execute("SELECT value FROM main.meta WHERE key='schema_version'").fetchone()[0])
+        part.eq('schema_version', SCHEMA_VERSION, db.execute("SELECT value FROM main.meta WHERE key='schema_version'").fetchone()[0])
 
     # ---- 5. injectivity ----
 

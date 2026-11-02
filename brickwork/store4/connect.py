@@ -2,6 +2,7 @@
 from contextlib import closing
 from datetime import datetime, timezone
 import os
+import re
 from pathlib import Path
 import sqlite3
 import uuid
@@ -17,6 +18,12 @@ UPGRADES = {
         'ALTER TABLE wish ADD COLUMN max_price_boxed TEXT',
         'ALTER TABLE wish ADD COLUMN max_price_boxed_currency TEXT CHECK((max_price_boxed IS NULL) = (max_price_boxed_currency IS NULL))')),
 }
+# The columns the steps add, by table: a row recorded before its step (an Undo receipt, a RowLog) lacks them and reads them as NULL.
+ADDED_COLUMNS = {}
+for _target, _statements in UPGRADES.values():
+    for _statement in _statements:
+        if (_added := re.match(r'ALTER TABLE (\w+) ADD COLUMN (\w+)', _statement)):
+            ADDED_COLUMNS.setdefault(_added[1], []).append(_added[2])
 CATALOGUE_VERSION = 'catalogue-4.0'
 HERE = Path(__file__).parent
 FIX = ('restore brickwork.db and catalogue.db from the same archive, '
@@ -61,6 +68,15 @@ def check_ids_never_reused(db, path):
         raise StaleSchema(f'{path} predates #124 (made before 2026-10-27): re-run the 3.3 \u2192 4.0 migration to rebuild it')
 
 
+def as_current(table, row):
+    """A row of `table` as recorded (a receipt, a RowLog entry), with every column an upgrade added since as NULL: Undo compares and
+    restores rows written before the upgrade like rows written after it."""
+    added = ADDED_COLUMNS.get(table)
+    if row is None or not added or all(c in row for c in added):
+        return row
+    return {**row, **{c: None for c in added if c not in row}}
+
+
 def upgrade(path):
     """Bring an older collection at `path` to `SCHEMA_VERSION` in place, step by step (`UPGRADES`). Each step re-reads the version
     inside its write transaction, so concurrent openers upgrade once; a failed step rolls back and leaves the file at its last version.
@@ -88,9 +104,22 @@ def upgrade(path):
         db.close()
 
 
-def _version(path):
-    with closing(sqlite3.connect(_uri(path, 'ro'), uri=True)) as db:
-        return (_meta(db) or {}).get('schema_version')
+def bring_up_to_date(path):
+    """Upgrade the collection at `path` in place when it is at an older 4.x version (`UPGRADES`); a no-op at the current version.
+    A stale file (#124) is refused before anything writes to it. The one explicit upgrade moment is app start; a read-write `connect`
+    does the same, a read-only one never writes and refuses a file that still needs it."""
+    with closing(sqlite3.connect(_uri(path, 'ro'), uri=True)) as probe:
+        old = (_meta(probe) or {}).get('schema_version')
+        if old not in UPGRADES:
+            return old
+        check_ids_never_reused(probe, path)              # a stale file is refused before anything writes to it
+    try:
+        return upgrade(path)
+    except sqlite3.OperationalError as exc:
+        hint = ('another process holds the file; open it again in a moment' if 'locked' in str(exc) or 'busy' in str(exc)
+                else 'make it writable and open it again')
+        raise UpgradeFailed(f'{path} is a Brick Work {old} collection and could not be upgraded to {SCHEMA_VERSION} '
+                            f'in place ({exc}); {hint}') from exc
 
 
 def connect(path='brickwork.db', catalogue='catalogue.db', *, read_only=False):
@@ -98,22 +127,18 @@ def connect(path='brickwork.db', catalogue='catalogue.db', *, read_only=False):
     path, catalogue = Path(path), Path(catalogue)
     if not read_only and not path.exists():
         _create(path, 'brickwork.sql', [('schema_version', SCHEMA_VERSION), ('install_id', str(uuid.uuid4()))], exclusive=False)
-    if path.exists() and (old := _version(path)) in UPGRADES:
-        with closing(sqlite3.connect(_uri(path, 'ro'), uri=True)) as probe:
-            check_ids_never_reused(probe, path)          # a stale file is refused before anything writes to it
-        try:
-            upgrade(path)                                # also before a read-only open: the code reads only the current schema
-        except sqlite3.OperationalError as exc:
-            hint = ('another process holds the file; open it again in a moment' if 'locked' in str(exc) or 'busy' in str(exc)
-                    else 'make it writable and open it again')
-            raise UpgradeFailed(f'{path} is a Brick Work {old} collection and could not be upgraded to {SCHEMA_VERSION} '
-                                f'in place ({exc}); {hint}') from exc
-    db = sqlite3.connect(_uri(path, 'ro' if read_only else None), uri=True)
-    db.row_factory = sqlite3.Row
-    try:
-        db.execute('PRAGMA foreign_keys=ON')
-        # Check the version before any pragma that writes: a refused file is left exactly as it was.
+    db = _open(path, read_only)
+    version = (_meta(db) or {}).get('schema_version')
+    if version in UPGRADES:
+        db.close()
+        if read_only:                                    # a read-only open never writes: the file stays as it is
+            raise UpgradeFailed(f'{path} is a Brick Work {version} collection; open it read-write once (start the app) to upgrade '
+                                f'it to {SCHEMA_VERSION} in place')
+        bring_up_to_date(path)
+        db = _open(path, read_only)
         version = (_meta(db) or {}).get('schema_version')
+    try:
+        # Check the version before any pragma that writes: a refused file is left exactly as it was.
         if version != SCHEMA_VERSION:
             raise SchemaMismatch(f'{path} is not a Brick Work {SCHEMA_VERSION} collection (schema_version={version!r}); '
                                  'a 3.3 file must be migrated, never opened')
@@ -128,6 +153,17 @@ def connect(path='brickwork.db', catalogue='catalogue.db', *, read_only=False):
     except BaseException:
         db.close()
         raise
+
+
+def _open(path, read_only):
+    db = sqlite3.connect(_uri(path, 'ro' if read_only else None), uri=True)
+    db.row_factory = sqlite3.Row
+    try:
+        db.execute('PRAGMA foreign_keys=ON')
+    except BaseException:
+        db.close()
+        raise
+    return db
 
 
 def _create(path, schema, meta, *, exclusive):

@@ -1,5 +1,7 @@
 """In-place upgrade of a 4.0 collection to 4.1 (#131: a wish's max price with box), with invented files."""
 from contextlib import closing
+import hashlib
+from pathlib import Path
 import sqlite3
 
 import pytest
@@ -53,13 +55,42 @@ def test_an_upgraded_wish_table_matches_a_new_one(tmp_path):
         assert all(s.count('CHECK((max_price_boxed IS NULL) = (max_price_boxed_currency IS NULL))') == 1 for s in sql)
 
 
-def test_a_read_only_open_upgrades_first_and_an_upgrade_runs_once(tmp_path):
+def digest(path):
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def test_a_read_only_open_never_writes_and_a_write_open_upgrades_once(tmp_path):
+    from brickwork.store4.errors import UpgradeFailed
     path = make_40(tmp_path / 'brickwork.db')
+    before = digest(path)
+    with pytest.raises(UpgradeFailed, match='open it read-write once'):
+        connect(path, tmp_path / 'catalogue.db', read_only=True)
+    assert digest(path) == before                                         # refused, and left exactly as it was
+    connect(path, tmp_path / 'catalogue.db').close()
     with closing(connect(path, tmp_path / 'catalogue.db', read_only=True)) as db:
         assert {r[1] for r in db.execute('PRAGMA table_xinfo(wish)')} >= set(NEW)
     assert upgrade(path) == '4.1'                                         # nothing left to do: no second ALTER
     with closing(sqlite3.connect(path)) as raw:
         assert raw.execute("SELECT count(*) FROM pragma_table_xinfo('wish') WHERE name LIKE 'max_price_boxed%'").fetchone()[0] == 2
+
+
+def test_app_start_upgrades_and_a_read_only_instance_refuses(tmp_path, monkeypatch):
+    from brickwork.core.connect import OldStore, upgrade as start_upgrade
+    path = make_40(tmp_path / 'brickwork.db')
+    start_upgrade(path)
+    with closing(sqlite3.connect(path)) as raw:
+        assert raw.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()[0] == '4.1'
+    start_upgrade(path)                                                   # current: a no-op
+    old = make_40(tmp_path / 'other.db')
+    monkeypatch.setenv('BW_READ_ONLY', '1')
+    monkeypatch.setenv('BW_DB_PATH', str(old))
+    monkeypatch.setenv('BW_EMBEDDED_WORKER', '0')
+    from flask import Flask
+    from brickwork.app import setup_app
+    before = digest(old)
+    with pytest.raises(OldStore, match='open it read-write once'):
+        setup_app(Flask('read-only-start'))
+    assert digest(old) == before
 
 
 def test_a_failed_step_leaves_the_file_at_40(tmp_path, monkeypatch):
@@ -86,16 +117,45 @@ def test_a_stale_40_file_is_refused_before_anything_writes_to_it(tmp_path):
         assert 'max_price_boxed' not in {r[1] for r in raw.execute('PRAGMA table_xinfo(wish)')}
 
 
-def test_a_failed_upgrade_says_open_again_never_migrate(tmp_path):
+@pytest.mark.parametrize('error,hint', [('attempt to write a readonly database', 'make it writable'),
+                                         ('database is locked', 'another process holds the file')])
+def test_a_failed_upgrade_says_open_again_never_migrate(tmp_path, monkeypatch, error, hint):
     from brickwork.core.connect import OldStore, connect as core_connect
+    from brickwork.store4 import connect as store4_connect
     from brickwork.store4.errors import UpgradeFailed
     path = make_40(tmp_path / 'brickwork.db')
-    path.chmod(0o444)
-    try:
-        with pytest.raises(UpgradeFailed, match='make it writable'):
-            connect(path, tmp_path / 'catalogue.db', read_only=True)
-        with pytest.raises(OldStore) as refused:
-            core_connect(path, read_only=True, require_catalogue=False)
-        assert 'could not be upgraded' in str(refused.value) and 'migrate' not in str(refused.value)
-    finally:
-        path.chmod(0o644)
+
+    def failing(path):
+        raise sqlite3.OperationalError(error)
+    monkeypatch.setattr(store4_connect, 'upgrade', failing)
+    with pytest.raises(UpgradeFailed, match=hint):
+        connect(path, tmp_path / 'catalogue.db')
+    with pytest.raises(OldStore) as refused:
+        core_connect(path, require_catalogue=False)
+    assert 'could not be upgraded' in str(refused.value) and 'migrate' not in str(refused.value)
+
+
+def test_undo_of_a_change_recorded_before_the_upgrade(tmp_path):
+    """A receipt and a RowLog written on 4.0 lack the added columns; after the upgrade they undo like new ones."""
+    from brickwork.core import collection
+    from brickwork.store4.rowlog import RowLog
+    path = make_40(tmp_path / 'brickwork.db')
+    raw = sqlite3.connect(path)                                           # the 4.0 app: no upgrade, rows without the new columns
+    raw.row_factory = sqlite3.Row
+    event = collection.save(raw, 'wish', ['w1'], dict(max_price='45'))
+    raw.commit()
+    log = RowLog(raw)
+    log.update('wish', log.select('wish', 'id=?', ('w1',))[0], note='Logged on 4.0')
+    raw.commit()
+    changes = log.changes
+    assert 'max_price_boxed' not in changes[0]['a']
+    raw.close()
+    with closing(connect(path, tmp_path / 'catalogue.db')) as db:
+        log = RowLog(db, changes)
+        assert log.verify() is None
+        log.restore()
+        db.commit()
+        assert db.execute("SELECT note, max_price_boxed FROM wish WHERE id='w1'").fetchone()[:] == (None, None)
+        collection.undo(db, event)
+        db.commit()
+        assert db.execute("SELECT max_price, max_price_currency FROM wish WHERE id='w1'").fetchone()[:] == ('40.00', 'EUR')

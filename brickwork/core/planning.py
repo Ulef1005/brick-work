@@ -306,8 +306,7 @@ def display_prices(db, rows):
                 [p for p in row['prices'] if p['guide'] in ('sold', 'stock') and p.get('slot') != 'boxed'],
                 row['kind'], priorities, condition)
         # A set's quote with box, chosen as its price card chooses it (#131): compared with the max with box, never shown as its price.
-        row['boxed_price'] = collection_prices.choose([p for p in records if p.get('slot') == 'boxed'], row['kind'], priorities) \
-            if row['kind'] == 'set' else None
+        row['boxed_price'] = collection_prices.with_box(records, row['kind'], priorities) if row['kind'] == 'set' else None
     return rows
 
 

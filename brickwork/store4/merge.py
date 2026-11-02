@@ -526,7 +526,8 @@ def move_kind_in(db, item_id, new_kind, *, via, actor=None, operation_key=None):
         for row in stock_rows:
             log.insert('stock', **{**{c: row[c] for c in log.cols('stock')}, 'kind': new_kind})
     for row in wish_rows:
-        log.insert('wish', **{**{c: row[c] for c in log.cols('wish')}, 'kind': new_kind})
+        boxed = {} if new_kind == 'set' else {'max_price_boxed': None, 'max_price_boxed_currency': None}   # only a set has one (#131)
+        log.insert('wish', **{**{c: row[c] for c in log.cols('wish')}, 'kind': new_kind, **boxed})
     _foreign_keys(db, log.tables())
     counts = {}
     for change in log.changes:

@@ -213,3 +213,18 @@ def test_the_wishlist_csv_carries_the_max_with_box(coll, wish, read):
     header = lines[0].split(',')
     assert header[8:12] == ['Max price', 'Currency', 'Max with box', 'Max with box currency'] and header[-1] == 'Note'
     assert lines[1].split(',')[8:12] == ['100', 'EUR', '120', 'EUR']
+
+
+def test_only_a_set_wish_takes_a_max_with_box(coll, world, client):
+    with pytest.raises(ValueError, match='Only set wishes have a max price with box'):
+        collection.save(coll.db, 'wish', [world.wish_part], dict(max_price_boxed='3'))
+    collection.save(coll.db, 'wish', [world.wish_part], dict(max_price_boxed=''))      # clearing is always allowed
+    sheet = page(client, f'/collection/wishes/{world.wish_part}').select_one('#bc-edit')
+    assert sheet.select_one('input[name=max_price]') and not sheet.select('input[name^=max_price_boxed]')
+
+
+def test_a_kind_move_away_from_a_set_clears_its_max_with_box(coll, wish):
+    local = coll.local('set', 'Syn set to move')
+    coll.sql("UPDATE wish SET item_id=?, max_price_boxed='70', max_price_boxed_currency='EUR' WHERE id=?", (local, wish))
+    merge.move_kind(coll.db, local, 'gear')
+    assert boxed_pair(coll, wish) == (None, None)

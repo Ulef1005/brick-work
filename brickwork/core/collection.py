@@ -22,7 +22,7 @@ from .admin import audit, origin
 from .completeness import derived_state
 from .sources.base import now
 from ..store4 import copies as store_copies, identity, part_list_read
-from ..store4.connect import has_catalogue, now as stamp_now
+from ..store4.connect import as_current, has_catalogue, now as stamp_now
 
 TYPES = {'S': 'Sets', 'M': 'Minifigures', 'P': 'Parts', 'I': 'Instructions',
          'O': 'Boxes', 'G': 'Gear', 'B': 'Books', 'C': 'Catalogs'}
@@ -627,8 +627,9 @@ def detail(db, item_id, *, colour=None, copy_id=None, stock_id=None, wish_id=Non
     row['price_records'] = decorate_prices(observations)
     row['condition_prices'] = collection_prices.condition_rows(row['price_records'], kind, price_priority)
     row['price_history'] = collection_prices.history(observations, collection_prices.choose([p for p in row['price_records'] if p['guide'] == 'sold' and p.get('slot') != 'boxed'], kind, price_priority, 'used'))
-    valuation = [p for p in row['price_records'] if p['guide'] in ('valuation', 'manual') or p.get('slot') == 'boxed']
-    row['valuation_prices'] = [p for slot in ('boxed', 'estimate') if (p := collection_prices.choose([p for p in valuation if (p.get('slot') == 'boxed') == (slot == 'boxed')], kind, price_priority))]
+    estimate = collection_prices.choose([p for p in row['price_records'] if p['guide'] in ('valuation', 'manual') and p.get('slot') != 'boxed'],
+                                        kind, price_priority)
+    row['valuation_prices'] = [p for p in (collection_prices.with_box(row['price_records'], kind, price_priority), estimate) if p]
     row['retail'] = retail(db, item_id) if kind == 'set' else None
     row['retail_saving'] = None
     if row['retail'] and selected and selected['entity'] == 'copy':
@@ -1158,6 +1159,8 @@ def save(db, entity, ids, data, *, archive=False):
 
 
 def _check_wish_edits(db, ids, old, edits):
+    if edits.get('max_price_boxed') is not None and any(r['kind'] != 'set' for r in old):
+        raise ValueError('Only set wishes have a max price with box')         # only a set has a quote with box (#131)
     if 'quantity' in edits:
         edits['quantity'] = add.quantity(edits['quantity'])
     if 'color_id' in edits:
@@ -1249,7 +1252,7 @@ def _undo_collection(db, event, via, actor):
             current = links(db, table, sample[LINK_TABLES[table]]) if sample else []
         else:
             current = snapshot(db, table, [r['id'] for r in new['rows']])
-        if current != new['rows']:
+        if current != [as_current(table, r) for r in new['rows']]:          # a receipt from before an upgrade lacks its columns
             raise ValueError(changed)
         if table == 'wishlist' and not old['rows'] and db.execute('SELECT 1 FROM main.wish WHERE wishlist_id=? AND archived_at IS NULL', (new['rows'][0]['id'],)).fetchone():
             raise ValueError('Wishlist changed · undo its wishes first')
@@ -1288,7 +1291,7 @@ def _put_back(db, pairs, stamp):
             db.executemany(f'UPDATE main.{table} SET {sets} WHERE id=?', [((stamp, stamp, r['id']) if 'updated_at' in names else (stamp, r['id'])) for r in new['rows']])
         else:
             names = [c for c in columns(db, table) if c != 'id']
-            for r in old['rows']:
+            for r in map(lambda row: as_current(table, row), old['rows']):
                 if table == 'wish':
                     wish_collision(db, table, r)
                 db.execute(f'UPDATE main.{table} SET ' + ','.join(f'{c}=?' for c in names) + ' WHERE id=?', (*[r[c] for c in names], r['id']))

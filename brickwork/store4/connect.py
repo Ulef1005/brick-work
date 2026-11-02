@@ -6,7 +6,7 @@ from pathlib import Path
 import sqlite3
 import uuid
 
-from .errors import CatalogueError, CatalogueMismatch, SchemaMismatch, StaleSchema, Unsupported
+from .errors import CatalogueError, CatalogueMismatch, SchemaMismatch, StaleSchema, Unsupported, UpgradeFailed
 
 MIN_SQLITE = (3, 37, 0)
 SCHEMA_VERSION = '4.1'
@@ -81,7 +81,8 @@ def upgrade(path):
                 db.execute("INSERT OR REPLACE INTO meta(key, value) VALUES(?, ?)", (f'upgraded_to_{target}', now()))
                 db.execute('COMMIT')
             except BaseException:
-                db.execute('ROLLBACK')
+                if db.in_transaction:                    # SQLite may have rolled back already (a full disk): keep the real error
+                    db.execute('ROLLBACK')
                 raise
     finally:
         db.close()
@@ -97,12 +98,16 @@ def connect(path='brickwork.db', catalogue='catalogue.db', *, read_only=False):
     path, catalogue = Path(path), Path(catalogue)
     if not read_only and not path.exists():
         _create(path, 'brickwork.sql', [('schema_version', SCHEMA_VERSION), ('install_id', str(uuid.uuid4()))], exclusive=False)
-    if path.exists() and _version(path) in UPGRADES:
+    if path.exists() and (old := _version(path)) in UPGRADES:
+        with closing(sqlite3.connect(_uri(path, 'ro'), uri=True)) as probe:
+            check_ids_never_reused(probe, path)          # a stale file is refused before anything writes to it
         try:
             upgrade(path)                                # also before a read-only open: the code reads only the current schema
         except sqlite3.OperationalError as exc:
-            raise SchemaMismatch(f'{path} is a Brick Work {_version(path)} collection and could not be upgraded to {SCHEMA_VERSION} '
-                                 f'in place ({exc}); make it writable and open it again') from exc
+            hint = ('another process holds the file; open it again in a moment' if 'locked' in str(exc) or 'busy' in str(exc)
+                    else 'make it writable and open it again')
+            raise UpgradeFailed(f'{path} is a Brick Work {old} collection and could not be upgraded to {SCHEMA_VERSION} '
+                                f'in place ({exc}); {hint}') from exc
     db = sqlite3.connect(_uri(path, 'ro' if read_only else None), uri=True)
     db.row_factory = sqlite3.Row
     try:

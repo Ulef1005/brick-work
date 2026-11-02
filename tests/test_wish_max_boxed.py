@@ -192,3 +192,24 @@ def test_without_edit_rights_no_footer_label_looks_like_an_action(coll, wish, cl
         footer = page(client, url).select_one('.bc-price-footer')
         assert not footer.select('button') and 'Set estimate' not in footer.text
         assert footer.select('.bc-estimate-label')                           # plain text in the secondary colour (bw-collection.css)
+
+
+def test_a_wishs_card_still_shows_the_sets_estimate(coll, wish, client):
+    quotes(coll, wish, boxed='55')                                          # Brickset's value with box is the card's "With box"
+    item = coll.db.execute('SELECT item_id FROM wish WHERE id=?', (wish,)).fetchone()[0]
+    coll.price(item, '48', guide='valuation', currency='EUR', source='brickset', observed=planning.now().isoformat())
+    footer = page(client, f'/collection/wishes/{wish}').select_one('.bc-price-footer')
+    estimate = footer.select_one('[data-bc-wish-estimate]')
+    assert estimate and '€48.00' in estimate.text and not estimate.select('button')   # shown, not an action, beside the two maxima
+
+
+# ---------- the app's own wishlist export ----------
+
+def test_the_wishlist_csv_carries_the_max_with_box(coll, wish, read):
+    from brickwork.core import list_exports
+    collection.save(coll.db, 'wish', [wish], dict(max_price_boxed='120', max_price_boxed_currency='EUR'))
+    with read() as db:
+        lines = list_exports.to_csv('wishlist', list_exports.wishlist(db)).splitlines()
+    header = lines[0].split(',')
+    assert header[8:12] == ['Max price', 'Currency', 'Max with box', 'Max with box currency'] and header[-1] == 'Note'
+    assert lines[1].split(',')[8:12] == ['100', 'EUR', '120', 'EUR']

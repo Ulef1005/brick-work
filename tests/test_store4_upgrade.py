@@ -71,3 +71,31 @@ def test_a_failed_step_leaves_the_file_at_40(tmp_path, monkeypatch):
     with closing(sqlite3.connect(path)) as raw:
         assert raw.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()[0] == '4.0'
         assert 'max_price_boxed' not in {r[1] for r in raw.execute('PRAGMA table_xinfo(wish)')}
+
+
+def test_a_stale_40_file_is_refused_before_anything_writes_to_it(tmp_path):
+    from brickwork.store4.errors import StaleSchema
+    path = make_40(tmp_path / 'brickwork.db')
+    with closing(sqlite3.connect(path)) as raw:                          # rebuild item_link as before #124: no AUTOINCREMENT
+        sql = raw.execute("SELECT sql FROM sqlite_master WHERE name='item_link'").fetchone()[0]
+        raw.executescript('PRAGMA foreign_keys=OFF; DROP TABLE item_link; ' + sql.replace('AUTOINCREMENT', '') + ';')
+    with pytest.raises(StaleSchema):
+        connect(path, tmp_path / 'catalogue.db')
+    with closing(sqlite3.connect(path)) as raw:
+        assert raw.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()[0] == '4.0'
+        assert 'max_price_boxed' not in {r[1] for r in raw.execute('PRAGMA table_xinfo(wish)')}
+
+
+def test_a_failed_upgrade_says_open_again_never_migrate(tmp_path):
+    from brickwork.core.connect import OldStore, connect as core_connect
+    from brickwork.store4.errors import UpgradeFailed
+    path = make_40(tmp_path / 'brickwork.db')
+    path.chmod(0o444)
+    try:
+        with pytest.raises(UpgradeFailed, match='make it writable'):
+            connect(path, tmp_path / 'catalogue.db', read_only=True)
+        with pytest.raises(OldStore) as refused:
+            core_connect(path, read_only=True, require_catalogue=False)
+        assert 'could not be upgraded' in str(refused.value) and 'migrate' not in str(refused.value)
+    finally:
+        path.chmod(0o644)

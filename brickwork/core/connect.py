@@ -5,7 +5,7 @@
 from pathlib import Path
 
 from ..store4 import connect as store4_connect
-from ..store4.errors import CatalogueError, SchemaMismatch, StaleSchema
+from ..store4.errors import CatalogueError, SchemaMismatch, StaleSchema, UpgradeFailed
 from . import errors
 
 CATALOGUE_NAME = 'catalogue.db'
@@ -40,8 +40,10 @@ def connect(path='brickwork.db', *, read_only=False, require_catalogue=True):
         return store4_connect.connect(path, catalogue, read_only=read_only)
     except StaleSchema as exc:
         raise OldStore(f'{exc}: {MIGRATE}') from None
+    except UpgradeFailed as exc:
+        raise OldStore(str(exc)) from None                  # a valid older 4.x file: open it again, never migrate it
     except SchemaMismatch as exc:
-        raise OldStore(f'{path} is not a Brick Work 4.0 collection. A 3.2/3.3 file must be migrated, never opened: {MIGRATE}. '
+        raise OldStore(f'{path} is not a Brick Work 4.x collection. A 3.2/3.3 file must be migrated, never opened: {MIGRATE}. '
                        f'({exc})') from None
     except CatalogueError as exc:
         raise NoCatalogue(str(exc)) from None

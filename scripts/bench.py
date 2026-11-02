@@ -56,10 +56,25 @@ class _FrozenDate(_dt.date):
         return FROZEN.date()
 
 
+def _import_all():
+    import importlib
+    import pkgutil
+    import brickwork
+    for module in pkgutil.walk_packages(brickwork.__path__, 'brickwork.'):
+        if module.name not in sys.modules and not module.name.endswith('__main__'):   # a __main__ runs its command line
+            try:
+                importlib.import_module(module.name)
+            except Exception:                         # an optional entry point (a CLI, a server) that does not import here
+                pass
+    for name in ('tests.app4', 'tests.web_fixtures', 'tests.store4_mint_fixtures'):
+        importlib.import_module(name)
+
+
 @contextmanager
 def frozen(seed=131):
     """Every `datetime`/`date` name bound in a loaded `brickwork` or `tests` module reads FROZEN, `time.time` is fixed, and `uuid.uuid4`
     is a seeded sequence: outputs that show ages, stamps or new ids are the same on every run and every day."""
+    _import_all()                                     # a module imported later would keep the real clock
     saved = []
     ids = random.Random(seed)
     real_uuid4, real_time = uuid.uuid4, time.time
@@ -135,6 +150,10 @@ def build(target, scale=1.0, seed=131):
         dump, links = catalogue_rows(scale, rng)
         pair = make_pair(target, rich=True, extra_dump=dump, extra_parts=links)
         with closing(connect(pair)) as db:
+            stamp = FROZEN.strftime('%Y-%m-%dT%H:%M:%S.000Z')                      # rows the schema stamps with SQLite's own clock
+            db.execute("UPDATE wishlist SET created_at=? WHERE id='default'", (stamp,))
+            db.execute('UPDATE color SET created_at=?, updated_at=? WHERE id IN (1, 2)', (stamp, stamp))
+            db.commit()
             coll = Coll(db)
             colours = [coll.colour(k) for k in ('4', '15', '0', '14')] + [coll.colour(str(2000 + i)) for i in range(c['colours'])]
             storages = [coll.storage(f'Syn shelf {i}', type='Shelf') for i in range(c['storages'])]

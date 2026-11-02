@@ -181,6 +181,7 @@ def prices(db, item_id=None, colour=None, *, pairs=None, used_sold=False):
     One item and colour -> a list; `pairs` (item id, colour id) rows -> `{(item, colour): [quotes]}`. `used_sold` keeps only
     the used, sold-guide, non-boxed quote: all a list row's price ever reads."""
     if pairs is not None:
+        pairs = list(pairs)
         where, params = 'WHERE p.item_id IN (SELECT value FROM json_each(?))', [_in(i for i, _ in pairs)]
     else:
         where, params = 'WHERE p.item_id=? AND p.color_id IS ?', [item_id, colour]
@@ -192,6 +193,10 @@ def prices(db, item_id=None, colour=None, *, pairs=None, used_sold=False):
         FROM price_current p JOIN price_observation o ON o.id=p.observation_id JOIN item i ON i.id=p.item_id
         LEFT JOIN source_freshness f ON f.source=o.source AND f.kind='prices' ''' + where +
         ' ORDER BY p.item_id,p.condition,p.guide,p.currency,p.slot,p.region', params).fetchall()
+    if pairs is not None and len(rows) > len(pairs):
+        # More quotes than pairs: other colours of those items came along. A caller reads its own pairs, so only those are decorated.
+        wanted = {(i, c) for i, c in pairs}
+        rows = [r for r in rows if (r['item_id'], r['color_id']) in wanted]
     result = defaultdict(list)
     for r in decorate_prices(rows):
         result[r['item_id'], r['color_id']].append(r)

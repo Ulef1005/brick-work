@@ -47,3 +47,20 @@ def test_the_fast_yaml_loader_reads_the_contract_as_the_python_one_does():
     if not hasattr(yaml, 'CSafeLoader'):
         pytest.skip('PyYAML without libyaml: the Python loader is used')
     assert yaml.load(text, Loader=yaml.CSafeLoader) == yaml.safe_load(text)
+
+
+@pytest.mark.parametrize('sort', sorted(__import__('brickwork.core.listing', fromlist=['SORTS']).SORTS))
+@pytest.mark.parametrize('direction', ['asc', 'desc'])
+@pytest.mark.parametrize('group', ['', 'colour', 'year'])
+def test_the_key_sort_is_the_comparators_order(sort, direction, group):
+    """`listing.ordered` (stable key sorts) puts rows in exactly `comparator`'s order, ties and absent values included."""
+    import random
+    from functools import cmp_to_key
+    from brickwork.core import listing
+    rng = random.Random(7)
+    rows = [dict(id=f'r{i}', number=rng.choice(['3001', '3001b', '10', '2', 'fig-000004', '', None]), name=rng.choice(['Brick', 'brick', 'Plate', None]),
+                 year=rng.choice([1990, 2001, None]), quantity=rng.choice([0, 1, 5]), missing=rng.choice([0, 2, None]), damaged=rng.choice([0, 1]),
+                 colour=rng.choice(['Red', 'Blue', '']), index=rng.randrange(5), price=rng.choice([None, ['EUR', '1.50'], ['EUR', '0.20'], ['USD', '1.50']]),
+                 ranking=rng.choice([[0, 1, '2.5', '1', 3, 'a', 'b'], [1, 0, '0', '0', 0, '', '']]))
+            for i in range(300)]
+    assert listing.ordered(rows, sort, direction, group) == sorted(rows, key=cmp_to_key(listing.comparator(sort, direction, group)))

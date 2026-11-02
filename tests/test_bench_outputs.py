@@ -37,3 +37,13 @@ def test_the_check_catches_a_changed_output(store, monkeypatch):
     found = bench.hashes(folder, ids)
     changed = {name for name in found if found[name] != REFERENCE[name]}
     assert {'web planning wishlist', 'api wishes', 'mcp list_wishes'} <= changed
+
+
+def test_the_fast_yaml_loader_reads_the_contract_as_the_python_one_does():
+    """App start and the MCP tools read the v2 contract with libyaml's CSafeLoader where PyYAML has it; it must read the same tree."""
+    yaml = pytest.importorskip('yaml')
+    from brickwork.core.contract import contract_v2_path
+    text = contract_v2_path().read_text()
+    if not hasattr(yaml, 'CSafeLoader'):
+        pytest.skip('PyYAML without libyaml: the Python loader is used')
+    assert yaml.load(text, Loader=yaml.CSafeLoader) == yaml.safe_load(text)

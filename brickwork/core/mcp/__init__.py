@@ -24,7 +24,7 @@ NUMBER = ("The item's number in that provider, such as 1000-1 or 3001. Tools tha
 
 @lru_cache(maxsize=1)
 def contract():
-    return yaml.safe_load(contract_v2_path().read_text())
+    return yaml.load(contract_v2_path().read_text(), Loader=getattr(yaml, 'CSafeLoader', yaml.SafeLoader))   # libyaml where PyYAML has it
 
 
 def resolve(spec, value):

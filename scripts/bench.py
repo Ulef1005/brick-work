@@ -223,7 +223,9 @@ def build(target, scale=1.0, seed=131):
                         coll.price(item, f'{base * 1.4:.2f}', guide='valuation', slot='boxed', source='brickset', observed=observed)
                         made += 1
             db.commit()
-            ids = dict(copy=copies[0], set_item=coll.item('sets', owned_sets[0]), wish=wished[0][0], part=part_ids[0], colour=colours[0],
+            second = db.execute('''SELECT id FROM copy c WHERE archived_at IS NULL AND (SELECT count(*) FROM copy d WHERE d.item_id=c.item_id
+                AND d.archived_at IS NULL AND (d.created_at, d.id) < (c.created_at, c.id)) = 1 ORDER BY id LIMIT 1''').fetchone()
+            ids = dict(second_copy=second[0] if second else copies[-1], copy=copies[0], set_item=coll.item('sets', owned_sets[0]), wish=wished[0][0], part=part_ids[0], colour=colours[0],
                        lot=lots[0], storage=storages[0], stock=stock[0], figure=figure_ids[0], set_key=owned_sets[0])
     (target / 'ids.json').write_text(json.dumps(ids, sort_keys=True))
     return ids
@@ -241,7 +243,8 @@ def paths(ids):
            ('web workbench storage', '/workbench/storage'),
            ('web planning wishlist', '/planning/wishlist'), ('web planning prices', '/planning/prices'),
            ('web planning price records', '/planning/prices/records'), ('web planning complete sets', '/planning/complete-sets'),
-           ('web search jump', '/collection/jump?q=syn%20set%2012'), ('web add search', '/manage/add/search?type=set&q=syn&sort=number'),
+           ('web search jump', '/collection/jump?q=syn%20set%2012'), ('web search jump (number)', f"/collection/jump?q={ids['set_key']}"),
+           ('web search jump (copy id)', f"/collection/jump?q={ids['second_copy'][:8]}"), ('web add search', '/manage/add/search?type=set&q=syn&sort=number'),
            ('web export wishlist csv', '/lists/wishlist.csv'), ('web export wishlist bl xml', '/planning/wishlists/default/export.xml?kind=sets')]
     api = [('api copies', '/copies?limit=200'), ('api stock', '/stock?limit=200'), ('api minifigures', '/minifigures?limit=200'),
            ('api wishes', '/wishes?limit=200'), ('api prices', '/prices?limit=200'), ('api items search', '/items?q=syn%20set%201&limit=50'),

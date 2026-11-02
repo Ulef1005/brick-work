@@ -121,6 +121,15 @@ def decorate(db, rows, loaded=None):
         key = r['item_id'], r['color_id']
         if key not in pictures or candidate < pictures[key]:
             pictures[key] = candidate
+    shown = {}                                                          # per colour id: (name, rgb, ink), worked out once
+
+    def colour_of(colour_id):
+        if colour_id not in shown:
+            colour = colour_rows.get(colour_id)
+            rgb = (colour['rgb'] if colour else None) or ''
+            rgb = rgb if re.fullmatch('[a-fA-F0-9]{6}', rgb) else None
+            shown[colour_id] = (colour['name'] if colour else None, rgb, add.colour_ink(rgb))
+        return shown[colour_id]
     result = []
     for source in rows:
         row = dict(source)
@@ -136,11 +145,7 @@ def decorate(db, rows, loaded=None):
         found = [pictures[key] for key in {(row['item_id'], None), (row['item_id'], row.get('color_id'))} if key in pictures]
         row['image'] = min(found)[2] if found else None
         row['unresolved'] = bool(row['unidentified'] or row['item_id'] in unresolved)
-        colour = colour_rows.get(row.get('color_id'))
-        row['color_name'] = colour['name'] if colour else None
-        rgb = (colour['rgb'] if colour else None) or ''
-        row['rgb'] = rgb if re.fullmatch('[a-fA-F0-9]{6}', rgb) else None
-        row['ink'] = add.colour_ink(row['rgb'])
+        row['color_name'], row['rgb'], row['ink'] = colour_of(row.get('color_id'))
         result.append(row)
     return result
 

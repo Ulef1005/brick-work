@@ -69,8 +69,8 @@ def test_a_voided_observation_never_shows(v2, coll, world):
 
 
 def test_the_prices_of_one_item_are_current_and_recorded(v2, coll, world):
-    coll.price(world.brick, '0.35', colour=world.red, observed=stamp(5))
-    coll.price(world.brick, '0.30', colour=world.white, observed=stamp(3))
+    coll.price(world.brick, '0.35', colour=world.red, observed='2026-10-21T12:00:00.000Z')      # five and three days before the world's 0.40
+    coll.price(world.brick, '0.30', colour=world.white, observed='2026-10-23T12:00:00.000Z')    # (fixed dates beside a fixed one, issue #132)
     prices = data(call(v2, f'/items/{world.brick}/prices'))
     assert set(prices) == {'current', 'records'} and len(prices['records']) == 3
     assert [r['price'] for r in prices['records']] == ['0.40', '0.30', '0.35']                    # by when they were observed, newest first

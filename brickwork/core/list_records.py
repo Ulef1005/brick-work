@@ -16,6 +16,9 @@ from ..web.formatting import money, short_age
 
 FIELDS = ('type number name colour color_id rgb ink category theme year quantity missing damaged in_sets image unresolved entity ids condition status storage place '
           'flags lot duplicates price lot_links defects price_basis missing_parts missing_figures pdf_available max_price subtheme tags item_id also source').split()
+DEFAULTS = {18: [''], 19: [''], 20: ['null'], 21: ['null'], 22: [], 23: ['null']}   # what the browser decoder restores for an omitted field
+KEYS = [str(i) for i in range(len(FIELDS))]
+EMPTY = (None, '', False, 0, [])
 
 
 def payload(rows, query="", filters=None, sort="index", direction="asc"):
@@ -49,12 +52,13 @@ def payload(rows, query="", filters=None, sort="index", direction="asc"):
             ((r.get('properties') or {}).get('subtheme') or {}).get('value') if r['item_type'] == 'S' and not wish else None,
             sorted({f['name'] for i in r.get('instances', []) for f in i.get('flags', []) if f.get('kind') == 'tag' and f.get('shown_on_grid') and f.get('name')}),
             r.get('item_id'), r.get('also'), 'bricklink' if r.get('number_source') == 'bricklink' else None]
-        defaults = {18:[''], 19:[''], 20:['null'], 21:['null'], 22:[], 23:['null']}
-        packed = {str(i): v for i,v in enumerate(values) if (i == 4 and v is not None) or (v != defaults.get(i) and v not in (None, '', False, 0, []))}
+        packed = {KEYS[i]: v for i, v in enumerate(values) if (i == 4 and v is not None) or (v != DEFAULTS.get(i) and v not in EMPTY)}
         records.append(packed)
-    decoded = [dict(zip(FIELDS, [record.get(str(i), defaults.get(i)) for i in range(len(FIELDS))]), id=str(i), index=i) for i, record in enumerate(records)]
-    ordered = filter_rows(decoded, query, filters, sort, direction)
-    records = [records[int(row['id'])] for row in ordered]
+    if query or filters or sort != 'index' or direction != 'asc':
+        # No query, filter or sort keeps every row in its order (`filter_rows` by index ascending): only another view decodes and orders.
+        decoded = [dict(zip(FIELDS, [record.get(KEYS[i], DEFAULTS.get(i)) for i in range(len(FIELDS))]), id=str(i), index=i) for i, record in enumerate(records)]
+        ordered = filter_rows(decoded, query, filters, sort, direction)
+        records = [records[int(row['id'])] for row in ordered]
     # Same script-safe escaping as Jinja tojson, with compact separators.
     encoded = json.dumps({'fields':FIELDS, 'rows':records}, separators=(',', ':'), ensure_ascii=False)
     return Markup(encoded.replace('&', '\\u0026').replace('<', '\\u003c').replace('>', '\\u003e').replace("'", '\\u0027'))

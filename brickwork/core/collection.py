@@ -291,9 +291,12 @@ def instances(db, kind=None, *, include_archived=False, item_id=None, stock_only
     return out
 
 
-def _instances(db, kind, include_archived, item_id, stock_only=False):
-    """`instances` before decoration: the rows with their flags in `_flags`."""
+def _instances(db, kind, include_archived, item_id, stock_only=False, item_ids=None):
+    """`instances` before decoration: the rows with their flags in `_flags`. `item_ids` scopes the read to those items (every row of
+    each, so a copy's `Set N` counts as in the whole list)."""
     one, params = (' AND c.item_id=?', [item_id]) if item_id is not None else ('', [])
+    if item_ids is not None:
+        one, params = one + ' AND c.item_id IN (SELECT value FROM json_each(?))', params + [_in(item_ids)]
     where = f'{_scope(include_archived, "c")}{one}'
     copies = []
     if kind in (None, 'set') and not stock_only:
@@ -305,10 +308,11 @@ def _instances(db, kind, include_archived, item_id, stock_only=False):
         defects = _copy_defects(db, where, params)
         for row in copies:
             row['missing'], row['damaged'], row['missing_parts'], row['missing_figures'] = defects.get(row['id'], (0, 0, 0, 0))
-    stock_where = f'{_scope(include_archived, "s")}' + (' AND s.item_id=?' if item_id is not None else '') + (' AND s.kind=?' if kind else '')
-    stock_params = ([item_id] if item_id is not None else []) + ([kind] if kind else [])
+    stock_where = (f'{_scope(include_archived, "s")}' + (' AND s.item_id=?' if item_id is not None else '') + (' AND s.kind=?' if kind else '')
+                   + (' AND s.item_id IN (SELECT value FROM json_each(?))' if item_ids is not None else ''))
+    stock_params = ([item_id] if item_id is not None else []) + ([kind] if kind else []) + ([_in(item_ids)] if item_ids is not None else [])
     rows = [] if kind == 'set' else [dict(r) for r in db.execute(f'{_STOCK} WHERE {stock_where} ORDER BY s.item_id,s.color_id,s.created_at,s.id', stock_params)]
-    scoped = item_id is not None or kind
+    scoped = item_id is not None or kind or item_ids is not None
     flags = _flags(db, {'stock': [r['id'] for r in rows] if scoped else None} if stock_only else
                    {'copy': [r['id'] for r in copies], 'stock': [r['id'] for r in rows]} if scoped else {'copy': None, 'stock': None})
     for row in copies + rows:
@@ -967,7 +971,10 @@ def search(db, query, limit=20):
             UNION SELECT item_id FROM main.item_link WHERE provider='bricklink' AND status IN ('matched','inferred','manual') AND provider_key LIKE ?1 ESCAPE '\\'""",
             (pattern, word))}
     candidates = {}
-    for r in _instances(db, None, False, None):
+    # Every live row of an item some matching row belongs to: the ids alone pick those items, then their rows are read whole.
+    scope = {item for row_id, item in db.execute('SELECT id,item_id FROM copy WHERE archived_at IS NULL UNION ALL SELECT id,item_id FROM stock WHERE archived_at IS NULL')
+             if item in matching or any(w in str(row_id).casefold() for w in words)}
+    for r in _instances(db, None, False, None, item_ids=scope) if scope else ():
         if r['item_id'] in matching or any(w in str(r['id']).casefold() for w in words):
             candidate = candidates.setdefault((r['item_id'], r.get('color_id')), dict(r, instances=[]))
             candidate['instances'].append(r)

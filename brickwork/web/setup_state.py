@@ -56,6 +56,20 @@ def catalogue_loaded():
         return False
 
 
+def catalogue_summary(paths):
+    """#85: the done state of the catalogue step: what the active catalogue holds and which download it came from. None when unreadable."""
+    from ..store4 import status
+    from .formatting import short_stamp
+    try:
+        build = status.catalogue_build(paths)
+    except (sqlite3.Error, OSError, ValueError):
+        return None
+    if not build:
+        return None
+    return dict(items=build['items'], colours=build['colours'], built=short_stamp(build['built_at']),
+                download=short_stamp(build['download_date']) if build['download_date'] else None)
+
+
 def first_run(can_edit):
     """The steps of the first-run flow (#83, on 12j) in order: the catalogue, keys (optional), bring your collection in. Each is done, current
     (where the flow resumes), open, skipped or waiting (see `onboarding.states`). `file` is a catalogue that is there but not active yet; `today`
@@ -68,7 +82,7 @@ def first_run(can_edit):
     found = cli.newest_download(paths)
     job = catalogue_jobs.read(paths)
     states = onboarding.states(dict(catalogue=loaded, keys=keyed, collection=onboarding.collection_started()), can_edit, onboarding.skipped())
-    return dict(steps=states, done=sum(state == 'done' for state in states.values()), total=len(states),
+    return dict(steps=states, done=sum(state == 'done' for state in states.values()), total=len(states), catalogue=catalogue_summary(paths) if loaded else None,
                 finished=all(state in ('done', 'skipped') for state in states.values()),
                 keyed=keyed, loaded=loaded, file=not loaded and catalogue_file(), can_edit=can_edit,
                 today=bool(found and found[0].name == date.today().isoformat()),

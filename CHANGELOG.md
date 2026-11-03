@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- **Get started** (#83, milestone A): the first run is one flow of three steps, in this order: **Load the catalogue**, **Set up your keys** (optional), **Bring your collection in** (Add a set, or Import from BrickTracker). Every step can be skipped for now and taken back. The flow resumes at the first open step, and after the first run it opens again from **Tools & Admin › Get started**, with how many steps are done. Before, the keys came first and the BrickTracker import was a fourth step. See [Settings and maintenance](docs/how-to/settings-and-maintenance.md).
+- **Get started** (#83, milestone A): the first run is one flow of three steps, in this order: **Load the catalogue**, **Set up your keys** (optional), **Bring your collection in** (Add a set, or Import from BrickTracker). Every step can be skipped for now and taken back. The flow resumes at the first open step, and after the first run it opens again from **Tools & Admin › Get started**, with how many steps are done. Before, the keys came first and the BrickTracker import was a fourth step. The catalogue step explains what the catalogue is (what it holds, Brick Work ids, what comes later), and once it is done shows how many items and colours it holds and the date of its files (#85). See [Settings and maintenance](docs/how-to/settings-and-maintenance.md).
 
 ## Brick Work 0.7.0 (schema 4.1) · 2026-11-03
 

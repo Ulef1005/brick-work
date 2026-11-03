@@ -742,6 +742,12 @@ html[data-web-ui="toni"] #bw-collection .bc-source-details summary { padding-inl
 #bw-collection .fr-actions { display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex:none; }
 #bw-collection .fr-skip-form { margin:4px 0 0;align-self:flex-start; }
 #bw-collection .fr-skip { min-height:44px;padding:0;border:0;background:none;color:var(--tw-accent-text);font:500 13px var(--tw-font);cursor:pointer; }
+/* #85: the catalogue step's done line and its explainer. */
+#bw-collection .fr-summary { font:500 13px/18px var(--tw-font);color:var(--tw-text-2);margin:0; }
+#bw-collection .fr-summary a { color:var(--tw-accent-text);text-decoration:none; }
+#bw-collection .fr-explain { margin:4px 0 0;font:400 13px/18px var(--tw-font);color:var(--tw-text-2); }
+#bw-collection .fr-explain summary { min-height:44px;display:flex;align-items:center;cursor:pointer;color:var(--tw-accent-text);font-weight:500;width:max-content; }
+#bw-collection .fr-explain ul { margin:0 0 4px;padding-left:18px;display:flex;flex-direction:column;gap:6px; }
 #bw-collection .fr-skipped { font:500 13px/18px var(--tw-font);color:var(--tw-text-2); }
 @media (max-width:640px) { #bw-collection .fr-step { flex-wrap:wrap; } #bw-collection .fr-actions { width:100%;align-items:stretch; } #bw-collection .fr-btn { width:100%; } }
 .key-need { display:flex;flex-direction:column;gap:4px;margin:0; }

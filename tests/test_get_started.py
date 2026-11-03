@@ -97,3 +97,35 @@ def test_tools_and_admin_reopens_the_flow_with_its_progress(client):
     hub = soup(client, '/manage/tools')
     row = hub.find('a', href='/manage/get-started')
     assert row and 'Get started' in row.get_text() and '1 of 3 done' in row.get_text()
+
+
+# #85: the catalogue step: what it is, its progress while it runs (also after leaving the page), its done state.
+
+def test_the_catalogue_step_says_what_the_catalogue_holds_and_when_it_is_done_what_is_active(client):
+    step = soup(client).select_one('[data-key=catalogue]')
+    summary = step.select_one('[data-catalogue-summary]')
+    assert ' items and ' in summary.get_text() and ' colours' in summary.get_text()
+    assert summary.find('a')['href'] == '/manage/catalogue'
+    explainer = step.select_one('details[data-catalogue-explainer]')
+    assert explainer.summary.get_text() == 'What the catalogue is' and not explainer.has_attr('open')
+    assert [li.strong.get_text() for li in explainer.select('li')] == ['What it holds.', 'Brick Work ids.', 'What comes later.']
+
+
+def test_before_the_catalogue_the_step_explains_it_and_has_no_summary(client, monkeypatch):
+    monkeypatch.setattr('brickwork.web.setup_state.catalogue_loaded', lambda: False)
+    step = soup(client, '/collection/sets').select_one('[data-key=catalogue]')
+    assert step.select_one('[data-catalogue-explainer]') and not step.select('[data-catalogue-summary]')
+
+
+@pytest.mark.parametrize('state', ['running', 'failed'])
+def test_coming_back_shows_a_running_job_with_its_progress_and_a_failed_one_with_its_retry(client, monkeypatch, state):
+    job = dict(kind='first', state=state, step=1, steps=['Download', 'Build', 'Activate'], label='First import', error='The download failed.')
+    monkeypatch.setattr('brickwork.web.setup_state.catalogue_loaded', lambda: False)
+    monkeypatch.setattr('brickwork.web.catalogue_jobs.read', lambda paths: job)
+    step = soup(client).select_one('[data-key=catalogue]')
+    if state == 'running':
+        assert step.select_one('[data-catalogue-job] [role=progressbar]')['aria-valuenow'] == '33'
+        assert not step.select('.fr-actions form')
+    else:
+        assert step.select_one('[data-job-failed]').get_text() == 'The download failed.'
+        assert step.select_one('.fr-actions form')['action'] == '/manage/first-run/catalogue'

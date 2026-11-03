@@ -433,14 +433,17 @@ def live_import_job(db, item_id):
 
 
 def queue_refresh(db, rows, steps=('market_price',)):
-    """Queue `steps` for each item of `rows` (dicts with `item_id`) that has no unfinished pipeline job; returns the job ids."""
+    """Queue `steps` for each item of `rows` (dicts with `item_id`) that has no unfinished pipeline job; returns the job ids. A bulk action:
+    the jobs are one batch (#127), shown as one row in Jobs, cancelled together, and overtaken by interactive work."""
+    from .pipeline import new_batch
     pipeline = Pipeline(db)
+    batch = new_batch('prices' if tuple(steps) == ('market_price',) else '-'.join(steps).replace('_', '-'))
     with transaction(db):
         jobs = []
         for item_id in sorted({r['item_id'] for r in rows}):
             if live_import_job(db, item_id) is not None:
                 continue
-            jobs.append(pipeline.queue_steps(item_id, steps, via='app'))
+            jobs.append(pipeline.queue_steps(item_id, steps, via='app', batch=batch))
         return jobs
 
 
@@ -456,19 +459,23 @@ def queue_missing_booklets(db):
     return queue_refresh(db, ok, steps=('identity',)), skipped
 
 
-def count_jobs(db):
-    return db.execute("SELECT count(*) FROM main.job").fetchone()[0]
+def count_jobs(db, *, batches=True):
+    from .pipeline import BATCH_SQL
+    return db.execute("SELECT count(*) FROM main.job" + ('' if batches else f' WHERE {BATCH_SQL} IS NULL')).fetchone()[0]
 
 
 FETCH_HEADINGS = {'rebrickable_set': 'Rebrickable set', 'bricklink_subsets': 'BrickLink part list', 'reconcile': 'Reconcile with the catalogue'}
 
 
-def jobs(db, limit=300):
+def jobs(db, limit=300, *, batches=True):
     """The newest jobs, newest first, each with its steps and a heading (the Jobs list): pipeline jobs and the two fetch kinds.
-    `count_jobs` says how many there are in all."""
+    `count_jobs` says how many there are in all. With `batches=False` the jobs of a bulk action are left out: Jobs shows each batch as
+    one row (#127, `pipeline.batches`)."""
     from collections import defaultdict
     from . import items
-    rows = [dict(r) for r in db.execute('SELECT * FROM main.job ORDER BY id DESC LIMIT ?', (limit,))]
+    from .pipeline import BATCH_SQL
+    where = '' if batches else f'WHERE {BATCH_SQL} IS NULL '
+    rows = [dict(r) for r in db.execute(f'SELECT * FROM main.job {where}ORDER BY id DESC LIMIT ?', (limit,))]
     steps = defaultdict(list)
     for row in db.execute('SELECT * FROM main.job_step WHERE job_id IN (SELECT value FROM json_each(?)) ORDER BY job_id, position',
                           (json.dumps([r['id'] for r in rows]),)):

@@ -325,5 +325,6 @@ def queue(db, scope, kinds, expected_count=None, via='app', actor=None):
         busy = {r[0] for r in db.execute("""SELECT DISTINCT j.item_id FROM main.job j JOIN main.job_step s ON s.job_id=j.id
             WHERE j.kind=? AND s.name='pictures' AND s.state IN ('queued','running','waiting_for_budget') AND j.state IN ('queued','running','waiting_for_budget')""",
                                   (pipeline.KIND,))}
-        jobs = [pipe.queue_steps(i, ['pictures'], via=via, actor=actor, refresh=scope == 'all') for i in chosen if i not in busy]
+        batch = pipeline.new_batch('pictures')                      # #127: one bulk action, one batch the drain lets interactive work overtake
+        jobs = [pipe.queue_steps(i, ['pictures'], via=via, actor=actor, refresh=scope == 'all', batch=batch) for i in chosen if i not in busy]
     return jobs, len(chosen)

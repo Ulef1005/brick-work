@@ -308,6 +308,18 @@ def bw_admin_write(page):
         elif page == 'refresh':
             admin_ops.tools_write('refresh')
             bw_start_worker()
+        elif page == 'jobs' and request.form.get('action') == 'cancel_batch':
+            if not bw_collection_editable():
+                abort(403, 'Changes are switched off on this instance')
+            from ..core import pipeline as bulk_jobs
+            from ..core.admin import database
+            batch = request.form.get('batch', '')
+            if not re.fullmatch(r'[a-z-]+-[0-9a-f]{8}', batch):
+                raise ValueError('Unknown batch')
+            with database(admin_ops.brickwork_path()) as wdb:
+                stopped = bulk_jobs.cancel_batch(wdb, batch)
+            flash(f'Cancelled · {stopped} not started' if stopped else 'Nothing left to cancel', 'success')
+            return redirect(url_for('web.bw_admin', page='jobs'))
         elif page == 'jobs':
             if not bw_collection_editable():
                 abort(403, 'Changes are switched off on this instance')

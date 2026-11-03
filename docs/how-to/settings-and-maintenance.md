@@ -67,6 +67,8 @@ After a move from 3.3, **Tools & Admin → Migration report** reads the report t
 
 **Jobs** lists the newest jobs with their steps. A failed step has **Retry**; a job that was running when the app stopped has **Resume**. **Bulk refresh prices** queues a price job for every held or wanted item whose price is stale, and needs the BrickLink key.
 
+A bulk action (**Bulk refresh prices**, **Refresh pictures**, fetching missing booklets) is one row under **Bulk actions** at the top of **Jobs**: how many of its items are done, failed, cancelled and still to go, a progress bar, and when it waits for a source's daily budget, until when. **… failed · why** lists the items that failed with the reason (the first 50). **Cancel** stops the items not started yet; the one running finishes, and a cancelled item is not retried. While a bulk action runs, your own work goes first: an Add's import, its part list and a single **Update price** run before the next item of the batch, so a new set gets its picture and price in seconds, not after the whole refresh. The daily budgets of each source hold for the batch's items as for any job.
+
 ## Instruction files
 
 A PDF is attached to a **set**; a booklet shows the files of the set with its number. **Upload a PDF** takes a set number (or a booklet's number, which names the same set) and a label; **Fetch missing** only refreshes the identity of booklets that have no PDF and downloads nothing.

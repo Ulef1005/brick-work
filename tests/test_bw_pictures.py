@@ -250,7 +250,9 @@ def test_queue_makes_one_job_per_item_and_skips_what_is_pictured_busy_or_unident
     assert count == len(jobs) == len(pictures.selection(coll.db, 'missing', ['part'])['item_ids'])
     pl = Pipeline(coll.db)
     one = pl.status(jobs[0])
-    assert [s['name'] for s in one['steps']] == ['pictures'] and json.loads(one['payload']) == {'steps': ['pictures']}
+    payload = json.loads(one['payload'])
+    assert [s['name'] for s in one['steps']] == ['pictures'] and payload['steps'] == ['pictures'] and payload['batch'].startswith('pictures-')
+    assert {json.loads(pl.status(j)['payload'])['batch'] for j in jobs} == {payload['batch']}      # #127: one refresh, one batch
     again, same = pictures.queue(coll.db, 'missing', ['part'])
     assert again == [] and same == count                                          # the open jobs are not doubled
     everything, _ = pictures.queue(coll.db, 'all', ['set'])

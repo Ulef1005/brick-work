@@ -359,8 +359,20 @@ def tools_read(page, group=None):
             from ..core.pipeline import owner_pid_alive
             owners = dict(db.execute('SELECT job_id,pid FROM job_owner'))
             live = {job: owner_pid_alive(pid, path=brickwork_path(), job=job) for job, pid in owners.items()}
-            jobs = admin.jobs(db)
-            return dict(total=admin.count_jobs(db), jobs=[
+            from ..core import items
+            from ..core.pipeline import batches as bulk
+            from .formatting import short_stamp
+            jobs = admin.jobs(db, batches=False)
+            found = bulk(db)
+            labels = items.labels(db, {(f['item_id'], None) for b in found for f in b['failures'] if f['item_id'] is not None})
+            for b in found:
+                b['label'] = BATCH_LABELS.get(b['batch'].rsplit('-', 1)[0], 'Bulk refresh')
+                b['started'] = short_stamp(b['created_at'], True)
+                b['retry_text'] = short_stamp(b['retry_at'], True) if b['retry_at'] else None
+                for f in b['failures']:
+                    label = labels.get((f['item_id'], None))
+                    f['item_label'] = label.text if label else f"item {f['item_id']}"
+            return dict(total=admin.count_jobs(db, batches=False), batches=found, jobs=[
                 {**job, 'interrupted': (job['state'] == 'running' or job['state'] == 'waiting_for_budget' and job['id'] in owners)
                  and not live.get(job['id'], False)} for job in jobs])
         if page == 'unresolved':
@@ -597,6 +609,9 @@ def setup():
         result['next'] = f'Open the app and press Download the catalogue on the first page, or from the command line: {GET_CATALOGUE}. It belongs beside the collection as {catalogue}.'
     return result
 
+
+# #127: the bulk actions a batch comes from, by the name in its id.
+BATCH_LABELS = {'pictures': 'Refresh pictures', 'prices': 'Bulk refresh prices', 'identity': 'Fetch missing booklets'}
 
 CATALOGUE_PAGES = {'catalogue': 'Catalogue', 'catalogue-lists': 'BrickLink item lists', 'catalogue-mappings': 'Mappings and coverage',
                    'migration': 'Migration report'}

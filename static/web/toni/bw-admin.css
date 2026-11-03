@@ -143,3 +143,6 @@ main .bw-chips a[aria-current=page]{background:var(--tw-accent-soft);color:var(-
 .bk-paths{display:flex;flex-direction:column;gap:12px}.bk-path{display:flex;flex-direction:column;gap:2px;min-width:0}.bk-path .mono{overflow-wrap:anywhere}
 .bk-commands{display:flex;flex-direction:column;gap:6px;margin:12px 0 0;min-width:0}.bk-commands code,.bk-note code{font:400 12px/16px var(--tw-mono);overflow-wrap:anywhere}.bk-commands code{display:block;padding:8px 10px;border-radius:8px;background:var(--tw-surface-2,var(--tw-viz-n1))}
 .bw-inline{display:inline}.bw-inline button{margin-left:8px}
+
+/* #127: a bulk action as one row in Jobs: its progress bar. */
+.bw-batch-bar{height:6px;border-radius:3px;background:var(--tw-surface-2);overflow:hidden}.bw-batch-bar>div{height:100%;background:var(--tw-accent)}

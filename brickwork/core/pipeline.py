@@ -166,9 +166,10 @@ class Pipeline:
 
     # ---- queue ----
 
-    def queue_steps(self, item_id, steps=None, *, via, actor=None, refresh=False):
+    def queue_steps(self, item_id, steps=None, *, via, actor=None, refresh=False, batch=None):
         """Queue a job for the item and return its id. Writes inside the caller's open write transaction (Add's). `refresh` asks the
-        steps to fetch again what they already have (a picture refresh of every held item)."""
+        steps to fetch again what they already have (a picture refresh of every held item). `batch` (#127) names the bulk action the job
+        belongs to: the drain runs interactive jobs ahead of batch jobs, and Jobs shows a batch as one row."""
         if not self.db.in_transaction:
             raise ValueError('queue_steps needs the caller\'s open write transaction')
         if via not in ('app', 'cli', 'api', 'import'):
@@ -181,7 +182,7 @@ class Pipeline:
         stamp, actor = now(), actor if via == 'api' else None
         job = self.db.execute('''INSERT INTO main.job(source, kind, item_id, state, payload, via, actor, created_at, updated_at)
                                  VALUES(?, ?, ?, 'queued', ?, ?, ?, ?, ?)''',
-                              (SOURCE, KIND, item_id, json.dumps({'steps': steps, **({'refresh': True} if refresh else {})}), via, actor, stamp, stamp)).lastrowid
+                              (SOURCE, KIND, item_id, json.dumps({'steps': steps, **({'refresh': True} if refresh else {}), **({'batch': batch} if batch else {})}), via, actor, stamp, stamp)).lastrowid
         for position, step in enumerate(steps):
             self.db.execute('INSERT INTO main.job_step(job_id, name, position, sources, total, updated_at) VALUES(?, ?, ?, ?, 1, ?)',
                             (job, step, position, json.dumps(sources_for(self.db, step, kind)), stamp))
@@ -314,11 +315,26 @@ class Pipeline:
         self._put(job['id'], name, 'done', error=SKIPPED if sources else 'skipped: no source is set for this step and kind', count=0, total=0)
 
     def drain(self, limit=100):
-        """Run the pipeline jobs that may run now: queued ones, claims that died, and waiting or failed ones whose retry is due."""
-        ids = [r[0] for r in self.db.execute('''SELECT id FROM main.job WHERE kind=? AND (state IN ('queued','running')
-            OR (state IN ('waiting_for_budget','failed') AND retry_at IS NOT NULL AND retry_at<=?)) ORDER BY id LIMIT ?''',
-                                             (KIND, now(), limit))]
-        return [self.run(job) for job in cooperative(self.db, ids) if not self.owner_alive(job)]
+        """Run the pipeline jobs that may run now: queued ones, claims that died, and waiting or failed ones whose retry is due.
+
+        #127: the next job is chosen one at a time, interactive jobs (an Add's, a single Update) before batch jobs (a bulk refresh), oldest
+        first within each. Before a batch job, a runnable fetch job (an Add's part list) ends the pass, so the drainer runs it next; a bulk
+        refresh of thousands of items never keeps a new set waiting for more than the job in hand."""
+        ran, seen = [], []
+        while len(seen) < limit:
+            row = self.db.execute(f'''SELECT id, {BATCH_SQL} IS NOT NULL batch FROM main.job WHERE kind=? AND (state IN ('queued','running')
+                OR (state IN ('waiting_for_budget','failed') AND retry_at IS NOT NULL AND retry_at<=?))
+                AND id NOT IN (SELECT value FROM json_each(?)) ORDER BY {BATCH_SQL} IS NOT NULL, id LIMIT 1''',
+                                  (KIND, now(), json.dumps(seen))).fetchone()
+            if row is None:
+                break
+            if row['batch'] and fetch_waiting(self.db):
+                break
+            seen.append(row['id'])
+            if not self.owner_alive(row['id']):
+                ran.append(self.run(row['id']))
+            yield_worker(self.db)
+        return ran
 
 
 # ---- the local steps: each returns (error code, message) for a finished step, (None, None) when all is well ----
@@ -383,6 +399,62 @@ def database_path(path=None):
         if configured:
             return Path(configured)
     return Path('data/brickwork.db')
+
+
+BATCH_SQL = "json_extract(payload, '$.batch')"
+
+
+def fetch_waiting(db):
+    """A fetch job (store4's kinds: an Add's Rebrickable set or BrickLink part list) may run now: a batch job lets it go first."""
+    from ..store4 import jobs as fetch_jobs
+    return db.execute(f'''SELECT 1 FROM main.job WHERE kind IN {fetch_jobs.OWN_KINDS} AND (state IN ('queued','running')
+        OR (state IN ('waiting_for_budget','failed') AND retry_at IS NOT NULL AND retry_at<=?)) LIMIT 1''', (now(),)).fetchone() is not None
+
+
+def new_batch(name):
+    """A batch id for one bulk action (#127): its name and a random tail, such as `pictures-3f9a1c2b`."""
+    import uuid
+    return f'{name}-{uuid.uuid4().hex[:8]}'
+
+
+def batches(db, limit=20):
+    """The newest bulk actions, newest first: each batch's steps, its counts by outcome and its failures (item, reason) for the Jobs row."""
+    rows = db.execute(f'''SELECT {BATCH_SQL} batch, min(created_at) created_at, max(updated_at) updated_at, count(*) total,
+        count(*) FILTER (WHERE state='done') done, count(*) FILTER (WHERE state='failed' AND error=?) cancelled,
+        count(*) FILTER (WHERE state='failed' AND (error IS NULL OR error!=?)) failed,
+        count(*) FILTER (WHERE state IN ('queued','running')) open, count(*) FILTER (WHERE state='waiting_for_budget') waiting,
+        min(retry_at) FILTER (WHERE state='waiting_for_budget') retry_at, json_extract(min(payload), '$.steps') steps
+        FROM main.job WHERE kind=? AND {BATCH_SQL} IS NOT NULL GROUP BY 1 ORDER BY max(id) DESC LIMIT ?''',
+                      (CANCELLED, CANCELLED, KIND, limit)).fetchall()
+    out = []
+    for r in rows:
+        failures = [dict(f) for f in db.execute(f'''SELECT j.id, j.item_id, coalesce(j.error, (SELECT s.error FROM main.job_step s WHERE s.job_id=j.id
+            AND s.state='failed' LIMIT 1)) error FROM main.job j WHERE j.kind=? AND {BATCH_SQL}=? AND j.state='failed' AND
+            (j.error IS NULL OR j.error!=?) ORDER BY j.id LIMIT 50''', (KIND, r['batch'], CANCELLED))]
+        out.append({**dict(r), 'steps': json.loads(r['steps'] or '[]'), 'failures': failures,
+                    'state': 'running' if r['open'] else 'waiting_for_budget' if r['waiting'] else 'cancelled' if r['cancelled'] else
+                             'failed' if r['failed'] else 'done'})
+    return out
+
+
+CANCELLED = 'Cancelled'
+
+
+def cancel_batch(db, batch, *, via='app', actor=None):
+    """Stop what is left of a batch: its jobs not started yet, or waiting for budget, end as failed with `Cancelled` and no retry.
+    A job running right now finishes. Returns how many were cancelled. One event for the batch."""
+    with transaction(db):
+        ids = [r[0] for r in db.execute(f'''SELECT id FROM main.job j WHERE kind=? AND {BATCH_SQL}=? AND (state='waiting_for_budget' OR
+            (state='queued' AND NOT EXISTS (SELECT 1 FROM main.job_owner o WHERE o.job_id=j.id)))''', (KIND, batch))]
+        if not ids:
+            return 0
+        stamp, listed = now(), json.dumps(ids)
+        db.execute(f"UPDATE main.job SET state='failed', error=?, error_code=NULL, retry_at=NULL, updated_at=? WHERE id IN (SELECT value FROM json_each(?))",
+                   (CANCELLED, stamp, listed))
+        db.execute(f"""UPDATE main.job_step SET state='failed', error=?, error_code=NULL, retry_at=NULL, updated_at=? WHERE job_id IN
+            (SELECT value FROM json_each(?)) AND state IN ('queued','waiting_for_budget')""", (CANCELLED, stamp, listed))
+        Events(db, via, actor).write('job', ids[0], 'cancelled', new={'batch': batch, 'jobs': len(ids)})
+    return len(ids)
 
 
 def drain(db, limit=100):

@@ -25,3 +25,5 @@ One file per decision that binds future work: the API contract, the data model, 
 | [0016](0016-data-model-4.md) | Data model 4.0: Brick Work ids, a catalogue from the Rebrickable dump, one migration | accepted | 2026-10-23 |
 | [0017](0017-api-v2.md) | API v2: v1's resources with the 4.0 identity, an MCP that takes numbers | accepted | 2026-10-27 |
 | [0018](0018-schema-cutover.md) | A schema cutover: one pinned catalogue, a rehearsal from a prod backup, the clients in the window | accepted | 2026-10-28 |
+| [0019](0019-first-run-flow.md) | The first run is one resumable flow; a step is done only when its data says so | accepted | 2026-11-03 |
+| [0020](0020-bulk-actions-as-batches.md) | A bulk action is one batch that interactive work overtakes, tagged in the job payload | accepted | 2026-11-03 |

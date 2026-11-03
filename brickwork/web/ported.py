@@ -41,6 +41,8 @@ PORTED |= {'web.bw_sync', 'web.bw_sync_link', 'web.bw_sync_plan', 'web.bw_sync_w
 PORTED |= {'web.bw_copy_part_list', 'web.bw_add_picture_known'}
 # M.12: onboarding step 1, the first-run page's catalogue button.
 PORTED |= {'web.bw_first_run_catalogue'}
+# #83 (milestone A): the first-run flow on its own page, and skipping a step for now.
+PORTED |= {'web.bw_get_started', 'web.bw_get_started_write'}
 PIECE = 'M.11'
 
 

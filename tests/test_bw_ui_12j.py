@@ -41,12 +41,14 @@ def test_first_run_needs_no_key_to_load_the_catalogue(client):
     assert '0 sets' in page.select_one('.bc-heading .secondary').get_text()
     assert page.select_one('[data-first-run] h2').get_text() == 'Nothing here yet.'
     found = steps(page)
-    assert [found[k]['data-state'] for k in '123'] == ['optional', 'current', 'waiting']       # M.12: keys are optional, the catalogue comes first
-    first = found['1'].find('a')
-    assert first.get_text(strip=True) == 'Catalogues & keys' and first['href'] == '/manage/catalogues'
-    assert found['2'].find('form')['action'] == '/manage/first-run/catalogue' and found['2'].find('button').get_text(strip=True) == 'Activate the catalogue'      # the fixture pair has the file; test_m12_onboarding covers an empty folder
-    button = found['3'].find('button')
-    assert button.has_attr('disabled') and not found['3'].find('a')
+    # #83: the catalogue comes first and needs no key; keys are optional; bringing the collection in waits for the catalogue
+    assert [(found[k]['data-key'], found[k]['data-state']) for k in '123'] == [('catalogue', 'current'), ('keys', 'open'), ('collection', 'waiting')]
+    assert found['1']['aria-current'] == 'step' and not found['2'].has_attr('aria-current')
+    assert found['1'].select_one('.fr-actions form')['action'] == '/manage/first-run/catalogue' and found['1'].select_one('.fr-actions button').get_text(strip=True) == 'Activate the catalogue'      # the fixture pair has the file; test_m12_onboarding covers an empty folder
+    keys_link = found['2'].select_one('.fr-actions a')
+    assert keys_link.get_text(strip=True) == 'Catalogues & keys' and keys_link['href'] == '/manage/catalogues'
+    button = found['3'].select_one('.fr-actions button')
+    assert button.has_attr('disabled') and not found['3'].select('.fr-actions a') and 'load the catalogue first' in button.get_text()
     assert 'without keys' in page.select_one('.fr-note').get_text()
     assert page.select_one('[data-bc-list]').has_attr('hidden')
 
@@ -54,23 +56,23 @@ def test_first_run_needs_no_key_to_load_the_catalogue(client):
 def test_first_run_marks_the_keys_step_done_once_a_key_is_stored(client, monkeypatch):
     monkeypatch.setenv('BW_REBRICKABLE_API_KEY', fake())
     found = steps(soup(client, '/collection/sets'))
-    assert [found[k]['data-state'] for k in '123'] == ['done', 'current', 'waiting']
-    assert found['2'].find('form') and found['3'].find('button').has_attr('disabled')
+    assert [found[k]['data-state'] for k in '123'] == ['current', 'done', 'waiting']
+    assert found['1'].select_one('.fr-actions form') and found['3'].select_one('.fr-actions button').has_attr('disabled')
 
 
 def test_a_key_in_the_encrypted_store_counts_like_one_in_the_environment(client, coll):
     from brickwork.core import keys
     keys.save(coll.db, 'rebrickable', {'key': fake()})
     found = steps(soup(client, '/collection/sets'))
-    assert [found[k]['data-state'] for k in '123'] == ['done', 'current', 'waiting']
+    assert [found[k]['data-state'] for k in '123'] == ['current', 'done', 'waiting']
 
 
-def test_first_run_unlocks_add_once_catalogue_is_loaded(client, monkeypatch):
+def test_first_run_unlocks_bringing_the_collection_in_once_the_catalogue_is_loaded(client, monkeypatch):
     monkeypatch.setenv('BW_REBRICKABLE_API_KEY', fake())
     monkeypatch.setattr('brickwork.web.setup_state.catalogue_loaded', lambda: True)
     found = steps(soup(client, '/collection/sets'))
     assert [found[k]['data-state'] for k in '123'] == ['done', 'done', 'current']
-    assert found['3'].find('a')['href'] == '/manage/add'
+    assert [a['href'] for a in found['3'].select('.fr-actions a')] == ['/manage/add', '/manage/import-legacy']
 
 
 def test_first_run_never_shows_a_key_value(client, monkeypatch):

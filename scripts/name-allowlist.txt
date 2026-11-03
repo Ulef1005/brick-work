@@ -45,3 +45,4 @@ brickwork/api2/writes.py	\bbricktracker\b|\b(?:post_)?imports?[-_]bricktracker\b
 brickwork/api2/write_contract.json	\bbricktracker\b|\b(?:post_)?imports?[-_]bricktracker\b|BrickTracker	Generated from the contract: the BrickTracker import operations.
 tests/test_api2_contract.py	\bbricktracker\b|\b(?:post_)?imports?[-_]bricktracker\b|BrickTracker	The admin operations of v1, among them the BrickTracker import.
 tests/test_api2_write_sync.py	\bbricktracker\b|\b(?:post_)?imports?[-_]bricktracker\b|BrickTracker	Tests of the BrickTracker import operations of API v2.
+docs/how-to/settings-and-maintenance.md	Import from BrickTracker	First-run flow: the name of the step 3 button.

@@ -1,0 +1,7 @@
+{% extends 'web/toni/base.html' %}
+{# #83: the first-run flow (12j) on its own page, reopened from Tools & Admin. #}
+{% from 'web/toni/web/bw_first_run.html' import first_run_path with context %}
+{% block title %} · {{ title }}{% endblock %}{% block page_assets %}<link rel="stylesheet" href="{{ bw_static('web/toni/bw-collection.css') }}">{% endblock %}
+{% block main %}<div id="bw-collection" class="bw-get-started"><header class="bc-heading"><div><h1>Get started</h1><p class="secondary" data-fr-count>{{ first_run.done }} of {{ first_run.total }} steps done</p></div></header>
+{% if not can_edit %}<p class="bc-status">Read only · Changes are switched off on this instance.</p>{% endif %}
+{{ first_run_path(first_run, can_edit, heading='All set.' if first_run.done == first_run.total else 'Pick up where you left off.' if first_run.done else 'Three steps to your own collection.', intro='Every step can be skipped and done later from here: Tools & Admin › Get started.', back='flow') }}</div>{% endblock %}

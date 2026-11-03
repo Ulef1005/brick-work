@@ -738,7 +738,12 @@ html[data-web-ui="toni"] #bw-collection .bc-source-details summary { padding-inl
 #bw-collection .fr-done { align-self:center;font:500 13px var(--tw-font);color:var(--tw-text-muted); }
 #bw-collection .fr-sr { position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap; }
 #bw-collection .fr-note { font:400 13px/18px var(--tw-font);color:var(--tw-text-muted);text-wrap:pretty;margin:0; }
-@media (max-width:640px) { #bw-collection .fr-step { flex-wrap:wrap; } #bw-collection .fr-btn { width:100%; } }
+/* #83: a step's actions, skipping a step for now and taking it back. */
+#bw-collection .fr-actions { display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex:none; }
+#bw-collection .fr-skip-form { margin:4px 0 0;align-self:flex-start; }
+#bw-collection .fr-skip { min-height:44px;padding:0;border:0;background:none;color:var(--tw-accent-text);font:500 13px var(--tw-font);cursor:pointer; }
+#bw-collection .fr-skipped { font:500 13px/18px var(--tw-font);color:var(--tw-text-2); }
+@media (max-width:640px) { #bw-collection .fr-step { flex-wrap:wrap; } #bw-collection .fr-actions { width:100%;align-items:stretch; } #bw-collection .fr-btn { width:100%; } }
 .key-need { display:flex;flex-direction:column;gap:4px;margin:0; }
 .key-need strong { font:500 14px var(--tw-font); }
 main .key-need a:not(.button) { min-height:44px;display:inline-flex;align-items:center;gap:4px;color:var(--tw-accent-text);font:500 15px var(--tw-font);text-decoration:none; }

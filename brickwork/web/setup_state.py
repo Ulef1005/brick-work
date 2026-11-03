@@ -57,20 +57,19 @@ def catalogue_loaded():
 
 
 def first_run(can_edit):
-    """The steps of 12j with their state: done, current or waiting. Keys are optional (design 6.1): the catalogue downloads without one, so
-    step 2 never waits on step 1. `file` is a catalogue that is there but not active yet; `today` offers today's download on disk; `job` is the
-    catalogue job to show (running, failed or interrupted)."""
-    from . import admin_ops, catalogue_jobs
+    """The steps of the first-run flow (#83, on 12j) in order: the catalogue, keys (optional), bring your collection in. Each is done, current
+    (where the flow resumes), open, skipped or waiting (see `onboarding.states`). `file` is a catalogue that is there but not active yet; `today`
+    offers today's download on disk; `job` is the catalogue job to show (running, failed or interrupted)."""
+    from . import admin_ops, catalogue_jobs, onboarding
     from ..store4 import cli
     keyed = any(key_states().values())
     loaded = catalogue_loaded()
     paths = admin_ops.store4_paths()
     found = cli.newest_download(paths)
     job = catalogue_jobs.read(paths)
-    states = ['done' if keyed else 'optional', 'done' if loaded else 'current']
-    states.append('current' if loaded and can_edit else 'waiting')
-    # 4 (#11): bring a BrickTracker collection over; needs only the catalogue for BrickLink names.
-    states.append('current' if loaded and can_edit else 'waiting')
-    return dict(steps=states, keyed=keyed, loaded=loaded, file=not loaded and catalogue_file(), can_edit=can_edit,
+    states = onboarding.states(dict(catalogue=loaded, keys=keyed, collection=onboarding.collection_started()), can_edit, onboarding.skipped())
+    return dict(steps=states, done=sum(state == 'done' for state in states.values()), total=len(states),
+                finished=all(state in ('done', 'skipped') for state in states.values()),
+                keyed=keyed, loaded=loaded, file=not loaded and catalogue_file(), can_edit=can_edit,
                 today=bool(found and found[0].name == date.today().isoformat()),
                 job=job if job and job['state'] in ('running', 'failed', 'interrupted') and not loaded else None)

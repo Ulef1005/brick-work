@@ -96,6 +96,10 @@ def bw_admin(page):
             data = admin_ops.tools_read(page, group)
             from ..core.admin import display
             data = display(data)
+            if page == 'hub':
+                from . import setup_state
+                flow = setup_state.first_run(bw_collection_editable())
+                data['get_started'] = 'done' if flow['done'] == flow['total'] else f"{flow['done']} of {flow['total']} done"
             if page == 'unresolved':
                 data['done'] = identity_undo_offer(request.args.get('done', ''))
             if page == 'settings':
@@ -403,6 +407,36 @@ def bw_first_run_catalogue():
     except Store4Error as exc:
         flash(catalogue_jobs.KINDS[kind] + ' · ' + str(exc), 'error')
     return redirect(url_for('web.bw_sets'))
+
+
+@web_page.get('/manage/get-started')
+@login_required
+def bw_get_started():
+    """#83: the first-run flow on its own page, reachable from Tools & Admin after the first run. It resumes at the first open step."""
+    from . import setup_state
+    flow = setup_state.first_run(bw_collection_editable())
+    response = current_app.make_response(render_template('web/toni/web/bw_get_started.html', title='Get started', first_run=flow,
+                                                         csrf_token=bw_add_token(), can_edit=bw_collection_editable()))
+    response.headers['Cache-Control'] = 'no-store'
+    return response
+
+
+@web_page.post('/manage/get-started')
+@login_required
+def bw_get_started_write():
+    """Skip a step for now, or take it back into the flow; back to the page the form was on."""
+    from . import onboarding
+    bw_add_csrf(request.form)
+    if not bw_collection_editable():
+        abort(403, 'Changes are switched off on this instance')
+    action, step = request.form.get('action'), request.form.get('step')
+    if action not in ('skip', 'unskip') or step not in onboarding.STEPS:
+        abort(400)
+    try:
+        onboarding.mark(step, action == 'skip')
+    except OSError as exc:
+        flash(public(exc, 'Nothing was saved · the data folder is not writable'), 'error')
+    return redirect(url_for('web.bw_sets') if request.form.get('back') == 'sets' else url_for('web.bw_get_started'))
 
 
 @web_page.get('/manage/catalogue/job')

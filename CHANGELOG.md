@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Get started** (#83, milestone A): the first run is one flow of three steps, in this order: **Load the catalogue**, **Set up your keys** (optional), **Bring your collection in** (Add a set, or Import from BrickTracker). Every step can be skipped for now and taken back. The flow resumes at the first open step, and after the first run it opens again from **Tools & Admin › Get started**, with how many steps are done. Before, the keys came first and the BrickTracker import was a fourth step. See [Settings and maintenance](docs/how-to/settings-and-maintenance.md).
+
 ## Brick Work 0.7.0 (schema 4.1) · 2026-11-03
 
 A wish gets a maximum price with box, which brings schema 4.1. A 0.6.0 collection (schema 4.0) is upgraded in place when 0.7.0 first opens it read-write. The upgrade is one-way: 0.6.0 cannot open a 4.1 file, so back up `brickwork.db` before you upgrade. To go back, restore that backup ([Back up and restore](docs/how-to/back-up-and-restore.md)).

@@ -5,7 +5,7 @@
 from pathlib import Path
 
 from ..store4 import connect as store4_connect
-from ..store4.errors import CatalogueError, SchemaMismatch, StaleSchema
+from ..store4.errors import CatalogueError, SchemaMismatch, StaleSchema, UpgradeFailed
 from . import errors
 
 CATALOGUE_NAME = 'catalogue.db'
@@ -28,7 +28,7 @@ def catalogue_path(path='brickwork.db'):
 
 
 def connect(path='brickwork.db', *, read_only=False, require_catalogue=True):
-    """Open the 4.0 collection at `path` with its catalogue attached read-only.
+    """Open the 4.x collection at `path` (upgraded first when older, unless `read_only`) with its catalogue attached read-only.
 
     Without the catalogue file `require_catalogue` decides: True (the default) refuses with the way to get one; False opens the
     collection alone (setup, and the first-run page that tells the user to get a catalogue)."""
@@ -40,8 +40,21 @@ def connect(path='brickwork.db', *, read_only=False, require_catalogue=True):
         return store4_connect.connect(path, catalogue, read_only=read_only)
     except StaleSchema as exc:
         raise OldStore(f'{exc}: {MIGRATE}') from None
+    except UpgradeFailed as exc:
+        raise OldStore(str(exc)) from None                  # a valid older 4.x file: open it again, never migrate it
     except SchemaMismatch as exc:
-        raise OldStore(f'{path} is not a Brick Work 4.0 collection. A 3.2/3.3 file must be migrated, never opened: {MIGRATE}. '
+        raise OldStore(f'{path} is not a Brick Work 4.x collection. A 3.2/3.3 file must be migrated, never opened: {MIGRATE}. '
                        f'({exc})') from None
     except CatalogueError as exc:
         raise NoCatalogue(str(exc)) from None
+
+
+def upgrade(path):
+    """Upgrade the collection at `path` in place when it is at an older 4.x version (app start; schema notes 4.1). A no-op when it is
+    current; the refusals read as `connect`'s."""
+    try:
+        store4_connect.bring_up_to_date(Path(path))
+    except StaleSchema as exc:
+        raise OldStore(f'{exc}: {MIGRATE}') from None
+    except UpgradeFailed as exc:
+        raise OldStore(str(exc)) from None

@@ -150,8 +150,9 @@ def post_wishes(db, body):
     except Skipped as error:
         return skipped(db, error)
     wish_id = made['wish']['id']
-    if body.get('max_price_currency') is not None:
-        collection.save(db, 'wish', [wish_id], {'max_price_currency': body['max_price_currency']})            # a currency without a price is the core's refusal
+    later = {k: body[k] for k in ('max_price_currency', 'max_price_boxed', 'max_price_boxed_currency') if body.get(k) is not None}
+    if later:                                            # what the Add flow does not take; a currency without a price is the core's refusal
+        collection.save(db, 'wish', [wish_id], later)
     return created([wish_id])
 
 

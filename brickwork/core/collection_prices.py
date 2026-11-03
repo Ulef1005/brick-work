@@ -47,6 +47,12 @@ def choose(rows, kind, priorities, condition=None, *, prefer_sold=False):
     return candidates[0] if candidates else None
 
 
+def with_box(rows, kind, priorities):
+    """A set's quote with box (`slot` 'boxed', any guide): what its price card shows as "With box" and what its max with box is held
+    against (#131). One rule for both."""
+    return choose([r for r in rows if r.get('slot') == 'boxed'], kind, priorities)
+
+
 def condition_rows(rows, kind, priorities):
     market = [r for r in rows if r['guide'] in ('sold', 'stock') and r.get('slot') != 'boxed']
     return [p for condition in ('used', 'new') if (p := choose(market, kind, priorities, condition, prefer_sold=True))]

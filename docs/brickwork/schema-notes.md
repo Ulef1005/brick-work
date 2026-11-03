@@ -253,3 +253,24 @@ exact-version constraint; this is an additive column, not a new schema generatio
   possible in a read-only file that could not be upgraded) shows the bare number.
 
 See [design diff 4.8b](design-diff-48b.md) for the Wishlist and Under max behaviour.
+
+## 4.1 Wish max price with box (#131)
+
+`wish` gains `max_price_boxed TEXT` and `max_price_boxed_currency TEXT`, a decimal price and its currency, both or neither
+(a column CHECK on the currency). They follow the `max_price` pair rules in `collection._pairs`: a price without a currency
+takes the shared or configured one, clearing the price clears the currency, a currency alone is refused.
+
+- **Version.** `meta.schema_version` is `4.1`. This is the first in-place step of the 4.x store: `store4.connect.UPGRADES`
+  maps `4.0` to `4.1` and two `ALTER TABLE wish ADD COLUMN` statements. App start upgrades the file
+  (`core.connect.upgrade`, skipped on a read-only instance), and so does a read-write `connect()`; a read-only `connect()` never
+  writes and refuses a file that still needs a step (`UpgradeFailed`). A stale file (#124) is refused before any step. Each step is one `BEGIN IMMEDIATE` transaction that re-reads the version, so concurrent
+  openers upgrade once and a failed step leaves the file at 4.0. The step records `meta.upgraded_to_4.1`. A new file
+  gets the columns from `brickwork.sql`, last before the table constraints, so its `wish` table matches an upgraded one
+  (`tests/test_store4_upgrade.py`).
+- **Older records.** Undo receipts and RowLogs written before the step lack the added columns; `store4.connect.as_current`
+  reads them as NULL, so Undo compares and restores such a row like a new one. A wish's ETag (a hash of its row) changes once.
+- **Sets only.** Only a set wish takes a max with box (`collection._check_wish_edits`); a kind move away from a set clears it.
+- **Comparison.** A set's quote with box (`slot` 'boxed') is held against `max_price_boxed`, or against `max_price` when no
+  max with box is set (`planning.max_limit`). Every other quote is held against `max_price`. The shown price never includes
+  a quote with box, so a wish has two verdicts: `max_state` and `max_boxed_state` (API `under_max`, `under_max_boxed`).
+- **Not carried.** The BrickLink wanted list has no boxed max: the XML export and import leave it out.

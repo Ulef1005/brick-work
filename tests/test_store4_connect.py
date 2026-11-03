@@ -16,7 +16,7 @@ from tests.store4_fixtures import activate, make_catalogue, pair
 def test_new_file_gets_the_schema_and_meta(tmp_path):
     with closing(connect(tmp_path / 'brickwork.db', tmp_path / 'catalogue.db')) as db:
         meta = dict(db.execute('SELECT key, value FROM meta').fetchall())
-        assert meta['schema_version'] == '4.0'
+        assert meta['schema_version'] == '4.1'
         assert str(uuid.UUID(meta['install_id'])) == meta['install_id']
         assert meta['created_at'].endswith('Z')
         assert 'catalogue_id' not in meta
@@ -40,9 +40,9 @@ def test_refuses_a_33_file_and_other_versions(tmp_path):
         assert raw.execute('SELECT version FROM schema_meta').fetchone()[0] == '3.3'
     odd = tmp_path / 'odd.db'
     with closing(connect(odd, tmp_path / 'catalogue.db')) as db:
-        db.execute("UPDATE meta SET value='4.1' WHERE key='schema_version'")
+        db.execute("UPDATE meta SET value='4.9' WHERE key='schema_version'")
         db.commit()
-    with pytest.raises(SchemaMismatch, match="'4.1'"):
+    with pytest.raises(SchemaMismatch, match="'4.9'"):
         connect(odd, tmp_path / 'catalogue.db')
 
 

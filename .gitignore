@@ -33,6 +33,7 @@ data/
 !.githooks/
 !.gitignore
 !.gitleaksignore
+!.gitleaks.toml
 !.dockerignore
 !.env.sample
 

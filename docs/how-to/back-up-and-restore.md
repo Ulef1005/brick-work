@@ -57,6 +57,8 @@ Only the check in the app keeps its result on the **Database** page. On a read-o
 
 Brick Work has no restore button, API call or command.
 
+An upgrade that changes the schema is one-way. 0.7.0 upgrades a 0.6.0 collection (schema 4.0) to 4.1 when it first opens it read-write, and 0.6.0 cannot open a 4.1 file. To go back to 0.6.0, stop Brick Work, put the database snapshot you exported before the upgrade back as `brickwork.db`, and start 0.6.0. Changes made after the upgrade are not in that snapshot. If 0.6.0 refuses the file with a message about migrating, the file is still 4.1: do not run `migrate4` on it.
+
 ## What next
 
 - [Undo a change](undo-a-change.md) to take back a single wrong edit.

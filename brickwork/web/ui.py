@@ -17,6 +17,17 @@ ROOT = Path(__file__).resolve().parents[2]
 PREFIX = 'web/toni/'
 
 
+def lot_total(rows):
+    """How many distinct lots the rows name: their `lots` flattened, 'null' left out, distinct as Jinja's `unique` counts (strings
+    without regard to case). Linear; the template's `sum(start=[])` of the same lists copied the growing list once per row."""
+    seen = set()
+    for row in rows:
+        for lot in row['lots']:
+            if lot != 'null':
+                seen.add(lot.lower() if isinstance(lot, str) else lot)
+    return len(seen)
+
+
 def bw_price_order(prices):
     return sorted(prices, key=lambda p: {'used': 0, 'new': 1}.get(p.get('condition'), 2))
 

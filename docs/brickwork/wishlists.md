@@ -8,7 +8,7 @@ Select wishes to move or copy them in bulk, or use Move wish / Copy wish on wish
 
 `wishlist` (the lists) contains `id TEXT PRIMARY KEY`, `name`, `note`, `sort`, `archived_at`, `created_at`, and optional `bricklink_id`. The last field stores a BrickLink wanted list id, never an inferred one. The default list has id `default` and name `Wishlist`; a new list gets a uuid.
 
-`wish` (the wishes) has a uuid `id`, `wishlist_id TEXT NOT NULL DEFAULT 'default' REFERENCES wishlist(id)`, a `kind` word, `item_id` and, for a part, `color_id`. The partial unique index `wish_live_key` is `(wishlist_id, item_id, color_key)` where `archived_at IS NULL`: wishes in different lists may share an item and colour. A maximum price and its currency are stored together or not at all (`max_price`, `max_price_currency`). A wish's flags are `wish_flag` rows. Nothing here is upgraded at run time: a 4.0 file has the tables from `setup` or the migration (`docs/data-model-4.0`).
+`wish` (the wishes) has a uuid `id`, `wishlist_id TEXT NOT NULL DEFAULT 'default' REFERENCES wishlist(id)`, a `kind` word, `item_id` and, for a part, `color_id`. The partial unique index `wish_live_key` is `(wishlist_id, item_id, color_key)` where `archived_at IS NULL`: wishes in different lists may share an item and colour. A maximum price and its currency are stored together or not at all (`max_price`, `max_price_currency`); so are the maximum price with box (`max_price_boxed`, `max_price_boxed_currency`, schema 4.1, #131). A wish's flags are `wish_flag` rows. A file has the tables from `setup` or the migration (`docs/data-model-4.0`); the only run-time change is the in-place 4.0 → 4.1 step that adds the max with box ([schema notes](schema-notes.md#41-wish-max-price-with-box-131)).
 
 ## Import
 

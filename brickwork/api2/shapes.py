@@ -98,7 +98,7 @@ def wish_rows(db, where='', params=()):
     planning.display_prices(db, rows)
     table = currency.rates(db)
     for r in rows:
-        r['max_state'], r['max_margin'] = planning.max_comparison(r, table)
+        planning.compare_maxima(r, table)
     wish_progress.annotate(db, rows)
     return rows
 
@@ -113,8 +113,10 @@ def wish_bodies(db, rows):
         shown = r.get('display_price') or {}
         out.append({'qty_filled': r['qty_filled'], 'qty_filled_source': r['qty_filled_source'], 'qty_filled_manual': r['qty_filled_manual'],
                     'list_id': r['list_id'], 'id': r['id'], 'item': book.item(r['item_id']), 'name': r['name'], 'color': book.color(r['color_id']),
-                    'quantity': r['quantity'], 'max_price': r['max_price'], 'max_price_currency': r['max_price_currency'], 'condition': r['condition'],
+                    'quantity': r['quantity'], 'max_price': r['max_price'], 'max_price_currency': r['max_price_currency'],
+                    'max_price_boxed': r['max_price_boxed'], 'max_price_boxed_currency': r['max_price_boxed_currency'], 'condition': r['condition'],
                     'note': r['note'], 'added_at': r['added_at'], 'updated_at': r['updated_at'], 'archived_at': r['archived_at'],
                     'under_max': {'under': True, 'over': False}.get(r['max_state']), 'current_price': shown.get('price'),
+                    'under_max_boxed': {'under': True, 'over': False}.get(r['max_boxed_state']),
                     'flags': flag_ids(r['flags']), 'etag': tags.get(r['id']), 'image_id': r['image']})
     return out

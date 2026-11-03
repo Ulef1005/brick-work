@@ -103,7 +103,7 @@ def test_the_user_journey_replays_through_the_apps_writers(tmp_path, client, tok
     assert admin_ops.setup()['setup'] == 'ok'
     with read() as db:
         assert sorted(tuple(r) for r in db.execute("SELECT name, system FROM flag")) == [('Box present', 1), ('Instructions present', 1), ('Set is checked', 1)]
-        assert one(db, "SELECT value FROM meta WHERE key='schema_version'") == '4.0' and one(db, "SELECT count(*) FROM meta WHERE key='install_id'") == 1
+        assert one(db, "SELECT value FROM meta WHERE key='schema_version'") == '4.1' and one(db, "SELECT count(*) FROM meta WHERE key='install_id'") == 1
         assert [tuple(r) for r in db.execute('SELECT id, born_key FROM color WHERE id<=2 ORDER BY id')] == [(1, '9999'), (2, '-1')]
         assert one(db, "SELECT count(*) FROM source WHERE id='import'") == 1 and one(db, 'SELECT count(*) FROM wishlist') == 1
         assert one(db, 'SELECT count(*) FROM color') == one(db, 'SELECT count(*) FROM catalogue.color')                  # every colour projected

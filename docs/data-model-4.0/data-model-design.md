@@ -470,7 +470,7 @@ Words are stored and served:
 2. **Build** `catalogue.db.new` beside the target: tables, ids (§ 3.1, seeded from the collection, which at onboarding holds only colours 1 and 2), the shipped and rule layers, the local layer if `data/mappings/` has files, `bl_digest`s, FTS. Then `PRAGMA journal_mode=DELETE`, fsync and `os.replace`.
 3. **Activate** in the collection file: `catalogue_build` rows, bind `meta.catalogue_id`, copy the high-water marks, project the 275 colours with their links, write one event.
 
-The cost of the raw tables plus FTS is 11.9 s on the Mac for the 22 Oct dump, giving a 129.7 MB file *(measured, `revise-4.0/build_dump.py`)*. The spike measured 11.3 s on the Pi for its own raw shape. The links, `bl_digest`s and the Pi timing of this build are not measured yet (§ 9). The onboarding text says "about a minute" only once the Pi run confirms it.
+The cost of the raw tables plus FTS is 11.9 s on the Mac for the 22 Oct dump, giving a 129.7 MB file *(measured, `revise-4.0/build_dump.py`)*. The spike measured 11.3 s on the Pi for its own raw shape. The links and `bl_digest`s are not measured separately (§ 9). **The first import on the Pi** (rasp, lego-test's hardware, 4 cores, an empty data folder, the 3 Nov dump, `bbcdd66`) took 51 s: download 4 s (12 files), build 40 s (110,874 items, 28,565 sets, a 154 MB file), setting up the collection 7.5 s *(measured 2026-11-03, #126)*, so the onboarding text says "about a minute".
 
 ### 6.2 Re-download (Tools & Admin)
 

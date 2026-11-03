@@ -186,7 +186,7 @@
     if(action!=='undo')showReceipt(result);return result;
   }
   undo?.addEventListener('click',async()=>{undo.disabled=true;try {await send('undo',{event_id:receipt.event_id});sessionStorage.removeItem(receiptKey);message.textContent='Undone';location.reload();}catch(e){message.textContent=e.message;}finally{undo.disabled=false;}});
-  root.querySelectorAll('[data-bw-open]').forEach(b=>b.addEventListener('click',()=>{const dialog=document.getElementById(b.dataset.bwOpen);dialog?.showModal();if(b.dataset.bcFocus==='current_value'){const field=dialog?.querySelector('[name=current_value]');const folded=field?.closest?.('details');if(folded)folded.open=true;field?.focus();}}));
+  root.querySelectorAll('[data-bw-open]').forEach(b=>b.addEventListener('click',()=>{const dialog=document.getElementById(b.dataset.bwOpen);dialog?.showModal();if(/^[a-z_]+$/.test(b.dataset.bcFocus||'')){const field=dialog?.querySelector(`[name=${b.dataset.bcFocus}]`);const folded=field?.closest?.('details');if(folded)folded.open=true;field?.focus();}}));
   root.querySelectorAll('[data-bw-close]').forEach(b=>b.addEventListener('click',()=>b.closest('dialog')?.close()));
   root.querySelectorAll('form[data-bc-action]').forEach(form=>form.addEventListener('submit',async e=>{
     e.preventDefault();const group=form.closest('[data-bc-save-group]')||form;

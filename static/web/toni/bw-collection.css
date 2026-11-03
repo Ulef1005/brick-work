@@ -278,6 +278,8 @@ html[data-web-ui="toni"] #bw-collection .bc-source-details summary { padding-inl
 #bw-collection .bc-estimate { display:flex;align-items:flex-end;flex-direction:column;text-align:right; }
 #bw-collection .bc-estimate button { min-height:44px;padding:0;background:transparent;border:0;color:var(--tw-accent-text);font-weight:500; }
 #bw-collection .bc-estimate small { font-size:12px;color:var(--tw-text-muted); }
+#bw-collection .bc-wish-limits { display:flex;flex-direction:column;align-items:flex-end;gap:4px; }   /* a wish's two maxima, stacked like the estimate (#131) */
+#bw-collection .bc-estimate-label { min-height:44px;display:flex;align-items:center;color:var(--tw-text-2);font-weight:500; }   /* no action: never the accent (#131) */
 
 /* 4.6l · detail parent navigation and recorded catalogue identity. */
 #bw-collection .bc-detail-back { display:flex;align-items:center;gap:2px;min-height:44px;text-decoration:none;font-size:15px;font-weight:500; }

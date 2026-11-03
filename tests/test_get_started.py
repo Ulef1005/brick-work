@@ -255,6 +255,9 @@ def test_the_guide_has_five_cards_whose_links_all_open(client, world):
         for link in links:
             assert client.get(link['href']).status_code == 200, link['href']
     assert 'only the read scope' in page.select_one('[data-guide-card=assistant]').get_text()
+    for card in cards:                                                         # the important words are bold (Ulf, 3 Nov)
+        assert card.select('p strong'), card['data-guide-card']
+    assert [s.get_text() for s in page.select('[data-guide-card=completeness] strong')][:2] == ['Complete', '"Set is checked"']
 
 
 def test_got_it_marks_the_guide_done_and_the_flow_links_it(client):

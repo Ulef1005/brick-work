@@ -267,3 +267,26 @@ def test_every_item_reference_has_both_guards():
                       and column in t['sql'].split(' ON ')[0].split('UPDATE OF')[-1]]
             assert insert, f'{table}.{column} has no _guard_insert trigger'
             assert update, f'{table}.{column} has no _guard_update trigger'
+
+
+# Foreign keys with no index that starts with their columns (M.8c, issue #110: the 3.3 test "every foreign key has an index" ported to the
+# 4.0 collection file). Three are known gaps of the M.1 schema, listed so a fourth cannot appear unnoticed; reported to the schema's owner,
+# not changed here.
+UNINDEXED_FOREIGN_KEYS = {('item_provider_status', ('provider',)), ('copy_part', ('copy_id', 'copy_figure_id')), ('part_check', ('copy_id', 'copy_figure_id'))}
+
+
+def test_every_collection_foreign_key_has_an_index_but_three_recorded(tmp_path):
+    from contextlib import closing as closing_
+    from brickwork.core.connect import connect
+    found = set()
+    with closing_(connect(tmp_path / 'new.db', require_catalogue=False)) as db:
+        for (table,) in db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").fetchall():
+            groups = {}
+            for r in db.execute(f'PRAGMA foreign_key_list({table})'):
+                groups.setdefault(r['id'], []).append(r['from'])
+            indexes = [tuple(r['name'] for r in db.execute(f'PRAGMA index_info({i["name"]})')) for i in db.execute(f'PRAGMA index_list({table})')]
+            primary = tuple(r['name'] for r in db.execute(f'PRAGMA table_info({table})') if r['pk'])
+            for columns in groups.values():
+                if not any(index[:len(columns)] == tuple(columns) for index in indexes + [primary]):
+                    found.add((table, tuple(columns)))
+    assert found == UNINDEXED_FOREIGN_KEYS

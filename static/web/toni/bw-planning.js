@@ -3,7 +3,7 @@
   function filter(rows, query, filters, sort, descending=false) {
     const text=query.trim().toLocaleLowerCase();
     const numeric=new Set(['rank','gap','cost','max','undermax','partout']);
-    return rows.filter(r=>(!text || [r.number,r.name,r.colour].join(' ').toLocaleLowerCase().includes(text)) && Object.entries(filters).every(([k,v])=>!v || (k==='pinned'?String(r[k])===(v==='true'?'1':'0'):Array.isArray(r[k])?r[k].includes(v):String(r[k])===v))).sort((a,b)=>{
+    return rows.filter(r=>(!text || [r.number,r.also,r.name,r.colour].join(' ').toLocaleLowerCase().includes(text)) && Object.entries(filters).every(([k,v])=>!v || (k==='pinned'?String(r[k])===(v==='true'?'1':'0'):Array.isArray(r[k])?r[k].includes(v):String(r[k])===v))).sort((a,b)=>{
       if(sort==='rank' && a.pinned!==b.pinned)return Number(b.pinned)-Number(a.pinned);
       const missing=x=>x==null || x==='' || x==='None';
       if(numeric.has(sort) && missing(a[sort])!==missing(b[sort]))return missing(a[sort])?1:-1;
@@ -73,13 +73,17 @@
   }
   async function run(button,operation,reload=false){button.disabled=true;message.textContent='Saving';try{await operation();if(reload)location.reload();}catch(e){message.textContent=e.message;}finally{button.disabled=false;}}
   undo?.addEventListener('click',()=>run(undo,async()=>{await send('undo',{event_id:receipt.event_id},receipt.collection);sessionStorage.removeItem(receiptKey);receipt=null;},true));
-  root.querySelectorAll('form[data-bp-action]').forEach(form=>form.addEventListener('submit',e=>{e.preventDefault();const values=Object.fromEntries(new FormData(form));run(form.querySelector('button'),()=>form.dataset.bpAction==='wish'?send('save',{entity:'wish',ids:[Number(form.dataset.id)],values},true):send('settings',{values}),true);}));
+  root.querySelectorAll('form[data-bp-action]').forEach(form=>form.addEventListener('submit',e=>{e.preventDefault();const values=Object.fromEntries(new FormData(form));run(form.querySelector('button'),()=>form.dataset.bpAction==='wish'?send('save',{entity:'wish',ids:[form.dataset.id],values},true):send('settings',{values}),true);}));
   root.querySelectorAll('[data-bp-pin]').forEach(b=>b.addEventListener('click',()=>run(b,()=>send('pin',{id:b.dataset.bpPin,pinned:b.dataset.pinned!=='true'}),true)));
-  root.querySelectorAll('[data-bp-archive]').forEach(b=>b.addEventListener('click',()=>{if(window.confirm('Archive this wish? Undo restores it.'))run(b,()=>send('archive',{entity:'wish',ids:[Number(b.dataset.bpArchive)],values:{}},true),true);}));
+  root.querySelectorAll('[data-bp-archive]').forEach(b=>b.addEventListener('click',()=>{if(window.confirm('Archive this wish? Undo restores it.'))run(b,()=>send('archive',{entity:'wish',ids:[b.dataset.bpArchive],values:{}},true),true);}));
   exp?.addEventListener('click',()=>run(exp,async()=>{
     const ids=[...root.querySelectorAll('[data-bp-selected]:checked')].map(c=>c.value);
-    const response=await fetch(root.dataset.saveUrl.replace('ACTION','export'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ids,csrf_token:root.dataset.csrf})});
-    if(!response.ok)throw new Error((await response.json()).message);const url=URL.createObjectURL(await response.blob()),a=document.createElement('a');a.href=url;a.download='missing-parts.xml';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);message.textContent='Exported';
+    const response=await fetch(root.dataset.saveUrl.replace('ACTION','export'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ids,summary:true,csrf_token:root.dataset.csrf})});
+    const result=await response.json();if(!response.ok)throw new Error(result.message||'Could not export');
+    const url=URL.createObjectURL(new Blob([result.content],{type:result.mimetype})),a=document.createElement('a');a.href=url;a.download=result.filename;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    // A line with no BrickLink number cannot be named in a wanted list: it is left out and said so.
+    const left=result.summary.skipped;
+    message.textContent='Exported'+(left.length?' · '+left.length+' left out: '+left.map(n=>[n.item_no,n.color,n.reason].filter(Boolean).join(' · ')).join('; '):'');
   }).finally(syncExport));
   render();
 })();

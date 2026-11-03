@@ -11,7 +11,7 @@
       const r = {};
       data.fields.forEach((field, i) => { r[field] = row[i]; });
       r.hay = [r.number, r.name, r.colour].join(' ').toLocaleLowerCase();
-      r.id = r.type + '|' + r.number + '|' + (r.color_id == null ? '' : r.color_id);  // an attribute value: no control characters
+      r.id = r.item_id + '|' + (r.color_id == null ? '' : r.color_id);  // an attribute value: no control characters
       return r;
     });
   }
@@ -41,7 +41,7 @@
     return items;
   }
   const rangeText = (total, page) => total ? ((page - 1) * PAGE + 1) + ' to ' + Math.min(total, page * PAGE) + ' of ' + total : '';
-  const itemUrl = (cfg, r) => cfg.itemBase.replace('TYPE', encodeURIComponent(r.type)).replace('NUMBER', r.number.split('/').map(encodeURIComponent).join('/')) +
+  const itemUrl = (cfg, r) => cfg.itemBase.replace(/0$/, '') + encodeURIComponent(r.item_id) +
     (r.color_id == null ? '' : '?colour=' + encodeURIComponent(r.color_id));
 
   function pictureHtml(cfg, r) {
@@ -57,7 +57,7 @@
     const age = r.price == null ? '' : esc(r.age) + (r.price_stale ? ' · stale' : '');
     const price = r.price == null ? '<span>no sales</span>'
       : '<span class="mono bp-short-price">' + (r.listings ? 'listings ' : '') + esc(r.price) + '<small class="bp-phone-age">' + age + '</small></span>';
-    const refresh = cfg.editable && !r.unresolved ? '<button type="button" data-bp-refresh=\'' + esc(JSON.stringify([r.type, r.number])) + '\'>Update</button>' : '';
+    const refresh = cfg.editable && !r.unresolved ? '<button type="button" data-bp-refresh=\'' + esc(JSON.stringify(r.item_id)) + '\'>Update</button>' : '';
     return '<article class="bp-row" tabindex="0" data-bp-row data-key="' + esc(r.id) + '">' +
       '<div class="bp-identity"><div class="bc-picture" data-item-no="' + esc(r.number) + '">' + pictureHtml(cfg, r) + '</div><div>' +
       '<a href="' + esc(itemUrl(cfg, r)) + '"><div class="bc-identity">' + chip + '<span class="mono">' + esc(r.number) +
@@ -218,7 +218,7 @@
     body.textContent = 'Loading';
     try {
       if (!detailCache.has(key)) {
-        const params = new URLSearchParams({kind: r.type, number: r.number}); if (r.color_id != null) params.set('colour', r.color_id);
+        const params = new URLSearchParams({item_id: r.item_id}); if (r.color_id != null) params.set('colour', r.color_id);
         const response = await fetch(root.dataset.detailsUrl + '?' + params, {headers: {Accept: 'application/json'}});
         if (!response.ok) throw new Error('Not loaded');
         detailCache.set(key, await response.json());
@@ -246,14 +246,14 @@
   container.addEventListener('click', e => {
     const b = e.target.closest?.('[data-bp-refresh]');
     if (b) run(b, async () => {
-      await send('refresh', {items: [JSON.parse(b.dataset.bpRefresh)]});
+      await send('refresh', {items: [JSON.parse(b.dataset.bpRefresh)]});          // item ids
       const row = b.closest('[data-bp-row]'), d = row?.querySelector('[data-bp-details]');
       if (row) detailCache.delete(row.dataset.key); if (d) delete d.dataset.loaded;
     });
   });
   bulk?.addEventListener('click', () => run(bulk, () => {
     const seen = new Set(), items = [];
-    view.forEach(r => { const k = r.type + '|' + r.number; if (r.type !== '?' && !r.unresolved && !seen.has(k)) { seen.add(k); items.push([r.type, r.number]); } });
+    view.forEach(r => { if (!r.unresolved && !seen.has(r.item_id)) { seen.add(r.item_id); items.push(r.item_id); } });
     const chunks = []; for (let i = 0; i < items.length; i += 2000) chunks.push(items.slice(i, i + 2000));
     return chunks.reduce((done, chunk) => done.then(() => send('refresh', {items: chunk})), Promise.resolve())
       .then(() => { if (chunks.length > 1) message.textContent = items.length + ' items queued in ' + chunks.length + ' parts'; });

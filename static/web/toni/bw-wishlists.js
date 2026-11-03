@@ -20,7 +20,7 @@
     undo.addEventListener('click',()=>run(undo,async()=>{await send('undo',{event_id:receipt});sessionStorage.removeItem(key);}));
     root.querySelectorAll('[data-wl-open]').forEach(b=>b.addEventListener('click',()=>document.getElementById(b.dataset.wlOpen).showModal()));
     root.querySelectorAll('[data-wl-close]').forEach(b=>b.addEventListener('click',()=>b.closest('dialog').close()));
-    const selected=()=>[...document.querySelectorAll('[data-wl-selected]:checked')].map(c=>Number(c.value));
+    const selected=()=>[...document.querySelectorAll('[data-wl-selected]:checked')].map(c=>c.value);
     const bar=scope.querySelector('[data-wl-selection]');
     function selectionChanged(){
       const n=selected().length,count=scope.querySelector('[data-wl-count]');

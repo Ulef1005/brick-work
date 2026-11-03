@@ -1,10 +1,9 @@
-"""Import from BrickTracker (#11 UI): upload an app.db, preview, import into this collection, Undo.
+"""Import from BrickTracker (#11 UI): upload an app.db, preview, import into this collection, Undo (rewritten on the 4.0 store in M.8j).
 
-The older path that builds a new database from server paths with a proof report stays available
-under "Build a new database instead" (`brickwork migrate` does the same from the CLI).
+The older path that built a new database from server paths with a proof report (`brickwork migrate`) is gone, decision 4 of #110:
+a 3.3 collection moves to 4.0 with `brickwork migrate4`.
 """
 from contextlib import closing
-from pathlib import Path
 import sqlite3
 import uuid
 
@@ -15,30 +14,6 @@ from flask_login import login_required
 from .views import web_page, bw_add_csrf, bw_add_token, bw_collection_editable
 
 LIMIT_MB = 200
-MIGRATE_FIELDS = ('app', 'extras', 'decisions', 'catalogue', 'out', 'report', 'catalogue_src')
-
-
-def data_paths(form):
-    """The migrate form's paths, each inside the database folder, or ValueError (#61).
-
-    A relative path is taken from that folder; an absolute one must already be inside it. Nothing
-    outside it is read or written from the browser; the CLI (`brickwork migrate`) takes any path.
-    """
-    from .admin_ops import brickwork_path
-    base = brickwork_path().parent.resolve()
-    paths = {}
-    for key in MIGRATE_FIELDS:
-        value = (form.get(key) or '').strip()
-        if not value:
-            paths[key] = None
-            continue
-        path = Path(value)
-        path = (path if path.is_absolute() else base / path).resolve()
-        if not path.is_relative_to(base):
-            raise ValueError('Give paths inside the data folder, for example imports/app.db; '
-                             'use brickwork migrate for files elsewhere.')
-        paths[key] = str(path)
-    return paths
 
 
 def _db():
@@ -97,7 +72,8 @@ def bw_import_upload():
             flash(redact(exc), 'warning')
             return redirect(url_for('web.bw_import_legacy'))
         finally:
-            target.unlink(missing_ok=True)
+            for leftover in (target, *(target.with_name(target.name + suffix) for suffix in ('-wal', '-shm', '-journal'))):
+                leftover.unlink(missing_ok=True)       # a WAL-mode upload leaves its sidecars when read
     return redirect(url_for('web.bw_import_plan', plan_id=plan['id']))
 
 
@@ -155,20 +131,3 @@ def bw_import_undo():
         except (ValueError, sqlite3.Error) as exc:
             flash(public(exc, 'The import could not run · nothing was changed'), 'warning')
     return redirect(url_for('web.bw_import_legacy'))
-
-
-@web_page.post('/manage/import-legacy/migrate')
-@login_required
-def bw_import_migrate():
-    """The older path: build a new database from server paths, with a proof report."""
-    from .admin_ops import migrate
-    from ..core.sources.base import redact
-    _guard()
-    result = error = None
-    try:
-        result = migrate(**data_paths(request.form))
-    except (ValueError, OSError, sqlite3.Error) as exc:
-        error = redact(exc)
-    except TypeError:
-        error = 'Fill in every required file path.'
-    return _render(screen='upload', limit=LIMIT_MB, result=result, error=error)

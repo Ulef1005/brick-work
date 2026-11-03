@@ -95,12 +95,11 @@ def http_app(flask_app, *, allow_write=False):
                              Mount('/', app=WSGIMiddleware(flask_app))], lifespan=lifespan)
 
 
-def run(*, in_process=False, transport='stdio', api_url='http://127.0.0.1:5000/api/v1',
+def run(*, in_process=False, transport='stdio', api_url='http://127.0.0.1:5000/api/v2',
         token_file=None, allow_write=False, host='127.0.0.1', port=5000):
     # Validate before either transport starts accepting requests.
     contract()
     from flask import Flask
-    from ...api import register
     from ... import settings
     from ...app import setup_app
     settings.load_env_file()
@@ -115,8 +114,9 @@ def run(*, in_process=False, transport='stdio', api_url='http://127.0.0.1:5000/a
         return
     token = Path(token_file).read_text().strip() if token_file else os.environ.get('BW_API_TOKEN', '')
     if in_process:
-        app = Flask('brickwork-mcp')
-        register(app)
+        # The whole app, as the HTTP host has it: the 4.0 fetchers read their keys through the app's key store.
+        app = Flask('brickwork-mcp', template_folder='../templates', static_folder='../static')
+        setup_app(app)
         client = InProcessClient(app, token)
     else:
         client = HTTPClient(api_url, token)

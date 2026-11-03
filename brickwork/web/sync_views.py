@@ -25,9 +25,10 @@ def _unavailable(view):
     @wraps(view)
     def wrapped(*args, **kwargs):
         import sqlite3
+        from ..core.connect import NoCatalogue
         try:
             return view(*args, **kwargs)
-        except sqlite3.OperationalError:
+        except (sqlite3.OperationalError, NoCatalogue):
             return render_template('web/toni/error.html', error='Brick Work database is not available. Check BW_DB_PATH and try again.', status=503), 503
     return wrapped
 
@@ -48,28 +49,28 @@ def _budget(db, source):
 
 
 def _log(db, limit=20):
-    """Sync log rows from the receipts and send records, newest first."""
+    """Sync log rows from the receipts, their undos and the send records, newest first."""
     rows = []
-    for r in db.execute("""SELECT id,entity,field,new_value,old_value,at FROM events
-            WHERE (entity='bw_sync' AND field IN ('receipt','undo')) OR (entity IN ('sync:rebrickable','sync:brickset') AND field='send')
-            ORDER BY id DESC LIMIT ?""", (limit,)):
+    for r in db.execute("""SELECT e.id, e.entity_id, e.field, e.new_value, e.at, EXISTS(SELECT 1 FROM event_undo u WHERE u.event_id=e.id) AS undone
+            FROM event e WHERE e.entity_kind='sync' AND e.field IN ('receipt', 'undo', 'send') ORDER BY e.id DESC LIMIT ?""", (limit,)):
         value = json.loads(r['new_value']) if r['new_value'] else None
-        if r['entity'] == 'bw_sync' and r['field'] == 'receipt':
+        if r['field'] == 'receipt':
             c = value.get('counts', {})
             what = ' · '.join(p for p in (
                 f"{c.get('copies', 0)} {'copy' if c.get('copies') == 1 else 'copies'} added" if c.get('copies') else '',
+                f"{c.get('stock', 0)} loose added" if c.get('stock') else '',
                 f"{c.get('wishes_added', 0)} {'wish' if c.get('wishes_added') == 1 else 'wishes'} added" if c.get('wishes_added') else '',
                 f"{c.get('wishes_changed', 0)} wish quantities raised" if c.get('wishes_changed') else '') if p) or 'Nothing new'
-            rows.append(dict(at=r['at'], source=value['source'], direction='Pulled', what=what, state='Done', event=r['id']))
-        elif r['entity'] == 'bw_sync':
-            rows.append(dict(at=r['at'], source='', direction='Undone', what='Pull ' + str(json.loads(r['old_value'])) + ' undone', state='Done', event=None))
+            rows.append(dict(at=r['at'], source=value['source'], direction='Pulled', what=what, state='Undone' if r['undone'] else 'Done', event=r['id']))
+        elif r['field'] == 'undo':
+            rows.append(dict(at=r['at'], source='', direction='Undone', what='Pull ' + str(value['undoes']) + ' undone', state='Done', event=None))
         else:
             counts = (value or {}).get('counts', {})
             sent = counts.get('sent', 0) + counts.get('unchanged', 0)
             problems = {k: v for k, v in counts.items() if k not in ('sent', 'unchanged')}
             what = f"{sent} {'change' if sent == 1 else 'changes'} sent" + ''.join(f" · {v} {k.replace('_', ' ')}" for k, v in problems.items())
             state = 'Done' if not problems else 'Waiting for you'
-            rows.append(dict(at=r['at'], source=r['entity'].split(':', 1)[1], direction='Sent', what=what, state=state, event=None))
+            rows.append(dict(at=r['at'], source=r['entity_id'], direction='Sent', what=what, state=state, event=None))
     return rows
 
 
@@ -211,7 +212,8 @@ def bw_sync_write(source, action):
                 if result.get('already_applied'):
                     flash('This plan was already pulled; nothing was added again.', 'info')
                     return redirect(url_for('web.bw_sync', pulled=result['event_id']))
-                flash(f"Pulled · {c['copies']} {'copy' if c['copies'] == 1 else 'copies'} and {c['wishes_added'] + c['wishes_changed']} "
+                flash(f"Pulled · {c['copies']} {'copy' if c['copies'] == 1 else 'copies'}"
+                      + (f", {c['stock']} loose" if c.get('stock') else '') + f" and {c['wishes_added'] + c['wishes_changed']} "
                       f"{'wish' if c['wishes_added'] + c['wishes_changed'] == 1 else 'wishes'} added here.", 'success')
                 return redirect(url_for('web.bw_sync', pulled=result['event_id']))
             elif action == 'send_apply':

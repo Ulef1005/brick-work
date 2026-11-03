@@ -76,7 +76,7 @@ Each is walked through, screen by screen, on the [workflows page](https://ulef10
 - **Receive a parts order.** Import a BrickLink order from your account, a confirmation email or the order XML (a line already imported is never added twice), count the parts as they arrive and allocate them to sets.
 - **Decide what to buy.** Wishlist, Prices and Complete sets rank repairs by value gained per euro.
 - **Know where everything is.** Every set, copy, part and box has a storage location.
-- **Bring your old collection over.** `brickwork migrate` imports an older tracker's database read-only, with row-count and checksum proof. The old database is never changed.
+- **Bring your old collection over.** Import from BrickTracker (Tools & Admin, or `brickwork import-bricktracker`) reads its database read-only, places every set, part and figure on the catalogue's Rebrickable numbers and can be undone as one step; a 3.3 collection of Brick Work moves to 4.0 with `brickwork migrate4`.
 - **Ask an assistant about your collection.** Connect over MCP with a read-only token; write tools stay off unless you enable them.
 - **Script your collection.** The versioned REST API with an OpenAPI contract; creates need an idempotency key, so a retried request cannot add twice.
 
@@ -109,10 +109,12 @@ Nothing until you add keys. With your own keys it calls BrickLink, Rebrickable a
 
 ## Standalone installation with Docker
 
+> **`main` is the Brick Work 4.0 development line and is not installable yet.** It opens only a 4.0 collection (with `catalogue.db` beside it), most screens answer 503 until they are moved over, and API v1 answers 410. For a working install use the released line: `git clone --branch release/0.5 …` below.
+
 With Git and Docker Compose installed:
 
 ```sh
-git clone https://github.com/Ulef1005/brick-work.git
+git clone --branch release/0.5 https://github.com/Ulef1005/brick-work.git
 cd brick-work
 mkdir -p data
 sudo chown 1000:1000 data   # the container runs as uid 1000; as root, leave out sudo
@@ -123,7 +125,7 @@ docker compose run --rm --entrypoint brickwork brickwork setup
 docker compose up -d
 ```
 
-Then open `http://localhost:3333` and sign in with that password; an empty install greets you with Add your first set. The container runs as uid 1000 and writes only to `data/`; if an older image (which ran as root) created that folder, run `sudo chown -R 1000:1000 data` once. The `data` volume holds the database, local catalogue index, photos, PDFs and job state. Back it up together with your environment configuration. No separate application or service is required. The offline smoke test covers a fresh installation without source credentials.
+Then open `http://localhost:3333` and sign in with that password; an empty install greets you with **Download the catalogue** (no key needed); after it, add a set by number and check its parts. The container runs as uid 1000 and writes only to `data/`; if an older image (which ran as root) created that folder, run `sudo chown -R 1000:1000 data` once. The `data` volume holds the database, local catalogue index, photos, PDFs and job state. Back it up together with your environment configuration. No separate application or service is required. The offline smoke test covers a fresh installation without source credentials.
 
 Environment variables override `data/.env`; a root `.env` is the fallback. See [.env.sample](.env.sample). Set `BW_AUTHENTICATION_PASSWORD`: without one the server refuses to start, because anyone who can reach it could edit the collection, export the database and create API tokens. To run without login on purpose (a single trusted computer), set `BW_ALLOW_NO_LOGIN=1`. The session key is generated into `data/session.key` on first start unless you set `BW_AUTHENTICATION_KEY`. `compose.yaml` publishes the port on this computer only (`127.0.0.1:3333`); change that to `3333:3333` to reach the app from your network once a password is set. `BW_DB_PATH` defaults to `data/brickwork.db`; `BW_HOST`, `BW_PORT` and `BW_READ_ONLY` control serving and editing.
 
@@ -174,7 +176,7 @@ Every setting is an environment variable, read from `data/.env` when it is not s
 
 ## API and MCP
 
-The sole API is `/api/v1`: [contract](docs/brickwork/api-v1.md), [OpenAPI](docs/brickwork/openapi-v1.yaml). Use `Authorization: Bearer TOKEN`. Set `BW_API_TOKEN` for a bootstrap admin token, or create scoped stored tokens after setup:
+The API is `/api/v2` on the 4.0 line (v1 answers `410 Gone`): [contract](docs/brickwork/api-v2.md), [OpenAPI](docs/brickwork/openapi-v2.yaml). The v1 contract stays as [api-v1.md](docs/brickwork/api-v1.md), the reference for what v2 inherits. Use `Authorization: Bearer TOKEN`. Set `BW_API_TOKEN` for a bootstrap admin token, or create scoped stored tokens after setup:
 
 ```sh
 docker compose exec brickwork brickwork token create --name client --scope read,write --expires 90d
@@ -187,24 +189,23 @@ A created token secret is shown once; only its hash is stored. The bootstrap tok
 The MCP server uses the same API authorization and schemas. For stdio in a local install:
 
 ```sh
-brickwork mcp --api-url http://127.0.0.1:3333/api/v1 --token-file /path/to/token
+brickwork mcp --api-url http://127.0.0.1:3333/api/v2 --token-file /path/to/token
 # Or use the local database through an in-process API:
 brickwork mcp --in-process --token-file /path/to/token
 ```
 
-Read tools are available by default. `--allow-write` enables write tools only when the calling token has sufficient scope. `--transport http --host 127.0.0.1 --port 5000` serves the HTTP MCP transport. See [MCP details](docs/brickwork/api-v1.md#7-mcp-server).
+Read tools are available by default. `--allow-write` enables write tools only when the calling token has sufficient scope. `--transport http --host 127.0.0.1 --port 5000` serves the HTTP MCP transport. See [MCP details](docs/brickwork/mcp.md).
 
 ## Import an old collection
 
-**Tools & Admin → Import from BrickTracker** and `brickwork migrate` share one read-only importer. Supply the old `app.db`, identity decisions JSON, a BrickLink catalogue database and a new output path; `--extras` optionally supplies the old extras database. No extras database is needed for normal operation.
+**Tools & Admin → Import from BrickTracker** and `brickwork import-bricktracker` share one read-only importer. BrickTracker stores Rebrickable numbers, which are the catalogue's own, so nothing is translated: give the old `app.db` (any BrickTracker version), read the preview, tick what to add, and the import writes copies, loose stock, lots and wishes as Add does, with BrickTracker's missing / damaged / checked marks on the part lines. What the catalogue does not know is listed and left out. One import is one event; **Undo** takes it back.
 
 ```sh
-brickwork migrate --app old/app.db --extras old/extras.db \
-  --decisions decisions.json --catalogue bricklink-catalog.db \
-  --out data/brickwork.db --report import-proof
+brickwork import-bricktracker old/app.db --plan-only     # the plan and its summary
+brickwork import-bricktracker --apply PLAN_ID            # apply it once
 ```
 
-Omit `--extras` if unavailable. Use `--catalogue-src` for the XML folder when Gear decisions require it. Existing outputs are refused unless the CLI's explicit `--replace` is used; the browser always refuses replacement. Review the row-count/checksum proof, then point `BW_DB_PATH` at the imported file and restart. The importer preserves the established historical mapping; review unresolved identities in the app.
+A Brick Work 3.3 collection is moved to 4.0 with `brickwork migrate4` (design § 8), not with this import.
 
 ## Development checks
 
@@ -217,7 +218,7 @@ The check script includes the naming gate, a standalone smoke test with sockets 
 
 ## Documentation
 
-The documentation site (published on GitHub Pages) shows this README, the API reference rendered from [openapi-v1.yaml](docs/brickwork/openapi-v1.yaml), and the [MCP guide](docs/brickwork/mcp.md). The [API guide](docs/brickwork/api-v1.md) covers authentication, conventions and examples. Build the site locally with `python scripts/build_site.py _site`.
+The documentation site (published on GitHub Pages) shows this README, the API reference rendered from [openapi-v2.yaml](docs/brickwork/openapi-v2.yaml), and the [MCP guide](docs/brickwork/mcp.md). The [API guide](docs/brickwork/api-v2.md) covers authentication, conventions and examples. Build the site locally with `python scripts/build_site.py _site`.
 
 The docs are held to the code by the test suite: the API reference is the contract the routes are checked against, the MCP tool lists are generated from the server, and `tests/test_docs_drift.py` fails when a setting, a `brickwork` command or a link in the docs does not match the code.
 

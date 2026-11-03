@@ -1,0 +1,7 @@
+# Gitleaks' default rules, plus one path whose content is never a secret.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "tests/bench_reference.json holds sha256 hashes of bench outputs (#135); the generic-api-key rule reads them as keys"
+paths = ['''(^|/)tests/bench_reference\.json$''']

@@ -5,7 +5,7 @@
 -- =====================================================================
 
 CREATE TABLE meta(key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL) STRICT;
--- keys: schema_version='4.0'; install_id; catalogue_id (bound at the first build; connect()
+-- keys: schema_version='4.1' (4.0 before #131; connect() upgrades a 4.0 file in place); install_id; catalogue_id (bound at the first build; connect()
 -- refuses a catalogue whose catalogue_id differs); catalogue_item_high_water and
 -- catalogue_color_high_water (copied at every activation: a rebuild from scratch mints above
 -- them); migrated_from (3.3 file name, sha256, migration report digest) after the migration.
@@ -57,7 +57,7 @@ INSERT INTO color(id,origin,name,rgb,is_trans,born_provider,born_key,created_at,
 -- The collection's own links: seeded from the catalogue at projection, then owned here.
 -- manual never changes automatically; matched is never downgraded automatically.
 CREATE TABLE item_link(
- id INTEGER PRIMARY KEY,
+ id INTEGER PRIMARY KEY AUTOINCREMENT,
  item_id INTEGER NOT NULL REFERENCES item(id),
  color_id INTEGER REFERENCES color(id),               -- NULL: every colour; set: this colour only
  color_key INTEGER GENERATED ALWAYS AS (coalesce(color_id,0)) VIRTUAL,
@@ -173,7 +173,7 @@ CREATE TABLE item_property(                          -- fetched metadata (Bricks
 CREATE INDEX item_property_source ON item_property(source);
 
 CREATE TABLE picture(                                -- cached provider pictures: a cache
- id INTEGER PRIMARY KEY,
+ id INTEGER PRIMARY KEY AUTOINCREMENT,
  item_id INTEGER NOT NULL REFERENCES item(id), color_id INTEGER REFERENCES color(id),
  color_key INTEGER GENERATED ALWAYS AS (coalesce(color_id,0)) VIRTUAL,
  source TEXT NOT NULL REFERENCES source(id),
@@ -392,6 +392,7 @@ CREATE TABLE wish(
  max_price TEXT, max_price_currency TEXT,
  qty_filled_manual INTEGER CHECK(qty_filled_manual IS NULL OR qty_filled_manual>=0),
  note TEXT, added_at TEXT NOT NULL, updated_at TEXT NOT NULL, archived_at TEXT,
+ max_price_boxed TEXT, max_price_boxed_currency TEXT CHECK((max_price_boxed IS NULL) = (max_price_boxed_currency IS NULL)), -- 4.1 (#131): last, as the upgrade adds them
  CHECK((kind='part') = (color_id IS NOT NULL)),
  CHECK((max_price IS NULL) = (max_price_currency IS NULL))) STRICT;
 CREATE UNIQUE INDEX wish_live_key ON wish(wishlist_id, item_id, color_key) WHERE archived_at IS NULL;
@@ -435,7 +436,7 @@ CREATE INDEX stock_transfer_event ON stock_transfer(event_id);
 CREATE TABLE purchase_order(
  id INTEGER PRIMARY KEY, bricklink_order_id TEXT UNIQUE, store TEXT, seller TEXT, date_ordered TEXT,
  status TEXT, cost TEXT, currency TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
- CHECK((cost IS NULL) = (currency IS NULL))) STRICT;
+ CHECK(cost IS NULL OR currency IS NOT NULL)) STRICT;       -- a currency may exist without a total (an e-mail has none); a cost needs its currency
 
 CREATE TABLE order_document(
  id INTEGER PRIMARY KEY, order_id INTEGER NOT NULL REFERENCES purchase_order(id),
@@ -539,7 +540,7 @@ CREATE TABLE source(
  kind TEXT NOT NULL CHECK(kind IN ('api','file','manual')),
  enabled INTEGER NOT NULL DEFAULT 1 CHECK(enabled IN (0,1))) STRICT;
 INSERT INTO source VALUES('rebrickable','Rebrickable','api',1),('bricklink','BrickLink','api',1),('brickset','Brickset','api',1),
- ('brickognize','Brickognize','api',1),('rebrickable_dump','Rebrickable dump','file',1),('bricklink_list','BrickLink item lists','file',1),
+ ('brickognize','Brickognize','api',1),('rebrickable_dump','Rebrickable dump','file',1),('rebrickable_api','Rebrickable API','api',1),('bricklink_list','BrickLink item lists','file',1),
  ('mapping','Mappings','file',1),('manual','Manual','manual',1),('own','Own photos','manual',1),('migration','Migration','manual',1),
  ('import','Import pipeline','manual',1),('lego','LEGO colour numbers','file',1);   -- 'import': the pipeline's job source (pipeline.py:106, review finding 8)
 
@@ -563,7 +564,8 @@ CREATE TABLE setting(key TEXT PRIMARY KEY NOT NULL, value TEXT) STRICT;
 -- Preferences only (design § 5.2): bricklink_region, bricklink_currency, incomplete_discount_pct,
 -- repair_shipping, repair_fees, repair_min_order, repair_use_loose_stock, retail_country,
 -- display_currency, source_priority (incl. the picture source order, Q17), import_order:<kind>,
--- prefer_bricklink_inventory ('true'/'false', Q13), maintenance:database_check.
+-- prefer_bricklink_inventory ('true'/'false', Q13). Also maintenance:database_check, the stored result of
+-- the last database check (not a preference, not migrated).
 
 CREATE TABLE job(
  id INTEGER PRIMARY KEY, source TEXT NOT NULL REFERENCES source(id), kind TEXT NOT NULL,

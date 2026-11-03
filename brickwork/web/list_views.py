@@ -1,5 +1,4 @@
 """#43 Printable lists and CSV: missing parts, Part Picker results and the wishlist."""
-from contextlib import closing
 from datetime import date
 import sqlite3
 
@@ -30,24 +29,6 @@ def _rows(kind):
         return list_exports.wishlist(db, request.args.get('list', 'all')), []
 
 
-def _images(rows):
-    """Item pictures for the printed rows, one query."""
-    from ..core.admin import database
-    from .admin_ops import brickwork_path
-    import json
-    keys = sorted({(r['item_type'], r['item_no'], r.get('color_id')) for r in rows})
-    if not keys:
-        return {}
-    with database(brickwork_path(), read_only=True) as db:
-        found = {}
-        for r in db.execute('''SELECT item_type,item_no,color_id,min(id) AS id FROM item_images
-                WHERE (item_type||char(31)||item_no) IN (SELECT value FROM json_each(?)) GROUP BY 1,2,3''',
-                (json.dumps(sorted({t + '\x1f' + n for t, n, _ in keys})),)):
-            found.setdefault((r['item_type'], r['item_no'], r['color_id']), r['id'])
-            found.setdefault((r['item_type'], r['item_no'], None), r['id'])
-    return found
-
-
 @web_page.get('/lists/<kind>/print')
 @login_required
 def bw_list_print(kind):
@@ -59,7 +40,6 @@ def bw_list_print(kind):
     except (ValueError, sqlite3.Error) as exc:
         error = public(exc, 'Brick Work database is not available · try again')
     pictures = request.args.get('pictures', '1') != '0'
-    images = _images(rows) if pictures and rows else {}
     from .ui import passthrough_args
     args = passthrough_args('kind')
     args['pictures'] = ['0' if pictures else '1']
@@ -68,7 +48,7 @@ def bw_list_print(kind):
                 else url_for('web.bw_picker', copy=copies, pick='1') if kind == 'picker'
                 else url_for('web.bw_planning', screen='wishlist', list=request.args.get('list', 'all')))
     response = current_app.make_response(render_template('web/toni/web/bw_print_list.html', kind=kind, title=KINDS[kind],
-        rows=rows, copies=copies, error=error, pictures=pictures, images=images, today=date.today().isoformat(),
+        rows=rows, copies=copies, error=error, pictures=pictures, today=date.today().isoformat(),
         total=sum(r['quantity'] or 0 for r in rows), toggle_url=toggle_url, back_url=back_url, csv_url=url_for('web.bw_list_csv', kind=kind, **passthrough_args('kind'))))
     response.headers['Cache-Control'] = 'no-store'
     return response

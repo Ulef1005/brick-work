@@ -9,7 +9,7 @@
 <ol class="fr-steps">
 {% for title, text, label, href, link_state in [
   ('Set up your keys (optional)', 'BrickLink, Rebrickable and Brickset keys, for prices and for sets newer than the catalogue. Stored encrypted on this install.', 'Catalogues & keys', catalogues, first_run.steps[0]),
-  ('Load the catalogue', 'Rebrickable\'s parts, sets and figures: 17 MB, no login, no key. Rebrickable asks for at most one download a day.', 'Download the catalogue', none, first_run.steps[1]),
+  ('Load the catalogue', 'Rebrickable\'s parts, sets and figures: 17 MB, no login, no key. Takes about a minute. Rebrickable asks for at most one download a day.', 'Download the catalogue', none, first_run.steps[1]),
   ('Add your first set', 'By number, by photo, or from an order.', 'Add a set', url_for('web.bw_add'), first_run.steps[2]),
   ('Or import from BrickTracker', 'Already use BrickTracker? Bring its app.db over, any version, with a preview first.', 'Import app.db', url_for('web.bw_import_legacy'), first_run.steps[3])] %}
 <li class="fr-step" data-step="{{ loop.index }}" data-state="{{ link_state }}"><span class="fr-num mono" aria-hidden="true">{{ loop.index }}</span><div class="fr-text"><h3>{{ title }}</h3><p>{{ text }}</p></div>

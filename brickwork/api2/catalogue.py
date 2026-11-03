@@ -8,6 +8,8 @@ import json
 import re
 
 from ..core import errors, items as items_core
+from ..core.secrets import secret_values
+from ..core.sources.base import redact
 from ..core.listing import natural
 from ..store4 import lookup
 from ..store4.connect import has_catalogue
@@ -211,8 +213,13 @@ def get_items(db):
     rows = db.execute('''SELECT id, kind, name, year, theme_name, category_name, born_key FROM main.item WHERE merged_into IS NULL'''
                       + (' AND kind=?' if kind else ''), (kind,) if kind else ()).fetchall()
     owned, _ = owned_counts(db, [r['id'] for r in rows])
-    # A text is also matched against the BrickLink numbers, which are in the bodies; without one only the page needs them.
-    book = bodies(db, items=[r['id'] for r in rows]) if args.get('q') else None
+    # A text is also matched against the BrickLink numbers of the bodies (`also`); only those numbers are read and redacted for every
+    # item, as the body would hold them, and whole bodies are built for the page alone.
+    numbers = {}
+    if args.get('q'):
+        secrets = secret_values()
+        numbers = {i: ' '.join(dict.fromkeys(redact(link['no'], secrets) for link in body['bricklink']))
+                   for i, body in lookup.item_bodies(db, [r['id'] for r in rows]).items()}
     records = [record(r['id'], r['born_key'] or '', kind=r['kind'], name=r['name'], year=r['year'], theme=r['theme_name'] or '', category=r['category_name'] or '',
-                      owned=owned.get(r['id'], 0) > 0, also=also(book.item(r['id'])) if book else '', _id=r['id']) for r in rows]
+                      owned=owned.get(r['id'], 0) > 0, also=numbers.get(r['id'], ''), _id=r['id']) for r in rows]
     return page(records, args, build=lambda chosen: [bodies(db, items=[r['_id'] for r in chosen]).item(r['_id']) for r in chosen])

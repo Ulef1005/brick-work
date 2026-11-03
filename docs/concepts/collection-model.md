@@ -42,7 +42,7 @@ A **storage** is a place: a drawer, a bin, a shelf, a room. Copies, loose stock 
 
 ## Wishes and wishlists
 
-A **wish** is something you want: a set, a minifigure, a part in a colour, or another item, with a quantity, the condition you accept and, if you like, your maximum price. Wishes live in **wishlists**; you start with one called *Wishlist* and can add more named lists.
+A **wish** is something you want: a set, a minifigure, a part in a colour, or another item, with a quantity, the condition you accept and, if you like, your maximum price. For a set you can also give a maximum price with box: a price with box is compared with it, and with your maximum price when you leave it empty. Set both on the wish's page, under **Edit** or from the buttons at the foot of its price card. Wishes live in **wishlists**; you start with one called *Wishlist* and can add more named lists.
 
 Brick Work shows how much of each wish you already have, counted from what you own: copies for sets, loose stock for parts and figures. Parts inside copies never count, since they are needed there.
 

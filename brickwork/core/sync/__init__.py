@@ -19,7 +19,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from ...store4 import pending
-from ...store4.connect import has_catalogue, now as store_now
+from ...store4.connect import as_current, has_catalogue, now as store_now
 from .. import errors, items, keys, stock
 from .. import undo as undoing
 from ..admin import audit
@@ -453,7 +453,7 @@ def _undo_pull(db, event, via, actor):
     changed = 'Something from this sync has changed since · undo the later change first'
     for entry in r['wishes']:
         row = db.execute('SELECT * FROM main.wish WHERE id=?', (entry['id'],)).fetchone()
-        if row is None or dict(row) != entry['after']:
+        if row is None or dict(row) != as_current('wish', entry['after']):
             raise ValueError(changed)
     for entry in reversed(r['wishes']):
         row = db.execute('SELECT * FROM main.wish WHERE id=?', (entry['id'],)).fetchone()

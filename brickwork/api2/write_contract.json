@@ -3477,6 +3477,21 @@
             "null"
           ]
         },
+        "max_price_boxed": {
+          "description": "Decimal string, never a float. The max for a quote with box (a set's slot boxed); without it such a quote is held against max_price.",
+          "pattern": "^[0-9]+(\\.[0-9]+)?$",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "max_price_boxed_currency": {
+          "pattern": "^[A-Z]{3,8}$",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "max_price_currency": {
           "pattern": "^[A-Z]{3,8}$",
           "type": [
@@ -3523,6 +3538,21 @@
         "max_price": {
           "description": "Decimal string, never a float.",
           "pattern": "^[0-9]+(\\.[0-9]+)?$",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "max_price_boxed": {
+          "description": "Decimal string, never a float. The max for a quote with box (a set's slot boxed); without it such a quote is held against max_price.",
+          "pattern": "^[0-9]+(\\.[0-9]+)?$",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "max_price_boxed_currency": {
+          "pattern": "^[A-Z]{3,8}$",
           "type": [
             "string",
             "null"

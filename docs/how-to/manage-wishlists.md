@@ -35,7 +35,7 @@ If a wish coming back would duplicate a live wish for the same item and colour i
 
 On a wish's page, press **Move or copy to another list**, choose the list under **To list**, then **Move** or **Copy**. The action shows only when there is another active list.
 
-A copy keeps the quantity, condition, maximum price and currency, colour, note and flags.
+A copy keeps the quantity, condition, maximum prices and their currencies, colour, note and flags.
 
 ### Collisions
 
@@ -63,6 +63,7 @@ A wish Brick Work cannot name in the format you chose is left out and listed, ne
 A few things to know about the files:
 
 - A maximum price goes into the BrickLink file only when it is above zero and in your BrickLink currency. Otherwise the limit is left out and the summary says so.
+- The maximum price with box is never exported: a BrickLink wanted list has no such field.
 - The BrickLink wanted list id is written only when you linked one to the list.
 - The Rebrickable file includes only items with a known Rebrickable number and colour. The rest are listed in the summary.
 

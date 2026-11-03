@@ -82,7 +82,7 @@ def test_setup_creates_a_4_0_collection_and_names_the_catalogue(where):
     result = ops.setup()
     assert result['catalogue'] == 'missing' and 'catalogue download' in result['next'] and result['database'] == str(where / 'brickwork.db')
     with closing(sqlite3.connect(where / 'brickwork.db')) as db:
-        assert db.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()[0] == '4.0'
+        assert db.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()[0] == '4.1'
         assert db.execute('SELECT count(*) FROM source_freshness').fetchone()[0] == 15
 
 

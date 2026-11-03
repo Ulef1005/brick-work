@@ -74,7 +74,12 @@ def test_first_run_has_the_import_step(client):
     steps = soup.select('[data-first-run] .fr-step')
     assert len(steps) == 3 and steps[2].h3.get_text() == 'Bring your collection in'      # #83: step 3 offers Add and the BrickTracker import
     links = [a['href'] for a in steps[2].select('.fr-actions a')]
-    assert links == [] if steps[2]['data-state'] == 'waiting' else '/manage/import-legacy' in links
+    assert links == [] if steps[2]['data-state'] == 'waiting' else '/manage/get-started/collection' in links
+
+
+def test_the_choice_screen_offers_the_import(client):
+    choice = page(client.get('/manage/get-started/collection')).select_one('[data-choice=bricktracker]')
+    assert choice.h2.get_text() == 'BrickTracker' and choice.find('a')['href'] == '/manage/import-legacy'
 
 
 def test_the_page_header(client):

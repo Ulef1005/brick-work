@@ -44,7 +44,7 @@ def collection_started():
     from .setup_state import _database
     try:
         with _database() as db:
-            return bool(db.execute('SELECT EXISTS(SELECT 1 FROM main.copy) OR EXISTS(SELECT 1 FROM main.stock)').fetchone()[0])
+            return bool(db.execute('SELECT EXISTS(SELECT 1 FROM main.copy WHERE archived_at IS NULL) OR EXISTS(SELECT 1 FROM main.stock WHERE archived_at IS NULL)').fetchone()[0])
     except (sqlite3.Error, OSError, ValueError):
         return False
 
@@ -77,3 +77,26 @@ KEY_HELP = {
     'brickset': dict(gives='Set data such as retail prices, and set pictures.', where='Get a Brickset key',
                      url='https://brickset.com/tools/webservices/requestkey'),
 }
+
+
+def collection_summary():
+    """#86: what the collection holds after step 3, and what is left to finish. An import leaves condition and completeness unset and tags
+    each copy `imported from <site>`; the tags come with their copy counts so the summary can link the Collection filtered by each."""
+    from .setup_state import _database
+    try:
+        with _database() as db:
+            copies, unfinished = db.execute('SELECT count(*), count(*) FILTER (WHERE condition IS NULL) FROM main.copy WHERE archived_at IS NULL'
+                                            ).fetchone()
+            stock = db.execute('SELECT count(*) FROM main.stock WHERE archived_at IS NULL').fetchone()[0]
+            wishes = db.execute('SELECT count(*) FROM main.wish WHERE archived_at IS NULL').fetchone()[0]
+            imported = db.execute("SELECT f.name, count(DISTINCT c.id) FROM main.flag f JOIN main.copy_flag cf ON cf.flag_id=f.id "
+                                  "JOIN main.copy c ON c.id=cf.copy_id AND c.archived_at IS NULL "
+                                  "WHERE f.kind='tag' AND f.archived_at IS NULL AND lower(f.name) LIKE 'imported from %' "
+                                  'GROUP BY f.id ORDER BY f.name').fetchall()
+    except (sqlite3.Error, OSError, ValueError):
+        return None
+    return dict(copies=copies, unfinished=unfinished, stock=stock, wishes=wishes, imported=[(name, count) for name, count in imported])
+
+
+# The pages a step-3 choice opens: while the flow sent the user there, they offer the way back to it.
+RETURN_ENDPOINTS = {'web.bw_sync', 'web.bw_sync_link', 'web.bw_sync_plan', 'web.bw_import_legacy', 'web.bw_import_plan', 'web.bw_add'}

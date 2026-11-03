@@ -41,7 +41,7 @@
     {% for group, links in toni_navigation %}<div class="navgroup" data-rail-group="{{ group }}"><p class="label secondary">{{ group }}</p>{% for link in links %}{{ nav_link(link, true) }}{% endfor %}</div>{% endfor %}
     </nav><div class="rail-theme">{{ theme_picker() }}</div></aside>
     <main id="content" tabindex="-1" class="{% block content_class %}standard{% endblock %}">
-      {% for category,message in get_flashed_messages(with_categories=true) %}<p class="notice" role="status">{{ message }}</p>{% endfor %}
+      {% for category,message in get_flashed_messages(with_categories=true) %}<p class="notice" role="status">{{ message }}</p>{% endfor %}{% if flow_return %}<p class="flow-return" data-flow-return><a href="{{ url_for('web.bw_get_started_collection') }}">‹ Back to Get started</a></p>{% endif %}
       {% block main %}{% endblock %}
     </main>
   </div>

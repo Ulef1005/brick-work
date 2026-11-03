@@ -19,6 +19,7 @@ One task per page, for someone who already knows the app.
 - [Pictures, prices and where they come from](pictures-and-prices.md)
 - [Links and the preferred number](links-and-preferred-numbers.md)
 - [Resolve unresolved items and merge items](merge-items.md)
+- [Bring your collection in from another app](migrate.md)
 - [Sync with Rebrickable and Brickset](sync-collection.md)
 - [Import from BrickTracker](import-from-bricktracker.md)
 - [Undo a change](undo-a-change.md)

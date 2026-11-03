@@ -439,6 +439,27 @@ def bw_get_started():
     return response
 
 
+@web_page.get('/manage/get-started/collection')
+@login_required
+def bw_get_started_collection():
+    """#86: step 3's choice screen (on 12b's import hub): where the collection lives today, each choice opening its existing path. While the
+    user follows one, those pages offer the way back here, where the summary says what came in and what is left to finish."""
+    from . import onboarding, setup_state
+    session['bw_flow_return'] = True
+    response = current_app.make_response(render_template('web/toni/web/bw_get_started_collection.html', title='Bring your collection in',
+        first_run=setup_state.first_run(bw_collection_editable()), summary=onboarding.collection_summary(), can_edit=bw_collection_editable(),
+        key_gaps={source: setup_state.key_missing(source) for source in ('rebrickable', 'brickset')}))
+    response.headers['Cache-Control'] = 'no-store'
+    return response
+
+
+@web_page.app_context_processor
+def bw_flow_return():
+    """The way back to step 3 on the pages its choices open, while the flow sent the user there (#86)."""
+    from . import onboarding
+    return dict(flow_return=bool(session.get('bw_flow_return')) and request.endpoint in onboarding.RETURN_ENDPOINTS)
+
+
 @web_page.post('/manage/get-started')
 @login_required
 def bw_get_started_write():

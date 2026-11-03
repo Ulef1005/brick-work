@@ -1,0 +1,24 @@
+{% extends 'web/toni/base.html' %}
+{# #86: step 3 of Get started, where the collection lives today (on 12b's import hub). Each card opens an existing path; Brickset's CSV is not readable yet. #}
+{% block title %} · {{ title }}{% endblock %}{% block page_assets %}<link rel="stylesheet" href="{{ bw_static('web/toni/bw-collection.css') }}">{% endblock %}
+{% block main %}<div id="bw-collection" class="bw-get-started"><p class="fr-back"><a href="{{ url_for('web.bw_get_started') }}">‹ Get started</a></p>
+<header class="bc-heading"><div><h1>Bring your collection in</h1><p class="secondary">Where does your collection live today? Every way in shows a preview first, and an import can be undone.</p></div></header>
+{% if not can_edit %}<p class="bc-status">Read only · Changes are switched off on this instance.</p>{% endif %}
+{% if not first_run.loaded %}<p class="bc-status" data-needs-catalogue>Load the catalogue first: an import finds every item in it. <a href="{{ url_for('web.bw_get_started') }}">Get started</a></p>{% endif %}
+{% if summary and (summary.copies or summary.stock or summary.wishes) %}<section class="fr-summary-card" data-collection-summary aria-labelledby="fr-sum-title"><h2 id="fr-sum-title">In your collection</h2>
+<p><span class="mono">{{ summary.copies }}</span> {{ 'copy' if summary.copies == 1 else 'copies' }} · <span class="mono">{{ summary.stock }}</span> loose {{ 'entry' if summary.stock == 1 else 'entries' }} · <span class="mono">{{ summary.wishes }}</span> {{ 'wish' if summary.wishes == 1 else 'wishes' }}</p>
+{% if summary.unfinished %}<p data-unfinished><span class="mono">{{ summary.unfinished }}</span> {{ 'copy has' if summary.unfinished == 1 else 'copies have' }} no condition or completeness yet: an import leaves them for you to set.</p>{% endif %}
+{% if summary.imported %}<ul class="fr-imported">{% for name, count in summary.imported %}<li><a href="{{ url_for('web.bw_sets', tag=name) }}" data-imported-tag="{{ name }}"><span class="mono">{{ count }}</span> {{ name }}</a></li>{% endfor %}</ul>{% endif %}
+</section>{% endif %}
+<div class="fr-choices" data-collection-choices>
+{% for key, title, text, label, href, note in [
+  ('rebrickable', 'Rebrickable', 'Your sets and wishlist from your Rebrickable account, with a preview before anything is added.', 'Open Collection sync', url_for('web.bw_sync'), key_gaps.rebrickable and 'Needs a Rebrickable key first.'),
+  ('brickset', 'Brickset', 'Your sets and wishlist from your Brickset account, with a preview. A Brickset CSV file cannot be read yet.', 'Open Collection sync', url_for('web.bw_sync'), key_gaps.brickset and 'Needs a Brickset key first.'),
+  ('bricklink', 'BrickLink', 'A wanted list or store inventory as an XML file, downloaded from BrickLink.', 'Choose an XML file', url_for('web.bw_add', mode='file'), none),
+  ('bricktracker', 'BrickTracker', 'Its app.db, any version, fresh or merged into this collection, with a preview first.', 'Import app.db', url_for('web.bw_import_legacy'), none),
+  ('file', 'Another app\'s file', 'BrickStore, Sets Collector, BrickScan and others: a BrickLink XML or Rebrickable CSV export.', 'Choose a file', url_for('web.bw_add', mode='file'), none),
+  ('hand', 'Start by hand', 'Add sets by number, by photo, or from an order.', 'Add a set', url_for('web.bw_add'), none)] %}
+<section class="fr-choice" data-choice="{{ key }}"><h2>{{ title }}</h2><p>{{ text }}</p>
+{% if note %}<p class="fr-choice-note" data-choice-needs>{{ note }} <a href="{{ url_for('web.bw_get_started') }}#keys">Set up keys</a></p>{% endif %}
+{% if can_edit and first_run.loaded %}<a class="button fr-btn fr-outline" href="{{ href }}">{{ label }}</a>{% else %}<button type="button" class="fr-btn" disabled aria-disabled="true">{{ label }}</button>{% endif %}</section>{% endfor %}
+</div></div>{% endblock %}

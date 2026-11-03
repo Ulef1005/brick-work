@@ -72,7 +72,7 @@ def test_first_run_unlocks_bringing_the_collection_in_once_the_catalogue_is_load
     monkeypatch.setattr('brickwork.web.setup_state.catalogue_loaded', lambda: True)
     found = steps(soup(client, '/collection/sets'))
     assert [found[k]['data-state'] for k in '123'] == ['done', 'done', 'current']
-    assert [a['href'] for a in found['3'].select('.fr-actions a')] == ['/manage/add', '/manage/import-legacy']
+    assert [a['href'] for a in found['3'].select('.fr-actions a')] == ['/manage/get-started/collection', '/manage/add']      # #86: the choice screen
 
 
 def test_first_run_never_shows_a_key_value(client, monkeypatch):

@@ -5,3 +5,7 @@
 @font-face{font-family:"Patrick Hand";src:url("/static/fonts/PatrickHand-Regular.woff2") format("woff2");font-weight:400;font-display:swap}
 @media(prefers-color-scheme:dark){:root:not(.tw-light){--bw-accent:oklch(0.76 0.10 215);--bw-accent-soft:oklch(0.35 0.065 215);--bw-on-accent:#1A1816}}
 .bw-wordmark{font-family:"Patrick Hand",cursive;font-weight:400}
+
+/* #86: the way back to Get started on the pages a step-3 choice opens. */
+.flow-return { margin:0 0 8px; }
+.flow-return a { min-height:44px;display:inline-flex;align-items:center;color:var(--tw-accent-text);font:500 15px var(--tw-font);text-decoration:none; }

@@ -95,7 +95,7 @@ def test_a_fresh_install_reaches_a_checkable_set_with_no_key(fresh):
         assert db.execute("SELECT count(*) FROM main.flag WHERE system=1").fetchone()[0] == 3
     page = soup(client, '/collection/sets')                                   # step 1 done: the flow resumes at the keys, adding opens
     assert [step(page, n)['data-state'] for n in (1, 2, 3)] == ['done', 'current', 'open']
-    assert step(page, 3).select_one('.fr-actions a')['href'] == '/manage/add'
+    assert [a['href'] for a in step(page, 3).select('.fr-actions a')] == ['/manage/get-started/collection', '/manage/add']
     csrf = token(client)                                                       # add a set by number, as the Add page does
     review = client.post('/manage/add/review', json=dict(csrf_token=csrf, type='set', where='owned', mode='paste', text='2070-1'))
     assert review.status_code == 200, review.get_data(as_text=True)

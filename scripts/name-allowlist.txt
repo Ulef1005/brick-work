@@ -46,3 +46,6 @@ brickwork/api2/write_contract.json	\bbricktracker\b|\b(?:post_)?imports?[-_]bric
 tests/test_api2_contract.py	\bbricktracker\b|\b(?:post_)?imports?[-_]bricktracker\b|BrickTracker	The admin operations of v1, among them the BrickTracker import.
 tests/test_api2_write_sync.py	\bbricktracker\b|\b(?:post_)?imports?[-_]bricktracker\b|BrickTracker	Tests of the BrickTracker import operations of API v2.
 docs/how-to/settings-and-maintenance.md	Import from BrickTracker	First-run flow: the name of the step 3 button.
+docs/how-to/migrate.md	BrickTracker	User guide to bringing a collection in: the retained importer and its source file.
+templates/web/toni/web/bw_get_started_collection.html	BrickTracker	Step 3 choice for the retained importer.
+tests/test_get_started.py	\bbricktracker\b|BrickTracker	Tests of the step 3 choice for the retained importer.

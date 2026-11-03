@@ -748,6 +748,20 @@ html[data-web-ui="toni"] #bw-collection .bc-source-details summary { padding-inl
 #bw-collection .fr-keys .bk-card { background:var(--tw-bg); }
 #bw-collection .fr-keys [data-key-help] a { color:var(--tw-accent-text);text-decoration:none;font-weight:500; }
 @media (max-width:640px) { #bw-collection .fr-keys { padding-left:0; } }
+/* #86: step 3's choice screen, on 12b's import hub cards, and the summary of what came in. */
+#bw-collection .fr-back { margin:0; }
+#bw-collection .fr-back a, #bw-collection .fr-choice-note a, #bw-collection .fr-imported a, #bw-collection [data-needs-catalogue] a { min-height:44px;display:inline-flex;align-items:center;color:var(--tw-accent-text);font:500 15px var(--tw-font);text-decoration:none; }
+#bw-collection .fr-choices { display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr));margin-top:24px; }
+#bw-collection .fr-choice { background:var(--tw-surface);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:8px;min-width:0; }
+#bw-collection .fr-choice h2 { font:600 18px/24px var(--tw-font);margin:0; }
+#bw-collection .fr-choice p { font:400 13px/18px var(--tw-font);color:var(--tw-text-muted);margin:0;text-wrap:pretty; }
+#bw-collection .fr-choice .fr-btn { margin-top:auto;align-self:flex-start; }
+#bw-collection .fr-choice-note { color:var(--tw-text-2)!important; }
+#bw-collection .fr-summary-card { background:var(--tw-surface);border-radius:16px;padding:20px;margin-top:24px;display:flex;flex-direction:column;gap:6px; }
+#bw-collection .fr-summary-card h2 { font:600 16px/22px var(--tw-font);margin:0; }
+#bw-collection .fr-summary-card p { font:400 14px/20px var(--tw-font);color:var(--tw-text-2);margin:0; }
+#bw-collection .fr-imported { list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:0 16px; }
+@media (max-width:640px) { #bw-collection .fr-choice .fr-btn { align-self:stretch; } }
 /* #85: the catalogue step's done line and its explainer. */
 #bw-collection .fr-summary { font:500 13px/18px var(--tw-font);color:var(--tw-text-2);margin:0; }
 #bw-collection .fr-summary a { color:var(--tw-accent-text);text-decoration:none; }

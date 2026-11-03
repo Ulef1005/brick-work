@@ -186,3 +186,56 @@ def test_without_the_flow_marker_a_key_action_stays_on_catalogues_and_keys(clien
     response = client.post('/manage/catalogues', data={'csrf_token': csrf(client), 'action': 'key_test_save', 'source': 'rebrickable',
                                                        'key:key': token_source.token_hex(14)})
     assert response.location.endswith('/manage/catalogues')
+
+
+# #86: step 3's choice screen: every source runs its existing path or says plainly what is not available; the pages it opens offer the
+# way back; the summary counts what came in and links the copies to finish.
+
+def test_the_choice_screen_offers_every_source_with_its_path(client):
+    page = soup(client, '/manage/get-started/collection')
+    assert page.h1.get_text() == 'Bring your collection in'
+    choices = {c['data-choice']: c for c in page.select('[data-collection-choices] [data-choice]')}
+    assert list(choices) == ['rebrickable', 'brickset', 'bricklink', 'bricktracker', 'file', 'hand']
+    assert {k: c.find('a', class_='fr-btn')['href'] for k, c in choices.items()} == {
+        'rebrickable': '/manage/sync', 'brickset': '/manage/sync', 'bricklink': '/manage/add?mode=file',
+        'bricktracker': '/manage/import-legacy', 'file': '/manage/add?mode=file', 'hand': '/manage/add'}
+    assert 'cannot be read yet' in choices['brickset'].get_text()                    # Brickset CSV: said plainly, not offered
+    for key in ('rebrickable', 'brickset'):                                          # no keys in this fixture: each sync says so
+        assert choices[key].select_one('[data-choice-needs] a')['href'] == '/manage/get-started#keys'
+    assert not choices['bricklink'].select('[data-choice-needs]')
+
+
+def test_without_the_catalogue_the_choices_wait_for_it(client, monkeypatch):
+    monkeypatch.setattr('brickwork.web.setup_state.catalogue_loaded', lambda: False)
+    page = soup(client, '/manage/get-started/collection')
+    assert page.select_one('[data-needs-catalogue]')
+    assert all(b.has_attr('disabled') for b in page.select('[data-choice] .fr-btn')) and not page.select('[data-choice] a.fr-btn')
+
+
+def test_the_pages_a_choice_opens_offer_the_way_back_and_others_do_not(client):
+    assert not soup(client, '/manage/add').select('[data-flow-return]')            # not sent by the flow yet
+    soup(client, '/manage/get-started/collection')
+    for route in ('/manage/add?mode=file', '/manage/import-legacy', '/manage/sync'):
+        back = soup(client, route).select_one('[data-flow-return] a')
+        assert back['href'] == '/manage/get-started/collection', route
+    assert not soup(client, '/collection/sets').select('[data-flow-return]')
+    assert soup(client, '/manage/add?mode=file').select_one('input[name=mode][value=file]').has_attr('checked')
+
+
+def test_the_summary_counts_what_came_in_and_links_each_import_to_finish(client, coll, world):
+    flag = coll.db.execute("INSERT INTO flag(id, name, kind, shown_on_grid, created_at) VALUES('f-imp', 'imported from Rebrickable', 'tag', 0, "
+                           "'2026-11-03T00:00:00Z') RETURNING id").fetchone()[0]
+    copy = coll.db.execute('SELECT id FROM copy WHERE archived_at IS NULL LIMIT 1').fetchone()[0]
+    coll.db.execute('INSERT INTO copy_flag(copy_id, flag_id) VALUES(?, ?)', (copy, flag))
+    coll.db.execute('UPDATE copy SET condition=NULL WHERE id=?', (copy,))
+    coll.db.commit()
+    summary = soup(client, '/manage/get-started/collection').select_one('[data-collection-summary]')
+    copies = coll.db.execute('SELECT count(*) FROM copy WHERE archived_at IS NULL').fetchone()[0]
+    assert f'{copies} {"copy" if copies == 1 else "copies"}' in ' '.join(summary.get_text().split())
+    assert summary.select_one('[data-unfinished]')
+    link = summary.select_one('[data-imported-tag]')
+    assert link['href'] == '/collection/sets?tag=imported+from+Rebrickable' and link.get_text(' ', strip=True) == '1 imported from Rebrickable'
+
+
+def test_an_empty_collection_has_no_summary(client):
+    assert not soup(client, '/manage/get-started/collection').select('[data-collection-summary]')

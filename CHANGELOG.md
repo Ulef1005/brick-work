@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## Brick Work 0.8.0 (schema 4.1) · 2026-11-03
+
+Milestone A, onboarding: a fresh install reaches its own collection through one guided flow, **Get started**. No schema change: a 0.7.0 collection (schema 4.1) opens as it is, and going back to 0.7.0 needs no restore. See [Bring your collection in from another app](docs/how-to/migrate.md) and [Settings and maintenance](docs/how-to/settings-and-maintenance.md).
+
 - **No key yet is not a failure** (#139). A step that only lacks a key (a BrickLink price, Brickset's set data) now ends as done and waiting for the key, so a job no longer shows **failed** on an install where you skipped the keys. Jobs says **Waiting for a key · runs once it is stored**. Storing the key puts those steps back in the queue, and so does a start with a key set in the environment. A key the site refuses still fails.
 - **BrickLink part numbers that name several parts** (#140). BrickLink files some Rebrickable parts under one number: 3001 also names the old mould 3556. An XML line for such a part now takes the part with the same Rebrickable number and says so in the review. Without one, it names the candidates. Before, it was refused as *Colour needs manual matching* although the colour was known.
 - **Bulk actions are one job** (#127): **Refresh pictures**, **Bulk refresh prices** and fetching missing booklets show as one row in **Jobs**, with its progress (done, failed, cancelled, to go), the failed items with their reasons, and **Cancel** for what is left. Your own work runs first: an Add's import and part list, or a single **Update price**, go before the batch's next item, so a new set no longer waits up to 45 minutes behind a picture refresh. The per-source budgets hold as before. See [Settings and maintenance](docs/how-to/settings-and-maintenance.md#jobs-and-bulk-refresh-prices).

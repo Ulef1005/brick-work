@@ -453,6 +453,18 @@ def bw_get_started_collection():
     return response
 
 
+@web_page.get('/manage/get-started/guide')
+@login_required
+def bw_get_started_guide():
+    """#87: step 4, how Brick Work thinks about a collection: five short cards, each linking to the screen it explains. "Got it" marks the
+    step done; the guide stays here for later."""
+    from . import setup_state
+    response = current_app.make_response(render_template('web/toni/web/bw_get_started_guide.html', title='How the inventory works',
+        first_run=setup_state.first_run(bw_collection_editable()), csrf_token=bw_add_token(), can_edit=bw_collection_editable()))
+    response.headers['Cache-Control'] = 'no-store'
+    return response
+
+
 @web_page.app_context_processor
 def bw_flow_return():
     """The way back to step 3 on the pages its choices open, while the flow sent the user there (#86)."""
@@ -469,10 +481,10 @@ def bw_get_started_write():
     if not bw_collection_editable():
         abort(403, 'Changes are switched off on this instance')
     action, step = request.form.get('action'), request.form.get('step')
-    if action not in ('skip', 'unskip') or step not in onboarding.STEPS:
+    if action not in ('skip', 'unskip', 'read') or step not in onboarding.STEPS or action == 'read' and step != 'guide':
         abort(400)
     try:
-        onboarding.mark(step, action == 'skip')
+        onboarding.mark_read() if action == 'read' else onboarding.mark(step, action == 'skip')
     except OSError as exc:
         flash(public(exc, 'Nothing was saved · the data folder is not writable'), 'error')
     return redirect(url_for('web.bw_sets') if request.form.get('back') == 'sets' else url_for('web.bw_get_started'))

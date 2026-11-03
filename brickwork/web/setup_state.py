@@ -81,7 +81,7 @@ def first_run(can_edit):
     paths = admin_ops.store4_paths()
     found = cli.newest_download(paths)
     job = catalogue_jobs.read(paths)
-    states = onboarding.states(dict(catalogue=loaded, keys=keyed, collection=onboarding.collection_started()), can_edit, onboarding.skipped())
+    states = onboarding.states(dict(catalogue=loaded, keys=keyed, collection=onboarding.collection_started(), guide=onboarding.guide_read()), can_edit, onboarding.skipped())
     return dict(steps=states, done=sum(state == 'done' for state in states.values()), total=len(states), catalogue=catalogue_summary(paths) if loaded else None,
                 finished=all(state in ('done', 'skipped') for state in states.values()),
                 keyed=keyed, loaded=loaded, file=not loaded and catalogue_file(), can_edit=can_edit,

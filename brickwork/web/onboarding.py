@@ -8,7 +8,7 @@ import json
 import os
 import sqlite3
 
-STEPS = ('catalogue', 'keys', 'collection')
+STEPS = ('catalogue', 'keys', 'collection', 'guide')
 FILE = 'onboarding.json'
 
 
@@ -17,26 +17,44 @@ def _path():
     return brickwork_path().parent / FILE
 
 
-def skipped():
-    """The steps the user skipped for now, in flow order; an unreadable file counts as none skipped."""
+def _load():
     try:
         data = json.loads(_path().read_text(encoding='utf-8'))
     except (OSError, ValueError):
-        return []
-    chosen = data.get('skipped') if isinstance(data, dict) else None
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _save(data):
+    """Written atomically: a crash leaves the old file or the new one."""
+    path = _path()
+    temporary = path.with_name(path.name + '.tmp')
+    temporary.write_text(json.dumps(data), encoding='utf-8')
+    os.replace(temporary, path)
+
+
+def skipped():
+    """The steps the user skipped for now, in flow order; an unreadable file counts as none skipped."""
+    chosen = _load().get('skipped')
     return [step for step in STEPS if isinstance(chosen, list) and step in chosen]
 
 
+def guide_read():
+    """#87: the guide was read to its end (its "Got it")."""
+    return _load().get('read') == ['guide']
+
+
 def mark(step, skip):
-    """Skip a step for now, or take it back into the flow. Written atomically: a crash leaves the old file or the new one."""
+    """Skip a step for now, or take it back into the flow."""
     if step not in STEPS:
         raise ValueError(step)
-    chosen = set(skipped())
+    data, chosen = _load(), set(skipped())
     chosen.add(step) if skip else chosen.discard(step)
-    path = _path()
-    temporary = path.with_name(path.name + '.tmp')
-    temporary.write_text(json.dumps(dict(skipped=[s for s in STEPS if s in chosen])), encoding='utf-8')
-    os.replace(temporary, path)
+    _save(dict(data, skipped=[s for s in STEPS if s in chosen]))
+
+
+def mark_read():
+    _save(dict(_load(), read=['guide']))
 
 
 def collection_started():

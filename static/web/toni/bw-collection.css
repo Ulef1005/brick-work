@@ -762,6 +762,12 @@ html[data-web-ui="toni"] #bw-collection .bc-source-details summary { padding-inl
 #bw-collection .fr-summary-card p { font:400 14px/20px var(--tw-font);color:var(--tw-text-2);margin:0; }
 #bw-collection .fr-imported { list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:0 16px; }
 @media (max-width:640px) { #bw-collection .fr-choice .fr-btn { align-self:stretch; } }
+/* #87: the guide's card links and its end. */
+#bw-collection .fr-guide-links { display:flex;flex-wrap:wrap;gap:0 16px;margin-top:auto!important; }
+#bw-collection .fr-guide-links a { min-height:44px;display:inline-flex;align-items:center;color:var(--tw-accent-text);font:500 14px var(--tw-font);text-decoration:none; }
+#bw-collection .fr-guide-end { margin-top:24px; }
+#bw-collection .fr-guide-end form { display:flex; }
+@media (max-width:640px) { #bw-collection .fr-guide-end form .fr-btn { flex:1; } }
 /* #85: the catalogue step's done line and its explainer. */
 #bw-collection .fr-summary { font:500 13px/18px var(--tw-font);color:var(--tw-text-2);margin:0; }
 #bw-collection .fr-summary a { color:var(--tw-accent-text);text-decoration:none; }

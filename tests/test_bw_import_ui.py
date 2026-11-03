@@ -72,7 +72,7 @@ def test_the_migrate_route_is_gone(client):
 def test_first_run_has_the_import_step(client):
     soup = page(client.get('/collection/sets'))
     steps = soup.select('[data-first-run] .fr-step')
-    assert len(steps) == 3 and steps[2].h3.get_text() == 'Bring your collection in'      # #83: step 3 offers Add and the BrickTracker import
+    assert len(steps) == 4 and steps[2].h3.get_text() == 'Bring your collection in'      # #83: step 3 offers Add and the BrickTracker import
     links = [a['href'] for a in steps[2].select('.fr-actions a')]
     assert links == [] if steps[2]['data-state'] == 'waiting' else '/manage/get-started/collection' in links
 

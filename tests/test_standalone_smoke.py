@@ -98,7 +98,7 @@ def test_standalone_smoke(tmp_path, monkeypatch, offline, capsys):
         assert first_run.status_code == 200, route
         html = first_run.get_data(as_text=True)
         assert 'data-first-run' in html and 'Nothing here yet.' in html and 'href="/manage/get-started#keys"' in html
-        assert html.count('class="fr-step"') + html.count('class="fr-step ') == 3
+        assert html.count('class="fr-step"') + html.count('class="fr-step ') == 4
     assert 'Cache-Control' in client.get('/').headers
     # every screen is ported since M.8j; one that is not says so, in the app's own shell
     assert client.get('/manage/sync').status_code == 200

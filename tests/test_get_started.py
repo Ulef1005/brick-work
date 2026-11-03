@@ -37,10 +37,10 @@ def skip(client, step, action='skip', back='flow'):
 def test_the_page_lists_the_steps_in_order_and_marks_where_the_flow_resumes(client):
     page = soup(client)
     assert page.h1.get_text() == 'Get started'
-    assert [li['data-key'] for li in page.select('.fr-step')] == list(onboarding.STEPS) == ['catalogue', 'keys', 'collection']
-    assert states(page) == dict(catalogue='done', keys='current', collection='open')         # the fixture pair has its catalogue active
+    assert [li['data-key'] for li in page.select('.fr-step')] == list(onboarding.STEPS) == ['catalogue', 'keys', 'collection', 'guide']
+    assert states(page) == dict(catalogue='done', keys='current', collection='open', guide='open')      # the fixture pair has its catalogue active
     assert page.select_one('[aria-current=step]')['data-key'] == 'keys'
-    assert page.select_one('[data-fr-count]').get_text() == '1 of 3 steps done'
+    assert page.select_one('[data-fr-count]').get_text() == '1 of 4 steps done'
     assert page.select_one('#fr-title').get_text() == 'Pick up where you left off.'
 
 
@@ -48,7 +48,7 @@ def test_skipping_a_step_moves_the_flow_on_and_taking_it_back_restores_it(client
     response = skip(client, 'keys')
     assert response.status_code == 302 and response.location.endswith('/manage/get-started')
     page = soup(client)
-    assert states(page) == dict(catalogue='done', keys='skipped', collection='current')        # left and come back: resumes at the first open step
+    assert states(page) == dict(catalogue='done', keys='skipped', collection='current', guide='open')      # left and come back: resumes at the first open step
     keys = page.select_one('[data-key=keys]')
     assert 'Skipped for now.' in keys.get_text() and keys.select('[data-flow-keys] [data-key-card]')      # it can still be done
     assert keys.select_one('.fr-skip').get_text() == 'Back into the flow'
@@ -61,25 +61,27 @@ def test_the_sets_page_skip_comes_back_to_the_sets_page(client, monkeypatch):
     monkeypatch.setattr('brickwork.web.setup_state.catalogue_loaded', lambda: False)
     assert skip(client, 'catalogue', back='sets').location.endswith('/collection/sets')
     page = soup(client, '/collection/sets')
-    assert states(page) == dict(catalogue='skipped', keys='current', collection='waiting')     # skipping the catalogue does not open step 3
+    assert states(page) == dict(catalogue='skipped', keys='current', collection='waiting', guide='open')      # skipping the catalogue does not open step 3
 
 
 def test_a_collection_with_copies_has_done_step_3_and_skipped_steps_finish_the_flow(client, world):
     assert states(soup(client))['collection'] == 'done'
     skip(client, 'keys')
+    skip(client, 'guide')
     page = soup(client)
-    assert states(page) == dict(catalogue='done', keys='skipped', collection='done')
+    assert states(page) == dict(catalogue='done', keys='skipped', collection='done', guide='skipped')
     assert not page.select('[aria-current=step]')
 
 
 def test_every_step_done_says_so(client, world, monkeypatch):
-    monkeypatch.setenv('BW_REBRICKABLE_API_KEY', 'synthetic-key-for-the-state-only')
+    monkeypatch.setenv('BW_REBRICKABLE_API_KEY', token_source.token_hex(14))
+    client.post('/manage/get-started', data=dict(csrf_token=csrf(client), step='guide', action='read'))
     page = soup(client)
     assert set(states(page).values()) == {'done'} and page.select_one('#fr-title').get_text() == 'All set.'
     assert not page.select('.fr-skip')
 
 
-@pytest.mark.parametrize('data', [dict(step='keys', action='hide'), dict(step='guide', action='skip'), dict(action='skip')])
+@pytest.mark.parametrize('data', [dict(step='keys', action='hide'), dict(step='nope', action='skip'), dict(action='skip'), dict(step='keys', action='read')])
 def test_an_unknown_step_or_action_is_refused(client, data):
     assert client.post('/manage/get-started', data=dict(csrf_token=csrf(client), **data)).status_code == 400
 
@@ -94,7 +96,7 @@ def test_a_skip_needs_the_csrf_token_and_changes_switched_on(client, monkeypatch
 
 
 def test_an_unreadable_or_foreign_file_counts_as_nothing_skipped(client, pair):
-    for text in ('not json', '["keys"]', '{"skipped": "keys"}', '{"skipped": ["guide", "keys"]}'):
+    for text in ('not json', '["keys"]', '{"skipped": "keys"}', '{"skipped": ["nope", "keys"]}'):
         (pair.parent / 'onboarding.json').write_text(text)
         assert states(soup(client))['keys'] == ('skipped' if text.endswith('"keys"]}') else 'current'), text
 
@@ -102,7 +104,7 @@ def test_an_unreadable_or_foreign_file_counts_as_nothing_skipped(client, pair):
 def test_tools_and_admin_reopens_the_flow_with_its_progress(client):
     hub = soup(client, '/manage/tools')
     row = hub.find('a', href='/manage/get-started')
-    assert row and 'Get started' in row.get_text() and '1 of 3 done' in row.get_text()
+    assert row and 'Get started' in row.get_text() and '1 of 4 done' in row.get_text()
 
 
 # #85: the catalogue step: what it is, its progress while it runs (also after leaving the page), its done state.
@@ -239,3 +241,28 @@ def test_the_summary_counts_what_came_in_and_links_each_import_to_finish(client,
 
 def test_an_empty_collection_has_no_summary(client):
     assert not soup(client, '/manage/get-started/collection').select('[data-collection-summary]')
+
+
+# #87: step 4, the guide: five cards, each linking to a screen that opens; "Got it" marks the step done; reachable from the flow and later.
+
+def test_the_guide_has_five_cards_whose_links_all_open(client, world):
+    page = soup(client, '/manage/get-started/guide')
+    cards = page.select('[data-guide] [data-guide-card]')
+    assert [c['data-guide-card'] for c in cards] == ['copies', 'completeness', 'stock', 'table', 'assistant']
+    for card in cards:
+        links = card.select('.fr-guide-links a')
+        assert links, card['data-guide-card']
+        for link in links:
+            assert client.get(link['href']).status_code == 200, link['href']
+    assert 'only the read scope' in page.select_one('[data-guide-card=assistant]').get_text()
+
+
+def test_got_it_marks_the_guide_done_and_the_flow_links_it(client):
+    step = soup(client).select_one('[data-key=guide]')
+    assert step['data-state'] == 'open' and step.select_one('.fr-actions a')['href'] == '/manage/get-started/guide'
+    page = soup(client, '/manage/get-started/guide')
+    form = page.select_one('.fr-guide-end form')
+    response = client.post(form['action'], data={i['name']: i['value'] for i in form.select('input')})
+    assert response.location.endswith('/manage/get-started')
+    assert states(soup(client))['guide'] == 'done'
+    assert soup(client, '/manage/get-started/guide').select_one('[data-guide-done]') and not soup(client, '/manage/get-started/guide').select('.fr-guide-end form')

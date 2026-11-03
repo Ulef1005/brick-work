@@ -2,8 +2,13 @@
 
 ## Unreleased
 
+## Brick Work 0.7.0 (schema 4.1) · 2026-11-03
+
+A wish gets a maximum price with box, which brings schema 4.1. A 0.6.0 collection (schema 4.0) is upgraded in place when 0.7.0 first opens it read-write. The upgrade is one-way: 0.6.0 cannot open a 4.1 file, so back up `brickwork.db` before you upgrade. To go back, restore that backup ([Back up and restore](docs/how-to/back-up-and-restore.md)).
+
 - **Schema 4.1.** A wish has a maximum price with box (#131). On a wish's page, **Edit** has **Max price with box** and its currency beside **Your max price**. The price card's footer shows **Your max price** and **Max with box**, each a button to its field, or *not set*. Only a set wish has one. In the API, a set's price with box is compared with the max with box, or with your max price when that is empty: the Wish has `max_price_boxed`, `max_price_boxed_currency` and `under_max_boxed`. A 4.0 collection is upgraded in place when the app starts (or at the first write); a read-only instance (`BW_READ_ONLY`) or a read-only open refuses a 4.0 file until it has been opened read-write once. Undo of a change made before the upgrade still works. Every wish's ETag changes once at the upgrade, so an API client re-reads a wish before its next edit. The wish card keeps the set's estimate beside the two maxima, and the wishlist CSV export has two new columns, **Max with box** and its currency, before **Note**. A stale 4.0 file (made before #124) is refused before the upgrade writes anything, and an upgrade that cannot finish says to open the file again, never to migrate it. The BrickLink wanted list has no such field, so the XML export and import leave it out. See [Collection model](docs/concepts/collection-model.md#wishes-and-wishlists).
 - **First run** says how long loading the catalogue takes: about a minute. Measured on a Raspberry Pi 5 from an empty data folder: 51 s, most of it building the catalogue (#126).
+- **Faster** (#133, #134), measured on a benchmark collection: the jump search by a number 204–262 ms → 29 ms, the item page 185 → 79 ms, the wish page 149 → 58 ms, the Matcher 164 → 71 ms, and app start about 1,000 → 660 ms. A test fixes the outputs of these paths, so the speed-ups change no result.
 - **Set estimate** no longer looks like a link when it does nothing: without edit rights the footer label is plain text (#131).
 
 ## Brick Work 0.6.0 (schema 4.0, API v2) · 2026-10-28

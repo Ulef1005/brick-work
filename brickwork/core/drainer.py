@@ -1,6 +1,7 @@
 """The embedded job drainer loop, shared by the web app and the API."""
 from contextlib import closing
 import os
+import sqlite3
 import threading
 import time
 
@@ -44,7 +45,21 @@ def queue_startup_work(path):
     """At start (the embedded drainer's and `brickwork worker`'s): a catalogue swapped in but not reconciled yet becomes one reconcile job
     (design 6.2), run by the drain like any other. Returns the job id, or None when nothing is due."""
     with closing(connect(path, require_catalogue=False)) as db:          # no catalogue file: nothing to reconcile, and the first-run page must still load
+        requeue_configured_keys(db)
         return reconcile_job.queue_if_due(db, via='app')
+
+
+def requeue_configured_keys(db):
+    """#139: a key set in the environment takes effect at a start: the steps that waited for one of the configured sources run again."""
+    from . import keys
+    from .transaction import transaction
+    try:
+        with transaction(db):
+            for source in keys.ENV:
+                if keys.state(db, source)['configured']:
+                    pipeline.requeue_for_key(db, source)
+    except (sqlite3.Error, ValueError):
+        pass                                                            # a collection without its tables yet: nothing waits
 
 
 def drain_once(path):

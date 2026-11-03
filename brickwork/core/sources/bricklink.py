@@ -16,7 +16,7 @@ from ...store4.audit import Events
 from ...store4.bricklink_sign import BASE, q, signed_request  # noqa: F401 (re-exported: signing lives in store4 since M.8a)
 from ...store4.fetched import add_item_link
 from .. import items
-from ..pipeline import StepDone, StepFailed, StepWait
+from ..pipeline import StepDone, StepFailed, StepNeedsKey, StepWait
 from ..transaction import transaction
 from .base import Source, SourceError, KeyRejected, NotFoundAtSource, InvalidReply, WaitingForBudget, observation, stamp, now
 from . import base
@@ -212,7 +212,7 @@ def market_price(db, job, step, *, http=None):
             except WaitingForBudget as wait:
                 raise StepWait(wait.retry_at, 'waiting for budget') from None
             except base.SourceNotConfigured as error:
-                raise StepFailed('source_not_configured', str(error)) from None
+                raise StepNeedsKey(str(error)) from None                # #139: no key yet is not a failure
             except base.SourceDisabled as error:
                 raise StepFailed('source_not_configured', str(error)) from None
             except KeyRejected as error:

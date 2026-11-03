@@ -13,7 +13,7 @@ from urllib.request import Request
 
 from ...store4.connect import now as store_now
 from .. import items
-from ..pipeline import StepDone, StepFailed, StepWait
+from ..pipeline import StepDone, StepFailed, StepNeedsKey, StepWait
 from . import base
 from .base import Source, SourceError, KeyRejected, InvalidReply, NotFoundAtSource, WaitingForBudget, observation, property_value
 
@@ -139,7 +139,9 @@ def metadata(db, job, step, *, http=None):
         known = client.refresh([item_id], job_id=job['id'])
     except WaitingForBudget as wait:
         raise StepWait(wait.retry_at, 'waiting for budget') from None
-    except (base.SourceNotConfigured, base.SourceDisabled, KeyRejected) as error:
+    except base.SourceNotConfigured as error:
+        raise StepNeedsKey(str(error)) from None                        # #139: no key yet is not a failure
+    except (base.SourceDisabled, KeyRejected) as error:
         raise StepFailed('source_not_configured', str(error)) from None
     except NotFoundAtSource as error:
         raise StepFailed('not_found', str(error)) from None

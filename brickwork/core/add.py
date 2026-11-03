@@ -147,6 +147,14 @@ def colors(db):
     return [dict(r) for r in db.execute('SELECT id AS color_id, name, rgb FROM main.color ORDER BY name, id')]
 
 
+def _born_key(db, item_id):
+    for store in ('main', 'catalogue') if has_catalogue(db) else ('main',):
+        row = db.execute(f'SELECT born_key FROM {store}.item WHERE id=?', (item_id,)).fetchone()
+        if row:
+            return row[0]
+    return None
+
+
 def _colour_known(db, color_id):
     if db.execute('SELECT 1 FROM main.color WHERE id=?', (color_id,)).fetchone():
         return True
@@ -376,8 +384,18 @@ def _identify(db, row):
         if kind == 'part' and row.get('bl_color') is not None:
             try:
                 found = identity.resolve_inverse(db, 'P', number, str(row['bl_color']), exhaustive=True)
-            except AmbiguousIdentity:
-                raise ValueError('Colour needs manual matching') from None
+            except AmbiguousIdentity as many:
+                # #140: BrickLink files several Rebrickable parts under one number (3001 also names the old mould 3556). The one with the
+                # same Rebrickable number is taken, and the review names the others; without one, the row says which parts it could be.
+                keys = {i: _born_key(db, i) for i in many.items}
+                same = [i for i, key in keys.items() if key == number]
+                others = sorted(str(key) for i, key in keys.items() if i not in same)
+                if len(same) != 1:
+                    raise ValueError(f'BrickLink {number} names several catalogue parts ({", ".join(sorted(map(str, keys.values())))}) · '
+                                     'add the one you mean by its Rebrickable number') from None
+                item_id, colour = same[0], _bricklink_colour(db, row['bl_color'])
+                row['identity_note'] = f'BrickLink {number} also names {", ".join(others)} · taken as {number}, the same number'
+                found = None
             if found:
                 item_id, colour = found
         if item_id is None:
@@ -458,7 +476,8 @@ def resolve(db, rows, where, *, list_id='default', map_wanted_ids=True):
                     'qty_filled': filled, 'max_price': maximum, 'max_price_currency': currency if maximum is not None else None,
                     'import_notes': ([f"Max price {money(maximum, currency, fixed=True)} · BrickLink currency setting: {currency}"] if maximum is not None else []) +
                                     ([f'Filled so far {filled} (BrickLink QTYFILLED)'] if filled is not None else []) +
-                                    (['Create ' + list_name + ' on confirm'] if target.startswith('new-bl:') else []),
+                                    (['Create ' + list_name + ' on confirm'] if target.startswith('new-bl:') else []) +
+                                    ([row['identity_note']] if row.get('identity_note') else []),
                     'where': where, 'color_id': color, 'note': row.get('note'), 'condition': condition, 'completeness': '', 'decision': ''}
             if item_id is None:
                 kind, number = row['kind'], str(row['number'])

@@ -113,22 +113,52 @@ def test_metadata_has_no_source_for_a_part_and_the_step_says_so(coll, world):
     assert (metadata['state'], metadata['source'], metadata['count']) == ('done', None, 0) and 'no source is set' in metadata['error']
 
 
-def test_missing_keys_fail_the_steps_that_need_them_and_retry_runs_only_those(coll, world, monkeypatch):
+def test_missing_keys_leave_the_steps_waiting_not_failed_and_a_key_runs_only_those(coll, world, monkeypatch):
+    # #139: no key yet is expected on a keyless install: the steps end done, waiting for the key, and the job does not fail.
+    from brickwork.core import drainer
     net, pics = routes(), Pictures()
     pl = Pipeline(coll.db, handlers=step_handlers(http=net, image_http=pics))
     job = queue(coll, world.keep, ['pictures', 'metadata', 'market_price'])
-    failed = pl.run(job)
+    finished = pl.run(job)
     got = steps(pl, job)
-    assert failed['state'] == 'failed' and failed['error_code'] == 'source_not_configured'
-    assert (got['pictures']['state'], got['metadata']['state'], got['market_price']['state']) == ('done', 'failed', 'failed')     # pictures need no key
+    assert finished['state'] == 'done' and finished['error_code'] is None
+    assert all(got[s]['state'] == 'done' for s in ('pictures', 'metadata', 'market_price'))      # pictures need no key
     assert got['metadata']['error_code'] == got['market_price']['error_code'] == 'source_not_configured' and 'key' in got['metadata']['error']
+    assert got['pictures']['error_code'] is None
     assert net.requests == [] and len(pics.asked) == 1
-    keyed(monkeypatch, 'bricklink', 'brickset')
-    done = pl.retry(job)
+    keyed(monkeypatch, 'bricklink', 'brickset')                                  # keys from the environment take effect at a start
+    drainer.requeue_configured_keys(coll.db)
+    assert {s['name']: s['state'] for s in pl.status(job)['steps']} == {'pictures': 'done', 'metadata': 'queued', 'market_price': 'queued'}
+    done = pl.run(job)
     got = steps(pl, job)
-    assert done['state'] == 'done' and all(s['state'] == 'done' for s in got.values())
+    assert done['state'] == 'done' and all(s['state'] == 'done' and s['error_code'] is None for s in got.values())
     assert len(pics.asked) == 1                                                       # the finished step was not run again
-    assert coll.db.execute('SELECT attempts FROM job WHERE id=?', (job,)).fetchone()[0] == 2
+
+
+def test_a_stored_key_puts_what_waited_for_it_back_in_the_queue(coll, world, monkeypatch):
+    from brickwork.core import keys, secrets
+    from cryptography.fernet import Fernet
+    import secrets as token_source
+    monkeypatch.setenv('BW_SECRET_KEY', Fernet.generate_key().decode())
+    secrets.forget()
+    pl = Pipeline(coll.db, handlers=step_handlers(http=routes(), image_http=Pictures()))
+    job = queue(coll, world.keep, ['metadata'])
+    pl.run(job)
+    assert steps(pl, job)['metadata']['error_code'] == 'source_not_configured'
+    keys.save(coll.db, 'brickset', {'key': token_source.token_hex(14)})
+    assert steps(pl, job)['metadata']['state'] == 'queued' and pl.status(job)['state'] == 'queued'
+
+
+def test_a_refused_key_still_fails_the_step(coll, world, monkeypatch):
+    from brickwork.core.sources import brickset
+    from brickwork.core.sources.base import KeyRejected
+    keyed(monkeypatch, 'brickset')
+    def refuse(*args, **kwargs):
+        raise KeyRejected('Brickset refused the key')
+    monkeypatch.setattr(brickset.Brickset, 'refresh', refuse)
+    pl = Pipeline(coll.db, handlers=step_handlers(http=routes(), image_http=Pictures()))
+    job = queue(coll, world.keep, ['metadata'])
+    assert pl.run(job)['state'] == 'failed' and steps(pl, job)['metadata']['state'] == 'failed'
 
 
 def test_a_failed_step_does_not_stop_the_others_and_names_its_reason(coll, world, monkeypatch):

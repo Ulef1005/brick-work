@@ -156,7 +156,7 @@ def test_the_user_journey_replays_through_the_apps_writers(tmp_path, client, tok
     with closing(connect(pair)) as db:
         got = run_item_job(db, first['job_id'], http=replies, image_http=pictures)
         assert got['identity'] == got['inventory'] == got['matching'] == ('done', None)
-        assert got['market_price'] == ('done', None) and got['metadata'] == ('failed', 'source_not_configured')     # no Brickset key
+        assert got['market_price'] == ('done', None) and got['metadata'] == ('done', 'source_not_configured')     # no Brickset key: waiting for it, not failed (#139)
         assert pictures.asked == ['https://img.bricklink.com/ItemImage/SN/0/6081-1.png']
         assert one(db, "SELECT count(*) FROM picture WHERE item_id=? AND source='bricklink'", set_item) == 1
         used = db.execute("SELECT * FROM price_observation WHERE item_id=? AND condition='used'", (set_item,)).fetchone()

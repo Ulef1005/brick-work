@@ -169,6 +169,8 @@ def save(db, source, payload, receipt=None):
             db.execute('INSERT INTO source_key(source,ciphertext,saved_at) VALUES(?,?,?)', (source, ciphertext, stamp))
         event = _audit(db, source, 'save', dict(source=source, saved_at=stamp, archived_at=None,
                        previous=None if old is None else dict(saved_at=old['saved_at'], archived_at=old['archived_at'])))
+        from .pipeline import requeue_for_key
+        requeue_for_key(db, source)                                     # #139: what waited for this key runs now
         if receipt is not None:
             receipt.append(event)
     return state(db, source)

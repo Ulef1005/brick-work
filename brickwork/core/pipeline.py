@@ -57,6 +57,15 @@ class StepWait(Exception):
         self.retry_at, self.why = retry_at, why
 
 
+class StepNeedsKey(Exception):
+    """Raised by a handler: the source has no key (#139). Not a failure: the step ends done with `source_not_configured` and its reason,
+    and storing the key puts it back in the queue (`requeue_for_key`). A key the source refused is a failure (StepFailed)."""
+
+    def __init__(self, message):
+        super().__init__(message)
+        self.message = message
+
+
 class StepDone(Exception):
     """Raised by a handler that found nothing to work with: the step ends done with the finding (`unidentified`, `not_found`)."""
 
@@ -287,6 +296,7 @@ class Pipeline:
                 self._put(job['id'], name, 'done', source='catalogue', error=message, code=code, count=1, total=1)
             return
         failed = None                                                   # (failure, source): the most telling provider failure so far
+        needs_key = None                                                # (reason, source): a source without a key (#139)
         for index in range(saved['source_index'], len(sources)):
             source = sources[index]
             handler = self.handlers.get((name, source)) or HANDLERS.get((name, source))
@@ -302,6 +312,9 @@ class Pipeline:
             except StepWait as wait:
                 self._put(job['id'], name, 'waiting_for_budget', source=source, error=wait.why, code='budget', retry_at=wait.retry_at)
                 return
+            except StepNeedsKey as need:
+                needs_key = needs_key or (need.message, source)
+                continue
             except StepFailed as failure:
                 if failed is None or failure.code != 'not_found':       # a source that only cannot name the item never hides a real error
                     failed = (failure, source)
@@ -311,6 +324,10 @@ class Pipeline:
         if failed is not None:                                          # a fallback without a handler does not erase the failure
             failure, source = failed
             self._put(job['id'], name, 'failed', source=source, error=failure.message, code=failure.code)
+            return
+        if needs_key is not None:                                       # #139: only a key is missing: done, waiting for it, not failed
+            reason, source = needs_key
+            self._put(job['id'], name, 'done', source=source, error=reason, code='source_not_configured', count=0, total=1)
             return
         self._put(job['id'], name, 'done', error=SKIPPED if sources else 'skipped: no source is set for this step and kind', count=0, total=0)
 
@@ -409,6 +426,19 @@ def fetch_waiting(db):
     from ..store4 import jobs as fetch_jobs
     return db.execute(f'''SELECT 1 FROM main.job WHERE kind IN {fetch_jobs.OWN_KINDS} AND (state IN ('queued','running')
         OR (state IN ('waiting_for_budget','failed') AND retry_at IS NOT NULL AND retry_at<=?)) LIMIT 1''', (now(),)).fetchone() is not None
+
+
+def requeue_for_key(db, source):
+    """#139: the pipeline steps that ended waiting for `source`'s key go back in the queue, with their jobs. Inside the caller's open
+    write transaction (the key's save); returns how many steps."""
+    rows = db.execute("""SELECT s.job_id, s.name FROM main.job_step s JOIN main.job j ON j.id=s.job_id WHERE j.kind=? AND s.state='done'
+        AND s.error_code='source_not_configured' AND s.source=?""", (KIND, source)).fetchall()
+    stamp = now()
+    for job, step in rows:
+        db.execute("""UPDATE main.job_step SET state='queued', source_index=0, source=NULL, error=NULL, error_code=NULL, retry_at=NULL,
+            count=0, updated_at=? WHERE job_id=? AND name=?""", (stamp, job, step))
+        db.execute("UPDATE main.job SET state='queued', error=NULL, error_code=NULL, retry_at=NULL, updated_at=? WHERE id=?", (stamp, job))
+    return len(rows)
 
 
 def new_batch(name):

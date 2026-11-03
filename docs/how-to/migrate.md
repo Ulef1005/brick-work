@@ -14,7 +14,7 @@ Or export **My Sets** from Brickset as a CSV file and choose **Choose a CSV file
 
 ## BrickLink
 
-Download your wanted list or a store inventory from BrickLink as an XML file, then choose **Choose an XML file**. It opens **Add** with **File** selected. Brick Work reads the item type, number, colour, quantity and condition of each line, and for a wanted list also the maximum price, remarks and the wanted list it came from. The review asks, row by row, whether a line is owned, loose or a wish.
+Download your wanted list or a store inventory from BrickLink as an XML file, then choose **Choose an XML file**. It opens **Add** with **File** selected. Brick Work reads the item type, number, colour, quantity and condition of each line, and for a wanted list also the maximum price, remarks and the wanted list it came from. The review asks, row by row, whether a line is owned, loose or a wish. BrickLink files some Rebrickable parts under one number: its 3001 also names the old mould 3556. Brick Work then takes the part with the same number and says so in the review. If none has the same number, the line names the parts it could be: add the one you mean by its Rebrickable number.
 
 ## BrickTracker
 

@@ -349,6 +349,38 @@ def test_a_rebrickable_csv_resolves_by_born_numbers_and_colour_ids(world, client
     assert [r['color_id'] for r in proposal['items'] if r.get('unknown')] == [world.white]
 
 
+# #140: BrickLink files several Rebrickable parts under one number (3001 also names the old mould 3556). Found in the gate run (#88).
+
+def ambiguous(monkeypatch, *item_ids):
+    from brickwork.store4 import identity
+    from brickwork.store4.errors import AmbiguousIdentity
+    def resolve(db, kind, number, colour, exhaustive=False):
+        raise AmbiguousIdentity(f'bricklink {kind} {number} names items {item_ids}', item_ids)
+    monkeypatch.setattr(identity, 'resolve_inverse', resolve)
+
+
+def xml_review(client, csrf, number, colour):
+    xml = f'<INVENTORY><ITEM><ITEMTYPE>P</ITEMTYPE><ITEMID>{number}</ITEMID><COLOR>{colour}</COLOR><MINQTY>2</MINQTY></ITEM></INVENTORY>'
+    return client.post('/manage/add/review', data=dict(csrf_token=csrf, type='part', where='loose', mode='file',
+                                                       file=(io.BytesIO(xml.encode()), 'wanted.xml')), content_type='multipart/form-data').json
+
+
+def test_a_bricklink_number_naming_several_parts_takes_the_one_with_the_same_number_and_says_so(world, client, csrf, monkeypatch):
+    ambiguous(monkeypatch, world.brick, world.plate)                          # 3001 and 3023 both under BrickLink 3001
+    proposal = xml_review(client, csrf, '3001', '5')
+    row = proposal['items'][0]
+    assert not proposal['unresolved'] and (row['item_id'], row['color_id'], row['quantity']) == (world.brick, world.red, 2)
+    assert 'BrickLink 3001 also names 3023 · taken as 3001, the same number' in row['import_notes']
+
+
+def test_without_a_same_number_part_the_row_names_the_candidates_not_the_colour(world, client, csrf, monkeypatch):
+    ambiguous(monkeypatch, world.brick, world.plate)
+    proposal = xml_review(client, csrf, '3001b', '5')
+    assert not proposal['items']
+    reason = proposal['unresolved'][0]['reason']
+    assert reason.startswith('BrickLink 3001b names several catalogue parts (3001, 3023)') and 'Colour' not in reason
+
+
 # Brickset's My Sets export (#12 step 2): its real header, synthetic rows. The user's own export is never committed.
 BRICKSET_HEADER = ('SetID,Number,Variant,YearFrom,Category,Theme,ThemeGroup,Subtheme,SetName,Image,ImageFilename,USRetailPrice,UKRetailPrice,'
                    'CARetailPrice,DERetailPrice,USDateAdded,USDateRemoved,Pieces,Minifigs,MinifigNumbers,PackagingType,Availability,USItemNumber,'

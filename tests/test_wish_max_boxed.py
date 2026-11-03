@@ -159,12 +159,15 @@ def test_a_wishs_card_offers_both_maxima_as_buttons(coll, wish, client):
     assert list(limits) == ['max_price', 'max_price_boxed']
     for field, label in (('max_price', 'Your max price'), ('max_price_boxed', 'Max with box')):
         button = limits[field].select_one('button[data-bw-open=bc-edit]')
-        assert button.text == label and button['data-bc-focus'] == field
+        assert button.get_text(strip=True) == label and button['data-bc-focus'] == field and button.select_one('svg')   # a pencil beside the label
         assert soup.select_one(f'#bc-edit input[name={field}]') and soup.select_one(f'#bc-edit input[name={field}_currency]')
     assert '€100.00' in limits['max_price'].text and 'not set' in limits['max_price_boxed'].text
     assert 'Set estimate' not in footer.text and not footer.select('.bc-estimate > span:not(.mono):not(.bc-estimate-label)')
     labels = [l.contents[0].strip() for l in soup.select('#bc-edit label') if l.select_one('input[name^=max_price]')]
-    assert labels == ['Your max price', 'Max price currency', 'Max price with box', 'Max with box currency']
+    assert labels == ['Your max price', 'Currency', 'Max price with box', 'Currency']                    # as frames 12k and 131b
+    names = [i.get('aria-label') for i in soup.select('#bc-edit input[name$=_currency]') if i['name'].startswith('max_price')]
+    assert names == ['Max price currency', 'Max with box currency']                                       # told apart for assistive tech
+    assert "Left empty, a price with box is compared with your max price." in soup.select_one('#bc-edit .bc-field-help').text
 
 
 def test_a_wishs_max_with_box_saves_from_the_sheet_and_shows_on_the_card(coll, wish, client):
@@ -194,13 +197,30 @@ def test_without_edit_rights_no_footer_label_looks_like_an_action(coll, wish, cl
         assert footer.select('.bc-estimate-label')                           # plain text in the secondary colour (bw-collection.css)
 
 
-def test_a_wishs_card_still_shows_the_sets_estimate(coll, wish, client):
+def test_a_wishs_footer_is_with_box_then_the_two_maxima_without_the_estimate(coll, wish, client):
+    """Frame 131a: one row each, With box first; a wish's card shows no set estimate (the approved design, replacing #131's first card)."""
     quotes(coll, wish, boxed='55')                                          # Brickset's value with box is the card's "With box"
     item = coll.db.execute('SELECT item_id FROM wish WHERE id=?', (wish,)).fetchone()[0]
     coll.price(item, '48', guide='valuation', currency='EUR', source='brickset', observed=planning.now().isoformat())
     footer = page(client, f'/collection/wishes/{wish}').select_one('.bc-price-footer')
-    estimate = footer.select_one('[data-bc-wish-estimate]')
-    assert estimate and '€48.00' in estimate.text and not estimate.select('button')   # shown, not an action, beside the two maxima
+    rows = footer.select('.bc-footer-row')
+    assert [r.get('data-bc-wish-limit') for r in rows] == [None, 'max_price', 'max_price_boxed']
+    assert rows[0].get_text(' ', strip=True).startswith('With box') and '€55.00' in rows[0].text
+    assert '€48.00' not in footer.text and 'Estimate' not in footer.text and not footer.select('.bc-estimate')
+
+
+def test_the_wanted_card_shows_the_max_with_box_of_a_set_only(coll, wish, client):
+    """The Wanted card (the frames' Wish card) has Max with box beside Your max price for a set; an empty one reads Not set."""
+    card = page(client, f'/collection/wishes/{wish}').select_one('[data-module=wanted]')
+    limits = {d['data-bc-wanted-limit']: d.select_one('strong') for d in card.select('[data-bc-wanted-limit]')}
+    assert list(limits) == ['max_price', 'max_price_boxed']
+    assert limits['max_price'].text == '€100.00' and limits['max_price_boxed'].text == 'Not set' and 'bc-unset' in limits['max_price_boxed']['class']
+    coll.sql("UPDATE wish SET max_price_boxed='120',max_price_boxed_currency='EUR' WHERE id=?", (wish,))
+    card = page(client, f'/collection/wishes/{wish}').select_one('[data-module=wanted]')
+    assert card.select_one('[data-bc-wanted-limit=max_price_boxed] strong').text == '€120.00'
+    part_wish = coll.add_wish(coll.item('parts', '3001'), colour=coll.colour('4'), condition='new', max_price='0.50', currency='EUR')
+    part = page(client, f'/collection/wishes/{part_wish}').select_one('[data-module=wanted]')
+    assert [d['data-bc-wanted-limit'] for d in part.select('[data-bc-wanted-limit]')] == ['max_price']
 
 
 # ---------- the app's own wishlist export ----------

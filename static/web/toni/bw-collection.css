@@ -278,7 +278,11 @@ html[data-web-ui="toni"] #bw-collection .bc-source-details summary { padding-inl
 #bw-collection .bc-estimate { display:flex;align-items:flex-end;flex-direction:column;text-align:right; }
 #bw-collection .bc-estimate button { min-height:44px;padding:0;background:transparent;border:0;color:var(--tw-accent-text);font-weight:500; }
 #bw-collection .bc-estimate small { font-size:12px;color:var(--tw-text-muted); }
-#bw-collection .bc-wish-limits { display:flex;flex-direction:column;align-items:flex-end;gap:4px; }   /* a wish's two maxima, stacked like the estimate (#131) */
+#bw-collection .bc-price-footer-wish { flex-direction:column;align-items:stretch;gap:0;padding-top:4px; }   /* a wish: one row each (#131 frames 131a, 131c) */
+#bw-collection .bc-footer-row { display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:44px; }
+#bw-collection .bc-footer-row small { font-size:13px;color:var(--tw-text-muted); }
+#bw-collection .bc-footer-row button { min-height:44px;padding:0;background:transparent;border:0;color:var(--tw-accent-text);font-weight:500;display:inline-flex;align-items:center;gap:6px; }
+#bw-collection .bc-footer-row button svg { width:14px;height:14px; }
 #bw-collection .bc-estimate-label { min-height:44px;display:flex;align-items:center;color:var(--tw-text-2);font-weight:500; }   /* no action: never the accent (#131) */
 
 /* 4.6l · detail parent navigation and recorded catalogue identity. */
@@ -382,7 +386,9 @@ html[data-web-ui="toni"] #bw-collection .bc-source-details summary { padding-inl
 #bw-collection .bc-wanted h2,.bc-wanted-label { margin:0;font:500 11px/14px var(--tw-font);letter-spacing:.1em;text-transform:uppercase;color:var(--tw-text-muted); }
 #bw-collection .bc-wanted-edit { height:44px;min-height:44px;padding:0 16px;gap:6px;border-radius:10px;border:.5px solid var(--tw-accent);color:var(--tw-accent-text);background:transparent;font:500 14px var(--tw-font); }
 .bc-wanted-edit svg { width:16px;height:16px; }
+.bc-wanted-maxima { display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px; }
 .bc-wanted-max { display:flex;flex-direction:column;gap:2px; }
+.bc-wanted-max strong.bc-unset { font:500 17px/30px var(--tw-font);color:var(--tw-text-muted); }   /* not money: the UI face, muted */
 .bc-wanted-max strong { font:600 24px/30px var(--tw-mono); }
 .bc-wanted-condition { display:flex;flex-direction:column;gap:6px; }
 .bc-wanted-segments { display:flex;background:var(--tw-surface);border-radius:10px;padding:2px;gap:2px; }

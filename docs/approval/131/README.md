@@ -10,3 +10,12 @@ The wish is set 1000-2 with a max price of €40 and no max with box; the set ha
 |---|---|
 | `1d-wish-price-card-phone-390-{light,dark}.png` | The price card alone (the other modules hidden for the capture): With box, Your max price, Max with box |
 | `1d-wish-phone-390-{light,dark}.png` | The whole wish page as it renders |
+
+## After the approved design (frames 131a to 131d)
+
+The wish page was changed to follow the approved frames in `docs/design-proposals/131`. These captures are from that build, with the same fixture wish:
+
+| File | What |
+|---|---|
+| `131a-wish-cards-phone-390-{light,dark}.png` | The Wanted card (Your max price, Max with box: Not set) and the price card footer (With box, Your max price, Max with box, one row each) |
+| `131b-edit-sheet-phone-390-{light,dark}.png` | The Edit sheet with Max price with box, both currency fields labelled Currency, and the line on an empty max with box |

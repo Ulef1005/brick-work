@@ -17,7 +17,7 @@ New issues get the `needs-triage` label. The maintainer triages them, fills the 
 - Bug fixes with a test that fails before the fix.
 - Imports from other collection apps and file formats.
 - Translations are not set up yet; ask first.
-- Anything larger, or anything that changes a screen: open or comment on an issue first, so the design can be agreed before you write code. Screens follow the design reference in `design/`.
+- Anything larger, or anything that changes a screen: open or comment on an issue first, so the design can be agreed before you write code. Screens follow the design reference in `design/` (checked with `DESIGN-CHECK.md`); the design kit, with the brand and the data-type language, is the `brickwork-design` skill in `.claude/skills/brickwork-design/`.
 
 Out of scope: running a BrickLink store, investment forecasting from market data, social features, and pile scanning as the main way to add parts.
 

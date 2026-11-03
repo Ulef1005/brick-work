@@ -1,14 +1,26 @@
-"""API v3 lookups and external-id evidence; canonical keys stay BrickLink."""
+"""Rebrickable API v3 on the 4.0 store (M.8f, issue #110; design 3.2, 6.8): picture URLs and external-id evidence, keyed by item id.
+
+The catalogue and the set part lists come from the dump and from `store4.rebrickable_api` (the `rebrickable_set` job); this client asks
+for what neither has: the picture of a part in a colour (`/parts/{num}/colors/{id}/`) or of a set or figure, and a part's record, whose
+`external_ids` say which BrickLink number it is. Evidence about a BrickLink number is written the way the collection records links:
+exactly one BrickLink id gives a `matched/external_ids` link; none or several give `item_provider_status(bricklink, unmatched, no_match)`
+and no link. A refresh never replaces a `manual` link and never downgrades a confirmed one."""
 import json
 import os
 import re
 from urllib.parse import urlencode
 from urllib.request import Request
 
-from .base import Source, SourceError, KeyRejected, RemoteBudgetExceeded, now, write
-from .images import download
+from ...store4.audit import Events
+from ...store4.connect import now as store_now
+from ...store4.fetched import add_item_link
+from .. import items
+from . import base
+from .base import Source, SourceError, KeyRejected, NotFoundAtSource, RemoteBudgetExceeded
 
 BASE = 'https://rebrickable.com/api/v3/lego'
+PATH = re.compile(r'/(?:parts|colors|minifigs|sets)/(?:[A-Za-z0-9._-]+/(?:colors/[0-9]+/)?)?')
+CONFIRMED = ('manual', 'matched', 'inferred')
 
 
 class Rebrickable(Source):
@@ -16,7 +28,6 @@ class Rebrickable(Source):
     source = 'rebrickable'
     minimum_spacing = 1
     credentials = ('BW_REBRICKABLE_API_KEY',)
-    freshness = {'part': 30, 'color': 90, 'minifigure': 30, 'image': 30}
 
     def __init__(self, db, **kwargs):
         super().__init__(db, **kwargs)
@@ -26,118 +37,76 @@ class Rebrickable(Source):
         self.daily_budget = int(budget)
 
     def call(self, path, params=None, *, normalize=None, job_id=None):
-        if not re.fullmatch(r'/(?:parts|colors|minifigs|sets)/(?:[A-Za-z0-9-]+/(?:colors/[0-9]+/)?)?', path):
+        if not PATH.fullmatch(path):
             raise ValueError('unsupported Rebrickable endpoint')
         self.ready()
+
         def consume(reply):
             if not isinstance(reply, dict):
-                raise SourceError('Rebrickable returned an invalid reply')
+                raise base.InvalidReply('Rebrickable returned an invalid reply')
             if 'detail' in reply:
-                if 'throttled' in str(reply['detail']).lower():
-                    match = re.search(r'available in ([0-9]+) seconds?', str(reply['detail']), re.IGNORECASE)
-                    delay = max(1, min(86400, int(match[1]))) if match else 60
-                    raise RemoteBudgetExceeded(retry_seconds=delay)
-                if re.search(r'invalid token|authentication credentials', str(reply['detail']), re.IGNORECASE):
+                detail = str(reply['detail'])
+                if 'throttled' in detail.lower():
+                    match = re.search(r'available in ([0-9]+) seconds?', detail, re.IGNORECASE)
+                    raise RemoteBudgetExceeded(retry_seconds=max(1, min(86400, int(match[1]))) if match else 60)
+                if re.search(r'invalid token|authentication credentials', detail, re.IGNORECASE):
                     raise KeyRejected('Rebrickable API unsuccessful')
+                if re.search(r'not found', detail, re.IGNORECASE):
+                    raise NotFoundAtSource('Rebrickable has no such record')
                 raise SourceError('Rebrickable API unsuccessful')
             return normalize(reply) if normalize else reply
         params = params or {}
-        request = Request(BASE + path + ('?' + urlencode(params) if params else ''),
-                          headers={'Authorization': 'key ' + self.credential_values()[0]})
-        return self.request(path, params, request, consume, job_id=job_id)
+        request = Request(BASE + path + ('?' + urlencode(params) if params else ''), headers={'Authorization': 'key ' + self.credential_values()[0]})
+        return self.request(path, json.dumps(params, sort_keys=True), request, consume, job_id=job_id)
 
     def check_key(self):
         return self.call('/colors/0/', normalize=lambda row: True)
 
-    def match(self, kind, row, *, canonical=None):
-        identifiers = row.get('external_ids', {}).get('BrickLink', [])
-        if isinstance(identifiers, dict):
-            identifiers = identifiers.get('ext_ids', [])
-        identifiers = list(dict.fromkeys(str(value) for value in identifiers))
-        source_id = str(row['id'] if kind == 'color' else row['part_num'] if kind == 'part' else row['set_num'])
-        item_type = {'part': 'P', 'minifigure': 'M', 'set': 'S'}.get(kind)
-        valid = canonical is not None and str(canonical) in identifiers and len(identifiers) == 1
-        if valid:
-            if kind == 'color':
-                write(self.db, 'INSERT OR IGNORE INTO colors(color_id) VALUES(?)', (int(canonical),))
-            elif not self.db.execute('SELECT 1 FROM items WHERE item_type=? AND item_no=?', (item_type, canonical)).fetchone():
-                valid = False
-        # A source refresh never replaces a user's decision.
-        existing = self.db.execute('SELECT status,item_type,item_no,color_id FROM id_match WHERE source=? AND kind=? AND source_id=?',
-                                   (self.source, kind, source_id)).fetchone()
-        if existing and existing['status'] in ('manual', 'matched', 'inferred'):
-            return dict(existing)
-        write(self.db, '''INSERT INTO id_match(source,kind,source_id,item_type,item_no,color_id,method,status,evidence_json,decided_at)
-            VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(source,kind,source_id) DO UPDATE SET
-            item_type=excluded.item_type,item_no=excluded.item_no,color_id=excluded.color_id,
-            method=excluded.method,status=excluded.status,evidence_json=excluded.evidence_json,decided_at=excluded.decided_at''',
-              (self.source, kind, source_id, item_type if valid else None,
-               str(canonical) if valid and item_type else None, int(canonical) if valid and kind == 'color' else None,
-               'external_ids', 'matched' if valid else 'unmatched', json.dumps(row), now().isoformat()))
-        return dict(source_id=source_id, status='matched' if valid else 'unmatched')
-
-    @staticmethod
-    def identifier(number):
-        if not isinstance(number, str) or not re.fullmatch('[A-Za-z0-9-]{1,64}', number):
-            raise ValueError('invalid Rebrickable identifier')
-        return number
-
-    def part(self, number, *, canonical=None, job_id=None):
-        self.identifier(number)
+    def picture_url(self, path, key, *, item_id=None, job_id=None):
+        """The picture URL in the record at `path` (`part_img_url` or `set_img_url`). A part's own record (`/parts/{num}/`) also tells which
+        BrickLink number it is: with `item_id` that evidence is recorded (`record_match`)."""
         def consume(row):
-            if row['part_num'] != number:
-                raise ValueError('part mismatch')
-            self.match('part', row, canonical=canonical)
-            return row
+            if item_id is not None and 'external_ids' in row:
+                self.record_match(item_id, row)
+            url = row.get(key)
+            if not url or not isinstance(url, str):
+                raise NotFoundAtSource('Rebrickable has no picture for this item')
+            return url
+        return self.call(path, normalize=consume, job_id=job_id)
+
+    def part(self, item_id, *, job_id=None):
+        """The record of a Rebrickable-born part; its BrickLink evidence is recorded. Returns the record."""
+        label = items.label(self.db, item_id)
+        if label.kind != 'part' or label.source != 'rebrickable':
+            raise ValueError('only a Rebrickable-born part can be asked for its record')
+        number = label.number
+
+        def consume(record):
+            if record.get('part_num') != number:
+                raise base.InvalidReply('Rebrickable answered with another part')
+            self.record_match(item_id, record)
+            return record
         return self.call(f'/parts/{number}/', normalize=consume, job_id=job_id)
 
-    def color(self, color_id, *, canonical=None, job_id=None):
-        if type(color_id) is not int or color_id < 0:
-            raise ValueError('invalid Rebrickable colour')
-        def consume(row):
-            if row['id'] != color_id:
-                raise ValueError('color mismatch')
-            self.match('color', row, canonical=canonical)
-            return row
-        return self.call(f'/colors/{color_id}/', normalize=consume, job_id=job_id)
-
-    def minifigure(self, number, *, canonical=None, job_id=None):
-        self.identifier(number)
-        def consume(row):
-            if row['set_num'] != number:
-                raise ValueError('minifigure mismatch')
-            self.match('minifigure', row, canonical=canonical)
-            return row
-        return self.call(f'/minifigs/{number}/', normalize=consume, job_id=job_id)
-
-    def find_part(self, canonical, *, job_id=None):
-        self.identifier(canonical)
-        def consume(reply):
-            from ..pipeline import cooperative
-            rows = reply['results']
-            if reply.get('next') or reply.get('count', len(rows)) != len(rows):
-                raise SourceError('ambiguous Rebrickable part results')
-            for row in cooperative(self.db, rows):
-                self.match('part', row, canonical=canonical if len(rows) == 1 else None)
-            return rows
-        rows = self.call('/parts/', {'bricklink_id': canonical, 'inc_part_details': 1}, normalize=consume, job_id=job_id)
-        matches = [row for row in rows if str(canonical) in row.get('external_ids', {}).get('BrickLink', [])]
-        if len(matches) != 1 or len(rows) != 1:
-            raise SourceError('Rebrickable part needs manual matching')
-        return matches[0]
-
-    def part_image(self, number, color_id, *, job_id=None):
-        self.identifier(number)
-        if type(color_id) is not int or color_id < 0:
-            raise ValueError('invalid Rebrickable colour')
-        def consume(row):
-            url = row.get('part_img_url')
-            if not url:
-                raise SourceError('Rebrickable has no part render')
-            return url
-        return self.call(f'/parts/{number}/colors/{color_id}/', normalize=consume, job_id=job_id)
-
-    def download_part_image(self, number, color_id, canonical, canonical_color, root, *, http=None):
-        url = self.part_image(number, color_id)
-        return download(self.db, root, self.source, 'P', canonical, url,
-                        color=canonical_color, image_kind='render', http=http)
+    def record_match(self, item_id, record):
+        """Write what a part record says about the item's BrickLink number (call inside the request's savepoint)."""
+        ids = record.get('external_ids', {}).get('BrickLink', [])
+        if isinstance(ids, dict):
+            ids = ids.get('ext_ids', [])
+        ids = list(dict.fromkeys(str(value) for value in ids))
+        items.ensure(self.db, item_id)
+        if len(ids) == 1:
+            add_item_link(self.db, item_id, provider='bricklink', provider_kind='P', provider_key=ids[0], status='matched', method='external_ids',
+                          origin='api', evidence={'rebrickable': record.get('part_num'), 'bricklink': ids},
+                          events=Events(self.db, base.AUDIT_ORIGIN.get(), base.AUDIT_ACTOR.get()))
+            self.db.execute("DELETE FROM main.item_provider_status WHERE item_id=? AND provider='bricklink' AND reason='no_match'", (item_id,))
+            return 'matched'
+        placed = self.db.execute(f'''SELECT 1 FROM main.item_link WHERE item_id=? AND provider='bricklink' AND status IN ({','.join('?' * len(CONFIRMED))}) LIMIT 1''',
+                                 (item_id, *CONFIRMED)).fetchone()
+        if placed:
+            return 'kept'                                              # a confirmed link is never downgraded by a refresh
+        self.db.execute('''INSERT INTO main.item_provider_status(item_id, provider, status, reason, evidence_json, checked_at)
+                           VALUES(?, 'bricklink', 'unmatched', 'no_match', ?, ?) ON CONFLICT(item_id, provider, reason)
+                           DO UPDATE SET evidence_json=excluded.evidence_json, checked_at=excluded.checked_at''',
+                        (item_id, json.dumps({'rebrickable': record.get('part_num'), 'bricklink': ids}, sort_keys=True), store_now()))
+        return 'unmatched'

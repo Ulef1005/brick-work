@@ -3,7 +3,7 @@ from contextlib import closing
 from pathlib import Path
 import sqlite3
 
-from .connect import CATALOGUE_VERSION, SCHEMA_VERSION, _uri
+from .connect import CATALOGUE_VERSION, SCHEMA_VERSION, UPGRADES, _uri, check_ids_never_reused
 from .errors import CatalogueError, CatalogueMismatch, SchemaMismatch
 
 LOCAL_BASE = 1_000_000_000
@@ -62,9 +62,10 @@ class CollectionSeed:
                 self.meta = dict(db.execute('SELECT key, value FROM meta').fetchall())
             except sqlite3.DatabaseError as exc:
                 raise SchemaMismatch(f'{self.path} is not a Brick Work {SCHEMA_VERSION} collection: {exc}') from exc
-            if self.meta.get('schema_version') != SCHEMA_VERSION:
+            if self.meta.get('schema_version') not in (SCHEMA_VERSION, *UPGRADES):   # a seed reads no table an upgrade changes
                 raise SchemaMismatch(f'{self.path} is not a Brick Work {SCHEMA_VERSION} collection '
                                      f"(schema_version={self.meta.get('schema_version')!r})")
+            check_ids_never_reused(db, self.path)
             self.items = _rows(db, "SELECT * FROM item WHERE born_provider='rebrickable'")
             self.colors = _rows(db, "SELECT * FROM color WHERE born_provider='rebrickable'")
             self.builds = _rows(db, 'SELECT * FROM catalogue_build ORDER BY id')

@@ -1,14 +1,12 @@
-"""Environment credentials stay private regardless of their variable prefix."""
-from contextlib import closing
-import sqlite3
+"""Environment credentials stay private regardless of their variable prefix (4.0 store, M.8f).
 
-from flask import Flask
+The CLI error text and the export are the maintenance piece's (test_secret_redaction_cli_export.py, M.8i)."""
 import pytest
 
-from brickwork.core.connect import connect
 from brickwork.core.secrets import secret_values
 from brickwork.core.sources import base
-from brickwork.web import admin_ops, cli
+from tests.app4 import coll, pair  # noqa: F401 (fixtures)
+from tests.sources4 import Net, keyed, price_reply
 
 
 @pytest.fixture(params=['OLD_REBRICKABLE_API_KEY', 'OTHER_SECRET', 'CUSTOM_TOKEN',
@@ -30,35 +28,19 @@ def test_secret_values_minimum_length(value, expected):
     assert secret_values({'SOME_KEY': value}) == expected
 
 
-def test_source_audit_redacts_arbitrary_prefix(tmp_path, credential):
-    with closing(connect(tmp_path / 'brickwork.db')) as db:
-        base.item(db, 'S', '1', credential + ' ordinary-display-name')
-        audit = db.execute('SELECT new_value FROM events').fetchone()[0]
+def test_source_audit_redacts_arbitrary_prefix(coll, credential):
+    base.write(coll.db, 'INSERT INTO setting(key, value) VALUES(?, ?)', ('note', credential + ' ordinary-display-name'))
+    audit = coll.db.execute("SELECT new_value FROM event WHERE entity_kind='source'").fetchone()[0]
     assert credential not in audit
     assert '[set] ordinary-display-name' in audit
 
 
-def test_cli_error_redacts_arbitrary_prefix(credential):
-    app = Flask(__name__)
-    app.config['CUSTOM_PASSWORD'] = 'synthetic-config-password'
-    with app.app_context():
-        result = cli._safe_error(ValueError(
-            credential + ' ordinary-display-name synthetic-config-password'))
-    assert result == '[set] ordinary-display-name [set]'
-
-
-def test_export_rejects_arbitrary_prefix(tmp_path, monkeypatch, credential):
-    path = tmp_path / 'brickwork.db'
-    monkeypatch.setenv('BW_DB_PATH', str(path))
-    with closing(connect(path)) as db, db:
-        db.execute("INSERT INTO items(item_type,item_no,name) VALUES('S','1',?)",
-                   ('ordinary-display-name',))
-    # Non-secret environment values and empty credentials do not block exports.
-    exported = admin_ops.tools_export()
-    with closing(sqlite3.connect(':memory:')) as snapshot:
-        snapshot.deserialize(exported)
-        assert snapshot.execute('SELECT name FROM items').fetchone()[0] == 'ordinary-display-name'
-    with closing(connect(path)) as db, db:
-        db.execute('UPDATE items SET name=?', (credential,))
-    with pytest.raises(ValueError, match='Export contains credential material'):
-        admin_ops.tools_export()
+def test_a_kept_reply_and_a_source_error_redact_arbitrary_prefix(coll, credential, monkeypatch):
+    keyed(monkeypatch, 'bricklink')
+    reply = price_reply()
+    reply['data']['note'] = credential + ' ordinary-display-name'
+    from brickwork.core.sources.bricklink import BrickLink
+    BrickLink(coll.db, http=Net(reply)).price(coll.item('sets', '1000-1'), None, 'used')
+    kept = coll.db.execute('SELECT payload FROM source_record').fetchone()[0]
+    assert credential not in kept and '[set] ordinary-display-name' in kept
+    assert base.redact('x ' + credential) == 'x [set]'

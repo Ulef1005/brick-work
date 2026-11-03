@@ -18,31 +18,31 @@ PLAN = {
 }
 
 
-def call(db, copy_id, root, **payload):
-    return checker.write(db, copy_id, dict(operation=str(uuid.uuid4()), **payload), root)
+def call(db, copy_id, **payload):
+    return checker.write(db, copy_id, dict(operation=str(uuid.uuid4()), **payload))
 
 
-def stage(store, root):
+def stage(store):
     """Start and answer the planned checks; returns {copy id: (cursor, steps)}."""
     result = {}
     with database(store) as db:
         for copy_id, (share, keep_missing) in PLAN.items():
-            if not db.execute('SELECT 1 FROM copies WHERE id=?', (copy_id,)).fetchone():
+            if not db.execute('SELECT 1 FROM copy WHERE id=?', (copy_id,)).fetchone():
                 continue
             # The test data's missing counts, read before the check overwrites them.
-            missing = {r['token']: r['missing'] or 0 for r in checker.rows(db, copy_id, root, images=False, decorate=False)}
-            call(db, copy_id, root, action='start', order='inventory')
-            state = checker.view(db, copy_id, root)
+            missing = {r['token']: r['missing'] or 0 for r in checker.rows(db, copy_id, images=False, decorate=False)}
+            call(db, copy_id, action='start', order='inventory')
+            state = checker.view(db, copy_id)
             session = state['session']
             rows = {r['token']: r for r in state['rows']}
             required = [t for t in session['order'] if rows[t]['kind'] != 'spare']
             for token in required[:round(len(required) * share)]:
                 quantity = rows[token]['quantity'] or 0
                 found = max(0, quantity - (missing.get(token, 0) if keep_missing else 0))
-                call(db, copy_id, root, action='answer', session=session['id'], token=token, found=found)
+                call(db, copy_id, action='answer', session=session['id'], token=token, found=found)
             if share >= 1 and any(r['kind'] == 'spare' for r in rows.values()):
                 try:
-                    call(db, copy_id, root, action='spares', session=session['id'], include=False)
+                    call(db, copy_id, action='spares', session=session['id'], include=False)
                 except ValueError:
                     pass  # no spare question at this point
             final = checker.session(db, copy_id)

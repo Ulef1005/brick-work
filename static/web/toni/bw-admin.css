@@ -141,3 +141,5 @@ main .bw-chips a[aria-current=page]{background:var(--tw-accent-soft);color:var(-
 .bw-currency-row label,.bw-rate-add label { display:flex;flex-direction:column;gap:6px;font:500 13px var(--tw-font);color:var(--tw-text-2); }
 .bw-currency-row input[name=display_currency],.bw-rate-add input[name=currency] { width:90px;text-transform:uppercase; }
 .bk-paths{display:flex;flex-direction:column;gap:12px}.bk-path{display:flex;flex-direction:column;gap:2px;min-width:0}.bk-path .mono{overflow-wrap:anywhere}
+.bk-commands{display:flex;flex-direction:column;gap:6px;margin:12px 0 0;min-width:0}.bk-commands code,.bk-note code{font:400 12px/16px var(--tw-mono);overflow-wrap:anywhere}.bk-commands code{display:block;padding:8px 10px;border-radius:8px;background:var(--tw-surface-2,var(--tw-viz-n1))}
+.bw-inline{display:inline}.bw-inline button{margin-left:8px}

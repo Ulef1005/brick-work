@@ -34,6 +34,12 @@ Brick Work shows only matches it finds in the local BrickLink catalogue. If noth
 
 The notice after saving offers **Undo**, which takes the figures out of stock and archives their identifications.
 
+## Add from a photo
+
+**Manage → Add** also takes a photo: choose **Photo**, choose a picture and press **Review**. Brick Work lists the matches (sets, minifigures and parts, best first) and adds nothing until you choose one. Tick **Keep photo** to save your picture as the new item's own photo; without it nothing is saved. **Undo** after adding takes the photo back with the item.
+
+A match whose number names more than one catalogue item is not guessed: it is listed under **Unresolved** with the reason.
+
 ## Look back at saved identifications
 
 Open **Manage → Tools & Admin → Identify history**. It lists saved identifications, newest first, with the candidates Brickognize offered and their match scores.

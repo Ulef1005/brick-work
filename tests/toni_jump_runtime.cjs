@@ -34,7 +34,7 @@ function type(value) {input.value = value;input.dispatchEvent({type:'input'});}
 function key(target, name, extra={}) {const e={type:'keydown',key:name,preventDefault(){this.prevented=true;},...extra};target.dispatchEvent(e);return e;}
 function flush() {const pending = timers;timers=[];pending.forEach(fn=>fn());}
 function anchors(node) {return [...(node.tag==='a'?[node]:[]),...node.children.flatMap(anchors)];}
-const copy = (id, completeness) => ({id,condition:'U',completeness,missing_parts:0,missing_minifigs:0,missing_label:'',url:`/sets/${id}/details`});
+const copy = (id, completeness) => ({id,condition:'used',completeness,missing_parts:0,missing_minifigs:0,missing_label:'',url:`/sets/${id}/details`});
 const result = copies => ({kind:'set',number:'6081-1',name:'<img onerror=alert(1)>',image:'/static/image.jpg',copies});
 (async () => {
  assert.equal(ids.theme.value,'system');assert.equal(ids['theme-mobile'].value,'system');
@@ -45,7 +45,7 @@ const result = copies => ({kind:'set',number:'6081-1',name:'<img onerror=alert(1
  assert(ids['global-jump'].open); assert.equal(document.activeElement, input);
  type('608'); type('6081'); assert.equal(timers.length, 1); flush();
  assert.equal(requests.length, 1); assert.equal(requests[0].url.searchParams.get('q'), '6081');
- requests[0].resolve({ok:true,json:async()=>({results:[result([{...copy('a','I'),missing_parts:1,missing_minifigs:1,missing_label:'1 part missing / 1 figure missing'},copy('b',null)])]})});await tick();
+ requests[0].resolve({ok:true,json:async()=>({results:[result([{...copy('a','incomplete'),missing_parts:1,missing_minifigs:1,missing_label:'1 part missing / 1 figure missing'},copy('b',null)])]})});await tick();
  const links = anchors(ids['jump-results']); assert.equal(links.length, 2);
  assert.equal(links[0].children[0].children[0].textContent, 'Set 1 · Used · Incomplete');
  assert.equal(links[1].children[0].children[0].textContent, 'Set 2 · Used · Not checked');
@@ -54,7 +54,7 @@ const result = copies => ({kind:'set',number:'6081-1',name:'<img onerror=alert(1
  assert.equal(ids['jump-results'].children[0].children[0].children[1].children[1].textContent,'<img onerror=alert(1)>');
  key(ids['global-jump'], 'ArrowDown'); key(ids['global-jump'], 'Enter'); assert.equal(clicked, '/sets/b/details');
  key(ids['global-jump'], 'ArrowUp'); key(ids['global-jump'], 'Enter'); assert.equal(clicked, '/sets/a/details');
- type('single'); flush(); requests.at(-1).resolve({ok:true,json:async()=>({results:[result([copy('one','S')])]})});await tick();
+ type('single'); flush(); requests.at(-1).resolve({ok:true,json:async()=>({results:[result([copy('one','sealed')])]})});await tick();
  key(ids['global-jump'],'Enter');assert.equal(clicked,'/sets/one/details');
  type('old'); flush();const old=requests.at(-1);type('new');flush();const latest=requests.at(-1);
  assert(old.options.signal.aborted);

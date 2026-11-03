@@ -151,7 +151,7 @@ Each invariant names what enforces it. "Trigger" and "CHECK" mean the DDL; every
 9. **One live row per merge key, NULLs included.** `stock (item, colour, condition, lot, storage)` for non-figures and `wish (wishlist, item, colour)` are unique through generated `coalesce` columns, matching today's `IS` comparison (`stock.py:95-99`) (tests L7, L11).
 10. **Count bounds are today's.** `0 ≤ missing ≤ quantity` and `0 ≤ damaged ≤ quantity`, each on its own, as `checker.mark_row` bounds them (`checker.py:454-468`). The initial design's `missing + damaged ≤ quantity` was new semantics that prod rows may break (review finding 8). It is not taken (test L4).
 11. **Events are append-only** (triggers, as `schema.sql:105-106` today; test L12).
-12. **Money is decimal text with a currency.** Pairs are CHECKed on `copy`, `stock`, `lot`, `wish` and `purchase_order`. `price_observation` has no CHECK, because 931 migrated rows have no currency.
+12. **Money is decimal text with a currency.** Pairs are CHECKed on `copy`, `stock`, `lot` and `wish`; `purchase_order` is one-way (a cost needs its currency, a currency may exist without a cost, since an order e-mail has no total; #114). `price_observation` has no CHECK, because 931 migrated rows have no currency.
 
 ---
 
@@ -454,7 +454,7 @@ Words are stored and served:
 |---|---|
 | `source` | Seeded rows include `import`, the pipeline's job source, which `pipeline.py:106` inserts at runtime today. Its absence made the journey's job insert fail (finding 8). |
 | `source_budget` | API call counters per source and day. No row for the dump download (Q14: tell, don't block). |
-| `setting` | Preferences only: `bricklink_region`, `bricklink_currency`, `incomplete_discount_pct`, `repair_shipping`, `repair_fees`, `repair_min_order`, `repair_use_loose_stock` (`price_settings.py:9-11`), `retail_country`, `display_currency`, `source_priority` (including the picture source order, Q17), `import_order:<kind>`, the new `prefer_bricklink_inventory` (Q13), and `maintenance:database_check`. |
+| `setting` | Preferences only: `bricklink_region`, `bricklink_currency`, `incomplete_discount_pct`, `repair_shipping`, `repair_fees`, `repair_min_order`, `repair_use_loose_stock` (`price_settings.py:9-11`), `retail_country`, `display_currency`, `source_priority` (including the picture source order, Q17), `import_order:<kind>`, the new `prefer_bricklink_inventory` (Q13). Besides the preferences it holds `maintenance:database_check`, the stored result of the last database check (not a preference; not migrated, § 8.10). |
 | `sync_state` | `link_json` (migrated, decision D); baseline and last pull/send start empty. |
 | `source_record` | Raw API replies only (decision 9). The catalogue builds hold digests of their input files in `build.files_json`. Unique over `(source, kind, key, digest)`, so two replies for one key both stay (two BrickLink fetches). |
 | `event` | Starts fresh at 4.0. Pre-4.0 events stay in the 3.3 file (scope). The initial design's `schema_generation` is dropped. |
@@ -470,7 +470,7 @@ Words are stored and served:
 2. **Build** `catalogue.db.new` beside the target: tables, ids (§ 3.1, seeded from the collection, which at onboarding holds only colours 1 and 2), the shipped and rule layers, the local layer if `data/mappings/` has files, `bl_digest`s, FTS. Then `PRAGMA journal_mode=DELETE`, fsync and `os.replace`.
 3. **Activate** in the collection file: `catalogue_build` rows, bind `meta.catalogue_id`, copy the high-water marks, project the 275 colours with their links, write one event.
 
-The cost of the raw tables plus FTS is 11.9 s on the Mac for the 22 Oct dump, giving a 129.7 MB file *(measured, `revise-4.0/build_dump.py`)*. The spike measured 11.3 s on the Pi for its own raw shape. The links, `bl_digest`s and the Pi timing of this build are not measured yet (§ 9). The onboarding text says "about a minute" only once the Pi run confirms it.
+The cost of the raw tables plus FTS is 11.9 s on the Mac for the 22 Oct dump, giving a 129.7 MB file *(measured, `revise-4.0/build_dump.py`)*. The spike measured 11.3 s on the Pi for its own raw shape. The links and `bl_digest`s are not measured separately (§ 9). **The first import on the Pi** (rasp, lego-test's hardware, 4 cores, an empty data folder, the 3 Nov dump, `bbcdd66`) took 51 s: download 4 s (12 files), build 40 s (110,874 items, 28,565 sets, a 154 MB file), setting up the collection 7.5 s *(measured 2026-11-03, #126)*, so the onboarding text says "about a minute".
 
 ### 6.2 Re-download (Tools & Admin)
 
@@ -539,7 +539,7 @@ Reconcile then mirrors this for projected items and adds BrickLink names as `ite
 
 The order is the existing setting `source_priority.pictures` (`importer/projection.py:24`, per kind), editable in Settings (Q17) and migrated (decision D). In 4.0 its sources are:
 
-- `rebrickable_dump`: the catalogue's `picture_url` (sets, figures, and parts in colours some inventory uses), a plain download;
+- `rebrickable_dump`: the catalogue's `picture_url`, a plain download. The builder fills it for parts in colours some inventory uses (from the dump's `inventory_parts`); sets and figures are served by the item's own `img_url` from the dump's `sets.csv` / `minifigs.csv` (found in M.8f, served since #122);
 - `bricklink`: `img.bricklink.com` by the resolved BrickLink key and colour (§ 3.2), a plain download, no key;
 - `rebrickable_api`: `GET /parts/{num}/colors/{id}/`, needs a key and is budgeted (today's path, `pipeline.py:506`).
 
@@ -744,6 +744,7 @@ The digest of `summary.md` and `proof.json` goes into `meta.migrated_from` and t
 - **`import_order:<type>`** → `import_order:<kind>`, with BrickLink type codes translated to kinds.
 - **`source_priority`:** the `pictures` order (Q17), `metadata` and `market_price` are carried, with type codes translated. The `identity`, `inventory` and `matching` steps change meaning in 4.0 (no `bricklink:local` identity, no `bricklink:subsets` default), so they take 4.0 defaults. Any non-default 3.3 value there is listed.
 - **`prefer_bricklink_inventory`** starts `false`.
+- **`maintenance:database_check`** is not carried: it is the stored result of the last check of the 3.3 file, which does not describe the new one. The 4.0 app writes its own on its first check (Ulf, 2026-10-26).
 
 ### 8.11 Fixtures and what to measure on prod before cutover
 
@@ -817,7 +818,7 @@ All of Q1–Q23 (c101) and A–F with the Q5, Q16, settings and BrickStore amend
 
 ## 12. Tests run in SQLite
 
-All in `/private/tmp/claude-502/-Users-adminuser-Workspace-ai-wiki/541107ab-907a-414d-ad52-0e812e714994/scratchpad/revise-4.0/`, SQLite 3.54.1 through python3 `sqlite3`, with `PRAGMA foreign_keys=ON`. Each half of `schema-4.0.sql` was loaded into its own database.
+All in a scratch folder outside the repository, SQLite 3.54.1 through python3 `sqlite3`, with `PRAGMA foreign_keys=ON`. Each half of `schema-4.0.sql` was loaded into its own database.
 
 | Script | What it covers | Result |
 |---|---|---|

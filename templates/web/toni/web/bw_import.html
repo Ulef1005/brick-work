@@ -19,18 +19,8 @@
 {% if can_edit %}<form method="post" enctype="multipart/form-data" action="{{ url_for('web.bw_import_upload') }}" data-sy-busy>{{ csrf() }}
 <div class="bc-photo-picker sy-file"><label class="bk-btn bk-outline" for="bt-file">Choose app.db</label><input class="bc-visually-hidden" id="bt-file" type="file" name="file" accept=".db,.sqlite,application/vnd.sqlite3,application/x-sqlite3" required data-bt-file><span data-bt-file-name role="status">No file chosen</span></div>
 <div class="bk-actions"><button class="bk-btn bk-primary" data-busy-label="Reading app.db">Upload and preview</button></div></form>{% endif %}
-<p class="bk-text">Nothing is imported until you check the preview. Sets keep their identity, so importing the same file again skips what is already here. Parts and figures without a BrickLink match go to <a href="{{ url_for('web.bw_admin', page='unresolved') }}">Unresolved figures</a>.</p>
+<p class="bk-text">Nothing is imported until you check the preview. BrickTracker's numbers are Rebrickable's, so every set, part and figure the catalogue knows is placed without guessing; importing the same file again skips what is already here. What the catalogue does not know is listed in the preview and left out.</p>
 </section>
-<details class="bk-more sy-advanced"><summary>Build a new database instead</summary>
-<p class="bk-text">Reads an old app.db and an optional extras database into a new Brick Work database with a proof report. Inputs stay unchanged; existing output files are refused. Use server-local paths, then set BW_DB_PATH to the new database and restart.</p>
-{% if error %}<p class="bk-banner bk-warning" role="alert">{{ error }}</p>{% endif %}
-{% if result %}<p class="bk-banner bk-success" role="status">Import complete. Proof: {{ result.proof }}</p>{% endif %}
-{% if can_edit %}<form method="post" class="stack" action="{{ url_for('web.bw_import_migrate') }}">{{ csrf() }}
-<p class="bk-muted">Paths are inside the data folder, for example <code>imports/app.db</code>. For files elsewhere, use <code>brickwork migrate</code>.</p>
-<div class="bk-fields">{% for key,label,required in [('app','Old app.db',true),('extras','Extras database (optional)',false),('decisions','Identity decisions JSON',true),('catalogue','BrickLink catalogue database',true),('catalogue_src','Catalogue XML folder (optional)',false),('out','New database path',true),('report','Proof folder',true)] %}
-<label class="bk-field">{{ label }}<input name="{{ key }}" {% if required %}required{% endif %}></label>{% endfor %}</div>
-<div class="bk-actions"><button class="bk-btn bk-outline" type="submit">Import into a new database</button></div></form>{% endif %}
-</details>
 
 {% else %}
 {% set rows = plan.rows %}
@@ -40,7 +30,7 @@
 {% set s = plan.summary %}
 <dl class="sy-dates bt-summary">{% for kind, label in [('copy','Sets'),('stock','Loose items'),('lot','Part lots'),('wish','Wishes')] %}<div><dt>{{ label }}</dt><dd class="mono">{{ s[kind].new }} new{% if s[kind].duplicate %} · {{ s[kind].duplicate }} duplicate{% endif %}{% if s[kind].imported %} · {{ s[kind].imported }} already here{% endif %}</dd></div>{% endfor %}
 <div><dt>Storages</dt><dd class="mono">{{ s.storages.new }} new · {{ s.storages.reused }} matched by name</dd></div><div><dt>Tags, statuses, owners</dt><dd class="mono">{{ s.flags.new }} new · {{ s.flags.reused }} matched</dd></div>
-<div><dt>Not matched</dt><dd class="mono">{{ plan.unresolved|length }} {{ 'item' if plan.unresolved|length == 1 else 'items' }} go to Unresolved figures</dd></div></dl>
+<div><dt>Marks on part lines</dt><dd class="mono">{{ s.marks }}</dd></div><div><dt>Not placed</dt><dd class="mono">{{ plan.unplaced|length }} {{ 'item' if plan.unplaced|length == 1 else 'items' }} left out</dd></div></dl>
 {% if plan.applied %}<p class="bk-banner bk-success" role="status">Already imported · <a href="{{ url_for('web.bw_import_legacy', event=plan.applied_event) }}">Undo is on the import page</a></p>{% endif %}
 <form method="post" class="sy-plan" data-sy-plan action="{{ url_for('web.bw_import_apply', plan_id=plan.id) }}" data-sy-busy>{{ csrf() }}
 {% set kinds = [('all','All',rows|length),('new','New',rows|selectattr('state','equalto','new')|list|length),('duplicate','Duplicate',rows|selectattr('state','equalto','duplicate')|list|length),('imported','Already here',rows|selectattr('state','equalto','imported')|list|length)] %}
@@ -48,14 +38,14 @@
 <label class="sy-search"><span class="bc-visually-hidden">Search</span>{{ toni_icon('search') }}<input type="search" data-sy-search placeholder="Number or name" aria-label="Search the preview"></label>
 <div class="sy-rows">
 {% for r in rows %}
-<div class="sy-row" data-sy-row data-state="{{ r.state }}" data-name="{{ r.item_no or '' }} {{ r.label }}">
-<div class="sy-id"><span class="mono">{{ r.item_no or '' }}{% if r.color_id is not none and r.color_id is defined %} · colour {{ r.color_id }}{% endif %}</span><strong>{{ r.label }}</strong><span class="sy-kind">{{ {'copy':'Set','stock':'Loose item','lot':'Part lot','wish':'Wish'}[r.kind] }}{% if r.kind == 'copy' and r.detail %} · {{ r.detail.parts }} parts{% if r.detail.missing %} · {{ r.detail.missing }} missing{% endif %}{% endif %}{% if r.quantity %} · ×{{ r.quantity }}{% endif %}</span></div>
+<div class="sy-row" data-sy-row data-state="{{ r.state }}" data-name="{{ r.number or '' }} {{ r.label }}">
+<div class="sy-id"><span class="mono">{{ r.number or '' }}</span><strong>{{ r.label }}</strong><span class="sy-kind">{{ {'copy':'Set','stock':'Loose item','lot':'Part lot','wish':'Wish'}[r.kind] }}{% if r.kind == 'copy' and r.marks %} · {{ r.marks }} marked {{ 'line' if r.marks == 1 else 'lines' }}{% endif %}{% if r.quantity %} · ×{{ r.quantity }}{% endif %}</span></div>
 <div class="sy-state">{{ pill('info' if r.state == 'new' else 'warning' if r.state == 'duplicate' else 'success', {'new':'New','duplicate':'Duplicate','imported':'Already here'}[r.state]) }}{% if r.state == 'duplicate' and r.here is defined %}<span class="mono sy-counts">here {{ r.here }}</span>{% endif %}</div>
 <div class="sy-do">{% if r.locked %}<span class="sy-muted">{{ 'Skipped · same set copy' if r.kind == 'copy' else 'Skipped · already on the wishlist' if r.kind == 'wish' else 'Skipped' }}</span>{% elif can_edit and not plan.applied %}<label class="sy-tick"><input type="checkbox" name="tick" value="{{ r.key }}" {% if r.action == 'add' %}checked{% endif %} data-sy-tick><span>{{ 'Add anyway' if r.state == 'duplicate' and r.kind != 'stock' else 'Add to the pile here' if r.state == 'duplicate' else 'Add' }}</span></label>{% endif %}</div>
 </div>
 {% else %}<p class="bk-text">The file holds nothing to import.</p>{% endfor %}
 </div>
-{% if plan.unresolved %}<details class="bk-more"><summary>{{ plan.unresolved|length }} not matched to BrickLink</summary>{% for u in plan.unresolved %}<div class="bw-entry"><span class="mono">{{ u.item_no }}</span><span>{{ u.name or 'Name not recorded' }}</span></div>{% endfor %}</details>{% endif %}
+{% if plan.unplaced %}<details class="bk-more" open><summary>{{ plan.unplaced|length }} not placed</summary>{% for u in plan.unplaced %}<div class="bw-entry"><span class="mono">{{ u.number }}</span><span>{{ u.reason }}</span></div>{% endfor %}</details>{% endif %}
 <div class="sy-footer">{% if can_edit and not plan.applied %}<button class="bk-btn bk-primary bk-lg" data-sy-submit data-sy-verb="Import" data-sy-plain data-busy-label="Importing">Import</button>{% endif %}<a class="bk-btn bk-quiet" href="{{ url_for('web.bw_import_legacy') }}">Cancel</a><p class="mono sy-total" data-sy-total role="status" aria-live="polite"></p></div>
 </form>
 {% endif %}

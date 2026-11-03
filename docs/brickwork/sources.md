@@ -1,147 +1,63 @@
-# Brick Work source layer (4.2b)
+# Brick Work source layer (4.0)
 
-The source clients write schema v3 `brickwork.db`. The existing screens and
-legacy `python -m brickwork.web` commands retain their previous adapters.
-The `brickwork` commands below use the new source layer.
-
-```sh
-brickwork catalogue import bricklink --from data/bricklink-catalog-src
-brickwork catalogue status
-brickwork prices refresh 6081-1
-brickwork brickset refresh 6081-1 6876-1
-brickwork brickset refresh
-brickwork sources status
-brickwork settings set retail_country DE
-```
-
-An empty Brickset set list selects all canonical sets already in `items`.
-`BW_DB_PATH` overrides the new store's path; otherwise it uses the explicit `BRICKWORK_DB_PATH` Flask setting or
-`data/brickwork.db`.
-The rebuildable catalogue lives beside it as `bricklink-catalog.db`.
+The source clients write the 4.0 collection file (`brickwork.db`). A source is one provider's client: `BrickLink`, `Rebrickable`,
+`Brickset` (and `Brickognize` for photos, with the Identify screen). The pipeline's `pictures`, `metadata` and `market_price` steps call
+them through handlers ([pipeline](pipeline.md)); the part lists are `store4.jobs`' (`bricklink_subsets`, `rebrickable_set`). The
+design is in the [4.0 design](../data-model-4.0/data-model-design.md) (§ 3.2, § 3.8, § 5.2, § 6.8).
 
 ## Credentials and limits
 
-Credentials are read exclusively from the process environment:
+Keys come from the environment first (all of a source's variables), then from the encrypted `source_key` table (Fernet, secret
+`BW_SECRET_KEY`; `core.keys`, installed at start as the provider `store4.keys` reads):
 
-- `BW_BRICKLINK_CONSUMER_KEY`
-- `BW_BRICKLINK_CONSUMER_SECRET`
-- `BW_BRICKLINK_TOKEN_VALUE`
-- `BW_BRICKLINK_TOKEN_SECRET`
-- `BW_BRICKSET_API_KEY`
+- BrickLink: `BW_BRICKLINK_CONSUMER_KEY`, `BW_BRICKLINK_CONSUMER_SECRET`, `BW_BRICKLINK_TOKEN_VALUE`, `BW_BRICKLINK_TOKEN_SECRET`
+- Rebrickable: `BW_REBRICKABLE_API_KEY`; Brickset: `BW_BRICKSET_API_KEY`
 
-`BW_BRICKLINK_DAILY_BUDGET` is a positive integer, default **4,400**. This
-provides a safety margin for other tools sharing the same key within the
-account's 5,000-call limit. BrickLink attempts have at least one second of spacing.
-Brickset permits 100 charged calls per UTC day; only `getSets` is charged.
-`check_key()` and `key_usage_stats()` expose the API's status checks without
-charging the local `getSets` budget. `sources status` reads local state and
-reports key presence, budget, usage today and last successful job without
-making network calls or creating an absent database.
+Daily budgets: BrickLink `BW_BRICKLINK_DAILY_BUDGET` (default 4,400, a margin under the account's 5,000), Rebrickable
+`BW_REBRICKABLE_DAILY_BUDGET` (1,000), Brickset 100 (only `getSets` is charged; `checkKey` and `getKeyUsageStats` are not). BrickLink and
+Rebrickable calls are at least one second apart. The counters are the rows of `source_budget` (source, UTC day, `used`, `blocked_until`,
+`last_attempt_at`), shared with `store4.jobs`, which counts its own calls on the same rows. The Rebrickable catalogue pictures are plain
+downloads and count against nothing.
 
-No credentials are written to `.env`, templates or error messages. HTTP
-redirects are disabled. Replies are stored verbatim as text except for redaction
-of any echoed environment credentials. Transport failures use fixed public
-errors; unsuccessful API bodies remain available locally for diagnosis.
+No key is written to a template, a log or an error text: replies are stored redacted, transport failures have fixed texts.
+Redirects are refused.
 
-## Common interface and transactions
+## One call
 
-`Source` declares `source`, `source_kind`, `daily_budget`, `minimum_spacing`,
-`credentials` and `freshness` (kind to maximum age in days). A new implementation
-adds a row to `sources` and its freshness rows without changing the schema.
-Freshness is declared here; scheduling and screen rewiring are later work.
+`Source.request` (core/sources/base.py): refuse a disabled source (`source.enabled`) or a missing key before anything is built or counted;
+count the call (`reserve`: the daily budget, a provider's pause, the spacing) or raise `WaitingForBudget(retry_at)`; make the HTTP request
+outside any write transaction; keep the reply in `source_record` under the pipeline job (unique over source, kind, key and digest, so the
+same reply twice is one record); normalise in one savepoint. A savepoint that fails rolls its writes back and keeps the reply with
+`status='failed'`. A provider's own rate pause (HTTP 429 or "throttled", Brickset's "API limit exceeded") is written as
+`blocked_until` and honoured by every client and job of the source. A 401 or 403 carrying the provider's own JSON error is `KeyRejected`;
+an HTML or empty answer says nothing about the key.
 
-Each network attempt first reserves its UTC budget in a separate, immediate
-transaction. `settings` holds `source:used:<source>:<UTC-day>` counters,
-`source:last_attempt:<source>` pacing timestamps and, if the provider reports
-exhaustion, `source:blocked_day:<source>`. `jobs` tracks payload, attempts,
-state and next UTC midnight retry time. Reservations commit before HTTP I/O,
-so failures and process restarts cannot recover spent calls. Corrupt counters
-fail closed. Process locks serialize requests; SQLite serializes reservations
-and pacing across processes.
-
-Exhaustion raises `WaitingForBudget(job_id)` and persists
-`state='waiting_for_budget'`, rather than failing the job. CLI commands report
-this state with a successful exit code. API clients can resume a waiting call
-with the same `job_id` and payload after budget becomes available. BrickLink
-`price(..., job_id=...)` resumes even a waiting stock fallback; Brickset
-`refresh(numbers, job_id=...)` resumes one batch. This layer does not run a
-background job scheduler.
-
-The reply, normalized tables, audit events and job completion are written in
-one transaction. A savepoint rolls back partial normalization on invalid data
-while preserving the raw reply and failure status. `source_records.source_id`
-contains `<job-id>:<attempt>` to retain every reply, including resumed attempts.
-Every mutation appends an `events` row with `via='import'` in the same transaction.
-Large audit values use a SHA-256 digest and length rather than duplicating the
-raw catalogue payload in the event log.
-
-## Table mappings
+## What each source writes
 
 | Source / operation | Local data |
 | --- | --- |
-| BrickLink catalogue | Separate indexed `items` table and metadata in `bricklink-catalog.db`; raw XML and successful import job in `brickwork.db` |
-| BrickLink item information | Canonical `items` name/category/year, all returned fields in `item_properties` |
-| BrickLink subsets | Canonical parent/child `items`, placeholder `colors`, replaced source-owned `inventory_lines` |
-| BrickLink colours | `colors` name/type, preserving existing RGB |
-| BrickLink price guide | Decimal strings in `price_observations`, latest guide/condition/region/currency in `price_current` |
-| BrickLink orders and order items | Full reply in `source_records`; order-ledger ingestion remains a later step |
-| Brickset `getSets` | `item_properties` metadata, `id_match` set numbers, retail `price_observations` and `price_current` |
-| All API operations | Every raw reply in `source_records`, budget/job state and import events |
+| BrickLink price guide | `price_observation` (decimal strings, words for the condition, slot `bricklink_new`/`bricklink_used`, the region and currency settings, `provider_key` like `P:3023/1` or `S:6081-1`) and `price_current`; an empty sold guide is stored and followed by the stock guide. An `inferred` BrickLink link the reply proves right becomes `matched` (`method='bricklink_api'`, `origin='api'`). |
+| BrickLink orders | the full reply in `source_record`; the order ledger is the orders piece's |
+| Brickset `getSets` | `item_property(source='brickset')` (setID, theme, subtheme, year, pieces, minifigs, name, category, availability, the first and last date at LEGO) and the retail `price_observation` (`guide='retail'`, slot `retail`, the `retail_country` setting: DE/EUR, US/USD, UK/GBP, CA/CAD). A set Brickset does not know gets `item_provider_status(brickset, unmatched, no_match)`. |
+| Rebrickable part record | the BrickLink evidence in `external_ids`: exactly one id is a `matched/external_ids` link, none or several `item_provider_status(bricklink, unmatched, no_match)`; a `manual` link is never replaced and a confirmed one never downgraded. |
+| Pictures | `picture` rows and files under `data/images/<source>/<kind>/<sha256>.<ext>`; see below. |
 
-Subset `quantity` already includes `extra_quantity`: both are retained, and
-extras are never added to the quantity. Duplicate child/colour lines are
-summed. Counterparts and alternates are excluded. Sets retain both parts and
-whole minifigures, while minifigure inventories retain parts.
+BrickLink prices are for the item's resolved BrickLink key and colour (`items.bricklink_key`, design 3.2). An item without one is
+unidentified: the step ends `done` with the code `unidentified` and nothing is called (design 3.8). Brickset is asked by a confirmed
+`brickset` link, else the Rebrickable number of a Rebrickable-born set (`6081-1`), else the BrickLink number of a BrickLink-born set
+(`6081` is read as `6081-1`); up to 500 numbers go in one call.
 
-BrickLink prices use the configured `bricklink_region` (default `eu`) and
-`bricklink_currency` (default `EUR`). Worldwide (`all`) omits the API region
-parameter. An empty sold guide is stored and followed by a stock guide. New
-and used prices are separate; all monetary values remain decimal strings.
+## Pictures
 
-Brickset sends a comma list of at most 500 set numbers with `pageSize=500`.
-Existing `id_match` aliases are used; a bare numeric canonical number maps to
-`<number>-1`. Returned unmatched numbers stay in `id_match` as `unmatched`
-without creating a purported canonical item. Brickset's `setID`, theme,
-subtheme, year, pieces, minifigs, name and availability are source properties.
-Retail price and availability dates come only from `LEGOCom.<retail_country>`.
-The default is `DE`; supported documented countries are DE/EUR, US/USD,
-UK/GBP and CA/CAD. No market prices are fetched from Brickset.
+Three sources (`rebrickable_dump`, `bricklink`, `rebrickable_api`), in the order of `source_priority.pictures` per kind (design 6.8; the
+defaults are in [the pipeline](pipeline.md)). `core.pictures` has the handler of each source, `picture_known(db, item_id, color_id)` (the
+Add review's warning: a stored picture, a catalogue `picture_url`, a resolvable BrickLink number, or a Rebrickable key and number) and the
+bulk refresh (`state`, `selection`, `queue`). A download is a plain GET of an https URL on a host of the source, no redirects, at most 20 MB,
+verified as an image before anything is written; the file is written first, then the row (a `picture:stored` event). Thumbnails are
+`core.thumbnails`, generated on first request and cached under `data/thumbs`.
 
-The catalogue importer streams every XML file in the input directory, identifies
-items by `ITEMTYPE`, and requires all eight types S/P/M/G/B/C/I/O before installation.
-Filenames can be `catalog-Sets.xml`, `Books.xml` or any other `.xml` name.
-Names are HTML-unescaped and whitespace-normalized. Duplicate keys or malformed
-files reject the rebuild. The lock, temporary build, fsync, atomic replace and
-previous-version rollback protocol are reused from `web/bl_catalog.py`.
-Raw XML is retained for each import. File installation and the store transaction
-are separate because they span two databases; the catalogue is rebuildable.
+## Stored keys and the embedded worker
 
-Brickset request and fixture shapes follow its [API v3 documentation](https://brickset.com/article/52664/api-version-3-documentation).
-The synthetic fixtures and mocked transport tests do not make network calls.
-
-## Import pipeline and Rebrickable (4.2c)
-
-The [pipeline](pipeline.md) composes these source operations into independent,
-retryable steps and supplies the reusable Add progress component. Rebrickable's
-API client uses `BW_REBRICKABLE_API_KEY`, a configurable
-`BW_REBRICKABLE_DAILY_BUDGET` (default 1,000), at least one second of durable
-spacing, and persisted short waits for remote throttling. Its part, colour and
-minifigure identifiers remain in `id_match`. Images are downloaded and indexed
-in `item_images`; URLs are provenance and must never be used as hot-links.
-
-## Stored keys and the embedded worker (4.11g)
-
-Source keys can come from the environment (`BW_BRICKLINK_CONSUMER_KEY`,
-`BW_BRICKLINK_CONSUMER_SECRET`, `BW_BRICKLINK_TOKEN_VALUE`,
-`BW_BRICKLINK_TOKEN_SECRET`, `BW_REBRICKABLE_API_KEY`, `BW_BRICKSET_API_KEY`) or be
-entered in Manage > Catalogues & keys, or through `PUT /api/v1/sources/{source}/key`.
-Entered keys are stored encrypted (Fernet) in `source_keys`; the encryption secret is
-`BW_SECRET_KEY`, a Fernet key (generate one with
-`python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`).
-Without it key entry is disabled and environment keys keep working. A complete
-environment key set wins over a stored one. Keys are write-only: no page, API response,
-log line, error, event or database export contains a key, a fragment or the ciphertext.
-
-Queued jobs are drained by an embedded worker started with the web app or the first
-queued API request. Catalogue XML files are read from `bricklink-catalog-src/` beside the database. Set `BW_EMBEDDED_WORKER=0` on headless installs and run
-`brickwork worker` instead; `POST /api/v1/jobs/drain` runs one drain on demand.
+Keys can be entered in Manage > Catalogues & keys (`core.keys.save`, `archive`; each is an event with Undo, and an export copy loses
+every key, `keys.strip`). `drainer.start` (the embedded worker) and `brickwork worker` register the source handlers and run the queue
+until nothing is pending; `BW_EMBEDDED_WORKER=0` leaves draining to `brickwork worker`.

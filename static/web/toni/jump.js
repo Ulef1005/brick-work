@@ -55,8 +55,8 @@
    if (item.kind === 'set') {
     item.copies.forEach((copy, i) => {
      if (dialog.dataset.check === 'true' && !copy.check_url) return;
-     const condition = {N: 'New', U: 'Used'}[copy.condition] || 'Condition not recorded';
-     const completeness = {S: 'Sealed', C: 'Complete', I: 'Incomplete'}[copy.completeness] || 'Not checked';
+     const condition = {new: 'New', used: 'Used'}[copy.condition] || 'Condition not recorded';
+     const completeness = {sealed: 'Sealed', complete: 'Complete', incomplete: 'Incomplete'}[copy.completeness] || 'Not checked';
      row(panel, `Set ${i + 1} · ${condition} · ${completeness}`,
          copy.missing_label || '', dialog.dataset.check === 'true' ? copy.check_url : copy.url);
     });

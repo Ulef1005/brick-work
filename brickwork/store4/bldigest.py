@@ -1,4 +1,6 @@
-"""The BrickLink-space digest of a part list (design 4.1, 8.6): one function, shared by the catalogue builder (which projects
+"""Two digests of a part list. `inventory_digest` is the catalogue's own form (below); `bl_digest` is the BrickLink-space one.
+
+The BrickLink-space digest of a part list (design 4.1, 8.6): one function, shared by the catalogue builder (which projects
 a Rebrickable inventory through the catalogue's links) and the 3.3 migration (which hashes a copy's lines as they were).
 
 A line is a tuple `(kind, key, color, is_spare, quantity)`:
@@ -22,3 +24,14 @@ def bl_digest(lines):
         total[k] = total.get(k, 0) + int(quantity)
     ordered = sorted(total.items(), key=lambda kv: (kv[0][0], kv[0][1], kv[0][2] is not None, kv[0][2] or '', kv[0][3]))
     return hashlib.sha256(json.dumps([[*k, q] for k, q in ordered], separators=(',', ':')).encode()).hexdigest()
+
+
+def inventory_digest(part_lines, figure_lines=(), set_lines=()):
+    """sha256 hex of a part list in the store's own ids: the form the catalogue builder stamps on every inventory version and
+    the fetched-list writer stamps on every fetched one, so equal lists get equal digests wherever they come from.
+
+    `part_lines` are `(item, colour, is_spare, quantity)`, `figure_lines` and `set_lines` are `(item, quantity)`. The lines
+    must already be unique per key (the callers sum first); this only sorts and hashes."""
+    lines = sorted([('p', *l) for l in part_lines] + [('f', i, 0, 0, q) for i, q in figure_lines]
+                   + [('s', i, 0, 0, q) for i, q in set_lines])
+    return hashlib.sha256(repr(lines).encode()).hexdigest()

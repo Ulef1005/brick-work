@@ -1,8 +1,5 @@
 """Conservative visual size proxy. No dimensions or size state are persisted."""
 import re
-import sqlite3
-from contextlib import closing
-from pathlib import Path
 
 # family: (weight, representative size when dimensions are absent)
 WEIGHTS = {'baseplate': (8, 64), 'large': (6, 16), 'brick': (3, 4),
@@ -53,18 +50,22 @@ def size_score(name='', category=''):
     return weight * proxy
 
 
-def identities(parts, path):
-    """One read-only catalog lookup per inventory, exact IDs only; graceful fallback."""
-    if not Path(path).is_file() or not parts:
-        return {}
-    try:
-        with closing(sqlite3.connect(Path(path).resolve().as_uri() + '?mode=ro', uri=True)) as db:
-            marks = ','.join('?' for _ in parts)
-            return {r[0]: (r[1], r[2] or '') for r in db.execute(
-                f'SELECT p.part_num,p.name,c.name FROM parts p LEFT JOIN part_categories c '
-                f'ON c.id=p.part_cat_id WHERE p.part_num IN ({marks})', list(parts))}
-    except sqlite3.Error:
-        return {}
+def identities(db, item_ids):
+    """`{item id: (name, category)}` for parts, one lookup: the projected item (design 6.3: name and `category_name` are projected),
+    else the catalogue's. An id neither file knows is left out; ordering then falls back to a neutral score."""
+    import json
+    ids = json.dumps(sorted({i for i in item_ids if i}))
+    found = {}
+    if ids == '[]':
+        return found
+    from ..store4.connect import has_catalogue
+    stores = [('main', 'i.category_name', '')]
+    if has_catalogue(db):
+        stores.append(('catalogue', 'c.name', ' LEFT JOIN catalogue.part_category c ON c.id=i.category_id'))
+    for store, column, join in stores:
+        for r in db.execute(f'SELECT i.id,i.name,{column} AS category FROM {store}.item i{join} WHERE i.id IN (SELECT value FROM json_each(?))', (ids,)):
+            found.setdefault(r['id'], (r['name'], r['category'] or ''))
+    return found
 
 
 def ordered(rows, order='largest'):

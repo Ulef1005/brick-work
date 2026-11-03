@@ -9,8 +9,10 @@ Do this when you saved something by mistake: a wrong count, a copy archived too 
 Undo appears where you made the change:
 
 - **Right after a save.** The notice that confirms a save ends in **Undo** on item pages, in **Manage → Add**, in **Part to Inventory** and in **Check Set Parts**. On an item page the Undo stays offered while that browser tab is open, also after a reload.
+- **On the planning screens.** After a pin or a change to the repair settings on Complete sets, and after any change to the lists on the Wishlist, **Undo** appears next to the message at the top of the page.
 - **In a history list.** **Part Picker** and **Matcher** list **Recent saves**. A storage location's page has **History**, and an order has **Allocation history**. Each row that can still be undone has an **Undo** button; rows already undone say **Undone**.
 - **For tokens.** After you revoke an API token, the banner offers **Undo** for 10 minutes.
+- **In Tools & Admin.** After **Save settings** the page offers **Undo**, and after you remove a source key the key's card does. **Unresolved items** offers it after each decision, a merge included ([Resolve unresolved items and merge items](merge-items.md)).
 
 Press **Undo**. The change is reversed and recorded as a new event. An Undo cannot be undone itself; make the change again instead.
 
@@ -20,10 +22,10 @@ Undo puts back the state from before your save, so it first checks that nothing 
 
 ### What Undo can't take back
 
-- Import jobs, price lookups and pictures already stored. Picture refresh says so: **No Undo for picture refresh**.
+- Import jobs, price lookups and pictures already stored. Picture refresh says so: **No Undo for picture refresh**. The copies a **Fetch from Rebrickable** made are the exception: Undo on the Add page takes them back like any other Add row.
 - Requests already spent from a source's daily budget, such as Brickognize identifications.
 - Changes sent to Rebrickable or Brickset with collection sync. Undo in Brick Work cannot reach the other site.
-- A database check, and an Undo itself.
+- A database check, a database export, and an Undo itself.
 
 Archiving is not deleting. An archived copy, list, location or value stays in the database, and Undo restores it.
 

@@ -20,7 +20,7 @@ const root=new Node({wlUrl:'/planning/wishlists/ACTION',csrf:'csrf'}),bar=new No
 root.nodes={'[data-wl-message]':message,'[data-wl-undo]':undo,'[data-wl-count]':count,'[data-wl-export]':exp,'[data-wl-summary]':summary,'[data-wl-summary-content]':content};
 root.nodes['[data-wl-selection]']=bar;root.nodes['[data-wl-clear]']=clear;
 root.groups={'[data-wl-open]':[open],'[data-wl-close]':[close],'form[data-wl-action]':[create,transfer]};
-let selected=[{value:'1',checked:true},{value:'2',checked:true}];const events={},requests=[],storage=new Map([['bw-wishlists-receipt','41']]);
+let selected=[{value:'w1',checked:true},{value:'w2',checked:true}];const events={},requests=[],storage=new Map([['bw-wishlists-receipt','41']]);
 let fail=false,reloads=0,download;
 const document={querySelector:s=>root.querySelector(s),querySelectorAll:s=>s==='[data-wl-root]'?[root]:s==='[data-wl-selected]:checked'?selected.filter(c=>c.checked):root.querySelectorAll(s),getElementById:()=>sheet,addEventListener:(k,f)=>events[k]=f,createElement:()=>{const n=new Node();download=n;return n;}};
 const context={document,sessionStorage:{getItem:k=>storage.get(k),setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},location:{reload:()=>reloads++},FormData:class{constructor(form){return Object.entries(form.values);}},Blob:class{},URL:{createObjectURL:()=> 'blob:download',revokeObjectURL(){}},setTimeout:f=>f(),fetch:async(url,options)=>{
@@ -37,7 +37,7 @@ async function submit(form,value=''){form.events.submit({preventDefault(){},targ
  await submit(create);assert.equal(requests.at(-1).body.values.name,'Gifts');assert.equal(requests.at(-1).body.values.bricklink_id,null);assert.equal(requests.at(-1).body.csrf_token,'csrf');assert.equal(reloads,1);
  assert.equal(count.textContent,'2 selected');assert.equal(bar.hidden,false);
  events.change({target:{matches:s=>s==='[data-wl-selected]'}});assert.equal(count.textContent,'2 selected');
- await submit(transfer,'true');assert.deepEqual(requests.at(-1).body.ids,[1,2]);assert.equal(requests.at(-1).body.copy,true);
+ await submit(transfer,'true');assert.deepEqual(requests.at(-1).body.ids,['w1','w2']);   // wish ids are text (uuid) since 4.0assert.equal(requests.at(-1).body.copy,true);
  fail=true;await submit(transfer,'false');assert.equal(message.textContent,'An item already exists');assert.equal(transfer.nodes.button.disabled,false);assert.equal(reloads,2);
  clear.events.click();assert.equal(count.textContent,'0 selected');assert.equal(bar.hidden,true);
  selected[0].checked=true;events.change({target:{matches:s=>s==='[data-wl-selected]'}});assert.equal(count.textContent,'1 selected');assert.equal(bar.hidden,false);

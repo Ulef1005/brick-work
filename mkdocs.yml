@@ -4,6 +4,7 @@ site_name: Brick Work
 docs_dir: docs
 exclude_docs: |
   adr/
+  approval/
   brickwork/
   data-model-4.0/
   img/

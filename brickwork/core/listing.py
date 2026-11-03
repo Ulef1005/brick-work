@@ -1,4 +1,5 @@
-"""Shared collection filtering and stable keyset pagination, without database reads."""
+"""Shared collection filtering and stable keyset pagination, without database reads. Conditions and statuses are words (design 5.1);
+a search takes the Rebrickable number and the BrickLink number (`also`)."""
 import base64
 from functools import cmp_to_key
 from decimal import Decimal
@@ -16,21 +17,50 @@ def natural(value):
     return [(1, int(v)) if v.isdigit() else (0, v.casefold()) for v in re.split(r'(\d+)', str(value or ''))]
 
 
+def _value(r, key):
+    if key == 'ranking':
+        rank = r.get('ranking', [0, 0, '0', '0', 0, '', ''])
+        return (rank[0], rank[1], Decimal(rank[2]), Decimal(rank[3]), rank[4], rank[5], rank[6])
+    if key == 'used_price':
+        p = r.get('price')
+        return (p[0], float(p[1])) if p else ('', 0)
+    if key == 'missing':
+        return float(r.get('missing') or 0) + float(r.get('damaged') or 0)
+    if key in ('quantity', 'year', 'damaged', 'index'):
+        return float(r.get(key) or 0)
+    return natural(r.get(key))
+
+
 def compare(a, b, key):
-    def value(r):
-        if key == 'ranking':
-            rank = r.get('ranking', [0, 0, '0', '0', 0, '', ''])
-            return (rank[0], rank[1], Decimal(rank[2]), Decimal(rank[3]), rank[4], rank[5], rank[6])
-        if key == 'used_price':
-            p = r.get('price')
-            return (p[0], float(p[1])) if p else ('', 0)
-        if key == 'missing':
-            return float(r.get('missing') or 0) + float(r.get('damaged') or 0)
-        if key in ('quantity', 'year', 'damaged', 'index'):
-            return float(r.get(key) or 0)
-        return natural(r.get(key))
-    x, y = value(a), value(b)
+    x, y = _value(a, key), _value(b, key)
     return (x > y) - (x < y)
+
+
+def ordered(rows, sort, direction, group=''):
+    """`rows` in `comparator`'s order, by keys: each row's values are computed once, not once per comparison.
+
+    Stable sorts from the least significant key to the most: the tie-breaks (number, then id, read only where numbers tie), the sort
+    key (reversed where the comparator negates it), rows with a price first for `used_price`, then the group. Python's sort is stable,
+    also with `reverse`, so the order is the comparator's."""
+    rows = list(rows)
+    numbers = [_value(r, 'number') for r in rows]
+    order = sorted(range(len(rows)), key=numbers.__getitem__)
+    start = 0
+    while start < len(order):                          # equal numbers: the id breaks the tie
+        end = start + 1
+        while end < len(order) and numbers[order[end]] == numbers[order[start]]:
+            end += 1
+        if end - start > 1:
+            order[start:end] = sorted(order[start:end], key=lambda k: _value(rows[k], 'id'))
+        start = end
+    primary = numbers if sort == 'number' else [_value(r, sort) for r in rows]
+    order.sort(key=primary.__getitem__, reverse=direction == 'desc' or sort == 'missing')
+    if sort == 'used_price':
+        order.sort(key=lambda k: not rows[k].get('price'))
+    if group:
+        grouped = [_value(r, group) for r in rows]
+        order.sort(key=grouped.__getitem__)
+    return [rows[k] for k in order]
 
 
 def comparator(sort, direction, group=''):
@@ -58,10 +88,10 @@ def filter_rows(rows, query='', filters=None, sort='number', direction='asc', gr
         if full or partial:
             if not size_matches(r.get('name') or '', full, partial):
                 return False
-            text = ' '.join(str(r.get(k) or '') for k in ('name', 'number', 'colour', 'category', 'theme', 'year')).casefold()
+            text = ' '.join(str(r.get(k) or '') for k in ('name', 'number', 'also', 'colour', 'category', 'theme', 'year')).casefold()
             if any(word.casefold() not in text for word in rest.split()):
                 return False
-        elif query.strip().casefold() not in ' '.join(str(r.get(k) or '') for k in ('name', 'number', 'colour', 'category', 'theme', 'year')).casefold():
+        elif query.strip().casefold() not in ' '.join(str(r.get(k) or '') for k in ('name', 'number', 'also', 'colour', 'category', 'theme', 'year')).casefold():
             return False
         for key, v in filters.items():
             if v is None or v == '':
@@ -98,11 +128,10 @@ def filter_rows(rows, query='', filters=None, sort='number', direction='asc', gr
                 target = 'flags' if key in ('tag', 'has') else 'flag_ids' if key == 'flag' else 'number' if key == 'item_no' else 'type' if key == 'item_type' else key
                 actual = r.get(target, '')
                 actual = actual if isinstance(actual, list) else [actual]
-                value = {'new': 'N', 'used': 'U', 'damaged': 'D'}.get(value, value) if key == 'condition' else value
-                value = {'sealed': 'S', 'complete': 'C', 'incomplete': 'I', 'unknown': ''}.get(value, value) if key == 'status' else value
+                value = '' if key == 'status' and value == 'unknown' else value               # words are stored and served (design 5.1)
                 if value not in [str(x) for x in actual]: return False
         return filters.get('archived') in ('include', 'only') or not r.get('archived_at')
-    return sorted(filter(matches, rows), key=cmp_to_key(comparator(sort, direction, group)))
+    return ordered(filter(matches, rows), sort, direction, group)
 
 
 def paginate(rows, *, cursor=None, limit=50, sort='number', direction='asc', signature=''):

@@ -26,7 +26,7 @@ import sqlite3
 from uuid import uuid4
 
 from ...store4 import copies, pending
-from ...store4.connect import has_catalogue, now as store_now
+from ...store4.connect import as_current, has_catalogue, now as store_now
 from .. import errors, items, stock
 from .. import undo as undoing
 from ..admin import audit, origin
@@ -561,7 +561,7 @@ def _undo_import(db, event, via, actor):
     changed = 'Something from this import has changed since · undo the later change first'
     for entry in r['wishes']:
         row = db.execute('SELECT * FROM main.wish WHERE id=?', (entry['id'],)).fetchone()
-        if row is None or dict(row) != entry['after']:
+        if row is None or dict(row) != as_current('wish', entry['after']):
             raise ValueError(changed)
     for copy_id in r['copies']:
         guard = r['guards'][copy_id]

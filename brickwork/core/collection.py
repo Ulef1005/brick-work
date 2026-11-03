@@ -22,7 +22,7 @@ from .admin import audit, origin
 from .completeness import derived_state
 from .sources.base import now
 from ..store4 import copies as store_copies, identity, part_list_read
-from ..store4.connect import has_catalogue, now as stamp_now
+from ..store4.connect import as_current, has_catalogue, now as stamp_now
 
 TYPES = {'S': 'Sets', 'M': 'Minifigures', 'P': 'Parts', 'I': 'Instructions',
          'O': 'Boxes', 'G': 'Gear', 'B': 'Books', 'C': 'Catalogs'}
@@ -121,6 +121,15 @@ def decorate(db, rows, loaded=None):
         key = r['item_id'], r['color_id']
         if key not in pictures or candidate < pictures[key]:
             pictures[key] = candidate
+    shown = {}                                                          # per colour id: (name, rgb, ink), worked out once
+
+    def colour_of(colour_id):
+        if colour_id not in shown:
+            colour = colour_rows.get(colour_id)
+            rgb = (colour['rgb'] if colour else None) or ''
+            rgb = rgb if re.fullmatch('[a-fA-F0-9]{6}', rgb) else None
+            shown[colour_id] = (colour['name'] if colour else None, rgb, add.colour_ink(rgb))
+        return shown[colour_id]
     result = []
     for source in rows:
         row = dict(source)
@@ -136,11 +145,7 @@ def decorate(db, rows, loaded=None):
         found = [pictures[key] for key in {(row['item_id'], None), (row['item_id'], row.get('color_id'))} if key in pictures]
         row['image'] = min(found)[2] if found else None
         row['unresolved'] = bool(row['unidentified'] or row['item_id'] in unresolved)
-        colour = colour_rows.get(row.get('color_id'))
-        row['color_name'] = colour['name'] if colour else None
-        rgb = (colour['rgb'] if colour else None) or ''
-        row['rgb'] = rgb if re.fullmatch('[a-fA-F0-9]{6}', rgb) else None
-        row['ink'] = add.colour_ink(row['rgb'])
+        row['color_name'], row['rgb'], row['ink'] = colour_of(row.get('color_id'))
         result.append(row)
     return result
 
@@ -176,6 +181,7 @@ def prices(db, item_id=None, colour=None, *, pairs=None, used_sold=False):
     One item and colour -> a list; `pairs` (item id, colour id) rows -> `{(item, colour): [quotes]}`. `used_sold` keeps only
     the used, sold-guide, non-boxed quote: all a list row's price ever reads."""
     if pairs is not None:
+        pairs = list(pairs)
         where, params = 'WHERE p.item_id IN (SELECT value FROM json_each(?))', [_in(i for i, _ in pairs)]
     else:
         where, params = 'WHERE p.item_id=? AND p.color_id IS ?', [item_id, colour]
@@ -187,6 +193,10 @@ def prices(db, item_id=None, colour=None, *, pairs=None, used_sold=False):
         FROM price_current p JOIN price_observation o ON o.id=p.observation_id JOIN item i ON i.id=p.item_id
         LEFT JOIN source_freshness f ON f.source=o.source AND f.kind='prices' ''' + where +
         ' ORDER BY p.item_id,p.condition,p.guide,p.currency,p.slot,p.region', params).fetchall()
+    if pairs is not None and len(rows) > len(pairs):
+        # More quotes than pairs: other colours of those items came along. A caller reads its own pairs, so only those are decorated.
+        wanted = {(i, c) for i, c in pairs}
+        rows = [r for r in rows if (r['item_id'], r['color_id']) in wanted]
     result = defaultdict(list)
     for r in decorate_prices(rows):
         result[r['item_id'], r['color_id']].append(r)
@@ -281,9 +291,12 @@ def instances(db, kind=None, *, include_archived=False, item_id=None, stock_only
     return out
 
 
-def _instances(db, kind, include_archived, item_id, stock_only=False):
-    """`instances` before decoration: the rows with their flags in `_flags`."""
+def _instances(db, kind, include_archived, item_id, stock_only=False, item_ids=None):
+    """`instances` before decoration: the rows with their flags in `_flags`. `item_ids` scopes the read to those items (every row of
+    each, so a copy's `Set N` counts as in the whole list)."""
     one, params = (' AND c.item_id=?', [item_id]) if item_id is not None else ('', [])
+    if item_ids is not None:
+        one, params = one + ' AND c.item_id IN (SELECT value FROM json_each(?))', params + [_in(item_ids)]
     where = f'{_scope(include_archived, "c")}{one}'
     copies = []
     if kind in (None, 'set') and not stock_only:
@@ -295,10 +308,11 @@ def _instances(db, kind, include_archived, item_id, stock_only=False):
         defects = _copy_defects(db, where, params)
         for row in copies:
             row['missing'], row['damaged'], row['missing_parts'], row['missing_figures'] = defects.get(row['id'], (0, 0, 0, 0))
-    stock_where = f'{_scope(include_archived, "s")}' + (' AND s.item_id=?' if item_id is not None else '') + (' AND s.kind=?' if kind else '')
-    stock_params = ([item_id] if item_id is not None else []) + ([kind] if kind else [])
+    stock_where = (f'{_scope(include_archived, "s")}' + (' AND s.item_id=?' if item_id is not None else '') + (' AND s.kind=?' if kind else '')
+                   + (' AND s.item_id IN (SELECT value FROM json_each(?))' if item_ids is not None else ''))
+    stock_params = ([item_id] if item_id is not None else []) + ([kind] if kind else []) + ([_in(item_ids)] if item_ids is not None else [])
     rows = [] if kind == 'set' else [dict(r) for r in db.execute(f'{_STOCK} WHERE {stock_where} ORDER BY s.item_id,s.color_id,s.created_at,s.id', stock_params)]
-    scoped = item_id is not None or kind
+    scoped = item_id is not None or kind or item_ids is not None
     flags = _flags(db, {'stock': [r['id'] for r in rows] if scoped else None} if stock_only else
                    {'copy': [r['id'] for r in copies], 'stock': [r['id'] for r in rows]} if scoped else {'copy': None, 'stock': None})
     for row in copies + rows:
@@ -627,8 +641,9 @@ def detail(db, item_id, *, colour=None, copy_id=None, stock_id=None, wish_id=Non
     row['price_records'] = decorate_prices(observations)
     row['condition_prices'] = collection_prices.condition_rows(row['price_records'], kind, price_priority)
     row['price_history'] = collection_prices.history(observations, collection_prices.choose([p for p in row['price_records'] if p['guide'] == 'sold' and p.get('slot') != 'boxed'], kind, price_priority, 'used'))
-    valuation = [p for p in row['price_records'] if p['guide'] in ('valuation', 'manual') or p.get('slot') == 'boxed']
-    row['valuation_prices'] = [p for slot in ('boxed', 'estimate') if (p := collection_prices.choose([p for p in valuation if (p.get('slot') == 'boxed') == (slot == 'boxed')], kind, price_priority))]
+    estimate = collection_prices.choose([p for p in row['price_records'] if p['guide'] in ('valuation', 'manual') and p.get('slot') != 'boxed'],
+                                        kind, price_priority)
+    row['valuation_prices'] = [p for p in (collection_prices.with_box(row['price_records'], kind, price_priority), estimate) if p]
     row['retail'] = retail(db, item_id) if kind == 'set' else None
     row['retail_saving'] = None
     if row['retail'] and selected and selected['entity'] == 'copy':
@@ -956,7 +971,10 @@ def search(db, query, limit=20):
             UNION SELECT item_id FROM main.item_link WHERE provider='bricklink' AND status IN ('matched','inferred','manual') AND provider_key LIKE ?1 ESCAPE '\\'""",
             (pattern, word))}
     candidates = {}
-    for r in _instances(db, None, False, None):
+    # Every live row of an item some matching row belongs to: the ids alone pick those items, then their rows are read whole.
+    scope = {item for row_id, item in db.execute('SELECT id,item_id FROM copy WHERE archived_at IS NULL UNION ALL SELECT id,item_id FROM stock WHERE archived_at IS NULL')
+             if item in matching or any(w in str(row_id).casefold() for w in words)}
+    for r in _instances(db, None, False, None, item_ids=scope) if scope else ():
         if r['item_id'] in matching or any(w in str(r['id']).casefold() for w in words):
             candidate = candidates.setdefault((r['item_id'], r.get('color_id')), dict(r, instances=[]))
             candidate['instances'].append(r)
@@ -993,11 +1011,14 @@ FIELDS = {
     'copy': {'condition', 'storage_id', 'place_id', 'purchase_date', 'purchase_price', 'purchase_currency', 'note', 'completeness',
              'completeness_source', 'current_value', 'current_value_currency'},
     'stock': {'condition', 'storage_id', 'place_id', 'purchase_date', 'purchase_price', 'purchase_currency', 'note', 'lot_id'},
-    'wish': {'quantity', 'color_id', 'condition', 'max_price', 'max_price_currency', 'note', 'wishlist_id', 'qty_filled_manual'},
+    'wish': {'quantity', 'color_id', 'condition', 'max_price', 'max_price_currency', 'max_price_boxed', 'max_price_boxed_currency', 'note',
+             'wishlist_id', 'qty_filled_manual'},
     'lot': {'name', 'note', 'storage_id', 'place_id', 'purchase_date', 'purchase_price', 'purchase_currency'},
 }
 CONDITIONS = {'copy': (None, 'new', 'used'), 'stock': (None, 'new', 'used', 'damaged'), 'wish': (None, 'new', 'used', 'any'), 'lot': (None,)}
-PAIRS = (('purchase_price', 'purchase_currency'), ('current_value', 'current_value_currency'), ('max_price', 'max_price_currency'))
+PAIRS = (('purchase_price', 'purchase_currency'), ('current_value', 'current_value_currency'), ('max_price', 'max_price_currency'),
+         ('max_price_boxed', 'max_price_boxed_currency'))
+MAXIMA = {'max_price': 'max price', 'max_price_boxed': 'max price with box'}   # a wish's limits: their own words in a refusal
 STAMPED = ('copy', 'stock', 'wish', 'lot')                      # tables with `updated_at`
 
 
@@ -1057,11 +1078,11 @@ def _pairs(db, edits, old):
         named = _currency(edits[currency]) if edits.get(currency) is not None else None
         if price in edits:
             if edits[price] is None:
-                if named is not None and price == 'max_price':
-                    raise ValueError('Enter a max price or clear the currency')
+                if named is not None and price in MAXIMA:
+                    raise ValueError(f'Enter a {MAXIMA[price]} or clear the currency')
                 edits[currency] = None                           # a cleared price takes its currency with it
             else:
-                edits[price] = _price(edits[price], 'max price' if price == 'max_price' else 'price')
+                edits[price] = _price(edits[price], MAXIMA.get(price, 'price'))
                 shared = {r[currency] for r in old}
                 edits[currency] = named or (shared.pop() if len(shared) == 1 and None not in shared else configured_currency(db))
         elif named is None:
@@ -1155,6 +1176,8 @@ def save(db, entity, ids, data, *, archive=False):
 
 
 def _check_wish_edits(db, ids, old, edits):
+    if edits.get('max_price_boxed') is not None and any(r['kind'] != 'set' for r in old):
+        raise ValueError('Only set wishes have a max price with box')         # only a set has a quote with box (#131)
     if 'quantity' in edits:
         edits['quantity'] = add.quantity(edits['quantity'])
     if 'color_id' in edits:
@@ -1246,7 +1269,7 @@ def _undo_collection(db, event, via, actor):
             current = links(db, table, sample[LINK_TABLES[table]]) if sample else []
         else:
             current = snapshot(db, table, [r['id'] for r in new['rows']])
-        if current != new['rows']:
+        if current != [as_current(table, r) for r in new['rows']]:          # a receipt from before an upgrade lacks its columns
             raise ValueError(changed)
         if table == 'wishlist' and not old['rows'] and db.execute('SELECT 1 FROM main.wish WHERE wishlist_id=? AND archived_at IS NULL', (new['rows'][0]['id'],)).fetchone():
             raise ValueError('Wishlist changed · undo its wishes first')
@@ -1285,7 +1308,7 @@ def _put_back(db, pairs, stamp):
             db.executemany(f'UPDATE main.{table} SET {sets} WHERE id=?', [((stamp, stamp, r['id']) if 'updated_at' in names else (stamp, r['id'])) for r in new['rows']])
         else:
             names = [c for c in columns(db, table) if c != 'id']
-            for r in old['rows']:
+            for r in map(lambda row: as_current(table, row), old['rows']):
                 if table == 'wish':
                     wish_collision(db, table, r)
                 db.execute(f'UPDATE main.{table} SET ' + ','.join(f'{c}=?' for c in names) + ' WHERE id=?', (*[r[c] for c in names], r['id']))

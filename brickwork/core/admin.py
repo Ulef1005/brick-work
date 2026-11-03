@@ -9,7 +9,7 @@ import uuid
 
 from .connect import connect
 from ..store4.audit import OPERATION_KEY, value_text
-from ..store4.connect import now as store4_now
+from ..store4.connect import SCHEMA_VERSION, now as store4_now
 from .pipeline import Pipeline, TYPES, validate_priority
 from .sources.base import now, redact
 
@@ -202,7 +202,7 @@ def seed_new(db):
             flag = dict(id=uuid.uuid4().hex, name=name, kind='status', shown_on_grid=1, system=1, created_at=store4_now())
             db.execute('INSERT INTO main.flag(id,name,kind,shown_on_grid,system,created_at) VALUES(:id,:name,:kind,:shown_on_grid,:system,:created_at)', flag)
             audit(db, 'flag:' + flag['id'], 'record', None, flag, via='cli')
-        audit(db, 'database', 'setup', new='4.0', via='cli')
+        audit(db, 'database', 'setup', new=SCHEMA_VERSION, via='cli')
         return True
 
 

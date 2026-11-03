@@ -1,0 +1,66 @@
+"""The bench's outputs do not change (perf/whole-repo): the API v2 responses, the MCP tool outputs and the HTML of the main pages, on the
+bench store at a small scale, hash to `tests/bench_reference.json`. The reference was taken from the code before any speed-up, so a
+speed-up that changes any byte of an output fails here. Rebuild it only for an intended change of output:
+
+    BW_BENCH_CACHE=$(mktemp -d) python scripts/bench.py --scale 0.05 --hashes > tests/bench_reference.json
+"""
+import json
+from pathlib import Path
+
+import pytest
+
+from scripts import bench
+
+REFERENCE = json.loads((Path(__file__).parent / 'bench_reference.json').read_text())
+SCALE = 0.05
+
+
+@pytest.fixture(scope='module')
+def store(tmp_path_factory):
+    folder = tmp_path_factory.mktemp('bench')
+    ids = bench.build(folder, SCALE)
+    return folder, ids
+
+
+def test_every_output_is_the_one_before_the_speed_ups(store):
+    folder, ids = store
+    found = bench.hashes(folder, ids)
+    assert set(found) == set(REFERENCE)
+    assert {name for name in found if found[name] != REFERENCE[name]} == set()
+
+
+def test_the_check_catches_a_changed_output(store, monkeypatch):
+    """A deliberate breakage, one verdict lost, shows in the wishlist page, the wish list API and the MCP tool that reads it."""
+    from brickwork.core import planning
+    monkeypatch.setattr(planning, 'max_comparison', lambda row, rates=None, price=None, **kw: (None, None))
+    folder, ids = store
+    found = bench.hashes(folder, ids)
+    changed = {name for name in found if found[name] != REFERENCE[name]}
+    assert {'web planning wishlist', 'api wishes', 'mcp list_wishes'} <= changed
+
+
+def test_the_fast_yaml_loader_reads_the_contract_as_the_python_one_does():
+    """App start and the MCP tools read the v2 contract with libyaml's CSafeLoader where PyYAML has it; it must read the same tree."""
+    yaml = pytest.importorskip('yaml')
+    from brickwork.core.contract import contract_v2_path
+    text = contract_v2_path().read_text()
+    if not hasattr(yaml, 'CSafeLoader'):
+        pytest.skip('PyYAML without libyaml: the Python loader is used')
+    assert yaml.load(text, Loader=yaml.CSafeLoader) == yaml.safe_load(text)
+
+
+@pytest.mark.parametrize('sort', sorted(__import__('brickwork.core.listing', fromlist=['SORTS']).SORTS))
+@pytest.mark.parametrize('direction', ['asc', 'desc'])
+@pytest.mark.parametrize('group', ['', 'colour', 'year'])
+def test_the_key_sort_is_the_comparators_order(sort, direction, group):
+    """`listing.ordered` (stable key sorts) puts rows in exactly `comparator`'s order, ties and absent values included."""
+    import random
+    from functools import cmp_to_key
+    from brickwork.core import listing
+    rng = random.Random(7)
+    rows = [dict(id=f'r{i}', number=rng.choice(['3001', '3001b', '10', '2', 'fig-000004', '', None]), name=rng.choice(['Brick', 'brick', 'Plate', None]),
+                 year=rng.choice([1990, 2001, None]), quantity=rng.choice([0, 1, 5]), missing=rng.choice([0, 2, None]), damaged=rng.choice([0, 1]),
+                 colour=rng.choice(['Red', 'Blue', '']), index=rng.randrange(5), price=rng.choice([None, ['EUR', '1.50'], ['EUR', '0.20'], ['USD', '1.50']]),
+                 ranking=rng.choice([[0, 1, '2.5', '1', 3, 'a', 'b'], [1, 0, '0', '0', 0, '', '']]))
+            for i in range(300)]
+    assert listing.ordered(rows, sort, direction, group) == sorted(rows, key=cmp_to_key(listing.comparator(sort, direction, group)))

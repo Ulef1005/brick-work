@@ -222,7 +222,7 @@ CREATE VIRTUAL TABLE item_fts USING fts5(item_id UNINDEXED, kind UNINDEXED, name
 -- =====================================================================
 
 CREATE TABLE meta(key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL) STRICT;
--- keys: schema_version='4.0'; install_id; catalogue_id (bound at the first build; connect()
+-- keys: schema_version='4.1' (4.0 before #131; connect() upgrades a 4.0 file in place); install_id; catalogue_id (bound at the first build; connect()
 -- refuses a catalogue whose catalogue_id differs); catalogue_item_high_water and
 -- catalogue_color_high_water (copied at every activation: a rebuild from scratch mints above
 -- them); migrated_from (3.3 file name, sha256, migration report digest) after the migration.
@@ -609,6 +609,7 @@ CREATE TABLE wish(
  max_price TEXT, max_price_currency TEXT,
  qty_filled_manual INTEGER CHECK(qty_filled_manual IS NULL OR qty_filled_manual>=0),
  note TEXT, added_at TEXT NOT NULL, updated_at TEXT NOT NULL, archived_at TEXT,
+ max_price_boxed TEXT, max_price_boxed_currency TEXT CHECK((max_price_boxed IS NULL) = (max_price_boxed_currency IS NULL)), -- 4.1 (#131): last, as the upgrade adds them
  CHECK((kind='part') = (color_id IS NOT NULL)),
  CHECK((max_price IS NULL) = (max_price_currency IS NULL))) STRICT;
 CREATE UNIQUE INDEX wish_live_key ON wish(wishlist_id, item_id, color_key) WHERE archived_at IS NULL;

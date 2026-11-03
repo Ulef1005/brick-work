@@ -194,7 +194,11 @@ def completion_context(db, all_gaps):
 
 def _usable_stock(db, wanted):
     """`{key: [(stock row, have)]}` for the live loose stock whose key some gap wants and of which some can be given."""
-    rows = [dict(r) for r in db.execute("SELECT * FROM main.stock WHERE archived_at IS NULL AND quantity>0 AND kind IN ('part','minifigure','instructions','box') ORDER BY id")]
+    # A part or figure row's key is its (item, colour): only rows of a wanted item can match. A booklet or box row's key is its BrickLink
+    # number, read below for every such row.
+    items_wanted = json.dumps(sorted({key[0] for key in wanted if isinstance(key[0], int)}))
+    rows = [dict(r) for r in db.execute(f"""SELECT * FROM main.stock WHERE archived_at IS NULL AND quantity>0 AND kind IN ('part','minifigure','instructions','box')
+        AND (kind IN ({','.join(repr(k) for k in sorted(set(BOOKLET_KIND.values())))}) OR item_id IN (SELECT value FROM json_each(?))) ORDER BY id""", (items_wanted,))]
     numbers = _booklet_numbers(db, [r for r in rows if r['kind'] in BOOKLET_KIND.values()])
     defective = defective_figures(db)
     found = defaultdict(list)

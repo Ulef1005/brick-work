@@ -1,6 +1,7 @@
 """The collection's read side on the 4.0 store (M.8b, issue #110): identity on screen, instances and lists, the item page, search, prices,
 places, and the small read modules (ownership, wish progress, completeness, list records), on the fixture pair of `tests/app4.py`.
 Invented data, no network."""
+from datetime import datetime, timezone
 from decimal import Decimal
 import json
 
@@ -335,7 +336,8 @@ def test_prices_decorate_ranges_staleness_and_boxed_labels(world, coll, read):
         assert [p['guide'] for p in listed[world.keep, None]] == ['sold'] and set(listed) == {(world.keep, None), (world.brick, world.red)}
 
 
-def test_a_quote_older_than_its_sources_freshness_is_stale(world, coll, read):
+def test_a_quote_older_than_its_sources_freshness_is_stale(world, coll, read, monkeypatch):
+    monkeypatch.setattr(collection, 'now', lambda: datetime(2026, 10, 27, tzinfo=timezone.utc))   # a day after the world's quotes (issue #132)
     coll.sql("INSERT INTO source_freshness(source,kind,max_age_days) VALUES('bricklink','prices',3)")
     coll.price(world.brick, '0.50', colour=world.red, condition='new', guide='sold', observed='2026-10-01T00:00:00.000Z')
     with read() as db:

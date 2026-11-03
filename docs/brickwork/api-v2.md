@@ -361,7 +361,7 @@ Scope `none` means no token. Every path is relative to `/api/v2`. The **v1** col
 | `POST /wishes` | Add a wish (same colour and item adds to the live row on decision=another). | write | M.11c | same |
 | `DELETE /wishes/{id}` | Archive the wish. | write | M.11c | same |
 | `GET /wishes/{id}` | One wish. | read | M.11b | same |
-| `PATCH /wishes/{id}` | Edit quantity, colour, condition, max price and currency, note. | write | M.11c | same |
+| `PATCH /wishes/{id}` | Edit quantity, colour, condition, max price, max price with box and their currencies, note. | write | M.11c | same |
 | `PUT /wishes/{id}/flags` | Replace the wish flags. | write | M.11c | same |
 | `POST /wishes/{id}/restore` | Restore an archived wish. | write | M.11c | same |
 | `POST /wishes/{id}/to-owned` | Turn a wish into owned copies and archive the wish, one transaction. | write | M.11c | same |

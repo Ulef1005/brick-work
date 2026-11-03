@@ -2533,7 +2533,7 @@ paths:
     patch:
       operationId: patch_wishes_by_id
       x-mcp-tool: update_wish
-      summary: Edit quantity, colour, condition, max price and currency, note.
+      summary: Edit quantity, colour, condition, max price, max price with box and their currencies, note.
       tags:
       - Wishlist
       security:
@@ -8213,6 +8213,18 @@ components:
           - string
           - 'null'
           pattern: ^[A-Z]{3,8}$
+        max_price_boxed:
+          type:
+          - string
+          - 'null'
+          pattern: ^[0-9]+(\.[0-9]+)?$
+          description: Decimal string, never a float. The max for a quote with box (a set's slot boxed); without it such a quote
+            is held against max_price.
+        max_price_boxed_currency:
+          type:
+          - string
+          - 'null'
+          pattern: ^[A-Z]{3,8}$
         condition:
           type:
           - string
@@ -8245,6 +8257,12 @@ components:
           type:
           - boolean
           - 'null'
+        under_max_boxed:
+          type:
+          - boolean
+          - 'null'
+          description: A set's current quote with box against max_price_boxed, or max_price when that is not set; null when either
+            is missing or the currencies differ without a rate.
         current_price:
           type:
           - string
@@ -8304,6 +8322,18 @@ components:
           - string
           - 'null'
           pattern: ^[A-Z]{3,8}$
+        max_price_boxed:
+          type:
+          - string
+          - 'null'
+          pattern: ^[0-9]+(\.[0-9]+)?$
+          description: Decimal string, never a float. The max for a quote with box (a set's slot boxed); without it such a quote
+            is held against max_price.
+        max_price_boxed_currency:
+          type:
+          - string
+          - 'null'
+          pattern: ^[A-Z]{3,8}$
         decision:
           type: string
           enum:
@@ -8343,6 +8373,18 @@ components:
           pattern: ^[0-9]+(\.[0-9]+)?$
           description: Decimal string, never a float.
         max_price_currency:
+          type:
+          - string
+          - 'null'
+          pattern: ^[A-Z]{3,8}$
+        max_price_boxed:
+          type:
+          - string
+          - 'null'
+          pattern: ^[0-9]+(\.[0-9]+)?$
+          description: Decimal string, never a float. The max for a quote with box (a set's slot boxed); without it such a quote
+            is held against max_price.
+        max_price_boxed_currency:
           type:
           - string
           - 'null'

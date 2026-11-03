@@ -305,18 +305,29 @@ def display_prices(db, rows):
             row['display_price'] = collection_prices.choose(
                 [p for p in row['prices'] if p['guide'] in ('sold', 'stock') and p.get('slot') != 'boxed'],
                 row['kind'], priorities, condition)
+        # A set's quote with box, chosen as its price card chooses it (#131): compared with the max with box, never shown as its price.
+        row['boxed_price'] = collection_prices.with_box(records, row['kind'], priorities) if row['kind'] == 'set' else None
     return rows
 
 
-def max_comparison(row, rates=None):
-    """Compare the price shown on a wish with its max; only when both are in the same currency.
+def max_limit(row, price):
+    """The max a quote is held against, with its currency: a boxed quote (`slot` 'boxed') against the wish's max with box when it has
+    one (#131), else, like every other quote, against its max."""
+    if price and price.get('slot') == 'boxed' and row.get('max_price_boxed') is not None:
+        return row['max_price_boxed'], row.get('max_price_boxed_currency')
+    return row.get('max_price'), row.get('max_price_currency')
+
+
+def max_comparison(row, rates=None, price=None, *, conversion='max_conversion'):
+    """Compare a quote on a wish (by default the price shown, `display_price`) with the max it is held against (`max_limit`).
 
     State is 'under' (price at or below the max), 'over', 'differs' (both currencies known and
-    different, never compared) or None (no max, no price or a max without a recorded currency).
-    margin = max minus price, only for a real comparison. No conversion.
+    different and no rate for them) or None (no max, no price or a max without a recorded currency).
+    margin = max minus price, only for a real comparison; a converted price is kept on the row under `conversion`.
     """
-    maximum, price = row.get('max_price'), row.get('display_price')
-    limit_currency = (row.get('max_price_currency') or '').upper()
+    price = row.get('display_price') if price is None else price
+    maximum, limit_currency = max_limit(row, price)
+    limit_currency = (limit_currency or '').upper()
     if maximum is None or not price or price.get('price') is None or not limit_currency:
         return None, None
     price_currency = (price.get('currency') or '').upper()
@@ -326,14 +337,23 @@ def max_comparison(row, rates=None):
         # #39: with rates for both currencies, compare the price converted into the max's currency
         # and keep the conversion for the "≈" mark; without them it stays 'differs'.
         from .currency import convert
-        conversion = convert(price['price'], price_currency, limit_currency, rates) if rates else None
-        if conversion is None:
+        converted = convert(price['price'], price_currency, limit_currency, rates) if rates else None
+        if converted is None:
             return 'differs', None
-        row['max_conversion'] = dict(conversion, amount=str(conversion['amount']), rate=str(conversion['rate']), currency=limit_currency)
-        margin = D(maximum) - conversion['amount']
+        row[conversion] = dict(converted, amount=str(converted['amount']), rate=str(converted['rate']), currency=limit_currency)
+        margin = D(maximum) - converted['amount']
         return ('under' if margin >= 0 else 'over'), margin
     margin = D(maximum) - D(price['price'])
     return ('under' if margin >= 0 else 'over'), margin
+
+
+def compare_maxima(row, rates=None):
+    """A wish's two verdicts: the price shown against its max (`max_state`, `max_margin`) and, for a set with a quote with box, that
+    quote against the max with box, or the max when no max with box is set (`max_boxed_state`, `max_boxed_margin`, #131)."""
+    row['max_state'], row['max_margin'] = max_comparison(row, rates)
+    boxed = row.get('boxed_price')
+    row['max_boxed_state'], row['max_boxed_margin'] = max_comparison(row, rates, boxed, conversion='max_boxed_conversion') if boxed else (None, None)
+    return row
 
 
 def wishes(db):
@@ -343,7 +363,7 @@ def wishes(db):
     rows = display_prices(db, collection.listing(db, 'S', wishes=True))
     table = currency.rates(db)
     for row in rows:
-        row['max_state'], row['max_margin'] = max_comparison(row, table)
+        compare_maxima(row, table)
     wish_progress.annotate(db, rows)
     info = retail.lookup(db, [r['item_id'] for r in rows if r['kind'] == 'set'])
     for r in rows:

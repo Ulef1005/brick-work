@@ -25,7 +25,7 @@ from xml.etree import ElementTree as ET
 
 from ..store4 import copies, fetched, identity, jobs, part_list_read, pending
 from ..store4.audit import Events
-from ..store4.connect import has_catalogue, now
+from ..store4.connect import as_current, has_catalogue, now
 from ..store4.errors import AmbiguousIdentity, Store4Error
 from . import errors, items, pictures, size_search, stock
 from . import undo as undoing
@@ -834,7 +834,7 @@ def _undo_receipt(db, event, via, actor):
     if r.get('wish'):
         w = r['wish']
         row = db.execute('SELECT * FROM main.wish WHERE id=?', (w['id'],)).fetchone()
-        if row is None or dict(row) != w['after']:
+        if row is None or dict(row) != as_current('wish', w['after']):
             raise ValueError(changed)
         if w['created']:
             db.execute('UPDATE main.wish SET archived_at=?, updated_at=? WHERE id=?', (stamp, stamp, w['id']))

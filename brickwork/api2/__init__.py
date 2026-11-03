@@ -52,7 +52,7 @@ def store4_problem(error):
 def _operations(path, stamp):
     import yaml
     with open(path) as handle:
-        spec = yaml.safe_load(handle)
+        spec = yaml.load(handle, Loader=getattr(yaml, 'CSafeLoader', yaml.SafeLoader))   # libyaml where PyYAML has it: 8x faster, same result
     result = {}
     shared = spec.get('components', {}).get('parameters', {})
     for template, methods in spec['paths'].items():

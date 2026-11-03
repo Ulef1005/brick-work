@@ -12,7 +12,7 @@ from . import csv_safe
 
 MISSING = ('Item type', 'Item number', 'Name', 'Colour', 'Colour id', 'Condition', 'Quantity', 'Note')
 PICKER = ('Rank', 'Item type', 'Item number', 'Name', 'Colour', 'Colour id', 'Quantity', 'Sets', 'Storage')
-WISHLIST = ('List', 'Item type', 'Item number', 'Name', 'Colour', 'Colour id', 'Quantity', 'Condition', 'Max price', 'Currency', 'Note')
+WISHLIST = ('List', 'Item type', 'Item number', 'Name', 'Colour', 'Colour id', 'Quantity', 'Condition', 'Max price', 'Currency', 'Max with box', 'Max with box currency', 'Note')
 
 
 def _shown(db, rows):
@@ -66,5 +66,6 @@ def to_csv(kind, rows):
         out.writerow(WISHLIST)
         out.writerows([r['list_name'], r['item_type'], r['item_no'], r['name'] or '', r['colour'] or '',
                        '' if r['color_id'] is None else r['color_id'], r['quantity'], (r['condition'] or '').capitalize(),
-                       r['max_price'] or '', r['max_price_currency'] or '', r['note'] or ''] for r in rows)
+                       r['max_price'] or '', r['max_price_currency'] or '', r.get('max_price_boxed') or '',
+                       r.get('max_price_boxed_currency') or '', r['note'] or ''] for r in rows)
     return stream.getvalue()

@@ -69,8 +69,8 @@ def test_a_voided_observation_never_shows(v2, coll, world):
 
 
 def test_the_prices_of_one_item_are_current_and_recorded(v2, coll, world):
-    coll.price(world.brick, '0.35', colour=world.red, observed=stamp(5))
-    coll.price(world.brick, '0.30', colour=world.white, observed=stamp(3))
+    coll.price(world.brick, '0.35', colour=world.red, observed='2026-10-21T12:00:00.000Z')      # five and three days before the world's 0.40
+    coll.price(world.brick, '0.30', colour=world.white, observed='2026-10-23T12:00:00.000Z')    # (fixed dates beside a fixed one, issue #132)
     prices = data(call(v2, f'/items/{world.brick}/prices'))
     assert set(prices) == {'current', 'records'} and len(prices['records']) == 3
     assert [r['price'] for r in prices['records']] == ['0.40', '0.30', '0.35']                    # by when they were observed, newest first
@@ -332,7 +332,7 @@ def test_the_picker_list_orders_the_pick_and_the_wishlist_list_is_one_or_all(v2,
     assert picker.data.decode().splitlines() == ['Rank,Item type,Item number,Name,Colour,Colour id,Quantity,Sets,Storage', '1,P,3001,Brick 2 x 4,Red,4,1,1000-1,Shelf A']
     assert call(v2, f'/export/picker.csv?copy_id={world.copy_a}').status_code == 200
     everything = call(v2, '/export/wishlist.csv').data.decode().splitlines()
-    assert everything[0] == 'List,Item type,Item number,Name,Colour,Colour id,Quantity,Condition,Max price,Currency,Note' and len(everything) == 3
-    assert everything[1] == 'Wishlist,P,3023,Plate 1 x 2,White,7,2,New,0.50,EUR,'
+    assert everything[0] == 'List,Item type,Item number,Name,Colour,Colour id,Quantity,Condition,Max price,Currency,Max with box,Max with box currency,Note' and len(everything) == 3
+    assert everything[1] == 'Wishlist,P,3023,Plate 1 x 2,White,7,2,New,0.50,EUR,,,'
     assert len(call(v2, '/export/wishlist.csv?list=default').data.decode().splitlines()) == 3 and call(v2, '/export/wishlist.csv?list=nothing').status_code == 404
     assert call(v2, '/export/picker.csv').status_code == 422

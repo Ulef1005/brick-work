@@ -65,16 +65,21 @@ def setup_app(app: Flask) -> None:
     register_v2(app)
 
     from .core import admin as core_admin, keys as core_keys
-    from .core.connect import connect as open_collection
+    from .api.transport import read_only
+    from .core.connect import connect as open_collection, upgrade as upgrade_collection
     from .core.pipeline import database_path
     # The 4.0 fetchers read credentials through the app's key store: the environment first, then `source_key` (M.8a).
     core_keys.install(database_path)
     # A collection that is not a 4.0 file stops the start with the fix named. Read-only and without the catalogue, so a first
     # run (no catalogue yet) still boots; a missing file is the setup page's business. Inside the app context, so a path set in
     # the app's config (BRICKWORK_DB_PATH) is the one checked.
+    # An older 4.x file is upgraded in place here, the one explicit moment (a read-only instance never writes: it refuses one).
     with app.app_context():
         startup_path = database_path()
+        locked = read_only()
     if startup_path.is_file():
+        if not locked:
+            upgrade_collection(startup_path)
         open_collection(startup_path, read_only=True, require_catalogue=False).close()
 
     @app.before_request

@@ -77,6 +77,16 @@ def test_first_run_has_the_import_step(client):
     assert links == [] if steps[2]['data-state'] == 'waiting' else '/manage/get-started/collection' in links
 
 
+def test_the_preview_keeps_the_way_back_to_get_started(client, tmp_path):
+    """#88 gate run: sent by step 3, the upload and its preview both offer the way back."""
+    client.get('/manage/get-started/collection')
+    csrf = token(client)
+    assert page(client.get('/manage/import-legacy')).select_one('[data-flow-return] a')['href'] == '/manage/get-started/collection'
+    data = upstream(tmp_path / 'app.db').read_bytes()
+    response = client.post('/manage/import-legacy/upload', data={'csrf_token': csrf, 'file': (io.BytesIO(data), 'app.db')}, content_type='multipart/form-data')
+    assert page(client.get(response.location)).select_one('[data-flow-return] a')['href'] == '/manage/get-started/collection'
+
+
 def test_the_choice_screen_offers_the_import(client):
     choice = page(client.get('/manage/get-started/collection')).select_one('[data-choice=bricktracker]')
     assert choice.h2.get_text() == 'BrickTracker' and choice.find('a')['href'] == '/manage/import-legacy'

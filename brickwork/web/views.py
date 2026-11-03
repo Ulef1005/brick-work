@@ -6,6 +6,7 @@ from xml.etree import ElementTree as ET
 from werkzeug.exceptions import HTTPException
 
 from .safe_errors import public
+from ..store4.errors import Store4Error
 from flask import Blueprint, abort, current_app, g, flash, jsonify, redirect, render_template, request, session, url_for
 from flask_login import login_required
 
@@ -80,24 +81,29 @@ def bw_tools():
 def bw_admin(page):
     from . import admin_ops
     titles = {'hub': 'Tools & Admin', 'catalogues': 'Catalogues & keys', 'jobs': 'Jobs',
-              'refresh': 'Bulk refresh prices', 'unresolved': 'Unresolved figures',
+              'refresh': 'Bulk refresh prices', 'unresolved': 'Unresolved items',
               'statistics': 'Statistics', 'values': 'Values', 'database': 'Database',
               'settings': 'Settings', 'appearance': 'Appearance', 'about': 'About', 'history': 'Identify history',
-              'instructions': 'Instruction files'}
+              'instructions': 'Instruction files', **admin_ops.CATALOGUE_PAGES}
     if page not in titles:
         abort(404)
     group = request.args.get('group', 'owners')
     error, data = None, None
     try:
-        if page not in ('appearance', 'about'):
+        if page in admin_ops.CATALOGUE_PAGES:
+            data = admin_ops.catalogue_pages(page)
+        elif page not in ('appearance', 'about'):
             data = admin_ops.tools_read(page, group)
             from ..core.admin import display
             data = display(data)
+            if page == 'unresolved':
+                data['done'] = identity_undo_offer(request.args.get('done', ''))
             if page == 'settings':
                 from ..core import currency
                 from ..core.admin import database
-                with database(admin_ops.brickwork_path(), read_only=True) as rdb:
+                with database(admin_ops.brickwork_path(), read_only=True, require_catalogue=False) as rdb:
                     data['currency'] = dict(display=currency.display_currency(rdb), rates=currency.listing(rdb))
+                    data['saved'] = settings_undo_offer(rdb, request.args.get('saved', ''))
             if page == 'catalogues':
                 from ..core import keys as key_store, secrets as key_secrets
                 data['view'] = admin_ops.catalogues_view(data, key_store.field_map(), key_secrets.entry_available(),
@@ -111,30 +117,58 @@ def bw_admin(page):
     except (ValueError, sqlite3.Error, OSError):
         error = 'Brick Work database is not available. Check BW_DB_PATH and try again.'
     from ..core.pipeline import STEPS, TYPES
+    from ..core.items import KIND_TYPE
+    from ..core.admin import SOURCE_STEPS
     from ..core import keys, secrets
     response = current_app.make_response(render_template('web/toni/web/bw_admin.html',
         page=page, title=titles[page], data=data, error=error, group=group,
-        steps=STEPS, item_types=sorted(TYPES), csrf_token=bw_add_token(), can_edit=bw_collection_editable(),
+        steps=SOURCE_STEPS, item_types=sorted(TYPES), type_letters=sorted(KIND_TYPE.values()), csrf_token=bw_add_token(), can_edit=bw_collection_editable(),
         key_fields=keys.field_map(), key_entry=secrets.entry_available()))
     response.headers['Cache-Control'] = 'no-store'
     return response
 
 
+def identity_undo_offer(text):
+    """`?done=<event id>` on the Unresolved screen: the id when that event is an identity decision that can still be undone, else None."""
+    from . import admin_ops, token_rows
+    from ..core import undo as undoing
+    from ..core.admin import database
+    identifier = token_rows.event_id(text)
+    if identifier is None:
+        return None
+    with database(admin_ops.brickwork_path(), read_only=True, require_catalogue=False) as db:
+        found = db.execute(f"SELECT 1 FROM main.event e WHERE e.id=? AND {undoing.undoable_sql('e')} AND NOT {undoing.undone_sql('e')} "
+                           "AND e.entity_kind IN ('item','item_link','item_provider_status')", (identifier,)).fetchone()
+    return identifier if found else None
+
+
+def settings_undo_offer(db, text):
+    """`?saved=<event id>` on the Settings page: the id when that event is a settings save that can still be undone, else None."""
+    from . import token_rows
+    from ..core import undo as undoing
+    identifier = token_rows.event_id(text)
+    if identifier is None:
+        return None
+    found = db.execute(f"SELECT 1 FROM main.event e WHERE e.id=? AND e.entity_kind='settings' AND e.field='save' AND NOT {undoing.undone_sql('e')}",
+                       (identifier,)).fetchone()
+    return identifier if found else None
+
+
 @web_page.post('/manage/<page>')
 @login_required
 def bw_admin_write(page):
-    from ..core.sources.base import ColourCodeError, SourceError
+    from ..core import errors
+    from ..core.sources.base import SourceError
     from flask import flash
     from . import admin_ops
+    from ..core.admin import SOURCE_STEPS
     from ..core.pipeline import STEPS, TYPES
-    import json
     action = request.form.get('action', '')
     failure_label = {
-        'catalogues': {'load': 'Catalogue load', 'colours': 'Colour load', 'source': 'Source toggle',
-                       'key_save': 'Source key', 'key_test_save': 'Source key', 'key_remove': 'Source key',
+        'catalogues': {'source': 'Source toggle', 'key_save': 'Source key', 'key_test_save': 'Source key', 'key_remove': 'Source key',
                        'key_undo': 'Source key', 'key_test': 'Source key test'}.get(action, 'Catalogues & keys'),
         'settings': 'Picture refresh' if action == 'pictures' else 'Settings',
-        'unresolved': 'Picture load' if action == 'images' else 'Figure resolution',
+        'unresolved': 'Identity decision',
         'refresh': 'Price refresh',
         'jobs': 'Job resume' if action == 'resume' else 'Job retry',
         'values': 'Value ' + {'add': 'add', 'rename': 'rename', 'delete': 'delete'}.get(action, 'save'),
@@ -146,7 +180,25 @@ def bw_admin_write(page):
     if request.headers.get('Sec-Fetch-Site') == 'cross-site':
         abort(403)
     bw_add_csrf(request.form)
+    saved = None
+    if page in admin_ops.CATALOGUE_PAGES:
+        return catalogue_write(page, action)
     try:
+        if page == 'unresolved':
+            if not bw_collection_editable():
+                abort(403, 'Changes are switched off on this instance')
+            fields = ('item', 'target', 'number', 'link', 'kind', 'provider', 'reason', 'event', 'colour', 'merge')
+            try:
+                result = admin_ops.tools_write('identity', action=request.form.get('action', ''),
+                                               **{k: request.form.get(k) or None for k in fields})
+            except (errors.BrickWorkError, ValueError, TypeError) as exc:
+                flash(failure_label + ' · ' + (str(exc) if isinstance(exc, errors.BrickWorkError) else 'Nothing was saved. Check the values and try again.'), 'error')
+                return redirect(url_for('web.bw_admin', page='unresolved'))
+            if request.form.get('action') == 'undo':
+                flash('Undone', 'success')
+                return redirect(url_for('web.bw_admin', page='unresolved'))
+            flash('Saved', 'success')
+            return redirect(url_for('web.bw_admin', page='unresolved', done=result.get('event_id') if isinstance(result, dict) else None))
         if page == 'instructions':
             if request.form['action'] == 'fetch_missing':
                 if not bw_collection_editable():
@@ -155,7 +207,7 @@ def bw_admin_write(page):
                 bw_start_worker()
                 note = f'Queued {len(queued)} identity refreshes'
                 if skipped:
-                    note += f', {len(skipped)} skipped (invalid number: {", ".join(skipped[:5])}{" ..." if len(skipped) > 5 else ""})'
+                    note += f', {len(skipped)} skipped (no number: {", ".join(skipped[:5])}{" ..." if len(skipped) > 5 else ""})'
                 flash(note + ' · This refreshes identities only; no PDFs are downloaded. Upload a PDF to attach one', 'info')
                 return redirect(url_for('web.bw_admin', page='instructions'))
             if request.form['action'] == 'rename':
@@ -172,12 +224,14 @@ def bw_admin_write(page):
                 # Read-only instance: check on a read-only connection and report; nothing is stored or audited.
                 from ..core import admin as core_admin
                 from ..core.admin import database
-                with database(admin_ops.brickwork_path(), read_only=True) as db:
-                    result = core_admin.check(db)
+                with database(admin_ops.brickwork_path(), read_only=True, require_catalogue=False) as db:
+                    result = core_admin.check_all(db)
                 findings = len(result['foreign_key_check'])
-                ok = result['integrity_check'] == ['ok'] and not findings
+                ok = core_admin.check_ok(result)
+                failed = [c['title'] for c in result['cross_checks'] if not c['ok']]
                 flash(('Database check: no problems found' if ok else
-                       f"Database check: integrity {', '.join(result['integrity_check'][:3])} · {findings} foreign-key findings")
+                       f"Database check: integrity {', '.join(result['integrity_check'][:3])} · {findings} foreign-key findings"
+                       + (f" · {', '.join(failed)} failed" if failed else ''))
                       + ' · not stored, this instance is read-only', 'success' if ok else 'error')
                 return redirect(url_for('web.bw_admin', page='database'))
             admin_ops.tools_write('database_check')
@@ -186,19 +240,22 @@ def bw_admin_write(page):
         elif page == 'settings' and request.form.get('action') == 'pictures':
             if not bw_collection_editable():
                 abort(403, 'Changes are switched off on this instance')
-            job, count = admin_ops.tools_write('pictures', source=request.form['source'],
-                scope=request.form['scope'], types=request.form.getlist('types'),
-                expected_count=request.form.get('expected_count') or None)
+            try:
+                jobs, count = admin_ops.tools_write('pictures', scope=request.form['scope'], kinds=request.form.getlist('types'),
+                    expected_count=request.form.get('expected_count') or None)
+            except ValueError as exc:                   # written for people: "N items now match, not M"
+                flash('Picture refresh · ' + str(exc), 'error')
+                return redirect(url_for('web.bw_admin', page='settings') + '#pictures')
             bw_start_worker()
-            flash(f'{count} picture identities queued · No Undo for picture refresh; existing files are kept', 'success')
-            return redirect(url_for('web.bw_admin', page='jobs') + '#job-' + str(job))
+            flash(f'{len(jobs)} picture jobs queued for {count} items · No Undo for picture refresh; existing files are kept', 'success')
+            return redirect(url_for('web.bw_admin', page='jobs'))
         elif page == 'settings' and request.form.get('action') in ('display_currency', 'rate', 'ecb'):
             # #39: display currency and exchange rates; stored amounts never change.
             if not bw_collection_editable():
                 abort(403, 'Changes are switched off on this instance')
             from ..core import currency
             from ..core.admin import database
-            with database(admin_ops.brickwork_path()) as db:
+            with database(admin_ops.brickwork_path(), require_catalogue=False) as db:
                 if request.form['action'] == 'display_currency':
                     flash('Display currency ' + currency.set_display(db, request.form.get('display_currency')), 'success')
                 elif request.form['action'] == 'rate':
@@ -209,9 +266,26 @@ def bw_admin_write(page):
                     flash(f"ECB rates of {result['as_of']} · {result['updated']} currencies"
                           + (f" · {result['kept_manual']} entered by hand kept" if result['kept_manual'] else ''), 'success')
             return redirect(url_for('web.bw_admin', page='settings') + '#currencies')
+        elif page == 'settings' and request.form.get('action') == 'prefer_bricklink':
+            if not bw_collection_editable():
+                abort(403, 'Changes are switched off on this instance')
+            if request.form.get('value') == 'on' and not admin_ops.tools_read('settings')['bricklink_list']['key']:
+                raise ValueError('No BrickLink key')
+            admin_ops.set_prefer_bricklink(request.form.get('value') == 'on')
+            return redirect(url_for('web.bw_admin', page='settings') + '#part-lists')
+        elif page == 'settings' and request.form.get('action') == 'undo':
+            if not bw_collection_editable():
+                abort(403, 'Changes are switched off on this instance')
+            try:
+                admin_ops.tools_write('settings_undo', event=int(request.form['event']))
+            except errors.BrickWorkError as exc:
+                flash('Settings · ' + str(exc), 'error')
+            else:
+                flash('Settings restored', 'success')
+            return redirect(url_for('web.bw_admin', page='settings'))
         elif page == 'settings':
             priority = {}
-            for step in STEPS:
+            for step in SOURCE_STEPS:
                 priority[step] = {}
                 for kind in ['*', *sorted(TYPES)]:
                     value = request.form.get('priority:' + step + ':' + kind, '').strip()
@@ -219,15 +293,7 @@ def bw_admin_write(page):
                         priority[step][kind] = [s.strip() for s in value.split(',')]
             freshness = [(request.form['source:' + n], request.form['kind:' + n], request.form['days:' + n])
                          for n in request.form.getlist('freshness')]
-            admin_ops.tools_write('settings', country=request.form['retail_country'], priority=priority, freshness=freshness)
-        elif page == 'unresolved':
-            identity = {k: request.form[k] for k in ('source', 'kind', 'source_id')}
-            if request.form['action'] == 'images':
-                admin_ops.tools_write('images', **identity)
-                bw_start_worker()
-            else:
-                choice = json.loads(request.form['candidate']) if request.form['action'] == 'pick' else None
-                admin_ops.tools_write('resolve', **identity, selected=tuple(choice) if choice else None)
+            saved = admin_ops.tools_write('settings', country=request.form['retail_country'], priority=priority, freshness=freshness)
         elif page == 'refresh':
             admin_ops.tools_write('refresh')
             bw_start_worker()
@@ -236,14 +302,17 @@ def bw_admin_write(page):
                 abort(403, 'Changes are switched off on this instance')
             job = int(request.form['job'])
             step = request.form.get('step') or None
-            if step is not None and step not in STEPS:
+            if step is not None and step not in STEPS and step != 'fetch':
                 raise ValueError('Unknown step')
             # Queue Retry for the same worker used by refresh, without blocking the request.
             if request.form.get('action') == 'resume':
+                import json
                 from ..core.admin import database
-                with database(admin_ops.brickwork_path(), read_only=True) as db:
-                    saved = db.execute("SELECT state FROM jobs WHERE id=? AND source='import'", (job,)).fetchone()
-                    if saved is None or saved['state'] not in ('running', 'waiting_for_budget'):
+                from ..store4 import jobs as fetch_jobs
+                with database(admin_ops.brickwork_path(), read_only=True, require_catalogue=False) as db:
+                    saved_job = db.execute("SELECT state FROM job WHERE id=? AND (source='import' OR kind IN (SELECT value FROM json_each(?)))",
+                                           (job, json.dumps(sorted(fetch_jobs.KINDS)))).fetchone()
+                    if saved_job is None or saved_job['state'] not in ('running', 'waiting_for_budget'):
                         raise ValueError('Job is not interrupted')
             else:
                 admin_ops.tools_write('retry_queue', job=job, step=step)
@@ -251,7 +320,7 @@ def bw_admin_write(page):
         elif page == 'catalogues' and request.form['action'] in ('key_save', 'key_test_save', 'key_remove', 'key_test', 'key_undo'):
             if not bw_collection_editable():
                 abort(403, 'Changes are switched off on this instance')
-            from ..core import errors, keys
+            from ..core import keys
             from ..core.sources.base import redact, KeyRejected
             source = request.form.get('source', '')
             try:
@@ -283,17 +352,12 @@ def bw_admin_write(page):
                 flash(failure_label + ' · ' + redact(exc), 'error')
                 return redirect(url_for('web.bw_admin', page='catalogues'))
         elif page == 'catalogues':
-            if request.form['action'] == 'load':
-                admin_ops.tools_write('catalogue')
-                admin_ops.tools_write('colours')
-            elif request.form['action'] == 'colours':
-                admin_ops.tools_write('colours')
-            else:
+            if request.form['action'] == 'source':
                 admin_ops.tools_write('source', source=request.form['source'], enabled=request.form.get('enabled') == 'yes')
+            else:
+                abort(400)
         else:
             abort(404)
-    except ColourCodeError as exc:
-        flash(str(exc), 'error')
     except SourceError as exc:
         flash(failure_label + ' · ' + str(exc), 'error')
     except (ValueError, KeyError, TypeError, sqlite3.Error, OSError):
@@ -301,7 +365,70 @@ def bw_admin_write(page):
     else:
         flash('Saved', 'success')
     target = 'jobs' if page in ('refresh', 'jobs') else page
-    return redirect(url_for('web.bw_admin', page=target, **({'group': request.form.get('group', 'owners')} if page == 'values' else {})))
+    extra = {'group': request.form.get('group', 'owners')} if page == 'values' else {'saved': saved} if page == 'settings' and saved else {}
+    return redirect(url_for('web.bw_admin', page=target, **extra))
+
+
+def catalogue_write(page, action):
+    """POST of the catalogue lifecycle pages: start a job (Re-download, Rebuild, Reconcile, load the BrickLink lists)."""
+    from . import admin_ops, catalogue_jobs
+    from ..store4.errors import Store4Error
+    if not bw_collection_editable():
+        abort(403, 'Changes are switched off on this instance')
+    kind = {'redownload': 'redownload', 'rebuild': 'rebuild', 'reconcile': 'reconcile', 'load_lists': 'lists'}.get(action)
+    if kind is None or (kind == 'lists') != (page == 'catalogue-lists') or page in ('catalogue-mappings', 'migration'):
+        abort(400)
+    try:
+        catalogue_jobs.start(admin_ops.store4_paths(), kind, folder=request.form.get('folder') or None)
+    except Store4Error as exc:
+        flash(catalogue_jobs.KINDS[kind] + ' · ' + str(exc), 'error')
+    return redirect(url_for('web.bw_admin', page=page))
+
+
+@web_page.post('/manage/first-run/catalogue')
+@login_required
+def bw_first_run_catalogue():
+    """Onboarding step 1 (design 6.1): the first-run page's button starts the first import, or activates a catalogue file that is there already.
+    Both are catalogue jobs; the page shows their progress."""
+    from . import admin_ops, catalogue_jobs
+    from ..store4.errors import Store4Error
+    bw_add_csrf(request.form)
+    if not bw_collection_editable():
+        abort(403, 'Changes are switched off on this instance')
+    kind = {'first': 'first', 'activate': 'reconcile'}.get(request.form.get('action'))
+    if kind is None:
+        abort(400)
+    try:
+        catalogue_jobs.start(admin_ops.store4_paths(), kind)
+    except Store4Error as exc:
+        flash(catalogue_jobs.KINDS[kind] + ' · ' + str(exc), 'error')
+    return redirect(url_for('web.bw_sets'))
+
+
+@web_page.get('/manage/catalogue/job')
+@login_required
+def bw_catalogue_job():
+    """The running catalogue job as JSON for the progress bar on the page."""
+    from . import admin_ops, catalogue_jobs
+    state = catalogue_jobs.read(admin_ops.store4_paths())
+    response = jsonify(state or dict(state='none'))
+    response.headers['Cache-Control'] = 'no-store'
+    return response
+
+
+@web_page.get('/manage/migration/file/<name>')
+@login_required
+def bw_migration_file(name):
+    """One file of the migration report as a download: only a plain file name that is in the report folder."""
+    from pathlib import Path
+    from flask import send_from_directory
+    from . import admin_ops
+    folder = admin_ops.migration_report_dir()
+    if name != Path(name).name or name.startswith('.') or not (folder / name).is_file():
+        abort(404)
+    response = send_from_directory(folder, name, as_attachment=True)
+    response.headers['Cache-Control'] = 'no-store'
+    return response
 
 
 def bw_tokens_render(*, created=None, revoked_event=None, form_error=None, form_name='', form_scopes=('read', 'write'),
@@ -314,7 +441,7 @@ def bw_tokens_render(*, created=None, revoked_event=None, form_error=None, form_
     from ..core.sources.base import now
     error, stored, environment, revoked_name, revoked_undo = None, [], [], None, False
     try:
-        with database(admin_ops.brickwork_path(), read_only=True) as db:
+        with database(admin_ops.brickwork_path(), read_only=True, require_catalogue=False) as db:
             stored, environment = token_rows.rows(tokens.listing(db), now())
             if revoked_event is not None:
                 revoked_name, revoked_undo = token_rows.revoked_event(db, revoked_event) or (None, False)
@@ -343,10 +470,9 @@ def bw_tokens():
 @web_page.post('/manage/tokens')
 @login_required
 def bw_tokens_write():
-    import uuid
     from . import admin_ops, token_rows
     from ..core import errors, tokens
-    from ..core.admin import database
+    from ..core.admin import database, operation
     from ..core.sources.base import audit_origin
     from flask import flash
     origin = request.headers.get('Origin')
@@ -361,26 +487,24 @@ def bw_tokens_write():
     if action not in ('create', 'revoke', 'undo'):
         abort(400)
     try:
-        with database(admin_ops.brickwork_path()) as db, audit_origin('app'):
+        with database(admin_ops.brickwork_path(), require_catalogue=False) as db, audit_origin('app'):
             if action == 'create':
                 scopes = request.form.getlist('scopes')
-                # Reloading the page that showed a secret resends this form: answer, do not create again (#68).
+                # Reloading the page that showed a secret resends this form: answer, do not create again (#68). The form id is the
+                # operation key of the request that created the token, so "already sent" is read from that token's event.
                 form_id = request.form.get('form_id', '')
                 if not re.fullmatch(r'[0-9a-f]{32}', form_id or ''):
                     form_id = ''
                 if form_id:
-                    db.execute("DELETE FROM settings WHERE key LIKE 'token_form:%' AND value<?", (str(time.time() - 86400),))
-                    if db.execute('SELECT 1 FROM settings WHERE key=?', ('token_form:' + form_id,)).fetchone():
+                    if db.execute("SELECT 1 FROM main.event WHERE entity_kind='bw_token' AND field='create' AND operation_key=?", (form_id,)).fetchone():
                         return bw_tokens_render(form_error='This form was already sent: the token exists, and its secret is shown only once.',
                                                 status=409)
                 try:
-                    created, _ = tokens.create(db, request.form.get('name', ''), scopes)
+                    with operation(form_id or None):
+                        created, _ = tokens.create(db, request.form.get('name', ''), scopes)
                 except errors.BrickWorkError as exc:
                     return bw_tokens_render(form_error=str(exc), form_name=request.form.get('name', ''), form_scopes=scopes,
                                             show_create=True, status=getattr(exc, 'status', 400))
-                if form_id:
-                    with db:
-                        db.execute('INSERT OR IGNORE INTO settings(key,value) VALUES(?,?)', ('token_form:' + form_id, str(time.time())))
                 return bw_tokens_render(created=created)
             if action == 'revoke':
                 _, event = tokens.revoke(db, request.form.get('id', ''))
@@ -388,12 +512,12 @@ def bw_tokens_write():
             identifier = token_rows.event_id(request.form.get('event', ''))
             if identifier is None:
                 abort(400, 'Invalid event')
-            found = db.execute("SELECT field,old_value,new_value,at FROM events WHERE id=? AND entity='bw_token' AND field IN ('create','revoke')", (identifier,)).fetchone()
+            found = db.execute("SELECT field,old_value,new_value,at FROM main.event WHERE id=? AND entity_kind='bw_token' AND field IN ('create','revoke')", (identifier,)).fetchone()
             if found and not token_rows.undoable(found):
                 abort(400, 'This token change cannot be undone')
             if found and not token_rows.recent(found):
                 abort(400, 'Undo is no longer available for this token change')
-            response, _, _ = tokens.undo(db, identifier, 'ui-' + uuid.uuid4().hex)
+            response, _, _ = tokens.undo(db, identifier)
             flash('Token restored' if found and found['field'] == 'revoke' and not response.get('already_undone') else response.get('message', 'Done'), 'success')
             return redirect(url_for('web.bw_tokens'))
     except (errors.BrickWorkError, ValueError) as exc:
@@ -417,17 +541,25 @@ def bw_start_worker():
 
 
 def bw_resume_imports(app):
-    """Resume durable imports when the standalone app starts."""
+    """Resume durable fetch jobs when the standalone app starts (a refused file, such as a 3.3 one, stops the start with its message)."""
     from .admin_ops import brickwork_path
     from ..core.admin import database
     with app.app_context():
         path = brickwork_path()
         if not path.is_file():
             return
-        with database(path, read_only=True) as db:
-            pending = db.execute("""SELECT 1 FROM jobs WHERE source='import'
-                AND state IN ('queued','running','waiting_for_budget') LIMIT 1""").fetchone()
-        if pending:
+        from ..core import drainer, orders
+        from ..api import read_only
+        if not read_only():
+            try:
+                with database(path, require_catalogue=False) as db:
+                    orders.fill_currencies(db)                             # orders stored before a currency could stand without a total (#114)
+            except sqlite3.IntegrityError as exc:                          # a 4.0 file made with the old CHECK: the app still starts
+                current_app.logger.warning('order currency backfill skipped: purchase_order still has the old currency CHECK (%s)', exc)
+        with database(path, read_only=True, require_catalogue=False) as db:
+            pending = drainer.pending(db)
+        queued = drainer.queue_startup_work(path) is not None            # a catalogue not reconciled yet: one job for the drainer (design 6.2)
+        if pending or queued:
             bw_start_worker()
 
 
@@ -447,17 +579,26 @@ def bw_export():
 
 
 @web_page.get('/manage/images/<int:image_id>')
+@web_page.get('/manage/images/<image_id>')
 @login_required
 def bw_image(image_id):
+    """A picture of an item (`picture`, a cache: a number) or an own photo (`photo`: a hex text that is never all digits), by file.
+
+    Pictures are fetched by the pipeline's `pictures` step (`core.pictures`): a number with no row answers 404, like a row whose file is gone."""
     from .admin_ops import brickwork_path
     from ..core.admin import database
+    from ..core.media import root_for
     from flask import send_file
     path = brickwork_path()
+    image_id = str(image_id)
+    own = not image_id.isdigit()
+    if own and not re.fullmatch(r'[0-9a-f]{32}', image_id):
+        abort(404)
     with database(path, read_only=True) as db:
-        row = db.execute('SELECT local_path FROM item_images WHERE id=?', (image_id,)).fetchone()
+        row = (db.execute('SELECT local_path FROM photo WHERE id=? AND archived_at IS NULL', (image_id,)) if own
+               else db.execute('SELECT local_path FROM picture WHERE id=?', (int(image_id),))).fetchone()
     if not row:
         abort(404)
-    from ..core.media import root_for
     root = root_for(path)
     target = (root / row[0]).resolve()
     if not target.is_relative_to(root / 'data/images') or not target.is_file():
@@ -468,7 +609,10 @@ def bw_image(image_id):
         from ..core import thumbnails
         if width not in {str(w) for w in thumbnails.WIDTHS}:
             abort(400)
-        target, mimetype = thumbnails.lookup(root, image_id, int(width), target)
+        if own:                                                         # the original of an own photo is what is shown, at any width
+            width = None
+    if width is not None:
+        target, mimetype = thumbnails.lookup(root, int(image_id), int(width), target)
     response = send_file(target, mimetype=mimetype, max_age=86400)
     response.cache_control.public = None
     response.cache_control.private = True
@@ -480,13 +624,13 @@ def bw_image(image_id):
 def bw_instruction_download(identifier):
     from .admin_ops import brickwork_path
     from ..core.admin import database
+    from ..core.media import root_for
     from flask import send_file
     path = brickwork_path()
     with database(path, read_only=True) as db:
-        row = db.execute('SELECT path FROM instruction_files WHERE id=? AND archived_at IS NULL', (identifier,)).fetchone()
+        row = db.execute('SELECT path FROM instruction_file WHERE id=? AND archived_at IS NULL', (identifier,)).fetchone()
     if not row:
         abort(404)
-    from ..core.media import root_for
     root = root_for(path)
     target = (root / row[0]).resolve()
     if not target.is_relative_to(root / 'data/instructions') or not target.is_file():
@@ -526,22 +670,34 @@ def bw_add_csrf(data):
         abort(400, 'Invalid CSRF token')
 
 
+def _add_database(read_only=False):
+    """The collection for the Add screens. Opened without insisting on a catalogue, so a missing or inactive one is answered with the fix
+    (`add.require_catalogue`) instead of a failed request."""
+    from .admin_ops import brickwork_path
+    from ..core.admin import database
+    return database(brickwork_path(), read_only=read_only, require_catalogue=False)
+
+
 @web_page.get('/manage/add')
 @login_required
 def bw_add():
-    from .admin_ops import brickwork_path
-    from ..core.admin import database
     from ..core import add
-    error, colours, wishlists = None, [], []
+    from ..core.errors import CatalogueNotLoaded
+    error, colours, lists = None, [], []
     try:
-        with database(brickwork_path(), read_only=True) as db:
-            colours = add.colors(db)
-            from ..core.wishlists import listing
-            wishlists = listing(db)
+        with _add_database(read_only=True) as db:
+            colours, lists = add.colors(db), add.wishlists(db)
+            try:
+                add.require_catalogue(db)
+            except CatalogueNotLoaded as exc:
+                error = str(exc)
     except (ValueError, sqlite3.Error, OSError):
         error = 'Brick Work database is not available. Check BW_DB_PATH and try again.'
-    response = current_app.make_response(render_template('web/toni/web/bw_add.html',
-        types=add.TYPES, colours=colours, wishlists=wishlists, error=error, csrf_token=bw_add_token()))
+    from ..core import items
+    asked = request.args.get('type', '')
+    asked = items.TYPE_KIND.get(asked, asked) if len(asked) == 1 else asked          # old links carry the BrickLink letter
+    response = current_app.make_response(render_template('web/toni/web/bw_add.html', initial_kind=asked if asked in add.KIND_NAMES else 'set',
+        kinds=add.KIND_NAMES, colours=colours, wishlists=lists, error=error, csrf_token=bw_add_token()))
     response.headers['Cache-Control'] = 'no-store'
     return response
 
@@ -549,17 +705,28 @@ def bw_add():
 @web_page.get('/manage/add/search')
 @login_required
 def bw_add_search():
-    from .admin_ops import brickwork_path
-    from ..core.admin import database
     from ..core.add import search
     try:
-        with database(brickwork_path(), read_only=True) as db:
-            result = search(db, request.args.get('type', 'S'), request.args.get('q', '')[:100], request.args.get('sort', 'number'))
+        with _add_database(read_only=True) as db:
+            result = search(db, request.args.get('type', 'set'), request.args.get('q', '')[:100], request.args.get('sort', 'number'))
     except (ValueError, sqlite3.Error, OSError) as error:
         return jsonify(error=public(error, 'Catalogue is not available')), 400
     response = jsonify(result)
     response.headers['Cache-Control'] = 'no-store'
     return response
+
+
+@web_page.get('/manage/add/picture-known')
+@login_required
+def bw_add_picture_known():
+    """The review's picture warning for a part in a colour the person just chose (design 6.8)."""
+    from ..core.add import picture_warning
+    try:
+        row = dict(kind='part', item_id=int(request.args['item_id']), color_id=int(request.args['color_id']))
+        with _add_database(read_only=True) as db:
+            return jsonify(no_picture=picture_warning(db, row))
+    except (KeyError, ValueError, sqlite3.Error, OSError):
+        return jsonify(error='Choose a part and a colour'), 400
 
 
 @web_page.post('/manage/add/review')
@@ -568,20 +735,18 @@ def bw_add_review():
     import base64
     import json
     import uuid
-    from .admin_ops import brickwork_path
-    from ..core.admin import database
-    from ..core import add
+    from ..core import add, identify
+    from ..core.sources.brickognize import photo_bytes
     from ..core.sources.base import audit_origin, SourceError
-    from ..core.sources.brickognize import Brickognize, photo_bytes
     data = request.get_json(silent=True) if request.is_json else request.form
     data = data or {}
     bw_add_csrf(data)
-    kind, where, mode = data.get('type', 'S'), data.get('where', 'owned'), data.get('mode', 'paste')
-    if kind not in add.TYPES:
+    kind, where, mode = data.get('type', 'set'), data.get('where', 'owned'), data.get('mode', 'paste')
+    if kind not in add.KIND_NAMES:
         abort(400, 'Choose an item type')
+    photo = None
     try:
-        with database(brickwork_path()) as db, audit_origin('app'):
-            photo = None
+        with _add_database() as db, audit_origin('app'):
             if mode == 'paste':
                 rows = add.paste(data.get('text', '')[:100000], kind)
             elif mode == 'file':
@@ -592,31 +757,42 @@ def bw_add_review():
                 if len(raw) > 2 * 1024 * 1024:
                     raise ValueError('Choose a file smaller than 2 MB')
                 rows = add.file_rows(raw, upload.filename or '', kind)
+            elif mode == 'search':
+                rows = data.get('items', [])
+                if not isinstance(rows, list):
+                    raise ValueError('Choose items from the search')
             elif mode == 'photo':
                 upload = request.files.get('file')
                 if not upload:
                     raise ValueError('Choose a photo')
                 photo = photo_bytes(upload.read(8 * 1024 * 1024 + 1))
-                candidates = Brickognize(db).predict(photo)
-                rows = [{**candidate, 'quantity': 1} for candidate in candidates]
-                if not rows:
+                choices, missed = identify.recognise(db, photo, kind if kind in ('part', 'minifigure') else None, kinds=('part', 'minifigure', 'set'))
+                if not choices:
                     raise ValueError('Nothing identified · try another photo')
-            elif mode == 'search':
-                rows = data.get('items', [])
-                if not isinstance(rows, list):
-                    raise ValueError('Choose items from the search')
+                rows = [dict(item_id=c['item_id'], quantity=1, score=c['score']) for c in choices]
             else:
                 raise ValueError('Choose how to add')
-            proposal = add.resolve(db, rows, where, list_id=data.get('list_id') or 'default', map_wanted_ids=data.get('map_wanted_ids', 'true') not in (False, 'false'))
+            proposal = add.resolve(db, rows, where, list_id=data.get('list_id') or 'default',
+                                   map_wanted_ids=data.get('map_wanted_ids', 'true') not in (False, 'false'))
             if photo:
-                scores = {(r['item_type'], r['item_no']): r['score'] for r in rows}
+                scores = {r['item_id']: r['score'] for r in rows}
                 for row in proposal['items']:
-                    row['score'] = scores[row['item_type'], row['item_no']]
-            token = bw_add_signer().dumps(dict(**proposal, batch=uuid.uuid4().hex,
-                owner=bw_add_token(), photo=base64.b64encode(photo).decode() if photo else None, mode=mode))
+                    row['score'] = scores.get(row['item_id'])
+                proposal['unresolved'] += [dict(number=m['item_no'], reason=m['reason']) for m in missed]
+            token = bw_add_signer().dumps(dict(**proposal, batch=uuid.uuid4().hex, owner=bw_add_token(), mode=mode,
+                                               photo=base64.b64encode(photo).decode() if photo else None))
         return jsonify(**proposal, token=token, candidates=mode == 'photo')
     except (ValueError, SourceError, sqlite3.Error, OSError, UnicodeError, json.JSONDecodeError, ET.ParseError) as error:
         return jsonify(error=public(error, 'Could not read this input')), 400
+
+
+def _add_receipt_view(receipt):
+    """What the page needs of a receipt: no row snapshots."""
+    keys = ('batch', 'index', 'item_id', 'kind', 'where', 'quantity', 'name', 'label', 'copies', 'job_id', 'fetch_job', 'pending', 'event_id')
+    view = {k: receipt.get(k) for k in keys}
+    view['stock'] = (receipt.get('stock') or {}).get('id')
+    view['wish'] = (receipt.get('wish') or {}).get('id')
+    return view
 
 
 @web_page.post('/manage/add/confirm')
@@ -624,8 +800,6 @@ def bw_add_review():
 def bw_add_confirm():
     import base64
     from itsdangerous import BadSignature
-    from .admin_ops import brickwork_path
-    from ..core.admin import database
     from ..core import add
     from ..core.sources.base import audit_origin
     data = request.get_json(silent=True) or {}
@@ -636,24 +810,23 @@ def bw_add_confirm():
         if proposal['owner'] != bw_add_token():
             raise ValueError('Review this input again')
         original = proposal['items']
-        if proposal['mode'] == 'photo':
+        if proposal.get('mode') == 'photo':                # a photo offers candidates; the person chooses one first
             selected = data.get('candidate')
             if type(selected) is not int or not 0 <= selected < len(original):
                 raise ValueError('Choose a photo candidate first')
             original = [original[selected]]
-        with database(brickwork_path()) as db, audit_origin('app'):
+        with _add_database() as db, audit_origin('app'):
             rows = add.validate_edits(db, original, data.get('items'), batch=proposal['batch'])
-            receipts = add.confirm(db, rows, batch=proposal['batch'],
-                photo=base64.b64decode(proposal['photo']) if proposal['photo'] else None,
-                keep_photo=data.get('keep_photo') is True)
+            receipts = add.confirm(db, rows, batch=proposal['batch'], photo=base64.b64decode(proposal['photo']) if proposal.get('photo') else None,
+                                   keep_photo=data.get('keep_photo') is True)
         if receipts:
             bw_start_worker()
-        return jsonify(receipts=receipts, batch=proposal['batch'])
+        return jsonify(receipts=[_add_receipt_view(r) for r in receipts], batch=proposal['batch'])
     except (BadSignature, ValueError, sqlite3.Error, OSError, TypeError, KeyError) as error:
         saved = []
         if proposal and proposal.get('owner') == bw_add_token():
             try:
-                with database(brickwork_path(), read_only=True) as db:
+                with _add_database(read_only=True) as db:
                     saved = add.receipts(db, proposal['batch'])
             except (ValueError, sqlite3.Error, OSError):
                 pass
@@ -661,21 +834,19 @@ def bw_add_confirm():
             bw_start_worker()
         message = (f'{len(saved)} items added · try again to finish this review' if saved else
                    public(error, 'Could not add · check the review and try again'))
-        return jsonify(error=message, receipts=saved), 400
+        return jsonify(error=message, receipts=[_add_receipt_view(r) for r in saved]), 400
 
 
 @web_page.post('/manage/add/undo')
 @login_required
 def bw_add_undo():
-    from .admin_ops import brickwork_path
-    from ..core.admin import database
     from ..core.add import undo
     data = request.get_json(silent=True) or {}
     bw_add_csrf(data)
     if not isinstance(data.get('batch'), str):
         abort(400)
     try:
-        with database(brickwork_path()) as db:
+        with _add_database() as db:
             undo(db, data['batch'])
     except ValueError as exc:
         return jsonify(error=public(exc, 'Could not undo · try again')), 400
@@ -685,13 +856,13 @@ def bw_add_undo():
 @web_page.get('/manage/add/jobs/<int:job>')
 @login_required
 def bw_add_job(job):
-    from .admin_ops import brickwork_path
-    from ..core.admin import database
-    with database(brickwork_path(), read_only=True) as db:
-        snapshot = db.execute("SELECT state FROM jobs WHERE id=? AND source='import'", (job,)).fetchone()
+    with _add_database(read_only=True) as db:
+        snapshot = db.execute('SELECT state FROM job WHERE id=?', (job,)).fetchone()
         if snapshot is None:
             abort(404)
-        steps = db.execute('SELECT * FROM import_steps WHERE job_id=? ORDER BY position', (job,)).fetchall()
+        steps = db.execute('SELECT * FROM job_step WHERE job_id=? ORDER BY position', (job,)).fetchall()
+        from ..core import add
+        fetch = add.fetch_outcome(db, job)           # a Fetch from Rebrickable job says what became of the Add row that asked for it
     # Only the safe step contract is returned; raw payloads and source keys stay server-side.
     done = sum(s['state'] == 'done' for s in steps)
     # The progress widget speaks started/progress/waiting/failed/done.
@@ -699,9 +870,9 @@ def bw_add_job(job):
     events = [dict(job_id=job, step=s['name'], state=shown.get(s['state'], s['state']),
         completed_steps=done, total_steps=len(steps), count=s['count'], total=s['total'],
         job_state=snapshot['state'], retry=s['state'] == 'failed',
-        message=s['error'] if s['state'] == 'failed' else 'Waiting for budget' if s['state'] == 'waiting_for_budget' else 'Importing · ' + s['name']) for s in steps]
+        message=s['error'] if s['state'] == 'failed' or (s['state'] == 'done' and s['error']) else 'Waiting for budget' if s['state'] == 'waiting_for_budget' else 'Importing · ' + s['name']) for s in steps]
     events.append(dict(job_id=job, step=None, state=snapshot['state'], completed_steps=done,
-        total_steps=len(steps), message='Import complete' if snapshot['state'] == 'done' else 'Import needs attention' if snapshot['state'] == 'failed' else 'Waiting for budget' if snapshot['state'] == 'waiting_for_budget' else 'Import queued'))
+        total_steps=len(steps), message=fetch['message'] if fetch and fetch['state'] != 'waiting' else 'Import complete' if snapshot['state'] == 'done' else 'Import needs attention' if snapshot['state'] == 'failed' else 'Waiting for budget' if snapshot['state'] == 'waiting_for_budget' else 'Import queued'))
     response = jsonify(events=events)
     response.headers['Cache-Control'] = 'no-store'
     return response
@@ -710,15 +881,18 @@ def bw_add_job(job):
 @web_page.post('/manage/add/jobs/<int:job>/retry')
 @login_required
 def bw_add_retry(job):
-    from .admin_ops import brickwork_path
-    from ..core.admin import database
     from ..core.pipeline import Pipeline
     from ..core.sources.base import audit_origin
     data = request.get_json(silent=True) or {}
     bw_add_csrf(data)
     try:
-        with database(brickwork_path()) as db, audit_origin('app'):
-            Pipeline(db).queue_retry(job, data.get('step'))
+        from ..store4 import jobs as fetch_jobs
+        with _add_database() as db, audit_origin('app'):
+            row = db.execute('SELECT kind FROM main.job WHERE id=?', (job,)).fetchone()
+            if row is not None and row['kind'] in fetch_jobs.KINDS:      # a fetch job of store4's runner (Fetch from Rebrickable)
+                fetch_jobs.requeue(db, job)
+            else:
+                Pipeline(db).queue_retry(job, data.get('step'))
         bw_start_worker()
         return jsonify(message='Queued')
     except ValueError:
@@ -731,11 +905,10 @@ def bw_check_parts():
     from .admin_ops import brickwork_path
     from ..core import checker
     from ..core.admin import database
-    path = brickwork_path()
     error, copies = None, []
     try:
-        with database(path, read_only=True) as db:
-            copies = checker.choices(db, _media(path))
+        with database(brickwork_path(), read_only=True) as db:
+            copies = checker.choices(db)
     except (ValueError, sqlite3.Error, OSError):
         error = 'Brick Work database is not available. Check BW_DB_PATH and try again.'
     response = current_app.make_response(render_template('web/toni/web/bw_checker.html', copies=copies, state=None, error=error, csrf_token=bw_add_token()))
@@ -749,10 +922,9 @@ def bw_check_copy(copy_id):
     from .admin_ops import brickwork_path
     from ..core import checker
     from ..core.admin import database
-    path = brickwork_path()
     try:
-        with database(path, read_only=True) as db:
-            state = checker.view(db, copy_id, _media(path))
+        with database(brickwork_path(), read_only=True) as db:
+            state = checker.view(db, copy_id)
     except ValueError as error:
         abort(404, str(error))
     response = current_app.make_response(render_template('web/toni/web/bw_checker.html', state=state, error=None, csrf_token=bw_add_token()))
@@ -760,17 +932,16 @@ def bw_check_copy(copy_id):
     return response
 
 
-@web_page.get('/workbench/check-parts/<copy_id>/figure/<minifig_type>/<minifig_no>')
+@web_page.get('/workbench/check-parts/<copy_id>/figure/<int:copy_figure_id>')
 @login_required
-def bw_check_figure(copy_id, minifig_type, minifig_no):
-    """Check figure parts: one whole figure's own parts inside a copy (4.8a)."""
+def bw_check_figure(copy_id, copy_figure_id):
+    """Check figure parts: one whole figure line's own parts inside a copy (4.8a)."""
     from .admin_ops import brickwork_path
     from ..core import checker
     from ..core.admin import database
-    path = brickwork_path()
     try:
-        with database(path, read_only=True) as db:
-            state = checker.figure_view(db, copy_id, _media(path), minifig_type, minifig_no)
+        with database(brickwork_path(), read_only=True) as db:
+            state = checker.figure_view(db, copy_id, copy_figure_id)
     except ValueError as error:
         abort(404, str(error))
     response = current_app.make_response(render_template('web/toni/web/bw_checker.html', state=state, error=None, csrf_token=bw_add_token()))
@@ -792,37 +963,32 @@ def bw_matcher():
 
 
 def bw_workbench_page(mode):
-    import json
     from .admin_ops import brickwork_path
     from ..core.admin import database
     from ..core import workbench
     rows, copies, history, selected, error = [], [], [], request.args.getlist('copy'), None
-    unresolved_rows = []
     match_groups = []
     ranking = request.args.getlist('rank') if request.args.get('ranked') else list(workbench.PICKER_DEFAULT)
     rank_keys = []
     try:
         with database(brickwork_path(), read_only=True) as db:
             all_gaps = workbench.gaps(db)
-            unresolved_rows = [r for r in all_gaps if r['unresolved']]
-            missing = [r for r in all_gaps if r['target'] == 'part']
             by_copy = {}
-            for row in missing:
-                copy = by_copy.setdefault(row['copy_id'],dict(row['copy'],missing=0))
+            for row in (r for r in all_gaps if r['target'] == 'part'):
+                copy = by_copy.setdefault(row['copy_id'], dict(row['copy'], missing=0))
                 copy['missing'] += row['need']
-            copies = workbench.decorate_many(db, [dict(c, item_no=c['set_no']) for c in by_copy.values()])
-            rows = workbench.picker(db,selected,ranking,all_gaps=all_gaps) if mode == 'picker' else workbench.matches(db, all_gaps=all_gaps)
+            copies = list(by_copy.values())
+            rows = workbench.picker(db, selected, ranking, all_gaps=all_gaps) if mode == 'picker' else workbench.matches(db, all_gaps=all_gaps)
             if mode == 'picker':
                 rank_keys = workbench.picker_keys(rows)
             if mode == 'matcher':
                 match_groups = workbench.group_matches(db, rows, all_gaps)
-            history = [dict(r) for r in db.execute("SELECT id,at,new_value FROM events WHERE entity='bw_workbench' AND field='receipt' AND id NOT IN (SELECT CAST(new_value AS INTEGER) FROM events WHERE entity='bw_workbench' AND field='undo') ORDER BY id DESC LIMIT 50")]
-            for row in history:
-                row['receipt'] = json.loads(row['new_value'])
-    except (ValueError,sqlite3.Error,OSError):
+            history = workbench.history(db)
+    except (ValueError, sqlite3.Error, OSError):
         error = 'Brick Work database is not available. Check BW_DB_PATH and try again.'
-    response = current_app.make_response(render_template('web/toni/web/bw_workbench.html',mode=mode,
-        rows=rows,ranking=ranking,rank_keys=rank_keys,picking=request.args.get('pick') == '1',match_groups=match_groups,copies=copies,selected=selected,history=history,unresolved_rows=unresolved_rows,error=error,csrf_token=bw_add_token()))
+    response = current_app.make_response(render_template('web/toni/web/bw_workbench.html', mode=mode,
+        rows=rows, ranking=ranking, rank_keys=rank_keys, picking=request.args.get('pick') == '1', match_groups=match_groups, copies=copies,
+        selected=selected, history=history, error=error, csrf_token=bw_add_token()))
     response.headers['Cache-Control'] = 'no-store'
     return response
 
@@ -833,10 +999,10 @@ def bw_check_write(copy_id):
     return bw_check_save(copy_id)
 
 
-@web_page.post('/workbench/check-parts/<copy_id>/figure/<minifig_type>/<minifig_no>')
+@web_page.post('/workbench/check-parts/<copy_id>/figure/<int:copy_figure_id>')
 @login_required
-def bw_check_figure_write(copy_id, minifig_type, minifig_no):
-    return bw_check_save(copy_id, (minifig_type, minifig_no))
+def bw_check_figure_write(copy_id, copy_figure_id):
+    return bw_check_save(copy_id, copy_figure_id)
 
 
 def bw_check_save(copy_id, figure=None):
@@ -847,7 +1013,6 @@ def bw_check_save(copy_id, figure=None):
     origin = request.headers.get('Origin')
     if (origin and origin.rstrip('/') != request.host_url.rstrip('/')) or request.headers.get('Sec-Fetch-Site') == 'cross-site':
         abort(403)
-    path = brickwork_path()
     payload = request.get_json(silent=True) if request.is_json else dict(request.form)
     if not isinstance(payload, dict):
         return jsonify(error='Choose a checker action'), 400
@@ -857,17 +1022,18 @@ def bw_check_save(copy_id, figure=None):
         payload['operation'] = uuid.uuid4().hex
         if payload.get('action') not in ('start', 'restart'):
             abort(400)
+    back = url_for('web.bw_check_figure', copy_id=copy_id, copy_figure_id=figure) if figure else url_for('web.bw_check_copy', copy_id=copy_id)
     try:
-        with database(path) as db:
-            state = checker.write(db, copy_id, payload, _media(path), figure)
+        with database(brickwork_path()) as db:
+            state = checker.write(db, copy_id, payload, figure)
     except (ValueError, sqlite3.Error, OSError) as error:
         message = public(error, 'The answer could not be saved. Retry.')
         if not request.is_json:
             flash(message, 'bw-checker')
-            return redirect(url_for('web.bw_check_figure', copy_id=copy_id, minifig_type=figure[0], minifig_no=figure[1]) if figure else url_for('web.bw_check_copy', copy_id=copy_id))
+            return redirect(back)
         return jsonify(error=message), 409
     if not request.is_json:
-        return redirect(url_for('web.bw_check_figure', copy_id=copy_id, minifig_type=figure[0], minifig_no=figure[1]) if figure else url_for('web.bw_check_copy', copy_id=copy_id, run=1))
+        return redirect(back if figure else url_for('web.bw_check_copy', copy_id=copy_id, run=1))
     response = jsonify(state=state)
     response.headers['Cache-Control'] = 'no-store'
     return response
@@ -886,7 +1052,7 @@ def bw_workbench_save(action):
             if action == 'transfer':
                 event = workbench.transfer(db,data['source_id'],data['copy_id'],data['target'],data['target_id'],data['quantity'])
             elif action == 'found':
-                event = workbench.found(db,data['item_type'],data['item_no'],data['color_id'],data['destination'],data.get('assignments',{}),data['quantity'])
+                event = workbench.found(db,int(data['item_id']),data['color_id'],data['destination'],data.get('assignments',{}),data['quantity'])
             elif action == 'booklets':
                 event = workbench.booklets(db,data['text'],data['quantity'])
             elif action == 'undo':
@@ -962,36 +1128,7 @@ def bw_order(order_id):
             data['destinations'] = orders.destinations(db, data['saved'])
             data['colours'] = add.colors(db)
             data['storages'] = ledger.storages(db)
-            data['lots'] = [dict(r) for r in db.execute('SELECT id,name FROM lots WHERE archived_at IS NULL ORDER BY name')]
-            # Resolve history targets in one batch; no query for each allocation.
-            targets = {row['id']: dict(row) for row in db.execute('''
-                SELECT a.id,c.set_no,s.name AS storage,l.name AS lot
-                FROM allocations a LEFT JOIN copies c ON c.id=coalesce(a.target_copy_id,a.copy_id)
-                LEFT JOIN loose_stock stock ON stock.id=a.target_stock_id
-                LEFT JOIN storages s ON s.id=stock.storage_id
-                LEFT JOIN lots l ON l.id=stock.lot_id WHERE a.order_id=?
-            ''', (order_id,))}
-            identities = {row['id']: row for row in data['lines']}
-            for allocation in data['allocations']:
-                allocation['identity'] = identities.get(allocation['line_id'])
-                target = targets.get(allocation['id']) or {}
-                copy_ref = allocation.get('target_copy_id') or allocation.get('copy_id')
-                if allocation['target_type'] == 'copy' or (allocation['target_type'] is None and copy_ref):
-                    name = target.get('set_no') or copy_ref
-                    allocation['target_label'] = 'Copy ' + str(name) if name else 'Target not recorded'
-                elif allocation['target_type'] == 'stock':
-                    allocation['target_label'] = (('Lot ' + target['lot'] if target.get('lot') else 'Loose stock') +
-                        (' · ' + target['storage'] if target.get('storage') else ''))
-                else:
-                    allocation['target_label'] = 'Target not recorded'
-            allocation_events = {}
-            for event in data['history']:
-                if event['undo_available'] and not event['undone']:
-                    for change in event['receipt'].get('changes', []):
-                        if change['table'] == 'allocations':
-                            allocation_events[change['key']['id']] = event['id']
-            for allocation in data['allocations']:
-                allocation['undo_event'] = allocation_events.get(allocation['id'])
+            data['lots'] = [dict(r) for r in db.execute('SELECT id,name FROM lot WHERE archived_at IS NULL ORDER BY name')]
     except (ValueError, sqlite3.Error):
         abort(404)
     order_view = request.args.get('view', 'detail')
@@ -1012,22 +1149,25 @@ def bw_inventory_detect():
     import uuid
     from .admin_ops import brickwork_path
     from ..core.admin import database
-    from ..core.part_inventory import candidates
-    from ..core.sources.brickognize import Brickognize, photo_bytes
-    from ..core.sources.base import audit_origin
+    from ..core import identify
+    from ..core.sources.brickognize import photo_bytes
+    from ..core.sources.base import audit_origin, SourceError
     bw_add_csrf(request.form)
     try:
         upload = request.files.get('file')
         if not upload:
             raise ValueError('Choose a photo')
         photo = photo_bytes(upload.read(8 * 1024 * 1024 + 1))
+        endpoint = request.form.get('endpoint', 'parts')
+        if endpoint not in ('parts', 'figs'):
+            raise ValueError('Choose parts or figures')
         with database(brickwork_path()) as db, audit_origin('app'):
-            choices, unresolved = candidates(db, Brickognize(db).predict(photo, request.form.get('endpoint', 'parts')))
+            choices, unresolved = identify.recognise(db, photo, {'parts': 'part', 'figs': 'minifigure'}[endpoint])
         if not choices:
             return jsonify(error='Nothing identified · try another photo', unresolved=unresolved), 400
         proposal = dict(id=uuid.uuid4().hex, owner=bw_add_token(), candidates=choices, photo=base64.b64encode(photo).decode())
         return jsonify(candidates=choices, unresolved=unresolved, token=bw_add_signer().dumps(proposal))
-    except (ValueError, sqlite3.Error, OSError) as exc:
+    except (ValueError, SourceError, sqlite3.Error, OSError) as exc:
         return jsonify(error=public(exc, 'Could not recognise this photo')), 400
 
 
@@ -1060,7 +1200,7 @@ def bw_inventory_save():
             event = part_inventory.save(db, pieces, batch=batch, condition=data.get('condition', 'U'), lot_id=data.get('lot_id'), new_lot=data.get('new_lot'), keep_photos=data.get('keep_photos', True) is True)
             created = None
             if data.get('new_lot'):
-                row = db.execute("SELECT l.id, l.name, l.created_date FROM events e JOIN lots l ON l.id = json_extract(e.new_value, '$.lot') WHERE e.id = ?", (event,)).fetchone()
+                row = db.execute("SELECT l.id, l.name, substr(l.created_at,1,10) AS created_date FROM main.event e JOIN main.lot l ON l.id = json_extract(e.new_value, '$.lot') WHERE e.id = ?", (event,)).fetchone()
                 created = dict(row) if row else None
         return jsonify(event=event, message='Receipts saved. Batch added.', lot=created)
     except SignatureExpired:
@@ -1088,7 +1228,7 @@ def bw_inventory_undo():
 def bw_orders_action(action):
     from .admin_ops import brickwork_path
     from ..core.admin import database
-    from ..core import orders, ledger
+    from ..core import orders
     from ..core.sources.base import audit_origin, SourceError
     data = bw_ledger_payload()
     try:
@@ -1106,7 +1246,8 @@ def bw_orders_action(action):
                 result = orders.import_document(db, data['source'], text, choice=data.get('choice', 'new'), number=data.get('number'), label=upload.filename if upload else None)
                 return jsonify(**result, message='Already imported · open the existing order' if result['duplicate'] else 'Draft saved · review the lines', url=url_for('web.bw_order', order_id=result['order_id']))
             elif action == 'match':
-                event = orders.match(db, int(data['order_id']), int(data['line_id']), data['item_type'], data['item_no'], data.get('color_id'))
+                event = orders.match(db, int(data['order_id']), int(data['line_id']), item_id=int(data['item_id']) if data.get('item_id') not in (None, '') else None,
+                                     color_id=data.get('color_id'), item_type=data.get('item_type'), item_no=data.get('item_no'))
             elif action in ('review', 'reopen', 'save'):
                 event = orders.phase(db, int(data['order_id']), int(data['document_id']), action, data.get('pairs'))
             elif action == 'received':
@@ -1118,7 +1259,7 @@ def bw_orders_action(action):
             elif action == 'reconcile':
                 event = orders.reconcile(db, int(data['order_id']))
             elif action == 'undo':
-                ledger.undo_history(db, int(data['event_id']))
+                orders.undo_history(db, int(data['event_id']))
                 return jsonify(message='Undone')
             else:
                 abort(404)
@@ -1130,17 +1271,21 @@ def bw_orders_action(action):
 @web_page.get('/workbench/orders/<int:order_id>/short.xml')
 @login_required
 def bw_order_short(order_id):
+    import json
+    from urllib.parse import quote
     from .admin_ops import brickwork_path
     from ..core.admin import database
-    from ..core.orders import short_xml
+    from ..core.orders import short_export
     with database(brickwork_path(), read_only=True) as db:
         try:
-            text = short_xml(db, order_id)
+            result = short_export(db, order_id)
         except ValueError:
             abort(404)
-    response = current_app.response_class(text, mimetype='application/xml')
+    response = current_app.response_class(result['xml'], mimetype='application/xml')
     response.headers['Content-Disposition'] = 'attachment; filename="order-short.xml"'
     response.headers['Cache-Control'] = 'no-store'
+    if result['skipped']:                                  # a line BrickLink cannot name is left out and said so (M.8g's header)
+        response.headers['X-Bw-Skipped'] = quote(json.dumps(result['skipped'], separators=(',', ':')))
     return response
 
 
@@ -1214,6 +1359,7 @@ def bw_collection(kind):
     from .admin_ops import brickwork_path
     from ..core.admin import database
     from ..core import collection
+    from ..core.connect import NoCatalogue
     from . import setup_state
     kind = kind.upper()
     if kind not in collection.TYPES:
@@ -1221,13 +1367,17 @@ def bw_collection(kind):
     error = None
     rows, choices = [], dict(storages=[], places=[], lots=[], flags=[], colours=[])
     try:
-        with database(brickwork_path(), read_only=True) as db:
-            rows = collection.listing(db, kind)
-            choices = collection.options(db)
+        if brickwork_path().is_file():                                 # no file yet: the first-run page, as with no catalogue
+            with database(brickwork_path(), read_only=True) as db:
+                rows = collection.listing(db, kind)
+                choices = collection.options(db)
+    except NoCatalogue:
+        pass                                                           # first run: the page says how to get a catalogue
     except (sqlite3.Error, OSError, ValueError) as exc:
         error = public(exc, 'Brick Work database is not available. Check BW_DB_PATH and try again.')
     response = current_app.make_response(render_template('web/toni/web/bw_collection.html',
         title=collection.TYPES[kind], kind=kind, rows=rows, records=ui.bw_collection_records(rows), choices=choices, error=error,
+        lot_total=ui.lot_total(rows) if kind == 'P' else 0,
         csrf_token=bw_add_token(), can_edit=bw_collection_editable(), detail=None,
         first_run=setup_state.first_run(bw_collection_editable()) if kind == 'S' and not rows and not error else None))
     response.headers['Cache-Control'] = 'no-store'
@@ -1240,33 +1390,177 @@ def bw_collection_editable():
     return not read_only() and LoginManager.is_authenticated()
 
 
-@web_page.get('/collection/item/<kind>/<path:number>')
+@web_page.get('/collection/item/<int:item_id>')
 @login_required
-def bw_collection_item(kind, number):
+def bw_collection_item(item_id):
     from .admin_ops import brickwork_path
     from ..core.admin import database
     from ..core import collection
-    kind = kind.upper()
+    from ..store4.connect import has_catalogue
     try:
         colour_arg = request.args.get('colour')
-        colour = int(colour_arg) if colour_arg and colour_arg != 'none' else None
         with database(brickwork_path(), read_only=True) as db:
-            colour_choices = collection.part_colours(db, number) if kind=='P' and not colour_arg else []
-            if len(colour_choices)==1:
+            moved = db.execute('SELECT new_id FROM item_redirect WHERE old_id=?', (item_id,)).fetchone()
+            if moved:                                                      # a merged item answers with the item it was merged into (design 3.6)
                 from .ui import passthrough_args
-                args = passthrough_args('kind', 'number')
-                args['colour'] = colour_choices[0]['color_id'] if colour_choices[0]['color_id'] is not None else 'none'
-                return redirect(url_for('web.bw_collection_item', kind=kind, number=number, **args))
-            detail = collection.detail(db, kind, number, colour=colour,
-                copy_id=request.args.get('copy'), stock_id=request.args.get('stock'))
-            detail['colour_choices'] = colour_choices if len(colour_choices)>1 else []
+                session['bw_merged_from'] = item_id                        # the survivor's page says where the visitor came from, with Unmerge (M.10 B)
+                return redirect(url_for('web.bw_collection_item', item_id=moved[0], **passthrough_args('item_id')), 301)
+            try:
+                colour = (collection.NO_COLOUR if colour_arg == 'none' else int(colour_arg)) if colour_arg else None   # 3.3's "no colour" is colour 1
+            except ValueError:
+                abort(404, 'Colour is unavailable')
+            row = db.execute('SELECT kind FROM item WHERE id=?', (item_id,)).fetchone() or (
+                db.execute('SELECT kind FROM catalogue.item WHERE id=?', (item_id,)).fetchone() if has_catalogue(db) else None)
+            if row is None:
+                abort(404, 'Item is unavailable')
+            letter = collection.type_of(row['kind'])
+            g.bw_nav_type = letter
+            colour_choices = collection.part_colours(db, item_id) if row['kind'] == 'part' and colour is None else []
+            if len(colour_choices) == 1:
+                from .ui import passthrough_args
+                args = passthrough_args('item_id')
+                args['colour'] = colour_choices[0]['color_id']
+                return redirect(url_for('web.bw_collection_item', item_id=item_id, **args))
+            detail = collection.detail(db, item_id, colour=colour, copy_id=request.args.get('copy'), stock_id=request.args.get('stock'))
+            detail['colour_choices'] = colour_choices if len(colour_choices) > 1 else []
             choices = collection.options(db)
+            from ..core import identity_admin
+            if not detail['colour_choices']:
+                detail['links'] = identity_admin.links(db, item_id, colour)
+            detail['merged_into'] = identity_admin.merged_into(db, item_id)
+            detail['merged_from'] = session.pop('bw_merged_from', None)
+            detail['identity_notice'] = identity_notice(db, request.args.get('done', ''))
     except ValueError as exc:
         abort(404, str(exc))
-    return bw_collection_detail_response(detail, choices, collection.TYPES.get(kind, 'Collection'))
+    return bw_collection_detail_response(detail, choices, collection.TYPES.get(letter, 'Collection'))
+
+
+def identity_notice(db, text):
+    """`?done=<event id>` on an item page: `dict(id, text, undo)` for the identity decision that was just made (`undo` when it can still be
+    undone), else None."""
+    import json
+    from . import token_rows
+    from ..core import undo as undoing
+    identifier = token_rows.event_id(text)
+    if identifier is None:
+        return None
+    event = db.execute("SELECT e.* FROM main.event e WHERE e.id=? AND e.entity_kind IN ('item','item_link','item_provider_status')", (identifier,)).fetchone()
+    if event is None:
+        return None
+    name = lambda item_id: (db.execute('SELECT name FROM main.item WHERE id=?', (item_id,)).fetchone() or ['that item'])[0] or 'that item'
+    if event['field'] == 'merge':
+        try:
+            moved = sum(sum(c.values()) for t, c in json.loads(event['new_value'])['counts'].items() if t != 'item')
+        except (ValueError, KeyError, TypeError):
+            moved = 0
+        words = f'Merged {name(int(event["old_value"]))} into this item' + (f' · {moved} {"row" if moved == 1 else "rows"} moved' if moved else '')
+    elif event['field'] == 'unmerge':
+        words = f'Unmerged {name(int(event["old_value"]))}'
+    elif event['field'] == 'prefer':
+        words = 'Preferred link saved'
+    elif event['field'] == 'add':
+        words = 'BrickLink number linked'
+    else:
+        words = 'Saved'
+    can = db.execute(f"SELECT 1 FROM main.event e WHERE e.id=? AND {undoing.undoable_sql('e')} AND NOT {undoing.undone_sql('e')}", (identifier,)).fetchone()
+    return dict(id=identifier, text=words, undo=bool(can))
+
+
+@web_page.get('/collection/item/<int:item_id>/merge')
+@login_required
+def bw_item_merge(item_id):
+    """Merge a local (or catalogue-retired) item into another: search for the survivor, see what moves and what refuses, then confirm."""
+    from .admin_ops import brickwork_path
+    from ..core.admin import database
+    from ..core import collection, identity_admin
+    if not bw_collection_editable():
+        abort(403, 'Changes are switched off on this instance')
+    query, target = request.args.get('q', '').strip()[:60], request.args.get('target')
+    try:
+        with database(brickwork_path(), require_catalogue=False) as db:
+            base = db.execute('SELECT * FROM main.item WHERE id=?', (item_id,)).fetchone()
+            if base is None:
+                abort(404, 'Item is unavailable')
+            if base['merged_into'] is not None:
+                return redirect(url_for('web.bw_collection_item', item_id=base['merged_into']))
+            loser = collection.decorate(db, [dict(item_id=item_id, name=base['name'], year=base['year'])])[0]
+            blocker = identity_admin.merge_blocker(db, item_id)
+            results = [] if blocker else identity_admin.survivors(db, item_id, query)
+            chosen = preview = None
+            if target and not blocker and target.isdigit():
+                chosen = collection.decorate(db, [dict(item_id=int(target))])[0]
+                preview = identity_admin.merge_preview(db, item_id, int(target))
+    except ValueError as exc:
+        abort(404, str(exc))
+    response = current_app.make_response(render_template('web/toni/web/bw_item_merge.html', title='Merge item', loser=loser, blocker=blocker, query=query,
+        results=results, chosen=chosen, preview=preview, csrf_token=bw_add_token(), can_edit=True))
+    response.headers['Cache-Control'] = 'no-store'
+    return response
+
+
+@web_page.post('/collection/item/<int:item_id>/identity')
+@login_required
+def bw_item_identity(item_id):
+    """A decision made on an item page: merge, unmerge, preferred link, BrickLink number, or Undo of the last one."""
+    from flask import flash
+    from ..core import errors
+    from . import admin_ops
+    origin = request.headers.get('Origin')
+    if (origin and origin.rstrip('/') != request.host_url.rstrip('/')) or request.headers.get('Sec-Fetch-Site') == 'cross-site':
+        abort(403)
+    bw_add_csrf(request.form)
+    if not bw_collection_editable():
+        abort(403, 'Changes are switched off on this instance')
+    action = request.form.get('action', '')
+    args = {k: request.form[k] for k in ('colour',) if request.form.get(k)}
+    fields = ('target', 'number', 'link', 'colour', 'merge', 'event')
+    back = url_for('web.bw_collection_item', item_id=item_id, **args)
+    try:
+        result = admin_ops.tools_write('identity', action=action, item=str(item_id), **{k: request.form.get(k) or None for k in fields})
+    except (errors.BrickWorkError, ValueError, TypeError) as exc:
+        flash('Not saved · ' + (str(exc) if isinstance(exc, errors.BrickWorkError) else 'Check the values and try again.'), 'error')
+        return redirect(url_for('web.bw_item_merge', item_id=item_id, target=request.form.get('target')) if action == 'merge' else back)
+    if action == 'undo':
+        flash('Undone', 'success')
+        return redirect(back)
+    if action == 'merge':
+        return redirect(url_for('web.bw_collection_item', item_id=int(request.form['target']), done=result['event_id']))
+    return redirect(url_for('web.bw_collection_item', item_id=item_id, done=result.get('event_id'), **args))
+
+
+@web_page.get('/collection/item/<kind>/<path:number>')
+@login_required
+def bw_collection_item_by_number(kind, number):
+    """Number URLs of earlier versions (and a pasted number): the item the number names, through `core.items.find`. The colour of
+    a part is a BrickLink colour number there, and means the colour that number stands for."""
+    from .admin_ops import brickwork_path
+    from .ui import passthrough_args
+    from ..core.admin import database
+    from ..core import items
+    from ..store4 import identity
+    kind_word = items.kind_of_type(kind.upper()) if len(kind) == 1 and kind.upper() in items.KIND_TYPE.values() else kind if kind in items.KINDS else None
+    if kind_word is None:
+        abort(404, 'Item is unavailable')
+    args = passthrough_args('kind', 'number', 'item_id')            # item_id is the destination's own parameter
+    with database(brickwork_path(), read_only=True) as db:
+        found = items.find(db, kind_word, number, limit=1)
+        if not found:
+            abort(404, 'Item is unavailable')
+        item_id = found[0]['item_id']
+        if kind_word == 'part' and 'colour' in args:
+            old = args.pop('colour')[0]
+            try:
+                resolved = identity.resolve_inverse(db, items.type_of_kind(kind_word), number, None if old == 'none' else str(old))
+            except Exception:                                              # an ambiguous or unknown colour: the part, and its colour chooser
+                resolved = None
+            if resolved:
+                item_id, args['colour'] = resolved[0], resolved[1]
+    return redirect(url_for('web.bw_collection_item', item_id=item_id, **args), 301)
 
 
 def bw_collection_detail_response(detail, choices, title):
+    for photo in detail.get('photos', ()):                                 # an own photo is served by the image route, by its text id
+        photo['url'] = url_for('web.bw_image', image_id=photo['id'])
     response = current_app.make_response(render_template('web/toni/web/bw_collection_detail.html',
         title=title, detail=detail, choices=choices, csrf_token=bw_add_token(), can_edit=bw_collection_editable()))
     response.headers['Cache-Control'] = 'no-store'
@@ -1294,18 +1588,20 @@ def bw_collection_wishes():
     return response
 
 
-@web_page.get('/collection/wishes/<int:identifier>')
+@web_page.get('/collection/wishes/<identifier>')
 @login_required
 def bw_collection_wish(identifier):
     from .admin_ops import brickwork_path
     from ..core.admin import database
     from ..core import collection
     with database(brickwork_path(), read_only=True) as db:
-        wish=db.execute('SELECT * FROM wishlist WHERE id=? AND archived_at IS NULL',(identifier,)).fetchone()
+        wish = db.execute('SELECT * FROM wish WHERE id=? AND archived_at IS NULL', (identifier,)).fetchone()
         if not wish: abort(404)
-        detail=collection.detail(db,wish['item_type'],wish['item_no'],colour=wish['color_id'],wish_id=identifier)
-        choices=collection.options(db, include_wishlists=True)
-    return bw_collection_detail_response(detail,choices,'Wishlist')
+        try:
+            detail = collection.detail(db, wish['item_id'], colour=wish['color_id'], wish_id=identifier)
+        except ValueError as exc: abort(404, str(exc))
+        choices = collection.options(db, include_wishlists=True)
+    return bw_collection_detail_response(detail, choices, 'Wishlist')
 
 
 @web_page.get('/collection/lots/<identifier>')
@@ -1365,22 +1661,20 @@ def bw_collection_write(action):
                         result['merged_ids'] = [r['id'] for r in merged]
                         if len(merged)==1:
                             r=merged[0]
-                            result['url'] = url_for('web.bw_collection_item',kind=r['item_type'],number=r['item_no'],colour=r['color_id'],stock=r['id'])
+                            result['url'] = url_for('web.bw_collection_item',item_id=r['item_id'],stock=r['id'],**({'colour':r['color_id']} if r['color_id'] is not None else {}))
             elif action=='wish':
-                event=collection.want_placeholder(db,data.get('item_no'))
+                event=collection.want(db,int(data['item_id']),data.get('color_id'))
                 message='Added to wishlist'
-            elif action=='undo':
-                event=int(data['event_id'])
-                row=db.execute('SELECT entity FROM events WHERE id=?',(event,)).fetchone()
-                if row and row[0]=='bw_workbench': workbench.undo(db,event)
-                else: collection.undo(db,event)
-                message='Undone'
             elif action=='transfer':
                 event=workbench.transfer(db,data['source_id'],data['copy_id'],data['target'],data['target_id'],data['quantity'])
                 message='Saved'
             elif action=='take':
-                event=workbench.take_for_gap(db,data['copy_id'],data['item_type'],data['item_no'],data['color_id'],data['quantity'])
+                event=workbench.take_for_gap(db,data['copy_id'],int(data['item_id']),data.get('color_id'),data['quantity'])
                 message='Took '+str(int(data['quantity']))
+            elif action=='undo':
+                event=int(data['event_id'])
+                collection.undo(db,event)
+                message='Undone'
             elif action=='photo':
                 upload=request.files.get('photo')
                 event=collection.photo(db,_media(brickwork_path()),data['entity'],data['identifier'],upload.read(15*1024*1024+1) if upload else b'',data.get('caption',''))
@@ -1389,12 +1683,64 @@ def bw_collection_write(action):
                 event=collection.new_lot(db,data['ids'],data)
                 message='Lot created'
             elif action=='caption':
-                event=collection.caption(db,int(data['identifier']),data.get('caption',''))
+                event=collection.caption(db,str(data['identifier']),data.get('caption',''))
                 message='Caption saved'
+            elif action in ('part-list','part-list-cancel','part-list-accept'):
+                event,message=_part_list_write(db,action,data)
             else: abort(404)
+    except Store4Error as exc:
+        return jsonify(message=str(exc)),400
     except (ValueError,KeyError,TypeError,sqlite3.Error,OSError) as exc:
         return jsonify(message=public(exc, 'Nothing was saved · review the values and try again')),400
     return jsonify(event_id=event,message=message,**result)
+
+
+def _part_list_write(db,action,data):
+    """The copy page's Part list writes (design 4.4, decision F): switch a copy in place (with "use this for new copies of this set" when
+    asked), cancel a pending BrickLink switch, accept a ready one. Returns `(event id or None, message)`; only a switch can be undone."""
+    from ..core.admin import origin
+    from ..store4 import copies, pending, part_list_read
+    via,actor=origin()
+    copy_id=str(data['copy_id'])
+    if action=='part-list-cancel':
+        pending.cancel_pending(db,copy_id,via=via,actor=actor)
+        return None,"Cancelled · the copy keeps Rebrickable's list"
+    if action=='part-list-accept':
+        receipt=pending.accept_pending(db,copy_id,via=via,actor=actor)
+        return receipt['event_id'],"Switched to BrickLink's list"
+    choice=part_list_read.parse_choice(data.get('choice',''))
+    remember=data.get('preference') in (True,'true','on')
+    if choice['source']=='bricklink':                                       # at once with a fetched list, else the copy waits on a queued job
+        done=pending.request_bricklink(db,copy_id,via=via,actor=actor,remember=remember)
+        receipt=done.get('receipt')
+    else:
+        receipt=copies.switch_part_list(db,copy_id,choice,via=via,actor=actor,remember=remember)
+    if receipt is None:
+        message="Fetching BrickLink's list · the copy switches when it arrives"
+    else:
+        counts=receipt.get('counts') or {}
+        message='Part list switched · %d added, %d retired'%(counts.get('lines_insert',0),counts.get('lines_retire',0))
+    if remember:
+        message+=' · used for new copies of this set'
+    return (receipt['event_id'] if receipt else None),message
+
+
+@web_page.get('/collection/copy/<copy_id>/part-list')
+@login_required
+def bw_copy_part_list(copy_id):
+    """The Switch sheet's body for one copy (design 4.4), loaded when the sheet opens: the choices and, for each, what it would change."""
+    from .admin_ops import brickwork_path
+    from ..core.admin import database
+    from ..core import collection
+    if not bw_collection_editable(): abort(403,'Changes are switched off on this instance')
+    try:
+        with database(brickwork_path(),read_only=True) as db:
+            sheet=collection.part_list_sheet(db,copy_id,choose=request.args.get('choose'))
+    except (Store4Error,ValueError) as exc:
+        abort(404,str(exc))
+    response=current_app.make_response(render_template('web/toni/brickwork/part_list_sheet.html',sheet=sheet,copy_id=copy_id,csrf_token=bw_add_token()))
+    response.headers['Cache-Control']='no-store'
+    return response
 
 
 @web_page.get('/collection/jump')
@@ -1410,11 +1756,11 @@ def bw_collection_jump():
         for r in result['results']:
             kind=r['item_type']
             row=dict(kind='wanted' if r.get('entity')=='wish' else {'S':'set','M':'minifigure','P':'part'}.get(kind,'item'),
-                item_type=kind,type_label=collection.TYPES[kind],number=r['item_no'],name=r['name'],
+                item_type=kind,type_label=collection.TYPES[kind],number=r['number_text'] or r['name'],name=r['name'],
                 quantity=r.get('quantity'),color=r.get('color_id'),color_name=r['color_name'],
                 image=url_for('web.bw_image',image_id=r['image'],w=320) if r['image'] else None)
-            params=dict(kind=kind,number=r['item_no'])
-            if r.get('color_id') is not None: params['colour']=r['color_id']
+            params=dict(item_id=r['item_id'])
+            if r.get('color_id') is not None and kind=='P': params['colour']=r['color_id']
             if row['kind']=='wanted': row['url']=url_for('web.bw_collection_wish',identifier=r['id'])
             elif row['kind']=='set':
                 row['copies']=[dict(id=c['id'],condition=c['condition'],completeness=c['completeness'],
@@ -1451,7 +1797,7 @@ def bw_planning(screen):
                 rows=[r for r in planning.wishes(db) if list_id=='all' or r['list_id']==list_id]
             elif screen=='prices':
                 # Rows are not rendered here: the page loads compact records and each row's observations on demand.
-                available_types=[r[0] for r in db.execute('SELECT DISTINCT item_type FROM price_current')]
+                available_types=[collection.type_of(r[0]) for r in db.execute('SELECT DISTINCT i.kind FROM price_current p JOIN item i ON i.id=p.item_id')]
             else:
                 data=planning.ranking(db);rows=data['rows'];settings=data['settings']
     except (ValueError,sqlite3.Error,OSError) as exc: error=public(exc, 'Brick Work database is not available. Check BW_DB_PATH and try again.')
@@ -1487,14 +1833,14 @@ def bw_prices_details():
     from ..core import planning, collection
     from ..core.admin import database
     from .admin_ops import brickwork_path
-    kind,number=request.args.get('kind'),request.args.get('number')
-    if kind not in collection.TYPES or not number: abort(400)
-    try: colour=int(request.args['colour']) if request.args.get('colour') not in (None,'') else None
-    except ValueError: abort(400)
-    if colour is not None and not 0<=colour<2**31: abort(400)
+    try:
+        item_id=int(request.args['item_id'])
+        colour=int(request.args['colour']) if request.args.get('colour') not in (None,'') else None
+    except (KeyError,ValueError): abort(400)
+    if item_id<1 or colour is not None and not 0<colour<2**31: abort(400)
     try:
         with database(brickwork_path(),read_only=True) as db:
-            result=planning.price_details(db,kind,number,colour)
+            result=planning.price_details(db,item_id,colour)
     except (ValueError,sqlite3.Error,OSError) as exc: return jsonify(message=public(exc, 'Brick Work database is not available · try again')),503
     if result is None: abort(404)
     response=jsonify(result);response.headers['Cache-Control']='no-store';return response
@@ -1503,38 +1849,52 @@ def bw_prices_details():
 @web_page.post('/planning/action/<action>')
 @login_required
 def bw_planning_write(action):
+    """The planning writes: `refresh` queues one `market_price` job per item id (unless one is unfinished already), `pin` and `settings`
+    save one event each, `undo` reverses any receipt by its event id, `export` is the BrickLink XML of the chosen copies' repair lines (a
+    read: it stays available on a read-only instance). Lines with no BrickLink number are skipped and listed (`summary: true` answers
+    JSON with the list, else the file)."""
     import json
-    from ..core import planning
-    from ..core.admin import database
+    from urllib.parse import quote
+    from ..core import items as core_items, planning
+    from ..core.admin import database, live_import_job
     from ..core.pipeline import Pipeline
+    from ..core.transaction import transaction
     from .admin_ops import brickwork_path
+    if action not in ('refresh', 'export', 'pin', 'settings', 'undo'): abort(404)
     if action!='export' and not bw_collection_editable(): abort(403,'Changes are switched off on this instance')
     data=request.get_json(silent=True)
     if not isinstance(data,dict): abort(400)
     bw_add_csrf(data)
     try:
-        with database(brickwork_path()) as db:
-            if action=='export':
-                response=current_app.response_class(planning.export(db,data.get('ids')),mimetype='application/xml')
-                response.headers['Content-Disposition']='attachment; filename="missing-parts.xml"'
-                response.headers['Cache-Control']='no-store'
-                return response
-            if action=='refresh':
-                identities=data.get('items')
-                if not isinstance(identities,list) or not identities or len(identities)>2000: raise ValueError('Choose priced items')
-                keys=[];seen=set()
-                for key in identities:
-                    if not isinstance(key,list) or len(key)!=2 or not all(isinstance(v,str) for v in key): raise ValueError('Choose item identities')
-                    if tuple(key) not in seen:
-                        seen.add(tuple(key));keys.append(key)
-                valid={(r[0],r[1]) for r in db.execute('SELECT item_type,item_no FROM items WHERE (item_type,item_no) IN (SELECT json_extract(value,\'$[0]\'),json_extract(value,\'$[1]\') FROM json_each(?))',(json.dumps(keys),))}
-                if set(map(tuple,keys))!=valid or any(k[0]=='?' for k in keys): raise ValueError('Resolve items before refreshing')
+        if action=='refresh':
+            identities=data.get('items')
+            if not isinstance(identities,list) or not identities or len(identities)>2000: raise ValueError('Choose priced items')
+            ids=[]
+            for identifier in identities:
+                if type(identifier) is not int or identifier<1: raise ValueError('Choose item identities')
+                if identifier not in ids: ids.append(identifier)
+            with database(brickwork_path()) as db:
+                try:
+                    if any(core_items.label(db,i).unidentified for i in ids): raise ValueError('Resolve items before refreshing')
+                except core_items.errors.NotFound: raise ValueError('Choose item identities') from None
                 pipeline=Pipeline(db)
-                with db:
-                    db.execute('BEGIN IMMEDIATE')
-                    jobs=[pipeline.queue_steps(*key,['market_price'],via='app') for key in keys]
-                bw_start_worker()
-                return jsonify(message='Price refresh queued · budgets checked by the worker',jobs=jobs)
+                with transaction(db):
+                    jobs=[pipeline.queue_steps(i,['market_price'],via='app') for i in ids if live_import_job(db,i) is None]
+            bw_start_worker()
+            return jsonify(message='Price refresh queued · budgets checked by the worker',jobs=jobs)
+        if action=='export':
+            with database(brickwork_path(),read_only=True) as db:
+                result=planning.export(db,data.get('ids'))
+            skipped=[dict(item_no=(r['name'] or ''),color=r['color_name'],quantity=r['quantity'],reason=r['why']) for r in result['skipped']]
+            if data.get('summary') is True:
+                return jsonify(content=result['xml'].decode('utf-8'),filename='missing-parts.xml',mimetype='application/xml',
+                               summary=dict(exported=len(result['lines']),skipped=skipped))
+            response=current_app.response_class(result['xml'],mimetype='application/xml')
+            response.headers['Content-Disposition']='attachment; filename="missing-parts.xml"'
+            response.headers['Cache-Control']='no-store'
+            response.headers['X-Bw-Skipped']=quote(json.dumps(skipped,separators=(',',':')))
+            return response
+        with database(brickwork_path()) as db:
             if action=='undo': planning.undo(db,int(data['event_id']));event=None
             else: event=planning.save(db,action,data)
     except (ValueError,KeyError,TypeError,sqlite3.Error,OSError) as exc: return jsonify(message=public(exc, 'Nothing was saved · review the values and try again')),400
@@ -1561,7 +1921,7 @@ def bw_wishlists_write(action):
                 _,event=wishlists.save(db, data.get('id') or None, data.get('values',{}), action=action)
             else: abort(404)
         return jsonify(message='Copied' if data.get('copy') else 'Saved', event_id=event)
-    except (ValueError,sqlite3.Error) as exc:
+    except (ValueError,KeyError,TypeError,sqlite3.Error) as exc:
         return jsonify(message=public(exc, 'Nothing was saved · review the values and try again')),400
 
 

@@ -1,5 +1,6 @@
 """#60: a fresh install works without BW_AUTHENTICATION_KEY, and no password needs an explicit opt-in."""
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -10,6 +11,7 @@ from brickwork.app import setup_app
 from brickwork.core.connect import connect
 from brickwork.settings import exposure_problem
 from brickwork.web.auth import session_key
+from tests.store4_mint_fixtures import build_catalogue
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -22,6 +24,9 @@ def fresh(tmp_path, monkeypatch, **env):
     monkeypatch.setenv('BW_EMBEDDED_WORKER', '0')
     for key, value in env.items():
         monkeypatch.setenv(key, value)
+    if not (tmp_path / 'catalogue.db').exists():                # a 4.0 collection opens only beside its catalogue
+        (tmp_path / 'cat').mkdir()
+        shutil.copy(build_catalogue(tmp_path / 'cat'), tmp_path / 'catalogue.db')
     connect(tmp_path / 'brickwork.db').close()
     app = Flask('first-run', template_folder=str(ROOT / 'templates'), static_folder=str(ROOT / 'static'))
     setup_app(app)

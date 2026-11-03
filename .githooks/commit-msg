@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# The user-docs check (App Standard, Repo & checks). Enabled by: git config core.hooksPath .githooks
+exec python3 "$(git rev-parse --show-toplevel)/scripts/check_docs.py" commit-msg "$1"

@@ -26,7 +26,7 @@ def test_route_manifest_and_retired_paths(app):
         assert response.status_code == 404, (path, response.status_code)
         assert 'Location' not in response.headers
     assert client.get('/api/v1/health').json['code'] == 'not_set_up'
-    assert set(app.blueprints) == {'web', 'login', 'brickwork_api'}
+    assert set(app.blueprints) == {'web', 'login', 'brickwork_api', 'brickwork_api2'}
 
 
 def test_static_shell_contains_only_live_assets(app):
@@ -36,6 +36,5 @@ def test_static_shell_contains_only_live_assets(app):
     assert assets
     for path in assets:
         assert app.test_client().get(path).status_code == 200, path
-    page = logged_in(app).get('/manage/add').text
-    assert 'socket.io' not in page
-    assert 'bw-add.js' in page and 'import-progress.js' in page
+    add = logged_in(app).get('/manage/add').text                              # the Add screen (M.8c): no socket.io, its own script present
+    assert 'socket.io' not in add and 'bw-add.js' in add

@@ -2,10 +2,12 @@
 
     python scripts/build_site.py OUT_DIR
 
-Pages: `/` the landing page, `/use-cases/` and `/workflows/` (Markdown in scripts/site), `/docs/` the README, `/demo/` the static demo (scripts/build_demo.py), `/api/` the OpenAPI contract as one local reference page, `/mcp/` the MCP
-guide with the tool and resource tables generated from the server itself. No site generator: Markdown
-is rendered with Python-Markdown, styled with the app's own design tokens and fonts. Links to files in
-the repository point at them on GitHub. The output is static and needs no server.
+Pages: `/` the landing page, `/use-cases/` and `/workflows/` (Markdown in scripts/site), `/docs/` the user docs, `/demo/` the static demo (scripts/build_demo.py), `/api/` the OpenAPI contract as one local reference page, `/mcp/` the MCP
+guide with the tool and resource tables generated from the server itself, `/changelog/` CHANGELOG.md, and `/design/` the ADRs and the
+4.0 data-model design (docs/adr, docs/data-model-4.0), one page per file. The user docs are built by
+Zensical from docs/ and mkdocs.yml (App Standard, Maintenance § Rules, User docs); the other pages are
+Markdown rendered with Python-Markdown, styled with the app's own design tokens and fonts. Links to files
+in the repository point at them on GitHub. The output is static and needs no server.
 """
 import argparse
 import html
@@ -13,7 +15,9 @@ import os
 import re
 import shutil
 import struct
+import subprocess
 import sys
+import tempfile
 from pathlib import Path
 from urllib.parse import unquote
 
@@ -23,7 +27,24 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 SITE = ROOT / 'scripts/site'
 PAGES = (('Home', ''), ('Use cases', 'use-cases/'), ('Workflows', 'workflows/'), ('Demo', 'demo/'), ('Docs', 'docs/'),
-         ('API reference', 'api/'), ('MCP', 'mcp/'))
+         ('API reference', 'api/'), ('MCP', 'mcp/'), ('Changelog', 'changelog/'), ('Design', 'design/'))
+# The design folders published under /design/<folder>/: README.md is the folder's index, each other .md file its own page.
+DESIGN = ('adr', 'data-model-4.0')
+DESIGN_SKIP = {'docs/adr/0000-template.md'}
+USER_DOCS = ('how-to', 'concepts', 'reference', 'tutorials')   # the Zensical sections under /docs/
+
+
+def site_page(resolved):
+    """The site path (from the root, with a trailing slash) of a repository file this site renders, or None."""
+    if resolved == 'CHANGELOG.md':
+        return 'changelog/'
+    section, _, name = resolved.removeprefix('docs/').partition('/')
+    if resolved.startswith('docs/') and section in USER_DOCS and name.endswith('.md') and '/' not in name:
+        return f'docs/{section}/' + ('' if name == 'index.md' else name.removesuffix('.md') + '/')
+    folder, _, name = resolved.removeprefix('docs/').partition('/')
+    if resolved.startswith('docs/') and folder in DESIGN and name.endswith('.md') and '/' not in name and resolved not in DESIGN_SKIP:
+        return f'design/{folder}/' + ('' if name == 'README.md' else name.removesuffix('.md') + '/')
+    return None
 
 
 def repository():
@@ -44,9 +65,11 @@ def rewrite_links(text, base, depth=0):
         path, _, anchor = target.partition('#')
         resolved = os.path.normpath(os.path.join(base, path)).replace(os.sep, '/')
         up = '../' * depth
-        local = {'README.md': up + 'docs/', 'docs/brickwork/mcp.md': up + 'mcp/', 'docs/brickwork/openapi-v1.yaml': up + 'api/'}
+        local = {'docs/brickwork/mcp.md': up + 'mcp/', 'docs/brickwork/openapi-v2.yaml': up + 'api/'}
         if resolved in local:
             url = local[resolved]
+        elif site_page(resolved):
+            url = up + site_page(resolved)
         else:
             url = blob(resolved)
         return f'[{label}]({url}{"#" + anchor if anchor else ""})'
@@ -101,10 +124,10 @@ def lockup(up):
 def api_reference():
     """Render the complete contract locally, without a remote renderer or runtime requests."""
     import yaml
-    contract = yaml.safe_load((ROOT / 'docs/brickwork/openapi-v1.yaml').read_text())
-    chunks = ['<h1>API reference</h1><p>The REST API at <code>/api/v1</code>. '
-              '<a href="openapi-v1.yaml">Download the OpenAPI contract</a>. '
-              f'<a href="{blob("docs/brickwork/api-v1.md")}">Authentication and examples</a>.</p>']
+    contract = yaml.safe_load((ROOT / 'docs/brickwork/openapi-v2.yaml').read_text())
+    chunks = ['<h1>API reference</h1><p>The REST API at <code>/api/v2</code>. '
+              '<a href="openapi-v2.yaml">Download the OpenAPI contract</a>. '
+              f'<a href="{blob("docs/brickwork/api-v2.md")}">Authentication and examples</a>.</p>']
     for path, operations in contract['paths'].items():
         for method, operation in operations.items():
             if method not in ('get', 'post', 'put', 'patch', 'delete', 'head', 'options'):
@@ -125,17 +148,66 @@ def mcp_tables():
     rows = {'GET': [], 'write': []}
     for name, (method, path, op) in sorted(adapter.tools.items()):
         arguments = ', '.join(f'`{a}`' for a in adapter.schema(op)['properties']) or 'none'
-        line = f'| `{name}` | {html.escape(op.get("summary", "")).capitalize()} | {arguments} | `{method} /api/v1{path}` |'
+        line = f'| `{name}` | {html.escape(op.get("summary", "")).capitalize()} | {arguments} | `{method} /api/v2{path}` |'
         rows['GET' if method == 'GET' else 'write'].append(line)
     head = '| Tool | What it does | Arguments | API call |\n|---|---|---|---|'
-    resources = contract().get('x-mcp', {}).get('resources', [])
-    resource_rows = '\n'.join(f'| `{r.get("uri")}` | {html.escape(str(r.get("description") or r.get("reads") or ""))} |'
-                              for r in resources if isinstance(r, dict))
+    resources = contract().get('x-mcp', {}).get('resources', {})
+    resource_rows = '\n'.join(f'| `{uri}` | `{target if isinstance(target, str) else target["operation"]}` |' for uri, target in resources.items())
     text = (f'\n### Read tools ({len(rows["GET"])})\n\n{head}\n' + '\n'.join(rows['GET']) +
             f'\n\n### Write tools ({len(rows["write"])}, only with a write token and `--allow-write`)\n\n{head}\n' + '\n'.join(rows['write']))
     if resource_rows:
-        text += f'\n\n### Resources ({len(resources)})\n\n| URI | Reads |\n|---|---|\n{resource_rows}'
+        text += f'\n\n### Resources ({len(resources)})\n\n| URI | API operation |\n|---|---|\n{resource_rows}'
     return text + '\n'
+
+
+def build_docs(out):
+    """Zensical takes its output directory only from the config and keeps it inside the project root,
+    so build into a temporary directory in the repo and copy the result out."""
+    import yaml
+    zensical = Path(sys.executable).with_name('zensical')
+    with tempfile.TemporaryDirectory(prefix='.build-site-', dir=ROOT) as tmp:
+        config = yaml.safe_load((ROOT / 'mkdocs.yml').read_text())
+        config['site_dir'] = str(Path(tmp) / 'site')
+        path = ROOT / f'{Path(tmp).name}.yml'
+        path.write_text(yaml.safe_dump(config, sort_keys=False, allow_unicode=True))
+        try:
+            subprocess.run((str(zensical) if zensical.exists() else 'zensical', 'build', '--strict', '--clean',
+                            '--config-file', str(path)), check=True)
+        finally:
+            path.unlink()
+        shutil.copytree(Path(tmp) / 'site', out)
+
+
+def mermaid_to_link(text, resolved):
+    """The site loads no Mermaid renderer (it makes no external requests): a diagram links to the file on GitHub,
+    which draws it, and keeps its source folded underneath."""
+    def figure(match):
+        heading = re.findall(r'^#+ (.+)$', text[:match.start()], flags=re.M)
+        anchor = '#' + re.sub(r'[^\w\- ]', '', heading[-1].lower()).replace(' ', '-') if heading else ''   # GitHub's heading slug
+        return (f'\n<p class="diagram"><a href="{blob(resolved)}{anchor}">This diagram is drawn on GitHub</a>.</p>\n'
+                f'<details><summary>Diagram source</summary><pre><code>{html.escape(match.group(1))}</code></pre></details>\n')
+    return re.sub(r'^```mermaid\n(.*?)^```$', figure, text, flags=re.M | re.S)
+
+
+def build_design(out):
+    """The changelog and the design documents, each rendered with links between them kept on the site."""
+    pages = [('CHANGELOG.md', 'Changelog', 'Changelog')]
+    for folder in DESIGN:
+        for path in sorted((ROOT / 'docs' / folder).glob('*.md')):
+            resolved = path.relative_to(ROOT).as_posix()
+            if resolved not in DESIGN_SKIP:
+                title = next((l[2:].strip() for l in path.read_text().splitlines() if l.startswith('# ')), path.stem)
+                pages.append((resolved, title, 'Design'))
+    for resolved, title, current in pages:
+        target = site_page(resolved)
+        depth = target.count('/')
+        (out / target).mkdir(parents=True, exist_ok=True)
+        text = mermaid_to_link(rewrite_links((ROOT / resolved).read_text(), os.path.dirname(resolved), depth), resolved)
+        (out / target / 'index.html').write_text(page(title, render(text), depth, current=current))
+    index = ('# Design\n\nHow Brick Work is built and why.\n\n'
+             '- [Architecture Decision Records](adr/): one page per decision that binds future work.\n'
+             '- [Data model 4.0](data-model-4.0/): the approved design of schema 4.0, its DDL, the user journey, the regression map and the estimate.\n')
+    (out / 'design/index.html').write_text(page('Design', render(index), 1, current='Design'))
 
 
 def build(out):
@@ -143,7 +215,7 @@ def build(out):
     if out.exists():
         shutil.rmtree(out)
     (out / 'assets' / 'fonts').mkdir(parents=True)
-    for sub in ('api', 'docs', 'use-cases', 'workflows'):
+    for sub in ('api', 'use-cases', 'workflows'):
         (out / sub).mkdir()
     (out / 'mcp').mkdir()
     static = ROOT / 'static'
@@ -162,9 +234,7 @@ def build(out):
     shutil.copy(SITE / 'site.js', out / 'assets/site.js')
     shutil.copytree(SITE / 'img', out / 'assets/img')
 
-    readme = re.sub(r'<!-- site:skip -->.*?<!-- /site:skip -->\n*', '', (ROOT / 'README.md').read_text(), flags=re.S)
-    readme = rewrite_links(readme, '.', 1)
-    (out / 'docs/index.html').write_text(page('Documentation', render(readme), 1, current='Docs'))
+    build_docs(out / 'docs')
 
     landing = (SITE / 'landing.html').read_text().replace('{repository}', repository())
     (out / 'index.html').write_text(page('Brick Work', landing, 0, current='Home', main='marketing landing'))
@@ -175,10 +245,12 @@ def build(out):
     guide = rewrite_links((ROOT / 'docs/brickwork/mcp.md').read_text(), 'docs/brickwork', 1) + mcp_tables()
     (out / 'mcp/index.html').write_text(page('MCP server', render(guide), 1, current='MCP'))
 
-    shutil.copy(ROOT / 'docs/brickwork/openapi-v1.yaml', out / 'api/openapi-v1.yaml')
+    shutil.copy(ROOT / 'docs/brickwork/openapi-v2.yaml', out / 'api/openapi-v2.yaml')
     body = api_reference()
     (out / 'api/index.html').write_text(page('API reference', body, 1, current='API reference').replace(
         '<main class="doc">', '<main class="doc api">'))
+    build_design(out)
+
     from scripts.build_demo import build_demo
     demo_base = f'/{repository().split("/")[1]}/demo/'
     build_demo(out / 'demo', demo_base)

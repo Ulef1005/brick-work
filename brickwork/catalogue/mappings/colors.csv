@@ -1,0 +1,426 @@
+# mapping_version: 2026.10.23.1
+# dump_date: 2026-10-23
+# external_ids_fetched: 2026-10-23T17:52:26Z
+# source: Rebrickable (https://rebrickable.com), data free to use with acknowledgement
+rb_color_id,rb_name,provider,provider_key,provider_name,inverse_preferred,rb_num_parts
+-1,[Unknown],lego,125,Light Orange,0,17
+-1,[Unknown],lego,158,Tr. Flu. Red,0,17
+0,Black,bricklink,11,Black,0,848422
+0,Black,lego,26,Black,0,848422
+0,Black,lego,342,CONDUCT. BLACK,0,848422
+1,Blue,bricklink,7,Blue,0,209899
+1,Blue,lego,23,Bright Blue,0,209899
+2,Green,bricklink,6,Green,0,92971
+2,Green,lego,28,Dark green,0,92971
+3,Dark Turquoise,bricklink,39,Dark Turquoise,0,24080
+3,Dark Turquoise,lego,107,Bright bluish green,0,24080
+4,Red,bricklink,5,Red,0,325687
+4,Red,lego,21,Bright red,0,325687
+5,Dark Pink,bricklink,47,Dark Pink,0,16550
+5,Dark Pink,lego,221,Bright Purple,0,16550
+6,Brown,bricklink,8,Brown,0,9560
+6,Brown,lego,25,Earth Orange,0,9560
+7,Light Gray,bricklink,9,Light Gray,0,92855
+7,Light Gray,lego,2,Grey,0,92855
+8,Dark Gray,bricklink,10,Dark Gray,0,22453
+8,Dark Gray,lego,27,Dark grey,0,22453
+9,Light Blue,bricklink,62,Light Blue,0,43
+9,Light Blue,lego,45,Light blue,0,43
+10,Bright Green,bricklink,36,Bright Green,0,28690
+10,Bright Green,lego,37,Bright Green,0,28690
+11,Light Turquoise,bricklink,40,Light Turquoise,0,164
+11,Light Turquoise,lego,116,Med. bluish green,0,164
+12,Salmon,bricklink,25,Salmon,0,186
+12,Salmon,lego,101,Medium Red,0,186
+13,Pink,bricklink,23,Pink,0,482
+13,Pink,lego,9,L.REDVIOL,0,482
+14,Yellow,bricklink,3,Yellow,0,219002
+14,Yellow,lego,24,Bright yellow,0,219002
+15,White,bricklink,1,White,0,525390
+15,White,lego,1,White,0,525390
+17,Light Green,bricklink,38,Light Green,0,166
+17,Light Green,lego,6,Light green,0,166
+18,Light Yellow,bricklink,33,Light Yellow,0,340
+18,Light Yellow,lego,3,Light yellow,0,340
+19,Tan,bricklink,2,Tan,0,200726
+19,Tan,lego,5,Brick yellow,0,200726
+20,Light Violet,bricklink,44,Light Violet,0,186
+20,Light Violet,lego,39,Light bluish violet,0,186
+21,Glow In Dark Opaque,bricklink,46,Glow In Dark Opaque,0,215
+21,Glow In Dark Opaque,lego,50,Phosp. White,0,215
+22,Purple,bricklink,24,Purple,0,1005
+22,Purple,lego,104,Bright violet,0,1005
+23,Dark Blue-Violet,bricklink,109,Dark Blue-Violet,0,9
+23,Dark Blue-Violet,lego,196,Dark Royal blue,0,9
+25,Orange,bricklink,4,Orange,0,55838
+25,Orange,lego,106,Bright orange,0,55838
+26,Magenta,bricklink,71,Magenta,0,14132
+26,Magenta,lego,124,Bright reddish violet,0,14132
+27,Lime,bricklink,34,Lime,0,46842
+27,Lime,lego,119,Br. yellowish green,0,46842
+28,Dark Tan,bricklink,69,Dark Tan,0,75711
+28,Dark Tan,lego,138,Sand yellow,0,75711
+29,Bright Pink,bricklink,104,Bright Pink,0,19131
+29,Bright Pink,lego,222,Light Purple,0,19131
+30,Medium Lavender,bricklink,157,Medium Lavender,0,10383
+30,Medium Lavender,lego,324,Medium Lavender,0,10383
+31,Lavender,bricklink,154,Lavender,0,8905
+31,Lavender,lego,325,Lavender,0,8905
+32,Trans-Black IR Lens,lego,109,Black IR,0,0
+32,Trans-Black IR Lens,lego,355,Tr.Black IR,0,0
+33,Trans-Dark Blue,bricklink,14,Trans-Dark Blue,0,10726
+33,Trans-Dark Blue,lego,43,Tr. Blue,0,10726
+34,Trans-Green,bricklink,20,Trans-Green,0,5456
+34,Trans-Green,lego,48,Tr. Green,0,5456
+35,Trans-Bright Green,bricklink,108,Trans-Bright Green,0,3743
+35,Trans-Bright Green,lego,311,Transparent Bright Green,0,3743
+36,Trans-Red,bricklink,17,Trans-Red,0,20670
+36,Trans-Red,lego,41,Tr. Red,0,20670
+40,Trans-Brown,bricklink,13,Trans-Black,0,8659
+40,Trans-Brown,lego,111,Tr. Brown,0,8659
+41,Trans-Light Blue,bricklink,15,Trans-Light Blue,0,33394
+41,Trans-Light Blue,lego,42,Tr. Lg blue,0,33394
+42,Trans-Neon Green,bricklink,16,Trans-Neon Green,0,6804
+42,Trans-Neon Green,lego,49,Tr. Flu. Green,0,6804
+43,Trans-Very Lt Blue,bricklink,113,Trans-Aqua,0,232
+43,Trans-Very Lt Blue,lego,229,Transparent Light Bluish Green,0,232
+45,Trans-Dark Pink,bricklink,50,Trans-Dark Pink,0,5784
+45,Trans-Dark Pink,lego,113,Tr. Medi. reddish violet,0,5784
+46,Trans-Yellow,bricklink,19,Trans-Yellow,0,13443
+46,Trans-Yellow,lego,44,Tr. Yellow,0,13443
+47,Trans-Clear,bricklink,12,Trans-Clear,0,47953
+47,Trans-Clear,lego,40,Transparent,0,47953
+52,Trans-Purple,bricklink,51,Trans-Purple,0,3097
+52,Trans-Purple,lego,126,Tr. Bright bluish violet,0,3097
+54,Trans-Neon Yellow,bricklink,121,Trans-Neon Yellow,0,187
+54,Trans-Neon Yellow,lego,157,Transparent Fluorescent Yellow,0,187
+57,Trans-Neon Orange,bricklink,18,Trans-Neon Orange,0,5612
+57,Trans-Neon Orange,lego,47,Tr. Flu. Reddish orange,0,5612
+60,Chrome Antique Brass,bricklink,57,Chrome Antique Brass,0,33
+61,Chrome Blue,bricklink,52,Chrome Blue,0,26
+62,Chrome Green,bricklink,64,Chrome Green,0,2
+63,Chrome Pink,bricklink,82,Chrome Pink,0,19
+64,Chrome Black,bricklink,122,Chrome Black,0,10
+68,Very Light Orange,bricklink,96,Very Light Orange,0,16
+68,Very Light Orange,lego,36,Light Yellowish Orange,0,16
+69,Light Purple,bricklink,93,Light Purple,0,102
+69,Light Purple,lego,198,Bright Reddish Lilac,0,102
+70,Reddish Brown,bricklink,88,Reddish Brown,0,182372
+70,Reddish Brown,lego,192,Reddish Brown,0,182372
+71,Light Bluish Gray,bricklink,86,Light Bluish Gray,0,527312
+71,Light Bluish Gray,lego,194,Medium stone grey,0,527312
+72,Dark Bluish Gray,bricklink,85,Dark Bluish Gray,0,379358
+72,Dark Bluish Gray,lego,199,Dark stone grey,0,379358
+73,Medium Blue,bricklink,42,Medium Blue,0,13327
+73,Medium Blue,lego,102,Medium blue,0,13327
+74,Medium Green,bricklink,37,Medium Green,0,572
+74,Medium Green,lego,29,Medium green,0,572
+75,Speckle Black-Copper,bricklink,116,Speckle Black-Copper,0,10
+75,Speckle Black-Copper,lego,306,COP. DIF.,0,10
+76,Speckle DBGray-Silver,bricklink,117,Speckle DBGray-Silver,0,12
+76,Speckle DBGray-Silver,lego,304,CO. SILVER DIF,0,12
+77,Light Pink,bricklink,56,Rose Pink,0,184
+77,Light Pink,lego,17,Rose,0,184
+77,Light Pink,lego,223,Light Pink,0,184
+78,Light Nougat,bricklink,90,Light Nougat,0,12162
+78,Light Nougat,lego,283,Light Nougat,0,12162
+79,Milky White,bricklink,60,Milky White,0,239
+79,Milky White,lego,20,Nature,0,239
+80,Metallic Silver,bricklink,67,Metallic Silver,0,4205
+80,Metallic Silver,lego,298,"C.SILVER, DR. L",0,4205
+80,Metallic Silver,lego,336,SILVER INK,0,4205
+81,Metallic Green,bricklink,70,Metallic Green,0,24
+82,Metallic Gold,bricklink,65,Metallic Gold,0,4010
+82,Metallic Gold,lego,299,"W.GOLD, DR.LA.",0,4010
+82,Metallic Gold,lego,335,GOLD INK,0,4010
+84,Medium Nougat,bricklink,150,Medium Nougat,0,45377
+84,Medium Nougat,lego,312,Medium Nougat,0,45377
+85,Dark Purple,bricklink,89,Dark Purple,0,17689
+85,Dark Purple,lego,268,Medium Lilac,0,17689
+86,Light Brown,bricklink,91,Light Brown,0,168
+86,Light Brown,lego,217,BROWN,0,168
+89,Royal Blue,bricklink,97,Royal Blue,0,191
+89,Royal Blue,lego,195,R. BLUE,0,191
+92,Nougat,bricklink,28,Nougat,0,3111
+92,Nougat,lego,18,Nougat,0,3111
+100,Light Salmon,bricklink,26,Light Salmon,0,180
+100,Light Salmon,lego,100,Light red,0,180
+110,Violet,bricklink,43,Violet,0,191
+110,Violet,lego,110,Bright Bluish Violet,0,191
+112,Medium Bluish Violet,bricklink,73,Medium Violet,0,62
+112,Medium Bluish Violet,lego,112,Medium Bluish Violet,0,62
+112,Medium Bluish Violet,lego,213,Medium Royal Blue,0,62
+114,Glitter Trans-Dark Pink,bricklink,100,Glitter Trans-Dark Pink,0,234
+114,Glitter Trans-Dark Pink,lego,114,Tr. Medium Reddish-Violet w. Glitter 2%,0,234
+115,Medium Lime,bricklink,76,Medium Lime,0,190
+115,Medium Lime,lego,115,Med. yellowish green,0,190
+117,Glitter Trans-Clear,bricklink,101,Glitter Trans-Clear,0,230
+117,Glitter Trans-Clear,lego,117,Transparent Glitter,0,230
+117,Glitter Trans-Clear,lego,122,Nature with Glitter,1,230
+118,Aqua,bricklink,41,Aqua,0,322
+118,Aqua,lego,118,Light bluish green,0,322
+120,Light Lime,bricklink,35,Light Lime,0,29
+120,Light Lime,lego,120,Lig. yellowish green,0,29
+125,Light Orange,bricklink,32,Light Orange,0,66
+125,Light Orange,lego,121,Medium Yellowish Orange,0,66
+129,Glitter Trans-Purple,bricklink,102,Glitter Trans-Purple,0,169
+129,Glitter Trans-Purple,lego,129,Tr. Bright Bluish Violet w. Glitter 2%,0,169
+132,Speckle Black-Silver,bricklink,111,Speckle Black-Silver,0,246
+132,Speckle Black-Silver,lego,304,CO. SILVER DIF,1,246
+133,Speckle Black-Gold,bricklink,151,Speckle Black-Gold,0,5
+133,Speckle Black-Gold,lego,305,"Warm Gold, Diffuse",0,5
+134,Copper,bricklink,84,Copper,0,186
+134,Copper,lego,139,Copper,0,186
+135,Pearl Light Gray,bricklink,66,Pearl Light Gray,0,5501
+135,Pearl Light Gray,lego,131,Silver,0,5501
+135,Pearl Light Gray,lego,296,Cool silver,0,5501
+137,Pearl Sand Blue,bricklink,78,Pearl Sand Blue,0,172
+137,Pearl Sand Blue,lego,145,Sand blue metallic,0,172
+142,Pearl Light Gold,bricklink,61,Pearl Light Gold,0,29
+142,Pearl Light Gold,lego,127,Gold,0,29
+143,Trans-Medium Blue,bricklink,74,Trans-Medium Blue,0,704
+143,Trans-Medium Blue,lego,143,Tr. Flu. Blue,0,704
+148,Pearl Dark Gray,bricklink,77,Pearl Dark Gray,0,534
+148,Pearl Dark Gray,lego,148,Mettalic Dark Grey,0,534
+150,Pearl Very Light Gray,bricklink,119,Pearl Very Light Gray,0,40
+150,Pearl Very Light Gray,lego,150,Metallic Light Gray,0,40
+151,Very Light Bluish Gray,bricklink,99,Very Light Bluish Gray,0,285
+151,Very Light Bluish Gray,lego,208,Light stone grey,0,285
+158,Yellowish Green,bricklink,158,Yellowish Green,0,3968
+158,Yellowish Green,lego,326,Spring Yellow Green,0,3968
+178,Flat Dark Gold,bricklink,81,Flat Dark Gold,0,141
+178,Flat Dark Gold,lego,147,Gold Metallic,0,141
+179,Flat Silver,bricklink,95,Flat Silver,0,23347
+179,Flat Silver,lego,315,Silver Metallic,0,23347
+182,Trans-Orange,bricklink,98,Trans-Orange,0,16049
+182,Trans-Orange,lego,182,Tr. Bright Orange,0,16049
+183,Pearl White,bricklink,83,Pearl White,0,46
+183,Pearl White,lego,183,Metallic White,0,46
+191,Bright Light Orange,bricklink,110,Bright Light Orange,0,30721
+191,Bright Light Orange,lego,191,Flame yellowish orange,0,30721
+212,Bright Light Blue,bricklink,105,Bright Light Blue,0,9940
+212,Bright Light Blue,lego,212,Light Royal blue,0,9940
+216,Rust,bricklink,27,Rust,0,31
+226,Bright Light Yellow,bricklink,103,Bright Light Yellow,0,12520
+226,Bright Light Yellow,lego,226,Cool Yellow,0,12520
+230,Trans-Pink,bricklink,107,Trans-Pink,0,434
+230,Trans-Pink,lego,230,TR. BR. PURPLE,0,434
+232,Sky Blue,bricklink,87,Sky Blue,0,131
+232,Sky Blue,lego,232,Dove blue,0,131
+236,Trans-Light Purple,bricklink,114,Trans-Light Purple,0,71
+236,Trans-Light Purple,lego,284,TR. RED-LILAC,0,71
+272,Dark Blue,bricklink,63,Dark Blue,0,54761
+272,Dark Blue,lego,140,Earth blue,0,54761
+272,Dark Blue,lego,428,Earth Blue V.3.,0,54761
+288,Dark Green,bricklink,80,Dark Green,0,28088
+288,Dark Green,lego,141,Earth Green,0,28088
+288,Dark Green,lego,490,,0,28088
+294,Glow In Dark Trans,bricklink,118,Glow In Dark Trans,0,131
+294,Glow In Dark Trans,lego,294,Phosphorescent Green,0,131
+297,Pearl Gold,bricklink,115,Pearl Gold,0,56448
+297,Pearl Gold,lego,297,Warm Gold,0,56448
+308,Dark Brown,bricklink,120,Dark Brown,0,25575
+308,Dark Brown,lego,308,Dark Brown,0,25575
+313,Maersk Blue,bricklink,72,Maersk Blue,0,469
+320,Dark Red,bricklink,59,Dark Red,0,51155
+320,Dark Red,lego,154,Dark red,0,51155
+321,Dark Azure,bricklink,153,Dark Azure,0,17753
+321,Dark Azure,lego,321,Dark Azur,0,17753
+322,Medium Azure,bricklink,156,Medium Azure,0,31632
+322,Medium Azure,lego,322,Medium Azure,0,31632
+322,Medium Azure,lego,491,,0,31632
+323,Light Aqua,bricklink,152,Light Aqua,0,10831
+323,Light Aqua,lego,323,Aqua,0,10831
+326,Olive Green,bricklink,155,Olive Green,0,12217
+326,Olive Green,lego,330,Olive Green,0,12217
+334,Chrome Gold,bricklink,21,Chrome Gold,0,2203
+334,Chrome Gold,lego,310,Metalized Gold,0,2203
+335,Sand Red,bricklink,58,Sand Red,0,603
+335,Sand Red,lego,153,Sand red,0,603
+351,Medium Dark Pink,bricklink,94,Medium Dark Pink,0,1093
+351,Medium Dark Pink,lego,22,Medium Reddish Violet,0,1093
+366,Earth Orange,bricklink,29,Earth Orange,0,170
+366,Earth Orange,lego,12,L.ORABROWN,0,170
+373,Sand Purple,bricklink,54,Sand Purple,0,73
+373,Sand Purple,lego,136,Sand violet,0,73
+378,Sand Green,bricklink,48,Sand Green,0,26370
+378,Sand Green,lego,151,Sand green,0,26370
+379,Sand Blue,bricklink,55,Sand Blue,0,11034
+379,Sand Blue,lego,135,Sand blue,0,11034
+383,Chrome Silver,bricklink,22,Chrome Silver,0,1336
+383,Chrome Silver,lego,309,Metalized Silver,0,1336
+450,Fabuland Brown,bricklink,106,Fabuland Brown,0,56
+450,Fabuland Brown,lego,4,Brick Red,0,56
+462,Medium Orange,bricklink,31,Medium Orange,0,491
+462,Medium Orange,lego,105,Br. yellowish orange,0,491
+484,Dark Orange,bricklink,68,Dark Orange,0,28955
+484,Dark Orange,lego,38,Dark Orange,0,28955
+503,Very Light Gray,bricklink,49,Very Light Gray,0,261
+503,Very Light Gray,lego,103,Light grey,0,261
+1000,Glow in Dark White,bricklink,159,Glow in Dark White,0,672
+1000,Glow in Dark White,lego,329,WHITE GLOW,0,672
+1001,Medium Violet,bricklink,245,Lilac,0,13
+1001,Medium Violet,lego,219,Lilac,0,13
+1002,Glitter Trans-Neon Green,bricklink,163,Glitter Trans-Neon Green,0,9
+1002,Glitter Trans-Neon Green,lego,339,TR.FL.GRE W/GLI,0,9
+1003,Glitter Trans-Light Blue,bricklink,162,Glitter Trans-Light Blue,0,92
+1003,Glitter Trans-Light Blue,lego,302,PCTR LI.BLUE W/,0,92
+1004,Trans-Flame Yellowish Orange,bricklink,164,Trans Light Orange,0,214
+1004,Trans-Flame Yellowish Orange,lego,231,TR. FL. YEL ORA,0,214
+1005,Trans-Fire Yellow,lego,234,TR. FIRE YELL,0,41
+1006,Trans-Light Royal Blue,lego,293,TR. L.ROYAL BLUE,0,90
+1007,Reddish Lilac,bricklink,227,Clikits Lavender,0,50
+1007,Reddish Lilac,lego,218,RED. LILAC,0,50
+1012,Fabuland Orange,bricklink,160,Fabuland Orange,0,5
+1012,Fabuland Orange,lego,19,Light Brown,0,5
+1013,Modulex White,bricklink,123,Mx White,0,3001
+1014,Modulex Light Bluish Gray,bricklink,124,Mx Light Bluish Gray,0,10
+1015,Modulex Light Gray,bricklink,125,Mx Light Gray,0,2250
+1016,Modulex Charcoal Gray,bricklink,126,Mx Charcoal Gray,0,2
+1017,Modulex Tile Gray,bricklink,127,Mx Tile Gray,0,219
+1018,Modulex Black,bricklink,128,Mx Black,0,2499
+1019,Modulex Tile Brown,bricklink,131,Mx Tile Brown,0,158
+1020,Modulex Terracotta,bricklink,134,Mx Terracotta,0,1622
+1021,Modulex Brown,bricklink,132,Mx Brown,0,2223
+1022,Modulex Buff,bricklink,133,Mx Buff,0,1626
+1023,Modulex Red,bricklink,129,Mx Red,0,26
+1024,Modulex Pink Red,bricklink,130,Mx Pink Red,0,7
+1025,Modulex Orange,bricklink,135,Mx Orange,0,126
+1026,Modulex Light Orange,bricklink,136,Mx Light Orange,0,7
+1027,Modulex Light Yellow,bricklink,137,Mx Light Yellow,0,8
+1028,Modulex Ochre Yellow,bricklink,138,Mx Ochre Yellow,0,1107
+1029,Modulex Lemon,bricklink,139,Mx Lemon,0,23
+1030,Modulex Pastel Green,bricklink,141,Mx Pastel Green,0,35
+1031,Modulex Olive Green,bricklink,140,Mx Olive Green,0,1111
+1032,Modulex Aqua Green,bricklink,142,Mx Aqua Green,0,16
+1033,Modulex Teal Blue,bricklink,146,Mx Teal Blue,0,1104
+1034,Modulex Tile Blue,bricklink,143,Mx Tile Blue,0,80
+1035,Modulex Medium Blue,bricklink,144,Mx Medium Blue,0,8
+1036,Modulex Pastel Blue,bricklink,145,Mx Pastel Blue,0,19
+1037,Modulex Violet,bricklink,147,Mx Violet,0,7
+1038,Modulex Pink,bricklink,148,Mx Pink,0,20
+1039,Modulex Clear,bricklink,149,Mx Clear,0,1394
+1040,Modulex Foil Dark Gray,bricklink,210,Mx Foil Dark Gray,0,1
+1041,Modulex Foil Light Gray,bricklink,211,Mx Foil Light Gray,0,1
+1042,Modulex Foil Dark Green,bricklink,212,Mx Foil Dark Green,0,1
+1043,Modulex Foil Light Green,bricklink,213,Mx Foil Light Green,0,1
+1044,Modulex Foil Dark Blue,bricklink,214,Mx Foil Dark Blue,0,1
+1045,Modulex Foil Light Blue,bricklink,215,Mx Foil Light Blue,0,1
+1046,Modulex Foil Violet,bricklink,216,Mx Foil Violet,0,1
+1047,Modulex Foil Red,bricklink,217,Mx Foil Red,0,1
+1048,Modulex Foil Yellow,bricklink,218,Mx Foil Yellow,0,1
+1049,Modulex Foil Orange,bricklink,219,Mx Foil Orange,0,1
+1050,Coral,bricklink,220,Coral,0,7920
+1050,Coral,lego,353,Coral,0,7920
+1051,Pastel Blue,bricklink,72,Maersk Blue,1,734
+1051,Pastel Blue,lego,11,Pastel Blue,0,734
+1052,Glitter Trans-Orange,bricklink,222,Glitter Trans-Orange,0,1
+1052,Glitter Trans-Orange,lego,341,TR.BR:ORA W/GLI,0,1
+1053,Opal Trans-Light Blue,bricklink,223,Satin Trans-Light Blue,0,1018
+1053,Opal Trans-Light Blue,lego,362,Transparent Blue Opal,0,1018
+1054,Opal Trans-Dark Pink,bricklink,224,Satin Trans-Dark Pink,0,256
+1054,Opal Trans-Dark Pink,lego,364,Transparent Medium Reddish Violet with Opalescence,0,256
+1055,Opal Trans-Clear,bricklink,228,Satin White,0,1014
+1055,Opal Trans-Clear,lego,360,Transparent with Opalescence,0,1014
+1056,Opal Trans-Brown,bricklink,229,Satin Trans-Black,0,140
+1056,Opal Trans-Brown,lego,363,Transparent Brown With Opalescence,0,140
+1057,Trans-Light Bright Green,bricklink,226,Trans-Light Bright Green,0,119
+1057,Trans-Light Bright Green,lego,227,Transparent Bright Yellowish Green,0,119
+1058,Trans-Light Green,bricklink,221,Trans-Light Green,0,42
+1058,Trans-Light Green,lego,285,Transparent Light Green,0,42
+1059,Opal Trans-Purple,bricklink,230,Satin Trans-Purple,0,325
+1059,Opal Trans-Purple,lego,365,Tr.Violet Opal,0,325
+1060,Opal Trans-Bright Green,bricklink,233,Satin Trans-Bright Green,0,182
+1060,Opal Trans-Bright Green,lego,367,Transparent Green With Opalescence,0,182
+1061,Opal Trans-Dark Blue,bricklink,232,Satin Trans-Dark Blue,0,216
+1061,Opal Trans-Dark Blue,lego,366,Transparent Blue With Opalescence,0,216
+1062,Vibrant Yellow,bricklink,236,Neon Yellow,0,2270
+1062,Vibrant Yellow,lego,368,Vibrant Yellow,0,2270
+1063,Pearl Copper,bricklink,249,Reddish Copper,0,72
+1063,Pearl Copper,lego,346,Copper Metallic,0,72
+1064,Fabuland Red,lego,13,Red Orange,0,23
+1065,Reddish Gold,bricklink,235,Reddish Gold,0,85
+1065,Reddish Gold,lego,189,Reddish Gold,0,85
+1066,Curry,bricklink,161,Dark Yellow,0,10
+1066,Curry,lego,180,Curry,0,10
+1067,Dark Nougat,bricklink,225,Dark Nougat,0,10
+1067,Dark Nougat,lego,128,Dark Nougat,0,10
+1068,Bright Reddish Orange,bricklink,231,Dark Salmon,0,16
+1068,Bright Reddish Orange,lego,123,Bright Reddish Orange,0,16
+1069,Pearl Red,bricklink,252,Pearl Red,0,24
+1069,Pearl Red,lego,184,Metallic Bright Red,0,24
+1070,Pearl Blue,bricklink,254,Pearl Blue,0,21
+1070,Pearl Blue,lego,185,Metallic Bright Blue,0,21
+1071,Pearl Green,bricklink,253,Pearl Green,0,21
+1071,Pearl Green,lego,186,Metallic Dark Green,0,21
+1072,Pearl Brown,bricklink,255,Pearl Brown,0,35
+1072,Pearl Brown,lego,187,Metallic Earth Orange,0,35
+1073,Pearl Black,bricklink,244,Pearl Black,0,35
+1073,Pearl Black,lego,149,Metallic Black,0,35
+1074,Duplo Blue,bricklink,247,Little Robots Blue,0,6
+1074,Duplo Blue,lego,188,Tiny Blue,0,6
+1075,Duplo Medium Blue,lego,269,Tiny-Medium Blue,0,1
+1076,Duplo Lime,bricklink,171,Lemon,0,5
+1076,Duplo Lime,lego,15,Lemon,0,5
+1077,Fabuland Lime,bricklink,248,Fabuland Lime,0,16
+1077,Fabuland Lime,lego,14,Pastel Green,0,16
+1078,Duplo Medium Green,lego,210,Faded Green,0,1
+1079,Duplo Light Green,lego,233,Light Faded Green,0,1
+1080,Light Tan,lego,224,Light Brick Yellow,0,1
+1081,Rust Orange,lego,216,Rust,0,3
+1082,Clikits Pink,lego,295,Flamingo Pink,0,32
+1083,Two-tone Copper,bricklink,237,Bionicle Copper,0,2
+1083,Two-tone Copper,lego,176,Red Flip/Flop,0,2
+1084,Two-tone Gold,bricklink,238,Bionicle Gold,0,6
+1084,Two-tone Gold,lego,178,Yellow Flip/Flop,0,6
+1085,Two-tone Silver,bricklink,239,Bionicle Silver,0,6
+1085,Two-tone Silver,lego,179,Silver Flip/Flop,0,6
+1086,Pearl Lime,lego,200,Lemon Metallic,0,41
+1087,Duplo Pink,lego,16,Pink,0,47
+1088,Medium Brown,bricklink,240,Medium Brown,0,230
+1088,Medium Brown,lego,370,Medium Brown,0,230
+1089,Warm Tan,bricklink,241,Medium Tan,0,641
+1089,Warm Tan,lego,371,Warm Tan,0,641
+1091,Warm Yellowish Orange,bricklink,172,Warm Yellowish Orange,0,19
+1091,Warm Yellowish Orange,lego,225,Warm Yellowish Orange,0,19
+1092,Metallic Copper,bricklink,250,Metallic Copper,0,52
+1092,Metallic Copper,lego,300,"COPPER, DR.LA.",0,52
+1092,Metallic Copper,lego,334,COPPER INK,0,52
+1093,Light Lilac,bricklink,246,Light Lilac,0,51
+1093,Light Lilac,lego,220,Light Lilac,0,51
+1094,Trans-Medium Purple,bricklink,234,Trans-Medium Purple,0,258
+1094,Trans-Medium Purple,lego,236,Transparent Bright Reddish Lilac,0,258
+1095,Trans-Black,bricklink,251,Trans-Black (2023),0,971
+1095,Trans-Black,lego,375,Tr. Black,0,971
+1096,Glitter Trans-Bright Green,lego,351,Transparent Bright Green w/ Glitter,0,0
+1097,Glitter Trans-Medium Purple,lego,303,Trans Br Reddish Lilac w/ Glitter,0,6
+1098,Glitter Trans-Green,lego,155,Transparent Green with Glitter,0,1
+1098,Glitter Trans-Green,lego,175,Transparent Green with Glitter,0,1
+1099,Glitter Trans-Pink,lego,301,Trans Bright Purple w/ Glitter,0,2
+1100,Clikits Yellow,lego,190,Fire Yellow,0,22
+1101,Duplo Dark Purple,lego,197,Bright Lilac,0,1
+1102,Trans-Neon Red,lego,158,Transparent Fluorescent Red,1,22
+1103,Pearl Titanium,bricklink,77,Pearl Dark Gray,1,7900
+1103,Pearl Titanium,lego,316,Titanium Metallic,0,7900
+1136,Reddish Orange,bricklink,167,Reddish Orange,0,3873
+1136,Reddish Orange,lego,402,Red. Orange,0,3873
+1137,Sienna Brown,bricklink,169,Sienna,0,66
+1137,Sienna Brown,lego,422,Sienna Brown,0,66
+1138,Umber Brown,bricklink,168,Umber,0,20
+1138,Umber Brown,lego,423,Umber Brown,0,20
+1139,Opal Trans-Yellow,bricklink,170,Satin Trans-Yellow,0,28
+1139,Opal Trans-Yellow,lego,376,Tr. Yellow Opal,0,28
+1140,Neon Orange,bricklink,165,Neon Orange,0,14
+1140,Neon Orange,lego,133,Neon Orange,0,14
+1141,Neon Green,bricklink,166,Neon Green,0,25
+1141,Neon Green,lego,134,Neon Green,0,25
+1142,Dark Olive Green,bricklink,242,Dark Olive Green,0,11
+1142,Dark Olive Green,lego,144,Dark Army Green,0,11
+1143,Glitter Milky White,lego,122,Nature with Glitter,0,4
+1145,Ochre Yellow,bricklink,173,Ochre Yellow,0,16
+1145,Ochre Yellow,lego,424,Ochre Yellow,0,16
+1146,Warm Pink,bricklink,175,Warm Pink,0,429
+1146,Warm Pink,lego,430,Warm Pink,0,429
+1147,Blue Violet,bricklink,174,Blue Violet,0,891
+1147,Blue Violet,lego,431,Blue Violet,0,891
+9999,[No Color/Any Color],bricklink,0,(Not Applicable),0,10976

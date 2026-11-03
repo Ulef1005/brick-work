@@ -81,7 +81,7 @@ def test_every_documentation_page_links_the_complete_favicon_set(site):
     from scripts.build_site import PAGES
 
     for _, href in PAGES:
-        if href == 'demo/':  # The demo uses the app's own icon links.
+        if href in ('demo/', 'docs/'):  # The demo uses the app's own icon links; Zensical builds the user docs.
             continue
         page = site / href / 'index.html'
         up = '../' * len(Path(href).parts)
@@ -219,8 +219,8 @@ def test_images_are_local_small_and_dimensioned(site):
 
 
 def test_shared_chrome_and_theme_script(site):
-    for name in ('index.html', 'use-cases/index.html', 'workflows/index.html',
-                 'docs/index.html', 'api/index.html', 'mcp/index.html'):
+    # docs/ is the Zensical user-docs site with its own chrome (App Standard, Maintenance § User docs).
+    for name in ('index.html', 'use-cases/index.html', 'workflows/index.html', 'api/index.html', 'mcp/index.html'):
         text = (site / name).read_text()
         assert 'data-theme-toggle' in text
         assert re.search(r'<script src="(?:../)?assets/site.js" defer>', text)

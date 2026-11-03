@@ -135,7 +135,7 @@ class Element {
  const handlers={};const data=new Map();let server=plain(initial),receipt=0;
  const browser={window:{addEventListener(){}},document:{addEventListener:(k,fn)=>handlers[k]=fn,createElement:t=>new Element(t),querySelector:s=>s==='#bw-checker'?root:null,querySelectorAll:()=>[]},
  localStorage:{getItem:k=>data.get(k)||null,setItem:(k,v)=>data.set(k,v)},crypto:{randomUUID:()=>String(++receipt)},setTimeout:(fn,ms)=>{const id=++timerId;timers.set(id,{fn,ms});return id;},clearTimeout:id=>timers.delete(id),
- fetch:async(url,options)=>{const payload=JSON.parse(options.body);if(payload.action==='undo')throw Error('offline');apply(server,payload);if(payload.action==='finish')server.copy.completeness='C';server.session.undo.push(receipt);return {ok:true,json:async()=>({state:{partial:true,copy:plain(server.copy),session:plain(server.session),rows:server.rows.filter(r=>r.token===payload.token).map(r=>plain(r))}})};}};
+ fetch:async(url,options)=>{const payload=JSON.parse(options.body);if(payload.action==='undo')throw Error('offline');apply(server,payload);if(payload.action==='finish')server.copy.completeness='complete';server.session.undo.push(receipt);return {ok:true,json:async()=>({state:{partial:true,copy:plain(server.copy),session:plain(server.session),rows:server.rows.filter(r=>r.token===payload.token).map(r=>plain(r))}})};}};
  vm.runInNewContext((fs.readFileSync('static/web/toni/formatting.js','utf8')+fs.readFileSync(require('node:path').join(__dirname,'../static/web/toni/bw-checker.js'),'utf8')),browser);handlers.DOMContentLoaded();
  const strip=root.querySelector('[data-progress]'), originalSegment=strip.children[0];
  const stage=root.querySelector('[data-stage]');assert(stage.text.includes('Found 4'));assert(stage.text.includes('Part 1'));
@@ -233,7 +233,7 @@ function boot(initial, dataset) {
  screen=boot(none,{endpoint:'/check/copy',imageUrl:'/images/0',unresolvedUrl:'/unresolved'});
  assert(!screen.stage.text.includes('Include spare parts?'));assert(screen.stage.text.includes('Found one in the pile?'));
  // Figure stepper: its own endpoint, no set checkbox, no spare question, Done returns to the set.
- const figure={copy:{id:'copy',completeness_source:'derived'},figure:{item_type:'M',item_no:'fig-1',name:'Figure',quantity:1,missing:0},
+ const figure={copy:{id:'copy',completeness_source:'derived'},figure:{id:3,item_type:'M',item_no:'fig-1',name:'Figure',quantity:1,missing:0},
   rows:[{token:'p:1',kind:'part',quantity:2,missing:0,name:'Hair',item_no:'h',color_name:'Black',parent_minifig:'fig-1'},{token:'p:2',kind:'part',quantity:1,missing:0,name:'Legs',item_no:'l',color_name:'Blue',parent_minifig:'fig-1'},
          {token:'p:9',kind:'spare',quantity:1,missing:0,name:'Spare',item_no:'s',color_name:'Red'}],
   session:{id:'fig-session',order:['p:1','p:2'],cursor:0,answers:{},misses:[],undo:[],spares:null,sort:'inventory'}};
@@ -253,12 +253,12 @@ function boot(initial, dataset) {
  assert.equal(done.href,'/set?inventory=figures');
  // A whole figure line links to its own parts and shows how many are missing.
  const wholeFigure=make();wholeFigure.copy={id:'copy',completeness_source:'derived'};
- Object.assign(wholeFigure.rows[2],{item_type:'M',item_no:'fig-1',name:'Figure',parts_lines:5,parts_missing:2});
+ Object.assign(wholeFigure.rows[2],{id:7,item_type:'M',item_no:'fig-1',name:'Figure',parts_lines:5,parts_missing:2});
  wholeFigure.session.cursor=2;
- screen=boot(wholeFigure,{endpoint:'/check/copy',figureUrl:'/check/copy/figure/TYPE/NUMBER',imageUrl:'/images/0',unresolvedUrl:'/unresolved'});
+ screen=boot(wholeFigure,{endpoint:'/check/copy',figureUrl:'/check/copy/figure/0',imageUrl:'/images/0',unresolvedUrl:'/unresolved'});
  assert(screen.stage.text.includes('2 parts missing'));
  const link=screen.stage.children.flatMap(n=>[n,...n.querySelectorAll('A')]).find(n=>n.textContent==='Check figure parts');
- assert.equal(link.href,'/check/copy/figure/M/fig-1');
+ assert.equal(link.href,'/check/copy/figure/7');
  console.log('Brick Work spare question and figure stepper passed');
 })().catch(error=>{console.error(error);process.exitCode=1;});
 
@@ -281,7 +281,7 @@ function boot(initial, dataset) {
 // Finished reloads use the server's start-card decision, even with run=1.
 for(const figureMode of [false,true]) {
  const initial=make();initial.copy={id:'copy'};initial.session.finished=true;
- if(figureMode)initial.figure={item_type:'M',item_no:'fig-1'};
+ if(figureMode)initial.figure={id:3,item_type:'M',item_no:'fig-1'};
  const screen=boot(initial,{endpoint:'/check/copy',imageUrl:'/images/0',landing:'false',checkStage:'start'});
  assert.equal(screen.root.querySelector('[data-check-body]').hidden,true);
  assert.equal(screen.root.querySelector('[data-start]').hidden,false);

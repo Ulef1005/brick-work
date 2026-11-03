@@ -12,7 +12,10 @@ import subprocess
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-PROSE = ('README.md', 'CONTRIBUTING.md', 'SECURITY.md', 'docs/brickwork/mcp.md', 'docs/brickwork/api-v1.md')
+PROSE = ('README.md', 'CONTRIBUTING.md', 'SECURITY.md', 'docs/brickwork/mcp.md', 'docs/brickwork/api-v2.md')
+# The user docs: their links are checked by Zensical's strict build, their settings and commands here.
+USER_DOCS = tuple(str(p.relative_to(ROOT)) for p in sorted((ROOT / 'docs').glob('*/*.md'))
+                  if p.parts[-2] in ('tutorials', 'how-to', 'concepts', 'reference'))
 CODE = re.compile(r'\bBW_[A-Z0-9_]*[A-Z0-9]\b')
 
 
@@ -34,9 +37,8 @@ def settings_in_code():
 
 
 def settings_table():
-    readme = (ROOT / 'README.md').read_text()
-    section = readme.split('## Settings reference', 1)[1].split('\n## ', 1)[0]
-    return {name for line in section.splitlines() if line.startswith('| `') for name in CODE.findall(line.split('|')[1])}
+    reference = (ROOT / 'docs/reference/settings.md').read_text()
+    return {name for line in reference.splitlines() if line.startswith('| `') for name in CODE.findall(line.split('|')[1])}
 
 
 def test_every_setting_the_code_reads_is_in_the_reference():
@@ -47,7 +49,7 @@ def test_every_setting_in_the_reference_is_read_by_the_code():
     assert sorted(settings_table() - settings_in_code()) == []
 
 
-@pytest.mark.parametrize('doc', PROSE + ('.env.sample',))
+@pytest.mark.parametrize('doc', PROSE + USER_DOCS + ('.env.sample',))
 def test_settings_named_anywhere_exist(doc):
     named = set(CODE.findall((ROOT / doc).read_text()))
     assert sorted(named - settings_in_code()) == []
@@ -67,7 +69,7 @@ def command_lines(doc):
 
 
 def documented_commands():
-    for doc in PROSE:
+    for doc in PROSE + USER_DOCS:
         for line in command_lines(doc):
             words = shlex.split(line)
             positions = [i for i, w in enumerate(words) if w == 'brickwork' and i + 1 < len(words)
@@ -88,8 +90,8 @@ def test_documented_commands_parse(doc, line, argv):
 def test_inline_commands_name_real_subcommands():
     from brickwork.web.cli import build_parser
     commands = set(build_parser()._subparsers._group_actions[0].choices)
-    for doc in PROSE:
-        for name in re.findall(r'`brickwork ([a-z][a-z-]*)', (ROOT / doc).read_text()):
+    for doc in PROSE + USER_DOCS:
+        for name in re.findall(r'`brickwork ([a-z][a-z0-9-]*)', (ROOT / doc).read_text()):
             assert name in commands, f'{doc}: brickwork {name}'
 
 
@@ -107,11 +109,22 @@ def test_the_site_builds_with_every_tool(tmp_path):
     from scripts.build_site import build
     from brickwork.core.mcp import Adapter
     site = build(tmp_path / 'site')
-    for page in ('index.html', 'docs/index.html', 'use-cases/index.html', 'workflows/index.html', 'api/index.html', 'api/openapi-v1.yaml', 'mcp/index.html', 'assets/site.css', '.nojekyll'):
+    for page in ('index.html', 'docs/index.html', 'use-cases/index.html', 'workflows/index.html', 'api/index.html', 'api/openapi-v2.yaml', 'mcp/index.html', 'assets/site.css', '.nojekyll'):
         assert (site / page).is_file(), page
+    api = (site / 'api/index.html').read_text()   # the retired v1 contract is not what the site documents (#125)
+    assert '<code>/api/v2</code>' in api and 'GET /items/{id}' in api and 'openapi-v1' not in api
     mcp = (site / 'mcp/index.html').read_text()
     for name in Adapter(client=None).tools:
         assert f'<code>{name}</code>' in mcp, name
-    index = (site / 'docs/index.html').read_text()
-    assert 'href="../api/"' in index and 'href="api/"' not in index
-    assert 'Settings reference' in index
+    assert 'BW_AUTHENTICATION_PASSWORD' in (site / 'docs/reference/settings/index.html').read_text()
+    # The changelog and the design documents: every ADR but the template and every data-model page, linked to each other on the site.
+    from scripts.build_site import ROOT
+    for path in [*(ROOT / 'docs/adr').glob('[0-9]*.md'), *(ROOT / 'docs/data-model-4.0').glob('*.md')]:
+        stem = '' if path.name == 'README.md' else path.stem + '/'
+        assert (site / 'design' / path.parent.name / stem / 'index.html').is_file() != (path.name == '0000-template.md'), path
+    assert (site / 'design/index.html').is_file()
+    changelog = (site / 'changelog/index.html').read_text()
+    assert 'Brick Work 0.6.0' in changelog and 'href="../docs/how-to/receive-an-order/"' in changelog
+    design = (site / 'design/data-model-4.0/data-model-design/index.html').read_text()   # no Mermaid renderer on the site
+    assert 'This diagram is drawn on GitHub' in design and 'language-mermaid' not in design
+    assert 'href="../../design/adr/0016-data-model-4/"' in (site / 'design/data-model-4.0/index.html').read_text()

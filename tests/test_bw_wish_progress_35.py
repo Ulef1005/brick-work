@@ -1,66 +1,62 @@
-"""#35 wishlist progress: derived filled quantity, manual override, QTYFILLED export, API and page. Invented data."""
-from contextlib import closing
-import os
+"""#35 wishlist progress on the 4.0 store (M.8g, issue #110): derived filled quantity, manual override, QTYFILLED export and page. Invented data.
 
+The API's wish read and PATCH (M.11) are in test_bw_wish_progress_35_api.py, which waits for them."""
 from bs4 import BeautifulSoup
 
 from brickwork.core import collection, planning, wishlists
-from brickwork.core.connect import connect
-from tests.test_bw_api_m1 import app  # noqa: F401
-from tests.test_bw_api_m2 import populated  # noqa: F401
-
-H = {'Authorization': 'Bearer synthetic-bootstrap'}
+from tests.app4 import app4, client, coll, pair, read, world  # noqa: F401 (fixtures)
 
 
-def store():
-    return closing(connect(os.environ['BW_DB_PATH']))
+def setup(coll):
+    """Wish 1: 2 used red 3001, and 9 used red 3001 in loose stock (filled). Wish 2: 3 of the set 1000-2, one copy of it (not filled)."""
+    brick, red, gate = coll.item('parts', '3001'), coll.colour('4'), coll.item('sets', '1000-2')
+    part = coll.add_wish(brick, colour=red, quantity=2, condition='used')
+    coll.add_stock('part', brick, colour=red, quantity=9, condition='used')
+    coll.add_stock('part', brick, colour=red, quantity=4, condition='new')                       # a new part does not fill a wish for a used one
+    kit = coll.add_wish(gate, quantity=3, condition='any')
+    coll.add_copy('1000-2')
+    return part, kit
 
 
-def test_derived_manual_and_order(populated):
-    with store() as db:
-        with db:
-            # Wish 1: 2 used 3001 red; loose stock t1 holds 9 used: filled. Wish 2: a set with one copy of three wanted.
-            db.execute("INSERT INTO wishlist(item_type,item_no,quantity,condition,list_id) VALUES('S','100-1',3,'any','default')")
-        rows = {r['item_no']: r for r in planning.wishes(db)}
-        part, kit = rows['3001'], rows['100-1']
-        assert (part['qty_filled'], part['qty_filled_source'], part['filled']) == (9, 'derived', True)
-        assert (kit['qty_filled'], kit['filled']) == (1, False)
-        assert [r['item_no'] for r in planning.wishes(db)] == ['100-1', '3001']  # filled lines last
-        collection.save(db, 'wish', [kit['id']], {'qty_filled_manual': '3'})
-        kit = next(r for r in planning.wishes(db) if r['item_no'] == '100-1')
-        assert (kit['qty_filled'], kit['qty_filled_source'], kit['filled']) == (3, 'manual', True)
-        collection.save(db, 'wish', [kit['id']], {'qty_filled_manual': ''})
-        assert next(r for r in planning.wishes(db) if r['item_no'] == '100-1')['qty_filled_source'] == 'derived'
+def test_derived_manual_and_order(coll, read):
+    part, kit = setup(coll)
+    with read() as db:
+        rows = {r['id']: r for r in planning.wishes(db)}
+        assert (rows[part]['qty_filled'], rows[part]['qty_filled_source'], rows[part]['filled']) == (9, 'derived', True)
+        assert (rows[kit]['qty_filled'], rows[kit]['filled']) == (1, False)
+        assert [r['id'] for r in planning.wishes(db)] == [kit, part]                      # filled lines last
+    collection.save(coll.db, 'wish', [kit], {'qty_filled_manual': '3'})
+    with read() as db:
+        row = next(r for r in planning.wishes(db) if r['id'] == kit)
+        assert (row['qty_filled'], row['qty_filled_source'], row['filled']) == (3, 'manual', True)
+    collection.save(coll.db, 'wish', [kit], {'qty_filled_manual': ''})
+    with read() as db:
+        assert next(r for r in planning.wishes(db) if r['id'] == kit)['qty_filled_source'] == 'derived'
 
 
-def test_export_writes_qtyfilled_capped(populated):
-    with store() as db:
-        result = wishlists.export(db, 'default', format='bricklink')
-    assert '<QTYFILLED>2</QTYFILLED>' in result['content']  # 9 in stock, capped at the wanted 2
+def test_an_archived_copy_and_a_new_part_do_not_fill(coll, read):
+    part, kit = setup(coll)
+    coll.sql("UPDATE copy SET archived_at='2026-10-27T00:00:00.000Z'")
+    coll.sql("UPDATE stock SET archived_at='2026-10-27T00:00:00.000Z' WHERE condition='used'")
+    with read() as db:
+        rows = {r['id']: r for r in planning.wishes(db)}
+    assert rows[kit]['qty_filled'] == 0 and rows[part]['qty_filled'] == 0 and rows[part]['filled'] is False
 
 
-def test_api_fields_and_patch(populated):
-    c = populated.test_client()
-    wish = c.get('/api/v1/wishes/1', headers=H).json['data']
-    assert (wish['qty_filled'], wish['qty_filled_source'], wish['qty_filled_manual']) == (9, 'derived', None)
-    etag = c.get('/api/v1/wishes/1', headers=H).headers.get('ETag')
-    patched = c.patch('/api/v1/wishes/1', json={'qty_filled_manual': 1}, headers=dict(H, **{'Idempotency-Key': 'wf-1', 'If-Match': etag or '*'}))
-    assert patched.status_code == 200, patched.json
-    wish = c.get('/api/v1/wishes/1', headers=H).json['data']
-    assert (wish['qty_filled'], wish['qty_filled_source']) == (1, 'manual')
+def test_export_writes_qtyfilled_capped(coll, read):
+    setup(coll)
+    with read() as db:
+        content = wishlists.export(db, 'default', format='bricklink')['content']
+    assert '<QTYFILLED>2</QTYFILLED>' in content          # 9 in stock, capped at the wanted 2
+    assert '<QTYFILLED>1</QTYFILLED>' in content          # one copy of three wanted sets
 
 
-def test_wishlist_page_progress_and_chip(populated):
-    from tests.web_fixtures import logged_in
-    from brickwork.app import setup_app
-    from flask import Flask
-    from tests.web_fixtures import ROOT
-    os.environ.setdefault('BW_AUTHENTICATION_PASSWORD', 'synthetic-password')
-    web = Flask('wish-progress', template_folder=str(ROOT / 'templates'), static_folder=str(ROOT / 'static'))
-    setup_app(web)
-    web.config.update(TESTING=True, SECRET_KEY='synthetic-session')
-    soup = BeautifulSoup(logged_in(web).get('/planning/wishlist').data, 'html.parser')
+def test_wishlist_page_progress_and_chip(coll, client):
+    part, kit = setup(coll)
+    soup = BeautifulSoup(client.get('/planning/wishlist').data, 'html.parser')
     line = soup.select_one('.bp-filled')
-    assert line['data-filled'] == 'true' and line.select_one('.mono').get_text() == '2 of 2' and 'Filled' in line.get_text()
+    assert line['data-filled'] == 'false' and line.select_one('.mono').get_text() == '1 of 3'
+    done = soup.select('.bp-filled[data-filled=true]')[0]
+    assert done.select_one('.mono').get_text() == '2 of 2' and 'Filled' in done.get_text()
     chip = soup.select_one('[data-bp-pick=filled][data-value=false]')
     assert chip and chip.get_text(' ', strip=True).startswith('Not yet filled')

@@ -1,11 +1,11 @@
-"""#48: failed web logins and API token checks back off per client; nothing submitted is logged."""
+"""#48: failed web logins and API v2 token checks back off per client; nothing submitted is logged (the MCP test: test_bw_throttle_mcp.py)."""
 import logging
 
-from flask import Flask
 import pytest
 
 from brickwork.core import throttle
-from tests.test_bw_api_m1 import app as api_app  # noqa: F401
+from tests.api2 import v2  # noqa: F401
+from tests.app4 import app4, coll, pair  # noqa: F401
 from tests.web_fixtures import app, apps  # noqa: F401
 
 
@@ -69,15 +69,15 @@ def test_web_login_backoff_message_and_no_password_in_logs(web, caplog):
     assert client.post('/login', data={'password': 'synthetic-password'}).headers['Location'] == '/'
 
 
-def test_api_429_retry_after_and_valid_token_elsewhere(api_app, monkeypatch):
+def test_api_429_retry_after_and_valid_token_elsewhere(v2, monkeypatch):
     monkeypatch.setenv('BW_LOGIN_MAX_FAILURES', '2')
-    client = api_app.test_client()
+    client = v2
     for _ in range(2):
-        assert client.get('/api/v1/me', headers={'Authorization': 'Bearer wrong'}).status_code == 401
-    refused = client.get('/api/v1/me', headers={'Authorization': 'Bearer synthetic-bootstrap'})
+        assert client.get('/api/v2/me', headers={'Authorization': 'Bearer wrong'}).status_code == 401
+    refused = client.get('/api/v2/me', headers={'Authorization': 'Bearer synthetic-bootstrap'})
     assert refused.status_code == 429 and refused.json['code'] == 'too_many_attempts'
     assert int(refused.headers['Retry-After']) >= 1 and refused.json['retry_after'] >= 1
-    elsewhere = client.get('/api/v1/me', headers={'Authorization': 'Bearer synthetic-bootstrap'},
+    elsewhere = client.get('/api/v2/me', headers={'Authorization': 'Bearer synthetic-bootstrap'},
                            environ_base={'REMOTE_ADDR': '10.0.0.9'})
     assert elsewhere.status_code == 200
 
@@ -100,21 +100,8 @@ def test_forwarded_for_is_used_with_one_trusted_proxy(apps, monkeypatch):  # noq
     assert client.post('/login', data={'password': 'synthetic-password'}, headers={'X-Forwarded-For': '10.9.0.2'}).status_code == 302
 
 
-def test_api_forwarded_for_is_ignored_by_default(api_app, monkeypatch):  # noqa: F811
+def test_api_forwarded_for_is_ignored_by_default(v2, monkeypatch):  # noqa: F811
     monkeypatch.setenv('BW_LOGIN_MAX_FAILURES', '2')
-    from brickwork.app import setup_app
-    full = Flask('proxy-default')
-    setup_app(full)
-    client = full.test_client()
     for n in range(3):
-        client.get('/api/v1/me', headers={'Authorization': 'Bearer wrong', 'X-Forwarded-For': f'10.9.1.{n}'})
-    assert client.get('/api/v1/me', headers={'Authorization': 'Bearer wrong', 'X-Forwarded-For': '10.9.1.50'}).status_code == 429
-
-
-def test_mcp_in_process_client_carries_the_caller_address(api_app, monkeypatch):  # noqa: F811
-    from brickwork.core.mcp.client import InProcessClient
-    monkeypatch.setenv('BW_LOGIN_MAX_FAILURES', '2')
-    for _ in range(2):
-        InProcessClient(api_app, 'wrong', remote_addr='10.9.2.1').request('GET', '/me')
-    assert InProcessClient(api_app, 'synthetic-bootstrap', remote_addr='10.9.2.1').request('GET', '/me')[0] == 429
-    assert InProcessClient(api_app, 'synthetic-bootstrap', remote_addr='10.9.2.2').request('GET', '/me')[0] == 200
+        v2.get('/api/v2/me', headers={'Authorization': 'Bearer wrong', 'X-Forwarded-For': f'10.9.1.{n}'})
+    assert v2.get('/api/v2/me', headers={'Authorization': 'Bearer wrong', 'X-Forwarded-For': '10.9.1.50'}).status_code == 429

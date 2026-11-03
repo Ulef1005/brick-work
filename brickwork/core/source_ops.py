@@ -1,8 +1,12 @@
-"""Source administration for the API: enable or disable, catalogue import, colour sync."""
-import json
-from pathlib import Path
+"""Source administration on the 4.0 store (M.8f, issue #110): the source list, enable or disable, and the pipeline's handlers.
 
-from . import errors
+A source is a row of `source` (seeded; `enabled` is the switch) and a client class in `core.sources`. `register_handlers` hands the
+pipeline its three steps' handlers (`pictures`, `metadata`, `market_price`); the app calls it once at start. The 3.3 operations that
+had no 4.0 premise are gone: the BrickLink colour table and item names come with the catalogue builds (`catalogue import bricklink`,
+M.8i), not from a source call."""
+import json
+
+from . import errors, pipeline
 from .transaction import transaction
 
 
@@ -20,15 +24,23 @@ def known(source):
     return source
 
 
-def ensure(db, source):
-    """Register a client's `sources` row on first use, with its budget and freshness rules."""
-    with transaction(db):
-        clients()[known(source)](db).register()
+def register_handlers(**options):
+    """Make the pipeline run the source steps: pictures (three sources), Brickset metadata, BrickLink prices. `options` are the test seams
+    (`http` for the API calls, `image_http` for downloads, `root` for the picture cache). Idempotent."""
+    from . import pictures
+    from .sources import bricklink, brickset
+    pictures.register(**{k: v for k, v in options.items() if k in ('http', 'image_http', 'root')})
+    for module in (bricklink, brickset):
+        for (step, source), function in module.handlers(http=options.get('http')).items():
+            pipeline.register(step, source, function)
 
 
 def view(db, source):
-    from .api_reads import sources
-    return next(r for r in sources(db) if r['source'] == source)
+    """What the Catalogues & keys list shows of a source: its switch, key state and the day's budget."""
+    client = clients()[known(source)](db)
+    row = db.execute('SELECT name, kind, enabled FROM source WHERE id=?', (source,)).fetchone()
+    return dict(source=source, name=row['name'] if row else client.label, kind=row['kind'] if row else 'api',
+                enabled=bool(row['enabled']) if row else True, **client.status())
 
 
 def toggle(db, source, enabled):
@@ -37,39 +49,27 @@ def toggle(db, source, enabled):
     if type(enabled) is not bool:
         raise errors.ValidationFailed('enabled must be true or false')
     with transaction(db):
-        ensure(db, source)
-        old = db.execute('SELECT enabled FROM sources WHERE source=?', (source,)).fetchone()[0]
-        db.execute('UPDATE sources SET enabled=? WHERE source=?', (int(enabled), source))
-        audit(db, 'source:' + source, 'enabled', old, int(enabled))
+        row = db.execute('SELECT enabled FROM source WHERE id=?', (source,)).fetchone()
+        if row is None:
+            raise errors.NotFound('Unknown source')
+        db.execute('UPDATE source SET enabled=? WHERE id=?', (int(enabled), source))
+        audit(db, 'source:' + source, 'enabled', row[0], int(enabled))
 
 
-def undo_toggle(db, identifier, receipt):
+def _undo_toggle(db, event, via, actor):
     from .admin import audit
-    source = receipt['entity'].split(':', 1)[1]
-    old, new = json.loads(receipt['old_value']), json.loads(receipt['new_value'])
-    with transaction(db):
-        row = db.execute('SELECT enabled FROM sources WHERE source=?', (source,)).fetchone()
-        if row is None or row[0] != new:
-            raise ValueError('Item changed · undo the later save first')
-        db.execute('UPDATE sources SET enabled=? WHERE source=?', (old, source))
-        audit(db, receipt['entity'], 'undo', new=identifier)
+    source = event['entity_id']
+    old, new = json.loads(event['old_value']), json.loads(event['new_value'])
+    row = db.execute('SELECT enabled FROM source WHERE id=?', (source,)).fetchone()
+    if row is None or row[0] != new:
+        raise ValueError('Item changed · undo the later save first')
+    db.execute('UPDATE source SET enabled=? WHERE id=?', (old, source))
+    audit(db, 'source:' + source, 'undo', new=event['id'], via=via, actor=actor)
+    undo_id = db.execute('SELECT last_insert_rowid()').fetchone()[0]
+    db.execute('INSERT INTO event_undo(event_id, undo_event_id) VALUES(?, ?)', (event['id'], undo_id))
+    return {'event_id': undo_id}
 
 
-def catalogue_import(db):
-    """Rebuild the BrickLink catalogue index from the XML files beside the database."""
-    from .media import store_dir
-    from .sources.bricklink_catalogue import info, load, source_directory
-    base = store_dir(db)
-    directory = source_directory(base / 'brickwork.db')
-    if not directory.is_dir() or not any(directory.glob('*.xml')):
-        raise errors.ValidationFailed('Place the BrickLink catalogue XML files in the catalogue source folder first')
-    load(directory, base / 'bricklink-catalog.db', db)
-    value = info(base / 'bricklink-catalog.db')
-    return dict(loaded=value['available'], imported_at=value.get('loaded_at'), items=value.get('counts', {}))
+from . import undo as undoing  # noqa: E402
 
-
-def sync_colours(db):
-    from .sources.bricklink import BrickLink
-    before = db.execute('SELECT count(*) FROM colors').fetchone()[0]
-    received = BrickLink(db).sync_colors()
-    return dict(colors=received, added=db.execute('SELECT count(*) FROM colors').fetchone()[0] - before)
+undoing.register('source', 'enabled', _undo_toggle, admin=True)

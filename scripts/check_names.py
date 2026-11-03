@@ -29,21 +29,22 @@ def main():
         if not reason.strip():
             raise ValueError('Every naming exception requires a reason')
         rules.append((path, re.compile(pattern, re.IGNORECASE)))
-    files = subprocess.check_output(['git', 'ls-files', '-z'], cwd=ROOT).decode().split('\0')
+    # Tracked and untracked, not ignored files: a name is caught before it is staged (App Standard, 2026-10-23).
+    files = subprocess.check_output(['git', 'ls-files', '-z', '--cached', '--others', '--exclude-standard'], cwd=ROOT).decode().split('\0')
     failures = []
     for name in filter(None, files):
         if any(part in ('.git', '.venv', 'node_modules', 'data') for part in Path(name).parts):
             continue
         try:
             content = (ROOT / name).read_text()
-        except UnicodeDecodeError:
+        except (UnicodeDecodeError, FileNotFoundError, IsADirectoryError):   # deleted but still tracked; a submodule
             continue
         exceptions = [pattern for path, pattern in rules if fnmatchcase(name, path)]
         failures.extend(f'{name}:{line}: {text}' for line, text in violations(content, exceptions))
     if failures:
         print('\n'.join(failures))
         return 1
-    print('Tracked-file naming gate passed.')
+    print('Naming gate passed (tracked and untracked files).')
     return 0
 
 

@@ -1,0 +1,6 @@
+# mapping_version: 2026.10.23.1
+# dump_date: 2026-10-23
+# source: Rebrickable (https://rebrickable.com), data free to use with acknowledgement
+rb_theme_id,theme_name,kind
+501,Gear,gear
+497,Books,book

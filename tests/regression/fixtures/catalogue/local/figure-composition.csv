@@ -1,0 +1,5 @@
+# mapping_version: 2099.1.1.1
+# dump_date: 2026-10-23
+# source: SYNTHETIC test row written by hand for the migration mint tests (the figure composition layer of design 3.4); not BrickStore data
+rb_part_num,rb_color_id,provider,provider_kind,provider_key,status,method,preferred
+fig-000004,,bricklink,M,syn-fig-0004,matched,composition_leg_rule,1

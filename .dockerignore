@@ -9,7 +9,7 @@ data/
 # Documentation
 docs/
 # API and MCP both read the OpenAPI contract at runtime
-!docs/brickwork/openapi-v1.yaml
+!docs/brickwork/openapi-v2.yaml
 LICENSE
 *.md
 *.sample
@@ -17,6 +17,8 @@ LICENSE
 
 # Temporary
 *.csv
+# The shipped catalogue mappings are app data (design 4.0, 3.3), read at runtime
+!brickwork/catalogue/mappings/*.csv
 
 # Database
 *.db

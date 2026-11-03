@@ -1,6 +1,7 @@
 {% extends 'web/toni/base.html' %}
 {% from 'web/toni/shell-components.html' import theme_picker, page_head with context %}
 {% from 'web/toni/web/bw_first_run.html' import needs_key %}
+{% from 'web/toni/web/bw_key_cards.html' import key_cards with context %}
 {% from 'web/toni/brickwork/identity_modules.html' import pill as bi_pill %}
 {% block title %} · {{ title }}{% endblock %}{% block content_class %}standard bw-admin-page{% endblock %}
 {% block page_assets %}
@@ -75,19 +76,7 @@
 </div>
 <div class="bk-col">
 <h2 class="bk-eyebrow">Keys</h2>
-{% for k in v.key_cards %}<section class="bk-card" id="key-{{ k.source }}" data-key-card="{{ k.source }}"><div class="bk-card-head"><h3>{{ k.name }} key</h3>{{ pill(k.pill[0], k.pill[1], 'data-key-pill data-key-rest="' ~ k.pill[1] ~ '" data-key-tone="' ~ k.pill[0] ~ '"') }}</div>
-{% if k.mode == 'removed' %}<div class="bk-flash"><span>{{ k.name }} key removed.</span>{% if k.event %}<form method="post">{{ post('key_undo', k.source) }}<input type="hidden" name="event" value="{{ k.event }}"><button class="bk-btn bk-outline">Undo</button></form>{% endif %}</div>
-{% elif k.mode == 'env' %}<div class="bk-stack"><span class="bk-status">Configured · Environment</span><span class="bk-note">Set by environment. A stored key is ignored while the environment key is set.</span></div>{% if k.message %}<p class="bk-error-box" role="alert">{{ k.message }}</p>{% endif %}
-<div class="bk-actions"><form method="post">{{ post('key_test', k.source) }}<button class="bk-btn bk-outline">Test key</button></form></div>
-{% elif k.mode == 'stored' %}<div class="bk-stack">{% if k.saved %}<span class="bk-status">Configured · saved {{ k.saved }}</span>{% else %}<span class="bk-status">Configured</span>{% endif %}<span class="bk-note">Stored (encrypted). A saved key is never shown again.</span></div>{% if k.message %}<p class="bk-error-box" role="alert">{{ k.message }}</p>{% endif %}
-<div class="bk-actions"><form method="post">{{ post('key_test', k.source) }}<button class="bk-btn bk-outline">Test key</button></form>{% if k.can_replace %}<a class="bk-btn bk-outline" href="{{ url_for('web.bw_admin',page='catalogues',replace=k.source) }}#key-{{ k.source }}">Replace</a>{% endif %}<form method="post">{{ post('key_remove', k.source) }}<button class="bk-btn bk-quiet">Remove</button></form></div>
-{% elif k.mode == 'disabled' %}<p class="bk-note">Key entry is disabled: set BW_SECRET_KEY on the server, or provide the key through the environment.</p>
-{% else %}<form method="post" autocomplete="off" data-key-form>{{ post('key_test_save', k.source) }}
-<div class="bk-fields{{ ' bk-one' if k.fields|length == 1 }}">{% for name, label in k.fields %}<label class="bk-field">{{ label }}<input type="password" name="key:{{ name }}" data-key-input placeholder="Paste here" autocomplete="off" autocapitalize="off" spellcheck="false" minlength="8" maxlength="256" required {% if k.message and loop.last %}aria-describedby="key-msg-{{ k.source }}"{% endif %}></label>{% endfor %}</div>
-{% if k.message %}<p class="bk-error-box" id="key-msg-{{ k.source }}" role="alert">{{ k.message }}</p>{% endif %}
-<p class="bk-note">Write-only: the value is stored encrypted and never shown again.</p>
-<div class="bk-actions"><button class="bk-btn bk-primary bk-lg" data-key-submit>Test and save</button><button type="reset" class="bk-btn bk-quiet" data-key-clear hidden>Clear</button>{% if k.replacing %}<a class="bk-btn bk-quiet" href="{{ url_for('web.bw_admin',page='catalogues') }}">Cancel</a>{% endif %}</div></form>
-{% endif %}</section>{% endfor %}
+{{ key_cards(v, csrf_token) }}
 <section class="bk-card" id="picture-order"><div class="bk-card-head"><h2 class="bk-eyebrow">Pictures</h2><a class="bk-btn bk-outline" href="{{ url_for('web.bw_admin',page='settings') }}#picture-priority">{{ toni_icon('edit') }}Edit</a></div>
 <div class="bk-pics">{% for label, order in v.pictures %}<div><span class="bk-pic-name">{{ label }}</span><span class="mono bk-2">{{ order|join(' · ') }}</span></div>{% endfor %}</div>
 <p class="bk-note">First source with a picture wins.</p></section>

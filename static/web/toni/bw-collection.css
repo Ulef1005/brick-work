@@ -742,6 +742,12 @@ html[data-web-ui="toni"] #bw-collection .bc-source-details summary { padding-inl
 #bw-collection .fr-actions { display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex:none; }
 #bw-collection .fr-skip-form { margin:4px 0 0;align-self:flex-start; }
 #bw-collection .fr-skip { min-height:44px;padding:0;border:0;background:none;color:var(--tw-accent-text);font:500 13px var(--tw-font);cursor:pointer; }
+/* #84: the keys step on Get started carries the key cards of Catalogues & keys (12l), one per source, on the page background. */
+#bw-collection .fr-step:has(.fr-keys) { flex-wrap:wrap; }
+#bw-collection .fr-keys { flex-basis:100%;display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));padding-left:48px; }
+#bw-collection .fr-keys .bk-card { background:var(--tw-bg); }
+#bw-collection .fr-keys [data-key-help] a { color:var(--tw-accent-text);text-decoration:none;font-weight:500; }
+@media (max-width:640px) { #bw-collection .fr-keys { padding-left:0; } }
 /* #85: the catalogue step's done line and its explainer. */
 #bw-collection .fr-summary { font:500 13px/18px var(--tw-font);color:var(--tw-text-2);margin:0; }
 #bw-collection .fr-summary a { color:var(--tw-accent-text);text-decoration:none; }

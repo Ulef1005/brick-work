@@ -1,5 +1,7 @@
 """#83: the first-run flow as one resumable flow: its own page, the steps' states, skipping a step for now and taking it back, resuming at the
 first open step, and reopening it from Tools & Admin."""
+import secrets as token_source
+
 from bs4 import BeautifulSoup
 import pytest
 
@@ -10,7 +12,11 @@ from tests.sources4 import unkeyed
 
 @pytest.fixture(autouse=True)
 def no_keys(monkeypatch):
+    from cryptography.fernet import Fernet
+    from brickwork.core import secrets
     unkeyed(monkeypatch)
+    monkeypatch.setenv('BW_SECRET_KEY', Fernet.generate_key().decode())       # key entry on, as on a set-up install
+    secrets.forget()
 
 
 def soup(client, route='/manage/get-started'):
@@ -44,7 +50,7 @@ def test_skipping_a_step_moves_the_flow_on_and_taking_it_back_restores_it(client
     page = soup(client)
     assert states(page) == dict(catalogue='done', keys='skipped', collection='current')        # left and come back: resumes at the first open step
     keys = page.select_one('[data-key=keys]')
-    assert 'Skipped for now.' in keys.get_text() and keys.select_one('.fr-actions a')['href'] == '/manage/catalogues'      # it can still be done
+    assert 'Skipped for now.' in keys.get_text() and keys.select('[data-flow-keys] [data-key-card]')      # it can still be done
     assert keys.select_one('.fr-skip').get_text() == 'Back into the flow'
     assert (pair.parent / 'onboarding.json').read_text() == '{"skipped": ["keys"]}'
     skip(client, 'keys', 'unskip')
@@ -129,3 +135,54 @@ def test_coming_back_shows_a_running_job_with_its_progress_and_a_failed_one_with
     else:
         assert step.select_one('[data-job-failed]').get_text() == 'The download failed.'
         assert step.select_one('.fr-actions form')['action'] == '/manage/first-run/catalogue'
+
+
+# #84: the keys step: one card per source with what it gives and where the key is made, Test, the honest note without keys, and every
+# key action coming back to the flow.
+
+def test_the_keys_step_has_a_card_per_source_with_what_it_gives_and_where_to_get_it(client):
+    step = soup(client).select_one('[data-key=keys]')
+    cards = {c['data-key-card']: c for c in step.select('[data-flow-keys] [data-key-card]')}
+    assert set(cards) == set(onboarding.KEY_HELP)
+    for source, card in cards.items():
+        link = card.select_one('[data-key-help] a')
+        assert link['href'] == onboarding.KEY_HELP[source]['url'] and link['href'].startswith('https://') and link['rel'] == ['noopener']
+        assert card.select_one('[data-key-pill]').get_text(strip=True) == 'Not set'
+    assert 'Without keys there are no prices' in step.select_one('[data-without-keys]').get_text()
+    assert not step.select('.fr-actions a')                                   # the cards are the action here
+    for form in step.select('[data-flow-keys] form'):
+        assert form['action'] == '/manage/catalogues' and form.select_one('input[name=back]')['value'] == 'flow'
+
+
+def test_a_stored_key_shows_configured_with_test_and_the_step_done(client, coll):
+    from brickwork.core import keys
+    value = token_source.token_hex(14)                                        # made per run: no key-shaped literal in the repo
+    keys.save(coll.db, 'rebrickable', {'key': value})
+    step = soup(client).select_one('[data-key=keys]')
+    assert step['data-state'] == 'done' and not step.select('[data-without-keys]')
+    card = step.select_one('[data-key-card=rebrickable]')
+    assert card.select_one('[data-key-pill]').get_text(strip=True) == 'Configured'
+    assert card.find('button', string='Test key')
+    assert value not in str(step)
+
+
+def test_a_rejected_key_comes_back_to_the_flow_with_the_sites_reason(client, monkeypatch):
+    from brickwork.core.sources.base import KeyRejected
+    def refuse(action, **kwargs):
+        raise KeyRejected('Rebrickable says: invalid key')
+    monkeypatch.setattr('brickwork.web.admin_ops.tools_write', refuse)
+    value = token_source.token_hex(14)
+    response = client.post('/manage/catalogues', data={'csrf_token': csrf(client), 'action': 'key_test_save', 'source': 'rebrickable',
+                                                       'key:key': value, 'back': 'flow'})
+    assert response.status_code == 302 and response.location.endswith('/manage/get-started#key-rebrickable')
+    card = soup(client).select_one('[data-flow-keys] [data-key-card=rebrickable]')
+    assert card.select_one('[data-key-pill]').get_text(strip=True) == 'Rejected'
+    assert 'invalid key' in card.select_one('[role=alert]').get_text()
+    assert value not in client.get('/manage/get-started').get_data(as_text=True)
+
+
+def test_without_the_flow_marker_a_key_action_stays_on_catalogues_and_keys(client, monkeypatch):
+    monkeypatch.setattr('brickwork.web.admin_ops.tools_write', lambda action, **kwargs: dict(tested=True))
+    response = client.post('/manage/catalogues', data={'csrf_token': csrf(client), 'action': 'key_test_save', 'source': 'rebrickable',
+                                                       'key:key': token_source.token_hex(14)})
+    assert response.location.endswith('/manage/catalogues')

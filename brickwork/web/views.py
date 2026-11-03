@@ -158,6 +158,13 @@ def settings_undo_offer(db, text):
     return identifier if found else None
 
 
+def key_return(source):
+    """Where a key action goes back to: the Get started flow's keys step when it came from there (#84), else Catalogues & keys."""
+    if request.form.get('back') == 'flow':
+        return url_for('web.bw_get_started') + ('#key-' + source if re.fullmatch(r'[a-z_]+', source or '') else '')
+    return url_for('web.bw_admin', page='catalogues')
+
+
 @web_page.post('/manage/<page>')
 @login_required
 def bw_admin_write(page):
@@ -333,7 +340,7 @@ def bw_admin_write(page):
                     values = {f: request.form.get('key:' + f, '') for f in keys.fields(keys.known(source))}
                     outcome = admin_ops.tools_write('key_test_save', source=source, values=values)
                     flash('Saved · The key works' if outcome['tested'] else 'Saved · Not tested: ' + outcome['reason'], 'success')
-                    return redirect(url_for('web.bw_admin', page='catalogues'))
+                    return redirect(key_return(source))
                 if request.form['action'] == 'key_undo':
                     admin_ops.tools_write('key_undo', source=source, event=int(request.form['event']))
                 elif request.form['action'] == 'key_save':
@@ -346,15 +353,15 @@ def bw_admin_write(page):
                 else:
                     admin_ops.tools_write('key_test', source=source)
                     flash('Source key test · The key works', 'success')
-                    return redirect(url_for('web.bw_admin', page='catalogues'))
+                    return redirect(key_return(source))
             except KeyRejected as exc:
                 session['bw_key_result'] = dict(source=source, state='rejected', message=redact(exc),
                                                 replacement=bool(getattr(exc, 'replacement', False)) and not getattr(exc, 'restore_failed', False),
                                                 restore_failed=bool(getattr(exc, 'restore_failed', False)))
-                return redirect(url_for('web.bw_admin', page='catalogues'))
+                return redirect(key_return(source))
             except errors.BrickWorkError as exc:
                 flash(failure_label + ' · ' + redact(exc), 'error')
-                return redirect(url_for('web.bw_admin', page='catalogues'))
+                return redirect(key_return(source))
         elif page == 'catalogues':
             if request.form['action'] == 'source':
                 admin_ops.tools_write('source', source=request.form['source'], enabled=request.form.get('enabled') == 'yes')
@@ -368,6 +375,8 @@ def bw_admin_write(page):
         flash('Nothing was saved. Check the values and try again.', 'error')
     else:
         flash('Saved', 'success')
+    if page == 'catalogues' and request.form.get('back') == 'flow':
+        return redirect(key_return(request.form.get('source', '')))
     target = 'jobs' if page in ('refresh', 'jobs') else page
     extra = {'group': request.form.get('group', 'owners')} if page == 'values' else {'saved': saved} if page == 'settings' and saved else {}
     return redirect(url_for('web.bw_admin', page=target, **extra))
@@ -413,9 +422,18 @@ def bw_first_run_catalogue():
 @login_required
 def bw_get_started():
     """#83: the first-run flow on its own page, reachable from Tools & Admin after the first run. It resumes at the first open step."""
-    from . import setup_state
+    from . import admin_ops, onboarding, setup_state
+    from ..core import keys as key_store, secrets as key_secrets
+    from ..core.admin import display
     flow = setup_state.first_run(bw_collection_editable())
+    try:                                                                # #84: the keys step carries the key cards of Catalogues & keys
+        data = display(admin_ops.tools_read('catalogues'))
+        key_view = admin_ops.catalogues_view(data, key_store.field_map(), key_secrets.entry_available(), session.pop('bw_key_result', None),
+                                             request.args.get('replace'))
+    except (ValueError, sqlite3.Error, OSError):
+        key_view = None
     response = current_app.make_response(render_template('web/toni/web/bw_get_started.html', title='Get started', first_run=flow,
+                                                         keys=key_view, key_help=onboarding.KEY_HELP,
                                                          csrf_token=bw_add_token(), can_edit=bw_collection_editable()))
     response.headers['Cache-Control'] = 'no-store'
     return response

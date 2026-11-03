@@ -66,3 +66,14 @@ def states(done, can_edit, chosen):
             state = 'open'
         result[step] = state
     return result
+
+
+# #84: what each key gives and where it is made, for the keys step. The links are the sites' own key pages.
+KEY_HELP = {
+    'rebrickable': dict(gives='Part lists for sets newer than the catalogue, and pictures.', where='Get a Rebrickable key',
+                        url='https://rebrickable.com/api/'),
+    'bricklink': dict(gives='Prices, and placed orders from your BrickLink account. Four values: consumer key and secret, token and its secret.',
+                      where='Get a BrickLink key', url='https://www.bricklink.com/v2/api/register_consumer.page'),
+    'brickset': dict(gives='Set data such as retail prices, and set pictures.', where='Get a Brickset key',
+                     url='https://brickset.com/tools/webservices/requestkey'),
+}

@@ -46,7 +46,7 @@ def test_first_run_needs_no_key_to_load_the_catalogue(client):
     assert found['1']['aria-current'] == 'step' and not found['2'].has_attr('aria-current')
     assert found['1'].select_one('.fr-actions form')['action'] == '/manage/first-run/catalogue' and found['1'].select_one('.fr-actions button').get_text(strip=True) == 'Activate the catalogue'      # the fixture pair has the file; test_m12_onboarding covers an empty folder
     keys_link = found['2'].select_one('.fr-actions a')
-    assert keys_link.get_text(strip=True) == 'Catalogues & keys' and keys_link['href'] == '/manage/catalogues'
+    assert keys_link.get_text(strip=True) == 'Set up keys' and keys_link['href'] == '/manage/get-started#keys'      # #84: the keys step of the flow
     button = found['3'].select_one('.fr-actions button')
     assert button.has_attr('disabled') and not found['3'].select('.fr-actions a') and 'load the catalogue first' in button.get_text()
     assert 'without keys' in page.select_one('.fr-note').get_text()

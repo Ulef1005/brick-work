@@ -1,0 +1,107 @@
+---
+name: brickwork-design
+description: Brick Work's design kit, a sub-brand of Toni's World. Use for any visual work on Brick Work - a new or changed screen, component or style, brand assets, the data-type language, a mock-up of a Brick Work screen, or a check of the built app against the frames - so the result follows the approved frames, the brand and the data-type language.
+---
+
+# Brick Work design kit
+
+Brick Work lives inside Toni's World, and this skill builds on the toni-design skill (ai-wiki `.claude/skills/toni-design/`): follow Toni for the tokens, type (Inter, Geist Mono), paper-and-ink surfaces, 0.5 px hairlines, spacing, motion, safe areas, the 44 px touch rule, charts (`charts.md`) and anything not said here. This kit adds a mark, one identity accent, a data-type language and the screens. The frames were approved on 2026-10-12 (v1.2) and updated to v1.3 on 2026-10-16, the current reference.
+
+**Sources of truth, not copies.** The design project's export is `design/` and is never edited here (`CLAUDE.md`): report a gap instead. The brand assets the app ships are in `static/brickwork/`. This skill points at both in place. Only the kit's own documents, which exist nowhere else in the repo, sit beside it in `reference/` (`tests/test_design_skill.py` keeps it so).
+
+## Where things are
+
+| What | Where |
+|---|---|
+| Tokens (Toni's World v2: light, dark, status, viz, safe areas). Load first, never add a colour | `design/tokens-v2.css` |
+| The screens, one page per nav group (each workflow is one row: phone frames, then 1440 and 1024 desktop; theme tweak = light/dark) | `design/BW Guide.dc.html`, `design/BW Collection.dc.html`, `design/BW Workbench.dc.html`, `design/BW Planning.dc.html`, `design/BW Manage.dc.html` |
+| Frames view (deep link `#/<id>?w=1440&t=dark`), manifest, start page | `design/BW Navigator.dc.html`, `design/frames.json`, `design/index.html` |
+| Exported frames, PNG, light and dark at 1440 / 1024 / 390 | `design/frames/` |
+| Exact values of the v1.3 sections | `design/sections/` (`<Group>/<id>.html`) |
+| Clickable phone and desktop flows | `design/Brick Work Clickdummy.dc.html` |
+| Screens of the built app for approval | `design/approval/` |
+| How to check the built app against the design | `DESIGN-CHECK.md` |
+| Sample content (sets, orders, wishlist, checker scenarios, part to inventory, empty states, edge cases, colours). Use it instead of inventing content | `design/test-data/` |
+| Missing-image tiles | `design/assets/data/placeholders/` |
+| Mark, app icon, favicons, lockups (use the PNG lockups: the SVG lockup clips the "k"), the accent CSS, manifest, head block | `static/brickwork/` |
+| App icons 152 to 1024 and the iPhone and iPad splash screens | `static/brickwork/icons/`, `static/brickwork/splash/` |
+| UI icons (1.6 px stroke, 24 px grid), with the sprite | `static/brickwork/icons-ui/` |
+| Patrick Hand (brand surfaces only) and its licence | `static/fonts/` |
+| The handoff, build spec, coverage, section index, frames by device, brand decisions, brand panel and specimen | `reference/` beside this file (paths inside them follow the kit's old layout: `design_files/` and `reference/` are `design/`, `assets/brick-work/` is `static/brickwork/`) |
+
+**Catalogue images are not in the repo.** The pages load set, part and minifigure pictures from `design/assets/data/{parts,sets,minifigs,photos}/`. They are Rebrickable CDN images for mock-ups only, so `.gitignore` keeps them out, and the frames fall back to the placeholders. To see the pages with pictures, put the images into those git-ignored folders locally. The design project's export (`brickwork-design-3.zip`) has them under `assets/data/`, and ai-wiki's history keeps the old kit's copy under `.claude/skills/brickwork-design/reference/assets/data/`. Never commit them.
+
+## Page map (section ids)
+
+- **Guide:** G1 to G4 (principles, colour, tokens, navigation), 1a data-type language, 1b app shell, 6a icons, 9a devices.
+- **Collection:** 1c Sets, 1d Set detail, 1e, 2a Minifigure, 2b Part, 2c Instruction and box, 2d Part lot, 2e Module states, 7a/7b lists and copy chooser, 8a item lists, 8c lot and order sheets.
+- **Workbench:** 3a Matcher, 3b Check Set Parts, 3c Part Picker, 3e Set parts checker, 3f Part to Inventory, 5a Orders, 5d Storage, 7d Orders detail.
+- **Planning:** 4a Wishlist, 4b Prices, 4c Complete sets, 7c.
+- **Manage:** 4d Add, 5b Tools & Admin, 5c Statistics, 7e/7f system pages, 8b forms.
+- **v1.3:** Workbench 12a Check this copy, 12b Orders desktop/iPad, 12c Storage desktop/iPad, 12d Include spare parts?, 12e Check figure parts; Collection 12f Minifigure detail, 12g Minifigures in a set, 12h Pager, 12i Sets filters (Select, Group), 12j First run without keys; Planning 12k Max price with currency; Manage 12l Catalogues & keys, 12m API tokens, 12n Collection sync (issue #10), 12o Scan a set barcode (issue #8).
+
+Known gaps: 12j predates schema 4.0 (the app's first run follows data-model design § 6.1), and no frame shows a wish's **Max with box** (#131; a proposal is in #136).
+
+## Decisions since v1
+
+- **Prices card** is identical everywhere (set, minifigure, part, instruction, box): label, value with unit, min/avg/max range bar for sold rows, sub-line with count, window and age. "With box" and "Set estimate" are set-only.
+- **Part to Inventory review:** the reference part is large on top with the user's photo smaller beside it (2:1); "Other possibilities" are listed below. Best match is not repeated in the list.
+- **Part to Inventory capture:** a Camera selector row and a Recognition switch (Local model | Brickognize) sit above the tabs and in the desktop capture column. Default Local model, works offline.
+- **Part to Inventory flow:** snap photo, AI detects, best match shown and confirmed by hand (alternatives on demand), approved pieces go to a verified queue, when a lot is done the batch is confirmed and added to inventory.
+- **Batch confirmation sheet:** "Add 3 pieces to inventory?" with Add to: Loose parts | Assign to a lot, a lot picker row, "New lot", button "Add 3 to Pile A".
+- **Check Set Parts:** "Missing so far" is a **history view** (all misses of the check, growing, scrolls), not the last 3. One **Missing pass** replaces the old "already answered" screen: a final pass over answered parts, each row "−n of m" with a "Found 1" button, hint "Found one in the pile? Tap Found 1 and the count drops.", footer "Done · 9 still missing".
+- **Part desktop (2b):** a part that completes a set shows a success chip "Completes set" in place of the "· n left" text.
+- **Desktop checker:** answer buttons sit directly under the part name, no empty gap.
+- **Images:** set rows use set covers, part rows part images on a white tile, minifigure rows minifigure images. Never cross categories.
+- **Workflows show all sizes together** (phone, 1440, 1024) in one row.
+
+## Brand
+
+- **Mark (direction D, "Courses in progress").** Three courses of a running-bond wall in hand-stitched line with abstract studs. The top course is half laid: one brick set, the next outlined and cross-stitched. Paper line on the accent tile in light, `#1A1816` line on the lighter accent in dark. Don't recolour, outline, add gradients or shadows. The dashed outline plus stitched cross doubles as the "missing / to place" pictogram.
+- **Accent (identity surfaces only).** `--bw-accent` light `oklch(0.50 0.10 215)`, dark `oklch(0.76 0.10 215)`; `--bw-accent-soft` `oklch(0.89 0.045 215)` / `oklch(0.35 0.065 215)`; `--bw-on-accent` `#FAFAF8` / `#1A1816` (`static/brickwork/brick-work.css`). Used for the logo, app icon, splash, lockup and the 24 px mark beside the app name in the top bar. Never on controls, data, charts or status.
+- **Clay stays the interaction colour:** buttons, links, focus, selected state.
+- **Wordmark:** "Brick Work" in Patrick Hand on brand surfaces only (splash, lockup, about). The product top bar uses Inter 600 beside the mark.
+- **No LEGO trademarks:** never the word "LEGO", its logo, red-and-yellow, a minifigure likeness or a photo-real 2 × 4 brick. Say "set", "part", "minifigure".
+- **No** second interaction colour, gradients, shadows, emoji or mascot.
+- **Voice:** warm, short, sentence case, bare counts, mid-dots, no exclamation marks. Names: "Tools & Admin", "Part to Inventory", "Wishlist", "Set 1" for a copy.
+
+## Data-type language (apply on every screen)
+
+One form per kind of data, in the same place everywhere (frames: `1a`).
+
+- **Identity:** picture left or on top; number in mono above the name; theme and year muted below. Never coloured.
+- **Status:** one pill family, dot and word on a soft ground, ink text. Complete = success, Incomplete = warning, Sealed = info. Unknown = dashed outline.
+- **Counts:** mono, tabular, right-aligned in lists. Deficits carry a minus sign: "needs 6 · −4". Bare numbers.
+- **Money:** mono, currency first, age mark always ("€8.53 8 Oct"). Stale says "stale" in ink. Listings are labelled "listings". No data reads "no sales". Never mix currencies in one figure.
+- **Actions:** clay only. 44 px minimum, 56 px for steppers and the main phone action. One primary per screen. Destructive confirm is the only place a danger tint sits on a button.
+- **Colour:** a part colour is a swatch **filled with that colour with its name inside** (ink `#1A1816` on light colours, `#FAFAF8` on dark). Inline chip 22 px, radius 6; choice chip 56 px with a 3 px clay outline and tick when selected; the required colour on a part screen is a tile at least 96 px tall. Never a bare dot, never a colour without its name. **Colour first, part number second** everywhere. Hex values come from Rebrickable `colors.csv` (the sample colours: `design/test-data/colors.json`).
+
+## Patterns
+
+Charts follow Toni's `charts.md`: bars start at zero, clay is the actual value, titles state the takeaway ("12 of 40 sets incomplete"); with no message use a neutral title.
+
+- **Segmented progress strip:** found (`--tw-viz-4`), missing (`--tw-warning`), skipped (outline), to go (`--tw-viz-n1`), 8 px, gap 2 px, mono legend.
+- **Part-to-whole bar:** solid for what can be done now, outline for the rest.
+- **Range bar with average and own max:** floating min to max band, solid tick at the average, dashed line at your max, the difference next to the max with a success or warning dot.
+- **Counter on the button:** `−` · primary button carrying the count · `+`. No separate count screen.
+- **Thumb zone:** the main phone answer sits in the bottom third; sticky bars never overlap the tab bar.
+- **Take / Give:** one transfer path from loose stock, started from either side, capped at min(needs, have).
+- **Every list is filterable and sortable:** search, Filters button (sheet on phone, docked panel on desktop), Sort button, removable chips, result count.
+
+## Navigation
+
+Four groups: **Collection** (Sets, Minifigures, Parts, Instructions, Boxes), **Workbench** (Part to Inventory, Check Set Parts, Part Picker, Matcher, Orders, Storage), **Planning** (Wishlist, Prices, Complete sets), **Manage** (Add, Tools & Admin). Phone: bottom bar of the four groups with the group's items in a scrolling row under the top bar, Jump search top right. Desktop: rail with counts, collapsing to icons at 1024 px. Home is the Sets list. Theme switcher: three icon segments (auto, sun, moon), no text, in Manage and at the foot of the desktop rail.
+
+Status model: Complete requires "Set is checked" and nothing missing; a missing minifigure makes a copy incomplete even when checked. Do not change it. One person and one collection; a home-screen web app on the phone and a desktop app; English UI.
+
+## Dark mode
+
+`tw-dark` on the root, with the mark colours (`--bw-g` `oklch(0.76 0.10 215)`, `--bw-i` `#1A1816`). In bottom sheets and side panels `--tw-sheet-bg` equals `--tw-surface` in dark, so set `--tw-surface: var(--tw-surface-2)` on the sheet container so chips and segments stay visible. Use `--tw-text-muted`, not `--tw-text-faint`, for any text.
+
+## Rules for new work
+
+1. Find the screen in `design/frames.json`, compare against its PNGs in `design/frames/` (light and dark, 1440 / 1024 / 390), take exact values from `design/sections/` or the matching `design/BW *.dc.html` page, and follow `DESIGN-CHECK.md`.
+2. Reuse a pattern from the frames before inventing one; the section map is in `reference/INDEX-brick-work-screens.md`.
+3. Use `design/test-data/` for content; images must match the row category.
+4. Check light and dark, 390 px and 1440 px.
+5. New UI gets a Claude Design hand-off on its issue; list any new component and why it is needed. Where the frames have no answer, report the gap rather than editing `design/`.

@@ -8,12 +8,12 @@ def test_task_entries_follow_unreleased_title_newest_first():
     assert headings[:8] == [
         '# Changelog',
         '## Unreleased',
+        '## Brick Work 0.7.0 (schema 4.1) · 2026-11-03',
         '## Brick Work 0.6.0 (schema 4.0, API v2) · 2026-10-28',
         '## Brick Work 0.5.0 (first public release) · 2026-10-18',
         '### All changes in this release',
         '## 4.6d-1 · Collection design comparison (partial)',
         '## 4.5v · list cost and quiet name refresh',
-        '## 4.5u · names, colours and identity',
     ]
     assert lines[0] == '# Changelog'
     assert headings.count('# Changelog') == 1

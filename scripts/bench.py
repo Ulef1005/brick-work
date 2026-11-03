@@ -309,6 +309,8 @@ def app_for(store):
 
 VOLATILE = [(re.compile(rb'\b\d+ms\b'), b'#ms'),                                          # the footer's render time
             (re.compile(rb'(\?v=)\d+'), rb'\1#'),                                        # the static files' version (their mtime)
+            (re.compile(rb'(Brick Work \(?)\d+\.\d+\.\d+[\w.+-]*'), rb'\1#'),             # the app version (footer, About): a release is no output change
+            (re.compile(rb'("app":\s*")[^"]*'), rb'\1#'),                                 # the app version in health answers
             (re.compile(rb'(name="csrf_token"[^>]*value=")[^"]*'), rb'\1#'), (re.compile(rb'(value=")[^"]*("[^>]*name="csrf_token")'), rb'\1#\2'),
             (re.compile(rb'(csrf[-_]token"?\s*[:=]\s*["\'])[^"\']*'), rb'\1#'), (re.compile(rb'(data-csrf=")[^"]*'), rb'\1#')]
 

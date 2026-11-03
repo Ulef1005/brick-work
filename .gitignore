@@ -36,6 +36,10 @@ data/
 !.gitleaks.toml
 !.dockerignore
 !.env.sample
+# the design skill lives in the repo (App Standard, 2026-11-03); the rest of .claude/ stays local
+!.claude/
+.claude/*
+!.claude/skills/
 
 # The built documentation site
 _site/

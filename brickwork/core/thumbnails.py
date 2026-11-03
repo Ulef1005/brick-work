@@ -158,7 +158,7 @@ def pregenerate(database):
     root = root_for(database)
     made = 0
     with open_database(database, read_only=True) as db:
-        rows = db.execute('SELECT id, local_path FROM item_images').fetchall()
+        rows = db.execute('SELECT id, local_path FROM picture').fetchall()
     for image_id, local_path in rows:
         original = (root / local_path).resolve()
         if not original.is_relative_to(root / 'data/images') or not original.is_file():

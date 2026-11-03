@@ -20,12 +20,12 @@ The v3 browser routes now live at the root. Old URLs return 404 with no redirect
 | POST | `/house/manage/add/jobs/<int:job>/retry` | `/manage/add/jobs/<int:job>/retry` | `bw_add_retry` |
 | GET | `/house/workbench/check-parts` | `/workbench/check-parts` | `bw_check_parts` |
 | GET | `/house/workbench/check-parts/<copy_id>` | `/workbench/check-parts/<copy_id>` | `bw_check_copy` |
-| GET | `/house/workbench/check-parts/<copy_id>/figure/<minifig_type>/<minifig_no>` | `/workbench/check-parts/<copy_id>/figure/<minifig_type>/<minifig_no>` | `bw_check_figure` |
+| GET | `/house/workbench/check-parts/<copy_id>/figure/<int:copy_figure_id>` | `/workbench/check-parts/<copy_id>/figure/<int:copy_figure_id>` | `bw_check_figure` |
 | GET | `/house/workbench/part-picker` | `/workbench/part-picker` | `bw_picker` |
 | GET | `/house/workbench/matcher` | `/workbench/matcher` | `bw_matcher` |
 | GET | `/house/workbench/match` | `/workbench/match` | `bw_matcher` |
 | POST | `/house/workbench/check-parts/<copy_id>` | `/workbench/check-parts/<copy_id>` | `bw_check_write` |
-| POST | `/house/workbench/check-parts/<copy_id>/figure/<minifig_type>/<minifig_no>` | `/workbench/check-parts/<copy_id>/figure/<minifig_type>/<minifig_no>` | `bw_check_figure_write` |
+| POST | `/house/workbench/check-parts/<copy_id>/figure/<int:copy_figure_id>` | `/workbench/check-parts/<copy_id>/figure/<int:copy_figure_id>` | `bw_check_figure_write` |
 | POST | `/house/workbench/save/<action>` | `/workbench/save/<action>` | `bw_workbench_save` |
 | GET | `/house/workbench/part-to-inventory` | `/workbench/part-to-inventory` | `bw_inventory` |
 | GET | `/house/workbench/orders` | `/workbench/orders` | `bw_orders` |
@@ -40,9 +40,10 @@ The v3 browser routes now live at the root. Old URLs return 404 with no redirect
 | POST | `/house/workbench/storage/action/<action>` | `/workbench/storage/action/<action>` | `bw_storage_action` |
 | GET | `/house/collection/sets` | `/collection/sets` | `bw_sets` |
 | GET | `/house/collection/<kind>` | `/collection/<kind>` | `bw_collection` |
-| GET | `/house/collection/item/<kind>/<path:number>` | `/collection/item/<kind>/<path:number>` | `bw_collection_item` |
+| GET | `/house/collection/item/<int:item_id>` | `/collection/item/<int:item_id>` | `bw_collection_item` |
+| GET | `/house/collection/item/<kind>/<path:number>` | `/collection/item/<kind>/<path:number>` | `bw_collection_item_by_number` |
 | GET | `/house/collection/wishes` | `/collection/wishes` | `bw_collection_wishes` |
-| GET | `/house/collection/wishes/<int:identifier>` | `/collection/wishes/<int:identifier>` | `bw_collection_wish` |
+| GET | `/house/collection/wishes/<identifier>` | `/collection/wishes/<identifier>` | `bw_collection_wish` |
 | GET | `/house/collection/lots/<identifier>` | `/collection/lots/<identifier>` | `bw_collection_lot` |
 | GET | `/house/collection/purchase-places` | `/collection/purchase-places` | `bw_collection_places` |
 | POST | `/house/collection/save/<action>` | `/collection/save/<action>` | `bw_collection_write` |

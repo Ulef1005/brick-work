@@ -8,17 +8,13 @@ from urllib.parse import urlsplit
 from bs4 import BeautifulSoup
 import pytest
 
-from tests.test_bw_collection import bw
-from tests.importer.test_importer import legacy
-from tests.web_fixtures import app, logged_in
-from tests.web_fixtures import apps
-from tests.test_bw_admin import reset_shell_metadata_after_test
+from tests.app4 import app4, client, coll, pair, read, world
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_jump_has_no_helper_copy_keyboard_line_or_add(app, bw):
-    soup = BeautifulSoup(logged_in(app).get('/').data, 'html.parser')
+def test_jump_has_no_helper_copy_keyboard_line_or_add(client):
+    soup = BeautifulSoup(client.get('/').data, 'html.parser')
     jump = soup.select_one('#global-jump')
     assert jump and not jump.has_attr('data-add-url')
     assert jump.select_one('#jump-message').text.strip() == ''
@@ -41,11 +37,11 @@ def test_bottom_bar_and_jump_sheet_css():
         assert value in sheet
 
 
-def test_shell_chromium_geometry(app, bw, tmp_path):
+def test_shell_chromium_geometry(client, tmp_path):
     chrome = os.environ.get('BW_COLLECTION_CHROME')
     if not chrome:
         pytest.skip('Set BW_COLLECTION_CHROME for opt-in browser geometry verification')
-    soup = BeautifulSoup(logged_in(app).get('/').data, 'html.parser')
+    soup = BeautifulSoup(client.get('/').data, 'html.parser')
     for link in soup.select('link[rel=stylesheet]'):
         style = soup.new_tag('style')
         style.string = (ROOT / urlsplit(link['href']).path.lstrip('/')).read_text()

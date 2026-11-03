@@ -24,7 +24,7 @@ function load(records,{kind='P',pageSize=15,defaultGroup='',groupOptions=null,sa
  const list=new Node(),container=new Node(),search=new Node(),sort=new Node(),direction=new Node(),group=new Node(),source=new Node(),count=new Node();
  sort.value='number';direction.value='asc';
  list.dataset.bcPageSize=String(pageSize);if(defaultGroup)list.dataset.bcDefaultGroup=defaultGroup;
- const defaults={type:kind,quantity:1,entity:'stock',ids:['x'],condition:['U'],status:[''],storage:['null'],place:['null'],flags:[],lot:['null'],lot_links:[],tags:[]};
+ const defaults={type:kind,quantity:1,entity:'stock',ids:['x'],condition:['used'],status:[''],storage:['null'],place:['null'],flags:[],lot:['null'],lot_links:[],tags:[]};
  const full=records.map((r,i)=>({...defaults,number:'n'+String(i).padStart(3,'0'),name:'Name '+i,...r}));
  const fields=[...new Set(full.flatMap(Object.keys))];
  source.textContent=JSON.stringify({fields,rows:full.map(r=>Object.fromEntries(fields.flatMap((k,i)=>r[k]===undefined?[]:[[i,r[k]]])))});
@@ -36,7 +36,7 @@ function load(records,{kind='P',pageSize=15,defaultGroup='',groupOptions=null,sa
  const apply=new Node(),toggle=new Node(),cancel=new Node(),bar=new Node();toggle.setAttribute('role','switch');toggle.dataset.bcSelect='';cancel.dataset.bcSelect='';
  list.nodes={'[data-bc-rows]':container,'[data-bc-records]':source,'[data-bc-search]':search,'[data-bc-sort]':sort,'[data-bc-direction]':direction,'[data-bc-count]':count,'[data-bc-group]':group,'[data-bc-apply]':apply,'[data-bc-selection-bar]':bar};
  list.groups={'[data-bc-filter]':[problem,lot],'[data-bc-group-pick]':picks,'[data-bc-quick]':quick,'[data-bc-select]':[toggle,cancel]};
- const root=new Node();root.dataset={bcCollectionList:'',saveUrl:'/x/ACTION',csrf:'c',type:kind,editable:'true',itemBase:'/i/TYPE/NUMBER',imageBase:'/img/0',lotBase:'/lots/LOT',wishBase:'/w/0',unresolvedUrl:'/u'};root.groups={'[data-bc-list]':[list]};if(detail)delete root.dataset.bcCollectionList;
+ const root=new Node();root.dataset={bcCollectionList:'',saveUrl:'/x/ACTION',csrf:'c',type:kind,editable:'true',itemBase:'/i/0',imageBase:'/img/0',lotBase:'/lots/LOT',wishBase:'/w/0',unresolvedUrl:'/u'};root.groups={'[data-bc-list]':[list]};if(detail)delete root.dataset.bcCollectionList;
  const doc=new Node();doc.querySelector=s=>s==='#bw-collection'?root:null;doc.createElement=tag=>{const n=new Node();n.tagName=tag.toUpperCase();return n;};
  const stored=new Map();if(saved)stored.set('bw-collection-list:/collection/'+kind+':0',JSON.stringify(saved));
  const basis=new Node();root.nodes['[data-bc-price-basis]']=basis;if(groupOptions)group.options=groupOptions.map(value=>({value}));
@@ -58,7 +58,7 @@ function load(records,{kind='P',pageSize=15,defaultGroup='',groupOptions=null,sa
  assert.equal(main.children[0].children[0].className,'bc-status unknown');
  assert.equal(sub.className,'bc-foot-sub');assert.deepEqual(texts(sub),['2 copies · 5 missing','8 Oct · stale']);
  assert.equal(tags.className,'bc-tags');assert.deepEqual(tags.children.map(t=>t.textContent),['Display','Gift']);
- const bare=api.buildRow(api.decodeRecords({fields:['type','number','year','entity','ids','status'],rows:[{0:'S',1:'x-1',2:1973,3:'copy',4:['c'],5:['I']}]})[0],root.dataset,false,()=>{});
+ const bare=api.buildRow(api.decodeRecords({fields:['type','number','year','entity','ids','status'],rows:[{0:'S',1:'x-1',2:1973,3:'copy',4:['c'],5:['incomplete']}]})[0],root.dataset,false,()=>{});
  assert.ok(texts(bare).includes('1973'));assert.ok(texts(bare).includes('no sales'));assert.equal(bare.querySelector('.bc-tags'),null);
  // Wishes keep the plain foot and never take a sub-theme.
  // Parts table cells (kit 7a).
@@ -108,7 +108,7 @@ function load(records,{kind='P',pageSize=15,defaultGroup='',groupOptions=null,sa
  // Detail pages carry the item's type on the root: the count names the list's own noun, never that type's.
  const det=load([{},{}],{kind:'M',detail:true});assert.equal(det.count.getAttribute('aria-label'),'1 to 2 of 2 results');
  // Price basis wording comes from the whole filtered list, not the current page.
- const priced=Array.from({length:30},(_,i)=>i>=20?{price:['EUR','1.00','2026-10-08',false,'€1.00','8 Oct'],price_basis:['U','sold','bricklink']}:{});
+ const priced=Array.from({length:30},(_,i)=>i>=20?{price:['EUR','1.00','2026-10-08',false,'€1.00','8 Oct'],price_basis:['used','sold','bricklink']}:{});
  const pb=load(priced,{kind:'S'});
  assert.equal(pb.basis.textContent,' · prices are used averages from BrickLink');
  const nextBtn=pb.container.afterNode.children.find(c=>c.className.includes('bc-page-next'));await nextBtn.trigger();

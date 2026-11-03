@@ -1,5 +1,14 @@
 # Brick Work v3.2 schema and migration definitions
 
+> **On `main` (the 4.0 line)** every screen runs on the 4.0 store ([design](../data-model-4.0/data-model-design.md)); the 3.x schema and the
+> `brickwork migrate` importer described below are history: the importer's identity matcher, projection, proof and migrate modules
+> (`core/importer/idmatch.py`, `projection.py`, `proof.py`, `migrate.py`), `core/names.py`, and the 3.x files `core/schema.sql`, `core/import.sql`,
+> `core/upgrade.py`, `core/upgrade_api.py` and `core/recompute.py` are deleted (decision 4 of issue #110; M.8a, M.8j). What remains of the
+> importer is the BrickTracker import of [how-to](../how-to/import-from-bricktracker.md), on Rebrickable numbers. A 3.3 collection moves to 4.0
+> with `brickwork migrate4` (design § 8), and the settings, freshness rules and maintenance screens are described in
+> [Settings and maintenance](../how-to/settings-and-maintenance.md). The sections that say "4.0" are current; the rest documents what the
+> 3.3 migration proved and is kept for the cutover.
+
 Retired screens continue using their existing stores. Add and Tools & Admin
 use the new store. The CLI migration runs without a Flask application
 context, network access, source schema initialization or legacy writers.
@@ -55,7 +64,7 @@ Retired legacy screens continue using their separate old stores.
    agrees. Ambiguous template children use parent source identity plus JSON
    ordinal, retain every candidate, and reference distinct placeholder rows.
    Decisions are an external input, never a repository fixture or committed
-   collection record. Inventory matching calls `web.idmatch.match`; canonical
+   collection record. Inventory matching called `web.idmatch.match` (deleted in 4.0); canonical
    cache projections preserve existing bridges, rather than rematching them.
 
 3. **Local pictures and own photos.** `item_images` retains rows only for
@@ -96,6 +105,8 @@ Retired legacy screens continue using their separate old stores.
    keys use expression indexes that distinguish NULL from empty text.
 
 ## Migration and proof contract
+
+*The 3.3 migration, as it was proved for 3.3. On `main` the command is `brickwork migrate4` (see the note at the top); `brickwork migrate` is gone.*
 
 `brickwork migrate --app APP --web WEB --decisions FILE
 --catalogue /path/to/bricklink-catalog.db --catalogue-src /path/to/xml
@@ -174,23 +185,21 @@ fails visibly; unrelated absent colours still fail the final FK proof.
 Run 2 passes all table counts/checksums, integrity and foreign-key checks and
 publishes the new database.
 
-## 4.2c additive import runtime DDL
+## 4.2c additive import runtime DDL (3.x; replaced in 4.0)
 
-`brickwork/core/import.sql` adds `import_steps`, `import_calls` and
-`import_owners` when the pipeline is initialized. The first tracks the six steps,
-the second checkpoints successful calls and waiting source jobs, and the third
-prevents simultaneous local workers while allowing dead-process recovery. Every
-foreign key has an index. `jobs.source='import'` is the parent job. No migrated
-table definition, mapping or proof expectation changes. Priority continues to
-live in `settings.source_priority`; `import_order:TYPE` adds per-type step order.
-See the [pipeline contract](pipeline.md) for states, events and worker operation.
+The 3.x import pipeline added `import_steps`, `import_calls` and `import_owners` to the 3.3 file. In 4.0 the same jobs live in `job`,
+`job_step`, `job_call` and `job_owner` of the collection file (design § 5.2), and the 3.x tables are not migrated. Priority continues to
+live in the setting `source_priority`; `import_order:<kind>` adds the per-kind step order. See the [pipeline](pipeline.md) for states,
+events and worker operation.
 
 ## 4.3d Orders and Storage
 
-The existing ledger tables support document review, line receipts and explicit
-copy/stock allocation without DDL changes. New app allocations are atomic and
-store reversible row snapshots in `events`, leaving historical ledger records
-as provenance. See [Orders and Storage](../web-ui/orders-storage-4.3d.md).
+On 4.0 (M.8h) the orders live in `purchase_order`, `order_document`, `order_line`, `line_receipt`, `line_receipt_log` and `allocation`
+(design § 5), empty after the migration (decision B). A line speaks item and colour ids and keeps the provider's words in `raw_*`; it is
+placed through `store4.identity.resolve_inverse(..., exhaustive=True)`, and a key that names several items stays unplaced with its candidates
+in `suggestions_json`. Every order save is one `orders:<order id>` event holding the rows it changed, before and after, and Undo
+(`core/orders.py`) deactivates a document rather than erasing it. The 3.3 tables and the `bw_ledger` receipt are gone. The storage part
+(the ledger) is `core/ledger.py`.
 
 Schema 3.2 (Ulf, 2026-10-13) adds nullable `storages.archived_at TEXT`.
 The approved archive-not-erase rule now covers storage locations, enabling
@@ -220,22 +229,14 @@ same shape as `purchase_currency` and `current_value_currency`). It is the only 
 no table, index or other column moves, and `schema_meta` stays `3.2` (its CHECK is an
 exact-version constraint; this is an additive column, not a new schema generation).
 
-- **Fresh outputs.** `schema.sql` declares the column. The legacy projection fills it
+- **Fresh outputs.** The 3.3 schema declared the column. The legacy projection filled it
   for every migrated wish that has a `max_price` with the configured BrickLink currency
   (`bricklink_currency` from the legacy price settings, default `EUR`) and leaves it
   NULL for wishes without a max, so the read-back proof covers it and byte
   determinism holds.
-- **Existing outputs.** `brickwork/core/upgrade.py` (`upgrade_wish_currency`)
-  adds the column and applies the backfill rule below. `connect()` runs it
-  automatically when a file opened for writing lacks the column or holds a limit without
-  a currency; a read-only open performs the same upgrade once on a short writable
-  handle and reopens; if that write fails (read-only file or deployment, locked
-  database) the failure is remembered per path for 300 seconds or until the file
-  changes, readers keep working without the column, and **a read-only deployment must
-  run the command below once**. The column check happens inside the write lock and a
-  concurrent upgrader's "duplicate column" is treated as already added. It can also be
-  run by hand:
-  `python -m brickwork.core.upgrade data/brickwork.db`.
+- **Existing outputs.** A 3.x upgrade step (`upgrade_wish_currency`) added the column and applied the backfill rule below on connect.
+  That code is gone in 4.0: a 3.2/3.3 file is never opened, it is migrated (`python -m brickwork.store4 migrate`), and the migration carries
+  the maximum price with its currency (`wish.max_price_currency`).
 - **Backfill rule.** Every wish with a `max_price` and no currency receives the
   `bricklink_currency` setting of that database (`EUR` when the setting is absent or
   empty). Wishes without a max stay NULL. The step is re-runnable: the column is added
@@ -252,3 +253,24 @@ exact-version constraint; this is an additive column, not a new schema generatio
   possible in a read-only file that could not be upgraded) shows the bare number.
 
 See [design diff 4.8b](design-diff-48b.md) for the Wishlist and Under max behaviour.
+
+## 4.1 Wish max price with box (#131)
+
+`wish` gains `max_price_boxed TEXT` and `max_price_boxed_currency TEXT`, a decimal price and its currency, both or neither
+(a column CHECK on the currency). They follow the `max_price` pair rules in `collection._pairs`: a price without a currency
+takes the shared or configured one, clearing the price clears the currency, a currency alone is refused.
+
+- **Version.** `meta.schema_version` is `4.1`. This is the first in-place step of the 4.x store: `store4.connect.UPGRADES`
+  maps `4.0` to `4.1` and two `ALTER TABLE wish ADD COLUMN` statements. App start upgrades the file
+  (`core.connect.upgrade`, skipped on a read-only instance), and so does a read-write `connect()`; a read-only `connect()` never
+  writes and refuses a file that still needs a step (`UpgradeFailed`). A stale file (#124) is refused before any step. Each step is one `BEGIN IMMEDIATE` transaction that re-reads the version, so concurrent
+  openers upgrade once and a failed step leaves the file at 4.0. The step records `meta.upgraded_to_4.1`. A new file
+  gets the columns from `brickwork.sql`, last before the table constraints, so its `wish` table matches an upgraded one
+  (`tests/test_store4_upgrade.py`).
+- **Older records.** Undo receipts and RowLogs written before the step lack the added columns; `store4.connect.as_current`
+  reads them as NULL, so Undo compares and restores such a row like a new one. A wish's ETag (a hash of its row) changes once.
+- **Sets only.** Only a set wish takes a max with box (`collection._check_wish_edits`); a kind move away from a set clears it.
+- **Comparison.** A set's quote with box (`slot` 'boxed') is held against `max_price_boxed`, or against `max_price` when no
+  max with box is set (`planning.max_limit`). Every other quote is held against `max_price`. The shown price never includes
+  a quote with box, so a wish has two verdicts: `max_state` and `max_boxed_state` (API `under_max`, `under_max_boxed`).
+- **Not carried.** The BrickLink wanted list has no boxed max: the XML export and import leave it out.

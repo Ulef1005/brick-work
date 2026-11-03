@@ -21,11 +21,11 @@
 <table class="pr-table{{ ' pr-pictures' if pictures else '' }}">
 <thead><tr>{% if kind == 'picker' %}<th class="pr-num">#</th>{% endif %}{% if pictures %}<th aria-label="Picture"></th>{% endif %}<th>Item</th><th>Colour</th>{% if kind == 'missing' %}<th>Condition</th>{% elif kind == 'picker' %}<th>Sets · Storage</th>{% else %}<th>List · Condition</th>{% endif %}<th class="pr-num">Qty</th><th class="pr-tick" aria-label="Done"></th></tr></thead>
 <tbody>
-{% for r in rows %}{% set image = images.get((r.item_type, r.item_no, r.color_id)) or images.get((r.item_type, r.item_no, none)) %}
+{% for r in rows %}{% set image = r.image %}
 <tr>{% if kind == 'picker' %}<td class="pr-num">{{ r.rank }}</td>{% endif %}{% if pictures %}<td class="pr-pic">{% if image %}<img {{ bw_picture_attrs(image, '48px') }} alt="" loading="eager">{% endif %}</td>{% endif %}
-<td><span class="pr-no">{{ r.item_no }}</span><span class="pr-name">{{ r.name or 'Name not recorded' }}</span>{% if r.unresolved %}<span class="pr-muted">Not matched yet</span>{% endif %}</td>
+<td><span class="pr-no">{{ r.number_text or r.item_no }}</span><span class="pr-name">{{ r.name or 'Name not recorded' }}</span>{% if r.unresolved %}<span class="pr-muted">Not matched yet</span>{% endif %}</td>
 <td>{% if r.color_id is not none %}<span class="pr-colour">{{ r.colour or 'Colour ' ~ r.color_id }}</span><span class="pr-no">{{ r.color_id }}</span>{% else %}<span class="pr-muted">No colour</span>{% endif %}</td>
-<td>{% if kind == 'missing' %}{{ {'N':'New','U':'Used'}.get(r.condition, r.condition or '') }}{% elif kind == 'picker' %}<span class="pr-no">{{ r.sets }}</span>{% if r.storage %}<span class="pr-muted">{{ r.storage }}</span>{% endif %}{% else %}{{ r.list_name }}{% if r.condition %} · {{ r.condition|capitalize }}{% endif %}{% if r.max_price %}<span class="pr-muted">max {{ r.max_price }} {{ r.max_price_currency or '' }}</span>{% endif %}{% endif %}</td>
+<td>{% if kind == 'missing' %}{{ (r.condition or '')|capitalize }}{% elif kind == 'picker' %}<span class="pr-no">{{ r.sets }}</span>{% if r.storage %}<span class="pr-muted">{{ r.storage }}</span>{% endif %}{% else %}{{ r.list_name }}{% if r.condition %} · {{ r.condition|capitalize }}{% endif %}{% if r.max_price %}<span class="pr-muted">max {{ r.max_price }} {{ r.max_price_currency or '' }}</span>{% endif %}{% endif %}</td>
 <td class="pr-num pr-qty">{{ r.quantity }}</td><td class="pr-tick"><span class="pr-box" aria-hidden="true"></span></td></tr>
 {% endfor %}
 </tbody></table>

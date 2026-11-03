@@ -28,7 +28,7 @@ def build_parser():
     mcp = parser(commands, 'mcp', 'mcp')
     mcp.add_argument('--transport', choices=('stdio', 'http'), default='stdio')
     mcp.add_argument('--in-process', action='store_true')
-    mcp.add_argument('--api-url', default='http://127.0.0.1:5000/api/v1')
+    mcp.add_argument('--api-url', default='http://127.0.0.1:5000/api/v2')
     mcp.add_argument('--token-file')
     mcp.add_argument('--allow-write', action='store_true')
     mcp.add_argument('--host', default='127.0.0.1')
@@ -43,12 +43,14 @@ def build_parser():
     parser(commands, 'setup', 'setup')
     parser(commands, 'check', 'brickwork_check')
     parser(commands, 'worker', 'jobs_worker')
-    migration = parser(commands, 'migrate', 'migrate')
-    for option in ('app', 'decisions', 'catalogue', 'out', 'report'):
-        migration.add_argument('--' + option, required=True)
-    migration.add_argument('--extras', help='Optional legacy extras database (read-only)')
-    migration.add_argument('--catalogue-src', help='Directory containing BrickLink XML files (Gear fallback)')
-    migration.add_argument('--replace', action='store_true')
+    # The 3.3 -> 4.0 migration is store4's; this is the name the design gives it (`brickwork migrate4`, data-model-design 8.2).
+    migrate4 = parser(commands, 'migrate4', 'migrate4')
+    migrate4.add_argument('--in', dest='src', required=True, help='the 3.3 collection file (read-only; stop the 3.3 app or give a copy)')
+    migrate4.add_argument('--catalogue', required=True, help='the catalogue.db the mint resolves against')
+    migrate4.add_argument('--mappings', required=True, help='the mappings directory the catalogue was built with')
+    migrate4.add_argument('--out', required=True, help='the 4.0 file to create (must not exist)')
+    migrate4.add_argument('--report', required=True, help='the report folder (new or empty)')
+    migrate4.add_argument('--pin', help='proof.json or summary.md of an earlier run to pin the catalogue and mappings to')
     catalogue = parser(commands, 'catalogue').add_subparsers(required=True)
     parser(catalogue, 'status', 'catalogue_status')
     sources = parser(catalogue, 'import').add_subparsers(required=True)
@@ -87,7 +89,8 @@ def build_parser():
     settings = parser(commands, 'settings').add_subparsers(required=True)
     parser(settings, 'show', 'settings_show')
     sub = parser(settings, 'set', 'settings_set')
-    sub.add_argument('key', choices=SETTING_KEYS + ('source_priority',) + tuple('import_order:' + t for t in 'SPMGBCIO'))
+    from ..core.items import KINDS
+    sub.add_argument('key', choices=SETTING_KEYS + ('source_priority',) + tuple('import_order:' + kind for kind in KINDS))
     sub.add_argument('value')
     wishes = parser(commands, 'wishlist').add_subparsers(required=True)
     parser(wishes, 'list', 'wishlist_list').add_argument('--archived', action='store_true')
@@ -97,7 +100,7 @@ def build_parser():
         parser(wishes, action, 'wishlist_'+action).add_argument('list')
     for action in ('move','copy'):
         sub = parser(wishes, action, 'wishlist_'+action)
-        sub.add_argument('list'); sub.add_argument('ids', nargs='+', type=int)
+        sub.add_argument('list'); sub.add_argument('ids', nargs='+', help='wish ids (see the item page or `wishlist list`)')
     sub = parser(wishes, 'export', 'wishlist_export')
     sub.add_argument('list', help='Wishlist id, exact name, or all')
     sub.add_argument('--format', choices=('bricklink','rebrickable'), required=True)
@@ -116,10 +119,11 @@ def application_context(operation):
 
 def _safe_error(error):
     # Fetcher exceptions may contain credential-bearing URLs. Never echo keys.
-    from flask import current_app
+    from flask import current_app, has_app_context
     from ..core.secrets import secret_values
     message = str(error)
-    secrets = secret_values(current_app.config) + secret_values()
+    # The wishlist commands report after their application context has closed: the environment's secrets still apply.
+    secrets = (secret_values(current_app.config) if has_app_context() else []) + secret_values()
     for secret in sorted(secrets, key=len, reverse=True):
         message = message.replace(secret, '[set]')
     return message
@@ -141,6 +145,19 @@ def _human(result, indent=0):
                 _human(value, indent + 2)
             else:
                 print(' ' * indent + str(value))
+
+
+def _print_check(result):
+    """`brickwork check`: the SQLite results as before, then one line per cross-file check, a failure with its message and fix."""
+    for name, db in result.items():
+        cross = db.get('cross_checks', [])
+        print(name + ':')
+        _human({k: v for k, v in db.items() if k != 'cross_checks'}, 2)
+        if cross:
+            print('  cross_checks:')
+        for c in cross:
+            print(f"    {'ok  ' if c['ok'] else 'FAIL'} {c['name']} · {c['title']}")
+            print(f"         {c['message']}")
 
 
 def main(argv=None):
@@ -227,17 +244,10 @@ def main(argv=None):
         except Exception as error:
             print(f'Token error: {redact(error)}', file=sys.stderr)
             return 1
-    if operation == 'migrate':
-        try:
-            result = admin_ops.migrate(**args)
-            if as_json:
-                print(json.dumps(result, indent=2))
-            else:
-                _human(result)
-            return 0
-        except Exception as error:
-            print(f'Migration error: {error}', file=sys.stderr)
-            return 1
+    if operation == 'migrate4':
+        argv = ['--in', args['src'], '--catalogue', args['catalogue'], '--mappings', args['mappings'], '--out', args['out'], '--report', args['report']]
+        argv += ['--pin', args['pin']] if args.get('pin') else []
+        return admin_ops.migrate4(argv + (['--json'] if as_json else []))
     if operation == 'import_bricktracker' and bool(args.get('source')) == bool(args.get('plan_id')):
         parser.error('give either an app.db or --apply PLAN')
     if args.get('limit') is not None and args['limit'] < 0:
@@ -256,12 +266,14 @@ def main(argv=None):
                 result = service(**args)
                 if as_json:
                     print(json.dumps(result, indent=2))
+                elif operation == 'brickwork_check':
+                    _print_check(result)
                 elif operation in ('import_item', 'jobs_retry', 'jobs_list'):
                     rows = result if isinstance(result, list) else [result]
                     if not rows:
                         print('(none)')
                     for job in rows:
-                        key = ' '.join(str(job[field]) for field in ('item_type', 'item_no') if job.get(field))
+                        key = f"item {job['item_id']}" if job.get('item_id') else ''
                         state = job['state'].replace('_', ' ')
                         print(' · '.join(part for part in (f"Job {job.get('id', '?')}", key, state) if part))
                 else:
@@ -269,7 +281,9 @@ def main(argv=None):
                 if operation in ('import_item', 'jobs_retry') and result['state'] == 'failed':
                     return 1
                 if operation in ('check', 'brickwork_check') and any(
-                        db['integrity_check'] != ['ok'] or db['foreign_key_check'] for db in result.values()):
+                        db['integrity_check'] != ['ok'] or db['foreign_key_check'] or db.get('catalogue_integrity_check', ['ok']) != ['ok']
+                        or not all(c['ok'] for c in db.get('cross_checks', ()))
+                        for db in result.values()):
                     return 1
                 if (
                         (operation == 'prices_refresh' and result.get('ok') is False) or

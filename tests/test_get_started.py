@@ -201,7 +201,7 @@ def test_the_choice_screen_offers_every_source_with_its_path(client):
     assert {k: c.find('a', class_='fr-btn')['href'] for k, c in choices.items()} == {
         'rebrickable': '/manage/sync', 'brickset': '/manage/sync', 'bricklink': '/manage/add?mode=file',
         'bricktracker': '/manage/import-legacy', 'file': '/manage/add?mode=file', 'hand': '/manage/add'}
-    assert 'cannot be read yet' in choices['brickset'].get_text()                    # Brickset CSV: said plainly, not offered
+    assert choices['brickset'].select_one('[data-choice-file]')['href'] == '/manage/add?mode=file'      # Brickset's My Sets CSV (#12 step 2)
     for key in ('rebrickable', 'brickset'):                                          # no keys in this fixture: each sync says so
         assert choices[key].select_one('[data-choice-needs] a')['href'] == '/manage/get-started#keys'
     assert not choices['bricklink'].select('[data-choice-needs]')

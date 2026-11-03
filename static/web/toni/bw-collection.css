@@ -755,7 +755,8 @@ html[data-web-ui="toni"] #bw-collection .bc-source-details summary { padding-inl
 #bw-collection .fr-choice { background:var(--tw-surface);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:8px;min-width:0; }
 #bw-collection .fr-choice h2 { font:600 18px/24px var(--tw-font);margin:0; }
 #bw-collection .fr-choice p { font:400 13px/18px var(--tw-font);color:var(--tw-text-muted);margin:0;text-wrap:pretty; }
-#bw-collection .fr-choice .fr-btn { margin-top:auto;align-self:flex-start; }
+#bw-collection .fr-choice .fr-btn { align-self:flex-start; }
+#bw-collection .fr-choice .fr-btn:first-of-type { margin-top:auto; }
 #bw-collection .fr-choice-note { color:var(--tw-text-2)!important; }
 #bw-collection .fr-summary-card { background:var(--tw-surface);border-radius:16px;padding:20px;margin-top:24px;display:flex;flex-direction:column;gap:6px; }
 #bw-collection .fr-summary-card h2 { font:600 16px/22px var(--tw-font);margin:0; }

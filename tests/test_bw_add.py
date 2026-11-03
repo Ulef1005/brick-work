@@ -349,6 +349,55 @@ def test_a_rebrickable_csv_resolves_by_born_numbers_and_colour_ids(world, client
     assert [r['color_id'] for r in proposal['items'] if r.get('unknown')] == [world.white]
 
 
+# Brickset's My Sets export (#12 step 2): its real header, synthetic rows. The user's own export is never committed.
+BRICKSET_HEADER = ('SetID,Number,Variant,YearFrom,Category,Theme,ThemeGroup,Subtheme,SetName,Image,ImageFilename,USRetailPrice,UKRetailPrice,'
+                   'CARetailPrice,DERetailPrice,USDateAdded,USDateRemoved,Pieces,Minifigs,MinifigNumbers,PackagingType,Availability,USItemNumber,'
+                   'EUItemNumber,EAN,UPC,Width,Height,Depth,Weight,ModelDimension1,ModelDimension2,ModelDimension3,AgeMin,AgeMax,OwnCount,WantCount,'
+                   'InstructionsCount,AdditionalImageCount,Released,Rating,BrickLinkSoldPriceNew,BrickLinkSoldPriceUsed,Designers,LaunchDate,ExitDate,'
+                   'Own,Want,QtyOwned,QtyOwnedNew,QtyOwnedUsed,QtyWanted,WantedPriority,,Flag2,Flag3,Flag4,Flag5,Flag6,Flag7,Flag8,UserNotes')
+
+
+def brickset_row(number, variant, own='', want='', owned='0', new='0', used='0', wanted='0', notes=''):
+    cells = dict(Number=number, Variant=variant, Own=own, Want=want, QtyOwned=owned, QtyOwnedNew=new, QtyOwnedUsed=used, QtyWanted=wanted,
+                 UserNotes=notes)
+    return ','.join('"' + cells.get(name, '') + '"' for name in BRICKSET_HEADER.split(','))
+
+
+def brickset_review(client, csrf, rows, where, kind='set'):
+    text = '\n'.join([BRICKSET_HEADER, *rows, '', ''])
+    return client.post('/manage/add/review', data=dict(csrf_token=csrf, type=kind, where=where, mode='file', list_id='default',
+                                                       file=(io.BytesIO(text.encode('utf-8-sig')), 'Brickset-list.csv')), content_type='multipart/form-data')
+
+
+def test_a_brickset_file_brings_its_owned_sets_split_by_condition(world, client, csrf):
+    rows = [brickset_row('1000', '1', own='X', owned='3', new='1', used='1', notes='Shelf A'), brickset_row('2070', '1', want='X', wanted='2'),
+            brickset_row('1000', '2', own='X')]
+    proposal = brickset_review(client, csrf, rows, 'owned').json
+    assert [(r['number'], r['quantity'], r['condition'], r['note']) for r in proposal['items']] == [
+        ('1000-1', 1, 'new', 'Shelf A'), ('1000-1', 1, 'used', 'Shelf A'), ('1000-1', 1, 'used', 'Shelf A'), ('1000-2', 1, 'used', None)]
+    assert not proposal['unresolved']                                         # the wanted 2070-1 is not owned: not offered here
+
+
+def test_a_brickset_file_brings_its_wanted_sets_to_a_wishlist(world, client, csrf):
+    rows = [brickset_row('1000', '1', own='X', owned='1'), brickset_row('2070', '1', want='X', wanted='2'), brickset_row('1000', '2', want='X')]
+    proposal = brickset_review(client, csrf, rows, 'wishlist').json
+    assert [(r['number'], r['quantity'], r['where']) for r in proposal['items']] == [('2070-1', 2, 'wishlist'), ('1000-2', 1, 'wishlist')]
+
+
+@pytest.mark.parametrize('case, message', [
+    ('columns', 'This Brickset file has no QtyOwned, QtyOwnedNew column'),
+    ('kind', 'A Brickset file lists sets'),
+    ('empty', 'This Brickset file has no set marked owned')])
+def test_a_brickset_file_the_import_cannot_read_is_refused_plainly(world, client, csrf, case, message):
+    if case == 'columns':
+        text = 'SetID,Number,Variant,Own,Want,QtyOwnedUsed,QtyWanted\n"1","1000","1","X","","0","0"\n'
+        response = client.post('/manage/add/review', data=dict(csrf_token=csrf, type='set', where='owned', mode='file',
+                                                               file=(io.BytesIO(text.encode()), 'Brickset-list.csv')), content_type='multipart/form-data')
+    else:
+        response = brickset_review(client, csrf, [brickset_row('1000', '1', want='X', wanted='1')], 'owned', 'part' if case == 'kind' else 'set')
+    assert response.status_code == 400 and message in response.get_data(as_text=True)
+
+
 # ---------- an unknown number: both offers ----------
 
 def test_an_unknown_set_number_offers_fetch_and_unidentified(world, client, csrf, read, monkeypatch):

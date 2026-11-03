@@ -841,7 +841,7 @@ def bw_add_review():
                 raw = upload.read(2 * 1024 * 1024 + 1)
                 if len(raw) > 2 * 1024 * 1024:
                     raise ValueError('Choose a file smaller than 2 MB')
-                rows = add.file_rows(raw, upload.filename or '', kind)
+                rows = add.file_rows(raw, upload.filename or '', kind, where)
             elif mode == 'search':
                 rows = data.get('items', [])
                 if not isinstance(rows, list):

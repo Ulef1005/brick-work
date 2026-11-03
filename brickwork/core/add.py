@@ -247,9 +247,50 @@ def paste(text, kind):
 BL_CONDITION = {'N': 'new', 'U': 'used', 'X': 'any'}
 
 
-def file_rows(data, filename, kind):
-    """Rows of a BrickLink wanted list or inventory (XML: BrickLink numbers and colour numbers) or a Rebrickable CSV (Rebrickable
-    numbers and colour ids). Nothing is looked up here."""
+# Brickset's My Sets export (#12 step 2): the columns the import reads. A file with SetID and Number but without these is refused by name.
+BRICKSET_COLUMNS = ('Number', 'Variant', 'Own', 'QtyOwned', 'QtyOwnedNew', 'QtyOwnedUsed', 'Want', 'QtyWanted')
+
+
+def _count(text):
+    text = (text or '').strip()
+    return int(text) if text.isdigit() else 0
+
+
+def brickset_rows(text, kind, where):
+    """Rows of a Brickset My Sets CSV: the sets marked owned (Add to Owned or Loose) or wanted (Add to a wishlist), as `Number-Variant`.
+    An owned count split into new and used becomes a row per condition; the rest has no condition, as in any file. UserNotes is the note."""
+    if kind != 'set':
+        raise ValueError('A Brickset file lists sets · choose Set')
+    reader = csv.DictReader(io.StringIO(text))
+    missing = [c for c in BRICKSET_COLUMNS if c not in (reader.fieldnames or [])]
+    if missing:
+        raise ValueError('This Brickset file has no ' + ', '.join(missing) + ' column · export My Sets from Brickset again')
+    result = []
+    for entry in reader:
+        base = (entry.get('Number') or '').strip()
+        if not base:
+            continue
+        number = base + '-' + ((entry.get('Variant') or '').strip() or '1')
+        note = (entry.get('UserNotes') or '').strip() or None
+        if where == 'wishlist':
+            wanted = _count(entry.get('QtyWanted')) or (1 if (entry.get('Want') or '').strip() else 0)
+            if wanted:
+                result.append(dict(kind='set', number=number, quantity=wanted, condition='any', note=note))
+            continue
+        owned = _count(entry.get('QtyOwned')) or (1 if (entry.get('Own') or '').strip() else 0)
+        new, used = min(_count(entry.get('QtyOwnedNew')), owned), _count(entry.get('QtyOwnedUsed'))
+        used = min(used, owned - new)
+        for condition, count in (('new', new), ('used', used), ('any', owned - new - used)):
+            if count:
+                result.append(dict(kind='set', number=number, quantity=count, condition=condition, note=note))
+    if not result:
+        raise ValueError('This Brickset file has no set marked ' + ('wanted' if where == 'wishlist' else 'owned'))
+    return result
+
+
+def file_rows(data, filename, kind, where='owned'):
+    """Rows of a BrickLink wanted list or inventory (XML: BrickLink numbers and colour numbers), a Rebrickable CSV (Rebrickable
+    numbers and colour ids) or a Brickset My Sets CSV (set numbers; `where` picks its owned or its wanted sets). Nothing is looked up here."""
     text = data.decode('utf-8-sig')
     if filename.lower().endswith('.xml'):
         if '<!DOCTYPE' in text.upper() or '<!ENTITY' in text.upper():
@@ -271,7 +312,10 @@ def file_rows(data, filename, kind):
                 qtyfilled=entry.findtext('QTYFILLED')))
         return result
     if not filename.lower().endswith('.csv'):
-        raise ValueError('Choose BrickLink XML or Rebrickable CSV')
+        raise ValueError('Choose BrickLink XML, Rebrickable CSV or Brickset CSV')
+    header = next(csv.reader(io.StringIO(text)), [])
+    if 'SetID' in header and 'Number' in header:
+        return brickset_rows(text, kind, where)
     result = []
     for entry in csv.DictReader(io.StringIO(text)):
         entry = {k.strip().lower().replace(' ', '_'): v for k, v in entry.items() if k}

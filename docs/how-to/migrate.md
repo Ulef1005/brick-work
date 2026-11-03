@@ -10,7 +10,7 @@ While you follow a choice, the pages it opens show **‹ Back to Get started**. 
 
 Your sets and wishlist come over through **Collection sync**, with a preview row by row. You need the site's API key (the keys step of **Get started**) and your own account login on **Collection sync**. See [Sync with Rebrickable and Brickset](sync-collection.md). Imported copies are tagged **imported from Rebrickable** or **imported from Brickset**.
 
-A Brickset CSV file cannot be read yet. Use the account sync instead.
+Or export **My Sets** from Brickset as a CSV file and choose **Choose a CSV file**, which opens **Add** with **File** selected. With **Owned** (or **Loose**) Brick Work takes the sets marked owned, with their count; an owned count split into new and used becomes a row per condition. With **Wishlist** it takes the sets marked wanted. The set number is Brickset's number and variant, such as `8285-1`, and your Brickset notes become the note. A file without the columns this needs is refused with their names. The CSV needs no Brickset key, and its copies get no **imported from** tag.
 
 ## BrickLink
 

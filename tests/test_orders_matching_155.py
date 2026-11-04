@@ -213,3 +213,78 @@ def test_the_summary_export_lists_only_orders_with_saved_lines(world, coll):
     assert {o['order_id'] for o in order_exports.rows(db, 'summary')} == {kept['order_id']}
     assert len({undone['order_id'], draft['order_id'], kept['order_id']}) == 3
     assert [o['lines'] for o in order_exports.rows(db, 'summary')] == [1] and len(order_exports.to_csv('summary', order_exports.rows(db, 'summary')).splitlines()) == 2
+
+
+# ---------- Codex review round 1 (4.2) ----------
+
+def test_a_repaste_with_a_blank_line_revives_every_line_in_place_and_its_undo_puts_them_back(world, coll):
+    """The digest ignores blank lines, the line numbers count them: the revival pairs the lines by position and deletes nothing."""
+    db = coll.db
+    text = email('Tile, Round 2 x 2', 'Slope, Curved 4 x 1')
+    first = orders.import_document(db, 'email', text)
+    orders.import_document(db, 'xml', inventory(line_of('P', '3023', colour=5)))         # another order's line takes the next id
+    before = [tuple(r) for r in db.execute('SELECT id,line_no,raw_text FROM order_line WHERE document_id=? ORDER BY id', (first['document_id'],))]
+    orders.undo(db, first['event_id'])
+    again = orders.import_document(db, 'email', '\n\n' + text.replace('\n[', '\n\n['))
+    assert again['duplicate'] is False and again['document_id'] == first['document_id']
+    after = [tuple(r) for r in db.execute('SELECT id,line_no,raw_text FROM order_line WHERE document_id=? ORDER BY id', (first['document_id'],))]
+    assert [(i, t) for i, _, t in after] == [(i, t) for i, _, t in before] and [n for _, n, _ in after] != [n for _, n, _ in before]
+    orders.undo(db, again['event_id'])
+    assert [tuple(r) for r in db.execute('SELECT id,line_no,raw_text FROM order_line WHERE document_id=? ORDER BY id', (first['document_id'],))] == before
+
+
+def test_a_revival_whose_lines_no_longer_pair_is_refused_and_writes_nothing(world, coll):
+    db = coll.db
+    text = inventory(line_of('P', '3001', colour=5), line_of('P', 'nowhere', colour=5))
+    first = orders.import_document(db, 'xml', text)
+    orders.undo(db, first['event_id'])
+    db.execute('UPDATE order_line SET line_no=line_no+100 WHERE id=(SELECT max(id) FROM order_line)')   # stands in for a parser change
+    db.execute('INSERT INTO order_line(order_id,document_id,line_no,state,qty,updated_at) VALUES(?,?,999,\'by_hand\',1,\'x\')',
+               (first['order_id'], first['document_id']))
+    db.commit()
+    lines = [tuple(r) for r in db.execute('SELECT * FROM order_line ORDER BY id')]
+    with pytest.raises(ValueError, match='no longer match'):
+        orders.import_document(db, 'xml', text)
+    assert [tuple(r) for r in db.execute('SELECT * FROM order_line ORDER BY id')] == lines
+    assert db.execute('SELECT phase FROM order_document').fetchone()[0] == 'undone'
+
+
+def _xml_in(currency, *lines):
+    return '<INVENTORY>' + (f'<CURRENCY>{currency}</CURRENCY>' if currency else '') + ''.join(lines) + '</INVENTORY>'
+
+
+def test_a_revival_fills_the_header_again_and_checks_the_currency_like_a_chosen_order(world, coll):
+    db = coll.db
+    base = orders.import_document(db, 'xml', inventory(line_of('P', '3023', colour=5)))
+    assert orders.get(db, base['order_id'])['currency'] is None
+    text = _xml_in('EUR', line_of('P', '3001', colour=5))
+    linked = orders.import_document(db, 'xml', text, choice=base['order_id'])
+    assert orders.get(db, base['order_id'])['currency'] == 'EUR'
+    orders.undo(db, linked['event_id'])
+    assert orders.get(db, base['order_id'])['currency'] is None
+    again = orders.import_document(db, 'xml', text)
+    assert again['document_id'] == linked['document_id'] and orders.get(db, base['order_id'])['currency'] == 'EUR'
+    orders.undo(db, again['event_id'])
+    db.execute("UPDATE purchase_order SET currency='USD' WHERE id=?", (base['order_id'],))
+    db.commit()
+    with pytest.raises(ValueError, match='currencies differ'):
+        orders.import_document(db, 'xml', text)
+
+
+def test_an_ambiguous_bricklink_colour_never_turns_colour_ids_into_item_suggestions(listing, monkeypatch):
+    """A BrickLink colour shared by several colours, none preferred, raises AmbiguousIdentity with colour ids: the line gets no colour,
+    and the suggestions are looked up without one, so only item ids reach the labels."""
+    db, made = listing
+    from brickwork.store4 import identity
+    from brickwork.store4.errors import AmbiguousIdentity
+
+    def shared(db_, provider, key):
+        if key is None:
+            return real(db_, provider, key)
+        raise AmbiguousIdentity(f'{provider} colour {key} names colours [1, 2]', [1, 2])
+    real = identity._inverse_color
+    monkeypatch.setattr(identity, '_inverse_color', shared)
+    result = orders.import_document(db, 'email', email('Tile, Round 2 x 2 micro scratches'))
+    row = only(db, result)
+    assert row['item_id'] is None and row['color_id'] is None
+    assert [s['item_id'] for s in json.loads(row['suggestions_json'])] == [made['3068b']]

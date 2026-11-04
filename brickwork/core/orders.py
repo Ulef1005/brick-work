@@ -531,7 +531,7 @@ def _near(db, row, colour):
         if len(suggestions) >= SUGGESTED:
             break
         try:
-            hit = identity.resolve_inverse(db, letter, number, str(row['color_id']) if letter == 'P' and row.get('color_id') is not None else None, exhaustive=True)
+            hit = identity.resolve_inverse(db, letter, number, str(row['color_id']) if letter == 'P' and colour is not None else None, exhaustive=True)
             held = [hit[0]] if hit else [r[0] for r in db.execute(     # a local BrickLink-born item is its own BrickLink key, as in `_place`
                 "SELECT id FROM main.item WHERE born_provider='bricklink' AND born_namespace=? AND born_key=? AND merged_into IS NULL ORDER BY id", (letter, number))]
         except AmbiguousIdentity as exc:
@@ -594,9 +594,9 @@ def import_document(db, source, text='', *, choice='new', number=None, label=Non
         cost = price(header.get('cost'))
         if not header.get('currency'):
             cost = None                                                       # a cost needs its currency; a currency may stand without a cost
-        if revived:                                                           # its order, its raw record and its header stand from the first import
-            order_id = revived['order_id']
-        elif choice == 'new':
+        if revived:                                                           # back into its order, through the same checks and header fill as a chosen order
+            choice = revived['order_id']
+        if choice == 'new':
             if number and db.execute('SELECT 1 FROM main.purchase_order WHERE bricklink_order_id=?', (number,)).fetchone():
                 raise ValueError('This BrickLink order exists · choose it in Link to order')
             order_id = db.execute('''INSERT INTO main.purchase_order(bricklink_order_id,store,seller,date_ordered,status,cost,currency,created_at,updated_at)
@@ -629,14 +629,15 @@ def import_document(db, source, text='', *, choice='new', number=None, label=Non
             document_id = revived['id']
             journal.touch('order_document', document_id)
             db.execute("UPDATE main.order_document SET phase='draft',updated_at=? WHERE id=?", (stamp, document_id))
-            old_lines = {r['line_no']: r['id'] for r in db.execute('SELECT id,line_no FROM main.order_line WHERE document_id=?', (document_id,))}
-            gone = [i for n, i in old_lines.items() if n not in {r['line_no'] for r in raw}]
-            if gone and db.execute("""SELECT 1 FROM main.allocation WHERE line_id IN (SELECT value FROM json_each(?)) UNION ALL SELECT 1 FROM main.line_receipt WHERE line_id IN (SELECT value FROM json_each(?))
-                                      UNION ALL SELECT 1 FROM main.order_line WHERE paired_line_id IN (SELECT value FROM json_each(?))""", (json.dumps(gone),) * 3).fetchone():
-                raise ValueError('This document cannot be imported again · its earlier lines are still referred to')
-            if gone:                                                          # the same text parses to the same lines; a line that no longer parses is dropped
-                journal.touch('order_line', *gone)
-                db.execute('DELETE FROM main.order_line WHERE id IN (SELECT value FROM json_each(?))', (json.dumps(gone),))
+            # The same text (blank lines aside: the digest ignores them, the line numbers count them) parses to the same lines in the same
+            # order, so the old lines are paired with the new ones by position and updated in place: nothing is deleted, and Undo of the
+            # revival puts every row back. Lines that no longer pair (a parser change) refuse the import.
+            ids = [r['id'] for r in db.execute('SELECT id FROM main.order_line WHERE document_id=? ORDER BY line_no', (document_id,))]
+            if len(ids) != len(raw):
+                raise ValueError('This document cannot be imported again · its lines no longer match the undone import')
+            journal.touch('order_line', *ids)
+            db.execute('UPDATE main.order_line SET line_no=-id WHERE document_id=?', (document_id,))   # free the numbers before renumbering
+            old_lines = {row['line_no']: line_id for row, line_id in zip(raw, ids)}
         else:
             document_id = db.execute('''INSERT INTO main.order_document(order_id,source,digest,label,phase,raw_record_id,created_at,updated_at) VALUES(?,?,?,?,'draft',?,?,?)''',
                                      (order_id, source, digest, label or source, record, stamp, stamp)).lastrowid

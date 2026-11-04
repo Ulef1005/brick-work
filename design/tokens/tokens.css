@@ -1,0 +1,155 @@
+/* Vendored from ai-wiki .claude/skills/design-builder/base/tokens.css
+   ai-wiki commit d76eb51b
+   Date: 2026-11-04
+   source SHA-256: c2a4d5b21540af3735c4698fe7115dbee7e0a80849679a41fc4a4f1ecfba860c
+   Never edit this copy: scripts/tokens_base.py sync writes it, check pins it.
+*/
+
+/* Neutral design base · v1 (2026-11-03) — the design builder skill's brand-free base (App Design Standard).
+
+   What it is: the structural tokens every app shares (spacing, motion, touch, safe areas, layout, z-index, focus,
+   a type-scale skeleton) and the colour ROLES every app must define. On its own it renders black on white with
+   system type: that is the look of the black-and-white wireframes (workflow step 2). No brand colour, no web
+   font, no font CDN, no brand radii.
+
+   How an app uses it: copy this file unchanged to design/tokens/tokens.css with a provenance header naming the
+   source path (.claude/skills/design-builder/base/tokens.css), the ai-wiki commit and the file's SHA-256, and pin
+   it with the drift check (engram's scripts/tokens_base.py is the reference implementation). Never edit the copy.
+   The app layer design/tokens/<app>-tokens.css, loaded after it, redefines every colour role light and dark, the
+   type families and scale, and the radii. A switch to a newer base is its own step with a frame comparison.
+
+   The --tw-* names are the house's contract names, kept so existing app layers and components work unchanged;
+   they carry no Toni's World brand here.
+
+   Theme mechanism (as before): default light; prefers-color-scheme: dark switches unless .tw-light is on <html>;
+   .tw-dark / .tw-light force a subtree. A token defined as a reference (--tw-focus-color: var(--tw-accent)) is
+   repeated in every theme block of the app layer. */
+
+:root {
+  /* Colour roles: neutral placeholders the app layer must redefine (light) */
+  --tw-bg:             #FFFFFF;
+  --tw-surface:        #FFFFFF;
+  --tw-surface-2:      #F2F2F2;
+  --tw-divider:        #D9D9D9;
+  --tw-divider-strong: #8C8C8C;
+  --tw-text:           #111111;
+  --tw-text-2:         #333333;
+  --tw-text-muted:     #595959;   /* 7.0:1 on white */
+  --tw-text-faint:     #595959;   /* no fainter text than muted until an app defines one that passes 4.5:1 */
+  --tw-accent:         #111111;
+  --tw-accent-soft:    #E6E6E6;
+  --tw-accent-text:    #111111;
+  --tw-on-accent:      #FFFFFF;
+  --tw-success:        #111111;  --tw-success-soft: #F2F2F2;
+  --tw-warning:        #111111;  --tw-warning-soft: #F2F2F2;
+  --tw-danger:         #111111;  --tw-danger-soft:  #F2F2F2;
+  --tw-info:           #111111;  --tw-info-soft:    #F2F2F2;
+  --tw-scrim:          rgba(0, 0, 0, 0.40);
+  --tw-sheet-bg:       var(--tw-bg);
+  --tw-toast-bg:       var(--tw-text);
+  --tw-toast-fg:       var(--tw-bg);
+
+  /* Data roles (charts, base/charts.md): actual, previous, plan, forecast and two neutrals */
+  --tw-viz-ac: #111111;   /* actual */
+  --tw-viz-py: #8C8C8C;   /* previous period: quieter, same hue */
+  --tw-viz-n1: #D9D9D9;   /* track, gridlines */
+  --tw-viz-n2: #595959;   /* comparison series, reference lines, axis labels */
+
+  /* Type: system faces and a scale skeleton; the app layer sets its own families and may retune the scale */
+  --tw-font:    -apple-system, system-ui, sans-serif;
+  --tw-font-alt: var(--tw-font);
+  --tw-mono:    ui-monospace, SFMono-Regular, monospace;
+  --tw-fs-display: 34px;  --tw-lh-display: 40px;
+  --tw-fs-h1:      28px;  --tw-lh-h1:      34px;
+  --tw-fs-h2:      22px;  --tw-lh-h2:      28px;
+  --tw-fs-h3:      18px;  --tw-lh-h3:      24px;
+  --tw-fs-body:    17px;  --tw-lh-body:    27px;
+  --tw-fs-small:   14px;  --tw-lh-small:   20px;
+  --tw-fs-label:   12px;  --tw-lh-label:   16px;   /* 12 px is the smallest text */
+
+  /* Spacing: 4 px steps */
+  --tw-s-0: 0; --tw-s-1: 4px; --tw-s-2: 8px; --tw-s-3: 12px; --tw-s-4: 16px;
+  --tw-s-5: 20px; --tw-s-6: 24px; --tw-s-7: 32px; --tw-s-8: 40px; --tw-s-9: 56px;
+
+  /* Radii: square until the app layer decides */
+  --tw-r-1: 0; --tw-r-2: 0; --tw-r-3: 0;
+  --tw-sheet-radius: var(--tw-r-3);
+  --tw-sheet-edge:   1px solid var(--tw-divider-strong);
+
+  /* Touch */
+  --tw-hit:    44px;   /* minimum target, every tappable thing */
+  --tw-hit-lg: 56px;   /* primary actions */
+
+  /* Motion */
+  --tw-ease:     cubic-bezier(0.2, 0.6, 0.2, 1);
+  --tw-dur-fast: 120ms;   /* state changes, pressed */
+  --tw-dur-base: 240ms;   /* sheets, drawers, pushes */
+
+  /* Focus */
+  --tw-focus-width:  2px;
+  --tw-focus-offset: 2px;
+  --tw-focus-color:  var(--tw-accent);
+
+  /* Layout and safe areas (Home Screen app) */
+  --tw-safe-top:    env(safe-area-inset-top, 0px);
+  --tw-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --tw-safe-left:   env(safe-area-inset-left, 0px);
+  --tw-safe-right:  env(safe-area-inset-right, 0px);
+  --tw-gutter:      20px;    /* side gutter at 390 */
+  --tw-grid-gap:    8px;     /* 12-column grid gap */
+  --tw-col-max:     640px;   /* reading column at wide sizes */
+  --tw-topbar-h:    52px;
+  --tw-tabbar-h:    49px;
+
+  /* Stacking */
+  --tw-z-bar:   10;
+  --tw-z-sheet: 20;
+  --tw-z-toast: 30;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.tw-light) {
+    --tw-bg: #111111; --tw-surface: #1A1A1A; --tw-surface-2: #262626;
+    --tw-divider: #333333; --tw-divider-strong: #8C8C8C;
+    --tw-text: #F2F2F2; --tw-text-2: #D9D9D9; --tw-text-muted: #A6A6A6; --tw-text-faint: #A6A6A6;
+    --tw-accent: #F2F2F2; --tw-accent-soft: #333333; --tw-accent-text: #F2F2F2; --tw-on-accent: #111111;
+    --tw-success: #F2F2F2; --tw-success-soft: #262626; --tw-warning: #F2F2F2; --tw-warning-soft: #262626;
+    --tw-danger: #F2F2F2;  --tw-danger-soft: #262626;  --tw-info: #F2F2F2;    --tw-info-soft: #262626;
+    --tw-scrim: rgba(0, 0, 0, 0.55); --tw-sheet-bg: var(--tw-surface);
+    --tw-toast-bg: var(--tw-text); --tw-toast-fg: var(--tw-bg); --tw-focus-color: var(--tw-accent);
+    --tw-viz-ac: #F2F2F2; --tw-viz-py: #8C8C8C; --tw-viz-n1: #333333; --tw-viz-n2: #A6A6A6;
+  }
+}
+
+.tw-dark {
+  --tw-bg: #111111; --tw-surface: #1A1A1A; --tw-surface-2: #262626;
+  --tw-divider: #333333; --tw-divider-strong: #8C8C8C;
+  --tw-text: #F2F2F2; --tw-text-2: #D9D9D9; --tw-text-muted: #A6A6A6; --tw-text-faint: #A6A6A6;
+  --tw-accent: #F2F2F2; --tw-accent-soft: #333333; --tw-accent-text: #F2F2F2; --tw-on-accent: #111111;
+  --tw-success: #F2F2F2; --tw-success-soft: #262626; --tw-warning: #F2F2F2; --tw-warning-soft: #262626;
+  --tw-danger: #F2F2F2;  --tw-danger-soft: #262626;  --tw-info: #F2F2F2;    --tw-info-soft: #262626;
+  --tw-scrim: rgba(0, 0, 0, 0.55); --tw-sheet-bg: var(--tw-surface);
+  --tw-toast-bg: var(--tw-text); --tw-toast-fg: var(--tw-bg); --tw-focus-color: var(--tw-accent);
+  --tw-viz-ac: #F2F2F2; --tw-viz-py: #8C8C8C; --tw-viz-n1: #333333; --tw-viz-n2: #A6A6A6;
+}
+
+.tw-light {
+  --tw-bg: #FFFFFF; --tw-surface: #FFFFFF; --tw-surface-2: #F2F2F2;
+  --tw-divider: #D9D9D9; --tw-divider-strong: #8C8C8C;
+  --tw-text: #111111; --tw-text-2: #333333; --tw-text-muted: #595959; --tw-text-faint: #595959;
+  --tw-accent: #111111; --tw-accent-soft: #E6E6E6; --tw-accent-text: #111111; --tw-on-accent: #FFFFFF;
+  --tw-success: #111111; --tw-success-soft: #F2F2F2; --tw-warning: #111111; --tw-warning-soft: #F2F2F2;
+  --tw-danger: #111111;  --tw-danger-soft: #F2F2F2;  --tw-info: #111111;    --tw-info-soft: #F2F2F2;
+  --tw-scrim: rgba(0, 0, 0, 0.40); --tw-sheet-bg: var(--tw-bg);
+  --tw-toast-bg: var(--tw-text); --tw-toast-fg: var(--tw-bg); --tw-focus-color: var(--tw-accent);
+  --tw-viz-ac: #111111; --tw-viz-py: #8C8C8C; --tw-viz-n1: #D9D9D9; --tw-viz-n2: #595959;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --tw-dur-fast: 0ms; --tw-dur-base: 0ms; }
+}
+
+:focus-visible {
+  outline: var(--tw-focus-width) solid var(--tw-focus-color);
+  outline-offset: var(--tw-focus-offset);
+}

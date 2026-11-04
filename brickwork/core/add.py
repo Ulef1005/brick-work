@@ -296,9 +296,42 @@ def brickset_rows(text, kind, where):
     return result
 
 
+# Brickset's minifigure export (#146): the columns the import reads. QtyOwned counts the figures in sets as well, which Brick Work holds
+# through the set copies, so the loose count is QtyOwnedLoose; Brickset has no wanted count for figures, only the Want mark.
+BRICKSET_MINIFIG_COLUMNS = ('MinifigNumber', 'QtyOwnedLoose', 'Want')
+
+
+def brickset_minifig_rows(text, kind, where):
+    """Rows of a Brickset minifigure CSV: the figures owned loose (QtyOwnedLoose; Loose or Owned) or marked wanted (one each; a
+    wishlist), by Brickset's minifigure number, which is BrickLink's. UserNotes is the note."""
+    if kind != 'minifigure':
+        raise ValueError('A Brickset minifigure file lists minifigures · choose Minifigure')
+    reader = csv.DictReader(io.StringIO(text))
+    missing = [c for c in BRICKSET_MINIFIG_COLUMNS if c not in (reader.fieldnames or [])]
+    if missing:
+        raise ValueError('This Brickset file has no ' + ', '.join(missing) + ' column · export your minifigures from Brickset again')
+    result = []
+    for entry in reader:
+        number = (entry.get('MinifigNumber') or '').strip()
+        if not number:
+            continue
+        note = (entry.get('UserNotes') or '').strip() or None
+        if where == 'wishlist':
+            if (entry.get('Want') or '').strip():
+                result.append(dict(kind='minifigure', number=number, quantity=1, condition='any', note=note))
+            continue
+        loose = _count(entry.get('QtyOwnedLoose'))
+        if loose:
+            result.append(dict(kind='minifigure', number=number, quantity=loose, condition='any', note=note))
+    if not result:
+        raise ValueError('This Brickset file has no minifigure ' + ('marked wanted' if where == 'wishlist' else 'owned loose'))
+    return result
+
+
 def file_rows(data, filename, kind, where='owned'):
     """Rows of a BrickLink wanted list or inventory (XML: BrickLink numbers and colour numbers), a Rebrickable CSV (Rebrickable
-    numbers and colour ids) or a Brickset My Sets CSV (set numbers; `where` picks its owned or its wanted sets). Nothing is looked up here."""
+    numbers and colour ids), a Brickset My Sets CSV (set numbers; `where` picks its owned or its wanted sets) or Brickset's minifigure
+    CSV (minifigure numbers: the loose ones or the wanted ones). Nothing is looked up here."""
     text = data.decode('utf-8-sig')
     if filename.lower().endswith('.xml'):
         if '<!DOCTYPE' in text.upper() or '<!ENTITY' in text.upper():
@@ -324,6 +357,8 @@ def file_rows(data, filename, kind, where='owned'):
     header = next(csv.reader(io.StringIO(text)), [])
     if 'SetID' in header and 'Number' in header:
         return brickset_rows(text, kind, where)
+    if 'MinifigNumber' in header:
+        return brickset_minifig_rows(text, kind, where)
     result = []
     for entry in csv.DictReader(io.StringIO(text)):
         entry = {k.strip().lower().replace(' ', '_'): v for k, v in entry.items() if k}

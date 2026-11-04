@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Brickset's minifigure CSV** (#146). **Add** › **Minifigure** › **File** reads Brickset's minifigure export: with **Loose** the figures you own loose (Brickset's loose count, so the figures in your sets are not added twice), with **Wishlist** the figures marked wanted. Before, it was refused with *CSV needs part_num, set_num or minifig_num*. See [Bring your collection in from another app](docs/how-to/migrate.md).
 - **Clearer CLI, MCP and order messages** (#152). `brickwork mcp` calls `http://127.0.0.1:3333/api/v2` by default, the install's own port (was 5000), and a URL that answers with the web app says so instead of returning the page. `brickwork settings set incomplete_discount_pct` with a word gives the range message. A second `brickwork wishlist undo` of the same change says **Already undone**. `python -m brickwork.store4 jobs` names an item job's item (was *item None*). Importing a placed BrickLink order whose items BrickLink has purged says so and suggests pasting the e-mail (was *No order lines were found*).
 
 ## Brick Work 0.8.1 (schema 4.1) · 2026-11-04

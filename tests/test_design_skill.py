@@ -16,10 +16,12 @@ def _tracked():
     return [ROOT / f for f in out if f]
 
 
-def test_the_skill_has_its_frontmatter_and_builds_on_toni():
+def test_the_skill_has_its_frontmatter_and_its_own_base():
+    """Brick Work left Toni's World (ADR 0022, #158): its own base and tokens, no sub-brand, no toni-design parent."""
     front = re.match(r'---\nname: brickwork-design\ndescription: (.+)\n---\n', TEXT)
     assert front and 'Brick Work' in front[1]
-    assert 'toni-design' in TEXT                      # builds on the Toni skill instead of repeating its rules
+    assert 'toni-design' not in TEXT and 'sub-brand' not in TEXT
+    assert 'design/tokens/tokens.css' in TEXT and 'design/tokens/brickwork-tokens.css' in TEXT
 
 
 def test_the_skill_keeps_no_copy_of_a_file_the_repo_holds():

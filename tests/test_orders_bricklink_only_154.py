@@ -122,3 +122,28 @@ def test_the_api_matches_a_line_by_a_bricklink_number_only_the_list_names(v2, wo
     assert after['unplaced'] is False and after['item']['name'] == 'Only on BrickLink' and after['color']['id'] == world.red
     assert write(v2, f"/events/{matched.json['event_id']}/undo").status_code == 200
     assert call(v2, f'/orders/{order}').json['data']['lines'][0]['item'] is None
+
+
+def test_a_number_an_item_holds_in_another_colour_scope_creates_no_second_identity(world, coll, pair):
+    """Codex review: a colour-scoped link makes the inverse miss for another colour; the number is still held, so nothing is created."""
+    from brickwork.core.transaction import transaction
+    from brickwork.store4 import fetched
+    listed(pair, ('P', 'scoped1', 'Held for red only'))
+    coll.db.close()
+    with closing(connect(pair)) as db:
+        with transaction(db):
+            fetched.add_item_link(db, world.brick, provider='bricklink', provider_kind='P', provider_key='scoped1', status='matched',
+                                  method='external_ids', origin='shipped', color_id=world.red)
+        made = orders.import_document(db, 'xml', inventory(line_of('P', 'scoped1', colour=1, qty=1)))   # BrickLink white
+        assert made['placed'] == 0
+        assert local(db, 'P', 'scoped1') is None
+
+
+def test_the_api_never_falls_back_to_another_providers_number(v2, world, pair):
+    """Codex review: a BrickLink key that names no item must not match the Rebrickable part that happens to carry that number."""
+    made = write(v2, '/orders/documents', 'post', dict(source='xml', text=inventory(line_of('P', 'stray77', colour=RED, qty=1))), key=True)
+    order = made.json['data']['order_id']
+    line = call(v2, f'/orders/{order}').json['data']['lines'][0]
+    refused = write(v2, f"/orders/{order}/lines/{line['id']}", 'patch', {'item': {'provider': 'bricklink', 'kind': 'part', 'key': '003402'}, 'color': RED}, key=True)
+    assert refused.status_code == 422, refused.text                                      # 003402 is a Rebrickable number only
+    assert call(v2, f'/orders/{order}').json['data']['lines'][0]['item'] is None

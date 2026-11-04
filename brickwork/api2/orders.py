@@ -207,7 +207,8 @@ def patch_orders_by_id_lines_by_line_id(db, body, id, line_id):
         if 'id' in key or key.get('provider', 'bricklink') != 'bricklink':
             raise
         # A BrickLink number no item holds yet: the loaded BrickLink item list may name it (#154); match() makes its local item or refuses.
-        event = orders.match(db, found['id'], line, item_type=items.type_of_kind(key['kind']), item_no=key['key'], color_id=colour)
+        event = orders.match(db, found['id'], line, item_type=items.type_of_kind(key['kind']), item_no=key['key'], color_id=colour,
+                             listed_only=True)
         return Done(receipt(event, 'Saved'), event)
     event = orders.match(db, found['id'], line, item_id=item, color_id=colour)
     return Done(receipt(event, 'Saved'), event)

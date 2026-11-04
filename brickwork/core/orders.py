@@ -364,6 +364,16 @@ def _listed_local(db, letter, number):
         listed = db.execute('SELECT item_no,name FROM catalogue.bricklink_item WHERE item_type=? AND item_no=?', (letter, number)).fetchone()
         if listed is None:
             return None
+        try:                                                           # held by any item in any colour scope: never a second identity
+            if identity.resolve_inverse(db, letter, number, None, exhaustive=True) is not None:
+                return None
+        except AmbiguousIdentity:
+            return None
+        if db.execute("SELECT 1 FROM main.item_link WHERE provider='bricklink' AND provider_kind=? AND provider_key=? LIMIT 1", (letter, number)).fetchone():
+            return None
+        if has_catalogue(db) and db.execute("SELECT 1 FROM catalogue.item_link WHERE provider='bricklink' AND provider_kind=? AND provider_key=? LIMIT 1",
+                                            (letter, number)).fetchone():
+            return None
         key, name = listed['item_no'], listed['name']
     item = fetched.create_local_item(db, kind=items.kind_of_type(letter), born_provider='bricklink', born_namespace=letter, born_key=key, name=name,
                                      kind_source='bricklink')
@@ -608,9 +618,10 @@ def fill_currencies(db):
     return done
 
 
-def match(db, order_id, line_id, *, item_id=None, color_id=None, item_type=None, item_no=None):
+def match(db, order_id, line_id, *, item_id=None, color_id=None, item_type=None, item_no=None, listed_only=False):
     """Place a draft line by hand: the item the person chose (an id from the catalogue search or a candidate), or a typed number that
-    names exactly one item. A part needs its colour."""
+    names exactly one item. A part needs its colour. `listed_only` (the API's BrickLink key that names no item): only a local item for a
+    number the BrickLink item list names, never a number of another provider."""
     if item_id is not None:
         found = add.lookup(db, item_id)
         if not found:
@@ -625,7 +636,7 @@ def match(db, order_id, line_id, *, item_id=None, color_id=None, item_type=None,
         number = str(item_no or '').strip()
         if not add.NUMBER.fullmatch(number):
             raise ValueError('Choose an identity from the catalogue')
-        item_id = add._pick(db, kind, number)
+        item_id = None if listed_only else add._pick(db, kind, number)
         via = 'number'
     colour = int(color_id) if kind == 'part' and color_id not in (None, '') else None
     if kind == 'part' and (colour is None or not add._colour_known(db, colour)):

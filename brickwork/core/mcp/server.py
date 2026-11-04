@@ -95,7 +95,7 @@ def http_app(flask_app, *, allow_write=False):
                              Mount('/', app=WSGIMiddleware(flask_app))], lifespan=lifespan)
 
 
-def run(*, in_process=False, transport='stdio', api_url='http://127.0.0.1:5000/api/v2',
+def run(*, in_process=False, transport='stdio', api_url='http://127.0.0.1:3333/api/v2',
         token_file=None, allow_write=False, host='127.0.0.1', port=5000):
     # Validate before either transport starts accepting requests.
     contract()

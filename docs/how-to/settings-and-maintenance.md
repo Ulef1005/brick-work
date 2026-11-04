@@ -43,7 +43,7 @@ When a job is done the page lists what changed (items, colours, retired items ke
 
 ## BrickLink item lists
 
-**Tools & Admin → Catalogue → BrickLink lists** is optional. BrickLink's own catalogue lists confirm BrickLink numbers for sets, offer same-number candidates and correct the kind of zero-part sets. Loading them never adds an item. Put BrickLink's catalogue XML files (all eight item types) in a folder under `bricklink-lists/` beside your collection, choose the folder and press **Load lists**.
+**Tools & Admin → BrickLink item lists** is optional. BrickLink's own catalogue lists confirm BrickLink numbers for sets, offer same-number candidates and correct the kind of zero-part sets. Loading them adds no item by itself. They also help **Orders**: an order e-mail's item names are matched against BrickLink's names, and a line naming an item only BrickLink has (an instruction booklet, some sticker and printed parts) becomes an item of Brick Work's own when the order is read (#154). See [Receive a parts order](receive-an-order.md). Put BrickLink's catalogue XML files (all eight item types) in a folder under `bricklink-lists/` beside your collection, choose the folder and press **Load lists**.
 
 The page keeps the last load: how many items were listed, how many links were upgraded, how many **candidates to check** there are (open **Unresolved items** to decide them) and how many kinds were corrected. A candidate is never confirmed on its own.
 

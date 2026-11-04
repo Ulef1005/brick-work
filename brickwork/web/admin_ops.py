@@ -60,6 +60,8 @@ def settings_set(key, value):
             admin.save_settings(db, value, admin.settings(db)['priority'], [])
             return {key: value}
         from ..core.price_settings import save
+        if key == 'incomplete_discount_pct' and not str(value).strip().isdigit():
+            raise ValueError('incomplete_discount_pct must be an integer from 0 to 95')    # not a raw int() error (#152)
         return save(db, {key: int(value) if key == 'incomplete_discount_pct' else value})
 
 

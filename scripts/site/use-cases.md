@@ -162,6 +162,6 @@ Old database unchanged</pre>
 <span class="layout-113">Planned</span>
 <span class="layout-32">Buildable sets, collection sync with Rebrickable, BrickLink and Brickset, and a pile check by photo are planned and not built.</span>
 </div>
-<a class="layout-138" href="https://github.com/users/Ulef1005/projects/3">Public roadmap</a>
+<a class="layout-138" href="https://github.com/Ulef1005/brick-work/milestones">Public roadmap</a>
 </div>
 </section>

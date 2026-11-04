@@ -2,7 +2,7 @@
 and `fetch bricklink|rebrickable <set-number>`, `jobs`, `jobs drain` (the job runner, issue #107, M.5d), and
 `copy add|show|switch|undo|pending|settle|changes|preference|prefer-bricklink` (copies and their part lists, issue #108, M.6d).
 
-Separate from the app's `brickwork catalogue` CLI, which runs the 3.3 code until M.8. `--data DIR` holds `brickwork.db`,
+The app's `brickwork catalogue` CLI runs on this store too (`brickwork catalogue status` calls `do_status`). `--data DIR` holds `brickwork.db`,
 `catalogue.db`, `catalogue-src/rebrickable/<date>/` (the downloads), `mappings/` (the local layer, optional) and
 `bricklink-lists/` (optional)."""
 import argparse
@@ -558,7 +558,8 @@ def show_copy(r, say):
 def show_job(r, say):
     step = r['step'] or {}
     ran = '' if r.get('ran', True) else ' (not run now)'
-    say(f"job {r['id']} {r['kind']} {r['number']}: {r['state']}{ran}, attempt {r['attempts']}, {step.get('count', 0)} call(s)")
+    subject = r['number'] if r.get('number') is not None else r.get('item_id')        # an item job names its item (#152)
+    say(f"job {r['id']} {r['kind']} {subject}: {r['state']}{ran}, attempt {r['attempts']}, {step.get('count', 0)} call(s)")
     if r['state'] == 'done' and r.get('result'):
         x = r['result']
         if r['kind'] == 'bricklink_subsets':

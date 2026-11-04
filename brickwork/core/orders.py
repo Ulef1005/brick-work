@@ -361,7 +361,8 @@ def _holders(db, letter, key, *, confirmed=False):
     held.update(r[0] for r in db.execute("SELECT item_id FROM main.item_link WHERE provider='bricklink' AND provider_kind=? AND provider_key=?" + status,
                                          (letter, key)))
     if has_catalogue(db):
-        held.update(r[0] for r in db.execute("SELECT item_id FROM catalogue.item_link WHERE provider='bricklink' AND provider_kind=? AND provider_key=?" + status,
+        held.update(r[0] for r in db.execute("SELECT item_id FROM catalogue.item_link WHERE provider='bricklink' AND provider_kind=? AND provider_key=?" + status
+                                             + ' AND item_id NOT IN (SELECT id FROM main.item)',           # a projected item's own links decide
                                              (letter, key)))
     return {items._merged_target(db, i) for i in held}
 

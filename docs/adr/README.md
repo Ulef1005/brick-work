@@ -29,3 +29,4 @@ One file per decision that binds future work: the API contract, the data model, 
 | [0020](0020-bulk-actions-as-batches.md) | A bulk action is one batch that interactive work overtakes, tagged in the job payload | accepted | 2026-11-03 |
 | [0021](0021-bricklink-only-order-items.md) | An order line for an item only BrickLink has becomes a local BrickLink-born item from the loaded BrickLink list | accepted | 2026-11-04 |
 | [0022](0022-design-roll-out.md) | Brick Work leaves Toni's World and takes the App Design Standard layout; the screenshot gate compares the built app with approved captures | accepted | 2026-11-04 |
+| [0023](0023-schema-4.2.md) | Schema 4.2: a job owner is a pid on one boot with one start time; an order line keeps why it is unplaced | accepted | 2026-11-04 |

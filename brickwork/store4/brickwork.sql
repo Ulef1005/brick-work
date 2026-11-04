@@ -5,7 +5,7 @@
 -- =====================================================================
 
 CREATE TABLE meta(key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL) STRICT;
--- keys: schema_version='4.1' (4.0 before #131; connect() upgrades a 4.0 file in place); install_id; catalogue_id (bound at the first build; connect()
+-- keys: schema_version='4.2' (4.0 before #131, 4.1 before #167/#155; connect() upgrades an older file in place); install_id; catalogue_id (bound at the first build; connect()
 -- refuses a catalogue whose catalogue_id differs); catalogue_item_high_water and
 -- catalogue_color_high_water (copied at every activation: a rebuild from scratch mints above
 -- them); migrated_from (3.3 file name, sha256, migration report digest) after the migration.
@@ -459,6 +459,7 @@ CREATE TABLE order_line(
  qty INTEGER NOT NULL CHECK(qty>0), unit_price TEXT, line_total TEXT,
  batch INTEGER, submitted TEXT, suggestions_json TEXT,
  paired_line_id INTEGER REFERENCES order_line(id), updated_at TEXT NOT NULL,
+ unplaced_reason TEXT, -- 4.2 (#155): why a line without an item was not placed; NULL when placed. Last, as the upgrade adds it
  UNIQUE(document_id, line_no)) STRICT;
 CREATE INDEX order_line_order ON order_line(order_id);
 CREATE INDEX order_line_item ON order_line(item_id);
@@ -596,7 +597,9 @@ CREATE TABLE job_call(
  PRIMARY KEY(job_id, step, operation), FOREIGN KEY(job_id, step) REFERENCES job_step(job_id, name)) STRICT;
 CREATE INDEX job_call_request ON job_call(request_job);
 
-CREATE TABLE job_owner(job_id INTEGER PRIMARY KEY NOT NULL REFERENCES job(id), pid INTEGER NOT NULL, claimed_at TEXT NOT NULL) STRICT;
+CREATE TABLE job_owner(job_id INTEGER PRIMARY KEY NOT NULL REFERENCES job(id), pid INTEGER NOT NULL, claimed_at TEXT NOT NULL,
+ boot_id TEXT, start_ticks INTEGER -- 4.2 (#167): the kernel boot id and the owner's process start ticks since boot; NULL on a claim made before 4.2
+) STRICT;
 
 CREATE TABLE source_record(                          -- raw API replies (decision 9: API responses stay raw)
  id INTEGER PRIMARY KEY,

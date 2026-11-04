@@ -72,7 +72,7 @@ def test_standalone_smoke(tmp_path, monkeypatch, offline, capsys):
     said = capsys.readouterr().out
     assert path.is_file() and 'missing' in said and 'catalogue download' in said
     with sqlite3.connect(path) as db:
-        assert db.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()[0] == '4.1'
+        assert db.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()[0] == '4.2'
     with pytest.raises(Exception, match='No catalogue at .*catalogue.db'):
         connect(path)
     # the fixture catalogue, built offline, goes beside the collection
@@ -83,7 +83,7 @@ def test_standalone_smoke(tmp_path, monkeypatch, offline, capsys):
     # health is the one v1 route that answers: no token, the app version and the 4.0 schema
     health = client.get('/api/v1/health')
     assert health.status_code == 200, health.text
-    assert health.json['data'] == {'status': 'ok', 'api': '1.0.0', 'app': __version__, 'schema': '4.1'}
+    assert health.json['data'] == {'status': 'ok', 'api': '1.0.0', 'app': __version__, 'schema': '4.2'}
     # every other v1 route is gone, with or without a token, and says why
     for method, route in (('get', '/version'), ('get', '/me'), ('get', '/copies'), ('post', '/copies'), ('get', '/events'),
                           ('post', '/events/1/undo'), ('get', '/openapi.yaml'), ('get', '/does-not-exist')):

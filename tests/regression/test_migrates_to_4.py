@@ -51,7 +51,7 @@ def test_migrates_to_4(fixture, tmp_path, world):
     with closing(connect(res.out, catalogue, read_only=True)) as db:
         assert db.execute('PRAGMA integrity_check').fetchone()[0] == 'ok'
         assert db.execute('PRAGMA foreign_key_check').fetchall() == []
-        assert db.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()[0] == '4.1'
+        assert db.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()[0] == '4.2'
 
 
 def test_the_command_line_migrates_too(tmp_path, world, capsys):

@@ -10,13 +10,17 @@ import uuid
 from .errors import CatalogueError, CatalogueMismatch, SchemaMismatch, StaleSchema, Unsupported, UpgradeFailed
 
 MIN_SQLITE = (3, 37, 0)
-SCHEMA_VERSION = '4.1'
+SCHEMA_VERSION = '4.2'
 # In-place upgrades of an older collection, one step per version, each in its own write transaction: {from: (to, statements)}.
 # A step only adds; a fresh file from `brickwork.sql` has the same tables as an upgraded one (tests/test_store4_upgrade.py).
 UPGRADES = {
     '4.0': ('4.1', (                                     # #131: a wish's max price with box, a price with its currency or neither
         'ALTER TABLE wish ADD COLUMN max_price_boxed TEXT',
         'ALTER TABLE wish ADD COLUMN max_price_boxed_currency TEXT CHECK((max_price_boxed IS NULL) = (max_price_boxed_currency IS NULL))')),
+    '4.1': ('4.2', (                                     # #167: who owns a job claim (boot id + start ticks); #155: why an order line is not placed
+        'ALTER TABLE job_owner ADD COLUMN boot_id TEXT',
+        'ALTER TABLE job_owner ADD COLUMN start_ticks INTEGER',
+        'ALTER TABLE order_line ADD COLUMN unplaced_reason TEXT')),
 }
 # The columns the steps add, by table: a row recorded before its step (an Undo receipt, a RowLog) lacks them and reads them as NULL.
 ADDED_COLUMNS = {}

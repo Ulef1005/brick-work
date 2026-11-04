@@ -33,6 +33,8 @@ APP_VENV=.venv bash scripts/check.sh
 
 `scripts/check.sh` is the same gate CI runs: the name check, the standalone smoke test (no keys, no network), the full test suite, the Node runtime harnesses, a gitleaks secret scan when gitleaks is installed, and the API contract checks. Tests use synthetic data only; never add a fixture taken from a real collection.
 
+Enable the commit hooks once per clone: `git config core.hooksPath .githooks`. The `commit-msg` hook blocks a commit that changes app source (`brickwork/`, `templates/`, `static/`, `app.py`, `wsgi.py`, `bin/`, `entrypoint.sh`) without a change to the user docs (`docs/index.md`, `docs/tutorials/`, `docs/how-to/`, `docs/concepts/`, `docs/reference/`), unless the message ends with a `Docs: none, <reason>` trailer. The `post-commit` hook re-checks the finished commit as a whole and warns, which covers `--amend` and `--no-verify`. `scripts/check.sh` reports the same for every commit in the range it checks.
+
 For a running app, follow the Docker steps in the [README](README.md).
 
 ## Pull requests

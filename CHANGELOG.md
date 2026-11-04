@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Brickset's minifigure CSV** (#146). **Add** › **Minifigure** › **File** reads Brickset's minifigure export: with **Loose** the figures you own loose (Brickset's loose count, so the figures in your sets are not added twice), with **Wishlist** the figures marked wanted. Before, it was refused with *CSV needs part_num, set_num or minifig_num*. See [Bring your collection in from another app](docs/how-to/migrate.md).
+
 ## Brick Work 0.8.1 (schema 4.1) · 2026-11-04
 
 Two fixes found while setting up and testing milestone B. No schema change: a 0.8.0 collection opens as it is, and going back to 0.8.0 needs no restore. Keep the new `secret.key` with `brickwork.db` in your backups.

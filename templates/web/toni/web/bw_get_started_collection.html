@@ -13,7 +13,7 @@
 <div class="fr-choices" data-collection-choices>
 {% for key, title, text, label, href, note in [
   ('rebrickable', 'Rebrickable', 'Your sets and wishlist from your Rebrickable account, with a preview before anything is added.', 'Open Collection sync', url_for('web.bw_sync'), key_gaps.rebrickable and 'Needs a Rebrickable key first.'),
-  ('brickset', 'Brickset', 'Your sets and wishlist from your Brickset account, with a preview, or the CSV file Brickset exports from My Sets.', 'Open Collection sync', url_for('web.bw_sync'), key_gaps.brickset and 'The account sync needs a Brickset key first; the CSV file does not.'),
+  ('brickset', 'Brickset', 'Your sets and wishlist from your Brickset account, with a preview, or the CSV files Brickset exports from My Sets and from your minifigures.', 'Open Collection sync', url_for('web.bw_sync'), key_gaps.brickset and 'The account sync needs a Brickset key first; the CSV file does not.'),
   ('bricklink', 'BrickLink', 'A wanted list or store inventory as an XML file, downloaded from BrickLink.', 'Choose an XML file', url_for('web.bw_add', mode='file'), none),
   ('bricktracker', 'BrickTracker', 'Its app.db, any version, fresh or merged into this collection, with a preview first.', 'Import app.db', url_for('web.bw_import_legacy'), none),
   ('file', 'Another app\'s file', 'BrickStore, Sets Collector, BrickScan and others: a BrickLink XML or Rebrickable CSV export.', 'Choose a file', url_for('web.bw_add', mode='file'), none),

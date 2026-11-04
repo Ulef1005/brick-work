@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# The user-docs check after the commit (App Standard, Repo & checks): re-checks HEAD as a whole, so an
+# amend or --no-verify commit that drops the docs requirement is reported at commit time. Never blocks.
+exec python3 "$(git rev-parse --show-toplevel)/scripts/check_docs.py" post-commit

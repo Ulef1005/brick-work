@@ -2,14 +2,18 @@
 
     python3 scripts/check_docs.py commit-msg MSGFILE   # the .githooks/commit-msg hook; exit 1 blocks the commit
     python3 scripts/check_docs.py range A..B           # check.yml re-checks the pushed commits; reports, never fails
+    python3 scripts/check_docs.py post-commit          # the .githooks/post-commit hook: re-checks HEAD as a whole, warns
 
 A commit that touches SOURCE without touching USER_DOCS carries the trailer `Docs: none`, optionally
 followed by a reason (`Docs: none, refactor only`). Rule: App Standard, Repo & checks and Maintenance
 (ai-wiki wiki/projects/references/app-standard-repo-checks.md). Standard library only, so the hook runs
 before any virtualenv exists.
 
-Known limit: on `git commit --amend` the hook sees only what is newly staged, not the changes already in
-the amended commit; the range report in check.sh still lists such a commit before it lands.
+On `git commit --amend` the commit-msg hook sees only what is newly staged, not the changes already in the
+amended commit, and git does not tell it reliably that the commit is an amend (`--amend -m` passes no
+marker). So the post-commit hook re-checks the finished commit as a whole against its parent and warns at
+commit time; it cannot block (the commit exists by then), and it also catches `--no-verify`, which skips
+commit-msg but not post-commit. The range report in check.sh lists such a commit again before it lands.
 """
 import re
 import subprocess
@@ -59,6 +63,24 @@ def commit_msg(path):
     return 1
 
 
+def commit_needs_docs(sha):
+    """needs_docs for a whole commit against its first parent (--root: a first commit against the empty tree)."""
+    paths = names('diff-tree', '--root', '--no-commit-id', '--name-only', '--no-renames', '-r', sha)
+    return needs_docs(paths, git('log', '-1', '--format=%B', sha))
+
+
+def post_commit():
+    """Warn when the commit just made, as a whole, changes app source without docs or trailer (amend, --no-verify)."""
+    if len(git('rev-list', '--parents', '-n', '1', 'HEAD').split()) > 2:
+        return 0  # a merge commit: the commit-msg hook skips merges too
+    if commit_needs_docs('HEAD'):
+        print('Docs check (post-commit): HEAD changes app source but not the user docs (docs/) and has no\n'
+              '`Docs: none` trailer; an amend carries the changes already in the commit. Fix it before landing:\n'
+              '    git commit --amend   (add the docs change, or end the message with  Docs: none, <reason>)\n'
+              'Rule: App Standard, Repo & checks.', file=sys.stderr)
+    return 0
+
+
 def check_range(rev_range):
     base = rev_range.split('..', 1)[0]
     exists = subprocess.run(('git', 'cat-file', '-e', f'{base}^{{commit}}'), capture_output=True).returncode == 0
@@ -67,8 +89,7 @@ def check_range(rev_range):
         return 0
     missing = []
     for sha in git('rev-list', '--no-merges', rev_range).split():
-        paths = names('diff-tree', '--no-commit-id', '--name-only', '-r', sha)
-        if needs_docs(paths, git('log', '-1', '--format=%B', sha)):
+        if commit_needs_docs(sha):
             missing.append(git('log', '-1', '--format=%h %s', sha).strip())
     for line in missing:
         print(f'::warning title=Docs check::{line} changes app source without docs and without a Docs: none trailer')
@@ -81,6 +102,8 @@ def main(argv):
         return commit_msg(argv[1])
     if len(argv) == 2 and argv[0] == 'range':
         return check_range(argv[1])
+    if argv == ['post-commit']:
+        return post_commit()
     print(__doc__, file=sys.stderr)
     return 2
 

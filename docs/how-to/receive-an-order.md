@@ -26,6 +26,8 @@ Each import starts as a draft. On the order's page, under **Documents · resume 
 
 Brick Work places a line on an item by the BrickLink type, number and colour number the document names, looking in your collection's links and in the catalogue together. A line it could not place stays as the store wrote it, marked **Unmatched**. This happens when the number or colour is unknown, or when the number names more than one item: Brick Work never picks one of them for you. In that case the line offers **Could be** with the candidates.
 
+Some items exist only on BrickLink: instruction booklets, and some sticker and printed parts. When the BrickLink item lists are loaded (**Tools & Admin → Catalogues & keys → Load BrickLink item lists**), Brick Work places such a line on a new item of its own, named as BrickLink names it, both when it reads the order and when you match the line by its number. An e-mail's "(Instructions) for Set 7946" names the set's one booklet (`7946-1`). Without the lists, these lines stay unmatched, and the review cannot be finished until they are matched.
+
 1. For any line Brick Work could not place, choose a candidate under **Could be**, or use **Search the catalogue** and pick the item, or set **Item type** and **Number** to a number that names exactly one item. Choose the **Colour** for a part, then press **Match line**.
 2. Press **Finish review**.
 3. If the order already has saved lines, link each repeated line to its **Saved line** so it is counted once. Leave **New line** for an extra purchase.

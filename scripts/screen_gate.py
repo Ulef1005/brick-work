@@ -152,7 +152,8 @@ def compare_images(expected: Path, actual: Path, diff: Path | None = None) -> di
         a, b = a.convert('RGB'), b.convert('RGB')
         if a.size != b.size:
             return {'size_differs': True, 'differing': None, 'total': None, 'share': 1.0, 'sizes': (a.size, b.size)}
-        delta = ImageChops.difference(a, b).convert('L')
+        r, g, bl = ImageChops.difference(a, b).split()
+        delta = ImageChops.lighter(ImageChops.lighter(r, g), bl)          # the largest channel difference per pixel, not a weighted grey
         mask = delta.point(lambda v: 255 if v > TOLERANCE['channel'] else 0)
         differing = mask.histogram()[255]
         total = a.size[0] * a.size[1]

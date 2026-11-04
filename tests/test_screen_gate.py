@@ -103,3 +103,33 @@ def test_an_approved_state_needs_all_six_baselines(tmp_path, monkeypatch):
 def test_a_baseline_file_of_no_built_state_is_still_reported(tmp_path, monkeypatch):
     found = _check_states(tmp_path, monkeypatch, False, ['09-Collection-777-light.png'])
     assert len(found) == 1 and 'belongs to no built state' in found[0]
+
+
+def test_a_change_in_one_colour_channel_is_seen(tmp_path):
+    """A pixel differs when ANY channel is off by more than the tolerance (Codex review): a blue shift of 30 weighs only ~3.4 in a grey
+    conversion, so the gate must compare the largest channel difference."""
+    a, b = tmp_path / 'a.png', tmp_path / 'b.png'
+    Image.new('RGB', (40, 40), (100, 100, 100)).save(a)
+    Image.new('RGB', (40, 40), (100, 100, 130)).save(b)
+    result = gate.compare_images(a, b)
+    assert result['differing'] == 1600 and result['share'] == 1.0
+
+
+def test_chrome_prints_only_the_binary_path_on_stdout(tmp_path, monkeypatch, capsys):
+    """check.sh and the gate read stdout as the path: download progress goes to stderr (Codex review)."""
+    import importlib.util, sys
+    spec = importlib.util.spec_from_file_location('chrome_tool', Path(__file__).resolve().parents[1] / 'scripts' / 'chrome.py')
+    chrome = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(chrome)
+    monkeypatch.setattr(chrome, 'explicit', lambda: None)
+    monkeypatch.setattr(chrome, 'pinned_cached', lambda: None)
+
+    def fake_download():
+        print('Downloading Chrome for Testing ...', file=sys.stderr)
+        return '/opt/chrome/bin/chrome'
+    monkeypatch.setattr(chrome, 'download', fake_download)
+    assert chrome.main(['pinned']) == 0
+    out = capsys.readouterr()
+    assert out.out == '/opt/chrome/bin/chrome\n' and 'Downloading' in out.err
+    source = (Path(__file__).resolve().parents[1] / 'scripts' / 'chrome.py').read_text()
+    assert "Downloading Chrome for Testing" in source and "file=sys.stderr, flush=True)   # stdout is only the path" in source

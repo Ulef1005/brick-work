@@ -10,6 +10,7 @@ The download is pinned by version and by the SHA-256 of the zip; a zip with anot
 pinned checksum (anything but linux x86-64 and macOS on Apple silicon) set CHROME themselves.
 Pixels from a system Chrome differ from the pinned build's, so the screenshot gate asks for `pinned` (or an explicit CHROME). Standard library
 only; `unzip` must be installed (it keeps the macOS bundle's symlinks)."""
+import fcntl
 import hashlib
 import os
 from pathlib import Path
@@ -83,9 +84,17 @@ def download() -> str:
         raise RuntimeError('unzip is not installed (needed to unpack Chrome for Testing)')
     target = cache() / VERSION
     target.mkdir(parents=True, exist_ok=True)
+    with (target / '.install.lock').open('w') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)                                   # one install at a time; a waiter finds it done
+        if (target / inner).is_file():
+            return str(target / inner)
+        return _install(url, checksum, inner, key, target)
+
+
+def _install(url, checksum, inner, key, target) -> str:
     with tempfile.TemporaryDirectory(dir=target) as scratch:
         archive = Path(scratch) / 'chrome.zip'
-        print(f'Downloading Chrome for Testing {VERSION} ({key}) into {target} ...', flush=True)
+        print(f'Downloading Chrome for Testing {VERSION} ({key}) into {target} ...', file=sys.stderr, flush=True)   # stdout is only the path
         try:
             with urllib.request.urlopen(url, timeout=120) as response, archive.open('wb') as out:
                 shutil.copyfileobj(response, out)
@@ -95,13 +104,13 @@ def download() -> str:
         if digest != checksum:
             raise RuntimeError(f'{url} has SHA-256 {digest}, expected {checksum}; refusing it')
         unpacked = Path(scratch) / 'unpacked'
-        subprocess.run(['unzip', '-q', str(archive), '-d', str(unpacked)], check=True)
+        subprocess.run(['unzip', '-q', str(archive), '-d', str(unpacked)], check=True, stdout=sys.stderr)
         binary = unpacked / inner
         if not binary.is_file():
             raise RuntimeError(f'{inner} is not in the downloaded archive')
-        for stale in target.iterdir():
-            if stale.name != Path(scratch).name and stale.is_dir():
-                shutil.rmtree(stale)
+        top = target / inner.split('/')[0]
+        if top.exists():                                                   # a half-installed earlier attempt (the lock is held)
+            shutil.rmtree(top)
         shutil.move(str(unpacked / inner.split('/')[0]), str(target / inner.split('/')[0]))
     return str(target / inner)
 

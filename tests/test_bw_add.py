@@ -670,3 +670,55 @@ def test_undo_of_an_add_is_refused_when_a_loose_figure_gap_was_filled(world, col
         with db:
             db.execute('BEGIN IMMEDIATE')
             __import__('brickwork.core.stock', fromlist=['x']).undo_added(db, change)
+
+
+# Brickset's minifigure export (#146): its real header (read from the maintainer's export, data never committed), synthetic rows.
+BRICKSET_MINIFIG_HEADER = ('MinifigNumber,MinifigName,MinifigCategory,SetCount,YearFrom,Status,CharacterName,PriceNew,PriceUsed,Own,QtyOwned,'
+                           'QtyOwnedLoose,Want,,Flag2,Flag3,Flag4,Flag5,Flag6,Flag7,Flag8,UserNotes')
+
+
+def brickset_minifig(number, own='', owned='0', loose='0', want='', notes=''):
+    cells = dict(MinifigNumber=number, Own=own, QtyOwned=owned, QtyOwnedLoose=loose, Want=want, UserNotes=notes)
+    return ','.join('"' + cells.get(name, '') + '"' for name in BRICKSET_MINIFIG_HEADER.split(','))
+
+
+def brickset_minifig_text(*rows):
+    return '\n'.join([BRICKSET_MINIFIG_HEADER, *rows, '']).encode('utf-8-sig')
+
+
+def test_a_brickset_minifigure_file_takes_the_loose_figures_and_the_wanted_ones():
+    data = brickset_minifig_text(brickset_minifig('cas001', own='X', owned='3', loose='2', notes='Box 4'), brickset_minifig('cas002', own='X', owned='1'),
+                                 brickset_minifig('sw0001', want='X'))
+    loose = add.file_rows(data, 'Brickset-myMinifigs-owned.csv', 'minifigure', 'loose')
+    assert [(r['kind'], r['number'], r['quantity'], r['note']) for r in loose] == [('minifigure', 'cas001', 2, 'Box 4')]   # QtyOwned counts the ones in sets
+    wanted = add.file_rows(data, 'Brickset-myMinifigs-owned.csv', 'minifigure', 'wishlist')
+    assert [(r['number'], r['quantity']) for r in wanted] == [('sw0001', 1)]
+
+
+def test_a_brickset_minifigure_resolves_by_its_bricklink_number(world, client, csrf, pair):
+    from brickwork.store4 import fetched
+    from brickwork.core.transaction import transaction
+    with closing(connect(pair)) as db:
+        with transaction(db):
+            fetched.add_item_link(db, world.figure, provider='bricklink', provider_kind='M', provider_key='syn0001', status='matched',
+                                  method='external_ids', origin='shipped')
+    response = client.post('/manage/add/review', data=dict(csrf_token=csrf, type='minifigure', where='loose', mode='file', list_id='default',
+                           file=(io.BytesIO(brickset_minifig_text(brickset_minifig('syn0001', own='X', owned='2', loose='2'))), 'Brickset-myMinifigs-owned.csv')),
+                           content_type='multipart/form-data')
+    assert response.status_code == 200, response.get_data(as_text=True)
+    items = response.json['items']
+    assert [(r['item_id'], r['quantity']) for r in items] == [(world.figure, 2)]
+
+
+@pytest.mark.parametrize('case, kind, message', [
+    ('columns', 'minifigure', 'This Brickset file has no QtyOwnedLoose column'),
+    ('kind', 'set', 'A Brickset minifigure file lists minifigures'),
+    ('empty', 'minifigure', 'This Brickset file has no minifigure owned loose')])
+def test_a_brickset_minifigure_file_the_import_cannot_read_is_refused_plainly(world, client, csrf, case, kind, message):
+    if case == 'columns':
+        data = b'MinifigNumber,Own,QtyOwned,Want\n"cas001","X","1",""\n'
+    else:
+        data = brickset_minifig_text(brickset_minifig('cas001', own='X', owned='1', loose='0'))
+    response = client.post('/manage/add/review', data=dict(csrf_token=csrf, type=kind, where='loose', mode='file', list_id='default',
+                           file=(io.BytesIO(data), 'Brickset-myMinifigs-owned.csv')), content_type='multipart/form-data')
+    assert response.status_code == 400 and message in response.get_data(as_text=True)

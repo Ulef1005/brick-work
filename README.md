@@ -15,7 +15,7 @@
   <a href="https://ulef1005.github.io/brick-work/workflows/">Workflows</a> ·
   <a href="https://ulef1005.github.io/brick-work/api/">API</a> ·
   <a href="https://ulef1005.github.io/brick-work/mcp/">MCP</a> ·
-  <a href="https://github.com/users/Ulef1005/projects/3">Roadmap</a>
+  <a href="https://github.com/Ulef1005/brick-work/milestones">Roadmap</a>
 </p>
 
 <p align="center">
@@ -44,8 +44,8 @@ Sets, minifigures, parts, instructions, boxes, storage, prices, wishlist and ord
 
 Brick Work is pre-1.0. Its maintainer uses it daily for a collection of about 200 set copies, but the schema and the API can still change between minor versions; read the [CHANGELOG](CHANGELOG.md) before upgrading.
 
-- **Shipped:** the Collection, Workbench (Check Set Parts, Part Picker, Matcher, Orders), Planning and Manage screens; an installable web app; a versioned REST API with scoped tokens and Undo; an admin CLI; an MCP server; a read-only importer for an older tracker database.
-- **Planned, not built:** Buildable sets, collection sync with Rebrickable, BrickLink and Brickset, a pile check by photo, a sale price for a used copy, complete-or-part-out for minifigures and sets, and one shopping list for missing parts. The [public roadmap](https://github.com/users/Ulef1005/projects/3) keeps the order; there are no dates.
+- **Shipped:** the Collection, Workbench (Check Set Parts, Part Picker, Matcher, Orders), Planning and Manage screens; an installable web app; a versioned REST API with scoped tokens and Undo; an admin CLI; an MCP server; a read-only importer for an older tracker database; collection sync of owned and wanted sets with Rebrickable and Brickset.
+- **Planned, not built:** Buildable sets, sync with BrickLink (#143), a pile check by photo, a sale price for a used copy, complete-or-part-out for minifigures and sets, and one shopping list for missing parts. The order is kept in the [GitHub milestones](https://github.com/Ulef1005/brick-work/milestones) and the issues' priority labels (`now`, `next`, `later`); there are no dates.
 
 It is self-hosted, single-user and meant for a home network or a VPN, not the open internet.
 

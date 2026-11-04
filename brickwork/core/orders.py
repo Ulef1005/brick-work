@@ -373,8 +373,11 @@ def _listed_local(db, letter, number):
         found, _ = w.booklet_item(db, number)
         if found is None:
             return None
-        if not isinstance(found, tuple):
-            return found
+        if not isinstance(found, tuple):                               # a booklet held by born key: still one owner only (no competing link)
+            row = db.execute('SELECT born_key FROM main.item WHERE id=?', (found,)).fetchone() or (
+                db.execute('SELECT born_key FROM catalogue.item WHERE id=?', (found,)).fetchone() if has_catalogue(db) else None)
+            owners = (_holders(db, 'I', row[0]) if row and row[0] else set()) | {items._merged_target(db, found)}
+            return found if len(owners) == 1 else None
         _, key, name = found
         holders = _holders(db, 'I', key)
         if holders:

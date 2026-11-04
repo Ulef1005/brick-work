@@ -165,3 +165,20 @@ def test_a_bare_booklet_number_reuses_the_item_that_holds_its_bricklink_link(wor
         assert made['placed'] == 1
         assert lines(db, made['order_id'])['7946']['item_id'] == other
         assert local(db, 'I', '7946-1') is None
+
+
+def test_a_booklet_held_by_born_key_and_by_another_items_link_is_ambiguous(world, coll, pair):
+    """Codex review: two items hold I/7946-1 (one by born key, one by link): the bare number places nothing."""
+    from brickwork.core.transaction import transaction
+    from brickwork.store4 import fetched
+    coll.db.close()
+    with closing(connect(pair)) as db:
+        with transaction(db):
+            fetched.create_local_item(db, kind='instructions', born_provider='bricklink', born_namespace='I', born_key='7946-1',
+                                      name="King's Castle", kind_source='bricklink')
+            rival = fetched.create_local_item(db, kind='instructions', born_provider='bricklink', born_namespace='I', born_key='7946-1y',
+                                              name='Another booklet', kind_source='bricklink')
+            fetched.add_item_link(db, rival, provider='bricklink', provider_kind='I', provider_key='7946-1', status='matched',
+                                  method='external_ids', origin='shipped')
+        made = orders.import_document(db, 'email', "* Batch #1 (submitted Dec 1, 2025 04:55)\n[Used] (Instructions) for Set 7946 King's Castle (x1) ..... EUR 10.00 each = EUR 10.00\n")
+        assert made['placed'] == 0

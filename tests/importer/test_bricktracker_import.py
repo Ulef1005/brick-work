@@ -117,7 +117,7 @@ def test_what_the_import_makes(tmp_path, db):
     assert {u['number'] for u in plan['unplaced']} == {'999999-1', 'nothing/4', '888888-1'}
     assert all(u['reason'] for u in plan['unplaced'])
     result = bricktracker.apply(db, plan['id'])
-    assert result['counts'] == dict(copies=2, stock=7, lots=1, wishes=2, storages=1, purchase_locations=1, flags=result['counts']['flags'])
+    assert result['counts'] == dict(copies=2, stock=7, stock_lines=3, lots=1, wishes=2, storages=1, purchase_locations=1, flags=result['counts']['flags'])
     copy = db.execute("SELECT c.* FROM copy c JOIN item i ON i.id=c.item_id WHERE i.born_key='1000-1'").fetchone()
     assert copy['inventory_source'] == 'rebrickable' and copy['completeness_source'] == 'derived' and copy['completeness'] == 'incomplete'
     assert dict(line(db, copy['id'], '3001', 4)) | {} and (line(db, copy['id'], '3001', 4)['missing'], line(db, copy['id'], '3001', 4)['damaged'], line(db, copy['id'], '3001', 4)['checked']) == (1, 1, 1)

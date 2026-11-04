@@ -173,7 +173,7 @@ def navigation():
         current = 'Parts' if endpoint.endswith('lot') else 'Storage'
     elif endpoint.startswith('web.bw_add'):
         current = 'Add'
-    elif endpoint in ('web.parts_scanner_page', 'web.bw_inventory'):
+    elif endpoint in ('web.parts_scanner_page', 'web.bw_inventory', 'web.bw_what_is_this'):   # What is this? identifies by photo too (#142)
         current = 'Part to Inventory'
     elif endpoint in ('set.check', 'web.bw_check_parts', 'web.bw_check_copy', 'web.bw_check_write'):
         current = 'Check Set Parts'

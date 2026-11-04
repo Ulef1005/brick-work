@@ -13,6 +13,8 @@ from pathlib import Path
 from PIL import Image
 import pytest
 
+from tests import rendered
+
 from brickwork.core import part_inventory as inventory
 from tests.app4 import app4, client, coll, csrf, pair, read, world  # noqa: F401 (fixtures)
 
@@ -201,6 +203,5 @@ def test_save_after_undo_adds_again_and_undo_archives_identifications(world, col
 
 
 def test_browser_runtime():
-    if not shutil.which('node'):
-        pytest.skip('node is not installed')
+    rendered.need_node()
     subprocess.run(['node', str(Path(__file__).with_name('toni_bw_inventory_runtime.cjs'))], check=True, capture_output=True, text=True)

@@ -13,6 +13,7 @@ from bs4 import BeautifulSoup
 import pytest
 
 from brickwork.core import collection
+from tests import rendered
 from tests.app4 import STAMP, app4, client, coll, pair, read, world  # noqa: F401  (the fixtures)
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -501,9 +502,7 @@ def add_49a_long_figure(coll, copy_id):
 @pytest.fixture
 def collection_chromium_geometry(world, coll, client, tmp_path):
     """Measure shipped shell/page CSS, including native disclosure layout."""
-    executable = os.environ.get('BW_COLLECTION_CHROME')
-    if not executable:
-        pytest.skip('Set BW_COLLECTION_CHROME for opt-in browser geometry verification')
+    executable = rendered.chrome()
     pages = tmp_path / 'geometry'
     pages.mkdir()
     coll.sql('UPDATE copy SET note=?,condition=? WHERE id=?', ('Long private note ' * 30, 'used', world.copy_a))
@@ -555,8 +554,8 @@ def test_49a_chromium_geometry_measured(collection_chromium_geometry):
         assert m['figure']['linkWidth'] >= 150 and m['figure']['wordSplit'] is False, m
         assert all(m['missingCard'].values()), m
         assert m['progress']['presentBeforeMissing'], m
-        # The coverage bar and its captions ("can be taken", "to order") are the Matcher's: no bar until M.8e, so `captionsBelowCoverage` is False here.
-        assert not m['progress']['captionsBelowCoverage'], m
+        # The coverage bar and its captions ("can be taken", "to order") came with M.8e: the captions sit 6 px under the bar.
+        assert m['progress']['captionsBelowCoverage'], m
 
 
 def test_47f_chromium_geometry_identity_minimum(collection_chromium_geometry):

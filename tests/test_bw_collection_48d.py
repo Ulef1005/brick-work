@@ -7,6 +7,8 @@ import time
 from bs4 import BeautifulSoup
 import pytest
 
+from tests import rendered
+
 from tests.app4 import app4, client, coll, pair, read, world  # noqa: F401  (fixtures)
 from tests.app4_bulk import bulk_owned
 
@@ -26,9 +28,7 @@ def test_every_collection_list_carries_the_page_size(world, client, kind):
 
 
 def test_pager_runtime_harness():
-    node = shutil.which('node')
-    if not node:
-        pytest.skip('node not installed')
+    node = rendered.need_node()
     subprocess.run([node, str(ROOT / 'tests/toni_bw_collection_paging_runtime.cjs')], check=True,
                    capture_output=True, text=True, cwd=ROOT)
 

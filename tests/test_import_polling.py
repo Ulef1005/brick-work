@@ -6,6 +6,8 @@ from pathlib import Path
 
 import pytest
 
+from tests import rendered
+
 from brickwork.core.pipeline import Pipeline
 from tests.app4 import app4, client, coll, pair, read  # noqa: F401 (fixtures)
 from tests.web_fixtures import logged_in
@@ -46,9 +48,7 @@ def scenarios(client, coll):
 
 
 def run_widget(tmp_path, data):
-    node = shutil.which('node')
-    if not node:
-        pytest.skip('Node is unavailable')
+    node = rendered.need_node()
     path = tmp_path / 'events.json'
     path.write_text(json.dumps(data))
     result = subprocess.run([node, str(ROOT / 'tests/import_polling_e2e.cjs'), str(path)],

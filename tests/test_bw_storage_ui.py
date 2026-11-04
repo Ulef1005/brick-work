@@ -11,6 +11,8 @@ from pathlib import Path
 from bs4 import BeautifulSoup
 import pytest
 
+from tests import rendered
+
 from brickwork.core import ledger
 from tests.app4 import STAMP, app4, client, coll, csrf, pair, read, world  # noqa: F401 (fixtures)
 
@@ -185,8 +187,7 @@ def test_storage_counts_and_queries(world, coll):
 
 
 def test_storage_runtime():
-    if not shutil.which('node'):
-        pytest.skip('node is not installed')
+    rendered.need_node()
     subprocess.run([shutil.which('node'), str(Path(__file__).with_name('toni_bw_storage_runtime.cjs'))], check=True, capture_output=True, text=True)
 
 

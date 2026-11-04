@@ -10,6 +10,8 @@ import subprocess
 from bs4 import BeautifulSoup
 import pytest
 
+from tests import rendered
+
 from brickwork.core import collection_prices, planning
 from brickwork.core.connect import connect
 from brickwork.core.sources.base import now
@@ -229,8 +231,8 @@ def test_the_planning_screens_and_actions_are_all_ported(world, client):
     assert client.get('/planning/nothing').status_code == 404
 
 
-@pytest.mark.skipif(shutil.which('node') is None, reason='Node is not installed')
 def test_prices_runtime_harness():
+    rendered.need_node()
     result = subprocess.run(['node', 'tests/toni_bw_prices_runtime.cjs'], cwd=ROOT, capture_output=True, text=True, timeout=60)
     assert result.returncode == 0, result.stdout + result.stderr
     assert 'prices runtime ok' in result.stdout

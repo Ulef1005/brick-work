@@ -7,6 +7,8 @@ from urllib.parse import unquote, urlsplit
 
 import pytest
 
+from tests import rendered
+
 from brickwork.demo.privacy import pattern
 
 PRIVATE = pattern()
@@ -259,8 +261,7 @@ def test_javascript_theme_and_step_state():
     """Exercise the actual script with a tiny DOM, including storage being blocked."""
     import shutil
     import subprocess
-    if not shutil.which('node'):
-        pytest.skip('Node is unavailable')
+    rendered.need_node()
     harness = r'''
 const assert = require('node:assert/strict');
 const fs = require('node:fs');

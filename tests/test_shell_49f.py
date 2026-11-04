@@ -8,6 +8,7 @@ from urllib.parse import urlsplit
 from bs4 import BeautifulSoup
 import pytest
 
+from tests import rendered
 from tests.app4 import app4, client, coll, pair, read, world
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -38,9 +39,7 @@ def test_bottom_bar_and_jump_sheet_css():
 
 
 def test_shell_chromium_geometry(client, tmp_path):
-    chrome = os.environ.get('BW_COLLECTION_CHROME')
-    if not chrome:
-        pytest.skip('Set BW_COLLECTION_CHROME for opt-in browser geometry verification')
+    chrome = rendered.chrome()
     soup = BeautifulSoup(client.get('/').data, 'html.parser')
     for link in soup.select('link[rel=stylesheet]'):
         style = soup.new_tag('style')

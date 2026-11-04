@@ -25,7 +25,7 @@ import re
 from uuid import uuid4
 from xml.etree import ElementTree as ET
 
-from ..store4 import identity
+from ..store4 import fetched, identity
 from ..store4.connect import has_catalogue, now as stamp_now
 from ..store4.errors import AmbiguousIdentity, Store4Error
 from . import add, collection, errors, items, stock as stock_module
@@ -346,6 +346,32 @@ def _label(db, item_id):
     return dict(item_id=item_id, label=(label.text + ' · ' if label.number else '') + label.name)
 
 
+def _listed_local(db, letter, number):
+    """The local BrickLink-born item for a key the loaded BrickLink item list names and no item holds (#154): created once (idempotent on
+    its born key) and linked, as the part-list fetch and the booklet entry do. A booklet goes through `workbench.booklet_item`, so a bare
+    set number ("for Set 7946") names its one booklet (`7946-1`). None when the list does not name the key. An import's Undo leaves the
+    item (unused), as the booklet entry's does."""
+    if letter == 'I':
+        found, _ = w.booklet_item(db, number)
+        if found is None:
+            return None
+        if not isinstance(found, tuple):
+            return found
+        _, key, name = found
+    else:
+        if not has_catalogue(db) or letter not in items.TYPE_KIND:
+            return None
+        listed = db.execute('SELECT item_no,name FROM catalogue.bricklink_item WHERE item_type=? AND item_no=?', (letter, number)).fetchone()
+        if listed is None:
+            return None
+        key, name = listed['item_no'], listed['name']
+    item = fetched.create_local_item(db, kind=items.kind_of_type(letter), born_provider='bricklink', born_namespace=letter, born_key=key, name=name,
+                                     kind_source='bricklink')
+    fetched.add_item_link(db, item, provider='bricklink', provider_kind=letter, provider_key=key, status='matched', method='bricklink_list',
+                          origin='bricklink_list')
+    return item
+
+
 def _place(db, letter, number, colour_key):
     """`(item id, colour id, suggestions, why)` for a BrickLink key through the pooled inverse. A key that names several items, or a colour
     that does, places nothing: the candidates are returned for the person to choose from."""
@@ -370,6 +396,9 @@ def _place(db, letter, number, colour_key):
             return None, colour, [_label(db, i) for i in born[:10]], 'The BrickLink number matches several items'
         if born:
             return born[0], colour, [], None
+        local = _listed_local(db, letter, number)
+        if local is not None:
+            return local, colour if letter == 'P' else None, [], None
         return None, colour, [], 'The BrickLink number is not in the catalogue'
     return found[0], found[1] if letter == 'P' else None, [], None
 
@@ -398,6 +427,7 @@ def _by_name(db, row, hits):
         except AmbiguousIdentity:
             colour = None
     ids = set()
+    unheld = set()                                                     # BrickLink keys of the name that no item holds yet (#154)
     for hit in hits:
         if hit[0] == 'item':
             ids.add(hit[1])
@@ -409,6 +439,12 @@ def _by_name(db, row, hits):
                 continue
             if found:
                 ids.add(found[0])
+            else:
+                unheld.add((hit[1], hit[2]))
+    if not ids and len(unheld) == 1:                                   # the name is exactly one BrickLink item and nothing holds it
+        local = _listed_local(db, *unheld.pop())
+        if local is not None:
+            ids.add(local)
     ids = {items._merged_target(db, i) for i in ids}
     if len(ids) == 1:
         item_id = next(iter(ids))
@@ -590,8 +626,6 @@ def match(db, order_id, line_id, *, item_id=None, color_id=None, item_type=None,
         if not add.NUMBER.fullmatch(number):
             raise ValueError('Choose an identity from the catalogue')
         item_id = add._pick(db, kind, number)
-        if item_id is None:
-            raise ValueError('Choose an identity from the catalogue')
         via = 'number'
     colour = int(color_id) if kind == 'part' and color_id not in (None, '') else None
     if kind == 'part' and (colour is None or not add._colour_known(db, colour)):
@@ -600,6 +634,10 @@ def match(db, order_id, line_id, *, item_id=None, color_id=None, item_type=None,
         row = db.execute('SELECT l.*,d.phase FROM main.order_line l JOIN main.order_document d ON d.id=l.document_id WHERE l.id=? AND l.order_id=?', (line_id, order_id)).fetchone()
         if not row or row['phase'] != 'draft':
             raise ValueError('Reopen this document before matching lines')
+        if item_id is None:                                            # a number only the BrickLink item list knows (#154): its local item
+            item_id = _listed_local(db, items.type_of_kind(kind), number)
+            if item_id is None:
+                raise ValueError('Choose an identity from the catalogue')
         _project(db, item_id, colour)
         journal = Journal(db)
         journal.touch('order_line', line_id)

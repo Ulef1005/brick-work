@@ -11,7 +11,7 @@ import re
 
 from flask import Response
 
-from ..core import errors, order_exports, orders, undo
+from ..core import errors, items, order_exports, orders, undo
 from . import route
 from .read import arguments, bodies, integer_id, page, reading, record, respond
 from .write_collection import receipt
@@ -199,8 +199,17 @@ def post_orders_documents(db, body):
 def patch_orders_by_id_lines_by_line_id(db, body, id, line_id):
     found = order_row(db, id)
     line = order_line(db, found['id'], line_id)
-    item = item_of(db, body['item'])
-    event = orders.match(db, found['id'], line, item_id=item, color_id=color_of(db, body['item'], body.get('color')))
+    key = body['item']
+    colour = color_of(db, key, body.get('color'))
+    try:
+        item = item_of(db, key)
+    except errors.Unidentified:
+        if 'id' in key or key.get('provider', 'bricklink') != 'bricklink':
+            raise
+        # A BrickLink number no item holds yet: the loaded BrickLink item list may name it (#154); match() makes its local item or refuses.
+        event = orders.match(db, found['id'], line, item_type=items.type_of_kind(key['kind']), item_no=key['key'], color_id=colour)
+        return Done(receipt(event, 'Saved'), event)
+    event = orders.match(db, found['id'], line, item_id=item, color_id=colour)
     return Done(receipt(event, 'Saved'), event)
 
 

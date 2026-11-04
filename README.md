@@ -154,13 +154,13 @@ docker compose exec brickwork brickwork catalogue import bricklink --from data/b
 
 The resulting `bricklink-catalog.db` sits beside `brickwork.db`. Adding a new identity requires this catalogue. Collection reads, part checks, manual prices, storage changes and order imports from email/XML work without source keys.
 
-Enter BrickLink, Rebrickable and Brickset keys in **Catalogues & keys**. Stored keys are encrypted with Fernet using `BW_SECRET_KEY`. Generate a key once, put it in `data/.env`, and retain it securely:
+Enter BrickLink, Rebrickable and Brickset keys in **Catalogues & keys**. Stored keys are encrypted with Fernet. With no `BW_SECRET_KEY`, Brick Work makes a key on first use and keeps it in `data/secret.key` (back it up with `brickwork.db`). To use your own, generate a key once, put it in `data/.env` as `BW_SECRET_KEY`, and retain it securely; it always wins:
 
 ```sh
 docker compose run --rm --entrypoint python brickwork -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'
 ```
 
-Without `BW_SECRET_KEY`, key entry is disabled; environment credentials still work. A complete environment bundle overrides that source's stored bundle. BrickLink uses `BW_BRICKLINK_CONSUMER_KEY`, `BW_BRICKLINK_CONSUMER_SECRET`, `BW_BRICKLINK_TOKEN_VALUE`, `BW_BRICKLINK_TOKEN_SECRET`; Rebrickable uses `BW_REBRICKABLE_API_KEY`; Brickset uses `BW_BRICKSET_API_KEY`. Pages and API responses show configured state, origin and saved time, never key values. Brickognize needs no key.
+If the data folder is not writable and `BW_SECRET_KEY` is not set, key entry is disabled; environment credentials still work. A complete environment bundle overrides that source's stored bundle. BrickLink uses `BW_BRICKLINK_CONSUMER_KEY`, `BW_BRICKLINK_CONSUMER_SECRET`, `BW_BRICKLINK_TOKEN_VALUE`, `BW_BRICKLINK_TOKEN_SECRET`; Rebrickable uses `BW_REBRICKABLE_API_KEY`; Brickset uses `BW_BRICKSET_API_KEY`. Pages and API responses show configured state, origin and saved time, never key values. Brickognize needs no key.
 
 **Getting keys** (each service's own terms apply):
 

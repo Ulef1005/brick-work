@@ -14,6 +14,7 @@ import pytest
 
 from brickwork.core import secrets
 from brickwork.core.sources import base
+from tests.sources4 import no_key_file
 from tests.app4 import app4, client, coll, csrf, pair, read, world  # noqa: F401  (the fixtures)
 
 PAGES = ['tools', 'catalogues', 'jobs', 'refresh', 'unresolved', 'statistics', 'values', 'database', 'settings', 'appearance', 'history', 'instructions', 'about', 'tokens']
@@ -60,7 +61,7 @@ def test_page_has_write_only_password_forms(client, keyed, world):
 
 
 def test_page_says_entry_is_disabled_without_the_secret(client, keyed, pair, world, monkeypatch):
-    monkeypatch.delenv('BW_SECRET_KEY')
+    no_key_file(monkeypatch)
     html = client.get('/manage/catalogues').get_data(as_text=True)
     assert 'Key entry is disabled' in html and 'name="key:key"' not in html
     response = client.post('/manage/catalogues', data={'csrf_token': token(client), 'action': 'key_save', 'source': 'rebrickable', 'key:key': fake()}, follow_redirects=True)

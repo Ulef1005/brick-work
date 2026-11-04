@@ -37,6 +37,8 @@ Media lives in a `data/` folder under the media root: `data/images`, `data/thumb
 
 Copy those folders with your usual file backup. The database stores only relative paths, so the files must keep the same layout under `data/`.
 
+Keep `secret.key` too if you copy the data folder or `brickwork.db` itself (a file copy, not the export above). Brick Work makes it beside `brickwork.db` the first time key entry is needed (opening Catalogues & keys or Get started step 2), and it is the key that encrypts them. Restore the two together: without the matching `secret.key` the stored source keys cannot be decrypted and must be entered again. If you set `BW_SECRET_KEY` instead, there is no file and that variable is what you keep. The database export and the API export leave out the stored source keys, so they need no `secret.key`.
+
 Also keep your settings file (`data/.env`, or wherever you set your `BW_*` variables).
 
 ## Check the database

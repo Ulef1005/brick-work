@@ -11,6 +11,7 @@ from brickwork.core import keys, secrets
 from brickwork.core.connect import connect
 from brickwork.api2 import writes
 from brickwork.core.sources import base
+from tests.sources4 import no_key_file
 from tests.api2 import BL_ENV, bl, call, events, fake, row, rows, secret, stored_token, v2, validate, wire, write  # noqa: F401
 from tests.api2 import app4, coll, pair, world  # noqa: F401
 
@@ -131,6 +132,7 @@ def test_the_environment_key_wins_over_the_stored_one(v2, world, secret, wire, m
 
 
 def test_without_the_secret_key_entry_is_disabled_but_environment_keys_work(v2, world, wire, monkeypatch, pair):
+    no_key_file(monkeypatch)
     response = put(v2, 'rebrickable', {'key': fake()})
     assert response.status_code == 424 and response.json['code'] == 'source_not_configured'
     assert 'BW_SECRET_KEY' in response.json['detail'] and row(pair, 'SELECT count(*) AS n FROM source_key')['n'] == 0

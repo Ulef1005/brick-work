@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Key entry works on a fresh install** (#144). Without `BW_SECRET_KEY`, Brick Work now makes its own encryption key on first use and keeps it in `secret.key` beside `brickwork.db` (mode 600), so **Get started** step 2, **Catalogues & keys** and `PUT /sources/{source}/key` no longer need a setting. `BW_SECRET_KEY`, when set, still wins and no file is made. If the data folder cannot be written, key entry stays disabled and the message says to set `BW_SECRET_KEY` (with the command that makes a key) or make the folder writable. A damaged `secret.key` fails closed and is never shown or replaced. Keep `secret.key` with `brickwork.db` in your backups: without it the stored source keys cannot be decrypted and must be entered again (the database export leaves them out anyway). See [Back up and restore](docs/how-to/back-up-and-restore.md) and [Settings](docs/reference/settings.md).
+
 ## Brick Work 0.8.0 (schema 4.1) · 2026-11-03
 
 Milestone A, onboarding: a fresh install reaches its own collection through one guided flow, **Get started**. No schema change: a 0.7.0 collection (schema 4.1) opens as it is, and going back to 0.7.0 needs no restore. See [Bring your collection in from another app](docs/how-to/migrate.md) and [Settings and maintenance](docs/how-to/settings-and-maintenance.md).

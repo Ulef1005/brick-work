@@ -12,7 +12,7 @@ from brickwork.store4 import keys as store_keys
 from brickwork.core.sources import base
 from brickwork.core.sources.brickset import Brickset
 from tests.app4 import coll, pair  # noqa: F401 (fixtures)
-from tests.sources4 import Net, keyed, unkeyed
+from tests.sources4 import Net, keyed, no_key_file, unkeyed
 
 KEY = 'synthetic-key-0001'
 BRICKLINK = dict(consumer_key='ck-123456', consumer_secret='cs-123456', token_value='tv-123456', token_secret='ts-123456')
@@ -84,7 +84,7 @@ def test_input_is_validated_without_echoing_the_value(coll, monkeypatch):
     with pytest.raises(errors.ValidationFailed, match='needs no key'):
         keys.save(coll.db, 'brickognize', {'key': KEY})
     assert rows(coll) == []
-    monkeypatch.delenv('BW_SECRET_KEY')
+    no_key_file(monkeypatch)
     with pytest.raises(errors.SourceNotConfigured, match='disabled'):
         keys.save(coll.db, 'rebrickable', {'key': KEY})
     assert not secrets.entry_available()

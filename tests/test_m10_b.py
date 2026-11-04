@@ -1,5 +1,5 @@
 """M.10 batch B (issue #112): identity on the item page (provider links, preferred link, merge and unmerge, the unidentified item) and the rebuilt
-Unresolved items list. One test per screen state of design/approval/112-m10-b. Invented data only."""
+Unresolved items list. One test per screen state of design/screens/approval/112-m10-b. Invented data only."""
 import re
 
 from bs4 import BeautifulSoup

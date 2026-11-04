@@ -1,4 +1,4 @@
-/* Design audit captures: PNGs of app pages at the kit sizes, light and dark, for approval (design/approval/README.md).
+/* Design audit captures: PNGs of app pages at the kit sizes, light and dark, for approval (design/screens/approval/README.md).
 
     node scripts/capture_screens.cjs CHROME JOBS.json
 

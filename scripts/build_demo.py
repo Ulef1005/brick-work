@@ -2,7 +2,7 @@
 
     python3 scripts/build_demo.py OUT [--base /brick-work/demo/]
 
-OUT must not exist. Runs offline from the repository alone (design/test-data supplies the catalogue
+OUT must not exist. Runs offline from the repository alone (design/sources/test-data supplies the catalogue
 facts; the collection, prices and owners are invented; no pictures). Writes are answered with
 "Demo with sample data: changes are not saved". Exit 1 when an exported page holds a private pattern
 or loads anything from outside. build_site.py can import build_demo(out, base).

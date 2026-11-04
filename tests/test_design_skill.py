@@ -1,6 +1,6 @@
-"""The brickwork-design skill (.claude/skills/brickwork-design): it points at the design export in `design/` and the brand assets in
-`static/brickwork/` in place and keeps no copy of them, so it cannot drift from what the repo holds. Only the kit's own documents, found
-nowhere else, sit beside it in `reference/`."""
+"""The brickwork-design skill (.claude/skills/brickwork-design): it points at the P2 layout in `design/` (the export in `design/sources/`,
+the screens, the logo, app icon and icons) in place and keeps no copy of it, so it cannot drift from what the repo holds. Only the kit's
+own documents, found nowhere else, sit beside it in `reference/`. The old flat paths are gone (#159)."""
 import hashlib
 import re
 import subprocess
@@ -34,11 +34,15 @@ def test_the_skill_keeps_no_copy_of_a_file_the_repo_holds():
 
 def test_every_path_the_skill_names_exists():
     named = set(re.findall(r'`((?:design|static|docs|tests|scripts)/[^`<>{}*]+|[A-Z][\w-]*\.md)`', TEXT))
-    assert {'design/tokens-v2.css', 'design/frames.json', 'design/frames/', 'design/sections/', 'design/test-data/',
-            'static/brickwork/', 'static/brickwork/icons-ui/', 'static/fonts/', 'DESIGN-CHECK.md'} <= named
+    assert {'design/sources/tokens-v2.css', 'design/sources/frames.json', 'design/sources/index.html', 'design/screens/',
+            'design/screens/approval/', 'design/sources/test-data/', 'design/sources/assets/data/placeholders/', 'design/logo/',
+            'design/app-icon/', 'design/components/icons/', 'static/brickwork/', 'static/fonts/', 'design/DESIGN-CHECK.md'} <= named
     for path in named:
         assert (ROOT / path).exists(), path
-    for page in re.findall(r'`(design/(?:BW [\w ]+|Brick Work [\w ]+)\.dc\.html)`', TEXT):
+    old = ('design/frames', 'design/sections', 'design/approval', 'design/test-data', 'design/assets', 'design/tokens-v2')
+    assert not [path for path in re.findall(r'design/[\w./-]+', TEXT) if path.startswith(old)]
+    assert '`DESIGN-CHECK.md`' not in TEXT and '`design/frames.json`' not in TEXT
+    for page in re.findall(r'`(design/sources/(?:BW [\w ]+|Brick Work [\w ]+)\.dc\.html)`', TEXT):
         assert (ROOT / page).is_file(), page
     for ref in re.findall(r'`(reference/[^`]+)`', TEXT):
         assert (SKILL / ref).exists(), ref
@@ -46,6 +50,6 @@ def test_every_path_the_skill_names_exists():
 
 def test_the_catalogue_images_stay_out_of_git():
     for folder in ('parts', 'sets', 'minifigs', 'photos'):
-        probe = f'design/assets/data/{folder}/x.jpg'
+        probe = f'design/sources/assets/data/{folder}/x.jpg'
         assert subprocess.run(['git', 'check-ignore', '-q', probe], cwd=ROOT).returncode == 0, probe
     assert not [p for p in _tracked() if p.suffix == '.jpg' and SKILL in p.parents]

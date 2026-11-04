@@ -7,30 +7,31 @@ description: Brick Work's own design kit (App Design Standard: its own base and 
 
 Brick Work has its own design, outside Toni's World (Ulf, 2026-11-03; ADR 0022). Its tokens are two files: the design builder's neutral base `design/tokens/tokens.css` (pinned, never edited) and Brick Work's layer `design/tokens/brickwork-tokens.css`, which redefines every colour role light and dark, the type (Inter, Geist Mono), the paper-and-ink surfaces, the 0.5 px hairlines, spacing, motion, safe areas and the 44 px touch rule. The app is served `static/web/toni/tokens-v2.css`, generated from the two by `scripts/tokens_base.py` (its `build`; the `check` step keeps them in step). Charts follow the design builder's `base/charts.md` (ai-wiki `.claude/skills/design-builder/`). This kit adds a mark, one identity accent, a data-type language and the screens. The frames were approved on 2026-10-12 (v1.2) and updated to v1.3 on 2026-10-16, the current reference.
 
-**Sources of truth, not copies.** The design project's export is `design/` and is never edited here (`CLAUDE.md`): report a gap instead. The brand assets the app ships are in `static/brickwork/`. This skill points at both in place. Only the kit's own documents, which exist nowhere else in the repo, sit beside it in `reference/` (`tests/test_design_skill.py` keeps it so).
+**Sources of truth, not copies.** The design project's export is `design/sources/` and is never hand-edited here (`CLAUDE.md`): report a gap instead. `design/` is organised per the App Design Standard's P2 by scripts, and the brand assets the app ships in `static/brickwork/` are generated from it. This skill points at `design/` in place. Only the kit's own documents, which exist nowhere else in the repo, sit beside it in `reference/` (`tests/test_design_skill.py` keeps it so).
 
 ## Where things are
 
 | What | Where |
 |---|---|
 | Tokens: the pinned base and Brick Work's layer (light, dark, status, viz, safe areas). Edit only the layer, then `python3 scripts/tokens_base.py build`; never add a colour outside it | `design/tokens/tokens.css`, `design/tokens/brickwork-tokens.css` (+ generated `.json`) |
-| The design project's old token export, kept until the P2 move (#159); its differences from the served tokens are listed for Ulf | `design/tokens-v2.css` |
-| The screens, one page per nav group (each workflow is one row: phone frames, then 1440 and 1024 desktop; theme tweak = light/dark) | `design/BW Guide.dc.html`, `design/BW Collection.dc.html`, `design/BW Workbench.dc.html`, `design/BW Planning.dc.html`, `design/BW Manage.dc.html` |
-| Frames view (deep link `#/<id>?w=1440&t=dark`), manifest, start page | `design/BW Navigator.dc.html`, `design/frames.json`, `design/index.html` |
-| Exported frames, PNG, light and dark at 1440 / 1024 / 390 | `design/frames/` |
-| Exact values of the v1.3 sections | `design/sections/` (`<Group>/<id>.html`) |
-| Clickable phone and desktop flows | `design/Brick Work Clickdummy.dc.html` |
-| Screens of the built app for approval | `design/approval/` |
-| How to check the built app against the design | `DESIGN-CHECK.md` |
-| Sample content (sets, orders, wishlist, checker scenarios, part to inventory, empty states, edge cases, colours). Use it instead of inventing content | `design/test-data/` |
-| Missing-image tiles | `design/assets/data/placeholders/` |
-| Mark, app icon, favicons, lockups (use the PNG lockups: the SVG lockup clips the "k"), the accent CSS, manifest, head block | `static/brickwork/` |
-| App icons 152 to 1024 and the iPhone and iPad splash screens | `static/brickwork/icons/`, `static/brickwork/splash/` |
-| UI icons (1.6 px stroke, 24 px grid), with the sprite | `static/brickwork/icons-ui/` |
+| The design project's own token export, kept as the export's copy so its pages render; its differences from the served tokens are listed for Ulf | `design/sources/tokens-v2.css` |
+| The screens, one page per nav group (each workflow is one row: phone frames, then 1440 and 1024 desktop; theme tweak = light/dark) | `design/sources/BW Guide.dc.html`, `design/sources/BW Collection.dc.html`, `design/sources/BW Workbench.dc.html`, `design/sources/BW Planning.dc.html`, `design/sources/BW Manage.dc.html` |
+| Frames view (deep link `#/<id>?w=1440&t=dark`), the export's manifest, start page | `design/sources/BW Navigator.dc.html`, `design/sources/frames.json`, `design/sources/index.html` |
+| Exported frames, PNG, light and dark at 1440 / 1024 / 390, one folder per section, with the generated manifest | `design/screens/` (`NN-<screen>/`, `manifest.json`) |
+| Exact values of the v1.3 sections | the HTML in the section's folder, `design/screens/NN-<screen>/NN-<Screen>.html` |
+| Clickable phone and desktop flows | `design/sources/Brick Work Clickdummy.dc.html` |
+| Screens of the built app for approval | `design/screens/approval/` |
+| How to check the built app against the design | `design/DESIGN-CHECK.md` |
+| Sample content (sets, orders, wishlist, checker scenarios, part to inventory, empty states, edge cases, colours). Use it instead of inventing content | `design/sources/test-data/` |
+| Missing-image tiles | `design/sources/assets/data/placeholders/` |
+| Mark and lockups (use the PNG lockups: the SVG lockup clips the "k") | `design/logo/` |
+| App icon, favicons, the head block, app icons 152 to 1024 and the iPhone and iPad splash screens | `design/app-icon/` (`icons/`, `splash/`) |
+| UI icons (1.6 px stroke, 24 px grid), with the sprite | `design/components/icons/` |
+| What the app serves of these (generated by `scripts/brand_assets.py`; the accent CSS `brick-work.css` and `manifest.webmanifest` are the app's own) | `static/brickwork/` |
 | Patrick Hand (brand surfaces only) and its licence | `static/fonts/` |
-| The handoff, build spec, coverage, section index, frames by device, brand decisions, brand panel and specimen | `reference/` beside this file (paths inside them follow the kit's old layout: `design_files/` and `reference/` are `design/`, `assets/brick-work/` is `static/brickwork/`) |
+| The handoff, build spec, coverage, section index, frames by device, brand decisions, brand panel and specimen | `reference/` beside this file (paths inside them follow the kit's old layout: `design_files/` and `reference/` are `design/`, `assets/brick-work/` is `design/logo/`, `design/app-icon/` and `design/components/icons/`); the brand panel and specimen pages are `design/sources/BW Panel.dc.html` and `design/sources/Brick Work Specimen.dc.html` |
 
-**Catalogue images are not in the repo.** The pages load set, part and minifigure pictures from `design/assets/data/{parts,sets,minifigs,photos}/`. They are Rebrickable CDN images for mock-ups only, so `.gitignore` keeps them out, and the frames fall back to the placeholders. To see the pages with pictures, put the images into those git-ignored folders locally. The design project's export (`brickwork-design-3.zip`) has them under `assets/data/`, and ai-wiki's history keeps the old kit's copy under `.claude/skills/brickwork-design/reference/assets/data/`. Never commit them.
+**Catalogue images are not in the repo.** The pages load set, part and minifigure pictures from `design/sources/assets/data/{parts,sets,minifigs,photos}/`. They are Rebrickable CDN images for mock-ups only, so `.gitignore` keeps them out, and the frames fall back to the placeholders. To see the pages with pictures, put the images into those git-ignored folders locally. The design project's export (`brickwork-design-3.zip`) has them under `assets/data/`, and ai-wiki's history keeps the old kit's copy under `.claude/skills/brickwork-design/reference/assets/data/`. Never commit them.
 
 ## Page map (section ids)
 
@@ -75,7 +76,7 @@ One form per kind of data, in the same place everywhere (frames: `1a`).
 - **Counts:** mono, tabular, right-aligned in lists. Deficits carry a minus sign: "needs 6 · −4". Bare numbers.
 - **Money:** mono, currency first, age mark always ("€8.53 8 Oct"). Stale says "stale" in ink. Listings are labelled "listings". No data reads "no sales". Never mix currencies in one figure.
 - **Actions:** clay only. 44 px minimum, 56 px for steppers and the main phone action. One primary per screen. Destructive confirm is the only place a danger tint sits on a button.
-- **Colour:** a part colour is a swatch **filled with that colour with its name inside** (ink `#1A1816` on light colours, `#FAFAF8` on dark). Inline chip 22 px, radius 6; choice chip 56 px with a 3 px clay outline and tick when selected; the required colour on a part screen is a tile at least 96 px tall. Never a bare dot, never a colour without its name. **Colour first, part number second** everywhere. Hex values come from Rebrickable `colors.csv` (the sample colours: `design/test-data/colors.json`).
+- **Colour:** a part colour is a swatch **filled with that colour with its name inside** (ink `#1A1816` on light colours, `#FAFAF8` on dark). Inline chip 22 px, radius 6; choice chip 56 px with a 3 px clay outline and tick when selected; the required colour on a part screen is a tile at least 96 px tall. Never a bare dot, never a colour without its name. **Colour first, part number second** everywhere. Hex values come from Rebrickable `colors.csv` (the sample colours: `design/sources/test-data/colors.json`).
 
 ## Patterns
 
@@ -101,8 +102,8 @@ Status model: Complete requires "Set is checked" and nothing missing; a missing 
 
 ## Rules for new work
 
-1. Find the screen in `design/frames.json`, compare against its PNGs in `design/frames/` (light and dark, 1440 / 1024 / 390), take exact values from `design/sections/` or the matching `design/BW *.dc.html` page, and follow `DESIGN-CHECK.md`.
+1. Find the screen in `design/sources/frames.json` (or `design/screens/manifest.json`), compare against its PNGs in `design/screens/` (light and dark, 1440 / 1024 / 390), take exact values from the HTML in its screen folder or the matching `design/sources/BW *.dc.html` page, and follow `design/DESIGN-CHECK.md`.
 2. Reuse a pattern from the frames before inventing one; the section map is in `reference/INDEX-brick-work-screens.md`.
-3. Use `design/test-data/` for content; images must match the row category.
+3. Use `design/sources/test-data/` for content; images must match the row category.
 4. Check light and dark, 390 px and 1440 px.
-5. New UI gets a Claude Design hand-off on its issue; list any new component and why it is needed. Where the frames have no answer, report the gap rather than editing `design/`.
+5. New UI gets a Claude Design hand-off on its issue; list any new component and why it is needed. Where the frames have no answer, report the gap rather than editing `design/sources/`.

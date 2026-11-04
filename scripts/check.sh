@@ -93,6 +93,8 @@ docs() {
 
 step names "$python" scripts/check_names.py
 step tokens "$python" scripts/tokens_base.py check
+step brand "$python" scripts/brand_assets.py check
+step screens "$python" scripts/design_screens.py check
 step smoke "$python" -m pytest tests/test_standalone_smoke.py -q
 step pytest "$python" -m pytest tests/ -q
 step quarantine quarantine

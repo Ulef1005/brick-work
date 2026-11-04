@@ -118,7 +118,7 @@ def test_standalone_smoke(tmp_path, monkeypatch, offline, capsys):
     from brickwork.core.mcp import server
     started = []
     monkeypatch.setattr(server, 'run', lambda **kwargs: started.append(kwargs))
-    assert main(['mcp']) == 0 and started[0]['api_url'] == 'http://127.0.0.1:5000/api/v2'
+    assert main(['mcp']) == 0 and started[0]['api_url'] == 'http://127.0.0.1:3333/api/v2'
     assert {f.name for f in path.parent.glob('*.db')} == {'brickwork.db', 'catalogue.db'}
     assert offline == []
 

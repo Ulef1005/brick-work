@@ -30,6 +30,9 @@ class HTTPClient:
             try:
                 value = response.json()
             except ValueError:
+                if 'html' in (response.headers.get('Content-Type') or '').lower():   # the web app, not the API (#152)
+                    return 502, {'code': 'not_the_api', 'status': 502,
+                                 'detail': 'This address answers with a web page, not the Brick Work API: --api-url ends in /api/v2'}
                 value = response.text
             return response.status_code, value
         except requests.RequestException:

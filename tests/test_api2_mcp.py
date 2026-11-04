@@ -452,7 +452,7 @@ def test_the_clients_speak_v2(app4, v2, world, monkeypatch):
     assert calls[0][1] == 'http://127.0.0.1:5000/api/v2/me' and calls[0][2]['allow_redirects'] is False
     assert calls[0][2]['headers']['Authorization'] == 'Bearer ' + BOOTSTRAP
     from brickwork.core.mcp import server
-    assert server.run.__kwdefaults__['api_url'] == 'http://127.0.0.1:5000/api/v2'
+    assert server.run.__kwdefaults__['api_url'] == 'http://127.0.0.1:3333/api/v2'
 
 
 def test_the_in_process_client_carries_the_caller_address(app4, v2, monkeypatch):
@@ -493,7 +493,7 @@ def test_stdio_offline_token_file(app4, v2, pair, world, tmp_path, monkeypatch):
 def test_cli_flags_and_environment(app4, v2, pair, monkeypatch, tmp_path):
     from brickwork.web.cli import build_parser, main
     from brickwork.core.mcp import server
-    assert build_parser().parse_args(['mcp']).api_url == 'http://127.0.0.1:5000/api/v2'
+    assert build_parser().parse_args(['mcp']).api_url == 'http://127.0.0.1:3333/api/v2'
     received = []
     received_run = server.run
     monkeypatch.setattr(server, 'run', lambda **kwargs: received.append(kwargs))

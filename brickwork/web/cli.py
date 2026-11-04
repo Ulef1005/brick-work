@@ -28,7 +28,7 @@ def build_parser():
     mcp = parser(commands, 'mcp', 'mcp')
     mcp.add_argument('--transport', choices=('stdio', 'http'), default='stdio')
     mcp.add_argument('--in-process', action='store_true')
-    mcp.add_argument('--api-url', default='http://127.0.0.1:5000/api/v2')
+    mcp.add_argument('--api-url', default='http://127.0.0.1:3333/api/v2')
     mcp.add_argument('--token-file')
     mcp.add_argument('--allow-write', action='store_true')
     mcp.add_argument('--host', default='127.0.0.1')
@@ -200,7 +200,7 @@ def main(argv=None):
                             return 0
                     elif operation=='wishlist_list': result=wishlists.listing(db,archived=args['archived'])
                     elif operation=='wishlist_undo':
-                        collection.undo(db,args['event_id']); result=dict(message='Undone')
+                        done=collection.undo(db,args['event_id']); result=dict(message='Already undone' if (done or {}).get('already_undone') else 'Undone')
                     elif operation in ('wishlist_move','wishlist_copy'):
                         result=dict(event_id=wishlists.transfer(db,args['ids'],identifier,copy=operation=='wishlist_copy'))
                     else:

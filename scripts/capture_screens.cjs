@@ -11,7 +11,7 @@ const [chrome,jobsFile]=process.argv.slice(2);
 if(!chrome||!jobsFile){console.error('usage: node scripts/capture_screens.cjs CHROME JOBS.json');process.exit(2);}
 const {headers={},jobs}=JSON.parse(fs.readFileSync(jobsFile,'utf8'));
 const profile=fs.mkdtempSync(path.join(os.tmpdir(),'bw-capture-'));
-const child=spawn(chrome,['--headless','--disable-background-networking','--hide-scrollbars','--remote-debugging-port=0','--user-data-dir='+profile,'about:blank'],{stdio:['ignore','ignore','pipe']});
+const child=spawn(chrome,[...(process.env.BW_CHROME_NO_SANDBOX?['--no-sandbox']:[]),'--headless','--disable-background-networking','--hide-scrollbars','--remote-debugging-port=0','--user-data-dir='+profile,'about:blank'],{stdio:['ignore','ignore','pipe']});
 let launchErrors='';child.stderr.on('data',data=>launchErrors+=data.toString());
 const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 (async()=>{

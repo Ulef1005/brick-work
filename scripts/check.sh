@@ -16,20 +16,47 @@ elif common=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null)
 fi
 echo "Using Python interpreter: $python"
 failed=()
+# Rendered tests (node harnesses, Chrome geometry and screenshots) never skip silently (ADR 0022): a missing tool fails the step, unless
+# BW_SKIP_RENDERED=1 is set, and then every skipped test is named in the summary below. The test suite records its skips in $BW_RENDERED_SKIPS.
+skips=$(mktemp) && : > "$skips" || exit 1
+gate_summary=$(mktemp) && : > "$gate_summary" || exit 1
+trap 'rm -f "$skips" "$gate_summary"' EXIT
+export BW_RENDERED_SKIPS=$skips BW_GATE_SUMMARY=$gate_summary
 step() {
   local name=$1
   shift
   "$@" || failed+=("$name")
 }
 
-runtimes() {
-  if ! command -v node >/dev/null 2>&1; then
-    echo "NOTE: node is not installed; skipping Node runtime harnesses."
+browser() {
+  # A Chrome for the geometry and screenshot tests: CHROME, else the pinned Chrome for Testing in the cache (downloaded the first time,
+  # checked by version and SHA-256), else a system Chrome (scripts/chrome.py; CONTRIBUTING, Rendered tests).
+  local found
+  if found=$(python3 scripts/chrome.py ensure); then
+    export CHROME=$found
+    echo "Chrome: $CHROME"
     return 0
   fi
-  local rc=0 harness
+  if [[ ${BW_SKIP_RENDERED:-} == 1 ]]; then
+    echo "NOTE: no Chrome; BW_SKIP_RENDERED=1, so the Chrome tests are skipped and named below."
+    return 0
+  fi
+  return 1
+}
+
+runtimes() {
   shopt -s nullglob
-  for harness in tests/*_runtime.cjs; do
+  local harnesses=(tests/*_runtime.cjs) rc=0 harness
+  if ! command -v node >/dev/null 2>&1; then
+    if [[ ${BW_SKIP_RENDERED:-} == 1 ]]; then
+      echo "NOTE: node is not installed; BW_SKIP_RENDERED=1, so the Node runtime harnesses are skipped and named below."
+      printf '%s (node is not installed)\n' "${harnesses[@]}" >> "$skips"
+      return 0
+    fi
+    echo "FAILED: node is not installed, so the Node runtime harnesses cannot run (set BW_SKIP_RENDERED=1 to skip them, named in the summary)."
+    return 1
+  fi
+  for harness in "${harnesses[@]}"; do
     node "$harness" || { echo "FAILED: $harness"; rc=1; }
   done
   return $rc
@@ -91,6 +118,7 @@ docs() {
   fi
 }
 
+step chrome browser
 step names "$python" scripts/check_names.py
 step tokens "$python" scripts/tokens_base.py check
 step brand "$python" scripts/brand_assets.py check
@@ -104,6 +132,19 @@ step secrets secrets
 step api-contract "$python" scripts/check_api_contract.py
 step docs docs
 step api-writes "$python" -m scripts.generate_api_writes
+
+echo
+echo '--- Rendered tests ---'
+if [[ -s $skips ]]; then
+  sort -u "$skips" > "$skips.sorted"
+  echo "Skipped rendered tests ($(wc -l < "$skips.sorted" | tr -d ' ')), BW_SKIP_RENDERED=1:"
+  sed 's/^/  /' "$skips.sorted"
+  rm -f "$skips.sorted"
+else
+  echo 'Skipped rendered tests: none (0)'
+fi
+echo '--- Screenshot gate ---'
+if [[ -s $gate_summary ]]; then cat "$gate_summary"; else echo 'Screenshot gate: summary not written (the gate test did not finish)'; fi
 
 if ((${#failed[@]})); then
   printf 'FAILED: %s\n' "${failed[*]}"

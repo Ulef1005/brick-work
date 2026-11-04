@@ -1,11 +1,11 @@
 ---
 name: brickwork-design
-description: Brick Work's design kit, a sub-brand of Toni's World. Use for any visual work on Brick Work - a new or changed screen, component or style, brand assets, the data-type language, a mock-up of a Brick Work screen, or a check of the built app against the frames - so the result follows the approved frames, the brand and the data-type language.
+description: Brick Work's own design kit (App Design Standard: its own base and tokens, outside Toni's World). Use for any visual work on Brick Work - a new or changed screen, component or style, brand assets, the data-type language, a mock-up of a Brick Work screen, or a check of the built app against the frames - so the result follows the approved frames, the brand and the data-type language.
 ---
 
 # Brick Work design kit
 
-Brick Work lives inside Toni's World, and this skill builds on the toni-design skill (ai-wiki `.claude/skills/toni-design/`): follow Toni for the tokens, type (Inter, Geist Mono), paper-and-ink surfaces, 0.5 px hairlines, spacing, motion, safe areas, the 44 px touch rule, charts (`charts.md`) and anything not said here. This kit adds a mark, one identity accent, a data-type language and the screens. The frames were approved on 2026-10-12 (v1.2) and updated to v1.3 on 2026-10-16, the current reference.
+Brick Work has its own design, outside Toni's World (Ulf, 2026-11-03; ADR 0022). Its tokens are two files: the design builder's neutral base `design/tokens/tokens.css` (pinned, never edited) and Brick Work's layer `design/tokens/brickwork-tokens.css`, which redefines every colour role light and dark, the type (Inter, Geist Mono), the paper-and-ink surfaces, the 0.5 px hairlines, spacing, motion, safe areas and the 44 px touch rule. The app is served `static/web/toni/tokens-v2.css`, generated from the two by `scripts/tokens_base.py` (its `build`; the `check` step keeps them in step). Charts follow the design builder's `base/charts.md` (ai-wiki `.claude/skills/design-builder/`). This kit adds a mark, one identity accent, a data-type language and the screens. The frames were approved on 2026-10-12 (v1.2) and updated to v1.3 on 2026-10-16, the current reference.
 
 **Sources of truth, not copies.** The design project's export is `design/` and is never edited here (`CLAUDE.md`): report a gap instead. The brand assets the app ships are in `static/brickwork/`. This skill points at both in place. Only the kit's own documents, which exist nowhere else in the repo, sit beside it in `reference/` (`tests/test_design_skill.py` keeps it so).
 
@@ -13,7 +13,8 @@ Brick Work lives inside Toni's World, and this skill builds on the toni-design s
 
 | What | Where |
 |---|---|
-| Tokens (Toni's World v2: light, dark, status, viz, safe areas). Load first, never add a colour | `design/tokens-v2.css` |
+| Tokens: the pinned base and Brick Work's layer (light, dark, status, viz, safe areas). Edit only the layer, then `python3 scripts/tokens_base.py build`; never add a colour outside it | `design/tokens/tokens.css`, `design/tokens/brickwork-tokens.css` (+ generated `.json`) |
+| The design project's old token export, kept until the P2 move (#159); its differences from the served tokens are listed for Ulf | `design/tokens-v2.css` |
 | The screens, one page per nav group (each workflow is one row: phone frames, then 1440 and 1024 desktop; theme tweak = light/dark) | `design/BW Guide.dc.html`, `design/BW Collection.dc.html`, `design/BW Workbench.dc.html`, `design/BW Planning.dc.html`, `design/BW Manage.dc.html` |
 | Frames view (deep link `#/<id>?w=1440&t=dark`), manifest, start page | `design/BW Navigator.dc.html`, `design/frames.json`, `design/index.html` |
 | Exported frames, PNG, light and dark at 1440 / 1024 / 390 | `design/frames/` |
@@ -78,7 +79,7 @@ One form per kind of data, in the same place everywhere (frames: `1a`).
 
 ## Patterns
 
-Charts follow Toni's `charts.md`: bars start at zero, clay is the actual value, titles state the takeaway ("12 of 40 sets incomplete"); with no message use a neutral title.
+Charts follow the design builder's `base/charts.md`: bars start at zero, clay is the actual value, titles state the takeaway ("12 of 40 sets incomplete"); with no message use a neutral title.
 
 - **Segmented progress strip:** found (`--tw-viz-4`), missing (`--tw-warning`), skipped (outline), to go (`--tw-viz-n1`), 8 px, gap 2 px, mono legend.
 - **Part-to-whole bar:** solid for what can be done now, outline for the rest.

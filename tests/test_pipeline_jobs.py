@@ -188,7 +188,8 @@ def test_a_wait_marks_the_job_waiting_until_the_retry_time(coll):
 def test_a_live_owner_is_excluded_and_a_dead_or_unclaimed_one_is_taken_over(coll):
     pl = Pipeline(coll.db)
     job = queue(coll, coll.item('sets', '1000-1'))
-    coll.sql('INSERT INTO job_owner(job_id, pid, claimed_at) VALUES(?, 1, ?)', (job, '2026-10-26T12:00:00.000Z'))      # pid 1 is always alive
+    coll.sql('INSERT INTO job_owner(job_id, pid, claimed_at, boot_id, start_ticks) VALUES(?, 1, ?, ?, ?)',
+             (job, '2026-10-26T12:00:00.000Z', *jobs.owner_identity(1)))                                              # pid 1 is always alive, with its real identity
     assert pl.run(job)['state'] == 'queued' and pl.drain() == []
     coll.sql('DELETE FROM job_owner')
     coll.sql('INSERT INTO job_owner(job_id, pid, claimed_at) VALUES(?, ?, ?)', (job, os.getpid(), '2026-10-26T12:00:00.000Z'))   # this process, no claim: crashed
@@ -268,3 +269,31 @@ def test_drainer_rechecks_before_it_stops(tmp_path, monkeypatch):
     started[0]()
     assert len(rounds) == 2  # a job found at the final check runs another round
     assert not app.extensions['bw_import_worker_active']
+
+
+@pytest.mark.parametrize('boot, ticks, taken', [('boot-a', 5000, False),        # the claiming process itself
+                                                ('boot-b', 5000, True),         # claimed before a restart: another boot
+                                                ('boot-a', 4999, True),         # same boot, another process holds the pid now
+                                                (None, None, True)])            # a claim made before 4.2
+def test_a_running_job_is_owned_only_by_the_process_that_claimed_it(coll, monkeypatch, boot, ticks, taken):
+    """#167: boot id and start ticks, compared exactly; /proc is monkeypatched so this runs alike on macOS and Linux."""
+    monkeypatch.setattr(jobs, 'boot_id', lambda: 'boot-a')
+    monkeypatch.setattr(jobs, 'start_ticks', lambda pid: 5000)
+    pl = Pipeline(coll.db)
+    job = queue(coll, coll.item('sets', '1000-1'))
+    coll.sql("UPDATE job SET state='running' WHERE id=?", (job,))
+    coll.sql('INSERT INTO job_owner(job_id, pid, claimed_at, boot_id, start_ticks) VALUES(?, 1, ?, ?, ?)', (job, '2026-10-26T12:00:00.000Z', boot, ticks))
+    assert pl.owner_alive(job) is (not taken)
+    assert pl.run(job)['state'] == ('done' if taken else 'running')
+
+
+def test_a_claim_records_the_boot_id_and_start_ticks_of_this_process(coll, monkeypatch):
+    monkeypatch.setattr(jobs, 'boot_id', lambda: 'boot-a')
+    monkeypatch.setattr(jobs, 'start_ticks', lambda pid: 5000)
+    pl = Pipeline(coll.db)
+    job = queue(coll, coll.item('sets', '1000-1'))
+    seen = []
+    pl._step = lambda snapshot, saved: seen.append(coll.db.execute('SELECT pid, boot_id, start_ticks FROM main.job_owner').fetchall()) or None
+    pl.run(job)
+    assert [tuple(r) for r in seen[0]] == [(os.getpid(), 'boot-a', 5000)]
+

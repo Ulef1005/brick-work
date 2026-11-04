@@ -50,9 +50,19 @@ or raises `StepDone(code, message)` (done with a finding such as `unidentified`)
 
 ## Claims and restarts
 
-A run claims the job in `job_owner` (pid and time) inside a write transaction. A job whose owner is another live process is left alone;
-a claim by a dead pid, or by this pid when this process does not hold it, is taken over. An interrupt leaves the job `queued` and
-unclaimed. The embedded drainer starts at app start-up when a job is active, and `BW_EMBEDDED_WORKER=0` leaves draining to
+A run claims the job in `job_owner` (pid, time and the owner's identity) inside a write transaction. The identity is the kernel boot id
+(`/proc/sys/kernel/random/boot_id`) and the owner's process start time in clock ticks since boot (`/proc/<pid>/stat`, field 22),
+recorded as `boot_id` and `start_ticks` (schema 4.2, #167). A job whose owner is another live process is left alone; a claim by a
+dead pid, or by this pid when this process does not hold it, is taken over.
+
+The owner is alive only when the pid exists **and** the stored boot id equals the current one **and** the stored start ticks equal the
+pid's current ones, compared exactly (`store4.jobs.pid_alive`). After a container restart the old owner's pid can name a different
+live process, which fails the comparison: its job runs again. A claim with no identity (made before 4.2, so before the restart that
+ran the upgrade) is dead wherever `/proc` answers. Where `/proc` cannot answer (macOS) the pid alone decides. No wall clock is
+involved. The fetch and reconcile jobs claim the same way, the API's `interrupted` and the Jobs page read it, and a catalogue job
+(`catalogue-job.json`) records the same `boot_id` and `start_ticks` beside its pid and is read as interrupted by the same test. An
+interrupt leaves the job `queued` and unclaimed; a process killed outright leaves it `running`, and the next start takes it over and
+runs the steps that are not done again. The embedded drainer starts at app start-up when a job is active, and `BW_EMBEDDED_WORKER=0` leaves draining to
 `brickwork worker`.
 
 ## Progress

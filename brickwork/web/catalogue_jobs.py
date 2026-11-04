@@ -16,6 +16,7 @@ import threading
 
 from ..core import admin
 from ..store4 import cli, status
+from ..store4 import jobs as fetch_jobs
 from ..store4.connect import connect
 from ..store4.errors import Store4Error, public_text
 
@@ -42,14 +43,14 @@ def _path(paths):
     return Path(paths.data) / FILE
 
 
-def _alive(pid):
-    try:
-        os.kill(pid, 0)
-    except ProcessLookupError:
+def _alive(state):
+    """The job's process is alive and is the one that started it: its pid, the kernel boot id and the process start ticks recorded with it
+    all match (#167: after a container restart the pid can name another process, this one included; `store4.jobs.pid_alive`). A state
+    written before schema 4.2 has no identity and is dead where /proc answers; where it cannot (macOS) the pid alone decides."""
+    pid = int(state.get('pid') or 0)
+    if pid <= 0:
         return False
-    except PermissionError:
-        return True
-    return True
+    return fetch_jobs.pid_alive(pid, state.get('boot_id'), state.get('start_ticks'))
 
 
 def read(paths):
@@ -60,7 +61,7 @@ def read(paths):
         return None
     if not isinstance(state, dict) or state.get('kind') not in KINDS:
         return None
-    if state.get('state') == 'running' and not _alive(int(state.get('pid') or 0)):
+    if state.get('state') == 'running' and not _alive(state):
         state = dict(state, state='interrupted', error='Brick Work stopped while this was running. Nothing was half written: the old catalogue is still in place.')
     state['label'] = KINDS[state['kind']]
     state['steps'] = list(STEPS[state['kind']])
@@ -113,7 +114,8 @@ def start(paths, kind, *, folder=None, background=True, operation_key=None):
             if not paths.catalogue.exists():
                 raise Store4Error('build the catalogue first: the lists are added to it')
             directory = paths.lists / folder
-        state = dict(kind=kind, state='running', pid=os.getpid(), started_at=_now(), finished_at=None, step=0, folder=folder, error=None, result=None)
+        boot_id, start_ticks = fetch_jobs.owner_identity()
+        state = dict(kind=kind, state='running', pid=os.getpid(), boot_id=boot_id, start_ticks=start_ticks, started_at=_now(), finished_at=None, step=0, folder=folder, error=None, result=None)
         _write(paths, state)
     if not background:
         return _run(paths, state, directory, operation_key)

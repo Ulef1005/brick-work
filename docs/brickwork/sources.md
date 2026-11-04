@@ -26,7 +26,9 @@ Redirects are refused.
 
 `Source.request` (core/sources/base.py): refuse a disabled source (`source.enabled`) or a missing key before anything is built or counted;
 count the call (`reserve`: the daily budget, a provider's pause, the spacing) or raise `WaitingForBudget(retry_at)`; make the HTTP request
-outside any write transaction; keep the reply in `source_record` under the pipeline job (unique over source, kind, key and digest, so the
+outside any write transaction (the count is committed before the request is sent, so a budget is never overspent: a process killed
+mid-request has spent that call, and the restarted step sends it again, so one call per such kill is counted twice, on the provider's
+side too; restart between jobs, or once the day's budget is used up, to lose none); keep the reply in `source_record` under the pipeline job (unique over source, kind, key and digest, so the
 same reply twice is one record); normalise in one savepoint. A savepoint that fails rolls its writes back and keeps the reply with
 `status='failed'`. A provider's own rate pause (HTTP 429 or "throttled", Brickset's "API limit exceeded") is written as
 `blocked_until` and honoured by every client and job of the source. A 401 or 403 carrying the provider's own JSON error is `KeyRejected`;

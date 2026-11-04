@@ -83,7 +83,7 @@ brickwork mcp [--transport stdio|http] [--in-process] [--api-url URL]
 |---|---|---|
 | `--transport` | `stdio` | `stdio` for a local assistant; `http` serves Streamable HTTP at `/mcp`. The HTTP server refuses to start without a login password, as the app does. |
 | `--in-process` | off | Use the local database directly through an in-process API instead of calling a running app. |
-| `--api-url URL` | `http://127.0.0.1:5000/api/v2` | The API to call when not in-process. For a default install, use `http://127.0.0.1:3333/api/v2`. |
+| `--api-url URL` | `http://127.0.0.1:3333/api/v2` | The API to call when not in-process (a default install). The URL ends in `/api/v2`; an address that answers with the web app instead says so. |
 | `--token-file FILE` | `BW_API_TOKEN` | A file holding the API token. Without it, the `BW_API_TOKEN` setting is used. |
 | `--allow-write` | off | Turns on write tools, as `BW_MCP_WRITE=1` does. |
 | `--host HOST` | `127.0.0.1` | Listen address for `--transport http`. |

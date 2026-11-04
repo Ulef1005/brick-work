@@ -325,6 +325,8 @@ def api_data(db, number):
     header = next((r for r in headers if str(r['order_id']) == str(number)), None)
     if header is None:
         raise ValueError('Order is not in your BrickLink purchases')
+    if str(header.get('status') or '').upper() == 'PURGED':                     # BrickLink keeps no items for a purged order (#152)
+        raise ValueError("BrickLink has purged this order's items · paste the order e-mail instead")
     groups = client.order_items(number)
     entries = [e for group in groups for e in group] if groups and isinstance(groups[0], list) else groups
     rows = []

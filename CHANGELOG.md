@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## Brick Work 0.8.1 (schema 4.1) · 2026-11-04
+
+Two fixes found while setting up and testing milestone B. No schema change: a 0.8.0 collection opens as it is, and going back to 0.8.0 needs no restore. Keep the new `secret.key` with `brickwork.db` in your backups.
+
+- **Orders with items only BrickLink has** (#154). An order line naming an instruction booklet or a BrickLink-only part (some sticker and printed parts) could not be matched, so the order could not be reviewed or saved. When the BrickLink item lists are loaded (**Tools & Admin → BrickLink item lists → Load lists**), such a line now gets a new item of Brick Work's own, named as BrickLink names it, when the order is read and when you match the line by its number. An e-mail's "(Instructions) for Set 7946" names the set's one booklet (`7946-1`). A number another item already holds is never made a second time. Undoing the import leaves the new item, unused. See [Receive an order](docs/how-to/receive-an-order.md).
 - **Key entry works on a fresh install** (#144). Without `BW_SECRET_KEY`, Brick Work now makes its own encryption key on first use and keeps it in `secret.key` beside `brickwork.db` (mode 600), so **Get started** step 2, **Catalogues & keys** and `PUT /sources/{source}/key` no longer need a setting. `BW_SECRET_KEY`, when set, still wins and no file is made. If the data folder cannot be written, key entry stays disabled and the message says to set `BW_SECRET_KEY` (with the command that makes a key) or make the folder writable. A damaged `secret.key` fails closed and is never shown or replaced. Keep `secret.key` with `brickwork.db` in your backups: without it the stored source keys cannot be decrypted and must be entered again (the database export leaves them out anyway). See [Back up and restore](docs/how-to/back-up-and-restore.md) and [Settings](docs/reference/settings.md).
 
 ## Brick Work 0.8.0 (schema 4.1) · 2026-11-03

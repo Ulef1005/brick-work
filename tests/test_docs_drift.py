@@ -52,7 +52,16 @@ def test_every_setting_in_the_reference_is_read_by_the_code():
 @pytest.mark.parametrize('doc', PROSE + USER_DOCS + ('.env.sample',))
 def test_settings_named_anywhere_exist(doc):
     named = set(CODE.findall((ROOT / doc).read_text()))
-    assert sorted(named - settings_in_code()) == []
+    assert sorted(named - settings_in_code() - tooling_variables()) == []
+
+
+def tooling_variables():
+    """The BW_ variables of the test and check tooling (BW_SKIP_RENDERED, BW_CHROME_CACHE, ...): not app settings, but CONTRIBUTING names them."""
+    names = set()
+    for path in [*(ROOT / 'scripts').iterdir(), ROOT / 'tests' / 'rendered.py']:
+        if path.suffix in ('.py', '.sh', '.cjs'):
+            names |= set(CODE.findall(path.read_text(errors='replace')))
+    return names
 
 
 def command_lines(doc):

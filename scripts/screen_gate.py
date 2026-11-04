@@ -67,12 +67,21 @@ class FrozenDatetime(dt.datetime):
         return FIXED_NOW.replace(tzinfo=None)
 
 
-def freeze_clock():
-    """The app's clock stands at FIXED_NOW: every brickwork module that imported `datetime` gets the frozen class."""
+def freeze_clock() -> list:
+    """The app's clock stands at FIXED_NOW: every brickwork module that imported `datetime` gets the frozen class. Returns the modules
+    patched, for `thaw_clock` (the gate also runs inside the test suite's process, which must get the real clock back)."""
     import brickwork  # noqa: F401
+    patched = []
     for name, module in list(sys.modules.items()):
         if name.startswith('brickwork') and getattr(module, 'datetime', None) is dt.datetime:
             module.datetime = FrozenDatetime
+            patched.append(module)
+    return patched
+
+
+def thaw_clock(patched: list) -> None:
+    for module in patched:
+        module.datetime = dt.datetime
 
 
 @contextmanager
@@ -92,7 +101,7 @@ def world(name: str, warm_up: list[str] = ()):
         client = app.test_client()
         for path in warm_up:
             client.get(path)
-        freeze_clock()
+        patched = freeze_clock()
         logging.getLogger('werkzeug').setLevel(logging.ERROR)
         from werkzeug.serving import make_server
         server = make_server('127.0.0.1', 0, app, threaded=True)
@@ -100,6 +109,7 @@ def world(name: str, warm_up: list[str] = ()):
         try:
             yield f'http://127.0.0.1:{server.server_port}'
         finally:
+            thaw_clock(patched)
             server.shutdown()
             for key, value in saved.items():
                 if value is None:

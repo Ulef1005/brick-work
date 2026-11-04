@@ -228,7 +228,7 @@ def test_a_repaste_with_a_blank_line_revives_every_line_in_place_and_its_undo_pu
     again = orders.import_document(db, 'email', '\n\n' + text.replace('\n[', '\n\n['))
     assert again['duplicate'] is False and again['document_id'] == first['document_id']
     after = [tuple(r) for r in db.execute('SELECT id,line_no,raw_text FROM order_line WHERE document_id=? ORDER BY id', (first['document_id'],))]
-    assert [(i, t) for i, _, t in after] == [(i, t) for i, _, t in before] and [n for _, n, _ in after] != [n for _, n, _ in before]
+    assert after == before                                                    # the same rows, ids and line numbers
     orders.undo(db, again['event_id'])
     assert [tuple(r) for r in db.execute('SELECT id,line_no,raw_text FROM order_line WHERE document_id=? ORDER BY id', (first['document_id'],))] == before
 
@@ -288,3 +288,18 @@ def test_an_ambiguous_bricklink_colour_never_turns_colour_ids_into_item_suggesti
     row = only(db, result)
     assert row['item_id'] is None and row['color_id'] is None
     assert [s['item_id'] for s in json.loads(row['suggestions_json'])] == [made['3068b']]
+
+
+def test_a_repaste_without_the_blank_lines_of_the_first_paste_revives_and_undoes_cleanly(world, coll):
+    """The other direction (Codex round 2): the first paste has blank lines, the second none. No line is renumbered, so Undo never collides."""
+    db = coll.db
+    text = email('Tile, Round 2 x 2', 'Slope, Curved 4 x 1')
+    first = orders.import_document(db, 'email', '\n\n' + text.replace('\n[', '\n\n['))
+    before = [tuple(r) for r in db.execute('SELECT id,line_no,raw_text FROM order_line WHERE document_id=? ORDER BY id', (first['document_id'],))]
+    orders.undo(db, first['event_id'])
+    again = orders.import_document(db, 'email', text)
+    assert again['document_id'] == first['document_id']
+    assert [tuple(r) for r in db.execute('SELECT id,line_no,raw_text FROM order_line WHERE document_id=? ORDER BY id', (first['document_id'],))] == before
+    orders.undo(db, again['event_id'])
+    assert db.execute('SELECT phase FROM order_document WHERE id=?', (first['document_id'],)).fetchone()[0] == 'undone'
+    assert [tuple(r) for r in db.execute('SELECT id,line_no,raw_text FROM order_line WHERE document_id=? ORDER BY id', (first['document_id'],))] == before

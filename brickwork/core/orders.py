@@ -630,14 +630,13 @@ def import_document(db, source, text='', *, choice='new', number=None, label=Non
             journal.touch('order_document', document_id)
             db.execute("UPDATE main.order_document SET phase='draft',updated_at=? WHERE id=?", (stamp, document_id))
             # The same text (blank lines aside: the digest ignores them, the line numbers count them) parses to the same lines in the same
-            # order, so the old lines are paired with the new ones by position and updated in place: nothing is deleted, and Undo of the
-            # revival puts every row back. Lines that no longer pair (a parser change) refuse the import.
-            ids = [r['id'] for r in db.execute('SELECT id FROM main.order_line WHERE document_id=? ORDER BY line_no', (document_id,))]
-            if len(ids) != len(raw):
+            # order, so the old lines are paired with the new ones by position and updated in place, each keeping its line number: nothing
+            # is deleted or renumbered, and Undo of the revival puts every row back. Lines that no longer pair (a parser change) refuse it.
+            kept = db.execute('SELECT id,line_no FROM main.order_line WHERE document_id=? ORDER BY line_no', (document_id,)).fetchall()
+            if len(kept) != len(raw):
                 raise ValueError('This document cannot be imported again · its lines no longer match the undone import')
-            journal.touch('order_line', *ids)
-            db.execute('UPDATE main.order_line SET line_no=-id WHERE document_id=?', (document_id,))   # free the numbers before renumbering
-            old_lines = {row['line_no']: line_id for row, line_id in zip(raw, ids)}
+            journal.touch('order_line', *[r['id'] for r in kept])
+            old_lines = {row['line_no']: (r['id'], r['line_no']) for row, r in zip(raw, kept)}
         else:
             document_id = db.execute('''INSERT INTO main.order_document(order_id,source,digest,label,phase,raw_record_id,created_at,updated_at) VALUES(?,?,?,?,'draft',?,?,?)''',
                                      (order_id, source, digest, label or source, record, stamp, stamp)).lastrowid
@@ -677,8 +676,8 @@ def import_document(db, source, text='', *, choice='new', number=None, label=Non
             columns = ('order_id,document_id,line_no,raw_item_type,raw_item_no,raw_color_id,raw_color_name,raw_name,raw_text,remark,item_id,color_id,sticker_set_item_id,'
                        'condition,state,qty,unit_price,line_total,batch,submitted,suggestions_json,unplaced_reason,updated_at')
             if row['line_no'] in old_lines:                                   # a revived document: the same line, placed anew
-                line_id = old_lines[row['line_no']]
-                journal.touch('order_line', line_id)
+                line_id, kept_no = old_lines[row['line_no']]
+                values = values[:2] + (kept_no,) + values[3:]                 # the line keeps its number: Undo never renumbers
                 db.execute('UPDATE main.order_line SET ' + ','.join(c + '=?' for c in columns.split(',')) + ',confirmed_via=NULL,paired_line_id=NULL WHERE id=?', (*values, line_id))
             else:
                 line_id = db.execute(f'INSERT INTO main.order_line({columns}) VALUES({",".join("?" * 23)})', values).lastrowid

@@ -346,9 +346,11 @@ def _label(db, item_id):
     return dict(item_id=item_id, label=(label.text + ' · ' if label.number else '') + label.name)
 
 
-def _holders(db, letter, key):
-    """The live items that hold a BrickLink key in any colour scope: the pooled inverse without a colour, and every collection or catalogue
-    link of the key. More than one is ambiguous; one is the owner to reuse; none lets the key become a new local item."""
+def _holders(db, letter, key, *, confirmed=False):
+    """The live items that hold a BrickLink key in any colour scope: the pooled inverse without a colour, and the collection and catalogue
+    links of the key, every status (`confirmed`: no `to_check` link, as the inverse itself). Any holder blocks a new local item; only a
+    sole confirmed holder may be reused."""
+    status = " AND status!='to_check'" if confirmed else ''
     held = set()
     try:
         found = identity.resolve_inverse(db, letter, key, None, exhaustive=True)
@@ -356,9 +358,10 @@ def _holders(db, letter, key):
             held.add(found[0])
     except AmbiguousIdentity as exc:
         held.update(exc.items)
-    held.update(r[0] for r in db.execute("SELECT item_id FROM main.item_link WHERE provider='bricklink' AND provider_kind=? AND provider_key=?", (letter, key)))
+    held.update(r[0] for r in db.execute("SELECT item_id FROM main.item_link WHERE provider='bricklink' AND provider_kind=? AND provider_key=?" + status,
+                                         (letter, key)))
     if has_catalogue(db):
-        held.update(r[0] for r in db.execute("SELECT item_id FROM catalogue.item_link WHERE provider='bricklink' AND provider_kind=? AND provider_key=?",
+        held.update(r[0] for r in db.execute("SELECT item_id FROM catalogue.item_link WHERE provider='bricklink' AND provider_kind=? AND provider_key=?" + status,
                                              (letter, key)))
     return {items._merged_target(db, i) for i in held}
 
@@ -373,15 +376,16 @@ def _listed_local(db, letter, number):
         found, _ = w.booklet_item(db, number)
         if found is None:
             return None
-        if not isinstance(found, tuple):                               # a booklet held by born key: still one owner only (no competing link)
-            row = db.execute('SELECT born_key FROM main.item WHERE id=?', (found,)).fetchone() or (
-                db.execute('SELECT born_key FROM catalogue.item WHERE id=?', (found,)).fetchone() if has_catalogue(db) else None)
-            owners = (_holders(db, 'I', row[0]) if row and row[0] else set()) | {items._merged_target(db, found)}
-            return found if len(owners) == 1 else None
+        if not isinstance(found, tuple):                               # held by born key: reused only as BrickLink's own booklet, sole owner
+            row = db.execute('SELECT born_provider,born_namespace,born_key FROM main.item WHERE id=?', (found,)).fetchone() or (
+                db.execute('SELECT born_provider,born_namespace,born_key FROM catalogue.item WHERE id=?', (found,)).fetchone() if has_catalogue(db) else None)
+            if not row or (row[0], row[1]) != ('bricklink', 'I') or not row[2]:
+                return None
+            return found if _holders(db, 'I', row[2]) | {items._merged_target(db, found)} == {items._merged_target(db, found)} else None
         _, key, name = found
         holders = _holders(db, 'I', key)
-        if holders:
-            return holders.pop() if len(holders) == 1 else None
+        if holders:                                                    # reused only when one item holds it, by a confirmed link
+            return next(iter(holders)) if len(holders) == 1 and _holders(db, 'I', key, confirmed=True) == holders else None
     else:
         if not has_catalogue(db) or letter not in items.TYPE_KIND:
             return None

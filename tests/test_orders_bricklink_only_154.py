@@ -182,3 +182,32 @@ def test_a_booklet_held_by_born_key_and_by_another_items_link_is_ambiguous(world
                                   method='external_ids', origin='shipped')
         made = orders.import_document(db, 'email', "* Batch #1 (submitted Dec 1, 2025 04:55)\n[Used] (Instructions) for Set 7946 King's Castle (x1) ..... EUR 10.00 each = EUR 10.00\n")
         assert made['placed'] == 0
+
+
+def test_a_booklet_with_only_a_link_to_check_is_not_reused_and_not_duplicated(world, coll, pair):
+    """Codex review: a `to_check` candidate is no identity; it blocks a new booklet and waits for the person."""
+    from brickwork.core.transaction import transaction
+    from brickwork.store4 import fetched
+    listed(pair, ('I', '7946-1', "King's Castle"))
+    coll.db.close()
+    with closing(connect(pair)) as db:
+        with transaction(db):
+            candidate = fetched.create_local_item(db, kind='instructions', born_provider='bricklink', born_namespace='I', born_key='7946-1z',
+                                                  name='Maybe this booklet', kind_source='bricklink')
+            fetched.add_item_link(db, candidate, provider='bricklink', provider_kind='I', provider_key='7946-1', status='to_check',
+                                  method='external_ids', origin='shipped')
+        made = orders.import_document(db, 'email', "* Batch #1 (submitted Dec 1, 2025 04:55)\n[Used] (Instructions) for Set 7946 King's Castle (x1) ..... EUR 10.00 each = EUR 10.00\n")
+        assert made['placed'] == 0 and local(db, 'I', '7946-1') is None
+
+
+def test_a_booklet_born_under_another_provider_is_not_taken_for_the_bricklink_one(world, coll, pair):
+    """Codex review: number equality across providers is no identity."""
+    from brickwork.core.transaction import transaction
+    from brickwork.store4 import fetched
+    coll.db.close()
+    with closing(connect(pair)) as db:
+        with transaction(db):
+            fetched.create_local_item(db, kind='instructions', born_provider='rebrickable', born_namespace='set', born_key='7946-1',
+                                      name='A Rebrickable-born booklet', kind_source='namespace')
+        made = orders.import_document(db, 'email', "* Batch #1 (submitted Dec 1, 2025 04:55)\n[Used] (Instructions) for Set 7946 King's Castle (x1) ..... EUR 10.00 each = EUR 10.00\n")
+        assert made['placed'] == 0

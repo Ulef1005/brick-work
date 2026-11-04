@@ -346,11 +346,29 @@ def _label(db, item_id):
     return dict(item_id=item_id, label=(label.text + ' · ' if label.number else '') + label.name)
 
 
+def _holders(db, letter, key):
+    """The live items that hold a BrickLink key in any colour scope: the pooled inverse without a colour, and every collection or catalogue
+    link of the key. More than one is ambiguous; one is the owner to reuse; none lets the key become a new local item."""
+    held = set()
+    try:
+        found = identity.resolve_inverse(db, letter, key, None, exhaustive=True)
+        if found is not None:
+            held.add(found[0])
+    except AmbiguousIdentity as exc:
+        held.update(exc.items)
+    held.update(r[0] for r in db.execute("SELECT item_id FROM main.item_link WHERE provider='bricklink' AND provider_kind=? AND provider_key=?", (letter, key)))
+    if has_catalogue(db):
+        held.update(r[0] for r in db.execute("SELECT item_id FROM catalogue.item_link WHERE provider='bricklink' AND provider_kind=? AND provider_key=?",
+                                             (letter, key)))
+    return {items._merged_target(db, i) for i in held}
+
+
 def _listed_local(db, letter, number):
     """The local BrickLink-born item for a key the loaded BrickLink item list names and no item holds (#154): created once (idempotent on
     its born key) and linked, as the part-list fetch and the booklet entry do. A booklet goes through `workbench.booklet_item`, so a bare
-    set number ("for Set 7946") names its one booklet (`7946-1`). None when the list does not name the key. An import's Undo leaves the
-    item (unused), as the booklet entry's does."""
+    set number ("for Set 7946") names its one booklet (`7946-1`); a booklet key that one item already holds by a link is that item, one
+    that several hold places nothing. Any other key an item holds, in any colour scope, places nothing here: never a second identity.
+    None when the list does not name the key. An import's Undo leaves a created item (unused), as the booklet entry's does."""
     if letter == 'I':
         found, _ = w.booklet_item(db, number)
         if found is None:
@@ -358,21 +376,14 @@ def _listed_local(db, letter, number):
         if not isinstance(found, tuple):
             return found
         _, key, name = found
+        holders = _holders(db, 'I', key)
+        if holders:
+            return holders.pop() if len(holders) == 1 else None
     else:
         if not has_catalogue(db) or letter not in items.TYPE_KIND:
             return None
         listed = db.execute('SELECT item_no,name FROM catalogue.bricklink_item WHERE item_type=? AND item_no=?', (letter, number)).fetchone()
-        if listed is None:
-            return None
-        try:                                                           # held by any item in any colour scope: never a second identity
-            if identity.resolve_inverse(db, letter, number, None, exhaustive=True) is not None:
-                return None
-        except AmbiguousIdentity:
-            return None
-        if db.execute("SELECT 1 FROM main.item_link WHERE provider='bricklink' AND provider_kind=? AND provider_key=? LIMIT 1", (letter, number)).fetchone():
-            return None
-        if has_catalogue(db) and db.execute("SELECT 1 FROM catalogue.item_link WHERE provider='bricklink' AND provider_kind=? AND provider_key=? LIMIT 1",
-                                            (letter, number)).fetchone():
+        if listed is None or _holders(db, letter, number):
             return None
         key, name = listed['item_no'], listed['name']
     item = fetched.create_local_item(db, kind=items.kind_of_type(letter), born_provider='bricklink', born_namespace=letter, born_key=key, name=name,

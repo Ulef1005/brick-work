@@ -147,3 +147,21 @@ def test_the_api_never_falls_back_to_another_providers_number(v2, world, pair):
     refused = write(v2, f"/orders/{order}/lines/{line['id']}", 'patch', {'item': {'provider': 'bricklink', 'kind': 'part', 'key': '003402'}, 'color': RED}, key=True)
     assert refused.status_code == 422, refused.text                                      # 003402 is a Rebrickable number only
     assert call(v2, f'/orders/{order}').json['data']['lines'][0]['item'] is None
+
+
+def test_a_bare_booklet_number_reuses_the_item_that_holds_its_bricklink_link(world, coll, pair):
+    """Codex review: a booklet held by a link (another born key) is that item, not a second booklet."""
+    from brickwork.core.transaction import transaction
+    from brickwork.store4 import fetched
+    listed(pair, ('I', '7946-1', "King's Castle"))
+    coll.db.close()
+    with closing(connect(pair)) as db:
+        with transaction(db):
+            other = fetched.create_local_item(db, kind='instructions', born_provider='bricklink', born_namespace='I', born_key='7946-1x',
+                                              name='Kings Castle booklet', kind_source='bricklink')
+            fetched.add_item_link(db, other, provider='bricklink', provider_kind='I', provider_key='7946-1', status='matched',
+                                  method='external_ids', origin='shipped')
+        made = orders.import_document(db, 'email', "* Batch #1 (submitted Dec 1, 2025 04:55)\n[Used] (Instructions) for Set 7946 King's Castle (x1) ..... EUR 10.00 each = EUR 10.00\n")
+        assert made['placed'] == 1
+        assert lines(db, made['order_id'])['7946']['item_id'] == other
+        assert local(db, 'I', '7946-1') is None

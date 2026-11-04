@@ -68,7 +68,7 @@ def test_c1_catalogue_shows_the_build_and_both_actions(client, world, paths):
 
 
 def test_c2_a_running_job_shows_progress_and_holds_the_actions(client, world, paths):
-    catalogue_jobs._write(paths, dict(kind='redownload', state='running', pid=os.getpid(), started_at='2026-10-27T09:00:00Z', finished_at=None,
+    catalogue_jobs._write(paths, dict(kind='redownload', state='running', pid=os.getpid(), started_at=catalogue_jobs._now(), finished_at=None,
                                       step=1, folder=None, error=None, result=None))
     html, soup = page(client, 'catalogue')
     bar = soup.find(attrs={'role': 'progressbar'})
@@ -369,7 +369,7 @@ def wait_for_job(paths):
 
 def test_the_job_route_reports_none_running_and_done(client, world, paths, served):
     assert client.get('/manage/catalogue/job').get_json() == {'state': 'none'}
-    catalogue_jobs._write(paths, dict(kind='redownload', state='running', pid=os.getpid(), started_at='2026-10-27T09:00:00Z', finished_at=None,
+    catalogue_jobs._write(paths, dict(kind='redownload', state='running', pid=os.getpid(), started_at=catalogue_jobs._now(), finished_at=None,
                                       step=2, folder=None, error=None, result=None))
     r = client.get('/manage/catalogue/job')
     state = r.get_json()
@@ -407,7 +407,7 @@ def test_post_load_lists_runs_the_job_through_the_route(client, world, paths):
 
 
 def test_a_second_job_while_one_runs_is_refused_with_a_message(client, world, paths):
-    catalogue_jobs._write(paths, dict(kind='redownload', state='running', pid=os.getpid(), started_at='2026-10-27T09:00:00Z', finished_at=None,
+    catalogue_jobs._write(paths, dict(kind='redownload', state='running', pid=os.getpid(), started_at=catalogue_jobs._now(), finished_at=None,
                                       step=0, folder=None, error=None, result=None))
     token = csrf(client)
     html = client.post('/manage/catalogue', data={'csrf_token': token, 'action': 'reconcile'}, follow_redirects=True).get_data(as_text=True)

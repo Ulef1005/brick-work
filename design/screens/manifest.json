@@ -1,0 +1,4055 @@
+{
+  "app": "brick-work",
+  "generated_by": "scripts/design_screens.py manifest",
+  "source": "design/sources/frames.json",
+  "screens": [
+    {
+      "id": "g1",
+      "folder": "01-Principles",
+      "screen": "Principles",
+      "group": "Guide",
+      "sub": "Principles",
+      "title": "G1Principles",
+      "source": "BW Guide.dc.html",
+      "view": "BW%20Navigator.dc.html#/Guide/Principles/g1",
+      "html": "01-Principles.html",
+      "states": [
+        {
+          "label": "G1 Principles",
+          "width": 1280,
+          "state": "G1 Principles"
+        }
+      ],
+      "sizes": [
+        1280
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "01-Principles-1280-dark.png",
+        "01-Principles-1280-light.png"
+      ]
+    },
+    {
+      "id": "g2",
+      "folder": "02-Colour-guidance",
+      "screen": "Colour-guidance",
+      "group": "Guide",
+      "sub": "Principles",
+      "title": "G2Colour guidance · part colours",
+      "source": "BW Guide.dc.html",
+      "view": "BW%20Navigator.dc.html#/Guide/Principles/g2",
+      "html": "02-Colour-guidance.html",
+      "states": [
+        {
+          "label": "G2 Colour guidance",
+          "width": 1280,
+          "state": "G2 Colour guidance"
+        }
+      ],
+      "sizes": [
+        1280
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "02-Colour-guidance-1280-dark.png",
+        "02-Colour-guidance-1280-light.png"
+      ]
+    },
+    {
+      "id": "g3",
+      "folder": "03-Tokens-and-type",
+      "screen": "Tokens-and-type",
+      "group": "Guide",
+      "sub": "Principles",
+      "title": "G3Tokens and type",
+      "source": "BW Guide.dc.html",
+      "view": "BW%20Navigator.dc.html#/Guide/Principles/g3",
+      "html": "03-Tokens-and-type.html",
+      "states": [
+        {
+          "label": "G3 Tokens and type",
+          "width": 1280,
+          "state": "G3 Tokens and type"
+        }
+      ],
+      "sizes": [
+        1280
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "03-Tokens-and-type-1280-dark.png",
+        "03-Tokens-and-type-1280-light.png"
+      ]
+    },
+    {
+      "id": "g4",
+      "folder": "04-Navigation-and-workflow-pages",
+      "screen": "Navigation-and-workflow-pages",
+      "group": "Guide",
+      "sub": "Principles",
+      "title": "G4Navigation and workflow pages",
+      "source": "BW Guide.dc.html",
+      "view": "BW%20Navigator.dc.html#/Guide/Principles/g4",
+      "html": "04-Navigation-and-workflow-pages.html",
+      "states": [
+        {
+          "label": "G4 Navigation",
+          "width": 1280,
+          "state": "G4 Navigation"
+        }
+      ],
+      "sizes": [
+        1280
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "04-Navigation-and-workflow-pages-navigation-1280-dark.png",
+        "04-Navigation-and-workflow-pages-navigation-1280-light.png"
+      ]
+    },
+    {
+      "id": "1a",
+      "folder": "05-Data-type-language",
+      "screen": "Data-type-language",
+      "group": "Guide",
+      "sub": "Language",
+      "title": "Data-type language",
+      "source": "BW Guide.dc.html",
+      "view": "BW%20Navigator.dc.html#/Guide/Language/1a",
+      "html": null,
+      "states": [
+        {
+          "label": "1a Key",
+          "width": 1280,
+          "state": "1a Key"
+        }
+      ],
+      "sizes": [
+        1280
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "05-Data-type-language-key-1280-dark.png",
+        "05-Data-type-language-key-1280-light.png"
+      ]
+    },
+    {
+      "id": "1b",
+      "folder": "06-App-shell",
+      "screen": "App-shell",
+      "group": "Guide",
+      "sub": "Shell and devices",
+      "title": "App shell · four groups, Jump, brand touch",
+      "source": "BW Guide.dc.html",
+      "view": "BW%20Navigator.dc.html#/Guide/Shell%20and%20devices/1b",
+      "html": null,
+      "states": [
+        {
+          "label": "1b Phone Workbench",
+          "width": 390,
+          "state": "1b Phone Workbench"
+        },
+        {
+          "label": "1b Phone Jump",
+          "width": 390,
+          "state": "1b Phone Jump"
+        },
+        {
+          "label": "1b Phone Manage",
+          "width": 390,
+          "state": "1b Phone Manage"
+        },
+        {
+          "label": "1b Desktop 1440",
+          "width": 1440,
+          "state": "1b Desktop 1440"
+        },
+        {
+          "label": "1b Desktop 1024",
+          "width": 1024,
+          "state": "1b Desktop 1024"
+        }
+      ],
+      "sizes": [
+        390,
+        1024,
+        1440
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "06-App-shell-desktop-1024-1024-dark.png",
+        "06-App-shell-desktop-1024-1024-light.png",
+        "06-App-shell-desktop-1440-1440-dark.png",
+        "06-App-shell-desktop-1440-1440-light.png",
+        "06-App-shell-phone-jump-390-dark.png",
+        "06-App-shell-phone-jump-390-light.png",
+        "06-App-shell-phone-manage-390-dark.png",
+        "06-App-shell-phone-manage-390-light.png",
+        "06-App-shell-phone-workbench-390-dark.png",
+        "06-App-shell-phone-workbench-390-light.png"
+      ]
+    },
+    {
+      "id": "6a",
+      "folder": "07-New-navigation-icons",
+      "screen": "New-navigation-icons",
+      "group": "Guide",
+      "sub": "Shell and devices",
+      "title": "New navigation icons · 1.6 px stroke, 24 px grid, round caps",
+      "source": "BW Guide.dc.html",
+      "view": "BW%20Navigator.dc.html#/Guide/Shell%20and%20devices/6a",
+      "html": "07-New-navigation-icons.html",
+      "states": [],
+      "sizes": [],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": []
+    },
+    {
+      "id": "9a",
+      "folder": "08-Devices",
+      "screen": "Devices",
+      "group": "Guide",
+      "sub": "Shell and devices",
+      "title": "Devices · iPad mini, desktop 1280 × 800, safe areas, Workbench sheet",
+      "source": "BW Guide.dc.html",
+      "view": "BW%20Navigator.dc.html#/Guide/Shell%20and%20devices/9a",
+      "html": null,
+      "states": [
+        {
+          "label": "9a iPad portrait checker",
+          "width": 768,
+          "state": "9a iPad portrait checker"
+        },
+        {
+          "label": "9a iPad landscape checker",
+          "width": 1024,
+          "state": "9a iPad landscape checker"
+        },
+        {
+          "label": "9a iPad portrait scanner",
+          "width": 768,
+          "state": "9a iPad portrait scanner"
+        },
+        {
+          "label": "9a Workbench sheet 390",
+          "width": 390,
+          "state": "9a Workbench sheet 390"
+        },
+        {
+          "label": "9a Workbench sheet 768",
+          "width": 768,
+          "state": "9a Workbench sheet 768"
+        },
+        {
+          "label": "9a Desktop 1280 checker",
+          "width": 1280,
+          "state": "9a Desktop 1280 checker"
+        }
+      ],
+      "sizes": [
+        390,
+        768,
+        1024,
+        1280
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "08-Devices-desktop-1280-checker-1280-dark.png",
+        "08-Devices-desktop-1280-checker-1280-light.png",
+        "08-Devices-ipad-landscape-checker-1024-dark.png",
+        "08-Devices-ipad-landscape-checker-1024-light.png",
+        "08-Devices-ipad-portrait-checker-768-dark.png",
+        "08-Devices-ipad-portrait-checker-768-light.png",
+        "08-Devices-ipad-portrait-scanner-768-dark.png",
+        "08-Devices-ipad-portrait-scanner-768-light.png",
+        "08-Devices-workbench-sheet-390-390-dark.png",
+        "08-Devices-workbench-sheet-390-390-light.png",
+        "08-Devices-workbench-sheet-768-768-dark.png",
+        "08-Devices-workbench-sheet-768-768-light.png"
+      ]
+    },
+    {
+      "id": "1c",
+      "folder": "09-Collection",
+      "screen": "Collection",
+      "group": "Collection",
+      "sub": "Sets",
+      "title": "Collection · Sets",
+      "source": "BW Collection.dc.html",
+      "view": "BW%20Navigator.dc.html#/Collection/Sets/1c",
+      "html": null,
+      "states": [
+        {
+          "label": "1c Sets grid",
+          "width": 390,
+          "state": "1c Sets grid"
+        },
+        {
+          "label": "1c Sets list",
+          "width": 390,
+          "state": "1c Sets list"
+        },
+        {
+          "label": "1c Filters sheet",
+          "width": 390,
+          "state": "1c Filters sheet"
+        },
+        {
+          "label": "1c Sort sheet",
+          "width": 390,
+          "state": "1c Sort sheet"
+        },
+        {
+          "label": "1c Sets desktop",
+          "width": 1440,
+          "state": "1c Sets desktop"
+        },
+        {
+          "label": "10a Sets iPad portrait",
+          "width": 768,
+          "state": "10a Sets iPad portrait"
+        },
+        {
+          "label": "10a Sets iPad landscape",
+          "width": 1024,
+          "state": "10a Sets iPad landscape"
+        }
+      ],
+      "sizes": [
+        390,
+        768,
+        1024,
+        1440
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "09-Collection-filters-sheet-390-dark.png",
+        "09-Collection-filters-sheet-390-light.png",
+        "09-Collection-sets-desktop-1440-dark.png",
+        "09-Collection-sets-desktop-1440-light.png",
+        "09-Collection-sets-grid-390-dark.png",
+        "09-Collection-sets-grid-390-light.png",
+        "09-Collection-sets-list-390-dark.png",
+        "09-Collection-sets-list-390-light.png",
+        "09-Collection-sort-sheet-390-dark.png",
+        "09-Collection-sort-sheet-390-light.png"
+      ]
+    },
+    {
+      "id": "1d",
+      "folder": "10-Set-detail",
+      "screen": "Set-detail",
+      "group": "Collection",
+      "sub": "Sets",
+      "title": "Set detail · 7286-1 Prisoner Transport",
+      "source": "BW Collection.dc.html",
+      "view": "BW%20Navigator.dc.html#/Collection/Sets/1d",
+      "html": null,
+      "states": [
+        {
+          "label": "1d Set detail phone",
+          "width": 390,
+          "state": "1d Set detail phone"
+        },
+        {
+          "label": "1d Set detail desktop",
+          "width": 1440,
+          "state": "1d Set detail desktop"
+        },
+        {
+          "label": "1d Set detail 1024",
+          "width": 1024,
+          "state": "1d Set detail 1024"
+        },
+        {
+          "label": "10a Set detail iPad portrait",
+          "width": 768,
+          "state": "10a Set detail iPad portrait"
+        },
+        {
+          "label": "10a Set detail iPad landscape",
+          "width": 1024,
+          "state": "10a Set detail iPad landscape"
+        }
+      ],
+      "sizes": [
+        390,
+        768,
+        1024,
+        1440
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "10-Set-detail-set-detail-1024-1024-dark.png",
+        "10-Set-detail-set-detail-1024-1024-light.png",
+        "10-Set-detail-set-detail-desktop-1440-dark.png",
+        "10-Set-detail-set-detail-desktop-1440-light.png",
+        "10-Set-detail-set-detail-phone-390-dark.png",
+        "10-Set-detail-set-detail-phone-390-light.png"
+      ]
+    },
+    {
+      "id": "1e",
+      "folder": "11-Edit-sheet",
+      "screen": "Edit-sheet",
+      "group": "Collection",
+      "sub": "Sets",
+      "title": "Edit sheet · set copy",
+      "source": "BW Collection.dc.html",
+      "view": "BW%20Navigator.dc.html#/Collection/Sets/1e",
+      "html": null,
+      "states": [
+        {
+          "label": "1e Edit sheet phone",
+          "width": 390,
+          "state": "1e Edit sheet phone"
+        },
+        {
+          "label": "1e Edit panel desktop",
+          "width": 1440,
+          "state": "1e Edit panel desktop"
+        }
+      ],
+      "sizes": [
+        390,
+        1440
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "11-Edit-sheet-edit-panel-desktop-1440-dark.png",
+        "11-Edit-sheet-edit-panel-desktop-1440-light.png",
+        "11-Edit-sheet-edit-sheet-phone-390-dark.png",
+        "11-Edit-sheet-edit-sheet-phone-390-light.png"
+      ]
+    },
+    {
+      "id": "2a",
+      "folder": "12-Minifigure-detail",
+      "screen": "Minifigure-detail",
+      "group": "Collection",
+      "sub": "Minifigures",
+      "title": "Minifigure detail",
+      "source": "BW Collection.dc.html",
+      "view": "BW%20Navigator.dc.html#/Collection/Minifigures/2a",
+      "html": null,
+      "states": [
+        {
+          "label": "2a Minifigure phone",
+          "width": 390,
+          "state": "2a Minifigure phone"
+        }
+      ],
+      "sizes": [
+        390
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "12-Minifigure-detail-minifigure-phone-390-dark.png",
+        "12-Minifigure-detail-minifigure-phone-390-light.png"
+      ]
+    },
+    {
+      "id": "2b",
+      "folder": "13-Part-detail",
+      "screen": "Part-detail",
+      "group": "Collection",
+      "sub": "Parts",
+      "title": "Part detail",
+      "source": "BW Collection.dc.html",
+      "view": "BW%20Navigator.dc.html#/Collection/Parts/2b",
+      "html": null,
+      "states": [
+        {
+          "label": "2b Part phone",
+          "width": 390,
+          "state": "2b Part phone"
+        },
+        {
+          "label": "2b Part desktop",
+          "width": 1440,
+          "state": "2b Part desktop"
+        }
+      ],
+      "sizes": [
+        390,
+        1440
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "13-Part-detail-part-desktop-1440-dark.png",
+        "13-Part-detail-part-desktop-1440-light.png",
+        "13-Part-detail-part-phone-390-dark.png",
+        "13-Part-detail-part-phone-390-light.png"
+      ]
+    },
+    {
+      "id": "2c",
+      "folder": "14-Instruction-and-box-detail",
+      "screen": "Instruction-and-box-detail",
+      "group": "Collection",
+      "sub": "Instructions and boxes",
+      "title": "Instruction and box detail · 6081-1",
+      "source": "BW Collection.dc.html",
+      "view": "BW%20Navigator.dc.html#/Collection/Instructions%20and%20boxes/2c",
+      "html": null,
+      "states": [
+        {
+          "label": "2c Instruction phone",
+          "width": 390,
+          "state": "2c Instruction phone"
+        },
+        {
+          "label": "2c Box phone",
+          "width": 390,
+          "state": "2c Box phone"
+        }
+      ],
+      "sizes": [
+        390
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "14-Instruction-and-box-detail-box-phone-390-dark.png",
+        "14-Instruction-and-box-detail-box-phone-390-light.png",
+        "14-Instruction-and-box-detail-instruction-phone-390-dark.png",
+        "14-Instruction-and-box-detail-instruction-phone-390-light.png"
+      ]
+    },
+    {
+      "id": "2d",
+      "folder": "15-Part-lot",
+      "screen": "Part-lot",
+      "group": "Collection",
+      "sub": "Parts",
+      "title": "Part lot",
+      "source": "BW Collection.dc.html",
+      "view": "BW%20Navigator.dc.html#/Collection/Parts/2d",
+      "html": null,
+      "states": [
+        {
+          "label": "2d Lot phone",
+          "width": 390,
+          "state": "2d Lot phone"
+        },
+        {
+          "label": "2d Lot desktop",
+          "width": 1440,
+          "state": "2d Lot desktop"
+        }
+      ],
+      "sizes": [
+        390,
+        1440
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "15-Part-lot-lot-desktop-1440-dark.png",
+        "15-Part-lot-lot-desktop-1440-light.png",
+        "15-Part-lot-lot-phone-390-dark.png",
+        "15-Part-lot-lot-phone-390-light.png"
+      ]
+    },
+    {
+      "id": "2e",
+      "folder": "16-Module-states",
+      "screen": "Module-states",
+      "group": "Collection",
+      "sub": "Lists and states",
+      "title": "Module states",
+      "source": "BW Collection.dc.html",
+      "view": "BW%20Navigator.dc.html#/Collection/Lists%20and%20states/2e",
+      "html": "16-Module-states.html",
+      "states": [
+        {
+          "label": "2e States",
+          "width": 1060,
+          "state": "2e States"
+        }
+      ],
+      "sizes": [
+        1060
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": []
+    },
+    {
+      "id": "7a",
+      "folder": "17-Item-lists",
+      "screen": "Item-lists",
+      "group": "Collection",
+      "sub": "Lists and states",
+      "title": "Item lists",
+      "source": "BW Collection.dc.html",
+      "view": "BW%20Navigator.dc.html#/Collection/Lists%20and%20states/7a",
+      "html": null,
+      "states": [
+        {
+          "label": "7a Minifigures phone",
+          "width": 390,
+          "state": "7a Minifigures phone"
+        },
+        {
+          "label": "7a Parts phone",
+          "width": 390,
+          "state": "7a Parts phone"
+        },
+        {
+          "label": "7a Instructions phone",
+          "width": 390,
+          "state": "7a Instructions phone"
+        },
+        {
+          "label": "7a Boxes phone",
+          "width": 390,
+          "state": "7a Boxes phone"
+        },
+        {
+          "label": "7a Parts desktop",
+          "width": 1440,
+          "state": "7a Parts desktop"
+        }
+      ],
+      "sizes": [
+        390,
+        1440
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "17-Item-lists-boxes-phone-390-dark.png",
+        "17-Item-lists-boxes-phone-390-light.png",
+        "17-Item-lists-instructions-phone-390-dark.png",
+        "17-Item-lists-instructions-phone-390-light.png",
+        "17-Item-lists-minifigures-phone-390-dark.png",
+        "17-Item-lists-minifigures-phone-390-light.png",
+        "17-Item-lists-parts-desktop-1440-dark.png",
+        "17-Item-lists-parts-desktop-1440-light.png",
+        "17-Item-lists-parts-phone-390-dark.png",
+        "17-Item-lists-parts-phone-390-light.png"
+      ]
+    },
+    {
+      "id": "7b",
+      "folder": "18-Copy-chooser",
+      "screen": "Copy-chooser",
+      "group": "Collection",
+      "sub": "Sets",
+      "title": "Copy chooser, delete, wishlist set",
+      "source": "BW Collection.dc.html",
+      "view": "BW%20Navigator.dc.html#/Collection/Sets/7b",
+      "html": null,
+      "states": [
+        {
+          "label": "7b Copy chooser",
+          "width": 390,
+          "state": "7b Copy chooser"
+        },
+        {
+          "label": "7b Delete set",
+          "width": 390,
+          "state": "7b Delete set"
+        },
+        {
+          "label": "7b Wish detail phone",
+          "width": 390,
+          "state": "7b Wish detail phone"
+        },
+        {
+          "label": "7b Wish detail desktop",
+          "width": 1440,
+          "state": "7b Wish detail desktop"
+        }
+      ],
+      "sizes": [
+        390,
+        1440
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "18-Copy-chooser-390-dark.png",
+        "18-Copy-chooser-390-light.png",
+        "18-Copy-chooser-delete-set-390-dark.png",
+        "18-Copy-chooser-delete-set-390-light.png",
+        "18-Copy-chooser-wish-detail-desktop-1440-dark.png",
+        "18-Copy-chooser-wish-detail-desktop-1440-light.png",
+        "18-Copy-chooser-wish-detail-phone-390-dark.png",
+        "18-Copy-chooser-wish-detail-phone-390-light.png"
+      ]
+    },
+    {
+      "id": "8a",
+      "folder": "19-Item-lists",
+      "screen": "Item-lists",
+      "group": "Collection",
+      "sub": "Lists and states",
+      "title": "Item lists · grid, select mode, read-only, problems, home picks",
+      "source": "BW Collection.dc.html",
+      "view": "BW%20Navigator.dc.html#/Collection/Lists%20and%20states/8a",
+      "html": null,
+      "states": [
+        {
+          "label": "8a Minifigures grid",
+          "width": 390,
+          "state": "8a Minifigures grid"
+        },
+        {
+          "label": "8a Select mode",
+          "width": 390,
+          "state": "8a Select mode"
+        },
+        {
+          "label": "8a Read-only",
+          "width": 390,
+          "state": "8a Read-only"
+        },
+        {
+          "label": "8a Problems",
+          "width": 390,
+          "state": "8a Problems"
+        },
+        {
+          "label": "8a Home picks",
+          "width": 390,
+          "state": "8a Home picks"
+        },
+        {
+          "label": "8a Problems desktop",
+          "width": 1440,
+          "state": "8a Problems desktop"
+        }
+      ],
+      "sizes": [
+        390,
+        1440
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "19-Item-lists-home-picks-390-dark.png",
+        "19-Item-lists-home-picks-390-light.png",
+        "19-Item-lists-minifigures-grid-390-dark.png",
+        "19-Item-lists-minifigures-grid-390-light.png",
+        "19-Item-lists-problems-390-dark.png",
+        "19-Item-lists-problems-390-light.png",
+        "19-Item-lists-problems-desktop-1440-dark.png",
+        "19-Item-lists-problems-desktop-1440-light.png",
+        "19-Item-lists-read-only-390-dark.png",
+        "19-Item-lists-read-only-390-light.png",
+        "19-Item-lists-select-mode-390-dark.png",
+        "19-Item-lists-select-mode-390-light.png"
+      ]
+    },
+    {
+      "id": "8c",
+      "folder": "20-Add-into-a-lot",
+      "screen": "Add-into-a-lot",
+      "group": "Collection",
+      "sub": "Lists and states",
+      "title": "Add into a lot, progress, instruction sheets, order details",
+      "source": "BW Collection.dc.html",
+      "view": "BW%20Navigator.dc.html#/Collection/Lists%20and%20states/8c",
+      "html": null,
+      "states": [
+        {
+          "label": "8c Add part lot",
+          "width": 390,
+          "state": "8c Add part lot"
+        },
+        {
+          "label": "8c Import progress",
+          "width": 390,
+          "state": "8c Import progress"
+        },
+        {
+          "label": "8c Fetch sheet",
+          "width": 390,
+          "state": "8c Fetch sheet"
+        },
+        {
+          "label": "8c Upload sheet",
+          "width": 390,
+          "state": "8c Upload sheet"
+        },
+        {
+          "label": "8c Leftovers",
+          "width": 390,
+          "state": "8c Leftovers"
+        },
+        {
+          "label": "8c Count audit",
+          "width": 390,
+          "state": "8c Count audit"
+        },
+        {
+          "label": "8c Estimate sheet",
+          "width": 390,
+          "state": "8c Estimate sheet"
+        }
+      ],
+      "sizes": [
+        390
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "20-Add-into-a-lot-add-part-lot-390-dark.png",
+        "20-Add-into-a-lot-add-part-lot-390-light.png",
+        "20-Add-into-a-lot-count-audit-390-dark.png",
+        "20-Add-into-a-lot-count-audit-390-light.png",
+        "20-Add-into-a-lot-estimate-sheet-390-dark.png",
+        "20-Add-into-a-lot-estimate-sheet-390-light.png",
+        "20-Add-into-a-lot-fetch-sheet-390-dark.png",
+        "20-Add-into-a-lot-fetch-sheet-390-light.png",
+        "20-Add-into-a-lot-import-progress-390-dark.png",
+        "20-Add-into-a-lot-import-progress-390-light.png",
+        "20-Add-into-a-lot-leftovers-390-dark.png",
+        "20-Add-into-a-lot-leftovers-390-light.png",
+        "20-Add-into-a-lot-upload-sheet-390-dark.png",
+        "20-Add-into-a-lot-upload-sheet-390-light.png"
+      ]
+    },
+    {
+      "id": "11a",
+      "folder": "21-Collection-capabilities",
+      "screen": "Collection-capabilities",
+      "group": "Collection",
+      "sub": "Lists and states",
+      "title": "Collection capabilities · scroll, duplicates, grouping, filters, purchase places, instances",
+      "source": "BW Collection.dc.html",
+      "view": "BW%20Navigator.dc.html#/Collection/Lists%20and%20states/11a",
+      "html": null,
+      "states": [
+        {
+          "label": "11a scroll Continuous scroll phone",
+          "width": 390,
+          "state": "11a scroll Continuous scroll phone"
+        },
+        {
+          "label": "11a scroll Continuous scroll desktop",
+          "width": 1440,
+          "state": "11a scroll Continuous scroll desktop"
+        },
+        {
+          "label": "11a dups Duplicates phone",
+          "width": 390,
+          "state": "11a dups Duplicates phone"
+        },
+        {
+          "label": "11a dups Duplicates desktop",
+          "width": 1440,
+          "state": "11a dups Duplicates desktop"
+        },
+        {
+          "label": "11a group Grouping phone",
+          "width": 390,
+          "state": "11a group Grouping phone"
+        },
+        {
+          "label": "11a group Grouping desktop",
+          "width": 1440,
+          "state": "11a group Grouping desktop"
+        },
+        {
+          "label": "11a filters Item filters phone",
+          "width": 390,
+          "state": "11a filters Item filters phone"
+        },
+        {
+          "label": "11a filters Item filters desktop",
+          "width": 1440,
+          "state": "11a filters Item filters desktop"
+        },
+        {
+          "label": "11a buy Purchase locations phone",
+          "width": 390,
+          "state": "11a buy Purchase locations phone"
+        },
+        {
+          "label": "11a buy Purchase locations desktop",
+          "width": 1440,
+          "state": "11a buy Purchase locations desktop"
+        },
+        {
+          "label": "11a inst Consolidated instances phone",
+          "width": 390,
+          "state": "11a inst Consolidated instances phone"
+        },
+        {
+          "label": "11a inst Consolidated instances desktop",
+          "width": 1440,
+          "state": "11a inst Consolidated instances desktop"
+        }
+      ],
+      "sizes": [
+        390,
+        1440
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "21-Collection-capabilities-consolidated-instances-desktop-1440-dark.png",
+        "21-Collection-capabilities-consolidated-instances-desktop-1440-light.png",
+        "21-Collection-capabilities-consolidated-instances-phone-390-dark.png",
+        "21-Collection-capabilities-consolidated-instances-phone-390-light.png",
+        "21-Collection-capabilities-duplicates-desktop-1440-dark.png",
+        "21-Collection-capabilities-duplicates-desktop-1440-light.png",
+        "21-Collection-capabilities-duplicates-phone-390-dark.png",
+        "21-Collection-capabilities-duplicates-phone-390-light.png",
+        "21-Collection-capabilities-grouping-desktop-1440-dark.png",
+        "21-Collection-capabilities-grouping-desktop-1440-light.png",
+        "21-Collection-capabilities-grouping-phone-390-dark.png",
+        "21-Collection-capabilities-grouping-phone-390-light.png",
+        "21-Collection-capabilities-item-filters-desktop-1440-dark.png",
+        "21-Collection-capabilities-item-filters-desktop-1440-light.png",
+        "21-Collection-capabilities-item-filters-phone-390-dark.png",
+        "21-Collection-capabilities-item-filters-phone-390-light.png",
+        "21-Collection-capabilities-purchase-locations-desktop-1440-dark.png",
+        "21-Collection-capabilities-purchase-locations-desktop-1440-light.png",
+        "21-Collection-capabilities-purchase-locations-phone-390-dark.png",
+        "21-Collection-capabilities-purchase-locations-phone-390-light.png",
+        "21-Collection-capabilities-scroll-desktop-1440-dark.png",
+        "21-Collection-capabilities-scroll-desktop-1440-light.png",
+        "21-Collection-capabilities-scroll-phone-390-dark.png",
+        "21-Collection-capabilities-scroll-phone-390-light.png"
+      ]
+    },
+    {
+      "id": "12f",
+      "folder": "22-Minifigure-detail",
+      "screen": "Minifigure-detail",
+      "group": "Collection",
+      "sub": "Minifigures",
+      "title": "Minifigure detail, all sizes",
+      "source": "BW Collection.dc.html",
+      "view": "BW%20Navigator.dc.html#/Collection/Minifigures/12f",
+      "html": "22-Minifigure-detail.html",
+      "states": [
+        {
+          "label": "Desktop · 1440 · loose and in sets",
+          "width": 1440,
+          "state": "loose and in sets"
+        },
+        {
+          "label": "iPad landscape · 1024 · loose and in sets",
+          "width": 1024,
+          "state": "loose and in sets"
+        },
+        {
+          "label": "iPad portrait · 768 · loose and in sets",
+          "width": 768,
+          "state": "loose and in sets"
+        },
+        {
+          "label": "Phone · 390 · loose and in sets",
+          "width": 390,
+          "state": "loose and in sets"
+        },
+        {
+          "label": "Desktop · 1440 · one copy missing parts",
+          "width": 1440,
+          "state": "one copy missing parts"
+        },
+        {
+          "label": "iPad landscape · 1024 · one copy missing parts",
+          "width": 1024,
+          "state": "one copy missing parts"
+        },
+        {
+          "label": "Phone · 390 · one copy missing parts",
+          "width": 390,
+          "state": "one copy missing parts"
+        },
+        {
+          "label": "Desktop · 1440 · only loose",
+          "width": 1440,
+          "state": "only loose"
+        },
+        {
+          "label": "iPad landscape · 1024 · only loose",
+          "width": 1024,
+          "state": "only loose"
+        },
+        {
+          "label": "Phone · 390 · only loose",
+          "width": 390,
+          "state": "only loose"
+        },
+        {
+          "label": "Desktop · 1440 · only in sets",
+          "width": 1440,
+          "state": "only in sets"
+        },
+        {
+          "label": "iPad landscape · 1024 · only in sets",
+          "width": 1024,
+          "state": "only in sets"
+        },
+        {
+          "label": "Phone · 390 · only in sets",
+          "width": 390,
+          "state": "only in sets"
+        },
+        {
+          "label": "Desktop · 1440 · unresolved placeholder",
+          "width": 1440,
+          "state": "unresolved placeholder"
+        },
+        {
+          "label": "iPad landscape · 1024 · unresolved placeholder",
+          "width": 1024,
+          "state": "unresolved placeholder"
+        },
+        {
+          "label": "Phone · 390 · unresolved placeholder",
+          "width": 390,
+          "state": "unresolved placeholder"
+        },
+        {
+          "label": "Desktop · 1440 · no picture",
+          "width": 1440,
+          "state": "no picture"
+        },
+        {
+          "label": "iPad landscape · 1024 · no picture",
+          "width": 1024,
+          "state": "no picture"
+        },
+        {
+          "label": "Phone · 390 · no picture",
+          "width": 390,
+          "state": "no picture"
+        }
+      ],
+      "sizes": [
+        390,
+        768,
+        1024,
+        1440
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "22-Minifigure-detail-loose-and-in-sets-1024-dark.png",
+        "22-Minifigure-detail-loose-and-in-sets-1024-light.png",
+        "22-Minifigure-detail-loose-and-in-sets-1440-dark.png",
+        "22-Minifigure-detail-loose-and-in-sets-1440-light.png",
+        "22-Minifigure-detail-loose-and-in-sets-390-dark.png",
+        "22-Minifigure-detail-loose-and-in-sets-390-light.png",
+        "22-Minifigure-detail-loose-and-in-sets-768-dark.png",
+        "22-Minifigure-detail-loose-and-in-sets-768-light.png",
+        "22-Minifigure-detail-no-picture-1024-dark.png",
+        "22-Minifigure-detail-no-picture-1024-light.png",
+        "22-Minifigure-detail-no-picture-1440-dark.png",
+        "22-Minifigure-detail-no-picture-1440-light.png",
+        "22-Minifigure-detail-no-picture-390-dark.png",
+        "22-Minifigure-detail-no-picture-390-light.png",
+        "22-Minifigure-detail-one-copy-missing-parts-1024-dark.png",
+        "22-Minifigure-detail-one-copy-missing-parts-1024-light.png",
+        "22-Minifigure-detail-one-copy-missing-parts-1440-dark.png",
+        "22-Minifigure-detail-one-copy-missing-parts-1440-light.png",
+        "22-Minifigure-detail-one-copy-missing-parts-390-dark.png",
+        "22-Minifigure-detail-one-copy-missing-parts-390-light.png",
+        "22-Minifigure-detail-only-in-sets-1024-dark.png",
+        "22-Minifigure-detail-only-in-sets-1024-light.png",
+        "22-Minifigure-detail-only-in-sets-1440-dark.png",
+        "22-Minifigure-detail-only-in-sets-1440-light.png",
+        "22-Minifigure-detail-only-in-sets-390-dark.png",
+        "22-Minifigure-detail-only-in-sets-390-light.png",
+        "22-Minifigure-detail-only-loose-1024-dark.png",
+        "22-Minifigure-detail-only-loose-1024-light.png",
+        "22-Minifigure-detail-only-loose-1440-dark.png",
+        "22-Minifigure-detail-only-loose-1440-light.png",
+        "22-Minifigure-detail-only-loose-390-dark.png",
+        "22-Minifigure-detail-only-loose-390-light.png",
+        "22-Minifigure-detail-unresolved-placeholder-1024-dark.png",
+        "22-Minifigure-detail-unresolved-placeholder-1024-light.png",
+        "22-Minifigure-detail-unresolved-placeholder-1440-dark.png",
+        "22-Minifigure-detail-unresolved-placeholder-1440-light.png",
+        "22-Minifigure-detail-unresolved-placeholder-390-dark.png",
+        "22-Minifigure-detail-unresolved-placeholder-390-light.png"
+      ]
+    },
+    {
+      "id": "12g",
+      "folder": "23-Minifigures-in-a-set",
+      "screen": "Minifigures-in-a-set",
+      "group": "Collection",
+      "sub": "Sets",
+      "title": "Minifigures in a set, one line per figure",
+      "source": "BW Collection.dc.html",
+      "view": "BW%20Navigator.dc.html#/Collection/Sets/12g",
+      "html": "23-Minifigures-in-a-set.html",
+      "states": [
+        {
+          "label": "Desktop · 1440 · set detail, minifigures module",
+          "width": 1440,
+          "state": "set detail, minifigures module"
+        },
+        {
+          "label": "iPad landscape · 1024 · set detail, minifigures module",
+          "width": 1024,
+          "state": "set detail, minifigures module"
+        },
+        {
+          "label": "iPad portrait · 768 · set detail, minifigures module",
+          "width": 768,
+          "state": "set detail, minifigures module"
+        },
+        {
+          "label": "Phone · 390 · set detail, minifigures module",
+          "width": 390,
+          "state": "set detail, minifigures module"
+        }
+      ],
+      "sizes": [
+        390,
+        768,
+        1024,
+        1440
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "23-Minifigures-in-a-set-set-detail-minifigures-module-1024-dark.png",
+        "23-Minifigures-in-a-set-set-detail-minifigures-module-1024-light.png",
+        "23-Minifigures-in-a-set-set-detail-minifigures-module-1440-dark.png",
+        "23-Minifigures-in-a-set-set-detail-minifigures-module-1440-light.png",
+        "23-Minifigures-in-a-set-set-detail-minifigures-module-390-dark.png",
+        "23-Minifigures-in-a-set-set-detail-minifigures-module-390-light.png",
+        "23-Minifigures-in-a-set-set-detail-minifigures-module-768-dark.png",
+        "23-Minifigures-in-a-set-set-detail-minifigures-module-768-light.png"
+      ]
+    },
+    {
+      "id": "12h",
+      "folder": "24-Pager",
+      "screen": "Pager",
+      "group": "Collection",
+      "sub": "Lists and states",
+      "title": "Pager · 15 per page",
+      "source": "BW Collection.dc.html",
+      "view": "BW%20Navigator.dc.html#/Collection/Lists%20and%20states/12h",
+      "html": "24-Pager.html",
+      "states": [
+        {
+          "label": "Desktop · 1440 · parts list, page 2",
+          "width": 1440,
+          "state": "parts list, page 2"
+        },
+        {
+          "label": "iPad landscape · 1024 · parts list, page 2",
+          "width": 1024,
+          "state": "parts list, page 2"
+        },
+        {
+          "label": "iPad portrait · 768 · parts list, page 2",
+          "width": 768,
+          "state": "parts list, page 2"
+        },
+        {
+          "label": "Phone · 390 · parts list, page 2",
+          "width": 390,
+          "state": "parts list, page 2"
+        }
+      ],
+      "sizes": [
+        390,
+        768,
+        1024,
+        1440
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "24-Pager-parts-list-page-2-1024-dark.png",
+        "24-Pager-parts-list-page-2-1024-light.png",
+        "24-Pager-parts-list-page-2-1440-dark.png",
+        "24-Pager-parts-list-page-2-1440-light.png",
+        "24-Pager-parts-list-page-2-390-dark.png",
+        "24-Pager-parts-list-page-2-390-light.png",
+        "24-Pager-parts-list-page-2-768-dark.png",
+        "24-Pager-parts-list-page-2-768-light.png"
+      ]
+    },
+    {
+      "id": "12i",
+      "folder": "25-Sets-filters-where-select-and-group-go",
+      "screen": "Sets-filters-where-select-and-group-go",
+      "group": "Collection",
+      "sub": "Sets",
+      "title": "Sets filters: where Select and Group go",
+      "source": "BW Collection.dc.html",
+      "view": "BW%20Navigator.dc.html#/Collection/Sets/12i",
+      "html": "25-Sets-filters-where-select-and-group-go.html",
+      "states": [
+        {
+          "label": "Phone · 390 · filters sheet",
+          "width": 390,
+          "state": "filters sheet"
+        },
+        {
+          "label": "iPad portrait · 768 · filters sheet",
+          "width": 768,
+          "state": "filters sheet"
+        },
+        {
+          "label": "Desktop · 1440 · toolbar options menu",
+          "width": 1440,
+          "state": "toolbar options menu"
+        },
+        {
+          "label": "iPad landscape · 1024 · toolbar options menu",
+          "width": 1024,
+          "state": "toolbar options menu"
+        }
+      ],
+      "sizes": [
+        390,
+        768,
+        1024,
+        1440
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "25-Sets-filters-where-select-and-group-go-filters-sheet-390-dark.png",
+        "25-Sets-filters-where-select-and-group-go-filters-sheet-390-light.png",
+        "25-Sets-filters-where-select-and-group-go-filters-sheet-768-dark.png",
+        "25-Sets-filters-where-select-and-group-go-filters-sheet-768-light.png",
+        "25-Sets-filters-where-select-and-group-go-toolbar-options-menu-1024-dark.png",
+        "25-Sets-filters-where-select-and-group-go-toolbar-options-menu-1024-light.png",
+        "25-Sets-filters-where-select-and-group-go-toolbar-options-menu-1440-dark.png",
+        "25-Sets-filters-where-select-and-group-go-toolbar-options-menu-1440-light.png"
+      ]
+    },
+    {
+      "id": "12j",
+      "folder": "26-First-run-without-keys",
+      "screen": "First-run-without-keys",
+      "group": "Collection",
+      "sub": "Sets",
+      "title": "First run without keys (standalone)",
+      "source": "BW Collection.dc.html",
+      "view": "BW%20Navigator.dc.html#/Collection/Sets/12j",
+      "html": "26-First-run-without-keys.html",
+      "states": [
+        {
+          "label": "Desktop · 1440 · first run, no keys",
+          "width": 1440,
+          "state": "first run, no keys"
+        },
+        {
+          "label": "iPad landscape · 1024 · first run, no keys",
+          "width": 1024,
+          "state": "first run, no keys"
+        },
+        {
+          "label": "iPad portrait · 768 · first run, no keys",
+          "width": 768,
+          "state": "first run, no keys"
+        },
+        {
+          "label": "Phone · 390 · first run, no keys",
+          "width": 390,
+          "state": "first run, no keys"
+        },
+        {
+          "label": "Desktop · 1440 · action that needs a missing key",
+          "width": 1440,
+          "state": "action that needs a missing key"
+        },
+        {
+          "label": "iPad landscape · 1024 · action that needs a missing key",
+          "width": 1024,
+          "state": "action that needs a missing key"
+        },
+        {
+          "label": "Phone · 390 · action that needs a missing key",
+          "width": 390,
+          "state": "action that needs a missing key"
+        }
+      ],
+      "sizes": [
+        390,
+        768,
+        1024,
+        1440
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "26-First-run-without-keys-action-that-needs-a-missing-key-1024-dark.png",
+        "26-First-run-without-keys-action-that-needs-a-missing-key-1024-light.png",
+        "26-First-run-without-keys-action-that-needs-a-missing-key-1440-dark.png",
+        "26-First-run-without-keys-action-that-needs-a-missing-key-1440-light.png",
+        "26-First-run-without-keys-action-that-needs-a-missing-key-390-dark.png",
+        "26-First-run-without-keys-action-that-needs-a-missing-key-390-light.png",
+        "26-First-run-without-keys-first-run-no-keys-1024-dark.png",
+        "26-First-run-without-keys-first-run-no-keys-1024-light.png",
+        "26-First-run-without-keys-first-run-no-keys-1440-dark.png",
+        "26-First-run-without-keys-first-run-no-keys-1440-light.png",
+        "26-First-run-without-keys-first-run-no-keys-390-dark.png",
+        "26-First-run-without-keys-first-run-no-keys-390-light.png",
+        "26-First-run-without-keys-first-run-no-keys-768-dark.png",
+        "26-First-run-without-keys-first-run-no-keys-768-light.png"
+      ]
+    },
+    {
+      "id": "3a",
+      "folder": "27-Matcher",
+      "screen": "Matcher",
+      "group": "Workbench",
+      "sub": "Matcher",
+      "title": "Matcher",
+      "source": "BW Workbench.dc.html",
+      "view": "BW%20Navigator.dc.html#/Workbench/Matcher/3a",
+      "html": null,
+      "states": [
+        {
+          "label": "3a Matcher phone",
+          "width": 390,
+          "state": "3a Matcher phone"
+        },
+        {
+          "label": "3a Matcher desktop",
+          "width": 1440,
+          "state": "3a Matcher desktop"
+        },
+        {
+          "label": "10a Matcher iPad portrait",
+          "width": 768,
+          "state": "10a Matcher iPad portrait"
+        },
+        {
+          "label": "10a Matcher iPad landscape",
+          "width": 1024,
+          "state": "10a Matcher iPad landscape"
+        }
+      ],
+      "sizes": [
+        390,
+        768,
+        1024,
+        1440
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "27-Matcher-matcher-desktop-1440-dark.png",
+        "27-Matcher-matcher-desktop-1440-light.png",
+        "27-Matcher-matcher-phone-390-dark.png",
+        "27-Matcher-matcher-phone-390-light.png"
+      ]
+    },
+    {
+      "id": "3b",
+      "folder": "28-Check-set-parts",
+      "screen": "Check-set-parts",
+      "group": "Workbench",
+      "sub": "Check Set Parts",
+      "title": "Check Set Parts",
+      "source": "BW Workbench.dc.html",
+      "view": "BW%20Navigator.dc.html#/Workbench/Check%20Set%20Parts/3b",
+      "html": null,
+      "states": [
+        {
+          "label": "3b Check Set Parts phone",
+          "width": 390,
+          "state": "3b Check Set Parts phone"
+        },
+        {
+          "label": "3b Check Set Parts desktop",
+          "width": 1440,
+          "state": "3b Check Set Parts desktop"
+        }
+      ],
+      "sizes": [
+        390,
+        1440
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "28-Check-set-parts-check-set-parts-desktop-1440-dark.png",
+        "28-Check-set-parts-check-set-parts-desktop-1440-light.png",
+        "28-Check-set-parts-check-set-parts-phone-390-dark.png",
+        "28-Check-set-parts-check-set-parts-phone-390-light.png"
+      ]
+    },
+    {
+      "id": "3c",
+      "folder": "29-Part-picker",
+      "screen": "Part-picker",
+      "group": "Workbench",
+      "sub": "Part Picker",
+      "title": "Part Picker",
+      "source": "BW Workbench.dc.html",
+      "view": "BW%20Navigator.dc.html#/Workbench/Part%20Picker/3c",
+      "html": null,
+      "states": [
+        {
+          "label": "3c Picker sets",
+          "width": 390,
+          "state": "3c Picker sets"
+        },
+        {
+          "label": "3c Picker sort",
+          "width": 390,
+          "state": "3c Picker sort"
+        },
+        {
+          "label": "3c Picker pick",
+          "width": 390,
+          "state": "3c Picker pick"
+        },
+        {
+          "label": "3c Picker selector",
+          "width": 390,
+          "state": "3c Picker selector"
+        },
+        {
+          "label": "3c Picker desktop",
+          "width": 1440,
+          "state": "3c Picker desktop"
+        },
+        {
+          "label": "10a Part Picker iPad portrait",
+          "width": 768,
+          "state": "10a Part Picker iPad portrait"
+        },
+        {
+          "label": "10a Part Picker iPad landscape",
+          "width": 1024,
+          "state": "10a Part Picker iPad landscape"
+        }
+      ],
+      "sizes": [
+        390,
+        768,
+        1024,
+        1440
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "29-Part-picker-picker-desktop-1440-dark.png",
+        "29-Part-picker-picker-desktop-1440-light.png",
+        "29-Part-picker-picker-pick-390-dark.png",
+        "29-Part-picker-picker-pick-390-light.png",
+        "29-Part-picker-picker-selector-390-dark.png",
+        "29-Part-picker-picker-selector-390-light.png",
+        "29-Part-picker-picker-sets-390-dark.png",
+        "29-Part-picker-picker-sets-390-light.png",
+        "29-Part-picker-picker-sort-390-dark.png",
+        "29-Part-picker-picker-sort-390-light.png"
+      ]
+    },
+    {
+      "id": "3e",
+      "folder": "30-Set-parts-checker",
+      "screen": "Set-parts-checker",
+      "group": "Workbench",
+      "sub": "Check Set Parts",
+      "title": "Set parts checker · start, part, count, figure, spares, finish",
+      "source": "BW Workbench.dc.html",
+      "view": "BW%20Navigator.dc.html#/Workbench/Check%20Set%20Parts/3e",
+      "html": null,
+      "states": [
+        {
+          "label": "3e Start",
+          "width": 390,
+          "state": "3e Start"
+        },
+        {
+          "label": "3e Resume",
+          "width": 390,
+          "state": "3e Resume"
+        },
+        {
+          "label": "3e Start desktop",
+          "width": 1440,
+          "state": "3e Start desktop"
+        },
+        {
+          "label": "3e Part",
+          "width": 390,
+          "state": "3e Part"
+        },
+        {
+          "label": "3e Part long caution",
+          "width": 390,
+          "state": "3e Part long caution"
+        },
+        {
+          "label": "3e Missing pass",
+          "width": 390,
+          "state": "3e Missing pass"
+        },
+        {
+          "label": "3e Count",
+          "width": 390,
+          "state": "3e Count"
+        },
+        {
+          "label": "3e Overflow",
+          "width": 390,
+          "state": "3e Overflow"
+        },
+        {
+          "label": "3e Part desktop",
+          "width": 1440,
+          "state": "3e Part desktop"
+        },
+        {
+          "label": "3e Figure one",
+          "width": 390,
+          "state": "3e Figure one"
+        },
+        {
+          "label": "3e Figure two",
+          "width": 390,
+          "state": "3e Figure two"
+        },
+        {
+          "label": "3e Spares",
+          "width": 390,
+          "state": "3e Spares"
+        },
+        {
+          "label": "3e Spares empty",
+          "width": 390,
+          "state": "3e Spares empty"
+        },
+        {
+          "label": "3e Finish gaps",
+          "width": 390,
+          "state": "3e Finish gaps"
+        },
+        {
+          "label": "3e Finish none",
+          "width": 390,
+          "state": "3e Finish none"
+        },
+        {
+          "label": "3e Finish skipped",
+          "width": 390,
+          "state": "3e Finish skipped"
+        },
+        {
+          "label": "3e Finish desktop",
+          "width": 1440,
+          "state": "3e Finish desktop"
+        }
+      ],
+      "sizes": [
+        390,
+        1440
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "30-Set-parts-checker-count-390-dark.png",
+        "30-Set-parts-checker-count-390-light.png",
+        "30-Set-parts-checker-figure-one-390-dark.png",
+        "30-Set-parts-checker-figure-one-390-light.png",
+        "30-Set-parts-checker-figure-two-390-dark.png",
+        "30-Set-parts-checker-figure-two-390-light.png",
+        "30-Set-parts-checker-finish-desktop-1440-dark.png",
+        "30-Set-parts-checker-finish-desktop-1440-light.png",
+        "30-Set-parts-checker-finish-gaps-390-dark.png",
+        "30-Set-parts-checker-finish-gaps-390-light.png",
+        "30-Set-parts-checker-finish-none-390-dark.png",
+        "30-Set-parts-checker-finish-none-390-light.png",
+        "30-Set-parts-checker-finish-skipped-390-dark.png",
+        "30-Set-parts-checker-finish-skipped-390-light.png",
+        "30-Set-parts-checker-missing-pass-390-dark.png",
+        "30-Set-parts-checker-missing-pass-390-light.png",
+        "30-Set-parts-checker-overflow-390-dark.png",
+        "30-Set-parts-checker-overflow-390-light.png",
+        "30-Set-parts-checker-part-390-dark.png",
+        "30-Set-parts-checker-part-390-light.png",
+        "30-Set-parts-checker-part-desktop-1440-dark.png",
+        "30-Set-parts-checker-part-desktop-1440-light.png",
+        "30-Set-parts-checker-part-long-caution-390-dark.png",
+        "30-Set-parts-checker-part-long-caution-390-light.png",
+        "30-Set-parts-checker-resume-390-dark.png",
+        "30-Set-parts-checker-resume-390-light.png",
+        "30-Set-parts-checker-spares-390-dark.png",
+        "30-Set-parts-checker-spares-390-light.png",
+        "30-Set-parts-checker-spares-empty-390-dark.png",
+        "30-Set-parts-checker-spares-empty-390-light.png",
+        "30-Set-parts-checker-start-390-dark.png",
+        "30-Set-parts-checker-start-390-light.png",
+        "30-Set-parts-checker-start-desktop-1440-dark.png",
+        "30-Set-parts-checker-start-desktop-1440-light.png"
+      ]
+    },
+    {
+      "id": "3f",
+      "folder": "31-Part-to-inventory",
+      "screen": "Part-to-inventory",
+      "group": "Workbench",
+      "sub": "Part to Inventory",
+      "title": "Part to Inventory · full flow",
+      "source": "BW Workbench.dc.html",
+      "view": "BW%20Navigator.dc.html#/Workbench/Part%20to%20Inventory/3f",
+      "html": null,
+      "states": [
+        {
+          "label": "3f Idle off",
+          "width": 390,
+          "state": "3f Idle off"
+        },
+        {
+          "label": "3f Idle on",
+          "width": 390,
+          "state": "3f Idle on"
+        },
+        {
+          "label": "3f Camera live",
+          "width": 390,
+          "state": "3f Camera live"
+        },
+        {
+          "label": "3f Queue",
+          "width": 390,
+          "state": "3f Queue"
+        },
+        {
+          "label": "3f Review colour not chosen",
+          "width": 390,
+          "state": "3f Review colour not chosen"
+        },
+        {
+          "label": "3f Review ready",
+          "width": 390,
+          "state": "3f Review ready"
+        },
+        {
+          "label": "3f Unidentified",
+          "width": 390,
+          "state": "3f Unidentified"
+        },
+        {
+          "label": "3f Results",
+          "width": 390,
+          "state": "3f Results"
+        },
+        {
+          "label": "3f Batch",
+          "width": 390,
+          "state": "3f Batch"
+        },
+        {
+          "label": "3f Scanner errors and empties",
+          "width": 1060,
+          "state": "3f Scanner errors and empties"
+        },
+        {
+          "label": "3f Scanner desktop",
+          "width": 1440,
+          "state": "3f Scanner desktop"
+        },
+        {
+          "label": "10a Part to Inventory Capture iPad portrait",
+          "width": 768,
+          "state": "10a Part to Inventory Capture iPad portrait"
+        },
+        {
+          "label": "10a Part to Inventory Capture iPad landscape",
+          "width": 1024,
+          "state": "10a Part to Inventory Capture iPad landscape"
+        },
+        {
+          "label": "10a Part to Inventory Queue iPad portrait",
+          "width": 768,
+          "state": "10a Part to Inventory Queue iPad portrait"
+        },
+        {
+          "label": "10a Part to Inventory Queue iPad landscape",
+          "width": 1024,
+          "state": "10a Part to Inventory Queue iPad landscape"
+        },
+        {
+          "label": "10a Part to Inventory Review iPad portrait",
+          "width": 768,
+          "state": "10a Part to Inventory Review iPad portrait"
+        },
+        {
+          "label": "10a Part to Inventory Review iPad landscape",
+          "width": 1024,
+          "state": "10a Part to Inventory Review iPad landscape"
+        },
+        {
+          "label": "10a Part to Inventory Results iPad portrait",
+          "width": 768,
+          "state": "10a Part to Inventory Results iPad portrait"
+        },
+        {
+          "label": "10a Part to Inventory Results iPad landscape",
+          "width": 1024,
+          "state": "10a Part to Inventory Results iPad landscape"
+        },
+        {
+          "label": "3f Camera list",
+          "width": 390,
+          "state": "3f Camera list"
+        },
+        {
+          "label": "3f New lot",
+          "width": 390,
+          "state": "3f New lot"
+        },
+        {
+          "label": "3f Results desktop",
+          "width": 1440,
+          "state": "3f Results desktop"
+        }
+      ],
+      "sizes": [
+        390,
+        768,
+        1024,
+        1060,
+        1440
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "31-Part-to-inventory-batch-phone-390-dark.png",
+        "31-Part-to-inventory-batch-phone-390-light.png",
+        "31-Part-to-inventory-camera-list-phone-390-dark.png",
+        "31-Part-to-inventory-camera-list-phone-390-light.png",
+        "31-Part-to-inventory-camera-live-390-dark.png",
+        "31-Part-to-inventory-camera-live-390-light.png",
+        "31-Part-to-inventory-idle-off-390-dark.png",
+        "31-Part-to-inventory-idle-off-390-light.png",
+        "31-Part-to-inventory-idle-on-390-dark.png",
+        "31-Part-to-inventory-idle-on-390-light.png",
+        "31-Part-to-inventory-new-lot-phone-390-dark.png",
+        "31-Part-to-inventory-new-lot-phone-390-light.png",
+        "31-Part-to-inventory-queue-390-dark.png",
+        "31-Part-to-inventory-queue-390-light.png",
+        "31-Part-to-inventory-results-390-dark.png",
+        "31-Part-to-inventory-results-390-light.png",
+        "31-Part-to-inventory-results-desktop-1440-dark.png",
+        "31-Part-to-inventory-results-desktop-1440-light.png",
+        "31-Part-to-inventory-review-colour-not-chosen-390-dark.png",
+        "31-Part-to-inventory-review-colour-not-chosen-390-light.png",
+        "31-Part-to-inventory-review-ready-390-dark.png",
+        "31-Part-to-inventory-review-ready-390-light.png",
+        "31-Part-to-inventory-scanner-desktop-1440-dark.png",
+        "31-Part-to-inventory-scanner-desktop-1440-light.png",
+        "31-Part-to-inventory-unidentified-390-dark.png",
+        "31-Part-to-inventory-unidentified-390-light.png"
+      ]
+    },
+    {
+      "id": "5a",
+      "folder": "32-Orders",
+      "screen": "Orders",
+      "group": "Workbench",
+      "sub": "Orders",
+      "title": "Orders",
+      "source": "BW Workbench.dc.html",
+      "view": "BW%20Navigator.dc.html#/Workbench/Orders/5a",
+      "html": null,
+      "states": [
+        {
+          "label": "5a Orders import",
+          "width": 390,
+          "state": "5a Orders import"
+        },
+        {
+          "label": "5a Orders list",
+          "width": 390,
+          "state": "5a Orders list"
+        },
+        {
+          "label": "5a Orders count",
+          "width": 390,
+          "state": "5a Orders count"
+        },
+        {
+          "label": "5a Orders allocation",
+          "width": 390,
+          "state": "5a Orders allocation"
+        },
+        {
+          "label": "5a Orders reconcile",
+          "width": 390,
+          "state": "5a Orders reconcile"
+        },
+        {
+          "label": "5a Orders desktop",
+          "width": 1440,
+          "state": "5a Orders desktop"
+        },
+        {
+          "label": "10a Orders iPad portrait",
+          "width": 768,
+          "state": "10a Orders iPad portrait"
+        },
+        {
+          "label": "10a Orders iPad landscape",
+          "width": 1024,
+          "state": "10a Orders iPad landscape"
+        }
+      ],
+      "sizes": [
+        390,
+        768,
+        1024,
+        1440
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "32-Orders-orders-allocation-390-dark.png",
+        "32-Orders-orders-allocation-390-light.png",
+        "32-Orders-orders-count-390-dark.png",
+        "32-Orders-orders-count-390-light.png",
+        "32-Orders-orders-desktop-1440-dark.png",
+        "32-Orders-orders-desktop-1440-light.png",
+        "32-Orders-orders-import-390-dark.png",
+        "32-Orders-orders-import-390-light.png",
+        "32-Orders-orders-list-390-dark.png",
+        "32-Orders-orders-list-390-light.png",
+        "32-Orders-orders-reconcile-390-dark.png",
+        "32-Orders-orders-reconcile-390-light.png"
+      ]
+    },
+    {
+      "id": "7d",
+      "folder": "33-Orders",
+      "screen": "Orders",
+      "group": "Workbench",
+      "sub": "Orders",
+      "title": "Orders · detail, review, history, resume",
+      "source": "BW Workbench.dc.html",
+      "view": "BW%20Navigator.dc.html#/Workbench/Orders/7d",
+      "html": null,
+      "states": [
+        {
+          "label": "7d Order detail",
+          "width": 390,
+          "state": "7d Order detail"
+        },
+        {
+          "label": "7d Line review",
+          "width": 390,
+          "state": "7d Line review"
+        },
+        {
+          "label": "7d Allocation history",
+          "width": 390,
+          "state": "7d Allocation history"
+        },
+        {
+          "label": "7d Resume draft",
+          "width": 390,
+          "state": "7d Resume draft"
+        },
+        {
+          "label": "7d Order detail desktop",
+          "width": 1440,
+          "state": "7d Order detail desktop"
+        }
+      ],
+      "sizes": [
+        390,
+        1440
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "33-Orders-allocation-history-390-dark.png",
+        "33-Orders-allocation-history-390-light.png",
+        "33-Orders-line-review-390-dark.png",
+        "33-Orders-line-review-390-light.png",
+        "33-Orders-order-detail-390-dark.png",
+        "33-Orders-order-detail-390-light.png",
+        "33-Orders-order-detail-desktop-1440-dark.png",
+        "33-Orders-order-detail-desktop-1440-light.png",
+        "33-Orders-resume-draft-390-dark.png",
+        "33-Orders-resume-draft-390-light.png"
+      ]
+    },
+    {
+      "id": "5d",
+      "folder": "34-Storage",
+      "screen": "Storage",
+      "group": "Workbench",
+      "sub": "Storage",
+      "title": "Storage",
+      "source": "BW Workbench.dc.html",
+      "view": "BW%20Navigator.dc.html#/Workbench/Storage/5d",
+      "html": null,
+      "states": [
+        {
+          "label": "5d Storage",
+          "width": 390,
+          "state": "5d Storage"
+        },
+        {
+          "label": "5d Storage desktop",
+          "width": 1440,
+          "state": "5d Storage desktop"
+        },
+        {
+          "label": "10a Storage iPad portrait",
+          "width": 768,
+          "state": "10a Storage iPad portrait"
+        },
+        {
+          "label": "10a Storage iPad landscape",
+          "width": 1024,
+          "state": "10a Storage iPad landscape"
+        }
+      ],
+      "sizes": [
+        390,
+        768,
+        1024,
+        1440
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "34-Storage-390-dark.png",
+        "34-Storage-390-light.png",
+        "34-Storage-storage-desktop-1440-dark.png",
+        "34-Storage-storage-desktop-1440-light.png"
+      ]
+    },
+    {
+      "id": "11b",
+      "folder": "35-Orders-capabilities",
+      "screen": "Orders-capabilities",
+      "group": "Workbench",
+      "sub": "Orders",
+      "title": "Orders capabilities · XML link, explicit link, hold, re-import",
+      "source": "BW Workbench.dc.html",
+      "view": "BW%20Navigator.dc.html#/Workbench/Orders/11b",
+      "html": null,
+      "states": [
+        {
+          "label": "11b xml BrickLink XML link phone",
+          "width": 390,
+          "state": "11b xml BrickLink XML link phone"
+        },
+        {
+          "label": "11b xml BrickLink XML link desktop",
+          "width": 1440,
+          "state": "11b xml BrickLink XML link desktop"
+        },
+        {
+          "label": "11b link Explicit order link phone",
+          "width": 390,
+          "state": "11b link Explicit order link phone"
+        },
+        {
+          "label": "11b link Explicit order link desktop",
+          "width": 1440,
+          "state": "11b link Explicit order link desktop"
+        },
+        {
+          "label": "11b undo Undo hold reconcile phone",
+          "width": 390,
+          "state": "11b undo Undo hold reconcile phone"
+        },
+        {
+          "label": "11b undo Undo hold reconcile desktop",
+          "width": 1440,
+          "state": "11b undo Undo hold reconcile desktop"
+        },
+        {
+          "label": "11b reimp Already imported phone",
+          "width": 390,
+          "state": "11b reimp Already imported phone"
+        },
+        {
+          "label": "11b reimp Already imported desktop",
+          "width": 1440,
+          "state": "11b reimp Already imported desktop"
+        }
+      ],
+      "sizes": [
+        390,
+        1440
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "35-Orders-capabilities-already-imported-desktop-1440-dark.png",
+        "35-Orders-capabilities-already-imported-desktop-1440-light.png",
+        "35-Orders-capabilities-already-imported-phone-390-dark.png",
+        "35-Orders-capabilities-already-imported-phone-390-light.png",
+        "35-Orders-capabilities-explicit-order-link-desktop-1440-dark.png",
+        "35-Orders-capabilities-explicit-order-link-desktop-1440-light.png",
+        "35-Orders-capabilities-explicit-order-link-phone-390-dark.png",
+        "35-Orders-capabilities-explicit-order-link-phone-390-light.png",
+        "35-Orders-capabilities-undo-hold-reconcile-desktop-1440-dark.png",
+        "35-Orders-capabilities-undo-hold-reconcile-desktop-1440-light.png",
+        "35-Orders-capabilities-undo-hold-reconcile-phone-390-dark.png",
+        "35-Orders-capabilities-undo-hold-reconcile-phone-390-light.png",
+        "35-Orders-capabilities-xml-link-desktop-1440-dark.png",
+        "35-Orders-capabilities-xml-link-desktop-1440-light.png",
+        "35-Orders-capabilities-xml-link-phone-390-dark.png",
+        "35-Orders-capabilities-xml-link-phone-390-light.png"
+      ]
+    },
+    {
+      "id": "12a",
+      "folder": "36-Check-this-copy",
+      "screen": "Check-this-copy",
+      "group": "Workbench",
+      "sub": "Check Set Parts",
+      "title": "Check this copy",
+      "source": "BW Workbench.dc.html",
+      "view": "BW%20Navigator.dc.html#/Workbench/Check%20Set%20Parts/12a",
+      "html": "36-Check-this-copy.html",
+      "states": [
+        {
+          "label": "Desktop · 1440 · never checked",
+          "width": 1440,
+          "state": "never checked"
+        },
+        {
+          "label": "iPad landscape · 1024 · never checked",
+          "width": 1024,
+          "state": "never checked"
+        },
+        {
+          "label": "iPad portrait · 768 · never checked",
+          "width": 768,
+          "state": "never checked"
+        },
+        {
+          "label": "Phone · 390 · never checked",
+          "width": 390,
+          "state": "never checked"
+        },
+        {
+          "label": "Desktop · 1440 · in progress, resume",
+          "width": 1440,
+          "state": "in progress, resume"
+        },
+        {
+          "label": "iPad landscape · 1024 · in progress, resume",
+          "width": 1024,
+          "state": "in progress, resume"
+        },
+        {
+          "label": "Phone · 390 · in progress, resume",
+          "width": 390,
+          "state": "in progress, resume"
+        },
+        {
+          "label": "Desktop · 1440 · checked",
+          "width": 1440,
+          "state": "checked"
+        },
+        {
+          "label": "iPad landscape · 1024 · checked",
+          "width": 1024,
+          "state": "checked"
+        },
+        {
+          "label": "Phone · 390 · checked",
+          "width": 390,
+          "state": "checked"
+        },
+        {
+          "label": "Desktop · 1440 · no copies",
+          "width": 1440,
+          "state": "no copies"
+        },
+        {
+          "label": "iPad landscape · 1024 · no copies",
+          "width": 1024,
+          "state": "no copies"
+        },
+        {
+          "label": "Phone · 390 · no copies",
+          "width": 390,
+          "state": "no copies"
+        },
+        {
+          "label": "Desktop · 1440 · save error",
+          "width": 1440,
+          "state": "save error"
+        },
+        {
+          "label": "iPad landscape · 1024 · save error",
+          "width": 1024,
+          "state": "save error"
+        },
+        {
+          "label": "Phone · 390 · save error",
+          "width": 390,
+          "state": "save error"
+        },
+        {
+          "label": "Desktop · 1440 · JavaScript off",
+          "width": 1440,
+          "state": "JavaScript off"
+        },
+        {
+          "label": "iPad landscape · 1024 · JavaScript off",
+          "width": 1024,
+          "state": "JavaScript off"
+        },
+        {
+          "label": "Phone · 390 · JavaScript off",
+          "width": 390,
+          "state": "JavaScript off"
+        }
+      ],
+      "sizes": [
+        390,
+        768,
+        1024,
+        1440
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "36-Check-this-copy-checked-1024-dark.png",
+        "36-Check-this-copy-checked-1024-light.png",
+        "36-Check-this-copy-checked-1440-dark.png",
+        "36-Check-this-copy-checked-1440-light.png",
+        "36-Check-this-copy-checked-390-dark.png",
+        "36-Check-this-copy-checked-390-light.png",
+        "36-Check-this-copy-in-progress-resume-1024-dark.png",
+        "36-Check-this-copy-in-progress-resume-1024-light.png",
+        "36-Check-this-copy-in-progress-resume-1440-dark.png",
+        "36-Check-this-copy-in-progress-resume-1440-light.png",
+        "36-Check-this-copy-in-progress-resume-390-dark.png",
+        "36-Check-this-copy-in-progress-resume-390-light.png",
+        "36-Check-this-copy-javascript-off-1024-dark.png",
+        "36-Check-this-copy-javascript-off-1024-light.png",
+        "36-Check-this-copy-javascript-off-1440-dark.png",
+        "36-Check-this-copy-javascript-off-1440-light.png",
+        "36-Check-this-copy-javascript-off-390-dark.png",
+        "36-Check-this-copy-javascript-off-390-light.png",
+        "36-Check-this-copy-never-checked-1024-dark.png",
+        "36-Check-this-copy-never-checked-1024-light.png",
+        "36-Check-this-copy-never-checked-1440-dark.png",
+        "36-Check-this-copy-never-checked-1440-light.png",
+        "36-Check-this-copy-never-checked-390-dark.png",
+        "36-Check-this-copy-never-checked-390-light.png",
+        "36-Check-this-copy-never-checked-768-dark.png",
+        "36-Check-this-copy-never-checked-768-light.png",
+        "36-Check-this-copy-no-copies-1024-dark.png",
+        "36-Check-this-copy-no-copies-1024-light.png",
+        "36-Check-this-copy-no-copies-1440-dark.png",
+        "36-Check-this-copy-no-copies-1440-light.png",
+        "36-Check-this-copy-no-copies-390-dark.png",
+        "36-Check-this-copy-no-copies-390-light.png",
+        "36-Check-this-copy-save-error-1024-dark.png",
+        "36-Check-this-copy-save-error-1024-light.png",
+        "36-Check-this-copy-save-error-1440-dark.png",
+        "36-Check-this-copy-save-error-1440-light.png",
+        "36-Check-this-copy-save-error-390-dark.png",
+        "36-Check-this-copy-save-error-390-light.png"
+      ]
+    },
+    {
+      "id": "12b",
+      "folder": "37-Orders-at-macbook-and-ipad-size",
+      "screen": "Orders-at-macbook-and-ipad-size",
+      "group": "Workbench",
+      "sub": "Orders",
+      "title": "Orders at MacBook and iPad size",
+      "source": "BW Workbench.dc.html",
+      "view": "BW%20Navigator.dc.html#/Workbench/Orders/12b",
+      "html": "37-Orders-at-macbook-and-ipad-size.html",
+      "states": [
+        {
+          "label": "Desktop · 1440 · import hub",
+          "width": 1440,
+          "state": "import hub"
+        },
+        {
+          "label": "iPad landscape · 1024 · import hub",
+          "width": 1024,
+          "state": "import hub"
+        },
+        {
+          "label": "iPad portrait · 768 · import hub",
+          "width": 768,
+          "state": "import hub"
+        },
+        {
+          "label": "Desktop · 1440 · order detail",
+          "width": 1440,
+          "state": "order detail"
+        },
+        {
+          "label": "iPad landscape · 1024 · order detail",
+          "width": 1024,
+          "state": "order detail"
+        },
+        {
+          "label": "iPad portrait · 768 · order detail",
+          "width": 768,
+          "state": "order detail"
+        },
+        {
+          "label": "Desktop · 1440 · count what arrived",
+          "width": 1440,
+          "state": "count what arrived"
+        },
+        {
+          "label": "iPad landscape · 1024 · count what arrived",
+          "width": 1024,
+          "state": "count what arrived"
+        },
+        {
+          "label": "iPad portrait · 768 · count what arrived",
+          "width": 768,
+          "state": "count what arrived"
+        },
+        {
+          "label": "Desktop · 1440 · allocation review",
+          "width": 1440,
+          "state": "allocation review"
+        },
+        {
+          "label": "iPad landscape · 1024 · allocation review",
+          "width": 1024,
+          "state": "allocation review"
+        },
+        {
+          "label": "iPad portrait · 768 · allocation review",
+          "width": 768,
+          "state": "allocation review"
+        },
+        {
+          "label": "Desktop · 1440 · allocated, undo",
+          "width": 1440,
+          "state": "allocated, undo"
+        },
+        {
+          "label": "iPad landscape · 1024 · allocated, undo",
+          "width": 1024,
+          "state": "allocated, undo"
+        },
+        {
+          "label": "Desktop · 1440 · save error, retry",
+          "width": 1440,
+          "state": "save error, retry"
+        },
+        {
+          "label": "iPad landscape · 1024 · save error, retry",
+          "width": 1024,
+          "state": "save error, retry"
+        },
+        {
+          "label": "Desktop · 1440 · allocations history and reconcile",
+          "width": 1440,
+          "state": "allocations history and reconcile"
+        },
+        {
+          "label": "iPad landscape · 1024 · allocations history and reconcile",
+          "width": 1024,
+          "state": "allocations history and reconcile"
+        },
+        {
+          "label": "iPad portrait · 768 · allocations history and reconcile",
+          "width": 768,
+          "state": "allocations history and reconcile"
+        }
+      ],
+      "sizes": [
+        768,
+        1024,
+        1440
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "37-Orders-at-macbook-and-ipad-size-allocated-undo-1024-dark.png",
+        "37-Orders-at-macbook-and-ipad-size-allocated-undo-1024-light.png",
+        "37-Orders-at-macbook-and-ipad-size-allocated-undo-1440-dark.png",
+        "37-Orders-at-macbook-and-ipad-size-allocated-undo-1440-light.png",
+        "37-Orders-at-macbook-and-ipad-size-allocation-review-1024-dark.png",
+        "37-Orders-at-macbook-and-ipad-size-allocation-review-1024-light.png",
+        "37-Orders-at-macbook-and-ipad-size-allocation-review-1440-dark.png",
+        "37-Orders-at-macbook-and-ipad-size-allocation-review-1440-light.png",
+        "37-Orders-at-macbook-and-ipad-size-allocation-review-768-dark.png",
+        "37-Orders-at-macbook-and-ipad-size-allocation-review-768-light.png",
+        "37-Orders-at-macbook-and-ipad-size-allocations-history-and-reconcile-1024-dark.png",
+        "37-Orders-at-macbook-and-ipad-size-allocations-history-and-reconcile-1024-light.png",
+        "37-Orders-at-macbook-and-ipad-size-allocations-history-and-reconcile-1440-dark.png",
+        "37-Orders-at-macbook-and-ipad-size-allocations-history-and-reconcile-1440-light.png",
+        "37-Orders-at-macbook-and-ipad-size-allocations-history-and-reconcile-768-dark.png",
+        "37-Orders-at-macbook-and-ipad-size-allocations-history-and-reconcile-768-light.png",
+        "37-Orders-at-macbook-and-ipad-size-count-what-arrived-1024-dark.png",
+        "37-Orders-at-macbook-and-ipad-size-count-what-arrived-1024-light.png",
+        "37-Orders-at-macbook-and-ipad-size-count-what-arrived-1440-dark.png",
+        "37-Orders-at-macbook-and-ipad-size-count-what-arrived-1440-light.png",
+        "37-Orders-at-macbook-and-ipad-size-count-what-arrived-768-dark.png",
+        "37-Orders-at-macbook-and-ipad-size-count-what-arrived-768-light.png",
+        "37-Orders-at-macbook-and-ipad-size-import-hub-1024-dark.png",
+        "37-Orders-at-macbook-and-ipad-size-import-hub-1024-light.png",
+        "37-Orders-at-macbook-and-ipad-size-import-hub-1440-dark.png",
+        "37-Orders-at-macbook-and-ipad-size-import-hub-1440-light.png",
+        "37-Orders-at-macbook-and-ipad-size-import-hub-768-dark.png",
+        "37-Orders-at-macbook-and-ipad-size-import-hub-768-light.png",
+        "37-Orders-at-macbook-and-ipad-size-order-detail-1024-dark.png",
+        "37-Orders-at-macbook-and-ipad-size-order-detail-1024-light.png",
+        "37-Orders-at-macbook-and-ipad-size-order-detail-1440-dark.png",
+        "37-Orders-at-macbook-and-ipad-size-order-detail-1440-light.png",
+        "37-Orders-at-macbook-and-ipad-size-order-detail-768-dark.png",
+        "37-Orders-at-macbook-and-ipad-size-order-detail-768-light.png",
+        "37-Orders-at-macbook-and-ipad-size-save-error-retry-1024-dark.png",
+        "37-Orders-at-macbook-and-ipad-size-save-error-retry-1024-light.png",
+        "37-Orders-at-macbook-and-ipad-size-save-error-retry-1440-dark.png",
+        "37-Orders-at-macbook-and-ipad-size-save-error-retry-1440-light.png"
+      ]
+    },
+    {
+      "id": "12c",
+      "folder": "38-Storage-at-macbook-and-ipad-size",
+      "screen": "Storage-at-macbook-and-ipad-size",
+      "group": "Workbench",
+      "sub": "Storage",
+      "title": "Storage at MacBook and iPad size",
+      "source": "BW Workbench.dc.html",
+      "view": "BW%20Navigator.dc.html#/Workbench/Storage/12c",
+      "html": "38-Storage-at-macbook-and-ipad-size.html",
+      "states": [
+        {
+          "label": "Desktop · 1440 · list and detail",
+          "width": 1440,
+          "state": "list and detail"
+        },
+        {
+          "label": "iPad landscape · 1024 · list and detail",
+          "width": 1024,
+          "state": "list and detail"
+        },
+        {
+          "label": "iPad portrait · 768 · list and detail",
+          "width": 768,
+          "state": "list and detail"
+        },
+        {
+          "label": "Desktop · 1440 · detail, select mode, move",
+          "width": 1440,
+          "state": "detail, select mode, move"
+        },
+        {
+          "label": "iPad landscape · 1024 · detail, select mode, move",
+          "width": 1024,
+          "state": "detail, select mode, move"
+        },
+        {
+          "label": "Desktop · 1440 · add storage sheet",
+          "width": 1440,
+          "state": "add storage sheet"
+        },
+        {
+          "label": "iPad landscape · 1024 · edit storage sheet",
+          "width": 1024,
+          "state": "edit storage sheet"
+        },
+        {
+          "label": "iPad portrait · 768 · add storage sheet",
+          "width": 768,
+          "state": "add storage sheet"
+        },
+        {
+          "label": "Desktop · 1440 · purchase locations",
+          "width": 1440,
+          "state": "purchase locations"
+        },
+        {
+          "label": "iPad landscape · 1024 · purchase locations",
+          "width": 1024,
+          "state": "purchase locations"
+        },
+        {
+          "label": "Desktop · 1440 · empty, no storages",
+          "width": 1440,
+          "state": "empty, no storages"
+        },
+        {
+          "label": "iPad landscape · 1024 · empty storage",
+          "width": 1024,
+          "state": "empty storage"
+        }
+      ],
+      "sizes": [
+        768,
+        1024,
+        1440
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "38-Storage-at-macbook-and-ipad-size-add-storage-sheet-1440-dark.png",
+        "38-Storage-at-macbook-and-ipad-size-add-storage-sheet-1440-light.png",
+        "38-Storage-at-macbook-and-ipad-size-add-storage-sheet-768-dark.png",
+        "38-Storage-at-macbook-and-ipad-size-add-storage-sheet-768-light.png",
+        "38-Storage-at-macbook-and-ipad-size-detail-select-mode-move-1024-dark.png",
+        "38-Storage-at-macbook-and-ipad-size-detail-select-mode-move-1024-light.png",
+        "38-Storage-at-macbook-and-ipad-size-detail-select-mode-move-1440-dark.png",
+        "38-Storage-at-macbook-and-ipad-size-detail-select-mode-move-1440-light.png",
+        "38-Storage-at-macbook-and-ipad-size-edit-storage-sheet-1024-dark.png",
+        "38-Storage-at-macbook-and-ipad-size-edit-storage-sheet-1024-light.png",
+        "38-Storage-at-macbook-and-ipad-size-empty-no-storages-1440-dark.png",
+        "38-Storage-at-macbook-and-ipad-size-empty-no-storages-1440-light.png",
+        "38-Storage-at-macbook-and-ipad-size-empty-storage-1024-dark.png",
+        "38-Storage-at-macbook-and-ipad-size-empty-storage-1024-light.png",
+        "38-Storage-at-macbook-and-ipad-size-list-and-detail-1024-dark.png",
+        "38-Storage-at-macbook-and-ipad-size-list-and-detail-1024-light.png",
+        "38-Storage-at-macbook-and-ipad-size-list-and-detail-1440-dark.png",
+        "38-Storage-at-macbook-and-ipad-size-list-and-detail-1440-light.png",
+        "38-Storage-at-macbook-and-ipad-size-list-and-detail-768-dark.png",
+        "38-Storage-at-macbook-and-ipad-size-list-and-detail-768-light.png",
+        "38-Storage-at-macbook-and-ipad-size-purchase-locations-1024-dark.png",
+        "38-Storage-at-macbook-and-ipad-size-purchase-locations-1024-light.png",
+        "38-Storage-at-macbook-and-ipad-size-purchase-locations-1440-dark.png",
+        "38-Storage-at-macbook-and-ipad-size-purchase-locations-1440-light.png"
+      ]
+    },
+    {
+      "id": "12d",
+      "folder": "39-Include-spare-parts",
+      "screen": "Include-spare-parts",
+      "group": "Workbench",
+      "sub": "Check Set Parts",
+      "title": "Include spare parts? (end of 3e)",
+      "source": "BW Workbench.dc.html",
+      "view": "BW%20Navigator.dc.html#/Workbench/Check%20Set%20Parts/12d",
+      "html": "39-Include-spare-parts.html",
+      "states": [
+        {
+          "label": "Desktop · 1440 · include spare parts?",
+          "width": 1440,
+          "state": "include spare parts?"
+        },
+        {
+          "label": "iPad landscape · 1024 · include spare parts?",
+          "width": 1024,
+          "state": "include spare parts?"
+        },
+        {
+          "label": "iPad portrait · 768 · include spare parts?",
+          "width": 768,
+          "state": "include spare parts?"
+        },
+        {
+          "label": "Phone · 390 · include spare parts?",
+          "width": 390,
+          "state": "include spare parts?"
+        },
+        {
+          "label": "Desktop · 1440 · finish, spares skipped",
+          "width": 1440,
+          "state": "finish, spares skipped"
+        },
+        {
+          "label": "iPad landscape · 1024 · finish, spares skipped",
+          "width": 1024,
+          "state": "finish, spares skipped"
+        },
+        {
+          "label": "Phone · 390 · finish, spares skipped",
+          "width": 390,
+          "state": "finish, spares skipped"
+        },
+        {
+          "label": "Desktop · 1440 · finish, with spare pass",
+          "width": 1440,
+          "state": "finish, with spare pass"
+        },
+        {
+          "label": "iPad landscape · 1024 · finish, with spare pass",
+          "width": 1024,
+          "state": "finish, with spare pass"
+        },
+        {
+          "label": "Phone · 390 · finish, with spare pass",
+          "width": 390,
+          "state": "finish, with spare pass"
+        }
+      ],
+      "sizes": [
+        390,
+        768,
+        1024,
+        1440
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "39-Include-spare-parts-1024-dark.png",
+        "39-Include-spare-parts-1024-light.png",
+        "39-Include-spare-parts-1440-dark.png",
+        "39-Include-spare-parts-1440-light.png",
+        "39-Include-spare-parts-390-dark.png",
+        "39-Include-spare-parts-390-light.png",
+        "39-Include-spare-parts-768-dark.png",
+        "39-Include-spare-parts-768-light.png",
+        "39-Include-spare-parts-finish-spares-skipped-1024-dark.png",
+        "39-Include-spare-parts-finish-spares-skipped-1024-light.png",
+        "39-Include-spare-parts-finish-spares-skipped-1440-dark.png",
+        "39-Include-spare-parts-finish-spares-skipped-1440-light.png",
+        "39-Include-spare-parts-finish-spares-skipped-390-dark.png",
+        "39-Include-spare-parts-finish-spares-skipped-390-light.png",
+        "39-Include-spare-parts-finish-with-spare-pass-1024-dark.png",
+        "39-Include-spare-parts-finish-with-spare-pass-1024-light.png",
+        "39-Include-spare-parts-finish-with-spare-pass-1440-dark.png",
+        "39-Include-spare-parts-finish-with-spare-pass-1440-light.png",
+        "39-Include-spare-parts-finish-with-spare-pass-390-dark.png",
+        "39-Include-spare-parts-finish-with-spare-pass-390-light.png"
+      ]
+    },
+    {
+      "id": "12e",
+      "folder": "40-Check-figure-parts",
+      "screen": "Check-figure-parts",
+      "group": "Workbench",
+      "sub": "Check Set Parts",
+      "title": "Check figure parts (figure mode of 3e)",
+      "source": "BW Workbench.dc.html",
+      "view": "BW%20Navigator.dc.html#/Workbench/Check%20Set%20Parts/12e",
+      "html": "40-Check-figure-parts.html",
+      "states": [
+        {
+          "label": "Desktop · 1440 · check figure parts",
+          "width": 1440,
+          "state": "check figure parts"
+        },
+        {
+          "label": "iPad landscape · 1024 · check figure parts",
+          "width": 1024,
+          "state": "check figure parts"
+        },
+        {
+          "label": "iPad portrait · 768 · check figure parts",
+          "width": 768,
+          "state": "check figure parts"
+        },
+        {
+          "label": "Phone · 390 · check figure parts",
+          "width": 390,
+          "state": "check figure parts"
+        }
+      ],
+      "sizes": [
+        390,
+        768,
+        1024,
+        1440
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "40-Check-figure-parts-1024-dark.png",
+        "40-Check-figure-parts-1024-light.png",
+        "40-Check-figure-parts-1440-dark.png",
+        "40-Check-figure-parts-1440-light.png",
+        "40-Check-figure-parts-390-dark.png",
+        "40-Check-figure-parts-390-light.png",
+        "40-Check-figure-parts-768-dark.png",
+        "40-Check-figure-parts-768-light.png"
+      ]
+    },
+    {
+      "id": "4a",
+      "folder": "41-Wishlist",
+      "screen": "Wishlist",
+      "group": "Planning",
+      "sub": "Wishlist",
+      "title": "Wishlist",
+      "source": "BW Planning.dc.html",
+      "view": "BW%20Navigator.dc.html#/Planning/Wishlist/4a",
+      "html": null,
+      "states": [
+        {
+          "label": "4a Wishlist phone",
+          "width": 390,
+          "state": "4a Wishlist phone"
+        },
+        {
+          "label": "4a Wishlist desktop",
+          "width": 1440,
+          "state": "4a Wishlist desktop"
+        }
+      ],
+      "sizes": [
+        390,
+        1440
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "41-Wishlist-wishlist-desktop-1440-dark.png",
+        "41-Wishlist-wishlist-desktop-1440-light.png",
+        "41-Wishlist-wishlist-phone-390-dark.png",
+        "41-Wishlist-wishlist-phone-390-light.png"
+      ]
+    },
+    {
+      "id": "4b",
+      "folder": "42-Prices",
+      "screen": "Prices",
+      "group": "Planning",
+      "sub": "Prices",
+      "title": "Prices",
+      "source": "BW Planning.dc.html",
+      "view": "BW%20Navigator.dc.html#/Planning/Prices/4b",
+      "html": null,
+      "states": [
+        {
+          "label": "4b Prices phone",
+          "width": 390,
+          "state": "4b Prices phone"
+        },
+        {
+          "label": "4b Prices desktop",
+          "width": 1440,
+          "state": "4b Prices desktop"
+        }
+      ],
+      "sizes": [
+        390,
+        1440
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "42-Prices-prices-desktop-1440-dark.png",
+        "42-Prices-prices-desktop-1440-light.png",
+        "42-Prices-prices-phone-390-dark.png",
+        "42-Prices-prices-phone-390-light.png"
+      ]
+    },
+    {
+      "id": "4c",
+      "folder": "43-Complete-sets",
+      "screen": "Complete-sets",
+      "group": "Planning",
+      "sub": "Complete sets",
+      "title": "Complete sets",
+      "source": "BW Planning.dc.html",
+      "view": "BW%20Navigator.dc.html#/Planning/Complete%20sets/4c",
+      "html": null,
+      "states": [
+        {
+          "label": "4c Complete sets phone",
+          "width": 390,
+          "state": "4c Complete sets phone"
+        },
+        {
+          "label": "4c Complete sets desktop",
+          "width": 1440,
+          "state": "4c Complete sets desktop"
+        }
+      ],
+      "sizes": [
+        390,
+        1440
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "43-Complete-sets-complete-sets-desktop-1440-dark.png",
+        "43-Complete-sets-complete-sets-desktop-1440-light.png",
+        "43-Complete-sets-complete-sets-phone-390-dark.png",
+        "43-Complete-sets-complete-sets-phone-390-light.png"
+      ]
+    },
+    {
+      "id": "7c",
+      "folder": "44-Complete-sets",
+      "screen": "Complete-sets",
+      "group": "Planning",
+      "sub": "Complete sets",
+      "title": "Complete sets · pins, settings, export",
+      "source": "BW Planning.dc.html",
+      "view": "BW%20Navigator.dc.html#/Planning/Complete%20sets/7c",
+      "html": null,
+      "states": [
+        {
+          "label": "7c Pins",
+          "width": 390,
+          "state": "7c Pins"
+        },
+        {
+          "label": "7c Repair settings",
+          "width": 390,
+          "state": "7c Repair settings"
+        },
+        {
+          "label": "7c Export selection",
+          "width": 390,
+          "state": "7c Export selection"
+        }
+      ],
+      "sizes": [
+        390
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "44-Complete-sets-export-selection-390-dark.png",
+        "44-Complete-sets-export-selection-390-light.png",
+        "44-Complete-sets-pins-390-dark.png",
+        "44-Complete-sets-pins-390-light.png",
+        "44-Complete-sets-repair-settings-390-dark.png",
+        "44-Complete-sets-repair-settings-390-light.png"
+      ]
+    },
+    {
+      "id": "11c",
+      "folder": "45-Wanted-watch-and-alert",
+      "screen": "Wanted-watch-and-alert",
+      "group": "Planning",
+      "sub": "Prices",
+      "title": "Wanted watch and alert",
+      "source": "BW Planning.dc.html",
+      "view": "BW%20Navigator.dc.html#/Planning/Prices/11c",
+      "html": null,
+      "states": [
+        {
+          "label": "11c watch Wanted watch and alert phone",
+          "width": 390,
+          "state": "11c watch Wanted watch and alert phone"
+        },
+        {
+          "label": "11c watch Wanted watch and alert desktop",
+          "width": 1440,
+          "state": "11c watch Wanted watch and alert desktop"
+        }
+      ],
+      "sizes": [
+        390,
+        1440
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "45-Wanted-watch-and-alert-watch-desktop-1440-dark.png",
+        "45-Wanted-watch-and-alert-watch-desktop-1440-light.png",
+        "45-Wanted-watch-and-alert-watch-phone-390-dark.png",
+        "45-Wanted-watch-and-alert-watch-phone-390-light.png"
+      ]
+    },
+    {
+      "id": "12k",
+      "folder": "46-Your-max-price-with-a-currency",
+      "screen": "Your-max-price-with-a-currency",
+      "group": "Planning",
+      "sub": "Wishlist",
+      "title": "Your max price with a currency (4a, 7b)",
+      "source": "BW Planning.dc.html",
+      "view": "BW%20Navigator.dc.html#/Planning/Wishlist/12k",
+      "html": "46-Your-max-price-with-a-currency.html",
+      "states": [
+        {
+          "label": "Desktop · 1440 · list with max price",
+          "width": 1440,
+          "state": "list with max price"
+        },
+        {
+          "label": "iPad landscape · 1024 · list with max price",
+          "width": 1024,
+          "state": "list with max price"
+        },
+        {
+          "label": "iPad portrait · 768 · list with max price",
+          "width": 768,
+          "state": "list with max price"
+        },
+        {
+          "label": "Phone · 390 · list with max price",
+          "width": 390,
+          "state": "list with max price"
+        },
+        {
+          "label": "Desktop · 1440 · sort by under max",
+          "width": 1440,
+          "state": "sort by under max"
+        },
+        {
+          "label": "iPad landscape · 1024 · sort by under max",
+          "width": 1024,
+          "state": "sort by under max"
+        },
+        {
+          "label": "Desktop · 1440 · edit wish, max price and currency",
+          "width": 1440,
+          "state": "edit wish, max price and currency"
+        },
+        {
+          "label": "iPad landscape · 1024 · edit wish, max price and currency",
+          "width": 1024,
+          "state": "edit wish, max price and currency"
+        },
+        {
+          "label": "Phone · 390 · edit wish, max price and currency",
+          "width": 390,
+          "state": "edit wish, max price and currency"
+        },
+        {
+          "label": "Desktop · 1440 · wish detail, under max",
+          "width": 1440,
+          "state": "wish detail, under max"
+        },
+        {
+          "label": "iPad landscape · 1024 · wish detail, under max",
+          "width": 1024,
+          "state": "wish detail, under max"
+        },
+        {
+          "label": "Phone · 390 · wish detail, under max",
+          "width": 390,
+          "state": "wish detail, under max"
+        },
+        {
+          "label": "Desktop · 1440 · wish detail, not comparable",
+          "width": 1440,
+          "state": "wish detail, not comparable"
+        },
+        {
+          "label": "iPad landscape · 1024 · wish detail, not comparable",
+          "width": 1024,
+          "state": "wish detail, not comparable"
+        },
+        {
+          "label": "Phone · 390 · wish detail, not comparable",
+          "width": 390,
+          "state": "wish detail, not comparable"
+        }
+      ],
+      "sizes": [
+        390,
+        768,
+        1024,
+        1440
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "46-Your-max-price-with-a-currency-edit-wish-max-price-and-currency-1024-dark.png",
+        "46-Your-max-price-with-a-currency-edit-wish-max-price-and-currency-1024-light.png",
+        "46-Your-max-price-with-a-currency-edit-wish-max-price-and-currency-1440-dark.png",
+        "46-Your-max-price-with-a-currency-edit-wish-max-price-and-currency-1440-light.png",
+        "46-Your-max-price-with-a-currency-edit-wish-max-price-and-currency-390-dark.png",
+        "46-Your-max-price-with-a-currency-edit-wish-max-price-and-currency-390-light.png",
+        "46-Your-max-price-with-a-currency-list-with-max-price-1024-dark.png",
+        "46-Your-max-price-with-a-currency-list-with-max-price-1024-light.png",
+        "46-Your-max-price-with-a-currency-list-with-max-price-1440-dark.png",
+        "46-Your-max-price-with-a-currency-list-with-max-price-1440-light.png",
+        "46-Your-max-price-with-a-currency-list-with-max-price-390-dark.png",
+        "46-Your-max-price-with-a-currency-list-with-max-price-390-light.png",
+        "46-Your-max-price-with-a-currency-list-with-max-price-768-dark.png",
+        "46-Your-max-price-with-a-currency-list-with-max-price-768-light.png",
+        "46-Your-max-price-with-a-currency-sort-by-under-max-1024-dark.png",
+        "46-Your-max-price-with-a-currency-sort-by-under-max-1024-light.png",
+        "46-Your-max-price-with-a-currency-sort-by-under-max-1440-dark.png",
+        "46-Your-max-price-with-a-currency-sort-by-under-max-1440-light.png",
+        "46-Your-max-price-with-a-currency-wish-detail-not-comparable-1024-dark.png",
+        "46-Your-max-price-with-a-currency-wish-detail-not-comparable-1024-light.png",
+        "46-Your-max-price-with-a-currency-wish-detail-not-comparable-1440-dark.png",
+        "46-Your-max-price-with-a-currency-wish-detail-not-comparable-1440-light.png",
+        "46-Your-max-price-with-a-currency-wish-detail-not-comparable-390-dark.png",
+        "46-Your-max-price-with-a-currency-wish-detail-not-comparable-390-light.png",
+        "46-Your-max-price-with-a-currency-wish-detail-under-max-1024-dark.png",
+        "46-Your-max-price-with-a-currency-wish-detail-under-max-1024-light.png",
+        "46-Your-max-price-with-a-currency-wish-detail-under-max-1440-dark.png",
+        "46-Your-max-price-with-a-currency-wish-detail-under-max-1440-light.png",
+        "46-Your-max-price-with-a-currency-wish-detail-under-max-390-dark.png",
+        "46-Your-max-price-with-a-currency-wish-detail-under-max-390-light.png"
+      ]
+    },
+    {
+      "id": "4d",
+      "folder": "47-Add",
+      "screen": "Add",
+      "group": "Manage",
+      "sub": "Add",
+      "title": "Add",
+      "source": "BW Manage.dc.html",
+      "view": "BW%20Navigator.dc.html#/Manage/Add/4d",
+      "html": null,
+      "states": [
+        {
+          "label": "4d Add search",
+          "width": 390,
+          "state": "4d Add search"
+        },
+        {
+          "label": "4d Add paste",
+          "width": 390,
+          "state": "4d Add paste"
+        },
+        {
+          "label": "4d Add file",
+          "width": 390,
+          "state": "4d Add file"
+        },
+        {
+          "label": "4d Add photo",
+          "width": 390,
+          "state": "4d Add photo"
+        },
+        {
+          "label": "4d Add confirm",
+          "width": 390,
+          "state": "4d Add confirm"
+        },
+        {
+          "label": "4d Add duplicate",
+          "width": 390,
+          "state": "4d Add duplicate"
+        },
+        {
+          "label": "4d Add confirm desktop",
+          "width": 1440,
+          "state": "4d Add confirm desktop"
+        },
+        {
+          "label": "10a Add iPad portrait",
+          "width": 768,
+          "state": "10a Add iPad portrait"
+        },
+        {
+          "label": "10a Add iPad landscape",
+          "width": 1024,
+          "state": "10a Add iPad landscape"
+        }
+      ],
+      "sizes": [
+        390,
+        768,
+        1024,
+        1440
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "47-Add-add-confirm-390-dark.png",
+        "47-Add-add-confirm-390-light.png",
+        "47-Add-add-confirm-desktop-1440-dark.png",
+        "47-Add-add-confirm-desktop-1440-light.png",
+        "47-Add-add-duplicate-390-dark.png",
+        "47-Add-add-duplicate-390-light.png",
+        "47-Add-add-file-390-dark.png",
+        "47-Add-add-file-390-light.png",
+        "47-Add-add-paste-390-dark.png",
+        "47-Add-add-paste-390-light.png",
+        "47-Add-add-photo-390-dark.png",
+        "47-Add-add-photo-390-light.png",
+        "47-Add-add-search-390-dark.png",
+        "47-Add-add-search-390-light.png"
+      ]
+    },
+    {
+      "id": "5b",
+      "folder": "48-Tools-and-admin",
+      "screen": "Tools-and-admin",
+      "group": "Manage",
+      "sub": "Tools and admin",
+      "title": "Tools & Admin",
+      "source": "BW Manage.dc.html",
+      "view": "BW%20Navigator.dc.html#/Manage/Tools%20and%20admin/5b",
+      "html": null,
+      "states": [
+        {
+          "label": "5b Tools hub",
+          "width": 390,
+          "state": "5b Tools hub"
+        },
+        {
+          "label": "5b Bulk refresh",
+          "width": 390,
+          "state": "5b Bulk refresh"
+        },
+        {
+          "label": "5b Instruction files",
+          "width": 390,
+          "state": "5b Instruction files"
+        },
+        {
+          "label": "5b Unresolved figures",
+          "width": 390,
+          "state": "5b Unresolved figures"
+        },
+        {
+          "label": "5b Tools desktop",
+          "width": 1440,
+          "state": "5b Tools desktop"
+        }
+      ],
+      "sizes": [
+        390,
+        1440
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "48-Tools-and-admin-bulk-refresh-390-dark.png",
+        "48-Tools-and-admin-bulk-refresh-390-light.png",
+        "48-Tools-and-admin-instruction-files-390-dark.png",
+        "48-Tools-and-admin-instruction-files-390-light.png",
+        "48-Tools-and-admin-tools-desktop-1440-dark.png",
+        "48-Tools-and-admin-tools-desktop-1440-light.png",
+        "48-Tools-and-admin-tools-hub-390-dark.png",
+        "48-Tools-and-admin-tools-hub-390-light.png",
+        "48-Tools-and-admin-unresolved-figures-390-dark.png",
+        "48-Tools-and-admin-unresolved-figures-390-light.png"
+      ]
+    },
+    {
+      "id": "5c",
+      "folder": "49-Statistics",
+      "screen": "Statistics",
+      "group": "Manage",
+      "sub": "Statistics",
+      "title": "Statistics",
+      "source": "BW Manage.dc.html",
+      "view": "BW%20Navigator.dc.html#/Manage/Statistics/5c",
+      "html": null,
+      "states": [
+        {
+          "label": "5c Statistics phone",
+          "width": 390,
+          "state": "5c Statistics phone"
+        },
+        {
+          "label": "5c Themes detail",
+          "width": 390,
+          "state": "5c Themes detail"
+        },
+        {
+          "label": "5c Storage detail",
+          "width": 390,
+          "state": "5c Storage detail"
+        },
+        {
+          "label": "5c Places detail",
+          "width": 390,
+          "state": "5c Places detail"
+        },
+        {
+          "label": "5c Statistics desktop",
+          "width": 1440,
+          "state": "5c Statistics desktop"
+        }
+      ],
+      "sizes": [
+        390,
+        1440
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "49-Statistics-places-detail-390-dark.png",
+        "49-Statistics-places-detail-390-light.png",
+        "49-Statistics-statistics-desktop-1440-dark.png",
+        "49-Statistics-statistics-desktop-1440-light.png",
+        "49-Statistics-statistics-phone-390-dark.png",
+        "49-Statistics-statistics-phone-390-light.png",
+        "49-Statistics-storage-detail-390-dark.png",
+        "49-Statistics-storage-detail-390-light.png",
+        "49-Statistics-themes-detail-390-dark.png",
+        "49-Statistics-themes-detail-390-light.png"
+      ]
+    },
+    {
+      "id": "7e",
+      "folder": "50-Tools-and-admin-pages",
+      "screen": "Tools-and-admin-pages",
+      "group": "Manage",
+      "sub": "Tools and admin",
+      "title": "Tools & Admin pages",
+      "source": "BW Manage.dc.html",
+      "view": "BW%20Navigator.dc.html#/Manage/Tools%20and%20admin/7e",
+      "html": null,
+      "states": [
+        {
+          "label": "7e Admin",
+          "width": 390,
+          "state": "7e Admin"
+        },
+        {
+          "label": "7e BrickLink",
+          "width": 390,
+          "state": "7e BrickLink"
+        },
+        {
+          "label": "7e Identify history",
+          "width": 390,
+          "state": "7e Identify history"
+        },
+        {
+          "label": "7e Peeron",
+          "width": 390,
+          "state": "7e Peeron"
+        },
+        {
+          "label": "7e Set refresh",
+          "width": 390,
+          "state": "7e Set refresh"
+        },
+        {
+          "label": "7e Instruction sheets",
+          "width": 390,
+          "state": "7e Instruction sheets"
+        },
+        {
+          "label": "7e Admin desktop",
+          "width": 1440,
+          "state": "7e Admin desktop"
+        }
+      ],
+      "sizes": [
+        390,
+        1440
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "50-Tools-and-admin-pages-admin-390-dark.png",
+        "50-Tools-and-admin-pages-admin-390-light.png",
+        "50-Tools-and-admin-pages-admin-desktop-1440-dark.png",
+        "50-Tools-and-admin-pages-admin-desktop-1440-light.png",
+        "50-Tools-and-admin-pages-bricklink-390-dark.png",
+        "50-Tools-and-admin-pages-bricklink-390-light.png",
+        "50-Tools-and-admin-pages-identify-history-390-dark.png",
+        "50-Tools-and-admin-pages-identify-history-390-light.png",
+        "50-Tools-and-admin-pages-instruction-sheets-390-dark.png",
+        "50-Tools-and-admin-pages-instruction-sheets-390-light.png",
+        "50-Tools-and-admin-pages-peeron-390-dark.png",
+        "50-Tools-and-admin-pages-peeron-390-light.png",
+        "50-Tools-and-admin-pages-set-refresh-390-dark.png",
+        "50-Tools-and-admin-pages-set-refresh-390-light.png"
+      ]
+    },
+    {
+      "id": "7f",
+      "folder": "51-System-pages",
+      "screen": "System-pages",
+      "group": "Manage",
+      "sub": "Tools and admin",
+      "title": "System pages",
+      "source": "BW Manage.dc.html",
+      "view": "BW%20Navigator.dc.html#/Manage/Tools%20and%20admin/7f",
+      "html": "51-System-pages.html",
+      "states": [
+        {
+          "label": "7f 404",
+          "width": 390,
+          "state": "7f 404"
+        },
+        {
+          "label": "7f Error",
+          "width": 390,
+          "state": "7f Error"
+        },
+        {
+          "label": "7f Exception",
+          "width": 390,
+          "state": "7f Exception"
+        },
+        {
+          "label": "7f Success",
+          "width": 390,
+          "state": "7f Success"
+        },
+        {
+          "label": "7f Lightbox",
+          "width": 390,
+          "state": "7f Lightbox"
+        }
+      ],
+      "sizes": [
+        390
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "51-System-pages-404-390-dark.png",
+        "51-System-pages-404-390-light.png",
+        "51-System-pages-error-390-dark.png",
+        "51-System-pages-error-390-light.png",
+        "51-System-pages-exception-390-dark.png",
+        "51-System-pages-exception-390-light.png",
+        "51-System-pages-lightbox-390-dark.png",
+        "51-System-pages-lightbox-390-light.png",
+        "51-System-pages-success-390-dark.png",
+        "51-System-pages-success-390-light.png"
+      ]
+    },
+    {
+      "id": "8b",
+      "folder": "52-Place",
+      "screen": "Place",
+      "group": "Manage",
+      "sub": "Tools and admin",
+      "title": "Place, storage, admin forms, theme picker",
+      "source": "BW Manage.dc.html",
+      "view": "BW%20Navigator.dc.html#/Manage/Tools%20and%20admin/8b",
+      "html": null,
+      "states": [
+        {
+          "label": "8b Place",
+          "width": 390,
+          "state": "8b Place"
+        },
+        {
+          "label": "8b Storage page",
+          "width": 390,
+          "state": "8b Storage page"
+        },
+        {
+          "label": "8b Admin form",
+          "width": 390,
+          "state": "8b Admin form"
+        },
+        {
+          "label": "8b Tags admin",
+          "width": 390,
+          "state": "8b Tags admin"
+        },
+        {
+          "label": "8b Theme picker",
+          "width": 390,
+          "state": "8b Theme picker"
+        }
+      ],
+      "sizes": [
+        390
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "52-Place-390-dark.png",
+        "52-Place-390-light.png",
+        "52-Place-admin-form-390-dark.png",
+        "52-Place-admin-form-390-light.png",
+        "52-Place-storage-page-390-dark.png",
+        "52-Place-storage-page-390-light.png",
+        "52-Place-tags-admin-390-dark.png",
+        "52-Place-tags-admin-390-light.png",
+        "52-Place-theme-picker-390-dark.png",
+        "52-Place-theme-picker-390-light.png"
+      ]
+    },
+    {
+      "id": "11d",
+      "folder": "53-Jobs-and-maintenance",
+      "screen": "Jobs-and-maintenance",
+      "group": "Manage",
+      "sub": "Tools and admin",
+      "title": "Jobs and maintenance · Peeron, bulk set refresh",
+      "source": "BW Manage.dc.html",
+      "view": "BW%20Navigator.dc.html#/Manage/Tools%20and%20admin/11d",
+      "html": null,
+      "states": [
+        {
+          "label": "11d peeron Peeron load phone",
+          "width": 390,
+          "state": "11d peeron Peeron load phone"
+        },
+        {
+          "label": "11d peeron Peeron load desktop",
+          "width": 1440,
+          "state": "11d peeron Peeron load desktop"
+        },
+        {
+          "label": "11d pdf Peeron PDF phone",
+          "width": 390,
+          "state": "11d pdf Peeron PDF phone"
+        },
+        {
+          "label": "11d pdf Peeron PDF desktop",
+          "width": 1440,
+          "state": "11d pdf Peeron PDF desktop"
+        },
+        {
+          "label": "11d refresh Set refresh bulk phone",
+          "width": 390,
+          "state": "11d refresh Set refresh bulk phone"
+        },
+        {
+          "label": "11d refresh Set refresh bulk desktop",
+          "width": 1440,
+          "state": "11d refresh Set refresh bulk desktop"
+        }
+      ],
+      "sizes": [
+        390,
+        1440
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "53-Jobs-and-maintenance-peeron-load-desktop-1440-dark.png",
+        "53-Jobs-and-maintenance-peeron-load-desktop-1440-light.png",
+        "53-Jobs-and-maintenance-peeron-load-phone-390-dark.png",
+        "53-Jobs-and-maintenance-peeron-load-phone-390-light.png",
+        "53-Jobs-and-maintenance-peeron-pdf-desktop-1440-dark.png",
+        "53-Jobs-and-maintenance-peeron-pdf-desktop-1440-light.png",
+        "53-Jobs-and-maintenance-peeron-pdf-phone-390-dark.png",
+        "53-Jobs-and-maintenance-peeron-pdf-phone-390-light.png",
+        "53-Jobs-and-maintenance-set-refresh-bulk-desktop-1440-dark.png",
+        "53-Jobs-and-maintenance-set-refresh-bulk-desktop-1440-light.png",
+        "53-Jobs-and-maintenance-set-refresh-bulk-phone-390-dark.png",
+        "53-Jobs-and-maintenance-set-refresh-bulk-phone-390-light.png"
+      ]
+    },
+    {
+      "id": "12l",
+      "folder": "54-Catalogues-and-keys",
+      "screen": "Catalogues-and-keys",
+      "group": "Manage",
+      "sub": "Tools and admin",
+      "title": "Catalogues & keys",
+      "source": "BW Manage.dc.html",
+      "view": "BW%20Navigator.dc.html#/Manage/Tools%20and%20admin/12l",
+      "html": "54-Catalogues-and-keys.html",
+      "states": [
+        {
+          "label": "Desktop · 1440 · keys configured",
+          "width": 1440,
+          "state": "keys configured"
+        },
+        {
+          "label": "iPad landscape · 1024 · keys configured",
+          "width": 1024,
+          "state": "keys configured"
+        },
+        {
+          "label": "iPad portrait · 768 · keys configured",
+          "width": 768,
+          "state": "keys configured"
+        },
+        {
+          "label": "Phone · 390 · keys configured",
+          "width": 390,
+          "state": "keys configured"
+        },
+        {
+          "label": "Key states · 1440",
+          "width": 1440,
+          "state": "Key states · 1440"
+        },
+        {
+          "label": "Desktop · 1440 · no keys, catalogue not loaded",
+          "width": 1440,
+          "state": "no keys, catalogue not loaded"
+        },
+        {
+          "label": "iPad landscape · 1024 · no keys, catalogue not loaded",
+          "width": 1024,
+          "state": "no keys, catalogue not loaded"
+        },
+        {
+          "label": "Phone · 390 · no keys, catalogue not loaded",
+          "width": 390,
+          "state": "no keys, catalogue not loaded"
+        },
+        {
+          "label": "Desktop · 1440 · budget used up",
+          "width": 1440,
+          "state": "budget used up"
+        },
+        {
+          "label": "iPad landscape · 1024 · budget used up",
+          "width": 1024,
+          "state": "budget used up"
+        },
+        {
+          "label": "Phone · 390 · budget used up",
+          "width": 390,
+          "state": "budget used up"
+        },
+        {
+          "label": "Desktop · 1440 · key rejected, catalogue loading",
+          "width": 1440,
+          "state": "key rejected, catalogue loading"
+        },
+        {
+          "label": "iPad landscape · 1024 · key rejected, catalogue loading",
+          "width": 1024,
+          "state": "key rejected, catalogue loading"
+        },
+        {
+          "label": "Phone · 390 · key rejected, catalogue loading",
+          "width": 390,
+          "state": "key rejected, catalogue loading"
+        }
+      ],
+      "sizes": [
+        390,
+        768,
+        1024,
+        1440
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "54-Catalogues-and-keys-budget-used-up-1024-dark.png",
+        "54-Catalogues-and-keys-budget-used-up-1024-light.png",
+        "54-Catalogues-and-keys-budget-used-up-1440-dark.png",
+        "54-Catalogues-and-keys-budget-used-up-1440-light.png",
+        "54-Catalogues-and-keys-budget-used-up-390-dark.png",
+        "54-Catalogues-and-keys-budget-used-up-390-light.png",
+        "54-Catalogues-and-keys-key-rejected-catalogue-loading-1024-dark.png",
+        "54-Catalogues-and-keys-key-rejected-catalogue-loading-1024-light.png",
+        "54-Catalogues-and-keys-key-rejected-catalogue-loading-1440-dark.png",
+        "54-Catalogues-and-keys-key-rejected-catalogue-loading-1440-light.png",
+        "54-Catalogues-and-keys-key-rejected-catalogue-loading-390-dark.png",
+        "54-Catalogues-and-keys-key-rejected-catalogue-loading-390-light.png",
+        "54-Catalogues-and-keys-key-states-1440-dark.png",
+        "54-Catalogues-and-keys-key-states-1440-light.png",
+        "54-Catalogues-and-keys-keys-configured-1024-dark.png",
+        "54-Catalogues-and-keys-keys-configured-1024-light.png",
+        "54-Catalogues-and-keys-keys-configured-1440-dark.png",
+        "54-Catalogues-and-keys-keys-configured-1440-light.png",
+        "54-Catalogues-and-keys-keys-configured-390-dark.png",
+        "54-Catalogues-and-keys-keys-configured-390-light.png",
+        "54-Catalogues-and-keys-keys-configured-768-dark.png",
+        "54-Catalogues-and-keys-keys-configured-768-light.png",
+        "54-Catalogues-and-keys-no-keys-catalogue-not-loaded-1024-dark.png",
+        "54-Catalogues-and-keys-no-keys-catalogue-not-loaded-1024-light.png",
+        "54-Catalogues-and-keys-no-keys-catalogue-not-loaded-1440-dark.png",
+        "54-Catalogues-and-keys-no-keys-catalogue-not-loaded-1440-light.png",
+        "54-Catalogues-and-keys-no-keys-catalogue-not-loaded-390-dark.png",
+        "54-Catalogues-and-keys-no-keys-catalogue-not-loaded-390-light.png"
+      ]
+    },
+    {
+      "id": "12m",
+      "folder": "55-Api-tokens",
+      "screen": "Api-tokens",
+      "group": "Manage",
+      "sub": "Tools and admin",
+      "title": "API tokens",
+      "source": "BW Manage.dc.html",
+      "view": "BW%20Navigator.dc.html#/Manage/Tools%20and%20admin/12m",
+      "html": "55-Api-tokens.html",
+      "states": [
+        {
+          "label": "Desktop · 1440 · list",
+          "width": 1440,
+          "state": "list"
+        },
+        {
+          "label": "iPad landscape · 1024 · list",
+          "width": 1024,
+          "state": "list"
+        },
+        {
+          "label": "iPad portrait · 768 · list",
+          "width": 768,
+          "state": "list"
+        },
+        {
+          "label": "Phone · 390 · list",
+          "width": 390,
+          "state": "list"
+        },
+        {
+          "label": "Desktop · 1440 · create token",
+          "width": 1440,
+          "state": "create token"
+        },
+        {
+          "label": "iPad landscape · 1024 · create token",
+          "width": 1024,
+          "state": "create token"
+        },
+        {
+          "label": "Phone · 390 · create token",
+          "width": 390,
+          "state": "create token"
+        },
+        {
+          "label": "Desktop · 1440 · token shown once",
+          "width": 1440,
+          "state": "token shown once"
+        },
+        {
+          "label": "iPad landscape · 1024 · token shown once",
+          "width": 1024,
+          "state": "token shown once"
+        },
+        {
+          "label": "Phone · 390 · token shown once",
+          "width": 390,
+          "state": "token shown once"
+        },
+        {
+          "label": "Desktop · 1440 · revoke, confirm",
+          "width": 1440,
+          "state": "revoke, confirm"
+        },
+        {
+          "label": "iPad landscape · 1024 · revoke, confirm",
+          "width": 1024,
+          "state": "revoke, confirm"
+        },
+        {
+          "label": "Phone · 390 · revoke, confirm",
+          "width": 390,
+          "state": "revoke, confirm"
+        },
+        {
+          "label": "Desktop · 1440 · revoked, undo",
+          "width": 1440,
+          "state": "revoked, undo"
+        },
+        {
+          "label": "iPad landscape · 1024 · revoked, undo",
+          "width": 1024,
+          "state": "revoked, undo"
+        },
+        {
+          "label": "Phone · 390 · revoked, undo",
+          "width": 390,
+          "state": "revoked, undo"
+        },
+        {
+          "label": "Desktop · 1440 · empty",
+          "width": 1440,
+          "state": "empty"
+        },
+        {
+          "label": "iPad landscape · 1024 · empty",
+          "width": 1024,
+          "state": "empty"
+        },
+        {
+          "label": "Phone · 390 · empty",
+          "width": 390,
+          "state": "empty"
+        }
+      ],
+      "sizes": [
+        390,
+        768,
+        1024,
+        1440
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "55-Api-tokens-create-token-1024-dark.png",
+        "55-Api-tokens-create-token-1024-light.png",
+        "55-Api-tokens-create-token-1440-dark.png",
+        "55-Api-tokens-create-token-1440-light.png",
+        "55-Api-tokens-create-token-390-dark.png",
+        "55-Api-tokens-create-token-390-light.png",
+        "55-Api-tokens-empty-1024-dark.png",
+        "55-Api-tokens-empty-1024-light.png",
+        "55-Api-tokens-empty-1440-dark.png",
+        "55-Api-tokens-empty-1440-light.png",
+        "55-Api-tokens-empty-390-dark.png",
+        "55-Api-tokens-empty-390-light.png",
+        "55-Api-tokens-list-1024-dark.png",
+        "55-Api-tokens-list-1024-light.png",
+        "55-Api-tokens-list-1440-dark.png",
+        "55-Api-tokens-list-1440-light.png",
+        "55-Api-tokens-list-390-dark.png",
+        "55-Api-tokens-list-390-light.png",
+        "55-Api-tokens-list-768-dark.png",
+        "55-Api-tokens-list-768-light.png",
+        "55-Api-tokens-revoke-confirm-1024-dark.png",
+        "55-Api-tokens-revoke-confirm-1024-light.png",
+        "55-Api-tokens-revoke-confirm-1440-dark.png",
+        "55-Api-tokens-revoke-confirm-1440-light.png",
+        "55-Api-tokens-revoke-confirm-390-dark.png",
+        "55-Api-tokens-revoke-confirm-390-light.png",
+        "55-Api-tokens-revoked-undo-1024-dark.png",
+        "55-Api-tokens-revoked-undo-1024-light.png",
+        "55-Api-tokens-revoked-undo-1440-dark.png",
+        "55-Api-tokens-revoked-undo-1440-light.png",
+        "55-Api-tokens-revoked-undo-390-dark.png",
+        "55-Api-tokens-revoked-undo-390-light.png",
+        "55-Api-tokens-token-shown-once-1024-dark.png",
+        "55-Api-tokens-token-shown-once-1024-light.png",
+        "55-Api-tokens-token-shown-once-1440-dark.png",
+        "55-Api-tokens-token-shown-once-1440-light.png",
+        "55-Api-tokens-token-shown-once-390-dark.png",
+        "55-Api-tokens-token-shown-once-390-light.png"
+      ]
+    },
+    {
+      "id": "12n",
+      "folder": "56-Collection-sync",
+      "screen": "Collection-sync",
+      "group": "Manage",
+      "sub": "Sync",
+      "title": "Collection sync",
+      "source": "BW Manage.dc.html",
+      "view": "BW%20Navigator.dc.html#/Manage/Sync/12n",
+      "html": "56-Collection-sync.html",
+      "states": [
+        {
+          "label": "Desktop · 1440 · sources",
+          "width": 1440,
+          "state": "sources"
+        },
+        {
+          "label": "iPad landscape · 1024 · sources",
+          "width": 1024,
+          "state": "sources"
+        },
+        {
+          "label": "iPad portrait · 768 · sources",
+          "width": 768,
+          "state": "sources"
+        },
+        {
+          "label": "Phone · 390 · sources",
+          "width": 390,
+          "state": "sources"
+        },
+        {
+          "label": "Desktop · 1440 · link a collection",
+          "width": 1440,
+          "state": "link a collection"
+        },
+        {
+          "label": "iPad landscape · 1024 · link a collection",
+          "width": 1024,
+          "state": "link a collection"
+        },
+        {
+          "label": "Phone · 390 · link a collection",
+          "width": 390,
+          "state": "link a collection"
+        },
+        {
+          "label": "Desktop · 1440 · pull preview",
+          "width": 1440,
+          "state": "pull preview"
+        },
+        {
+          "label": "iPad landscape · 1024 · pull preview",
+          "width": 1024,
+          "state": "pull preview"
+        },
+        {
+          "label": "Phone · 390 · pull preview",
+          "width": 390,
+          "state": "pull preview"
+        },
+        {
+          "label": "Desktop · 1440 · send review",
+          "width": 1440,
+          "state": "send review"
+        },
+        {
+          "label": "iPad landscape · 1024 · send review",
+          "width": 1024,
+          "state": "send review"
+        },
+        {
+          "label": "Phone · 390 · send review",
+          "width": 390,
+          "state": "send review"
+        },
+        {
+          "label": "Desktop · 1440 · changed in both places",
+          "width": 1440,
+          "state": "changed in both places"
+        },
+        {
+          "label": "iPad landscape · 1024 · changed in both places",
+          "width": 1024,
+          "state": "changed in both places"
+        },
+        {
+          "label": "Phone · 390 · changed in both places",
+          "width": 390,
+          "state": "changed in both places"
+        },
+        {
+          "label": "Desktop · 1440 · sending",
+          "width": 1440,
+          "state": "sending"
+        },
+        {
+          "label": "Desktop · 1440 · sent",
+          "width": 1440,
+          "state": "sent"
+        },
+        {
+          "label": "Phone · 390 · paused, retry",
+          "width": 390,
+          "state": "paused, retry"
+        },
+        {
+          "label": "iPad landscape · 1024 · key rejected",
+          "width": 1024,
+          "state": "key rejected"
+        },
+        {
+          "label": "Desktop · 1440 · only one key set",
+          "width": 1440,
+          "state": "only one key set"
+        },
+        {
+          "label": "Phone · 390 · only one key set",
+          "width": 390,
+          "state": "only one key set"
+        }
+      ],
+      "sizes": [
+        390,
+        768,
+        1024,
+        1440
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "56-Collection-sync-changed-in-both-places-1024-dark.png",
+        "56-Collection-sync-changed-in-both-places-1024-light.png",
+        "56-Collection-sync-changed-in-both-places-1440-dark.png",
+        "56-Collection-sync-changed-in-both-places-1440-light.png",
+        "56-Collection-sync-changed-in-both-places-390-dark.png",
+        "56-Collection-sync-changed-in-both-places-390-light.png",
+        "56-Collection-sync-key-rejected-1024-dark.png",
+        "56-Collection-sync-key-rejected-1024-light.png",
+        "56-Collection-sync-link-a-collection-1024-dark.png",
+        "56-Collection-sync-link-a-collection-1024-light.png",
+        "56-Collection-sync-link-a-collection-1440-dark.png",
+        "56-Collection-sync-link-a-collection-1440-light.png",
+        "56-Collection-sync-link-a-collection-390-dark.png",
+        "56-Collection-sync-link-a-collection-390-light.png",
+        "56-Collection-sync-only-one-key-set-1440-dark.png",
+        "56-Collection-sync-only-one-key-set-1440-light.png",
+        "56-Collection-sync-only-one-key-set-390-dark.png",
+        "56-Collection-sync-only-one-key-set-390-light.png",
+        "56-Collection-sync-paused-retry-390-dark.png",
+        "56-Collection-sync-paused-retry-390-light.png",
+        "56-Collection-sync-pull-preview-1024-dark.png",
+        "56-Collection-sync-pull-preview-1024-light.png",
+        "56-Collection-sync-pull-preview-1440-dark.png",
+        "56-Collection-sync-pull-preview-1440-light.png",
+        "56-Collection-sync-pull-preview-390-dark.png",
+        "56-Collection-sync-pull-preview-390-light.png",
+        "56-Collection-sync-send-review-1024-dark.png",
+        "56-Collection-sync-send-review-1024-light.png",
+        "56-Collection-sync-send-review-1440-dark.png",
+        "56-Collection-sync-send-review-1440-light.png",
+        "56-Collection-sync-send-review-390-dark.png",
+        "56-Collection-sync-send-review-390-light.png",
+        "56-Collection-sync-sending-1440-dark.png",
+        "56-Collection-sync-sending-1440-light.png",
+        "56-Collection-sync-sent-1440-dark.png",
+        "56-Collection-sync-sent-1440-light.png",
+        "56-Collection-sync-sources-1024-dark.png",
+        "56-Collection-sync-sources-1024-light.png",
+        "56-Collection-sync-sources-1440-dark.png",
+        "56-Collection-sync-sources-1440-light.png",
+        "56-Collection-sync-sources-390-dark.png",
+        "56-Collection-sync-sources-390-light.png",
+        "56-Collection-sync-sources-768-dark.png",
+        "56-Collection-sync-sources-768-light.png"
+      ]
+    },
+    {
+      "id": "12o",
+      "folder": "57-Scan-a-set-barcode",
+      "screen": "Scan-a-set-barcode",
+      "group": "Manage",
+      "sub": "Add",
+      "title": "Scan a set barcode",
+      "source": "BW Manage.dc.html",
+      "view": "BW%20Navigator.dc.html#/Manage/Add/12o",
+      "html": "57-Scan-a-set-barcode.html",
+      "states": [
+        {
+          "label": "Phone · 390 · scanning",
+          "width": 390,
+          "state": "scanning"
+        },
+        {
+          "label": "Phone · 390 · match found, add",
+          "width": 390,
+          "state": "match found, add"
+        },
+        {
+          "label": "Phone · 390 · already owned, used",
+          "width": 390,
+          "state": "already owned, used"
+        },
+        {
+          "label": "Phone · 390 · added, keep scanning",
+          "width": 390,
+          "state": "added, keep scanning"
+        },
+        {
+          "label": "Phone · 390 · several sets for one barcode",
+          "width": 390,
+          "state": "several sets for one barcode"
+        },
+        {
+          "label": "Phone · 390 · no match",
+          "width": 390,
+          "state": "no match"
+        },
+        {
+          "label": "Phone · 390 · camera not allowed",
+          "width": 390,
+          "state": "camera not allowed"
+        },
+        {
+          "label": "Phone · 390 · needs a Brickset key",
+          "width": 390,
+          "state": "needs a Brickset key"
+        },
+        {
+          "label": "Desktop · 1440 · scan session",
+          "width": 1440,
+          "state": "scan session"
+        },
+        {
+          "label": "iPad landscape · 1024 · scan session",
+          "width": 1024,
+          "state": "scan session"
+        },
+        {
+          "label": "iPad portrait · 768 · scan, match found",
+          "width": 768,
+          "state": "scan, match found"
+        },
+        {
+          "label": "Desktop · 1440 · added, undo",
+          "width": 1440,
+          "state": "added, undo"
+        },
+        {
+          "label": "iPad landscape · 1024 · added, undo",
+          "width": 1024,
+          "state": "added, undo"
+        }
+      ],
+      "sizes": [
+        390,
+        768,
+        1024,
+        1440
+      ],
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "pngs": [
+        "57-Scan-a-set-barcode-added-keep-scanning-390-dark.png",
+        "57-Scan-a-set-barcode-added-keep-scanning-390-light.png",
+        "57-Scan-a-set-barcode-added-undo-1024-dark.png",
+        "57-Scan-a-set-barcode-added-undo-1024-light.png",
+        "57-Scan-a-set-barcode-added-undo-1440-dark.png",
+        "57-Scan-a-set-barcode-added-undo-1440-light.png",
+        "57-Scan-a-set-barcode-already-owned-used-390-dark.png",
+        "57-Scan-a-set-barcode-already-owned-used-390-light.png",
+        "57-Scan-a-set-barcode-camera-not-allowed-390-dark.png",
+        "57-Scan-a-set-barcode-camera-not-allowed-390-light.png",
+        "57-Scan-a-set-barcode-match-found-add-390-dark.png",
+        "57-Scan-a-set-barcode-match-found-add-390-light.png",
+        "57-Scan-a-set-barcode-needs-a-brickset-key-390-dark.png",
+        "57-Scan-a-set-barcode-needs-a-brickset-key-390-light.png",
+        "57-Scan-a-set-barcode-no-match-390-dark.png",
+        "57-Scan-a-set-barcode-no-match-390-light.png",
+        "57-Scan-a-set-barcode-scan-match-found-768-dark.png",
+        "57-Scan-a-set-barcode-scan-match-found-768-light.png",
+        "57-Scan-a-set-barcode-scan-session-1024-dark.png",
+        "57-Scan-a-set-barcode-scan-session-1024-light.png",
+        "57-Scan-a-set-barcode-scan-session-1440-dark.png",
+        "57-Scan-a-set-barcode-scan-session-1440-light.png",
+        "57-Scan-a-set-barcode-scanning-390-dark.png",
+        "57-Scan-a-set-barcode-scanning-390-light.png",
+        "57-Scan-a-set-barcode-several-sets-for-one-barcode-390-dark.png",
+        "57-Scan-a-set-barcode-several-sets-for-one-barcode-390-light.png"
+      ]
+    }
+  ],
+  "unmapped": [
+    "10a-add-ipad-landscape-1024-dark.png",
+    "10a-add-ipad-landscape-1024-light.png",
+    "10a-add-ipad-portrait-768-dark.png",
+    "10a-add-ipad-portrait-768-light.png",
+    "10a-matcher-ipad-landscape-1024-dark.png",
+    "10a-matcher-ipad-landscape-1024-light.png",
+    "10a-matcher-ipad-portrait-768-dark.png",
+    "10a-matcher-ipad-portrait-768-light.png",
+    "10a-orders-ipad-landscape-1024-dark.png",
+    "10a-orders-ipad-landscape-1024-light.png",
+    "10a-orders-ipad-portrait-768-dark.png",
+    "10a-orders-ipad-portrait-768-light.png",
+    "10a-p2i-capture-ipad-landscape-1024-dark.png",
+    "10a-p2i-capture-ipad-landscape-1024-light.png",
+    "10a-p2i-capture-ipad-portrait-768-dark.png",
+    "10a-p2i-capture-ipad-portrait-768-light.png",
+    "10a-p2i-queue-ipad-landscape-1024-dark.png",
+    "10a-p2i-queue-ipad-landscape-1024-light.png",
+    "10a-p2i-queue-ipad-portrait-768-dark.png",
+    "10a-p2i-queue-ipad-portrait-768-light.png",
+    "10a-p2i-results-ipad-landscape-1024-dark.png",
+    "10a-p2i-results-ipad-landscape-1024-light.png",
+    "10a-p2i-results-ipad-portrait-768-dark.png",
+    "10a-p2i-results-ipad-portrait-768-light.png",
+    "10a-p2i-review-ipad-landscape-1024-dark.png",
+    "10a-p2i-review-ipad-landscape-1024-light.png",
+    "10a-p2i-review-ipad-portrait-768-dark.png",
+    "10a-p2i-review-ipad-portrait-768-light.png",
+    "10a-part-picker-ipad-landscape-1024-dark.png",
+    "10a-part-picker-ipad-landscape-1024-light.png",
+    "10a-part-picker-ipad-portrait-768-dark.png",
+    "10a-part-picker-ipad-portrait-768-light.png",
+    "10a-set-detail-ipad-landscape-1024-dark.png",
+    "10a-set-detail-ipad-landscape-1024-light.png",
+    "10a-set-detail-ipad-portrait-768-dark.png",
+    "10a-set-detail-ipad-portrait-768-light.png",
+    "10a-sets-ipad-landscape-1024-dark.png",
+    "10a-sets-ipad-landscape-1024-light.png",
+    "10a-sets-ipad-portrait-768-dark.png",
+    "10a-sets-ipad-portrait-768-light.png",
+    "10a-storage-ipad-landscape-1024-dark.png",
+    "10a-storage-ipad-landscape-1024-light.png",
+    "10a-storage-ipad-portrait-768-dark.png",
+    "10a-storage-ipad-portrait-768-light.png"
+  ]
+}

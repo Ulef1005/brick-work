@@ -1,4 +1,4 @@
-"""Build the demo's 4.0 collection from design/test-data (M.8j, issue #110).
+"""Build the demo's 4.0 collection from design/sources/test-data (M.8j, issue #110).
 
 The catalogue is built, not stored: a Rebrickable-shaped dump is written from the design test data (set, part, colour and minifigure names and
 numbers, which took them from a public catalogue snapshot), `store4.builder` builds a `catalogue.db` from it beside the collection, the
@@ -23,7 +23,7 @@ from ..store4 import builder, identity
 from ..store4.activate import activate
 from ..store4.dump import HEADERS
 
-DATA = Path(__file__).resolve().parents[2] / 'design' / 'test-data'
+DATA = Path(__file__).resolve().parents[2] / 'design' / 'sources' / 'test-data'
 STAMP = '2026-10-12T08:00:00.000Z'
 NOW = '2026-10-12T08:00:00Z'
 

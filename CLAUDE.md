@@ -1,10 +1,10 @@
 # Brick Work
 
 ## Design reference
-The app must follow the design in `design/`. Before building or changing a screen, and when asked to check compliance, follow `DESIGN-CHECK.md`:
-- find the screen in `design/frames.json`,
-- compare against its PNGs in `design/frames/` (light and dark, 1440 / 1024 / 390),
-- take exact values from `design/sections/<Group>/<id>.html` or the section in its `design/BW *.dc.html` page,
-- use tokens from `design/tokens-v2.css`, never new colours.
+The app must follow the design in `design/`. Before building or changing a screen, and when asked to check compliance, follow `design/DESIGN-CHECK.md`:
+- find the screen in `design/sources/frames.json`,
+- compare against its PNGs in `design/screens/` (light and dark, 1440 / 1024 / 390),
+- take exact values from the HTML in its screen folder (`design/screens/NN-<screen>/`) or the section in its `design/sources/BW *.dc.html` page,
+- use tokens from `design/tokens/`, never new colours.
 
-Do not edit files in `design/`; they are exported from the design project. Report design gaps instead.
+`design/sources/` is the design project's export; `design/` is organised per P2 by scripts; never hand-edit `sources/` or generated files. Report design gaps instead.

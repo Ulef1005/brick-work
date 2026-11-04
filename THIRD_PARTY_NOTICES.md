@@ -9,8 +9,8 @@ Brick Work is MIT-licensed ([LICENSE](LICENSE)). It was inspired by and started 
 | Inter 5.3.0 (latin subset, from @fontsource) | `static/web/toni/fonts/` | SIL Open Font License 1.1, `LICENSE-Inter.txt` |
 | Geist Mono 5.3.0 (latin subset, from @fontsource) | `static/web/toni/fonts/` | SIL Open Font License 1.1, `LICENSE-GeistMono.txt` |
 | Patrick Hand, © 2010-2012 Patrick Wagesreiter | `static/fonts/` | SIL Open Font License 1.1, `OFL-PatrickHand.txt` |
-| UI icons (24 px stroke icons) | `static/web/toni/icons/`, `static/brickwork/icons-ui/` | Drawn for this project; MIT, as the project |
-| App icons and Brick Work mark | `static/brickwork/icons/` | Drawn for this project; MIT, as the project |
+| UI icons (24 px stroke icons) | `static/web/toni/icons/`, `design/components/icons/` (served from `static/brickwork/icons-ui/`) | Drawn for this project; MIT, as the project |
+| App icons and Brick Work mark | `design/app-icon/icons/`, `design/logo/` (served from `static/brickwork/`) | Drawn for this project; MIT, as the project |
 
 ## Python dependencies
 

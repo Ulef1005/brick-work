@@ -1,6 +1,6 @@
 """The invented collection of M.10 batch A (issue #112): part list screens on a set with three Rebrickable versions, a BrickLink list,
 copies in every state the copy page and the Switch sheet show. Shared by `tests/test_m10_a.py` and the frame script
-`design/approval/112-m10-a/build_frames.py`. Dump rows marked `syn` are invented; the fixture catalogue is `tests/app4.py`'s."""
+`design/screens/approval/112-m10-a/build_frames.py`. Dump rows marked `syn` are invented; the fixture catalogue is `tests/app4.py`'s."""
 from brickwork.store4 import copies, fetched, identity
 from tests.app4 import RICH, make_pair
 

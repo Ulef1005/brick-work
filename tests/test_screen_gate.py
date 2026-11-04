@@ -1,0 +1,67 @@
+"""The screenshot gate (D3, #160; ADR 0022): the built app against the approved baseline captures, per screen state.
+
+`test_approved_states_match_their_baselines` is the gate. With no approved state it still runs, says so and passes; it never skips. The summary
+goes to the file named by BW_GATE_SUMMARY (scripts/check.sh prints it). Invented data only; the pinned Chrome (scripts/chrome.py) renders."""
+import os
+from pathlib import Path
+
+from PIL import Image
+
+from scripts import screen_gate as gate
+from tests import rendered
+
+
+def write_summary(lines):
+    target = os.environ.get('BW_GATE_SUMMARY')
+    if target:
+        Path(target).write_text('\n'.join(lines) + '\n', encoding='utf-8')
+
+
+def test_approved_states_match_their_baselines():
+    states = gate.load()
+    c = gate.counts(states)
+    chrome = rendered.chrome(pinned=True) if c['approved'] else ''
+    lines, checked, differ = gate.run_compare(chrome)
+    write_summary(lines)
+    print('\n'.join(lines))
+    assert checked == len(c['approved'])
+    assert not differ, '\n'.join(lines)
+
+
+def test_every_approved_state_is_built_and_has_its_baselines():
+    for entry in gate.load()['states']:
+        if entry['approved']:
+            assert entry['built'], entry
+            assert all(path.is_file() for _, _, path in gate.variants(entry)), entry
+
+
+def test_the_comparison_sees_a_changed_pixel_block_and_ignores_noise(tmp_path):
+    a, b, c = tmp_path / 'a.png', tmp_path / 'b.png', tmp_path / 'c.png'
+    Image.new('RGB', (200, 100), (250, 250, 248)).save(a)
+    image = Image.new('RGB', (200, 100), (251, 250, 248))                 # one channel off by 1: noise
+    image.save(b)
+    assert gate.compare_images(a, b)['share'] == 0
+    for x in range(20):
+        for y in range(20):
+            image.putpixel((x, y), (10, 10, 10))
+    image.save(c)
+    diff = tmp_path / 'diff.png'
+    result = gate.compare_images(a, c, diff)
+    assert result['differing'] == 400 and result['share'] > gate.TOLERANCE['pixels'] and diff.is_file()
+    assert gate.compare_images(a, Image.new('RGB', (10, 10)).save(tmp_path / 'd.png') or tmp_path / 'd.png')['size_differs']
+
+
+def test_a_state_renders_the_same_twice(tmp_path, monkeypatch):
+    """Deterministic rendering: the same state, rendered twice, differs by less than the gate's tolerance (fixed clock, no animation, bundled fonts)."""
+    chrome = rendered.chrome(pinned=True)
+    monkeypatch.setattr(gate, 'WIDTHS', (390, 1440))
+    monkeypatch.setattr(gate, 'THEMES', ('dark',))
+    entries = [e for e in gate.load()['states'] if e['built'] and e['screen'] in ('42-Prices', '09-Collection')]
+    assert entries
+    first = gate.render(entries, lambda e, w, t: tmp_path / '1' / gate.filename(e['screen'], e['state'], w, t), chrome)
+    second = gate.render(entries, lambda e, w, t: tmp_path / '2' / gate.filename(e['screen'], e['state'], w, t), chrome)
+    assert len(first) == len(second) == 4
+    for one, two in zip(first, second):
+        assert Image.open(one).size[0] in (390 * 2, 1440), one
+        result = gate.compare_images(one, two)
+        assert not result['size_differs'] and result['share'] <= gate.TOLERANCE['pixels'] / 5, (one.name, result)

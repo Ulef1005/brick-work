@@ -8,7 +8,8 @@ HTML as NN-<Screen>.html, one folder per frames.json section. NN is the section'
 section's short title in kebab-case. frames.json is the design project's export and stays byte-identical: it still names the old flat
 paths (`frames/<name>.png`, `sections/<Group>/<id>.html`); this script resolves them to the folders. A frame the export never listed
 (the 10a iPad frames) sits in design/screens/_unmapped/ under its old name, and the manifest lists it.
-The build captures of the app are design/screens/approval/ (D3's baselines) and are not part of this manifest.
+The build captures of the app are design/screens/approval/ and are not part of this manifest. design/screens/states.json (hand-kept, D3) says how
+each screen is reached in the built app and whether it is built and approved; `check` also keeps it and approval/baselines/ consistent.
 `check`: the manifest is what `manifest` writes, every PNG and HTML it lists exists, no PNG or HTML in the folders is unlisted.
 Standard library only. Modelled on engram's design/screens/manifest.json."""
 import json
@@ -20,6 +21,8 @@ ROOT = Path(__file__).resolve().parent.parent
 SCREENS = ROOT / 'design' / 'screens'
 FRAMES = ROOT / 'design' / 'sources' / 'frames.json'
 MANIFEST = SCREENS / 'manifest.json'
+STATES = SCREENS / 'states.json'
+BASELINES = SCREENS / 'approval' / 'baselines'
 UNMAPPED = '_unmapped'
 THEMES = ('light', 'dark')
 PHONE = 390
@@ -121,6 +124,40 @@ def problems() -> list[str]:
             found.append(f'design/screens/{path.name}/ is not a section folder of design/sources/frames.json')
     if not MANIFEST.is_file() or MANIFEST.read_text(encoding='utf-8') != manifest_text():
         found.append('design/screens/manifest.json is not what `scripts/design_screens.py manifest` makes (it is generated)')
+    return found + state_problems(folders)
+
+
+def state_problems(folders: set) -> list[str]:
+    """design/screens/states.json (the screenshot gate's list, hand-kept) against the manifest and the baseline files."""
+    if not STATES.is_file():
+        return ['design/screens/states.json is missing']
+    found, listed, expected = [], set(), set()
+    states = json.loads(STATES.read_text(encoding='utf-8'))
+    for entry in states['states']:
+        name = f'{entry["screen"]}{" [" + entry["state"] + "]" if entry["state"] else ""}'
+        listed.add(entry['screen'])
+        if entry['screen'] not in folders:
+            found.append(f'states.json: {name} is not a screen folder of the manifest')
+        if entry['approved'] and not entry['built']:
+            found.append(f'states.json: {name} is approved but not built')
+        if entry['built'] and not (entry.get('world') and entry.get('path', '').startswith('/')):
+            found.append(f'states.json: {name} is built but names no world and path')
+        if not entry['built'] and not entry.get('reason'):
+            found.append(f'states.json: {name} is not built and gives no reason')
+        if entry['built']:
+            stem = entry['screen'] + (f'-{entry["state"]}' if entry['state'] else '')
+            for width in states['sizes']:
+                for theme in states['themes']:
+                    file = f'{stem}-{width}-{theme}.png'
+                    expected.add((entry['screen'], file))
+                    if not (BASELINES / entry['screen'] / file).is_file():
+                        found.append(f'states.json: {name} has no {"approved baseline" if entry["approved"] else "candidate"} approval/baselines/{entry["screen"]}/{file}')
+    found += [f'states.json lists no state of {folder}' for folder in sorted(folders - listed)]
+    if BASELINES.is_dir():
+        for folder in sorted(p for p in BASELINES.iterdir() if p.is_dir()):
+            for file in sorted(p.name for p in folder.iterdir() if p.is_file()):
+                if (folder.name, file) not in expected:
+                    found.append(f'approval/baselines/{folder.name}/{file} belongs to no built state of states.json')
     return found
 
 
@@ -132,7 +169,7 @@ def check() -> int:
         return 1
     count = sum(len(listed_files(item)) for item in sections())
     print(f'Design screens OK: {len(sections())} screens, {count} PNGs listed and present, manifest generated, '
-          f'{len(unmapped_files())} unmapped file(s) in {UNMAPPED}/.')
+          f'{len(unmapped_files())} unmapped file(s) in {UNMAPPED}/; states.json consistent with the baselines.')
     return 0
 
 

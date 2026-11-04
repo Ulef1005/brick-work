@@ -29,6 +29,14 @@ def unkeyed(monkeypatch):
         monkeypatch.delenv(name, raising=False)
 
 
+def no_key_file(monkeypatch):
+    """BW_SECRET_KEY unset and no `secret.key` can be made (#144): key entry is disabled, as in a read-only data folder."""
+    from pathlib import Path
+    from brickwork.core import secrets
+    monkeypatch.delenv('BW_SECRET_KEY', raising=False)
+    monkeypatch.setattr(secrets, 'key_file', lambda: Path('/nonexistent-brickwork-data/secret.key'))
+
+
 class Net:
     """A fake `http(request)`: answers the replies in order (the last repeats). A reply is JSON-able, a `(status, body)` pair for an
     HTTP error answer, or an Exception to raise."""

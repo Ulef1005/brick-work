@@ -36,16 +36,81 @@ def secret_values(values=None):
                   key=len, reverse=True)
 
 
-def _fernet():
-    from .errors import SourceNotConfigured, ValidationFailed
+KEY_FILE = 'secret.key'
+GENERATE = 'python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"'
+DISABLED = ('Key entry is disabled: Brick Work cannot create or read its key file (' + KEY_FILE + ') in the data folder. '
+            'Set BW_SECRET_KEY to a key made with ' + GENERATE + ', or make the data folder writable.')
+
+
+def key_file():
+    """`secret.key` beside the collection (the data folder that holds brickwork.db)."""
+    from .pipeline import database_path
+    return database_path().parent / KEY_FILE
+
+
+def _sync_dir(folder):
+    """fsync a folder so a new file name in it survives a power cut (POSIX; a no-op where folders can't be opened)."""
+    try:
+        fd = os.open(folder, os.O_RDONLY)
+    except OSError:
+        return
+    try:
+        os.fsync(fd)
+    except OSError:
+        pass
+    finally:
+        os.close(fd)
+
+
+def _file_key():
+    """The key in `secret.key`; made on first need. Several workers may race: the file is written whole under a private name, then
+    linked into place, so it never exists half written and the first writer's key is the one everybody reads."""
+    from .errors import SourceNotConfigured
+    path = key_file()
+    try:
+        return path.read_bytes().decode('ascii', 'replace').strip()
+    except FileNotFoundError:
+        pass
+    except (OSError, UnicodeError):
+        raise SourceNotConfigured(DISABLED) from None
+    from cryptography.fernet import Fernet
+    temp = path.with_name(f'.{KEY_FILE}.{os.getpid()}.{threading.get_ident()}.tmp')
+    try:
+        fd = os.open(temp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        try:
+            with os.fdopen(fd, 'wb') as out:
+                out.write(Fernet.generate_key() + b'\n')
+                out.flush()
+                os.fsync(out.fileno())             # the key is on disk before anything can be encrypted with it
+            os.link(temp, path)
+            _sync_dir(path.parent)                 # and so is its name
+        except FileExistsError:
+            _sync_dir(path.parent)                 # a racing writer's key may not be durable yet either
+        finally:
+            temp.unlink(missing_ok=True)
+        return path.read_bytes().decode('ascii', 'replace').strip()
+    except (OSError, UnicodeError):
+        raise SourceNotConfigured(DISABLED) from None
+
+
+def _secret():
+    """The Fernet key: BW_SECRET_KEY when set (it always wins), otherwise the key file."""
     key = os.environ.get('BW_SECRET_KEY')
-    if not key:
-        raise SourceNotConfigured('Key entry is disabled: configure BW_SECRET_KEY')
+    if key:
+        return key, 'BW_SECRET_KEY must be a valid Fernet key'
+    key = _file_key()
+    remember(key)  # the key must never reach a log or an error either
+    return key, 'The key file secret.key is not a valid key'
+
+
+def _fernet():
+    from .errors import ValidationFailed
+    key, invalid = _secret()
     from cryptography.fernet import Fernet
     try:
         return Fernet(key.encode('ascii'))
     except (ValueError, UnicodeError):
-        raise ValidationFailed('BW_SECRET_KEY must be a valid Fernet key') from None
+        raise ValidationFailed(invalid) from None
 
 
 def encrypt(value):
@@ -67,7 +132,7 @@ def decrypt(ciphertext):
 
 
 def entry_available():
-    """True when BW_SECRET_KEY can encrypt; never reveals why a bad value is bad."""
+    """True when a secret key (BW_SECRET_KEY or secret.key) can encrypt; never reveals why a bad value is bad."""
     try:
         _fernet()
     except Exception:
@@ -80,9 +145,6 @@ def fingerprint(value):
     import hashlib
     import hmac
     import json
-    secret = os.environ.get('BW_SECRET_KEY')
-    if not secret:
-        from .errors import SourceNotConfigured
-        raise SourceNotConfigured('Key entry is disabled: configure BW_SECRET_KEY')
+    secret = _secret()[0]
     data = json.dumps(value, sort_keys=True, separators=(',', ':')).encode()
     return hmac.new(b'brickwork-key-replay:' + secret.encode(), data, hashlib.sha256).hexdigest()

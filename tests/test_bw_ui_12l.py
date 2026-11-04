@@ -14,6 +14,7 @@ import pytest
 
 from brickwork.core import secrets
 from brickwork.core.sources import base
+from tests.sources4 import no_key_file
 from tests.app4 import app4, client, coll, csrf, pair, read, world  # noqa: F401  (the fixtures)
 from tests.test_bw_api_m5_web import BL_ENV, fake, keyed, stored, token  # noqa: F401  (keyed is a fixture)
 
@@ -80,7 +81,7 @@ def test_budget_used_up_banner_and_cell(client, keyed, coll, world):
 
 
 def test_entry_disabled_without_the_secret(client, keyed, world, monkeypatch):
-    monkeypatch.delenv('BW_SECRET_KEY')
+    no_key_file(monkeypatch)
     html, soup = page(client)
     assert 'Key entry is disabled' in card(soup, 'rebrickable').get_text()
     assert not card(soup, 'rebrickable').find('input', {'type': 'password'})

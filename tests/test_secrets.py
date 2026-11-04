@@ -11,6 +11,7 @@ from brickwork.core import errors, secrets
 from brickwork.core.connect import connect
 from brickwork.core.sources import base
 from tests.app4 import make_pair
+from tests.sources4 import no_key_file
 
 
 def fernet_key(monkeypatch):
@@ -43,7 +44,7 @@ def test_a_wrong_secret_key_fails_safely(monkeypatch):
 
 
 def test_a_missing_secret_key_disables_entry(monkeypatch):
-    monkeypatch.delenv('BW_SECRET_KEY', raising=False)
+    no_key_file(monkeypatch)
     with pytest.raises(errors.SourceNotConfigured, match='Key entry is disabled'):
         secrets.encrypt('synthetic-credential')
 

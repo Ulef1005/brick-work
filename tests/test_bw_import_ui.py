@@ -98,3 +98,19 @@ def test_the_page_header(client):
     assert not soup.select('.breadcrumb')
     assert soup.select_one('.bw-page-head h1').get_text() == 'Import from BrickTracker'
     assert soup.select_one('.bw-page-head a.bw-back[href="/manage/tools"]')
+
+
+def test_the_banner_counts_loose_items_by_line_with_their_pieces(client, pair, tmp_path):
+    """#145: the preview counts loose items by line; the banner after Import says the same, with the pieces in brackets."""
+    csrf = token(client)
+    data = upstream(tmp_path / 'app.db').read_bytes()
+    response = client.post('/manage/import-legacy/upload', data={'csrf_token': csrf, 'file': (io.BytesIO(data), 'app.db')}, content_type='multipart/form-data')
+    plan_id = response.location.rsplit('/', 1)[1]
+    ticks = [i['value'] for i in page(client.get(response.location)).select('input[name=tick]')]
+    response = client.post(f'/manage/import-legacy/plan/{plan_id}/apply', data={'csrf_token': csrf, 'tick': ticks})
+    text = page(client.get(response.location)).get_text()
+    with closing(connect(pair, read_only=True)) as db:
+        lines, pieces = db.execute('SELECT count(*), sum(quantity) FROM stock WHERE archived_at IS NULL').fetchone()
+    assert lines
+    expected = f'{lines} loose items ({pieces} pieces)' if pieces != lines else f'{lines} loose items'
+    assert expected in text, (expected, re.search(r'Imported ·[^\n]*', text)[0])

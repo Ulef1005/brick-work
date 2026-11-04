@@ -110,9 +110,12 @@ def bw_import_apply(plan_id):
     if result.get('already_applied'):
         flash('This plan was already imported; nothing was added again.', 'info')
         return redirect(url_for('web.bw_import_legacy', event=result['event_id']))
-    flash('Imported · ' + ' · '.join(f'{n} {label}' for label, n in (
-        ('sets', c.get('copies', 0)), ('loose items', c.get('stock', 0)), ('lots', c.get('lots', 0)), ('wishes', c.get('wishes', 0))) if n)
-        if any(c.values()) else 'Nothing was imported.', 'success')
+    # Loose items are counted as the preview counts them, by line; the pieces follow in brackets (#145). An older receipt has no line count.
+    lines, pieces = c.get('stock_lines'), c.get('stock', 0)
+    loose = (f'{lines} loose items ({pieces} pieces)' if lines != pieces else f'{lines} loose items') if lines else (f'{pieces} loose pieces' if pieces else '')
+    parts = [f'{c.get("copies", 0)} sets' if c.get('copies') else '', loose, f'{c.get("lots", 0)} lots' if c.get('lots') else '',
+             f'{c.get("wishes", 0)} wishes' if c.get('wishes') else '']
+    flash('Imported · ' + ' · '.join(p for p in parts if p) if any(c.values()) else 'Nothing was imported.', 'success')
     return redirect(url_for('web.bw_import_legacy', event=result['event_id']))
 
 

@@ -15,7 +15,8 @@ from tests.app4 import app4, client, coll, pair, read, world  # noqa: F401  (the
     ('/planning/prices', 'Prices'), ('/planning/wishlist', 'Wishlist'),
     ('/manage/tools', 'Tools & Admin'),
     ('/workbench/check-parts', 'Check Set Parts'), ('/workbench/matcher', 'Matcher'),
-    ('/workbench/part-picker', 'Part Picker'), ('/workbench/part-to-inventory', 'Part to Inventory')])
+    ('/workbench/part-picker', 'Part Picker'), ('/workbench/part-to-inventory', 'Part to Inventory'),
+    ('/workbench/what-is-this', 'Part to Inventory')])                          # a Workbench tool, not Tools & Admin (#142)
 def test_rail_destinations_and_current_state(app4, client, world, path, current):
     with app4.test_request_context(path):
         from flask import session

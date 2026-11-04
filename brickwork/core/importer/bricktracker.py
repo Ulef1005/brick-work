@@ -534,7 +534,7 @@ def apply(db, plan_id, decisions=None, *, queue=True):
             receipt['origin'][entry['id']] = scratch['wish']['id']
             flag_rows('wish_flag', 'wish_id', scratch['wish']['id'], entry['flags'])
         receipt['jobs'] = queue_new_items(db, touched) if queue else []
-        counts = dict(copies=len(receipt['copies']), stock=sum(c['quantity'] for c in receipt['stock']), lots=len(receipt['lots']),
+        counts = dict(copies=len(receipt['copies']), stock=sum(c['quantity'] for c in receipt['stock']), stock_lines=len(receipt['stock']), lots=len(receipt['lots']),
                       wishes=len(receipt['wishes']), storages=len(receipt['storages']), purchase_locations=len(receipt['places']),
                       flags=len(receipt['flags']))
         receipt['counts'] = counts

@@ -42,14 +42,10 @@ def _path(paths):
     return Path(paths.data) / FILE
 
 
-def _alive(pid):
-    try:
-        os.kill(pid, 0)
-    except ProcessLookupError:
-        return False
-    except PermissionError:
-        return True
-    return True
+def _alive(pid, started_at=None):
+    """The job's process is alive and is the one that started it (#167: after a container restart its pid can name a new process)."""
+    from ..store4.jobs import pid_alive
+    return pid > 0 and pid_alive(pid, started_at)
 
 
 def read(paths):
@@ -60,7 +56,7 @@ def read(paths):
         return None
     if not isinstance(state, dict) or state.get('kind') not in KINDS:
         return None
-    if state.get('state') == 'running' and not _alive(int(state.get('pid') or 0)):
+    if state.get('state') == 'running' and not _alive(int(state.get('pid') or 0), state.get('started_at')):
         state = dict(state, state='interrupted', error='Brick Work stopped while this was running. Nothing was half written: the old catalogue is still in place.')
     state['label'] = KINDS[state['kind']]
     state['steps'] = list(STEPS[state['kind']])

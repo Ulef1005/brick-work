@@ -51,8 +51,11 @@ or raises `StepDone(code, message)` (done with a finding such as `unidentified`)
 ## Claims and restarts
 
 A run claims the job in `job_owner` (pid and time) inside a write transaction. A job whose owner is another live process is left alone;
-a claim by a dead pid, or by this pid when this process does not hold it, is taken over. An interrupt leaves the job `queued` and
-unclaimed. The embedded drainer starts at app start-up when a job is active, and `BW_EMBEDDED_WORKER=0` leaves draining to
+a claim by a dead pid, or by this pid when this process does not hold it, is taken over. A live pid whose process started after the
+claim (read from `/proc`, 2 s slack) is not the owner either: after a container restart the old owner's pid can name a new process, and
+its claim is taken over (#167). Without `/proc` (macOS) the pid alone decides. The fetch and reconcile jobs claim the same way
+(`store4.jobs.pid_alive`), and a catalogue job (`catalogue-job.json`) is read as interrupted by the same test against its `started_at`. An interrupt leaves the job `queued` and unclaimed. A process killed outright leaves it `running`; the next
+start takes it over and runs the steps that are not done again. The embedded drainer starts at app start-up when a job is active, and `BW_EMBEDDED_WORKER=0` leaves draining to
 `brickwork worker`.
 
 ## Progress

@@ -108,19 +108,15 @@ def cooperative(db, rows):
             yield_worker(db)
 
 
-def owner_pid_alive(pid, *, path=None, job=None):
-    """A same-pid row is live only when this process holds its job claim."""
+def owner_pid_alive(pid, claimed_at=None, *, path=None, job=None):
+    """A same-pid row is live only when this process holds its job claim; another pid only when its process is older than the claim
+    (#167, `store4.jobs.pid_alive`)."""
     if pid is None:
         return False
     if pid == os.getpid():
         return (pid, str(Path(path).resolve()), job) in _CLAIMED_JOBS if path is not None else False
-    try:
-        os.kill(pid, 0)
-    except ProcessLookupError:
-        return False
-    except PermissionError:
-        return True
-    return True
+    from ..store4.jobs import pid_alive                                # store4.jobs imports nothing from core at load
+    return pid_alive(pid, claimed_at)
 
 
 def validate_priority(value):
@@ -233,8 +229,8 @@ class Pipeline:
     # ---- run ----
 
     def owner_alive(self, job):
-        owner = self.db.execute('SELECT pid FROM main.job_owner WHERE job_id=?', (job,)).fetchone()
-        return owner_pid_alive(owner[0] if owner else None, path=self.path, job=job)
+        owner = self.db.execute('SELECT pid, claimed_at FROM main.job_owner WHERE job_id=?', (job,)).fetchone()
+        return owner_pid_alive(owner[0], path=self.path, job=job, claimed_at=owner[1]) if owner else False
 
     def _claim(self, job):
         """Take the job if it may run now: its snapshot, or None (not runnable, finished, or another process has it)."""

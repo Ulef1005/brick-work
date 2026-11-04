@@ -359,8 +359,8 @@ def tools_read(page, group=None):
             return admin.stale_prices(db)
         if page == 'jobs':
             from ..core.pipeline import owner_pid_alive
-            owners = dict(db.execute('SELECT job_id,pid FROM job_owner'))
-            live = {job: owner_pid_alive(pid, path=brickwork_path(), job=job) for job, pid in owners.items()}
+            owners = db.execute('SELECT job_id, pid, claimed_at FROM job_owner').fetchall()
+            live = {job: owner_pid_alive(pid, path=brickwork_path(), job=job, claimed_at=claimed) for job, pid, claimed in owners}
             from ..core import items
             from ..core.pipeline import batches as bulk
             from .formatting import short_stamp

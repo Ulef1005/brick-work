@@ -59,8 +59,8 @@ def _claim(db, job_id, stamp):
     """Take a queued job, or a running one whose owner is gone; False when another process has it."""
     with transaction(db, 'claiming the reconcile'):
         job = db.execute('SELECT state FROM main.job WHERE id=?', (job_id,)).fetchone()
-        owner = db.execute('SELECT pid FROM main.job_owner WHERE job_id=?', (job_id,)).fetchone()
-        if job is None or job['state'] not in ('queued', 'running') or (owner and _alive(db, owner[0], job_id)):
+        owner = db.execute('SELECT pid, claimed_at FROM main.job_owner WHERE job_id=?', (job_id,)).fetchone()
+        if job is None or job['state'] not in ('queued', 'running') or (owner and _alive(db, owner[0], job_id, owner[1])):
             return False
         db.execute('INSERT OR REPLACE INTO main.job_owner(job_id, pid, claimed_at) VALUES(?, ?, ?)', (job_id, os.getpid(), stamp))
         db.execute("UPDATE main.job SET state='running', attempts=attempts+1, error=NULL, updated_at=? WHERE id=?", (stamp, job_id))

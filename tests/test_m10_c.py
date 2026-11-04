@@ -7,6 +7,8 @@ import json
 import os
 import shutil
 from contextlib import closing
+from datetime import datetime, timezone
+from pathlib import Path
 
 from bs4 import BeautifulSoup
 import pytest
@@ -660,3 +662,14 @@ def test_q1_exact_relative_known_paths_are_redacted_like_absolute_ones(tmp_path,
     assert 'catalogue-src' not in out and 'rebrickable' not in out and 'data/' not in out
     assert 'the data folder (busy)' in out and 'brickwork.db is fine' in out
     assert public_text(Store4Error('all the data is kept'), known=known) == 'all the data is kept'          # prose is still left alone
+
+
+def test_a_catalogue_job_whose_pid_now_names_a_newer_process_is_interrupted(paths, monkeypatch):
+    """#167: after a container restart the job's old pid can name a new, live process; the job reads as interrupted, not running."""
+    state = dict(kind='rebuild', state='running', pid=os.getppid(), started_at='2026-11-04T10:00:00Z', finished_at=None, step=0,
+                 folder=None, error=None, result=None)
+    (Path(paths.data) / catalogue_jobs.FILE).write_text(json.dumps(state), encoding='utf-8')
+    monkeypatch.setattr(fetch_jobs, 'process_started', lambda pid: datetime(2026, 11, 4, 9, 0, tzinfo=timezone.utc))
+    assert catalogue_jobs.read(paths)['state'] == 'running'                                   # the process that started it
+    monkeypatch.setattr(fetch_jobs, 'process_started', lambda pid: datetime(2026, 11, 4, 14, 52, tzinfo=timezone.utc))
+    assert catalogue_jobs.read(paths)['state'] == 'interrupted'

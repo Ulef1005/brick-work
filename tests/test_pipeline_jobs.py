@@ -188,7 +188,7 @@ def test_a_wait_marks_the_job_waiting_until_the_retry_time(coll):
 def test_a_live_owner_is_excluded_and_a_dead_or_unclaimed_one_is_taken_over(coll):
     pl = Pipeline(coll.db)
     job = queue(coll, coll.item('sets', '1000-1'))
-    coll.sql('INSERT INTO job_owner(job_id, pid, claimed_at) VALUES(?, 1, ?)', (job, '2026-10-26T12:00:00.000Z'))      # pid 1 is always alive
+    coll.sql('INSERT INTO job_owner(job_id, pid, claimed_at) VALUES(?, 1, ?)', (job, jobs._stamp(datetime.now(timezone.utc))))   # pid 1 is alive and older than the claim
     assert pl.run(job)['state'] == 'queued' and pl.drain() == []
     coll.sql('DELETE FROM job_owner')
     coll.sql('INSERT INTO job_owner(job_id, pid, claimed_at) VALUES(?, ?, ?)', (job, os.getpid(), '2026-10-26T12:00:00.000Z'))   # this process, no claim: crashed
@@ -268,3 +268,15 @@ def test_drainer_rechecks_before_it_stops(tmp_path, monkeypatch):
     started[0]()
     assert len(rounds) == 2  # a job found at the final check runs another round
     assert not app.extensions['bw_import_worker_active']
+
+
+def test_a_reused_pid_does_not_keep_a_running_job_stuck(coll, monkeypatch):
+    """#167: a job left running before a container restart, whose owner's pid now names a newer live process, runs again."""
+    pl = Pipeline(coll.db)
+    job = queue(coll, coll.item('sets', '1000-1'))
+    coll.sql("UPDATE job SET state='running' WHERE id=?", (job,))
+    coll.sql('INSERT INTO job_owner(job_id, pid, claimed_at) VALUES(?, 1, ?)', (job, '2026-10-26T12:00:00.000Z'))
+    monkeypatch.setattr(jobs, 'process_started', lambda pid: datetime(2026, 10, 26, 12, 0, 0, tzinfo=timezone.utc))
+    assert pl.run(job)['state'] == 'running' and pl.owner_alive(job)                         # the owner itself: left alone
+    monkeypatch.setattr(jobs, 'process_started', lambda pid: datetime(2026, 11, 4, 14, 52, tzinfo=timezone.utc))
+    assert not pl.owner_alive(job) and pl.run(job)['state'] == 'done'

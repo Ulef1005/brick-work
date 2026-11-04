@@ -401,7 +401,7 @@ def test_a_dead_owners_claim_is_taken_over(db):
 def test_a_live_owners_claim_is_left_alone(db):
     job = bricklink_job(db)
     db.execute("UPDATE job SET state='running', attempts=1 WHERE id=?", (job,))
-    db.execute('INSERT INTO job_owner(job_id, pid, claimed_at) VALUES(?, ?, ?)', (job, os.getppid(), '2026-10-25T11:00:00.000Z'))
+    db.execute('INSERT INTO job_owner(job_id, pid, claimed_at) VALUES(?, ?, ?)', (job, os.getppid(), jobs._stamp(datetime.now(timezone.utc))))   # claimed now: the parent is older (#167)
     db.commit()
     net = Net()
     r = jobs.run(db, job, http=net, now=T0)
@@ -505,3 +505,36 @@ def test_a_link_changed_during_the_call_is_asked_again(db):
     s = jobs.run(db, job, http=Net(bl=moved), now=T0)
     assert (s['state'], s['error_code']) == ('failed', 'source_error') and s['retry_at'] is not None
     assert q(db, 'SELECT count(*) FROM main.fetched_inventory') == [(0,)]
+
+
+def test_a_live_pid_that_started_after_the_claim_is_not_the_owner(db, monkeypatch):
+    """#167: after a container restart the old owner's pid can be a new, live process; its claim is taken over."""
+    job = bricklink_job(db)
+    db.execute("UPDATE job SET state='running', attempts=1 WHERE id=?", (job,))
+    db.execute('INSERT INTO job_owner(job_id, pid, claimed_at) VALUES(?, ?, ?)', (job, os.getppid(), '2026-10-25T11:00:00.000Z'))
+    db.commit()
+    monkeypatch.setattr(jobs, 'process_started', lambda pid: datetime(2026, 10, 25, 11, 0, 5, tzinfo=timezone.utc))
+    r = jobs.run(db, job, http=Net(), now=T0)
+    assert (r['ran'], r['state'], r['attempts']) == (True, 'done', 2) and q(db, 'SELECT count(*) FROM job_owner') == [(0,)]
+
+
+def test_pid_alive_checks_the_process_start_against_the_claim(monkeypatch):
+    claim = '2026-10-25T11:00:00.000Z'
+    for started, alive in ((datetime(2026, 10, 25, 10, 0, tzinfo=timezone.utc), True),       # older than the claim: the owner
+                           (datetime(2026, 10, 25, 11, 0, 1, tzinfo=timezone.utc), True),    # within the slack
+                           (datetime(2026, 10, 25, 11, 0, 3, tzinfo=timezone.utc), False),   # newer: a reused pid
+                           (None, True)):                                                    # no /proc: the pid alone decides
+        monkeypatch.setattr(jobs, 'process_started', lambda pid, s=started: s)
+        assert jobs.pid_alive(os.getppid(), claim) is alive
+    assert jobs.pid_alive(dead_pid(), claim) is False and jobs.pid_alive(None) is False
+    monkeypatch.setattr(jobs, 'process_started', lambda pid: datetime(2030, 1, 1, tzinfo=timezone.utc))
+    assert jobs.pid_alive(os.getppid()) is True                                              # no claim time: the pid alone decides
+
+
+def test_process_started_reads_proc_where_there_is_one():
+    started = jobs.process_started(os.getpid())
+    if not os.path.exists('/proc/self/stat'):
+        assert started is None
+        return
+    assert started is not None and started <= datetime.now(timezone.utc) + jobs.CLAIM_SLACK
+    assert jobs.process_started(dead_pid()) is None

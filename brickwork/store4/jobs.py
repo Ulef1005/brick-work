@@ -220,16 +220,47 @@ def _path(db):
     return next(r[2] for r in db.execute('PRAGMA database_list') if r[1] == 'main')
 
 
-def _alive(db, pid, job_id):
-    if pid == os.getpid():
-        return (pid, _path(db), job_id) in _CLAIMED
+def process_started(pid):
+    """When process `pid` started (UTC), from /proc; None where /proc cannot say (not Linux, gone, unreadable)."""
+    try:
+        with open(f'/proc/{pid}/stat') as f:
+            ticks = int(f.read().rsplit(')', 1)[1].split()[19])          # field 22, starttime: the fields after the name start at 3
+        with open('/proc/stat') as f:
+            boot = next(int(line.split()[1]) for line in f if line.startswith('btime '))
+        return datetime.fromtimestamp(boot + ticks / os.sysconf('SC_CLK_TCK'), timezone.utc)
+    except (OSError, ValueError, IndexError, StopIteration):
+        return None
+
+
+CLAIM_SLACK = timedelta(seconds=2)                                     # btime is whole seconds; a clock step must not orphan a live owner
+
+
+def pid_alive(pid, claimed_at=None):
+    """Is another process `pid` alive and the one that made a claim at `claimed_at` (#167)? After a container restart the old owner's
+    pid can belong to a new process: one that started after the claim cannot hold it. Without /proc only the pid is checked."""
+    if pid is None:
+        return False
     try:
         os.kill(pid, 0)
     except ProcessLookupError:
         return False
     except PermissionError:
-        return True
+        pass
+    started = process_started(pid) if claimed_at else None
+    if started is not None:
+        try:
+            claimed = datetime.fromisoformat(claimed_at.replace('Z', '+00:00'))
+        except ValueError:
+            return True
+        claimed = claimed if claimed.tzinfo else claimed.replace(tzinfo=timezone.utc)
+        return started <= claimed + CLAIM_SLACK
     return True
+
+
+def _alive(db, pid, job_id, claimed_at=None):
+    if pid == os.getpid():
+        return (pid, _path(db), job_id) in _CLAIMED
+    return pid_alive(pid, claimed_at)
 
 
 def _safe(text):
@@ -263,8 +294,8 @@ def _claim(db, job_id, now):
         due = job['retry_at'] is not None and job['retry_at'] <= stamp
         if not (job['state'] in ('queued', 'running') or job['state'] in ('waiting_for_budget', 'failed') and due):
             return None
-        owner = db.execute('SELECT pid FROM job_owner WHERE job_id=?', (job_id,)).fetchone()
-        if owner and _alive(db, owner[0], job_id):
+        owner = db.execute('SELECT pid, claimed_at FROM job_owner WHERE job_id=?', (job_id,)).fetchone()
+        if owner and _alive(db, owner[0], job_id, owner[1]):
             return None
         source, kind = job['source'], job['kind']
         if not _configured(source):

@@ -288,3 +288,11 @@ as NULL (`as_current`).
   decides. `catalogue-job.json` records the same two values with its pid. The pid alone was not enough: after a container restart a
   different live process can hold the old pid. A time-based check (process start against `claimed_at`) was rejected: a wall-clock step
   moves `/proc/stat` `btime`, and a pid reused within the slack still looks like the owner. See [Pipeline](pipeline.md#claims-and-restarts).
+- **`order_line.unplaced_reason TEXT`** (nullable). The reason `core.orders._place` and `_by_name` compute for a line they could not place ("The BrickLink
+  number is not in the catalogue", "The name matches several items", "No item has exactly this name"), stored at import; NULL when the line is placed,
+  when a match places it, and on a line imported before 4.2. The API's `OrderLine.unplaced_reason` carries it. An Undo receipt written on 4.1 lacks the
+  column and reads it as NULL (`orders._undo` normalises both sides with `as_current`).
+- **No table rebuild.** `order_document` keeps `UNIQUE(order_id, source, digest)`. Importing the text of an undone document again revives that row
+  (phase back to `draft`, its lines updated in place by line number) instead of answering `duplicate`; the event is an ordinary, undoable `import`.
+- **Suggestions are not stored differently.** `suggestions_json` keeps its shape (`item_id`, `label`); the new candidates (longest-prefix and all-words
+  matches against `catalogue.bricklink_item` names, `orders._near`) go into it, at most ten, never placed by the importer.

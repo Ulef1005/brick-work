@@ -216,7 +216,9 @@ def test_document_undo_dependency_order_and_preserved_provenance(world, coll):
         orders.undo(db, event)
     detail = orders.detail(db, oid)
     assert detail['documents'][0]['phase'] == 'undone' and detail['lines'][0]['raw_text'] and not detail['saved']
-    assert orders.import_document(db, 'xml', XML)['duplicate']                      # the document stays: it is never imported twice
+    again = orders.import_document(db, 'xml', XML)                                   # an undone document is not a duplicate: it comes back as a draft (#155)
+    assert not again['duplicate'] and again['document_id'] == did and orders.detail(db, oid)['documents'][0]['phase'] == 'draft'
+    assert orders.import_document(db, 'xml', XML)['duplicate']                      # a live document is
 
 
 # ---------- counting and allocating ----------

@@ -26,7 +26,7 @@ from uuid import uuid4
 from xml.etree import ElementTree as ET
 
 from ..store4 import fetched, identity
-from ..store4.connect import has_catalogue, now as stamp_now
+from ..store4.connect import as_current, has_catalogue, now as stamp_now
 from ..store4.errors import AmbiguousIdentity, Store4Error
 from . import add, collection, errors, items, stock as stock_module
 from . import undo as undoing
@@ -485,7 +485,63 @@ def _by_name(db, row, hits):
         return item_id, colour if kind == 'part' else None, [], None
     if ids:
         return None, colour, [_label(db, i) for i in sorted(ids)[:10]], 'The name matches several items'
-    return None, colour, [], 'No item has exactly this name'
+    return None, colour, _near(db, row, colour), 'No item has exactly this name'
+
+
+SUGGESTED = 10                                                         # as the other candidate lists of a line
+WORDS = re.compile('[a-z0-9]+')
+
+
+def _near(db, row, colour):
+    """Suggestions for a line whose name no item has exactly (#155), from the loaded BrickLink item list's names; `[]` when it is not
+    loaded. **Suggestions only**: the person chooses, nothing here places a line. In rank order, then name:
+
+    1. *prefix*: the longest name of the list that starts the line's name at a word boundary (two words at least, the whole name included):
+       a seller's condition note glued to the end ("Tile, Round 2 x 2 micro scratches"). A prefix can mislead ("Slope, Curved 4 x 1
+       Inverted" starts with another part's name), which is why it is only offered;
+    2. *all words*: names that hold every word of the line's name, nearest in length first: BrickLink renamed the item (commas, added words).
+
+    Only names that an item holds are offered: a suggestion is an item the person can choose; a BrickLink number no item holds yet is
+    placed by its number (#154)."""
+    if not has_catalogue(db):
+        return []
+    query = row.get('name_query') or ''
+    words = query.split()
+    found = []
+    prefixes = [' '.join(words[:n]) for n in range(len(words), 1, -1)]
+    if prefixes:
+        hits = db.execute('SELECT item_type,item_no,lower(name) AS n FROM catalogue.bricklink_item WHERE lower(name) IN (SELECT value FROM json_each(?))',
+                          (json.dumps(prefixes),)).fetchall()
+        if hits:
+            longest = max(len(h['n']) for h in hits)
+            found += sorted(((h['item_type'], h['item_no']) for h in hits if len(h['n']) == longest), key=lambda key: (key[0], key[1]))
+    tokens = sorted(set(WORDS.findall(query)))
+    long_tokens = sorted((t for t in tokens if len(t) >= 3), key=lambda t: -len(t))[:2]
+    if len(tokens) >= 2 and long_tokens:
+        clauses = ' AND '.join('lower(name) LIKE ?' for _ in long_tokens)
+        near = []
+        for h in db.execute(f'SELECT item_type,item_no,lower(name) AS n FROM catalogue.bricklink_item WHERE {clauses} ORDER BY length(name),item_type,item_no LIMIT 400',
+                            [f'%{t}%' for t in long_tokens]):
+            held = set(WORDS.findall(h['n']))
+            if set(tokens) <= held:
+                near.append((len(held) - len(tokens), h['n'], h['item_type'], h['item_no']))
+        found += [(t, n) for _, _, t, n in sorted(near)]
+    suggestions, seen = [], set()
+    for letter, number in found:
+        if len(suggestions) >= SUGGESTED:
+            break
+        try:
+            hit = identity.resolve_inverse(db, letter, number, str(row['color_id']) if letter == 'P' and row.get('color_id') is not None else None, exhaustive=True)
+            held = [hit[0]] if hit else [r[0] for r in db.execute(     # a local BrickLink-born item is its own BrickLink key, as in `_place`
+                "SELECT id FROM main.item WHERE born_provider='bricklink' AND born_namespace=? AND born_key=? AND merged_into IS NULL ORDER BY id", (letter, number))]
+        except AmbiguousIdentity as exc:
+            held = list(exc.items)
+        for item_id in held:
+            item_id = items._merged_target(db, item_id)
+            if item_id not in seen and len(suggestions) < SUGGESTED:
+                seen.add(item_id)
+                suggestions.append(_label(db, item_id))
+    return suggestions
 
 
 def _sticker_set(db, number):
@@ -504,7 +560,8 @@ def _project(db, item_id, colour):
 
 def import_document(db, source, text='', *, choice='new', number=None, label=None, prepared=None):
     """Import one document as a draft. Returns `dict(order_id, document_id, duplicate, event_id, placed, unplaced)`: how many lines were
-    placed on an item and how many wait for hand matching. The same document again answers `duplicate` and writes nothing."""
+    placed on an item and how many wait for hand matching. The same document again answers `duplicate` and writes nothing, unless it was
+    undone: an undone document is not a duplicate, importing the same text again brings it back as a draft with its lines placed anew (#155)."""
     if source not in ('email', 'xml', 'api'):
         raise ValueError('Choose email, XML or BrickLink')
     if source == 'api':
@@ -525,7 +582,9 @@ def import_document(db, source, text='', *, choice='new', number=None, label=Non
     body = json.dumps(raw, sort_keys=True) if source == 'api' else '\n'.join(l.strip() for l in text.splitlines() if l.strip())
     digest = hashlib.sha256(body.encode()).hexdigest()
     with transaction(db):
-        existing = db.execute('SELECT order_id,id FROM main.order_document WHERE source=? AND digest=?', (source, digest)).fetchone()
+        found = db.execute('SELECT order_id,id,phase FROM main.order_document WHERE source=? AND digest=? ORDER BY phase=\'undone\', id', (source, digest)).fetchall()
+        existing = next((r for r in found if r['phase'] != 'undone'), None)
+        revived = None if existing else next((r for r in found if choice == 'new' or int(choice) == r['order_id']), None)
         if existing:
             if choice != 'new' and int(choice) != existing['order_id']:
                 raise ValueError('This document already belongs to another order')
@@ -535,7 +594,9 @@ def import_document(db, source, text='', *, choice='new', number=None, label=Non
         cost = price(header.get('cost'))
         if not header.get('currency'):
             cost = None                                                       # a cost needs its currency; a currency may stand without a cost
-        if choice == 'new':
+        if revived:                                                           # its order, its raw record and its header stand from the first import
+            order_id = revived['order_id']
+        elif choice == 'new':
             if number and db.execute('SELECT 1 FROM main.purchase_order WHERE bricklink_order_id=?', (number,)).fetchone():
                 raise ValueError('This BrickLink order exists · choose it in Link to order')
             order_id = db.execute('''INSERT INTO main.purchase_order(bricklink_order_id,store,seller,date_ordered,status,cost,currency,created_at,updated_at)
@@ -563,9 +624,23 @@ def import_document(db, source, text='', *, choice='new', number=None, label=Non
         db.execute("INSERT OR IGNORE INTO main.source_record(source,kind,key,payload,digest,bytes,job_id,fetched_at,status) VALUES('bricklink',?,?,?,?,?,NULL,?,'imported')",
                    ('order_document:' + source, digest, payload, hashlib.sha256(payload.encode()).hexdigest(), len(payload.encode()), stamp))
         record = db.execute("SELECT id FROM main.source_record WHERE source='bricklink' AND kind=? AND key=? ORDER BY id LIMIT 1", ('order_document:' + source, digest)).fetchone()[0]
-        document_id = db.execute('''INSERT INTO main.order_document(order_id,source,digest,label,phase,raw_record_id,created_at,updated_at) VALUES(?,?,?,?,'draft',?,?,?)''',
-                                 (order_id, source, digest, label or source, record, stamp, stamp)).lastrowid
-        journal.created('order_document', document_id)
+        old_lines = {}
+        if revived:
+            document_id = revived['id']
+            journal.touch('order_document', document_id)
+            db.execute("UPDATE main.order_document SET phase='draft',updated_at=? WHERE id=?", (stamp, document_id))
+            old_lines = {r['line_no']: r['id'] for r in db.execute('SELECT id,line_no FROM main.order_line WHERE document_id=?', (document_id,))}
+            gone = [i for n, i in old_lines.items() if n not in {r['line_no'] for r in raw}]
+            if gone and db.execute("""SELECT 1 FROM main.allocation WHERE line_id IN (SELECT value FROM json_each(?)) UNION ALL SELECT 1 FROM main.line_receipt WHERE line_id IN (SELECT value FROM json_each(?))
+                                      UNION ALL SELECT 1 FROM main.order_line WHERE paired_line_id IN (SELECT value FROM json_each(?))""", (json.dumps(gone),) * 3).fetchone():
+                raise ValueError('This document cannot be imported again · its earlier lines are still referred to')
+            if gone:                                                          # the same text parses to the same lines; a line that no longer parses is dropped
+                journal.touch('order_line', *gone)
+                db.execute('DELETE FROM main.order_line WHERE id IN (SELECT value FROM json_each(?))', (json.dumps(gone),))
+        else:
+            document_id = db.execute('''INSERT INTO main.order_document(order_id,source,digest,label,phase,raw_record_id,created_at,updated_at) VALUES(?,?,?,?,'draft',?,?,?)''',
+                                     (order_id, source, digest, label or source, record, stamp, stamp)).lastrowid
+            journal.created('order_document', document_id)
         queries = {r['name_query'] for r in raw if r.get('name_query')}
         named = _names(db, queries) if queries else {}
         placed = unplaced = 0
@@ -595,13 +670,18 @@ def import_document(db, source, text='', *, choice='new', number=None, label=Non
                 items.ensure(db, sticker)
             placed += item_id is not None
             unplaced += item_id is None
-            line_id = db.execute('''INSERT INTO main.order_line(order_id,document_id,line_no,raw_item_type,raw_item_no,raw_color_id,raw_color_name,raw_name,raw_text,remark,
-                                    item_id,color_id,sticker_set_item_id,condition,state,qty,unit_price,line_total,batch,submitted,suggestions_json,updated_at)
-                                    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
-                                 (order_id, document_id, row['line_no'], letter, number_, colour_key, row.get('colour_name'), row.get('name'), row.get('raw_text'),
-                                  row.get('remark') or '', item_id, colour, sticker, condition, 'matched' if item_id is not None else 'by_hand', qty, unit, total,
-                                  row.get('batch'), row.get('submitted'), json.dumps(suggestions) if suggestions else None, stamp)).lastrowid
-            journal.created('order_line', line_id)
+            values = (order_id, document_id, row['line_no'], letter, number_, colour_key, row.get('colour_name'), row.get('name'), row.get('raw_text'),
+                      row.get('remark') or '', item_id, colour, sticker, condition, 'matched' if item_id is not None else 'by_hand', qty, unit, total,
+                      row.get('batch'), row.get('submitted'), json.dumps(suggestions) if suggestions else None, None if item_id is not None else why, stamp)
+            columns = ('order_id,document_id,line_no,raw_item_type,raw_item_no,raw_color_id,raw_color_name,raw_name,raw_text,remark,item_id,color_id,sticker_set_item_id,'
+                       'condition,state,qty,unit_price,line_total,batch,submitted,suggestions_json,unplaced_reason,updated_at')
+            if row['line_no'] in old_lines:                                   # a revived document: the same line, placed anew
+                line_id = old_lines[row['line_no']]
+                journal.touch('order_line', line_id)
+                db.execute('UPDATE main.order_line SET ' + ','.join(c + '=?' for c in columns.split(',')) + ',confirmed_via=NULL,paired_line_id=NULL WHERE id=?', (*values, line_id))
+            else:
+                line_id = db.execute(f'INSERT INTO main.order_line({columns}) VALUES({",".join("?" * 23)})', values).lastrowid
+                journal.created('order_line', line_id)
         journal.context(order_id=order_id, document_id=document_id, lines=len(raw), placed=placed, unplaced=unplaced)
         event = journal.write('import', order_id)
         return dict(order_id=order_id, document_id=document_id, duplicate=False, event_id=event, placed=placed, unplaced=unplaced)
@@ -673,7 +753,7 @@ def match(db, order_id, line_id, *, item_id=None, color_id=None, item_type=None,
         _project(db, item_id, colour)
         journal = Journal(db)
         journal.touch('order_line', line_id)
-        db.execute("UPDATE main.order_line SET item_id=?,color_id=?,state='confirmed',confirmed_via=?,suggestions_json=NULL,updated_at=? WHERE id=?",
+        db.execute("UPDATE main.order_line SET item_id=?,color_id=?,state='confirmed',confirmed_via=?,suggestions_json=NULL,unplaced_reason=NULL,updated_at=? WHERE id=?",
                    (item_id, colour, via, stamp_now(), line_id))
         journal.context(order_id=order_id, line_id=line_id, item_id=item_id)
         return journal.write('match', order_id)
@@ -890,7 +970,8 @@ def _current(db, table, rows):
 
 def _undo(db, event, via, actor):
     """Put an order save back. Refused whole when an order row, a copy's status or any row the save changed differs from what it left."""
-    before, after = json.loads(event['old_value']), json.loads(event['new_value'])
+    before, after = (json.loads(event[name]) for name in ('old_value', 'new_value'))
+    before, after = ([dict(entry, rows=[as_current(entry['table'], r) for r in entry['rows']]) for entry in entries] for entries in (before, after))   # a 4.1 receipt lacks the added columns
     pairs = list(zip(before, after))
     mine = [(o, n) for o, n in pairs if n['table'] in ORDER_TABLES]
     for old, new in mine:

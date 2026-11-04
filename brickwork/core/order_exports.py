@@ -2,7 +2,8 @@
 
 Totals are never summed across currencies. BrickLink's shipping, insurance and fees are not stored
 separately (only the order's grand total in `purchase_order.cost`), so the summary shows the grand total and
-the difference to the line totals as "Other costs" rather than inventing a split.
+the difference to the line totals as "Other costs" rather than inventing a split. The summary lists only orders with saved lines: an
+undone order and a draft never reviewed have none (#155).
 
 A line is named the way BrickLink names it (type letter, number, colour number: `items.label(...).bricklink`), the colour by its
 Brick Work name. A saved line always has an item; a draft's lines are not exported.
@@ -66,7 +67,8 @@ def rows(db, kind='lines', date_from=None, date_to=None, store=None):
     orders = {}
     for o in db.execute(f'''SELECT o.id AS order_id,coalesce(o.bricklink_order_id,'O-'||o.id) AS label,
             substr(coalesce(o.date_ordered,o.created_at),1,10) AS date,o.store,o.seller,o.status,o.cost,o.currency
-            FROM main.purchase_order o WHERE 1=1{where} ORDER BY date,o.id''', params):
+            FROM main.purchase_order o WHERE EXISTS (SELECT 1 FROM main.order_line l JOIN main.order_document d ON d.id=l.document_id
+                                                      WHERE l.order_id=o.id AND d.phase='saved'){where} ORDER BY date,o.id''', params):
         orders[o['order_id']] = dict(o, lines=0, items=0, new=Decimal(0), used=Decimal(0), priced=True)
     for line in lines:
         o = orders[line['order_id']]

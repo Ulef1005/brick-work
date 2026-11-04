@@ -8764,6 +8764,7 @@ components:
           - {$ref: '#/components/schemas/Color'}
           - {type: 'null'}
         unplaced: {type: boolean}
+        unplaced_reason: {type: [string, 'null'], description: 'Why the importer did not place the line, in words ("The BrickLink number is not in the catalogue", "The name matches several items"); null when it is placed, and on a line imported before schema 4.2.'}
         condition: {type: [string, 'null'], enum: [new, used, null]}
         qty: {type: integer}
         unit_price: {type: [string, 'null']}
@@ -8785,7 +8786,7 @@ components:
         paired_line_id: {type: [integer, 'null']}
         suggestions:
           type: array
-          description: The items a line that names several could be, for the person to choose from.
+          description: 'The items an unplaced line could be, for the person to choose from, best first. A line that names several items lists them; a line whose name no item has exactly lists the nearest names of the BrickLink item list (when loaded), the longest name that starts it first, then the names that hold all its words (#155). Never placed by itself.'
           items:
             type: object
             additionalProperties: false

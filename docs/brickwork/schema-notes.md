@@ -274,3 +274,25 @@ takes the shared or configured one, clearing the price clears the currency, a cu
   max with box is set (`planning.max_limit`). Every other quote is held against `max_price`. The shown price never includes
   a quote with box, so a wish has two verdicts: `max_state` and `max_boxed_state` (API `under_max`, `under_max_boxed`).
 - **Not carried.** The BrickLink wanted list has no boxed max: the XML export and import leave it out.
+
+## 4.2 Job claim identity (#167) and order line reasons (#155)
+
+One in-place step, `UPGRADES['4.1']`, three `ALTER TABLE ... ADD COLUMN` statements in one `BEGIN IMMEDIATE` transaction at app start,
+the way 4.1 was done (a new file gets the columns from `brickwork.sql`, last in each table, so it matches an upgraded one;
+`tests/test_store4_upgrade.py`). It records `meta.upgraded_to_4.2`. Undo receipts and RowLogs written on 4.1 read the new columns
+as NULL (`as_current`).
+
+- **`job_owner.boot_id TEXT`, `job_owner.start_ticks INTEGER`** (nullable). A claim writes the kernel boot id and the owner's process
+  start time in clock ticks since boot (`/proc/<pid>/stat` field 22). The owner is alive only if the pid is alive and both values equal
+  the current ones, exactly; NULL (a claim made before 4.2) is dead where `/proc` answers. Where it cannot (macOS), the pid alone
+  decides. `catalogue-job.json` records the same two values with its pid. The pid alone was not enough: after a container restart a
+  different live process can hold the old pid. A time-based check (process start against `claimed_at`) was rejected: a wall-clock step
+  moves `/proc/stat` `btime`, and a pid reused within the slack still looks like the owner. See [Pipeline](pipeline.md#claims-and-restarts).
+- **`order_line.unplaced_reason TEXT`** (nullable). The reason `core.orders._place` and `_by_name` compute for a line they could not place ("The BrickLink
+  number is not in the catalogue", "The name matches several items", "No item has exactly this name"), stored at import; NULL when the line is placed,
+  when a match places it, and on a line imported before 4.2. The API's `OrderLine.unplaced_reason` carries it. An Undo receipt written on 4.1 lacks the
+  column and reads it as NULL (`orders._undo` normalises both sides with `as_current`).
+- **No table rebuild.** `order_document` keeps `UNIQUE(order_id, source, digest)`. Importing the text of an undone document again revives that row
+  (phase back to `draft`, its lines updated in place by line number) instead of answering `duplicate`; the event is an ordinary, undoable `import`.
+- **Suggestions are not stored differently.** `suggestions_json` keeps its shape (`item_id`, `label`); the new candidates (longest-prefix and all-words
+  matches against `catalogue.bricklink_item` names, `orders._near`) go into it, at most ten, never placed by the importer.

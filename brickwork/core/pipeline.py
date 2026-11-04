@@ -108,19 +108,16 @@ def cooperative(db, rows):
             yield_worker(db)
 
 
-def owner_pid_alive(pid, *, path=None, job=None):
-    """A same-pid row is live only when this process holds its job claim."""
+def owner_pid_alive(pid, boot_id=None, start_ticks=None, *, path=None, job=None):
+    """A same-pid row is live only when this process holds its job claim; another pid only when it is the process that claimed:
+    same kernel boot id and same start ticks, NULL identity counting as dead where /proc answers (#167, `store4.jobs.pid_alive`).
+    Where /proc cannot answer (macOS) the pid alone decides."""
     if pid is None:
         return False
     if pid == os.getpid():
         return (pid, str(Path(path).resolve()), job) in _CLAIMED_JOBS if path is not None else False
-    try:
-        os.kill(pid, 0)
-    except ProcessLookupError:
-        return False
-    except PermissionError:
-        return True
-    return True
+    from ..store4.jobs import pid_alive
+    return pid_alive(pid, boot_id, start_ticks)
 
 
 def validate_priority(value):
@@ -233,8 +230,8 @@ class Pipeline:
     # ---- run ----
 
     def owner_alive(self, job):
-        owner = self.db.execute('SELECT pid FROM main.job_owner WHERE job_id=?', (job,)).fetchone()
-        return owner_pid_alive(owner[0] if owner else None, path=self.path, job=job)
+        owner = self.db.execute('SELECT pid, boot_id, start_ticks FROM main.job_owner WHERE job_id=?', (job,)).fetchone()
+        return owner_pid_alive(*owner, path=self.path, job=job) if owner else False
 
     def _claim(self, job):
         """Take the job if it may run now: its snapshot, or None (not runnable, finished, or another process has it)."""
@@ -244,7 +241,9 @@ class Pipeline:
             if not (snapshot['state'] in ('queued', 'running') or due) or self.owner_alive(job):
                 return None
             stamp = now()
-            self.db.execute('INSERT OR REPLACE INTO main.job_owner(job_id, pid, claimed_at) VALUES(?, ?, ?)', (job, os.getpid(), stamp))
+            from ..store4.jobs import owner_identity
+            self.db.execute('INSERT OR REPLACE INTO main.job_owner(job_id, pid, claimed_at, boot_id, start_ticks) VALUES(?, ?, ?, ?, ?)',
+                            (job, os.getpid(), stamp, *owner_identity()))
             self.db.execute("UPDATE main.job SET state='running', attempts=attempts+1, retry_at=NULL, updated_at=? WHERE id=?", (stamp, job))
             _CLAIMED_JOBS.add((os.getpid(), str(self.path.resolve()), job))
             return self.status(job)

@@ -10,7 +10,7 @@ from .activate import activate
 from .audit import Events, transaction
 from .connect import has_catalogue
 from .errors import public_text
-from .jobs import ACTIVE, _CLAIMED, _alive, _now, _path, _stamp
+from .jobs import ACTIVE, _CLAIMED, _alive, _now, _path, _stamp, owner_identity
 from .reconcile import reconcile
 
 KIND, SOURCE = 'reconcile', 'mapping'
@@ -59,10 +59,11 @@ def _claim(db, job_id, stamp):
     """Take a queued job, or a running one whose owner is gone; False when another process has it."""
     with transaction(db, 'claiming the reconcile'):
         job = db.execute('SELECT state FROM main.job WHERE id=?', (job_id,)).fetchone()
-        owner = db.execute('SELECT pid FROM main.job_owner WHERE job_id=?', (job_id,)).fetchone()
-        if job is None or job['state'] not in ('queued', 'running') or (owner and _alive(db, owner[0], job_id)):
+        owner = db.execute('SELECT pid, boot_id, start_ticks FROM main.job_owner WHERE job_id=?', (job_id,)).fetchone()
+        if job is None or job['state'] not in ('queued', 'running') or (owner and _alive(db, owner[0], job_id, owner[1], owner[2])):
             return False
-        db.execute('INSERT OR REPLACE INTO main.job_owner(job_id, pid, claimed_at) VALUES(?, ?, ?)', (job_id, os.getpid(), stamp))
+        db.execute('INSERT OR REPLACE INTO main.job_owner(job_id, pid, claimed_at, boot_id, start_ticks) VALUES(?, ?, ?, ?, ?)',
+                   (job_id, os.getpid(), stamp, *owner_identity()))
         db.execute("UPDATE main.job SET state='running', attempts=attempts+1, error=NULL, updated_at=? WHERE id=?", (stamp, job_id))
         _CLAIMED.add((os.getpid(), _path(db), job_id))          # a second drainer in this process sees the owner alive, as for the fetch jobs
         return True

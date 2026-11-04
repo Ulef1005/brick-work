@@ -18,6 +18,8 @@ from tests.app4 import app4, client, coll, csrf, pair, read, world  # noqa: F401
 from tests.store4_mint_fixtures import build_catalogue
 from tests.test_store4_bricklink import write_xml
 
+OWN = dict(zip(('boot_id', 'start_ticks'), fetch_jobs.owner_identity()))      # this process's identity: a running-job fixture holds only with it (#167)
+
 
 def page(client, name):
     response = client.get('/manage/' + name)
@@ -66,7 +68,7 @@ def test_c1_catalogue_shows_the_build_and_both_actions(client, world, paths):
 
 
 def test_c2_a_running_job_shows_progress_and_holds_the_actions(client, world, paths):
-    catalogue_jobs._write(paths, dict(kind='redownload', state='running', pid=os.getpid(), started_at='2026-10-27T09:00:00Z', finished_at=None,
+    catalogue_jobs._write(paths, dict(kind='redownload', state='running', pid=os.getpid(), **OWN, started_at='2026-10-27T09:00:00Z', finished_at=None,
                                       step=1, folder=None, error=None, result=None))
     html, soup = page(client, 'catalogue')
     bar = soup.find(attrs={'role': 'progressbar'})
@@ -367,7 +369,7 @@ def wait_for_job(paths):
 
 def test_the_job_route_reports_none_running_and_done(client, world, paths, served):
     assert client.get('/manage/catalogue/job').get_json() == {'state': 'none'}
-    catalogue_jobs._write(paths, dict(kind='redownload', state='running', pid=os.getpid(), started_at='2026-10-27T09:00:00Z', finished_at=None,
+    catalogue_jobs._write(paths, dict(kind='redownload', state='running', pid=os.getpid(), **OWN, started_at='2026-10-27T09:00:00Z', finished_at=None,
                                       step=2, folder=None, error=None, result=None))
     r = client.get('/manage/catalogue/job')
     state = r.get_json()
@@ -405,7 +407,7 @@ def test_post_load_lists_runs_the_job_through_the_route(client, world, paths):
 
 
 def test_a_second_job_while_one_runs_is_refused_with_a_message(client, world, paths):
-    catalogue_jobs._write(paths, dict(kind='redownload', state='running', pid=os.getpid(), started_at='2026-10-27T09:00:00Z', finished_at=None,
+    catalogue_jobs._write(paths, dict(kind='redownload', state='running', pid=os.getpid(), **OWN, started_at='2026-10-27T09:00:00Z', finished_at=None,
                                       step=0, folder=None, error=None, result=None))
     token = csrf(client)
     html = client.post('/manage/catalogue', data={'csrf_token': token, 'action': 'reconcile'}, follow_redirects=True).get_data(as_text=True)
@@ -660,3 +662,52 @@ def test_q1_exact_relative_known_paths_are_redacted_like_absolute_ones(tmp_path,
     assert 'catalogue-src' not in out and 'rebrickable' not in out and 'data/' not in out
     assert 'the data folder (busy)' in out and 'brickwork.db is fine' in out
     assert public_text(Store4Error('all the data is kept'), known=known) == 'all the data is kept'          # prose is still left alone
+
+
+@pytest.mark.parametrize('boot, ticks, state', [('boot-a', 5000, 'running'),        # the process that started it
+                                                ('boot-b', 5000, 'interrupted'),    # started in an earlier boot: a container restart
+                                                ('boot-a', 4999, 'interrupted'),    # the pid names another process now
+                                                (None, None, 'interrupted')])       # written before schema 4.2
+def test_a_catalogue_job_is_running_only_for_the_process_that_started_it(paths, monkeypatch, boot, ticks, state):
+    """#167: pid, boot id and start ticks compared exactly; /proc is monkeypatched so this runs alike on macOS and Linux."""
+    monkeypatch.setattr(fetch_jobs, 'boot_id', lambda: 'boot-a')
+    monkeypatch.setattr(fetch_jobs, 'start_ticks', lambda pid: 5000)
+    catalogue_jobs._write(paths, dict(kind='rebuild', state='running', pid=os.getppid(), boot_id=boot, start_ticks=ticks,
+                                      started_at='2026-11-04T10:00:00Z', finished_at=None, step=0, folder=None, error=None, result=None))
+    assert catalogue_jobs.read(paths)['state'] == state
+
+
+def test_a_stale_running_catalogue_job_does_not_refuse_a_new_one_as_busy(world, paths, monkeypatch, served):
+    monkeypatch.setattr(fetch_jobs, 'boot_id', lambda: 'boot-a')
+    monkeypatch.setattr(fetch_jobs, 'start_ticks', lambda pid: 5000)
+    catalogue_jobs._write(paths, dict(kind='redownload', state='running', pid=os.getpid(), boot_id='boot-old', start_ticks=5000,
+                                      started_at='2026-11-04T10:00:00Z', finished_at=None, step=0, folder=None, error=None, result=None))
+    assert catalogue_jobs.start(paths, 'redownload', background=False)['state'] == 'done'
+
+
+def test_a_started_catalogue_job_records_the_identity_of_its_process(paths, monkeypatch):
+    monkeypatch.setattr(fetch_jobs, 'boot_id', lambda: 'boot-a')
+    monkeypatch.setattr(fetch_jobs, 'start_ticks', lambda pid: 5000)
+    seen = []
+    monkeypatch.setattr(catalogue_jobs, '_run', lambda paths, state, directory, operation_key=None: seen.append(dict(state)))
+    catalogue_jobs.start(paths, 'reconcile', background=False)
+    assert (seen[0]['pid'], seen[0]['boot_id'], seen[0]['start_ticks']) == (os.getpid(), 'boot-a', 5000)
+
+
+def test_a_reconcile_job_claim_is_taken_over_unless_its_owner_is_the_claiming_process(pair, coll, paths, monkeypatch):
+    """#167: the reconcile job claims as the fetch jobs do (/proc monkeypatched)."""
+    from brickwork.core.connect import connect
+    from brickwork.store4 import reconcile_job
+    monkeypatch.setattr(fetch_jobs, 'boot_id', lambda: 'boot-a')
+    monkeypatch.setattr(fetch_jobs, 'start_ticks', lambda pid: 5000)
+    unreconcile(pair)
+    with closing(connect(pair)) as db:
+        job = reconcile_job.queue_if_due(db)
+        db.execute("UPDATE job SET state='running' WHERE id=?", (job,))
+        db.execute("INSERT INTO job_owner(job_id, pid, claimed_at, boot_id, start_ticks) VALUES(?, ?, '2026-11-04T10:00:00.000Z', 'boot-a', 5000)", (job, os.getppid()))
+        db.commit()
+        assert reconcile_job._claim(db, job, '2026-11-04T11:00:00.000Z') is False                   # the claiming process is alive
+        db.execute("UPDATE job_owner SET start_ticks=4999")
+        db.commit()
+        assert reconcile_job._claim(db, job, '2026-11-04T11:00:00.000Z') is True                    # the pid names another process now
+        assert tuple(db.execute('SELECT pid, boot_id, start_ticks FROM job_owner').fetchone()) == (os.getpid(), 'boot-a', 5000)

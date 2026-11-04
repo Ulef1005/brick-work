@@ -12,7 +12,7 @@ def test_health_carries_the_app_version_and_schema(app, tmp_path):
     response = app.test_client().get('/api/v1/health')
     assert response.status_code == 200
     data = response.json['data']
-    assert data['status'] == 'ok' and data['app'] == __version__ and data['schema'] == '4.1'
+    assert data['status'] == 'ok' and data['app'] == __version__ and data['schema'] == '4.2'
 
 
 def test_health_without_a_collection_says_to_set_up(app):

@@ -23,7 +23,8 @@ Policy (decisions the design leaves open, all in the tests):
   `unidentified`; network, 5xx and other HTTP failures -> `source_error`, retried: `failed` with a `retry_at`, which `drain`
   picks up, at most MAX_ATTEMPTS runs, 1, 5, 15 and 60 minutes apart; the last failure keeps `failed` with no `retry_at`.
   Only a transient failure has a `retry_at`; every other `failed` job is final (a new `queue` makes a new job).
-- A dead owner's claim is taken over (the pid is gone, or it is this pid in a process that does not hold the job)."""
+- A dead owner's claim is taken over (the pid is gone, it is this pid in a process that does not hold the job, or the pid names
+  another process than the one that claimed: a claim records the kernel boot id and the owner's start ticks, `pid_alive`; #167)."""
 from datetime import datetime, timedelta, timezone
 import json
 import os
@@ -220,16 +221,59 @@ def _path(db):
     return next(r[2] for r in db.execute('PRAGMA database_list') if r[1] == 'main')
 
 
-def _alive(db, pid, job_id):
-    if pid == os.getpid():
-        return (pid, _path(db), job_id) in _CLAIMED
+BOOT_ID_FILE = '/proc/sys/kernel/random/boot_id'
+
+
+def boot_id():
+    """The kernel's boot id, or None where /proc cannot say (macOS, an unreadable file)."""
+    try:
+        with open(BOOT_ID_FILE) as f:
+            return f.read().strip() or None
+    except OSError:
+        return None
+
+
+def start_ticks(pid):
+    """Process `pid`'s start time in clock ticks since boot (field 22 of /proc/<pid>/stat), exactly as the kernel reports it; None
+    where /proc cannot say (not Linux, the process is gone, unreadable). A tick count is monotonic: no wall clock is involved."""
+    try:
+        with open(f'/proc/{pid}/stat') as f:
+            return int(f.read().rsplit(')', 1)[1].split()[19])           # the fields after the name start at 3, so starttime is index 19
+    except (OSError, ValueError, IndexError):
+        return None
+
+
+def owner_identity(pid=None):
+    """`(boot_id, start_ticks)` of `pid` (this process by default): what a job claim records about its owner (#167)."""
+    pid = os.getpid() if pid is None else pid
+    return boot_id(), start_ticks(pid)
+
+
+def pid_alive(pid, owner_boot_id=None, owner_start_ticks=None):
+    """Is another process `pid` alive and the very process that made a claim recording `(owner_boot_id, owner_start_ticks)`? (#167)
+    The pid must exist, the stored boot id must equal this boot's and the stored start ticks must equal the pid's current ones, all
+    compared exactly: after a container restart the old owner's pid can name a different live process. A claim with no identity
+    (written before schema 4.2, so before the restart that ran the upgrade) is dead wherever /proc answers. Where /proc cannot answer
+    (macOS development, tests there) only the pid decides, as before."""
+    if pid is None:
+        return False
     try:
         os.kill(pid, 0)
     except ProcessLookupError:
         return False
     except PermissionError:
+        pass
+    current_boot = boot_id()
+    if current_boot is None:                                           # no /proc here: the pid alone decides
         return True
-    return True
+    current_ticks = start_ticks(pid)
+    return current_ticks is not None and owner_boot_id == current_boot and owner_start_ticks == current_ticks
+
+
+def _alive(db, pid, job_id, owner_boot_id=None, owner_start_ticks=None):
+    if pid == os.getpid():
+        return (pid, _path(db), job_id) in _CLAIMED
+    return pid_alive(pid, owner_boot_id, owner_start_ticks)
 
 
 def _safe(text):
@@ -263,8 +307,8 @@ def _claim(db, job_id, now):
         due = job['retry_at'] is not None and job['retry_at'] <= stamp
         if not (job['state'] in ('queued', 'running') or job['state'] in ('waiting_for_budget', 'failed') and due):
             return None
-        owner = db.execute('SELECT pid FROM job_owner WHERE job_id=?', (job_id,)).fetchone()
-        if owner and _alive(db, owner[0], job_id):
+        owner = db.execute('SELECT pid, boot_id, start_ticks FROM job_owner WHERE job_id=?', (job_id,)).fetchone()
+        if owner and _alive(db, owner[0], job_id, owner[1], owner[2]):
             return None
         source, kind = job['source'], job['kind']
         if not _configured(source):
@@ -282,7 +326,8 @@ def _claim(db, job_id, now):
         if wait:
             _put(db, job_id, 'waiting_for_budget', t, code='budget', error=wait[1], retry_at=wait[0])
             return None
-        db.execute('INSERT OR REPLACE INTO job_owner(job_id, pid, claimed_at) VALUES(?, ?, ?)', (job_id, os.getpid(), stamp))
+        db.execute('INSERT OR REPLACE INTO job_owner(job_id, pid, claimed_at, boot_id, start_ticks) VALUES(?, ?, ?, ?, ?)',
+                   (job_id, os.getpid(), stamp, *owner_identity()))
         db.execute('''UPDATE job SET state='running', attempts=attempts+1, budget_day=?, budget_used=0, retry_at=NULL, error=NULL,
                       error_code=NULL, updated_at=? WHERE id=?''', (_day(t), stamp, job_id))
         db.execute('''UPDATE job_step SET state='running', count=0, error=NULL, error_code=NULL, retry_at=NULL, updated_at=?

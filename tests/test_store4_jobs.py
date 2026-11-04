@@ -401,7 +401,8 @@ def test_a_dead_owners_claim_is_taken_over(db):
 def test_a_live_owners_claim_is_left_alone(db):
     job = bricklink_job(db)
     db.execute("UPDATE job SET state='running', attempts=1 WHERE id=?", (job,))
-    db.execute('INSERT INTO job_owner(job_id, pid, claimed_at) VALUES(?, ?, ?)', (job, os.getppid(), '2026-10-25T11:00:00.000Z'))
+    db.execute('INSERT INTO job_owner(job_id, pid, claimed_at, boot_id, start_ticks) VALUES(?, ?, ?, ?, ?)',
+               (job, os.getppid(), '2026-10-25T11:00:00.000Z', *jobs.owner_identity(os.getppid())))     # the parent's real identity: alive on Linux and macOS
     db.commit()
     net = Net()
     r = jobs.run(db, job, http=net, now=T0)
@@ -505,3 +506,92 @@ def test_a_link_changed_during_the_call_is_asked_again(db):
     s = jobs.run(db, job, http=Net(bl=moved), now=T0)
     assert (s['state'], s['error_code']) == ('failed', 'source_error') and s['retry_at'] is not None
     assert q(db, 'SELECT count(*) FROM main.fetched_inventory') == [(0,)]
+
+
+# ---- the claim's owner identity (#167): boot id and start ticks, compared exactly ----
+
+BOOT, TICKS = 'boot-a', 5000
+
+
+@pytest.fixture
+def proc(monkeypatch):
+    """A /proc that answers: one boot id, and every pid started at TICKS (so tests run alike on macOS and Linux)."""
+    monkeypatch.setattr(jobs, 'boot_id', lambda: BOOT)
+    monkeypatch.setattr(jobs, 'start_ticks', lambda pid: TICKS)
+
+
+def claimed_by_parent(db, boot, ticks):
+    job = bricklink_job(db)
+    db.execute("UPDATE job SET state='running', attempts=1 WHERE id=?", (job,))
+    db.execute('INSERT INTO job_owner(job_id, pid, claimed_at, boot_id, start_ticks) VALUES(?, ?, ?, ?, ?)',
+               (job, os.getppid(), '2026-10-25T11:00:00.000Z', boot, ticks))
+    db.commit()
+    return job
+
+
+@pytest.mark.parametrize('boot, ticks', [('boot-b', TICKS),        # a live foreign pid, claimed in an earlier boot: a container restart
+                                         (BOOT, TICKS - 1),        # same boot, another process now has the pid
+                                         (BOOT, TICKS + 1),
+                                         (None, None),             # a claim made before 4.2
+                                         (BOOT, None), (None, TICKS)])
+def test_a_live_pid_that_is_not_the_claiming_process_is_claimable(db, proc, boot, ticks):
+    job = claimed_by_parent(db, boot, ticks)
+    r = jobs.run(db, job, http=Net(), now=T0)
+    assert (r['ran'], r['state'], r['attempts']) == (True, 'done', 2) and q(db, 'SELECT count(*) FROM job_owner') == [(0,)]
+
+
+def test_a_matching_identity_keeps_the_claim(db, proc):
+    job = claimed_by_parent(db, BOOT, TICKS)
+    net = Net()
+    r = jobs.run(db, job, http=net, now=T0)
+    assert (r['ran'], r['state'], r['attempts']) == (False, 'running', 1) and net.urls == []
+    assert jobs.drain(db, now=T0, http=net) == [] and q(db, 'SELECT boot_id, start_ticks FROM job_owner') == [(BOOT, TICKS)]
+
+
+def test_a_claim_records_this_process_identity(db, proc):
+    job = bricklink_job(db)
+    claimed = []
+    jobs.run(db, job, http=lambda url, headers: claimed.append(q(db, 'SELECT pid, boot_id, start_ticks FROM job_owner')) or Net()(url, headers), now=T0)
+    assert claimed[0] == [(os.getpid(), BOOT, TICKS)]
+
+
+def test_pid_alive_compares_the_identity_exactly(proc, monkeypatch):
+    me = os.getppid()
+    assert jobs.pid_alive(me, BOOT, TICKS) is True
+    assert jobs.pid_alive(me, 'other', TICKS) is False and jobs.pid_alive(me, BOOT, TICKS + 1) is False
+    assert jobs.pid_alive(me, None, None) is False                                          # NULL identity, /proc answers: dead
+    assert jobs.pid_alive(dead_pid(), BOOT, TICKS) is False and jobs.pid_alive(None, BOOT, TICKS) is False
+    monkeypatch.setattr(jobs, 'start_ticks', lambda pid: None)                              # the pid vanished between the two reads
+    assert jobs.pid_alive(me, BOOT, TICKS) is False
+
+
+def test_without_proc_the_pid_alone_decides(monkeypatch):
+    monkeypatch.setattr(jobs, 'boot_id', lambda: None)
+    monkeypatch.setattr(jobs, 'start_ticks', lambda pid: None)
+    assert jobs.owner_identity() == (None, None)
+    assert jobs.pid_alive(os.getppid(), None, None) is True and jobs.pid_alive(os.getppid(), 'x', 1) is True
+    assert jobs.pid_alive(dead_pid(), None, None) is False
+
+
+def test_boot_id_and_start_ticks_read_proc_where_there_is_one(tmp_path, monkeypatch):
+    boot = tmp_path / 'boot_id'
+    boot.write_text('3f2c-aa\n')
+    monkeypatch.setattr(jobs, 'BOOT_ID_FILE', str(boot))
+    assert jobs.boot_id() == '3f2c-aa'
+    monkeypatch.setattr(jobs, 'BOOT_ID_FILE', str(tmp_path / 'missing'))
+    assert jobs.boot_id() is None
+    if os.path.exists('/proc/self/stat'):
+        ticks = jobs.start_ticks(os.getpid())
+        assert isinstance(ticks, int) and ticks > 0 and jobs.start_ticks(os.getpid()) == ticks and jobs.start_ticks(dead_pid()) is None
+    else:
+        assert jobs.start_ticks(os.getpid()) is None
+
+
+def test_start_ticks_is_field_22_of_the_stat_line(tmp_path, monkeypatch):
+    """The process name may hold spaces and parentheses; the fields are counted after the last closing parenthesis."""
+    import builtins
+    stat = '4242 (my (odd) name) S ' + ' '.join(str(n) for n in range(4, 22)) + ' 987654 ' + ' '.join('0' for _ in range(10))
+    real_open = builtins.open
+    monkeypatch.setattr(builtins, 'open', lambda path, *a, **k: real_open(tmp_path / 'stat', *a, **k) if path == '/proc/4242/stat' else real_open(path, *a, **k))
+    (tmp_path / 'stat').write_text(stat)
+    assert jobs.start_ticks(4242) == 987654

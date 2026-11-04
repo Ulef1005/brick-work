@@ -25,13 +25,13 @@ def job_bodies(db, rows):
     for s in db.execute('SELECT * FROM main.job_step WHERE job_id IN (SELECT value FROM json_each(?)) ORDER BY job_id, position', (packed,)):
         steps.setdefault(s['job_id'], []).append({'name': s['name'], 'position': s['position'], 'state': s['state'], 'source': s['source'], 'error': s['error'],
                                                   'error_code': s['error_code'], 'retry_at': s['retry_at']})
-    owners = {o['job_id']: o['pid'] for o in db.execute('SELECT job_id, pid FROM main.job_owner WHERE job_id IN (SELECT value FROM json_each(?))', (packed,))}
+    owners = {o['job_id']: (o['pid'], o['boot_id'], o['start_ticks']) for o in db.execute('SELECT job_id, pid, boot_id, start_ticks FROM main.job_owner WHERE job_id IN (SELECT value FROM json_each(?))', (packed,))}
     path = db.execute('PRAGMA database_list').fetchone()['file']
     book = bodies(db, items=[r['item_id'] for r in rows if r['item_id'] is not None])
     return [{'id': r['id'], 'source': r['source'], 'kind': r['kind'], 'item': book.item(r['item_id']) if r['item_id'] is not None else None,
              'state': r['state'], 'attempts': r['attempts'], 'retry_at': r['retry_at'], 'error': r['error'], 'created_at': r['created_at'],
              'updated_at': r['updated_at'], 'steps': steps.get(r['id'], []),
-             'interrupted': r['state'] == 'running' and not pipeline.owner_pid_alive(owners.get(r['id']), path=path, job=r['id'])} for r in rows]
+             'interrupted': r['state'] == 'running' and not pipeline.owner_pid_alive(*owners.get(r['id'], (None, None, None)), path=path, job=r['id'])} for r in rows]
 
 
 def job_body(db, identifier):

@@ -46,7 +46,7 @@ def live(db):
 def test_connect_creates_a_4_0_collection_with_the_catalogue_beside_it(pair):
     assert not pair.exists()
     with closing(connect(pair)) as db:
-        assert db.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()[0] == '4.1'
+        assert db.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()[0] == '4.2'
         assert has_catalogue(db) and db.execute('PRAGMA foreign_keys').fetchone()[0] == 1
     assert catalogue_path(pair) == pair.with_name('catalogue.db')
 

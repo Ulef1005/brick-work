@@ -43,7 +43,7 @@ def line_bodies(db, rows):
     book = bodies(db, items=[r['item_id'] for r in rows if r['item_id'] is not None] + [s['item_id'] for each in suggestions.values() for s in each],
                   colors=[r['color_id'] for r in rows])
     return [{'id': r['id'], 'order_id': r['order_id'], 'document_id': r['document_id'], 'document_phase': r['phase'], 'line_no': r['line_no'], 'state': r['state'],
-             'item': book.item(r['item_id']) if r['item_id'] is not None else None, 'color': book.color(r['color_id']), 'unplaced': r['item_id'] is None,
+             'item': book.item(r['item_id']) if r['item_id'] is not None else None, 'color': book.color(r['color_id']), 'unplaced': r['item_id'] is None, 'unplaced_reason': r['unplaced_reason'],
              'condition': r['condition'], 'qty': r['qty'], 'unit_price': r['unit_price'], 'line_total': r['line_total'], 'remark': r['remark'],
              'raw': {'item_type': r['raw_item_type'], 'item_no': r['raw_item_no'], 'color_id': r['raw_color_id'], 'color_name': r['raw_color_name'],
                      'name': r['raw_name'], 'text': r['raw_text']},

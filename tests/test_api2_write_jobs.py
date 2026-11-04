@@ -92,6 +92,19 @@ def test_a_job_whose_worker_died_is_interrupted_and_resumable(v2, world, pair):
     assert write(v2, f'/jobs/{job}/retry').status_code == 409                       # interrupted, nothing failed
 
 
+def test_a_running_job_is_interrupted_when_its_owner_is_not_the_claiming_process(v2, world, pair, monkeypatch):
+    """#167: the job body judges the owner by boot id and start ticks, as the pipeline does (/proc monkeypatched)."""
+    from brickwork.store4 import jobs as fetch_jobs
+    monkeypatch.setattr(fetch_jobs, 'boot_id', lambda: 'boot-a')
+    monkeypatch.setattr(fetch_jobs, 'start_ticks', lambda pid: 5000)
+    job = queue(pair, world.brick)
+    sql(pair, "UPDATE job SET state='running' WHERE id=?", (job,))
+    sql(pair, "INSERT INTO job_owner(job_id, pid, claimed_at, boot_id, start_ticks) VALUES(?, 1, '2026-11-04T10:00:00.000Z', 'boot-a', 5000)", (job,))
+    assert call(v2, f'/jobs/{job}').json['data']['interrupted'] is False
+    sql(pair, "UPDATE job_owner SET boot_id='boot-old'")
+    assert call(v2, f'/jobs/{job}').json['data']['interrupted'] is True
+
+
 def test_a_job_waiting_for_its_budget_may_be_resumed(v2, world, pair):
     job = queue(pair, world.brick, ('identity',))
     sql(pair, "UPDATE job SET state='waiting_for_budget', retry_at='2999-01-01T00:00:00.000Z' WHERE id=?", (job,))

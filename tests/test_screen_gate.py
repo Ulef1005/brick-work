@@ -2,6 +2,7 @@
 
 `test_approved_states_match_their_baselines` is the gate. With no approved state it still runs, says so and passes; it never skips. The summary
 goes to the file named by BW_GATE_SUMMARY (scripts/check.sh prints it). Invented data only; the pinned Chrome (scripts/chrome.py) renders."""
+import json
 import os
 from pathlib import Path
 
@@ -65,3 +66,40 @@ def test_a_state_renders_the_same_twice(tmp_path, monkeypatch):
         assert Image.open(one).size[0] in (390 * 2, 1440), one
         result = gate.compare_images(one, two)
         assert not result['size_differs'] and result['share'] <= gate.TOLERANCE['pixels'] / 5, (one.name, result)
+
+
+def _check_states(tmp_path, monkeypatch, approved, files):
+    """design_screens.state_problems() for one built state `09-Collection`, with the given `approved` flag and baseline files present."""
+    from scripts import design_screens as ds
+    states = {'sizes': [1440, 1024, 390], 'themes': ['light', 'dark'], 'states': [
+        {'screen': '09-Collection', 'section': 'x', 'state': '', 'built': True, 'approved': approved, 'world': 'demo', 'path': '/collection'}]}
+    (tmp_path / 'states.json').write_text(json.dumps(states), encoding='utf-8')
+    folder = tmp_path / 'baselines' / '09-Collection'
+    folder.mkdir(parents=True)
+    for name in files:
+        (folder / name).write_bytes(b'')
+    monkeypatch.setattr(ds, 'STATES', tmp_path / 'states.json')
+    monkeypatch.setattr(ds, 'BASELINES', tmp_path / 'baselines')
+    return ds.state_problems({'09-Collection'})
+
+
+ALL_SIX = [f'09-Collection-{w}-{t}.png' for w in (1440, 1024, 390) for t in ('light', 'dark')]
+
+
+def test_a_built_state_that_is_not_approved_needs_no_baseline_file(tmp_path, monkeypatch):
+    assert _check_states(tmp_path, monkeypatch, False, []) == []
+
+
+def test_an_approved_state_needs_all_six_baselines(tmp_path, monkeypatch):
+    (tmp_path / 'full').mkdir()
+    assert _check_states(tmp_path / 'full', monkeypatch, True, ALL_SIX) == []
+    (tmp_path / 'part').mkdir()
+    found = _check_states(tmp_path / 'part', monkeypatch, True, ALL_SIX[:5])
+    assert len(found) == 1 and 'is approved but has no baseline' in found[0] and ALL_SIX[5] in found[0]
+    (tmp_path / 'none').mkdir()
+    assert len(_check_states(tmp_path / 'none', monkeypatch, True, [])) == 6
+
+
+def test_a_baseline_file_of_no_built_state_is_still_reported(tmp_path, monkeypatch):
+    found = _check_states(tmp_path, monkeypatch, False, ['09-Collection-777-light.png'])
+    assert len(found) == 1 and 'belongs to no built state' in found[0]

@@ -9,7 +9,8 @@ section's short title in kebab-case. frames.json is the design project's export 
 paths (`frames/<name>.png`, `sections/<Group>/<id>.html`); this script resolves them to the folders. A frame the export never listed
 (the 10a iPad frames) sits in design/screens/_unmapped/ under its old name, and the manifest lists it.
 The build captures of the app are design/screens/approval/ and are not part of this manifest. design/screens/states.json (hand-kept, D3) says how
-each screen is reached in the built app and whether it is built and approved; `check` also keeps it and approval/baselines/ consistent.
+each screen is reached in the built app and whether it is built and approved; `check` also keeps it and approval/baselines/ consistent:
+an approved state has all six baselines (1440 / 1024 / 390, light and dark), a built state that is not approved needs none (baselines are committed at approval only).
 `check`: the manifest is what `manifest` writes, every PNG and HTML it lists exists, no PNG or HTML in the folders is unlisted.
 Standard library only. Modelled on engram's design/screens/manifest.json."""
 import json
@@ -150,8 +151,8 @@ def state_problems(folders: set) -> list[str]:
                 for theme in states['themes']:
                     file = f'{stem}-{width}-{theme}.png'
                     expected.add((entry['screen'], file))
-                    if not (BASELINES / entry['screen'] / file).is_file():
-                        found.append(f'states.json: {name} has no {"approved baseline" if entry["approved"] else "candidate"} approval/baselines/{entry["screen"]}/{file}')
+                    if entry['approved'] and not (BASELINES / entry['screen'] / file).is_file():
+                        found.append(f'states.json: {name} is approved but has no baseline approval/baselines/{entry["screen"]}/{file}')
     found += [f'states.json lists no state of {folder}' for folder in sorted(folders - listed)]
     if BASELINES.is_dir():
         for folder in sorted(p for p in BASELINES.iterdir() if p.is_dir()):

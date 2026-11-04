@@ -11,10 +11,10 @@ Open **Workbench → Orders**.
 The **Import an order** page offers three ways in.
 
 - **Import a placed order** reads your BrickLink account. It needs a BrickLink key. Press **Load placed orders**, tick the orders you want and press **Import 1 order** (or **Import 2 orders**, and so on). Orders you already imported show **Already imported** and cannot be ticked.
-- **Paste order email**: paste the store's whole confirmation email and press **Read email**.
+- **Paste order email**: paste the store's whole confirmation email and press **Read email**. Use this for older orders: BrickLink purges an order's items after a while (the order shows as *Purged*), and **Import a placed order** then finds no lines (#155 tracks a clearer message). Undoing an e-mail import and pasting the same e-mail again is reported as already imported for now (#155).
 - **BrickLink XML upload**: drop an `.xml` file (or open **Or paste XML**) and press **Import and review**. One order per file.
 
-An order e-mail names colours and items by words, not numbers. Brick Work reads the BrickLink colour name and looks for an item with exactly that name; a name that fits several items (or none) leaves the line for you to match.
+An order e-mail names colours and items by words, not numbers. Brick Work reads the BrickLink colour name and looks for an item with exactly that name; a name that fits several items (or none) leaves the line for you to match. The match is exact, so some lines always wait for you (#155): a seller's condition note written after the name ("… micro scratches", "playwear", "good condition"), and an item BrickLink has renamed since the order ("Flag 2 x 2 Square with Flat Edge …"). With the BrickLink item lists loaded far more lines match: on one real 64-line order, 6 matched without them and 45 with them.
 
 A total always comes with its currency: a document that gives a total without a currency leaves the order without a total. A currency can stand without a total: an e-mail has only line prices in EUR, so its order has the currency and no total, and the line prices show EUR. An order whose document names no currency at all shows **Currency not recorded** on its line prices. Orders stored by an earlier version get their currency from their document when Brick Work starts.
 
@@ -26,7 +26,7 @@ Each import starts as a draft. On the order's page, under **Documents · resume 
 
 Brick Work places a line on an item by the BrickLink type, number and colour number the document names, looking in your collection's links and in the catalogue together. A line it could not place stays as the store wrote it, marked **Unmatched**. This happens when the number or colour is unknown, or when the number names more than one item: Brick Work never picks one of them for you. In that case the line offers **Could be** with the candidates.
 
-Some items exist only on BrickLink: instruction booklets, and some sticker and printed parts. When the BrickLink item lists are loaded (**Tools & Admin → Catalogues & keys → Load BrickLink item lists**), Brick Work places such a line on a new item of its own, named as BrickLink names it, both when it reads the order and when you match the line by its number. An e-mail's "(Instructions) for Set 7946" names the set's one booklet (`7946-1`). Without the lists, these lines stay unmatched, and the review cannot be finished until they are matched.
+Some items exist only on BrickLink: instruction booklets, and some sticker and printed parts. When the BrickLink item lists are loaded (**Tools & Admin → BrickLink item lists → Load lists**), Brick Work places such a line on a new item of its own, named as BrickLink names it, both when it reads the order and when you match the line by its number. An e-mail's "(Instructions) for Set 7946" names the set's one booklet (`7946-1`). Without the lists, these lines stay unmatched, and the review cannot be finished until they are matched.
 
 1. For any line Brick Work could not place, choose a candidate under **Could be**, or use **Search the catalogue** and pick the item, or set **Item type** and **Number** to a number that names exactly one item. Choose the **Colour** for a part, then press **Match line**.
 2. Press **Finish review**.

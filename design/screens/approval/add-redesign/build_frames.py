@@ -1,8 +1,8 @@
 """Approval frames of the Add page redesign (Ulf, 2026-10-28: "Add to list" read as adding to the collection). Re-runnable.
 
-    <the canonical venv's python> design/approval/add-redesign/build_frames.py [frame id ...]   (from the repo root)
+    <the canonical venv's python> design/screens/approval/add-redesign/build_frames.py [frame id ...]   (from the repo root)
 
-It reuses the invented 4.0 pair and the app set-up of design/approval/112-m10-a/build_frames.py (no Rebrickable key) and captures the
+It reuses the invented 4.0 pair and the app set-up of design/screens/approval/112-m10-a/build_frames.py (no Rebrickable key) and captures the
 Add page at the three kit sizes, light and dark. Nothing under data/ is read."""
 import importlib.util
 import json

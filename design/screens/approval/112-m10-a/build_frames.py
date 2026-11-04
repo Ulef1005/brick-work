@@ -1,6 +1,6 @@
 """Approval frames of M.10 batch A (issue #112): the part list on the copy page and in the Add review. Re-runnable.
 
-    <the canonical venv's python> design/approval/112-m10-a/build_frames.py [frame id ...]   (from the repo root)
+    <the canonical venv's python> design/screens/approval/112-m10-a/build_frames.py [frame id ...]   (from the repo root)
 
 It builds an invented 4.0 pair in a temporary folder (tests/m10a_data.py) and starts the real app on 127.0.0.1, twice: with BrickLink's key only
 (most frames: no Rebrickable key, so an unmapped part has no picture) and with both keys (m10a8b), logs in with a session cookie and runs scripts/capture_screens.cjs at the three kit sizes,
@@ -16,7 +16,7 @@ import tempfile
 import logging
 import threading
 
-ROOT = Path(__file__).resolve().parents[3]
+ROOT = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(ROOT))
 OUT = Path(__file__).resolve().parent
 CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'

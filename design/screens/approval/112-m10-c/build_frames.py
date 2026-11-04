@@ -2,7 +2,7 @@
 """M.10 batch C frames (#112): builds an invented 4.0 pair, runs the real app on 127.0.0.1, walks it through the screen states of the
 catalogue lifecycle and captures each at the three kit sizes, light and dark, into this folder.
 
-    /path/to/.venv/bin/python design/approval/112-m10-c/build_frames.py [--chrome PATH] [--only m10c1,m10c4]
+    /path/to/.venv/bin/python design/screens/approval/112-m10-c/build_frames.py [--chrome PATH] [--only m10c1,m10c4]
 
 Re-runnable: everything is built in a fresh temp dir. Nothing reads data/ or ~/Backups; the report, the dumps and the BrickLink XML are invented
 (the test fixtures), and the app is pointed at the temp pair by BW_DB_PATH."""
@@ -18,7 +18,7 @@ import tempfile
 import threading
 from contextlib import closing
 
-ROOT = Path(__file__).resolve().parents[3]
+ROOT = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(ROOT))
 OUT = Path(__file__).resolve().parent
 CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'

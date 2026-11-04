@@ -1,6 +1,6 @@
 """M.10 batch B frames (issue #112): identity on the item page, merge and unmerge, Unresolved items, the unidentified item.
 
-    python design/approval/112-m10-b/build_frames.py [--no-capture]
+    python design/screens/approval/112-m10-b/build_frames.py [--no-capture]
 
 Builds an invented 4.0 pair (the fixture catalogue of tests/app4.py plus local items made here), starts the real app on 127.0.0.1, signs the
 browser in with a session cookie, writes JOBS.json and runs scripts/capture_screens.cjs. Re-runnable: everything lives in a fresh temp folder.
@@ -14,7 +14,7 @@ import sys
 import tempfile
 import threading
 
-ROOT = Path(__file__).resolve().parents[3]
+ROOT = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(ROOT))
 OUT = Path(__file__).resolve().parent
 CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'

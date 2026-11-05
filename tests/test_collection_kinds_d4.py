@@ -105,6 +105,23 @@ def test_parts_keep_every_part_filter(client, all_kinds):
     assert panel.select_one('.bc-theme-row select[data-bc-filter=theme]')
 
 
+
+# --- Round 2, Q6 and Q7 (maintainer, 2026-11-05: "(a) Remove it", "(a) 'Name or number'")
+
+@pytest.mark.parametrize('kind', ['G', 'B', 'C'])
+def test_gear_books_catalogs_group_without_theme_and_search_by_name_or_number(client, all_kinds, kind):
+    soup = page(client, '/collection/' + kind)
+    assert [b['data-bc-group-pick'] for b in soup.select('[data-bc-group-pick]')] == ['', 'storage', 'year', 'place', 'lot']
+    assert soup.select_one('input[data-bc-search]')['placeholder'] == 'Name or number'
+
+
+def test_parts_and_sets_keep_their_grouping_and_search_words(client, all_kinds):
+    parts = page(client, '/collection/P')
+    assert 'theme' in [b['data-bc-group-pick'] for b in parts.select('[data-bc-group-pick]')]
+    assert parts.select_one('input[data-bc-search]')['placeholder'] == 'Name, number or colour'
+    assert page(client, '/collection/S').select_one('input[data-bc-search]')['placeholder'] == 'Number or name'
+
+
 # --- Q5: the phone strip scrolls to the active entry
 
 def test_the_strip_script_reveals_the_active_entry_without_motion():

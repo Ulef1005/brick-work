@@ -40,7 +40,7 @@
     nodes.forEach(n=>{n.hidden=!matching.has(n);const wish=n.querySelector('[data-wl-selected]');if(wish && n.hidden && wish.checked){wish.checked=false;wish.dispatchEvent?.(new Event('change',{bubbles:true}));}const selected=n.querySelector('[data-bp-selected]');if(selected && n.hidden)selected.checked=false;});
     syncExport();
     const container=root.querySelector('[data-bp-rows]');visible.forEach(r=>{r.node.hidden=false;container.append(r.node);});
-    root.querySelector('[data-bp-count]').textContent=window.BrickFormatting.resultCount(visible.length,root.dataset.screen==='wishlist'?(records.length && records.every(r=>r.type==='S')?'sets':'items'):'results');root.querySelector('[data-bp-empty]').hidden=visible.length>0;
+    root.querySelector('[data-bp-count]').textContent=window.BrickFormatting.resultCount(visible.length,...(root.dataset.screen==='wishlist'?(records.length && records.every(r=>r.type==='S')?['sets','set']:['items','item']):['results']));root.querySelector('[data-bp-empty]').hidden=visible.length>0;
     const chips=root.querySelector('[data-bp-chips]');chips.replaceChildren();
     [...controls,search].forEach(c=>{if(!c.value)return;const b=document.createElement('button');b.type='button';b.textContent=(c===search?'Search: '+c.value:c.closest('label').firstChild.textContent.trim()+': '+c.selectedOptions[0].textContent)+' ×';b.setAttribute('aria-label','Remove '+b.textContent);b.addEventListener('click',()=>{c.value='';render();});chips.append(b);});
   }

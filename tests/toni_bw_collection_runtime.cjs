@@ -124,8 +124,8 @@ assert.equal(count.textContent,'130 parts');assert.equal(loaded.textContent,'Loa
  assert.equal(inventoryMissing.hidden,true);assert.equal(inventoryPresent.hidden,true);
  assert.ok(inventoryRows.children.filter(n=>!n.hidden).every(n=>n.parentElement===inventoryRows),'present and missing figures remain inline');
  root.dataset.type='P';await inventoryTabs[0].trigger();
- assert.equal(inventoryCount.textContent,'1 parts');await inventoryTabs[1].trigger();assert.equal(inventoryCount.textContent,'2 minifigures');assert.equal(inventoryTabs[1]['aria-pressed'],'true');
- await inventoryTabs[2].trigger();assert.equal(inventoryCount.textContent,'2 minifigures');assert.equal(inventoryExtras.hidden,false);assert.equal(inventoryPanel.hidden,true);assert.equal(inventoryTabs[2]['aria-pressed'],'true');assert.ok(tabUrl.endsWith('?inventory=extras'));await inventoryTabs[0].trigger();assert.equal(inventoryExtras.hidden,true);assert.equal(inventoryPanel.hidden,false);assert.equal(inventoryCount.textContent,'1 parts');
+ assert.equal(inventoryCount.textContent,'1 part');await inventoryTabs[1].trigger();assert.equal(inventoryCount.textContent,'2 minifigures');assert.equal(inventoryTabs[1]['aria-pressed'],'true');
+ await inventoryTabs[2].trigger();assert.equal(inventoryCount.textContent,'2 minifigures');assert.equal(inventoryExtras.hidden,false);assert.equal(inventoryPanel.hidden,true);assert.equal(inventoryTabs[2]['aria-pressed'],'true');assert.ok(tabUrl.endsWith('?inventory=extras'));await inventoryTabs[0].trigger();assert.equal(inventoryExtras.hidden,true);assert.equal(inventoryPanel.hidden,false);assert.equal(inventoryCount.textContent,'1 part');
 
  await sortOpen.trigger();assert.equal(sortPanel.hidden,false);await sortOpen.trigger();assert.equal(sortPanel.hidden,true);
  await statusIncomplete.trigger();assert.equal(controls.find(c=>c.dataset.bcFilter==='status').value,'incomplete');assert.equal(statusIncomplete['aria-pressed'],'true');
@@ -312,10 +312,10 @@ search.value='';sort.value='number';controls.forEach(c=>c.value='');panel.hidden
 vm.runInNewContext((fs.readFileSync('static/web/toni/formatting.js','utf8')+fs.readFileSync('static/web/toni/bw-collection.js','utf8')),context);
 assert.equal(summaryNode.textContent,'Missing in view: 15 parts in 7286-1 · 1 part, 2 figs in 2260-1');
 assert.equal(applySets.textContent,'Show 2 sets');
-await copiesPick.trigger();assert.equal(count.textContent,'1 sets');assert.equal(copiesControl.value,'true');assert.equal(copiesPick['aria-pressed'],'true');
+await copiesPick.trigger();assert.equal(count.textContent,'1 set');assert.equal(copiesControl.value,'true');assert.equal(copiesPick['aria-pressed'],'true');
 assert.equal(summaryNode.textContent,'Missing in view: 1 part, 2 figs in 2260-1');
 await reset.trigger();assert.equal(applySets.textContent,'Show 2 sets');assert.equal(copiesControl.value,'');assert.equal(copiesPick['aria-pressed'],'false');
-search.value='Dragon';await search.trigger('input');assert.equal(applySets.textContent,'Show 1 sets');assert.equal(summaryNode.textContent,'Missing in view: 1 part, 2 figs in 2260-1');
+search.value='Dragon';await search.trigger('input');assert.equal(applySets.textContent,'Show 1 set');assert.equal(summaryNode.textContent,'Missing in view: 1 part, 2 figs in 2260-1');
 search.value='absent';await search.trigger('input');assert.equal(summaryNode.hidden,true);assert.equal(applySets.textContent,'Show 0 sets');
 await filters.trigger();assert.equal(sheetScrim.hidden,false);assert.equal(panel.hidden,false);
 await applySets.trigger();assert.equal(panel.hidden,true);assert.equal(sheetScrim.hidden,true);

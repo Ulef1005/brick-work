@@ -62,7 +62,7 @@ def test_headlines_for_parts_and_minifigures(coll, world, client):
     assert page(client, '/collection/P').select_one('.bc-heading h1').get_text() == 'No parts have damaged pieces'
 
 
-@pytest.mark.parametrize('kind', ['P', 'M', 'I', 'O', 'G'])
+@pytest.mark.parametrize('kind', ['P', 'M', 'I', 'O'])   # Gear, Books and Catalogs drop the part-only filters (tests/test_collection_kinds_d4.py)
 def test_filter_panel_uses_chips_and_pickers_and_keeps_every_filter(world, client, kind):
     panel = page(client, '/collection/' + kind).select_one('[data-bc-panel]')
     names = {s['data-bc-filter'] for s in panel.select('select[data-bc-filter]')}

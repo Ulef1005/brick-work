@@ -10,6 +10,7 @@ from tests.app4 import app4, pair  # noqa: F401
 
 ROOT = Path(__file__).resolve().parents[1]
 BEFORE = 'd97bf65'   # main before D2
+GROWN = {'/static/brickwork/icons-ui/sprite.svg', '/static/brickwork/icons-ui/README.md'}
 sys.path.insert(0, str(ROOT / 'scripts'))
 import brand_assets  # noqa: E402
 
@@ -28,7 +29,10 @@ def test_every_url_served_before_the_move_answers_with_the_same_bytes(app4):
     for url, content in before.items():
         response = client.get(url)
         assert response.status_code == 200, url
-        assert response.get_data() == content, url
+        if url in GROWN:   # the icon set has grown since (#153: gear, book, catalog): every line served before is still there
+            assert set(content.decode().splitlines()) <= set(response.get_data().decode().splitlines()), url
+        else:
+            assert response.get_data() == content, url
         response.close()
 
 

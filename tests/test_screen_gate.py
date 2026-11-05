@@ -159,3 +159,12 @@ def test_chrome_loads_and_honours_chrome_without_fcntl(tmp_path, monkeypatch, ca
     chrome = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(chrome)
     assert chrome.main(['pinned']) == 0 and capsys.readouterr().out == f'{binary}\n'
+
+
+def test_the_world_folder_has_the_same_path_every_time():
+    """Pages print the data folder (Catalogues & keys), so its path must not change between renders (CI run of #179)."""
+    with gate.world_folder() as first:
+        assert Path(first).is_dir()
+    with gate.world_folder() as second:
+        assert second == first
+    assert not Path(first).exists()

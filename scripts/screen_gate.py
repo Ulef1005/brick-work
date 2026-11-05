@@ -85,12 +85,36 @@ def thaw_clock(patched: list) -> None:
 
 
 @contextmanager
+def world_folder():
+    """The world's data folder, always at the same path: pages show it (Catalogues & keys prints the database and media paths), so a random
+    temporary name made that state differ on every render. One run at a time holds it, through a lock beside it; without fcntl (Windows) a
+    temporary folder stands in, whose pages are then not comparable."""
+    try:
+        import fcntl
+    except ImportError:
+        with tempfile.TemporaryDirectory(prefix='bw-gate-') as scratch:
+            yield scratch
+        return
+    base = Path(tempfile.gettempdir())
+    folder = base / 'bw-gate-world'
+    with open(base / 'bw-gate-world.lock', 'w') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        try:
+            shutil.rmtree(folder, ignore_errors=True)
+            folder.mkdir()
+            yield str(folder)
+        finally:
+            shutil.rmtree(folder, ignore_errors=True)
+            fcntl.flock(lock, fcntl.LOCK_UN)
+
+
+@contextmanager
 def world(name: str, warm_up: list[str] = ()):
     """Serve the invented world `name` on 127.0.0.1; yields its base URL. The `warm_up` paths are requested once before the clock is frozen,
     so that every module a page imports lazily has been imported by then."""
     from brickwork.demo import checks, dataset
     saved = {k: os.environ.get(k) for k in ('BW_DB_PATH', 'BW_EMBEDDED_WORKER', 'BW_ALLOW_NO_LOGIN', 'BW_AUTHENTICATION_PASSWORD')}
-    with tempfile.TemporaryDirectory(prefix='bw-gate-') as scratch:
+    with world_folder() as scratch:
         if name != 'demo':
             raise ValueError(f'unknown world {name}')
         store = Path(scratch) / 'brickwork.db'

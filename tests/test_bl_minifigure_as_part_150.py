@@ -112,6 +112,19 @@ def test_an_email_line_naming_the_figure_without_a_colour_is_placed_on_the_part_
         orders.phase(db, made['order_id'], made['document_id'], 'review')
 
 
+def test_an_email_line_naming_the_figure_in_a_colour_keeps_that_colour(pair):
+    import sqlite3
+    with sqlite3.connect(pair.with_name('catalogue.db')) as cat:
+        build = cat.execute('SELECT max(id) FROM build').fetchone()[0]
+        cat.execute("INSERT INTO bricklink_item(item_type,item_no,name,name_key,build_id) VALUES('M','syntech1','Technic Figure Syn One','technic figure syn one',?)", (build,))
+    text = '* Batch #1 (submitted Dec 1, 2025 04:55)\n[Used] Red Technic Figure Syn One (x1) ..... EUR 2.00 each = EUR 2.00\n'
+    with closing(connect(pair)) as db:
+        made = orders.import_document(db, 'email', text)
+        line = db.execute('SELECT item_id, color_id FROM order_line WHERE order_id=?', (made['order_id'],)).fetchone()
+        assert line['item_id'] == part(db, 'syn-tech-a')
+        assert line['color_id'] not in (None, 1)            # the colour the e-mail names is kept, not replaced by "no colour"
+
+
 def test_an_api_write_naming_the_figure_lands_on_the_part_in_no_colour(v2, pair):
     from tests.api2 import write
     made = write(v2, '/stock', body={'item': {'provider': 'bricklink', 'kind': 'minifigure', 'key': 'syntech1'}, 'quantity': 2, 'condition': 'used'})

@@ -485,8 +485,8 @@ def _by_name(db, row, hits):
     if len(ids) == 1:
         item_id = next(iter(ids))
         kind = items.label(db, item_id).kind
-        if kind == 'part' and item_id in figure_parts:
-            return item_id, 1, [], None                                # #150: the figure's part line, in no colour
+        if kind == 'part' and colour is None and item_id in figure_parts:
+            return item_id, 1, [], None                                # #150: the figure's part line; no colour named means "no colour"
         if kind == 'part' and colour is None:
             return None, None, [_label(db, item_id)], 'The colour name is not known'
         return item_id, colour if kind == 'part' else None, [], None

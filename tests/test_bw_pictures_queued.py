@@ -105,3 +105,22 @@ def test_found_into_loose_stock_queues_nothing_for_a_part_with_its_picture(world
     give_picture(coll, world.brick, world.red)
     w.found(coll.db, world.brick, world.red, 'loose', {}, 1)
     assert not live_picture_jobs(coll.db, world.brick)
+
+
+def test_a_running_picture_step_does_not_block_a_follow_up(world, coll):
+    """A running step read its colours when it began, so a colour added meanwhile needs its own job (Codex review)."""
+    db = coll.db
+    first = pictures.queue_missing(db, [world.brick])
+    coll.sql("UPDATE job_step SET state='running' WHERE job_id=? AND name='pictures'", (first[0],))
+    coll.sql("UPDATE job SET state='running' WHERE id=?", (first[0],))
+    assert len(pictures.queue_missing(db, [world.brick])) == 1 and len(live_picture_jobs(db, world.brick)) == 2
+
+
+def test_queueing_never_fails_the_write_it_follows(world, coll, monkeypatch, caplog):
+    """The write has committed; a queueing failure is logged and returns no jobs (Codex review)."""
+    def locked(*a, **k):
+        raise __import__('sqlite3').OperationalError('database is locked')
+    monkeypatch.setattr(pictures, '_queue_missing', locked)
+    with caplog.at_level('WARNING'):
+        assert pictures.queue_missing(coll.db, [world.brick]) == []
+    assert 'Could not queue pictures' in caplog.text

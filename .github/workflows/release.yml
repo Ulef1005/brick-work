@@ -1,0 +1,239 @@
+# Publishes the container image to GHCR for a release tag (#78): ghcr.io/ulef1005/brick-work, amd64 and arm64, one manifest.
+# The first stability release, v0.9.0, is the first image (maintainer, 2026-11-05). Every tag is built natively per architecture
+# and smoke-tested as in docker.yml; only then is anything pushed.
+#
+# Nothing reaches GHCR unless the repository variable GHCR_PUBLISH is "true". It is set on the maintainer's go for the first push
+# (condition 4 of #78); without it a tag builds and tests and the run says it published nothing.
+#
+# Tags: X.Y.Z, X.Y and X; `latest` only for a release without a pre-release suffix. Every image gets a build provenance
+# attestation and an SPDX SBOM attestation.
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "An existing release tag to build again (e.g. v0.9.0); pushes only when GHCR_PUBLISH is true"
+        required: true
+
+permissions:
+  contents: read
+
+# One release at a time: releases share the alias tags (latest, X, X.Y), so a slow older build must not overwrite a newer one.
+concurrency:
+  group: release
+  cancel-in-progress: false
+  queue: max                # keep every waiting release; the default keeps only one and cancels the rest (Codex review)
+
+env:
+  IMAGE: ghcr.io/ulef1005/brick-work
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      tag: ${{ steps.read.outputs.tag }}
+      version: ${{ steps.read.outputs.version }}
+      tags: ${{ steps.read.outputs.tags }}
+      revision: ${{ steps.read.outputs.revision }}
+      publish: ${{ steps.read.outputs.publish }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+      - name: Read the release tag
+        id: read
+        # The tag and the variable go through the environment, never into the script text (script injection).
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
+          PUBLISH: ${{ vars.GHCR_PUBLISH }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! "$TAG" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::$TAG is not a release tag (vX.Y.Z or vX.Y.Z-suffix)"; exit 1
+          fi
+          major=${BASH_REMATCH[1]} minor=${BASH_REMATCH[2]} suffix=${BASH_REMATCH[4]}
+          version=${TAG#v}
+          revision=$(git rev-list -n 1 "refs/tags/$TAG")    # the tagged commit, also for a rebuild run from main
+          # An alias moves only to the highest stable release it covers, so a rebuild of an older release never moves it back.
+          stable=$(git tag -l 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sed 's/^v//' | sort -V || true)
+          highest() { printf '%s\n' "$stable" | grep -E "^$1" | tail -n 1; }
+          tags="$version"                                     # a pre-release gets only its own tag
+          if [[ -z "$suffix" ]]; then
+            [[ "$(highest "$major\.$minor\.")" == "$version" ]] && tags="$tags $major.$minor"
+            [[ "$(highest "$major\.")" == "$version" ]] && tags="$tags $major"
+            [[ "$(highest '')" == "$version" ]] && tags="$tags latest"
+          fi
+          publish=false
+          if [[ "$PUBLISH" == true ]]; then publish=true; fi
+          {
+            echo "tag=$TAG"; echo "version=$version"; echo "tags=$tags"; echo "revision=$revision"; echo "publish=$publish"
+          } >> "$GITHUB_OUTPUT"
+          echo "Release $TAG: image tags [$tags], publish=$publish"
+
+  build:
+    needs: version
+    strategy:
+      matrix:
+        include:
+          - platform: linux/amd64
+            arch: amd64
+            runner: ubuntu-latest
+          - platform: linux/arm64
+            arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 40
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: refs/tags/${{ needs.version.outputs.tag }}
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build for the smoke test
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          platforms: ${{ matrix.platform }}
+          push: false
+          load: true
+          tags: brickwork:release
+          cache-from: type=gha,scope=${{ matrix.platform }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.platform }}
+      - name: Smoke test fresh installation
+        shell: bash
+        run: |
+          set -euo pipefail
+          trap 'status=$?; if [ "$status" -ne 0 ]; then docker logs bw || true; fi' EXIT
+          DATA=$(mktemp -d)
+          cp .env.sample "$DATA/.env"
+          sudo chown -R 1000:1000 "$DATA"
+          docker run --rm --entrypoint brickwork \
+            -e BW_ALLOW_NO_LOGIN=1 -v "$DATA:/app/data" brickwork:release setup
+          docker run -d --name bw -p 3333:3333 \
+            -e BW_ALLOW_NO_LOGIN=1 -v "$DATA:/app/data" brickwork:release
+          timeout 60s bash -c '
+            until [ "$(curl --silent --output /dev/null --write-out "%{http_code}" \
+              --max-time 2 http://127.0.0.1:3333/api/v1/health || true)" = 200 ]; do
+              sleep 1
+            done
+          '
+      - name: Stop container
+        if: always()
+        run: docker rm -f bw || true
+      - name: Log in to GHCR
+        if: needs.version.outputs.publish == 'true'
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Push by digest
+        id: push
+        if: needs.version.outputs.publish == 'true'
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          platforms: ${{ matrix.platform }}
+          outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=${{ matrix.platform }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/Ulef1005/brick-work
+            org.opencontainers.image.version=${{ needs.version.outputs.version }}
+            org.opencontainers.image.revision=${{ needs.version.outputs.revision }}
+      - name: Keep the digest
+        if: needs.version.outputs.publish == 'true'
+        env:
+          DIGEST: ${{ steps.push.outputs.digest }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p digests
+          touch "digests/${DIGEST#sha256:}"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: needs.version.outputs.publish == 'true'
+        with:
+          name: digests-${{ matrix.arch }}
+          path: digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    steps:
+      - name: Say that nothing is published
+        if: needs.version.outputs.publish != 'true'
+        env:
+          TAG: ${{ needs.version.outputs.tag }}
+        run: echo "::notice::$TAG built and smoke-tested on amd64 and arm64; nothing pushed to GHCR (GHCR_PUBLISH is not true)."
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        if: needs.version.outputs.publish == 'true'
+        with:
+          path: digests
+          pattern: digests-*
+          merge-multiple: true
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        if: needs.version.outputs.publish == 'true'
+      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        if: needs.version.outputs.publish == 'true'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create the multi-arch manifest
+        id: manifest
+        if: needs.version.outputs.publish == 'true'
+        env:
+          TAGS: ${{ needs.version.outputs.tags }}
+        shell: bash
+        working-directory: digests
+        run: |
+          set -euo pipefail
+          [ "$(ls | wc -l)" -eq 2 ] || { echo "::error::expected two digests (amd64, arm64), got $(ls | wc -l)"; exit 1; }
+          args=()
+          for t in $TAGS; do args+=(-t "$IMAGE:$t"); done
+          docker buildx imagetools create "${args[@]}" $(printf "$IMAGE@sha256:%s " *)
+          first=${TAGS%% *}
+          digest=$(docker buildx imagetools inspect "$IMAGE:$first" --format '{{json .Manifest}}' | jq -r .digest)
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          docker buildx imagetools inspect "$IMAGE:$first"
+      - name: Build provenance attestation
+        if: needs.version.outputs.publish == 'true'
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: ${{ env.IMAGE }}
+          subject-digest: ${{ steps.manifest.outputs.digest }}
+          push-to-registry: true
+      - name: SBOM
+        if: needs.version.outputs.publish == 'true'
+        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+        with:
+          image: ${{ env.IMAGE }}@${{ steps.manifest.outputs.digest }}
+          format: spdx-json
+          output-file: sbom.spdx.json
+          upload-artifact: false
+          upload-release-assets: false
+      - name: SBOM attestation
+        if: needs.version.outputs.publish == 'true'
+        uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e # v4.1.0
+        with:
+          subject-name: ${{ env.IMAGE }}
+          subject-digest: ${{ steps.manifest.outputs.digest }}
+          sbom-path: sbom.spdx.json
+          push-to-registry: true

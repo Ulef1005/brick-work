@@ -13,6 +13,7 @@ from urllib.request import Request
 
 from ...store4.connect import now as store_now
 from .. import items
+from .. import pipeline
 from ..pipeline import StepDone, StepFailed, StepNeedsKey, StepWait
 from . import base
 from .base import Source, SourceError, KeyRejected, InvalidReply, NotFoundAtSource, WaitingForBudget, observation, property_value
@@ -129,28 +130,58 @@ class Brickset(Source):
 # ---------- the pipeline step ----------
 
 def metadata(db, job, step, *, http=None):
-    """The `metadata` step for one set: properties and retail price. `StepDone('unidentified')` for a set with no number to ask with,
-    `StepDone('not_found')` when Brickset does not know it (a finding, not a failure: asking again gives the same)."""
+    """The `metadata` step: properties and retail price. `StepDone('unidentified')` for a set with no number to ask with,
+    `StepDone('not_found')` when Brickset does not know it (a finding, not a failure: asking again gives the same).
+
+    #194: Brickset charges per `getSets` call and one call takes up to `BATCH` numbers, so the step also takes the other jobs whose next
+    step is this one (`pipeline.claim_batchmates`, the worker's own claim), asks for all in one call and ends each one's step with its
+    own result. If the call fails they are released as they were and only this job gets the failure."""
     item_id = job['item_id']
     client = Brickset(db, http=http)
-    if client.number_of(item_id) is None:
+    mine = client.number_of(item_id)
+    if mine is None:
         raise StepDone('unidentified', 'The set has no number from any provider, so Brickset cannot be asked')
+    numbers = {mine: item_id}
+
+    def accept(other):
+        number = client.number_of(other)
+        return number is not None and NUMBER.fullmatch(number) is not None and numbers.setdefault(number, other) == other   # the rest are asked alone
+    mates, finished = [], set()
     try:
-        known = client.refresh([item_id], job_id=job['id'])
-    except WaitingForBudget as wait:
-        raise StepWait(wait.retry_at, 'waiting for budget') from None
-    except base.SourceNotConfigured as error:
-        raise StepNeedsKey(str(error)) from None                        # #139: no key yet is not a failure
-    except (base.SourceDisabled, KeyRejected) as error:
-        raise StepFailed('source_not_configured', str(error)) from None
-    except NotFoundAtSource as error:
-        raise StepFailed('not_found', str(error)) from None
-    except InvalidReply as error:
-        raise StepFailed('invalid_reply', str(error)) from None
-    except SourceError as error:
-        raise StepFailed('source_error', str(error)) from None
+        if NUMBER.fullmatch(mine):
+            mates = pipeline.claim_batchmates(db, 'metadata', 'brickset', exclude=job['id'], limit=BATCH - 1, accept=accept)
+        try:
+            known = client.refresh(list(dict.fromkeys([item_id] + [m['item_id'] for m in mates])), job_id=job['id'])
+        except BaseException as error:
+            raise _step_error(error) from None
+        for mate in mates:
+            if mate['item_id'] in known:
+                pipeline.finish_batchmate(db, mate, 'metadata', 'brickset')
+            else:
+                pipeline.finish_batchmate(db, mate, 'metadata', 'brickset', 'not_found', 'Brickset does not know this set')
+            finished.add(mate['job'])
+    except BaseException:
+        pipeline.release_batchmates(db, [m for m in mates if m['job'] not in finished])      # finished ones stay done
+        raise
     if item_id not in known:
         raise StepDone('not_found', 'Brickset does not know this set')
+
+
+def _step_error(error):
+    """The step exception for a failed call (anything unexpected stays itself)."""
+    if isinstance(error, WaitingForBudget):
+        return StepWait(error.retry_at, 'waiting for budget')
+    if isinstance(error, base.SourceNotConfigured):
+        return StepNeedsKey(str(error))                                 # #139: no key yet is not a failure
+    if isinstance(error, (base.SourceDisabled, KeyRejected)):
+        return StepFailed('source_not_configured', str(error))
+    if isinstance(error, NotFoundAtSource):
+        return StepFailed('not_found', str(error))
+    if isinstance(error, InvalidReply):
+        return StepFailed('invalid_reply', str(error))
+    if isinstance(error, SourceError):
+        return StepFailed('source_error', str(error))
+    return error
 
 
 def handlers(*, http=None):

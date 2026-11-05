@@ -17,7 +17,7 @@ Daily budgets: BrickLink `BW_BRICKLINK_DAILY_BUDGET` (default 4,400, a margin un
 `BW_REBRICKABLE_DAILY_BUDGET` (1,000), Brickset 100 (only `getSets` is charged; `checkKey` and `getKeyUsageStats` are not). BrickLink and
 Rebrickable calls are at least one second apart. The counters are the rows of `source_budget` (source, UTC day, `used`, `blocked_until`,
 `last_attempt_at`), shared with `store4.jobs`, which counts its own calls on the same rows. The Rebrickable catalogue pictures are plain
-downloads and count against nothing.
+downloads and count against nothing. The Brickset `metadata` step batches: one `getSets` call (counted once) asks for up to 500 sets, the job in hand and the other queued or waiting jobs whose next step is Brickset `metadata`, and ends each of those jobs' step with its own result.
 
 No key is written to a template, a log or an error text: replies are stored redacted, transport failures have fixed texts.
 Redirects are refused.

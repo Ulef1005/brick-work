@@ -183,3 +183,11 @@ def test_the_login_guard_covers_the_workbench(app4):
 def test_workbench_browser_runtime():
     rendered.need_node()
     subprocess.run(['node', str(Path(__file__).with_name('toni_bw_workbench_runtime.cjs'))], check=True, capture_output=True, text=True)
+
+
+def test_the_list_count_is_markup_not_escaped_text(world, client):
+    """Every workbench list's count slot is a real element, never the escaped `<span …>` shown as text (found in the D3 baseline review)."""
+    for route in ['/workbench/part-picker', '/workbench/matcher', '/workbench/match']:
+        html = client.get(route).get_data(as_text=True)
+        assert '&lt;span' not in html, route
+    assert '<span class="mono" data-count role="status"></span>' in client.get('/workbench/match').get_data(as_text=True)   # Recent saves

@@ -146,18 +146,23 @@ def metadata(db, job, step, *, http=None):
     def accept(other):
         number = client.number_of(other)
         return number is not None and NUMBER.fullmatch(number) is not None and numbers.setdefault(number, other) == other   # the rest are asked alone
-    mates = pipeline.claim_batchmates(db, 'metadata', 'brickset', exclude=job['id'], limit=BATCH - 1, accept=accept) if NUMBER.fullmatch(mine) else []
+    mates, finished = [], set()
     try:
-        known = client.refresh(list(dict.fromkeys([item_id] + [m['item_id'] for m in mates])), job_id=job['id'])
-    except BaseException as error:
+        if NUMBER.fullmatch(mine):
+            mates = pipeline.claim_batchmates(db, 'metadata', 'brickset', exclude=job['id'], limit=BATCH - 1, accept=accept)
+        try:
+            known = client.refresh(list(dict.fromkeys([item_id] + [m['item_id'] for m in mates])), job_id=job['id'])
+        except BaseException as error:
+            raise _step_error(error) from None
         for mate in mates:
-            pipeline.release_batchmate(db, mate)
-        raise _step_error(error) from None
-    for mate in mates:
-        if mate['item_id'] in known:
-            pipeline.finish_batchmate(db, mate, 'metadata', 'brickset')
-        else:
-            pipeline.finish_batchmate(db, mate, 'metadata', 'brickset', 'not_found', 'Brickset does not know this set')
+            if mate['item_id'] in known:
+                pipeline.finish_batchmate(db, mate, 'metadata', 'brickset')
+            else:
+                pipeline.finish_batchmate(db, mate, 'metadata', 'brickset', 'not_found', 'Brickset does not know this set')
+            finished.add(mate['job'])
+    except BaseException:
+        pipeline.release_batchmates(db, [m for m in mates if m['job'] not in finished])      # finished ones stay done
+        raise
     if item_id not in known:
         raise StepDone('not_found', 'Brickset does not know this set')
 

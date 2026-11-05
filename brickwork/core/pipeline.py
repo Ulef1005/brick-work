@@ -361,29 +361,36 @@ def claim_batchmates(db, step, source, *, exclude, limit, accept=lambda item_id:
     `job_owner` row and `state='running'` written in one transaction after re-checking the job, so a concurrent worker finds it owned and
     skips it. A waiting job counts whether or not its retry is due: the caller's own run just proved the budget allows the call. Returns
     the claims for `finish_batchmate` / `release_batchmate`; `accept(item_id)` lets the caller leave a job out."""
-    candidates = db.execute("""SELECT j.id, j.item_id FROM main.job j
+    sql = """SELECT j.id, j.item_id FROM main.job j
         JOIN main.job_step s ON s.job_id=j.id AND s.name=? AND s.state NOT IN ('done','failed')
              AND json_extract(s.sources, '$[' || s.source_index || ']')=?
-        WHERE j.kind=? AND j.state IN ('queued','waiting_for_budget') AND j.id!=?
+        WHERE j.kind=? AND j.state IN ('queued','waiting_for_budget') AND j.id!=? {only}
           AND NOT EXISTS (SELECT 1 FROM main.job_step p WHERE p.job_id=j.id AND p.position<s.position AND p.state NOT IN ('done','failed'))
-        ORDER BY j.id""", (step, source, KIND, exclude)).fetchall()
+        ORDER BY j.id"""
+    candidates = db.execute(sql.format(only=''), (step, source, KIND, exclude)).fetchall()
     pipeline, claims = Pipeline(db), []
-    for row in candidates:
-        if len(claims) >= limit:
-            break
-        if not accept(row['item_id']):
-            continue
-        with transaction(db):
-            seen = db.execute('SELECT state, retry_at, attempts FROM main.job WHERE id=?', (row['id'],)).fetchone()
-            if seen['state'] not in ('queued', 'waiting_for_budget') or pipeline.owner_alive(row['id']):
+    try:
+        for row in candidates:
+            if len(claims) >= limit:
+                break
+            if not accept(row['item_id']):
                 continue
-            from ..store4.jobs import owner_identity
-            stamp = now()
-            db.execute('INSERT OR REPLACE INTO main.job_owner(job_id, pid, claimed_at, boot_id, start_ticks) VALUES(?, ?, ?, ?, ?)',
-                       (row['id'], os.getpid(), stamp, *owner_identity()))
-            db.execute("UPDATE main.job SET state='running', updated_at=? WHERE id=?", (stamp, row['id']))
+            with transaction(db):
+                seen = db.execute('SELECT state, retry_at, attempts FROM main.job WHERE id=?', (row['id'],)).fetchone()
+                # the whole eligibility again, in the claim's own transaction: the job may have moved on since the selection
+                if (db.execute(sql.format(only='AND j.id=?'), (step, source, KIND, exclude, row['id'])).fetchone() is None
+                        or pipeline.owner_alive(row['id'])):
+                    continue
+                from ..store4.jobs import owner_identity
+                stamp = now()
+                db.execute('INSERT OR REPLACE INTO main.job_owner(job_id, pid, claimed_at, boot_id, start_ticks) VALUES(?, ?, ?, ?, ?)',
+                           (row['id'], os.getpid(), stamp, *owner_identity()))
+                db.execute("UPDATE main.job SET state='running', updated_at=? WHERE id=?", (stamp, row['id']))
             _CLAIMED_JOBS.add((os.getpid(), str(pipeline.path.resolve()), row['id']))
-        claims.append({'job': row['id'], 'item_id': row['item_id'], 'prior': tuple(seen)})
+            claims.append({'job': row['id'], 'item_id': row['item_id'], 'prior': tuple(seen)})
+    except BaseException:
+        release_batchmates(db, claims)                  # a claim that fails part-way never strands the ones already taken
+        raise
     return claims
 
 
@@ -404,6 +411,18 @@ def _unclaim(db, claim, step=None, **done):
 def finish_batchmate(db, claim, step, source, code=None, message=None):
     """The claimed job's `step` ends done (with a finding `code`, as a handler's `StepDone`) and the job goes back to the queue."""
     _unclaim(db, claim, step, source=source, code=code, message=message)
+
+
+def release_batchmates(db, claims):
+    """Release every claim in `claims` (best effort: one that cannot be released does not stop the others; it is raised after)."""
+    failure = None
+    for claim in claims:
+        try:
+            release_batchmate(db, claim)
+        except BaseException as error:
+            failure = failure or error
+    if failure is not None:
+        raise failure
 
 
 def release_batchmate(db, claim):

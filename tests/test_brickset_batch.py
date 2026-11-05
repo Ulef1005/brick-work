@@ -144,3 +144,64 @@ def test_the_call_takes_at_most_batch_sets_the_current_job_first(coll, world, mo
     pl.run(jobs[0])
     assert json.loads(asked(net)[0])['setNumber'] == '1000-2,2070-1' and len(net.requests) == 1
     assert [steps(pl, j)['metadata']['state'] for j in jobs] == ['done', 'done', 'queued']
+
+
+def owned(coll):
+    return coll.db.execute("SELECT count(*) FROM job_owner").fetchone()[0], coll.db.execute("SELECT count(*) FROM job WHERE state='running'").fetchone()[0]
+
+
+def test_a_claim_that_fails_part_way_releases_the_ones_already_taken(coll, world, monkeypatch):
+    keyed(monkeypatch, 'brickset')
+    monkeypatch.setattr(pipeline, '_CLAIMED_JOBS', set())
+    pl = Pipeline(coll.db, handlers=step_handlers(http=Net(reply('1000-1'))))
+    jobs = [queue(coll, i, ['metadata']) for i in (world.keep, world.gate, world.duplo)]
+    real, calls = pipeline.Pipeline.owner_alive, []
+
+    def flaky(self, job):
+        calls.append(job)
+        if len(calls) == 2:
+            raise RuntimeError('database is locked')
+        return real(self, job)
+    monkeypatch.setattr(pipeline.Pipeline, 'owner_alive', flaky)
+    with pytest.raises(RuntimeError, match='locked'):
+        pipeline.claim_batchmates(coll.db, 'metadata', 'brickset', exclude=jobs[0], limit=5)
+    assert owned(coll) == (0, 0) and not pipeline._CLAIMED_JOBS
+    assert [pl.status(j)['state'] for j in jobs[1:]] == ['queued', 'queued']
+
+
+def test_a_failing_finish_releases_the_unfinished_mates_and_keeps_the_finished_ones_done(coll, world, monkeypatch):
+    keyed(monkeypatch, 'brickset')
+    monkeypatch.setattr(pipeline, '_CLAIMED_JOBS', set())
+    net = Net(reply('1000-1', '1000-2', '2070-1'))
+    pl = Pipeline(coll.db, handlers=step_handlers(http=net))
+    jobs = [queue(coll, i, ['metadata']) for i in (world.keep, world.gate, world.duplo)]
+    real, count = pipeline._unclaim, []
+
+    def flaky(db, claim, step=None, **done):
+        if step is not None:
+            count.append(claim['job'])
+            if len(count) == 2:
+                raise RuntimeError('database is locked')
+        return real(db, claim, step, **done)
+    monkeypatch.setattr(pipeline, '_unclaim', flaky)
+    with pytest.raises(RuntimeError, match='locked'):
+        pl.run(jobs[0])
+    assert owned(coll)[0] == 0 and not pipeline._CLAIMED_JOBS
+    assert coll.db.execute("SELECT count(*) FROM job WHERE state='running' AND id!=?", (jobs[0],)).fetchone()[0] == 0
+    assert [steps(pl, j)['metadata']['state'] for j in jobs[1:]] == ['done', 'queued']
+
+
+def test_a_candidate_that_moved_on_before_its_claim_is_not_taken(coll, world, monkeypatch):
+    keyed(monkeypatch, 'brickset')
+    monkeypatch.setattr(pipeline, '_CLAIMED_JOBS', set())
+    jobs = [queue(coll, i, ['metadata']) for i in (world.keep, world.gate, world.duplo)]
+
+    def accept(item):
+        if item == world.gate:                                               # the gate's job finishes its step after the selection
+            coll.db.execute("UPDATE job_step SET state='done' WHERE job_id=?", (jobs[1],))
+            coll.db.commit()
+        return True
+    claims = pipeline.claim_batchmates(coll.db, 'metadata', 'brickset', exclude=jobs[0], limit=5, accept=accept)
+    assert [c['job'] for c in claims] == [jobs[2]]
+    pipeline.release_batchmates(coll.db, claims)
+    assert owned(coll) == (0, 0)

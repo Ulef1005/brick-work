@@ -263,7 +263,16 @@ def identified(db, key, color):
         found = lookup.find_items(db, provider, key['kind'], key['key'], colour)
     except ValueError as error:
         raise errors.ValidationFailed(str(error)) from None
-    return one_of(db, found, f'{provider} {key["kind"]} {key["key"]}'), colour
+    item = one_of(db, found, f'{provider} {key["kind"]} {key["key"]}')
+    return item, figure_colour(db, key, item, colour)
+
+
+def figure_colour(db, key, item, colour):
+    """A BrickLink figure number the catalogue holds as a part (#150) finds that part; the figure has no colour, so a request without one
+    means the part in colour 1 ("no colour"), never a colourless part line."""
+    if colour is None and 'id' not in key and key.get('kind') == 'minifigure' and (lookup.item_row(db, item) or (None, {}))[1]['kind'] == 'part':
+        return 1
+    return colour
 
 
 # ---------- preconditions ----------

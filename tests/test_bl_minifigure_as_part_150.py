@@ -96,3 +96,27 @@ def test_a_subsets_figure_line_is_a_part_line(pair):
                                              (result.fetched_id,))] == [(wanted, 1, 0, 2)]
         assert db.execute('SELECT count(*) FROM main.fetched_inventory_figure WHERE fetched_inventory_id=?', (result.fetched_id,)).fetchone()[0] == 0
         assert db.execute("SELECT count(*) FROM main.item WHERE born_provider='bricklink' AND born_namespace='M'").fetchone()[0] == 0
+
+
+def test_an_email_line_naming_the_figure_without_a_colour_is_placed_on_the_part_in_no_colour(pair):
+    import sqlite3
+    with sqlite3.connect(pair.with_name('catalogue.db')) as cat:
+        build = cat.execute('SELECT max(id) FROM build').fetchone()[0]
+        cat.execute("INSERT INTO bricklink_item(item_type,item_no,name,name_key,build_id) VALUES('M','syntech1','Technic Figure Syn One','technic figure syn one',?)", (build,))
+    text = '* Batch #1 (submitted Dec 1, 2025 04:55)\n[Used] Technic Figure Syn One (x1) ..... EUR 2.00 each = EUR 2.00\n'
+    with closing(connect(pair)) as db:
+        made = orders.import_document(db, 'email', text)
+        assert (made['placed'], made['unplaced']) == (1, 0)
+        line = db.execute('SELECT item_id, color_id, state FROM order_line WHERE order_id=?', (made['order_id'],)).fetchone()
+        assert tuple(line) == (part(db, 'syn-tech-a'), 1, 'matched')
+        orders.phase(db, made['order_id'], made['document_id'], 'review')
+
+
+def test_an_api_write_naming_the_figure_lands_on_the_part_in_no_colour(v2, pair):
+    from tests.api2 import write
+    made = write(v2, '/stock', body={'item': {'provider': 'bricklink', 'kind': 'minifigure', 'key': 'syntech1'}, 'quantity': 2, 'condition': 'used'})
+    assert made.status_code == 201
+    with closing(connect(pair)) as db:
+        stock = db.execute('SELECT s.item_id, s.color_id, s.quantity FROM main.stock s WHERE s.id=?', (made.json['data']['ids'][0],)).fetchone()
+        assert tuple(stock) == (part(db, 'syn-tech-a'), 1, 2)
+    assert write(v2, '/stock', body={'item': {'provider': 'bricklink', 'kind': 'part', 'key': 'syntech1'}, 'quantity': 1}).status_code == 422   # a real part still needs its colour

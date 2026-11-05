@@ -40,7 +40,9 @@ FOLLOW = [re.compile(p) for p in (
     r'^/workbench/storage(/[^/?]+)?$',
     r'^/manage/(add|tools|statistics|sync|catalogues|tokens|jobs|refresh|appearance|history|values)$',
 )]
-LIMIT = 400
+LIMIT = 3000   # a safety stop, never a silent cut: reaching it raises (the whole demo is about 1,300 pages)
+HOST_PATH = re.compile(r'/var/folders|/private/var|/private/tmp|/tmp/|/home/[a-z]|/Users/[A-Za-z]|\\btmp[a-z0-9_]{8}\\b')
+NEUTRAL_ROOT = '/srv/brick-work'   # what the pages that print the store and media paths show instead of the build's scratch folder
 ATTRIBUTE = re.compile(r'(\s(?:href|src|action|poster|content|data-[\w-]+)=")([^"]*)(")')
 # Links a visitor may follow (the app's catalogue links); nothing outside is ever loaded (src).
 LINKS_OK = re.compile(r'^https://(github\.com/Ulef1005/brick-work|ulef1005\.github\.io/brick-work/\Z|(www\.)?bricklink\.com/|brickset\.com/|rebrickable\.com/)')
@@ -93,6 +95,9 @@ def crawl(client, base, seeds):
             found = key_of(value, base)
             if found and found not in pages and any(p.match(found) for p in FOLLOW):
                 queue.append(found)
+    left = sorted({k for k in queue if k not in pages and k not in skipped})
+    if left:
+        raise RuntimeError(f'demo crawl reached its limit of {LIMIT} pages with {len(left)} still to visit, for example {left[0]}: raise LIMIT or narrow FOLLOW')
     return pages, skipped
 
 
@@ -187,14 +192,36 @@ def rewrite(text, base, pages):
     return re.sub(r'<head([^>]*)>', lambda m: m.group(0) + shim, text, count=1)
 
 
+def neutral(text, hidden, version):
+    """A page or reply with the build's scratch folder shown as NEUTRAL_ROOT and the asset cache-buster made content-derived (the same in every build)."""
+    for folder in hidden:
+        text = text.replace(folder, NEUTRAL_ROOT)
+    return re.sub(r'(\.(?:css|js|png|svg|ico|woff2?))\?v=[0-9]+', lambda m: m.group(1) + '?v=' + version, text)
+
+
+def static_version(folder):
+    digest = hashlib.sha1()
+    for path in sorted(p for p in Path(folder).rglob('*') if p.is_file()):
+        digest.update(str(path.relative_to(folder)).encode() + b'\0' + path.read_bytes())
+    return digest.hexdigest()[:12]
+
+
+TEXT = ('.html', '.json', '.js', '.css', '.svg', '.webmanifest', '.txt')
+
+
 def check(out):
-    """Private patterns and outside URLs in src/href attributes; returns the findings."""
+    """Private patterns, host paths and outside URLs; returns the findings. Every text file of the export is scanned for private and host-path patterns
+    (pages, saved replies, the shim, the app's scripts and styles); src/href attributes are checked in the pages and the shim."""
     findings, private = [], pattern()
-    for path in sorted(out.rglob('*.html')) + [out / 'demo-shim.js']:
-        text = path.read_text(encoding='utf-8')
+    for path in sorted(p for p in out.rglob('*') if p.is_file() and p.suffix in TEXT):
+        text = path.read_text(encoding='utf-8', errors='replace')
         for number, line in enumerate(text.splitlines(), 1):
             if private.search(line):
                 findings.append(f'{path.relative_to(out)}:{number}: private pattern')
+            if HOST_PATH.search(line):
+                findings.append(f'{path.relative_to(out)}:{number}: host path')
+    for path in sorted(out.rglob('*.html')) + [out / 'demo-shim.js']:
+        text = path.read_text(encoding='utf-8')
         for url in re.findall(r'\ssrc="(https?://[^"]+)"', text):
             findings.append(f'{path.relative_to(out)}: loads from outside {url}')
         for url in re.findall(r'\shref="(https?://[^"]+)"', text):
@@ -213,6 +240,7 @@ def export(out, base='/brick-work/demo/', data=dataset.DATA, rich=True):
         raise ValueError('base must start and end with /')
     with tempfile.TemporaryDirectory() as scratch:
         store = Path(scratch) / 'brickwork.db'
+        hidden = sorted({str(scratch), str(Path(scratch).resolve()), os.path.realpath(scratch)}, key=len, reverse=True)
         counts = dataset.build(store, data, showcase.layer(data) if rich else None)
         saved_env = {k: os.environ.get(k) for k in ('BW_DB_PATH', 'BW_EMBEDDED_WORKER', 'BW_ALLOW_NO_LOGIN', 'BW_AUTHENTICATION_PASSWORD')}
         patched = []
@@ -234,19 +262,21 @@ def export(out, base='/brick-work/demo/', data=dataset.DATA, rich=True):
                     os.environ[k] = v
     out.mkdir(parents=True)
     shutil.copytree(ROOT / 'static', out / 'static')
+    version = static_version(out / 'static')
     (out / 'manage' / 'images').mkdir(parents=True)
     for identifier, content in images.items():
         (out / 'manage' / 'images' / f'{identifier}.png').write_bytes(content)
     for key, text in pages.items():
         target = out / file_of(key)
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(rewrite(text, base, pages), encoding='utf-8')
+        target.write_text(neutral(rewrite(text, base, pages), hidden, version), encoding='utf-8')
     gets = {}
     for index, (key, text) in enumerate(sorted(saved.items())):
         name = f'data/{index:04d}.json'
         (out / name).parent.mkdir(parents=True, exist_ok=True)
-        (out / name).write_text(text, encoding='utf-8')
+        (out / name).write_text(neutral(text, hidden, version), encoding='utf-8')
         gets[key] = name
+    counts['crawl_limit'] = LIMIT
     manifest = dict(base=base, note=NOTE, pages={k: file_of(k).removesuffix('index.html') for k in sorted(pages)},
                     gets=gets, skipped=skipped, counts=counts)
     shim = (Path(__file__).with_name('shim.js').read_text(encoding='utf-8')

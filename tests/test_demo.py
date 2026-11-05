@@ -204,3 +204,35 @@ def test_every_item_the_world_shows_has_its_picture_row_and_its_exported_file(tm
     assert shown and {k for (k,) in shown} <= pictured, sorted({k for (k,) in shown} - pictured)
     assert manifest['counts']['pictures'] == db.execute('SELECT count(*) FROM picture').fetchone()[0] == len(list((out / 'manage' / 'images').iterdir()))
     assert all((showcase.ART / f).is_file() for (f,) in db.execute("SELECT replace(local_path, 'data/images/', '') FROM picture"))
+
+
+def test_no_host_path_reaches_the_export_and_check_covers_every_text_file(tmp_path, site):
+    """The Catalogues & keys page prints the store and media paths: the export shows a fixed neutral root, never the build's scratch folder; check() scans every text file."""
+    out, manifest = site
+    assert '/manage/catalogues' in manifest['pages']
+    page = (out / manifest['pages']['/manage/catalogues'] / 'index.html').read_text()
+    assert export.NEUTRAL_ROOT + '/brickwork.db' in page and export.NEUTRAL_ROOT + '/data' in page
+    for path in out.rglob('*'):
+        if path.is_file() and path.suffix in export.TEXT:
+            assert not export.HOST_PATH.search(path.read_text(encoding='utf-8', errors='replace')), path.relative_to(out)
+    assert export.check(out) == []
+    for name in ('manage/tools/index.html', 'data/0001.json', 'static/app.js', 'demo-shim.js'):
+        bad = tmp_path / name.replace('/', '_')
+        folder = tmp_path / ('site-' + bad.name)
+        (folder / 'static').mkdir(parents=True)
+        (folder / 'manage' / 'tools').mkdir(parents=True)
+        (folder / 'data').mkdir()
+        (folder / 'demo-shim.js').write_text('')
+        (folder / name).write_text('<p>/private/var/folders/xx/T/tmpabcd1234/brickwork.db</p>' if name.endswith('.html') else '"/var/folders/xx/T/tmpabcd1234"')
+        assert any('host path' in f for f in export.check(folder)), name
+
+
+def test_the_crawl_never_stops_silently_and_the_cache_buster_is_content_derived(site, monkeypatch, tmp_path):
+    out, manifest = site
+    assert manifest['counts']['crawl_limit'] == export.LIMIT and len(manifest['pages']) < export.LIMIT and manifest['skipped'] == {}
+    assert len(manifest['pages']) > 1000                                                        # every item page the lists link to is exported, so no visible link is dead
+    versions = set(re.findall(r'\.css\?v=([0-9a-z]+)', (out / 'collection/sets/index.html').read_text()))
+    assert len(versions) == 1 and re.fullmatch(r'[0-9a-f]{12}', versions.pop())
+    monkeypatch.setattr(export, 'LIMIT', 60)
+    with pytest.raises(RuntimeError, match='reached its limit'):
+        export.export(tmp_path / 'cut', BASE)

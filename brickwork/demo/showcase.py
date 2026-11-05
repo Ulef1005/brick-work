@@ -1,13 +1,15 @@
-"""The richer demo world: an additive layer over `dataset`, used only by the exported demo (`export.export`) and the site's screenshots.
+"""The public demo's world: the invented collection only, as a layer over `dataset`, used by the exported demo (`export.export`) and the site's pictures.
 
 The screen gate's approved baselines are rendered from the plain `dataset` world and must not move, so nothing here touches it: `dataset.build(path)`
-without a layer is byte-for-byte what it was. With `layer()` the same world gains an invented collection that makes every screen of the app look lived
-in: more sets over several themes and years (with part lists, minifigures and check state), incomplete copies, loose parts and figures in storage,
+without a layer is byte-for-byte what it was. With `layer()` the world is replaced by an invented collection that makes every screen of the app look
+lived in: sets over several themes and years (with part lists, minifigures and check state), incomplete copies, loose parts and figures in storage,
 gear, books and catalogs, several wishlists with maximum prices, price records and a few orders.
 
-Everything is invented and deterministic (a fixed seed; the ids come from a seeded generator, never from the clock or the system's randomness).
-The sets, figures, gear, books and catalogs are generic names under numbers in a range no catalogue uses (99xxx-1, fig-99xxxx), so nothing implies
-real catalogue data; the parts and colours are drawn from the design test data's inventories, as the base world's are. No pictures.
+Everything is invented and deterministic (a fixed seed; the ids come from a seeded generator, never from the clock or the system's randomness):
+the sets, figures, gear, books and catalogs have generic names under numbers in a range no catalogue uses (99xxx-1, fig-99xxxx), and the shops,
+sellers and order numbers are made up. Nothing of the design test data's real-named catalogue is shown: its sets, figures and wishes are left out
+whole, and of its inventories only generic parts and colours are used (see LICENCED and `generic` below for the rule). Pictures are the original
+illustrations of design/demo-art/ (scripts/demo_art.py), stored as ordinary pictures with the source "Demo illustration".
 """
 from contextlib import closing, contextmanager
 import json
@@ -28,7 +30,7 @@ SEED = 20261012
 NAMESPACE = uuid.UUID('6f1c7a52-0a54-4d5d-9b52-2f6b1c0d5e11')
 
 
-def uid_(*parts):
+def uid(*parts):
     return str(uuid.uuid5(NAMESPACE, '/'.join(str(p) for p in parts)))
 
 
@@ -46,34 +48,34 @@ SETS = [
     ('99110-1', 'Dragon Keep Gatehouse', 2003, 'Castle / Dragon Keep', 5109, 130, 3),
     ('99111-1', 'Royal Stable', 1991, 'Castle / Royal Court', 5110, 76, 2),
     ('99112-1', 'Mountain Outpost', 2019, 'Castle / Frontier', 5111, 118, 3),
-    ('99113-1', 'Crawler Crane', 2017, 'Technic / Construction', 5112, 140, 0),
-    ('99114-1', 'Rally Buggy', 2020, 'Technic / Vehicles', 5113, 66, 1),
-    ('99115-1', 'Wind Turbine', 2022, 'Creator / Eco', 5114, 82, 0),
-    ('99116-1', 'Seaside Cottage', 2011, 'Creator / Houses', 5115, 104, 2),
+    ('99113-1', 'Crawler Crane', 2017, 'Mechanical / Construction', 5112, 140, 0),
+    ('99114-1', 'Rally Buggy', 2020, 'Mechanical / Vehicles', 5113, 66, 1),
+    ('99115-1', 'Wind Turbine', 2022, 'Makers / Eco', 5114, 82, 0),
+    ('99116-1', 'Seaside Cottage', 2011, 'Makers / Houses', 5115, 104, 2),
     ('99117-1', 'Night Express', 2013, 'Trains / Night Express', 5116, 150, 2),
     ('99118-1', 'Pirate Cove', 1996, 'Pirates / Cove', 5117, 92, 3),
     ('99119-1', 'Jungle Expedition', 2008, 'Adventure / Jungle', 5118, 78, 3),
     ('99120-1', 'Desert Caravan', 2010, 'Adventure / Desert', 5119, 64, 2),
     ('99121-1', 'Market Square', 1989, 'Town / Market', 5120, 58, 2),
-    ('99122-1', 'Old Mill', 2023, 'Creator / Houses', 5115, 120, 2),
+    ('99122-1', 'Old Mill', 2023, 'Makers / Houses', 5115, 120, 2),
 ]
 
 # Wished sets (no part list: nobody owns them): number, name, year, theme path, theme id, parts
 WISH_SETS = [
-    ('99201-1', 'Grand Observatory', 2023, 'Creator / Landmarks', 5201, 2310),
+    ('99201-1', 'Grand Observatory', 2023, 'Makers / Landmarks', 5201, 2310),
     ('99202-1', 'Steam Depot', 2022, 'Trains / Steam Depot', 5202, 1468),
     ('99203-1', 'Frontier Fortress', 2020, 'Castle / Frontier', 5111, 1850),
     ('99204-1', 'Ocean Explorer', 2019, 'Town / Harbour', 5101, 942),
     ('99205-1', 'Skyline Tower', 2021, 'City / Roads', 5104, 1190),
     ('99206-1', 'Moon Base Alpha', 2022, 'Space / Lunar', 5106, 1604),
     ('99207-1', 'Pirate Galleon', 2018, 'Pirates / Cove', 5117, 2294),
-    ('99208-1', 'Racing Garage', 2023, 'Technic / Vehicles', 5113, 760),
+    ('99208-1', 'Racing Garage', 2023, 'Mechanical / Vehicles', 5113, 760),
 ]
 
 # Gear, books and catalogs are catalogue entries with no parts: number, name, year, theme path, theme id
 GEAR = [('99501-1', 'Brick Separator Set', 2015), ('99502-1', 'Sorting Tray, Six Wells', 2018), ('99503-1', 'Display Stand, Wall', 2020),
         ('99504-1', 'Baseplate Carry Case', 2017), ('99505-1', 'Desk Lamp, Brick Shaped', 2021)]
-BOOKS = [('99601-1', 'The Brick Builder Handbook', 2016), ('99602-1', 'Castles of the Lowlands', 2012), ('99603-1', 'Technic Mechanisms Explained', 2019),
+BOOKS = [('99601-1', 'The Brick Builder Handbook', 2016), ('99602-1', 'Castles of the Lowlands', 2012), ('99603-1', 'Gears and Mechanisms Explained', 2019),
          ('99604-1', 'Trains and Tracks, a Field Guide', 2014)]
 CATALOGS = [('99701-1', 'Annual Product Catalog 1989', 1989), ('99702-1', 'Annual Product Catalog 1996', 1996), ('99703-1', 'Collector Price Guide 2004', 2004)]
 
@@ -85,14 +87,15 @@ FIGURE_NAMES = ['Harbour Master', 'Lighthouse Keeper', 'Deckhand', 'Coast Guard 
                 'Baker Apprentice', 'Stargazer', 'Lab Assistant', 'Harbour Pilot', 'Net Mender', 'Signal Keeper', 'Cargo Handler', 'Bandit Lookout', 'Squire']
 
 STORAGE = [('Shelf B', 'Shelf'), ('Cabinet A', 'Cabinet'), ('Drawer 3', 'Drawer'), ('Drawer 8', 'Drawer'), ('Drawer 12', 'Drawer'), ('Bag 07', 'Bag'),
-           ('Box 5', 'Box'), ('Technic bin', 'Bin'), ('Wheels and tyres tray', 'Bin'), ('Study shelf', 'Shelf')]
-PLACES = [('Steinreich-Bricks', 'BrickLink store'), ('Kloetzchen-Kiste', 'BrickLink store'), ('Brick Corner Graz', 'Shop'), ('Flohmarkt Lend', 'Market'),
-          ('Plattenbau Parts', 'BrickLink store'), ('Spielwaren Huber', 'Shop')]
+           ('Box 5', 'Box'), ('Mechanics bin', 'Bin'), ('Wheels and tyres tray', 'Bin'), ('Study shelf', 'Shelf')]
+# Clearly generic names: none is a real shop, store or market.
+PLACES = [('Sample Bricks Store', 'BrickLink store'), ('Example Parts Depot', 'BrickLink store'), ('Corner Toy Shop', 'Shop'), ('Village Flea Market', 'Market'),
+          ('Demo Brick Outlet', 'BrickLink store'), ('High Street Toys', 'Shop')]
 HOMES = {  # a set's place on the shelves, by theme root
-    'Town': 'Shelf A2 – Town', 'City': 'Shelf A2 – Town', 'Castle': 'Shelf A1 – Castle', 'Space': 'Display case', 'Technic': 'Technic crate',
-    'Creator': 'Display case', 'Trains': 'Shelf A2 – Town', 'Pirates': 'Shelf A1 – Castle', 'Adventure': 'Kellerregal Ü2'}
+    'Town': 'Shelf A2 – Town', 'City': 'Shelf A2 – Town', 'Castle': 'Shelf A1 – Castle', 'Space': 'Display case', 'Mechanical': 'Mechanics crate',
+    'Makers': 'Display case', 'Trains': 'Shelf A2 – Town', 'Pirates': 'Shelf A1 – Castle', 'Adventure': 'Kellerregal Ü2'}
 OWNERS = ['Alex', 'Sam', 'Shared']
-TAGS = {'Castle': ['Castle'], 'Technic': ['Technic'], 'Space': ['Display'], 'Creator': ['Display']}
+TAGS = {'Castle': ['Castle'], 'Space': ['Display'], 'Makers': ['Display']}
 # state per set number: what the owner did with the copy (the second field says whether it has a part list of its own)
 STATE = {
     '99101-1': 'complete', '99102-1': 'gaps', '99103-1': 'gaps', '99104-1': 'sealed', '99105-1': 'complete', '99106-1': 'progress', '99107-1': 'gaps',
@@ -104,15 +107,11 @@ SECOND_COPIES = {'99102-1': ('built', 'Shelf B'), '99115-1': ('displayed', 'Disp
 
 # The running checks the exported demo and the pictures show (brickwork/demo/checks.py): copy id: (share of the steps answered, keep the missing counts)
 CHECKS = {
-    uid_('copy', '99120-1', 'a'): (0.0, True),    # started, first part
-    uid_('copy', '99106-1', 'a'): (0.4, True),    # about 40 % answered, resume
-    uid_('copy', '99103-1', 'a'): (1.0, True),    # answered to the end, with gaps
-    uid_('copy', '99101-1', 'a'): (1.0, False),   # answered to the end, nothing missing
+    uid('copy', '99120-1', 'a'): (0.0, True),    # started, first part
+    uid('copy', '99106-1', 'a'): (0.4, True),    # about 40 % answered, resume
+    uid('copy', '99103-1', 'a'): (1.0, True),    # answered to the end, with gaps
+    uid('copy', '99101-1', 'a'): (1.0, False),   # answered to the end, nothing missing
 }
-
-
-def uid(*parts):
-    return str(uuid.uuid5(NAMESPACE, '/'.join(str(p) for p in parts)))
 
 
 # The public demo shows only the invented collection. What it may take from the design test data is its generic parts: a catalogue item is
@@ -318,19 +317,20 @@ class Layer:
                 db.execute('UPDATE storage SET type=? WHERE id=? AND type IS NULL', (kind, 'storage-' + dataset.slug(name)))
             for name, kind in PLACES:
                 dataset.put(db, 'place', 'place-' + dataset.slug(name), name, kind=kind)
+                db.execute('UPDATE place SET kind=? WHERE id=? AND kind IS NULL', (kind, 'place-' + dataset.slug(name)))
             # The shelves nest: boxes and drawers sit in a cabinet or on a shelf.
             for child, parent in (('Bag 07', 'Box 5'), ('Drawer 3', 'Cabinet A'), ('Drawer 8', 'Cabinet A'), ('Drawer 12', 'Cabinet A'),
-                                  ('Box 5', 'Shelf B'), ('Technic bin', 'Technic crate'), ('Wheels and tyres tray', 'Technic crate')):
+                                  ('Box 5', 'Shelf B'), ('Mechanics bin', 'Mechanics crate'), ('Wheels and tyres tray', 'Mechanics crate')):
                 if parent:
                     db.execute('UPDATE storage SET parent_id=? WHERE id=?', ('storage-' + dataset.slug(parent), 'storage-' + dataset.slug(child)))
 
     def loose_parts(self, db):
-        drawers = ['Drawer 3', 'Drawer 8', 'Drawer 12', 'Bag 07', 'Parts drawer unit', 'Technic bin', 'Wheels and tyres tray']
+        drawers = ['Drawer 3', 'Drawer 8', 'Drawer 12', 'Bag 07', 'Parts drawer unit', 'Mechanics bin', 'Wheels and tyres tray']
         with transaction(db):
             for row in self.rng.sample(self.stockpool, 90):
                 drawer = drawers[(sum(map(ord, row['part'])) + row['color']['id']) % len(drawers)]
                 if row['category'].startswith('Technic'):
-                    drawer = 'Technic bin'
+                    drawer = 'Mechanics bin'
                 elif row['category'].startswith('Wheels'):
                     drawer = 'Wheels and tyres tray'
                 stock.add_loose(db, item_id=dataset.item_by(db, 'parts', row['part']), color_id=dataset.colour_by(db, row['color']['id']),
@@ -434,8 +434,8 @@ class Layer:
 
     def orders(self, db):
         """Three orders through the app's own XML import: one received whole, one partly arrived, one still a draft (nothing is allocated)."""
-        made = [('Steinreich-Bricks', '4812201', '2026-09-28', 'Received', 7, 'all'), ('Plattenbau Parts', '4793377', '2026-10-05', 'Shipped', 5, 'part'),
-                ('Kloetzchen-Kiste', '4830962', '2026-10-10', 'Pending', 4, None)]
+        made = [('Sample Bricks Store', '9900101', '2026-09-28', 'Received', 7, 'all'), ('Example Parts Depot', '9900102', '2026-10-05', 'Shipped', 5, 'part'),
+                ('Demo Brick Outlet', '9900103', '2026-10-10', 'Pending', 4, None)]
         order_rng = random.Random(SEED + 1)
         # Only parts the order import can place by BrickLink's numbers (a few parts have no link in the shipped mappings).
         placeable = [r for r in self.stockpool if orders._place(db, 'P', r['part'], bricklink_colour(db, r['color']['id']))[0] is not None]

@@ -184,12 +184,14 @@ def fill(db, data, inventories, layer=None):
         kinds = {s['name']: s.get('type') for s in places['storages']}
         for name in sorted({s['storage'] for s in sets} | {s['name'] for s in places['storages']} | {'Parts drawer unit'}):
             put(db, 'storage', 'storage-' + slug(name), name, type=kinds.get(name))
-        place_kinds = {p['name']: p.get('kind') for p in places['purchase_locations']}
+        place_kinds = {} if layer is not None else {p['name']: p.get('kind') for p in places['purchase_locations']}   # the demo's places are the layer's own
         for name in sorted({s['purchase_location'] for s in sets} | set(place_kinds)):
             put(db, 'place', 'place-' + slug(name), name, kind=place_kinds.get(name))
         for status in meta['statuses']:
             flags['status', status['id']] = put(db, 'flag', 'status-' + status['id'], status['name'], kind='status', shown_on_grid=int(status['displayed_on_grid']))
         for tag in meta['tags']:
+            if layer is not None and tag['name'] in ('Ideas', 'Technic'):   # LEGO product-line names: not in the public demo
+                continue
             flags['tag', tag['name']] = put(db, 'flag', 'tag-' + slug(tag['name']), tag['name'], kind='tag', shown_on_grid=0)
         for owner in meta['owners']:
             flags['owner', owner['name']] = put(db, 'flag', 'owner-' + slug(owner['name']), owner['name'], kind='owner', shown_on_grid=0)

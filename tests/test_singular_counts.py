@@ -32,3 +32,10 @@ def test_the_sets_subtitle_says_copy_for_one_copy_and_copies_otherwise(client, w
     assert match and match.group(2) == ('copy' if match.group(1) == '1' else 'copies')
     count = re.match(r'Show (\d+) (set|sets)$', show)
     assert count and count.group(2) == ('set' if count.group(1) == '1' else 'sets')
+
+
+def test_the_parts_show_button_is_singular_for_one_part_before_any_script_runs(client, coll):  # noqa: F811
+    coll.add_stock('part', coll.item('parts', '3001'), colour=coll.colour('4'), quantity=3)
+    assert page(client, '/collection/P').select_one('[data-bc-apply]').get_text(strip=True) == 'Show 1 part'
+    coll.add_stock('part', coll.item('parts', '3001'), colour=coll.colour('15'), quantity=1)
+    assert page(client, '/collection/P').select_one('[data-bc-apply]').get_text(strip=True) == 'Show 2 parts'

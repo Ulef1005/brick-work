@@ -234,6 +234,7 @@ class Layer:
                 self.loose_figures(db, ids)
                 self.other_kinds(db)
                 self.finishing_stock(db)
+                self.finished_checks(db)
                 self.prices(db)
                 self.damaged_prices(db)
                 self.missing_figures(db)
@@ -282,14 +283,24 @@ class Layer:
                 stock.add_loose(db, item_id=item, quantity=1, condition='used', storage_id='storage-box-5', via='cli')
 
     def finishing_stock(self, db):
-        """Loose parts that finish two of the incomplete copies (the Matcher offers them as complete-able) and half-finish a third."""
-        wanted = {'99102-1': 1.0, '99114-1': 1.0, '99107-1': 0.5}
+        """Loose parts that finish three of the incomplete copies (the Matcher offers them as complete-able) and half-finish a third."""
+        wanted = {'99102-1': 1.0, '99114-1': 1.0, '99105-1': 1.0, '99107-1': 0.5}
         with transaction(db):
             for number, share in wanted.items():
                 rows = [r for r in self.inventories[number]['parts'] if r['missing'] or r['damaged']]
                 for row in rows[:max(1, round(len(rows) * share))]:
                     stock.add_loose(db, item_id=dataset.item_by(db, 'parts', row['part']), color_id=dataset.colour_by(db, row['color']['id']),
                                     quantity=row['missing'] + row['damaged'], condition='used', storage_id='storage-drawer-8', via='cli')
+
+    def finished_checks(self, db):
+        """The three copies the loose stock can finish have a finished check behind them (the status 'Set is checked', completeness worked out by the
+        app), as Check Set Parts leaves a copy; the Matcher counts only such copies as ones that can become complete."""
+        with transaction(db):
+            flag = dataset.put(db, 'flag', 'status-set-is-checked', 'Set is checked', kind='status', shown_on_grid=0)
+            for number in ('99102-1', '99114-1', '99105-1'):
+                copy = next(c for c in self.sets if c['set'] == number and c['summary'])
+                db.execute('INSERT OR IGNORE INTO copy_flag(copy_id, flag_id) VALUES(?, ?)', (copy['id'], flag))
+                db.execute("UPDATE copy SET completeness='incomplete', completeness_source='derived' WHERE id=?", (copy['id'],))
 
     def other_kinds(self, db):
         homes = {'gear': ['Study shelf', 'Cabinet A', 'Study shelf', 'Display case', 'Study shelf'], 'book': ['Study shelf'] * 4, 'catalog': ['Kellerregal Ü2'] * 3}

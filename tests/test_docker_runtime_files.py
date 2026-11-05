@@ -125,6 +125,7 @@ def test_release_workflow_publishes_only_on_the_maintainers_switch():
     assert triggers['push'] == {'tags': ['v*']} and 'workflow_dispatch' in triggers
     assert workflow['permissions'] == {'contents': 'read'}
     jobs = workflow['jobs']
+    assert workflow['concurrency'] == {'group': 'release', 'cancel-in-progress': False, 'queue': 'max'}   # one at a time, none dropped
     assert "vars.GHCR_PUBLISH" in source and source.count('${{ vars.') == 1   # the one switch, read once, into `publish`
     for name, job in jobs.items():
         for step in job.get('steps', []):

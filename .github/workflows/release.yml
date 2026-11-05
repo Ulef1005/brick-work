@@ -25,6 +25,7 @@ permissions:
 concurrency:
   group: release
   cancel-in-progress: false
+  queue: max                # keep every waiting release; the default keeps only one and cancels the rest (Codex review)
 
 env:
   IMAGE: ghcr.io/ulef1005/brick-work

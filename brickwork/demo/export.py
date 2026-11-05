@@ -154,6 +154,15 @@ def render(client, base, data, store):
     return pages, skipped, saved
 
 
+def pictures_of(store):
+    """{picture id: PNG bytes} of the demo world's pictures (its own illustrations, design/demo-art/): the pages ask for /manage/images/<id>?w=...,
+    and a static site answers every query with the one file."""
+    from ..core.connect import connect
+    root = Path(store).resolve().parent
+    with closing(connect(store, read_only=True)) as db:
+        return {r[0]: (root / r[1]).read_bytes() for r in db.execute('SELECT id, local_path FROM picture ORDER BY id') if (root / r[1]).is_file()}
+
+
 def rewrite(text, base, pages):
     def attribute(match):
         start, value, end = match.groups()
@@ -162,6 +171,9 @@ def rewrite(text, base, pages):
         key = key_of(value, base)
         if key is None or key.startswith('/static/') or '/static/' in value:
             return match.group(0)
+        picture = re.match(r'^/manage/images/([0-9]+)', key)
+        if picture:                                     # one file per picture, whatever width the page asks for
+            return start + base + 'manage/images/' + picture[1] + end
         if key in pages:
             return start + base + file_of(key).removesuffix('index.html') + end
         if start.strip().startswith('data-'):
@@ -209,6 +221,7 @@ def export(out, base='/brick-work/demo/', data=dataset.DATA, rich=True):
             patched = clock.freeze_clock()              # prices go stale after a week and pages show relative dates: the demo's "now" is fixed
             counts['checks'] = checks.stage(store)
             pages, skipped, saved = render(client, base, data, store)
+            images = pictures_of(store)
         finally:
             clock.thaw_clock(patched)
             for k, v in saved_env.items():
@@ -218,6 +231,9 @@ def export(out, base='/brick-work/demo/', data=dataset.DATA, rich=True):
                     os.environ[k] = v
     out.mkdir(parents=True)
     shutil.copytree(ROOT / 'static', out / 'static')
+    (out / 'manage' / 'images').mkdir(parents=True)
+    for identifier, content in images.items():
+        (out / 'manage' / 'images' / str(identifier)).write_bytes(content)
     for key, text in pages.items():
         target = out / file_of(key)
         target.parent.mkdir(parents=True, exist_ok=True)

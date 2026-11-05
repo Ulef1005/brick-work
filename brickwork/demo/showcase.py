@@ -13,6 +13,7 @@ from contextlib import closing, contextmanager
 import json
 from pathlib import Path
 import random
+import struct
 import sqlite3
 import uuid
 
@@ -20,6 +21,8 @@ from ..core import items, orders, stock
 from ..core.transaction import transaction
 from . import clock, dataset
 
+ART = Path(__file__).resolve().parents[2] / 'design' / 'demo-art'
+SOURCE = 'demo_illustration'
 SEED = 20261012
 NAMESPACE = uuid.UUID('6f1c7a52-0a54-4d5d-9b52-2f6b1c0d5e11')
 
@@ -180,7 +183,9 @@ def build_copy(rng, pool, figure_parts, number, name, year, path, theme, rows_n,
 class Layer:
     """What the richer world adds to the base: catalogue rows, copies (in the shape of the design test data's sets.json), part lists, and a fill step."""
 
-    def __init__(self, data):
+    def __init__(self, data, pictures=True):
+        self.pictures = pictures
+        self.figure_rows = {}
         rng = random.Random(SEED)
         pool, figure_parts = parts_pool(data)
         self.pool, self.rng = pool, rng
@@ -240,8 +245,31 @@ class Layer:
                 self.missing_figures(db)
                 self.wishlists(db)
                 self.orders(db)
+                if self.pictures:
+                    self.illustrate(db)
         finally:
             clock.thaw_clock(patched)
+
+    def illustrate(self, db):
+        """Own illustrations (design/demo-art/, drawn by scripts/demo_art.py: original artwork, nothing from BrickLink, Rebrickable, Brickset or LEGO)
+        stored the way the app stores any picture: a file under data/images/ in the media folder and a `picture` row, source "Demo illustration"."""
+        from contextlib import closing as _closing
+        import shutil
+        from ..core.media import media_root
+        manifest = json.loads((ART / 'manifest.json').read_text(encoding='utf-8'))
+        folder = media_root(db) / 'data' / 'images'
+        folder.mkdir(parents=True, exist_ok=True)
+        with transaction(db):
+            db.execute("INSERT OR IGNORE INTO source(id, name, kind, enabled) VALUES(?, 'Demo illustration', 'file', 1)", (SOURCE,))
+            for row in picture_targets(db):
+                file = manifest.get(picture_key(row))
+                if file is None:
+                    continue
+                shutil.copyfile(ART / file, folder / file)
+                kind = 'render' if row['kind'] in ('set', 'minifigure', 'gear', 'book', 'catalog') else 'photo'
+                width, height = struct.unpack('>II', (ART / file).read_bytes()[16:24])
+                db.execute('INSERT OR IGNORE INTO picture(item_id, color_id, source, kind, local_path, url, width, height, fetched_at) VALUES(?, ?, ?, ?, ?, NULL, ?, ?, ?)',
+                           (row['item_id'], row['color_id'], SOURCE, kind, 'data/images/' + file, width, height, dataset.STAMP))
 
     def storage_and_places(self, db):
         with transaction(db):
@@ -415,5 +443,37 @@ def seeded_uuids(rng):
         uuid.uuid4 = real
 
 
-def layer(data=dataset.DATA):
-    return Layer(Path(data))
+def layer(data=dataset.DATA, pictures=True):
+    return Layer(Path(data), pictures)
+
+
+TARGETS = '''
+    WITH want(item_id, color_id) AS (
+      SELECT item_id, NULL FROM copy WHERE archived_at IS NULL UNION SELECT item_id, color_id FROM stock WHERE archived_at IS NULL
+      UNION SELECT item_id, color_id FROM wish WHERE archived_at IS NULL UNION SELECT item_id, color_id FROM order_line WHERE item_id IS NOT NULL
+      UNION SELECT item_id, color_id FROM copy_part WHERE retired_at IS NULL
+      UNION SELECT item_id, NULL FROM copy_figure WHERE retired_at IS NULL)
+    SELECT w.item_id, w.color_id, i.kind, i.born_namespace, i.born_key, i.name, c.born_key AS colour_key, c.rgb AS colour_rgb
+    FROM want w JOIN item i ON i.id = w.item_id LEFT JOIN color c ON c.id = w.color_id
+    WHERE i.origin = 'catalogue' ORDER BY i.born_namespace, i.born_key, c.born_key'''
+
+
+def picture_targets(db):
+    """Every item (and colour) the built world shows that wants a picture: owned, wished, held loose or ordered, and every part of a copy and every figure."""
+    return [dict(r) for r in db.execute(TARGETS)]
+
+
+def picture_key(row):
+    return '/'.join(str(p) for p in (row['born_namespace'], row['born_key'], row['colour_key']) if p is not None)
+
+
+def missing_pictures():
+    """The pictures the world needs that design/demo-art/manifest.json does not list (scripts/demo_art.py draws them)."""
+    from ..core.connect import connect
+    import tempfile
+    manifest = json.loads((ART / 'manifest.json').read_text(encoding='utf-8')) if (ART / 'manifest.json').is_file() else {}
+    with tempfile.TemporaryDirectory() as scratch:
+        store = Path(scratch) / 'brickwork.db'
+        dataset.build(store, layer=layer(pictures=False))
+        with closing(connect(store, read_only=True)) as db:
+            return sorted({picture_key(r) for r in picture_targets(db)} - manifest.keys())

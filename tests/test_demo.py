@@ -143,3 +143,29 @@ def test_the_richer_world_is_an_additive_layer_over_the_gates_world(tmp_path):
 def test_export_without_the_layer_is_the_base_world(tmp_path):
     manifest = export.export(tmp_path / 'plain', BASE, rich=False)
     assert manifest['counts']['copy'] == 19 and '/collection/sets' in manifest['pages']
+
+
+def test_every_picture_the_world_needs_is_drawn_and_stored_as_a_picture(tmp_path):
+    """The demo's pictures are original illustrations (design/demo-art/, scripts/demo_art.py) stored through the app's `picture` table; the gate's world has none."""
+    from brickwork.demo import showcase
+    assert showcase.missing_pictures() == []
+    for folder in ('plain', 'rich'):
+        (tmp_path / folder).mkdir()
+    dataset.build(tmp_path / 'plain' / 'x.db')
+    dataset.build(tmp_path / 'rich' / 'x.db', layer=showcase.layer())
+    plain, rich = sqlite3.connect(tmp_path / 'plain' / 'x.db'), sqlite3.connect(tmp_path / 'rich' / 'x.db')
+    assert plain.execute('SELECT count(*) FROM picture').fetchone()[0] == 0
+    assert rich.execute("SELECT count(*) FROM picture WHERE source='demo_illustration'").fetchone()[0] == rich.execute('SELECT count(*) FROM picture').fetchone()[0] > 300
+    assert rich.execute("SELECT name FROM source WHERE id='demo_illustration'").fetchone()[0] == 'Demo illustration'
+    for (path,) in rich.execute('SELECT local_path FROM picture'):
+        assert (tmp_path / 'rich' / path).is_file()
+    total = sum(p.stat().st_size for p in showcase.ART.glob('*.png'))
+    assert total < 1_500_000 and (showcase.ART / 'README.md').is_file()
+
+
+def test_the_export_carries_one_file_per_picture(site):
+    out, _ = site
+    files = list((out / 'manage' / 'images').iterdir())
+    assert len(files) > 300 and all(f.read_bytes()[:8] == b'\x89PNG\r\n\x1a\n' for f in files)
+    sets = (out / 'collection/sets/index.html').read_text()
+    assert f'data-image-base="{BASE}manage/images/0"' in sets

@@ -11,6 +11,7 @@ Brick Work is MIT-licensed ([LICENSE](LICENSE)). It was inspired by and started 
 | Patrick Hand, © 2010-2012 Patrick Wagesreiter | `static/fonts/` | SIL Open Font License 1.1, `OFL-PatrickHand.txt` |
 | UI icons (24 px stroke icons) | `static/web/toni/icons/`, `design/components/icons/` (served from `static/brickwork/icons-ui/`) | Drawn for this project; MIT, as the project |
 | App icons and Brick Work mark | `design/app-icon/icons/`, `design/logo/` (served from `static/brickwork/`) | Drawn for this project; MIT, as the project |
+| Demo illustrations (sets, figures, parts of the invented demo collection) | `design/demo-art/` (drawn by `scripts/demo_art.py`) | Original artwork made for the demo; MIT, as the project. Nothing in them comes from, or is traced from, BrickLink, Rebrickable, Brickset or LEGO pictures |
 
 ## Python dependencies
 
@@ -18,7 +19,7 @@ Installed from PyPI at build time, not bundled: see `requirements.txt` and `requ
 
 ## Catalogue data and images
 
-Brick Work bundles no catalogue data or images from BrickLink or Brickset, and no pictures from any of them. The mapping files in `brickwork/catalogue/mappings/` are derived from data of [Rebrickable](https://rebrickable.com) (its downloadable dump and the external ids of its API); Rebrickable allows free use with acknowledgement, which this entry gives. They map Rebrickable's colours, parts and themes to BrickLink and LEGO identifiers and carry no BrickLink catalogue data. Each install loads its own BrickLink and Rebrickable catalogue files and uses its own API keys; pictures are fetched by the install and stored locally.
+Brick Work bundles no catalogue data or images from BrickLink or Brickset, and no pictures from any of them (the demo's illustrations are original drawings, see above). The mapping files in `brickwork/catalogue/mappings/` are derived from data of [Rebrickable](https://rebrickable.com) (its downloadable dump and the external ids of its API); Rebrickable allows free use with acknowledgement, which this entry gives. They map Rebrickable's colours, parts and themes to BrickLink and LEGO identifiers and carry no BrickLink catalogue data. Each install loads its own BrickLink and Rebrickable catalogue files and uses its own API keys; pictures are fetched by the install and stored locally.
 
 ## Trademarks
 

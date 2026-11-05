@@ -131,8 +131,12 @@
   if (at.left >= box.left && at.right <= box.right) return;
   strip.scrollTo({ left: strip.scrollLeft + (at.left - box.left) - (box.width - at.width) / 2, behavior: 'auto' });
  });
- revealActive();
+ // After load, not at script time: measuring here forced an early layout on every page, which changed how Linux draws form controls'
+ // text (the screenshot gate saw the selects of Place and Tools & Admin differ). The node harnesses have no addEventListener: run at once there.
  // Again when the strip appears or changes width: a window narrowed into the phone layout, or a phone rotated (Codex review).
- let revealTimer;
- if (typeof window.addEventListener === 'function') window.addEventListener('resize', () => { clearTimeout(revealTimer); revealTimer = setTimeout(revealActive, 100); });
+ if (typeof window.addEventListener === 'function') {
+  if (document.readyState === 'complete') revealActive(); else window.addEventListener('load', revealActive);
+  let revealTimer;
+  window.addEventListener('resize', () => { clearTimeout(revealTimer); revealTimer = setTimeout(revealActive, 100); });
+ } else revealActive();
 })();

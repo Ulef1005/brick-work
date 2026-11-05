@@ -5,6 +5,7 @@ import re
 import subprocess
 
 import pytest
+import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -113,3 +114,47 @@ def test_docker_workflow_builds_without_publishing():
     build = next(step for step in steps if step.get('uses', '').startswith('docker/build-push-action@'))
     assert build['with']['push'] is False
     assert build['with']['load'] is True
+
+
+def test_release_workflow_publishes_only_on_the_maintainers_switch():
+    """#78: the release workflow builds and smoke-tests every v* tag on both architectures; every step that writes to GHCR (log in,
+    push, manifest, attestations) runs only when the repository variable GHCR_PUBLISH is true, which is set on the maintainer's go."""
+    source = (ROOT / '.github/workflows/release.yml').read_text()
+    workflow = yaml.safe_load(source)
+    triggers = workflow[True]                                          # PyYAML reads the key `on` as True
+    assert triggers['push'] == {'tags': ['v*']} and 'workflow_dispatch' in triggers
+    assert workflow['permissions'] == {'contents': 'read'}
+    jobs = workflow['jobs']
+    assert "vars.GHCR_PUBLISH" in source and source.count('${{ vars.') == 1   # the one switch, read once, into `publish`
+    for name, job in jobs.items():
+        for step in job.get('steps', []):
+            uses = step.get('uses', '')
+            if uses:
+                assert re.fullmatch(r'[\w.-]+/[\w.-]+@[0-9a-f]{40}', uses), (name, uses)
+            writes = (uses.startswith(('docker/login-action@', 'actions/attest', 'anchore/sbom-action@', 'actions/upload-artifact@',
+                                       'actions/download-artifact@'))
+                      or 'push=true' in str(step.get('with', {}).get('outputs', '')) or 'imagetools create' in step.get('run', ''))
+            if writes:
+                assert step.get('if') == "needs.version.outputs.publish == 'true'", (name, step.get('name') or uses)
+    smoke = [s for s in jobs['build']['steps'] if s.get('name') == 'Smoke test fresh installation']
+    push = [i for i, s in enumerate(jobs['build']['steps']) if s.get('name') == 'Push by digest']
+    assert smoke and push and jobs['build']['steps'].index(smoke[0]) < push[0]        # tested before anything is pushed
+    assert {m['platform'] for m in jobs['build']['strategy']['matrix']['include']} == {'linux/amd64', 'linux/arm64'}
+    assert jobs['publish']['permissions'] == {'contents': 'read', 'packages': 'write', 'id-token': 'write', 'attestations': 'write'}
+
+
+@pytest.mark.parametrize('tag,tags', [('v0.9.0', '0.9.0 0.9 0 latest'), ('v1.2.3', '1.2.3 1.2 1 latest'), ('v1.0.0-rc.1', '1.0.0-rc.1')])
+def test_release_workflow_tags(tag, tags, tmp_path):
+    """The tag step's own bash: X.Y.Z, X.Y, X and latest for a release; only its own tag for a pre-release; anything else fails."""
+    import subprocess
+    script = next(s for s in yaml.safe_load((ROOT / '.github/workflows/release.yml').read_text())['jobs']['version']['steps'] if s.get('id') == 'read')['run']
+    out = tmp_path / 'out'
+    run = lambda t, p='': subprocess.run(['bash', '-c', script], env={'TAG': t, 'PUBLISH': p, 'GITHUB_OUTPUT': str(out), 'PATH': '/usr/bin:/bin'},
+                                         capture_output=True, text=True)
+    assert run(tag).returncode == 0
+    lines = dict(line.split('=', 1) for line in out.read_text().splitlines())
+    assert lines['tags'] == tags and lines['publish'] == 'false' and lines['version'] == tag[1:]
+    out.unlink()
+    assert run(tag, 'true').returncode == 0 and 'publish=true' in out.read_text()
+    for bad in ('main', 'v0.9', 'v0.9.0; rm -rf /', '0.9.0'):
+        assert run(bad).returncode != 0, bad

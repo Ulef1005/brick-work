@@ -52,6 +52,16 @@ For a running app, follow the Docker steps in the [README](README.md).
 - Keep the API contract (`docs/brickwork/api-v2.md`, `openapi-v2.yaml`; v1's files stay as the reference) in step with any API change; the contract checks enforce it.
 - Write commit messages that say what changed and why.
 
+## Releases and the container image
+
+A release is a `vX.Y.Z` tag on `main`, made by the maintainer, with the matching `CHANGELOG.md` section as its notes. The tag starts the `release` workflow (`.github/workflows/release.yml`):
+
+- It builds the image natively on amd64 and arm64 and runs the same fresh-install smoke test as the `docker` workflow, before anything is pushed.
+- It then pushes `ghcr.io/ulef1005/brick-work` as one multi-architecture image, tagged `X.Y.Z`, `X.Y` and `X`, plus `latest` for a release without a pre-release suffix (`v1.0.0-rc.1` gets only its own tag). A build provenance attestation and an SPDX SBOM attestation are pushed with it.
+- Nothing is pushed unless the repository variable `GHCR_PUBLISH` is `true`. Until it is set, a tag only builds and tests, and the run says it published nothing. The maintainer sets it for the first push, planned for v0.9.0, the first stability release.
+
+To build an existing tag again, run the workflow by hand with that tag.
+
 ## Licence of contributions
 
 Brick Work is MIT-licensed. By submitting a contribution you agree that it is licensed under the same [MIT licence](LICENSE) as the project (inbound = outbound). No sign-off or CLA is required.

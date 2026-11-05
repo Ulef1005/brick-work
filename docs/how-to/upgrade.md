@@ -28,18 +28,18 @@ If an older version refuses a newer file, its message may say a 3.3 file must be
 
 ## From 0.5.x
 
-1. Make a copy of the 3.3 `brickwork.db`.
+1. Stop Brick Work 0.5.x, so that everything it wrote is in `brickwork.db` and not only in `brickwork.db-wal`. Then make a copy of the 3.3 `brickwork.db`. Never copy the file while the app runs.
 2. Run `brickwork migrate4` on the copy, with the `catalogue.db` and the mapping files it needs. The arguments and the exit statuses are in [Commands](../reference/cli.md#migrate4).
 3. Read the report folder. Rows that need a decision stop the run.
 4. Put the new file in place as `brickwork.db`, beside `catalogue.db`, and start the new version.
 
 ## Move to the new version
 
-With the Docker install, check out the release you want, then rebuild and restart:
+With the Docker install, check out the release you want by its tag, then rebuild and restart:
 
 ```sh
 git fetch
-git checkout RELEASE_BRANCH_OR_TAG
+git checkout v0.9.0
 docker compose build
 docker compose up -d
 ```
@@ -54,7 +54,7 @@ Your `data/` folder stays where it is. Without Docker, update the source the sam
 
 ## Go back
 
-Stop Brick Work, put the backed-up `brickwork.db` and `secret.key` back, check out the older version and start it. Changes made after the upgrade are not in the backup. [Back up and restore](back-up-and-restore.md#restore) has the details.
+Stop Brick Work, put the backed-up `brickwork.db` and `secret.key` back, check out the older version's tag, and rebuild before you start it (`docker compose build`, then `docker compose up -d`). Without the rebuild, Docker starts the newer image again, and it upgrades the restored file once more. Changes made after the upgrade are not in the backup. [Back up and restore](back-up-and-restore.md#restore) has the details.
 
 ## What next
 

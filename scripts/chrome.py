@@ -10,7 +10,6 @@ The download is pinned by version and by the SHA-256 of the zip; a zip with anot
 pinned checksum (anything but linux x86-64 and macOS on Apple silicon) set CHROME themselves.
 Pixels from a system Chrome differ from the pinned build's, so the screenshot gate asks for `pinned` (or an explicit CHROME). Standard library
 only; `unzip` must be installed (it keeps the macOS bundle's symlinks)."""
-import fcntl
 import hashlib
 import os
 from pathlib import Path
@@ -84,6 +83,7 @@ def download() -> str:
         raise RuntimeError('unzip is not installed (needed to unpack Chrome for Testing)')
     target = cache() / VERSION
     target.mkdir(parents=True, exist_ok=True)
+    import fcntl                                                           # POSIX only, and only needed to install (Windows sets CHROME)
     with (target / '.install.lock').open('w') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)                                   # one install at a time; a waiter finds it done
         if (target / inner).is_file():

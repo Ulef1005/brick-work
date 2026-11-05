@@ -133,3 +133,22 @@ def test_chrome_prints_only_the_binary_path_on_stdout(tmp_path, monkeypatch, cap
     assert out.out == '/opt/chrome/bin/chrome\n' and 'Downloading' in out.err
     source = (Path(__file__).resolve().parents[1] / 'scripts' / 'chrome.py').read_text()
     assert "Downloading Chrome for Testing" in source and "file=sys.stderr, flush=True)   # stdout is only the path" in source
+
+
+def test_chrome_loads_and_honours_chrome_without_fcntl(tmp_path, monkeypatch, capsys):
+    """On a platform without fcntl (Windows) the script still loads and an explicit CHROME works (Codex review round 2)."""
+    import builtins, importlib.util
+    real_import = builtins.__import__
+
+    def no_fcntl(name, *args, **kwargs):
+        if name == 'fcntl':
+            raise ModuleNotFoundError("No module named 'fcntl'")
+        return real_import(name, *args, **kwargs)
+    monkeypatch.setattr(builtins, '__import__', no_fcntl)
+    binary = tmp_path / 'chrome.exe'
+    binary.write_text('')
+    monkeypatch.setenv('CHROME', str(binary))
+    spec = importlib.util.spec_from_file_location('chrome_nofcntl', Path(__file__).resolve().parents[1] / 'scripts' / 'chrome.py')
+    chrome = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(chrome)
+    assert chrome.main(['pinned']) == 0 and capsys.readouterr().out == f'{binary}\n'

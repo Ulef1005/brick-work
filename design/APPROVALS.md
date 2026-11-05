@@ -37,3 +37,11 @@ One line per approved item under the App Design Standard: the item, the round, U
 | Screenshot baseline 55-Api-tokens · list | D3 (#160) round 1, artifact XbYZRrttfn3s7Z6QkV7xdH | "D3 and D4 are approved" (Ulf, relayed by the wiki-agent) | 2026-11-05 |
 | Screenshot baseline 55-Api-tokens · create | D3 (#160) round 1, artifact XbYZRrttfn3s7Z6QkV7xdH | "D3 and D4 are approved" (Ulf, relayed by the wiki-agent) | 2026-11-05 |
 | Screenshot baseline 56-Collection-sync | D3 (#160) round 1, artifact XbYZRrttfn3s7Z6QkV7xdH | "D3 and D4 are approved" (Ulf, relayed by the wiki-agent) | 2026-11-05 |
+| D4 (#161) round 2 screens: icons, sidebar, Books, Gear and Catalogs lists (D4-R2-01 to 05) | D4 round 2, artifact Neq2UYcTcNSUEGTttPTKtN | "All approved" (Ulf, relayed by the wiki-agent) | 2026-11-05 |
+| D4 (#161) round 2 Q6, Group by without Theme for Gear, Books and Catalogs | D4 round 2, artifact Neq2UYcTcNSUEGTttPTKtN | "(a) Remove it (Recommended)" (Ulf, relayed by the wiki-agent) | 2026-11-05 |
+| D4 (#161) round 2 Q7, search box "Name or number" for Gear, Books and Catalogs | D4 round 2, artifact Neq2UYcTcNSUEGTttPTKtN | "(a) 'Name or number' (Recommended)" (Ulf, relayed by the wiki-agent) | 2026-11-05 |
+| Screenshot baseline 27-Matcher at 390 px, strip scrolled to the open page (D4 Q5) | D4 round 2 (D4-R2-06), artifact Neq2UYcTcNSUEGTttPTKtN | "All approved" (Ulf, relayed by the wiki-agent) | 2026-11-05 |
+| Screenshot baseline 32-Orders at 390 px, strip scrolled to the open page (D4 Q5) | D4 round 2 (D4-R2-06), artifact Neq2UYcTcNSUEGTttPTKtN | "All approved" (Ulf, relayed by the wiki-agent) | 2026-11-05 |
+| Screenshot baseline 34-Storage at 390 px, strip scrolled to the open page (D4 Q5) | D4 round 2 (D4-R2-06), artifact Neq2UYcTcNSUEGTttPTKtN | "All approved" (Ulf, relayed by the wiki-agent) | 2026-11-05 |
+| Screenshot baseline 38-Storage-at-macbook-and-ipad-size at 390 px, strip scrolled to the open page (D4 Q5) | D4 round 2 (D4-R2-06), artifact Neq2UYcTcNSUEGTttPTKtN | "All approved" (Ulf, relayed by the wiki-agent) | 2026-11-05 |
+| Screenshot baseline 52-Place at 390 px, strip scrolled to the open page (D4 Q5) | D4 round 2 (D4-R2-06), artifact Neq2UYcTcNSUEGTttPTKtN | "All approved" (Ulf, relayed by the wiki-agent) | 2026-11-05 |

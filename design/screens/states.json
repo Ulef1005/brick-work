@@ -237,7 +237,7 @@
    "world": "demo",
    "path": "/workbench/matcher",
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "28-Check-set-parts",
@@ -282,7 +282,7 @@
    "world": "demo",
    "path": "/workbench/orders",
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "33-Orders",
@@ -299,7 +299,7 @@
    "world": "demo",
    "path": "/workbench/storage",
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "35-Orders-capabilities",
@@ -332,7 +332,7 @@
    "world": "demo",
    "path": "/workbench/storage/storage-shelf-a1---castle",
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "39-Include-spare-parts",
@@ -462,7 +462,7 @@
    "world": "demo",
    "path": "/collection/purchase-places",
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "52-Place",

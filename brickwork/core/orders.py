@@ -431,6 +431,8 @@ def _place(db, letter, number, colour_key):
         if local is not None:
             return local, colour if letter == 'P' else None, [], None
         return None, colour, [], 'The BrickLink number is not in the catalogue'
+    if letter == 'M' and items._row(db, found[0])[0]['kind'] == 'part':     # #150: a BrickLink figure the catalogue knows as a part is a part line (no colour)
+        return found[0], found[1], [], None
     return found[0], found[1] if letter == 'P' else None, [], None
 
 

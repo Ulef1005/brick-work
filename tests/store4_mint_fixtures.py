@@ -122,3 +122,15 @@ class Store33:
     def wish(self, item_type, item_no, color_id=None):
         self.item(item_type, item_no)
         self.db.execute('INSERT INTO wishlist(item_type, item_no, color_id, quantity) VALUES(?, ?, ?, 1)', (item_type, item_no, color_id))
+
+
+# Issue #150: BrickLink files an old Technic figure as a minifigure (M) where the catalogue links the same number to a Rebrickable part (P).
+# Synthetic rows (`syn`): `syntech1` is one part's P link, `syntech2` two parts' (ambiguous), `syntech3` a part's P link and a catalogue
+# minifigure's M link (the figure wins).
+TECHNIC_DUMP = {'parts': [['syn-tech-a', 'Synthetic Technic Figure A', '14', 'Plastic'], ['syn-tech-b', 'Synthetic Technic Figure B', '14', 'Plastic'],
+                          ['syn-tech-c', 'Synthetic Technic Figure C', '14', 'Plastic']]}
+TECHNIC_PARTS = [['syn-tech-a', '', 'bricklink', 'P', 'syntech1', 'matched', 'external_ids', '0'],
+                 ['syn-tech-a', '', 'bricklink', 'P', 'syntech2', 'matched', 'external_ids', '0'],
+                 ['syn-tech-b', '', 'bricklink', 'P', 'syntech2', 'matched', 'external_ids', '0'],
+                 ['syn-tech-c', '', 'bricklink', 'P', 'syntech3', 'matched', 'external_ids', '0']]
+TECHNIC_FIGURES = [['fig-000004', '', 'bricklink', 'M', 'syntech3', 'matched', 'composition', '1']]

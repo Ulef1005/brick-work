@@ -218,6 +218,10 @@ def find_items(db, provider, kind, key, color_id=None):
                 f'SELECT 1 FROM main.item_link WHERE item_id=? AND provider=? AND color_id=? AND status IN ({_IN})',
                 (i, 'bricklink', color_id, *_CONFIRMED)).fetchone()]
         found.update(born)
+        if not found and provider == 'bricklink' and kind == 'minifigure' and color_id in (None, 1):     # a figure has no colour: "no colour" or none
+            part = identity.figure_as_part(db, key)        # #150: a figure number that is the catalogue's part of that number
+            if part:
+                found.add(part[0])
     live = set()
     for item_id in found:
         target = live_id(db, item_id)

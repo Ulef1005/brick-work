@@ -156,7 +156,7 @@ def render(client, base, data, store):
 
 def pictures_of(store):
     """{picture id: PNG bytes} of the demo world's pictures (its own illustrations, design/demo-art/): the pages ask for /manage/images/<id>?w=...,
-    and a static site answers every query with the one file."""
+    and a static site answers every query with the one file, `<id>.png` (shim.js maps the URLs the pages' scripts build)."""
     from ..core.connect import connect
     root = Path(store).resolve().parent
     with closing(connect(store, read_only=True)) as db:
@@ -172,14 +172,16 @@ def rewrite(text, base, pages):
         if key is None or key.startswith('/static/') or '/static/' in value:
             return match.group(0)
         picture = re.match(r'^/manage/images/([0-9]+)', key)
-        if picture:                                     # one file per picture, whatever width the page asks for
-            return start + base + 'manage/images/' + picture[1] + end
+        if picture:                                     # one .png per picture, whatever width the page asks for; the pages' own image base ends in 0
+            return match.group(0) if picture[1] == '0' else start + base + 'manage/images/' + picture[1] + '.png' + end
         if key in pages:
             return start + base + file_of(key).removesuffix('index.html') + end
         if start.strip().startswith('data-'):
             return match.group(0)  # endpoint templates; the shim answers them at run time
         return start + '#demo-not-included' + end
     text = ATTRIBUTE.sub(attribute, text)
+    # srcset lists one URL per width; the demo has the one file
+    text = re.sub(r'(\ssrcset=")([^"]*)(")', lambda m: m.group(1) + re.sub(r'(/manage/images/[1-9][0-9]*)\?w=[0-9]+', r'\1.png', m.group(2)) + m.group(3), text)
     text = re.sub(r'<link rel="manifest"[^>]*>', '', text)  # the demo is not an installable app
     shim = f'<script src="{base}demo-shim.js"></script>'
     return re.sub(r'<head([^>]*)>', lambda m: m.group(0) + shim, text, count=1)
@@ -233,7 +235,7 @@ def export(out, base='/brick-work/demo/', data=dataset.DATA, rich=True):
     shutil.copytree(ROOT / 'static', out / 'static')
     (out / 'manage' / 'images').mkdir(parents=True)
     for identifier, content in images.items():
-        (out / 'manage' / 'images' / str(identifier)).write_bytes(content)
+        (out / 'manage' / 'images' / f'{identifier}.png').write_bytes(content)
     for key, text in pages.items():
         target = out / file_of(key)
         target.parent.mkdir(parents=True, exist_ok=True)

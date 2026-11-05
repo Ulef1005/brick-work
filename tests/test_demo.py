@@ -163,9 +163,14 @@ def test_every_picture_the_world_needs_is_drawn_and_stored_as_a_picture(tmp_path
     assert total < 1_500_000 and (showcase.ART / 'README.md').is_file()
 
 
-def test_the_export_carries_one_file_per_picture(site):
+def test_the_export_carries_one_png_per_picture(site):
     out, _ = site
     files = list((out / 'manage' / 'images').iterdir())
-    assert len(files) > 300 and all(f.read_bytes()[:8] == b'\x89PNG\r\n\x1a\n' for f in files)
+    assert len(files) > 300 and all(f.suffix == '.png' and f.read_bytes()[:8] == b'\x89PNG\r\n\x1a\n' for f in files)
     sets = (out / 'collection/sets/index.html').read_text()
-    assert f'data-image-base="{BASE}manage/images/0"' in sets
+    assert f'data-image-base="{BASE}manage/images/0"' in sets                  # the pages' scripts build <base><id>?w=...
+    shim = (out / 'demo-shim.js').read_text()
+    assert "'.png'" in shim and 'HTMLImageElement.prototype' in shim and 'manage\\/images' in shim.replace('\\\\', '\\')
+    assert not any(re.search(r'manage/images/[1-9][0-9]*(\?|")', p.read_text()) for p in (out / 'workbench').rglob('index.html'))   # src and srcset both name the .png
+    detail = (out / 'collection/item').glob('*/index.html')
+    assert any(re.search(r'src="' + re.escape(BASE) + r'manage/images/[1-9][0-9]*\.png"', p.read_text()) for p in detail)

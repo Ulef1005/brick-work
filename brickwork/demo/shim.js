@@ -87,6 +87,22 @@
     else toast(method === 'get' ? 'Not part of the demo' : demo.note);
   }, true);
 
+  // Pictures: a page's script builds /manage/images/<id>?w=... from the page's image base; the demo keeps one <id>.png per picture.
+  const pngOf = value => {
+    const found = /^(.*\/manage\/images\/[1-9][0-9]*)(?:\?.*)?$/.exec(String(value));
+    return found ? found[1] + '.png' : value;
+  };
+  const srcProperty = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src');
+  Object.defineProperty(HTMLImageElement.prototype, 'src', {configurable: true, enumerable: true, get: srcProperty.get, set(value) { srcProperty.set.call(this, pngOf(value)); }});
+  const setAttribute = Element.prototype.setAttribute;
+  Element.prototype.setAttribute = function (name, value) {
+    return setAttribute.call(this, name, name === 'src' && this instanceof HTMLImageElement ? pngOf(value) : value);
+  };
+  // An <img> a script wrote as HTML starts loading before any setter runs: when it fails, it is tried as the .png.
+  document.addEventListener('error', event => {
+    const image = event.target;
+    if (image instanceof HTMLImageElement && pngOf(image.getAttribute('src')) !== image.getAttribute('src')) image.src = image.getAttribute('src');
+  }, true);
   // No service worker: a static demo must not cache itself as the app.
   if (navigator.serviceWorker) {
     navigator.serviceWorker.register = () => Promise.resolve({unregister: () => Promise.resolve(true)});

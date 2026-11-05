@@ -353,6 +353,64 @@ class Pipeline:
         return ran
 
 
+# ---- one call for several jobs (#194): a handler that asks a source about many items at once takes the other jobs' step too ----
+
+def claim_batchmates(db, step, source, *, exclude, limit, accept=lambda item_id: True):
+    """Claim up to `limit` other jobs whose NEXT pending step is `step` on `source` (the earlier steps all done or failed), so a handler can
+    ask for them in one call. Not running, not cancelled, no live owner. Each claim is the worker's own (see `Pipeline._claim`): a
+    `job_owner` row and `state='running'` written in one transaction after re-checking the job, so a concurrent worker finds it owned and
+    skips it. A waiting job counts whether or not its retry is due: the caller's own run just proved the budget allows the call. Returns
+    the claims for `finish_batchmate` / `release_batchmate`; `accept(item_id)` lets the caller leave a job out."""
+    candidates = db.execute("""SELECT j.id, j.item_id FROM main.job j
+        JOIN main.job_step s ON s.job_id=j.id AND s.name=? AND s.state NOT IN ('done','failed')
+             AND json_extract(s.sources, '$[' || s.source_index || ']')=?
+        WHERE j.kind=? AND j.state IN ('queued','waiting_for_budget') AND j.id!=?
+          AND NOT EXISTS (SELECT 1 FROM main.job_step p WHERE p.job_id=j.id AND p.position<s.position AND p.state NOT IN ('done','failed'))
+        ORDER BY j.id""", (step, source, KIND, exclude)).fetchall()
+    pipeline, claims = Pipeline(db), []
+    for row in candidates:
+        if len(claims) >= limit:
+            break
+        if not accept(row['item_id']):
+            continue
+        with transaction(db):
+            seen = db.execute('SELECT state, retry_at, attempts FROM main.job WHERE id=?', (row['id'],)).fetchone()
+            if seen['state'] not in ('queued', 'waiting_for_budget') or pipeline.owner_alive(row['id']):
+                continue
+            from ..store4.jobs import owner_identity
+            stamp = now()
+            db.execute('INSERT OR REPLACE INTO main.job_owner(job_id, pid, claimed_at, boot_id, start_ticks) VALUES(?, ?, ?, ?, ?)',
+                       (row['id'], os.getpid(), stamp, *owner_identity()))
+            db.execute("UPDATE main.job SET state='running', updated_at=? WHERE id=?", (stamp, row['id']))
+            _CLAIMED_JOBS.add((os.getpid(), str(pipeline.path.resolve()), row['id']))
+        claims.append({'job': row['id'], 'item_id': row['item_id'], 'prior': tuple(seen)})
+    return claims
+
+
+def _unclaim(db, claim, step=None, **done):
+    path = Path(db.execute('PRAGMA database_list').fetchone()['file']).resolve()
+    with transaction(db):
+        if step is not None:                                                          # the step ends done with its own result
+            db.execute('''UPDATE main.job_step SET state='done', error=?, error_code=?, retry_at=NULL, count=1, total=1, source=?, updated_at=?
+                          WHERE job_id=? AND name=?''', (done.get('message'), done.get('code'), done['source'], now(), claim['job'], step))
+            db.execute("UPDATE main.job SET state='queued', retry_at=NULL, updated_at=? WHERE id=?", (now(), claim['job']))   # its next step is the drain's
+        else:                                                                         # as before the claim
+            state, retry_at, attempts = claim['prior']
+            db.execute('UPDATE main.job SET state=?, retry_at=?, attempts=?, updated_at=? WHERE id=?', (state, retry_at, attempts, now(), claim['job']))
+        db.execute('DELETE FROM main.job_owner WHERE job_id=?', (claim['job'],))
+    _CLAIMED_JOBS.discard((os.getpid(), str(path), claim['job']))
+
+
+def finish_batchmate(db, claim, step, source, code=None, message=None):
+    """The claimed job's `step` ends done (with a finding `code`, as a handler's `StepDone`) and the job goes back to the queue."""
+    _unclaim(db, claim, step, source=source, code=code, message=message)
+
+
+def release_batchmate(db, claim):
+    """The call failed: the job is exactly as it was before the claim."""
+    _unclaim(db, claim)
+
+
 # ---- the local steps: each returns (error code, message) for a finished step, (None, None) when all is well ----
 
 def _item(db, item_id):

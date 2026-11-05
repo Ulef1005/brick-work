@@ -23,12 +23,14 @@ from brickwork.demo.showcase import uid  # noqa: E402
 
 SITE = ROOT / 'scripts' / 'site' / 'img'
 README = ROOT / 'docs' / 'img' / 'readme'
-STARTED = 'eaacf51c-1b63-58ff-b1a9-a2ea287565fc'     # 1592-1: a check about 40 % answered (brickwork/demo/checks.py)
-GAPS = '4fcedaaf-0c28-5203-9058-7044daabce23'        # 40567-1: a check answered to the end, with gaps
+STARTED = uid('copy', '99106-1', 'a')                # a check about 40 % answered (showcase.CHECKS)
+GAPS = uid('copy', '99103-1', 'a')                   # a check answered to the end, with gaps
 FRESH = uid('copy', '99113-1', 'a')                  # an unchecked copy: its check has not been started
 STORAGE = '/workbench/storage/storage-drawer-3'
 PICKED = '/workbench/part-picker?copy=' + '&copy='.join([uid('copy', '99103-1', 'a'), uid('copy', '99110-1', 'a'), uid('copy', '99118-1', 'a')])
 OPEN_FOUND = "document.querySelector('[data-open=\"found-1\"]').click(); await new Promise(r => setTimeout(r, 400));"
+
+SETTLE = 'await new Promise(r => setTimeout(r, 900));'   # lists build their rows and load their pictures after the page's load event
 
 # stem: (path, width, max CSS height, script, destination)
 PICTURES = {
@@ -75,7 +77,7 @@ def main(argv):
         for stem, (path, width, limit, script, _) in chosen.items():
             for theme in ('light', 'dark'):
                 out = Path(scratch) / f'{stem}-{theme}.png'
-                jobs.append({'url': base + path, 'out': str(out), 'width': width, 'theme': theme, 'max': limit, **({'script': script} if script else {})})
+                jobs.append({'url': base + path, 'out': str(out), 'width': width, 'theme': theme, 'max': limit, 'script': (script or '') + SETTLE})
         spec = Path(scratch) / 'jobs.json'
         spec.write_text(json.dumps({'deterministic': True, 'now': screen_gate.FIXED_NOW.isoformat().replace('+00:00', 'Z'), 'jobs': jobs}))
         result = subprocess.run(['node', str(ROOT / 'scripts' / 'capture_screens.cjs'), chrome.stdout.strip(), str(spec)], capture_output=True, text=True, timeout=1800)

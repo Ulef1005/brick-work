@@ -59,10 +59,12 @@ def test_agreed_routes_are_exported(site):
     assert manifest['skipped'] == {} and manifest['gets']['/planning/prices/records']
     assert any(k.startswith('/planning/prices/details?item_id=') for k in manifest['gets'])
     # Running checks made with the app's own checker: first part, half done, at the end.
+    from brickwork.demo import showcase
     checks = manifest['counts']['checks']
-    assert checks['56325b99-16bc-549b-bb98-f7be2ab38829'][0] == 0
-    assert 0 < checks['eaacf51c-1b63-58ff-b1a9-a2ea287565fc'][0] < checks['eaacf51c-1b63-58ff-b1a9-a2ea287565fc'][1]
-    assert all(c == n for c, n in (checks['4fcedaaf-0c28-5203-9058-7044daabce23'], checks['ff25ae37-7a6c-5804-92aa-bb3a03e64cac']))
+    first, half, gaps, clean = (showcase.uid('copy', n, 'a') for n in ('99120-1', '99106-1', '99103-1', '99101-1'))
+    assert checks[first][0] == 0
+    assert 0 < checks[half][0] < checks[half][1]
+    assert all(c == n for c, n in (checks[gaps], checks[clean]))
     assert json.loads((out / 'demo-manifest.json').read_text())['base'] == BASE
 
 
@@ -118,15 +120,15 @@ def test_export_refuses_an_existing_folder_and_a_bad_base(tmp_path):
         export.export(tmp_path / 'new', 'brick-work/demo')
 
 
-def test_the_richer_world_is_an_additive_layer_over_the_gates_world(tmp_path):
-    """The screen gate renders `dataset.build(path)`: the demo's extra collection must not touch it (approved baselines)."""
+def test_the_demo_world_is_the_invented_collection_only(tmp_path):
+    """The gate renders `dataset.build(path)`; the public demo (the layer) holds none of the fixture's real-named sets, figures, wishes or licensed parts."""
     from brickwork.demo import showcase
     for folder in ('plain', 'rich', 'again'):
         (tmp_path / folder).mkdir()
     plain = dataset.build(tmp_path / 'plain' / 'x.db')
     rich = dataset.build(tmp_path / 'rich' / 'x.db', layer=showcase.layer())
     assert plain['copy'] == 19 and plain['wish'] == 6                                            # the gate's world is what it was
-    assert rich['copy'] >= 40 and rich['wish'] >= 25 and rich['stock'] > 3 * plain['stock']
+    assert rich['copy'] >= 25 and rich['wish'] >= 20 and rich['stock'] > plain['stock']
     db = sqlite3.connect(tmp_path / 'rich' / 'x.db')
     assert db.execute('PRAGMA integrity_check').fetchone()[0] == 'ok' and not db.execute('PRAGMA foreign_key_check').fetchall()
     kinds = dict(db.execute('SELECT kind, count(*) FROM stock WHERE archived_at IS NULL GROUP BY kind'))
@@ -134,9 +136,20 @@ def test_the_richer_world_is_an_additive_layer_over_the_gates_world(tmp_path):
     assert db.execute('SELECT count(*) FROM wishlist').fetchone()[0] >= 4 and db.execute('SELECT count(*) FROM purchase_order').fetchone()[0] >= 3
     assert db.execute("SELECT count(*) FROM copy WHERE completeness='incomplete'").fetchone()[0] >= 8
     assert not db.execute("SELECT count(*) FROM item WHERE origin='local'").fetchone()[0]
+    # nothing real-named or licensed: no fixture set or figure, and no name the licence rule rejects
+    fixture = {r['set'] for r in dataset.load('sets.json')} | {r['set'] for r in dataset.load('wishlist.json')}
+    catalogue = sqlite3.connect(tmp_path / 'rich' / 'catalogue.db')
+    for name, key, namespace in catalogue.execute('SELECT name, born_key, born_namespace FROM item'):
+        assert not showcase.LICENCED.search(name), name
+        assert key not in fixture, key
+        if namespace == 'minifigs':
+            assert key.startswith('fig-99'), key
+        if namespace == 'sets':
+            assert key.startswith('99'), key
+    assert not [n for (n,) in catalogue.execute("SELECT name FROM item WHERE born_namespace='parts'") if showcase.PRINTED.search(n) and 'Minifig' not in n and 'Hips' not in n and 'Torso' not in n]
     again = dataset.build(tmp_path / 'again' / 'x.db', layer=showcase.layer())
     assert {k: v for k, v in again.items() if k != 'ids'} == {k: v for k, v in rich.items() if k != 'ids'}   # deterministic
-    ids = "SELECT id FROM stock WHERE storage_id IS NOT 'storage-parts-drawer-unit'"       # the base world's own loose stock keeps its random ids
+    ids = "SELECT id FROM stock WHERE storage_id IS NOT 'storage-parts-drawer-unit'"       # loose stock the base fill adds keeps its random ids
     assert {r[0] for r in db.execute(ids)} == {r[0] for r in sqlite3.connect(tmp_path / 'again' / 'x.db').execute(ids)}
 
 

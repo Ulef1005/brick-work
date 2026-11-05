@@ -60,8 +60,8 @@ def write_dump(directory, data=DATA, layer=None):
     sets, wishes = load('sets.json', data), load('wishlist.json', data)
     inventories = inventories_of(sets, data)
     extra = []
-    if layer is not None:   # the richer demo world (showcase.py): more copies, part lists and catalogue entries; the gate's world has no layer
-        sets, inventories, extra = sets + layer.sets, {**inventories, **layer.inventories}, layer.catalogue
+    if layer is not None:   # the public demo world (showcase.py): only the invented collection, none of the fixture's real-named sets; the gate's world has no layer
+        sets, wishes, inventories, extra = layer.sets, [], layer.inventories, layer.catalogue
     # themes: 'City / Police' is two themes; the leaf takes the set's theme id, its parents get invented ones
     themes, next_theme = {}, 9000
     for row in sets + wishes + extra:
@@ -177,7 +177,7 @@ def fill(db, data, inventories, layer=None):
     from ..core import add
     sets, wishes, meta = load('sets.json', data), load('wishlist.json', data), load('metadata.json', data)
     if layer is not None:
-        sets = sets + layer.sets
+        sets, wishes = layer.sets, []
     places = load('storages.json', data)
     ids, flags, loose = {}, {}, []
     with transaction(db):

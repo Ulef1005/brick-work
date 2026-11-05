@@ -4,12 +4,13 @@
     python scripts/demo_art.py --check    # exit 1 when a picture the world needs is missing from the manifest
 
 Every picture is drawn here, from shapes, with Pillow (a runtime dependency already): a brick-built scene for each set, a generic figure for each
-minifigure (in the colours of its parts), a flat drawing of the part's shape in its colour for each part. Nothing is taken from, traced from or
-derived from BrickLink, Rebrickable, Brickset or LEGO pictures. The style is the app's: flat fills, a hairline in a darker shade of the fill,
-no shadows, on a transparent ground. The drawing is deterministic (no randomness). `brickwork/demo/showcase.py` stores the pictures through the
+minifigure, a flat drawing of the part's shape for each part. Nothing is taken from, traced from or
+derived from BrickLink, Rebrickable, Brickset or LEGO pictures. The style is black and white: a near-black line drawing (#1A1816) on white, with light grey shading where it helps, no colour and no shadows.
+A part has one drawing per shape: its colour is shown by the app's own colour chip. The picture is an opaque white card, which reads in the light and in the dark theme. The drawing is deterministic (no randomness). `brickwork/demo/showcase.py` stores the pictures through the
 app's own `picture` table (source "Demo illustration"); see design/demo-art/README.md.
 """
 import argparse
+import hashlib
 import json
 from pathlib import Path
 import re
@@ -22,16 +23,22 @@ ART = ROOT / 'design' / 'demo-art'
 SCALE = 4                                           # drawn at 4x and reduced: anti-aliased edges without a drawing library
 
 # The app's warm neutrals (design/tokens) and a few brick colours for the scenes.
-INK = (69, 65, 59)
+INK = (26, 24, 22)
 SKY = (236, 232, 223)
 BRICKS = {'red': (201, 26, 9), 'blue': (13, 105, 171), 'yellow': (242, 205, 55), 'green': (35, 120, 65), 'orange': (226, 99, 30),
           'tan': (215, 197, 153), 'grey': (160, 165, 169), 'dark': (99, 95, 98), 'white': (244, 244, 240), 'brown': (88, 42, 18), 'teal': (0, 133, 143)}
 SCENE_COLOURS = [v for k, v in BRICKS.items() if k != 'white']   # white bodies vanish on the app's light surface
 
 
-def edge_of(fill):
-    """The hairline: a darker shade of the fill, darker still for the palest fills so a white part shows on the white tile."""
-    return shade(fill, 0.55 if sum(fill) > 600 else 0.72)
+def tone(fill):
+    """The grey a colour is drawn in: its brightness in five light steps, white to mid grey; only the ink itself is black (no colour is ever drawn)."""
+    if tuple(fill) == INK:
+        return INK
+    brightness = 0.299 * fill[0] + 0.587 * fill[1] + 0.114 * fill[2]
+    for floor, grey in ((235, 255), (185, 238), (130, 214), (75, 186)):
+        if brightness >= floor:
+            return (grey,) * 3
+    return (150,) * 3
 
 
 def shade(rgb, factor):
@@ -44,9 +51,10 @@ def hexrgb(text):
 
 
 class Canvas:
-    def __init__(self, width, height):
+    def __init__(self, width, height, line=2.6):
         from PIL import Image, ImageDraw
         self.size = (width, height)
+        self.line = max(1, round(line * SCALE))
         self.image = Image.new('RGBA', (width * SCALE, height * SCALE), (0, 0, 0, 0))
         self.draw = ImageDraw.Draw(self.image)
 
@@ -55,20 +63,22 @@ class Canvas:
 
     def rect(self, x, y, w, h, fill, radius=0, line=True):
         box = self.s(x, y, x + w, y + h)
-        edge = edge_of(fill) if line else None
+        fill, edge = tone(fill), INK if line else None
         if radius:
-            self.draw.rounded_rectangle(box, radius * SCALE, fill=fill, outline=edge, width=SCALE // 2 or 1)
+            self.draw.rounded_rectangle(box, radius * SCALE, fill=fill, outline=edge, width=self.line)
         else:
-            self.draw.rectangle(box, fill=fill, outline=edge, width=SCALE // 2 or 1)
+            self.draw.rectangle(box, fill=fill, outline=edge, width=self.line)
 
     def poly(self, points, fill, line=True):
         pts = [tuple(self.s(*p)) for p in points]
-        self.draw.polygon(pts, fill=fill, outline=edge_of(fill) if line else None, width=SCALE // 2 or 1)
+        self.draw.polygon(pts, fill=tone(fill), outline=INK if line else None, width=self.line)
+        if line:
+            self.draw.line(pts + [pts[0]], fill=INK, width=self.line, joint='curve')
 
     def ellipse(self, cx, cy, rx, ry, fill, line=True):
-        self.draw.ellipse(self.s(cx - rx, cy - ry, cx + rx, cy + ry), fill=fill, outline=edge_of(fill) if line else None, width=SCALE // 2 or 1)
+        self.draw.ellipse(self.s(cx - rx, cy - ry, cx + rx, cy + ry), fill=tone(fill), outline=INK if line else None, width=self.line)
 
-    def save(self, path, fit=False, out=None, colours=96):
+    def save(self, path, fit=False, out=None, colours=10):
         from PIL import Image
         image = self.image
         if fit:   # a part is cropped to its drawing and centred, so it fills the frame whatever its shape
@@ -78,8 +88,10 @@ class Canvas:
             framed = Image.new('RGBA', (side, side), (0, 0, 0, 0))
             framed.paste(image.crop(box), ((side - (box[2] - box[0])) // 2, (side - (box[3] - box[1])) // 2))
             image = framed.resize(self.image.size, Image.Resampling.LANCZOS)
-        small = image.resize((out, out) if out else self.size, Image.Resampling.LANCZOS)
-        small.quantize(colors=colours, method=Image.Quantize.FASTOCTREE, dither=Image.Dither.NONE).save(path, optimize=True)
+        card = Image.new('RGBA', image.size, (255, 255, 255, 255))   # an opaque white card: the line drawing reads on a light or a dark tile
+        card.alpha_composite(image)
+        small = card.convert('RGB').resize((out, out) if out else self.size, Image.Resampling.LANCZOS)
+        small.quantize(colors=colours, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).save(path, optimize=True)
 
 
 # ---------- sets: a scene per motif ----------
@@ -223,7 +235,7 @@ def dome(c, body, cap):
     c.rect(130, 190, 220, 110, body)
     c.ellipse(240, 190, 110, 100, cap)
     c.rect(130, 190, 220, 110, body)
-    c.draw.pieslice(c.s(130, 90, 350, 290), 180, 360, fill=cap, outline=shade(cap, 0.72), width=SCALE // 2)
+    c.draw.pieslice(c.s(130, 90, 350, 290), 180, 360, fill=tone(cap), outline=INK, width=c.line)
     c.rect(228, 100, 24, 80, shade(cap, 0.7))
     c.rect(214, 230, 52, 70, BRICKS['brown'], radius=3)
 
@@ -268,16 +280,52 @@ def tray(c, body, accent):
     c.ellipse(240, 160, 22, 22, accent)
 
 
+def garage(c, body, accent):
+    ground(c)
+    c.rect(70, 150, 340, 150, body)
+    c.rect(60, 136, 360, 20, accent)
+    c.rect(150, 190, 180, 110, BRICKS['white'], radius=4)
+    for k in range(5):
+        c.rect(150, 196 + k * 22, 180, 3, BRICKS['grey'], line=False)
+    c.rect(96, 172, 34, 22, BRICKS['white'], radius=2); c.rect(350, 172, 34, 22, BRICKS['white'], radius=2)
+    c.rect(196, 252, 90, 30, accent, radius=10)
+    c.ellipse(214, 286, 12, 12, INK); c.ellipse(268, 286, 12, 12, INK)
+
+
+def barn(c, body, roof):
+    ground(c)
+    c.rect(90, 160, 300, 140, body)
+    c.poly([(70, 164), (130, 100), (350, 100), (410, 164)], roof)
+    c.rect(180, 200, 120, 100, BRICKS['brown'], radius=3)
+    c.poly([(180, 200), (300, 300)], BRICKS['brown'], line=True)
+    c.draw.line(c.s(180, 300, 300, 200), fill=INK, width=c.line)
+    c.draw.line(c.s(240, 200, 240, 300), fill=INK, width=c.line)
+    c.rect(214, 120, 52, 30, BRICKS['white'], radius=2)
+
+
+def mountain(c, rock, hut):
+    ground(c)
+    c.poly([(30, 300), (170, 90), (290, 300)], rock)
+    c.poly([(190, 300), (320, 130), (450, 300)], shade(rock, 1.15))
+    c.poly([(150, 130), (170, 90), (190, 130), (170, 120)], BRICKS['white'])
+    c.rect(300, 248, 60, 52, hut)
+    c.poly([(292, 250), (330, 214), (368, 250)], BRICKS['brown'])
+    c.rect(399, 180, 3, 70, INK, line=False); c.poly([(402, 180), (432, 192), (402, 204)], BRICKS['red'])
+
+
 MOTIFS = [
+    ('garage', lambda c, p: garage(c, p[0], p[1])),
+    ('stable|barn', lambda c, p: barn(c, p[0], p[1])),
+    ('outpost|mountain', lambda c, p: mountain(c, p[0], p[1])),
     ('lighthouse', lambda c, p: lighthouse(c, p[0], p[1])),
     ('galleon|ship|cutter|cove|titanic|ocean|explorer boat', lambda c, p: ship(c, p[0], p[1], 1)),
     ('volcano', lambda c, p: volcano(c, p[0], p[1])),
     ('moon base|observatory|dome', lambda c, p: dome(c, p[0], p[1])),
-    ('castle|keep|fortress|gatehouse|stable|outpost|colosseum|king|monarch|falcon.s fortress', lambda c, p: castle(c, p[0], p[1])),
-    ('cruiser|falcon|galaxy|asteroid|starlight|spaceship|rover', lambda c, p: spaceship(c, p[0], p[1])),
+    ('castle|keep|fortress|gatehouse|king|monarch', lambda c, p: castle(c, p[0], p[1])),
+    ('cruiser|galaxy|asteroid|starlight|spaceship', lambda c, p: spaceship(c, p[0], p[1])),
     ('express|train|depot|locomotive', lambda c, p: train(c, p[0], p[1])),
     ('crane', lambda c, p: crane(c, p[0], p[1])),
-    ('buggy|batmobile|ferrari|lamborghini|wheel|car\\b|racing|daytona', lambda c, p: vehicle(c, p[0], p[1], 'car')),
+    ('buggy|rover|car\\b|racing|wheel', lambda c, p: vehicle(c, p[0], p[1], 'car')),
     ('transport|truck|caravan|cargo', lambda c, p: vehicle(c, p[0], p[1], 'truck')),
     ('turbine', lambda c, p: turbine(c, p[0], p[1])),
     ('mill', lambda c, p: mill(c, p[0], p[1])),
@@ -383,7 +431,8 @@ def part_picture(part_name, category, colour, path):
     category = (category or '').lower()
     a, b = dims(part_name)
     n = max(1, min(max(a, b), 8))
-    c = Canvas(256, 256)
+    colour = (222, 222, 222)   # a part has one drawing per shape in light grey: its colour is the app's own chip
+    c = Canvas(256, 256, line=3.4)
     w = 40 + 22 * n
     x = (256 - w) / 2
     if 'wheel' in category or 'tyre' in text or 'wheel' in text:
@@ -450,7 +499,7 @@ def part_picture(part_name, category, colour, path):
         c.rect(x, 108, w, 60, colour, radius=4)
         studs(c, x, 108, w, max(1, n), colour)
         c.rect(x + w - 14, 124, 22, 20, shade(colour, 0.9), radius=3)
-    c.save(path, fit=True, out=160, colours=40)
+    c.save(path, fit=True, out=160)
 
 
 # ---------- the world's needs ----------
@@ -484,12 +533,10 @@ def draw_all(out):
     from contextlib import closing
     data = dataset.DATA
     layer = showcase.layer(data, pictures=False)
-    fixtures = {}
-    for path in sorted((data / 'inventories').glob('*-copy-a.json')):
-        for number, rows in json.loads(path.read_text(encoding='utf-8')).get('minifigure_parts', {}).items():
-            fixtures.setdefault(number, rows)
     layer.figure_rows = {number: rows for inv in layer.inventories.values() for number, rows in inv['minifigure_parts'].items()}
     out.mkdir(parents=True, exist_ok=True)
+    for old in out.glob('*.png'):
+        old.unlink()
     manifest = {}
     with tempfile.TemporaryDirectory() as scratch:
         store = Path(scratch) / 'brickwork.db'
@@ -510,16 +557,19 @@ def draw_all(out):
         key, ns, number = key_of(row), row['born_namespace'], row['born_key']
         if key in manifest:
             continue
-        file = re.sub(r'[^A-Za-z0-9._-]', '_', key.replace('/', '-')) + '.png'
-        target = out / file
+        target = out / '_drawing.png'
         if ns == 'parts':
             part_picture(row['name'], category_of.get(number), hexrgb(row['colour_rgb']), target)
         elif ns == 'minifigs':
-            figure_picture(figure_colours(layer, number, fixtures), target)
+            figure_picture(figure_colours(layer, number, {}), target)
         elif row['kind'] in ('gear', 'book', 'catalog'):
             object_picture(row['kind'], number, row['name'], target)
         else:
             set_picture(number, row['name'], target)
+        content = target.read_bytes()
+        file = 'art-' + hashlib.sha1(content).hexdigest()[:12] + '.png'   # a drawing shared by several items is one file
+        (out / file).write_bytes(content)
+        target.unlink()
         manifest[key] = file
     (out / 'manifest.json').write_text(json.dumps(dict(sorted(manifest.items())), indent=0) + '\n', encoding='utf-8')
     return manifest
@@ -535,8 +585,9 @@ def main(argv):
         print('\n'.join(missing) or 'every picture the demo world needs is drawn')
         return 1 if missing else 0
     manifest = draw_all(ART)
-    size = sum(p.stat().st_size for p in ART.glob('*.png'))
-    print(f'{len(manifest)} pictures, {size / 1024:.0f} KiB in {ART}')
+    files = {p for p in ART.glob('*.png')}
+    size = sum(p.stat().st_size for p in files)
+    print(f'{len(manifest)} pictures in {len(files)} files, {size / 1024:.0f} KiB in {ART}')
     return 0
 
 

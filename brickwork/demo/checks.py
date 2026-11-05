@@ -22,11 +22,11 @@ def call(db, copy_id, **payload):
     return checker.write(db, copy_id, dict(operation=str(uuid.uuid4()), **payload))
 
 
-def stage(store):
+def stage(store, plan=None):
     """Start and answer the planned checks; returns {copy id: (cursor, steps)}."""
     result = {}
     with database(store) as db:
-        for copy_id, (share, keep_missing) in PLAN.items():
+        for copy_id, (share, keep_missing) in (PLAN if plan is None else plan).items():
             if not db.execute('SELECT 1 FROM copy WHERE id=?', (copy_id,)).fetchone():
                 continue
             # The test data's missing counts, read before the check overwrites them.

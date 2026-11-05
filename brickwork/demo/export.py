@@ -221,7 +221,7 @@ def export(out, base='/brick-work/demo/', data=dataset.DATA, rich=True):
             for key in SEEDS + item_pages(store)[:6]:   # every module a page imports lazily is imported before the clock stops
                 client.get(key, base_url='http://demo.invalid' + base.rstrip('/'))
             patched = clock.freeze_clock()              # prices go stale after a week and pages show relative dates: the demo's "now" is fixed
-            counts['checks'] = checks.stage(store)
+            counts['checks'] = checks.stage(store, showcase.CHECKS if rich else None)
             pages, skipped, saved = render(client, base, data, store)
             images = pictures_of(store)
         finally:

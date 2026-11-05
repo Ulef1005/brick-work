@@ -13,6 +13,7 @@ from contextlib import closing, contextmanager
 import json
 from pathlib import Path
 import random
+import re
 import struct
 import sqlite3
 import uuid
@@ -25,6 +26,11 @@ ART = Path(__file__).resolve().parents[2] / 'design' / 'demo-art'
 SOURCE = 'demo_illustration'
 SEED = 20261012
 NAMESPACE = uuid.UUID('6f1c7a52-0a54-4d5d-9b52-2f6b1c0d5e11')
+
+
+def uid_(*parts):
+    return str(uuid.uuid5(NAMESPACE, '/'.join(str(p) for p in parts)))
+
 
 # (number, name, year, theme path, theme id, rows, figures)
 SETS = [
@@ -96,21 +102,50 @@ STATE = {
 SECOND_COPIES = {'99102-1': ('built', 'Shelf B'), '99115-1': ('displayed', 'Display case'), '99121-1': ('built', 'Study shelf')}
 
 
+# The running checks the exported demo and the pictures show (brickwork/demo/checks.py): copy id: (share of the steps answered, keep the missing counts)
+CHECKS = {
+    uid_('copy', '99120-1', 'a'): (0.0, True),    # started, first part
+    uid_('copy', '99106-1', 'a'): (0.4, True),    # about 40 % answered, resume
+    uid_('copy', '99103-1', 'a'): (1.0, True),    # answered to the end, with gaps
+    uid_('copy', '99101-1', 'a'): (1.0, False),   # answered to the end, nothing missing
+}
+
+
 def uid(*parts):
     return str(uuid.uuid5(NAMESPACE, '/'.join(str(p) for p in parts)))
 
 
+# The public demo shows only the invented collection. What it may take from the design test data is its generic parts: a catalogue item is
+# kept out when its name carries a licensed franchise, a character or a model (the words below), and a part is also kept out when it is a
+# printed design (a name with "Print", or a part number with a print code, "pr" and digits), since printed artwork is where licences hide.
+# A figure's part keeps its prints (a face is a print) and is tested against the words only. Every fixture set, figure, wish and order of the
+# design test data is left out whole: the demo's catalogue, copies, wishes and figures are the invented ones in this file.
+LICENCED_WORDS = (r'\bSW\b', 'star wars', 'millennium', 'falcon', 'droid', 'wookiee', 'chewbacca', 'c-3po', 'k-3po', 'han solo', r'\bleia\b', r'\brey\b', r'\bfinn\b',
+                  'jedi', 'sith', 'vader', 'clone', 'gwen stacy', 'lavender brown', 'harry potter', 'hogwarts', 'marvel', 'avengers', 'spider', 'batman', r'\bdc\b',
+                  'disney', 'mickey', 'ninjago', 'jurassic', 'minecraft', 'mario', 'indiana', 'lord of the rings', 'hobbit', 'ferrari', 'lamborghini', 'porsche',
+                  'mclaren', 'bugatti', 'titanic', 'colosseum', 'eiffel', 'lego', 'duplo')
+LICENCED = re.compile('|'.join(LICENCED_WORDS), re.I)
+PRINTED = re.compile(r'\bprint\b|pr\d{3,}$|pat\d+$', re.I)
+
+
+def generic(row, figure=False):
+    """Whether a design-test-data part line may appear in the demo (the rule above)."""
+    if LICENCED.search(row['name']) or LICENCED.search(row['part']):
+        return False
+    return figure or not (PRINTED.search(row['name']) or PRINTED.search(row['part']))
+
+
 def parts_pool(data):
-    """Part lines of the design test data's inventories: the parts and colours the invented part lists are drawn from."""
+    """Part lines of the design test data's inventories that pass `generic`: the parts and colours the invented part lists are drawn from."""
     pool, figure_parts = {}, {}
     for path in sorted((data / 'inventories').glob('*-copy-a.json')):
         inventory = json.loads(path.read_text(encoding='utf-8'))
         for row in inventory['parts']:
-            if not row.get('figure') and not row.get('spare'):
+            if not row.get('figure') and not row.get('spare') and generic(row):
                 pool.setdefault((row['part'], row['color']['id']), row)
         for rows in inventory.get('minifigure_parts', {}).values():
             for row in rows:
-                if not row.get('spare'):
+                if not row.get('spare') and generic(row, figure=True):
                     figure_parts.setdefault(row['category'], {}).setdefault((row['part'], row['color']['id']), row)
     return [pool[k] for k in sorted(pool)], {c: [v[k] for k in sorted(v)] for c, v in sorted(figure_parts.items())}
 
@@ -197,6 +232,11 @@ class Layer:
             self.sets.append(self.copy(number, name, year, path, theme, pieces, summary, inventory['copy_id'], 0))
             if number in SECOND_COPIES:
                 self.sets.append(self.copy(number, name, year, path, theme, pieces, {}, uid('copy', number, 'b'), 1))
+        used = {}
+        for inventory in self.inventories.values():
+            for row in inventory['parts']:
+                used.setdefault((row['part'], row['color']['id']), row)
+        self.stockpool = [used[k] for k in sorted(used)]   # the catalogue holds only the parts some invented set uses: loose stock, wishes and orders draw from those
         for number, name, year, path, theme, pieces in WISH_SETS:
             self.catalogue.append(dict(set=number, name=name, year=year, theme_id=theme, theme_path=path, parts=pieces))
         for number, name, year in GEAR:
@@ -279,7 +319,7 @@ class Layer:
             for name, kind in PLACES:
                 dataset.put(db, 'place', 'place-' + dataset.slug(name), name, kind=kind)
             # The shelves nest: boxes and drawers sit in a cabinet or on a shelf.
-            for child, parent in (('Box 3 (attic)', None), ('Bag 07', 'Box 5'), ('Drawer 3', 'Cabinet A'), ('Drawer 8', 'Cabinet A'), ('Drawer 12', 'Cabinet A'),
+            for child, parent in (('Bag 07', 'Box 5'), ('Drawer 3', 'Cabinet A'), ('Drawer 8', 'Cabinet A'), ('Drawer 12', 'Cabinet A'),
                                   ('Box 5', 'Shelf B'), ('Technic bin', 'Technic crate'), ('Wheels and tyres tray', 'Technic crate')):
                 if parent:
                     db.execute('UPDATE storage SET parent_id=? WHERE id=?', ('storage-' + dataset.slug(parent), 'storage-' + dataset.slug(child)))
@@ -287,7 +327,7 @@ class Layer:
     def loose_parts(self, db):
         drawers = ['Drawer 3', 'Drawer 8', 'Drawer 12', 'Bag 07', 'Parts drawer unit', 'Technic bin', 'Wheels and tyres tray']
         with transaction(db):
-            for row in self.rng.sample(self.pool, 90):
+            for row in self.rng.sample(self.stockpool, 90):
                 drawer = drawers[(sum(map(ord, row['part'])) + row['color']['id']) % len(drawers)]
                 if row['category'].startswith('Technic'):
                     drawer = 'Technic bin'
@@ -298,17 +338,11 @@ class Layer:
                                 storage_id='storage-' + dataset.slug(drawer), via='cli')
 
     def loose_figures(self, db, ids):
-        places = ['Box 5', 'Drawer 3', 'Display case', 'Box 3 (attic)']
+        places = ['Box 5', 'Drawer 3', 'Display case', 'Box 3']
         with transaction(db):
             for index, figure in enumerate(self.figures[:34:2]):
                 stock.add_loose(db, item_id=dataset.item_by(db, 'minifigs', figure), quantity=1 + index % 3, condition='used',
                                 storage_id='storage-' + dataset.slug(places[index % len(places)]), via='cli')
-            for figure in ('fig-012855', 'fig-012856', 'fig-001714'):
-                try:
-                    item = dataset.item_by(db, 'minifigs', figure)
-                except TypeError:
-                    continue
-                stock.add_loose(db, item_id=item, quantity=1, condition='used', storage_id='storage-box-5', via='cli')
 
     def finishing_stock(self, db):
         """Loose parts that finish three of the incomplete copies (the Matcher offers them as complete-able) and half-finish a third."""
@@ -385,7 +419,7 @@ class Layer:
                 dataset.price(db, item, None, 'U', round(base * 0.74, 2), 19 + index * 2, '2026-10-12T06:00:00.000Z', low=round(base * 0.55, 2), high=round(base * 0.95, 2))
                 for month in range(10):
                     dataset.price(db, item, None, 'N', round(base * (1.12 - 0.012 * month), 2), None, '2026-%02d-%02dT06:00:00.000Z' % (1 + month, 14), current=False)
-            wanted = [('wl-parts', rng_part, qty, price) for rng_part, qty, price in zip(self.rng.sample(self.pool, 9), [40, 24, 16, 60, 12, 30, 8, 20, 50],
+            wanted = [('wl-parts', rng_part, qty, price) for rng_part, qty, price in zip(self.rng.sample(self.stockpool, 9), [40, 24, 16, 60, 12, 30, 8, 20, 50],
                                                                                        [0.06, 0.12, 0.2, 0.05, 0.3, 0.1, 0.45, 0.15, 0.04])]
             for index, (key, row, quantity, maximum) in enumerate(wanted):
                 part, colour = dataset.item_by(db, 'parts', row['part']), dataset.colour_by(db, row['color']['id'])
@@ -404,7 +438,7 @@ class Layer:
                 ('Kloetzchen-Kiste', '4830962', '2026-10-10', 'Pending', 4, None)]
         order_rng = random.Random(SEED + 1)
         # Only parts the order import can place by BrickLink's numbers (a few parts have no link in the shipped mappings).
-        placeable = [r for r in self.pool if orders._place(db, 'P', r['part'], bricklink_colour(db, r['color']['id']))[0] is not None]
+        placeable = [r for r in self.stockpool if orders._place(db, 'P', r['part'], bricklink_colour(db, r['color']['id']))[0] is not None]
         for number, (store, bricklink, ordered, status, count, arrived) in enumerate(made):
             rows = order_rng.sample(placeable, count)
             lines = [(row, 6 + index * 5, 'N' if (index + number) % 3 else 'U', 0.04 + 0.03 * ((index * 5 + number) % 6)) for index, row in enumerate(rows)]

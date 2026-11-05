@@ -94,14 +94,21 @@
   };
   const srcProperty = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src');
   Object.defineProperty(HTMLImageElement.prototype, 'src', {configurable: true, enumerable: true, get: srcProperty.get, set(value) { srcProperty.set.call(this, pngOf(value)); }});
+  const pngSet = value => String(value).replace(/(\/manage\/images\/[1-9][0-9]*)\?w=[0-9]+/g, '$1.png');
+  const srcsetProperty = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'srcset');
+  Object.defineProperty(HTMLImageElement.prototype, 'srcset', {configurable: true, enumerable: true, get: srcsetProperty.get, set(value) { srcsetProperty.set.call(this, pngSet(value)); }});
   const setAttribute = Element.prototype.setAttribute;
   Element.prototype.setAttribute = function (name, value) {
-    return setAttribute.call(this, name, name === 'src' && this instanceof HTMLImageElement ? pngOf(value) : value);
+    if (this instanceof HTMLImageElement && name === 'src') value = pngOf(value);
+    if (this instanceof HTMLImageElement && name === 'srcset') value = pngSet(value);
+    return setAttribute.call(this, name, value);
   };
   // An <img> a script wrote as HTML starts loading before any setter runs: when it fails, it is tried as the .png.
   document.addEventListener('error', event => {
     const image = event.target;
-    if (image instanceof HTMLImageElement && pngOf(image.getAttribute('src')) !== image.getAttribute('src')) image.src = image.getAttribute('src');
+    if (!(image instanceof HTMLImageElement)) return;
+    if (image.hasAttribute('srcset') && pngSet(image.getAttribute('srcset')) !== image.getAttribute('srcset')) image.srcset = image.getAttribute('srcset');
+    if (pngOf(image.getAttribute('src')) !== image.getAttribute('src')) image.src = image.getAttribute('src');
   }, true);
   // No service worker: a static demo must not cache itself as the app.
   if (navigator.serviceWorker) {

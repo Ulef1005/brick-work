@@ -92,7 +92,7 @@ def world(name: str, warm_up: list[str] = ()):
             raise ValueError(f'unknown world {name}')
         store = Path(scratch) / 'brickwork.db'
         dataset.build(store, layer=showcase.layer() if name == 'showcase' else None)
-        checks.stage(store)
+        checks.stage(store, showcase.CHECKS if name == 'showcase' else None)
         from brickwork.demo.export import make_app
         app = make_app(store)
         client = app.test_client()

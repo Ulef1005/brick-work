@@ -49,3 +49,4 @@ docs/how-to/settings-and-maintenance.md	Import from BrickTracker	First-run flow:
 docs/how-to/migrate.md	BrickTracker	User guide to bringing a collection in: the retained importer and its source file.
 templates/web/toni/web/bw_get_started_collection.html	BrickTracker	Step 3 choice for the retained importer.
 tests/test_get_started.py	\bbricktracker\b|BrickTracker	Tests of the step 3 choice for the retained importer.
+scripts/site/use-cases.md	\bbrickwork import-bricktracker\b	Use-cases page shows the retained BrickTracker importer command.

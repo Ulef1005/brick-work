@@ -95,16 +95,16 @@
 </article>
 <article class="layout-124">
 <div class="layout-125">
-<pre class="layout-133">$ brickwork migrate
+<pre class="layout-133">$ brickwork import-bricktracker old/app.db --plan-only
 
 Read-only import
-Row counts and checksums match
+Plan and summary first
 Old database unchanged</pre>
 </div>
 <div class="layout-127">
 <h3 class="layout-39">Bring your old collection over</h3>
 <p class="layout-128">Your collection lives in another tracker.</p>
-<p class="layout-129">Run the read-only importer on the old database, review the row-count and checksum proof, then point Brick Work at the new database. The old one is never changed.</p>
+<p class="layout-129">Run the read-only importer on the old tracker database, review the plan and what it leaves out, then apply it. One import is one event that Undo takes back. The old database is never changed.</p>
 <div class="layout-130">
 <span class="layout-49">CLI</span>
 </div>
@@ -160,7 +160,7 @@ Old database unchanged</pre>
 <div class="layout-136">
 <div class="layout-137">
 <span class="layout-113">Planned</span>
-<span class="layout-32">Buildable sets, collection sync with Rebrickable, BrickLink and Brickset, and a pile check by photo are planned and not built.</span>
+<span class="layout-32">Buildable sets, collection sync with BrickLink and a pile check by photo are planned and not built.</span>
 </div>
 <a class="layout-138" href="https://github.com/Ulef1005/brick-work/milestones">Public roadmap</a>
 </div>

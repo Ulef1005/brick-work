@@ -7,7 +7,7 @@ Layout (App Design Standard, P2): design/screens/NN-<Screen>/NN-<Screen>[-<state
 HTML as NN-<Screen>.html, one folder per frames.json section. NN is the section's position in frames.json (two digits), <Screen> the
 section's short title in kebab-case. frames.json is the design project's export and stays byte-identical: it still names the old flat
 paths (`frames/<name>.png`, `sections/<Group>/<id>.html`); this script resolves them to the folders. A frame the export never listed
-(the 10a iPad frames) sits in design/screens/_unmapped/ under its old name, and the manifest lists it.
+(the 10a iPad frames) was retired by the maintainer (2026-11-05): it sits in design/screens/_retired/ under its old name, and the manifest lists it.
 The build captures of the app are design/screens/approval/ and are not part of this manifest. design/screens/states.json (hand-kept, D3) says how
 each screen is reached in the built app and whether it is built and approved; `check` also keeps it and approval/baselines/ consistent:
 an approved state has all six baselines (1440 / 1024 / 390, light and dark), a built state that is not approved needs none (baselines are committed at approval only).
@@ -24,7 +24,7 @@ FRAMES = ROOT / 'design' / 'sources' / 'frames.json'
 MANIFEST = SCREENS / 'manifest.json'
 STATES = SCREENS / 'states.json'
 BASELINES = SCREENS / 'approval' / 'baselines'
-UNMAPPED = '_unmapped'
+RETIRED = '_retired'
 THEMES = ('light', 'dark')
 PHONE = 390
 
@@ -83,8 +83,8 @@ def listed_files(item: dict) -> list[str]:
     return sorted(item['png'].values())
 
 
-def unmapped_files() -> list[str]:
-    folder = SCREENS / UNMAPPED
+def retired_files() -> list[str]:
+    folder = SCREENS / RETIRED
     return sorted(p.name for p in folder.iterdir() if p.is_file()) if folder.is_dir() else []
 
 
@@ -100,7 +100,7 @@ def manifest_text() -> str:
             'states': [{'label': f['label'], 'width': f['width'], 'state': f['state']} for f in section['frames']],
             'sizes': sizes, 'themes': list(THEMES), 'pngs': listed_files(item)})
     return json.dumps({'app': 'brick-work', 'generated_by': 'scripts/design_screens.py manifest',
-                       'source': 'design/sources/frames.json', 'screens': screens, 'unmapped': unmapped_files()},
+                       'source': 'design/sources/frames.json', 'screens': screens, 'retired': retired_files()},
                       indent=2, ensure_ascii=False) + '\n'
 
 
@@ -121,7 +121,7 @@ def problems() -> list[str]:
         found += [f'{item["folder"]}/{name} is listed but missing' for name in sorted(want - have)]
         found += [f'{item["folder"]}/{name} is not listed by design/sources/frames.json' for name in sorted(have - want)]
     for path in sorted(SCREENS.iterdir()):
-        if path.is_dir() and path.name not in folders | {UNMAPPED, 'approval'}:
+        if path.is_dir() and path.name not in folders | {RETIRED, 'approval'}:
             found.append(f'design/screens/{path.name}/ is not a section folder of design/sources/frames.json')
     if not MANIFEST.is_file() or MANIFEST.read_text(encoding='utf-8') != manifest_text():
         found.append('design/screens/manifest.json is not what `scripts/design_screens.py manifest` makes (it is generated)')
@@ -170,7 +170,7 @@ def check() -> int:
         return 1
     count = sum(len(listed_files(item)) for item in sections())
     print(f'Design screens OK: {len(sections())} screens, {count} PNGs listed and present, manifest generated, '
-          f'{len(unmapped_files())} unmapped file(s) in {UNMAPPED}/; states.json consistent with the baselines.')
+          f'{len(retired_files())} retired file(s) in {RETIRED}/; states.json consistent with the baselines.')
     return 0
 
 

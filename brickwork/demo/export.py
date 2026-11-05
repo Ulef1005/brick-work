@@ -41,7 +41,7 @@ FOLLOW = [re.compile(p) for p in (
     r'^/manage/(add|tools|statistics|sync|catalogues|tokens|jobs|refresh|appearance|history|values)$',
 )]
 LIMIT = 3000   # a safety stop, never a silent cut: reaching it raises (the whole demo is about 1,300 pages)
-HOST_PATH = re.compile(r'/var/folders|/private/var|/private/tmp|/tmp/|/home/[a-z]|/Users/[A-Za-z]|\\btmp[a-z0-9_]{8}\\b')
+HOST_PATH = re.compile(r'/var/folders|/private/var|/private/tmp|/tmp/|/home/[a-z]|/Users/[A-Za-z]|\btmp[a-z0-9_]{8}\b')
 NEUTRAL_ROOT = '/srv/brick-work'   # what the pages that print the store and media paths show instead of the build's scratch folder
 ATTRIBUTE = re.compile(r'(\s(?:href|src|action|poster|content|data-[\w-]+)=")([^"]*)(")')
 # Links a visitor may follow (the app's catalogue links); nothing outside is ever loaded (src).
@@ -201,7 +201,7 @@ def neutral(text, hidden, version):
 
 def static_version(folder):
     digest = hashlib.sha1()
-    for path in sorted(p for p in Path(folder).rglob('*') if p.is_file()):
+    for path in sorted(p for p in Path(folder).rglob('*') if p.is_file() and not any(part.startswith('.') or part == '__pycache__' for part in p.relative_to(folder).parts)):
         digest.update(str(path.relative_to(folder)).encode() + b'\0' + path.read_bytes())
     return digest.hexdigest()[:12]
 

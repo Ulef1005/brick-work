@@ -225,6 +225,9 @@ def test_no_host_path_reaches_the_export_and_check_covers_every_text_file(tmp_pa
         (folder / 'demo-shim.js').write_text('')
         (folder / name).write_text('<p>/private/var/folders/xx/T/tmpabcd1234/brickwork.db</p>' if name.endswith('.html') else '"/var/folders/xx/T/tmpabcd1234"')
         assert any('host path' in f for f in export.check(folder)), name
+    for leak in ('scratch folder tmpabcd1234 named alone', 'a JSON-free page: tmpq1w2e3r4'):
+        assert export.HOST_PATH.search(leak), leak                                               # a bare temp folder name is a host path too
+    assert not export.HOST_PATH.search('template tmpl and a normal word like temporary')
 
 
 def test_the_crawl_never_stops_silently_and_the_cache_buster_is_content_derived(site, monkeypatch, tmp_path):
@@ -233,6 +236,16 @@ def test_the_crawl_never_stops_silently_and_the_cache_buster_is_content_derived(
     assert len(manifest['pages']) > 1000                                                        # every item page the lists link to is exported, so no visible link is dead
     versions = set(re.findall(r'\.css\?v=([0-9a-z]+)', (out / 'collection/sets/index.html').read_text()))
     assert len(versions) == 1 and re.fullmatch(r'[0-9a-f]{12}', versions.pop())
+    probe = tmp_path / 'static-probe'
+    (probe / 'css').mkdir(parents=True)
+    (probe / 'css' / 'a.css').write_text('a{}')
+    first = export.static_version(probe)
+    (probe / '.DS_Store').write_text('x')
+    (probe / '__pycache__').mkdir()
+    (probe / '__pycache__' / 'x.pyc').write_text('x')
+    assert export.static_version(probe) == first                                                 # editor and cache leftovers do not change it
+    (probe / 'css' / 'a.css').write_text('a{color:red}')
+    assert export.static_version(probe) != first                                                 # a changed file does
     monkeypatch.setattr(export, 'LIMIT', 60)
     with pytest.raises(RuntimeError, match='reached its limit'):
         export.export(tmp_path / 'cut', BASE)

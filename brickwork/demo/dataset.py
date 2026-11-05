@@ -236,7 +236,7 @@ def fill(db, data, inventories, layer=None):
                 quote = (wish.get('prices') or {}).get(slot)
                 if quote and quote.get('price') is not None:
                     price(db, item, None, condition, quote['price'], quote.get('sold'), quote['observed_at'] + 'T06:00:00.000Z', low=quote.get('min'), high=quote.get('max'))
-        # Loose stock that can fill some gaps, so the Part Picker and Complete sets have matches.
+        # Loose stock that can fill some gaps, so the Part Runner and Complete sets have matches.
         for part, colour, quantity in loose:
             stock.add_loose(db, item_id=part, color_id=colour, quantity=quantity, condition='used', storage_id='storage-parts-drawer-unit', via='cli')
     if layer is not None:

@@ -210,4 +210,4 @@ async function cameraRestoreFlow(){
  await nodes.capture.click();await tick();assert.equal(streams.length,2);assert.equal(nodes.capture.textContent,'Take picture');
  streams[1].active=false;await nodes.capture.click();await tick();assert.equal(streams.length,3);
 }
-(async()=>{await hardeningFlow();await cameraRestoreFlow();await flow();await cameraFlow();await cameraErrorFlow();await overlappingStartFlow();console.log('Part to Inventory runtime passed');})().catch(e=>{console.error(e);process.exitCode=1;});
+(async()=>{await hardeningFlow();await cameraRestoreFlow();await flow();await cameraFlow();await cameraErrorFlow();await overlappingStartFlow();console.log('Part Spotter runtime passed');})().catch(e=>{console.error(e);process.exitCode=1;});

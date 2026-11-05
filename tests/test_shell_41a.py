@@ -25,7 +25,7 @@ def test_groups_order_and_copy_chooser(app4, client, world):
         groups = navigation()
         assert [(name, [link['title'] for link in links]) for name, links in groups] == [
             ('Collection', ['Sets', 'Minifigures', 'Parts', 'Instructions', 'Boxes', 'Gear']),
-            ('Workbench', ['Part to Inventory', 'Check Set Parts', 'Part Picker', 'Matcher', 'Orders', 'Storage']),
+            ('Workbench', ['Part Spotter', 'Set Inspector', 'Part Runner', 'Matchmaker', 'Orders', 'Storage']),
             ('Planning', ['Wishlist', 'Prices', 'Complete sets']),
             ('Manage', ['Add', 'Tools & Admin'])]
         check = groups[1][1][1]
@@ -36,7 +36,7 @@ def test_groups_order_and_copy_chooser(app4, client, world):
     app.config['HIDE_ALL_SETS'] = True
     with app.test_request_context('/tools'):
         app.preprocess_request()
-        assert not any(link['title'] in ('Sets', 'Check Set Parts') for _, links in navigation() for link in links)
+        assert not any(link['title'] in ('Sets', 'Set Inspector') for _, links in navigation() for link in links)
 
 
 def test_counts_read_only_one_query_per_request(app4, world, monkeypatch):

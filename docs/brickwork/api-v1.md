@@ -643,7 +643,7 @@ M3 returns the `event_id` of one API operation event containing the core receipt
 | Transfer, take, found, booklets | `bw_workbench`, `receipt` | `workbench.undo` | same |
 | Storage, move, orders, allocations | `bw_ledger`, `receipt` | `ledger.undo` | same |
 | Pin, repair settings | `bw_planning`, `pin`/`settings` | `planning.undo` | same |
-| Part to Inventory | `part_inventory:<batch>`, `receipt` | `part_inventory.undo` | same (Part to Inventory itself is not in v1, section 9) |
+| Part Spotter | `part_inventory:<batch>`, `receipt` | `part_inventory.undo` | same (Part Spotter itself is not in v1, section 9) |
 | Part check answers | `checker:<id>` (or `checker:<id>:fig:<type>:<no>`), field `checker:<operation>` | `checker.write` action `undo_event`, sharing the web Undo snapshot guard | `POST /events/{id}/undo`; later answers or edits block Undo |
 | Prices recorded by API | `bw_manual_prices`, `receipt` (embedded in `bw_api`) | `manual_prices.undo`: set `error='undone'` and recompute `price_current` | same |
 | Places and flags edits/archive | `bw_collection`, `save`/`archive` | `collection.undo` | same |
@@ -729,7 +729,7 @@ The legacy blueprint and its prefixed routes were removed in 4.11j. Only the ind
 | Copies | Create = `add.confirm(where=owned)`: inserts items row if absent, N copies with completeness `I` and source `derived` unless given, queues the six-step import in the same transaction, writes the `bw_add` receipt. Storage and purchase fields on create are NEW (applied by `collection.save` inside the same transaction; one receipt). Edit = `collection.save`, which validates conditions, ids, `Decimal` prices, dates and recomputes derived completeness (`completeness.derived_state`). |
 | Part and figure marking | The only existing single-line writes are inside `checker.write` (session-bound) and `workbench.reduce_gap` (reduces only). `PATCH .../parts/{part_id}` is NEW: sets absolute `missing`, `damaged`, `checked` with the checker's bounds (0 to quantity), recomputes derived completeness via `workbench.recompute`, writes a `bw_workbench` style receipt. Whole-figure missing affects component parts exactly as `workbench.reduce_gap`/`part_gap` define. |
 | Loose stock | `stock.add_loose` merges identical lines (not for type `M`: each figure is its own line, `stock.py`); `PATCH` can merge, response lists `merged_ids` (`collection.merge_result`). Booklets are type `I` stock created by `workbench.booklets` (limits: 200 lines, quantity 1 to 99). |
-| Take and give | `take_for_gap(copy_id, 'P', no, color, qty)` or `take_for_gap(copy_id, 'M', no, None, qty)`: all or nothing, Matcher order, one receipt. `transfer(source_id, copy_id, target, target_id, amount)`: target `part, figure, stock-part, instructions, box`. Both raise on changed counts ("review matches again"); API code `409 stale_match`. |
+| Take and give | `take_for_gap(copy_id, 'P', no, color, qty)` or `take_for_gap(copy_id, 'M', no, None, qty)`: all or nothing, Matchmaker order, one receipt. `transfer(source_id, copy_id, target, target_id, amount)`: target `part, figure, stock-part, instructions, box`. Both raise on changed counts ("review matches again"); API code `409 stale_match`. |
 | Prices | Reads use `collection.prices`/`decorate_prices` and `collection_prices.choose` (priority from `settings.source_priority`). Manual and valuation observations are NEW: insert `price_observations` (`source='manual'`), update `price_current`, audit. Source-fetched prices (BrickLink, Brickset) are written only by the pipeline. Refresh = `Pipeline.queue_steps(..., ('market_price',))`; skips items with a live import job (`admin.queue_refresh`). |
 | Wishlist | `collection.save(entity=wish)` already takes `max_price` plus `max_price_currency` (rules: max without currency keeps the wish's currency, else the configured one; currency without max is rejected; clearing the max clears the currency). `under_max` uses `planning.max_comparison`. Create with a max price is NEW (create then save, one receipt). |
 | Storages and locations | `ledger.storage_save/move/storage_archive`; archive refuses a non-empty storage unless `move_to_unstored=true`; the virtual "Not stored" is `unstored` in `POST /storages/{id}/contents`. Lots are created only from existing stock (`collection.new_lot`). |
@@ -922,7 +922,7 @@ Only these hosts are called (constants in the clients): `api.bricklink.com` (sto
 * No arbitrary outbound requests, webhooks or server-sent events in v1 (progress is polling `GET /jobs/{id}`; the Socket.IO channel in pipeline.md stays a web-UI detail).
 * No user accounts or per-user data separation: tokens identify clients of one collection.
 * No price alerts (out of scope, wiki Open Questions).
-* No Part to Inventory, Brickset-only refresh in v1 (CLI and web keep them).
+* No Part Spotter, Brickset-only refresh in v1 (CLI and web keep them).
 
 ---
 

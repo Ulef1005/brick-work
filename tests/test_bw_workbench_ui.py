@@ -1,7 +1,7 @@
-"""The Workbench screens on the 4.0 store (M.8e, issue #110): Part Picker, Matcher, the save routes and their Undo, the recent saves.
+"""The Workbench screens on the 4.0 store (M.8e, issue #110): Part Runner, Matchmaker, the save routes and their Undo, the recent saves.
 
 Adapted from the page tests of the 3.3 test_bw_workbench.py (routes, selection and rank, copy grouping, booklets form, CSRF, found
-destinations, picker markup). The "Needs a check" list of the Matcher is gone: a link still to check no longer blocks a match.
+destinations, picker markup). The "Needs a check" list of the Matchmaker is gone: a link still to check no longer blocks a match.
 """
 import json
 from pathlib import Path

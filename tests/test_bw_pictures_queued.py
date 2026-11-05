@@ -1,4 +1,4 @@
-"""The paths that add items without Add's own job queue the `pictures` step (#183): the helper and the order allocation, Part to Inventory and
+"""The paths that add items without Add's own job queue the `pictures` step (#183): the helper and the order allocation, Part Spotter and
 Workbench Found call sites. Sync and the file import from another app are covered in their own test files. Invented data, no network."""
 import pytest
 

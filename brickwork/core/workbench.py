@@ -1,4 +1,4 @@
-"""The Workbench on the 4.0 store (M.8e, issue #110; design 5 `stock_transfer`, 4.4, 3.8): gaps, the Matcher, the Part Picker, Take and Give.
+"""The Workbench on the 4.0 store (M.8e, issue #110; design 5 `stock_transfer`, 4.4, 3.8): gaps, the Matchmaker, the Part Runner, Take and Give.
 
 **Gaps.** What a copy lacks: a live set line's missing and damaged pieces, a live figure line's missing figures, a missing booklet or box
 (a set copy without the status flag "Instructions present" / "Box present"), and a loose figure's missing parts. A retired line is no line,
@@ -190,7 +190,7 @@ def completion_context(db, all_gaps):
     return counts, checked
 
 
-# ---------- the Matcher ----------
+# ---------- the Matchmaker ----------
 
 def _usable_stock(db, wanted):
     """`{key: [(stock row, have)]}` for the live loose stock whose key some gap wants and of which some can be given."""
@@ -262,7 +262,7 @@ def group_matches(db, rows, all_gaps):
                   key=lambda g: (not g['completes'], -(g['covered'] / g['missing'] if g['missing'] else 1), g['copy']['set_no'], g['copy']['id']))
 
 
-# ---------- the Part Picker ----------
+# ---------- the Part Runner ----------
 
 PICKER_KEYS = ('category', 'colour', 'size', 'set', 'storage')
 PICKER_DEFAULT = PICKER_KEYS
@@ -514,7 +514,7 @@ def transfer(db, source_id, copy_id, target, target_id, amount):
 def take_for_gap(db, copy_id, item_id, color_id, quantity_wanted):
     """Take N of one missing part (or whole minifigure) from loose stock into a set copy, all or nothing.
 
-    Sources follow the Matcher's order per gap (largest usable amount first, then stock id); one transaction and one receipt, so one
+    Sources follow the Matchmaker's order per gap (largest usable amount first, then stock id); one transaction and one receipt, so one
     Undo reverses every move."""
     amount = add.quantity(quantity_wanted)
     kind = (db.execute('SELECT kind FROM main.item WHERE id=?', (item_id,)).fetchone() or [None])[0]
@@ -555,7 +555,7 @@ def take_for_gap(db, copy_id, item_id, color_id, quantity_wanted):
         for gap in wanted:
             need = gap['need']
             while left and need and by_id:
-                # Matcher order from the in-memory amounts: largest usable first, then lowest id.
+                # Matchmaker order from the in-memory amounts: largest usable first, then lowest id.
                 chosen = min(by_id, key=lambda i: (-min(have[i], need), i))
                 source = by_id[chosen]
                 step = min(left, need, have[chosen])

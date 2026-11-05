@@ -13,7 +13,7 @@
     textMatch(row, query) && (!filter || row.filterValue===filter || (row.filterValue || '').split(' ').includes(filter)))
     .sort((a,b) => sort === 'need' ? Number(b.need)-Number(a.need) : sort === 'rank' ? a.rank-b.rank : String(a[sort] || '').localeCompare(String(b[sort] || ''),undefined,{numeric:true}));
   const step = (value, delta, max) => Math.max(0,Math.min(max,Number(value)+delta));
-  // #52: the Part Picker's set list pages 15 at a time with the 12h pager (as the Collection lists).
+  // #52: the Part Runner's set list pages 15 at a time with the 12h pager (as the Collection lists).
   const PAGE = 15;
   const pageItems = (pages, page) => {
     const wanted = [...new Set([1, page - 1, page, page + 1, pages].filter(n => n >= 1 && n <= pages))].sort((a, b) => a - b), items = [];

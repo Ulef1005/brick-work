@@ -82,7 +82,7 @@
         const b=button(`${known.name} · have ${o.quantity}`,()=>{piece.colour=o.color_id;piece.status='review';showReview(piece);renderQueue();});
         swatch(b,known);b.setAttribute('aria-pressed',String(o.color_id===piece.colour));picks.append(b);});
       if(picks.children.length)box.append(picks);
-      if(owned.needed_count){const a=el('a',`Fills a gap in ${owned.needed_count} ${owned.needed_count===1?'copy':'copies'} · Matcher`,'inv-owned-need');a.href='/workbench/matcher';box.append(a);}
+      if(owned.needed_count){const a=el('a',`Fills a gap in ${owned.needed_count} ${owned.needed_count===1?'copy':'copies'} · Matchmaker`,'inv-owned-need');a.href='/workbench/matcher';box.append(a);}
       out.append(box);}
     const alternatives=piece.candidates.map((candidate,i)=>({...candidate,index:i})).filter(c=>c.index!==piece.index);
     if (alternatives.length) {

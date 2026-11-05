@@ -1,6 +1,6 @@
 """4.9a: UI review run 6, set and part detail, on a 4.0 collection (M.8b, issue #110).
 
-The Matching module and its sorting (c6/c7, c9/c10, the per-match query count) wait for M.8e, which ports the Matcher."""
+The Matching module and its sorting (c6/c7, c9/c10, the per-match query count) wait for M.8e, which ports the Matchmaker."""
 from pathlib import Path
 import re
 
@@ -76,7 +76,7 @@ def test_c5_loose_part_info_has_no_empty_tags_fact(coll, client):
 
 
 def test_set_detail_has_no_matching_module(coll, client):
-    """Decision 16 (A), the one assertion of c6/c7 that does not need the Matcher: Take on the missing-part cards covers it."""
+    """Decision 16 (A), the one assertion of c6/c7 that does not need the Matchmaker: Take on the missing-part cards covers it."""
     copy = coll.add_copy('1000-1')
     assert not page(client, f'/collection/item/{coll.item("sets", "1000-1")}', copy=copy).select('[data-module=matching]')
 
@@ -97,7 +97,7 @@ def test_c11_c12_progress_dom_keeps_one_block(coll, client):
     block = soup.select_one('[aria-label="Copy progress"] .bc-progress-block')
     assert block
     # Kit order: the bar, then the present count on the left and the missing count on the right. The coverage bar and its two captions
-    # ("can be taken", "to order") need the loose stock the Matcher counts: they are pinned with M.8e.
+    # ("can be taken", "to order") need the loose stock the Matchmaker counts: they are pinned with M.8e.
     assert [c.get('class')[-1] for c in block.find_all(recursive=False)][:2] == ['bc-progress', 'bc-progress-stats']
     first = block.select_one('.bc-progress-stats')
     assert first.find_all(recursive=False)[0]['class'] == ['bc-progress-present'] and first.find_all(recursive=False)[1].get_text().endswith(' missing')

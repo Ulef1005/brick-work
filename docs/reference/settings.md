@@ -32,7 +32,7 @@ On/off settings take `1` for on. Where a setting accepts more spellings, the tab
 | `BW_DARK_MODE` | off | `1` makes dark the default theme; each browser can still choose. |
 | `BW_IMPORT_MAX_MB` | `200` | Largest database import upload, in MB. It is also the cap for any request body; smaller per-upload limits (photos, PDFs, order files) stay as they are. |
 | `BW_HIDE_ADD_SET` | off | `1` hides **Add** from the navigation and the header. |
-| `BW_HIDE_ALL_SETS` | off | `1` hides **Sets** and **Check Set Parts** from the navigation. |
+| `BW_HIDE_ALL_SETS` | off | `1` hides **Sets** and **Set Inspector** from the navigation. |
 | `BW_HIDE_ALL_MINIFIGURES` | off | `1` hides **Minifigures** from the navigation. |
 | `BW_HIDE_ALL_PARTS` | off | `1` hides **Parts** from the navigation. |
 | `BW_HIDE_ALL_PROBLEMS_PARTS` | off | `1` hides **Complete sets** from the navigation. |

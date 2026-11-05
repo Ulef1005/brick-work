@@ -54,7 +54,7 @@
 #bw-checker .check-spare-choice button:not(.bw-primary) { background:transparent;border:1px solid var(--tw-accent);color:var(--tw-accent-text); }
 #bw-checker .check-figure-parts { color:var(--tw-danger);font-weight:600; }
 
-/* ===== 4.9c · UI review run 6, Check Set Parts list (3b): w9 w10 w11 w13 ===== */
+/* ===== 4.9c · UI review run 6, Set Inspector list (3b): w9 w10 w11 w13 ===== */
 /* w9 · the kit list has no result-count line under the toolbar. The element stays for the script. */
 #bw-check-choices [data-check-count] { display:none; }
 #bw-check-choices .bc-list-options:has(> [data-check-count]:only-child) { display:none; }

@@ -49,8 +49,8 @@ def test_rail_destinations_and_current_state(app4, client, world, path, current)
         assert [name for name, _ in groups] == ['Collection', 'Workbench', 'Planning', 'Manage']
         links = [link for _, links in groups for link in links]
         titles = [link['title'] for link in links]
-        for expected in ('Sets', 'Minifigures', 'Parts', 'Instructions', 'Boxes', 'Gear', 'Part to Inventory', 'Check Set Parts',
-                         'Part Picker', 'Matcher', 'Orders', 'Storage', 'Wishlist', 'Prices', 'Complete sets', 'Add', 'Tools & Admin'):
+        for expected in ('Sets', 'Minifigures', 'Parts', 'Instructions', 'Boxes', 'Gear', 'Part Spotter', 'Set Inspector',
+                         'Part Runner', 'Matchmaker', 'Orders', 'Storage', 'Wishlist', 'Prices', 'Complete sets', 'Add', 'Tools & Admin'):
             assert expected in titles
         assert [link['title'] for link in links if link['active']] == [current]
     response = client.get(path, follow_redirects=True)
@@ -63,3 +63,13 @@ def test_item_page_keeps_its_kind_current(client, world):
     response = client.get(f'/collection/item/{world.keep}', follow_redirects=True)
     assert response.status_code == 200
     assert re.search(r'aria-current="page">.*?Sets</span>.*?</a>', response.get_data(as_text=True), re.S)
+
+
+@pytest.mark.parametrize('query,title,note', [
+    ('Matchmaker', 'Matchmaker', 'Workbench'), ('Matcher', 'Matchmaker', 'Was Matcher'),
+    ('Part Picker', 'Part Runner', 'Was Part Picker'), ('part to inv', 'Part Spotter', 'Was Part to Inventory'),
+    ('check set parts', 'Set Inspector', 'Was Check Set Parts'), ('inspector', 'Set Inspector', 'Workbench')])
+def test_jump_lists_workbench_workflows_by_new_and_former_name(coll, client, query, title, note):
+    first = client.get('/collection/jump', query_string={'q': query}).json['results'][0]
+    assert (first['kind'], first['name'], first['note']) == ('page', title, note)
+    assert first['url'].startswith('/workbench/')

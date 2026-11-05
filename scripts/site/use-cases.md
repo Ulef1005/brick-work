@@ -22,11 +22,11 @@
 <div class="layout-127">
 <h3 class="layout-39">Finish the set you started</h3>
 <p class="layout-128">You built half a set years ago and do not know what is missing.</p>
-<p class="layout-129">Open the copy and run Check Set Parts against its inventory. The shortfall becomes a list you can act on, with a count of how far along the copy is.</p>
+<p class="layout-129">Open the copy and run Set Inspector against its inventory. The shortfall becomes a list you can act on, with a count of how far along the copy is.</p>
 <div class="layout-130">
-<span class="layout-49">Check Set Parts</span>
+<span class="layout-49">Set Inspector</span>
 </div>
-<a class="layout-131" href="../workflows/#check-set-parts">Walk through Check Set Parts</a>
+<a class="layout-131" href="../workflows/#check-set-parts">Walk through Set Inspector</a>
 </div>
 </article>
 <article class="layout-124">
@@ -36,12 +36,12 @@
 <div class="layout-127">
 <h3 class="layout-39">Build from your bulk</h3>
 <p class="layout-128">Boxes of sorted loose parts, and several unfinished sets.</p>
-<p class="layout-129">Part Picker lists the missing parts you can pull for the sets you tick, in your sort order, so one pass through the drawers serves many sets. Matcher shows which copies your stock finishes outright.</p>
+<p class="layout-129">Part Runner lists the missing parts you can pull for the sets you tick, in your sort order, so one pass through the drawers serves many sets. Matchmaker shows which copies your stock finishes outright.</p>
 <div class="layout-130">
-<span class="layout-49">Part Picker</span>
-<span class="layout-49">Matcher</span>
+<span class="layout-49">Part Runner</span>
+<span class="layout-49">Matchmaker</span>
 </div>
-<a class="layout-131" href="../workflows/#part-picker">Walk through Part Picker</a>
+<a class="layout-131" href="../workflows/#part-picker">Walk through Part Runner</a>
 </div>
 </article>
 <article class="layout-124">

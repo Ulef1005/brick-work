@@ -1,4 +1,4 @@
-"""#43 Printable lists and CSV: missing parts, Part Picker results and the wishlist."""
+"""#43 Printable lists and CSV: missing parts, Part Runner results and the wishlist."""
 from datetime import date
 import sqlite3
 
@@ -8,7 +8,7 @@ from flask_login import login_required
 
 from .views import web_page
 
-KINDS = {'missing': 'Missing parts', 'picker': 'Part Picker', 'wishlist': 'Wishlist'}
+KINDS = {'missing': 'Missing parts', 'picker': 'Part Runner', 'wishlist': 'Wishlist'}
 
 
 def _rows(kind):

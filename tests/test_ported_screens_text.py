@@ -1,9 +1,9 @@
 """4.6r on the 4.0 store (M.8c, issue #110): every ported screen uses words for visible numeric differences.
 
 `ROUTES` lists the screens a piece has ported; each piece adds its own (M.8f added the Prices screen and the text its records and details carry;
-M.8g the Wishlist and Complete sets screens, with a repair of every kind: ranked, free, outside break-even and needing evidence). Item, lot, wish and Check Set Parts pages are walked from the data (M.8d: the chooser, every copy's
-check screen, running and not, and every figure line's; M.8e: the Part Picker and Matcher with each copy selected, the Storage screen of every
-storage, the printable lists and the Part to Inventory page; M.8h: the Orders hub, What is this? and an order's four views, see below)."""
+M.8g the Wishlist and Complete sets screens, with a repair of every kind: ranked, free, outside break-even and needing evidence). Item, lot, wish and Set Inspector pages are walked from the data (M.8d: the chooser, every copy's
+check screen, running and not, and every figure line's; M.8e: the Part Runner and Matchmaker with each copy selected, the Storage screen of every
+storage, the printable lists and the Part Spotter page; M.8h: the Orders hub, What is this? and an order's four views, see below)."""
 import re
 
 from bs4 import BeautifulSoup

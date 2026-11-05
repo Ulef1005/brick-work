@@ -1,6 +1,6 @@
 {% extends 'web/toni/base.html' %}
 {% from 'web/toni/brickwork/collection_modules.html' import list_controls with context %}
-{% set title = 'Part Picker' if mode == 'picker' else 'Matcher' %}
+{% set title = 'Part Runner' if mode == 'picker' else 'Matchmaker' %}
 {% block title %} · {{ title }}{% endblock %}
 
 {% block page_assets %}<link rel="stylesheet" href="{{ bw_static('web/toni/bw-collection.css') }}"><link rel="stylesheet" href="{{ bw_static('web/toni/bw-workbench.css') }}"><script src="{{ bw_static('web/toni/size-search.js') }}" defer></script><script src="{{ bw_static('web/toni/bw-workbench.js') }}" defer></script>{% endblock %}

@@ -39,11 +39,11 @@ Components: stepper (− / count / +), Found / Missing answer, filter chips, seg
 
 - **Jump:** ⌘K. Esc closes sheets, panels and menus; focus returns to the opener.
 - **Checker:** `F` found all, `M` missing, `1`–`9` set the count, `S` skip for later, `Z` or ⌘Z undo, `←` back, `→` or Enter next. Shown as small keys in the footer of the part screen.
-- **Part Picker:** the same keys; `Enter` opens the find selector, `1`/`2`/`3` choose add to set, loose parts, pick list only.
-- **Part to Inventory:** `Space` takes the picture, `Enter` confirms the label when a colour is chosen, `1`–`9` choose a candidate.
+- **Part Runner:** the same keys; `Enter` opens the find selector, `1`/`2`/`3` choose add to set, loose parts, pick list only.
+- **Part Spotter:** `Space` takes the picture, `Enter` confirms the label when a colour is chosen, `1`–`9` choose a candidate.
 - **Lists:** `/` focuses search, `F` opens Filters, arrow keys move between rows, Enter opens.
 - **Tab order:** top bar, rail, page title, toolbar, list, sticky actions. Sheets trap focus.
-- **Drag and drop:** photo files onto Add and Part to Inventory; the drop zone shows a clay dashed outline while a file is over it.
+- **Drag and drop:** photo files onto Add and Part Spotter; the drop zone shows a clay dashed outline while a file is over it.
 
 ## 5. Accessibility
 

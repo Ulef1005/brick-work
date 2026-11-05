@@ -1,4 +1,4 @@
-"""Part to Inventory on the 4.0 store (M.8e, issue #110): the page, the batch save and its Undo.
+"""Part Spotter on the 4.0 store (M.8e, issue #110): the page, the batch save and its Undo.
 
 The recognition call (`/workbench/part-to-inventory/detect`, Brickognize) is Identify's (M.8h, `tests/test_bw_identify.py` covers it with a fake
 transport); here a test builds the signed proposal the detect route would hand out (`proposal`).

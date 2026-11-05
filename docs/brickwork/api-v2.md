@@ -425,7 +425,7 @@ Scope `none` means no token. Every path is relative to `/api/v2`. The **v1** col
 | `GET /export/missing.csv` | Missing parts of the chosen copies as CSV (the printable list, #43). | read | M.11b | same |
 | `GET /export/missing.json` | The same missing-item aggregation and eligibility as XML, returned as JSON. | read | M.11b | same |
 | `GET /export/missing.xml` | BrickLink wanted-list XML of missing items for chosen copies. | read | M.11b | same |
-| `GET /export/picker.csv` | Part Picker results for the chosen copies as CSV, in pick order (#43). | read | M.11b | same |
+| `GET /export/picker.csv` | Part Runner results for the chosen copies as CSV, in pick order (#43). | read | M.11b | same |
 | `GET /export/wishlist.csv` | The wishlist (one list or all) as CSV (#43). | read | M.11b | same |
 | `GET /planning/ranking` | Owned copies ranked by cost to complete, with the repair settings used. | read | M.11b | same |
 

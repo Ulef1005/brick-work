@@ -1,4 +1,4 @@
-/* Part to Inventory, kit 3f. Clay is the only interaction colour; status uses status tokens. */
+/* Part Spotter, kit 3f. Clay is the only interaction colour; status uses status tokens. */
 #bw-inventory {max-width:1200px;margin:auto;display:flex;flex-direction:column;gap:16px}
 #bw-inventory [hidden] {display:none!important}
 #bw-inventory button {min-height:44px}

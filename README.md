@@ -26,7 +26,7 @@
     </picture>
     <picture>
       <source media="(prefers-color-scheme: dark)" srcset="docs/img/readme/3c-picker-pick-390-dark.png">
-      <img src="docs/img/readme/3c-picker-pick-390-light.png" alt="Brick Work: Part Picker on a phone" width="190">
+      <img src="docs/img/readme/3c-picker-pick-390-light.png" alt="Brick Work: Part Runner on a phone" width="190">
     </picture>
   </a>
 </p>
@@ -46,7 +46,7 @@ Sets, minifigures, parts, instructions, boxes, storage, prices, wishlist and ord
 
 Release 0.9.0 (5 November 2026, schema 4.2) is the first stability release: a stable schema with tested upgrades from 0.5.x, and a published multi-arch container image on GHCR. Version 1.0.0 follows when the gate of milestone B (#96) passes. Its maintainer uses Brick Work daily for a collection of about 200 set copies. Read the [CHANGELOG](CHANGELOG.md) before upgrading.
 
-- **Shipped:** the Collection (sets, minifigures, parts, gear, books and catalogs), Workbench (Check Set Parts, Part Picker, Matcher, Orders), Planning and Manage screens; **Get started**, a guided first run; an installable web app; a versioned REST API with scoped tokens and Undo; an admin CLI; an MCP server; orders from your BrickLink account, a confirmation e-mail or the order XML; optional BrickLink item lists; a read-only importer for an older tracker database; collection sync of owned and wanted sets with Rebrickable and Brickset.
+- **Shipped:** the Collection (sets, minifigures, parts, gear, books and catalogs), Workbench (Set Inspector, Part Runner, Matchmaker, Orders), Planning and Manage screens; **Get started**, a guided first run; an installable web app; a versioned REST API with scoped tokens and Undo; an admin CLI; an MCP server; orders from your BrickLink account, a confirmation e-mail or the order XML; optional BrickLink item lists; a read-only importer for an older tracker database; collection sync of owned and wanted sets with Rebrickable and Brickset.
 - **Planned, not built:** Buildable sets, sync with BrickLink (#143, open), a pile check by photo, a sale price for a used copy, complete-or-part-out for minifigures and sets, and one shopping list for missing parts. The order is kept in the [GitHub milestones](https://github.com/Ulef1005/brick-work/milestones) and the issues' priority labels (`now`, `next`, `later`); there are no dates.
 
 It is self-hosted, single-user and meant for a home network or a VPN, not the open internet.
@@ -55,8 +55,8 @@ It is self-hosted, single-user and meant for a home network or a VPN, not the op
 
 Private collectors with a real, messy collection that should help them finish it: built and boxed sets, bags of sorted and unsorted parts, a few sets you know are short and a wishlist, often tracked in a spreadsheet or two other sites.
 
-- **You rebuild used and vintage sets.** "I want to know exactly what is missing from each set." Check Set Parts, then export the gaps as BrickLink XML.
-- **You build from sorted bulk.** "Do I have it, how many, and which drawer?" Storage per item, Part Picker and Matcher.
+- **You rebuild used and vintage sets.** "I want to know exactly what is missing from each set." Set Inspector, then export the gaps as BrickLink XML.
+- **You build from sorted bulk.** "Do I have it, how many, and which drawer?" Storage per item, Part Runner and Matchmaker.
 - **You collect minifigures.** "Which figures can I put together from parts?" Loose figures with their parts and photo capture.
 - **You were handed a collection.** "What is in this box, and what do I do with it?" One place for sets, copies and boxes, with storage.
 - **You script things at home.** "I want Claude to talk to my collection." REST API, CLI and an MCP server over your own data.
@@ -65,16 +65,16 @@ Not built for sealed-box investors who need market forecasts, BrickLink stores t
 
 ## Three workflows that help at the table
 
-- **Check Set Parts.** Go through a copy part by part against its inventory and keep a running count of what is missing.
-- **Part Picker.** Tick several sets and get the missing parts you can pull from your sorted loose stock, in your own order.
-- **Matcher.** See which incomplete copies your loose stock can finish, then decide what to build or buy.
+- **Set Inspector** (was Check Set Parts). Go through a copy part by part against its inventory and keep a running count of what is missing.
+- **Part Runner** (was Part Picker). Tick several sets and get the missing parts you can pull from your sorted loose stock, in your own order.
+- **Matchmaker** (was Matcher). See which incomplete copies your loose stock can finish, then decide what to build or buy.
 
 Each is walked through, screen by screen, on the [workflows page](https://ulef1005.github.io/brick-work/workflows/).
 
 ## Use cases
 
-- **Finish the set you started.** Run Check Set Parts against the inventory and get the shortfall as a list.
-- **Build from your bulk.** One pass through the drawers serves many sets; Matcher shows which copies your stock finishes outright.
+- **Finish the set you started.** Run Set Inspector against the inventory and get the shortfall as a list.
+- **Build from your bulk.** One pass through the drawers serves many sets; Matchmaker shows which copies your stock finishes outright.
 - **Receive a parts order.** Import a BrickLink order from your account, a confirmation email or the order XML (a line already imported is never added twice), count the parts as they arrive and allocate them to sets.
 - **Decide what to buy.** Wishlist, Prices and Complete sets rank repairs by value gained per euro.
 - **Know where everything is.** Every set, copy, part and box has a storage location.

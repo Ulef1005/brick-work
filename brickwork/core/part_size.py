@@ -1,6 +1,6 @@
 """How big a part is, from its catalogue name and category, in brick volumes (a 1 x 1 brick is 1).
 
-Check Set Parts orders "Largest first" by this, so the pieces that are easiest to find in a pile and
+Set Inspector orders "Largest first" by this, so the pieces that are easiest to find in a pile and
 take the most room come first. The first size in the name gives width x depth x height in studs and
 bricks ("Brick 2 x 4" is 8, "Brick 1 x 2 x 3" is 6); plates, tiles and baseplates without a height are
 a third of a brick ("Plate 2 x 4" is 2.67, "Baseplate 32 x 32" is 341). A name without a size falls

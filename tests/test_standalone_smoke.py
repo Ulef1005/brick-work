@@ -1,7 +1,7 @@
 """Standalone installation contract on the 4.0 store: real app and CLI, a fixture catalogue built offline, no sockets (M.8a, #110).
 
-What renders without ported modules: the install files, the login page, Add (M.8c), Check Set Parts and the collection's writes (M.8d), the
-Workbench (Matcher, Part Picker, Take and Give, Storage, printable lists; M.8e), the sources (pictures, Brickset, BrickLink prices, the Prices
+What renders without ported modules: the install files, the login page, Add (M.8c), Set Inspector and the collection's writes (M.8d), the
+Workbench (Matchmaker, Part Runner, Take and Give, Storage, printable lists; M.8e), the sources (pictures, Brickset, BrickLink prices, the Prices
 screen and a set fetched from Rebrickable; M.8f), planning (Complete sets ranked, pinned and exported, the Wishlist with its lists, exports and Undo,
 the part-out value and manual prices; M.8g) and (M.8b)
 the collection's read side: `/` and the collection lists
@@ -261,7 +261,7 @@ def test_the_checker_and_the_collection_writes_check_edit_and_undo(tmp_path, mon
         with closing(connect(path, read_only=True)) as db:
             return [tuple(r) for r in db.execute(sql, args)]
 
-    # Check Set Parts: choose the copy, start, answer every step, say yes to the spare, finish as checked
+    # Set Inspector: choose the copy, start, answer every step, say yes to the spare, finish as checked
     url = f'/workbench/check-parts/{w.copy_b}'
     assert client.get('/workbench/check-parts').status_code == 200 and 'Start a check' in client.get(url).get_data(as_text=True)
     assert client.post(url, data=dict(csrf_token=csrf, action='start', order='largest')).status_code == 302
@@ -317,7 +317,7 @@ def test_the_checker_and_the_collection_writes_check_edit_and_undo(tmp_path, mon
 
 
 def test_the_workbench_gives_takes_moves_and_undoes(tmp_path, monkeypatch, offline):
-    """The pick-parts, match-stock-to-sets and storage how-tos on a fixture pair, offline: the Matcher offers loose stock for a gap, Give moves it
+    """The pick-parts, match-stock-to-sets and storage how-tos on a fixture pair, offline: the Matchmaker offers loose stock for a gap, Give moves it
     into the copy, Take does the same from the item page, a booklet goes in as stock, a storage is made and things are moved into it; each is
     undone from its history list."""
     path = make_pair(tmp_path, rich=True)
@@ -333,7 +333,7 @@ def test_the_workbench_gives_takes_moves_and_undoes(tmp_path, monkeypatch, offli
         with closing(connect(path, read_only=True)) as db:
             return [tuple(r) for r in db.execute(sql, args)]
 
-    # Part Picker and Matcher show the gap of the world's first copy: one red 3001, and loose red 3001 to fill it
+    # Part Runner and Matchmaker show the gap of the world's first copy: one red 3001, and loose red 3001 to fill it
     assert 'Start picking' in client.get(f'/workbench/part-picker?copy={w.copy_a}').get_data(as_text=True)
     matcher = BeautifulSoup(client.get('/workbench/matcher').get_data(as_text=True), 'html.parser')
     form = matcher.select_one(f'[data-copy-id="{w.copy_a}"] form[data-action=transfer]')
@@ -355,7 +355,7 @@ def test_the_workbench_gives_takes_moves_and_undoes(tmp_path, monkeypatch, offli
     assert took.json['message'] == 'Took 1' and rows('SELECT missing FROM copy_part WHERE id=?', identity['target_id']) == [(0,)]
     assert client.post('/collection/save/undo', json=dict(csrf_token=csrf, event_id=took.json['event_id'])).json['message'] == 'Undone'
     assert rows('SELECT missing FROM copy_part WHERE id=?', identity['target_id']) == [(1,)]
-    # the booklet the Matcher would give: the world has one, Give it to the first copy
+    # the booklet the Matchmaker would give: the world has one, Give it to the first copy
     booklet = client.post('/workbench/save/transfer', json=dict(csrf_token=csrf, source_id=w.stock_booklet, copy_id=w.copy_a, target='instructions', target_id=w.copy_a, quantity=1))
     assert booklet.status_code == 200 and rows('SELECT quantity FROM stock WHERE id=?', w.stock_booklet) == [(0,)]
     assert client.post('/workbench/save/undo', json=dict(csrf_token=csrf, event_id=booklet.json['event_id'])).status_code == 200

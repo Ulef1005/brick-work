@@ -8,6 +8,6 @@
 
 **How to read it.** It is about this copy, not the set: two copies of the same set can differ. Incomplete with no missing parts usually means the copy has not been checked to the end yet.
 
-**What changes it.** Finishing Check Set Parts, marking parts or minifigures missing or damaged, allocating a part from an order or loose stock to the copy, or ticking "Set is checked". A value you chose yourself stays as chosen until you change it.
+**What changes it.** Finishing Set Inspector, marking parts or minifigures missing or damaged, allocating a part from an order or loose stock to the copy, or ticking "Set is checked". A value you chose yourself stays as chosen until you change it.
 
 Exact definition: [Reference › Completeness](../reference/metrics.md#completeness). The words used here: [Sets, copies, lots and stock](collection-model.md).

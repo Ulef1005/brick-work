@@ -40,8 +40,8 @@ Totals: MacBook / desktop 49 · iPhone 16 (390) 125 · iPad mini 26 (200 frames,
 - 11c: 1 (watch Wanted watch and alert desktop)
 
 **Workbench**
-- 3a: 1 (Matcher desktop)
-- 3b: 1 (Check Set Parts desktop)
+- 3a: 1 (Matchmaker desktop)
+- 3b: 1 (Set Inspector desktop)
 - 3c: 1 (Picker desktop)
 - 3e: 3 (Start desktop, Part desktop, Finish desktop)
 - 3f: 2 (Scanner desktop, Results desktop)
@@ -62,7 +62,7 @@ Totals: MacBook / desktop 49 · iPhone 16 (390) 125 · iPad mini 26 (200 frames,
 - 10a: 2 (Add iPad portrait, Add iPad landscape)
 
 **Workbench**
-- 10a: 16 (Matcher iPad portrait, Matcher iPad landscape, Part Picker iPad portrait, Part Picker iPad landscape, Part to Inventory Capture iPad portrait, Part to Inventory Capture iPad landscape, Part to Inventory Queue iPad portrait, Part to Inventory Queue iPad landscape, …)
+- 10a: 16 (Matchmaker iPad portrait, Matchmaker iPad landscape, Part Runner iPad portrait, Part Runner iPad landscape, Part Spotter Capture iPad portrait, Part Spotter Capture iPad landscape, Part Spotter Queue iPad portrait, Part Spotter Queue iPad landscape, …)
 
 ## iPhone 16 (390)
 
@@ -101,8 +101,8 @@ Totals: MacBook / desktop 49 · iPhone 16 (390) 125 · iPad mini 26 (200 frames,
 - 11c: 1 (watch Wanted watch and alert phone)
 
 **Workbench**
-- 3a: 1 (Matcher phone)
-- 3b: 1 (Check Set Parts phone)
+- 3a: 1 (Matchmaker phone)
+- 3b: 1 (Set Inspector phone)
 - 3c: 4 (Picker sets, Picker sort, Picker pick, Picker selector)
 - 3e: 14 (Start, Resume, Part, Part long caution, Missing pass, Count, Overflow, Figure one, …)
 - 3f: 11 (Idle off, Idle on, Camera live, Queue, Review colour not chosen, Review ready, Unidentified, Results, …)

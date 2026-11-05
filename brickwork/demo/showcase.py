@@ -345,7 +345,7 @@ class Layer:
                                 storage_id='storage-' + dataset.slug(places[index % len(places)]), via='cli')
 
     def finishing_stock(self, db):
-        """Loose parts that finish three of the incomplete copies (the Matcher offers them as complete-able) and half-finish a third."""
+        """Loose parts that finish three of the incomplete copies (the Matchmaker offers them as complete-able) and half-finish a third."""
         wanted = {'99102-1': 1.0, '99114-1': 1.0, '99105-1': 1.0, '99107-1': 0.5}
         with transaction(db):
             for number, share in wanted.items():
@@ -356,7 +356,7 @@ class Layer:
 
     def finished_checks(self, db):
         """The three copies the loose stock can finish have a finished check behind them (the status 'Set is checked', completeness worked out by the
-        app), as Check Set Parts leaves a copy; the Matcher counts only such copies as ones that can become complete."""
+        app), as Set Inspector leaves a copy; the Matchmaker counts only such copies as ones that can become complete."""
         with transaction(db):
             flag = dataset.put(db, 'flag', 'status-set-is-checked', 'Set is checked', kind='status', shown_on_grid=0)
             for number in ('99102-1', '99114-1', '99105-1'):

@@ -1,4 +1,4 @@
-"""#43 printable lists and CSV on the 4.0 store (M.8e, issue #110): missing parts, Part Picker results, wishlist. Invented data.
+"""#43 printable lists and CSV on the 4.0 store (M.8e, issue #110): missing parts, Part Runner results, wishlist. Invented data.
 
 Split out to later pieces: the API exports (`test_bw_lists_43_api.py`, M.11) and the entry points on the planning screens
 (`test_bw_lists_43_later.py`, M.8g).
@@ -58,7 +58,7 @@ def test_print_view_and_entry_points(world, coll, client):
     assert not off.select('.pr-pic')
     assert BeautifulSoup(client.get('/lists/missing/print').data, 'html.parser').select_one('.pr-error')
     picked = BeautifulSoup(client.get(f'/lists/picker/print?copy={world.copy_a}').data, 'html.parser')
-    assert picked.h1.get_text() == 'Part Picker' and picked.select_one('td.pr-num').get_text() == '1'
+    assert picked.h1.get_text() == 'Part Runner' and picked.select_one('td.pr-num').get_text() == '1'
     wishlist = BeautifulSoup(client.get('/lists/wishlist/print').data, 'html.parser')
     assert wishlist.h1.get_text() == 'Wishlist' and len(wishlist.select('tbody tr')) == 2
     assert client.get('/lists/wishlist.csv').mimetype == 'text/csv'

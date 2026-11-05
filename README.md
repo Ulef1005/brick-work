@@ -196,6 +196,32 @@ brickwork mcp --in-process --token-file /path/to/token
 
 Read tools are available by default. `--allow-write` enables write tools only when the calling token has sufficient scope. `--transport http --host 127.0.0.1 --port 5000` serves the HTTP MCP transport. See [MCP details](docs/brickwork/mcp.md).
 
+## Upgrade
+
+Back up first (next section), then check out the new release, rebuild and restart:
+
+```sh
+git fetch
+git checkout RELEASE_BRANCH_OR_TAG
+docker compose build
+docker compose up -d
+```
+
+A schema change inside 4.x (4.0 to 4.1 in 0.7.0, 4.1 to 4.2 in 0.9.0) runs in place at the first read-write start, one step per version. It is one-way: an older version cannot open the upgraded file, so going back means restoring the backup. A 0.5.x (schema 3.3) collection is not upgraded by starting 0.6.0 or later: run `brickwork migrate4` on a copy first; the 3.3 file is never changed. To check the result, open `/api/v2/health` (it shows the app version and the schema) and run `brickwork check`. The steps for every version are in [Upgrade Brick Work](docs/how-to/upgrade.md); `CHANGELOG.md` names any step a release needs. The upgrade from a 0.5.0-shaped collection through every schema step is tested in `tests/test_upgrade_path.py`, which `scripts/check.sh` runs.
+
+## Backup and restore
+
+Back up the `data/` folder:
+
+- `brickwork.db`, the collection (SQLite in WAL mode: copy it with Brick Work stopped, or with the export below, never the bare file while it runs);
+- `secret.key`, the key that encrypts your stored source keys (or keep `BW_SECRET_KEY`);
+- the media folders `data/images`, `data/thumbs`, `data/instructions` and `data/identifications` under the media root, and `data/.env`;
+- `catalogue.db` can be built again, but `data/catalogue-src/` and `data/mappings/` let it rebuild offline.
+
+To take a consistent copy of the database while Brick Work runs, press **Export database** under **Manage → Tools & Admin → Database**, or call `GET /api/v2/database/export` with an `admin` token. The export leaves out the stored source keys.
+
+To restore, stop Brick Work, put `brickwork.db` and `secret.key` (and the media folders) back, start it, and run `brickwork check`; it shows that the collection and the catalogue file belong together. Brick Work has no restore button. See [Back up and restore](docs/how-to/back-up-and-restore.md).
+
 ## Import an old collection
 
 **Tools & Admin → Import from BrickTracker** and `brickwork import-bricktracker` share one read-only importer. BrickTracker stores Rebrickable numbers, which are the catalogue's own, so nothing is translated: give the old `app.db` (any BrickTracker version), read the preview, tick what to add, and the import writes copies, loose stock, lots and wishes as Add does, with BrickTracker's missing / damaged / checked marks on the part lines. What the catalogue does not know is listed and left out. One import is one event; **Undo** takes it back.

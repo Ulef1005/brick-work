@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Counts of one use the singular** (#180). The Sets page said "1 copies", the Catalogs page "1 catalogs", and the filter panel's button "Show 1 parts" and the like. A list's subtitle and its **Show** button, and the Wishlist count, now use the singular for exactly one and the plural otherwise, for every kind.
+
 ## Brick Work 0.9.0 (schema 4.2) · 2026-11-05
 
 The first stability release (milestone 1.0): a stable schema with tested upgrades from 0.5.x, a written upgrade and backup guide, and the first published container image, `ghcr.io/ulef1005/brick-work` (amd64 and arm64; see [Releases and the container image](CONTRIBUTING.md#releases-and-the-container-image)). A 0.8.x collection (schema 4.1) is upgraded in place when 0.9.0 first opens it read-write: three columns are added and nothing else changes. The upgrade is one-way: 0.8.x cannot open a 4.2 file and stops with *a 3.3 file must be migrated*; ignore that hint, which is meant for 3.3 files. So back up `brickwork.db` and `secret.key` before you upgrade, and to go back, restore that backup ([Upgrade Brick Work](docs/how-to/upgrade.md), [Back up and restore](docs/how-to/back-up-and-restore.md)). `catalogue.db` is not touched.

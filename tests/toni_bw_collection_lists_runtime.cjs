@@ -133,5 +133,8 @@ function load(records,{kind='P',pageSize=15,defaultGroup='',groupOptions=null,sa
  // A saved grouping the list does not offer falls back to None.
  const sets=load([{}],{kind:'S',groupOptions:['','theme','storage'],saved:{group:'lot'}});assert.equal(sets.group.value,'');
  const keeps=load([{}],{kind:'S',groupOptions:['','theme','storage'],saved:{group:'theme'}});assert.equal(keeps.group.value,'theme');
+ // #180: a count of 1 takes the singular noun, in the subtitle count and the Show button, for every kind.
+ for(const [kind,one,many] of [['S','set','sets'],['M','minifigure','minifigures'],['P','part','parts'],['I','booklet','booklets'],['O','box','boxes'],['G','gear','gear'],['B','book','books'],['C','catalog','catalogs'],['?','item','unresolved items'],['wish','wish','wishes']])
+  for(const [n,noun] of [[1,one],[2,many]]){const h=load(Array.from({length:n},()=>({type:kind})),{kind,pageSize:0});assert.equal(h.count.textContent,n+' '+noun,kind+' count '+n);assert.equal(h.apply.textContent,'Show '+n+' '+noun,kind+' button '+n);}
  console.log('lists runtime ok');
 })().catch(e=>{console.error(e);process.exit(1);});

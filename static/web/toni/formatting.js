@@ -11,6 +11,6 @@
     return match ? text.slice(0, match.index) + match[1] + match[2].replace(/\s/g, '\u00a0')
       : text.replace(/ ([^ ]*)$/, '\u00a0$1');
   };
-  const resultCount = (count, noun='results') => count+' '+(count===1 && noun==='results'?'result':noun);
+  const resultCount = (count, noun='results', one=noun==='results'?'result':noun) => count+' '+(count===1?one:noun);
   window.BrickFormatting = {nowrapTail,partName,resultCount};
 })();

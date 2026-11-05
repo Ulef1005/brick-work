@@ -135,13 +135,13 @@ grid.trigger();assert.equal(container.dataset.view,'grid');assert.equal(grid['ar
 assert.equal(JSON.parse(saved[viewKey]).query,'preserved');
 assert.equal(JSON.parse(saved[viewKey]).view,'grid');
 root.dataset.screen='wishlist';search.trigger('input');assert.equal(count.textContent,'2 items');
-filterControl.value='S';search.trigger('input');assert.equal(count.textContent,'1 items');
+filterControl.value='S';search.trigger('input');assert.equal(count.textContent,'1 item');
 filterControl.value='';search.value='no match';await search.trigger('input');assert.equal(count.textContent,'0 items');
 // Missing Collection must not stop wishlist initialization, search or actions.
 context.window.BrickCollection=undefined;
 vm.runInNewContext(fs.readFileSync('static/web/toni/bw-planning.js','utf8'),context);
 assert.equal(count.textContent,'0 items');assert.equal(empty.hidden,false);
-search.value='red';await search.trigger('input');assert.equal(count.textContent,'1 items');
+search.value='red';await search.trigger('input');assert.equal(count.textContent,'1 item');
 const beforeAction=calls.length;await pin.trigger();assert.equal(calls.length,beforeAction+1);
 // The full record list owns the noun, including empty and set-only wishlists.
 root.groups['[data-bp-row]']=[];search.value='';
@@ -149,6 +149,6 @@ vm.runInNewContext(fs.readFileSync('static/web/toni/bw-planning.js','utf8'),cont
 assert.equal(count.textContent,'0 items');assert.equal(empty.hidden,false);
 root.groups['[data-bp-row]']=[nodes[1]];
 vm.runInNewContext(fs.readFileSync('static/web/toni/bw-planning.js','utf8'),context);
-assert.equal(count.textContent,'1 sets');search.value='no match';await search.trigger('input');assert.equal(count.textContent,'0 sets');
+assert.equal(count.textContent,'1 set');search.value='no match';await search.trigger('input');assert.equal(count.textContent,'0 sets');
  console.log('Brick Work Planning runtime passed');
 })().catch(e=>{console.error(e);process.exitCode=1;});

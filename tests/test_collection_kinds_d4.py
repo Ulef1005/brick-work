@@ -112,6 +112,8 @@ def test_parts_keep_every_part_filter(client, all_kinds):
 def test_gear_books_catalogs_group_without_theme_and_search_by_name_or_number(client, all_kinds, kind):
     soup = page(client, '/collection/' + kind)
     assert [b['data-bc-group-pick'] for b in soup.select('[data-bc-group-pick]')] == ['', 'storage', 'year', 'place', 'lot']
+    # The hidden select the saved state is checked against offers the same, so a Theme grouping saved before falls back to None (Codex).
+    assert [o['value'] for o in soup.select('select[data-bc-group] option')] == ['', 'storage', 'year', 'place', 'lot']
     assert soup.select_one('input[data-bc-search]')['placeholder'] == 'Name or number'
 
 

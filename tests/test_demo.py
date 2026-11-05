@@ -187,3 +187,20 @@ def test_the_export_carries_one_png_per_picture(site):
     assert not any(re.search(r'manage/images/[1-9][0-9]*(\?|")', p.read_text()) for p in (out / 'workbench').rglob('index.html'))   # src and srcset both name the .png
     detail = (out / 'collection/item').glob('*/index.html')
     assert any(re.search(r'src="' + re.escape(BASE) + r'manage/images/[1-9][0-9]*\.png"', p.read_text()) for p in detail)
+
+
+def test_every_item_the_world_shows_has_its_picture_row_and_its_exported_file(tmp_path, site):
+    """A figure, set, part or other item without its illustration shows the app's error tile: each item the pages can show has a picture row, and every row's file is in the export."""
+    from brickwork.demo import showcase
+    out, manifest = site
+    (tmp_path / 'w').mkdir()
+    dataset.build(tmp_path / 'w' / 'x.db', layer=showcase.layer())
+    db = sqlite3.connect(tmp_path / 'w' / 'x.db')
+    db.execute('ATTACH ? AS catalogue', (str(tmp_path / 'w' / 'catalogue.db'),))
+    shown = db.execute("""SELECT DISTINCT i.born_key FROM (SELECT item_id FROM copy UNION SELECT item_id FROM stock UNION SELECT item_id FROM wish
+                          UNION SELECT item_id FROM copy_figure) w JOIN main.item i ON i.id = w.item_id
+                          WHERE i.kind IN ('set', 'minifigure', 'gear', 'book', 'catalog')""").fetchall()
+    pictured = {k for (k,) in db.execute('SELECT i.born_key FROM picture p JOIN main.item i ON i.id = p.item_id')}
+    assert shown and {k for (k,) in shown} <= pictured, sorted({k for (k,) in shown} - pictured)
+    assert manifest['counts']['pictures'] == db.execute('SELECT count(*) FROM picture').fetchone()[0] == len(list((out / 'manage' / 'images').iterdir()))
+    assert all((showcase.ART / f).is_file() for (f,) in db.execute("SELECT replace(local_path, 'data/images/', '') FROM picture"))

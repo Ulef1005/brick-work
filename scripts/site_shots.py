@@ -30,7 +30,23 @@ STORAGE = '/workbench/storage/storage-drawer-3'
 PICKED = '/workbench/part-picker?copy=' + '&copy='.join([uid('copy', '99103-1', 'a'), uid('copy', '99110-1', 'a'), uid('copy', '99118-1', 'a')])
 OPEN_FOUND = "document.querySelector('[data-open=\"found-1\"]').click(); await new Promise(r => setTimeout(r, 400));"
 
-SETTLE = 'await new Promise(r => setTimeout(r, 900));'   # lists build their rows and load their pictures after the page's load event
+# Run in the page before each capture: the page must be settled, not just loaded. Lists build their rows and load their pictures after the load event,
+# so wait (up to 15 s) for fonts, every stylesheet and every picture, then fail loudly on a broken picture or a missing stylesheet instead of
+# photographing a half-loaded page.
+SETTLE = """
+await (document.fonts ? document.fonts.ready : null);
+const waiting = () => {
+  for (const i of document.images) i.loading = 'eager';
+  return [...document.images].filter(i => !i.complete).length + [...document.querySelectorAll('link[rel=stylesheet]')].filter(l => !l.sheet).length;
+};
+await new Promise(r => setTimeout(r, 500));
+const until = Date.now() + 15000;
+while (waiting() && Date.now() < until) await new Promise(r => setTimeout(r, 50));
+const broken = [...document.images].filter(i => (i.getAttribute('src') || '').includes('/manage/images/') && (!i.complete || i.naturalWidth === 0)).map(i => i.getAttribute('src'));
+const bare = [...document.querySelectorAll('link[rel=stylesheet]')].filter(l => !l.sheet).map(l => l.getAttribute('href'));
+if (waiting() || broken.length || bare.length) throw new Error('page not settled: ' + JSON.stringify({waiting: waiting(), broken, bare}));
+await new Promise(r => setTimeout(r, 150));
+"""
 
 # stem: (path, width, max CSS height, script, destination)
 PICTURES = {

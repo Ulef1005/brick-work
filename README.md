@@ -30,6 +30,8 @@
     </picture>
   </a>
 </p>
+
+<p align="center"><sub>The screenshots show the demo's placeholder drawings; a real install loads pictures from BrickLink and Rebrickable (no key needed).</sub></p>
 <!-- /site:skip -->
 
 # Brick Work

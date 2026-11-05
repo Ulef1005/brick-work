@@ -224,6 +224,7 @@ def export(out, base='/brick-work/demo/', data=dataset.DATA, rich=True):
             counts['checks'] = checks.stage(store, showcase.CHECKS if rich else None)
             pages, skipped, saved = render(client, base, data, store)
             images = pictures_of(store)
+            counts['pictures'] = len(images)
         finally:
             clock.thaw_clock(patched)
             for k, v in saved_env.items():

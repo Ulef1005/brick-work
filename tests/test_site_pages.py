@@ -354,3 +354,18 @@ def test_every_image_the_readme_and_the_pages_show_exists_and_is_a_built_capture
             assert target.is_file(), f'{source}: {name} is missing'
             assert re.sub(r'-(light|dark)\.png$', '', name) in stems, f'{source}: {name} is not a capture of the built app'
     assert len(shown) >= 34
+
+
+NOTE = re.compile(r'placeholder drawings.*?BrickLink and Rebrickable', re.S)
+
+
+def test_the_placeholder_picture_note_is_on_the_readme_the_landing_page_and_the_demo_banner(site):
+    """The demo's pictures are original placeholder drawings; a real install loads its pictures from BrickLink and Rebrickable (core/pictures.py, no key
+    needed for those two sources). The README, the landing page and the demo's banner all say so."""
+    readme = (ROOT / 'README.md').read_text()
+    top = readme.split('<!-- /site:skip -->')[0]
+    assert NOTE.search(top.split('</picture>')[-1]), 'the README says it right under the screenshots, inside the block GitHub shows'
+    assert NOTE.search((site / 'index.html').read_text())
+    shim = (site / 'demo' / 'demo-shim.js').read_text()
+    banner = shim.split('// The banner:', 1)[1].split('const realFetch', 1)[0]
+    assert NOTE.search(banner)

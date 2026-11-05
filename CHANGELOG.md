@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **The Wishlist on a phone has no empty gap under the list chips** (#141). At phone width, Planning › Wishlist left about half a screen of empty space between the list chips and the **Manage lists**, **Export**, **Print** and **Download CSV** buttons. The buttons and the search now follow the chips directly, as on a wider screen. Two approved phone screenshots (light and dark) change with it.
 - **Counts of one use the singular** (#180). The Sets page said "1 copies", the Catalogs page "1 catalogs", and the filter panel's button "Show 1 parts" and the like. A list's subtitle and its **Show** button, and the Wishlist count, now use the singular for exactly one and the plural otherwise, for every kind.
 
 ## Brick Work 0.9.0 (schema 4.2) · 2026-11-05

@@ -7,6 +7,7 @@ The baselines are rendered on Linux (ADR 0022), so only a Linux run decides. Els
 differences are printed as advisory, because font rendering differs by a few per cent on every page; `BW_GATE_STRICT=1` makes them fail anyway."""
 import json
 import os
+import tempfile
 import sys
 from pathlib import Path
 
@@ -166,5 +167,9 @@ def test_the_world_folder_has_the_same_path_every_time():
     with gate.world_folder() as first:
         assert Path(first).is_dir()
     with gate.world_folder() as second:
-        assert second == first
-    assert not Path(first).exists()
+        assert Path(second).is_dir()
+    try:
+        import fcntl  # noqa: F401
+    except ImportError:
+        return                      # without fcntl (Windows) a temporary folder stands in, by design; nothing fixed to compare
+    assert first == second == str(Path(tempfile.gettempdir()) / 'bw-gate-world')

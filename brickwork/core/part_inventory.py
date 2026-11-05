@@ -12,7 +12,7 @@ import json
 import uuid
 from pathlib import Path
 
-from . import add, collection, identify, stock
+from . import add, collection, identify, pictures, stock
 from . import undo as undoing
 from .admin import audit
 from .media import media_root
@@ -121,7 +121,9 @@ def save(db, pieces, *, batch, condition='used', lot_id=None, new_lot=None, keep
                 photos.append(keep_photo(db, root, identity['item_id'], colour, base64.b64decode(piece['photo']), stock_id=change['id']))
         receipt = dict(batch=batch, stock=stock_changes, lot=created_lot, identifications=records, photos=photos)
         audit(db, 'part_inventory:' + batch, 'receipt', None, receipt)
-        return db.execute('SELECT last_insert_rowid()').fetchone()[0]
+        event = db.execute('SELECT last_insert_rowid()').fetchone()[0]
+    pictures.queue_missing(db, [identity['item_id'] for _, identity, _, _ in validated])      # #183: after the receipt commits; an Undo leaves a harmless job
+    return event
 
 
 def _undo_batch(db, event, via, actor):

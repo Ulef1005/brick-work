@@ -424,7 +424,7 @@ def _finish_stock(db, change, entry, places, currency):
 
 def apply(db, plan_id, decisions=None, *, queue=True):
     """Write the chosen rows in one transaction; returns the receipt event id and counts."""
-    from .. import add, plans, wishlists
+    from .. import add, pictures, plans, wishlists
     from ..pipeline import queue_new_items
     work, meta = load_plan(db, plan_id)
     done = plans.applied(db, 'import', plan_id)                  # the database decides; the plan file can say applied for a write that rolled back
@@ -541,6 +541,8 @@ def apply(db, plan_id, decisions=None, *, queue=True):
         audit(db, 'import:' + plan_id, 'receipt', None, receipt, via=via, actor=actor)
         event = db.execute('SELECT last_insert_rowid()').fetchone()[0]
         plans.mark(db, 'import', plan_id, dict(event_id=event, counts=counts, at=stamp), source=meta['source'], created_at=meta['created_at'])
+    if queue:
+        pictures.queue_missing(db, touched, via=via, actor=actor)     # #183: items that had a job but still lack a picture (new ones are queued above)
     meta.update(applied=True, applied_event=event, applied_counts=counts, applied_at=stamp)
     (work / 'plan.json').write_text(json.dumps(meta))
     (work / 'app.db').unlink(missing_ok=True)

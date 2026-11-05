@@ -18,7 +18,7 @@ A receipt's last entry may be `context` (what a history row says); it is not a t
 from collections import Counter, defaultdict
 import json
 
-from . import add, collection, items
+from . import add, collection, items, pictures
 from . import stock as stock_module
 from . import undo as undoing
 from .errors import StaleMatch
@@ -595,7 +595,10 @@ def found(db, item_id, color_id, destination, assignments, amount):
             change = stock_module.add_loose(db, item_id=item_id, color_id=color_id, quantity=amount, condition='used')
             _note_added(tracker, change)
         tracker.context(item_id=item_id, color_id=color_id, quantity=amount, destination=destination)
-        return tracker.write('found')
+        event = tracker.write('found')
+    if destination == 'loose':
+        pictures.queue_missing(db, [item_id])                       # #183: after the write commits; an Undo leaves a harmless job
+    return event
 
 
 def _note_added(tracker, change):

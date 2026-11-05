@@ -28,7 +28,7 @@ from xml.etree import ElementTree as ET
 from ..store4 import fetched, identity
 from ..store4.connect import as_current, has_catalogue, now as stamp_now
 from ..store4.errors import AmbiguousIdentity, Store4Error
-from . import add, collection, errors, items, stock as stock_module
+from . import add, collection, errors, items, pictures, stock as stock_module
 from . import undo as undoing
 from . import workbench as w
 from .transaction import transaction
@@ -843,7 +843,7 @@ def allocate(db, order_id, chosen):
         saved = {r['id']: r for r in lines(db, order_id) if r['phase'] == 'saved' and r['paired_line_id'] is None}
         journal = Journal(db)
         confirm = uuid4().hex
-        affected, total = set(), 0
+        affected, total, placed = set(), 0, set()
         for choice in chosen:
             line = saved.get(int(choice['line_id']))
             amount = add.quantity(choice['quantity'])
@@ -874,6 +874,7 @@ def allocate(db, order_id, chosen):
                 change = stock_module.add_loose(db, item_id=line['item_id'], color_id=line['color_id'], quantity=amount, condition=line['condition'],
                                                 storage_id=storage, lot_id=lot)
                 w._note_added(journal, change)
+                placed.add(line['item_id'])
                 values.update(stock_id=change['id'], kind={'minifigure': 'loose_figure', 'part': 'loose_part'}.get(line['kind'], 'loose_other'))
             else:
                 raise ValueError('Choose a copy gap or loose stock')
@@ -884,7 +885,9 @@ def allocate(db, order_id, chosen):
             w._recompute(db, journal, copy_id)
         journal.guard(*affected)
         journal.context(order_id=order_id, quantity=total)
-        return journal.write('allocate', order_id)
+        event = journal.write('allocate', order_id)
+    pictures.queue_missing(db, placed)                            # #183: items placed into loose stock; after the write commits, an Undo leaves a harmless job
+    return event
 
 
 def reconcile(db, order_id):

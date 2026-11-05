@@ -371,7 +371,7 @@ def _placed_wish(db, wish_list, item_id, kind, count, via, actor):
 def apply_pull(db, plan_id, ticked=None, *, via=None, actor=None):
     """Place one copy per missing unit of a set (design 4.3's preselection; flagged, condition and completeness unset), loose stock of the
     other kinds, and the missing wishes, in one transaction with one receipt. Never deletes or lowers anything here."""
-    from .. import add, plans
+    from .. import add, pictures, plans
     from ..admin import origin
     from ..pipeline import queue_new_items
     plan = load_plan(db, plan_id, 'pull')
@@ -425,6 +425,7 @@ def apply_pull(db, plan_id, ticked=None, *, via=None, actor=None):
         audit(db, 'sync:' + plan_id, 'receipt', None, receipt, via=via, actor=actor)
         event = db.execute('SELECT last_insert_rowid()').fetchone()[0]
         plans.mark(db, 'sync', plan_id, dict(event_id=event, counts=counts, at=stamp), source=source, created_at=plan['created_at'])
+    pictures.queue_missing(db, touched, via=via, actor=actor)     # #183: items that had a job but still lack a picture (new ones are queued above)
     plan['applied'] = dict(event_id=event, counts=counts, at=stamp)
     _store_plan(db, plan)
     return dict(event_id=event, already_applied=False, counts=counts)

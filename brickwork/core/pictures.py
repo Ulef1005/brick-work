@@ -246,9 +246,11 @@ HELD = '''WITH held(item_id, color_id) AS (
 '''
 
 
-def _held(db):
+def _held(db, item_ids=None):
+    only = '' if item_ids is None else ' AND h.item_id IN (SELECT value FROM json_each(?))'
     return db.execute(HELD + f'''SELECT h.item_id, h.color_id, i.kind, NOT {items.identified_sql('i')} AS unidentified FROM held h JOIN main.item i ON i.id=h.item_id
-                                WHERE i.merged_into IS NULL ORDER BY h.item_id, h.color_id''').fetchall()
+                                WHERE i.merged_into IS NULL{only} ORDER BY h.item_id, h.color_id''',
+                      () if item_ids is None else (json.dumps(sorted(set(item_ids))),)).fetchall()
 
 
 def state(db):
@@ -275,13 +277,13 @@ def state(db):
     return dict(summary=summary, unidentified=sum(t['unidentified'] for t in totals.values()))
 
 
-def _per_item(db):
-    """One entry per held item: its kind, whether it is unidentified and whether some colour of it has no picture."""
+def _per_item(db, item_ids=None):
+    """One entry per held item (of `item_ids` when given): its kind, whether it is unidentified and whether some colour of it has no picture."""
     stored = defaultdict(set)
     for r in db.execute('SELECT item_id, color_id FROM main.picture'):
         stored[r['item_id']].add(r['color_id'])
     per_item = {}
-    for item_id, color_id, kind, unidentified in _held(db):
+    for item_id, color_id, kind, unidentified in _held(db, item_ids):
         entry = per_item.setdefault(item_id, dict(kind=kind, unidentified=bool(unidentified), missing=False))
         have = stored.get(item_id, set())
         entry['missing'] |= not (None in have or color_id in have)
@@ -314,6 +316,45 @@ def matrix(db):
     return result
 
 
+def _busy(db, states=('queued', 'running', 'waiting_for_budget')):
+    """The items with a `pictures` step in one of `states` (by default every live one: queued, running or waiting for budget)."""
+    marks = ','.join('?' * len(states))
+    return {r[0] for r in db.execute(f"""SELECT DISTINCT j.item_id FROM main.job j JOIN main.job_step s ON s.job_id=j.id
+            WHERE j.kind=? AND s.name='pictures' AND s.state IN ({marks}) AND j.state IN ('queued','running','waiting_for_budget')""",
+                                  (pipeline.KIND, *states))}
+
+
+def queue_missing(db, item_ids, *, via=None, actor=None):
+    """Queue a `pictures` job for each of `item_ids` that is identified, has a colour held without a picture (the `missing` rule of
+    `selection`) and has no live pictures job. For the paths that add items without Add's own job (#183): call it after the write
+    commits. One batch per call (#127), so interactive work goes first. Returns the job ids.
+
+    Only a step that has not started yet counts as busy: a running one read its colours when it began, so a colour added meanwhile
+    gets a job of its own (Codex review). Queueing is best effort: the write it follows has committed, so a failure here (a locked
+    database, say) is logged and never raised. The caller's receipt stays true, and Refresh pictures finds what is still missing."""
+    try:
+        return _queue_missing(db, item_ids, via=via, actor=actor)
+    except Exception:                                                   # noqa: BLE001 (never fail a committed write over a picture)
+        import logging
+        logging.getLogger(__name__).warning('Could not queue pictures for %s', sorted(set(item_ids))[:20], exc_info=True)
+        return []
+
+
+def _queue_missing(db, item_ids, *, via=None, actor=None):
+    ids = set(item_ids)
+    if not ids:
+        return []
+    if via is None:
+        from .admin import origin
+        via, actor = origin()
+    pipe = pipeline.Pipeline(db)
+    with transaction(db):
+        busy = _busy(db, ('queued', 'waiting_for_budget'))
+        chosen = sorted(i for i, e in _per_item(db, ids).items() if not e['unidentified'] and e['missing'] and i not in busy)
+        batch = pipeline.new_batch('pictures') if chosen else None
+        return [pipe.queue_steps(i, ['pictures'], via=via, actor=actor, batch=batch) for i in chosen]
+
+
 def queue(db, scope, kinds, expected_count=None, via='app', actor=None):
     """Queue a `pictures` job for each selected item that has no live pictures job. Returns `(job ids, selected count)`; with
     `expected_count` the call refuses when the estimate on the page no longer matches, so a confirmation is never a surprise."""
@@ -322,9 +363,7 @@ def queue(db, scope, kinds, expected_count=None, via='app', actor=None):
         chosen = selection(db, scope, kinds)['item_ids']
         if expected_count is not None and int(expected_count) != len(chosen):
             raise ValueError(f'{len(chosen)} items now match, not {int(expected_count)} · review the count and confirm again')
-        busy = {r[0] for r in db.execute("""SELECT DISTINCT j.item_id FROM main.job j JOIN main.job_step s ON s.job_id=j.id
-            WHERE j.kind=? AND s.name='pictures' AND s.state IN ('queued','running','waiting_for_budget') AND j.state IN ('queued','running','waiting_for_budget')""",
-                                  (pipeline.KIND,))}
+        busy = _busy(db)
         batch = pipeline.new_batch('pictures')                      # #127: one bulk action, one batch the drain lets interactive work overtake
         jobs = [pipe.queue_steps(i, ['pictures'], via=via, actor=actor, refresh=scope == 'all', batch=batch) for i in chosen if i not in busy]
     return jobs, len(chosen)

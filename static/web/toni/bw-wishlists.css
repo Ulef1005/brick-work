@@ -41,6 +41,7 @@
 .wl-move { display:flex;flex-direction:column;gap:12px; }
 @media (max-width:767px) {
   .wl-head { flex-direction:column;align-items:stretch; }
+  .wl-lists { flex:none; }   /* the 360 px basis is a width in the desktop row; in this column it would be a 360 px height */
   .wl-toolbar { flex-wrap:wrap; }
   .wl-toolbar>button,.wl-toolbar>.button { flex:1 1 auto; }
   .wl-selection [data-wl-count] { flex-basis:100%; }

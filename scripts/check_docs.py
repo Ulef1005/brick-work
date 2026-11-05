@@ -4,8 +4,8 @@
     python3 scripts/check_docs.py range A..B           # check.yml re-checks the pushed commits; reports, never fails
     python3 scripts/check_docs.py post-commit          # the .githooks/post-commit hook: re-checks HEAD as a whole, warns
 
-A commit that touches SOURCE without touching USER_DOCS carries the trailer `Docs: none`, optionally
-followed by a reason (`Docs: none, refactor only`). Rule: App Standard, Repo & checks and Maintenance
+A commit that touches SOURCE without touching a user doc (any docs/**/*.md outside NOT_USER_DOCS) carries
+the trailer `Docs: none`, optionally followed by a reason (`Docs: none, refactor only`). Rule: App Standard, Repo & checks and Maintenance
 (ai-wiki wiki/projects/references/app-standard-repo-checks.md). Standard library only, so the hook runs
 before any virtualenv exists.
 
@@ -20,7 +20,9 @@ import subprocess
 import sys
 
 SOURCE = ('brickwork/', 'templates/', 'static/', 'app.py', 'wsgi.py', 'bin/', 'entrypoint.sh')
-USER_DOCS = ('docs/index.md', 'docs/tutorials/', 'docs/how-to/', 'docs/concepts/', 'docs/reference/')
+# User docs: any Markdown file under docs/ except the decision record and the milestone decks (Ulf, 2026-11-05;
+# the Diataxis folders alone missed real user docs such as docs/pipeline.md).
+NOT_USER_DOCS = ('docs/adr/', 'docs/milestones/')
 TRAILER = re.compile(r'^Docs: none\b', re.MULTILINE)
 
 
@@ -37,9 +39,13 @@ def touches(paths, prefixes):
     return any(path == prefix or path.startswith(prefix) for path in paths for prefix in prefixes)
 
 
+def is_user_doc(path):
+    return path.startswith('docs/') and path.endswith('.md') and not path.startswith(NOT_USER_DOCS)
+
+
 def needs_docs(paths, message):
     """True when the change touches app source, leaves the user docs alone and carries no trailer."""
-    return touches(paths, SOURCE) and not touches(paths, USER_DOCS) and not TRAILER.search(message)
+    return touches(paths, SOURCE) and not any(map(is_user_doc, paths)) and not TRAILER.search(message)
 
 
 def strip_comments(message):

@@ -37,6 +37,8 @@ Prices are fetched for every colour a part is held in, new and used, as BrickLin
 
 Calls count against a daily budget per source (`BW_BRICKLINK_DAILY_BUDGET` and `BW_REBRICKABLE_DAILY_BUDGET` set the limits; Brickset allows 100 a day). When a day's budget is used up, or a source asks you to slow down, the job waits and carries on by itself; a price that already arrived is not asked for again.
 
+A collection moved from 3.3 may also hold Brickset's **New** and **Used** values for its sets. Brick Work 3.3 read them from Brickset's website; Brickset's API, which Brick Work uses now, has no such values, so they are never refreshed. The item page lists them under **Price records** marked *legacy · Brickset 3.3, not refreshed*, and an **Estimate** that comes from one says *legacy*. Current market prices are BrickLink's, above, and **Set estimate** on a copy sets your own.
+
 ## Fetch from Rebrickable
 
 A number that is in neither the catalogue nor your collection shows **Not in the catalogue** on its Add row with two ways out, side by side: **Fetch from Rebrickable** (greyed with "needs a Rebrickable key" when no key is set) and **Add as unidentified**, plus **Skip**. Nothing is added until you choose one; the row never guesses. An unidentified item is a local item with the name you typed and works on every screen; link it to a BrickLink number or merge it into a catalogue item later.

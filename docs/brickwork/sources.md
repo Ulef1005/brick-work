@@ -44,6 +44,8 @@ an HTML or empty answer says nothing about the key.
 | Rebrickable part record | the BrickLink evidence in `external_ids`: exactly one id is a `matched/external_ids` link, none or several `item_provider_status(bricklink, unmatched, no_match)`; a `manual` link is never replaced and a confirmed one never downgraded. |
 | Pictures | `picture` rows and files under `data/images/<source>/<kind>/<sha256>.<ext>`; see below. |
 
+Brickset `valuation` observations (`new`/`used`) exist only in collections migrated from 3.3, which read them from Brickset's website. The v3 API's `getSets` has no value field (its only price is `LEGOCom.<region>.retailPrice`), so nothing in 4.x writes or refreshes them; they are kept as history and shown as legacy (#173).
+
 BrickLink prices are for the item's resolved BrickLink key and colour (`items.bricklink_key`, design 3.2). An item without one is
 unidentified: the step ends `done` with the code `unidentified` and nothing is called (design 3.8). Brickset is asked by a confirmed
 `brickset` link, else the Rebrickable number of a Rebrickable-born set (`6081-1`), else the BrickLink number of a BrickLink-born set

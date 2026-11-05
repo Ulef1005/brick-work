@@ -257,7 +257,7 @@ def price_details(db, item_id, colour=None):
     def age(p):
         return short_age(p['age']) + (' · stale' if p['stale'] else '')
     def quote(p):
-        guide = 'avg' if p['guide'] == 'sold' else 'listings' if p['guide'] == 'stock' else p['guide']
+        guide = 'avg' if p['guide'] == 'sold' else 'listings' if p['guide'] == 'stock' else collection_prices.LEGACY_LABEL if p.get('legacy') else p['guide']
         meta = [age(p), p['source']]
         if p['region']: meta.append(p['region'])
         if p['guide'] == 'sold': meta += [f"{p['sold'] if p['sold'] is not None else 'Count not recorded'} sold", 'Window not recorded']

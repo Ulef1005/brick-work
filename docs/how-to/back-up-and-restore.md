@@ -22,11 +22,11 @@ Each export is recorded in the event log. On a read-only instance (`BW_READ_ONLY
 
 ### Through the API
 
-`GET /api/v1/database/export` returns the same snapshot. It needs a token with the `admin` scope:
+`GET /api/v2/database/export` returns the same snapshot. It needs a token with the `admin` scope:
 
 ```sh
 curl -H "Authorization: Bearer YOUR_ADMIN_TOKEN" -o brickwork.db \
-  http://127.0.0.1:3333/api/v1/database/export
+  http://127.0.0.1:3333/api/v2/database/export
 ```
 
 If known credentials would still be in the copy, the API refuses with `409` instead of sending it.
@@ -51,7 +51,7 @@ The check reads the whole file, so it runs only when you ask. Afterwards the pag
 The same check is available elsewhere:
 
 - On the server: `brickwork check` (with Docker: `docker compose exec brickwork brickwork check`). It prints the same checks and exits with an error status when one finds a problem. Run it after you restore: it shows that the collection and the catalogue file come from one archive.
-- Through the API: `GET /api/v1/database/check`, with an `admin` token.
+- Through the API: `GET /api/v2/database/check`, with an `admin` token.
 
 Only the check in the app keeps its result on the **Database** page. On a read-only instance **Run integrity check** is switched off; use `brickwork check` instead.
 
@@ -59,7 +59,7 @@ Only the check in the app keeps its result on the **Database** page. On a read-o
 
 Brick Work has no restore button, API call or command.
 
-An upgrade that changes the schema is one-way. 0.7.0 upgrades a 0.6.0 collection (schema 4.0) to 4.1 when it first opens it read-write, and 0.6.0 cannot open a 4.1 file. To go back to 0.6.0, stop Brick Work, put the database snapshot you exported before the upgrade back as `brickwork.db`, and start 0.6.0. Changes made after the upgrade are not in that snapshot. If 0.6.0 refuses the file with a message about migrating, the file is still 4.1: do not run `migrate4` on it.
+An upgrade that changes the schema is one-way. 0.7.0 upgrades a 0.6.0 collection (schema 4.0) to 4.1 when it first opens it read-write, and 0.6.0 cannot open a 4.1 file. To go back to 0.6.0, stop Brick Work, put the database snapshot you exported before the upgrade back as `brickwork.db`, and start 0.6.0; with Docker, check out its tag and run `docker compose build` first, or the newer image starts and upgrades the file again. Changes made after the upgrade are not in that snapshot. If 0.6.0 refuses the file with a message about migrating, the file is still 4.1: do not run `migrate4` on it. 0.9.0 likewise moves a 4.1 file to 4.2, and 0.8.x cannot open it. The steps of every version are in [Upgrade Brick Work](upgrade.md).
 
 ## What next
 

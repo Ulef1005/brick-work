@@ -27,6 +27,11 @@ PKG = check_docs.SOURCE[0]
     (["app.py"], "Port", True),
     (["tests/test_store.py", "README.md"], "Tests", False),
     (["docs/runbook.md"], "Runbook", False),
+    ([PKG + "pipeline.py", "docs/pipeline.md"], "Pipeline docs outside the Diataxis folders", False),
+    ([PKG + "store.py", "docs/how-to/sub/deep.md"], "Nested user doc", False),
+    ([PKG + "store.py", "docs/milestones/a/deck.md"], "Milestone deck only", True),
+    ([PKG + "store.py", "docs/assets/logo.svg"], "Not Markdown", True),
+    ([PKG + "store.py", "docsx/notes.md"], "Not under docs/", True),
 ])
 def test_needs_docs(paths, message, expected):
     assert check_docs.needs_docs(paths, message) is expected

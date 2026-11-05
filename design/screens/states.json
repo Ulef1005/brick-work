@@ -84,7 +84,7 @@
    "world": "demo",
    "path": "/collection/sets",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "10-Set-detail",
@@ -93,7 +93,7 @@
    "world": "demo",
    "path": "/collection/item/set/7286-1?copy=56325b99-16bc-549b-bb98-f7be2ab38829",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "11-Edit-sheet",
@@ -110,7 +110,7 @@
    "world": "demo",
    "path": "/collection/item/minifigure/fig-001714",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "13-Part-detail",
@@ -119,7 +119,7 @@
    "world": "demo",
    "path": "/collection/item/part/3010",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "14-Instruction-and-box-detail",
@@ -152,7 +152,7 @@
    "world": "demo",
    "path": "/collection/P",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "18-Copy-chooser",
@@ -202,7 +202,7 @@
    "path": "/collection/item/set/7286-1?copy=56325b99-16bc-549b-bb98-f7be2ab38829",
    "script": "document.querySelector('[data-bc-tab=figures]').click();await new Promise(r=>setTimeout(r,200));",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "24-Pager",
@@ -211,7 +211,7 @@
    "world": "demo",
    "path": "/collection/M",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "25-Sets-filters-where-select-and-group-go",
@@ -228,7 +228,7 @@
    "world": "demo",
    "path": "/manage/get-started",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "27-Matcher",
@@ -237,7 +237,7 @@
    "world": "demo",
    "path": "/workbench/matcher",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "28-Check-set-parts",
@@ -246,7 +246,7 @@
    "world": "demo",
    "path": "/workbench/check-parts",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "29-Part-picker",
@@ -255,7 +255,7 @@
    "world": "demo",
    "path": "/workbench/part-picker",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "30-Set-parts-checker",
@@ -264,7 +264,7 @@
    "world": "demo",
    "path": "/workbench/check-parts/56325b99-16bc-549b-bb98-f7be2ab38829",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "31-Part-to-inventory",
@@ -273,7 +273,7 @@
    "world": "demo",
    "path": "/workbench/part-to-inventory",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "32-Orders",
@@ -282,7 +282,7 @@
    "world": "demo",
    "path": "/workbench/orders",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "33-Orders",
@@ -299,7 +299,7 @@
    "world": "demo",
    "path": "/workbench/storage",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "35-Orders-capabilities",
@@ -332,7 +332,7 @@
    "world": "demo",
    "path": "/workbench/storage/storage-shelf-a1---castle",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "39-Include-spare-parts",
@@ -357,7 +357,7 @@
    "world": "demo",
    "path": "/planning/wishlist",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "42-Prices",
@@ -366,7 +366,7 @@
    "world": "demo",
    "path": "/planning/prices",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "43-Complete-sets",
@@ -375,7 +375,7 @@
    "world": "demo",
    "path": "/planning/complete-sets",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "44-Complete-sets",
@@ -408,7 +408,7 @@
    "world": "demo",
    "path": "/manage/add",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "48-Tools-and-admin",
@@ -417,7 +417,7 @@
    "world": "demo",
    "path": "/manage/tools",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "49-Statistics",
@@ -426,7 +426,7 @@
    "world": "demo",
    "path": "/manage/statistics",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "50-Tools-and-admin-pages",
@@ -435,7 +435,7 @@
    "world": "demo",
    "path": "/manage/settings",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "50-Tools-and-admin-pages",
@@ -444,7 +444,7 @@
    "world": "demo",
    "path": "/manage/history",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "51-System-pages",
@@ -453,7 +453,7 @@
    "world": "demo",
    "path": "/nothing-here",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "52-Place",
@@ -462,7 +462,7 @@
    "world": "demo",
    "path": "/collection/purchase-places",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "52-Place",
@@ -471,7 +471,7 @@
    "world": "demo",
    "path": "/manage/appearance",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "53-Jobs-and-maintenance",
@@ -480,7 +480,7 @@
    "world": "demo",
    "path": "/manage/refresh",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "53-Jobs-and-maintenance",
@@ -489,7 +489,7 @@
    "world": "demo",
    "path": "/manage/jobs",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "54-Catalogues-and-keys",
@@ -498,7 +498,7 @@
    "world": "demo",
    "path": "/manage/catalogues",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "55-Api-tokens",
@@ -507,7 +507,7 @@
    "world": "demo",
    "path": "/manage/tokens",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "55-Api-tokens",
@@ -516,7 +516,7 @@
    "world": "demo",
    "path": "/manage/tokens?create=1",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "56-Collection-sync",
@@ -525,7 +525,7 @@
    "world": "demo",
    "path": "/manage/sync",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "57-Scan-a-set-barcode",

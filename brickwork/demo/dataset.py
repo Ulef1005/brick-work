@@ -53,15 +53,18 @@ def inventories_of(sets, data=DATA):
     return found
 
 
-def write_dump(directory, data=DATA):
+def write_dump(directory, data=DATA, layer=None):
     """The twelve Rebrickable dump files (`<name>.csv.gz`) for the design test data."""
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
     sets, wishes = load('sets.json', data), load('wishlist.json', data)
     inventories = inventories_of(sets, data)
+    extra = []
+    if layer is not None:   # the richer demo world (showcase.py): more copies, part lists and catalogue entries; the gate's world has no layer
+        sets, inventories, extra = sets + layer.sets, {**inventories, **layer.inventories}, layer.catalogue
     # themes: 'City / Police' is two themes; the leaf takes the set's theme id, its parents get invented ones
     themes, next_theme = {}, 9000
-    for row in sets + wishes:
+    for row in sets + wishes + extra:
         parent, names = '', [n.strip() for n in row['theme_path'].split('/')]
         for depth, name in enumerate(names):
             path = (parent + '/' + name).strip('/')
@@ -94,7 +97,7 @@ def write_dump(directory, data=DATA):
                 inventory_rows.append([inventory_ids[figure['figure']], 1, figure['figure']])
                 lines(inventory_ids[figure['figure']], inventory.get('minifigure_parts', {}).get(figure['figure'], []))
     shown = {}
-    for row in sets + wishes:
+    for row in sets + wishes + extra:
         shown.setdefault(row['set'], [row['set'], row['name'], row['year'], themes[theme_path(row)][0], row.get('parts') or 0, ''])
     files = {
         'colors': [[i, n, rgb, str(t), 0, 0, 0, 0] for i, (n, rgb, t) in sorted(colours.items())],
@@ -135,7 +138,7 @@ def fixed_copy_id(identifier):
         uuid.uuid4 = real
 
 
-def build(path, data=DATA):
+def build(path, data=DATA, layer=None):
     """Create a new collection at `path` (which must not exist) with its catalogue beside it, and fill it; returns row counts and the copy ids
     by set number."""
     path = Path(path)
@@ -144,11 +147,13 @@ def build(path, data=DATA):
         if target.exists():
             raise FileExistsError(target)
     with tempfile.TemporaryDirectory() as scratch:
-        inventories = write_dump(Path(scratch) / 'dump', data)
+        inventories = write_dump(Path(scratch) / 'dump', data, layer)
         builder.build(Path(scratch) / 'dump', catalogue, app_version='demo', now=NOW)
+        if layer is not None:
+            layer.after_catalogue(catalogue)
     with closing(connect(path)) as db:
         activate(db)
-        ids = fill(db, data, inventories)
+        ids = fill(db, data, inventories, layer)
         counts = {t: db.execute(f'SELECT count(*) FROM {t}').fetchone()[0] for t in ('item', 'copy', 'copy_part', 'stock', 'wish', 'price_observation')}
         counts['ids'] = ids
         return counts
@@ -168,9 +173,11 @@ def put(db, table, identifier, name, **fields):
     return identifier
 
 
-def fill(db, data, inventories):
+def fill(db, data, inventories, layer=None):
     from ..core import add
     sets, wishes, meta = load('sets.json', data), load('wishlist.json', data), load('metadata.json', data)
+    if layer is not None:
+        sets = sets + layer.sets
     places = load('storages.json', data)
     ids, flags, loose = {}, {}, []
     with transaction(db):
@@ -230,6 +237,8 @@ def fill(db, data, inventories):
         # Loose stock that can fill some gaps, so the Part Picker and Complete sets have matches.
         for part, colour, quantity in loose:
             stock.add_loose(db, item_id=part, color_id=colour, quantity=quantity, condition='used', storage_id='storage-parts-drawer-unit', via='cli')
+    if layer is not None:
+        layer.fill(db, ids)
     return ids
 
 

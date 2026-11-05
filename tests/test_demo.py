@@ -52,7 +52,10 @@ def test_agreed_routes_are_exported(site):
     assert any(re.fullmatch(r'/collection/item/[0-9]+\?colour=[0-9]+', k) for k in pages)     # and one part in one colour
     assert any(k.startswith('/workbench/check-parts/') and k.endswith('?run=1') for k in pages)  # Start opens a running check
     assert any(k.startswith('/workbench/part-picker?copy=') for k in pages)  # Continue opens the picking view
-    assert not any(k.startswith('/manage') for k in pages)
+    for route in ('/collection/G', '/collection/B', '/collection/C', '/workbench/match', '/workbench/orders', '/workbench/orders/1', '/planning/wishlist',
+                  '/manage/add', '/manage/tools', '/manage/statistics', '/manage/sync', '/manage/jobs'):
+        assert route in pages, route                                                          # every kind and every area of 0.9.0 has its pages
+    assert not any(k.startswith('/manage/get-started') for k in pages)
     assert manifest['skipped'] == {} and manifest['gets']['/planning/prices/records']
     assert any(k.startswith('/planning/prices/details?item_id=') for k in manifest['gets'])
     # Running checks made with the app's own checker: first part, half done, at the end.
@@ -113,3 +116,30 @@ def test_export_refuses_an_existing_folder_and_a_bad_base(tmp_path):
         export.export(tmp_path, BASE)
     with pytest.raises(ValueError):
         export.export(tmp_path / 'new', 'brick-work/demo')
+
+
+def test_the_richer_world_is_an_additive_layer_over_the_gates_world(tmp_path):
+    """The screen gate renders `dataset.build(path)`: the demo's extra collection must not touch it (approved baselines)."""
+    from brickwork.demo import showcase
+    for folder in ('plain', 'rich', 'again'):
+        (tmp_path / folder).mkdir()
+    plain = dataset.build(tmp_path / 'plain' / 'x.db')
+    rich = dataset.build(tmp_path / 'rich' / 'x.db', layer=showcase.layer())
+    assert plain['copy'] == 19 and plain['wish'] == 6                                            # the gate's world is what it was
+    assert rich['copy'] >= 40 and rich['wish'] >= 25 and rich['stock'] > 3 * plain['stock']
+    db = sqlite3.connect(tmp_path / 'rich' / 'x.db')
+    assert db.execute('PRAGMA integrity_check').fetchone()[0] == 'ok' and not db.execute('PRAGMA foreign_key_check').fetchall()
+    kinds = dict(db.execute('SELECT kind, count(*) FROM stock WHERE archived_at IS NULL GROUP BY kind'))
+    assert all(kinds.get(k) for k in ('part', 'minifigure', 'gear', 'book', 'catalog'))
+    assert db.execute('SELECT count(*) FROM wishlist').fetchone()[0] >= 4 and db.execute('SELECT count(*) FROM purchase_order').fetchone()[0] >= 3
+    assert db.execute("SELECT count(*) FROM copy WHERE completeness='incomplete'").fetchone()[0] >= 8
+    assert not db.execute("SELECT count(*) FROM item WHERE origin='local'").fetchone()[0]
+    again = dataset.build(tmp_path / 'again' / 'x.db', layer=showcase.layer())
+    assert {k: v for k, v in again.items() if k != 'ids'} == {k: v for k, v in rich.items() if k != 'ids'}   # deterministic
+    ids = "SELECT id FROM stock WHERE storage_id IS NOT 'storage-parts-drawer-unit'"       # the base world's own loose stock keeps its random ids
+    assert {r[0] for r in db.execute(ids)} == {r[0] for r in sqlite3.connect(tmp_path / 'again' / 'x.db').execute(ids)}
+
+
+def test_export_without_the_layer_is_the_base_world(tmp_path):
+    manifest = export.export(tmp_path / 'plain', BASE, rich=False)
+    assert manifest['counts']['copy'] == 19 and '/collection/sets' in manifest['pages']

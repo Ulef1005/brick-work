@@ -7,6 +7,7 @@ Prices records and their details) is saved beside them. A small script (shim.js)
 every page, answers those reads from the saved files and every write with "not saved".
 """
 from contextlib import closing
+import hashlib
 import html
 import json
 import os
@@ -16,24 +17,30 @@ import tempfile
 from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlsplit
 
-from . import checks, dataset
+from . import checks, clock, dataset, showcase
 from .privacy import pattern
 
 ROOT = Path(__file__).resolve().parents[2]
 NOTE = 'Demo with sample data: changes are not saved'
-SEEDS = ['/collection/sets', '/collection/M', '/collection/P',
-         '/workbench/check-parts', '/workbench/part-picker', '/workbench/part-to-inventory',
-         '/planning/wishlist', '/planning/prices', '/planning/complete-sets', '/workbench/storage']
+SEEDS = ['/collection/sets', '/collection/M', '/collection/P', '/collection/G', '/collection/B', '/collection/C', '/collection/purchase-places',
+         '/workbench/check-parts', '/workbench/part-picker', '/workbench/part-to-inventory', '/workbench/match', '/workbench/orders',
+         '/workbench/what-is-this', '/workbench/storage',
+         '/planning/wishlist', '/planning/prices', '/planning/complete-sets',
+         '/manage/add', '/manage/tools', '/manage/statistics', '/manage/sync', '/manage/catalogues', '/manage/tokens', '/manage/jobs',
+         '/manage/refresh', '/manage/appearance', '/manage/history', '/manage/values']
 # Routes the crawl may follow from a seed (the agreed demo routes and their own sub-pages).
 FOLLOW = [re.compile(p) for p in (
-    r'^/collection/(sets|M|P)$',
+    r'^/collection/(sets|M|P|G|B|C|purchase-places)$',
     r'^/collection/item/[1-9][0-9]*(\?colour=[0-9]+)?$',
+    r'^/collection/wishes/wish-[A-Za-z0-9._%-]+$',
     r'^/workbench/check-parts(/[0-9a-f-]{36}(\?run=1)?)?$',
-    r'^/workbench/(part-picker|part-to-inventory)$',
+    r'^/workbench/(part-picker|part-to-inventory|match|what-is-this)$',
+    r'^/workbench/orders(/[1-9][0-9]*)?$',
     r'^/planning/(wishlist|prices|complete-sets)$',
     r'^/workbench/storage(/[^/?]+)?$',
+    r'^/manage/(add|tools|statistics|sync|catalogues|tokens|jobs|refresh|appearance|history|values)$',
 )]
-LIMIT = 120
+LIMIT = 400
 ATTRIBUTE = re.compile(r'(\s(?:href|src|action|poster|content|data-[\w-]+)=")([^"]*)(")')
 # Links a visitor may follow (the app's catalogue links); nothing outside is ever loaded (src).
 LINKS_OK = re.compile(r'^https://(github\.com/Ulef1005/brick-work|ulef1005\.github\.io/brick-work/\Z|(www\.)?bricklink\.com/|brickset\.com/|rebrickable\.com/)')
@@ -53,7 +60,10 @@ def file_of(key):
     path, _, query = key.partition('?')
     folder = path.strip('/')
     if query:
-        folder += '/_' + re.sub(r'[^A-Za-z0-9._-]', '-', query.replace('=', '-').replace('&', '_'))
+        name = re.sub(r'[^A-Za-z0-9._-]', '-', query.replace('=', '-').replace('&', '_'))
+        if len(name) > 100:   # a long query (the Part Picker with every incomplete copy ticked) would not fit a file name
+            name = name[:40] + '-' + hashlib.sha1(query.encode()).hexdigest()[:16]
+        folder += '/_' + name
     return (folder + '/' if folder else '') + 'index.html'
 
 
@@ -123,12 +133,15 @@ def reads(client, base):
 
 
 def item_pages(store):
-    """The item pages the lists link to from rows their script builds: every owned set, and one part in one colour it is held in."""
+    """The item pages the lists link to from rows their script builds: every owned set, one item of each other kind that is held loose
+    (a few figures, gear, books, catalogs), and some parts in one colour each."""
     from ..core.connect import connect
     with closing(connect(store, read_only=True)) as db:
         sets = ['/collection/item/%d' % r[0] for r in db.execute('SELECT DISTINCT item_id FROM copy WHERE archived_at IS NULL ORDER BY item_id')]
-        part = db.execute("SELECT item_id, color_id FROM stock WHERE kind='part' AND archived_at IS NULL ORDER BY item_id, color_id LIMIT 1").fetchone()
-    return sets + (['/collection/item/%d?colour=%d' % tuple(part)] if part else [])
+        other = ['/collection/item/%d' % r[0] for kind, limit in (('minifigure', 6), ('gear', 5), ('book', 4), ('catalog', 3))
+                 for r in db.execute('SELECT DISTINCT item_id FROM stock WHERE kind=? AND archived_at IS NULL ORDER BY item_id LIMIT ?', (kind, limit))]
+        parts = db.execute("SELECT item_id, color_id FROM stock WHERE kind='part' AND archived_at IS NULL ORDER BY item_id, color_id LIMIT 4").fetchall()
+    return sets + other + ['/collection/item/%d?colour=%d' % tuple(part) for part in parts]
 
 
 def render(client, base, data, store):
@@ -176,8 +189,9 @@ def check(out):
     return findings
 
 
-def export(out, base='/brick-work/demo/', data=dataset.DATA):
-    """Build the demo into `out` (which must not exist). Returns the manifest; raises on findings."""
+def export(out, base='/brick-work/demo/', data=dataset.DATA, rich=True):
+    """Build the demo into `out` (which must not exist). Returns the manifest; raises on findings. `rich` adds the showcase layer
+    (showcase.py) to the design test data's world; the screen gate renders the world without it."""
     out = Path(out)
     if out.exists():
         raise FileExistsError(out)
@@ -185,13 +199,18 @@ def export(out, base='/brick-work/demo/', data=dataset.DATA):
         raise ValueError('base must start and end with /')
     with tempfile.TemporaryDirectory() as scratch:
         store = Path(scratch) / 'brickwork.db'
-        counts = dataset.build(store, data)
-        counts['checks'] = checks.stage(store)
+        counts = dataset.build(store, data, showcase.layer(data) if rich else None)
         saved_env = {k: os.environ.get(k) for k in ('BW_DB_PATH', 'BW_EMBEDDED_WORKER', 'BW_ALLOW_NO_LOGIN', 'BW_AUTHENTICATION_PASSWORD')}
+        patched = []
         try:
             client = make_app(store).test_client()
+            for key in SEEDS + item_pages(store)[:6]:   # every module a page imports lazily is imported before the clock stops
+                client.get(key, base_url='http://demo.invalid' + base.rstrip('/'))
+            patched = clock.freeze_clock()              # prices go stale after a week and pages show relative dates: the demo's "now" is fixed
+            counts['checks'] = checks.stage(store)
             pages, skipped, saved = render(client, base, data, store)
         finally:
+            clock.thaw_clock(patched)
             for k, v in saved_env.items():
                 if v is None:
                     os.environ.pop(k, None)

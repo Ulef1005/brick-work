@@ -43,6 +43,8 @@ Without a network or a browser you can run `BW_SKIP_RENDERED=1 APP_VENV=.venv ba
 
 The screenshot gate (`tests/test_screen_gate.py`) compares the app with approved baseline captures; see `design/DESIGN-CHECK.md`. When you change a screen on purpose, regenerate its candidates with `python scripts/screen_gate.py capture <NN-Screen>` and say so in the pull request; the maintainer approves baselines.
 
+The README and Pages pictures are captures of the built app on the demo's richer world: regenerate them with `python scripts/site_shots.py` (not gate baselines; the world is invented, `brickwork/demo/showcase.py`).
+
 For a running app, follow the Docker steps in the [README](README.md).
 
 ## Pull requests

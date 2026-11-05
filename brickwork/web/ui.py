@@ -149,16 +149,19 @@ WORKFLOW_PAGES = (
 
 
 def workflow_matches(query):
-    """Jump-search rows for the Workbench workflows whose name or former name contains the query (two characters at least)."""
+    """Jump-search rows for the Workbench workflows: the query (three characters at least) starts a word of the name or of a former name."""
     needle = ' '.join(query.casefold().split())
-    if len(needle) < 2:
+    if len(needle) < 3:
         return []
+
+    def starts_a_word(name):
+        return f' {needle}' in f' {name.casefold()}'
     rows = []
     for title, endpoint, aliases in WORKFLOW_PAGES:
-        former = next((alias for alias in aliases if needle in alias.casefold()), None)
-        if needle in title.casefold() or former:
+        former = next((alias for alias in aliases if starts_a_word(alias)), None)
+        if starts_a_word(title) or former:
             rows.append(dict(kind='page', number=title, name=title, type_label='Workbench', url=url_for(endpoint),
-                             note=f'Was {former}' if former and needle not in title.casefold() else 'Workbench'))
+                             note=f'Was {former}' if former and not starts_a_word(title) else 'Workbench'))
     return rows
 
 

@@ -72,7 +72,8 @@
    }
    results.append(panel);
   }
-  message.textContent = data.results.length ? `${data.results.length} results${data.truncated ? ' · refine your search for more' : ''}` : 'No matches.';
+  const shown = results.children.length;   // rows skipped in the check chooser are not counted
+  message.textContent = shown ? `${shown} results${data.truncated ? ' · refine your search for more' : ''}` : 'No matches.';
   if (links.length) choose(0);
  }
  async function search(ticket) {

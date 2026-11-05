@@ -14,6 +14,16 @@ Each row you confirm in **Manage → Add** gets one background job with six step
 | Fetching set metadata | Brickset's theme, piece count and years of sale for a set, and the retail price in your retail country. | A Brickset key. |
 | Fetching market price | BrickLink's price guide for new and used, in your region and currency. | The four BrickLink values. |
 
+**Add** is not the only place. These also queue a **Downloading images** step for an item that has no picture yet (for every colour you hold), so the picture is there without pressing **Refresh pictures**:
+
+- placing an order line into loose stock (**Workbench → Orders**, **Allocate**);
+- **Part to Inventory**;
+- the import of another app's file (**Tools & Admin**);
+- a **Collection sync** pull from Rebrickable or Brickset;
+- **Found** in the Workbench, when you put the part into loose stock.
+
+Nothing is queued for an item that has its pictures, for an unidentified item, or while a picture job for the item is already waiting. If you undo the change, the queued job stays and just fetches the picture.
+
 An item with no number from any provider (an *unidentified* item) cannot be asked for anything. Its steps end **done** with the finding **unidentified**, nothing is called, and the job does not fail. Prices and the BrickLink export also skip an item BrickLink has no number for; add a link or merge it into a catalogue item to resolve it.
 
 ## Where pictures come from

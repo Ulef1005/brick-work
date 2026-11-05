@@ -13,6 +13,7 @@ import pytest
 from brickwork.core import errors, sync
 from brickwork.core.connect import connect
 from brickwork.core.sources import base
+from brickwork.core.transaction import transaction
 from tests.app4 import RICH, Coll, make_pair, table_digest
 
 PASSWORD = 'synthetic-password-never-stored'
@@ -449,7 +450,6 @@ def test_a_second_submit_after_a_lost_file_write_applies_nothing(store):
 
 def test_a_rolled_back_apply_can_be_applied_again(store):
     """#64: inside an outer write that fails, the marker rolls back with the rows."""
-    from brickwork.core.transaction import transaction
     plan = sync.plan_pull(store, 'rebrickable', http=rebrickable_ready(store))
     with pytest.raises(RuntimeError):
         with transaction(store):
@@ -475,3 +475,32 @@ def test_undo_keeps_a_tag_the_pile_already_had(store):
     sync.undo(store, result['event_id'])
     assert store.execute('SELECT quantity FROM stock WHERE id=?', (pile,)).fetchone()[0] == 1
     assert store.execute('SELECT 1 FROM stock_flag WHERE stock_id=? AND flag_id=?', (pile, flag)).fetchone()
+
+
+def pictures_jobs(db, number):
+    return db.execute("SELECT count(*) FROM job j JOIN job_step s ON s.job_id=j.id JOIN item i ON i.id=j.item_id WHERE i.born_key=? AND s.name='pictures'", (number,)).fetchone()[0]
+
+
+def test_a_pull_queues_the_picture_step_once_and_again_for_an_item_with_an_old_job_but_no_picture(store):
+    """#183: new items get the whole import job; an item that had a job before but still has no picture gets a pictures job; none is queued twice."""
+    from brickwork.core import pipeline
+    old = key(store, '1000-2')
+    with transaction(store):
+        pipeline.Pipeline(store).queue_steps(old, ['market_price'], via='app')            # an earlier job, not for pictures
+    remote = rebrickable_ready(store)
+    sync.apply_pull(store, sync.plan_pull(store, 'rebrickable', http=remote)['id'])
+    assert pictures_jobs(store, '1000-1') == 1, 'new item: one job, one pictures step'
+    assert pictures_jobs(store, '1000-2') == 1, 'old job without a pictures step, no picture'
+    assert pictures_jobs(store, GEAR) == 1
+
+
+def test_a_pull_queues_no_picture_step_for_an_item_with_its_picture_and_an_old_job(store):
+    from brickwork.core import pipeline
+    old = key(store, '1000-2')
+    with transaction(store):
+        pipeline.Pipeline(store).queue_steps(old, ['market_price'], via='app')
+    store.execute("INSERT INTO picture(item_id,color_id,source,kind,local_path,fetched_at) VALUES(?,NULL,'bricklink','photo','data/images/x.png','a')", (old,))
+    store.commit()
+    remote = rebrickable_ready(store)
+    sync.apply_pull(store, sync.plan_pull(store, 'rebrickable', http=remote)['id'])
+    assert pictures_jobs(store, '1000-2') == 0

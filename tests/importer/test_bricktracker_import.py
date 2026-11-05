@@ -378,3 +378,23 @@ def test_undo_removes_only_the_flag_links_the_import_made(tmp_path, db):
     result = bricktracker.apply(db, plan['id'], {'stock:loose-3': 'add', 'stock:loose-2': 'skip'})
     bricktracker.undo(db, result['event_id'])
     assert db.execute('SELECT 1 FROM stock_flag WHERE stock_id=? AND flag_id=?', (pile, owner)).fetchone()
+
+
+def pictures_jobs(db, number):
+    return db.execute("SELECT count(*) FROM job j JOIN job_step s ON s.job_id=j.id JOIN item i ON i.id=j.item_id WHERE i.born_key=? AND s.name='pictures'", (number,)).fetchone()[0]
+
+
+def test_the_import_queues_the_picture_step_for_what_it_adds(tmp_path, db):
+    """#183: new items get one job with a pictures step; an item that had a job but no picture gets a pictures job; an item with its picture none."""
+    from brickwork.core import pipeline
+    from brickwork.core.transaction import transaction
+    ids = {n: db.execute('SELECT id FROM main.item WHERE born_key=? UNION SELECT id FROM catalogue.item WHERE born_key=?', (n, n)).fetchone()[0] for n in ('1000-1', '1000-2')}
+    with transaction(db):
+        for item in ids.values():
+            pipeline.Pipeline(db).queue_steps(item, ['market_price'], via='app')            # earlier jobs, not for pictures
+    db.execute("INSERT INTO picture(item_id,color_id,source,kind,local_path,fetched_at) VALUES(?,NULL,'bricklink','photo','data/images/x.png','a')", (ids['1000-2'],))
+    db.commit()
+    bricktracker.apply(db, bricktracker.plan(db, upstream(tmp_path / 'app.db'))['id'])
+    assert pictures_jobs(db, '1000-1') == 1
+    assert pictures_jobs(db, '1000-2') == 0
+    assert pictures_jobs(db, '2070-1') == 1

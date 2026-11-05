@@ -74,6 +74,18 @@ function load(records,{kind='P',pageSize=15,defaultGroup='',groupOptions=null,sa
  assert.equal(row.querySelector('.bc-identity-top').children[0].textContent,'Black');
  const loose=P.api.buildRow(P.api.decodeRecords({fields:['type','number','quantity','entity','ids'],rows:[{0:'P',1:'x',2:3,3:'stock',4:['s']}]})[0],P.root.dataset,false,()=>{});
  assert.deepEqual(loose.children.filter(c=>c.className.split(' ').includes('bc-cell')).map(texts).map(t=>t.join(' ')),['No damaged pieces','No lot —','Used price  no sales','Quantity  ×3']);
+ // Gear, Books and Catalogs: a card without a picture shows the number once, in the tile; with a picture or for other kinds nothing changes (#153).
+ for (const [type,number] of [['G','gear-01'],['B','ISBN 9780000000001'],['C','1976 Catalog']]) {
+  const K=load([{}],{kind:type});
+  const plain=K.api.buildRow(K.api.decodeRecords({fields:['type','number','source','name','entity','ids'],rows:[{0:type,1:number,2:'bricklink',3:'Some item',4:'stock',5:['s']}]})[0],K.root.dataset,false,()=>{});
+  const shown=texts(plain).filter(t=>t.includes(number));
+  assert.deepEqual(shown,[number+' (BrickLink)'],type+': number once, got '+JSON.stringify(shown));
+  assert.equal(plain.querySelector('.bc-picture').children[0].textContent,number+' (BrickLink)');
+  const pic=K.api.buildRow(K.api.decodeRecords({fields:['type','number','source','name','image','entity','ids'],rows:[{0:type,1:number,2:'bricklink',3:'Some item',4:'img1',5:'stock',6:['s']}]})[0],K.root.dataset,false,()=>{});
+  assert.deepEqual(texts(pic).filter(t=>t.includes(number)),[number+' (BrickLink)'],type+': with a picture the number sits above the name');
+ }
+ const keepsTwice=P.api.buildRow(P.api.decodeRecords({fields:['type','number','entity','ids'],rows:[{0:'P',1:'3004',2:'stock',3:['s']}]})[0],P.root.dataset,false,()=>{});
+ assert.equal(texts(keepsTwice).filter(t=>t==='3004').length,2,'other kinds keep tile and identity');
  // Filters: lot "any" and groupValue.
  const rows=[{number:'a',lot:['null']},{number:'b',lot:['lot-1']},{number:'c',lot:['null','lot-2']}];
  assert.deepEqual(api.filterRows(rows,'',{lot:'any'}).map(r=>r.number),['b','c']);

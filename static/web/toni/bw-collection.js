@@ -80,11 +80,13 @@
     const picture=el('div','bc-picture');picture.dataset.itemNo=r.number;
     if(r.image){const button=el('button'),img=el('img');button.type='button';button.dataset.bwLightbox=config.imageBase.replace(/0$/,r.image);button.dataset.caption=displayName+(r.colour?' · '+r.colour:'');button.setAttribute('aria-label','View '+displayName);const full=button.dataset.bwLightbox;img.src=full+'?w=320';img.srcset=full+'?w=320 320w, '+full+'?w=640 640w';img.sizes='160px';img.dataset.full=full;img.alt=button.dataset.caption;img.loading='lazy';button.append(img);picture.append(button);button.addEventListener('click',()=>openPicture(button));}
     else picture.append(...(label?[el('span','mono',label)]:[]),el('span','','No image'));
+    // Gear, Books and Catalogs: a card without a picture shows the number once, in the tile (#153).
+    const numberInTile=!r.image&&'GBC'.includes(r.type);
     row.append(picture);
     const link=el('a'),identity=el('div','bc-identity');link.dataset.bcItemLink='';
     link.href=r.entity==='wish'?config.wishBase.replace(/0$/,r.ids[0]):config.itemBase.replace(/0$/,r.item_id)+(r.type==='P'&&r.color_id!=null?'?colour='+encodeURIComponent(r.color_id):'');
     if(r.type==='P'){const top=el('span','bc-identity-top'),colour=el('span','bc-colour',r.colour||'Unknown colour');if(/^[0-9a-f]{6}$/i.test(r.rgb||'')){colour.style.background='#'+r.rgb;colour.style.color=r.ink;}top.append(colour,...(label?[el('span','mono',label)]:[]));identity.append(top);}
-    else if(label)identity.append(el('span','mono',label));
+    else if(label&&!numberInTile)identity.append(el('span','mono',label));
     if(r.name)identity.append(el('strong','',nowrapTail(name)));
     // Sets name the theme and sub-theme before the year ("Castle / Lion Knights · 1984").
     const secondary=[[r.theme||r.category,r.type==='S'&&r.entity!=='wish'?r.subtheme:''].filter(Boolean).join(' / '),r.year].filter(Boolean).join(' · ');

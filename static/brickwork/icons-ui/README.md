@@ -11,6 +11,9 @@
 | minifig | `icons-ui/minifig.svg` | Minifigures nav | new |
 | parts | `icons-ui/parts.svg` | Parts nav | new |
 | instr | `icons-ui/instr.svg` | Instructions nav | new |
+| gear | `icons-ui/gear.svg` | Gear nav (shopping bag) | new |
+| book | `icons-ui/book.svg` | Books nav (open book) | new |
+| catalog | `icons-ui/catalog.svg` | Catalogs nav (catalog over a second page) | new |
 | box | `icons-ui/box.svg` | Boxes nav (replaces grid) | new |
 | scan | `icons-ui/scan.svg` | Part to Inventory nav | new |
 | check | `icons-ui/check.svg` | Check Set Parts nav, checklist | new |

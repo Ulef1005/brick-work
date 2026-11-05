@@ -32,4 +32,7 @@
 <symbol id="bw-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5h16M4 12h16M4 17.5h16"></path></symbol>
 <symbol id="bw-minus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 12h12"></path></symbol>
 <symbol id="bw-tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></symbol>
+<symbol id="bw-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 8.5h13l-1 12h-11z"></path><path d="M9 8.5V7a3 3 0 0 1 6 0v1.5"></path></symbol>
+<symbol id="bw-book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6.5C10 5 7 4.5 4 5v13c3-.5 6 0 8 1.5 2-1.5 5-2 8-1.5V5c-3-.5-6 0-8 1.5z"></path><path d="M12 6.5v13"></path></symbol>
+<symbol id="bw-catalog" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3.5h10v15H5z"></path><path d="M15 6.5h3.5v14H8v-2"></path><path d="M8 8h4M8 11.5h4M8 15h2"></path></symbol>
 </svg>

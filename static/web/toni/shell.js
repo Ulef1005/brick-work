@@ -121,4 +121,15 @@
   ['pointerup','pointercancel','pointerleave'].forEach(type => link.addEventListener(type, () => clearTimeout(timer)));
   link.addEventListener('click', event => { if (labelled) { event.preventDefault(); link.querySelector('.rail-tooltip')?.remove(); labelled = false; } });
  });
+ // Phone top strip: bring the active entry into view so Gear, Books and Catalogs do not sit off the edge (#153).
+ // Only the strip scrolls (never the page) and only when the entry is not already fully visible; the jump is instant, so no motion at all
+ // for prefers-reduced-motion users.
+ const revealActive = () => document.querySelectorAll('.group-items > div:not([hidden])').forEach(strip => {
+  const link = strip.querySelector('a[aria-current=page]');
+  if (!link || strip.scrollWidth <= strip.clientWidth) return;
+  const box = strip.getBoundingClientRect(), at = link.getBoundingClientRect();
+  if (at.left >= box.left && at.right <= box.right) return;
+  strip.scrollTo({ left: strip.scrollLeft + (at.left - box.left) - (box.width - at.width) / 2, behavior: 'auto' });
+ });
+ revealActive();
 })();

@@ -206,10 +206,11 @@ def navigation():
     # Nothing about the collection shows before login (#66).
     counts = navigation_counts() if LoginManager.is_authenticated() else {}
     from flask import current_app
-    # Gear, Books and Catalogs show once the collection holds one, and on their own page while it is open even when empty (#171, Q3 a).
-    for title,kind in [('Gear','G'),('Books','B'),('Catalogs','C')]:
+    # Gear, Books and Catalogs show once the collection holds one, and on their own page while it is open even when empty (#171, Q3 a),
+    # each with its own icon (#153).
+    for title,kind,icon in [('Gear','G','gear'),('Books','B','book'),('Catalogs','C','catalog')]:
         if counts.get(title) or current == title:
-            groups[0][1].append((title,'web.bw_collection','parts',(),{'kind':kind}))
+            groups[0][1].append((title,'web.bw_collection',icon,(),{'kind':kind}))
     result = []
     for group, definitions in groups:
         links = _links(definitions)

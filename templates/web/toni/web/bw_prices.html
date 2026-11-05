@@ -1,7 +1,6 @@
 {% extends 'web/toni/base.html' %}
 {% from 'web/toni/brickwork/collection_modules.html' import list_controls with context %}
 {% block title %} · {{ title }}{% endblock %}
-{% block breadcrumb_row %}{% endblock %}
 {% block page_assets %}<link rel="stylesheet" href="{{ bw_static('web/toni/bw-collection.css') }}"><link rel="stylesheet" href="{{ bw_static('web/toni/bw-planning.css') }}"><script src="{{ bw_static('web/toni/bw-prices.js') }}" defer></script>{% endblock %}
 {# The rows are not rendered here. bw-prices.js loads the compact records once, shows 15 rows per page, and loads a row's observations when its Details opens. #}
 {% block main %}

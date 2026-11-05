@@ -2,7 +2,6 @@
 {% from 'web/toni/brickwork/collection_modules.html' import list_controls with context %}
 {% set title = 'Part Picker' if mode == 'picker' else 'Matcher' %}
 {% block title %} · {{ title }}{% endblock %}
-{% block breadcrumb_row %}{% endblock %}
 
 {% block page_assets %}<link rel="stylesheet" href="{{ bw_static('web/toni/bw-collection.css') }}"><link rel="stylesheet" href="{{ bw_static('web/toni/bw-workbench.css') }}"><script src="{{ bw_static('web/toni/size-search.js') }}" defer></script><script src="{{ bw_static('web/toni/bw-workbench.js') }}" defer></script>{% endblock %}
 {% macro picture(row) %}<div class="bw-picture" data-item-no="{{ row.item_no }}">{% if row.image %}<img {{ bw_picture_attrs(row.image) }} alt="{{ row.name or row.item_no }}{% if row.color_name %} · {{ row.color_name }}{% endif %}" loading="lazy">{% else %}<span class="mono">{{ row.item_no }}</span><span>No image</span>{% endif %}</div>{% endmacro %}

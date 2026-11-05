@@ -1,7 +1,6 @@
 {% extends 'web/toni/base.html' %}
 {% from 'web/toni/brickwork/collection_modules.html' import identity,status,list_controls,list_options with context %}
 {% block title %} · {{ title }}{% endblock %}
-{% block breadcrumb_row %}{% endblock %}
 {% block page_assets %}<script src="{{ bw_static('web/toni/bw-wishlists.js') }}" defer></script><link rel="stylesheet" href="{{ bw_static('web/toni/bw-wishlists.css') }}"><link rel="stylesheet" href="{{ bw_static('web/toni/bw-collection.css') }}"><link rel="stylesheet" href="{{ bw_static('web/toni/bw-planning.css') }}"><script src="{{ bw_static('web/toni/size-search.js') }}" defer></script><script src="{{ bw_static('web/toni/bw-collection.js') }}" defer></script><script src="{{ bw_static('web/toni/bw-options-menu.js') }}" defer></script><script src="{{ bw_static('web/toni/bw-planning.js') }}" defer></script>{% endblock %}
 {% macro amount(value,currency='') %}{{ toni_money(value,currency,fixed=true) }}{% endmacro %}
 {% block main %}

@@ -21,8 +21,9 @@ on:
 permissions:
   contents: read
 
+# One release at a time: releases share the alias tags (latest, X, X.Y), so a slow older build must not overwrite a newer one.
 concurrency:
-  group: release-${{ inputs.tag || github.ref_name }}
+  group: release
   cancel-in-progress: false
 
 env:
@@ -36,8 +37,14 @@ jobs:
       tag: ${{ steps.read.outputs.tag }}
       version: ${{ steps.read.outputs.version }}
       tags: ${{ steps.read.outputs.tags }}
+      revision: ${{ steps.read.outputs.revision }}
       publish: ${{ steps.read.outputs.publish }}
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
       - name: Read the release tag
         id: read
         # The tag and the variable go through the environment, never into the script text (script injection).
@@ -52,15 +59,20 @@ jobs:
           fi
           major=${BASH_REMATCH[1]} minor=${BASH_REMATCH[2]} suffix=${BASH_REMATCH[4]}
           version=${TAG#v}
-          if [[ -n "$suffix" ]]; then
-            tags="$version"                                   # a pre-release gets only its own tag
-          else
-            tags="$version $major.$minor $major latest"
+          revision=$(git rev-list -n 1 "refs/tags/$TAG")    # the tagged commit, also for a rebuild run from main
+          # An alias moves only to the highest stable release it covers, so a rebuild of an older release never moves it back.
+          stable=$(git tag -l 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sed 's/^v//' | sort -V || true)
+          highest() { printf '%s\n' "$stable" | grep -E "^$1" | tail -n 1; }
+          tags="$version"                                     # a pre-release gets only its own tag
+          if [[ -z "$suffix" ]]; then
+            [[ "$(highest "$major\.$minor\.")" == "$version" ]] && tags="$tags $major.$minor"
+            [[ "$(highest "$major\.")" == "$version" ]] && tags="$tags $major"
+            [[ "$(highest '')" == "$version" ]] && tags="$tags latest"
           fi
           publish=false
           if [[ "$PUBLISH" == true ]]; then publish=true; fi
           {
-            echo "tag=$TAG"; echo "version=$version"; echo "tags=$tags"; echo "publish=$publish"
+            echo "tag=$TAG"; echo "version=$version"; echo "tags=$tags"; echo "revision=$revision"; echo "publish=$publish"
           } >> "$GITHUB_OUTPUT"
           echo "Release $TAG: image tags [$tags], publish=$publish"
 
@@ -136,7 +148,7 @@ jobs:
           labels: |
             org.opencontainers.image.source=https://github.com/Ulef1005/brick-work
             org.opencontainers.image.version=${{ needs.version.outputs.version }}
-            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.revision=${{ needs.version.outputs.revision }}
       - name: Keep the digest
         if: needs.version.outputs.publish == 'true'
         env:

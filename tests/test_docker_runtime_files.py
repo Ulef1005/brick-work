@@ -143,17 +143,36 @@ def test_release_workflow_publishes_only_on_the_maintainers_switch():
     assert jobs['publish']['permissions'] == {'contents': 'read', 'packages': 'write', 'id-token': 'write', 'attestations': 'write'}
 
 
-@pytest.mark.parametrize('tag,tags', [('v0.9.0', '0.9.0 0.9 0 latest'), ('v1.2.3', '1.2.3 1.2 1 latest'), ('v1.0.0-rc.1', '1.0.0-rc.1')])
+RELEASE_TAGS = ['v0.8.1', 'v0.9.0', 'v0.9.1', 'v1.0.0-rc.1']
+
+
+@pytest.mark.parametrize('tag,tags', [
+    ('v0.9.1', '0.9.1 0.9 0 latest'),          # the highest stable release moves every alias
+    ('v0.9.0', '0.9.0'),                        # a rebuild of an older one moves none (Codex review)
+    ('v0.8.1', '0.8.1 0.8'),                    # the highest of its X.Y line, not of 0 or overall
+    ('v1.0.0-rc.1', '1.0.0-rc.1'),              # a pre-release gets only its own tag
+])
 def test_release_workflow_tags(tag, tags, tmp_path):
-    """The tag step's own bash: X.Y.Z, X.Y, X and latest for a release; only its own tag for a pre-release; anything else fails."""
-    import subprocess
+    """The tag step's own bash, in a repository holding RELEASE_TAGS: aliases only to the highest stable release they cover, the
+    tagged commit as the revision, and anything that is not a release tag refused."""
     script = next(s for s in yaml.safe_load((ROOT / '.github/workflows/release.yml').read_text())['jobs']['version']['steps'] if s.get('id') == 'read')['run']
+    repo = tmp_path / 'repo'
+    vcs = lambda *a: subprocess.run(['git', '-C', str(repo), *a], check=True, capture_output=True, text=True).stdout.strip()
+    repo.mkdir()
+    vcs('init', '-q')
+    revisions = {}
+    for t in RELEASE_TAGS:
+        vcs('-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-q', '--allow-empty', '-m', t)
+        vcs('tag', t)
+        revisions[t] = vcs('rev-parse', 'HEAD')
     out = tmp_path / 'out'
-    run = lambda t, p='': subprocess.run(['bash', '-c', script], env={'TAG': t, 'PUBLISH': p, 'GITHUB_OUTPUT': str(out), 'PATH': '/usr/bin:/bin'},
-                                         capture_output=True, text=True)
-    assert run(tag).returncode == 0
+    run = lambda t, p='': subprocess.run(['bash', '-c', script], cwd=repo, capture_output=True, text=True,
+                                         env={'TAG': t, 'PUBLISH': p, 'GITHUB_OUTPUT': str(out), 'PATH': '/usr/bin:/bin:/usr/local/bin:/opt/homebrew/bin'})
+    result = run(tag)
+    assert result.returncode == 0, result.stderr
     lines = dict(line.split('=', 1) for line in out.read_text().splitlines())
     assert lines['tags'] == tags and lines['publish'] == 'false' and lines['version'] == tag[1:]
+    assert lines['revision'] == revisions[tag]
     out.unlink()
     assert run(tag, 'true').returncode == 0 and 'publish=true' in out.read_text()
     for bad in ('main', 'v0.9', 'v0.9.0; rm -rf /', '0.9.0'):

@@ -2,8 +2,12 @@ services:
   brickwork:
     container_name: brickwork
     restart: unless-stopped
+    # `docker compose pull` fetches the published image below (amd64 and arm64).
+    # `docker compose build` builds the same name from this source instead;
+    # `docker compose pull` brings the published image back.
+    # The tag is this release's version: a checkout of tag vX.Y.Z runs image X.Y.Z.
+    image: ghcr.io/ulef1005/brick-work:0.9.0
     build: .
-    image: brickwork:local
     # The image runs as uid 1000; to use another user, set user: and make ./data writable for it.
     # user: "1000:1000"
     ports:

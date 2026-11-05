@@ -109,21 +109,21 @@ Nothing until you add keys. With your own keys it calls BrickLink, Rebrickable a
 
 ## Standalone installation with Docker
 
-> **`main` is the Brick Work 4.0 development line and is not installable yet.** It opens only a 4.0 collection (with `catalogue.db` beside it), most screens answer 503 until they are moved over, and API v1 answers 410. For a working install use the released line: `git clone --branch release/0.5 …` below.
-
 With Git and Docker Compose installed:
 
 ```sh
-git clone --branch release/0.5 https://github.com/Ulef1005/brick-work.git
+git clone --branch v0.9.0 https://github.com/Ulef1005/brick-work.git
 cd brick-work
 mkdir -p data
 sudo chown 1000:1000 data   # the container runs as uid 1000; as root, leave out sudo
 cp .env.sample data/.env
 # Edit data/.env: set BW_AUTHENTICATION_PASSWORD (or BW_ALLOW_NO_LOGIN=1 on a single trusted computer).
-docker compose build
+docker compose pull
 docker compose run --rm --entrypoint brickwork brickwork setup
 docker compose up -d
 ```
+
+The clone is still needed: it holds `compose.yaml` and `.env.sample`. The published image `ghcr.io/ulef1005/brick-work` is multi-arch (amd64 and arm64). To build it from source instead, run `docker compose build` in place of `docker compose pull`. To check the image's provenance, run `gh attestation verify oci://ghcr.io/ulef1005/brick-work:0.9.0 --owner Ulef1005`.
 
 Then open `http://localhost:3333` and sign in with that password; an empty install greets you with **Download the catalogue** (no key needed); after it, add a set by number and check its parts. The container runs as uid 1000 and writes only to `data/`; if an older image (which ran as root) created that folder, run `sudo chown -R 1000:1000 data` once. The `data` volume holds the database, local catalogue index, photos, PDFs and job state. Back it up together with your environment configuration. No separate application or service is required. The offline smoke test covers a fresh installation without source credentials.
 
@@ -198,16 +198,16 @@ Read tools are available by default. `--allow-write` enables write tools only wh
 
 ## Upgrade
 
-Back up first (next section), then check out the new release, rebuild and restart:
+Back up first (next section), then check out the new release, pull its image and restart:
 
 ```sh
 git fetch
 git checkout v0.9.0          # the release's tag
-docker compose build
+docker compose pull
 docker compose up -d
 ```
 
-A schema change inside 4.x (4.0 to 4.1 in 0.7.0, 4.1 to 4.2 in 0.9.0) runs in place at the first read-write start, one step per version. It is one-way: an older version cannot open the upgraded file, so going back means restoring the backup, checking out the older tag and rebuilding the image before you start it. A 0.5.x (schema 3.3) collection is not upgraded by starting 0.6.0 or later: run `brickwork migrate4` on a copy first; the 3.3 file is never changed. To check the result, open `/api/v2/health` (it shows the app version and the schema) and run `brickwork check`. The steps for every version are in [Upgrade Brick Work](docs/how-to/upgrade.md); `CHANGELOG.md` names any step a release needs. The upgrade from a 0.5.0-shaped collection through every schema step is tested in `tests/test_upgrade_path.py`, which `scripts/check.sh` runs.
+A schema change inside 4.x (4.0 to 4.1 in 0.7.0, 4.1 to 4.2 in 0.9.0) runs in place at the first read-write start, one step per version. It is one-way: an older version cannot open the upgraded file, so going back means restoring the backup, checking out the older tag and, for 0.8.x or older (no published image), rebuilding with `docker compose build` before you start it; from 0.9.0 on, `docker compose pull`. A 0.5.x (schema 3.3) collection is not upgraded by starting 0.6.0 or later: run `brickwork migrate4` on a copy first; the 3.3 file is never changed. To check the result, open `/api/v2/health` (it shows the app version and the schema) and run `brickwork check`. The steps for every version are in [Upgrade Brick Work](docs/how-to/upgrade.md); `CHANGELOG.md` names any step a release needs. The upgrade from a 0.5.0-shaped collection through every schema step is tested in `tests/test_upgrade_path.py`, which `scripts/check.sh` runs.
 
 ## Backup and restore
 

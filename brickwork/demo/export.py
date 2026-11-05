@@ -7,6 +7,7 @@ Prices records and their details) is saved beside them. A small script (shim.js)
 every page, answers those reads from the saved files and every write with "not saved".
 """
 from contextlib import closing
+import hashlib
 import html
 import json
 import os
@@ -16,24 +17,32 @@ import tempfile
 from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlsplit
 
-from . import checks, dataset
+from . import checks, clock, dataset, showcase
 from .privacy import pattern
 
 ROOT = Path(__file__).resolve().parents[2]
 NOTE = 'Demo with sample data: changes are not saved'
-SEEDS = ['/collection/sets', '/collection/M', '/collection/P',
-         '/workbench/check-parts', '/workbench/part-picker', '/workbench/part-to-inventory',
-         '/planning/wishlist', '/planning/prices', '/planning/complete-sets', '/workbench/storage']
+SEEDS = ['/collection/sets', '/collection/M', '/collection/P', '/collection/G', '/collection/B', '/collection/C', '/collection/purchase-places',
+         '/workbench/check-parts', '/workbench/part-picker', '/workbench/part-to-inventory', '/workbench/match', '/workbench/orders',
+         '/workbench/what-is-this', '/workbench/storage',
+         '/planning/wishlist', '/planning/prices', '/planning/complete-sets',
+         '/manage/add', '/manage/tools', '/manage/statistics', '/manage/sync', '/manage/catalogues', '/manage/tokens', '/manage/jobs',
+         '/manage/refresh', '/manage/appearance', '/manage/history', '/manage/values']
 # Routes the crawl may follow from a seed (the agreed demo routes and their own sub-pages).
 FOLLOW = [re.compile(p) for p in (
-    r'^/collection/(sets|M|P)$',
+    r'^/collection/(sets|M|P|G|B|C|purchase-places)$',
     r'^/collection/item/[1-9][0-9]*(\?colour=[0-9]+)?$',
+    r'^/collection/wishes/wish-[A-Za-z0-9._%-]+$',
     r'^/workbench/check-parts(/[0-9a-f-]{36}(\?run=1)?)?$',
-    r'^/workbench/(part-picker|part-to-inventory)$',
+    r'^/workbench/(part-picker|part-to-inventory|match|what-is-this)$',
+    r'^/workbench/orders(/[1-9][0-9]*)?$',
     r'^/planning/(wishlist|prices|complete-sets)$',
     r'^/workbench/storage(/[^/?]+)?$',
+    r'^/manage/(add|tools|statistics|sync|catalogues|tokens|jobs|refresh|appearance|history|values)$',
 )]
-LIMIT = 120
+LIMIT = 3000   # a safety stop, never a silent cut: reaching it raises (the whole demo is about 1,300 pages)
+HOST_PATH = re.compile(r'/var/folders|/private/var|/private/tmp|/tmp/|/home/[a-z]|/Users/[A-Za-z]|\btmp[a-z0-9_]{8}\b')
+NEUTRAL_ROOT = '/srv/brick-work'   # what the pages that print the store and media paths show instead of the build's scratch folder
 ATTRIBUTE = re.compile(r'(\s(?:href|src|action|poster|content|data-[\w-]+)=")([^"]*)(")')
 # Links a visitor may follow (the app's catalogue links); nothing outside is ever loaded (src).
 LINKS_OK = re.compile(r'^https://(github\.com/Ulef1005/brick-work|ulef1005\.github\.io/brick-work/\Z|(www\.)?bricklink\.com/|brickset\.com/|rebrickable\.com/)')
@@ -53,7 +62,10 @@ def file_of(key):
     path, _, query = key.partition('?')
     folder = path.strip('/')
     if query:
-        folder += '/_' + re.sub(r'[^A-Za-z0-9._-]', '-', query.replace('=', '-').replace('&', '_'))
+        name = re.sub(r'[^A-Za-z0-9._-]', '-', query.replace('=', '-').replace('&', '_'))
+        if len(name) > 100:   # a long query (the Part Picker with every incomplete copy ticked) would not fit a file name
+            name = name[:40] + '-' + hashlib.sha1(query.encode()).hexdigest()[:16]
+        folder += '/_' + name
     return (folder + '/' if folder else '') + 'index.html'
 
 
@@ -83,6 +95,9 @@ def crawl(client, base, seeds):
             found = key_of(value, base)
             if found and found not in pages and any(p.match(found) for p in FOLLOW):
                 queue.append(found)
+    left = sorted({k for k in queue if k not in pages and k not in skipped})
+    if left:
+        raise RuntimeError(f'demo crawl reached its limit of {LIMIT} pages with {len(left)} still to visit, for example {left[0]}: raise LIMIT or narrow FOLLOW')
     return pages, skipped
 
 
@@ -123,12 +138,15 @@ def reads(client, base):
 
 
 def item_pages(store):
-    """The item pages the lists link to from rows their script builds: every owned set, and one part in one colour it is held in."""
+    """The item pages the lists link to from rows their script builds: every owned set, one item of each other kind that is held loose
+    (a few figures, gear, books, catalogs), and some parts in one colour each."""
     from ..core.connect import connect
     with closing(connect(store, read_only=True)) as db:
         sets = ['/collection/item/%d' % r[0] for r in db.execute('SELECT DISTINCT item_id FROM copy WHERE archived_at IS NULL ORDER BY item_id')]
-        part = db.execute("SELECT item_id, color_id FROM stock WHERE kind='part' AND archived_at IS NULL ORDER BY item_id, color_id LIMIT 1").fetchone()
-    return sets + (['/collection/item/%d?colour=%d' % tuple(part)] if part else [])
+        other = ['/collection/item/%d' % r[0] for kind, limit in (('minifigure', 6), ('gear', 5), ('book', 4), ('catalog', 3))
+                 for r in db.execute('SELECT DISTINCT item_id FROM stock WHERE kind=? AND archived_at IS NULL ORDER BY item_id LIMIT ?', (kind, limit))]
+        parts = db.execute("SELECT item_id, color_id FROM stock WHERE kind='part' AND archived_at IS NULL ORDER BY item_id, color_id LIMIT 4").fetchall()
+    return sets + other + ['/collection/item/%d?colour=%d' % tuple(part) for part in parts]
 
 
 def render(client, base, data, store):
@@ -141,6 +159,15 @@ def render(client, base, data, store):
     return pages, skipped, saved
 
 
+def pictures_of(store):
+    """{picture id: PNG bytes} of the demo world's pictures (its own illustrations, design/demo-art/): the pages ask for /manage/images/<id>?w=...,
+    and a static site answers every query with the one file, `<id>.png` (shim.js maps the URLs the pages' scripts build)."""
+    from ..core.connect import connect
+    root = Path(store).resolve().parent
+    with closing(connect(store, read_only=True)) as db:
+        return {r[0]: (root / r[1]).read_bytes() for r in db.execute('SELECT id, local_path FROM picture ORDER BY id') if (root / r[1]).is_file()}
+
+
 def rewrite(text, base, pages):
     def attribute(match):
         start, value, end = match.groups()
@@ -149,25 +176,52 @@ def rewrite(text, base, pages):
         key = key_of(value, base)
         if key is None or key.startswith('/static/') or '/static/' in value:
             return match.group(0)
+        picture = re.match(r'^/manage/images/([0-9]+)', key)
+        if picture:                                     # one .png per picture, whatever width the page asks for; the pages' own image base ends in 0
+            return match.group(0) if picture[1] == '0' else start + base + 'manage/images/' + picture[1] + '.png' + end
         if key in pages:
             return start + base + file_of(key).removesuffix('index.html') + end
         if start.strip().startswith('data-'):
             return match.group(0)  # endpoint templates; the shim answers them at run time
         return start + '#demo-not-included' + end
     text = ATTRIBUTE.sub(attribute, text)
+    # srcset lists one URL per width; the demo has the one file
+    text = re.sub(r'(\ssrcset=")([^"]*)(")', lambda m: m.group(1) + re.sub(r'(/manage/images/[1-9][0-9]*)\?w=[0-9]+', r'\1.png', m.group(2)) + m.group(3), text)
     text = re.sub(r'<link rel="manifest"[^>]*>', '', text)  # the demo is not an installable app
     shim = f'<script src="{base}demo-shim.js"></script>'
     return re.sub(r'<head([^>]*)>', lambda m: m.group(0) + shim, text, count=1)
 
 
+def neutral(text, hidden, version):
+    """A page or reply with the build's scratch folder shown as NEUTRAL_ROOT and the asset cache-buster made content-derived (the same in every build)."""
+    for folder in hidden:
+        text = text.replace(folder, NEUTRAL_ROOT)
+    return re.sub(r'(\.(?:css|js|png|svg|ico|woff2?))\?v=[0-9]+', lambda m: m.group(1) + '?v=' + version, text)
+
+
+def static_version(folder):
+    digest = hashlib.sha1()
+    for path in sorted(p for p in Path(folder).rglob('*') if p.is_file() and not any(part.startswith('.') or part == '__pycache__' for part in p.relative_to(folder).parts)):
+        digest.update(str(path.relative_to(folder)).encode() + b'\0' + path.read_bytes())
+    return digest.hexdigest()[:12]
+
+
+TEXT = ('.html', '.json', '.js', '.css', '.svg', '.webmanifest', '.txt')
+
+
 def check(out):
-    """Private patterns and outside URLs in src/href attributes; returns the findings."""
+    """Private patterns, host paths and outside URLs; returns the findings. Every text file of the export is scanned for private and host-path patterns
+    (pages, saved replies, the shim, the app's scripts and styles); src/href attributes are checked in the pages and the shim."""
     findings, private = [], pattern()
-    for path in sorted(out.rglob('*.html')) + [out / 'demo-shim.js']:
-        text = path.read_text(encoding='utf-8')
+    for path in sorted(p for p in out.rglob('*') if p.is_file() and p.suffix in TEXT):
+        text = path.read_text(encoding='utf-8', errors='replace')
         for number, line in enumerate(text.splitlines(), 1):
             if private.search(line):
                 findings.append(f'{path.relative_to(out)}:{number}: private pattern')
+            if HOST_PATH.search(line):
+                findings.append(f'{path.relative_to(out)}:{number}: host path')
+    for path in sorted(out.rglob('*.html')) + [out / 'demo-shim.js']:
+        text = path.read_text(encoding='utf-8')
         for url in re.findall(r'\ssrc="(https?://[^"]+)"', text):
             findings.append(f'{path.relative_to(out)}: loads from outside {url}')
         for url in re.findall(r'\shref="(https?://[^"]+)"', text):
@@ -176,8 +230,9 @@ def check(out):
     return findings
 
 
-def export(out, base='/brick-work/demo/', data=dataset.DATA):
-    """Build the demo into `out` (which must not exist). Returns the manifest; raises on findings."""
+def export(out, base='/brick-work/demo/', data=dataset.DATA, rich=True):
+    """Build the demo into `out` (which must not exist). Returns the manifest; raises on findings. `rich` adds the showcase layer
+    (showcase.py) to the design test data's world; the screen gate renders the world without it."""
     out = Path(out)
     if out.exists():
         raise FileExistsError(out)
@@ -185,13 +240,21 @@ def export(out, base='/brick-work/demo/', data=dataset.DATA):
         raise ValueError('base must start and end with /')
     with tempfile.TemporaryDirectory() as scratch:
         store = Path(scratch) / 'brickwork.db'
-        counts = dataset.build(store, data)
-        counts['checks'] = checks.stage(store)
+        hidden = sorted({str(scratch), str(Path(scratch).resolve()), os.path.realpath(scratch)}, key=len, reverse=True)
+        counts = dataset.build(store, data, showcase.layer(data) if rich else None)
         saved_env = {k: os.environ.get(k) for k in ('BW_DB_PATH', 'BW_EMBEDDED_WORKER', 'BW_ALLOW_NO_LOGIN', 'BW_AUTHENTICATION_PASSWORD')}
+        patched = []
         try:
             client = make_app(store).test_client()
+            for key in SEEDS + item_pages(store)[:6]:   # every module a page imports lazily is imported before the clock stops
+                client.get(key, base_url='http://demo.invalid' + base.rstrip('/'))
+            patched = clock.freeze_clock()              # prices go stale after a week and pages show relative dates: the demo's "now" is fixed
+            counts['checks'] = checks.stage(store, showcase.CHECKS if rich else None)
             pages, skipped, saved = render(client, base, data, store)
+            images = pictures_of(store)
+            counts['pictures'] = len(images)
         finally:
+            clock.thaw_clock(patched)
             for k, v in saved_env.items():
                 if v is None:
                     os.environ.pop(k, None)
@@ -199,16 +262,21 @@ def export(out, base='/brick-work/demo/', data=dataset.DATA):
                     os.environ[k] = v
     out.mkdir(parents=True)
     shutil.copytree(ROOT / 'static', out / 'static')
+    version = static_version(out / 'static')
+    (out / 'manage' / 'images').mkdir(parents=True)
+    for identifier, content in images.items():
+        (out / 'manage' / 'images' / f'{identifier}.png').write_bytes(content)
     for key, text in pages.items():
         target = out / file_of(key)
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(rewrite(text, base, pages), encoding='utf-8')
+        target.write_text(neutral(rewrite(text, base, pages), hidden, version), encoding='utf-8')
     gets = {}
     for index, (key, text) in enumerate(sorted(saved.items())):
         name = f'data/{index:04d}.json'
         (out / name).parent.mkdir(parents=True, exist_ok=True)
-        (out / name).write_text(text, encoding='utf-8')
+        (out / name).write_text(neutral(text, hidden, version), encoding='utf-8')
         gets[key] = name
+    counts['crawl_limit'] = LIMIT
     manifest = dict(base=base, note=NOTE, pages={k: file_of(k).removesuffix('index.html') for k in sorted(pages)},
                     gets=gets, skipped=skipped, counts=counts)
     shim = (Path(__file__).with_name('shim.js').read_text(encoding='utf-8')

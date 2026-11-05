@@ -33,7 +33,7 @@
     const bar = document.createElement('p');
     bar.id = 'bw-demo-banner';
     bar.style.cssText = 'margin:0;padding:8px 16px;background:#E8E2D6;color:#1A1816;font:500 13px/18px Inter,system-ui,sans-serif;text-align:center';
-    bar.append('Demo with sample data · changes are not saved · ');
+    bar.append('Demo with sample data · changes are not saved · Pictures are placeholder drawings; a real install loads them from BrickLink and Rebrickable · ');
     const link = document.createElement('a');
     link.href = 'https://github.com/Ulef1005/brick-work'; link.textContent = 'Brick Work on GitHub'; link.style.color = 'inherit';
     bar.append(link);
@@ -87,6 +87,29 @@
     else toast(method === 'get' ? 'Not part of the demo' : demo.note);
   }, true);
 
+  // Pictures: a page's script builds /manage/images/<id>?w=... from the page's image base; the demo keeps one <id>.png per picture.
+  const pngOf = value => {
+    const found = /^(.*\/manage\/images\/[1-9][0-9]*)(?:\?.*)?$/.exec(String(value));
+    return found ? found[1] + '.png' : value;
+  };
+  const srcProperty = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src');
+  Object.defineProperty(HTMLImageElement.prototype, 'src', {configurable: true, enumerable: true, get: srcProperty.get, set(value) { srcProperty.set.call(this, pngOf(value)); }});
+  const pngSet = value => String(value).replace(/(\/manage\/images\/[1-9][0-9]*)\?w=[0-9]+/g, '$1.png');
+  const srcsetProperty = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'srcset');
+  Object.defineProperty(HTMLImageElement.prototype, 'srcset', {configurable: true, enumerable: true, get: srcsetProperty.get, set(value) { srcsetProperty.set.call(this, pngSet(value)); }});
+  const setAttribute = Element.prototype.setAttribute;
+  Element.prototype.setAttribute = function (name, value) {
+    if (this instanceof HTMLImageElement && name === 'src') value = pngOf(value);
+    if (this instanceof HTMLImageElement && name === 'srcset') value = pngSet(value);
+    return setAttribute.call(this, name, value);
+  };
+  // An <img> a script wrote as HTML starts loading before any setter runs: when it fails, it is tried as the .png.
+  document.addEventListener('error', event => {
+    const image = event.target;
+    if (!(image instanceof HTMLImageElement)) return;
+    if (image.hasAttribute('srcset') && pngSet(image.getAttribute('srcset')) !== image.getAttribute('srcset')) image.srcset = image.getAttribute('srcset');
+    if (pngOf(image.getAttribute('src')) !== image.getAttribute('src')) image.src = image.getAttribute('src');
+  }, true);
   // No service worker: a static demo must not cache itself as the app.
   if (navigator.serviceWorker) {
     navigator.serviceWorker.register = () => Promise.resolve({unregister: () => Promise.resolve(true)});

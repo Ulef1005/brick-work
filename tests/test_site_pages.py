@@ -176,7 +176,7 @@ def test_desktop_screenshots_are_only_kept_for_other_pages(site):
         '3a-matcher-phone-390', '1d-set-detail-phone-390',
     ]),
 ])
-def test_design_kit_frame_placements(site, page, stems):
+def test_built_screen_placements(site, page, stems):
     elements = Elements((site / page).read_text()).elements
     images = [Path(attrs['src']).name for tag, attrs in elements
               if tag == 'img' and '/img/' in attrs.get('src', '')]
@@ -185,7 +185,8 @@ def test_design_kit_frame_placements(site, page, stems):
     assert images == [f'{stem}-light.png' for stem in stems]
     assert sources == [f'{stem}-dark.png' for stem in stems]
     if page == 'index.html':
-        assert 'Planned · design preview, not built yet' in (site / page).read_text()
+        text = (site / page).read_text()
+        assert 'Available · the built screen' in text and 'design preview' not in text and 'not built yet</span>' not in text
 
 
 def test_no_unreferenced_screenshots_are_shipped(site):
@@ -199,6 +200,11 @@ def test_no_unreferenced_screenshots_are_shipped(site):
     assert {p.name for p in (site / 'assets/img').glob('*')} == referenced
 
 
+def picture_scale(name):
+    """Phone captures are drawn at twice the pixels (scripts/site_shots.py), so their width and height attributes are half the file's."""
+    return 2 if '-phone-' in name or '-390-' in name else 1
+
+
 def test_images_are_local_small_and_dimensioned(site):
     for png in (ROOT / 'scripts/site/img').glob('*.png'):
         assert png.stat().st_size < 300_000, png.name
@@ -207,14 +213,16 @@ def test_images_are_local_small_and_dimensioned(site):
         for tag, attrs in Elements(text).elements:
             if tag == 'source' and '/img/' in attrs.get('srcset', ''):
                 dimensions = struct.unpack('>II', local_target(site, site / name, attrs['srcset']).read_bytes()[16:24])
-                assert dimensions == (int(attrs['width']), int(attrs['height']))
+                scale = picture_scale(attrs['srcset'])
+                assert dimensions == (scale * int(attrs['width']), scale * int(attrs['height']))
             if tag != 'img':
                 continue
             assert attrs.get('loading') == 'lazy' and attrs.get('decoding') == 'async'
             assert int(attrs['width']) > 0 and int(attrs['height']) > 0
             if attrs['src'].endswith('.png'):
                 dimensions = struct.unpack('>II', local_target(site, site / name, attrs['src']).read_bytes()[16:24])
-                assert dimensions == (int(attrs['width']), int(attrs['height']))
+                scale = picture_scale(attrs['src'])
+                assert dimensions == (scale * int(attrs['width']), scale * int(attrs['height']))
         assert '<picture>' in text or '<picture ' in text
         assert 'media="(prefers-color-scheme: dark)"' in text
         assert 'style=' not in text and '{{' not in text and '<sc-' not in text
@@ -324,3 +332,40 @@ for (const blocked of [false, true]) {
 }
 '''
     subprocess.run(['node', '-e', harness], cwd=ROOT, check=True, capture_output=True, text=True)
+
+
+def test_every_image_the_readme_and_the_pages_show_exists_and_is_a_built_capture():
+    """The pictures are captures of the built app (scripts/site_shots.py), not design frames: every one the README and the pages name is
+    in site_shots.PICTURES, so a design-project mock-up cannot come back unnoticed."""
+    sys_path = str(ROOT / 'scripts')
+    import sys
+    sys.path.insert(0, sys_path)
+    try:
+        import site_shots
+    finally:
+        sys.path.remove(sys_path)
+    stems = set(site_shots.PICTURES)
+    shown = set()
+    for source in ('README.md', 'scripts/site/landing.html', 'scripts/site/use-cases.md', 'scripts/site/workflows.md'):
+        text = (ROOT / source).read_text()
+        for name in re.findall(r'(?:src|srcset)="[^"]*?/img/(?:readme/)?([^"/]+\.png)"', text):
+            shown.add(name)
+            target = ROOT / ('docs/img/readme' if source == 'README.md' else 'scripts/site/img') / name
+            assert target.is_file(), f'{source}: {name} is missing'
+            assert re.sub(r'-(light|dark)\.png$', '', name) in stems, f'{source}: {name} is not a capture of the built app'
+    assert len(shown) >= 34
+
+
+NOTE = re.compile(r'placeholder drawings.*?BrickLink and Rebrickable', re.S)
+
+
+def test_the_placeholder_picture_note_is_on_the_readme_the_landing_page_and_the_demo_banner(site):
+    """The demo's pictures are original placeholder drawings; a real install loads its pictures from BrickLink and Rebrickable (core/pictures.py, no key
+    needed for those two sources). The README, the landing page and the demo's banner all say so."""
+    readme = (ROOT / 'README.md').read_text()
+    top = readme.split('<!-- /site:skip -->')[0]
+    assert NOTE.search(top.split('</picture>')[-1]), 'the README says it right under the screenshots, inside the block GitHub shows'
+    assert NOTE.search((site / 'index.html').read_text())
+    shim = (site / 'demo' / 'demo-shim.js').read_text()
+    banner = shim.split('// The banner:', 1)[1].split('const realFetch', 1)[0]
+    assert NOTE.search(banner)

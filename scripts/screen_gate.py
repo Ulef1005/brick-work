@@ -25,6 +25,7 @@ import threading
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
+from brickwork.demo.clock import FIXED_NOW, FrozenDatetime, freeze_clock, thaw_clock  # noqa: E402,F401  (the demo dataset's own "now")
 STATES = ROOT / 'design' / 'screens' / 'states.json'
 MANIFEST = ROOT / 'design' / 'screens' / 'manifest.json'
 BASELINES = ROOT / 'design' / 'screens' / 'approval' / 'baselines'
@@ -32,7 +33,6 @@ DIFFS = ROOT / 'build' / 'screen-diffs'
 WIDTHS = (1440, 1024, 390)
 THEMES = ('light', 'dark')
 MAX_HEIGHT = 1600   # CSS px: a longer page is clipped to its first 1600 px (keeps the baselines small; a state may set its own `max`)
-FIXED_NOW = dt.datetime(2026, 10, 12, 8, 0, 0, tzinfo=dt.timezone.utc)   # the demo dataset's own "now" (brickwork/demo/dataset.py)
 TOLERANCE = {'channel': 3, 'pixels': 0.0005}   # a pixel differs when a channel is off by more than 3/255; a capture differs when more than 0.05 % do
 
 
@@ -56,33 +56,6 @@ def label(entry: dict) -> str:
 
 
 # ---------- the app on the invented world ----------
-
-class FrozenDatetime(dt.datetime):
-    @classmethod
-    def now(cls, tz=None):
-        return FIXED_NOW.astimezone(tz) if tz else FIXED_NOW.replace(tzinfo=None)
-
-    @classmethod
-    def utcnow(cls):
-        return FIXED_NOW.replace(tzinfo=None)
-
-
-def freeze_clock() -> list:
-    """The app's clock stands at FIXED_NOW: every brickwork module that imported `datetime` gets the frozen class. Returns the modules
-    patched, for `thaw_clock` (the gate also runs inside the test suite's process, which must get the real clock back)."""
-    import brickwork  # noqa: F401
-    patched = []
-    for name, module in list(sys.modules.items()):
-        if name.startswith('brickwork') and getattr(module, 'datetime', None) is dt.datetime:
-            module.datetime = FrozenDatetime
-            patched.append(module)
-    return patched
-
-
-def thaw_clock(patched: list) -> None:
-    for module in patched:
-        module.datetime = dt.datetime
-
 
 @contextmanager
 def world_folder():
@@ -110,16 +83,16 @@ def world_folder():
 
 @contextmanager
 def world(name: str, warm_up: list[str] = ()):
-    """Serve the invented world `name` on 127.0.0.1; yields its base URL. The `warm_up` paths are requested once before the clock is frozen,
+    """Serve the invented world `name` on 127.0.0.1 ('demo', the gate's; 'showcase', the same plus the richer layer of the exported demo and the site's pictures); yields its base URL. The `warm_up` paths are requested once before the clock is frozen,
     so that every module a page imports lazily has been imported by then."""
-    from brickwork.demo import checks, dataset
+    from brickwork.demo import checks, dataset, showcase
     saved = {k: os.environ.get(k) for k in ('BW_DB_PATH', 'BW_EMBEDDED_WORKER', 'BW_ALLOW_NO_LOGIN', 'BW_AUTHENTICATION_PASSWORD')}
     with world_folder() as scratch:
-        if name != 'demo':
+        if name not in ('demo', 'showcase'):
             raise ValueError(f'unknown world {name}')
         store = Path(scratch) / 'brickwork.db'
-        dataset.build(store)
-        checks.stage(store)
+        dataset.build(store, layer=showcase.layer() if name == 'showcase' else None)
+        checks.stage(store, showcase.CHECKS if name == 'showcase' else None)
         from brickwork.demo.export import make_app
         app = make_app(store)
         client = app.test_client()

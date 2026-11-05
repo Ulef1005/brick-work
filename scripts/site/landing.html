@@ -3,7 +3,7 @@
 <div class="layout-2">
 <div class="layout-3">
 <span class="layout-4">Self-hosted · open source · MIT</span>
-<span class="layout-5">Pre-1.0</span>
+<span class="layout-5">0.9.0 · first stability release</span>
 </div>
 <h1 class="layout-6">Finish the sets you started.</h1>
 <p class="layout-7">Brick Work is the workbench for your brick collection. Check a set's parts, pull the missing ones from loose stock, and see which unfinished sets that stock can complete.</p>
@@ -12,7 +12,7 @@
 <a class="layout-10" href="#install">Install</a>
 <a class="layout-11" href="https://github.com/Ulef1005/brick-work">View on GitHub</a>
 </div>
-<p class="layout-12">The demo runs the real interface on an invented collection; nothing is saved. Pre-1.0, used daily by its maintainer on about 200 set copies.</p>
+<p class="layout-12">The demo runs the real interface on an invented collection; nothing is saved. Release 0.9.0 is the first stability release; its maintainer uses it daily on about 200 set copies.</p>
 </div>
 <div class="layout-13">
 <picture class="layout-14"><source media="(prefers-color-scheme: dark)" srcset="assets/img/1c-sets-desktop-1440-dark.png" width="1442" height="1022"><img alt="Brick Work on desktop: set overview" decoding="async" loading="lazy" src="assets/img/1c-sets-desktop-1440-light.png" width="1442" height="1022"></picture><picture class="layout-15"><source media="(prefers-color-scheme: dark)" srcset="assets/img/3a-matcher-phone-390-dark.png" width="392" height="879"><img alt="Brick Work on phone: Matcher" decoding="async" loading="lazy" src="assets/img/3a-matcher-phone-390-light.png" width="392" height="879"></picture>
@@ -221,18 +221,18 @@
 </div>
 <div class="layout-71">
 <div class="layout-72">
-<div class="layout-73"><span class="layout-74">Available</span><h3 class="layout-75">Move over from another app</h3><p class="layout-76">Run <code class="layout-77">brickwork migrate</code> on your old tracker. It imports read-only and shows row-count and checksum proof. The old database is never changed.</p></div>
+<div class="layout-73"><span class="layout-74">Available</span><h3 class="layout-75">Move over from another app</h3><p class="layout-76">Import your old BrickTracker database from Tools &amp; Admin or with <code class="layout-77">brickwork import-bricktracker</code>. It reads the old database read-only, shows a preview first and can be undone as one step. The old database is never changed.</p></div>
 <div class="layout-73"><span class="layout-74">Available</span><h3 class="layout-75">Work alongside BrickLink</h3><p class="layout-76">Import orders from your account, a confirmation email or the order XML. Export the missing parts of any copy as BrickLink XML for your next order.</p></div>
-<div class="layout-73"><span class="layout-78">Planned</span><h3 class="layout-75">Sync your existing collection</h3><p class="layout-76">Pull your collection from Rebrickable, Brickset or BrickLink, work on it here, then send the changes back. Pull never deletes; send always shows the changes first.</p></div>
+<div class="layout-73"><span class="layout-74">Available</span><h3 class="layout-75">Sync your existing collection</h3><p class="layout-76">Pull your collection from Rebrickable or Brickset, work on it here, then send the changes back. Pull never deletes; send always shows the changes first. Sync with BrickLink is planned.</p></div>
 </div>
 <div class="sync-preview"><span class="layout-78">Planned · design preview, not built yet</span><div class="sync-preview-crop"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/img/12n-sources-phone-390-dark.png" width="391" height="1914"><img src="assets/img/12n-sources-phone-390-light.png" alt="Collection sync, design preview" loading="lazy" decoding="async" width="391" height="1914"></picture></div></div>
 </div>
 <div class="layout-81">
 <div class="layout-82"><span>Service</span><span>Catalogue</span><span>Orders</span><span>Sync</span></div>
 <div class="layout-83"><span class="layout-84">BrickLink</span><span class="layout-74">Available</span><span class="layout-74">Available</span><span class="layout-78">Planned</span></div>
-<div class="layout-83"><span class="layout-84">Rebrickable</span><span class="layout-74">Available</span><span class="layout-85">—</span><span class="layout-78">Planned</span></div>
-<div class="layout-86"><span class="layout-84">Brickset</span><span class="layout-74">Available</span><span class="layout-85">—</span><span class="layout-78">Planned</span></div>
-<p class="layout-87">Catalogue data and prices use your own API keys. Brick Work is not affiliated with these services.</p>
+<div class="layout-83"><span class="layout-84">Rebrickable</span><span class="layout-74">Available</span><span class="layout-85">—</span><span class="layout-74">Available</span></div>
+<div class="layout-86"><span class="layout-84">Brickset</span><span class="layout-74">Available</span><span class="layout-85">—</span><span class="layout-74">Available</span></div>
+<p class="layout-87">The catalogue comes from Rebrickable's public download and needs no key; prices and sync use your own API keys. Brick Work is not affiliated with these services.</p>
 </div>
 </section>
 <section class="how-it-compares layout-16">
@@ -290,19 +290,20 @@
 <div class="layout-103"><h3 class="layout-24">I do not run servers.</h3><p class="layout-76">The demo needs no install. To keep your own, you need a computer at home or a NAS, and one Docker Compose path.</p></div>
 <div class="layout-103"><h3 class="layout-24">Is it safe to let an assistant into my data?</h3><p class="layout-76">Tokens are read-only by default. Write tools stay off unless you enable them, scopes limit what a token can do, and every change has an Undo link.</p></div>
 <div class="layout-103"><h3 class="layout-24">What if the project disappears?</h3><p class="layout-76">It is open source under MIT. Your data is a plain database file in one folder, plus exports.</p></div>
-<div class="layout-103"><h3 class="layout-24">Does it replace Rebrickable or BrickLink?</h3><p class="layout-76">No. It uses your own keys for catalogue data and prices, and bundles none of their data.</p></div>
-<div class="layout-103"><h3 class="layout-24">Is it finished?</h3><p class="layout-76">No. It is pre-1.0 and used daily by its maintainer on about 200 set copies. Planned work is labelled planned on the roadmap.</p></div>
+<div class="layout-103"><h3 class="layout-24">Does it replace Rebrickable or BrickLink?</h3><p class="layout-76">No. The catalogue comes from Rebrickable's public download, your own keys add prices and sync, and it bundles none of their data.</p></div>
+<div class="layout-103"><h3 class="layout-24">Is it finished?</h3><p class="layout-76">Not yet. Release 0.9.0 is the first stability release, with a stable schema, tested upgrades from 0.5.x and a published container image. Version 1.0.0 follows when milestone B passes. Its maintainer uses it daily on about 200 set copies. Planned work is labelled planned on the roadmap.</p></div>
 </div>
 </section>
 <section class="install layout-104" id="install">
 <div class="layout-18">
-<h2 class="layout-105">Start in five commands</h2>
-<p class="layout-21">Docker Compose on your own machine. Then open <code class="layout-106">http://localhost:3333</code>. Moving an old collection over? <code class="layout-106">brickwork migrate</code> imports it read-only.</p>
+<h2 class="layout-105">Start from the published image</h2>
+<p class="layout-21">Docker Compose on your own machine. Then open <code class="layout-106">http://localhost:3333</code>. Moving an old collection over? <code class="layout-106">brickwork import-bricktracker</code> imports it read-only.</p>
 <a class="layout-107" href="docs/">Full install guide</a>
 </div>
-<pre class="layout-108">mkdir -p data &amp;&amp; sudo chown 1000:1000 data
+<pre class="layout-108">git clone --branch v0.9.0 https://github.com/Ulef1005/brick-work.git &amp;&amp; cd brick-work
+mkdir -p data &amp;&amp; sudo chown 1000:1000 data
 cp .env.sample data/.env   <span class="layout-61"># set BW_AUTHENTICATION_PASSWORD</span>
-docker compose build
+docker compose pull
 docker compose run --rm --entrypoint brickwork brickwork setup
 docker compose up -d</pre>
 </section>

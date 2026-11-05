@@ -36,16 +36,16 @@
 
 **Finish the sets you started.** Brick Work is a self-hosted web app for your brick collection. Check a set's parts, pull the missing ones from your loose stock, and see which unfinished sets that stock can complete. Every app does inventory; Brick Work also helps at the table.
 
-Sets, minifigures, parts, instructions, boxes, storage, prices, wishlist and orders live in one place. The browser, API, CLI and MCP server share one core and one database file, `brickwork.db`; catalogue identities come from BrickLink, and source imports enrich them without inventing new ones. Open source, MIT.
+Sets, minifigures, parts, instructions, boxes, storage, prices, wishlist and orders live in one place. The browser, API, CLI and MCP server share one core and one database file, `brickwork.db`; every item has a Brick Work id, and the catalogue is built from Rebrickable's public download into a second file, `catalogue.db`, beside the collection. BrickLink, Rebrickable and Brickset numbers are links to those items, and BrickLink's item lists are an optional addition. Open source, MIT.
 
 **[Try the demo](https://ulef1005.github.io/brick-work/demo/)**: the real interface on an invented collection, in your browser. Nothing is saved.
 
 ## Where we stand
 
-Brick Work is pre-1.0. Its maintainer uses it daily for a collection of about 200 set copies, but the schema and the API can still change between minor versions; read the [CHANGELOG](CHANGELOG.md) before upgrading.
+Release 0.9.0 (5 November 2026, schema 4.2) is the first stability release: a stable schema with tested upgrades from 0.5.x, and a published multi-arch container image on GHCR. Version 1.0.0 follows when the gate of milestone B (#96) passes. Its maintainer uses Brick Work daily for a collection of about 200 set copies. Read the [CHANGELOG](CHANGELOG.md) before upgrading.
 
-- **Shipped:** the Collection, Workbench (Check Set Parts, Part Picker, Matcher, Orders), Planning and Manage screens; an installable web app; a versioned REST API with scoped tokens and Undo; an admin CLI; an MCP server; a read-only importer for an older tracker database; collection sync of owned and wanted sets with Rebrickable and Brickset.
-- **Planned, not built:** Buildable sets, sync with BrickLink (#143), a pile check by photo, a sale price for a used copy, complete-or-part-out for minifigures and sets, and one shopping list for missing parts. The order is kept in the [GitHub milestones](https://github.com/Ulef1005/brick-work/milestones) and the issues' priority labels (`now`, `next`, `later`); there are no dates.
+- **Shipped:** the Collection (sets, minifigures, parts, gear, books and catalogs), Workbench (Check Set Parts, Part Picker, Matcher, Orders), Planning and Manage screens; **Get started**, a guided first run; an installable web app; a versioned REST API with scoped tokens and Undo; an admin CLI; an MCP server; orders from your BrickLink account, a confirmation e-mail or the order XML; optional BrickLink item lists; a read-only importer for an older tracker database; collection sync of owned and wanted sets with Rebrickable and Brickset.
+- **Planned, not built:** Buildable sets, sync with BrickLink (#143, open), a pile check by photo, a sale price for a used copy, complete-or-part-out for minifigures and sets, and one shopping list for missing parts. The order is kept in the [GitHub milestones](https://github.com/Ulef1005/brick-work/milestones) and the issues' priority labels (`now`, `next`, `later`); there are no dates.
 
 It is self-hosted, single-user and meant for a home network or a VPN, not the open internet.
 
@@ -85,7 +85,7 @@ More on the [use cases page](https://ulef1005.github.io/brick-work/use-cases/).
 ## Why collectors stay
 
 - **One place instead of five tools.** Several copies of a set stay apart, so you never buy one twice.
-- **Your data stays yours.** Self-hosted in one folder you back up; no account, no telemetry. Everything that needs no catalogue key works offline.
+- **Your data stays yours.** Self-hosted in one folder you back up; no account, no telemetry. Everything that needs no source key works offline once the catalogue is loaded.
 - **Every change can be undone.** Each write records an event with an Undo link, including changes from the API or an assistant.
 - **Installable on any screen.** Add it to the Home Screen from the browser; no app store. Installing needs HTTPS.
 - **Prices in your currency.** The BrickLink price guide with your region and currency, through your own key.
@@ -93,19 +93,19 @@ More on the [use cases page](https://ulef1005.github.io/brick-work/use-cases/).
 
 ## Works with the sites you already use
 
-Brick Work uses your own keys for catalogue data and prices and bundles none of their data. It works next to BrickLink, Rebrickable and Brickset, not instead of them.
+The catalogue comes from Rebrickable's public download and needs no key; your own keys add prices, part lists for newer sets, BrickLink orders and sync. Brick Work bundles none of their data. It works next to BrickLink, Rebrickable and Brickset, not instead of them.
 
 | Service | Catalogue | Orders | Sync |
 |---|---|---|---|
 | BrickLink | Available | Available | Planned |
-| Rebrickable | Available | none | Planned |
-| Brickset | Available | none | Planned |
+| Rebrickable | Available | none | Available |
+| Brickset | Available | none | Available |
 
 Brick Work is not affiliated with these services. Compared with the sites and tools you may know: Rebrickable and Brickset are where the catalogue and the market live, Brick Work is where your own copies, parts and drawers live; [BrickTracker](https://gitea.baerentsen.space/FrederikBaerentsen/BrickTracker) is the self-hosted tracker Brick Work grew from; BrickStore, BrickEconomy and phone scanners do different jobs and sit well alongside.
 
 ## What it contacts
 
-Nothing until you add keys. With your own keys it calls BrickLink, Rebrickable and Brickset for catalogue data, inventories, pictures and prices; photo identification sends the photo you choose to Brickognize. There is no telemetry and no account with this project.
+Nothing until you ask. **Download the catalogue** fetches Rebrickable's public files and needs no key. With your own keys it calls BrickLink, Rebrickable and Brickset for inventories, pictures and prices; photo identification sends the photo you choose to Brickognize. There is no telemetry and no account with this project.
 
 ## Standalone installation with Docker
 
@@ -146,15 +146,21 @@ Failed logins and failed API token checks back off per client address: after `BW
 
 ## Catalogue, keys and jobs
 
-Load your BrickLink catalogue XML files from `data/bricklink-catalog-src/` through **Tools & Admin → Catalogues & keys** or:
+The catalogue comes from Rebrickable's public download and needs no key. On an empty install, **Get started** (or **Download the catalogue** on the empty Sets page) fetches it, builds `catalogue.db` beside `brickwork.db` and switches it on; it takes about a minute. Later, **Tools & Admin → Catalogue** shows what it holds and can **Re-download** or **Rebuild** it. The commands are the same under the app's name:
 
 ```sh
-docker compose exec brickwork brickwork catalogue import bricklink --from data/bricklink-catalog-src
+docker compose exec brickwork brickwork catalogue status
 ```
 
-The resulting `bricklink-catalog.db` sits beside `brickwork.db`. Adding a new identity requires this catalogue. Collection reads, part checks, manual prices, storage changes and order imports from email/XML work without source keys.
+BrickLink's item lists are optional. They confirm BrickLink numbers and help match order e-mails; they add no item by themselves. Put BrickLink's catalogue XML files in a folder under `data/bricklink-lists/`, then press **Load lists** under **Tools & Admin → BrickLink item lists** or run:
 
-Enter BrickLink, Rebrickable and Brickset keys in **Catalogues & keys**. Stored keys are encrypted with Fernet. With no `BW_SECRET_KEY`, Brick Work makes a key on first use and keeps it in `data/secret.key` (back it up with `brickwork.db`). To use your own, generate a key once, put it in `data/.env` as `BW_SECRET_KEY`, and retain it securely; it always wins:
+```sh
+docker compose exec brickwork brickwork catalogue import bricklink --from data/bricklink-lists/FOLDER
+```
+
+Collection reads, part checks, manual prices, storage changes and order imports from email/XML work without source keys.
+
+Keys are optional. Enter BrickLink, Rebrickable and Brickset keys in **Catalogues & keys** (or in the second step of **Get started**). Stored keys are encrypted with Fernet. With no `BW_SECRET_KEY`, Brick Work makes a key on first use and keeps it in `data/secret.key` (back it up with `brickwork.db`). To use your own, generate a key once, put it in `data/.env` as `BW_SECRET_KEY`, and retain it securely; it always wins:
 
 ```sh
 docker compose run --rm --entrypoint python brickwork -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'
@@ -260,7 +266,7 @@ This GitHub repository is the canonical source: changes land here first. The mai
 
 MIT; see [LICENSE](LICENSE), which keeps the upstream copyright notice, and [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md) for fonts and icons.
 
-LEGO® is a trademark of the LEGO Group of companies, which does not sponsor, authorize or endorse this project. Brick Work bundles no catalogue data or images from BrickLink, Rebrickable or Brickset; each install uses its owner's keys.
+LEGO® is a trademark of the LEGO Group of companies, which does not sponsor, authorize or endorse this project. Brick Work bundles no catalogue data or images from BrickLink, Rebrickable or Brickset; each install downloads Rebrickable's public files itself and uses its owner's keys for the rest.
 
 ## Acknowledgements
 

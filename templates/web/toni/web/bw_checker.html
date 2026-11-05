@@ -1,7 +1,6 @@
 {% extends 'web/toni/base.html' %}
 {% from 'web/toni/brickwork/collection_modules.html' import list_controls with context %}
 {% block title %} · {{ 'Check figure parts' if state and state.figure else 'Check Set Parts' }}{% endblock %}
-{% block breadcrumb_row %}{% endblock %}
 
 {% block page_assets %}
 <link rel="stylesheet" href="{{ bw_static('web/toni/bw-collection.css') }}">

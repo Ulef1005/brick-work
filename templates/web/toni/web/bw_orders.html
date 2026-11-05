@@ -1,7 +1,7 @@
 {% extends 'web/toni/base.html' %}
 {% from 'web/toni/web/bw_ledger_macros.html' import toolbar, identity, history as render_history with context %}
 {% from 'web/toni/web/bw_first_run.html' import needs_key %}
-{% block breadcrumb_row %}{% endblock %}{% block content_class %}orders-page{% endblock %}
+{% block content_class %}orders-page{% endblock %}
 {% block title %} · Orders{% endblock %}
 {% block page_assets %}<link rel="stylesheet" href="{{ bw_static('web/toni/bw-workbench.css') }}"><link rel="stylesheet" href="{{ bw_static('web/toni/bw-ledger.css') }}"><script src="{{ bw_static('web/toni/bw-ledger.js') }}" defer></script><link rel="stylesheet" href="{{ bw_static('web/toni/bw-orders.css') }}"><script src="{{ bw_static('web/toni/bw-orders.js') }}" defer></script>{% endblock %}
 {% block main %}<div id="bw-ledger" class="bw-orders" data-page-size="15" data-url="{{ url_for('web.bw_orders_action',action='ACTION') }}" data-csrf="{{ csrf_token }}" data-search-url="{{ url_for('web.bw_add_search') }}">

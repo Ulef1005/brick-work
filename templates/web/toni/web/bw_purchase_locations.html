@@ -1,5 +1,5 @@
 {% extends 'web/toni/base.html' %}
-{% block title %} · Purchase locations{% endblock %}{% block breadcrumb_row %}{% endblock %}{% block content_class %}storage-page{% endblock %}
+{% block title %} · Purchase locations{% endblock %}{% block content_class %}storage-page{% endblock %}
 {% block page_assets %}<link rel="stylesheet" href="{{ bw_static('web/toni/bw-workbench.css') }}"><link rel="stylesheet" href="{{ bw_static('web/toni/bw-ledger.css') }}"><link rel="stylesheet" href="{{ bw_static('web/toni/bw-storage.css') }}"><script src="{{ bw_static('web/toni/bw-ledger.js') }}" defer></script><script src="{{ bw_static('web/toni/bw-places.js') }}" defer></script>{% endblock %}
 {% block main %}<div id="bw-ledger" class="bw-places" data-url="{{ url_for('web.bw_storage_action',action='ACTION') }}" data-csrf="{{ csrf_token }}"><p data-message role="status" hidden></p>
 <div class="pl-page"><div><h1>Purchase locations</h1><p class="pl-lead">Where things came from. Used on orders and copies.</p></div>

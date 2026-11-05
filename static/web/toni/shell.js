@@ -66,7 +66,9 @@
    const opener = openers.get(dialog);
    opener?.setAttribute('aria-expanded', 'false');
    if (handoffs.has(dialog)) handoffs.delete(dialog);
-   else restoreFocus(focusTargets.get(dialog) || opener);
+   // The close event fires after close(): if this or another dialog is open again by then (Escape, then Enter at once), focus is already
+   // where it belongs, so the stale close must not pull it back to the opener.
+   else if (!document.querySelector('dialog[open]')) restoreFocus(focusTargets.get(dialog) || opener);
   });
   dialog.querySelectorAll('[data-close]').forEach(button => button.addEventListener('click', () => dialog.close()));
  });

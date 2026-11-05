@@ -16,6 +16,7 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
  socket.addEventListener('message',event=>{const data=JSON.parse(event.data);if(pending.has(data.id)){const {resolve,reject}=pending.get(data.id);pending.delete(data.id);data.error?reject(data.error):resolve(data.result);}});
  const call=(method,params={})=>new Promise((resolve,reject)=>{const n=++id;pending.set(n,{resolve,reject});socket.send(JSON.stringify({id:n,method,params}));});
  const evaluate=async expression=>{const result=await call('Runtime.evaluate',{expression,returnByValue:true});assert.ok(!result.exceptionDetails,JSON.stringify(result.exceptionDetails));return result.result.value;};
+ const settled=async expression=>{for(let i=0;i<40;i++){if(await evaluate(expression)===true)return true;await delay(50);}return evaluate(expression);};   // focus moves after the event is handled: wait up to 2 s, never longer
  await call('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:false});
  await call('Page.navigate',{url:'file://'+path.join(dir,'shell.html')});
  for(let i=0;i<100;i++){if(await evaluate("document.readyState==='complete' && !!document.querySelector('.mobile-bottom')"))break;await delay(20);}
@@ -40,15 +41,15 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
    const point=await evaluate(`(()=>{const r=document.querySelectorAll('[data-nav-group]')[${group}].getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+20};})()`);
    await call('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[point]});
    await call('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
-   assert.equal(await evaluate(`document.activeElement===document.querySelectorAll('[data-nav-sheet]')[${group}]`),true);
+   assert.equal(await settled(`document.activeElement===document.querySelectorAll('[data-nav-sheet]')[${group}]`),true);
    assert.equal(await evaluate("getComputedStyle(document.activeElement).outlineStyle"),'none');
    for (const key of ['Enter',' ']) {
     await call('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape'});
     await call('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape'});
-    assert.equal(await evaluate(`document.activeElement===document.querySelectorAll('[data-nav-group]')[${group}]`),true);
+    assert.equal(await settled(`document.activeElement===document.querySelectorAll('[data-nav-group]')[${group}]`),true);
     await call('Input.dispatchKeyEvent',{type:'keyDown',key,code:key===' '?'Space':'Enter'});
     await call('Input.dispatchKeyEvent',{type:'keyUp',key,code:key===' '?'Space':'Enter'});
-    assert.equal(await evaluate(`document.activeElement===document.querySelectorAll('[data-nav-sheet]')[${group}].querySelector('.workbench-grid a, .workbench-grid button')`),true);
+    assert.equal(await settled(`document.activeElement===document.querySelectorAll('[data-nav-sheet]')[${group}].querySelector('.workbench-grid a, .workbench-grid button')`),true);
     const failures=await evaluate(`(()=>{
      const sheet=document.querySelectorAll('[data-nav-sheet]')[${group}];sheet.getAnimations().forEach(a=>a.finish());
      const grid=sheet.querySelector('.workbench-grid'),failures=[];

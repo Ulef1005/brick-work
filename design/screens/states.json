@@ -357,7 +357,7 @@
    "world": "demo",
    "path": "/planning/wishlist",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "42-Prices",

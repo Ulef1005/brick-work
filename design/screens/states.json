@@ -498,7 +498,7 @@
    "world": "demo",
    "path": "/manage/catalogues",
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "55-Api-tokens",

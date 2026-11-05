@@ -2,16 +2,17 @@
 
     node scripts/capture_screens.cjs CHROME JOBS.json
 
-JOBS.json is {"headers": {...optional, e.g. Cookie}, "jobs": [{"url", "out", "width", "height"?, "theme": "light"|"dark",
+JOBS.json is {"headers": {...optional, e.g. Cookie}, "deterministic"?: true, "now"?: ISO time, "jobs": [{"url", "out", "width", "height"?, "theme": "light"|"dark",
 "wait"?: CSS selector, "script"?: JS run before the capture (open a sheet, tick a box), "max"?: px, default 3000}]}.
-The theme is the system preference (the app's default mode). A page is captured whole with the viewport grown to its height (fixed
+"deterministic" (the screenshot gate, scripts/screen_gate.py) turns animations and transitions off, hides the caret, asks for reduced motion and, with "now",
+fixes the page's clock (Date) at that instant. The theme is the system preference (the app's default mode). A page is captured whole with the viewport grown to its height (fixed
 bars at its foot), clipped to its first `max` px; with a sheet open (`dialog[open]`) one viewport is captured, as the device shows it. */
 const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),{spawn}=require('node:child_process');
 const [chrome,jobsFile]=process.argv.slice(2);
 if(!chrome||!jobsFile){console.error('usage: node scripts/capture_screens.cjs CHROME JOBS.json');process.exit(2);}
-const {headers={},jobs}=JSON.parse(fs.readFileSync(jobsFile,'utf8'));
+const {headers={},jobs,deterministic=false,now=null}=JSON.parse(fs.readFileSync(jobsFile,'utf8'));
 const profile=fs.mkdtempSync(path.join(os.tmpdir(),'bw-capture-'));
-const child=spawn(chrome,['--headless','--disable-background-networking','--hide-scrollbars','--remote-debugging-port=0','--user-data-dir='+profile,'about:blank'],{stdio:['ignore','ignore','pipe']});
+const child=spawn(chrome,[...(process.env.BW_CHROME_NO_SANDBOX?['--no-sandbox']:[]),'--headless','--disable-background-networking','--hide-scrollbars','--remote-debugging-port=0','--user-data-dir='+profile,'about:blank'],{stdio:['ignore','ignore','pipe']});
 let launchErrors='';child.stderr.on('data',data=>launchErrors+=data.toString());
 const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 (async()=>{
@@ -27,10 +28,17 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
  const evaluate=async expression=>{const r=await call('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});if(r.exceptionDetails)throw new Error(JSON.stringify(r.exceptionDetails));return r.result.value;};
  await call('Page.enable');await call('Network.enable');
  if(Object.keys(headers).length)await call('Network.setExtraHTTPHeaders',{headers});
+ if(deterministic){
+  const fixed=now?Date.parse(now):null;
+  const clock=fixed===null?'':'const T='+fixed+',R=Date;class D extends R{constructor(...a){a.length?super(...a):super(T);}static now(){return T;}}globalThis.Date=D;';
+  await call('Page.addScriptToEvaluateOnNewDocument',{source:'(()=>{'+clock+
+   "const style=()=>{const s=document.createElement('style');s.textContent='*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important;scroll-behavior:auto!important}';(document.head||document.documentElement).appendChild(s);};"+
+   "if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',style);else style();})()"});
+ }
  for(const job of jobs){
   const width=job.width,height=job.height||(width<600?844:width<1100?1024:900),max=job.max||3000;
   await call('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:width<600?2:1,mobile:width<600});
-  await call('Emulation.setEmulatedMedia',{features:[{name:'prefers-color-scheme',value:job.theme==='dark'?'dark':'light'}]});
+  await call('Emulation.setEmulatedMedia',{features:[{name:'prefers-color-scheme',value:job.theme==='dark'?'dark':'light'},...(deterministic?[{name:'prefers-reduced-motion',value:'reduce'}]:[])]});
   await call('Page.navigate',{url:job.url});
   for(let i=0;i<200;i++){if(await evaluate(`document.readyState==='complete'${job.wait?` && !!document.querySelector(${JSON.stringify(job.wait)})`:''}`))break;await delay(50);}
   await evaluate("document.fonts?document.fonts.ready.then(()=>true):true");

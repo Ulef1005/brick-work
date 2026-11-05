@@ -2,7 +2,7 @@
 const fs=require('node:fs'),path=require('node:path'),{spawn}=require('node:child_process'),assert=require('node:assert/strict');
 const [chrome,dir]=process.argv.slice(2);
 const profile=path.join(dir,'profile');
-const child=spawn(chrome,['--headless','--disable-background-networking','--remote-debugging-port=0','--user-data-dir='+profile,'about:blank'],{stdio:['ignore','ignore','pipe']});
+const child=spawn(chrome,[...(process.env.BW_CHROME_NO_SANDBOX?['--no-sandbox']:[]),'--headless','--disable-background-networking','--hide-scrollbars','--remote-debugging-port=0','--user-data-dir='+profile,'about:blank'],{stdio:['ignore','ignore','pipe']});
 let launchErrors='';child.stderr.on('data',data=>launchErrors+=data.toString());
 let socket;
 const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
@@ -17,7 +17,7 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
  socket.addEventListener('message',event=>{const data=JSON.parse(event.data);if(pending.has(data.id)){const {resolve,reject}=pending.get(data.id);pending.delete(data.id);data.error?reject(data.error):resolve(data.result);}});
  const call=(method,params={})=>new Promise((resolve,reject)=>{const n=++id;pending.set(n,{resolve,reject});socket.send(JSON.stringify({id:n,method,params}));});
  const evaluate=async expression=>{const result=await call('Runtime.evaluate',{expression,returnByValue:true});assert.ok(!result.exceptionDetails,JSON.stringify(result.exceptionDetails));return result.result.value;};
- for(const screen of ['complete-sets','prices']){
+ for(const screen of ['complete-sets']){   // Prices builds its rows in the browser since #24 (4b): its names are covered by toni_bw_prices_runtime.cjs and the screenshot gate
   for(const width of [360,390,1024]){
    await call('Emulation.setDeviceMetricsOverride',{width,height:900,deviceScaleFactor:1,mobile:false});
    await call('Page.navigate',{url:'file://'+path.join(dir,screen+'.html')});
@@ -52,8 +52,7 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
      return {errors,rows:rows.length,numbers:document.querySelectorAll('.bp-repair-numbers').length,names:names.length};
     })()`);
     assert.ok(measured.rows>0,screen+' missing rows');
-    if(screen==='complete-sets')assert.ok(measured.numbers>0,'missing repair numbers');
-    else assert.equal(measured.names,2);
+    assert.ok(measured.numbers>0,'missing repair numbers');
     assert.deepEqual(measured.errors,[],screen+' '+width+' details '+open);
    }
   }

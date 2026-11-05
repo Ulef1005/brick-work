@@ -7,6 +7,8 @@ from urllib.parse import urlencode
 
 import pytest
 
+from tests import rendered
+
 from brickwork.api2 import operations
 from brickwork.core import secrets as secret_store
 from tests.api2 import CONTRACT, OPERATION_BY_ID, PREFIX, add_files, call, stored_token, v2, validate  # noqa: F401
@@ -252,8 +254,7 @@ def test_the_web_scripts_and_the_api_filter_with_the_same_fixtures():
     import subprocess
     from pathlib import Path
     from brickwork.core.listing import filter_rows
-    if shutil.which('node') is None:
-        pytest.skip('node is not installed')
+    rendered.need_node()
     root = Path(__file__).resolve().parents[1]
     fixture = json.loads((root / 'tests/fixtures/bw_filter_rows.json').read_text())
     script = ("const fs=require('fs'),vm=require('vm');global.window={BrickFormatting:{nowrapTail:()=>{}}};global.document={querySelector:()=>null,"

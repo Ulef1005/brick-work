@@ -35,6 +35,14 @@ APP_VENV=.venv bash scripts/check.sh
 
 Enable the commit hooks once per clone: `git config core.hooksPath .githooks`. The `commit-msg` hook blocks a commit that changes app source (`brickwork/`, `templates/`, `static/`, `app.py`, `wsgi.py`, `bin/`, `entrypoint.sh`) without a change to the user docs (`docs/index.md`, `docs/tutorials/`, `docs/how-to/`, `docs/concepts/`, `docs/reference/`), unless the message ends with a `Docs: none, <reason>` trailer. The `post-commit` hook re-checks the finished commit as a whole and warns, which covers `--amend` and `--no-verify`. `scripts/check.sh` reports the same for every commit in the range it checks.
 
+### Rendered tests
+
+Tests that run JavaScript or draw a page need Node.js and Chrome, and they never skip silently: a missing tool **fails** the test. `scripts/check.sh` finds Chrome through `scripts/chrome.py`: the `CHROME` environment variable if set, else the pinned Chrome for Testing in `~/.cache/brickwork/chrome/<version>/` (downloaded on first use, about 150 to 200 MB, checked by version and SHA-256; Linux x86-64 and macOS on Apple silicon), else a system Chrome or Chromium. Set `BW_CHROME_CACHE` to move the cache; set `CHROME` to a binary on other platforms. No npm packages are involved.
+
+Without a network or a browser you can run `BW_SKIP_RENDERED=1 APP_VENV=.venv bash scripts/check.sh`: the rendered tests are then skipped, and the summary ends with a "Skipped rendered tests" list naming each one. CI never sets it.
+
+The screenshot gate (`tests/test_screen_gate.py`) compares the app with approved baseline captures; see `design/DESIGN-CHECK.md`. When you change a screen on purpose, regenerate its candidates with `python scripts/screen_gate.py capture <NN-Screen>` and say so in the pull request; the maintainer approves baselines.
+
 For a running app, follow the Docker steps in the [README](README.md).
 
 ## Pull requests

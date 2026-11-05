@@ -11,6 +11,8 @@ import shutil
 from bs4 import BeautifulSoup
 import pytest
 
+from tests import rendered
+
 from brickwork.core import workbench as w
 from tests.app4 import app4, client, coll, csrf, pair, post, read, world  # noqa: F401 (fixtures)
 
@@ -179,6 +181,5 @@ def test_the_login_guard_covers_the_workbench(app4):
 
 
 def test_workbench_browser_runtime():
-    if not shutil.which('node'):
-        pytest.skip('node is not installed')
+    rendered.need_node()
     subprocess.run(['node', str(Path(__file__).with_name('toni_bw_workbench_runtime.cjs'))], check=True, capture_output=True, text=True)

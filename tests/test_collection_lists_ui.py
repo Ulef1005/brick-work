@@ -7,6 +7,8 @@ import subprocess
 from bs4 import BeautifulSoup
 import pytest
 
+from tests import rendered
+
 from brickwork.core import collection
 from brickwork.core.list_records import FIELDS, payload
 from tests.app4 import world, coll, pair, read, app4, client  # noqa: F401  (fixtures)
@@ -146,9 +148,7 @@ def test_an_unidentified_item_sits_on_its_own_kinds_screen_marked_unidentified(w
 def test_lot_filter_matches_between_the_api_filter_and_the_list_script():
     """One rule for lot: any, null and a specific id behave the same in listing.filter_rows and bw-collection.js."""
     from brickwork.core.listing import filter_rows
-    node = shutil.which('node')
-    if not node:
-        pytest.skip('node not installed')
+    node = rendered.need_node()
     rows = [{'number': 'a', 'lot': ['null']}, {'number': 'b', 'lot': ['lot-1']}, {'number': 'c', 'lot': ['null', 'lot-2']}, {'number': 'd'}]
     script = (
         "const fs=require('node:fs'),vm=require('node:vm');const window={};"
@@ -184,8 +184,6 @@ def test_set_card_sources_and_markup_contract():
 
 
 def test_lists_runtime_harness():
-    node = shutil.which('node')
-    if not node:
-        pytest.skip('node not installed')
+    node = rendered.need_node()
     done = subprocess.run([node, str(ROOT / 'tests/toni_bw_collection_lists_runtime.cjs')], check=True, capture_output=True, text=True, cwd=ROOT)
     assert 'lists runtime ok' in done.stdout

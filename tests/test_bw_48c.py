@@ -12,6 +12,8 @@ from pathlib import Path
 from bs4 import BeautifulSoup
 import pytest
 
+from tests import rendered
+
 from brickwork.core import workbench as w
 from tests.app4 import app4, client, coll, csrf, pair, post, read, world  # noqa: F401 (fixtures)
 
@@ -175,8 +177,7 @@ def test_take_statement_count_does_not_grow_with_unused_sources(world, coll, car
 
 
 def test_take_runtime_harness():
-    if not shutil.which('node'):
-        pytest.skip('node is not installed')
+    rendered.need_node()
     subprocess.run(['node', str(Path(__file__).with_name('toni_bw_take_runtime.cjs'))], check=True, capture_output=True, text=True)
 
 

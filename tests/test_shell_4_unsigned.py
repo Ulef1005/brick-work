@@ -11,6 +11,8 @@ from pathlib import Path
 from bs4 import BeautifulSoup
 import pytest
 
+from tests import rendered
+
 from brickwork.web.formatting import difference, money, nowrap_tail, ratio
 from tests.app4 import RICH, app4, client, coll, make_pair, read, world
 
@@ -84,8 +86,7 @@ def test_guard_preserves_identifiers(text, forbidden):
 
 
 def test_inventory_text_runtime():
-    if not shutil.which('node'):
-        pytest.skip('Node is unavailable')
+    rendered.need_node()
     subprocess.run(['node', str(Path(__file__).with_name('toni_bw_inventory_runtime.cjs'))], check=True)
 
 
@@ -131,6 +132,5 @@ def test_dimension_names(coll, client, name, expected):
 
 
 def test_collection_runtime():
-    if not shutil.which('node'):
-        pytest.skip('Node is unavailable')
+    rendered.need_node()
     subprocess.run(['node', str(Path(__file__).with_name('toni_bw_collection_runtime.cjs'))], check=True)

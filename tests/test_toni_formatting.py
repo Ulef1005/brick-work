@@ -6,6 +6,8 @@ import subprocess
 
 import pytest
 
+from tests import rendered
+
 from brickwork.web.formatting import (
     money, short_date, source_label, source_line, missing_counts, watch_scale,
     nowrap_tail, ratio,
@@ -119,8 +121,7 @@ def test_ratio_invalid_and_unsigned_values(value, expected):
 
 
 def test_name_tail_bundles_runtime():
-    if not shutil.which('node'):
-        pytest.skip('Node is unavailable')
+    rendered.need_node()
     subprocess.run(['node', str(Path(__file__).with_name('toni_formatting_runtime.cjs'))],
                    check=True)
 

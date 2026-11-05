@@ -1,6 +1,20 @@
-# Design audit: screens for approval
+# Captures of the built app
 
-Captures from the test instance of the app, for approval on the tracking issues. Each file is named `<frame>-<view>-<device>-<width>-<theme>.png`, the same pattern as `design/frames/`. Long pages are clipped to their first 3,000 px.
+Two kinds of captures of the running app, both made from invented data (never anything under `data/`).
+
+## `baselines/`: the screenshot gate's captures (D3, #160)
+
+`baselines/<NN-Screen>/<NN-Screen>[-<state>]-<width>-<theme>.png`, one folder per screen section of `design/screens/manifest.json`, at 1440 / 1024 / 390, light and dark. `NN-Screen` is the manifest's folder name; `<state>` names a further state of a section (`50-Tools-and-admin-pages-settings-1440-dark.png`).
+
+- **No file until approved.** A built state that is not approved has no baseline in the repo; an approved state has all six. `scripts/design_screens.py check` enforces both. `scripts/screen_gate.py capture` writes candidate images (locally, for review; they may be rendered anywhere and are not committed). A state is approved only when the maintainer sets `approved: true` for it in `design/screens/states.json`, after reviewing its captures (through a review artifact). Until then they are candidates and the gate only counts them.
+- **What the gate does.** `tests/test_screen_gate.py` renders every approved state again and compares it with its baseline; see `design/DESIGN-CHECK.md` § The screenshot gate. A baseline is a capture of the built app, never of the design frames.
+- **How they are made.** From the app's venv, at the repo root: `python scripts/screen_gate.py capture [NN-Screen ...]`. It starts the real app on the demo dataset (clock fixed at 2026-10-12T08:00:00Z), renders with the pinned Chrome for Testing (`scripts/chrome.py`), bundled fonts, no animation, and clips pages longer than 1600 CSS px. States it cannot reach are listed with their reason in `states.json` (`built: false`).
+- **Committed baselines are made in CI.** At approval the session runs the `baselines` workflow (`.github/workflows/baselines.yml`) for the approved screens, downloads the `baselines` artifact and commits those PNGs with the `APPROVALS.md` line and `approved: true`, in one commit. The gate compares in CI on Linux; a local macOS `compare` is expected to differ slightly and is not authoritative.
+- **Replacing a baseline.** Set the state's `approved` to false, run the `baselines` workflow, and have the maintainer approve again.
+
+## The older folders: captures sent for approval on issues
+
+Captures from the test instance, sent for approval on the tracking issues before D3. Each file is named `<frame>-<view>-<device>-<width>-<theme>.png` (the widths are 390, 768 and 1440, so they are not the gate's baselines). Long pages are clipped to their first 3,000 px. The `build_frames.py` scripts in some folders re-create them from the repo root; they use a system Chrome at the path they name.
 
 | Folder | Issue | What changed |
 |---|---|---|

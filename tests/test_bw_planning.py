@@ -16,6 +16,8 @@ from xml.etree import ElementTree as ET
 from bs4 import BeautifulSoup
 import pytest
 
+from tests import rendered
+
 from brickwork.core import admin, collection, gaps, planning, workbench
 from brickwork.core.sources.base import now
 from tests.app4 import STAMP, app4, client, coll, csrf, pair, read, world  # noqa: F401 (fixtures)
@@ -770,16 +772,15 @@ def test_prices_name_orphan_guard_preserves_compact_rows_css_contract():
     assert '.bp-prices .bp-identity .bc-picture { margin-bottom:-20px; }' in css
 
 
-def test_planning_compact_chromium_geometry(coll, client, tmp_path):
-    """Opt-in measurements use the shipped DOM/CSS; no screenshots."""
+def test_planning_compact_chromium_geometry(coll, world, client, tmp_path):
+    """Measurements use the shipped DOM/CSS; no screenshots. Needs Chrome (tests/rendered.py)."""
     import os
-    chrome = os.environ.get('BW_COLLECTION_CHROME')
-    if not chrome:
-        pytest.skip('Set BW_COLLECTION_CHROME for opt-in browser geometry verification')
+    chrome = rendered.chrome()
     from urllib.parse import urlsplit
     evidence(coll)
     coll.sql("UPDATE wish SET condition='used'")
-    for screen in ('complete-sets', 'prices', 'wishlist'):
+    price(coll, world.plate, '82.39', colour=world.white, minimum='70', maximum='99', sold=3)         # the wishlist row's price range (4.9d w4/w5)
+    for screen in ('complete-sets', 'wishlist'):
         soup = BeautifulSoup(client.get('/planning/' + screen).data, 'html.parser')
         for link in soup.select('link[rel=stylesheet]'):
             style = soup.new_tag('style')
@@ -787,11 +788,6 @@ def test_planning_compact_chromium_geometry(coll, client, tmp_path):
             link.replace_with(style)
         for script in soup.select('script'):
             script.decompose()
-        if screen == 'prices':
-            names = soup.select('.bp-identity .bc-identity strong')
-            assert len(names) >= 2
-            for name, text in zip(names, ("Technic, Liftarm Thick 1", "Aaron Fox's Aero Striker")):
-                name.string = text
         (tmp_path / (screen + '.html')).write_text(str(soup))
     result = subprocess.run(['node', 'tests/toni_bw_planning_geometry.cjs', chrome, str(tmp_path)], capture_output=True, text=True, timeout=60, cwd=ROOT)
     assert result.returncode == 0, result.stdout + result.stderr
@@ -984,8 +980,7 @@ def test_the_wishlist_screen_links_the_printable_list(world, client):
 
 
 def test_prices_runtime_harness_and_planning_runtime_harness():
-    if shutil.which('node') is None:
-        pytest.skip('Node is not installed')
+    rendered.need_node()
     for name in ('toni_bw_planning_runtime.cjs', 'toni_bw_wishlists_runtime.cjs'):
         result = subprocess.run(['node', 'tests/' + name], cwd=ROOT, capture_output=True, text=True, timeout=60)
         assert result.returncode == 0, result.stdout + result.stderr

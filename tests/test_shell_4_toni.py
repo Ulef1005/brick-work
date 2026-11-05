@@ -8,6 +8,8 @@ from flask import g, render_template
 from jinja2 import meta, nodes
 import pytest
 
+from tests import rendered
+
 from brickwork.web.ui import PREFIX, ROOT
 from tests.app4 import BROWSER_PASSWORD, app4 as app, client, coll, pair, read, world
 
@@ -98,9 +100,7 @@ def test_theme_runtime_precedence_storage_and_system():
     """Execute the actual pre-paint script with DOM/storage/media test doubles."""
     import shutil
     import subprocess
-    node = shutil.which('node')
-    if not node:
-        pytest.skip('Node is needed to execute the JavaScript theme contract')
+    node = rendered.need_node()
     source = (ROOT / 'static/web/toni/theme.js').read_text()
     harness = r'''
 const assert = require('node:assert/strict');

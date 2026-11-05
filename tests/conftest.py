@@ -1,8 +1,10 @@
 """Shared test setup: failed-login counters are per process, so each test starts clean."""
+import os
 from pathlib import Path
 
 import pytest
 
+from tests import rendered
 from tests.quarantine import QUARANTINE
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -27,3 +29,12 @@ def _pipeline_handlers_restored():
     yield
     pipeline.HANDLERS.clear()
     pipeline.HANDLERS.update(saved)
+
+
+def pytest_runtest_logreport(report):
+    """Record the rendered tests skipped under BW_SKIP_RENDERED=1 (tests/rendered.py) in the file named by BW_RENDERED_SKIPS, one per line,
+    so that scripts/check.sh can name every one of them in its summary."""
+    target = os.environ.get('BW_RENDERED_SKIPS')
+    if target and report.skipped and report.when in ("setup", "call") and rendered.MARK in str(report.longrepr):
+        with open(target, 'a', encoding='utf-8') as out:
+            out.write(report.nodeid + '\n')

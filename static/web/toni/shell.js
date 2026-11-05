@@ -132,4 +132,7 @@
   strip.scrollTo({ left: strip.scrollLeft + (at.left - box.left) - (box.width - at.width) / 2, behavior: 'auto' });
  });
  revealActive();
+ // Again when the strip appears or changes width: a window narrowed into the phone layout, or a phone rotated (Codex review).
+ let revealTimer;
+ if (typeof window.addEventListener === 'function') window.addEventListener('resize', () => { clearTimeout(revealTimer); revealTimer = setTimeout(revealActive, 100); });
 })();

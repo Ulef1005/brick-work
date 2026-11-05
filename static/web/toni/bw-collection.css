@@ -22,6 +22,7 @@
 .bc-cards[data-view=list] { display:flex;flex-direction:column; }
 .bc-cards[data-view=list] .bc-card { flex-direction:row;align-items:center;min-height:80px;border-radius:0;border-width:0 0 0.5px;padding:12px 0; }
 .bc-cards[data-view=list] .bc-picture { width:56px;aspect-ratio:1; }
+.bc-cards:not([data-view=list]) .bc-tile-dupe { display:none; }
 .bc-cards[data-view=list] .bc-card>a[data-bc-item-link] { flex:1; }
 .bc-cards[data-view=list] .bc-card-foot { max-width:35%;justify-content:end; }
 .bc-cards>[data-bc-group-heading] { grid-column:1/-1; }

@@ -36,6 +36,13 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
   assert.ok(m.inside,'Catalogs fully inside the strip, reduced='+reduced+' '+JSON.stringify(m));
   assert.equal(m.pageY,0);assert.equal(m.pageX,0);
  }
+ // Opened wide, then narrowed into the phone layout: the reveal runs again on resize (Codex review).
+ await call('Emulation.setDeviceMetricsOverride',{width:1440,height:900,deviceScaleFactor:1,mobile:false});
+ await call('Page.navigate',{url:'file://'+path.join(dir,'shell.html')});
+ for(let i=0;i<100;i++){if(await evaluate("document.readyState==='complete' && !!document.querySelector('.group-items')"))break;await delay(20);}
+ await delay(100);
+ await call('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:false});
+ assert.ok(await settled(`(()=>{const m=${probe};return m.left>0&&m.inside;})()`),'Catalogs revealed after narrowing to 390 px: '+JSON.stringify(await evaluate(probe)));
  console.log('strip ok');
  socket.close();child.kill();process.exit(0);
 })().catch(error=>{console.error(error);child.kill();process.exit(1);});

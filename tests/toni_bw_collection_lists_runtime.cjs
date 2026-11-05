@@ -78,8 +78,10 @@ function load(records,{kind='P',pageSize=15,defaultGroup='',groupOptions=null,sa
  for (const [type,number] of [['G','gear-01'],['B','ISBN 9780000000001'],['C','1976 Catalog']]) {
   const K=load([{}],{kind:type});
   const plain=K.api.buildRow(K.api.decodeRecords({fields:['type','number','source','name','entity','ids'],rows:[{0:type,1:number,2:'bricklink',3:'Some item',4:'stock',5:['s']}]})[0],K.root.dataset,false,()=>{});
+  const dupe=plain.querySelector('.bc-tile-dupe');
+  assert.ok(dupe&&dupe.textContent===number+' (BrickLink)',type+': the name line keeps a copy for the list view (its tile clips)');
   const shown=texts(plain).filter(t=>t.includes(number));
-  assert.deepEqual(shown,[number+' (BrickLink)'],type+': number once, got '+JSON.stringify(shown));
+  assert.equal(shown.length,2,type+': tile and the list-only copy, got '+JSON.stringify(shown));
   assert.equal(plain.querySelector('.bc-picture').children[0].textContent,number+' (BrickLink)');
   const pic=K.api.buildRow(K.api.decodeRecords({fields:['type','number','source','name','image','entity','ids'],rows:[{0:type,1:number,2:'bricklink',3:'Some item',4:'img1',5:'stock',6:['s']}]})[0],K.root.dataset,false,()=>{});
   assert.deepEqual(texts(pic).filter(t=>t.includes(number)),[number+' (BrickLink)'],type+': with a picture the number sits above the name');

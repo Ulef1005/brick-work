@@ -248,7 +248,11 @@ def load_subsets(db, set_item_id, set_number, reply, *, job_id=None, events=None
             rb, key = loader.colour(colour)
             parts.append((loader.item('P', number, key, parsed.names.get(('P', number), number)), rb, spare, q))
         for number, q in parsed.figure_lines:
-            figures.append((loader.item('M', number, None, parsed.names.get(('M', number), number)), q))
+            item = loader.item('M', number, None, parsed.names.get(('M', number), number))
+            if db.execute('SELECT kind FROM main.item WHERE id=?', (item,)).fetchone()[0] == 'part':
+                parts.append((item, 1, 0, q))              # #150: a figure the catalogue knows as a part is a part line, in no colour
+            else:
+                figures.append((item, q))
         fid = fetched.write_fetched(db, set_item_id, 'bricklink', parts, figures, job_id=job_id, source_record_id=record, events=events)
         seq, digest = db.execute('SELECT seq, digest FROM main.fetched_inventory WHERE id=?', (fid,)).fetchone()
         digest_bl = bl_digest(parsed.bl_lines)

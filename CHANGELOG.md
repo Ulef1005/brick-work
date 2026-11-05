@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **A BrickLink figure that the catalogue knows as a part is that part** (#150). BrickLink files the old Technic figures (`tech028`, `tech039`) as minifigures, while the catalogue links the same numbers to Rebrickable parts. A BrickLink order line, a BrickLink subsets list or `GET /lookup?provider=bricklink&kind=minifigure` that names such a number found no minifigure and made an unidentified one. When no minifigure holds the number and exactly one part holds the very same BrickLink number, it now resolves to that part, as a part line in no colour. A catalogue minifigure still wins, several parts keep today's behaviour, and no other number is tried. Figures already made unidentified keep resolving to themselves.
 - **The Wishlist on a phone has no empty gap under the list chips** (#141). At phone width, Planning › Wishlist left about half a screen of empty space between the list chips and the **Manage lists**, **Export**, **Print** and **Download CSV** buttons. The buttons and the search now follow the chips directly, as on a wider screen. Two approved phone screenshots (light and dark) change with it.
 - **Counts of one use the singular** (#180). The Sets page said "1 copies", the Catalogs page "1 catalogs", and the filter panel's button "Show 1 parts" and the like. A list's subtitle and its **Show** button, and the Wishlist count, now use the singular for exactly one and the plural otherwise, for every kind.
 

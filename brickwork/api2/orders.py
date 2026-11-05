@@ -15,7 +15,7 @@ from ..core import errors, items, order_exports, orders, undo
 from . import route
 from .read import arguments, bodies, integer_id, page, reading, record, respond
 from .write_collection import receipt
-from .writes import Done, color_of, item_of, write
+from .writes import Done, color_of, figure_colour, item_of, write
 
 
 # ---------- bodies ----------
@@ -210,7 +210,7 @@ def patch_orders_by_id_lines_by_line_id(db, body, id, line_id):
         event = orders.match(db, found['id'], line, item_type=items.type_of_kind(key['kind']), item_no=key['key'], color_id=colour,
                              listed_only=True)
         return Done(receipt(event, 'Saved'), event)
-    event = orders.match(db, found['id'], line, item_id=item, color_id=colour)
+    event = orders.match(db, found['id'], line, item_id=item, color_id=figure_colour(db, key, item, colour))
     return Done(receipt(event, 'Saved'), event)
 
 

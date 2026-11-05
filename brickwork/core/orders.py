@@ -431,6 +431,8 @@ def _place(db, letter, number, colour_key):
         if local is not None:
             return local, colour if letter == 'P' else None, [], None
         return None, colour, [], 'The BrickLink number is not in the catalogue'
+    if letter == 'M' and items._row(db, found[0])[0]['kind'] == 'part':     # #150: a BrickLink figure the catalogue knows as a part is a part line (no colour)
+        return found[0], found[1], [], None
     return found[0], found[1] if letter == 'P' else None, [], None
 
 
@@ -458,6 +460,7 @@ def _by_name(db, row, hits):
         except AmbiguousIdentity:
             colour = None
     ids = set()
+    figure_parts = set()
     unheld = set()                                                     # BrickLink keys of the name that no item holds yet (#154)
     for hit in hits:
         if hit[0] == 'item':
@@ -470,6 +473,8 @@ def _by_name(db, row, hits):
                 continue
             if found:
                 ids.add(found[0])
+                if hit[1] == 'M' and items._row(db, found[0])[0]['kind'] == 'part':
+                    figure_parts.add(found[0])                          # #150: a BrickLink figure the catalogue holds as a part has no colour
             else:
                 unheld.add((hit[1], hit[2]))
     if not ids and len(unheld) == 1:                                   # the name is exactly one BrickLink item and nothing holds it
@@ -480,6 +485,8 @@ def _by_name(db, row, hits):
     if len(ids) == 1:
         item_id = next(iter(ids))
         kind = items.label(db, item_id).kind
+        if kind == 'part' and colour is None and item_id in figure_parts:
+            return item_id, 1, [], None                                # #150: the figure's part line; no colour named means "no colour"
         if kind == 'part' and colour is None:
             return None, None, [_label(db, item_id)], 'The colour name is not known'
         return item_id, colour if kind == 'part' else None, [], None

@@ -210,6 +210,22 @@ def candidate_items(db, provider_kind, provider_key, color_id, provider='brickli
     return sorted(pooled)
 
 
+def figure_as_part(db, number):
+    """`(item id, colour 1)` of the one catalogue part that BrickLink's minifigure number stands for, else None (issue #150).
+
+    BrickLink files the old Technic figures (`tech028`) as minifigures (type M) where the catalogue links the same number to a Rebrickable
+    part (type P). Only when nothing holds the number as an M (no confirmed link, no local BrickLink-born figure) and exactly one item
+    holds the very same number as a P link that applies in colour 1 ("no colour"), the figure is that part: a part line in no colour.
+    Another number is never tried, several parts keep today's answer (None), and a catalogue minifigure always wins."""
+    number = str(number)
+    if candidate_items(db, 'M', number, 1):
+        return None
+    if db.execute("SELECT 1 FROM main.item WHERE born_provider='bricklink' AND born_namespace='M' AND born_key=?", (number,)).fetchone():
+        return None
+    parts = candidate_items(db, 'P', number, 1)
+    return (parts[0], 1) if len(parts) == 1 else None
+
+
 def resolve_inverse(db, provider_kind, provider_key, provider_color_key, provider='bricklink', *, exhaustive=False):
     """Which (item, colour) does a provider key stand for? The inverse of resolve; None if nothing links to it.
 
@@ -226,6 +242,8 @@ def resolve_inverse(db, provider_kind, provider_key, provider_color_key, provide
         items = candidate_items(db, provider_kind, provider_key, colour, provider)
         if len(items) > 1:
             raise AmbiguousIdentity(f'{provider} {provider_kind} {provider_key} (colour {provider_color_key}) names items {items}', items)
+        if not items and provider == 'bricklink' and provider_kind == 'M':
+            return figure_as_part(db, provider_key)            # #150: the exhaustive callers build lines, and a part line is one of them
         return (items[0], colour) if items else None
     for store in ['main'] + (['catalogue'] if has_catalogue(db) else []):
         owned = '' if store == 'main' else 'AND item_id NOT IN (SELECT id FROM main.item)'

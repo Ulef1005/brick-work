@@ -210,6 +210,8 @@ def decorate_prices(rows):
         r = dict(raw)
         r['item_type'] = type_of(r.get('kind')) if r.get('kind') else r.get('item_type')
         r['label'] = {'new': 'New', 'used': 'Used'}.get(r['condition'], 'Price')
+        # #173: Brickset's new/used values came from its website in 3.3; its API has none, so they are history, never refreshed.
+        r['legacy'] = r.get('source') == 'brickset' and r.get('guide') == 'valuation'
         if r['guide'] == 'stock':
             r['label'] += ' listings'
         if r['slot']:

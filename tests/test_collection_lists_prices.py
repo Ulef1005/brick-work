@@ -58,6 +58,7 @@ def old_decorate_prices(rows):
         r = dict(raw)
         r['item_type'] = collection.type_of(r.get('kind')) if r.get('kind') else r.get('item_type')
         r['label'] = {'new': 'New', 'used': 'Used'}.get(r['condition'], 'Price')
+        r['legacy'] = r.get('source') == 'brickset' and r.get('guide') == 'valuation'   # #173
         if r['guide'] == 'stock':
             r['label'] += ' listings'
         if r['slot']:

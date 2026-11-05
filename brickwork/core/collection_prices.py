@@ -8,6 +8,10 @@ from decimal import Decimal, InvalidOperation
 from .sources.base import now
 
 
+# #173: how a Brickset new/used value carried over from 3.3 is labelled; it is history and never refreshed.
+LEGACY_LABEL = 'legacy · Brickset 3.3, not refreshed'
+
+
 def priority(db):
     """The market-price source order per kind (`setting.source_priority`); a kind is a kind word, `*` is every other."""
     row = db.execute("SELECT value FROM setting WHERE key='source_priority'").fetchone()

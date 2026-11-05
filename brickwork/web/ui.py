@@ -10,6 +10,7 @@ from urllib.parse import urlsplit
 from markupsafe import Markup, escape
 
 from ..core.list_records import payload as bw_collection_records
+from ..core import collection_prices
 from .formatting import short_age as bw_age
 from .formatting import money, short_date, short_stamp, source_label, source_line, missing_counts, plural, difference, nowrap_tail, part_name, ratio
 
@@ -90,7 +91,8 @@ def install(app):
                        toni_link=local_link, toni_date=date_value, toni_asset=local_asset, toni_json=json.loads,
                        toni_ratio=ratio, toni_difference=difference, toni_nowrap_tail=nowrap_tail, toni_part_name=part_name, toni_money=money, toni_short_date=short_date, toni_stamp=short_stamp,
                        toni_source=source_label, toni_source_line=source_line,
-                       toni_missing=missing_counts, toni_plural=plural, bw_key_missing=key_missing)
+                       toni_missing=missing_counts, toni_plural=plural, bw_key_missing=key_missing,
+                       bw_legacy_label=collection_prices.LEGACY_LABEL)
     def shell_context():
         groups = navigation()
         active = next((name for name, links in groups if any(link['active'] for link in links)), 'Manage')

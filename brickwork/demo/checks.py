@@ -8,6 +8,7 @@ import uuid
 
 from ..core import checker
 from ..core.admin import database
+from . import clock
 
 # copy id: (share of the required steps to answer, whether the test data's missing counts are kept)
 PLAN = {
@@ -23,7 +24,16 @@ def call(db, copy_id, **payload):
 
 
 def stage(store, plan=None):
-    """Start and answer the planned checks; returns {copy id: (cursor, steps)}."""
+    """Start and answer the planned checks; returns {copy id: (cursor, steps)}. The checks are stamped with the demo's own "now"
+    (clock.FIXED_NOW), not the moment they are staged: the saved-check page shows the time, and the screen gate compares it."""
+    patched = clock.freeze_clock()
+    try:
+        return _stage(store, plan)
+    finally:
+        clock.thaw_clock(patched)
+
+
+def _stage(store, plan):
     result = {}
     with database(store) as db:
         for copy_id, (share, keep_missing) in (PLAN if plan is None else plan).items():

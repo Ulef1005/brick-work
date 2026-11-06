@@ -82,6 +82,7 @@
 #bw-checker .check-start-help { display:grid;gap:12px; }
 #bw-checker .check-start-help a { color:var(--tw-accent-text);font:500 15px var(--tw-font); }
 #bw-checker .check-saved { font-size:13px;line-height:18px;color:var(--tw-text-muted); }
+#bw-checker .check-start [data-resume] { margin:16px 0; }
 #bw-checker .check-identity { display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-content:start; }
 #bw-checker .check-identity>* { grid-column:1/-1; }
 #bw-checker .check-identity>h2 { grid-row:1;grid-column:1;font:600 28px/34px var(--tw-font);letter-spacing:-.2px; }

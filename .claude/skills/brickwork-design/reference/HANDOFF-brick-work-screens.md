@@ -26,5 +26,5 @@ Rules:
 See the "Not framed" and "Partly" tables in `COVERAGE-brick-work.md`. The largest gaps are the item lists (Minifigures, Parts, Instructions, Boxes), wishlist detail, order detail and document review, admin pages, and system pages.
 
 
-## Check Set Parts · "Missing so far" list
+## Set Inspector · "Missing so far" list
 This is a **history view**, not a "last 3" list: it shows every part marked missing in the current check, newest first, and keeps growing (scrolls inside the panel). Each row has a "Found n" action to undo a miss. The "3 parts" in the label is the live count of the history.

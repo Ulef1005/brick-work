@@ -1,7 +1,7 @@
 # Handoff: Brick Work (screens, flows, brand)
 
 ## Overview
-Brick Work is a single-user Lego collection workbench, a sub-brand inside Toni's World. It tracks owned sets (the rail counts in the frames come from a real collection of a few hundred items. The bundled sample data is smaller: 19 copies of 18 sets and 6 wishes, only for filling frames), wishlist, loose minifigures and parts, orders, storage and prices, and has workbench tools: **Part to Inventory** (photo to part ID), **Check Set Parts**, **Part Picker** and **Matcher**. Devices, in order of importance: **2020 MacBook (1440 × 900, 1280 × 800) is the main device**; iPad mini 5 sometimes (768 × 1024, 1024 × 768); iPhone 16 very rarely. English UI, no login.
+Brick Work is a single-user Lego collection workbench, a sub-brand inside Toni's World. It tracks owned sets (the rail counts in the frames come from a real collection of a few hundred items. The bundled sample data is smaller: 19 copies of 18 sets and 6 wishes, only for filling frames), wishlist, loose minifigures and parts, orders, storage and prices, and has workbench tools: **Part Spotter** (photo to part ID), **Set Inspector**, **Part Runner** and **Matchmaker**. Devices, in order of importance: **2020 MacBook (1440 × 900, 1280 × 800) is the main device**; iPad mini 5 sometimes (768 × 1024, 1024 × 768); iPhone 16 very rarely. English UI, no login.
 
 ## About the design files
 Everything in `design_files/` is a **design reference built in HTML**: prototypes showing the intended look and behaviour, not production code. Recreate them in the target codebase's own stack and patterns (React, Vue, SwiftUI, etc.). If no stack exists, pick the most suitable one for a responsive PWA. Do not ship the HTML.
@@ -11,14 +11,14 @@ Everything in `design_files/` is a **design reference built in HTML**: prototype
 
 ## Open the files
 - `design_files/reference/BW Guide.dc.html` (general guidance: principles, colour, tokens, navigation, data-type language) and `BW Collection`, `BW Workbench`, `BW Planning`, `BW Manage`: one page per nav group. Each workflow is a row of all sizes: phone, MacBook 1440, iPad mini portrait and landscape (pan sideways). A Theme tweak switches light and dark. Each file needs `support.js`, `tokens-v2.css` and `assets/data/` beside it (laid out). PNG exports of every frame, light and dark, are in `design_files/frames/` (`<section>-<frame>-<width>-<theme>.png`); device coverage is in `reference/FRAMES-by-device.md`.
-- `Brick Work Clickdummy.dc.html`: clickable flows (Sets, Set detail, Check Set Parts, Part Picker, Part to Inventory).
+- `Brick Work Clickdummy.dc.html`: clickable flows (Sets, Set detail, Set Inspector, Part Runner, Part Spotter).
 - `design_files/SKILL.md`: kit guide and page map. `reference/BUILD-SPEC.md`: motion, states, accessibility. `reference/COVERAGE-brick-work.md`: frames against capabilities (13 capabilities are partly framed, small variants of existing patterns).
 - `design_files/test-data/`: sample JSON (sets, orders, wishlist, checker scenarios, part-to-inventory, colours, empty states, edge cases) plus README. Images are in `reference/assets/data/`.
 
 ## Navigation
 Four groups:
 - **Collection:** Sets (home `/`), Minifigures, Parts, Instructions, Boxes.
-- **Workbench:** Part to Inventory, Check Set Parts, Part Picker, Matcher, Orders, Storage.
+- **Workbench:** Part Spotter, Set Inspector, Part Runner, Matchmaker, Orders, Storage.
 - **Planning:** Wishlist, Prices, Complete sets.
 - **Manage:** Add, Tools & Admin (+ Statistics, system pages, theme switcher).
 
@@ -34,18 +34,18 @@ Layout rule everywhere: phone 390 wide, 20 px side padding; desktop content padd
 - *8c:* add into a lot, progress, instruction sheets, order details.
 
 **Workbench**
-- *3a Matcher, 3c Part Picker (Choose sets, Rank, Pick, Found it):* picker grid shows a count badge per found part; sheet has a stepper per copy.
-- *3b/3e Check Set Parts:* Start/Resume, Part (stepper `−` · "Found 4" primary · `+`, Missing, Back, Skip for later, Undo), Count, Figure, Spares, Finish.
+- *3a Matchmaker, 3c Part Runner (Choose sets, Rank, Pick, Found it):* picker grid shows a count badge per found part; sheet has a stepper per copy.
+- *3b/3e Set Inspector:* Start/Resume, Part (stepper `−` · "Found 4" primary · `+`, Missing, Back, Skip for later, Undo), Count, Figure, Spares, Finish.
   - **Missing so far** (desktop right panel) is a **history view**: every miss of the current check, newest first, growing, scrollable. Header "MISSING SO FAR · n PARTS · −total". Each row: part image, name, colour dot + number · colour name, "−1 of 2", **Found 1** button; footer hint "Found one in the pile? Tap Found 1 and the count drops."
   - **Missing pass** (phone, replaces the old "already answered" screen): final pass over answered parts. Progress strip "104 of 113 found / 9 missing", list of the same rows, button "Done · 9 still missing", links Back / Undo last. Use case: a pile of parts, add the missing items to a set.
   - Desktop checker: answer buttons sit directly under part name and number (no gap).
-- *3f Part to Inventory:* see flow below.
+- *3f Part Spotter:* see flow below.
 - *5a Orders, 7d detail/review/history/resume, 5d Storage.*
 
 **Planning:** 4a Wishlist, 4b Prices, 4c Complete sets (pins, settings, export), 7c.
 **Manage:** 4d Add, 5b Tools & Admin (+7e pages), 5c Statistics, 7f system pages, 8b place/storage/admin forms and theme picker.
 
-## Part to Inventory flow
+## Part Spotter flow
 1. **Capture.** Controls above the tabs: **Camera** row (e.g. "Rear camera · wide", dropdown; opens a list of available cameras) and **Recognition** switch **Local model | Brickognize** (default Local model, hint "Runs on this device · works offline"). Toggle "Add inventory to Brick Work". Viewfinder 4:3 with dashed guide and "Piece n" tag; primary "Take picture"; links "Add a saved photo", "Review n queued". Queue limit 6.
 2. **Detect.** The chosen engine returns ranked candidates with confidence.
 3. **Review (one piece).** Top: **reference part large** (2fr, white tile, name, number · colour · "0.91 match") beside **your photo** (1fr), both square. Below: **Other possibilities** list (48 px thumb, name, number · colour, score). Tapping an alternative swaps the reference. Colour: choice chips 56 px, filled with the colour, name inside, 3 px clay outline + tick when selected; **Confirm is disabled until a colour is chosen**. Unidentified pieces can be skipped or retaken.
@@ -74,8 +74,8 @@ Layout rule everywhere: phone 390 wide, 20 px side padding; desktop content padd
 
 ## State and data
 - Entities: Set (id `7286-1`, copies with `copy_label`), Copy (status, checked, missing parts), Part (number, name, colour id), Colour (Rebrickable id), Minifigure, Lot, Order, Wishlist item, Price observation (condition, avg/min/max, count, window, observed date).
-- Check Set Parts state: per part `{needed, found, missing, skipped}` + history array of misses; derived progress strip; "Missing pass" reads the history and decrements on Found 1.
-- Part to Inventory state: settings `{camera, engine: 'local'|'brickognize', addInventory}`, queue (max 6) of pieces `{photo, candidates[{part, colour, confidence}], chosen, colour, status}`, batch `{destination: 'loose'|'lot', lotId}`.
+- Set Inspector state: per part `{needed, found, missing, skipped}` + history array of misses; derived progress strip; "Missing pass" reads the history and decrements on Found 1.
+- Part Spotter state: settings `{camera, engine: 'local'|'brickognize', addInventory}`, queue (max 6) of pieces `{photo, candidates[{part, colour, confidence}], chosen, colour, status}`, batch `{destination: 'loose'|'lot', lotId}`.
 - Part colours: Rebrickable `colors.csv` (`id`, `name`, `rgb` hex without `#`, `is_trans`). Fill `#rgb`; ink dark if luminance > 0.45 else paper. Unknown id: "Unknown colour", neutral fill, raw id in mono. Match by Rebrickable id.
 - Recognition engines: local on-device model or Brickognize API; both return the same candidate shape.
 - Sync: catalog sync refreshes colours and prices.
@@ -90,13 +90,13 @@ Source: `design_files/assets/tokens-v2.css` (Toni's World v2; load first).
 
 ## Assets
 - `assets/brand/`: mark (`mark.svg`, dark, line), app icon, icons 152 to 1024, splash for iPad mini (1536×2048, 2048×1536) and iPhone 16 (1179×2556) light/dark, lockups (PNG or SVG; the SVG text needs Patrick Hand, shipped in `assets/fonts/`), manifest, `brick-work.css`.
-- `assets/icons-ui/`: 33 UI icons, 24 px grid, 1.6 px stroke, round caps. New: Boxes, Part Picker, Matcher, sun, moon, auto.
+- `assets/icons-ui/`: 33 UI icons, 24 px grid, 1.6 px stroke, round caps. New: Boxes, Part Runner, Matchmaker, sun, moon, auto.
 - Sample images (`reference/assets/data/`): from the supplied test data, for design only. Real imagery is still needed for the five image-slot categories.
 - Wordmark font Patrick Hand (brand surfaces only): `assets/fonts/PatrickHand-Regular.woff2` (Latin subset, from Google Fonts) and `OFL-PatrickHand.txt`. Serve it from `/fonts/`, as `head-block.html` expects.
 - No LEGO trademarks: never the word "LEGO", its logo or a minifigure likeness in the brand; UI says "set", "part", "minifigure".
 
 ## Voice
-Warm, short, sentence case, bare counts, mid-dots, no exclamation marks. Names: "Tools & Admin", "Part to Inventory", "Wishlist", "Set 1".
+Warm, short, sentence case, bare counts, mid-dots, no exclamation marks. Names: "Tools & Admin", "Part Spotter", "Wishlist", "Set 1".
 
 ## Open items
 Rebrickable `colors.csv` (sample `colors.json` is enough for frames; see Guide G2); real imagery; wiring of the Missing pass and lot assignment in the click-dummy.

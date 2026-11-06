@@ -1,6 +1,6 @@
 {% extends 'web/toni/base.html' %}
 {% from 'web/toni/brickwork/collection_modules.html' import list_controls with context %}
-{% block title %} · {{ 'Check figure parts' if state and state.figure else 'Check Set Parts' }}{% endblock %}
+{% block title %} · {{ 'Check figure parts' if state and state.figure else 'Set Inspector' }}{% endblock %}
 
 {% block page_assets %}
 <link rel="stylesheet" href="{{ bw_static('web/toni/bw-collection.css') }}">
@@ -10,7 +10,7 @@
 {% macro status(copy) %}<span class="check-pill" data-status="{{ copy.completeness or 'unknown' }}"><span aria-hidden="true">●</span>{{ {'complete':'Complete','incomplete':'Incomplete','sealed':'Sealed'}.get(copy.completeness,'Not checked') }}</span>{% endmacro %}
 {% macro picture(image, number, name) %}<div class="check-picture">{% if image %}<img {{ bw_picture_attrs(image) }} alt="{{ name }}" loading="lazy">{% else %}<span class="mono">{{ number }}</span><span>No image</span>{% endif %}</div>{% endmacro %}
 {% block main %}
-{% if error %}<h1>Check Set Parts</h1><p role="alert">{{ error }}</p><a class="button" href="{{ request.path }}">Try again</a>
+{% if error %}<h1>Set Inspector</h1><p role="alert">{{ error }}</p><a class="button" href="{{ request.path }}">Try again</a>
 {% elif not state %}
 <div id="bw-check-choices" data-check-list data-copy-chooser>
 {% set totals=namespace(progress=0,unchecked=0) %}{% for choice in copies %}{% if choice.session and not choice.session.finished and not choice['copy'].set_checked %}{% set totals.progress=totals.progress+1 %}{% elif not choice['copy'].set_checked %}{% set totals.unchecked=totals.unchecked+1 %}{% endif %}{% endfor %}

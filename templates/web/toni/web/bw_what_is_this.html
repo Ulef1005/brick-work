@@ -4,7 +4,7 @@
 {% block main %}
 <header class="bw-page-head"><h1>What is this?</h1><p>Take or choose a photo of one part or minifigure. Brick Work names it and shows what you already have of it.</p></header>
 <section class="wi-capture" data-wi-root data-url="{{ detect_url }}" data-csrf="{{ csrf_token }}">
-{# Capture as Part to Inventory (frame 3f): a live preview with a guide, one primary that enables the camera
+{# Capture as Part Spotter (frame 3f): a live preview with a guide, one primary that enables the camera
    and then takes the picture, and a saved photo as the quiet alternative. #}
 <div class="wi-switch" role="radiogroup" aria-label="Recognise"><label><input type="radio" name="wi-endpoint" value="parts" checked><span>Part</span></label><label><input type="radio" name="wi-endpoint" value="figs"><span>Minifigure</span></label></div>
 <div class="wi-viewfinder" data-wi-viewfinder hidden><video data-wi-video autoplay muted playsinline></video><span class="wi-guide" aria-hidden="true"></span></div>

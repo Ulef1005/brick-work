@@ -249,3 +249,16 @@ def test_the_crawl_never_stops_silently_and_the_cache_buster_is_content_derived(
     monkeypatch.setattr(export, 'LIMIT', 60)
     with pytest.raises(RuntimeError, match='reached its limit'):
         export.export(tmp_path / 'cut', BASE)
+
+
+def test_staged_checks_carry_the_demo_clock_not_the_build_time(tmp_path):
+    """The saved-check page shows when the check was saved and the screen gate compares it, so the staged checks are stamped
+    with the demo's own "now"; a real-clock stamp made 30-Set-parts-checker differ on every day after its baselines (#206)."""
+    from brickwork.demo import checks, clock
+    store = tmp_path / 'demo.db'
+    dataset.build(store)
+    checks.stage(store)
+    stamp = clock.FIXED_NOW.strftime('%Y-%m-%dT%H:%M:%S')
+    db = sqlite3.connect(store)
+    rows = db.execute('SELECT started_at, updated_at FROM part_check').fetchall()
+    assert rows and all(v.startswith(stamp) for row in rows for v in row), rows

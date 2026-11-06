@@ -26,7 +26,7 @@ A **loose minifigure** is a figure you own on its own. It can carry its own list
 
 **Loose stock** is everything you own outside a copy: parts by part and colour, loose minifigures, and other items such as booklets and boxes. Each entry has a quantity, a condition (new, used or damaged) and optionally a storage place and a lot. Parts inside a copy are not loose stock: they are needed there.
 
-Part Picker, the Matcher and Complete sets look in loose stock for parts that your copies are missing.
+Part Runner, the Matchmaker and Complete sets look in loose stock for parts that your copies are missing.
 
 ## Lots
 

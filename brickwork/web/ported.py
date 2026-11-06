@@ -14,11 +14,11 @@ PORTED |= {'index.index', 'web.bw_sets', 'web.bw_collection', 'web.bw_collection
 PORTED |= {'web.bw_add', 'web.bw_add_search', 'web.bw_add_review', 'web.bw_add_confirm', 'web.bw_add_undo', 'web.bw_add_job', 'web.bw_add_retry'}
 # M.10 B: merge, unmerge and the preferred link, from the item page.
 PORTED |= {'web.bw_item_merge', 'web.bw_item_identity'}
-# M.8d: Check Set Parts (chooser, copy, figure line; each with its write), the collection's writes (save, archive, Undo, photo, caption, lot,
+# M.8d: Set Inspector (chooser, copy, figure line; each with its write), the collection's writes (save, archive, Undo, photo, caption, lot,
 # wish) and the media handlers for own photos, pictures and instruction PDFs.
 PORTED |= {'web.bw_check_parts', 'web.bw_check_copy', 'web.bw_check_figure', 'web.bw_check_write', 'web.bw_check_figure_write',
            'web.bw_collection_write', 'web.bw_image', 'web.bw_instruction_download'}
-# M.8e: the Workbench (Part Picker, Matcher, Found it, booklets, Take and Give, Undo), Storage with its history, Part to Inventory (the page, its
+# M.8e: the Workbench (Part Runner, Matchmaker, Found it, booklets, Take and Give, Undo), Storage with its history, Part Spotter (the page, its
 # save and Undo; the photo recognition behind it is Identify, M.8h) and the printable lists and their CSV.
 PORTED |= {'web.bw_picker', 'web.bw_matcher', 'web.bw_workbench_save', 'web.bw_storages', 'web.bw_storage_action',
            'web.bw_inventory', 'web.bw_inventory_save', 'web.bw_inventory_undo', 'web.bw_list_print', 'web.bw_list_csv'}
@@ -27,7 +27,7 @@ PORTED |= {'web.bw_planning', 'web.bw_prices_records', 'web.bw_prices_details', 
 # M.8g: the Wishlist and Complete sets screens (they share `web.bw_planning`) with their writes (pin, repair settings, export, Undo) and the
 # wishlist management and exports.
 PORTED |= {'web.bw_wishlists_write', 'web.bw_wishlists_export'}
-# M.8h: Orders (import, review, count, allocate, reconcile, the short list, the CSV export) and Identify (the photo recognition of Part to Inventory
+# M.8h: Orders (import, review, count, allocate, reconcile, the short list, the CSV export) and Identify (the photo recognition of Part Spotter
 # and What is this?; Add's photo mode runs through Add's own endpoints).
 PORTED |= {'web.bw_orders', 'web.bw_order', 'web.bw_orders_action', 'web.bw_order_short', 'web.bw_orders_export', 'web.bw_inventory_detect',
            'web.bw_what_is_this'}

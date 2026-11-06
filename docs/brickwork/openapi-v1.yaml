@@ -3372,7 +3372,7 @@ paths:
     get:
       operationId: "get_export_picker_csv"
       x-milestone: M7
-      summary: "Part Picker results for the chosen copies as CSV, in pick order (#43)."
+      summary: "Part Runner results for the chosen copies as CSV, in pick order (#43)."
       x-backing: "core.list_exports"
       security:
         - bearerAuth: [read]

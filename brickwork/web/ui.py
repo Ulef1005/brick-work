@@ -138,6 +138,33 @@ def passthrough_args(*route_params):
     return {k: v for k, v in request.args.to_dict(flat=False).items() if not k.startswith('_') and k not in route_params}
 
 
+# The Workbench workflows the jump search lists by name. The old names stay as aliases so that a user who knows "Matcher" or "Part Picker"
+# still finds the page (#204); the URLs, routes and endpoints keep their old names.
+WORKFLOW_PAGES = (
+    ('Part Spotter', 'web.bw_inventory', ('Part to Inventory',)),
+    ('Set Inspector', 'web.bw_check_parts', ('Check Set Parts',)),
+    ('Part Runner', 'web.bw_picker', ('Part Picker',)),
+    ('Matchmaker', 'web.bw_matcher', ('Matcher',)),
+)
+
+
+def workflow_matches(query):
+    """Jump-search rows for the Workbench workflows: the query (three characters at least) starts a word of the name or of a former name."""
+    needle = ' '.join(query.casefold().split())
+    if len(needle) < 3:
+        return []
+
+    def starts_a_word(name):
+        return f' {needle}' in f' {name.casefold()}'
+    rows = []
+    for title, endpoint, aliases in WORKFLOW_PAGES:
+        former = next((alias for alias in aliases if starts_a_word(alias)), None)
+        if starts_a_word(title) or former:
+            rows.append(dict(kind='page', number=title, name=title, type_label='Workbench', url=url_for(endpoint),
+                             note=f'Was {former}' if former and not starts_a_word(title) else 'Workbench'))
+    return rows
+
+
 def navigation():
     groups = [
         ('Collection', [
@@ -147,9 +174,9 @@ def navigation():
             ('Instructions', 'web.bw_collection', 'instr', (), {'kind':'I'}),
             ('Boxes', 'web.bw_collection', 'box', (), {'kind':'O'})]),
         ('Workbench', [
-            ('Part to Inventory', 'web.bw_inventory', 'scan', (), {}),
-            ('Part Picker', 'web.bw_picker', 'pick', (), {}),
-            ('Matcher', 'web.bw_matcher', 'match', (), {}),
+            ('Part Spotter', 'web.bw_inventory', 'scan', (), {}),
+            ('Part Runner', 'web.bw_picker', 'pick', (), {}),
+            ('Matchmaker', 'web.bw_matcher', 'match', (), {}),
             ('Orders', 'web.bw_orders', 'orders', (), {}),
             ('Storage', 'web.bw_storages', 'storage', ('HIDE_ALL_STORAGES',), {})]),
         ('Planning', [
@@ -176,13 +203,13 @@ def navigation():
     elif endpoint.startswith('web.bw_add'):
         current = 'Add'
     elif endpoint in ('web.parts_scanner_page', 'web.bw_inventory', 'web.bw_what_is_this'):   # What is this? identifies by photo too (#142)
-        current = 'Part to Inventory'
+        current = 'Part Spotter'
     elif endpoint in ('set.check', 'web.bw_check_parts', 'web.bw_check_copy', 'web.bw_check_write'):
-        current = 'Check Set Parts'
+        current = 'Set Inspector'
     elif endpoint == 'web.bw_picker':
-        current = 'Part Picker'
+        current = 'Part Runner'
     elif endpoint in ('web.matcher_page', 'web.bw_matcher'):
-        current = 'Matcher'
+        current = 'Matchmaker'
     elif endpoint.startswith('web.boxes') or endpoint in ('web.save_loose_boxes','web.assign_loose_boxes'):
         current = 'Boxes'
     elif endpoint == 'index.index':
@@ -215,7 +242,7 @@ def navigation():
     for group, definitions in groups:
         links = _links(definitions)
         if group == 'Workbench' and not current_app.config.get('HIDE_ALL_SETS'):
-            links.insert(1, dict(title='Check Set Parts', endpoint='web.bw_check_parts',
+            links.insert(1, dict(title='Set Inspector', endpoint='web.bw_check_parts',
                                 url=url_for('web.bw_check_parts'), icon='check'))
         for link in links:
             link['count'] = counts.get(link['title'])

@@ -1,4 +1,4 @@
-"""Check Set Parts, Largest first: physical size from the catalogue name, then count, then colour."""
+"""Set Inspector, Largest first: physical size from the catalogue name, then count, then colour."""
 import pytest
 
 from brickwork.core.checker import sorter

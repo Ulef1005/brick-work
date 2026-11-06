@@ -1,4 +1,4 @@
-"""Part to Inventory on the 4.0 store (M.8e, issue #110): photo proposals and atomic inventory batches.
+"""Part Spotter on the 4.0 store (M.8e, issue #110): photo proposals and atomic inventory batches.
 
 A batch is one `part_inventory:<batch>` receipt event holding the stock changes `stock.add_loose` made (rows before and after), the lot
 it created, the photos it kept and the identification records it wrote; Undo (`core/undo.py`) takes the stock back, archives the lot,

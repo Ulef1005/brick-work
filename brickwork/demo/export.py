@@ -63,7 +63,7 @@ def file_of(key):
     folder = path.strip('/')
     if query:
         name = re.sub(r'[^A-Za-z0-9._-]', '-', query.replace('=', '-').replace('&', '_'))
-        if len(name) > 100:   # a long query (the Part Picker with every incomplete copy ticked) would not fit a file name
+        if len(name) > 100:   # a long query (the Part Runner with every incomplete copy ticked) would not fit a file name
             name = name[:40] + '-' + hashlib.sha1(query.encode()).hexdigest()[:16]
         folder += '/_' + name
     return (folder + '/' if folder else '') + 'index.html'

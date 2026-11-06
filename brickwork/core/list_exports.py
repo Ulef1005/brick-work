@@ -1,4 +1,4 @@
-"""Printable and CSV lists (#43) on the 4.0 store (M.8e, issue #110): missing parts, Part Picker results and the wishlist.
+"""Printable and CSV lists (#43) on the 4.0 store (M.8e, issue #110): missing parts, Part Runner results and the wishlist.
 
 The same rows feed the CSV download and the printed page; colour names always travel with the colour id so a black-and-white printout
 still says which colour. Every row names its item as the screens do (`core/items.py`: the Rebrickable number first, the preferred

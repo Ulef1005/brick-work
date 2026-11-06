@@ -17,7 +17,7 @@ Each row you confirm in **Manage → Add** gets one background job with six step
 **Add** is not the only place. These also queue a **Downloading images** step for an item that has no picture yet (for every colour you hold), so the picture is there without pressing **Refresh pictures**:
 
 - placing an order line into loose stock (**Workbench → Orders**, **Allocate**);
-- **Part to Inventory**;
+- **Part Spotter**;
 - the import of another app's file (**Tools & Admin**);
 - a **Collection sync** pull from Rebrickable or Brickset;
 - **Found** in the Workbench, when you put the part into loose stock.

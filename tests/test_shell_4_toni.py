@@ -79,7 +79,7 @@ def test_login_post_and_failure(app):
 def test_visibility_links_and_auth(app):
     app.config.update(HIDE_ALL_SETS=True, HIDE_ADD_SET=True)
     html = render(app, 'web/toni/error.html', error='Example')
-    assert '>Sets</a>' not in html and '>Check Set Parts</a>' not in html
+    assert '>Sets</a>' not in html and '>Set Inspector</a>' not in html
     assert 'href="/workbench/orders"' in html
     app.config['LOGIN_DISABLED'] = True
 

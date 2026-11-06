@@ -1,6 +1,6 @@
 """4.8c on the 4.0 store (M.8e, issue #110): the Take button on the missing-part and missing-figure cards of a copy, built on the transfer.
 
-`/collection/save/take` takes `copy_id`, `item_id` and `color_id` (3.3 sent the typed number); the stock arithmetic is the Matcher's
+`/collection/save/take` takes `copy_id`, `item_id` and `color_id` (3.3 sent the typed number); the stock arithmetic is the Matchmaker's
 (`workbench.take_for_gap`), one receipt, one Undo. Premise gone: a figure with a pending identity check was refused in 3.3; a link still
 to check marks the row now and does not block (see `core/workbench.py`).
 """

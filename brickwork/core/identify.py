@@ -5,12 +5,12 @@ letters and numbers. `candidates` turns each prediction into an item of the coll
 or a provider gives follows: the Rebrickable (born) number first, then the items a confirmed BrickLink link names (the pooled
 `store4.identity.candidate_items`: collection and catalogue together), then the catalogue's search index. A number that still names
 several items is **listed apart as ambiguous, never guessed**; a number that names none is listed apart as unknown.
-`recognise` is the one call the screens make (Part to Inventory, What is this?, Add's photo mode): photo → choices and the unlisted.
+`recognise` is the one call the screens make (Part Spotter, What is this?, Add's photo mode): photo → choices and the unlisted.
 
 **History.** `store` keeps one result in `identification` (candidates with their names and scores, a clean 256 px thumbnail under
 `data/identifications/`; the original photo stays in memory); `archive` hides it. Both write an `identification:<id>` event
 (`create`, `archive`) that `undo` reverses: created → archived, archived → restored, refused when the record changed since. The
-Part to Inventory batch writes its own records inside its batch receipt (`core/part_inventory.py`) and is undone with the batch.
+Part Spotter batch writes its own records inside its batch receipt (`core/part_inventory.py`) and is undone with the batch.
 """
 from io import BytesIO
 import json

@@ -103,7 +103,7 @@ def test_a_fresh_install_reaches_a_checkable_set_with_no_key(fresh):
     assert not proposal['unresolved'] and proposal['items'][0]['number'] == '2070-1'
     done = client.post('/manage/add/confirm', json=dict(csrf_token=csrf, token=proposal['token'], items=proposal['items']))
     assert done.status_code == 200, done.get_data(as_text=True)
-    chooser = soup(client, '/workbench/check-parts')                           # Check Set Parts lists it; the parts are there
+    chooser = soup(client, '/workbench/check-parts')                           # Set Inspector lists it; the parts are there
     row = chooser.select_one('#bw-check-choices [data-list-row]')
     assert row['data-number'] == '2070-1' and row['href'].startswith('/workbench/check-parts/')
     started = client.post(row['href'], data={'csrf_token': csrf, 'action': 'start'})

@@ -3330,7 +3330,7 @@ paths:
   /export/picker.csv:
     get:
       operationId: get_export_picker_csv
-      summary: Part Picker results for the chosen copies as CSV, in pick order (#43).
+      summary: Part Runner results for the chosen copies as CSV, in pick order (#43).
       security:
       - bearerAuth:
         - read

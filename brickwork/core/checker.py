@@ -1,4 +1,4 @@
-"""Check Set Parts on the 4.0 store (M.8d, issue #110; design 5 `part_check`, 4.4, 4.5, 2.4 invariant 10).
+"""Set Inspector on the 4.0 store (M.8d, issue #110; design 5 `part_check`, 4.4, 4.5, 2.4 invariant 10).
 
 A session is a `part_check` row per copy (and one per figure line inside the copy): its order and answers are kept by token, and a
 token is a line's own id, which an in-place part-list switch keeps: `p:<copy_part.id>` for a required or spare part line and

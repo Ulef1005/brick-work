@@ -195,7 +195,7 @@
  .bw-mobile-selector form { flex:1;height:auto; }
 }
 
-/* ===== 4.9c · UI review run 6, Part Picker ranking (3c): w15 ===== */
+/* ===== 4.9c · UI review run 6, Part Runner ranking (3c): w15 ===== */
 /* Row order is label, ordinal, switch (kit 3c): the ordinal sits inside the label, 12px mono text-2, 20px wide. */
 .bw-rank-key { grid-template-columns:20px minmax(0,1fr); }
 #bw-workbench .bw-rank-key label { gap:6px; }

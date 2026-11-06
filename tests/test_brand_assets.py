@@ -31,6 +31,8 @@ def test_every_url_served_before_the_move_answers_with_the_same_bytes(app4):
         assert response.status_code == 200, url
         if url in GROWN:   # the icon set has grown since (#153: gear, book, catalog): every line served before is still there
             assert set(content.decode().splitlines()) <= set(response.get_data().decode().splitlines()), url
+        elif url.endswith('/manifest.webmanifest'):   # the one change since: the Workbench shortcut is named Part Spotter (#204)
+            assert response.get_data() == content.replace(b'Part to Inventory', b'Part Spotter'), url
         else:
             assert response.get_data() == content, url
         response.close()

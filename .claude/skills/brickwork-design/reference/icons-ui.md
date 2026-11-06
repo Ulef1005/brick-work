@@ -12,10 +12,10 @@
 | parts | `icons-ui/parts.svg` | Parts nav | new |
 | instr | `icons-ui/instr.svg` | Instructions nav | new |
 | box | `icons-ui/box.svg` | Boxes nav (replaces grid) | new |
-| scan | `icons-ui/scan.svg` | Part to Inventory nav | new |
-| check | `icons-ui/check.svg` | Check Set Parts nav, checklist | new |
-| pick | `icons-ui/pick.svg` | Part Picker nav (new) | new |
-| match | `icons-ui/match.svg` | Matcher nav (replaces check) | new |
+| scan | `icons-ui/scan.svg` | Part Spotter nav | new |
+| check | `icons-ui/check.svg` | Set Inspector nav, checklist | new |
+| pick | `icons-ui/pick.svg` | Part Runner nav (new) | new |
+| match | `icons-ui/match.svg` | Matchmaker nav (replaces check) | new |
 | orders | `icons-ui/orders.svg` | Orders nav | new |
 | storage | `icons-ui/storage.svg` | Storage nav | new |
 | wish | `icons-ui/wish.svg` | Wishlist nav, pins | new |

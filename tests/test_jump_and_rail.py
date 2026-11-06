@@ -14,9 +14,9 @@ from tests.app4 import app4, client, coll, pair, read, world  # noqa: F401  (the
     ('/workbench/storage', 'Storage'),
     ('/planning/prices', 'Prices'), ('/planning/wishlist', 'Wishlist'),
     ('/manage/tools', 'Tools & Admin'),
-    ('/workbench/check-parts', 'Check Set Parts'), ('/workbench/matcher', 'Matcher'),
-    ('/workbench/part-picker', 'Part Picker'), ('/workbench/part-to-inventory', 'Part to Inventory'),
-    ('/workbench/what-is-this', 'Part to Inventory')])                          # a Workbench tool, not Tools & Admin (#142)
+    ('/workbench/check-parts', 'Set Inspector'), ('/workbench/matcher', 'Matchmaker'),
+    ('/workbench/part-picker', 'Part Runner'), ('/workbench/part-to-inventory', 'Part Spotter'),
+    ('/workbench/what-is-this', 'Part Spotter')])                          # a Workbench tool, not Tools & Admin (#142)
 def test_rail_destinations_and_current_state(app4, client, world, path, current):
     with app4.test_request_context(path):
         from flask import session
@@ -29,8 +29,8 @@ def test_rail_destinations_and_current_state(app4, client, world, path, current)
         assert [name for name, _ in groups] == ['Collection', 'Workbench', 'Planning', 'Manage']
         links = [link for _, links in groups for link in links]
         titles = [link['title'] for link in links]
-        for expected in ('Sets', 'Minifigures', 'Parts', 'Instructions', 'Boxes', 'Part to Inventory', 'Check Set Parts',
-                         'Part Picker', 'Matcher', 'Orders', 'Storage', 'Wishlist', 'Prices', 'Complete sets', 'Add', 'Tools & Admin'):
+        for expected in ('Sets', 'Minifigures', 'Parts', 'Instructions', 'Boxes', 'Part Spotter', 'Set Inspector',
+                         'Part Runner', 'Matchmaker', 'Orders', 'Storage', 'Wishlist', 'Prices', 'Complete sets', 'Add', 'Tools & Admin'):
             assert expected in titles
         assert [link['title'] for link in links if link['active']] == [current]
     response = client.get(path, follow_redirects=True)

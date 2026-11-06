@@ -1,18 +1,18 @@
 {% extends 'web/toni/base.html' %}
-{% block title %} · Part to Inventory{% endblock %}
+{% block title %} · Part Spotter{% endblock %}
 {% block content_class %}inv-page{% endblock %}
 
 {% block page_assets %}<link rel="stylesheet" href="{{ bw_static('web/toni/bw-inventory.css') }}"><script defer src="{{ bw_static('web/toni/bw-inventory.js') }}"></script>{% endblock %}
 {% block main %}
 <div id="bw-inventory" class="inv" data-view="capture" data-url="{{ url_for('web.bw_inventory') }}" data-csrf="{{ csrf_token }}" data-colours="{{ colours|tojson|forceescape }}">
-<header class="inv-head"><div><h1>Part to Inventory</h1><p class="secondary">Photograph a piece, confirm part and colour</p></div><p class="inv-hint">Confirmed pieces are added to loose parts after you review the batch.</p></header>
+<header class="inv-head"><div><h1>Part Spotter</h1><p class="secondary">Photograph a piece, confirm part and colour</p></div><p class="inv-hint">Confirmed pieces are added to loose parts after you review the batch.</p></header>
 <div class="inv-notice" data-notice data-kind="info"{% if not error %} hidden{% endif %}><p data-message role="status" aria-live="polite">{{ error or '' }}</p><button type="button" data-undo hidden>Undo</button></div>
 <p data-unresolved></p>
 <div class="inv-grid">
 <section class="inv-source" data-panel="source" aria-label="Camera and recognition"><div class="inv-field"><span class="inv-label" id="inv-camera-label">Camera</span><div class="inv-picker"><button type="button" class="inv-row-button" data-camera aria-haspopup="listbox" aria-expanded="false" aria-labelledby="inv-camera-label inv-camera-value"><span class="inv-glyph inv-glyph-camera" aria-hidden="true"></span><span class="inv-grow" id="inv-camera-value" data-camera-label>Choose camera</span><span class="inv-glyph inv-glyph-chevron" aria-hidden="true"></span></button><div class="inv-list" data-camera-list role="listbox" aria-label="Cameras" hidden></div></div></div>
 <div class="inv-field"><span class="inv-label" id="inv-recognition-label">Recognition</span><div class="inv-seg" role="group" aria-labelledby="inv-recognition-label"><button type="button" disabled aria-disabled="true" title="Not available yet">Local model</button><button type="button" aria-pressed="true">Brickognize</button></div><span class="mono inv-note">Local model · Not available yet</span></div>
 <div class="inv-field"><span class="inv-label" id="inv-identify-label">Identify</span><div class="inv-seg" role="group" aria-labelledby="inv-identify-label"><button type="button" data-endpoint="parts" aria-pressed="true">Parts</button><button type="button" data-endpoint="figs" aria-pressed="false">Figures</button></div></div></section>
-<div class="inv-tabs" role="group" aria-label="Part to Inventory views"><button type="button" data-tab="capture" aria-pressed="true">Capture</button><button type="button" data-tab="queue" aria-pressed="false">Queue<span class="mono" data-total>0</span></button><button type="button" data-tab="review" aria-pressed="false">Review</button><button type="button" data-tab="results" aria-pressed="false">Results<span class="mono" data-results-count>0</span></button></div>
+<div class="inv-tabs" role="group" aria-label="Part Spotter views"><button type="button" data-tab="capture" aria-pressed="true">Capture</button><button type="button" data-tab="queue" aria-pressed="false">Queue<span class="mono" data-total>0</span></button><button type="button" data-tab="review" aria-pressed="false">Review</button><button type="button" data-tab="results" aria-pressed="false">Results<span class="mono" data-results-count>0</span></button></div>
 <section class="inv-capture" data-panel="capture" aria-label="Capture">
 <div class="viewfinder" data-drop><video data-video autoplay muted playsinline></video><span class="guide" aria-hidden="true"></span><span class="inv-slot mono" data-slot>Piece 1</span></div>
 <button type="button" data-capture class="button primary inv-primary">Enable camera</button>

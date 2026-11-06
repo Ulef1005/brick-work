@@ -210,7 +210,7 @@ def test_metadata_priority_prices_ranges_and_consolidation(coll):
 
 
 def test_jump_queries_are_bounded(coll):
-    """The Matcher's half of 3.3's bound test stays with M.8e; the jump search reads in a fixed number of statements however much is held."""
+    """The Matchmaker's half of 3.3's bound test stays with M.8e; the jump search reads in a fixed number of statements however much is held."""
     red = coll.colour('4')
     bulk(coll.db, 'part', 20, colour=red, prefix='part')
     small, _, _ = traced(coll.db, lambda: collection.search(coll.db, 'part'))

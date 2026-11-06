@@ -8,9 +8,9 @@ Do this when you saved something by mistake: a wrong count, a copy archived too 
 
 Undo appears where you made the change:
 
-- **Right after a save.** The notice that confirms a save ends in **Undo** on item pages, in **Manage → Add**, in **Part to Inventory** and in **Check Set Parts**. On an item page the Undo stays offered while that browser tab is open, also after a reload.
+- **Right after a save.** The notice that confirms a save ends in **Undo** on item pages, in **Manage → Add**, in **Part Spotter** and in **Set Inspector**. On an item page the Undo stays offered while that browser tab is open, also after a reload.
 - **On the planning screens.** After a pin or a change to the repair settings on Complete sets, and after any change to the lists on the Wishlist, **Undo** appears next to the message at the top of the page.
-- **In a history list.** **Part Picker** and **Matcher** list **Recent saves**. A storage location's page has **History**, and an order has **Allocation history**. Each row that can still be undone has an **Undo** button; rows already undone say **Undone**.
+- **In a history list.** **Part Runner** and **Matchmaker** list **Recent saves**. A storage location's page has **History**, and an order has **Allocation history**. Each row that can still be undone has an **Undo** button; rows already undone say **Undone**.
 - **For tokens.** After you revoke an API token, the banner offers **Undo** for 10 minutes.
 - **In Tools & Admin.** After **Save settings** the page offers **Undo**, and after you remove a source key the key's card does. **Unresolved items** offers it after each decision, a merge included ([Resolve unresolved items and merge items](merge-items.md)).
 
@@ -18,7 +18,7 @@ Press **Undo**. The change is reversed and recorded as a new event. An Undo cann
 
 ### When Undo is refused
 
-Undo puts back the state from before your save, so it first checks that nothing has changed since. If a later save touched the same rows, Brick Work refuses with a message such as **Item changed · undo the later save first**. Undo the later change first, then this one. Check Set Parts says **This answer changed elsewhere. Reload before undoing.**
+Undo puts back the state from before your save, so it first checks that nothing has changed since. If a later save touched the same rows, Brick Work refuses with a message such as **Item changed · undo the later save first**. Undo the later change first, then this one. Set Inspector says **This answer changed elsewhere. Reload before undoing.**
 
 ### What Undo can't take back
 

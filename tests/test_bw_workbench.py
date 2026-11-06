@@ -1,4 +1,4 @@
-"""The Workbench on the 4.0 store (M.8e, issue #110): gaps, the Matcher, the Part Picker, Take and Give, Found it, booklets and their Undo.
+"""The Workbench on the 4.0 store (M.8e, issue #110): gaps, the Matchmaker, the Part Runner, Take and Give, Found it, booklets and their Undo.
 
 Rewritten from the 3.3 file of the same name on `tests/app4.py` fixtures. What changed with the model: a gap and its stock meet by item id
 (and colour), booklets and boxes by the set's BrickLink number; every move writes one `workbench` receipt event and `stock_transfer` rows

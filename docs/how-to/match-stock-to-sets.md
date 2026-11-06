@@ -2,13 +2,15 @@
 
 *Since 0.5.0.*
 
+Matchmaker (was Matcher) is the Workbench workflow described here.
+
 See which incomplete [copies](../concepts/collection-model.md) your loose stock can fill, and move the parts across. Do this after you have checked some sets and added loose parts, minifigures, booklets or boxes to your stock.
 
-Matcher works from the gaps recorded on your copies: missing and damaged parts, missing minifigures, and a missing box or instruction booklet. Loose minifigures with missing parts count as well.
+Matchmaker works from the gaps recorded on your copies: missing and damaged parts, missing minifigures, and a missing box or instruction booklet. Loose minifigures with missing parts count as well.
 
 ## Move loose stock into a copy
 
-1. Open **Workbench → Matcher**. (The addresses `/workbench/matcher` and `/workbench/match` open the same page.)
+1. Open **Workbench → Matchmaker**. (The addresses `/workbench/matcher` and `/workbench/match` open the same page.)
 2. The heading tells you how many copies can be advanced and how many can become complete. Copies that loose stock can finish come first, then the rest by how much of their gap your stock covers.
 3. Each copy shows **covers N of M missing**, the kinds of item that match (**Parts**, **Figures**, **Instruction**, **Box**), and **Completes checked copy** if the matches would finish it.
 4. Open a copy to see its matches. Each line shows the item, **Needs N · have M** and any note on the loose stock.
@@ -24,7 +26,7 @@ Every move appears under **Recent saves**, with an **Undo** on each line.
 - Within one copy, coverage counts each loose stock item once, so a lot of 2 does not cover two gaps of 2.
 - Damaged loose stock and loose minifigures with missing parts are not offered.
 - A match is exact by the catalogue item, so an item that still says **To check** is matched like any other; the mark only tells you its BrickLink number is not settled. A loose item with no number, or a BrickLink-only item, never meets a catalogue part: merge it into the catalogue item first.
-- A copy becomes Complete only when **Set is checked** is set on it and no required part or minifigure is missing. If you set its completeness by hand, Matcher leaves it as it is.
+- A copy becomes Complete only when **Set is checked** is set on it and no required part or minifigure is missing. If you set its completeness by hand, Matchmaker leaves it as it is.
 
 ## Narrow the list
 
@@ -34,7 +36,7 @@ Use search to find a copy by set number, name or the parts it needs. The filter 
 
 *Since 0.5.0.*
 
-Booklets you own but have not recorded can be added from the Matcher page. They go into your loose stock, where Matcher can match them to a copy that lacks its booklet.
+Booklets you own but have not recorded can be added from the Matchmaker page. They go into your loose stock, where Matchmaker can match them to a copy that lacks its booklet.
 
 1. Under **Add instruction booklets**, enter one booklet number per line in **Set numbers**. A number works when you already hold that booklet or the BrickLink item list (once it is loaded) names it; a set's own number does not name its booklet. Use the full number when a set has several booklets.
 2. Set **Quantity per line**, or add a comma and a quantity to a line to override it.
@@ -43,4 +45,4 @@ Booklets you own but have not recorded can be added from the Matcher page. They 
 ## What next
 
 - [Pick parts for several sets](pick-parts.md) for the gaps your loose stock does not cover.
-- [Check a set's parts](check-set-parts.md) to record gaps on more copies, so Matcher has more to work with.
+- [Check a set's parts](check-set-parts.md) to record gaps on more copies, so Matchmaker has more to work with.

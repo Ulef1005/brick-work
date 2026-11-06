@@ -34,6 +34,12 @@
   results.replaceChildren(); links = []; selected = -1;
   for (const item of data.results) {
    if (dialog.dataset.check === 'true' && item.kind !== 'set') continue;
+   if (item.kind === 'page') {   // a Workbench workflow by its name or its former name
+    const panel = text('section', '', 'jump-result');
+    row(panel, item.name, item.note || '', item.url);
+    results.append(panel);
+    continue;
+   }
    const panel = text('section', '', 'jump-result');
    const head = text('div', '', 'jump-result-head');
    const tile = text('div', 'No image', 'jump-image tw-light');
@@ -66,7 +72,8 @@
    }
    results.append(panel);
   }
-  message.textContent = data.results.length ? `${data.results.length} results${data.truncated ? ' · refine your search for more' : ''}` : 'No matches.';
+  const shown = results.children.length;   // rows skipped in the check chooser are not counted
+  message.textContent = shown ? `${shown} results${data.truncated ? ' · refine your search for more' : ''}` : 'No matches.';
   if (links.length) choose(0);
  }
  async function search(ticket) {

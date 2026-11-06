@@ -178,7 +178,7 @@ Partly framed capabilities are now all framed (phone 390 and MacBook 1440), so *
 | planning.wanted-watch | Planning 11c Wanted watch and alert |
 | jobs.peeron-load, jobs.peeron-pdf | Manage 11d Peeron load, Peeron PDF |
 | maintenance.admin.set.refresh-bulk | Manage 11d Set refresh bulk |
-| Part to Inventory camera list, New lot, desktop Results | Workbench 3f |
+| Part Spotter camera list, New lot, desktop Results | Workbench 3f |
 
 The manifest file `coverage/coverage-manifest.json` was not re-counted tag by tag; the table above is the delta from the 13 partly-framed items of v1. Device coverage per section: `FRAMES-by-device.md`. All frames are exported as PNG in `frames/`.
 | `collection.continuous-scroll` | 11a scroll (v1.2 frames, phone and desktop) |

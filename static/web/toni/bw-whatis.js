@@ -51,7 +51,7 @@
   }
   file.addEventListener('change', () => { if (file.files && file.files[0]) identify(file.files[0]); file.value = ''; });
 
-  // Live camera (as Part to Inventory): the first press asks for the camera, then each press takes a picture.
+  // Live camera (as Part Spotter): the first press asks for the camera, then each press takes a picture.
   const capture = root.querySelector('[data-wi-capture]'), label = root.querySelector('[data-wi-capture-label]');
   const finder = root.querySelector('[data-wi-viewfinder]'), video = root.querySelector('[data-wi-video]');
   const media = typeof navigator !== 'undefined' && navigator.mediaDevices && navigator.mediaDevices.getUserMedia && (typeof window.isSecureContext === 'undefined' || window.isSecureContext);

@@ -1843,6 +1843,7 @@ def bw_copy_part_list(copy_id):
 @web_page.get('/collection/jump')
 @login_required
 def bw_collection_jump():
+    from . import ui
     from .admin_ops import brickwork_path
     from ..core.admin import database
     from ..core import collection
@@ -1867,7 +1868,7 @@ def bw_collection_jump():
                 row['url']=row['copies'][0]['url'] if len(row['copies'])==1 else None
             else: row['url']=url_for('web.bw_collection_item',**params)
             rows.append(row)
-        result['results']=rows
+        result['results']=rows+ui.workflow_matches(request.args.get('q',''))   # the workflow pages come after the items, which keep their `limit`
     except (sqlite3.Error,OSError,ValueError) as exc:
         return jsonify(message=public(exc, 'Brick Work database is not available · try again')),503
     response=jsonify(result);response.headers['Cache-Control']='no-store';return response

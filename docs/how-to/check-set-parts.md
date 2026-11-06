@@ -2,11 +2,13 @@
 
 *Since 0.5.0.*
 
+Set Inspector (was Check Set Parts) is the Workbench workflow described here.
+
 Go through one [copy](../concepts/collection-model.md) of a set part by part and record what is missing. Do this when you sort out a used or half-built set. The copy needs its part list in your catalogue first.
 
 ## Run the check
 
-1. Open **Workbench → Check Set Parts**. The list shows copies **In progress**, **Not checked** and **Checked**; it opens on **Not checked**. Change that under the filter, or sort by **Largest first**, **Number** or **Name**.
+1. Open **Workbench → Set Inspector**. The list shows copies **In progress**, **Not checked** and **Checked**; it opens on **Not checked**. Change that under the filter, or sort by **Largest first**, **Number** or **Name**.
 2. Choose a copy.
 3. Under **Order**, pick **Inventory order**, **By colour** or **Largest first**. Then select **Start**.
 4. For each part, set the number you found with **−** and **+**, then select **Found N** (N is your count) to save it. The difference is recorded as missing.
@@ -26,7 +28,7 @@ Keyboard: **F** found all, **M** missing, **1 to 9** count, **S** skip, **Z** un
 
 ## What the check changes
 
-- Each answer sets that line's missing count on the copy. Those counts are what Part Picker, Matcher and the exports work from.
+- Each answer sets that line's missing count on the copy. Those counts are what Part Runner, Matchmaker and the exports work from.
 - **Set is checked** can only be ticked once no part or figure is left skipped or unanswered.
 - With **Set is checked** ticked and nothing missing, the copy's completeness becomes Complete. With gaps it stays Incomplete. If you set the copy's completeness by hand, the check leaves it as it is.
 

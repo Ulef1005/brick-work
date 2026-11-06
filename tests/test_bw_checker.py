@@ -1,4 +1,4 @@
-"""Check Set Parts on the 4.0 store (M.8d, issue #110): sessions on `part_check`, tokens by line id, receipts and Undo on `event`.
+"""Set Inspector on the 4.0 store (M.8d, issue #110): sessions on `part_check`, tokens by line id, receipts and Undo on `event`.
 
 The fixture copy is a copy of `1000-1` (RICH in tests/app4.py): two required parts (3001 red x4, 3023 white x2), one spare part, and a
 figure line (2 x fig-000004) with four own parts. Invented data, no network."""

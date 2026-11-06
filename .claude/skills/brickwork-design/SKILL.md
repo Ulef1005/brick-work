@@ -37,7 +37,7 @@ Brick Work has its own design, outside Toni's World (Ulf, 2026-11-03; ADR 0022).
 
 - **Guide:** G1 to G4 (principles, colour, tokens, navigation), 1a data-type language, 1b app shell, 6a icons, 9a devices.
 - **Collection:** 1c Sets, 1d Set detail, 1e, 2a Minifigure, 2b Part, 2c Instruction and box, 2d Part lot, 2e Module states, 7a/7b lists and copy chooser, 8a item lists, 8c lot and order sheets.
-- **Workbench:** 3a Matcher, 3b Check Set Parts, 3c Part Picker, 3e Set parts checker, 3f Part to Inventory, 5a Orders, 5d Storage, 7d Orders detail.
+- **Workbench:** 3a Matchmaker, 3b Set Inspector, 3c Part Runner, 3e Set parts checker, 3f Part Spotter, 5a Orders, 5d Storage, 7d Orders detail.
 - **Planning:** 4a Wishlist, 4b Prices, 4c Complete sets, 7c.
 - **Manage:** 4d Add, 5b Tools & Admin, 5c Statistics, 7e/7f system pages, 8b forms.
 - **v1.3:** Workbench 12a Check this copy, 12b Orders desktop/iPad, 12c Storage desktop/iPad, 12d Include spare parts?, 12e Check figure parts; Collection 12f Minifigure detail, 12g Minifigures in a set, 12h Pager, 12i Sets filters (Select, Group), 12j First run without keys; Planning 12k Max price with currency; Manage 12l Catalogues & keys, 12m API tokens, 12n Collection sync (issue #10), 12o Scan a set barcode (issue #8).
@@ -47,11 +47,11 @@ Known gaps: 12j predates schema 4.0 (the app's first run follows data-model desi
 ## Decisions since v1
 
 - **Prices card** is identical everywhere (set, minifigure, part, instruction, box): label, value with unit, min/avg/max range bar for sold rows, sub-line with count, window and age. "With box" and "Set estimate" are set-only.
-- **Part to Inventory review:** the reference part is large on top with the user's photo smaller beside it (2:1); "Other possibilities" are listed below. Best match is not repeated in the list.
-- **Part to Inventory capture:** a Camera selector row and a Recognition switch (Local model | Brickognize) sit above the tabs and in the desktop capture column. Default Local model, works offline.
-- **Part to Inventory flow:** snap photo, AI detects, best match shown and confirmed by hand (alternatives on demand), approved pieces go to a verified queue, when a lot is done the batch is confirmed and added to inventory.
+- **Part Spotter review:** the reference part is large on top with the user's photo smaller beside it (2:1); "Other possibilities" are listed below. Best match is not repeated in the list.
+- **Part Spotter capture:** a Camera selector row and a Recognition switch (Local model | Brickognize) sit above the tabs and in the desktop capture column. Default Local model, works offline.
+- **Part Spotter flow:** snap photo, AI detects, best match shown and confirmed by hand (alternatives on demand), approved pieces go to a verified queue, when a lot is done the batch is confirmed and added to inventory.
 - **Batch confirmation sheet:** "Add 3 pieces to inventory?" with Add to: Loose parts | Assign to a lot, a lot picker row, "New lot", button "Add 3 to Pile A".
-- **Check Set Parts:** "Missing so far" is a **history view** (all misses of the check, growing, scrolls), not the last 3. One **Missing pass** replaces the old "already answered" screen: a final pass over answered parts, each row "−n of m" with a "Found 1" button, hint "Found one in the pile? Tap Found 1 and the count drops.", footer "Done · 9 still missing".
+- **Set Inspector:** "Missing so far" is a **history view** (all misses of the check, growing, scrolls), not the last 3. One **Missing pass** replaces the old "already answered" screen: a final pass over answered parts, each row "−n of m" with a "Found 1" button, hint "Found one in the pile? Tap Found 1 and the count drops.", footer "Done · 9 still missing".
 - **Part desktop (2b):** a part that completes a set shows a success chip "Completes set" in place of the "· n left" text.
 - **Desktop checker:** answer buttons sit directly under the part name, no empty gap.
 - **Images:** set rows use set covers, part rows part images on a white tile, minifigure rows minifigure images. Never cross categories.
@@ -65,7 +65,7 @@ Known gaps: 12j predates schema 4.0 (the app's first run follows data-model desi
 - **Wordmark:** "Brick Work" in Patrick Hand on brand surfaces only (splash, lockup, about). The product top bar uses Inter 600 beside the mark.
 - **No LEGO trademarks:** never the word "LEGO", its logo, red-and-yellow, a minifigure likeness or a photo-real 2 × 4 brick. Say "set", "part", "minifigure".
 - **No** second interaction colour, gradients, shadows, emoji or mascot.
-- **Voice:** warm, short, sentence case, bare counts, mid-dots, no exclamation marks. Names: "Tools & Admin", "Part to Inventory", "Wishlist", "Set 1" for a copy.
+- **Voice:** warm, short, sentence case, bare counts, mid-dots, no exclamation marks. Names: "Tools & Admin", "Part Spotter", "Wishlist", "Set 1" for a copy.
 
 ## Data-type language (apply on every screen)
 
@@ -92,7 +92,7 @@ Charts follow the design builder's `base/charts.md`: bars start at zero, clay is
 
 ## Navigation
 
-Four groups: **Collection** (Sets, Minifigures, Parts, Instructions, Boxes), **Workbench** (Part to Inventory, Check Set Parts, Part Picker, Matcher, Orders, Storage), **Planning** (Wishlist, Prices, Complete sets), **Manage** (Add, Tools & Admin). Phone: bottom bar of the four groups with the group's items in a scrolling row under the top bar, Jump search top right. Desktop: rail with counts, collapsing to icons at 1024 px. Home is the Sets list. Theme switcher: three icon segments (auto, sun, moon), no text, in Manage and at the foot of the desktop rail.
+Four groups: **Collection** (Sets, Minifigures, Parts, Instructions, Boxes), **Workbench** (Part Spotter, Set Inspector, Part Runner, Matchmaker, Orders, Storage), **Planning** (Wishlist, Prices, Complete sets), **Manage** (Add, Tools & Admin). Phone: bottom bar of the four groups with the group's items in a scrolling row under the top bar, Jump search top right. Desktop: rail with counts, collapsing to icons at 1024 px. Home is the Sets list. Theme switcher: three icon segments (auto, sun, moon), no text, in Manage and at the foot of the desktop rail.
 
 Status model: Complete requires "Set is checked" and nothing missing; a missing minifigure makes a copy incomplete even when checked. Do not change it. One person and one collection; a home-screen web app on the phone and a desktop app; English UI.
 

@@ -49,8 +49,8 @@ def test_rail_destinations_and_current_state(app4, client, world, path, current)
         assert [name for name, _ in groups] == ['Collection', 'Workbench', 'Planning', 'Manage']
         links = [link for _, links in groups for link in links]
         titles = [link['title'] for link in links]
-        for expected in ('Sets', 'Minifigures', 'Parts', 'Instructions', 'Boxes', 'Gear', 'Part to Inventory', 'Check Set Parts',
-                         'Part Picker', 'Matcher', 'Orders', 'Storage', 'Wishlist', 'Prices', 'Complete sets', 'Add', 'Tools & Admin'):
+        for expected in ('Sets', 'Minifigures', 'Parts', 'Instructions', 'Boxes', 'Gear', 'Part Spotter', 'Set Inspector',
+                         'Part Runner', 'Matchmaker', 'Orders', 'Storage', 'Wishlist', 'Prices', 'Complete sets', 'Add', 'Tools & Admin'):
             assert expected in titles
         assert [link['title'] for link in links if link['active']] == [current]
     response = client.get(path, follow_redirects=True)
@@ -63,3 +63,37 @@ def test_item_page_keeps_its_kind_current(client, world):
     response = client.get(f'/collection/item/{world.keep}', follow_redirects=True)
     assert response.status_code == 200
     assert re.search(r'aria-current="page">.*?Sets</span>.*?</a>', response.get_data(as_text=True), re.S)
+
+
+def pages(client, query):
+    return [r for r in client.get('/collection/jump', query_string={'q': query}).json['results'] if r['kind'] == 'page']
+
+
+@pytest.mark.parametrize('query,title,note', [
+    ('Matchmaker', 'Matchmaker', 'Workbench'), ('Matcher', 'Matchmaker', 'Was Matcher'), ('match', 'Matchmaker', 'Workbench'),
+    ('Part Picker', 'Part Runner', 'Was Part Picker'), ('part  picker', 'Part Runner', 'Was Part Picker'),
+    ('part to inv', 'Part Spotter', 'Was Part to Inventory'), ('check set parts', 'Set Inspector', 'Was Check Set Parts'),
+    ('inspector', 'Set Inspector', 'Workbench'), ('insp', 'Set Inspector', 'Workbench')])
+def test_jump_lists_workbench_workflows_by_new_and_former_name(coll, client, query, title, note):
+    found = pages(client, query)
+    assert [(r['name'], r['note']) for r in found if r['name'] == title] == [(title, note)]
+    assert found[0]['url'].startswith('/workbench/')
+
+
+@pytest.mark.parametrize('query', ['m', 'in', 'to', 'or', 'ma', 'pa', 'ker', 'spector'])
+def test_jump_page_rows_need_three_characters_that_start_a_word(coll, client, query):
+    assert pages(client, query) == []
+
+
+def test_jump_page_rows_come_after_the_items_and_never_take_the_selection(coll, client):
+    wanted = coll.add_wish(coll.local('set', 'Setting Sun', born_key='set-sun'))
+    results = client.get('/collection/jump?q=set').json['results']
+    assert results[0]['kind'] != 'page' and results[0]['url'].endswith(wanted)
+    assert [r['name'] for r in results if r['kind'] == 'page'] == ['Set Inspector']
+    assert results[-1]['kind'] == 'page'
+
+
+def test_jump_check_chooser_counts_only_the_rows_it_shows():
+    source = (ROOT / 'static/web/toni/jump.js').read_text()
+    assert "const shown = results.children.length" in source and 'data.results.length' not in source
+    assert source.index("item.kind !== 'set') continue") < source.index("item.kind === 'page'")   # check mode skips before a page row is drawn

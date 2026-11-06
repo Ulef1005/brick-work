@@ -11,7 +11,7 @@ G1 Principles · G2 Colour guidance (Rebrickable) · G3 Tokens and type · G4 Na
 1c Sets (+ iPad) · 1d Set detail (+ iPad) · 1e Edit sheet and panel · 2a Minifigure · 2b Part · 2c Instruction and box · 2d Part lot · 2e Module states · 7a Item lists · 7b Copy chooser, delete, wish detail · 8a Item lists, select, read-only, problems · 8c Lot, progress, instruction sheets · 11a Capabilities: continuous scroll, duplicates, grouping, item filters, purchase locations, consolidated instances.
 
 ## BW Workbench.dc.html
-3a Matcher (+ iPad) · 3b Check Set Parts · 3c Part Picker (+ iPad) · 3e Set parts checker (start, part, missing pass, count, figure, spares, finish) · 3f Part to Inventory (capture with camera and recognition, queue, review, results, batch sheet, camera list, new lot, desktop results; + iPad) · 5a Orders (+ iPad) · 5d Storage (+ iPad) · 7d Order detail, review, history, resume · 11b Orders capabilities.
+3a Matchmaker (+ iPad) · 3b Set Inspector · 3c Part Runner (+ iPad) · 3e Set parts checker (start, part, missing pass, count, figure, spares, finish) · 3f Part Spotter (capture with camera and recognition, queue, review, results, batch sheet, camera list, new lot, desktop results; + iPad) · 5a Orders (+ iPad) · 5d Storage (+ iPad) · 7d Order detail, review, history, resume · 11b Orders capabilities.
 
 ## BW Planning.dc.html
 4a Wishlist · 4b Prices · 4c Complete sets · 7c Pins, settings, export · 11c Wanted watch.

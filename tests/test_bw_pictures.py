@@ -341,3 +341,40 @@ def test_the_dump_serves_a_set_or_figure_by_its_img_url(coll, world, pair):
     assert net.asked == [url] and stored(coll, world.keep) == [(None, 'rebrickable_dump', 'photo')]
     assert pictures.can_serve(coll.db, world.keep, None, 'rebrickable_dump')
     assert not pictures.can_serve(coll.db, world.gate, None, 'rebrickable_dump')        # no img_url: the order falls through
+
+
+def test_preview_fetches_and_stores_a_reviewed_sets_picture_once(coll, world):
+    # #217: the Add review shows a set's picture before Add ("Fetch and store when selected", Ulf, 08.11.).
+    net = Pictures()
+    first = pictures.preview(coll.db, world.keep, image_http=net)
+    assert first and len(net.asked) == 1
+    assert stored(coll, world.keep)
+    assert pictures.preview(coll.db, world.keep, image_http=net) == first and len(net.asked) == 1, 'a stored picture is not fetched again'
+
+
+def test_preview_leaves_parts_and_unidentified_items_alone(coll, world):
+    net = Pictures()
+    assert pictures.preview(coll.db, world.brick, image_http=net) is None          # a part's picture depends on the colour chosen later
+    assert pictures.preview(coll.db, world.mystery, image_http=net) is None
+    assert net.asked == []
+
+
+def test_preview_passes_over_a_source_that_has_nothing(coll, world):
+    net = Pictures(default=base.NotFoundAtSource('no picture'))
+    assert pictures.preview(coll.db, world.figure, image_http=net) is None and net.asked
+
+
+def test_preview_of_a_set_only_the_catalogue_knows(coll, world):
+    # Review finding: the normal Add case is an item not yet in the collection; `identified` read the collection's item first and broke.
+    found = coll.db.execute("SELECT c.id FROM catalogue.item c WHERE c.kind!='part' AND c.id NOT IN (SELECT id FROM main.item) ORDER BY c.kind='set' DESC, c.id LIMIT 1").fetchone()
+    assert found, 'the fixture catalogue has an item the collection does not hold'
+    net = Pictures()
+    image = pictures.preview(coll.db, found[0], image_http=net)
+    assert image and net.asked and coll.db.execute('SELECT 1 FROM main.item WHERE id=?', (found[0],)).fetchone()
+
+
+def test_preview_never_calls_the_rebrickable_api(coll, world, monkeypatch):
+    coll.setting('source_priority', json.dumps({'pictures': {'*': ['rebrickable_api']}}))
+    net, api = Pictures(), Router({})
+    assert pictures.preview(coll.db, world.keep, http=api, image_http=net) is None
+    assert net.asked == [] and not getattr(api, 'asked', [])

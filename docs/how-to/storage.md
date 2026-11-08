@@ -49,7 +49,7 @@ A lot takes its parts with it: loose parts filed in that lot and in the same sto
 
 ## See what's in a storage
 
-Select a storage in the list on **Workbench → Storage**. It shows its type, where it sits, its note, and its contents grouped as **Sets**, **Minifigures**, **Part lots** and **Other** (instructions, boxes and the like), with a search and filters. **Not stored** in the same list shows everything without a place.
+Select a storage in the list on **Workbench → Storage**. It shows its type, where it sits, its note, and its contents grouped as **Sets**, **Minifigures**, **Part lots** and **Other** (instructions, boxes and the like), with a search and filters. **Not stored** in the same list shows everything without a place. The name of a set, minifigure or part opens its page; a lot has no page of its own, so its name is plain text. In select mode a click on a name selects the row instead.
 
 On the **Collection** lists you can also filter by **Storage** or group by it.
 

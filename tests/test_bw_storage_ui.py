@@ -277,3 +277,21 @@ def test_storages_page_loads_the_storage_list_once(world, client, monkeypatch):
     assert client.get('/workbench/storage').status_code == 200
     assert client.get(f'/workbench/storage/{world.shelf}').status_code == 200
     assert len(seen) == 2                                                     # one per request
+
+
+def test_contents_rows_link_to_their_detail_pages(world, coll, client):
+    # #223: a set, figure or part in a storage opens its own page; a lot has none, so its name stays text.
+    coll.sql('UPDATE stock SET storage_id=? WHERE id=?', (world.shelf, world.stock_figure))
+    soup = page(client, f'/workbench/storage/{world.shelf}')
+    groups = {g['data-group']: g for g in soup.select('.st-group')}
+    set_link = groups['set'].select_one('.st-item .st-open')
+    assert set_link and set_link.select_one('strong') and f'copy=' in set_link['href']
+    figure_link = groups['figure'].select_one('.st-item .st-open')
+    assert figure_link and 'stock=' in figure_link['href']
+    lot = next(i for i in groups['part'].select('.st-item') if 'Lot ·' in text(i))
+    assert not lot.select('.st-open')
+    for link in (set_link, figure_link):
+        assert client.get(link['href']).status_code == 200
+    # The link sits inside the selectable label: select mode turns its pointer events off so a click selects the row.
+    css = (Path(__file__).parents[1] / 'static/web/toni/bw-storage.css').read_text()
+    assert '.is-selecting .st-open{pointer-events:none}' in css

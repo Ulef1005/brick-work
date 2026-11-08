@@ -100,6 +100,10 @@ def bw_admin(page):
                 from . import setup_state
                 flow = setup_state.first_run(bw_collection_editable())
                 data['get_started'] = 'done' if flow['done'] == flow['total'] else f"{flow['done']} of {flow['total']} done"
+            if page == 'statistics':
+                from . import stats_charts
+                data['headline'] = stats_charts.headline(data['completeness'])
+                data['charts'] = stats_charts.charts(data)
             if page == 'unresolved':
                 data['done'] = identity_undo_offer(request.args.get('done', ''))
             if page == 'settings':

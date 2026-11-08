@@ -63,6 +63,10 @@ After a move from 3.3, **Tools & Admin → Migration report** reads the report t
 
 **Values** edits the lists the forms offer: owners, statuses, tags, storage locations and purchase places. Rename a value in place; **Archive** hides it from the forms and keeps what refers to it. A value Brick Work uses itself (such as the status that marks a set as checked) is listed but cannot be renamed or archived. A storage location can only be archived when it holds nothing; its own page, **Open location · moves and Undo**, moves things out and undoes the archive.
 
+## Statistics
+
+**Tools & Admin → Statistics** counts your live copies four ways: by completeness, by theme, by storage and by purchase place. The headline says how many copies are incomplete ("9 of 25 copies are incomplete"), and each chart's title states its point ("Only 5 copies are complete", "Harbour is the biggest theme, 3 copies"). Every bar is one line, label, bar and value, and all four charts share one scale, copies starting at zero, so bars compare across charts. Completeness is in status order (Complete, Incomplete, Not checked, Sealed); the others run from most to fewest copies. After six rows the rest folds into one outlined row, for example **14 more themes**, with their summed copies. Below the charts, a card compares what you paid with LEGO's retail price.
+
 ## Jobs and Bulk refresh prices
 
 **Jobs** lists the newest jobs with their steps. A failed step has **Retry**; a job that was running when the app stopped has **Resume**. **Bulk refresh prices** queues a price job for every held or wanted item whose price is stale, and needs the BrickLink key.

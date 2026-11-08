@@ -123,11 +123,16 @@
     other: 'Loads from Rebrickable or BrickLink with Refresh pictures',
   };
   const setNumber = /^\d+[A-Za-z]?-\d+$/;
+  const NOTE_MIN_WIDTH = 120;
   function pictureNote(span) {
     const tile = span.closest('[data-item-no],[data-kind],.bc-picture,.bw-picture,.check-picture,.scan-tile') || span.parentElement;
     const kind = tile && tile.dataset ? tile.dataset.kind : null;
     const number = (tile && tile.dataset && tile.dataset.itemNo) || (tile && tile.querySelector('.mono')?.textContent) || '';
     const isSet = kind ? kind === 'S' : setNumber.test(number.trim());
+    // #197: the sentence needs room; a small tile (a list row's thumbnail, about 56 px) keeps the app's short "No image". The box is the
+    // placeholder itself when it is a box (the 56 px thumbnail of a row is the span), else the tile it sits in.
+    const box = getComputedStyle(span).display === 'inline' ? tile : span;
+    if (!box || box.getBoundingClientRect().width < NOTE_MIN_WIDTH) return;
     span.textContent = isSet ? PICTURE_NOTE.set : PICTURE_NOTE.other;
     span.classList.add('bw-demo-picture-note');
   }

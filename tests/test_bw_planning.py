@@ -992,8 +992,12 @@ def test_wishlist_save_feedback_one_line_and_chip_gap(world, client):
     feedback = soup.select_one('.bp-save-feedback')
     assert feedback.select_one('[data-bp-message][role="status"]')
     assert feedback.select_one('button[data-bp-undo][hidden]')
-    js = (ROOT / 'static/web/toni/bw-planning.js').read_text()
-    assert "'Saved · Undo'" not in js and "message.textContent='Saved'" in js
+    wishlist = soup.select_one('.wl-feedback')  # the Wishlist's own saves (moves, copies, lists) report here
+    assert wishlist.select_one('[data-wl-message][role="status"]')
+    assert wishlist.select_one('button[data-wl-undo][hidden]')
+    for script in ('bw-planning.js', 'bw-wishlists.js'):
+        js = (ROOT / 'static/web/toni' / script).read_text()
+        assert "'Saved · Undo'" not in js and "message.textContent='Saved'" in js, script
     planning = (ROOT / 'static/web/toni/bw-planning.css').read_text()
     assert re.search(r'#bw-planning \.bp-save-feedback \{[^}]*display:flex;align-items:center', planning)
     wishlists = (ROOT / 'static/web/toni/bw-wishlists.css').read_text()

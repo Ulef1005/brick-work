@@ -1951,6 +1951,7 @@
             "back",
             "next",
             "spares",
+            "recheck",
             "finish",
             "undo"
           ],
@@ -1973,11 +1974,26 @@
           ],
           "type": "string"
         },
+        "scope": {
+          "description": "start only: `all` (the default) walks the whole set; `missing` walks only the parts the last check left missing (the others keep their answers; refused with 422 when none is missing). A running check of the other scope is replaced.",
+          "enum": [
+            "all",
+            "missing"
+          ],
+          "type": "string"
+        },
         "session": {
           "type": "string"
         },
         "token": {
           "type": "string"
+        },
+        "tokens": {
+          "description": "recheck only: the skipped lines to walk (default: every skipped one).",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
         }
       },
       "required": [

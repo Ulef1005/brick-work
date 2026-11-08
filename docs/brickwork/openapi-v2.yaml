@@ -1202,7 +1202,7 @@ paths:
       x-piece: M.11b
     post:
       operationId: post_copies_by_id_check
-      summary: Apply one part-check action (start, answer, found_one, skip, select, back, next, spares, finish, undo).
+      summary: Apply one part-check action (start, answer, found_one, skip, select, back, next, spares, recheck, finish, undo).
       tags:
       - Copies
       security:
@@ -7184,7 +7184,7 @@ components:
       type: object
       properties:
         session:
-          description: The saved part-check session (id, order, cursor, answers, misses, undo, finished, sort, spares, saved_at), or null when none was started.
+          description: The saved part-check session (id, order, cursor, answers, misses, undo, finished, sort, spares, scope, saved_at; `scope` is `missing` for a missing-only run, `skipped` for a walk of the skipped parts, null for the whole set), or null when none was started.
         rows:
           description: The sequence of the check. One entry per required part line (kind part), whole figure (figure) and spare line (spare) with token, id, item, name, color, quantity, missing, damaged, checked and image_id; a figure carries parts_lines and parts_missing.
     CheckAction:
@@ -7201,6 +7201,7 @@ components:
           - back
           - next
           - spares
+          - recheck
           - finish
           - undo
         token:
@@ -7219,6 +7220,17 @@ components:
           - inventory
           - largest
           - colour
+        scope:
+          type: string
+          description: 'start only: `all` (the default) walks the whole set; `missing` walks only the parts the last check left missing (the others keep their answers; refused with 422 when none is missing). A running check of the other scope is replaced.'
+          enum:
+          - all
+          - missing
+        tokens:
+          type: array
+          description: 'recheck only: the skipped lines to walk (default: every skipped one).'
+          items:
+            type: string
       required:
       - action
     Gap:

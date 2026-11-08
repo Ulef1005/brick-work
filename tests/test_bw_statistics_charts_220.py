@@ -72,3 +72,12 @@ def test_the_page_renders_the_charts(coll, world, client):
     assert len(html.select('.bw-chart')) == 4 and not html.select('.bw-card.bw-chart')
     assert [h.get_text() for h in html.select('.bw-chart h3')][0] == 'Only 1 copy is complete'
     assert len(html.select('.bw-chart-note')) == 1
+
+
+def test_a_tie_for_the_lead_is_named_as_a_tie():
+    from brickwork.web.stats_charts import _title
+    rows = lambda *counts: [{'label': f'L{i}', 'count': c} for i, c in enumerate(counts)]
+    assert _title('theme', rows(3, 2)) == 'L0 is the biggest theme, 3 copies'
+    assert _title('storage', rows(5, 5, 3)) == 'L0 and L1 lead, 5 copies each'
+    assert _title('theme', rows(2, 2, 2, 1)) == '3 themes share the lead, 2 copies each'
+    assert _title('purchase place', rows(1, 1, 1)) == '3 places share the lead, 1 copy each'

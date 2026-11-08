@@ -40,6 +40,11 @@ def _title(kind, rows):
         if not done:
             return 'No copy is complete'
         return f"Only {_copies(done)} {'is' if done == 1 else 'are'} complete"
+    tied = [r['label'] for r in rows if r['count'] == top['count']]
+    if len(tied) == 2:  # a tie names both; no row is "the biggest" when another has as many
+        return f"{tied[0]} and {tied[1]} lead, {_copies(top['count'])} each"
+    if len(tied) > 2:
+        return f"{len(tied)} {'themes' if kind == 'theme' else 'places'} share the lead, {_copies(top['count'])} each"
     if kind == 'theme':
         return f"{top['label']} is the biggest theme, {_copies(top['count'])}"
     return f"{top['label']} holds the most, {_copies(top['count'])}"

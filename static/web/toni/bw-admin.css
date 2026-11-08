@@ -100,20 +100,20 @@ main .key-need a:not(.button) { min-height:44px;display:inline-flex;align-items:
 /* UI-P6 · Tools & Admin pages (Manage 5b, 7e, 8b, 11d). */
 .bw-admin-page{gap:24px}
 .bw-hub{display:grid;grid-template-columns:minmax(0,1fr);gap:0 40px}
-.bw-hub-top{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1fr);gap:16px;padding:8px 0 4px}
-main a.bw-hub-card{display:flex;flex-direction:column;align-items:stretch;gap:12px;min-height:0;padding:20px;border:0;border-radius:16px;background:var(--tw-accent-soft);color:var(--tw-accent-text)}
-.bw-hub-eyebrow{padding-bottom:12px;border-bottom:.5px solid var(--tw-accent);font:500 11px/16px var(--tw-font);letter-spacing:.08em;text-transform:uppercase;color:var(--tw-accent-text)}
-.bw-hub-card-body{display:flex;align-items:flex-start;gap:16px}
-main a.bw-hub-card .bw-hub-text{padding:0}main a.bw-hub-card .bw-hub-title{color:var(--tw-text)}main a.bw-hub-card .bw-hub-note{color:var(--tw-text-muted)}
-main a.bw-hub-card .bw-hub-signal{color:var(--tw-accent-text);white-space:nowrap}
-main a.bw-hub-card:hover .bw-hub-title,main a.bw-hub-card:focus-visible .bw-hub-title{color:var(--tw-accent-text)}
-main a.bw-hub-card:focus-visible{outline:2px solid var(--tw-focus-color);outline-offset:2px}
 .bw-hub-group{display:flex;flex-direction:column;gap:0;padding-bottom:8px;align-content:start}
 .bw-hub-group>.bw-label{padding:20px 0 8px}
 main a.bw-hub-row{display:flex;align-items:center;gap:16px;min-height:64px;padding:0;border-top:.5px solid var(--tw-divider);color:var(--tw-text);text-decoration:none}
 .bw-hub-text{flex:1;display:flex;flex-direction:column;gap:2px;padding:12px 0;min-width:0}.bw-hub-title{font:500 16px var(--tw-font)}.bw-hub-note{font:400 13px/18px var(--tw-font);color:var(--tw-text-muted)}
 .bw-hub-signal{font:400 12px/16px var(--tw-mono);color:var(--tw-text-muted);text-align:right}
 main a.bw-hub-row:hover .bw-hub-title,main a.bw-hub-row:focus-visible .bw-hub-title{color:var(--tw-accent-text)}
+.bw-hub-top{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1fr);gap:16px;padding:8px 0 4px;margin-bottom:12px}
+main a.bw-hub-card{display:flex;text-align:left;flex-direction:column;align-items:stretch;gap:12px;min-height:0;padding:20px;border:0;border-radius:16px;background:var(--tw-accent-soft);color:var(--tw-accent-text)}
+.bw-hub-eyebrow{align-self:stretch;text-align:left;padding-bottom:12px;border-bottom:.5px solid var(--tw-accent);font:500 11px/16px var(--tw-font);letter-spacing:.08em;text-transform:uppercase;color:var(--tw-accent-text)}
+.bw-hub-card-body{align-self:stretch;display:flex;align-items:flex-start;gap:16px}
+main a.bw-hub-card .bw-hub-text{padding:0}main a.bw-hub-card .bw-hub-title{color:var(--tw-text)}main a.bw-hub-card .bw-hub-note{color:var(--tw-text-muted)}
+main a.bw-hub-card .bw-hub-signal{color:var(--tw-accent-text);white-space:nowrap}
+main a.bw-hub-card:hover .bw-hub-title,main a.bw-hub-card:focus-visible .bw-hub-title{color:var(--tw-accent-text)}
+main a.bw-hub-card:focus-visible{outline:2px solid var(--tw-focus-color);outline-offset:2px}
 @media(min-width:900px){.bw-hub{grid-template-columns:repeat(2,minmax(0,1fr))}.bw-hub-top{grid-template-columns:repeat(2,minmax(0,1fr));gap:20px 40px}}
 .bw-chips{display:flex;flex-wrap:wrap;gap:8px}
 main .bw-chips a{display:inline-flex;align-items:center;height:44px;min-height:44px;padding:0 14px;border-radius:10px;border:0;background:var(--tw-surface);color:var(--tw-text);font:500 14px var(--tw-font);text-decoration:none}

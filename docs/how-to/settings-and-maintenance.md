@@ -2,7 +2,7 @@
 
 *Since 0.6.0.*
 
-Do this to change how Brick Work behaves (the retail country, where pictures come from, how old a price may be), to look after the catalogue and your keys, and to keep the collection healthy. Everything is under **Manage → Tools & Admin**.
+Do this to change how Brick Work behaves (the retail country, where pictures come from, how old a price may be), to look after the catalogue and your keys, and to keep the collection healthy. Everything is under **Manage → Tools & Admin**, which opens with two cards, **Get started** and **Statistics**, followed by the groups of tools.
 
 ## Settings
 

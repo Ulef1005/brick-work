@@ -8,6 +8,7 @@ import pytest
 from brickwork.core import orders
 from brickwork.core.connect import connect
 from brickwork.store4 import bricklink_subsets as bs, identity, lookup
+from brickwork.store4.bldigest import bl_digest
 from tests.api2 import call, v2  # noqa: F401
 from tests.app4 import app4, make_pair  # noqa: F401
 from tests.store4_mint_fixtures import TECHNIC_DUMP, TECHNIC_FIGURES, TECHNIC_PARTS, item_id
@@ -96,6 +97,7 @@ def test_a_subsets_figure_line_is_a_part_line(pair):
                                              (result.fetched_id,))] == [(wanted, 1, 0, 2)]
         assert db.execute('SELECT count(*) FROM main.fetched_inventory_figure WHERE fetched_inventory_id=?', (result.fetched_id,)).fetchone()[0] == 0
         assert db.execute("SELECT count(*) FROM main.item WHERE born_provider='bricklink' AND born_namespace='M'").fetchone()[0] == 0
+        assert result.bl_digest == bl_digest([('P', 'syntech1', None, 0, 2)])    # the P line the catalogue projects, not the M line (#239)
 
 
 def test_an_email_line_naming_the_figure_without_a_colour_is_placed_on_the_part_in_no_colour(pair):

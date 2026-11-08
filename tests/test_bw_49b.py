@@ -23,8 +23,8 @@ def sets_page(client):
 def test_c18_c19_c20_sets_sort_matches_kit(world, client):
     sort = sets_page(client).select_one('[data-bc-sort-panel]')
     labels = [b.get_text(strip=True).rstrip('✓') for b in sort.select('[data-bc-sort-pick]')]
-    assert labels == ['Number', 'Name', 'Year', 'Missing parts', 'Used price']
-    assert [o['value'] for o in sort.select('[data-bc-sort] option')] == ['number', 'name', 'year', 'missing', 'used_price']
+    assert labels == ['Number', 'Name', 'Year', 'Missing parts', 'Used price', 'Date added']                  # Date added: #226
+    assert [o['value'] for o in sort.select('[data-bc-sort] option')] == ['number', 'name', 'year', 'missing', 'used_price', 'added']
     assert 'Missing first' not in str(sort)
 
 

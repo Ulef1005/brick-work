@@ -12,7 +12,7 @@ On screen an item shows its Rebrickable number first, and its BrickLink number b
 
 ## Set and copy
 
-A **set** is the catalogue item, such as 6081. A **copy** is one set you own. Own the same set twice and you have two copies, each with its own condition (new or used), storage, purchase details, notes and photos, so they never blur into one.
+A **set** is the catalogue item, such as 6081. A **copy** is one set you own. Own the same set twice and you have two copies, each with its own condition (new or used), storage, purchase details, notes and photos, so they never blur into one. A copy also keeps when it was added to Brick Work, its *date added*, apart from the purchase date. **Collection › Sets** sorts by it with **Date added** (newest first; a set with several copies counts its newest). A collection brought in by an import shares the date of that import.
 
 Each copy carries its own list of parts and minifigures, taken from the set's inventory. When you check a copy, you mark on that list what is missing or damaged, for that copy only. Whether the copy is complete is its [completeness](completeness.md).
 

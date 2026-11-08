@@ -6231,8 +6231,8 @@ components:
       in: query
       schema:
         type: string
-      description: One of number, name, year, quantity, missing, damaged, used_price, colour. Default number; planning defaults to ranking (core group,
-        pin, ratio and gain order).
+      description: One of number, name, year, quantity, missing, damaged, used_price, colour, added. Default number; planning defaults to ranking (core group,
+        pin, ratio and gain order). `added` (on /copies) is when the copy was added to Brick Work.
     Path_color_id_int:
       name: color_id
       in: path

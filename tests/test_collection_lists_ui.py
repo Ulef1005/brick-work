@@ -36,7 +36,7 @@ def test_list_records_carry_subtheme_and_tags_only_as_display_fields(coll, world
     coll.prop(world.keep, 'subtheme', 'Lion Knights')
     with read() as db:
         rows = collection.listing(db, 'S')
-    assert FIELDS[-5:] == ['subtheme', 'tags', 'item_id', 'also', 'source']
+    assert FIELDS[-6:] == ['subtheme', 'tags', 'item_id', 'also', 'source', 'added']
     data = json.loads(payload(rows))
     index = {name: i for i, name in enumerate(data['fields'])}
     castle = next(r for r in data['rows'] if r.get(str(index['item_id'])) == world.keep and r.get(str(index['number'])) == '1000-1')
@@ -45,6 +45,23 @@ def test_list_records_carry_subtheme_and_tags_only_as_display_fields(coll, world
     assert castle[str(index['tags'])] == ['collection']
     assert 'Set is checked' in castle[str(index['flags'])]
 
+
+
+def test_sets_sort_by_date_added_uses_the_newest_copy(coll, world, read, client):
+    # #226: a set's date added is its newest copy's; the server sort and the API accept `added`.
+    with read() as db:
+        rows = collection.listing(db, 'S')
+    assert all(r['added'] for r in rows)
+    newest = min(rows, key=lambda r: r['added'])
+    coll.sql('UPDATE copy SET created_at=? WHERE item_id=?', ('2099-01-01T00:00:00.000000Z', newest['item_id']))
+    with read() as db:
+        rows = collection.listing(db, 'S')
+    data = json.loads(payload(rows, sort='added', direction='desc'))
+    index = {name: i for i, name in enumerate(data['fields'])}
+    first = data['rows'][0]
+    assert first[str(index['item_id'])] == newest['item_id'] and first[str(index['added'])].startswith('2099-01-01')
+    oldest_first = json.loads(payload(rows, sort='added', direction='asc'))['rows']
+    assert oldest_first[-1][str(index['item_id'])] == newest['item_id']
 
 def test_headlines_for_parts_and_minifigures(coll, world, client):
     coll.sql('UPDATE stock SET damaged=2 WHERE id=?', (world.stock_brick,))

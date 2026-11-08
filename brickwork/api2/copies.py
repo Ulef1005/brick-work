@@ -42,7 +42,7 @@ def get_copies(db):
                       condition=r['condition'] or '', storage=r['storage_id'] or 'null', place=r['place_id'] or 'null', lot='null',
                       flags=[f['name'] for f in r['flags']], flag_ids=[f['id'] for f in r['flags']], theme=r['theme'] or '', category=r['category'] or '',
                       year=r['year'], duplicates=live_count[r['item_id']] > 1, missing=r['missing'], damaged=r['damaged'], quantity=1,
-                      archived_at=r['archived_at'], item_id=r['item_id'], color_id=None, _row=r) for r in rows]
+                      archived_at=r['archived_at'], item_id=r['item_id'], color_id=None, added=r['created_at'], _row=r) for r in rows]
     records = narrow(records, items, color)
     if args.get('sort') == 'used_price':
         used_prices(db, records)

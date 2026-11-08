@@ -15,7 +15,7 @@ from .collection import defects
 from ..web.formatting import money, short_age
 
 FIELDS = ('type number name colour color_id rgb ink category theme year quantity missing damaged in_sets image unresolved entity ids condition status storage place '
-          'flags lot duplicates price lot_links defects price_basis missing_parts missing_figures pdf_available max_price subtheme tags item_id also source').split()
+          'flags lot duplicates price lot_links defects price_basis missing_parts missing_figures pdf_available max_price subtheme tags item_id also source added').split()
 DEFAULTS = {18: [''], 19: [''], 20: ['null'], 21: ['null'], 22: [], 23: ['null']}   # what the browser decoder restores for an omitted field
 KEYS = [str(i) for i in range(len(FIELDS))]
 EMPTY = (None, '', False, 0, [])
@@ -51,7 +51,8 @@ def payload(rows, query="", filters=None, sort="index", direction="asc"):
             (money(r.get('max_price'), r.get('max_price_currency') or '', fixed=True) if wish and r.get('max_price') is not None else None),
             ((r.get('properties') or {}).get('subtheme') or {}).get('value') if r['item_type'] == 'S' and not wish else None,
             sorted({f['name'] for i in r.get('instances', []) for f in i.get('flags', []) if f.get('kind') == 'tag' and f.get('shown_on_grid') and f.get('name')}),
-            r.get('item_id'), r.get('also'), 'bricklink' if r.get('number_source') == 'bricklink' else None]
+            r.get('item_id'), r.get('also'), 'bricklink' if r.get('number_source') == 'bricklink' else None,
+            r.get('added')]
         packed = {KEYS[i]: v for i, v in enumerate(values) if (i == 4 and v is not None) or (v != DEFAULTS.get(i) and v not in EMPTY)}
         records.append(packed)
     if query or filters or sort != 'index' or direction != 'asc':

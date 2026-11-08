@@ -127,6 +127,7 @@ def test_release_workflow_publishes_only_on_the_maintainers_switch():
     jobs = workflow['jobs']
     assert workflow['concurrency'] == {'group': 'release', 'cancel-in-progress': False, 'queue': 'max'}   # one at a time, none dropped
     assert "vars.GHCR_PUBLISH" in source and source.count('${{ vars.') == 1   # the one switch, read once, into `publish`
+    assert 'actions/attest-sbom@' not in source                         # deprecated; the SBOM goes through actions/attest (#190)
     for name, job in jobs.items():
         for step in job.get('steps', []):
             uses = step.get('uses', '')

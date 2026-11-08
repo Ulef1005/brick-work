@@ -971,11 +971,12 @@ def bw_add_job(job):
     # The job's own event comes last and sets the bar: while it runs it carries the active step's count, so the bar does not drop back
     # to the finished steps and a running job does not read "Import queued" (#218).
     active = next((s for s in steps if s['state'] != 'done'), None)
-    running = snapshot['state'] == 'running' and active is not None
+    running = snapshot['state'] == 'running'
     events.append(dict(job_id=job, step=None, state='progress' if running else snapshot['state'], completed_steps=done,
-        total_steps=len(steps), job_state=snapshot['state'], **(dict(count=active['count'], total=active['total']) if running else {}),
+        total_steps=len(steps), job_state=snapshot['state'], **(dict(count=active['count'], total=active['total']) if running and active else {}),
         message=fetch['message'] if fetch and fetch['state'] != 'waiting' else 'Import complete' if snapshot['state'] == 'done' else 'Import needs attention' if snapshot['state'] == 'failed' else 'Waiting for budget' if snapshot['state'] == 'waiting_for_budget'
-        else ('Importing · ' + active['name'].replace('_', ' ') + (f" · {active['count']} of {active['total']}" if active['total'] else '')) if running else 'Import queued'))
+        else ('Importing · ' + active['name'].replace('_', ' ') + (f" · {active['count']} of {active['total']}" if active['total'] else '')) if running and active
+        else 'Importing' if running else 'Import queued'))
     response = jsonify(events=events)
     response.headers['Cache-Control'] = 'no-store'
     return response

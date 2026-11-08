@@ -126,33 +126,50 @@
   const live = document.querySelector('[data-jobs-live]');
   let panels = mount(live || document);
   const OPEN = new Set(['queued','running','waiting_for_budget']);
-  let busy = false;
-  // #218: while a job or bulk action is open, fetch the Jobs page again and swap in its job area: batches, state lines, step counts and
-  // new jobs update without a reload. The search and filters stay; open "failed · why" lists stay open. Stops once all are settled.
+  const SLOTS = ['[data-jobs-batches]', '[data-jobs-shown-slot]', '[data-bw-rows]'];
+  const FAST = 5000, SLOW = 60000;
+  let busy = false, delay = FAST, timer = null;
+  const open = () => [...live.querySelectorAll('[data-state]')].some(n => OPEN.has(n.dataset.state));
+  // #218: fetch the Jobs page again and swap in its job area: batches, state lines, step counts and new jobs update without a reload.
+  // Every 5 s while something changes; when a fetch changes nothing (a job waiting hours for budget, an interrupted job, a queue
+  // with no worker) the wait doubles up to a minute, and a settled page looks once a minute for jobs started elsewhere. The search and
+  // filters stay, an open "failed · why" list stays open, and nothing is swapped while focus is inside the job area.
   const refresh = async () => {
-   if (!live || busy || document.visibilityState === 'hidden' || !navigator.onLine) return;
-   if (![...live.querySelectorAll('[data-state]')].some(n => OPEN.has(n.dataset.state))) return;
+   if (!live || busy || document.visibilityState === 'hidden' || !navigator.onLine) return false;
+   const focus = document.activeElement;
+   if (focus && SLOTS.some(slot => live.querySelector(slot)?.contains?.(focus))) return false;
    busy = true;
    try {
     const response = await fetch(window.location.href, {cache:'no-store'});
-    if (!response.ok) return;
+    if (!response.ok) return false;
     const fresh = new DOMParser().parseFromString(await response.text(), 'text/html').querySelector('[data-jobs-live]');
-    if (!fresh) return;
+    if (!fresh) return false;
+    if (SLOTS.every(slot => live.querySelector(slot)?.innerHTML === fresh.querySelector(slot)?.innerHTML)) return false;
     const opened = new Set([...live.querySelectorAll('details[open]')].map(d => d.closest('[id]')?.id).filter(Boolean));
     panels.forEach(p => p.destroy());
-    for (const slot of ['[data-jobs-batches]', '[data-jobs-shown-slot]', '[data-bw-rows]']) {
+    for (const slot of SLOTS) {
      const now = live.querySelector(slot), next = fresh.querySelector(slot);
      if (now && next) now.replaceChildren(...next.childNodes);
     }
     opened.forEach(id => live.querySelector(`#${CSS.escape(id)} details`)?.setAttribute('open', ''));
     live.querySelectorAll('[data-bw-list]').forEach(updateList);
     panels = mount(live);
-   } catch { /* The last rendered state stays until the next try. */ }
+    return true;
+   } catch { return false; /* The last rendered state stays until the next try. */ }
    finally { busy = false; }
   };
-  const timer = setInterval(refresh, 5000);
+  const schedule = wait => { clearTimeout(timer); timer = setTimeout(tick, wait); };
+  const tick = async () => {
+   const changed = await refresh();
+   delay = changed ? FAST : Math.min(SLOW, delay * 2);
+   schedule(live && open() ? delay : SLOW);
+  };
+  const wake = () => { if (document.visibilityState !== 'hidden') { delay = FAST; schedule(FAST); } };
+  if (live) schedule(open() ? FAST : SLOW);
   window.BrickAdminJobsRefresh = refresh;
-  window.addEventListener('pagehide',()=>{clearInterval(timer);panels.forEach(p=>p.destroy());},{once:true});
+  document.addEventListener('visibilitychange', wake);
+  window.addEventListener('pageshow', event => { if (event.persisted) wake(); });
+  window.addEventListener('pagehide', () => { clearTimeout(timer); });
  });
 })();
 

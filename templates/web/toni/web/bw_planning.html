@@ -8,7 +8,7 @@
 {% set ranked=rows|selectattr('group','defined')|selectattr('group','equalto','ranked')|list %}
 {% set first=ranked|selectattr('rank','equalto',1)|first %}
 <h1>{% if screen=='wishlist' %}{{ rows|sum(attribute='quantity') }} {{ 'sets' if rows and rows|selectattr('item_type','equalto','S')|list|length==rows|length else 'items' }} wanted{% elif screen=='complete-sets' and first %}Repair {{ first.item_no or first.name }} first: {{ toni_ratio(first.ratio) }}{% if ranked[0].rank!=1 %} · pins listed first{% endif %}{% else %}{{ title }}{% endif %}</h1><p class="bp-subtitle">{{ 'Price now against your max, used average' if screen=='wishlist' else 'Value gained per unit of repair · estimates from cached prices' }}</p>
-<p role="status" aria-live="polite" data-bp-message></p><button type="button" data-bp-undo hidden>Undo</button>
+<div class="bp-save-feedback"><p role="status" aria-live="polite" data-bp-message></p><button type="button" data-bp-undo hidden>Undo</button></div>
 {% if error %}<p role="alert">{{ error }}</p><a href="{{ url_for('web.bw_admin',page='database') }}">Open Tools &amp; Admin</a>{% else %}
 {% if screen=='complete-sets' %}<details class="bc-module kit-disclosure"><summary>Repair settings</summary><form data-bp-action="settings" class="bp-settings">
 {% for key,label in [('repair_shipping','Shipping'),('repair_fees','Fees'),('repair_min_order','Minimum order'),('incomplete_discount_pct','Incomplete discount · %')] %}<label>{{ label }}<input name="{{ key }}" type="number" step="any" min="0" {% if key=='incomplete_discount_pct' %}max="100"{% endif %} value="{{ settings[key] }}" required {% if not can_edit %}disabled{% endif %}></label>{% endfor %}

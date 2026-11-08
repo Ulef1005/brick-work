@@ -48,14 +48,17 @@
   return img;
  };
  // #217: a reviewed item without a picture asks for one once; it is fetched and stored now, and the tile is replaced where it stands.
+ // One request per item for the whole page (rows of the same item share it), so two rows never race for the same picture.
+ const asked = new Map();
  const askPicture = row => {
-  if (row.image || row.picture_asked || row.item_id == null || row.unknown || row.kind === 'part') return;
-  row.picture_asked = true;
-  api('/picture', {item_id: row.item_id}).then(result => {
-   if (!result.image) return;
-   row.image = result.image;
-   root.querySelectorAll(`[data-picture-for="${CSS.escape(String(row.item_id))}"]`).forEach(tile => tile.replaceWith(picture(row)));
-  }).catch(() => {});
+  if (row.image || row.item_id == null || row.unknown || row.kind === 'part') return;
+  const key = String(row.item_id);
+  if (!asked.has(key)) asked.set(key, api('/picture', {item_id: row.item_id}).then(result => result.image || null, () => null));
+  asked.get(key).then(image => {
+   if (!image) return;
+   row.image = image;
+   root.querySelectorAll(`[data-picture-for="${CSS.escape(key)}"]`).forEach(tile => tile.replaceWith(picture(row)));
+  });
  };
  const identity = row => {
   const wrap = el('div', undefined, 'bw-add-item'); wrap.append(picture(row));

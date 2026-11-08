@@ -831,24 +831,26 @@ def settle_fetches(db, *, via=None, actor=None):
     again. A job that failed leaves its receipt with nothing to create (the job view says so; Retry queues the job again and a later
     run settles it). Returns the number of receipts settled."""
     settled, made = 0, []
-    for candidate in [r[0] for r in db.execute(f'SELECT e.id {UNSETTLED} ORDER BY e.id').fetchall()]:
-        with transaction(db):                                       # the write lock first, then the checks: another worker or an Undo may have got there
-            event = db.execute(f'SELECT e.id, e.via, e.actor, e.entity_id, e.new_value {UNSETTLED} AND e.id=?', (candidate,)).fetchone()
-            if event is None:                                       # settled by another process, or undone, since the list was read
-                continue
-            receipt = json.loads(event['new_value'])
-            job = db.execute('SELECT state, item_id FROM main.job WHERE id=?', (receipt['fetch_job'],)).fetchone()
-            if job is None or job['state'] != 'done' or job['item_id'] is None:
-                continue
-            settled += 1
-            try:
-                if not isinstance(receipt.get('ask'), dict):
-                    raise ValueError('this row was added before fetch follow-ups existed, so it did not record what to create')
-                made += _create_fetched(db, event, receipt, job['item_id'], via or event['via'], actor if via else event['actor'])
-            except Exception as error:                              # one receipt never stops the drain or the others; it is recorded and not tried again
-                audit(db, 'add:' + event['entity_id'], 'fetch_failed', None, dict(receipt=event['id'], fetch_job=receipt['fetch_job'], error=str(error)),
-                      via=via or event['via'], actor=actor if via else event['actor'])
-    pictures.queue_for_copies(db, made, via=via, actor=actor)          # #217: the fetched copies' parts, after their writes commit
+    try:
+        for candidate in [r[0] for r in db.execute(f'SELECT e.id {UNSETTLED} ORDER BY e.id').fetchall()]:
+            with transaction(db):                                       # the write lock first, then the checks: another worker or an Undo may have got there
+                event = db.execute(f'SELECT e.id, e.via, e.actor, e.entity_id, e.new_value {UNSETTLED} AND e.id=?', (candidate,)).fetchone()
+                if event is None:                                       # settled by another process, or undone, since the list was read
+                    continue
+                receipt = json.loads(event['new_value'])
+                job = db.execute('SELECT state, item_id FROM main.job WHERE id=?', (receipt['fetch_job'],)).fetchone()
+                if job is None or job['state'] != 'done' or job['item_id'] is None:
+                    continue
+                settled += 1
+                try:
+                    if not isinstance(receipt.get('ask'), dict):
+                        raise ValueError('this row was added before fetch follow-ups existed, so it did not record what to create')
+                    made += _create_fetched(db, event, receipt, job['item_id'], via or event['via'], actor if via else event['actor'])
+                except Exception as error:                              # one receipt never stops the drain or the others; it is recorded and not tried again
+                    audit(db, 'add:' + event['entity_id'], 'fetch_failed', None, dict(receipt=event['id'], fetch_job=receipt['fetch_job'], error=str(error)),
+                          via=via or event['via'], actor=actor if via else event['actor'])
+    finally:
+        pictures.queue_for_copies(db, made, via=via, actor=actor)      # #217: the fetched copies' parts, also when a later receipt fails
     return settled
 
 

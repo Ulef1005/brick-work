@@ -241,7 +241,8 @@ def preview(db, item_id, *, http=None, image_http=None, root=None):
                 continue
             if served(db, item_id, None):
                 break
-    found = db.execute('SELECT id, source FROM main.picture WHERE item_id=? AND color_id IS NULL', (item_id,)).fetchall()
+    found = db.execute('SELECT id, source FROM main.picture WHERE item_id=? AND color_id IS NULL ORDER BY fetched_at DESC, id DESC',   # as the review's list
+                       (item_id,)).fetchall()
     ranks = order(db, row['kind'])
     found = sorted(found, key=lambda p: ranks.index(p['source']) if p['source'] in ranks else len(ranks))
     return found[0]['id'] if found else None

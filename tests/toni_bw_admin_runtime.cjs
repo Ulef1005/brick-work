@@ -48,9 +48,9 @@ assert.equal(options.retry(42,'inventory'),true);assert(submitted);assert.equal(
  const slot=html=>({childNodes:[...html.match(/[a-z]\d/g)||[]],innerHTML:html});
  const updates=[];
  const env={navigator:{onLine:true},CSS:{escape:x=>x},setTimeout(fn,ms){next=fn;wait=ms;return 2;},clearTimeout(){},
-  async fetch(url,opts){fetches++;assert.equal(url,'https://lego-test/manage/jobs');assert.equal(opts.cache,'no-store');return {ok:true,async text(){return '<html>';}};},
+  async fetch(url,opts){fetches++;assert.equal(url,'https://brickwork.example/manage/jobs');assert.equal(opts.cache,'no-store');return {ok:true,async text(){return '<html>';}};},
   DOMParser:class{parseFromString(){return {querySelector:k=>k==='[data-jobs-live]'?{querySelector:s=>({'[data-jobs-batches]':slot('b1'),'[data-jobs-shown-slot]':slot(''),'[data-bw-rows]':slot(freshRows)})[s]}:null};}},
-  window:{location:{href:'https://lego-test/manage/jobs'},addEventListener(){},
+  window:{location:{href:'https://brickwork.example/manage/jobs'},addEventListener(){},
    BrickImportProgress:class{constructor(){mounted++;}update(d){updates.push(d);}destroy(){destroyed++;}}},
   document:{visibilityState:'visible',activeElement:null,addEventListener(e,fn){if(e==='DOMContentLoaded')env.ready=fn;},querySelector:k=>k==='[data-bw-jobs]'?{dataset:{csrf:'x'}}:k==='[data-jobs-live]'?live:null,
    querySelectorAll:()=>[],createElement:()=>({})}};

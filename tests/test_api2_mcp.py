@@ -277,9 +277,9 @@ def write_arguments(w, pair, v2):
     gone = write(v2, '/wishlists', body={'name': 'Gone'}).json['data']['id']
     write(v2, f'/wishlists/{gone}', 'delete')
     return {
-        'post_wishlists': {'name': 'Synthetic wishlist'}, 'patch_wishlists_id': {'id': extra, 'name': 'Synthetic renamed'},
-        'delete_wishlists_id': {'id': extra}, 'post_wishlists_id_restore': {'id': gone},
-        'post_wishlists_id_transfer': {'id': extra, 'ids': [w.wish_part]},
+        'create_wishlist': {'name': 'Synthetic wishlist'}, 'edit_wishlist': {'id': extra, 'name': 'Synthetic renamed'},
+        'archive_wishlist': {'id': extra}, 'restore_wishlist': {'id': gone},
+        'transfer_wishes': {'id': extra, 'ids': [w.wish_part]},
         'import_item': {'kind': 'part', 'no': '3001'},
         'add_copies': {'item': {'kind': 'set', 'key': '1000-2'}, 'decision': 'another'},
         'update_copy': {'id': w.copy_a, 'fields': {'note': 'Synthetic note'}}, 'archive_copy': {'id': w.copy_b},
@@ -348,15 +348,18 @@ def test_a_write_through_a_tool_is_audited_as_the_token_and_replays(adapter, wor
 
 def test_the_wishlist_tools_create_and_export(adapter, world, pair):
     names = {t.name for t in adapter.list_tools()}
-    assert {'get_wishlists', 'post_wishlists', 'patch_wishlists_id', 'post_wishlists_id_transfer', 'export_wishlist_xml', 'export_wishlist_csv'} <= names
-    target = payload(adapter.call_tool('post_wishlists', {'name': 'New'}))['data']['id']
+    assert {'get_wishlists', 'create_wishlist', 'edit_wishlist', 'archive_wishlist', 'restore_wishlist', 'transfer_wishes', 'export_wishlist_xml', 'export_wishlist_csv'} <= names
+    # #152: the generated-looking names are gone (renamed before v1.0.0, ADR 0017's amendment of 8 Nov), and no tool name is a method plus a path
+    assert not names & {'post_wishlists', 'patch_wishlists_id', 'delete_wishlists_id', 'post_wishlists_id_restore', 'post_wishlists_id_transfer'}
+    assert not [n for n in names if n.split('_')[0] in ('post', 'patch', 'put', 'delete')]
+    target = payload(adapter.call_tool('create_wishlist', {'name': 'New'}))['data']['id']
     created = adapter.call_tool('add_wish', {'item': {'kind': 'set', 'key': '1000-1'}, 'list_id': target, 'condition': 'any', 'decision': 'another'})
     assert not created.isError, payload(created)
     wish = payload(adapter.call_tool('list_wishes', {'list': target}))['data'][0]
     assert wish['list_id'] == target and wish['condition'] == 'any'
     output = adapter.call_tool('export_wishlist_xml', {'id': target, 'summary': True})
     assert not output.isError and output.structuredContent['summary']['exported'] == 1
-    assert not adapter.call_tool('post_wishlists', {'name': 'MCP'}).isError
+    assert not adapter.call_tool('create_wishlist', {'name': 'MCP'}).isError
 
 
 # ---------- resources ----------

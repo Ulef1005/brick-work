@@ -285,13 +285,18 @@ def test_contents_rows_link_to_their_detail_pages(world, coll, client):
     soup = page(client, f'/workbench/storage/{world.shelf}')
     groups = {g['data-group']: g for g in soup.select('.st-group')}
     set_link = groups['set'].select_one('.st-item .st-open')
-    assert set_link and set_link.select_one('strong') and f'copy=' in set_link['href']
+    copy_id = json.loads(set_link.find_parent('label').select_one('[data-selection]')['data-selection'])['id']
+    assert set_link.select_one('strong') and f'copy={copy_id}' in set_link['href']
     figure_link = groups['figure'].select_one('.st-item .st-open')
-    assert figure_link and 'stock=' in figure_link['href']
+    assert f'stock={world.stock_figure}' in figure_link['href']
+    parts = [i.select_one('.st-open') for i in groups['part'].select('.st-item') if 'Lot ·' not in text(i)]
+    for link in [p for p in parts if p]:                                     # a loose part opens on its colour
+        assert 'stock=' in link['href'] and 'colour=' in link['href'] and client.get(link['href']).status_code == 200
     lot = next(i for i in groups['part'].select('.st-item') if 'Lot ·' in text(i))
     assert not lot.select('.st-open')
     for link in (set_link, figure_link):
         assert client.get(link['href']).status_code == 200
-    # The link sits inside the selectable label: select mode turns its pointer events off so a click selects the row.
+    # The link sits inside the selectable label: in select mode it takes no pointer events and leaves the tab order (bw-storage.js).
     css = (Path(__file__).parents[1] / 'static/web/toni/bw-storage.css').read_text()
-    assert '.is-selecting .st-open{pointer-events:none}' in css
+    js = (Path(__file__).parents[1] / 'static/web/toni/bw-storage.js').read_text()
+    assert '.is-selecting .st-open{pointer-events:none}' in css and "querySelectorAll('.st-open')" in js

@@ -5,7 +5,7 @@
   function progress(state) {
     const counts = {found:0, missing:0, skipped:0, remaining:0};
     // #222: a missing-only run counts the parts it walks, as the server's progress does.
-    const walked = state.session?.scope === 'missing' ? new Set(state.session.order) : null;
+    const walked = state.session?.scope === 'missing' ? new Set(state.session.members || state.session.order) : null;
     for (const r of state.rows.filter(r => r.kind !== 'spare' && (!walked || walked.has(r.token)))) {
       const answer = state.session?.answers[r.token];
       if (!answer) counts.remaining++;
@@ -38,10 +38,10 @@
       // #214: walk the skipped parts (or the named ones) in the part view; the server's order replaces this one once the save returns.
       const place = new Map(state.rows.map((x, i) => [x.token, i]));
       const skipped = state.rows.filter(x => x.kind !== 'spare' && s.answers[x.token] === 'skipped').map(x => x.token);
-      s.order = (payload.tokens || skipped).slice().sort((a, b) => place.get(a) - place.get(b)); s.cursor = 0; s.scope = 'skipped';
+      s.order = (payload.tokens || skipped).slice().sort((a, b) => place.get(a) - place.get(b)); s.cursor = 0; if (s.scope !== 'missing') s.scope = 'skipped';
     } else if (payload.action === 'skip') {
       s.answers[r.token] = 'skipped'; s.cursor = Math.min(s.order.indexOf(r.token)+1, s.order.length);
-    } else if (payload.action === 'select') s.cursor = s.order.indexOf(r.token);
+    } else if (payload.action === 'select') { if (!s.order.includes(r.token)) s.order.push(r.token); s.cursor = s.order.indexOf(r.token); }
     else if (payload.action === 'back') s.cursor = Math.max(0, s.cursor-1);
     else if (payload.action === 'next') s.cursor = Math.min(s.order.length, s.cursor+1);
     else if (payload.action === 'spares') {
@@ -275,7 +275,7 @@
       if(s.cursor>=s.order.length && mode!=='finish' && mode!=='missing')mode=skippedRows().length?'skipped':'missing';
       if(mode==='skipped' && !skippedRows().length)mode='missing';
       if(mode==='skipped') {history.hidden=true;skippedScreen();return;}
-      if(mode==='missing') {history.hidden=true;stage.append(steps(2));missingList(stage,true);stage.append(button('Back','back'),button('Undo last','undo'));return;}
+      if(mode==='missing') {history.hidden=true;missingList(stage,true);stage.prepend(steps(2));stage.append(button('Back','back'),button('Undo last','undo'));return;}
       if(mode==='finish') {
         history.hidden=false;stage.append(steps(3),el('h2','Finish'));
         const unchecked=state.rows.filter(r=>r.kind!=='spare' && s.answers[r.token]!=='answered');

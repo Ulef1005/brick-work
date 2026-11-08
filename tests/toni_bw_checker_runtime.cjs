@@ -81,6 +81,7 @@ class Element {
  append(...nodes){this.children.push(...nodes);}
  appendChild(node){this.children=this.children.filter(n=>n!==node);this.children.push(node);return node;}
  replaceChildren(...nodes){this.children=nodes;}
+ prepend(...nodes){this.children.unshift(...nodes);}
  addEventListener(type,fn){this.handlers[type]=fn;}
  setAttribute(name,value){this[name]=value;}
  get value(){return this._value||this.children.find(n=>n.tagName==='OPTION')?.value||'';}
@@ -331,6 +332,7 @@ for(const figureMode of [false,true]) {
  assert(screen.stage.querySelectorAll('[data-action]').filter(b=>b.dataset.action==='check_one').length===2);
  screen.click('leave_skipped');
  assert(screen.stage.text.includes('Done · 1 still missing'));assert(!screen.stage.text.includes('Check the 2 skipped parts'));
+ assert(screen.stage.querySelectorAll('LI').length===3,'Step 2 shows the 1/2/3 header');assert.equal(screen.stage.children[0].tagName,'OL');
  screen.click('finish_view');assert(screen.stage.text.includes('Finish'));
  // Check on one skipped part walks only that part in the part view.
  screen=boot(ended(),{endpoint:'/check/copy',imageUrl:'/images/0'});
@@ -350,3 +352,12 @@ for(const figureMode of [false,true]) {
  assert.equal(screen.root.querySelector('[data-legend]').textContent,'0 found · 0 still missing · 0 skipped · 1 to go · missing parts only');
  console.log('Brick Work checker end steps and missing-only run passed');
 })().catch(error=>{console.error(error);process.exitCode=1;});
+
+// Review of a part outside a narrowed walk joins the walk; a missing-only run stays one after a skipped walk and counts its own members.
+{
+  const s=make();s.session.order=['p:1'];s.session.cursor=1;s.session.answers={'p:1':'answered'};
+  apply(s,{action:'select',token:'m:1'});assert.deepEqual(plain(s.session.order),['p:1','m:1']);assert.equal(s.session.cursor,1);
+  const run=make();run.session.scope='missing';run.session.members=['p:1','p:2'];run.session.order=['p:1','p:2'];run.session.answers={'p:1':'answered','p:2':'skipped'};
+  apply(run,{action:'recheck'});assert.equal(run.session.scope,'missing');assert.deepEqual(plain(run.session.order),['p:2']);
+  assert.deepEqual(plain(progress(run)),{found:1,missing:0,skipped:1,remaining:0});
+}

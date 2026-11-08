@@ -187,7 +187,7 @@ def _model(row):
     body = json.loads(row['session_json'])
     return dict(id=row['session_id'], order=body['order'], cursor=body['cursor'], answers=body['answers'], misses=body['misses'], undo=body['undo'],
                 finished=bool(row['finished']), sort=row['order_mode'], spares=row['spares'],
-                scope=body.get('scope'))
+                scope=body.get('scope'), members=body.get('members'))
 
 
 def session(db, copy_id, figure=None):
@@ -199,6 +199,8 @@ def _put_session(db, copy_id, figure, s, started_at=None):
     db.execute('DELETE FROM main.part_check WHERE copy_id=? AND figure_key=?', (copy_id, figure or 0))
     stamp = now()
     body = dict(order=s['order'], cursor=s['cursor'], answers=s['answers'], misses=s['misses'], undo=s['undo'])
+    if s.get('members'):
+        body['members'] = s['members']                                 # a missing-only run: every part it walks, whatever a later walk of the skipped ones narrows `order` to
     if s.get('scope'):
         body['scope'] = s['scope']                                     # #222/#214: `missing` (the parts the last check left missing) or `skipped`; absent is the whole set
     body = json.dumps(body, separators=(',', ':'))
@@ -334,7 +336,7 @@ def saved_view(db, copy_id, tokens=(), figure=None):
     inventory = rows(db, copy_id, decorate=False, figure=figure)
     s = normalise(session(db, copy_id, figure), {r['token']: r['kind'] for r in inventory})
     counts = dict(found=0, missing=0, skipped=0, remaining=0)
-    walked = set(s['order']) if (s or {}).get('scope') == 'missing' else None      # a missing-only run counts its own parts, as the screen does
+    walked = set(s.get('members') or s['order']) if (s or {}).get('scope') == 'missing' else None      # a missing-only run counts its own parts, as the screen does
     for r in inventory:
         if r['kind'] == 'spare' or (walked is not None and r['token'] not in walked):
             continue
@@ -427,11 +429,14 @@ def write(db, copy_id, payload, figure=None):
         if action in ('start', 'restart'):
             if action == 'restart' and (not s or payload.get('session') != s['id']):
                 raise ValueError('This check changed. Reload to continue.')
-            scope = payload.get('scope', 'all')
-            if scope not in ('all', 'missing'):
+            scope = payload.get('scope')
+            if scope not in (None, 'all', 'missing'):
                 raise ValueError('Choose what to check')
-            if action == 'start' and s and not s.get('finished') and (s.get('scope') or 'all') == scope:
+            # A plain start resumes whatever check is running (also a walk of the skipped parts, after a reload); only a named scope that
+            # is not the running one replaces it, and Undo brings the earlier check back.
+            if action == 'start' and s and not s.get('finished') and (scope is None or (s.get('scope') or 'all') == scope):
                 return saved_view(db, copy_id, figure=figure)
+            scope = scope or 'all'
             order_mode = payload.get('order', 'inventory')
             if order_mode not in ORDERS:
                 raise ValueError('Choose an order')
@@ -439,7 +444,7 @@ def write(db, copy_id, payload, figure=None):
             ordered = sorted((r for r in all_rows if r['kind'] != 'spare'), key=lambda r: ({'part': 0, 'figure': 1}[r['kind']], sort(r)))
             if figure and not ordered:
                 raise ValueError('This figure has no recorded parts')
-            answers, spares, kept_scope = {}, None, None
+            answers, spares, kept_scope, members = {}, None, None, None
             if scope == 'missing':
                 # #222: walk only the parts the last check left missing; every other part keeps its answer from the earlier session.
                 ordered = [r for r in ordered if (r['missing'] or 0) > 0]
@@ -447,18 +452,22 @@ def write(db, copy_id, payload, figure=None):
                     raise ValueError('No part is missing')
                 walked = {r['token'] for r in ordered}
                 answers = {t: a for t, a in (s or {}).get('answers', {}).items() if t not in walked and t in by_token and by_token[t]['kind'] != 'spare'}
-                spares, kept_scope = 'no', 'missing'
+                spares, kept_scope, members = 'no', 'missing', [r['token'] for r in ordered]
             s = dict(id=uuid.uuid4().hex, order=[r['token'] for r in ordered], cursor=0, answers=answers, misses=[], undo=[], finished=False, sort=order_mode,
-                     spares=spares, scope=kept_scope)
+                     spares=spares, scope=kept_scope, members=members)
             started_at = None
         else:
             if not s or payload.get('session') != s['id']:
                 raise ValueError('This check changed. Reload to continue.')
             if action in ('answer', 'found_one', 'skip', 'select'):
-                if not tokens or (action != 'found_one' and token not in s['order']):     # Found 1 on Missing so far also reaches a part outside a narrowed walk
+                if not tokens or (action not in ('found_one', 'select') and token not in s['order']):     # Found 1 on Missing so far also reaches a part outside a narrowed walk
                     raise ValueError('Choose a part from this copy')
                 r = by_token[token]
                 if action == 'select':
+                    if token not in s['order']:                          # Review of a part a narrowed walk left out: it joins the walk's end
+                        if r['kind'] == 'spare' and s['spares'] != 'yes':
+                            raise ValueError('Choose a part from this copy')
+                        s['order'].append(token)
                     s['cursor'] = s['order'].index(token)
                 elif action == 'skip':
                     s['answers'][token] = 'skipped'
@@ -497,7 +506,9 @@ def write(db, copy_id, payload, figure=None):
                     raise ValueError('Nothing is skipped')
                 sort = sorter(s.get('sort', 'inventory'), position)
                 ordered = sorted((by_token[t] for t in chosen), key=lambda r: ({'part': 0, 'figure': 1}[r['kind']], sort(r)))
-                s['order'], s['cursor'], s['scope'] = [r['token'] for r in ordered], 0, 'skipped'
+                s['order'], s['cursor'] = [r['token'] for r in ordered], 0
+                if s.get('scope') != 'missing':                                                        # a missing-only run stays one (badge, heading, counts)
+                    s['scope'] = 'skipped'
             elif action == 'spares':
                 # The last step of the set check: spare parts are opt in, default no (design 4.5).
                 include = payload.get('include')

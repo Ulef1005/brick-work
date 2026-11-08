@@ -533,6 +533,52 @@ def test_skipped_parts_are_walked_again_and_found_one_still_reaches_the_misses(c
     assert answered['session']['answers'][parts[1]['token']] == 'answered'
 
 
+def test_a_missing_only_run_stays_one_through_a_skipped_walk_and_counts_its_members(coll, copy):
+    db = coll.db
+    state = start(db, copy)
+    answer_all(db, copy, state)
+    parts = [r for r in state['rows'] if r['kind'] == 'part']
+    for r in parts:
+        mark_missing(db, copy, r['token'], 1)
+    mutate(db, copy, 'restart', scope='missing')
+    mutate(db, copy, 'answer', token=parts[0]['token'], found=parts[0]['quantity'] - 1)
+    mutate(db, copy, 'skip', token=parts[1]['token'])
+    saved = mutate(db, copy, 'recheck')
+    assert saved['session']['scope'] == 'missing' and saved['session']['order'] == [parts[1]['token']]
+    assert saved['progress'] == dict(found=0, missing=1, skipped=1, remaining=0)                  # both walked parts still count
+    assert checker.view(db, copy)['session']['members'] == [parts[0]['token'], parts[1]['token']]
+
+
+def test_review_of_a_part_outside_a_narrowed_walk_joins_the_walk(coll, copy):
+    db = coll.db
+    state = start(db, copy)
+    parts = [r for r in state['rows'] if r['kind'] == 'part']
+    figure = next(r for r in state['rows'] if r['kind'] == 'figure')
+    mutate(db, copy, 'answer', token=parts[0]['token'], found=parts[0]['quantity'])
+    mutate(db, copy, 'skip', token=parts[1]['token'])
+    mutate(db, copy, 'skip', token=figure['token'])
+    mutate(db, copy, 'recheck', tokens=[parts[1]['token']])
+    saved = mutate(db, copy, 'select', token=figure['token'])
+    assert saved['session']['order'] == [parts[1]['token'], figure['token']] and saved['session']['cursor'] == 1
+    spare = next(r for r in state['rows'] if r['kind'] == 'spare')
+    with pytest.raises(ValueError, match='Choose a part'):
+        mutate(db, copy, 'select', token=spare['token'])                                          # spares stay out until asked for
+
+
+def test_a_plain_start_resumes_a_skipped_walk_and_only_a_named_scope_replaces_it(coll, copy):
+    db = coll.db
+    state = start(db, copy)
+    part = next(r for r in state['rows'] if r['kind'] == 'part')
+    mutate(db, copy, 'skip', token=part['token'])
+    mutate(db, copy, 'recheck')
+    running = checker.session(db, copy)
+    assert running['scope'] == 'skipped'
+    resumed = checker.write(db, copy, dict(action='start', operation=uuid.uuid4().hex))
+    assert resumed['session']['id'] == running['id'] and resumed['session']['scope'] == 'skipped'          # a reload does not lose it
+    replaced = checker.write(db, copy, dict(action='start', scope='all', operation=uuid.uuid4().hex))
+    assert replaced['session']['id'] != running['id'] and replaced['session']['scope'] is None
+
+
 def test_found_one_outside_a_check_lowers_the_missing_count_with_an_undo(coll, copy, client):
     db = coll.db
     state = start(db, copy)

@@ -31,7 +31,7 @@ Keyboard: **F** found all, **M** missing, **1 to 9** count, **S** skip, **Z** un
 
 ## Check only the missing parts
 
-When a copy already has missing parts, **Check missing only** on the set's page (beside **Check parts**) starts a run over just those parts. Use it after a visit to the pile, or when you have found parts since the last check. The heading reads **Missing part 1 of N** with a **Missing only** tag, the progress line ends with **· missing parts only**, and each part shows **Missing since the last check: X of Y**. Buttons, keys and the end of the check are as above. The other parts keep their answers from the earlier check. Starting a missing-only run replaces a check that is in progress; **Undo** brings the earlier check back.
+When a copy already has missing parts, **Check missing only** on the set's page (beside **Check parts**) starts a run over just those parts. Use it after a visit to the pile, or when you have found parts since the last check. The heading reads **Missing part 1 of N** with a **Missing only** tag, the progress line ends with **· missing parts only**, and each part shows **Missing since the last check: X of Y**. Buttons, keys and the end of the check are as above. The other parts keep their answers from the earlier check. Checking the skipped parts inside a missing-only run keeps it a missing-only run. Reloading the page resumes whatever check is running. Starting a missing-only run replaces a check that is in progress; **Undo** brings the earlier check back.
 
 ## Found 1 on the set's page
 

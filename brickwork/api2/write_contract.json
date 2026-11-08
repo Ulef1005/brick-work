@@ -1975,7 +1975,7 @@
           "type": "string"
         },
         "scope": {
-          "description": "start only: `all` (the default) walks the whole set; `missing` walks only the parts the last check left missing (the others keep their answers; refused with 422 when none is missing). A running check of the other scope is replaced.",
+          "description": "start only: `all` walks the whole set (a fresh start without `scope` does too); `missing` walks only the parts the last check left missing (the others keep their answers; refused with 422 when none is missing). Left out, a start resumes the running check; a named scope that is not the running one replaces it (Undo brings it back).",
           "enum": [
             "all",
             "missing"

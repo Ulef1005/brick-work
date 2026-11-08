@@ -984,3 +984,17 @@ def test_prices_runtime_harness_and_planning_runtime_harness():
     for name in ('toni_bw_planning_runtime.cjs', 'toni_bw_wishlists_runtime.cjs'):
         result = subprocess.run(['node', 'tests/' + name], cwd=ROOT, capture_output=True, text=True, timeout=60)
         assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_wishlist_save_feedback_one_line_and_chip_gap(world, client):
+    """#224: the save status and its one Undo share a line; the wishlist chips have the 8 px gap."""
+    soup = BeautifulSoup(client.get('/planning/wishlist').data, 'html.parser')
+    feedback = soup.select_one('.bp-save-feedback')
+    assert feedback.select_one('[data-bp-message][role="status"]')
+    assert feedback.select_one('button[data-bp-undo][hidden]')
+    js = (ROOT / 'static/web/toni/bw-planning.js').read_text()
+    assert "'Saved · Undo'" not in js and "message.textContent='Saved'" in js
+    planning = (ROOT / 'static/web/toni/bw-planning.css').read_text()
+    assert re.search(r'#bw-planning \.bp-save-feedback \{[^}]*display:flex;align-items:center', planning)
+    wishlists = (ROOT / 'static/web/toni/bw-wishlists.css').read_text()
+    assert re.search(r'\.wl-lists \{[^}]*display:flex;flex-wrap:wrap;gap:8px', wishlists)

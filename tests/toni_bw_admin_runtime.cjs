@@ -27,7 +27,7 @@ const integration={navigator:{onLine:true},setInterval(fn){poll=fn;return 1;},cl
  BrickImportProgress:class{constructor(root,transport,opts){options=opts;instance=this;this.updates=[];this.jobId=opts.jobId;assert.equal(transport.connected,true);transport.on('import_progress',data=>this.update(data));}
  update(data){this.updates.push(data);}destroy(){this.destroyed=true;}},
  addEventListener(event,fn){assert.equal(event,'pagehide');cleanup=fn;}},document:{
- addEventListener(event,fn){ready=fn;},querySelector(selector){return config;},
+ addEventListener(event,fn){ready=fn;},querySelector(selector){return selector==='[data-jobs-live]'?null:config;},
  querySelectorAll(selector){return selector==='[data-import-job]'?[panelRoot]:[];},
  createElement(tag){return {children:[],appendChild(el){this.children.push(el);},submit(){submitted=true;}};},
  body:{appendChild(form){this.form=form;}}}};
@@ -35,7 +35,35 @@ vm.runInNewContext(fs.readFileSync(require('node:path').join(__dirname,'../stati
 ready();assert.equal(typeof poll,'function');
 assert.equal(instance.updates[0].state,'failed');assert.equal(instance.updates[0].job_id,42);
 assert.equal(options.retry(42,'inventory'),true);assert(submitted);assert.equal(integration.document.body.form.children.find(f=>f.name==='csrf_token').value,'admin-csrf');
-(async()=>{await poll();assert.deepEqual(fetched,['/manage/add/jobs/42']);assert.equal(instance.updates.at(-1).state,'done');cleanup();assert(instance.destroyed);assert(cleared);console.log('Brick Work admin polling and retry passed');})().catch(error=>{console.error(error);process.exitCode=1;});
+(async()=>{await poll();assert.deepEqual(fetched,[]);cleanup();assert(instance.destroyed);assert(cleared);console.log('Brick Work admin polling and retry passed');})().catch(error=>{console.error(error);process.exitCode=1;});
+// #218: the Jobs page swaps in its own job area while a job or bulk action is open, keeps an open failure list open, and stops when all are settled.
+(async()=>{
+ const node=(attrs={})=>({dataset:{...attrs},children:[],childNodes:[],replaceChildren(...kids){this.children=kids;},setAttribute(k,v){this[k]=v;}});
+ const state={job:'running'},rows=node(),batches=node(),shown=node(),details=node();let mounted=0,destroyed=0,refresh,fetches=0;
+ const job=()=>node({state:state.job});
+ const panelEl={dataset:{importJob:'7',importState:'running',importSnapshot:JSON.stringify([{name:'inventory',state:'done',count:1,total:1},{name:'pictures',state:'running',count:3,total:9},{name:'market_price',state:'queued',count:0,total:0}])}};
+ const live={querySelector:k=>({'[data-jobs-batches]':batches,'[data-jobs-shown-slot]':shown,'[data-bw-rows]':rows,'#batch-1 details':details})[k]||null,
+  querySelectorAll:k=>k==='[data-state]'?[job()]:k==='[data-import-job]'?[panelEl]:k==='details[open]'?[{closest:()=>({id:'batch-1'})}]:[]};
+ const fresh={querySelector:k=>({'[data-jobs-batches]':{childNodes:['b']},'[data-jobs-shown-slot]':{childNodes:[]},'[data-bw-rows]':{childNodes:['r1','r2']}})[k]};
+ const updates=[];
+ const env={navigator:{onLine:true},CSS:{escape:x=>x},setInterval(fn){refresh=fn;return 2;},clearInterval(){},
+  async fetch(url,opts){fetches++;assert.equal(url,'https://lego-test/manage/admin/jobs');assert.equal(opts.cache,'no-store');return {ok:true,async text(){return '<html>';}};},
+  DOMParser:class{parseFromString(){return {querySelector:k=>k==='[data-jobs-live]'?fresh:null};}},
+  window:{location:{href:'https://lego-test/manage/admin/jobs'},addEventListener(){},
+   BrickImportProgress:class{constructor(){mounted++;}update(d){updates.push(d);}destroy(){destroyed++;}}},
+  document:{visibilityState:'visible',addEventListener(e,fn){env.ready=fn;},querySelector:k=>k==='[data-bw-jobs]'?{dataset:{csrf:'x'}}:k==='[data-jobs-live]'?live:null,
+   querySelectorAll:()=>[],createElement:()=>({})}};
+ env.window.CSS=env.CSS;env.window.DOMParser=env.DOMParser;
+ vm.runInNewContext(fs.readFileSync(require('node:path').join(__dirname,'../static/web/toni/bw-admin.js'),'utf8'),env);
+ env.ready();assert.equal(mounted,1);
+ assert.equal(updates.at(-1).step,'pictures');                       // the active step is replayed last, so the bar shows its 3 of 9
+ await refresh();
+ assert.equal(fetches,1);assert.deepEqual(rows.children,['r1','r2']);assert.deepEqual(batches.children,['b']);
+ assert.equal(destroyed,1);assert.equal(mounted,2);assert.equal(details.open,'');
+ env.document.visibilityState='hidden';await refresh();assert.equal(fetches,1);   // a hidden tab does not poll
+ env.document.visibilityState='visible';state.job='done';await refresh();assert.equal(fetches,1);   // all settled: no more polls
+ console.log('Brick Work Jobs page live refresh passed');
+})().catch(error=>{console.error(error);process.exitCode=1;});
 // Instruction files has no toolbar on short lists, and only search on long lists.
 const instructionFields={'[data-bw-rows]':container};
 const instructionList={dataset:{noun:'files'},querySelector:key=>instructionFields[key]};

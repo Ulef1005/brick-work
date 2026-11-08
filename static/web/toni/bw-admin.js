@@ -95,12 +95,9 @@
   });
   const config = document.querySelector('[data-bw-jobs]');
   if (!config || !window.BrickImportProgress) return;
-  const listeners = new Map();
-  const channel = {connected:navigator.onLine,
-   on(event,fn){if(!listeners.has(event))listeners.set(event,new Set());listeners.get(event).add(fn);},
-   off(event,fn){listeners.get(event)?.delete(fn);}};
-  const dispatch=(event,data)=>listeners.get(event)?.forEach(fn=>fn(data));
-  const panels = [...document.querySelectorAll('[data-import-job]')].map(el => {
+  // The panels show the server's snapshot of each job; the page itself is the one live source (#218).
+  const channel = {connected:navigator.onLine, on(){}, off(){}};
+  const mount = scope => [...scope.querySelectorAll('[data-import-job]')].map(el => {
    const panel = new window.BrickImportProgress(el,channel,{
    jobId:Number(el.dataset.importJob),
    retry(job,step) {
@@ -113,7 +110,9 @@
   });
    const steps=JSON.parse(el.dataset.importSnapshot||'[]');
    const completed=steps.filter(s=>s.state==='done').length;
-   for (const step of steps) {
+   // The active step goes last, so the bar and the message show it rather than the last queued step (#218).
+   const active=steps.find(s=>s.state!=='done');
+   for (const step of active?[...steps.filter(s=>s!==active),active]:steps) {
     const state=step.state==='waiting_for_budget'?'waiting':step.state==='queued'||step.state==='running'?'started':step.state;
     panel.update({job_id:Number(el.dataset.importJob),step:step.name,source:step.source,state,
      count:step.count,total:step.total,total_steps:steps.length,completed_steps:completed,
@@ -124,17 +123,35 @@
     total_steps:steps.length,completed_steps:completed,count:1,total:1,job_state:'done',message:el.dataset.pictureRefresh==='true'?`Downloading images · ${steps[0].count} of ${steps[0].total} · complete`:'Import complete'});
    return panel;
   });
-  const poll=async()=>{
-   channel.connected=navigator.onLine;
-   if(!channel.connected)return;
-   await Promise.all(panels.map(async panel=>{
-    try {
-     const response=await fetch(config.dataset.url.replace(/0$/,String(panel.jobId)),{cache:'no-store'});
-     if(response.ok)(await response.json()).events.forEach(event=>dispatch('import_progress',event));
-    }catch{ /* The saved snapshot stays visible until the next poll. */ }
-   }));
+  const live = document.querySelector('[data-jobs-live]');
+  let panels = mount(live || document);
+  const OPEN = new Set(['queued','running','waiting_for_budget']);
+  let busy = false;
+  // #218: while a job or bulk action is open, fetch the Jobs page again and swap in its job area: batches, state lines, step counts and
+  // new jobs update without a reload. The search and filters stay; open "failed · why" lists stay open. Stops once all are settled.
+  const refresh = async () => {
+   if (!live || busy || document.visibilityState === 'hidden' || !navigator.onLine) return;
+   if (![...live.querySelectorAll('[data-state]')].some(n => OPEN.has(n.dataset.state))) return;
+   busy = true;
+   try {
+    const response = await fetch(window.location.href, {cache:'no-store'});
+    if (!response.ok) return;
+    const fresh = new DOMParser().parseFromString(await response.text(), 'text/html').querySelector('[data-jobs-live]');
+    if (!fresh) return;
+    const opened = new Set([...live.querySelectorAll('details[open]')].map(d => d.closest('[id]')?.id).filter(Boolean));
+    panels.forEach(p => p.destroy());
+    for (const slot of ['[data-jobs-batches]', '[data-jobs-shown-slot]', '[data-bw-rows]']) {
+     const now = live.querySelector(slot), next = fresh.querySelector(slot);
+     if (now && next) now.replaceChildren(...next.childNodes);
+    }
+    opened.forEach(id => live.querySelector(`#${CSS.escape(id)} details`)?.setAttribute('open', ''));
+    live.querySelectorAll('[data-bw-list]').forEach(updateList);
+    panels = mount(live);
+   } catch { /* The last rendered state stays until the next try. */ }
+   finally { busy = false; }
   };
-  const timer=setInterval(poll,3000);
+  const timer = setInterval(refresh, 5000);
+  window.BrickAdminJobsRefresh = refresh;
   window.addEventListener('pagehide',()=>{clearInterval(timer);panels.forEach(p=>p.destroy());},{once:true});
  });
 })();

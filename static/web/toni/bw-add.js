@@ -42,10 +42,20 @@
  const step = name => root.querySelectorAll('[data-step]').forEach(e => { if (e.dataset.step === name) e.setAttribute('aria-current', 'step'); else e.removeAttribute('aria-current'); });
  const selectedKey = row => JSON.stringify([row.item_id, row.color_id ?? null]);
  const picture = row => {
-  if (!row.image) return el('span', row.label || row.number || '', 'bw-add-picture bw-add-no-image');
+  if (!row.image) {const tile = el('span', row.label || row.number || '', 'bw-add-picture bw-add-no-image'); if (row.item_id != null) tile.dataset.pictureFor = row.item_id; return tile;}
   const img = el('img', undefined, 'bw-add-picture'); const full = `/manage/images/${row.image}`; img.src = full + '?w=320'; img.srcset = `${full}?w=320 320w, ${full}?w=640 640w`; img.sizes = '160px'; img.dataset.full = full; img.alt = row.name; img.loading = 'lazy';
   img.addEventListener('error', () => img.replaceWith(el('span',row.label || row.number || '','bw-add-picture bw-add-no-image')), {once:true});
   return img;
+ };
+ // #217: a reviewed item without a picture asks for one once; it is fetched and stored now, and the tile is replaced where it stands.
+ const askPicture = row => {
+  if (row.image || row.picture_asked || row.item_id == null || row.unknown || row.kind === 'part') return;
+  row.picture_asked = true;
+  api('/picture', {item_id: row.item_id}).then(result => {
+   if (!result.image) return;
+   row.image = result.image;
+   root.querySelectorAll(`[data-picture-for="${CSS.escape(String(row.item_id))}"]`).forEach(tile => tile.replaceWith(picture(row)));
+  }).catch(() => {});
  };
  const identity = row => {
   const wrap = el('div', undefined, 'bw-add-item'); wrap.append(picture(row));
@@ -130,7 +140,7 @@ const chips=(row,offers)=>{
   if(type) chip($('review-chips'),type,() => {$('review-filter').value='';renderReview();});
   visible.forEach(row => {
    const tr=el('tr'),labels=['Item','Type','Quantity','Where','Condition','Completeness','Choice'];const cell=content => {const td=el('td');td.dataset.label=labels[tr.children.length] || '';if(typeof content==='string') td.textContent=content;else td.append(content);tr.append(td);return td;};
-   const id=identity(row);let picker=null;
+   const id=identity(row);let picker=null;askPicture(row);
    if(row.kind==='part') {
     const button=el('button',row.color_id == null ? 'Choose a colour' : 'Change colour');button.type='button';button.className='bw-add-colour';
     button.addEventListener('click',()=>{colourRow=row;colourOpener=button;renderColours();$('colour-dialog').showModal();$('colour-search').focus();});id.append(button);

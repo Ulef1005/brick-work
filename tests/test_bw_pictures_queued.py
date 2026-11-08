@@ -159,3 +159,15 @@ def test_adding_a_set_queues_its_parts_pictures(world, client, csrf, read):
         waiting = {r[0] for r in db.execute("SELECT DISTINCT j.item_id FROM main.job j JOIN main.job_step s ON s.job_id=j.id WHERE j.kind=? AND s.name='pictures' AND s.state='queued'",
                                             (pipeline.KIND,))}
     assert lines and lines & waiting, 'the new copy\'s parts wait for their pictures'
+
+
+def test_the_add_review_asks_for_a_picture_with_its_token(world, client, csrf, monkeypatch):
+    # #217: POST /manage/add/picture fetches and stores a reviewed item's picture (pictures.preview); the Add token is required.
+    asked = []
+    monkeypatch.setattr(pictures, 'preview', lambda db, item_id, **kw: asked.append(item_id) or 77)
+    assert client.post('/manage/add/picture', json=dict(item_id=world.keep)).status_code == 400          # no token
+    reply = client.post('/manage/add/picture', json=dict(csrf_token=csrf, item_id=world.keep))
+    assert reply.status_code == 200 and reply.json == {'image': 77} and asked == [world.keep]
+    assert client.post('/manage/add/picture', json=dict(csrf_token=csrf, item_id='x')).status_code == 400
+    script = (__import__('pathlib').Path(__file__).parents[1] / 'static/web/toni/bw-add.js').read_text()
+    assert "api('/picture', {item_id: row.item_id})" in script and 'dataset.pictureFor' in script

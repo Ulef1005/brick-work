@@ -7,7 +7,7 @@
 {% endblock %}
 {% block main %}
 <div id="bw-add" class="stack" data-url="{{ url_for('web.bw_add') }}" data-csrf="{{ csrf_token }}" data-colours="{{ colours|tojson|forceescape }}" data-wishlists="{{ wishlists|tojson|forceescape }}">
-  <header><h1>Add</h1><p class="secondary">Find what you have, select it, review the details, then add it. Nothing is saved before the last step.</p></header>
+  <header><h1>Add</h1><p class="secondary">Find what you have, select it, review the details, then add it. Nothing is saved before the last step, except the pictures fetched to show you.</p></header>
   <ol class="bw-add-steps" aria-label="Steps"><li data-step="find" aria-current="step">Find and select</li><li data-step="review">Review and add</li><li data-step="added">Added</li></ol>
   {% if error %}<p class="notice" role="alert">{{ error }}</p>{% endif %}
   {% set initial_type = initial_kind %}

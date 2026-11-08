@@ -214,6 +214,34 @@ def fetch(db, job, source, *, http=None, image_http=None, root=None):
     return stored
 
 
+def preview(db, item_id, *, http=None, image_http=None, root=None):
+    """#217: the picture of an item being reviewed on Add, fetched now so the review can show it (Ulf, via wiki-agent, 08.11.: "Fetch and
+    store when selected"). Only items without colours (sets, minifigures and the other kinds; a part's picture depends on the colour
+    chosen later). Returns the picture id, or None when no source has one. A stored picture is a cache, not collection data; the item is
+    projected into the collection (`items.ensure`) because a picture belongs to an item there. Same sources, order and budgets as the
+    pictures step; a source that waits for its budget or fails is passed over, so the review never waits."""
+    row = _item(db, item_id)
+    if row['kind'] == 'part' or not items.identified(db, item_id):
+        return None
+    if not served(db, item_id, None):
+        with transaction(db):
+            items.ensure(db, item_id)
+        job = dict(item_id=item_id, payload=None, id=None, via='app', actor=None)
+        for source in order(db, row['kind']):
+            if not can_serve(db, item_id, None, source):
+                continue
+            try:
+                fetch(db, job, source, http=http, image_http=image_http, root=root)
+            except (StepWait, StepFailed, StepDone):
+                continue
+            if served(db, item_id, None):
+                break
+    found = db.execute('SELECT id, source FROM main.picture WHERE item_id=? AND color_id IS NULL', (item_id,)).fetchall()
+    ranks = order(db, row['kind'])
+    found = sorted(found, key=lambda p: ranks.index(p['source']) if p['source'] in ranks else len(ranks))
+    return found[0]['id'] if found else None
+
+
 def handler(source, *, http=None, image_http=None, root=None):
     """The pipeline handler `(db, job, step)` of one picture source; `http` and `image_http` are the test seams for the API and the
     image downloads."""

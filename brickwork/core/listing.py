@@ -10,7 +10,7 @@ import re
 from .errors import BadRequest, UnknownFilter
 
 FILTERS = set('type condition status storage place flag flags tag has stock lot problem duplicates theme category year colour inventory item_no archived under_max since color_id source guide currency kind state entity field copy_id source_id item_type completes has_file owned spare parent bricklink_order_id via undoable failed'.split())
-SORTS = set('number name year quantity missing damaged used_price colour index ranking'.split())
+SORTS = set('number name year quantity missing damaged used_price colour index ranking added'.split())
 
 
 def natural(value):
@@ -28,6 +28,8 @@ def _value(r, key):
         return float(r.get('missing') or 0) + float(r.get('damaged') or 0)
     if key in ('quantity', 'year', 'damaged', 'index'):
         return float(r.get(key) or 0)
+    if key == 'added':                          # #226: an ISO time, the newest copy's on a list row, a record's own on the API
+        return str(r.get('added') or r.get('created_at') or '')
     return natural(r.get(key))
 
 

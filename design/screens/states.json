@@ -93,7 +93,7 @@
    "world": "demo",
    "path": "/collection/item/set/7286-1?copy=56325b99-16bc-549b-bb98-f7be2ab38829",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "11-Edit-sheet",
@@ -246,7 +246,7 @@
    "world": "demo",
    "path": "/workbench/check-parts",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "29-Part-picker",
@@ -264,7 +264,7 @@
    "world": "demo",
    "path": "/workbench/check-parts/56325b99-16bc-549b-bb98-f7be2ab38829",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "31-Part-to-inventory",

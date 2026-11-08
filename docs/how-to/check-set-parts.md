@@ -17,7 +17,7 @@ Go through one [copy](../concepts/collection-model.md) of a set part by part and
    - **Back** and **Undo** step back or reverse the last answer.
 5. Minifigures come after the required parts, as a **Figure review**. Count the whole figure like a part.
 6. If the set has spare parts, you are asked **Include spare parts?** Select **No, skip them** or **Yes, check them**. Spares are never counted as missing.
-7. The **Missing so far** list shows every gap. If you find a piece later in the pile, select **Found 1** next to it and the count drops by one.
+7. The **Missing so far** list shows every gap, the newest on top. If you find a piece later in the pile, select **Found 1** next to it and the count drops by one; the entry stays where it is in the list.
 8. Select **Done · N still missing** to reach **Finish**. Tick **Set is checked** if you have also inspected the build and the figures, then select **Done**.
 
 Every answer saves as you go. You can close the page and come back later: the copy shows under **In progress** and its start screen offers **Resume check**. **Start over** starts a new pass.

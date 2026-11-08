@@ -276,6 +276,19 @@ def test_a_copy_without_spares_has_no_spare_step(coll):
         mutate(db, copy, 'spares', include=False)
 
 
+
+def test_a_listed_miss_keeps_its_place_in_missing_so_far(coll, copy):
+    # #213: Found 1 on an entry of the sidebar moved it to the top of the list; a part already listed keeps its place.
+    db = coll.db
+    state = start(db, copy)
+    first, second = [r for r in state['rows'] if r['kind'] == 'part' and (r['quantity'] or 0) >= 2][:2]
+    mutate(db, copy, 'answer', token=first['token'], found=0)
+    saved = mutate(db, copy, 'answer', token=second['token'], found=0)
+    assert saved['session']['misses'] == [second['token'], first['token']]   # a new miss goes on top
+    again = mutate(db, copy, 'found_one', token=first['token'])
+    assert next(r for r in again['rows'] if r['token'] == first['token'])['missing'] == first['quantity'] - 1
+    assert again['session']['misses'] == [second['token'], first['token']]
+
 def test_normalise_drops_spare_answers_and_misses_until_yes():
     s = dict(order=['p:1', 'p:2'], cursor=2, answers={'p:1': 'answered', 'p:2': 'answered'}, misses=['p:2', 'p:1'], spares=None)
     kinds = {'p:1': 'part', 'p:2': 'spare', 'p:9': 'part'}

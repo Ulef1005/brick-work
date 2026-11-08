@@ -181,7 +181,7 @@ def test_list_records_are_words_with_both_numbers_and_the_item_id(world, read):
         rows = collection.listing(db, 'M')
     data = json.loads(list_records.payload(rows))
     fields = data['fields']
-    assert fields[-3:] == ['item_id', 'also', 'source'] and 'purchase_location_id' not in fields
+    assert fields[-4:] == ['item_id', 'also', 'source', 'added'] and 'purchase_location_id' not in fields   # added: #226
     record = decoded(list_records.payload(rows))[0]
     assert record['item_id'] == world.figure and record['also'] == 'syn-fig-0004' and record['condition'] == ['used'] and record['number'] == 'fig-000004'
     for key in ('condition', 'status'):

@@ -353,7 +353,9 @@
       selectionCount();saveState();
     }
     const searchRender=debounce(()=>render(true),120);
-    [...filterControls,search,sort,direction,group].filter(Boolean).forEach(c=>c.addEventListener(c===search?'input':'change',c===search?searchRender:()=>render(true)));
+    // #226: Date added starts newest first; the order buttons still turn it round.
+    const sorted=()=>{if(sort?.value==='added'&&direction)direction.value='desc';render(true);};
+    [...filterControls,search,sort,direction,group].filter(Boolean).forEach(c=>c.addEventListener(c===search?'input':'change',c===search?searchRender:c===sort?sorted:()=>render(true)));
     const scrim=list.querySelector('[data-bc-sheet-scrim]');
     const sortPanel=list.querySelector('[data-bc-sort-panel]');
     function syncSheets(){if(scrim)scrim.hidden=(panel.hidden||desktop())&&(!sortPanel||sortPanel.hidden||desktop());}
@@ -379,7 +381,7 @@
     }
     scrim?.addEventListener('click',closeSheets);
     list.querySelector('[data-bc-apply]')?.addEventListener('click',()=>{closeSheets();list.querySelector('[data-bc-filters]')?.focus();});
-    list.querySelectorAll('[data-bc-sort-pick]').forEach(b=>b.addEventListener('click',()=>{sort.value=b.dataset.bcSortPick;render(true);}));
+    list.querySelectorAll('[data-bc-sort-pick]').forEach(b=>b.addEventListener('click',()=>{sort.value=b.dataset.bcSortPick;sorted();}));
     list.querySelectorAll('[data-bc-order-pick]').forEach(b=>b.addEventListener('click',()=>{direction.value=b.dataset.bcOrderPick;render(true);}));
     picks.forEach(b=>b.addEventListener('click',()=>{const control=filterControls.find(c=>c.dataset.bcFilter===b.dataset.bcPick);if(control)control.value=control.value===b.dataset.value?'':b.dataset.value;render(true);}));
     groupPicks.forEach(b=>b.addEventListener('click',()=>{if(group){group.value=b.dataset.bcGroupPick;render(true);}}));

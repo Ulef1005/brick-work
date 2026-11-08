@@ -16,6 +16,17 @@ assert.deepEqual(plain(progress(state)),{found:0,missing:2,skipped:1,remaining:0
 assert.deepEqual(plain(state.session.misses),['m:1','p:1']);
 apply(state,{action:'found_one',token:'p:1'});assert.equal(state.rows[0].missing,0);
 assert.deepEqual(plain(state.session.misses),['m:1','p:1']);
+{ // #213: Found 1 in the sidebar, or answering a listed part again, keeps its place in Missing so far; only a new miss goes on top.
+  const kept=make();
+  apply(kept,{action:'answer',token:'p:1',found:1});apply(kept,{action:'answer',token:'m:1',found:0});
+  assert.deepEqual(plain(kept.session.misses),['m:1','p:1']);
+  apply(kept,{action:'found_one',token:'p:1'});assert.equal(kept.rows[0].missing,2);
+  assert.deepEqual(plain(kept.session.misses),['m:1','p:1']);
+  apply(kept,{action:'answer',token:'p:1',found:2});
+  assert.deepEqual(plain(kept.session.misses),['m:1','p:1']);
+  apply(kept,{action:'answer',token:'p:2',found:0});
+  assert.deepEqual(plain(kept.session.misses),['p:2','m:1','p:1']);
+}
 apply(state,{action:'select',token:'p:2'});assert.equal(state.session.cursor,1);
 apply(state,{action:'back'});assert.equal(state.session.cursor,0);
 apply(state,{action:'next'});assert.equal(state.session.cursor,1);

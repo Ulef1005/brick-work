@@ -94,6 +94,8 @@
   selectButton?.addEventListener('click', () => {
     const on = !selecting();
     root.classList.toggle('is-selecting', on);
+    // #223: in select mode a name selects its row, so its link leaves the tab order and Enter cannot open the item instead.
+    root.querySelectorAll('.st-open').forEach(a => { if (on) a.setAttribute('tabindex', '-1'); else a.removeAttribute('tabindex'); });
     selectButton.setAttribute('aria-pressed', String(on));
     selectButton.textContent = on ? 'Cancel' : 'Select';
     bar.hidden = !on;

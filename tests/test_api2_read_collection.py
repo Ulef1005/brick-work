@@ -125,6 +125,15 @@ def test_copies_sort_by_number_name_missing_and_used_price(v2, world):
     assert call(v2, '/copies?sort=nonsense').status_code == 400 and call(v2, '/copies?sort=year&direction=sideways').status_code == 400
 
 
+
+def test_copies_sort_by_date_added(v2, coll, world):
+    # #226: `added` is when the copy came into Brick Work.
+    coll.sql('UPDATE copy SET created_at=? WHERE id=?', ('2099-01-01T00:00:00.000000Z', world.copy_b))
+    coll.sql('UPDATE copy SET created_at=? WHERE id=?', ('2000-01-01T00:00:00.000000Z', world.copy_c))
+    newest = ids(call(v2, '/copies?sort=added&direction=desc'))
+    assert newest[0] == world.copy_b and newest[-1] == world.copy_c
+    assert ids(call(v2, '/copies?sort=added'))[0] == world.copy_c
+
 def test_archived_copies_are_hidden_until_asked_for_and_still_read_by_id(v2, coll, world):
     coll.sql('UPDATE copy SET archived_at=? WHERE id=?', ('2026-10-27T00:00:00.000Z', world.copy_a))
     assert world.copy_a not in ids(call(v2, '/copies'))

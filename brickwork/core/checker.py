@@ -456,8 +456,9 @@ def write(db, copy_id, payload, figure=None):
                     else:
                         mark_row(db, 'copy_figure', dict(id=r['id'], copy_id=copy_id), r, dict(missing=missing))
                     s['answers'][token] = 'answered'
-                    if missing:
-                        s['misses'] = [token] + [t for t in s['misses'] if t != token]
+                    # #213: a new miss goes to the top of Missing so far; one already listed keeps its place there.
+                    if missing and token not in s['misses']:
+                        s['misses'] = [token] + s['misses']
                     if action == 'answer':
                         s['cursor'] = min(s['order'].index(token) + 1, len(s['order']))
                     settle()

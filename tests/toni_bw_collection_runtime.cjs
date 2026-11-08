@@ -147,6 +147,10 @@ assert.equal(count.textContent,'130 parts');assert.equal(loaded.textContent,'Loa
  search.value='Black';await search.trigger('input');search.value='';await search.trigger('input');assert.equal(container.querySelector('[data-bc-selected]').checked,false);
  group.value='colour';await group.trigger('change');assert.equal(container.querySelectorAll('[data-bc-group-heading]').length,1);await more.trigger();assert.equal(container.querySelectorAll('[data-bc-group-heading]').length,2);
  sort.value='quantity';direction.value='desc';await direction.trigger('change');group.value='';await group.trigger('change');assert.equal(container.querySelector('[data-bc-item-link]').children[0].children[1].textContent,'Part\u00a0129');
+ // #226: picking Date added turns the order to newest first; the order stays the user's to turn round afterwards.
+ direction.value='asc';sort.value='added';await sort.trigger('change');assert.equal(direction.value,'desc');
+ direction.value='asc';await direction.trigger('change');assert.equal(direction.value,'asc');
+ sort.value='quantity';direction.value='desc';await direction.trigger('change');
  await more.trigger();await view.trigger();const state=JSON.parse(stored.get('bw-collection-list:/collection/P:0'));assert.equal(state.limit,120);assert.equal(state.sort,'quantity');assert.equal(state.direction,'desc');assert.equal(state.view,'list');
  container.replaceChildren();
  state.query='White';state.filters={condition:'used'};state.scroll=321;stored.set('bw-collection-list:/collection/P:0',JSON.stringify(state));

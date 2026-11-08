@@ -396,6 +396,8 @@ def listing(db, type_letter, *, wishes=False):
             row['lots'].append(r.get('lot_id') or 'null')
             row['missing'] += r.get('missing') or 0
             row['damaged'] += r.get('damaged') or 0
+            if kind == 'set':                                                        # #226: the newest copy's date added, sets only
+                row['added'] = max(row.get('added') or '', r.get('created_at') or '')
         rows = list(grouped.values())
         in_sets = []
         if kind == 'part':

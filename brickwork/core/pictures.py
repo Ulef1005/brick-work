@@ -342,8 +342,9 @@ def queue_missing(db, item_ids, *, via=None, actor=None):
 
 def queue_for_copies(db, copy_ids, *, via=None, actor=None):
     """#217: after copies of a set are written, queue the pictures their parts and minifigures still lack (the set's own picture is its
-    Add job's step). The parts are the copies' live lines, so a copy whose list is still pending gets them when Refresh pictures runs.
-    Best effort, like `queue_missing`: call it after the write commits."""
+    Add job's step). The parts are the copies' live lines; a copy that later switches to its BrickLink list by itself is queued again by
+    the drainer, and one whose offered list is accepted by hand gets the rest from Refresh pictures. Best effort, like `queue_missing`:
+    call it after the write (inside a caller's transaction it is part of that transaction)."""
     ids = sorted(set(copy_ids))
     if not ids:
         return []

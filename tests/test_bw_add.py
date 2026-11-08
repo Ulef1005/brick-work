@@ -227,11 +227,15 @@ def test_bricklink_pending_settles_end_to_end_through_add(world, client, csrf, k
     with read() as db:
         copy = db.execute('SELECT * FROM copy WHERE id=?', (copy_id,)).fetchone()
         assert (copy['inventory_source'], copy['inventory_pending']) == ('bricklink', None)       # settled: switched automatically (unmarked)
-        assert {r['state'] for r in db.execute('SELECT state FROM job')} == {'done'}
         assert db.execute("SELECT count(*) FROM job WHERE kind='item' AND state='done' AND json_extract(payload,'$.batch') IS NULL").fetchone()[0] == 1
-        # #217: and one pictures job per part of the new copy, as one batch
-        batches = db.execute("SELECT DISTINCT json_extract(payload,'$.batch') FROM job WHERE kind='item' AND json_extract(payload,'$.batch') IS NOT NULL").fetchall()
-        assert len(batches) == 1 and batches[0][0].startswith('pictures-')
+        # #217: a pictures batch for the Rebrickable lines at Add, then one for the BrickLink lines the switch brought, queued now
+        batches = [r[0] for r in db.execute("SELECT DISTINCT json_extract(payload,'$.batch') FROM job WHERE kind='item' AND json_extract(payload,'$.batch') IS NOT NULL ORDER BY id")]
+        assert len(batches) == 2 and all(b.startswith('pictures-') for b in batches)
+        waiting = {r[0] for r in db.execute("SELECT item_id FROM job WHERE state='queued'")}
+        assert waiting and waiting <= {r[0] for r in db.execute('SELECT item_id FROM copy_part WHERE copy_id=? AND retired_at IS NULL', (copy_id,))}
+    drainer.drain_once(pair)
+    with read() as db:
+        assert {r['state'] for r in db.execute('SELECT state FROM job')} == {'done'}
         assert drainer.poll_delay(db) is None and not drainer.pending(db)
     assert undo(client, csrf, confirmed['batch']).json['message'] == 'Undone'
     with read() as db:

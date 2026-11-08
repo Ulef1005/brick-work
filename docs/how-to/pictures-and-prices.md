@@ -14,7 +14,7 @@ Each row you confirm in **Manage → Add** gets one background job with six step
 | Fetching set metadata | Brickset's theme, piece count and years of sale for a set, and the retail price in your retail country. | A Brickset key. |
 | Fetching market price | BrickLink's price guide for new and used, in your region and currency. | The four BrickLink values. |
 
-When **Add** makes copies of a set, the parts and minifigures of those copies that have no picture yet are queued too, as one bulk action under **Jobs › Bulk actions**; your own work still goes first. A copy whose part list is still being fetched gets its parts' pictures with **Refresh pictures**.
+When **Add** makes copies of a set, the parts and minifigures of those copies that have no picture yet are queued too, as one bulk action under **Jobs › Bulk actions**; your own work still goes first. When a copy switches to BrickLink's list by itself once it is fetched, its new parts are queued the same way; if you accept an offered list by hand, **Refresh pictures** fetches what is still missing.
 
 **Add** is not the only place. These also queue a **Downloading images** step for an item that has no picture yet (for every colour you hold), so the picture is there without pressing **Refresh pictures**:
 

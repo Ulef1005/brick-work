@@ -737,19 +737,24 @@ def confirm(db, rows, *, batch, via=None, actor=None, photo=None, keep_photo=Fal
         via, actor = origin()
     require_catalogue(db)
     pipeline, result = Pipeline(db), []
-    for index, row in enumerate(rows):
-        if row['decision'] == 'skip':
-            continue
-        with transaction(db):
-            saved = next((r for r in receipts(db, batch) if r['index'] == index), None)
-            if saved:
-                result.append(saved)
+    try:
+        for index, row in enumerate(rows):
+            if row['decision'] == 'skip':
                 continue
-            try:
-                result.append(_confirm_row(db, pipeline, row, batch, index, via, actor, photo if keep_photo else None))
-            except Store4Error as error:
-                raise errors.ValidationFailed(str(error)) from None
-    pictures.queue_for_copies(db, [c for r in result for c in r.get('copies') or []], via=via, actor=actor)   # #217: after the rows commit
+            with transaction(db):
+                saved = next((r for r in receipts(db, batch) if r['index'] == index), None)
+                if saved:
+                    result.append(saved)
+                    continue
+                try:
+                    result.append(_confirm_row(db, pipeline, row, batch, index, via, actor, photo if keep_photo else None))
+                except Store4Error as error:
+                    raise errors.ValidationFailed(str(error)) from None
+    finally:
+        # #217: the pictures the new copies' parts and figures lack, also for the rows saved before one that failed. On the web this
+        # runs after each row committed; the API's `writes.execute` holds one transaction around the call, so there it is part of it
+        # (a dry run or a later error rolls the jobs back with the rows).
+        pictures.queue_for_copies(db, [c for r in result for c in r.get('copies') or []], via=via, actor=actor)
     return result
 
 

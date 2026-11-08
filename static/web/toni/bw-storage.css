@@ -82,9 +82,11 @@
 #bw-ledger.bw-storage .st-pic img{width:100%;height:100%;object-fit:contain;display:block;background:#fff}
 #bw-ledger.bw-storage .st-id{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
 #bw-ledger.bw-storage .st-id strong{font:600 15px var(--tw-font)}
-#bw-ledger.bw-storage .st-open{align-self:flex-start;max-width:100%;color:inherit;text-decoration:none;min-width:0}
+/* #223: the link adds no box of its own (display:contents), so the row lays out exactly as the approved state; the name is what you hover */
+#bw-ledger.bw-storage .st-open{display:contents;color:inherit;text-decoration:none}
+#bw-ledger.bw-storage .st-open strong{align-self:flex-start;max-width:100%}
 #bw-ledger.bw-storage .st-open:hover strong,#bw-ledger.bw-storage .st-open:focus-visible strong{text-decoration:underline}
-#bw-ledger.bw-storage .st-open:focus-visible{outline:2px solid var(--tw-accent);outline-offset:2px;border-radius:2px}
+#bw-ledger.bw-storage .st-open:focus-visible strong{outline:2px solid var(--tw-accent);outline-offset:2px;border-radius:2px}
 /* #223: in select mode a click on the name selects the row, it does not open the item */
 #bw-ledger.bw-storage.is-selecting .st-open{pointer-events:none}
 #bw-ledger.bw-storage .st-id .mono{font-size:12px;line-height:16px;color:var(--tw-text-muted)}

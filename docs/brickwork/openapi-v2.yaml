@@ -148,8 +148,8 @@ paths:
       x-piece: M.11b
     post:
       operationId: post_wishlists
-      x-mcp-tool: post_wishlists
-      summary: post wishlists
+      x-mcp-tool: create_wishlist
+      summary: Create a wishlist
       tags:
       - Wishlist
       security:
@@ -177,8 +177,8 @@ paths:
   /wishlists/{id}:
     patch:
       operationId: patch_wishlists_by_id
-      x-mcp-tool: patch_wishlists_id
-      summary: patch wishlists id
+      x-mcp-tool: edit_wishlist
+      summary: Rename a wishlist or change its settings
       tags:
       - Wishlist
       security:
@@ -210,8 +210,8 @@ paths:
       x-piece: M.11c
     delete:
       operationId: delete_wishlists_by_id
-      x-mcp-tool: delete_wishlists_id
-      summary: delete wishlists id
+      x-mcp-tool: archive_wishlist
+      summary: Archive a wishlist
       tags:
       - Wishlist
       security:
@@ -238,8 +238,8 @@ paths:
   /wishlists/{id}/restore:
     post:
       operationId: post_wishlists_by_id_restore
-      x-mcp-tool: post_wishlists_id_restore
-      summary: post wishlists id restore
+      x-mcp-tool: restore_wishlist
+      summary: Restore an archived wishlist
       tags:
       - Wishlist
       security:
@@ -266,8 +266,8 @@ paths:
   /wishlists/{id}/transfer:
     post:
       operationId: post_wishlists_by_id_transfer
-      x-mcp-tool: post_wishlists_id_transfer
-      summary: post wishlists id transfer
+      x-mcp-tool: transfer_wishes
+      summary: Move or copy wishes into this wishlist
       tags:
       - Wishlist
       security:

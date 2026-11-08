@@ -127,6 +127,23 @@ def test_jobs_shows_a_batch_as_one_row_with_progress_failures_and_cancel(world, 
     assert '2 cancelled' in row.select_one('[data-batch-counts]').get_text() and not row.select('[data-batch-cancel]')
 
 
+
+def test_jobs_page_has_one_live_area_whose_slots_carry_the_current_state(world, coll, client):
+    # #218: the page refetches itself and swaps these three slots, so each must exist once inside the live area, and a fresh render
+    # must already show the work done since the last one (a batch's counts, a job's state).
+    bulk(coll, [world.keep, world.gate, world.duplo, world.brick])
+    single(coll, world.plate)
+    first = soup(client, '/manage/jobs')
+    live = first.select('[data-jobs-live]')
+    assert len(live) == 1
+    for slot in ('[data-jobs-batches]', '[data-jobs-shown-slot]', '[data-bw-rows]'):
+        assert len(live[0].select(slot)) == 1, slot
+    assert live[0].select_one('[data-jobs-batches] [data-batch]')['data-state'] in ('queued', 'running', 'waiting_for_budget')
+    assert not live[0].select('[data-bw-rows] [data-bw-search]')                  # the search sits outside the swapped rows
+    runner(coll, []).drain(limit=3)
+    later = soup(client, '/manage/jobs').select_one('[data-jobs-live] [data-jobs-batches] [data-batch-counts]').get_text()
+    assert later != first.select_one('[data-batch-counts]').get_text() and later.startswith('2 of 4 done')
+
 @pytest.mark.parametrize('batch', ['', 'prices', 'prices-XYZ', 'pictures-12345678; DROP'])
 def test_cancel_refuses_a_batch_id_it_did_not_make(world, client, batch):
     response = client.post('/manage/jobs', data=dict(csrf_token=csrf(client), action='cancel_batch', batch=batch))

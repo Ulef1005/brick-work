@@ -69,6 +69,8 @@ def test_widget_follows_running_finished_failed_and_waiting_jobs(scenarios, tmp_
     out = run_widget(tmp_path, data)
     # Running: two of three steps' worth of finished work plus 38 of 112 on the active step.
     assert 33 < out['running']['width'] < 56 and out['running']['retryHidden'] is True
+    # #218: the job's own last event keeps the active step's share (1 + 38/112 of 3 steps) and says what runs.
+    assert 44 < out['running']['width'] < 45.5 and out['running']['message'] == 'Importing · pictures · 38 of 112'
     assert out['finished']['width'] == 100 and out['finished']['message'] == 'Import complete'
     assert out['finished']['retryHidden'] is True
     assert out['failed']['retryHidden'] is False and out['failed']['retried'] == [[jobs['failed'], 'pictures']]

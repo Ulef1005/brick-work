@@ -154,3 +154,6 @@ main .bw-chips a[aria-current=page]{background:var(--tw-accent-soft);color:var(-
 
 /* #127: a bulk action as one row in Jobs: its progress bar. */
 .bw-batch-bar{height:6px;border-radius:3px;background:var(--tw-surface-2);overflow:hidden}.bw-batch-bar>div{height:100%;background:var(--tw-accent)}
+/* #218: the live job area and its slots add no boxes, so the page lays out as before (the stack's gaps between the bulk actions, the
+ * list toolbar and the rows stay), and an empty slot takes no gap. The page script swaps their contents. */
+[data-jobs-live],[data-jobs-batches],[data-jobs-shown-slot]{display:contents}

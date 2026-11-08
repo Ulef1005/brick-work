@@ -22,7 +22,7 @@ const probe=`(async()=>{
  if(pending())problems.push('page did not settle');
  for(const l of document.querySelectorAll('link[rel=stylesheet]')){let n=0;try{n=l.sheet?l.sheet.cssRules.length:0}catch(e){n=-1}if(!l.sheet||n===0)problems.push('stylesheet '+l.getAttribute('href'));}
  for(const i of document.images)if((i.getAttribute('src')||'').includes('/manage/images/')&&(!i.complete||i.naturalWidth===0))problems.push('picture '+i.getAttribute('src'));
- for(const n of document.querySelectorAll('.bw-demo-picture-note')){const t=getComputedStyle(n).display==='inline'?(n.closest('[data-item-no],[data-kind],.bc-picture,.bw-picture,.check-picture,.scan-tile')||n.parentElement):n,b=t.getBoundingClientRect(),r=document.createRange();r.selectNodeContents(n);const a=r.getBoundingClientRect();if(a.width&&(a.top<b.top-1||a.bottom>b.bottom+1||a.left<b.left-1||a.right>b.right+1||n.scrollHeight>n.clientHeight+1&&t===n))problems.push('picture note overflows its tile (#197): '+(t.dataset.itemNo||t.getAttribute('class')||t.tagName));}
+ for(const n of document.querySelectorAll('.bw-demo-picture-note')){const t=n.closest('.bc-picture,.bw-picture,.check-picture,.scan-tile'),r=document.createRange();r.selectNodeContents(n);const a=r.getBoundingClientRect();if(!t){if(a.width)problems.push('picture note outside a picture box (#197)');continue;}const b=t.getBoundingClientRect();if(a.width&&(a.top<b.top-1||a.bottom>b.bottom+1||a.left<b.left-1||a.right>b.right+1))problems.push('picture note overflows its picture box (#197): '+(t.dataset.itemNo||t.getAttribute('class')||t.tagName));}
  return JSON.stringify({problems,images:document.images.length,sheets:document.styleSheets.length});
 })()`;
 (async()=>{

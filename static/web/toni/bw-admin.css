@@ -109,8 +109,8 @@ main a.bw-hub-row:hover .bw-hub-title,main a.bw-hub-row:focus-visible .bw-hub-ti
 .bw-hub-top{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1fr);gap:16px;padding:8px 0 4px;margin-bottom:12px}
 main a.bw-hub-card{display:flex;text-align:left;flex-direction:column;align-items:stretch;gap:12px;min-height:0;padding:20px;border:0;border-radius:16px;background:var(--tw-accent-soft);color:var(--tw-accent-text)}
 .bw-hub-eyebrow{align-self:stretch;text-align:left;padding-bottom:12px;border-bottom:.5px solid var(--tw-accent);font:500 11px/16px var(--tw-font);letter-spacing:.08em;text-transform:uppercase;color:var(--tw-accent-text)}
-.bw-hub-card-body{align-self:stretch;display:flex;align-items:flex-start;gap:16px}
-main a.bw-hub-card .bw-hub-text{padding:0}main a.bw-hub-card .bw-hub-title{color:var(--tw-text)}main a.bw-hub-card .bw-hub-note{color:var(--tw-text-muted)}
+.bw-hub-card-body{align-self:stretch;display:flex;align-items:flex-start;gap:8px 16px;flex-wrap:wrap}
+main a.bw-hub-card .bw-hub-text{padding:0;flex:1 1 120px;min-width:0}main a.bw-hub-card .bw-hub-title{color:var(--tw-text)}main a.bw-hub-card .bw-hub-note{color:var(--tw-text-muted)}
 main a.bw-hub-card .bw-hub-signal{color:var(--tw-accent-text);white-space:nowrap}
 main a.bw-hub-card:hover .bw-hub-title,main a.bw-hub-card:focus-visible .bw-hub-title{color:var(--tw-accent-text)}
 main a.bw-hub-card:focus-visible{outline:2px solid var(--tw-focus-color);outline-offset:2px}

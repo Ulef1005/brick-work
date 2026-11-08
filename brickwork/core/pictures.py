@@ -340,6 +340,24 @@ def queue_missing(db, item_ids, *, via=None, actor=None):
         return []
 
 
+def queue_for_copies(db, copy_ids, *, via=None, actor=None):
+    """#217: after copies of a set are written, queue the pictures their parts and minifigures still lack (the set's own picture is its
+    Add job's step). The parts are the copies' live lines, so a copy whose list is still pending gets them when Refresh pictures runs.
+    Best effort, like `queue_missing`: call it after the write commits."""
+    ids = sorted(set(copy_ids))
+    if not ids:
+        return []
+    try:
+        lines = [r[0] for r in db.execute("""SELECT item_id FROM main.copy_part WHERE retired_at IS NULL AND copy_id IN (SELECT value FROM json_each(?))
+            UNION SELECT item_id FROM main.copy_figure WHERE retired_at IS NULL AND copy_id IN (SELECT value FROM json_each(?))""",
+                                         (json.dumps(ids), json.dumps(ids)))]
+    except Exception:                                                   # noqa: BLE001 (never fail a committed write over a picture)
+        import logging
+        logging.getLogger(__name__).warning('Could not read the lines of copies %s', ids[:20], exc_info=True)
+        return []
+    return queue_missing(db, lines, via=via, actor=actor)
+
+
 def _queue_missing(db, item_ids, *, via=None, actor=None):
     ids = set(item_ids)
     if not ids:

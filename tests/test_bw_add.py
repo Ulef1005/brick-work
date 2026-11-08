@@ -228,7 +228,10 @@ def test_bricklink_pending_settles_end_to_end_through_add(world, client, csrf, k
         copy = db.execute('SELECT * FROM copy WHERE id=?', (copy_id,)).fetchone()
         assert (copy['inventory_source'], copy['inventory_pending']) == ('bricklink', None)       # settled: switched automatically (unmarked)
         assert {r['state'] for r in db.execute('SELECT state FROM job')} == {'done'}
-        assert db.execute("SELECT count(*) FROM job WHERE kind='item' AND state='done'").fetchone()[0] == 1
+        assert db.execute("SELECT count(*) FROM job WHERE kind='item' AND state='done' AND json_extract(payload,'$.batch') IS NULL").fetchone()[0] == 1
+        # #217: and one pictures job per part of the new copy, as one batch
+        batches = db.execute("SELECT DISTINCT json_extract(payload,'$.batch') FROM job WHERE kind='item' AND json_extract(payload,'$.batch') IS NOT NULL").fetchall()
+        assert len(batches) == 1 and batches[0][0].startswith('pictures-')
         assert drainer.poll_delay(db) is None and not drainer.pending(db)
     assert undo(client, csrf, confirmed['batch']).json['message'] == 'Undone'
     with read() as db:

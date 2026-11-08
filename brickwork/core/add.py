@@ -749,6 +749,7 @@ def confirm(db, rows, *, batch, via=None, actor=None, photo=None, keep_photo=Fal
                 result.append(_confirm_row(db, pipeline, row, batch, index, via, actor, photo if keep_photo else None))
             except Store4Error as error:
                 raise errors.ValidationFailed(str(error)) from None
+    pictures.queue_for_copies(db, [c for r in result for c in r.get('copies') or []], via=via, actor=actor)   # #217: after the rows commit
     return result
 
 
@@ -824,7 +825,7 @@ def settle_fetches(db, *, via=None, actor=None):
     `add:fetched` event, undoable like the receipt's rows; rows that cannot be made are recorded as `add:fetch_failed` and not tried
     again. A job that failed leaves its receipt with nothing to create (the job view says so; Retry queues the job again and a later
     run settles it). Returns the number of receipts settled."""
-    settled = 0
+    settled, made = 0, []
     for candidate in [r[0] for r in db.execute(f'SELECT e.id {UNSETTLED} ORDER BY e.id').fetchall()]:
         with transaction(db):                                       # the write lock first, then the checks: another worker or an Undo may have got there
             event = db.execute(f'SELECT e.id, e.via, e.actor, e.entity_id, e.new_value {UNSETTLED} AND e.id=?', (candidate,)).fetchone()
@@ -838,10 +839,11 @@ def settle_fetches(db, *, via=None, actor=None):
             try:
                 if not isinstance(receipt.get('ask'), dict):
                     raise ValueError('this row was added before fetch follow-ups existed, so it did not record what to create')
-                _create_fetched(db, event, receipt, job['item_id'], via or event['via'], actor if via else event['actor'])
+                made += _create_fetched(db, event, receipt, job['item_id'], via or event['via'], actor if via else event['actor'])
             except Exception as error:                              # one receipt never stops the drain or the others; it is recorded and not tried again
                 audit(db, 'add:' + event['entity_id'], 'fetch_failed', None, dict(receipt=event['id'], fetch_job=receipt['fetch_job'], error=str(error)),
                       via=via or event['via'], actor=actor if via else event['actor'])
+    pictures.queue_for_copies(db, made, via=via, actor=actor)          # #217: the fetched copies' parts, after their writes commit
     return settled
 
 
@@ -873,6 +875,7 @@ def _create_fetched(db, event, receipt, item_id, via, actor):
         raise
     finally:
         db.execute('RELEASE fetched')
+    return made['copies']
 
 
 def fetch_outcome(db, job_id):

@@ -3,8 +3,9 @@ Workbench Found call sites. Sync and the file import from another app are covere
 import pytest
 
 from brickwork.core import orders, part_inventory, pictures, pipeline, workbench as w
-from tests.app4 import app4, client, coll, pair, read, world  # noqa: F401 (fixtures)
+from tests.app4 import app4, client, coll, csrf, pair, read, world  # noqa: F401 (fixtures)
 from tests.test_bw_orders_storage import saved
+from tests.test_bw_add import csrf  # noqa: F401 (the Add page's own token fixture)
 
 
 def live_picture_jobs(db, item_id):
@@ -124,3 +125,37 @@ def test_queueing_never_fails_the_write_it_follows(world, coll, monkeypatch, cap
     with caplog.at_level('WARNING'):
         assert pictures.queue_missing(coll.db, [world.brick]) == []
     assert 'Could not queue pictures' in caplog.text
+
+
+def copy_lines(db, copy_id):
+    return {r[0] for r in db.execute('SELECT item_id FROM copy_part WHERE copy_id=? AND retired_at IS NULL UNION SELECT item_id FROM copy_figure WHERE copy_id=? AND retired_at IS NULL',
+                                     (copy_id, copy_id))}
+
+
+def test_queue_for_copies_queues_the_parts_and_figures_still_without_a_picture(world, coll):
+    # #217: a set's parts had no picture after Add until Refresh pictures ran.
+    db = coll.db
+    lines = copy_lines(db, world.copy_a)
+    assert lines
+    pictured = sorted(lines)[0]
+    give_picture(coll, pictured)
+    jobs = pictures.queue_for_copies(db, [world.copy_a, world.copy_a])
+    queued = {pipeline.Pipeline(db).status(j)['item_id'] for j in jobs}
+    assert pictured not in queued and queued <= lines and queued
+    assert pictures.queue_for_copies(db, [world.copy_a]) == [], 'not twice while they wait'
+    assert pictures.queue_for_copies(db, []) == []
+
+
+def test_adding_a_set_queues_its_parts_pictures(world, client, csrf, read):
+    from tests.test_bw_add import review
+    proposal = review(client, csrf, '1000-1').json
+    items = proposal['items']
+    items[0].update(decision='another')
+    result = client.post('/manage/add/confirm', json=dict(csrf_token=csrf, token=proposal['token'], items=items))
+    assert result.status_code == 200
+    copy_id = result.json['receipts'][0]['copies'][0]
+    with read() as db:
+        lines = copy_lines(db, copy_id)
+        waiting = {r[0] for r in db.execute("SELECT DISTINCT j.item_id FROM main.job j JOIN main.job_step s ON s.job_id=j.id WHERE j.kind=? AND s.name='pictures' AND s.state='queued'",
+                                            (pipeline.KIND,))}
+    assert lines and lines & waiting, 'the new copy\'s parts wait for their pictures'

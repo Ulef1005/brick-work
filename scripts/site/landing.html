@@ -291,19 +291,19 @@
 <div class="layout-103"><h3 class="layout-24">Is it safe to let an assistant into my data?</h3><p class="layout-76">Tokens are read-only by default. Write tools stay off unless you enable them, scopes limit what a token can do, and every change has an Undo link.</p></div>
 <div class="layout-103"><h3 class="layout-24">What if the project disappears?</h3><p class="layout-76">It is open source under MIT. Your data is a plain database file in one folder, plus exports.</p></div>
 <div class="layout-103"><h3 class="layout-24">Does it replace Rebrickable or BrickLink?</h3><p class="layout-76">No. The catalogue comes from Rebrickable's public download, your own keys add prices and sync, and it bundles none of their data.</p></div>
-<div class="layout-103"><h3 class="layout-24">Is it finished?</h3><p class="layout-76">Not yet. Release 0.9.0 is the first stability release, with a stable schema, tested upgrades from 0.5.x and a published container image. Version 1.0.0 follows when milestone B passes. Its maintainer uses it daily on about 200 set copies. Planned work is labelled planned on the roadmap.</p></div>
+<div class="layout-103"><h3 class="layout-24">Is it finished?</h3><p class="layout-76">Not yet. Release 0.9.0 is the first stability release, with a stable schema and tested upgrades from 0.5.x. It is built from source; the published container image starts with the next release. Version 1.0.0 follows when milestone B passes. Its maintainer uses it daily on about 200 set copies. Planned work is labelled planned on the roadmap.</p></div>
 </div>
 </section>
 <section class="install layout-104" id="install">
 <div class="layout-18">
-<h2 class="layout-105">Start from the published image</h2>
-<p class="layout-21">Docker Compose on your own machine. Then open <code class="layout-106">http://localhost:3333</code>. Moving an old collection over? <code class="layout-106">brickwork import-bricktracker</code> imports it read-only.</p>
+<h2 class="layout-105">Install with Docker</h2>
+<p class="layout-21">Docker Compose on your own machine; 0.9.0 builds the image from source, and the release after it pulls the published image. Then open <code class="layout-106">http://localhost:3333</code>. Moving an old collection over? <code class="layout-106">brickwork import-bricktracker</code> imports it read-only.</p>
 <a class="layout-107" href="docs/">Full install guide</a>
 </div>
 <pre class="layout-108">git clone --branch v0.9.0 https://github.com/Ulef1005/brick-work.git &amp;&amp; cd brick-work
 mkdir -p data &amp;&amp; sudo chown 1000:1000 data
 cp .env.sample data/.env   <span class="layout-61"># set BW_AUTHENTICATION_PASSWORD</span>
-docker compose pull
+docker compose build
 docker compose run --rm --entrypoint brickwork brickwork setup
 docker compose up -d</pre>
 </section>

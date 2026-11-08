@@ -813,6 +813,27 @@ def bw_add_search():
     return response
 
 
+@web_page.post('/manage/add/picture')
+@login_required
+def bw_add_picture():
+    """#217: the Add review asks for the picture of an item it shows without one; fetched and stored now (a picture cache)."""
+    from ..core import errors, pictures
+    from ..core.sources.base import audit_origin
+    data = request.get_json(silent=True) or {}
+    bw_add_csrf(data)
+    try:
+        item_id = int(data['item_id'])
+    except (KeyError, TypeError, ValueError):
+        return jsonify(error='Choose an item'), 400
+    try:
+        with _add_database() as db, audit_origin('app'):
+            return jsonify(image=pictures.preview(db, item_id))
+    except (errors.NotFound, LookupError):
+        return jsonify(error='No such item'), 404
+    except (sqlite3.Error, OSError):
+        return jsonify(image=None)
+
+
 @web_page.get('/manage/add/picture-known')
 @login_required
 def bw_add_picture_known():

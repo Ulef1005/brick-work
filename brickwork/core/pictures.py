@@ -218,17 +218,22 @@ def preview(db, item_id, *, http=None, image_http=None, root=None):
     """#217: the picture of an item being reviewed on Add, fetched now so the review can show it (Ulf, via wiki-agent, 08.11.: "Fetch and
     store when selected"). Only items without colours (sets, minifigures and the other kinds; a part's picture depends on the colour
     chosen later). Returns the picture id, or None when no source has one. A stored picture is a cache, not collection data; the item is
-    projected into the collection (`items.ensure`) because a picture belongs to an item there. Same sources, order and budgets as the
-    pictures step; a source that waits for its budget or fails is passed over, so the review never waits."""
+    projected into the collection (`items.ensure`) because a picture belongs to an item there; a projected item nobody holds shows in no
+    list. The pictures step's sources in their order, without the Rebrickable API (its daily budget is the jobs'); a source that fails is
+    passed over, so the review never waits."""
     row = _item(db, item_id)
-    if row['kind'] == 'part' or not items.identified(db, item_id):
+    if row['kind'] == 'part':
         return None
     if not served(db, item_id, None):
         with transaction(db):
-            items.ensure(db, item_id)
+            items.ensure(db, item_id)                               # first: `identified` and `fetch` read the collection's item
+        if not items.identified(db, item_id):
+            return None
         job = dict(item_id=item_id, payload=None, id=None, via='app', actor=None)
         for source in order(db, row['kind']):
-            if not can_serve(db, item_id, None, source):
+            # A preview never spends the Rebrickable API's daily budget: only the free sources (the dump's URL, BrickLink's image
+            # address) are asked; the Add job's pictures step still tries every source.
+            if source == 'rebrickable_api' or not can_serve(db, item_id, None, source):
                 continue
             try:
                 fetch(db, job, source, http=http, image_http=image_http, root=root)

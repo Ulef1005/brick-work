@@ -362,3 +362,19 @@ def test_preview_leaves_parts_and_unidentified_items_alone(coll, world):
 def test_preview_passes_over_a_source_that_has_nothing(coll, world):
     net = Pictures(default=base.NotFoundAtSource('no picture'))
     assert pictures.preview(coll.db, world.figure, image_http=net) is None and net.asked
+
+
+def test_preview_of_a_set_only_the_catalogue_knows(coll, world):
+    # Review finding: the normal Add case is an item not yet in the collection; `identified` read the collection's item first and broke.
+    found = coll.db.execute("SELECT c.id FROM catalogue.item c WHERE c.kind!='part' AND c.id NOT IN (SELECT id FROM main.item) ORDER BY c.kind='set' DESC, c.id LIMIT 1").fetchone()
+    assert found, 'the fixture catalogue has an item the collection does not hold'
+    net = Pictures()
+    image = pictures.preview(coll.db, found[0], image_http=net)
+    assert image and net.asked and coll.db.execute('SELECT 1 FROM main.item WHERE id=?', (found[0],)).fetchone()
+
+
+def test_preview_never_calls_the_rebrickable_api(coll, world, monkeypatch):
+    coll.setting('source_priority', json.dumps({'pictures': {'*': ['rebrickable_api']}}))
+    net, api = Pictures(), Router({})
+    assert pictures.preview(coll.db, world.keep, http=api, image_http=net) is None
+    assert net.asked == [] and not getattr(api, 'asked', [])

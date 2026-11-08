@@ -20,7 +20,7 @@ Option 2. `core/orders._listed_local` creates the item once (idempotent on its b
 
 ## Consequences
 
-- A real order with BrickLink-only items can be reviewed, saved, received and allocated (proved on lego-test: 45/64 placed, then the whole flow and Undo).
+- A real order with BrickLink-only items can be reviewed, saved, received and allocated (proved on the test instance: 45/64 placed, then the whole flow and Undo).
 - The behaviour depends on the BrickLink item lists being loaded. Prod has none yet; loading them is the maintainer's decision at B's close-out.
 - An import's Undo leaves the created item, unused, as the booklet entry does.
 - Name matching stays exact. Seller notes and BrickLink renames still need hand matching (#155).

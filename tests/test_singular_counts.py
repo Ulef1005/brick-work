@@ -52,3 +52,8 @@ def test_the_wishlist_says_wish_for_one_and_wishes_for_two_before_any_script_run
     assert texts(client, 'wishes') == ('1 wish', 'Show 1 wish')
     coll.add_wish(coll.item('parts', '3001'), colour=coll.colour('15'))
     assert texts(client, 'wishes') == ('2 wishes', 'Show 2 wishes')
+
+
+def test_the_sets_show_button_and_subtitle_are_singular_for_exactly_one_copy(client, coll):  # noqa: F811
+    coll.add_copy('2070-1')
+    assert texts(client, 'S') == ('1 copy', 'Show 1 set')

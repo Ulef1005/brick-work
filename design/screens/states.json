@@ -408,7 +408,7 @@
    "world": "demo",
    "path": "/manage/add",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "48-Tools-and-admin",

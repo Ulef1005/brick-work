@@ -10,7 +10,6 @@ from tests.quarantine import QUARANTINE
 from tests.xdist_groups import pytest_collection_modifyitems  # noqa: F401  (hook: the xdist groups, tests/xdist_groups.py)
 
 ROOT = Path(__file__).resolve().parents[1]
-START_ENV = dict(os.environ)   # DIAGNOSTIC #254 (temporary): the worker's environment at start, compared by the screen gate test
 # Tests that wait for their module's port to the 4.0 store are not collected (tests/quarantine.py; M.8a, issue #110).
 collect_ignore = [str(ROOT / name) for name in QUARANTINE]
 

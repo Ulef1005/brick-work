@@ -31,7 +31,7 @@ python3 -m venv .venv
 APP_VENV=.venv bash scripts/check.sh
 ```
 
-`scripts/check.sh` is the same gate CI runs: the name check, the full test suite (which includes the standalone smoke test: no keys, no network), the Node runtime harnesses, a gitleaks secret scan when gitleaks is installed, and the API contract checks. Tests use synthetic data only; never add a fixture taken from a real collection.
+`scripts/check.sh` is the same gate CI runs: the name check, the full test suite in parallel (which includes the standalone smoke test: no keys, no network), then the screenshot gate on its own, the Node runtime harnesses, a gitleaks secret scan when gitleaks is installed, and the API contract checks. Tests use synthetic data only; never add a fixture taken from a real collection.
 
 The tests run in parallel: `scripts/check.sh` calls `pytest -n auto --dist loadgroup` (pytest-xdist, one worker per core; `BW_TEST_WORKERS=1` runs them one at a time, which is the way to debug an order-dependent failure). A test must therefore not depend on another test, on run order, or on a fixed path, port or environment variable that two tests could use at once: use `tmp_path`, port 0 and `monkeypatch`. See [ADR 0024](docs/adr/0024-parallel-check.md).
 

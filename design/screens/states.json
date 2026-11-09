@@ -84,7 +84,7 @@
    "world": "demo",
    "path": "/collection/sets",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "10-Set-detail",

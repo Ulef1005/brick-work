@@ -8,7 +8,7 @@
 docker compose exec brickwork brickwork <command> ...
 ```
 
-> **On `main` (the 4.0 development line):** `setup` creates a 4.0 collection and says where `catalogue.db` goes, `mcp` talks API v2 (`/api/v2`), `migrate` (the 3.x importer) is gone (a 3.3 collection moves with `migrate4`), and `sync` and `import-bricktracker` run on the 4.0 store. The catalogue itself is built with `python -m brickwork.store4` (see [catalogue](#catalogue)). This page otherwise describes release 0.5.
+> **On `main` (the 4.0 development line):** `setup` creates a 4.0 collection and says where `catalogue.db` goes, `mcp` talks API v2 (`/api/v2`), `migrate` (the BrickTracker-era importer) is gone (a 3.3 collection moves with `migrate4`), and `sync` and `import-bricktracker` run on the 4.0 store. The catalogue itself is built with `python -m brickwork.store4` (see [catalogue](#catalogue)). This page otherwise describes release 0.5.
 
 Every command takes `--json` to print its result as JSON instead of plain lines, and `-h` for its usage. A command that fails prints the reason on standard error and exits with status 1. With `BW_READ_ONLY` on, the `token` and `wishlist` commands that change something are refused.
 

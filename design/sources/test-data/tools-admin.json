@@ -79,12 +79,12 @@
     "upgrade_available": true,
     "tables": {
       "rebrickable_sets": 19,
-      "copy": 19,
+      "bricktracker_sets": 19,
       "rebrickable_parts": 4417,
-      "copy_part": 6031,
+      "bricktracker_parts": 6031,
       "rebrickable_minifigures": 74,
-      "wish": 6,
-      "stock": 212
+      "bricktracker_wishes": 6,
+      "bricktracker_individual_parts": 212
     }
   },
   "migrations": [
@@ -120,19 +120,19 @@
     "findings": [
       {
         "kind": "orphan",
-        "table": "copy_part",
+        "table": "bricktracker_parts",
         "count": 3,
         "detail": "rows whose set copy no longer exists"
       },
       {
         "kind": "orphan",
-        "table": "copy_flag",
+        "table": "bricktracker_set_tags",
         "count": 1,
         "detail": "tag removed but still referenced"
       },
       {
         "kind": "ok",
-        "table": "copy_figure",
+        "table": "bricktracker_minifigures",
         "count": 0,
         "detail": "consistent"
       }

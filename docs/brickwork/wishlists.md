@@ -80,4 +80,4 @@ brickwork wishlist export all --format rebrickable --kind sets > sets.csv
 brickwork wishlist export all --format rebrickable --kind parts --json
 ```
 
-CLI file content goes to stdout and its summary to stderr; `--json` returns both together. MCP tools are generated from OpenAPI: `get_wishlists`, `post_wishlists`, `patch_wishlists_id`, `delete_wishlists_id`, `post_wishlists_id_restore`, `post_wishlists_id_transfer`, `export_wishlist_xml`, and `export_wishlist_csv`. Existing wish tools gain list fields. Use `summary:true` on export tools to receive both file content and omissions.
+CLI file content goes to stdout and its summary to stderr; `--json` returns both together. MCP tools are generated from OpenAPI: `get_wishlists`, `create_wishlist`, `edit_wishlist`, `archive_wishlist`, `restore_wishlist`, `transfer_wishes`, `export_wishlist_xml`, and `export_wishlist_csv` (the five write tools had method-and-path names up to 0.9.0; [ADR 0017](../adr/0017-api-v2.md), amendment of 8 Nov 2026). Existing wish tools gain list fields. Use `summary:true` on export tools to receive both file content and omissions.

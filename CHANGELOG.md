@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **The copy of the upstream changelog is gone** (#237). `docs/upstream-CHANGELOG.md`, the upstream project's release history kept from the fork, is removed; this changelog links the upstream repository for releases 1.4.2 and older. The credit in the README and THIRD_PARTY_NOTICES stays.
 - **The install and upgrade steps for 0.9.0 say `docker compose build`** (#238). The README and [Upgrade Brick Work](docs/how-to/upgrade.md) told you to check out `v0.9.0` and run `docker compose pull`, but that tag's `compose.yaml` builds the image from source and names no published one, so the pull fetched nothing useful. For 0.9.0 the steps now say `docker compose build`, and going back to 0.9.0 or older does too. The pull-first install, and the provenance check of the published image, start with the first release cut after 0.9.0. The tag itself is unchanged. [Back up and restore](docs/how-to/back-up-and-restore.md) and the Pages landing page say the same.
 - **Found 1 no longer moves a part to the top of Missing so far** (#213). In **Set Inspector**, selecting **Found 1** on a part that was still missing afterwards, or answering a listed part again, moved it to the top of the **Missing so far** list, so the list reordered under your finger. A part already listed now keeps its place, and only a new gap goes on top. See [Check a set's parts](docs/how-to/check-set-parts.md).
 - **Items in a storage link to their pages** (#223). On **Workbench › Storage**, the sets, minifigures, parts and other items in a storage were listed as plain text. Their names now open the item's page: a set opens on that copy, anything else on that loose stock. A lot's name stays text, since a lot has no page. In select mode a click on a name still selects the row. See [Storage](docs/how-to/storage.md).
@@ -255,4 +256,4 @@ Fork work since upstream `8b0b85f`:
 
 ## Upstream history
 
-Releases 1.4.2 and older come from the upstream BrickTracker project: see [docs/upstream-CHANGELOG.md](docs/upstream-CHANGELOG.md).
+Releases 1.4.2 and older come from the upstream BrickTracker project: see [its repository](https://gitea.baerentsen.space/FrederikBaerentsen/BrickTracker).

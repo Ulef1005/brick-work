@@ -447,6 +447,8 @@ def part_picture(part_name, category, colour, path):
         c.rect(52, 116, 152, 24, colour, radius=8)
         c.rect(52, 100, 24, 56, shade(colour, 1.0), radius=6)
         c.rect(180, 106, 24, 44, shade(colour, 0.85), radius=6)
+    # Round tiles also land here ('tile' in the category wins over the round test): they are drawn flat on purpose, since a tile has
+    # no studs to show. Drawing them round would change the committed demo pictures and the screen baselines.
     elif 'tile' in category or ' tile' in text and 'round' not in text:
         c.rect(x, 140, w, 34, colour, radius=3)
         c.rect(x + 4, 144, w - 8, 3, shade(colour, 1.18), line=False)

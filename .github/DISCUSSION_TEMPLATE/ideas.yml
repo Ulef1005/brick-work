@@ -1,0 +1,29 @@
+body:
+  - type: markdown
+    attributes:
+      value: |
+        An idea that is still loose? Talk it through here. Once it is clear what job it does, it becomes an [enhancement issue](https://github.com/Ulef1005/brick-work/issues/new?template=enhancement.md) and gets a place on the [roadmap](https://github.com/Ulef1005/brick-work/milestones). Give an idea you want a thumbs-up.
+  - type: textarea
+    id: job
+    attributes:
+      label: The job
+      description: What are you trying to get done? When ___, I want to ___, so I can ___.
+    validations:
+      required: true
+  - type: dropdown
+    id: who
+    attributes:
+      label: Which kind of collector are you?
+      options:
+        - Used-lot or vintage rebuilder
+        - Builder from sorted bulk or MOC builder
+        - Minifigure collector
+        - Sealed-set collector
+        - Parent with mixed bins
+        - Small BrickLink seller
+        - Other
+  - type: textarea
+    id: today
+    attributes:
+      label: How you do it today
+      description: With Brick Work, another site, a spreadsheet or by hand, and what is annoying about it.

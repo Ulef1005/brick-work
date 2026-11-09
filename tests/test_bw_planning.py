@@ -772,6 +772,7 @@ def test_prices_name_orphan_guard_preserves_compact_rows_css_contract():
     assert '.bp-prices .bp-identity .bc-picture { margin-bottom:-20px; }' in css
 
 
+@rendered.group
 def test_planning_compact_chromium_geometry(coll, world, client, tmp_path):
     """Measurements use the shipped DOM/CSS; no screenshots. Needs Chrome (tests/rendered.py)."""
     import os

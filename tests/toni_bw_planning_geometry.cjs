@@ -8,7 +8,7 @@ let socket;
 const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 (async()=>{
  let port;
- for(let i=0;i<100;i++){try{port=fs.readFileSync(path.join(profile,'DevToolsActivePort'),'utf8').split('\n')[0];break;}catch{}await delay(50);}
+ for(let i=0;i<600;i++){try{port=fs.readFileSync(path.join(profile,'DevToolsActivePort'),'utf8').split('\n')[0];break;}catch{}await delay(50);}
  assert.ok(port,'Chromium did not start: '+launchErrors);
  const targets=await (await fetch('http://127.0.0.1:'+port+'/json/list')).json();
  socket=new WebSocket(targets.find(t=>t.type==='page').webSocketDebuggerUrl);

@@ -8,6 +8,8 @@ import pytest
 from brickwork.demo import dataset, export
 
 BASE = '/brick-work/demo/'
+# The module's fixture exports the demo or builds the site (about a minute under load): one group, so one worker builds it, not each worker (#254, ADR 0024)
+pytestmark = pytest.mark.xdist_group('demo')
 
 
 @pytest.fixture(scope='module')

@@ -45,9 +45,25 @@ jobs:
         uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e  # v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # A pull request that changes only documentation runs the docs check and the site build, not the app (#254, ADR 0024). Pushes to main always run
+      # everything. scripts/check_scope.py answers `docs` only when it can list the changed files (base...head, so a moved base does not count);
+      # a new branch, a force push or any failure to diff answers `full`.
+      - name: Which check
+        id: scope
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          mode=full
+          if [[ $EVENT == pull_request ]]; then mode=$(python3 scripts/check_scope.py "$BASE" "$HEAD") || mode=full; fi
+          [[ $mode == docs ]] || mode=full
+          echo "mode=$mode" >> "$GITHUB_OUTPUT"
+          echo "Check mode: $mode"
       - name: scripts/check.sh
         run: APP_VENV=.venv bash scripts/check.sh
         env:
+          BW_CHECK_MODE: ${{ steps.scope.outputs.mode }}
           BW_CHROME_NO_SANDBOX: "1"  # the runner's user namespaces may be restricted; the pages are our own test fixtures
           DOCS_RANGE: ${{ github.event_name == 'push' && format('{0}..{1}', github.event.before, github.sha) || format('{0}..{1}', github.event.pull_request.base.sha, github.sha) }}
       - name: Upload the screenshot diffs

@@ -2,7 +2,11 @@
 
 A test that runs JavaScript or draws a page calls `need_node()` or `chrome()` first. When the tool is missing the test FAILS, never skips
 silently. Only `BW_SKIP_RENDERED=1` turns the failure into a skip, and `tests/conftest.py` records every such skip so that
-`scripts/check.sh` can name it in its summary."""
+`scripts/check.sh` can name it in its summary.
+
+Under pytest-xdist (`pytest -n auto --dist loadgroup`, scripts/check.sh) a test that draws a page or renders the screen gate shares Chrome
+and the gate's world folder (/tmp/bw-gate-world, one lock) with the others, so it carries `rendered.group` (`@rendered.group` on a test, or
+`pytestmark = rendered.group` on a module): every marked test runs on one worker, one at a time. `chrome()` fails a test that lacks the mark."""
 import os
 from pathlib import Path
 import shutil
@@ -13,6 +17,9 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 MARK = 'rendered test skipped (BW_SKIP_RENDERED=1):'
+GROUP = 'rendered'
+group = pytest.mark.xdist_group(GROUP)
+CURRENT = None   # the running test item, set by tests/conftest.py, so that chrome() can check its mark
 
 
 def skipping() -> bool:
@@ -38,6 +45,9 @@ def chrome(*, pinned: bool = False) -> str:
     """The Chrome binary (scripts/chrome.py: CHROME, the pinned cache, a system Chrome, else the pinned download).
     `pinned`: the screenshot gate's browser, whose pixels the baselines were made with."""
     need_node()
+    if CURRENT is not None and not any(m.args[:1] == (GROUP,) for m in CURRENT.iter_markers('xdist_group')):
+        pytest.fail(f'{CURRENT.nodeid} uses Chrome but is not in the xdist group: put `@rendered.group` on it (tests/rendered.py), '
+                    'so that it does not run beside the other Chrome tests and the gate\'s world folder', pytrace=False)
     env = os.environ.get('CHROME') or os.environ.get('BW_COLLECTION_CHROME')
     if env and Path(env).is_file():
         return env

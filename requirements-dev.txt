@@ -1,5 +1,8 @@
 -r requirements.txt
 pytest==9.2.0
+# The tests run in parallel in scripts/check.sh (pytest -n auto --dist loadgroup; ADR 0024)
+pytest-xdist==3.8.0
+execnet==2.1.2
 PyYAML>=6,<7
 jsonschema>=4,<5
 # The documentation site (scripts/build_site.py): Python-Markdown for the marketing pages, Zensical for the user docs

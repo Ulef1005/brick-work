@@ -12,6 +12,9 @@ from tests import rendered
 from brickwork.demo.privacy import pattern
 
 PRIVATE = pattern()
+
+# The module's fixture exports the demo or builds the site (about a minute under load): one group, so one worker builds it, not each worker (#254, ADR 0024)
+pytestmark = pytest.mark.xdist_group('site-pages')
 ROOT = Path(__file__).resolve().parents[1]
 SECTIONS = ('hero', 'who-it-is-for', 'three-flows', 'more-advantages',
             'scriptable-and-ai-ready', 'integrations', 'how-it-compares',

@@ -1,11 +1,13 @@
 """Shared test setup: failed-login counters are per process, so each test starts clean."""
 import os
 from pathlib import Path
+import re
 
 import pytest
 
 from tests import rendered
 from tests.quarantine import QUARANTINE
+from tests.xdist_groups import pytest_collection_modifyitems  # noqa: F401  (hook: the xdist groups, tests/xdist_groups.py)
 
 ROOT = Path(__file__).resolve().parents[1]
 # Tests that wait for their module's port to the 4.0 store are not collected (tests/quarantine.py; M.8a, issue #110).
@@ -31,10 +33,21 @@ def _pipeline_handlers_restored():
     pipeline.HANDLERS.update(saved)
 
 
+@pytest.fixture(autouse=True)
+def _current_item(request):
+    """Tell tests/rendered.py which test runs, so that rendered.chrome() can insist on the xdist group (tests/rendered.py)."""
+    rendered.CURRENT = request.node
+    yield
+    rendered.CURRENT = None
+
+
 def pytest_runtest_logreport(report):
     """Record the rendered tests skipped under BW_SKIP_RENDERED=1 (tests/rendered.py) in the file named by BW_RENDERED_SKIPS, one per line,
-    so that scripts/check.sh can name every one of them in its summary."""
+    so that scripts/check.sh can name every one of them in its summary. Under pytest-xdist the hook runs in each worker and again in the
+    controller, which receives every worker's reports: only the controller writes, and an xdist group suffix (`@rendered`) is cut off the name."""
     target = os.environ.get('BW_RENDERED_SKIPS')
+    if os.environ.get('PYTEST_XDIST_WORKER'):
+        return
     if target and report.skipped and report.when in ("setup", "call") and rendered.MARK in str(report.longrepr):
         with open(target, 'a', encoding='utf-8') as out:
-            out.write(report.nodeid + '\n')
+            out.write(re.sub(r'@[\w-]+$', '', report.nodeid) + '\n')

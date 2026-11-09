@@ -13,6 +13,7 @@ from tests.app4 import app4, client, coll, pair, world  # noqa: F401  (the fixtu
 ROOT = Path(__file__).resolve().parents[1]
 
 
+@rendered.group
 def test_set_cards_show_each_copys_status(world, coll, client, tmp_path):
     executable = rendered.chrome()
     coll.add_copy('2070-1', condition='used')                     # a copy nobody has checked: no completeness

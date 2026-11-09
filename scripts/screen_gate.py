@@ -11,6 +11,7 @@ design/screens/manifest.json reached in the built app by a path in an invented f
 baselines are captures of the BUILT APP, never the design frames, which stay the design record. The app runs on invented data only
 (brickwork/demo/dataset.py on design/sources/test-data/; never anything under data/), with the clock fixed, animations off and the bundled
 fonts, rendered by the pinned Chrome for Testing (scripts/chrome.py). Run it from the app's venv (it imports the app)."""
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 import datetime as dt
 import json
@@ -115,6 +116,39 @@ def world(name: str, warm_up: list[str] = ()):
                     os.environ[key] = value
 
 
+def workers() -> int:
+    """How many Chrome processes render at once: 1 unless BW_GATE_WORKERS asks for more. The approved baselines were rendered in ONE Chrome session,
+    and state a session carries from page to page (storage, cached fonts and styles) shows in some captures: rendered in fresh sessions of 12 jobs,
+    52-Place's drop-down text sat 1 px lower on Linux and failed the gate (PR #261; ADR 0024). So the gate and the baselines render in one session;
+    BW_GATE_WORKERS > 1 is for quick local review images only, never for a baseline or a deciding run."""
+    try:
+        wanted = int(os.environ.get('BW_GATE_WORKERS', ''))
+    except ValueError:
+        wanted = 0
+    return max(1, wanted or 1)
+
+
+def run_jobs(jobs: list[dict], scratch: str, chrome: str) -> None:
+    """Run the capture jobs on `workers()` Chrome processes at once. Each job is independent (its own viewport, theme and navigation; the clock, fonts and
+    animation settings are set per process by capture_screens.cjs), so the captures do not depend on which process takes them. The jobs go out in
+    batches of consecutive jobs (a state's variants stay together) that idle processes pick up, so one slow batch does not hold the others back."""
+    batch = 12 if workers() > 1 else max(1, len(jobs))   # one worker: every job in one Chrome session, as the baselines were made
+    chunks = [jobs[i:i + batch] for i in range(0, len(jobs), batch)]
+    clock = FIXED_NOW.isoformat().replace('+00:00', 'Z')
+
+    def run(item):
+        number, chunk = item
+        spec = Path(scratch) / f'jobs-{number}.json'
+        spec.write_text(json.dumps({'deterministic': True, 'now': clock, 'jobs': chunk}))
+        result = subprocess.run(['node', str(ROOT / 'scripts' / 'capture_screens.cjs'), chrome, str(spec)], cwd=ROOT,
+                                capture_output=True, text=True, timeout=1800)
+        if result.returncode:
+            raise RuntimeError('capture_screens.cjs failed:\n' + result.stdout[-2000:] + result.stderr[-2000:])
+
+    with ThreadPoolExecutor(max_workers=min(workers(), len(chunks) or 1)) as pool:
+        list(pool.map(run, enumerate(chunks)))   # map re-raises the first failure; the rest of the pool finishes its batches first
+
+
 def render(entries: list[dict], out_for, chrome: str) -> list[Path]:
     """Render every variant of the given states with scripts/capture_screens.cjs; `out_for(entry, width, theme)` is the target path."""
     written = []
@@ -131,12 +165,7 @@ def render(entries: list[dict], out_for, chrome: str) -> list[Path]:
                         written.append(target)
                         jobs.append({'url': base + entry['path'], 'out': str(target), 'width': width, 'theme': theme,
                                      'max': MAX_HEIGHT, **{k: entry[k] for k in ('wait', 'script', 'max') if k in entry}})
-            spec = Path(scratch) / 'jobs.json'
-            spec.write_text(json.dumps({'deterministic': True, 'now': FIXED_NOW.isoformat().replace('+00:00', 'Z'), 'jobs': jobs}))
-            result = subprocess.run(['node', str(ROOT / 'scripts' / 'capture_screens.cjs'), chrome, str(spec)], cwd=ROOT,
-                                    capture_output=True, text=True, timeout=1800)
-            if result.returncode:
-                raise RuntimeError('capture_screens.cjs failed:\n' + result.stdout[-2000:] + result.stderr[-2000:])
+            run_jobs(jobs, scratch, chrome)
     return written
 
 
@@ -197,6 +226,10 @@ def run_compare(chrome: str) -> tuple[list[str], int, list[str]]:
                         differ.append(f'{label(entry)} {width} {theme}: baseline {baseline.relative_to(ROOT)} is missing')
                         continue
                     diff = DIFFS / entry['screen'] / ('diff-' + baseline.name)
+                    if os.environ.get('BW_GATE_KEEP'):   # keep the captures for inspection (a folder; nothing else reads them)
+                        keep = Path(os.environ['BW_GATE_KEEP']) / entry['screen'] / actual.name
+                        keep.parent.mkdir(parents=True, exist_ok=True)
+                        shutil.copyfile(actual, keep)
                     result = compare_images(baseline, actual, diff)
                     if result['size_differs']:
                         differ.append(f'{label(entry)} {width} {theme}: size {result["sizes"][1]} instead of {result["sizes"][0]}')

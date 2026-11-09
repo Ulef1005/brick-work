@@ -231,7 +231,7 @@ jobs:
           upload-release-assets: false
       - name: SBOM attestation
         if: needs.version.outputs.publish == 'true'
-        uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e # v4.1.0
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2 (actions/attest-sbom is deprecated, #190)
         with:
           subject-name: ${{ env.IMAGE }}
           subject-digest: ${{ steps.manifest.outputs.digest }}

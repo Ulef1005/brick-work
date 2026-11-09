@@ -138,10 +138,11 @@ The [command line reference](../reference/cli.md) lists every command and option
 
 ## 4. Connect an assistant
 
-An assistant such as Claude Code reaches Brick Work through the MCP server. The server is a thin layer over the same API, so it uses a token too. Give the assistant its own token with only **read**: create one as in step 1, name it `assistant` and tick only **read**. Save the secret in a file of its own, `data/mcp-token`, with nothing else in it, and restrict it:
+An assistant such as Claude Code reaches Brick Work through the MCP server. The server is a thin layer over the same API, so it uses a token too. Give the assistant its own token with only **read**: create one as in step 1, name it `assistant` and tick only **read**. Save the secret in a file of its own, `data/mcp-token`, with nothing else in it. Restrict it, and give it to the container's user (uid 1000) like the rest of `data/`:
 
 ```sh
 chmod 600 data/mcp-token
+sudo chown 1000:1000 data/mcp-token
 ```
 
 Then tell Claude Code how to start the server (replace `/path/to/brick-work` with the folder of your install):

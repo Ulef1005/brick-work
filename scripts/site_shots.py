@@ -23,11 +23,15 @@ from brickwork.demo.showcase import uid  # noqa: E402
 
 SITE = ROOT / 'scripts' / 'site' / 'img'
 README = ROOT / 'docs' / 'img' / 'readme'
+TUTORIALS = ROOT / 'docs' / 'img' / 'tutorials'
 STARTED = uid('copy', '99106-1', 'a')                # a check about 40 % answered (showcase.CHECKS)
 GAPS = uid('copy', '99103-1', 'a')                   # a check answered to the end, with gaps
 FRESH = uid('copy', '99113-1', 'a')                  # an unchecked copy: its check has not been started
 STORAGE = '/workbench/storage/storage-drawer-3'
 PICKED = '/workbench/part-picker?copy=' + '&copy='.join([uid('copy', '99103-1', 'a'), uid('copy', '99110-1', 'a'), uid('copy', '99118-1', 'a')])
+ADD_SEARCH = "const s = document.querySelector('[data-search]'); s.value = 'Old Mill'; s.dispatchEvent(new Event('input', {bubbles: true})); await new Promise(r => setTimeout(r, 1500));"
+CHOOSE_SETS = ("document.querySelector('[data-none]').click(); for (const n of ['99103-1', '99110-1', '99118-1']) "
+               "document.querySelector('[data-number=' + JSON.stringify(n) + '] input').click(); await new Promise(r => setTimeout(r, 300));")
 OPEN_FOUND = "document.querySelector('[data-open=\"found-1\"]').click(); await new Promise(r => setTimeout(r, 400));"
 
 # Run in the page before each capture: the page must be settled, not just loaded. Lists build their rows and load their pictures after the load event,
@@ -62,11 +66,24 @@ PICTURES = {
     '3c-picker-pick-phone-390': (PICKED + '&pick=1', 390, 950, None, (SITE,)),
     '3c-picker-selector-phone-390': (PICKED + '&pick=1', 390, 844, OPEN_FOUND, (SITE,)),
     '4c-complete-sets-phone-390': ('/planning/complete-sets', 390, 844, None, (SITE,)),
+    # The two tutorials (docs/tutorials/): the Add search, Set Inspector, Complete sets, the wishlist and an order being counted, on the same invented world
+    'tut-add-desktop-1440': ('/manage/add', 1440, 640, ADD_SEARCH, (TUTORIALS,)),
+    'tut-inspect-list-phone-390': ('/workbench/check-parts', 390, 1100, None, (TUTORIALS,)),
+    'tut-inspect-part-phone-390': ('/workbench/check-parts/%s?run=1' % STARTED, 390, 844, None, (TUTORIALS,)),
+    'tut-inspect-end-phone-390': ('/workbench/check-parts/%s?run=1' % GAPS, 390, 1100, None, (TUTORIALS,)),
+    'tut-complete-sets-phone-390': ('/planning/complete-sets', 390, 844, None, (TUTORIALS,)),
+    'tut-wishlist-phone-390': ('/planning/wishlist', 390, 900, None, (TUTORIALS,)),
+    'tut-order-count-phone-390': ('/workbench/orders/2?view=count', 390, 1500, None, (TUTORIALS,)),
     '12n-sources-phone-390': ('/manage/sync', 390, 1400, None, (SITE,)),
     '12b-count-what-arrived-desktop-1440': ('/workbench/orders/2', 1440, 1050, None, (SITE,)),
     '12c-list-and-detail-desktop-1440': (STORAGE, 1440, 1300, None, (SITE,)),
     '1d-set-detail-phone-390': ('/collection/item/set/99103-1?copy=' + uid('copy', '99103-1', 'a'), 390, 1800, None, (SITE,)),
     '3c-picker-pick-390': (PICKED + '&pick=1', 390, 950, None, (README,)),
+    'bulk-storage-desktop-1440': (STORAGE, 1440, 900, None, (TUTORIALS,)),
+    'bulk-runner-sets-phone-390': ('/workbench/part-picker', 390, 1700, CHOOSE_SETS, (TUTORIALS,)),
+    'bulk-runner-order-phone-390': (PICKED, 390, 844, None, (TUTORIALS,)),
+    'bulk-runner-found-phone-390': (PICKED + '&pick=1', 390, 844, OPEN_FOUND, (TUTORIALS,)),
+    'bulk-matchmaker-desktop-1440': ('/workbench/match', 1440, 900, None, (TUTORIALS,)),
 }
 
 

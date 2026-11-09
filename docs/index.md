@@ -5,6 +5,6 @@ Brick Work is a self-hosted web app for your brick collection: check a set's par
 - [How-to guides](how-to/index.md): one task per page, from checking a set to backing up.
 - [Concepts](concepts/index.md): what sets, copies, lots and stock mean, and how completeness is worked out.
 - [Reference](reference/index.md): settings, the command line and metrics.
-- [Tutorials](tutorials/index.md): no tutorial yet; Get started in the app is the guided first run.
+- [Tutorials](tutorials/index.md): complete paths through the app, start to finish; Get started in the app is the guided first run.
 
 Installation is in the [README](https://github.com/Ulef1005/brick-work#standalone-installation-with-docker). The REST API and the MCP server have their own pages: [API reference](../api/) and [MCP server](../mcp/).

@@ -45,6 +45,8 @@ The screenshot gate (`tests/test_screen_gate.py`) compares the app with approved
 
 The README and Pages pictures are captures of the built app on the demo's richer world: regenerate them with `python scripts/site_shots.py` (not gate baselines; the world is invented, `brickwork/demo/showcase.py`).
 
+After a change to the demo (`brickwork/demo/`, its shim or its export), run `python scripts/check_demo_pages.py`: it builds the demo, loads every page in the pinned Chrome, light and dark, and fails on a broken picture, a stylesheet without rules, or a missing-picture note that sits in a box under 120 px or spills out of it (#197). It is not part of `scripts/check.sh` (about 2,600 page loads).
+
 For a running app, follow the Docker steps in the [README](README.md).
 
 ## Pull requests

@@ -102,7 +102,8 @@
     }else if(config.type==='S'){
       // Kit 1c: status pill left and price right on one line; the gap count and the price date below; tags last.
       const main=el('div','bc-foot-main'),pills=el('div','bc-foot-pills'),sub=el('div','bc-foot-sub');
-      [...new Set(r.status)].forEach(value=>{const states={C:['complete','Complete'],I:['incomplete','Incomplete'],S:['sealed','Sealed']},state=states[value]||['unknown','Not checked'];pills.append(el('span','bc-status '+state[0],state[1]));});
+      // #258: the payload sends completeness as words (core.list_records), not the old letters.
+      [...new Set(r.status)].forEach(value=>{const states={complete:['complete','Complete'],incomplete:['incomplete','Incomplete'],sealed:['sealed','Sealed']},state=states[value]||['unknown','Not checked'];pills.append(el('span','bc-status '+state[0],state[1]));});
       main.append(pills);
       if(r.price){main.append(el('span','bc-card-money mono',r.price[4]));}else main.append(el('span','secondary','no sales'));
       const left=[r.quantity>1?r.quantity+' copies':'',r.defects].filter(Boolean).join(' · ');

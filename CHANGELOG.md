@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Set cards show each copy's status again** (#258). On **Collection › Sets** every card said **Not checked**, also for a copy that is complete, incomplete or sealed; the filter chips above the list were right. The card read the status in a form the list stopped sending with the 4.0 data model (0.6.0). It now shows **Complete**, **Incomplete**, **Sealed** or **Not checked** for each copy, one pill per status when a set has several copies.
 ## Brick Work 1.0.0 (schema 4.2) · 2026-11-09
 
 The first release after milestone B: its maintainer's real collection was set up from scratch through **Get started** on a test install, and every workflow ran on it. The schema stays 4.2, so a 0.9.0 collection needs no upgrade step, and going back to 0.9.0 means starting it on the same file. It is the first release whose `compose.yaml` pulls the published image, `ghcr.io/ulef1005/brick-work:1.0.0` (amd64 and arm64, with build provenance and an SBOM): install and upgrade with `docker compose pull`; 0.9.0 and older still build with `docker compose build` ([Upgrade Brick Work](docs/how-to/upgrade.md)). Back up `brickwork.db` and `secret.key` before you upgrade, as always.

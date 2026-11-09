@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Set cards show each copy's status again** (#258). On **Collection › Sets** every card said **Not checked**, also for a copy that is complete, incomplete or sealed; the filter chips above the list were right. The card read the status in a form the list stopped sending with the 4.0 data model (0.6.0). It now shows **Complete**, **Incomplete**, **Sealed** or **Not checked** for each copy, one pill per status when a set has several copies.
 - **The `check` job runs in about a third of the time** (#254). The tests run in parallel (`pytest -n auto --dist loadgroup`, pytest-xdist; the Chrome and screen-gate tests share one group), the screen gate renders its captures on up to four Chrome processes at once, and a pull request that changes only documentation runs the docs check and the site build instead of the whole gate (`scripts/check_scope.py`). The standalone smoke test no longer runs twice. No test was removed or loosened; [ADR 0024](docs/adr/0024-parallel-check.md) has the numbers.
 
 ## Brick Work 1.0.0 (schema 4.2) · 2026-11-09

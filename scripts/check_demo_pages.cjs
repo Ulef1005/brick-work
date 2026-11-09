@@ -10,7 +10,7 @@ const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),{spa
 const [chrome,base,pagesFile]=process.argv.slice(2);
 const pages=JSON.parse(fs.readFileSync(pagesFile,'utf8'));
 const profile=fs.mkdtempSync(path.join(os.tmpdir(),'bw-sweep-'));
-const child=spawn(chrome,[...(process.env.BW_CHROME_NO_SANDBOX?['--no-sandbox']:[]),'--headless','--disable-background-networking','--hide-scrollbars','--remote-debugging-port=0','--user-data-dir='+profile,'about:blank'],{stdio:['ignore','ignore','pipe']});
+const child=spawn(chrome,[...(process.env.BW_CHROME_NO_SANDBOX?['--no-sandbox']:[]),'--headless','--disable-background-networking','--hide-scrollbars','--remote-debugging-port=0','--user-data-dir='+profile,'about:blank'],{stdio:['ignore','ignore','ignore']});
 const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const probe=`(async()=>{
  await (document.fonts?document.fonts.ready:null);

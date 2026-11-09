@@ -47,6 +47,7 @@ This serves the MCP endpoint at `/mcp` next to the app. Each request must carry 
 - Every write returns an `event_id` and, where possible, an `undo_url`. The `undo_event` tool takes that id back.
 - A write tool accepts an optional `idempotency_key`. Pass the same key when retrying a call, and the first result is returned instead of applying the change twice.
 - `archive_*` tools archive. Nothing is hard-deleted through MCP, and archived records can be restored in the app.
+- **Renamed after 0.9.0:** the wishlist tools `post_wishlists`, `patch_wishlists_id`, `delete_wishlists_id`, `post_wishlists_id_restore` and `post_wishlists_id_transfer` are now `create_wishlist`, `edit_wishlist`, `archive_wishlist`, `restore_wishlist` and `transfer_wishes`. A client that calls an old name gets *unknown tool* ([ADR 0017](../adr/0017-api-v2.md), amendment of 8 Nov 2026).
 
 ## Items go by number
 

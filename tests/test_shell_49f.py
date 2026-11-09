@@ -28,7 +28,9 @@ def test_jump_has_no_helper_copy_keyboard_line_or_add(client):
 def test_bottom_bar_and_jump_sheet_css():
     css = (ROOT / 'static/web/toni/shell.css').read_text()
     region = css[css.index('4.9f'):]
-    assert '--bw-bottom-inset:max(34px,var(--tw-safe-bottom))' in region
+    assert '--bw-bottom-inset:var(--tw-safe-bottom)' in region
+    # #245: no rule forces a minimum under the bar; the inset is the phone's own (0 in a browser toolbar).
+    assert not re.search(r'--bw-bottom-inset:[^;}]*(max|min)\(', css) and 'max(34px' not in css
     assert '--bw-bottom:calc(49px + var(--bw-bottom-inset))' in region
     assert 'font:500 11px/12px var(--tw-font)' in region
     assert 'height:var(--bw-bottom)' in region and 'padding-bottom:var(--bw-bottom-inset)' in region

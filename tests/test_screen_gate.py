@@ -16,6 +16,8 @@ from PIL import Image
 from scripts import screen_gate as gate
 from tests import rendered
 
+pytestmark = rendered.group    # the gate's world folder and Chrome are shared: one worker runs this module's tests (tests/rendered.py)
+
 
 def write_summary(lines):
     target = os.environ.get('BW_GATE_SUMMARY')

@@ -540,10 +540,12 @@ def collection_chromium_geometry(world, coll, client, tmp_path):
     return json.loads(result.stdout.splitlines()[0])
 
 
+@rendered.group
 def test_collection_chromium_geometry(collection_chromium_geometry):
     assert collection_chromium_geometry['identityMeasurements']
 
 
+@rendered.group
 def test_49a_chromium_geometry_measured(collection_chromium_geometry):
     """c1 uncropped set image, c14 one-line 24 px figure pill, c15 identity width, c11 present-before-missing (c12, the coverage captions, waits for M.8e)."""
     measured = collection_chromium_geometry['review49a']
@@ -558,6 +560,7 @@ def test_49a_chromium_geometry_measured(collection_chromium_geometry):
         assert m['progress']['captionsBelowCoverage'], m
 
 
+@rendered.group
 def test_47f_chromium_geometry_identity_minimum(collection_chromium_geometry):
     """Present identities keep 150 px; missing cards keep the kit column budget."""
     measurements = collection_chromium_geometry['identityMeasurements']

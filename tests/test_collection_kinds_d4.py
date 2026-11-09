@@ -132,6 +132,7 @@ def test_the_strip_script_reveals_the_active_entry_without_motion():
     assert "a[aria-current=page]" in block and "behavior: 'auto'" in block and 'smooth' not in js
 
 
+@rendered.group
 def test_phone_strip_shows_the_active_entry_at_390(client, all_kinds, tmp_path):
     chrome = rendered.chrome()
     soup = page(client, '/collection/C')

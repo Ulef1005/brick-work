@@ -22,6 +22,14 @@ skips=$(mktemp) && : > "$skips" || exit 1
 gate_summary=$(mktemp) && : > "$gate_summary" || exit 1
 trap 'rm -f "$skips" "$gate_summary"' EXIT
 export BW_RENDERED_SKIPS=$skips BW_GATE_SUMMARY=$gate_summary
+# BW_CHECK_MODE=docs (CI sets it for a pull request that changes only documentation, scripts/check_scope.py; locally you may too) runs the name
+# check, the docs checks, the site and docs tests (they build the site) and the secret scan, and not the app. Anything else is the full gate.
+mode=${BW_CHECK_MODE:-full}
+if [[ $mode != full && $mode != docs ]]; then echo "BW_CHECK_MODE must be full or docs, not $mode"; exit 2; fi
+echo "Check mode: $mode"
+# The tests run in parallel (pytest-xdist; ADR 0024): one worker per core, and the tests of the xdist group `rendered` (Chrome, the screen gate's
+# shared world folder; tests/rendered.py) one at a time on one worker. BW_TEST_WORKERS overrides the count (1 runs them serially).
+pytest_args=(-q -n "${BW_TEST_WORKERS:-auto}" --dist loadgroup)
 step() {
   local name=$1
   shift
@@ -118,20 +126,28 @@ docs() {
   fi
 }
 
-step chrome browser
-step names "$python" scripts/check_names.py
-step tokens "$python" scripts/tokens_base.py check
-step brand "$python" scripts/brand_assets.py check
-step screens "$python" scripts/design_screens.py check
-step smoke "$python" -m pytest tests/test_standalone_smoke.py -q
-step pytest "$python" -m pytest tests/ -q
-step quarantine quarantine
-step suite-size "$python" scripts/check_suite_size.py
-step runtimes runtimes
-step secrets secrets
-step api-contract "$python" scripts/check_api_contract.py
-step docs docs
-step api-writes "$python" -m scripts.generate_api_writes
+if [[ $mode == docs ]]; then
+  step names "$python" scripts/check_names.py
+  step docs-tests "$python" -m pytest tests/test_docs_*.py tests/test_site_pages.py tests/test_install_docs.py tests/test_changelog_order.py "${pytest_args[@]}"
+  step secrets secrets
+  step docs docs
+else
+  step chrome browser
+  step names "$python" scripts/check_names.py
+  step tokens "$python" scripts/tokens_base.py check
+  step brand "$python" scripts/brand_assets.py check
+  step screens "$python" scripts/design_screens.py check
+  # The standalone smoke test (tests/test_standalone_smoke.py) runs inside this step; it has no step of its own, which would only run it twice
+  # (every step runs whatever the earlier ones did, so an early smoke step brought no earlier failure; #254).
+  step pytest "$python" -m pytest tests/ "${pytest_args[@]}"
+  step quarantine quarantine
+  step suite-size "$python" scripts/check_suite_size.py
+  step runtimes runtimes
+  step secrets secrets
+  step api-contract "$python" scripts/check_api_contract.py
+  step docs docs
+  step api-writes "$python" -m scripts.generate_api_writes
+fi
 
 echo
 echo '--- Rendered tests ---'
@@ -144,7 +160,8 @@ else
   echo 'Skipped rendered tests: none (0)'
 fi
 echo '--- Screenshot gate ---'
-if [[ -s $gate_summary ]]; then cat "$gate_summary"; else echo 'Screenshot gate: summary not written (the gate test did not finish)'; fi
+if [[ $mode == docs ]]; then echo 'Screenshot gate: not run (docs-only check, BW_CHECK_MODE=docs)'
+elif [[ -s $gate_summary ]]; then cat "$gate_summary"; else echo 'Screenshot gate: summary not written (the gate test did not finish)'; fi
 
 if ((${#failed[@]})); then
   printf 'FAILED: %s\n' "${failed[*]}"

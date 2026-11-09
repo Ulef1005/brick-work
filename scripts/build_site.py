@@ -161,20 +161,20 @@ def mcp_tables():
 
 
 def build_docs(out):
-    """Zensical takes its output directory only from the config and keeps it inside the project root,
-    so build into a temporary directory in the repo and copy the result out."""
+    """Zensical takes its output directory only from the config and keeps it inside the project root, and it keeps its cache (`.cache`, cleared
+    by `--clean`) beside the config file. So the config goes into a temporary folder of its own in the repo, with a copy of the docs folder, and the site and the cache are built there and the result copied out: builds that run at the same
+    time (the tests run in parallel, #254) then never share a cache."""
     import yaml
     zensical = Path(sys.executable).with_name('zensical')
     with tempfile.TemporaryDirectory(prefix='.build-site-', dir=ROOT) as tmp:
         config = yaml.safe_load((ROOT / 'mkdocs.yml').read_text())
+        docs = config.get('docs_dir', 'docs')
+        shutil.copytree(ROOT / docs, Path(tmp) / docs)   # the docs folder must lie inside the project root (6 MB)
         config['site_dir'] = str(Path(tmp) / 'site')
-        path = ROOT / f'{Path(tmp).name}.yml'
+        path = Path(tmp) / 'mkdocs.yml'
         path.write_text(yaml.safe_dump(config, sort_keys=False, allow_unicode=True))
-        try:
-            subprocess.run((str(zensical) if zensical.exists() else 'zensical', 'build', '--strict', '--clean',
-                            '--config-file', str(path)), check=True)
-        finally:
-            path.unlink()
+        subprocess.run((str(zensical) if zensical.exists() else 'zensical', 'build', '--strict', '--clean',
+                        '--config-file', str(path)), check=True)
         shutil.copytree(Path(tmp) / 'site', out)
 
 

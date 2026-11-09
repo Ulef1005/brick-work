@@ -40,6 +40,7 @@ def test_bottom_bar_and_jump_sheet_css():
         assert value in sheet
 
 
+@rendered.group
 def test_shell_chromium_geometry(client, tmp_path):
     chrome = rendered.chrome()
     soup = BeautifulSoup(client.get('/').data, 'html.parser')

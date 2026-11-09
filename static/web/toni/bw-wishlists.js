@@ -7,7 +7,7 @@
     const key='bw-wishlists-receipt';
     let receipt;
     try { receipt=JSON.parse(sessionStorage.getItem(key)); } catch (_) {}
-    if(receipt){undo.hidden=false;message.textContent='Saved · Undo';}
+    if(receipt){undo.hidden=false;message.textContent='Saved';}   // #224: the Undo button beside it says Undo; the text no longer does too
     async function send(action,data){
       const response=await fetch(root.dataset.wlUrl.replace('ACTION',action),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...data,csrf_token:root.dataset.csrf})});
       const result=await response.json();

@@ -281,7 +281,7 @@ Scope `none` means no token. Every path is relative to `/api/v2`. The **v1** col
 | `GET /copies/{id}` | One copy. | read | M.11b | same |
 | `PATCH /copies/{id}` | Edit condition, completeness, storage, purchase and estimate fields, note. | write | M.11c | same |
 | `GET /copies/{id}/check` | Part-check session state for this copy. | read | M.11b | same |
-| `POST /copies/{id}/check` | Apply one part-check action (start, answer, found_one, skip, select, back, next, spares, finish, undo). | write | M.11c | same |
+| `POST /copies/{id}/check` | Apply one part-check action (start, answer, found_one, skip, select, back, next, spares, recheck, finish, undo; `start` takes `scope` `all` or `missing`). | write | M.11c | same |
 | `PUT /copies/{id}/checked` | Set or clear the "Set is checked" flag and recompute derived completeness. | write | M.11c | same |
 | `GET /copies/{id}/completeness` | Stored and derived completeness, checked flag, missing and damaged counts. | read | M.11b | same |
 | `PUT /copies/{id}/flags` | Replace the copy flags. | write | M.11c | same |

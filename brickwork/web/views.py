@@ -100,6 +100,10 @@ def bw_admin(page):
                 from . import setup_state
                 flow = setup_state.first_run(bw_collection_editable())
                 data['get_started'] = 'done' if flow['done'] == flow['total'] else f"{flow['done']} of {flow['total']} done"
+            if page == 'statistics':
+                from . import stats_charts
+                data['headline'] = stats_charts.headline(data['completeness'])
+                data['charts'] = stats_charts.charts(data)
             if page == 'unresolved':
                 data['done'] = identity_undo_offer(request.args.get('done', ''))
             if page == 'settings':
@@ -1796,6 +1800,10 @@ def bw_collection_write(action):
             elif action=='take':
                 event=workbench.take_for_gap(db,data['copy_id'],int(data['item_id']),data.get('color_id'),data['quantity'])
                 message='Took '+str(int(data['quantity']))
+            elif action=='found-one':
+                from ..core import checker
+                event=checker.found_one(db,data['copy_id'],data['token'])
+                message='Found 1'
             elif action=='undo':
                 event=int(data['event_id'])
                 collection.undo(db,event)

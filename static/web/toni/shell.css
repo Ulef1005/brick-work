@@ -56,7 +56,7 @@ body:has([data-checker])>.header{display:flex}body:has([data-checker]) .rail{dis
 }
 @media(min-width:768px) and (max-width:1023.98px){.workbench-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .jump-search-row{display:flex;align-items:center;gap:8px}
-.jump-search-field{flex:1;min-width:0;height:48px;border-radius:10px;background:var(--tw-surface);outline:2px solid var(--tw-accent);display:flex;align-items:center;gap:10px;padding:0 14px;box-sizing:border-box}
+.jump-search-field{flex:1;min-width:0;height:48px;border-radius:10px;background:var(--tw-surface);outline:1px solid var(--tw-accent-text);display:flex;align-items:center;gap:10px;padding:0 14px;box-sizing:border-box}
 .jump-search-field .icon{width:20px;height:20px;color:var(--tw-text-muted);flex:none}
 #global-jump #jump-query{flex:1;min-width:0;min-height:0;width:100%;border:0;background:none;padding:0;font:400 16px var(--tw-font);color:var(--tw-text)}
 #global-jump .jump-cancel{height:44px;min-height:44px;padding:0 4px;border:0;background:none;color:var(--tw-accent-text);font:500 15px var(--tw-font)}

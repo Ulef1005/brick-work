@@ -140,8 +140,8 @@ else
   # The standalone smoke test (tests/test_standalone_smoke.py) runs inside this step; it has no step of its own, which would only run it twice
   # (every step runs whatever the earlier ones did, so an early smoke step brought no earlier failure; #254).
   step pytest "$python" -m pytest tests/ --ignore=tests/test_screen_gate.py "${pytest_args[@]}"
-  # The screen gate runs on its own, after the parallel tests and with nothing beside it: under a fully loaded CPU, Chrome sometimes laid out a
-  # drop-down's text before the bundled font was ready and kept it 1 px lower, failing the gate at random (PR #261; ADR 0024).
+  # The screen gate runs on its own, after the parallel tests and with nothing beside it, in one Chrome session as its baselines were made
+  # (scripts/screen_gate.py workers(); PR #261, ADR 0024).
   step screen-gate "$python" -m pytest tests/test_screen_gate.py -q -p no:xdist
   step quarantine quarantine
   step suite-size "$python" scripts/check_suite_size.py

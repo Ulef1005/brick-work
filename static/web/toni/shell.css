@@ -62,7 +62,7 @@ body:has([data-checker])>.header{display:flex}body:has([data-checker]) .rail{dis
 #global-jump .jump-cancel{height:44px;min-height:44px;padding:0 4px;border:0;background:none;color:var(--tw-accent-text);font:500 15px var(--tw-font)}
 
 /* ===== 4.9f: shell bottom navigation and phone Jump sheet (kit frame 1b) ===== */
-:root{--bw-bottom-inset:max(34px,var(--tw-safe-bottom))}
+:root{--bw-bottom-inset:var(--tw-safe-bottom)}
 @media(max-width:1023.98px){:root{--bw-bottom:calc(49px + var(--bw-bottom-inset))}}
 #jump-message:empty{display:none}
 @media(max-width:1023.98px){

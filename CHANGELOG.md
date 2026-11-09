@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **The upgrade guide shows how to check the published image** (#190). [Upgrade Brick Work](docs/how-to/upgrade.md#move-to-the-new-version) now gives the two `gh attestation verify` commands for a pull-first release: one for the build provenance, one for the SBOM attached to the image, and what a failure means. The README names the SBOM check too.
 - **Tutorial: finish a half-built set** (#247). A second learning path in the docs, on the same invented collection as the demo: check a half-built copy in Set Inspector, put the missing parts on a wishlist, receive a parts order against them and watch the copy turn complete. It links [Check a set's parts](docs/how-to/check-set-parts.md), [Manage wishlists](docs/how-to/manage-wishlists.md) and [Receive a parts order](docs/how-to/receive-an-order.md). Its pictures come from `scripts/site_shots.py` (new `tut-` stems), light and dark; the docs site now ships `docs/img/tutorials/`.
 - **Tutorial: your first set, start to finish** (#246). The tutorials page had no tutorial. It now has one: install from the README, the **Get started** first run (catalogue, keys optional), add one set, check its parts and see what is missing and where it shows up. See [Your first set, start to finish](docs/tutorials/first-set.md).
 - **The SBOM attestation uses `actions/attest`** (#190). The release workflow's SBOM attestation ran `actions/attest-sbom`, which GitHub has deprecated; it now runs `actions/attest` v4.2.2 (pinned by SHA) with the same subject, SBOM and registry push.

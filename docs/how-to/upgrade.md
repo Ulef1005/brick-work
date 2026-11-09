@@ -46,6 +46,16 @@ docker compose up -d
 
 Your `data/` folder stays where it is. Without Docker, update the source the same way and restart the app.
 
+From the first pull-first release on, you can check the published image before you start it, with the [GitHub CLI](https://cli.github.com/) and that release's version for `VERSION`:
+
+```sh
+gh attestation verify oci://ghcr.io/ulef1005/brick-work:VERSION --owner Ulef1005
+gh attestation verify oci://ghcr.io/ulef1005/brick-work:VERSION --owner Ulef1005 \
+  --predicate-type https://spdx.dev/Document/v2.3
+```
+
+The first command checks the build provenance: the image was built by this repository's release workflow from that tag. The second checks the software bill of materials (SBOM, in SPDX) attached to the same image, which lists the packages inside it. Both print the verified attestation; a failure means the image did not come from this repository's release, so do not start it.
+
 ## Check the result
 
 1. Open `/api/v2/health` (no token). It shows the app version and the schema, for example `"app": "0.9.0"` and `"schema": "4.2"`. `/api/v1/health` answers the same.

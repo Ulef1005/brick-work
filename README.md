@@ -38,7 +38,7 @@
 
 **Finish the sets you started.** Brick Work is a self-hosted web app for your brick collection. Check a set's parts, pull the missing ones from your loose stock, and see which unfinished sets that stock can complete. Every app does inventory; Brick Work also helps at the table.
 
-Sets, minifigures, parts, instructions, boxes, storage, prices, wishlist and orders live in one place. The browser, API, CLI and MCP server share one core and one database file, `brickwork.db`; every item has a Brick Work id, and the catalogue is built from Rebrickable's public download into a second file, `catalogue.db`, beside the collection. BrickLink, Rebrickable and Brickset numbers are links to those items, and BrickLink's item lists are an optional addition. Open source, MIT.
+It is for private collectors who rebuild used and vintage sets, build from sorted bulk, or keep a messy collection spread over spreadsheets and sites. Rebrickable and Brickset stay where the catalogue and the market live; Brick Work is where your own copies, parts and drawers live, on your own computer, and it brings your collection over from Brickset, Rebrickable, BrickLink or BrickTracker. Free and open source (MIT).
 
 **[Try the demo](https://ulef1005.github.io/brick-work/demo/)**: the real interface on an invented collection, in your browser. Nothing is saved.
 
@@ -99,6 +99,8 @@ More on the [use cases page](https://ulef1005.github.io/brick-work/use-cases/).
 
 ## Works with the sites you already use
 
+Sets, minifigures, parts, instructions, boxes, storage, prices, wishlist and orders live in one place. The browser, API, CLI and MCP server share one core and one database file, `brickwork.db`; every item has a Brick Work id, and the catalogue is built from Rebrickable's public download into a second file, `catalogue.db`, beside the collection. BrickLink, Rebrickable and Brickset numbers are links to those items, and BrickLink's item lists are an optional addition.
+
 The catalogue comes from Rebrickable's public download and needs no key; your own keys add prices, part lists for newer sets, BrickLink orders and sync. Brick Work bundles none of their data. It works next to BrickLink, Rebrickable and Brickset, not instead of them.
 
 | Service | Catalogue | Orders | Sync |
@@ -114,6 +116,8 @@ Brick Work is not affiliated with these services. Compared with the sites and to
 Nothing until you ask. **Download the catalogue** fetches Rebrickable's public files and needs no key. With your own keys it calls BrickLink, Rebrickable and Brickset for inventories, pictures and prices; photo identification sends the photo you choose to Brickognize. There is no telemetry and no account with this project.
 
 ## Standalone installation with Docker
+
+**No server and no Git?** [Install on your computer with Docker Desktop](docs/how-to/install-docker-desktop.md) walks through it on Windows or a Mac in about 15 minutes.
 
 With Git and Docker Compose installed:
 

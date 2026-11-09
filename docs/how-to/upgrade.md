@@ -35,12 +35,12 @@ If an older version refuses a newer file, its message may say a 3.3 file must be
 
 ## Move to the new version
 
-With the Docker install, check out the release you want by its tag, then pull its image and restart:
+With the Docker install, check out the release you want by its tag, then build or pull its image and restart. The v0.9.0 tag builds from source; the first release cut after it pulls the published image:
 
 ```sh
 git fetch
 git checkout v0.9.0
-docker compose pull
+docker compose build        # later releases, from the first pull-first one: docker compose pull
 docker compose up -d
 ```
 
@@ -54,7 +54,7 @@ Your `data/` folder stays where it is. Without Docker, update the source the sam
 
 ## Go back
 
-Stop Brick Work, put the backed-up `brickwork.db` and `secret.key` back, check out the older version's tag, and refresh the image before you start it. From 0.9.0 on, run `docker compose pull`. Releases before 0.9.0 have no published image, so for 0.8.x or older run `docker compose build`. Then run `docker compose up -d`. Without that step, Docker starts the newer image again, and it upgrades the restored file once more. Changes made after the upgrade are not in the backup. [Back up and restore](back-up-and-restore.md#restore) has the details.
+Stop Brick Work, put the backed-up `brickwork.db` and `secret.key` back, check out the older version's tag, and refresh the image before you start it. For 0.9.0 and older, run `docker compose build`: their `compose.yaml` builds from source. From the first release with a pull-first `compose.yaml` on, run `docker compose pull`. Then run `docker compose up -d`. Without that step, Docker starts the newer image again, and it upgrades the restored file once more. Changes made after the upgrade are not in the backup. [Back up and restore](back-up-and-restore.md#restore) has the details.
 
 ## What next
 

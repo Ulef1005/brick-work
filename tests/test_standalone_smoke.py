@@ -220,7 +220,8 @@ def test_the_add_workflow_adds_checks_and_undoes_every_kind(tmp_path, monkeypatc
     assert rows('SELECT count(*), sum(completeness=?) FROM copy WHERE archived_at IS NULL', 'sealed') == [(3, 2)]                       # two sealed copies of 1000-1 and the unidentified set's one
     assert rows('SELECT quantity FROM stock WHERE item_id=? AND color_id=? AND condition=?', brick, red, 'new') == [(4,)]
     assert rows('SELECT count(*) FROM stock_part WHERE stock_id=?', batches[2]['receipts'][0]['stock'])[0][0] > 0
-    assert rows("SELECT count(*) FROM job WHERE kind='item'") == [(5,)]
+    assert rows("SELECT count(*) FROM job WHERE kind='item' AND json_extract(payload,'$.batch') IS NULL") == [(5,)]   # one per Add row
+    assert rows("SELECT count(DISTINCT json_extract(payload,'$.batch')) FROM job WHERE kind='item' AND json_extract(payload,'$.batch') LIKE 'pictures-%'") == [(1,)]   # #217: the set's parts
     drainer.drain_once(path)
     assert rows("SELECT DISTINCT state FROM job") == [('done',)]
     assert rows("SELECT name FROM job_step WHERE state='done' AND error LIKE 'skipped%' GROUP BY name ORDER BY name") == [('market_price',), ('metadata',), ('pictures',)]

@@ -823,7 +823,7 @@ The HTTP transport always forwards the request's bearer token and never falls ba
 | `add_stock` | item_type, item_no, color_id, quantity, condition | `POST /stock` |
 | `update_stock` | id, fields | `PATCH /stock/{id}` |
 | `add_wish` | item_type, item_no, color_id, quantity, max_price | `POST /wishes` |
-| `post_wishlists` | name, note, sort, bricklink_id | `POST /wishlists` |
+| `post_wishlists` (v2 from 1.0: `create_wishlist`; the five wishlist tools were renamed, [ADR 0017](../adr/0017-api-v2.md)) | name, note, sort, bricklink_id | `POST /wishlists` |
 | `patch_wishlists_id` | id, name, note, sort, bricklink_id | `PATCH /wishlists/{id}` |
 | `delete_wishlists_id` | id | `DELETE /wishlists/{id}` |
 | `post_wishlists_id_restore` | id | `POST /wishlists/{id}/restore` |

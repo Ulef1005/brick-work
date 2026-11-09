@@ -32,7 +32,7 @@ vm.runInNewContext(fs.readFileSync('static/web/toni/bw-wishlists.js','utf8'),con
 const flush=()=>new Promise(r=>setImmediate(r));
 async function submit(form,value=''){form.events.submit({preventDefault(){},target:form,submitter:Object.assign(form.nodes.button,{value})});await flush();}
 (async()=>{
- assert.equal(undo.hidden,false);assert.equal(message.textContent,'Saved · Undo');
+ assert.equal(undo.hidden,false);assert.equal(message.textContent,'Saved');
  open.events.click();assert.equal(sheet.open,true);close.events.click();assert.equal(sheet.open,false);
  await submit(create);assert.equal(requests.at(-1).body.values.name,'Gifts');assert.equal(requests.at(-1).body.values.bricklink_id,null);assert.equal(requests.at(-1).body.csrf_token,'csrf');assert.equal(reloads,1);
  assert.equal(count.textContent,'2 selected');assert.equal(bar.hidden,false);

@@ -43,7 +43,7 @@ A list holds one live wish per item and colour. If any selected wish already exi
 
 ## Undo
 
-After a change, **Undo** appears next to the message at the top of the list. It reverses the last change: a move puts the wishes back, a copy archives the new wishes, an archive restores the list.
+After a change, the message at the top of the list reads *Saved* with an **Undo** button beside it. **Undo** reverses the last change: a move puts the wishes back, a copy archives the new wishes, an archive restores the list.
 
 Undo is refused if something changed since, for example when a later save touched the same wishes. Undo the later change first. If the list the wishes came from has been archived since, restore it before you undo the move.
 

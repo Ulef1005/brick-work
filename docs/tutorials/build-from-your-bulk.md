@@ -27,21 +27,21 @@ Part Runner collects the missing parts of several sets while you walk along your
 2. Select **Choose sets** and tick three or four sets. (**All incomplete sets** takes every one.)
 3. Select **Continue · N sets**, where N is the number you ticked.
 
-![Part Runner on a phone: Choose sets is on, three sets are ticked and the button reads Continue · 3 sets.](../img/tutorials/bulk-runner-sets-phone-390-light.png#only-light)
-![Part Runner on a phone: Choose sets is on, three sets are ticked and the button reads Continue · 3 sets.](../img/tutorials/bulk-runner-sets-phone-390-dark.png#only-dark)
+![Part Runner on a phone: Choose sets is on, three sets are ticked and the button reads Continue · 3 sets.](../img/tutorials/bulk-runner-sets-phone-390-light.png#only-light){ width="300" }
+![Part Runner on a phone: Choose sets is on, three sets are ticked and the button reads Continue · 3 sets.](../img/tutorials/bulk-runner-sets-phone-390-dark.png#only-dark){ width="300" }
 
 4. Under **In what order do you pick?**, you see the keys **Category**, **Colour**, **Size**, **Set** and **Storage**. A line under them says which order you get. Keep **Storage** switched on: it puts the parts that sit in the same drawer next to each other. A key with nothing to sort by is switched off and says why.
 5. Select **Start picking**.
 
-![The pick order on a phone: Category, Colour, Set and Storage are on, Size is off because no part sizes are recorded.](../img/tutorials/bulk-runner-order-phone-390-light.png#only-light)
-![The pick order on a phone: Category, Colour, Set and Storage are on, Size is off because no part sizes are recorded.](../img/tutorials/bulk-runner-order-phone-390-dark.png#only-dark)
+![The pick order on a phone: Category, Colour, Set and Storage are on, Size is off because no part sizes are recorded.](../img/tutorials/bulk-runner-order-phone-390-light.png#only-light){ width="300" }
+![The pick order on a phone: Category, Colour, Set and Storage are on, Size is off because no part sizes are recorded.](../img/tutorials/bulk-runner-order-phone-390-dark.png#only-dark){ width="300" }
 
 6. Part Runner shows one part at a time: its picture, colour and number, **Pick N**, and which sets need how many. A part that three sets need appears once, with the total.
 7. Find the part in your drawer and select **Found it**.
 8. Choose where it goes. **Add to set** lowers the missing count of the sets that need it. Set how many go to each set with **−** and **+**. Select **Confirm**.
 
-![Found it on a phone: choose Add to set, Add to loose parts or Add to pick list only.](../img/tutorials/bulk-runner-found-phone-390-light.png#only-light)
-![Found it on a phone: choose Add to set, Add to loose parts or Add to pick list only.](../img/tutorials/bulk-runner-found-phone-390-dark.png#only-dark)
+![Found it on a phone: choose Add to set, Add to loose parts or Add to pick list only.](../img/tutorials/bulk-runner-found-phone-390-light.png#only-light){ width="300" }
+![Found it on a phone: choose Add to set, Add to loose parts or Add to pick list only.](../img/tutorials/bulk-runner-found-phone-390-dark.png#only-dark){ width="300" }
 
 9. Part Runner moves to the next part. Use **Skip for later** for a part you cannot find; its missing count stays as it is.
 10. Select **Stop** when you are done. Every save is listed under **Recent saves**, each with its own **Undo**.

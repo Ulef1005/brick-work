@@ -27,12 +27,19 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
    jump:[r.left,r.top,r.width,r.height],message:getComputedStyle(document.getElementById('jump-message')).display,
    add:!!document.getElementById('jump-add'),text:jump.textContent};
  })()`);
- assert.equal(m.bar,83);assert.equal(m.save,'83px');assert.equal(m.toast,'99px');assert.equal(m.label,'12px');assert.equal(m.size,'11px');
+ assert.equal(m.bar,49);assert.equal(m.save,'49px');assert.equal(m.toast,'65px');assert.equal(m.label,'12px');assert.equal(m.size,'11px');
  assert.ok(m.link>=48&&m.link<=49,'link '+m.link);
  assert.deepEqual(m.jump,[0,0,390,844]);
  assert.equal(m.message,'none');assert.equal(m.add,false);
  assert.ok(!/Enter opens copy|Search owned and wanted/.test(m.text));
  await evaluate("document.getElementById('global-jump').close()");
+ // #245: content clears the bar with no inset (browser toolbar) and with a 34px home-indicator inset (installed app).
+ for(const [inset,bar] of [[0,49],[34,83]]){
+  const c=await evaluate(`(()=>{document.documentElement.style.setProperty('--tw-safe-bottom','${inset}px');const b=document.querySelector('.mobile-bottom');window.scrollTo(0,document.documentElement.scrollHeight);
+   const end=(document.querySelector('.footer')||document.querySelector('main')).getBoundingClientRect().bottom;return {bar:b.getBoundingClientRect().height,pad:parseFloat(getComputedStyle(document.body).paddingBottom),top:b.getBoundingClientRect().top,end,inner:parseFloat(getComputedStyle(b).paddingBottom)};})()`);
+  assert.equal(c.bar,bar,'bar at inset '+inset);assert.equal(c.pad,bar,'body clearance at inset '+inset);assert.equal(c.inner,inset);assert.ok(c.end<=c.top+.5,'last row hidden at inset '+inset+': '+JSON.stringify(c));
+ }
+ await evaluate("document.documentElement.style.removeProperty('--tw-safe-bottom')");
  // Real touch opens must focus the sheet; both keyboard activation keys focus a tile.
  await call('Emulation.setTouchEmulationEnabled',{enabled:true});
  for (const height of [844,480]) {

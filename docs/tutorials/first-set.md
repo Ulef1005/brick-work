@@ -35,7 +35,8 @@ You can set them up later. The note under the step says what you give up without
 3. Leave **What** on **Set** and **Where** on **Owned**.
 4. Next to your set in the results, select **Select**. The button at the bottom now reads **Review 1 item**.
 
-<picture><source media="(prefers-color-scheme: dark)" srcset="../img/tutorials/tut-add-desktop-1440-dark.png"><img src="../img/tutorials/tut-add-desktop-1440-light.png" alt="The Add screen: the Search field holds "Old Mill" and one result, with its Select button, before you select it" loading="lazy" width="620"></picture>
+![The Add screen: the Search field holds Old Mill and one result, with its Select button, before you select it](../img/tutorials/tut-add-desktop-1440-light.png#only-light)
+![The Add screen: the Search field holds Old Mill and one result, with its Select button, before you select it](../img/tutorials/tut-add-desktop-1440-dark.png#only-dark)
 
 5. Select **Review 1 item**. The review shows one row with **Quantity**, **Where**, **Condition** and **Completeness**. Set **Condition** to **New** or **Used**. Leave **Completeness** on **Unknown · from checks**: the check you run next decides it. Under the row, **Part list** shows which part list the copy gets; keep the preselected one.
 6. Select **Add 1 item to the collection**.
@@ -57,13 +58,15 @@ The page now reads **Added 1 item** and shows a progress bar while the copy is m
    - If none is there, select **Missing**.
    - If you cannot tell now, select **Skip for later**.
 
-<picture><source media="(prefers-color-scheme: dark)" srcset="../img/tutorials/tut-inspect-part-phone-390-dark.png"><img src="../img/tutorials/tut-inspect-part-phone-390-light.png" alt="Set Inspector on a phone: a red sloped brick, 2x, with Found 2, Missing, Back, Skip for later and Undo" loading="lazy" width="300"></picture>
+![Set Inspector on a phone: a red sloped brick, 2x, with Found 2, Missing, Back, Skip for later and Undo](../img/tutorials/tut-inspect-part-phone-390-light.png#only-light){ width="300" }
+![Set Inspector on a phone: a red sloped brick, 2x, with Found 2, Missing, Back, Skip for later and Undo](../img/tutorials/tut-inspect-part-phone-390-dark.png#only-dark){ width="300" }
 
 4. Keep going. Every answer saves as you go, so you can close the page and pick the check up again from **Workbench → Set Inspector**, where the copy sits under **In progress**.
 5. If the set has minifigures, they come after the parts as a **Figure review**. If it has spare parts, you are asked **Include spare parts?**. Spares are never counted as missing.
 6. After the last part, the end of the check shows three steps: **1 Skipped**, **2 Missing**, **3 Save**. Work through them: **Check the N skipped parts** or **Leave them unchecked**, then read **Missing so far**.
 
-<picture><source media="(prefers-color-scheme: dark)" srcset="../img/tutorials/tut-inspect-end-phone-390-dark.png"><img src="../img/tutorials/tut-inspect-end-phone-390-light.png" alt="The end of a check: Missing so far lists nine entries, each with a Found 1 button, and the button Done, 15 still missing" loading="lazy" width="300"></picture>
+![The end of a check: Missing so far lists nine entries, each with a Found 1 button, and the button Done, 15 still missing](../img/tutorials/tut-inspect-end-phone-390-light.png#only-light){ width="300" }
+![The end of a check: Missing so far lists nine entries, each with a Found 1 button, and the button Done, 15 still missing](../img/tutorials/tut-inspect-end-phone-390-dark.png#only-dark){ width="300" }
 
 7. Select **Done · N still missing**. In the last step, tick **Set is checked** and select **Done**.
 
@@ -74,7 +77,8 @@ All the buttons, the keyboard keys and the variants are in [Check a set's parts]
 1. Go back to your set under **Collection → Sets**. Under **Consists of**, the **Parts** tab now has a line such as **19 parts missing, 8 in loose stock**, a bar with **340 of 359 parts present** and each missing part as a card with **Found 1**. (The numbers are from the invented demo.)
 2. Open **Planning → Complete sets**. It lists every copy with recorded gaps, here yours. It ranks them by what a repair is worth and offers the missing parts as a BrickLink XML export or a printable list. This is the page for deciding what to buy or fix first.
 
-<picture><source media="(prefers-color-scheme: dark)" srcset="../img/tutorials/tut-complete-sets-phone-390-dark.png"><img src="../img/tutorials/tut-complete-sets-phone-390-light.png" alt="Planning, Complete sets: copies with recorded gaps, ranked by what a repair is worth, each with Pin and Details" loading="lazy" width="300"></picture>
+![Planning, Complete sets: copies with recorded gaps, ranked by what a repair is worth, each with Pin and Details](../img/tutorials/tut-complete-sets-phone-390-light.png#only-light){ width="300" }
+![Planning, Complete sets: copies with recorded gaps, ranked by what a repair is worth, each with Pin and Details](../img/tutorials/tut-complete-sets-phone-390-dark.png#only-dark){ width="300" }
 
 3. Open **Workbench → Part Runner**. Under **Pick for which sets?** it lists the same copy with the number of parts it is missing, if any. This is where you go to pull missing parts from your drawers.
 

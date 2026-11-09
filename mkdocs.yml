@@ -10,7 +10,6 @@ exclude_docs: |
   img/
   milestones/
   pitch/
-  upstream-CHANGELOG.md
 theme:
   name: material
   font: false  # system fonts: the site makes no external requests

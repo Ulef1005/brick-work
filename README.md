@@ -42,12 +42,24 @@ Sets, minifigures, parts, instructions, boxes, storage, prices, wishlist and ord
 
 **[Try the demo](https://ulef1005.github.io/brick-work/demo/)**: the real interface on an invented collection, in your browser. Nothing is saved.
 
+## The crew
+
+Four named workflows on the **Workbench** do the work at the table. Each one is walked through, screen by screen, on the [workflows page](https://ulef1005.github.io/brick-work/workflows/), and the [tutorials](https://ulef1005.github.io/brick-work/docs/tutorials/) take you through them on the demo collection.
+
+**Part Spotter** (was Part to Inventory) names the piece in your hand. Photograph it with the camera or add a saved photo, and Brickognize, an outside recognition service, suggests the part and its colour, or the minifigure when **Identify** is set to **Figures**. Photos queue up while you work; you review each result, confirm part and colour, and add the batch to your loose parts, a lot or a place in one step, with Undo. Only the photo you choose leaves your network, resized, and each one uses one request of the daily budget. [Identify a minifigure from a photo](docs/how-to/identify-a-minifigure.md) shows it with a minifigure.
+
+**Set Inspector** (was Check Set Parts) tells you what a copy is missing. It goes through the copy part by part against its inventory: for each part you say **Found**, with how many, or **Missing**, or skip it for later. Answers are saved as you go, so you can stop and resume; spare parts never count as missing. At the end you deal with the skipped parts, read what is missing, and tick **Set is checked**: from then on the copy turns **Complete** by itself once nothing is missing or damaged. A copy with gaps can start a check of only its missing parts, or mark one found straight from its missing list. [Check a set's parts](docs/how-to/check-set-parts.md) has every variant.
+
+**Part Runner** (was Part Picker) fills several sets in one walk along your drawers. Tick the incomplete sets you want to work on, or all of them, and choose the pick order: category, colour, size, set and storage, so the parts in one drawer come together. Each part shows once with the total and which sets need how many; **Found it** puts it into those sets, into your loose parts, or only onto the pick list. The list also prints, or saves as CSV for the table. [Pick parts for several sets](docs/how-to/pick-parts.md) explains the order and the keys.
+
+**Matchmaker** (was Matcher) works the other way round: it looks at the loose stock you already hold and shows which incomplete copies it can finish. Copies it completes come first and say so; every copy shows how many of its missing parts the stock covers. Open one, check each line against your stock, and give the parts to the copy, with Undo; a match is a suggestion, not a reservation, so work through one copy at a time. [Find sets your loose stock can finish](docs/how-to/match-stock-to-sets.md) covers it.
+
 ## Where we stand
 
-Release 0.9.0 (5 November 2026, schema 4.2) is the first stability release: a stable schema with tested upgrades from 0.5.x. It is built from source with `docker compose build`; the install from the published multi-arch image on GHCR (`docker compose pull`) starts with the first release cut after it. Version 1.0.0 follows when the gate of milestone B (#96) passes. Its maintainer uses Brick Work daily for a collection of about 200 set copies. Read the [CHANGELOG](CHANGELOG.md) before upgrading.
+Release 1.0.0 (9 November 2026, schema 4.2) is the first release after its maintainer's real collection was set up from scratch through **Get started** on a test install and every workflow was run on it (milestone B). The schema is stable, upgrades from 0.5.x are tested, and it is the first release you install by pulling the published multi-arch image from GHCR, with build provenance and an SBOM you can verify. Its maintainer uses Brick Work daily for a collection of about 200 set copies. Read the [CHANGELOG](CHANGELOG.md) before upgrading.
 
-- **Shipped:** the Collection (sets, minifigures, parts, gear, books and catalogs), Workbench (Set Inspector, Part Runner, Matchmaker, Orders), Planning and Manage screens; **Get started**, a guided first run; an installable web app; a versioned REST API with scoped tokens and Undo; an admin CLI; an MCP server; orders from your BrickLink account, a confirmation e-mail or the order XML; optional BrickLink item lists; a read-only importer for an older tracker database; collection sync of owned and wanted sets with Rebrickable and Brickset.
-- **Planned, not built:** Buildable sets, sync with BrickLink (#143, open), a pile check by photo, a sale price for a used copy, complete-or-part-out for minifigures and sets, and one shopping list for missing parts. The order is kept in the [GitHub milestones](https://github.com/Ulef1005/brick-work/milestones) and the issues' priority labels (`now`, `next`, `later`); there are no dates.
+- **Shipped:** the Collection (sets, minifigures, parts, gear, books and catalogs), the Workbench (Part Spotter, Set Inspector, Part Runner, Matchmaker, Orders, Storage), Planning and Manage screens; **Get started**, a guided first run; an installable web app with its own look on phone and desktop; a versioned REST API with scoped tokens and Undo; an admin CLI; an MCP server; orders from your BrickLink account, a confirmation e-mail or the order XML; optional BrickLink item lists; a read-only importer for an older tracker database; collection sync of owned and wanted sets with Rebrickable and Brickset; user docs with four tutorials.
+- **Planned, not built:** Buildable sets, sync with BrickLink (#143, open), changing which catalogue figure a copy holds (#151), a pile check by photo, a sale price for a used copy, complete-or-part-out for minifigures and sets, and one shopping list for missing parts. The order is kept in the [GitHub milestones](https://github.com/Ulef1005/brick-work/milestones) and the issues' priority labels (`now`, `next`, `later`); there are no dates.
 
 It is self-hosted, single-user and meant for a home network or a VPN, not the open internet.
 
@@ -57,19 +69,11 @@ Private collectors with a real, messy collection that should help them finish it
 
 - **You rebuild used and vintage sets.** "I want to know exactly what is missing from each set." Set Inspector, then export the gaps as BrickLink XML.
 - **You build from sorted bulk.** "Do I have it, how many, and which drawer?" Storage per item, Part Runner and Matchmaker.
-- **You collect minifigures.** "Which figures can I put together from parts?" Loose figures with their parts and photo capture.
+- **You collect minifigures.** "Which figures can I put together from parts?" Loose figures with their parts, and Part Spotter to name a figure from a photo.
 - **You were handed a collection.** "What is in this box, and what do I do with it?" One place for sets, copies and boxes, with storage.
 - **You script things at home.** "I want Claude to talk to my collection." REST API, CLI and an MCP server over your own data.
 
 Not built for sealed-box investors who need market forecasts, BrickLink stores that need order fulfilment, or anyone looking for a social profile. Other tools serve them well.
-
-## Three workflows that help at the table
-
-- **Set Inspector** (was Check Set Parts). Go through a copy part by part against its inventory and keep a running count of what is missing.
-- **Part Runner** (was Part Picker). Tick several sets and get the missing parts you can pull from your sorted loose stock, in your own order.
-- **Matchmaker** (was Matcher). See which incomplete copies your loose stock can finish, then decide what to build or buy.
-
-Each is walked through, screen by screen, on the [workflows page](https://ulef1005.github.io/brick-work/workflows/).
 
 ## Use cases
 
@@ -114,18 +118,18 @@ Nothing until you ask. **Download the catalogue** fetches Rebrickable's public f
 With Git and Docker Compose installed:
 
 ```sh
-git clone --branch v0.9.0 https://github.com/Ulef1005/brick-work.git
+git clone --branch v1.0.0 https://github.com/Ulef1005/brick-work.git
 cd brick-work
 mkdir -p data
 sudo chown 1000:1000 data   # the container runs as uid 1000; as root, leave out sudo
 cp .env.sample data/.env
 # Edit data/.env: set BW_AUTHENTICATION_PASSWORD (or BW_ALLOW_NO_LOGIN=1 on a single trusted computer).
-docker compose build
+docker compose pull
 docker compose run --rm --entrypoint brickwork brickwork setup
 docker compose up -d
 ```
 
-The clone is still needed: it holds `compose.yaml` and `.env.sample`. The `compose.yaml` of the v0.9.0 tag builds the image from the source you cloned; it does not pull one. The install from the published image `ghcr.io/ulef1005/brick-work` (multi-arch, amd64 and arm64) starts with the first release cut after 0.9.0: clone that release's tag and run `docker compose pull` in place of `docker compose build`. For such a release you can check the image's provenance with `gh attestation verify oci://ghcr.io/ulef1005/brick-work:VERSION --owner Ulef1005`, with that release's version for `VERSION`, and its SBOM by adding `--predicate-type https://spdx.dev/Document/v2.3` ([Upgrade Brick Work](docs/how-to/upgrade.md#move-to-the-new-version)).
+The clone is still needed: it holds `compose.yaml` and `.env.sample`. `docker compose pull` fetches the published image `ghcr.io/ulef1005/brick-work:1.0.0` (multi-arch, amd64 and arm64); `docker compose build` builds the same image from the source you cloned instead. You can check the published image's provenance with `gh attestation verify oci://ghcr.io/ulef1005/brick-work:1.0.0 --owner Ulef1005`, and its SBOM by adding `--predicate-type https://spdx.dev/Document/v2.3` ([Upgrade Brick Work](docs/how-to/upgrade.md#move-to-the-new-version)). Releases up to 0.9.0 build from source: their `compose.yaml` does not pull.
 
 Then open `http://localhost:3333` and sign in with that password; an empty install greets you with **Download the catalogue** (no key needed); after it, add a set by number and check its parts. The container runs as uid 1000 and writes only to `data/`; if an older image (which ran as root) created that folder, run `sudo chown -R 1000:1000 data` once. The `data` volume holds the database, local catalogue index, photos, PDFs and job state. Back it up together with your environment configuration. No separate application or service is required. The offline smoke test covers a fresh installation without source credentials.
 
@@ -210,12 +214,12 @@ Back up first (next section), then check out the new release, build or pull its 
 
 ```sh
 git fetch
-git checkout v0.9.0          # the release's tag
-docker compose build         # 0.9.0 has no pull-first compose.yaml; later releases: docker compose pull
+git checkout v1.0.0          # the release's tag
+docker compose pull          # 0.9.0 and older: docker compose build
 docker compose up -d
 ```
 
-A schema change inside 4.x (4.0 to 4.1 in 0.7.0, 4.1 to 4.2 in 0.9.0) runs in place at the first read-write start, one step per version. It is one-way: an older version cannot open the upgraded file, so going back means restoring the backup, checking out the older tag and, for 0.9.0 and older, rebuilding with `docker compose build` before you start it; from the first release with a pull-first `compose.yaml` on, `docker compose pull`. A 0.5.x (schema 3.3) collection is not upgraded by starting 0.6.0 or later: run `brickwork migrate4` on a copy first; the 3.3 file is never changed. To check the result, open `/api/v2/health` (it shows the app version and the schema) and run `brickwork check`. The steps for every version are in [Upgrade Brick Work](docs/how-to/upgrade.md); `CHANGELOG.md` names any step a release needs. The upgrade from a 0.5.0-shaped collection through every schema step is tested in `tests/test_upgrade_path.py`, which `scripts/check.sh` runs.
+A schema change inside 4.x (4.0 to 4.1 in 0.7.0, 4.1 to 4.2 in 0.9.0) runs in place at the first read-write start, one step per version. It is one-way: an older version cannot open the upgraded file, so going back means restoring the backup, checking out the older tag and, refreshing its image before you start it: `docker compose pull` from 1.0.0 on, `docker compose build` for 0.9.0 and older. A 0.5.x (schema 3.3) collection is not upgraded by starting 0.6.0 or later: run `brickwork migrate4` on a copy first; the 3.3 file is never changed. To check the result, open `/api/v2/health` (it shows the app version and the schema) and run `brickwork check`. The steps for every version are in [Upgrade Brick Work](docs/how-to/upgrade.md); `CHANGELOG.md` names any step a release needs. The upgrade from a 0.5.0-shaped collection through every schema step is tested in `tests/test_upgrade_path.py`, which `scripts/check.sh` runs.
 
 ## Backup and restore
 

@@ -19,6 +19,7 @@ The backup is also the way back. An upgrade that changes the schema is one-way.
 | 0.6.0 | 0.7.0 | 4.0 to 4.1 | In place, at the first read-write start. | Restore the backup. 0.6.0 cannot open a 4.1 file. |
 | 0.7.0 | 0.8.0, 0.8.1 | none (stays 4.1) | Nothing. | Start the older version on the same file. |
 | 0.8.x | 0.9.0 | 4.1 to 4.2 | In place, at the first read-write start. | Restore the backup. 0.8.x cannot open a 4.2 file. |
+| 0.9.0 | 1.0.0 | none (stays 4.2) | Nothing. | Start the older version on the same file. |
 
 You can skip versions from 0.6.0 on. Starting 0.9.0 on a 4.0 file runs both in-place steps one after the other, each in its own transaction; a step that fails leaves the file at the version before it. From 0.5.x you always run `brickwork migrate4` first, and it writes the schema of the version you are moving to.
 
@@ -35,18 +36,18 @@ If an older version refuses a newer file, its message may say a 3.3 file must be
 
 ## Move to the new version
 
-With the Docker install, check out the release you want by its tag, then build or pull its image and restart. The v0.9.0 tag builds from source; the first release cut after it pulls the published image:
+With the Docker install, check out the release you want by its tag, then pull its image and restart. From 1.0.0 on, `compose.yaml` names the published image; up to 0.9.0 it builds from source, so use `docker compose build` there:
 
 ```sh
 git fetch
-git checkout v0.9.0
-docker compose build        # later releases, from the first pull-first one: docker compose pull
+git checkout v1.0.0
+docker compose pull         # 0.9.0 and older: docker compose build
 docker compose up -d
 ```
 
 Your `data/` folder stays where it is. Without Docker, update the source the same way and restart the app.
 
-From the first pull-first release on, you can check the published image before you start it, with the [GitHub CLI](https://cli.github.com/) and that release's version for `VERSION`:
+From 1.0.0 on, you can check the published image before you start it, with the [GitHub CLI](https://cli.github.com/) and that release's version for `VERSION`:
 
 ```sh
 gh attestation verify oci://ghcr.io/ulef1005/brick-work:VERSION --owner Ulef1005
@@ -58,13 +59,13 @@ The first command checks the build provenance: the image was built by this repos
 
 ## Check the result
 
-1. Open `/api/v2/health` (no token). It shows the app version and the schema, for example `"app": "0.9.0"` and `"schema": "4.2"`. `/api/v1/health` answers the same.
+1. Open `/api/v2/health` (no token). It shows the app version and the schema, for example `"app": "1.0.0"` and `"schema": "4.2"`. `/api/v1/health` answers the same.
 2. Run `brickwork check` (with Docker: `docker compose exec brickwork brickwork check`), or press **Run integrity check** under **Manage → Tools & Admin → Database**. Both must pass.
 3. Open **Sets** and compare what you see with your last export if you kept a note of the counts.
 
 ## Go back
 
-Stop Brick Work, put the backed-up `brickwork.db` and `secret.key` back, check out the older version's tag, and refresh the image before you start it. For 0.9.0 and older, run `docker compose build`: their `compose.yaml` builds from source. From the first release with a pull-first `compose.yaml` on, run `docker compose pull`. Then run `docker compose up -d`. Without that step, Docker starts the newer image again, and it upgrades the restored file once more. Changes made after the upgrade are not in the backup. [Back up and restore](back-up-and-restore.md#restore) has the details.
+Stop Brick Work, put the backed-up `brickwork.db` and `secret.key` back, check out the older version's tag, and refresh the image before you start it. For 0.9.0 and older, run `docker compose build`: their `compose.yaml` builds from source. From 1.0.0 on, run `docker compose pull`. Then run `docker compose up -d`. Without that step, Docker starts the newer image again, and it upgrades the restored file once more. Changes made after the upgrade are not in the backup. [Back up and restore](back-up-and-restore.md#restore) has the details.
 
 ## What next
 

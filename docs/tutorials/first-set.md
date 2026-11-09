@@ -9,7 +9,7 @@ You need Brick Work running. Follow the install steps in the [README](https://gi
 ## 1. Open Brick Work
 
 1. Open `http://localhost:3333` in your browser and sign in with the password you set in `data/.env`.
-2. You land on **Sets**. It says **0 sets** and, under **Nothing here yet.**, shows four numbered steps: **Load the catalogue**, **Set up your keys (optional)**, **Bring your collection in** and **See how the inventory works**. This is **Get started**. You can come back to it later under **Tools & Admin › Get started**.
+2. You land on **Sets**. It says **0 sets** and, under **Nothing here yet.**, shows four numbered steps: **Load the catalogue**, **Set up your keys (optional)**, **Bring your collection in** and **See how the inventory works**. This is **Get started**. You can come back to it later under **Tools & Admin → Get started**.
 
 The collection is empty, so the third step shows **Add a set** greyed out until the catalogue is loaded.
 
@@ -44,7 +44,7 @@ The page now reads **Added 1 item** and shows a progress bar while the copy is m
 
 ## 5. Open the set
 
-1. Open **Collection › Sets** and select your set.
+1. Open **Collection → Sets** and select your set.
 2. Find **Consists of** and its **Parts** tab. It says **Parts not checked** and offers **Check parts**. Brick Work knows the part list but not yet what you hold.
 
 ## 6. Check its parts
@@ -59,7 +59,7 @@ The page now reads **Added 1 item** and shows a progress bar while the copy is m
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="../img/tutorials/tut-inspect-part-phone-390-dark.png"><img src="../img/tutorials/tut-inspect-part-phone-390-light.png" alt="Set Inspector on a phone: a red sloped brick, 2x, with Found 2, Missing, Back, Skip for later and Undo" loading="lazy" width="300"></picture>
 
-4. Keep going. Every answer saves as you go, so you can close the page and pick the check up again from **Workbench › Set Inspector**, where the copy sits under **In progress**.
+4. Keep going. Every answer saves as you go, so you can close the page and pick the check up again from **Workbench → Set Inspector**, where the copy sits under **In progress**.
 5. If the set has minifigures, they come after the parts as a **Figure review**. If it has spare parts, you are asked **Include spare parts?**. Spares are never counted as missing.
 6. After the last part, the end of the check shows three steps: **1 Skipped**, **2 Missing**, **3 Save**. Work through them: **Check the N skipped parts** or **Leave them unchecked**, then read **Missing so far**.
 
@@ -71,12 +71,12 @@ All the buttons, the keyboard keys and the variants are in [Check a set's parts]
 
 ## 7. See what is missing and where it shows up
 
-1. Go back to your set under **Collection › Sets**. Under **Consists of**, the **Parts** tab now has a line such as **19 parts missing, 8 in loose stock**, a bar with **340 of 359 parts present** and each missing part as a card with **Found 1**. (The numbers are from the invented demo.)
-2. Open **Planning › Complete sets**. It lists every copy with recorded gaps, here yours. It ranks them by what a repair is worth and offers the missing parts as a BrickLink XML export or a printable list. This is the page for deciding what to buy or fix first.
+1. Go back to your set under **Collection → Sets**. Under **Consists of**, the **Parts** tab now has a line such as **19 parts missing, 8 in loose stock**, a bar with **340 of 359 parts present** and each missing part as a card with **Found 1**. (The numbers are from the invented demo.)
+2. Open **Planning → Complete sets**. It lists every copy with recorded gaps, here yours. It ranks them by what a repair is worth and offers the missing parts as a BrickLink XML export or a printable list. This is the page for deciding what to buy or fix first.
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="../img/tutorials/tut-complete-sets-phone-390-dark.png"><img src="../img/tutorials/tut-complete-sets-phone-390-light.png" alt="Planning, Complete sets: copies with recorded gaps, ranked by what a repair is worth, each with Pin and Details" loading="lazy" width="300"></picture>
 
-3. Open **Workbench › Part Runner**. Under **Pick for which sets?** it lists the same copy with the number of parts it is missing, if any. This is where you go to pull missing parts from your drawers.
+3. Open **Workbench → Part Runner**. Under **Pick for which sets?** it lists the same copy with the number of parts it is missing, if any. This is where you go to pull missing parts from your drawers.
 
 The missing counts you recorded are what these pages, **Matchmaker** and the exports work from. If you checked every part and none was missing, the set shows no gaps. The copy then becomes **Complete** because you ticked **Set is checked**.
 

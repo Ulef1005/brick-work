@@ -243,7 +243,7 @@ def load_subsets(db, set_item_id, set_number, reply, *, job_id=None, events=None
             raise InventoryError(f'item {set_item_id} is a {row["kind"]}, not a set')
         record = fetched.store_source_record(db, source='bricklink', kind='subsets', key=set_number, payload=reply, job_id=job_id)
         loader = _Loader(db, set_item_id, set_number, events)
-        parts, figures = [], []
+        parts, figures, figures_as_parts = [], [], set()
         for number, colour, spare, q in parsed.part_lines:
             rb, key = loader.colour(colour)
             parts.append((loader.item('P', number, key, parsed.names.get(('P', number), number)), rb, spare, q))
@@ -251,11 +251,13 @@ def load_subsets(db, set_item_id, set_number, reply, *, job_id=None, events=None
             item = loader.item('M', number, None, parsed.names.get(('M', number), number))
             if db.execute('SELECT kind FROM main.item WHERE id=?', (item,)).fetchone()[0] == 'part':
                 parts.append((item, 1, 0, q))              # #150: a figure the catalogue knows as a part is a part line, in no colour
+                figures_as_parts.add(number)
             else:
                 figures.append((item, q))
         fid = fetched.write_fetched(db, set_item_id, 'bricklink', parts, figures, job_id=job_id, source_record_id=record, events=events)
         seq, digest = db.execute('SELECT seq, digest FROM main.fetched_inventory WHERE id=?', (fid,)).fetchone()
-        digest_bl = bl_digest(parsed.bl_lines)
+        # The catalogue projects such a figure as a P line in no colour, so the digest hashes that line, not the M line (#239).
+        digest_bl = bl_digest([('P', l[1], None, l[3], l[4]) if l[0] == 'M' and l[1] in figures_as_parts else l for l in parsed.bl_lines])
         version = None
         if has_catalogue(db):
             hit = db.execute('SELECT version FROM catalogue.inventory WHERE item_id=? AND bl_digest=? ORDER BY is_latest DESC, version DESC',

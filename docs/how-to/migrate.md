@@ -34,3 +34,5 @@ Choose **Choose a file**, which opens **Add** with **File** selected. A file can
 ## By hand
 
 **Add a set** opens **Add**: search by number or name, paste a list of numbers, take a photo, or add from an order.
+
+Step 1, **Find and select**, runs top to bottom: the four ways to find (**Search**, **Paste**, **File**, **Photo**), the field or file for the one you chose, then **What** you are adding and **Where** it goes (**Owned**, **Loose** or **Wishlist**), then the results, then the **Review** button. On a wide screen **What** and **Where** share one row; on a phone they stack.

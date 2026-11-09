@@ -3,7 +3,7 @@
     python scripts/build_site.py OUT_DIR
 
 Pages: `/` the landing page, `/use-cases/` and `/workflows/` (Markdown in scripts/site), `/docs/` the user docs, `/demo/` the static demo (scripts/build_demo.py), `/api/` the OpenAPI contract as one local reference page, `/mcp/` the MCP
-guide with the tool and resource tables generated from the server itself, `/changelog/` CHANGELOG.md, and `/design/` the ADRs and the
+guide with the tool and resource tables generated from the server itself, `/changelog/` CHANGELOG.md, `/llms.txt` the facts for AI assistants (scripts/site/llms.md), and `/design/` the ADRs and the
 4.0 data-model design (docs/adr, docs/data-model-4.0), one page per file. The user docs are built by
 Zensical from docs/ and mkdocs.yml (App Standard, Maintenance § Rules, User docs); the other pages are
 Markdown rendered with Python-Markdown, styled with the app's own design tokens and fonts. Links to files
@@ -210,6 +210,15 @@ def build_design(out):
     (out / 'design/index.html').write_text(page('Design', render(index), 1, current='Design'))
 
 
+def llms_txt():
+    """/llms.txt (llmstxt.org) from scripts/site/llms.md: the facts an AI assistant is most often asked, with the release's version
+    filled in and every repository link turned into the raw Markdown file on GitHub, which an assistant reads best."""
+    from brickwork.version import __version__
+    text = (SITE / 'llms.md').read_text().replace('{version}', __version__).replace('{repository}', repository())
+    raw = f'https://raw.githubusercontent.com/{repository()}/main/'
+    return re.sub(r'\]\((?!https?://|#)([^)\s]+)\)', lambda m: f']({raw}{m[1]})', text)
+
+
 def build(out):
     out = Path(out)
     if out.exists():
@@ -261,6 +270,7 @@ def build(out):
     for directory in sorted((out / 'demo').rglob('*'), key=lambda p: len(p.parts), reverse=True):
         if directory.is_dir() and unquote(directory.name) != directory.name:
             directory.rename(directory.with_name(unquote(directory.name)))
+    (out / 'llms.txt').write_text(llms_txt())
     (out / '.nojekyll').write_text('')
     return out
 

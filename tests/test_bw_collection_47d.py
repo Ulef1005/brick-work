@@ -100,7 +100,7 @@ def test_set_controls_match_1c_structure(world, client):
     sort = root.select_one('[data-bc-sort-panel]')
     assert 'bc-collection-sheet' in sort['class']
     assert sort.select_one('[data-bc-sort-pick=used_price]').get_text(strip=True).startswith('Used price')
-    assert [o['value'] for o in sort.select('[data-bc-sort] option')] == ['number','name','year','missing','used_price']
+    assert [o['value'] for o in sort.select('[data-bc-sort] option')] == ['number','name','year','missing','used_price','added']   # added: #226
     assert root.select_one('[data-bc-sheet-scrim]')
 
 

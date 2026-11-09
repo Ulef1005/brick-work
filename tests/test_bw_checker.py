@@ -276,6 +276,19 @@ def test_a_copy_without_spares_has_no_spare_step(coll):
         mutate(db, copy, 'spares', include=False)
 
 
+def test_a_listed_miss_keeps_its_place_in_missing_so_far(coll, copy):
+    # #213: Found 1 on an entry of the sidebar moved it to the top of the list; a part already listed keeps its place.
+    db = coll.db
+    state = start(db, copy)
+    first, second = [r for r in state['rows'] if r['kind'] == 'part' and (r['quantity'] or 0) >= 2][:2]
+    mutate(db, copy, 'answer', token=first['token'], found=0)
+    saved = mutate(db, copy, 'answer', token=second['token'], found=0)
+    assert saved['session']['misses'] == [second['token'], first['token']]   # a new miss goes on top
+    again = mutate(db, copy, 'found_one', token=first['token'])
+    assert next(r for r in again['rows'] if r['token'] == first['token'])['missing'] == first['quantity'] - 1
+    assert again['session']['misses'] == [second['token'], first['token']]
+
+
 def test_normalise_drops_spare_answers_and_misses_until_yes():
     s = dict(order=['p:1', 'p:2'], cursor=2, answers={'p:1': 'answered', 'p:2': 'answered'}, misses=['p:2', 'p:1'], spares=None)
     kinds = {'p:1': 'part', 'p:2': 'spare', 'p:9': 'part'}
@@ -450,6 +463,154 @@ def test_the_checked_status_decides_the_chooser_section(coll, copy, client):
     assert soup.select_one('[data-filter] option[selected]')['value'] == 'unchecked'
     assert soup.select_one('[data-check-sort] option')['value'] == 'largest'
     assert soup.select_one('[data-check-all-fallback]') is not None
+
+
+def mark_missing(db, copy_id, token, missing):
+    checker.mark(db, copy_id, [(token, dict(missing=missing))])
+
+
+def test_a_missing_only_run_walks_the_missing_parts_and_keeps_every_other_answer(coll, copy):
+    db = coll.db
+    state = start(db, copy)
+    answer_all(db, copy, state)
+    part = next(r for r in state['rows'] if r['kind'] == 'part' and r['quantity'] == 4)
+    other = next(r for r in state['rows'] if r['kind'] == 'part' and r['quantity'] == 2)
+    mark_missing(db, copy, part['token'], 3)
+    with pytest.raises(ValueError, match='Choose what to check'):
+        mutate(db, copy, 'restart', scope='nothing')
+    mutate(db, copy, 'restart', scope='missing')
+    s = checker.session(db, copy)
+    assert s['order'] == [part['token']] and s['scope'] == 'missing' and s['spares'] == 'no' and s['misses'] == []
+    assert s['answers'][other['token']] == 'answered' and part['token'] not in s['answers']        # the others keep theirs
+    assert checker.view(db, copy)['session']['order'] == [part['token']]                          # nothing joins a chosen walk
+    saved = mutate(db, copy, 'answer', token=part['token'], found=3)
+    assert saved['progress'] == dict(found=0, missing=1, skipped=0, remaining=0)                  # counts are the walked parts only
+    done = mutate(db, copy, 'finish', checked=False)
+    assert done['session']['finished'] and done['session']['scope'] == 'missing'
+    # a plain start after it is a whole-set check again
+    assert checker.view(db, copy)['session']['finished']
+    again = start(db, copy)
+    assert again['session']['scope'] is None and len(again['session']['order']) == 3
+
+
+def test_a_missing_only_start_with_nothing_missing_is_refused_and_replaces_a_running_check(coll, copy):
+    db = coll.db
+    state = start(db, copy)
+    with pytest.raises(ValueError, match='No part is missing'):
+        mutate(db, copy, 'restart', scope='missing')
+    part = next(r for r in state['rows'] if r['kind'] == 'part' and r['quantity'] == 4)
+    mark_missing(db, copy, part['token'], 1)
+    before = checker.session(db, copy)['id']
+    assert checker.write(db, copy, dict(action='start', operation=uuid.uuid4().hex))['session']['id'] == before      # a repeat of the same start changes nothing
+    saved = checker.write(db, copy, dict(action='start', scope='missing', operation=uuid.uuid4().hex))
+    assert saved['session']['id'] != before and saved['session']['scope'] == 'missing'
+    mutate(db, copy, 'undo')
+    assert checker.session(db, copy)['id'] == before                                              # Undo brings the earlier check back
+
+
+def test_skipped_parts_are_walked_again_and_found_one_still_reaches_the_misses(coll, copy):
+    db = coll.db
+    state = start(db, copy)
+    parts = [r for r in state['rows'] if r['kind'] == 'part']
+    mutate(db, copy, 'answer', token=parts[0]['token'], found=0)
+    mutate(db, copy, 'skip', token=parts[1]['token'])
+    mutate(db, copy, 'skip', token=next(r['token'] for r in state['rows'] if r['kind'] == 'figure'))
+    with pytest.raises(ValueError, match='Choose skipped parts'):
+        mutate(db, copy, 'recheck', tokens=[parts[0]['token']])
+    saved = mutate(db, copy, 'recheck', tokens=[parts[1]['token']])
+    assert saved['session']['order'] == [parts[1]['token']] and saved['session']['scope'] == 'skipped' and saved['session']['cursor'] == 0
+    assert saved['session']['answers'][parts[0]['token']] == 'answered'                          # the others keep their answers
+    mutate(db, copy, 'found_one', token=parts[0]['token'])                                         # a miss outside the narrowed walk
+    assert db.execute('SELECT missing FROM copy_part WHERE id=?', (parts[0]['id'],)).fetchone()[0] == parts[0]['quantity'] - 1
+    mutate(db, copy, 'answer', token=parts[1]['token'], found=parts[1]['quantity'])
+    everything = mutate(db, copy, 'recheck')
+    assert everything['session']['order'] == [next(r['token'] for r in state['rows'] if r['kind'] == 'figure')]
+    mutate(db, copy, 'undo')
+    assert checker.session(db, copy)['order'] == [parts[1]['token']]
+    answered = mutate(db, copy, 'answer', token=parts[1]['token'], found=parts[1]['quantity'])
+    with pytest.raises(ValueError, match='Nothing is skipped|Choose skipped'):
+        mutate(db, copy, 'recheck', tokens=[parts[1]['token']])
+    assert answered['session']['answers'][parts[1]['token']] == 'answered'
+
+
+def test_a_missing_only_run_stays_one_through_a_skipped_walk_and_counts_its_members(coll, copy):
+    db = coll.db
+    state = start(db, copy)
+    answer_all(db, copy, state)
+    parts = [r for r in state['rows'] if r['kind'] == 'part']
+    for r in parts:
+        mark_missing(db, copy, r['token'], 1)
+    mutate(db, copy, 'restart', scope='missing')
+    mutate(db, copy, 'answer', token=parts[0]['token'], found=parts[0]['quantity'] - 1)
+    mutate(db, copy, 'skip', token=parts[1]['token'])
+    saved = mutate(db, copy, 'recheck')
+    assert saved['session']['scope'] == 'missing' and saved['session']['order'] == [parts[1]['token']]
+    assert saved['progress'] == dict(found=0, missing=1, skipped=1, remaining=0)                  # both walked parts still count
+    assert checker.view(db, copy)['session']['members'] == [parts[0]['token'], parts[1]['token']]
+
+
+def test_review_of_a_part_outside_a_narrowed_walk_joins_the_walk(coll, copy):
+    db = coll.db
+    state = start(db, copy)
+    parts = [r for r in state['rows'] if r['kind'] == 'part']
+    figure = next(r for r in state['rows'] if r['kind'] == 'figure')
+    mutate(db, copy, 'answer', token=parts[0]['token'], found=parts[0]['quantity'])
+    mutate(db, copy, 'skip', token=parts[1]['token'])
+    mutate(db, copy, 'skip', token=figure['token'])
+    mutate(db, copy, 'recheck', tokens=[parts[1]['token']])
+    saved = mutate(db, copy, 'select', token=figure['token'])
+    assert saved['session']['order'] == [parts[1]['token'], figure['token']] and saved['session']['cursor'] == 1
+    spare = next(r for r in state['rows'] if r['kind'] == 'spare')
+    with pytest.raises(ValueError, match='Choose a part'):
+        mutate(db, copy, 'select', token=spare['token'])                                          # spares stay out until asked for
+
+
+def test_a_plain_start_resumes_a_skipped_walk_and_only_a_named_scope_replaces_it(coll, copy):
+    db = coll.db
+    state = start(db, copy)
+    part = next(r for r in state['rows'] if r['kind'] == 'part')
+    mutate(db, copy, 'skip', token=part['token'])
+    mutate(db, copy, 'recheck')
+    running = checker.session(db, copy)
+    assert running['scope'] == 'skipped'
+    resumed = checker.write(db, copy, dict(action='start', operation=uuid.uuid4().hex))
+    assert resumed['session']['id'] == running['id'] and resumed['session']['scope'] == 'skipped'          # a reload does not lose it
+    replaced = checker.write(db, copy, dict(action='start', scope='all', operation=uuid.uuid4().hex))
+    assert replaced['session']['id'] != running['id'] and replaced['session']['scope'] is None
+
+
+def test_found_one_outside_a_check_lowers_the_missing_count_with_an_undo(coll, copy, client):
+    db = coll.db
+    state = start(db, copy)
+    part = next(r for r in state['rows'] if r['kind'] == 'part' and r['quantity'] == 4)
+    mark_missing(db, copy, part['token'], 2)
+    token = csrf(client)
+    url = '/collection/save/found-one'
+    done = client.post(url, json=dict(copy_id=copy, token=part['token'], csrf_token=token))
+    assert done.status_code == 200 and done.json['message'] == 'Found 1'
+    assert db.execute('SELECT missing,checked FROM copy_part WHERE id=?', (part['id'],)).fetchone()[0] == 1
+    client.post('/collection/save/undo', json=dict(event_id=done.json['event_id'], csrf_token=token))
+    assert db.execute('SELECT missing FROM copy_part WHERE id=?', (part['id'],)).fetchone()[0] == 2
+    mark_missing(db, copy, part['token'], 0)
+    refused = client.post(url, json=dict(copy_id=copy, token=part['token'], csrf_token=token))
+    assert refused.status_code == 400 and 'not missing' in refused.json['message']
+    assert client.post(url, json=dict(copy_id=copy, token='x:1', csrf_token=token)).status_code == 400
+
+
+def test_the_set_page_offers_found_one_and_check_missing_only_for_a_copy_with_missing_parts(coll, copy, client):
+    db = coll.db
+    state = start(db, copy)
+    item = db.execute('SELECT item_id FROM copy WHERE id=?', (copy,)).fetchone()[0]
+    url = f'/collection/item/{item}?copy={copy}'
+    html = client.get(url).get_data(as_text=True)
+    assert 'Check missing only' not in html and 'data-bc-found-one' not in html
+    part = next(r for r in state['rows'] if r['kind'] == 'part' and r['quantity'] == 4)
+    mark_missing(db, copy, part['token'], 2)
+    html = client.get(url).get_data(as_text=True)
+    assert html.count('data-bc-found-one') == 1 and 'Check missing only' in html and 'name="scope" value="missing"' in html
+    token = csrf(client)
+    started = client.post(f'/workbench/check-parts/{copy}', data={'csrf_token': token, 'action': 'start', 'scope': 'missing'})
+    assert started.status_code == 302 and checker.session(db, copy)['scope'] == 'missing'
 
 
 def test_checker_runtime():

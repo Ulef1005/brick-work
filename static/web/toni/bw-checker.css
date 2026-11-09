@@ -140,3 +140,21 @@
 .check-order input:focus-visible+span { outline:2px solid var(--tw-accent);outline-offset:2px; }
 @media(max-width:1023px) { #bw-checker[data-landing=true] .check-start { grid-template-columns:minmax(0,1fr); }.check-start-help { grid-column:auto; } }
 @media(max-width:767px) { .check-copy-header { gap:16px;align-items:center; }.check-copy-header .check-picture { width:96px;height:72px; }.check-copy-header h1 { font-size:24px;line-height:30px; }.check-order span { font-size:12px;padding:0 4px; } }
+
+/* #214 · the end of a check is three steps; #222 · the missing-only tag. */
+#bw-checker .check-progress { width:100%;box-sizing:border-box; }
+#bw-checker .check-steps { display:flex;flex-wrap:wrap;gap:8px 24px;list-style:none;margin:24px 0 8px;padding:0; }
+#bw-checker .check-step { display:inline-flex;align-items:center;gap:8px;font:500 15px var(--tw-font);color:var(--tw-text-muted); }
+#bw-checker .check-step-n { display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;border:1px solid var(--tw-divider-strong);font:500 12px var(--tw-mono); }
+#bw-checker .check-step[data-state=current] { color:var(--tw-text); }
+#bw-checker .check-step[data-state=current] .check-step-n { border-color:var(--tw-accent);color:var(--tw-accent-text); }
+#bw-checker .check-step[data-state=done] .check-step-n { background:var(--tw-accent-soft);border-color:var(--tw-accent);color:var(--tw-accent-text); }
+#bw-checker .check-skipped-choice { display:flex;flex-wrap:wrap;gap:12px;margin-block:20px 32px; }
+#bw-checker .check-skipped-choice button:not(.bw-primary) { background:transparent;border:1px solid var(--tw-accent);color:var(--tw-accent-text);min-height:56px;padding:0 20px;font:600 16px var(--tw-font);border-radius:10px; }
+#bw-checker .check-skipped-choice button.bw-primary { padding:0 20px; }
+#bw-checker .check-next-step { opacity:.45;pointer-events:none; }
+#bw-checker .check-scope-tag { display:inline-flex;align-items:center;margin-left:12px;padding:2px 10px;border:1px solid var(--tw-accent);border-radius:999px;color:var(--tw-accent-text);font:500 13px/20px var(--tw-font);vertical-align:middle; }
+@media(max-width:767px) { #bw-checker .check-skipped-choice button { width:100%; } #bw-checker .check-step { font-size:14px; } }
+#bw-checker { width:100%;box-sizing:border-box; }
+/* #214 · an empty segment takes no room (it kept ~64 px and stopped the bar short of the full width). */
+#bw-checker .check-segment.empty { display:none; }

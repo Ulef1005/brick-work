@@ -3,6 +3,10 @@
 #bw-planning [data-bp-message]:empty,
 #bw-planning details:not([open]) > :not(summary) { display:none!important; }
 #bw-planning label { display:flex;flex-direction:column;gap:8px; }
+/* #224: the save status and its Undo on one line, as the checker's save feedback; nothing while there is no message */
+#bw-planning .bp-save-feedback { display:flex;align-items:center;flex-wrap:wrap;gap:8px; }
+#bw-planning .bp-save-feedback:has([data-bp-message]:empty):has([data-bp-undo][hidden]) { display:none; }
+#bw-planning .bp-save-feedback p { margin:0; }
 #bw-planning .bp-row label,#bw-planning .bp-settings label { min-width:0; }
 #bw-planning input:not([type=checkbox]),#bw-planning select { min-height:44px;max-width:100%; }
 #bw-planning input[type=checkbox] { width:24px;height:24px;flex:none; }

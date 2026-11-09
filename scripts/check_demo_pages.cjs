@@ -4,13 +4,13 @@
 
 PAGES.json is a list of paths under BASE_URL. Each page is loaded once per colour scheme; pictures are made eager, then the page must settle (fonts ready,
 every stylesheet loaded, every img complete) within 15 s, and then: no `img` of a picture (/manage/images/) may have naturalWidth 0, every
-<link rel=stylesheet> must have a sheet with rules, and a demo picture note must stay inside its tile (#197). Prints one line per failure and a summary;
+<link rel=stylesheet> must have a sheet with rules, and a demo picture note must sit in a picture box of at least 120 px and stay inside it (#197). Prints one line per failure and a summary;
 exit 1 on any failure. */
 const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),{spawn}=require('node:child_process');
 const [chrome,base,pagesFile]=process.argv.slice(2);
 const pages=JSON.parse(fs.readFileSync(pagesFile,'utf8'));
 const profile=fs.mkdtempSync(path.join(os.tmpdir(),'bw-sweep-'));
-const child=spawn(chrome,[...(process.env.BW_CHROME_NO_SANDBOX?['--no-sandbox']:[]),'--headless','--disable-background-networking','--hide-scrollbars','--remote-debugging-port=0','--user-data-dir='+profile,'about:blank'],{stdio:['ignore','ignore','pipe']});
+const child=spawn(chrome,[...(process.env.BW_CHROME_NO_SANDBOX?['--no-sandbox']:[]),'--headless','--disable-background-networking','--hide-scrollbars','--remote-debugging-port=0','--user-data-dir='+profile,'about:blank'],{stdio:['ignore','ignore','ignore']});
 const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const probe=`(async()=>{
  await (document.fonts?document.fonts.ready:null);
@@ -22,7 +22,7 @@ const probe=`(async()=>{
  if(pending())problems.push('page did not settle');
  for(const l of document.querySelectorAll('link[rel=stylesheet]')){let n=0;try{n=l.sheet?l.sheet.cssRules.length:0}catch(e){n=-1}if(!l.sheet||n===0)problems.push('stylesheet '+l.getAttribute('href'));}
  for(const i of document.images)if((i.getAttribute('src')||'').includes('/manage/images/')&&(!i.complete||i.naturalWidth===0))problems.push('picture '+i.getAttribute('src'));
- for(const n of document.querySelectorAll('.bw-demo-picture-note')){const t=n.closest('.bc-picture,.bw-picture,.check-picture,.scan-tile'),r=document.createRange();r.selectNodeContents(n);const a=r.getBoundingClientRect();if(!t){if(a.width)problems.push('picture note outside a picture box (#197)');continue;}const b=t.getBoundingClientRect();if(a.width&&(a.top<b.top-1||a.bottom>b.bottom+1||a.left<b.left-1||a.right>b.right+1))problems.push('picture note overflows its picture box (#197): '+(t.dataset.itemNo||t.getAttribute('class')||t.tagName));}
+ for(const n of document.querySelectorAll('.bw-demo-picture-note')){const t=n.closest('.bc-picture,.bw-picture,.check-picture,.scan-tile'),r=document.createRange();r.selectNodeContents(n);const a=r.getBoundingClientRect();if(!t){if(a.width)problems.push('picture note outside a picture box (#197)');continue;}const b=t.getBoundingClientRect();if(b.width<120)problems.push('picture note in a box under 120 px (#197): '+(t.getAttribute('class')||t.tagName));if(a.width&&(a.top<b.top-1||a.bottom>b.bottom+1||a.left<b.left-1||a.right>b.right+1))problems.push('picture note overflows its picture box (#197): '+(t.dataset.itemNo||t.getAttribute('class')||t.tagName));}
  return JSON.stringify({problems,images:document.images.length,sheets:document.styleSheets.length});
 })()`;
 (async()=>{

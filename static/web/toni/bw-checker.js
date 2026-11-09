@@ -4,7 +4,9 @@
   const clone = value => JSON.parse(JSON.stringify(value));
   function progress(state) {
     const counts = {found:0, missing:0, skipped:0, remaining:0};
-    for (const r of state.rows.filter(r => r.kind !== 'spare')) {
+    // #222: a missing-only run counts the parts it walks, as the server's progress does.
+    const walked = state.session?.scope === 'missing' ? new Set(state.session.members || state.session.order) : null;
+    for (const r of state.rows.filter(r => r.kind !== 'spare' && (!walked || walked.has(r.token)))) {
       const answer = state.session?.answers[r.token];
       if (!answer) counts.remaining++;
       else if (answer === 'skipped') counts.skipped++;
@@ -30,11 +32,16 @@
     if (['answer','found_one'].includes(payload.action)) {
       const found = payload.action === 'found_one' ? r.quantity - (r.missing || 0) + 1 : payload.found;
       r.missing = r.quantity - found; r.checked = 1; s.answers[r.token] = 'answered';
-      if (r.missing) s.misses = [r.token, ...s.misses.filter(t => t !== r.token)];
+      if (r.missing && !s.misses.includes(r.token)) s.misses = [r.token, ...s.misses];
       if (payload.action === 'answer') s.cursor = Math.min(s.order.indexOf(r.token)+1, s.order.length);
+    } else if (payload.action === 'recheck') {
+      // #214: walk the skipped parts (or the named ones) in the part view; the server's order replaces this one once the save returns.
+      const place = new Map(state.rows.map((x, i) => [x.token, i]));
+      const skipped = state.rows.filter(x => x.kind !== 'spare' && s.answers[x.token] === 'skipped').map(x => x.token);
+      s.order = (payload.tokens || skipped).slice().sort((a, b) => place.get(a) - place.get(b)); s.cursor = 0; if (s.scope !== 'missing') s.scope = 'skipped';
     } else if (payload.action === 'skip') {
       s.answers[r.token] = 'skipped'; s.cursor = Math.min(s.order.indexOf(r.token)+1, s.order.length);
-    } else if (payload.action === 'select') s.cursor = s.order.indexOf(r.token);
+    } else if (payload.action === 'select') { if (!s.order.includes(r.token)) s.order.push(r.token); s.cursor = s.order.indexOf(r.token); }
     else if (payload.action === 'back') s.cursor = Math.max(0, s.cursor-1);
     else if (payload.action === 'next') s.cursor = Math.min(s.order.length, s.cursor+1);
     else if (payload.action === 'spares') {
@@ -185,6 +192,32 @@
       const b=button(recovery?'Found 1':'Review',recovery?'found_one':'select',r.token);
       b.disabled=recovery && (!(r.missing>0) || r.quantity===null);n.append(b);return n;
     }
+    const skippedRows=()=>state.rows.filter(r=>r.kind!=='spare'&&state.session.answers[r.token]==='skipped');
+    // #214: the end of a check is three steps, 1 Skipped, 2 Missing, 3 Save; the current one is marked, an earlier one is done.
+    function steps(active) {
+      const nav=el('ol',undefined,'check-steps');nav.setAttribute('aria-label','Steps to finish');
+      [['Skipped · '+skippedRows().length],['Missing · '+state.session.misses.length],['Save']].forEach(([label],i)=>{
+        const n=i+1,li=el('li',undefined,'check-step');li.dataset.state=n<active?'done':n===active?'current':'next';
+        if(n===active)li.setAttribute('aria-current','step');
+        li.append(el('span',String(n),'check-step-n'),el('span',label));nav.append(li);
+      });
+      return nav;
+    }
+    function skippedRow(r) {
+      const n=el('div',undefined,'check-miss');n.append(image(r));const identity=el('div');
+      if(r.kind!=='figure')identity.append(colour(r));identity.append(el('span',r.item_no,'mono'),el('p',nowrapTail(r.name)));
+      n.append(identity,el('span','skipped · '+(r.quantity??'Unknown')+' needed','mono'));
+      n.append(button('Check','check_one',r.token));return n;
+    }
+    function skippedScreen() {
+      const rows=skippedRows(),n=rows.length;
+      stage.append(steps(1),el('h2','Skipped · '+n+(n===1?' entry':' entries')+' not checked yet'),el('p','Check them now, part by part, or leave them unchecked. Unchecked parts keep the copy at Not checked.'));
+      const list=el('div');rows.forEach(r=>list.append(skippedRow(r)));stage.append(list);
+      const choice=el('div',undefined,'check-skipped-choice');
+      choice.append(button('Check the '+n+(n===1?' skipped part':' skipped parts'),'check_skipped',null,true),button('Leave them unchecked','leave_skipped'));stage.append(choice);
+      const next=el('div',undefined,'check-next-step');next.setAttribute('inert','');next.setAttribute('aria-hidden','true');missingList(next);stage.append(next);
+      const nav=el('div',undefined,'actions');nav.append(button('Back','back'),button('Undo last','undo'));stage.append(nav);
+    }
     function missingList(target, finishing=false) {
       target.replaceChildren();
       const misses=state.session.misses.map(t=>state.rows.find(r=>r.token===t)).filter(Boolean);
@@ -221,7 +254,8 @@
         seg.className='check-segment '+kind+(n?'':' empty');seg.style.flexGrow=n;
         if(!segments.includes(seg))strip.append(seg);
       }
-      const legend=p.found+' found · '+p.missing+' missing · '+p.skipped+' skipped · '+p.remaining+' remaining';
+      const legend=s.scope==='missing' ? p.found+' found · '+p.missing+' still missing · '+p.skipped+' skipped · '+p.remaining+' to go · missing parts only'
+        : p.found+' found · '+p.missing+' missing · '+p.skipped+' skipped · '+p.remaining+' remaining';
       root.querySelector('[data-progress]').setAttribute('aria-label',legend);root.querySelector('[data-legend]').textContent=legend;
       stage.replaceChildren();missingList(history);
       if(s.finished) {
@@ -238,10 +272,12 @@
         const nav=el('div',undefined,'actions');nav.append(button('Back','back'),button('Undo last','undo'));stage.append(nav);
         no.autofocus=true;if(no.focus)no.focus({preventScroll:true});return;
       }
-      if(s.cursor>=s.order.length && mode!=='finish')mode='missing';
-      if(mode==='missing') {history.hidden=true;missingList(stage,true);stage.append(button('Back','back'),button('Undo last','undo'));return;}
+      if(s.cursor>=s.order.length && mode!=='finish' && mode!=='missing')mode=skippedRows().length?'skipped':'missing';
+      if(mode==='skipped' && !skippedRows().length)mode='missing';
+      if(mode==='skipped') {history.hidden=true;skippedScreen();return;}
+      if(mode==='missing') {history.hidden=true;missingList(stage,true);stage.prepend(steps(2));stage.append(button('Back','back'),button('Undo last','undo'));return;}
       if(mode==='finish') {
-        history.hidden=false;stage.append(el('h2','Finish'));
+        history.hidden=false;stage.append(steps(3),el('h2','Finish'));
         const unchecked=state.rows.filter(r=>r.kind!=='spare' && s.answers[r.token]!=='answered');
         const missing=state.rows.filter(r=>r.kind!=='spare').reduce((n,r)=>n+(r.missing||0),0);
         stage.append(el('p',missing?missing+' still missing':'Nothing missing'),el('p',unchecked.length+' entries still unchecked'));
@@ -257,8 +293,9 @@
       history.hidden=false;
       const r=state.rows.find(r=>r.token===s.order[s.cursor]);if(!r){stage.append(el('p','This inventory changed. Reload to continue.'));return;}
       if(current!==r.token){count=r.quantity;current=r.token;}
-      const heading=r.kind==='figure'?'Figure review':r.kind==='spare'?'Spare pass · optional · not counted':'Part '+(s.cursor+1)+' of '+s.order.length;
-      stage.append(el('h2',heading));const layout=el('div',undefined,'check-answer-layout');layout.append(image(r));const identity=el('div',undefined,'check-identity');
+      const missingRun=s.scope==='missing'&&r.kind!=='spare';
+      const heading=r.kind==='figure'?'Figure review':r.kind==='spare'?'Spare pass · optional · not counted':(missingRun?'Missing part ':'Part ')+(s.cursor+1)+' of '+s.order.length;
+      const title=el('h2',heading);if(missingRun)title.append(el('span','Missing only','check-scope-tag'));stage.append(title);const layout=el('div',undefined,'check-answer-layout');layout.append(image(r));const identity=el('div',undefined,'check-identity');
       if(r.kind!=='figure')identity.append(colour(r));
       const name=(r.name||'').trim();
       identity.append(el('h2',nowrapTail(name||r.item_no)));
@@ -267,7 +304,7 @@
       identity.append(quantity);
       if(r.parent_minifig)identity.append(el('p','Figure parts · '+r.parent_minifig));
       if(r.unresolved){const a=el('a','Unresolved · review in Tools & Admin');a.href=root.dataset.unresolvedUrl;identity.append(a);}
-      identity.append(el('p',s.answers[r.token]==='answered'?'Recorded · '+r.missing+' missing':s.answers[r.token]==='skipped'?'Skipped · still unchecked':'Not answered yet'));
+      identity.append(el('p',s.answers[r.token]==='answered'?'Recorded · '+r.missing+' missing':s.answers[r.token]==='skipped'?'Skipped · still unchecked':missingRun?'Missing since the last check: '+r.missing+' of '+r.quantity:'Not answered yet'));
       const stepper=el('div',undefined,'check-stepper');const minus=button('−','decrease'),found=button('Found '+(count??'?'),'answer',r.token,true),plus=button('+','increase');
       minus.setAttribute('aria-label','Found count, '+count+', decrease');plus.setAttribute('aria-label','Found count, '+count+', increase');
       minus.disabled=count===null||count<=0;plus.disabled=count===null||count>=r.quantity;found.disabled=count===null;stepper.append(minus,found,plus);identity.append(stepper);
@@ -301,17 +338,19 @@
     } catch(error){status.textContent='Local storage is unavailable. Enable storage and reload before checking.';return;}
     function action(name,token) {
       if(!state.session)return;
-      root.dataset.direction=['back','undo'].includes(name)?'back':['answer','missing','skip','next','select'].includes(name)?'forward':'none';
+      root.dataset.direction=['back','undo'].includes(name)?'back':['answer','missing','skip','next','select','check_skipped','check_one'].includes(name)?'forward':'none';
       if(name==='finish_view'){mode='finish';render();return;}
       if(name==='missing_view'){mode='missing';render();return;}
       if(name==='image_retry'){render();return;}
       if(name==='decrease'||name==='increase'){count=Math.max(0,Math.min(state.rows.find(r=>r.token===current).quantity,count+(name==='increase'?1:-1)));render();return;}
+      if(name==='leave_skipped'){mode='missing';render();return;}
       if(name==='back'&&mode==='finish'){mode='missing';render();return;}
       if(name==='back')mode='part';
       if(name==='select')mode='part';
       const payload={action:name,token:token||current,operation:crypto.randomUUID(),session:state.session.id};
       if(name==='missing'){payload.action='answer';payload.found=0;}
       if(name==='answer')payload.found=count;
+      if(name==='check_skipped'||name==='check_one'){payload.action='recheck';payload.token=null;if(name==='check_one')payload.tokens=[token];mode='part';}
       if(name==='spares_yes'||name==='spares_no'){payload.action='spares';payload.include=name==='spares_yes';mode='part';}
       if(name==='finish'&&!figureMode)payload.checked=!!root.querySelector('#set-checked')?.checked;
       const prior=clone(state);

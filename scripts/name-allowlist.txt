@@ -1,7 +1,6 @@
 # path glob	allowed regex span	reason
 LICENSE	[\s\S]*	Upstream MIT attribution, preserved verbatim.
-CHANGELOG.md	BrickTracker cache files|upstream BrickTracker project|(?<=`)/house(?=/)	Brick Work history names the retained importer cache source, the upstream project credit and one old path.
-docs/upstream-CHANGELOG.md	[\s\S]*	Upstream release history, preserved verbatim.
+CHANGELOG.md	BrickTracker cache files|upstream BrickTracker project|gitea\.baerentsen\.space/FrederikBaerentsen/BrickTracker|(?<=`)/house(?=/)	Brick Work history names the retained importer cache source, the upstream project credit and one old path.
 README.md	\[BrickTracker\]\(https://gitea\.baerentsen\.space/FrederikBaerentsen/BrickTracker\)|Import from BrickTracker	Upstream credit and the retained importer name.
 brickwork/core/importer/*	\b(?:idx_)?bricktracker(?:_[a-z0-9_]*)?\b|BrickTracker|\bhouse_loose_transfers\b	Read-only importer module: historical source schema identifiers.
 tests/importer/*	\bbricktracker(?:_[a-z0-9_]*)?\b|\bhouse_loose_transfers\b	Importer tests and synthetic historical source schemas.

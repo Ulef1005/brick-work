@@ -87,7 +87,7 @@ def install(app):
         return Markup(f'src="{base}?w=320" srcset="{base}?w=320 320w, {base}?w=640 640w" '
                       f'sizes="{escape(sizes)}" data-full="{base}"')
 
-    env.globals.update(bw_picture_attrs=picture_attrs, bw_price_order=bw_price_order, bw_age=bw_age, bw_defects=defects, toni_template=toni_template, toni_icon=icon, bw_static=bw_static,
+    env.globals.update(bw_picture_attrs=picture_attrs, bw_price_order=bw_price_order, bw_age=bw_age, bw_defects=defects, toni_template=toni_template, toni_icon=icon, bw_static=bw_static, bw_noun=bw_noun,
                        toni_link=local_link, toni_date=date_value, toni_asset=local_asset, toni_json=json.loads,
                        toni_ratio=ratio, toni_difference=difference, toni_nowrap_tail=nowrap_tail, toni_part_name=part_name, toni_money=money, toni_short_date=short_date, toni_stamp=short_stamp,
                        toni_source=source_label, toni_source_line=source_line,
@@ -99,6 +99,18 @@ def install(app):
         return dict(toni_navigation=groups, toni_active_group=active, tools_navigation=tools_navigation())
 
     app.context_processor(shell_context)
+
+
+# The nouns of a collection list, the same as singularNoun and listNoun in static/web/toni/bw-collection.js,
+# so the page reads the same before and after the script runs.
+_LIST_NOUNS = {'S': ('set', 'sets'), 'M': ('minifigure', 'minifigures'), 'P': ('part', 'parts'), 'I': ('booklet', 'booklets'),
+               'O': ('box', 'boxes'), 'G': ('gear', 'gear'), 'B': ('book', 'books'), 'C': ('catalog', 'catalogs'),
+               '?': ('item', 'unresolved items'), 'wish': ('wish', 'wishes')}
+
+
+def bw_noun(kind, count):
+    one, many = _LIST_NOUNS.get(kind, ('result', 'results'))
+    return one if count == 1 else many
 
 
 def bw_static(filename):

@@ -701,7 +701,8 @@ def detail(db, item_id, *, colour=None, copy_id=None, stock_id=None, wish_id=Non
         checked=sum(p['quantity'] or 0 for p in required if p.get('checked')), can_take=sum(p['can_take'] for p in required),
         different=len({(p['item_id'], p.get('color_id')) for p in required}),
         lines=len(required), checked_lines=sum(bool(p.get('checked')) for p in required),
-        check_recorded=check_recorded, spare_lines=spare_lines)
+        check_recorded=check_recorded, spare_lines=spare_lines,
+        missing_lines=sum(1 for p in consists if not p['spare'] and (p['missing'] or 0) > 0))     # #215: lines a missing-only check would walk
     figures = [p for p in consists if p.get('minifig_no')]
     row['figure_progress'] = dict(total=sum(p['quantity'] or 0 for p in figures),
                                   present=sum(max((p['quantity'] or 0)-(p['missing'] or 0), 0) for p in figures))

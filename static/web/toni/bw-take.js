@@ -7,6 +7,26 @@
   const root = document.querySelector('#bw-collection');
   if (!root) return;
   const receiptKey = 'bw-collection-receipt';
+  // #215 · Found 1 on a missing line: lowers its missing count by one through the same save route, with Undo; loose stock stays.
+  root.querySelectorAll('[data-bc-found-one]').forEach(button => {
+    const note = button.parentElement.querySelector('[data-bc-found-message]');
+    button.addEventListener('click', async () => {
+      if (button.disabled) return;
+      button.disabled = true;
+      if (note) note.textContent = 'Saving';
+      try {
+        const data = {...JSON.parse(button.dataset.identity), csrf_token: root.dataset.csrf};
+        const response = await fetch(root.dataset.saveUrl.replace('ACTION', 'found-one'), {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)});
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || 'Not saved · try again');
+        try { sessionStorage.setItem(receiptKey, JSON.stringify(result)); } catch (_) {}
+        location.reload();
+      } catch (error) {
+        if (note) note.textContent = error.message;
+        button.disabled = false;
+      }
+    });
+  });
   root.querySelectorAll('[data-bc-take]').forEach(box => {
     const max = Number(box.dataset.max), output = box.querySelector('[data-bc-take-value]'),
       go = box.querySelector('[data-bc-take-go]'), note = box.querySelector('[data-bc-take-message]'),

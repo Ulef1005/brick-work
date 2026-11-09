@@ -1800,6 +1800,10 @@ def bw_collection_write(action):
             elif action=='take':
                 event=workbench.take_for_gap(db,data['copy_id'],int(data['item_id']),data.get('color_id'),data['quantity'])
                 message='Took '+str(int(data['quantity']))
+            elif action=='found-one':
+                from ..core import checker
+                event=checker.found_one(db,data['copy_id'],data['token'])
+                message='Found 1'
             elif action=='undo':
                 event=int(data['event_id'])
                 collection.undo(db,event)

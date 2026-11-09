@@ -119,7 +119,7 @@
    "world": "demo",
    "path": "/collection/item/part/3010",
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "14-Instruction-and-box-detail",

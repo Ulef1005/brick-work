@@ -224,6 +224,10 @@ def run_compare(chrome: str) -> tuple[list[str], int, list[str]]:
                         differ.append(f'{label(entry)} {width} {theme}: baseline {baseline.relative_to(ROOT)} is missing')
                         continue
                     diff = DIFFS / entry['screen'] / ('diff-' + baseline.name)
+                    if os.environ.get('BW_GATE_KEEP'):   # keep the captures for inspection (a folder; nothing else reads them)
+                        keep = Path(os.environ['BW_GATE_KEEP']) / entry['screen'] / actual.name
+                        keep.parent.mkdir(parents=True, exist_ok=True)
+                        shutil.copyfile(actual, keep)
                     result = compare_images(baseline, actual, diff)
                     if result['size_differs']:
                         differ.append(f'{label(entry)} {width} {theme}: size {result["sizes"][1]} instead of {result["sizes"][0]}')

@@ -68,6 +68,7 @@ jobs:
           # The gate's captures render in one Chrome process on the runner: with fresh profiles per batch and the test workers beside them, form
           # controls rendered a few hundred pixels differently (PR #261, run 42644303454). Locally the parallel capture stays (scripts/screen_gate.py).
           BW_GATE_WORKERS: "1"
+          BW_GATE_KEEP: build/screen-diffs/kept   # DIAGNOSTIC #254 (temporary): the actual captures, uploaded with the diffs
           DOCS_RANGE: ${{ github.event_name == 'push' && format('{0}..{1}', github.event.before, github.sha) || format('{0}..{1}', github.event.pull_request.base.sha, github.sha) }}
       - name: Upload the screenshot diffs
         if: failure()

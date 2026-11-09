@@ -33,6 +33,11 @@ def test_approved_states_match_their_baselines():
     authoritative = sys.platform.startswith('linux') or os.environ.get('BW_GATE_STRICT') == '1'
     if differ and not authoritative:
         lines.append(f'  advisory on {sys.platform}: the baselines are Linux renders, so only the Linux run (CI) decides (ADR 0022)')
+    # DIAGNOSTIC #254 (temporary): which environment variables differ from the worker's start, and which worker this is.
+    from tests import conftest
+    changed = sorted(k for k in set(os.environ) | set(conftest.START_ENV) if os.environ.get(k) != conftest.START_ENV.get(k))
+    lines.append(f'  diagnostic: worker {os.environ.get("PYTEST_XDIST_WORKER")}, env changed since start: '
+                 + ', '.join(f'{k}={os.environ.get(k)!r} (was {conftest.START_ENV.get(k)!r})' for k in changed if k not in ('PYTEST_CURRENT_TEST',)))
     write_summary(lines)
     print('\n'.join(lines))
     assert checked == len(c['approved'])

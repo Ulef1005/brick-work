@@ -426,7 +426,7 @@
    "world": "demo",
    "path": "/manage/statistics",
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "50-Tools-and-admin-pages",

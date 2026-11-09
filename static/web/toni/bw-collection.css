@@ -866,3 +866,16 @@ main .key-need a:not(.button) { min-height:44px;display:inline-flex;align-items:
 #bw-collection .bc-picture.bc-no-image.bc-hero-picture>.mono { font-size:13px; }
 /* From a tablet down the copy page is one column, as on a phone: the cards need the width. */
 @media(max-width:1023px) { #bw-collection .bc-detail-layout { grid-template-columns:minmax(0,1fr); }#bw-collection .bc-detail-layout>.bc-detail-aside,#bw-collection .bc-detail-layout>.bc-detail-main { grid-column:1;grid-row:auto; } }
+
+/* #215 · Found 1 on a missing card, Check missing only beside Check parts. */
+#bw-collection .bc-check-actions { display:flex;gap:8px;align-items:center;flex:none; }
+#bw-collection .bc-check-actions form { margin:0; }
+#bw-collection .bc-check-actions .bc-outline { min-height:44px;padding:0 16px; }
+#bw-collection .bc-found { grid-column:2;display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:0; }
+#bw-collection .bc-found [data-bc-found-message] { margin:0;font:400 13px var(--tw-mono);color:var(--tw-text-2); }
+#bw-collection .bc-found [data-bc-found-message]:empty { display:none; }
+#bw-collection .bc-found-one { min-height:44px;padding:0 16px;border-radius:10px;border:.5px solid var(--tw-accent);background:none;color:var(--tw-accent-text);font:500 14px var(--tw-font);cursor:pointer; }
+#bw-collection .bc-found-link { min-height:44px;padding:0;border:0;background:none;color:var(--tw-accent-text);font:500 14px var(--tw-font);text-decoration:underline;cursor:pointer; }
+#bw-collection .bc-found button:disabled { opacity:.4;cursor:default; }
+#bw-collection .bc-figure-row .bc-found { flex:1 1 100%; }
+@media(max-width:767px) { #bw-collection .bc-check-actions { flex-wrap:wrap; } }

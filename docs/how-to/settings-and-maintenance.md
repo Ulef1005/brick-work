@@ -2,7 +2,7 @@
 
 *Since 0.6.0.*
 
-Do this to change how Brick Work behaves (the retail country, where pictures come from, how old a price may be), to look after the catalogue and your keys, and to keep the collection healthy. Everything is under **Manage → Tools & Admin**.
+Do this to change how Brick Work behaves (the retail country, where pictures come from, how old a price may be), to look after the catalogue and your keys, and to keep the collection healthy. Everything is under **Manage → Tools & Admin**, which opens with two cards, **Get started** and **Statistics**, followed by the groups of tools.
 
 ## Settings
 
@@ -62,6 +62,10 @@ After a move from 3.3, **Tools & Admin → Migration report** reads the report t
 ## Values
 
 **Values** edits the lists the forms offer: owners, statuses, tags, storage locations and purchase places. Rename a value in place; **Archive** hides it from the forms and keeps what refers to it. A value Brick Work uses itself (such as the status that marks a set as checked) is listed but cannot be renamed or archived. A storage location can only be archived when it holds nothing; its own page, **Open location · moves and Undo**, moves things out and undoes the archive.
+
+## Statistics
+
+**Tools & Admin → Statistics** counts your live copies four ways: by completeness, by theme, by storage and by purchase place. The headline says how many copies are incomplete ("9 of 25 copies are incomplete"), and each chart's title states its point ("Only 5 copies are complete", "Harbour is the biggest theme, 3 copies"); when rows tie for the lead the title says so ("Icons and Police lead, 2 copies each", "3 places share the lead, 5 copies each"). Every bar is one line, label, bar and value, and all four charts share one scale, copies starting at zero, so bars compare across charts. Completeness is in status order (Complete, Incomplete, Not checked, Sealed); the others run from most to fewest copies. After six rows the rest folds into one outlined row, for example **14 more themes**, with their summed copies. Below the charts, a card compares what you paid with LEGO's retail price.
 
 ## Jobs and Bulk refresh prices
 

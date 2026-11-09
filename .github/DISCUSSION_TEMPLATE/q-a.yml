@@ -1,0 +1,43 @@
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ask anything about installing or using Brick Work. Something broken? Please open a [bug report](https://github.com/Ulef1005/brick-work/issues/new?template=bug.md) instead. The [docs](https://ulef1005.github.io/brick-work/docs/) may already answer it.
+  - type: textarea
+    id: question
+    attributes:
+      label: Your question
+      description: What are you trying to do, and where are you stuck?
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Brick Work version
+      description: Shown in the page footer and under Manage › Tools & Admin › About.
+      placeholder: "1.0.0"
+  - type: dropdown
+    id: install
+    attributes:
+      label: Where it runs
+      options:
+        - Docker Desktop on Windows
+        - Docker Desktop on a Mac
+        - A NAS (Synology, QNAP, Unraid, TrueNAS...)
+        - A Raspberry Pi or another small server
+        - A Linux server or VM
+        - Something else
+        - Not installed yet
+  - type: textarea
+    id: tried
+    attributes:
+      label: What you tried
+      description: Commands, settings or screens you used, and what they showed. Paste error text as text.
+      render: text
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Before you post
+      options:
+        - label: This post holds no personal data, keys or tokens, and any screenshots use sample data.
+          required: true

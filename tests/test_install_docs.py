@@ -13,3 +13,22 @@ def test_v090_install_steps_do_not_pull():
         for block in re.findall(r"```.*?```|<pre.*?</pre>", text, re.S):
             if "v0.9.0" in block:
                 assert not re.search(r"^docker compose pull", block, re.M), f"{name}: a v0.9.0 step says docker compose pull"
+
+
+INSTALL_PINS = ("README.md", "scripts/site/landing.html", "docs/how-to/install-docker-desktop.md")
+
+
+def test_install_steps_name_the_current_release():
+    """The install steps pin the release they install (a clone of its tag, its compose.yaml), so a release commit
+    that bumps brickwork/version.py must bump them too, or a new user installs the old version."""
+    from brickwork.version import __version__
+
+    pins = {
+        "README.md": r"git clone --branch (v[\w.-]+) ",
+        "scripts/site/landing.html": r"git clone --branch (v[\w.-]+) ",
+        "docs/how-to/install-docker-desktop.md": r"raw\.githubusercontent\.com/Ulef1005/brick-work/(v[\w.-]+)/compose\.yaml",
+    }
+    for name in INSTALL_PINS:
+        found = re.findall(pins[name], (ROOT / name).read_text())
+        assert found, f"{name}: no pinned install step found"
+        assert set(found) == {f"v{__version__}"}, f"{name}: install pins {sorted(set(found))}, the app is v{__version__}"

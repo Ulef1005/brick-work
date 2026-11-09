@@ -49,3 +49,5 @@ docs/how-to/migrate.md	BrickTracker	User guide to bringing a collection in: the 
 templates/web/toni/web/bw_get_started_collection.html	BrickTracker	Step 3 choice for the retained importer.
 tests/test_get_started.py	\bbricktracker\b|BrickTracker	Tests of the step 3 choice for the retained importer.
 scripts/site/use-cases.md	\bbrickwork import-bricktracker\b	Use-cases page shows the retained BrickTracker importer command.
+README.md	over from Brickset, Rebrickable, BrickLink or BrickTracker	Who-it-is-for line: the sources the importers bring a collection over from, the retained importer included (brick-work-marketing, 2026-11-09).
+.github/DISCUSSION_TEMPLATE/show-and-tell.yml	Brickset, Rebrickable, BrickLink, BrickTracker or a spreadsheet	Show and tell form: asks which source a collection came from, the retained importer included.

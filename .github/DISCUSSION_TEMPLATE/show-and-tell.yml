@@ -1,0 +1,54 @@
+title: "My setup: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for running Brick Work. Tell us a little about your setup: it shows what works, and what to build next.
+  - type: textarea
+    id: collection
+    attributes:
+      label: Your collection
+      description: Roughly how many sets, and what kind? Vintage, current, minifigures, sorted bulk, a box from someone else...
+      placeholder: About 300 sets, mostly 80s and 90s Castle and Space, plus a few tubs of loose parts sorted by colour.
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: Where it runs
+      options:
+        - Docker Desktop on Windows
+        - Docker Desktop on a Mac
+        - A NAS (Synology, QNAP, Unraid, TrueNAS...)
+        - A Raspberry Pi or another small server
+        - A Linux server or VM
+        - Something else
+    validations:
+      required: true
+  - type: textarea
+    id: use
+    attributes:
+      label: What you use it for
+      description: Which parts do you use most? Set Inspector, Part Runner, Matchmaker, orders, storage, the API or an assistant...
+  - type: textarea
+    id: came-from
+    attributes:
+      label: Where you came from
+      description: Did you bring a collection over from Brickset, Rebrickable, BrickLink, BrickTracker or a spreadsheet? How did that go?
+  - type: textarea
+    id: missing
+    attributes:
+      label: What is missing or got in your way
+      description: Anything that was hard to set up, or that you expected and did not find.
+  - type: textarea
+    id: pictures
+    attributes:
+      label: Screenshots (optional)
+      description: Drag pictures here. They are public, so leave out anything personal.
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Before you post
+      options:
+        - label: This post holds no personal data (addresses, order numbers, keys or tokens).
+          required: true

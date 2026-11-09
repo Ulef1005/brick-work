@@ -70,7 +70,7 @@ A release is a `vX.Y.Z` tag on `main`, made by the maintainer, with the matching
 - It then pushes `ghcr.io/ulef1005/brick-work` as one multi-architecture image, tagged `X.Y.Z`, `X.Y` and `X`, plus `latest` for a release without a pre-release suffix (`v1.0.0-rc.1` gets only its own tag). An alias (`X.Y`, `X`, `latest`) only ever moves to the highest stable release it covers, so building an older tag again never moves it back. Releases run one at a time. A build provenance attestation and an SPDX SBOM attestation are pushed with it.
 - Nothing is pushed unless the repository variable `GHCR_PUBLISH` is `true`. Until it is set, a tag only builds and tests, and the run says it published nothing. The maintainer sets it for the first push. The `compose.yaml` of the v0.9.0 tag builds from source (`build: .`) and the tag is never moved, so the pull-first install starts with the first release cut from `main` after it.
 
-The release commit bumps the image tag in `compose.yaml` together with `brickwork/version.py`; `tests/test_compose_image.py` fails if they differ.
+The release commit bumps the image tag in `compose.yaml` together with `brickwork/version.py`; `tests/test_compose_image.py` fails if they differ. It also bumps the version the install steps pin (the README's and the landing page's `git clone --branch`, the `compose.yaml` link in [Install on your computer with Docker Desktop](docs/how-to/install-docker-desktop.md)); `tests/test_install_docs.py` fails if one is left behind.
 
 To build an existing tag again, run the workflow by hand with that tag.
 

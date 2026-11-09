@@ -39,3 +39,21 @@ def test_the_parts_show_button_is_singular_for_one_part_before_any_script_runs(c
     assert page(client, '/collection/P').select_one('[data-bc-apply]').get_text(strip=True) == 'Show 1 part'
     coll.add_stock('part', coll.item('parts', '3001'), colour=coll.colour('15'), quantity=1)
     assert page(client, '/collection/P').select_one('[data-bc-apply]').get_text(strip=True) == 'Show 2 parts'
+
+
+def test_the_instructions_list_says_booklets_before_any_script_runs(client, coll):  # noqa: F811
+    for n in (1, 2):
+        coll.add_stock('instructions', coll.local('instructions', f'Syn booklet {n}', born_key=f'syn-b{n}'), quantity=1, condition='used')
+    assert texts(client, 'I') == ('2 booklets', 'Show 2 booklets')
+
+
+def test_the_wishlist_says_wish_for_one_and_wishes_for_two_before_any_script_runs(client, coll):  # noqa: F811
+    coll.add_wish(coll.item('parts', '3001'), colour=coll.colour('4'))
+    assert texts(client, 'wishes') == ('1 wish', 'Show 1 wish')
+    coll.add_wish(coll.item('parts', '3001'), colour=coll.colour('15'))
+    assert texts(client, 'wishes') == ('2 wishes', 'Show 2 wishes')
+
+
+def test_the_sets_show_button_and_subtitle_are_singular_for_exactly_one_copy(client, coll):  # noqa: F811
+    coll.add_copy('2070-1')
+    assert texts(client, 'S') == ('1 copy', 'Show 1 set')

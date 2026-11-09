@@ -123,11 +123,17 @@
     other: 'Loads from Rebrickable or BrickLink with Refresh pictures',
   };
   const setNumber = /^\d+[A-Za-z]?-\d+$/;
+  const NOTE_MIN_WIDTH = 120;
+  const NOTE_BOXES = '.bc-picture,.bw-picture,.check-picture,.scan-tile';
   function pictureNote(span) {
     const tile = span.closest('[data-item-no],[data-kind],.bc-picture,.bw-picture,.check-picture,.scan-tile') || span.parentElement;
     const kind = tile && tile.dataset ? tile.dataset.kind : null;
     const number = (tile && tile.dataset && tile.dataset.itemNo) || (tile && tile.querySelector('.mono')?.textContent) || '';
     const isSet = kind ? kind === 'S' : setNumber.test(number.trim());
+    // #197: the sentence needs room, so it goes only into a picture box the pages draw large (a card's or a detail page's picture)
+    // that is at least 120 px wide. Anything else, such as a list row's 56 px thumbnail, keeps the app's short "No image".
+    const box = span.closest(NOTE_BOXES);
+    if (!box || box.getBoundingClientRect().width < NOTE_MIN_WIDTH) return;
     span.textContent = isSet ? PICTURE_NOTE.set : PICTURE_NOTE.other;
     span.classList.add('bw-demo-picture-note');
   }

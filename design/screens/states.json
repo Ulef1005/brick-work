@@ -417,7 +417,7 @@
    "world": "demo",
    "path": "/manage/tools",
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "49-Statistics",

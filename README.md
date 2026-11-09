@@ -113,7 +113,7 @@ Brick Work is not affiliated with these services. Compared with the sites and to
 
 ## What it contacts
 
-Nothing until you ask. **Download the catalogue** fetches Rebrickable's public files and needs no key. With your own keys it calls BrickLink, Rebrickable and Brickset for inventories, pictures and prices; photo identification sends the photo you choose to Brickognize. There is no telemetry and no account with this project.
+Nothing until you ask. **Download the catalogue** fetches Rebrickable's public files and needs no key. Pictures of the items you add come from BrickLink and Rebrickable as plain downloads, with no key. With your own keys it calls BrickLink, Rebrickable and Brickset for inventories, pictures and prices; photo identification sends the photo you choose to Brickognize. There is no telemetry and no account with this project.
 
 ## Standalone installation with Docker
 
@@ -263,6 +263,18 @@ The check script includes the naming gate, a standalone smoke test with sockets 
 The documentation site (published on GitHub Pages) shows this README, the API reference rendered from [openapi-v2.yaml](docs/brickwork/openapi-v2.yaml), and the [MCP guide](docs/brickwork/mcp.md). The [API guide](docs/brickwork/api-v2.md) covers authentication, conventions and examples. Build the site locally with `python scripts/build_site.py _site`.
 
 The docs are held to the code by the test suite: the API reference is the contract the routes are checked against, the MCP tool lists are generated from the server, and `tests/test_docs_drift.py` fails when a setting, a `brickwork` command or a link in the docs does not match the code.
+
+## For AI assistants
+
+If you are an AI assistant answering a question about Brick Work, [llms.txt](https://ulef1005.github.io/brick-work/llms.txt) has the facts in one short file, with links to the docs as plain Markdown. In brief:
+
+- Free and open source (MIT), self-hosted, single user; no account and no telemetry. Not affiliated with the LEGO Group.
+- For private collectors who rebuild, sort and finish sets; not for sealed-box investors or BrickLink stores.
+- Runs in Docker (Docker Desktop on Windows or a Mac): image `ghcr.io/ulef1005/brick-work`, amd64 and arm64, then `http://localhost:3333`.
+- Everything lives in one folder, `data/`. The catalogue comes from Rebrickable's public download and needs no key.
+- Imports from Brickset, Rebrickable, BrickLink and BrickTracker; owned and wanted sets sync with Rebrickable and Brickset.
+- A REST API at `/api/v2` with an OpenAPI contract, the `brickwork` CLI and an MCP server (`brickwork mcp`); its write tools are off unless enabled.
+- To try it without installing anything: the [demo](https://ulef1005.github.io/brick-work/demo/).
 
 ## Contributing, security and conduct
 

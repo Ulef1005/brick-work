@@ -19,7 +19,7 @@
   let receipt=null,visible=records;
   const receiptKey='bw-planning-receipt';
   try{receipt=JSON.parse(sessionStorage.getItem(receiptKey));}catch(_){}
-  if(receipt){undo.hidden=false;message.textContent='Saved · Undo';}
+  if(receipt){undo.hidden=false;message.textContent='Saved';}   // #224: the Undo button beside it says Undo; the text no longer does too
   const exp=root.querySelector('[data-bp-export]');
   function syncExport(){
     if(!exp)return;

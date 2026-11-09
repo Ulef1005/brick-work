@@ -214,6 +214,40 @@ def fetch(db, job, source, *, http=None, image_http=None, root=None):
     return stored
 
 
+def preview(db, item_id, *, http=None, image_http=None, root=None):
+    """#217: the picture of an item being reviewed on Add, fetched now so the review can show it (Ulf, via wiki-agent, 08.11.: "Fetch and
+    store when selected"). Only items without colours (sets, minifigures and the other kinds; a part's picture depends on the colour
+    chosen later). Returns the picture id, or None when no source has one. A stored picture is a cache, not collection data; the item is
+    projected into the collection (`items.ensure`) because a picture belongs to an item there; a projected item nobody holds shows in no
+    list. The pictures step's sources in their order, without the Rebrickable API (its daily budget is the jobs'); a source that fails is
+    passed over, so the review never waits."""
+    row = _item(db, item_id)
+    if row['kind'] == 'part':
+        return None
+    if not served(db, item_id, None):
+        with transaction(db):
+            items.ensure(db, item_id)                               # first: `identified` and `fetch` read the collection's item
+        if not items.identified(db, item_id):
+            return None
+        job = dict(item_id=item_id, payload=None, id=None, via='app', actor=None)
+        for source in order(db, row['kind']):
+            # A preview never spends the Rebrickable API's daily budget: only the free sources (the dump's URL, BrickLink's image
+            # address) are asked; the Add job's pictures step still tries every source.
+            if source == 'rebrickable_api' or not can_serve(db, item_id, None, source):
+                continue
+            try:
+                fetch(db, job, source, http=http, image_http=image_http, root=root)
+            except (StepWait, StepFailed, StepDone):
+                continue
+            if served(db, item_id, None):
+                break
+    found = db.execute('SELECT id, source FROM main.picture WHERE item_id=? AND color_id IS NULL ORDER BY fetched_at DESC, id DESC',   # as the review's list
+                       (item_id,)).fetchall()
+    ranks = order(db, row['kind'])
+    found = sorted(found, key=lambda p: ranks.index(p['source']) if p['source'] in ranks else len(ranks))
+    return found[0]['id'] if found else None
+
+
 def handler(source, *, http=None, image_http=None, root=None):
     """The pipeline handler `(db, job, step)` of one picture source; `http` and `image_http` are the test seams for the API and the
     image downloads."""
@@ -338,6 +372,25 @@ def queue_missing(db, item_ids, *, via=None, actor=None):
         import logging
         logging.getLogger(__name__).warning('Could not queue pictures for %s', sorted(set(item_ids))[:20], exc_info=True)
         return []
+
+
+def queue_for_copies(db, copy_ids, *, via=None, actor=None):
+    """#217: after copies of a set are written, queue the pictures their parts and minifigures still lack (the set's own picture is its
+    Add job's step). The parts are the copies' live lines; a copy that later switches to its BrickLink list by itself is queued again by
+    the drainer, and one whose offered list is accepted by hand gets the rest from Refresh pictures. Best effort, like `queue_missing`:
+    call it after the write (inside a caller's transaction it is part of that transaction)."""
+    ids = sorted(set(copy_ids))
+    if not ids:
+        return []
+    try:
+        lines = [r[0] for r in db.execute("""SELECT item_id FROM main.copy_part WHERE retired_at IS NULL AND copy_id IN (SELECT value FROM json_each(?))
+            UNION SELECT item_id FROM main.copy_figure WHERE retired_at IS NULL AND copy_id IN (SELECT value FROM json_each(?))""",
+                                         (json.dumps(ids), json.dumps(ids)))]
+    except Exception:                                                   # noqa: BLE001 (never fail a committed write over a picture)
+        import logging
+        logging.getLogger(__name__).warning('Could not read the lines of copies %s', ids[:20], exc_info=True)
+        return []
+    return queue_missing(db, lines, via=via, actor=actor)
 
 
 def _queue_missing(db, item_ids, *, via=None, actor=None):

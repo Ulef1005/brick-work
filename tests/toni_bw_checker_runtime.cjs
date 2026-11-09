@@ -16,6 +16,17 @@ assert.deepEqual(plain(progress(state)),{found:0,missing:2,skipped:1,remaining:0
 assert.deepEqual(plain(state.session.misses),['m:1','p:1']);
 apply(state,{action:'found_one',token:'p:1'});assert.equal(state.rows[0].missing,0);
 assert.deepEqual(plain(state.session.misses),['m:1','p:1']);
+{ // #213: Found 1 in the sidebar, or answering a listed part again, keeps its place in Missing so far; only a new miss goes on top.
+  const kept=make();
+  apply(kept,{action:'answer',token:'p:1',found:1});apply(kept,{action:'answer',token:'m:1',found:0});
+  assert.deepEqual(plain(kept.session.misses),['m:1','p:1']);
+  apply(kept,{action:'found_one',token:'p:1'});assert.equal(kept.rows[0].missing,2);
+  assert.deepEqual(plain(kept.session.misses),['m:1','p:1']);
+  apply(kept,{action:'answer',token:'p:1',found:2});
+  assert.deepEqual(plain(kept.session.misses),['m:1','p:1']);
+  apply(kept,{action:'answer',token:'p:2',found:0});
+  assert.deepEqual(plain(kept.session.misses),['p:2','m:1','p:1']);
+}
 apply(state,{action:'select',token:'p:2'});assert.equal(state.session.cursor,1);
 apply(state,{action:'back'});assert.equal(state.session.cursor,0);
 apply(state,{action:'next'});assert.equal(state.session.cursor,1);
@@ -70,6 +81,7 @@ class Element {
  append(...nodes){this.children.push(...nodes);}
  appendChild(node){this.children=this.children.filter(n=>n!==node);this.children.push(node);return node;}
  replaceChildren(...nodes){this.children=nodes;}
+ prepend(...nodes){this.children.unshift(...nodes);}
  addEventListener(type,fn){this.handlers[type]=fn;}
  setAttribute(name,value){this[name]=value;}
  get value(){return this._value||this.children.find(n=>n.tagName==='OPTION')?.value||'';}
@@ -296,4 +308,56 @@ for(const figureMode of [false,true]) {
  const screen=boot(initial,{endpoint:'/check/copy',imageUrl:'/images/0'});
  assert(screen.root.querySelector('[data-history]').text.includes('3 entries · 3 missing'));
  assert(!/[−–-]\d/.test(screen.root.querySelector('[data-history]').text));
+}
+
+// #222: a missing-only run counts the parts it walks. #214: Check on skipped parts walks them in the part view.
+{
+  const run=make();run.session.scope='missing';run.session.order=['p:1'];run.session.answers={'p:2':'answered'};
+  assert.deepEqual(plain(progress(run)),{found:0,missing:0,skipped:0,remaining:1});
+  const skipped=make();skipped.session.answers={'p:1':'skipped','p:2':'answered','m:1':'skipped'};skipped.session.cursor=3;
+  apply(skipped,{action:'recheck'});
+  assert.deepEqual(plain(skipped.session.order),['p:1','m:1']);assert.equal(skipped.session.cursor,0);assert.equal(skipped.session.scope,'skipped');
+  assert.equal(skipped.session.answers['p:2'],'answered');
+  apply(skipped,{action:'recheck',tokens:['m:1']});assert.deepEqual(plain(skipped.session.order),['m:1']);
+}
+
+// #214 / #222: the end of a check shows three steps, starts at step 2 with nothing skipped; a missing-only run is headed and counted on its own.
+(async()=>{
+ const ended=()=>{const s=make();s.copy={id:'copy',completeness_source:'derived'};s.session.cursor=3;s.session.spares='no';s.session.answers={'p:1':'skipped','p:2':'answered','m:1':'skipped'};
+  s.rows.forEach(r=>{r.name='Part';r.item_no=r.token;r.color_name='Red';r.image=null;});s.rows[1].missing=1;s.session.misses=['p:2'];return s;};
+ let screen=boot(ended(),{endpoint:'/check/copy',imageUrl:'/images/0'});
+ assert(screen.stage.text.includes('Skipped · 2 entries not checked yet'));
+ assert(screen.stage.text.includes('Check the 2 skipped parts'));assert(screen.stage.text.includes('Leave them unchecked'));
+ assert(screen.stage.text.includes('Missing so far · 1 entry'));
+ assert(screen.stage.querySelectorAll('[data-action]').filter(b=>b.dataset.action==='check_one').length===2);
+ screen.click('leave_skipped');
+ assert(screen.stage.text.includes('Done · 1 still missing'));assert(!screen.stage.text.includes('Check the 2 skipped parts'));
+ assert(screen.stage.querySelectorAll('LI').length===3,'Step 2 shows the 1/2/3 header');assert.equal(screen.stage.children[0].tagName,'OL');
+ screen.click('finish_view');assert(screen.stage.text.includes('Finish'));
+ // Check on one skipped part walks only that part in the part view.
+ screen=boot(ended(),{endpoint:'/check/copy',imageUrl:'/images/0'});
+ const one=screen.stage.querySelectorAll('[data-action]').find(b=>b.dataset.action==='check_one'&&b.dataset.token==='m:1');
+ screen.root.handlers.click({target:one});await screen.settle();
+ assert.equal(screen.sent[0].payload.action,'recheck');assert.deepEqual(screen.sent[0].payload.tokens,['m:1']);
+ assert.deepEqual(JSON.parse(JSON.stringify(screen.server().session.order)),['m:1']);assert(screen.stage.text.includes('Figure review'));
+ // Nothing skipped: the screen starts at the missing step.
+ const none=ended();none.session.answers={'p:1':'answered','p:2':'answered','m:1':'answered'};
+ screen=boot(none,{endpoint:'/check/copy',imageUrl:'/images/0'});
+ assert(!screen.stage.text.includes('not checked yet'));assert(screen.stage.text.includes('Done · 1 still missing'));
+ // A missing-only run: heading with the tag, the part's missing count, its own legend.
+ const run=ended();run.session.scope='missing';run.session.order=['p:2'];run.session.cursor=0;run.session.answers={'p:1':'answered'};run.rows[1].quantity=3;
+ screen=boot(run,{endpoint:'/check/copy',imageUrl:'/images/0'});
+ assert(screen.stage.text.includes('Missing part 1 of 1'));assert(screen.stage.text.includes('Missing only'));
+ assert(screen.stage.text.includes('Missing since the last check: 1 of 3'));assert(screen.stage.text.includes('Found 3'));
+ assert.equal(screen.root.querySelector('[data-legend]').textContent,'0 found · 0 still missing · 0 skipped · 1 to go · missing parts only');
+ console.log('Brick Work checker end steps and missing-only run passed');
+})().catch(error=>{console.error(error);process.exitCode=1;});
+
+// Review of a part outside a narrowed walk joins the walk; a missing-only run stays one after a skipped walk and counts its own members.
+{
+  const s=make();s.session.order=['p:1'];s.session.cursor=1;s.session.answers={'p:1':'answered'};
+  apply(s,{action:'select',token:'m:1'});assert.deepEqual(plain(s.session.order),['p:1','m:1']);assert.equal(s.session.cursor,1);
+  const run=make();run.session.scope='missing';run.session.members=['p:1','p:2'];run.session.order=['p:1','p:2'];run.session.answers={'p:1':'answered','p:2':'skipped'};
+  apply(run,{action:'recheck'});assert.equal(run.session.scope,'missing');assert.deepEqual(plain(run.session.order),['p:2']);
+  assert.deepEqual(plain(progress(run)),{found:1,missing:0,skipped:1,remaining:0});
 }

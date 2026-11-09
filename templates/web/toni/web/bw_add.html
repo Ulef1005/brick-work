@@ -7,25 +7,27 @@
 {% endblock %}
 {% block main %}
 <div id="bw-add" class="stack" data-url="{{ url_for('web.bw_add') }}" data-csrf="{{ csrf_token }}" data-colours="{{ colours|tojson|forceescape }}" data-wishlists="{{ wishlists|tojson|forceescape }}">
-  <header><h1>Add</h1><p class="secondary">Find what you have, select it, review the details, then add it. Nothing is saved before the last step.</p></header>
+  <header><h1>Add</h1><p class="secondary">Find what you have, select it, review the details, then add it. Nothing is saved before the last step, except the pictures fetched to show you.</p></header>
   <ol class="bw-add-steps" aria-label="Steps"><li data-step="find" aria-current="step">Find and select</li><li data-step="review">Review and add</li><li data-step="added">Added</li></ol>
   {% if error %}<p class="notice" role="alert">{{ error }}</p>{% endif %}
   {% set initial_type = initial_kind %}
   {% set initial_where = request.args.get('where') if request.args.get('where') in ['owned','loose','wishlist'] else 'owned' %}
   <div data-intake class="stack">
+    <fieldset aria-label="How"><div class="bw-add-segments bw-add-continuous">{% for key, name in [('search','Search'),('paste','Paste'),('file','File'),('photo','Photo')] %}<label><input type="radio" name="mode" value="{{ key }}"{% if key == (request.args.get('mode') if request.args.get('mode') in ('search', 'paste', 'file', 'photo') else 'paste' if request.args.get('number') else 'search') %} checked{% endif %}><span>{{ name }}</span></label>{% endfor %}</div></fieldset>
+    <section data-mode="search" aria-label="Catalogue search field">
+      <div class="bw-add-search-field">{{ toni_icon('search') }}<input data-search type="search" aria-label="Number or name" placeholder="Number or name" maxlength="100" autocomplete="off"></div>
+    </section>
+    <section data-mode="paste" hidden><label class="field">One per line, number and optional quantity<textarea data-paste rows="6" placeholder="10305-1&#10;2260-1 x2">{{ request.args.get("number","") }}</textarea></label></section>
+    <section data-mode="file" hidden><label class="bw-add-drop">Choose a file<input data-file type="file" accept=".xml,.csv"><span class="secondary">BrickLink XML · Rebrickable CSV · Brickset CSV</span></label></section>
+    <section data-mode="photo" hidden><label class="bw-add-drop">Choose a photo<input data-photo type="file" accept="image/*" capture="environment"><span class="secondary">Brickognize · sets, minifigures and parts</span></label><label class="check-field"><input data-keep type="checkbox">Keep photo</label><p class="secondary">Choose a candidate by hand. Your photo is saved only when you add and tick Keep photo.</p></section>
     <div class="bw-add-choices">
       <fieldset><legend class="label">What</legend><div class="bw-add-segments" data-types>{% for key, name in kinds.items() %}<label><input type="radio" name="type" value="{{ key }}"{% if key == initial_type %} checked{% endif %}><span>{{ name }}</span></label>{% endfor %}</div></fieldset>
       <fieldset><legend class="label">Where</legend><div class="bw-add-segments bw-add-continuous">{% for key, name in [('owned','Owned'),('loose','Loose'),('wishlist','Wishlist')] %}<label><input type="radio" name="where" value="{{ key }}"{% if key == initial_where %} checked{% endif %}><span>{{ name }}</span></label>{% endfor %}</div></fieldset>
     </div>
     <label data-where-only="wishlist">Wishlist destination<select data-wishlist-target>{% for l in wishlists %}<option value="{{ l.id }}" {% if request.args.get('list')==l.id %}selected{% endif %}>{{ l.name }}</option>{% endfor %}</select></label><label class="check-field" data-where-only="wishlist" data-mode-only="file"><input data-map-wanted type="checkbox" checked>Use BrickLink wanted list ids from the file · create unmatched lists on confirm</label>
-    <fieldset aria-label="How"><div class="bw-add-segments bw-add-continuous">{% for key, name in [('search','Search'),('paste','Paste'),('file','File'),('photo','Photo')] %}<label><input type="radio" name="mode" value="{{ key }}"{% if key == (request.args.get('mode') if request.args.get('mode') in ('search', 'paste', 'file', 'photo') else 'paste' if request.args.get('number') else 'search') %} checked{% endif %}><span>{{ name }}</span></label>{% endfor %}</div></fieldset>
-    <section data-mode="search" class="stack" aria-label="Catalogue search">
-      <div class="bw-add-search-field">{{ toni_icon('search') }}<input data-search type="search" aria-label="Number or name" placeholder="Number or name" maxlength="100" autocomplete="off"></div>
+    <section data-mode="search" class="stack" aria-label="Catalogue search results">
       <div data-chips class="actions" aria-label="Active filters" hidden></div><p data-result-count class="mono" role="status" hidden>Search the catalogue by number or name</p><label class="bw-add-result-sort" hidden>Sort<select data-sort><option value="number">Number</option><option value="name">Name</option></select></label><div data-results class="stack"></div>
     </section>
-    <section data-mode="paste" hidden><label class="field">One per line, number and optional quantity<textarea data-paste rows="6" placeholder="10305-1&#10;2260-1 x2">{{ request.args.get("number","") }}</textarea></label></section>
-    <section data-mode="file" hidden><label class="bw-add-drop">Choose a file<input data-file type="file" accept=".xml,.csv"><span class="secondary">BrickLink XML · Rebrickable CSV · Brickset CSV</span></label></section>
-    <section data-mode="photo" hidden><label class="bw-add-drop">Choose a photo<input data-photo type="file" accept="image/*" capture="environment"><span class="secondary">Brickognize · sets, minifigures and parts</span></label><label class="check-field"><input data-keep type="checkbox">Keep photo</label><p class="secondary">Choose a candidate by hand. Your photo is saved only when you add and tick Keep photo.</p></section>
     <div class="bw-add-bar"><p data-queued class="mono" role="status">Nothing selected yet</p><button data-review type="button" class="button primary">Review 0 items</button></div>
   </div>
   <p data-message role="status" aria-live="polite"></p>

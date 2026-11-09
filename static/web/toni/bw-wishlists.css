@@ -2,7 +2,7 @@
    Built from kit parts: filter chips, outline buttons, bc-sheet, bc-segments and the Sets list's selection bar. */
 .wl-root { display:flex;flex-direction:column;gap:12px;margin:8px 0 16px; }
 .wl-head { display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:12px 24px; }
-.wl-lists { flex:1 1 360px;min-width:0; }
+.wl-lists { flex:1 1 360px;min-width:0;display:flex;flex-wrap:wrap;gap:8px; }   /* #224: the 8 px gap of the other chip rows */
 .wl-lists .button { height:44px;padding:0 14px;border-radius:10px;background:var(--tw-surface);border:0;font:500 14px var(--tw-font);color:var(--tw-text);gap:8px;text-decoration:none; }
 .wl-lists .button .mono { color:var(--tw-text-muted);font-size:13px; }
 .wl-lists .button[aria-current=page] { background:var(--tw-accent-soft);color:var(--tw-accent-text); }

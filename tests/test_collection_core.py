@@ -181,7 +181,7 @@ def test_list_records_are_words_with_both_numbers_and_the_item_id(world, read):
         rows = collection.listing(db, 'M')
     data = json.loads(list_records.payload(rows))
     fields = data['fields']
-    assert fields[-3:] == ['item_id', 'also', 'source'] and 'purchase_location_id' not in fields
+    assert fields[-4:] == ['item_id', 'also', 'source', 'added'] and 'purchase_location_id' not in fields   # added: #226
     record = decoded(list_records.payload(rows))[0]
     assert record['item_id'] == world.figure and record['also'] == 'syn-fig-0004' and record['condition'] == ['used'] and record['number'] == 'fig-000004'
     for key in ('condition', 'status'):
@@ -222,7 +222,7 @@ def test_the_set_page_lists_its_copy_and_what_is_missing(world, read):
         assert [(l['item_no'], l['quantity'], l['missing'], l['deficit']) for l in d['consists'] if not l.get('minifig_no')] == [('3001', 4, 1, 1), ('3023', 2, 0, 0)]
         figures = [l for l in d['consists'] if l.get('minifig_no')]
         assert [(f['item_no'], f['quantity'], f['missing'], f['parts_lines']) for f in figures] == [('fig-000004', 2, 0, 4)]
-        assert d['progress'] == dict(total=6, missing=1, checked=0, can_take=1, different=2, lines=2, checked_lines=0, check_recorded=True, spare_lines=1, known=True)
+        assert d['progress'] == dict(total=6, missing=1, checked=0, can_take=1, different=2, lines=2, checked_lines=0, check_recorded=True, spare_lines=1, missing_lines=1, known=True)
         assert d['figure_progress'] == {'total': 2, 'present': 2}
         assert [i['id'] for i in d['instances']] == [world.copy_a, world.copy_b]
         assert d['price_records'][0]['price'] == '30.00' and d['condition_prices'][0]['condition'] == 'used'

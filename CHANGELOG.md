@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **The `check` job runs in about a third of the time** (#254). The tests run in parallel (`pytest -n auto --dist loadgroup`, pytest-xdist; the Chrome and screen-gate tests share one group), the screen gate renders its captures on up to four Chrome processes at once, and a pull request that changes only documentation runs the docs check and the site build instead of the whole gate (`scripts/check_scope.py`). The standalone smoke test no longer runs twice. No test was removed or loosened; [ADR 0024](docs/adr/0024-parallel-check.md) has the numbers.
+
 ## Brick Work 1.0.0 (schema 4.2) · 2026-11-09
 
 The first release after milestone B: its maintainer's real collection was set up from scratch through **Get started** on a test install, and every workflow ran on it. The schema stays 4.2, so a 0.9.0 collection needs no upgrade step, and going back to 0.9.0 means starting it on the same file. It is the first release whose `compose.yaml` pulls the published image, `ghcr.io/ulef1005/brick-work:1.0.0` (amd64 and arm64, with build provenance and an SBOM): install and upgrade with `docker compose pull`; 0.9.0 and older still build with `docker compose build` ([Upgrade Brick Work](docs/how-to/upgrade.md)). Back up `brickwork.db` and `secret.key` before you upgrade, as always.

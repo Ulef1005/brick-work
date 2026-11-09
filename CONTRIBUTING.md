@@ -31,7 +31,11 @@ python3 -m venv .venv
 APP_VENV=.venv bash scripts/check.sh
 ```
 
-`scripts/check.sh` is the same gate CI runs: the name check, the standalone smoke test (no keys, no network), the full test suite, the Node runtime harnesses, a gitleaks secret scan when gitleaks is installed, and the API contract checks. Tests use synthetic data only; never add a fixture taken from a real collection.
+`scripts/check.sh` is the same gate CI runs: the name check, the full test suite (which includes the standalone smoke test: no keys, no network), the Node runtime harnesses, a gitleaks secret scan when gitleaks is installed, and the API contract checks. Tests use synthetic data only; never add a fixture taken from a real collection.
+
+The tests run in parallel: `scripts/check.sh` calls `pytest -n auto --dist loadgroup` (pytest-xdist, one worker per core; `BW_TEST_WORKERS=1` runs them one at a time, which is the way to debug an order-dependent failure). A test must therefore not depend on another test, on run order, or on a fixed path, port or environment variable that two tests could use at once: use `tmp_path`, port 0 and `monkeypatch`. See [ADR 0024](docs/adr/0024-parallel-check.md).
+
+**Docs-only pull requests.** CI runs the docs check, the docs and site tests (which build the site) and the secret scan, not the app, when every changed file is under `docs/` (except `docs/brickwork/` and `docs/data-model-4.0/`, which hold the API contract, the cutover table and the schema design that app tests read), `scripts/site/`, `mkdocs.yml`, `CHANGELOG.md` or `README.md` (`scripts/check_scope.py`). A push to `main`, a new branch, anything else in the change, or a diff CI cannot compute runs everything. The job and its name (`check`) are the same. Locally: `BW_CHECK_MODE=docs APP_VENV=.venv bash scripts/check.sh`.
 
 Enable the commit hooks once per clone: `git config core.hooksPath .githooks`. The `commit-msg` hook blocks a commit that changes app source (`brickwork/`, `templates/`, `static/`, `app.py`, `wsgi.py`, `bin/`, `entrypoint.sh`) without a change to the user docs (any Markdown file under `docs/` except `docs/adr/` and `docs/milestones/`), unless the message ends with a `Docs: none, <reason>` trailer. The `post-commit` hook re-checks the finished commit as a whole and warns, which covers `--amend` and `--no-verify`. `scripts/check.sh` reports the same for every commit in the range it checks.
 
@@ -41,7 +45,9 @@ Tests that run JavaScript or draw a page need Node.js and Chrome, and they never
 
 Without a network or a browser you can run `BW_SKIP_RENDERED=1 APP_VENV=.venv bash scripts/check.sh`: the rendered tests are then skipped, and the summary ends with a "Skipped rendered tests" list naming each one. CI never sets it.
 
-The screenshot gate (`tests/test_screen_gate.py`) compares the app with approved baseline captures; see `design/DESIGN-CHECK.md`. When you change a screen on purpose, regenerate its candidates with `python scripts/screen_gate.py capture <NN-Screen>` and say so in the pull request; the maintainer approves baselines.
+**New rendered tests.** A test that draws a page in Chrome, renders the screen gate or uses the gate's shared world folder (`/tmp/bw-gate-world`, held through one lock) joins the xdist group `rendered`: `@rendered.group` on the test, or `pytestmark = rendered.group` on the module (`tests/rendered.py`). The tests of the group run one at a time on one worker, so they never share Chrome or the folder; `rendered.chrome()` fails a test that is not in it. A test that only runs a Node harness (`rendered.need_node()`) on its own temporary files needs no group. `BW_SKIP_RENDERED` works with the workers: each records its skips in the same file and `check.sh` lists them all.
+
+The screenshot gate (`tests/test_screen_gate.py`) compares the app with approved baseline captures; see `design/DESIGN-CHECK.md`. When you change a screen on purpose, regenerate its candidates with `python scripts/screen_gate.py capture <NN-Screen>` and say so in the pull request; the maintainer approves baselines. The gate renders its captures on up to four Chrome processes at once (`BW_GATE_WORKERS=1` for one; the captures are the same whichever process takes them).
 
 The README and Pages pictures are captures of the built app on the demo's richer world: regenerate them with `python scripts/site_shots.py` (not gate baselines; the world is invented, `brickwork/demo/showcase.py`).
 

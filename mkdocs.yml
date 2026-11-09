@@ -7,7 +7,7 @@ exclude_docs: |
   approval/
   brickwork/
   data-model-4.0/
-  img/
+  img/readme/
   milestones/
   pitch/
 theme:

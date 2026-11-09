@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **The upgrade guide shows how to check the published image** (#190). [Upgrade Brick Work](docs/how-to/upgrade.md#move-to-the-new-version) now gives the two `gh attestation verify` commands for a pull-first release: one for the build provenance, one for the SBOM attached to the image, and what a failure means. The README names the SBOM check too.
 - **The SBOM attestation uses `actions/attest`** (#190). The release workflow's SBOM attestation ran `actions/attest-sbom`, which GitHub has deprecated; it now runs `actions/attest` v4.2.2 (pinned by SHA) with the same subject, SBOM and registry push.
 - **The copy of the upstream changelog is gone** (#237). `docs/upstream-CHANGELOG.md`, the upstream project's release history kept from the fork, is removed; this changelog links the upstream repository for releases 1.4.2 and older. The credit in the README and THIRD_PARTY_NOTICES stays.
 - **The Add search field sits right under the ways to find** (#221). On **Manage › Add**, step 1 put **What** and **Where** above the **Search**, **Paste**, **File** and **Photo** tabs and the search field, so on a phone the field you type into sat below the first screen. The field (or the file and photo choosers) now follows the tabs directly, then **What** and **Where** in one row (stacked on a phone), then the results and **Review**. Nothing else changed, and the Tab key follows the new order. See [Bring your collection in from another app](docs/how-to/migrate.md#by-hand).

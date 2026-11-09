@@ -56,7 +56,7 @@ def test_usage_errors_and_removed_commands(argv, monkeypatch):
 
 
 def test_migrate_is_gone(monkeypatch, capsys):
-    """`brickwork migrate` (the BrickTracker-era importer) is removed (decision 4 of #110, M.8j): it is not a command, and `migrate4` is the one migration."""
+    """`brickwork migrate` (the 3.x importer) is removed (decision 4 of #110, M.8j): it is not a command, and `migrate4` is the one migration."""
     monkeypatch.setattr(cli, 'application_context', Mock(side_effect=AssertionError('must not initialize')))
     assert not hasattr(cli.admin_ops, 'migrate')
     with pytest.raises(SystemExit) as error:

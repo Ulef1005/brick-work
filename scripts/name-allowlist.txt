@@ -27,7 +27,7 @@ tests/quarantine.py	bricktracker|BrickTracker	Names the quarantined importer tes
 tests/test_quarantine.py	bricktracker	The frozen baseline of the quarantine names the same importer test file.
 THIRD_PARTY_NOTICES.md	\[BrickTracker\]\(https://gitea\.baerentsen\.space/FrederikBaerentsen/BrickTracker\)	Upstream credit next to the kept MIT notice.
 scripts/build_site.py	inspired by BrickTracker	Upstream credit in the documentation site footer.
-design/sources/test-data/tools-admin.json	BK_[A-Z_]+|bricktracker_[a-z_]+	Design export test data (design/sources/ is not edited here); the old setting and table names describe the legacy import screen.
+design/sources/test-data/tools-admin.json	BK_[A-Z_]+	Design export test data (design/sources/ is not edited here); the old setting names of the legacy admin screen.
 scripts/site/landing.html	\[?BrickTracker\]?|BrickTracker	Comparison section names the self-hosted tracker Brick Work grew from.
 docs/reference/cli.md	\bbricktracker\b|\b(?:post_)?imports?[-_]bricktracker\b|BrickTracker	User docs: CLI command import-bricktracker.
 docs/data-model-4.0/*	BrickTracker importer|BrickTracker import|\bhouse-api/lego\.py\b	Data model 4.0 design: the retained importer, and the House API client that switches at the cutover.
@@ -39,7 +39,6 @@ brickwork/core/undo.py	importer import bricktracker	Imports the importer module 
 brickwork/web/ported.py	Import from BrickTracker	Comment naming the Import from BrickTracker screens.
 docs/brickwork/schema-notes.md	BrickTracker import|import-from-bricktracker	Points from the 3.x schema notes to the BrickTracker import how-to.
 docs/how-to/index.md	Import from BrickTracker|import-from-bricktracker	Index entry of the Import from BrickTracker how-to.
-tests/test_cli.py	BrickTracker-era	Docstring: the removed BrickTracker-era `brickwork migrate`.
 brickwork/api2/sync.py	\bbricktracker\b|\b(?:post_)?imports?[-_]bricktracker\b|BrickTracker	The BrickTracker import operations of API v2.
 brickwork/api2/writes.py	\bbricktracker\b|\b(?:post_)?imports?[-_]bricktracker\b|BrickTracker	The streamed upload of a BrickTracker database.
 brickwork/api2/write_contract.json	\bbricktracker\b|\b(?:post_)?imports?[-_]bricktracker\b|BrickTracker	Generated from the contract: the BrickTracker import operations.

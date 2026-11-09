@@ -18,6 +18,7 @@ Facts an assistant is most often asked:
 ## Try it
 
 - [Demo with an invented collection](https://ulef1005.github.io/brick-work/demo/): the real interface in the browser, nothing is saved
+- [Video tour, 1:36](https://www.youtube.com/watch?v=R5Q_6GUB1OQ): the four workflows on the same invented collection
 - [README](README.md): the full overview, install and settings
 - [Install on your computer with Docker Desktop](docs/how-to/install-docker-desktop.md): Windows or Mac, no Git
 - [Your first set, start to finish](docs/tutorials/first-set.md): the first-run tutorial

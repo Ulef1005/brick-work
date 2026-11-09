@@ -11,6 +11,7 @@
 <p align="center">
   <a href="https://ulef1005.github.io/brick-work/">Website</a> ·
   <a href="https://ulef1005.github.io/brick-work/demo/">Demo</a> ·
+  <a href="https://www.youtube.com/watch?v=R5Q_6GUB1OQ">Video</a> ·
   <a href="https://ulef1005.github.io/brick-work/docs/">Docs</a> ·
   <a href="https://ulef1005.github.io/brick-work/workflows/">Workflows</a> ·
   <a href="https://ulef1005.github.io/brick-work/api/">API</a> ·
@@ -40,7 +41,7 @@
 
 It is for private collectors who rebuild used and vintage sets, build from sorted bulk, or keep a messy collection spread over spreadsheets and sites. Rebrickable and Brickset stay where the catalogue and the market live; Brick Work is where your own copies, parts and drawers live, on your own computer, and it brings your collection over from Brickset, Rebrickable, BrickLink or BrickTracker. Free and open source (MIT).
 
-**[Try the demo](https://ulef1005.github.io/brick-work/demo/)**: the real interface on an invented collection, in your browser. Nothing is saved.
+**[Try the demo](https://ulef1005.github.io/brick-work/demo/)**: the real interface on an invented collection, in your browser. Nothing is saved. Or **[watch the tour](https://www.youtube.com/watch?v=R5Q_6GUB1OQ)** (1:36): the four workflows on the same invented collection.
 
 ## The crew
 

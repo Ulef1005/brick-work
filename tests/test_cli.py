@@ -11,6 +11,7 @@ from tests.app4 import coll, pair  # noqa: F401  (the fixtures)
 # argv, service, exact service arguments.
 CASES = [
     (['setup'], 'setup', {}),
+    (['setup', '--if-missing'], 'setup', {'if_missing': True}),
     (['check'], 'brickwork_check', {}),
     (['catalogue', 'status'], 'catalogue_status', {}),
     (['catalogue', 'import', 'bricklink', '--from', 'DIR'], 'catalogue_import_bricklink', {'directory': 'DIR'}),

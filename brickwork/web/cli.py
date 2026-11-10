@@ -40,7 +40,9 @@ def build_parser():
     sub.add_argument('--expires')
     parser(token, 'list', 'token_list')
     parser(token, 'revoke', 'token_revoke').add_argument('id')
-    parser(commands, 'setup', 'setup')
+    parser(commands, 'setup', 'setup').add_argument(
+        '--if-missing', action='store_true', default=argparse.SUPPRESS,
+        help='skip setup when the collection path already exists')
     parser(commands, 'check', 'brickwork_check')
     parser(commands, 'worker', 'jobs_worker')
     # The 3.3 -> 4.0 migration is store4's; this is the name the design gives it (`brickwork migrate4`, data-model-design 8.2).

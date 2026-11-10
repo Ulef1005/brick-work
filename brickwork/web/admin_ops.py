@@ -599,11 +599,13 @@ def jobs_worker():
     return worker(path=brickwork_path())
 
 
-def setup():
-    """Create a fresh 4.0 collection (an existing 4.0 file is left as it is; a 3.3 file is refused) and say where the catalogue goes."""
+def setup(if_missing=False):
+    """Create and seed a collection, or skip any existing path with if_missing. Plain setup refuses a 3.3 file."""
     from ..core import admin
     from ..core.connect import GET_CATALOGUE, catalogue_path
     path = brickwork_path()
+    if if_missing and path.exists():
+        return {'setup': 'skipped', 'database': str(path), 'reason': 'collection exists'}
     admin.ensure_collection(path)                     # freshness rules, system flags, setup event; an existing collection keeps its own
     catalogue = catalogue_path(path)
     result = {'setup': 'ok', 'database': str(path), 'catalogue': str(catalogue) if catalogue.is_file() else 'missing'}

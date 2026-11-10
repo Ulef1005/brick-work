@@ -134,6 +134,8 @@ docker compose run --rm --entrypoint brickwork brickwork setup
 docker compose up -d
 ```
 
+For NAS users whose shared folder is not owned by uid 1000, set `user: "<uid>:<gid>"` in `compose.yaml` (or `--user <uid>:<gid>` with `docker run`) to the folder owner's ids instead of changing ownership; Unraid uses `99:100`.
+
 The clone is still needed: it holds `compose.yaml` and `.env.sample`. `docker compose pull` fetches the published image `ghcr.io/ulef1005/brick-work:1.0.0` (multi-arch, amd64 and arm64); `docker compose build` builds the same image from the source you cloned instead. You can check the published image's provenance with `gh attestation verify oci://ghcr.io/ulef1005/brick-work:1.0.0 --owner Ulef1005`, and its SBOM by adding `--predicate-type https://spdx.dev/Document/v2.3` ([Upgrade Brick Work](docs/how-to/upgrade.md#move-to-the-new-version)). Releases up to 0.9.0 build from source: their `compose.yaml` does not pull.
 
 Then open `http://localhost:3333` and sign in with that password; an empty install greets you with **Download the catalogue** (no key needed); after it, add a set by number and check its parts. The container runs as uid 1000 and writes only to `data/`; if an older image (which ran as root) created that folder, run `sudo chown -R 1000:1000 data` once. The `data` volume holds the database, local catalogue index, photos, PDFs and job state. Back it up together with your environment configuration. No separate application or service is required. The offline smoke test covers a fresh installation without source credentials.

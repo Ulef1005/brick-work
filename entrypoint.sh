@@ -21,5 +21,11 @@ then
     exit 1
 fi
 
+if ! brickwork setup --if-missing
+then
+    echo "Brick Work setup failed; the server will not start." >&2
+    exit 1
+fi
+
 # Execute the WSGI server
-exec gunicorn --bind "${BW_HOST}:${BW_PORT}" "wsgi:application" --worker-class "gevent" --workers 1 --timeout 120 "$@"
+exec gunicorn --bind "${BW_HOST}:${BW_PORT}" "wsgi:application" --worker-class "gevent" --workers 1 --timeout 120 --no-control-socket "$@"

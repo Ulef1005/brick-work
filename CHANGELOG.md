@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## Brick Work 1.0.1 (schema 4.2) · 2026-11-10
+
+A fix release: fresh containers set themselves up on first start and no longer log the gunicorn control-socket error. The schema stays 4.2, so a 1.0.0 collection needs no upgrade step, and going back means starting 1.0.0 on the same file. The published image is `ghcr.io/ulef1005/brick-work:1.0.1`; a new container no longer needs the console `brickwork setup` step. Back up `brickwork.db` and `secret.key` before you upgrade, as always.
+
 - **Containers set themselves up on first start** (#266). A new container creates and seeds its missing collection automatically; existing installs are unchanged and the console `brickwork setup` step is no longer needed with this version. The new `brickwork setup --if-missing` flag skips any existing collection file.
 - **No control server error at container start** (#265). Gunicorn runs with its unused control socket disabled, removing the "Control server error" permission-denied line.
 - **Facts for AI assistants.** The Pages site now serves [`/llms.txt`](https://ulef1005.github.io/brick-work/llms.txt) (the llmstxt.org convention), built by `scripts/build_site.py` from `scripts/site/llms.md`: what Brick Work is and is not for, requirements, install, data, keys, imports, API and MCP, what it contacts, with the release's version filled in and links to the docs as raw Markdown. The README has a short **For AI assistants** section that points to it. `tests/test_llms_txt.py` checks that every linked file exists and every placeholder is filled.

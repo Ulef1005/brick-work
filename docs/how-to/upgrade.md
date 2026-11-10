@@ -20,6 +20,7 @@ The backup is also the way back. An upgrade that changes the schema is one-way.
 | 0.7.0 | 0.8.0, 0.8.1 | none (stays 4.1) | Nothing. | Start the older version on the same file. |
 | 0.8.x | 0.9.0 | 4.1 to 4.2 | In place, at the first read-write start. | Restore the backup. 0.8.x cannot open a 4.2 file. |
 | 0.9.0 | 1.0.0 | none (stays 4.2) | Nothing. | Start the older version on the same file. |
+| 1.0.0 | 1.0.1 | none (stays 4.2) | Nothing. | Start the older version on the same file. |
 
 You can skip versions from 0.6.0 on. Starting 0.9.0 on a 4.0 file runs both in-place steps one after the other, each in its own transaction; a step that fails leaves the file at the version before it. From 0.5.x you always run `brickwork migrate4` first, and it writes the schema of the version you are moving to.
 
@@ -40,7 +41,7 @@ With the Docker install, check out the release you want by its tag, then pull it
 
 ```sh
 git fetch
-git checkout v1.0.0
+git checkout v1.0.1
 docker compose pull         # 0.9.0 and older: docker compose build
 docker compose up -d
 ```
@@ -59,7 +60,7 @@ The first command checks the build provenance: the image was built by this repos
 
 ## Check the result
 
-1. Open `/api/v2/health` (no token). It shows the app version and the schema, for example `"app": "1.0.0"` and `"schema": "4.2"`. `/api/v1/health` answers the same.
+1. Open `/api/v2/health` (no token). It shows the app version and the schema, for example `"app": "1.0.1"` and `"schema": "4.2"`. `/api/v1/health` answers the same.
 2. Run `brickwork check` (with Docker: `docker compose exec brickwork brickwork check`), or press **Run integrity check** under **Manage → Tools & Admin → Database**. Both must pass.
 3. Open **Sets** and compare what you see with your last export if you kept a note of the counts.
 

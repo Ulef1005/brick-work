@@ -22,7 +22,7 @@ Docker Desktop is free for personal use; check its terms if you use it at work.
 
 ## 3. Add two files
 
-1. **`compose.yaml`** tells Docker which Brick Work to run. Open [compose.yaml of release 1.0.0](https://raw.githubusercontent.com/Ulef1005/brick-work/v1.0.0/compose.yaml), save it with **Save page as** into the `brick-work` folder, and check that the name is exactly `compose.yaml`, not `compose.yaml.txt`.
+1. **`compose.yaml`** tells Docker which Brick Work to run. Open [compose.yaml of release 1.0.1](https://raw.githubusercontent.com/Ulef1005/brick-work/v1.0.1/compose.yaml), save it with **Save page as** into the `brick-work` folder, and check that the name is exactly `compose.yaml`, not `compose.yaml.txt`.
 2. **`data/.env`** holds your settings. Make a plain text file in the `data` folder with this one line, using a password of your own:
 
     ```
@@ -42,15 +42,14 @@ brick-work/
 
 ## 4. Start Brick Work
 
-Open a terminal in the `brick-work` folder: on Windows, **Terminal** or **PowerShell** (in File Explorer, right-click the folder and choose **Open in Terminal**); on a Mac, **Terminal** (right-click the folder in Finder, **Services → New Terminal at Folder**). Then type these three lines, one at a time:
+Open a terminal in the `brick-work` folder: on Windows, **Terminal** or **PowerShell** (in File Explorer, right-click the folder and choose **Open in Terminal**); on a Mac, **Terminal** (right-click the folder in Finder, **Services → New Terminal at Folder**). Then type these two lines, one at a time:
 
 ```sh
 docker compose pull
-docker compose run --rm --entrypoint brickwork brickwork setup
 docker compose up -d
 ```
 
-The first line downloads Brick Work (under 1 GB, once). The second creates your empty collection and prints `setup: ok`. The third starts it in the background.
+The first line downloads Brick Work (under 1 GB, once). The second starts it in the background; on first start, the container creates your empty collection automatically.
 
 ## 5. Open it
 

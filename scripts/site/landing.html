@@ -3,7 +3,7 @@
 <div class="layout-2">
 <div class="layout-3">
 <span class="layout-4">Self-hosted · open source · MIT</span>
-<span class="layout-5">1.0.0 · tested on a real collection</span>
+<span class="layout-5">1.0.1 · tested on a real collection</span>
 </div>
 <h1 class="layout-6">Finish the sets you started.</h1>
 <p class="layout-7">Brick Work is the workbench for your brick collection. Check a set's parts, pull the missing ones from loose stock, and see which unfinished sets that stock can complete.</p>
@@ -301,11 +301,10 @@
 <p class="layout-21">Docker Compose on your own machine pulls the published image (amd64 and arm64). Then open <code class="layout-106">http://localhost:3333</code>. Moving an old collection over? <code class="layout-106">brickwork import-bricktracker</code> imports it read-only. No server and no Git? <a href="docs/how-to/install-docker-desktop/">Install on your computer with Docker Desktop</a>.</p>
 <a class="layout-107" href="docs/">Full install guide</a>
 </div>
-<pre class="layout-108">git clone --branch v1.0.0 https://github.com/Ulef1005/brick-work.git &amp;&amp; cd brick-work
+<pre class="layout-108">git clone --branch v1.0.1 https://github.com/Ulef1005/brick-work.git &amp;&amp; cd brick-work
 mkdir -p data &amp;&amp; sudo chown 1000:1000 data
 cp .env.sample data/.env   <span class="layout-61"># set BW_AUTHENTICATION_PASSWORD</span>
 docker compose pull
-docker compose run --rm --entrypoint brickwork brickwork setup
 docker compose up -d</pre>
 </section>
 <section class="planned layout-16">

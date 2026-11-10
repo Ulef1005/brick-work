@@ -6,7 +6,7 @@ services:
     # `docker compose build` builds the same name from this source instead;
     # `docker compose pull` brings the published image back.
     # The tag is this release's version: a checkout of tag vX.Y.Z runs image X.Y.Z.
-    image: ghcr.io/ulef1005/brick-work:1.0.0
+    image: ghcr.io/ulef1005/brick-work:1.0.1
     build: .
     # The image runs as uid 1000; to use another user, set user: and make ./data writable for it.
     # user: "1000:1000"

@@ -20,7 +20,10 @@ Creates the database at `BW_DB_PATH` (and its folder) if it does not exist yet, 
 
 ```text
 brickwork setup
+brickwork setup --if-missing
 ```
+
+On `main`, `--if-missing` uses the app's collection path rules, including `BW_DB_PATH` from the environment or `data/.env`: if that path exists in any format, it succeeds with `setup: skipped` and `reason: collection exists` without opening or changing the file. If missing, it creates and seeds the collection as plain `setup` does, without downloading the catalogue. The container entrypoint runs this automatically before starting the server; a setup failure stops the container.
 
 ## check
 

@@ -32,3 +32,39 @@ def test_entrypoint_refuses_an_unwritable_data_folder(tmp_path):
         return  # root can write anywhere; the check is for the unprivileged image
     assert result.returncode == 1
     assert 'chown -R' in result.stderr
+
+
+def entrypoint_with_stubs(tmp_path, setup_exit):
+    entry = tmp_path / 'entrypoint.sh'
+    entry.write_text((ROOT / 'entrypoint.sh').read_text().replace('/app/data', str(tmp_path / 'data')))
+    for name, body in {
+        'brickwork': f'printf "brickwork\\n" >> "$CALLS"\nprintf "%s\\n" "$@" >> "$CALLS"\nexit {setup_exit}\n',
+        'gunicorn': 'printf "gunicorn\\n" >> "$CALLS"\nprintf "%s\\n" "$@" >> "$CALLS"\n',
+    }.items():
+        stub = tmp_path / name
+        stub.write_text('#!/bin/sh\n' + body)
+        stub.chmod(0o700)
+    calls = tmp_path / 'calls'
+    env = dict(os.environ, PATH=str(tmp_path) + os.pathsep + '/usr/bin:/bin',
+               CALLS=str(calls), BW_HOST='127.0.0.1', BW_PORT='4321')
+    result = subprocess.run(['sh', str(entry), '--log-level', 'debug', '--access-logformat', 'user argument'],
+                            capture_output=True, text=True, env=env)
+    return result, calls.read_text().splitlines()
+
+
+def test_entrypoint_sets_up_before_gunicorn_without_control_socket(tmp_path):
+    result, calls = entrypoint_with_stubs(tmp_path, 0)
+    assert result.returncode == 0, result.stderr
+    assert calls == [
+        'brickwork', 'setup', '--if-missing',
+        'gunicorn', '--bind', '127.0.0.1:4321', 'wsgi:application',
+        '--worker-class', 'gevent', '--workers', '1', '--timeout', '120',
+        '--no-control-socket', '--log-level', 'debug', '--access-logformat', 'user argument',
+    ]
+
+
+def test_entrypoint_stops_when_setup_fails(tmp_path):
+    result, calls = entrypoint_with_stubs(tmp_path, 1)
+    assert result.returncode == 1
+    assert result.stderr == 'Brick Work setup failed; the server will not start.\n'
+    assert calls == ['brickwork', 'setup', '--if-missing']

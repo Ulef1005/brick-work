@@ -92,6 +92,9 @@ def test_a_3_3_file_is_refused_by_setup_and_every_service(where):
     with closing(sqlite3.connect(where / 'brickwork.db')) as db:
         db.execute('CREATE TABLE schema_meta(key TEXT, value TEXT)')
         db.commit()
+    before = snapshot(where)
+    assert ops.setup(if_missing=True)['setup'] == 'skipped'
+    assert snapshot(where) == before
     for service in (ops.setup, ops.brickwork_check, ops.settings_show):
         with pytest.raises(errors.NotSetUp, match='brickwork migrate4|store4 migrate'):
             service()
@@ -206,3 +209,39 @@ def test_import_runs_the_items_job_here(coll, pair, monkeypatch):
         ops.import_item('S', 'nonesuch')
     with pytest.raises(Exception):
         ops.import_item('Z', '1000-1')
+
+
+def test_setup_if_missing_creates_and_seeds_then_skips(where, monkeypatch, capsys):
+    from brickwork.web import cli
+    monkeypatch.setattr(cli, 'application_context', lambda operation: Flask('x').app_context())
+    path = where / 'brickwork.db'
+    assert cli.main(['setup', '--if-missing', '--json']) == 0
+    result = json.loads(capsys.readouterr().out)
+    assert result['setup'] == 'ok' and result['database'] == str(path)
+    assert result['catalogue'] == 'missing'
+    with closing(sqlite3.connect(path)) as db:
+        assert db.execute('SELECT count(*) FROM source_freshness').fetchone()[0] == 15
+        assert db.execute('SELECT count(*) FROM flag').fetchone()[0] == 3
+    before = snapshot(where)
+    assert cli.main(['setup', '--if-missing', '--json']) == 0
+    assert json.loads(capsys.readouterr().out) == {
+        'setup': 'skipped', 'database': str(path), 'reason': 'collection exists',
+    }
+    assert snapshot(where) == before
+    assert not (where / 'catalogue.db').exists()
+
+
+@pytest.mark.parametrize('filename', ['brickwork.db', 'custom-collection.db'])
+def test_setup_if_missing_skips_junk_at_environment_path(where, monkeypatch, capsys, filename):
+    from brickwork.web import cli
+    monkeypatch.setattr(cli, 'application_context', lambda operation: Flask('x').app_context())
+    path = where / filename
+    monkeypatch.setenv('BW_DB_PATH', str(path))
+    path.write_bytes(b'not a collection\x00\xff')
+    before = snapshot(where)
+    assert cli.main(['setup', '--if-missing', '--json']) == 0
+    assert json.loads(capsys.readouterr().out) == {
+        'setup': 'skipped', 'database': str(path), 'reason': 'collection exists',
+    }
+    assert snapshot(where) == before
+    assert list(where.iterdir()) == [path]

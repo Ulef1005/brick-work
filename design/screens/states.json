@@ -454,6 +454,24 @@
    "approved": true
   },
   {
+   "screen": "43-Complete-sets",
+   "section": "4c",
+   "state": "order-missing-parts",
+   "world": "demo",
+   "path": "/planning/order-missing-parts",
+   "built": true,
+   "approved": false
+  },
+  {
+   "screen": "43-Complete-sets",
+   "section": "4c",
+   "state": "order-missing-parts-review",
+   "world": "demo",
+   "path": "/planning/order-missing-parts?step=review",
+   "built": true,
+   "approved": false
+  },
+  {
    "screen": "44-Complete-sets",
    "section": "7c",
    "state": "",

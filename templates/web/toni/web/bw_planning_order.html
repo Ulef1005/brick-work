@@ -1,0 +1,70 @@
+{% extends 'web/toni/base.html' %}
+{% block title %} · {{ title }}{% endblock %}
+{% block page_assets %}<link rel="stylesheet" href="{{ bw_static('web/toni/bw-collection.css') }}"><link rel="stylesheet" href="{{ bw_static('web/toni/bw-planning.css') }}"><script src="{{ bw_static('web/toni/bw-planning-order.js') }}" defer></script>{% endblock %}
+{# #225: one server-rendered page. Every choice is in the query (a link), the ticks are a GET form, the file is a link: nothing here needs a script. #}
+{% macro amount(value,currency='') %}{{ toni_money(value,currency,fixed=true) }}{% endmacro %}
+{% macro piece(n,word) %}{{ n }} {{ word }}{{ '' if n==1 else 's' }}{% endmacro %}
+{% macro tick(url,label) %}<a class="oo-chip" href="{{ url }}">{{ label }}<span aria-hidden="true">✕</span><span class="bc-visually-hidden"> (remove)</span></a>{% endmacro %}
+{% block main %}
+{% set lines=order.lines %}{% set ticked=choice.chosen|length %}{% set gain_note=choice.gain and choice.shown|selectattr('gain','none')|list|length %}
+<div id="bw-planning" class="oo" data-screen="order" data-step="{{ choice.step }}">
+{% if error %}<h1>{{ title }}</h1><p role="alert">{{ error }}</p><a href="{{ url_for('web.bw_admin',page='database') }}">Open Tools &amp; Admin</a>{% else %}
+<section class="oo-choose" aria-label="Choose sets">
+<a class="oo-crumb" href="{{ url_for('web.bw_planning',screen='complete-sets') }}">Planning · Complete sets</a>
+<h1>{{ title }}</h1>
+<p class="bp-subtitle" data-oo-summary>{{ rows|length }} {{ 'set has' if rows|length==1 else 'sets have' }} gaps · {{ ticked }} in the list</p>
+{% if not rows %}<p>No set has a gap. Mark missing parts on a copy first.</p>{% else %}
+<form method="get" action="{{ url_for('web.bw_planning_order') }}" class="oo-form" id="oo-form" data-oo-form>
+<input type="hidden" name="sel" value="1">
+<div class="oo-controls">
+<label class="oo-search"><span class="bc-visually-hidden">Search sets</span>{{ toni_icon('search') }}<input type="search" name="q" value="{{ choice.q }}" placeholder="Search sets" maxlength="60" autocomplete="off"></label>
+<details open class="oo-filter-box" data-oo-filters><summary><span>Filters{% set active=(1 if choice.sell else 0)+(1 if choice.gain else 0)+(1 if choice.theme else 0) %}{% if active %} · {{ active }}{% endif %}</span></summary>
+<div class="oo-more-controls">
+
+<label class="oo-select"><span>Theme</span><select name="theme"><option value="">All</option>{% for t in page.themes %}<option value="{{ t }}" {% if t==choice.theme %}selected{% endif %}>{{ t }}</option>{% endfor %}</select></label>
+<label class="oo-switch"><input type="hidden" name="sell" value="0"><span class="oo-switch-text">Leave out sets to sell or part out</span><span class="bk-switch"><input type="checkbox" role="switch" name="sell" value="1" {% if choice.sell %}checked{% endif %}><span class="bk-track"></span></span></label>
+<label class="oo-switch"><input type="hidden" name="gain" value="0"><span class="oo-switch-text">Only sets that gain value</span><span class="bk-switch"><input type="checkbox" role="switch" name="gain" value="1" {% if choice.gain %}checked{% endif %}><span class="bk-track"></span></span></label>
+<label class="oo-select"><span>Sort</span><select name="sort">{% for key,name in page.sorts %}<option value="{{ key }}" {% if key==choice.sort %}selected{% endif %}>{{ name }}</option>{% endfor %}</select></label>
+<button type="submit" class="oo-update" data-oo-update>Update list</button>
+</div></details></div>
+<div class="oo-chips">{% if choice.sell and page.sold %}{{ tick(page.link(sell='0',**page.picked),'Leave out: sell or part out · '~piece(page.sold,'set')) }}{% endif %}{% if choice.gain %}{{ tick(page.link(gain='',**page.picked),'Only sets that gain value') }}{% endif %}{% if choice.theme %}{{ tick(page.link(theme='',**page.picked),'Theme · '~choice.theme) }}{% endif %}{% if choice.q %}{{ tick(page.link(q='',**page.picked),'Search · '~choice.q) }}{% endif %}
+<span class="oo-count mono" role="status"><span data-oo-ticked>{{ ticked }}</span> of {{ choice.shown|length }} sets</span><a class="oo-text" href="{{ page.all_url }}">Select all</a><a class="oo-text" href="{{ page.clear_url }}">Clear</a></div>
+{% if gain_note %}<p class="oo-note">{{ piece(gain_note,'set') }} {{ 'has' if gain_note==1 else 'have' }} no current price for the repair, so {{ 'it counts' if gain_note==1 else 'they count' }} as no gain.</p>{% endif %}
+<ul class="oo-rows" data-oo-rows>
+{% for r in choice.shown %}{% set why=choice.out[r.id] %}
+<li><label class="oo-row {% if why %}oo-out{% endif %}">
+<input type="checkbox" name="copy" value="{{ r.id }}" {% if r.id in page.ticked %}checked{% endif %} data-oo-copy><span class="oo-box" aria-hidden="true"></span>
+<span class="bc-picture" data-item-no="{{ r.item_no }}">{% if r.image %}<img {{ bw_picture_attrs(r.image) }} alt="" loading="lazy">{% else %}<span class="mono">{{ r.number_text or r.name }}</span>{% endif %}</span>
+<span class="oo-who"><span class="oo-name"><span class="mono">{{ r.number_text or r.item_no }}{% if r.show_label %} · {{ r.label }}{% endif %}</span> <strong>{{ toni_nowrap_tail(r.name or r.item_no) }}</strong></span>
+<span class="oo-meta">{{ r.theme or r.category or '' }}{% if (r.theme or r.category) and r.year %} · {% endif %}{{ r.year or '' }}{% if r.checking %} <span class="bc-status incomplete">Check in progress</span>{% endif %}{% if why %} <span class="bc-status unknown">{{ why }}</span> left out{% endif %}</span></span>
+<span class="oo-num"><span class="mono">{% if r.parts or not r.figures %}<span class="oo-gap"><b>−{{ r.parts }}</b> {{ 'part' if r.parts==1 else 'parts' }}</span>{% endif %}{% if r.figures %}<span class="oo-gap"><b>−{{ r.figures }}</b> {{ 'figure' if r.figures==1 else 'figures' }}</span>{% endif %}</span>
+<span class="oo-sub mono">{% if why %}not in the list{% elif r.gain %}gain +{{ amount(r.gain,settings.bricklink_currency) }}{% endif %}</span></span>
+</label></li>{% else %}<li class="oo-none">No set matches. Clear a filter to see the rest.</li>{% endfor %}
+</ul>
+</form>{% endif %}
+</section>
+<section class="oo-review" aria-label="Order list">
+<a class="oo-crumb oo-back" href="{{ page.back_url }}">‹ {{ title }}</a>
+<p class="lab oo-label">Order list</p>
+<h2 data-oo-total>{{ piece(lines|length,'line') }} · {{ piece(order.pieces,'piece') }}<span class="oo-from"> from {{ piece(ticked,'set') }}</span></h2>
+<p class="bp-subtitle oo-sub-top"><span class="oo-from-sub">From {{ piece(ticked,'set') }}. </span>Same part, colour and condition are combined. {% if settings.repair_use_loose_stock %}Loose stock is already taken off.{% else %}Loose stock is not counted (Repair settings).{% endif %}</p>
+{% if not ticked %}<p class="oo-none">Tick the sets you want to order for.</p>{% elif not lines and not order.skipped %}<p class="oo-none">Nothing to buy for these sets{% if settings.repair_use_loose_stock %}: loose stock covers it{% endif %}.</p>{% endif %}
+{% macro line(l) %}<li class="oo-line"><span class="bc-picture oo-tile" data-item-no="{{ l.number_text }}">{% if l.image %}<img {{ bw_picture_attrs(l.image) }} alt="" loading="lazy">{% else %}<span class="mono">{{ l.number_text or '' }}</span>{% endif %}</span>
+<span class="oo-what"><strong>{{ toni_nowrap_tail(l.name or l.number_text or 'Unnamed item') }}</strong>
+<span class="oo-id">{% if l.color_id is not none %}<span class="bc-colour" {% if l.rgb %}style="background:#{{ l.rgb }};color:{{ l.ink }}"{% endif %}>{{ l.color_name or 'Unknown colour' }}</span> {% endif %}<span class="mono">{{ l.number_text }} · {{ 'new' if l.condition=='N' else 'used' }}</span></span>
+<span class="oo-srcs">{% for s in l.sources %}<span class="oo-src mono">{{ s.label }} ×{{ s.quantity }}</span>{% endfor %}</span></span>
+<span class="oo-qty mono">×{{ l.quantity }}</span></li>{% endmacro %}
+{% if lines %}<ul class="oo-lines" data-oo-lines>{% for l in lines[:page.first] %}{{ line(l) }}{% endfor %}</ul>
+{% if lines|length>page.first %}<details class="oo-more"><summary>+ {{ lines|length-page.first }} more {{ 'line' if lines|length-page.first==1 else 'lines' }} · Show all</summary><ul class="oo-lines">{% for l in lines[page.first:] %}{{ line(l) }}{% endfor %}</ul></details>{% endif %}{% endif %}
+{% if order.skipped %}<div class="oo-warn" role="note"><b>{{ piece(order.skipped|length,'line') }} left out:</b>
+<ul>{% for l in order.skipped %}<li>{{ l.name or l.number_text or 'An unnamed item' }}{% if l.color_name %} · {{ l.color_name }}{% endif %} ({% for s in l.sources %}{{ s.label }}{% if not loop.last %}, {% endif %}{% endfor %}) has no BrickLink {{ 'colour' if l.why=='no BrickLink colour' else 'number' }}. <a href="{{ url_for('web.bw_collection_item',item_id=l.item_id) }}">Link it</a></li>{% endfor %}</ul></div>{% endif %}
+<div class="oo-export">{% if lines %}<a class="button primary bw-primary" href="{{ page.export_url }}" download="missing-parts.xml">Export {{ piece(ticked,'set') }} · BrickLink XML</a>{% else %}<span class="button primary bw-primary" aria-disabled="true">Export {{ piece(ticked,'set') }} · BrickLink XML</span>{% endif %}
+<p class="bp-subtitle">Downloads missing-parts.xml for a BrickLink Wanted List.{% if not can_edit %} This instance is read-only; the file is still a read.{% endif %}</p></div>
+</section>
+<div class="bc-selection-bar oo-bar" data-oo-bar>
+{% if choice.step=='review' %}<div class="oo-bar-text"><span class="mono">{{ piece(ticked,'set') }}</span><span class="oo-sub">{{ piece(lines|length,'line') }} · {{ piece(order.pieces,'piece') }}</span></div>
+{% if lines %}<a class="button primary bw-primary" href="{{ page.export_url }}" download="missing-parts.xml">Export · BrickLink XML</a>{% else %}<span class="button primary bw-primary" aria-disabled="true">Export · BrickLink XML</span>{% endif %}
+{% else %}<div class="oo-bar-text"><span class="mono" data-oo-bar-sets>{{ piece(ticked,'set') }}</span><span class="oo-sub">{{ piece(lines|length,'line') }} · {{ piece(order.pieces,'piece') }}</span></div>
+{% if rows %}<button type="submit" form="oo-form" name="step" value="review" class="primary bw-primary" data-oo-review {% if not ticked %}aria-disabled="true"{% endif %}>Review list</button>{% endif %}{% endif %}
+</div>
+{% endif %}</div>{% endblock %}

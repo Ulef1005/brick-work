@@ -2263,6 +2263,79 @@ def bw_planning(screen):
     return response
 
 
+ORDER_COPIES_LIMIT=2000
+
+
+def bw_order_choice(rows,args):
+    """What the Order missing parts query asks for, read against `rows`: `dict(q, theme, sort, sell, gain, step, shown, out, chosen)`.
+
+    `sell` (leave out sets to sell or part out) is on unless the query says 0 and `gain` (only sets that gain value) is off unless it says
+    1, so a default survives an unticked box (the form sends a 0 before each switch). The choice is the query's `copy` list when `sel=1`,
+    nothing for `sel=none`, else (`sel=all` or no `sel`) every shown copy that is not left out. Only copies on the screen count."""
+    from ..core import order_missing
+    q=(args.get('q') or '').strip()[:60];theme=(args.get('theme') or '')[:100]
+    sort=args.get('sort') if args.get('sort') in dict(order_missing.SORTS) else 'missing'
+    sell=(args.getlist('sell') or ['1'])[-1]!='0';gain=(args.getlist('gain') or ['0'])[-1]=='1'
+    shown=order_missing.ordered(order_missing.visible(rows,query=q,theme=theme),sort)
+    out={r['id']:order_missing.left_out(r,sell=sell,gain=gain) for r in shown}
+    if args.get('sel')=='1':
+        asked=set(args.getlist('copy'));chosen=[r['id'] for r in shown if r['id'] in asked]
+    elif args.get('sel')=='none': chosen=[]
+    else: chosen=[r['id'] for r in shown if not out[r['id']]]
+    return dict(q=q,theme=theme,sort=sort,sell=sell,gain=gain,step='review' if args.get('step')=='review' else 'choose',shown=shown,out=out,chosen=chosen)
+
+
+@web_page.get('/planning/order-missing-parts')
+@login_required
+def bw_planning_order():
+    """Order missing parts (#225): the copies with gaps, a choice among them (all in the query, so the page is a link), and the combined
+    list of what to buy for that choice with the copies each line comes from. A read: it writes nothing and stays on a read-only instance."""
+    from ..core import order_missing, planning
+    from ..core.admin import database
+    from .admin_ops import brickwork_path
+    error=None;rows=[];order=dict(lines=[],skipped=[],pieces=0);settings={}
+    try:
+        with database(brickwork_path(),read_only=True) as db:
+            rows=order_missing.candidates(db)
+            choice=bw_order_choice(rows,request.args)
+            order=order_missing.order_list(db,rows,set(choice['chosen']))
+            settings=planning.configuration(db)
+    except (ValueError,sqlite3.Error,OSError) as exc:
+        error=public(exc, 'Brick Work database is not available. Check BW_DB_PATH and try again.');choice=bw_order_choice([],request.args)
+    base={k:v for k,v in dict(q=choice['q'],theme=choice['theme'],sort=choice['sort'] if choice['sort']!='missing' else '',
+          sell='0' if not choice['sell'] else '',gain='1' if choice['gain'] else '').items() if v}
+    def link(**change):
+        merged={**base,**change}
+        return url_for('web.bw_planning_order',**{k:v for k,v in merged.items() if v not in ('',None,[])})
+    picked=dict(sel='1',copy=choice['chosen'])
+    page=dict(link=link,base=base,picked=picked,
+              all_url=link(sel='all'),clear_url=link(sel='none'),review_url=link(**picked,step='review'),back_url=link(**picked),
+              export_url=url_for('web.bw_planning_order_file',copy=choice['chosen']),
+              themes=sorted({r['theme'] for r in rows if r['theme']}),sorts=order_missing.SORTS,
+              first=order_missing.FIRST_LINES,sold=sum(1 for r in choice['shown'] if choice['sell'] and r['to_sell']),
+              ticked=set(choice['chosen']))
+    response=current_app.make_response(render_template('web/toni/web/bw_planning_order.html',title='Order missing parts',rows=rows,order=order,
+        error=error,settings=settings,choice=choice,page=page,can_edit=bw_collection_editable()))
+    response.headers['Cache-Control']='no-store'
+    return response
+
+
+@web_page.get('/planning/order-missing-parts/missing-parts.xml')
+@login_required
+def bw_planning_order_file():
+    """The BrickLink XML of the chosen copies: the file `planning.export` makes for Complete sets' Export (same response), by link so the
+    page needs no script. A read, so it stays on a read-only instance."""
+    from ..core import planning
+    from ..core.admin import database
+    from .admin_ops import brickwork_path
+    ids=request.args.getlist('copy')
+    try:
+        with database(brickwork_path(),read_only=True) as db:
+            result=planning.export(db,ids)
+    except (ValueError,sqlite3.Error,OSError) as exc: abort(400,public(exc, 'Brick Work database is not available · try again'))
+    return bw_missing_parts_file(result)
+
+
 @web_page.get('/planning/prices/records')
 @login_required
 def bw_prices_records():
@@ -2298,6 +2371,19 @@ def bw_prices_details():
     except (ValueError,sqlite3.Error,OSError) as exc: return jsonify(message=public(exc, 'Brick Work database is not available · try again')),503
     if result is None: abort(404)
     response=jsonify(result);response.headers['Cache-Control']='no-store';return response
+
+
+def bw_missing_parts_file(result):
+    """The download of a `planning.export` result: missing-parts.xml, the lines it had to leave out in `X-Bw-Skipped` (one file, one
+    set of headers, for Complete sets' export and for Order missing parts)."""
+    import json
+    from urllib.parse import quote
+    skipped=[dict(item_no=(r['name'] or ''),color=r['color_name'],quantity=r['quantity'],reason=r['why']) for r in result['skipped']]
+    response=current_app.response_class(result['xml'],mimetype='application/xml')
+    response.headers['Content-Disposition']='attachment; filename="missing-parts.xml"'
+    response.headers['Cache-Control']='no-store'
+    response.headers['X-Bw-Skipped']=quote(json.dumps(skipped,separators=(',',':')))
+    return response
 
 
 @web_page.post('/planning/action/<action>')
@@ -2339,15 +2425,11 @@ def bw_planning_write(action):
         if action=='export':
             with database(brickwork_path(),read_only=True) as db:
                 result=planning.export(db,data.get('ids'))
-            skipped=[dict(item_no=(r['name'] or ''),color=r['color_name'],quantity=r['quantity'],reason=r['why']) for r in result['skipped']]
             if data.get('summary') is True:
+                skipped=[dict(item_no=(r['name'] or ''),color=r['color_name'],quantity=r['quantity'],reason=r['why']) for r in result['skipped']]
                 return jsonify(content=result['xml'].decode('utf-8'),filename='missing-parts.xml',mimetype='application/xml',
                                summary=dict(exported=len(result['lines']),skipped=skipped))
-            response=current_app.response_class(result['xml'],mimetype='application/xml')
-            response.headers['Content-Disposition']='attachment; filename="missing-parts.xml"'
-            response.headers['Cache-Control']='no-store'
-            response.headers['X-Bw-Skipped']=quote(json.dumps(skipped,separators=(',',':')))
-            return response
+            return bw_missing_parts_file(result)
         with database(brickwork_path()) as db:
             if action=='undo': planning.undo(db,int(data['event_id']));event=None
             else: event=planning.save(db,action,data)

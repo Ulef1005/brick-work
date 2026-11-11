@@ -52,6 +52,7 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
   await delay(250);
   // An open sheet is shown as the device sees it (one viewport); a page is shown whole, with the viewport grown to its height so the
   // fixed bars (phone tab bar, save bar) sit at its foot rather than across the middle of the capture.
+  if(process.env.BW_CAPTURE_FONTS){try{await call('DOM.enable');await call('CSS.enable');const root=await call('DOM.getDocument',{depth:0});const q=await call('DOM.querySelector',{nodeId:root.root.nodeId,selector:'select'});if(q.nodeId){const f=await call('CSS.getPlatformFontsForNode',{nodeId:q.nodeId});console.error('FONTS '+path.basename(job.out)+' '+JSON.stringify(f.fonts));}}catch(e){console.error('FONTS error '+e.message);}}
   const sheet=await evaluate("!!document.querySelector('dialog[open]')");
   let shotHeight=height;
   if(!sheet){

@@ -40,6 +40,7 @@ jobs:
         run: .venv/bin/python scripts/screen_gate.py agree
         env:
           BW_CHROME_NO_SANDBOX: "1"  # the runner's user namespaces may be restricted; the pages are our own test fixtures
+          BW_CAPTURE_FONTS: "1"
           BW_GATE_KEEP: ${{ github.workspace }}/build/gate-agree
       - name: Upload both renders
         if: always()

@@ -2279,7 +2279,15 @@ def bw_order_choice(rows,args):
     shown=order_missing.ordered(order_missing.visible(rows,query=q,theme=theme),sort)
     out={r['id']:order_missing.left_out(r,sell=sell,gain=gain) for r in shown}
     if args.get('sel')=='1':
-        asked=set(args.getlist('copy'));chosen=[r['id'] for r in shown if r['id'] in asked]
+        # What the form sends is the page as it was drawn (`was_sell`, `was_gain`): a switch that changed since then moves the copies it
+        # leaves out or lets back in, and every other tick stays as it was (a hand-ticked copy that is left out stays ticked).
+        was_sell=(args.get('was_sell',('1' if sell else '0'))!='0');was_gain=(args.get('was_gain',('1' if gain else '0'))=='1')
+        asked=set(args.getlist('copy'))
+        for r in shown:
+            before=order_missing.left_out(r,sell=was_sell,gain=was_gain)
+            if out[r['id']] and not before: asked.discard(r['id'])
+            elif before and not out[r['id']]: asked.add(r['id'])
+        chosen=[r['id'] for r in shown if r['id'] in asked]
     elif args.get('sel')=='none': chosen=[]
     else: chosen=[r['id'] for r in shown if not out[r['id']]]
     return dict(q=q,theme=theme,sort=sort,sell=sell,gain=gain,step='review' if args.get('step')=='review' else 'choose',shown=shown,out=out,chosen=chosen)
@@ -2307,7 +2315,7 @@ def bw_planning_order():
     def link(**change):
         merged={**base,**change}
         return url_for('web.bw_planning_order',**{k:v for k,v in merged.items() if v not in ('',None,[])})
-    picked=dict(sel='1',copy=choice['chosen'])
+    picked=dict(sel='1',copy=choice['chosen'],was_sell='1' if choice['sell'] else '0',was_gain='1' if choice['gain'] else '0')
     page=dict(link=link,base=base,picked=picked,
               all_url=link(sel='all'),clear_url=link(sel='none'),review_url=link(**picked,step='review'),back_url=link(**picked),
               export_url=url_for('web.bw_planning_order_file',copy=choice['chosen']),

@@ -67,7 +67,7 @@ def test_a_set_to_sell_stays_visible_greyed_and_unticked_with_its_reason(coll, c
     off = page(client, sell='0')
     assert s['gate'] in ticked(off) and not off.select('.oo-out')
     by_hand = page(client, sel='1', copy=list(s.values()))
-    assert s['gate'] in ticked(by_hand) and 'oo-out' in by_hand.find('input', value=s['gate']).find_parent('label')['class']
+    assert s['gate'] in ticked(by_hand) and 'To sell' in by_hand.find('input', value=s['gate']).find_parent('label').text
 
 
 def test_the_switches_survive_an_unticked_box(client, coll):
@@ -161,3 +161,43 @@ def test_the_nav_keeps_complete_sets_current_and_complete_sets_links_here(coll, 
 def test_an_empty_collection_says_so(coll, client):
     soup = page(client)
     assert 'No set has a gap' in soup.get_text()
+
+
+def test_a_switch_changed_in_the_form_moves_the_ticks_it_decides(coll, client):
+    """The form sends every tick and the state the page was drawn with; a switch that changed since then ticks and unticks what it decides."""
+    s = scene(coll)
+    everything = list(s.values())
+    soup = page(client, sel='1', copy=everything, gain='1', was_gain='0')                 # Only sets that gain value turned on: no copy has a price
+    assert not ticked(soup) and soup.select_one('[data-oo-total]').text == '0 lines · 0 pieces from 0 sets'
+    back = page(client, sel='1', copy=[], gain='0', was_gain='1')                         # and off again: they come back
+    assert set(ticked(back)) == set(everything)
+    coll.tag('copy', s['gate'], coll.flag('To sell', 'status'))
+    on = page(client, sel='1', copy=everything, sell='1', was_sell='0')
+    assert s['gate'] not in ticked(on) and len(ticked(on)) == 3
+    assert not page(client, sel='1', copy=[s['first']], sell='0', was_sell='1').select('.oo-out')   # off: a copy is not left out, ticks stay as asked
+
+
+def test_a_left_out_copy_ticked_by_hand_stays_ticked_counted_and_named(coll, client):
+    s = scene(coll)
+    coll.tag('copy', s['gate'], coll.flag('To sell', 'status'))
+    soup = page(client, sel='1', copy=[s['first'], s['gate']], sell='1', was_sell='1')
+    row = soup.find('input', value=s['gate']).find_parent('label')
+    assert s['gate'] in ticked(soup) and 'oo-out' not in row['class']
+    assert 'To sell' in row.text and 'not in the list' not in row.text and 'left out' not in row.text
+    assert soup.select_one('[data-oo-total]').text.endswith('from 2 sets')
+
+
+def test_the_chips_remove_a_filter_and_apply_what_it_decided(coll, client):
+    s = scene(coll)
+    coll.tag('copy', s['gate'], coll.flag('To sell', 'status'))
+    soup = page(client)
+    chip = soup.select_one('.oo-chip')['href']
+    assert s['gate'] not in ticked(soup)
+    freed = BeautifulSoup(client.get(chip).data, 'html.parser')
+    assert s['gate'] in ticked(freed) and not freed.select('.oo-chip') and len(ticked(freed)) == 4
+
+
+def test_the_gain_note_counts_only_the_copies_without_a_price(coll, client):
+    scene(coll)
+    soup = page(client, gain='1')
+    assert soup.select_one('.oo-note').text.startswith('4 sets have no current price')

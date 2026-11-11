@@ -17,7 +17,7 @@ Narrow the list with:
 - **Search sets:** a number, a name or "Set 2".
 - **Theme.**
 - **Leave out sets to sell or part out** (on by default). A copy with a status or tag whose name says so, such as *To sell*, *For sale*, *Part out*, *Parted out* or *Donor*, is left out: it stays in the list, greyed and unticked, with its tag and **left out**. Tick it yourself if you want its parts anyway. Brick Work has no built-in mark for this; name the tag whatever you like from those words.
-- **Only sets that gain value** (off by default). Copies the repair ranking gives no gain, including those whose price is missing or too old, count as no gain and are left out; the page says how many.
+- **Only sets that gain value** (off by default). A copy the repair ranking gives no gain is left out. A copy whose price is missing or too old has no gain figure and counts as no gain; the page says how many.
 - **Sort:** most missing (the default), fewest missing, most gain, number or name.
 
 Only the sets you can see count: a set hidden by the search or the theme is not in the list. Every choice is in the page's address, so you can bookmark or share the view. Without JavaScript, press **Update list** after changing a filter or a tick.

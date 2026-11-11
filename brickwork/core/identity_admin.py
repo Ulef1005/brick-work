@@ -572,8 +572,8 @@ def _live_variant(db, item_id, kind):
     if row is not None:
         return row['kind'] == kind and row['origin'] == 'catalogue' and row['catalogue_retired_at'] is None and row['merged_into'] is None
     if has_catalogue(db):
-        row = db.execute('SELECT kind FROM catalogue.item WHERE id=?', (item_id,)).fetchone()
-        return row is not None and row['kind'] == kind
+        row = db.execute('SELECT kind, retired_at FROM catalogue.item WHERE id=?', (item_id,)).fetchone()
+        return row is not None and row['kind'] == kind and row['retired_at'] is None
     return False
 
 
@@ -660,9 +660,12 @@ def variant_preview(db, from_id, to_id):
     try:
         counts = variant.preview_change_variant(db, int(from_id), int(to_id))
     except sqlite3.OperationalError as exc:
-        if 'locked' not in str(exc) and 'busy' not in str(exc):
+        if 'no such table' in str(exc) or 'unable to open' in str(exc):
+            out['refusal'] = NOT_ACTIVATED                       # the catalogue file is gone or unreadable
+        elif 'locked' not in str(exc) and 'busy' not in str(exc):
             raise
-        out.update(busy=True, refusal='Brick Work is busy with something else, such as a sync or a job. Try again in a moment.')
+        else:
+            out.update(busy=True, refusal='Brick Work is busy with something else, such as a sync or a job. Try again in a moment.')
     except MergeRefused as exc:
         out['refusal'] = explain_variant_refusal(db, str(exc), int(from_id), int(to_id))
     except CatalogueError:

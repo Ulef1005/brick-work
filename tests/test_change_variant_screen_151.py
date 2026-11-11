@@ -192,3 +192,23 @@ def test_the_page_survives_a_catalogue_that_is_not_activated(coll, client, world
     monkeypatch.setattr(store_variant, 'preview_change_variant', refuse)
     soup = page(client, url(world.figure, target=other))
     assert "catalogue isn't activated yet" in soup.select_one('.bi-refusal').get_text()
+
+
+def test_a_preview_whose_catalogue_table_is_missing_is_the_catalogue_refusal_not_a_server_error(coll, client, world, other, monkeypatch):
+    import sqlite3
+
+    def gone(*args, **kwargs):
+        raise sqlite3.OperationalError('no such table: catalogue.inventory')
+    monkeypatch.setattr(store_variant, 'preview_change_variant', gone)
+    soup = page(client, url(world.figure, target=other))
+    assert "catalogue isn't activated yet" in soup.select_one('.bi-refusal').get_text()
+
+
+def test_a_retired_catalogue_item_is_not_offered_as_a_variant(coll, client, world, tmp_path):
+    import sqlite3
+    from contextlib import closing
+    assert [a.select_one('strong').get_text() for a in page(client, url(world.figure, q='fig-000005')).select('.bi-result')] == ['Syn Reissue Figure']
+    with closing(sqlite3.connect(tmp_path / 'catalogue.db')) as other:                       # the catalogue retires it (the file is attached read-only here)
+        other.execute("UPDATE item SET retired_at='2026-11-01T00:00:00.000Z' WHERE born_key='fig-000005'")
+        other.commit()
+    assert page(client, url(world.figure, q='fig-000005')).select('.bi-result') == []

@@ -88,7 +88,7 @@ def setup_app(app: Flask) -> None:
         g.login = LoginManager
         g.request_start_time = time.monotonic()
         g.request_time = lambda: f'{(time.monotonic() - g.request_start_time) * 1000:.0f}ms'
-        g.version = __version__
+        g.version = app.config.get('GATE_SHOWN_VERSION') or __version__   # the screen gate pins it (#257)
 
     @app.teardown_request
     def end_operation(error):

@@ -175,3 +175,14 @@ def test_the_world_folder_has_the_same_path_every_time():
     except ImportError:
         return                      # without fcntl (Windows) a temporary folder stands in, by design; nothing fixed to compare
     assert first == second == str(Path(tempfile.gettempdir()) / 'bw-gate-world')
+
+
+def test_the_footer_shows_the_gate_version_whatever_the_release(monkeypatch):
+    """#257: a release bump must not change a baseline, so the gate's world shows a constant in the footer."""
+    import urllib.request
+    import brickwork.app
+    monkeypatch.setattr(brickwork.app, '__version__', '9.9.9')
+    with gate.world('demo') as base:
+        html = urllib.request.urlopen(base + '/').read().decode()
+    assert f'Brick Work ({gate.GATE_VERSION})' in html
+    assert '9.9.9' not in html

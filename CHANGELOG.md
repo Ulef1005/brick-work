@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **The screen gate shows a fixed version in the footer** (#257). The gate's invented world now renders `Brick Work (1.0.0)` whatever the release, the text the approved baselines already show, so a release bump no longer changes a baseline and needs no re-approval. The app's own footer is unchanged.
+
 ## Brick Work 1.0.1 (schema 4.2) · 2026-11-10
 
 A fix release: fresh containers set themselves up on first start and no longer log the gunicorn control-socket error. The schema stays 4.2, so a 1.0.0 collection needs no upgrade step, and going back means starting 1.0.0 on the same file. The published image is `ghcr.io/ulef1005/brick-work:1.0.1`; a new container no longer needs the console `brickwork setup` step. Back up `brickwork.db` and `secret.key` before you upgrade, as always.

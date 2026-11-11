@@ -201,3 +201,13 @@ def test_the_gain_note_counts_only_the_copies_without_a_price(coll, client):
     scene(coll)
     soup = page(client, gain='1')
     assert soup.select_one('.oo-note').text.startswith('4 sets have no current price')
+
+
+def test_a_choice_past_the_exporters_limit_is_cut_and_says_so(coll, client, monkeypatch):
+    from brickwork.web import views
+    scene(coll)
+    monkeypatch.setattr(views, 'ORDER_COPIES_LIMIT', 2)
+    soup = page(client)
+    assert 'Only the first 2 ticked sets' in soup.select_one('.oo-review').text
+    assert soup.select_one('[data-oo-total]').text.endswith('from 2 sets')
+    assert 'Export 2 sets' in soup.select_one('.oo-export .button').text

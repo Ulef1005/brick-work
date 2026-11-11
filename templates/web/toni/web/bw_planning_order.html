@@ -57,6 +57,7 @@
 <span class="oo-qty mono">×{{ l.quantity }}</span></li>{% endmacro %}
 {% if lines %}<ul class="oo-lines" data-oo-lines>{% for l in lines[:page.first] %}{{ line(l) }}{% endfor %}</ul>
 {% if lines|length>page.first %}<details class="oo-more"><summary>+ {{ lines|length-page.first }} more {{ 'line' if lines|length-page.first==1 else 'lines' }} · Show all</summary><ul class="oo-lines">{% for l in lines[page.first:] %}{{ line(l) }}{% endfor %}</ul></details>{% endif %}{% endif %}
+{% if capped %}<p class="oo-note" role="note">Only the first {{ copies_limit }} ticked sets are in the list and the file.</p>{% endif %}
 {% if order.skipped %}<div class="oo-warn" role="note"><b>{{ piece(order.skipped|length,'line') }} left out:</b>
 <ul>{% for l in order.skipped %}<li>{{ l.name or l.number_text or 'An unnamed item' }}{% if l.color_name %} · {{ l.color_name }}{% endif %} ({% for s in l.sources %}{{ s.label }}{% if not loop.last %}, {% endif %}{% endfor %}) has no BrickLink {{ 'colour' if l.why=='no BrickLink colour' else 'number' }}. <a href="{{ url_for('web.bw_collection_item',item_id=l.item_id) }}">Link it</a></li>{% endfor %}</ul></div>{% endif %}
 <div class="oo-export">{% if lines %}<a class="button primary bw-primary" href="{{ page.export_url }}" download="missing-parts.xml">Export {{ piece(ticked,'set') }} · BrickLink XML</a>{% else %}<span class="button primary bw-primary" aria-disabled="true">Export {{ piece(ticked,'set') }} · BrickLink XML</span>{% endif %}

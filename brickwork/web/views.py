@@ -2301,11 +2301,13 @@ def bw_planning_order():
     from ..core import order_missing, planning
     from ..core.admin import database
     from .admin_ops import brickwork_path
-    error=None;rows=[];order=dict(lines=[],skipped=[],pieces=0);settings={}
+    error=None;rows=[];order=dict(lines=[],skipped=[],pieces=0);settings={};capped=False
     try:
         with database(brickwork_path(),read_only=True) as db:
             rows=order_missing.candidates(db)
             choice=bw_order_choice(rows,request.args)
+            capped=len(choice['chosen'])>ORDER_COPIES_LIMIT                      # the exporter takes at most this many copies
+            if capped: choice['chosen']=choice['chosen'][:ORDER_COPIES_LIMIT]
             order=order_missing.order_list(db,rows,set(choice['chosen']))
             settings=planning.configuration(db)
     except (ValueError,sqlite3.Error,OSError) as exc:
@@ -2323,7 +2325,7 @@ def bw_planning_order():
               first=order_missing.FIRST_LINES,sold=sum(1 for r in choice['shown'] if choice['sell'] and r['to_sell']),
               ticked=set(choice['chosen']))
     response=current_app.make_response(render_template('web/toni/web/bw_planning_order.html',title='Order missing parts',rows=rows,order=order,
-        error=error,settings=settings,choice=choice,page=page,can_edit=bw_collection_editable()))
+        error=error,settings=settings,choice=choice,page=page,capped=capped,copies_limit=ORDER_COPIES_LIMIT,can_edit=bw_collection_editable()))
     response.headers['Cache-Control']='no-store'
     return response
 

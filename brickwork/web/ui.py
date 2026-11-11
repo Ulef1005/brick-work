@@ -210,8 +210,8 @@ def navigation():
         current = {'S':'Sets','M':'Minifigures','P':'Parts','I':'Instructions','O':'Boxes','G':'Gear','B':'Books','C':'Catalogs'}.get(letter.upper(),'Sets')
     elif endpoint in ('web.bw_sets','index.index','web.collection_legacy_home'):
         current = 'Sets'
-    elif endpoint in ('web.bw_collection_lot','web.bw_collection_places'):
-        current = 'Parts' if endpoint.endswith('lot') else 'Storage'
+    elif endpoint in ('web.bw_collection_lot','web.bw_collection_places','web.bw_lot_sticker'):
+        current = 'Parts' if endpoint.endswith(('lot','sticker')) else 'Storage'
     elif endpoint.startswith('web.bw_add'):
         current = 'Add'
     elif endpoint in ('web.parts_scanner_page', 'web.bw_inventory', 'web.bw_what_is_this'):   # What is this? identifies by photo too (#142)

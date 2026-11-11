@@ -106,8 +106,9 @@ def _dependents(db, log):
     return {t: sorted(v) for t, v in found.items()}
 
 
-def _refuse_double_lines(db, loser, survivor):
-    """A parent that holds a line for both items cannot be merged by a rule: the counts and checks on the lines are the user's."""
+def _refuse_double_lines(db, loser, survivor, tables=None):
+    """A parent that holds a line for both items cannot be merged by a rule: the counts and checks on the lines are the user's.
+    `tables` limits the check to those line tables (the change of a variant moves only some of them)."""
     checks = (
         ('copy_figure', 'SELECT a.copy_id FROM main.copy_figure a JOIN main.copy_figure b ON b.copy_id=a.copy_id WHERE a.item_id=? AND b.item_id=?',
          'copy {} holds a figure line for both items'),
@@ -123,6 +124,8 @@ def _refuse_double_lines(db, loser, survivor):
                                          ON b.fetched_inventory_id=a.fetched_inventory_id WHERE a.item_id=? AND b.item_id=?''',
          'fetched figure list {} holds a line for both items'))
     for table, sql, message in checks:
+        if tables is not None and table not in tables:
+            continue
         found = db.execute(sql, (loser, survivor)).fetchone()
         if found:
             raise MergeRefused(message.format(found[0]) + ' · correct that line by hand, then merge again')

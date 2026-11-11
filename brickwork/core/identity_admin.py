@@ -16,7 +16,7 @@ import json
 import re
 import sqlite3
 
-from ..store4 import merge as moves
+from ..store4 import merge as moves, variant
 from ..store4.connect import has_catalogue, now
 from ..store4.errors import CatalogueError, MergeRefused
 from ..store4.rowlog import RowLog
@@ -210,6 +210,12 @@ def move_item_kind(db, item_id, kind):
     return _run(db, moves.move_kind_in, int(item_id), kind)
 
 
+def change_item_variant(db, from_id, to_id):
+    """Change an item's variant: everything owned moves from `from_id` to `to_id` (same kind), and BrickLink's number becomes `to_id`'s (issue #151).
+    One transaction, one event, one receipt. Returns `{event_id, from, to, number, counts}`."""
+    return _run(db, variant.change_variant_in, int(from_id), int(to_id))
+
+
 def _logged(db, entity, ident, field, old, new, log, *, via, actor, operation_key):
     """Write the event of a logged change; its `new_value` is the receipt (`{changes: [...], ...}`)."""
     return moves._event(db, via, actor, operation_key, entity, ident, field, old, dict(new, changes=log.changes))
@@ -352,6 +358,10 @@ def _undo_kind_move(db, event, via, actor):
     return moves.undo_kind_move_in(db, event['id'], via=via, actor=actor, operation_key=OPERATION_KEY.get())
 
 
+def _undo_change_variant(db, event, via, actor):
+    return variant.undo_change_variant_in(db, event['id'], via=via, actor=actor, operation_key=OPERATION_KEY.get())
+
+
 def _undo_logged(db, event, via, actor):
     """Put a logged decision back: refused when any row it changed differs now."""
     receipt = json.loads(event['new_value'])
@@ -368,6 +378,7 @@ def _undo_logged(db, event, via, actor):
 
 undoing.register('item', 'merge', _undo_merge)
 undoing.register('item', moves.KIND_FIELD, _undo_kind_move)
+undoing.register('item', variant.FIELD, _undo_change_variant)
 for _entity, _field in (('item_link', 'confirm'), ('item_link', 'reject'), ('item_link', 'add'), ('item_link', 'prefer'), ('item_provider_status', 'settle')):
     undoing.register(_entity, _field, _undo_logged)
 

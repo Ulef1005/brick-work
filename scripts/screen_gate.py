@@ -2,6 +2,7 @@
 
     python3 scripts/screen_gate.py capture [SCREEN ...]   write CANDIDATE baselines for the built states into
                                                           design/screens/approval/baselines/<NN-Screen>/ (all of them, or the named screens)
+    python3 scripts/screen_gate.py agree                  render every approved state on one Chrome process and on four, compare the two renders (#267)
     python3 scripts/screen_gate.py compare                render every built state with `approved: true`, compare it with its baseline, write
                                                           the diffs of the failures; print the gate summary; exit 1 on any difference
     python3 scripts/screen_gate.py summary                the summary only (no rendering)
@@ -122,22 +123,21 @@ def world(name: str, warm_up: list[str] = ()):
 
 
 def workers() -> int:
-    """How many Chrome processes render at once: 1 unless BW_GATE_WORKERS asks for more. The approved baselines were rendered in ONE Chrome session,
-    and state a session carries from page to page (storage, cached fonts and styles) shows in some captures: rendered in fresh sessions of 12 jobs,
-    52-Place's drop-down text sat 1 px lower on Linux and failed the gate (PR #261; ADR 0024). So the gate and the baselines render in one session;
-    BW_GATE_WORKERS > 1 is for quick local review images only, never for a baseline or a deciding run."""
+    """How many Chrome processes render at once: BW_GATE_WORKERS, else up to four (one per core). A capture does not depend on the session it is rendered in
+    (#267, ADR 0024): the browser starts every capture empty, loads every font face and lays the page out again once the fonts are in, so one process and
+    four give the same pixels (`screen_gate.py agree` proves it on Linux). BW_GATE_WORKERS=1 renders everything in one Chrome session."""
     try:
         wanted = int(os.environ.get('BW_GATE_WORKERS', ''))
     except ValueError:
         wanted = 0
-    return max(1, wanted or 1)
+    return max(1, wanted or min(4, os.cpu_count() or 1))
 
 
 def run_jobs(jobs: list[dict], scratch: str, chrome: str) -> None:
     """Run the capture jobs on `workers()` Chrome processes at once. Each job is independent (its own viewport, theme and navigation; the clock, fonts and
     animation settings are set per process by capture_screens.cjs), so the captures do not depend on which process takes them. The jobs go out in
     batches of consecutive jobs (a state's variants stay together) that idle processes pick up, so one slow batch does not hold the others back."""
-    batch = 12 if workers() > 1 else max(1, len(jobs))   # one worker: every job in one Chrome session, as the baselines were made
+    batch = 12 if workers() > 1 else max(1, len(jobs))   # one worker: every job in one Chrome session
     chunks = [jobs[i:i + batch] for i in range(0, len(jobs), batch)]
     clock = FIXED_NOW.isoformat().replace('+00:00', 'Z')
 
@@ -244,6 +244,37 @@ def run_compare(chrome: str) -> tuple[list[str], int, list[str]]:
     return summary_lines(states, len(approved), differ), len(approved), differ
 
 
+def run_agree(chrome: str, parallel: int = 4) -> tuple[list[str], int]:
+    """(summary lines, captures compared): renders every approved state twice, on one Chrome process and on `parallel` of them, and lists each capture
+    whose two renders differ by more than the gate's tolerance. The proof that a capture does not depend on the session (#267); CI runs it by hand
+    (the `gate-agree` workflow), and BW_GATE_KEEP keeps both renders."""
+    approved = counts(load())['approved']
+    differ, total = [], 0
+    saved = os.environ.get('BW_GATE_WORKERS')
+    with tempfile.TemporaryDirectory(prefix='bw-agree-') as scratch:
+        renders = {}
+        try:
+            for mode, count in (('serial', 1), ('parallel', parallel)):
+                os.environ['BW_GATE_WORKERS'] = str(count)
+                renders[mode] = render(approved, lambda e, w, t, m=mode: Path(scratch) / m / e['screen'] / filename(e['screen'], e['state'], w, t), chrome)
+        finally:
+            if saved is None:
+                os.environ.pop('BW_GATE_WORKERS', None)
+            else:
+                os.environ['BW_GATE_WORKERS'] = saved
+        for one, two in zip(renders.get('serial', []), renders.get('parallel', [])):
+            total += 1
+            result = compare_images(one, two)
+            if os.environ.get('BW_GATE_KEEP'):
+                for tag, path in (('serial', one), ('parallel', two)):
+                    keep = Path(os.environ['BW_GATE_KEEP']) / tag / path.parent.name / path.name
+                    keep.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copyfile(path, keep)
+            if result['size_differs'] or result['share'] > TOLERANCE['pixels']:
+                differ.append(f'{one.name}: ' + ('size differs' if result['size_differs'] else f'{result["differing"]} of {result["total"]} pixels ({result["share"]:.2%})'))
+    return [f'Serial against {parallel}-process render: {total} captures compared, {len(differ)} differ'] + [f'  differs: {d}' for d in differ], total
+
+
 def capture(selected: list[str], chrome: str) -> int:
     states = load()
     todo = [e for e in states['states'] if e['built'] and (not selected or e['screen'] in selected or e['screen'].split('-')[0] in selected)]
@@ -268,6 +299,10 @@ def main(argv: list[str]) -> int:
     chrome = chrome.stdout.strip()
     if mode == 'capture':
         return capture(argv[1:], chrome)
+    if mode == 'agree':
+        lines, total = run_agree(chrome)
+        print('\n'.join(lines))
+        return 1 if len(lines) > 1 or not total else 0
     if mode == 'compare':
         lines, _, differ = run_compare(chrome)
         print('\n'.join(lines))

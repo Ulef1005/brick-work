@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **The screen gate renders in parallel again** (#267). Every capture now starts from an empty browser, loads every font face and lays the page out again once the fonts are in, so a capture no longer depends on what a Chrome session rendered before it: one process and four give the same pixels on Linux (`python scripts/screen_gate.py agree`, the `gate-agree` workflow). The gate runs on up to four processes by default (`BW_GATE_WORKERS=1` for one). Six states' baselines were rendered again for a 1 px text shift in drop-downs. [ADR 0024](docs/adr/0024-parallel-check.md) has the cause.
+
 - **The screen gate shows a fixed version in the footer** (#257). The gate's invented world now renders `Brick Work (1.0.0)` whatever the release, the text the approved baselines already show, so a release bump no longer changes a baseline and needs no re-approval. The app's own footer is unchanged.
 
 ## Brick Work 1.0.1 (schema 4.2) · 2026-11-10

@@ -3365,6 +3365,94 @@ paths:
         default:
           $ref: '#/components/responses/Problem'
       x-piece: M.11b
+  /lots/{id}/candidate-sets:
+    get:
+      operationId: get_lots_by_id_candidate_sets
+      x-mcp-tool: get_lot_candidate_sets
+      summary: The sets a lot may have come from, ranked, with reasons and distinctive parts (Lot Detective).
+      description: 'Scores the live loose parts and figures of the lot against the active catalogue build (the engine of `GET /planning/set-scores`, ADR 0026)
+        and returns the candidate sets. The `score` is 0 to 100: how strongly the found parts point to the set, weighed by how rare each part is, relative to the
+        best candidate (the first set that passes the set filters scores 100). It is NOT a probability and says nothing about how likely the set is to be the
+        right one in absolute terms. Each set has `reasons` (for example "7 of 9 distinctive parts found", "2 printed parts only in this set"), the distinctive
+        parts found and not found yet (a distinctive part is held by at most 25 sets; up to 20 of each, heaviest first, with their pictures) and the stock
+        flags passed to the engine (a flag named Sticker as `sticker`). By default `ignore_common` drops the lines held by more than N sets before scoring
+        (setting `candidate_sets_common_max`, default 300). The theme filter takes a catalogue theme id or a name (its sub-themes are included); the part
+        range is the catalogue''s part count of the set. Read-only; an unknown lot is 404.'
+      tags:
+      - Lots
+      security:
+      - bearerAuth:
+        - read
+      parameters:
+      - $ref: '#/components/parameters/Path_id'
+      - name: min_score
+        in: query
+        description: Only sets scoring at least this (0 to 100).
+        schema:
+          type: number
+          minimum: 0
+          maximum: 100
+          default: 0
+      - name: theme
+        in: query
+        description: A catalogue theme id or name; the theme and the themes below it.
+        schema:
+          type: string
+      - name: year_from
+        in: query
+        description: Only sets released in this year or later.
+        schema:
+          type: integer
+          minimum: 0
+      - name: year_to
+        in: query
+        description: Only sets released in this year or earlier.
+        schema:
+          type: integer
+          minimum: 0
+      - name: parts_min
+        in: query
+        description: Only sets with at least this many parts (the catalogue's part count).
+        schema:
+          type: integer
+          minimum: 0
+      - name: parts_max
+        in: query
+        description: Only sets with at most this many parts (the catalogue's part count).
+        schema:
+          type: integer
+          minimum: 0
+      - name: ignore_common
+        in: query
+        description: Drop the parts that more than `candidate_sets_common_max` sets hold before scoring (default true).
+        schema:
+          type: boolean
+          default: true
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      - name: offset
+        in: query
+        schema:
+          type: integer
+          minimum: 0
+          default: 0
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CandidateSetPage'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Problem'
+      x-piece: M.11b
   /export/missing.csv:
     get:
       operationId: get_export_missing_csv
@@ -11271,6 +11359,10 @@ components:
         prefer_bricklink_inventory:
           type: boolean
           description: New copies take BrickLink's part list when one exists (design 4.4).
+        candidate_sets_common_max:
+          type: integer
+          minimum: 25
+          description: Lot Detective ignores, by default, the parts that more than this many sets hold (default 300; #200).
     SettingsPatch:
       type: object
       properties:
@@ -11306,6 +11398,10 @@ components:
         prefer_bricklink_inventory:
           type: boolean
           description: New copies take BrickLink's part list when one exists (design 4.4).
+        candidate_sets_common_max:
+          type: integer
+          minimum: 25
+          description: Lot Detective ignores, by default, the parts that more than this many sets hold (default 300; #200).
     Problem:
       type: object
       properties:
@@ -11535,6 +11631,214 @@ components:
       - required:
         - kind
         - key
+    CandidateSetPage:
+      type: object
+      required:
+      - data
+      properties:
+        data:
+          $ref: '#/components/schemas/CandidateSets'
+    CandidateSets:
+      type: object
+      required:
+      - catalogue
+      - lot
+      - common_max
+      - input
+      - total
+      - limit
+      - offset
+      - results
+      properties:
+        catalogue:
+          type: object
+          description: The index the answer came from.
+          required:
+          - sets
+          - lines
+          - postings
+          - distinctive_max
+          properties:
+            sets:
+              type: integer
+            lines:
+              type: integer
+            postings:
+              type: integer
+            distinctive_max:
+              type: integer
+        lot:
+          type: string
+        common_max:
+          type:
+          - integer
+          - 'null'
+          description: N, the most sets a part may be held by and still count; null when `ignore_common` is false.
+        input:
+          type: object
+          required:
+          - lines
+          - quantity
+          - ignored_common_lines
+          - unmatched_lines
+          properties:
+            lines:
+              type: integer
+              description: Lines scored (after the common parts were dropped).
+            quantity:
+              type: integer
+            ignored_common_lines:
+              type: integer
+              description: Lines of the lot dropped because more than N sets hold them.
+            unmatched_lines:
+              type: integer
+              description: Scored lines that no set holds.
+        total:
+          type: integer
+          description: Candidate sets after the filters.
+        limit:
+          type: integer
+        offset:
+          type: integer
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/CandidateSet'
+    CandidateSet:
+      type: object
+      required:
+      - rank
+      - item
+      - picture
+      - score
+      - evidence
+      - coverage
+      - reasons
+      - covered_lines
+      - set_lines
+      - distinctive_found
+      - distinctive_total
+      - flags
+      - distinctive_found_parts
+      - distinctive_missing_parts
+      properties:
+        rank:
+          type: integer
+        item:
+          $ref: '#/components/schemas/Item'
+        picture:
+          oneOf:
+          - $ref: '#/components/schemas/CandidatePicture'
+          - type: 'null'
+        score:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: 'How strongly the found parts point to this set, 0 to 100, relative to the best candidate (evidence over the best candidate''s evidence). Not a probability.'
+        evidence:
+          type: number
+          description: The engine's evidence in nats (ADR 0026).
+        coverage:
+          type: number
+          description: Evidence over the set's total weight, 0 to 1.
+        reasons:
+          type: array
+          items:
+            type: string
+        covered_quantity:
+          type: integer
+        set_quantity:
+          type: integer
+        covered_lines:
+          type: integer
+        complete_lines:
+          type: integer
+        set_lines:
+          type: integer
+        distinctive_found:
+          type: integer
+        distinctive_total:
+          type: integer
+        flags:
+          type: object
+          description: Per flag passed to the engine (`sticker`), what the lines carrying it contributed to this set.
+          additionalProperties:
+            type: object
+            properties:
+              lines:
+                type: integer
+              covered_quantity:
+                type: integer
+              evidence:
+                type: number
+        distinctive_found_parts:
+          type: array
+          description: Up to 20 distinctive parts the lot has, heaviest first.
+          items:
+            $ref: '#/components/schemas/CandidatePart'
+        distinctive_missing_parts:
+          type: array
+          description: Up to 20 distinctive parts of the set the lot does not have yet, heaviest first (`quantity` is 0).
+          items:
+            $ref: '#/components/schemas/CandidatePart'
+    CandidatePicture:
+      type: object
+      required:
+      - id
+      - content_url
+      - image_url
+      properties:
+        id:
+          type:
+          - integer
+          - 'null'
+          description: The newest local picture (`GET /images/{id}/content`).
+        content_url:
+          type:
+          - string
+          - 'null'
+        image_url:
+          type:
+          - string
+          - 'null'
+          description: The catalogue's picture address for the item.
+    CandidatePart:
+      type: object
+      required:
+      - item
+      - color
+      - quantity
+      - need
+      - weight
+      - only_in_set
+      - printed
+      - picture
+      properties:
+        item:
+          $ref: '#/components/schemas/Item'
+        color:
+          oneOf:
+          - $ref: '#/components/schemas/Color'
+          - type: 'null'
+        quantity:
+          type: integer
+          description: How many of it the lot has.
+        need:
+          type: integer
+          description: How many the set holds.
+        weight:
+          type: number
+          description: The line's rarity weight ln(N/df).
+        only_in_set:
+          type: boolean
+          description: Exactly one set holds this part in this colour.
+        printed:
+          type: boolean
+          description: True only for a part that only this set holds and that is printed, that is a part number with a print suffix (`pr` and digits) or the printed child of a type P part relationship.
+        picture:
+          oneOf:
+          - $ref: '#/components/schemas/CandidatePicture'
+          - type: 'null'
     SetScorePage:
       type: object
       required:

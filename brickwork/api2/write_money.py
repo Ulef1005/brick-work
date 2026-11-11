@@ -50,7 +50,7 @@ def settings_body(db):
             'import_order': s['import_order'],
             'freshness': [{'source': r['source'], 'kind': r['kind'], 'max_age_days': r['max_age_days']} for r in s['freshness']],
             'repair': {'shipping': s['repair_shipping'], 'fees': s['repair_fees'], 'min_order': s['repair_min_order'], 'use_loose_stock': s['repair_use_loose_stock']},
-            'prefer_bricklink_inventory': bool(row and row['value'] == 'true')}
+            'prefer_bricklink_inventory': bool(row and row['value'] == 'true'), 'candidate_sets_common_max': s['candidate_sets_common_max']}
 
 
 @route('/settings')

@@ -3,12 +3,13 @@
 The ranking is `core/planning.py`'s (live copies with a gap, by what a repair gains per unit spent); the exports are `core/gaps.py`,
 `core/list_exports.py` and `core/planning.py`'s `export`, which name every line for BrickLink where they can and list the rest."""
 from decimal import Decimal
+import json
 
 from flask import Response, request
 
-from ..core import collection, errors, list_exports, planning, set_scoring
+from ..core import candidate_sets, collection, errors, list_exports, planning, set_scoring
 from . import route
-from .read import (arguments, bodies, page, reading, record, respond)
+from .read import (arguments, bodies, flag, page, reading, record, respond)
 
 
 def plain(value):
@@ -190,3 +191,74 @@ def get_planning_set_scores(db):
     return respond(dict(catalogue=result['catalogue'], source=dict(kind=chosen[0], id=None if chosen[0] in ('loose', 'stock') else args[chosen[0]]),
                         input=dict(given, unmatched=[line(u) for u in given['unmatched']]),
                         total=result['total'], limit=limit, offset=offset, results=sets))
+
+
+# ---------- which sets came in this lot (#200) ----------
+
+def number(args, name, low, high):
+    if name not in args or args[name] == '':
+        return None
+    try:
+        value = float(args[name])
+    except ValueError:
+        raise errors.ValidationFailed(f'{name} is a number') from None
+    if not low <= value <= high:
+        raise errors.ValidationFailed(f'{name} is {low} to {high}')
+    return value
+
+
+def optional_whole(args, name, low=0, high=10 ** 9):
+    return None if args.get(name) in (None, '') else whole(args, name, 0, low, high)
+
+
+def pictures_of(db, pairs):
+    """`{(item id, colour id or None): {id, content_url, image_url}}` for the lines: the newest local picture (the colour's, else the item's own) and
+    the catalogue's picture address (`image_url`, absent when the catalogue has none); a line without either is left out."""
+    items = sorted({i for i, _ in pairs})
+    local = {}
+    for r in db.execute('SELECT id,item_id,color_id FROM main.picture WHERE item_id IN (SELECT value FROM json_each(?)) ORDER BY fetched_at, id', (json.dumps(items),)):
+        local[(r['item_id'], r['color_id'])] = r['id']
+    remote = {r[0]: r[1] for r in db.execute('SELECT id,img_url FROM catalogue.item WHERE id IN (SELECT value FROM json_each(?))', (json.dumps(items),)) if r[1]}
+    found = {}
+    for item, colour in pairs:
+        picture = local.get((item, colour)) or local.get((item, None))
+        body = {'id': picture, 'content_url': f'/api/v2/images/{picture}/content' if picture else None, 'image_url': remote.get(item)}
+        if picture or body['image_url']:
+            found[(item, colour)] = body
+    return found
+
+
+@route('/lots/<id>/candidate-sets')
+@reading
+def get_lots_by_id_candidate_sets(db, id):
+    """The sets a lot may have come from (Lot Detective, `core/candidate_sets.py`): ranked, with reasons and distinctive parts. Read-only."""
+    args = arguments()
+    ignore_common = flag(args, 'ignore_common')
+    ignore_common = True if ignore_common is None else ignore_common
+    limit, offset = whole(args, 'limit', 20, 1, 100), whole(args, 'offset', 0, 0, 10 ** 9)
+    min_score = number(args, 'min_score', 0, 100) or 0
+    year_from, year_to, parts_min, parts_max = (optional_whole(args, n) for n in ('year_from', 'year_to', 'parts_min', 'parts_max'))
+    for low, high, names in ((year_from, year_to, 'year_from and year_to'), (parts_min, parts_max, 'parts_min and parts_max')):
+        if low is not None and high is not None and low > high:
+            raise errors.ValidationFailed(f'{names} are a range: the first is above the second')
+    if len(id) > 64:
+        raise errors.NotFound('No such lot')
+    try:
+        result = candidate_sets.candidates(db, id, min_score=min_score, theme=args.get('theme'), year_from=year_from, year_to=year_to,
+                                           parts_min=parts_min, parts_max=parts_max, ignore_common=ignore_common, limit=limit, offset=offset)
+    except ValueError as error:
+        raise (errors.NotFound(str(error)) if str(error) == 'No such lot' else errors.ValidationFailed(str(error))) from None
+    parts = [p for r in result['results'] for p in r['distinctive_found_parts'] + r['distinctive_missing_parts']]
+    set_ids = {r['set_item_id'] for r in result['results']}
+    book = bodies(db, items=set_ids | {p['item_id'] for p in parts}, colors={p['color_id'] for p in parts})
+    shots = pictures_of(db, {(p['item_id'], p['color_id']) for p in parts} | {(i, None) for i in set_ids})
+
+    def part(body):
+        return {**{k: v for k, v in body.items() if k not in ('item_id', 'color_id')}, 'item': book.item(body['item_id']),
+                'color': book.color(body['color_id']), 'picture': shots.get((body['item_id'], body['color_id']))}
+
+    sets = [{**{k: v for k, v in r.items() if k not in ('set_item_id', 'distinctive_found_parts', 'distinctive_missing_parts')},
+             'item': book.item(r['set_item_id']), 'picture': shots.get((r['set_item_id'], None)),
+             'distinctive_found_parts': [part(p) for p in r['distinctive_found_parts']],
+             'distinctive_missing_parts': [part(p) for p in r['distinctive_missing_parts']]} for r in result['results']]
+    return respond(dict(result, lot=id, results=sets))

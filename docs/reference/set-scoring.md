@@ -90,3 +90,31 @@ Order of work: the lot's lines; **ignore common** (a line held by more than N se
 ## Speed
 
 Measured on a Mac with a catalogue of about 21,000 sets (1.6 million postings): the index takes about 2 s to build (the first query pays it) and about 400 MB at its peak while loading; a 2,000-line pile is then ranked with its first page of 20 sets in about 0.1 s, and another page of the same input in about 0.04 s. The target is under 10 s for such a pile on the machine that serves the app, cold. `python scripts/bench_set_scoring.py path/to/catalogue.db` builds a random pile from a real catalogue file (read-only) and prints the load and build times, the memory, the cold and warm query times and PASS or FAIL against the target, so it can be run on that machine.
+
+## Build Scout
+
+*Unreleased (#9).* Build Scout (`brickwork/core/build_scout.py`) answers a different question from the ranking above: not which set a pile came from, but how much of each set the pile already makes. It reads the same catalogue through the same code (`load_rows`, `build_index`), as two indexes built once per catalogue build and process: the **parts** index (a set's own parts, sub-sets expanded, spares left out) and the **figures** index (whole figures only, sub-sets expanded). The rarity weight plays no part. [ADR 0027](../adr/0027-build-scout-percent.md) records the definitions.
+
+| Field | Value |
+|---|---|
+| Definition | Pieces of a set the stock covers |
+| Formula | `parts_available = sum over the set's part lines of min(have, need)`; `have` is the quantity of the same part in the same colour in the chosen stock |
+| Unit | Pieces |
+| Code | `brickwork/core/build_scout.py::covered_by` |
+
+| Field | Value |
+|---|---|
+| Definition | The share of a set's parts the stock covers |
+| Formula | `percent = 100 * parts_available / parts_total`, one decimal; `parts_total` is the sum of the set's part-line quantities (spares and a minifigure's components are not part lines) |
+| Unit | Percent |
+| Code | `brickwork/core/build_scout.py::ranked` |
+
+`missing_parts = parts_total - parts_available` (pieces) and `missing_lines` is the number of part lines the stock does not cover in full. **Figures** are counted apart: `figures_available = sum over the set's whole-figure lines of min(have, need)` against `figures_required`; a loose whole figure counts, loose parts of a figure never do. **Swaps** are the engine's (another colour, an alternate mould), listed per set and never in a number above. Sets are sorted by percent, then fewest missing parts, then set id.
+
+**Cost to complete** adds `price * missing` over the missing part lines and missing figures that have a price in `price_current` (the used price before the new one, a sold average before a stock listing, the newest observation last), in the currency most of the page's missing lines are priced in. A line with no price, or a price in another currency, is not added and is counted as `unpriced_lines`; with no priced line the amount is `null`. It is worked out for the page shown, never for the whole catalogue.
+
+**The stock** is one rule for the ranking and for Build it (`stock_rows`): live loose parts and minifigures, each counted as `workbench.available` says (a damaged row counts for nothing unless asked for, a figure with defective parts for nothing, a row's missing and damaged counts are taken off). A selection is the union of the stock kept in no lot or storage (`loose`), the chosen lots and the chosen storages with the storages inside them; none chosen means all loose stock. A row in a chosen lot and a chosen storage counts once.
+
+**Build it** (`build_scout.build_set`, over `brickwork/store4/found_copy.py::make_copy_in`) takes from exactly those rows, the largest usable row first and then the lowest id, `min(have, need)` of every part line and of every whole-figure line, into one new copy of the catalogue's latest Rebrickable part list; the rest is `missing` on the copy (a missing figure's components too). It is one transaction and one event, `copy` / `make_from_stock`, whose receipt is a row log; `stock_transfer` rows are kept as provenance. Undo (the event's registered undoer) puts the stock rows back and archives the copy, and is refused when any row it changed differs now or the copy has been given flags, a check, photos or other transfers since. A set made of other sets is refused: the copy's part list does not expand sub-sets, the Scout's index does. `make_copy_in(db, set_item_id, takes, ...)` is the shared piece for any action that turns held parts into a copy (`takes` is a list of `(stock id, amount)`).
+
+**API.** `GET /api/v2/planning/build-scout` (MCP tool `get_planning_build_scout`) and `POST /api/v2/items/{id}/build` (see the API v2 reference, 2.10). `scripts/bench_build_scout.py` times it on a real catalogue: on a catalogue of about 21,000 sets the two indexes take about 2 s and 390 MB at the peak while loading, and ranking every set that shares a part with a pile of 2,000 lines takes about 0.1 s (0.2 s for 8,000 lines).

@@ -101,9 +101,11 @@ class Scout:
         sets = list(rows.sets)
         self.parts = set_scoring.build_index(set_scoring.Rows(sets, (), rows.subsets, (), rows.relations, rows.key))
         self.figures = set_scoring.build_index(set_scoring.Rows([(s, []) for s, _ in sets], rows.figures, rows.subsets, (), (), rows.key))
-        self.nested = {parent for parent, _, _ in rows.subsets}
         cur = db.cursor()
         cur.row_factory = None
+        # a set made of other sets, from the catalogue's own records: the engine's list leaves out a child that is not scorable, but a copy still lacks it
+        self.nested = {r[0] for r in cur.execute('''SELECT DISTINCT i.item_id FROM catalogue.inventory i JOIN catalogue.inventory_set s ON s.inventory_id=i.id
+                                                    WHERE i.is_latest=1 AND i.retired_at IS NULL''')}
         self.meta = {r[0]: (r[1], r[2]) for r in cur.execute("SELECT id, year, theme_id FROM catalogue.item WHERE kind='set'")}
         self.themes = {r[0]: (r[1], r[2]) for r in cur.execute('SELECT id, name, parent_id FROM catalogue.theme')}
         self.children = defaultdict(list)
@@ -400,15 +402,16 @@ def wish_set(db, set_item_id):
     Returns `dict(event_id, wish_id, already)`; a set already wished is `already` and nothing is written."""
     via, actor = origin()
     row = {'item_id': int(set_item_id), 'color_id': None, 'quantity': 1, 'condition': 'any', 'note': WISH_NOTE, 'max_price': None}
-    if (add.lookup(db, row['item_id']) or {}).get('kind') != 'set':
-        raise ValueError('Only a set can be added to the wishlist from Build Scout')
-    proposal = add.resolve(db, [row], 'wishlist', list_id='default')
-    if proposal['unresolved']:
-        raise ValueError(proposal['unresolved'][0]['reason'])
-    if proposal['items'][0]['wished']:
-        return dict(event_id=None, wish_id=None, already=True)
-    rows = add.validate_edits(db, proposal['items'], [dict(quantity=1, decision='another', note=WISH_NOTE, list_id='default')])
-    made = add.confirm(db, rows, batch=uuid.uuid4().hex, via=via, actor=actor)
+    with transaction(db):                                   # the check and the write are one transaction, so a second request sees the first one's wish
+        if (add.lookup(db, row['item_id']) or {}).get('kind') != 'set':
+            raise ValueError('Only a set can be added to the wishlist from Build Scout')
+        proposal = add.resolve(db, [row], 'wishlist', list_id='default')
+        if proposal['unresolved']:
+            raise ValueError(proposal['unresolved'][0]['reason'])
+        if proposal['items'][0]['wished']:
+            return dict(event_id=None, wish_id=None, already=True)
+        rows = add.validate_edits(db, proposal['items'], [dict(quantity=1, decision='another', note=WISH_NOTE, list_id='default')])
+        made = add.confirm(db, rows, batch=uuid.uuid4().hex, via=via, actor=actor)
     if not made:
         raise ValueError('Nothing was added')
     return dict(event_id=made[0].get('event_id'), wish_id=made[0]['wish']['id'], already=False)

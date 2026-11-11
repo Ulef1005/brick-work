@@ -356,3 +356,47 @@ def test_build_it_uses_only_the_chosen_sources(world):
     made = B.build_set(w.db, w.set('9101-1'), lots=[lot])
     assert made['pieces'] == 2 and stock_state(w.db)[inside] == 0
     assert w.db.execute('SELECT count(*) FROM stock WHERE quantity=4').fetchone()[0] == 1
+
+
+# ---------- review findings ----------
+
+def test_a_set_with_an_unscorable_child_set_is_still_made_of_sets(world):
+    import sqlite3
+    w = world
+    w.stock('970c22', w.red, 1)
+    w.stock('3001', w.red, 8)
+    with closing(sqlite3.connect(w.path.parent / 'catalogue.db')) as cat:                   # 9101-1 (the child of 9106-1) loses its live latest inventory
+        cat.execute("UPDATE inventory SET is_latest=0 WHERE item_id=?", (w.set('9101-1'),))
+        cat.commit()
+    B._SCOUTS.clear()
+    assert w.set('9106-1') in B.scout_for(w.db).nested
+    assert w.scout(min_percent=0)['results'] and w.row(w.scout(min_percent=0), '9106-1')['nested'] is True
+    with pytest.raises(ValueError):
+        B.build_set(w.db, w.set('9106-1'))
+    assert w.db.execute('SELECT count(*) FROM copy').fetchone()[0] == 0
+
+
+def test_undo_ignores_a_transfer_that_was_itself_undone(world):
+    from brickwork.core import workbench
+    w = world
+    w.stock('3001', w.red, 4)
+    w.stock('3023', w.white, 2)
+    made = B.build_set(w.db, w.set('9101-1'))
+    rare = w.stock('syn-r1', w.red, 1)
+    gap = w.db.execute('SELECT id FROM copy_part WHERE copy_id=? AND item_id=? AND missing>0', (made['copy_id'], w.part('syn-r1'))).fetchone()[0]
+    event = workbench.transfer(w.db, rare, made['copy_id'], 'part', gap, 1)
+    with pytest.raises(errors.UndoBlocked):                                                  # a live later transfer still blocks
+        undoing.undo_event(w.db, made['event_id'])
+    undoing.undo_event(w.db, event)
+    assert undoing.undo_event(w.db, made['event_id'])['already_undone'] is False
+    assert w.db.execute('SELECT archived_at FROM copy WHERE id=?', (made['copy_id'],)).fetchone()[0] is not None
+
+
+def test_the_wish_check_and_the_write_are_one_transaction(world, monkeypatch):
+    from brickwork.core import add
+    w = world
+    seen = []
+    real = add.confirm
+    monkeypatch.setattr(add, 'confirm', lambda db, *a, **k: (seen.append(db.in_transaction), real(db, *a, **k))[1])
+    assert B.wish_set(w.db, w.set('9101-1'))['already'] is False
+    assert seen == [True]

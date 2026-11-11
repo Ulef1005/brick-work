@@ -159,7 +159,7 @@ def undo_make_copy_in(db, event_id, *, via, actor=None, operation_key=None):
         raise MergeRefused(f'{changed["t"]} changed since Build it · undo the later change first')
     for table, sql in (('flags', 'SELECT 1 FROM main.copy_flag WHERE copy_id=?'), ('a check', 'SELECT 1 FROM main.part_check WHERE copy_id=?'),
                        ('photos', 'SELECT 1 FROM main.photo WHERE copy_id=? AND archived_at IS NULL'), ('an allocation', 'SELECT 1 FROM main.allocation WHERE copy_id=?'),
-                       ('another transfer', 'SELECT 1 FROM main.stock_transfer WHERE copy_id=? AND event_id!=?')):
+                       ('another transfer', 'SELECT 1 FROM main.stock_transfer WHERE copy_id=? AND event_id!=? AND event_id NOT IN (SELECT event_id FROM main.event_undo)')):
         if db.execute(sql, (copy_id, event_id) if table == 'another transfer' else (copy_id,)).fetchone():
             raise MergeRefused(f'the copy has {table} since Build it · undo the later change first')
     only_stock = RowLog(db, [c for c in receipt['changes'] if c['t'] == 'stock'])

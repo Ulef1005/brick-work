@@ -1,0 +1,87 @@
+{% extends 'web/toni/base.html' %}
+{% block title %} · Build Scout{% endblock %}
+{% block page_assets %}<link rel="stylesheet" href="{{ bw_static('web/toni/bw-workbench.css') }}"><link rel="stylesheet" href="{{ bw_static('web/toni/bw-build-scout.css') }}"><script src="{{ bw_static('web/toni/bw-build-scout.js') }}" defer></script>{% endblock %}
+{% macro number(n) %}{{ '{:,}'.format(n) }}{% endmacro %}
+{% macro parts_word(n) %}{{ n }} part{{ '' if n == 1 else 's' }}{% endmacro %}
+{% macro tile(row, small=false) %}<span class="bs-tile{{ ' bs-tile-small' if small else '' }}" data-item-no="{{ row.item_no }}">{% if row.image %}<img {{ bw_picture_attrs(row.image) }} alt="" loading="lazy">{% else %}<span class="mono">{{ row.number_text or row.item_no }}</span>{% endif %}</span>{% endmacro %}
+{% macro bar(done, total) %}{% set share = (100 * done / total) if total else 0 %}<span class="bs-bar" role="img" aria-label="{{ share|round(0)|int }}% of the parts available"><i style="width:{{ share|round(1) }}%"></i></span>{% endmacro %}
+{% macro cost_text(cost, short=false) %}{% if cost and cost.amount %}<span class="mono">≈ {{ toni_money(cost.amount, cost.currency, fixed=true) }}</span>{% if cost.unpriced_lines %} · {{ cost.unpriced_lines }} line{{ '' if cost.unpriced_lines == 1 else 's' }} unpriced{% elif not short %} to complete{% endif %}{% elif cost and cost.unpriced_lines %}not priced{% endif %}{% endmacro %}
+{% macro gap_line(line) %}<div class="bs-gap"><span class="bs-tile bs-tile-small" data-item-no="{{ line.item_no }}">{% if line.image %}<img {{ bw_picture_attrs(line.image) }} alt="" loading="lazy">{% else %}<span class="mono">{{ line.number_text or line.item_no }}</span>{% endif %}</span><div class="bs-gap-name"><span class="mono muted">{{ line.number_text or line.item_no }}</span> <strong>{{ toni_nowrap_tail(toni_part_name(line.name) if line.item_type == 'P' and line.name else (line.name or line.item_no)) }}</strong>{% if line.color_name %} <span class="bw-colour" {% if line.rgb %}style="background:#{{ line.rgb }};color:{{ line.ink }}"{% endif %}>{{ line.color_name }}</span>{% endif %}</div><span class="mono bs-gap-qty">−{{ line.missing }}</span></div>{% endmacro %}
+{% macro panel(p, aside) %}{% set src = params %}
+<section class="bs-panel{{ ' bs-aside' if aside else '' }}" aria-label="{{ p.name or p.number_text }}" data-bs-panel data-set="{{ p.set_item_id }}">
+{% if aside %}<p class="lab">Selected</p>{% endif %}
+<h{{ 2 if aside else 1 }} class="bs-set-title"><span class="mono muted">{{ p.number_text }}</span> {{ p.name }}</h{{ 2 if aside else 1 }}>
+<p class="sub">{{ p.theme or 'No theme' }}{% if p.year %} · {{ p.year }}{% endif %} · {{ parts_word(p.parts_total) }}</p>
+<p class="lab">Parts you hold</p>
+<div class="bs-strip" role="img" aria-label="{{ p.parts_available }} of {{ p.parts_total }} parts available"><i class="have" style="flex:{{ p.parts_available }}"></i><i style="flex:{{ p.missing_parts }}"></i></div>
+<p class="mono bs-count"><b>{{ p.parts_available }}</b> of {{ p.parts_total }}{% if p.missing_parts %} · <b>{{ p.missing_parts }}</b> missing in {{ p.missing_lines }} line{{ '' if p.missing_lines == 1 else 's' }}{% else %} · nothing missing{% endif %}</p>
+{% if p.figures_required %}<p class="cap2">Figures: {{ p.figures_available }} of {{ p.figures_required }} in stock{% if not aside %} · {{ cost_text(p.cost) }}{% endif %}</p>{% elif not aside %}<p class="cap2">{{ cost_text(p.cost) }}</p>{% endif %}
+{% for line in p.gaps[:2] %}{{ gap_line(line) }}{% endfor %}
+{% if p.gaps|length > 2 %}<details class="bs-more-lines"><summary>+ {{ p.gaps|length - 2 }} more line{{ '' if p.gaps|length - 2 == 1 else 's' }} · Show all</summary>{% for line in p.gaps[2:] %}{{ gap_line(line) }}{% endfor %}</details>{% endif %}
+{% for line in p.figure_gaps %}<div class="bs-gap"><span class="bs-tile bs-tile-small"><span class="mono">{{ line.number_text or line.item_no }}</span></span><div class="bs-gap-name"><span class="mono muted">{{ line.number_text or line.item_no }}</span> <strong>{{ line.name or line.item_no }}</strong> <span class="bs-kind">Minifigure</span></div><span class="mono bs-gap-qty">−{{ line.missing }}</span></div>{% endfor %}
+{% if p.swaps.quantity %}<p class="bs-swaps"><b>Swaps, not in the %:</b> {{ p.swaps.quantity }} piece{{ '' if p.swaps.quantity == 1 else 's' }} would fit in another {{ 'colour' if p.swaps['items']|selectattr('kind','equalto','colour')|list else 'mould' }}{% if p.swaps['items']|selectattr('kind','equalto','colour')|list and p.swaps['items']|selectattr('kind','equalto','mould')|list %} or mould{% endif %}{% set shown = p.swaps['items']|selectattr('kind','equalto','colour')|list %}{% if shown %} ({{ shown[0].have.color_name }} for {{ shown[0].wanted.color_name }}){% endif %}.</p>{% endif %}
+{% if aside %}<p class="cap2">{{ cost_text(p.cost) }}</p>{% endif %}
+{% set usable = p.parts_available + p.figures_available %}
+<div class="bs-actions" data-bs-actions>
+{% if not read_only %}<button type="button" class="button bw-primary bs-build" data-bs-build {% if p.nested or not usable %}disabled{% endif %}>Build it · make a copy</button>{% endif %}
+<div class="bs-secondary">{% if not read_only %}<button type="button" class="button bw-secondary" data-bs-wish>Add to wishlist</button>{% endif %}{% if p.missing_parts or p.missing_figures %}<a class="button bw-secondary" href="{{ url_for('web.bw_build_scout_xml', item_id=p.set_item_id) }}{% set q = query(src) %}{% if q %}?{{ q }}{% endif %}" download>Missing parts · XML</a>{% endif %}</div>
+</div>
+{% if not read_only %}<p class="sub bs-help">{% if p.nested %}This set is made of other sets, and Build it does not handle those yet.{% elif not usable %}The chosen stock holds nothing this set needs.{% else %}Build it moves the {{ p.parts_available }} matching piece{{ '' if p.parts_available == 1 else 's' }}{% if p.figures_available %} and {{ p.figures_available }} figure{{ '' if p.figures_available == 1 else 's' }}{% endif %} out of loose stock into a new copy, as one step you can undo.{% endif %}</p>{% endif %}
+<p class="bs-message" data-bs-message role="status" aria-live="polite"></p>
+</section>{% endmacro %}
+{% block content_class %}build-scout-page{% endblock %}
+{% block main %}
+{% set sel = shown.panel if shown else none %}
+<div id="bw-build-scout" class="bs" data-csrf="{{ csrf_token }}" data-undo-url="{{ url_for('web.bw_build_scout_undo') }}" data-sources='{{ {"lots": params.lots, "storages": params.storages, "loose": params.loose, "damaged": params.damaged}|tojson }}'
+ {% if sel %}data-build-url="{{ url_for('web.bw_build_scout_write', item_id=sel.set_item_id, action='build') }}" data-wish-url="{{ url_for('web.bw_build_scout_write', item_id=sel.set_item_id, action='wishlist') }}"{% endif %}>
+{% if single %}
+<p class="crumb"><a href="{{ url_for('web.bw_build_scout') }}{% set q = query(params) %}{% if q %}?{{ q }}{% endif %}">‹ Build Scout</a></p>
+{% if error %}<p class="notice" role="status">{{ error }}</p>{% endif %}
+{% if sel %}{{ panel(sel, false) }}{% endif %}
+{% else %}
+<div class="bs-main">
+<div class="bs-list">
+<h1>Build Scout</h1>
+<p class="sub">Which sets can you build, or nearly build, from the parts you hold loose</p>
+{% if error %}<p class="notice" role="status">{{ error }}</p>{% endif %}
+{% if shown %}
+{% set a = shown.answer %}{% set f = params.filters %}{% set opts = shown.options %}
+<form class="bs-filters" method="get" action="{{ url_for('web.bw_build_scout') }}">
+<details class="bs-pop"><summary class="bs-fbtn">Parts from <b>{{ a.source.text }}</b></summary>
+<div class="bs-popbody"><fieldset><legend>Count the parts in</legend>
+<label class="bs-check"><input type="checkbox" name="loose" value="1" {% if params.loose %}checked{% endif %}> Loose stock <span class="muted">not in a lot or storage</span></label>
+{% if opts.lots %}<p class="lab">Lots</p><div class="bs-choices">{% for lot in opts.lots %}<label class="bs-check"><input type="checkbox" name="lot" value="{{ lot.id }}" {% if lot.id in params.lots %}checked{% endif %}> {{ lot.name }}</label>{% endfor %}</div>{% endif %}
+{% if opts.storages %}<p class="lab">Storages</p><div class="bs-choices">{% for s in opts.storages %}<label class="bs-check"><input type="checkbox" name="storage" value="{{ s.id }}" {% if s.id in params.storages %}checked{% endif %}> {{ s.name }}</label>{% endfor %}</div>{% endif %}
+<label class="bs-check"><input type="checkbox" name="damaged" value="1" {% if params.damaged %}checked{% endif %}> Count damaged parts too</label>
+<p class="sub">Choose none to count all loose stock.</p></fieldset><button class="button bw-primary" type="submit">Apply</button></div></details>
+{% set active = [f.max_missing, f.theme, f.year_from or f.year_to, f.size_from or f.size_to, '1' if f.min_percent != '60' else '']|select|list|length %}
+<details class="bs-more" open data-bs-wide><summary class="bs-fbtn bs-more-summary">Filters{% if active %} · {{ active }}{% endif %}</summary>
+<div class="bs-fields">
+<label class="bs-fbtn">Min <span class="bs-field"><input class="mono" type="number" name="min_percent" min="0" max="100" value="{{ f.min_percent }}" aria-label="Minimum percent of parts available">%</span></label>
+<label class="bs-fbtn">Max missing <span class="bs-field"><input class="mono" type="number" name="max_missing" min="0" value="{{ f.max_missing or '' }}" placeholder="any" aria-label="Most missing parts"></span></label>
+<label class="bs-fbtn">Theme <span class="bs-field"><input type="text" name="theme" list="bs-themes" value="{{ f.theme or '' }}" placeholder="All" aria-label="Theme"></span><datalist id="bs-themes">{% for name in opts.themes %}<option value="{{ name }}">{% endfor %}</datalist></label>
+<label class="bs-fbtn">Years <span class="bs-field"><input class="mono" type="number" name="year_from" value="{{ f.year_from or '' }}" placeholder="any" aria-label="From year"> – <input class="mono" type="number" name="year_to" value="{{ f.year_to or '' }}" placeholder="any" aria-label="To year"></span></label>
+<label class="bs-fbtn">Size <span class="bs-field"><input class="mono" type="number" name="size_from" min="0" value="{{ f.size_from or '' }}" placeholder="any" aria-label="Fewest parts"> – <input class="mono" type="number" name="size_to" min="0" value="{{ f.size_to or '' }}" placeholder="any" aria-label="Most parts"></span></label>
+<span class="bs-fbtn bs-sort">Sort <b>% available</b></span>
+<button class="button bw-secondary" type="submit">Apply</button>
+</div></details>
+</form>
+<p class="cap2">{{ number(a.total) }} of {{ number(a.catalogue.sets) }} sets · {{ number(a.input.pieces) }} loose pieces counted · figures shown separately · swaps listed in the set, never in the %</p>
+{% if not shown.has_stock %}<p class="bs-empty">No loose parts to count yet. Add parts with Part Spotter or Add, then come back.</p>
+{% elif not shown.rows %}<p class="bs-empty">No set reaches {{ f.min_percent }}% of its parts from this stock. Lower the minimum or count more of the stock.</p>{% endif %}
+<div class="bs-rows" data-bs-rows>
+{% for r in shown.rows %}<a class="bs-row{{ ' is-selected' if r.selected else '' }}" href="{{ url_for('web.bw_build_scout_set', item_id=r.set_item_id) }}{% set q = query(params) %}{% if q %}?{{ q }}{% endif %}" data-select="{{ url_for('web.bw_build_scout') }}?{{ query(params, set=r.set_item_id, page=params.page if params.page > 1 else none) }}" {% if r.selected %}aria-current="true"{% endif %}>
+{{ tile(r) }}
+<span class="bs-row-body"><span class="bs-name"><span class="mono muted">{{ r.number_text }}</span> {{ toni_nowrap_tail(r.name or r.number_text) }}</span><span class="sub">{{ r.theme or 'No theme' }}{% if r.year %} · {{ r.year }}{% endif %} · {{ parts_word(r.parts_total) }}</span>
+<span class="bs-share">{{ bar(r.parts_available, r.parts_total) }}<span class="mono bs-share-text"><b>{{ r.percent|round(0)|int }}%</b> · {{ r.parts_available }} of {{ r.parts_total }} parts</span></span>
+<span class="mono bs-phone-line">{{ r.parts_available }} of {{ r.parts_total }} · {{ '−' ~ r.missing_parts ~ ' parts' if r.missing_parts else 'nothing missing' }}</span></span>
+<span class="bs-side"><span class="mono bs-percent">{{ r.percent|round(0)|int }}%</span><span class="mono bs-missing">{% if r.missing_parts %}<b>−{{ r.missing_parts }}</b> parts{% else %}all parts{% endif %}{% if r.figures_required %} · <b>{{ r.missing_figures }}</b> of {{ r.figures_required }} figures missing{% endif %}</span><span class="sub bs-cost">{{ cost_text(r.cost) }}</span></span></a>{% endfor %}
+</div>
+{% if shown.pages > 1 %}<nav class="bs-pager" aria-label="Pages">{% if shown.page > 1 %}<a class="button" href="?{{ query(params, page=shown.page - 1 if shown.page > 2 else none) }}">‹ Previous</a>{% endif %}<span class="mono">Page {{ shown.page }} of {{ shown.pages }}</span>{% if shown.page < shown.pages %}<a class="button" href="?{{ query(params, page=shown.page + 1) }}">Next ›</a>{% endif %}</nav>{% endif %}
+{% endif %}
+</div>
+{% if sel %}{{ panel(sel, true) }}{% endif %}
+</div>
+{% endif %}
+</div>
+{% endblock %}

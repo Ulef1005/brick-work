@@ -240,6 +240,33 @@
    "approved": true
   },
   {
+   "screen": "27-Matcher",
+   "section": "3a",
+   "state": "build-scout",
+   "world": "demo",
+   "path": "/workbench/build-scout?min_percent=0",
+   "built": true,
+   "approved": false
+  },
+  {
+   "screen": "27-Matcher",
+   "section": "3a",
+   "state": "build-scout-set",
+   "world": "demo",
+   "path": "/workbench/build-scout/12?min_percent=0",
+   "built": true,
+   "approved": false
+  },
+  {
+   "screen": "27-Matcher",
+   "section": "3a",
+   "state": "build-scout-empty",
+   "world": "demo",
+   "path": "/workbench/build-scout",
+   "built": true,
+   "approved": false
+  },
+  {
    "screen": "28-Check-set-parts",
    "section": "3b",
    "state": "",

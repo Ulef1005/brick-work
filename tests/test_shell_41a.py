@@ -25,7 +25,7 @@ def test_groups_order_and_copy_chooser(app4, client, world):
         groups = navigation()
         assert [(name, [link['title'] for link in links]) for name, links in groups] == [
             ('Collection', ['Sets', 'Minifigures', 'Parts', 'Instructions', 'Boxes', 'Gear']),
-            ('Workbench', ['Part Spotter', 'Set Inspector', 'Part Runner', 'Matchmaker', 'Orders', 'Storage']),
+            ('Workbench', ['Part Spotter', 'Set Inspector', 'Part Runner', 'Matchmaker', 'Build Scout', 'Orders', 'Storage']),
             ('Planning', ['Wishlist', 'Prices', 'Complete sets']),
             ('Manage', ['Add', 'Tools & Admin'])]
         check = groups[1][1][1]

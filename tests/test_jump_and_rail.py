@@ -14,7 +14,7 @@ from tests.app4 import app4, client, coll, pair, read, world  # noqa: F401  (the
     ('/workbench/storage', 'Storage'),
     ('/planning/prices', 'Prices'), ('/planning/wishlist', 'Wishlist'),
     ('/manage/tools', 'Tools & Admin'),
-    ('/workbench/check-parts', 'Set Inspector'), ('/workbench/matcher', 'Matchmaker'),
+    ('/workbench/check-parts', 'Set Inspector'), ('/workbench/matcher', 'Matchmaker'), ('/workbench/build-scout', 'Build Scout'),
     ('/workbench/part-picker', 'Part Runner'), ('/workbench/part-to-inventory', 'Part Spotter'),
     ('/workbench/what-is-this', 'Part Spotter')])                          # a Workbench tool, not Tools & Admin (#142)
 def test_rail_destinations_and_current_state(app4, client, world, path, current):

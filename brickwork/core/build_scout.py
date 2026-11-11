@@ -214,10 +214,10 @@ def _filters(args):
                 size_from=_whole(args.get('size_from'), 'size_from'), size_to=_whole(args.get('size_to'), 'size_to'))
 
 
-def scout(db, *, lots=(), storages=(), loose=False, damaged=False, limit=20, offset=0, detail=0, **filters):
+def scout(db, *, lots=(), storages=(), loose=False, damaged=False, limit=20, offset=0, detail=0, cost=False, **filters):
     """The Build Scout answer: `dict(catalogue, source, input, total, limit, offset, results)`; `results` are the page's sets, each
     `dict(rank, set_item_id, year, theme, parts_available, parts_total, percent, missing_parts, missing_lines, figures_available, figures_required, cost, ...)`.
-    With `detail` above 0 each set lists that many of its biggest missing lines (`gaps`), its missing figures (`figure_gaps`), its cost and its swaps. Read-only; `ValueError` for a refused argument."""
+    With `detail` above 0 each set lists that many of its biggest missing lines (`gaps`), its missing figures (`figure_gaps`), its cost and its swaps; `cost` alone adds the cost. Read-only; `ValueError` for a refused argument."""
     if not 1 <= limit <= MAX_LIMIT or offset < 0 or not 0 <= detail <= MAX_LINES:
         raise ValueError(f'limit is 1 to {MAX_LIMIT}, offset from 0, detail 0 to {MAX_LINES}')
     options = _filters(filters)
@@ -230,16 +230,16 @@ def scout(db, *, lots=(), storages=(), loose=False, damaged=False, limit=20, off
     ordered, sharing = ranked(chosen, pile, **options)
     figures, _ = figures_of(chosen, pile)
     page = ordered[offset:offset + limit]
-    shown = _present(db, chosen, pile, page, offset, figures, detail)
+    shown = _present(db, chosen, pile, page, offset, figures, detail, cost)
     return dict(catalogue=dict(chosen.parts.describe(), nested=len(chosen.nested)),
                 source=dict(lots=list(lots), storages=list(storages), loose=bool(loose), damaged=bool(damaged), text=sources_text(db, lots, storages, loose)),
                 input=dict(lines=len(pile), pieces=sum(v for k, v in pile.items() if k & ((1 << 32) - 1)), figures=sum(v for k, v in pile.items() if not k & ((1 << 32) - 1))),
                 filters=options, sharing=sharing, total=len(ordered), limit=limit, offset=offset, results=shown)
 
 
-def _present(db, chosen, pile, page, offset, figures, detail):
+def _present(db, chosen, pile, page, offset, figures, detail, cost=False):
     index = chosen.parts
-    prices = _prices(db, chosen, [p for p, _, _ in page], pile) if detail else None
+    prices = _prices(db, chosen, [p for p, _, _ in page], pile) if detail or cost else None
     out = []
     for n, (position, pieces, complete) in enumerate(page):
         item = index.set_item[position]
@@ -252,6 +252,8 @@ def _present(db, chosen, pile, page, offset, figures, detail):
                    nested=item in chosen.nested)
         if detail:
             row.update(set_detail_in(db, chosen, position, pile, lines_shown=detail, prices=prices))
+        elif cost:
+            row['cost'] = cost_of([(k, gap) for k, _, _, gap in missing_lines(chosen, position, pile) + figure_lines_missing(chosen, item, pile)], prices)
         out.append(row)
     return out
 

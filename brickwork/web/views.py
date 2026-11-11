@@ -1122,6 +1122,110 @@ def bw_workbench_page(mode):
     return response
 
 
+@web_page.get('/workbench/build-scout')
+@login_required
+def bw_build_scout():
+    """Build Scout (#9): the sets the loose stock makes, best first, with the selected set's panel beside the list."""
+    return bw_build_scout_page(None)
+
+
+@web_page.get('/workbench/build-scout/<int:item_id>')
+@login_required
+def bw_build_scout_set(item_id):
+    """One Build Scout set on its own page (the phone's second screen)."""
+    return bw_build_scout_page(item_id)
+
+
+def bw_build_scout_page(item_id):
+    from .admin_ops import brickwork_path
+    from ..api import read_only
+    from ..core.admin import database
+    from . import build_scout_page as scout_page
+    params = scout_page.parse(request.args)
+    shown, error = None, params['problem']
+    try:
+        with database(brickwork_path(), read_only=True) as db:
+            if item_id is None:
+                shown = scout_page.context(db, params, int(request.args['set']) if request.args.get('set', '').isdigit() else None)
+            else:
+                panel = scout_page.detail(db, params, item_id)
+                if panel is None:
+                    abort(404, 'This set has no part list to compare')
+                shown = dict(panel=panel, options=scout_page.options(db), rows=[], answer=None)
+    except (ValueError, sqlite3.Error, OSError) as exc:
+        error = public(exc, 'Brick Work database is not available. Check BW_DB_PATH and try again.')
+    response = current_app.make_response(render_template('web/toni/web/bw_build_scout.html', shown=shown, params=params, query=scout_page.query, error=error,
+                                                         single=item_id is not None, read_only=read_only(), csrf_token=bw_add_token()))
+    response.headers['Cache-Control'] = 'no-store'
+    return response
+
+
+@web_page.post('/workbench/build-scout/<int:item_id>/<action>')
+@login_required
+def bw_build_scout_write(item_id, action):
+    """Build it and Add to wishlist, as the screen's buttons send them (JSON with the CSRF token and the chosen stock)."""
+    from .admin_ops import brickwork_path
+    from ..core import build_scout
+    from ..core.admin import database
+    data = request.get_json(silent=True) or {}
+    bw_add_csrf(data)
+    if action not in ('build', 'wishlist'):
+        abort(404)
+    try:
+        with database(brickwork_path()) as db:
+            if action == 'wishlist':
+                done = build_scout.wish_set(db, item_id)
+                return jsonify(message='Already on the wishlist' if done['already'] else 'Added to the wishlist', event_id=done['event_id'], already=done['already'])
+            lots, storages = data.get('lots') or [], data.get('storages') or []
+            if not all(isinstance(v, str) for v in lots + storages):
+                raise ValueError('Choose lots and storages by id')
+            made = build_scout.build_set(db, item_id, lots=lots, storages=storages, loose=data.get('loose') is True, damaged=data.get('damaged') is True)
+        pieces = f'{made["pieces"]} piece{"" if made["pieces"] == 1 else "s"}'
+        figures = f' and {made["figures"]} figure{"" if made["figures"] == 1 else "s"}' if made['figures'] else ''
+        missing = f' · {made["missing_parts"]} still missing' if made['missing_parts'] else ''
+        return jsonify(message=f'Made a copy · {pieces}{figures} moved out of loose stock{missing}', event_id=made['event_id'],
+                       url=url_for('web.bw_collection_item', item_id=item_id, copy=made['copy_id']))
+    except (ValueError, Store4Error) as error:
+        return jsonify(message=public(error, 'Nothing was saved · the stock may have changed. Review and try again.')), 400
+    except sqlite3.Error:
+        return jsonify(message='Nothing was saved · the stock may have changed. Review and try again.'), 400
+
+
+@web_page.post('/workbench/build-scout/undo')
+@login_required
+def bw_build_scout_undo():
+    from .admin_ops import brickwork_path
+    from ..core import collection
+    from ..core.admin import database
+    from ..core.errors import BrickWorkError
+    data = request.get_json(silent=True) or {}
+    bw_add_csrf(data)
+    try:
+        with database(brickwork_path()) as db:
+            collection.undo(db, int(data['event_id']))
+        return jsonify(message='Undone')
+    except (BrickWorkError, KeyError, TypeError, ValueError, sqlite3.Error) as error:
+        return jsonify(message=public(error, 'Nothing was undone · something changed since. Undo the later change first.')), 400
+
+
+@web_page.get('/workbench/build-scout/<int:item_id>/missing.xml')
+@login_required
+def bw_build_scout_xml(item_id):
+    """The BrickLink wanted list of the set's missing parts and figures for the chosen stock, by the exporter the copies use."""
+    from .admin_ops import brickwork_path
+    from ..core import build_scout
+    from ..core.admin import database
+    from . import build_scout_page as scout_page
+    params = scout_page.parse(request.args)
+    try:
+        with database(brickwork_path(), read_only=True) as db:
+            export = build_scout.missing_export(db, item_id, **scout_page.sources(params))
+    except ValueError as error:
+        abort(404, public(error, 'Nothing is missing of this set'))
+    return current_app.response_class(export['xml'], mimetype='application/xml', headers={
+        'Content-Disposition': 'attachment; filename="brickwork-build-scout-missing.xml"', 'Cache-Control': 'no-store'})
+
+
 @web_page.post('/workbench/check-parts/<copy_id>')
 @login_required
 def bw_check_write(copy_id):

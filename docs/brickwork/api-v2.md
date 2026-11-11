@@ -125,7 +125,7 @@ As v1: `Authorization: Bearer <token>`; `read` < `write` < `admin`; `BW_API_TOKE
 
 ### 2.10 Reads (M.11b) and writes (M.11c)
 
-What the 59 read operations (M.11b) and the 66 write operations (M.11c, further down) do beyond v1, and where the first contract text changed when they were built (each is also in `openapi-v2.yaml`).
+What the 60 read operations (M.11b) and the 67 write operations (M.11c, further down) do beyond v1, and where the first contract text changed when they were built (each is also in `openapi-v2.yaml`).
 
 * **The query is the contract's.** A query name an operation does not declare is `400 unknown_filter`, a name given twice is `400 bad_request` unless the contract declares it an array (`copy_id` on the exports). `limit`, `direction`, `cursor` and `sort` are accepted where the operation lists them.
 * **Filters on an item or colour** take the provider space of decision 4: `number` (with `provider`, `bricklink` by default, `rebrickable`) finds the live items that number stands for in any kind, or in `kind`; `color` is read in the same `provider` space, and `provider=brickwork` is for `color` only (a Brick Work id is not a number: `number` with it is `422`). A filter that names nothing is an empty list; a colour that does not exist is `422`.
@@ -187,7 +187,7 @@ What the 59 read operations (M.11b) and the 66 write operations (M.11c, further 
 
 ### 3.1 Summary
 
-191 operations in all (M.11a 9, M.11b 59, M.11c 66, M.11d 57 by piece); v1 had 179 operations.
+193 operations in all (M.11a 9, M.11b 60, M.11c 67, M.11d 57 by piece); v1 had 179 operations.
 
 | Group | Operations | Pieces |
 |---|---|---|
@@ -196,7 +196,7 @@ What the 59 read operations (M.11b) and the 66 write operations (M.11c, further 
 | Items | 8 | M.11a 1, M.11b 6, M.11d 1 |
 | Identity | 11 | M.11a 4, M.11b 3, M.11c 4 |
 | Images | 1 | M.11b 1 |
-| Copies | 18 | M.11b 6, M.11c 12 |
+| Copies | 19 | M.11b 6, M.11c 13 |
 | Copy parts | 5 | M.11b 2, M.11c 3 |
 | Loose stock | 13 | M.11b 3, M.11c 10 |
 | Minifigures | 2 | M.11b 2 |
@@ -207,7 +207,7 @@ What the 59 read operations (M.11b) and the 66 write operations (M.11c, further 
 | Lots | 7 | M.11b 3, M.11c 4 |
 | Places | 5 | M.11b 1, M.11c 4 |
 | Flags | 5 | M.11b 1, M.11c 4 |
-| Planning | 7 | M.11b 7 |
+| Planning | 8 | M.11b 8 |
 | Orders | 15 | M.11d 15 |
 | Events | 3 | M.11b 2, M.11c 1 |
 | Jobs | 7 | M.11d 7 |
@@ -547,7 +547,7 @@ The `?` item type and the `item_type`, `item_no` and `color_id` members are gone
 | **M.11d** | Orders, jobs, sources and keys, sync, imports, identifications, tokens, admin; the dead v1 callers removed | 57 |
 | **M.11e** | The MCP regenerated from this file, the v2 parity test, API and MCP docs. **Done** (2026-10-28) | none |
 
-Operations by piece: M.11a 9, M.11b 59, M.11c 66, M.11d 57 (191 in all). The two tables below are generated from the contract and the routes by `scripts/check_api_contract.py --write`, and that check (run by `scripts/check.sh`) fails when the contract, the routes or these tables disagree. A piece lands by adding itself to `brickwork.api2.DONE`.
+Operations by piece: M.11a 9, M.11b 60, M.11c 67, M.11d 57 (193 in all). The two tables below are generated from the contract and the routes by `scripts/check_api_contract.py --write`, and that check (run by `scripts/check.sh`) fails when the contract, the routes or these tables disagree. A piece lands by adding itself to `brickwork.api2.DONE`.
 
 ### Implemented
 
@@ -621,6 +621,7 @@ Operations by piece: M.11a 9, M.11b 59, M.11c 66, M.11d 57 (191 in all). The two
 | `POST /api/v2/instruction-files/{id}/restore` | M.11c | `brickwork.api2.write_where.post_instruction_files_by_id_restore` |
 | `GET /api/v2/items` | M.11b | `brickwork.api2.catalogue.get_items` |
 | `GET /api/v2/items/{id}` | M.11a | `brickwork.api2.items.get_items_by_id` |
+| `POST /api/v2/items/{id}/build` | M.11c | `brickwork.api2.write_collection.post_items_by_id_build` |
 | `POST /api/v2/items/{id}/change-variant` | M.11c | `brickwork.api2.write_identity.post_items_by_id_change_variant` |
 | `GET /api/v2/items/{id}/colors` | M.11b | `brickwork.api2.item_views.get_items_by_id_colors` |
 | `GET /api/v2/items/{id}/detail` | M.11b | `brickwork.api2.item_views.get_items_by_id_detail` |
@@ -680,6 +681,7 @@ Operations by piece: M.11a 9, M.11b 59, M.11c 66, M.11d 57 (191 in all). The two
 | `DELETE /api/v2/places/{id}` | M.11c | `brickwork.api2.write_where.delete_places_by_id` |
 | `PATCH /api/v2/places/{id}` | M.11c | `brickwork.api2.write_where.patch_places_by_id` |
 | `POST /api/v2/places/{id}/restore` | M.11c | `brickwork.api2.write_where.post_places_by_id_restore` |
+| `GET /api/v2/planning/build-scout` | M.11b | `brickwork.api2.ranking.get_planning_build_scout` |
 | `GET /api/v2/planning/ranking` | M.11b | `brickwork.api2.ranking.get_planning_ranking` |
 | `GET /api/v2/planning/set-scores` | M.11b | `brickwork.api2.ranking.get_planning_set_scores` |
 | `GET /api/v2/prices` | M.11b | `brickwork.api2.prices.get_prices` |

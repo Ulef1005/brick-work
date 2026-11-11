@@ -1907,6 +1907,24 @@
       "undo_nullable": false
     },
     {
+      "endpoint": "post_items_by_id_build",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/items/{id}/build",
+      "piece": "M.11c",
+      "query": [],
+      "required": true,
+      "schema": {
+        "$ref": "#/components/schemas/BuildFromStockRequest"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
       "endpoint": "post_copies_by_id_inventory",
       "event_nullable": false,
       "if_match": true,
@@ -1955,6 +1973,34 @@
       "required": [
         "text"
       ],
+      "type": "object"
+    },
+    "BuildFromStockRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "damaged": {
+          "type": "boolean"
+        },
+        "loose": {
+          "type": "boolean"
+        },
+        "lots": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 500,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "storages": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 500,
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
       "type": "object"
     },
     "ChangeVariantRequest": {

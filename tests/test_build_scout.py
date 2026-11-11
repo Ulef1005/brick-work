@@ -120,7 +120,7 @@ def test_swaps_are_listed_apart_and_never_in_the_percent(world):
     assert (detail['parts_available'], detail['parts_total']) == (1, 4)                                      # the white 3023 is no yellow one
     swap = [s for s in detail['swaps']['items'] if s['kind'] == 'colour']
     assert len(swap) == 1 and swap[0]['quantity'] == 3 and swap[0]['have']['color_id'] == w.white and swap[0]['wanted']['color_id'] == w.yellow
-    assert [m['missing'] for m in detail['missing']] == [3]
+    assert [m['missing'] for m in detail['gaps']] == [3]
 
 
 def test_missing_lines_and_cost_say_how_many_lines_are_unpriced(world):
@@ -128,12 +128,12 @@ def test_missing_lines_and_cost_say_how_many_lines_are_unpriced(world):
     w.stock('3001', w.red, 4)
     w.coll.price(w.part('3023'), '0.30', colour=w.white)
     detail = B.set_detail(w.db, w.set('9101-1'))
-    assert [(m['item_id'], m['missing']) for m in detail['missing']] == [(w.part('3023'), 2), (w.part('syn-r1'), 1)]
+    assert [(m['item_id'], m['missing']) for m in detail['gaps']] == [(w.part('3023'), 2), (w.part('syn-r1'), 1)]
     assert detail['cost'] == dict(amount='0.60', currency='EUR', priced_lines=1, unpriced_lines=1)
     assert B.set_detail(w.db, w.set('9102-1'))['cost'] == dict(amount='0.30', currency='EUR', priced_lines=1, unpriced_lines=0)
     assert B.set_detail(w.db, w.set('9105-1'))['cost']['amount'] is None                                 # nothing priced: no amount, not 0.00
     page = w.scout(min_percent=0, detail=5)
-    assert w.row(page, '9101-1')['cost']['unpriced_lines'] == 1 and len(w.row(page, '9101-1')['missing']) == 2
+    assert w.row(page, '9101-1')['cost']['unpriced_lines'] == 1 and len(w.row(page, '9101-1')['gaps']) == 2
 
 
 def test_a_price_in_another_currency_is_left_out(world):

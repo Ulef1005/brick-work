@@ -217,7 +217,7 @@ def _filters(args):
 def scout(db, *, lots=(), storages=(), loose=False, damaged=False, limit=20, offset=0, detail=0, **filters):
     """The Build Scout answer: `dict(catalogue, source, input, total, limit, offset, results)`; `results` are the page's sets, each
     `dict(rank, set_item_id, year, theme, parts_available, parts_total, percent, missing_parts, missing_lines, figures_available, figures_required, cost, ...)`.
-    With `detail` above 0 each set lists that many of its biggest missing lines and its swaps. Read-only; `ValueError` for a refused argument."""
+    With `detail` above 0 each set lists that many of its biggest missing lines (`gaps`), its missing figures (`figure_gaps`), its cost and its swaps. Read-only; `ValueError` for a refused argument."""
     if not 1 <= limit <= MAX_LIMIT or offset < 0 or not 0 <= detail <= MAX_LINES:
         raise ValueError(f'limit is 1 to {MAX_LIMIT}, offset from 0, detail 0 to {MAX_LINES}')
     options = _filters(filters)
@@ -343,8 +343,8 @@ def set_detail_in(db, chosen, position, pile, *, lines_shown=MAX_LINES, prices=N
     figs = figure_lines_missing(chosen, item, pile)
     prices = prices if prices is not None else price_map(db, [set_scoring.unkey(k) for k, *_ in missing + figs])
     swaps = set_scoring._swaps(index, position, pile, dict(zip(index.set_keys[position], index.set_needs[position])), set_scoring.by_item_of(pile))
-    return dict(missing=[dict(item_id=set_scoring.unkey(k)[0], color_id=set_scoring.unkey(k)[1], need=need, have=have, missing=gap) for k, need, have, gap in missing[:lines_shown]],
-                figure_lines=[dict(item_id=set_scoring.unkey(k)[0], need=need, have=have, missing=gap) for k, need, have, gap in figs],
+    return dict(gaps=[dict(item_id=set_scoring.unkey(k)[0], color_id=set_scoring.unkey(k)[1], need=need, have=have, missing=gap) for k, need, have, gap in missing[:lines_shown]],
+                figure_gaps=[dict(item_id=set_scoring.unkey(k)[0], need=need, have=have, missing=gap) for k, need, have, gap in figs],
                 cost=cost_of([(k, gap) for k, _, _, gap in missing + figs], prices), swaps=swaps)
 
 

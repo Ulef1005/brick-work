@@ -82,6 +82,10 @@ def world_folder():
             fcntl.flock(lock, fcntl.LOCK_UN)
 
 
+# The version the footer shows in the gate's world. The baselines were rendered when the footer said 1.0.0; the constant keeps that text for good.
+GATE_VERSION = '1.0.0'
+
+
 @contextmanager
 def world(name: str, warm_up: list[str] = ()):
     """Serve the invented world `name` on 127.0.0.1 ('demo', the gate's; 'showcase', the same plus the richer layer of the exported demo and the site's pictures); yields its base URL. The `warm_up` paths are requested once before the clock is frozen,
@@ -96,6 +100,7 @@ def world(name: str, warm_up: list[str] = ()):
         checks.stage(store, showcase.CHECKS if name == 'showcase' else None)
         from brickwork.demo.export import make_app
         app = make_app(store)
+        app.config['GATE_SHOWN_VERSION'] = GATE_VERSION   # the footer shows a constant, so a release never changes a baseline (#257)
         client = app.test_client()
         for path in warm_up:
             client.get(path)

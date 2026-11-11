@@ -3290,6 +3290,81 @@ paths:
           $ref: '#/components/responses/Problem'
       x-v1: get_planning_ranking
       x-piece: M.11b
+  /planning/set-scores:
+    get:
+      operationId: get_planning_set_scores
+      x-mcp-tool: get_planning_set_scores
+      summary: The catalogue's sets ranked by how much of a pile of loose parts each explains.
+      description: 'Scores the live loose stock of one lot, one storage (and the storages inside it), all loose stock, or a saved selection of stock lines
+        (`stock`, repeated) against the active catalogue build; give exactly one of `lot`, `storage`, `loose=true` or `stock`. Read-only. Each set carries
+        the evidence (the sum, over the lines of the pile that the set holds, of the line''s rarity weight ln(N/df) times the covered share of the set''s
+        quantity), the coverage (evidence over the set''s own total weight), the covered and complete lines, the distinctive lines found of the set''s
+        distinctive ones, the matched lines (the heaviest `detail` of them, with the stock flags passed through and summed per flag), and the swaps: the same
+        part in another colour or as an alternate mould, listed apart and never counted in any number. Ranked by evidence, then coverage, then set id.
+        ADR 0026.'
+      tags:
+      - Planning
+      security:
+      - bearerAuth:
+        - read
+      parameters:
+      - name: lot
+        in: query
+        description: A lot id; scores its live loose parts and figures.
+        schema:
+          type: string
+      - name: storage
+        in: query
+        description: A storage id; scores the live loose stock kept in it and in the storages inside it.
+        schema:
+          type: string
+      - name: loose
+        in: query
+        description: true scores all live loose parts and figures.
+        schema:
+          type: boolean
+      - name: stock
+        in: query
+        description: Stock line ids (live loose parts or figures), 1 to 5000 different ones.
+        style: form
+        explode: true
+        schema:
+          type: array
+          items:
+            type: string
+          maxItems: 5000
+          uniqueItems: true
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      - name: offset
+        in: query
+        schema:
+          type: integer
+          minimum: 0
+          default: 0
+      - name: detail
+        in: query
+        description: How many matched lines each set lists (the numbers always count all of them).
+        schema:
+          type: integer
+          minimum: 0
+          maximum: 50
+          default: 10
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SetScorePage'
+        default:
+          $ref: '#/components/responses/Problem'
+      x-piece: M.11b
   /export/missing.csv:
     get:
       operationId: get_export_missing_csv
@@ -11460,6 +11535,219 @@ components:
       - required:
         - kind
         - key
+    SetScorePage:
+      type: object
+      required:
+      - data
+      properties:
+        data:
+          $ref: '#/components/schemas/SetScores'
+    SetScores:
+      type: object
+      required:
+      - catalogue
+      - source
+      - input
+      - total
+      - limit
+      - offset
+      - results
+      properties:
+        catalogue:
+          type: object
+          description: The index the answer came from.
+          required:
+          - sets
+          - lines
+          - postings
+          - distinctive_max
+          properties:
+            sets:
+              type: integer
+              description: N, the candidate sets (live sets with a latest inventory that has at least one line).
+            lines:
+              type: integer
+              description: Distinct (part, colour) lines and whole figures held by those sets.
+            postings:
+              type: integer
+            distinctive_max:
+              type: integer
+              description: A line held by at most this many candidate sets is distinctive.
+        source:
+          type: object
+          required:
+          - kind
+          - id
+          properties:
+            kind:
+              type: string
+              enum:
+              - lot
+              - storage
+              - loose
+              - stock
+            id:
+              type:
+              - string
+              - 'null'
+        input:
+          type: object
+          required:
+          - lines
+          - quantity
+          - matched_lines
+          - unmatched_lines
+          - unmatched
+          properties:
+            lines:
+              type: integer
+            quantity:
+              type: integer
+            matched_lines:
+              type: integer
+              description: Lines of the pile that at least one set holds.
+            unmatched_lines:
+              type: integer
+            unmatched:
+              type: array
+              description: Up to 50 of the lines no set holds.
+              items:
+                $ref: '#/components/schemas/SetScoreLine'
+        total:
+          type: integer
+          description: Sets that share at least one line with the pile.
+        limit:
+          type: integer
+        offset:
+          type: integer
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SetScore'
+    SetScoreLine:
+      type: object
+      required:
+      - item
+      - color
+      - quantity
+      properties:
+        item:
+          $ref: '#/components/schemas/Item'
+        color:
+          oneOf:
+          - $ref: '#/components/schemas/Color'
+          - type: 'null'
+        quantity:
+          type: integer
+          description: How many of it the pile has.
+        need:
+          type: integer
+          description: How many the set holds (a matched line only).
+        covered:
+          type: integer
+          description: min(quantity, need) (a matched line only).
+        weight:
+          type: number
+          description: The line's rarity weight ln(N/df) (a matched line only).
+        flags:
+          type: array
+          items:
+            type: string
+    SetScore:
+      type: object
+      required:
+      - rank
+      - item
+      - evidence
+      - coverage
+      - covered_quantity
+      - set_quantity
+      - covered_lines
+      - complete_lines
+      - set_lines
+      - distinctive_found
+      - distinctive_total
+      - matched
+      - flags
+      - swaps
+      properties:
+        rank:
+          type: integer
+        item:
+          $ref: '#/components/schemas/Item'
+        evidence:
+          type: number
+        coverage:
+          type: number
+        covered_quantity:
+          type: integer
+        set_quantity:
+          type: integer
+        covered_lines:
+          type: integer
+        complete_lines:
+          type: integer
+          description: Lines the pile covers in full.
+        set_lines:
+          type: integer
+        distinctive_found:
+          type: integer
+        distinctive_total:
+          type: integer
+        matched:
+          type: array
+          items:
+            $ref: '#/components/schemas/SetScoreLine'
+        flags:
+          type: object
+          description: Per stock flag name, what the lines carrying it contributed to this set.
+          additionalProperties:
+            type: object
+            required:
+            - lines
+            - covered_quantity
+            - evidence
+            properties:
+              lines:
+                type: integer
+              covered_quantity:
+                type: integer
+              evidence:
+                type: number
+        swaps:
+          type: object
+          description: Listed apart, never in any number above.
+          required:
+          - lines
+          - quantity
+          - items
+          properties:
+            lines:
+              type: integer
+            quantity:
+              type: integer
+            items:
+              type: array
+              description: Up to 20, heaviest first.
+              items:
+                type: object
+                required:
+                - kind
+                - have
+                - wanted
+                - quantity
+                properties:
+                  kind:
+                    type: string
+                    enum:
+                    - colour
+                    - mould
+                  have:
+                    $ref: '#/components/schemas/SetScoreLine'
+                  wanted:
+                    $ref: '#/components/schemas/SetScoreLine'
+                  quantity:
+                    type: integer
     ItemLink:
       type: object
       required:

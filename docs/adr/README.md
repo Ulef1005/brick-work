@@ -31,3 +31,5 @@ One file per decision that binds future work: the API contract, the data model, 
 | [0022](0022-design-roll-out.md) | Brick Work leaves Toni's World and takes the App Design Standard layout; the screenshot gate compares the built app with approved captures | accepted | 2026-11-04 |
 | [0023](0023-schema-4.2.md) | Schema 4.2: a job owner is a pid on one boot with one start time; an order line keeps why it is unplaced | accepted | 2026-11-04 |
 | [0024](0024-parallel-check.md) | The check runs its tests in parallel, its screen gate on several Chrome processes, and a docs-only change skips the app | accepted | 2026-11-09 |
+| [0025](0025-first-start-setup.md) | Containers set up a missing collection before starting the server | accepted | 2026-11-10 |
+| [0026](0026-set-scoring-weights.md) | Set scoring: inverse-frequency weight, swaps never in the score | accepted | 2026-11-11 |

@@ -125,7 +125,7 @@ As v1: `Authorization: Bearer <token>`; `read` < `write` < `admin`; `BW_API_TOKE
 
 ### 2.10 Reads (M.11b) and writes (M.11c)
 
-What the 57 read operations (M.11b) and the 66 write operations (M.11c, further down) do beyond v1, and where the first contract text changed when they were built (each is also in `openapi-v2.yaml`).
+What the 58 read operations (M.11b) and the 66 write operations (M.11c, further down) do beyond v1, and where the first contract text changed when they were built (each is also in `openapi-v2.yaml`).
 
 * **The query is the contract's.** A query name an operation does not declare is `400 unknown_filter`, a name given twice is `400 bad_request` unless the contract declares it an array (`copy_id` on the exports). `limit`, `direction`, `cursor` and `sort` are accepted where the operation lists them.
 * **Filters on an item or colour** take the provider space of decision 4: `number` (with `provider`, `bricklink` by default, `rebrickable`) finds the live items that number stands for in any kind, or in `kind`; `color` is read in the same `provider` space, and `provider=brickwork` is for `color` only (a Brick Work id is not a number: `number` with it is `422`). A filter that names nothing is an empty list; a colour that does not exist is `422`.
@@ -153,6 +153,7 @@ What the 57 read operations (M.11b) and the 66 write operations (M.11c, further 
 * **Settings.** `GET /settings` reads `admin.settings`; `source_priority` is `{step: {kind or "*": [source ids]}}` over `pictures`, `metadata` and `market_price` (a step that is sent replaces that step), `prefer_bricklink_inventory` is the global switch of design 4.4. A key outside the whitelist is `422 unsupported_setting`. Changing settings needs `admin`.
 * **Links, merge, unmerge.** `PUT /items/{id}/links` makes sure the item has the BrickLink link as a `manual` one (a link to check is confirmed; one scoped to a colour is its own row, in the BrickLink colour space) and, with `preferred: true`, makes it the preferred one of its scope; the BrickLink `type` must be the item's. It is idempotent per (type, number, colour): putting what is there writes nothing. `preferred: false` means no change to the preference: a preference is replaced by marking another link preferred, never cleared to none (there is always a resolver order). `POST /items/{id}/merge` names the loser in the path and the survivor as an `ItemKey`; `Merge.receipt` is `{event_id, counts}`. `POST /items/{id}/unmerge` names the merged id in the path; `merge_id` is optional and must belong to it; an unmerge has no Undo (merge again). No M.11c operation writes provider status: a person resolves a to-check row by a link or a merge.
 * **Change variant** (#151). `POST /items/{id}/change-variant` takes `{"to": <ItemKey>}` and names the old variant in the path; both are catalogue figures (or parts, or other items) of one kind, neither merged. Every owned row moves from the item in the path to `to`, keeping its id: loose stock, wishes, the figure lines of copies (a copy keeps its part list; a line that named a catalogue list `to` does not have becomes a `migrated` one) and the part lines of loose parts. BrickLink's number (the old item's preferred one, else the one link to check on `to`) becomes `to`'s preferred `manual` link, and the old item's link of it becomes `to_check`; the old item is left as it is. `VariantChange` is `{from, to, number, receipt: {event_id, counts}}`. One event: its Undo (`POST /events/{id}/undo`) puts every row and link back, and is `409` once any of them changed. Refused with `409`: a merged item on either side (`merged` with `survivor`), another kind, a set, the same item, a job in flight for either, a copy, loose figure or part list with a line for both items, a row holding a fetched part list of the old item, and a live stock row or wish that would meet a live one of `to` on its key (nothing is added up).
+* **Sets versus a pile of parts** (#199). `GET /planning/set-scores` ranks the catalogue's sets by how much of a pile of loose parts each explains: give exactly one of `lot`, `storage` (with the storages inside it), `loose=true` or `stock` (repeated line ids), else `422`; an unknown lot or storage is `404`, a stock id that is not a live loose part or figure `422`. `limit` (1 to 100, default 20), `offset` and `detail` (matched lines per set, 0 to 50, default 10) page and size the answer; the ranking is cached per catalogue build and input, so a later page is cheap. Each set carries `evidence` (the sum, over the lines it holds, of the rarity weight ln(N/df) times the covered share of the set's quantity), `coverage` (evidence over the set's own total weight), covered, complete and distinctive lines, the `matched` lines with the stock flags passed through (`flags` sums them per flag) and `swaps` (the same part in another colour or as an alternate mould, listed apart and in no number). It reads and writes nothing, so a read token may call it, and it is a GET: an arbitrary parts list goes through the Python service `brickwork.core.set_scoring.score`. The formula and the decisions are ADR 0026; the how-to for developers is the reference page [Set scoring](../reference/set-scoring.md).
 * **The copy's part list.** `POST /copies/{id}/inventory` takes `source`, `version` (Rebrickable; default the latest) and, new in M.11c, `remember` (also the set's preference for new copies, in the same event). BrickLink's list without a key is `424 source_not_configured`; with no fetched list the answer is `202` with `Location: /api/v2/jobs/{id}` and the copy waits (`inventory.pending`); a copy already waiting, or already on that list, is `409`. `DELETE .../inventory/pending` cancels the wait and puts back the preference it remembered.
 * **Refusals of the 4.0 store** are problems: a state that does not allow the change (nothing to switch, a marked copy, a pending change, a refused merge) is `409`, a missing catalogue `424`, the rest `422`; the words are the refusal's own with folders cut.
 * **Corrections to the first contract text of the writes:** `WishlistTransfer.ids` are texts (wish ids are uuids); `Settings.source_priority` is nested as above; `CopyInventorySwitch` has `remember`; `WrittenSettings.event_id` and `WrittenItemLink.event_id` may be null; `InstructionUpload.item` is JSON text in the form; `PriceCreate.color` and `WishPatch.color` are Brick Work colour ids; `LooseFigurePartKey.spare` null reads as 0.
@@ -185,7 +186,7 @@ What the 57 read operations (M.11b) and the 66 write operations (M.11c, further 
 
 ### 3.1 Summary
 
-189 operations in all (M.11a 9, M.11b 57, M.11c 66, M.11d 57 by piece); v1 had 179 operations.
+190 operations in all (M.11a 9, M.11b 58, M.11c 66, M.11d 57 by piece); v1 had 179 operations.
 
 | Group | Operations | Pieces |
 |---|---|---|
@@ -205,7 +206,7 @@ What the 57 read operations (M.11b) and the 66 write operations (M.11c, further 
 | Lots | 6 | M.11b 2, M.11c 4 |
 | Places | 5 | M.11b 1, M.11c 4 |
 | Flags | 5 | M.11b 1, M.11c 4 |
-| Planning | 6 | M.11b 6 |
+| Planning | 7 | M.11b 7 |
 | Orders | 15 | M.11d 15 |
 | Events | 3 | M.11b 2, M.11c 1 |
 | Jobs | 7 | M.11d 7 |
@@ -540,12 +541,12 @@ The `?` item type and the `item_type`, `item_no` and `color_id` members are gone
 | Piece | What | Operations |
 |---|---|---|
 | **M.11a** | This contract and the OpenAPI twin; the `/api/v2` blueprint (auth, scopes, throttle, read-only, audit origin, envelopes, errors, body caps); meta; item addressing and the item and colour serializers; the merged-id `307`; v1's 410 names v2; the contract check covers v2 | 9 |
-| **M.11b** | Reads: catalogue, colours, items (detail, inventory, used-in, colours, images, links, provider status), copies, stock, minifigures, gaps and matches, instructions, prices, wishes and wishlists, storages, lots, places, flags, planning, exports, events, statistics | 57 |
+| **M.11b** | Reads: catalogue, colours, items (detail, inventory, used-in, colours, images, links, provider status), copies, stock, minifigures, gaps and matches, instructions, prices, wishes and wishlists, storages, lots, places, flags, planning, exports, events, statistics, set scores | 58 |
 | **M.11c** | Writes: the v2 write contract, create by numbers with `422 unidentified`, the copy inventory switch and cancel, links, merge and unmerge, settings, undo | 65 |
 | **M.11d** | Orders, jobs, sources and keys, sync, imports, identifications, tokens, admin; the dead v1 callers removed | 57 |
 | **M.11e** | The MCP regenerated from this file, the v2 parity test, API and MCP docs. **Done** (2026-10-28) | none |
 
-Operations by piece: M.11a 9, M.11b 57, M.11c 66, M.11d 57 (189 in all). The two tables below are generated from the contract and the routes by `scripts/check_api_contract.py --write`, and that check (run by `scripts/check.sh`) fails when the contract, the routes or these tables disagree. A piece lands by adding itself to `brickwork.api2.DONE`.
+Operations by piece: M.11a 9, M.11b 58, M.11c 66, M.11d 57 (190 in all). The two tables below are generated from the contract and the routes by `scripts/check_api_contract.py --write`, and that check (run by `scripts/check.sh`) fails when the contract, the routes or these tables disagree. A piece lands by adding itself to `brickwork.api2.DONE`.
 
 ### Implemented
 
@@ -678,6 +679,7 @@ Operations by piece: M.11a 9, M.11b 57, M.11c 66, M.11d 57 (189 in all). The two
 | `PATCH /api/v2/places/{id}` | M.11c | `brickwork.api2.write_where.patch_places_by_id` |
 | `POST /api/v2/places/{id}/restore` | M.11c | `brickwork.api2.write_where.post_places_by_id_restore` |
 | `GET /api/v2/planning/ranking` | M.11b | `brickwork.api2.ranking.get_planning_ranking` |
+| `GET /api/v2/planning/set-scores` | M.11b | `brickwork.api2.ranking.get_planning_set_scores` |
 | `GET /api/v2/prices` | M.11b | `brickwork.api2.prices.get_prices` |
 | `POST /api/v2/prices/observations` | M.11c | `brickwork.api2.write_money.post_prices_observations` |
 | `POST /api/v2/prices/refresh` | M.11d | `brickwork.api2.jobs.post_prices_refresh` |

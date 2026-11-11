@@ -6,7 +6,7 @@ from decimal import Decimal
 
 from flask import Response, request
 
-from ..core import collection, errors, list_exports, planning
+from ..core import collection, errors, list_exports, planning, set_scoring
 from . import route
 from .read import (arguments, bodies, page, reading, record, respond)
 
@@ -131,3 +131,62 @@ def get_export_missing_json(db):
 def get_export_missing_xml(db):
     arguments()
     return attachment(planning.export(db, chosen_copies())['xml'], 'application/xml', 'brickwork-missing.xml')
+
+
+# ---------- sets versus a pile of parts (#199) ----------
+
+SELECTORS = ('lot', 'storage', 'loose', 'stock')
+
+
+def whole(args, name, default, low, high):
+    try:
+        value = int(args.get(name, default))
+    except ValueError:
+        raise errors.ValidationFailed(f'{name} is a whole number') from None
+    if not low <= value <= high:
+        raise errors.ValidationFailed(f'{name} is {low} to {high}')
+    return value
+
+
+@route('/planning/set-scores')
+@reading
+def get_planning_set_scores(db):
+    """The catalogue's sets ranked by how much of a pile of loose parts each explains (`core/set_scoring.py`, ADR 0026). Read-only."""
+    args = arguments()
+    stock = request.args.getlist('stock')
+    chosen = [name for name in SELECTORS if (stock if name == 'stock' else args.get(name) not in (None, '', 'false'))]
+    if len(chosen) != 1 or (args.get('loose') not in (None, '', 'true', 'false')):
+        raise errors.ValidationFailed('Give exactly one of lot, storage, loose=true or stock')
+    limit, offset, detail = whole(args, 'limit', 20, 1, 100), whole(args, 'offset', 0, 0, 10 ** 9), whole(args, 'detail', 10, 0, 50)
+    try:
+        if chosen[0] == 'lot':
+            parts, flags = set_scoring.from_lot(db, args['lot'])
+        elif chosen[0] == 'storage':
+            parts, flags = set_scoring.from_storage(db, args['storage'])
+        elif chosen[0] == 'stock':
+            if len(stock) > 5000 or len(set(stock)) != len(stock):
+                raise errors.ValidationFailed('Choose 1 to 5000 different stock lines')
+            parts, flags = set_scoring.from_stock(db, stock)
+        else:
+            parts, flags = set_scoring.from_loose(db)
+    except errors.BrickWorkError:
+        raise
+    except ValueError as error:
+        raise (errors.NotFound(str(error)) if str(error).startswith('No such') else errors.ValidationFailed(str(error))) from None
+    result = set_scoring.score(db, parts, flags, limit=limit, offset=offset, detail=detail)
+    lines = [*result['input']['unmatched']]
+    for r in result['results']:
+        lines += r['matched'] + [s[k] for s in r['swaps']['items'] for k in ('have', 'wanted')]
+    book = bodies(db, items={r['set_item_id'] for r in result['results']} | {i['item_id'] for i in lines}, colors={i['color_id'] for i in lines})
+
+    def line(body):
+        return {**{k: v for k, v in body.items() if k not in ('item_id', 'color_id')}, 'item': book.item(body['item_id']), 'color': book.color(body['color_id'])}
+
+    sets = [{**{k: v for k, v in r.items() if k not in ('set_item_id', 'matched', 'swaps')}, 'item': book.item(r['set_item_id']),
+             'matched': [line(m) for m in r['matched']],
+             'swaps': {**r['swaps'], 'items': [{**s, 'have': line(s['have']), 'wanted': line(s['wanted'])} for s in r['swaps']['items']]}}
+            for r in result['results']]
+    given = result['input']
+    return respond(dict(catalogue=result['catalogue'], source=dict(kind=chosen[0], id=None if chosen[0] in ('loose', 'stock') else args[chosen[0]]),
+                        input=dict(given, unmatched=[line(u) for u in given['unmatched']]),
+                        total=result['total'], limit=limit, offset=offset, results=sets))

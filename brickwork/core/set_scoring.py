@@ -144,18 +144,22 @@ class Index:
 
 
 def _resolve(item, own, children, memo, trail):
-    """A set's lines: its own plus every sub-set's times the quantity (recursive, a cycle is cut where it closes)."""
+    """A set's lines: its own plus every sub-set's times the quantity (recursive). A cycle is cut at the edge that closes it, so the set that
+    refers back adds nothing; a result that had an edge cut is not memoised, since it depends on where the walk started. Returns `(lines, cut)`."""
     if item in memo:
-        return memo[item]
-    lines = dict(own.get(item, {}))
+        return memo[item], False
     if item in trail:
-        return lines
+        return {}, True
+    lines = dict(own.get(item, {}))
+    cut = False
     for child, quantity in children.get(item, ()):
-        for key, amount in _resolve(child, own, children, memo, trail | {item}).items():
+        sub, sub_cut = _resolve(child, own, children, memo, trail | {item})
+        cut = cut or sub_cut
+        for key, amount in sub.items():
             lines[key] = lines.get(key, 0) + amount * quantity
-    if not trail:
+    if not cut:
         memo[item] = lines
-    return lines
+    return lines, cut
 
 
 def build_index(rows):
@@ -185,7 +189,7 @@ def build_index(rows):
     memo = {}
     postings = {}
     for set_id in sorted(own):
-        lines = _resolve(set_id, own, children, memo, frozenset()) if set_id in children else own[set_id]
+        lines = _resolve(set_id, own, children, memo, frozenset())[0] if set_id in children else own[set_id]
         if not lines:
             continue
         position = len(index.set_item)

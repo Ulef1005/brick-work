@@ -174,6 +174,14 @@ def test_a_cycle_of_sub_sets_stops(cat):
     rows = S.Rows([(1, [(10, 1, 1)]), (2, [(11, 1, 2)])], subsets=[(1, 2, 1), (2, 1, 1)], key=('cycle',))
     index = S.build_index(rows)
     assert index.total == 2 and index.set_lines[0] == 2 and index.set_lines[1] == 2
+    # the edge that closes the cycle adds nothing: each set holds its own piece and the other's, once
+    assert sum(index.set_quantity[0:1]) == 3 and sum(index.set_quantity[1:2]) == 3
+
+
+def test_a_set_that_refers_to_itself_does_not_need_its_pieces_twice(cat):
+    rows = S.Rows([(1, [(10, 1, 1)])], subsets=[(1, 1, 1)], key=('self',))
+    index = S.build_index(rows)
+    assert index.set_quantity[0] == 1 and list(index.set_needs[0]) == [1]
 
 
 # ---------- the answer ----------

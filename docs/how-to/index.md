@@ -9,6 +9,7 @@ One task per page, for someone who already knows the app.
 - [Find sets your loose stock can finish](match-stock-to-sets.md)
 - [Find sets to build from your loose stock](find-sets-to-build.md)
 - [Decide which set to repair first](plan-repairs.md)
+- [Order the parts all your sets are missing](order-missing-parts.md)
 - [Identify a minifigure from a photo](identify-a-minifigure.md)
 - [Find the sets in a bulk lot](find-the-sets-in-a-bulk-lot.md)
 - [Mark a sticker](mark-a-sticker.md)

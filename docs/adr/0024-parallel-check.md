@@ -48,6 +48,10 @@ A gate whose captures do not depend on the session (clean storage and warmed fon
 - A docs-only pull request does not run the app tests or the screen gate. The gate runs in full on the push to `main` after the merge, so a mistake in that classification costs a red `main` and not a bad release.
 - `check.sh` and the workflow's change detection are generic and come from app-template: the change goes to the wiki-agent as an App Standard candidate.
 
+## Amended: the gate is parallel again (#267, 2026-11-11)
+
+The follow-up named above was done. `scripts/capture_screens.cjs`, in the gate's deterministic mode, now starts every capture from an empty browser (it clears the cache, the origin's stored data and the web storage), loads every declared font face, and lays the page out again once the fonts are in. The cause of the 1 px was that last point: a form control laid out before its webfont arrived kept the fallback font's metrics in a fresh Chrome process, while a warm session had the font already; clearing storage alone did not change it (`gate-agree` on CI, 14 captures differed with and without it). `scripts/screen_gate.py agree` (and the `gate-agree` workflow) renders every approved state on one process and on four and compares them: on Linux, 198 captures, 0 differ. The gate's default is up to four processes again; `BW_GATE_WORKERS=1` gives the single session back. Six states changed against the old baselines by a few hundred to a few thousand pixels (text 1 px lower in a drop-down); their baselines were rendered again in CI and approved by the maintainer.
+
 ## Links
 
 Issue #254; [ADR 0022](0022-design-roll-out.md) (rendered tests never skip silently, the screen gate); `CONTRIBUTING.md` (running the gate, the group rule, the docs-only path); `design/DESIGN-CHECK.md`.

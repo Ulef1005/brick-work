@@ -123,22 +123,21 @@ def world(name: str, warm_up: list[str] = ()):
 
 
 def workers() -> int:
-    """How many Chrome processes render at once: 1 unless BW_GATE_WORKERS asks for more. The approved baselines were rendered in ONE Chrome session,
-    and state a session carries from page to page (storage, cached fonts and styles) shows in some captures: rendered in fresh sessions of 12 jobs,
-    52-Place's drop-down text sat 1 px lower on Linux and failed the gate (PR #261; ADR 0024). So the gate and the baselines render in one session;
-    BW_GATE_WORKERS > 1 is for quick local review images only, never for a baseline or a deciding run."""
+    """How many Chrome processes render at once: BW_GATE_WORKERS, else up to four (one per core). A capture does not depend on the session it is rendered in
+    (#267, ADR 0024): the browser starts every capture empty, loads every font face and lays the page out again once the fonts are in, so one process and
+    four give the same pixels (`screen_gate.py agree` proves it on Linux). BW_GATE_WORKERS=1 renders everything in one Chrome session."""
     try:
         wanted = int(os.environ.get('BW_GATE_WORKERS', ''))
     except ValueError:
         wanted = 0
-    return max(1, wanted or 1)
+    return max(1, wanted or min(4, os.cpu_count() or 1))
 
 
 def run_jobs(jobs: list[dict], scratch: str, chrome: str) -> None:
     """Run the capture jobs on `workers()` Chrome processes at once. Each job is independent (its own viewport, theme and navigation; the clock, fonts and
     animation settings are set per process by capture_screens.cjs), so the captures do not depend on which process takes them. The jobs go out in
     batches of consecutive jobs (a state's variants stay together) that idle processes pick up, so one slow batch does not hold the others back."""
-    batch = 12 if workers() > 1 else max(1, len(jobs))   # one worker: every job in one Chrome session, as the baselines were made
+    batch = 12 if workers() > 1 else max(1, len(jobs))   # one worker: every job in one Chrome session
     chunks = [jobs[i:i + batch] for i in range(0, len(jobs), batch)]
     clock = FIXED_NOW.isoformat().replace('+00:00', 'Z')
 

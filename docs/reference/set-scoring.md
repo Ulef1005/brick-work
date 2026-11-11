@@ -93,7 +93,7 @@ Measured on a Mac with a catalogue of about 21,000 sets (1.6 million postings): 
 
 ## Build Scout
 
-*Unreleased (#9).* Build Scout (`brickwork/core/build_scout.py`) answers a different question from the ranking above: not which set a pile came from, but how much of each set the pile already makes. It reads the same catalogue through the same code (`load_rows`, `build_index`), as two indexes built once per catalogue build and process: the **parts** index (a set's own parts, sub-sets expanded, spares left out) and the **figures** index (whole figures only, sub-sets expanded). The rarity weight plays no part. [ADR 0027](../adr/0027-build-scout-percent.md) records the definitions.
+*Unreleased (#9).* Build Scout (`brickwork/core/build_scout.py`) answers a different question from the ranking above: not which set a pile came from, but how much of each set the pile already makes. It reads the same catalogue through the same code (`load_rows`, `build_index`), as two indexes built once per catalogue build and process: the **parts** index (a set's own parts, sub-sets expanded, spares left out) and the **figures** index (whole figures only, sub-sets expanded). The rarity weight plays no part. ADR 0027 records the definitions.
 
 | Field | Value |
 |---|---|

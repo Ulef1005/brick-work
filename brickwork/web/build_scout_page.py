@@ -66,14 +66,13 @@ def _named(db, rows):
 
 def _sets(db, results):
     shown = {r['item_id']: r for r in _named(db, [dict(item_id=r['set_item_id'], color_id=None) for r in results])}
-    return [dict(r, **{k: shown[r['set_item_id']].get(k) for k in ('item_type', 'item_no', 'number_text', 'name', 'image', 'unresolved')},
-                 **{'item_id': r['set_item_id']}) for r in results]
+    return [{**shown[r['set_item_id']], **r} for r in results]
 
 
 def _lines(db, lines):
     """Gap lines with their item and colour words."""
     shown = _named(db, [dict(item_id=l['item_id'], color_id=l.get('color_id')) for l in lines])
-    return [dict(l, **{k: s.get(k) for k in ('item_type', 'item_no', 'number_text', 'name', 'image', 'color_name', 'rgb', 'ink')}) for l, s in zip(lines, shown)]
+    return [{**s, **l} for l, s in zip(lines, shown)]
 
 
 def detail(db, params, set_item_id):

@@ -1,4 +1,4 @@
-"""Writes on identity and history (M.11c, issue #113): an item's BrickLink links, merge and unmerge, the switch of a copy's part list, and Undo.
+"""Writes on identity and history (M.11c, issue #113): an item's BrickLink links, merge and unmerge, change of variant, the switch of a copy's part list, and Undo.
 
 Links and merges are `core/identity_admin.py`'s (one logged change each, Undo puts every row back); the part list of a copy is
 `store4/copies.py`'s switch and `store4/pending.py`'s request for BrickLink's list (a copy waits on the fetch job and keeps its list
@@ -76,6 +76,19 @@ def post_items_by_id_unmerge(db, body, id):
     merge = found[0]
     done = identity_admin.unmerge_item(db, merge['id'])
     return Done(merge_body(db, merge['id'], merge['survivor_id'], merged, {'event_id': done['event_id']}), done['event_id'])
+
+
+@route('/items/<id>/change-variant', 'POST')
+@write
+def post_items_by_id_change_variant(db, body, id):
+    """Everything owned of the item in the path moves to the variant named in the body, and BrickLink's number becomes that variant's (#151). One
+    event; Undo (`POST /events/{id}/undo`) puts every row back."""
+    old = for_write(db, id)
+    new = item_of(db, body['to'], what='variant')
+    done = identity_admin.change_item_variant(db, old, new)
+    book = bodies(db, items=[old, new])
+    return Done({'from': book.item(old), 'to': book.item(new), 'number': done['number'], 'receipt': {'event_id': done['event_id'], 'counts': done['counts']}},
+                done['event_id'])
 
 
 # ---------- the part list of a copy ----------

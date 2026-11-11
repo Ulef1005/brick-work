@@ -6086,6 +6086,40 @@ paths:
         default:
           $ref: '#/components/responses/Problem'
       x-piece: M.11c
+  /items/{id}/change-variant:
+    post:
+      operationId: post_items_by_id_change_variant
+      summary: 'Change the variant (#151): everything owned of this catalogue item (loose stock, wishes, figure lines of copies with their part lists) moves to another item of the same kind, and BrickLink''s number becomes the other item''s preferred link. One event; Undo puts every row back. Refused for a merged item, another kind, a set, a job in flight, and rows that would meet on a key.'
+      tags:
+      - Identity
+      security:
+      - bearerAuth:
+        - write
+      parameters:
+      - $ref: '#/components/parameters/Path_item_id'
+      - $ref: '#/components/parameters/IdempotencyKeyRequired'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangeVariantRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WrittenVariantChange'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Invalid'
+        default:
+          $ref: '#/components/responses/Problem'
+      x-piece: M.11c
   /copies/{id}/inventory:
     post:
       operationId: post_copies_by_id_inventory
@@ -11587,6 +11621,32 @@ components:
           $ref: '#/components/schemas/Item'
         receipt:
           description: What moved and how collisions were resolved (design 3.6).
+    ChangeVariantRequest:
+      type: object
+      required:
+      - to
+      additionalProperties: false
+      properties:
+        to:
+          $ref: '#/components/schemas/ItemKey'
+    VariantChange:
+      type: object
+      required:
+      - from
+      - to
+      - number
+      properties:
+        from:
+          $ref: '#/components/schemas/Item'
+        to:
+          $ref: '#/components/schemas/Item'
+        number:
+          type:
+          - string
+          - 'null'
+          description: The BrickLink number that became the new item's preferred link; null when neither item had one to move.
+        receipt:
+          description: What moved, as `{event_id, counts}`.
     CopyInventory:
       type: object
       required:
@@ -11748,6 +11808,20 @@ components:
           - integer
           - 'null'
           description: The event of the change; null when the link was there as asked (the call is idempotent per link).
+        undo_url:
+          type: string
+        idempotent_replay:
+          type: boolean
+    WrittenVariantChange:
+      type: object
+      required:
+      - data
+      - event_id
+      properties:
+        data:
+          $ref: '#/components/schemas/VariantChange'
+        event_id:
+          type: integer
         undo_url:
           type: string
         idempotent_replay:

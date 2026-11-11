@@ -37,3 +37,7 @@ A merge is allowed only for a local item (or one the catalogue has retired), int
 ## Moving an item to another kind
 
 An item whose kind was guessed from its theme can be wrong (a set that is really a gear item). When BrickLink says so and the item is already held, **Move to …** changes its kind and replaces the copies by loose stock of the new kind, or the other way round, keeping the condition, storage, price, note, flags and photos. It is refused when it would lose something: a copy with part lines, a damaged piece becoming a copy, or a lot. Undo restores the copies or stock rows exactly.
+
+## Two catalogue items for one thing
+
+A merge is for a local item. When both items are catalogue items (an older and a reissued variant of a figure), move what you own from one to the other instead: [Change an item's variant](change-variant.md).

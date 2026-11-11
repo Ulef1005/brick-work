@@ -5,6 +5,8 @@ name: gate-agree
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths: [".github/workflows/gate-agree.yml"]   # a new workflow file can only be dispatched from the default branch, so the pull request that changes it runs it
 
 permissions:
   contents: read

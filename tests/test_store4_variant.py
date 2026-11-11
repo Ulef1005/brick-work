@@ -193,3 +193,30 @@ def test_a_row_holding_a_fetched_part_list_of_the_old_variant_is_refused(coll, w
     with pytest.raises(MergeRefused, match='holds a fetched part list'):
         variant.change_variant(db, a, b, via='cli')
     assert table_digest(db) == before
+
+
+def test_a_stock_rows_own_photos_move_with_it_and_back_on_undo(coll, world):
+    db = coll.db
+    a, b, _ = figures(coll, world)
+    coll.sql("INSERT INTO photo(id, item_id, stock_id, local_path, created_at) VALUES('ph-1', ?, ?, 'data/images/own/ph-1.jpg', ?)",
+             (a, world.stock_figure, STAMP))
+    before = table_digest(db)
+    result = variant.change_variant(db, a, b, via='cli')
+    assert db.execute("SELECT item_id FROM main.photo WHERE id='ph-1'").fetchone()[0] == b and checks_ok(db)
+    db.execute('BEGIN IMMEDIATE')
+    variant.undo_change_variant_in(db, result['event_id'], via='cli')
+    db.commit()
+    assert table_digest(db) == before
+
+
+def test_an_undo_that_meets_a_new_row_on_the_original_key_is_refused_not_a_database_error(coll, world):
+    db = coll.db
+    a, b, wish = figures(coll, world)
+    result = variant.change_variant(db, a, b, via='cli')
+    coll.add_wish(a, quantity=1)                                     # holds the place the wish would go back to
+    after = table_digest(db)
+    db.execute('BEGIN IMMEDIATE')
+    with pytest.raises(MergeRefused, match='holds the place of one to restore'):
+        variant.undo_change_variant_in(db, result['event_id'], via='cli')
+    db.rollback()
+    assert table_digest(db) == after

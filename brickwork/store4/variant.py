@@ -6,7 +6,7 @@ in one transaction, under one `RowLog` receipt and one event (`item` / `change_v
 
 What moves, keeping each row's id and history (the id of a copy, a stock row or a wish never changes):
 
-- `stock` rows (loose figures and parts), `wish` rows, `copy_figure` lines (the line of a figure in a copy: its part lines hang on the line,
+- `stock` rows (loose figures and parts) with their own photos, `wish` rows, `copy_figure` lines (the line of a figure in a copy: its part lines hang on the line,
   not on the item, so a copy keeps its whole part list), and the `copy_part` and `stock_part` lines whose own item is `a` (when the kind is `part`).
 - A line that was attached to a catalogue part list of `a` (`inventory_source='rebrickable'`) is attached to the same version of `b` when `b`'s
   catalogue has that version with the same digest, and else becomes `migrated`: the lines stay as they are and the page offers "choose a part
@@ -28,6 +28,7 @@ item on either side, items of different kinds, a set (a copy's part list is the 
 copy, loose figure or part list holding a line for both items, a row that holds a fetched part list of `a`, a live stock row or wish that would meet a live one of `b` on its
 key (`stock_merge_key`, `wish_live_key`; they are not summed), each naming the row."""
 import json
+import sqlite3
 import uuid
 
 from . import merge as moves
@@ -90,6 +91,8 @@ def _attach(db, row, b):
 def _move_rows(db, log, a, b):
     for row in _plan_stock(db, log, a, b):
         log.update('stock', row, item_id=b, **_attach(db, row, b))
+        for photo in log.select('photo', 'stock_id=? AND item_id=?', (row['id'], a)):
+            log.update('photo', photo, item_id=b)              # the detail page finds a stock row's photos by item and stock
     for row in _plan_wishes(db, log, a, b):
         log.update('wish', row, item_id=b)
     for row in log.select('copy_figure', 'item_id=?', (a,)):
@@ -195,7 +198,11 @@ def undo_change_variant_in(db, event_id, *, via, actor=None, operation_key=None)
         if set(keys) - set(known.get(table, ())):
             raise MergeRefused(f'{table} changed since the change of variant (a row added after it refers to a row it moved) · undo the later change first')
     db.execute('PRAGMA defer_foreign_keys=ON')
-    log.restore()
+    try:
+        log.restore()
+    except sqlite3.IntegrityError as error:                     # a row added since now holds the original's key (stock or wish key)
+        raise MergeRefused(f'a row added since the change of variant holds the place of one to restore ({error}) · '
+                           'archive or change that row first, then undo') from None
     moves._foreign_keys(db, log.tables())
     undo = moves._event(db, via, actor, operation_key or uuid.uuid4().hex, 'item', receipt['to'], FIELD + '_undo', receipt['to'],
                         dict(undoes=event_id, restored=receipt['from']))

@@ -1889,6 +1889,24 @@
       "undo_nullable": false
     },
     {
+      "endpoint": "post_items_by_id_change_variant",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/items/{id}/change-variant",
+      "piece": "M.11c",
+      "query": [],
+      "required": true,
+      "schema": {
+        "$ref": "#/components/schemas/ChangeVariantRequest"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
       "endpoint": "post_copies_by_id_inventory",
       "event_nullable": false,
       "if_match": true,
@@ -1936,6 +1954,18 @@
       },
       "required": [
         "text"
+      ],
+      "type": "object"
+    },
+    "ChangeVariantRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "to": {
+          "$ref": "#/components/schemas/ItemKey"
+        }
+      },
+      "required": [
+        "to"
       ],
       "type": "object"
     },

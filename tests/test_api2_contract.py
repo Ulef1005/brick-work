@@ -32,7 +32,7 @@ def test_the_contract_records_the_v2_decisions():
     assert 'actor=token name' in text and 'writeOnly: true' in text
     assert {'origin', 'saved_at', 'configured'} <= set(V2['components']['schemas']['KeyState']['properties'])      # a key's status, never its value
     for path in ('/items/{id}', '/sets/by-number/{no}', '/parts/by-number/{no}', '/minifigures/by-number/{no}', '/lookup', '/items/{id}/links',
-                 '/items/{id}/provider-status', '/items/{id}/merge', '/items/{id}/unmerge', '/copies/{id}/inventory', '/copies/{id}/inventory/pending',
+                 '/items/{id}/provider-status', '/items/{id}/merge', '/items/{id}/unmerge', '/items/{id}/change-variant', '/copies/{id}/inventory', '/copies/{id}/inventory/pending',
                  '/catalogue/status', '/settings', '/links'):
         assert path in V2['paths'], path
     assert OPERATIONS[('DELETE', '/copies/{id}/inventory/pending')] and OPERATIONS[('POST', '/copies/{id}/inventory')]
@@ -69,7 +69,7 @@ def test_every_v1_operation_is_carried_or_dropped_with_a_reason():
     doc = (ROOT / 'docs/brickwork/api-v2.md').read_text().split('### 3.3 Dropped v1 operations')[1].split('## 4.')[0]
     for path in ('/unresolved`', '/unresolved/resolve`', '/id-matches`', '/colors/sync`'):
         assert path in doc
-    assert (len(v1_ids), len(OPERATIONS), len(carried)) == (179, 188, 175)
+    assert (len(v1_ids), len(OPERATIONS), len(carried)) == (179, 189, 175)
 
 
 def test_every_operation_names_a_piece_a_scope_and_a_unique_id():
@@ -101,7 +101,7 @@ def test_admin_scopes_are_v1s():
 
 def test_the_check_script_agrees_with_the_routes_and_the_doc(capsys):
     assert check_v2(False) == 0
-    assert 'API v2: 188 operations implemented, 0 answer 501' in capsys.readouterr().out
+    assert 'API v2: 189 operations implemented, 0 answer 501' in capsys.readouterr().out
 
 
 def test_the_audit_origin_of_a_request_is_api_and_the_token_name(v2, monkeypatch, coll):

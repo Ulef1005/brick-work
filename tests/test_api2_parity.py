@@ -26,7 +26,7 @@ def test_every_operation_has_a_route_and_every_route_is_in_the_contract():
     routes = v2_routes()
     assert sorted(set(OPERATIONS) - set(routes)) == [], 'in the contract without a route'
     assert sorted(set(routes) - set(OPERATIONS)) == [], 'routed but not in the contract'
-    assert len(OPERATIONS) == 188
+    assert len(OPERATIONS) == 189
 
 
 def test_no_operation_answers_501():

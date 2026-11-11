@@ -104,7 +104,7 @@ As v1: copies, stock and wishes carry an `ETag`; `PATCH`, `PUT` and `DELETE` acc
 
 ### 2.7 Idempotency
 
-As v1: `Idempotency-Key: <1 to 80 characters of [A-Za-z0-9-]>`, stored in the one event row of the request; same key and body replays the stored response (`idempotent_replay: true`), another body is `409 idempotency_conflict`, a key is honoured for 30 days. **Fingerprint version:** the request fingerprint (method, path, sorted query, body, file hash) carries a version `v` (now `1`), and the receipt stores the version it was made under; a replay is compared under the receipt's own version, so a later change to what is hashed bumps `v` and old receipts keep replaying. **Required** on: creates (`POST /copies`, `/stock`, `/wishes`, `/found`, `/stock/booklets`, `/lots`, `/wishlists`) and the wishlist edits (`PATCH` and `DELETE /wishlists/{id}`, `POST /wishlists/{id}/restore` and `/transfer`), quantity moves (`/copies/{id}/take`, `/stock/{id}/give`, `/wishes/{id}/to-owned`, `/storages/{id}/contents`, `/copies/{id}/parts/bulk`), orders (`/orders/documents`, `/orders/{id}/allocate`, `/orders/{id}/allocations/retry`), prices (`/prices/observations`, `/items/{id}/prices`), `/events/{id}/undo`, and the v2 identity writes (`PUT /items/{id}/links`, `POST /items/{id}/merge`, `POST /items/{id}/unmerge`, `POST /copies/{id}/inventory`). A missing key is `428 idempotency_key_required`. Optional elsewhere.
+As v1: `Idempotency-Key: <1 to 80 characters of [A-Za-z0-9-]>`, stored in the one event row of the request; same key and body replays the stored response (`idempotent_replay: true`), another body is `409 idempotency_conflict`, a key is honoured for 30 days. **Fingerprint version:** the request fingerprint (method, path, sorted query, body, file hash) carries a version `v` (now `1`), and the receipt stores the version it was made under; a replay is compared under the receipt's own version, so a later change to what is hashed bumps `v` and old receipts keep replaying. **Required** on: creates (`POST /copies`, `/stock`, `/wishes`, `/found`, `/stock/booklets`, `/lots`, `/wishlists`) and the wishlist edits (`PATCH` and `DELETE /wishlists/{id}`, `POST /wishlists/{id}/restore` and `/transfer`), quantity moves (`/copies/{id}/take`, `/stock/{id}/give`, `/wishes/{id}/to-owned`, `/storages/{id}/contents`, `/copies/{id}/parts/bulk`), orders (`/orders/documents`, `/orders/{id}/allocate`, `/orders/{id}/allocations/retry`), prices (`/prices/observations`, `/items/{id}/prices`), `/events/{id}/undo`, and the v2 identity writes (`PUT /items/{id}/links`, `POST /items/{id}/merge`, `POST /items/{id}/unmerge`, `POST /items/{id}/change-variant`, `POST /copies/{id}/inventory`). A missing key is `428 idempotency_key_required`. Optional elsewhere.
 
 ### 2.8 Errors
 
@@ -125,7 +125,7 @@ As v1: `Authorization: Bearer <token>`; `read` < `write` < `admin`; `BW_API_TOKE
 
 ### 2.10 Reads (M.11b) and writes (M.11c)
 
-What the 57 read operations (M.11b) and the 65 write operations (M.11c, further down) do beyond v1, and where the first contract text changed when they were built (each is also in `openapi-v2.yaml`).
+What the 57 read operations (M.11b) and the 66 write operations (M.11c, further down) do beyond v1, and where the first contract text changed when they were built (each is also in `openapi-v2.yaml`).
 
 * **The query is the contract's.** A query name an operation does not declare is `400 unknown_filter`, a name given twice is `400 bad_request` unless the contract declares it an array (`copy_id` on the exports). `limit`, `direction`, `cursor` and `sort` are accepted where the operation lists them.
 * **Filters on an item or colour** take the provider space of decision 4: `number` (with `provider`, `bricklink` by default, `rebrickable`) finds the live items that number stands for in any kind, or in `kind`; `color` is read in the same `provider` space, and `provider=brickwork` is for `color` only (a Brick Work id is not a number: `number` with it is `422`). A filter that names nothing is an empty list; a colour that does not exist is `422`.
@@ -152,6 +152,7 @@ What the 57 read operations (M.11b) and the 65 write operations (M.11c, further 
 * **PDFs.** `POST /instruction-files` is multipart with `item` as JSON text (`{"id": 15011}`), `label` and `file`; the PDF belongs to a set, a booklet names the set with its number. A photo (`POST /copies/{id}/photos`, `/stock/{id}/photos`) is an image up to 15 MB; the copy's or line's `image_id` stays the cached picture, the own photo is in `/items/{id}/images`.
 * **Settings.** `GET /settings` reads `admin.settings`; `source_priority` is `{step: {kind or "*": [source ids]}}` over `pictures`, `metadata` and `market_price` (a step that is sent replaces that step), `prefer_bricklink_inventory` is the global switch of design 4.4. A key outside the whitelist is `422 unsupported_setting`. Changing settings needs `admin`.
 * **Links, merge, unmerge.** `PUT /items/{id}/links` makes sure the item has the BrickLink link as a `manual` one (a link to check is confirmed; one scoped to a colour is its own row, in the BrickLink colour space) and, with `preferred: true`, makes it the preferred one of its scope; the BrickLink `type` must be the item's. It is idempotent per (type, number, colour): putting what is there writes nothing. `preferred: false` means no change to the preference: a preference is replaced by marking another link preferred, never cleared to none (there is always a resolver order). `POST /items/{id}/merge` names the loser in the path and the survivor as an `ItemKey`; `Merge.receipt` is `{event_id, counts}`. `POST /items/{id}/unmerge` names the merged id in the path; `merge_id` is optional and must belong to it; an unmerge has no Undo (merge again). No M.11c operation writes provider status: a person resolves a to-check row by a link or a merge.
+* **Change variant** (#151). `POST /items/{id}/change-variant` takes `{"to": <ItemKey>}` and names the old variant in the path; both are catalogue figures (or parts, or other items) of one kind, neither merged. Every owned row moves from the item in the path to `to`, keeping its id: loose stock, wishes, the figure lines of copies (a copy keeps its part list; a line that named a catalogue list `to` does not have becomes a `migrated` one) and the part lines of loose parts. BrickLink's number (the old item's preferred one, else the one link to check on `to`) becomes `to`'s preferred `manual` link, and the old item's link of it becomes `to_check`; the old item is left as it is. `VariantChange` is `{from, to, number, receipt: {event_id, counts}}`. One event: its Undo (`POST /events/{id}/undo`) puts every row and link back, and is `409` once any of them changed. Refused with `409`: a merged item on either side (`merged` with `survivor`), another kind, a set, the same item, a job in flight for either, a copy, loose figure or part list with a line for both items, a row holding a fetched part list of the old item, and a live stock row or wish that would meet a live one of `to` on its key (nothing is added up).
 * **The copy's part list.** `POST /copies/{id}/inventory` takes `source`, `version` (Rebrickable; default the latest) and, new in M.11c, `remember` (also the set's preference for new copies, in the same event). BrickLink's list without a key is `424 source_not_configured`; with no fetched list the answer is `202` with `Location: /api/v2/jobs/{id}` and the copy waits (`inventory.pending`); a copy already waiting, or already on that list, is `409`. `DELETE .../inventory/pending` cancels the wait and puts back the preference it remembered.
 * **Refusals of the 4.0 store** are problems: a state that does not allow the change (nothing to switch, a marked copy, a pending change, a refused merge) is `409`, a missing catalogue `424`, the rest `422`; the words are the refusal's own with folders cut.
 * **Corrections to the first contract text of the writes:** `WishlistTransfer.ids` are texts (wish ids are uuids); `Settings.source_priority` is nested as above; `CopyInventorySwitch` has `remember`; `WrittenSettings.event_id` and `WrittenItemLink.event_id` may be null; `InstructionUpload.item` is JSON text in the form; `PriceCreate.color` and `WishPatch.color` are Brick Work colour ids; `LooseFigurePartKey.spare` null reads as 0.
@@ -184,14 +185,14 @@ What the 57 read operations (M.11b) and the 65 write operations (M.11c, further 
 
 ### 3.1 Summary
 
-188 operations in all (M.11a 9, M.11b 57, M.11c 65, M.11d 57 by piece); v1 had 179 operations.
+189 operations in all (M.11a 9, M.11b 57, M.11c 66, M.11d 57 by piece); v1 had 179 operations.
 
 | Group | Operations | Pieces |
 |---|---|---|
 | Meta | 4 | M.11a 4 |
 | Catalogue | 5 | M.11b 5 |
 | Items | 8 | M.11a 1, M.11b 6, M.11d 1 |
-| Identity | 10 | M.11a 4, M.11b 3, M.11c 3 |
+| Identity | 11 | M.11a 4, M.11b 3, M.11c 4 |
 | Images | 1 | M.11b 1 |
 | Copies | 18 | M.11b 6, M.11c 12 |
 | Copy parts | 5 | M.11b 2, M.11c 3 |
@@ -544,7 +545,7 @@ The `?` item type and the `item_type`, `item_no` and `color_id` members are gone
 | **M.11d** | Orders, jobs, sources and keys, sync, imports, identifications, tokens, admin; the dead v1 callers removed | 57 |
 | **M.11e** | The MCP regenerated from this file, the v2 parity test, API and MCP docs. **Done** (2026-10-28) | none |
 
-Operations by piece: M.11a 9, M.11b 57, M.11c 65, M.11d 57 (188 in all). The two tables below are generated from the contract and the routes by `scripts/check_api_contract.py --write`, and that check (run by `scripts/check.sh`) fails when the contract, the routes or these tables disagree. A piece lands by adding itself to `brickwork.api2.DONE`.
+Operations by piece: M.11a 9, M.11b 57, M.11c 66, M.11d 57 (189 in all). The two tables below are generated from the contract and the routes by `scripts/check_api_contract.py --write`, and that check (run by `scripts/check.sh`) fails when the contract, the routes or these tables disagree. A piece lands by adding itself to `brickwork.api2.DONE`.
 
 ### Implemented
 
@@ -618,6 +619,7 @@ Operations by piece: M.11a 9, M.11b 57, M.11c 65, M.11d 57 (188 in all). The two
 | `POST /api/v2/instruction-files/{id}/restore` | M.11c | `brickwork.api2.write_where.post_instruction_files_by_id_restore` |
 | `GET /api/v2/items` | M.11b | `brickwork.api2.catalogue.get_items` |
 | `GET /api/v2/items/{id}` | M.11a | `brickwork.api2.items.get_items_by_id` |
+| `POST /api/v2/items/{id}/change-variant` | M.11c | `brickwork.api2.write_identity.post_items_by_id_change_variant` |
 | `GET /api/v2/items/{id}/colors` | M.11b | `brickwork.api2.item_views.get_items_by_id_colors` |
 | `GET /api/v2/items/{id}/detail` | M.11b | `brickwork.api2.item_views.get_items_by_id_detail` |
 | `GET /api/v2/items/{id}/images` | M.11b | `brickwork.api2.item_views.get_items_by_id_images` |

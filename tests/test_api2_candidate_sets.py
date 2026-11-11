@@ -1,4 +1,7 @@
 """API v2: `GET /lots/{id}/candidate-sets` (#200, Lot Detective) on the invented sets of `test_candidate_sets`, and the setting that goes with it."""
+import sqlite3
+from contextlib import closing
+
 import pytest
 
 from tests.api2 import call, stored_token, v2, validate, write, events  # noqa: F401
@@ -85,3 +88,19 @@ def test_a_read_token_may_call_it_it_writes_nothing_and_no_token_may_not(v2, lot
     before = len(events(pair))
     assert call(v2, PATH.format(lot.id), token=token).status_code == 200
     assert len(events(pair)) == before and call(v2, PATH.format(lot.id), token=None).status_code == 401
+
+
+def test_an_oversized_theme_number_is_unknown_not_a_server_error(v2, lot):
+    response = call(v2, PATH.format(lot.id) + '?theme=9223372036854775808')
+    assert response.status_code == 422
+
+
+def test_a_catalogue_part_picture_comes_from_the_colour_picture_list(v2, lot, tmp_path):
+    part = lot.part('a2')
+    colour = next(p for p in data(call(v2, PATH.format(lot.id)))['results'][0]['distinctive_found_parts'] if p['item']['id'] == part)['color']['id']
+    with closing(sqlite3.connect(tmp_path / 'catalogue.db')) as other:        # the catalogue is attached read-only: write it from another connection
+        other.execute("INSERT INTO picture_url(item_id,color_id,url) VALUES(?,?,'https://img.invalid/a2.png')", (part, colour))
+        other.commit()
+    first = data(call(v2, PATH.format(lot.id)))['results'][0]
+    picture = next(p for p in first['distinctive_found_parts'] if p['item']['id'] == part)['picture']
+    assert picture['image_url'] == 'https://img.invalid/a2.png'

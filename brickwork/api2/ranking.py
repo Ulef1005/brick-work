@@ -219,10 +219,15 @@ def pictures_of(db, pairs):
     for r in db.execute('SELECT id,item_id,color_id FROM main.picture WHERE item_id IN (SELECT value FROM json_each(?)) ORDER BY fetched_at, id', (json.dumps(items),)):
         local[(r['item_id'], r['color_id'])] = r['id']
     remote = {r[0]: r[1] for r in db.execute('SELECT id,img_url FROM catalogue.item WHERE id IN (SELECT value FROM json_each(?))', (json.dumps(items),)) if r[1]}
+    shipped = {}                                   # parts carry no item picture in the catalogue: theirs sit in `picture_url`, per colour
+    for r in db.execute('SELECT item_id,color_id,url FROM catalogue.picture_url WHERE item_id IN (SELECT value FROM json_each(?)) ORDER BY color_id', (json.dumps(items),)):
+        shipped[(r[0], r[1])] = r[2]
+        shipped.setdefault((r[0], None), r[2])                  # the item's first colour stands in for a line in a colour with no picture
     found = {}
     for item, colour in pairs:
         picture = local.get((item, colour)) or local.get((item, None))
-        body = {'id': picture, 'content_url': f'/api/v2/images/{picture}/content' if picture else None, 'image_url': remote.get(item)}
+        address = shipped.get((item, colour)) or shipped.get((item, None)) or remote.get(item)
+        body = {'id': picture, 'content_url': f'/api/v2/images/{picture}/content' if picture else None, 'image_url': address}
         if picture or body['image_url']:
             found[(item, colour)] = body
     return found

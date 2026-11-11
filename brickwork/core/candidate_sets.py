@@ -47,6 +47,8 @@ def valid_common_max(value):
 def theme_ids(db, theme):
     """The ids of a theme and the themes below it: `theme` is a catalogue theme id (digits) or a name (case-insensitive). `ValueError` when unknown."""
     text = str(theme).strip()
+    if text.isdigit() and int(text) > 2 ** 63 - 1:
+        raise ValueError('No such theme')                     # beyond SQLite's integer range: no such id
     if text.isdigit():
         roots = [r[0] for r in db.execute('SELECT id FROM catalogue.theme WHERE id=?', (int(text),))]
     else:

@@ -1,7 +1,7 @@
 {% extends 'web/toni/base.html' %}
 {% block title %} · {{ title }}{% endblock %}{% block content_class %}standard bi-page{% endblock %}
 {% block page_assets %}<link rel="stylesheet" href="{{ bw_static('web/toni/bw-collection.css') }}"><link rel="stylesheet" href="{{ bw_static('web/toni/bw-identity.css') }}">{% endblock %}
-{% macro tile(row, size='64px') %}<div class="bi-item">{% if row.image %}<img {{ bw_picture_attrs(row.image, size) }} alt="" width="64" height="64">{% else %}<span class="bi-noimg">No image</span>{% endif %}<div class="bi-item-text"><span class="mono">{{ row.number_text or 'No number' }}</span><strong>{{ row.name or 'Unnamed item' }}</strong>{% if row.year %}<span class="bi-sub">{{ row.year }}</span>{% endif %}</div></div>{% endmacro %}
+{% from 'web/toni/web/bw_identity_macros.html' import tile %}
 {% block main %}<div id="bw-collection" class="bi-merge">
 <a class="bc-detail-back" href="{{ url_for('web.bw_collection_item',item_id=loser.item_id) }}">{{ toni_icon("chevron-left") }}<span>{{ loser.name or loser.number_text or 'Item' }}</span></a>
 <header class="bi-head"><h1>Merge into another item</h1><p class="bi-lead">Everything you hold of this item moves onto the item you pick, and its old address leads there. You can unmerge it later while the moved rows are unchanged.</p></header>

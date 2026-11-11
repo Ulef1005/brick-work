@@ -466,7 +466,8 @@ def links(db, item_id, colour=None):
     shown = result
     return dict(item_id=item_id, kind=item['kind'], editable=store == 'main', colour=colour, colour_name=(colours.get(colour) or {}).get('name'),
                 providers=shown, to_check=sum(1 for r in rows if r['status'] == 'to_check') + sum(1 for s in statuses if s['status'] == 'to_check'),
-                local=origin_of == 'local', unidentified=not _identified(db, item_id, store, item), merge_blocker=merge_blocker(db, item_id))
+                local=origin_of == 'local', unidentified=not _identified(db, item_id, store, item), merge_blocker=merge_blocker(db, item_id),
+                variant_blocker=variant_blocker(db, item_id))
 
 
 def _identified(db, item_id, store, item):
@@ -542,6 +543,138 @@ def merge_preview(db, loser, survivor):
                        dropped=sum(c.get('deleted', 0) for c in counts.values()))
     finally:
         db.execute('ROLLBACK')
+    return out
+
+
+# ---------- change variant (issue #151): the screen's reads; the change itself is `change_item_variant` ----------
+
+VARIANT_KINDS = ('minifigure', 'part')
+
+
+def variant_blocker(db, item_id):
+    """Why an item has no Change variant screen, in plain words, or None: a live catalogue figure or part of the collection that is not merged.
+    (The rules of the change itself, such as a set, stay with the preview; a set, an item of yours or a retired one is merged or left alone here.)"""
+    row = db.execute('SELECT kind, origin, catalogue_retired_at, merged_into FROM main.item WHERE id=?', (item_id,)).fetchone()
+    if row is None:
+        return 'This item is in the catalogue and not in your collection yet, so there is nothing to change.'
+    if row['merged_into'] is not None:
+        return 'This item is merged into another one already.'
+    if row['kind'] not in VARIANT_KINDS:
+        return 'Only a figure or a part changes variant.'
+    if row['origin'] != 'catalogue' or row['catalogue_retired_at'] is not None:
+        return 'Only an item of the live catalogue changes variant. An item you added yourself, or one the catalogue has retired, is merged into the item it is.'
+    return None
+
+
+def _live_variant(db, item_id, kind):
+    """True when `item_id` is a live catalogue item of `kind` that is not merged (in the collection or only in the catalogue)."""
+    row = db.execute('SELECT kind, origin, catalogue_retired_at, merged_into FROM main.item WHERE id=?', (item_id,)).fetchone()
+    if row is not None:
+        return row['kind'] == kind and row['origin'] == 'catalogue' and row['catalogue_retired_at'] is None and row['merged_into'] is None
+    if has_catalogue(db):
+        row = db.execute('SELECT kind FROM catalogue.item WHERE id=?', (item_id,)).fetchone()
+        return row is not None and row['kind'] == kind
+    return False
+
+
+def variants(db, item_id, text, limit=12):
+    """The items this one may change to, `[dict(item_id, name, number_text, image, kind, year, how)]`: live catalogue items of the same kind, never itself.
+
+    With no text, the suggestions: items that hold one of this item's BrickLink numbers (any colour scope; `how` = `same_number`) and items named by
+    one of its links to check (`to_check`). With text, the number or name search of the merge page, narrowed to live catalogue items of the kind."""
+    row = db.execute('SELECT * FROM main.item WHERE id=?', (item_id,)).fetchone()
+    if row is None:
+        raise errors.NotFound(f'No item {item_id}')
+    text = (text or '').strip()
+    if text:
+        found = [dict(item_id=r['item_id'], how=r['how']) for r in survivors(db, item_id, text, limit=limit * 4)]
+    else:
+        keys = {r[0] for r in db.execute("SELECT provider_key FROM main.item_link WHERE item_id=? AND provider='bricklink'", (item_id,))}
+        if row['born_provider'] == 'bricklink' and row['born_key'] is not None:
+            keys.add(row['born_key'])
+        found = {}
+        for store in _stores(db):
+            for other in db.execute(f"""SELECT item_id FROM {store}.item_link WHERE provider='bricklink' AND item_id!=? AND provider_key IN (SELECT value FROM json_each(?))
+                                        UNION SELECT id FROM {store}.item WHERE born_provider='bricklink' AND id!=? AND born_key IN (SELECT value FROM json_each(?)) ORDER BY 1""",
+                                    (item_id, json.dumps(sorted(keys)), item_id, json.dumps(sorted(keys)))):
+                found.setdefault(other[0], 'same_number')
+        for link in db.execute("SELECT provider, provider_kind, provider_key FROM main.item_link WHERE item_id=? AND status='to_check' ORDER BY id", (item_id,)):
+            for store in _stores(db):
+                named = db.execute(f'SELECT id FROM {store}.item WHERE born_provider=? AND born_namespace=? AND born_key=?', (link['provider'], link['provider_kind'], link['provider_key'])).fetchone()
+                if named:
+                    found.setdefault(named['id'], 'to_check')
+                    break
+        found = [dict(item_id=i, how=how) for i, how in sorted(found.items(), key=lambda kv: (kv[1] != 'same_number', kv[0]))]
+    found = [f for f in found if f['item_id'] != item_id and _live_variant(db, f['item_id'], row['kind'])][:limit]
+    decorated = {r['item_id']: r for r in collection.decorate(db, [dict(item_id=f['item_id']) for f in found])}
+    return [dict(f, name=decorated[f['item_id']].get('name'), number_text=decorated[f['item_id']].get('number_text'), image=decorated[f['item_id']].get('image'),
+                 kind=decorated[f['item_id']].get('kind'), year=decorated[f['item_id']].get('year')) for f in found]
+
+
+def explain_variant_refusal(db, text, from_id, to_id):
+    """A `MergeRefused` message of the change of a variant in plain words for its screen (the refusals of issue #151)."""
+    def name(item_id):
+        for store in _stores(db):
+            row = db.execute(f'SELECT name, born_key FROM {store}.item WHERE id=?', (item_id,)).fetchone()
+            if row:
+                return row['name'] or row['born_key'] or f'item {item_id}'
+        return f'item {item_id}'
+    if 'become itself' in text:
+        return 'An item cannot change to itself. Pick the other variant.'
+    if 'is merged already' in text:
+        return f'{name(from_id)} is merged into another item already.'
+    if 'is merged (into' in text:
+        return f'{name(to_id)} was merged into another item already. Pick the item it was merged into.'
+    if 'its own kind' in text:
+        return f'{name(from_id)} and {name(to_id)} are not the same kind. A variant changes only to one of its own kind.'
+    if 'set cannot change variant' in text:
+        return 'A set cannot change variant: the part list of a copy belongs to its set.'
+    if 'in flight' in text:
+        return 'A job for one of these items is still running. Let it finish, or cancel it in Jobs, then change the variant.'
+    if ' holds ' in text and 'for both items' in text:
+        sentence = re.sub(r'^copy \S+ holds', 'One of your copies holds', text.split(' · ')[0])
+        sentence = re.sub(r'^loose figure \S+ holds', 'One of your loose figures holds', sentence)
+        sentence = re.sub(r'^fetched (part|figure) list \S+ holds', r'A fetched \1 list holds', sentence)
+        return sentence + '. Correct that line by hand first, then change the variant.'
+    if ' would meet ' in text:
+        what = 'loose stock row' if text.startswith('stock') else 'wish'
+        return (f'One of your {what}s would meet a {what} you already have of {name(to_id)} (the same colour, condition, lot and storage, or the same wish list and colour). '
+                'Rows are never added up silently: change or archive one of them first, then change the variant.')
+    if 'holds a fetched part list' in text:
+        return 'A row holds a fetched part list of this item. Switch its part list first, then change the variant.'
+    if 'is in neither the collection nor the catalogue' in text or 'not in this collection' in text:
+        return 'That item is not in your collection or the catalogue.'
+    if 'dangling' in text:
+        return 'The change would leave a row pointing at nothing, so nothing was changed.'
+    return text[0].upper() + text[1:]
+
+
+def variant_preview(db, from_id, to_id):
+    """What `change_item_variant` would do, without doing it (a write connection is needed, as for `merge_preview`).
+
+    `dict(ok, refusal, busy, rows, photos, number, counts)`: `rows` = `[(label, n)]` for the rows that move, zeros included (loose stock, the lines of
+    figures or parts in copies, wishes); `photos` = the photos that go with the stock; `number` = BrickLink's number that follows, or None."""
+    out = dict(ok=False, refusal=None, busy=False, rows=[], photos=0, number=None, counts={})
+    wait = db.execute('PRAGMA busy_timeout').fetchone()[0]
+    db.execute(f'PRAGMA busy_timeout={PREVIEW_WAIT_MS}')            # a screen must not hang behind a sync or a job that holds the write lock
+    try:
+        counts = variant.preview_change_variant(db, int(from_id), int(to_id))
+    except sqlite3.OperationalError as exc:
+        if 'locked' not in str(exc) and 'busy' not in str(exc):
+            raise
+        out.update(busy=True, refusal='Brick Work is busy with something else, such as a sync or a job. Try again in a moment.')
+    except MergeRefused as exc:
+        out['refusal'] = explain_variant_refusal(db, str(exc), int(from_id), int(to_id))
+    except CatalogueError:
+        out['refusal'] = NOT_ACTIVATED
+    else:
+        moved = lambda table: sum(counts['counts'].get(table, {}).get(op, 0) for op in ('changed', 'inserted'))
+        kind = (db.execute('SELECT kind FROM main.item WHERE id=?', (int(from_id),)).fetchone() or ['part'])[0]
+        rows = [('Loose figures' if kind == 'minifigure' else 'Loose parts', moved('stock'))]
+        rows += [('Figure lines in copies', moved('copy_figure'))] if kind == 'minifigure' else [('Part lines in copies', moved('copy_part')), ('Part lines in figures', moved('stock_part'))]
+        out.update(ok=True, rows=rows + [('Wishes', moved('wish'))], photos=moved('photo'), number=counts['number'], counts=counts['counts'])
+    finally:
+        db.execute(f'PRAGMA busy_timeout={wait}')
     return out
 
 

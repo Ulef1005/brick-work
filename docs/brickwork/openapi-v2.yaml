@@ -3375,7 +3375,9 @@ paths:
         best candidate (the first set that passes the set filters scores 100). It is NOT a probability and says nothing about how likely the set is to be the
         right one in absolute terms. Each set has `reasons` (for example "7 of 9 distinctive parts found", "2 printed parts only in this set"), the distinctive
         parts found and not found yet (a distinctive part is held by at most 25 sets; up to 20 of each, heaviest first, with their pictures) and the stock
-        flags passed to the engine (a flag named Sticker as `sticker`). By default `ignore_common` drops the lines held by more than N sets before scoring
+        flags passed to the engine (a flag named Sticker as `sticker`), and the swaps (the lot has the part in another colour, or an alternate mould),
+        listed apart and never in the score. A Sticker flag raises the sets that hold the part and a sticker sheet, and a confirmed sticker is strong evidence for its
+        set (`POST /lots/{id}/stock/{stock_id}/sticker`). By default `ignore_common` drops the lines held by more than N sets before scoring
         (setting `candidate_sets_common_max`, default 300). The theme filter takes a catalogue theme id or a name (its sub-themes are included); the part
         range is the catalogue''s part count of the set. Read-only; an unknown lot is 404.'
       tags:
@@ -3453,6 +3455,111 @@ paths:
         default:
           $ref: '#/components/responses/Problem'
       x-piece: M.11b
+  /lots/{id}/stock/{stock_id}/stickers:
+    get:
+      operationId: get_lots_by_id_stock_by_stock_id_stickers
+      x-mcp-tool: list_sticker_candidates
+      summary: The sets a sticker on a part line of a lot may belong to (sets that hold the part in its colour and a sticker sheet).
+      description: 'The catalogue does not say which part a sticker goes on, so this is the fallback: the live catalogue sets whose latest inventory holds the
+        part in the line''s colour AND a sticker sheet (a part of the category named `Stickers`; spare lines are left out). A set with several sheets is one row,
+        its sheet with the lowest number first; sets with a sheet picture come first, then the earlier year. `sticker` says whether the line holds the Sticker flag
+        and which set was confirmed ("This one"). Read-only; a line that is not a live part of the lot is 404.'
+      tags:
+      - Lots
+      security:
+      - bearerAuth:
+        - read
+      parameters:
+      - $ref: '#/components/parameters/Path_id'
+      - $ref: '#/components/parameters/Path_stock_id'
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      - name: offset
+        in: query
+        schema:
+          type: integer
+          minimum: 0
+          default: 0
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StickerCandidatePage'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Problem'
+      x-piece: M.11b
+  /lots/{id}/stock/{stock_id}/sticker:
+    post:
+      operationId: post_lots_by_id_stock_by_stock_id_sticker
+      x-mcp-tool: confirm_sticker
+      summary: 'Confirm the sticker of a part line: the sheet of a set from the candidates ("This one"). One undoable event; choosing what is already chosen writes nothing.'
+      description: 'The line must hold the Sticker flag (409 otherwise) and the pair must be one of the line''s candidates (422 otherwise). A confirmed sticker is
+        strong evidence for its set in Lot Detective and `GET /planning/set-scores`; the flag alone is a smaller hint. Undo takes the choice back.'
+      tags:
+      - Lots
+      security:
+      - bearerAuth:
+        - write
+      parameters:
+      - $ref: '#/components/parameters/Path_id'
+      - $ref: '#/components/parameters/Path_stock_id'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StickerConfirm'
+      responses:
+        '200':
+          description: Done.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WrittenSticker'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Invalid'
+        default:
+          $ref: '#/components/responses/Problem'
+      x-piece: M.11c
+    delete:
+      operationId: delete_lots_by_id_stock_by_stock_id_sticker
+      x-mcp-tool: clear_sticker
+      summary: 'Not a sticker: remove the Sticker flag from a part line and stop counting a confirmed sticker. One undoable event; a line without the flag writes nothing.'
+      tags:
+      - Lots
+      security:
+      - bearerAuth:
+        - write
+      parameters:
+      - $ref: '#/components/parameters/Path_id'
+      - $ref: '#/components/parameters/Path_stock_id'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Done.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WrittenSticker'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Problem'
+      x-piece: M.11c
   /export/missing.csv:
     get:
       operationId: get_export_missing_csv
@@ -6532,6 +6639,12 @@ components:
       description: true or include (default exclude), or only.
     Path_id:
       name: id
+      in: path
+      required: true
+      schema:
+        type: string
+    Path_stock_id:
+      name: stock_id
       in: path
       required: true
       schema:
@@ -11719,6 +11832,7 @@ components:
       - distinctive_found
       - distinctive_total
       - flags
+      - swaps
       - distinctive_found_parts
       - distinctive_missing_parts
       properties:
@@ -11771,6 +11885,8 @@ components:
                 type: integer
               evidence:
                 type: number
+        swaps:
+          $ref: '#/components/schemas/SetScoreSwaps'
         distinctive_found_parts:
           type: array
           description: Up to 20 distinctive parts the lot has, heaviest first.
@@ -11839,6 +11955,147 @@ components:
           oneOf:
           - $ref: '#/components/schemas/CandidatePicture'
           - type: 'null'
+    StickerCandidatePage:
+      type: object
+      required:
+      - data
+      properties:
+        data:
+          $ref: '#/components/schemas/StickerCandidates'
+    StickerCandidates:
+      type: object
+      required:
+      - lot
+      - stock_id
+      - item
+      - color
+      - quantity
+      - sticker
+      - total
+      - limit
+      - offset
+      - results
+      properties:
+        lot:
+          type: string
+        stock_id:
+          type: string
+        item:
+          $ref: '#/components/schemas/Item'
+        color:
+          oneOf:
+          - $ref: '#/components/schemas/Color'
+          - type: 'null'
+        quantity:
+          type: integer
+        sticker:
+          $ref: '#/components/schemas/StickerState'
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/StickerCandidate'
+    StickerState:
+      type: object
+      required:
+      - flagged
+      - confirmed
+      properties:
+        flagged:
+          type: boolean
+          description: The line holds the Sticker flag.
+        confirmed:
+          oneOf:
+          - $ref: '#/components/schemas/StickerChoice'
+          - type: 'null'
+          description: The set chosen with "This one", only while the line holds the flag.
+    StickerChoice:
+      type: object
+      required:
+      - set_item_id
+      - sheet_item_id
+      properties:
+        set_item_id:
+          type: integer
+        sheet_item_id:
+          type: integer
+        set_number:
+          type:
+          - string
+          - 'null'
+        set_name:
+          type:
+          - string
+          - 'null'
+    StickerCandidate:
+      type: object
+      required:
+      - set
+      - sheet
+      - year
+      - picture
+      properties:
+        set:
+          $ref: '#/components/schemas/Item'
+        sheet:
+          $ref: '#/components/schemas/Item'
+        year:
+          type:
+          - integer
+          - 'null'
+        picture:
+          oneOf:
+          - $ref: '#/components/schemas/CandidatePicture'
+          - type: 'null'
+          description: The sticker sheet's picture.
+    StickerConfirm:
+      type: object
+      required:
+      - set_item_id
+      - sheet_item_id
+      properties:
+        set_item_id:
+          type: integer
+          minimum: 1
+          description: The set (an item id from the candidates).
+        sheet_item_id:
+          type: integer
+          minimum: 1
+          description: Its sticker sheet (an item id from the candidates).
+    StickerWritten:
+      type: object
+      required:
+      - changed
+      - sticker
+      properties:
+        changed:
+          type: boolean
+          description: False when the write was already true and wrote nothing.
+        sticker:
+          $ref: '#/components/schemas/StickerState'
+    WrittenSticker:
+      type: object
+      required:
+      - data
+      - event_id
+      properties:
+        data:
+          $ref: '#/components/schemas/StickerWritten'
+        event_id:
+          type:
+          - integer
+          - 'null'
+        undo_url:
+          type:
+          - string
+          - 'null'
+        idempotent_replay:
+          type: boolean
     SetScorePage:
       type: object
       required:
@@ -12019,39 +12276,41 @@ components:
               evidence:
                 type: number
         swaps:
-          type: object
-          description: Listed apart, never in any number above.
-          required:
-          - lines
-          - quantity
-          - items
-          properties:
-            lines:
-              type: integer
-            quantity:
-              type: integer
-            items:
-              type: array
-              description: Up to 20, heaviest first.
-              items:
-                type: object
-                required:
-                - kind
-                - have
-                - wanted
-                - quantity
-                properties:
-                  kind:
-                    type: string
-                    enum:
-                    - colour
-                    - mould
-                  have:
-                    $ref: '#/components/schemas/SetScoreLine'
-                  wanted:
-                    $ref: '#/components/schemas/SetScoreLine'
-                  quantity:
-                    type: integer
+          $ref: '#/components/schemas/SetScoreSwaps'
+    SetScoreSwaps:
+      type: object
+      description: Listed apart, never in any number above.
+      required:
+      - lines
+      - quantity
+      - items
+      properties:
+        lines:
+          type: integer
+        quantity:
+          type: integer
+        items:
+          type: array
+          description: Up to 20, heaviest first.
+          items:
+            type: object
+            required:
+            - kind
+            - have
+            - wanted
+            - quantity
+            properties:
+              kind:
+                type: string
+                enum:
+                - colour
+                - mould
+              have:
+                $ref: '#/components/schemas/SetScoreLine'
+              wanted:
+                $ref: '#/components/schemas/SetScoreLine'
+              quantity:
+                type: integer
     ItemLink:
       type: object
       required:

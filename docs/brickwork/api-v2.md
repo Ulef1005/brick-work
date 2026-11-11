@@ -187,7 +187,7 @@ What the 59 read operations (M.11b) and the 66 write operations (M.11c, further 
 
 ### 3.1 Summary
 
-191 operations in all (M.11a 9, M.11b 59, M.11c 66, M.11d 57 by piece); v1 had 179 operations.
+194 operations in all (M.11a 9, M.11b 60, M.11c 68, M.11d 57 by piece); v1 had 179 operations.
 
 | Group | Operations | Pieces |
 |---|---|---|
@@ -547,7 +547,7 @@ The `?` item type and the `item_type`, `item_no` and `color_id` members are gone
 | **M.11d** | Orders, jobs, sources and keys, sync, imports, identifications, tokens, admin; the dead v1 callers removed | 57 |
 | **M.11e** | The MCP regenerated from this file, the v2 parity test, API and MCP docs. **Done** (2026-10-28) | none |
 
-Operations by piece: M.11a 9, M.11b 59, M.11c 66, M.11d 57 (191 in all). The two tables below are generated from the contract and the routes by `scripts/check_api_contract.py --write`, and that check (run by `scripts/check.sh`) fails when the contract, the routes or these tables disagree. A piece lands by adding itself to `brickwork.api2.DONE`.
+Operations by piece: M.11a 9, M.11b 60, M.11c 68, M.11d 57 (194 in all). The two tables below are generated from the contract and the routes by `scripts/check_api_contract.py --write`, and that check (run by `scripts/check.sh`) fails when the contract, the routes or these tables disagree. A piece lands by adding itself to `brickwork.api2.DONE`.
 
 ### Implemented
 
@@ -653,6 +653,9 @@ Operations by piece: M.11a 9, M.11b 59, M.11c 66, M.11d 57 (191 in all). The two
 | `PATCH /api/v2/lots/{id}` | M.11c | `brickwork.api2.write_where.patch_lots_by_id` |
 | `GET /api/v2/lots/{id}/candidate-sets` | M.11b | `brickwork.api2.ranking.get_lots_by_id_candidate_sets` |
 | `POST /api/v2/lots/{id}/restore` | M.11c | `brickwork.api2.write_where.post_lots_by_id_restore` |
+| `DELETE /api/v2/lots/{id}/stock/{stock_id}/sticker` | M.11c | `brickwork.api2.stickers.delete_lots_by_id_stock_by_stock_id_sticker` |
+| `POST /api/v2/lots/{id}/stock/{stock_id}/sticker` | M.11c | `brickwork.api2.stickers.post_lots_by_id_stock_by_stock_id_sticker` |
+| `GET /api/v2/lots/{id}/stock/{stock_id}/stickers` | M.11b | `brickwork.api2.stickers.get_lots_by_id_stock_by_stock_id_stickers` |
 | `GET /api/v2/matches` | M.11b | `brickwork.api2.loose.get_matches` |
 | `GET /api/v2/me` | M.11a | `brickwork.api2.get_me` |
 | `GET /api/v2/minifigures` | M.11b | `brickwork.api2.loose.get_minifigures` |

@@ -255,15 +255,20 @@ def get_lots_by_id_candidate_sets(db, id):
         raise (errors.NotFound(str(error)) if str(error) == 'No such lot' else errors.ValidationFailed(str(error))) from None
     parts = [p for r in result['results'] for p in r['distinctive_found_parts'] + r['distinctive_missing_parts']]
     set_ids = {r['set_item_id'] for r in result['results']}
-    book = bodies(db, items=set_ids | {p['item_id'] for p in parts}, colors={p['color_id'] for p in parts})
+    swapped = [s[k] for r in result['results'] for s in r['swaps']['items'] for k in ('have', 'wanted')]
+    book = bodies(db, items=set_ids | {p['item_id'] for p in parts} | {i['item_id'] for i in swapped}, colors={p['color_id'] for p in parts} | {i['color_id'] for i in swapped})
     shots = pictures_of(db, {(p['item_id'], p['color_id']) for p in parts} | {(i, None) for i in set_ids})
 
     def part(body):
         return {**{k: v for k, v in body.items() if k not in ('item_id', 'color_id')}, 'item': book.item(body['item_id']),
                 'color': book.color(body['color_id']), 'picture': shots.get((body['item_id'], body['color_id']))}
 
-    sets = [{**{k: v for k, v in r.items() if k not in ('set_item_id', 'distinctive_found_parts', 'distinctive_missing_parts')},
+    def line(body):
+        return {**{k: v for k, v in body.items() if k not in ('item_id', 'color_id')}, 'item': book.item(body['item_id']), 'color': book.color(body['color_id'])}
+
+    sets = [{**{k: v for k, v in r.items() if k not in ('set_item_id', 'distinctive_found_parts', 'distinctive_missing_parts', 'swaps')},
              'item': book.item(r['set_item_id']), 'picture': shots.get((r['set_item_id'], None)),
+             'swaps': {**r['swaps'], 'items': [{**s, 'have': line(s['have']), 'wanted': line(s['wanted'])} for s in r['swaps']['items']]},
              'distinctive_found_parts': [part(p) for p in r['distinctive_found_parts']],
              'distinctive_missing_parts': [part(p) for p in r['distinctive_missing_parts']]} for r in result['results']]
     return respond(dict(result, lot=id, results=sets))

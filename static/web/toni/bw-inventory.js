@@ -92,11 +92,18 @@
     }
     const choices=listControls(colours,c=>{const b=button(c.name||`Unknown colour · ${c.color_id}`,()=>{piece.colour=c.color_id;piece.status='review';showReview(piece);renderQueue();});swatch(b,c);b.setAttribute('aria-pressed',String(c.color_id===piece.colour));if(c.color_id===piece.colour)b.append(el('span',undefined,'inv-tick'));return b;},'colours');
     const colourBlock = el('div', undefined, 'inv-stack'); colourBlock.append(el('h3', 'Colour · you choose', 'inv-label'), choices);
-    const confirmText=()=>colour?`Confirm · ${colour.name} ×${piece.quantity}`:'Choose a colour';
+    const confirmText=()=>colour?`Confirm · ${colour.name} ×${piece.quantity}${piece.sticker?' · sticker':''}`:'Choose a colour';
     const confirm=button(confirmText(),()=>{piece.status='verified';renderQueue();const next=queue.find(p=>p.status==='review');showReview(next || piece);});confirm.disabled=!colour;confirm.className='button primary inv-primary';confirm.dataset.confirm='';
     const qtyRow = el('div', undefined, 'inv-split'); qtyRow.append(el('span', 'Quantity', 'inv-label'), quantityStepper(piece, () => { confirm.textContent = confirmText(); }));
+    // #201: the print on a part is a clue to the set that only the person can read; the sticker itself is chosen on the lot page after saving
+    const sticker = el('label', undefined, 'inv-switch-row'), words = el('span', undefined, 'inv-grow'), toggle = el('span', undefined, 'inv-switch'), box = el('input');
+    box.type = 'checkbox'; box.setAttribute('role', 'switch'); box.checked = piece.sticker === true; box.dataset.sticker = '';
+    box.addEventListener('change', () => { piece.sticker = box.checked; confirm.textContent = confirmText(); renderResults(); });
+    words.append(el('span', 'Has a sticker', 'inv-switch-title'), el('span', 'The print is a clue to the set. You pick the sticker after saving.', 'inv-note'));
+    toggle.append(box, el('span', undefined, 'inv-track'));
+    sticker.append(words, toggle);
     const links = el('div', undefined, 'inv-split'); links.append(button('Delete picture',()=>remove(piece),'inv-link'));
-    out.append(colourBlock, qtyRow, confirm, links, el('p','Enter · confirm · 1 to 9 · choose a candidate','mono inv-note'));
+    out.append(colourBlock, qtyRow, sticker, confirm, links, el('p','Enter · confirm · 1 to 9 · choose a candidate','mono inv-note'));
   }
   function drop(piece) {const at=queue.indexOf(piece);if(at<0)return false;queue.splice(at,1);URL.revokeObjectURL(piece.photo);release(piece);return true;}
   function release(piece) {if(pendingPiece!==piece)return;piece.abort?.abort();pendingPiece=null;node('capture').disabled=false;}
@@ -115,7 +122,7 @@
   function resultRow(piece, label) {
     const c=piece.candidates[piece.index], r=el('div',undefined,'scan-row');
     r.append(tile(c ? image(c) : null,c?.name||'Unidentified',c?.item_no),identity(piece));
-    const right=el('div',undefined,'inv-right');right.append(el('span',`×${piece.quantity}`,'mono inv-qty-text'));if(label){const pill=el('span',undefined,'inv-status inv-status-ok');pill.append(el('i'),document.createTextNode(label));right.append(pill);}
+    const right=el('div',undefined,'inv-right');right.append(el('span',`×${piece.quantity}${piece.sticker?' · sticker':''}`,'mono inv-qty-text'));if(label){const pill=el('span',undefined,'inv-status inv-status-ok');pill.append(el('i'),document.createTextNode(label));right.append(pill);}
     r.append(right);return r;
   }
   function renderResults() {
@@ -208,7 +215,7 @@
     const sending=batchPieces.slice(), lot=destination==='lot', fresh=lot&&!node('new-fields').hidden, quantity=sending.reduce((n,p)=>n+p.quantity,0);
     saving=true;batchLabel();
     try{
-      const data=await request('save',{pieces:sending.map(p=>({token:p.token,chosen:{...p.candidates[p.index],color_id:p.colour,quantity:p.quantity}})),destination:lot?'lot':'loose',condition,keep_photos:node('keep').checked,lot_id:lot&&!fresh?lotId:null,new_lot:fresh?{name:node('lot-name').value,note:node('note').value,storage_id:storageId}:null});
+      const data=await request('save',{pieces:sending.map(p=>({token:p.token,chosen:{...p.candidates[p.index],color_id:p.colour,quantity:p.quantity,sticker:p.sticker===true}})),destination:lot?'lot':'loose',condition,keep_photos:node('keep').checked,lot_id:lot&&!fresh?lotId:null,new_lot:fresh?{name:node('lot-name').value,note:node('note').value,storage_id:storageId}:null});
       receipt=data.event;sending.forEach(drop);
       if(fresh){if(data.lot)addLotOption(data.lot,quantity);resetNewLot();}
       saving=false;node('batch').close();node('undo').hidden=false;message(data.message,'success');showReview(null);renderQueue();

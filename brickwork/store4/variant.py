@@ -33,7 +33,7 @@ import uuid
 
 from . import merge as moves
 from .connect import now
-from .errors import MergeRefused, NotInCatalogue
+from .errors import MergeRefused, NotInCatalogue, Store4Error
 from .rowlog import RowLog
 
 FIELD = 'change_variant'
@@ -213,3 +213,17 @@ def undo_change_variant_in(db, event_id, *, via, actor=None, operation_key=None)
 def change_variant(db, from_id, to_id, *, via='cli', actor=None):
     """`change_variant_in` in its own transaction."""
     return moves._own_transaction(db, 'change_variant', change_variant_in, from_id, to_id, via=via, actor=actor)
+
+
+def preview_change_variant(db, from_id, to_id):
+    """What `change_variant` would do, without keeping any of it (a screen's preview, issue #151): the change runs in a write transaction of its
+    own, through the same refusals and the same planning, and is rolled back. Returns `{from, to, number, counts}` (as `change_variant`, without an
+    event); raises `MergeRefused` for what the change would refuse, and `sqlite3.OperationalError` when another writer holds the lock."""
+    if db.in_transaction:
+        raise Store4Error('preview_change_variant runs in its own transaction; commit or roll back the open one first')
+    db.execute('BEGIN IMMEDIATE')
+    try:
+        done = change_variant_in(db, from_id, to_id, via='app')
+    finally:
+        db.rollback()
+    return {key: done[key] for key in ('from', 'to', 'number', 'counts')}

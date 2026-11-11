@@ -220,3 +220,46 @@ def test_an_undo_that_meets_a_new_row_on_the_original_key_is_refused_not_a_datab
         variant.undo_change_variant_in(db, result['event_id'], via='cli')
     db.rollback()
     assert table_digest(db) == after
+
+
+def test_the_preview_counts_what_a_change_would_do_and_writes_nothing(coll, world):
+    db = coll.db
+    a, b, wish = figures(coll, world)
+    before = table_digest(db)
+    preview = variant.preview_change_variant(db, a, b)
+    assert table_digest(db) == before and not db.in_transaction                       # not even an event or a link
+    assert set(preview) == {'from', 'to', 'number', 'counts'} and (preview['from'], preview['to'], preview['number']) == (a, b, NUMBER)
+    done = variant.change_variant(db, a, b, via='cli')                                  # the same counts as the change itself
+    assert preview['counts'] == done['counts'] and preview['counts']['stock'] == {'changed': 1} and preview['counts']['wish'] == {'changed': 1}
+    assert preview['counts']['copy_figure'] == {'changed': 2}
+
+
+@pytest.mark.parametrize('case', ['kind', 'self', 'set', 'job', 'wish'])
+def test_the_preview_refuses_what_the_change_refuses(coll, world, case):
+    db = coll.db
+    a, b, _ = figures(coll, world)
+    if case == 'kind':
+        args, message = (a, world.brick), 'its own kind'
+    elif case == 'self':
+        args, message = (a, a), 'become itself'
+    elif case == 'set':
+        args, message = (world.keep, world.gate), 'set cannot change variant'
+    elif case == 'job':
+        coll.sql("INSERT INTO job(source,kind,item_id,state,via,created_at,updated_at) VALUES('bricklink','item',?,'queued','app',?,?)", (b, STAMP, STAMP))
+        args, message = (a, b), 'still in flight'
+    else:
+        coll.add_wish(b, quantity=1)
+        args, message = (a, b), 'would meet wish'
+    before = table_digest(db)
+    with pytest.raises(MergeRefused, match=message):
+        variant.preview_change_variant(db, *args)
+    assert table_digest(db) == before and not db.in_transaction
+
+
+def test_the_preview_does_not_open_inside_a_transaction(coll, world):
+    from brickwork.store4.errors import Store4Error
+    a, b, _ = figures(coll, world)
+    coll.db.execute('BEGIN IMMEDIATE')
+    with pytest.raises(Store4Error, match='own transaction'):
+        variant.preview_change_variant(coll.db, a, b)
+    coll.db.rollback()

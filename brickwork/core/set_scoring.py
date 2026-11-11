@@ -25,7 +25,6 @@ Semantics (ADR 0026):
   returned set, from what the exact match left over, and never enter any number above.
 """
 from array import array
-from bisect import bisect_left
 from collections import OrderedDict, defaultdict
 import hashlib
 import json
@@ -131,9 +130,10 @@ class Index:
         self.set_quantity = array('Q')  # pieces of the set over those lines
         self.set_weight = array('d')    # sum of w over the set's lines
         self.set_distinctive = array('I')
+        self.set_keys = []              # position -> array of the set's line keys, and
+        self.set_needs = []             # position -> array of their quantities (the forward side: a page reads its sets' lines from here)
         self.posting = {}               # key -> (array of set positions, array of quantities), positions ascending
         self.weight = {}                # key -> w
-        self.colours = {}               # part id -> colour ids the part is held in
         self.alternates = {}            # part id -> part ids it swaps with as another mould
         self.position = {}              # set item id -> position
         self.total = 0                  # N, the candidate sets
@@ -141,14 +141,6 @@ class Index:
     def describe(self):
         return dict(sets=self.total, lines=len(self.posting), postings=sum(len(p[0]) for p in self.posting.values()),
                     distinctive_max=DISTINCTIVE_MAX)
-
-    def need(self, position, key):
-        """The quantity the set at `position` holds of the line, 0 if none."""
-        found = self.posting.get(key)
-        if found is None:
-            return 0
-        at = bisect_left(found[0], position)
-        return found[1][at] if at < len(found[0]) and found[0][at] == position else 0
 
 
 def _resolve(item, own, children, memo, trail):
@@ -201,6 +193,8 @@ def build_index(rows):
         index.set_item.append(set_id)
         index.set_lines.append(len(lines))
         index.set_quantity.append(sum(lines.values()))
+        index.set_keys.append(array('Q', lines))
+        index.set_needs.append(array('I', lines.values()))
         for k, quantity in lines.items():
             slot = postings.get(k)
             if slot is None:
@@ -220,9 +214,6 @@ def build_index(rows):
             index.set_weight[position] += w
             if distinctive:
                 index.set_distinctive[position] += 1
-        item, colour = unkey(k)
-        if colour is not None:
-            index.colours.setdefault(item, []).append(colour)
     for _, child, parent in rows.relations:
         index.alternates.setdefault(child, set()).add(parent)
         index.alternates.setdefault(parent, set()).add(child)
@@ -312,47 +303,50 @@ def _line_of(k, have, need=None, w=None, flags=None):
     return body
 
 
-def _swaps(index, position, lines):
+def _swaps(index, position, lines, needs, by_item):
     """What the exact match leaves over, listed as swaps: the same part in another colour, or an alternate mould in the same colour.
     A swap uses the input line's leftover (its quantity less what this set takes of it) against the set's unmet need; the same input
-    line may appear in several swaps, none of them is taken from the numbers of the set."""
+    line may appear in several swaps, none of them is taken from the numbers of the set. `needs` is the set's `{line key: quantity}`,
+    `by_item` the pile's `{item id: [(colour, line key, quantity)]}`."""
     found = []
 
-    def leftover(k, have):
-        return have - min(have, index.need(position, k))
+    def offer(kind, target, gap, other, key, have):
+        spare = have - min(have, needs.get(key, 0))
+        if spare > 0:
+            found.append((kind, key, target, min(gap, spare)))
 
-    def met(k):
-        return min(lines.get(k, 0), index.need(position, k))
-
-    for k, have in lines.items():
-        item, colour = unkey(k)
-        if colour is None:
+    for target, need in needs.items():
+        gap = need - min(lines.get(target, 0), need)
+        item, colour = unkey(target)
+        if gap <= 0 or colour is None:
             continue
-        spare = leftover(k, have)
-        if spare <= 0:
-            continue
-        for other in index.colours.get(item, ()):
+        for other, key, have in by_item.get(item, ()):
             if other != colour:
-                target = key_of(item, other)
-                gap = index.need(position, target) - met(target)
-                if gap > 0:
-                    found.append(('colour', k, target, min(gap, spare)))
+                offer('colour', target, gap, other, key, have)
         for alternate in index.alternates.get(item, ()):
-            target = key_of(alternate, colour)
-            gap = index.need(position, target) - met(target)
-            if gap > 0:
-                found.append(('mould', k, target, min(gap, spare)))
+            for other, key, have in by_item.get(alternate, ()):
+                if other == colour:
+                    offer('mould', target, gap, other, key, have)
     found.sort(key=lambda s: (-s[3] * index.weight.get(s[2], 0.0), s[0], s[1], s[2]))
-    items = [dict(kind=kind, have=_line_of(k, lines[k]), wanted=_line_of(t, index.need(position, t)), quantity=q) for kind, k, t, q in found[:SWAPS_SHOWN]]
+    items = [dict(kind=kind, have=_line_of(k, lines[k]), wanted=_line_of(t, needs[t]), quantity=q) for kind, k, t, q in found[:SWAPS_SHOWN]]
     return dict(lines=len(found), quantity=sum(s[3] for s in found), items=items)
 
 
-def _detail(index, row, lines, flags, detail):
-    position, ev, quantity, covered, complete, distinctive = row
-    seen, by_flag = [], {}
+def by_item_of(lines):
+    found = defaultdict(list)
     for k, have in lines.items():
-        need = index.need(position, k)
-        if not need:
+        item, colour = unkey(k)
+        found[item].append((colour, k, have))
+    return found
+
+
+def _detail(index, row, lines, flags, detail, by_item=None):
+    position, ev, quantity, covered, complete, distinctive = row
+    needs = dict(zip(index.set_keys[position], index.set_needs[position]))
+    seen, by_flag = [], {}
+    for k, need in needs.items():
+        have = lines.get(k)
+        if not have:
             continue
         w = index.weight[k]
         share = w * min(have, need) / need
@@ -369,7 +363,7 @@ def _detail(index, row, lines, flags, detail):
                 set_lines=index.set_lines[position], distinctive_found=distinctive, distinctive_total=index.set_distinctive[position],
                 matched=[_line_of(k, have, need, w, (flags or {}).get(k)) for _, k, have, need, w in seen[:detail]],
                 flags={f: dict(v, evidence=round(v['evidence'], 4)) for f, v in sorted(by_flag.items())},
-                swaps=_swaps(index, position, lines))
+                swaps=_swaps(index, position, lines, needs, by_item if by_item is not None else by_item_of(lines)))
 
 
 def score(db, parts, flags=None, *, limit=20, offset=0, detail=10):
@@ -399,12 +393,13 @@ def score(db, parts, flags=None, *, limit=20, offset=0, detail=10):
             while len(_RESULTS) > CACHE_SIZE:
                 _RESULTS.popitem(last=False)
     ranked, matched = held
+    grouped = by_item_of(lines)
     unmatched = [k for k in lines if k not in index.posting]
     return dict(catalogue=index.describe(),
                 input=dict(lines=len(lines), quantity=sum(lines.values()), matched_lines=matched, unmatched_lines=len(unmatched),
                            unmatched=[_line_of(k, lines[k]) for k in sorted(unmatched)[:UNMATCHED_SHOWN]]),
                 total=len(ranked), limit=limit, offset=offset, cached=cached, index_built=built,
-                results=[dict(rank=offset + i + 1, **_detail(index, row, lines, marks, detail)) for i, row in enumerate(ranked[offset:offset + limit])])
+                results=[dict(rank=offset + i + 1, **_detail(index, row, lines, marks, detail, grouped)) for i, row in enumerate(ranked[offset:offset + limit])])
 
 
 # ---------- builders of the input ----------

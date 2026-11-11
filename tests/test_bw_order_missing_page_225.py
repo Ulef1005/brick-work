@@ -211,3 +211,10 @@ def test_a_choice_past_the_exporters_limit_is_cut_and_says_so(coll, client, monk
     assert 'Only the first 2 ticked sets' in soup.select_one('.oo-review').text
     assert soup.select_one('[data-oo-total]').text.endswith('from 2 sets')
     assert 'Export 2 sets' in soup.select_one('.oo-export .button').text
+
+
+def test_the_leave_out_chip_names_the_flags_it_matched(coll, client):
+    s = scene(coll)
+    coll.tag('copy', s['gate'], coll.flag('To sell', 'status'))
+    chip = page(client).select_one('.oo-chips').text
+    assert 'Leave out: sell or part out · 1 set (flag: To sell)' in chip

@@ -2323,6 +2323,7 @@ def bw_planning_order():
               export_url=url_for('web.bw_planning_order_file',copy=choice['chosen']),
               themes=sorted({r['theme'] for r in rows if r['theme']}),sorts=order_missing.SORTS,
               first=order_missing.FIRST_LINES,sold=sum(1 for r in choice['shown'] if choice['sell'] and r['to_sell']),
+              sold_flags=sorted({r['to_sell'] for r in choice['shown'] if choice['sell'] and r['to_sell']}),
               ticked=set(choice['chosen']))
     response=current_app.make_response(render_template('web/toni/web/bw_planning_order.html',title='Order missing parts',rows=rows,order=order,
         error=error,settings=settings,choice=choice,page=page,capped=capped,copies_limit=ORDER_COPIES_LIMIT,can_edit=bw_collection_editable()))

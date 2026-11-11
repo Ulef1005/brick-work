@@ -148,8 +148,6 @@ def run_jobs(jobs: list[dict], scratch: str, chrome: str) -> None:
         spec.write_text(json.dumps({'deterministic': True, 'now': clock, 'jobs': chunk}))
         result = subprocess.run(['node', str(ROOT / 'scripts' / 'capture_screens.cjs'), chrome, str(spec)], cwd=ROOT,
                                 capture_output=True, text=True, timeout=1800)
-        if os.environ.get('BW_CAPTURE_FONTS'):
-            print(f'[chunk {number}, workers {workers()}]', result.stderr, flush=True)
         if result.returncode:
             raise RuntimeError('capture_screens.cjs failed:\n' + result.stdout[-2000:] + result.stderr[-2000:])
 

@@ -48,11 +48,11 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
   await call('Page.navigate',{url:job.url});
   for(let i=0;i<200;i++){if(await evaluate(`document.readyState==='complete'${job.wait?` && !!document.querySelector(${JSON.stringify(job.wait)})`:''}`))break;await delay(50);}
   await evaluate("document.fonts?Promise.all([...document.fonts].map(f=>f.load().catch(()=>null))).then(()=>document.fonts.ready).then(()=>true):true");   // every declared face loaded, not only those the first paint asked for
+  if(deterministic)await evaluate("(()=>{const b=document.body;if(!b)return true;b.style.display='none';void b.offsetHeight;b.style.display='';void b.offsetHeight;return true;})()");   // lay the page out again with every font loaded: a form control laid out before its webfont arrived keeps the fallback's metrics, 1 px off from a warm session's (#267)
   if(job.script)await evaluate(`(async()=>{${job.script}})()`);
   await delay(250);
   // An open sheet is shown as the device sees it (one viewport); a page is shown whole, with the viewport grown to its height so the
   // fixed bars (phone tab bar, save bar) sit at its foot rather than across the middle of the capture.
-  if(process.env.BW_CAPTURE_FONTS){try{await call('DOM.enable');await call('CSS.enable');const root=await call('DOM.getDocument',{depth:0});const q=await call('DOM.querySelector',{nodeId:root.root.nodeId,selector:'select'});if(q.nodeId){const f=await call('CSS.getPlatformFontsForNode',{nodeId:q.nodeId});console.error('FONTS '+path.basename(job.out)+' '+JSON.stringify(f.fonts));}}catch(e){console.error('FONTS error '+e.message);}}
   const sheet=await evaluate("!!document.querySelector('dialog[open]')");
   let shotHeight=height;
   if(!sheet){

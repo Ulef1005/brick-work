@@ -66,6 +66,27 @@ The ranking is cached per catalogue build and input (the last 8 inputs in a proc
 
 `GET /api/v2/planning/set-scores` takes exactly one of `lot`, `storage`, `loose=true` or `stock` (repeated), plus `limit` (1 to 100), `offset` and `detail` (0 to 50). It needs a read token and writes nothing. An arbitrary multiset is not an API input (a read is a GET); call `score` from Python. The MCP tool is `get_planning_set_scores`.
 
+## Candidate sets of a lot (Lot Detective, #200)
+
+`brickwork/core/candidate_sets.py` turns the engine's ranking of a lot into the answer to "which sets came in this lot?". `candidates(db, lot_id, *, min_score, theme, year_from, year_to, parts_min, parts_max, ignore_common, limit, offset)` is the service; `GET /api/v2/lots/{id}/candidate-sets` (MCP tool `get_lot_candidate_sets`) is the API. It reads the lot's live loose parts and figures, scores them and writes nothing. The screen is built on it later.
+
+| Field | Value |
+|---|---|
+| Definition | How strongly the found parts point to a set, relative to the best candidate. Not a probability |
+| Formula | `score = round(100 * evidence / best evidence)`, a whole number 0 to 100; the best candidate is the first set that passes the theme, year and size filters, so it scores 100 |
+| Unit | Percent of the best candidate |
+| Code | `brickwork/core/candidate_sets.py::candidates` |
+
+Order of work: the lot's lines; **ignore common** (a line held by more than N sets is dropped before scoring, so it moves no evidence and the digest of the input changes); the engine's cached ranking; sets with no evidence dropped; the set filters; normalise; `min_score`; page. `total` counts the sets left after all of that, so paging and `total` are right under every filter.
+
+- **Ignore common** is on by default. N is the stored setting `candidate_sets_common_max` (the `setting` table, shown by `GET /settings`, changed by `PATCH /settings` with the `admin` scope, audited), default 300, a whole number of at least 25 (the engine's distinctive limit, so a distinctive line is never dropped). An invalid stored value reads as 300. No environment variable.
+- **Filters.** `theme` is a catalogue theme id (digits) or a name (case-insensitive) and takes the themes below it too; an unknown theme is an error. Years and part counts are the catalogue item's `year` and `num_parts`; a set without the value does not pass a filter on it. The part count is the catalogue's number for the set, not the engine's `set_quantity` (which counts figure lines twice).
+- **Distinctive parts.** A distinctive line is a (part, colour) line that at most 25 sets hold (`DISTINCTIVE_MAX`). `distinctive_found_parts` are the ones the lot has, `distinctive_missing_parts` the ones it has none of yet, heaviest first, up to 20 each; the counts `distinctive_found` and `distinctive_total` are for the whole set. A part that exactly one set holds in that colour is *only in this set*.
+- **Printed.** A part is printed when its number holds a print suffix, `pr` followed by a digit (3626bpr0001, 973pr1234c01), or when the catalogue lists it as the child of a part relationship of type P (Rebrickable's print). It is derived from the catalogue; nothing is stored. Only parts that are *only in this set* are marked.
+- **Reasons**, in order: "N of M distinctive parts found" (when the set has any); "Matched on common parts only" (when none was found); "N printed parts only in this set"; "N (other) parts only in this set"; "N of M part lines of the set are in the lot". The counts cover the whole set, not only the listed parts.
+- **Flags.** A stock flag named Sticker (any case; the flag's kind is not checked) is passed to the engine as `sticker` and comes back per set in `flags`; other flag names are not used. The evidence uplift for stickers is a later change (#201).
+- **Cache.** The ranking is the engine's, cached per catalogue build and input, so an unchanged lot is not ranked again and a changed lot (a different input) is. The filters and the page are applied on each call.
+
 ## Speed
 
 Measured on a Mac with a catalogue of about 21,000 sets (1.6 million postings): the index takes about 2 s to build (the first query pays it) and about 400 MB at its peak while loading; a 2,000-line pile is then ranked with its first page of 20 sets in about 0.1 s, and another page of the same input in about 0.04 s. The target is under 10 s for such a pile on the machine that serves the app, cold. `python scripts/bench_set_scoring.py path/to/catalogue.db` builds a random pile from a real catalogue file (read-only) and prints the load and build times, the memory, the cold and warm query times and PASS or FAIL against the target, so it can be run on that machine.

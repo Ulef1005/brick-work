@@ -3132,6 +3132,11 @@
         "bricklink_region": {
           "type": "string"
         },
+        "candidate_sets_common_max": {
+          "description": "Lot Detective ignores, by default, the parts that more than this many sets hold (default 300;",
+          "minimum": 25,
+          "type": "integer"
+        },
         "display_currency": {
           "description": "Totals and comparisons across currencies convert into this (#39).",
           "type": "string"

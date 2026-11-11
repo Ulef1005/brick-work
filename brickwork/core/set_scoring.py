@@ -370,19 +370,18 @@ def _detail(index, row, lines, flags, detail, by_item=None):
                 swaps=_swaps(index, position, lines, needs, by_item if by_item is not None else by_item_of(lines)))
 
 
-def score(db, parts, flags=None, *, limit=20, offset=0, detail=10):
-    """The ranked sets for a parts multiset, `dict(catalogue, input, total, limit, offset, cached, results)`.
-
-    `parts` is `{(item id, colour id or None): quantity}`; `flags` optionally `{(item id, colour id or None): {flag name, ...}}`, passed
-    through to each set's matched lines and summed per flag. Results are cached per input and catalogue build (the ranking; the page's
-    detail is rebuilt, it is cheap). Read-only."""
-    if not 1 <= limit <= MAX_LIMIT or offset < 0 or not 0 <= detail <= MAX_DETAIL:
-        raise ValueError(f'limit is 1 to {MAX_LIMIT}, offset from 0, detail 0 to {MAX_DETAIL}')
-    lines = clean(parts)
+def marks_of(lines, flags):
+    """`{line key: {flag name, ...}}` for the flags that sit on a line of the (cleaned) input."""
     marks = defaultdict(set)
     for (item, colour), names in (flags or {}).items():
         if key_of(item, colour) in lines:
             marks[key_of(item, colour)].update(names)
+    return marks
+
+
+def ranking(db, lines):
+    """`(index, (ranked rows, matched line count), index built now, ranking from the cache)` for cleaned input lines: the whole ranking, not a
+    page, so a caller that filters the sets itself (candidate sets, #200) can page after it. Cached per catalogue build and input."""
     index, built = index_for(db)
     token = (index.key, digest(lines))
     with _LOCK:
@@ -396,6 +395,20 @@ def score(db, parts, flags=None, *, limit=20, offset=0, detail=10):
             _RESULTS[token] = held
             while len(_RESULTS) > CACHE_SIZE:
                 _RESULTS.popitem(last=False)
+    return index, held, built, cached
+
+
+def score(db, parts, flags=None, *, limit=20, offset=0, detail=10):
+    """The ranked sets for a parts multiset, `dict(catalogue, input, total, limit, offset, cached, results)`.
+
+    `parts` is `{(item id, colour id or None): quantity}`; `flags` optionally `{(item id, colour id or None): {flag name, ...}}`, passed
+    through to each set's matched lines and summed per flag. Results are cached per input and catalogue build (the ranking; the page's
+    detail is rebuilt, it is cheap). Read-only."""
+    if not 1 <= limit <= MAX_LIMIT or offset < 0 or not 0 <= detail <= MAX_DETAIL:
+        raise ValueError(f'limit is 1 to {MAX_LIMIT}, offset from 0, detail 0 to {MAX_DETAIL}')
+    lines = clean(parts)
+    marks = marks_of(lines, flags)
+    index, held, built, cached = ranking(db, lines)
     ranked, matched = held
     grouped = by_item_of(lines)
     unmatched = [k for k in lines if k not in index.posting]

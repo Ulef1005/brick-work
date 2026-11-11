@@ -50,7 +50,7 @@ def test_the_tool_surface_is_generated_from_the_v2_contract():
     marked = {op['x-mcp-tool']: (method.upper(), path) for path, methods in CONTRACT['paths'].items()
               for method, op in methods.items() if isinstance(op, dict) and 'x-mcp-tool' in op}
     assert {n: (m, p) for n, (m, p, _) in DEFINITIONS.items()} == marked
-    assert len(READS) + len(WRITES) == 66
+    assert len(READS) + len(WRITES) == 67
     for name, (method, path, op) in DEFINITIONS.items():
         assert op['security'] == [{'bearerAuth': ['read' if method == 'GET' else 'write']}], name   # admin work is never a tool
         assert op['summary'], name
@@ -251,7 +251,7 @@ def read_arguments(w, pair):
         'get_item': {'kind': 'set', 'no': '1000-1'}, 'list_copies': {}, 'get_copy': {'id': w.copy_a}, 'get_copy_completeness': {'id': w.copy_a},
         'list_copy_parts': {'id': w.copy_a}, 'list_copy_figures': {'id': w.copy_a}, 'list_stock': {}, 'list_minifigures': {}, 'list_gaps': {},
         'list_matches': {}, 'list_instruction_files': {}, 'get_prices': {'kind': 'set', 'no': '1000-1'}, 'list_stale_prices': {}, 'list_wishes': {},
-        'list_storages': {}, 'list_lots': {}, 'list_places': {}, 'list_flags': {}, 'get_planning_ranking': {}, 'get_planning_set_scores': {'loose': True}, 'list_orders': {},
+        'list_storages': {}, 'list_lots': {}, 'list_places': {}, 'list_flags': {}, 'get_planning_ranking': {}, 'get_planning_set_scores': {'loose': True}, 'get_lot_candidate_sets': {'id': w.bag}, 'list_orders': {},
         'get_order': {'id': 99999}, 'list_events': {}, 'list_jobs': {}, 'get_sources': {}, 'get_sync_status': rebrickable, 'get_settings': {},
         'get_statistics': {}, 'get_set_by_number': {'no': '1000-1'}, 'get_part_by_number': {'no': '3001'},
         'get_minifigure_by_number': {'no': 'syn-fig-0004'}, 'lookup_item': {'kind': 'set', 'key': '1000-1'}}

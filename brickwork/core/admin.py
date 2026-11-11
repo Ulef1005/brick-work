@@ -236,7 +236,8 @@ def effective_priority(raw):
 def settings(db):
     values = dict(db.execute('SELECT key,value FROM main.setting'))
     from .price_settings import read
-    return dict(**read(db), retail_country=values.get('retail_country') or 'DE',
+    from .candidate_sets import common_max
+    return dict(**read(db), retail_country=values.get('retail_country') or 'DE', candidate_sets_common_max=common_max(db),
                 priority=effective_priority(values.get('source_priority')),
                 import_order={k.removeprefix('import_order:'): json.loads(v) for k, v in sorted(values.items())
                               if k.startswith('import_order:') and v},
@@ -249,12 +250,13 @@ def patch_settings(db, data):
 
     freshness: [{source, kind, max_age_days}] (as GET /settings returns it); import_order:
     {item kind: [the six steps]}; repair: {shipping, fees, min_order, use_loose_stock}; prefer_bricklink_inventory: true or false (new
-    copies take BrickLink's part list, design 4.4).
+    copies take BrickLink's part list, design 4.4); candidate_sets_common_max: a whole number of 25 or more (Lot Detective ignores lines held by more
+    sets than this, #200; default 300).
     """
     from . import errors, price_settings
     from .pipeline import STEPS, TYPES
     allowed = {'retail_country', 'bricklink_region', 'bricklink_currency', 'incomplete_discount_pct',
-               'source_priority', 'import_order', 'freshness', 'repair', 'display_currency', 'prefer_bricklink_inventory'}
+               'source_priority', 'import_order', 'freshness', 'repair', 'display_currency', 'prefer_bricklink_inventory', 'candidate_sets_common_max'}
     if not isinstance(data, dict) or not data:
         raise errors.ValidationFailed('Send at least one setting')
     if set(data) - allowed:
@@ -295,6 +297,16 @@ def patch_settings(db, data):
             from ..store4 import copies
             via, actor = origin()
             copies.set_prefer_bricklink_in(db, data['prefer_bricklink_inventory'], via=via, actor=actor)
+        if 'candidate_sets_common_max' in data:
+            from .candidate_sets import SETTING_KEY, common_max, valid_common_max
+            try:
+                value = valid_common_max(data['candidate_sets_common_max'])
+            except ValueError as exc:
+                raise errors.ValidationFailed(str(exc)) from None
+            before = common_max(db)
+            if value != before:
+                db.execute('INSERT OR REPLACE INTO main.setting(key,value) VALUES(?,?)', (SETTING_KEY, str(value)))
+                audit(db, 'settings', 'candidate_sets', {SETTING_KEY: before}, {SETTING_KEY: value})
         if 'import_order' in data:
             orders = data['import_order']
             if not isinstance(orders, dict) or not orders:

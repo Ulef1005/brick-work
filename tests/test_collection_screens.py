@@ -535,7 +535,7 @@ def collection_chromium_geometry(world, coll, client, tmp_path):
             else:
                 script.decompose()
         (pages / (kind + '.html')).write_text(str(soup))
-    result = subprocess.run(['node', 'tests/toni_bw_collection_geometry.cjs', str(Path(executable)), str(pages)], capture_output=True, text=True, timeout=60, cwd=ROOT)
+    result = subprocess.run(['node', 'tests/toni_bw_collection_geometry.cjs', str(Path(executable)), str(pages)], capture_output=True, text=True, timeout=180, cwd=ROOT)
     assert result.returncode == 0, result.stdout + result.stderr
     return json.loads(result.stdout.splitlines()[0])
 

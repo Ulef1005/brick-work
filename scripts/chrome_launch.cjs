@@ -13,16 +13,17 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const LISTENING=/DevTools listening on ws:\/\/[^:\s]+:(\d+)\//;
 const NOISE=/CVDisplayLinkCreateWithCGDisplay/;
 
+function killGroup(child){try{process.kill(-child.pid,'SIGKILL');}catch{try{child.kill('SIGKILL');}catch{}}}
 function tail(text,lines=15){return text.split('\n').filter(l=>l.trim()&&!NOISE.test(l)).slice(-lines).join('\n');}
 
 async function attempt(chrome,{extraArgs,startMs,profileDir}){
  const profile=profileDir||fs.mkdtempSync(path.join(os.tmpdir(),'bw-chrome-'));
- const child=spawn(chrome,[...(process.env.BW_CHROME_NO_SANDBOX?['--no-sandbox']:[]),'--headless','--disable-background-networking','--hide-scrollbars','--remote-debugging-port=0','--user-data-dir='+profile,...extraArgs,'about:blank'],{stdio:['ignore','ignore','pipe']});
+ const child=spawn(chrome,[...(process.env.BW_CHROME_NO_SANDBOX?['--no-sandbox']:[]),'--headless','--disable-background-networking','--hide-scrollbars','--remote-debugging-port=0','--user-data-dir='+profile,...extraArgs,'about:blank'],{stdio:['ignore','ignore','pipe'],detached:true});   // its own process group, so a failed start can be killed with its helpers
  let stderr='',exited=false;
  child.stderr.on('data',data=>{stderr+=data.toString();});
  child.once('exit',()=>{exited=true;});
  const stop=async()=>{
-  if(!exited){const gone=new Promise(resolve=>child.once('exit',resolve));child.kill('SIGKILL');await Promise.race([gone,delay(5000)]);}
+  if(!exited){const gone=new Promise(resolve=>child.once('exit',resolve));killGroup(child);await Promise.race([gone,delay(5000)]);}
   try{fs.rmSync(profile,{recursive:true,force:true,maxRetries:5,retryDelay:100});}catch{}
  };
  const deadline=Date.now()+startMs;
@@ -34,7 +35,7 @@ async function attempt(chrome,{extraArgs,startMs,profileDir}){
   if(port){
    try{
     const targets=await (await fetch('http://127.0.0.1:'+port+'/json/list',{signal:AbortSignal.timeout(5000)})).json();
-    if(targets.some(t=>t.type==='page')){process.once('exit',()=>{try{child.kill('SIGKILL');}catch{}try{fs.rmSync(profile,{recursive:true,force:true});}catch{}});return {child,profile,port,stop};}   // a harness that ends by process.exit leaves nothing behind
+    if(targets.some(t=>t.type==='page')){process.once('exit',()=>{killGroup(child);try{fs.rmSync(profile,{recursive:true,force:true});}catch{}});return {child,profile,port,stop};}   // a harness that ends by process.exit leaves nothing behind
    }catch{}
   }
   await delay(50);

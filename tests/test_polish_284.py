@@ -2,7 +2,6 @@
 import json
 from pathlib import Path
 import re
-import subprocess
 import sys
 
 from bs4 import BeautifulSoup
@@ -77,10 +76,8 @@ def test_a_56_px_no_image_tile_holds_the_number_on_one_line_and_the_note_inside(
               'clipped:s.scrollWidth>s.clientWidth+1};});});document.body.setAttribute("data-out",JSON.stringify(out));});</script>')
     page = tmp_path / 'tile.html'
     page.write_text(f'<!doctype html><meta charset=utf-8><style>{css}</style><body class="tw-light">{tiles}{script}')
-    result = subprocess.run([chrome, '--headless=new', '--no-sandbox', '--disable-gpu', '--virtual-time-budget=3000', '--dump-dom', page.as_uri()],
-                            capture_output=True, text=True, timeout=60)
-    assert result.returncode == 0, result.stderr[-500:]
-    out = json.loads(re.search(r'data-out="([^"]*)"', result.stdout).group(1).replace('&quot;', '"'))
+    dom = rendered.dump_dom(chrome, page.as_uri())      # retries a start that stalls or ends in the teardown watchdog (#293)
+    out = json.loads(re.search(r'data-out="([^"]*)"', dom).group(1).replace('&quot;', '"'))
     assert len(out) == len(numbers)
     for number, (num, note) in zip(numbers, out):
         assert num['rows'] == 1 and num['inside'] and not num['clipped'], (number, num)

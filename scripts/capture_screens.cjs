@@ -7,18 +7,15 @@ JOBS.json is {"headers": {...optional, e.g. Cookie}, "deterministic"?: true, "no
 "deterministic" (the screenshot gate, scripts/screen_gate.py) starts every capture from an empty browser (no cache, no stored data, empty web storage), loads every declared font face, turns animations and transitions off, hides the caret, asks for reduced motion and, with "now",
 fixes the page's clock (Date) at that instant. The theme is the system preference (the app's default mode). A page is captured whole with the viewport grown to its height (fixed
 bars at its foot), clipped to its first `max` px; with a sheet open (`dialog[open]`) one viewport is captured, as the device shows it; so is a job below its `sheet_below` width. */
-const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),{spawn}=require('node:child_process');
+const fs=require('node:fs'),path=require('node:path'),{launch}=require('./chrome_launch.cjs');
 const [chrome,jobsFile]=process.argv.slice(2);
 if(!chrome||!jobsFile){console.error('usage: node scripts/capture_screens.cjs CHROME JOBS.json');process.exit(2);}
 const {headers={},jobs,deterministic=false,now=null}=JSON.parse(fs.readFileSync(jobsFile,'utf8'));
-const profile=fs.mkdtempSync(path.join(os.tmpdir(),'bw-capture-'));
-const child=spawn(chrome,[...(process.env.BW_CHROME_NO_SANDBOX?['--no-sandbox']:[]),'--headless','--disable-background-networking','--hide-scrollbars','--remote-debugging-port=0','--user-data-dir='+profile,'about:blank'],{stdio:['ignore','ignore','pipe']});
-let launchErrors='';child.stderr.on('data',data=>launchErrors+=data.toString());
 const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+let browser=null;
 (async()=>{
- let port;
- for(let i=0;i<200;i++){try{port=fs.readFileSync(path.join(profile,'DevToolsActivePort'),'utf8').split('\n')[0];break;}catch{}await delay(50);}
- if(!port)throw new Error('Chrome did not start: '+launchErrors);
+ browser=await launch(chrome);   // starts Chrome, retries a failed start (scripts/chrome_launch.cjs)
+ const {port}=browser;
  const targets=await (await fetch('http://127.0.0.1:'+port+'/json/list')).json();
  const socket=new WebSocket(targets.find(t=>t.type==='page').webSocketDebuggerUrl);
  await new Promise(resolve=>socket.addEventListener('open',resolve));
@@ -66,6 +63,5 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
   fs.writeFileSync(job.out,Buffer.from(shot.data,'base64'));
   console.log(job.out);
  }
- socket.close();const exited=new Promise(resolve=>child.once('exit',resolve));child.kill();await exited;
- try{fs.rmSync(profile,{recursive:true,force:true,maxRetries:5,retryDelay:100});}catch{}
-})().catch(error=>{console.error(error.message||error);child.kill();process.exit(1);});
+ socket.close();await browser.stop();
+})().catch(async error=>{console.error(error.message||error);if(browser)await browser.stop();process.exit(1);});

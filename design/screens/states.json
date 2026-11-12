@@ -326,7 +326,7 @@
    "state": "home-picks",
    "built": false,
    "approved": false,
-   "reason": "the home page picks (\"Try one tonight\") are not in the built Sets list; no page shows them"
+   "reason": "the home page picks (\"Try one tonight\") are not in the built Sets list; no page shows them; the feature is #300"
   },
   {
    "screen": "20-Add-into-a-lot",
@@ -380,7 +380,7 @@
    "state": "fetch-sheet",
    "built": false,
    "approved": false,
-   "reason": "the built Instruction files page fetches with a form button and has no sheet"
+   "reason": "the built Instruction files page fetches with a form button and has no sheet; the sheet comes with #25"
   },
   {
    "screen": "20-Add-into-a-lot",
@@ -437,7 +437,7 @@
    "state": "duplicates",
    "built": false,
    "approved": false,
-   "reason": "the Duplicates screen (Compare copies, Keep both) is not built as a page"
+   "reason": "the Duplicates screen (Compare copies, Keep both) is not built as a page; the feature is #299"
   },
   {
    "screen": "21-Collection-capabilities",
@@ -858,7 +858,7 @@
    "state": "",
    "built": false,
    "approved": false,
-   "reason": "not in the app: there is no watch or price-alert screen (no target, no Alert me, no Save watch); the design is ahead of the build, see #57 and milestone D"
+   "reason": "not in the app: there is no watch or price-alert screen (no target, no Alert me, no Save watch); the design is ahead of the build; the feature is #298"
   },
   {
    "screen": "46-Your-max-price-with-a-currency",
@@ -1010,7 +1010,7 @@
    "state": "",
    "built": false,
    "approved": false,
-   "reason": "not in the app: there is no barcode scanner screen (the only camera page is Part Spotter / What is this); needs the feature and a mocked camera"
+   "reason": "not in the app: there is no barcode scanner screen (the only camera page is Part Spotter / What is this); needs the feature (#8) and a mocked camera"
   }
  ]
 }

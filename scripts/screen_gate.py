@@ -94,19 +94,26 @@ GATE_VERSION = '1.0.0'
 WORLDS = ('demo', 'showcase', 'extras')
 
 
+def build_store(name: str, store: Path) -> None:
+    """Build the invented collection of world `name` at `store` (and its catalogue beside it), with its staged checks. The one place a gate world's data
+    is made, so a test can build exactly what the gate renders (tests/test_gate_edge_world.py proves the three older worlds did not change)."""
+    from brickwork.demo import checks, dataset, gate_extras, showcase
+    layers = {'demo': None, 'showcase': showcase, 'extras': gate_extras}
+    dataset.build(store, layer=layers[name].layer() if layers[name] else None)
+    checks.stage(store, showcase.CHECKS if name != 'demo' else None)
+
+
 @contextmanager
 def world(name: str, warm_up: list[str] = ()):
     """Serve the invented world `name` on 127.0.0.1 ('demo', the gate's; 'showcase', the richer layer of the exported demo and the site's pictures; 'extras',
     the showcase plus what the other worlds lack, brickwork/demo/gate_extras.py, #268); yields its base URL. The `warm_up` paths are requested once before the clock is frozen,
     so that every module a page imports lazily has been imported by then."""
-    from brickwork.demo import checks, dataset, gate_extras, showcase
     saved = {k: os.environ.get(k) for k in ('BW_DB_PATH', 'BW_EMBEDDED_WORKER', 'BW_ALLOW_NO_LOGIN', 'BW_AUTHENTICATION_PASSWORD')}
     with world_folder() as scratch:
         if name not in WORLDS:
             raise ValueError(f'unknown world {name}')
         store = Path(scratch) / 'brickwork.db'
-        dataset.build(store, layer={'demo': None, 'showcase': showcase, 'extras': gate_extras}[name].layer() if name != 'demo' else None)
-        checks.stage(store, showcase.CHECKS if name != 'demo' else None)
+        build_store(name, store)
         from brickwork.core import thumbnails
         thumbnails.pregenerate(store)   # every thumbnail exists before the first capture: the first request for a picture is answered with the original file while the thumbnail is built, so the first capture to show a picture would differ from the rest (#268)
         from brickwork.demo.export import make_app

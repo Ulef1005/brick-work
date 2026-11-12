@@ -8,7 +8,7 @@ Do this once you have recorded a good amount of [loose stock](../concepts/collec
 
 ## Read the list
 
-1. Open **Workbench → Build Scout**.
+1. Open **Workbench → Build Scout**: the entry with the magnifier over a brick, in the sidebar and in the phone's top strip (Sets keeps the brick).
 2. Each row is a set, best first. The bar and the percentage say how much of the set's parts your stock covers (**85%**, **398 of 430 parts**). On the right: the parts still missing (**−32 parts**), how many of its minifigures are missing (**2 of 3 figures missing**) and an approximate cost to complete (**≈ €31.20 · 3 lines unpriced**).
 3. Sets are sorted by the percentage available, then by the fewest missing parts.
 4. On a wide screen the set you select shows its details beside the list; on a phone, open the set. The details give **Parts you hold**, the biggest missing lines with their colours (**−6**), **Show all** for the rest, and the figures you hold of those the set needs.

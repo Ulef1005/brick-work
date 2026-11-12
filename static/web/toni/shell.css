@@ -95,3 +95,11 @@ main .bw-page-head .bw-back{margin-bottom:0}
 .system-code{font:400 12px/16px var(--tw-mono);color:var(--tw-danger)}
 .system-trace{margin:0;max-width:100%;box-sizing:border-box;background:var(--tw-surface);border-radius:12px;padding:12px;font:400 12px/18px var(--tw-mono);color:var(--tw-text-2);white-space:pre-wrap;overflow-wrap:anywhere}
 .jump-whatis { display:inline-flex;align-items:center;gap:8px;min-height:44px;color:var(--tw-accent-text);font:500 14px var(--tw-font);text-decoration:none; }
+/* A missing picture in a small tile (a list row's 56 px thumbnail, #284): the number on one line, the note smaller under it, both inside the tile.
+   The tiles of the app's lists and workbench share this rule; a tile of 96 px or more keeps its own sizes. */
+.bc-picture,.bw-picture,.check-picture,.scan-tile { container-type:inline-size; }
+@container (max-width:80px) {
+  .mono:not(img),.mono:not(img)+span { max-width:100%;box-sizing:border-box;padding:0 3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center; }
+  .mono:not(img) { font-size:11px !important;line-height:14px !important; } /* !important: the pages' own `.mono` rules (one with an id) set 12 px */
+  .mono:not(img)+span { font-size:9px !important;line-height:12px !important; }
+}

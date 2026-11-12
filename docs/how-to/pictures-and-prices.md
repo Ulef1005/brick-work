@@ -18,6 +18,8 @@ While you review a row on **Add**, a set, minifigure or other item without a pic
 
 When **Add** makes copies of a set, the parts and minifigures of those copies that have no picture yet are queued too, as one bulk action under **Jobs › Bulk actions**; your own work still goes first. When a copy switches to BrickLink's list by itself once it is fetched, its new parts are queued the same way; if you accept an offered list by hand, **Refresh pictures** fetches what is still missing.
 
+A set or part without a picture shows a plain tile with its number. In a list row the tile is small, so it shows the number on one line and a smaller **No image** under it, both inside the tile; the larger tiles of cards and detail pages say the same with more room.
+
 **Add** is not the only place. These also queue a **Downloading images** step for an item that has no picture yet (for every colour you hold), so the picture is there without pressing **Refresh pictures**:
 
 - placing an order line into loose stock (**Workbench → Orders**, **Allocate**);

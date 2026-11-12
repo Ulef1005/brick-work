@@ -170,6 +170,7 @@
    "state": "set-detection",
    "world": "showcase",
    "path": "/collection/lots/9637c558-464c-59a7-a79b-e1b57f4aff0c?detect=1",
+   "script": "document.querySelector(\"[data-bc-list]\").hidden=true;",
    "max": 3000,
    "built": true,
    "approved": false
@@ -466,6 +467,10 @@
    "world": "showcase",
    "path": "/collection/sets",
    "script": "document.querySelector(\"[data-bc-options-open]\").click();await new Promise(r=>setTimeout(r,300));",
+   "sizes": [
+    1440,
+    1024
+   ],
    "built": true,
    "approved": false
   },

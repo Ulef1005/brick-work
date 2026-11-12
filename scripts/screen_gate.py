@@ -46,9 +46,15 @@ def filename(screen: str, state: str, width: int, theme: str) -> str:
     return f'{screen}{"-" + state if state else ""}-{width}-{theme}.png'
 
 
+def widths(entry: dict) -> list[int]:
+    """The widths a state is captured at: all of WIDTHS, or the ones its optional `sizes` names (a state that exists at some widths only, e.g. a
+    menu the phone does not have); design_screens.py check validates the key."""
+    return [w for w in WIDTHS if w in entry.get('sizes', WIDTHS)]
+
+
 def variants(entry: dict):
     """(width, theme, baseline path) of every capture of a state."""
-    for width in WIDTHS:
+    for width in widths(entry):
         for theme in THEMES:
             yield width, theme, BASELINES / entry['screen'] / filename(entry['screen'], entry['state'], width, theme)
 
@@ -166,7 +172,7 @@ def render(entries: list[dict], out_for, chrome: str) -> list[Path]:
         with world(name, sorted({e['path'] for e in group})) as base, tempfile.TemporaryDirectory(prefix='bw-jobs-') as scratch:
             jobs = []
             for entry in group:
-                for width in WIDTHS:
+                for width in widths(entry):
                     for theme in THEMES:
                         target = out_for(entry, width, theme)
                         written.append(target)

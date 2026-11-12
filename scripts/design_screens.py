@@ -10,7 +10,7 @@ paths (`frames/<name>.png`, `sections/<Group>/<id>.html`); this script resolves 
 (the 10a iPad frames) was retired by the maintainer (2026-11-05): it sits in design/screens/_retired/ under its old name, and the manifest lists it.
 The build captures of the app are design/screens/approval/ and are not part of this manifest. design/screens/states.json (hand-kept, D3) says how
 each screen is reached in the built app and whether it is built and approved; `check` also keeps it and approval/baselines/ consistent:
-an approved state has all six baselines (1440 / 1024 / 390, light and dark), a built state that is not approved needs none (baselines are committed at approval only).
+an approved state has all its baselines (1440 / 1024 / 390, light and dark: six, or fewer where the state names its own `sizes`), a built state that is not approved needs none (baselines are committed at approval only).
 `check`: the manifest is what `manifest` writes, every PNG and HTML it lists exists, no PNG or HTML in the folders is unlisted.
 Standard library only. Modelled on engram's design/screens/manifest.json."""
 import json
@@ -150,9 +150,13 @@ def state_problems(folders: set) -> list[str]:
             found.append(f'states.json: {name} is built, so it is not covered by another state')
         elif covered and not any(e['built'] and covered in (e['screen'], f'{e["screen"]} [{e["state"]}]') for e in states['states'] if e is not entry):
             found.append(f'states.json: {name} is covered by {covered}, which is not a built state')
+        if 'sizes' in entry:
+            sizes = entry['sizes']
+            if not isinstance(sizes, list) or not sizes or any(width not in states['sizes'] for width in sizes) or len(set(sizes)) != len(sizes):
+                found.append(f'states.json: {name} has sizes {sizes!r}, which must be a non-empty list of distinct widths from the file\'s "sizes"')
         if entry['built']:
             stem = entry['screen'] + (f'-{entry["state"]}' if entry['state'] else '')
-            for width in states['sizes']:
+            for width in [w for w in states['sizes'] if w in (entry['sizes'] if isinstance(entry.get('sizes'), list) else states['sizes'])]:
                 for theme in states['themes']:
                     file = f'{stem}-{width}-{theme}.png'
                     expected.add((entry['screen'], file))

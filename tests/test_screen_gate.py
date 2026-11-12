@@ -110,6 +110,56 @@ def test_an_approved_state_needs_all_six_baselines(tmp_path, monkeypatch):
     assert len(_check_states(tmp_path / 'none', monkeypatch, True, [])) == 6
 
 
+def _check_sized(tmp_path, monkeypatch, sizes, files, approved=True):
+    from scripts import design_screens as ds
+    states = {'sizes': [1440, 1024, 390], 'themes': ['light', 'dark'], 'states': [
+        {'screen': '09-Collection', 'section': 'x', 'state': 'menu', 'built': True, 'approved': approved, 'world': 'demo', 'path': '/collection', 'sizes': sizes}]}
+    (tmp_path / 'states.json').write_text(json.dumps(states), encoding='utf-8')
+    folder = tmp_path / 'baselines' / '09-Collection'
+    folder.mkdir(parents=True)
+    for name in files:
+        (folder / name).write_bytes(b'')
+    monkeypatch.setattr(ds, 'STATES', tmp_path / 'states.json')
+    monkeypatch.setattr(ds, 'BASELINES', tmp_path / 'baselines')
+    return ds.state_problems({'09-Collection'})
+
+
+def test_a_state_with_sizes_needs_baselines_for_those_widths_only(tmp_path, monkeypatch):
+    four = [f'09-Collection-menu-{w}-{t}.png' for w in (1440, 1024) for t in ('light', 'dark')]
+    (tmp_path / 'ok').mkdir()
+    assert _check_sized(tmp_path / 'ok', monkeypatch, [1440, 1024], four) == []
+    (tmp_path / 'short').mkdir()
+    found = _check_sized(tmp_path / 'short', monkeypatch, [1440, 1024], four[:3])
+    assert len(found) == 1 and four[3] in found[0]
+    (tmp_path / 'extra').mkdir()
+    found = _check_sized(tmp_path / 'extra', monkeypatch, [1440, 1024], four + ['09-Collection-menu-390-light.png'])
+    assert len(found) == 1 and 'belongs to no built state' in found[0]
+
+
+def test_sizes_must_be_distinct_widths_of_the_file(tmp_path, monkeypatch):
+    for n, sizes in enumerate(([], [777], [1440, 1440], 'all')):
+        (tmp_path / str(n)).mkdir()
+        found = _check_sized(tmp_path / str(n), monkeypatch, sizes, [], approved=False)
+        assert len(found) == 1 and 'sizes' in found[0], (sizes, found)
+
+
+def test_the_gate_captures_a_state_at_its_sizes_only(monkeypatch):
+    entry = {'screen': 'x', 'state': 'menu', 'sizes': [1440, 1024]}
+    assert gate.widths(entry) == [1440, 1024]
+    assert [w for w, _, _ in gate.variants(entry)] == [1440, 1440, 1024, 1024]
+    assert gate.widths({'screen': 'x', 'state': ''}) == list(gate.WIDTHS)
+    monkeypatch.setattr(gate, 'WIDTHS', (390, 1440))
+    assert gate.widths(entry) == [1440]
+
+
+def test_the_states_file_names_its_sized_states_validly():
+    from scripts import design_screens as ds
+    states = gate.load()
+    sized = [e for e in states['states'] if 'sizes' in e]
+    assert sized and all(set(e['sizes']) <= set(states['sizes']) for e in sized)
+    assert not [p for p in ds.state_problems({e['screen'] for e in states['states']}) if 'sizes' in p]
+
+
 def test_a_baseline_file_of_no_built_state_is_still_reported(tmp_path, monkeypatch):
     found = _check_states(tmp_path, monkeypatch, False, ['09-Collection-777-light.png'])
     assert len(found) == 1 and 'belongs to no built state' in found[0]

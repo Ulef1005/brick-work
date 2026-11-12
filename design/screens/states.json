@@ -170,10 +170,10 @@
    "state": "set-detection",
    "world": "showcase",
    "path": "/collection/lots/9637c558-464c-59a7-a79b-e1b57f4aff0c?detect=1",
-   "script": "document.querySelector(\"[data-bc-list]\").hidden=true;",
+   "script": "document.querySelector(\"[data-bc-list]\").hidden=true;await Promise.all([...document.images].map(i=>{i.loading=\"eager\";return i.complete?null:new Promise(r=>{i.onload=i.onerror=r;setTimeout(r,8000);});}));await Promise.all([...document.images].map(i=>i.decode?i.decode().catch(()=>0):0));",
    "max": 3000,
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "15-Part-lot",
@@ -466,12 +466,12 @@
    "state": "toolbar-options-menu",
    "world": "showcase",
    "path": "/collection/sets",
-   "script": "document.querySelector(\"[data-bc-options-open]\").click();await new Promise(r=>setTimeout(r,300));",
+   "script": "document.querySelector(\"[data-bc-options-open]\").click();await new Promise(r=>setTimeout(r,300));await Promise.all([...document.images].map(i=>{i.loading=\"eager\";return i.complete?null:new Promise(r=>{i.onload=i.onerror=r;setTimeout(r,8000);});}));await Promise.all([...document.images].map(i=>i.decode?i.decode().catch(()=>0):0));",
    "sizes": [
     1024
    ],
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "26-First-run-without-keys",

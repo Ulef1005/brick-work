@@ -145,6 +145,11 @@ def state_problems(folders: set) -> list[str]:
             found.append(f'states.json: {name} is built but names no world and path')
         if not entry['built'] and not entry.get('reason'):
             found.append(f'states.json: {name} is not built and gives no reason')
+        covered = entry.get('covered_by')
+        if covered and entry['built']:
+            found.append(f'states.json: {name} is built, so it is not covered by another state')
+        elif covered and not any(e['built'] and covered in (e['screen'], f'{e["screen"]} [{e["state"]}]') for e in states['states'] if e is not entry):
+            found.append(f'states.json: {name} is covered by {covered}, which is not a built state')
         if entry['built']:
             stem = entry['screen'] + (f'-{entry["state"]}' if entry['state'] else '')
             for width in states['sizes']:

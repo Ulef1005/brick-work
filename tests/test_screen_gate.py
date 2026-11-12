@@ -186,3 +186,53 @@ def test_the_footer_shows_the_gate_version_whatever_the_release(monkeypatch):
         html = urllib.request.urlopen(base + '/').read().decode()
     assert f'Brick Work ({gate.GATE_VERSION})' in html
     assert '9.9.9' not in html
+
+
+def test_the_extras_world_adds_to_the_showcase_and_the_demo_world_stays_as_it_was():
+    """#268: the instruction, the boxes and the dollar wish live in the `extras` world only; the demo world, whose baselines are approved, holds none."""
+    import sqlite3
+    held = {}
+    for name in ('demo', 'showcase', 'extras'):
+        with gate.world(name):
+            db = sqlite3.connect(Path(tempfile.gettempdir()) / 'bw-gate-world' / 'brickwork.db')
+            held[name] = {
+                'stock': db.execute("SELECT count(*) FROM stock WHERE kind IN ('instructions','box')").fetchone()[0],
+                'usd': db.execute("SELECT count(*) FROM wish WHERE max_price_currency='USD'").fetchone()[0],
+                'orders': db.execute('SELECT count(*) FROM purchase_order').fetchone()[0]}
+            db.close()
+    assert held['demo'] == {'stock': 0, 'usd': 0, 'orders': 0}
+    assert held['showcase'] == {'stock': 0, 'usd': 0, 'orders': 3}
+    assert held['extras'] == {'stock': 3, 'usd': 1, 'orders': 3}
+
+
+def test_every_built_state_path_is_served_in_its_world():
+    """#268: a state names a path in a world (ids of copies, lots, orders, stickers); a moved id would capture an error page, so each path must answer 200."""
+    import urllib.error
+    import urllib.request
+    by_world = {}
+    for entry in gate.load()['states']:
+        if entry['built'] and entry['state'] != 'not-found':    # the 404 page is the state
+            by_world.setdefault(entry['world'], []).append(entry)
+    for name, entries in by_world.items():
+        with gate.world(name) as base:
+            for entry in entries:
+                try:
+                    status = urllib.request.urlopen(base + entry['path'].split('#')[0]).status
+                except urllib.error.HTTPError as error:
+                    status = error.code
+                assert status == 200, f'{gate.label(entry)} in {name}: {entry["path"]} answers {status}'
+
+
+def test_a_state_covered_by_another_names_a_built_state(tmp_path, monkeypatch):
+    """#268: `covered_by` is the record that another built state shows the page; it must name one, and a built state has none."""
+    from scripts import design_screens as ds
+    states = {'sizes': [1440], 'themes': ['light'], 'states': [
+        {'screen': '09-Collection', 'section': 'x', 'state': '', 'built': True, 'approved': False, 'world': 'demo', 'path': '/collection'},
+        {'screen': '22-Minifigure-detail', 'section': 'y', 'state': '', 'built': False, 'approved': False, 'reason': 'same page', 'covered_by': '09-Collection'},
+        {'screen': '08-Devices', 'section': 'z', 'state': '', 'built': False, 'approved': False, 'reason': 'same page', 'covered_by': '99-Nothing'}]}
+    (tmp_path / 'states.json').write_text(json.dumps(states), encoding='utf-8')
+    monkeypatch.setattr(ds, 'STATES', tmp_path / 'states.json')
+    monkeypatch.setattr(ds, 'BASELINES', tmp_path / 'none')
+    found = ds.state_problems({'09-Collection', '22-Minifigure-detail', '08-Devices'})
+    assert any('08-Devices' in f and 'covered by 99-Nothing, which is not a built state' in f for f in found)
+    assert not any('22-Minifigure' in f for f in found)

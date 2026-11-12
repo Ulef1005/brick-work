@@ -85,20 +85,22 @@ def world_folder():
 
 # The version the footer shows in the gate's world. The baselines were rendered when the footer said 1.0.0; the constant keeps that text for good.
 GATE_VERSION = '1.0.0'
+WORLDS = ('demo', 'showcase', 'extras')
 
 
 @contextmanager
 def world(name: str, warm_up: list[str] = ()):
-    """Serve the invented world `name` on 127.0.0.1 ('demo', the gate's; 'showcase', the same plus the richer layer of the exported demo and the site's pictures); yields its base URL. The `warm_up` paths are requested once before the clock is frozen,
+    """Serve the invented world `name` on 127.0.0.1 ('demo', the gate's; 'showcase', the richer layer of the exported demo and the site's pictures; 'extras',
+    the showcase plus what the other worlds lack, brickwork/demo/gate_extras.py, #268); yields its base URL. The `warm_up` paths are requested once before the clock is frozen,
     so that every module a page imports lazily has been imported by then."""
-    from brickwork.demo import checks, dataset, showcase
+    from brickwork.demo import checks, dataset, gate_extras, showcase
     saved = {k: os.environ.get(k) for k in ('BW_DB_PATH', 'BW_EMBEDDED_WORKER', 'BW_ALLOW_NO_LOGIN', 'BW_AUTHENTICATION_PASSWORD')}
     with world_folder() as scratch:
-        if name not in ('demo', 'showcase'):
+        if name not in WORLDS:
             raise ValueError(f'unknown world {name}')
         store = Path(scratch) / 'brickwork.db'
-        dataset.build(store, layer=showcase.layer() if name == 'showcase' else None)
-        checks.stage(store, showcase.CHECKS if name == 'showcase' else None)
+        dataset.build(store, layer={'demo': None, 'showcase': showcase, 'extras': gate_extras}[name].layer() if name != 'demo' else None)
+        checks.stage(store, showcase.CHECKS if name != 'demo' else None)
         from brickwork.demo.export import make_app
         app = make_app(store)
         app.config['GATE_SHOWN_VERSION'] = GATE_VERSION   # the footer shows a constant, so a release never changes a baseline (#257)

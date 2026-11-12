@@ -49,9 +49,9 @@ def test_details_show_found_missing_swaps_and_the_link_to_the_set(client, world,
     labels = [p.text for p in card.select('.bd-label')]
     assert labels == ['Found in the lot · 0', 'Not found yet · 0', 'Swaps, not counted in the score · 1'] or labels[2] == 'Swaps, not counted in the score · 1'
     assert 'Lot has' in card.select_one('.bd-swaps').text and 'Red' in card.select_one('.bd-swaps').text
-    link = card.select_one('.bd-actions a')
+    pull, link = card.select('.bd-actions a')
+    assert pull.text == 'Pull list' and pull['href'] == f"/collection/lots/{world.lot}/pull/{world.set('9401-1')}"        # #202
     assert link.text.startswith('Open set') and link['href'] == f"/collection/item/{world.set('9401-1')}"
-    assert not soup.select('.bd-cand a[href*="pull"]'), 'Pull list is #202'
 
 
 def test_found_and_missing_parts_have_a_tile_each_with_the_picture_when_there_is_one(client, world, coll):

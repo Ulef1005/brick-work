@@ -36,7 +36,7 @@
 {% if c.missing %}<ul class="bd-tiles">{% for p in c.missing %}<li><span class="bd-tile bd-no" title="{{ p.name }} · {{ p.colour }} · {{ p.number }}">{% if p.image %}<img {{ bw_picture_attrs(p.image, '64px') }} alt="{{ p.name }}, {{ p.colour }}" loading="lazy">{% else %}<span class="mono">{{ p.number }}</span>{% endif %}</span><span class="bd-cap mono">{{ p.number }}</span></li>{% endfor %}</ul>{% else %}<p class="bd-none">Every distinctive part of this set is in the lot.</p>{% endif %}
 <p class="bd-label">Swaps, not counted in the score · {{ c.swap_count }}</p>
 {% if c.swaps %}<ul class="bd-swaps">{% for text in c.swaps %}<li>{{ text }}</li>{% endfor %}</ul>{% else %}<p class="bd-none">No part of the lot fits this set in another colour or mould.</p>{% endif %}
-<div class="bd-actions"><a class="button bw-secondary" href="{{ url_for('web.bw_collection_item',item_id=c.id) }}">Open set {{ c.number }}</a></div>
+<div class="bd-actions"><a class="button bw-secondary" href="{{ url_for('web.bw_pull_list',identifier=detail.id,set_id=c.id) }}">Pull list</a><a class="button bw-secondary" href="{{ url_for('web.bw_collection_item',item_id=c.id) }}">Open set {{ c.number }}</a></div>
 </div></details></article>
 {% endfor %}
 {% if detect.more %}<p class="bd-more-link"><a href="?{{ detect_query(f, show=detect.next_show) }}#set-detection">Show more candidates</a> · {{ detect.rows|length }} of {{ detect.total }}</p>{% endif %}

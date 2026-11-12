@@ -13,6 +13,7 @@ PORTED |= {'index.index', 'web.bw_sets', 'web.bw_collection', 'web.bw_collection
 # M.8c: Add (search, review, confirm, undo) and the progress of the jobs it queues.
 PORTED |= {'web.bw_add', 'web.bw_add_search', 'web.bw_add_review', 'web.bw_add_confirm', 'web.bw_add_undo', 'web.bw_add_job', 'web.bw_add_retry'}
 PORTED |= {'web.bw_lot_sticker', 'web.bw_lot_sticker_write', 'web.bw_lot_sticker_undo'}   # #201: the sticker chooser of a lot's part line and its writes
+PORTED |= {'web.bw_pull_list', 'web.bw_pull_confirm', 'web.bw_pull_found', 'web.bw_pull_make_copy', 'web.bw_pull_undo'}   # #202: the pull list of a set for a lot, its counters, Make it a copy and Undo
 PORTED |= {'web.bw_add_picture'}                                     # #217: the Add review's picture, fetched when shown
 # M.10 B: merge, unmerge and the preferred link, from the item page.
 PORTED |= {'web.bw_item_merge', 'web.bw_item_identity'}

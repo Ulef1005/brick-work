@@ -159,3 +159,14 @@ def test_make_it_a_copy_refusals_write_nothing(v2, world, pair):
     assert write(v2, path(world, set_id=world.brick, tail='/make-copy')).status_code == 404
     assert before != digest(pair)
     assert len(rows(pair, "SELECT id FROM main.event WHERE field='make_from_stock'")) == 1
+
+
+def test_a_merged_set_is_a_307_to_the_survivor_on_this_path(v2, world, coll):
+    from brickwork.store4 import merge
+    loser = coll.local('set', 'Local keep', born_key='x1000')
+    merge.merge(coll.db, loser, world.keep, via='cli')
+    coll.db.commit()
+    response = call(v2, path(world, set_id=loser) + '?show=find')
+    assert response.status_code == 307 and response.headers['Location'] == f'/api/v2/lots/{world.bag}/pull-list/{world.keep}?show=find'
+    followed = v2.get(response.headers['Location'], headers={'Authorization': 'Bearer synthetic-bootstrap'})
+    assert followed.status_code == 200 and followed.json['data']['set']['id'] == world.keep

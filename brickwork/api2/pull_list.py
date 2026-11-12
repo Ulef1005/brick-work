@@ -1,7 +1,11 @@
 """Pull a detected set out of a lot (#202): the pull list of a set for one lot, the found counts and Make it a copy (`core/pull_list.py`, ADR 0029)."""
+import re
+
+from flask import request
+
 from ..core import errors, pull_list
 from . import route
-from .items import for_write, live
+from .items import for_write, item_id as item_number, lookup
 from .ranking import pictures_of, whole
 from .read import arguments, bodies, reading, respond
 from .writes import Done, identified, write
@@ -10,6 +14,18 @@ from .writes import Done, identified, write
 def guarded(lot):
     if len(lot) > 64:
         raise errors.NotFound('No such lot')
+
+
+def live_set(db, text):
+    """The id of the live set a path names; a merged one is `307` to the same path with the survivor in its place (`items.live` only knows /items and /minifigures)."""
+    old = item_number(text)
+    found = lookup.live_id(db, old)
+    if found is None:
+        raise errors.NotFound('No such item')
+    if found[1]:
+        location = re.sub(rf'(/pull-list/){old}(?=[/?]|$)', rf'\g<1>{found[0]}', request.full_path.rstrip('?'), count=1)
+        raise errors.Moved(f'Item {old} was merged into item {found[0]}', location=location, survivor=found[0])
+    return old
 
 
 def refused(error):
@@ -48,7 +64,7 @@ def get_lots_by_id_pull_list_by_set_id(db, id, set_id):
         raise errors.ValidationFailed('show is find, found or all')
     limit, offset = whole(args, 'limit', 100, 1, 500), whole(args, 'offset', 0, 0, 10 ** 9)
     guarded(id)
-    chosen = live(db, set_id)
+    chosen = live_set(db, set_id)
     try:
         info = pull_list.state(db, id, chosen)
     except (ValueError, errors.NotFound) as error:

@@ -468,7 +468,6 @@
    "path": "/collection/sets",
    "script": "document.querySelector(\"[data-bc-options-open]\").click();await new Promise(r=>setTimeout(r,300));",
    "sizes": [
-    1440,
     1024
    ],
    "built": true,

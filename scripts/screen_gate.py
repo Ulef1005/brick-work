@@ -107,6 +107,8 @@ def world(name: str, warm_up: list[str] = ()):
         store = Path(scratch) / 'brickwork.db'
         dataset.build(store, layer={'demo': None, 'showcase': showcase, 'extras': gate_extras}[name].layer() if name != 'demo' else None)
         checks.stage(store, showcase.CHECKS if name != 'demo' else None)
+        from brickwork.core import thumbnails
+        thumbnails.pregenerate(store)   # every thumbnail exists before the first capture: the first request for a picture is answered with the original file while the thumbnail is built, so the first capture to show a picture would differ from the rest (#268)
         from brickwork.demo.export import make_app
         app = make_app(store)
         app.config['GATE_SHOWN_VERSION'] = GATE_VERSION   # the footer shows a constant, so a release never changes a baseline (#257)

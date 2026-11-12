@@ -100,6 +100,6 @@ main .bw-page-head .bw-back{margin-bottom:0}
 .bc-picture,.bw-picture,.check-picture,.scan-tile { container-type:inline-size; }
 @container (max-width:80px) {
   .mono:not(img),.mono:not(img)+span { max-width:100%;box-sizing:border-box;padding:0 3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center; }
-  .mono:not(img) { font-size:11px;line-height:14px; }
-  .mono:not(img)+span { font-size:9px;line-height:12px; }
+  .mono:not(img) { font-size:11px !important;line-height:14px !important; } /* !important: the pages' own `.mono` rules (one with an id) set 12 px */
+  .mono:not(img)+span { font-size:9px !important;line-height:12px !important; }
 }

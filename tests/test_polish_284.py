@@ -58,8 +58,10 @@ def test_the_small_tile_rule_is_shared_in_the_global_stylesheet():
 
 
 @rendered.group
+@pytest.mark.parametrize('wrap', ['{}', '<label class="bw-copy">{}</label>', '<div class="bw-copy-summary">{}</div>',
+                                  '<div id="bw-check-choices"><a class="check-copy">{}</a></div>'])
 @pytest.mark.parametrize('tile', ['bc-picture', 'bw-picture', 'check-picture', 'scan-tile'])
-def test_a_56_px_no_image_tile_holds_the_number_on_one_line_and_the_note_inside(tile, tmp_path):
+def test_a_56_px_no_image_tile_holds_the_number_on_one_line_and_the_note_inside(tile, wrap, tmp_path):
     """The shared tiles of the lists and the workbench, drawn with the shipped stylesheets, in the pinned Chrome."""
     chrome = rendered.chrome()
     css = ''.join((ROOT / 'static/web/toni' / name).read_text() for name in
@@ -68,6 +70,7 @@ def test_a_56_px_no_image_tile_holds_the_number_on_one_line_and_the_note_inside(
     tiles = ''.join(f'<div class="{tile}" style="width:56px;height:56px"><span class="mono">{n}</span><span>No image</span></div>' for n in numbers)
     if tile == 'bc-picture':   # Complete sets draws it as the first cell of a row
         tiles = f'<div class="bp-complete-sets"><div class="bp-row">{tiles}</div></div>'
+    tiles = ''.join(wrap.format(t) for t in re.findall(r'<div class="[^"]*" style=[^>]*>.*?</div>', tiles)) if tile != 'bc-picture' else wrap.format(tiles)   # the pages' own ancestors carry a 12 px `.mono` rule that the tile rule must beat (Codex review)
     script = ('<script>addEventListener("load",()=>{const out=[...document.querySelectorAll(".bc-picture,.bw-picture,.check-picture,.scan-tile")].map(t=>{const b=t.getBoundingClientRect();'
               'return [...t.children].map(s=>{const r=document.createRange();r.selectNodeContents(s);const rows=new Set([...r.getClientRects()].map(x=>Math.round(x.top)));'
               'const a=s.getBoundingClientRect();return {rows:rows.size,inside:a.left>=b.left-0.5&&a.right<=b.right+0.5&&a.top>=b.top-0.5&&a.bottom<=b.bottom+0.5,'

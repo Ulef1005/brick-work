@@ -1,15 +1,13 @@
 /* Planning geometry against offline migration-fixture pages; no screenshots. */
 const fs=require('node:fs'),path=require('node:path'),{spawn}=require('node:child_process'),assert=require('node:assert/strict');
 const [chrome,dir]=process.argv.slice(2);
-const profile=path.join(dir,'profile');
-const child=spawn(chrome,[...(process.env.BW_CHROME_NO_SANDBOX?['--no-sandbox']:[]),'--headless','--disable-background-networking','--hide-scrollbars','--remote-debugging-port=0','--user-data-dir='+profile,'about:blank'],{stdio:['ignore','ignore','pipe']});
-let launchErrors='';child.stderr.on('data',data=>launchErrors+=data.toString());
+const {launch}=require('../scripts/chrome_launch.cjs');   // starts Chrome and retries a failed start (#293)
+let child=null;
 let socket;
 const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 (async()=>{
  let port;
- for(let i=0;i<600;i++){try{port=fs.readFileSync(path.join(profile,'DevToolsActivePort'),'utf8').split('\n')[0];break;}catch{}await delay(50);}
- assert.ok(port,'Chromium did not start: '+launchErrors);
+ const browser=await launch(chrome);child=browser.child;port=browser.port;
  const targets=await (await fetch('http://127.0.0.1:'+port+'/json/list')).json();
  socket=new WebSocket(targets.find(t=>t.type==='page').webSocketDebuggerUrl);
  await new Promise(resolve=>socket.addEventListener('open',resolve));
@@ -73,4 +71,4 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
  for(const width of [360,390]){const m=await stack(width);assert.ok(m.gap>=0&&m.gap<=32,'wishlist chips to buttons gap at '+width+': '+m.gap+' px');assert.ok(m.listsHeight<120,'wishlist chips row height at '+width+': '+m.listsHeight);}
  for(const width of [1024,1440]){const m=await stack(width);assert.ok(m.sameRow&&m.toolbarLeft>=m.listsRight,'wishlist chips and buttons share a row at '+width);}
  console.log('Planning geometry: repair numbers/Details and price name orphans at 360/390/1024, closed/open passed; wishlist chips-to-buttons gap');
-})().catch(e=>{console.error(e);process.exitCode=1;}).finally(()=>{socket?.close();child.kill();});
+})().catch(e=>{console.error(e);process.exitCode=1;}).finally(()=>{socket?.close();child?.kill();});

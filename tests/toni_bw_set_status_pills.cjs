@@ -2,15 +2,13 @@
    [{number, pills: [{text, state}]}] for every card on the page. */
 const fs=require('node:fs'),path=require('node:path'),{spawn}=require('node:child_process'),{pathToFileURL}=require('node:url'),assert=require('node:assert/strict');
 const [chrome,page]=process.argv.slice(2);
-const profile=path.join(path.dirname(page),'profile');
-const child=spawn(chrome,[...(process.env.BW_CHROME_NO_SANDBOX?['--no-sandbox']:[]),'--headless','--disable-background-networking','--hide-scrollbars','--remote-debugging-port=0','--user-data-dir='+profile,'about:blank'],{stdio:['ignore','ignore','pipe']});
-let launchErrors='';child.stderr.on('data',data=>launchErrors+=data.toString());
+const {launch}=require('../scripts/chrome_launch.cjs');   // starts Chrome and retries a failed start (#293)
+let child=null;
 let socket;
 const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 (async()=>{
  let port;
- for(let i=0;i<600;i++){try{port=fs.readFileSync(path.join(profile,'DevToolsActivePort'),'utf8').split('\n')[0];break;}catch{}await delay(50);}
- assert.ok(port,'Chromium did not start: '+launchErrors);
+ const browser=await launch(chrome);child=browser.child;port=browser.port;
  // The page target can register after DevToolsActivePort is written: ask again until it is listed.
  let target;
  for(let i=0;i<100&&!target;i++){target=(await (await fetch('http://127.0.0.1:'+port+'/json/list')).json()).find(t=>t.type==='page');if(!target)await delay(50);}
@@ -31,5 +29,5 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
   if(cards.length)break;await delay(20);
  }
  process.stdout.write(JSON.stringify(cards)+'\n');
- socket.close();child.kill();process.exit(0);
-})().catch(error=>{console.error(error);child.kill();process.exit(1);});
+ socket.close();child?.kill();process.exit(0);
+})().catch(error=>{console.error(error);child?.kill();process.exit(1);});

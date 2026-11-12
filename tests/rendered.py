@@ -56,3 +56,13 @@ def chrome(*, pinned: bool = False) -> str:
     if result.returncode:
         unavailable(result.stderr.strip().splitlines()[-1] if result.stderr.strip() else 'no Chrome found')
     return result.stdout.strip().splitlines()[-1]
+
+
+def dump_dom(chrome_binary: str, url: str, **options) -> str:
+    """`chrome --headless=new --dump-dom URL` with the bounded retry of scripts/chrome.py (#293); a run that failed every attempt fails the test
+    with the reason and the last stderr lines. Use it instead of calling Chrome by hand: a start that stalls on macOS is run again."""
+    from scripts import chrome as chrome_module
+    try:
+        return chrome_module.dump_dom(chrome_binary, url, **options)
+    except RuntimeError as error:
+        pytest.fail(str(error), pytrace=False)

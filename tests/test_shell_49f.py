@@ -55,7 +55,7 @@ def test_shell_chromium_geometry(client, tmp_path):
     soup.body.append(script)
     (tmp_path / 'shell.html').write_text(str(soup))
     result = subprocess.run(['node', 'tests/toni_shell_geometry.cjs', chrome, str(tmp_path)],
-                            capture_output=True, text=True, timeout=60, cwd=ROOT)
+                            capture_output=True, text=True, timeout=180, cwd=ROOT)
     assert result.returncode == 0, result.stdout + result.stderr
 
 

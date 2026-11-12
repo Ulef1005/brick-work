@@ -1,14 +1,12 @@
 /* #153 Q5: at 390 px the phone top strip scrolls the active entry (Catalogs) into view on load, instant, page not scrolled. */
 const fs=require('node:fs'),path=require('node:path'),{spawn}=require('node:child_process'),assert=require('node:assert/strict');
 const [chrome,dir]=process.argv.slice(2);
-const profile=path.join(dir,'profile');
-const child=spawn(chrome,[...(process.env.BW_CHROME_NO_SANDBOX?['--no-sandbox']:[]),'--headless','--disable-background-networking','--hide-scrollbars','--remote-debugging-port=0','--user-data-dir='+profile,'about:blank'],{stdio:['ignore','ignore','pipe']});
-let launchErrors='';child.stderr.on('data',data=>launchErrors+=data.toString());
+const {launch}=require('../scripts/chrome_launch.cjs');   // starts Chrome and retries a failed start (#293)
+let child=null;
 const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 (async()=>{
  let port;
- for(let i=0;i<600;i++){try{port=fs.readFileSync(path.join(profile,'DevToolsActivePort'),'utf8').split('\n')[0];break;}catch{}await delay(50);}
- assert.ok(port,'Chromium did not start: '+launchErrors);
+ const browser=await launch(chrome);child=browser.child;port=browser.port;
  const targets=await (await fetch('http://127.0.0.1:'+port+'/json/list')).json();
  const socket=new WebSocket(targets.find(t=>t.type==='page').webSocketDebuggerUrl);
  await new Promise(resolve=>socket.addEventListener('open',resolve));
@@ -44,5 +42,5 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
  await call('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:false});
  assert.ok(await settled(`(()=>{const m=${probe};return m.left>0&&m.inside;})()`),'Catalogs revealed after narrowing to 390 px: '+JSON.stringify(await evaluate(probe)));
  console.log('strip ok');
- socket.close();child.kill();process.exit(0);
-})().catch(error=>{console.error(error);child.kill();process.exit(1);});
+ socket.close();child?.kill();process.exit(0);
+})().catch(error=>{console.error(error);child?.kill();process.exit(1);});

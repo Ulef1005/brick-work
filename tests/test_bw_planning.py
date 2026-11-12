@@ -790,7 +790,7 @@ def test_planning_compact_chromium_geometry(coll, world, client, tmp_path):
         for script in soup.select('script'):
             script.decompose()
         (tmp_path / (screen + '.html')).write_text(str(soup))
-    result = subprocess.run(['node', 'tests/toni_bw_planning_geometry.cjs', chrome, str(tmp_path)], capture_output=True, text=True, timeout=60, cwd=ROOT)
+    result = subprocess.run(['node', 'tests/toni_bw_planning_geometry.cjs', chrome, str(tmp_path)], capture_output=True, text=True, timeout=180, cwd=ROOT)
     assert result.returncode == 0, result.stdout + result.stderr
 
 
@@ -983,7 +983,7 @@ def test_the_wishlist_screen_links_the_printable_list(world, client):
 def test_prices_runtime_harness_and_planning_runtime_harness():
     rendered.need_node()
     for name in ('toni_bw_planning_runtime.cjs', 'toni_bw_wishlists_runtime.cjs'):
-        result = subprocess.run(['node', 'tests/' + name], cwd=ROOT, capture_output=True, text=True, timeout=60)
+        result = subprocess.run(['node', 'tests/' + name], cwd=ROOT, capture_output=True, text=True, timeout=180)
         assert result.returncode == 0, result.stdout + result.stderr
 
 

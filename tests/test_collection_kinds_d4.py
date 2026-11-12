@@ -146,6 +146,6 @@ def test_phone_strip_shows_the_active_entry_at_390(client, all_kinds, tmp_path):
     script.string = "window.adminTheme={mode:'light'};\n" + (ROOT / 'static/web/toni/shell.js').read_text()
     soup.body.append(script)
     (tmp_path / 'shell.html').write_text(str(soup))
-    result = subprocess.run(['node', 'tests/toni_strip_scroll.cjs', chrome, str(tmp_path)], capture_output=True, text=True, timeout=60, cwd=ROOT)
+    result = subprocess.run(['node', 'tests/toni_strip_scroll.cjs', chrome, str(tmp_path)], capture_output=True, text=True, timeout=180, cwd=ROOT)
     assert result.returncode == 0, result.stdout + result.stderr
     assert 'strip ok' in result.stdout

@@ -180,12 +180,12 @@
   const root=document.querySelector('#bw-collection'); if (!root) return;
   const message=root.querySelector('[data-bc-message]'),undo=root.querySelector('[data-bc-undo]');
   const receiptKey='bw-collection-receipt';let receipt;
-  const pathOf=u=>String(u||'').replace(/^[a-z][a-z0-9+.-]*:\/\/[^/]*/i,'').split(/[?#]/)[0];
+  const pathOf=u=>{const parts=String(u||'').replace(/^[a-z][a-z0-9+.-]*:\/\/[^/]*/i,'').split('#')[0].split('?');const q=new URLSearchParams(parts[1]||'');const id=['copy','stock','colour'].filter(k=>q.get(k)).map(k=>k+'='+q.get(k)).join('&');return id?parts[0]+'?'+id:parts[0];};   // the screen of a receipt: the path plus the query parts that choose which copy, stock row or colour the page shows
   try {receipt=JSON.parse(sessionStorage.getItem(receiptKey));}catch(_){}
   // #236: a receipt belongs to the screen it was made for (the page a save leads to); elsewhere it is dropped, not shown.
-  if(receipt&&receipt.screen!==pathOf(location.pathname)){receipt=null;try{sessionStorage.removeItem(receiptKey);}catch(_){}}
+  if(receipt&&receipt.screen!==pathOf(location.pathname+(location.search||''))){receipt=null;try{sessionStorage.removeItem(receiptKey);}catch(_){}}
   function stamp(target) {if(!receipt)return;receipt.screen=pathOf(target);sessionStorage.setItem(receiptKey,JSON.stringify(receipt));}
-  function showReceipt(data) {receipt={...data,screen:pathOf(data.url||location.pathname)};sessionStorage.setItem(receiptKey,JSON.stringify(receipt));if(message)message.textContent=data.message;if(undo)undo.hidden=false;}
+  function showReceipt(data) {receipt={...data,screen:pathOf(data.url||location.pathname+(location.search||''))};sessionStorage.setItem(receiptKey,JSON.stringify(receipt));if(message)message.textContent=data.message;if(undo)undo.hidden=false;}
   if(receipt) {if(message)message.textContent=receipt.message;if(undo)undo.hidden=false;}
   async function send(action,data,multipart=false) {
     if(multipart)data.append('csrf_token',root.dataset.csrf);else data.csrf_token=root.dataset.csrf;

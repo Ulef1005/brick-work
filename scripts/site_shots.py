@@ -127,7 +127,7 @@ PICTURES = {
     'bulk-runner-found-phone-390': (PICKED + '&pick=1', 390, 844, OPEN_FOUND, (TUTORIALS,)),
     'bulk-matchmaker-desktop-1440': ('/workbench/match', 1440, 900, None, (TUTORIALS,)),
     # The tutorial for the new functions (docs/tutorials/): a bag of loose parts, the sets it may come from, the sticker, the pull list; Build Scout; ordering what is missing; a part's variant
-    'lot-detect-desktop-1440': (LOT_PAGE + '?detect=1#set-detection', 1440, 1500, SHOW_DETECTION, (TUTORIALS,)),
+    'lot-detect-desktop-1440': (LOT_PAGE + '?detect=1&ignore_common=1#set-detection', 1440, 1500, SHOW_DETECTION, (TUTORIALS,)),
     'lot-sticker-chooser-desktop-1440': (lot_link(re.escape(LOT_PAGE) + r'/sticker/[0-9a-f]+[^"]*', None), 1440, 900, None, (TUTORIALS,)),
     'lot-pull-list-phone-390': (pull(BEST, '?show=all'), 390, 1700, None, (TUTORIALS,)),
     'lot-pull-confirm-phone-390': (pull(BEST, '/make-copy'), 390, 844, None, (TUTORIALS,)),

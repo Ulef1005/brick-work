@@ -9,6 +9,9 @@ worlds are built from the `extras` layer plus what is added here, and only state
 * two incomplete copies that are pinned in Complete sets (screen 44);
 * a box with a listings record and no sale, and an instruction booklet with no price record (the "listings only", "loading" and "error" module states of screen 16).
 
+The `edge-value` world (#57) is these plus `ValueLayer`: five existing copies changed so the Value module and Paid vs value show their states (no row is added, so every
+count stays); only states that name `edge-value` see it, and the `edge` worlds' approved baselines are rendered from the layer above.
+
 The worlds themselves are named in scripts/screen_gate.py: `edge` (this layer), `edge-read-only` (the same data on an instance switched to
 read-only, screen 19) and `edge-empty` (no copy at all, screen 36). Everything is invented and deterministic (its own seed and the demo clock); the
 numbers sit in a range no catalogue uses (998xx-1 and up)."""
@@ -126,3 +129,30 @@ def layer(data=dataset.DATA, pictures=True):
 
 def empty_layer(data=dataset.DATA, pictures=False):
     return NoCopies(showcase.Path(data), pictures)
+
+
+# The copies and sets `ValueLayer` changes (numbers of the showcase): a copy with your own value, a set with no sale at all, a set whose quote is old, a copy paid in dollars.
+OVERRIDE_SET, NO_QUOTE_SET, STALE_SET, DOLLAR_SET = '99101-1', '99112-1', '99103-1', '99105-1'
+STALE_AT = '2026-06-01T00:00:00.000Z'    # older than the source's freshness rule at the demo clock (2026-10-12)
+
+
+class ValueLayer(Layer):
+    """The edge layer with the value data of #57: an override, a set with no sale, an old quote and a copy paid in dollars, on copies the showcase already owns."""
+
+    def edge(self, db):
+        super().edge(db)
+        with transaction(db):
+            def first_copy(number):
+                return db.execute('SELECT id FROM copy WHERE item_id=? ORDER BY created_at, id LIMIT 1', (dataset.item_by(db, 'sets', number),)).fetchone()[0]
+            db.execute("UPDATE copy SET current_value='62.00', current_value_currency='EUR' WHERE id=?", (first_copy(OVERRIDE_SET),))
+            quiet = dataset.item_by(db, 'sets', NO_QUOTE_SET)
+            db.execute('DELETE FROM price_current WHERE item_id=?', (quiet,))
+            db.execute('DELETE FROM price_observation WHERE item_id=?', (quiet,))
+            db.execute('UPDATE price_observation SET observed_at=? WHERE item_id=?', (STALE_AT, dataset.item_by(db, 'sets', STALE_SET)))
+            db.execute("UPDATE copy SET purchase_price='50.00', purchase_currency='USD' WHERE id=?", (first_copy(DOLLAR_SET),))
+            db.execute("INSERT OR REPLACE INTO source_freshness(source, kind, max_age_days) VALUES('bricklink', 'prices', 30)")
+            db.execute("INSERT OR REPLACE INTO exchange_rate(currency, per_eur, as_of, source) VALUES('USD', '1.08', '2026-10-09', 'manual')")
+
+
+def value_layer(data=dataset.DATA, pictures=True):
+    return ValueLayer(showcase.Path(data), pictures)

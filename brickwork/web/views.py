@@ -106,6 +106,13 @@ def bw_admin(page):
                 from . import stats_charts
                 data['headline'] = stats_charts.headline(data['completeness'])
                 data['charts'] = stats_charts.charts(data)
+                from . import valuation_views
+                from ..core.admin import database as paid_database
+                try:
+                    with paid_database(admin_ops.brickwork_path(), read_only=True, require_catalogue=False) as vdb:
+                        data['paid_vs_value'] = valuation_views.paid_vs_value(vdb)
+                except (sqlite3.Error, OSError, ValueError):
+                    data['paid_vs_value'] = dict(state='error')
             if page == 'unresolved':
                 data['done'] = identity_undo_offer(request.args.get('done', ''))
             if page == 'settings':
@@ -1665,6 +1672,8 @@ def bw_collection_item(item_id):
             detail['merged_into'] = identity_admin.merged_into(db, item_id)
             detail['merged_from'] = session.pop('bw_merged_from', None)
             detail['identity_notice'] = identity_notice(db, request.args.get('done', ''))
+            from . import valuation_views
+            detail['value'] = valuation_views.detail_module(db, detail.get('selected')) if letter == 'S' and not detail['colour_choices'] else None
     except ValueError as exc:
         abort(404, str(exc))
     return bw_collection_detail_response(detail, choices, collection.TYPES.get(letter, 'Collection'))
@@ -2494,3 +2503,4 @@ from . import sync_views  # noqa: E402,F401 — 12n Collection sync pages
 from . import import_views  # noqa: E402,F401 — Import from BrickTracker (#11)
 
 from . import list_views  # noqa: E402,F401 — printable lists and CSV (#43)
+from . import valuation_views  # noqa: E402,F401 — value and gain, Paid vs value, the insurance report (#57)

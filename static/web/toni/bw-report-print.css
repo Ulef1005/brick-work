@@ -1,0 +1,48 @@
+/* #57 the insurance report, print view: A4 portrait, light only, every copy, a row and its photos never split. Tokens only. */
+.rp-page { margin:0;padding:24px 16px 48px;background:var(--tw-bg);color:var(--tw-text);font:400 12px/16px var(--tw-font);max-width:794px;margin-inline:auto; }
+.rp-tools { display:flex;gap:8px;flex-wrap:wrap;margin:0 0 24px; }
+.rp-btn { display:inline-flex;align-items:center;height:44px;padding:0 16px;border-radius:10px;border:1px solid var(--tw-accent);background:transparent;color:var(--tw-accent-text);font:500 14px var(--tw-font);text-decoration:none;cursor:pointer; }
+.rp-primary { background:var(--tw-accent);color:var(--bw-action-ink,#1A1816);font-weight:600; }
+.rp-title { margin:0 0 12px;font:600 22px/28px var(--tw-font);letter-spacing:-.2px; }
+.rp-facts { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;border-block:.5px solid var(--tw-divider);padding:12px 0;margin:0; }
+.rp-facts div { display:flex;flex-direction:column;gap:2px;min-width:0; }
+.rp-facts dt { font:400 12px/16px var(--tw-font);color:var(--tw-text-muted); }
+.rp-facts dd { margin:0;font:500 15px/22px var(--tw-mono);font-variant-numeric:tabular-nums; }
+.rp-foot { margin:12px 0;font:400 12px/16px var(--tw-mono);color:var(--tw-text-muted); }
+.rp-msg { margin:0;color:var(--tw-text-2);font-size:14px;line-height:20px; }
+.rp-table { width:100%;border-collapse:collapse;table-layout:fixed; }
+.rp-table col { width:auto; }
+.rp-table th { text-align:left;font:500 12px/16px var(--tw-font);color:var(--tw-text-muted);padding:0 6px 6px 0;border-bottom:.5px solid var(--tw-divider-strong); }
+.rp-table th:nth-child(1) { width:56px; } .rp-table th:nth-child(3) { width:36px; } .rp-table th:nth-child(4) { width:60px; }
+.rp-table th:nth-child(5) { width:84px; } .rp-table th:nth-child(6) { width:84px; } .rp-table th:nth-child(7) { width:64px; } .rp-table th:nth-child(8) { width:112px; }
+.rp-table .r { text-align:right;padding-right:0; }
+.rp-table td { padding:8px 6px 0 0;vertical-align:top;font:400 12px/16px var(--tw-font);overflow-wrap:anywhere; }
+.rp-table td.r { padding-right:0; }
+.rp-photos td { padding:6px 0 8px;border-bottom:.5px solid var(--tw-divider); }
+.rp-copy { break-inside:avoid;page-break-inside:avoid; }
+.rp-copy tr { break-inside:avoid;page-break-inside:avoid; }
+.rp-photos { break-before:avoid;page-break-before:avoid; }
+.rp-main { break-after:avoid;page-break-after:avoid; }
+.rp-table thead { display:table-header-group; }
+.br-num,.br-year,.br-purchased,.br-paid { font:400 12px/16px var(--tw-mono); }
+.br-name { font-weight:600; }
+.br-paid small,.br-worth small { display:block;font:400 12px/16px var(--tw-font);color:var(--tw-text-muted); }
+.br-worth b { font:500 12px/16px var(--tw-mono); }
+.br-worth { text-align:right; }
+.br-worth b,.br-worth small { display:block; }
+.br-mark { font-weight:400;color:var(--tw-text-muted); }
+.br-stale em { font-style:normal;font-weight:600;color:var(--tw-text); }
+.br-none { color:var(--tw-text-muted);font-family:var(--tw-font); }
+.br-none.br-mono { font-family:var(--tw-mono); }
+.br-strip { display:flex;gap:6px;align-items:center;flex-wrap:wrap; }
+.br-tile { width:60px;height:45px;border-radius:6px;background:#fff;border:.5px solid var(--tw-divider-strong);display:grid;place-items:center;overflow:hidden;flex:none; }
+.br-tile img { width:100%;height:100%;object-fit:contain;display:block; }
+.br-tile.br-empty { background:transparent;border:1px dashed var(--tw-divider-strong);font:400 12px/16px var(--tw-font);color:var(--tw-text-muted);padding:0 4px;text-align:center; }
+.br-more { font:400 12px/16px var(--tw-mono);color:var(--tw-text-muted);margin-left:2px; }
+@page { size:A4 portrait;margin:15mm 15mm 18mm;
+  @bottom-right { content:"Page " counter(page) " of " counter(pages);font:400 11px var(--tw-mono);color:var(--tw-text-muted); }
+  @bottom-left { font:400 11px var(--tw-mono);color:var(--tw-text-muted); }
+  @top-left { content:"Insurance report, continued";font:600 13px var(--tw-font);color:var(--tw-text); }
+  @top-right { font:400 11px var(--tw-mono);color:var(--tw-text-muted); } }
+@page :first { @top-left { content:none; } @top-right { content:none; } }
+@media print { html,body,.rp-page { background:none; } .rp-page { padding:0;max-width:none; } .rp-tools { display:none; } }

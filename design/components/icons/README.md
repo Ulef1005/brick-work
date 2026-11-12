@@ -14,6 +14,7 @@
 | gear | `icons-ui/gear.svg` | Gear nav (shopping bag) | new |
 | book | `icons-ui/book.svg` | Books nav (open book) | new |
 | catalog | `icons-ui/catalog.svg` | Catalogs nav (catalog over a second page) | new |
+| scout | `icons-ui/scout.svg` | Build Scout nav (magnifier over a brick) | new |
 | box | `icons-ui/box.svg` | Boxes nav (replaces grid) | new |
 | scan | `icons-ui/scan.svg` | Part to Inventory nav | new |
 | check | `icons-ui/check.svg` | Check Set Parts nav, checklist | new |

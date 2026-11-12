@@ -190,7 +190,7 @@ def navigation():
             ('Part Spotter', 'web.bw_inventory', 'scan', (), {}),
             ('Part Runner', 'web.bw_picker', 'pick', (), {}),
             ('Matchmaker', 'web.bw_matcher', 'match', (), {}),
-            ('Build Scout', 'web.bw_build_scout', 'sets', (), {}),
+            ('Build Scout', 'web.bw_build_scout', 'scout', (), {}),
             ('Orders', 'web.bw_orders', 'orders', (), {}),
             ('Storage', 'web.bw_storages', 'storage', ('HIDE_ALL_STORAGES',), {})]),
         ('Planning', [

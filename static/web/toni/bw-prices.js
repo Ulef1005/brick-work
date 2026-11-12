@@ -269,7 +269,7 @@
     root.querySelectorAll('[data-bp-chip=collection]').forEach(b => { b.disabled = !all.some(r => r[b.dataset.value]); });
   }
   async function load() {
-    message.textContent = '';
+    if (!receipt) message.textContent = '';   // #236: an own-screen receipt keeps its Saved line beside the Undo button
     try {
       const response = await fetch(root.dataset.recordsUrl, {headers: {Accept: 'application/json'}});
       if (!response.ok) throw new Error('Prices not loaded');

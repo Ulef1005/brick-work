@@ -193,7 +193,7 @@ const keys = html => [...html.matchAll(/data-key="([^"]+)"/g)].map(m => m[1]);
   // #236: the saved line reads just "Saved" beside the one Undo button, and a receipt made on another Planning screen is dropped here.
   const rec = (receipt) => ({'bw-planning-receipt': JSON.stringify(receipt)});
   const own = page({rows: [], stored: rec({event_id: 5, collection: false, screen: '/planning/prices'}), fetcher: () => ({ok: true, json: async () => ({fields: FIELDS, rows: []})})});
-  assert.equal(own.nodes['[data-bp-undo]'].hidden, false); await sleep(20); assert.doesNotMatch(script, /Saved \u00b7 Undo/);
+  assert.equal(own.nodes['[data-bp-undo]'].hidden, false); await sleep(20); assert.doesNotMatch(script, /Saved \u00b7 Undo/); assert.equal(own.nodes['[data-bp-message]'].textContent, 'Saved');   // load() keeps the line
   for (const stale of [rec({event_id: 5, collection: false, screen: '/planning/complete-sets'}), rec({event_id: 5, collection: false})]) {
     const other = page({rows: [], stored: stale, fetcher: () => ({ok: true, json: async () => ({fields: FIELDS, rows: []})})}); await sleep(20);
     assert.equal(other.nodes['[data-bp-undo]'].hidden, true); assert.notEqual(other.nodes['[data-bp-message]'].textContent, 'Saved'); assert.equal(other.store.has('bw-planning-receipt'), false);

@@ -171,7 +171,7 @@ def render(entries: list[dict], out_for, chrome: str) -> list[Path]:
                         target = out_for(entry, width, theme)
                         written.append(target)
                         jobs.append({'url': base + entry['path'], 'out': str(target), 'width': width, 'theme': theme,
-                                     'max': MAX_HEIGHT, **{k: entry[k] for k in ('wait', 'script', 'max') if k in entry}})
+                                     'max': MAX_HEIGHT, **{k: entry[k] for k in ('wait', 'script', 'max', 'sheet_below') if k in entry}})
             run_jobs(jobs, scratch, chrome)
     return written
 

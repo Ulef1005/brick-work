@@ -3,10 +3,10 @@
     node scripts/capture_screens.cjs CHROME JOBS.json
 
 JOBS.json is {"headers": {...optional, e.g. Cookie}, "deterministic"?: true, "now"?: ISO time, "jobs": [{"url", "out", "width", "height"?, "theme": "light"|"dark",
-"wait"?: CSS selector, "script"?: JS run before the capture (open a sheet, tick a box), "max"?: px, default 3000}]}.
+"wait"?: CSS selector, "script"?: JS run before the capture (open a sheet, tick a box), "max"?: px, default 3000, "sheet_below"?: px}]}.
 "deterministic" (the screenshot gate, scripts/screen_gate.py) starts every capture from an empty browser (no cache, no stored data, empty web storage), loads every declared font face, turns animations and transitions off, hides the caret, asks for reduced motion and, with "now",
 fixes the page's clock (Date) at that instant. The theme is the system preference (the app's default mode). A page is captured whole with the viewport grown to its height (fixed
-bars at its foot), clipped to its first `max` px; with a sheet open (`dialog[open]`) one viewport is captured, as the device shows it. */
+bars at its foot), clipped to its first `max` px; with a sheet open (`dialog[open]`) one viewport is captured, as the device shows it; so is a job below its `sheet_below` width. */
 const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),{spawn}=require('node:child_process');
 const [chrome,jobsFile]=process.argv.slice(2);
 if(!chrome||!jobsFile){console.error('usage: node scripts/capture_screens.cjs CHROME JOBS.json');process.exit(2);}
@@ -53,7 +53,7 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
   await delay(250);
   // An open sheet is shown as the device sees it (one viewport); a page is shown whole, with the viewport grown to its height so the
   // fixed bars (phone tab bar, save bar) sit at its foot rather than across the middle of the capture.
-  const sheet=await evaluate("!!document.querySelector('dialog[open]')");
+  const sheet=(job.sheet_below&&width<job.sheet_below)||await evaluate("!!document.querySelector('dialog[open]')");   // sheet_below: a sheet that is not a dialog (a fixed panel) is still one viewport on a phone
   let shotHeight=height;
   if(!sheet){
    const full=await evaluate('Math.max(document.documentElement.scrollHeight,document.body.scrollHeight)');

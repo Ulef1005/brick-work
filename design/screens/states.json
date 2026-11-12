@@ -381,6 +381,7 @@
    "world": "showcase",
    "path": "/collection/P",
    "script": "document.querySelector(\"[data-bc-filters]\").click();await new Promise(r=>setTimeout(r,300));",
+   "sheet_below": 600,
    "built": true,
    "approved": false
   },
@@ -454,6 +455,7 @@
    "world": "showcase",
    "path": "/collection/sets",
    "script": "document.querySelector(\"[data-bc-filters]\").click();await new Promise(r=>setTimeout(r,300));",
+   "sheet_below": 600,
    "built": true,
    "approved": false
   },
@@ -649,8 +651,8 @@
    "screen": "36-Check-this-copy",
    "section": "12a",
    "state": "checked",
-   "world": "showcase",
-   "path": "/workbench/check-parts/0133c51c-12df-57b3-97c1-93ce94e8691d",
+   "world": "extras",
+   "path": "/workbench/check-parts/9d6269ab-614d-549e-90ce-ca84e84afded",
    "built": true,
    "approved": false
   },
@@ -711,8 +713,8 @@
    "screen": "40-Check-figure-parts",
    "section": "12e",
    "state": "",
-   "world": "showcase",
-   "path": "/workbench/check-parts/0133c51c-12df-57b3-97c1-93ce94e8691d/figure/1",
+   "world": "extras",
+   "path": "/workbench/check-parts/2e46e1e6-3019-5315-aa7d-c596a5d6a280/figure/26",
    "built": true,
    "approved": false
   },

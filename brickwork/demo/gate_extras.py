@@ -6,6 +6,7 @@ for the screens that need what is added here:
 
 * an instruction booklet and a box (kinds the demo dataset does not hold), with a price record that is stale, one with a single sale and a
   box that has no price at all (the module states of screen 16);
+* a copy whose check is finished and marked "Set is checked" (the landing page with Check again, screen 36), and a figure check under way (screen 40);
 * a wish whose maximum price is in dollars, while its price is in euros: the verdict is "Not comparable" (screen 46).
 
 Everything is invented and deterministic (its own fixed seed, the demo clock). The numbers sit in a range no catalogue uses (998xx-1)."""
@@ -13,7 +14,9 @@ from contextlib import closing
 import random
 import sqlite3
 
-from ..core import items, stock
+import uuid
+
+from ..core import checker, items, stock
 from ..core.transaction import transaction
 from . import clock, dataset, showcase
 
@@ -22,6 +25,8 @@ BOOKLET = ('99801-1', 'Instructions, Harbour Lighthouse', 2009)
 BOX = ('99802-1', 'Box, Harbour Lighthouse', 2009)
 BOX_BARE = ('99803-1', 'Box, Fishing Cutter', 2012)
 DOLLAR_WISH = ('99209-1', 'Lakeside Pier', 2021, 'Town / Harbour', 5101, 1320)     # wished in dollars (the showcase wishes are all in euros)
+FINISHED_COPY = ('99121-1', 'a')     # a check answered to the end and finished as checked
+FIGURE_COPY = ('99112-1', 'a')       # one figure of it checked: two parts answered
 KINDS = {BOOKLET[0]: 'instructions', BOX[0]: 'box', BOX_BARE[0]: 'box'}
 
 
@@ -62,6 +67,28 @@ class Layer(showcase.Layer):
             db.execute('''INSERT INTO wish(id, wishlist_id, kind, item_id, color_id, quantity, condition, max_price, max_price_currency, added_at, updated_at)
                           VALUES('wish-usd-pier', 'wl-birthday', 'set', ?, NULL, 1, 'new', '550.00', 'USD', ?, ?)''', (wish, dataset.STAMP, dataset.STAMP))
             dataset.price(db, wish, None, 'N', 612.0, 9, '2026-10-12T06:00:00.000Z', low=540.0, high=690.0)
+        self.checks(db)
+
+    def checks(self, db):
+        """A finished set check and a running figure check, made with the checker's own writes (what Set Inspector leaves behind)."""
+        def call(copy_id, figure=None, **payload):
+            return checker.write(db, copy_id, dict(operation=str(uuid.uuid4()), **payload), figure=figure)
+        copy_id = showcase.uid('copy', *FINISHED_COPY)
+        call(copy_id, action='start', order='inventory')
+        state = checker.view(db, copy_id)
+        rows = {r['token']: r for r in state['rows']}
+        for token in [t for t in state['session']['order'] if rows[t]['kind'] != 'spare']:
+            call(copy_id, action='answer', session=state['session']['id'], token=token, found=rows[token]['quantity'] or 0)
+        if any(r['kind'] == 'spare' for r in rows.values()):
+            call(copy_id, action='spares', session=state['session']['id'], include=False)
+        call(copy_id, action='finish', session=state['session']['id'], checked=True)
+        copy_id = showcase.uid('copy', *FIGURE_COPY)
+        figure = db.execute('SELECT id FROM copy_figure WHERE copy_id=? AND retired_at IS NULL ORDER BY id LIMIT 1', (copy_id,)).fetchone()[0]
+        call(copy_id, figure=figure, action='start', order='inventory')
+        state = checker.figure_view(db, copy_id, figure)
+        rows = {r['token']: r for r in state['rows']}
+        for token in state['session']['order'][:2]:
+            call(copy_id, figure=figure, action='answer', session=state['session']['id'], token=token, found=rows[token]['quantity'] or 0)
 
 
 def layer(data=dataset.DATA, pictures=True):

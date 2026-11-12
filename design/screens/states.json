@@ -173,7 +173,7 @@
    "script": "document.querySelector(\"[data-bc-list]\").hidden=true;",
    "max": 3000,
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "15-Part-lot",
@@ -471,7 +471,7 @@
     1024
    ],
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "26-First-run-without-keys",

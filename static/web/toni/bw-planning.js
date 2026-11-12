@@ -19,6 +19,8 @@
   let receipt=null,visible=records;
   const receiptKey='bw-planning-receipt';
   try{receipt=JSON.parse(sessionStorage.getItem(receiptKey));}catch(_){}
+  // #236: a receipt belongs to the screen that made it; on any other Planning screen it is dropped, not shown.
+  if(receipt&&receipt.screen!==location.pathname){receipt=null;try{sessionStorage.removeItem(receiptKey);}catch(_){}}
   if(receipt){undo.hidden=false;message.textContent='Saved';}   // #224: the Undo button beside it says Undo; the text no longer does too
   const exp=root.querySelector('[data-bp-export]');
   function syncExport(){
@@ -68,7 +70,7 @@
   async function send(action,data,collection=false){
     const response=await fetch((collection?root.dataset.collectionUrl:root.dataset.saveUrl).replace('ACTION',action),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...data,csrf_token:root.dataset.csrf})});
     const result=await response.json();if(!response.ok)throw new Error(result.message||'Not saved · try again');
-    if(result.event_id && action!=='undo'){receipt={event_id:result.event_id,collection};sessionStorage.setItem(receiptKey,JSON.stringify(receipt));undo.hidden=false;}
+    if(result.event_id && action!=='undo'){receipt={event_id:result.event_id,collection,screen:location.pathname};sessionStorage.setItem(receiptKey,JSON.stringify(receipt));undo.hidden=false;}
     message.textContent=result.message;return result;
   }
   async function run(button,operation,reload=false){button.disabled=true;message.textContent='Saving';try{await operation();if(reload)location.reload();}catch(e){message.textContent=e.message;}finally{button.disabled=false;}}

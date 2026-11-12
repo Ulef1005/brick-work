@@ -7,17 +7,19 @@
     const key='bw-wishlists-receipt';
     let receipt;
     try { receipt=JSON.parse(sessionStorage.getItem(key)); } catch (_) {}
+    // #236: a receipt belongs to the screen that made it; elsewhere it is dropped, not shown.
+    if(receipt&&receipt.screen!==location.pathname){receipt=null;try{sessionStorage.removeItem(key);}catch(_){}}
     if(receipt){undo.hidden=false;message.textContent='Saved';}   // #224: the Undo button beside it says Undo; the text no longer does too
     async function send(action,data){
       const response=await fetch(root.dataset.wlUrl.replace('ACTION',action),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...data,csrf_token:root.dataset.csrf})});
       const result=await response.json();
       if(!response.ok)throw Error(result.message || 'Could not save');
       if(action==='undo')sessionStorage.removeItem(key);
-      else if(result.event_id)sessionStorage.setItem(key,JSON.stringify(result.event_id));
+      else if(result.event_id)sessionStorage.setItem(key,JSON.stringify({event_id:result.event_id,screen:location.pathname}));
       location.reload();
     }
     async function run(button,fn){button.disabled=true;try{await fn();}catch(e){message.textContent=e.message;}finally{button.disabled=false;}}
-    undo.addEventListener('click',()=>run(undo,async()=>{await send('undo',{event_id:receipt});sessionStorage.removeItem(key);}));
+    undo.addEventListener('click',()=>run(undo,async()=>{await send('undo',{event_id:receipt.event_id});sessionStorage.removeItem(key);}));
     root.querySelectorAll('[data-wl-open]').forEach(b=>b.addEventListener('click',()=>document.getElementById(b.dataset.wlOpen).showModal()));
     root.querySelectorAll('[data-wl-close]').forEach(b=>b.addEventListener('click',()=>b.closest('dialog').close()));
     const selected=()=>[...document.querySelectorAll('[data-wl-selected]:checked')].map(c=>c.value);

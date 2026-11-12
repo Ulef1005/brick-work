@@ -19,7 +19,7 @@
         const response = await fetch(root.dataset.saveUrl.replace('ACTION', 'found-one'), {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)});
         const result = await response.json();
         if (!response.ok) throw new Error(result.message || 'Not saved · try again');
-        try { sessionStorage.setItem(receiptKey, JSON.stringify(result)); } catch (_) {}
+        try { sessionStorage.setItem(receiptKey, JSON.stringify({...result, screen: location.pathname})); } catch (_) {}
         location.reload();
       } catch (error) {
         if (note) note.textContent = error.message;
@@ -55,7 +55,7 @@
         const response = await fetch(root.dataset.saveUrl.replace('ACTION', 'take'), {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)});
         const result = await response.json();
         if (!response.ok) throw new Error(result.message || 'Not saved · try again');
-        try { sessionStorage.setItem(receiptKey, JSON.stringify(result)); } catch (_) {}
+        try { sessionStorage.setItem(receiptKey, JSON.stringify({...result, screen: location.pathname})); } catch (_) {}
         location.reload();
       } catch (error) {
         if (note) note.textContent = error.message;

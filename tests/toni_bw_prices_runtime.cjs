@@ -101,7 +101,7 @@ function page({rows, kind = '', editable = true, stored = null, fetcher}) {
   const context = {
     window: {adminShell: {open() {}}}, Intl, JSON, Number, String, Set, Math, Array, Object, URLSearchParams, Promise, setTimeout, clearTimeout, console,
     document: {querySelector: s => s === '#bw-planning' ? root : null, getElementById: () => null, addEventListener() {}, createElement: tag => new El(tag.toUpperCase())},
-    sessionStorage: {getItem: k => store.get(k) ?? null, setItem: (k, v) => store.set(k, v), removeItem: k => store.delete(k)}, location: {reload() { calls.push('reload'); }},
+    sessionStorage: {getItem: k => store.get(k) ?? null, setItem: (k, v) => store.set(k, v), removeItem: k => store.delete(k)}, location: {pathname: '/planning/prices', reload() { calls.push('reload'); }},
     fetch: async (url, init) => { calls.push([url, init]); const r = await fetcher(url, init); return {headers: {get: () => 'application/json'}, ...r}; }};
   vm.createContext(context); vm.runInContext(formatting, context); vm.runInContext(script, context);
   return {root, nodes, container, search, sort, order, filters, chips, calls, store, context};
@@ -190,5 +190,17 @@ const keys = html => [...html.matchAll(/data-key="([^"]+)"/g)].map(m => m[1]);
   const none = page({rows: [], fetcher: () => ({ok: true, json: async () => ({fields: FIELDS, rows: []})})}); await sleep(20);
   assert.equal(none.nodes['[data-bp-empty]'].hidden, false); assert.equal(none.container.next.hidden, true); assert.equal(none.nodes['[data-bp-refresh-all]'].disabled, true);
   assert.equal(none.chips[1].disabled, true); assert.equal(none.chips[4].disabled, true);
+  // #236: the saved line reads just "Saved" beside the one Undo button, and a receipt made on another Planning screen is dropped here.
+  const rec = (receipt) => ({'bw-planning-receipt': JSON.stringify(receipt)});
+  const own = page({rows: [], stored: rec({event_id: 5, collection: false, screen: '/planning/prices'}), fetcher: () => ({ok: true, json: async () => ({fields: FIELDS, rows: []})})});
+  assert.equal(own.nodes['[data-bp-undo]'].hidden, false); await sleep(20); assert.doesNotMatch(script, /Saved \u00b7 Undo/); assert.equal(own.nodes['[data-bp-message]'].textContent, 'Saved');   // load() keeps the line
+  for (const stale of [rec({event_id: 5, collection: false, screen: '/planning/complete-sets'}), rec({event_id: 5, collection: false})]) {
+    const other = page({rows: [], stored: stale, fetcher: () => ({ok: true, json: async () => ({fields: FIELDS, rows: []})})}); await sleep(20);
+    assert.equal(other.nodes['[data-bp-undo]'].hidden, true); assert.notEqual(other.nodes['[data-bp-message]'].textContent, 'Saved'); assert.equal(other.store.has('bw-planning-receipt'), false);
+  }
+  const saver = page({rows: many, fetcher: (url) => url === '/planning/prices/records' ? {ok: true, json: async () => ({fields: FIELDS, rows: many})} : {ok: true, json: async () => ({message: 'Price refresh queued', event_id: 9})}}); await sleep(20);
+  const one = Object.assign(new El('BUTTON'), {dataset: {bpRefresh: '100'}});
+  await saver.container.fire('click', {target: Object.assign(one, {closest: s => s === '[data-bp-refresh]' ? one : null})}); await sleep(5);
+  deq(JSON.parse(saver.store.get('bw-planning-receipt')), {event_id: 9, collection: false, screen: '/planning/prices'});
   console.log('prices runtime ok');
 })().catch(e => { console.error(e); process.exit(1); });

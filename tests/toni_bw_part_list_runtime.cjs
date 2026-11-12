@@ -24,7 +24,7 @@ const node = (props = {}) => ({dataset: {}, listeners: {}, hidden: false, checke
   querySelectorAll: s => s === '[data-bc-part-list]' ? [opener] : []});
  const context = {document: {querySelector: s => s === '#bw-collection' ? root : null, getElementById: id => id === 'bc-part-list' ? dialog : null},
   sessionStorage: {getItem: k => store[k] ?? null, setItem: (k, v) => { store[k] = v; }, removeItem: k => { delete store[k]; }},
-  location: {reload() { reloads.push(1); }},
+  location: {pathname: '/collection/P', reload() { reloads.push(1); }},
   fetch: async (url, options = {}) => {
    if (options.body) { sent.push({url, body: JSON.parse(options.body)}); return {ok: true, json: async () => ({event_id: 7, message: 'Part list switched'})}; }
    return {ok: true, text: async () => '<form></form>'};
@@ -34,7 +34,7 @@ const node = (props = {}) => ({dataset: {}, listeners: {}, hidden: false, checke
  assert.equal(dialog.open, true);
  // The latest Rebrickable version can be remembered: the ticked box is sent.
  await form.fire('submit');
- assert.equal(sent.at(-1).body.choice, 'rebrickable:3');assert.equal(sent.at(-1).body.preference, true);assert.equal(store['bw-collection-receipt'], JSON.stringify({event_id: 7, message: 'Part list switched'}));
+ assert.equal(sent.at(-1).body.choice, 'rebrickable:3');assert.equal(sent.at(-1).body.preference, true);assert.equal(store['bw-collection-receipt'], JSON.stringify({event_id: 7, message: 'Part list switched', screen: '/collection/P'}));
  // A fetched Rebrickable list cannot: the box is hidden, cleared, and never sent ticked.
  radios[0].checked = false;radios[1].checked = true;await radios[1].fire('change');
  assert.equal(label.hidden, true);assert.equal(box.checked, false);

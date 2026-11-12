@@ -999,6 +999,8 @@ def test_wishlist_save_feedback_one_line_and_chip_gap(world, client):
     for script in ('bw-planning.js', 'bw-wishlists.js'):
         js = (ROOT / 'static/web/toni' / script).read_text()
         assert "'Saved · Undo'" not in js and "message.textContent='Saved'" in js, script
+    for script in sorted((ROOT / 'static/web/toni').glob('bw-*.js')):  # #236: no save line says Undo beside its Undo button
+        assert '· Undo' not in script.read_text(), script.name
     planning = (ROOT / 'static/web/toni/bw-planning.css').read_text()
     assert re.search(r'#bw-planning \.bp-save-feedback \{[^}]*display:flex;align-items:center', planning)
     wishlists = (ROOT / 'static/web/toni/bw-wishlists.css').read_text()

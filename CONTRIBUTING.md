@@ -74,6 +74,8 @@ The release commit bumps the image tag in `compose.yaml` together with `brickwor
 
 To build an existing tag again, run the workflow by hand with that tag.
 
+The full checklist, from deciding the release to what follows the tag (changelog, user docs, upgrade guide, pictures, website, demo, image checks, Unraid template), is in [RELEASING](RELEASING.md).
+
 ## Licence of contributions
 
 Brick Work is MIT-licensed. By submitting a contribution you agree that it is licensed under the same [MIT licence](LICENSE) as the project (inbound = outbound). No sign-off or CLA is required.

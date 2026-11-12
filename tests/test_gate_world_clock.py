@@ -120,7 +120,7 @@ def problems(folder: Path, built_from: dt.datetime, built_to: dt.datetime) -> li
             for (table, column, reason), values in sorted(bad.items())]
 
 
-@pytest.mark.parametrize('name', ['demo', 'showcase', 'extras'])
+@pytest.mark.parametrize('name', ['demo', 'showcase', 'extras', 'edge', 'edge-empty'])
 def test_every_timestamp_in_the_gate_world_is_the_demo_clock(name):
     built_from = dt.datetime.now(dt.timezone.utc) - dt.timedelta(seconds=2)
     with gate.world(name):

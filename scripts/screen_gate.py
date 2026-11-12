@@ -91,26 +91,60 @@ def world_folder():
 
 # The version the footer shows in the gate's world. The baselines were rendered when the footer said 1.0.0; the constant keeps that text for good.
 GATE_VERSION = '1.0.0'
-WORLDS = ('demo', 'showcase', 'extras')
+WORLDS = ('demo', 'showcase', 'extras', 'edge', 'edge-read-only', 'edge-empty')
+
+
+def build_store(name: str, store: Path) -> None:
+    """Build the invented collection of world `name` at `store` (and its catalogue beside it), with its staged checks. The one place a gate world's data
+    is made, so a test can build exactly what the gate renders (tests/test_gate_edge_world.py proves the three older worlds did not change)."""
+    from brickwork.demo import checks, dataset, gate_edge, gate_extras, showcase
+    layers = {'demo': None, 'showcase': showcase.layer, 'extras': gate_extras.layer, 'edge': gate_edge.layer, 'edge-read-only': gate_edge.layer, 'edge-empty': gate_edge.empty_layer}
+    dataset.build(store, layer=layers[name]() if layers[name] else None)
+    checks.stage(store, showcase.CHECKS if name != 'demo' else None)
+
+
+@contextmanager
+def edge_seams(name: str):
+    """What only the edge worlds switch on (brickwork/demo/gate_edge.py): BrickLink looks configured, so Update price is offered, and the photo recognition is
+    answered by a staged reply instead of the network. Nothing is changed for any other world, and both are put back when the world is gone."""
+    if not name.startswith('edge'):
+        yield
+        return
+    from brickwork.core.sources import base
+    from brickwork.demo import gate_edge
+    saved_keys = {k: os.environ.get(k) for k in gate_edge.KEYS}
+    saved_transport = base.transport
+    os.environ.update(gate_edge.KEYS)
+    base.transport = gate_edge.transport
+    try:
+        yield
+    finally:
+        base.transport = saved_transport
+        for key, value in saved_keys.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
 
 
 @contextmanager
 def world(name: str, warm_up: list[str] = ()):
     """Serve the invented world `name` on 127.0.0.1 ('demo', the gate's; 'showcase', the richer layer of the exported demo and the site's pictures; 'extras',
-    the showcase plus what the other worlds lack, brickwork/demo/gate_extras.py, #268); yields its base URL. The `warm_up` paths are requested once before the clock is frozen,
+    the showcase plus what the other worlds lack, brickwork/demo/gate_extras.py, #268; 'edge', 'edge-read-only' and 'edge-empty', the extras plus the data and seams of
+    brickwork/demo/gate_edge.py, #268); yields its base URL. The `warm_up` paths are requested once before the clock is frozen,
     so that every module a page imports lazily has been imported by then."""
-    from brickwork.demo import checks, dataset, gate_extras, showcase
     saved = {k: os.environ.get(k) for k in ('BW_DB_PATH', 'BW_EMBEDDED_WORKER', 'BW_ALLOW_NO_LOGIN', 'BW_AUTHENTICATION_PASSWORD')}
-    with world_folder() as scratch:
+    with world_folder() as scratch, edge_seams(name):
         if name not in WORLDS:
             raise ValueError(f'unknown world {name}')
         store = Path(scratch) / 'brickwork.db'
-        dataset.build(store, layer={'demo': None, 'showcase': showcase, 'extras': gate_extras}[name].layer() if name != 'demo' else None)
-        checks.stage(store, showcase.CHECKS if name != 'demo' else None)
+        build_store(name, store)
         from brickwork.core import thumbnails
         thumbnails.pregenerate(store)   # every thumbnail exists before the first capture: the first request for a picture is answered with the original file while the thumbnail is built, so the first capture to show a picture would differ from the rest (#268)
         from brickwork.demo.export import make_app
         app = make_app(store)
+        if name.startswith('edge'):
+            app.config['BW_READ_ONLY'] = name == 'edge-read-only'
         app.config['GATE_SHOWN_VERSION'] = GATE_VERSION   # the footer shows a constant, so a release never changes a baseline (#257)
         client = app.test_client()
         for path in warm_up:
@@ -179,7 +213,7 @@ def render(entries: list[dict], out_for, chrome: str) -> list[Path]:
                         target = out_for(entry, width, theme)
                         written.append(target)
                         jobs.append({'url': base + entry['path'], 'out': str(target), 'width': width, 'theme': theme,
-                                     'max': MAX_HEIGHT, **{k: entry[k] for k in ('wait', 'script', 'max', 'sheet_below') if k in entry}})
+                                     'max': MAX_HEIGHT, **{k: entry[k] for k in ('wait', 'script', 'max', 'sheet_below', 'javascript') if k in entry}})
             run_jobs(jobs, scratch, chrome)
     return written
 

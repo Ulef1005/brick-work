@@ -3,7 +3,8 @@
     node scripts/capture_screens.cjs CHROME JOBS.json
 
 JOBS.json is {"headers": {...optional, e.g. Cookie}, "deterministic"?: true, "now"?: ISO time, "jobs": [{"url", "out", "width", "height"?, "theme": "light"|"dark",
-"wait"?: CSS selector, "script"?: JS run before the capture (open a sheet, tick a box), "max"?: px, default 3000, "sheet_below"?: px}]}.
+"wait"?: CSS selector, "script"?: JS run before the capture (open a sheet, tick a box), "max"?: px, default 3000, "sheet_below"?: px,
+"javascript"?: false renders the page with scripts switched off (the app's no-script fallback; every other job runs with them on)}]}.
 "deterministic" (the screenshot gate, scripts/screen_gate.py) starts every capture from an empty browser (no cache, no stored data, empty web storage), loads every declared font face, turns animations and transitions off, hides the caret, asks for reduced motion and, with "now",
 fixes the page's clock (Date) at that instant. The theme is the system preference (the app's default mode). A page is captured whole with the viewport grown to its height (fixed
 bars at its foot), clipped to its first `max` px; with a sheet open (`dialog[open]`) one viewport is captured, as the device shows it; so is a job below its `sheet_below` width. */
@@ -42,6 +43,7 @@ let browser=null;
   const width=job.width,height=job.height||(width<600?844:width<1100?1024:900),max=job.max||3000;
   await call('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:width<600?2:1,mobile:width<600});
   await call('Emulation.setEmulatedMedia',{features:[{name:'prefers-color-scheme',value:job.theme==='dark'?'dark':'light'},...(deterministic?[{name:'prefers-reduced-motion',value:'reduce'}]:[])]});
+  await call('Emulation.setScriptExecutionDisabled',{value:job.javascript===false});   // set for every job, so a no-script capture never leaks into the next one of the session
   await call('Page.navigate',{url:job.url});
   for(let i=0;i<200;i++){if(await evaluate(`document.readyState==='complete'${job.wait?` && !!document.querySelector(${JSON.stringify(job.wait)})`:''}`))break;await delay(50);}
   await evaluate("document.fonts?Promise.all([...document.fonts].map(f=>f.load().catch(()=>null))).then(()=>document.fonts.ready).then(()=>true):true");   // every declared face loaded, not only those the first paint asked for

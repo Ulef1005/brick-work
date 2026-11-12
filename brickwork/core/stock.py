@@ -42,10 +42,10 @@ def dependents(db, stock_id):
                           UNION ALL SELECT 1 FROM main.allocation WHERE stock_id=:s LIMIT 1''', {'s': stock_id}).fetchone() is not None
 
 
-def add_loose(db, *, item_id, color_id=None, quantity, condition, lot_id=None, storage_id=None, note=None, via=None, actor=None):
+def add_loose(db, *, item_id, color_id=None, quantity, condition, lot_id=None, storage_id=None, note=None, via=None, actor=None, record=True):
     """Add `quantity` of an item to loose stock: onto the live row with the same merge key, else a new row. A part needs a colour
     and any other kind has none. Returns the change `{id, created, quantity, before, after}` (rows as dicts), which is what
-    `undo_added` needs and what the Add receipt keeps."""
+    `undo_added` needs and what the Add receipt keeps. `record=False` writes no audit event: the caller's own event is the receipt (the pull list's Make it a copy)."""
     if not db.in_transaction:
         raise ValueError('Loose stock must be added in a transaction')
     if isinstance(quantity, bool) or not isinstance(quantity, int) or quantity <= 0:
@@ -83,7 +83,8 @@ def add_loose(db, *, item_id, color_id=None, quantity, condition, lot_id=None, s
         db.executemany('INSERT INTO main.stock_part(stock_id, item_id, color_id, is_spare, quantity) VALUES(?, ?, ?, ?, ?)',
                        [(stock_id, *line) for line in lines])
     after = dict(db.execute('SELECT * FROM main.stock WHERE id=?', (stock_id,)).fetchone())
-    audit(db, 'stock:' + stock_id, 'increased' if before else 'created', before, after, via=via, actor=actor)
+    if record:
+        audit(db, 'stock:' + stock_id, 'increased' if before else 'created', before, after, via=via, actor=actor)
     return dict(id=stock_id, created=before is None, quantity=quantity, before=before, after=after, parts=part_digest(db, stock_id) if kind == 'minifigure' else None)
 
 

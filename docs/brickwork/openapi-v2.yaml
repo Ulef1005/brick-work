@@ -3684,6 +3684,135 @@ paths:
         default:
           $ref: '#/components/responses/Problem'
       x-piece: M.11c
+  /lots/{id}/pull-list/{set_id}:
+    get:
+      operationId: get_lots_by_id_pull_list_by_set_id
+      x-mcp-tool: get_lot_pull_list
+      summary: 'The pull list of a set for a lot (#202, Lot Detective): the set''s lines with what each needs, what the lot holds and what is found so far.'
+      description: 'The set''s own parts (the latest Rebrickable list, sub-sets expanded, spares left out) and its whole minifigures, as Build Scout reads them.
+        Per line: `need` (what the set has), `held` (what the lot can give: damaged rows give nothing), `found` (`held` plus the pieces ticked in the bulk
+        and not filed yet, never above `need`) and `to_find`. `totals` count pieces over all lines: `moves` is what Make it a copy would move out of the lot,
+        `missing` what it would record as missing on the copy and `stays` what the lot keeps. Lines come in category then number order (whole figures last);
+        `show` keeps the lines still to find (`find`), the complete ones (`found`) or all. `refusal` says why Make it a copy would be refused (a set made of
+        other sets, nothing found yet). Read-only; an unknown lot or set is 404, a set with no part list 422.'
+      tags:
+      - Lots
+      security:
+      - bearerAuth:
+        - read
+      parameters:
+      - $ref: '#/components/parameters/Path_id'
+      - $ref: '#/components/parameters/Path_set_item_id'
+      - name: show
+        in: query
+        description: Which lines to list; the totals always count the whole list.
+        schema:
+          type: string
+          enum:
+          - find
+          - found
+          - all
+          default: all
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 500
+          default: 100
+      - name: offset
+        in: query
+        schema:
+          type: integer
+          minimum: 0
+          default: 0
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PullListPage'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Invalid'
+        default:
+          $ref: '#/components/responses/Problem'
+      x-piece: M.11b
+  /lots/{id}/pull-list/{set_id}/found:
+    post:
+      operationId: post_lots_by_id_pull_list_by_set_id_found
+      summary: 'Save how many of one part of the pull list are found (an absolute count, idempotent; kept between visits). Not an event: nothing to undo.'
+      description: 'The count includes what the lot already holds of the line (`held`); a count below it only drops the pieces ticked in the bulk. Pieces ticked
+        and not in the lot yet are filed in the lot, as found in the bulk, when Make it a copy runs. The line must be on the list (422 otherwise) and `found`
+        is 0 to its `need`. `event_id` and `undo_url` are always null.'
+      tags:
+      - Lots
+      security:
+      - bearerAuth:
+        - write
+      parameters:
+      - $ref: '#/components/parameters/Path_id'
+      - $ref: '#/components/parameters/Path_set_item_id'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PullFound'
+      responses:
+        '200':
+          description: Done.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WrittenPullFound'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Invalid'
+        default:
+          $ref: '#/components/responses/Problem'
+      x-piece: M.11c
+  /lots/{id}/pull-list/{set_id}/make-copy:
+    post:
+      operationId: post_lots_by_id_pull_list_by_set_id_make_copy
+      x-mcp-tool: make_copy_from_lot
+      summary: 'Make it a copy (#202): the found pieces of the pull list move out of the lot into a new copy of the set, the rest recorded as missing on it. One undoable event.'
+      description: 'One transaction and one event (`copy` / `make_from_stock`). The pieces ticked in the bulk are filed in the lot first, then exactly the found
+        counts move from the lot''s stock rows into the copy (nothing of another lot); everything the set has and was not found is recorded as missing on the
+        copy, which starts used, incomplete and not checked. The lot keeps the leftovers and the progress of this (lot, set) is cleared. Undo
+        (`POST /events/{id}/undo`) puts the stock back and archives the copy; the pieces ticked in the bulk stay filed in the lot. Refused with 422 and nothing
+        written: a set made of other sets, nothing found yet, a set with no part list.'
+      tags:
+      - Lots
+      security:
+      - bearerAuth:
+        - write
+      parameters:
+      - $ref: '#/components/parameters/Path_id'
+      - $ref: '#/components/parameters/Path_set_item_id'
+      - $ref: '#/components/parameters/IdempotencyKeyRequired'
+      responses:
+        '200':
+          description: Done.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WrittenCopyFromLot'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Invalid'
+        default:
+          $ref: '#/components/responses/Problem'
+      x-piece: M.11c
   /export/missing.csv:
     get:
       operationId: get_export_missing_csv
@@ -6971,6 +7100,15 @@ components:
         type: integer
         minimum: 1
       description: 'Brick Work item id. Ids are per install (design 3.1): store numbers, not ids.'
+    Path_set_item_id:
+      name: set_id
+      in: path
+      required: true
+      x-mcp-item: true
+      schema:
+        type: integer
+        minimum: 1
+      description: Brick Work item id of the set.
     Path_figure_item_id:
       name: item_id
       in: path
@@ -12216,6 +12354,249 @@ components:
           - $ref: '#/components/schemas/CandidatePicture'
           - type: 'null'
           description: The sticker sheet's picture.
+    PullListPage:
+      type: object
+      required:
+      - data
+      properties:
+        data:
+          $ref: '#/components/schemas/PullList'
+    PullList:
+      type: object
+      required:
+      - lot
+      - set
+      - totals
+      - nested
+      - refusal
+      - show
+      - total
+      - limit
+      - offset
+      - lines
+      properties:
+        lot:
+          type: object
+          required:
+          - id
+          - name
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+        set:
+          $ref: '#/components/schemas/Item'
+        totals:
+          $ref: '#/components/schemas/PullTotals'
+        nested:
+          type: boolean
+          description: The set is made of other sets; Make it a copy does not handle those yet.
+        refusal:
+          type:
+          - string
+          - 'null'
+          description: Why Make it a copy would be refused now, or null.
+        show:
+          type: string
+        total:
+          type: integer
+          description: How many lines `show` keeps.
+        limit:
+          type: integer
+        offset:
+          type: integer
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/PullLine'
+    PullTotals:
+      type: object
+      required:
+      - need
+      - held
+      - found
+      - to_find
+      - lines
+      - lines_to_find
+      - figures_need
+      - figures_found
+      - lot_pieces
+      - moves
+      properties:
+        need:
+          type: integer
+          description: Pieces the set has (parts and whole figures).
+        held:
+          type: integer
+          description: Of them, what the lot can give already.
+        found:
+          type: integer
+          description: '`held` plus the pieces ticked in the bulk.'
+        to_find:
+          type: integer
+        lines:
+          type: integer
+        lines_to_find:
+          type: integer
+        figures_need:
+          type: integer
+        figures_found:
+          type: integer
+        lot_pieces:
+          type: integer
+          description: Every piece the lot holds, damaged ones included.
+        moves:
+          type: object
+          required:
+          - moves
+          - missing
+          - stays
+          properties:
+            moves:
+              type: integer
+              description: Found pieces that would move out of the lot.
+            missing:
+              type: integer
+              description: Pieces recorded as missing on the copy.
+            stays:
+              type: integer
+              description: Pieces the lot would keep (the pieces ticked in the bulk are counted in, then moved).
+    PullLine:
+      type: object
+      required:
+      - item
+      - color
+      - kind
+      - category
+      - need
+      - held
+      - found
+      - to_find
+      - picture
+      properties:
+        item:
+          $ref: '#/components/schemas/Item'
+        color:
+          oneOf:
+          - $ref: '#/components/schemas/Color'
+          - type: 'null'
+        kind:
+          type: string
+          enum:
+          - part
+          - figure
+        category:
+          type: string
+          description: The part's catalogue category (Minifigures for a whole figure).
+        need:
+          type: integer
+        held:
+          type: integer
+        found:
+          type: integer
+        to_find:
+          type: integer
+        picture:
+          oneOf:
+          - $ref: '#/components/schemas/CandidatePicture'
+          - type: 'null'
+    PullFound:
+      type: object
+      description: One line of the pull list and how many of it are found.
+      properties:
+        item:
+          allOf:
+          - $ref: '#/components/schemas/ItemKey'
+          description: The part or whole minifigure, by number (decision 3) or by id.
+        color:
+          type:
+          - integer
+          - 'null'
+          description: 'A colour in the provider space of the item key (decision 4); a whole minifigure has none.'
+        found:
+          type: integer
+          minimum: 0
+          description: The count found so far, what the lot already holds included.
+      required:
+      - item
+      - found
+    PullFoundWritten:
+      type: object
+      required:
+      - line
+      - totals
+      properties:
+        line:
+          $ref: '#/components/schemas/PullLine'
+        totals:
+          $ref: '#/components/schemas/PullTotals'
+    WrittenPullFound:
+      type: object
+      required:
+      - data
+      - event_id
+      properties:
+        data:
+          $ref: '#/components/schemas/PullFoundWritten'
+        event_id:
+          type:
+          - integer
+          - 'null'
+        undo_url:
+          type:
+          - string
+          - 'null'
+        idempotent_replay:
+          type: boolean
+    CopyFromLot:
+      type: object
+      required:
+      - copy_id
+      - set
+      - pieces
+      - figures
+      - missing_parts
+      - missing_figures
+      - completeness
+      - stays
+      properties:
+        copy_id:
+          type: string
+        set:
+          $ref: '#/components/schemas/Item'
+        pieces:
+          type: integer
+          description: Parts that moved into the copy.
+        figures:
+          type: integer
+          description: Whole figures that moved into the copy.
+        missing_parts:
+          type: integer
+        missing_figures:
+          type: integer
+        completeness:
+          type: string
+          enum:
+          - complete
+          - incomplete
+        stays:
+          type: integer
+          description: Pieces the lot holds now.
+    WrittenCopyFromLot:
+      type: object
+      required:
+      - data
+      - event_id
+      properties:
+        data:
+          $ref: '#/components/schemas/CopyFromLot'
+        event_id:
+          type: integer
+        undo_url:
+          type: string
+        idempotent_replay:
+          type: boolean
     StickerConfirm:
       type: object
       required:

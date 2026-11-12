@@ -121,4 +121,4 @@ def test_the_501_placeholder_is_a_problem_that_names_its_piece(app4):
 def test_no_operation_is_left_to_the_501_placeholder(app4):
     assert pending() == []
     assert not [r.rule for r in app4.url_map.iter_rules() if hasattr(app4.view_functions[r.endpoint], 'piece')]
-    assert len(operations()) == 196
+    assert len(operations()) == 199

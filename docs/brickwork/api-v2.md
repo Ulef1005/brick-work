@@ -188,7 +188,7 @@ What the 60 read operations (M.11b) and the 67 write operations (M.11c, further 
 
 ### 3.1 Summary
 
-196 operations in all (M.11a 9, M.11b 60, M.11c 70, M.11d 57 by piece); v1 had 179 operations.
+199 operations in all (M.11a 9, M.11b 62, M.11c 71, M.11d 57 by piece); v1 had 179 operations.
 
 | Group | Operations | Pieces |
 |---|---|---|
@@ -548,7 +548,7 @@ The `?` item type and the `item_type`, `item_no` and `color_id` members are gone
 | **M.11d** | Orders, jobs, sources and keys, sync, imports, identifications, tokens, admin; the dead v1 callers removed | 57 |
 | **M.11e** | The MCP regenerated from this file, the v2 parity test, API and MCP docs. **Done** (2026-10-28) | none |
 
-Operations by piece: M.11a 9, M.11b 60, M.11c 70, M.11d 57 (196 in all). The two tables below are generated from the contract and the routes by `scripts/check_api_contract.py --write`, and that check (run by `scripts/check.sh`) fails when the contract, the routes or these tables disagree. A piece lands by adding itself to `brickwork.api2.DONE`.
+Operations by piece: M.11a 9, M.11b 62, M.11c 71, M.11d 57 (199 in all). The two tables below are generated from the contract and the routes by `scripts/check_api_contract.py --write`, and that check (run by `scripts/check.sh`) fails when the contract, the routes or these tables disagree. A piece lands by adding itself to `brickwork.api2.DONE`.
 
 ### Implemented
 
@@ -654,6 +654,9 @@ Operations by piece: M.11a 9, M.11b 60, M.11c 70, M.11d 57 (196 in all). The two
 | `GET /api/v2/lots/{id}` | M.11b | `brickwork.api2.places.get_lots_by_id` |
 | `PATCH /api/v2/lots/{id}` | M.11c | `brickwork.api2.write_where.patch_lots_by_id` |
 | `GET /api/v2/lots/{id}/candidate-sets` | M.11b | `brickwork.api2.ranking.get_lots_by_id_candidate_sets` |
+| `GET /api/v2/lots/{id}/pull-list/{set_id}` | M.11b | `brickwork.api2.pull_list.get_lots_by_id_pull_list_by_set_id` |
+| `POST /api/v2/lots/{id}/pull-list/{set_id}/found` | M.11c | `brickwork.api2.pull_list.post_lots_by_id_pull_list_by_set_id_found` |
+| `POST /api/v2/lots/{id}/pull-list/{set_id}/make-copy` | M.11c | `brickwork.api2.pull_list.post_lots_by_id_pull_list_by_set_id_make_copy` |
 | `POST /api/v2/lots/{id}/restore` | M.11c | `brickwork.api2.write_where.post_lots_by_id_restore` |
 | `DELETE /api/v2/lots/{id}/stock/{stock_id}/sticker` | M.11c | `brickwork.api2.stickers.delete_lots_by_id_stock_by_stock_id_sticker` |
 | `POST /api/v2/lots/{id}/stock/{stock_id}/sticker` | M.11c | `brickwork.api2.stickers.post_lots_by_id_stock_by_stock_id_sticker` |

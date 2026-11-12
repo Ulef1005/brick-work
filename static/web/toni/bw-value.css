@@ -26,7 +26,7 @@
 .bw-primary:is([disabled],[aria-disabled=true]) { background:var(--tw-surface-2)!important;border-color:var(--tw-divider-strong)!important;color:var(--tw-text-muted)!important;opacity:1!important; }
 
 /* ---- Paid vs value on Statistics (frames i57b) ---- */
-.bw-value-stats { grid-column:1 / -1;margin-top:16px;display:flex;flex-direction:column;gap:16px;background:var(--tw-surface-2);border:0;padding:20px; }
+.bw-value-stats { grid-column:1 / -1;margin-top:16px;display:flex;flex-direction:column;gap:16px;background:var(--tw-surface);border:0;padding:20px; }
 .bv-head { display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px; }
 .bv-lab { font:500 11px/14px var(--tw-font);letter-spacing:.1em;text-transform:uppercase;color:var(--tw-text-2); }
 .bv-title { margin:0;font:600 22px/28px var(--tw-font);letter-spacing:-.2px; }
@@ -103,10 +103,10 @@
 .br-tile img { width:100%;height:100%;object-fit:contain;display:block; }
 .br-tile.br-empty { background:transparent;border:1px dashed var(--tw-divider-strong);font:400 12px/16px var(--tw-font);color:var(--tw-text-muted);padding:0 4px;text-align:center; }
 .br-more { font:400 12px/16px var(--tw-mono);color:var(--tw-text-muted);margin-left:2px; }
-.br-empty { display:flex;flex-direction:column;gap:8px;align-items:flex-start; }
-.br-empty h2 { margin:0;font:600 16px/22px var(--tw-font); }
-.br-empty p { margin:0;color:var(--tw-text-2); }
-section.br-empty { background:var(--tw-surface-2);border-radius:16px;padding:20px;border:0; }
+.br-nodata { display:flex;flex-direction:column;gap:8px;align-items:flex-start; }
+.br-nodata h2 { margin:0;font:600 16px/22px var(--tw-font); }
+.br-nodata p { margin:0;color:var(--tw-text-2); }
+section.br-nodata { background:var(--tw-surface);border-radius:16px;padding:20px;border:0; }
 /* the shared pager (12h), as links */
 .br-pager { display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:4px 8px;margin-block:8px 0; }
 .br-pager .bc-page-numbers { display:flex;align-items:center;gap:4px; }

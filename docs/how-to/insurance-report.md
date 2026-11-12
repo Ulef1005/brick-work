@@ -23,9 +23,9 @@ The page shows 15 copies at a time with the pager at the foot. Print and Downloa
 
 1. Press **Print**. The report opens in a new tab as a print view and your browser's print dialog opens by itself.
 2. To keep it as a file, choose **Save as PDF** as the destination.
-3. Print it on A4, portrait. The first page carries the header with the totals; the following pages say "Insurance report, continued" and repeat the column heads; each page has "Page n of m" at the foot. A row and its photos are never split across two pages.
+3. Print it on A4, portrait. The first page carries the header with the totals; the following pages say "Insurance report, continued" and repeat the column heads; in browsers that support page counters each page has "Page n of m" at the foot. A row and its photos are never split across two pages.
 
-The print view is always light, whatever theme the app is in. If the dialog does not open, press **Print** in the toolbar at the top of the tab. Turn on **Background graphics** in the dialog if the pictures' white tiles look grey.
+The print view is always light, whatever theme the app is in. If the dialog does not open, press **Print** in the toolbar at the top of the tab.
 
 ## Download the CSV
 

@@ -68,7 +68,7 @@ def module(r, label):
         if r['worth_date']:
             parts.append(short_age(r['worth_date']))
         if r['worth_discount_pct']:
-            parts.append(f"incomplete, {r['worth_discount_pct']} % off")
+            parts.append(f"incomplete, {r['worth_discount_pct']}% off")
         stale = bool(r['worth_stale'])
     elif r['worth_reason'] == 'no_quote':
         parts = [wanted, 'no sales']

@@ -132,7 +132,7 @@ def test_a_gain_with_no_percent_shows_the_amount_only(coll, client):
 
 def test_only_a_copy_of_a_set_has_the_module(coll, client, world):
     assert module(client, coll, world.copy_a)[0] is not None
-    for url in (f'/collection/item/{world.brick}?colour={world.red}', f'/collection/item/{world.figure}'):
+    for url in (f'/collection/item/{world.brick}?colour={world.red}', f'/collection/item/{world.figure}', f'/collection/wishes/{world.wish_set}'):
         assert not soup(client, url).select('[data-module=value]'), url
 
 
@@ -340,7 +340,8 @@ def test_the_print_view_is_a_light_a4_document_that_prints_itself(coll, client):
     css = (ROOT / 'static/web/toni/bw-report-print.css').read_text()
     for rule in ('size:A4 portrait', 'counter(page)', 'counter(pages)', '.rp-copy { break-inside:avoid', '@page :first', 'Insurance report, continued'):
         assert rule in css
-    assert 'window.print()' in (ROOT / 'static/web/toni/bw-report-print.js').read_text()
+    script = (ROOT / 'static/web/toni/bw-report-print.js').read_text()
+    assert "addEventListener('load', () => window.print())" in script and not page.select('.rp-copy img[loading=lazy]')
 
 
 def test_the_csv_is_the_cores_report_with_the_api_file_name(coll, client, read):
@@ -356,7 +357,7 @@ def test_an_empty_collection_disables_both_outputs_and_offers_add_a_set(client):
     page = soup(client, '/manage/insurance-report')
     assert words(page.select_one('.br-title p')) == '0 copies'
     assert [(b.get_text(), b.has_attr('disabled')) for b in page.select('.br-actions button')] == [('Download CSV', True), ('Print', True)]
-    empty = page.select_one('.br-empty')
+    empty = page.select_one('.br-nodata')
     assert words(empty).startswith('No copies to report The report lists one row per copy.') and empty.select_one('a.button')['href'] == '/manage/add'
     assert not page.select('[data-copy-row], .br-proposal')
     printing = BeautifulSoup(client.get('/manage/insurance-report?print=1').data, 'html.parser')

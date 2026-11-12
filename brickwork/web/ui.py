@@ -202,7 +202,9 @@ def navigation():
             ('Tools & Admin', 'web.bw_tools', 'tools', (), {})])]
     endpoint = request.endpoint or ''
     area = endpoint.split('.')[0]
-    if endpoint=='web.bw_planning':
+    if endpoint in ('web.bw_planning_order','web.bw_planning_order_file'):
+        current='Complete sets'
+    elif endpoint=='web.bw_planning':
         current={'wishlist':'Wishlist','prices':'Prices','complete-sets':'Complete sets'}.get((request.view_args or {}).get('screen'),'Wishlist')
     elif endpoint.startswith('web.bw_collection_wish'):
         current = 'Wishlist'

@@ -47,6 +47,8 @@ When 9 in 10 of a copy's present lines have a used price, **Details** adds **Par
 
 Each line is an item, colour and condition with the quantity still to buy: with *Use loose stock* on, the quantity is the gap less your loose parts. A line Brick Work cannot name for BrickLink, because the item has no BrickLink number or its colour has none, is left out of the file and named in the message ("Exported · 1 left out: …"). The rest exports. Exporting works on a read-only instance too.
 
+To order the parts of many sets at once, with each line combined and showing which sets it comes from, press **Order missing parts** instead: see [Order the parts all your sets are missing](order-missing-parts.md).
+
 **Print missing parts of N** opens a printable list of the same copies; see [Check a set's parts](check-set-parts.md#export-the-gaps).
 
 ## What next

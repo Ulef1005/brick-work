@@ -1,6 +1,6 @@
 # Order the parts all your sets are missing
 
-*Unreleased (#225).*
+*Since 1.1.0.*
 
 Do this when several of your sets have gaps and you want one BrickLink wanted list for the parts of the sets you choose, with each line combined across them and showing which sets it comes from.
 

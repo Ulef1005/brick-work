@@ -1,6 +1,6 @@
 # Find the sets in a bulk lot
 
-*Since 1.0.2.*
+*Since 1.1.0.*
 
 A lot is a pile of loose parts bought together. **Set detection** on the lot page ranks the catalogue's sets by how strongly the parts in the lot point to them, so you can see which sets the pile was made from.
 

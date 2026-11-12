@@ -1,6 +1,6 @@
 # Mark a sticker
 
-*Since 1.0.2.*
+*Since 1.1.0.*
 
 The photo shows only the base part under a sticker, so the print is a clue only you can read. Mark the part as having a sticker; later you pick the sticker, and set detection uses it.
 

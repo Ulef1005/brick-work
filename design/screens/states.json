@@ -451,7 +451,7 @@
    "world": "demo",
    "path": "/planning/complete-sets",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "43-Complete-sets",

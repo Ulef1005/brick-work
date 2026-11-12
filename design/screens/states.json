@@ -12,7 +12,10 @@
  "worlds": {
   "demo": "the demo dataset (brickwork/demo/dataset.py on design/sources/test-data/), clock fixed at 2026-10-12T08:00:00Z",
   "showcase": "the demo world: the invented collection of brickwork/demo/showcase.py (orders, a lot, two-copy sets, staged checks), clock fixed at 2026-10-12T08:00:00Z",
-  "extras": "the showcase world plus brickwork/demo/gate_extras.py (an instruction, boxes, a dollar wish), for the screens the others cannot show"
+  "extras": "the showcase world plus brickwork/demo/gate_extras.py (an instruction, boxes, a dollar wish), for the screens the others cannot show",
+  "edge": "the extras world plus brickwork/demo/gate_edge.py (three unowned sets, a copy with spare lines and a spare pass under way, two pinned copies, a box with a listings record), with BrickLink looking configured and the photo recognition answered by a staged reply, for the states that were untested for want of data or a seam (#268)",
+  "edge-read-only": "the edge world on an instance switched to read-only (the environment setting, BW_READ_ONLY)",
+  "edge-empty": "the showcase catalogue with nothing owned: no copy, no stock, no wish"
  },
  "states": [
   {
@@ -234,10 +237,31 @@
   {
    "screen": "16-Module-states",
    "section": "2e",
-   "state": "loading-and-error",
-   "built": false,
-   "approved": false,
-   "reason": "the loading and error states of the Prices module need a provider that is slow or fails; the gate world runs offline and has no such seam. Listings-only needs a listings guide record the dataset does not write"
+   "state": "loading",
+   "world": "edge",
+   "path": "/collection/item/instructions/99872-1",
+   "script": "window.fetch=()=>Promise.resolve(new Response('{}',{status:200,headers:{'Content-Type':'application/json'}}));document.querySelector('[data-bc-fetch-prices]').click();await new Promise(r=>setTimeout(r,300));",
+   "built": true,
+   "approved": false
+  },
+  {
+   "screen": "16-Module-states",
+   "section": "2e",
+   "state": "error",
+   "world": "edge",
+   "path": "/collection/item/instructions/99872-1",
+   "script": "window.fetch=()=>Promise.resolve(new Response(JSON.stringify({message:\"BrickLink did not answer \\u00b7 timeout\"}),{status:502,headers:{'Content-Type':'application/json'}}));document.querySelector('[data-bc-fetch-prices]').click();await new Promise(r=>setTimeout(r,300));",
+   "built": true,
+   "approved": false
+  },
+  {
+   "screen": "16-Module-states",
+   "section": "2e",
+   "state": "listings-only",
+   "world": "edge",
+   "path": "/collection/item/box/99871-1",
+   "built": true,
+   "approved": false
   },
   {
    "screen": "17-Item-lists",
@@ -291,9 +315,10 @@
    "screen": "19-Item-lists",
    "section": "8a",
    "state": "read-only",
-   "built": false,
-   "approved": false,
-   "reason": "read-only needs an instance switched to read-only (an environment setting), which the gate world does not set"
+   "world": "edge-read-only",
+   "path": "/collection/P",
+   "built": true,
+   "approved": false
   },
   {
    "screen": "19-Item-lists",
@@ -347,7 +372,7 @@
    "state": "add-part-lot",
    "built": false,
    "approved": false,
-   "reason": "the Add into a lot switch of the Add page needs a typed part list and a review step, an interaction the gate has no script for yet"
+   "reason": "not in the app: the Add page has no \"Put these parts in a lot\" switch, no New lot / Existing lot choice and no lot name, price paid, date, place or storage fields (a lot is made from Part Spotter's batch dialog, from the loose parts list and by the API's lot_id); the typed part list (Paste, with What set to Parts) and the review step exist and need no new data, so the state needs the feature, then a script"
   },
   {
    "screen": "20-Add-into-a-lot",
@@ -361,9 +386,11 @@
    "screen": "20-Add-into-a-lot",
    "section": "8c",
    "state": "import-progress",
-   "built": false,
-   "approved": false,
-   "reason": "needs a running Add import job; the gate world runs no worker"
+   "world": "edge",
+   "path": "/manage/add",
+   "script": "const wait=async(f,n=100)=>{for(let i=0;i<n&&!f();i++)await new Promise(r=>setTimeout(r,50));};\nconst real=window.fetch.bind(window);\nwindow.fetch=(url,opts)=>{const u=String(url);\n if(u.endsWith('/confirm'))return Promise.resolve(new Response(JSON.stringify({batch:'gate-batch',receipts:[{label:'99851-1',name:\"Lighthouse Keeper's Cabin\",job_id:9001},{label:'99852-1',name:'Sample Set',job_id:9002},{label:'99853-1',name:'Storm Watch Station',job_id:9003}]}),{status:200,headers:{'Content-Type':'application/json'}}));\n const m=u.match(/\\/jobs\\/(\\d+)$/);\n if(m){const id=Number(m[1]),done=id<9003,part=id===9003;\n  const event=done?{job_id:id,step:null,state:'done',total_steps:6,completed_steps:6,message:'Added'}:{job_id:id,step:'inventory',state:'progress',total_steps:6,completed_steps:2,total:112,count:38,message:'Fetching parts from BrickLink · 38 of 112'};\n  return Promise.resolve(new Response(JSON.stringify({events:[event]}),{status:200,headers:{'Content-Type':'application/json'}}));}\n return real(url,opts);};\ndocument.querySelector('input[name=mode][value=paste]').click();\ndocument.querySelector('input[name=where][value=owned]').click();\ndocument.querySelector('[data-paste]').value='99851-1\\n99852-1\\n99853-1';\ndocument.querySelector('[data-paste]').dispatchEvent(new Event('input',{bubbles:true}));\ndocument.querySelector('[data-review]').click();\nawait wait(()=>!document.querySelector('[data-review-panel]').hidden);\ndocument.querySelector('[data-confirm]').click();\nawait wait(()=>!document.querySelector('[data-jobs]').hidden);\nawait new Promise(r=>setTimeout(r,300));",
+   "built": true,
+   "approved": false
   },
   {
    "screen": "21-Collection-capabilities",
@@ -558,9 +585,12 @@
    "screen": "31-Part-to-inventory",
    "section": "3f",
    "state": "has-a-sticker",
-   "built": false,
+   "world": "edge",
+   "path": "/workbench/part-to-inventory",
+   "script": "const wait=async(f,n=100)=>{for(let i=0;i<n&&!f();i++)await new Promise(r=>setTimeout(r,50));};\nconst canvas=document.createElement('canvas');canvas.width=64;canvas.height=64;const g=canvas.getContext('2d');g.fillStyle='#8a8d8f';g.fillRect(0,0,64,64);g.fillStyle='#d4d6d8';g.fillRect(8,24,48,16);\nconst blob=await new Promise(r=>canvas.toBlob(r,'image/png'));\nconst input=document.querySelector('[data-file]');const transfer=new DataTransfer();transfer.items.add(new File([blob],'piece.png',{type:'image/png'}));input.files=transfer.files;input.dispatchEvent(new Event('change',{bubbles:true}));\nawait wait(()=>document.querySelector('.scan-colours button'));\n[...document.querySelectorAll('.scan-colours button')].find(b=>b.textContent.startsWith('Light Bluish Gray')).click();\nawait wait(()=>document.querySelector('[data-sticker]'));\nconst box=document.querySelector('[data-sticker]');box.click();\nawait new Promise(r=>setTimeout(r,300));",
+   "built": true,
    "approved": false,
-   "reason": "the review step needs a recognised photo, which the gate cannot make offline (#201 frame #s201)"
+   "max": 3000
   },
   {
    "screen": "32-Orders",
@@ -638,9 +668,11 @@
    "screen": "35-Orders-capabilities",
    "section": "11b",
    "state": "xml-link",
-   "built": false,
-   "approved": false,
-   "reason": "the link-to-an-existing-order controls of the XML and email cards are collapsed in the hub; expanding them is an interaction not scripted yet"
+   "world": "showcase",
+   "path": "/workbench/orders",
+   "script": "document.querySelectorAll('details.order-link').forEach(d=>{d.open=true});await new Promise(r=>setTimeout(r,300));",
+   "built": true,
+   "approved": false
   },
   {
    "screen": "36-Check-this-copy",
@@ -672,10 +704,31 @@
   {
    "screen": "36-Check-this-copy",
    "section": "12a",
-   "state": "other-states",
-   "built": false,
-   "approved": false,
-   "reason": "no-copies, JavaScript off and save error need an empty collection, a browser without scripts and a failing save; the gate world has none of them"
+   "state": "no-copies",
+   "world": "edge-empty",
+   "path": "/workbench/check-parts",
+   "built": true,
+   "approved": false
+  },
+  {
+   "screen": "36-Check-this-copy",
+   "section": "12a",
+   "state": "save-error",
+   "world": "showcase",
+   "path": "/workbench/check-parts/79f5df76-b75b-5fd5-bf6c-d3f4506e1406",
+   "script": "document.querySelector('[data-resume]').click();await new Promise(r=>setTimeout(r,300));window.fetch=()=>Promise.resolve(new Response(JSON.stringify({error:'The answer could not be saved. Retry.'}),{status:500,headers:{'Content-Type':'application/json'}}));document.querySelector('[data-action=answer]').click();await new Promise(r=>setTimeout(r,300));",
+   "built": true,
+   "approved": false
+  },
+  {
+   "screen": "36-Check-this-copy",
+   "section": "12a",
+   "state": "javascript-off",
+   "world": "showcase",
+   "path": "/workbench/check-parts/60b6e39e-1532-5baf-a0df-08566d2328a2",
+   "javascript": false,
+   "built": true,
+   "approved": false
   },
   {
    "screen": "37-Orders-at-macbook-and-ipad-size",
@@ -709,9 +762,11 @@
    "screen": "39-Include-spare-parts",
    "section": "12d",
    "state": "spare-pass",
-   "built": false,
-   "approved": false,
-   "reason": "the spare-parts question needs a copy whose part list has spare lines; the showcase sets have none"
+   "world": "edge",
+   "path": "/workbench/check-parts/0c757f44-7e9e-5993-ac24-c40810a6cb5e",
+   "script": "document.querySelector('[data-resume]').click();await new Promise(r=>setTimeout(r,300));",
+   "built": true,
+   "approved": false
   },
   {
    "screen": "40-Check-figure-parts",
@@ -791,9 +846,11 @@
    "screen": "44-Complete-sets",
    "section": "7c",
    "state": "pins",
-   "built": false,
-   "approved": false,
-   "reason": "a pin is saved by a click that reloads the page; the script cannot survive the reload, and the dataset pins nothing"
+   "world": "edge",
+   "path": "/planning/complete-sets",
+   "script": "const f=document.querySelector('[data-bp-filter=pinned]');f.value='true';f.dispatchEvent(new Event('input',{bubbles:true}));f.dispatchEvent(new Event('change',{bubbles:true}));await new Promise(r=>setTimeout(r,300));",
+   "built": true,
+   "approved": false
   },
   {
    "screen": "45-Wanted-watch-and-alert",

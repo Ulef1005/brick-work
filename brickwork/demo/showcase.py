@@ -105,6 +105,18 @@ STATE = {
 SECOND_COPIES = {'99102-1': ('built', 'Shelf B'), '99115-1': ('displayed', 'Display case'), '99121-1': ('built', 'Study shelf')}
 
 
+# The flea-market lot (#200, #201, #202; the tutorial "Which set is this bag from?"): a bag of loose parts bought as one lot. Its part lines come from three
+# invented sets by what only that set holds (so set detection ranks them apart), plus one line flagged Sticker that two sets hold together with a sticker sheet.
+LOT = uid('lot', 'flea-market-bag')
+LOT_NAME = 'Flea market bag'
+LOT_SETS = (('99109-1', 16), ('99114-1', 9), ('99111-1', 5))       # the sets the lot's lines come from, and how many unique lines of each
+LOT_SHARED = 3                                                    # lines two or three sets hold: they make the list look like a real bag
+STICKER_SETS = ('99109-1', '99106-1')                              # the two sets that hold the sticker's part together with a sticker sheet
+STICKER_PART = ('2431', 71)                                        # that part (a tile) and its colour: only these two sets hold it
+STICKER_SHEETS = (('stk-99001', 'Sticker Sheet, Mining Signs'), ('stk-99002', 'Sticker Sheet, Fire Station Signs'))
+# Found in the bulk, not yet filed (the pull list of the lot's best set): how many of the set's lines the person has ticked
+PULL_TICKS = 6
+
 # The running checks the exported demo and the pictures show (brickwork/demo/checks.py): copy id: (share of the steps answered, keep the missing counts)
 CHECKS = {
     uid('copy', '99120-1', 'a'): (0.0, True),    # started, first part
@@ -231,6 +243,7 @@ class Layer:
             self.sets.append(self.copy(number, name, year, path, theme, pieces, summary, inventory['copy_id'], 0))
             if number in SECOND_COPIES:
                 self.sets.append(self.copy(number, name, year, path, theme, pieces, {}, uid('copy', number, 'b'), 1))
+        self.add_sticker_sheets()
         used = {}
         for inventory in self.inventories.values():
             for row in inventory['parts']:
@@ -244,6 +257,24 @@ class Layer:
             self.catalogue.append(dict(set=number, name=name, year=year, theme_id=497, theme_path='Books', parts=0))
         for number, name, year in CATALOGS:
             self.catalogue.append(dict(set=number, name=name, year=year, theme_id=5990, theme_path='Books / Catalogs', parts=0))
+
+    def sticker_line(self):
+        """The part line (of the first sticker set's inventory) that is the lot's Sticker line: STICKER_PART, held by exactly the two STICKER_SETS."""
+        holders = [n for n, inventory in self.inventories.items() if any((r['part'], r['color']['id']) == STICKER_PART for r in inventory['parts'])]
+        if sorted(holders) != sorted(STICKER_SETS):
+            raise ValueError('The sticker part must be held by exactly the two sticker sets')
+        return next(r for r in self.inventories[STICKER_SETS[0]]['parts'] if (r['part'], r['color']['id']) == STICKER_PART)
+
+    def add_sticker_sheets(self):
+        """A sticker sheet (a part of the category `Stickers`, found by that name) in each of the STICKER_SETS' part lists: the catalogue does not say which
+        part a sticker goes on, so the lot page offers the sets that hold the flagged part and a sheet. Added after the random draw: nothing else moves."""
+        base = self.sticker_line()
+        for number, (part, name) in zip(STICKER_SETS, STICKER_SHEETS):
+            inventory = self.inventories[number]
+            counted = STATE[number] in ('complete', 'gaps')
+            inventory['parts'] = [r for r in inventory['parts'] if r['category'] != 'Stickers']      # the drawn-from pool's own sticker sheets carry a real set's name
+            sheet = line(dict(part=part, name=name, category='Stickers', color=base['color']), 1, checked=1 if counted else 0)
+            inventory['parts'].append(sheet)
 
     def copy(self, number, name, year, path, theme, pieces, summary, copy_id, nth):
         root = path.split(' / ')[0]
@@ -284,6 +315,7 @@ class Layer:
                 self.missing_figures(db)
                 self.wishlists(db)
                 self.orders(db)
+                self.flea_market(db)
                 if self.pictures:
                     self.illustrate(db)
         finally:
@@ -431,6 +463,36 @@ class Layer:
                 item = items.ensure(db, dataset.item_by(db, 'minifigs', figure))
                 db.execute('''INSERT OR IGNORE INTO wish(id, wishlist_id, kind, item_id, color_id, quantity, condition, max_price, max_price_currency, added_at, updated_at)
                               VALUES(?, 'wl-castle', 'minifigure', ?, NULL, 1, 'any', ?, 'EUR', ?, ?)''', ('wish-figure-%d' % index, item, f'{6 + index * 2.5:.2f}', dataset.STAMP, dataset.STAMP))
+
+    def flea_market(self, db):
+        """The Flea market bag: a lot of loose parts the Set detection (#200) ranks against the sets, the Sticker line of the chooser (#201) and the progress of a
+        pull list (#202). The lines are the parts that only one of LOT_SETS holds, in full quantity, a few parts several sets hold, and the sticker part; for the
+        best set, a few more lines are ticked as found in the bulk."""
+        from ..core import pull_list, stickers
+        holders = {}
+        for number, inventory in self.inventories.items():
+            for row in inventory['parts']:
+                holders.setdefault((row['part'], row['color']['id']), set()).add(number)
+        base = self.sticker_line()
+        chosen = []
+        for number, count in LOT_SETS:
+            own = [r for r in self.inventories[number]['parts'] if holders[(r['part'], r['color']['id'])] == {number} and not r['category'].startswith('Sticker')]
+            chosen += own[:count]
+        shared = [r for r in self.inventories[LOT_SETS[0][0]]['parts'] if len(holders[(r['part'], r['color']['id'])]) in (2, 3) and r is not base]
+        chosen += shared[:LOT_SHARED]
+        with transaction(db):
+            db.execute('INSERT INTO lot(id, name, note, place_id, created_at, updated_at) VALUES(?, ?, ?, ?, ?, ?)',
+                       (LOT, LOT_NAME, 'One bag, no list', None, dataset.STAMP, dataset.STAMP))
+            for row in chosen + [base]:
+                made = stock.add_loose(db, item_id=dataset.item_by(db, 'parts', row['part']), color_id=dataset.colour_by(db, row['color']['id']),
+                                       quantity=row['quantity'], condition='used', lot_id=LOT, via='cli')
+                if row is base:
+                    flag, _ = stickers.ensure_flag(db)
+                    db.execute('INSERT OR IGNORE INTO stock_flag(stock_id, flag_id) VALUES(?, ?)', (made['id'], flag))
+        best = dataset.item_by(db, 'sets', LOT_SETS[0][0])
+        ticked = [r for r in self.inventories[LOT_SETS[0][0]]['parts'] if r not in chosen and r is not base and not r['category'].startswith('Sticker')]
+        for row in ticked[:PULL_TICKS]:
+            pull_list.set_found(db, LOT, best, dataset.item_by(db, 'parts', row['part']), dataset.colour_by(db, row['color']['id']), row['quantity'])
 
     def orders(self, db):
         """Three orders through the app's own XML import: one received whole, one partly arrived, one still a draft (nothing is allocated)."""

@@ -1,6 +1,6 @@
 # Pull a set out of a lot
 
-*Since 1.0.2.*
+*Since 1.1.0.*
 
 Set detection says a set is probably in your bulk lot. The pull list shows which of its parts you still have to find, lets you tick them off as you find them, and ends with an owned copy of the set.
 

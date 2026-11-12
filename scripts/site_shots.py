@@ -11,15 +11,17 @@ Run it from the app's venv (it imports the app).
 import argparse
 import json
 from pathlib import Path
+import re
 import subprocess
 import sys
 import tempfile
+import urllib.request
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / 'scripts'))
 import screen_gate  # noqa: E402
-from brickwork.demo.showcase import uid  # noqa: E402
+from brickwork.demo.showcase import LOT, LOT_SETS, uid  # noqa: E402
 
 SITE = ROOT / 'scripts' / 'site' / 'img'
 README = ROOT / 'docs' / 'img' / 'readme'
@@ -32,6 +34,46 @@ PICKED = '/workbench/part-picker?copy=' + '&copy='.join([uid('copy', '99103-1', 
 ADD_SEARCH = "const s = document.querySelector('[data-search]'); s.value = 'Old Mill'; s.dispatchEvent(new Event('input', {bubbles: true})); await new Promise(r => setTimeout(r, 1500));"
 CHOOSE_SETS = ("document.querySelector('[data-none]').click(); for (const n of ['99103-1', '99110-1', '99118-1']) "
                "document.querySelector('[data-number=' + JSON.stringify(n) + '] input').click(); await new Promise(r => setTimeout(r, 300));")
+LOT_PAGE = '/collection/lots/' + LOT
+BEST, SECOND = LOT_SETS[0][0], LOT_SETS[1][0]                      # the Flea market bag's best and second candidate (brickwork/demo/showcase.py)
+
+
+def lot_link(pattern, near=None):
+    """A path that is only known once the world is built (a stock line's or a catalogue item's id): the first link of the lot page matching `pattern`."""
+    def find(base):
+        page = urllib.request.urlopen(base + LOT_PAGE + '?detect=1&min_score=0').read().decode()
+        scope = page[page.index(near):] if near else page
+        return re.search(r'href="(%s)"' % pattern, scope).group(1).replace('&amp;', '&')
+    return find
+
+
+def pull(number, tail=''):
+    """The pull list of the set `number` for the lot: its catalogue id is the number in the card's links, found by the set's name in the card."""
+    def find(base):
+        page = urllib.request.urlopen(base + LOT_PAGE + '?detect=1&min_score=0').read().decode()
+        card = page[page.index('class="bd-cand'):]
+        found = re.search(r'%s.*?href="(%s/pull/\d+)"' % (re.escape(number), re.escape(LOT_PAGE)), card, re.S)
+        return found.group(1) + tail
+    return find
+
+
+def scout_set(number):
+    """Build Scout with one set selected (its panel beside the list): the set's catalogue id comes from its pull list link."""
+    find = pull(number)
+    return lambda base: '/workbench/build-scout?min_percent=10&set=%s' % find(base).rsplit('/', 1)[1]
+
+
+def variant_change(old, new):
+    """Change variant of the part `old` with the part `new` chosen (both share BrickLink's number of the catalogue): the items' catalogue ids come from their number's redirect."""
+    def find(base):
+        ids = [urllib.request.urlopen(base + '/collection/item/part/' + n).geturl().split('?')[0].rsplit('/', 1)[1] for n in (old, new)]
+        return '/collection/item/%s/change-variant?target=%s' % tuple(ids)
+    return find
+
+
+# Hide what comes before the Set detection section, so that the clip (which always starts at the top of the page) begins at it.
+SHOW_DETECTION = ("const section = document.querySelector('#set-detection'); "
+                  "for (let sibling = section.previousElementSibling; sibling; sibling = sibling.previousElementSibling) if (sibling.tagName !== 'H1') sibling.style.display = 'none';")
 OPEN_FOUND = "document.querySelector('[data-open=\"found-1\"]').click(); await new Promise(r => setTimeout(r, 400));"
 
 # Run in the page before each capture: the page must be settled, not just loaded. Lists build their rows and load their pictures after the load event,
@@ -84,6 +126,16 @@ PICTURES = {
     'bulk-runner-order-phone-390': (PICKED, 390, 844, None, (TUTORIALS,)),
     'bulk-runner-found-phone-390': (PICKED + '&pick=1', 390, 844, OPEN_FOUND, (TUTORIALS,)),
     'bulk-matchmaker-desktop-1440': ('/workbench/match', 1440, 900, None, (TUTORIALS,)),
+    # The tutorial for the new functions (docs/tutorials/): a bag of loose parts, the sets it may come from, the sticker, the pull list; Build Scout; ordering what is missing; a part's variant
+    'lot-detect-desktop-1440': (LOT_PAGE + '?detect=1&ignore_common=1#set-detection', 1440, 1500, SHOW_DETECTION, (TUTORIALS,)),
+    'lot-sticker-chooser-desktop-1440': (lot_link(re.escape(LOT_PAGE) + r'/sticker/[0-9a-f]+[^"]*', None), 1440, 900, None, (TUTORIALS,)),
+    'lot-pull-list-phone-390': (pull(BEST, '?show=all'), 390, 1700, None, (TUTORIALS,)),
+    'lot-pull-confirm-phone-390': (pull(BEST, '/make-copy'), 390, 844, None, (TUTORIALS,)),
+    'scout-list-desktop-1440': ('/workbench/build-scout?min_percent=10', 1440, 900, None, (TUTORIALS,)),
+    'scout-set-desktop-1440': (scout_set(SECOND), 1440, 900, None, (TUTORIALS,)),
+    'variant-change-desktop-1440': (variant_change('4287c', '4287b'), 1440, 1000, None, (TUTORIALS,)),
+    'order-missing-desktop-1440': ('/planning/order-missing-parts', 1440, 1000, None, (TUTORIALS,)),
+    'order-missing-review-phone-390': ('/planning/order-missing-parts?step=review', 390, 1500, None, (TUTORIALS,)),
 }
 
 
@@ -105,9 +157,10 @@ def main(argv):
         print(chrome.stderr.strip())
         return 1
     chosen = {k: v for k, v in PICTURES.items() if options.only is None or k in options.only}
-    with screen_gate.world('showcase', sorted({v[0] for v in chosen.values()})) as base, tempfile.TemporaryDirectory(prefix='bw-site-') as scratch:
+    with screen_gate.world('showcase', sorted({v[0] for v in chosen.values() if isinstance(v[0], str)})) as base, tempfile.TemporaryDirectory(prefix='bw-site-') as scratch:
         jobs, targets = [], []
         for stem, (path, width, limit, script, _) in chosen.items():
+            path = path(base) if callable(path) else path
             for theme in ('light', 'dark'):
                 out = Path(scratch) / f'{stem}-{theme}.png'
                 jobs.append({'url': base + path, 'out': str(out), 'width': width, 'theme': theme, 'max': limit, 'script': (script or '') + SETTLE})

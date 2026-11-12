@@ -1,6 +1,6 @@
 # Find sets to build from your loose stock
 
-*Unreleased (#9).* Build Scout is a Workbench workflow.
+*Since 1.1.0.* Build Scout is a Workbench workflow.
 
 Build Scout asks the question [Matchmaker](match-stock-to-sets.md) does not: for **every set in the catalogue**, how much of it do your loose parts already make? Matchmaker fills the gaps of copies you own. Build Scout looks at sets you may not own at all, and shows the ones you could build, or nearly build, from parts that sit in your drawers.
 

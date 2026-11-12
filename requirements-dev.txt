@@ -6,7 +6,7 @@ execnet==2.1.2
 PyYAML>=6,<7
 jsonschema>=4,<5
 # The documentation site (scripts/build_site.py): Python-Markdown for the marketing pages, Zensical for the user docs
-zensical==0.1.0
+zensical==0.1.1
 deepmerge==3.0.1
 Jinja2==3.1.6
 Markdown==3.11.2

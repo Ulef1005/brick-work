@@ -98,7 +98,7 @@ assert.equal(api.filter(rows,'',{},'cost')[0].number,'20');
  await chips.children[0].trigger();assert.equal(count.textContent,'2 results');
  await toggle.trigger();assert.equal(panel.hidden,false);await doc.trigger('keydown',{key:'Escape'});assert.equal(panel.hidden,true);assert.equal(toggle.focused,true);
  fail=true;await pin.trigger();assert.equal(message.textContent,'Not saved · retry');assert.equal(pin.disabled,false);assert.equal(reloads,0);
- fail=false;await pin.trigger();assert.equal(calls[1].data.csrf_token,'token');assert.equal(calls[1].data.pinned,true);assert.equal(undo.hidden,false);assert.equal(reloads,1);
+ fail=false;await pin.trigger();assert.equal(calls[1].data.csrf_token,'token');assert.equal(calls[1].data.pinned,true);assert.equal(undo.hidden,false);assert.equal(reloads,1);assert.equal(JSON.parse(saved['bw-planning-receipt']).screen,'/planning/wishlist','#236: the receipt carries its screen');
  await undo.trigger();assert.equal(calls[2].url,'/planning/action/undo');assert.equal(calls[2].data.event_id,42);assert.equal(reloads,2);
  // P3: Export is disabled until a row is selected and names the count.
  nodes.forEach(n=>n.querySelector('[data-bp-selected]').checked=false);await root.trigger('change',{target:{matches:s=>s==='[data-bp-selected]'}});
@@ -150,5 +150,12 @@ assert.equal(count.textContent,'0 items');assert.equal(empty.hidden,false);
 root.groups['[data-bp-row]']=[nodes[1]];
 vm.runInNewContext(fs.readFileSync('static/web/toni/bw-planning.js','utf8'),context);
 assert.equal(count.textContent,'1 set');search.value='no match';await search.trigger('input');assert.equal(count.textContent,'0 sets');
+ // #236: a pin on Complete sets must not show "Saved" and an Undo on the Wishlist; the same screen still does.
+ const again=()=>vm.runInNewContext(fs.readFileSync('static/web/toni/bw-planning.js','utf8'),context);
+ saved['bw-planning-receipt']=JSON.stringify({event_id:77,collection:false,screen:'/planning/complete-sets'});undo.hidden=true;message.textContent='';again();
+ assert.equal(undo.hidden,true);assert.equal(message.textContent,'');assert.equal(saved['bw-planning-receipt'],undefined,'the stale receipt is cleared');
+ saved['bw-planning-receipt']=JSON.stringify({event_id:77,collection:false});again();assert.equal(undo.hidden,true,'a receipt without a screen is stale');assert.equal(saved['bw-planning-receipt'],undefined);
+ saved['bw-planning-receipt']=JSON.stringify({event_id:77,collection:false,screen:'/planning/wishlist'});again();
+ assert.equal(undo.hidden,false);assert.equal(message.textContent,'Saved');
  console.log('Brick Work Planning runtime passed');
 })().catch(e=>{console.error(e);process.exitCode=1;});

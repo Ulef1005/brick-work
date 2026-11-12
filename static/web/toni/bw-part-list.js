@@ -18,7 +18,7 @@
   return result;
  };
  const done = result => {
-  if (result.event_id) store(s => s.setItem(receiptKey, JSON.stringify(result)));
+  if (result.event_id) store(s => s.setItem(receiptKey, JSON.stringify({...result, screen: location.pathname})));
   else store(s => { s.removeItem(receiptKey); s.setItem(flashKey, result.message); });
   location.reload();
  };

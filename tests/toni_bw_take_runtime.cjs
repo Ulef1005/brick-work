@@ -19,7 +19,7 @@ function build(max, response) {
   const calls = [], store = {}, reloads = [];
   const context = {window: {}, document: {querySelector: s => s === '#bw-collection' ? root : null},
     sessionStorage: {setItem: (k, v) => { store[k] = v; }, getItem: k => store[k]},
-    location: {reload: () => reloads.push(1)},
+    location: {pathname: '/collection/item/P/bl-part', reload: () => reloads.push(1)},
     fetch: async (url, init) => { calls.push({url, body: JSON.parse(init.body)}); return response; }};
   vm.runInNewContext(source, context);
   return {context, output, go, note, minus, plus, stepper, calls, store, reloads};
@@ -48,7 +48,7 @@ assert.equal(build(1, ok).output.textContent, '1');
   await t.go.fire('click');
   assert.equal(t.calls.length, 1); assert.equal(t.calls[0].url, '/collection/save/take');
   assert.deepEqual(t.calls[0].body, {copy_id: 'copy', item_type: 'P', item_no: 'bl-part', color_id: 11, quantity: 2, csrf_token: 'token'});
-  assert.deepEqual(JSON.parse(t.store['bw-collection-receipt']), {message: 'Took 3', event_id: 7});
+  assert.deepEqual(JSON.parse(t.store['bw-collection-receipt']), {message: 'Took 3', event_id: 7, screen: '/collection/item/P/bl-part'});  // #236: stamped with the screen
   assert.equal(t.reloads.length, 1);
   // In flight: keys and clicks change nothing until the answer arrives.
   let release; const slow = {ok: true, json: () => new Promise(r => { release = () => r({message: 'Took 3', event_id: 9}); })};

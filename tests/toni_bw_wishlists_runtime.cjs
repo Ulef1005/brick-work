@@ -20,10 +20,10 @@ const root=new Node({wlUrl:'/planning/wishlists/ACTION',csrf:'csrf'}),bar=new No
 root.nodes={'[data-wl-message]':message,'[data-wl-undo]':undo,'[data-wl-count]':count,'[data-wl-export]':exp,'[data-wl-summary]':summary,'[data-wl-summary-content]':content};
 root.nodes['[data-wl-selection]']=bar;root.nodes['[data-wl-clear]']=clear;
 root.groups={'[data-wl-open]':[open],'[data-wl-close]':[close],'form[data-wl-action]':[create,transfer]};
-let selected=[{value:'w1',checked:true},{value:'w2',checked:true}];const events={},requests=[],storage=new Map([['bw-wishlists-receipt','41']]);
+let selected=[{value:'w1',checked:true},{value:'w2',checked:true}];const events={},requests=[],storage=new Map([['bw-wishlists-receipt',JSON.stringify({event_id:41,screen:'/planning/wishlist'})]]);
 let fail=false,reloads=0,download;
 const document={querySelector:s=>root.querySelector(s),querySelectorAll:s=>s==='[data-wl-root]'?[root]:s==='[data-wl-selected]:checked'?selected.filter(c=>c.checked):root.querySelectorAll(s),getElementById:()=>sheet,addEventListener:(k,f)=>events[k]=f,createElement:()=>{const n=new Node();download=n;return n;}};
-const context={document,sessionStorage:{getItem:k=>storage.get(k),setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},location:{reload:()=>reloads++},FormData:class{constructor(form){return Object.entries(form.values);}},Blob:class{},URL:{createObjectURL:()=> 'blob:download',revokeObjectURL(){}},setTimeout:f=>f(),fetch:async(url,options)=>{
+const context={document,sessionStorage:{getItem:k=>storage.get(k),setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},location:{pathname:'/planning/wishlist',reload:()=>reloads++},FormData:class{constructor(form){return Object.entries(form.values);}},Blob:class{},URL:{createObjectURL:()=> 'blob:download',revokeObjectURL(){}},setTimeout:f=>f(),fetch:async(url,options)=>{
  requests.push({url,body:options?JSON.parse(options.body):null});
  if(!options)return {ok:true,json:async()=>({filename:'wishlist.csv',mimetype:'text/csv',content:'Part,Color,Quantity\r\nrb,4,2\r\n',summary:{exported:1,omitted:[{item_no:'other',reason:'Missing mapping'}],notes:[]}})};
  return {ok:!fail,json:async()=>fail?{message:'An item already exists'}:{event_id:42}};
@@ -34,7 +34,7 @@ async function submit(form,value=''){form.events.submit({preventDefault(){},targ
 (async()=>{
  assert.equal(undo.hidden,false);assert.equal(message.textContent,'Saved');
  open.events.click();assert.equal(sheet.open,true);close.events.click();assert.equal(sheet.open,false);
- await submit(create);assert.equal(requests.at(-1).body.values.name,'Gifts');assert.equal(requests.at(-1).body.values.bricklink_id,null);assert.equal(requests.at(-1).body.csrf_token,'csrf');assert.equal(reloads,1);
+ await submit(create);assert.equal(requests.at(-1).body.values.name,'Gifts');assert.equal(requests.at(-1).body.values.bricklink_id,null);assert.equal(requests.at(-1).body.csrf_token,'csrf');assert.equal(reloads,1);assert.deepEqual(JSON.parse(storage.get('bw-wishlists-receipt')),{event_id:42,screen:'/planning/wishlist'});
  assert.equal(count.textContent,'2 selected');assert.equal(bar.hidden,false);
  events.change({target:{matches:s=>s==='[data-wl-selected]'}});assert.equal(count.textContent,'2 selected');
  await submit(transfer,'true');assert.deepEqual(requests.at(-1).body.ids,['w1','w2']);   // wish ids are text (uuid) since 4.0assert.equal(requests.at(-1).body.copy,true);
@@ -44,5 +44,11 @@ async function submit(form,value=''){form.events.submit({preventDefault(){},targ
  events.change({target:{matches:()=>false}});
  fail=false;await submit(exp);assert.equal(requests.at(-1).url,'/planning/wishlists/all/export.csv?summary=true&kind=parts');assert.equal(summary.hidden,false);assert.equal(content.children[1].textContent,'other · Missing mapping');assert.equal(download.download,'wishlist.csv');assert.equal(download.clicked,true);
  undo.events.click();await flush();assert.equal(requests.at(-1).body.event_id,41);assert.equal(storage.has('bw-wishlists-receipt'),false);
+ // #236: a receipt made on another screen (Complete sets) is dropped here, not shown with an Undo that would act on it.
+ const run=()=>vm.runInNewContext(fs.readFileSync('static/web/toni/bw-wishlists.js','utf8'),context);
+ storage.set('bw-wishlists-receipt',JSON.stringify({event_id:43,screen:'/planning/complete-sets'}));undo.hidden=true;message.textContent='';run();
+ assert.equal(undo.hidden,true);assert.equal(message.textContent,'');assert.equal(storage.has('bw-wishlists-receipt'),false);
+ storage.set('bw-wishlists-receipt','43');run();assert.equal(undo.hidden,true,'a receipt without a screen is stale');assert.equal(storage.has('bw-wishlists-receipt'),false);
+ storage.set('bw-wishlists-receipt',JSON.stringify({event_id:44,screen:'/planning/wishlist'}));run();assert.equal(undo.hidden,false);assert.equal(message.textContent,'Saved');
  console.log('Brick Work wishlists runtime passed');
 })().catch(e=>{console.error(e);process.exitCode=1;});

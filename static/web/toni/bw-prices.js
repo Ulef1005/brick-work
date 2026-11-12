@@ -106,7 +106,9 @@
   } catch (_) {}
   if (search) search.value = state.query;
   try { receipt = JSON.parse(sessionStorage.getItem(receiptKey)); } catch (_) {}
-  if (receipt && undo) { undo.hidden = false; message.textContent = 'Saved · Undo'; }
+  // #236: a receipt belongs to the screen that made it; on any other Planning screen it is dropped, not shown.
+  if (receipt && receipt.screen !== location.pathname) { receipt = null; try { sessionStorage.removeItem(receiptKey); } catch (_) {} }
+  if (receipt && undo) { undo.hidden = false; message.textContent = 'Saved'; }   // #236: the Undo button beside it says Undo; the text no longer does too
 
   // The 12h pager, the same markup and classes as the Collection lists.
   const nav = document.createElement('nav'), prev = document.createElement('button'), next = document.createElement('button'), numbers = document.createElement('div'), text = document.createElement('p');
@@ -231,7 +233,7 @@
   async function send(action, data) {
     const response = await fetch(root.dataset.saveUrl.replace('ACTION', action), {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({...data, csrf_token: root.dataset.csrf})});
     const result = await response.json(); if (!response.ok) throw new Error(result.message || 'Not saved · try again');
-    if (result.event_id && action !== 'undo') { receipt = {event_id: result.event_id, collection: false}; try { sessionStorage.setItem(receiptKey, JSON.stringify(receipt)); } catch (_) {} undo.hidden = false; }
+    if (result.event_id && action !== 'undo') { receipt = {event_id: result.event_id, collection: false, screen: location.pathname}; try { sessionStorage.setItem(receiptKey, JSON.stringify(receipt)); } catch (_) {} undo.hidden = false; }
     message.textContent = result.message; return result;
   }
   async function run(button, operation, reload = false) {

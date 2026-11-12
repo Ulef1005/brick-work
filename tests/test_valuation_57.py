@@ -349,3 +349,13 @@ def test_the_json_bodies_carry_strings_for_money(coll):
     body = json.loads(json.dumps(valuation.valuation(coll.db)))
     first = body['copies'][0]
     assert isinstance(first['paid']['amount'], str) and isinstance(first['gain']['amount'], str) and isinstance(body['statistics']['paid'], str)
+
+
+def test_copies_can_be_limited_to_the_given_copy_ids_with_the_same_rows(coll):
+    coll.price(coll.item('sets', '1000-1'), '61.00', condition='used', sold=14, observed='2026-10-09T08:00:00.000Z')
+    first = coll.add_copy('1000-1', condition='used', completeness='complete', price='24.00', currency='EUR', date='2025-03-09')
+    second = coll.add_copy('1000-1', condition='used', completeness='complete', price='30.00', currency='EUR', date='2025-04-09')
+    everything = {r['id']: r for r in valuation.copies(coll.db)}
+    only = valuation.copies(coll.db, [second])
+    assert [r['id'] for r in only] == [second] and only[0] == everything[second] and first in everything
+    assert valuation.copies(coll.db, []) == []

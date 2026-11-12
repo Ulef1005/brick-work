@@ -92,7 +92,7 @@ def detail_module(db, selected):
     if not selected or selected.get('entity') != 'copy':
         return None
     try:
-        rows = valuation.copies(db)
+        rows = valuation.copies(db, [selected['id']])
     except (sqlite3.Error, ValueError):
         return dict(error=True, label=selected.get('label') or 'Set')
     row = next((r for r in rows if str(r['id']) == str(selected['id'])), None)

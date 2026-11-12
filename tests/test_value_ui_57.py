@@ -139,7 +139,7 @@ def test_only_a_copy_of_a_set_has_the_module(coll, client, world):
 def test_a_failed_read_is_the_error_state_with_retry_not_a_broken_page(coll, client, monkeypatch):
     copy = coll.add_copy('1000-1', condition='used', completeness='complete', price='24.00', currency='EUR')
 
-    def broken(db):
+    def broken(db, *args):
         raise sqlite3.OperationalError('boom')
     monkeypatch.setattr(valuation, 'copies', broken)
     text, node = module(client, coll, copy)
@@ -241,7 +241,7 @@ def test_a_collection_with_no_copy_has_no_paid_vs_value(client, coll):
 def test_a_failed_read_is_the_error_state_with_retry(coll, client, monkeypatch):
     paid_copy(coll, '1000-1', '20.00')
 
-    def broken(db):
+    def broken(db, *args):
         raise sqlite3.OperationalError('boom')
     monkeypatch.setattr(valuation, 'copies', broken)
     node, text = section(client)
@@ -365,7 +365,7 @@ def test_an_empty_collection_disables_both_outputs_and_offers_add_a_set(client):
 
 
 def test_the_report_needs_a_login_and_a_failed_read_is_an_error_not_a_trace(coll, client, monkeypatch):
-    def broken(db):
+    def broken(db, *args):
         raise sqlite3.OperationalError('boom')
     many(coll, 1)
     monkeypatch.setattr(valuation, 'report', broken)

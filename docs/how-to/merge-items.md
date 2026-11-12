@@ -40,4 +40,4 @@ An item whose kind was guessed from its theme can be wrong (a set that is really
 
 ## Two catalogue items for one thing
 
-A merge is for a local item. When both items are catalogue items (an older and a reissued variant of a figure), move what you own from one to the other instead: [Change an item's variant](change-variant.md).
+A merge is for a local item. When both items are catalogue items (an older and a reissued variant of a figure), move what you own from one to the other instead, with **Change variant…** beside **Merge into…** on the item page: [Change an item's variant](change-variant.md).

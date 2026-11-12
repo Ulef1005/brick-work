@@ -122,6 +122,15 @@
    "approved": true
   },
   {
+   "screen": "13-Part-detail",
+   "section": "2b",
+   "state": "change-variant",
+   "world": "demo",
+   "path": "/collection/item/174/change-variant?target=594",
+   "built": true,
+   "approved": true
+  },
+  {
    "screen": "14-Instruction-and-box-detail",
    "section": "2c",
    "state": "",

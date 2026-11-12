@@ -1691,6 +1691,12 @@ def identity_notice(db, text):
         words = f'Merged {name(int(event["old_value"]))} into this item' + (f' · {moved} {"row" if moved == 1 else "rows"} moved' if moved else '')
     elif event['field'] == 'unmerge':
         words = f'Unmerged {name(int(event["old_value"]))}'
+    elif event['field'] == 'change_variant':
+        try:
+            moved = sum(sum(c.values()) for t, c in json.loads(event['new_value'])['counts'].items() if t != 'item_link')
+        except (ValueError, KeyError, TypeError):
+            moved = 0
+        words = f'Changed variant from {name(int(event["old_value"]))} to this item' + (f' · {moved} {"row" if moved == 1 else "rows"} moved' if moved else '')
     elif event['field'] == 'prefer':
         words = 'Preferred link saved'
     elif event['field'] == 'add':
@@ -1733,10 +1739,43 @@ def bw_item_merge(item_id):
     return response
 
 
+@web_page.get('/collection/item/<int:item_id>/change-variant')
+@login_required
+def bw_item_change_variant(item_id):
+    """Change variant (issue #151): everything owned of a live catalogue figure or part moves to its other variant. Search for the variant, see what
+    moves and what refuses, then confirm. The page of the merge, for two items that both stay in the catalogue."""
+    from .admin_ops import brickwork_path
+    from ..core.admin import database
+    from ..core import collection, identity_admin
+    if not bw_collection_editable():
+        abort(403, 'Changes are switched off on this instance')
+    query, target = request.args.get('q', '').strip()[:60], request.args.get('target')
+    try:
+        with database(brickwork_path(), require_catalogue=False) as db:
+            base = db.execute('SELECT * FROM main.item WHERE id=?', (item_id,)).fetchone()
+            if base is None:
+                abort(404, 'Item is unavailable')
+            if base['merged_into'] is not None:
+                return redirect(url_for('web.bw_collection_item', item_id=base['merged_into']))
+            old = collection.decorate(db, [dict(item_id=item_id, name=base['name'], year=base['year'])])[0]
+            blocker = identity_admin.variant_blocker(db, item_id)
+            results = [] if blocker else identity_admin.variants(db, item_id, query)
+            chosen = preview = None
+            if target and not blocker and target.isdigit():
+                chosen = collection.decorate(db, [dict(item_id=int(target))])[0]
+                preview = identity_admin.variant_preview(db, item_id, int(target))
+    except ValueError as exc:
+        abort(404, str(exc))
+    response = current_app.make_response(render_template('web/toni/web/bw_item_change_variant.html', title='Change variant', old=old, blocker=blocker, query=query,
+        results=results, chosen=chosen, preview=preview, csrf_token=bw_add_token(), can_edit=True))
+    response.headers['Cache-Control'] = 'no-store'
+    return response
+
+
 @web_page.post('/collection/item/<int:item_id>/identity')
 @login_required
 def bw_item_identity(item_id):
-    """A decision made on an item page: merge, unmerge, preferred link, BrickLink number, or Undo of the last one."""
+    """A decision made on an item page: merge, change variant, unmerge, preferred link, BrickLink number, or Undo of the last one."""
     from flask import flash
     from ..core import errors
     from . import admin_ops
@@ -1754,11 +1793,13 @@ def bw_item_identity(item_id):
         result = admin_ops.tools_write('identity', action=action, item=str(item_id), **{k: request.form.get(k) or None for k in fields})
     except (errors.BrickWorkError, ValueError, TypeError) as exc:
         flash('Not saved · ' + (str(exc) if isinstance(exc, errors.BrickWorkError) else 'Check the values and try again.'), 'error')
-        return redirect(url_for('web.bw_item_merge', item_id=item_id, target=request.form.get('target')) if action == 'merge' else back)
+        if action in ('merge', 'change_variant'):
+            return redirect(url_for('web.bw_item_merge' if action == 'merge' else 'web.bw_item_change_variant', item_id=item_id, target=request.form.get('target')))
+        return redirect(back)
     if action == 'undo':
         flash('Undone', 'success')
         return redirect(back)
-    if action == 'merge':
+    if action in ('merge', 'change_variant'):                                      # the rows are on the other item now: its page shows the notice and Undo
         return redirect(url_for('web.bw_collection_item', item_id=int(request.form['target']), done=result['event_id']))
     return redirect(url_for('web.bw_collection_item', item_id=item_id, done=result.get('event_id'), **args))
 

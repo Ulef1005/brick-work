@@ -16,7 +16,7 @@ PORTED |= {'web.bw_lot_sticker', 'web.bw_lot_sticker_write', 'web.bw_lot_sticker
 PORTED |= {'web.bw_pull_list', 'web.bw_pull_confirm', 'web.bw_pull_found', 'web.bw_pull_make_copy', 'web.bw_pull_undo'}   # #202: the pull list of a set for a lot, its counters, Make it a copy and Undo
 PORTED |= {'web.bw_add_picture'}                                     # #217: the Add review's picture, fetched when shown
 # M.10 B: merge, unmerge and the preferred link, from the item page.
-PORTED |= {'web.bw_item_merge', 'web.bw_item_identity'}
+PORTED |= {'web.bw_item_merge', 'web.bw_item_identity', 'web.bw_item_change_variant'}   # + #151: change variant
 # M.8d: Set Inspector (chooser, copy, figure line; each with its write), the collection's writes (save, archive, Undo, photo, caption, lot,
 # wish) and the media handlers for own photos, pictures and instruction PDFs.
 PORTED |= {'web.bw_check_parts', 'web.bw_check_copy', 'web.bw_check_figure', 'web.bw_check_write', 'web.bw_check_figure_write',

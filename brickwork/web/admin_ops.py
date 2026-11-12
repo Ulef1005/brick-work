@@ -435,6 +435,8 @@ def identity_write(db, *, action, item=None, target=None, number=None, link=None
         item = int(item)
         survivor = int(target) if target else identity.find_target(db, item, number)
         return identity.merge_item(db, item, survivor)
+    if action == 'change_variant':
+        return identity.change_item_variant(db, int(item), int(target))
     if action == 'confirm':
         return identity.confirm_link(db, int(link))
     if action == 'reject':

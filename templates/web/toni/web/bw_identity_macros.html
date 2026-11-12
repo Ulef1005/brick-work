@@ -1,0 +1,2 @@
+{# Shared by the merge page and the change-variant page (issue #151): one item as a tile. #}
+{% macro tile(row, size='64px') %}<div class="bi-item">{% if row.image %}<img {{ bw_picture_attrs(row.image, size) }} alt="" width="64" height="64">{% else %}<span class="bi-noimg">No image</span>{% endif %}<div class="bi-item-text"><span class="mono">{{ row.number_text or 'No number' }}</span><strong>{{ row.name or 'Unnamed item' }}</strong>{% if row.year %}<span class="bi-sub">{{ row.year }}</span>{% endif %}</div></div>{% endmacro %}

@@ -27,6 +27,9 @@ from tests import rendered
 
 pytestmark = rendered.group
 
+# Without fcntl (Windows) the gate's world lives in a random folder, not under the shared name this test reads; the gate itself is Linux and macOS only.
+fcntl = pytest.importorskip('fcntl', reason='the gate world has a fixed folder only where fcntl exists')
+
 NAMED = re.compile(r'(_at|_on|_date|created|updated)$|^(at|date_.+)$')
 ISO = re.compile(r'^\d{4}-\d\d-\d\d([T ]\d\d:\d\d(:\d\d(\.\d+)?)?(Z|[+-]\d\d:?\d\d)?)?$')
 

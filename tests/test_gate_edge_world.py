@@ -229,20 +229,21 @@ NEW = {('16-Module-states', 'loading'), ('16-Module-states', 'error'), ('16-Modu
        ('39-Include-spare-parts', 'spare-pass'), ('44-Complete-sets', 'pins')}
 
 
-def test_the_new_states_are_built_candidates_in_a_known_world():
+def test_the_new_states_are_built_in_a_known_world():
     states = {(e['screen'], e['state']): e for e in gate.load()['states']}
     assert NEW <= set(states)
     for key in NEW:
         entry = states[key]
-        assert entry['built'] is True and entry['approved'] is False, key                  # only the maintainer approves
+        assert entry['built'] is True and isinstance(entry['approved'], bool), key         # approved by the maintainer on 12.11. (decision 600); a state that moves is approved again by him
         assert entry['world'] in gate.WORLDS and entry['path'].startswith('/'), key
     assert {k for k in NEW if states[k].get('javascript') is False} == {('36-Check-this-copy', 'javascript-off')}
     assert {k for k in NEW if not states[k]['world'].startswith('edge')} == {('35-Orders-capabilities', 'xml-link'), ('36-Check-this-copy', 'save-error'),
                                                                                ('36-Check-this-copy', 'javascript-off')}     # script-only states add no data, so they use the showcase
 
 
-def test_no_approved_state_uses_an_edge_world():
-    assert not [e for e in gate.load()['states'] if e.get('approved') and e.get('world', '').startswith('edge')]
+def test_only_the_new_states_use_an_edge_world():
+    """No state approved before the edge worlds existed was moved into one: its baseline would then depend on the edge data."""
+    assert {(e['screen'], e['state']) for e in gate.load()['states'] if e.get('world', '').startswith('edge')} <= NEW
 
 
 def test_the_state_left_unbuilt_says_what_is_missing():

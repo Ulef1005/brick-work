@@ -245,7 +245,7 @@
    "world": "demo",
    "path": "/collection/P",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "18-Copy-chooser",
@@ -485,7 +485,7 @@
    "world": "demo",
    "path": "/workbench/matcher",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "27-Matcher",
@@ -521,7 +521,7 @@
    "world": "demo",
    "path": "/workbench/check-parts",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "29-Part-picker",
@@ -530,7 +530,7 @@
    "world": "demo",
    "path": "/workbench/part-picker",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "30-Set-parts-checker",
@@ -734,7 +734,7 @@
    "world": "demo",
    "path": "/planning/prices",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "43-Complete-sets",
@@ -743,7 +743,7 @@
    "world": "demo",
    "path": "/planning/complete-sets",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "43-Complete-sets",
@@ -752,7 +752,7 @@
    "world": "demo",
    "path": "/planning/order-missing-parts",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "43-Complete-sets",
@@ -761,7 +761,7 @@
    "world": "demo",
    "path": "/planning/order-missing-parts?step=review",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "44-Complete-sets",

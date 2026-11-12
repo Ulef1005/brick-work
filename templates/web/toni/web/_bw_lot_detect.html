@@ -39,7 +39,7 @@
 <div class="bd-actions"><a class="button bw-secondary" href="{{ url_for('web.bw_pull_list',identifier=detail.id,set_id=c.id) }}">Pull list</a><a class="button bw-secondary" href="{{ url_for('web.bw_collection_item',item_id=c.id) }}">Open set {{ c.number }}</a></div>
 </div></details></article>
 {% endfor %}
-{% if detect.more %}<p class="bd-more-link"><a href="?{{ detect_query(f, show=detect.next_show) }}#set-detection">Show more candidates</a> · {{ detect.rows|length }} of {{ detect.total }}</p>{% endif %}
+{% if detect.more or detect.previous is not none %}<p class="bd-more-link">{% if detect.previous is not none %}<a href="?{{ detect_query(f, offset=detect.previous) }}#set-detection">Previous candidates</a> · {% endif %}{{ detect.first }} to {{ detect.last }} of {{ detect.total }}{% if detect.more %} · <a href="?{{ detect_query(f, offset=detect.next_offset) }}#set-detection">Show more candidates</a>{% endif %}</p>{% endif %}
 {% endif %}
 {% endif %}
 </section>

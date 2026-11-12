@@ -104,9 +104,11 @@ def test_more_candidates_come_with_a_show_more_link_that_keeps_the_filters(clien
     soup, _ = page(client, world.lot, '?min_score=0&detect=1&ignore_common=0')
     assert len(soup.select('.bd-cand')) == 10
     link = section(soup).select_one('.bd-more-link a')
-    assert 'show=20' in link['href'] and 'ignore_common=0' in link['href'] and link['href'].endswith('#set-detection')
+    assert 'offset=10' in link['href'] and 'ignore_common=0' in link['href'] and link['href'].endswith('#set-detection')
     more, _ = page(client, world.lot, '?min_score=0&show=20')
     assert len(more.select('.bd-cand')) == 20
+    second, _ = page(client, world.lot, '?min_score=0&offset=10')
+    assert [c.select_one('.bd-name').text for c in second.select('.bd-cand')][:1] != [c.select_one('.bd-name').text for c in soup.select('.bd-cand')][:1]
 
 
 def test_bad_filter_values_are_notes_not_errors(client, world):

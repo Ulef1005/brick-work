@@ -10,7 +10,9 @@
   "dark"
  ],
  "worlds": {
-  "demo": "the demo dataset (brickwork/demo/dataset.py on design/sources/test-data/), clock fixed at 2026-10-12T08:00:00Z"
+  "demo": "the demo dataset (brickwork/demo/dataset.py on design/sources/test-data/), clock fixed at 2026-10-12T08:00:00Z",
+  "showcase": "the demo world: the invented collection of brickwork/demo/showcase.py (orders, a lot, two-copy sets, staged checks), clock fixed at 2026-10-12T08:00:00Z",
+  "extras": "the showcase world plus brickwork/demo/gate_extras.py (an instruction, boxes, a dollar wish), for the screens the others cannot show"
  },
  "states": [
   {
@@ -56,10 +58,12 @@
   {
    "screen": "06-App-shell",
    "section": "1b",
-   "state": "",
-   "built": false,
-   "approved": false,
-   "reason": "the shell is part of every built screen; its Jump and brand-touch states need scripted interaction, not yet written"
+   "state": "jump",
+   "world": "demo",
+   "path": "/collection/sets",
+   "script": "document.querySelector(\"[data-open=\\\"global-jump\\\"]\").click();await new Promise(r=>setTimeout(r,300));",
+   "built": true,
+   "approved": false
   },
   {
    "screen": "07-New-navigation-icons",
@@ -75,7 +79,8 @@
    "state": "",
    "built": false,
    "approved": false,
-   "reason": "iPad and desktop variants of other sections (checker, scanner, Workbench sheet); not a page of its own"
+   "reason": "iPad and desktop variants of other sections: the gate renders every state at 1440, 1024 and 390, and the checker, Matcher and Part Picker are states of their own",
+   "covered_by": "30-Set-parts-checker"
   },
   {
    "screen": "09-Collection",
@@ -98,10 +103,12 @@
   {
    "screen": "11-Edit-sheet",
    "section": "1e",
-   "state": "",
-   "built": false,
-   "approved": false,
-   "reason": "the edit panel opens by interaction on a copy page; the script is not written yet"
+   "state": "edit-sheet",
+   "world": "demo",
+   "path": "/collection/item/set/7286-1?copy=56325b99-16bc-549b-bb98-f7be2ab38829",
+   "script": "document.querySelector(\".bc-info-edit\").click();await new Promise(r=>setTimeout(r,300));",
+   "built": true,
+   "approved": false
   },
   {
    "screen": "12-Minifigure-detail",
@@ -133,58 +140,103 @@
   {
    "screen": "14-Instruction-and-box-detail",
    "section": "2c",
-   "state": "",
-   "built": false,
-   "approved": false,
-   "reason": "the demo dataset holds no instruction or box item"
+   "state": "instruction",
+   "world": "extras",
+   "path": "/collection/item/instructions/99801-1",
+   "built": true,
+   "approved": false
+  },
+  {
+   "screen": "14-Instruction-and-box-detail",
+   "section": "2c",
+   "state": "box",
+   "world": "extras",
+   "path": "/collection/item/box/99802-1",
+   "built": true,
+   "approved": false
   },
   {
    "screen": "15-Part-lot",
    "section": "2d",
    "state": "",
-   "built": false,
-   "approved": false,
-   "reason": "the demo dataset holds no part lot"
+   "world": "showcase",
+   "path": "/collection/lots/9637c558-464c-59a7-a79b-e1b57f4aff0c",
+   "built": true,
+   "approved": false
   },
   {
    "screen": "15-Part-lot",
    "section": "2d",
    "state": "set-detection",
-   "built": false,
-   "approved": false,
-   "reason": "the demo dataset holds no part lot and no sticker sheets; #200 candidates are captured on an invented lot world (frames #s200)"
+   "world": "showcase",
+   "path": "/collection/lots/9637c558-464c-59a7-a79b-e1b57f4aff0c?detect=1",
+   "max": 3000,
+   "built": true,
+   "approved": false
   },
   {
    "screen": "15-Part-lot",
    "section": "2d",
    "state": "sticker-chooser",
-   "built": false,
-   "approved": false,
-   "reason": "the demo dataset holds no part lot and no sticker sheets; #201 chooser is captured on an invented lot world (frames #s201)"
+   "world": "showcase",
+   "path": "/collection/lots/9637c558-464c-59a7-a79b-e1b57f4aff0c/sticker/1d0e754ba9bf470290784927428ff05b#sticker-chooser",
+   "max": 900,
+   "built": true,
+   "approved": false
   },
   {
    "screen": "15-Part-lot",
    "section": "2d",
    "state": "pull-list",
-   "built": false,
-   "approved": false,
-   "reason": "the demo dataset holds no part lot; the pull list is captured on an invented lot world (frames #s202)"
+   "world": "showcase",
+   "path": "/collection/lots/9637c558-464c-59a7-a79b-e1b57f4aff0c/pull/11",
+   "built": true,
+   "approved": false
   },
   {
    "screen": "15-Part-lot",
    "section": "2d",
    "state": "pull-list-confirm",
-   "built": false,
-   "approved": false,
-   "reason": "the demo dataset holds no part lot; the Make it a copy confirm is captured on an invented lot world (frames #s202)"
+   "world": "showcase",
+   "path": "/collection/lots/9637c558-464c-59a7-a79b-e1b57f4aff0c/pull/11/make-copy#bp-confirm",
+   "max": 900,
+   "built": true,
+   "approved": false
   },
   {
    "screen": "16-Module-states",
    "section": "2e",
-   "state": "",
+   "state": "stale",
+   "world": "extras",
+   "path": "/collection/item/instructions/99801-1",
+   "built": true,
+   "approved": false
+  },
+  {
+   "screen": "16-Module-states",
+   "section": "2e",
+   "state": "thin-data",
+   "world": "extras",
+   "path": "/collection/item/box/99802-1",
+   "built": true,
+   "approved": false
+  },
+  {
+   "screen": "16-Module-states",
+   "section": "2e",
+   "state": "no-data",
+   "world": "extras",
+   "path": "/collection/item/box/99803-1",
+   "built": true,
+   "approved": false
+  },
+  {
+   "screen": "16-Module-states",
+   "section": "2e",
+   "state": "loading-and-error",
    "built": false,
    "approved": false,
-   "reason": "module states (empty, error, loading) need seeded conditions the demo dataset does not have"
+   "reason": "the loading and error states of the Prices module need a provider that is slow or fails; the gate world runs offline and has no such seam. Listings-only needs a listings guide record the dataset does not write"
   },
   {
    "screen": "17-Item-lists",
@@ -199,33 +251,174 @@
    "screen": "18-Copy-chooser",
    "section": "7b",
    "state": "",
-   "built": false,
-   "approved": false,
-   "reason": "needs a set with two copies and the chooser opened; not scripted yet"
+   "world": "showcase",
+   "path": "/collection/item/set/99102-1",
+   "built": true,
+   "approved": false
   },
   {
    "screen": "19-Item-lists",
    "section": "8a",
-   "state": "",
+   "state": "minifigures-grid",
+   "world": "showcase",
+   "path": "/collection/M",
+   "script": "document.querySelector(\"[data-bc-view=\\\"grid\\\"]\").click();await new Promise(r=>setTimeout(r,300));",
+   "built": true,
+   "approved": false
+  },
+  {
+   "screen": "19-Item-lists",
+   "section": "8a",
+   "state": "problems",
+   "world": "showcase",
+   "path": "/collection/P",
+   "script": "[...document.querySelectorAll('button')].find(b=>b.textContent.trim().startsWith('Damaged')).click();await new Promise(r=>setTimeout(r,300));",
+   "built": true,
+   "approved": false
+  },
+  {
+   "screen": "19-Item-lists",
+   "section": "8a",
+   "state": "select-mode",
+   "world": "showcase",
+   "path": "/collection/P",
+   "script": "document.querySelector(\"[data-bc-options-open]\").click();await new Promise(r=>setTimeout(r,300));document.querySelector(\"[data-bc-select]\").click();await new Promise(r=>setTimeout(r,300));",
+   "built": true,
+   "approved": false
+  },
+  {
+   "screen": "19-Item-lists",
+   "section": "8a",
+   "state": "read-only",
    "built": false,
    "approved": false,
-   "reason": "grid, select mode, read-only and problems states need scripted interaction, not yet written"
+   "reason": "read-only needs an instance switched to read-only (an environment setting), which the gate world does not set"
+  },
+  {
+   "screen": "19-Item-lists",
+   "section": "8a",
+   "state": "home-picks",
+   "built": false,
+   "approved": false,
+   "reason": "the home page picks (\"Try one tonight\") are not in the built Sets list; no page shows them"
   },
   {
    "screen": "20-Add-into-a-lot",
    "section": "8c",
-   "state": "",
+   "state": "estimate-sheet",
+   "world": "showcase",
+   "path": "/collection/item/set/99102-1?copy=941e4ebc-0ac0-5258-809e-b586f2e6254c",
+   "script": "document.querySelector(\"[data-bc-focus=current_value]\").click();await new Promise(r=>setTimeout(r,300));",
+   "built": true,
+   "approved": false
+  },
+  {
+   "screen": "20-Add-into-a-lot",
+   "section": "8c",
+   "state": "upload-sheet",
+   "world": "extras",
+   "path": "/manage/instructions",
+   "script": "document.querySelector(\"summary\").click();await new Promise(r=>setTimeout(r,300));",
+   "built": true,
+   "approved": false
+  },
+  {
+   "screen": "20-Add-into-a-lot",
+   "section": "8c",
+   "state": "count-audit",
+   "world": "showcase",
+   "path": "/workbench/orders/1?view=count",
+   "built": true,
+   "approved": false
+  },
+  {
+   "screen": "20-Add-into-a-lot",
+   "section": "8c",
+   "state": "leftovers",
+   "world": "showcase",
+   "path": "/workbench/orders/2?view=allocation",
+   "built": true,
+   "approved": false
+  },
+  {
+   "screen": "20-Add-into-a-lot",
+   "section": "8c",
+   "state": "add-part-lot",
    "built": false,
    "approved": false,
-   "reason": "the demo dataset holds no lot, and the sheets need scripted interaction"
+   "reason": "the Add into a lot switch of the Add page needs a typed part list and a review step, an interaction the gate has no script for yet"
+  },
+  {
+   "screen": "20-Add-into-a-lot",
+   "section": "8c",
+   "state": "fetch-sheet",
+   "built": false,
+   "approved": false,
+   "reason": "the built Instruction files page fetches with a form button and has no sheet"
+  },
+  {
+   "screen": "20-Add-into-a-lot",
+   "section": "8c",
+   "state": "import-progress",
+   "built": false,
+   "approved": false,
+   "reason": "needs a running Add import job; the gate world runs no worker"
   },
   {
    "screen": "21-Collection-capabilities",
    "section": "11a",
-   "state": "",
+   "state": "grouping",
+   "world": "showcase",
+   "path": "/collection/sets",
+   "script": "document.querySelector(\"[data-bc-options-open]\").click();await new Promise(r=>setTimeout(r,300));document.querySelector(\"[data-bc-group-pick=\\\"theme\\\"]\").click();await new Promise(r=>setTimeout(r,300));",
+   "built": true,
+   "approved": false
+  },
+  {
+   "screen": "21-Collection-capabilities",
+   "section": "11a",
+   "state": "item-filters",
+   "world": "showcase",
+   "path": "/collection/P",
+   "script": "document.querySelector(\"[data-bc-filters]\").click();await new Promise(r=>setTimeout(r,300));",
+   "sheet_below": 600,
+   "built": true,
+   "approved": false
+  },
+  {
+   "screen": "21-Collection-capabilities",
+   "section": "11a",
+   "state": "purchase-locations",
    "built": false,
    "approved": false,
-   "reason": "scroll, duplicate and grouping states need scripted interaction, not yet written"
+   "reason": "the same page as 52-Place",
+   "covered_by": "52-Place"
+  },
+  {
+   "screen": "21-Collection-capabilities",
+   "section": "11a",
+   "state": "scroll",
+   "built": false,
+   "approved": false,
+   "reason": "paging of long lists is the Pager (the list keeps its place); a \"load more\" state needs a scrolled page",
+   "covered_by": "24-Pager"
+  },
+  {
+   "screen": "21-Collection-capabilities",
+   "section": "11a",
+   "state": "duplicates",
+   "built": false,
+   "approved": false,
+   "reason": "the Duplicates screen (Compare copies, Keep both) is not built as a page"
+  },
+  {
+   "screen": "21-Collection-capabilities",
+   "section": "11a",
+   "state": "consolidated-instances",
+   "built": false,
+   "approved": false,
+   "reason": "the merged-instances list of a part is part of the part page",
+   "covered_by": "13-Part-detail"
   },
   {
    "screen": "22-Minifigure-detail",
@@ -233,7 +426,8 @@
    "state": "",
    "built": false,
    "approved": false,
-   "reason": "the same page as 12-Minifigure-detail; the other sizes and states of 12f are not scripted"
+   "reason": "the same page as 12-Minifigure-detail; the gate renders it at 1440, 1024 and 390",
+   "covered_by": "12-Minifigure-detail"
   },
   {
    "screen": "23-Minifigures-in-a-set",
@@ -257,10 +451,23 @@
   {
    "screen": "25-Sets-filters-where-select-and-group-go",
    "section": "12i",
-   "state": "",
-   "built": false,
-   "approved": false,
-   "reason": "the filter panel opens by interaction; not scripted yet"
+   "state": "filters-sheet",
+   "world": "showcase",
+   "path": "/collection/sets",
+   "script": "document.querySelector(\"[data-bc-filters]\").click();await new Promise(r=>setTimeout(r,300));",
+   "sheet_below": 600,
+   "built": true,
+   "approved": false
+  },
+  {
+   "screen": "25-Sets-filters-where-select-and-group-go",
+   "section": "12i",
+   "state": "toolbar-options-menu",
+   "world": "showcase",
+   "path": "/collection/sets",
+   "script": "document.querySelector(\"[data-bc-options-open]\").click();await new Promise(r=>setTimeout(r,300));",
+   "built": true,
+   "approved": false
   },
   {
    "screen": "26-First-run-without-keys",
@@ -363,10 +570,38 @@
   {
    "screen": "33-Orders",
    "section": "7d",
-   "state": "",
-   "built": false,
-   "approved": false,
-   "reason": "the demo dataset holds no order"
+   "state": "order-detail",
+   "world": "showcase",
+   "path": "/workbench/orders/2",
+   "built": true,
+   "approved": false
+  },
+  {
+   "screen": "33-Orders",
+   "section": "7d",
+   "state": "resume-draft",
+   "world": "showcase",
+   "path": "/workbench/orders/3",
+   "built": true,
+   "approved": false
+  },
+  {
+   "screen": "33-Orders",
+   "section": "7d",
+   "state": "line-review",
+   "world": "showcase",
+   "path": "/workbench/orders/1?view=allocation",
+   "built": true,
+   "approved": false
+  },
+  {
+   "screen": "33-Orders",
+   "section": "7d",
+   "state": "allocation-history",
+   "world": "showcase",
+   "path": "/workbench/orders/1?view=history",
+   "built": true,
+   "approved": false
   },
   {
    "screen": "34-Storage",
@@ -380,18 +615,63 @@
   {
    "screen": "35-Orders-capabilities",
    "section": "11b",
-   "state": "",
+   "state": "already-imported",
+   "world": "showcase",
+   "path": "/workbench/orders",
+   "built": true,
+   "approved": false
+  },
+  {
+   "screen": "35-Orders-capabilities",
+   "section": "11b",
+   "state": "undo-hold-reconcile",
+   "world": "showcase",
+   "path": "/workbench/orders/1?view=history",
+   "built": true,
+   "approved": false
+  },
+  {
+   "screen": "35-Orders-capabilities",
+   "section": "11b",
+   "state": "xml-link",
    "built": false,
    "approved": false,
-   "reason": "the demo dataset holds no order"
+   "reason": "the link-to-an-existing-order controls of the XML and email cards are collapsed in the hub; expanding them is an interaction not scripted yet"
   },
   {
    "screen": "36-Check-this-copy",
    "section": "12a",
-   "state": "",
+   "state": "in-progress-resume",
+   "world": "showcase",
+   "path": "/workbench/check-parts/79f5df76-b75b-5fd5-bf6c-d3f4506e1406",
+   "built": true,
+   "approved": false
+  },
+  {
+   "screen": "36-Check-this-copy",
+   "section": "12a",
+   "state": "checked",
+   "world": "extras",
+   "path": "/workbench/check-parts/9d6269ab-614d-549e-90ce-ca84e84afded",
+   "built": true,
+   "approved": false
+  },
+  {
+   "screen": "36-Check-this-copy",
+   "section": "12a",
+   "state": "never-checked",
+   "world": "showcase",
+   "path": "/workbench/check-parts/60b6e39e-1532-5baf-a0df-08566d2328a2",
+   "built": true,
+   "approved": false
+  },
+  {
+   "screen": "36-Check-this-copy",
+   "section": "12a",
+   "state": "other-states",
    "built": false,
    "approved": false,
-   "reason": "the same page as 30-Set-parts-checker; the states of 12a need an answered check, not scripted yet"
+   "reason": "no-copies, JavaScript off and save error need an empty collection, a browser without scripts and a failing save; the gate world has none of them"
   },
   {
    "screen": "37-Orders-at-macbook-and-ipad-size",
@@ -399,7 +679,8 @@
    "state": "",
    "built": false,
    "approved": false,
-   "reason": "the demo dataset holds no order"
+   "reason": "the same pages as 33-Orders and 32-Orders (order detail, allocation, history, hub); the gate renders each at 1440, 1024 and 390",
+   "covered_by": "33-Orders"
   },
   {
    "screen": "38-Storage-at-macbook-and-ipad-size",
@@ -413,18 +694,29 @@
   {
    "screen": "39-Include-spare-parts",
    "section": "12d",
-   "state": "",
+   "state": "finish-spares-skipped",
+   "world": "showcase",
+   "path": "/workbench/check-parts/0133c51c-12df-57b3-97c1-93ce94e8691d",
+   "script": "document.querySelector(\"[data-resume]\").click();await new Promise(r=>setTimeout(r,300));",
+   "built": true,
+   "approved": false
+  },
+  {
+   "screen": "39-Include-spare-parts",
+   "section": "12d",
+   "state": "spare-pass",
    "built": false,
    "approved": false,
-   "reason": "the end of a check; needs an answered check, not scripted yet"
+   "reason": "the spare-parts question needs a copy whose part list has spare lines; the showcase sets have none"
   },
   {
    "screen": "40-Check-figure-parts",
    "section": "12e",
    "state": "",
-   "built": false,
-   "approved": false,
-   "reason": "figure mode of the checker; needs an answered check, not scripted yet"
+   "world": "extras",
+   "path": "/workbench/check-parts/2e46e1e6-3019-5315-aa7d-c596a5d6a280/figure/26",
+   "built": true,
+   "approved": false
   },
   {
    "screen": "41-Wishlist",
@@ -474,10 +766,30 @@
   {
    "screen": "44-Complete-sets",
    "section": "7c",
-   "state": "",
+   "state": "export-selection",
+   "world": "demo",
+   "path": "/planning/complete-sets",
+   "script": "document.querySelectorAll('[data-bp-selected]').forEach((b,i)=>{if(i<2)b.click()});await new Promise(r=>setTimeout(r,300));",
+   "built": true,
+   "approved": false
+  },
+  {
+   "screen": "44-Complete-sets",
+   "section": "7c",
+   "state": "repair-settings",
+   "world": "demo",
+   "path": "/planning/complete-sets",
+   "script": "document.querySelector(\"summary\").click();await new Promise(r=>setTimeout(r,300));",
+   "built": true,
+   "approved": false
+  },
+  {
+   "screen": "44-Complete-sets",
+   "section": "7c",
+   "state": "pins",
    "built": false,
    "approved": false,
-   "reason": "pins, repair settings and export need scripted interaction, not yet written"
+   "reason": "a pin is saved by a click that reloads the page; the script cannot survive the reload, and the dataset pins nothing"
   },
   {
    "screen": "45-Wanted-watch-and-alert",
@@ -485,15 +797,25 @@
    "state": "",
    "built": false,
    "approved": false,
-   "reason": "needs a watched price; the demo dataset has none"
+   "reason": "not in the app: there is no watch or price-alert screen (no target, no Alert me, no Save watch); the design is ahead of the build, see #57 and milestone D"
   },
   {
    "screen": "46-Your-max-price-with-a-currency",
    "section": "12k",
-   "state": "",
-   "built": false,
-   "approved": false,
-   "reason": "wishes in several currencies; the demo dataset has one currency"
+   "state": "list-with-max-price",
+   "world": "extras",
+   "path": "/planning/wishlist?list=wl-birthday",
+   "built": true,
+   "approved": false
+  },
+  {
+   "screen": "46-Your-max-price-with-a-currency",
+   "section": "12k",
+   "state": "wish-detail-not-comparable",
+   "world": "extras",
+   "path": "/collection/wishes/wish-usd-pier",
+   "built": true,
+   "approved": false
   },
   {
    "screen": "47-Add",
@@ -627,7 +949,7 @@
    "state": "",
    "built": false,
    "approved": false,
-   "reason": "needs a camera or a mocked scanner"
+   "reason": "not in the app: there is no barcode scanner screen (the only camera page is Part Spotter / What is this); needs the feature and a mocked camera"
   }
  ]
 }

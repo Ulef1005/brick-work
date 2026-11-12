@@ -187,3 +187,28 @@ def test_unit_the_extra_of_a_line():
     import math
     assert S.sticker_extra(Index, 0, 2.0, frozenset({10})) == pytest.approx(S.CONFIRMED_FACTOR * math.log(100) - 2.0)
     assert S.sticker_extra(Index, 1, 2.0, frozenset({10})) == 0.0
+
+
+# ---------- review fixes ----------
+
+def test_confirm_projects_the_set_and_the_sheet_into_the_collection_so_a_rebuild_keeps_their_ids(db, world):
+    world.flag()
+    a, sheet = world.set('9401-1'), world.sheet('sheet-a')
+    held = lambda: {r[0] for r in db.execute('SELECT id FROM main.item WHERE id IN (?,?)', (a, sheet))}          # noqa: E731
+    assert held() == set()
+    stickers.confirm(db, world.lot, world.line, a, sheet)
+    assert held() == {a, sheet}
+
+
+def test_undoing_an_older_not_a_sticker_is_refused_while_a_later_change_is_active(db, world):
+    world.flag()
+    first = stickers.clear(db, world.lot, world.line)
+    world.flag()                                    # another piece of the same stock row is filed with the switch on
+    second = stickers.clear(db, world.lot, world.line)
+    assert not stickers.states(db, [world.line])[world.line]['flagged']
+    with pytest.raises(errors.UndoBlocked, match='undo the later change first'):
+        undo.undo_event(db, first['event_id'])
+    assert not stickers.states(db, [world.line])[world.line]['flagged'], 'nothing was restored'
+    undo.undo_event(db, second['event_id'])
+    undo.undo_event(db, first['event_id'])
+    assert stickers.states(db, [world.line])[world.line]['flagged']

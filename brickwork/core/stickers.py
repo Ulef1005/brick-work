@@ -14,6 +14,7 @@ import uuid
 
 from . import errors, set_scoring as engine, undo as undoing
 from .admin import audit
+from ..store4 import identity
 from ..store4.connect import now as stamp_now
 
 FLAG_NAME = 'Sticker'
@@ -130,6 +131,8 @@ def confirm(db, lot_id, stock_id, set_item_id, sheet_item_id):
         results = _holders(db, line(db, lot_id, stock_id))
         if not any(r['set_item_id'] == set_item_id and r['sheet_item_id'] == sheet_item_id for r in results):
             raise ValueError('Choose one of the sets that hold this part and a sticker sheet')
+        identity.project(db, set_item_id)               # an id named in an event survives a catalogue rebuild only when the item is in main.item
+        identity.project(db, sheet_item_id)
         now = decision(db, stock_id)
         if now and (now['set_item_id'], now['sheet_item_id']) == (set_item_id, sheet_item_id):
             return dict(event_id=now['event_id'], changed=False)
@@ -162,6 +165,9 @@ def _undo_confirm(db, event, via, actor):
 def _undo_clear(db, event, via, actor):
     """Undo "Not a sticker": the flag goes back on the line (refused when the line is gone); the earlier confirmation counts again."""
     body = json.loads(event['new_value'])
+    if db.execute(f"SELECT 1 FROM main.event e WHERE e.entity_kind='{KIND}' AND e.entity_id=? AND e.id>? AND e.field IN ('{CONFIRM}','{CLEAR}') "
+                  'AND NOT EXISTS(SELECT 1 FROM main.event_undo u WHERE u.event_id=e.id)', (body['stock_id'], event['id'])).fetchone():
+        raise ValueError('The sticker of this part changed since · undo the later change first')
     row = db.execute('SELECT 1 FROM main.stock WHERE id=? AND archived_at IS NULL', (body['stock_id'],)).fetchone()
     if row is None:
         raise ValueError('This part line is gone')

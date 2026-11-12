@@ -110,7 +110,7 @@
    "world": "demo",
    "path": "/collection/item/minifigure/fig-001714",
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "13-Part-detail",
@@ -128,7 +128,7 @@
    "world": "demo",
    "path": "/collection/item/174/change-variant?target=594",
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "14-Instruction-and-box-detail",

@@ -134,7 +134,7 @@ def register(app):
     from ..limits import install as install_body_limits
     install_body_limits(app)
     from . import items  # noqa: F401 — the routes of M.11a
-    from . import catalogue, copies, history, instructions, item_views, loose, places, prices, pull_list, ranking, stickers, wishes  # noqa: F401 — the routes of M.11b
+    from . import catalogue, copies, history, instructions, item_views, loose, places, prices, pull_list, ranking, stickers, valuation, wishes  # noqa: F401 — the routes of M.11b
     from . import write_collection, write_identity, write_money, write_where  # noqa: F401 — the routes of M.11c
     from . import identifications, jobs, orders, sources, sync, system  # noqa: F401 — the routes of M.11d
     app.register_blueprint(blueprint())

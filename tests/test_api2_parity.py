@@ -26,7 +26,7 @@ def test_every_operation_has_a_route_and_every_route_is_in_the_contract():
     routes = v2_routes()
     assert sorted(set(OPERATIONS) - set(routes)) == [], 'in the contract without a route'
     assert sorted(set(routes) - set(OPERATIONS)) == [], 'routed but not in the contract'
-    assert len(OPERATIONS) == 199
+    assert len(OPERATIONS) == 201
 
 
 def test_no_operation_answers_501():
@@ -48,7 +48,7 @@ def tools_of_contract():
 
 def test_every_tool_maps_to_one_operation_and_the_names_are_unique():
     names = [op['x-mcp-tool'] for op in OPERATIONS.values() if 'x-mcp-tool' in op]
-    assert len(names) == len(set(names)) == 73
+    assert len(names) == len(set(names)) == 74
     assert re.fullmatch(r'[a-z][a-z0-9_]*', ''.join(sorted(set(names))).replace('_', ''))
     adapter = Adapter(None)
     assert {name: (method, path) for name, (method, path, _) in adapter.tools.items()} == {n: (m, p) for n, (m, p) in tools_of_contract().items()}

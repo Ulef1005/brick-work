@@ -155,6 +155,7 @@ What the 60 read operations (M.11b) and the 67 write operations (M.11c, further 
 * **Change variant** (#151). `POST /items/{id}/change-variant` takes `{"to": <ItemKey>}` and names the old variant in the path; both are catalogue figures (or parts, or other items) of one kind, neither merged. Every owned row moves from the item in the path to `to`, keeping its id: loose stock, wishes, the figure lines of copies (a copy keeps its part list; a line that named a catalogue list `to` does not have becomes a `migrated` one) and the part lines of loose parts. BrickLink's number (the old item's preferred one, else the one link to check on `to`) becomes `to`'s preferred `manual` link, and the old item's link of it becomes `to_check`; the old item is left as it is. `VariantChange` is `{from, to, number, receipt: {event_id, counts}}`. One event: its Undo (`POST /events/{id}/undo`) puts every row and link back, and is `409` once any of them changed. Refused with `409`: a merged item on either side (`merged` with `survivor`), another kind, a set, the same item, a job in flight for either, a copy, loose figure or part list with a line for both items, a row holding a fetched part list of the old item, and a live stock row or wish that would meet a live one of `to` on its key (nothing is added up).
 * **Sets versus a pile of parts** (#199). `GET /planning/set-scores` ranks the catalogue's sets by how much of a pile of loose parts each explains: give exactly one of `lot`, `storage` (with the storages inside it), `loose=true` or `stock` (repeated line ids), else `422`; an unknown lot or storage is `404`, a stock id that is not a live loose part or figure `422`. `limit` (1 to 100, default 20), `offset` and `detail` (matched lines per set, 0 to 50, default 10) page and size the answer; the ranking is cached per catalogue build and input, so a later page is cheap. Each set carries `evidence` (the sum, over the lines it holds, of the rarity weight ln(N/df) times the covered share of the set's quantity), `coverage` (evidence over the set's own total weight), covered, complete and distinctive lines, the `matched` lines with the stock flags passed through (`flags` sums them per flag) and `swaps` (the same part in another colour or as an alternate mould, listed apart and in no number). It reads and writes nothing, so a read token may call it, and it is a GET: an arbitrary parts list goes through the Python service `brickwork.core.set_scoring.score`. The formula and the decisions are ADR 0026; the how-to for developers is the reference page [Set scoring](../reference/set-scoring.md).
 * **Which sets came in this lot** (#200). `GET /lots/{id}/candidate-sets` ranks the sets a lot may have come from with the engine of `GET /planning/set-scores`, read-only; an unknown lot is `404`. `score` is 0 to 100: the set's evidence over the best candidate's, so the best set that passes the set filters scores 100; it is not a probability. `reasons` are sentences ("7 of 9 distinctive parts found", "2 printed parts only in this set"), `distinctive_found_parts` and `distinctive_missing_parts` list up to 20 distinctive parts each (held by at most 25 sets) with their picture (`id`, `content_url` of the newest local one, `image_url` of the catalogue). Filters: `min_score`, `theme` (a catalogue theme id or name, with its sub-themes; an unknown one is `422`), `year_from`, `year_to`, `parts_min`, `parts_max` (the catalogue's part count), `ignore_common` (default true: lines held by more than `candidate_sets_common_max` sets are dropped before scoring) and `limit` (1 to 100, default 20) and `offset`, which page after the filters. A bad boolean is `400 unknown_filter`, any other bad value `422`. The rules and the code are in [Set scoring](../reference/set-scoring.md).
+* **Value and gain** (#57). `GET /valuation` (MCP tool `get_valuation`) answers `copies` (every live copy, in set-number order) and `statistics` (the Paid vs value figures of Statistics), all in the display currency of Settings. A copy has `paid` (its price paid, `null` with `paid_reason` `no_price_paid` for none or 0.00, or `no_rate`), `worth` (`null` with `worth_reason` `no_quote` or `no_rate`) and `gain` (worth minus paid, negative for a loss, with its whole percent of the price paid; `null` unless both are known). A money figure is `{amount, currency, converted, rate, rate_as_of, original}`: a converted one carries the rate used, its date and the amount as recorded, and a missing rate is a `null` figure with the reason, never a guess; two currencies never share a figure. `worth_source` is `override` (the copy's own value) or `used` or `new` (the sold average of its set for the copy's condition and completeness; a new or sealed copy is priced new, an incomplete one has the incomplete-set discount of Prices taken off, `worth_discount_pct`), with `worth_date` (the day of the quote), `worth_sales` and `worth_stale` (the Prices card's rule). `statistics` counts only the copies that have both a price paid and a worth (`comparable_copies`; `enough` is three or more), so the gain compares like with like; `without_price_paid`, `without_quote` and `without_rate` count the rest apart, and `by_theme` and `by_year` list `{label, paid, worth, gain, percent, copies}` (a purchase year that is not recorded is `Not recorded`). `GET /export/insurance.csv` is the insurance report: every live copy, one row each, columns Set number, Name, Year, Condition, Completeness, Purchase date, Price paid, Price paid currency, Current value, Current value currency, Value source, Value date, Photos (the copy's own photos, a count) and Remarks; text cells are made safe for a spreadsheet. Both are read-only. The column set is a proposal until the Discussions say what insurers ask for.
 * **Stickers** (#201). `GET /lots/{id}/stock/{stock_id}/stickers` lists the sets whose latest inventory holds the part line's part in its colour and a sticker sheet (a part of the category `Stickers`), with the sheet and its picture, and the line's `sticker` state (`flagged`, `confirmed`). `POST /lots/{id}/stock/{stock_id}/sticker` with `set_item_id` and `sheet_item_id` from that list confirms the choice (`409` when the line has no Sticker flag, `422` for a pair that is not a candidate); `DELETE` on the same path is "Not a sticker": it removes the flag and stops counting a confirmation. Both are one undoable event, an unchanged state writes nothing (`changed: false`, `event_id: null` when there is no event) and the Idempotency-Key is optional. The candidate-sets answer lists each set's `swaps`. Filing with `sticker: true` is a Part Spotter (web) matter; the API sets the flag with `PUT /stock/{id}/flags` as before. See [Set scoring](../reference/set-scoring.md) for the evidence rule.
 * **The copy's part list.** `POST /copies/{id}/inventory` takes `source`, `version` (Rebrickable; default the latest) and, new in M.11c, `remember` (also the set's preference for new copies, in the same event). BrickLink's list without a key is `424 source_not_configured`; with no fetched list the answer is `202` with `Location: /api/v2/jobs/{id}` and the copy waits (`inventory.pending`); a copy already waiting, or already on that list, is `409`. `DELETE .../inventory/pending` cancels the wait and puts back the preference it remembered.
 * **Refusals of the 4.0 store** are problems: a state that does not allow the change (nothing to switch, a marked copy, a pending change, a refused merge) is `409`, a missing catalogue `424`, the rest `422`; the words are the refusal's own with folders cut.
@@ -188,7 +189,7 @@ What the 60 read operations (M.11b) and the 67 write operations (M.11c, further 
 
 ### 3.1 Summary
 
-199 operations in all (M.11a 9, M.11b 62, M.11c 71, M.11d 57 by piece); v1 had 179 operations.
+201 operations in all (M.11a 9, M.11b 64, M.11c 71, M.11d 57 by piece); v1 had 179 operations.
 
 | Group | Operations | Pieces |
 |---|---|---|
@@ -202,13 +203,13 @@ What the 60 read operations (M.11b) and the 67 write operations (M.11c, further 
 | Loose stock | 13 | M.11b 3, M.11c 10 |
 | Minifigures | 2 | M.11b 2 |
 | Instructions | 7 | M.11b 3, M.11c 4 |
-| Prices | 8 | M.11b 4, M.11c 2, M.11d 2 |
+| Prices | 9 | M.11b 5, M.11c 2, M.11d 2 |
 | Wishlist | 16 | M.11b 5, M.11c 11 |
 | Storages | 7 | M.11b 2, M.11c 5 |
 | Lots | 7 | M.11b 3, M.11c 4 |
 | Places | 5 | M.11b 1, M.11c 4 |
 | Flags | 5 | M.11b 1, M.11c 4 |
-| Planning | 8 | M.11b 8 |
+| Planning | 9 | M.11b 9 |
 | Orders | 15 | M.11d 15 |
 | Events | 3 | M.11b 2, M.11c 1 |
 | Jobs | 7 | M.11d 7 |
@@ -357,6 +358,7 @@ Scope `none` means no token. Every path is relative to `/api/v2`. The **v1** col
 | `POST /prices/observations` | Record up to 500 observations in one transaction. | write | M.11c | same |
 | `POST /prices/refresh` | Queue refresh jobs for every stale item. | write | M.11d | same |
 | `GET /prices/stale` | Items whose price is older than the freshness rule. | read | M.11b | same |
+| `GET /valuation` | Value and gain per live copy, and the Paid vs value figures of Statistics (#57). | read | M.11b | **NEW** |
 
 #### Wishlist
 
@@ -426,6 +428,7 @@ Scope `none` means no token. Every path is relative to `/api/v2`. The **v1** col
 
 | Operation | What it does | Scope | Piece | v1 |
 |---|---|---|---|---|
+| `GET /export/insurance.csv` | The insurance report as CSV: one row per live copy with price paid, worth, source and date of the quote (#57). | read | M.11b | **NEW** |
 | `GET /export/missing.csv` | Missing parts of the chosen copies as CSV (the printable list, #43). | read | M.11b | same |
 | `GET /export/missing.json` | The same missing-item aggregation and eligibility as XML, returned as JSON. | read | M.11b | same |
 | `GET /export/missing.xml` | BrickLink wanted-list XML of missing items for chosen copies. | read | M.11b | same |
@@ -548,7 +551,7 @@ The `?` item type and the `item_type`, `item_no` and `color_id` members are gone
 | **M.11d** | Orders, jobs, sources and keys, sync, imports, identifications, tokens, admin; the dead v1 callers removed | 57 |
 | **M.11e** | The MCP regenerated from this file, the v2 parity test, API and MCP docs. **Done** (2026-10-28) | none |
 
-Operations by piece: M.11a 9, M.11b 62, M.11c 71, M.11d 57 (199 in all). The two tables below are generated from the contract and the routes by `scripts/check_api_contract.py --write`, and that check (run by `scripts/check.sh`) fails when the contract, the routes or these tables disagree. A piece lands by adding itself to `brickwork.api2.DONE`.
+Operations by piece: M.11a 9, M.11b 64, M.11c 71, M.11d 57 (201 in all). The two tables below are generated from the contract and the routes by `scripts/check_api_contract.py --write`, and that check (run by `scripts/check.sh`) fails when the contract, the routes or these tables disagree. A piece lands by adding itself to `brickwork.api2.DONE`.
 
 ### Implemented
 
@@ -592,6 +595,7 @@ Operations by piece: M.11a 9, M.11b 62, M.11c 71, M.11d 57 (199 in all). The two
 | `GET /api/v2/exchange-rates` | M.11d | `brickwork.api2.system.get_exchange_rates` |
 | `POST /api/v2/exchange-rates/ecb` | M.11d | `brickwork.api2.system.post_exchange_rates_ecb` |
 | `PUT /api/v2/exchange-rates/{code}` | M.11d | `brickwork.api2.system.put_exchange_rates_by_code` |
+| `GET /api/v2/export/insurance.csv` | M.11b | `brickwork.api2.valuation.get_export_insurance_csv` |
 | `GET /api/v2/export/missing.csv` | M.11b | `brickwork.api2.ranking.get_export_missing_csv` |
 | `GET /api/v2/export/missing.json` | M.11b | `brickwork.api2.ranking.get_export_missing_json` |
 | `GET /api/v2/export/missing.xml` | M.11b | `brickwork.api2.ranking.get_export_missing_xml` |
@@ -737,6 +741,7 @@ Operations by piece: M.11a 9, M.11b 62, M.11c 71, M.11d 57 (199 in all). The two
 | `GET /api/v2/tokens` | M.11d | `brickwork.api2.system.get_tokens` |
 | `POST /api/v2/tokens` | M.11d | `brickwork.api2.system.post_tokens` |
 | `DELETE /api/v2/tokens/{id}` | M.11d | `brickwork.api2.system.delete_tokens_by_id` |
+| `GET /api/v2/valuation` | M.11b | `brickwork.api2.valuation.get_valuation` |
 | `GET /api/v2/version` | M.11a | `brickwork.api2.get_version` |
 | `GET /api/v2/wishes` | M.11b | `brickwork.api2.wishes.get_wishes` |
 | `POST /api/v2/wishes` | M.11c | `brickwork.api2.write_collection.post_wishes` |

@@ -93,12 +93,12 @@ def state(db, lot_id, set_item_id):
     chosen = _set(db, set_item_id)
     scout = build_scout.scout_for(db)
     position = scout.parts.position.get(chosen['id'])
-    if position is None:
+    fig = scout.figures.position.get(chosen['id'])
+    if position is None and fig is None:                  # the parts index omits a set with no standalone parts: a set of whole figures is in the figures one
         raise ValueError('This set has no part list to pull from')
     pile = build_scout.pile_of(build_scout.stock_rows(db, lots=[lot_id]))
     ticks = stored(db, lot_id, chosen['id'])
-    entries = [(key, need, False) for key, need in zip(scout.parts.set_keys[position], scout.parts.set_needs[position])]
-    fig = scout.figures.position.get(chosen['id'])
+    entries = [] if position is None else [(key, need, False) for key, need in zip(scout.parts.set_keys[position], scout.parts.set_needs[position])]
     if fig is not None:
         entries += [(key, need, True) for key, need in zip(scout.figures.set_keys[fig], scout.figures.set_needs[fig])]
     categories = _categories(db, [set_scoring.unkey(k)[0] for k, _, _ in entries])
@@ -159,6 +159,25 @@ def set_found(db, lot_id, set_item_id, item_id, color_id, found):
     return line
 
 
+def plan_takes(info, rows):
+    """`[(stock id, amount)]` so that every line of the list gets `min(have, need)` from the lot's rows, the largest usable row first, then the lowest id (the order of
+    `build_scout.plan_takes`, which reads the parts index and so cannot plan a set of whole figures only)."""
+    by_key = {}
+    for row in rows:
+        by_key.setdefault(set_scoring.key_of(row['item_id'], row['color_id']), []).append(dict(row))
+    takes = []
+    for line in info['lines']:
+        left = line['need']
+        for row in sorted(by_key.get(set_scoring.key_of(line['item_id'], line['color_id']), ()), key=lambda r: (-min(r['have'], line['need']), r['id'])):
+            step = min(left, row['have'])
+            if step:
+                takes.append((row['id'], step))
+                left -= step
+            if not left:
+                break
+    return takes
+
+
 def make_copy(db, lot_id, set_item_id):
     """Make it a copy: the found pieces of the pull list move out of the lot into a new copy of the set, one transaction, one undoable event. Returns
     `dict(event_id, copy_id, pieces, figures, missing_parts, missing_figures, completeness, stays)`. Refused (`ValueError`, nothing written): a set made of
@@ -173,7 +192,7 @@ def make_copy(db, lot_id, set_item_id):
                 stock.add_loose(db, item_id=line['item_id'], color_id=line['color_id'], quantity=line['ticked'], condition='used', lot_id=lot_id,
                                 note=BULK_NOTE, record=False)
         rows = build_scout.stock_rows(db, lots=[lot_id])
-        takes, _ = build_scout.plan_takes(db, info['set']['id'], rows)
+        takes = plan_takes(info, rows)
         if not takes:
             raise ValueError('Nothing found yet · tick the parts you find first')
         made = found_copy.make_copy_in(db, info['set']['id'], takes, via=via, actor=actor, operation_key=OPERATION_KEY.get(), note=NOTE)

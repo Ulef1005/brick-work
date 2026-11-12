@@ -219,3 +219,18 @@ def test_a_figure_ticked_in_the_bulk_is_filed_and_moved_too(world):
     P.set_found(w.db, w.lot, item_id(w.db, 'sets', '9103-1'), figure, None, 2)
     made = P.make_copy(w.db, w.lot, item_id(w.db, 'sets', '9103-1'))
     assert (made['figures'], made['missing_figures'], made['pieces']) == (2, 0, 0)
+
+
+def test_a_set_of_whole_figures_only_has_a_pull_list_and_can_be_made_a_copy(tmp_path):
+    dump = {**SYN, 'sets': SYN['sets'] + [['9199-1', 'Syn Figure Set', 2010, 600, 1, '']], 'inventories': SYN['inventories'] + [[9199, 1, '9199-1']],
+            'inventory_minifigs': SYN['inventory_minifigs'] + [[9199, 'fig-000004', 1]]}
+    path = make_pair(tmp_path, extra_dump=dump)
+    with closing(connect(path)) as db:
+        w = W(db, Coll(db), path)
+        figure = item_id(db, 'minifigs', 'fig-000004')
+        w.coll.add_stock('minifigure', figure, quantity=1, lot=w.lot)
+        chosen = item_id(db, 'sets', '9199-1')
+        info = P.state(db, w.lot, chosen)                                   # no part lines: it is not in the parts index
+        assert [(ln['kind'], ln['need'], ln['found']) for ln in info['lines']] == [('figure', 1, 1)] and info['refusal'] is None
+        made = P.make_copy(db, w.lot, chosen)
+        assert (made['figures'], made['pieces'], made['missing_figures']) == (1, 0, 0) and made['completeness'] == 'complete'

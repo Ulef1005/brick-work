@@ -173,7 +173,7 @@
    "script": "document.querySelector(\"[data-bc-list]\").hidden=true;await Promise.all([...document.images].map(i=>{i.loading=\"eager\";return i.complete?null:new Promise(r=>{i.onload=i.onerror=r;setTimeout(r,8000);});}));await Promise.all([...document.images].map(i=>i.decode?i.decode().catch(()=>0):0));",
    "max": 3000,
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "15-Part-lot",
@@ -471,7 +471,7 @@
     1024
    ],
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "26-First-run-without-keys",

@@ -34,7 +34,7 @@ def query_of(view, **more):
 
 
 def _matches(row, needle):
-    text = ' '.join(str(row.get(k) or '') for k in ('name', 'number_text', 'item_no', 'color_name')).casefold()
+    text = ' '.join(str(row.get(k) or '') for k in ('name', 'number', 'colour')).casefold()
     return all(word in text for word in needle.casefold().split())
 
 

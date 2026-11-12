@@ -151,3 +151,8 @@ def test_a_read_only_instance_shows_the_list_without_writes(client, world, app4)
     for tail in ('/found', '/make-copy', '/undo'):
         assert client.post(base(world) + tail, data=dict(csrf_token=token, item_id='1', found='1', event_id='1')).status_code == 403
     app4.config['BW_READ_ONLY'] = False
+
+
+def test_search_finds_a_line_by_its_number_and_its_colour(client, world):
+    assert set(lines(page(client, world, '?show=all&q=stk-bar'))) == {'Stk bar'}                # the number is not in the name
+    assert set(lines(page(client, world, '?show=all&q=red'))) == {'Stk tile'}                 # the colour name: only the tile has a colour in the set

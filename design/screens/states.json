@@ -246,7 +246,7 @@
    "world": "demo",
    "path": "/workbench/build-scout?min_percent=0",
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "27-Matcher",
@@ -255,7 +255,7 @@
    "world": "demo",
    "path": "/workbench/build-scout/12?min_percent=0",
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "27-Matcher",
@@ -264,7 +264,7 @@
    "world": "demo",
    "path": "/workbench/build-scout",
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "28-Check-set-parts",

@@ -1,0 +1,78 @@
+{# The pull list of a set for a lot (#202): server-rendered, no JavaScript needed. The counters are form posts; the confirm is this page with the dialog open. #}
+{% extends 'web/toni/base.html' %}
+{% block title %} · Pull list{% endblock %}
+{% block page_assets %}<link rel="stylesheet" href="{{ bw_static('web/toni/bw-workbench.css') }}"><link rel="stylesheet" href="{{ bw_static('web/toni/bw-pull.css') }}"><script src="{{ bw_static('web/toni/bw-pull.js') }}" defer></script>{% endblock %}
+{% block content_class %}pull-list-page{% endblock %}
+{% macro back_fields() %}{% if view.q %}<input type="hidden" name="q" value="{{ view.q }}">{% endif %}<input type="hidden" name="show" value="{{ view.show }}"><input type="hidden" name="sort" value="{{ view.sort }}">{% if view.every %}<input type="hidden" name="all" value="1">{% endif %}{% endmacro %}
+{% macro step(ln, value, sign, label, off) %}<form method="post" action="{{ url_for('web.bw_pull_found', identifier=detail.id, set_id=set_row.id) }}" class="bp-step"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="item_id" value="{{ ln.item_id }}"><input type="hidden" name="color_id" value="{{ ln.color_id if ln.color_id is not none }}"><input type="hidden" name="found" value="{{ value }}">{{ back_fields() }}<button type="submit" aria-label="{{ label }}" {% if off %}disabled{% endif %}>{{ sign }}</button></form>{% endmacro %}
+{% block main %}
+{% set t = info.totals %}{% set m = moves %}
+{% set q = pull_query(view) %}
+{% set back = pull_url ~ ('?' ~ q if q else '') %}
+{% set mine = set_row.number or set_row.name %}
+<div id="bw-pull" class="bp" data-bp>
+<div class="bp-main">
+<div class="bp-list">
+<p class="crumb"><a href="{{ lot_url }}#set-detection">‹&nbsp;<span class="bp-crumb-lot">{{ detail.name or detail.id }}&nbsp;·&nbsp;</span>Which sets are in this lot?</a></p>
+<p class="lab">Pull list</p>
+<h1 class="bp-title">{{ set_row.name }} <span class="mono muted bp-title-no">{{ set_row.number }}</span></h1>
+<p class="sub">{{ [set_row.theme, set_row.year, ((set_row.size|string) ~ ' parts') if set_row.size is not none]|select|join(' · ') }}</p>
+{% if error %}<p class="notice bp-error" role="alert">{{ error }}</p>{% endif %}
+{% if done and copy %}<div class="bp-done" role="status"><span>Copy made · {{ request.args.get('pieces') }} piece{{ '' if request.args.get('pieces') == '1' else 's' }} moved out of the lot{% if request.args.get('missing') and request.args.get('missing') != '0' %} · {{ request.args.get('missing') }} recorded as missing{% endif %}</span>
+<span class="bp-done-actions"><a href="{{ url_for('web.bw_collection_item', item_id=set_row.id, copy=copy.id) }}">Open the copy</a>{% if can_edit %}<form method="post" action="{{ url_for('web.bw_pull_undo', identifier=detail.id, set_id=set_row.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="event_id" value="{{ done }}"><button type="submit" class="bp-link">Undo</button></form>{% endif %}</span></div>
+{% elif undone %}<div class="bp-done" role="status"><span>Undone · the copy is archived and its pieces are back in the lot</span></div>{% endif %}
+<div class="bp-prog"><span><b class="mono">{{ t.found }}</b> of <span class="mono">{{ t.need }}</span> <span class="bp-pieces">pieces </span>found</span><span class="muted">{{ t.to_find }} to find</span></div>
+<div class="bp-strip" role="img" aria-label="{{ t.found }} of {{ t.need }} pieces found"><i class="f" style="flex:{{ t.found }}"></i><i style="flex:{{ t.to_find }}"></i></div>
+<form class="bp-tools" method="get" action="{{ pull_url }}" data-bp-form>
+<span class="bp-search"><input type="search" name="q" value="{{ view.q }}" placeholder="Search parts" aria-label="Search parts" autocomplete="off"></span>
+<label class="bp-sel"><span class="bp-sel-name">Show </span><select name="show" aria-label="Show">{% for value, label in show_label.items() %}<option value="{{ value }}" {% if view.show == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+<label class="bp-sel"><span class="bp-sel-name">Sort </span><select name="sort" aria-label="Sort">{% for value, label in sort_label.items() %}<option value="{{ value }}" {% if view.sort == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+<button type="submit" class="button bw-secondary bp-apply">Apply</button>
+<span class="muted bp-lines">{{ t.lines_to_find }} line{{ '' if t.lines_to_find == 1 else 's' }} to find</span>
+</form>
+{% for g in groups %}
+<p class="lab bp-grp">{{ g.name }}{% if g.to_find %} · {{ g.to_find }} <span class="bp-pieces">pieces </span>to find{% else %} · all found{% endif %}</p>
+{% for ln in g.lines %}
+<div class="bp-line{{ ' bp-full' if ln.full }}" id="l-{{ ln.item_id }}-{{ ln.color_id or 0 }}" data-line>
+{% if can_edit %}<form method="post" action="{{ url_for('web.bw_pull_found', identifier=detail.id, set_id=set_row.id) }}" class="bp-cbform"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="item_id" value="{{ ln.item_id }}"><input type="hidden" name="color_id" value="{{ ln.color_id if ln.color_id is not none }}"><input type="hidden" name="found" value="{{ ln.held if ln.full else ln.need }}">{{ back_fields() }}<button type="submit" class="bp-cb{{ ' on' if ln.full }}" role="checkbox" aria-checked="{{ 'true' if ln.full else 'false' }}" aria-label="{{ 'All' if not ln.full else 'Not all' }} {{ ln.need }} of {{ ln.name }}{{ ', ' ~ ln.colour if ln.colour }} found" {% if ln.full and ln.held >= ln.need %}disabled{% endif %}></button></form>{% else %}<span class="bp-cb{{ ' on' if ln.full }}" aria-hidden="true"></span>{% endif %}
+<span class="bp-tile">{% if ln.image %}<img {{ bw_picture_attrs(ln.image, '48px') }} alt="" loading="lazy">{% else %}<span class="mono">{{ ln.number }}</span>{% endif %}</span>
+<div class="bp-t"><div class="bp-nm">{{ ln.name }}</div><div class="bp-sub">{% if ln.colour %}<span class="bw-colour" {% if ln.rgb %}style="background:#{{ ln.rgb }};color:{{ ln.ink }}"{% endif %}>{{ ln.colour }}</span> {% endif %}<span class="mono muted bp-no">{{ ln.number }}</span>{% if ln.held %} <span class="muted bp-held">{{ ln.held }} already in the lot</span>{% endif %}</div></div>
+<div class="bp-cnt{{ ' full' if ln.full }}">{% if can_edit %}{{ step(ln, ln.found - 1, '−', 'One less found of ' ~ ln.name, ln.found <= ln.held) }}{% else %}<span class="bp-sign">−</span>{% endif %}<span class="v mono" aria-label="{{ ln.found }} of {{ ln.need }} found">{{ ln.found }} of {{ ln.need }}</span>{% if can_edit %}{{ step(ln, ln.found + 1, '+', 'One more found of ' ~ ln.name, ln.found >= ln.need) }}{% else %}<span class="bp-sign">+</span>{% endif %}</div>
+</div>
+{% endfor %}
+{% endfor %}
+{% if not groups %}<p class="bp-empty">{% if view.q %}No line matches “{{ view.q }}” · <a href="{{ pull_url }}?{{ pull_query(view, q='') }}">Clear the search</a>{% elif view.show == 'find' %}Every piece of this set is found · <a href="{{ pull_url }}?{{ pull_query(view, show='all') }}">Show all lines</a>{% elif view.show == 'found' %}Nothing is found yet · tick the parts you find in the bulk.{% else %}This set has no lines.{% endif %}</p>{% endif %}
+{% if hidden %}<p class="bp-more">+ {{ hidden }} more line{{ '' if hidden == 1 else 's' }} · <a href="{{ pull_url }}?{{ pull_query(view, every=True) }}">Show all</a></p>{% endif %}
+</div>
+<aside class="bp-aside" aria-labelledby="bp-card-title">
+<div class="bp-card">
+<p class="lab">When you are done</p>
+<h2 id="bp-card-title">Make it a copy</h2>
+<p class="sub bp-lead">Creates your copy of {{ mine }} from the {{ t.found }} pieces found. They move out of the lot. The {{ m.missing }} not found are recorded as missing on the copy.</p>
+<div class="bp-mv"><span>Moves out of the lot</span><span class="mono">{{ m.moves }}</span></div>
+<div class="bp-mv"><span>Recorded as missing</span><span class="mono">{{ m.missing }}</span></div>
+<div class="bp-mv"><span>Stays in the lot</span><span class="mono">{{ m.stays }}</span></div>
+{% if can_edit and not info.refusal %}<a class="button bw-primary bp-lg" href="{{ pull_url }}/make-copy{{ '?' ~ q if q }}">Make it a copy</a>
+{% else %}<span class="button bw-primary bp-lg" aria-disabled="true">Make it a copy</span><p class="sub bp-why">{% if not can_edit %}Changes are switched off on this instance.{% else %}{{ info.refusal }}{% endif %}</p>{% endif %}
+<p class="sub bp-once">One step you can undo. You can also stop now: your progress is kept.</p>
+<p class="bp-note">Missing parts show up in Matcher, Complete sets and the missing-parts XML.</p>
+</div>
+</aside>
+</div>
+<div class="bp-bar"><div class="bp-bar-count"><div class="mono"><b>{{ t.found }} found</b></div><div class="cap2">{{ t.to_find }} to find</div></div>
+{% if can_edit and not info.refusal %}<a class="button bw-primary bp-lg" href="{{ pull_url }}/make-copy{{ '?' ~ q if q }}">Make it a copy</a>{% else %}<span class="button bw-primary bp-lg" aria-disabled="true">Make it a copy</span>{% endif %}</div>
+{% if confirm and can_edit and not info.refusal %}
+<aside class="bp-confirm" id="bp-confirm" role="dialog" aria-modal="true" aria-labelledby="bp-ct">
+<a class="bp-scrim" href="{{ back }}" aria-label="Cancel"></a>
+<div class="bp-panel"><span class="bp-grab" aria-hidden="true"></span>
+<h2 id="bp-ct">Make {{ mine }} a copy?</h2>
+<p class="sub bp-sub2">{{ [set_row.name, set_row.theme, set_row.year]|select|join(' · ') }}</p>
+<div class="bp-mv"><span>Found pieces move out of the lot</span><span class="mono">{{ m.moves }}</span></div>
+<div class="bp-mv"><span>Recorded as missing on the copy</span><span class="mono">{{ m.missing }}</span></div>
+<div class="bp-mv"><span>Stay in the lot</span><span class="mono">{{ m.stays }}</span></div>
+<p class="sub bp-status">The copy starts as {% if m.missing %}<span class="bp-pill warn"><i></i>Incomplete</span>{% else %}<span class="bp-pill ok"><i></i>Complete</span>{% endif %} <span class="bp-pill dash"><i></i>Not checked</span>. Missing parts appear in Matcher, Complete sets and the missing-parts XML. One step you can undo.</p>
+<form method="post" action="{{ url_for('web.bw_pull_make_copy', identifier=detail.id, set_id=set_row.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}">{{ back_fields() }}<button type="submit" class="button bw-primary bp-lg" autofocus>Make copy of {{ mine }}</button></form>
+<a class="bp-cancel" href="{{ back }}">Cancel</a></div></aside>
+{% endif %}
+</div>
+{% endblock %}

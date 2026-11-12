@@ -1,7 +1,9 @@
 """Brick Work v3 browser routes, backed solely by the core store."""
+import json
 import re
 import sqlite3
 import time
+from urllib.parse import urlencode
 from xml.etree import ElementTree as ET
 from werkzeug.exceptions import HTTPException
 
@@ -1837,20 +1839,193 @@ def bw_collection_wish(identifier):
     return bw_collection_detail_response(detail, choices, 'Wishlist')
 
 
-@web_page.get('/collection/lots/<identifier>')
-@login_required
-def bw_collection_lot(identifier):
+def bw_lot_page(identifier, stock_id=None):
+    """The lot page: its parts with their Sticker tags, the Set detection section (#200) and, for a part line, the chooser panel (#201)."""
     from .admin_ops import brickwork_path
     from ..core.admin import database
-    from ..core import collection
+    from ..core import collection, errors, stickers
+    from . import lot_detect
+    chooser = None
     try:
         with database(brickwork_path(),read_only=True) as db:
             detail,choices=collection.lot_detail(db,identifier),collection.options(db)
+            sticker_lines=lot_detect.lot_stickers(db,detail['rows'])
+            detect=lot_detect.section(db,identifier,request.args)
+            if stock_id is not None:
+                try:
+                    chooser=lot_detect.chooser(db,identifier,stock_id,request.args)
+                except errors.NotFound: abort(404,'No such part in this lot')
+                if not chooser['state']['flagged']: abort(404,'This part is not marked as having a sticker')
     except ValueError as exc: abort(404,str(exc))
     response=current_app.make_response(render_template('web/toni/web/bw_collection_extra.html',
-        title='Part lot',detail=detail,rows=detail['rows'],choices=choices,can_edit=bw_collection_editable(),csrf_token=bw_add_token()))
+        title='Part lot',detail=detail,rows=detail['rows'],choices=choices,can_edit=bw_collection_editable(),csrf_token=bw_add_token(),
+        detect=detect,detect_query=lot_detect.query_of,chooser=chooser,sticker_lines=sticker_lines,done=request.args.get('done'),lot_url=url_for('web.bw_collection_lot',identifier=identifier)))
     response.headers['Cache-Control']='no-store'
     return response
+
+
+@web_page.get('/collection/lots/<identifier>')
+@login_required
+def bw_collection_lot(identifier):
+    return bw_lot_page(identifier)
+
+
+@web_page.get('/collection/lots/<identifier>/sticker/<stock_id>')
+@login_required
+def bw_lot_sticker(identifier,stock_id):
+    return bw_lot_page(identifier,stock_id)
+
+
+@web_page.post('/collection/lots/<identifier>/sticker/<stock_id>/<action>')
+@login_required
+def bw_lot_sticker_write(identifier,stock_id,action):
+    """"This one" (`confirm`) and "Not a sticker" (`clear`) from the chooser, as plain form posts; the page it returns to offers Undo."""
+    from .admin_ops import brickwork_path
+    from ..core.admin import database
+    from ..core import errors, stickers
+    if not bw_collection_editable(): abort(403,'Changes are switched off on this instance')
+    if action not in ('confirm','clear'): abort(404)
+    data=request.form.to_dict()
+    bw_add_csrf(data)
+    try:
+        with database(brickwork_path()) as db:
+            if action=='confirm':
+                done=stickers.confirm(db,identifier,stock_id,int(data.get('set_item_id','')),int(data.get('sheet_item_id','')))
+            else:
+                done=stickers.clear(db,identifier,stock_id)
+    except errors.NotFound: abort(404,'No such part in this lot')
+    except (ValueError,errors.Conflict) as exc: abort(400,str(exc))
+    return redirect(url_for('web.bw_collection_lot',identifier=identifier,**({'done':done['event_id'],'was':action} if done['changed'] else {}))+'#set-detection')
+
+
+@web_page.post('/collection/lots/<identifier>/sticker-undo')
+@login_required
+def bw_lot_sticker_undo(identifier):
+    from .admin_ops import brickwork_path
+    from ..core.admin import database
+    from ..core import errors, undo as undoing
+    if not bw_collection_editable(): abort(403,'Changes are switched off on this instance')
+    data=request.form.to_dict()
+    bw_add_csrf(data)
+    try:
+        with database(brickwork_path()) as db:
+            event=db.execute("SELECT entity_kind,json_extract(new_value,'$.lot_id') AS lot FROM event WHERE id=?",(int(data.get('event_id','')),)).fetchone()
+            if event is None or event['entity_kind']!='stock_sticker' or event['lot']!=identifier: abort(404)
+            undoing.undo_event(db,int(data['event_id']))
+    except ValueError: abort(400,'Choose a change to undo')
+    except errors.BrickWorkError as exc: abort(400,str(exc))
+    return redirect(url_for('web.bw_collection_lot',identifier=identifier,undone=1)+'#set-detection')
+
+
+def bw_pull_page(identifier,set_id,*,confirm=False,error=None,status=200):
+    """The pull list of a set for a lot (#202): the lines with their counters, the Make it a copy card and, for the confirm, the dialog."""
+    from .admin_ops import brickwork_path
+    from ..core.admin import database
+    from ..core import collection, errors
+    from . import pull_page
+    try:
+        with database(brickwork_path(),read_only=True) as db:
+            shown=pull_page.page(db,identifier,set_id,request.args)
+            detail=collection.lot_detail(db,identifier)
+            copy=None
+            if request.args.get('copy'):
+                copy=db.execute('SELECT id,item_id FROM copy WHERE id=? AND item_id=?',(request.args['copy'],set_id)).fetchone()
+    except errors.NotFound as exc: abort(404,str(exc))
+    except ValueError as exc: abort(404,public(exc,'No pull list for this set'))
+    view=shown['view']
+    response=current_app.make_response(render_template('web/toni/web/bw_pull_list.html',title='Pull list',detail=detail,csrf_token=bw_add_token(),can_edit=bw_collection_editable(),
+        lot_url=url_for('web.bw_collection_lot',identifier=identifier),pull_url=url_for('web.bw_pull_list',identifier=identifier,set_id=set_id),pull_query=pull_page.query_of,
+        confirm=confirm,error=error,done=request.args.get('done'),copy=copy,undone=request.args.get('undone'),show_label=pull_page.SHOW_LABEL,sort_label=pull_page.SORT_LABEL,**shown))
+    response.status_code=status
+    response.headers['Cache-Control']='no-store'
+    return response
+
+
+@web_page.get('/collection/lots/<identifier>/pull/<int:set_id>')
+@login_required
+def bw_pull_list(identifier,set_id):
+    return bw_pull_page(identifier,set_id)
+
+
+@web_page.get('/collection/lots/<identifier>/pull/<int:set_id>/make-copy')
+@login_required
+def bw_pull_confirm(identifier,set_id):
+    return bw_pull_page(identifier,set_id,confirm=True)
+
+
+def _pull_back(identifier,set_id,form,**more):
+    """Where a pull list form returns to: the same page with the search, Show and Sort it was sent from."""
+    from . import pull_page
+    view=pull_page.read_args({k:form.get(k) for k in ('q','show','sort','all')})
+    query=pull_page.query_of(view)
+    extra=urlencode(more)
+    base=url_for('web.bw_pull_list',identifier=identifier,set_id=set_id)
+    return base+('?'+'&'.join(x for x in (query,extra) if x) if query or extra else '')
+
+
+@web_page.post('/collection/lots/<identifier>/pull/<int:set_id>/found')
+@login_required
+def bw_pull_found(identifier,set_id):
+    """One counter of the pull list (the buttons − and +, the tick), as a plain form post; it returns to the line it came from."""
+    from .admin_ops import brickwork_path
+    from ..core.admin import database
+    from ..core import errors, pull_list
+    if not bw_collection_editable(): abort(403,'Changes are switched off on this instance')
+    data=request.form.to_dict()
+    bw_add_csrf(data)
+    try:
+        item=int(data.get('item_id',''))
+        colour=int(data['color_id']) if data.get('color_id') else None
+        found=int(data.get('found',''))
+        with database(brickwork_path()) as db:
+            pull_list.set_found(db,identifier,set_id,item,colour,found)
+    except errors.NotFound as exc: abort(404,str(exc))
+    except ValueError as exc: abort(400,public(exc,'Choose a whole number of pieces'))
+    return redirect(_pull_back(identifier,set_id,data)+'#l-'+f'{item}-{colour or 0}')
+
+
+@web_page.post('/collection/lots/<identifier>/pull/<int:set_id>/make-copy')
+@login_required
+def bw_pull_make_copy(identifier,set_id):
+    """Make it a copy: the found pieces move out of the lot into a new copy, one undoable event. A refusal shows on the pull list."""
+    from .admin_ops import brickwork_path
+    from ..core.admin import database
+    from ..core import errors, pull_list
+    if not bw_collection_editable(): abort(403,'Changes are switched off on this instance')
+    data=request.form.to_dict()
+    bw_add_csrf(data)
+    try:
+        with database(brickwork_path()) as db:
+            made=pull_list.make_copy(db,identifier,set_id)
+    except errors.NotFound as exc: abort(404,str(exc))
+    except (ValueError,Store4Error) as exc:
+        return bw_pull_page(identifier,set_id,error=public(exc,'Nothing was saved · the stock may have changed. Review and try again.'),status=422)
+    except sqlite3.Error:
+        return bw_pull_page(identifier,set_id,error='Nothing was saved · the stock may have changed. Review and try again.',status=422)
+    return redirect(url_for('web.bw_pull_list',identifier=identifier,set_id=set_id,done=made['event_id'],copy=made['copy_id'],pieces=made['pieces']+made['figures'],missing=made['missing_parts']+made['missing_figures']))
+
+
+@web_page.post('/collection/lots/<identifier>/pull/<int:set_id>/undo')
+@login_required
+def bw_pull_undo(identifier,set_id):
+    from .admin_ops import brickwork_path
+    from ..core.admin import database
+    from ..core import collection
+    from ..core.errors import BrickWorkError
+    if not bw_collection_editable(): abort(403,'Changes are switched off on this instance')
+    data=request.form.to_dict()
+    bw_add_csrf(data)
+    try:
+        event_id=int(data.get('event_id',''))
+        with database(brickwork_path()) as db:
+            event=db.execute("SELECT entity_kind,field,new_value FROM event WHERE id=?",(event_id,)).fetchone()
+            receipt=json.loads(event['new_value']) if event and event['field']=='make_from_stock' else None
+            held=receipt and db.execute('SELECT count(*) FROM stock WHERE lot_id=? AND id IN (SELECT value FROM json_each(?))',(identifier,json.dumps([t[0] for t in receipt['taken']]))).fetchone()[0]
+            if not receipt or receipt['item']!=set_id or not held: abort(404)
+            collection.undo(db,event_id)
+    except (BrickWorkError,KeyError,TypeError,ValueError,sqlite3.Error) as exc:
+        abort(400,public(exc,'Nothing was undone · something changed since. Undo the later change first.'))
+    return redirect(url_for('web.bw_pull_list',identifier=identifier,set_id=set_id,undone=1))
 
 
 @web_page.get('/collection/purchase-places')

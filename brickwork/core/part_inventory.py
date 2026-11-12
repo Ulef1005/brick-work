@@ -12,7 +12,7 @@ import json
 import uuid
 from pathlib import Path
 
-from . import add, collection, identify, pictures, stock
+from . import add, collection, identify, pictures, stickers, stock
 from . import undo as undoing
 from .admin import audit
 from .media import media_root
@@ -82,7 +82,10 @@ def save(db, pieces, *, batch, condition='used', lot_id=None, new_lot=None, keep
             colour = chosen.get('color_id')
             if identity['kind'] == 'part' and not add._colour_known(db, colour):
                 raise ValueError('Choose a colour')
-            validated.append((piece, identity, colour if identity['kind'] == 'part' else None, add.quantity(chosen.get('quantity', 1))))
+            sticker = chosen.get('sticker', False)
+            if not isinstance(sticker, bool):
+                raise ValueError('Has a sticker is on or off')
+            validated.append((piece, identity, colour if identity['kind'] == 'part' else None, add.quantity(chosen.get('quantity', 1)), sticker and identity['kind'] == 'part'))
         stamp = stamp_now()
         created_lot = None
         if new_lot:
@@ -100,14 +103,20 @@ def save(db, pieces, *, batch, condition='used', lot_id=None, new_lot=None, keep
         elif lot_id and not db.execute('SELECT 1 FROM main.lot WHERE id=? AND archived_at IS NULL', (lot_id,)).fetchone():
             raise ValueError('Choose an available lot')
         root = media_root(db)
-        stock_changes, records, photos = [], [], []
-        for piece, identity, colour, amount in validated:
+        stock_changes, records, photos, stock_flags, flag_created = [], [], [], [], None
+        for piece, identity, colour, amount, sticker in validated:
             identifier = piece['id']
             prior = db.execute('SELECT archived_at FROM main.identification WHERE id=?', (identifier,)).fetchone()
             if prior and prior['archived_at'] is None:
                 raise ValueError('This piece was already added')
             change = stock.add_loose(db, item_id=identity['item_id'], color_id=colour, quantity=amount, condition=condition, lot_id=lot_id)
             stock_changes.append(change)
+            if sticker:                                     # #201: the Sticker flag marks the line (a merged row keeps one flag for all its pieces)
+                flag, made = stickers.ensure_flag(db)
+                flag_created = flag if made else flag_created
+                if not db.execute('SELECT 1 FROM main.stock_flag WHERE stock_id=? AND flag_id=?', (change['id'], flag)).fetchone():
+                    db.execute('INSERT INTO main.stock_flag(stock_id,flag_id) VALUES(?,?)', (change['id'], flag))
+                    stock_flags.append([change['id'], flag])
             if prior:                                   # archived by an earlier Undo: bring it back instead of colliding on the key
                 db.execute('UPDATE main.identification SET archived_at=NULL,created_at=?,has_thumb=?,candidates=? WHERE id=?',
                            (stamp, int(keep_photos), json.dumps(piece['candidates']), identifier))
@@ -119,16 +128,18 @@ def save(db, pieces, *, batch, condition='used', lot_id=None, new_lot=None, keep
             records.append(identifier)
             if keep_photos and piece.get('photo'):
                 photos.append(keep_photo(db, root, identity['item_id'], colour, base64.b64decode(piece['photo']), stock_id=change['id']))
-        receipt = dict(batch=batch, stock=stock_changes, lot=created_lot, identifications=records, photos=photos)
+        receipt = dict(batch=batch, stock=stock_changes, lot=created_lot, identifications=records, photos=photos, stock_flags=stock_flags, flag_created=flag_created)
         audit(db, 'part_inventory:' + batch, 'receipt', None, receipt)
         event = db.execute('SELECT last_insert_rowid()').fetchone()[0]
-    pictures.queue_missing(db, [identity['item_id'] for _, identity, _, _ in validated])      # #183: after the receipt commits; an Undo leaves a harmless job
+    pictures.queue_missing(db, [identity['item_id'] for _, identity, _, _, _ in validated])      # #183: after the receipt commits; an Undo leaves a harmless job
     return event
 
 
 def _undo_batch(db, event, via, actor):
     """Take a batch back: the stock it added, its lot, photos and identification records. Refused when the stock or the lot changed."""
     receipt = json.loads(event['new_value'])
+    for stock_id, flag in receipt.get('stock_flags', []):           # only the links this batch made; a receipt from before #201 has none
+        db.execute('DELETE FROM main.stock_flag WHERE stock_id=? AND flag_id=?', (stock_id, flag))
     for change in reversed(receipt['stock']):
         stock.undo_added(db, change, via=via, actor=actor)
     stamp = stamp_now()

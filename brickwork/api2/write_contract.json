@@ -931,6 +931,74 @@
       "undo_nullable": false
     },
     {
+      "endpoint": "post_lots_by_id_stock_by_stock_id_sticker",
+      "event_nullable": true,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/lots/{id}/stock/{stock_id}/sticker",
+      "piece": "M.11c",
+      "query": [],
+      "required": false,
+      "schema": {
+        "$ref": "#/components/schemas/StickerConfirm"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": true
+    },
+    {
+      "endpoint": "delete_lots_by_id_stock_by_stock_id_sticker",
+      "event_nullable": true,
+      "if_match": false,
+      "method": "DELETE",
+      "multipart": false,
+      "path": "/lots/{id}/stock/{stock_id}/sticker",
+      "piece": "M.11c",
+      "query": [],
+      "required": false,
+      "schema": null,
+      "statuses": [
+        200
+      ],
+      "undo_nullable": true
+    },
+    {
+      "endpoint": "post_lots_by_id_pull_list_by_set_id_found",
+      "event_nullable": true,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/lots/{id}/pull-list/{set_id}/found",
+      "piece": "M.11c",
+      "query": [],
+      "required": false,
+      "schema": {
+        "$ref": "#/components/schemas/PullFound"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": true
+    },
+    {
+      "endpoint": "post_lots_by_id_pull_list_by_set_id_make_copy",
+      "event_nullable": false,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/lots/{id}/pull-list/{set_id}/make-copy",
+      "piece": "M.11c",
+      "query": [],
+      "required": true,
+      "schema": null,
+      "statuses": [
+        200
+      ],
+      "undo_nullable": false
+    },
+    {
       "endpoint": "post_orders_documents",
       "event_nullable": true,
       "if_match": false,
@@ -3163,6 +3231,36 @@
       ],
       "type": "object"
     },
+    "PullFound": {
+      "description": "One line of the pull list and how many of it are found.",
+      "properties": {
+        "color": {
+          "description": "A colour in the provider space of the item key (decision 4); a whole minifigure has none.",
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "found": {
+          "description": "The count found so far, what the lot already holds included.",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "item": {
+          "allOf": [
+            {
+              "$ref": "#/components/schemas/ItemKey"
+            }
+          ],
+          "description": "The part or whole minifigure, by number (decision 3) or by id."
+        }
+      },
+      "required": [
+        "item",
+        "found"
+      ],
+      "type": "object"
+    },
     "RefreshRequest": {
       "additionalProperties": false,
       "description": "Queue the shared market_price step for the whole item; variant selection belongs to the pipeline. No network call before queueing.",
@@ -3267,6 +3365,25 @@
       },
       "required": [
         "enabled"
+      ],
+      "type": "object"
+    },
+    "StickerConfirm": {
+      "properties": {
+        "set_item_id": {
+          "description": "The set (an item id from the candidates).",
+          "minimum": 1,
+          "type": "integer"
+        },
+        "sheet_item_id": {
+          "description": "Its sticker sheet (an item id from the candidates).",
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "set_item_id",
+        "sheet_item_id"
       ],
       "type": "object"
     },

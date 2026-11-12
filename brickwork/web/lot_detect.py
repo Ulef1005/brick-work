@@ -56,8 +56,12 @@ def read_filters(args):
         show = max(SHOW, min(SHOW_MAX, int(args.get('show') or SHOW)))
     except ValueError:
         show = SHOW
+    try:
+        offset = max(0, int(args.get('offset') or 0))
+    except ValueError:
+        offset = 0
     return dict(min_score=int(min_score) if min_score == int(min_score) else min_score, theme=(args.get('theme') or '').strip(), year_from=year_from,
-                year_to=year_to, parts_min=parts_min, parts_max=parts_max, ignore_common=ignore, show=show), notes
+                year_to=year_to, parts_min=parts_min, parts_max=parts_max, ignore_common=ignore, show=show, offset=offset), notes
 
 
 def active_count(filters):
@@ -78,6 +82,8 @@ def query_of(filters, **more):
     pairs.append(('ignore_common', '1' if values['ignore_common'] else '0'))
     if values['show'] != SHOW:
         pairs.append(('show', values['show']))
+    if values.get('offset'):
+        pairs.append(('offset', values['offset']))
     return urlencode(pairs)
 
 
@@ -122,7 +128,7 @@ def section(db, lot_id, args):
     try:
         result = candidate_sets.candidates(db, lot_id, min_score=filters['min_score'], theme=filters['theme'] or None, year_from=filters['year_from'],
                                            year_to=filters['year_to'], parts_min=filters['parts_min'], parts_max=filters['parts_max'],
-                                           ignore_common=filters['ignore_common'], limit=min(filters['show'], candidate_sets.MAX_LIMIT))
+                                           ignore_common=filters['ignore_common'], limit=min(filters['show'], candidate_sets.MAX_LIMIT), offset=filters['offset'])
     except ValueError as error:
         return dict(found, state='error', notes=notes + [str(error)])
     found['counts'] = counts_line(result, filters['ignore_common'])
@@ -160,7 +166,8 @@ def section(db, lot_id, args):
             found=[part(p) for p in r['distinctive_found_parts']], missing=[part(p) for p in r['distinctive_missing_parts']],
             found_count=r['distinctive_found'], missing_count=r['distinctive_total'] - r['distinctive_found'],
             swaps=[_swap_text(s, label) for s in r['swaps']['items']], swap_count=r['swaps']['lines']))
-    found.update(rows=shown, more=result['total'] > len(shown), next_show=min(SHOW_MAX, filters['show'] + SHOW))
+    found.update(rows=shown, more=filters['offset'] + len(shown) < result['total'], next_offset=filters['offset'] + len(shown), first=filters['offset'] + 1,
+                 last=filters['offset'] + len(shown), previous=max(0, filters['offset'] - filters['show']) if filters['offset'] else None)
     return found
 
 
@@ -176,11 +183,16 @@ def lot_stickers(db, rows):
 def chooser(db, lot_id, stock_id, args):
     """The chooser page's data: the part line, the state, the candidates (three, or all with `all=1`, paged by `offset`)."""
     show_all = args.get('all') == '1'
-    first = stickers.candidates(db, lot_id, stock_id, limit=stickers.MAX_LIMIT if show_all else 3)
+    try:
+        offset = max(0, int(args.get('offset') or 0)) if show_all else 0
+    except ValueError:
+        offset = 0
+    first = stickers.candidates(db, lot_id, stock_id, limit=stickers.MAX_LIMIT if show_all else 3, offset=offset)
     state = stickers.states(db, [stock_id])[stock_id]
     items = first['results']
     from ..api2.ranking import pictures_of
     shots = pictures_of(db, {(r['sheet_item_id'], None) for r in items})
     for r in items:
         r['image'] = (shots.get((r['sheet_item_id'], None)) or {}).get('id')
-    return dict(line=first['stock'], total=first['total'], results=items, rest=first['total'] - len(items), all=show_all, state=state)
+    return dict(line=first['stock'], total=first['total'], results=items, rest=first['total'] - offset - len(items), all=show_all, offset=offset, next_offset=offset + len(items), previous=max(0, offset - stickers.MAX_LIMIT) if offset else None,
+                state=state)

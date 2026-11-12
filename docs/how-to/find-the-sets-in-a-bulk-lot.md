@@ -20,3 +20,5 @@ Select **Apply**; the filters are in the page's address, so you can bookmark or 
 A lot with no parts says so, and so does a filter that matches no set; **Clear the filters** brings the list back. The page only reads: nothing is changed. The same answer is in the API (`GET /api/v2/lots/{id}/candidate-sets`) and the assistant tool `get_lot_candidate_sets`.
 
 Parts you flagged as having a sticker count for more: see [Mark a sticker](mark-a-sticker.md). How the score is worked out is in [Set scoring](../reference/set-scoring.md).
+
+To get a detected set out of the pile, open its **Pull list**: see [Pull a set out of a lot](pull-a-set-out-of-a-lot.md).

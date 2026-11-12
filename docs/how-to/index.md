@@ -12,6 +12,7 @@ One task per page, for someone who already knows the app.
 - [Identify a minifigure from a photo](identify-a-minifigure.md)
 - [Find the sets in a bulk lot](find-the-sets-in-a-bulk-lot.md)
 - [Mark a sticker](mark-a-sticker.md)
+- [Pull a set out of a lot](pull-a-set-out-of-a-lot.md)
 - [Choose and switch a part list](part-lists.md)
 
 ## Keeping the collection

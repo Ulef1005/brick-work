@@ -3813,6 +3813,54 @@ paths:
         default:
           $ref: '#/components/responses/Problem'
       x-piece: M.11c
+  /valuation:
+    get:
+      operationId: get_valuation
+      x-mcp-tool: get_valuation
+      summary: 'Value and gain per copy (#57): what each live copy cost, what it is worth now and the gain, and the Paid vs value figures of Statistics.'
+      description: 'Every figure is in the display currency (Settings), converted with the rates of #39: a converted figure carries the rate and its date and the
+        amount as recorded, and a figure whose rate is missing is `null` with a reason, never a guess. A copy''s **worth** is its own value (`worth_source`
+        `override`) or the current used or new sold average of its set for the copy''s condition and completeness (new for a new or sealed copy, used
+        otherwise; a copy with a missing or damaged line has the incomplete-set discount taken off, as on the set page), with the date of the quote and whether it is stale by the
+        Prices card''s rule. A copy with no price paid (none, or 0.00) has no `paid` and no gain; a copy with no sold average has no `worth` and no gain.
+        **Gain** is worth minus price paid, negative for a loss, and its whole percent of the price paid. The `statistics` totals, `by_theme` and `by_year`
+        count only the copies that have both a price paid and a worth, so the gain compares like with like; the others are counted apart. Copies are in set-number order.
+        Read-only.'
+      tags:
+      - Prices
+      security:
+      - bearerAuth:
+        - read
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValuationPage'
+        default:
+          $ref: '#/components/responses/Problem'
+      x-piece: M.11b
+  /export/insurance.csv:
+    get:
+      operationId: get_export_insurance_csv
+      summary: 'The insurance report (#57) as CSV: one row per live copy with its price paid, worth, source and date of the quote.'
+      description: 'Every live copy in set-number order, in the display currency. A figure that cannot be given is empty and the Remarks column says why (no price paid,
+        no sales, no rate for a currency). Text cells that a spreadsheet would run as a formula are written with a leading apostrophe. The printable page
+        of the same rows is a screen of the app.'
+      security:
+      - bearerAuth:
+        - read
+      responses:
+        '200':
+          description: CSV with the columns Set number, Name, Year, Condition, Completeness, Purchase date, Price paid, Price paid currency, Current value, Current value currency, Value source, Value date, Photos, Remarks.
+          content:
+            text/csv:
+              schema:
+                type: string
+        default:
+          $ref: '#/components/responses/Problem'
+      x-piece: M.11b
   /export/missing.csv:
     get:
       operationId: get_export_missing_csv
@@ -13016,6 +13064,259 @@ components:
           $ref: '#/components/schemas/Item'
         receipt:
           description: What moved and how collisions were resolved (design 3.6).
+    ValuationPage:
+      type: object
+      required:
+      - data
+      properties:
+        data:
+          $ref: '#/components/schemas/Valuation'
+    Valuation:
+      type: object
+      required:
+      - copies
+      - statistics
+      properties:
+        copies:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValuedCopy'
+        statistics:
+          $ref: '#/components/schemas/PaidVsValue'
+    ValuationMoney:
+      type: object
+      description: An amount in the display currency. `converted` says it was worked out with a rate (`rate` and its date `rate_as_of`, the amount as recorded in `original`); otherwise it is as recorded.
+      required:
+      - amount
+      - currency
+      - converted
+      - rate
+      - rate_as_of
+      - original
+      properties:
+        amount:
+          type: string
+          description: A decimal with 2 places.
+        currency:
+          type: string
+        converted:
+          type: boolean
+        rate:
+          type: [string, 'null']
+        rate_as_of:
+          type: [string, 'null']
+        original:
+          type:
+          - object
+          - 'null'
+          required:
+          - amount
+          - currency
+          properties:
+            amount:
+              type: string
+            currency:
+              type: string
+    ValuedCopy:
+      type: object
+      required:
+      - id
+      - item_id
+      - number
+      - name
+      - year
+      - theme
+      - condition
+      - completeness
+      - purchase_date
+      - currency
+      - paid_original
+      - paid
+      - paid_reason
+      - worth
+      - worth_reason
+      - worth_source
+      - worth_date
+      - worth_stale
+      - worth_sales
+      - worth_price_source
+      - worth_discount_pct
+      - gain
+      properties:
+        id:
+          type: string
+        item_id:
+          type: integer
+        number:
+          type: string
+          description: The set number, for example 7286-1.
+        name:
+          type: string
+        year:
+          type: [integer, 'null']
+        theme:
+          type: string
+        condition:
+          type: [string, 'null']
+          enum: [new, used, null]
+        completeness:
+          type: [string, 'null']
+          enum: [sealed, complete, incomplete, null]
+        purchase_date:
+          type: [string, 'null']
+        currency:
+          type: string
+          description: The display currency every figure of the copy is in.
+        paid_original:
+          type:
+          - object
+          - 'null'
+          description: The price paid as recorded; null when there is none.
+          required:
+          - amount
+          - currency
+          properties:
+            amount:
+              type: string
+            currency:
+              type: string
+        paid:
+          anyOf:
+          - $ref: '#/components/schemas/ValuationMoney'
+          - type: 'null'
+        paid_reason:
+          type: [string, 'null']
+          enum: [no_price_paid, no_rate, null]
+          description: Why `paid` is null.
+        worth:
+          anyOf:
+          - $ref: '#/components/schemas/ValuationMoney'
+          - type: 'null'
+        worth_reason:
+          type: [string, 'null']
+          enum: [no_quote, no_rate, null]
+          description: Why `worth` is null.
+        worth_source:
+          type: [string, 'null']
+          enum: [override, used, new, null]
+          description: '`override` is the copy''s own value ("Your value"); `used` and `new` are the sold average of the copy''s set.'
+        worth_date:
+          type: [string, 'null']
+          description: The day of the quote; null for the copy's own value.
+        worth_stale:
+          type: boolean
+        worth_sales:
+          type: [integer, 'null']
+          description: The number of sales behind the sold average.
+        worth_price_source:
+          type: [string, 'null']
+          description: The price source of the quote, for example bricklink.
+        worth_discount_pct:
+          type: [number, 'null']
+          description: The incomplete-set discount (copies with a gap) taken off the quote, in percent.
+        gain:
+          type:
+          - object
+          - 'null'
+          description: Worth minus price paid (negative for a loss) and its whole percent of the price paid (null when the price paid is 0.00 after conversion); the whole object is null unless both are known.
+          required:
+          - amount
+          - percent
+          - currency
+          properties:
+            amount:
+              type: string
+            percent:
+              type: [integer, 'null']
+            currency:
+              type: string
+    ValuationGroup:
+      type: object
+      required:
+      - label
+      - paid
+      - worth
+      - gain
+      - percent
+      - copies
+      properties:
+        label:
+          type: string
+        paid:
+          type: string
+        worth:
+          type: string
+        gain:
+          type: string
+        percent:
+          type: [integer, 'null']
+        copies:
+          type: integer
+    PaidVsValue:
+      type: object
+      description: The Statistics figures. `paid`, `worth` and `gain` are over the comparable copies (a price paid and a worth) only.
+      required:
+      - currency
+      - copies
+      - comparable_copies
+      - enough
+      - paid
+      - worth
+      - gain
+      - percent
+      - without_price_paid
+      - without_quote
+      - without_rate
+      - worth_without_price_paid
+      - converted
+      - rates_as_of
+      - by_theme
+      - by_year
+      properties:
+        currency:
+          type: string
+        copies:
+          type: integer
+          description: The live copies.
+        comparable_copies:
+          type: integer
+        enough:
+          type: boolean
+          description: Three or more comparable copies; under that the screen says "Charts need more data".
+        paid:
+          type: [string, 'null']
+        worth:
+          type: [string, 'null']
+        gain:
+          type: [string, 'null']
+          description: Negative for a loss.
+        percent:
+          type: [integer, 'null']
+        without_price_paid:
+          type: integer
+        without_quote:
+          type: integer
+        without_rate:
+          type: integer
+          description: Copies with a price paid or a worth that needs a rate that is missing.
+        worth_without_price_paid:
+          type: [string, 'null']
+          description: The worth of the copies that have a worth and no price paid; never in the totals.
+        converted:
+          type: boolean
+        rates_as_of:
+          type: [string, 'null']
+          description: The oldest rate date among the converted figures.
+        by_theme:
+          type: array
+          description: Largest price paid first.
+          items:
+            $ref: '#/components/schemas/ValuationGroup'
+        by_year:
+          type: array
+          description: Purchase years ascending; `Not recorded` last.
+          items:
+            $ref: '#/components/schemas/ValuationGroup'
     BuildScoutPage:
       type: object
       required:

@@ -55,6 +55,17 @@ Calls count against a daily budget per source (`BW_BRICKLINK_DAILY_BUDGET` and `
 
 A collection moved from 3.3 may also hold Brickset's **New** and **Used** values for its sets. Brick Work 3.3 read them from Brickset's website; Brickset's API, which Brick Work uses now, has no such values, so they are never refreshed. The item page lists them under **Price records** marked *legacy · Brickset 3.3, not refreshed*, and an **Estimate** that comes from one says *legacy*. Current market prices are BrickLink's, above, and **Set estimate** on a copy sets your own.
 
+## Value and gain of a copy
+
+Brick Work works out, per copy, what you paid, what it is worth now and the gain, in your display currency (Settings), and in total over the collection.
+
+- **Paid** is the copy's price paid. A copy with no price paid (empty or 0.00) has no paid figure and no gain; it is counted apart ("12 copies without a price paid") and never in the paid total.
+- **Worth now** is the value you set on the copy ("Your value"), or else the current **used** or **new** sold average of its set from your prices: new for a new or sealed copy, used for any other, with the incomplete-set discount of Settings taken off a copy that has a missing or damaged part or a missing figure (the same rule as the set page, not the completeness label). The date of the quote and the number of sales stay with it, and a quote older than its source's age limit is marked stale but still counts. The average is the one the Prices card shows, also when the latest refresh found no sales and an earlier average remains. Listings, a price with box and a price in a currency you have no rate for are not a sold average, so a copy with none of those has no worth and no gain.
+- **Gain** is worth minus paid, with its whole percent of the price paid. A loss is a negative gain in the data and is written as a loss on screen.
+- **Currencies.** A figure recorded in another currency is converted with the rates under Settings and carries the rate and its date; if the rate is missing the figure is left out and the copy is counted ("1 copy needs a rate"), never guessed. Two currencies never share a figure.
+- **Totals** (total paid, total worth, gain, by theme and by purchase year) count only the copies that have both a price paid and a worth, so the gain compares like with like.
+- **Insurance report.** One row per copy, every copy, in set-number order: set number, name, year, condition, completeness, purchase date, price paid, current value with its source and date, and the number of your own photos of the copy (never the set's cover). Its CSV is `GET /api/v2/export/insurance.csv`; the figures are `GET /api/v2/valuation` and the assistant tool `get_valuation`. The column set is a proposal until we know what insurers ask for.
+
 ## Fetch from Rebrickable
 
 A number that is in neither the catalogue nor your collection shows **Not in the catalogue** on its Add row with two ways out, side by side: **Fetch from Rebrickable** (greyed with "needs a Rebrickable key" when no key is set) and **Add as unidentified**, plus **Skip**. Nothing is added until you choose one; the row never guesses. An unidentified item is a local item with the name you typed and works on every screen; link it to a BrickLink number or merge it into a catalogue item later.

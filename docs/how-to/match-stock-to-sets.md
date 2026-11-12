@@ -44,5 +44,6 @@ Booklets you own but have not recorded can be added from the Matchmaker page. Th
 
 ## What next
 
+- [Find sets to build from your loose stock](find-sets-to-build.md) for sets you do not own yet.
 - [Pick parts for several sets](pick-parts.md) for the gaps your loose stock does not cover.
 - [Check a set's parts](check-set-parts.md) to record gaps on more copies, so Matchmaker has more to work with.

@@ -3453,6 +3453,130 @@ paths:
         default:
           $ref: '#/components/responses/Problem'
       x-piece: M.11b
+  /planning/build-scout:
+    get:
+      operationId: get_planning_build_scout
+      x-mcp-tool: get_planning_build_scout
+      summary: 'Build Scout (#9): the catalogue''s sets ranked by how much of each the loose stock already makes.'
+      description: 'For every catalogue set that shares a part with the chosen loose stock: the parts available (the sum over the set''s own part lines of
+        min(have, need); spares and a minifigure''s components are not part lines), the percent of the set''s parts that is, the missing parts and lines, the
+        whole figures available of those required (a loose whole figure counts), and with `detail` the biggest missing lines, the missing figures, the cost
+        to complete (missing lines priced from the current prices, in the one currency most are priced in, with the number of unpriced lines) and the swaps
+        (another colour, an alternate mould), listed apart and never in a number. Ranked by percent available, then fewest missing parts, then set id. The stock
+        is the live loose parts and whole figures with what can be given (damaged rows give nothing unless `damaged=true`) of the chosen sources: `loose=true`
+        (the stock kept in no lot or storage), the `lot` and `storage` ids (a storage with the storages inside it), or all loose stock when none is given.
+        Read-only. ADR 0027.'
+      tags:
+      - Planning
+      security:
+      - bearerAuth:
+        - read
+      parameters:
+      - name: lot
+        in: query
+        description: Lot ids (repeated); the stock kept in them.
+        style: form
+        explode: true
+        schema:
+          type: array
+          items:
+            type: string
+          maxItems: 500
+          uniqueItems: true
+      - name: storage
+        in: query
+        description: Storage ids (repeated); the stock kept in them and in the storages inside them.
+        style: form
+        explode: true
+        schema:
+          type: array
+          items:
+            type: string
+          maxItems: 500
+          uniqueItems: true
+      - name: loose
+        in: query
+        description: true adds the stock kept in no lot or storage.
+        schema:
+          type: boolean
+      - name: damaged
+        in: query
+        description: true counts stock whose condition is damaged (off by default).
+        schema:
+          type: boolean
+      - name: min_percent
+        in: query
+        description: The least percent of a set's parts that must be available.
+        schema:
+          type: integer
+          minimum: 0
+          maximum: 100
+          default: 60
+      - name: max_missing
+        in: query
+        description: The most missing parts (pieces) a set may have.
+        schema:
+          type: integer
+          minimum: 0
+      - name: theme
+        in: query
+        description: A catalogue theme id or name (any case), with its sub-themes.
+        schema:
+          type: string
+      - name: year_from
+        in: query
+        schema:
+          type: integer
+      - name: year_to
+        in: query
+        schema:
+          type: integer
+      - name: size_from
+        in: query
+        description: The fewest parts a set has (spares left out).
+        schema:
+          type: integer
+          minimum: 0
+      - name: size_to
+        in: query
+        schema:
+          type: integer
+          minimum: 0
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      - name: offset
+        in: query
+        schema:
+          type: integer
+          minimum: 0
+          default: 0
+      - name: detail
+        in: query
+        description: How many missing lines each set lists, with its missing figures, cost and swaps (0 lists none of them).
+        schema:
+          type: integer
+          minimum: 0
+          maximum: 50
+          default: 0
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BuildScoutPage'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Invalid'
+        default:
+          $ref: '#/components/responses/Problem'
+      x-piece: M.11b
   /export/missing.csv:
     get:
       operationId: get_export_missing_csv
@@ -6274,6 +6398,45 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/WrittenVariantChange'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Invalid'
+        default:
+          $ref: '#/components/responses/Problem'
+      x-piece: M.11c
+  /items/{id}/build:
+    post:
+      operationId: post_items_by_id_build
+      summary: 'Build it (#9): make a copy of this set from the loose stock, moving the matching parts and whole figures into it; one event, Undo puts the stock back and archives the copy.'
+      description: 'Builds one copy of the set from the catalogue''s latest Rebrickable part list: every part line and whole figure the chosen stock covers is
+        moved out of it into the copy (the largest usable row first, then the lowest id), the rest is recorded as missing on the copy, and one
+        `stock_transfer` row per move is kept. The stock is the one Build Scout counts (`GET /planning/build-scout`): damaged rows give nothing unless
+        `damaged` is true. Refused with 422 for a set made of other sets, a set with no part list and sources that hold nothing the set needs. The event
+        is `copy` / `make_from_stock`; Undo (`POST /events/{id}/undo`) puts the stock back and archives the copy, and is refused when the copy or the stock changed since.'
+      tags:
+      - Copies
+      security:
+      - bearerAuth:
+        - write
+      parameters:
+      - $ref: '#/components/parameters/Path_item_id'
+      - $ref: '#/components/parameters/IdempotencyKeyRequired'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BuildFromStockRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WrittenBuild'
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
@@ -12213,6 +12376,296 @@ components:
           $ref: '#/components/schemas/Item'
         receipt:
           description: What moved and how collisions were resolved (design 3.6).
+    BuildScoutPage:
+      type: object
+      required:
+      - data
+      properties:
+        data:
+          $ref: '#/components/schemas/BuildScout'
+    BuildScout:
+      type: object
+      required:
+      - catalogue
+      - source
+      - input
+      - filters
+      - sharing
+      - total
+      - limit
+      - offset
+      - results
+      properties:
+        catalogue:
+          type: object
+          description: The parts index the answer came from, and how many of its sets are made of other sets.
+          required:
+          - sets
+          - lines
+          - postings
+          - distinctive_max
+          - nested
+          properties:
+            sets:
+              type: integer
+            lines:
+              type: integer
+            postings:
+              type: integer
+            distinctive_max:
+              type: integer
+            nested:
+              type: integer
+        source:
+          type: object
+          required:
+          - lots
+          - storages
+          - loose
+          - damaged
+          - text
+          properties:
+            lots:
+              type: array
+              items:
+                type: string
+            storages:
+              type: array
+              items:
+                type: string
+            loose:
+              type: boolean
+            damaged:
+              type: boolean
+            text:
+              type: string
+              description: The selection in words, 'Loose stock · 2 lots · 3 storages'; 'All loose stock' when none is chosen.
+        input:
+          type: object
+          description: What the chosen stock holds that can be given.
+          required:
+          - lines
+          - pieces
+          - figures
+          properties:
+            lines:
+              type: integer
+            pieces:
+              type: integer
+              description: Loose parts counted.
+            figures:
+              type: integer
+              description: Whole loose figures counted.
+        filters:
+          type: object
+          description: The filters the answer applied, null where none.
+          additionalProperties: true
+        sharing:
+          type: integer
+          description: Sets that share at least one part line with the stock, before the filters.
+        total:
+          type: integer
+          description: Sets that pass the filters.
+        limit:
+          type: integer
+        offset:
+          type: integer
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/BuildScoutSet'
+    BuildScoutSet:
+      type: object
+      required:
+      - rank
+      - item
+      - year
+      - theme
+      - parts_available
+      - parts_total
+      - percent
+      - missing_parts
+      - missing_lines
+      - figures_available
+      - figures_required
+      - missing_figures
+      - nested
+      properties:
+        rank:
+          type: integer
+        item:
+          $ref: '#/components/schemas/Item'
+        year:
+          type:
+          - integer
+          - 'null'
+        theme:
+          type:
+          - string
+          - 'null'
+        parts_available:
+          type: integer
+          description: The sum over the set's part lines of min(have, need).
+        parts_total:
+          type: integer
+          description: Pieces of the set's own parts, spares and a minifigure's components left out, the parts of its sub-sets in.
+        percent:
+          type: number
+          description: parts_available over parts_total, in percent to one decimal. Swaps are never in it.
+        missing_parts:
+          type: integer
+          description: parts_total less parts_available, in pieces.
+        missing_lines:
+          type: integer
+          description: Part lines the stock does not cover in full.
+        figures_available:
+          type: integer
+          description: The sum over the set's whole-figure lines of min(have, need) (a loose whole figure counts).
+        figures_required:
+          type: integer
+        missing_figures:
+          type: integer
+        nested:
+          type: boolean
+          description: true when the set is made of other sets; Build it does not handle those.
+        gaps:
+          type: array
+          description: With `detail`, the biggest missing part lines.
+          items:
+            $ref: '#/components/schemas/BuildScoutGap'
+        figure_gaps:
+          type: array
+          description: With `detail`, the whole figures that are missing.
+          items:
+            $ref: '#/components/schemas/BuildScoutGap'
+        cost:
+          type: object
+          description: With `detail`, the missing parts and figures priced from the current prices.
+          required:
+          - amount
+          - currency
+          - priced_lines
+          - unpriced_lines
+          properties:
+            amount:
+              type:
+              - string
+              - 'null'
+              description: The sum, two decimals; null when no missing line has a price.
+            currency:
+              type:
+              - string
+              - 'null'
+            priced_lines:
+              type: integer
+            unpriced_lines:
+              type: integer
+        swaps:
+          type: object
+          description: With `detail`, listed apart and never in any number above (the engine's swaps, ADR 0026).
+          required:
+          - lines
+          - quantity
+          - items
+          properties:
+            lines:
+              type: integer
+            quantity:
+              type: integer
+            items:
+              type: array
+              items:
+                type: object
+                required:
+                - kind
+                - have
+                - wanted
+                - quantity
+                properties:
+                  kind:
+                    type: string
+                    enum:
+                    - colour
+                    - mould
+                  have:
+                    $ref: '#/components/schemas/SetScoreLine'
+                  wanted:
+                    $ref: '#/components/schemas/SetScoreLine'
+                  quantity:
+                    type: integer
+    BuildScoutGap:
+      type: object
+      required:
+      - item
+      - color
+      - need
+      - have
+      - missing
+      properties:
+        item:
+          $ref: '#/components/schemas/Item'
+        color:
+          oneOf:
+          - $ref: '#/components/schemas/Color'
+          - type: 'null'
+        need:
+          type: integer
+        have:
+          type: integer
+          description: min(stock, need).
+        missing:
+          type: integer
+    BuildFromStockRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        lots:
+          type: array
+          items:
+            type: string
+          maxItems: 500
+          uniqueItems: true
+        storages:
+          type: array
+          items:
+            type: string
+          maxItems: 500
+          uniqueItems: true
+        loose:
+          type: boolean
+        damaged:
+          type: boolean
+    BuildFromStock:
+      type: object
+      required:
+      - copy_id
+      - item
+      - pieces
+      - figures
+      - missing_parts
+      - missing_figures
+      - completeness
+      properties:
+        copy_id:
+          type: string
+        item:
+          $ref: '#/components/schemas/Item'
+        pieces:
+          type: integer
+          description: Loose parts moved into the copy.
+        figures:
+          type: integer
+          description: Whole loose figures moved into the copy.
+        missing_parts:
+          type: integer
+          description: Pieces recorded as missing on the copy.
+        missing_figures:
+          type: integer
+        completeness:
+          type: string
+          enum:
+          - complete
+          - incomplete
     ChangeVariantRequest:
       type: object
       required:
@@ -12400,6 +12853,20 @@ components:
           - integer
           - 'null'
           description: The event of the change; null when the link was there as asked (the call is idempotent per link).
+        undo_url:
+          type: string
+        idempotent_replay:
+          type: boolean
+    WrittenBuild:
+      type: object
+      required:
+      - data
+      - event_id
+      properties:
+        data:
+          $ref: '#/components/schemas/BuildFromStock'
+        event_id:
+          type: integer
         undo_url:
           type: string
         idempotent_replay:

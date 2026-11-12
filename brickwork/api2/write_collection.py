@@ -7,7 +7,7 @@ Creating goes through the Add flow (`core/add.py`: resolve, validate, confirm), 
 design's preselection, its import is queued, one receipt undoes it."""
 import uuid
 
-from ..core import add, checker, collection, errors, planning, wishlists, workbench
+from ..core import add, build_scout, checker, collection, errors, planning, wishlists, workbench
 from ..core.media import media_root
 from . import route
 from .copies import FIGURES, LINES, check_state, completeness_body, copy_row, figure_body, part_body
@@ -127,6 +127,22 @@ def post_copies(db, body):
     if edits:
         collection.save(db, 'copy', ids, edits)
     return created(ids)
+
+
+@route('/items/<id>/build', 'POST')
+@write
+def post_items_by_id_build(db, body, id):
+    """Build it (#9): one copy of this set from the chosen loose stock, the matching parts and whole figures moved into it, the rest missing on the copy. One
+    event (`copy` / `make_from_stock`); Undo (`POST /events/{id}/undo`) puts the stock back and archives the copy."""
+    item_id = for_write(db, id)
+    lots, storages = body.get('lots', []), body.get('storages', [])
+    for table, ids in (('lot', lots), ('storage', storages)):
+        for identifier in ids:
+            if not db.execute(f'SELECT 1 FROM main.{table} WHERE id=? AND archived_at IS NULL', (identifier,)).fetchone():
+                raise errors.NotFound(f'No such {table}')
+    made = build_scout.build_set(db, item_id, lots=lots, storages=storages, loose=bool(body.get('loose')), damaged=bool(body.get('damaged')))
+    return Done({'copy_id': made['copy_id'], 'item': bodies(db, items=[item_id]).item(item_id), 'pieces': made['pieces'], 'figures': made['figures'],
+                 'missing_parts': made['missing_parts'], 'missing_figures': made['missing_figures'], 'completeness': made['completeness']}, made['event_id'])
 
 
 @route('/stock', 'POST')

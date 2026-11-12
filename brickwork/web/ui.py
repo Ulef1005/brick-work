@@ -157,6 +157,7 @@ WORKFLOW_PAGES = (
     ('Set Inspector', 'web.bw_check_parts', ('Check Set Parts',)),
     ('Part Runner', 'web.bw_picker', ('Part Picker',)),
     ('Matchmaker', 'web.bw_matcher', ('Matcher',)),
+    ('Build Scout', 'web.bw_build_scout', ()),
 )
 
 
@@ -189,6 +190,7 @@ def navigation():
             ('Part Spotter', 'web.bw_inventory', 'scan', (), {}),
             ('Part Runner', 'web.bw_picker', 'pick', (), {}),
             ('Matchmaker', 'web.bw_matcher', 'match', (), {}),
+            ('Build Scout', 'web.bw_build_scout', 'sets', (), {}),
             ('Orders', 'web.bw_orders', 'orders', (), {}),
             ('Storage', 'web.bw_storages', 'storage', ('HIDE_ALL_STORAGES',), {})]),
         ('Planning', [
@@ -222,6 +224,8 @@ def navigation():
         current = 'Part Runner'
     elif endpoint in ('web.matcher_page', 'web.bw_matcher'):
         current = 'Matchmaker'
+    elif endpoint in ('web.bw_build_scout', 'web.bw_build_scout_set'):
+        current = 'Build Scout'
     elif endpoint.startswith('web.boxes') or endpoint in ('web.save_loose_boxes','web.assign_loose_boxes'):
         current = 'Boxes'
     elif endpoint == 'index.index':

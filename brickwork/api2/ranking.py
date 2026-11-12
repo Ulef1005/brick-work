@@ -7,7 +7,7 @@ import json
 
 from flask import Response, request
 
-from ..core import candidate_sets, collection, errors, list_exports, planning, set_scoring
+from ..core import build_scout, candidate_sets, collection, errors, list_exports, planning, set_scoring
 from . import route
 from .read import (arguments, bodies, flag, page, reading, record, respond)
 
@@ -267,3 +267,51 @@ def get_lots_by_id_candidate_sets(db, id):
              'distinctive_found_parts': [part(p) for p in r['distinctive_found_parts']],
              'distinctive_missing_parts': [part(p) for p in r['distinctive_missing_parts']]} for r in result['results']]
     return respond(dict(result, lot=id, results=sets))
+
+
+# ---------- Build Scout (#9) ----------
+
+def chosen_sources(db, args):
+    """`(lots, storages, loose, damaged)` of the query: repeated `lot` and `storage` (an unknown or archived one is `404`), `loose` and `damaged`."""
+    lots, storages = request.args.getlist('lot'), request.args.getlist('storage')
+    for table, ids in (('lot', lots), ('storage', storages)):
+        if len(set(ids)) != len(ids) or len(ids) > 500:
+            raise errors.ValidationFailed(f'Choose 1 to 500 different {table}s')
+        for identifier in ids:
+            if not db.execute(f'SELECT 1 FROM main.{table} WHERE id=? AND archived_at IS NULL', (identifier,)).fetchone():
+                raise errors.NotFound(f'No such {table}')
+    return lots, storages, bool(flag(args, 'loose')), bool(flag(args, 'damaged'))
+
+
+@route('/planning/build-scout')
+@reading
+def get_planning_build_scout(db):
+    """The catalogue's sets ranked by how much of each the loose stock already makes: parts available, missing parts, figures, cost to complete (`core/build_scout.py`, ADR 0027). Read-only."""
+    args = arguments()
+    lots, storages, loose, damaged = chosen_sources(db, args)
+    limit, offset, detail = whole(args, 'limit', 20, 1, 100), whole(args, 'offset', 0, 0, 10 ** 9), whole(args, 'detail', 0, 0, 50)
+    filters = {name: args[name] for name in ('min_percent', 'max_missing', 'theme', 'year_from', 'year_to', 'size_from', 'size_to') if args.get(name) not in (None, '')}
+    try:
+        found = build_scout.scout(db, lots=lots, storages=storages, loose=loose, damaged=damaged, limit=limit, offset=offset, detail=detail, **filters)
+    except errors.BrickWorkError:
+        raise
+    except ValueError as error:
+        raise errors.ValidationFailed(str(error)) from None
+    lines = []
+    for r in found['results']:
+        lines += r.get('gaps', []) + r.get('figure_gaps', [])
+        lines += [s[k] for s in r.get('swaps', {}).get('items', []) for k in ('have', 'wanted')]
+    book = bodies(db, items={r['set_item_id'] for r in found['results']} | {i['item_id'] for i in lines}, colors={i.get('color_id') for i in lines})
+
+    def line(body):
+        return {**{k: v for k, v in body.items() if k not in ('item_id', 'color_id')}, 'item': book.item(body['item_id']), 'color': book.color(body.get('color_id'))}
+
+    def row(r):
+        out = {k: v for k, v in r.items() if k not in ('set_item_id', 'theme_id', 'gaps', 'figure_gaps', 'swaps')}
+        out['item'] = book.item(r['set_item_id'])
+        if 'gaps' in r:
+            out['gaps'] = [line(m) for m in r['gaps']]
+            out['figure_gaps'] = [line(m) for m in r['figure_gaps']]
+            out['swaps'] = {**r['swaps'], 'items': [{**s, 'have': line(s['have']), 'wanted': line(s['wanted'])} for s in r['swaps']['items']]}
+        return out
+    return respond(dict(found, results=[row(r) for r in found['results']]))

@@ -34,3 +34,5 @@ One file per decision that binds future work: the API contract, the data model, 
 | [0025](0025-first-start-setup.md) | Containers set up a missing collection before starting the server | accepted | 2026-11-10 |
 | [0026](0026-set-scoring-weights.md) | Set scoring: inverse-frequency weight, swaps never in the score | accepted | 2026-11-11 |
 | [0027](0027-build-scout-percent.md) | Build Scout: percent available counts a set's own parts, figures apart | accepted | 2026-11-12 |
+| [0028](0028-sticker-evidence.md) | Stickers: a flag, a choice kept as an undoable event, and a documented evidence rule | accepted | 2026-11-12 |
+| [0029](0029-pull-list-progress.md) | Pull list: found counts kept in a setting row, Make it a copy as the one event | accepted | 2026-11-12 |

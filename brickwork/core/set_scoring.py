@@ -21,6 +21,12 @@ Semantics (ADR 0026):
   A line every set holds weighs 0; a line in two sets of 25,000 weighs about 9.4.
 * Per set: `evidence = sum over matched lines of w * min(have, need) / need`; `coverage = evidence / sum of w over all the set's lines`.
   The ranking is by `evidence`, ties by `coverage`, then by set id.
+* **Stickers** (#201): a line flagged `Sticker` is a hint that the print on the part comes from a sticker sheet, and the catalogue does not say which
+  part a sticker goes on. An *unconfirmed* sticker raises, for each set that holds the line and a sticker sheet (a part of the category named
+  `Stickers`), that line's evidence by `HINT_FACTOR - 1` (a quarter): the line then counts 1.25 times its own weight, never more than 1.5. A *confirmed*
+  sticker (the person chose the set; `sticker:<set item id>` joins the line's flags) is near-certain evidence for that set: the line's evidence for it is
+  `CONFIRMED_FACTOR` times `ln N`, the largest weight any line can carry (one set holds it), instead of its own share; the other sets get nothing extra
+  from that line. The adjustment is applied after the cached ranking (`apply_stickers`), so the cache key stays the parts.
 * Swaps (the same part in another colour, an alternate mould by `part_relationship` types A and M, in either direction) are listed per
   returned set, from what the exact match left over, and never enter any number above.
 """
@@ -33,6 +39,11 @@ import os
 import threading
 
 DISTINCTIVE_MAX = 25            # a line held by at most this many candidate sets is "distinctive"
+STICKER_CATEGORY = 'Stickers'   # the part category whose items are sticker sheets, found by name (ids differ between catalogues)
+STICKER_FLAG = 'sticker'        # a stock flag named Sticker (any case) is read as this
+CONFIRMED_PREFIX = 'sticker:'   # a confirmed sticker adds `sticker:<set item id>` to the line's flags
+HINT_FACTOR = 1.25              # an unconfirmed sticker: the line counts this many times its own weight in a set with a sticker sheet (at most 1.5)
+CONFIRMED_FACTOR = 2.0          # a confirmed sticker: the line's evidence for the chosen set is this times ln N
 ALTERNATE_TYPES = ('A', 'M')    # part_relationship types read as an alternate mould (Rebrickable: A alternate, M mold variation)
 MAX_LIMIT = 500
 MAX_DETAIL = 100
@@ -55,15 +66,16 @@ def unkey(key):
 
 class Rows:
     """What the index is built from; plain Python values, so a test or the benchmark can make them without a catalogue."""
-    __slots__ = ('sets', 'figures', 'subsets', 'figure_parts', 'relations', 'key')
+    __slots__ = ('sets', 'figures', 'subsets', 'figure_parts', 'relations', 'key', 'stickers')
 
-    def __init__(self, sets, figures=(), subsets=(), figure_parts=(), relations=(), key=None):
+    def __init__(self, sets, figures=(), subsets=(), figure_parts=(), relations=(), key=None, stickers=()):
         self.sets = sets                # iterable of (set item id, [(part, colour, quantity), ...]) of the set's own parts
         self.figures = figures          # iterable of (set item id, figure item id, quantity)
         self.subsets = subsets          # iterable of (parent set item id, child set item id, quantity)
         self.figure_parts = figure_parts    # iterable of (figure item id, [(part, colour, quantity), ...])
         self.relations = relations      # iterable of (rel_type, child part, parent part)
         self.key = key
+        self.stickers = stickers        # iterable of the item ids of sticker sheets
 
 
 def build_key(db):
@@ -115,7 +127,10 @@ def load_rows(db):
     relations = [tuple(r) for r in cur.execute(
         f"SELECT rel_type,child_item_id,parent_item_id FROM catalogue.part_relationship WHERE rel_type IN ({','.join('?' * len(ALTERNATE_TYPES))})",
         ALTERNATE_TYPES)]
-    return Rows(sets.items(), figures, subsets, figure_parts.items(), relations, build_key(db))
+    stickers = [r[0] for r in cur.execute(
+        '''SELECT i.id FROM catalogue.item i JOIN catalogue.part_category c ON c.id=i.category_id
+           WHERE i.kind='part' AND i.retired_at IS NULL AND c.name=?''', (STICKER_CATEGORY,))]
+    return Rows(sets.items(), figures, subsets, figure_parts.items(), relations, build_key(db), stickers)
 
 
 # ---------- layer 2: the index ----------
@@ -136,6 +151,7 @@ class Index:
         self.weight = {}                # key -> w
         self.alternates = {}            # part id -> part ids it swaps with as another mould
         self.position = {}              # set item id -> position
+        self.set_sticker = array('B')   # position -> 1 when the set holds a sticker sheet (a part of the Stickers category)
         self.total = 0                  # N, the candidate sets
 
     def describe(self):
@@ -207,6 +223,13 @@ def build_index(rows):
             slot[1].append(quantity)
     index.posting = postings
     index.total = n = len(index.set_item)
+    index.set_sticker = array('B', [0]) * n
+    sheets = set(rows.stickers)
+    if sheets:
+        for k, (positions, _) in postings.items():
+            if k >> _SHIFT in sheets:
+                for position in positions:
+                    index.set_sticker[position] = 1
     index.set_weight = array('d', [0.0]) * n
     index.set_distinctive = array('I', [0]) * n
     weight = index.weight
@@ -344,7 +367,7 @@ def by_item_of(lines):
     return found
 
 
-def _detail(index, row, lines, flags, detail, by_item=None):
+def _detail(index, row, lines, flags, detail, by_item=None, stickers=None):
     position, ev, quantity, covered, complete, distinctive = row
     needs = dict(zip(index.set_keys[position], index.set_needs[position]))
     seen, by_flag = [], {}
@@ -354,6 +377,8 @@ def _detail(index, row, lines, flags, detail, by_item=None):
             continue
         w = index.weight[k]
         share = w * min(have, need) / need
+        if stickers and k in stickers:
+            share += sticker_extra(index, position, share, stickers[k])
         seen.append((share, k, have, need, w))
         for flag in (flags or {}).get(k, ()):
             slot = by_flag.setdefault(flag, dict(lines=0, covered_quantity=0, evidence=0.0))
@@ -362,7 +387,7 @@ def _detail(index, row, lines, flags, detail, by_item=None):
             slot['evidence'] += share
     seen.sort(key=lambda s: (-s[0], s[1]))
     total = index.set_weight[position]
-    return dict(set_item_id=index.set_item[position], evidence=round(ev, 4), coverage=round(ev / total, 4) if total else 0.0,
+    return dict(set_item_id=index.set_item[position], evidence=round(ev, 4), coverage=round(min(1.0, ev / total), 4) if total else 0.0,
                 covered_quantity=quantity, set_quantity=index.set_quantity[position], covered_lines=covered, complete_lines=complete,
                 set_lines=index.set_lines[position], distinctive_found=distinctive, distinctive_total=index.set_distinctive[position],
                 matched=[_line_of(k, have, need, w, (flags or {}).get(k)) for _, k, have, need, w in seen[:detail]],
@@ -371,12 +396,53 @@ def _detail(index, row, lines, flags, detail, by_item=None):
 
 
 def marks_of(lines, flags):
-    """`{line key: {flag name, ...}}` for the flags that sit on a line of the (cleaned) input."""
+    """`{line key: {flag name, ...}}` for the flags that sit on a line of the (cleaned) input (a sticker confirmation, `sticker:<id>`, is not a flag a
+    person sees: `stickers_of` reads it)."""
     marks = defaultdict(set)
     for (item, colour), names in (flags or {}).items():
         if key_of(item, colour) in lines:
-            marks[key_of(item, colour)].update(names)
-    return marks
+            marks[key_of(item, colour)].update(n for n in names if not n.startswith(CONFIRMED_PREFIX))
+    return {k: v for k, v in marks.items() if v}
+
+
+def stickers_of(lines, flags):
+    """`{line key: frozenset of the set item ids the sticker is confirmed for}` for the lines flagged Sticker (the empty set: not chosen yet)."""
+    found = {}
+    for (item, colour), names in (flags or {}).items():
+        k = key_of(item, colour)
+        if k in lines and any(n.casefold() == STICKER_FLAG for n in names):
+            confirmed = {int(n[len(CONFIRMED_PREFIX):]) for n in names if n.startswith(CONFIRMED_PREFIX) and n[len(CONFIRMED_PREFIX):].isdigit()}
+            found[k] = frozenset(found.get(k, frozenset()) | confirmed)
+    return found
+
+
+def sticker_extra(index, position, share, confirmed):
+    """What a sticker-flagged line adds to a set's evidence on top of its own `share` there (can be negative: a confirmed sticker replaces the share)."""
+    if confirmed:
+        if index.set_item[position] in confirmed:
+            return CONFIRMED_FACTOR * math.log(max(index.total, 2)) - share
+        return 0.0
+    return share * (HINT_FACTOR - 1) if index.set_sticker[position] else 0.0
+
+
+def apply_stickers(index, ranked, lines, stickers):
+    """The ranked rows with the sticker evidence added and sorted again (the cached ranking itself is never changed)."""
+    if not stickers:
+        return ranked
+    extra = defaultdict(float)
+    for k, confirmed in stickers.items():
+        found = index.posting.get(k)
+        if found is None:
+            continue
+        have, w = lines[k], index.weight[k]
+        for position, need in zip(*found):
+            extra[position] += sticker_extra(index, position, w * min(have, need) / need, confirmed)
+    if not any(extra.values()):
+        return ranked
+    set_weight, item = index.set_weight, index.set_item
+    rows = [(r[0], r[1] + extra.get(r[0], 0.0), *r[2:]) for r in ranked]
+    rows.sort(key=lambda r: (-r[1], -(r[1] / set_weight[r[0]] if set_weight[r[0]] else 0.0), item[r[0]]))
+    return rows
 
 
 def ranking(db, lines):
@@ -408,33 +474,39 @@ def score(db, parts, flags=None, *, limit=20, offset=0, detail=10):
         raise ValueError(f'limit is 1 to {MAX_LIMIT}, offset from 0, detail 0 to {MAX_DETAIL}')
     lines = clean(parts)
     marks = marks_of(lines, flags)
+    stickers = stickers_of(lines, flags)
     index, held, built, cached = ranking(db, lines)
     ranked, matched = held
+    ranked = apply_stickers(index, ranked, lines, stickers)
     grouped = by_item_of(lines)
     unmatched = [k for k in lines if k not in index.posting]
     return dict(catalogue=index.describe(),
                 input=dict(lines=len(lines), quantity=sum(lines.values()), matched_lines=matched, unmatched_lines=len(unmatched),
                            unmatched=[_line_of(k, lines[k]) for k in sorted(unmatched)[:UNMATCHED_SHOWN]]),
                 total=len(ranked), limit=limit, offset=offset, cached=cached, index_built=built,
-                results=[dict(rank=offset + i + 1, **_detail(index, row, lines, marks, detail, grouped)) for i, row in enumerate(ranked[offset:offset + limit])])
+                results=[dict(rank=offset + i + 1, **_detail(index, row, lines, marks, detail, grouped, stickers)) for i, row in enumerate(ranked[offset:offset + limit])])
 
 
 # ---------- builders of the input ----------
 
 def _gather(rows):
     parts, flags = {}, defaultdict(set)
-    for item, colour, quantity, kind, names in rows:
+    for item, colour, quantity, kind, names, confirmed in rows:
         k = (item, None if kind == 'minifigure' else (colour or 1))
         parts[k] = parts.get(k, 0) + quantity
         if names:
             flags[k].update(names.split('\x1f'))
+            if confirmed is not None and any(n.casefold() == STICKER_FLAG for n in names.split('\x1f')):
+                flags[k].add(f'{CONFIRMED_PREFIX}{int(confirmed)}')       # a confirmed sticker (core/stickers.py); a cleared one reads null
     return parts, dict(flags)
 
 
 def _stock_rows(db, where, params):
     return _gather(db.execute(
         f"""SELECT s.item_id,s.color_id,s.quantity,s.kind,
-              (SELECT group_concat(f.name,char(31)) FROM main.stock_flag x JOIN main.flag f ON f.id=x.flag_id AND f.archived_at IS NULL WHERE x.stock_id=s.id)
+              (SELECT group_concat(f.name,char(31)) FROM main.stock_flag x JOIN main.flag f ON f.id=x.flag_id AND f.archived_at IS NULL WHERE x.stock_id=s.id),
+              (SELECT json_extract(e.new_value,'$.set_item_id') FROM main.event e WHERE e.entity_kind='stock_sticker' AND e.entity_id=s.id
+                 AND e.field IN ('confirm','clear') AND NOT EXISTS(SELECT 1 FROM main.event_undo u WHERE u.event_id=e.id) ORDER BY e.id DESC LIMIT 1)
             FROM main.stock s WHERE s.archived_at IS NULL AND s.quantity>0 AND s.kind IN ('part','minifigure') {where}""", params))
 
 

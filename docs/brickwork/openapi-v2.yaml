@@ -3375,7 +3375,9 @@ paths:
         best candidate (the first set that passes the set filters scores 100). It is NOT a probability and says nothing about how likely the set is to be the
         right one in absolute terms. Each set has `reasons` (for example "7 of 9 distinctive parts found", "2 printed parts only in this set"), the distinctive
         parts found and not found yet (a distinctive part is held by at most 25 sets; up to 20 of each, heaviest first, with their pictures) and the stock
-        flags passed to the engine (a flag named Sticker as `sticker`). By default `ignore_common` drops the lines held by more than N sets before scoring
+        flags passed to the engine (a flag named Sticker as `sticker`), and the swaps (the lot has the part in another colour, or an alternate mould),
+        listed apart and never in the score. A Sticker flag raises the sets that hold the part and a sticker sheet, and a confirmed sticker is strong evidence for its
+        set (`POST /lots/{id}/stock/{stock_id}/sticker`). By default `ignore_common` drops the lines held by more than N sets before scoring
         (setting `candidate_sets_common_max`, default 300). The theme filter takes a catalogue theme id or a name (its sub-themes are included); the part
         range is the catalogue''s part count of the set. Read-only; an unknown lot is 404.'
       tags:
@@ -3577,6 +3579,240 @@ paths:
         default:
           $ref: '#/components/responses/Problem'
       x-piece: M.11b
+  /lots/{id}/stock/{stock_id}/stickers:
+    get:
+      operationId: get_lots_by_id_stock_by_stock_id_stickers
+      x-mcp-tool: list_sticker_candidates
+      summary: The sets a sticker on a part line of a lot may belong to (sets that hold the part in its colour and a sticker sheet).
+      description: 'The catalogue does not say which part a sticker goes on, so this is the fallback: the live catalogue sets whose latest inventory holds the
+        part in the line''s colour AND a sticker sheet (a part of the category named `Stickers`; spare lines are left out). A set with several sheets is one row,
+        its sheet with the lowest number first; sets with a sheet picture come first, then the earlier year. `sticker` says whether the line holds the Sticker flag
+        and which set was confirmed ("This one"). Read-only; a line that is not a live part of the lot is 404.'
+      tags:
+      - Lots
+      security:
+      - bearerAuth:
+        - read
+      parameters:
+      - $ref: '#/components/parameters/Path_id'
+      - $ref: '#/components/parameters/Path_stock_id'
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      - name: offset
+        in: query
+        schema:
+          type: integer
+          minimum: 0
+          default: 0
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StickerCandidatePage'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Problem'
+      x-piece: M.11b
+  /lots/{id}/stock/{stock_id}/sticker:
+    post:
+      operationId: post_lots_by_id_stock_by_stock_id_sticker
+      x-mcp-tool: confirm_sticker
+      summary: 'Confirm the sticker of a part line: the sheet of a set from the candidates ("This one"). One undoable event; choosing what is already chosen writes nothing.'
+      description: 'The line must hold the Sticker flag (409 otherwise) and the pair must be one of the line''s candidates (422 otherwise). A confirmed sticker is
+        strong evidence for its set in Lot Detective and `GET /planning/set-scores`; the flag alone is a smaller hint. Undo takes the choice back.'
+      tags:
+      - Lots
+      security:
+      - bearerAuth:
+        - write
+      parameters:
+      - $ref: '#/components/parameters/Path_id'
+      - $ref: '#/components/parameters/Path_stock_id'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StickerConfirm'
+      responses:
+        '200':
+          description: Done.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WrittenSticker'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Invalid'
+        default:
+          $ref: '#/components/responses/Problem'
+      x-piece: M.11c
+    delete:
+      operationId: delete_lots_by_id_stock_by_stock_id_sticker
+      x-mcp-tool: clear_sticker
+      summary: 'Not a sticker: remove the Sticker flag from a part line and stop counting a confirmed sticker. One undoable event; a line without the flag writes nothing.'
+      tags:
+      - Lots
+      security:
+      - bearerAuth:
+        - write
+      parameters:
+      - $ref: '#/components/parameters/Path_id'
+      - $ref: '#/components/parameters/Path_stock_id'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Done.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WrittenSticker'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Problem'
+      x-piece: M.11c
+  /lots/{id}/pull-list/{set_id}:
+    get:
+      operationId: get_lots_by_id_pull_list_by_set_id
+      x-mcp-tool: get_lot_pull_list
+      summary: 'The pull list of a set for a lot (#202, Lot Detective): the set''s lines with what each needs, what the lot holds and what is found so far.'
+      description: 'The set''s own parts (the latest Rebrickable list, sub-sets expanded, spares left out) and its whole minifigures, as Build Scout reads them.
+        Per line: `need` (what the set has), `held` (what the lot can give: damaged rows give nothing), `found` (`held` plus the pieces ticked in the bulk
+        and not filed yet, never above `need`) and `to_find`. `totals` count pieces over all lines: `moves` is what Make it a copy would move out of the lot,
+        `missing` what it would record as missing on the copy and `stays` what the lot keeps. Lines come in category then number order (whole figures last);
+        `show` keeps the lines still to find (`find`), the complete ones (`found`) or all. `refusal` says why Make it a copy would be refused (a set made of
+        other sets, nothing found yet). Read-only; an unknown lot or set is 404, a set with no part list 422.'
+      tags:
+      - Lots
+      security:
+      - bearerAuth:
+        - read
+      parameters:
+      - $ref: '#/components/parameters/Path_id'
+      - $ref: '#/components/parameters/Path_set_item_id'
+      - name: show
+        in: query
+        description: Which lines to list; the totals always count the whole list.
+        schema:
+          type: string
+          enum:
+          - find
+          - found
+          - all
+          default: all
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 500
+          default: 100
+      - name: offset
+        in: query
+        schema:
+          type: integer
+          minimum: 0
+          default: 0
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PullListPage'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Invalid'
+        default:
+          $ref: '#/components/responses/Problem'
+      x-piece: M.11b
+  /lots/{id}/pull-list/{set_id}/found:
+    post:
+      operationId: post_lots_by_id_pull_list_by_set_id_found
+      summary: 'Save how many of one part of the pull list are found (an absolute count, idempotent; kept between visits). Not an event: nothing to undo.'
+      description: 'The count includes what the lot already holds of the line (`held`); a count below it only drops the pieces ticked in the bulk. Pieces ticked
+        and not in the lot yet are filed in the lot, as found in the bulk, when Make it a copy runs. The line must be on the list (422 otherwise) and `found`
+        is 0 to its `need`. `event_id` and `undo_url` are always null.'
+      tags:
+      - Lots
+      security:
+      - bearerAuth:
+        - write
+      parameters:
+      - $ref: '#/components/parameters/Path_id'
+      - $ref: '#/components/parameters/Path_set_item_id'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PullFound'
+      responses:
+        '200':
+          description: Done.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WrittenPullFound'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Invalid'
+        default:
+          $ref: '#/components/responses/Problem'
+      x-piece: M.11c
+  /lots/{id}/pull-list/{set_id}/make-copy:
+    post:
+      operationId: post_lots_by_id_pull_list_by_set_id_make_copy
+      x-mcp-tool: make_copy_from_lot
+      summary: 'Make it a copy (#202): the found pieces of the pull list move out of the lot into a new copy of the set, the rest recorded as missing on it. One undoable event.'
+      description: 'One transaction and one event (`copy` / `make_from_stock`). The pieces ticked in the bulk are filed in the lot first, then exactly the found
+        counts move from the lot''s stock rows into the copy (nothing of another lot); everything the set has and was not found is recorded as missing on the
+        copy, which starts used, incomplete and not checked. The lot keeps the leftovers and the progress of this (lot, set) is cleared. Undo
+        (`POST /events/{id}/undo`) puts the stock back and archives the copy; the pieces ticked in the bulk stay filed in the lot. Refused with 422 and nothing
+        written: a set made of other sets, nothing found yet, a set with no part list.'
+      tags:
+      - Lots
+      security:
+      - bearerAuth:
+        - write
+      parameters:
+      - $ref: '#/components/parameters/Path_id'
+      - $ref: '#/components/parameters/Path_set_item_id'
+      - $ref: '#/components/parameters/IdempotencyKeyRequired'
+      responses:
+        '200':
+          description: Done.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WrittenCopyFromLot'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Invalid'
+        default:
+          $ref: '#/components/responses/Problem'
+      x-piece: M.11c
   /export/missing.csv:
     get:
       operationId: get_export_missing_csv
@@ -6699,6 +6935,12 @@ components:
       required: true
       schema:
         type: string
+    Path_stock_id:
+      name: stock_id
+      in: path
+      required: true
+      schema:
+        type: string
     Q_spare:
       name: spare
       in: query
@@ -6858,6 +7100,15 @@ components:
         type: integer
         minimum: 1
       description: 'Brick Work item id. Ids are per install (design 3.1): store numbers, not ids.'
+    Path_set_item_id:
+      name: set_id
+      in: path
+      required: true
+      x-mcp-item: true
+      schema:
+        type: integer
+        minimum: 1
+      description: Brick Work item id of the set.
     Path_figure_item_id:
       name: item_id
       in: path
@@ -11882,6 +12133,7 @@ components:
       - distinctive_found
       - distinctive_total
       - flags
+      - swaps
       - distinctive_found_parts
       - distinctive_missing_parts
       properties:
@@ -11934,6 +12186,8 @@ components:
                 type: integer
               evidence:
                 type: number
+        swaps:
+          $ref: '#/components/schemas/SetScoreSwaps'
         distinctive_found_parts:
           type: array
           description: Up to 20 distinctive parts the lot has, heaviest first.
@@ -12002,6 +12256,390 @@ components:
           oneOf:
           - $ref: '#/components/schemas/CandidatePicture'
           - type: 'null'
+    StickerCandidatePage:
+      type: object
+      required:
+      - data
+      properties:
+        data:
+          $ref: '#/components/schemas/StickerCandidates'
+    StickerCandidates:
+      type: object
+      required:
+      - lot
+      - stock_id
+      - item
+      - color
+      - quantity
+      - sticker
+      - total
+      - limit
+      - offset
+      - results
+      properties:
+        lot:
+          type: string
+        stock_id:
+          type: string
+        item:
+          $ref: '#/components/schemas/Item'
+        color:
+          oneOf:
+          - $ref: '#/components/schemas/Color'
+          - type: 'null'
+        quantity:
+          type: integer
+        sticker:
+          $ref: '#/components/schemas/StickerState'
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/StickerCandidate'
+    StickerState:
+      type: object
+      required:
+      - flagged
+      - confirmed
+      properties:
+        flagged:
+          type: boolean
+          description: The line holds the Sticker flag.
+        confirmed:
+          oneOf:
+          - $ref: '#/components/schemas/StickerChoice'
+          - type: 'null'
+          description: The set chosen with "This one", only while the line holds the flag.
+    StickerChoice:
+      type: object
+      required:
+      - set_item_id
+      - sheet_item_id
+      properties:
+        set_item_id:
+          type: integer
+        sheet_item_id:
+          type: integer
+        set_number:
+          type:
+          - string
+          - 'null'
+        set_name:
+          type:
+          - string
+          - 'null'
+    StickerCandidate:
+      type: object
+      required:
+      - set
+      - sheet
+      - year
+      - picture
+      properties:
+        set:
+          $ref: '#/components/schemas/Item'
+        sheet:
+          $ref: '#/components/schemas/Item'
+        year:
+          type:
+          - integer
+          - 'null'
+        picture:
+          oneOf:
+          - $ref: '#/components/schemas/CandidatePicture'
+          - type: 'null'
+          description: The sticker sheet's picture.
+    PullListPage:
+      type: object
+      required:
+      - data
+      properties:
+        data:
+          $ref: '#/components/schemas/PullList'
+    PullList:
+      type: object
+      required:
+      - lot
+      - set
+      - totals
+      - nested
+      - refusal
+      - show
+      - total
+      - limit
+      - offset
+      - lines
+      properties:
+        lot:
+          type: object
+          required:
+          - id
+          - name
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+        set:
+          $ref: '#/components/schemas/Item'
+        totals:
+          $ref: '#/components/schemas/PullTotals'
+        nested:
+          type: boolean
+          description: The set is made of other sets; Make it a copy does not handle those yet.
+        refusal:
+          type:
+          - string
+          - 'null'
+          description: Why Make it a copy would be refused now, or null.
+        show:
+          type: string
+        total:
+          type: integer
+          description: How many lines `show` keeps.
+        limit:
+          type: integer
+        offset:
+          type: integer
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/PullLine'
+    PullTotals:
+      type: object
+      required:
+      - need
+      - held
+      - found
+      - to_find
+      - lines
+      - lines_to_find
+      - figures_need
+      - figures_found
+      - lot_pieces
+      - moves
+      properties:
+        need:
+          type: integer
+          description: Pieces the set has (parts and whole figures).
+        held:
+          type: integer
+          description: Of them, what the lot can give already.
+        found:
+          type: integer
+          description: '`held` plus the pieces ticked in the bulk.'
+        to_find:
+          type: integer
+        lines:
+          type: integer
+        lines_to_find:
+          type: integer
+        figures_need:
+          type: integer
+        figures_found:
+          type: integer
+        lot_pieces:
+          type: integer
+          description: Every piece the lot holds, damaged ones included.
+        moves:
+          type: object
+          required:
+          - moves
+          - missing
+          - stays
+          properties:
+            moves:
+              type: integer
+              description: Found pieces that would move out of the lot.
+            missing:
+              type: integer
+              description: Pieces recorded as missing on the copy.
+            stays:
+              type: integer
+              description: Pieces the lot would keep (the pieces ticked in the bulk are counted in, then moved).
+    PullLine:
+      type: object
+      required:
+      - item
+      - color
+      - kind
+      - category
+      - need
+      - held
+      - found
+      - to_find
+      - picture
+      properties:
+        item:
+          $ref: '#/components/schemas/Item'
+        color:
+          oneOf:
+          - $ref: '#/components/schemas/Color'
+          - type: 'null'
+        kind:
+          type: string
+          enum:
+          - part
+          - figure
+        category:
+          type: string
+          description: The part's catalogue category (Minifigures for a whole figure).
+        need:
+          type: integer
+        held:
+          type: integer
+        found:
+          type: integer
+        to_find:
+          type: integer
+        picture:
+          oneOf:
+          - $ref: '#/components/schemas/CandidatePicture'
+          - type: 'null'
+    PullFound:
+      type: object
+      description: One line of the pull list and how many of it are found.
+      properties:
+        item:
+          allOf:
+          - $ref: '#/components/schemas/ItemKey'
+          description: The part or whole minifigure, by number (decision 3) or by id.
+        color:
+          type:
+          - integer
+          - 'null'
+          description: 'A colour in the provider space of the item key (decision 4); a whole minifigure has none.'
+        found:
+          type: integer
+          minimum: 0
+          description: The count found so far, what the lot already holds included.
+      required:
+      - item
+      - found
+    PullFoundWritten:
+      type: object
+      required:
+      - line
+      - totals
+      properties:
+        line:
+          $ref: '#/components/schemas/PullLine'
+        totals:
+          $ref: '#/components/schemas/PullTotals'
+    WrittenPullFound:
+      type: object
+      required:
+      - data
+      - event_id
+      properties:
+        data:
+          $ref: '#/components/schemas/PullFoundWritten'
+        event_id:
+          type:
+          - integer
+          - 'null'
+        undo_url:
+          type:
+          - string
+          - 'null'
+        idempotent_replay:
+          type: boolean
+    CopyFromLot:
+      type: object
+      required:
+      - copy_id
+      - set
+      - pieces
+      - figures
+      - missing_parts
+      - missing_figures
+      - completeness
+      - stays
+      properties:
+        copy_id:
+          type: string
+        set:
+          $ref: '#/components/schemas/Item'
+        pieces:
+          type: integer
+          description: Parts that moved into the copy.
+        figures:
+          type: integer
+          description: Whole figures that moved into the copy.
+        missing_parts:
+          type: integer
+        missing_figures:
+          type: integer
+        completeness:
+          type: string
+          enum:
+          - complete
+          - incomplete
+        stays:
+          type: integer
+          description: Pieces the lot holds now.
+    WrittenCopyFromLot:
+      type: object
+      required:
+      - data
+      - event_id
+      properties:
+        data:
+          $ref: '#/components/schemas/CopyFromLot'
+        event_id:
+          type: integer
+        undo_url:
+          type: string
+        idempotent_replay:
+          type: boolean
+    StickerConfirm:
+      type: object
+      required:
+      - set_item_id
+      - sheet_item_id
+      properties:
+        set_item_id:
+          type: integer
+          minimum: 1
+          description: The set (an item id from the candidates).
+        sheet_item_id:
+          type: integer
+          minimum: 1
+          description: Its sticker sheet (an item id from the candidates).
+    StickerWritten:
+      type: object
+      required:
+      - changed
+      - sticker
+      properties:
+        changed:
+          type: boolean
+          description: False when the write was already true and wrote nothing.
+        sticker:
+          $ref: '#/components/schemas/StickerState'
+    WrittenSticker:
+      type: object
+      required:
+      - data
+      - event_id
+      properties:
+        data:
+          $ref: '#/components/schemas/StickerWritten'
+        event_id:
+          type:
+          - integer
+          - 'null'
+        undo_url:
+          type:
+          - string
+          - 'null'
+        idempotent_replay:
+          type: boolean
     SetScorePage:
       type: object
       required:
@@ -12182,39 +12820,41 @@ components:
               evidence:
                 type: number
         swaps:
-          type: object
-          description: Listed apart, never in any number above.
-          required:
-          - lines
-          - quantity
-          - items
-          properties:
-            lines:
-              type: integer
-            quantity:
-              type: integer
-            items:
-              type: array
-              description: Up to 20, heaviest first.
-              items:
-                type: object
-                required:
-                - kind
-                - have
-                - wanted
-                - quantity
-                properties:
-                  kind:
-                    type: string
-                    enum:
-                    - colour
-                    - mould
-                  have:
-                    $ref: '#/components/schemas/SetScoreLine'
-                  wanted:
-                    $ref: '#/components/schemas/SetScoreLine'
-                  quantity:
-                    type: integer
+          $ref: '#/components/schemas/SetScoreSwaps'
+    SetScoreSwaps:
+      type: object
+      description: Listed apart, never in any number above.
+      required:
+      - lines
+      - quantity
+      - items
+      properties:
+        lines:
+          type: integer
+        quantity:
+          type: integer
+        items:
+          type: array
+          description: Up to 20, heaviest first.
+          items:
+            type: object
+            required:
+            - kind
+            - have
+            - wanted
+            - quantity
+            properties:
+              kind:
+                type: string
+                enum:
+                - colour
+                - mould
+              have:
+                $ref: '#/components/schemas/SetScoreLine'
+              wanted:
+                $ref: '#/components/schemas/SetScoreLine'
+              quantity:
+                type: integer
     ItemLink:
       type: object
       required:

@@ -35,7 +35,7 @@ def paths(w):
         'get_items_by_id_prices': f'/items/{w.brick}/prices', 'get_items_by_id_prices_history': f'/items/{w.brick}/prices/history', 'get_prices_stale': '/prices/stale',
         'get_wishes': '/wishes', 'get_wishes_by_id': f'/wishes/{w.wish_part}', 'get_wishlists': '/wishlists', 'get_wishlists_by_id_export_xml': '/wishlists/default/export.xml',
         'get_wishlists_by_id_export_csv': '/wishlists/default/export.csv', 'get_storages': '/storages', 'get_storages_by_id': f'/storages/{w.shelf}', 'get_lots': '/lots',
-        'get_lots_by_id': f'/lots/{w.bag}', 'get_places': '/places', 'get_flags': '/flags', 'get_planning_ranking': '/planning/ranking', 'get_planning_set_scores': '/planning/set-scores?loose=true', 'get_planning_build_scout': '/planning/build-scout', 'get_lots_by_id_candidate_sets': f'/lots/{w.bag}/candidate-sets',
+        'get_lots_by_id': f'/lots/{w.bag}', 'get_places': '/places', 'get_flags': '/flags', 'get_planning_ranking': '/planning/ranking', 'get_planning_set_scores': '/planning/set-scores?loose=true', 'get_planning_build_scout': '/planning/build-scout', 'get_lots_by_id_candidate_sets': f'/lots/{w.bag}/candidate-sets', 'get_lots_by_id_stock_by_stock_id_stickers': f'/lots/{w.bag}/stock/{w.stock_brick}/stickers', 'get_lots_by_id_pull_list_by_set_id': f'/lots/{w.bag}/pull-list/{w.keep}',
         'get_export_missing_csv': f'/export/missing.csv?copy_id={copy}', 'get_export_missing_json': f'/export/missing.json?copy_id={copy}',
         'get_export_missing_xml': f'/export/missing.xml?ids={copy}', 'get_export_picker_csv': f'/export/picker.csv?copy_id={copy}', 'get_export_wishlist_csv': '/export/wishlist.csv',
         'get_events': '/events', 'get_events_by_id': '/events/1', 'get_statistics': '/statistics', 'get_items_by_id_detail': f'/items/{w.keep}/detail',
@@ -56,7 +56,7 @@ def full(coll, world, pair):
 
 
 def test_every_read_operation_has_a_case(world):
-    assert len(READS) == 60 and set(paths(world)) == set(READS)
+    assert len(READS) == 62 and set(paths(world)) == set(READS)
 
 
 @pytest.mark.parametrize('operation', READS)

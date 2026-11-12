@@ -138,6 +138,22 @@
    "reason": "the demo dataset holds no part lot"
   },
   {
+   "screen": "15-Part-lot",
+   "section": "2d",
+   "state": "set-detection",
+   "built": false,
+   "approved": false,
+   "reason": "the demo dataset holds no part lot and no sticker sheets; #200 candidates are captured on an invented lot world (frames #s200)"
+  },
+  {
+   "screen": "15-Part-lot",
+   "section": "2d",
+   "state": "sticker-chooser",
+   "built": false,
+   "approved": false,
+   "reason": "the demo dataset holds no part lot and no sticker sheets; #201 chooser is captured on an invented lot world (frames #s201)"
+  },
+  {
    "screen": "16-Module-states",
    "section": "2e",
    "state": "",
@@ -301,6 +317,14 @@
    "path": "/workbench/part-to-inventory",
    "built": true,
    "approved": true
+  },
+  {
+   "screen": "31-Part-to-inventory",
+   "section": "3f",
+   "state": "has-a-sticker",
+   "built": false,
+   "approved": false,
+   "reason": "the review step needs a recognised photo, which the gate cannot make offline (#201 frame #s201)"
   },
   {
    "screen": "32-Orders",

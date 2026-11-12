@@ -1837,20 +1837,82 @@ def bw_collection_wish(identifier):
     return bw_collection_detail_response(detail, choices, 'Wishlist')
 
 
-@web_page.get('/collection/lots/<identifier>')
-@login_required
-def bw_collection_lot(identifier):
+def bw_lot_page(identifier, stock_id=None):
+    """The lot page: its parts with their Sticker tags, the Set detection section (#200) and, for a part line, the chooser panel (#201)."""
     from .admin_ops import brickwork_path
     from ..core.admin import database
-    from ..core import collection
+    from ..core import collection, errors, stickers
+    from . import lot_detect
+    chooser = None
     try:
         with database(brickwork_path(),read_only=True) as db:
             detail,choices=collection.lot_detail(db,identifier),collection.options(db)
+            sticker_lines=lot_detect.lot_stickers(db,detail['rows'])
+            detect=lot_detect.section(db,identifier,request.args)
+            if stock_id is not None:
+                try:
+                    chooser=lot_detect.chooser(db,identifier,stock_id,request.args)
+                except errors.NotFound: abort(404,'No such part in this lot')
+                if not chooser['state']['flagged']: abort(404,'This part is not marked as having a sticker')
     except ValueError as exc: abort(404,str(exc))
     response=current_app.make_response(render_template('web/toni/web/bw_collection_extra.html',
-        title='Part lot',detail=detail,rows=detail['rows'],choices=choices,can_edit=bw_collection_editable(),csrf_token=bw_add_token()))
+        title='Part lot',detail=detail,rows=detail['rows'],choices=choices,can_edit=bw_collection_editable(),csrf_token=bw_add_token(),
+        detect=detect,detect_query=lot_detect.query_of,chooser=chooser,sticker_lines=sticker_lines,done=request.args.get('done'),lot_url=url_for('web.bw_collection_lot',identifier=identifier)))
     response.headers['Cache-Control']='no-store'
     return response
+
+
+@web_page.get('/collection/lots/<identifier>')
+@login_required
+def bw_collection_lot(identifier):
+    return bw_lot_page(identifier)
+
+
+@web_page.get('/collection/lots/<identifier>/sticker/<stock_id>')
+@login_required
+def bw_lot_sticker(identifier,stock_id):
+    return bw_lot_page(identifier,stock_id)
+
+
+@web_page.post('/collection/lots/<identifier>/sticker/<stock_id>/<action>')
+@login_required
+def bw_lot_sticker_write(identifier,stock_id,action):
+    """"This one" (`confirm`) and "Not a sticker" (`clear`) from the chooser, as plain form posts; the page it returns to offers Undo."""
+    from .admin_ops import brickwork_path
+    from ..core.admin import database
+    from ..core import errors, stickers
+    if not bw_collection_editable(): abort(403,'Changes are switched off on this instance')
+    if action not in ('confirm','clear'): abort(404)
+    data=request.form.to_dict()
+    bw_add_csrf(data)
+    try:
+        with database(brickwork_path()) as db:
+            if action=='confirm':
+                done=stickers.confirm(db,identifier,stock_id,int(data.get('set_item_id','')),int(data.get('sheet_item_id','')))
+            else:
+                done=stickers.clear(db,identifier,stock_id)
+    except errors.NotFound: abort(404,'No such part in this lot')
+    except (ValueError,errors.Conflict) as exc: abort(400,str(exc))
+    return redirect(url_for('web.bw_collection_lot',identifier=identifier,**({'done':done['event_id'],'was':action} if done['changed'] else {}))+'#set-detection')
+
+
+@web_page.post('/collection/lots/<identifier>/sticker-undo')
+@login_required
+def bw_lot_sticker_undo(identifier):
+    from .admin_ops import brickwork_path
+    from ..core.admin import database
+    from ..core import errors, undo as undoing
+    if not bw_collection_editable(): abort(403,'Changes are switched off on this instance')
+    data=request.form.to_dict()
+    bw_add_csrf(data)
+    try:
+        with database(brickwork_path()) as db:
+            event=db.execute("SELECT entity_kind,json_extract(new_value,'$.lot_id') AS lot FROM event WHERE id=?",(int(data.get('event_id','')),)).fetchone()
+            if event is None or event['entity_kind']!='stock_sticker' or event['lot']!=identifier: abort(404)
+            undoing.undo_event(db,int(data['event_id']))
+    except ValueError: abort(400,'Choose a change to undo')
+    except errors.BrickWorkError as exc: abort(400,str(exc))
+    return redirect(url_for('web.bw_collection_lot',identifier=identifier,undone=1)+'#set-detection')
 
 
 @web_page.get('/collection/purchase-places')

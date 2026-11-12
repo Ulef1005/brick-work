@@ -10,6 +10,10 @@ The lot's live loose parts and figures are scored (ADR 0026); this module adds w
   set shown is always 100; `min_score` then cuts the list.
 * **Reasons**: plain sentences built from the engine's counts and the catalogue (see `reasons_of`).
 * **Distinctive parts**: found and not found, the engine's distinctive lines (held by at most `DISTINCTIVE_MAX` sets).
+* **Stickers** (#201): a line flagged Sticker is never dropped as common (its base part is usually a tile or a brick many sets hold), and the engine's
+  sticker rule (`set_scoring.apply_stickers`) is applied to the cached ranking before the set filters, so the best candidate and the scores include it.
+  A set a sticker is confirmed for says so in its reasons.
+* **Swaps**: the engine's swaps (another colour, an alternate mould) are listed per set and never count in the score.
 
 The ranking is the engine's cached one (per catalogue build and input), so a lot that did not change costs only the filters; a changed lot is a
 different input and ranks again."""
@@ -82,10 +86,11 @@ def plural(count, one, many):
     return f'{count} {one if count == 1 else many}'
 
 
-def reasons_of(found, total, only_printed, only_other, covered_lines, set_lines):
+def reasons_of(found, total, only_printed, only_other, covered_lines, set_lines, stickers=()):
     """The sentences that say why a set is a candidate. `found` of `total` distinctive parts; `only_printed` and `only_other` the found parts that
-    exactly one set holds (printed or not); then how much of the set's part lines the lot holds."""
-    reasons = []
+    exactly one set holds (printed or not); then how much of the set's part lines the lot holds. `stickers`: the numbers of the sets a sticker in the
+    lot is confirmed for, one reason each."""
+    reasons = [f'sticker of set {number} confirmed' for number in dict.fromkeys(stickers)]
     if total:
         reasons.append(f'{found} of {total} distinctive parts found')
     if found == 0:
@@ -116,16 +121,19 @@ def candidates(db, lot_id, *, min_score=0.0, theme=None, year_from=None, year_to
     index, _ = engine.index_for(db)
     n = common_max(db)
     given = engine.clean(parts)
+    stickers = engine.stickers_of(given, flags)
     lines, ignored = {}, 0
     for k, quantity in given.items():
         held = index.posting.get(k)
-        if ignore_common and held is not None and len(held[0]) > n:
+        if ignore_common and held is not None and len(held[0]) > n and k not in stickers:
             ignored += 1
             continue
         lines[k] = quantity
     marks = engine.marks_of(lines, sticker_flags(flags))
+    stickers = engine.stickers_of(lines, flags)
+    grouped = engine.by_item_of(lines)
     index, held, _, _ = engine.ranking(db, lines)
-    ranked, matched = held
+    ranked = engine.apply_stickers(index, held[0], lines, stickers)
     rows = [r for r in ranked if r[1] > 0]
     if theme not in (None, '') or year_from is not None or year_to is not None or parts_min is not None or parts_max is not None:
         wanted = theme_ids(db, theme) if theme not in (None, '') else None
@@ -151,17 +159,19 @@ def candidates(db, lot_id, *, min_score=0.0, theme=None, year_from=None, year_to
         listed.append((score, row, found, missing))
     single = {engine.unkey(f['key'])[0] for _, _, found, missing in listed for f in found + missing if f['only_in_set']}
     prints = printed(db, single) if single else set()
+    numbers = set_numbers(db, {i for v in stickers.values() for i in v})
     out = []
     for i, (score, row, found, missing) in enumerate(listed):
         for f in found + missing:
             f['printed'] = f['only_in_set'] and engine.unkey(f['key'])[0] in prints
         only = [f for f in found if f['only_in_set']]
         n_printed = sum(1 for f in only if f['printed'])
-        detail = engine._detail(index, row, lines, marks, 0, {})
-        shown = {k: v for k, v in detail.items() if k not in ('matched', 'swaps')}
+        detail = engine._detail(index, row, lines, marks, 0, grouped, stickers)
+        shown = {k: v for k, v in detail.items() if k != 'matched'}
+        chosen = sorted(numbers[s] for v in stickers.values() for s in v if s == detail['set_item_id'] and s in numbers)
         shown.update(rank=offset + i + 1, score=score,
                      reasons=reasons_of(len(found), len(found) + len(missing), n_printed, len(only) - n_printed, detail['covered_lines'],
-                                        detail['set_lines']),
+                                        detail['set_lines'], chosen),
                      distinctive_found_parts=[_public(f) for f in found[:PARTS_SHOWN]],
                      distinctive_missing_parts=[_public(f) for f in missing[:PARTS_SHOWN]])
         out.append(shown)
@@ -169,6 +179,11 @@ def candidates(db, lot_id, *, min_score=0.0, theme=None, year_from=None, year_to
                 input=dict(lines=len(lines), quantity=sum(lines.values()), ignored_common_lines=ignored,
                            unmatched_lines=sum(1 for k in lines if k not in index.posting)),
                 total=len(scored), limit=limit, offset=offset, results=out)
+
+
+def set_numbers(db, items):
+    """`{set item id: its number, as `1682-1`}`."""
+    return {r[0]: r[1] for r in db.execute('SELECT id,born_key FROM catalogue.item WHERE id IN (SELECT value FROM json_each(?))', (json.dumps(sorted(items)),))}
 
 
 def distinctive_of(index, position, lines):

@@ -931,6 +931,40 @@
       "undo_nullable": false
     },
     {
+      "endpoint": "post_lots_by_id_stock_by_stock_id_sticker",
+      "event_nullable": true,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/lots/{id}/stock/{stock_id}/sticker",
+      "piece": "M.11c",
+      "query": [],
+      "required": false,
+      "schema": {
+        "$ref": "#/components/schemas/StickerConfirm"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": true
+    },
+    {
+      "endpoint": "delete_lots_by_id_stock_by_stock_id_sticker",
+      "event_nullable": true,
+      "if_match": false,
+      "method": "DELETE",
+      "multipart": false,
+      "path": "/lots/{id}/stock/{stock_id}/sticker",
+      "piece": "M.11c",
+      "query": [],
+      "required": false,
+      "schema": null,
+      "statuses": [
+        200
+      ],
+      "undo_nullable": true
+    },
+    {
       "endpoint": "post_orders_documents",
       "event_nullable": true,
       "if_match": false,
@@ -3267,6 +3301,25 @@
       },
       "required": [
         "enabled"
+      ],
+      "type": "object"
+    },
+    "StickerConfirm": {
+      "properties": {
+        "set_item_id": {
+          "description": "The set (an item id from the candidates).",
+          "minimum": 1,
+          "type": "integer"
+        },
+        "sheet_item_id": {
+          "description": "Its sticker sheet (an item id from the candidates).",
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "set_item_id",
+        "sheet_item_id"
       ],
       "type": "object"
     },

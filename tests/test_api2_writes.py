@@ -35,7 +35,7 @@ def test_every_write_operation_of_the_pieces_done_has_a_view_and_a_spec():
     from tests.api2 import PREFIX
     for operation in writes.SPEC.values():
         assert operation['method'] == spec[operation['endpoint']]['method'] and operation['path'] == spec[operation['endpoint']]['path']
-    assert len(writes.SPEC) == 104                                  # M.11c 66 and M.11d 38
+    assert len(writes.SPEC) == 106                                  # M.11c 68 and M.11d 38
 
 
 def test_the_operations_that_need_an_idempotency_key_are_the_documented_ones():

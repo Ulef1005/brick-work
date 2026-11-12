@@ -64,3 +64,5 @@ Brick Work allows 100 Brickognize requests a day by default. Change it with `BW_
 - [Connect an assistant](connect-an-assistant.md) to create the API token.
 - [Back up and restore](back-up-and-restore.md): identification thumbnails sit with your other media, outside the database.
 - [Settings](../reference/settings.md) for `BW_BRICKOGNIZE_DAILY_BUDGET`.
+
+A part under a sticker: turn on **Has a sticker** on its review step; see [Mark a sticker](mark-a-sticker.md).

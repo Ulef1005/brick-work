@@ -2,8 +2,8 @@
 
 A copy's **price paid** is its `purchase_price`; a null or zero price is "no price paid". Its **worth** is the copy's own `current_value`
 (source `override`, "Your value") or else the current used or new sold average of the set for the copy's condition and completeness: new for a
-new or sealed copy, used for any other, with the discount for an incomplete set that Prices applies (`incomplete_discount_pct`). The quote
-is the one the Prices card shows (`collection.prices`, then `collection_prices.choose` by source priority and freshness) and is stale by the
+new or sealed copy, used for any other, with the discount for a copy with a gap that the set detail applies (`incomplete_discount_pct`; a missing or damaged line, not the completeness label). The quote
+is the one the Prices card shows (the unvoided observations, then `collection_prices.choose` by source priority, sold first and freshness) and is stale by the
 same rule (`decorate_prices`: older than the source's `max_age_days`). A stale quote still counts, marked.
 
 Everything is in the display currency with the rate and its date when a conversion happened (#39). A missing rate makes that figure None
@@ -11,7 +11,7 @@ with a reason, never a guess, and never two currencies in one figure. **Gain** i
 loss, and the percent of the price paid as a whole number. The totals count only the copies that have both a price paid and a worth, so the
 gain compares like with like; the others are counted apart.
 
-Batched: a fixed number of queries for any number of copies (labels, copies, prices, rates, settings and, for the report, photos).
+Batched: a fixed number of queries for any number of copies (labels, copies, prices, gaps, rates, settings and, for the report, photos).
 """
 from collections import defaultdict
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
@@ -48,7 +48,9 @@ def _text(amount):
 
 
 def _percent(gain, paid):
-    """Whole percent of the price paid, half away from zero (so a gain and a loss of the same size round alike)."""
+    """Whole percent of the price paid, half away from zero (so a gain and a loss of the same size round alike); None when the price paid is 0.00."""
+    if not paid:
+        return None                                                    # a price paid that rounds to 0.00 after conversion: the amount stands, no percent
     share = abs(gain) / paid * 100
     whole = int(share.quantize(Decimal(1), ROUND_HALF_UP))
     return -whole if gain < 0 else whole
@@ -79,21 +81,40 @@ def _body(money):
 
 
 def _quotes(db, copies):
-    """`{(item id, wanted condition): choice}` of the sold averages the Prices card would pick for these copies' sets, one query for all."""
-    pairs = {(c['item_id'], None) for c in copies}
-    if not pairs:
+    """`{(item id, wanted condition): choice}` of the sold averages the set detail's Prices card would pick for these copies' sets, in one query.
+
+    The card's way: the unvoided observations newest first (`decorate_prices`, so the stale mark is the card's), then `condition_rows`' choice
+    (`choose` by source priority, sold before listings, freshest), falling back to the current quote of a price with no recorded condition. On
+    top of that: only a sold guide, not with box, no error, a currency and a positive price count."""
+    ids = sorted({c['item_id'] for c in copies})
+    if not ids:
         return {}
-    by_item = collection.prices(db, pairs=pairs)
+    current = {r[0] for r in db.execute('SELECT observation_id FROM price_current WHERE color_id IS NULL AND item_id IN (SELECT value FROM json_each(?))', (json.dumps(ids),))}
+    records = collection.decorate_prices(db.execute("""SELECT o.*, i.kind, f.max_age_days FROM price_observation o JOIN item i ON i.id=o.item_id
+        LEFT JOIN source_freshness f ON f.source=o.source AND f.kind='prices'
+        WHERE o.color_id IS NULL AND o.voided_at IS NULL AND o.item_id IN (SELECT value FROM json_each(?))
+        ORDER BY o.observed_at DESC, o.id DESC""", (json.dumps(ids),)))
+    by_item = defaultdict(list)
+    for q in records:
+        price = _decimal(q['price'])
+        if q['guide'] == 'sold' and q.get('slot') != 'boxed' and not q.get('error') and q.get('currency') and price is not None and price > 0:
+            by_item[q['item_id']].append(dict(q, amount=price))
     priority = collection_prices.priority(db)
     found = {}
     for item_id, condition in {(c['item_id'], c['condition_wanted']) for c in copies}:
-        rows = []
-        for q in by_item.get((item_id, None), []):
-            price = _decimal(q['price'])
-            if q['guide'] == 'sold' and q.get('slot') != 'boxed' and not q.get('error') and q.get('currency') and price is not None and price > 0:
-                rows.append(dict(q, amount=price))
-        found[item_id, condition] = collection_prices.choose(rows, 'set', priority, condition)
+        rows = by_item.get(item_id, [])
+        found[item_id, condition] = collection_prices.choose(rows, 'set', priority, condition, prefer_sold=True) or collection_prices.choose(
+            [r for r in rows if r['id'] in current and r['condition'] not in ('used', 'new')], 'set', priority, prefer_sold=True)
     return found
+
+
+def _gaps(db, copy_ids):
+    """The ids of the copies with a gap, by the rule of the set detail (#123): a part line (spares and a figure's own parts are none) that is
+    missing or damaged, or a figure line that is missing, not retired. One query for all."""
+    packed = json.dumps(list(copy_ids))
+    return {r[0] for r in db.execute("""SELECT copy_id FROM copy_part WHERE is_spare=0 AND copy_figure_id IS NULL AND retired_at IS NULL AND (missing>0 OR damaged>0)
+        AND copy_id IN (SELECT value FROM json_each(?)) UNION SELECT copy_id FROM copy_figure WHERE retired_at IS NULL AND missing>0
+        AND copy_id IN (SELECT value FROM json_each(?))""", (packed, packed))}
 
 
 def copies(db):
@@ -107,7 +128,7 @@ def copies(db):
     `worth_date` (the quote's day `YYYY-MM-DD`; None for an override), `worth_stale` (bool; never for an override), `worth_sales` (the
     number of sales behind the quote, or None), `worth_price_source` (the price source, e.g. `bricklink`, or None) and `worth_discount_pct`
     (the incomplete-set discount applied to the quote, or None),
-    `gain` (`{amount, percent, currency}`, worth minus paid, negative for a loss, or None when either is None).
+    `gain` (`{amount, percent, currency}`, worth minus paid, negative for a loss, or None when either is None; `percent` is None when the price paid is 0.00 after conversion).
 
     A money body is `{amount: Decimal (2 places), currency: display currency, converted: bool, rate: Decimal or None, rate_as_of: day or
     None, original: {amount, currency} as recorded, or None unless converted}`."""
@@ -123,7 +144,7 @@ def copies(db):
     discount = config['incomplete_discount_pct']
     for c in rows:
         c['condition_wanted'] = 'new' if c['condition'] == 'new' or c['completeness'] == 'sealed' else 'used'
-    quotes = _quotes(db, rows)
+    quotes, gaps = _quotes(db, rows), _gaps(db, [c['id'] for c in rows])
     out = []
     for c in rows:
         label = labels.get((c['item_id'], None))
@@ -142,7 +163,7 @@ def copies(db):
             quote = quotes.get((c['item_id'], c['condition_wanted']))
             if quote:
                 amount = quote['amount']
-                if c['completeness'] == 'incomplete' and discount:
+                if c['id'] in gaps and discount:
                     amount, applied = amount * (100 - discount) / 100, int(discount) if discount == int(discount) else float(discount)
                 worth, worth_reason = _money(amount, quote['currency'], display, table)
                 source, date, stale, sales, price_source = c['condition_wanted'], (quote['observed_at'] or '')[:10] or None, bool(quote['stale']), quote.get('sold'), quote['source']

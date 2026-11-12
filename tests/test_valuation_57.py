@@ -59,12 +59,63 @@ def test_a_sealed_or_new_copy_is_valued_on_the_new_average_and_other_copies_on_t
         ('new', '90.00'), ('new', '90.00'), ('used', '30.00'), ('used', '30.00')]
 
 
-def test_an_incomplete_copy_has_the_incomplete_set_discount_of_prices(coll):
+def discount_setup(coll):
     coll.price(coll.item('sets', '1000-1'), '100.00', condition='used', sold=5)
     coll.sql("INSERT OR REPLACE INTO setting(key,value) VALUES('incomplete_discount_pct','25')")
+
+
+def test_a_copy_with_a_missing_part_has_the_incomplete_set_discount(coll):
+    discount_setup(coll)
     copy = coll.add_copy('1000-1', condition='used', completeness='incomplete', price='50', currency='EUR')
+    coll.mark(copy, '3001', '4', missing=1)
     r = one(coll, copy)
     assert str(r['worth']['amount']) == '75.00' and r['worth_discount_pct'] == 25 and (str(r['gain']['amount']), r['gain']['percent']) == ('25.00', 50)
+    assert 'Incomplete set, 25 % off the complete quote' in list(csv.reader(io.StringIO(valuation.report_csv(coll.db))))[1][13]
+
+
+def test_the_label_incomplete_without_a_gap_is_not_discounted_and_a_damaged_line_is_whatever_the_label(coll):
+    discount_setup(coll)
+    labelled = coll.add_copy('1000-1', condition='used', completeness='incomplete', price='50', currency='EUR')
+    damaged = coll.add_copy('1000-1', condition='used', completeness='complete', price='50', currency='EUR')
+    coll.mark(damaged, '3001', '4', damaged=1)
+    assert (str(one(coll, labelled)['worth']['amount']), one(coll, labelled)['worth_discount_pct']) == ('100.00', None)
+    assert (str(one(coll, damaged)['worth']['amount']), one(coll, damaged)['worth_discount_pct']) == ('75.00', 25)
+    notes = [r[13] for r in list(csv.reader(io.StringIO(valuation.report_csv(coll.db))))[1:]]
+    assert sorted(notes) == ['', 'Incomplete set, 25 % off the complete quote']
+
+
+def test_a_latest_sold_observation_with_no_price_leaves_the_earlier_average(coll):
+    keep = coll.item('sets', '1000-1')
+    coll.price(keep, '61.00', condition='used', sold=14, observed='2026-10-09T08:00:00.000Z')
+    coll.price(keep, None, condition='used', sold=0, observed='2026-10-20T08:00:00.000Z')                   # a refresh with no sales replaces price_current
+    copy = coll.add_copy('1000-1', condition='used', completeness='complete', price='24', currency='EUR')
+    r = one(coll, copy)
+    assert str(r['worth']['amount']) == '61.00' and r['worth_date'] == '2026-10-09' and r['gain'] is not None
+    assert valuation.paid_vs_value(coll.db)['comparable_copies'] == 1
+
+
+def test_a_voided_observation_is_ignored(coll):
+    keep = coll.item('sets', '1000-1')
+    coll.price(keep, '61.00', condition='used', sold=14, observed='2026-10-09T08:00:00.000Z')
+    newer = coll.price(keep, '99.00', condition='used', sold=3, observed='2026-10-20T08:00:00.000Z')
+    copy = coll.add_copy('1000-1', condition='used', completeness='complete', price='24', currency='EUR')
+    assert str(one(coll, copy)['worth']['amount']) == '99.00'
+    coll.sql('UPDATE price_observation SET voided_at=? WHERE id=?', (STAMP, newer))
+    assert str(one(coll, copy)['worth']['amount']) == '61.00'
+
+
+def test_a_price_paid_that_rounds_to_zero_gives_the_gain_amount_and_no_percent_without_raising(coll):
+    coll.price(coll.item('sets', '1000-1'), '5.00', condition='used', sold=2)
+    rate(coll, 'KRW', '1500')
+    tiny = coll.add_copy('1000-1', condition='used', completeness='complete', price='1', currency='KRW')
+    coll.add_copy('1000-1', condition='used', completeness='complete', price='4', currency='EUR')
+    r = one(coll, tiny)
+    assert str(r['paid']['amount']) == '0.00' and (str(r['gain']['amount']), r['gain']['percent']) == ('5.00', None)
+    body = valuation.valuation(coll.db)
+    assert any(c['gain']['percent'] is None for c in body['copies'] if c['gain']) and body['statistics']['paid'] == '4.00'
+    assert len(list(csv.reader(io.StringIO(valuation.report_csv(coll.db))))) == 3
+    only = valuation._sum([r])
+    assert (str(only['paid']), only['percent']) == ('0.00', None)
 
 
 def test_the_copys_own_value_wins_and_is_marked_override(coll):
@@ -287,6 +338,8 @@ def test_the_number_of_queries_does_not_grow_with_the_number_of_copies(coll):
     few = [queries(coll, f) for f in (valuation.copies, valuation.paid_vs_value, valuation.report, valuation.report_csv)]
     for n in range(8):
         coll.add_copy('1000-1' if n % 2 else '1000-2', condition='used', completeness='incomplete', price='24', currency='USD' if n % 3 else 'EUR')
+        if n % 2:
+            coll.sql("UPDATE copy_part SET missing=1 WHERE rowid=(SELECT rowid FROM copy_part WHERE copy_id=(SELECT id FROM copy ORDER BY rowid DESC LIMIT 1) AND is_spare=0 LIMIT 1)")
     many = [queries(coll, f) for f in (valuation.copies, valuation.paid_vs_value, valuation.report, valuation.report_csv)]
     assert few == many and all(n < 40 for n in many), (few, many)
 

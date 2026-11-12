@@ -3821,7 +3821,7 @@ paths:
       description: 'Every figure is in the display currency (Settings), converted with the rates of #39: a converted figure carries the rate and its date and the
         amount as recorded, and a figure whose rate is missing is `null` with a reason, never a guess. A copy''s **worth** is its own value (`worth_source`
         `override`) or the current used or new sold average of its set for the copy''s condition and completeness (new for a new or sealed copy, used
-        otherwise; an incomplete copy has the incomplete-set discount of Prices taken off), with the date of the quote and whether it is stale by the
+        otherwise; a copy with a missing or damaged line has the incomplete-set discount taken off, as on the set page), with the date of the quote and whether it is stale by the
         Prices card''s rule. A copy with no price paid (none, or 0.00) has no `paid` and no gain; a copy with no sold average has no `worth` and no gain.
         **Gain** is worth minus price paid, negative for a loss, and its whole percent of the price paid. The `statistics` totals, `by_theme` and `by_year`
         count only the copies that have both a price paid and a worth, so the gain compares like with like; the others are counted apart. Copies are in set-number order.
@@ -13213,12 +13213,12 @@ components:
           description: The price source of the quote, for example bricklink.
         worth_discount_pct:
           type: [number, 'null']
-          description: The incomplete-set discount taken off the quote, in percent.
+          description: The incomplete-set discount (copies with a gap) taken off the quote, in percent.
         gain:
           type:
           - object
           - 'null'
-          description: Worth minus price paid (negative for a loss) and its whole percent of the price paid; null unless both are known.
+          description: Worth minus price paid (negative for a loss) and its whole percent of the price paid (null when the price paid is 0.00 after conversion); the whole object is null unless both are known.
           required:
           - amount
           - percent
@@ -13227,7 +13227,7 @@ components:
             amount:
               type: string
             percent:
-              type: integer
+              type: [integer, 'null']
             currency:
               type: string
     ValuationGroup:

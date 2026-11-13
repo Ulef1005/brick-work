@@ -1,0 +1,108 @@
+/* Brick Work marketing pages (home, install, workflows, changelog, about ...): the approved website design in the app's kit.
+   Colours come from tokens-v2.css (the .tw-dark / .tw-light classes site.js sets); this file lays the pages out.
+   Paper and ink, clay on every control, 0.5px hairlines, no shadows or gradients. The phone rules are media queries (the page has no container wrapper). */
+.site{--r1:6px;--r2:10px;--r3:16px;--hair:.5px solid var(--tw-divider-strong);font-size:17px;line-height:27px;color:var(--tw-text)}
+.site a{color:inherit;text-decoration:none}
+.site h1,.site h2,.site h3,.site p{margin:0}
+.site :focus-visible{outline:2px solid var(--tw-accent);outline-offset:2px}
+.site .label{font-size:11px;line-height:14px;letter-spacing:.10em;text-transform:uppercase;color:var(--tw-text-muted);font-weight:500}
+.top{display:flex;align-items:center;gap:20px;padding:10px 32px;border-bottom:var(--hair);min-height:60px;flex-wrap:wrap;position:relative}
+.top .brand{display:flex;align-items:center}
+.top .brand img{height:32px;width:auto;display:block}
+.top nav{display:flex;gap:4px;flex:1;flex-wrap:wrap}
+.top nav a{min-height:44px;display:inline-flex;align-items:center;padding:0 12px;font-size:14px;line-height:20px;color:var(--tw-text-2);border-radius:var(--r1)}
+.top nav a[aria-current="page"]{color:var(--tw-text);font-weight:600;border-bottom:2px solid var(--tw-accent);border-radius:0}
+.top .gh{font-size:14px}
+.top [data-theme-toggle]{min-height:44px;padding:0 14px;border:var(--hair);border-radius:var(--r1);background:transparent;color:var(--tw-text-2);font:inherit;font-size:14px;cursor:pointer}
+.menu{display:none;position:relative;margin-left:auto}
+.menu summary{list-style:none;min-height:44px;display:inline-flex;align-items:center;padding:0 14px;border:var(--hair);border-radius:var(--r1);font-size:14px;cursor:pointer}
+.menu summary::-webkit-details-marker{display:none}
+.menu .menu-list{position:absolute;right:0;top:48px;z-index:5;min-width:200px;display:flex;flex-direction:column;background:var(--tw-bg);border:var(--hair);border-radius:var(--r2);overflow:hidden}
+.menu .menu-list a{min-height:44px;display:flex;align-items:center;padding:0 16px;border-bottom:var(--hair);font-size:15px}
+.menu .menu-list a:last-child{border-bottom:0}
+.sec{padding:56px 32px;border-bottom:var(--hair);display:flex;flex-direction:column;gap:28px}
+.sec.alt,.foot{background:var(--tw-surface)}
+.inner{max-width:1080px;margin:0 auto;width:100%;display:flex;flex-direction:column;gap:28px}
+.head{display:flex;flex-direction:column;gap:8px}
+.site h2{font-size:28px;line-height:34px;font-weight:600;text-wrap:balance;letter-spacing:-.01em}
+.site h3{font-size:18px;line-height:24px;font-weight:600}
+.display{font-size:44px;line-height:48px;font-weight:600;letter-spacing:-.02em;text-wrap:balance}
+.display.page{font-size:40px;line-height:44px}
+.clay{color:var(--tw-accent-text)}
+.lede{color:var(--tw-text-2);max-width:56ch}
+.small{font-size:14px;line-height:20px;color:var(--tw-text-2)}
+.muted{color:var(--tw-text-muted)}
+.mono{font-family:var(--tw-mono);font-variant-numeric:tabular-nums}
+.btns{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.btn{min-height:44px;display:inline-flex;align-items:center;justify-content:center;padding:0 18px;border-radius:var(--r2);font-size:15px;font-weight:600;border:var(--hair);background:transparent;color:var(--tw-text)}
+.btn.primary{background:var(--tw-accent);color:var(--tw-on-accent);border-color:var(--tw-accent);min-height:56px;padding:0 26px;font-size:16px}
+.site a.link,.link{font-size:15px;font-weight:500;color:var(--tw-accent-text);min-height:44px;display:inline-flex;align-items:center}
+.link:hover{text-decoration:underline}
+.site p a.link{display:inline;min-height:0;font-size:inherit}
+.hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:48px;align-items:center}
+.hero .copy{display:flex;flex-direction:column;gap:20px}
+.pillrow{display:flex;gap:8px;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:2px 10px;font-size:12px;line-height:18px;background:var(--tw-success-soft);color:var(--tw-text)}
+.pill::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--tw-success)}
+.pill.plain{background:transparent;border:var(--hair);color:var(--tw-text-2)}
+.pill.plain::before{display:none}
+.shots{display:grid;grid-template-columns:minmax(0,1fr) 28%;gap:12px;align-items:end}
+.shot{border:var(--hair);border-radius:var(--r2);overflow:hidden;background:var(--tw-surface);min-width:0}
+.shot img{display:block;width:100%;height:auto}
+.facade{display:flex;align-items:center;gap:16px;border:var(--hair);border-radius:var(--r2);padding:12px 16px;background:var(--tw-surface);min-height:72px}
+.facade .play{width:56px;height:56px;border-radius:var(--r2);background:var(--tw-text);color:var(--tw-bg);display:flex;align-items:center;justify-content:center;flex:none;font-size:18px}
+.grid{display:grid;gap:16px}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr))}.g3{grid-template-columns:repeat(3,minmax(0,1fr))}.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.card{border:var(--hair);border-radius:var(--r2);padding:16px;background:var(--tw-bg);display:flex;flex-direction:column;gap:10px;min-width:0}
+.card .q{color:var(--tw-text-2);font-size:14px;line-height:20px}
+.card .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.wf-card{padding:0;overflow:hidden}
+.wf-card .tile{background:var(--tw-surface);border-bottom:var(--hair);aspect-ratio:4/3;overflow:hidden;display:flex;align-items:flex-start;justify-content:center}
+.wf-card .tile picture{display:block;width:62%}
+.wf-card .tile.wide picture{width:100%}
+.wf-card .tile img{width:100%;height:auto;display:block}
+.grid:has(.wf-card){align-items:start}
+.wf-card .body{padding:14px 16px 16px;display:flex;flex-direction:column;gap:6px}
+.wf-card .body p{font-size:14px;line-height:20px;color:var(--tw-text-2)}
+.wf-card .top-line{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.count{font-family:var(--tw-mono);font-size:13px;color:var(--tw-text)}
+.rows{display:flex;flex-direction:column;border:var(--hair);border-radius:var(--r2);overflow:hidden}
+.rows a{min-height:56px;padding:10px 16px;display:flex;justify-content:space-between;gap:12px;align-items:center;border-bottom:var(--hair);background:var(--tw-bg)}
+.rows a:last-child{border-bottom:0}
+.rows a span:last-child{font-size:14px;color:var(--tw-text-muted)}
+/* the install tabs work without JavaScript: radio inputs and their panels */
+.tabs{display:flex;flex-direction:column;gap:16px}
+.tabs>input{position:absolute;opacity:0;pointer-events:none}
+.tabs .tablist{display:inline-flex;flex-wrap:wrap;border:var(--hair);border-radius:var(--r2);overflow:hidden;align-self:flex-start}
+.tabs .tablist label{min-height:44px;display:inline-flex;align-items:center;padding:0 18px;font-size:14px;border-right:var(--hair);cursor:pointer}
+.tabs .tablist label:last-child{border-right:0}
+.tabs .panel{display:none;flex-direction:column;gap:14px}
+.tabs>input:focus-visible~.tablist label{outline:0}
+#t1:checked~.tablist label[for=t1],#t2:checked~.tablist label[for=t2],#t3:checked~.tablist label[for=t3],#t4:checked~.tablist label[for=t4]{background:var(--tw-accent-soft);font-weight:600;box-shadow:inset 0 0 0 2px var(--tw-accent)}
+#t1:checked~.p1,#t2:checked~.p2,#t3:checked~.p3,#t4:checked~.p4{display:flex}
+pre.code{margin:0;border:var(--hair);border-radius:var(--r2);background:var(--tw-surface);padding:16px;font-family:var(--tw-mono);font-size:13px;line-height:20px;overflow-x:auto;color:var(--tw-text)}
+.note-box{border:var(--hair);border-radius:var(--r2);padding:14px 16px;background:var(--tw-info-soft);font-size:14px;line-height:20px;display:flex;flex-direction:column;gap:4px}
+.note-box.warn{background:var(--tw-warning-soft)}
+.foot .cols{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:24px;font-size:14px;line-height:20px}
+.foot ul{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:4px;color:var(--tw-text-2)}
+.foot ul a{min-height:32px;display:flex;align-items:center}
+.foot .fine{max-width:80ch}
+/* long text pages (use cases, legal, 404) keep the reading column inside the new shell */
+.site main.doc{max-width:760px}
+.big404{font-size:64px;line-height:1;font-family:var(--tw-mono);color:var(--tw-text-muted)}
+@media (min-width:641px) and (max-width:960px){.g4,.g3{grid-template-columns:repeat(2,minmax(0,1fr))}.hero{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:640px){
+  .top{padding:8px 16px;gap:8px;flex-wrap:nowrap}.top nav,.site .top a.gh{display:none}.top .brand{flex:1;min-width:0}.menu{display:block;margin-left:0}
+  .top [data-theme-toggle]{padding:0 10px}
+  .sec{padding:36px 16px;gap:22px}
+  .site h2{font-size:22px;line-height:28px}
+  .display{font-size:34px;line-height:40px}.display.page{font-size:32px;line-height:38px}
+  .site{font-size:16px;line-height:25px}
+  .hero{grid-template-columns:minmax(0,1fr);gap:28px}
+  .g4,.g3,.g2{grid-template-columns:minmax(0,1fr)}
+  .btns .btn{flex:1 1 100%}
+  .foot .cols{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .wf-card .tile{aspect-ratio:16/10}.wf-card .tile picture{width:46%}.wf-card .tile.wide picture{width:100%}
+  .big404{font-size:44px}
+}
+@media (prefers-reduced-motion:reduce){.site *{transition:none!important}}

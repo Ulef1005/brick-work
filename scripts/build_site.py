@@ -27,8 +27,9 @@ import markdown
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 SITE = ROOT / 'scripts/site'
-PAGES = (('Home', ''), ('Use cases', 'use-cases/'), ('Workflows', 'workflows/'), ('Demo', 'demo/'), ('Docs', 'docs/'),
-         ('API reference', 'docs/developer/api-v2-reference/'), ('MCP', 'docs/brickwork/mcp/'), ('Changelog', 'changelog/'))
+# The top bar: (label, path from the site root, key). Install is the home page's install section until /install/ exists (slice S2); About joins in S4.
+NAV = (('Install', '#install'), ('Demo', 'demo/'), ('Use cases', 'use-cases/'), ('Workflows', 'workflows/'), ('Docs', 'docs/'),
+       ('Changelog', 'changelog/'))
 # The pages that moved into the docs (doc-standard-v1 B1b): the old URL keeps a stub page that points at the new one.
 MOVED = (('api', 'API reference', 'docs/developer/api-v2-reference/'), ('mcp', 'MCP server', 'docs/brickwork/mcp/'))
 USER_DOCS = ('how-to', 'concepts', 'reference', 'tutorials', 'developer')   # the Zensical sections under /docs/
@@ -89,8 +90,19 @@ def render(text):
 
 def page(title, body, depth, *, current, head='', main='doc', absolute=False):
     up = site_base() if absolute else '../' * depth
-    nav = ''.join(f'<a href="{up}{href}"{" aria-current=\"page\"" if name == current else ""}>{name}</a>'
-                  for name, href in PAGES)
+    repo = repository()
+    nav = ''.join(f'<a href="{up}{href}"{" aria-current=\"page\"" if name == current else ""}>{name}</a>' for name, href in NAV)
+    menu = nav + f'<a href="https://github.com/{repo}">GitHub</a>'
+    col = lambda heading, links: (f'<div><b>{heading}</b><ul>' + ''.join(f'<li><a href="{href}">{label}</a></li>' for label, href in links)
+                                  + '</ul></div>')
+    footer_cols = ''.join((
+        col('Product', (('Install', f'{up}#install'), ('Demo', f'{up}demo/'), ('Use cases', f'{up}use-cases/'), ('Workflows', f'{up}workflows/'))),
+        col('Learn', (('Docs', f'{up}docs/'), ('Changelog', f'{up}changelog/'), ('API', f'{up}docs/developer/api-v2-reference/'),
+                      ('MCP', f'{up}docs/brickwork/mcp/'))),
+        col('Project', (('GitHub', f'https://github.com/{repo}'), ('Show and tell', f'https://github.com/{repo}/discussions'),
+                        ('Roadmap', 'https://github.com/users/Ulef1005/projects/3'))),
+        col('Legal', (('Impressum', f'{up}impressum/'), ('Privacy', f'{up}privacy/'), ('MIT licence', blob('LICENSE')))),
+    ))
     return f'''<!doctype html>
 <html lang="en">
 <head>
@@ -106,13 +118,15 @@ def page(title, body, depth, *, current, head='', main='doc', absolute=False):
 <link rel="stylesheet" href="{up}assets/tokens-v2.css">
 <link rel="stylesheet" href="{up}assets/brick-work.css">
 <link rel="stylesheet" href="{up}assets/site.css">
+<link rel="stylesheet" href="{up}assets/marketing.css">
 {head}
 </head>
 <body>
-<header class="site-head"><a class="brand" href="{up}" aria-label="Brick Work home">{lockup(up)}</a>
-<nav aria-label="Documentation">{nav}<a href="https://github.com/{repository()}">GitHub</a></nav><button class="js-only" type="button" data-theme-toggle aria-label="Switch theme">Theme</button></header>
+<div class="site"><header class="top"><a class="brand" href="{up}" aria-label="Brick Work home">{lockup(up)}</a>
+<nav aria-label="Main">{nav}</nav><a class="gh link" href="https://github.com/{repo}">GitHub</a><button class="js-only" type="button" data-theme-toggle aria-label="Switch theme">Theme</button><details class="menu"><summary>Menu</summary><nav class="menu-list" aria-label="Menu">{menu}</nav></details></header></div>
 <main class="{main}">{body}</main>
-<footer class="site-foot"><div class="footer-inner"><div><a class="footer-brand" href="{up}">{lockup(up)}</a><p>Brick Work is MIT-licensed and inspired by BrickTracker. LEGO® is a trademark of the LEGO Group of companies, which does not sponsor, authorize or endorse this project.</p></div><nav aria-label="Footer"><a href="{up}impressum/">Impressum</a><a href="{up}privacy/">Privacy</a><a href="{up}demo/">Demo</a><a href="{up}docs/">Docs</a><a href="https://github.com/users/Ulef1005/projects/3">Roadmap</a><a href="https://github.com/{repository()}">GitHub</a></nav></div></footer>
+<div class="site"><footer class="sec foot"><div class="inner"><div class="cols">{footer_cols}</div>
+<p class="small muted fine">Brick Work is an independent project and is not affiliated with the LEGO Group, Rebrickable, Brickset or BrickLink. LEGO® is a trademark of the LEGO Group of companies, which does not sponsor, authorize or endorse this project. Brick Work is MIT-licensed and inspired by BrickTracker.</p></div></footer></div>
 <script src="{up}assets/site.js" defer></script>
 </body>
 </html>
@@ -125,6 +139,44 @@ def lockup(up):
     return (f'<picture><source media="(prefers-color-scheme: dark)" srcset="{up}assets/lockup-horizontal-dark.png">'
             f'<img src="{up}assets/lockup-horizontal-light.png" alt="Brick Work" width="{width}" height="{height}" '
             'loading="lazy" decoding="async"></picture>')
+
+
+def picture(name, alt, up, *, phone=None):
+    """A light/dark screenshot of scripts/site/img as one <picture>, with its real pixel size (phone captures are drawn at twice the pixels)."""
+    light, dark = f'assets/img/{name}-light.png', f'assets/img/{name}-dark.png'
+    width, height = struct.unpack('>II', (SITE / 'img' / f'{name}-light.png').read_bytes()[16:24])
+    scale = 2 if (phone if phone is not None else 'phone' in name) else 1
+    return (f'<picture><source media="(prefers-color-scheme: dark)" srcset="{up}{dark}" width="{width // scale}" height="{height // scale}">'
+            f'<img alt="{html.escape(alt)}" src="{up}{light}" width="{width // scale}" height="{height // scale}" loading="lazy" decoding="async"></picture>')
+
+
+def latest_release():
+    """(version, schema, date, summary) of the newest release heading in CHANGELOG.md; the summary is the paragraph under it."""
+    text = (ROOT / 'CHANGELOG.md').read_text()
+    match = re.search(r'^## Brick Work (\S+) \(schema ([^)]+)\) · (\d{4}-\d{2}-\d{2})\n\n(.+?)\n', text, flags=re.M)
+    version, schema, date, summary = match.groups()
+    summary = re.sub(r'\[([^\]]+)\]\([^)]*\)', r'\1', summary).replace('`', '')
+    first = re.match(r'(.+?\.)\s(?=[A-Z])', summary + ' X')
+    return version, schema, date, first.group(1) if first else summary
+
+
+def docs_count(section):
+    return len([p for p in (ROOT / 'docs' / section).glob('*.md') if p.name != 'index.md'])
+
+
+def home(up):
+    """The home page body from scripts/site/landing.html: version, release notes and docs counts from the repository, pictures with their sizes."""
+    from brickwork.version import __version__
+    version, schema, date, summary = latest_release()
+    text = (SITE / 'landing.html').read_text()
+    values = {'repository': repository(), 'up': up, 'version': __version__, 'release_version': version, 'release_date': date,
+              'release_summary': html.escape(summary), 'release_schema': schema}
+    for section in ('tutorials', 'how-to', 'concepts', 'reference'):
+        values['count_' + section.replace('-', '_')] = str(docs_count(section))
+    for key, value in values.items():
+        text = text.replace('{' + key + '}', value)
+    text = re.sub(r'\{pic:([^|}]+)\|([^}]+)\}', lambda m: picture(m[1], m[2], up), text)
+    return text
 
 
 def stub(title, target):
@@ -221,13 +273,13 @@ def build(out):
     (out / 'assets/brick-work.css').write_text(brand_css)
     shutil.copy(static / 'fonts/PatrickHand-Regular.woff2', out / 'assets/fonts/PatrickHand-Regular.woff2')
     shutil.copy(ROOT / 'scripts/site/site.css', out / 'assets/site.css')
+    shutil.copy(SITE / 'marketing.css', out / 'assets/marketing.css')
     shutil.copy(SITE / 'site.js', out / 'assets/site.js')
     shutil.copytree(SITE / 'img', out / 'assets/img')
 
     build_docs(out / 'docs')
 
-    landing = (SITE / 'landing.html').read_text().replace('{repository}', repository())
-    (out / 'index.html').write_text(page('Brick Work', landing, 0, current='Home', main='marketing landing'))
+    (out / 'index.html').write_text(page('Brick Work', home(''), 0, current=None, main='home'))
     for name, title, current in (('use-cases', 'Use cases', 'Use cases'), ('workflows', 'Workflows', 'Workflows'),
                                  ('impressum', 'Impressum', None), ('privacy', 'Privacy', None)):
         text = (SITE / f'{name}.md').read_text().replace('{repository}', repository())

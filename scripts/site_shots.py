@@ -130,20 +130,24 @@ PICTURES = {
 def callouts(*marks):
     """JS for a job's `after`: a clay ring round each element and a numbered disc on its top left corner, drawn from the element's box (App Docs Standard,
     screenshot standard). `marks` are (selector, number) pairs. The disc is the ink of the page with paper digits and, in dark mode, the page's light
-    ink with dark digits: the tokens do the inversion. Nothing here depends on timing: the boxes are read after the fonts are loaded and the viewport has its final size."""
+    ink with dark digits: the tokens do the inversion. Nothing here depends on timing: the boxes are read after the fonts are loaded and the viewport has its final size. A mark whose element sits inside a modal dialog (shown with showModal) is drawn inside that dialog, because the top layer hides body-level overlays."""
     return """
 await document.fonts.ready;
 const marks = %s;
 for (const [selector, number] of marks) {
   const el = document.querySelector(selector);
   if (!el) throw new Error('call-out target missing: ' + selector);
-  const r = el.getBoundingClientRect(), x = r.left + scrollX, y = r.top + scrollY;
+  const host = el.closest('dialog:modal') || document.body;
+  const hostRect = host === document.body ? null : host.getBoundingClientRect();
+  const r = el.getBoundingClientRect();
+  const x = hostRect ? r.left - hostRect.left + host.scrollLeft : r.left + scrollX;
+  const y = hostRect ? r.top - hostRect.top + host.scrollTop : r.top + scrollY;
   const ring = document.createElement('div');
   ring.style.cssText = `position:absolute;left:${x - 4}px;top:${y - 4}px;width:${r.width + 8}px;height:${r.height + 8}px;box-sizing:border-box;border:2px solid var(--tw-accent);border-radius:10px;pointer-events:none;z-index:2147483646`;
   const disc = document.createElement('div');
   disc.textContent = String(number);
   disc.style.cssText = `position:absolute;left:${x - 16}px;top:${y - 16}px;width:24px;height:24px;border-radius:50%%;background:var(--tw-text);color:var(--tw-bg);font:600 13px/24px var(--tw-font, sans-serif);text-align:center;pointer-events:none;z-index:2147483647`;
-  document.body.append(ring, disc);
+  host.append(ring, disc);
 }
 """ % json.dumps(marks)
 
@@ -195,8 +199,9 @@ def tag_nth(selector, n, attr='data-shot-area', closest=None):
 REAL = {'real': lambda number: uid('copy', number, 'a')}['real']
 REAL_STARTED, REAL_GAPS = REAL('8043-1'), REAL('7938-1')   # a check about 40 % answered; a check answered to the end, with gaps
 BULK_PICKED = '/workbench/part-picker?copy=' + '&copy='.join(REAL(n) for n in ('31120-1', '7938-1', '7213-1'))
-CHOOSE_REAL_SETS = ("document.querySelector('[data-none]').click(); for (const n of ['31120-1', '7938-1', '7213-1']) "
-                    "document.querySelector('[data-number=' + JSON.stringify(n) + '] input').click(); await new Promise(r => setTimeout(r, 300));")
+CHOOSE_REAL_SETS = ("document.querySelector('[data-none]').click(); for (const n of ['31120-1', '7938-1', '7213-1']) { "
+                    "const box = document.querySelector('[data-number=' + JSON.stringify(n) + '] input'); if (!box) throw new Error('Part Runner does not list ' + n); box.click(); } "
+                    "await new Promise(r => setTimeout(r, 300));")
 LAYOUT_SCALE = {'desktop': 2, 'phone': 2}
 assert 'Old Mill' in ADD_SEARCH
 TUTORIAL_SHOTS = {

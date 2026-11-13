@@ -17,7 +17,7 @@ It takes about 20 minutes. You need a Brick Work install with some copies that h
 4. Press **Add storage**. The new drawer appears in the list.
 5. Open **Collection → Parts**, turn on **Select mode**, and tick the loose parts that belong in that drawer.
 6. In the bar that appears, under **Change**, choose **Storage**. Under **Value**, choose your drawer. Press **Save**.
-7. Go back to **Workbench → Storage** and select the drawer. You see its part lots with their counts.
+7. Go back to **Workbench → Storage** and select the drawer. The header counts its sets, figures, part lots and pieces, and the list below it shows each one.
 
 ![Workbench Storage with Drawer 3 open: the header counts its sets, figures, part lots and pieces.](../img/tutorials/tut-storage-desktop-1024-light.png#only-light)
 ![Workbench Storage with Drawer 3 open: the header counts its sets, figures, part lots and pieces.](../img/tutorials/tut-storage-desktop-1024-dark.png#only-dark)

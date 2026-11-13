@@ -252,3 +252,6 @@ html.tw-dark{color-scheme:dark}
 .sync-preview>span{align-self:flex-start}
 .sync-preview-crop{height:540px;overflow:hidden;width:100%;display:flex;justify-content:center}
 .sync-preview picture{display:block;width:100%;max-width:320px;align-self:flex-start;border-radius:var(--tw-r-3) var(--tw-r-3) 0 0;overflow:hidden}
+
+/* Approved website tagline exception: clay text beyond controls. */
+.tagline-clay{color:var(--tw-accent-text)}

@@ -1,6 +1,6 @@
 # Brick Work
 
-> Brick Work is a free, open-source (MIT), self-hosted web app for a private brick collection. Besides inventory it helps at the table: check a set's parts, pull the missing ones from your loose stock, and see which unfinished sets that stock can complete. Version {version}. Single user, runs in Docker on your own computer, NAS or small server; no account, no telemetry.
+> Don't just manage your collection. Work with it. Brick Work is a free, open-source (MIT), self-hosted web app for a private brick collection. Besides inventory it helps at the table: check a set's parts, pull the missing ones from your loose stock, and see which unfinished sets that stock can complete. Version {version}. Single user, runs in Docker on your own computer, NAS or small server; no account, no telemetry.
 
 Facts an assistant is most often asked:
 

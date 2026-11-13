@@ -37,7 +37,7 @@
 
 # Brick Work
 
-**Finish the sets you started.** Brick Work is a self-hosted web app for your brick collection. Check a set's parts, pull the missing ones from your loose stock, and see which unfinished sets that stock can complete. Every app does inventory; Brick Work also helps at the table.
+**Don't just manage your collection. Work with it.** Brick Work is a self-hosted web app for your brick collection. Check a set's parts, pull the missing ones from your loose stock, and see which unfinished sets that stock can complete. Every app does inventory; Brick Work also helps at the table.
 
 It is for private collectors who rebuild used and vintage sets, build from sorted bulk, or keep a messy collection spread over spreadsheets and sites. Rebrickable and Brickset stay where the catalogue and the market live; Brick Work is where your own copies, parts and drawers live, on your own computer, and it brings your collection over from Brickset, Rebrickable, BrickLink or BrickTracker. Free and open source (MIT).
 
@@ -265,6 +265,8 @@ The check script includes the naming gate, a standalone smoke test with sockets 
 ## Documentation
 
 The documentation site (published on GitHub Pages) shows this README, the API reference rendered from [openapi-v2.yaml](docs/brickwork/openapi-v2.yaml), and the [MCP guide](docs/brickwork/mcp.md). The [API guide](docs/brickwork/api-v2.md) covers authentication, conventions and examples. Build the site locally with `python scripts/build_site.py _site`.
+
+`SITE_BASE` sets the deployment path, with a leading and trailing slash. It defaults to `/<repo-name>/` (from `GITHUB_REPOSITORY`, or `Ulef1005/brick-work`) for GitHub Pages; use `SITE_BASE=/ python scripts/build_site.py _site` for `brick-work.app` at the domain root. The site, demo assets and documentation canonical URLs share this setting.
 
 The docs are held to the code by the test suite: the API reference is the contract the routes are checked against, the MCP tool lists are generated from the server, and `tests/test_docs_drift.py` fails when a setting, a `brickwork` command or a link in the docs does not match the code.
 

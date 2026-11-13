@@ -35,6 +35,8 @@ def unavailable(reason: str):
 
 def need_node() -> str:
     """The node binary; the test fails (or, with BW_SKIP_RENDERED=1, skips) when there is none."""
+    if os.environ.get('BW_NO_CHROME') == '1':   # a pull request runs no Node and no Chrome test (the maintainer, 2026-11-13); check.sh names each skip
+        pytest.skip(f'{MARK} Node is switched off (BW_NO_CHROME=1)')
     node = shutil.which('node')
     if not node:
         unavailable('node is not installed')

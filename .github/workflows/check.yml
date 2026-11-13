@@ -28,6 +28,7 @@ jobs:
           cache: pip
           cache-dependency-path: requirements-dev.txt
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
+        if: github.event_name != 'pull_request'   # a pull request runs no Node test (the maintainer, 2026-11-13); a push to main installs it and runs them
         with:
           node-version: "22"
       # The rendered tests run in CI (ADR 0022): scripts/check.sh gets the pinned Chrome for Testing through scripts/chrome.py, which checks its

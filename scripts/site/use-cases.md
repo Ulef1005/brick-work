@@ -134,7 +134,7 @@ Old database unchanged</pre>
 <div class="layout-130">
 <span class="layout-49">MCP</span>
 </div>
-<a class="layout-131" href="../mcp/">MCP guide</a>
+<a class="layout-131" href="../docs/brickwork/mcp/">MCP guide</a>
 </div>
 </article>
 <article class="layout-124">
@@ -151,7 +151,7 @@ Old database unchanged</pre>
 <span class="layout-49">REST API</span>
 <span class="layout-49">OpenAPI</span>
 </div>
-<a class="layout-131" href="../api/">API reference</a>
+<a class="layout-131" href="../docs/developer/api-v2-reference/">API reference</a>
 </div>
 </article>
 </div>

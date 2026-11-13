@@ -14,8 +14,8 @@
   <a href="https://www.youtube.com/watch?v=R5Q_6GUB1OQ">Video</a> ·
   <a href="https://ulef1005.github.io/brick-work/docs/">Docs</a> ·
   <a href="https://ulef1005.github.io/brick-work/workflows/">Workflows</a> ·
-  <a href="https://ulef1005.github.io/brick-work/api/">API</a> ·
-  <a href="https://ulef1005.github.io/brick-work/mcp/">MCP</a> ·
+  <a href="https://ulef1005.github.io/brick-work/docs/developer/api-v2-reference/">API</a> ·
+  <a href="https://ulef1005.github.io/brick-work/docs/brickwork/mcp/">MCP</a> ·
   <a href="https://github.com/Ulef1005/brick-work/milestones">Roadmap</a>
 </p>
 

@@ -83,10 +83,11 @@ def test_every_page_and_asset_resolves_without_external_requests(site):
 
 
 def test_every_documentation_page_links_the_complete_favicon_set(site):
-    from scripts.build_site import PAGES
+    from scripts.build_site import MOVED, PAGES
 
-    for _, href in PAGES:
-        if href in ('demo/', 'docs/'):  # The demo uses the app's own icon links; Zensical builds the user docs.
+    # The stub pages at the old /api/ and /mcp/ URLs are built here too.
+    for href in [href for _, href in PAGES] + [folder + '/' for folder, _, _ in MOVED]:
+        if href.startswith(('demo/', 'docs/')):  # The demo uses the app's own icon links; Zensical builds the docs.
             continue
         page = site / href / 'index.html'
         up = '../' * len(Path(href).parts)

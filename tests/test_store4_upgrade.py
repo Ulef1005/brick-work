@@ -15,10 +15,9 @@ TABLES = ('wish', 'job_owner', 'order_line', 'part_check')
 
 
 def old_sql(*, drop_41, drop_42=True):
-    """Today's schema without what the later steps add: the 4.2 lines (marked `-- 4.2`), and with `drop_41` the 4.1 ones too."""
+    """Historical schema: undo the 4.3 CHECK change, optionally dropping the 4.2 and 4.1 columns."""
     lines = (HERE / 'brickwork.sql').read_text().splitlines(keepends=True)
     kept = ''.join(line for line in lines if not (drop_42 and '-- 4.2' in line) and not (drop_41 and 'max_price_boxed' in line))
-    assert len(kept) < sum(map(len, lines))
     kept = kept.replace("'colour','group'", "'colour'")
     return re.sub(r',(\s*\n\))', r'\1', kept)                  # the last column of job_owner lost its successor: no comma before the paren
 
@@ -217,3 +216,83 @@ def test_undo_of_a_change_recorded_before_the_upgrade(tmp_path):
         collection.undo(db, event)
         db.commit()
         assert db.execute("SELECT max_price, max_price_currency FROM wish WHERE id='w1'").fetchone()[:] == ('40.00', 'EUR')
+
+
+def populated_42(path):
+    """Old modes, finished sessions and figure sessions, plus receipts that must survive the rebuild."""
+    make_42(path)
+    with closing(sqlite3.connect(path)) as db:
+        db.row_factory = sqlite3.Row
+        db.execute('PRAGMA foreign_keys=ON')
+        stamp = '2026-11-13T10:00:00.000Z'
+        db.execute("INSERT INTO item(id,origin,kind,name,kind_source,created_at,updated_at) VALUES(1000000002,'local','minifigure','Syn figure','manual',?,?)", (stamp, stamp))
+        for n, mode in enumerate(('inventory', 'largest', 'colour')):
+            copy = f'copy-{n}'
+            db.execute("INSERT INTO copy(id,item_id,inventory_source,created_at,updated_at) VALUES(?,1000000001,'none',?,?)", (copy, stamp, stamp))
+            db.execute("INSERT INTO copy_figure(id,copy_id,item_id,quantity,inventory_source,updated_at) VALUES(?,?,1000000002,1,'none',?)", (n + 1, copy, stamp))
+            db.execute("INSERT INTO part_check(rowid,copy_id,copy_figure_id,session_id,order_mode,spares,session_json,finished,started_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)",
+                       (n + 11, copy, n + 1 if n else None, f's-{n}', mode, 'yes' if n else None,
+                        '{ "order": ["p:17"], "answers": {}, "note": "ä" }', n % 2, stamp, stamp))
+        from brickwork.store4.rowlog import RowLog
+        log = RowLog(db)
+        row = log.select('part_check', 'copy_id=?', ('copy-0',))[0]
+        log.update('part_check', row, updated_at='2026-11-13T10:01:00.000Z')
+        # A checker receipt uses the raw stored session columns, never a schema object or a table rowid.
+        from brickwork.core import checker
+        receipt = checker.snapshot(db, 'copy-0', [])
+        db.commit()
+    return log.changes, receipt
+
+
+def test_a_42_rebuild_keeps_every_value_and_receipt_and_widens_only_the_order(tmp_path):
+    from brickwork.core import checker
+    from brickwork.store4.rowlog import RowLog
+    path = tmp_path / 'old.db'
+    changes, receipt = populated_42(path)
+    with closing(sqlite3.connect(path)) as raw:
+        before = raw.execute('SELECT rowid,* FROM part_check ORDER BY rowid').fetchall()
+        raw.execute('CREATE INDEX extra_check ON part_check(finished)')
+        raw.execute("CREATE TRIGGER extra_check_trigger BEFORE UPDATE OF session_id ON part_check WHEN new.session_id != old.session_id BEGIN SELECT RAISE(ABORT,'keep trigger'); END")
+        objects = raw.execute("SELECT type,name,sql FROM sqlite_master WHERE tbl_name='part_check' AND type IN ('index','trigger') ORDER BY type,name").fetchall()
+    with closing(connect(path, tmp_path / 'catalogue.db')) as db:
+        assert db.execute('PRAGMA foreign_keys').fetchone()[0] == 1
+        assert db.execute('PRAGMA foreign_key_check').fetchall() == []
+        assert [tuple(r) for r in db.execute('SELECT rowid,* FROM part_check ORDER BY rowid')] == before
+        assert [tuple(r) for r in db.execute("SELECT type,name,sql FROM sqlite_master WHERE tbl_name='part_check' AND type IN ('index','trigger') ORDER BY type,name")] == objects
+        assert checker.snapshot(db, 'copy-0', []) == receipt
+        log = RowLog(db, changes)
+        assert log.verify() is None
+        log.restore()
+        assert db.execute("SELECT updated_at FROM part_check WHERE copy_id='copy-0'").fetchone()[0] == changes[0]['b']['updated_at']
+        db.execute("UPDATE part_check SET order_mode='group'")
+        with pytest.raises(sqlite3.IntegrityError):
+            db.execute("UPDATE part_check SET order_mode='x'")
+        with pytest.raises(sqlite3.IntegrityError, match='keep trigger'):
+            db.execute("UPDATE part_check SET session_id='changed'")
+        db.commit()
+    before = digest(path)
+    assert upgrade(path) == '4.3'
+    assert digest(path) == before
+
+
+def test_a_failed_43_rebuild_rolls_back_ddl_rows_indexes_and_meta(tmp_path, monkeypatch):
+    path = tmp_path / 'old.db'
+    populated_42(path)
+    before = digest(path)
+    monkeypatch.setitem(UPGRADES, '4.2', ('4.3', (*UPGRADES['4.2'][1], 'INSERT INTO no_such_table VALUES(1)')))
+    with pytest.raises(sqlite3.OperationalError):
+        upgrade(path)
+    assert digest(path) == before
+    with closing(sqlite3.connect(path)) as raw:
+        assert raw.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()[0] == '4.2'
+        assert not raw.execute("SELECT 1 FROM sqlite_master WHERE name='part_check_upgrade'").fetchall()
+
+
+def test_a_42_rebuild_refuses_an_incoming_foreign_key(tmp_path):
+    path = make_42(tmp_path / 'old.db')
+    with closing(sqlite3.connect(path)) as raw:
+        raw.execute('CREATE TABLE check_reference(copy_id TEXT REFERENCES part_check(copy_id))')
+    before = digest(path)
+    with pytest.raises(sqlite3.OperationalError, match='incoming foreign key'):
+        upgrade(path)
+    assert digest(path) == before

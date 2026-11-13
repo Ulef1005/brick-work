@@ -193,7 +193,7 @@ def test_the_list_count_is_markup_not_escaped_text(world, client):
     assert '<span class="mono" data-count role="status"></span>' in client.get('/workbench/match').get_data(as_text=True)   # Recent saves
 
 
-def test_group_ranking_renders_enabled_disabled_and_unknown_values(world, coll, client):
+def test_group_ranking_renders_enabled_disabled_and_unknown_values(world, coll, client, pair):
     coll.sql("UPDATE item SET category_name='Bricks' WHERE id=?", (world.brick,))
     page = soup(client, f'/workbench/part-picker?copy={world.copy_a}&ranked=1&rank=group&rank=old')
     group = page.select_one('[data-rank-key=group]')
@@ -201,6 +201,9 @@ def test_group_ranking_renders_enabled_disabled_and_unknown_values(world, coll, 
     assert group.select_one('input').has_attr('checked')
     assert not group.select_one('input').has_attr('disabled')
     coll.sql('UPDATE item SET category_name=NULL WHERE id=?', (world.brick,))
+    import sqlite3
+    with sqlite3.connect(pair.with_name('catalogue.db')) as catalogue:
+        catalogue.execute('UPDATE item SET category_id=NULL WHERE id=?', (world.brick,))
     page = soup(client, f'/workbench/part-picker?copy={world.copy_a}')
     group = page.select_one('[data-rank-key=group]')
     assert group.select_one('input').has_attr('disabled')

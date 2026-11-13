@@ -417,7 +417,7 @@ def test_picker_category_is_the_items_projected_category(world, coll):
     assert {k['key']: k['reason'] for k in w.picker_keys(rows)}['category'] == ''
     coll.sql("UPDATE item SET category_name='  ' WHERE id=?", (world.brick,))
     again = w.picker(db, [world.copy_a])
-    assert again[0]['category'] is None and {k['key']: k['reason'] for k in w.picker_keys(again)}['category'] == 'No category is recorded for these parts'
+    assert again[0]['category'] == 'Bricks' and {k['key']: k['reason'] for k in w.picker_keys(again)}['category'] == ''
 
 
 def test_scoped_gaps_are_the_whole_store_gaps_of_the_relevant_copies(world, coll):
@@ -496,3 +496,33 @@ def test_picker_group_key_order_availability_defaults_and_old_rankings():
     reasons = {k['key']: k['reason'] for k in w.picker_keys(rows)}
     assert reasons['group'] == reasons['category'] == 'No category is recorded for these parts'
     assert w.order_picker(rows, ['group']) == w.order_picker(rows, [])
+
+
+def test_checker_and_picker_share_batched_catalogue_category_fallback(world, coll):
+    from brickwork.core import checker
+    db = coll.db
+    coll.sql('UPDATE item SET category_name=NULL WHERE id=?', (world.brick,))
+
+    def read():
+        statements = []
+        db.set_trace_callback(statements.append)
+        try:
+            check = checker.rows(db, world.copy_a, decorate=False)
+            pick = w.picker(db, [world.copy_a])
+        finally:
+            db.set_trace_callback(None)
+        for rows in (check, pick):
+            assert next(r for r in rows if r['item_id'] == world.brick)['category'] == 'Bricks'
+        category_queries = [s for s in statements if 'SELECT i.id,i.name,i.kind,' in s]
+        return len(statements), len(category_queries)
+
+    small = read()
+    for i in range(20):
+        item = coll.local('part', f'Syn additional brick {i}')
+        coll.sql("UPDATE item SET category_name='Tiles' WHERE id=?", (item,))
+        coll.sql('INSERT INTO copy_part(copy_id,item_id,color_id,quantity,missing) VALUES(?,?,?,1,1)', (world.copy_a, item, world.red))
+    large = read()
+    assert large == small and small[1] >= 4   # two batched lookups per reader; no per-row queries
+    coll.sql("UPDATE item SET category_name='Plates' WHERE id=?", (world.brick,))
+    assert next(r for r in checker.rows(db, world.copy_a, decorate=False) if r['item_id'] == world.brick)['category'] == 'Plates'
+    assert next(r for r in w.picker(db, [world.copy_a]) if r['item_id'] == world.brick)['category'] == 'Plates'

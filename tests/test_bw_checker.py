@@ -661,6 +661,11 @@ def test_saved_group_mode(coll, copy, client):
     assert choice and choice.parent.get_text(strip=True) == 'Category group'
     assert landing.select_one('input[name=order][checked]')['value'] == 'group'
     assert json_state(landing)['session']['sort'] == 'group'
+    assert json_state(landing)['session']['order'] == state['session']['order']
+    resumed = mutate(db, copy, 'start')
+    assert resumed['session']['id'] == state['session']['id']
+    assert resumed['session']['order'] == state['session']['order']
+    assert resumed['session']['sort'] == 'group'
 
 
 @pytest.mark.parametrize('mode,expected', [('group', 'group'), ('old-mode', 'inventory')])

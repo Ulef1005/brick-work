@@ -532,7 +532,8 @@ def test_robots_and_sitemaps_point_at_this_sites_address(site):
     import xml.etree.ElementTree as ET
     from scripts.build_site import origin, site_base
     base = origin() + site_base()
-    assert (site / 'robots.txt').read_text() == f'User-agent: *\nAllow: /\n\nSitemap: {base}sitemap.xml\n'
+    assert (site / 'robots.txt').read_text() == (f'User-agent: *\nAllow: /\n\n# For AI assistants: {base}llms.txt (the short facts) and {base}llms-full.txt (the key docs in one file)\n'
+                                                f'Sitemap: {base}sitemap.xml\n')
     ns = '{http://www.sitemaps.org/schemas/sitemap/0.9}'
     index = ET.fromstring((site / 'sitemap.xml').read_text())
     assert [e.find(ns + 'loc').text for e in index] == [f'{base}sitemap-pages.xml', f'{base}docs/sitemap.xml']
@@ -569,3 +570,18 @@ def test_every_site_page_offers_the_releases_feed_once(site):
         links = re.findall(r'<link rel="alternate" type="application/atom\+xml"[^>]*href="([^"]+)"', page.read_text())
         assert len(links) == 1, page
         assert (page.parent / links[0]).resolve() == (site / 'changelog' / 'feed.xml').resolve() or page.name == '404.html', (page, links)
+
+
+def test_every_page_points_assistants_at_llms_txt(site):
+    """The head link and the footer link are on every built site page, and the two files they name are built (the link is relative, so it fits each depth)."""
+    assert (site / 'llms.txt').is_file() and (site / 'llms-full.txt').is_file()
+    pages = [p for p in site.rglob('index.html') if p.relative_to(site).parts[0] not in ('docs', 'demo')] + [site / '404.html']
+    assert len(pages) > 10
+    for page in pages:
+        text = page.read_text()
+        depth = len(page.relative_to(site).parts) - 1
+        up = '../' * depth if page.name != '404.html' else None
+        links = re.findall(r'<link rel="alternate" type="text/markdown" href="([^"]+)"', text)
+        assert len(links) == 1 and links[0].endswith('llms.txt'), page
+        assert links[0] == ((up or links[0].removesuffix('llms.txt')) + 'llms.txt'), page
+        assert re.search(r'<li><a href="[^"]*llms\.txt">For AI assistants</a></li>', text), page

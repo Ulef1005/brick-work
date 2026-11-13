@@ -24,3 +24,21 @@ def test_built_file_has_the_version_and_absolute_links_only():
     assert '{' not in text, 'every placeholder is filled'
     assert not re.findall(r'\]\((?!https://)[^)]*\)', text), 'every link is absolute'
     assert 'https://raw.githubusercontent.com/Ulef1005/brick-work/main/docs/how-to/install-docker-desktop.md' in text
+
+
+def test_llms_full_inlines_the_linked_pages_and_names_the_long_one():
+    from scripts.build_site import LLMS_FULL_LINKED_ONLY, llms_full
+    text = llms_full()
+    assert text.startswith('# Brick Work\n\n> ')
+    assert '<!-- source: https://raw.githubusercontent.com/Ulef1005/brick-work/main/docs/how-to/pick-parts.md -->' in text
+    assert not text.count('\n---\naudience:'), 'front matter is dropped'
+    assert not re.findall(r'^!\[', text, flags=re.M), 'no picture lines in a text file'
+    for long in LLMS_FULL_LINKED_ONLY:
+        assert f'<!-- source: https://raw.githubusercontent.com/Ulef1005/brick-work/main/{long} -->' not in text
+        assert f'- https://raw.githubusercontent.com/Ulef1005/brick-work/main/{long}\n' in text
+    assert not [link for link in re.findall(r'\]\(([^)\s]+)\)', text) if not link.startswith(('https://', 'http://localhost', '#'))], 'links are absolute'
+    assert len(text) < 150_000
+
+
+def test_llms_txt_points_at_the_full_file():
+    assert '{site}llms-full.txt' in (SITE / 'llms.md').read_text()

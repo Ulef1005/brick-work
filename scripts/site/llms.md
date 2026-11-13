@@ -25,6 +25,7 @@ Facts an assistant is most often asked:
 
 ## Docs
 
+- [Everything in one file]({site}llms-full.txt): this page's facts and the full text of the pages below, for one fetch
 - [Bring your collection in from another app](docs/how-to/migrate.md): Brickset, Rebrickable, BrickLink and BrickTracker
 - [Check a set's parts](docs/how-to/check-set-parts.md): Set Inspector
 - [Pick parts for several sets](docs/how-to/pick-parts.md): Part Runner

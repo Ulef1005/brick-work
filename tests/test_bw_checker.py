@@ -714,7 +714,7 @@ def test_unknown_saved_sort_falls_back_to_sequence(coll, copy):
     assert checker._model(row)['sort'] == 'inventory'
 
 
-def test_group_session_survives_rowlog_and_admin_export(coll, copy):
+def test_group_session_survives_rowlog_and_admin_export(coll, copy, app4):
     from contextlib import closing
     from brickwork.store4.rowlog import RowLog
     from brickwork.web.admin_ops import tools_export

@@ -317,7 +317,8 @@ def bw_admin_write(page):
                         priority[step][kind] = [s.strip() for s in value.split(',')]
             freshness = [(request.form['source:' + n], request.form['kind:' + n], request.form['days:' + n])
                          for n in request.form.getlist('freshness')]
-            saved = admin_ops.tools_write('settings', country=request.form['retail_country'], priority=priority, freshness=freshness)
+            saved = admin_ops.tools_write('settings', country=request.form['retail_country'], priority=priority, freshness=freshness,
+                                          part_list_grouping=request.form.get('part_list_grouping'))
         elif page == 'refresh':
             admin_ops.tools_write('refresh')
             bw_start_worker()

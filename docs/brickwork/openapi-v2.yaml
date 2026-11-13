@@ -11818,6 +11818,10 @@ components:
         import_order: {}
         freshness: {}
         repair: {}
+        part_list_grouping:
+          type: string
+          enum: [grouped, bricklink, none]
+          default: grouped
         prefer_bricklink_inventory:
           type: boolean
           description: New copies take BrickLink's part list when one exists (design 4.4).
@@ -11857,6 +11861,10 @@ components:
         import_order: {}
         freshness: {}
         repair: {}
+        part_list_grouping:
+          type: string
+          enum: [grouped, bricklink, none]
+          default: grouped
         prefer_bricklink_inventory:
           type: boolean
           description: New copies take BrickLink's part list when one exists (design 4.4).

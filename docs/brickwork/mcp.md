@@ -1,3 +1,8 @@
+---
+audience: developer
+verified: 1.0
+---
+
 # Brick Work MCP server
 
 Brick Work ships an [MCP](https://modelcontextprotocol.io) server, so an AI assistant can read your collection and, if you allow it, change it. The server is a thin layer over the [REST API](api-v2.md): every tool call is one API request with your token, so scopes, Undo, idempotency and the audit log behave exactly as for any other API client.

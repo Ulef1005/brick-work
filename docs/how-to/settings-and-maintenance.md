@@ -1,3 +1,8 @@
+---
+audience: user
+verified: 1.0
+---
+
 # Settings and maintenance
 
 *Since 0.6.0.*

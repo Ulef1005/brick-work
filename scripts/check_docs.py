@@ -121,13 +121,24 @@ BAD_ALT = re.compile(r'(image|picture|screenshot) of\b', re.IGNORECASE)
 STALE_AFTER = 3   # minor releases (Ulf, 2026-11-12)
 
 
+def excluded_docs(root):
+    """The `exclude_docs:` entries of mkdocs.yml as docs/-relative prefixes or file names (a folder ends with a slash): repo-only records, not site pages."""
+    path = Path(root) / 'mkdocs.yml'
+    if not path.exists():
+        return ()
+    block = re.search(r'^exclude_docs:\s*\|\n((?:[ \t]+.*\n?)+)', path.read_text(encoding='utf-8'), re.MULTILINE)
+    lines = (line.strip() for line in block[1].splitlines()) if block else ()
+    return tuple('docs/' + line for line in lines if line and not line.startswith('#'))
+
+
 def page_paths(root):
     """Every Markdown page of the docs site that has hand-written text, as paths relative to the repository root."""
     root = Path(root)
+    skipped = PAGE_EXEMPT + excluded_docs(root)
     found = []
     for path in sorted((root / 'docs').rglob('*.md')):
         rel = path.relative_to(root).as_posix()
-        if rel.startswith(PAGE_EXEMPT) or rel in GENERATED:
+        if rel.startswith(skipped) or rel in GENERATED:
             continue
         found.append(rel)
     return found
@@ -225,23 +236,21 @@ def check_pages(root):
     return out
 
 
-def latest_release():
-    """(major, minor) of the newest v* tag, or None when the repository has none."""
-    tags = [minor(tag) for tag in git('tag', '--list', 'v*').split()]
-    tags = [tag for tag in tags if tag]
-    return max(tags) if tags else None
+def release_minors():
+    """The release lines (major, minor) of the v* tags, oldest first; a patch release is not a new line."""
+    return sorted({tag for tag in (minor(t) for t in git('tag', '--list', 'v*').split()) if tag})
 
 
-def stale_pages(root, release):
-    """(path, verified, minors behind) of the pages whose `verified` is STALE_AFTER or more minor releases behind `release`; an older major counts as stale."""
+def stale_pages(root, releases):
+    """(path, verified, minor releases since) of the pages whose `verified` line is STALE_AFTER or more release lines behind the newest of `releases`."""
     out = []
     for rel in page_paths(root):
         fields, _ = front_matter((Path(root) / rel).read_text(encoding='utf-8'))
         seen = minor(fields.get('verified'))
         if seen is None:
             continue
-        behind = release[1] - seen[1] if release[0] == seen[0] else STALE_AFTER
-        if release[0] != seen[0] or behind >= STALE_AFTER:
+        behind = sum(1 for release in releases if release > seen)
+        if behind >= STALE_AFTER:
             out.append((rel, fields['verified'], behind))
     return out
 
@@ -257,16 +266,16 @@ def pages(gate):
 
 def stale():
     root = Path(git('rev-parse', '--show-toplevel').strip())
-    release = latest_release()
-    if release is None:
+    releases = release_minors()
+    if not releases:
         print('Stale pages: no release tag; skipped')
         return 0
-    old = stale_pages(root, release)
+    latest = f'v{releases[-1][0]}.{releases[-1][1]}'
+    old = stale_pages(root, releases)
     for rel, verified, behind in old:
-        print(f'::warning file={rel},title=Stale page::verified {verified}, {behind} minor release(s) behind v{release[0]}.{release[1]}')
-    print(f'Stale pages: {len(old)} not re-verified for {STALE_AFTER} minor releases (latest v{release[0]}.{release[1]})')
+        print(f'::warning file={rel},title=Stale page::verified {verified}, {behind} release line(s) behind {latest}')
+    print(f'Stale pages: {len(old)} not re-verified for {STALE_AFTER} minor releases (latest {latest})')
     return 0
-
 
 def main(argv):
     if len(argv) == 2 and argv[0] == 'commit-msg':

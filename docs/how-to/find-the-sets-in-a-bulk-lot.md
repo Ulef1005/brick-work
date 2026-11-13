@@ -1,3 +1,8 @@
+---
+audience: user
+verified: 1.0
+---
+
 # Find the sets in a bulk lot
 
 *Since 1.1.0.*

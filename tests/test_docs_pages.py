@@ -89,13 +89,29 @@ def test_check_pages_reads_the_retired_names_file(tmp_path):
     assert [(rel, rule) for rel, rule, _, _ in found] == [('docs/how-to/x.md', 'retired-name')]
 
 
-@pytest.mark.parametrize(('verified', 'stale'), [('1.4', False), ('1.3', False), ('1.2', True), ('1.0', True), ('0.9', True)])
-def test_a_page_not_reverified_for_three_minor_releases_is_stale(tmp_path, verified, stale):
+RELEASES = [(0, 9), (1, 0), (1, 1), (1, 2), (1, 3)]
+
+
+@pytest.mark.parametrize(('verified', 'behind'), [('1.3', 0), ('1.2', 1), ('1.1', 2), ('1.0', 3), ('0.9', 4)])
+def test_a_page_not_reverified_for_three_minor_releases_is_stale(tmp_path, verified, behind):
     (tmp_path / 'docs/how-to').mkdir(parents=True)
     (tmp_path / 'docs/how-to/x.md').write_text(GOOD.replace('verified: 1.0', f'verified: {verified}'))
-    assert bool(check_docs.stale_pages(tmp_path, (1, 5))) is stale
-    # 1.5 is "three behind" 1.2: the third minor release after it
-    assert check_docs.stale_pages(tmp_path, (1, 5)) == ([('docs/how-to/x.md', verified, 5 - int(verified.split('.')[1]) if verified.startswith('1.') else 3)] if stale else [])
+    expected = [('docs/how-to/x.md', verified, behind)] if behind >= 3 else []
+    assert check_docs.stale_pages(tmp_path, RELEASES) == expected
+
+
+def test_a_patch_release_is_not_a_new_release_line(monkeypatch):
+    monkeypatch.setattr(check_docs, 'git', lambda *args: 'v1.0.0\nv1.0.1\nv1.1.0\nnot-a-tag\n')
+    assert check_docs.release_minors() == [(1, 0), (1, 1)]
+
+
+def test_pages_the_site_excludes_are_not_checked(tmp_path):
+    (tmp_path / 'docs/brickwork').mkdir(parents=True)
+    (tmp_path / 'docs/how-to').mkdir()
+    (tmp_path / 'docs/brickwork/api-v1.md').write_text('no front matter')
+    (tmp_path / 'docs/how-to/x.md').write_text(GOOD)
+    (tmp_path / 'mkdocs.yml').write_text('site_name: X\nexclude_docs: |\n  adr/\n  # a comment\n  brickwork/api-v1.md\ntheme:\n  name: material\n')
+    assert check_docs.page_paths(tmp_path) == ['docs/how-to/x.md']
 
 
 def test_the_pages_command_fails_only_with_gate_and_findings(tmp_path, monkeypatch, capsys):

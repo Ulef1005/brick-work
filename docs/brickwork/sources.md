@@ -1,3 +1,8 @@
+---
+audience: developer
+verified: 0.9
+---
+
 # Brick Work source layer (4.0)
 
 The source clients write the 4.0 collection file (`brickwork.db`). A source is one provider's client: `BrickLink`, `Rebrickable`,

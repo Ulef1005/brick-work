@@ -1,3 +1,8 @@
+---
+audience: user
+verified: 1.0
+---
+
 # Choose and switch a part list
 
 *Since 0.6.0.*

@@ -1,3 +1,8 @@
+---
+audience: developer
+verified: 1.0
+---
+
 # Named wishlists and portable files
 
 Planning → Wishlist has an All lists view and a picker for each active list, with live row counts. All lists labels each wish with its list name. Manage lists creates, renames, archives and restores lists. Archiving also archives the wishes that were live at that moment; restoring the list restores those wishes, leaving previously archived wishes archived. Names may repeat; use an id when a name is ambiguous in the CLI.

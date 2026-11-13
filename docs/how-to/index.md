@@ -1,3 +1,8 @@
+---
+audience: user
+verified: 1.0
+---
+
 # How-to guides
 
 One task per page, for someone who already knows the app.

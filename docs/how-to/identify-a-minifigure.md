@@ -1,3 +1,8 @@
+---
+audience: user
+verified: 1.0
+---
+
 # Identify a minifigure from a photo
 
 *Since 0.5.0.*

@@ -1,3 +1,8 @@
+---
+audience: user
+verified: 0.9
+---
+
 # Know where things are
 
 *Since 0.5.0.*

@@ -1,3 +1,8 @@
+---
+audience: user
+verified: 0.8
+---
+
 # Receive a parts order
 
 *Since 0.5.0.*

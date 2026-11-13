@@ -1,3 +1,8 @@
+---
+audience: user
+verified: 1.0
+---
+
 # Mark a sticker
 
 *Since 1.1.0.*

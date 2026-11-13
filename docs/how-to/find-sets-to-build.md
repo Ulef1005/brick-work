@@ -1,3 +1,8 @@
+---
+audience: user
+verified: 1.0
+---
+
 # Find sets to build from your loose stock
 
 *Since 1.1.0.* Build Scout is a Workbench workflow.

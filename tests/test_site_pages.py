@@ -583,5 +583,6 @@ def test_every_page_points_assistants_at_llms_txt(site):
         up = '../' * depth if page.name != '404.html' else None
         links = re.findall(r'<link rel="alternate" type="text/markdown" href="([^"]+)"', text)
         assert len(links) == 1 and links[0].endswith('llms.txt'), page
-        assert links[0] == ((up or links[0].removesuffix('llms.txt')) + 'llms.txt'), page
+        from scripts.build_site import site_base
+        assert links[0] == ((up if up is not None else site_base()) + 'llms.txt'), page
         assert re.search(r'<li><a href="[^"]*llms\.txt">For AI assistants</a></li>', text), page

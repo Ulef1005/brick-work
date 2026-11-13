@@ -50,3 +50,14 @@ def test_the_phone_menu_needs_no_script():
 
 def test_the_bar_height_is_a_variable_the_layouts_can_offset_by():
     assert f'--bw-topbar-h:{site_nav.HEIGHT}px' in site_nav.STYLE
+
+
+def test_a_page_marker_in_the_text_does_not_stop_the_bar():
+    page = PAGE.replace('<main>', '<main><p>data-bw-topbar</p>')
+    assert site_nav.bar('/') in site_nav.inject(page, '/')
+
+
+def test_the_pages_own_theme_switch_is_honoured():
+    style = site_nav.STYLE
+    assert 'body[data-md-color-scheme="slate"] .bw-topbar' in style and 'html.tw-dark .bw-topbar' in style
+    assert ':root:not(.tw-light) body:not([data-md-color-scheme="default"]) .bw-topbar' in style

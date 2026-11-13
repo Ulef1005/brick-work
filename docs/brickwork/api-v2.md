@@ -2,7 +2,7 @@
 
 **Status:** the contract of the whole v2 surface, written for M.11a (issue #113, 2026-10-27). The transport, the meta endpoints and item addressing are implemented in M.11a, the reads in M.11b, the writes in M.11c and the orders, jobs, sources, sync, imports, identifications, tokens and admin operations in M.11d, and the MCP and the parity test in M.11e: every operation of the contract is implemented (a piece that has not landed answers `501 not_implemented`, none is left). The machine-readable twin is [openapi-v2.yaml](openapi-v2.yaml); the data model behind it is [data-model-design.md](../data-model-4.0/data-model-design.md) (sections 3.1, 3.2, 3.5, 3.6, 3.8 and 7).
 
-**How to read this file.** v2 is v1 with the 4.0 identity, not a redesign ([api-v1.md](api-v1.md) is the v1 contract and stays as the reference for what v2 inherits). Section 1 says what changed and what did not. Section 2 holds the conventions, section 3 the resource catalogue with every v1 operation mapped to its v2 operation (or dropped, with the reason), section 4 the pieces and the 501 list. Each operation carries the piece that implements it: **M.11a** the contract, transport, meta and item addressing; **M.11b** the reads; **M.11c** the writes; **M.11d** orders, jobs, sources, keys, sync, imports, identifications, tokens and admin; **M.11e** the MCP regenerated from this file and the parity test (no operations of its own).
+**How to read this file.** v2 is v1 with the 4.0 identity, not a redesign ([api-v1.md](https://github.com/Ulef1005/brick-work/blob/main/docs/brickwork/api-v1.md) is the v1 contract and stays as the reference for what v2 inherits). Section 1 says what changed and what did not. Section 2 holds the conventions, section 3 the resource catalogue with every v1 operation mapped to its v2 operation (or dropped, with the reason), section 4 the pieces and the 501 list. Each operation carries the piece that implements it: **M.11a** the contract, transport, meta and item addressing; **M.11b** the reads; **M.11c** the writes; **M.11d** orders, jobs, sources, keys, sync, imports, identifications, tokens and admin; **M.11e** the MCP regenerated from this file and the parity test (no operations of its own).
 
 ---
 
@@ -221,7 +221,7 @@ What the 60 read operations (M.11b) and the 67 write operations (M.11c, further 
 
 ### 3.2 Operations
 
-Scope `none` means no token. Every path is relative to `/api/v2`. The **v1** column names the v1 operation the row replaces when its path changed, says `same` when the path is unchanged and **NEW** when v1 had no such operation. Write rows are one transaction plus one event; the receipt kinds and Undo dispatch per write group are v1's ([api-v1.md](api-v1.md) section 4) and move to this file with M.11c.
+Scope `none` means no token. Every path is relative to `/api/v2`. The **v1** column names the v1 operation the row replaces when its path changed, says `same` when the path is unchanged and **NEW** when v1 had no such operation. Write rows are one transaction plus one event; the receipt kinds and Undo dispatch per write group are v1's ([api-v1.md](https://github.com/Ulef1005/brick-work/blob/main/docs/brickwork/api-v1.md) section 4) and move to this file with M.11c.
 
 #### Meta
 

@@ -2,7 +2,9 @@
 
 Brick Work has a REST API, a command line and an MCP server for AI assistants. They all work with the same data and the same API tokens. In this tutorial you create a token, use it to read and change your collection from a terminal, and then connect an assistant and ask it about your collection.
 
-It takes about 20 minutes. You need a running Brick Work install ([README](https://github.com/Ulef1005/brick-work#standalone-installation-with-docker)) with some sets in it, and a terminal on the computer that runs it. Try it on a test collection first: step 3 changes data, though you will undo the change. The outputs below come from the invented demo collection, so your numbers and names will differ.
+## Before you start
+
+It takes about 20 minutes. You need a running Brick Work install ([README](https://github.com/Ulef1005/brick-work#standalone-installation-with-docker)) with some sets in it, and a terminal on the computer that runs it. Try it on a test collection first: step 3 changes data, though you will undo the change. The outputs below come from the invented demo collection, so your numbers and names will differ. The commands and outputs were run on Brick Work 1.0.1 or later (the main branch on 13 November 2026).
 
 In a Docker install, run every `brickwork` command inside the container, like this:
 
@@ -17,16 +19,20 @@ The commands below are written without the `docker compose exec brickwork` part.
 A token lets a script or an assistant call Brick Work without your login. Each token has its own scopes: **read** reads, **write** changes things.
 
 1. Open **Manage → Tools & Admin → API tokens**.
-2. Press **Create token**.
+2. Click **Create token**.
 3. Enter a **Name**, for example `tutorial`.
 4. Under **Scopes**, tick **read** and **write**.
-5. Press **Create token**.
-6. Under **Your new token**, press **Copy**, then **Done**. The secret is shown once and cannot be shown again.
+5. Click **Create token**.
+6. Under **Your new token**, click **Copy**, then **Done**. The secret is shown once and cannot be shown again.
 7. In your terminal, keep it in a variable for this session:
 
 ```sh
-export TOKEN=paste-the-secret-here
+export TOKEN=TOKEN_SECRET
 ```
+
+Replace the following:
+
+- `TOKEN_SECRET`: the secret you copied.
 
 You see the token in the list with its name and its scopes. The [API tokens section of Connect an assistant](../how-to/connect-an-assistant.md#create-a-token) also shows how to create one with `brickwork token create`.
 
@@ -145,10 +151,10 @@ chmod 600 data/mcp-token
 sudo chown 1000:1000 data/mcp-token
 ```
 
-Then tell Claude Code how to start the server (replace `/path/to/brick-work` with the folder of your install):
+Then tell Claude Code how to start the server (replace `BRICK_WORK_DIR` with the folder of your install):
 
 ```sh
-claude mcp add brickwork -- docker compose -f /path/to/brick-work/compose.yaml exec -T brickwork \
+claude mcp add brickwork -- docker compose -f BRICK_WORK_DIR/compose.yaml exec -T brickwork \
   brickwork mcp --in-process --token-file /app/data/mcp-token
 ```
 
@@ -178,9 +184,9 @@ The assistant reads that result and answers in its own words; what it writes is 
 
 Two things to notice. The assistant names sets and parts by number, never by a Brick Work id. And it can only do what its token allows: a read-only token and no `--allow-write` means it cannot change your collection. If it ever did make a change, the change would carry an `event_id` that `undo_event` takes back.
 
-When you are done, press **Revoke** next to the `tutorial` and `assistant` tokens on **API tokens**. Calls with a revoked token fail at once.
+When you are done, click **Revoke** next to the `tutorial` and `assistant` tokens on **API tokens**. Calls with a revoked token fail at once.
 
-## What you did
+## What next
 
 You created a token, called the API with it, read and changed the collection from the command line, undid the change, and gave an assistant read-only access. From here:
 

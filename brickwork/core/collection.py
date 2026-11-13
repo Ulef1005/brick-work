@@ -487,7 +487,8 @@ def part_gap(row, whole_missing=0):
 def _names(db, ids):
     found = {}
     for store in ('main', 'catalogue') if has_catalogue(db) else ('main',):
-        for r in db.execute(f'SELECT id,name,kind,category_name FROM {store}.item WHERE id IN (SELECT value FROM json_each(?))', (_in(ids),)):
+        category = 'category_name' if store == 'main' else 'NULL AS category_name'
+        for r in db.execute(f'SELECT id,name,kind,{category} FROM {store}.item WHERE id IN (SELECT value FROM json_each(?))', (_in(ids),)):
             found.setdefault(r['id'], dict(r))
     return found
 

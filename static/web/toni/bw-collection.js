@@ -248,7 +248,7 @@
       const goTo=n=>{if(section)section.page=n;else page=n;render();const first=container.querySelector('[data-bc-row]');if(first&&typeof first.scrollIntoView==='function'&&list.hasAttribute('data-bc-main'))first.scrollIntoView({block:'start'});};
       // Page buttons are rebuilt on every render: focus returns to the current page when the activated button is gone or disabled.
       const focusCurrent=()=>[...numbers.children].find(c=>c.getAttribute&&c.getAttribute('aria-current')==='page')?.focus({preventScroll:true});
-      for(const [b,label,delta] of [[prev,'Previous',-1],[next,'Next',1]]){b.type='button';b.className='bc-page-step bc-page-'+(delta<0?'prev':'next');b.textContent=label;b.setAttribute('aria-label',label+' page');b.addEventListener('click',()=>{goTo(page+delta);if(b.disabled)focusCurrent();});}
+      for(const [b,label,delta] of [[prev,'Previous',-1],[next,'Next',1]]){b.type='button';b.className='bc-page-step bc-page-'+(delta<0?'prev':'next');b.textContent=label;b.setAttribute('aria-label',label+' page');b.addEventListener('click',()=>{goTo((section?section.page:page)+delta);if(b.disabled)focusCurrent();});}
       numbers.className='bc-page-numbers';
       text.className='mono';text.dataset.bcPageText='';
       nav.append(prev,numbers,next,text);target.after(nav);return {nav,prev,next,numbers,text,goTo,focusCurrent};
@@ -277,7 +277,7 @@
       if(more)more.hidden=true;if(loaded)loaded.textContent='';
     }
     // Section state belongs to this item and selected copy, independent of list filters.
-    const sectionKey='bw-part-sections:'+location.pathname+':'+new URLSearchParams(location.search).get('copy');
+    const sectionKey='bw-part-sections:'+location.pathname+':'+(list.dataset.bcSectionCopy||new URLSearchParams(location.search).get('copy'));
     let sectionMemory={};
     try {const stored=JSON.parse(localStorage.getItem(sectionKey));if(stored&&typeof stored==='object')sectionMemory=stored;}catch(_){}
     const partSections=[...list.querySelectorAll('[data-bc-part-section]')].map(element=>{

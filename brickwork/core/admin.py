@@ -261,6 +261,10 @@ def patch_settings(db, data):
         raise errors.ValidationFailed('Send at least one setting')
     if set(data) - allowed:
         raise errors.UnsupportedSetting('Unsupported setting: ' + ', '.join(sorted(set(data) - allowed)))
+    if 'part_list_grouping' in data:
+        from .part_groups import MODES
+        if data['part_list_grouping'] not in MODES:
+            raise errors.ValidationFailed('Choose grouped, bricklink or none for part_list_grouping')
     price = {k: data[k] for k in ('bricklink_region', 'bricklink_currency', 'incomplete_discount_pct') if k in data}
     if 'repair' in data:
         repair = data['repair']

@@ -3291,9 +3291,13 @@
           "type": "number"
         },
         "part_list_grouping": {
-          "type": "string",
-          "enum": ["grouped", "bricklink", "none"],
-          "default": "grouped"
+          "default": "grouped",
+          "enum": [
+            "grouped",
+            "bricklink",
+            "none"
+          ],
+          "type": "string"
         },
         "prefer_bricklink_inventory": {
           "description": "New copies take BrickLink's part list when one exists (design 4.4).",

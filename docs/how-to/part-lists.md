@@ -50,7 +50,7 @@ After a catalogue download, a copy whose list is no longer the one in the catalo
 
 ## Group the parts on a set page
 
-In **Manage → Settings**, **Group parts by** offers **Part groups** (the default twelve groups), **BrickLink categories** (the original names in alphabetical order), or **No grouping** (one list, 15 rows per page). Save the page to apply your choice; **Undo** restores the previous setting.
+In **Manage → Settings**, **Group parts by** offers **Part groups** (the default twelve groups), **BrickLink categories** (the original names in alphabetical order), or **No grouping** (one list, 15 rows per page). Save the page to apply your choice; **Undo** restores the previous setting. From the command line, use `brickwork settings set part_list_grouping grouped` (or `bricklink` or `none`).
 
 On a set's **Consists of** list, each group shows its row and piece counts, checked rows and remaining work. Groups with missing parts or unchecked rows start expanded; complete groups start collapsed. Click a group header to open or close it, or use **Expand all** and **Collapse all**. Your browser remembers this separately for each copy. Without JavaScript, every group stays open and shows all its rows.
 

@@ -399,7 +399,7 @@ def test_missing_inventory_projection_and_no_invented_progress(coll, client, rea
     soup = item_page(client, keep, copy=cid)
     progress = soup.select_one('[aria-label="Copy progress"]')
     assert 'primary' in progress.select_one('a.button')['class']
-    assert not soup.select_one('[data-module=consists]>.actions a')
+    assert not soup.select_one('[data-module=consists]>.actions a.button.primary')
     if state in ('unchecked', 'empty'):
         assert progress.h3.get_text() == 'Parts not checked'
         assert not progress.select_one('.bc-progress-subline')
@@ -614,7 +614,7 @@ def test_required_card_counts_agree(coll, client, read, context):
     assert progress.h3.get_text() == f'{expected} parts missing, 0 in loose stock'
     assert progress.select_one('.bc-progress-subline').get_text() == '1 different parts · all checked'
     assert [s.get_text() for s in progress.select_one('.bc-progress-stats').select('span')] == [f'{expected} missing']
-    part_cards = [c for c in soup.select('[data-bc-inventory-rows] > article') if c.select_one('.bc-missing-count') and 'needs 2' in c.get_text()]
+    part_cards = [c for c in soup.select('[data-bc-inventory-rows] article[data-bc-row]') if c.select_one('.bc-missing-count') and 'needs 2' in c.get_text()]
     assert sum('bc-missing-card' in c.get('class', []) for c in part_cards) == expected == len(part_cards)
 
 

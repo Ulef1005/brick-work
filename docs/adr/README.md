@@ -36,3 +36,4 @@ One file per decision that binds future work: the API contract, the data model, 
 | [0027](0027-build-scout-percent.md) | Build Scout: percent available counts a set's own parts, figures apart | accepted | 2026-11-12 |
 | [0028](0028-sticker-evidence.md) | Stickers: a flag, a choice kept as an undoable event, and a documented evidence rule | accepted | 2026-11-12 |
 | [0029](0029-pull-list-progress.md) | Pull list: found counts kept in a setting row, Make it a copy as the one event | accepted | 2026-11-12 |
+| [0030](0030-docs-reference-pages.md) | Docs site: generated reference pages, and the hand-built /api/, /mcp/ and /design/ pages retired | accepted | 2026-11-13 |

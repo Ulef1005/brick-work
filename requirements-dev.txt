@@ -9,6 +9,19 @@ jsonschema>=4,<5
 zensical==0.1.1
 # The generated API v2 and MCP reference pages (docs/developer/, scripts/docs_reference.py)
 markdown-exec==1.13.0
+# The code reference (docs/developer/code-reference.md, ADR 0030): mkdocstrings and what it needs, MkDocs 1.6 included (only its plugin API is used)
+mkdocstrings==1.0.8
+mkdocstrings-python==2.0.11
+griffelib==2.4.1
+mkdocs-autorefs==1.4.5
+mkdocs==1.6.1
+mkdocs-get-deps==0.2.2
+ghp-import==2.1.0
+mergedeep==1.3.4
+pyyaml_env_tag==1.1
+watchdog==7.1.0
+platformdirs==4.14.5
+python-dateutil==4.0.0
 deepmerge==3.0.1
 Jinja2==3.1.6
 Markdown==3.11.2

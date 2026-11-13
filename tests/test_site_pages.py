@@ -98,7 +98,7 @@ def test_every_documentation_page_links_the_complete_favicon_set(site):
     from scripts.build_site import MOVED, NAV
 
     # The stub pages at the old /api/ and /mcp/ URLs are built here too.
-    for href in [''] + [href for _, href in NAV if '#' not in href] + [folder + '/' for folder, _, _ in MOVED]:
+    for href in [''] + [href for _, href in NAV if '#' not in href] + ['coming-from/' + n + '/' for n in ('rebrickable', 'bricklink', 'bricktracker', 'other')] + [folder + '/' for folder, _, _ in MOVED]:
         if href.startswith(('demo/', 'docs/')):  # The demo uses the app's own icon links; Zensical builds the docs.
             continue
         page = site / href / 'index.html'
@@ -132,7 +132,7 @@ def test_landing_sections_and_copy(site):
         assert f'<span class="label">{label}</span>' in body, label
     assert body.count('class="card"><h3>You ') == 6          # the six "Who it is for" boxes
     assert body.count('class="card wf-card"') == 9           # nine workflow cards
-    assert 'id="install"' in body and 'href="demo/"' in body
+    assert 'id="install"' in body and 'href="demo/"' in body and 'href="install/"' in body
     assert 'LEGO' not in body
     assert 'not affiliated with the LEGO Group, Rebrickable, Brickset or BrickLink' in text
     from brickwork.version import __version__
@@ -478,3 +478,16 @@ def test_copied_demo_html_root_paths_use_demo_base(site, name):
         mapped = {'static': '/static/', 'brand': '/static/brickwork/', 'fonts': '/static/fonts/'}[kind] + path
         assert site_base() + 'demo' + mapped in built
     assert not re.search(r'''["'(=]/(?:static|brand|fonts)/''', built)
+
+
+def test_install_and_coming_from_pages_exist_and_cross_link(site):
+    expected = {'install/': 'Install Brick Work in about five minutes.', 'coming-from/rebrickable/': 'Coming from Rebrickable or Brickset.',
+                'coming-from/bricklink/': 'Coming from BrickLink.', 'coming-from/bricktracker/': 'Coming from BrickTracker.',
+                'coming-from/other/': 'Coming from another app.'}
+    for path, heading in expected.items():
+        text = (site / path / 'index.html').read_text()
+        assert heading in text, path
+        assert 'aria-current="page"' in text.split('</header>')[0] or path.startswith('coming-from/'), path
+    for path in expected:
+        if path.startswith('coming-from/'):
+            assert text.count('<a href=') >= 4          # the four sibling rows on every coming-from page

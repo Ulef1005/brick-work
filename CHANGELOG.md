@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Install page and four coming-from pages on the website** (#345). `/install/` has the Docker Compose command, Docker Desktop, Unraid and NAS notes and the four Get started steps; `/coming-from/` has a page each for Rebrickable or Brickset, BrickLink, BrickTracker and another app, written from the migration how-tos. The top bar's Install now opens `/install/`.
 - **New website shell and homepage** (#344). The site gets the approved design: a top bar (Install, Demo, Use cases, Workflows, Docs, Changelog, GitHub, and a Menu on a phone), a hero with the tagline "Don't just manage your collection. Work with it.", who it is for, the nine workflows, an install block with tabs that work without JavaScript, coming-from rows, documentation tiles with real page counts, what's new from the changelog, and a four-column footer. The version, the release notes and the counts come from the repository. The unused sources screenshot is dropped.
 - Serve the site and demo with a shared `SITE_BASE` for repository paths or the domain root; add Impressum, Privacy and a styled 404 page, and update the tagline to “Don't just manage your collection. Work with it.”
 

@@ -27,8 +27,8 @@ import markdown
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 SITE = ROOT / 'scripts/site'
-# The top bar: (label, path from the site root, key). Install is the home page's install section until /install/ exists (slice S2); About joins in S4.
-NAV = (('Install', '#install'), ('Demo', 'demo/'), ('Use cases', 'use-cases/'), ('Workflows', 'workflows/'), ('Docs', 'docs/'),
+# The top bar: (label, path from the site root). About joins in S4.
+NAV = (('Install', 'install/'), ('Demo', 'demo/'), ('Use cases', 'use-cases/'), ('Workflows', 'workflows/'), ('Docs', 'docs/'),
        ('Changelog', 'changelog/'))
 # The pages that moved into the docs (doc-standard-v1 B1b): the old URL keeps a stub page that points at the new one.
 MOVED = (('api', 'API reference', 'docs/developer/api-v2-reference/'), ('mcp', 'MCP server', 'docs/brickwork/mcp/'))
@@ -96,7 +96,7 @@ def page(title, body, depth, *, current, head='', main='doc', absolute=False):
     col = lambda heading, links: (f'<div><b>{heading}</b><ul>' + ''.join(f'<li><a href="{href}">{label}</a></li>' for label, href in links)
                                   + '</ul></div>')
     footer_cols = ''.join((
-        col('Product', (('Install', f'{up}#install'), ('Demo', f'{up}demo/'), ('Use cases', f'{up}use-cases/'), ('Workflows', f'{up}workflows/'))),
+        col('Product', (('Install', f'{up}install/'), ('Demo', f'{up}demo/'), ('Use cases', f'{up}use-cases/'), ('Workflows', f'{up}workflows/'))),
         col('Learn', (('Docs', f'{up}docs/'), ('Changelog', f'{up}changelog/'), ('API', f'{up}docs/developer/api-v2-reference/'),
                       ('MCP', f'{up}docs/brickwork/mcp/'))),
         col('Project', (('GitHub', f'https://github.com/{repo}'), ('Show and tell', f'https://github.com/{repo}/discussions'),
@@ -164,19 +164,34 @@ def docs_count(section):
     return len([p for p in (ROOT / 'docs' / section).glob('*.md') if p.name != 'index.md'])
 
 
-def home(up):
-    """The home page body from scripts/site/landing.html: version, release notes and docs counts from the repository, pictures with their sizes."""
+def fill(text, up):
+    """Fill the tokens of a scripts/site HTML template: {up}, {repository}, {version}, the latest release and the docs counts, and {pic:name|alt}."""
     from brickwork.version import __version__
     version, schema, date, summary = latest_release()
-    text = (SITE / 'landing.html').read_text()
     values = {'repository': repository(), 'up': up, 'version': __version__, 'release_version': version, 'release_date': date,
               'release_summary': html.escape(summary), 'release_schema': schema}
     for section in ('tutorials', 'how-to', 'concepts', 'reference'):
         values['count_' + section.replace('-', '_')] = str(docs_count(section))
     for key, value in values.items():
         text = text.replace('{' + key + '}', value)
-    text = re.sub(r'\{pic:([^|}]+)\|([^}]+)\}', lambda m: picture(m[1], m[2], up), text)
-    return text
+    return re.sub(r'\{pic:([^|}]+)\|([^}]+)\}', lambda m: picture(m[1], m[2], up), text)
+
+
+def home(up):
+    """The home page body from scripts/site/landing.html."""
+    return fill((SITE / 'landing.html').read_text(), up)
+
+
+def build_pages(out):
+    """Every scripts/site/pages/*.html is one page: a header of `key: value` lines (title, path, current), a line `---`, then the body.
+    `path` is the folder from the site root (`install/`, `coming-from/rebrickable/`); `current` names the top-bar item to mark."""
+    for source in sorted((SITE / 'pages').glob('*.html')):
+        header, _, body = source.read_text().partition('\n---\n')
+        meta = dict(line.split(': ', 1) for line in header.strip().splitlines())
+        depth = len(Path(meta['path']).parts)
+        folder = out / meta['path']
+        folder.mkdir(parents=True, exist_ok=True)
+        (folder / 'index.html').write_text(page(meta['title'], fill(body, '../' * depth), depth, current=meta.get('current') or None, main='home'))
 
 
 def stub(title, target):
@@ -287,6 +302,8 @@ def build(out):
 
     missing = (SITE / '404.md').read_text().replace('{base}', base)
     (out / '404.html').write_text(page('Page not found', render(missing), 0, current=None, absolute=True))
+
+    build_pages(out)
 
     for folder, title, target in MOVED:
         (out / folder / 'index.html').write_text(stub(title, target))

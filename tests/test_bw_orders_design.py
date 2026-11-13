@@ -202,4 +202,6 @@ def test_save_error_is_atomic_and_retry_controls_render(world, client, token, co
 
 
 def test_orders_runtime():
+    from tests import rendered
+    rendered.need_node()
     subprocess.run([shutil.which('node'), str(Path(__file__).with_name('toni_bw_orders_runtime.cjs'))], check=True, capture_output=True, text=True)

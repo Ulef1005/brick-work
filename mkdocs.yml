@@ -14,6 +14,18 @@ theme:
   name: material
   font: false  # system fonts: the site makes no external requests
   favicon: assets/favicon.svg
+  # Light and dark with a toggle: without a palette the #only-light / #only-dark images both show (doc-standard-v1 B1)
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
   logo: assets/app-icon.svg
   features: [navigation.sections, navigation.indexes, search.highlight]
 markdown_extensions: [admonition, tables, toc, attr_list, pymdownx.highlight, pymdownx.superfences]

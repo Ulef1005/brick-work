@@ -1,0 +1,6 @@
+extends: occurrence
+message: "A sentence of more than 30 words is hard to follow; split it (%s words)."
+level: warning
+scope: sentence
+max: 30
+token: '\b[\w’'']+\b'

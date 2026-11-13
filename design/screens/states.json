@@ -102,7 +102,7 @@
    "world": "demo",
    "path": "/collection/item/set/7286-1?copy=56325b99-16bc-549b-bb98-f7be2ab38829",
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "10-Set-detail",
@@ -112,7 +112,7 @@
    "path": "/collection/item/set/99121-1?copy=9d6269ab-614d-549e-90ce-ca84e84afded",
    "max": 2600,
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "10-Set-detail",
@@ -122,7 +122,7 @@
    "path": "/collection/item/set/99104-1?copy=02a8e1f2-1a00-591a-93b8-9647f7f03d14",
    "max": 2600,
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "10-Set-detail",
@@ -132,7 +132,7 @@
    "path": "/collection/item/set/99112-1?copy=2e46e1e6-3019-5315-aa7d-c596a5d6a280",
    "max": 2600,
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "10-Set-detail",
@@ -142,7 +142,7 @@
    "path": "/collection/item/set/99101-1?copy=0133c51c-12df-57b3-97c1-93ce94e8691d",
    "max": 2600,
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "10-Set-detail",
@@ -152,7 +152,7 @@
    "path": "/collection/item/set/99103-1?copy=f1d1b5b5-8a1f-5819-96d4-8e6d5e444b60",
    "max": 2600,
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "10-Set-detail",
@@ -162,7 +162,7 @@
    "path": "/collection/item/set/99105-1?copy=d0e368ec-42c1-5320-a57b-2b1572e6b6ef",
    "max": 2600,
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "11-Edit-sheet",
@@ -172,7 +172,7 @@
    "path": "/collection/item/set/7286-1?copy=56325b99-16bc-549b-bb98-f7be2ab38829",
    "script": "document.querySelector(\".bc-info-edit\").click();await new Promise(r=>setTimeout(r,300));",
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "12-Minifigure-detail",
@@ -340,7 +340,7 @@
    "world": "showcase",
    "path": "/collection/item/set/99102-1",
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "19-Item-lists",
@@ -397,7 +397,7 @@
    "path": "/collection/item/set/99102-1?copy=941e4ebc-0ac0-5258-809e-b586f2e6254c",
    "script": "document.querySelector(\"[data-bc-focus=current_value]\").click();await new Promise(r=>setTimeout(r,300));",
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "20-Add-into-a-lot",

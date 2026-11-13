@@ -4,6 +4,7 @@
 
 JOBS.json is {"headers": {...optional, e.g. Cookie}, "deterministic"?: true, "now"?: ISO time, "jobs": [{"url", "out", "width", "height"?, "theme": "light"|"dark",
 "wait"?: CSS selector, "script"?: JS run before the capture (open a sheet, tick a box), "max"?: px, default 3000, "sheet_below"?: px,
+"scale"?: device scale (default 2 below 600 px, else 1), "after"?: JS run after the final resize, "crop"?: selector or list of selectors and "crop_pad"?: px (the picture is cut to their union),
 "javascript"?: false renders the page with scripts switched off (the app's no-script fallback; every other job runs with them on)}]}.
 "deterministic" (the screenshot gate, scripts/screen_gate.py) starts every capture from an empty browser (no cache, no stored data, empty web storage), loads every declared font face, turns animations and transitions off, hides the caret, asks for reduced motion and, with "now",
 fixes the page's clock (Date) at that instant. The theme is the system preference (the app's default mode). A page is captured whole with the viewport grown to its height (fixed
@@ -41,7 +42,8 @@ let browser=null;
    await call('Storage.clearDataForOrigin',{origin:new URL(job.url).origin,storageTypes:'all'});
   }
   const width=job.width,height=job.height||(width<600?844:width<1100?1024:900),max=job.max||3000;
-  await call('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:width<600?2:1,mobile:width<600});
+  const scale=job.scale||(width<600?2:1);
+  await call('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:scale,mobile:width<600});
   await call('Emulation.setEmulatedMedia',{features:[{name:'prefers-color-scheme',value:job.theme==='dark'?'dark':'light'},...(deterministic?[{name:'prefers-reduced-motion',value:'reduce'}]:[])]});
   await call('Emulation.setScriptExecutionDisabled',{value:job.javascript===false});   // set for every job, so a no-script capture never leaks into the next one of the session
   await call('Page.navigate',{url:job.url});
@@ -57,10 +59,18 @@ let browser=null;
   if(!sheet){
    const full=await evaluate('Math.max(document.documentElement.scrollHeight,document.body.scrollHeight)');
    shotHeight=Math.min(Math.max(full,height),max);
-   await call('Emulation.setDeviceMetricsOverride',{width,height:shotHeight,deviceScaleFactor:width<600?2:1,mobile:width<600});
+   await call('Emulation.setDeviceMetricsOverride',{width,height:shotHeight,deviceScaleFactor:scale,mobile:width<600});
    await delay(250);
   }
-  const shot=await call('Page.captureScreenshot',{format:'png',clip:{x:0,y:0,width,height:shotHeight,scale:1}});
+  if(job.after){await evaluate(`(async()=>{${job.after}})()`);await delay(250);}   // after: JS run once the viewport has its final size (the call-out overlays, which are placed from the boxes as they now are)
+  let clip={x:0,y:0,width,height:shotHeight,scale:1};
+  if(job.crop){   // crop: a selector or a list of them (the union of their boxes, plus `crop_pad` px), clipped to the page; the file is `scale` times the CSS size
+   const pad=job.crop_pad===undefined?16:job.crop_pad;
+   const box=await evaluate(`(()=>{const boxes=[].concat(${JSON.stringify(job.crop)}).flatMap(s=>[...document.querySelectorAll(s)]).map(e=>e.getBoundingClientRect());if(!boxes.length)throw new Error('crop matches nothing: '+${JSON.stringify(JSON.stringify(job.crop))});return {x:Math.min(...boxes.map(b=>b.left))+scrollX,y:Math.min(...boxes.map(b=>b.top))+scrollY,r:Math.max(...boxes.map(b=>b.right))+scrollX,b:Math.max(...boxes.map(b=>b.bottom))+scrollY};})()`);
+   const x=Math.max(0,box.x-pad),y=Math.max(0,box.y-pad);
+   clip={x,y,width:Math.min(width,box.r+pad)-x,height:Math.min(shotHeight,box.b+pad)-y,scale:1};
+  }
+  const shot=await call('Page.captureScreenshot',{format:'png',clip});
   fs.mkdirSync(path.dirname(job.out),{recursive:true});
   fs.writeFileSync(job.out,Buffer.from(shot.data,'base64'));
   console.log(job.out);

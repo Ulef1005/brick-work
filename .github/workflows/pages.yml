@@ -29,6 +29,9 @@ jobs:
           cache: pip
           cache-dependency-path: requirements-dev.txt
       - name: Build
+        env:
+          # An empty variable keeps the /<repo>/ base; set to / for a custom domain at the apex.
+          SITE_BASE: ${{ vars.SITE_BASE }}
         run: |
           python -m venv .venv
           .venv/bin/pip install -r requirements-dev.txt

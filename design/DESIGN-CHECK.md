@@ -33,6 +33,8 @@ Deep link to any section: `BW Navigator.dc.html#/<Group>/<Sub-area>/<id>?w=1440&
 
 ## The screenshot gate
 
+**Not part of the pull request check since 2026-11-13 (the maintainer): `scripts/check.sh` no longer runs it, because screens are approved from frames in a review artifact. The test and the `capture` and `baselines` tooling stay, and the gate can be run by hand.**
+
 The gate compares the **built app** with **approved baseline captures** of the built app, per screen state; it never compares with the design frames, which stay the design record (ADR 0022).
 
 - `design/screens/states.json` lists each screen section of the manifest with how to reach it in the built app (a path in the invented demo dataset, clock fixed) and two flags: `built` (the app has this screen) and `approved` (the maintainer approved its baseline captures). Only the maintainer sets `approved`, after reviewing the candidates. A screen that is not built, or whose state is not reached yet, says why.

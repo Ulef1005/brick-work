@@ -99,8 +99,8 @@ The assistant sees whatever its token can read: sets, parts, prices, storage loc
 
 ## What next
 
-- The [MCP guide](../../mcp/) lists every tool and resource.
-- The [API reference](../../api/) for calling the API directly.
+- [MCP tools and resources](../developer/mcp-reference.md) lists every tool and resource.
+- The [API v2 reference](../developer/api-v2-reference.md) for calling the API directly.
 - [Undo a change](undo-a-change.md) an assistant made.
 - [Settings](../reference/settings.md) for `BW_MCP_WRITE`, `BW_API_TOKEN` and `BW_TRUSTED_PROXIES`.
 - [Commands](../reference/cli.md) for `brickwork mcp` and `brickwork token`.

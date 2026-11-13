@@ -71,6 +71,6 @@ The assistant sees what its token can read: your sets, parts, prices, storage lo
 
 ## Tools and resources
 
-The lists below are generated from the server's own tool table when this site is built, so they always match the release.
+[MCP tools and resources](../developer/mcp-reference.md) lists every read tool, write tool and resource, generated from the server's own tool table when the docs site is built, so it always matches the release.
 
 A resource is a read-only document an assistant can open by its address, for example `brickwork://summary` or `brickwork://items/bricklink/part/3001`.

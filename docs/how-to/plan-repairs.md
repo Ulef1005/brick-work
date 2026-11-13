@@ -49,7 +49,7 @@ Each line is an item, colour and condition with the quantity still to buy: with 
 
 To order the parts of many sets at once, with each line combined and showing which sets it comes from, press **Order missing parts** instead: see [Order the parts all your sets are missing](order-missing-parts.md).
 
-**Print missing parts of N** opens a printable list of the same copies; see [Check a set's parts](check-set-parts.md#export-the-gaps).
+**Print missing parts of N** opens a printable list of the same copies; see [Export or print the missing parts](export-missing-parts.md).
 
 ## What next
 

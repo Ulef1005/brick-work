@@ -2,9 +2,7 @@
 
 *Since 0.5.0.*
 
-Set Inspector (was Check Set Parts) is the Workbench workflow described here.
-
-Go through one [copy](../concepts/collection-model.md) of a set part by part and record what is missing. Do this when you sort out a used or half-built set. The copy needs its part list in your catalogue first.
+Use Set Inspector (was Check Set Parts) to go through one [copy](../concepts/collection-model.md) of a set part by part and record what is missing. Do this when you sort out a used or half-built set. The copy needs its part list in your catalogue first.
 
 ## Run the check
 
@@ -33,7 +31,7 @@ Keyboard: **F** found all, **M** missing, **1 to 9** count, **S** skip, **Z** un
 
 When a copy already has missing parts, **Check missing only** on the set's page (beside **Check parts**) starts a run over just those parts. Use it after a visit to the pile, or when you have found parts since the last check. The heading reads **Missing part 1 of N** with a **Missing only** tag, the progress line ends with **· missing parts only**, and each part shows **Missing since the last check: X of Y**. Buttons, keys and the end of the check are as above. The other parts keep their answers from the earlier check. Checking the skipped parts inside a missing-only run keeps it a missing-only run. Reloading the page resumes whatever check is running. Starting a missing-only run replaces a check that is in progress; **Undo** brings the earlier check back.
 
-## Found 1 on the set's page
+## Mark a found part on the set's page
 
 Every missing part card on a copy's page has **Found 1**. It lowers that part's missing count by one, the same as **Found 1** in Set Inspector, and the loose stock is not touched. An **Undo** appears at the top of the page. On a card that has **Take N** (loose stock covers the gap) **Found 1** is a text link under **Take**, so **Take** stays the main action; otherwise it is an outline button. See also [Find sets your loose stock can finish](match-stock-to-sets.md).
 
@@ -49,19 +47,8 @@ Every missing part card on a copy's page has **Found 1**. It lowers that part's 
 
 On a figure's step, **Check figure parts** opens a check of that figure's own parts, if the catalogue lists them. Parts missing from a figure count on the figure, not on the set, so they do not change the set's missing count or completeness. **Done** takes you back to the set's figures.
 
-## Export the gaps
-
-*Since 0.5.0.*
-
-1. Open **Planning → Complete sets**. It lists your copies that have recorded gaps.
-2. Tick the copies you want.
-3. Choose one:
-   - **Export N · BrickLink XML** downloads `missing-parts.xml` for a BrickLink Wanted List: every missing or damaged part and every missing figure of the ticked copies, by BrickLink number and colour, with the condition of the copy. Something Brick Work cannot name for BrickLink, because it has no BrickLink number or its colour has none, is left out of the file and named in the message; the rest still exports. With *Use loose stock* on in the repair settings, the quantities are what you still have to buy ([Decide which set to repair first](plan-repairs.md)).
-   - **Print missing parts of N** opens a printable list. **Download CSV** on that page saves the same list as a CSV file (item type, number, name, colour, condition, quantity and a note for items not matched yet). Items not matched yet stay on this list, marked.
-
-The REST API offers the same missing-parts lists as XML, CSV and JSON.
-
 ## What next
 
+- [Export or print the missing parts](export-missing-parts.md) to buy them or hand the list on.
 - [Pick parts for several sets](pick-parts.md) to work through the gaps at your drawers.
 - [Find sets your loose stock can finish](match-stock-to-sets.md) to fill gaps from parts you already own.

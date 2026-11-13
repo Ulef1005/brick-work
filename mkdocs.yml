@@ -77,6 +77,7 @@ nav:
           - how-to/index.md
           - At the table:
               - how-to/check-set-parts.md
+              - how-to/export-missing-parts.md
               - how-to/pick-parts.md
               - how-to/match-stock-to-sets.md
               - how-to/find-sets-to-build.md

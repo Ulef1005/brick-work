@@ -84,7 +84,7 @@ All the buttons, the keyboard keys and the variants are in [Check a set's parts]
 
 The missing counts you recorded are what these pages, **Matchmaker** and the exports work from. If you checked every part and none was missing, the set shows no gaps. The copy then becomes **Complete** because you ticked **Set is checked**.
 
-## What you did
+## What next
 
 You loaded the catalogue, added a set, counted its parts and saw where the gaps appear. From here:
 

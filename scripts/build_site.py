@@ -393,8 +393,8 @@ def llms_full():
         text = (ROOT / path).read_text()
         text = re.sub(r'\A---\n.*?\n---\n', '', text, flags=re.S).strip()
         text = re.sub(r'^!\[[^\n]*\n', '', text, flags=re.M)   # a picture is no use to a text file
-        owner, name = repository().lower().split('/')
-        text = text.replace(f'https://{owner}.github.io/{name}/', origin() + site_base())   # a page that still names the old Pages address (the README) gets this build's
+        owner, name = repository().split('/')
+        text = text.replace(f'https://{owner.lower()}.github.io/{name}/', origin() + site_base())   # a page that still names the old Pages address (the README) gets this build's
         folder = posixpath.dirname(path)
 
         def absolute(match, folder=folder):
@@ -404,7 +404,9 @@ def llms_full():
             file, _, anchor = target.partition('#')
             return f'{match[1]}({raw}{posixpath.normpath(posixpath.join(folder, file))}{"#" + anchor if anchor else ""})'
         parts.append(f'<!-- source: {raw}{path} -->\n' + re.sub(r'(?<!!)(\[[^\]]*\])\(([^)\s]+)\)', absolute, text) + '\n')
-    parts.append('Too long to inline, read them at their address:\n\n' + ''.join(f'- {raw}{path}\n' for path in paths if path in LLMS_FULL_LINKED_ONLY))
+    linked = [path for path in paths if path in LLMS_FULL_LINKED_ONLY]
+    if linked:
+        parts.append('Too long to inline, read them at their address:\n\n' + ''.join(f'- {raw}{path}\n' for path in linked))
     return '\n---\n\n'.join(parts)
 
 

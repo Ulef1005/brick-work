@@ -162,16 +162,19 @@ def test_use_cases_have_eight_cards_in_three_groups(site):
     assert '<picture' not in order          # no capture while the demo's pictures are placeholders (the screenshots test below)
 
 
-def test_site_pages_show_no_screenshot_until_the_pictures_are_real(site):
-    """Ulf, 2026-11-13: no image with placeholder pictures. The demo's drawings are placeholders, so no page of the site shows a capture of it;
-    the captures come back with the Rebrickable pictures (#332), and then this test names the pages that carry them."""
-    assert not (site / 'assets/img').exists()
-    for page in site.glob('*/index.html'):
-        if page.parts[-2] in ('docs', 'demo'):
-            continue
-        for tag, attrs in Elements(page.read_text()).elements:
-            assert '/img/' not in attrs.get('src', '') + attrs.get('srcset', ''), (page, attrs)
-    assert not [t for t, a in Elements((site / 'index.html').read_text()).elements if t == 'img' and 'img/' in a.get('src', '')]
+def test_site_pages_show_the_real_world_pictures_and_no_placeholder(site):
+    """Ulf, 2026-11-13: the site shows the demo's real-sets world (#332) and never a placeholder. The home page and the workflows page carry the captures
+    (scripts/site_shots.py, rendered with no_tiles); every picture they name is in the build, and no page carries a capture of the old drawings."""
+    for name, wanted in (('index.html', ('1c-sets-desktop-1440', '3a-matcher-phone-390', '3e-start-phone-390', '3c-picker-sets-phone-390', '12b-count-what-arrived-desktop-1440')),
+                         ('workflows/index.html', ('3e-start-phone-390', '3e-part-phone-390', '3c-picker-sets-phone-390', '3c-picker-pick-phone-390', '3a-matcher-phone-390', '12b-count-what-arrived-desktop-1440',
+                                                  '12c-list-and-detail-desktop-1440', 'scout-list-desktop-1440', 'lot-pull-confirm-phone-390', 'lot-detect-desktop-1440'))):
+        text = (site / name).read_text()
+        for stem in wanted:
+            assert f'{stem}-light.png' in text and f'{stem}-dark.png' in text, (name, stem)
+        for tag, attrs in Elements(text).elements:
+            for url in (attrs.get('src', '') + ' ' + attrs.get('srcset', '')).split():
+                if '/img/' in url:
+                    assert (site / 'assets/img' / url.rsplit('/', 1)[1]).is_file(), (name, url)
 
 
 def picture_scale(name):
@@ -310,7 +313,7 @@ for (const blocked of [false, true]) {
 
 def test_every_image_the_readme_and_the_pages_show_exists_and_is_a_built_capture():
     """The pictures are captures of the built app (scripts/site_shots.py), not design frames: every one the README and the pages name is
-    in site_shots.PICTURES, so a design-project mock-up cannot come back unnoticed."""
+    in site_shots.PICTURES or SITE_PICTURES, so a design-project mock-up cannot come back unnoticed."""
     sys_path = str(ROOT / 'scripts')
     import sys
     sys.path.insert(0, sys_path)
@@ -318,7 +321,7 @@ def test_every_image_the_readme_and_the_pages_show_exists_and_is_a_built_capture
         import site_shots
     finally:
         sys.path.remove(sys_path)
-    stems = set(site_shots.PICTURES)
+    stems, site_stems = set(site_shots.PICTURES), set(site_shots.SITE_PICTURES)   # the README's captures are the showcase world's, the site's the real-sets world's
     shown = set()
     for source in ('README.md', 'scripts/site/landing.html', 'scripts/site/use-cases.md', 'scripts/site/pages/workflows.html'):
         text = (ROOT / source).read_text()
@@ -328,7 +331,7 @@ def test_every_image_the_readme_and_the_pages_show_exists_and_is_a_built_capture
             shown.add(name)
             target = ROOT / ('docs/img/readme' if source == 'README.md' else 'scripts/site/img') / name
             assert target.is_file(), f'{source}: {name} is missing'
-            assert re.sub(r'-(light|dark)\.png$', '', name) in stems, f'{source}: {name} is not a capture of the built app'
+            assert re.sub(r'-(light|dark)\.png$', '', name) in (stems if source == 'README.md' else site_stems), f'{source}: {name} is not a capture of the built app'
     assert len(shown) >= 2
 
 

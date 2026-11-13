@@ -64,14 +64,15 @@ let browser=null;
    await delay(250);
   }
   if(job.after){await evaluate(`(async()=>{${job.after}})()`);await delay(250);}   // after: JS run once the viewport has its final size (the call-out overlays, which are placed from the boxes as they now are)
-  // no_tiles: the capture fails when the page (or the selector's subtree) shows the app's missing-picture tile (.bc-no-image, .bw-no-image, or a .bc-picture without an img: the lists build the tile in script) or a picture that
+  // no_tiles: the capture fails when the page (or the selector's subtree) shows the app's missing-picture tile (.bc-no-image, .bw-no-image, .bi-noimg, a .check-picture, .bw-picture or .bc-picture without an img: the lists build the tile in script; a tile holding only the item's number, or any leaf reading "No image") or a picture that
   // did not load (#332: no capture shows a placeholder). It runs with the viewport at its final size: lazy pictures are made eager and given up to 5 s to finish, and one still loading then counts as missing.
   if(job.no_tiles){const scope=typeof job.no_tiles==='string'?job.no_tiles:'body';
-    const bad=await evaluate(`(async()=>{const roots=[...document.querySelectorAll(${JSON.stringify(scope)})];
+    const bad=await evaluate(`(async()=>{window.scrollTo(0,0);const roots=[...document.querySelectorAll(${JSON.stringify(scope)})];
       const shown=e=>e.getClientRects().length>0;
+      const onscreen=e=>{const b=e.getBoundingClientRect();if(!b.width||!b.height||b.bottom<=0||b.top>=innerHeight)return false;const t=document.elementFromPoint(Math.min(Math.max(b.left+b.width/2,0),innerWidth-1),Math.min(Math.max(b.top+b.height/2,0),innerHeight-1));return !!t&&e.contains(t);};
       const imgs=roots.flatMap(r=>[...r.querySelectorAll('img[src]')]);imgs.forEach(i=>{i.loading='eager';});
-      const until=Date.now()+5000;while(imgs.some(i=>shown(i)&&!i.complete)&&Date.now()<until)await new Promise(r=>setTimeout(r,100));
-      return roots.flatMap(r=>[...r.querySelectorAll('.bc-no-image,.bw-no-image,.bc-picture:not(:has(img)),img')].filter(e=>shown(e)&&(e.tagName!=='IMG'||(e.getAttribute('src')&&(!e.complete||!e.naturalWidth)))).map(e=>e.className||e.getAttribute('src')||e.tagName));})()`);
+      const until=performance.now()+5000;while(imgs.some(i=>shown(i)&&!i.complete)&&performance.now()<until)await new Promise(r=>setTimeout(r,100));
+      return roots.flatMap(r=>[...r.querySelectorAll('.bc-no-image,.bw-no-image,.bc-picture:not(:has(img)),img'),...[...r.querySelectorAll('span.mono:only-child')].map(e=>e.parentElement).filter(p=>/tile|pic|thumb|image/.test(p.className)&&!p.querySelector('img,svg')&&onscreen(p)),...[...r.querySelectorAll('.bi-noimg,.check-picture:not(:has(img)),.bw-picture:not(:has(img)),span,div')].filter(e=>(e.matches('.bi-noimg,.check-picture:not(:has(img)),.bw-picture:not(:has(img))')||(!e.children.length&&e.textContent.trim()==='No image'))&&onscreen(e))].filter(e=>shown(e)&&(e.tagName!=='IMG'||(e.getAttribute('src')&&(!e.complete||!e.naturalWidth)))).map(e=>e.className||e.getAttribute('src')||e.tagName));})()`);
     if(bad.length)throw new Error('no_tiles: '+bad.length+' missing picture(s) in '+job.url+' ('+job.out+'): '+[...new Set(bad)].slice(0,5).join(', '));}
   let clip={x:0,y:0,width,height:shotHeight,scale:1};
   if(job.crop){   // crop: a selector or a list of them (the union of their boxes, plus `crop_pad` px), clipped to the page; the file is `scale` times the CSS size

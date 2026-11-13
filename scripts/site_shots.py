@@ -2,10 +2,11 @@
 
     python scripts/site_shots.py [--only STEM ...] [--out DIR]
 
-Renders the app on the invented 'showcase' world (the screen gate's world plus the richer demo layer, brickwork/demo/showcase.py) with the
-pinned Chrome for Testing, at 1440 (desktop) and 390 (phone, drawn at twice the pixels), light and dark, with the clock fixed. Each picture is
+Renders the app on two invented worlds: the site's pictures on the 'real' world (seven real sets with Rebrickable's pictures around an invented
+collection, brickwork/demo/real.py, #332), the README's and the older tutorial shots' on the 'showcase' world (the screen gate's world plus the richer demo
+layer, brickwork/demo/showcase.py), the tutorial shots that follow the reader's screen on the real world too (WORLD_OF). Both use the pinned Chrome for Testing, at 1440 (desktop) and 390 (phone, drawn at twice the pixels), light and dark, with the clock fixed. Each picture is
 written under the file name the page already uses (`<stem>-light.png`, `<stem>-dark.png`), clipped to a sensible height and optimised.
-These are not gate baselines. No pictures of sets or parts are in the world, so tiles show the app's missing-picture note.
+These are not gate baselines. A site picture fails its capture when the page shows a missing-picture tile (`no_tiles`): the site never shows a placeholder.
 Run it from the app's venv (it imports the app).
 """
 import argparse
@@ -21,6 +22,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / 'scripts'))
 import screen_gate  # noqa: E402
+from brickwork.demo import real  # noqa: E402
 from brickwork.demo.showcase import LOT, LOT_SETS, uid  # noqa: E402
 
 SITE = ROOT / 'scripts' / 'site' / 'img'
@@ -47,12 +49,24 @@ def lot_link(pattern, near=None):
     return find
 
 
-def pull(number, tail=''):
+def pull(number, tail='', lot_page=LOT_PAGE):
     """The pull list of the set `number` for the lot: its catalogue id is the number in the card's links, found by the set's name in the card."""
     def find(base):
-        page = urllib.request.urlopen(base + LOT_PAGE + '?detect=1&min_score=0').read().decode()
+        page = urllib.request.urlopen(base + lot_page + '?detect=1&min_score=0').read().decode()
         card = page[page.index('class="bd-cand'):]
-        found = re.search(r'%s.*?href="(%s/pull/\d+)"' % (re.escape(number), re.escape(LOT_PAGE)), card, re.S)
+        found = re.search(r'%s.*?href="(%s/pull/\d+)"' % (re.escape(number), re.escape(lot_page)), card, re.S)
+        return found.group(1) + tail
+    return find
+
+
+def first_pull(lot_page, tail=''):
+    """The pull list of the lot's best candidate."""
+    def find(base):
+        page = urllib.request.urlopen(base + lot_page + '?detect=1&min_score=0').read().decode()
+        card = page[page.index('class="bd-cand'):]
+        found = re.search(r'href="(%s/pull/\d+)"' % re.escape(lot_page), card)
+        if not found:
+            raise SystemExit(f'first_pull: no pull list link in the first candidate of {base + lot_page}')
         return found.group(1) + tail
     return find
 
@@ -86,8 +100,8 @@ const waiting = () => {
   return [...document.images].filter(i => !i.complete).length + [...document.querySelectorAll('link[rel=stylesheet]')].filter(l => !l.sheet).length;
 };
 await new Promise(r => setTimeout(r, 500));
-const until = Date.now() + 15000;
-while (waiting() && Date.now() < until) await new Promise(r => setTimeout(r, 50));
+const until = performance.now() + 15000;
+while (waiting() && performance.now() < until) await new Promise(r => setTimeout(r, 50));
 const broken = [...document.images].filter(i => (i.getAttribute('src') || '').includes('/manage/images/') && (!i.complete || i.naturalWidth === 0)).map(i => i.getAttribute('src'));
 const bare = [...document.querySelectorAll('link[rel=stylesheet]')].filter(l => !l.sheet).map(l => l.getAttribute('href'));
 if (waiting() || broken.length || bare.length) throw new Error('page not settled: ' + JSON.stringify({waiting: waiting(), broken, bare}));
@@ -96,18 +110,8 @@ await new Promise(r => setTimeout(r, 150));
 
 # stem: (path, width, max CSS height, script, destination)
 PICTURES = {
-    '1c-sets-desktop-1440': ('/collection/sets', 1440, 1020, None, (SITE, README)),
-    '3a-matcher-phone-390': ('/workbench/match', 390, 844, None, (SITE,)),
-    '3e-start-phone-390': ('/workbench/check-parts/' + FRESH, 390, 844, None, (SITE,)),
-    '3e-part-phone-390': ('/workbench/check-parts/%s?run=1' % STARTED, 390, 844, None, (SITE,)),
-    '3e-finish-gaps-phone-390': ('/workbench/check-parts/%s?run=1' % GAPS, 390, 1100, None, (SITE,)),
-    '3c-picker-sets-phone-390': ('/workbench/part-picker', 390, 844, None, (SITE,)),
-    '3c-picker-pick-phone-390': (PICKED + '&pick=1', 390, 950, None, (SITE,)),
-    '4c-complete-sets-phone-390': ('/planning/complete-sets', 390, 844, None, (SITE,)),
+    '1c-sets-desktop-1440': ('/collection/sets', 1440, 1020, None, (README,)),
     # The two tutorials (docs/tutorials/): the Add search, Set Inspector, Complete sets, the wishlist and an order being counted, on the same invented world
-    '12b-count-what-arrived-desktop-1440': ('/workbench/orders/2', 1440, 1050, None, (SITE,)),
-    '12c-list-and-detail-desktop-1440': (STORAGE, 1440, 1300, None, (SITE,)),
-    '1d-set-detail-phone-390': ('/collection/item/set/99103-1?copy=' + uid('copy', '99103-1', 'a'), 390, 1800, None, (SITE,)),
     '3c-picker-pick-390': (PICKED + '&pick=1', 390, 950, None, (README,)),
     'bulk-storage-desktop-1440': (STORAGE, 1440, 900, None, (TUTORIALS,)),
     'bulk-runner-sets-phone-390': ('/workbench/part-picker', 390, 1700, CHOOSE_SETS, (TUTORIALS,)),
@@ -124,6 +128,29 @@ PICTURES = {
     'variant-change-desktop-1440': (variant_change('4287c', '4287b'), 1440, 1000, None, (TUTORIALS,)),
     'order-missing-desktop-1440': ('/planning/order-missing-parts', 1440, 1000, None, (TUTORIALS,)),
     'order-missing-review-phone-390': ('/planning/order-missing-parts?step=review', 390, 1500, None, (TUTORIALS,)),
+}
+
+
+# The site shows no part tile without a picture: Build Scout without its side panel, Set detection with the candidates collapsed.
+HIDE_PANEL = "document.querySelector('.bs-aside').remove();"
+COLLAPSE_CANDIDATES = "document.querySelectorAll('.bd-cand details').forEach(d => { d.open = false; });"
+R_FRESH = real.uid('copy', '21028-1', 'a')
+R_STARTED = real.uid('copy', '8043-1', 'a')
+R_PICKED = '/workbench/part-picker?copy=' + '&copy='.join(real.uid('copy', n, 'a') for n in ('7938-1', '10210-1', '7213-1'))
+R_LOT_PAGE = '/collection/lots/' + real.LOT
+
+SITE_PICTURES = {
+    '1c-sets-desktop-1440': ('/collection/sets', 1440, 1020, None, (SITE,)),
+    '3a-matcher-phone-390': ('/workbench/match', 390, 844, None, (SITE,)),
+    '3e-start-phone-390': ('/workbench/check-parts/' + R_FRESH, 390, 844, None, (SITE,)),
+    '3e-part-phone-390': ('/workbench/check-parts/%s?run=1' % R_STARTED, 390, 844, None, (SITE,)),
+    '3c-picker-sets-phone-390': ('/workbench/part-picker', 390, 844, None, (SITE,)),
+    '3c-picker-pick-phone-390': (R_PICKED + '&pick=1', 390, 950, None, (SITE,)),
+    '12b-count-what-arrived-desktop-1440': ('/workbench/orders/2', 1440, 1050, None, (SITE,)),
+    '12c-list-and-detail-desktop-1440': ('/workbench/storage/storage-shelf-b', 1440, 900, None, (SITE,)),
+    'scout-list-desktop-1440': ('/workbench/build-scout?min_percent=10', 1440, 900, HIDE_PANEL, (SITE,)),
+    'lot-detect-desktop-1440': (R_LOT_PAGE + '?detect=1&ignore_common=1#set-detection', 1440, 900, SHOW_DETECTION + COLLAPSE_CANDIDATES, (SITE,)),
+    'lot-pull-confirm-phone-390': (first_pull(R_LOT_PAGE, '/make-copy'), 390, 844, None, (SITE,)),
 }
 
 
@@ -249,18 +276,29 @@ def main(argv):
     if chrome.returncode:
         print(chrome.stderr.strip())
         return 1
-    chosen = {k: v for k, v in PICTURES.items() if options.only is None or k in options.only}
+    # One table per purpose: PICTURES (README and tutorials; each stem's world is WORLD_OF's, else showcase) and SITE_PICTURES (the website, always on the
+    # real-sets world, each capture failing on a missing-picture tile). A stem can be in both, so an entry is (world, table, stem).
+    entries = [(WORLD_OF.get(stem, 'showcase'), PICTURES, stem) for stem in PICTURES] + [('real', SITE_PICTURES, stem) for stem in SITE_PICTURES]
+    entries = [e for e in entries if options.only is None or e[2] in options.only]
+    if options.out:
+        names = [e[2] for e in entries]
+        clash = sorted({n for n in names if names.count(n) > 1})
+        if clash:
+            print('--out writes every picture flat, and these are made on two worlds: ' + ', '.join(clash) + '; run without --out (each goes to its own folder)')
+            return 1
     with tempfile.TemporaryDirectory(prefix='bw-site-') as scratch:
-        for world in dict.fromkeys(WORLD_OF.get(stem, 'showcase') for stem in chosen):
-            stems = [stem for stem in chosen if WORLD_OF.get(stem, 'showcase') == world]
-            with screen_gate.world(world, sorted({chosen[stem][0] for stem in stems if isinstance(chosen[stem][0], str)})) as base:
-                jobs = []
-                for stem in stems:
-                    path, width, limit, script, _ = chosen[stem]
+        for world in dict.fromkeys(e[0] for e in entries):
+            group = [(table, stem) for w, table, stem in entries if w == world]
+            with screen_gate.world(world, sorted({table[stem][0] for table, stem in group if isinstance(table[stem][0], str)})) as base:
+                jobs, folders_of = [], {}
+                for table, stem in group:
+                    path, width, limit, script, folders = table[stem]
                     path = path(base) if callable(path) else path
                     for theme in ('light', 'dark'):
-                        jobs.append({'url': base + path, 'out': str(Path(scratch) / f'{stem}-{theme}.png'), 'width': width, 'theme': theme, 'max': limit,
-                                     'script': (script or '') + SETTLE, **EXTRAS.get(stem, {})})
+                        out = Path(scratch) / f'{world}-{table is SITE_PICTURES}-{stem}-{theme}.png'
+                        folders_of[out] = (f'{stem}-{theme}.png', folders)
+                        jobs.append({'url': base + path, 'out': str(out), 'width': width, 'theme': theme, 'max': limit, 'script': (script or '') + SETTLE,
+                                     **EXTRAS.get(stem, {}), **({'no_tiles': True} if table is SITE_PICTURES else {})})
                 spec = Path(scratch) / f'jobs-{world}.json'
                 spec.write_text(json.dumps({'deterministic': True, 'now': screen_gate.FIXED_NOW.isoformat().replace('+00:00', 'Z'), 'jobs': jobs}))
                 result = subprocess.run(['node', str(ROOT / 'scripts' / 'capture_screens.cjs'), chrome.stdout.strip(), str(spec)], capture_output=True, text=True, timeout=1800)
@@ -269,13 +307,12 @@ def main(argv):
                     return 1
                 for job in jobs:
                     made = Path(job['out'])
+                    name, folders = folders_of[made]
                     optimise(made)
-                    stem = made.name.rsplit('-', 1)[0]
-                    folders = [Path(options.out)] if options.out else list(chosen[stem][4])
-                    for folder in folders:
+                    for folder in ([Path(options.out)] if options.out else list(folders)):
                         folder.mkdir(parents=True, exist_ok=True)
-                        (folder / made.name).write_bytes(made.read_bytes())
-                    print(made.name, made.stat().st_size)
+                        (folder / name).write_bytes(made.read_bytes())
+                    print(name, made.stat().st_size)
     return 0
 
 

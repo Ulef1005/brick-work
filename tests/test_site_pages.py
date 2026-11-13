@@ -511,7 +511,8 @@ def test_install_and_coming_from_pages_exist_and_cross_link(site):
         assert 'aria-current="page"' in text.split('</header>')[0] or path.startswith('coming-from/'), path
     for path in expected:
         if path.startswith('coming-from/'):
-            assert text.count('<a href=') >= 4          # the four sibling rows on every coming-from page
+            rows = (site / path / 'index.html').read_text().split('<div class="rows">')[1].split('</div>')[0]
+            assert rows.count('<a href=') == 4          # the four sibling rows on every coming-from page
 
 
 def test_changelog_page_lists_every_release_with_an_anchor_and_an_atom_feed(site):

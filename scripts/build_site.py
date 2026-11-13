@@ -117,7 +117,7 @@ def page(title, body, depth, *, current, head='', main='doc', absolute=False, pa
     description = description or DEFAULT_DESCRIPTION
     full_title = html.escape(title) + ' · Brick Work' if title != 'Brick Work' else 'Brick Work'
     if path is not None:
-        head = seo_head(full_title.replace('&#x27;', "'"), description, path) + head
+        head = seo_head(title + ' · Brick Work' if title != 'Brick Work' else 'Brick Work', description, path) + head
     nav = ''.join(f'<a href="{up}{href}"{" aria-current=\"page\"" if name == current else ""}>{name}</a>' for name, href in NAV)
     menu = nav + f'<a href="https://github.com/{repo}">GitHub</a>'
     col = lambda heading, links: (f'<div><b>{heading}</b><ul>' + ''.join(f'<li><a href="{href}">{label}</a></li>' for label, href in links)
@@ -405,6 +405,8 @@ def build(out):
     shutil.copy(static / 'fonts/PatrickHand-Regular.woff2', out / 'assets/fonts/PatrickHand-Regular.woff2')
     shutil.copy(ROOT / 'scripts/site/site.css', out / 'assets/site.css')
     shutil.copy(SITE / 'marketing.css', out / 'assets/marketing.css')
+    if (SITE / 'social-preview.png').exists():
+        shutil.copy(SITE / 'social-preview.png', out / 'assets/social-preview.png')
     shutil.copy(SITE / 'site.js', out / 'assets/site.js')
     shutil.copytree(SITE / 'img', out / 'assets/img')
 

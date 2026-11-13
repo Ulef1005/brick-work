@@ -121,7 +121,7 @@ pre.code{margin:0;border:var(--hair);border-radius:var(--r2);background:var(--tw
 .mini:last-child{border-bottom:0}
 .mini.nopic{grid-template-columns:minmax(0,1fr) auto}
 .mini .th{aspect-ratio:4/3;border:var(--hair);border-radius:var(--r1);overflow:hidden;background:var(--tw-surface);display:flex;align-items:flex-start}
-.mini .th picture{display:block;width:100%}.mini .th img{width:100%;display:block}
+.mini .th picture{display:block;width:100%}.mini .th img{width:100%;height:auto;display:block}
 .prose{display:flex;flex-direction:column;gap:14px;max-width:68ch}
 .prose h2{font-size:22px;line-height:28px;margin-top:10px}
 .prose p,.prose li{color:var(--tw-text-2)}
@@ -133,6 +133,7 @@ pre.code{margin:0;border:var(--hair);border-radius:var(--r2);background:var(--tw
 .rel .dt{font-family:var(--tw-mono);font-size:13px;color:var(--tw-text-muted)}
 .rel .body{padding:0 18px 18px;display:flex;flex-direction:column;gap:10px;color:var(--tw-text-2)}
 .rel .body li{margin-left:18px}
+.rel .body a:not(.link),.prose a{color:var(--tw-accent-text);text-decoration:underline;text-underline-offset:2px}
 @media (min-width:641px) and (max-width:960px){.walk{grid-template-columns:minmax(0,1fr)}}
 @media (max-width:640px){
   .walk{grid-template-columns:minmax(0,1fr);gap:20px}

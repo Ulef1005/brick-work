@@ -128,16 +128,18 @@ docs() {
   else
     echo 'NOTE: no upstream and no DOCS_RANGE; docs check skipped'
   fi
-  # The page checks, the stale-page report and Vale (App Docs Standard: User Docs and Developer Docs): reports until Brick Work's docs
-  # are migrated to the standard (doc-standard-v1 B6), then `--gate`. Vale needs its pinned binary (scripts/vale.py downloads it into the cache); with no network
-  # and no cached binary it is skipped with a note rather than failing the gate.
-  python3 scripts/check_docs.py pages
+  # The page checks and Vale are a gate (App Docs Standard: User Docs and Developer Docs; doc-standard-v1 B6, the docs are migrated); the stale-page report is a report.
+  # Vale needs its pinned binary (scripts/vale.py downloads it into the cache); with no network and no cached binary it is skipped with a note rather than
+  # failing the gate, and CI, which has the network, always runs it.
+  local rc=0
+  python3 scripts/check_docs.py pages --gate || rc=1
   python3 scripts/check_docs.py stale
   if vale=$(python3 scripts/vale.py path 2>/dev/null); then
-    VALE=$vale python3 scripts/vale.py check | tail -1
+    VALE=$vale python3 scripts/vale.py check --gate || rc=1
   else
     echo 'NOTE: no Vale binary (no network and nothing cached); prose check skipped'
   fi
+  return $rc
 }
 
 if [[ $mode == docs ]]; then

@@ -15,3 +15,5 @@ docs/how-to/back-up-and-restore.md:curl-auth-header:28
 docs/how-to/undo-a-change.md:curl-auth-header:41
 docs/how-to/undo-a-change.md:curl-auth-header:42
 docs/how-to/undo-a-change.md:curl-auth-header:43
+# Cloudflare Web Analytics site token: public by design, it is in every page's HTML (website S5).
+9bb3e5ebc10c7ff51589a49470856ecae771b734:scripts/build_site.py:generic-api-key:93

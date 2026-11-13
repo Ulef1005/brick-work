@@ -40,6 +40,10 @@ browser() {
   # A Chrome for the geometry and screenshot tests: CHROME, else the pinned Chrome for Testing in the cache (downloaded the first time,
   # checked by version and SHA-256), else a system Chrome (scripts/chrome.py; CONTRIBUTING, Rendered tests).
   local found
+  if [[ ${BW_NO_CHROME:-} == 1 ]]; then
+    echo "NOTE: BW_NO_CHROME=1, so every Chrome test is skipped and named below (CI sets it on pull requests; run them by hand before a release)."
+    return 0
+  fi
   if found=$(python3 scripts/chrome.py ensure); then
     export CHROME=$found
     echo "Chrome: $CHROME"
@@ -124,11 +128,21 @@ docs() {
   else
     echo 'NOTE: no upstream and no DOCS_RANGE; docs check skipped'
   fi
+  # The page checks, the stale-page report and Vale (App Docs Standard: User Docs and Developer Docs): reports until Brick Work's docs
+  # are migrated to the standard (doc-standard-v1 B6), then `--gate`. Vale needs its pinned binary (scripts/vale.py downloads it into the cache); with no network
+  # and no cached binary it is skipped with a note rather than failing the gate.
+  python3 scripts/check_docs.py pages
+  python3 scripts/check_docs.py stale
+  if vale=$(python3 scripts/vale.py path 2>/dev/null); then
+    VALE=$vale python3 scripts/vale.py check | tail -1
+  else
+    echo 'NOTE: no Vale binary (no network and nothing cached); prose check skipped'
+  fi
 }
 
 if [[ $mode == docs ]]; then
   step names "$python" scripts/check_names.py
-  step docs-tests "$python" -m pytest tests/test_docs_*.py tests/test_site_pages.py tests/test_install_docs.py tests/test_changelog_order.py "${pytest_args[@]}"
+  step docs-tests "$python" -m pytest tests/test_docs_*.py tests/test_vale.py tests/test_site_pages.py tests/test_install_docs.py tests/test_changelog_order.py "${pytest_args[@]}"
   step secrets secrets
   step docs docs
 else

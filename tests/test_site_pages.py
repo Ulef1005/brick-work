@@ -586,3 +586,23 @@ def test_every_page_points_assistants_at_llms_txt(site):
         from scripts.build_site import site_base
         assert links[0] == ((up if up is not None else site_base()) + 'llms.txt'), page
         assert re.search(r'<li><a href="[^"]*llms\.txt">For AI assistants</a></li>', text), page
+
+
+def test_docs_and_demo_pages_carry_the_site_top_bar(site):
+    """#363 (Ulf, 13.11.): every page of /docs/ and /demo/ has the site's top bar so a visitor can get back. Redirect stubs and the demo's static/
+    asset templates are not pages; the bar's links are absolute from the site base and it adds no analytics tag."""
+    from scripts.build_site import site_base
+    base = site_base()
+    for area in ('docs', 'demo'):
+        pages = [f for f in (site / area).rglob('*.html') if not (area == 'demo' and f.relative_to(site / 'demo').parts[0] == 'static')]
+        shown = [f for f in pages if 'http-equiv="refresh"' not in f.read_text()[:400]]
+        assert len(shown) > 20 and len(pages) - len(shown) <= 2, area
+        for file in shown:
+            text = file.read_text()
+            assert text.count('<header class="bw-topbar" data-bw-topbar>') == 1, file
+            assert f'<a href="{base}install/">Install</a>' in text and f'<a href="{base}docs/">Docs</a>' in text, file
+    docs = (site / 'docs/index.html').read_text()
+    assert '.md-header{top:var(--bw-topbar-h)}' in docs and '.bs-aside' not in docs
+    sets = (site / 'demo/collection/sets/index.html').read_text()
+    assert '.bs-aside' in sets and '.md-header' not in sets
+    assert 'cloudflareinsights' not in docs + sets

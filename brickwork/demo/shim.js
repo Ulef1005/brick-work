@@ -40,7 +40,9 @@
     const website = document.createElement('a');
     website.href = 'https://ulef1005.github.io/brick-work/'; website.textContent = 'Website'; website.style.color = 'inherit';
     bar.append(' · ', website);
-    document.body.prepend(bar);
+    // Under the site's top bar when the page has one (scripts/site_nav.py adds it to the built demo), else first.
+    const top = document.querySelector('[data-bw-topbar]');
+    if (top) top.after(bar); else document.body.prepend(bar);
   });
 
   const realFetch = window.fetch.bind(window);

@@ -38,6 +38,14 @@ html.tw-dark .bw-topbar,body[data-md-color-scheme="slate"] .bw-topbar{{--bw-bg:#
 </style>'''
 
 
+# The layouts' own sticky and fixed elements sit at `top: 0` or a few pixels below it; with the bar above them they move down by its height.
+DOCS_OFFSETS = (''
+                '.md-header{top:var(--bw-topbar-h)}'
+                '.md-sidebar{top:calc(var(--bw-topbar-h) + 2.4rem)}')
+DEMO_OFFSETS = ('.bs-aside,.bp-aside,.oo-review{top:calc(var(--bw-topbar-h) + 16px)}'
+                '.bd-chooser .bd-panel{top:calc(var(--bw-topbar-h) + 72px)}')
+
+
 def bar(base, repository='Ulef1005/brick-work'):
     """The top bar for a site deployed under `base` (a path with a leading and trailing slash), linking GitHub at `repository`."""
     links = ''.join(f'<a href="{base}{path}">{name}</a>' for name, path in LINKS)
@@ -49,7 +57,7 @@ def bar(base, repository='Ulef1005/brick-work'):
             f'<details class="bw-menu"><summary>Menu</summary><nav class="bw-menu-list" aria-label="Site menu">{links}<a href="{github}">GitHub</a></nav></details></header>')
 
 
-def inject(page, base, repository='Ulef1005/brick-work'):
+def inject(page, base, repository='Ulef1005/brick-work', offsets=''):
     """`page` (an HTML document) with the bar in it. A page that already has the bar comes back unchanged, so a second pass is harmless. A page
     without `<head>` and `<body>` is an error: the bar must never silently go missing."""
     if f'<header class="bw-topbar" {MARKER}' in page:
@@ -58,4 +66,5 @@ def inject(page, base, repository='Ulef1005/brick-work'):
     body = re.search(r'<body\b[^>]*>', page, flags=re.I)
     if not head or not body or head.start() > body.start():
         raise ValueError('cannot add the top bar: the page has no <head> before its <body>')
-    return page[:head.start()] + STYLE + page[head.start():body.end()] + bar(base, repository) + page[body.end():]
+    style = STYLE.replace('</style>', offsets + '</style>')
+    return page[:head.start()] + style + page[head.start():body.end()] + bar(base, repository) + page[body.end():]

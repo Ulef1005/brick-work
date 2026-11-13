@@ -408,6 +408,21 @@ def llms_full():
     return '\n---\n\n'.join(parts)
 
 
+def add_top_bar(out):
+    """The site's top bar on every page of /docs/ and /demo/ (#363), so a visitor can get back to the site. The demo's static/ folder holds the app's
+    asset templates (the offline page, head snippets), not pages a visitor opens, and keeps none; a redirect stub keeps none either. A page without <head> and <body> fails the build."""
+    from scripts import site_nav
+    base, repo = site_base(), repository()
+    for area, extra in (('docs', site_nav.DOCS_OFFSETS), ('demo', site_nav.DEMO_OFFSETS)):
+        for file in sorted((out / area).rglob('*.html')):
+            if area == 'demo' and file.relative_to(out / 'demo').parts[0] == 'static':
+                continue
+            text = file.read_text()
+            if 'http-equiv="refresh"' in text[:400]:   # a redirect stub (the demo's /demo/) shows nothing a bar could sit on
+                continue
+            file.write_text(site_nav.inject(text, base, repo, extra))
+
+
 def rewrite_demo_html(text, demo_base):
     """Prefix root paths in copied HTML attributes and CSS URLs with the demo base."""
     paths = {'static': 'static/', 'brand': 'static/brickwork/', 'fonts': 'static/fonts/'}
@@ -478,6 +493,7 @@ def build(out):
             directory.rename(directory.with_name(unquote(directory.name)))
     shim = out / 'demo/demo-shim.js'
     shim.write_text(own_address(shim.read_text()))
+    add_top_bar(out)
     (out / 'llms.txt').write_text(llms_txt())
     (out / 'llms-full.txt').write_text(llms_full())
     build_seo_files(out)

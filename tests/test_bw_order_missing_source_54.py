@@ -180,3 +180,11 @@ def test_the_copy_list_reads_missing_and_never_a_minus(coll, client):
     scene(coll)
     text = page(client).select_one('[data-oo-rows]').text
     assert 'missing' in text and '−' not in text and '-' not in text.replace('1000-1', '').replace('1000-2', '')
+
+
+def test_the_source_controls_stay_on_the_review_step(coll, pair, client):
+    s = scene(coll)
+    elements(pair, coll, (*RED_3001, '300126'))
+    soup = page(client, sel='1', copy=copies(s, 'first'), step='review')
+    links = [soup.select_one('.oo-prefer')['href']] + [a['href'] for a in soup.select('.oo-tabs a')] + [a['href'] for a in soup.select('a.oo-sc')]
+    assert links and all('step=review' in href for href in links)

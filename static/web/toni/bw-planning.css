@@ -295,7 +295,7 @@
   #bw-planning[data-step=review] .oo-choose { display:none; }
   #bw-planning[data-step=review] .oo-back { display:inline-flex; }
   #bw-planning[data-step=review] .oo-review h2 { font-size:26px;line-height:32px; }
-  #bw-planning[data-step=review] .oo-export { display:none; }
+  #bw-planning[data-step=review] .oo-export > div:first-child { display:none; }                      /* the bar holds the BrickLink download; Pick a Brick's stays here (#54) */
   .oo-from { display:none; }
   .oo-from-sub { display:inline; }
   .oo-row { grid-template-columns:44px minmax(0,1fr) auto; }

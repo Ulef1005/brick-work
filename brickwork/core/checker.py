@@ -1,4 +1,4 @@
-"""Set Inspector on the 4.0 store (M.8d, issue #110; design 5 `part_check`, 4.4, 4.5, 2.4 invariant 10).
+"""Set Inspector sessions and answers on the collection store.
 
 A session is a `part_check` row per copy (and one per figure line inside the copy): its order and answers are kept by token, and a
 token is a line's own id, which an in-place part-list switch keeps: `p:<copy_part.id>` for a required or spare part line and
@@ -19,14 +19,14 @@ import uuid
 
 from ..store4.audit import value_text
 from ..store4.connect import now
-from . import errors
+from . import errors, part_groups
 from . import undo as undoing
 from .admin import OPERATION_KEY, audit, origin
 from .completeness import derived_state
 from .transaction import transaction
 
 CHECKED_FLAG = 'Set is checked'
-ORDERS = ('inventory', 'largest', 'colour')
+ORDERS = ('inventory', 'largest', 'colour', 'group')
 SESSION_COLUMNS = ('session_id', 'order_mode', 'spares', 'session_json', 'finished', 'started_at', 'updated_at')
 _REQUEST = ContextVar('checker_request_operation', default=None)       # the client's operation id while an Undo runs, for its receipt
 
@@ -46,7 +46,14 @@ def _figure_of(entity):
 def sorter(mode, position):
     """Sort key of the rows of one kind for an order mode. Largest first is the physical size from the catalogue name and category
     (`part_size.volume`; the item's `size_key` is the sorted dimensions of the same name and cannot tell a plate from a brick), then
-    the larger count, then one colour after another so a part's colours stay together."""
+    the larger count, then colour, item number and sequence position. Category group uses the fixed
+    `part_groups.GROUPS` order with that same size key within each group; figures keep their sequence.
+    Unknown modes use sequence position."""
+    if mode == 'group':
+        largest = sorter('largest', position)
+        groups = list(part_groups.GROUPS)
+        return lambda r: ((0, position[r['token']]) if r.get('kind') == 'figure' else
+                          (groups.index(part_groups.group_of(r.get('category'))), *largest(r)))
     if mode == 'largest':
         from .part_size import volume
         return lambda r: (-volume(r.get('name') or '', r.get('category') or ''), -(r['quantity'] or 0),
@@ -65,6 +72,8 @@ def normalise(s, kinds):
     finish. Nothing stored is rewritten here; the next save persists the changed form and its receipt keeps the raw old value."""
     if not s:
         return s
+    if s.get('sort') not in ORDERS:
+        s['sort'] = 'inventory'
     keep_spares = s['spares'] == 'yes'
 
     def visible(token):
@@ -157,6 +166,12 @@ def rows(db, copy_id, images=True, tokens=None, decorate=True, figure=None):
                 r['ink'] = None
             if not images:
                 r.pop('image', None)
+    if decorate:
+        # Server-computed positions keep optimistic offline spare ordering identical.
+        position = {r['token']: i for i, r in enumerate(result)}
+        for mode in ('group', 'largest'):
+            for rank, r in enumerate(sorted(result, key=sorter(mode, position))):
+                r[mode + '_order'] = rank
     return result
 
 
@@ -271,6 +286,7 @@ def recompute(db, copy_id):
 # ---------- the screens' reads ----------
 
 def view(db, copy_id):
+    """Return the copy, live checker rows and normalised saved session from the collection store."""
     c = header(db, copy_id)
     inventory = rows(db, copy_id)
     s = normalise(session(db, copy_id), {r['token']: r['kind'] for r in inventory})

@@ -22,7 +22,9 @@
     const spare = state.rows.filter(r => r.kind === 'spare' && !s.order.includes(r.token));
     const text = (a, b) => a < b ? -1 : a > b ? 1 : 0;
     const mode = s.sort || 'inventory';
-    spare.sort((a, b) => mode === 'largest' ? ((b.quantity || 0) - (a.quantity || 0)) || text(a.token, b.token)
+    spare.sort((a, b) => mode === 'group' ? a.group_order - b.group_order
+      : mode === 'largest' && a.largest_order != null && b.largest_order != null ? a.largest_order - b.largest_order
+      : mode === 'largest' ? ((b.quantity || 0) - (a.quantity || 0)) || text(a.token, b.token)
       : mode === 'colour' ? text(a.color_name || 'Unknown colour', b.color_name || 'Unknown colour') || text(a.item_no, b.item_no)
       : position.get(a.token) - position.get(b.token));
     return spare.map(r => r.token);

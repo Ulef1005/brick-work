@@ -1,4 +1,4 @@
-"""The Workbench on the 4.0 store (M.8e, issue #110; design 5 `stock_transfer`, 4.4, 3.8): gaps, the Matchmaker, the Part Runner, Take and Give.
+"""Workbench gaps, matching, picking and stock transfers on the collection store.
 
 **Gaps.** What a copy lacks: a live set line's missing and damaged pieces, a live figure line's missing figures, a missing booklet or box
 (a set copy without the status flag "Instructions present" / "Box present"), and a loose figure's missing parts. A retired line is no line,
@@ -18,7 +18,7 @@ A receipt's last entry may be `context` (what a history row says); it is not a t
 from collections import Counter, defaultdict
 import json
 
-from . import add, collection, items, pictures
+from . import add, collection, items, pictures, part_groups
 from . import stock as stock_module
 from . import undo as undoing
 from .errors import StaleMatch
@@ -264,8 +264,8 @@ def group_matches(db, rows, all_gaps):
 
 # ---------- the Part Runner ----------
 
-PICKER_KEYS = ('category', 'colour', 'size', 'set', 'storage')
-PICKER_DEFAULT = PICKER_KEYS
+PICKER_KEYS = ('category', 'group', 'colour', 'size', 'set', 'storage')
+PICKER_DEFAULT = ('category', 'colour', 'size', 'set', 'storage')
 
 
 def picker(db, selected, ranking=None, *, all_gaps=None):
@@ -301,19 +301,29 @@ def picker(db, selected, ranking=None, *, all_gaps=None):
 
 
 def picker_keys(rows):
-    """Availability is based on the selected snapshot, never guessed dimensions."""
+    """Return ranking keys, labels and unavailable reasons for a picker snapshot.
+
+    Category and Category group both require a recorded `item.category_name`.
+    """
     reasons = dict(size='No part sizes are recorded',
                    category='' if any(r.get('category') for r in rows) else 'No category is recorded for these parts',
                    storage='' if any(r.get('rank_storage') for r in rows) else 'No usable loose parts have a recorded location')
-    return [dict(key=k, label=k.capitalize(), reason=reasons.get(k, '')) for k in PICKER_KEYS]
+    reasons['group'] = reasons['category']
+    return [dict(key=k, label='Category group' if k == 'group' else k.capitalize(), reason=reasons.get(k, '')) for k in PICKER_KEYS]
 
 
 def order_picker(rows, ranking=None):
+    """Order picker rows by enabled ranking keys, ignoring unknown or unavailable keys.
+
+    `None` uses `PICKER_DEFAULT`, which leaves Category group off. An explicit empty
+    ranking uses the completion, item number, colour id and item id tie-breakers.
+    Group ordering follows `part_groups.GROUPS`, with absent categories in Other.
+    """
     enabled = set(k['key'] for k in picker_keys(rows) if not k['reason'])
     ranking = list(dict.fromkeys(k for k in (PICKER_DEFAULT if ranking is None else ranking) if k in enabled))
 
     def key(row):
-        values = dict(completes=-row['completes'], colour=row.get('color_name') or '', category=row.get('category') or '', set=row['rank_set'], storage=row['rank_storage'])
+        values = dict(group=list(part_groups.GROUPS).index(part_groups.group_of(row.get('category'))), completes=-row['completes'], colour=row.get('color_name') or '', category=row.get('category') or '', set=row['rank_set'], storage=row['rank_storage'])
         return tuple((k != 'colour' and values[k] == '', values[k]) for k in ranking) + (-row['completes'], row['item_no'], row['color_id'] or 0, row['item_id'])
     return sorted(rows, key=key)
 

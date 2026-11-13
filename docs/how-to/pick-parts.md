@@ -11,7 +11,7 @@ Collect the missing parts of several sets in one pass through your drawers. Part
 1. Open **Workbench → Part Runner**. Under **Pick for which sets?** you see every [copy](../concepts/collection-model.md) with recorded missing parts and how many it is missing.
 2. Keep **All incomplete sets**, or select **Choose sets** and tick the copies you want. The list shows 15 sets a page; ticks on other pages stay.
 3. Select **Continue · N sets**.
-4. Under **In what order do you pick?**, switch the sort keys on or off and drag them into order: **Category**, **Colour**, **Size**, **Set**, **Storage**. The line under the keys shows the order you get. Select **Start picking**.
+4. Under **In what order do you pick?**, switch the sort keys on or off and drag them into order: **Category**, **Category group**, **Colour**, **Size**, **Set**, **Storage**. The line under the keys shows the order you get. Select **Start picking**.
 5. Part Runner shows one part at a time: its picture, colour and number, **Pick N**, and which copies need how many.
 6. When you have the part in hand, select **Found it** and choose where it goes:
    - **Add to set** lowers the missing count of the copies that need it. Set how many go to each copy with **−** and **+**.
@@ -49,3 +49,5 @@ Part Runner lists every missing part of the chosen copies, whether or not you ha
 
 - [Find sets your loose stock can finish](match-stock-to-sets.md) to move loose parts you already have into the copies that need them.
 - [Check a set's parts](check-set-parts.md) to record gaps for more sets.
+
+**Category group** is off by default. Switch it on to pick in the fixed category-group order, with **Other** last. Like **Category**, it is unavailable when none of the parts has a recorded category. It works independently of **Group parts by**.

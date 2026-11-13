@@ -1,4 +1,13 @@
-"""Display groups for part lists. Categories always come from item.category_name."""
+"""Category groups for part lists and picking orders on the collection store.
+
+Categories come from `item.category_name`. The `grouped` mode maps those names
+into the fixed catalogue order in `GROUPS`; unmapped or absent names go to Other.
+The `bricklink` mode keeps each category name as a group. The `none` mode disables
+grouping. Other is always last and is only present when a row lands in it.
+
+`group_of` maps one category to its group; `order` orders only the supplied groups.
+These helpers do not read or change the store.
+"""
 MODES = ('grouped', 'bricklink', 'none')
 DEFAULT = 'grouped'
 GROUPS = {
@@ -19,6 +28,7 @@ _CATEGORY_GROUP = {category: group for group, categories in GROUPS.items() for c
 
 
 def group_of(category_name, mode=DEFAULT):
+    """Return the mapped group, the BrickLink category (or Other), or None."""
     if mode == 'none':
         return None
     if mode == 'bricklink':

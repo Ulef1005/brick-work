@@ -9,7 +9,8 @@ read at build time by `brickwork/demo/real.py`; CI never needs the download.
 
 What it keeps, per set: number, name, year, theme path and the theme id of the leaf, the part count and the picture's source URL; the inventory's part
 lines (version 1 when a set has several, which is the first release's list), with each part's name and category and each colour's name, RGB and
-transparency; the minifigures with their own part lists (a figure's inventory is the one whose set number is the figure number).
+transparency; the minifigures with their own part lists (a figure's inventory is the one whose set number is the figure number). The wished sets keep
+name, year, theme and part count.
 """
 import csv
 import io
@@ -20,6 +21,8 @@ import zipfile
 from pathlib import Path
 
 SETS = ['31120-1', '7938-1', '8043-1', '10210-1', '7213-1', '10254-1', '21028-1']
+# Wished sets: name, year, theme and part count only (no part list, no picture): the vintage sets whose pictures are box scans with the LEGO logo
+WISHED = ['6382-1', '6985-1', '6085-1', '6270-1', '6542-1']
 PRINTED = re.compile(r'\bprint\b|pr\d{3,}$|pat\d+$', re.I)
 
 
@@ -41,9 +44,9 @@ def main(zip_path, out):
     out = Path(out)
     with zipfile.ZipFile(zip_path) as archive:
         themes = {r['id']: r for r in rows(archive, 'themes.csv')}
-        sets = {r['set_num']: r for r in rows(archive, 'sets.csv') if r['set_num'] in SETS}
-        if sorted(sets) != sorted(SETS):
-            raise SystemExit('missing sets: ' + ', '.join(sorted(set(SETS) - set(sets))))
+        sets = {r['set_num']: r for r in rows(archive, 'sets.csv') if r['set_num'] in SETS + WISHED}
+        if sorted(sets) != sorted(SETS + WISHED):
+            raise SystemExit('missing sets: ' + ', '.join(sorted(set(SETS + WISHED) - set(sets))))
         versions = {}
         for r in rows(archive, 'inventories.csv'):
             versions.setdefault(r['set_num'], []).append((int(r['version']), r['id']))
@@ -82,8 +85,10 @@ def main(zip_path, out):
                                          'image_url': minifigs[fig]['img_url']})
             entry['minifigure_parts'][fig] = [line(r, fig) for r in lines.get(inventory_of[fig], [])]
         result.append(entry)
+    wished = [{'set': n, 'name': sets[n]['name'], 'year': int(sets[n]['year']), 'theme_id': int(sets[n]['theme_id']),
+               'theme_path': theme_path(themes, sets[n]['theme_id']), 'parts': int(sets[n]['num_parts'])} for n in WISHED]
     out.mkdir(parents=True, exist_ok=True)
-    (out / 'sets.json').write_text(json.dumps(result, indent=1, ensure_ascii=False) + '\n', encoding='utf-8')
+    (out / 'sets.json').write_text(json.dumps({'sets': result, 'wished': wished}, indent=1, ensure_ascii=False) + '\n', encoding='utf-8')
     print(f"{len(result)} sets, {sum(len(e['parts_list']) for e in result)} part lines, {sum(len(e['minifigures']) for e in result)} figures -> {out / 'sets.json'}")
 
 

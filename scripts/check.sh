@@ -141,9 +141,8 @@ else
   # The standalone smoke test (tests/test_standalone_smoke.py) runs inside this step; it has no step of its own, which would only run it twice
   # (every step runs whatever the earlier ones did, so an early smoke step brought no earlier failure; #254).
   step pytest "$python" -m pytest tests/ --ignore=tests/test_screen_gate.py "${pytest_args[@]}"
-  # The screen gate runs on its own, after the parallel tests and with nothing beside it, on up to four Chrome processes
-  # (scripts/screen_gate.py workers(); #267, ADR 0024).
-  step screen-gate "$python" -m pytest tests/test_screen_gate.py -q -p no:xdist
+  # The screenshot gate (tests/test_screen_gate.py) no longer runs here (Ulf, 2026-11-13: screens are approved from frames in a review artifact).
+  # Run it by hand: python -m pytest tests/test_screen_gate.py -q -p no:xdist
   step quarantine quarantine
   step suite-size "$python" scripts/check_suite_size.py
   step runtimes runtimes
@@ -164,8 +163,7 @@ else
   echo 'Skipped rendered tests: none (0)'
 fi
 echo '--- Screenshot gate ---'
-if [[ $mode == docs ]]; then echo 'Screenshot gate: not run (docs-only check, BW_CHECK_MODE=docs)'
-elif [[ -s $gate_summary ]]; then cat "$gate_summary"; else echo 'Screenshot gate: summary not written (the gate test did not finish)'; fi
+echo 'Screenshot gate: not run (removed from the check, 2026-11-13)'
 
 if ((${#failed[@]})); then
   printf 'FAILED: %s\n' "${failed[*]}"

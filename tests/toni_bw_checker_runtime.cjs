@@ -34,6 +34,16 @@ for(const [key,result] of [['f',{action:'answer',count:4}],['m',{action:'missing
 assert.equal(keyCommand('f',true,true,4),null);assert.equal(keyCommand('f',false,true,null),null);
 assert.deepEqual(plain(keyCommand('z',true,false,null)),{action:'undo'});
 assert.equal(keyCommand('m',false,false,4),null);
+// Offline spare order uses the server's group/size positions, including Other and ties.
+{
+ const grouped=make();grouped.session.sort='group';
+ grouped.rows.push({token:'p:5',kind:'spare',group_order:1},{token:'p:6',kind:'spare',group_order:3});
+ grouped.rows[3].group_order=4;grouped.rows[4].group_order=2;
+ apply(grouped,{action:'spares',include:true});
+ assert.deepEqual(plain(grouped.session.order).slice(3),['p:5','p:4','p:6','p:3']);
+ const unknown=make();unknown.session.sort='old-mode';apply(unknown,{action:'spares',include:true});
+ assert.deepEqual(plain(unknown.session.order).slice(3),['p:3','p:4']);
+}
 // 4.8a: the last step asks about spares; "No" keeps them out of the sequence.
 {
  const no=make();apply(no,{action:'spares',include:false});

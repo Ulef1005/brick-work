@@ -31,3 +31,27 @@ def test_largest_first_is_by_size_then_count_then_colour():
     # Baseplate, 2x4 brick, 2x4 plate; the 1x2-sized pieces by count (slope 6, then both bricks by colour);
     # then the 1x1 plate and the pin, however many there are.
     assert ordered == ['c', 'b', 'd', 'g', 'f', 'e', 'a', 'h']
+
+
+def test_category_groups_use_catalogue_order_and_the_complete_largest_tie_breaker():
+    rows = [dict(token=str(i), kind='part', name=name, category=category,
+                 quantity=count, color_name=colour, item_no=number)
+            for i, (name, category, count, colour, number) in enumerate([
+                ('Tile 8 x 8', 'Tiles', 9, 'Red', '1'),
+                ('Brick 1 x 1', 'Bricks', 2, 'Red', '2'),
+                ('Plate 1 x 1', 'Plates', 1, 'Red', '3'),
+                ('Brick 2 x 4', 'Bricks Special', 1, 'Red', '4'),
+                ('Brick 1 x 1', 'Bricks', 3, 'Red', '2'),
+                ('Brick 1 x 1', 'Bricks', 3, 'Black', '2'),
+                ('Brick 1 x 1', 'Bricks', 3, 'Black', '1'),
+                ('Brick 1 x 1', 'Bricks', 3, 'Black', '1'),
+                ('Brick 9 x 9', None, 1, 'Red', '9'),
+                ('Brick 8 x 8', 'Unmapped category', 1, 'Red', '8'),
+                ('Slope 2 x 2', 'Bricks Sloped', 1, 'Red', '5'),
+            ])]
+    position = {r['token']: i for i, r in enumerate(rows)}
+    assert [r['token'] for r in sorted(rows, key=sorter('group', position))] == [
+        '3', '6', '7', '5', '4', '1', '10', '2', '0', '8', '9']
+    assert sorted(rows, key=sorter('unrecognised', position)) == rows
+    figures = [dict(r, kind='figure') for r in rows]
+    assert sorted(figures, key=sorter('group', position)) == figures

@@ -475,3 +475,24 @@ def test_giving_one_of_two_missing_figures_clears_one_figures_component_defects(
     w.take_for_gap(db, world.copy_a, gap['item_id'], None, 1)
     assert db.execute('SELECT missing FROM copy_figure WHERE id=1').fetchone()[0] == 0
     assert db.execute('SELECT sum(missing) FROM copy_part WHERE copy_figure_id=1').fetchone()[0] == 0
+
+
+def test_picker_group_key_order_availability_defaults_and_old_rankings():
+    rows = [dict(item_id=str(i), item_no=str(i), color_id=1, category=category,
+                 color_name='Red', rank_set='1000-1', rank_storage='', completes=0)
+            for i, category in enumerate(['Tiles', None, 'Bricks Special', 'Bricks', 'Unknown', 'Plates'])]
+    keys = w.picker_keys(rows)
+    assert [k['key'] for k in keys] == ['category', 'group', 'colour', 'size', 'set', 'storage']
+    assert keys[1] == dict(key='group', label='Category group', reason='')
+    assert [r['item_id'] for r in w.order_picker(rows, ['group'])] == ['2', '3', '5', '0', '1', '4']
+    assert [r['item_id'] for r in w.order_picker(rows, [])] == ['0', '1', '2', '3', '4', '5']
+    old = ['category', 'colour', 'size', 'set', 'storage']
+    assert w.PICKER_DEFAULT == tuple(old)
+    assert w.order_picker(rows) == w.order_picker(rows, old)
+    assert w.order_picker(rows, old + ['obsolete']) == w.order_picker(rows, old)
+    assert w.order_picker(rows, ['obsolete']) == w.order_picker(rows, [])
+    for row in rows:
+        row['category'] = None
+    reasons = {k['key']: k['reason'] for k in w.picker_keys(rows)}
+    assert reasons['group'] == reasons['category'] == 'No category is recorded for these parts'
+    assert w.order_picker(rows, ['group']) == w.order_picker(rows, [])

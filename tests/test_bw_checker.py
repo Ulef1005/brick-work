@@ -292,7 +292,7 @@ def test_a_listed_miss_keeps_its_place_in_missing_so_far(coll, copy):
 def test_normalise_drops_spare_answers_and_misses_until_yes():
     s = dict(order=['p:1', 'p:2'], cursor=2, answers={'p:1': 'answered', 'p:2': 'answered'}, misses=['p:2', 'p:1'], spares=None)
     kinds = {'p:1': 'part', 'p:2': 'spare', 'p:9': 'part'}
-    assert checker.normalise(dict(s), kinds) == dict(order=['p:1', 'p:9'], cursor=1, answers={'p:1': 'answered'}, misses=['p:1'], spares=None)     # p:9 is new
+    assert checker.normalise(dict(s), kinds) == dict(order=['p:1', 'p:9'], cursor=1, answers={'p:1': 'answered'}, misses=['p:1'], spares=None, sort='inventory')     # p:9 is new
     kept = checker.normalise(dict(s, spares='yes'), kinds)
     assert kept['order'] == ['p:1', 'p:2', 'p:9'] and kept['misses'] == ['p:2', 'p:1']
 
@@ -377,7 +377,7 @@ def test_the_chooser_and_the_copy_landing(coll, copy, client):
     box = landing.select_one('#bw-checker')
     assert box['data-landing'] == 'true' and box.select_one('[data-start] [data-resume]')['href'].endswith('?run=1')
     assert box.select_one('[data-check-body]').has_attr('hidden') and 'Minifigures follow the required parts.' in box.text
-    assert [i['value'] for i in box.select('input[name=order]')] == ['inventory', 'colour', 'largest']
+    assert [i['value'] for i in box.select('input[name=order]')] == ['inventory', 'colour', 'largest', 'group']
     assert box.select_one('input[name=order][checked]')['value'] == 'largest'
     assert box.select_one('.check-saved').text.startswith('Saved ') and '0 of 3 entries done' in box.select_one('.check-saved').text
     assert box.find('a', string='Back to the set')['href'].endswith(f'?copy={copy}')
@@ -641,3 +641,29 @@ def test_chooser_phone_status_stacks_below_full_identity():
     for rule in re.findall(r'[^{}]*>span\.mono\s*\{([^{}]*)\}', css):
         assert not re.search(r'white-space\s*:\s*nowrap|overflow\s*:\s*hidden|text-overflow\s*:\s*ellipsis', rule)
     assert not re.search(r'\border\s*:|display\s*:\s*contents', phone)
+
+
+def test_saved_group_mode(coll, copy, client):
+    db = coll.db
+    coll.sql("UPDATE item SET category_name='Tiles' WHERE id IN (SELECT item_id FROM copy_part WHERE copy_id=? AND quantity=4)", (copy,))
+    coll.sql("UPDATE item SET category_name='Bricks' WHERE id IN (SELECT item_id FROM copy_part WHERE copy_id=? AND quantity=2)", (copy,))
+    state = start(db, copy, order='group')
+    by_token = {r['token']: r for r in state['rows']}
+    assert [by_token[t]['kind'] for t in state['session']['order']] == ['part', 'part', 'figure']
+    assert [by_token[t]['category'] for t in state['session']['order'][:2]] == ['Bricks', 'Tiles']
+    for r in state['rows']:
+        assert isinstance(r['group_order'], int)
+    view = checker.view(db, copy)
+    assert view['session']['sort'] == 'group'
+    assert view['session']['order'] == state['session']['order']
+    landing = page(client, f'/workbench/check-parts/{copy}')
+    choice = landing.select_one('input[name=order][value=group]')
+    assert choice and choice.parent.get_text(strip=True) == 'Category group'
+    assert landing.select_one('input[name=order][checked]')['value'] == 'group'
+    assert json_state(landing)['session']['sort'] == 'group'
+
+
+@pytest.mark.parametrize('mode,expected', [('group', 'group'), ('old-mode', 'inventory')])
+def test_normalise_order_mode(mode, expected):
+    session = dict(order=['p:1'], cursor=0, answers={}, misses=[], spares=None, sort=mode)
+    assert checker.normalise(session, {'p:1': 'part'})['sort'] == expected

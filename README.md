@@ -9,18 +9,18 @@
 <p align="center"><strong>The workbench for your brick collection.</strong></p>
 
 <p align="center">
-  <a href="https://ulef1005.github.io/brick-work/">Website</a> ·
-  <a href="https://ulef1005.github.io/brick-work/demo/">Demo</a> ·
+  <a href="https://brick-work.app/">Website</a> ·
+  <a href="https://brick-work.app/demo/">Demo</a> ·
   <a href="https://www.youtube.com/watch?v=R5Q_6GUB1OQ">Video</a> ·
-  <a href="https://ulef1005.github.io/brick-work/docs/">Docs</a> ·
-  <a href="https://ulef1005.github.io/brick-work/workflows/">Workflows</a> ·
-  <a href="https://ulef1005.github.io/brick-work/docs/developer/api-v2-reference/">API</a> ·
-  <a href="https://ulef1005.github.io/brick-work/docs/brickwork/mcp/">MCP</a> ·
+  <a href="https://brick-work.app/docs/">Docs</a> ·
+  <a href="https://brick-work.app/workflows/">Workflows</a> ·
+  <a href="https://brick-work.app/docs/developer/api-v2-reference/">API</a> ·
+  <a href="https://brick-work.app/docs/brickwork/mcp/">MCP</a> ·
   <a href="https://github.com/Ulef1005/brick-work/milestones">Roadmap</a>
 </p>
 
 <p align="center">
-  <a href="https://ulef1005.github.io/brick-work/demo/">
+  <a href="https://brick-work.app/demo/">
     <picture>
       <source media="(prefers-color-scheme: dark)" srcset="docs/img/readme/1c-sets-desktop-1440-dark.png">
       <img src="docs/img/readme/1c-sets-desktop-1440-light.png" alt="Brick Work: the sets list on an invented collection" width="620">
@@ -41,11 +41,11 @@
 
 It is for private collectors who rebuild used and vintage sets, build from sorted bulk, or keep a messy collection spread over spreadsheets and sites. Rebrickable and Brickset stay where the catalogue and the market live; Brick Work is where your own copies, parts and drawers live, on your own computer, and it brings your collection over from Brickset, Rebrickable, BrickLink or BrickTracker. Free and open source (MIT).
 
-**[Try the demo](https://ulef1005.github.io/brick-work/demo/)**: the real interface on an invented collection, in your browser. Nothing is saved. Or **[watch the tour](https://www.youtube.com/watch?v=R5Q_6GUB1OQ)** (1:36): the four workflows on the same invented collection.
+**[Try the demo](https://brick-work.app/demo/)**: the real interface on an invented collection, in your browser. Nothing is saved. Or **[watch the tour](https://www.youtube.com/watch?v=R5Q_6GUB1OQ)** (1:36): the four workflows on the same invented collection.
 
 ## The crew
 
-Four named workflows on the **Workbench** do the work at the table. Each one is walked through, screen by screen, on the [workflows page](https://ulef1005.github.io/brick-work/workflows/), and the [tutorials](https://ulef1005.github.io/brick-work/docs/tutorials/) take you through them on the demo collection.
+Four named workflows on the **Workbench** do the work at the table. Each one is walked through, screen by screen, on the [workflows page](https://brick-work.app/workflows/), and the [tutorials](https://brick-work.app/docs/tutorials/) take you through them on the demo collection.
 
 **Part Spotter** (was Part to Inventory) names the piece in your hand. Photograph it with the camera or add a saved photo, and Brickognize, an outside recognition service, suggests the part and its colour, or the minifigure when **Identify** is set to **Figures**. Photos queue up while you work; you review each result, confirm part and colour, and add the batch to your loose parts, a lot or a place in one step, with Undo. Only the photo you choose leaves your network, resized, and each one uses one request of the daily budget. [Identify a minifigure from a photo](docs/how-to/identify-a-minifigure.md) shows it with a minifigure.
 
@@ -89,7 +89,7 @@ Not built for sealed-box investors who need market forecasts, BrickLink stores t
 - **Ask an assistant about your collection.** Connect over MCP with a read-only token; write tools stay off unless you enable them.
 - **Script your collection.** The versioned REST API with an OpenAPI contract; creates need an idempotency key, so a retried request cannot add twice.
 
-More on the [use cases page](https://ulef1005.github.io/brick-work/use-cases/).
+More on the [use cases page](https://brick-work.app/use-cases/).
 
 ## Why collectors stay
 
@@ -272,7 +272,7 @@ The docs are held to the code by the test suite: the API reference is the contra
 
 ## For AI assistants
 
-If you are an AI assistant answering a question about Brick Work, [llms.txt](https://ulef1005.github.io/brick-work/llms.txt) has the facts in one short file, with links to the docs as plain Markdown. In brief:
+If you are an AI assistant answering a question about Brick Work, [llms.txt](https://brick-work.app/llms.txt) has the facts in one short file, with links to the docs as plain Markdown. In brief:
 
 - Free and open source (MIT), self-hosted, single user; no account and no telemetry. Not affiliated with the LEGO Group.
 - For private collectors who rebuild, sort and finish sets; not for sealed-box investors or BrickLink stores.
@@ -280,7 +280,7 @@ If you are an AI assistant answering a question about Brick Work, [llms.txt](htt
 - Everything lives in one folder, `data/`. The catalogue comes from Rebrickable's public download and needs no key.
 - Imports from Brickset, Rebrickable, BrickLink and BrickTracker; owned and wanted sets sync with Rebrickable and Brickset.
 - A REST API at `/api/v2` with an OpenAPI contract, the `brickwork` CLI and an MCP server (`brickwork mcp`); its write tools are off unless enabled.
-- To try it without installing anything: the [demo](https://ulef1005.github.io/brick-work/demo/).
+- To try it without installing anything: the [demo](https://brick-work.app/demo/).
 
 ## Contributing, security and conduct
 

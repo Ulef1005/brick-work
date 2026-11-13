@@ -4,8 +4,8 @@
 
 Pages: `/` the landing page, `/use-cases/` and `/workflows/` (Markdown in scripts/site), `/docs/` the user and developer docs, `/demo/` the static demo (scripts/build_demo.py), `/api/` and `/mcp/` stub pages that point
 at the generated API v2 and MCP reference pages in the docs' Developers tab (scripts/docs_reference.py), `/api/openapi-v2.yaml` the
-contract to download, `/changelog/` CHANGELOG.md, `/llms.txt` the facts for AI assistants (scripts/site/llms.md), and `/design/` the ADRs and the
-4.0 data-model design (docs/adr, docs/data-model-4.0), one page per file. The user docs are built by
+contract to download, `/changelog/` CHANGELOG.md and `/llms.txt` the facts for AI assistants (scripts/site/llms.md). The ADRs and the 4.0 data-model
+design are read on GitHub; the design pages readers need are in the docs' Developers tab (ADR 0030). The user docs are built by
 Zensical from docs/ and mkdocs.yml (App Standard, Maintenance § Rules, User docs); the other pages are
 Markdown rendered with Python-Markdown, styled with the app's own design tokens and fonts. Links to files
 in the repository point at them on GitHub. The output is static and needs no server.
@@ -28,13 +28,9 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 SITE = ROOT / 'scripts/site'
 PAGES = (('Home', ''), ('Use cases', 'use-cases/'), ('Workflows', 'workflows/'), ('Demo', 'demo/'), ('Docs', 'docs/'),
-         ('API reference', 'docs/developer/api-v2-reference/'), ('MCP', 'docs/brickwork/mcp/'), ('Changelog', 'changelog/'),
-         ('Design', 'design/'))
+         ('API reference', 'docs/developer/api-v2-reference/'), ('MCP', 'docs/brickwork/mcp/'), ('Changelog', 'changelog/'))
 # The pages that moved into the docs (doc-standard-v1 B1b): the old URL keeps a stub page that points at the new one.
 MOVED = (('api', 'API reference', 'docs/developer/api-v2-reference/'), ('mcp', 'MCP server', 'docs/brickwork/mcp/'))
-# The design folders published under /design/<folder>/: README.md is the folder's index, each other .md file its own page.
-DESIGN = ('adr', 'data-model-4.0')
-DESIGN_SKIP = {'docs/adr/0000-template.md'}
 USER_DOCS = ('how-to', 'concepts', 'reference', 'tutorials', 'developer')   # the Zensical sections under /docs/
 
 
@@ -45,9 +41,6 @@ def site_page(resolved):
     section, _, name = resolved.removeprefix('docs/').partition('/')
     if resolved.startswith('docs/') and section in USER_DOCS and name.endswith('.md') and '/' not in name:
         return f'docs/{section}/' + ('' if name == 'index.md' else name.removesuffix('.md') + '/')
-    folder, _, name = resolved.removeprefix('docs/').partition('/')
-    if resolved.startswith('docs/') and folder in DESIGN and name.endswith('.md') and '/' not in name and resolved not in DESIGN_SKIP:
-        return f'design/{folder}/' + ('' if name == 'README.md' else name.removesuffix('.md') + '/')
     return None
 
 
@@ -170,25 +163,12 @@ def mermaid_to_link(text, resolved):
     return re.sub(r'^```mermaid\n(.*?)^```$', figure, text, flags=re.M | re.S)
 
 
-def build_design(out):
-    """The changelog and the design documents, each rendered with links between them kept on the site."""
-    pages = [('CHANGELOG.md', 'Changelog', 'Changelog')]
-    for folder in DESIGN:
-        for path in sorted((ROOT / 'docs' / folder).glob('*.md')):
-            resolved = path.relative_to(ROOT).as_posix()
-            if resolved not in DESIGN_SKIP:
-                title = next((l[2:].strip() for l in path.read_text().splitlines() if l.startswith('# ')), path.stem)
-                pages.append((resolved, title, 'Design'))
-    for resolved, title, current in pages:
-        target = site_page(resolved)
-        depth = target.count('/')
-        (out / target).mkdir(parents=True, exist_ok=True)
-        text = mermaid_to_link(rewrite_links((ROOT / resolved).read_text(), os.path.dirname(resolved), depth), resolved)
-        (out / target / 'index.html').write_text(page(title, render(text), depth, current=current))
-    index = ('# Design\n\nHow Brick Work is built and why.\n\n'
-             '- [Architecture Decision Records](adr/): one page per decision that binds future work.\n'
-             '- [Data model 4.0](data-model-4.0/): the approved design of schema 4.0, its DDL, the user journey, the regression map and the estimate.\n')
-    (out / 'design/index.html').write_text(page('Design', render(index), 1, current='Design'))
+def build_changelog(out):
+    """/changelog/: CHANGELOG.md, its links to docs pages kept on the site and every other link pointing at GitHub."""
+    target = site_page('CHANGELOG.md')
+    (out / target).mkdir(parents=True, exist_ok=True)
+    text = mermaid_to_link(rewrite_links((ROOT / 'CHANGELOG.md').read_text(), '', 1), 'CHANGELOG.md')
+    (out / target / 'index.html').write_text(page('Changelog', render(text), 1, current='Changelog'))
 
 
 def llms_txt():
@@ -235,7 +215,7 @@ def build(out):
     for folder, title, target in MOVED:
         (out / folder / 'index.html').write_text(stub(title, target))
     shutil.copy(ROOT / 'docs/brickwork/openapi-v2.yaml', out / 'api/openapi-v2.yaml')
-    build_design(out)
+    build_changelog(out)
 
     from scripts.build_demo import build_demo
     demo_base = f'/{repository().split("/")[1]}/demo/'

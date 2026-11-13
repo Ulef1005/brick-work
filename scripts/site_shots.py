@@ -198,7 +198,7 @@ TUTORIAL_SHOTS = {
         layout: (width, ['[data-stage]'], [('[data-stage] img', 1), ('[data-action=answer]', 2), ('[data-action=missing]', 3), ('[data-action=skip]', 4)], '')
         for layout, width in (('desktop', 1024), ('phone', 390))}),
     'inspect-end': ('/workbench/check-parts/%s?run=1' % REAL_GAPS, None, {
-        layout: (width, ['[data-stage] h2', '[data-shot-area]'], [('[data-stage] h2', 1), ('[data-action=found_one]', 2)], tag_nth('[data-action=found_one]', 1, closest='.check-miss'))
+        layout: (width, ['[data-stage] h2', '[data-shot-area]'], [('[data-stage] h2', 1), ('[data-action=found_one]', 2)], tag_nth('[data-action=found_one]', 1, closest='.check-miss') + "[...document.querySelectorAll('.check-miss')].slice(1).forEach(e => { e.style.display = 'none'; });\n")
         for layout, width in (('desktop', 1024), ('phone', 390))}),
     'inspect-list': ('/workbench/check-parts', None, {
         layout: (width, ['[data-copy-section=progress]', '[data-copy-section=unchecked]'],

@@ -46,7 +46,7 @@ def test_the_part_lists_are_rebrickables_and_deterministic(tmp_path):
 def test_each_set_has_its_picture_and_every_picture_has_a_file(tmp_path):
     manifest = real.pictures_manifest()
     assert {k for k in manifest if k.startswith('sets/')} == {'sets/' + n for n in SETS}
-    assert {k for k in manifest if not k.startswith('sets/')} == {'parts/33299a/71', 'parts/62462/25', 'parts/87619/15', 'parts/91968c01/0', 'minifigs/fig-004770'}
+    assert {k for k in manifest if not k.startswith('sets/')} == {'parts/33299a/71', 'parts/62462/25', 'parts/87619/15', 'parts/91968c01/0', 'parts/2527/4', 'parts/3665/71', 'parts/4865b/19', 'parts/48336/14', 'parts/6091/14', 'parts/3633/72', 'minifigs/fig-004770'}
     assert all((real.FOLDER / 'images' / f).is_file() for f in manifest.values())
     _, db, _ = build(tmp_path)
     assert db.execute("SELECT count(*) FROM picture WHERE source='rebrickable_images'").fetchone()[0] == db.execute('SELECT count(*) FROM picture').fetchone()[0] == len(manifest)   # every manifest entry matched an item
@@ -81,9 +81,9 @@ def test_the_real_world_exports_with_jpeg_pictures(tmp_path):
     manifest = export.export(tmp_path / 'site', base, world='real')
     out = tmp_path / 'site'
     pictures = real.pictures_manifest()
-    assert manifest['counts']['pictures'] == len(pictures) == 12 and manifest['counts']['copy'] == 8      # 7 sets, 1 figure, 4 parts
+    assert manifest['counts']['pictures'] == len(pictures) == 18 and manifest['counts']['copy'] == 8      # 7 sets, 1 figure, 10 parts
     files = {f.stem: f for f in (out / 'manage' / 'images').iterdir()}
-    assert len(files) == 12
+    assert len(files) == 18
     jpegs = {i for i, f in files.items() if f.suffix == '.jpg'}
     assert len(jpegs) == 8 and all(files[i].read_bytes()[:2] == b'\xff\xd8' for i in jpegs)             # the sets and the figure
     assert all(f.suffix == '.png' and f.read_bytes()[:8] == b'\x89PNG\r\n\x1a\n' for i, f in files.items() if i not in jpegs)   # the part renders

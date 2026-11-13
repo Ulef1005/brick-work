@@ -115,7 +115,6 @@ PICTURES = {
     'tut-complete-sets-phone-390': ('/planning/complete-sets', 390, 844, None, (TUTORIALS,)),
     'tut-wishlist-phone-390': ('/planning/wishlist', 390, 900, None, (TUTORIALS,)),
     'tut-order-count-phone-390': ('/workbench/orders/2?view=count', 390, 1500, None, (TUTORIALS,)),
-    '12n-sources-phone-390': ('/manage/sync', 390, 1400, None, (SITE,)),
     '12b-count-what-arrived-desktop-1440': ('/workbench/orders/2', 1440, 1050, None, (SITE,)),
     '12c-list-and-detail-desktop-1440': (STORAGE, 1440, 1300, None, (SITE,)),
     '1d-set-detail-phone-390': ('/collection/item/set/99103-1?copy=' + uid('copy', '99103-1', 'a'), 390, 1800, None, (SITE,)),

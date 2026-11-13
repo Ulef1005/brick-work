@@ -1,4 +1,5 @@
 """The static site stays complete, local, accessible without JS, and free of private material."""
+import html
 from html.parser import HTMLParser
 from pathlib import Path
 import re
@@ -94,10 +95,10 @@ def test_every_page_and_asset_resolves_without_external_requests(site):
 
 
 def test_every_documentation_page_links_the_complete_favicon_set(site):
-    from scripts.build_site import MOVED, PAGES
+    from scripts.build_site import MOVED, NAV
 
     # The stub pages at the old /api/ and /mcp/ URLs are built here too.
-    for href in [href for _, href in PAGES] + [folder + '/' for folder, _, _ in MOVED]:
+    for href in [''] + [href for _, href in NAV if '#' not in href] + [folder + '/' for folder, _, _ in MOVED]:
         if href.startswith(('demo/', 'docs/')):  # The demo uses the app's own icon links; Zensical builds the docs.
             continue
         page = site / href / 'index.html'
@@ -121,16 +122,22 @@ def test_every_documentation_page_links_the_complete_favicon_set(site):
 
 def test_landing_sections_and_copy(site):
     text = (site / 'index.html').read_text()
-    sections = [attrs['class'].split()[0] for tag, attrs in Elements(text).elements if tag == 'section']
-    assert sections == list(SECTIONS)
-    assert "Don't just manage your collection. Work with it." in re.sub(r'<[^>]+>', '', text)
-    assert '<span class="tagline-clay">Work with it.</span>' in text
-    assert '.tagline-clay{color:var(--tw-accent-text)}' in (site / 'assets/site.css').read_text()
-    assert 'the workbench for your brick collection' in text
-    assert 'Planned, not built yet' in text
-    assert 'LEGO' not in text.split('<footer')[0]
-    assert 'href="demo/"' in text
-    assert len(text.encode()) + (site / 'assets/site.css').stat().st_size + (site / 'assets/site.js').stat().st_size < 100_000
+    body = text.split('<main class="home">')[1].split('</main>')[0]
+    plain = re.sub(r'<[^>]+>', '', body)
+    assert "Don't just manage your collection. Work with it." in plain
+    assert '<span class="clay">Work with it.</span>' in body
+    assert '.clay{color:var(--tw-accent-text)}' in (site / 'assets/marketing.css').read_text()
+    assert "The workbench for your collection that you didn't know existed" in html.unescape(plain)
+    for label in ('Who it is for', 'The workbench', 'Install', 'Coming from another tool', 'Documentation', "What's new"):
+        assert f'<span class="label">{label}</span>' in body, label
+    assert body.count('class="card"><h3>You ') == 6          # the six "Who it is for" boxes
+    assert body.count('class="card wf-card"') == 9           # nine workflow cards
+    assert 'id="install"' in body and 'href="demo/"' in body
+    assert 'LEGO' not in body
+    assert 'not affiliated with the LEGO Group, Rebrickable, Brickset or BrickLink' in text
+    from brickwork.version import __version__
+    assert f'{__version__} · tested on a real collection' in body and f'Brick Work {__version__}' in body
+    assert len(text.encode()) + sum((site / 'assets' / n).stat().st_size for n in ('site.css', 'marketing.css', 'site.js')) < 130_000
 
 
 def test_walkthroughs_and_no_js_content(site):
@@ -177,8 +184,8 @@ def test_desktop_screenshots_are_only_kept_for_other_pages(site):
 @pytest.mark.parametrize('page,stems', [
     ('index.html', [
         '1c-sets-desktop-1440', '3a-matcher-phone-390',
-        '3e-part-phone-390', '3c-picker-sets-phone-390', '3a-matcher-phone-390',
-        '12n-sources-phone-390',
+        '3e-start-phone-390', '3c-picker-pick-phone-390', '3a-matcher-phone-390',
+        '12b-count-what-arrived-desktop-1440',
     ]),
     ('use-cases/index.html', [
         '3e-finish-gaps-phone-390', '3c-picker-sets-phone-390',
@@ -203,7 +210,7 @@ def test_built_screen_placements(site, page, stems):
     assert sources == [f'{stem}-dark.png' for stem in stems]
     if page == 'index.html':
         text = (site / page).read_text()
-        assert 'Available · the built screen' in text and 'design preview' not in text and 'not built yet</span>' not in text
+        assert 'design preview' not in text and 'to capture' not in text
 
 
 def test_no_unreferenced_screenshots_are_shipped(site):
@@ -212,7 +219,7 @@ def test_no_unreferenced_screenshots_are_shipped(site):
                   for tag, attrs in Elements((site / name).read_text()).elements
                   for attr in ('src', 'srcset') if tag in ('img', 'source')
                   and '/img/' in attrs.get(attr, '')}
-    assert len(referenced) == 32
+    assert len(referenced) == 30
     assert {p.name for p in (ROOT / 'scripts/site/img').glob('*')} == referenced
     assert {p.name for p in (site / 'assets/img').glob('*')} == referenced
 
@@ -254,7 +261,7 @@ def test_shared_chrome_and_theme_script(site):
         elements = Elements(text).elements
         logos = [attrs for tag, attrs in elements
                  if tag == 'img' and attrs.get('alt') == 'Brick Work']
-        assert len(logos) == 2  # Header and footer use the same rendered wordmark.
+        assert len(logos) == 1  # The header carries the wordmark; the footer is text columns.
         for logo in logos:
             assert logo['src'].endswith('assets/lockup-horizontal-light.png')
             dimensions = struct.unpack('>II', local_target(site, site / name, logo['src']).read_bytes()[16:24])
@@ -262,9 +269,9 @@ def test_shared_chrome_and_theme_script(site):
             assert dimensions[0] >= 2 * 160
         sources = [attrs for tag, attrs in elements if tag == 'source'
                    and attrs.get('srcset', '').endswith('assets/lockup-horizontal-dark.png')]
-        assert len(sources) == 2
+        assert len(sources) == 1
         assert all(source['media'] == '(prefers-color-scheme: dark)' for source in sources)
-        for label in ('Demo', 'Docs', 'API reference', 'MCP', 'GitHub'):
+        for label in ('Demo', 'Docs', 'Changelog', 'GitHub', 'API', 'MCP'):
             assert f'>{label}</a>' in text
     for theme in ('light', 'dark'):
         name = f'lockup-horizontal-{theme}.png'
@@ -365,12 +372,14 @@ def test_every_image_the_readme_and_the_pages_show_exists_and_is_a_built_capture
     shown = set()
     for source in ('README.md', 'scripts/site/landing.html', 'scripts/site/use-cases.md', 'scripts/site/workflows.md'):
         text = (ROOT / source).read_text()
-        for name in re.findall(r'(?:src|srcset)="[^"]*?/img/(?:readme/)?([^"/]+\.png)"', text):
+        names = re.findall(r'(?:src|srcset)="[^"]*?/img/(?:readme/)?([^"/]+\.png)"', text)
+        names += [f'{stem}-{theme}.png' for stem in re.findall(r'\{pic:([^|}]+)\|', text) for theme in ('light', 'dark')]
+        for name in names:
             shown.add(name)
             target = ROOT / ('docs/img/readme' if source == 'README.md' else 'scripts/site/img') / name
             assert target.is_file(), f'{source}: {name} is missing'
             assert re.sub(r'-(light|dark)\.png$', '', name) in stems, f'{source}: {name} is not a capture of the built app'
-    assert len(shown) >= 34
+    assert len(shown) >= 32
 
 
 NOTE = re.compile(r'placeholder drawings.*?BrickLink and Rebrickable', re.S)

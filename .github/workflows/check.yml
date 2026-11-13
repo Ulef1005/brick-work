@@ -35,7 +35,7 @@ jobs:
       # SHA-256; the cache saves the ~200 MB download. BW_SKIP_RENDERED is never set here, so a missing browser fails the job. A pull request sets
       # BW_NO_CHROME=1 instead: every Chrome test is skipped and named in the summary; a push to main runs them all.
       - name: Cache Chrome for Testing
-        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25  # v5.1.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
           path: ~/.cache/brickwork/chrome
           key: chrome-${{ runner.os }}-${{ hashFiles('scripts/chrome.py') }}

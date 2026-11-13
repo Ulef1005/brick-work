@@ -61,7 +61,7 @@ runtimes() {
   local harnesses=(tests/*_runtime.cjs) rc=0 harness
   if [[ ${BW_NO_CHROME:-} == 1 ]]; then
     echo "NOTE: BW_NO_CHROME=1, so the Node runtime harnesses are skipped and named below (CI sets it on pull requests; a push to main runs them)."
-    printf '%s (BW_NO_CHROME=1)\n' "${harnesses[@]}" >> "$skips"
+    (( ${#harnesses[@]} )) && printf '%s (BW_NO_CHROME=1)\n' "${harnesses[@]}" >> "$skips"   # an empty glob names nothing
     return 0
   fi
   if ! command -v node >/dev/null 2>&1; then

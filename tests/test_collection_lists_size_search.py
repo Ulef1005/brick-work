@@ -23,6 +23,8 @@ def test_python_table():
 
 
 def test_javascript_agrees():
+    from tests import rendered
+    rendered.need_node()
     script = f"""
 const fs=require('fs'),vm=require('vm');const ctx={{}};vm.runInNewContext(fs.readFileSync('static/web/toni/size-search.js','utf8'),ctx);
 const S=ctx.BrickSize,c=JSON.parse(fs.readFileSync('tests/fixtures/size_cases.json','utf8'));

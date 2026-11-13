@@ -616,6 +616,8 @@ def test_the_set_page_offers_found_one_and_check_missing_only_for_a_copy_with_mi
 def test_checker_runtime():
     import shutil
     import subprocess
+    from tests import rendered
+    rendered.need_node()
     subprocess.run([shutil.which('node'), str(Path(__file__).with_name('toni_bw_checker_runtime.cjs'))], check=True, capture_output=True, text=True)
 
 

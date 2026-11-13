@@ -55,6 +55,8 @@ def test_group_sheets_in_migrated_shell(client, world, path, active):
 
 
 def test_sheet_runtime():
+    from tests import rendered
+    rendered.need_node()
     subprocess.run(['node', str(ROOT / 'tests/toni_shell_runtime.cjs')], check=True)
 
 

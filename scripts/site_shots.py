@@ -164,7 +164,11 @@ def no_placeholders(*selectors):
     their own 'No image' tile, found here by its text; the order and ledger pages draw .bw-picture boxes."""
     return """
 await document.fonts.ready;
-const areas = %s.flatMap(s => [...document.querySelectorAll(s)]).map(e => e.getBoundingClientRect());
+const areas = %s.flatMap(s => {
+  const rects = [...document.querySelectorAll(s)].map(e => e.getBoundingClientRect()).filter(r => r.width > 0 && r.height > 0);
+  if (!rects.length) throw new Error('no_placeholders: the selector ' + s + ' matches nothing visible');
+  return rects;
+});
 if (!areas.length) throw new Error('no_placeholders: the area matches nothing');
 const pad = 28, box = {l: Math.min(...areas.map(a => a.left)) - pad, t: Math.min(...areas.map(a => a.top)) - pad, r: Math.max(...areas.map(a => a.right)) + pad, b: Math.max(...areas.map(a => a.bottom)) + pad};
 const inside = e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.right > box.l && r.left < box.r && r.bottom > box.t && r.top < box.b; };
@@ -177,10 +181,11 @@ if (named.length) throw new Error('no_placeholders: ' + named.length + ' placeho
 
 
 def tag_nth(selector, n, attr='data-shot-area', closest=None):
-    """JS for a job's `after`: mark the n-th (1-based) element matching `selector` (or its nearest ancestor matching `closest`, else its grandparent) with `attr`,
+    """JS for a job's `after`: mark the n-th (1-based) element matching `selector` (or its nearest ancestor matching `closest`) with `attr`,
     so a crop or a call-out can name it ("the first row")."""
     return (f"{{ let hit = [...document.querySelectorAll({json.dumps(selector)})][{n - 1}]; if (!hit) throw new Error('tag_nth: no match for ' + {json.dumps(selector)});\n"
-            f"hit = ({json.dumps(closest)} && hit.closest({json.dumps(closest)})) || ({json.dumps(closest)} ? hit.parentElement.parentElement : hit); hit.setAttribute({json.dumps(attr)}, ''); }}\n")
+            f"if ({json.dumps(closest)}) {{ hit = hit.closest({json.dumps(closest)}); if (!hit) throw new Error('tag_nth: no ' + {json.dumps(closest)} + ' around ' + {json.dumps(selector)}); }}\n"
+            f"hit.setAttribute({json.dumps(attr)}, ''); }}\n")
 
 
 # The tutorial shots that follow the reader's screen (App Docs Standard, screenshot standard): each exists as a desktop shot (a 1024 px viewport at device
@@ -190,6 +195,7 @@ def tag_nth(selector, n, attr='data-shot-area', closest=None):
 REAL = {'real': lambda number: uid('copy', number, 'a')}['real']
 REAL_STARTED, REAL_GAPS = REAL('8043-1'), REAL('7938-1')   # a check about 40 % answered; a check answered to the end, with gaps
 LAYOUT_SCALE = {'desktop': 2, 'phone': 2}
+assert 'Old Mill' in ADD_SEARCH
 TUTORIAL_SHOTS = {
     'add': ('/manage/add', ADD_SEARCH.replace('Old Mill', 'Medieval'), {
         layout: (width, ['.bw-add-search-field', '.bw-add-select'], [('.bw-add-search-field', 1), ('.bw-add-select', 2)], '')

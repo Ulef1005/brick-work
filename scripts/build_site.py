@@ -51,8 +51,8 @@ def repository():
 
 def site_base():
     """The deployment prefix, shared by the site, docs and demo."""
-    base = os.environ.get('SITE_BASE', f'/{repository().split("/")[1]}/')
-    if not re.fullmatch(r'/(?:[A-Za-z0-9_-]+/)*', base):
+    base = os.environ.get('SITE_BASE') or f'/{repository().split("/")[1]}/'
+    if not re.fullmatch(r'/(?:(?!\.+/)[A-Za-z0-9_.-]+/)*', base):
         raise ValueError('SITE_BASE must be a path with a leading and trailing slash (for example / or /brick-work/)')
     return base
 
@@ -191,6 +191,14 @@ def llms_txt():
     return re.sub(r'\]\((?!https?://|#)([^)\s]+)\)', lambda m: f']({raw}{m[1]})', text)
 
 
+def rewrite_demo_html(text, demo_base):
+    """Prefix root paths in copied HTML attributes and CSS URLs with the demo base."""
+    paths = {'static': 'static/', 'brand': 'static/brickwork/', 'fonts': 'static/fonts/'}
+    text = re.sub(r'''(?<=["'(=])/(static|brand|fonts)/''',
+                  lambda m: demo_base + paths[m[1]], text)
+    return text.replace('href="/"', f'href="{demo_base}"')
+
+
 def build(out):
     base = site_base()
     out = Path(out)
@@ -241,10 +249,7 @@ def build(out):
         css.write_text(css.read_text().replace('/static/', demo_base + 'static/'))
     # The copied offline page and brand head snippet are HTML assets too; keep their links local.
     for template in (out / 'demo/static').rglob('*.html'):
-        paths = {'static': 'static/', 'brand': 'static/brickwork/', 'fonts': 'static/fonts/'}
-        text = re.sub(r'/(static|brand|fonts)/', lambda m: demo_base + paths[m[1]], template.read_text())
-        text = text.replace('href="/"', f'href="{demo_base}"')
-        template.write_text(text)
+        template.write_text(rewrite_demo_html(template.read_text(), demo_base))
     # Static hosts decode URL paths before looking up files (including non-ASCII storage names).
     for directory in sorted((out / 'demo').rglob('*'), key=lambda p: len(p.parts), reverse=True):
         if directory.is_dir() and unquote(directory.name) != directory.name:

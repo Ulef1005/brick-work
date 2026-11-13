@@ -33,10 +33,12 @@ class Elements(HTMLParser):
 
 
 def local_target(site, page, url):
+    from scripts.build_site import site_base
     path = unquote(urlsplit(url).path)
-    # Demo uses the Pages repository prefix and a real document base.
-    if path.startswith('/brick-work/'):
-        return site / path[len('/brick-work/'):]
+    # Demo uses the deployment prefix and a real document base.
+    base = site_base()
+    if path.startswith(base):
+        return site / path[len(base):]
     return site / path.lstrip('/') if path.startswith('/') else page.parent / path
 
 
@@ -56,7 +58,7 @@ def site(tmp_path_factory, request):
 
 def test_every_page_and_asset_resolves_without_external_requests(site):
     # Copied demo source templates are assets, not exported application pages.
-    pages = list(site.rglob('index.html'))
+    pages = [*site.rglob('index.html'), site / '404.html']
     assert {'index.html', 'use-cases/index.html', 'workflows/index.html', 'docs/index.html',
             'api/index.html', 'mcp/index.html', 'demo/index.html'} <= {
                 str(p.relative_to(site)) for p in pages}
@@ -421,8 +423,12 @@ def test_all_absolute_html_and_css_paths_resolve(site):
         if file.suffix not in ('.html', '.css'):
             continue
         text = file.read_text()
-        urls = (url for _, attrs in Elements(text).elements for key, url in attrs.items()
-                if key in ('href', 'src')) if file.suffix == '.html' else re.findall(r'url\([\s\'\"]*([^\s\'\")]+)', text)
+        if file.suffix == '.html':
+            urls = [candidate for _, attrs in Elements(text).elements for key, url in attrs.items()
+                    if key in ('href', 'src', 'srcset')
+                    for candidate in ([s.strip().split()[0] for s in url.split(',')] if key == 'srcset' else [url])]
+        else:
+            urls = re.findall(r'url\([\s\'\"]*([^\s\'\")]+)', text)
         for url in urls:
             if not url.startswith('/') or url.startswith('//'):
                 continue
@@ -439,7 +445,7 @@ def test_all_absolute_html_and_css_paths_resolve(site):
     assert list((site / 'docs/assets/fonts').glob('*.woff2'))
 
 
-@pytest.mark.parametrize('base', ['', 'demo/', '/demo', '//demo/', '/demo/../', 'https://example.org/'])
+@pytest.mark.parametrize('base', ['demo/', '/demo', '//demo/', '/demo/../', '/a/../', '/./', '/.../', 'https://example.org/'])
 def test_invalid_site_base_is_rejected(monkeypatch, base):
     from scripts.build_site import site_base
     monkeypatch.setenv('SITE_BASE', base)
@@ -447,8 +453,50 @@ def test_invalid_site_base_is_rejected(monkeypatch, base):
         site_base()
 
 
-def test_default_site_base_uses_repository_name(monkeypatch):
+@pytest.mark.parametrize('repository,expected', [
+    ('example/another-repo', '/another-repo/'),
+    ('owner/brick.work', '/brick.work/'),
+])
+@pytest.mark.parametrize('base', [None, ''])
+def test_default_site_base_uses_repository_name(monkeypatch, repository, expected, base):
     from scripts.build_site import site_base
-    monkeypatch.delenv('SITE_BASE', raising=False)
-    monkeypatch.setenv('GITHUB_REPOSITORY', 'example/another-repo')
-    assert site_base() == '/another-repo/'
+    if base is None:
+        monkeypatch.delenv('SITE_BASE', raising=False)
+    else:
+        monkeypatch.setenv('SITE_BASE', base)
+    monkeypatch.setenv('GITHUB_REPOSITORY', repository)
+    assert site_base() == expected
+
+
+def test_local_target_uses_site_base(monkeypatch):
+    monkeypatch.setenv('SITE_BASE', '/brick.work/')
+    site = Path('/site')
+    assert local_target(site, site / '404.html', '/brick.work/assets/site.css') == site / 'assets/site.css'
+
+
+@pytest.mark.parametrize('prefix', ['"', "'", '(', '='])
+@pytest.mark.parametrize('path,target', [
+    ('/static/x', '/brick-work/demo/static/x'),
+    ('/brand/x', '/brick-work/demo/static/brickwork/x'),
+    ('/fonts/x', '/brick-work/demo/static/fonts/x'),
+    ('../static/x', '../static/x'),
+    ('/demo/static/x', '/demo/static/x'),
+    ('https://example.com/static/x', 'https://example.com/static/x'),
+])
+def test_copied_demo_html_rewrites_only_root_paths(prefix, path, target):
+    from scripts.build_site import rewrite_demo_html
+    assert rewrite_demo_html(prefix + path, '/brick-work/demo/') == prefix + target
+
+
+@pytest.mark.parametrize('name', ['web/toni/offline.html', 'brickwork/head-block.html'])
+def test_copied_demo_html_root_paths_use_demo_base(site, name):
+    from scripts.build_site import site_base
+    source = (ROOT / 'static' / name).read_text()
+    built = (site / 'demo/static' / name).read_text()
+    roots = re.findall(r'''["'(=](/(?:static|brand|fonts)/[^"'\s)<>]+)''', source)
+    assert roots
+    for root in roots:
+        _, kind, path = root.split('/', 2)
+        mapped = {'static': '/static/', 'brand': '/static/brickwork/', 'fonts': '/static/fonts/'}[kind] + path
+        assert site_base() + 'demo' + mapped in built
+    assert not re.search(r'''["'(=]/(?:static|brand|fonts)/''', built)

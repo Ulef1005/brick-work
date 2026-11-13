@@ -559,3 +559,13 @@ def test_analytics_script_is_on_the_site_pages_only_and_the_privacy_page_matches
         assert tag not in file.read_text(), file
     privacy = (site / 'privacy/index.html').read_text()
     assert 'One analytics script' in privacy and 'hosted here' not in privacy     # the picture line waits for the Rebrickable pictures (#332)
+
+
+def test_every_site_page_offers_the_releases_feed_once(site):
+    """The website session's crawl (13.11.): the Atom link was only on /changelog/; every marketing page carries it, once, and it reaches feed.xml."""
+    pages = [p for p in site.rglob('index.html') if p.relative_to(site).parts[0] not in ('docs', 'demo')] + [site / '404.html']
+    assert len(pages) >= 8
+    for page in pages:
+        links = re.findall(r'<link rel="alternate" type="application/atom\+xml"[^>]*href="([^"]+)"', page.read_text())
+        assert len(links) == 1, page
+        assert (page.parent / links[0]).resolve() == (site / 'changelog' / 'feed.xml').resolve() or page.name == '404.html', (page, links)

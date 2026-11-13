@@ -118,6 +118,7 @@ def page(title, body, depth, *, current, head='', main='doc', absolute=False, pa
     full_title = html.escape(title) + ' · Brick Work' if title != 'Brick Work' else 'Brick Work'
     if path is not None:
         head = seo_head(title + ' · Brick Work' if title != 'Brick Work' else 'Brick Work', description, path) + head
+    head = f'<link rel="alternate" type="application/atom+xml" title="Brick Work releases" href="{up}changelog/feed.xml">' + head   # every page offers the releases feed
     nav = ''.join(f'<a href="{up}{href}"{" aria-current=\"page\"" if name == current else ""}>{name}</a>' for name, href in NAV)
     menu = nav + f'<a href="https://github.com/{repo}">GitHub</a>'
     col = lambda heading, links: (f'<div><b>{heading}</b><ul>' + ''.join(f'<li><a href="{href}">{label}</a></li>' for label, href in links)
@@ -345,8 +346,7 @@ def build_changelog(out):
             f'<h1 class="display page">Changelog</h1><p class="lede">Every release since the first public one on {oldest[2]}, newest first.</p>'
             f'<div class="btns"><a class="link" href="feed.xml">Atom feed</a><a class="link" href="https://github.com/{repository()}/releases">Releases on GitHub</a></div></div>'
             f'<div style="display:flex;flex-direction:column;gap:12px">{"".join(rows)}</div></div></div></div>')
-    head = '<link rel="alternate" type="application/atom+xml" title="Brick Work releases" href="feed.xml">'
-    (out / target / 'index.html').write_text(page('Changelog', body, 1, current='Changelog', head=head, main='home', path='changelog/',
+    (out / target / 'index.html').write_text(page('Changelog', body, 1, current='Changelog', main='home', path='changelog/',
                                                          description='Every Brick Work release since the first public one, newest first, with an Atom feed.'))
     (out / target / 'feed.xml').write_text(atom_feed())
 

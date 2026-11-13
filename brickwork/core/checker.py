@@ -47,13 +47,13 @@ def sorter(mode, position):
     """Sort key of the rows of one kind for an order mode. Largest first is the physical size from the catalogue name and category
     (`part_size.volume`; the item's `size_key` is the sorted dimensions of the same name and cannot tell a plate from a brick), then
     the larger count, then colour, item number and sequence position. Category group uses the fixed
-    `part_groups.GROUPS` order with that same size key within each group; figures keep their sequence.
+    `part_groups.GROUPS` order with that same size key within each group; figures come first in their sequence.
     Unknown modes use sequence position."""
     if mode == 'group':
         largest = sorter('largest', position)
         groups = list(part_groups.GROUPS)
         return lambda r: ((0, position[r['token']]) if r.get('kind') == 'figure' else
-                          (groups.index(part_groups.group_of(r.get('category'))), *largest(r)))
+                          (1 + groups.index(part_groups.group_of(r.get('category'))), *largest(r)))
     if mode == 'largest':
         from .part_size import volume
         return lambda r: (-volume(r.get('name') or '', r.get('category') or ''), -(r['quantity'] or 0),
@@ -204,8 +204,13 @@ def _model(row):
     if row is None:
         return None
     body = json.loads(row['session_json'])
+    sort = body.get('sort')
+    if sort not in ORDERS:
+        sort = row['order_mode']
+    if sort not in ORDERS:
+        sort = 'inventory'
     return dict(id=row['session_id'], order=body['order'], cursor=body['cursor'], answers=body['answers'], misses=body['misses'], undo=body['undo'],
-                finished=bool(row['finished']), sort=row['order_mode'], spares=row['spares'],
+                finished=bool(row['finished']), sort=sort, spares=row['spares'],
                 scope=body.get('scope'), members=body.get('members'))
 
 
@@ -213,18 +218,23 @@ def session(db, copy_id, figure=None):
     return _model(_session_row(db, copy_id, figure))
 
 
+def _legacy_order_mode(sort):
+    """Keep the legacy column's three-value CHECK while session_json stores extensible order names, without a schema upgrade."""
+    return sort if sort in ('inventory', 'largest', 'colour') else 'inventory'
+
+
 def _put_session(db, copy_id, figure, s, started_at=None):
     """Write the session `s` (the client's model) as the copy's row, replacing the one there (nothing else points at the row)."""
     db.execute('DELETE FROM main.part_check WHERE copy_id=? AND figure_key=?', (copy_id, figure or 0))
     stamp = now()
-    body = dict(order=s['order'], cursor=s['cursor'], answers=s['answers'], misses=s['misses'], undo=s['undo'])
+    body = dict(sort=s['sort'], order=s['order'], cursor=s['cursor'], answers=s['answers'], misses=s['misses'], undo=s['undo'])
     if s.get('members'):
         body['members'] = s['members']                                 # a missing-only run: every part it walks, whatever a later walk of the skipped ones narrows `order` to
     if s.get('scope'):
         body['scope'] = s['scope']                                     # #222/#214: `missing` (the parts the last check left missing) or `skipped`; absent is the whole set
     body = json.dumps(body, separators=(',', ':'))
     db.execute('''INSERT INTO main.part_check(copy_id,copy_figure_id,session_id,order_mode,spares,session_json,finished,started_at,updated_at)
-                  VALUES(?,?,?,?,?,?,?,?,?)''', (copy_id, figure, s['id'], s['sort'], s['spares'], body, int(bool(s['finished'])), started_at or stamp, stamp))
+                  VALUES(?,?,?,?,?,?,?,?,?)''', (copy_id, figure, s['id'], _legacy_order_mode(s['sort']), s['spares'], body, int(bool(s['finished'])), started_at or stamp, stamp))
 
 
 def _row_state(row):
@@ -235,6 +245,7 @@ def _row_state(row):
 def _restore_session(db, copy_id, figure, state):
     db.execute('DELETE FROM main.part_check WHERE copy_id=? AND figure_key=?', (copy_id, figure or 0))
     if state is not None:
+        state = dict(state, order_mode=_legacy_order_mode(_model(state)['sort']))
         db.execute(f'INSERT INTO main.part_check(copy_id,copy_figure_id,{",".join(SESSION_COLUMNS)}) VALUES(?,?,{",".join("?" * len(SESSION_COLUMNS))})',
                    (copy_id, figure, *(state[k] for k in SESSION_COLUMNS)))
 

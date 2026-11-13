@@ -28,8 +28,6 @@ A read-only instance (`BW_READ_ONLY`) never upgrades a file. Start the new versi
 
 If an older version refuses a newer file, its message may say a 3.3 file must be migrated. Do not run `migrate4` on a 4.x file: it reads only a 3.3 file. Restore the backup instead.
 
-The current schema is **4.3**. On the first read-write start, a 4.2 collection is upgraded in one transaction: the checker session table is rebuilt with the same rows and indexes, and its order column also accepts Category group. Nothing needs doing by hand; the catalogue is unchanged. Older programs cannot open a 4.3 collection. To go back, restore the backup from before the upgrade.
-
 ## From 0.5.x
 
 1. Stop Brick Work 0.5.x, so that everything it wrote is in `brickwork.db` and not only in `brickwork.db-wal`. Then make a copy of the 3.3 `brickwork.db`. Never copy the file while the app runs.
@@ -62,7 +60,7 @@ The first command checks the build provenance: the image was built by this repos
 
 ## Check the result
 
-1. Open `/api/v2/health` (no token). It shows the app version and the schema, including `"schema": "4.3"` in this version. `/api/v1/health` answers the same.
+1. Open `/api/v2/health` (no token). It shows the app version and the schema, for example `"app": "1.0.1"` and `"schema": "4.2"`. `/api/v1/health` answers the same.
 2. Run `brickwork check` (with Docker: `docker compose exec brickwork brickwork check`), or press **Run integrity check** under **Manage → Tools & Admin → Database**. Both must pass.
 3. Open **Sets** and compare what you see with your last export if you kept a note of the counts.
 

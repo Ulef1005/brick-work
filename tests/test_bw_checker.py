@@ -46,7 +46,7 @@ def test_the_sequence_is_parts_then_figures_and_the_spare_is_asked_last(coll, co
     assert [kinds[t] for t in state['session']['order']] == ['part', 'part', 'figure']
     assert sorted(kinds.values()) == ['figure', 'part', 'part', 'spare']
     assert state['session']['spares'] is None and all(t.startswith(('p:', 'f:')) for t in state['session']['order'])
-    # the row of the session: order mode and spares answer are columns, the walk is the body
+    # The legacy order column duplicates the body's sort; the spares answer is a column.
     row = db.execute('SELECT order_mode, spares, finished, copy_figure_id FROM part_check WHERE copy_id=?', (copy,)).fetchone()
     assert tuple(row) == ('inventory', None, 0, None)
     spare = next(r for r in state['rows'] if r['kind'] == 'spare')
@@ -666,6 +666,74 @@ def test_saved_group_mode(coll, copy, client):
     assert resumed['session']['id'] == state['session']['id']
     assert resumed['session']['order'] == state['session']['order']
     assert resumed['session']['sort'] == 'group'
+
+
+def test_group_answers_reload_and_undo_keep_session_order(coll, copy):
+    db = coll.db
+    state = start(db, copy, order='group')
+    order = state['session']['order']
+    before = checker.snapshot(db, copy, order)
+    for token in order[:2]:
+        mutate(db, copy, 'answer', token=token, found=0)
+    row = db.execute('SELECT * FROM part_check WHERE copy_id=?', (copy,)).fetchone()
+    body = json.loads(row['session_json'])
+    assert row['order_mode'] == 'inventory'
+    assert body['sort'] == 'group' and body['order'] == order
+    reloaded = checker.view(db, copy)['session']
+    assert reloaded['sort'] == 'group' and reloaded['order'] == order
+    assert set(reloaded['answers']) == set(order[:2])
+    for _ in order[:2]:
+        mutate(db, copy, 'undo')
+    assert checker.snapshot(db, copy, order) == before
+    assert checker.session(db, copy)['sort'] == 'group'
+
+
+@pytest.mark.parametrize('mode', ['inventory', 'largest', 'colour'])
+def test_legacy_column_only_session_keeps_its_order(coll, copy, mode):
+    db = coll.db
+    state = start(db, copy, order=mode)
+    db.execute("UPDATE part_check SET session_json=json_remove(session_json,'$.sort') WHERE copy_id=?", (copy,))
+    db.commit()
+    assert checker.session(db, copy)['sort'] == mode
+    assert checker.session(db, copy)['order'] == state['session']['order']
+    mutate(db, copy, 'answer', token=state['session']['order'][0], found=0)
+    mutate(db, copy, 'undo')
+    assert checker.session(db, copy)['sort'] == mode
+
+
+def test_unknown_saved_sort_falls_back_to_sequence(coll, copy):
+    db = coll.db
+    state = start(db, copy)
+    db.execute("UPDATE part_check SET session_json=json_set(session_json,'$.sort','future-order') WHERE copy_id=?", (copy,))
+    db.commit()
+    session = checker.view(db, copy)['session']
+    assert session['sort'] == 'inventory'
+    assert session['order'] == state['session']['order']
+    row = dict(db.execute('SELECT * FROM part_check WHERE copy_id=?', (copy,)).fetchone())
+    row['order_mode'] = 'unknown-legacy-order'
+    assert checker._model(row)['sort'] == 'inventory'
+
+
+def test_group_session_survives_rowlog_and_admin_export(coll, copy):
+    from contextlib import closing
+    from brickwork.store4.rowlog import RowLog
+    from brickwork.web.admin_ops import tools_export
+
+    db = coll.db
+    state = start(db, copy, order='group')
+    log = RowLog(db)
+    row = log.select('part_check', 'copy_id=?', (copy,))[0]
+    assert row['order_mode'] == 'inventory'
+    log.delete('part_check', row)
+    assert log.verify() is None
+    log.restore()
+    db.commit()
+    assert checker.session(db, copy) == state['session']
+    with closing(sqlite3.connect(':memory:')) as exported:
+        exported.deserialize(tools_export())
+        exported.row_factory = sqlite3.Row
+        assert checker.session(exported, copy) == state['session']
+        assert exported.execute('PRAGMA integrity_check').fetchone()[0] == 'ok'
 
 
 @pytest.mark.parametrize('mode,expected', [('group', 'group'), ('old-mode', 'inventory')])

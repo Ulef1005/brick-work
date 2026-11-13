@@ -125,7 +125,7 @@ def test_ids_are_kept_and_words_translated(world):
 def test_meta_and_one_event(world, catalogue):
     m, _ = world
     meta = dict(rows(m, 'SELECT key, value FROM meta'))
-    assert meta['schema_version'] == '4.3' and meta['install_id'] != ''
+    assert meta['schema_version'] == '4.2' and meta['install_id'] != ''
     cat = dict(rows(m, 'SELECT key, value FROM catalogue.meta'))
     assert meta['catalogue_id'] == cat['catalogue_id']
     assert meta['catalogue_item_high_water'] == cat['item_high_water'] and meta['catalogue_color_high_water'] == cat['color_high_water']
@@ -188,7 +188,7 @@ def test_nothing_is_visible_before_publish_and_inputs_are_unchanged(tmp_path, ca
     assert out.exists() and not m.temp_path.exists()
     assert (sha(src), sha(catalogue)) == before
     with closing(connect(out, catalogue)) as db:               # an ordinary 4.0 collection, openable by the store
-        assert db.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()[0] == '4.3'
+        assert db.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()[0] == '4.2'
     with pytest.raises(SchemaMismatch):
         connect(src, catalogue)                                # the 3.3 file is never opened as 4.0
 

@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_health_needs_no_token_and_names_v2(v2):
     response = v2.get(PREFIX + '/health')
     assert response.status_code == 200
-    assert response.json['data'] == {'status': 'ok', 'api': '2.0.0', 'app': response.json['data']['app'], 'schema': '4.3'}
+    assert response.json['data'] == {'status': 'ok', 'api': '2.0.0', 'app': response.json['data']['app'], 'schema': '4.2'}
     assert response.headers['Cache-Control'] == 'no-store'
 
 

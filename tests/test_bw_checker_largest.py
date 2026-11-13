@@ -55,3 +55,19 @@ def test_category_groups_use_catalogue_order_and_the_complete_largest_tie_breake
     assert sorted(rows, key=sorter('unrecognised', position)) == rows
     figures = [dict(r, kind='figure') for r in rows]
     assert sorted(figures, key=sorter('group', position)) == figures
+
+
+def test_group_sort_keeps_figures_together_before_every_part_group():
+    from brickwork.core.part_groups import GROUPS
+
+    rows = []
+    expected = ['figure-first', 'figure-second']
+    for index, categories in enumerate(GROUPS.values()):
+        for size in (1, 4):
+            rows.append(dict(token=f'{index}-{size}', kind='part', name=f'Brick 1 x {size}',
+                             category=categories[0], quantity=1))
+        expected.extend([f'{index}-4', f'{index}-1'])
+    rows.insert(1, dict(token='figure-first', kind='figure'))
+    rows.insert(8, dict(token='figure-second', kind='figure'))
+    position = {r['token']: i for i, r in enumerate(rows)}
+    assert [r['token'] for r in sorted(rows, key=sorter('group', position))] == expected

@@ -33,7 +33,7 @@
     const bar = document.createElement('p');
     bar.id = 'bw-demo-banner';
     bar.style.cssText = 'margin:0;padding:8px 16px;background:#E8E2D6;color:#1A1816;font:500 13px/18px Inter,system-ui,sans-serif;text-align:center';
-    bar.append('Demo with sample data · changes are not saved · Pictures are placeholder drawings; a real install loads them from BrickLink and Rebrickable · ');
+    bar.append('Demo with sample data · changes are not saved · Set pictures: Rebrickable · LEGO® is a trademark of the LEGO Group of companies, which does not sponsor, authorize or endorse this site · ');
     const link = document.createElement('a');
     link.href = 'https://github.com/Ulef1005/brick-work'; link.textContent = 'Brick Work on GitHub'; link.style.color = 'inherit';
     bar.append(link);

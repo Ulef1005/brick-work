@@ -153,7 +153,7 @@ def page(title, body, depth, *, current, head='', main='doc', absolute=False, pa
 <nav aria-label="Main">{nav}</nav><a class="gh link" href="https://github.com/{repo}">GitHub</a><button class="js-only" type="button" data-theme-toggle aria-label="Switch theme">Theme</button><details class="menu"><summary>Menu</summary><nav class="menu-list" aria-label="Menu">{menu}</nav></details></header></div>
 <main class="{main}">{body}</main>
 <div class="site"><footer class="sec foot"><div class="inner"><div class="cols">{footer_cols}</div>
-<p class="small muted fine">Brick Work is an independent project and is not affiliated with the LEGO Group, Rebrickable, Brickset or BrickLink. LEGO® is a trademark of the LEGO Group of companies, which does not sponsor, authorize or endorse this project. Brick Work is MIT-licensed and inspired by BrickTracker.</p></div></footer></div>
+<p class="small muted fine">Brick Work is an independent project and is not affiliated with the LEGO Group, Rebrickable, Brickset or BrickLink. LEGO® is a trademark of the LEGO Group of companies, which does not sponsor, authorize or endorse this project. Brick Work is MIT-licensed and inspired by BrickTracker. Part and set images: Rebrickable.</p></div></footer></div>
 <script src="{up}assets/site.js" defer></script>
 {ANALYTICS}
 </body>

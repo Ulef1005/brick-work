@@ -2,8 +2,8 @@
 
     python3 scripts/build_demo.py OUT [--base /brick-work/demo/]
 
-OUT must not exist. Runs offline from the repository alone (design/sources/test-data supplies the catalogue
-facts; the collection, prices and owners are invented; no pictures). Writes are answered with
+OUT must not exist. Runs offline from the repository alone (the real-sets world of brickwork/demo/real.py: seven real sets and their
+pictures from the not-MIT folder, everything around them invented). Writes are answered with
 "Demo with sample data: changes are not saved". Exit 1 when an exported page holds a private pattern
 or loads anything from outside. build_site.py can import build_demo(out, base).
 """
@@ -17,7 +17,7 @@ sys.path.insert(0, str(ROOT))
 
 def build_demo(out, base='/brick-work/demo/'):
     from brickwork.demo.export import export
-    return export(Path(out), base)
+    return export(Path(out), base, world='real')
 
 
 def main(argv=None):

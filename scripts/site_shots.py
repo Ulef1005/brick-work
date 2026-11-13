@@ -65,6 +65,8 @@ def first_pull(lot_page, tail=''):
         page = urllib.request.urlopen(base + lot_page + '?detect=1&min_score=0').read().decode()
         card = page[page.index('class="bd-cand'):]
         found = re.search(r'href="(%s/pull/\d+)"' % re.escape(lot_page), card)
+        if not found:
+            raise SystemExit(f'first_pull: no pull list link in the first candidate of {base + lot_page}')
         return found.group(1) + tail
     return find
 
@@ -278,7 +280,12 @@ def main(argv):
     # real-sets world, each capture failing on a missing-picture tile). A stem can be in both, so an entry is (world, table, stem).
     entries = [(WORLD_OF.get(stem, 'showcase'), PICTURES, stem) for stem in PICTURES] + [('real', SITE_PICTURES, stem) for stem in SITE_PICTURES]
     entries = [e for e in entries if options.only is None or e[2] in options.only]
-    written = set()
+    if options.out:
+        names = [e[2] for e in entries]
+        clash = sorted({n for n in names if names.count(n) > 1})
+        if clash:
+            print('--out writes every picture flat, and these are made on two worlds: ' + ', '.join(clash) + '; run without --out (each goes to its own folder)')
+            return 1
     with tempfile.TemporaryDirectory(prefix='bw-site-') as scratch:
         for world in dict.fromkeys(e[0] for e in entries):
             group = [(table, stem) for w, table, stem in entries if w == world]
@@ -301,10 +308,6 @@ def main(argv):
                 for job in jobs:
                     made = Path(job['out'])
                     name, folders = folders_of[made]
-                    if options.out and name in written:
-                        print(f'{name} is made on two worlds: run it without --out, or --only one of them')
-                        return 1
-                    written.add(name)
                     optimise(made)
                     for folder in ([Path(options.out)] if options.out else list(folders)):
                         folder.mkdir(parents=True, exist_ok=True)

@@ -225,8 +225,8 @@ def main(argv: list[str]) -> int:
             '--window-size=1200,630',
             f'--screenshot={tmp_png}',
             tmp_html.as_uri(),
-        ], capture_output=True, text=True)
-        if result.returncode:
+        ], capture_output=True, text=True, timeout=120)
+        if result.returncode or not tmp_png.is_file():
             print(result.stdout[-2000:] + result.stderr[-2000:])
             return 1
         optimise(tmp_png)

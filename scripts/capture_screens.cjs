@@ -53,10 +53,6 @@ let browser=null;
   if(deterministic)await evaluate("(()=>{const b=document.body;if(!b)return true;b.style.display='none';void b.offsetHeight;b.style.display='';void b.offsetHeight;return true;})()");   // lay the page out again with every font loaded: a form control laid out before its webfont arrived keeps the fallback's metrics, 1 px off from a warm session's (#267)
   if(job.script)await evaluate(`(async()=>{${job.script}})()`);
   await delay(250);
-  // no_tiles: the capture fails when the page (or the selector's subtree) shows the app's missing-picture tile (.bc-no-image, .bw-no-image, or a .bc-picture without an img: the lists build the tile in script) or a picture that did not load (#332: no capture shows a placeholder)
-  if(job.no_tiles){const scope=typeof job.no_tiles==='string'?job.no_tiles:'body';
-    const bad=await evaluate(`(()=>{const roots=[...document.querySelectorAll(${JSON.stringify(scope)})];return roots.flatMap(r=>[...r.querySelectorAll('.bc-no-image,.bw-no-image,.bc-picture:not(:has(img)),img')].filter(e=>e.getClientRects().length&&(e.tagName!=='IMG'||(e.getAttribute('src')&&e.complete&&!e.naturalWidth))).map(e=>e.className||e.getAttribute('src')||e.tagName));})()`);
-    if(bad.length)throw new Error('no_tiles: '+bad.length+' missing picture(s) in '+job.url+' ('+job.out+'): '+[...new Set(bad)].slice(0,5).join(', '));}
   // An open sheet is shown as the device sees it (one viewport); a page is shown whole, with the viewport grown to its height so the
   // fixed bars (phone tab bar, save bar) sit at its foot rather than across the middle of the capture.
   const sheet=(job.sheet_below&&width<job.sheet_below)||await evaluate("!!document.querySelector('dialog[open]')");   // sheet_below: a sheet that is not a dialog (a fixed panel) is still one viewport on a phone
@@ -68,6 +64,15 @@ let browser=null;
    await delay(250);
   }
   if(job.after){await evaluate(`(async()=>{${job.after}})()`);await delay(250);}   // after: JS run once the viewport has its final size (the call-out overlays, which are placed from the boxes as they now are)
+  // no_tiles: the capture fails when the page (or the selector's subtree) shows the app's missing-picture tile (.bc-no-image, .bw-no-image, or a .bc-picture without an img: the lists build the tile in script) or a picture that
+  // did not load (#332: no capture shows a placeholder). It runs with the viewport at its final size: lazy pictures are made eager and given up to 5 s to finish, and one still loading then counts as missing.
+  if(job.no_tiles){const scope=typeof job.no_tiles==='string'?job.no_tiles:'body';
+    const bad=await evaluate(`(async()=>{const roots=[...document.querySelectorAll(${JSON.stringify(scope)})];
+      const shown=e=>e.getClientRects().length>0;
+      const imgs=roots.flatMap(r=>[...r.querySelectorAll('img[src]')]);imgs.forEach(i=>{i.loading='eager';});
+      const until=Date.now()+5000;while(imgs.some(i=>shown(i)&&!i.complete)&&Date.now()<until)await new Promise(r=>setTimeout(r,100));
+      return roots.flatMap(r=>[...r.querySelectorAll('.bc-no-image,.bw-no-image,.bc-picture:not(:has(img)),img')].filter(e=>shown(e)&&(e.tagName!=='IMG'||(e.getAttribute('src')&&(!e.complete||!e.naturalWidth)))).map(e=>e.className||e.getAttribute('src')||e.tagName));})()`);
+    if(bad.length)throw new Error('no_tiles: '+bad.length+' missing picture(s) in '+job.url+' ('+job.out+'): '+[...new Set(bad)].slice(0,5).join(', '));}
   let clip={x:0,y:0,width,height:shotHeight,scale:1};
   if(job.crop){   // crop: a selector or a list of them (the union of their boxes, plus `crop_pad` px), clipped to the page; the file is `scale` times the CSS size
    const pad=job.crop_pad===undefined?16:job.crop_pad;

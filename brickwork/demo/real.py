@@ -190,7 +190,7 @@ class Layer(showcase.Layer):
                 dataset.price(db, item, None, 'N', round(base, 2), 11 + index, '2026-10-12T06:00:00.000Z', low=round(base * 0.88, 2), high=round(base * 1.2, 2))
                 dataset.price(db, item, None, 'U', round(base * 0.74, 2), 19 + index * 2, '2026-10-12T06:00:00.000Z', low=round(base * 0.55, 2), high=round(base * 0.95, 2))
                 for month in range(10):
-                    dataset.price(db, item, None, 'N', round(base * (1.12 - 0.012 * month), 2), None, '2026-%02d-14T06:00:00.000Z' % (1 + month), current=False)
+                    dataset.price(db, item, None, 'N', round(base * (1.12 - 0.012 * month), 2), None, '2026-%02d-05T06:00:00.000Z' % (1 + month), current=False)   # every date is before the demo's frozen now (2026-10-12)
             wanted = zip(self.rng.sample(self.stockpool, 9), [40, 24, 16, 60, 12, 30, 8, 20, 50], [0.06, 0.12, 0.2, 0.05, 0.3, 0.1, 0.45, 0.15, 0.04])
             for index, (row, quantity, maximum) in enumerate(wanted):
                 part, colour = dataset.item_by(db, 'parts', row['part']), dataset.colour_by(db, row['color']['id'])
@@ -264,17 +264,31 @@ class Layer(showcase.Layer):
 
 
 def size_of(path):
-    """Width and height of a PNG or a JPEG, read from the header."""
+    """Width and height of a PNG or a JPEG, read from the header; anything else is a ValueError."""
     data = Path(path).read_bytes()
-    if data[:8] == b'\x89PNG\r\n\x1a\n':
+    if data[:8] == b'\x89PNG\r\n\x1a\n' and len(data) >= 24:
         return struct.unpack('>II', data[16:24])
-    index = 2
-    while index < len(data):   # JPEG: walk the segments to the first start-of-frame marker
-        marker, length = data[index + 1], struct.unpack('>H', data[index + 2:index + 4])[0]
-        if marker in (0xC0, 0xC1, 0xC2):
-            height, width = struct.unpack('>HH', data[index + 5:index + 9])
-            return width, height
-        index += 2 + length
+    if data[:2] == b'\xff\xd8':
+        index = 2
+        while index + 4 <= len(data):   # JPEG: walk the segments to the first start-of-frame marker (every SOF but DHT, JPG and DAC)
+            if data[index] != 0xFF:
+                break
+            marker = data[index + 1]
+            if marker == 0xFF:   # fill byte
+                index += 1
+                continue
+            if marker in (0x01, *range(0xD0, 0xDA)):   # standalone markers carry no length
+                index += 2
+                continue
+            if marker == 0xDA:   # start of scan: no frame header came before it
+                break
+            length = struct.unpack('>H', data[index + 2:index + 4])[0]
+            if 0xC0 <= marker <= 0xCF and marker not in (0xC4, 0xC8, 0xCC):
+                if index + 9 > len(data):
+                    break
+                height, width = struct.unpack('>HH', data[index + 5:index + 9])
+                return width, height
+            index += 2 + length
     raise ValueError('not a PNG or JPEG: %s' % path)
 
 

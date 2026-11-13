@@ -2,6 +2,8 @@
 import json
 import sqlite3
 
+import pytest
+
 from brickwork.demo import dataset, real
 from tests import rendered
 
@@ -102,3 +104,19 @@ def test_a_capture_fails_on_a_missing_picture_tile(tmp_path):
         assert capture('/collection/sets').returncode == 0
         failed = capture('/collection/P')
         assert failed.returncode != 0 and 'no_tiles' in (failed.stderr + failed.stdout)
+
+
+def test_size_of_reads_png_and_jpeg_headers_and_refuses_the_rest(tmp_path):
+    import struct
+    png = tmp_path / 'a.png'
+    png.write_bytes(b'\x89PNG\r\n\x1a\n' + struct.pack('>I', 13) + b'IHDR' + struct.pack('>II', 30, 20))
+    assert real.size_of(png) == (30, 20)
+    frame = b'\xff\xc2' + struct.pack('>HBHHB', 11, 8, 40, 60, 1) + b'\0\0\0'                   # a progressive frame header: 60 wide, 40 high
+    jpeg = tmp_path / 'a.jpg'
+    jpeg.write_bytes(b'\xff\xd8\xff\xff\xe0' + struct.pack('>H', 4) + b'\0\0' + b'\xff\xd0' + frame)   # a fill byte, an APP0 segment, a standalone marker
+    assert real.size_of(jpeg) == (60, 40)
+    for name, body in (('empty.jpg', b''), ('cut.jpg', b'\xff\xd8\xff\xe0\x00'), ('text.png', b'not a picture at all, long enough to pass any length check')):
+        (tmp_path / name).write_bytes(body)
+        with pytest.raises(ValueError):
+            real.size_of(tmp_path / name)
+    assert real.size_of(real.FOLDER / 'images' / 'sets' / '31120-1.jpg') == (900, 668)

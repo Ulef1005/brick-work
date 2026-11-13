@@ -81,11 +81,21 @@ runtimes() {
 
 secrets() {
   if ! command -v gitleaks >/dev/null 2>&1; then
+    if [[ ${CI:-} == true ]]; then   # CI gets gitleaks from the action in the check workflow: without it the scan must fail, never skip (#364)
+      echo "FAILED: gitleaks is not installed in CI, so the secret scan cannot run."
+      return 1
+    fi
     echo "NOTE: gitleaks is not installed; skipping secret scan."
     return 0
   fi
   local rc=0 base tree f repo=$PWD
   gitleaks detect --no-banner || rc=1
+  # In CI the working copy is the checkout of the commit the history scan (fetch-depth 0) has just covered, and nothing in it is untracked (CI=true is set by
+  # GitHub Actions), so the copy and its second scan add nothing there and cost about 15 s (#364, item 4). Locally both scans always run.
+  if [[ ${CI:-} == true ]]; then
+    echo "NOTE: CI=true, so the working-copy secret scan is skipped; the history scan above covers the checkout."
+    return $rc
+  fi
   # History alone misses what is not committed yet: scan the working copy of every tracked and untracked,
   # not ignored file too. Both scans always run; a copy that fails fails the step, so a partial tree never passes.
   base=$(mktemp -d) || return 1

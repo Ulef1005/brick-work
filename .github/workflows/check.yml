@@ -43,6 +43,8 @@ jobs:
         run: |
           python -m venv .venv
           .venv/bin/pip install -r requirements-dev.txt
+      # This action also puts the gitleaks binary on the PATH: scripts/check.sh's `secrets` step (the whole history, which includes this scan's pull request
+      # commits) needs it and fails in CI without it. Keep the step even though its own scan is a subset (#364, item 4).
       - name: Secret scan
         uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e  # v3.0.0
         env:

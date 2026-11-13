@@ -109,13 +109,13 @@ def test_picker_ranking_controls_and_disabled_keys(world, coll, client):
     page = BeautifulSoup(response.text, 'html.parser')
     assert response.status_code == 200 and page.select_one('[data-pick]').has_attr('hidden') is False
     controls = page.select('[data-rank-key] input')
-    assert len(controls) == 5
+    assert len(controls) == 6
     assert [n['value'] for n in controls if n.has_attr('checked')] == ['storage', 'colour']
     assert page.select_one('[value=size]').has_attr('disabled')
     handle = page.select_one('[data-rank-key="size"] [data-drag]')
-    assert handle['tabindex'] == '-1' and handle['aria-disabled'] == 'true' and len(page.select('[data-drag][tabindex="0"]')) == 4
+    assert handle['tabindex'] == '-1' and handle['aria-disabled'] == 'true' and len(page.select('[data-drag][tabindex="0"]')) == 5
     default = soup(client, f'/workbench/part-picker?copy={world.copy_a}')
-    assert [n['data-rank-key'] for n in default.select('[data-rank-key]')] == list(w.PICKER_KEYS)
+    assert [n['data-rank-key'] for n in default.select('[data-rank-key]')] == list(w.PICKER_DEFAULT) + ['group']
     assert [n['value'] for n in default.select('[data-rank-key] input[checked]')] == ['category', 'colour', 'set', 'storage']
 
 
@@ -191,3 +191,20 @@ def test_the_list_count_is_markup_not_escaped_text(world, client):
         html = client.get(route).get_data(as_text=True)
         assert '&lt;span' not in html, route
     assert '<span class="mono" data-count role="status"></span>' in client.get('/workbench/match').get_data(as_text=True)   # Recent saves
+
+
+def test_group_ranking_renders_enabled_disabled_and_unknown_values(world, coll, client, pair):
+    coll.sql("UPDATE item SET category_name='Bricks' WHERE id=?", (world.brick,))
+    page = soup(client, f'/workbench/part-picker?copy={world.copy_a}&ranked=1&rank=group&rank=old')
+    group = page.select_one('[data-rank-key=group]')
+    assert group.select_one('label span').text == 'Category group'
+    assert group.select_one('input').has_attr('checked')
+    assert not group.select_one('input').has_attr('disabled')
+    coll.sql('UPDATE item SET category_name=NULL WHERE id=?', (world.brick,))
+    import sqlite3
+    with sqlite3.connect(pair.with_name('catalogue.db')) as catalogue:
+        catalogue.execute('UPDATE item SET category_id=NULL WHERE id=?', (world.brick,))
+    page = soup(client, f'/workbench/part-picker?copy={world.copy_a}')
+    group = page.select_one('[data-rank-key=group]')
+    assert group.select_one('input').has_attr('disabled')
+    assert group.select_one('small').text == 'No category is recorded for these parts'

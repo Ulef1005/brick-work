@@ -424,6 +424,19 @@ def test_legal_pages_footer_and_missing_page(site):
     assert canonical == [origin + site_base() + 'docs/']
 
 
+def test_the_apex_build_holds_no_repository_path_anywhere(site):
+    # On the custom domain every path starts at /; a leftover /brick-work/ is a 404 there (the demo entry page's meta refresh and the
+    # demo manifest are not attributes the path check above reads). GitHub URLs and filesystem examples have a word before the slash.
+    from scripts.build_site import site_base
+    if site_base() != '/':
+        pytest.skip('only the apex build')
+    leak = re.compile(r'(?<![\w.\-/])/brick-work/')
+    # The changelog page quotes the build_demo.py `--base /brick-work/demo/` option as text, so it is not scanned.
+    found = [str(f.relative_to(site)) for f in site.rglob('*') if f.relative_to(site).parts[0] != 'changelog'
+             and f.suffix in ('.html', '.css', '.js', '.json', '.txt', '.xml') and leak.search(f.read_text(errors='ignore'))]
+    assert not found, found
+
+
 def test_all_absolute_html_and_css_paths_resolve(site):
     from scripts.build_site import site_base
     base = site_base()

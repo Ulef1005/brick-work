@@ -73,7 +73,8 @@ assert.deepEqual([...api.pageItems(3,1)],[1,2,3]);assert.deepEqual([...api.pageI
   Object.defineProperty(row,'nextSibling',{get(){return ranking.children[ranking.children.indexOf(row)+1] || null;}});return row;
  };
  const storage=make('storage','Storage',true),colour=make('colour','Colour',true),category=make('category','Category',false),size=make('size','Size',false,true);
- ranking.children=[storage,colour,category,size];ranking.insertBefore=(row,target)=>{ranking.children=ranking.children.filter(n=>n!==row);const i=target?ranking.children.indexOf(target):ranking.children.length;ranking.children.splice(i,0,row);};
+ const group=make('group','Category group',false);
+ ranking.children=[storage,colour,category,size,group];ranking.insertBefore=(row,target)=>{ranking.children=ranking.children.filter(n=>n!==row);const i=target?ranking.children.indexOf(target):ranking.children.length;ranking.children.splice(i,0,row);};
  vm.runInNewContext((fs.readFileSync('static/web/toni/formatting.js','utf8')+fs.readFileSync('static/web/toni/bw-workbench.js','utf8')),{window:{},document:d});
  assert.equal(summary.textContent,'Storage, then colour');
  const original=ranking.children.slice();
@@ -92,6 +93,10 @@ assert.deepEqual([...api.pageItems(3,1)],[1,2,3]);assert.deepEqual([...api.pageI
  colour.nodes['[data-drag]'].trigger('keydown',{key:'ArrowUp'});
  category.nodes.input.checked=true;category.nodes.input.trigger('change');assert.equal(category.nodes['[data-rank-position]'].textContent,'3');
  category.trigger('dragstart',{dataTransfer:{setData(){}}});colour.trigger('drop');assert.equal(ranking.children[0],category);assert.equal(summary.textContent,'Category, then colour, then storage');
+ group.nodes.input.checked=true;group.nodes.input.trigger('change');
+ group.trigger('dragstart',{dataTransfer:{setData(){}}});category.trigger('drop');
+ assert.equal(ranking.children[0],group);assert.equal(summary.textContent,'Category group, then category, then colour, then storage');
+ group.nodes['[data-drag]'].trigger('keydown',{key:'ArrowDown'});assert.equal(ranking.children[1],group);
  size.nodes.input.checked=true;size.nodes.input.trigger('change');assert.ok(!summary.textContent.includes('size'));
  for(const row of ranking.children)row.nodes.input.checked=false;size.nodes.input.trigger('change');assert.equal(summary.textContent,'Default order');
 }

@@ -30,7 +30,7 @@ Part Runner collects the missing parts of several sets while you walk along your
 ![Part Runner on a phone: Choose sets is on, three sets are ticked and the button reads Continue · 3 sets.](../img/tutorials/bulk-runner-sets-phone-390-light.png#only-light){ width="300" }
 ![Part Runner on a phone: Choose sets is on, three sets are ticked and the button reads Continue · 3 sets.](../img/tutorials/bulk-runner-sets-phone-390-dark.png#only-dark){ width="300" }
 
-4. Under **In what order do you pick?**, you see the keys **Category**, **Colour**, **Size**, **Set** and **Storage**. A line under them says which order you get. Keep **Storage** switched on: it puts the parts that sit in the same drawer next to each other. A key with nothing to sort by is switched off and says why.
+4. Under **In what order do you pick?**, you see the keys **Category**, **Category group**, **Colour**, **Size**, **Set** and **Storage**. A line under them says which order you get. Keep **Storage** switched on: it puts the parts that sit in the same drawer next to each other. A key with nothing to sort by is switched off and says why.
 5. Select **Start picking**.
 
 ![The pick order on a phone: Category, Colour, Set and Storage are on, Size is off because no part sizes are recorded.](../img/tutorials/bulk-runner-order-phone-390-light.png#only-light){ width="300" }
@@ -72,3 +72,5 @@ You gave your loose parts a place, collected the missing parts of several sets i
 - [Know where things are](../how-to/storage.md) for more on storage.
 - [Pick parts for several sets](../how-to/pick-parts.md) for the full pick order and printing.
 - [Find sets your loose stock can finish](../how-to/match-stock-to-sets.md) for how matching works and how to narrow the list.
+
+**Category group** is off by default. Switch it on to pick in the fixed category-group order, with **Other** last. Like **Category**, it is unavailable when none of the parts has a recorded category. It works independently of **Group parts by**.

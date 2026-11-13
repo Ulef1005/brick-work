@@ -44,6 +44,8 @@ def need_node() -> str:
 def chrome(*, pinned: bool = False) -> str:
     """The Chrome binary (scripts/chrome.py: CHROME, the pinned cache, a system Chrome, else the pinned download).
     `pinned`: the screenshot gate's browser, whose pixels the baselines were made with."""
+    if os.environ.get('BW_NO_CHROME') == '1':   # CI switches every Chrome test off on a pull request (Ulf, 2026-11-13); check.sh names each skip
+        pytest.skip(f'{MARK} Chrome is switched off (BW_NO_CHROME=1)')
     need_node()
     if CURRENT is not None and not any(m.args[:1] == (GROUP,) for m in CURRENT.iter_markers('xdist_group')):
         pytest.fail(f'{CURRENT.nodeid} uses Chrome but is not in the xdist group: put `@rendered.group` on it (tests/rendered.py), '

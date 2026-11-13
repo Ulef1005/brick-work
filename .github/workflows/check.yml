@@ -31,7 +31,8 @@ jobs:
         with:
           node-version: "22"
       # The rendered tests run in CI (ADR 0022): scripts/check.sh gets the pinned Chrome for Testing through scripts/chrome.py, which checks its
-      # SHA-256; the cache saves the ~200 MB download. BW_SKIP_RENDERED is never set here, so a missing browser fails the job.
+      # SHA-256; the cache saves the ~200 MB download. BW_SKIP_RENDERED is never set here, so a missing browser fails the job. A pull request sets
+      # BW_NO_CHROME=1 instead: every Chrome test is skipped and named in the summary; a push to main runs them all.
       - name: Cache Chrome for Testing
         uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25  # v5.1.0
         with:
@@ -64,6 +65,7 @@ jobs:
         run: APP_VENV=.venv bash scripts/check.sh
         env:
           BW_CHECK_MODE: ${{ steps.scope.outputs.mode }}
+          BW_NO_CHROME: ${{ github.event_name == 'pull_request' && '1' || '' }}  # no Chrome test on a pull request (Ulf, 2026-11-13); a push to main still runs them
           BW_CHROME_NO_SANDBOX: "1"  # the runner's user namespaces may be restricted; the pages are our own test fixtures
           DOCS_RANGE: ${{ github.event_name == 'push' && format('{0}..{1}', github.event.before, github.sha) || format('{0}..{1}', github.event.pull_request.base.sha, github.sha) }}
       - name: Upload the screenshot diffs

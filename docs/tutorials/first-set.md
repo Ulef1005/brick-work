@@ -70,8 +70,8 @@ The page now reads **Added 1 item** and shows a progress bar while the copy is m
 5. If the set has minifigures, they come after the parts as a **Figure review**. If it has spare parts, you are asked **Include spare parts?**. Spares are never counted as missing.
 6. After the last part, the end of the check shows three steps: **1 Skipped**, **2 Missing**, **3 Save**. Work through them: **Check the N skipped parts** or **Leave them unchecked**, then read **Missing so far**.
 
-<picture data-bw-screens><source media="(max-width: 600px)" srcset="../img/tutorials/tut-inspect-end-phone-390-light.png"><img src="../img/tutorials/tut-inspect-end-desktop-1024-light.png#only-light" alt="The end of a check with three call-outs: 1 is the Missing so far heading, 2 the Found 1 button of the first entry, 3 the Done button."></picture>
-<picture data-bw-screens><source media="(max-width: 600px)" srcset="../img/tutorials/tut-inspect-end-phone-390-dark.png"><img src="../img/tutorials/tut-inspect-end-desktop-1024-dark.png#only-dark" alt="The end of a check with three call-outs: 1 is the Missing so far heading, 2 the Found 1 button of the first entry, 3 the Done button."></picture>
+<picture data-bw-screens><source media="(max-width: 600px)" srcset="../img/tutorials/tut-inspect-end-phone-390-light.png"><img src="../img/tutorials/tut-inspect-end-desktop-1024-light.png#only-light" alt="The end of a check: 1 marks the Missing so far heading, 2 the Found 1 button of its first entry, a minifigure."></picture>
+<picture data-bw-screens><source media="(max-width: 600px)" srcset="../img/tutorials/tut-inspect-end-phone-390-dark.png"><img src="../img/tutorials/tut-inspect-end-desktop-1024-dark.png#only-dark" alt="The end of a check: 1 marks the Missing so far heading, 2 the Found 1 button of its first entry, a minifigure."></picture>
 
 7. Select **Done · N still missing**. In the last step, tick **Set is checked** and select **Done**.
 

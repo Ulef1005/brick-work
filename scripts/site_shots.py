@@ -105,9 +105,6 @@ PICTURES = {
     '3c-picker-pick-phone-390': (PICKED + '&pick=1', 390, 950, None, (SITE,)),
     '4c-complete-sets-phone-390': ('/planning/complete-sets', 390, 844, None, (SITE,)),
     # The two tutorials (docs/tutorials/): the Add search, Set Inspector, Complete sets, the wishlist and an order being counted, on the same invented world
-    'tut-inspect-list-phone-390': ('/workbench/check-parts', 390, 1100, None, (TUTORIALS,)),
-    'tut-wishlist-phone-390': ('/planning/wishlist', 390, 900, None, (TUTORIALS,)),
-    'tut-order-count-phone-390': ('/workbench/orders/2?view=count', 390, 1500, None, (TUTORIALS,)),
     '12b-count-what-arrived-desktop-1440': ('/workbench/orders/2', 1440, 1050, None, (SITE,)),
     '12c-list-and-detail-desktop-1440': (STORAGE, 1440, 1300, None, (SITE,)),
     '1d-set-detail-phone-390': ('/collection/item/set/99103-1?copy=' + uid('copy', '99103-1', 'a'), 390, 1800, None, (SITE,)),
@@ -151,6 +148,12 @@ for (const [selector, number] of marks) {
 """ % json.dumps(marks)
 
 
+def tag_text(selector, text, attr='data-shot-area'):
+    """JS for a job's `after`: mark the first element matching `selector` whose text is `text` with `attr` (a link or button that has no id of its own)."""
+    return (f"{{ const named = [...document.querySelectorAll({json.dumps(selector)})].find(e => (e.textContent || '').replace(/\\s+/g, ' ').trim() === {json.dumps(text)});\n"
+            f"if (!named) throw new Error('tag_text: no ' + {json.dumps(selector)} + ' with the text ' + {json.dumps(text)}); named.setAttribute({json.dumps(attr)}, ''); }}\n")
+
+
 # The tutorial shots that follow the reader's screen (App Docs Standard, screenshot standard): each exists as a desktop shot (a 1024 px viewport at device
 # scale 2, cut to the area the step is about) and as a phone shot, each in light and dark, with numbered call-outs. name: (path, script, {layout: (width, crop, marks)}).
 # The file is `tut-<name>-<layout>-<width>-<theme>.png`. `crop` is a list of selectors (the picture is cut to their union), `marks` are (selector, number) pairs.
@@ -173,9 +176,11 @@ if (named.length) throw new Error('no_placeholders: ' + named.length + ' placeho
 """ % json.dumps(list(selectors))
 
 
-def tag_nth(selector, n, attr='data-shot-area'):
-    """JS for a job's `after`: mark the n-th (1-based) element matching `selector` with `attr`, so a crop or a call-out can name it ("the fourth row")."""
-    return f"const hit = [...document.querySelectorAll({json.dumps(selector)})][{n - 1}]; if (!hit) throw new Error('tag_nth: no match for ' + {json.dumps(selector)}); hit.setAttribute({json.dumps(attr)}, '');\n"
+def tag_nth(selector, n, attr='data-shot-area', closest=None):
+    """JS for a job's `after`: mark the n-th (1-based) element matching `selector` (or its nearest ancestor matching `closest`, else its grandparent) with `attr`,
+    so a crop or a call-out can name it ("the first row")."""
+    return (f"{{ let hit = [...document.querySelectorAll({json.dumps(selector)})][{n - 1}]; if (!hit) throw new Error('tag_nth: no match for ' + {json.dumps(selector)});\n"
+            f"hit = ({json.dumps(closest)} && hit.closest({json.dumps(closest)})) || ({json.dumps(closest)} ? hit.parentElement.parentElement : hit); hit.setAttribute({json.dumps(attr)}, ''); }}\n")
 
 
 # The tutorial shots that follow the reader's screen (App Docs Standard, screenshot standard): each exists as a desktop shot (a 1024 px viewport at device
@@ -193,7 +198,20 @@ TUTORIAL_SHOTS = {
         layout: (width, ['[data-stage]'], [('[data-stage] img', 1), ('[data-action=answer]', 2), ('[data-action=missing]', 3), ('[data-action=skip]', 4)], '')
         for layout, width in (('desktop', 1024), ('phone', 390))}),
     'inspect-end': ('/workbench/check-parts/%s?run=1' % REAL_GAPS, None, {
-        layout: (width, ['[data-stage] h2', '[data-shot-area]'], [('[data-stage] h2', 1), ('[data-action=found_one]', 2), ('[data-action=finish_view]', 3)], tag_nth('[data-action=found_one]', 4))
+        layout: (width, ['[data-stage] h2', '[data-shot-area]'], [('[data-stage] h2', 1), ('[data-action=found_one]', 2)], tag_nth('[data-action=found_one]', 1, closest='.check-miss'))
+        for layout, width in (('desktop', 1024), ('phone', 390))}),
+    'inspect-list': ('/workbench/check-parts', None, {
+        layout: (width, ['[data-copy-section=progress]', '[data-copy-section=unchecked]'],
+                 [('[data-copy-section=progress] .check-copy', 1), ('[data-copy-section=unchecked] .check-section-title', 2)], '')
+        for layout, width in (('desktop', 1024), ('phone', 390))}),
+    'wishlist': ('/planning/wishlist', None, {
+        layout: (width, ['h1', '[data-shot-area]'],
+                 [('a.button[aria-current=page]', 1), ('[data-wl-open=bw-manage-wishlists]', 2), ('[data-wl-open=bw-export-wishlist]', 3), ('[data-shot-print]', 4)],
+                 tag_text('a.button', 'Download CSV') + tag_text('a.button', 'Print', 'data-shot-print'))
+        for layout, width in (('desktop', 1024), ('phone', 390))}),
+    'order-count': ('/workbench/orders/2?view=count', None, {
+        layout: (width, ['[data-order-panel=count] h2', '[data-shot-area]'], [('[data-order-panel=count] h2', 1), ('.order-count-row', 2)],
+                 tag_nth('.order-count-row', 3))
         for layout, width in (('desktop', 1024), ('phone', 390))}),
     'complete-sets': ('/planning/complete-sets', None, {
         layout: (width, ['[data-bp-row]:first-of-type'], [('[data-bp-row]:first-of-type', 1), ('[data-bp-pin]', 2), ('.bp-repair-details summary', 3)], '')

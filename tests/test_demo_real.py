@@ -49,7 +49,7 @@ def test_each_set_has_its_picture_and_every_picture_has_a_file(tmp_path):
     assert {k for k in manifest if not k.startswith('sets/')} == {'parts/33299a/71', 'parts/62462/25', 'parts/87619/15', 'parts/91968c01/0', 'minifigs/fig-004770'}
     assert all((real.FOLDER / 'images' / f).is_file() for f in manifest.values())
     _, db, _ = build(tmp_path)
-    assert db.execute("SELECT count(*) FROM picture WHERE source='rebrickable_images'").fetchone()[0] == db.execute('SELECT count(*) FROM picture').fetchone()[0] >= 7
+    assert db.execute("SELECT count(*) FROM picture WHERE source='rebrickable_images'").fetchone()[0] == db.execute('SELECT count(*) FROM picture').fetchone()[0] == len(manifest)   # every manifest entry matched an item
     assert db.execute("SELECT name FROM source WHERE id='rebrickable_images'").fetchone()[0] == 'Rebrickable'
     for (path,) in db.execute('SELECT local_path FROM picture'):
         assert (tmp_path / 'w' / path).is_file()
@@ -86,14 +86,17 @@ def test_the_real_world_exports_with_jpeg_pictures(tmp_path):
     assert len(files) == 12
     jpegs = {i for i, f in files.items() if f.suffix == '.jpg'}
     assert len(jpegs) == 8 and all(files[i].read_bytes()[:2] == b'\xff\xd8' for i in jpegs)             # the sets and the figure
-    assert all(f.read_bytes()[:8] == b'\x89PNG\r\n\x1a\n' for i, f in files.items() if i not in jpegs)   # the part renders
+    assert all(f.suffix == '.png' and f.read_bytes()[:8] == b'\x89PNG\r\n\x1a\n' for i, f in files.items() if i not in jpegs)   # the part renders
     assert manifest['pictures'] == {i: 'jpg' for i in jpegs}                                            # only the non-PNG ones are listed for the shim
     assert 'kindOf' in (out / 'demo-shim.js').read_text() and '"pictures"' in (out / 'demo-shim.js').read_text()
     pages = list((out / 'collection').rglob('index.html'))
     assert any(re.search(r'src="' + re.escape(base) + r'manage/images/[1-9][0-9]*\.jpg"', p.read_text()) for p in pages)
+    named = set()
     for page in pages:   # every picture a page names has the extension of its file
         for number, extension in re.findall(r'manage/images/([1-9][0-9]*)\.(png|jpg)', page.read_text()):
             assert files[number].suffix == '.' + extension, (page, number)
+            named.add(extension)
+    assert named == {'png', 'jpg'}   # a part render and a set picture are both shown
 
 
 @rendered.group

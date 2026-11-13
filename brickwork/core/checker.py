@@ -1,4 +1,4 @@
-"""Set Inspector on the 4.0 store (M.8d, issue #110; design 5 `part_check`, 4.4, 4.5, 2.4 invariant 10).
+"""Set Inspector sessions and answers on the collection store.
 
 A session is a `part_check` row per copy (and one per figure line inside the copy): its order and answers are kept by token, and a
 token is a line's own id, which an in-place part-list switch keeps: `p:<copy_part.id>` for a required or spare part line and
@@ -19,14 +19,14 @@ import uuid
 
 from ..store4.audit import value_text
 from ..store4.connect import now
-from . import errors
+from . import errors, part_groups
 from . import undo as undoing
 from .admin import OPERATION_KEY, audit, origin
 from .completeness import derived_state
 from .transaction import transaction
 
 CHECKED_FLAG = 'Set is checked'
-ORDERS = ('inventory', 'largest', 'colour')
+ORDERS = ('inventory', 'largest', 'colour', 'group')
 SESSION_COLUMNS = ('session_id', 'order_mode', 'spares', 'session_json', 'finished', 'started_at', 'updated_at')
 _REQUEST = ContextVar('checker_request_operation', default=None)       # the client's operation id while an Undo runs, for its receipt
 
@@ -46,7 +46,14 @@ def _figure_of(entity):
 def sorter(mode, position):
     """Sort key of the rows of one kind for an order mode. Largest first is the physical size from the catalogue name and category
     (`part_size.volume`; the item's `size_key` is the sorted dimensions of the same name and cannot tell a plate from a brick), then
-    the larger count, then one colour after another so a part's colours stay together."""
+    the larger count, then colour, item number and sequence position. Category group uses the fixed
+    `part_groups.GROUPS` order with that same size key within each group; figures come first in their sequence.
+    Unknown modes use sequence position."""
+    if mode == 'group':
+        largest = sorter('largest', position)
+        groups = list(part_groups.GROUPS)
+        return lambda r: ((0, position[r['token']]) if r.get('kind') == 'figure' else
+                          (1 + groups.index(part_groups.group_of(r.get('category'))), *largest(r)))
     if mode == 'largest':
         from .part_size import volume
         return lambda r: (-volume(r.get('name') or '', r.get('category') or ''), -(r['quantity'] or 0),
@@ -65,6 +72,8 @@ def normalise(s, kinds):
     finish. Nothing stored is rewritten here; the next save persists the changed form and its receipt keeps the raw old value."""
     if not s:
         return s
+    if s.get('sort') not in ORDERS:
+        s['sort'] = 'inventory'
     keep_spares = s['spares'] == 'yes'
 
     def visible(token):
@@ -122,7 +131,7 @@ def rows(db, copy_id, images=True, tokens=None, decorate=True, figure=None):
     """The sequence of a check: the required parts, the whole figures and the spare lines of a copy, all live.
 
     With `figure` (a `copy_figure` id) the rows are exactly that figure's required (non-spare) component lines. `decorate=False` is the
-    write path's light read (names and sizes for ordering, no identity or picture lookups); `images=False` leaves the pictures out of
+    write path's light read (names and item numbers for ordering, no picture lookups); `images=False` leaves the pictures out of
     the decorated rows. Each row: `token`, `kind` (`part`, `figure`, `spare`), `id`, `item_id`, `color_id`, `quantity`, `missing`,
     `damaged`, `checked` (a figure line has no `damaged` or `checked`: its `missing` is the answer)."""
     result = []
@@ -144,6 +153,10 @@ def rows(db, copy_id, images=True, tokens=None, decorate=True, figure=None):
             if table == 'figure':
                 r['parts_lines'], r['parts_missing'] = components.get(r['id'], (0, 0))
             result.append(r)
+    from . import collection
+    names = collection._names(db, [r['item_id'] for r in result])
+    for r in result:
+        r['category'] = (names.get(r['item_id'], {}).get('category_name') or '').strip() or None
     if decorate and result:
         from . import collection
         for r, d in zip(result, collection.decorate(db, result)):
@@ -157,6 +170,21 @@ def rows(db, copy_id, images=True, tokens=None, decorate=True, figure=None):
                 r['ink'] = None
             if not images:
                 r.pop('image', None)
+    if not decorate and result:
+        # Match the decorated sort keys without looking up pictures.
+        from . import items
+        labels = items.labels(db, [(r['item_id'], r['color_id']) for r in result])
+        for r in result:
+            label = labels.get((r['item_id'], r['color_id']))
+            r['item_no'] = (label.number if label else None) or ''
+            r['name'] = _tidy(r['name'] or (label.name if label else '')) or r['item_no']
+            r['color_name'] = r['color_name'] or 'Unknown colour'
+    if decorate and tokens is None:
+        # Server-computed positions keep optimistic offline spare ordering identical.
+        position = {r['token']: i for i, r in enumerate(result)}
+        for mode in ('group', 'largest'):
+            for rank, r in enumerate(sorted(result, key=sorter(mode, position))):
+                r[mode + '_order'] = rank
     return result
 
 
@@ -185,8 +213,13 @@ def _model(row):
     if row is None:
         return None
     body = json.loads(row['session_json'])
+    sort = body.get('sort')
+    if sort not in ORDERS:
+        sort = row['order_mode']
+    if sort not in ORDERS:
+        sort = 'inventory'
     return dict(id=row['session_id'], order=body['order'], cursor=body['cursor'], answers=body['answers'], misses=body['misses'], undo=body['undo'],
-                finished=bool(row['finished']), sort=row['order_mode'], spares=row['spares'],
+                finished=bool(row['finished']), sort=sort, spares=row['spares'],
                 scope=body.get('scope'), members=body.get('members'))
 
 
@@ -194,18 +227,25 @@ def session(db, copy_id, figure=None):
     return _model(_session_row(db, copy_id, figure))
 
 
+def _legacy_order_mode(sort):
+    """Keep the legacy column's three-value CHECK while session_json stores extensible order names, without a schema upgrade."""
+    return sort if sort in ('inventory', 'largest', 'colour') else 'inventory'
+
+
 def _put_session(db, copy_id, figure, s, started_at=None):
     """Write the session `s` (the client's model) as the copy's row, replacing the one there (nothing else points at the row)."""
     db.execute('DELETE FROM main.part_check WHERE copy_id=? AND figure_key=?', (copy_id, figure or 0))
     stamp = now()
     body = dict(order=s['order'], cursor=s['cursor'], answers=s['answers'], misses=s['misses'], undo=s['undo'])
+    if s['sort'] not in ('inventory', 'largest', 'colour'):
+        body['sort'] = s['sort']
     if s.get('members'):
         body['members'] = s['members']                                 # a missing-only run: every part it walks, whatever a later walk of the skipped ones narrows `order` to
     if s.get('scope'):
         body['scope'] = s['scope']                                     # #222/#214: `missing` (the parts the last check left missing) or `skipped`; absent is the whole set
     body = json.dumps(body, separators=(',', ':'))
     db.execute('''INSERT INTO main.part_check(copy_id,copy_figure_id,session_id,order_mode,spares,session_json,finished,started_at,updated_at)
-                  VALUES(?,?,?,?,?,?,?,?,?)''', (copy_id, figure, s['id'], s['sort'], s['spares'], body, int(bool(s['finished'])), started_at or stamp, stamp))
+                  VALUES(?,?,?,?,?,?,?,?,?)''', (copy_id, figure, s['id'], _legacy_order_mode(s['sort']), s['spares'], body, int(bool(s['finished'])), started_at or stamp, stamp))
 
 
 def _row_state(row):
@@ -216,6 +256,7 @@ def _row_state(row):
 def _restore_session(db, copy_id, figure, state):
     db.execute('DELETE FROM main.part_check WHERE copy_id=? AND figure_key=?', (copy_id, figure or 0))
     if state is not None:
+        state = dict(state, order_mode=_legacy_order_mode(_model(state)['sort']))
         db.execute(f'INSERT INTO main.part_check(copy_id,copy_figure_id,{",".join(SESSION_COLUMNS)}) VALUES(?,?,{",".join("?" * len(SESSION_COLUMNS))})',
                    (copy_id, figure, *(state[k] for k in SESSION_COLUMNS)))
 
@@ -271,6 +312,7 @@ def recompute(db, copy_id):
 # ---------- the screens' reads ----------
 
 def view(db, copy_id):
+    """Return the copy, live checker rows and normalised saved session from the collection store."""
     c = header(db, copy_id)
     inventory = rows(db, copy_id)
     s = normalise(session(db, copy_id), {r['token']: r['kind'] for r in inventory})

@@ -113,4 +113,6 @@ def test_l7_checker_rows_batch_identities_and_pictures(coll):
     assert unresolved['Pending one'] is True and sum(r['unresolved'] for r in result) == 1
     assert all('image' in r for r in result)
     assert sum('FROM picture' in s for s in statements) == 1
-    assert len(statements) < 15
+    # Batched, never one statement per row: 33 rows take 17 statements (the category lookup for the Category group order adds a main and
+    # a catalogue read); the bound stays well below the row count.
+    assert len(statements) < 20

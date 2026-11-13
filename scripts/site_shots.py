@@ -109,7 +109,6 @@ PICTURES = {
     '3c-picker-selector-phone-390': (PICKED + '&pick=1', 390, 844, OPEN_FOUND, (SITE,)),
     '4c-complete-sets-phone-390': ('/planning/complete-sets', 390, 844, None, (SITE,)),
     # The two tutorials (docs/tutorials/): the Add search, Set Inspector, Complete sets, the wishlist and an order being counted, on the same invented world
-    'tut-add-desktop-1440': ('/manage/add', 1440, 640, ADD_SEARCH, (TUTORIALS,)),
     'tut-inspect-list-phone-390': ('/workbench/check-parts', 390, 1100, None, (TUTORIALS,)),
     'tut-inspect-part-phone-390': ('/workbench/check-parts/%s?run=1' % STARTED, 390, 844, None, (TUTORIALS,)),
     'tut-inspect-end-phone-390': ('/workbench/check-parts/%s?run=1' % GAPS, 390, 1100, None, (TUTORIALS,)),
@@ -139,6 +138,45 @@ PICTURES = {
 }
 
 
+def callouts(*marks):
+    """JS for a job's `after`: a clay ring round each element and a numbered disc on its top left corner, drawn from the element's box (App Docs Standard,
+    screenshot standard). `marks` are (selector, number) pairs. The disc is the ink of the page with paper digits and, in dark mode, the page's light
+    ink with dark digits: the tokens do the inversion. Nothing here depends on timing: the boxes are read after the fonts are loaded and the viewport has its final size."""
+    return """
+await document.fonts.ready;
+const marks = %s;
+for (const [selector, number] of marks) {
+  const el = document.querySelector(selector);
+  if (!el) throw new Error('call-out target missing: ' + selector);
+  const r = el.getBoundingClientRect(), x = r.left + scrollX, y = r.top + scrollY;
+  const ring = document.createElement('div');
+  ring.style.cssText = `position:absolute;left:${x - 4}px;top:${y - 4}px;width:${r.width + 8}px;height:${r.height + 8}px;box-sizing:border-box;border:2px solid var(--tw-accent);border-radius:10px;pointer-events:none;z-index:2147483646`;
+  const disc = document.createElement('div');
+  disc.textContent = String(number);
+  disc.style.cssText = `position:absolute;left:${x - 16}px;top:${y - 16}px;width:24px;height:24px;border-radius:50%%;background:var(--tw-text);color:var(--tw-bg);font:600 13px/24px var(--tw-font, sans-serif);text-align:center;pointer-events:none;z-index:2147483647`;
+  document.body.append(ring, disc);
+}
+""" % json.dumps(marks)
+
+
+# The tutorial shots that follow the reader's screen (App Docs Standard, screenshot standard): each exists as a desktop shot (a 1024 px viewport at device
+# scale 2, cut to the area the step is about) and as a phone shot, each in light and dark, with numbered call-outs. name: (path, script, {layout: (width, crop, marks)}).
+# The file is `tut-<name>-<layout>-<width>-<theme>.png`. `crop` is a list of selectors (the picture is cut to their union), `marks` are (selector, number) pairs.
+LAYOUT_SCALE = {'desktop': 2, 'phone': 2}
+TUTORIAL_SHOTS = {
+    'add': ('/manage/add', ADD_SEARCH, {
+        'desktop': (1024, ['.bw-add-search-field', '[data-results] button'], [('.bw-add-search-field', 1), ('[data-results] button', 2)]),
+        'phone': (390, ['.bw-add-search-field', '[data-results] button'], [('.bw-add-search-field', 1), ('[data-results] button', 2)]),
+    }),
+}
+EXTRAS = {}
+for _name, (_path, _script, _layouts) in TUTORIAL_SHOTS.items():
+    for _layout, (_width, _crop, _marks) in _layouts.items():
+        _stem = f'tut-{_name}-{_layout}-{_width}'
+        PICTURES[_stem] = (_path, _width, 3000, _script, (TUTORIALS,))
+        EXTRAS[_stem] = {'scale': LAYOUT_SCALE[_layout], 'crop': _crop, 'crop_pad': 28, 'after': callouts(*_marks)}
+
+
 def optimise(path: Path) -> None:
     """Palette PNG: the app's flat colours quantise without visible loss and weigh a fraction."""
     from PIL import Image
@@ -163,7 +201,7 @@ def main(argv):
             path = path(base) if callable(path) else path
             for theme in ('light', 'dark'):
                 out = Path(scratch) / f'{stem}-{theme}.png'
-                jobs.append({'url': base + path, 'out': str(out), 'width': width, 'theme': theme, 'max': limit, 'script': (script or '') + SETTLE})
+                jobs.append({'url': base + path, 'out': str(out), 'width': width, 'theme': theme, 'max': limit, 'script': (script or '') + SETTLE, **EXTRAS.get(stem, {})})
         spec = Path(scratch) / 'jobs.json'
         spec.write_text(json.dumps({'deterministic': True, 'now': screen_gate.FIXED_NOW.isoformat().replace('+00:00', 'Z'), 'jobs': jobs}))
         result = subprocess.run(['node', str(ROOT / 'scripts' / 'capture_screens.cjs'), chrome.stdout.strip(), str(spec)], capture_output=True, text=True, timeout=1800)

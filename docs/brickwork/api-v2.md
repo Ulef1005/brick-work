@@ -497,6 +497,8 @@ Scope `none` means no token. Every path is relative to `/api/v2`. The **v1** col
 | `GET /settings` | Allowed settings and freshness rules. | read | M.11c | same |
 | `PATCH /settings` | Update allowed settings (whitelist). | admin | M.11c | same |
 
+`part_list_grouping` is a settings key: `grouped` (default), `bricklink`, or `none`. PATCH uses the same save and undo event as the Settings page. It changes the set detail list only.
+
 #### Admin
 
 | Operation | What it does | Scope | Piece | v1 |

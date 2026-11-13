@@ -157,3 +157,5 @@ main .bw-chips a[aria-current=page]{background:var(--tw-accent-soft);color:var(-
 /* #218: the live job area and its slots add no boxes, so the page lays out as before (the stack's gaps between the bulk actions, the
  * list toolbar and the rows stay), and an empty slot takes no gap. The page script swaps their contents. */
 [data-jobs-live],[data-jobs-batches],[data-jobs-shown-slot]{display:contents}
+
+#part-list-grouping .bw-toggle-row{justify-content:flex-start;padding-block:8px}

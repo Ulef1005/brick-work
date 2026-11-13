@@ -879,3 +879,14 @@ main .key-need a:not(.button) { min-height:44px;display:inline-flex;align-items:
 #bw-collection .bc-found button:disabled { opacity:.4;cursor:default; }
 #bw-collection .bc-figure-row .bc-found { flex:1 1 100%; }
 @media(max-width:767px) { #bw-collection .bc-check-actions { flex-wrap:wrap; } }
+
+.bc-part-group { border-top:.5px solid var(--tw-divider); }
+.bc-part-group h3 { margin:0; }
+#bw-collection .bc-part-group-toggle { display:flex;align-items:center;gap:12px;width:100%;min-height:56px;padding:12px 0;border:0;border-radius:0;background:transparent;color:var(--tw-text);text-align:left; }
+.bc-part-group-toggle strong { font-weight:600; }
+.bc-part-group-count { font-size:12px;font-weight:400; }
+.bc-part-group-toggle .bc-status { margin-left:auto;white-space:nowrap; }
+.bc-part-chevron { display:flex; }
+.bc-part-group-toggle[aria-expanded="false"] .bc-part-chevron { transform:rotate(-90deg); }
+.bc-part-group [hidden] { display:none; }
+@media(max-width:600px) { .bc-part-group-count { display:none; }.bc-part-group-toggle { gap:8px; } }

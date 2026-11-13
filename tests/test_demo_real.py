@@ -3,6 +3,7 @@ import json
 import sqlite3
 
 from brickwork.demo import dataset, real
+from tests import rendered
 
 SETS = ['10210-1', '10254-1', '21028-1', '31120-1', '7213-1', '7938-1', '8043-1']
 
@@ -84,3 +85,20 @@ def test_the_real_world_exports_with_jpeg_pictures(tmp_path):
     pages = (out / 'collection' / 'item').glob('*/index.html')
     assert any(re.search(r'src="' + re.escape(base) + r'manage/images/[1-9][0-9]*\.jpg"', p.read_text()) for p in pages)
     assert not any(re.search(r'manage/images/[1-9][0-9]*\.png', p.read_text()) for p in (out / 'collection').rglob('index.html'))
+
+
+@rendered.group
+def test_a_capture_fails_on_a_missing_picture_tile(tmp_path):
+    """#332: no capture shows a placeholder. `no_tiles` passes a page whose pictures are all there (the sets) and fails one that shows the app's tile (the
+    loose parts have no picture yet)."""
+    import subprocess
+    from scripts import screen_gate
+    chrome = rendered.chrome()
+    with screen_gate.world('real') as base:
+        def capture(path):
+            jobs = {'jobs': [{'url': base + path, 'out': str(tmp_path / 'x.png'), 'width': 1440, 'height': 900, 'theme': 'light', 'no_tiles': True}]}
+            (tmp_path / 'jobs.json').write_text(json.dumps(jobs))
+            return subprocess.run(['node', str(real.FOLDER.parents[1] / 'scripts' / 'capture_screens.cjs'), chrome, str(tmp_path / 'jobs.json')], capture_output=True, text=True)
+        assert capture('/collection/sets').returncode == 0
+        failed = capture('/collection/P')
+        assert failed.returncode != 0 and 'no_tiles' in (failed.stderr + failed.stdout)

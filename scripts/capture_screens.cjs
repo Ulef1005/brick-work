@@ -5,6 +5,7 @@
 JOBS.json is {"headers": {...optional, e.g. Cookie}, "deterministic"?: true, "now"?: ISO time, "jobs": [{"url", "out", "width", "height"?, "theme": "light"|"dark",
 "wait"?: CSS selector, "script"?: JS run before the capture (open a sheet, tick a box), "max"?: px, default 3000, "sheet_below"?: px,
 "scale"?: device scale (default 2 below 600 px, else 1), "after"?: JS run after the final resize, "crop"?: selector or list of selectors and "crop_pad"?: px (the picture is cut to their union),
+"no_tiles"?: true or a selector: fail the job when the page (or that subtree) shows a missing-picture tile or a picture that did not load,
 "javascript"?: false renders the page with scripts switched off (the app's no-script fallback; every other job runs with them on)}]}.
 "deterministic" (the screenshot gate, scripts/screen_gate.py) starts every capture from an empty browser (no cache, no stored data, empty web storage), loads every declared font face, turns animations and transitions off, hides the caret, asks for reduced motion and, with "now",
 fixes the page's clock (Date) at that instant. The theme is the system preference (the app's default mode). A page is captured whole with the viewport grown to its height (fixed
@@ -52,6 +53,10 @@ let browser=null;
   if(deterministic)await evaluate("(()=>{const b=document.body;if(!b)return true;b.style.display='none';void b.offsetHeight;b.style.display='';void b.offsetHeight;return true;})()");   // lay the page out again with every font loaded: a form control laid out before its webfont arrived keeps the fallback's metrics, 1 px off from a warm session's (#267)
   if(job.script)await evaluate(`(async()=>{${job.script}})()`);
   await delay(250);
+  // no_tiles: the capture fails when the page (or the selector's subtree) shows the app's missing-picture tile (.bc-no-image, .bw-no-image, or a .bc-picture without an img: the lists build the tile in script) or a picture that did not load (#332: no capture shows a placeholder)
+  if(job.no_tiles){const scope=typeof job.no_tiles==='string'?job.no_tiles:'body';
+    const bad=await evaluate(`(()=>{const roots=[...document.querySelectorAll(${JSON.stringify(scope)})];return roots.flatMap(r=>[...r.querySelectorAll('.bc-no-image,.bw-no-image,.bc-picture:not(:has(img)),img')].filter(e=>e.getClientRects().length&&(e.tagName!=='IMG'||(e.getAttribute('src')&&e.complete&&!e.naturalWidth))).map(e=>e.className||e.getAttribute('src')||e.tagName));})()`);
+    if(bad.length)throw new Error('no_tiles: '+bad.length+' missing picture(s) in '+job.url+' ('+job.out+'): '+[...new Set(bad)].slice(0,5).join(', '));}
   // An open sheet is shown as the device sees it (one viewport); a page is shown whole, with the viewport grown to its height so the
   // fixed bars (phone tab bar, save bar) sit at its foot rather than across the middle of the capture.
   const sheet=(job.sheet_below&&width<job.sheet_below)||await evaluate("!!document.querySelector('dialog[open]')");   // sheet_below: a sheet that is not a dialog (a fixed panel) is still one viewport on a phone

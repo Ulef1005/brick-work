@@ -22,7 +22,7 @@ Use it as a copy-and-tick list in the release pull request.
 ## 3. Update the pictures, the website and the demo
 
 - [ ] **Pictures:** if a screen changed, regenerate the README, Pages and tutorial pictures with `python scripts/site_shots.py` (they are captures of the demo's richer world, not gate baselines) and open each one to check it.
-- [ ] **Screen gate:** every changed approved screen has its baselines replaced with the maintainer's written approval recorded in `design/APPROVALS.md`. The screen gate is not part of the `check` workflow any more (2026-11-13).
+- [ ] **Screen gate:** every changed approved screen has its baselines replaced with the maintainer's written approval recorded in `design/APPROVALS.md`. The screen gate is not part of the `check` workflow any more (2026-11-13): run it by hand before the release (`python -m pytest tests/test_screen_gate.py -q -p no:xdist`, on Linux, which decides) and have it green.
 - [ ] **Website:** the Pages site is built from `main` by the `pages` workflow (landing page, workflows, use cases, user docs, API reference, MCP guide, changelog, design pages, `llms.txt`). Edit the sources in `scripts/site/` where the text changed; the landing page carries the version (`scripts/site/landing.html`).
 - [ ] **Demo:** the static demo (`scripts/build_demo.py`) is rebuilt by the same workflow from the app on `main`, so it shows the release's screens. Run `scripts/check_demo_pages.py` locally when a screen changed, and open the demo after the deploy.
 

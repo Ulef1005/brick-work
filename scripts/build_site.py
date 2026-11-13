@@ -173,10 +173,14 @@ def home(up):
               'release_summary': html.escape(summary), 'release_schema': schema}
     for section in ('tutorials', 'how-to', 'concepts', 'reference'):
         values['count_' + section.replace('-', '_')] = str(docs_count(section))
-    for key, value in values.items():
-        text = text.replace('{' + key + '}', value)
-    text = re.sub(r'\{pic:([^|}]+)\|([^}]+)\}', lambda m: picture(m[1], m[2], up), text)
-    return text
+    # One pass over the template, so a value (a release summary) is never scanned for tokens itself.
+    def token(match):
+        key = match[1]
+        if key.startswith('pic:'):
+            name, _, alt = key[4:].partition('|')
+            return picture(name, alt, up)
+        return values.get(key, match[0])
+    return re.sub(r'\{([A-Za-z_]+|pic:[^|}]+\|[^}]+)\}', token, text)
 
 
 def stub(title, target):

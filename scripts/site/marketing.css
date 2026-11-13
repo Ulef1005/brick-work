@@ -13,7 +13,7 @@
 .top nav a{min-height:44px;display:inline-flex;align-items:center;padding:0 12px;font-size:14px;line-height:20px;color:var(--tw-text-2);border-radius:var(--r1)}
 .top nav a[aria-current="page"]{color:var(--tw-text);font-weight:600;border-bottom:2px solid var(--tw-accent);border-radius:0}
 .top .gh{font-size:14px}
-.top [data-theme-toggle]{min-height:44px;padding:0 14px;border:var(--hair);border-radius:var(--r1);background:transparent;color:var(--tw-text-2);font:inherit;font-size:14px;cursor:pointer}
+.top [data-theme-toggle]{align-items:center;justify-content:center;min-height:44px;padding:0 14px;border:var(--hair);border-radius:var(--r1);background:transparent;color:var(--tw-text-2);font:inherit;font-size:14px;cursor:pointer}
 .menu{display:none;position:relative;margin-left:auto}
 .menu summary{list-style:none;min-height:44px;display:inline-flex;align-items:center;padding:0 14px;border:var(--hair);border-radius:var(--r1);font-size:14px;cursor:pointer}
 .menu summary::-webkit-details-marker{display:none}
@@ -77,7 +77,7 @@
 .tabs .tablist label{min-height:44px;display:inline-flex;align-items:center;padding:0 18px;font-size:14px;border-right:var(--hair);cursor:pointer}
 .tabs .tablist label:last-child{border-right:0}
 .tabs .panel{display:none;flex-direction:column;gap:14px}
-.tabs>input:focus-visible~.tablist label{outline:0}
+#t1:focus-visible~.tablist label[for=t1],#t2:focus-visible~.tablist label[for=t2],#t3:focus-visible~.tablist label[for=t3],#t4:focus-visible~.tablist label[for=t4]{outline:2px solid var(--tw-accent);outline-offset:-4px}
 #t1:checked~.tablist label[for=t1],#t2:checked~.tablist label[for=t2],#t3:checked~.tablist label[for=t3],#t4:checked~.tablist label[for=t4]{background:var(--tw-accent-soft);font-weight:600;box-shadow:inset 0 0 0 2px var(--tw-accent)}
 #t1:checked~.p1,#t2:checked~.p2,#t3:checked~.p3,#t4:checked~.p4{display:flex}
 pre.code{margin:0;border:var(--hair);border-radius:var(--r2);background:var(--tw-surface);padding:16px;font-family:var(--tw-mono);font-size:13px;line-height:20px;overflow-x:auto;color:var(--tw-text)}
@@ -87,8 +87,6 @@ pre.code{margin:0;border:var(--hair);border-radius:var(--r2);background:var(--tw
 .foot ul{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:4px;color:var(--tw-text-2)}
 .foot ul a{min-height:32px;display:flex;align-items:center}
 .foot .fine{max-width:80ch}
-/* long text pages (use cases, legal, 404) keep the reading column inside the new shell */
-.site main.doc{max-width:760px}
 .big404{font-size:64px;line-height:1;font-family:var(--tw-mono);color:var(--tw-text-muted)}
 @media (min-width:641px) and (max-width:960px){.g4,.g3{grid-template-columns:repeat(2,minmax(0,1fr))}.hero{grid-template-columns:minmax(0,1fr)}}
 @media (max-width:640px){

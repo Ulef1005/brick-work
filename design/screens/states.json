@@ -110,6 +110,7 @@
    "state": "value-loss",
    "world": "edge-value",
    "path": "/collection/item/set/99121-1?copy=9d6269ab-614d-549e-90ce-ca84e84afded",
+   "max": 2600,
    "built": true,
    "approved": false
   },
@@ -119,6 +120,7 @@
    "state": "value-no-price",
    "world": "edge-value",
    "path": "/collection/item/set/99104-1?copy=02a8e1f2-1a00-591a-93b8-9647f7f03d14",
+   "max": 2600,
    "built": true,
    "approved": false
   },
@@ -128,6 +130,7 @@
    "state": "value-no-quote",
    "world": "edge-value",
    "path": "/collection/item/set/99112-1?copy=2e46e1e6-3019-5315-aa7d-c596a5d6a280",
+   "max": 2600,
    "built": true,
    "approved": false
   },
@@ -137,6 +140,7 @@
    "state": "value-override",
    "world": "edge-value",
    "path": "/collection/item/set/99101-1?copy=0133c51c-12df-57b3-97c1-93ce94e8691d",
+   "max": 2600,
    "built": true,
    "approved": false
   },
@@ -146,6 +150,7 @@
    "state": "value-stale",
    "world": "edge-value",
    "path": "/collection/item/set/99103-1?copy=f1d1b5b5-8a1f-5819-96d4-8e6d5e444b60",
+   "max": 2600,
    "built": true,
    "approved": false
   },
@@ -155,6 +160,7 @@
    "state": "value-other-currency",
    "world": "edge-value",
    "path": "/collection/item/set/99105-1?copy=d0e368ec-42c1-5320-a57b-2b1572e6b6ef",
+   "max": 2600,
    "built": true,
    "approved": false
   },
@@ -966,6 +972,7 @@
    "state": "paid-vs-value",
    "world": "edge-value",
    "path": "/manage/statistics",
+   "max": 4600,
    "built": true,
    "approved": false
   },

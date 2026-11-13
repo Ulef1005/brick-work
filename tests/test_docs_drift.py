@@ -138,17 +138,12 @@ def test_the_site_builds_with_every_tool(tmp_path):
     assert 'url=../docs/brickwork/mcp/' in (site / 'mcp/index.html').read_text()
     assert (site / 'docs/brickwork/mcp/index.html').is_file() and (site / 'docs/brickwork/openapi-v2.yaml').is_file()
     assert 'BW_AUTHENTICATION_PASSWORD' in (site / 'docs/reference/settings/index.html').read_text()
-    # The changelog and the design documents: every ADR but the template and every data-model page, linked to each other on the site.
-    from scripts.build_site import ROOT
-    for path in [*(ROOT / 'docs/adr').glob('[0-9]*.md'), *(ROOT / 'docs/data-model-4.0').glob('*.md')]:
-        stem = '' if path.name == 'README.md' else path.stem + '/'
-        assert (site / 'design' / path.parent.name / stem / 'index.html').is_file() != (path.name == '0000-template.md'), path
-    assert (site / 'design/index.html').is_file()
+    # The changelog keeps its links to docs pages on the site; the ADRs and the 4.0 design are on GitHub, not on the site (ADR 0030).
     changelog = (site / 'changelog/index.html').read_text()
     assert 'Brick Work 0.6.0' in changelog and 'href="../docs/how-to/receive-an-order/"' in changelog
-    design = (site / 'design/data-model-4.0/data-model-design/index.html').read_text()   # no Mermaid renderer on the site
-    assert 'This diagram is drawn on GitHub' in design and 'language-mermaid' not in design
+    from scripts.build_site import blob
+    assert f'href="{blob("docs/adr/0030-docs-reference-pages.md")}"' in changelog
+    assert not (site / 'design').exists()
     docs_design = (site / 'docs/data-model-4.0/data-model-design/index.html').read_text()   # the same page in the Developers tab (#319)
     assert docs_design.count('This diagram is drawn on GitHub') == 2 and 'language-mermaid' not in docs_design
     assert (site / 'docs/pitch/brick-work-pitch.pdf').is_file() and not (site / 'docs/brickwork/api-v1/index.html').exists()
-    assert 'href="../../design/adr/0016-data-model-4/"' in (site / 'design/data-model-4.0/index.html').read_text()

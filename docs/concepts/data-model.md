@@ -53,4 +53,4 @@ A save writes one **event** that names what changed. That is what **Undo** rever
 
 A 0.5 collection (schema 3.3) is moved with `brickwork migrate4`. The command reads the old file without changing it, translates every BrickLink number and colour to a Brick Work item and colour, proves the result, and writes a report of everything it could not carry ([CLI](../reference/cli.md#migrate4)).
 
-The full design, with the tables, the DDL and the reasoning, is on the [Design](../../design/data-model-4.0/) pages.
+The full design, with the tables and the reasoning, is [Data model 4.0 design](../data-model-4.0/data-model-design.md), and the DDL and the estimate are in [`docs/data-model-4.0/`](https://github.com/Ulef1005/brick-work/tree/main/docs/data-model-4.0) on GitHub.

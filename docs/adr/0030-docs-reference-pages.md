@@ -20,7 +20,7 @@ Option 3.
 - **API v2 reference** (`docs/developer/api-v2-reference.md`) and **MCP tools and resources** (`docs/developer/mcp-reference.md`) are one markdown-exec block each. They read their sources at build time and copy nothing (#328).
 - **Code reference** (`docs/developer/code-reference.md`): mkdocstrings renders `brickwork.core`, the services the REST API and the screens call (the MCP server's adapter is part of it), on one page, one section per module, without source listings. Private names and the importer's migrations, copied unchanged from upstream, are filtered out. The web layer, the API routers, the store and the catalogue builder are left out; the HTTP surface is documented by the API reference.
 - `build_docs` runs Zensical from the repository root with the root on `PYTHONPATH`, so the blocks can import `scripts` and `brickwork`. To preview the docs alone: `PYTHONPATH=. zensical serve`.
-- The old `/api/` and `/mcp/` URLs keep a stub page that sends the browser on; `/api/openapi-v2.yaml` stays for download. API v1 is not on the site. `/design/` is removed, in the last step of #319: the ADRs and the 4.0 design are read on GitHub, and the 4.0 design pages that readers need are in the Developers tab.
+- The old `/api/` and `/mcp/` URLs keep a stub page that sends the browser on; `/api/openapi-v2.yaml` stays for download. API v1 is not on the site. `/design/` is removed: the ADRs and the 4.0 design are read on GitHub, and the 4.0 design pages that readers need are in the Developers tab.
 - When Zensical ships its own OpenAPI support, it replaces the markdown-exec step for the API page.
 
 ## Consequences

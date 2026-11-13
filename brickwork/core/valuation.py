@@ -117,8 +117,8 @@ def _gaps(db, copy_ids):
         AND copy_id IN (SELECT value FROM json_each(?))""", (packed, packed))}
 
 
-def copies(db):
-    """One row per live copy, in set-number order (numbers compared as numbers, then the copy's creation), as a list of dicts:
+def copies(db, copy_ids=None):
+    """One row per live copy (only those in `copy_ids` when given: the set detail asks for its own copy), in set-number order (numbers compared as numbers, then the copy's creation), as a list of dicts:
 
     `id`, `item_id`, `number` (the set number, e.g. `7286-1`), `name`, `year`, `theme`, `condition`, `completeness`, `purchase_date`,
     `currency` (the display currency),
@@ -132,11 +132,13 @@ def copies(db):
 
     A money body is `{amount: Decimal (2 places), currency: display currency, converted: bool, rate: Decimal or None, rate_as_of: day or
     None, original: {amount, currency} as recorded, or None unless converted}`."""
+    packed = None if copy_ids is None else json.dumps(list(copy_ids))
     rows = [dict(r) for r in db.execute('''SELECT c.id, c.item_id, c.condition, c.completeness, c.purchase_date, c.purchase_price, c.purchase_currency,
             c.current_value, c.current_value_currency, c.created_at, i.year,
             coalesce((SELECT value FROM item_property p WHERE p.item_id=c.item_id AND p.key='theme' AND p.source='brickset'
                       ORDER BY p.fetched_at DESC LIMIT 1), i.theme_name) AS theme
-            FROM copy c JOIN item i ON i.id=c.item_id WHERE c.archived_at IS NULL''')]
+            FROM copy c JOIN item i ON i.id=c.item_id WHERE c.archived_at IS NULL
+            AND (? IS NULL OR c.id IN (SELECT value FROM json_each(?)))''', (packed, packed))]
     if not rows:
         return []
     labels = items.labels(db, {(c['item_id'], None) for c in rows})

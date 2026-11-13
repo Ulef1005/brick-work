@@ -50,6 +50,8 @@ PORTED |= {'web.bw_copy_part_list', 'web.bw_add_picture_known'}
 PORTED |= {'web.bw_first_run_catalogue'}
 # #83 (milestone A): the first-run flow on its own page, and skipping a step for now.
 PORTED |= {'web.bw_get_started', 'web.bw_get_started_write', 'web.bw_get_started_collection', 'web.bw_get_started_guide'}
+# #57: the insurance report (the page, its print view and its CSV).
+PORTED |= {'web.bw_insurance_report', 'web.bw_insurance_csv'}
 PIECE = 'M.11'
 
 

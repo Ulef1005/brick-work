@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en" class="tw-light">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Brick Work · {{ title }}{% if header %} · {{ header.generated }}{% endif %}</title>
+<link rel="stylesheet" href="{{ bw_static('web/toni/tokens-v2.css') }}">
+{% if header %}<style>@page{@bottom-left{content:"Insurance report · {{ header.generated }}"}@top-right{content:"{{ header.generated }} · {{ header.copies_word }}"}}</style>{% endif %}
+<link rel="stylesheet" href="{{ bw_static('web/toni/bw-report-print.css') }}">
+<script src="{{ bw_static('web/toni/bw-report-print.js') }}" defer></script>
+</head>
+<body class="rp-page"{% if header and header.copies and not error %} data-rp-auto{% endif %}>
+{% from 'web/toni/web/_bw_report_cells.html' import paid_cell, worth_cell, strip %}
+<div class="rp-tools" role="toolbar" aria-label="Print options"><a class="rp-btn" href="{{ url_for('web.bw_insurance_report') }}">Back to the report</a><a class="rp-btn" href="{{ csv_url }}" download>Download CSV</a><button type="button" class="rp-btn rp-primary" data-rp-print>Print</button></div>
+{% if error %}<p class="rp-msg" role="alert">{{ error }}</p>
+{% elif not header.copies %}<h1 class="rp-title">No copies to report</h1><p class="rp-msg">The report lists one row per copy. Add a set to your collection to start it.</p>
+{% else %}<header class="rp-head"><h1 class="rp-title">Insurance report</h1><dl class="rp-facts"><div><dt>Generated</dt><dd>{{ header.generated }}</dd></div><div><dt>Copies</dt><dd>{{ header.copies }}</dd></div><div><dt>Total paid</dt><dd>{{ header.paid }}</dd></div><div><dt>Total worth</dt><dd>{{ header.worth }}</dd></div></dl><p class="rp-foot">{{ header.foot }}</p></header>
+<table class="rp-table"><thead><tr><th>Set</th><th>Name</th><th>Year</th><th>Condition</th><th>Completeness</th><th>Purchased</th><th class="r">Price paid</th><th class="r">Worth now</th></tr></thead>
+{% for r in rows %}<tbody class="rp-copy"><tr class="rp-main"><td class="br-num">{{ r.number }}</td><td class="br-name">{{ r.name }}</td><td class="br-year">{{ r.year }}</td><td>{{ r.condition }}</td><td>{{ r.completeness }}</td><td class="br-purchased">{{ r.purchased }}</td><td class="br-paid r">{{ paid_cell(r) }}</td><td class="br-worth r">{{ worth_cell(r) }}</td></tr><tr class="rp-photos"><td colspan="8">{{ strip(r, true) }}</td></tr></tbody>{% endfor %}</table>{% endif %}
+</body>
+</html>

@@ -1,3 +1,8 @@
+---
+audience: user
+verified: 1.0
+---
+
 # Change an item's variant
 
 *Since 1.1.0.* On the item page of a figure or part, **Identity** has a **Change variant…** button; the same action is on the API (`POST /items/{id}/change-variant`).

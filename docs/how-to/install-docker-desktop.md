@@ -1,3 +1,8 @@
+---
+audience: user
+verified: 1.0
+---
+
 # Install on your computer with Docker Desktop
 
 *Since 1.0.0.*

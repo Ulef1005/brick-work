@@ -1,3 +1,8 @@
+---
+audience: user
+verified: 1.0
+---
+
 # Pull a set out of a lot
 
 *Since 1.1.0.*

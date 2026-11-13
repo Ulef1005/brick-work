@@ -1,3 +1,8 @@
+---
+audience: developer
+verified: 1.0
+---
+
 # Command line
 
 *Since 0.5.0.*

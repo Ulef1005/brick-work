@@ -1,3 +1,8 @@
+---
+audience: user
+verified: 1.0
+---
+
 # Find sets your loose stock can finish
 
 *Since 0.5.0.*

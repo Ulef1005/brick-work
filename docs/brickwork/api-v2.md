@@ -1,3 +1,8 @@
+---
+audience: developer
+verified: 1.0
+---
+
 # Brick Work API v2: contract
 
 **Status:** the contract of the whole v2 surface, written for M.11a (issue #113, 2026-10-27). The transport, the meta endpoints and item addressing are implemented in M.11a, the reads in M.11b, the writes in M.11c and the orders, jobs, sources, sync, imports, identifications, tokens and admin operations in M.11d, and the MCP and the parity test in M.11e: every operation of the contract is implemented (a piece that has not landed answers `501 not_implemented`, none is left). The machine-readable twin is [openapi-v2.yaml](openapi-v2.yaml); the data model behind it is [data-model-design.md](../data-model-4.0/data-model-design.md) (sections 3.1, 3.2, 3.5, 3.6, 3.8 and 7).

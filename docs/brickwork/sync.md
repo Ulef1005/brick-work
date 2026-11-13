@@ -1,3 +1,8 @@
+---
+audience: developer
+verified: 0.5
+---
+
 # Collection sync with Rebrickable and Brickset
 
 Issue #10, backend; on the 4.0 store since M.8j (issue #110). Owned sets and wanted sets only; loose parts, minifigures, missing parts, BrickLink, two-way merge and scheduled sync are out of scope. Code: `brickwork/core/sync/` (service) and `brickwork/core/sync/adapters.py` (remote calls). The API v1 routes named below answer 410 on the 4.0 line until API v2 (M.11); the screens (Tools & Admin → Collection sync) and `brickwork sync` run the same service.

@@ -1,3 +1,8 @@
+---
+audience: user
+verified: 1.0
+---
+
 # Check a set's parts
 
 *Since 0.5.0.*

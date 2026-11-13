@@ -1,3 +1,8 @@
+---
+audience: user
+verified: 1.0
+---
+
 # Resolve unresolved items and merge items
 
 *Since 0.6.0.*

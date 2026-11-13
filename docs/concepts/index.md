@@ -1,3 +1,8 @@
+---
+audience: user
+verified: 0.6
+---
+
 # Concepts
 
 What the app's ideas and numbers mean, in plain language.

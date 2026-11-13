@@ -1,3 +1,8 @@
+---
+audience: user
+verified: 0.5
+---
+
 # See an item's links and choose the preferred number
 
 *Since 0.6.0.*

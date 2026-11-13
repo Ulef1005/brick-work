@@ -1,3 +1,8 @@
+---
+audience: user
+verified: 1.0
+---
+
 # Connect an assistant
 
 *Since 0.5.0.*

@@ -1,3 +1,8 @@
+---
+audience: user
+verified: 1.0
+---
+
 # Make an insurance report
 
 Do this when you want a list of every copy you own with what you paid and what it is worth now, to keep for yourself or to hand to an insurer.

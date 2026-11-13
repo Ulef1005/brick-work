@@ -1,3 +1,8 @@
+---
+audience: developer
+verified: 1.0
+---
+
 # Developers
 
 For anyone who programs against Brick Work (its REST API, command line and MCP server) or works on it: builds it, contributes, releases it or runs it from a checkout. Using Brick Work through its screens is in the User guide.

@@ -1,3 +1,8 @@
+---
+audience: user
+verified: 1.0
+---
+
 # Pictures, prices and where they come from
 
 *Since 0.6.0.*

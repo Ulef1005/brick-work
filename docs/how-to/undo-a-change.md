@@ -1,3 +1,8 @@
+---
+audience: user
+verified: 0.9
+---
+
 # Undo a change
 
 *Since 0.5.0.*

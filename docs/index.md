@@ -1,3 +1,8 @@
+---
+audience: user
+verified: 1.0
+---
+
 # Brick Work
 
 Brick Work is a self-hosted web app for your brick collection: check a set's parts, pull the missing ones from your loose stock, and see which unfinished sets that stock can complete. It is for private collectors with a real, messy collection of built and boxed sets, loose parts and minifigures.

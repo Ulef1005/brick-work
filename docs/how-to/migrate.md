@@ -1,3 +1,8 @@
+---
+audience: user
+verified: 0.9
+---
+
 # Bring your collection in from another app
 
 *Since 0.8.0.*

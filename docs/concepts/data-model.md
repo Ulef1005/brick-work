@@ -1,3 +1,8 @@
+---
+audience: user
+verified: 1.0
+---
+
 # The data model: two files and one id per item
 
 *Since 0.6.0.*

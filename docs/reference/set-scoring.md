@@ -1,3 +1,8 @@
+---
+audience: user
+verified: 1.0
+---
+
 # Set scoring
 
 *Unreleased (#199).* For developers. Set scoring ranks the catalogue's sets by how much of a pile of loose parts each one explains. It is one read-only engine that features build on (finding the sets in a lot, Buildable sets); it writes nothing. The code is `brickwork/core/set_scoring.py`.

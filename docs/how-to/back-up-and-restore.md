@@ -1,3 +1,8 @@
+---
+audience: user
+verified: 0.9
+---
+
 # Back up and restore
 
 *Since 0.5.0.*

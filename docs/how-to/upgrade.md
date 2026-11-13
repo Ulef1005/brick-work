@@ -1,3 +1,8 @@
+---
+audience: user
+verified: 1.0
+---
+
 # Upgrade Brick Work
 
 *Since 0.9.0.*

@@ -1,3 +1,8 @@
+---
+audience: user
+verified: 0.5
+---
+
 # Sync with Rebrickable and Brickset
 
 *Since 0.6.0.*

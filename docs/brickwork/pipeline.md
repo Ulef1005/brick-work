@@ -1,3 +1,8 @@
+---
+audience: developer
+verified: 0.8
+---
+
 # Brick Work import pipeline (4.0)
 
 One **job** per confirmed Add row, six **steps**, run in the background beside the fetch jobs. Everything lives in the collection file's

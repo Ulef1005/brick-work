@@ -490,7 +490,9 @@ def _names(db, ids):
         category = 'i.category_name' if store == 'main' else 'c.name AS category_name'
         join = '' if store == 'main' else ' LEFT JOIN catalogue.part_category c ON c.id=i.category_id'
         for r in db.execute(f'SELECT i.id,i.name,i.kind,{category} FROM {store}.item i{join} WHERE i.id IN (SELECT value FROM json_each(?))', (_in(ids),)):
-            found.setdefault(r['id'], dict(r))
+            entry = found.setdefault(r['id'], dict(r))
+            if store == 'catalogue' and not entry['category_name']:
+                entry['category_name'] = r['category_name']
     return found
 
 

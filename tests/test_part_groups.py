@@ -189,6 +189,22 @@ def test_catalogue_reference_groups_use_categories_and_other(coll, client, read)
     assert [s['data-bc-part-section'] for s in soup.select('[data-bc-part-section]')] == ['Bricks', 'Plates', 'Other']
 
 
+@pytest.mark.parametrize('main_category,expected_group', [(None, 'Bricks'), ('', 'Bricks'), ('Tiles', 'Tiles')])
+def test_catalogue_category_fills_missing_main_category_only(coll, read, main_category, expected_group):
+    item = coll.item('sets', '1000-1')
+    part = coll.project(coll.item('parts', '3001'))
+    coll.db.execute('UPDATE main.item SET category_name=?,name=? WHERE id=?', (main_category, 'Main part name', part))
+    coll.db.commit()
+    with read() as db:
+        main = dict(db.execute('SELECT id,name,kind,category_name FROM main.item WHERE id=?', (part,)).fetchone())
+        names = collection._names(db, [part])
+        assert names[part] == dict(main, category_name=main_category or 'Bricks')
+        detail = collection.detail(db, item)
+    row = next(p for p in detail['consists'] if p['item_id'] == part)
+    assert row['group'] == expected_group
+    assert any(p['item_id'] == part for g in detail['part_groups'] if g['name'] == expected_group for p in g['rows'])
+
+
 def test_catalogue_reference_figures_are_separate_from_part_groups(coll, client, read):
     item = coll.item('sets', '1000-1')
     with read() as db:

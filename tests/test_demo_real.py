@@ -45,7 +45,8 @@ def test_the_part_lists_are_rebrickables_and_deterministic(tmp_path):
 
 def test_each_set_has_its_picture_and_every_picture_has_a_file(tmp_path):
     manifest = real.pictures_manifest()
-    assert sorted(manifest) == ['sets/' + n for n in SETS]
+    assert {k for k in manifest if k.startswith('sets/')} == {'sets/' + n for n in SETS}
+    assert {k for k in manifest if not k.startswith('sets/')} == {'parts/33299a/71', 'parts/62462/25', 'parts/87619/15', 'parts/91968c01/0', 'minifigs/fig-004770'}
     assert all((real.FOLDER / 'images' / f).is_file() for f in manifest.values())
     _, db, _ = build(tmp_path)
     assert db.execute("SELECT count(*) FROM picture WHERE source='rebrickable_images'").fetchone()[0] == db.execute('SELECT count(*) FROM picture').fetchone()[0] >= 7
@@ -79,14 +80,20 @@ def test_the_real_world_exports_with_jpeg_pictures(tmp_path):
     base = '/brick-work/demo/'
     manifest = export.export(tmp_path / 'site', base, world='real')
     out = tmp_path / 'site'
-    assert manifest['counts']['pictures'] == 7 and manifest['counts']['copy'] == 8
-    assert manifest['pictures'] == {str(i): 'jpg' for i in range(1, 8)}
-    files = sorted((out / 'manage' / 'images').iterdir())
-    assert len(files) == 7 and all(f.suffix == '.jpg' and f.read_bytes()[:2] == b'\xff\xd8' for f in files)
+    pictures = real.pictures_manifest()
+    assert manifest['counts']['pictures'] == len(pictures) == 12 and manifest['counts']['copy'] == 8      # 7 sets, 1 figure, 4 parts
+    files = {f.stem: f for f in (out / 'manage' / 'images').iterdir()}
+    assert len(files) == 12
+    jpegs = {i for i, f in files.items() if f.suffix == '.jpg'}
+    assert len(jpegs) == 8 and all(files[i].read_bytes()[:2] == b'\xff\xd8' for i in jpegs)             # the sets and the figure
+    assert all(f.read_bytes()[:8] == b'\x89PNG\r\n\x1a\n' for i, f in files.items() if i not in jpegs)   # the part renders
+    assert manifest['pictures'] == {i: 'jpg' for i in jpegs}                                            # only the non-PNG ones are listed for the shim
     assert 'kindOf' in (out / 'demo-shim.js').read_text() and '"pictures"' in (out / 'demo-shim.js').read_text()
-    pages = (out / 'collection' / 'item').glob('*/index.html')
+    pages = list((out / 'collection').rglob('index.html'))
     assert any(re.search(r'src="' + re.escape(base) + r'manage/images/[1-9][0-9]*\.jpg"', p.read_text()) for p in pages)
-    assert not any(re.search(r'manage/images/[1-9][0-9]*\.png', p.read_text()) for p in (out / 'collection').rglob('index.html'))
+    for page in pages:   # every picture a page names has the extension of its file
+        for number, extension in re.findall(r'manage/images/([1-9][0-9]*)\.(png|jpg)', page.read_text()):
+            assert files[number].suffix == '.' + extension, (page, number)
 
 
 @rendered.group

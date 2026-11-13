@@ -34,4 +34,4 @@ Part and set images: Rebrickable. Data: Rebrickable.
 
 ## How it was made
 
-`rebrickable/sets.json` is cut from Rebrickable's CSV download by `scripts/extract_rebrickable.py`. Each set picture was fetched once, by hand, from the picture URL named in that download, checked, and resized. Part pictures come from Rebrickable's LDraw render zips on its Downloads page. The collection built around these sets in the demo (copies, storage, prices, orders) is invented.
+`rebrickable/sets.json` is cut from Rebrickable's CSV download by `scripts/extract_rebrickable.py`. Each set picture was fetched once, by hand, from the picture URL named in that download, checked, and resized. Part pictures come from Rebrickable's LDraw render zips on its Downloads page (the render of the assembly 91968c01, the train buffer with its mount, is the one the zip holds for its base part 91968, which has no render of its own). The picture of the minifigure fig-004770 was fetched once, by hand, like the set pictures. The collection built around these sets in the demo (copies, storage, prices, orders) is invented.

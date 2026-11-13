@@ -21,6 +21,9 @@ import urllib.request
 
 ROOT = Path(__file__).resolve().parent.parent
 VERSION = '3.25.1'   # published 2026-10-22; v3.26.0 (2026-10-31) and v3.27.0 (2026-11-12) are younger than the two-week rule of the release watch
+# The vendored style packs under .vale/styles/ (errata-ai/Microsoft and errata-ai/Google releases, MIT); one line each so release watch can read the pin.
+MICROSOFT_PACK = 'v0.15.1'
+GOOGLE_PACK = 'v0.7.1'
 URL = 'https://github.com/errata-ai/vale/releases/download/v%s/vale_%s_%s.tar.gz'
 # platform -> (asset name, SHA-256 of the archive from vale_3.25.1_checksums.txt). Checked 2026-11-13.
 BUILDS = {

@@ -1,0 +1,4 @@
+# Retired names of the docs (App Docs Standard: User Docs, One name per thing): the page check fails a page that uses one.
+# A page may mention the old name once in a "(was X)" note. Add a rename here in the same change that renames the term.
+[retired]
+"Check Set Parts" = "Set Inspector"

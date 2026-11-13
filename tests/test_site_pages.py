@@ -76,7 +76,9 @@ def test_every_page_and_asset_resolves_without_external_requests(site):
                 for url in targets:
                     parsed = urlsplit(url)
                     external = bool(parsed.scheme or parsed.netloc)
-                    if tag in ('link', 'script', 'img', 'source') and attrs.get('rel') != 'canonical':
+                    analytics = (tag == 'script' and url == 'https://static.cloudflareinsights.com/beacon.min.js'      # the one allowed script,
+                                 and page.relative_to(site).parts[0] not in ('docs', 'demo'))                     # never on the docs or the demo
+                    if tag in ('link', 'script', 'img', 'source') and attrs.get('rel') != 'canonical' and not analytics:
                         assert not external, f'{page}: external {tag} {url}'
                     if external or not parsed.path or tag == 'base':
                         continue
@@ -581,3 +583,13 @@ def test_no_page_names_the_pages_address_on_the_apex_build(site):
     leaks = [str(f.relative_to(site)) for f in site.rglob('*') if f.suffix in ('.html', '.js', '.json', '.txt', '.xml')
              and 'github.io' in f.read_text(errors='ignore')]
     assert not leaks, leaks
+
+
+def test_analytics_script_is_on_the_site_pages_only_and_the_privacy_page_matches(site):
+    tag = 'static.cloudflareinsights.com/beacon.min.js'
+    for path in ('', 'install/', 'workflows/', 'changelog/', 'about/', 'privacy/'):
+        assert (site / path / 'index.html').read_text().count(tag) == 1, path
+    for file in list((site / 'docs').rglob('*.html')) + list((site / 'demo').rglob('*.html')):
+        assert tag not in file.read_text(), file
+    privacy = (site / 'privacy/index.html').read_text()
+    assert 'One analytics script' in privacy and 'hosted here' not in privacy     # the picture line waits for the Rebrickable pictures (#332)

@@ -88,6 +88,9 @@ def render(text):
                              extension_configs={'toc': {'permalink': False}})
 
 
+# Cloudflare Web Analytics (cookieless, public site token): on the pages built here only, never on the docs or the demo (see the privacy page).
+ANALYTICS = ('<script defer src="https://static.cloudflareinsights.com/beacon.min.js" '
+             'data-cf-beacon=\'{"token": "f09e0d34781b4d658aa5ddd6adce3f44"}\'></script>')
 HOME_DESCRIPTION = ('Brick Work is a free, open-source, self-hosted workbench for your brick collection: check a set\'s parts, pull missing ones from loose stock '
                     'and see which unfinished sets your stock can complete.')
 MD_DESCRIPTIONS = {'use-cases': 'Eight moments a collector knows, and how Brick Work helps with each: rebuilding used sets, sorted bulk, minifigures, bought collections and orders.',
@@ -152,6 +155,7 @@ def page(title, body, depth, *, current, head='', main='doc', absolute=False, pa
 <div class="site"><footer class="sec foot"><div class="inner"><div class="cols">{footer_cols}</div>
 <p class="small muted fine">Brick Work is an independent project and is not affiliated with the LEGO Group, Rebrickable, Brickset or BrickLink. LEGO® is a trademark of the LEGO Group of companies, which does not sponsor, authorize or endorse this project. Brick Work is MIT-licensed and inspired by BrickTracker.</p></div></footer></div>
 <script src="{up}assets/site.js" defer></script>
+{ANALYTICS}
 </body>
 </html>
 '''

@@ -459,7 +459,7 @@ def build(out):
     if (SITE / 'social-preview.png').exists():
         shutil.copy(SITE / 'social-preview.png', out / 'assets/social-preview.png')
     shutil.copy(SITE / 'site.js', out / 'assets/site.js')
-    if any((SITE / 'img').glob('*.png')):   # no capture is shown while the demo's pictures are placeholders (the captures return with the Rebrickable pictures, #332)
+    if any((SITE / 'img').glob('*.png')):   # the site's captures (scripts/site_shots.py, on the real-sets world)
         shutil.copytree(SITE / 'img', out / 'assets/img')
 
     build_docs(out / 'docs')

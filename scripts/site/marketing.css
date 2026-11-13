@@ -40,6 +40,8 @@
 .link:hover{text-decoration:underline}
 .site p a.link{display:inline;min-height:0;font-size:inherit}
 .hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:48px;align-items:center}
+.hero.solo{grid-template-columns:minmax(0,1fr)}
+.hero.solo .copy{max-width:66ch}
 .hero .copy{display:flex;flex-direction:column;gap:20px}
 .pillrow{display:flex;gap:8px;flex-wrap:wrap}
 .pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:2px 10px;font-size:12px;line-height:18px;background:var(--tw-success-soft);color:var(--tw-text)}
@@ -114,6 +116,7 @@ pre.code{margin:0;border:var(--hair);border-radius:var(--r2);background:var(--tw
 .steps b{display:block;font-weight:600}
 .steps .d{color:var(--tw-text-2);font-size:14px;line-height:20px}
 .walk{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.8fr);gap:40px;align-items:start}
+.walk.solo{grid-template-columns:minmax(0,1fr)}
 .walk .txt{display:flex;flex-direction:column;gap:14px}
 .walk .pic{display:flex;gap:10px;justify-content:center;align-items:flex-start}
 .walk .pic .shot{width:48%}.walk .pic .shot.w{width:100%}

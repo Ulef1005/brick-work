@@ -16,9 +16,6 @@
 </div>
 <div class="layout-123">
 <article class="layout-124">
-<div class="layout-125">
-<picture class="layout-126"><source media="(prefers-color-scheme: dark)" srcset="../assets/img/3e-finish-gaps-phone-390-dark.png" width="390" height="1100"><img alt="Finish the set you started" decoding="async" loading="lazy" src="../assets/img/3e-finish-gaps-phone-390-light.png" width="390" height="1100"></picture>
-</div>
 <div class="layout-127">
 <h3 class="layout-39">Finish the set you started</h3>
 <p class="layout-128">You built half a set years ago and do not know what is missing.</p>
@@ -30,9 +27,6 @@
 </div>
 </article>
 <article class="layout-124">
-<div class="layout-125">
-<picture class="layout-126"><source media="(prefers-color-scheme: dark)" srcset="../assets/img/3c-picker-sets-phone-390-dark.png" width="390" height="844"><img alt="Build from your bulk" decoding="async" loading="lazy" src="../assets/img/3c-picker-sets-phone-390-light.png" width="390" height="844"></picture>
-</div>
 <div class="layout-127">
 <h3 class="layout-39">Build from your bulk</h3>
 <p class="layout-128">Boxes of sorted loose parts, and several unfinished sets.</p>
@@ -45,9 +39,6 @@
 </div>
 </article>
 <article class="layout-124">
-<div class="layout-125">
-<picture class="layout-132"><source media="(prefers-color-scheme: dark)" srcset="../assets/img/12b-count-what-arrived-desktop-1440-dark.png" width="1440" height="1050"><img src="../assets/img/12b-count-what-arrived-desktop-1440-light.png" alt="Receive a parts order" loading="lazy" decoding="async" width="1440" height="1050"></picture>
-</div>
 <div class="layout-127">
 <h3 class="layout-39">Receive a parts order</h3>
 <p class="layout-128">A BrickLink order arrives.</p>
@@ -66,9 +57,6 @@
 </div>
 <div class="layout-123">
 <article class="layout-124">
-<div class="layout-125">
-<picture class="layout-126"><source media="(prefers-color-scheme: dark)" srcset="../assets/img/4c-complete-sets-phone-390-dark.png" width="390" height="844"><img alt="Decide what to buy" decoding="async" loading="lazy" src="../assets/img/4c-complete-sets-phone-390-light.png" width="390" height="844"></picture>
-</div>
 <div class="layout-127">
 <h3 class="layout-39">Decide what to buy</h3>
 <p class="layout-128">Several sets are short. Which are worth finishing?</p>
@@ -81,9 +69,6 @@
 </div>
 </article>
 <article class="layout-124">
-<div class="layout-125">
-<picture class="layout-132"><source media="(prefers-color-scheme: dark)" srcset="../assets/img/12c-list-and-detail-desktop-1440-dark.png" width="1440" height="1300"><img alt="Know where everything is" decoding="async" loading="lazy" src="../assets/img/12c-list-and-detail-desktop-1440-light.png" width="1440" height="1300"></picture>
-</div>
 <div class="layout-127">
 <h3 class="layout-39">Know where everything is</h3>
 <p class="layout-128">A set is broken down into bags. Which box is it in?</p>

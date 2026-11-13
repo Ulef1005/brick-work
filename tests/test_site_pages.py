@@ -159,59 +159,19 @@ def test_use_cases_have_eight_cards_in_three_groups(site):
         assert f'id="{group}"' in text
     assert 'Planned' in text
     order = next(card for card in text.split('<article') if '<h3 class="layout-39">Receive a parts order' in card)
-    assert '12b-count-what-arrived-desktop-1440-light.png' in order
+    assert '<picture' not in order          # no capture while the demo's pictures are placeholders (the screenshots test below)
 
 
-def test_desktop_screenshots_are_only_kept_for_other_pages(site):
-    pages = [(site / name).read_text() for name in ('index.html', 'use-cases/index.html')]
-    referenced = {Path(attrs[attr]).name for text in pages for tag, attrs in Elements(text).elements
-                  for attr in ('src', 'srcset') if tag in ('img', 'source')
-                  and 'desktop-' in attrs.get(attr, '')}
-    assert len(referenced) == 6
-    assert {p.name for p in (ROOT / 'scripts/site/img').glob('*desktop*.png')} == referenced
-    assert {p.name for p in (site / 'assets/img').glob('*desktop*.png')} == referenced
-
-
-@pytest.mark.parametrize('page,stems', [
-    ('index.html', [
-        '1c-sets-desktop-1440', '3a-matcher-phone-390',
-        '3e-start-phone-390', '3c-picker-pick-phone-390', '3a-matcher-phone-390',
-        '12b-count-what-arrived-desktop-1440',
-    ]),
-    ('use-cases/index.html', [
-        '3e-finish-gaps-phone-390', '3c-picker-sets-phone-390',
-        '12b-count-what-arrived-desktop-1440', '4c-complete-sets-phone-390',
-        '12c-list-and-detail-desktop-1440',
-    ]),
-    ('workflows/index.html', [
-        '3e-start-phone-390', '3e-part-phone-390',
-        '3c-picker-sets-phone-390', '3c-picker-pick-phone-390',
-        '3a-matcher-phone-390', '1d-set-detail-phone-390',
-        '12b-count-what-arrived-desktop-1440',
-    ]),
-])
-def test_built_screen_placements(site, page, stems):
-    elements = Elements((site / page).read_text()).elements
-    images = [Path(attrs['src']).name for tag, attrs in elements
-              if tag == 'img' and '/img/' in attrs.get('src', '')]
-    sources = [Path(attrs['srcset']).name for tag, attrs in elements
-               if tag == 'source' and '/img/' in attrs.get('srcset', '')]
-    assert images == [f'{stem}-light.png' for stem in stems]
-    assert sources == [f'{stem}-dark.png' for stem in stems]
-    if page == 'index.html':
-        text = (site / page).read_text()
-        assert 'design preview' not in text and 'to capture' not in text
-
-
-def test_no_unreferenced_screenshots_are_shipped(site):
-    referenced = {Path(attrs[attr]).name
-                  for name in ('index.html', 'use-cases/index.html', 'workflows/index.html')
-                  for tag, attrs in Elements((site / name).read_text()).elements
-                  for attr in ('src', 'srcset') if tag in ('img', 'source')
-                  and '/img/' in attrs.get(attr, '')}
-    assert len(referenced) == 22
-    assert {p.name for p in (ROOT / 'scripts/site/img').glob('*')} == referenced
-    assert {p.name for p in (site / 'assets/img').glob('*')} == referenced
+def test_site_pages_show_no_screenshot_until_the_pictures_are_real(site):
+    """Ulf, 2026-11-13: no image with placeholder pictures. The demo's drawings are placeholders, so no page of the site shows a capture of it;
+    the captures come back with the Rebrickable pictures (#332), and then this test names the pages that carry them."""
+    assert not (site / 'assets/img').exists()
+    for page in site.glob('*/index.html'):
+        if page.parts[-2] in ('docs', 'demo'):
+            continue
+        for tag, attrs in Elements(page.read_text()).elements:
+            assert '/img/' not in attrs.get('src', '') + attrs.get('srcset', ''), (page, attrs)
+    assert not [t for t, a in Elements((site / 'index.html').read_text()).elements if t == 'img' and 'img/' in a.get('src', '')]
 
 
 def picture_scale(name):
@@ -369,7 +329,7 @@ def test_every_image_the_readme_and_the_pages_show_exists_and_is_a_built_capture
             target = ROOT / ('docs/img/readme' if source == 'README.md' else 'scripts/site/img') / name
             assert target.is_file(), f'{source}: {name} is missing'
             assert re.sub(r'-(light|dark)\.png$', '', name) in stems, f'{source}: {name} is not a capture of the built app'
-    assert len(shown) >= 24
+    assert len(shown) >= 2
 
 
 NOTE = re.compile(r'placeholder drawings.*?BrickLink and Rebrickable', re.S)

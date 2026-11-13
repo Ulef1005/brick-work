@@ -106,9 +106,6 @@ PICTURES = {
     '4c-complete-sets-phone-390': ('/planning/complete-sets', 390, 844, None, (SITE,)),
     # The two tutorials (docs/tutorials/): the Add search, Set Inspector, Complete sets, the wishlist and an order being counted, on the same invented world
     'tut-inspect-list-phone-390': ('/workbench/check-parts', 390, 1100, None, (TUTORIALS,)),
-    'tut-inspect-part-phone-390': ('/workbench/check-parts/%s?run=1' % STARTED, 390, 844, None, (TUTORIALS,)),
-    'tut-inspect-end-phone-390': ('/workbench/check-parts/%s?run=1' % GAPS, 390, 1100, None, (TUTORIALS,)),
-    'tut-complete-sets-phone-390': ('/planning/complete-sets', 390, 844, None, (TUTORIALS,)),
     'tut-wishlist-phone-390': ('/planning/wishlist', 390, 900, None, (TUTORIALS,)),
     'tut-order-count-phone-390': ('/workbench/orders/2?view=count', 390, 1500, None, (TUTORIALS,)),
     '12b-count-what-arrived-desktop-1440': ('/workbench/orders/2', 1440, 1050, None, (SITE,)),
@@ -157,19 +154,58 @@ for (const [selector, number] of marks) {
 # The tutorial shots that follow the reader's screen (App Docs Standard, screenshot standard): each exists as a desktop shot (a 1024 px viewport at device
 # scale 2, cut to the area the step is about) and as a phone shot, each in light and dark, with numbered call-outs. name: (path, script, {layout: (width, crop, marks)}).
 # The file is `tut-<name>-<layout>-<width>-<theme>.png`. `crop` is a list of selectors (the picture is cut to their union), `marks` are (selector, number) pairs.
+def no_placeholders(*selectors):
+    """JS for a job's `after`, before the call-outs: fail when a missing-picture tile or a picture that did not load is inside the area the shot is cut to
+    (the union of `selectors`, plus the crop padding). No screenshot of the docs shows a placeholder (Ulf, 2026-11-13); the message names the item of each
+    tile (its row's text) so the picture can be added. The page's own `no_tiles` check finds the list tiles; the Set Inspector and Part Runner draw
+    their own 'No image' tile, found here by its text."""
+    return """
+await document.fonts.ready;
+const areas = %s.flatMap(s => [...document.querySelectorAll(s)]).map(e => e.getBoundingClientRect());
+if (!areas.length) throw new Error('no_placeholders: the area matches nothing');
+const pad = 28, box = {l: Math.min(...areas.map(a => a.left)) - pad, t: Math.min(...areas.map(a => a.top)) - pad, r: Math.max(...areas.map(a => a.right)) + pad, b: Math.max(...areas.map(a => a.bottom)) + pad};
+const inside = e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.right > box.l && r.left < box.r && r.bottom > box.t && r.top < box.b; };
+const tiles = [...document.querySelectorAll('.bc-no-image,.bw-no-image,.bc-picture:not(:has(img))')].concat(
+  [...document.querySelectorAll('body *')].filter(e => !e.children.length && /^No image$/i.test((e.textContent || '').trim())));
+const broken = [...document.images].filter(i => inside(i) && (!i.complete || !i.naturalWidth));
+const named = [...tiles.filter(inside), ...broken].map(e => { const row = e.closest('article,li,tr,form,[data-row]') || e.parentElement.parentElement; return (row.innerText || e.getAttribute('src') || '').replace(/\\s+/g, ' ').trim().slice(0, 130); });
+if (named.length) throw new Error('no_placeholders: ' + named.length + ' placeholder(s): ' + [...new Set(named)].join(' | '));
+""" % json.dumps(list(selectors))
+
+
+def tag_nth(selector, n, attr='data-shot-area'):
+    """JS for a job's `after`: mark the n-th (1-based) element matching `selector` with `attr`, so a crop or a call-out can name it ("the fourth row")."""
+    return f"const hit = [...document.querySelectorAll({json.dumps(selector)})][{n - 1}]; if (!hit) throw new Error('tag_nth: no match for ' + {json.dumps(selector)}); hit.setAttribute({json.dumps(attr)}, '');\n"
+
+
+# The tutorial shots that follow the reader's screen (App Docs Standard, screenshot standard): each exists as a desktop shot (a 1024 px viewport at device
+# scale 2, cut to the area the step is about) and as a phone shot, each in light and dark, with numbered call-outs, made in the real-sets world (no
+# placeholders, Ulf 2026-11-13). name: (path, script, {layout: (width, crop selectors, marks, `after` code run first)}). The file is
+# `tut-<name>-<layout>-<width>-<theme>.png`; a mark is a (selector, number) pair.
+REAL = {'real': lambda number: uid('copy', number, 'a')}['real']
+REAL_STARTED, REAL_GAPS = REAL('8043-1'), REAL('7938-1')   # a check about 40 % answered; a check answered to the end, with gaps
 LAYOUT_SCALE = {'desktop': 2, 'phone': 2}
 TUTORIAL_SHOTS = {
-    'add': ('/manage/add', ADD_SEARCH, {
-        'desktop': (1024, ['.bw-add-search-field', '[data-results] button'], [('.bw-add-search-field', 1), ('[data-results] button', 2)]),
-        'phone': (390, ['.bw-add-search-field', '[data-results] button'], [('.bw-add-search-field', 1), ('[data-results] button', 2)]),
-    }),
+    'add': ('/manage/add', ADD_SEARCH.replace('Old Mill', 'Medieval'), {
+        layout: (width, ['.bw-add-search-field', '.bw-add-select'], [('.bw-add-search-field', 1), ('.bw-add-select', 2)], '')
+        for layout, width in (('desktop', 1024), ('phone', 390))}),
+    'inspect-part': ('/workbench/check-parts/%s?run=1' % REAL_STARTED, None, {
+        layout: (width, ['[data-stage]'], [('[data-stage] img', 1), ('[data-action=answer]', 2), ('[data-action=missing]', 3), ('[data-action=skip]', 4)], '')
+        for layout, width in (('desktop', 1024), ('phone', 390))}),
+    'inspect-end': ('/workbench/check-parts/%s?run=1' % REAL_GAPS, None, {
+        layout: (width, ['[data-stage] h2', '[data-shot-area]'], [('[data-stage] h2', 1), ('[data-action=found_one]', 2), ('[data-action=finish_view]', 3)], tag_nth('[data-action=found_one]', 4))
+        for layout, width in (('desktop', 1024), ('phone', 390))}),
+    'complete-sets': ('/planning/complete-sets', None, {
+        layout: (width, ['[data-bp-row]:first-of-type'], [('[data-bp-row]:first-of-type', 1), ('[data-bp-pin]', 2), ('.bp-repair-details summary', 3)], '')
+        for layout, width in (('desktop', 1024), ('phone', 390))}),
 }
-EXTRAS = {}
+EXTRAS, WORLD_OF = {}, {}
 for _name, (_path, _script, _layouts) in TUTORIAL_SHOTS.items():
-    for _layout, (_width, _crop, _marks) in _layouts.items():
+    for _layout, (_width, _crop, _marks, _prepare) in _layouts.items():
         _stem = f'tut-{_name}-{_layout}-{_width}'
         PICTURES[_stem] = (_path, _width, 3000, _script, (TUTORIALS,))
-        EXTRAS[_stem] = {'scale': LAYOUT_SCALE[_layout], 'crop': _crop, 'crop_pad': 28, 'after': callouts(*_marks)}
+        WORLD_OF[_stem] = 'real'
+        EXTRAS[_stem] = {'scale': LAYOUT_SCALE[_layout], 'crop': _crop, 'crop_pad': 28, 'after': _prepare + no_placeholders(*_crop) + callouts(*_marks)}
 
 
 def optimise(path: Path) -> None:
@@ -190,28 +226,32 @@ def main(argv):
         print(chrome.stderr.strip())
         return 1
     chosen = {k: v for k, v in PICTURES.items() if options.only is None or k in options.only}
-    with screen_gate.world('showcase', sorted({v[0] for v in chosen.values() if isinstance(v[0], str)})) as base, tempfile.TemporaryDirectory(prefix='bw-site-') as scratch:
-        jobs, targets = [], []
-        for stem, (path, width, limit, script, _) in chosen.items():
-            path = path(base) if callable(path) else path
-            for theme in ('light', 'dark'):
-                out = Path(scratch) / f'{stem}-{theme}.png'
-                jobs.append({'url': base + path, 'out': str(out), 'width': width, 'theme': theme, 'max': limit, 'script': (script or '') + SETTLE, **EXTRAS.get(stem, {})})
-        spec = Path(scratch) / 'jobs.json'
-        spec.write_text(json.dumps({'deterministic': True, 'now': screen_gate.FIXED_NOW.isoformat().replace('+00:00', 'Z'), 'jobs': jobs}))
-        result = subprocess.run(['node', str(ROOT / 'scripts' / 'capture_screens.cjs'), chrome.stdout.strip(), str(spec)], capture_output=True, text=True, timeout=1800)
-        if result.returncode:
-            print(result.stdout[-2000:] + result.stderr[-2000:])
-            return 1
-        for job in jobs:
-            made = Path(job['out'])
-            optimise(made)
-            stem = made.name.rsplit('-', 1)[0]
-            folders = [Path(options.out)] if options.out else list(chosen[stem][4])
-            for folder in folders:
-                folder.mkdir(parents=True, exist_ok=True)
-                (folder / made.name).write_bytes(made.read_bytes())
-            print(made.name, made.stat().st_size)
+    with tempfile.TemporaryDirectory(prefix='bw-site-') as scratch:
+        for world in dict.fromkeys(WORLD_OF.get(stem, 'showcase') for stem in chosen):
+            stems = [stem for stem in chosen if WORLD_OF.get(stem, 'showcase') == world]
+            with screen_gate.world(world, sorted({chosen[stem][0] for stem in stems if isinstance(chosen[stem][0], str)})) as base:
+                jobs = []
+                for stem in stems:
+                    path, width, limit, script, _ = chosen[stem]
+                    path = path(base) if callable(path) else path
+                    for theme in ('light', 'dark'):
+                        jobs.append({'url': base + path, 'out': str(Path(scratch) / f'{stem}-{theme}.png'), 'width': width, 'theme': theme, 'max': limit,
+                                     'script': (script or '') + SETTLE, **EXTRAS.get(stem, {})})
+                spec = Path(scratch) / f'jobs-{world}.json'
+                spec.write_text(json.dumps({'deterministic': True, 'now': screen_gate.FIXED_NOW.isoformat().replace('+00:00', 'Z'), 'jobs': jobs}))
+                result = subprocess.run(['node', str(ROOT / 'scripts' / 'capture_screens.cjs'), chrome.stdout.strip(), str(spec)], capture_output=True, text=True, timeout=1800)
+                if result.returncode:
+                    print(result.stdout[-2000:] + result.stderr[-2000:])
+                    return 1
+                for job in jobs:
+                    made = Path(job['out'])
+                    optimise(made)
+                    stem = made.name.rsplit('-', 1)[0]
+                    folders = [Path(options.out)] if options.out else list(chosen[stem][4])
+                    for folder in folders:
+                        folder.mkdir(parents=True, exist_ok=True)
+                        (folder / made.name).write_bytes(made.read_bytes())
+                    print(made.name, made.stat().st_size)
     return 0
 
 

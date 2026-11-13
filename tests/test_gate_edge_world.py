@@ -229,16 +229,16 @@ NEW = {('16-Module-states', 'loading'), ('16-Module-states', 'error'), ('16-Modu
        ('39-Include-spare-parts', 'spare-pass'), ('44-Complete-sets', 'pins')}
 
 
-# #57: the Value module and Paid vs value states, in their own world (`edge-value`: the edge world plus gate_edge.ValueLayer), added as candidates.
+# #57: the Value module and Paid vs value states, in their own world (`edge-value`: the edge world plus gate_edge.ValueLayer), added as candidates, approved on 13.11.
 VALUE = {('10-Set-detail', s) for s in ('value-loss', 'value-no-price', 'value-no-quote', 'value-override', 'value-stale', 'value-other-currency')} | {
     ('49-Statistics', 'paid-vs-value'), ('49-Statistics', 'insurance-report'), ('49-Statistics', 'insurance-report-empty')}
 
 
-def test_the_value_states_use_the_edge_value_world_or_the_empty_one_and_are_candidates():
+def test_the_value_states_use_the_edge_value_world_or_the_empty_one_and_are_built():
     states = {(e['screen'], e['state']): e for e in gate.load()['states']}
     assert VALUE <= set(states)
     for key in VALUE:
-        assert states[key]['world'] in ('edge-value', 'edge-empty') and states[key]['built'] is True and states[key]['approved'] is False, key
+        assert states[key]['world'] in ('edge-value', 'edge-empty') and states[key]['built'] is True and isinstance(states[key]['approved'], bool), key   # approved by Ulf on 13.11. (decision 602); a state that moves is approved again by him
 
 
 def test_the_new_states_are_built_in_a_known_world():

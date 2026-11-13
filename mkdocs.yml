@@ -38,6 +38,7 @@ theme:
   features: [navigation.tabs, navigation.sections, navigation.indexes, search.highlight]
 # The theme: generated from the served tokens by scripts/docs_theme.py (doc-standard-v1 B2, design/APPROVALS.md); edit the tokens, not the CSS.
 extra_css: [assets/brickwork-docs.css]
+extra_javascript: [assets/screens.js]
 markdown_extensions: [admonition, tables, toc, attr_list, pymdownx.details, pymdownx.highlight, pymdownx.superfences]
 # The API v2 and MCP reference pages are printed by a markdown-exec block at build time (scripts/docs_reference.py), and the code
 # reference is rendered by mkdocstrings from brickwork.core's docstrings (ADR 0030). An explicit plugins: list replaces the default

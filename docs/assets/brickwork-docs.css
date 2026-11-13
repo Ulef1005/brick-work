@@ -385,3 +385,11 @@
 .md-typeset .admonition.quote, .md-typeset details.quote { background-color: var(--tw-info-soft); }
 .md-typeset .quote > .admonition-title, .md-typeset .quote > summary { background-color: transparent; color: var(--tw-text); }
 .md-typeset .quote > .admonition-title::before, .md-typeset .quote > summary::before { background-color: var(--tw-info); }
+
+/* The screens switch (docs/assets/screens.js) and the screenshots: the picture never outgrows the column; a phone shot shown on a wide screen stays phone-sized. */
+.md-typeset picture { display: inline-block; max-width: 100%; }
+.md-typeset picture[data-forced="phone"] img { width: 300px; }
+.bw-screens { display: flex; flex-wrap: wrap; align-items: center; gap: var(--tw-s-2); margin: var(--tw-s-3) 0; font-size: var(--tw-fs-small); color: var(--tw-text-2); }
+.bw-screens button { font: inherit; color: var(--tw-text); background: transparent; border: 0.5px solid var(--tw-divider-strong); border-radius: var(--tw-r-2); padding: var(--tw-s-1) var(--tw-s-3); cursor: pointer; }
+.bw-screens button[aria-pressed="true"] { background: var(--tw-accent-soft); border-color: var(--tw-accent); color: var(--tw-accent-text); font-weight: 600; }
+.bw-screens button:hover { border-color: var(--tw-accent); }

@@ -31,12 +31,12 @@ You can set them up later. The note under the step says what you give up without
 ## 4. Add one set
 
 1. In step 3, select **Add a set**. (**Add** at the top of the page opens the same screen.)
-2. Under **Search**, type the set's number or its name. The tabs **Paste**, **File** and **Photo** are other ways in; you do not need them now.
+2. Under **Search** (marked 1 in the picture), type the set's number or its name. The tabs **Paste**, **File** and **Photo** are other ways in; you do not need them now.
 3. Leave **What** on **Set** and **Where** on **Owned**.
-4. Next to your set in the results, select **Select**. The button at the bottom now reads **Review 1 item**.
+4. Next to your set in the results, select **Select** (marked 2). The button at the bottom now reads **Review 1 item**.
 
-![The Add screen: the Search field holds Old Mill and one result, with its Select button, before you select it](../img/tutorials/tut-add-desktop-1440-light.png#only-light)
-![The Add screen: the Search field holds Old Mill and one result, with its Select button, before you select it](../img/tutorials/tut-add-desktop-1440-dark.png#only-dark)
+<picture data-bw-screens><source media="(max-width: 600px)" srcset="../img/tutorials/tut-add-phone-390-light.png"><img src="../img/tutorials/tut-add-desktop-1024-light.png#only-light" alt="The Add screen with two call-outs: 1 is the Search field holding Old Mill, 2 is the Select button of the one result."></picture>
+<picture data-bw-screens><source media="(max-width: 600px)" srcset="../img/tutorials/tut-add-phone-390-dark.png"><img src="../img/tutorials/tut-add-desktop-1024-dark.png#only-dark" alt="The Add screen with two call-outs: 1 is the Search field holding Old Mill, 2 is the Select button of the one result."></picture>
 
 5. Select **Review 1 item**. The review shows one row with **Quantity**, **Where**, **Condition** and **Completeness**. Set **Condition** to **New** or **Used**. Leave **Completeness** on **Unknown · from checks**: the check you run next decides it. Under the row, **Part list** shows which part list the copy gets; keep the preselected one.
 6. Select **Add 1 item to the collection**.

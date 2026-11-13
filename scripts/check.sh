@@ -40,6 +40,10 @@ browser() {
   # A Chrome for the geometry and screenshot tests: CHROME, else the pinned Chrome for Testing in the cache (downloaded the first time,
   # checked by version and SHA-256), else a system Chrome (scripts/chrome.py; CONTRIBUTING, Rendered tests).
   local found
+  if [[ ${BW_NO_CHROME:-} == 1 ]]; then
+    echo "NOTE: BW_NO_CHROME=1, so every Chrome test is skipped and named below (CI sets it on pull requests; run them by hand before a release)."
+    return 0
+  fi
   if found=$(python3 scripts/chrome.py ensure); then
     export CHROME=$found
     echo "Chrome: $CHROME"

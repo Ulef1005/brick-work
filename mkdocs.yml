@@ -20,7 +20,7 @@ exclude_docs: |
   data-model-4.0/schema-4.0.sql
 theme:
   name: material
-  font: false  # no Google Fonts: Inter and Geist Mono come from docs/assets/fonts (the theme CSS), the documentation pages make no external requests.
+  font: false  # no Google Fonts: Inter and Geist Mono come from docs/assets/fonts (the theme CSS), so the documentation pages make no external requests
   favicon: assets/favicon.svg
   # Light and dark with a toggle: without a palette the #only-light / #only-dark images both show (doc-standard-v1 B1)
   palette:

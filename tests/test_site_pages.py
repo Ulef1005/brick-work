@@ -396,6 +396,7 @@ def test_legal_pages_footer_and_missing_page(site):
     assert '@' not in impressum
     assert not re.search(r'\d+', visible)
     privacy = (site / 'privacy/index.html').read_text()
+    assert 'its own cookies and policy apply after that' in privacy
     assert f'https://github.com/{repository()}/discussions' in privacy
     assert f'https://github.com/{repository()}/issues' in privacy
     footer = (site / 'index.html').read_text().split('<footer', 1)[1]

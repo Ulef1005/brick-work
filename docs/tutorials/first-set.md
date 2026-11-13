@@ -21,7 +21,7 @@ The collection is empty, so the third step shows **Add a set** greyed out until 
 ## 2. Load the catalogue
 
 1. In step 1, select **Download the catalogue**. It fetches Rebrickable's public files (17 MB, no login, no key). A progress bar and a list of steps show how far it is; it takes about a minute.
-2. When it is done, step 1 reads **Done** and says how many items and colours the catalogue holds. For example, it says "658 items and 44 colours" on the invented demo, but far more on a real install.
+2. When it is done, step 1 reads **Done** and says how many items and colours the catalogue holds. For example, it says "674 items and 58 colours" on the invented demo, but far more on a real install.
 
 The catalogue is what lets Brick Work know a set's parts without asking a website each time. Rebrickable asks for at most one download a day, so do not repeat this step.
 
@@ -40,8 +40,8 @@ You can set them up later. The note under the step says what you give up without
 3. Leave **What** on **Set** and **Where** on **Owned**.
 4. Next to your set in the results, select **Select** (marked 2). The button at the bottom now reads **Review 1 item**.
 
-<picture data-bw-screens><source media="(max-width: 600px)" srcset="../img/tutorials/tut-add-phone-390-light.png"><img src="../img/tutorials/tut-add-desktop-1024-light.png#only-light" alt="The Add screen with two call-outs: 1 is the Search field holding Old Mill, 2 is the Select button of the one result."></picture>
-<picture data-bw-screens><source media="(max-width: 600px)" srcset="../img/tutorials/tut-add-phone-390-dark.png"><img src="../img/tutorials/tut-add-desktop-1024-dark.png#only-dark" alt="The Add screen with two call-outs: 1 is the Search field holding Old Mill, 2 is the Select button of the one result."></picture>
+<picture data-bw-screens><source media="(max-width: 600px)" srcset="../img/tutorials/tut-add-phone-390-light.png"><img src="../img/tutorials/tut-add-desktop-1024-light.png#only-light" alt="The Add screen with two call-outs: 1 is the Search field holding Medieval, 2 is the Select button of the one result."></picture>
+<picture data-bw-screens><source media="(max-width: 600px)" srcset="../img/tutorials/tut-add-phone-390-dark.png"><img src="../img/tutorials/tut-add-desktop-1024-dark.png#only-dark" alt="The Add screen with two call-outs: 1 is the Search field holding Medieval, 2 is the Select button of the one result."></picture>
 
 5. Select **Review 1 item**. The review shows one row with **Quantity**, **Where**, **Condition** and **Completeness**. Set **Condition** to **New** or **Used**. Leave **Completeness** on **Unknown · from checks**: the check you run next decides it. Under the row, **Part list** shows which part list the copy gets; keep the preselected one.
 6. Select **Add 1 item to the collection**.
@@ -63,15 +63,15 @@ The page now reads **Added 1 item** and shows a progress bar while the copy is m
    - If none is there, select **Missing**.
    - If you cannot tell now, select **Skip for later**.
 
-![Set Inspector on a phone: a red sloped brick, 2x, with Found 2, Missing, Back, Skip for later and Undo.](../img/tutorials/tut-inspect-part-phone-390-light.png#only-light){ width="300" }
-![Set Inspector on a phone: a red sloped brick, 2x, with Found 2, Missing, Back, Skip for later and Undo.](../img/tutorials/tut-inspect-part-phone-390-dark.png#only-dark){ width="300" }
+<picture data-bw-screens><source media="(max-width: 600px)" srcset="../img/tutorials/tut-inspect-part-phone-390-light.png"><img src="../img/tutorials/tut-inspect-part-desktop-1024-light.png#only-light" alt="Set Inspector with four call-outs: 1 is the part picture, 2 the Found 6 button, 3 the Missing button, 4 Skip for later."></picture>
+<picture data-bw-screens><source media="(max-width: 600px)" srcset="../img/tutorials/tut-inspect-part-phone-390-dark.png"><img src="../img/tutorials/tut-inspect-part-desktop-1024-dark.png#only-dark" alt="Set Inspector with four call-outs: 1 is the part picture, 2 the Found 6 button, 3 the Missing button, 4 Skip for later."></picture>
 
 4. Keep going. Every answer saves as you go, so you can close the page and pick the check up again from **Workbench → Set Inspector**, where the copy sits under **In progress**.
 5. If the set has minifigures, they come after the parts as a **Figure review**. If it has spare parts, you are asked **Include spare parts?**. Spares are never counted as missing.
 6. After the last part, the end of the check shows three steps: **1 Skipped**, **2 Missing**, **3 Save**. Work through them: **Check the N skipped parts** or **Leave them unchecked**, then read **Missing so far**.
 
-![The end of a check: Missing so far lists nine entries, each with a Found 1 button, and the button Done, 15 still missing.](../img/tutorials/tut-inspect-end-phone-390-light.png#only-light){ width="300" }
-![The end of a check: Missing so far lists nine entries, each with a Found 1 button, and the button Done, 15 still missing.](../img/tutorials/tut-inspect-end-phone-390-dark.png#only-dark){ width="300" }
+<picture data-bw-screens><source media="(max-width: 600px)" srcset="../img/tutorials/tut-inspect-end-phone-390-light.png"><img src="../img/tutorials/tut-inspect-end-desktop-1024-light.png#only-light" alt="The end of a check: 1 marks the Missing so far heading, 2 the Found 1 button of its first entry, a minifigure."></picture>
+<picture data-bw-screens><source media="(max-width: 600px)" srcset="../img/tutorials/tut-inspect-end-phone-390-dark.png"><img src="../img/tutorials/tut-inspect-end-desktop-1024-dark.png#only-dark" alt="The end of a check: 1 marks the Missing so far heading, 2 the Found 1 button of its first entry, a minifigure."></picture>
 
 7. Select **Done · N still missing**. In the last step, tick **Set is checked** and select **Done**.
 
@@ -79,11 +79,11 @@ All the buttons, the keyboard keys and the variants are in [Check a set's parts]
 
 ## 7. See what is missing and where it shows up
 
-1. Go back to your set under **Collection → Sets**. Under **Consists of**, the **Parts** tab now has a line such as **19 parts missing, 8 in loose stock**. It also has a bar with **340 of 359 parts present** and each missing part as a card with **Found 1**. (The numbers are from the invented demo.)
+1. Go back to your set under **Collection → Sets**. Under **Consists of**, the **Parts** tab now has a line such as **12 parts missing, 1 in loose stock**. It also has a bar with **1396 of 1408 parts present** and each missing part as a card with **Found 1**. (The numbers are from the invented demo.)
 2. Open **Planning → Complete sets**. It lists every copy with recorded gaps, here yours. It ranks them by what a repair is worth and offers the missing parts as a BrickLink XML export or a printable list. This is the page for deciding what to buy or fix first.
 
-![Planning, Complete sets: copies with recorded gaps, ranked by what a repair is worth, each with Pin and Details.](../img/tutorials/tut-complete-sets-phone-390-light.png#only-light){ width="300" }
-![Planning, Complete sets: copies with recorded gaps, ranked by what a repair is worth, each with Pin and Details.](../img/tutorials/tut-complete-sets-phone-390-dark.png#only-dark){ width="300" }
+<picture data-bw-screens><source media="(max-width: 600px)" srcset="../img/tutorials/tut-complete-sets-phone-390-light.png"><img src="../img/tutorials/tut-complete-sets-desktop-1024-light.png#only-light" alt="Planning, Complete sets with three call-outs on the first copy: 1 is the copy, 2 its Pin button, 3 its repair details."></picture>
+<picture data-bw-screens><source media="(max-width: 600px)" srcset="../img/tutorials/tut-complete-sets-phone-390-dark.png"><img src="../img/tutorials/tut-complete-sets-desktop-1024-dark.png#only-dark" alt="Planning, Complete sets with three call-outs on the first copy: 1 is the copy, 2 its Pin button, 3 its repair details."></picture>
 
 3. Open **Workbench → Part Runner**. Under **Pick for which sets?** it lists the same copy with the number of parts it is missing, if any. This is where you go to pull missing parts from your drawers.
 

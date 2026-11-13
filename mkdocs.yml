@@ -9,6 +9,7 @@ exclude_docs: |
   approval/
   milestones/
   img/readme/
+  img/tutorials/NOTICE.md
   pitch/README.md
   brickwork/api-v1.md
   brickwork/openapi-v1.yaml

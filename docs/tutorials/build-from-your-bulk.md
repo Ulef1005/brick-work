@@ -1,3 +1,8 @@
+---
+audience: user
+verified: 1.0
+---
+
 # Build from your bulk
 
 You have sets that lack a few parts and a pile of loose parts that might fill the gaps. In this tutorial you give the loose parts a home, pick the missing parts of several sets in one pass through your drawers, and then let Brick Work show which sets your loose stock now finishes.
@@ -65,7 +70,7 @@ Part Runner takes parts you find. Matchmaker works the other way round: it looks
 
 A move is not a reservation: the same loose part can show against several copies, so work through one copy at a time. A copy becomes complete only when **Set is checked** is set on it. Every move is listed under **Recent saves** with an **Undo**.
 
-## What you did
+## What next
 
 You gave your loose parts a place, collected the missing parts of several sets in one trip, and moved loose stock into the sets it finishes. From here:
 

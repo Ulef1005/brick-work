@@ -47,7 +47,12 @@ brick-work/
 
 ## 4. Start Brick Work
 
-Open a terminal in the `brick-work` folder: on Windows, **Terminal** or **PowerShell** (in File Explorer, right-click the folder and choose **Open in Terminal**); on a Mac, **Terminal** (right-click the folder in Finder, **Services → New Terminal at Folder**). Then type these two lines, one at a time:
+Open a terminal in the `brick-work` folder:
+
+- On Windows, **Terminal** or **PowerShell** (in File Explorer, right-click the folder and choose **Open in Terminal**).
+- On a Mac, **Terminal** (right-click the folder in Finder, **Services → New Terminal at Folder**).
+
+Then type these two lines, one at a time:
 
 ```sh
 docker compose pull
@@ -72,6 +77,6 @@ Brick Work keeps running while Docker Desktop runs. To stop it, type `docker com
 
 ## Next steps
 
-- [Back up and restore](back-up-and-restore.md): copy the `data` folder regularly.
+- [Back up and restore](back-up-and-restore.md): copy the `data` folder on a regular schedule.
 - [Upgrade Brick Work](upgrade.md): a new release means a new `compose.yaml`, then `docker compose pull` and `docker compose up -d`.
 - Reaching Brick Work from your phone, or installing it on the Home Screen, needs it on your network with HTTPS: see **Standalone installation with Docker** in the [README](https://github.com/Ulef1005/brick-work#standalone-installation-with-docker).

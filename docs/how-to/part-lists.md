@@ -11,7 +11,7 @@ Do this when a set has more than one part list to build a copy from: several Reb
 
 ## See which list a copy uses
 
-Open the copy (**Collection → Sets**, then the set and its **Set 1**, **Set 2**…). The **Part list** card says where its lines come from: "Rebrickable · version 2 of 3" (with **latest** when it is) or "BrickLink's list", and how many lines and minifigures it has. Each minifigure line says where its own parts came from, because a figure's parts always come from the figure's own Rebrickable list, even in a copy built from BrickLink's.
+Open the copy (**Collection → Sets**, then the set and its **Set 1**, **Set 2**…). The **Part list** card says where its lines come from: "Rebrickable · version 2 of 3" (with **latest** when it is) or "BrickLink's list." It also says how many lines and minifigures it has. Each minifigure line says where its own parts came from, because a figure's parts always come from the figure's own Rebrickable list, even in a copy built from BrickLink's.
 
 The card shows **Switch** only when there is something to switch to.
 
@@ -29,34 +29,34 @@ The line under the picker says which one it started on. If you pick another list
 
 1. On the copy, press **Switch** on the **Part list** card.
 2. Choose a list. The sheet shows **What changes**: lines added, lines retired, and quantities capped.
-3. Read **Marks that will not carry over**. A line that is missing, damaged or checked and is not in the new list is retired with its marks; a quantity that is lower in the new list caps the marks on it.
+3. Read **Marks that will not carry over**. A line that is missing, damaged or checked and is not in the new list is retired with its marks. A quantity that is lower in the new list caps the marks on it.
 4. Press **Switch**. **Undo** takes the switch back, and the page says so.
 
 Ticking **Use this for new copies of this set** is part of the switch: it is remembered in the same step, and **Undo** takes both back. Saying the same choice again counts as a new decision, so an earlier Undo or Cancel leaves it alone. The box is not offered for a list fetched from Rebrickable (a set newer than your catalogue), which cannot be remembered.
 
-Nothing is deleted. A line that is not in the new list is **retired**: it stays with its marks and leaves every count and check. A note under the parts says "n retired lines kept · m with marks", and opens to list them. If you switch back to a list that has the line again, it comes back with its marks.
+Nothing is deleted. A line that is not in the new list is **retired**: it stays with its marks and leaves every count and check. A note under the parts says "n retired lines kept · m with marks." It opens to list them. If you switch back to a list that has the line again, it comes back with its marks.
 
 ## BrickLink's list for a copy that is not on it
 
 A copy already on BrickLink's list switches to a newer fetched BrickLink list the same way.
 
 
-If BrickLink's list for the set was fetched before, the copy switches at once. If not, choosing it fetches the list: the sheet says "Fetches BrickLink's list; the copy switches when it arrives". The copy keeps working on its Rebrickable list, and its **Part list** card says **BrickLink list pending**.
+If BrickLink's list for the set was fetched before, the copy switches at once. If not, choosing it fetches the list: the sheet says "Fetches BrickLink's list; the copy switches when it arrives." The copy keeps working on its Rebrickable list, and its **Part list** card says **BrickLink list pending**.
 
 - The card says what it is waiting for: the job running, today's BrickLink budget, or the network.
 - When the list arrives, a copy with no checks or marks switches by itself. A copy with marks stays pending and offers **Switch now** with what would not carry over.
-- **Cancel** stops waiting and leaves the copy on its Rebrickable list. If you ticked **Use this for new copies of this set** with the request, Cancel puts the set's earlier choice back (unless you decided it again since, even to the same value). When the list arrives and the copy switches, one **Undo** takes back the switch and the remembered choice together.
+- **Cancel** stops waiting and leaves the copy on its Rebrickable list. If you ticked **Use this for new copies of this set** with the request, Cancel puts the set's earlier choice back. It does not do so if you decided it again since, even to the same value. When the list arrives and the copy switches, one **Undo** takes back the switch and the remembered choice together.
 
-Without a BrickLink key the choice is greyed with "needs a BrickLink key".
+Without a BrickLink key the choice is greyed with "needs a BrickLink key."
 
 ## When a list changed
 
-After a catalogue download, a copy whose list is no longer the one in the catalogue says "Rebrickable changed version 3 of 3 since this copy was built · n lines differ", for the copy and for each figure line. Nothing switches by itself. Press **Switch to the current list** to see what would change and decide. For a copy on BrickLink's list the note says "needs a BrickLink key" instead when no key is set; the page always opens without one.
+After a catalogue download, a copy whose list is no longer the one in the catalogue gets a note, for the copy and for each figure line. The note says "Rebrickable changed version 3 of 3 since this copy was built · n lines differ." Nothing switches by itself. Press **Switch to the current list** to see what would change and decide. For a copy on BrickLink's list the note says "needs a BrickLink key" instead when no key is set; the page always opens without one.
 
 ## Group the parts on a set page
 
 In **Manage → Settings**, **Group parts by** offers **Part groups** (the default twelve groups), **BrickLink categories** (the original names in alphabetical order), or **No grouping** (one list, 15 rows per page). Save the page to apply your choice; **Undo** restores the previous setting. From the command line, use `brickwork settings set part_list_grouping grouped` (or `bricklink` or `none`).
 
-On a set's **Consists of** list, each group shows its row and piece counts. For an owned copy it also shows checked rows and remaining work; a reference set without a copy has no checking counters or status pill. Reference parts use their catalogue categories, with uncategorised parts under **Other**. Groups with missing parts or unchecked rows start expanded; complete groups start collapsed. Click a group header to open or close it, or use **Expand all** and **Collapse all**. Your browser remembers this separately for each copy. Without JavaScript, every group stays open and shows all its rows.
+On a set's **Consists of** list, each group shows its row and piece counts. For an owned copy it also shows checked rows and remaining work; a reference set without a copy has no checking counters or status pill. Reference parts use their catalogue categories, with uncategorised parts under **Other**. Groups with missing parts or unchecked rows start expanded; complete groups start collapsed. Select a group header to open or close it, or use **Expand all** and **Collapse all**. Your browser remembers this per copy. Without JavaScript, every group stays open and shows all its rows.
 
 Each group has pages of 25 rows. Minifigures stay in their own tab, outside the part groups and their counts, and have a separate pager when there are more than 25 rows. Search and filters apply across groups and hide empty groups; sorting orders the rows within each group. On a phone, the headers keep the group name and status while the counts stay out of the way.

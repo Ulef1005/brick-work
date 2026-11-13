@@ -30,7 +30,7 @@ Every move appears under **Recent saves**, with an **Undo** on each line.
 - Matches are candidates from current stock, not reservations. The same loose item can appear against several copies.
 - Within one copy, coverage counts each loose stock item once, so a lot of 2 does not cover two gaps of 2.
 - Damaged loose stock and loose minifigures with missing parts are not offered.
-- A match is exact by the catalogue item, so an item that still says **To check** is matched like any other; the mark only tells you its BrickLink number is not settled. A loose item with no number, or a BrickLink-only item, never meets a catalogue part: merge it into the catalogue item first.
+- A match is exact by the catalogue item, so an item that still says **To check** is matched like any other. The mark only tells you its BrickLink number is not settled. A loose item with no number, or a BrickLink-only item, never meets a catalogue part: merge it into the catalogue item first.
 - A copy becomes Complete only when **Set is checked** is set on it and no required part or minifigure is missing. If you set its completeness by hand, Matchmaker leaves it as it is.
 
 ## Narrow the list

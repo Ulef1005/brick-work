@@ -7,13 +7,13 @@ verified: 1.0
 
 *Since 0.5.0.*
 
-`brickwork` is the admin command line. It reads the same [settings](settings.md) as the app, so it works on the database named by `BW_DB_PATH`. In a Docker install, run it inside the container:
+`brickwork` is the administrator command line. It reads the same [settings](settings.md) as the app, so it works on the database named by `BW_DB_PATH`. In a Docker install, run it inside the container:
 
 ```text
 docker compose exec brickwork brickwork <command> ...
 ```
 
-> **On `main` (the 4.0 development line):** `setup` creates a 4.0 collection and says where `catalogue.db` goes, `mcp` talks API v2 (`/api/v2`), `migrate` (the BrickTracker-era importer) is gone (a 3.3 collection moves with `migrate4`), and `sync` and `import-bricktracker` run on the 4.0 store. The catalogue itself is built with `python -m brickwork.store4` (see [catalogue](#catalogue)). This page otherwise describes release 0.5.
+> **On `main` (the 4.0 development line):** `setup` creates a 4.0 collection and says where `catalogue.db` goes, and `mcp` talks API v2 (`/api/v2`). `migrate` (the BrickTracker-era importer) is gone (a 3.3 collection moves with `migrate4`), and `sync` and `import-bricktracker` run on the 4.0 store. The catalogue itself is built with `python -m brickwork.store4` (see [catalogue](#catalogue)). This page otherwise describes release 0.5.
 
 Every command takes `--json` to print its result as JSON instead of plain lines, and `-h` for its usage. A command that fails prints the reason on standard error and exits with status 1. With `BW_READ_ONLY` on, the `token` and `wishlist` commands that change something are refused.
 
@@ -21,20 +21,20 @@ Every command takes `--json` to print its result as JSON instead of plain lines,
 
 *Since 0.5.0.*
 
-Creates the database at `BW_DB_PATH` (and its folder) if it does not exist yet, with the freshness rules a new collection starts with (prices 30 days, metadata 365 days, pictures never) and the three statuses Brick Work itself reads: *Set is checked*, *Box present* and *Instructions present*, which cannot be renamed or archived. Run it once before the first start. Running it again changes nothing, and a database set up by an older version is refused with the fix named.
+Creates the database at `BW_DB_PATH` (and its folder) if it does not exist yet. It is created with the freshness rules a new collection starts with (prices 30 days, metadata 365 days, pictures never). It also gets the three statuses Brick Work itself reads, *Set is checked*, *Box present*, and *Instructions present*, which cannot be renamed or archived. Run it once before the first start. Running it again changes nothing, and a database set up by an older version is refused with the fix named.
 
 ```text
 brickwork setup
 brickwork setup --if-missing
 ```
 
-*Since 1.0.1:* `--if-missing` uses the app's collection path rules, including `BW_DB_PATH` from the environment or `data/.env`: if that path exists in any format, it succeeds with `setup: skipped` and `reason: collection exists` without opening or changing the file. If missing, it creates and seeds the collection as plain `setup` does, without downloading the catalogue. The container entrypoint runs this automatically before starting the server; a setup failure stops the container.
+*Since 1.0.1:* `--if-missing` uses the app's collection path rules, including `BW_DB_PATH` from the environment or `data/.env`. If that path exists in any format, it succeeds with `setup: skipped` and `reason: collection exists` without opening or changing the file. If missing, it creates and seeds the collection as plain `setup` does, without downloading the catalogue. The container entrypoint runs this automatically before starting the server; a setup failure stops the container.
 
 ## check
 
 *Since 0.5.0.*
 
-Checks the database: SQLite integrity and foreign keys of the collection, SQLite integrity of the catalogue file beside it, and the row count of every table. It then checks that the two files belong together (*since 0.6.0*), one named check each:
+Checks the database: the SQLite integrity and foreign keys of the collection, the SQLite integrity of the catalogue file beside it, and the row count of every table. It then checks that the two files belong together (*since 0.6.0*), one named check each:
 
 - `binding`: the collection is bound to this catalogue and every build it activated is in the catalogue file.
 - `born_keys`: every catalogue item and colour in the collection has the same id and born key in the catalogue.
@@ -61,7 +61,7 @@ brickwork worker
 
 *Since 0.5.0.*
 
-Creates, lists and revokes API tokens. A new token's secret is printed once; only its hash is stored.
+Creates, lists, and revokes API tokens. A new token's secret is printed once; only its hash is stored.
 
 ```text
 brickwork token create --name NAME [--scope SCOPES] [--expires DAYSd]
@@ -147,7 +147,12 @@ brickwork migrate4 --in OLD_DB --catalogue CATALOGUE_DB --mappings MAPPINGS_DIR
 | `--report` | Required. A new or empty folder for the proof and the report. |
 | `--pin` | Optional. The `proof.json` or `summary.md` of an earlier run: refuse unless the catalogue and the mapping files are identical to that run's. |
 
-The exit status is 0 when the proof passed and the file was published, 10 when the proof failed, 11 when the command refused before writing, and 12 when 3.3 rows need a decision.
+The exit status is:
+
+- 0 when the proof passed and the file was published
+- 10 when the proof failed
+- 11 when the command refused before writing
+- 12 when 3.3 rows need a decision
 
 ## import-bricktracker
 
@@ -178,13 +183,13 @@ brickwork catalogue status
 brickwork catalogue import bricklink --from DIRECTORY
 ```
 
-`status` prints the catalogue's builds, the activations in the collection, the last reconcile and the newest Rebrickable download. `import bricklink` builds a new catalogue with the BrickLink item lists found in `DIRECTORY`, activates it and reconciles the collection with it. The Rebrickable download and build are `python -m brickwork.store4 --data DIR catalogue download` and `catalogue import`; a catalogue copied in by hand needs `catalogue reconcile` once. **Tools & Admin → Catalogue** does the download, the build, the rebuild, the BrickLink lists and the reconcile from the browser ([Settings and maintenance](../how-to/settings-and-maintenance.md#catalogue)); the app also reconciles a catalogue that is not reconciled yet when it starts, and `brickwork worker` does the same.
+`status` prints the catalogue's builds, the activations in the collection, the last reconcile, and the newest Rebrickable download. `import bricklink` builds a new catalogue with the BrickLink item lists found in `DIRECTORY`, activates it, and reconciles the collection with it. The Rebrickable download and build are `python -m brickwork.store4 --data DIR catalogue download` and `catalogue import`; a catalogue copied in by hand needs `catalogue reconcile` once. **Tools & Admin → Catalogue** does the download, the build, the rebuild, the BrickLink lists, and the reconcile from the browser ([Settings and maintenance](../how-to/settings-and-maintenance.md#catalogue)). The app also reconciles a catalogue that is not reconciled yet when it starts, and `brickwork worker` does the same.
 
 ## sources
 
 *Since 0.5.0.*
 
-Shows each source with its key state (never the key), its daily budget and the calls used today.
+Shows each source with its key state (never the key), its daily budget, and the calls used today.
 
 ```text
 brickwork sources status
@@ -225,7 +230,7 @@ brickwork brickset refresh [SET ...]
 
 *Since 0.5.0.*
 
-Fetches BrickLink's prices for one set you hold or want, new and used. It runs the set's `market_price` step here.
+Fetches BrickLink's new and used prices for one set you hold or want. It runs the set's `market_price` step here.
 
 ```text
 brickwork prices refresh SET_NUM

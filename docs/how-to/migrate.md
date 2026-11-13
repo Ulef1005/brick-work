@@ -15,13 +15,15 @@ While you follow a choice, the pages it opens show **‹ Back to Get started**. 
 
 Your sets and wishlist come over through **Collection sync**, with a preview row by row. You need the site's API key (the keys step of **Get started**) and your own account login on **Collection sync**. See [Sync with Rebrickable and Brickset](sync-collection.md). Imported copies are tagged **imported from Rebrickable** or **imported from Brickset**.
 
+<!-- vale Microsoft.FirstPerson = NO -->
 Or export **My Sets** from Brickset as a CSV file and choose **Choose a CSV file**, which opens **Add** with **File** selected. With **Owned** (or **Loose**) Brick Work takes the sets marked owned, with their count; an owned count split into new and used becomes a row per condition. With **Wishlist** it takes the sets marked wanted. The set number is Brickset's number and variant, such as `8285-1`, and your Brickset notes become the note. A file without the columns this needs is refused with their names. The CSV needs no Brickset key, and its copies get no **imported from** tag.
+<!-- vale Microsoft.FirstPerson = YES -->
 
 Brickset's **minifigure** export (the CSV of your minifigures) is read the same way: choose **Minifigure** and **Loose** in **Add**, then **File**. Brick Work takes the figures you own loose, with Brickset's loose count (**QtyOwnedLoose**): the figures in your sets come with the set copies, so they are not added twice. With **Wishlist** it takes the figures marked wanted, one each (Brickset keeps no wanted count for figures). The number is Brickset's minifigure number, which is BrickLink's (such as `sw0001`), and your Brickset notes become the note.
 
 ## BrickLink
 
-Download your wanted list or a store inventory from BrickLink as an XML file, then choose **Choose an XML file**. It opens **Add** with **File** selected. Brick Work reads the item type, number, colour, quantity and condition of each line, and for a wanted list also the maximum price, remarks and the wanted list it came from. The review asks, row by row, whether a line is owned, loose or a wish. BrickLink files some Rebrickable parts under one number: its 3001 also names the old mould 3556. Brick Work then takes the part with the same number and says so in the review. If none has the same number, the line names the parts it could be: add the one you mean by its Rebrickable number.
+Download your wanted list or a store inventory from BrickLink as an XML file, then choose **Choose an XML file**. It opens **Add** with **File** selected. Brick Work reads the item type, number, colour, quantity and condition of each line. For a wanted list it also reads the maximum price, remarks and the wanted list it came from. The review asks, row by row, whether a line is owned, loose or a wish. BrickLink files some Rebrickable parts under one number: its 3001 also names the old mould 3556. Brick Work then takes the part with the same number and says so in the review. If none has the same number, the line names the parts it could be: add the one you mean by its Rebrickable number.
 
 ## BrickTracker
 
@@ -40,4 +42,12 @@ Choose **Choose a file**, which opens **Add** with **File** selected. A file can
 
 **Add a set** opens **Add**: search by number or name, paste a list of numbers, take a photo, or add from an order.
 
-Step 1, **Find and select**, runs top to bottom: the four ways to find (**Search**, **Paste**, **File**, **Photo**), the field or file for the one you chose, then **What** you are adding and **Where** it goes (**Owned**, **Loose** or **Wishlist**), then the results, then the **Review** button. On a wide screen **What** and **Where** share one row; on a phone they stack.
+Step 1, **Find and select**, runs top to bottom:
+
+- the four ways to find (**Search**, **Paste**, **File**, **Photo**)
+- the field or file for the one you chose
+- **What** you are adding and **Where** it goes (**Owned**, **Loose** or **Wishlist**)
+- the results
+- the **Review** button
+
+On a wide screen **What** and **Where** share one row; on a phone they stack.

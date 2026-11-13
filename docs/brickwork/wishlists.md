@@ -5,7 +5,7 @@ verified: 1.0
 
 # Named wishlists and portable files
 
-Planning → Wishlist has an All lists view and a picker for each active list, with live row counts. All lists labels each wish with its list name. Manage lists creates, renames, archives and restores lists. Archiving also archives the wishes that were live at that moment; restoring the list restores those wishes, leaving previously archived wishes archived. Names may repeat; use an id when a name is ambiguous in the CLI.
+Planning → Wishlist has an All lists view and a picker for each active list, with live row counts. All lists labels each wish with its list name. Manage lists creates, renames, archives, and restores lists. Archiving also archives the wishes that were live at that moment; restoring the list restores those wishes, leaving previously archived wishes archived. Names may repeat; use an id when a name is ambiguous in the command-line tool.
 
 Select wishes to move or copy them in bulk, or use Move wish / Copy wish on wish detail. A target collision rejects the entire operation with no partial changes. Copy retains quantity, condition, maximum and currency, colour, note and item flags. Undo detaches the copied flags while keeping the original ones. List writes, transfers and their Undo use collection receipts in one transaction. Undo checks for intervening changes and archives newly created rows rather than deleting them. Restoring a wish or undoing a move into an archived list requires restoring that list first.
 
@@ -13,11 +13,11 @@ Select wishes to move or copy them in bulk, or use Move wish / Copy wish on wish
 
 `wishlist` (the lists) contains `id TEXT PRIMARY KEY`, `name`, `note`, `sort`, `archived_at`, `created_at`, and optional `bricklink_id`. The last field stores a BrickLink wanted list id, never an inferred one. The default list has id `default` and name `Wishlist`; a new list gets a uuid.
 
-`wish` (the wishes) has a uuid `id`, `wishlist_id TEXT NOT NULL DEFAULT 'default' REFERENCES wishlist(id)`, a `kind` word, `item_id` and, for a part, `color_id`. The partial unique index `wish_live_key` is `(wishlist_id, item_id, color_key)` where `archived_at IS NULL`: wishes in different lists may share an item and colour. A maximum price and its currency are stored together or not at all (`max_price`, `max_price_currency`); so are the maximum price with box (`max_price_boxed`, `max_price_boxed_currency`, schema 4.1, #131). A wish's flags are `wish_flag` rows. A file has the tables from `setup` or the migration (`docs/data-model-4.0`); the only run-time change is the in-place 4.0 → 4.1 step that adds the max with box ([schema notes](https://github.com/Ulef1005/brick-work/blob/main/docs/brickwork/schema-notes.md#41-wish-max-price-with-box-131)).
+`wish` (the wishes) has a uuid `id`, `wishlist_id TEXT NOT NULL DEFAULT 'default' REFERENCES wishlist(id)`, a `kind` word, `item_id` and, for a part, `color_id`. The partial unique index `wish_live_key` is `(wishlist_id, item_id, color_key)` where `archived_at IS NULL`: wishes in different lists may share an item and colour. A maximum price and its currency are stored together or not at all (`max_price`, `max_price_currency`); so are the maximum price with box (`max_price_boxed`, `max_price_boxed_currency`, schema 4.1, #131). A wish's flags are `wish_flag` rows. A file has the tables from `setup` or the migration (`docs/data-model-4.0`). The only run-time change is the in-place 4.0 → 4.1 step that adds the max with box ([schema notes](https://github.com/Ulef1005/brick-work/blob/main/docs/brickwork/schema-notes.md#41-wish-max-price-with-box-131)).
 
 ## Import
 
-Add → File supports BrickLink `INVENTORY` and `WANTEDLIST` XML and Rebrickable CSV. Choose the wishlist destination. With Use BrickLink wanted list ids enabled, an item's `WANTEDLISTID` selects a stored linked list. Unknown ids propose a new `BrickLink <id>` list in preview and create it only on confirmation. Disable the option or change the row's list to pick an existing target instead. Preview itself writes nothing. Unresolved catalogue identities and colour mappings remain in the unresolved preview.
+Add → File supports BrickLink `INVENTORY` and `WANTEDLIST` XML and Rebrickable CSV. Choose the wishlist destination. With Use BrickLink wanted list ids enabled, an item's `WANTEDLISTID` selects a stored linked list. Unknown ids propose a new `BrickLink <id>` list in preview and create it only on confirmation. Turn off the option or change the row's list to pick an existing target instead. Preview itself writes nothing. Unresolved catalogue identities and colour mappings remain in the unresolved preview.
 
 BrickLink `MINQTY` (or inventory `QTY`) supplies quantity. `CONDITION` N/U/X maps to new/used/any; absent condition means any for wishes. `REMARKS` supplies the note. Non-negative `MAXPRICE` is a decimal string in the configured BrickLink currency, which is explicitly named in preview. Negative no-limit values are omitted. `QTYFILLED` is ignored with a preview note; it never becomes owned stock or invented progress. Repeated wishes are checked within their target list and require the existing add-to-quantity or skip decision.
 
@@ -33,7 +33,7 @@ BrickLink example, without an XML declaration:
 <INVENTORY><ITEM><ITEMTYPE>P</ITEMTYPE><ITEMID>3001</ITEMID><COLOR>4</COLOR><MINQTY>3</MINQTY><MAXPRICE>1.25</MAXPRICE><CONDITION>U</CONDITION><REMARKS>A &amp; B</REMARKS><NOTIFY>N</NOTIFY><WANTEDLISTID>1234</WANTEDLISTID></ITEM></INVENTORY>
 ```
 
-Ids and colours are BrickLink canonical values, named through `core.items` (the preferred confirmed link, else a BrickLink-born number); a wish with no BrickLink number or colour is left out and listed in the summary. `MAXPRICE` appears only for a positive maximum in the configured BrickLink currency. A zero or a different currency omits the limit and adds a summary note. `CONDITION` is N/U for new/used; any omits it. Notes are XML escaped. `WANTEDLISTID` appears only when explicitly linked on the list; otherwise it is left out for the user to set after downloading. `QTYFILLED` is not exported.
+Ids and colours are BrickLink canonical values, named through `core.items` (the preferred confirmed link, else a BrickLink-born number). A wish with no BrickLink number or colour is left out and listed in the summary. `MAXPRICE` appears only for a positive maximum in the configured BrickLink currency. A zero or a different currency omits the limit and adds a summary note. `CONDITION` is N/U for new/used; any omits it. Notes are XML escaped. `WANTEDLISTID` appears only when explicitly linked on the list; otherwise it is left out for the user to set after downloading. `QTYFILLED` is not exported.
 
 Rebrickable set-list CSV (CRLF records):
 
@@ -53,11 +53,11 @@ The sample identifiers describe the format; actual identifiers are obtained only
 
 ### Documentation verification, 2026-10-17
 
-[BrickLink Wanted List, Mass Upload](https://www.bricklink.com/help.asp?helpID=207&viewType=shop) confirms INVENTORY/ITEM structure, canonical type/number/colour, positive MAXPRICE, MINQTY, QTYFILLED, N/U condition, escaped REMARKS, and optional WANTEDLISTID. Its example uses NOTIFY=N; [Importing items with XML](https://www.bricklink.com/help.asp?helpID=2567&viewType=shop) explicitly describes Y/N notifications. There are no unconfirmed emitted BrickLink tag names. BrickLink's XML documentation does not explicitly specify the currency context of MAXPRICE, so using the configured BrickLink currency is the application policy required by this task. X is accepted on input as requested but is not emitted because the wanted-list upload documentation only lists N/U.
+[BrickLink Wanted List, Mass Upload](https://www.bricklink.com/help.asp?helpID=207&viewType=shop) confirms INVENTORY/ITEM structure, canonical type/number/colour, positive MAXPRICE, MINQTY, QTYFILLED, N/U condition, escaped REMARKS, and optional WANTEDLISTID. Its example uses NOTIFY=N; [Importing items with XML](https://www.bricklink.com/help.asp?helpID=2567&viewType=shop) explicitly describes Y/N notifications. There are no unconfirmed emitted BrickLink tag names. BrickLink's XML documentation does not explicitly specify the currency context of MAXPRICE, so using the configured BrickLink currency is the app policy required by this task. X is accepted on input as requested but is not emitted because the wanted-list upload documentation only lists N/U.
 
 Rebrickable's [Importing parts](https://rebrickable.com/help/importing-parts/) and [Importing sets](https://rebrickable.com/help/importing-sets/) pages could not be retrieved. The requested `Set Number,Quantity` and `Part,Color,Quantity` headers are implemented and tested locally, but their current site acceptance could not be independently confirmed. No authenticated upload to either site was performed.
 
-## API, CLI and MCP
+## API, command-line tool, and MCP
 
 All API operations use the existing authentication, write/read-only policy and idempotency receipts:
 
@@ -85,4 +85,4 @@ brickwork wishlist export all --format rebrickable --kind sets > sets.csv
 brickwork wishlist export all --format rebrickable --kind parts --json
 ```
 
-CLI file content goes to stdout and its summary to stderr; `--json` returns both together. MCP tools are generated from OpenAPI: `get_wishlists`, `create_wishlist`, `edit_wishlist`, `archive_wishlist`, `restore_wishlist`, `transfer_wishes`, `export_wishlist_xml`, and `export_wishlist_csv` (the five write tools had method-and-path names up to 0.9.0; [ADR 0017](https://github.com/Ulef1005/brick-work/blob/main/docs/adr/0017-api-v2.md), amendment of 8 Nov 2026). Existing wish tools gain list fields. Use `summary:true` on export tools to receive both file content and omissions.
+In the command-line tool, file content goes to stdout and its summary to stderr; `--json` returns both together. MCP tools are generated from OpenAPI: `get_wishlists`, `create_wishlist`, `edit_wishlist`, `archive_wishlist`, `restore_wishlist`, `transfer_wishes`, `export_wishlist_xml`, and `export_wishlist_csv` (the five write tools had method-and-path names up to 0.9.0; [ADR 0017](https://github.com/Ulef1005/brick-work/blob/main/docs/adr/0017-api-v2.md), amendment of November 8, 2026). Existing wish tools gain list fields. Use `summary:true` on export tools to receive both file content and omissions.

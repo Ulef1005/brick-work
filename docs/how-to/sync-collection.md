@@ -26,13 +26,13 @@ For Rebrickable, choose which of your set lists hold what you own, which one is 
 - **Conflict**: both sides changed since the last sync and they differ. Both numbers are shown and nothing is ticked.
 - **Not matched**: a number that names no single item in Brick Work, or only a part or a figure. It is listed and never guessed.
 
-A set becomes one **copy** per missing unit (condition and completeness not recorded, tagged *imported from Rebrickable* or *… Brickset*), with the part list the set has by design 4.3's preselection. An item the catalogue knows as another kind (a gear item, a book, an instruction booklet) becomes loose stock of that kind, as when you add it. Missing wishes go to the linked wishlist, or raise the quantity of a wish you have. The plan expires after 24 hours.
+A set becomes one **copy** per missing unit, with the part list the set has by design 4.3's preselection. Its condition and completeness are not recorded, and it is tagged *imported from Rebrickable* or *… Brickset*. An item the catalogue knows as another kind (a gear item, a book, an instruction booklet) becomes loose stock of that kind, as when you add it. Missing wishes go to the linked wishlist, or raise the quantity of a wish you have. The plan expires after 24 hours.
 
 **Undo this pull** (shown right after a pull, and in the log) archives the copies, takes the stock and wish quantities back and removes the tag. It is refused once you have changed any of them (**Something from this sync has changed since**).
 
 ## Send
 
-**Send** lists the remote changes first: sets to add there, counts to change and removals. Removals stay unticked until you tick them. An item with no number yet (a local item added without one) cannot be named to a site: it is listed as *Not on Rebrickable* and cannot be ticked; link a number in **Unresolved items** first. A daily budget that runs out pauses the rest of the send, and a rejected token stops it; **Retry** sends only what was not sent. **Brick Work's Undo cannot reverse a change made at a site.**
+**Send** lists the remote changes first: sets to add there, counts to change and removals. Removals stay unticked until you tick them. An item with no number yet (a local item added without one) cannot be named to a site. It is listed as *Not on Rebrickable* and cannot be ticked. Link a number in **Unresolved items** first. A daily budget that runs out pauses the rest of the send, and a rejected token stops it; **Retry** sends only what was not sent. **Brick Work's Undo cannot reverse a change made at a site.**
 
 Condition, completeness, box, instructions and storage never leave Brick Work.
 

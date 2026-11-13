@@ -22,20 +22,26 @@ Daily budgets: BrickLink `BW_BRICKLINK_DAILY_BUDGET` (default 4,400, a margin un
 `BW_REBRICKABLE_DAILY_BUDGET` (1,000), Brickset 100 (only `getSets` is charged; `checkKey` and `getKeyUsageStats` are not). BrickLink and
 Rebrickable calls are at least one second apart. The counters are the rows of `source_budget` (source, UTC day, `used`, `blocked_until`,
 `last_attempt_at`), shared with `store4.jobs`, which counts its own calls on the same rows. The Rebrickable catalogue pictures are plain
-downloads and count against nothing. The Brickset `metadata` step batches: one `getSets` call (counted once) asks for up to 500 sets, the job in hand and the other queued or waiting jobs whose next step is Brickset `metadata`, and ends each of those jobs' step with its own result.
+downloads and count against nothing. The Brickset `metadata` step batches. One `getSets` call (counted once) asks for up to 500 sets: the job in hand and the other queued or waiting jobs whose next step is Brickset `metadata`. It ends each of those jobs' step with its own result.
 
 No key is written to a template, a log or an error text: replies are stored redacted, transport failures have fixed texts.
 Redirects are refused.
 
 ## One call
 
-`Source.request` (core/sources/base.py): refuse a disabled source (`source.enabled`) or a missing key before anything is built or counted;
-count the call (`reserve`: the daily budget, a provider's pause, the spacing) or raise `WaitingForBudget(retry_at)`; make the HTTP request
-outside any write transaction (the count is committed before the request is sent, so a budget is never overspent: a process killed
-mid-request has spent that call, and the restarted step sends it again, so one call per such kill is counted twice, on the provider's
-side too; restart between jobs, or once the day's budget is used up, to lose none); keep the reply in `source_record` under the pipeline job (unique over source, kind, key and digest, so the
-same reply twice is one record); normalise in one savepoint. A savepoint that fails rolls its writes back and keeps the reply with
-`status='failed'`. A provider's own rate pause (HTTP 429 or "throttled", Brickset's "API limit exceeded") is written as
+`Source.request` (core/sources/base.py) runs these steps:
+
+1. Refuse a source that is turned off (`source.enabled`) or a missing key before anything is built or counted.
+2. Count the call (`reserve`: the daily budget, a provider's pause, the spacing) or raise `WaitingForBudget(retry_at)`.
+3. Make the HTTP request outside any write transaction. The count is committed before the request is sent, so a budget is never overspent.
+   A process killed mid-request has spent that call, and the restarted step sends it again. So one call per such killed request is counted
+   twice, on the provider's side too. Restart between jobs, or once the day's budget is used up, to lose none.
+4. Keep the reply in `source_record` under the pipeline job (unique over source, kind, key, and digest, so the same reply twice is one
+   record).
+5. Normalise in one savepoint.
+
+A savepoint that fails rolls its writes back and keeps the reply with
+`status='failed'`. A provider's own rate pause (HTTP 429 or "throttled"; Brickset's "API limit exceeded") is written as
 `blocked_until` and honoured by every client and job of the source. A 401 or 403 carrying the provider's own JSON error is `KeyRejected`;
 an HTML or empty answer says nothing about the key.
 
@@ -45,7 +51,7 @@ an HTML or empty answer says nothing about the key.
 | --- | --- |
 | BrickLink price guide | `price_observation` (decimal strings, words for the condition, slot `bricklink_new`/`bricklink_used`, the region and currency settings, `provider_key` like `P:3023/1` or `S:6081-1`) and `price_current`; an empty sold guide is stored and followed by the stock guide. An `inferred` BrickLink link the reply proves right becomes `matched` (`method='bricklink_api'`, `origin='api'`). |
 | BrickLink orders | the full reply in `source_record`; the order ledger is the orders piece's |
-| Brickset `getSets` | `item_property(source='brickset')` (setID, theme, subtheme, year, pieces, minifigs, name, category, availability, the first and last date at LEGO) and the retail `price_observation` (`guide='retail'`, slot `retail`, the `retail_country` setting: DE/EUR, US/USD, UK/GBP, CA/CAD). A set Brickset does not know gets `item_provider_status(brickset, unmatched, no_match)`. |
+| Brickset `getSets` | `item_property(source='brickset')` (setID, theme, subtheme, year, pieces, minifigs, name, category, availability, the first and last date at LEGO) and the retail `price_observation` (`guide='retail'`, slot `retail`, the `retail_country` setting (`DE/EUR`, `US/USD`, `UK/GBP`, `CA/CAD`)). A set Brickset does not know gets `item_provider_status(brickset, unmatched, no_match)`. |
 | Rebrickable part record | the BrickLink evidence in `external_ids`: exactly one id is a `matched/external_ids` link, none or several `item_provider_status(bricklink, unmatched, no_match)`; a `manual` link is never replaced and a confirmed one never downgraded. |
 | Pictures | `picture` rows and files under `data/images/<source>/<kind>/<sha256>.<ext>`; see below. |
 
@@ -54,7 +60,7 @@ Brickset `valuation` observations (`new`/`used`) exist only in collections migra
 BrickLink prices are for the item's resolved BrickLink key and colour (`items.bricklink_key`, design 3.2). An item without one is
 unidentified: the step ends `done` with the code `unidentified` and nothing is called (design 3.8). Brickset is asked by a confirmed
 `brickset` link, else the Rebrickable number of a Rebrickable-born set (`6081-1`), else the BrickLink number of a BrickLink-born set
-(`6081` is read as `6081-1`); up to 500 numbers go in one call.
+(`6081` is read as `6081-1`). Up to 500 numbers go in one call.
 
 ## Pictures
 
@@ -62,7 +68,7 @@ Three sources (`rebrickable_dump`, `bricklink`, `rebrickable_api`), in the order
 defaults are in [the pipeline](pipeline.md)). `core.pictures` has the handler of each source, `picture_known(db, item_id, color_id)` (the
 Add review's warning: a stored picture, a catalogue `picture_url`, a resolvable BrickLink number, or a Rebrickable key and number) and the
 bulk refresh (`state`, `selection`, `queue`). A download is a plain GET of an https URL on a host of the source, no redirects, at most 20 MB,
-verified as an image before anything is written; the file is written first, then the row (a `picture:stored` event). Thumbnails are
+verified as an image before anything is written. The file is written first, then the row (a `picture:stored` event). Thumbnails are
 `core.thumbnails`, generated on first request and cached under `data/thumbs`.
 
 ## Stored keys and the embedded worker

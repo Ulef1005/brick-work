@@ -16,7 +16,7 @@ SCHEMA_VERSION = '4.3'
 def _category_group_order(db):
     """Widen the checker order CHECK, retaining stored columns, rowids, indexes and triggers.
 
-    No schema object references this table, and no table has an incoming foreign key. Refuse an unexpected incoming key before
+    The shipped schema has no external view/trigger reference to this table and no incoming foreign key. Refuse an unexpected incoming key before
     rebuilding: foreign key enforcement stays enabled throughout the upgrade. Undo/RowLog receipts keep the same columns and keys.
     """
     tables = [r[0] for r in db.execute("SELECT name FROM main.sqlite_master WHERE type='table'")]

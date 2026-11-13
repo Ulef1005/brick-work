@@ -276,11 +276,23 @@ def test_a_42_rebuild_keeps_every_value_and_receipt_and_widens_only_the_order(tm
     assert digest(path) == before
 
 
-def test_a_failed_43_rebuild_rolls_back_ddl_rows_indexes_and_meta(tmp_path, monkeypatch):
+@pytest.mark.parametrize('failure', ['before_rename', 'after_rebuild'])
+def test_a_failed_43_rebuild_rolls_back_ddl_rows_indexes_and_meta(tmp_path, monkeypatch, failure):
     path = tmp_path / 'old.db'
     populated_42(path)
     before = digest(path)
-    monkeypatch.setitem(UPGRADES, '4.2', ('4.3', (*UPGRADES['4.2'][1], 'INSERT INTO no_such_table VALUES(1)')))
+    if failure == 'after_rebuild':
+        monkeypatch.setitem(UPGRADES, '4.2', ('4.3', (*UPGRADES['4.2'][1], 'INSERT INTO no_such_table VALUES(1)')))
+    else:
+        original = sqlite3.connect
+
+        class FailRename(sqlite3.Connection):
+            def execute(self, sql, *args):
+                if sql == 'ALTER TABLE part_check_upgrade RENAME TO part_check':
+                    raise sqlite3.OperationalError('injected failure after DROP TABLE')
+                return super().execute(sql, *args)
+
+        monkeypatch.setattr(sqlite3, 'connect', lambda *a, **kw: original(*a, factory=FailRename, **kw))
     with pytest.raises(sqlite3.OperationalError):
         upgrade(path)
     assert digest(path) == before

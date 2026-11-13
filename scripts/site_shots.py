@@ -129,12 +129,12 @@ PICTURES = {
 
 def callouts(*marks):
     """JS for a job's `after`: a clay ring round each element and a numbered disc on its top left corner, drawn from the element's box (App Docs Standard,
-    screenshot standard). `marks` are (selector, number) pairs. The disc is the ink of the page with paper digits and, in dark mode, the page's light
+    screenshot standard). `marks` are (selector, number) pairs, or (selector, number, 'right') to put the disc after the box, centred, when its top left corner would cover text. The disc is the ink of the page with paper digits and, in dark mode, the page's light
     ink with dark digits: the tokens do the inversion. Nothing here depends on timing: the boxes are read after the fonts are loaded and the viewport has its final size. A mark whose element sits inside a modal dialog (shown with showModal) is drawn inside that dialog, because the top layer hides body-level overlays."""
     return """
 await document.fonts.ready;
 const marks = %s;
-for (const [selector, number] of marks) {
+for (const [selector, number, side] of marks) {
   const el = document.querySelector(selector);
   if (!el) throw new Error('call-out target missing: ' + selector);
   const host = el.closest('dialog:modal') || document.body;
@@ -146,7 +146,7 @@ for (const [selector, number] of marks) {
   ring.style.cssText = `position:absolute;left:${x - 4}px;top:${y - 4}px;width:${r.width + 8}px;height:${r.height + 8}px;box-sizing:border-box;border:2px solid var(--tw-accent);border-radius:10px;pointer-events:none;z-index:2147483646`;
   const disc = document.createElement('div');
   disc.textContent = String(number);
-  disc.style.cssText = `position:absolute;left:${x - 16}px;top:${y - 16}px;width:24px;height:24px;border-radius:50%%;background:var(--tw-text);color:var(--tw-bg);font:600 13px/24px var(--tw-font, sans-serif);text-align:center;pointer-events:none;z-index:2147483647`;
+  disc.style.cssText = `position:absolute;left:${side === 'right' ? x + r.width + 8 : x - 16}px;top:${side === 'right' ? y + (r.height - 24) / 2 : y - 16}px;width:24px;height:24px;border-radius:50%%;background:var(--tw-text);color:var(--tw-bg);font:600 13px/24px var(--tw-font, sans-serif);text-align:center;pointer-events:none;z-index:2147483647`;
   host.append(ring, disc);
 }
 """ % json.dumps(marks)
@@ -160,7 +160,7 @@ def tag_text(selector, text, attr='data-shot-area'):
 
 # The tutorial shots that follow the reader's screen (App Docs Standard, screenshot standard): each exists as a desktop shot (a 1024 px viewport at device
 # scale 2, cut to the area the step is about) and as a phone shot, each in light and dark, with numbered call-outs. name: (path, script, {layout: (width, crop, marks)}).
-# The file is `tut-<name>-<layout>-<width>-<theme>.png`. `crop` is a list of selectors (the picture is cut to their union), `marks` are (selector, number) pairs.
+# The file is `tut-<name>-<layout>-<width>-<theme>.png`. `crop` is a list of selectors (the picture is cut to their union), `marks` are (selector, number) pairs, or (selector, number, 'right') to put the disc after the box, centred, when its top left corner would cover text.
 def no_placeholders(*selectors):
     """JS for a job's `after`, before the call-outs: fail when a missing-picture tile or a picture that did not load is inside the area the shot is cut to
     (the union of `selectors`, plus the crop padding). No screenshot of the docs shows a placeholder (Ulf, 2026-11-13); the message names the item of each
@@ -228,7 +228,7 @@ TUTORIAL_SHOTS = {
                  tag_nth('.order-count-row', 3))
         for layout, width in (('desktop', 1024), ('phone', 390))}),
     'storage': ('/workbench/storage/storage-drawer-3', None, {
-        layout: (width, ['.st-detail-head'], [('.st-detail-head p', 1)], '')
+        layout: (width, ['.st-detail-head'], [('.st-detail-head p', 1, 'right')], '')
         for layout, width in (('desktop', 1024), ('phone', 390))}),
     'runner-sets': ('/workbench/part-picker', CHOOSE_REAL_SETS, {
         layout: (width, ['[data-selection] .bw-segments', '[data-continue]'], [('[data-none]', 1), ('[data-row] input:checked', 2), ('[data-continue]', 3)], '')

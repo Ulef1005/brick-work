@@ -67,3 +67,20 @@ def test_the_not_mit_folder_carries_its_notice_and_stays_out_of_the_image():
     assert 'not-mit/' in (root / '.dockerignore').read_text().splitlines()
     assert 'not-mit/NOTICE.md' in (root / 'THIRD_PARTY_NOTICES.md').read_text() and 'not-mit/NOTICE.md' in (root / 'README.md').read_text()
     assert 'sets' in json.loads((real.FOLDER / 'sets.json').read_text())
+
+
+def test_the_real_world_exports_with_jpeg_pictures(tmp_path):
+    """The export keeps each picture's own extension: the real sets' JPEGs are `<id>.jpg`, listed in the manifest for the shim; the showcase's PNGs stay `.png`."""
+    import re
+    from brickwork.demo import export
+    base = '/brick-work/demo/'
+    manifest = export.export(tmp_path / 'site', base, world='real')
+    out = tmp_path / 'site'
+    assert manifest['counts']['pictures'] == 7 and manifest['counts']['copy'] == 8
+    assert manifest['pictures'] == {str(i): 'jpg' for i in range(1, 8)}
+    files = sorted((out / 'manage' / 'images').iterdir())
+    assert len(files) == 7 and all(f.suffix == '.jpg' and f.read_bytes()[:2] == b'\xff\xd8' for f in files)
+    assert 'kindOf' in (out / 'demo-shim.js').read_text() and '"pictures"' in (out / 'demo-shim.js').read_text()
+    pages = (out / 'collection' / 'item').glob('*/index.html')
+    assert any(re.search(r'src="' + re.escape(base) + r'manage/images/[1-9][0-9]*\.jpg"', p.read_text()) for p in pages)
+    assert not any(re.search(r'manage/images/[1-9][0-9]*\.png', p.read_text()) for p in (out / 'collection').rglob('index.html'))

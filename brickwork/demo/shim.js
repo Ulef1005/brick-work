@@ -88,13 +88,14 @@
   }, true);
 
   // Pictures: a page's script builds /manage/images/<id>?w=... from the page's image base; the demo keeps one <id>.png per picture.
+  const kindOf = id => (demo.pictures && demo.pictures[id]) || 'png';   // a picture that is not a PNG is listed in the manifest
   const pngOf = value => {
-    const found = /^(.*\/manage\/images\/[1-9][0-9]*)(?:\?.*)?$/.exec(String(value));
-    return found ? found[1] + '.png' : value;
+    const found = /^(.*\/manage\/images\/([1-9][0-9]*))(?:\?.*)?$/.exec(String(value));
+    return found ? found[1] + '.' + kindOf(found[2]) : value;
   };
   const srcProperty = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src');
   Object.defineProperty(HTMLImageElement.prototype, 'src', {configurable: true, enumerable: true, get: srcProperty.get, set(value) { srcProperty.set.call(this, pngOf(value)); }});
-  const pngSet = value => String(value).replace(/(\/manage\/images\/[1-9][0-9]*)\?w=[0-9]+/g, '$1.png');
+  const pngSet = value => String(value).replace(/(\/manage\/images\/([1-9][0-9]*))\?w=[0-9]+/g, (all, stem, id) => stem + '.' + kindOf(id));
   const srcsetProperty = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'srcset');
   Object.defineProperty(HTMLImageElement.prototype, 'srcset', {configurable: true, enumerable: true, get: srcsetProperty.get, set(value) { srcsetProperty.set.call(this, pngSet(value)); }});
   const setAttribute = Element.prototype.setAttribute;

@@ -90,7 +90,7 @@ def render(text):
 
 # Cloudflare Web Analytics (cookieless, public site token): on the pages built here only, never on the docs or the demo (see the privacy page).
 ANALYTICS = ('<script defer src="https://static.cloudflareinsights.com/beacon.min.js" '
-             'data-cf-beacon=\'{"token": "f09e0d34781b4d658aa5ddd6adce3f44"}\'></script>')
+             'data-cf-beacon=\'{"token": "f09e0d34781b4d658aa5ddd6adce3f44"}\'></script>')   # gitleaks:allow (the site token is public by design: it sits in every page's HTML)
 HOME_DESCRIPTION = ('Brick Work is a free, open-source, self-hosted workbench for your brick collection: check a set\'s parts, pull missing ones from loose stock '
                     'and see which unfinished sets your stock can complete.')
 MD_DESCRIPTIONS = {'use-cases': 'Eight moments a collector knows, and how Brick Work helps with each: rebuilding used sets, sorted bulk, minifigures, bought collections and orders.',

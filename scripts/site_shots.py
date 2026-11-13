@@ -2,10 +2,11 @@
 
     python scripts/site_shots.py [--only STEM ...] [--out DIR]
 
-Renders the app on the invented 'showcase' world (the screen gate's world plus the richer demo layer, brickwork/demo/showcase.py) with the
-pinned Chrome for Testing, at 1440 (desktop) and 390 (phone, drawn at twice the pixels), light and dark, with the clock fixed. Each picture is
+Renders the app on two invented worlds: the site's pictures on the 'real' world (seven real sets with Rebrickable's pictures around an invented
+collection, brickwork/demo/real.py, #332), the README's and the tutorials' on the 'showcase' world (the screen gate's world plus the richer demo
+layer, brickwork/demo/showcase.py). Both use the pinned Chrome for Testing, at 1440 (desktop) and 390 (phone, drawn at twice the pixels), light and dark, with the clock fixed. Each picture is
 written under the file name the page already uses (`<stem>-light.png`, `<stem>-dark.png`), clipped to a sensible height and optimised.
-These are not gate baselines. No pictures of sets or parts are in the world, so tiles show the app's missing-picture note.
+These are not gate baselines. A site picture fails its capture when the page shows a missing-picture tile (`no_tiles`): the site never shows a placeholder.
 Run it from the app's venv (it imports the app).
 """
 import argparse
@@ -21,6 +22,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / 'scripts'))
 import screen_gate  # noqa: E402
+from brickwork.demo import real  # noqa: E402
 from brickwork.demo.showcase import LOT, LOT_SETS, uid  # noqa: E402
 
 SITE = ROOT / 'scripts' / 'site' / 'img'
@@ -96,14 +98,7 @@ await new Promise(r => setTimeout(r, 150));
 
 # stem: (path, width, max CSS height, script, destination)
 PICTURES = {
-    '1c-sets-desktop-1440': ('/collection/sets', 1440, 1020, None, (SITE, README)),
-    '3a-matcher-phone-390': ('/workbench/match', 390, 844, None, (SITE,)),
-    '3e-start-phone-390': ('/workbench/check-parts/' + FRESH, 390, 844, None, (SITE,)),
-    '3e-part-phone-390': ('/workbench/check-parts/%s?run=1' % STARTED, 390, 844, None, (SITE,)),
-    '3e-finish-gaps-phone-390': ('/workbench/check-parts/%s?run=1' % GAPS, 390, 1100, None, (SITE,)),
-    '3c-picker-sets-phone-390': ('/workbench/part-picker', 390, 844, None, (SITE,)),
-    '3c-picker-pick-phone-390': (PICKED + '&pick=1', 390, 950, None, (SITE,)),
-    '4c-complete-sets-phone-390': ('/planning/complete-sets', 390, 844, None, (SITE,)),
+    '1c-sets-desktop-1440': ('/collection/sets', 1440, 1020, None, (README,)),
     # The two tutorials (docs/tutorials/): the Add search, Set Inspector, Complete sets, the wishlist and an order being counted, on the same invented world
     'tut-inspect-list-phone-390': ('/workbench/check-parts', 390, 1100, None, (TUTORIALS,)),
     'tut-inspect-part-phone-390': ('/workbench/check-parts/%s?run=1' % STARTED, 390, 844, None, (TUTORIALS,)),
@@ -111,9 +106,6 @@ PICTURES = {
     'tut-complete-sets-phone-390': ('/planning/complete-sets', 390, 844, None, (TUTORIALS,)),
     'tut-wishlist-phone-390': ('/planning/wishlist', 390, 900, None, (TUTORIALS,)),
     'tut-order-count-phone-390': ('/workbench/orders/2?view=count', 390, 1500, None, (TUTORIALS,)),
-    '12b-count-what-arrived-desktop-1440': ('/workbench/orders/2', 1440, 1050, None, (SITE,)),
-    '12c-list-and-detail-desktop-1440': (STORAGE, 1440, 1300, None, (SITE,)),
-    '1d-set-detail-phone-390': ('/collection/item/set/99103-1?copy=' + uid('copy', '99103-1', 'a'), 390, 1800, None, (SITE,)),
     '3c-picker-pick-390': (PICKED + '&pick=1', 390, 950, None, (README,)),
     'bulk-storage-desktop-1440': (STORAGE, 1440, 900, None, (TUTORIALS,)),
     'bulk-runner-sets-phone-390': ('/workbench/part-picker', 390, 1700, CHOOSE_SETS, (TUTORIALS,)),

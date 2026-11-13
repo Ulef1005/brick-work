@@ -174,13 +174,14 @@ def test_a_stale_file_is_refused_before_anything_writes_to_it(tmp_path, make):
     assert digest(path) == before
 
 
+@pytest.mark.parametrize('make', [make_40, make_41, make_42])
 @pytest.mark.parametrize('error,hint', [('attempt to write a readonly database', 'make it writable'),
                                          ('database is locked', 'another process holds the file')])
-def test_a_failed_upgrade_says_open_again_never_migrate(tmp_path, monkeypatch, error, hint):
+def test_a_failed_upgrade_says_open_again_never_migrate(tmp_path, monkeypatch, error, hint, make):
     from brickwork.core.connect import OldStore, connect as core_connect
     from brickwork.store4 import connect as store4_connect
     from brickwork.store4.errors import UpgradeFailed
-    path = make_40(tmp_path / 'brickwork.db')
+    path = make(tmp_path / 'brickwork.db')
 
     def failing(path):
         raise sqlite3.OperationalError(error)

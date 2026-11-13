@@ -1,9 +1,9 @@
 """The upgrade path of an install that started on 0.5.x (issue #80): a 3.3 collection through `migrate4`, then the in-place steps 4.0 to 4.1
-(0.7.0) and 4.1 to 4.2 (0.9.0), with the rows counted at every stage and the result held to the app's own `brickwork check`.
+(0.7.0), 4.1 to 4.2 (0.9.0) and 4.2 to 4.3, with the rows counted at every stage and the result held to the app's own `brickwork check`.
 
 One gap, said plainly: `migrate4` of this tree writes the current schema (4.3), not the 4.0 it wrote in 0.6.0, so no real 4.0 file can be made
 here. The 4.0 stage is the migrated file taken back to 4.0 shape: the tables of the 4.0 schema (today's `brickwork.sql` without the lines the 4.1
-and 4.2 steps add, as `test_store4_upgrade` does) filled with every row of the migrated file. The steps themselves are the real ones. The 0.5.0
+and 4.2 steps add and the 4.3 CHECK change reversed, as `test_store4_upgrade` does) filled with every row of the migrated file. The steps themselves are the real ones. The 0.5.0
 shape of the 3.3 file is `tests/legacy33` (the real 3.3 schema) filled by `store4_migrate_fixtures`. 0.7.0 to 0.8.1 changed no schema."""
 from contextlib import closing
 import shutil
@@ -119,6 +119,7 @@ def test_a_050_collection_reaches_the_current_schema_step_by_step(tmp_path, cata
         assert db.execute('PRAGMA integrity_check').fetchone()[0] == 'ok'
         assert db.execute('PRAGMA foreign_key_check').fetchall() == []
         assert db.execute("SELECT COUNT(*) FROM meta WHERE key='upgraded_to_4.2'").fetchone()[0] == 1
+        assert db.execute("SELECT COUNT(*) FROM meta WHERE key='upgraded_to_4.3'").fetchone()[0] == 1
         checked = check_all(db)                                 # what `brickwork check` runs
         assert check_ok(checked), checked
         assert checked['integrity_check'] == ['ok'] and checked['foreign_key_check'] == []

@@ -1,6 +1,6 @@
 """The screen gate's `edge` worlds (#268, decision 595): synthetic data for the approved states that were untested for want of data or a seam.
 
-The approved baselines are Linux renders that cannot be re-made here, so the three older worlds must not change by a single row: the first test
+The approved baselines are Linux renders that cannot be re-made here, so the three older worlds keep their data (apart from meta.schema_version on a schema upgrade): the first test
 fingerprints their built databases (every table's rows, ids and build-time stamps masked, rows sorted) and compares them with the fingerprints taken
 on origin/main before the edge worlds existed. The module is in the `rendered` group: the gate's world folder is shared."""
 import datetime as dt
@@ -66,11 +66,12 @@ def digest(name):
     return hashlib.sha256(repr(sorted((f, sorted(t.items())) for f, t in prints.items())).encode()).hexdigest()
 
 
-# Taken on origin/main (21ac7ce), before the edge worlds were added.
+# Taken on origin/main (21ac7ce), before the edge worlds were added; advanced for schema 4.3 (#315).
+# For all three worlds, substituting only meta.schema_version=4.2 reproduces the original fingerprint exactly.
 BEFORE = {
-    'demo': '7df99615330895f2cb8ef3ac0ab561e214c8c98ad3abbd74634e05e1c6321093',
-    'showcase': '92a4f3f53da923af093e09624257e80cf810d610fee70bda7f84d26cd7e833ad',
-    'extras': '56b8fc87611dc171e5b55bc9b1ef74ac52c2d44f0e036cb07ea67ad72b211b94',
+    'demo': 'c8bca9e90adc57718a2b43e8aaba1f533b8e113432ebfa77601879774b4b54d2',
+    'showcase': '7388699a853ccbca29455768925e185571d36a551d28550cd87024012c183ade',
+    'extras': 'abcfac8acc3d18ff2af980a50792b8c58a30d654093653f520127e445df6f5fb',
 }
 
 

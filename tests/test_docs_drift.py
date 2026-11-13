@@ -129,6 +129,11 @@ def test_the_site_builds_with_every_tool(tmp_path):
     mcp = (site / 'docs/developer/mcp-reference/index.html').read_text()
     for name in Adapter(client=None).tools:
         assert f'<code>{name}</code>' in mcp, name
+    code = (site / 'docs/developer/code-reference/index.html').read_text()   # rendered by mkdocstrings from the docstrings (ADR 0030)
+    from brickwork.core import valuation
+    assert 'id="brickwork.core.valuation"' in code and 'id="brickwork.core.valuation.valuation"' in code and 'the insurance report' in code
+    assert '_migrations' not in code   # the importer's migrations are upstream code copied unchanged, not Brick Work's reference
+    assert 'Brick Work&#39;s services on the 4.0 store' in code or "Brick Work's services on the 4.0 store" in code
     assert 'url=../docs/developer/api-v2-reference/' in (site / 'api/index.html').read_text()
     assert 'url=../docs/brickwork/mcp/' in (site / 'mcp/index.html').read_text()
     assert (site / 'docs/brickwork/mcp/index.html').is_file() and (site / 'docs/brickwork/openapi-v2.yaml').is_file()

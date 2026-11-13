@@ -37,11 +37,25 @@ theme:
   logo: assets/app-icon.svg
   features: [navigation.tabs, navigation.sections, navigation.indexes, search.highlight]
 markdown_extensions: [admonition, tables, toc, attr_list, pymdownx.details, pymdownx.highlight, pymdownx.superfences]
-# The API v2 and MCP reference pages are printed by a markdown-exec block at build time (scripts/docs_reference.py). An explicit
-# plugins: list replaces the default one, so search is named too. Preview from the repo root with `PYTHONPATH=. zensical serve`.
+# The API v2 and MCP reference pages are printed by a markdown-exec block at build time (scripts/docs_reference.py), and the code
+# reference is rendered by mkdocstrings from brickwork.core's docstrings (ADR 0030). An explicit plugins: list replaces the default
+# one, so search is named too. Preview from the repo root with `PYTHONPATH=. zensical serve`.
 plugins:
   - search
   - markdown-exec
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [.]
+          options:
+            show_submodules: true
+            show_source: false
+            members_order: source
+            show_root_heading: false
+            show_root_toc_entry: false
+            heading_level: 2
+            # Private names, and the importer's vendored migrations, copied unchanged from upstream (their README in brickwork/core/importer/)
+            filters: ["!^_[^_]", "!_migrations$"]
 nav:
   - Home:
       - index.md
@@ -115,4 +129,5 @@ nav:
           - developer/api-v2-reference.md
           - "MCP server": brickwork/mcp.md
           - developer/mcp-reference.md
+          - developer/code-reference.md
           - reference/cli.md

@@ -1,4 +1,5 @@
 """The user-docs site renders what the docs are written in and loads nothing from outside (App Standard, Maintenance § Rules, User docs)."""
+import os
 import shutil
 import subprocess
 import sys
@@ -18,8 +19,11 @@ def build(tmp_path):
     config['site_dir'] = str(tmp_path / 'site')
     (tmp_path / 'mkdocs.yml').write_text(yaml.safe_dump(config, sort_keys=False))
     zensical = Path(sys.executable).with_name('zensical')
+    # The generated reference pages import scripts and brickwork (ADR 0030), as in scripts/build_site.py.
+    pythonpath = os.pathsep.join(p for p in (str(ROOT), os.environ.get('PYTHONPATH')) if p)
     subprocess.run((str(zensical) if zensical.exists() else 'zensical', 'build', '--strict', '--clean',
-                    '--config-file', str(tmp_path / 'mkdocs.yml')), check=True, cwd=tmp_path, capture_output=True)
+                    '--config-file', str(tmp_path / 'mkdocs.yml')), check=True, cwd=tmp_path, capture_output=True,
+                   env={**os.environ, 'PYTHONPATH': pythonpath})
     return tmp_path / 'site'
 
 
@@ -33,3 +37,5 @@ def test_site_loads_no_external_fonts(tmp_path):
     for page in site.rglob('*.html'):
         text = page.read_text()
         assert 'fonts.googleapis.com' not in text and 'fonts.gstatic.com' not in text, page
+        # A markdown-exec block that fails prints its traceback into the page and the strict build still passes.
+        assert 'Traceback (most recent call last)' not in text, page

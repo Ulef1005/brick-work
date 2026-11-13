@@ -153,6 +153,10 @@ def rows(db, copy_id, images=True, tokens=None, decorate=True, figure=None):
             if table == 'figure':
                 r['parts_lines'], r['parts_missing'] = components.get(r['id'], (0, 0))
             result.append(r)
+    from . import collection
+    names = collection._names(db, [r['item_id'] for r in result])
+    for r in result:
+        r['category'] = (names.get(r['item_id'], {}).get('category_name') or '').strip() or None
     if decorate and result:
         from . import collection
         for r, d in zip(result, collection.decorate(db, result)):

@@ -283,10 +283,9 @@ def picker(db, selected, ranking=None, *, all_gaps=None):
         for copy_id in {r['copy_id'] for r in g['needs']}:
             if totals[copy_id] == counts[copy_id][identity(g)] and copy_id in eligible:
                 g['completes'] += 1
-    categories = {r[0]: (r[1] or '').strip() for r in db.execute('SELECT id,category_name FROM main.item WHERE id IN (SELECT value FROM json_each(?))',
-                                                                  (json.dumps(sorted({g['item_id'] for g in grouped.values()})),))}
+    names = collection._names(db, [g['item_id'] for g in grouped.values()])
     for g in grouped.values():
-        g['category'] = categories.get(g['item_id']) or None
+        g['category'] = (names.get(g['item_id'], {}).get('category_name') or '').strip() or None
     storage_names = defaultdict(set)
     defective = defective_figures(db)
     for raw in db.execute('''SELECT s.*,t.name AS storage_name FROM main.stock s JOIN main.storage t ON t.id=s.storage_id
@@ -303,7 +302,7 @@ def picker(db, selected, ranking=None, *, all_gaps=None):
 def picker_keys(rows):
     """Return ranking keys, labels and unavailable reasons for a picker snapshot.
 
-    Category and Category group both require a recorded `item.category_name`.
+    Category and Category group require a collection category or its catalogue fallback.
     """
     reasons = dict(size='No part sizes are recorded',
                    category='' if any(r.get('category') for r in rows) else 'No category is recorded for these parts',

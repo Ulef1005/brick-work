@@ -16,7 +16,7 @@ from tests.store4_fixtures import activate, make_catalogue, pair
 def test_new_file_gets_the_schema_and_meta(tmp_path):
     with closing(connect(tmp_path / 'brickwork.db', tmp_path / 'catalogue.db')) as db:
         meta = dict(db.execute('SELECT key, value FROM meta').fetchall())
-        assert meta['schema_version'] == '4.2'
+        assert meta['schema_version'] == '4.3'
         assert str(uuid.UUID(meta['install_id'])) == meta['install_id']
         assert meta['created_at'].endswith('Z')
         assert 'catalogue_id' not in meta

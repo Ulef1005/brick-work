@@ -1,5 +1,5 @@
 """In-place upgrades of older collections: 4.0 to 4.1 (#131: a wish's max price with box) and 4.1 to 4.2 (#167: the owner identity of a job claim;
-#155: why an order line is not placed), with invented files."""
+#155: why an order line is not placed), then 4.2 to 4.3 (checker Category group), with invented files."""
 from contextlib import closing
 import hashlib
 from pathlib import Path
@@ -11,21 +11,22 @@ import pytest
 from brickwork.store4.connect import HERE, SCHEMA_VERSION, UPGRADES, connect, upgrade
 
 NEW = ('max_price_boxed', 'max_price_boxed_currency')
-TABLES = ('wish', 'job_owner', 'order_line')
+TABLES = ('wish', 'job_owner', 'order_line', 'part_check')
 
 
-def old_sql(*, drop_41):
+def old_sql(*, drop_41, drop_42=True):
     """Today's schema without what the later steps add: the 4.2 lines (marked `-- 4.2`), and with `drop_41` the 4.1 ones too."""
     lines = (HERE / 'brickwork.sql').read_text().splitlines(keepends=True)
-    kept = ''.join(line for line in lines if '-- 4.2' not in line and not (drop_41 and 'max_price_boxed' in line))
+    kept = ''.join(line for line in lines if not (drop_42 and '-- 4.2' in line) and not (drop_41 and 'max_price_boxed' in line))
     assert len(kept) < sum(map(len, lines))
+    kept = kept.replace("'colour','group'", "'colour'")
     return re.sub(r',(\s*\n\))', r'\1', kept)                  # the last column of job_owner lost its successor: no comma before the paren
 
 
 def make_old(path, version):
     """A file as an older Brick Work made it, with one wish with a max, a job with its owner and an order line."""
     with closing(sqlite3.connect(path)) as db:
-        db.executescript('BEGIN;\n' + old_sql(drop_41=version == '4.0'))
+        db.executescript('BEGIN;\n' + old_sql(drop_41=version == '4.0', drop_42=version != '4.2'))
         db.executemany('INSERT INTO meta(key, value) VALUES(?, ?)', [('schema_version', version), ('install_id', 'x'), ('created_at', 'y')])
         db.execute("INSERT INTO item(id,origin,kind,born_provider,born_namespace,born_key,name,kind_source,created_at,updated_at)"
                    " VALUES(1000000001,'local','set',NULL,NULL,NULL,'Syn set','manual','2026-10-26T12:00:00.000Z','2026-10-26T12:00:00.000Z')")
@@ -47,6 +48,10 @@ def make_40(path):
     return make_old(path, '4.0')
 
 
+def make_42(path):
+    return make_old(path, '4.2')
+
+
 def make_41(path):
     return make_old(path, '4.1')
 
@@ -55,15 +60,15 @@ def shape(db, table='wish'):
     return [tuple(r)[1:] for r in db.execute(f'PRAGMA main.table_xinfo({table})')]
 
 
-def test_the_version_is_42_and_the_steps_chain_from_40():
-    assert SCHEMA_VERSION == '4.2' and list(UPGRADES) == ['4.0', '4.1'] and UPGRADES['4.0'][0] == '4.1' and UPGRADES['4.1'][0] == '4.2'
+def test_the_version_is_43_and_the_steps_chain_from_40():
+    assert SCHEMA_VERSION == '4.3' and list(UPGRADES) == ['4.0', '4.1', '4.2'] and UPGRADES['4.0'][0] == '4.1' and UPGRADES['4.1'][0] == '4.2' and UPGRADES['4.2'][0] == '4.3'
 
 
 def test_a_40_file_is_upgraded_on_open_and_keeps_its_wishes(tmp_path):
     path = make_40(tmp_path / 'brickwork.db')
     with closing(connect(path, tmp_path / 'catalogue.db')) as db:
         meta = dict(db.execute('SELECT key, value FROM meta').fetchall())
-        assert meta['schema_version'] == '4.2' and meta['upgraded_to_4.1'].endswith('Z') and meta['upgraded_to_4.2'].endswith('Z')
+        assert meta['schema_version'] == '4.3' and meta['upgraded_to_4.1'].endswith('Z') and meta['upgraded_to_4.2'].endswith('Z')
         row = db.execute('SELECT * FROM wish').fetchone()
         assert (row['max_price'], row['max_price_currency'], row['max_price_boxed'], row['max_price_boxed_currency']) == ('40.00', 'EUR', None, None)
         with pytest.raises(sqlite3.IntegrityError):                       # the pair rule holds on an upgraded file too
@@ -75,12 +80,12 @@ def test_a_41_file_is_upgraded_and_keeps_its_claims_and_order_lines(tmp_path):
     path = make_41(tmp_path / 'brickwork.db')
     with closing(connect(path, tmp_path / 'catalogue.db')) as db:
         meta = dict(db.execute('SELECT key, value FROM meta').fetchall())
-        assert meta['schema_version'] == '4.2' and meta['upgraded_to_4.2'].endswith('Z') and 'upgraded_to_4.1' not in meta
+        assert meta['schema_version'] == '4.3' and meta['upgraded_to_4.2'].endswith('Z') and 'upgraded_to_4.1' not in meta
         assert tuple(db.execute('SELECT job_id, pid, claimed_at, boot_id, start_ticks FROM job_owner').fetchone()) == (1, 4242, '2026-10-26T12:00:00.000Z', None, None)
         assert tuple(db.execute('SELECT id, state, qty, unplaced_reason FROM order_line').fetchone()) == (1, 'held', 2, None)
 
 
-@pytest.mark.parametrize('make', [make_40, make_41])
+@pytest.mark.parametrize('make', [make_40, make_41, make_42])
 def test_an_upgraded_table_matches_a_new_one(tmp_path, make):
     with closing(connect(make(tmp_path / 'old.db'), tmp_path / 'catalogue.db')) as upgraded, \
             closing(connect(tmp_path / 'new.db', tmp_path / 'catalogue.db')) as new:
@@ -90,14 +95,20 @@ def test_an_upgraded_table_matches_a_new_one(tmp_path, make):
         sql = [db.execute("SELECT sql FROM sqlite_master WHERE name='wish'").fetchone()[0] for db in (upgraded, new)]
         assert all(s.count('CHECK((max_price_boxed IS NULL) = (max_price_boxed_currency IS NULL))') == 1 for s in sql)
 
+        def ddl(db):
+            return [(kind, name, sql.replace('"part_check"', 'part_check')) for kind, name, sql in db.execute(
+                "SELECT type,name,sql FROM sqlite_master WHERE tbl_name='part_check' ORDER BY type,name")]
+        assert ddl(upgraded) == ddl(new)
+
 
 def digest(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
-def test_a_read_only_open_never_writes_and_a_write_open_upgrades_once(tmp_path):
+@pytest.mark.parametrize('make', [make_40, make_41, make_42])
+def test_a_read_only_open_never_writes_and_a_write_open_upgrades_once(tmp_path, make):
     from brickwork.store4.errors import UpgradeFailed
-    path = make_40(tmp_path / 'brickwork.db')
+    path = make(tmp_path / 'brickwork.db')
     before = digest(path)
     with pytest.raises(UpgradeFailed, match='open it read-write once'):
         connect(path, tmp_path / 'catalogue.db', read_only=True)
@@ -105,7 +116,7 @@ def test_a_read_only_open_never_writes_and_a_write_open_upgrades_once(tmp_path):
     connect(path, tmp_path / 'catalogue.db').close()
     with closing(connect(path, tmp_path / 'catalogue.db', read_only=True)) as db:
         assert {r[1] for r in db.execute('PRAGMA table_xinfo(wish)')} >= set(NEW)
-    assert upgrade(path) == '4.2'                                         # nothing left to do: no second ALTER
+    assert upgrade(path) == '4.3'                                         # nothing left to do: no second ALTER
     with closing(sqlite3.connect(path)) as raw:
         assert raw.execute("SELECT count(*) FROM pragma_table_xinfo('wish') WHERE name LIKE 'max_price_boxed%'").fetchone()[0] == 2
 
@@ -115,7 +126,7 @@ def test_app_start_upgrades_and_a_read_only_instance_refuses(tmp_path, monkeypat
     path = make_40(tmp_path / 'brickwork.db')
     start_upgrade(path)
     with closing(sqlite3.connect(path)) as raw:
-        assert raw.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()[0] == '4.2'
+        assert raw.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()[0] == '4.3'
     start_upgrade(path)                                                   # current: a no-op
     old = make_40(tmp_path / 'other.db')
     monkeypatch.setenv('BW_READ_ONLY', '1')
@@ -151,17 +162,17 @@ def test_a_failed_second_step_leaves_the_file_at_41(tmp_path, monkeypatch):
         assert 'boot_id' not in {r[1] for r in raw.execute('PRAGMA table_xinfo(job_owner)')}
 
 
-def test_a_stale_40_file_is_refused_before_anything_writes_to_it(tmp_path):
+@pytest.mark.parametrize('make', [make_40, make_41, make_42])
+def test_a_stale_file_is_refused_before_anything_writes_to_it(tmp_path, make):
     from brickwork.store4.errors import StaleSchema
-    path = make_40(tmp_path / 'brickwork.db')
+    path = make(tmp_path / 'brickwork.db')
     with closing(sqlite3.connect(path)) as raw:                          # rebuild item_link as before #124: no AUTOINCREMENT
         sql = raw.execute("SELECT sql FROM sqlite_master WHERE name='item_link'").fetchone()[0]
         raw.executescript('PRAGMA foreign_keys=OFF; DROP TABLE item_link; ' + sql.replace('AUTOINCREMENT', '') + ';')
+    before = digest(path)
     with pytest.raises(StaleSchema):
         connect(path, tmp_path / 'catalogue.db')
-    with closing(sqlite3.connect(path)) as raw:
-        assert raw.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()[0] == '4.0'
-        assert 'max_price_boxed' not in {r[1] for r in raw.execute('PRAGMA table_xinfo(wish)')}
+    assert digest(path) == before
 
 
 @pytest.mark.parametrize('error,hint', [('attempt to write a readonly database', 'make it writable'),

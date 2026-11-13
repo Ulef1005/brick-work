@@ -140,6 +140,37 @@ def test_landing_sections_and_copy(site):
     assert len(text.encode()) + sum((site / 'assets' / n).stat().st_size for n in ('site.css', 'marketing.css', 'site.js')) < 130_000
 
 
+def test_walkthroughs_and_no_js_content(site):
+    text = (site / 'workflows/index.html').read_text()
+    for name, count in (('check-set-parts', 5), ('part-picker', 4), ('matcher', 2)):
+        section = text.split(f'id="{name}"', 1)[1].split('</section>', 1)[0]
+        assert section.count('<li>') == count
+        assert 'data-back' in section and 'data-next' in section
+        assert 'data-step-status' in section
+        assert section.count('<figure data-frame=') == count
+        assert section.count('<img') == count
+        assert 'not in the demo yet' not in section
+    for removed in ('desktop-frame', 'device-switch', 'data-device', 'desktop-1440'):
+        assert removed not in text
+    assert text.count('class="phone-frame"') == 11
+    screenshots = [attrs for tag, attrs in Elements(text).elements
+                   if tag in ('img', 'source') and '/img/' in attrs.get('src', attrs.get('srcset', ''))]
+    assert len(screenshots) == 22
+    assert all('-phone-' in attrs.get('src', attrs.get('srcset', '')) for attrs in screenshots)
+    assert text.count('data-walkthrough') == 3
+    assert 'hidden' not in text  # JavaScript alone hides inactive screenshots.
+
+
+def test_use_cases_have_eight_cards_in_three_groups(site):
+    text = (site / 'use-cases/index.html').read_text()
+    assert text.count('<article') == 8
+    for group in ('uc-table', 'uc-plan', 'uc-scripts'):
+        assert f'id="{group}"' in text
+    assert 'Planned' in text
+    order = next(card for card in text.split('<article') if '<h3 class="layout-39">Receive a parts order' in card)
+    assert '12b-count-what-arrived-desktop-1440-light.png' in order
+
+
 def test_desktop_screenshots_are_only_kept_for_other_pages(site):
     pages = [(site / name).read_text() for name in ('index.html', 'use-cases/index.html')]
     referenced = {Path(attrs[attr]).name for text in pages for tag, attrs in Elements(text).elements

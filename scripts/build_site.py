@@ -27,9 +27,9 @@ import markdown
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 SITE = ROOT / 'scripts/site'
-# The top bar: (label, path from the site root). About joins in S4.
+# The top bar: (label, path from the site root).
 NAV = (('Install', 'install/'), ('Demo', 'demo/'), ('Use cases', 'use-cases/'), ('Workflows', 'workflows/'), ('Docs', 'docs/'),
-       ('Changelog', 'changelog/'))
+       ('Changelog', 'changelog/'), ('About', 'about/'))
 # The pages that moved into the docs (doc-standard-v1 B1b): the old URL keeps a stub page that points at the new one.
 MOVED = (('api', 'API reference', 'docs/developer/api-v2-reference/'), ('mcp', 'MCP server', 'docs/brickwork/mcp/'))
 USER_DOCS = ('how-to', 'concepts', 'reference', 'tutorials', 'developer')   # the Zensical sections under /docs/
@@ -99,7 +99,7 @@ def page(title, body, depth, *, current, head='', main='doc', absolute=False):
         col('Product', (('Install', f'{up}install/'), ('Demo', f'{up}demo/'), ('Use cases', f'{up}use-cases/'), ('Workflows', f'{up}workflows/'))),
         col('Learn', (('Docs', f'{up}docs/'), ('Changelog', f'{up}changelog/'), ('API', f'{up}docs/developer/api-v2-reference/'),
                       ('MCP', f'{up}docs/brickwork/mcp/'))),
-        col('Project', (('GitHub', f'https://github.com/{repo}'), ('Show and tell', f'https://github.com/{repo}/discussions'),
+        col('Project', (('About', f'{up}about/'), ('GitHub', f'https://github.com/{repo}'), ('Show and tell', f'https://github.com/{repo}/discussions'),
                         ('Roadmap', 'https://github.com/users/Ulef1005/projects/3'))),
         col('Legal', (('Impressum', f'{up}impressum/'), ('Privacy', f'{up}privacy/'), ('MIT licence', blob('LICENSE')))),
     ))
@@ -170,6 +170,7 @@ def fill(text, up):
     version, schema, date, summary = latest_release()
     values = {'repository': repository(), 'up': up, 'version': __version__, 'release_version': version, 'release_date': date,
               'release_summary': html.escape(summary), 'release_schema': schema}
+    values['count_adr'] = str(len(list((ROOT / 'docs/adr').glob('[0-9]*.md'))))
     for section in ('tutorials', 'how-to', 'concepts', 'reference'):
         values['count_' + section.replace('-', '_')] = str(docs_count(section))
     # One pass over the template, so a value (a release summary) is never scanned for tokens itself.
@@ -246,12 +247,57 @@ def mermaid_to_link(text, resolved):
     return re.sub(r'^```mermaid\n(.*?)^```$', figure, text, flags=re.M | re.S)
 
 
+RELEASE = re.compile(r'^## Brick Work (\S+) \(([^)]*)\) · (\d{4}-\d{2}-\d{2})$', re.M)
+
+
+def releases():
+    """Every release of CHANGELOG.md, newest first: (version, schema note, date, Markdown body). The older task entries and Unreleased are not releases."""
+    text = (ROOT / 'CHANGELOG.md').read_text()
+    out = []
+    for mark in RELEASE.finditer(text):
+        end = text.find('\n## ', mark.end())
+        out.append((mark[1], mark[2], mark[3], text[mark.end():end if end != -1 else len(text)].strip()))
+    return out
+
+
+def origin():
+    owner = repository().split('/')[0].lower()
+    return 'https://brick-work.app' if site_base() == '/' else f'https://{owner}.github.io'
+
+
 def build_changelog(out):
-    """/changelog/: CHANGELOG.md, its links to docs pages kept on the site and every other link pointing at GitHub."""
+    """/changelog/: every release since the first public one, newest open, an anchor per version, and an Atom feed (feed.xml)."""
     target = site_page('CHANGELOG.md')
     (out / target).mkdir(parents=True, exist_ok=True)
-    text = mermaid_to_link(rewrite_links((ROOT / 'CHANGELOG.md').read_text(), '', 1), 'CHANGELOG.md')
-    (out / target / 'index.html').write_text(page('Changelog', render(text), 1, current='Changelog'))
+    rows = []
+    for index, (version, schema, date, body) in enumerate(releases()):
+        markdown_body = mermaid_to_link(rewrite_links(body, '', 1), 'CHANGELOG.md')
+        pill = '<span class="pill">Latest</span>' if index == 0 else '<span></span>'
+        rows.append(f'<details class="rel" id="v{version}"{" open" if index == 0 else ""}><summary><span class="v">{version}</span>'
+                    f'<span class="dt">{date} · <span class="sch">{html.escape(schema)}</span></span>{pill}</summary>'
+                    f'<div class="body">{render(markdown_body)}<a class="link" href="https://github.com/{repository()}/releases/tag/v{version}">Release {version} on GitHub</a></div></details>')
+    oldest = releases()[-1]
+    body = (f'<div class="site"><div class="sec"><div class="inner"><div class="pagehead"><span class="label">Home / Changelog</span>'
+            f'<h1 class="display page">Changelog</h1><p class="lede">Every release since the first public one on {oldest[2]}, newest first.</p>'
+            f'<div class="btns"><a class="link" href="feed.xml">Atom feed</a><a class="link" href="https://github.com/{repository()}/releases">Releases on GitHub</a></div></div>'
+            f'<div style="display:flex;flex-direction:column;gap:12px">{"".join(rows)}</div></div></div></div>')
+    head = '<link rel="alternate" type="application/atom+xml" title="Brick Work releases" href="feed.xml">'
+    (out / target / 'index.html').write_text(page('Changelog', body, 1, current='Changelog', head=head, main='home'))
+    (out / target / 'feed.xml').write_text(atom_feed())
+
+
+def atom_feed():
+    """The Atom feed of the releases (the newest twenty): one entry each, linking its anchor on the changelog page."""
+    base = origin() + site_base()
+    entries = []
+    for version, schema, date, body in releases()[:20]:
+        first = re.sub(r'\[([^\]]+)\]\([^)]*\)', r'\1', body.split('\n\n', 1)[0]).replace('`', '')
+        entries.append(f'<entry><title>Brick Work {version}</title><id>tag:{origin().removeprefix("https://")},{date}:{version}</id>'
+                       f'<link href="{base}changelog/#v{version}"/><updated>{date}T00:00:00Z</updated><summary>{html.escape(first)}</summary></entry>')
+    latest = releases()[0][2]
+    return ('<?xml version="1.0" encoding="utf-8"?>\n<feed xmlns="http://www.w3.org/2005/Atom"><title>Brick Work releases</title>'
+            f'<id>{base}changelog/</id><link rel="self" href="{base}changelog/feed.xml"/><link href="{base}changelog/"/>'
+            f'<updated>{latest}T00:00:00Z</updated><author><name>Ulf Weihbold</name></author>{"".join(entries)}</feed>\n')
 
 
 def llms_txt():

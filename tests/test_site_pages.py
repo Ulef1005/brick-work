@@ -510,3 +510,27 @@ def test_install_and_coming_from_pages_exist_and_cross_link(site):
     for path in expected:
         if path.startswith('coming-from/'):
             assert text.count('<a href=') >= 4          # the four sibling rows on every coming-from page
+
+
+def test_changelog_page_lists_every_release_with_an_anchor_and_an_atom_feed(site):
+    import xml.etree.ElementTree as ET
+    from brickwork.version import __version__
+    from scripts.build_site import releases
+    versions = [version for version, *_ in releases()]
+    assert versions[0] == __version__ and versions[-1] == '0.5.0' and len(versions) == len(set(versions)) >= 8
+    text = (site / 'changelog/index.html').read_text()
+    for version in versions:
+        assert f'<details class="rel" id="v{version}"' in text, version
+    assert text.count('<details class="rel"') == len(versions) and text.count('<details class="rel" id="v') == len(versions)
+    assert f'id="v{__version__}" open' in text and text.count(' open>') == 1          # only the newest is open
+    assert 'href="feed.xml"' in text and 'application/atom+xml' in text
+    feed = ET.fromstring((site / 'changelog/feed.xml').read_text())
+    entries = feed.findall('{http://www.w3.org/2005/Atom}entry')
+    assert [e.find('{http://www.w3.org/2005/Atom}title').text for e in entries] == [f'Brick Work {v}' for v in versions]
+
+
+def test_about_page_and_the_nav_that_reaches_it(site):
+    text = (site / 'about/index.html').read_text()
+    assert 'Ulf Weihbold, Linz' in text and 'MIT' in text and 'decision records in the repository' in text
+    assert 'github.com/' in text and 'aria-current="page"' in text.split('</header>')[0]
+    assert '>About</a>' in (site / 'index.html').read_text()

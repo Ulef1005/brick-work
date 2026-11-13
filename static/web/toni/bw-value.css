@@ -120,17 +120,11 @@ section.br-nodata { background:var(--tw-surface);border-radius:16px;padding:20px
 .br-pager .bc-page-next::after { content:"";border-width:1.5px 1.5px 0 0;transform:rotate(45deg);margin-right:3px; }
 .br-pager>p { flex-basis:100%;margin:0;text-align:center;font:400 13px/18px var(--tw-mono);color:var(--tw-text-muted); }
 .br-range { text-align:center; }
-@media(max-width:1023px) {
-  .br-colheads,.br-line { grid-template-columns:72px minmax(0,1fr) 44px 60px 100px 92px 92px 150px;gap:8px; }
-}
-@media(max-width:767px) {
-  .br-actions { width:100%; }
-  .br-actions>* { flex:1; }
-  .br-sheet { padding:16px; }
-  .br-facts { grid-template-columns:repeat(2,minmax(0,1fr)); }
+/* Below 1280 px the columns would squeeze the name (the grid needs about 750 px beside it): a row is a card, as on the phone. */
+@media(max-width:1279px) {
   .br-colheads { display:none; }
   .br-row { padding:14px 0; }
-  .br-line { grid-template-columns:minmax(0,1fr);gap:2px; }
+  .br-line { grid-template-columns:minmax(0,1fr);gap:2px;max-width:640px; }
   .br-num { font:400 12px/16px var(--tw-mono);color:var(--tw-text-muted); }
   .br-name { font:600 15px/20px var(--tw-font); }
   .br-meta { display:flex;gap:0;font:400 13px/18px var(--tw-font);color:var(--tw-text-muted); }
@@ -141,4 +135,10 @@ section.br-nodata { background:var(--tw-surface);border-radius:16px;padding:20px
   .br-worth small { flex-basis:100%;text-align:right; }
   .br-purchased::before,.br-paid::before,.br-worth::before { content:attr(data-label);font:400 13px/18px var(--tw-font);color:var(--tw-text-muted);text-align:left; }
   .br-paid small { display:none; }
+}
+@media(max-width:767px) {
+  .br-actions { width:100%; }
+  .br-actions>* { flex:1; }
+  .br-sheet { padding:16px; }
+  .br-facts { grid-template-columns:repeat(2,minmax(0,1fr)); }
 }

@@ -208,14 +208,17 @@ def _row(r):
 def _header(data, rows):
     h = data['header']
     n, c, wp = h['copies'], h['comparable_copies'], h['without_price_paid']
-    unworthy = sum(1 for r in data['rows'] if r['paid'] and not r['worth'])
+    rate = h['without_rate']                                           # a figure that needs a missing rate: in no total, whichever side it is on
+    unworthy = sum(1 for r in data['rows'] if r['paid'] and not r['worth'] and r['worth_reason'] != 'no_rate')
     foot = f'Totals count the {plural(c, "copy", "copies")} with a price paid'
-    if unworthy:
+    if unworthy or rate:
         foot += ' and a worth'
     if wp:
         foot += f' · {plural(wp, "copy", "copies")} {"has" if wp == 1 else "have"} no price paid and {"is" if wp == 1 else "are"} listed without one'
     if unworthy:
         foot += f' · {plural(unworthy, "copy", "copies")} {"has" if unworthy == 1 else "have"} no worth and {"is" if unworthy == 1 else "are"} listed without one'
+    if rate:
+        foot += f' · {plural(rate, "copy", "copies")} {"needs" if rate == 1 else "need"} a rate and {"is" if rate == 1 else "are"} listed without a total'
     return dict(generated=short_date(h['generated']), copies=n, copies_word=plural(n, 'copy', 'copies'),
                 paid=text(h['paid'], h['currency']) if h['paid'] is not None else '—', worth=text(h['worth'], h['currency']) if h['worth'] is not None else '—',
                 foot=foot, comparable=c)

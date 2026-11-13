@@ -16,7 +16,7 @@ let browser=null,socket=null;
  const checks={
   detail:"[data-module=value]",statistics:'.bw-value-stats',report:'.br-sheet'};
  for(const screen of Object.keys(checks)){
-  for(const width of [1440,390]){
+  for(const width of (screen==='report'?[1440,1280,1024,768,390]:[1440,390])){
    await call('Emulation.setDeviceMetricsOverride',{width,height:900,deviceScaleFactor:1,mobile:false});
    await call('Page.navigate',{url:'file://'+path.join(dir,screen+'.html')});
    for(let i=0;i<100;i++){if(await evaluate("document.readyState==='complete' && !!document.querySelector("+JSON.stringify(checks[screen])+")"))break;await delay(50);}
@@ -52,10 +52,14 @@ let browser=null,socket=null;
      }
      for(const b of document.querySelectorAll('.br-actions a,.br-actions button'))if(rect(b).height<43.5)errors.push('button under 44px');
      const pager=document.querySelector('.br-pager');if(!pager||rect(pager).bottom>rect(root).bottom+.5)errors.push('pager missing or outside the sheet');
-     if(${width}>=1024){const heads=[...root.querySelectorAll('.br-colheads span')],cells=[...rows[0].querySelectorAll('.br-line > .br-num,.br-line > .br-name,.br-line .br-year,.br-line .br-purchased,.br-line .br-paid,.br-line .br-worth')];
+     const name=rows[0].querySelector('.br-name');
+     if(${width}>=1280){const heads=[...root.querySelectorAll('.br-colheads span')],cells=[...rows[0].querySelectorAll('.br-line > .br-num,.br-line > .br-name,.br-line .br-year,.br-line .br-purchased,.br-line .br-paid,.br-line .br-worth')];
       if(heads.length!==8)errors.push('column heads');
+      for(let i=1;i<heads.length;i++)if(rect(heads[i-1]).right>rect(heads[i]).left+.5)errors.push('heading overlaps the next');
+      if(rect(name).width<150)errors.push('Name column under 150 px: '+rect(name).width);
       if(Math.abs(rect(heads[0]).left-rect(cells[0]).left)>1||Math.abs(rect(heads[7]).right-rect(cells[cells.length-1]).right)>1)errors.push('columns do not line up with their heads');}
-     else if(getComputedStyle(root.querySelector('.br-colheads')).display!=='none')errors.push('column heads shown on a phone');
+     else{if(getComputedStyle(root.querySelector('.br-colheads')).display!=='none')errors.push('column heads shown in the card layout');
+      if(rect(name).width<150)errors.push('Name under 150 px: '+rect(name).width);}
     }
     return errors;})()`);
    assert.deepEqual(errors,[],screen+' at '+width+': '+errors.join(', '));

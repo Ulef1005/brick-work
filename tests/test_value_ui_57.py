@@ -418,3 +418,34 @@ def test_value_screens_geometry(coll, client, tmp_path):
     inline(client, '/manage/insurance-report', tmp_path, 'report')
     result = subprocess.run(['node', 'tests/toni_bw_value_geometry.cjs', chrome, str(tmp_path)], capture_output=True, text=True, timeout=240, cwd=ROOT)
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+# ---- review findings: a missing rate in the footnote and the notes, the report's widths ----
+
+def test_the_footnote_names_copies_that_need_a_rate(coll, client):
+    quote(coll, '40.00')
+    for price in ('20.00', '25.00', '30.00'):
+        paid_copy(coll, '1000-1', price)
+    coll.add_copy('1000-1', condition='used', completeness='complete', price='30.00', currency='USD')          # no USD rate
+    foot = words(soup(client, '/manage/insurance-report').select_one('.br-foot'))
+    assert foot == 'Totals count the 3 copies with a price paid and a worth · 1 copy needs a rate and is listed without a total'
+    printing = words(soup(client, '/manage/insurance-report?print=1').select_one('.rp-foot'))
+    assert printing == foot
+    assert [words(r.select_one('.br-paid')) for r in rows(soup(client, '/manage/insurance-report'))][-1] == 'needs a rate'
+
+
+def test_the_footnote_is_the_approved_wording_when_no_rate_is_missing(coll, client):
+    many(coll, 3)
+    coll.add_copy('1000-1', condition='used', completeness='complete')
+    assert words(soup(client, '/manage/insurance-report').select_one('.br-foot')) == (
+        'Totals count the 3 copies with a price paid · 1 copy has no price paid and is listed without one')
+
+
+def test_the_notes_show_under_charts_need_more_data_too(coll, client):
+    quote(coll, '40.00')
+    for price in ('20.00', '25.00'):
+        paid_copy(coll, '1000-1', price)
+    coll.add_copy('1000-1', condition='used', completeness='complete', price='30.00', currency='USD')          # no USD rate
+    node, text = section(client)
+    assert node['data-state'] == 'few' and 'Charts need more data' in text
+    assert [words(n) for n in node.select('.bv-note')] == ['1 copy needs a rate · left out of the totals']

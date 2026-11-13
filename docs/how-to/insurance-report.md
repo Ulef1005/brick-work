@@ -9,7 +9,7 @@ The report uses the same figures as [Value and gain of a copy](pictures-and-pric
 1. Open **Tools & Admin → Statistics**.
 2. In the **Paid vs value** card, press **Insurance report**.
 
-The page shows the report as it prints. At the top: the date it was made, how many copies it lists, the total paid and the total worth. The note under the totals says which copies they count: the total paid and the total worth cover only the copies that have both a price paid and a worth, so the gain compares like with like. Copies without a price paid are still listed, with **No price paid**, and copies with no sold prices say **no sales**.
+The page shows the report as it prints. At the top: the date it was made, how many copies it lists, the total paid and the total worth. The note under the totals says which copies they count: the total paid and the total worth cover only the copies that have both a price paid and a worth, so the gain compares like with like. A copy whose price or value is in a currency with no rate in Settings says **needs a rate**, is listed, and is named in that note as left out of the totals. Copies without a price paid are still listed, with **No price paid**, and copies with no sold prices say **no sales**.
 
 ## What is in each row
 

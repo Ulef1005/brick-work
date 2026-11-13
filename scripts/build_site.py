@@ -277,7 +277,7 @@ def build(out):
     if out.exists():
         shutil.rmtree(out)
     (out / 'assets' / 'fonts').mkdir(parents=True)
-    for sub in ('api', 'use-cases', 'workflows', 'impressum', 'privacy'):
+    for sub in ('api', 'use-cases', 'impressum', 'privacy'):
         (out / sub).mkdir()
     (out / 'mcp').mkdir()
     static = ROOT / 'static'
@@ -300,7 +300,7 @@ def build(out):
     build_docs(out / 'docs')
 
     (out / 'index.html').write_text(page('Brick Work', home(''), 0, current=None, main='home'))
-    for name, title, current in (('use-cases', 'Use cases', 'Use cases'), ('workflows', 'Workflows', 'Workflows'),
+    for name, title, current in (('use-cases', 'Use cases', 'Use cases'),
                                  ('impressum', 'Impressum', None), ('privacy', 'Privacy', None)):
         text = (SITE / f'{name}.md').read_text().replace('{repository}', repository())
         (out / name / 'index.html').write_text(page(title, render(text), 1, current=current, main='marketing'))

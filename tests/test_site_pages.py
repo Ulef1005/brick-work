@@ -140,25 +140,14 @@ def test_landing_sections_and_copy(site):
     assert len(text.encode()) + sum((site / 'assets' / n).stat().st_size for n in ('site.css', 'marketing.css', 'site.js')) < 130_000
 
 
-def test_walkthroughs_and_no_js_content(site):
+def test_workflow_walkthroughs_are_complete_without_javascript(site):
     text = (site / 'workflows/index.html').read_text()
-    for name, count in (('check-set-parts', 5), ('part-picker', 4), ('matcher', 2)):
-        section = text.split(f'id="{name}"', 1)[1].split('</section>', 1)[0]
-        assert section.count('<li>') == count
-        assert 'data-back' in section and 'data-next' in section
-        assert 'data-step-status' in section
-        assert section.count('<figure data-frame=') == count
-        assert section.count('<img') == count
-        assert 'not in the demo yet' not in section
-    for removed in ('desktop-frame', 'device-switch', 'data-device', 'desktop-1440'):
-        assert removed not in text
-    assert text.count('class="phone-frame"') == 11
-    screenshots = [attrs for tag, attrs in Elements(text).elements
-                   if tag in ('img', 'source') and '/img/' in attrs.get('src', attrs.get('srcset', ''))]
-    assert len(screenshots) == 22
-    assert all('-phone-' in attrs.get('src', attrs.get('srcset', '')) for attrs in screenshots)
-    assert text.count('data-walkthrough') == 3
-    assert 'hidden' not in text  # JavaScript alone hides inactive screenshots.
+    for anchor, steps in (('part-spotter', 4), ('check-set-parts', 5), ('part-picker', 4), ('matcher', 2)):
+        section = text.split(f'id="{anchor}"')[1].split('<div class="sec')[0]
+        assert section.count('<li><span class="n">') == steps, anchor
+    assert text.count('class="mini') == 5               # Orders, Storage, Build Scout, Build it, Set detection
+    assert 'to capture' not in text and 'data-walkthrough' not in text
+    assert 'The rest of the workbench.' in text
 
 
 def test_use_cases_have_eight_cards_in_three_groups(site):
@@ -193,11 +182,10 @@ def test_desktop_screenshots_are_only_kept_for_other_pages(site):
         '12c-list-and-detail-desktop-1440',
     ]),
     ('workflows/index.html', [
-        '3b-check-set-parts-phone-390', '3e-start-phone-390', '3e-part-phone-390',
-        '3e-finish-gaps-phone-390', '3e-resume-phone-390',
-        '3c-picker-sets-phone-390', '3c-picker-sort-phone-390',
-        '3c-picker-pick-phone-390', '3c-picker-selector-phone-390',
+        '3e-start-phone-390', '3e-part-phone-390',
+        '3c-picker-sets-phone-390', '3c-picker-pick-phone-390',
         '3a-matcher-phone-390', '1d-set-detail-phone-390',
+        '12b-count-what-arrived-desktop-1440',
     ]),
 ])
 def test_built_screen_placements(site, page, stems):
@@ -219,7 +207,7 @@ def test_no_unreferenced_screenshots_are_shipped(site):
                   for tag, attrs in Elements((site / name).read_text()).elements
                   for attr in ('src', 'srcset') if tag in ('img', 'source')
                   and '/img/' in attrs.get(attr, '')}
-    assert len(referenced) == 30
+    assert len(referenced) == 22
     assert {p.name for p in (ROOT / 'scripts/site/img').glob('*')} == referenced
     assert {p.name for p in (site / 'assets/img').glob('*')} == referenced
 
@@ -370,7 +358,7 @@ def test_every_image_the_readme_and_the_pages_show_exists_and_is_a_built_capture
         sys.path.remove(sys_path)
     stems = set(site_shots.PICTURES)
     shown = set()
-    for source in ('README.md', 'scripts/site/landing.html', 'scripts/site/use-cases.md', 'scripts/site/workflows.md'):
+    for source in ('README.md', 'scripts/site/landing.html', 'scripts/site/use-cases.md', 'scripts/site/pages/workflows.html'):
         text = (ROOT / source).read_text()
         names = re.findall(r'(?:src|srcset)="[^"]*?/img/(?:readme/)?([^"/]+\.png)"', text)
         names += [f'{stem}-{theme}.png' for stem in re.findall(r'\{pic:([^|}]+)\|', text) for theme in ('light', 'dark')]
@@ -379,7 +367,7 @@ def test_every_image_the_readme_and_the_pages_show_exists_and_is_a_built_capture
             target = ROOT / ('docs/img/readme' if source == 'README.md' else 'scripts/site/img') / name
             assert target.is_file(), f'{source}: {name} is missing'
             assert re.sub(r'-(light|dark)\.png$', '', name) in stems, f'{source}: {name} is not a capture of the built app'
-    assert len(shown) >= 32
+    assert len(shown) >= 24
 
 
 NOTE = re.compile(r'placeholder drawings.*?BrickLink and Rebrickable', re.S)

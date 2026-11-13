@@ -3919,7 +3919,7 @@ paths:
           uniqueItems: true
       - name: rank
         in: query
-        description: Pick order keys (category, colour, size, set, storage); default all.
+        description: Pick order keys (category, group, colour, size, set, storage); group means Category group (fixed catalogue order, Other last). Default category, colour, size, set, storage; group is off. Unknown keys are ignored.
         style: form
         explode: true
         schema:

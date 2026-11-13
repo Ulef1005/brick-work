@@ -34,6 +34,43 @@ for(const [key,result] of [['f',{action:'answer',count:4}],['m',{action:'missing
 assert.equal(keyCommand('f',true,true,4),null);assert.equal(keyCommand('f',false,true,null),null);
 assert.deepEqual(plain(keyCommand('z',true,false,null)),{action:'undo'});
 assert.equal(keyCommand('m',false,false,4),null);
+// Offline spare order uses the server's group/size positions, including Other and ties.
+{
+ const grouped=make();grouped.session.sort='group';
+ grouped.rows.push({token:'p:5',kind:'spare',group_order:1},{token:'p:6',kind:'spare',group_order:3});
+ grouped.rows[3].group_order=4;grouped.rows[4].group_order=2;
+ apply(grouped,{action:'spares',include:true});
+ assert.deepEqual(plain(grouped.session.order).slice(3),['p:5','p:4','p:6','p:3']);
+ const unknown=make();unknown.session.sort='old-mode';apply(unknown,{action:'spares',include:true});
+ assert.deepEqual(plain(unknown.session.order).slice(3),['p:3','p:4']);
+}
+// Missing group ranks use quantity and token ties, including a mixed ranked/unranked pair.
+{
+ for (const ranked of [false,true]) {
+  const fallback=make();fallback.session.sort='group';
+  if(ranked) fallback.rows[3].group_order=0;
+  apply(fallback,{action:'spares',include:true});
+  assert.deepEqual(plain(fallback.session.order).slice(3),['p:4','p:3']);
+ }
+ const tied=make();tied.session.sort='group';tied.rows[3].quantity=3;
+ tied.rows[3].token='p:z';tied.rows[4].token='p:a';
+ apply(tied,{action:'spares',include:true});
+ assert.deepEqual(plain(tied.session.order).slice(3),['p:a','p:z']);
+}
+// Answering one spare merges a subset delta without changing either spare's inventory ranks.
+{
+ const full=make();full.session.sort='group';
+ full.rows[3].group_order=4;full.rows[3].largest_order=3;
+ full.rows[4].group_order=2;full.rows[4].largest_order=1;
+ apply(full,{action:'spares',include:true});
+ const answered=plain(full);apply(answered,{action:'answer',token:'p:3',found:1});
+ const result={partial:true,session:answered.session,rows:[{token:'p:3',missing:0,checked:1}]};
+ const updated=merge(full,result);
+ assert.deepEqual(plain(updated.rows.filter(r=>r.kind==='spare').map(r=>[r.group_order,r.largest_order])),[[4,3],[2,1]]);
+ updated.session.order=updated.session.order.slice(0,3);
+ apply(updated,{action:'spares',include:true});
+ assert.deepEqual(plain(updated.session.order).slice(3),['p:4','p:3']);
+}
 // 4.8a: the last step asks about spares; "No" keeps them out of the sequence.
 {
  const no=make();apply(no,{action:'spares',include:false});

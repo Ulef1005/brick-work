@@ -631,7 +631,7 @@
    "world": "demo",
    "path": "/workbench/check-parts/56325b99-16bc-549b-bb98-f7be2ab38829",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "31-Part-to-inventory",
@@ -742,7 +742,7 @@
    "world": "showcase",
    "path": "/workbench/check-parts/79f5df76-b75b-5fd5-bf6c-d3f4506e1406",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "36-Check-this-copy",
@@ -751,7 +751,7 @@
    "world": "extras",
    "path": "/workbench/check-parts/9d6269ab-614d-549e-90ce-ca84e84afded",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "36-Check-this-copy",
@@ -760,7 +760,7 @@
    "world": "showcase",
    "path": "/workbench/check-parts/60b6e39e-1532-5baf-a0df-08566d2328a2",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "36-Check-this-copy",
@@ -789,7 +789,7 @@
    "path": "/workbench/check-parts/60b6e39e-1532-5baf-a0df-08566d2328a2",
    "javascript": false,
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "37-Orders-at-macbook-and-ipad-size",

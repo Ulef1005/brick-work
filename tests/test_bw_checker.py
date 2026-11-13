@@ -46,7 +46,7 @@ def test_the_sequence_is_parts_then_figures_and_the_spare_is_asked_last(coll, co
     assert [kinds[t] for t in state['session']['order']] == ['part', 'part', 'figure']
     assert sorted(kinds.values()) == ['figure', 'part', 'part', 'spare']
     assert state['session']['spares'] is None and all(t.startswith(('p:', 'f:')) for t in state['session']['order'])
-    # The legacy order column duplicates the body's sort; the spares answer is a column.
+    # Legacy orders live in the order column; the spares answer is a column.
     row = db.execute('SELECT order_mode, spares, finished, copy_figure_id FROM part_check WHERE copy_id=?', (copy,)).fetchone()
     assert tuple(row) == ('inventory', None, 0, None)
     spare = next(r for r in state['rows'] if r['kind'] == 'spare')
@@ -692,13 +692,25 @@ def test_group_answers_reload_and_undo_keep_session_order(coll, copy):
 def test_legacy_column_only_session_keeps_its_order(coll, copy, mode):
     db = coll.db
     state = start(db, copy, order=mode)
-    db.execute("UPDATE part_check SET session_json=json_remove(session_json,'$.sort') WHERE copy_id=?", (copy,))
-    db.commit()
+    row = db.execute('SELECT * FROM part_check WHERE copy_id=?', (copy,)).fetchone()
+    assert row['order_mode'] == mode
+    assert 'sort' not in json.loads(row['session_json'])
     assert checker.session(db, copy)['sort'] == mode
     assert checker.session(db, copy)['order'] == state['session']['order']
     mutate(db, copy, 'answer', token=state['session']['order'][0], found=0)
     mutate(db, copy, 'undo')
     assert checker.session(db, copy)['sort'] == mode
+    # Receipts retain the same legacy body bytes as the stored session, through answer and undo.
+    for event in db.execute("SELECT old_value,new_value FROM event WHERE entity_kind='part_check' AND field='save' AND entity_id=?", (copy,)):
+        for value in event:
+            saved = json.loads(value)['session']
+            if saved is None:
+                continue
+            assert saved['order_mode'] == mode
+            body = json.loads(saved['session_json'])
+            assert 'sort' not in body
+            assert saved['session_json'] == json.dumps(
+                {key: body[key] for key in ('order', 'cursor', 'answers', 'misses', 'undo')}, separators=(',', ':'))
 
 
 def test_unknown_saved_sort_falls_back_to_sequence(coll, copy):
@@ -740,3 +752,44 @@ def test_group_session_survives_rowlog_and_admin_export(coll, copy, app4):
 def test_normalise_order_mode(mode, expected):
     session = dict(order=['p:1'], cursor=0, answers={}, misses=[], spares=None, sort=mode)
     assert checker.normalise(session, {'p:1': 'part'})['sort'] == expected
+
+
+@pytest.mark.parametrize('mode', ['group', 'largest'])
+def test_persisted_order_matches_view_ranks_on_item_number_ties(coll, copy, mode):
+    db = coll.db
+    # Keep this walk to the two tied parts, without a separate figure pass.
+    coll.sql("UPDATE copy_figure SET retired_at='2026-11-13T00:00:00Z' WHERE copy_id=?", (copy,))
+    # Put the lexically later item first in sequence, with all earlier sort keys tied.
+    parts = db.execute("SELECT id FROM copy_part WHERE copy_id=? AND copy_figure_id IS NULL AND is_spare=0 ORDER BY id", (copy,)).fetchall()
+    for line, number in zip(parts, ('tie-z', 'tie-a')):
+        item = coll.local('part', 'Brick 1 x 2', born_key=number)
+        coll.sql("UPDATE item SET category_name='Bricks' WHERE id=?", (item,))
+        coll.sql('UPDATE copy_part SET item_id=?, quantity=2, color_id=? WHERE id=?',
+                 (item, coll.colour('4'), line['id']))
+    state = start(db, copy, order=mode)
+    required = [r for r in state['rows'] if r['kind'] == 'part']
+    expected = [r['token'] for r in sorted(required, key=lambda r: r[mode + '_order'])]
+    assert expected == [r['token'] for r in reversed(required)]
+    stored = json.loads(db.execute('SELECT session_json FROM part_check WHERE copy_id=?', (copy,)).fetchone()[0])
+    assert len(expected) == 2
+    assert stored['order'] == expected
+
+
+def test_saved_spare_subset_omits_full_inventory_ranks(coll, copy):
+    db = coll.db
+    spare = db.execute('SELECT * FROM copy_part WHERE copy_id=? AND is_spare=1', (copy,)).fetchone()
+    coll.sql('INSERT INTO copy_part(copy_id,item_id,color_id,is_spare,quantity) VALUES(?,?,?,1,2)',
+             (copy, spare['item_id'], coll.colour('15')))
+    state = start(db, copy, order='group')
+    mutate(db, copy, 'spares', include=True)
+    spares = [r for r in state['rows'] if r['kind'] == 'spare']
+    assert len(spares) == 2
+    token = spares[-1]['token']
+    saved = mutate(db, copy, 'answer', token=token, found=1)
+    assert [r['token'] for r in saved['rows']] == [token]
+    assert all('group_order' not in r and 'largest_order' not in r for r in saved['rows'])
+    merged = {r['token']: dict(r) for r in state['rows']}
+    for r in saved['rows']:
+        merged[r['token']].update(r)
+    for r in spares:
+        assert (merged[r['token']]['group_order'], merged[r['token']]['largest_order']) == (r['group_order'], r['largest_order'])

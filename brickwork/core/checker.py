@@ -131,7 +131,7 @@ def rows(db, copy_id, images=True, tokens=None, decorate=True, figure=None):
     """The sequence of a check: the required parts, the whole figures and the spare lines of a copy, all live.
 
     With `figure` (a `copy_figure` id) the rows are exactly that figure's required (non-spare) component lines. `decorate=False` is the
-    write path's light read (names and sizes for ordering, no identity or picture lookups); `images=False` leaves the pictures out of
+    write path's light read (names and item numbers for ordering, no picture lookups); `images=False` leaves the pictures out of
     the decorated rows. Each row: `token`, `kind` (`part`, `figure`, `spare`), `id`, `item_id`, `color_id`, `quantity`, `missing`,
     `damaged`, `checked` (a figure line has no `damaged` or `checked`: its `missing` is the answer)."""
     result = []
@@ -170,7 +170,16 @@ def rows(db, copy_id, images=True, tokens=None, decorate=True, figure=None):
                 r['ink'] = None
             if not images:
                 r.pop('image', None)
-    if decorate:
+    if not decorate and result:
+        # Match the decorated sort keys without looking up pictures.
+        from . import items
+        labels = items.labels(db, [(r['item_id'], r['color_id']) for r in result])
+        for r in result:
+            label = labels.get((r['item_id'], r['color_id']))
+            r['item_no'] = (label.number if label else None) or ''
+            r['name'] = _tidy(r['name'] or (label.name if label else '')) or r['item_no']
+            r['color_name'] = r['color_name'] or 'Unknown colour'
+    if decorate and tokens is None:
         # Server-computed positions keep optimistic offline spare ordering identical.
         position = {r['token']: i for i, r in enumerate(result)}
         for mode in ('group', 'largest'):
@@ -227,7 +236,9 @@ def _put_session(db, copy_id, figure, s, started_at=None):
     """Write the session `s` (the client's model) as the copy's row, replacing the one there (nothing else points at the row)."""
     db.execute('DELETE FROM main.part_check WHERE copy_id=? AND figure_key=?', (copy_id, figure or 0))
     stamp = now()
-    body = dict(sort=s['sort'], order=s['order'], cursor=s['cursor'], answers=s['answers'], misses=s['misses'], undo=s['undo'])
+    body = dict(order=s['order'], cursor=s['cursor'], answers=s['answers'], misses=s['misses'], undo=s['undo'])
+    if s['sort'] not in ('inventory', 'largest', 'colour'):
+        body['sort'] = s['sort']
     if s.get('members'):
         body['members'] = s['members']                                 # a missing-only run: every part it walks, whatever a later walk of the skipped ones narrows `order` to
     if s.get('scope'):

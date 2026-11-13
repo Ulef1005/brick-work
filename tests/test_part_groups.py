@@ -202,6 +202,7 @@ def test_catalogue_reference_figures_are_separate_from_part_groups(coll, client,
     figures = [r for r in rows if json.loads(r['data-record'])['type'] == 'M']
     assert len(figures) == 1
     assert not figures[0].find_parent(attrs={'data-bc-part-section': True})
+    assert figures[0].find_parent(attrs={'data-bc-figure-rows': True})
     assert soup.select_one('[data-bc-tab=figures]')
 
 

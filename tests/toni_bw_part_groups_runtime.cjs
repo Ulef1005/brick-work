@@ -20,11 +20,11 @@ class Node {
 Node.prototype.after=function(n){this.afterNode=n;n.parentElement=this.parentElement;};
 let doc;
 // Invented DOM fixture: the real collection script, without browser or sockets.
-function setup({stored=new Map(),copy='one',blocked=false,count=76,figures=0}={}) {
+function setup({stored=new Map(),copy='one',blocked=false,count=76,figures=0,parts=true}={}) {
  doc=new Node();
  const root=new Node(),list=new Node(),container=new Node(),search=new Node(),sort=new Node(),direction=new Node(),actions=new Node();
  root.dataset={editable:'false'};sort.value='number';direction.value='asc';
- const sections=['Bricks','Tiles','Other'].map((name,index)=>{
+ const sections=(parts?['Bricks','Tiles','Other']:[]).map((name,index)=>{
   const element=new Node(),button=new Node(),body=new Node(),rows=new Node();
   element.dataset={bcPartSection:name,bcDefaultOpen:index===0?'false':'true'};
   element.nodes={'[data-bc-section-toggle]':button,'[data-bc-section-body]':body,'[data-bc-section-rows]':rows};
@@ -91,6 +91,6 @@ const numbers=s=>s.pager().children.find(n=>n.className==='bc-page-numbers').chi
  figureCase.search.value='Figure 75';await figureCase.search.trigger('input');
  assert.equal(batch.visible().length,1);assert.equal(batch.pager().hidden,true);
  const small=setup({figures:25});await small.tabs[1].trigger();assert.equal(small.figureBatch.visible().length,25);assert.equal(small.figureBatch.pager().hidden,true);
- const onlyFigures=setup({count:0,figures:61});await onlyFigures.tabs[1].trigger();assert.equal(onlyFigures.figureBatch.visible().length,25);
+ const onlyFigures=setup({parts:false,figures:61});await onlyFigures.tabs[1].trigger();assert.equal(onlyFigures.figureBatch.visible().length,25);
  console.log('part groups runtime ok');
 })().catch(error=>{console.error(error);process.exit(1);});

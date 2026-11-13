@@ -94,6 +94,7 @@ def test_shim_answers_writes_and_carries_the_manifest(site):
     assert "website.href = 'https://ulef1005.github.io/brick-work/'; website.textContent = 'Website'; website.style.color = 'inherit';" in banner
     assert banner.index('bar.append(link);') < banner.index("bar.append(' · ', website);")
     assert 'target' not in banner
+    assert "document.querySelector('[data-bw-topbar]')" in banner and 'top.after(bar)' in banner and 'document.body.prepend(bar)' in banner   # under the site's top bar when there is one
     # Missing-picture tiles say where the app gets pictures (checked against the pipeline's pictures step).
     assert 'Loads from BrickLink when you add the set' in shim and 'Loads from Rebrickable or BrickLink with Refresh pictures' in shim
 

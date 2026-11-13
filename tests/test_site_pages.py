@@ -532,7 +532,8 @@ def test_robots_and_sitemaps_point_at_this_sites_address(site):
     import xml.etree.ElementTree as ET
     from scripts.build_site import origin, site_base
     base = origin() + site_base()
-    assert (site / 'robots.txt').read_text() == f'User-agent: *\nAllow: /\n\nSitemap: {base}sitemap.xml\n'
+    assert (site / 'robots.txt').read_text() == (f'User-agent: *\nAllow: /\n\n# For AI assistants: {base}llms.txt (the short facts) and {base}llms-full.txt (the key docs in one file)\n'
+                                                f'Sitemap: {base}sitemap.xml\n')
     ns = '{http://www.sitemaps.org/schemas/sitemap/0.9}'
     index = ET.fromstring((site / 'sitemap.xml').read_text())
     assert [e.find(ns + 'loc').text for e in index] == [f'{base}sitemap-pages.xml', f'{base}docs/sitemap.xml']
@@ -569,3 +570,39 @@ def test_every_site_page_offers_the_releases_feed_once(site):
         links = re.findall(r'<link rel="alternate" type="application/atom\+xml"[^>]*href="([^"]+)"', page.read_text())
         assert len(links) == 1, page
         assert (page.parent / links[0]).resolve() == (site / 'changelog' / 'feed.xml').resolve() or page.name == '404.html', (page, links)
+
+
+def test_every_page_points_assistants_at_llms_txt(site):
+    """The head link and the footer link are on every built site page, and the two files they name are built (the link is relative, so it fits each depth)."""
+    assert (site / 'llms.txt').is_file() and (site / 'llms-full.txt').is_file()
+    pages = [p for p in site.rglob('index.html') if p.relative_to(site).parts[0] not in ('docs', 'demo')] + [site / '404.html']
+    assert len(pages) > 10
+    for page in pages:
+        text = page.read_text()
+        depth = len(page.relative_to(site).parts) - 1
+        up = '../' * depth if page.name != '404.html' else None
+        links = re.findall(r'<link rel="alternate" type="text/markdown" href="([^"]+)"', text)
+        assert len(links) == 1 and links[0].endswith('llms.txt'), page
+        from scripts.build_site import site_base
+        assert links[0] == ((up if up is not None else site_base()) + 'llms.txt'), page
+        assert re.search(r'<li><a href="[^"]*llms\.txt">For AI assistants</a></li>', text), page
+
+
+def test_docs_and_demo_pages_carry_the_site_top_bar(site):
+    """#363 (Ulf, 13.11.): every page of /docs/ and /demo/ has the site's top bar so a visitor can get back. Redirect stubs and the demo's static/
+    asset templates are not pages; the bar's links are absolute from the site base and it adds no analytics tag."""
+    from scripts.build_site import site_base
+    base = site_base()
+    for area in ('docs', 'demo'):
+        pages = [f for f in (site / area).rglob('*.html') if not (area == 'demo' and f.relative_to(site / 'demo').parts[0] == 'static')]
+        shown = [f for f in pages if 'http-equiv="refresh"' not in f.read_text()[:400]]
+        assert len(shown) > 20 and len(pages) - len(shown) <= 2, area
+        for file in shown:
+            text = file.read_text()
+            assert text.count('<header class="bw-topbar" data-bw-topbar>') == 1, file
+            assert f'<a href="{base}install/">Install</a>' in text and f'<a href="{base}docs/">Docs</a>' in text, file
+    docs = (site / 'docs/index.html').read_text()
+    assert '.md-header{top:var(--bw-topbar-h)}' in docs and '.bs-aside' not in docs
+    sets = (site / 'demo/collection/sets/index.html').read_text()
+    assert '.bs-aside' in sets and '.md-header' not in sets
+    assert 'cloudflareinsights' not in docs + sets

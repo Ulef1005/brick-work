@@ -13,6 +13,7 @@ in the repository point at them on GitHub. The output is static and needs no ser
 import argparse
 import html
 import os
+import posixpath
 import re
 import shutil
 import struct
@@ -126,7 +127,7 @@ def page(title, body, depth, *, current, head='', main='doc', absolute=False, pa
     footer_cols = ''.join((
         col('Product', (('Install', f'{up}install/'), ('Demo', f'{up}demo/'), ('Use cases', f'{up}use-cases/'), ('Workflows', f'{up}workflows/'))),
         col('Learn', (('Docs', f'{up}docs/'), ('Changelog', f'{up}changelog/'), ('API', f'{up}docs/developer/api-v2-reference/'),
-                      ('MCP', f'{up}docs/brickwork/mcp/'))),
+                      ('MCP', f'{up}docs/brickwork/mcp/'), ('For AI assistants', f'{up}llms.txt'))),
         col('Project', (('About', f'{up}about/'), ('GitHub', f'https://github.com/{repo}'), ('Show and tell', f'https://github.com/{repo}/discussions'),
                         ('Roadmap', 'https://github.com/users/Ulef1005/projects/3'))),
         col('Legal', (('Impressum', f'{up}impressum/'), ('Privacy', f'{up}privacy/'), ('MIT licence', blob('LICENSE')))),
@@ -147,6 +148,7 @@ def page(title, body, depth, *, current, head='', main='doc', absolute=False, pa
 <link rel="stylesheet" href="{up}assets/brick-work.css">
 <link rel="stylesheet" href="{up}assets/site.css">
 <link rel="stylesheet" href="{up}assets/marketing.css">
+<link rel="alternate" type="text/markdown" href="{up}llms.txt" title="Brick Work for AI assistants">
 {head}
 </head>
 <body>
@@ -252,7 +254,7 @@ def site_urls(out):
 def build_seo_files(out):
     """robots.txt and the sitemaps: /sitemap.xml is an index of sitemap-pages.xml (the pages of this site) and docs/sitemap.xml (Zensical's)."""
     base = origin() + site_base()
-    (out / 'robots.txt').write_text(f'User-agent: *\nAllow: /\n\nSitemap: {base}sitemap.xml\n')
+    (out / 'robots.txt').write_text(f'User-agent: *\nAllow: /\n\n# For AI assistants: {base}llms.txt (the short facts) and {base}llms-full.txt (the key docs in one file)\nSitemap: {base}sitemap.xml\n')
     urls = ''.join(f'<url><loc>{base}{path}</loc></url>' for path in site_urls(out))
     (out / 'sitemap-pages.xml').write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' + urls + '</urlset>\n')
     (out / 'sitemap.xml').write_text('<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
@@ -374,6 +376,55 @@ def llms_txt():
     return re.sub(r'\]\((?!https?://|#)([^)\s]+)\)', lambda m: f']({raw}{m[1]})', text)
 
 
+LLMS_FULL_LINKED_ONLY = ('docs/brickwork/api-v2.md',)   # about 95 KB: llms-full.txt names it instead of inlining it
+
+
+def llms_full():
+    """/llms-full.txt (llmstxt.org): llms.txt's facts followed by the full text of every Markdown page it links in its Try-it, Docs and API sections
+    (not the Optional ones), so an assistant needs one fetch. A page's front matter is dropped and its relative links become raw GitHub links."""
+    raw = f'https://raw.githubusercontent.com/{repository()}/main/'
+    source = (SITE / 'llms.md').read_text()
+    paths = []
+    for link in re.findall(r'\]\((?!https?://|#|\{site\})([^)\s]+)\)', source.split('\n## Optional')[0]):
+        if link.endswith('.md') and link not in paths:
+            paths.append(link)
+    parts = [llms_txt().split('\n## Try it')[0].rstrip() + '\n']
+    for path in [p for p in paths if p not in LLMS_FULL_LINKED_ONLY]:
+        text = (ROOT / path).read_text()
+        text = re.sub(r'\A---\n.*?\n---\n', '', text, flags=re.S).strip()
+        text = re.sub(r'^!\[[^\n]*\n', '', text, flags=re.M)   # a picture is no use to a text file
+        owner, name = repository().split('/')
+        text = text.replace(f'https://{owner.lower()}.github.io/{name}/', origin() + site_base())   # a page that still names the old Pages address (the README) gets this build's
+        folder = posixpath.dirname(path)
+
+        def absolute(match, folder=folder):
+            target = match[2]
+            if re.match(r'(?:[a-z]+:|#|/)', target):
+                return match[0]
+            file, _, anchor = target.partition('#')
+            return f'{match[1]}({raw}{posixpath.normpath(posixpath.join(folder, file))}{"#" + anchor if anchor else ""})'
+        parts.append(f'<!-- source: {raw}{path} -->\n' + re.sub(r'(?<!!)(\[[^\]]*\])\(([^)\s]+)\)', absolute, text) + '\n')
+    linked = [path for path in paths if path in LLMS_FULL_LINKED_ONLY]
+    if linked:
+        parts.append('Too long to inline, read them at their address:\n\n' + ''.join(f'- {raw}{path}\n' for path in linked))
+    return '\n---\n\n'.join(parts)
+
+
+def add_top_bar(out):
+    """The site's top bar on every page of /docs/ and /demo/ (#363), so a visitor can get back to the site. The demo's static/ folder holds the app's
+    asset templates (the offline page, head snippets), not pages a visitor opens, and keeps none; a redirect stub keeps none either. A page without <head> and <body> fails the build."""
+    from scripts import site_nav
+    base, repo = site_base(), repository()
+    for area, extra in (('docs', site_nav.DOCS_OFFSETS), ('demo', site_nav.DEMO_OFFSETS)):
+        for file in sorted((out / area).rglob('*.html')):
+            if area == 'demo' and file.relative_to(out / 'demo').parts[0] == 'static':
+                continue
+            text = file.read_text()
+            if 'http-equiv="refresh"' in text[:400]:   # a redirect stub (the demo's /demo/) shows nothing a bar could sit on
+                continue
+            file.write_text(site_nav.inject(text, base, repo, extra))
+
+
 def rewrite_demo_html(text, demo_base):
     """Prefix root paths in copied HTML attributes and CSS URLs with the demo base."""
     paths = {'static': 'static/', 'brand': 'static/brickwork/', 'fonts': 'static/fonts/'}
@@ -444,7 +495,9 @@ def build(out):
             directory.rename(directory.with_name(unquote(directory.name)))
     shim = out / 'demo/demo-shim.js'
     shim.write_text(own_address(shim.read_text()))
+    add_top_bar(out)
     (out / 'llms.txt').write_text(llms_txt())
+    (out / 'llms-full.txt').write_text(llms_full())
     build_seo_files(out)
     (out / '.nojekyll').write_text('')
     return out

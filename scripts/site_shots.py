@@ -49,12 +49,22 @@ def lot_link(pattern, near=None):
     return find
 
 
-def pull(number, tail=''):
+def pull(number, tail='', lot_page=LOT_PAGE):
     """The pull list of the set `number` for the lot: its catalogue id is the number in the card's links, found by the set's name in the card."""
     def find(base):
-        page = urllib.request.urlopen(base + LOT_PAGE + '?detect=1&min_score=0').read().decode()
+        page = urllib.request.urlopen(base + lot_page + '?detect=1&min_score=0').read().decode()
         card = page[page.index('class="bd-cand'):]
-        found = re.search(r'%s.*?href="(%s/pull/\d+)"' % (re.escape(number), re.escape(LOT_PAGE)), card, re.S)
+        found = re.search(r'%s.*?href="(%s/pull/\d+)"' % (re.escape(number), re.escape(lot_page)), card, re.S)
+        return found.group(1) + tail
+    return find
+
+
+def first_pull(lot_page, tail=''):
+    """The pull list of the lot's best candidate."""
+    def find(base):
+        page = urllib.request.urlopen(base + lot_page + '?detect=1&min_score=0').read().decode()
+        card = page[page.index('class="bd-cand'):]
+        found = re.search(r'href="(%s/pull/\d+)"' % re.escape(lot_page), card)
         return found.group(1) + tail
     return find
 
@@ -125,6 +135,31 @@ PICTURES = {
 }
 
 
+# The site shows no part tile without a picture: Build Scout without its side panel, Set detection with the candidates collapsed.
+HIDE_PANEL = "document.querySelector('.bs-aside').remove();"
+COLLAPSE_CANDIDATES = "document.querySelectorAll('.bd-cand details').forEach(d => { d.open = false; });"
+R_FRESH = real.uid('copy', '21028-1', 'a')
+R_STARTED = real.uid('copy', '8043-1', 'a')
+R_GAPS = real.uid('copy', '7938-1', 'a')
+R_PICKED = '/workbench/part-picker?copy=' + '&copy='.join(real.uid('copy', n, 'a') for n in ('7938-1', '10210-1', '7213-1'))
+R_LOT_PAGE = '/collection/lots/' + real.LOT
+
+SITE_PICTURES = {
+    '1c-sets-desktop-1440': ('/collection/sets', 1440, 1020, None, (SITE,)),
+    '3a-matcher-phone-390': ('/workbench/match', 390, 844, None, (SITE,)),
+    '3e-start-phone-390': ('/workbench/check-parts/' + R_FRESH, 390, 844, None, (SITE,)),
+    '3e-part-phone-390': ('/workbench/check-parts/%s?run=1' % R_STARTED, 390, 844, None, (SITE,)),
+    '3e-finish-gaps-phone-390': ('/workbench/check-parts/%s?run=1' % R_GAPS, 390, 1100, None, (SITE,)),
+    '3c-picker-sets-phone-390': ('/workbench/part-picker', 390, 844, None, (SITE,)),
+    '3c-picker-pick-phone-390': (R_PICKED + '&pick=1', 390, 950, None, (SITE,)),
+    '12b-orders-desktop-1440': ('/workbench/orders', 1440, 900, None, (SITE,)),
+    '12c-list-and-detail-desktop-1440': ('/workbench/storage/storage-shelf-b', 1440, 900, None, (SITE,)),
+    'scout-list-desktop-1440': ('/workbench/build-scout?min_percent=10', 1440, 900, HIDE_PANEL, (SITE,)),
+    'lot-detect-desktop-1440': (R_LOT_PAGE + '?detect=1&ignore_common=1#set-detection', 1440, 900, SHOW_DETECTION + COLLAPSE_CANDIDATES, (SITE,)),
+    'lot-pull-confirm-phone-390': (first_pull(R_LOT_PAGE, '/make-copy'), 390, 844, None, (SITE,)),
+}
+
+
 def callouts(*marks):
     """JS for a job's `after`: a clay ring round each element and a numbered disc on its top left corner, drawn from the element's box (App Docs Standard,
     screenshot standard). `marks` are (selector, number) pairs. The disc is the ink of the page with paper digits and, in dark mode, the page's light
@@ -181,29 +216,33 @@ def main(argv):
     if chrome.returncode:
         print(chrome.stderr.strip())
         return 1
-    chosen = {k: v for k, v in PICTURES.items() if options.only is None or k in options.only}
-    with screen_gate.world('showcase', sorted({v[0] for v in chosen.values() if isinstance(v[0], str)})) as base, tempfile.TemporaryDirectory(prefix='bw-site-') as scratch:
-        jobs, targets = [], []
-        for stem, (path, width, limit, script, _) in chosen.items():
-            path = path(base) if callable(path) else path
-            for theme in ('light', 'dark'):
-                out = Path(scratch) / f'{stem}-{theme}.png'
-                jobs.append({'url': base + path, 'out': str(out), 'width': width, 'theme': theme, 'max': limit, 'script': (script or '') + SETTLE, **EXTRAS.get(stem, {})})
-        spec = Path(scratch) / 'jobs.json'
-        spec.write_text(json.dumps({'deterministic': True, 'now': screen_gate.FIXED_NOW.isoformat().replace('+00:00', 'Z'), 'jobs': jobs}))
-        result = subprocess.run(['node', str(ROOT / 'scripts' / 'capture_screens.cjs'), chrome.stdout.strip(), str(spec)], capture_output=True, text=True, timeout=1800)
-        if result.returncode:
-            print(result.stdout[-2000:] + result.stderr[-2000:])
-            return 1
-        for job in jobs:
-            made = Path(job['out'])
-            optimise(made)
-            stem = made.name.rsplit('-', 1)[0]
-            folders = [Path(options.out)] if options.out else list(chosen[stem][4])
-            for folder in folders:
-                folder.mkdir(parents=True, exist_ok=True)
-                (folder / made.name).write_bytes(made.read_bytes())
-            print(made.name, made.stat().st_size)
+    for name, table in {'showcase': PICTURES, 'real': SITE_PICTURES}.items():
+        chosen = {k: v for k, v in table.items() if options.only is None or k in options.only}
+        if not chosen:
+            continue
+        warm_up = sorted({v[0] for v in chosen.values() if isinstance(v[0], str)})
+        with screen_gate.world(name, warm_up) as base, tempfile.TemporaryDirectory(prefix='bw-site-') as scratch:
+            jobs = []
+            for stem, (path, width, limit, script, _) in chosen.items():
+                path = path(base) if callable(path) else path
+                for theme in ('light', 'dark'):
+                    out = Path(scratch) / f'{stem}-{theme}.png'
+                    jobs.append({'url': base + path, 'out': str(out), 'width': width, 'theme': theme, 'max': limit, 'script': (script or '') + SETTLE, **EXTRAS.get(stem, {}), **({'no_tiles': True} if name == 'real' else {})})
+            spec = Path(scratch) / 'jobs.json'
+            spec.write_text(json.dumps({'deterministic': True, 'now': screen_gate.FIXED_NOW.isoformat().replace('+00:00', 'Z'), 'jobs': jobs}))
+            result = subprocess.run(['node', str(ROOT / 'scripts' / 'capture_screens.cjs'), chrome.stdout.strip(), str(spec)], capture_output=True, text=True, timeout=1800)
+            if result.returncode:
+                print(result.stdout[-2000:] + result.stderr[-2000:])
+                return 1
+            for job in jobs:
+                made = Path(job['out'])
+                optimise(made)
+                stem = made.name.rsplit('-', 1)[0]
+                folders = [Path(options.out)] if options.out else list(chosen[stem][4])
+                for folder in folders:
+                    folder.mkdir(parents=True, exist_ok=True)
+                    (folder / made.name).write_bytes(made.read_bytes())
+                print(made.name, made.stat().st_size)
     return 0
 
 

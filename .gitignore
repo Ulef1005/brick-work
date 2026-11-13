@@ -36,6 +36,8 @@ data/
 !.gitleaks.toml
 !.dockerignore
 !.env.sample
+!.vale.ini
+!.vale/
 # the design skill lives in the repo (App Standard, 2026-11-03); the rest of .claude/ stays local
 !.claude/
 .claude/*

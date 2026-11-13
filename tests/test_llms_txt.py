@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 def test_every_repository_link_in_the_source_exists():
     source = (SITE / 'llms.md').read_text()
-    links = re.findall(r'\]\((?!https?://|#)([^)\s]+)\)', source)
+    links = re.findall(r'\]\((?!https?://|#|\{site\})([^)\s]+)\)', source)   # {site} links are the site's own pages, filled at build time
     assert links, 'llms.md links the README and the docs'
     missing = [link for link in links if not (ROOT / link).is_file()]
     assert not missing, f'llms.md links files that do not exist: {missing}'

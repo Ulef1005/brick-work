@@ -27,9 +27,9 @@ import markdown
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 SITE = ROOT / 'scripts/site'
-# The top bar: (label, path from the site root, key). Install is the home page's install section until /install/ exists (slice S2); About joins in S4.
-NAV = (('Install', '#install'), ('Demo', 'demo/'), ('Use cases', 'use-cases/'), ('Workflows', 'workflows/'), ('Docs', 'docs/'),
-       ('Changelog', 'changelog/'))
+# The top bar: (label, path from the site root).
+NAV = (('Install', 'install/'), ('Demo', 'demo/'), ('Use cases', 'use-cases/'), ('Workflows', 'workflows/'), ('Docs', 'docs/'),
+       ('Changelog', 'changelog/'), ('About', 'about/'))
 # The pages that moved into the docs (doc-standard-v1 B1b): the old URL keeps a stub page that points at the new one.
 MOVED = (('api', 'API reference', 'docs/developer/api-v2-reference/'), ('mcp', 'MCP server', 'docs/brickwork/mcp/'))
 USER_DOCS = ('how-to', 'concepts', 'reference', 'tutorials', 'developer')   # the Zensical sections under /docs/
@@ -88,18 +88,45 @@ def render(text):
                              extension_configs={'toc': {'permalink': False}})
 
 
-def page(title, body, depth, *, current, head='', main='doc', absolute=False):
+# Cloudflare Web Analytics (cookieless, public site token): on the pages built here only, never on the docs or the demo (see the privacy page).
+ANALYTICS = ('<script defer src="https://static.cloudflareinsights.com/beacon.min.js" '
+             'data-cf-beacon=\'{"token": "f09e0d34781b4d658aa5ddd6adce3f44"}\'></script>')   # gitleaks:allow (the site token is public by design: it sits in every page's HTML)
+HOME_DESCRIPTION = ('Brick Work is a free, open-source, self-hosted workbench for your brick collection: check a set\'s parts, pull missing ones from loose stock '
+                    'and see which unfinished sets your stock can complete.')
+MD_DESCRIPTIONS = {'use-cases': 'Eight moments a collector knows, and how Brick Work helps with each: rebuilding used sets, sorted bulk, minifigures, bought collections and orders.',
+                   'impressum': 'Impressum of the Brick Work website.', 'privacy': 'What the Brick Work website loads and what it does not: no tracking cookies, no consent banner.'}
+DEFAULT_DESCRIPTION = 'Brick Work: the workbench for your brick collection: self-hosted, with a REST API and an MCP server.'
+
+
+def seo_head(title, description, path):
+    """Canonical, Open Graph and Twitter tags for a page at `path` (a folder from the site root, '' for the home page). The apex or the Pages address
+    comes from the build's SITE_BASE; a social preview picture is added when scripts/site/social-preview.png exists."""
+    url = origin() + site_base() + path
+    image = f'{origin()}{site_base()}assets/social-preview.png' if (SITE / 'social-preview.png').exists() else None
+    tags = [('og:type', 'website'), ('og:site_name', 'Brick Work'), ('og:title', title), ('og:description', description), ('og:url', url)]
+    if image:
+        tags.append(('og:image', image))
+    tags += [('twitter:card', 'summary_large_image' if image else 'summary'), ('twitter:title', title), ('twitter:description', description)]
+    meta = ''.join(f'<meta {"property" if key.startswith("og:") else "name"}="{key}" content="{html.escape(value, quote=True)}">' for key, value in tags)
+    return f'<link rel="canonical" href="{url}">' + meta
+
+
+def page(title, body, depth, *, current, head='', main='doc', absolute=False, path=None, description=None):
     up = site_base() if absolute else '../' * depth
     repo = repository()
+    description = description or DEFAULT_DESCRIPTION
+    full_title = html.escape(title) + ' · Brick Work' if title != 'Brick Work' else 'Brick Work'
+    if path is not None:
+        head = seo_head(title + ' · Brick Work' if title != 'Brick Work' else 'Brick Work', description, path) + head
     nav = ''.join(f'<a href="{up}{href}"{" aria-current=\"page\"" if name == current else ""}>{name}</a>' for name, href in NAV)
     menu = nav + f'<a href="https://github.com/{repo}">GitHub</a>'
     col = lambda heading, links: (f'<div><b>{heading}</b><ul>' + ''.join(f'<li><a href="{href}">{label}</a></li>' for label, href in links)
                                   + '</ul></div>')
     footer_cols = ''.join((
-        col('Product', (('Install', f'{up}#install'), ('Demo', f'{up}demo/'), ('Use cases', f'{up}use-cases/'), ('Workflows', f'{up}workflows/'))),
+        col('Product', (('Install', f'{up}install/'), ('Demo', f'{up}demo/'), ('Use cases', f'{up}use-cases/'), ('Workflows', f'{up}workflows/'))),
         col('Learn', (('Docs', f'{up}docs/'), ('Changelog', f'{up}changelog/'), ('API', f'{up}docs/developer/api-v2-reference/'),
                       ('MCP', f'{up}docs/brickwork/mcp/'))),
-        col('Project', (('GitHub', f'https://github.com/{repo}'), ('Show and tell', f'https://github.com/{repo}/discussions'),
+        col('Project', (('About', f'{up}about/'), ('GitHub', f'https://github.com/{repo}'), ('Show and tell', f'https://github.com/{repo}/discussions'),
                         ('Roadmap', 'https://github.com/users/Ulef1005/projects/3'))),
         col('Legal', (('Impressum', f'{up}impressum/'), ('Privacy', f'{up}privacy/'), ('MIT licence', blob('LICENSE')))),
     ))
@@ -108,8 +135,8 @@ def page(title, body, depth, *, current, head='', main='doc', absolute=False):
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{html.escape(title) + " · Brick Work" if title != "Brick Work" else "Brick Work"}</title>
-<meta name="description" content="Brick Work: the workbench for your brick collection: self-hosted, with a REST API and an MCP server.">
+<title>{full_title}</title>
+<meta name="description" content="{html.escape(description, quote=True)}">
 <link rel="icon" href="{up}assets/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="{up}assets/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="icon" href="{up}assets/favicon-16.png" sizes="16x16" type="image/png">
@@ -128,6 +155,7 @@ def page(title, body, depth, *, current, head='', main='doc', absolute=False):
 <div class="site"><footer class="sec foot"><div class="inner"><div class="cols">{footer_cols}</div>
 <p class="small muted fine">Brick Work is an independent project and is not affiliated with the LEGO Group, Rebrickable, Brickset or BrickLink. LEGO® is a trademark of the LEGO Group of companies, which does not sponsor, authorize or endorse this project. Brick Work is MIT-licensed and inspired by BrickTracker.</p></div></footer></div>
 <script src="{up}assets/site.js" defer></script>
+{ANALYTICS}
 </body>
 </html>
 '''
@@ -164,13 +192,13 @@ def docs_count(section):
     return len([p for p in (ROOT / 'docs' / section).glob('*.md') if p.name != 'index.md'])
 
 
-def home(up):
-    """The home page body from scripts/site/landing.html: version, release notes and docs counts from the repository, pictures with their sizes."""
+def fill(text, up):
+    """Fill the tokens of a scripts/site HTML template: {up}, {repository}, {version}, the latest release and the docs counts, and {pic:name|alt}."""
     from brickwork.version import __version__
     version, schema, date, summary = latest_release()
-    text = (SITE / 'landing.html').read_text()
     values = {'repository': repository(), 'up': up, 'version': __version__, 'release_version': version, 'release_date': date,
               'release_summary': html.escape(summary), 'release_schema': schema}
+    values['count_adr'] = str(len(list((ROOT / 'docs/adr').glob('[0-9]*.md'))))
     for section in ('tutorials', 'how-to', 'concepts', 'reference'):
         values['count_' + section.replace('-', '_')] = str(docs_count(section))
     # One pass over the template, so a value (a release summary) is never scanned for tokens itself.
@@ -181,6 +209,59 @@ def home(up):
             return picture(name, alt, up)
         return values.get(key, match[0])
     return re.sub(r'\{([A-Za-z_]+|pic:[^|}]+\|[^}]+)\}', token, text)
+
+
+def home(up):
+    """The home page body from scripts/site/landing.html."""
+    return fill((SITE / 'landing.html').read_text(), up)
+
+
+def build_pages(out):
+    """Every scripts/site/pages/*.html is one page: a header of `key: value` lines (title, path, current), a line `---`, then the body.
+    `path` is the folder from the site root (`install/`, `coming-from/rebrickable/`); `current` names the top-bar item to mark."""
+    for source in sorted((SITE / 'pages').glob('*.html')):
+        header, _, body = source.read_text().partition('\n---\n')
+        meta = dict(line.split(': ', 1) for line in header.strip().splitlines())
+        depth = len(Path(meta['path']).parts)
+        folder = out / meta['path']
+        folder.mkdir(parents=True, exist_ok=True)
+        (folder / 'index.html').write_text(page(meta['title'], fill(body, '../' * depth), depth, current=meta.get('current') or None, main='home',
+                                                path=meta['path'], description=meta.get('description')))
+
+
+def json_ld():
+    """SoftwareApplication structured data for the home page."""
+    import json
+    from brickwork.version import __version__
+    data = {'@context': 'https://schema.org', '@type': 'SoftwareApplication', 'name': 'Brick Work', 'url': origin() + site_base(),
+            'applicationCategory': 'UtilitiesApplication', 'operatingSystem': 'Docker on Linux, macOS or Windows', 'softwareVersion': __version__,
+            'description': HOME_DESCRIPTION, 'license': 'https://opensource.org/licenses/MIT',
+            'downloadUrl': f'https://github.com/{repository()}', 'offers': {'@type': 'Offer', 'price': '0', 'priceCurrency': 'EUR'},
+            'author': {'@type': 'Person', 'name': 'Ulf Weihbold'}}
+    return '<script type="application/ld+json">' + json.dumps(data, ensure_ascii=False).replace('</', '<\\/') + '</script>'
+
+
+def site_urls(out):
+    """The marketing pages that go into sitemap-pages.xml: every folder with an index.html outside docs/ and demo/, plus the demo's entry."""
+    folders = sorted(p.parent.relative_to(out).as_posix() for p in out.glob('*/index.html')) + sorted(
+        p.parent.relative_to(out).as_posix() for p in out.glob('*/*/index.html') if p.parts[-3] in ('coming-from',))
+    return [''] + [f + '/' for f in folders if f.split('/')[0] not in ('docs', 'demo', 'api', 'mcp')] + ['demo/']
+
+
+def build_seo_files(out):
+    """robots.txt and the sitemaps: /sitemap.xml is an index of sitemap-pages.xml (the pages of this site) and docs/sitemap.xml (Zensical's)."""
+    base = origin() + site_base()
+    (out / 'robots.txt').write_text(f'User-agent: *\nAllow: /\n\nSitemap: {base}sitemap.xml\n')
+    urls = ''.join(f'<url><loc>{base}{path}</loc></url>' for path in site_urls(out))
+    (out / 'sitemap-pages.xml').write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' + urls + '</urlset>\n')
+    (out / 'sitemap.xml').write_text('<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+                                     f'<sitemap><loc>{base}sitemap-pages.xml</loc></sitemap><sitemap><loc>{base}docs/sitemap.xml</loc></sitemap></sitemapindex>\n')
+
+
+def own_address(text):
+    """The site's own address instead of the Pages address (an apex build serves from brick-work.app)."""
+    owner = repository().split('/')[0].lower()
+    return text.replace(f'https://{owner}.github.io/{repository().split("/")[1]}/', origin() + site_base())
 
 
 def stub(title, target):
@@ -230,19 +311,65 @@ def mermaid_to_link(text, resolved):
     return re.sub(r'^```mermaid\n(.*?)^```$', figure, text, flags=re.M | re.S)
 
 
+RELEASE = re.compile(r'^## Brick Work (\S+) \(([^)]*)\) · (\d{4}-\d{2}-\d{2})$', re.M)
+
+
+def releases():
+    """Every release of CHANGELOG.md, newest first: (version, schema note, date, Markdown body). The older task entries and Unreleased are not releases."""
+    text = (ROOT / 'CHANGELOG.md').read_text()
+    out = []
+    for mark in RELEASE.finditer(text):
+        end = text.find('\n## ', mark.end())
+        out.append((mark[1], mark[2], mark[3], text[mark.end():end if end != -1 else len(text)].strip()))
+    return out
+
+
+def origin():
+    owner = repository().split('/')[0].lower()
+    return 'https://brick-work.app' if site_base() == '/' else f'https://{owner}.github.io'
+
+
 def build_changelog(out):
-    """/changelog/: CHANGELOG.md, its links to docs pages kept on the site and every other link pointing at GitHub."""
+    """/changelog/: every release since the first public one, newest open, an anchor per version, and an Atom feed (feed.xml)."""
     target = site_page('CHANGELOG.md')
     (out / target).mkdir(parents=True, exist_ok=True)
-    text = mermaid_to_link(rewrite_links((ROOT / 'CHANGELOG.md').read_text(), '', 1), 'CHANGELOG.md')
-    (out / target / 'index.html').write_text(page('Changelog', render(text), 1, current='Changelog'))
+    rows = []
+    for index, (version, schema, date, body) in enumerate(releases()):
+        markdown_body = own_address(mermaid_to_link(rewrite_links(body, '', 1), 'CHANGELOG.md'))
+        pill = '<span class="pill">Latest</span>' if index == 0 else '<span></span>'
+        rows.append(f'<details class="rel" id="v{version}"{" open" if index == 0 else ""}><summary><span class="v">{version}</span>'
+                    f'<span class="dt">{date} · <span class="sch">{html.escape(schema)}</span></span>{pill}</summary>'
+                    f'<div class="body">{render(markdown_body)}<a class="link" href="https://github.com/{repository()}/releases/tag/v{version}">Release {version} on GitHub</a></div></details>')
+    oldest = releases()[-1]
+    body = (f'<div class="site"><div class="sec"><div class="inner"><div class="pagehead"><span class="label">Home / Changelog</span>'
+            f'<h1 class="display page">Changelog</h1><p class="lede">Every release since the first public one on {oldest[2]}, newest first.</p>'
+            f'<div class="btns"><a class="link" href="feed.xml">Atom feed</a><a class="link" href="https://github.com/{repository()}/releases">Releases on GitHub</a></div></div>'
+            f'<div style="display:flex;flex-direction:column;gap:12px">{"".join(rows)}</div></div></div></div>')
+    head = '<link rel="alternate" type="application/atom+xml" title="Brick Work releases" href="feed.xml">'
+    (out / target / 'index.html').write_text(page('Changelog', body, 1, current='Changelog', head=head, main='home', path='changelog/',
+                                                         description='Every Brick Work release since the first public one, newest first, with an Atom feed.'))
+    (out / target / 'feed.xml').write_text(atom_feed())
+
+
+def atom_feed():
+    """The Atom feed of the releases (the newest twenty): one entry each, linking its anchor on the changelog page."""
+    base = origin() + site_base()
+    entries = []
+    for version, schema, date, body in releases()[:20]:
+        first = re.sub(r'\[([^\]]+)\]\([^)]*\)', r'\1', body.split('\n\n', 1)[0]).replace('`', '')
+        entries.append(f'<entry><title>Brick Work {version}</title><id>tag:{origin().removeprefix("https://")},{date}:{version}</id>'
+                       f'<link href="{base}changelog/#v{version}"/><updated>{date}T00:00:00Z</updated><summary>{html.escape(first)}</summary></entry>')
+    latest = releases()[0][2]
+    return ('<?xml version="1.0" encoding="utf-8"?>\n<feed xmlns="http://www.w3.org/2005/Atom"><title>Brick Work releases</title>'
+            f'<id>{base}changelog/</id><link rel="self" href="{base}changelog/feed.xml"/><link href="{base}changelog/"/>'
+            f'<updated>{latest}T00:00:00Z</updated><author><name>Ulf Weihbold</name></author>{"".join(entries)}</feed>\n')
 
 
 def llms_txt():
     """/llms.txt (llmstxt.org) from scripts/site/llms.md: the facts an AI assistant is most often asked, with the release's version
     filled in and every repository link turned into the raw Markdown file on GitHub, which an assistant reads best."""
     from brickwork.version import __version__
-    text = (SITE / 'llms.md').read_text().replace('{version}', __version__).replace('{repository}', repository())
+    text = (SITE / 'llms.md').read_text().replace('{version}', __version__).replace('{repository}', repository()).replace('{site}', origin() + site_base())
     raw = f'https://raw.githubusercontent.com/{repository()}/main/'
     return re.sub(r'\]\((?!https?://|#)([^)\s]+)\)', lambda m: f']({raw}{m[1]})', text)
 
@@ -261,7 +388,7 @@ def build(out):
     if out.exists():
         shutil.rmtree(out)
     (out / 'assets' / 'fonts').mkdir(parents=True)
-    for sub in ('api', 'use-cases', 'workflows', 'impressum', 'privacy'):
+    for sub in ('api', 'use-cases', 'impressum', 'privacy'):
         (out / sub).mkdir()
     (out / 'mcp').mkdir()
     static = ROOT / 'static'
@@ -278,19 +405,24 @@ def build(out):
     shutil.copy(static / 'fonts/PatrickHand-Regular.woff2', out / 'assets/fonts/PatrickHand-Regular.woff2')
     shutil.copy(ROOT / 'scripts/site/site.css', out / 'assets/site.css')
     shutil.copy(SITE / 'marketing.css', out / 'assets/marketing.css')
+    if (SITE / 'social-preview.png').exists():
+        shutil.copy(SITE / 'social-preview.png', out / 'assets/social-preview.png')
     shutil.copy(SITE / 'site.js', out / 'assets/site.js')
-    shutil.copytree(SITE / 'img', out / 'assets/img')
+    if any((SITE / 'img').glob('*.png')):   # no capture is shown while the demo's pictures are placeholders (the captures return with the Rebrickable pictures, #332)
+        shutil.copytree(SITE / 'img', out / 'assets/img')
 
     build_docs(out / 'docs')
 
-    (out / 'index.html').write_text(page('Brick Work', home(''), 0, current=None, main='home'))
-    for name, title, current in (('use-cases', 'Use cases', 'Use cases'), ('workflows', 'Workflows', 'Workflows'),
+    (out / 'index.html').write_text(page('Brick Work', home(''), 0, current=None, main='home', path='', head=json_ld(), description=HOME_DESCRIPTION))
+    for name, title, current in (('use-cases', 'Use cases', 'Use cases'),
                                  ('impressum', 'Impressum', None), ('privacy', 'Privacy', None)):
         text = (SITE / f'{name}.md').read_text().replace('{repository}', repository())
-        (out / name / 'index.html').write_text(page(title, render(text), 1, current=current, main='marketing'))
+        (out / name / 'index.html').write_text(page(title, render(text), 1, current=current, main='marketing', path=f'{name}/', description=MD_DESCRIPTIONS[name]))
 
     missing = (SITE / '404.md').read_text().replace('{base}', base)
     (out / '404.html').write_text(page('Page not found', render(missing), 0, current=None, absolute=True))
+
+    build_pages(out)
 
     for folder, title, target in MOVED:
         (out / folder / 'index.html').write_text(stub(title, target))
@@ -310,7 +442,10 @@ def build(out):
     for directory in sorted((out / 'demo').rglob('*'), key=lambda p: len(p.parts), reverse=True):
         if directory.is_dir() and unquote(directory.name) != directory.name:
             directory.rename(directory.with_name(unquote(directory.name)))
+    shim = out / 'demo/demo-shim.js'
+    shim.write_text(own_address(shim.read_text()))
     (out / 'llms.txt').write_text(llms_txt())
+    build_seo_files(out)
     (out / '.nojekyll').write_text('')
     return out
 

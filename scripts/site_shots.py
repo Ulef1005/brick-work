@@ -98,15 +98,11 @@ await new Promise(r => setTimeout(r, 150));
 PICTURES = {
     '1c-sets-desktop-1440': ('/collection/sets', 1440, 1020, None, (SITE, README)),
     '3a-matcher-phone-390': ('/workbench/match', 390, 844, None, (SITE,)),
-    '3b-check-set-parts-phone-390': ('/workbench/check-parts', 390, 844, None, (SITE,)),
     '3e-start-phone-390': ('/workbench/check-parts/' + FRESH, 390, 844, None, (SITE,)),
     '3e-part-phone-390': ('/workbench/check-parts/%s?run=1' % STARTED, 390, 844, None, (SITE,)),
     '3e-finish-gaps-phone-390': ('/workbench/check-parts/%s?run=1' % GAPS, 390, 1100, None, (SITE,)),
-    '3e-resume-phone-390': ('/workbench/check-parts/' + STARTED, 390, 844, None, (SITE,)),
     '3c-picker-sets-phone-390': ('/workbench/part-picker', 390, 844, None, (SITE,)),
-    '3c-picker-sort-phone-390': (PICKED, 390, 844, None, (SITE,)),
     '3c-picker-pick-phone-390': (PICKED + '&pick=1', 390, 950, None, (SITE,)),
-    '3c-picker-selector-phone-390': (PICKED + '&pick=1', 390, 844, OPEN_FOUND, (SITE,)),
     '4c-complete-sets-phone-390': ('/planning/complete-sets', 390, 844, None, (SITE,)),
     # The two tutorials (docs/tutorials/): the Add search, Set Inspector, Complete sets, the wishlist and an order being counted, on the same invented world
     'tut-inspect-list-phone-390': ('/workbench/check-parts', 390, 1100, None, (TUTORIALS,)),

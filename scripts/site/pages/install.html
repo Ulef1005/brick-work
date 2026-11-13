@@ -1,0 +1,44 @@
+title: Install
+path: install/
+current: Install
+description: Install Brick Work with Docker Compose in about five minutes, or with Docker Desktop, on Unraid or on a NAS. Your data stays in one folder you back up.
+---
+<div class="site">
+<div class="sec"><div class="inner">
+<div class="head"><span class="label">Home / Install</span><h1 class="display page">Install Brick Work in about five minutes.</h1><p class="lede">It runs in a container on your own computer or server. Your data stays in one folder you back up.</p></div>
+<div class="grid g2" style="align-items:start">
+<div class="head"><h2>Docker Compose</h2><p class="lede">Pulls the published image for amd64 and arm64. Then open it in the browser.</p>
+<pre class="code">git clone --branch v{version} https://github.com/{repository}.git &amp;&amp; cd brick-work
+mkdir -p data &amp;&amp; sudo chown 1000:1000 data
+cp .env.sample data/.env # set BW_AUTHENTICATION_PASSWORD
+docker compose pull
+docker compose up -d</pre>
+<p class="small">Then open <span class="mono">http://localhost:3333</span> and sign in with your password.</p></div>
+<div class="note-box warn"><b>Single user, home network</b>Brick Work is meant for a home network or a VPN, not the open internet. Without a password the server refuses to start, because anyone who can reach it could edit the collection.</div>
+</div>
+</div></div>
+
+<div class="sec alt"><div class="inner">
+<div class="head"><span class="label">No server, no Git</span><h2>Docker Desktop on Windows or Mac</h2><p class="lede">About 15 minutes and a few GB of disk space. Tested on macOS; the Windows steps are the same, typed in PowerShell, but no test on a real Windows computer is recorded yet.</p></div>
+<ol class="steps"><li><span class="n">1</span><div><b>Install Docker Desktop</b></div></li><li><span class="n">2</span><div><b>Make a Brick Work folder</b></div></li><li><span class="n">3</span><div><b>Add two files</b></div></li><li><span class="n">4</span><div><b>Start Brick Work</b></div></li><li><span class="n">5</span><div><b>Open it</b></div></li></ol>
+<div class="btns"><a class="btn" href="{up}docs/how-to/install-docker-desktop/">Docker Desktop guide</a></div>
+</div></div>
+
+<div class="sec"><div class="inner">
+<div class="grid g2">
+<div class="card"><h3>Unraid</h3><p class="small">Run the same image and set the user to <span class="mono">99:100</span>, the ids Unraid gives a shared folder.</p></div>
+<div class="card"><h3>NAS</h3><p class="small">If the shared folder is not owned by uid 1000, set the user to the folder owner's ids instead of changing ownership. Put the pictures on the NAS with <span class="mono">BW_MEDIA_PATH</span> and keep the database on fast local storage.</p><a class="link" href="https://github.com/{repository}#readme">Read the notes in the README</a></div>
+</div>
+</div></div>
+
+<div class="sec alt"><div class="inner">
+<div class="head"><span class="label">After you install</span><h2>Get started takes four steps.</h2><p class="lede">Every step can be skipped for now and taken back. It opens again from Tools &amp; Admin.</p></div>
+<div class="grid g4">
+<div class="card"><span class="count">1</span><h3>Load the catalogue</h3><p class="small">Needs no key.</p></div>
+<div class="card"><span class="count">2</span><h3>Set up your keys</h3><p class="small">Optional.</p></div>
+<div class="card"><span class="count">3</span><h3>Bring your collection in</h3><p class="small">Or add your first set.</p></div>
+<div class="card"><span class="count">4</span><h3>See how the inventory works</h3><p class="small">A short tour.</p></div>
+</div>
+<div class="btns"><a class="btn primary" href="{up}demo/">Try the demo first</a><a class="link" href="{up}coming-from/bricktracker/">Moving an old collection over?</a><a class="link" href="{up}docs/how-to/upgrade/">Upgrade and back up</a></div>
+</div></div>
+</div>

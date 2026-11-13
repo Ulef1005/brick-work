@@ -76,7 +76,9 @@ def test_every_page_and_asset_resolves_without_external_requests(site):
                 for url in targets:
                     parsed = urlsplit(url)
                     external = bool(parsed.scheme or parsed.netloc)
-                    if tag in ('link', 'script', 'img', 'source') and attrs.get('rel') != 'canonical':
+                    analytics = (tag == 'script' and url == 'https://static.cloudflareinsights.com/beacon.min.js'      # the one allowed script,
+                                 and page.relative_to(site).parts[0] not in ('docs', 'demo'))                     # never on the docs or the demo
+                    if tag in ('link', 'script', 'img', 'source') and attrs.get('rel') != 'canonical' and not analytics:
                         assert not external, f'{page}: external {tag} {url}'
                     if external or not parsed.path or tag == 'base':
                         continue
@@ -98,7 +100,7 @@ def test_every_documentation_page_links_the_complete_favicon_set(site):
     from scripts.build_site import MOVED, NAV
 
     # The stub pages at the old /api/ and /mcp/ URLs are built here too.
-    for href in [''] + [href for _, href in NAV if '#' not in href] + [folder + '/' for folder, _, _ in MOVED]:
+    for href in [''] + [href for _, href in NAV if '#' not in href] + ['coming-from/' + n + '/' for n in ('rebrickable', 'bricklink', 'bricktracker', 'other')] + [folder + '/' for folder, _, _ in MOVED]:
         if href.startswith(('demo/', 'docs/')):  # The demo uses the app's own icon links; Zensical builds the docs.
             continue
         page = site / href / 'index.html'
@@ -132,7 +134,7 @@ def test_landing_sections_and_copy(site):
         assert f'<span class="label">{label}</span>' in body, label
     assert body.count('class="card"><h3>You ') == 6          # the six "Who it is for" boxes
     assert body.count('class="card wf-card"') == 9           # nine workflow cards
-    assert 'id="install"' in body and 'href="demo/"' in body
+    assert 'id="install"' in body and 'href="demo/"' in body and 'href="install/"' in body
     assert 'LEGO' not in body
     assert 'not affiliated with the LEGO Group, Rebrickable, Brickset or BrickLink' in text
     from brickwork.version import __version__
@@ -140,25 +142,14 @@ def test_landing_sections_and_copy(site):
     assert len(text.encode()) + sum((site / 'assets' / n).stat().st_size for n in ('site.css', 'marketing.css', 'site.js')) < 130_000
 
 
-def test_walkthroughs_and_no_js_content(site):
+def test_workflow_walkthroughs_are_complete_without_javascript(site):
     text = (site / 'workflows/index.html').read_text()
-    for name, count in (('check-set-parts', 5), ('part-picker', 4), ('matcher', 2)):
-        section = text.split(f'id="{name}"', 1)[1].split('</section>', 1)[0]
-        assert section.count('<li>') == count
-        assert 'data-back' in section and 'data-next' in section
-        assert 'data-step-status' in section
-        assert section.count('<figure data-frame=') == count
-        assert section.count('<img') == count
-        assert 'not in the demo yet' not in section
-    for removed in ('desktop-frame', 'device-switch', 'data-device', 'desktop-1440'):
-        assert removed not in text
-    assert text.count('class="phone-frame"') == 11
-    screenshots = [attrs for tag, attrs in Elements(text).elements
-                   if tag in ('img', 'source') and '/img/' in attrs.get('src', attrs.get('srcset', ''))]
-    assert len(screenshots) == 22
-    assert all('-phone-' in attrs.get('src', attrs.get('srcset', '')) for attrs in screenshots)
-    assert text.count('data-walkthrough') == 3
-    assert 'hidden' not in text  # JavaScript alone hides inactive screenshots.
+    for anchor, steps in (('part-spotter', 4), ('check-set-parts', 5), ('part-picker', 4), ('matcher', 2)):
+        section = text.split(f'id="{anchor}"')[1].split('<div class="sec')[0]
+        assert section.count('<li><span class="n">') == steps, anchor
+    assert text.count('class="mini') == 5               # Orders, Storage, Build Scout, Build it, Set detection
+    assert 'to capture' not in text and 'data-walkthrough' not in text
+    assert 'The rest of the workbench.' in text
 
 
 def test_use_cases_have_eight_cards_in_three_groups(site):
@@ -168,60 +159,19 @@ def test_use_cases_have_eight_cards_in_three_groups(site):
         assert f'id="{group}"' in text
     assert 'Planned' in text
     order = next(card for card in text.split('<article') if '<h3 class="layout-39">Receive a parts order' in card)
-    assert '12b-count-what-arrived-desktop-1440-light.png' in order
+    assert '<picture' not in order          # no capture while the demo's pictures are placeholders (the screenshots test below)
 
 
-def test_desktop_screenshots_are_only_kept_for_other_pages(site):
-    pages = [(site / name).read_text() for name in ('index.html', 'use-cases/index.html')]
-    referenced = {Path(attrs[attr]).name for text in pages for tag, attrs in Elements(text).elements
-                  for attr in ('src', 'srcset') if tag in ('img', 'source')
-                  and 'desktop-' in attrs.get(attr, '')}
-    assert len(referenced) == 6
-    assert {p.name for p in (ROOT / 'scripts/site/img').glob('*desktop*.png')} == referenced
-    assert {p.name for p in (site / 'assets/img').glob('*desktop*.png')} == referenced
-
-
-@pytest.mark.parametrize('page,stems', [
-    ('index.html', [
-        '1c-sets-desktop-1440', '3a-matcher-phone-390',
-        '3e-start-phone-390', '3c-picker-pick-phone-390', '3a-matcher-phone-390',
-        '12b-count-what-arrived-desktop-1440',
-    ]),
-    ('use-cases/index.html', [
-        '3e-finish-gaps-phone-390', '3c-picker-sets-phone-390',
-        '12b-count-what-arrived-desktop-1440', '4c-complete-sets-phone-390',
-        '12c-list-and-detail-desktop-1440',
-    ]),
-    ('workflows/index.html', [
-        '3b-check-set-parts-phone-390', '3e-start-phone-390', '3e-part-phone-390',
-        '3e-finish-gaps-phone-390', '3e-resume-phone-390',
-        '3c-picker-sets-phone-390', '3c-picker-sort-phone-390',
-        '3c-picker-pick-phone-390', '3c-picker-selector-phone-390',
-        '3a-matcher-phone-390', '1d-set-detail-phone-390',
-    ]),
-])
-def test_built_screen_placements(site, page, stems):
-    elements = Elements((site / page).read_text()).elements
-    images = [Path(attrs['src']).name for tag, attrs in elements
-              if tag == 'img' and '/img/' in attrs.get('src', '')]
-    sources = [Path(attrs['srcset']).name for tag, attrs in elements
-               if tag == 'source' and '/img/' in attrs.get('srcset', '')]
-    assert images == [f'{stem}-light.png' for stem in stems]
-    assert sources == [f'{stem}-dark.png' for stem in stems]
-    if page == 'index.html':
-        text = (site / page).read_text()
-        assert 'design preview' not in text and 'to capture' not in text
-
-
-def test_no_unreferenced_screenshots_are_shipped(site):
-    referenced = {Path(attrs[attr]).name
-                  for name in ('index.html', 'use-cases/index.html', 'workflows/index.html')
-                  for tag, attrs in Elements((site / name).read_text()).elements
-                  for attr in ('src', 'srcset') if tag in ('img', 'source')
-                  and '/img/' in attrs.get(attr, '')}
-    assert len(referenced) == 30
-    assert {p.name for p in (ROOT / 'scripts/site/img').glob('*')} == referenced
-    assert {p.name for p in (site / 'assets/img').glob('*')} == referenced
+def test_site_pages_show_no_screenshot_until_the_pictures_are_real(site):
+    """Ulf, 2026-11-13: no image with placeholder pictures. The demo's drawings are placeholders, so no page of the site shows a capture of it;
+    the captures come back with the Rebrickable pictures (#332), and then this test names the pages that carry them."""
+    assert not (site / 'assets/img').exists()
+    for page in site.glob('*/index.html'):
+        if page.parts[-2] in ('docs', 'demo'):
+            continue
+        for tag, attrs in Elements(page.read_text()).elements:
+            assert '/img/' not in attrs.get('src', '') + attrs.get('srcset', ''), (page, attrs)
+    assert not [t for t, a in Elements((site / 'index.html').read_text()).elements if t == 'img' and 'img/' in a.get('src', '')]
 
 
 def picture_scale(name):
@@ -370,7 +320,7 @@ def test_every_image_the_readme_and_the_pages_show_exists_and_is_a_built_capture
         sys.path.remove(sys_path)
     stems = set(site_shots.PICTURES)
     shown = set()
-    for source in ('README.md', 'scripts/site/landing.html', 'scripts/site/use-cases.md', 'scripts/site/workflows.md'):
+    for source in ('README.md', 'scripts/site/landing.html', 'scripts/site/use-cases.md', 'scripts/site/pages/workflows.html'):
         text = (ROOT / source).read_text()
         names = re.findall(r'(?:src|srcset)="[^"]*?/img/(?:readme/)?([^"/]+\.png)"', text)
         names += [f'{stem}-{theme}.png' for stem in re.findall(r'\{pic:([^|}]+)\|', text) for theme in ('light', 'dark')]
@@ -379,7 +329,7 @@ def test_every_image_the_readme_and_the_pages_show_exists_and_is_a_built_capture
             target = ROOT / ('docs/img/readme' if source == 'README.md' else 'scripts/site/img') / name
             assert target.is_file(), f'{source}: {name} is missing'
             assert re.sub(r'-(light|dark)\.png$', '', name) in stems, f'{source}: {name} is not a capture of the built app'
-    assert len(shown) >= 32
+    assert len(shown) >= 2
 
 
 NOTE = re.compile(r'placeholder drawings.*?BrickLink and Rebrickable', re.S)
@@ -422,19 +372,6 @@ def test_legal_pages_footer_and_missing_page(site):
                  if tag == 'link' and attrs.get('rel') == 'canonical']
     origin = 'https://brick-work.app' if site_base() == '/' else 'https://ulef1005.github.io'
     assert canonical == [origin + site_base() + 'docs/']
-
-
-def test_the_apex_build_holds_no_repository_path_anywhere(site):
-    # On the custom domain every path starts at /; a leftover /brick-work/ is a 404 there (the demo entry page's meta refresh and the
-    # demo manifest are not attributes the path check above reads). GitHub URLs and filesystem examples have a word before the slash.
-    from scripts.build_site import site_base
-    if site_base() != '/':
-        pytest.skip('only the apex build')
-    leak = re.compile(r'(?<![\w.\-/])/brick-work/')
-    # The changelog page quotes the build_demo.py `--base /brick-work/demo/` option as text, so it is not scanned.
-    found = [str(f.relative_to(site)) for f in site.rglob('*') if f.relative_to(site).parts[0] != 'changelog'
-             and f.suffix in ('.html', '.css', '.js', '.json', '.txt', '.xml') and leak.search(f.read_text(errors='ignore'))]
-    assert not found, found
 
 
 def test_all_absolute_html_and_css_paths_resolve(site):
@@ -522,3 +459,98 @@ def test_copied_demo_html_root_paths_use_demo_base(site, name):
         mapped = {'static': '/static/', 'brand': '/static/brickwork/', 'fonts': '/static/fonts/'}[kind] + path
         assert site_base() + 'demo' + mapped in built
     assert not re.search(r'''["'(=]/(?:static|brand|fonts)/''', built)
+
+
+def test_install_and_coming_from_pages_exist_and_cross_link(site):
+    expected = {'install/': 'Install Brick Work in about five minutes.', 'coming-from/rebrickable/': 'Coming from Rebrickable or Brickset.',
+                'coming-from/bricklink/': 'Coming from BrickLink.', 'coming-from/bricktracker/': 'Coming from BrickTracker.',
+                'coming-from/other/': 'Coming from another app.'}
+    for path, heading in expected.items():
+        text = (site / path / 'index.html').read_text()
+        assert heading in text, path
+        assert 'aria-current="page"' in text.split('</header>')[0] or path.startswith('coming-from/'), path
+    for path in expected:
+        if path.startswith('coming-from/'):
+            rows = (site / path / 'index.html').read_text().split('<div class="rows">')[1].split('</div>')[0]
+            assert rows.count('<a href=') == 4          # the four sibling rows on every coming-from page
+
+
+def test_changelog_page_lists_every_release_with_an_anchor_and_an_atom_feed(site):
+    import xml.etree.ElementTree as ET
+    from brickwork.version import __version__
+    from scripts.build_site import releases
+    versions = [version for version, *_ in releases()]
+    assert versions[0] == __version__ and versions[-1] == '0.5.0' and len(versions) == len(set(versions)) >= 8
+    text = (site / 'changelog/index.html').read_text()
+    for version in versions:
+        assert f'<details class="rel" id="v{version}"' in text, version
+    assert text.count('<details class="rel"') == len(versions) and text.count('<details class="rel" id="v') == len(versions)
+    assert f'id="v{__version__}" open' in text and text.count(' open>') == 1          # only the newest is open
+    assert 'href="feed.xml"' in text and 'application/atom+xml' in text
+    feed = ET.fromstring((site / 'changelog/feed.xml').read_text())
+    entries = feed.findall('{http://www.w3.org/2005/Atom}entry')
+    assert [e.find('{http://www.w3.org/2005/Atom}title').text for e in entries] == [f'Brick Work {v}' for v in versions]
+
+
+def test_about_page_and_the_nav_that_reaches_it(site):
+    text = (site / 'about/index.html').read_text()
+    assert 'Ulf Weihbold, Linz' in text and 'MIT' in text and 'decision records in the repository' in text
+    assert 'github.com/' in text and 'aria-current="page"' in text.split('</header>')[0]
+    assert '>About</a>' in (site / 'index.html').read_text()
+
+
+def test_every_site_page_has_its_own_description_canonical_and_social_tags_and_no_noindex(site):
+    from scripts.build_site import origin, site_base
+    seen = set()
+    for path in ('', 'install/', 'workflows/', 'changelog/', 'about/', 'use-cases/', 'impressum/', 'privacy/', 'coming-from/rebrickable/',
+                 'coming-from/bricklink/', 'coming-from/bricktracker/', 'coming-from/other/'):
+        text = (site / path / 'index.html').read_text()
+        description = re.search(r'<meta name="description" content="([^"]+)"', text)[1]
+        assert description not in seen, path
+        seen.add(description)
+        assert f'<link rel="canonical" href="{origin() + site_base() + path}">' in text, path
+        for tag in ('og:title', 'og:description', 'og:url', 'twitter:card'):
+            assert tag in text, (path, tag)
+    for file in site.rglob('*.html'):
+        assert 'noindex' not in file.read_text(), file
+
+
+def test_home_page_has_software_application_structured_data(site):
+    import json
+    text = (site / 'index.html').read_text()
+    data = json.loads(re.search(r'<script type="application/ld\+json">(.+?)</script>', text)[1])
+    assert data['@type'] == 'SoftwareApplication' and data['name'] == 'Brick Work' and data['offers']['price'] == '0'
+    assert data['author']['name'] == 'Ulf Weihbold' and data['license'].endswith('/MIT')
+
+
+def test_robots_and_sitemaps_point_at_this_sites_address(site):
+    import xml.etree.ElementTree as ET
+    from scripts.build_site import origin, site_base
+    base = origin() + site_base()
+    assert (site / 'robots.txt').read_text() == f'User-agent: *\nAllow: /\n\nSitemap: {base}sitemap.xml\n'
+    ns = '{http://www.sitemaps.org/schemas/sitemap/0.9}'
+    index = ET.fromstring((site / 'sitemap.xml').read_text())
+    assert [e.find(ns + 'loc').text for e in index] == [f'{base}sitemap-pages.xml', f'{base}docs/sitemap.xml']
+    locs = [e.find(ns + 'loc').text for e in ET.fromstring((site / 'sitemap-pages.xml').read_text())]
+    assert base in locs and f'{base}install/' in locs and f'{base}coming-from/other/' in locs and f'{base}demo/' in locs
+    assert all(loc.startswith(base) for loc in locs) and len(locs) == len(set(locs))
+    assert (site / 'docs/sitemap.xml').is_file()
+
+
+def test_no_page_names_the_pages_address_on_the_apex_build(site):
+    from scripts.build_site import site_base
+    if site_base() != '/':
+        pytest.skip('only the apex build')
+    leaks = [str(f.relative_to(site)) for f in site.rglob('*') if f.suffix in ('.html', '.js', '.json', '.txt', '.xml')
+             and 'github.io' in f.read_text(errors='ignore')]
+    assert not leaks, leaks
+
+
+def test_analytics_script_is_on_the_site_pages_only_and_the_privacy_page_matches(site):
+    tag = 'static.cloudflareinsights.com/beacon.min.js'
+    for path in ('', 'install/', 'workflows/', 'changelog/', 'about/', 'privacy/'):
+        assert (site / path / 'index.html').read_text().count(tag) == 1, path
+    for file in list((site / 'docs').rglob('*.html')) + list((site / 'demo').rglob('*.html')):
+        assert tag not in file.read_text(), file
+    privacy = (site / 'privacy/index.html').read_text()
+    assert 'One analytics script' in privacy and 'hosted here' not in privacy     # the picture line waits for the Rebrickable pictures (#332)

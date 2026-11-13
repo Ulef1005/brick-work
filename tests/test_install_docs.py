@@ -15,7 +15,7 @@ def test_v090_install_steps_do_not_pull():
                 assert not re.search(r"^docker compose pull", block, re.M), f"{name}: a v0.9.0 step says docker compose pull"
 
 
-INSTALL_PINS = ("README.md", "scripts/site/landing.html", "docs/how-to/install-docker-desktop.md")
+INSTALL_PINS = ("README.md", "scripts/site/landing.html", "scripts/site/pages/install.html", "docs/how-to/install-docker-desktop.md")
 
 
 def test_install_steps_name_the_current_release():
@@ -26,6 +26,7 @@ def test_install_steps_name_the_current_release():
     pins = {
         "README.md": r"git clone --branch (v[\w.-]+) ",
         "scripts/site/landing.html": r"git clone --branch (v[\w.{}-]+) ",
+        "scripts/site/pages/install.html": r"git clone --branch (v[\w.{}-]+) ",
         "docs/how-to/install-docker-desktop.md": r"raw\.githubusercontent\.com/Ulef1005/brick-work/(v[\w.-]+)/compose\.yaml",
     }
     for name in INSTALL_PINS:

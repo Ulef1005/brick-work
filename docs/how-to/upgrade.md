@@ -60,7 +60,7 @@ The first command checks the build provenance: the image was built by this repos
 
 ## Check the result
 
-1. Open `/api/v2/health` (no token). It shows the app version and the schema, for example `"app": "1.0.1"` and `"schema": "4.2"`. `/api/v1/health` answers the same.
+1. Open `/api/v2/health` (no token). It shows the app version and the schema, for example `"app": "1.0.1"` and `"schema": "4.3"`. `/api/v1/health` answers the same.
 2. Run `brickwork check` (with Docker: `docker compose exec brickwork brickwork check`), or press **Run integrity check** under **Manage → Tools & Admin → Database**. Both must pass.
 3. Open **Sets** and compare what you see with your last export if you kept a note of the counts.
 
@@ -72,3 +72,5 @@ Stop Brick Work, put the backed-up `brickwork.db` and `secret.key` back, check o
 
 - [Back up and restore](back-up-and-restore.md) for the backup itself.
 - [Settings and maintenance](settings-and-maintenance.md) for the catalogue and the checks.
+
+The current schema is **4.3**. On the first read-write start, a 4.2 collection is upgraded in one transaction: the checker session table is rebuilt with the same rows and indexes, and its order column also accepts Category group. Nothing needs doing by hand; the catalogue is unchanged. Older programs cannot open a 4.3 collection. To go back, restore the backup from before the upgrade.

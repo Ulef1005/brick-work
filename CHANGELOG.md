@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **Category group order** (#315). Set Inspector and Part Runner can walk parts by category group, with the saved checker order kept when you resume.
+- **Schema 4.3** (#315). The in-place upgrade widens the checker order column to accept the new value; nothing needs doing by hand. An older program cannot open a 4.3 file.
+
 - **Category group picking order** (#315). Set Inspector offers Category group, with largest parts first within each group; Part Runner adds an optional Category group ranking key, off by default. Both use the fixed catalogue group order with Other last.
 
 - **Group parts on a set page** (#315). Settings offers twelve part groups, alphabetical BrickLink categories or the original flat list. Reference sets use catalogue categories and show row and piece counts; owned copies also show checking and missing counts. Minifigures stay outside part groups and page separately in batches of 25. Groups remember whether each copy's sections are open, and page independently in batches of 25. Search, filters and sorting work across the sections.

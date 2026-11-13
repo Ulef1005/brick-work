@@ -10,9 +10,37 @@ import uuid
 from .errors import CatalogueError, CatalogueMismatch, SchemaMismatch, StaleSchema, Unsupported, UpgradeFailed
 
 MIN_SQLITE = (3, 37, 0)
-SCHEMA_VERSION = '4.2'
+SCHEMA_VERSION = '4.3'
+
+
+def _category_group_order(db):
+    """Widen the checker order CHECK, retaining stored columns, rowids, indexes and triggers.
+
+    No schema object references this table, and no table has an incoming foreign key. Refuse an unexpected incoming key before
+    rebuilding: foreign key enforcement stays enabled throughout the upgrade. Undo/RowLog receipts keep the same columns and keys.
+    """
+    tables = [r[0] for r in db.execute("SELECT name FROM main.sqlite_master WHERE type='table'")]
+    for table in tables:
+        if any(r[2] == 'part_check' for r in db.execute('PRAGMA main.foreign_key_list("' + table.replace('"', '""') + '")')):
+            raise sqlite3.OperationalError('cannot rebuild part_check: an incoming foreign key references it')
+    sql = db.execute("SELECT sql FROM main.sqlite_master WHERE name='part_check' AND type='table'").fetchone()[0]
+    old = "CHECK(order_mode IN ('inventory','largest','colour'))"
+    if sql.count(old) != 1:
+        raise sqlite3.OperationalError('unexpected part_check order constraint')
+    objects = db.execute("SELECT sql FROM main.sqlite_master WHERE tbl_name='part_check' AND type IN ('index','trigger') AND sql IS NOT NULL ORDER BY type,name").fetchall()
+    sql = sql.replace(old, "CHECK(order_mode IN ('inventory','largest','colour','group'))")
+    sql = re.sub(r'CREATE TABLE\s+"?part_check"?', 'CREATE TABLE part_check_upgrade', sql, count=1)
+    db.execute(sql)
+    columns = ','.join('"' + r[1] + '"' for r in db.execute('PRAGMA main.table_xinfo(part_check)') if r[6] == 0)
+    db.execute(f'INSERT INTO part_check_upgrade(rowid,{columns}) SELECT rowid,{columns} FROM part_check')
+    db.execute('DROP TABLE part_check')
+    db.execute('ALTER TABLE part_check_upgrade RENAME TO part_check')
+    for (statement,) in objects:
+        db.execute(statement)
+
+
 # In-place upgrades of an older collection, one step per version, each in its own write transaction: {from: (to, statements)}.
-# A step only adds; a fresh file from `brickwork.sql` has the same tables as an upgraded one (tests/test_store4_upgrade.py).
+# Steps contain SQL statements or callables receiving the connection; a fresh file from `brickwork.sql` has the same tables as an upgraded one (tests/test_store4_upgrade.py).
 UPGRADES = {
     '4.0': ('4.1', (                                     # #131: a wish's max price with box, a price with its currency or neither
         'ALTER TABLE wish ADD COLUMN max_price_boxed TEXT',
@@ -21,12 +49,13 @@ UPGRADES = {
         'ALTER TABLE job_owner ADD COLUMN boot_id TEXT',
         'ALTER TABLE job_owner ADD COLUMN start_ticks INTEGER',
         'ALTER TABLE order_line ADD COLUMN unplaced_reason TEXT')),
+    '4.2': ('4.3', (_category_group_order,)),
 }
 # The columns the steps add, by table: a row recorded before its step (an Undo receipt, a RowLog) lacks them and reads them as NULL.
 ADDED_COLUMNS = {}
 for _target, _statements in UPGRADES.values():
     for _statement in _statements:
-        if (_added := re.match(r'ALTER TABLE (\w+) ADD COLUMN (\w+)', _statement)):
+        if isinstance(_statement, str) and (_added := re.match(r'ALTER TABLE (\w+) ADD COLUMN (\w+)', _statement)):
             ADDED_COLUMNS.setdefault(_added[1], []).append(_added[2])
 CATALOGUE_VERSION = 'catalogue-4.0'
 HERE = Path(__file__).parent
@@ -87,6 +116,7 @@ def upgrade(path):
     Returns the version the file is at; a version with no step (current, or unknown) is left alone for `connect` to judge."""
     db = sqlite3.connect(_uri(path), uri=True, isolation_level=None)
     try:
+        db.execute('PRAGMA foreign_keys=ON')
         while True:
             db.execute('BEGIN IMMEDIATE')
             version = (_meta(db) or {}).get('schema_version')
@@ -96,7 +126,10 @@ def upgrade(path):
             target, statements = UPGRADES[version]
             try:
                 for statement in statements:
-                    db.execute(statement)
+                    if callable(statement):
+                        statement(db)
+                    else:
+                        db.execute(statement)
                 db.execute("UPDATE meta SET value=? WHERE key='schema_version'", (target,))
                 db.execute("INSERT OR REPLACE INTO meta(key, value) VALUES(?, ?)", (f'upgraded_to_{target}', now()))
                 db.execute('COMMIT')

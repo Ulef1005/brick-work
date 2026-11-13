@@ -2,7 +2,7 @@
 
     python scripts/build_site.py OUT_DIR
 
-Pages: `/` the landing page, `/use-cases/` and `/workflows/` (Markdown in scripts/site), `/docs/` the user and developer docs, `/demo/` the static demo (scripts/build_demo.py), `/api/` and `/mcp/` stub pages that point
+Pages: `/` the landing page, `/use-cases/`, `/workflows/`, `/impressum/`, `/privacy/` and `404.html` (Markdown in scripts/site), `/docs/` the user and developer docs, `/demo/` the static demo (scripts/build_demo.py), `/api/` and `/mcp/` stub pages that point
 at the generated API v2 and MCP reference pages in the docs' Developers tab (scripts/docs_reference.py), `/api/openapi-v2.yaml` the
 contract to download, `/changelog/` CHANGELOG.md and `/llms.txt` the facts for AI assistants (scripts/site/llms.md). The ADRs and the 4.0 data-model
 design are read on GitHub; the design pages readers need are in the docs' Developers tab (ADR 0030). The user docs are built by
@@ -49,6 +49,14 @@ def repository():
     return os.environ.get('GITHUB_REPOSITORY') or 'Ulef1005/brick-work'
 
 
+def site_base():
+    """The deployment prefix, shared by the site, docs and demo."""
+    base = os.environ.get('SITE_BASE', f'/{repository().split("/")[1]}/')
+    if not re.fullmatch(r'/(?:[A-Za-z0-9_-]+/)*', base):
+        raise ValueError('SITE_BASE must be a path with a leading and trailing slash (for example / or /brick-work/)')
+    return base
+
+
 def blob(path):
     return f'https://github.com/{repository()}/blob/main/{path}'
 
@@ -79,8 +87,8 @@ def render(text):
                              extension_configs={'toc': {'permalink': False}})
 
 
-def page(title, body, depth, *, current, head='', main='doc'):
-    up = '../' * depth
+def page(title, body, depth, *, current, head='', main='doc', absolute=False):
+    up = site_base() if absolute else '../' * depth
     nav = ''.join(f'<a href="{up}{href}"{" aria-current=\"page\"" if name == current else ""}>{name}</a>'
                   for name, href in PAGES)
     return f'''<!doctype html>
@@ -104,7 +112,7 @@ def page(title, body, depth, *, current, head='', main='doc'):
 <header class="site-head"><a class="brand" href="{up}" aria-label="Brick Work home">{lockup(up)}</a>
 <nav aria-label="Documentation">{nav}<a href="https://github.com/{repository()}">GitHub</a></nav><button class="js-only" type="button" data-theme-toggle aria-label="Switch theme">Theme</button></header>
 <main class="{main}">{body}</main>
-<footer class="site-foot"><div class="footer-inner"><div><a class="footer-brand" href="{up}">{lockup(up)}</a><p>Brick Work is MIT-licensed and inspired by BrickTracker. LEGO® is a trademark of the LEGO Group of companies, which does not sponsor, authorize or endorse this project.</p></div><nav aria-label="Footer"><a href="{up}demo/">Demo</a><a href="{up}docs/">Docs</a><a href="https://github.com/users/Ulef1005/projects/3">Roadmap</a><a href="https://github.com/{repository()}">GitHub</a></nav></div></footer>
+<footer class="site-foot"><div class="footer-inner"><div><a class="footer-brand" href="{up}">{lockup(up)}</a><p>Brick Work is MIT-licensed and inspired by BrickTracker. LEGO® is a trademark of the LEGO Group of companies, which does not sponsor, authorize or endorse this project.</p></div><nav aria-label="Footer"><a href="{up}impressum/">Impressum</a><a href="{up}privacy/">Privacy</a><a href="{up}demo/">Demo</a><a href="{up}docs/">Docs</a><a href="https://github.com/users/Ulef1005/projects/3">Roadmap</a><a href="https://github.com/{repository()}">GitHub</a></nav></div></footer>
 <script src="{up}assets/site.js" defer></script>
 </body>
 </html>
@@ -135,13 +143,16 @@ def build_docs(out):
         config = yaml.safe_load((ROOT / 'mkdocs.yml').read_text())
         docs = config.get('docs_dir', 'docs')
         shutil.copytree(ROOT / docs, Path(tmp) / docs)   # the docs folder must lie inside the project root (6 MB)
-        # The site loads no Mermaid renderer (no external requests), so in the copy a diagram becomes a link to GitHub, which
+        # The documentation pages make no external requests. In the copy a diagram becomes a link to GitHub, which
         # draws it, as on the other pages (mermaid_to_link); the source file keeps its diagram.
         for page in (Path(tmp) / docs).rglob('*.md'):
             text = page.read_text()
             if '```mermaid' in text:
                 resolved = (Path(docs) / page.relative_to(Path(tmp) / docs)).as_posix()
                 page.write_text(mermaid_to_link(text, resolved))
+        owner = repository().split('/')[0].lower()
+        origin = 'https://brick-work.app' if site_base() == '/' else f'https://{owner}.github.io'
+        config['site_url'] = origin + site_base() + 'docs/'
         config['site_dir'] = str(Path(tmp) / 'site')
         path = Path(tmp) / 'mkdocs.yml'
         path.write_text(yaml.safe_dump(config, sort_keys=False, allow_unicode=True))
@@ -153,7 +164,7 @@ def build_docs(out):
 
 
 def mermaid_to_link(text, resolved):
-    """The site loads no Mermaid renderer (it makes no external requests): a diagram links to the file on GitHub,
+    """The documentation pages make no external requests. A diagram links to the file on GitHub,
     which draws it, and keeps its source folded underneath."""
     def figure(match):
         heading = re.findall(r'^#+ (.+)$', text[:match.start()], flags=re.M)
@@ -181,11 +192,12 @@ def llms_txt():
 
 
 def build(out):
+    base = site_base()
     out = Path(out)
     if out.exists():
         shutil.rmtree(out)
     (out / 'assets' / 'fonts').mkdir(parents=True)
-    for sub in ('api', 'use-cases', 'workflows'):
+    for sub in ('api', 'use-cases', 'workflows', 'impressum', 'privacy'):
         (out / sub).mkdir()
     (out / 'mcp').mkdir()
     static = ROOT / 'static'
@@ -208,9 +220,13 @@ def build(out):
 
     landing = (SITE / 'landing.html').read_text().replace('{repository}', repository())
     (out / 'index.html').write_text(page('Brick Work', landing, 0, current='Home', main='marketing landing'))
-    for name, title, current in (('use-cases', 'Use cases', 'Use cases'), ('workflows', 'Workflows', 'Workflows')):
-        text = (SITE / f'{name}.md').read_text()
+    for name, title, current in (('use-cases', 'Use cases', 'Use cases'), ('workflows', 'Workflows', 'Workflows'),
+                                 ('impressum', 'Impressum', None), ('privacy', 'Privacy', None)):
+        text = (SITE / f'{name}.md').read_text().replace('{repository}', repository())
         (out / name / 'index.html').write_text(page(title, render(text), 1, current=current, main='marketing'))
+
+    missing = (SITE / '404.md').read_text().replace('{base}', base)
+    (out / '404.html').write_text(page('Page not found', render(missing), 0, current=None, absolute=True))
 
     for folder, title, target in MOVED:
         (out / folder / 'index.html').write_text(stub(title, target))
@@ -218,11 +234,17 @@ def build(out):
     build_changelog(out)
 
     from scripts.build_demo import build_demo
-    demo_base = f'/{repository().split("/")[1]}/demo/'
+    demo_base = base + 'demo/'
     build_demo(out / 'demo', demo_base)
-    # The app's absolute font paths need the same Pages prefix as its HTML assets.
+    # The app's absolute font paths need the same deployment prefix as its HTML assets.
     for css in (out / 'demo').rglob('*.css'):
         css.write_text(css.read_text().replace('/static/', demo_base + 'static/'))
+    # The copied offline page and brand head snippet are HTML assets too; keep their links local.
+    for template in (out / 'demo/static').rglob('*.html'):
+        paths = {'static': 'static/', 'brand': 'static/brickwork/', 'fonts': 'static/fonts/'}
+        text = re.sub(r'/(static|brand|fonts)/', lambda m: demo_base + paths[m[1]], template.read_text())
+        text = text.replace('href="/"', f'href="{demo_base}"')
+        template.write_text(text)
     # Static hosts decode URL paths before looking up files (including non-ASCII storage names).
     for directory in sorted((out / 'demo').rglob('*'), key=lambda p: len(p.parts), reverse=True):
         if directory.is_dir() and unquote(directory.name) != directory.name:

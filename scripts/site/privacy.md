@@ -1,0 +1,13 @@
+<!-- Draft copy, pending the owner's confirmation. The Cloudflare script and the YouTube facade are added later and by hand; this page describes the intended set-up. -->
+# Privacy
+
+This website sets no tracking cookies and shows no consent banner. What it loads:
+
+- **Cloudflare** serves this site and sees the traffic as a proxy.
+- **One analytics script** from Cloudflare Web Analytics, cookieless, on the marketing pages only.
+- **YouTube** loads only after you press play on the tour.
+- **Pictures** of parts and sets are hosted here; they come from Rebrickable.
+
+The Brick Work app itself has no telemetry and runs on your own machine.
+
+Questions: open a [GitHub Discussion](https://github.com/{repository}/discussions) or an [issue](https://github.com/{repository}/issues).

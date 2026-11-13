@@ -3,6 +3,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 import re
 import struct
+import time
 from urllib.parse import unquote, urlsplit
 
 import pytest
@@ -39,10 +40,18 @@ def local_target(site, page, url):
     return site / path.lstrip('/') if path.startswith('/') else page.parent / path
 
 
-@pytest.fixture(scope='module')
-def site(tmp_path_factory):
+@pytest.fixture(scope='module', params=['default', 'apex'])
+def site(tmp_path_factory, request):
     from scripts.build_site import build
-    return build(tmp_path_factory.mktemp('pages') / 'site')
+    with pytest.MonkeyPatch.context() as env:
+        env.setenv('GITHUB_REPOSITORY', 'Ulef1005/brick-work')
+        env.delenv('SITE_BASE', raising=False)
+        if request.param == 'apex':
+            env.setenv('SITE_BASE', '/')
+        started = time.monotonic()
+        built = build(tmp_path_factory.mktemp(request.param) / 'site')
+        print(f'\nSite build ({request.param}): {time.monotonic() - started:.2f}s', flush=True)
+        yield built
 
 
 def test_every_page_and_asset_resolves_without_external_requests(site):
@@ -64,7 +73,7 @@ def test_every_page_and_asset_resolves_without_external_requests(site):
                 for url in targets:
                     parsed = urlsplit(url)
                     external = bool(parsed.scheme or parsed.netloc)
-                    if tag in ('link', 'script', 'img', 'source'):
+                    if tag in ('link', 'script', 'img', 'source') and attrs.get('rel') != 'canonical':
                         assert not external, f'{page}: external {tag} {url}'
                     if external or not parsed.path or tag == 'base':
                         continue
@@ -112,7 +121,9 @@ def test_landing_sections_and_copy(site):
     text = (site / 'index.html').read_text()
     sections = [attrs['class'].split()[0] for tag, attrs in Elements(text).elements if tag == 'section']
     assert sections == list(SECTIONS)
-    assert 'Finish the sets you started.' in text
+    assert "Don't just manage your collection. Work with it." in re.sub(r'<[^>]+>', '', text)
+    assert '<span class="tagline-clay">Work with it.</span>' in text
+    assert '.tagline-clay{color:var(--tw-accent-text)}' in (site / 'assets/site.css').read_text()
     assert 'the workbench for your brick collection' in text
     assert 'Planned, not built yet' in text
     assert 'LEGO' not in text.split('<footer')[0]
@@ -373,3 +384,70 @@ def test_the_placeholder_picture_note_is_on_the_readme_the_landing_page_and_the_
     shim = (site / 'demo' / 'demo-shim.js').read_text()
     banner = shim.split('// The banner:', 1)[1].split('const realFetch', 1)[0]
     assert NOTE.search(banner)
+
+
+def test_legal_pages_footer_and_missing_page(site):
+    from scripts.build_site import repository, site_base
+    impressum = (site / 'impressum/index.html').read_text()
+    body = impressum.split('<main', 1)[1].split('>', 1)[1].split('</main>', 1)[0]
+    # Source comments carry the legal reference, not the visible page copy.
+    visible = re.sub(r'<[^>]+>|<!--.*?-->', '', body, flags=re.S)
+    assert visible.split() == ['Impressum', 'Ulf', 'Weihbold', 'Linz,', 'Austria']
+    assert '@' not in impressum
+    assert not re.search(r'\d+', visible)
+    privacy = (site / 'privacy/index.html').read_text()
+    assert f'https://github.com/{repository()}/discussions' in privacy
+    assert f'https://github.com/{repository()}/issues' in privacy
+    footer = (site / 'index.html').read_text().split('<footer', 1)[1]
+    assert 'href="impressum/"' in footer and 'href="privacy/"' in footer
+    nav = (site / 'index.html').read_text().split('<main', 1)[0]
+    assert '>Impressum</a>' not in nav and '>Privacy</a>' not in nav
+    missing = (site / '404.html').read_text()
+    assert 'That page is not here.' in missing and 'It may have moved. Try one of these.' in missing
+    for href in ('#install', 'docs/', 'workflows/', 'assets/site.css'):
+        assert f'href="{site_base()}{href}"' in missing
+    canonical = [attrs['href'] for tag, attrs in Elements((site / 'docs/index.html').read_text()).elements
+                 if tag == 'link' and attrs.get('rel') == 'canonical']
+    origin = 'https://brick-work.app' if site_base() == '/' else 'https://ulef1005.github.io'
+    assert canonical == [origin + site_base() + 'docs/']
+
+
+def test_all_absolute_html_and_css_paths_resolve(site):
+    from scripts.build_site import site_base
+    base = site_base()
+    checked = set()
+    for file in site.rglob('*'):
+        if file.suffix not in ('.html', '.css'):
+            continue
+        text = file.read_text()
+        urls = (url for _, attrs in Elements(text).elements for key, url in attrs.items()
+                if key in ('href', 'src')) if file.suffix == '.html' else re.findall(r'url\([\s\'\"]*([^\s\'\")]+)', text)
+        for url in urls:
+            if not url.startswith('/') or url.startswith('//'):
+                continue
+            path = unquote(urlsplit(url).path)
+            assert path.startswith(base), f'{file}: outside base: {url}'
+            target = site / path[len(base):]
+            if target.is_dir():
+                target /= 'index.html'
+            assert target.is_file(), f'{file}: broken absolute path: {url}'
+            checked.add(target.relative_to(site).as_posix())
+    assert any(path.startswith('demo/static/') for path in checked)
+    assert any(path.startswith('demo/') and path.endswith('index.html') for path in checked)
+    # The existing CSS URL check also follows relative font URLs in the docs.
+    assert list((site / 'docs/assets/fonts').glob('*.woff2'))
+
+
+@pytest.mark.parametrize('base', ['', 'demo/', '/demo', '//demo/', '/demo/../', 'https://example.org/'])
+def test_invalid_site_base_is_rejected(monkeypatch, base):
+    from scripts.build_site import site_base
+    monkeypatch.setenv('SITE_BASE', base)
+    with pytest.raises(ValueError, match='SITE_BASE'):
+        site_base()
+
+
+def test_default_site_base_uses_repository_name(monkeypatch):
+    from scripts.build_site import site_base
+    monkeypatch.delenv('SITE_BASE', raising=False)
+    monkeypatch.setenv('GITHUB_REPOSITORY', 'example/another-repo')
+    assert site_base() == '/another-repo/'

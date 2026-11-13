@@ -161,14 +161,14 @@ def no_placeholders(*selectors):
     """JS for a job's `after`, before the call-outs: fail when a missing-picture tile or a picture that did not load is inside the area the shot is cut to
     (the union of `selectors`, plus the crop padding). No screenshot of the docs shows a placeholder (Ulf, 2026-11-13); the message names the item of each
     tile (its row's text) so the picture can be added. The page's own `no_tiles` check finds the list tiles; the Set Inspector and Part Runner draw
-    their own 'No image' tile, found here by its text."""
+    their own 'No image' tile, found here by its text; the order and ledger pages draw .bw-picture boxes."""
     return """
 await document.fonts.ready;
 const areas = %s.flatMap(s => [...document.querySelectorAll(s)]).map(e => e.getBoundingClientRect());
 if (!areas.length) throw new Error('no_placeholders: the area matches nothing');
 const pad = 28, box = {l: Math.min(...areas.map(a => a.left)) - pad, t: Math.min(...areas.map(a => a.top)) - pad, r: Math.max(...areas.map(a => a.right)) + pad, b: Math.max(...areas.map(a => a.bottom)) + pad};
 const inside = e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.right > box.l && r.left < box.r && r.bottom > box.t && r.top < box.b; };
-const tiles = [...document.querySelectorAll('.bc-no-image,.bw-no-image,.bc-picture:not(:has(img))')].concat(
+const tiles = [...document.querySelectorAll('.bc-no-image,.bw-no-image,.bc-picture:not(:has(img)),.bw-picture:not(:has(img))')].concat(
   [...document.querySelectorAll('body *')].filter(e => !e.children.length && /^No image$/i.test((e.textContent || '').trim())));
 const broken = [...document.images].filter(i => inside(i) && (!i.complete || !i.naturalWidth));
 const named = [...tiles.filter(inside), ...broken].map(e => { const row = e.closest('article,li,tr,form,[data-row]') || e.parentElement.parentElement; return (row.innerText || e.getAttribute('src') || '').replace(/\\s+/g, ' ').trim().slice(0, 130); });

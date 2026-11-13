@@ -1,3 +1,8 @@
+---
+audience: user
+verified: 1.0
+---
+
 # Find the sets in a bulk lot
 
 You bought a bag of mixed loose bricks and suspect that several sets were thrown into it. In this tutorial you let Brick Work rank the sets the bag may hold, tell it about a sticker you cannot read, tick off the parts of one set as you dig them out, and end with an owned copy of that set.
@@ -49,7 +54,7 @@ Saving your ticks changes nothing else: the ticked pieces are filed in the lot o
 
 One step does everything: the ticked pieces are filed in the lot, the found pieces move into a new copy of the set, and what you did not find is recorded as missing on it, so the copy shows in Matchmaker, Complete sets and the missing-parts file. The page you come back to shows **Open the copy** and **Undo**. Run set detection again for the next set; the lot keeps the leftovers.
 
-## What you did
+## What next
 
 You ranked the sets a bag may hold, confirmed a sticker, collected one set's parts and turned them into a copy. From here:
 

@@ -1,3 +1,8 @@
+---
+audience: user
+verified: 1.0
+---
+
 # Build from what you have, and order the rest
 
 Your loose parts may already make a set you do not own, or a set you own may only lack a handful of parts. In this tutorial you let Build Scout rank the catalogue by how much of each set your stock covers, turn the best one into a copy, and collect the missing parts of several sets into one BrickLink wanted list.
@@ -51,7 +56,7 @@ The catalogue sometimes lists the same part or figure twice, an older and a reis
 
 See [Change an item's variant](../how-to/change-variant.md).
 
-## What you did
+## What next
 
 You ranked sets by what your stock covers, built one from it, and collected the missing parts of several sets into one wanted list. From here:
 

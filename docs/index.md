@@ -7,4 +7,4 @@ Brick Work is a self-hosted web app for your brick collection: check a set's par
 - [Reference](reference/index.md): settings, the command line and metrics.
 - [Tutorials](tutorials/index.md): complete paths through the app, start to finish; Get started in the app is the guided first run.
 
-Installation is in the [README](https://github.com/Ulef1005/brick-work#standalone-installation-with-docker). The REST API and the MCP server have their own pages: [API reference](../api/) and [MCP server](../mcp/).
+Installation is in the [README](https://github.com/Ulef1005/brick-work#standalone-installation-with-docker). The REST API and the MCP server have their own pages: [API v2 reference](developer/api-v2-reference.md) and [MCP server](brickwork/mcp.md), under Developers.

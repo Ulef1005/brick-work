@@ -22,7 +22,6 @@ a:focus-visible{outline:var(--tw-focus-width,2px) solid var(--tw-focus-color,var
 .site-head nav a[aria-current="page"]{color:var(--tw-text);text-decoration:underline;text-decoration-color:var(--tw-accent);text-decoration-thickness:2px}
 
 .doc{max-width:760px;margin:0 auto;padding:var(--tw-s-6) var(--tw-s-4) calc(var(--tw-s-1) * 12)}
-.doc.api{max-width:none;padding:0}
 .doc h1{font-size:var(--tw-fs-h1);line-height:var(--tw-lh-h1);margin:var(--tw-s-2) 0 var(--tw-s-4)}
 .doc h2{font-size:var(--tw-fs-h2);line-height:var(--tw-lh-h2);margin:var(--tw-s-8) 0 var(--tw-s-3);padding-top:var(--tw-s-3);border-top:0.5px solid var(--tw-divider)}
 .doc h3{font-size:var(--tw-fs-h3,18px);margin:calc(var(--tw-s-1) * 7) 0 var(--tw-s-2)}
@@ -35,7 +34,6 @@ a:focus-visible{outline:var(--tw-focus-width,2px) solid var(--tw-focus-color,var
 .doc th,.doc td{text-align:left;vertical-align:top;padding:var(--tw-s-2) calc(var(--tw-s-1) * 2.5);border-bottom:0.5px solid var(--tw-divider)}
 .doc th{color:var(--tw-text-2);font-weight:600}
 .doc img{max-width:100%;height:auto}
-.api-note{max-width:760px;margin:0 auto;padding:var(--tw-s-4)}
 
 .site-foot{border-top:0.5px solid var(--tw-divider);padding:var(--tw-s-4);color:var(--tw-text-muted);font-size:13px;text-align:center}
 .site-foot p{max-width:760px;margin:0 auto}
@@ -242,9 +240,6 @@ button{font:500 14px/1.4 var(--tw-font);cursor:pointer;min-height:var(--tw-hit);
 .doc{overflow-wrap:anywhere}
 /* In a table, `anywhere` lets the columns shrink below their words ("accept|ed", "000|1"); break-word wraps only what cannot fit. */
 .doc td,.doc th{overflow-wrap:break-word}
-.doc.api{max-width:1000px;padding:var(--tw-s-6) var(--tw-s-4)}
-.api-operation{border-top:1px solid var(--tw-divider);padding:var(--tw-s-4) 0}
-.api-operation pre{white-space:pre-wrap;overflow-wrap:anywhere}
 @media(min-width:768px){.site-head nav{flex-basis:auto;order:initial}.walkthrough{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
 @media(max-width:600px){.integrations>div:last-child{font-size:12px}.integrations>div:last-child>div{gap:var(--tw-s-1)}.integrations>div:last-child span{font-size:11px;padding-left:0;padding-right:0}}
 .site-head{padding-inline:max(var(--tw-s-5),calc((100% - 1160px)/2))}

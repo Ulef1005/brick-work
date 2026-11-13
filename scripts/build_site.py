@@ -2,8 +2,9 @@
 
     python scripts/build_site.py OUT_DIR
 
-Pages: `/` the landing page, `/use-cases/` and `/workflows/` (Markdown in scripts/site), `/docs/` the user docs, `/demo/` the static demo (scripts/build_demo.py), `/api/` the OpenAPI contract as one local reference page, `/mcp/` the MCP
-guide with the tool and resource tables generated from the server itself, `/changelog/` CHANGELOG.md, `/llms.txt` the facts for AI assistants (scripts/site/llms.md), and `/design/` the ADRs and the
+Pages: `/` the landing page, `/use-cases/` and `/workflows/` (Markdown in scripts/site), `/docs/` the user and developer docs, `/demo/` the static demo (scripts/build_demo.py), `/api/` and `/mcp/` stub pages that point
+at the generated API v2 and MCP reference pages in the docs' Developers tab (scripts/docs_reference.py), `/api/openapi-v2.yaml` the
+contract to download, `/changelog/` CHANGELOG.md, `/llms.txt` the facts for AI assistants (scripts/site/llms.md), and `/design/` the ADRs and the
 4.0 data-model design (docs/adr, docs/data-model-4.0), one page per file. The user docs are built by
 Zensical from docs/ and mkdocs.yml (App Standard, Maintenance § Rules, User docs); the other pages are
 Markdown rendered with Python-Markdown, styled with the app's own design tokens and fonts. Links to files
@@ -27,11 +28,14 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 SITE = ROOT / 'scripts/site'
 PAGES = (('Home', ''), ('Use cases', 'use-cases/'), ('Workflows', 'workflows/'), ('Demo', 'demo/'), ('Docs', 'docs/'),
-         ('API reference', 'api/'), ('MCP', 'mcp/'), ('Changelog', 'changelog/'), ('Design', 'design/'))
+         ('API reference', 'docs/developer/api-v2-reference/'), ('MCP', 'docs/brickwork/mcp/'), ('Changelog', 'changelog/'),
+         ('Design', 'design/'))
+# The pages that moved into the docs (doc-standard-v1 B1b): the old URL keeps a stub page that points at the new one.
+MOVED = (('api', 'API reference', 'docs/developer/api-v2-reference/'), ('mcp', 'MCP server', 'docs/brickwork/mcp/'))
 # The design folders published under /design/<folder>/: README.md is the folder's index, each other .md file its own page.
 DESIGN = ('adr', 'data-model-4.0')
 DESIGN_SKIP = {'docs/adr/0000-template.md'}
-USER_DOCS = ('how-to', 'concepts', 'reference', 'tutorials')   # the Zensical sections under /docs/
+USER_DOCS = ('how-to', 'concepts', 'reference', 'tutorials', 'developer')   # the Zensical sections under /docs/
 
 
 def site_page(resolved):
@@ -65,7 +69,8 @@ def rewrite_links(text, base, depth=0):
         path, _, anchor = target.partition('#')
         resolved = os.path.normpath(os.path.join(base, path)).replace(os.sep, '/')
         up = '../' * depth
-        local = {'docs/brickwork/mcp.md': up + 'mcp/', 'docs/brickwork/openapi-v2.yaml': up + 'api/'}
+        local = {'docs/brickwork/mcp.md': up + 'docs/brickwork/mcp/', 'docs/brickwork/api-v2.md': up + 'docs/brickwork/api-v2/',
+                 'docs/brickwork/openapi-v2.yaml': up + 'docs/developer/api-v2-reference/'}
         if resolved in local:
             url = local[resolved]
         elif site_page(resolved):
@@ -121,43 +126,10 @@ def lockup(up):
             'loading="lazy" decoding="async"></picture>')
 
 
-def api_reference():
-    """Render the complete contract locally, without a remote renderer or runtime requests."""
-    import yaml
-    contract = yaml.safe_load((ROOT / 'docs/brickwork/openapi-v2.yaml').read_text())
-    chunks = ['<h1>API reference</h1><p>The REST API at <code>/api/v2</code>. '
-              '<a href="openapi-v2.yaml">Download the OpenAPI contract</a>. '
-              f'<a href="{blob("docs/brickwork/api-v2.md")}">Authentication and examples</a>.</p>']
-    for path, operations in contract['paths'].items():
-        for method, operation in operations.items():
-            if method not in ('get', 'post', 'put', 'patch', 'delete', 'head', 'options'):
-                continue
-            chunks.append('<section class="api-operation"><h2>' + html.escape(method.upper() + ' ' + path) + '</h2>')
-            chunks.append('<p>' + html.escape(operation.get('summary', '')) + '</p>')
-            chunks.append('<details><summary>Request and responses</summary><pre><code>' +
-                          html.escape(yaml.safe_dump(operation, sort_keys=False)) + '</code></pre></details></section>')
-    chunks.append('<h2>Shared schemas and authentication</h2><pre><code>' +
-                  html.escape(yaml.safe_dump(contract.get('components', {}), sort_keys=False)) + '</code></pre>')
-    return ''.join(chunks)
-
-
-def mcp_tables():
-    """Read tools, write tools and resources, from the adapter the server itself uses."""
-    from brickwork.core.mcp import Adapter, contract
-    adapter = Adapter(client=None)
-    rows = {'GET': [], 'write': []}
-    for name, (method, path, op) in sorted(adapter.tools.items()):
-        arguments = ', '.join(f'`{a}`' for a in adapter.schema(op)['properties']) or 'none'
-        line = f'| `{name}` | {html.escape(op.get("summary", "")).capitalize()} | {arguments} | `{method} /api/v2{path}` |'
-        rows['GET' if method == 'GET' else 'write'].append(line)
-    head = '| Tool | What it does | Arguments | API call |\n|---|---|---|---|'
-    resources = contract().get('x-mcp', {}).get('resources', {})
-    resource_rows = '\n'.join(f'| `{uri}` | `{target if isinstance(target, str) else target["operation"]}` |' for uri, target in resources.items())
-    text = (f'\n### Read tools ({len(rows["GET"])})\n\n{head}\n' + '\n'.join(rows['GET']) +
-            f'\n\n### Write tools ({len(rows["write"])}, only with a write token and `--allow-write`)\n\n{head}\n' + '\n'.join(rows['write']))
-    if resource_rows:
-        text += f'\n\n### Resources ({len(resources)})\n\n| URI | API operation |\n|---|---|\n{resource_rows}'
-    return text + '\n'
+def stub(title, target):
+    """The page left at a moved page's old URL: a link to the new one, followed at once by the browser."""
+    return page(title, f'<h1>{html.escape(title)}</h1><p>This page has moved to <a href="../{target}">{html.escape(title)} in the docs</a>.</p>',
+                1, current=None, head=f'<meta http-equiv="refresh" content="0; url=../{target}">')
 
 
 def build_docs(out):
@@ -180,8 +152,10 @@ def build_docs(out):
         config['site_dir'] = str(Path(tmp) / 'site')
         path = Path(tmp) / 'mkdocs.yml'
         path.write_text(yaml.safe_dump(config, sort_keys=False, allow_unicode=True))
+        # The markdown-exec blocks of the reference pages import scripts.docs_reference, so the build runs from the root with it on the path.
+        pythonpath = os.pathsep.join(p for p in (str(ROOT), os.environ.get('PYTHONPATH')) if p)
         subprocess.run((str(zensical) if zensical.exists() else 'zensical', 'build', '--strict', '--clean',
-                        '--config-file', str(path)), check=True)
+                        '--config-file', str(path)), check=True, cwd=ROOT, env={**os.environ, 'PYTHONPATH': pythonpath})
         shutil.copytree(Path(tmp) / 'site', out)
 
 
@@ -258,13 +232,9 @@ def build(out):
         text = (SITE / f'{name}.md').read_text()
         (out / name / 'index.html').write_text(page(title, render(text), 1, current=current, main='marketing'))
 
-    guide = rewrite_links((ROOT / 'docs/brickwork/mcp.md').read_text(), 'docs/brickwork', 1) + mcp_tables()
-    (out / 'mcp/index.html').write_text(page('MCP server', render(guide), 1, current='MCP'))
-
+    for folder, title, target in MOVED:
+        (out / folder / 'index.html').write_text(stub(title, target))
     shutil.copy(ROOT / 'docs/brickwork/openapi-v2.yaml', out / 'api/openapi-v2.yaml')
-    body = api_reference()
-    (out / 'api/index.html').write_text(page('API reference', body, 1, current='API reference').replace(
-        '<main class="doc">', '<main class="doc api">'))
     build_design(out)
 
     from scripts.build_demo import build_demo

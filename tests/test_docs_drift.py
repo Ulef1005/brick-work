@@ -120,11 +120,18 @@ def test_the_site_builds_with_every_tool(tmp_path):
     site = build(tmp_path / 'site')
     for page in ('index.html', 'docs/index.html', 'use-cases/index.html', 'workflows/index.html', 'api/index.html', 'api/openapi-v2.yaml', 'mcp/index.html', 'assets/site.css', '.nojekyll'):
         assert (site / page).is_file(), page
-    api = (site / 'api/index.html').read_text()   # the retired v1 contract is not what the site documents (#125)
-    assert '<code>/api/v2</code>' in api and 'GET /items/{id}' in api and 'openapi-v1' not in api
-    mcp = (site / 'mcp/index.html').read_text()
+    # The API v2 and MCP references are generated in the Developers tab (#319); the old URLs keep a stub that points there.
+    api = (site / 'docs/developer/api-v2-reference/index.html').read_text()   # the retired v1 contract is not what the site documents (#125)
+    assert '<code>/api/v2</code>' in api and 'GET <code>/items/{id}</code>' in api and 'openapi-v1' not in api
+    assert 'id="get-itemsid"' in api and 'exec-1' not in api and 'docs_reference' not in api
+    assert 'flag imported from &lt;site&gt;' in api   # a summary's placeholder is text, not a raw HTML tag
+    assert 'href="../docs/developer/api-v2-reference/"' in (site / 'changelog/index.html').read_text()
+    mcp = (site / 'docs/developer/mcp-reference/index.html').read_text()
     for name in Adapter(client=None).tools:
         assert f'<code>{name}</code>' in mcp, name
+    assert 'url=../docs/developer/api-v2-reference/' in (site / 'api/index.html').read_text()
+    assert 'url=../docs/brickwork/mcp/' in (site / 'mcp/index.html').read_text()
+    assert (site / 'docs/brickwork/mcp/index.html').is_file() and (site / 'docs/brickwork/openapi-v2.yaml').is_file()
     assert 'BW_AUTHENTICATION_PASSWORD' in (site / 'docs/reference/settings/index.html').read_text()
     # The changelog and the design documents: every ADR but the template and every data-model page, linked to each other on the site.
     from scripts.build_site import ROOT

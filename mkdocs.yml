@@ -36,7 +36,12 @@ theme:
         name: Switch to light mode
   logo: assets/app-icon.svg
   features: [navigation.tabs, navigation.sections, navigation.indexes, search.highlight]
-markdown_extensions: [admonition, tables, toc, attr_list, pymdownx.highlight, pymdownx.superfences]
+markdown_extensions: [admonition, tables, toc, attr_list, pymdownx.details, pymdownx.highlight, pymdownx.superfences]
+# The API v2 and MCP reference pages are printed by a markdown-exec block at build time (scripts/docs_reference.py). An explicit
+# plugins: list replaces the default one, so search is named too. Preview from the repo root with `PYTHONPATH=. zensical serve`.
+plugins:
+  - search
+  - markdown-exec
 nav:
   - Home:
       - index.md
@@ -107,5 +112,7 @@ nav:
           - brickwork/wishlists.md
       - Reference:
           - "API v2 contract": brickwork/api-v2.md
+          - developer/api-v2-reference.md
           - "MCP server": brickwork/mcp.md
+          - developer/mcp-reference.md
           - reference/cli.md

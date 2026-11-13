@@ -42,7 +42,7 @@ curl -s -H "Authorization: Bearer $TOKEN" http://127.0.0.1:3333/api/v2/me
 {"data":{"expires_at":null,"name":"tutorial","scopes":["read","write"]}}
 ```
 
-The answer names your token and its scopes. Reload **API tokens**: **Last used** now has a time. Every API call carries the token this way. The [API reference](../../api/) lists every endpoint.
+The answer names your token and its scopes. Reload **API tokens**: **Last used** now has a time. Every API call carries the token this way. The [API v2 reference](../developer/api-v2-reference.md) lists every endpoint.
 
 ## 3. Read and change the collection
 
@@ -184,6 +184,6 @@ When you are done, press **Revoke** next to the `tutorial` and `assistant` token
 
 You created a token, called the API with it, read and changed the collection from the command line, undid the change, and gave an assistant read-only access. From here:
 
-- [API reference](../../api/) for every endpoint.
+- [API v2 reference](../developer/api-v2-reference.md) for every endpoint.
 - [Command line](../reference/cli.md) for every `brickwork` command.
 - [Connect an assistant](../how-to/connect-an-assistant.md) for other assistants, the HTTP transport and write access.

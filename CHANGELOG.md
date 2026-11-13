@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Category group order** (#315). Set Inspector offers Category group, with largest parts first within each group and the saved order kept when you resume; Part Runner adds an optional Category group ranking key, off by default. Both use the fixed catalogue group order with Other last.
 - Serve the site and demo with a shared `SITE_BASE` for repository paths or the domain root; add Impressum, Privacy and a styled 404 page, and update the tagline to “Don't just manage your collection. Work with it.”
 
 - **Group parts on a set page** (#315). Settings offers twelve part groups, alphabetical BrickLink categories or the original flat list. Reference sets use catalogue categories and show row and piece counts; owned copies also show checking and missing counts. Minifigures stay outside part groups and page separately in batches of 25. Groups remember whether each copy's sections are open, and page independently in batches of 25. Search, filters and sorting work across the sections.

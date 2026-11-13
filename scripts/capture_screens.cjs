@@ -5,6 +5,7 @@
 JOBS.json is {"headers": {...optional, e.g. Cookie}, "deterministic"?: true, "now"?: ISO time, "jobs": [{"url", "out", "width", "height"?, "theme": "light"|"dark",
 "wait"?: CSS selector, "script"?: JS run before the capture (open a sheet, tick a box), "max"?: px, default 3000, "sheet_below"?: px,
 "scale"?: device scale (default 2 below 600 px, else 1), "after"?: JS run after the final resize, "crop"?: selector or list of selectors and "crop_pad"?: px (the picture is cut to their union),
+"no_tiles"?: true or a selector: fail the job when the page (or that subtree) shows a missing-picture tile or a picture that did not load,
 "javascript"?: false renders the page with scripts switched off (the app's no-script fallback; every other job runs with them on)}]}.
 "deterministic" (the screenshot gate, scripts/screen_gate.py) starts every capture from an empty browser (no cache, no stored data, empty web storage), loads every declared font face, turns animations and transitions off, hides the caret, asks for reduced motion and, with "now",
 fixes the page's clock (Date) at that instant. The theme is the system preference (the app's default mode). A page is captured whole with the viewport grown to its height (fixed
@@ -63,6 +64,15 @@ let browser=null;
    await delay(250);
   }
   if(job.after){await evaluate(`(async()=>{${job.after}})()`);await delay(250);}   // after: JS run once the viewport has its final size (the call-out overlays, which are placed from the boxes as they now are)
+  // no_tiles: the capture fails when the page (or the selector's subtree) shows the app's missing-picture tile (.bc-no-image, .bw-no-image, or a .bc-picture without an img: the lists build the tile in script) or a picture that
+  // did not load (#332: no capture shows a placeholder). It runs with the viewport at its final size: lazy pictures are made eager and given up to 5 s to finish, and one still loading then counts as missing.
+  if(job.no_tiles){const scope=typeof job.no_tiles==='string'?job.no_tiles:'body';
+    const bad=await evaluate(`(async()=>{const roots=[...document.querySelectorAll(${JSON.stringify(scope)})];
+      const shown=e=>e.getClientRects().length>0;
+      const imgs=roots.flatMap(r=>[...r.querySelectorAll('img[src]')]);imgs.forEach(i=>{i.loading='eager';});
+      const until=Date.now()+5000;while(imgs.some(i=>shown(i)&&!i.complete)&&Date.now()<until)await new Promise(r=>setTimeout(r,100));
+      return roots.flatMap(r=>[...r.querySelectorAll('.bc-no-image,.bw-no-image,.bc-picture:not(:has(img)),img')].filter(e=>shown(e)&&(e.tagName!=='IMG'||(e.getAttribute('src')&&(!e.complete||!e.naturalWidth)))).map(e=>e.className||e.getAttribute('src')||e.tagName));})()`);
+    if(bad.length)throw new Error('no_tiles: '+bad.length+' missing picture(s) in '+job.url+' ('+job.out+'): '+[...new Set(bad)].slice(0,5).join(', '));}
   let clip={x:0,y:0,width,height:shotHeight,scale:1};
   if(job.crop){   // crop: a selector or a list of them (the union of their boxes, plus `crop_pad` px), clipped to the page; the file is `scale` times the CSS size
    const pad=job.crop_pad===undefined?16:job.crop_pad;

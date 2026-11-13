@@ -17,7 +17,7 @@ import tempfile
 from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlsplit
 
-from . import checks, clock, dataset, showcase
+from . import checks, clock, dataset, real, showcase
 from .privacy import pattern
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -160,15 +160,23 @@ def render(client, base, data, store):
 
 
 def pictures_of(store):
-    """{picture id: PNG bytes} of the demo world's pictures (its own illustrations, design/demo-art/): the pages ask for /manage/images/<id>?w=...,
-    and a static site answers every query with the one file, `<id>.png` (shim.js maps the URLs the pages' scripts build)."""
+    """{picture id: bytes} of the demo world's pictures (the showcase's own PNG illustrations, design/demo-art/, or the real sets' JPEGs): the pages ask for
+    /manage/images/<id>?w=..., and a static site answers every query with the one file, `<id>.png` or `<id>.jpg` (shim.js maps the URLs the pages' scripts build)."""
     from ..core.connect import connect
     root = Path(store).resolve().parent
     with closing(connect(store, read_only=True)) as db:
         return {r[0]: (root / r[1]).read_bytes() for r in db.execute('SELECT id, local_path FROM picture ORDER BY id') if (root / r[1]).is_file()}
 
 
-def rewrite(text, base, pages):
+def extension(content):
+    """The file extension a picture's bytes call for: `png` for a PNG (the showcase's illustrations), `jpg` for a JPEG (the real sets' pictures)."""
+    return 'png' if content[:8] == b'\x89PNG\r\n\x1a\n' else 'jpg'
+
+
+def rewrite(text, base, pages, types=None):
+    """`types` names the extension of each picture that is not a PNG ({picture id: 'jpg'}); the rest are `<id>.png`."""
+    types = types or {}
+
     def attribute(match):
         start, value, end = match.groups()
         if value.startswith('/static/'):
@@ -177,8 +185,8 @@ def rewrite(text, base, pages):
         if key is None or key.startswith('/static/') or '/static/' in value:
             return match.group(0)
         picture = re.match(r'^/manage/images/([0-9]+)', key)
-        if picture:                                     # one .png per picture, whatever width the page asks for; the pages' own image base ends in 0
-            return match.group(0) if picture[1] == '0' else start + base + 'manage/images/' + picture[1] + '.png' + end
+        if picture:                                     # one file per picture, whatever width the page asks for; the pages' own image base ends in 0
+            return match.group(0) if picture[1] == '0' else start + base + 'manage/images/' + picture[1] + '.' + types.get(picture[1], 'png') + end
         if key in pages:
             return start + base + file_of(key).removesuffix('index.html') + end
         if start.strip().startswith('data-'):
@@ -186,7 +194,7 @@ def rewrite(text, base, pages):
         return start + '#demo-not-included' + end
     text = ATTRIBUTE.sub(attribute, text)
     # srcset lists one URL per width; the demo has the one file
-    text = re.sub(r'(\ssrcset=")([^"]*)(")', lambda m: m.group(1) + re.sub(r'(/manage/images/[1-9][0-9]*)\?w=[0-9]+', r'\1.png', m.group(2)) + m.group(3), text)
+    text = re.sub(r'(\ssrcset=")([^"]*)(")', lambda m: m.group(1) + re.sub(r'(/manage/images/([1-9][0-9]*))\?w=[0-9]+', lambda w: w[1] + '.' + types.get(w[2], 'png'), m.group(2)) + m.group(3), text)
     text = re.sub(r'<link rel="manifest"[^>]*>', '', text)  # the demo is not an installable app
     shim = f'<script src="{base}demo-shim.js"></script>'
     return re.sub(r'<head([^>]*)>', lambda m: m.group(0) + shim, text, count=1)
@@ -230,9 +238,10 @@ def check(out):
     return findings
 
 
-def export(out, base='/brick-work/demo/', data=dataset.DATA, rich=True):
+def export(out, base='/brick-work/demo/', data=dataset.DATA, rich=True, world='showcase'):
     """Build the demo into `out` (which must not exist). Returns the manifest; raises on findings. `rich` adds the showcase layer
-    (showcase.py) to the design test data's world; the screen gate renders the world without it."""
+    (showcase.py) to the design test data's world; the screen gate renders the world without it. `world='real'` builds the real-sets world instead (real.py, #332)."""
+    layer, plan = (real.layer(), real.CHECKS) if world == 'real' else (showcase.layer(data), showcase.CHECKS)
     out = Path(out)
     if out.exists():
         raise FileExistsError(out)
@@ -241,7 +250,7 @@ def export(out, base='/brick-work/demo/', data=dataset.DATA, rich=True):
     with tempfile.TemporaryDirectory() as scratch:
         store = Path(scratch) / 'brickwork.db'
         hidden = sorted({str(scratch), str(Path(scratch).resolve()), os.path.realpath(scratch)}, key=len, reverse=True)
-        counts = dataset.build(store, data, showcase.layer(data) if rich else None)
+        counts = dataset.build(store, data, layer if rich else None)
         saved_env = {k: os.environ.get(k) for k in ('BW_DB_PATH', 'BW_EMBEDDED_WORKER', 'BW_ALLOW_NO_LOGIN', 'BW_AUTHENTICATION_PASSWORD')}
         patched = []
         try:
@@ -249,7 +258,7 @@ def export(out, base='/brick-work/demo/', data=dataset.DATA, rich=True):
             for key in SEEDS + item_pages(store)[:6]:   # every module a page imports lazily is imported before the clock stops
                 client.get(key, base_url='http://demo.invalid' + base.rstrip('/'))
             patched = clock.freeze_clock()              # prices go stale after a week and pages show relative dates: the demo's "now" is fixed
-            counts['checks'] = checks.stage(store, showcase.CHECKS if rich else None)
+            counts['checks'] = checks.stage(store, plan if rich else None)
             pages, skipped, saved = render(client, base, data, store)
             images = pictures_of(store)
             counts['pictures'] = len(images)
@@ -264,12 +273,13 @@ def export(out, base='/brick-work/demo/', data=dataset.DATA, rich=True):
     shutil.copytree(ROOT / 'static', out / 'static')
     version = static_version(out / 'static')
     (out / 'manage' / 'images').mkdir(parents=True)
+    types = {str(identifier): extension(content) for identifier, content in images.items() if extension(content) != 'png'}
     for identifier, content in images.items():
-        (out / 'manage' / 'images' / f'{identifier}.png').write_bytes(content)
+        (out / 'manage' / 'images' / f'{identifier}.{extension(content)}').write_bytes(content)
     for key, text in pages.items():
         target = out / file_of(key)
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(neutral(rewrite(text, base, pages), hidden, version), encoding='utf-8')
+        target.write_text(neutral(rewrite(text, base, pages, types), hidden, version), encoding='utf-8')
     gets = {}
     for index, (key, text) in enumerate(sorted(saved.items())):
         name = f'data/{index:04d}.json'
@@ -278,9 +288,9 @@ def export(out, base='/brick-work/demo/', data=dataset.DATA, rich=True):
         gets[key] = name
     counts['crawl_limit'] = LIMIT
     manifest = dict(base=base, note=NOTE, pages={k: file_of(k).removesuffix('index.html') for k in sorted(pages)},
-                    gets=gets, skipped=skipped, counts=counts)
+                    gets=gets, skipped=skipped, counts=counts, **({'pictures': types} if types else {}))
     shim = (Path(__file__).with_name('shim.js').read_text(encoding='utf-8')
-            .replace('/*MANIFEST*/null', json.dumps({k: manifest[k] for k in ('base', 'note', 'pages', 'gets')})))
+            .replace('/*MANIFEST*/null', json.dumps({k: manifest[k] for k in ('base', 'note', 'pages', 'gets', 'pictures') if k in manifest})))
     (out / 'demo-shim.js').write_text(shim, encoding='utf-8')
     start = base + manifest['pages']['/collection/sets']
     (out / 'index.html').write_text(f'<!doctype html><meta charset="utf-8"><title>Brick Work demo</title>'

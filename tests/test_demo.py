@@ -185,7 +185,7 @@ def test_the_export_carries_one_png_per_picture(site):
     sets = (out / 'collection/sets/index.html').read_text()
     assert f'data-image-base="{BASE}manage/images/0"' in sets                  # the pages' scripts build <base><id>?w=...
     shim = (out / 'demo-shim.js').read_text()
-    assert "'.png'" in shim and 'HTMLImageElement.prototype' in shim and 'manage\\/images' in shim.replace('\\\\', '\\')
+    assert "'png'" in shim and 'HTMLImageElement.prototype' in shim and 'manage\\/images' in shim.replace('\\\\', '\\')
     assert not any(re.search(r'manage/images/[1-9][0-9]*(\?|")', p.read_text()) for p in (out / 'workbench').rglob('index.html'))   # src and srcset both name the .png
     detail = (out / 'collection/item').glob('*/index.html')
     assert any(re.search(r'src="' + re.escape(BASE) + r'manage/images/[1-9][0-9]*\.png"', p.read_text()) for p in detail)

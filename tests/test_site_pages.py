@@ -332,19 +332,22 @@ def test_every_image_the_readme_and_the_pages_show_exists_and_is_a_built_capture
     assert len(shown) >= 2
 
 
-NOTE = re.compile(r'placeholder drawings.*?BrickLink and Rebrickable', re.S)
+NOTE = re.compile(r'placeholder drawings.*?BrickLink and Rebrickable', re.S)   # the README's captures are still the old demo's until they are retaken (#332)
+REAL_NOTE = re.compile(r"Rebrickable.*?(plain tile|does not sponsor, authorize or endorse)", re.S)
 
 
-def test_the_placeholder_picture_note_is_on_the_readme_the_landing_page_and_the_demo_banner(site):
-    """The demo's pictures are original placeholder drawings; a real install loads its pictures from BrickLink and Rebrickable (core/pictures.py, no key
-    needed for those two sources). The README, the landing page and the demo's banner all say so."""
+def test_the_picture_notes_are_on_the_readme_the_landing_page_and_the_demo_banner(site):
+    """The demo shows seven real sets with Rebrickable's pictures: the landing page and the demo's banner say so (the banner with the LEGO disclaimer, the
+    Fair Play policy's wording), and the README keeps its placeholder note under screenshots that are still of the old demo."""
     readme = (ROOT / 'README.md').read_text()
     top = readme.split('<!-- /site:skip -->')[0]
     assert NOTE.search(top.split('</picture>')[-1]), 'the README says it right under the screenshots, inside the block GitHub shows'
-    assert NOTE.search((site / 'index.html').read_text())
+    landing = (site / 'index.html').read_text()
+    assert REAL_NOTE.search(landing) and 'placeholder drawings' not in landing
     shim = (site / 'demo' / 'demo-shim.js').read_text()
     banner = shim.split('// The banner:', 1)[1].split('const realFetch', 1)[0]
-    assert NOTE.search(banner)
+    assert 'Set pictures: Rebrickable' in banner and 'LEGO® is a trademark of the LEGO Group of companies, which does not sponsor, authorize or endorse this site' in banner
+    assert 'placeholder' not in banner
 
 
 def test_legal_pages_footer_and_missing_page(site):
@@ -358,6 +361,8 @@ def test_legal_pages_footer_and_missing_page(site):
     assert not re.search(r'\d+', visible)
     privacy = (site / 'privacy/index.html').read_text()
     assert 'its own cookies and policy apply after that' in privacy
+    assert 'Pictures</strong> of the demo' in privacy and 'does not contact Rebrickable' in privacy
+    assert 'Part and set images: Rebrickable.' in (site / 'index.html').read_text()
     assert f'https://github.com/{repository()}/discussions' in privacy
     assert f'https://github.com/{repository()}/issues' in privacy
     footer = (site / 'index.html').read_text().split('<footer', 1)[1]
@@ -554,3 +559,13 @@ def test_analytics_script_is_on_the_site_pages_only_and_the_privacy_page_matches
         assert tag not in file.read_text(), file
     privacy = (site / 'privacy/index.html').read_text()
     assert 'One analytics script' in privacy and 'hosted here' not in privacy     # the picture line waits for the Rebrickable pictures (#332)
+
+
+def test_every_site_page_offers_the_releases_feed_once(site):
+    """The website session's crawl (13.11.): the Atom link was only on /changelog/; every marketing page carries it, once, and it reaches feed.xml."""
+    pages = [p for p in site.rglob('index.html') if p.relative_to(site).parts[0] not in ('docs', 'demo')] + [site / '404.html']
+    assert len(pages) >= 8
+    for page in pages:
+        links = re.findall(r'<link rel="alternate" type="application/atom\+xml"[^>]*href="([^"]+)"', page.read_text())
+        assert len(links) == 1, page
+        assert (page.parent / links[0]).resolve() == (site / 'changelog' / 'feed.xml').resolve() or page.name == '404.html', (page, links)

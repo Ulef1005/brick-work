@@ -171,8 +171,8 @@ const areas = %s.flatMap(s => {
 });
 if (!areas.length) throw new Error('no_placeholders: the area matches nothing');
 const pad = 28, box = {l: Math.min(...areas.map(a => a.left)) - pad, t: Math.min(...areas.map(a => a.top)) - pad, r: Math.max(...areas.map(a => a.right)) + pad, b: Math.max(...areas.map(a => a.bottom)) + pad};
-const inside = e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.right > box.l && r.left < box.r && r.bottom > box.t && r.top < box.b; };
-const tiles = [...document.querySelectorAll('.bc-no-image,.bw-no-image,.bc-picture:not(:has(img)),.bw-picture:not(:has(img))')].concat(
+const inside = e => { const r = e.getBoundingClientRect(); return e.checkVisibility() && r.width > 0 && r.height > 0 && r.right > box.l && r.left < box.r && r.bottom > box.t && r.top < box.b; };
+const tiles = [...document.querySelectorAll('.bc-no-image,.bw-no-image,.bc-picture:not(:has(img)),.bw-picture:not(:has(img)),.st-pic:not(:has(img))')].concat(
   [...document.querySelectorAll('body *')].filter(e => !e.children.length && /^No image$/i.test((e.textContent || '').trim())));
 const broken = [...document.images].filter(i => inside(i) && (!i.complete || !i.naturalWidth));
 const named = [...tiles.filter(inside), ...broken].map(e => { const row = e.closest('article,li,tr,form,[data-row]') || e.parentElement.parentElement; return (row.innerText || e.getAttribute('src') || '').replace(/\\s+/g, ' ').trim().slice(0, 130); });
@@ -194,6 +194,9 @@ def tag_nth(selector, n, attr='data-shot-area', closest=None):
 # `tut-<name>-<layout>-<width>-<theme>.png`; a mark is a (selector, number) pair.
 REAL = {'real': lambda number: uid('copy', number, 'a')}['real']
 REAL_STARTED, REAL_GAPS = REAL('8043-1'), REAL('7938-1')   # a check about 40 % answered; a check answered to the end, with gaps
+BULK_PICKED = '/workbench/part-picker?copy=' + '&copy='.join(REAL(n) for n in ('31120-1', '7938-1', '7213-1'))
+CHOOSE_REAL_SETS = ("document.querySelector('[data-none]').click(); for (const n of ['31120-1', '7938-1', '7213-1']) "
+                    "document.querySelector('[data-number=' + JSON.stringify(n) + '] input').click(); await new Promise(r => setTimeout(r, 300));")
 LAYOUT_SCALE = {'desktop': 2, 'phone': 2}
 assert 'Old Mill' in ADD_SEARCH
 TUTORIAL_SHOTS = {
@@ -218,6 +221,21 @@ TUTORIAL_SHOTS = {
     'order-count': ('/workbench/orders/2?view=count', None, {
         layout: (width, ['[data-order-panel=count] h2', '[data-shot-area]'], [('[data-order-panel=count] h2', 1), ('.order-count-row', 2)],
                  tag_nth('.order-count-row', 3))
+        for layout, width in (('desktop', 1024), ('phone', 390))}),
+    'storage': ('/workbench/storage/storage-drawer-3', None, {
+        layout: (width, ['.st-detail-head'], [('.st-detail-head p', 1)], '')
+        for layout, width in (('desktop', 1024), ('phone', 390))}),
+    'runner-sets': ('/workbench/part-picker', CHOOSE_REAL_SETS, {
+        layout: (width, ['[data-selection] .bw-segments', '[data-continue]'], [('[data-none]', 1), ('[data-row] input:checked', 2), ('[data-continue]', 3)], '')
+        for layout, width in (('desktop', 1024), ('phone', 390))}),
+    'runner-order': (BULK_PICKED, None, {
+        layout: (width, ['section[data-rank] h1', '[data-rank-keys]', 'section[data-rank] .bw-primary'], [('[data-rank-key]', 1), ('section[data-rank] .bw-primary', 2)], '')
+        for layout, width in (('desktop', 1024), ('phone', 390))}),
+    'runner-found': (BULK_PICKED + '&pick=1', OPEN_FOUND, {
+        layout: (width, ['.bw-pick-card'], [('[data-selector] [name=destination]', 1), ('[data-selector] [data-step="1"]', 2), ('[data-selector] .bw-primary', 3)], '')
+        for layout, width in (('desktop', 1024), ('phone', 390))}),
+    'matchmaker': ('/workbench/match', None, {
+        layout: (width, ['h1', '.bw-copy-summary'], [('.bw-badge', 1), ('.bw-coverage', 2)], "document.querySelectorAll('.bw-match-details').forEach(d => { d.open = false; });\n")
         for layout, width in (('desktop', 1024), ('phone', 390))}),
     'complete-sets': ('/planning/complete-sets', None, {
         layout: (width, ['[data-bp-row]:first-of-type'], [('[data-bp-row]:first-of-type', 1), ('[data-bp-pin]', 2), ('.bp-repair-details summary', 3)], '')

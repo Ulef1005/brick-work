@@ -16,6 +16,7 @@
 {% if not rows %}<p>No set has a gap. Mark missing parts on a copy first.</p>{% else %}
 <form method="get" action="{{ url_for('web.bw_planning_order') }}" class="oo-form" id="oo-form" data-oo-form>
 <input type="hidden" name="sel" value="1"><input type="hidden" name="was_sell" value="{{ 1 if choice.sell else 0 }}"><input type="hidden" name="was_gain" value="{{ 1 if choice.gain else 0 }}">
+{% if choice.prefer %}<input type="hidden" name="prefer" value="1">{% endif %}{% if choice.tab %}<input type="hidden" name="tab" value="{{ choice.tab }}">{% endif %}{% for v in choice.src_values %}<input type="hidden" name="src" value="{{ v }}">{% endfor %}
 <div class="oo-controls">
 <label class="oo-search"><span class="bc-visually-hidden">Search sets</span>{{ toni_icon('search') }}<input type="search" name="q" value="{{ choice.q }}" placeholder="Search sets" maxlength="60" autocomplete="off"></label>
 <details open class="oo-filter-box" data-oo-filters><summary><span>Filters{% set active=(1 if choice.sell else 0)+(1 if choice.gain else 0)+(1 if choice.theme else 0) %}{% if active %} · {{ active }}{% endif %}</span></summary>
@@ -38,7 +39,7 @@
 <span class="bc-picture" data-item-no="{{ r.item_no }}">{% if r.image %}<img {{ bw_picture_attrs(r.image) }} alt="" loading="lazy">{% else %}<span class="mono">{{ r.number_text or r.name }}</span>{% endif %}</span>
 <span class="oo-who"><span class="oo-name"><span class="mono">{{ r.number_text or r.item_no }}{% if r.show_label %} · {{ r.label }}{% endif %}</span> <strong>{{ toni_nowrap_tail(r.name or r.item_no) }}</strong></span>
 <span class="oo-meta">{{ r.theme or r.category or '' }}{% if (r.theme or r.category) and r.year %} · {% endif %}{{ r.year or '' }}{% if r.checking %} <span class="bc-status incomplete">Check in progress</span>{% endif %}{% if why %} <span class="bc-status unknown">{{ why }}</span>{% if left %} left out{% endif %}{% endif %}</span></span>
-<span class="oo-num"><span class="mono">{% if r.parts or not r.figures %}<span class="oo-gap"><b>−{{ r.parts }}</b> {{ 'part' if r.parts==1 else 'parts' }}</span>{% endif %}{% if r.figures %}<span class="oo-gap"><b>−{{ r.figures }}</b> {{ 'figure' if r.figures==1 else 'figures' }}</span>{% endif %}</span>
+<span class="oo-num"><span class="mono">{% if r.parts or not r.figures %}<span class="oo-gap"><b>{{ r.parts }}</b> {{ 'part' if r.parts==1 else 'parts' }} missing</span>{% endif %}{% if r.figures %}<span class="oo-gap"><b>{{ r.figures }}</b> {{ 'figure' if r.figures==1 else 'figures' }} missing</span>{% endif %}</span>
 <span class="oo-sub mono">{% if left %}not in the list{% elif r.gain %}gain +{{ amount(r.gain,settings.bricklink_currency) }}{% endif %}</span></span>
 </label></li>{% else %}<li class="oo-none">No set matches. Clear a filter to see the rest.</li>{% endfor %}
 </ul>
@@ -48,24 +49,40 @@
 <a class="oo-crumb oo-back" href="{{ page.back_url }}">‹ {{ title }}</a>
 <p class="lab oo-label">Order list</p>
 <h2 data-oo-total>{{ piece(lines|length,'line') }} · {{ piece(order.pieces,'piece') }}<span class="oo-from"> from {{ piece(ticked,'set') }}</span></h2>
-<p class="bp-subtitle oo-sub-top"><span class="oo-from-sub">From {{ piece(ticked,'set') }}. </span>Same part, colour and condition are combined. {% if settings.repair_use_loose_stock %}Loose stock is already taken off.{% else %}Loose stock is not counted (Repair settings).{% endif %}</p>
+<p class="bp-subtitle oo-sub-top"><span class="oo-from-sub">From {{ piece(ticked,'set') }}. </span>Same part, colour and condition are combined. Each line goes to one source. {% if settings.repair_use_loose_stock %}Loose stock is already taken off.{% else %}Loose stock is not counted (Repair settings).{% endif %}</p>
+{% set sp=order.split %}{% set tabbed=lines if not choice.tab else lines|selectattr('source','equalto',choice.tab)|list %}
+{% if lines %}<a class="oo-prefer" role="switch" aria-checked="{{ 'true' if choice.prefer else 'false' }}" href="{{ page.prefer_url }}"><span class="oo-prefer-text"><strong>Prefer Pick a Brick where a line has an element id</strong><span>{{ 'On: lines with an element id start on Pick a Brick.' if choice.prefer else 'Off: lines start on BrickLink. Change a single line with its chips.' }}</span></span><span class="bk-track" aria-hidden="true"></span></a>
+<nav class="oo-tabs" aria-label="Source">{% for key,name,n in (('','All',lines|length),('bl','BrickLink',sp.bl.lines),('pab','Pick a Brick',sp.pab.lines)) %}<a class="oo-tab {{ 'on' if choice.tab==key }}" href="{{ page.tab_url(key) }}" aria-current="{{ 'page' if choice.tab==key else 'false' }}">{{ name }} <i class="mono">{{ n }}</i></a>{% endfor %}</nav>
+<div class="oo-tots">
+{% if choice.tab!='pab' %}<div class="oo-tot"><span>BrickLink</span><b class="mono">{{ amount(sp.bl.total,settings.bricklink_currency) }}</b><i class="mono">{{ piece(sp.bl.lines,'line') }} · {{ piece(sp.bl.pieces,'piece') }}{% if sp.bl.no_sales %} · {{ sp.bl.no_sales }} no sales{% endif %}</i></div>{% endif %}
+{% if choice.tab!='bl' %}<div class="oo-tot"><span>Pick a Brick</span><em>no price</em><i class="mono">{{ piece(sp.pab.lines,'line') }} · {{ piece(sp.pab.pieces,'piece') }}</i>{% if choice.tab=='pab' %}<i>Prices and availability are not looked up.</i>{% endif %}</div>{% endif %}
+{% if sp.shipping is not none and choice.tab!='pab' %}<div class="oo-tot oo-wide"><span>Shipping, estimate</span><b class="mono">{{ amount(sp.shipping,settings.bricklink_currency) }}</b><i class="mono">BrickLink order only · Repair settings</i></div>
+{% if not choice.tab %}<div class="oo-tot oo-wide oo-sum"><span>Estimated total</span><b class="mono">{{ amount(sp.estimate,settings.bricklink_currency) }}</b><i class="mono">parts and shipping · BrickLink only</i></div>{% endif %}{% endif %}
+</div>{% endif %}
 {% if not ticked %}<p class="oo-none">Tick the sets you want to order for.</p>{% elif not lines and not order.skipped %}<p class="oo-none">Nothing to buy for these sets{% if settings.repair_use_loose_stock %}: loose stock covers it{% endif %}.</p>{% endif %}
+{% macro chip(l,src) %}{% set on=l.source==src %}{% if src=='bl' %}<a class="oo-sc {{ 'on' if on }}" href="{{ page.chip_url(l,'bl') }}" aria-current="{{ 'true' if on else 'false' }}"><b>BrickLink</b><i class="mono">{% if l.price is not none %}{{ amount(l.price,l.quote.currency) }} {{ bw_age(l.quote.observed_at) }}{% else %}no sales{% endif %}</i></a>
+{% elif l.element_id %}<a class="oo-sc {{ 'on' if on }}" href="{{ page.chip_url(l,'pab') }}" aria-current="{{ 'true' if on else 'false' }}"><b>Pick a Brick</b><i class="mono">{{ l.element_id }}</i></a>
+{% else %}<span class="oo-sc dis"><b>Pick a Brick</b><i>no element id</i></span>{% endif %}{% endmacro %}
 {% macro line(l) %}<li class="oo-line"><span class="bc-picture oo-tile" data-item-no="{{ l.number_text }}">{% if l.image %}<img {{ bw_picture_attrs(l.image) }} alt="" loading="lazy">{% else %}<span class="mono">{{ l.number_text or '' }}</span>{% endif %}</span>
 <span class="oo-what"><strong>{{ toni_nowrap_tail(l.name or l.number_text or 'Unnamed item') }}</strong>
 <span class="oo-id">{% if l.color_id is not none %}<span class="bc-colour" {% if l.rgb %}style="background:#{{ l.rgb }};color:{{ l.ink }}"{% endif %}>{{ l.color_name or 'Unknown colour' }}</span> {% endif %}<span class="mono">{{ l.number_text }} · {{ 'new' if l.condition=='N' else 'used' }}</span></span>
 <span class="oo-srcs">{% for s in l.sources %}<span class="oo-src mono">{{ s.label }} ×{{ s.quantity }}</span>{% endfor %}</span></span>
-<span class="oo-qty mono">×{{ l.quantity }}</span></li>{% endmacro %}
-{% if lines %}<ul class="oo-lines" data-oo-lines>{% for l in lines[:page.first] %}{{ line(l) }}{% endfor %}</ul>
-{% if lines|length>page.first %}<details class="oo-more"><summary>+ {{ lines|length-page.first }} more {{ 'line' if lines|length-page.first==1 else 'lines' }} · Show all</summary><ul class="oo-lines">{% for l in lines[page.first:] %}{{ line(l) }}{% endfor %}</ul></details>{% endif %}{% endif %}
+<span class="oo-qty mono">×{{ l.quantity }}</span>
+{% if l.key %}<span class="oo-pick">{{ chip(l,'bl') }}{{ chip(l,'pab') }}</span>{% endif %}</li>{% endmacro %}
+{% if tabbed %}<ul class="oo-lines" data-oo-lines>{% for l in tabbed[:page.first] %}{{ line(l) }}{% endfor %}</ul>
+{% if tabbed|length>page.first %}<details class="oo-more"><summary>+ {{ tabbed|length-page.first }} more {{ 'line' if tabbed|length-page.first==1 else 'lines' }} · Show all</summary><ul class="oo-lines">{% for l in tabbed[page.first:] %}{{ line(l) }}{% endfor %}</ul></details>{% endif %}{% elif lines %}<p class="oo-none">No line is on {{ 'BrickLink' if choice.tab=='bl' else 'Pick a Brick' }}.</p>{% endif %}
 {% if capped %}<p class="oo-note" role="note">Only the first {{ copies_limit }} ticked sets are in the list and the file.</p>{% endif %}
 {% if order.skipped %}<div class="oo-warn" role="note"><b>{{ piece(order.skipped|length,'line') }} left out:</b>
 <ul>{% for l in order.skipped %}<li>{{ l.name or l.number_text or 'An unnamed item' }}{% if l.color_name %} · {{ l.color_name }}{% endif %} ({% for s in l.sources %}{{ s.label }}{% if not loop.last %}, {% endif %}{% endfor %}) has no BrickLink {{ 'colour' if l.why=='no BrickLink colour' else 'number' }}. <a href="{{ url_for('web.bw_collection_item',item_id=l.item_id) }}">Link it</a></li>{% endfor %}</ul></div>{% endif %}
-<div class="oo-export">{% if lines %}<a class="button primary bw-primary" href="{{ page.export_url }}" download="missing-parts.xml">Export {{ piece(ticked,'set') }} · BrickLink XML</a>{% else %}<span class="button primary bw-primary" aria-disabled="true">Export {{ piece(ticked,'set') }} · BrickLink XML</span>{% endif %}
-<p class="bp-subtitle">Downloads missing-parts.xml for a BrickLink Wanted List.</p></div>
+{% if lines and sp.no_element %}{% set n=sp.no_element|length %}<div class="oo-warn" role="note"><b>{{ piece(n,'line') }} {{ 'has' if n==1 else 'have' }} no element id.</b> {% for l in sp.no_element[:3] %}{{ l.name or l.number_text }}{% if l.color_name %} {{ l.color_name }}{% endif %}{% if not loop.last %}, {% endif %}{% endfor %}{% if n>3 %} and {{ n-3 }} more{% endif %} can only go to BrickLink, so {{ 'it is' if n==1 else 'they are' }} not in the Pick a Brick file.</div>{% endif %}
+<div class="oo-export">
+<div>{% if sp and sp.bl.lines %}<a class="button primary bw-primary" href="{{ page.export_url }}" download="missing-parts.xml">Download BrickLink XML</a><p class="bp-subtitle mono">{{ piece(sp.bl.lines,'line') }} · {{ piece(sp.bl.pieces,'piece') }} · missing-parts.xml</p>{% else %}<span class="button primary bw-primary" aria-disabled="true">Download BrickLink XML</span><p class="bp-subtitle">{% if lines %}Nothing to download: every line is set to Pick a Brick.{% else %}Nothing to download.{% endif %}</p>{% endif %}</div>
+<div>{% if sp and sp.pab.lines %}<a class="button" href="{{ page.csv_url }}" download="pick-a-brick.csv">Download Pick a Brick CSV</a><p class="bp-subtitle mono">{{ piece(sp.pab.lines,'line') }} · {{ piece(sp.pab.pieces,'piece') }} · element id and quantity</p>{% else %}<span class="button" aria-disabled="true">Download Pick a Brick CSV</span><p class="bp-subtitle">{% if lines %}Nothing to download: no line is set to Pick a Brick.{% else %}Nothing to download.{% endif %}</p>{% endif %}</div>
+</div>
 </section>
 <div class="bc-selection-bar oo-bar" data-oo-bar>
 {% if choice.step=='review' %}<div class="oo-bar-text"><span class="mono">{{ piece(ticked,'set') }}</span><span class="oo-sub">{{ piece(lines|length,'line') }} · {{ piece(order.pieces,'piece') }}</span></div>
-{% if lines %}<a class="button primary bw-primary" href="{{ page.export_url }}" download="missing-parts.xml">Export · BrickLink XML</a>{% else %}<span class="button primary bw-primary" aria-disabled="true">Export · BrickLink XML</span>{% endif %}
+{% if order.split and order.split.bl.lines %}<a class="button primary bw-primary" href="{{ page.export_url }}" download="missing-parts.xml">Download BrickLink XML</a>{% else %}<span class="button primary bw-primary" aria-disabled="true">Download BrickLink XML</span>{% endif %}
 {% else %}<div class="oo-bar-text"><span class="mono" data-oo-bar-sets>{{ piece(ticked,'set') }}</span><span class="oo-sub">{{ piece(lines|length,'line') }} · {{ piece(order.pieces,'piece') }}</span></div>
 {% if rows %}<button type="submit" form="oo-form" name="step" value="review" class="primary bw-primary" data-oo-review {% if not ticked %}aria-disabled="true"{% endif %}>Review list</button>{% endif %}{% endif %}
 </div>

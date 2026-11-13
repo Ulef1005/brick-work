@@ -2,13 +2,13 @@
 
 *Since 1.1.0.*
 
-Do this when several of your sets have gaps and you want one BrickLink wanted list for the parts of the sets you choose, with each line combined across them and showing which sets it comes from.
+Do this when several of your sets have gaps and you want one list for the parts of the sets you choose, with each line combined across them and showing which sets it comes from, and a BrickLink wanted list and a Pick a Brick file to buy them with.
 
 Open **Planning → Complete sets** and press **Order missing parts**, or open `/planning/order-missing-parts`. The page only reads: it changes nothing in your collection, and it works on a read-only instance too. [Check a set's parts](check-set-parts.md) records the gaps it works from.
 
 ## Choose the sets
 
-The left side lists every copy that has a recorded gap, one row per copy ("Set 2" is your second copy of a set). A row shows the set number and name, its theme and year, and the gap: **−12 parts**, or **−9 parts · −1 figure** when a minifigure is missing. A copy whose Set Inspector check is not finished says **Check in progress**; its gaps may still change. Under the gap, **gain +€18.40** is the net gain the [repair ranking](plan-repairs.md) works out for that copy.
+The left side lists every copy that has a recorded gap, one row per copy ("Set 2" is your second copy of a set). A row shows the set number and name, its theme and year, and the gap: **12 parts missing**, or **9 parts missing · 1 figure missing** when a minifigure is missing. A copy whose Set Inspector check is not finished says **Check in progress**; its gaps may still change. Under the gap, **gain +€18.40** is the net gain the [repair ranking](plan-repairs.md) works out for that copy.
 
 Tick the copies you want. **Select all** ticks every set on the screen that is not left out, **Clear** unticks everything. The subtitle counts: **7 sets have gaps · 6 in the list**.
 
@@ -30,9 +30,26 @@ Each line is a part, colour and condition, combined over the ticked sets, with t
 
 A line Brick Work cannot name for BrickLink, because the item has no BrickLink number or its colour has none, is left out of the file and listed in the yellow box with a link to the item, so you can link it and come back.
 
-## Download the file
+## Choose where each line is bought
 
-Press **Export 6 sets · BrickLink XML**. The file `missing-parts.xml` is exactly what **Export N · BrickLink XML** on Complete sets downloads for the same copies. Upload it to BrickLink as a wanted list.
+Every line has two choice chips under it: **BrickLink**, with its cached price and the age of the price (or **no sales**), and **Pick a Brick**, with the element id Brick Work has stored for that part in that colour. The chip with the clay outline is where the line goes; tap the other one to move the line. A line with no stored element id has a dashed **Pick a Brick** chip that says **no element id**: it can only go to BrickLink, and the yellow note under the list names those lines.
+
+Lines start on BrickLink. Turn on **Prefer Pick a Brick where a line has an element id** to start every line that has one on Pick a Brick instead; a line you moved by hand stays where you put it. Brick Work does not ask LEGO.com for prices or availability, so it cannot pick the cheaper source for you: the choice is yours.
+
+The tabs **All**, **BrickLink** and **Pick a Brick** show each source's lines with the number of lines. Under the tabs:
+
+- **BrickLink:** the estimated total of the lines that have a cached price, their lines and pieces, and how many have **no sales** (those are not in the total).
+- **Pick a Brick:** its lines and pieces and **no price**. Pick a Brick has no price here.
+- **Shipping, estimate:** the shipping from the repair settings, for the BrickLink order only, and the **Estimated total** of parts and shipping. Nothing is added for Pick a Brick.
+
+If a part and colour has several element ids in the catalogue, Brick Work uses the lowest one.
+
+## Download the two files
+
+- **Download BrickLink XML:** `missing-parts.xml` holds the lines on BrickLink. When no line is on Pick a Brick it is exactly what **Export N · BrickLink XML** on Complete sets downloads for the same copies. Upload it to BrickLink as a wanted list.
+- **Download Pick a Brick CSV:** `pick-a-brick.csv` has a header `elementId,quantity` and one row per line on Pick a Brick. Upload it on LEGO's Pick a Brick page with its upload button (the feature is rolling out by country, and LEGO reports a limit of 400 part types per upload; Brick Work does not split the file).
+
+A button is greyed, with the reason under it, when no line is on that source.
 
 ## What next
 

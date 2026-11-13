@@ -2299,7 +2299,19 @@ def bw_order_choice(rows,args):
         chosen=[r['id'] for r in shown if r['id'] in asked]
     elif args.get('sel')=='none': chosen=[]
     else: chosen=[r['id'] for r in shown if not out[r['id']]]
-    return dict(q=q,theme=theme,sort=sort,sell=sell,gain=gain,step='review' if args.get('step')=='review' else 'choose',shown=shown,out=out,chosen=chosen)
+    prefer=(args.getlist('prefer') or ['0'])[-1]=='1'
+    src=order_missing.parse_choices(args.getlist('src'))
+    tab=args.get('tab') if args.get('tab') in (order_missing.BL,order_missing.PAB) else ''
+    return dict(q=q,theme=theme,sort=sort,sell=sell,gain=gain,prefer=prefer,src=src,src_values=[order_missing.choice_value(k,v) for k,v in src.items()],tab=tab,step='review' if args.get('step')=='review' else 'choose',shown=shown,out=out,chosen=chosen)
+
+
+def bw_order_source_query(choice):
+    """The source choices of the page as a query for its two files: the default switch and the lines placed by hand."""
+    from ..core import order_missing
+    query={}
+    if choice['prefer']: query['prefer']='1'
+    if choice['src']: query['src']=[order_missing.choice_value(k,v) for k,v in choice['src'].items()]
+    return query
 
 
 @web_page.get('/planning/order-missing-parts')
@@ -2319,17 +2331,23 @@ def bw_planning_order():
             if capped: choice['chosen']=choice['chosen'][:ORDER_COPIES_LIMIT]
             order=order_missing.order_list(db,rows,set(choice['chosen']))
             settings=planning.configuration(db)
+            order_missing.split(db,order,prefer=choice['prefer'],chosen=choice['src'],config=settings)
     except (ValueError,sqlite3.Error,OSError) as exc:
         error=public(exc, 'Brick Work database is not available. Check BW_DB_PATH and try again.');choice=bw_order_choice([],request.args)
     base={k:v for k,v in dict(q=choice['q'],theme=choice['theme'],sort=choice['sort'] if choice['sort']!='missing' else '',
-          sell='0' if not choice['sell'] else '',gain='1' if choice['gain'] else '').items() if v}
+          sell='0' if not choice['sell'] else '',gain='1' if choice['gain'] else '',prefer='1' if choice['prefer'] else '',
+          tab=choice['tab'],src=[order_missing.choice_value(k,v) for k,v in choice['src'].items()]).items() if v}
     def link(**change):
         merged={**base,**change}
         return url_for('web.bw_planning_order',**{k:v for k,v in merged.items() if v not in ('',None,[])})
     picked=dict(sel='1',copy=choice['chosen'],was_sell='1' if choice['sell'] else '0',was_gain='1' if choice['gain'] else '0')
     page=dict(link=link,base=base,picked=picked,
               all_url=link(sel='all'),clear_url=link(sel='none'),review_url=link(**picked,step='review'),back_url=link(**picked),
-              export_url=url_for('web.bw_planning_order_file',copy=choice['chosen']),
+              export_url=url_for('web.bw_planning_order_file',copy=choice['chosen'],**bw_order_source_query(choice)),
+              csv_url=url_for('web.bw_planning_order_pab_file',copy=choice['chosen'],**bw_order_source_query(choice)),
+              prefer_url=link(**picked,step='review',prefer='' if choice['prefer'] else '1'),
+              tab_url=lambda tab: link(**picked,step='review',tab=tab),
+              chip_url=lambda line,source: link(**picked,step='review',src=[order_missing.choice_value(k,v) for k,v in {**choice['src'],line['key']:source}.items()]),
               themes=sorted({r['theme'] for r in rows if r['theme']}),sorts=order_missing.SORTS,
               first=order_missing.FIRST_LINES,sold=sum(1 for r in choice['shown'] if choice['sell'] and r['to_sell']),
               sold_flags=sorted({r['to_sell'] for r in choice['shown'] if choice['sell'] and r['to_sell']}),
@@ -2340,20 +2358,50 @@ def bw_planning_order():
     return response
 
 
+def bw_order_placed(db,args):
+    """The order list of the copies in the query's `copy` list, placed by the query's source choices (`prefer`, `src`): what the two
+    files hold. Raises ValueError for no copies, too many or a copy that is no longer in the list."""
+    from ..core import order_missing, planning
+    ids=args.getlist('copy')
+    if not ids or len(ids)>ORDER_COPIES_LIMIT or len(set(ids))!=len(ids): raise ValueError('Choose copies to export')
+    rows=order_missing.candidates(db)
+    if not set(ids)<={r['id'] for r in rows}: raise ValueError('Copy is unavailable')
+    order=order_missing.order_list(db,rows,set(ids))
+    return order_missing.split(db,order,prefer=(args.getlist('prefer') or ['0'])[-1]=='1',chosen=order_missing.parse_choices(args.getlist('src')),config=planning.configuration(db))
+
+
 @web_page.get('/planning/order-missing-parts/missing-parts.xml')
 @login_required
 def bw_planning_order_file():
-    """The BrickLink XML of the chosen copies: the file `planning.export` makes for Complete sets' Export (same response), by link so the
-    page needs no script. A read, so it stays on a read-only instance."""
-    from ..core import planning
+    """The BrickLink XML of the chosen copies' lines placed on BrickLink (`planning.export`'s file when none is on Pick a Brick), by link
+    so the page needs no script. A read, so it stays on a read-only instance."""
+    from ..core import gaps, order_missing
     from ..core.admin import database
     from .admin_ops import brickwork_path
-    ids=request.args.getlist('copy')
     try:
         with database(brickwork_path(),read_only=True) as db:
-            result=planning.export(db,ids)
+            order=bw_order_placed(db,request.args)
+            result=gaps.export_lines(db,None,named=([l for l in order['lines'] if l['source']==order_missing.BL],order['skipped']))
     except (ValueError,sqlite3.Error,OSError) as exc: abort(400,public(exc, 'Brick Work database is not available · try again'))
     return bw_missing_parts_file(result)
+
+
+@web_page.get('/planning/order-missing-parts/pick-a-brick.csv')
+@login_required
+def bw_planning_order_pab_file():
+    """The Pick a Brick upload file (`elementId,quantity`) of the lines placed on Pick a Brick. A read, from the stored element ids only:
+    nothing is asked of LEGO.com."""
+    from ..core import order_missing
+    from ..core.admin import database
+    from .admin_ops import brickwork_path
+    try:
+        with database(brickwork_path(),read_only=True) as db:
+            text=order_missing.pick_a_brick_csv(bw_order_placed(db,request.args))
+    except (ValueError,sqlite3.Error,OSError) as exc: abort(400,public(exc, 'Brick Work database is not available · try again'))
+    response=current_app.response_class(text,mimetype='text/csv')
+    response.headers['Content-Disposition']='attachment; filename="pick-a-brick.csv"'
+    response.headers['Cache-Control']='no-store'
+    return response
 
 
 @web_page.get('/planning/prices/records')

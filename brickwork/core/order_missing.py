@@ -5,6 +5,7 @@ the repair settings let it use, so the list here is the file `planning.export` w
 added is where each combined line comes from: `sources`, the ticked copies and their quantities. Loose stock is taken from one pool over all
 copies in set-number order, as the export does, not afresh per choice. The XML itself is `planning.export`; nothing here writes it."""
 from collections import defaultdict
+from decimal import Decimal
 import json
 import re
 
@@ -77,7 +78,7 @@ def ordered(rows, sort):
     return sorted(base, key=lambda r: -(r['parts'] + r['figures']))
 
 
-def combine(rows, chosen):
+def combine(rows, chosen, quotes=None):
     """`({(item id, colour id, 'N'|'U'): to buy}, {same key: [(copy id, to buy)]})` over the chosen copies only.
 
     The grouping is `planning.export`'s: the quantity still to buy of each line, per item, colour and condition."""
@@ -88,7 +89,10 @@ def combine(rows, chosen):
         mine = defaultdict(int)
         for line in row['items']:
             if line['missing']:
-                mine[line['item_id'], line['color_id'], gaps.CONDITION.get(row['condition'], 'U')] += line['missing']
+                key = line['item_id'], line['color_id'], gaps.CONDITION.get(row['condition'], 'U')
+                mine[key] += line['missing']
+                if quotes is not None and line.get('quote') and key not in quotes:
+                    quotes[key] = line['quote']                                      # a copy's condition fixes the quote, so any source gives the same
         for key, quantity in mine.items():
             total[key] += quantity
             sources[key].append((row['id'], quantity))
@@ -102,16 +106,88 @@ def order_list(db, rows, chosen):
     `image`, colour `rgb` and `ink`) and `sources`: `[dict(copy_id, label, quantity)]`, the largest first. `skipped` are the lines the file
     leaves out (no BrickLink number or colour), the same way. `pieces` is the sum of the lines in the file, a figure counting as many as its
     quantity."""
-    total, sources = combine(rows, chosen)
+    quotes = {}
+    total, sources = combine(rows, chosen, quotes)
     lines, skipped = gaps.named_lines(db, total)
     by_copy = {r['id']: r for r in rows}
     key = lambda line: (line['item_id'], line['color_id'], line['condition'])           # noqa: E731
     shown = collection.decorate(db, [dict(item_id=l['item_id'], color_id=l['color_id']) for l in lines + skipped])
     names = {(s['item_id'], s['color_id']): s for s in shown}
     for line in lines + skipped:
+        line['quote'] = quotes.get(key(line))
         line.update(sources=[dict(copy_id=c, label=by_copy[c]['source_label'], quantity=q)
                              for c, q in sorted(sources[key(line)], key=lambda s: (-s[1], by_copy[s[0]]['source_label']))])
         shown_line = names[line['item_id'], line['color_id']]
         line.update({k: shown_line.get(k) for k in ('number_text', 'image', 'rgb', 'ink', 'item_type')})
     lines.sort(key=lambda l: (-l['quantity'], l['number_text'] or l['name'] or '', l['color_id'] or 0, l['condition']))
     return dict(lines=lines, skipped=skipped, pieces=sum(l['quantity'] for l in lines))
+
+
+# ---------- the source of each line (#54): BrickLink or Pick a Brick ----------
+
+BL, PAB = 'bl', 'pab'
+PAB_FILE_LIMIT = 400                                                       # part types one Pick a Brick upload takes, as reported; the file is not split
+SOURCE_WORDS = {BL: 'BrickLink', PAB: 'Pick a Brick'}
+
+
+def line_key(line):
+    """The line's address in the query: item, colour (0 for none) and condition, `<item>.<colour>.<N|U>`."""
+    return f"{line['item_id']}.{line['color_id'] if line['color_id'] is not None else 0}.{line['condition']}"
+
+
+def parse_choices(values):
+    """`{line key: 'bl'|'pab'}` from the query's `src` values (`<line key>.<b|p>`); anything else is ignored."""
+    chosen = {}
+    for value in values or []:
+        key, _, letter = str(value).rpartition('.')
+        if key and letter in ('b', 'p'):
+            chosen[key] = PAB if letter == 'p' else BL
+    return chosen
+
+
+def choice_value(key, source):
+    return f"{key}.{'p' if source == PAB else 'b'}"
+
+
+def element_ids(db, lines):
+    """`{(item id, colour id): Pick a Brick element id}` for the lines: the catalogue's lowest element id of the part in that colour
+    (a part and colour can have several; the lowest is always the same one)."""
+    wanted = sorted({l['item_id'] for l in lines if l['color_id'] is not None})
+    if not wanted:
+        return {}
+    found = db.execute("""SELECT item_id,color_id,min(CAST(element_id AS INTEGER)) FROM catalogue.element
+                          WHERE item_id IN (SELECT value FROM json_each(?)) GROUP BY item_id,color_id""", (json.dumps(wanted),))
+    return {(r[0], r[1]): str(r[2]) for r in found}
+
+
+def split(db, order, *, prefer, chosen, config):
+    """`order` (from `order_list`) with every line placed: `source` ('bl' or 'pab'), `element_id` (or None), `key` and `price`
+    (the BrickLink quote's price as a Decimal, or None), then `split`: the totals per source.
+
+    A line goes where the query's `chosen` says; else to Pick a Brick when `prefer` is on and the line has an element id; else to BrickLink.
+    A choice of Pick a Brick for a line with no element id is ignored. Pick a Brick has no price here (its prices are not looked up);
+    the BrickLink total counts the lines with a quote and says how many have none. Shipping is the Repair settings' for the BrickLink part."""
+    elements = element_ids(db, order['lines'])
+    for line in order['lines']:
+        line['key'] = line_key(line)
+        line['element_id'] = elements.get((line['item_id'], line['color_id']))
+        wanted = chosen.get(line['key'])
+        if wanted == PAB and not line['element_id']:
+            wanted = None
+        line['source'] = wanted or (PAB if prefer and line['element_id'] else BL)
+        quote = line.get('quote')
+        line['price'] = Decimal(str(quote['price'])) if quote and quote.get('price') is not None else None
+    parts = {src: [l for l in order['lines'] if l['source'] == src] for src in (BL, PAB)}
+    bl_total = sum((l['price'] * l['quantity'] for l in parts[BL] if l['price'] is not None), Decimal(0))
+    shipping = Decimal(str(config['repair_shipping'])) if parts[BL] else None
+    order['split'] = dict(
+        bl=dict(lines=len(parts[BL]), pieces=sum(l['quantity'] for l in parts[BL]), total=bl_total, no_sales=sum(1 for l in parts[BL] if l['price'] is None)),
+        pab=dict(lines=len(parts[PAB]), pieces=sum(l['quantity'] for l in parts[PAB])),
+        shipping=shipping, estimate=bl_total + (shipping or Decimal(0)), no_element=[l for l in order['lines'] if not l['element_id']])
+    return order
+
+
+def pick_a_brick_csv(order):
+    """The Pick a Brick upload file of the lines placed on Pick a Brick: `elementId,quantity`, one line each, in the list's order."""
+    rows = ['elementId,quantity'] + [f"{l['element_id']},{l['quantity']}" for l in order['lines'] if l['source'] == PAB]
+    return '\r\n'.join(rows) + '\r\n'

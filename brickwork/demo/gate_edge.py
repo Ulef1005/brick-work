@@ -156,3 +156,20 @@ class ValueLayer(Layer):
 
 def value_layer(data=dataset.DATA, pictures=True):
     return ValueLayer(showcase.Path(data), pictures)
+
+
+class OrderLayer(Layer):
+    """The edge layer with Pick a Brick element ids in the catalogue (#54): two parts in three have one, the third has none, so the order list shows
+    lines that can go to either source and lines that can only go to BrickLink. The collection rows are the edge world's, unchanged."""
+
+    def after_catalogue(self, catalogue):
+        super().after_catalogue(catalogue)
+        with closing(sqlite3.connect(catalogue)) as db:
+            pairs = db.execute('SELECT DISTINCT item_id, color_id FROM inventory_part ORDER BY item_id, color_id').fetchall()
+            db.executemany('INSERT OR IGNORE INTO element(element_id, item_id, color_id) VALUES(?,?,?)',
+                           [(str(300000 + 7 * n), item, color) for n, (item, color) in enumerate(pairs) if n % 3 != 2])
+            db.commit()
+
+
+def order_layer(data=dataset.DATA, pictures=True):
+    return OrderLayer(showcase.Path(data), pictures)

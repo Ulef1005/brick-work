@@ -32,7 +32,7 @@ def test_the_choice_lives_in_the_query_and_the_totals_follow_it(coll, client):
     assert set(ticked(soup)) == {s['first'], s['gate_new']}
     assert soup.select_one('[data-oo-summary]').text == '4 sets have gaps · 2 in the list'
     assert soup.select_one('[data-oo-total]').text == '2 lines · 3 pieces from 2 sets'
-    assert 'Export 2 sets · BrickLink XML' in soup.select_one('.oo-export .button').text
+    assert 'Download BrickLink XML' in soup.select_one('.oo-export .button').text
     assert not ticked(page(client, sel='none')) and ticked(page(client, sel='1')) == []
     assert 'Tick the sets' in page(client, sel='none').select_one('.oo-review').text
     assert set(ticked(page(client, sel='all'))) == set(s.values())
@@ -112,7 +112,7 @@ def test_more_lines_than_the_first_few_sit_behind_show_all(coll, client):
     assert len(soup.select('[data-oo-lines] > .oo-line')) == order_missing.FIRST_LINES
     more = soup.select_one('.oo-more')
     assert more.summary.text == '+ 1 more line · Show all' and len(more.select('.oo-line')) == 1
-    assert '−1</b> figure' in str(soup.select_one('[data-oo-rows]'))
+    assert '1</b> figure missing' in str(soup.select_one('[data-oo-rows]'))
 
 
 def test_the_file_is_the_one_complete_sets_exports(coll, client):
@@ -133,7 +133,7 @@ def test_a_phone_step_shows_the_review_and_the_bar_names_the_choice(coll, client
     s = scene(coll)
     soup = page(client, sel='1', copy=[s['first']], step='review')
     assert soup.select_one('#bw-planning')['data-step'] == 'review'
-    assert 'Export · BrickLink XML' in soup.select_one('.oo-bar').text
+    assert 'Download BrickLink XML' in soup.select_one('.oo-bar').text
     choose = page(client, sel='1', copy=[s['first']])
     assert choose.select_one('#bw-planning')['data-step'] == 'choose'
     button = choose.select_one('[data-oo-review]')
@@ -210,7 +210,7 @@ def test_a_choice_past_the_exporters_limit_is_cut_and_says_so(coll, client, monk
     soup = page(client)
     assert 'Only the first 2 ticked sets' in soup.select_one('.oo-review').text
     assert soup.select_one('[data-oo-total]').text.endswith('from 2 sets')
-    assert 'Export 2 sets' in soup.select_one('.oo-export .button').text
+    assert 'Download BrickLink XML' in soup.select_one('.oo-export .button').text
 
 
 def test_the_leave_out_chip_names_the_flags_it_matched(coll, client):

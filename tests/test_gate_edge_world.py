@@ -255,7 +255,7 @@ def test_the_new_states_are_built_in_a_known_world():
 
 def test_only_the_new_states_use_an_edge_world():
     """No state approved before the edge worlds existed was moved into one: its baseline would then depend on the edge data."""
-    assert {(e['screen'], e['state']) for e in gate.load()['states'] if e.get('world', '').startswith('edge')} <= NEW | VALUE
+    assert {(e['screen'], e['state']) for e in gate.load()['states'] if e.get('world', '').startswith('edge')} <= NEW | VALUE | SOURCE
 
 
 def test_the_state_left_unbuilt_says_what_is_missing():
@@ -288,3 +288,20 @@ def test_a_capture_without_javascript_does_not_leak_into_the_next_one(tmp_path):
     off1, on, off2 = (tmp_path / f'{n}.png' for n in range(3))
     assert gate.compare_images(off1, off2)['share'] <= gate.TOLERANCE['pixels']
     assert gate.compare_images(off1, on)['share'] > gate.TOLERANCE['pixels'] or gate.compare_images(off1, on)['size_differs']
+
+
+# #54: the order list's source states, in the `edge-order` world (the edge world plus element ids in the catalogue), added as candidates.
+SOURCE = {('43-Complete-sets', 'order-missing-parts-source'), ('43-Complete-sets', 'order-missing-parts-pick-a-brick')}
+
+
+def test_the_source_states_use_the_edge_order_world_and_are_built():
+    states = {(e['screen'], e['state']): e for e in gate.load()['states']}
+    assert SOURCE <= set(states)
+    for key in SOURCE:
+        assert states[key]['world'] == 'edge-order' and states[key]['built'] is True and isinstance(states[key]['approved'], bool), key
+
+
+def test_the_edge_order_world_adds_element_ids_to_the_catalogue_and_nothing_else():
+    plain, order = fingerprint('edge'), fingerprint('edge-order')
+    assert plain['brickwork.db'] == order['brickwork.db']
+    assert {t for t in order['catalogue.db'] if order['catalogue.db'][t] != plain['catalogue.db'].get(t)} == {'element'}

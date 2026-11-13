@@ -100,6 +100,17 @@ Status model: Complete requires "Set is checked" and nothing missing; a missing 
 
 `tw-dark` on the root, with the mark colours (`--bw-g` `oklch(0.76 0.10 215)`, `--bw-i` `#1A1816`). In bottom sheets and side panels `--tw-sheet-bg` equals `--tw-surface` in dark, so set `--tw-surface: var(--tw-surface-2)` on the sheet container so chips and segments stay visible. Use `--tw-text-muted`, not `--tw-text-faint`, for any text.
 
+## Docs site
+
+The docs site (Zensical, `mkdocs.yml`) wears the same tokens as the app (approved by Ulf, 13.11., B2 of the App Docs Standard).
+
+- **The theme is generated.** `docs/assets/brickwork-docs.css` comes from `static/web/toni/tokens-v2.css` through `scripts/docs_theme.py`. Never edit the CSS by hand: change a token in `design/tokens/brickwork-tokens.css`, run `python3 scripts/tokens_base.py build`, then `python3 scripts/docs_theme.py build`. The `docs-theme` step of `scripts/check.sh` fails when the committed files drift from what `build` writes.
+- **No colours of its own.** The token classes `.tw-light` and `.tw-dark` become Zensical's colour schemes `default` and `slate`, and every `--md-*` variable is a `var(--tw-*)` (`tests/test_docs_theme.py` checks it). Use the colour tokens themselves in any docs CSS, not tokens defined in terms of another (they resolve on `<html>` and follow the system setting).
+- **Clay** goes on links, the active tab (one 2 px underline) and the selected page (ink on `--tw-accent-soft`). The header is paper with a 0.5 px hairline and keeps the app icon on its teal identity tile. No shadows, as in the app.
+- **Admonitions** take the status soft grounds and status-coloured icons. Folded reference blocks (`??? reference`) are plain surface boxes.
+- **Fonts** are Inter and Geist Mono, copied by `docs_theme.py build` into `docs/assets/fonts/` with their licences. The site makes no external requests, so a docs page must not load a font, script or image from another host.
+- Every docs page needs an entry in `mkdocs.yml`'s `nav:` (`scripts/check_nav.py`, run by `check.sh` and CI).
+
 ## Rules for new work
 
 1. Find the screen in `design/sources/frames.json` (or `design/screens/manifest.json`), compare against its PNGs in `design/screens/` (light and dark, 1440 / 1024 / 390), take exact values from the HTML in its screen folder or the matching `design/sources/BW *.dc.html` page, and follow `design/DESIGN-CHECK.md`.

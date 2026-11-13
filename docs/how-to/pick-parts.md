@@ -34,7 +34,10 @@ Every save appears under **Recent saves**, each with its own **Undo**.
 
 - Parts are grouped by part and colour, so a part that three sets need appears once, with the total to pick.
 - The keys sort in the order you set. **Storage** sorts by the named storage that holds usable loose stock of that part. **Category** uses the part category from your catalogue.
-- A key with nothing to sort by is switched off and says why: "No category is recorded for these parts", "No usable loose parts have a recorded location" or "No part sizes are recorded".
+- A key with nothing to sort by is switched off and says why, with one of these messages:
+    - "No category is recorded for these parts"
+    - "No usable loose parts have a recorded location"
+    - "No part sizes are recorded"
 - Parts with no value for a key come after the ones that have one.
 - On a tie, a part that finishes more checked copies comes first.
 

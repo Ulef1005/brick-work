@@ -7,7 +7,7 @@ verified: 0.9
 
 *Since 0.5.0.*
 
-Do this when one wishlist is no longer enough: you want separate lists for a project, for gifts or for one BrickLink wanted list, and you want to move wishes between them.
+Do this when one wishlist is no longer enough. Use separate lists for a project, for gifts or for one BrickLink wanted list, and move wishes between them.
 
 Open **Planning → Wishlist**. The lists sit at the top as chips, each with its count. **All lists** shows every wish from every active list and labels each one with its list's name.
 
@@ -63,7 +63,13 @@ Undo is refused if something changed since, for example when a later save touche
 
 The file downloads, and **Export summary** says how many rows were exported and which were left out and why. Archived lists and wishes are never exported.
 
-A wish Brick Work cannot name in the format you chose is left out and listed, never exported under a made-up number: *No BrickLink number* or *No BrickLink colour* for the XML, *Missing or ambiguous Rebrickable mapping* for the CSV, *Outside selected export kind* for a set in a parts file and the other way round. The rest still exports.
+A wish Brick Work cannot name in the format you chose is left out and listed, never exported under a made-up number. The reasons are:
+
+- *No BrickLink number* or *No BrickLink colour* for the XML
+- *Missing or ambiguous Rebrickable mapping* for the CSV
+- *Outside selected export kind* for a set in a parts file and the other way round
+
+The rest still exports.
 
 A few things to know about the files:
 

@@ -13,7 +13,7 @@ Every item page has a **Links** card: the numbers other catalogues use for the i
 
 - **One block per catalogue** (BrickLink, Rebrickable), with each number in mono type.
 - **A status pill.** *matched* (the catalogue or a list says so), *inferred* (a rule guessed it, such as the set number), *manual* (you chose it), *to check* (a guess waiting for your decision). A number that came with the item shows *catalogue number* or *own number*.
-- **Colour.** A number that holds for one colour only shows that colour's swatch and "only"; the other numbers read "All colours", or "All other colours" next to such a one. A leg part, for example, is one BrickLink number in Black and another in every other colour.
+- **Colour.** A number that holds for one colour only shows that colour's swatch and "only"; the other numbers read "All colours," or "All other colours" next to such a one. A leg part, for example, is one BrickLink number in Black and another in every other colour.
 - **Used for …** marks the number that answers for the colour you are looking at; **Preferred** marks the one you or a rule preferred.
 - **No number.** A catalogue with nothing for the item says so, with the reason: no match found, or to check (no candidate, the kind differs, from the migration).
 

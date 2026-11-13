@@ -14,14 +14,14 @@ You need Brick Work running. Follow the install steps in the [README](https://gi
 ## 1. Open Brick Work
 
 1. Open `http://localhost:3333` in your browser and sign in with the password you set in `data/.env`.
-2. You land on **Sets**. It says **0 sets** and, under **Nothing here yet.**, shows four numbered steps: **Load the catalogue**, **Set up your keys (optional)**, **Bring your collection in** and **See how the inventory works**. This is **Get started**. You can come back to it later under **Tools & Admin → Get started**.
+2. You land on **Sets**. It says **0 sets**. Under **Nothing here yet.** it shows four numbered steps: **Load the catalogue**, **Set up your keys (optional)**, **Bring your collection in** and **See how the inventory works**. This is **Get started**. You can come back to it later under **Tools & Admin → Get started**.
 
 The collection is empty, so the third step shows **Add a set** greyed out until the catalogue is loaded.
 
 ## 2. Load the catalogue
 
 1. In step 1, select **Download the catalogue**. It fetches Rebrickable's public files (17 MB, no login, no key). A progress bar and a list of steps show how far it is; it takes about a minute.
-2. When it is done, step 1 reads **Done** and says how many items and colours the catalogue holds, for example "658 items and 44 colours" on the invented demo, but far more on a real install.
+2. When it is done, step 1 reads **Done** and says how many items and colours the catalogue holds. For example, it says "658 items and 44 colours" on the invented demo, but far more on a real install.
 
 The catalogue is what lets Brick Work know a set's parts without asking a website each time. Rebrickable asks for at most one download a day, so do not repeat this step.
 
@@ -31,7 +31,7 @@ Step 2 is for BrickLink, Rebrickable and Brickset keys. They bring prices and pa
 
 1. In step 2, select **Skip for now**.
 
-You can set them up later. The note under the step says what you give up without them: no prices, and a set newer than the catalogue keeps its number until a Rebrickable key brings its part list. Everything else works.
+You can set them up later. The note under the step says what you give up without them. There are no prices, and a set newer than the catalogue keeps its number until a Rebrickable key brings its part list. Everything else works.
 
 ## 4. Add one set
 
@@ -79,7 +79,7 @@ All the buttons, the keyboard keys and the variants are in [Check a set's parts]
 
 ## 7. See what is missing and where it shows up
 
-1. Go back to your set under **Collection → Sets**. Under **Consists of**, the **Parts** tab now has a line such as **19 parts missing, 8 in loose stock**, a bar with **340 of 359 parts present** and each missing part as a card with **Found 1**. (The numbers are from the invented demo.)
+1. Go back to your set under **Collection → Sets**. Under **Consists of**, the **Parts** tab now has a line such as **19 parts missing, 8 in loose stock**. It also has a bar with **340 of 359 parts present** and each missing part as a card with **Found 1**. (The numbers are from the invented demo.)
 2. Open **Planning → Complete sets**. It lists every copy with recorded gaps, here yours. It ranks them by what a repair is worth and offers the missing parts as a BrickLink XML export or a printable list. This is the page for deciding what to buy or fix first.
 
 ![Planning, Complete sets: copies with recorded gaps, ranked by what a repair is worth, each with Pin and Details.](../img/tutorials/tut-complete-sets-phone-390-light.png#only-light){ width="300" }

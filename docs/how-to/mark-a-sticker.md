@@ -23,6 +23,6 @@ The photo shows only the base part under a sticker, so the print is a clue only 
 
 ## What it does to set detection
 
-An open sticker raises, a little, the sets that hold the part and a sticker sheet. A chosen sticker counts as strong evidence for its set, and the set's reasons say "sticker of set 1682-1 confirmed". A flagged part is never left out as a common part. Details: [Set scoring](../reference/set-scoring.md). Read-only instances show the lists but no buttons.
+An open sticker raises, a little, the sets that hold the part and a sticker sheet. A chosen sticker counts as strong evidence for its set, and the set's reasons say "sticker of set 1682-1 confirmed." A flagged part is never left out as a common part. Details: [Set scoring](../reference/set-scoring.md). Read-only instances show the lists but no buttons.
 
 The API has the same: `GET /api/v2/lots/{id}/stock/{stock_id}/stickers`, `POST` and `DELETE` on `.../sticker`, and the tools `list_sticker_candidates`, `confirm_sticker` and `clear_sticker`. See [Find the sets in a bulk lot](find-the-sets-in-a-bulk-lot.md).

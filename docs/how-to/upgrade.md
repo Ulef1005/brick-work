@@ -21,15 +21,15 @@ The backup is also the way back. An upgrade that changes the schema is one-way.
 | From | To | Schema | What runs | Going back |
 |---|---|---|---|---|
 | 0.5.x | 0.6.0 | 3.3 to 4.0 | You run [`brickwork migrate4`](../reference/cli.md#migrate4) on a copy. It writes a new file and checks it before it publishes. The 3.3 file is never changed. | Keep the 3.3 file and start 0.5.x on it. |
-| 0.6.0 | 0.7.0 | 4.0 to 4.1 | In place, at the first read-write start. | Restore the backup. 0.6.0 cannot open a 4.1 file. |
+| 0.6.0 | 0.7.0 | 4.0 to 4.1 | In place, at the first read/write start. | Restore the backup. 0.6.0 cannot open a 4.1 file. |
 | 0.7.0 | 0.8.0, 0.8.1 | none (stays 4.1) | Nothing. | Start the older version on the same file. |
-| 0.8.x | 0.9.0 | 4.1 to 4.2 | In place, at the first read-write start. | Restore the backup. 0.8.x cannot open a 4.2 file. |
+| 0.8.x | 0.9.0 | 4.1 to 4.2 | In place, at the first read/write start. | Restore the backup. 0.8.x cannot open a 4.2 file. |
 | 0.9.0 | 1.0.0 | none (stays 4.2) | Nothing. | Start the older version on the same file. |
 | 1.0.0 | 1.0.1 | none (stays 4.2) | Nothing. | Start the older version on the same file. |
 
-You can skip versions from 0.6.0 on. Starting 0.9.0 on a 4.0 file runs both in-place steps one after the other, each in its own transaction; a step that fails leaves the file at the version before it. From 0.5.x you always run `brickwork migrate4` first, and it writes the schema of the version you are moving to.
+You can skip versions from 0.6.0 on. Starting 0.9.0 on a 4.0 file runs both in-place steps one after the other, each in its own transaction. A step that fails leaves the file at the version before it. From 0.5.x you always run `brickwork migrate4` first, and it writes the schema of the version you are moving to.
 
-A read-only instance (`BW_READ_ONLY`) never upgrades a file. Start the new version read-write once, then switch.
+A read-only instance (`BW_READ_ONLY`) never upgrades a file. Start the new version read/write once, then switch.
 
 If an older version refuses a newer file, its message may say a 3.3 file must be migrated. Do not run `migrate4` on a 4.x file: it reads only a 3.3 file. Restore the backup instead.
 

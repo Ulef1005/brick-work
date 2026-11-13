@@ -7,14 +7,14 @@ verified: 1.0
 
 *Since 1.1.0.* Build Scout is a Workbench workflow.
 
-Build Scout asks the question [Matchmaker](match-stock-to-sets.md) does not: for **every set in the catalogue**, how much of it do your loose parts already make? Matchmaker fills the gaps of copies you own. Build Scout looks at sets you may not own at all, and shows the ones you could build, or nearly build, from parts that sit in your drawers.
+Build Scout asks the question [Matchmaker](match-stock-to-sets.md) does not: for **every set in the catalogue**, how much of it do your loose parts already make? Matchmaker fills the gaps of copies you own. Build Scout looks at sets you may not own at all, and shows the ones you could build, or come close to building, from parts that sit in your drawers.
 
 Do this once you have recorded a good amount of [loose stock](../concepts/collection-model.md): parts and minifigures that are not part of a copy.
 
 ## Read the list
 
 1. Open **Workbench → Build Scout**: the entry with the magnifier over a brick, in the sidebar and in the phone's top strip (Sets keeps the brick).
-2. Each row is a set, best first. The bar and the percentage say how much of the set's parts your stock covers (**85%**, **398 of 430 parts**). On the right: the parts still missing (**−32 parts**), how many of its minifigures are missing (**2 of 3 figures missing**) and an approximate cost to complete (**≈ €31.20 · 3 lines unpriced**).
+2. Each row is a set, best first. The bar and the percentage say how much of the set's parts your stock covers (**85%**, **398 of 430 parts**). On the right are the parts still missing (**−32 parts**) and how many of its minifigures are missing (**2 of 3 figures missing**). The right side also gives an approximate cost to complete (**≈ €31.20 · 3 lines unpriced**).
 3. Sets are sorted by the percentage available, then by the fewest missing parts.
 4. On a wide screen the set you select shows its details beside the list; on a phone, open the set. The details give **Parts you hold**, the biggest missing lines with their colours (**−6**), **Show all** for the rest, and the figures you hold of those the set needs.
 

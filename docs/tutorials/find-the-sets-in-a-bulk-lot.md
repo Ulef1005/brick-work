@@ -5,7 +5,7 @@ verified: 1.0
 
 # Find the sets in a bulk lot
 
-You bought a bag of mixed loose bricks and suspect that several sets were thrown into it. In this tutorial you let Brick Work rank the sets the bag may hold, tell it about a sticker you cannot read, tick off the parts of one set as you dig them out, and end with an owned copy of that set.
+You bought a bag of mixed loose bricks and suspect that several sets were thrown into it. In this tutorial you let Brick Work rank the sets the bag may hold and tell it about a sticker you cannot read. Then you tick off the parts of one set as you dig them out, and end with an owned copy of that set.
 
 It takes about 15 minutes. You need a Brick Work install with the catalogue loaded and a [lot](../concepts/collection-model.md) of loose parts: filed one piece at a time with Part Spotter or entered some other way. The pictures come from the invented demo collection, so your numbers will differ.
 
@@ -23,7 +23,7 @@ The list only reads; nothing in your collection changes. **Min score**, **Theme*
 
 ## 2. Tell it about a sticker
 
-A sticker is the one thing a photo of a part cannot show: you see the base part, the print is under your thumb. If you flagged a part as having a sticker when you filed it (in Part Spotter, **Has a sticker** under Quantity), the lot page shows **Sticker · not chosen** on that line.
+A sticker is the one thing a photo of a part cannot show: you see the base part, the print is under your thumb. You may have flagged a part as having a sticker when you filed it (in Part Spotter, **Has a sticker** under Quantity). If so, the lot page shows **Sticker · not chosen** on that line.
 
 1. Select **Which sticker?** on the flagged line. The chooser lists the sets that hold that part in its colour and a sticker sheet.
 2. Select **This one** on the set whose sticker you recognise. The line now reads **Sticker · set …**, and the set's reasons say the sticker is confirmed.
@@ -52,7 +52,7 @@ Saving your ticks changes nothing else: the ticked pieces are filed in the lot o
 ![The confirm of Make it a copy on a phone, with the numbers moving, missing and staying.](../img/tutorials/lot-pull-confirm-phone-390-light.png#only-light)
 ![The confirm of Make it a copy on a phone, with the numbers moving, missing and staying.](../img/tutorials/lot-pull-confirm-phone-390-dark.png#only-dark)
 
-One step does everything: the ticked pieces are filed in the lot, the found pieces move into a new copy of the set, and what you did not find is recorded as missing on it, so the copy shows in Matchmaker, Complete sets and the missing-parts file. The page you come back to shows **Open the copy** and **Undo**. Run set detection again for the next set; the lot keeps the leftovers.
+One step does everything. The ticked pieces are filed in the lot, and the found pieces move into a new copy of the set. What you did not find is recorded as missing on it, so the copy shows in Matchmaker, Complete sets and the missing-parts file. The page you come back to shows **Open the copy** and **Undo**. Run set detection again for the next set; the lot keeps the leftovers.
 
 ## What next
 

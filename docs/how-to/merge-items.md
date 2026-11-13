@@ -7,7 +7,13 @@ verified: 1.0
 
 *Since 0.6.0.*
 
-Do this when Brick Work holds an item it cannot yet name: a part or figure the migration could not place, an item you added without a number, or a local item that is really a catalogue item under another number. Open **Manage → Tools & Admin → Unresolved items**. The list holds only what needs a decision: the hub row says how many. Use the search box to find an item, **Filters** to show one reason (merge candidates, links to check, no candidate, kind differs, from the migration, unidentified), **Sort** to order the rows, and the chips to remove a filter. The count above the rows follows.
+Do this when Brick Work holds an item it cannot yet name:
+
+- a part or figure the migration could not place
+- an item you added without a number
+- a local item that is a catalogue item under another number
+
+Open **Manage → Tools & Admin → Unresolved items**. The list holds only what needs a decision: the hub row says how many. Use the search box to find an item and **Filters** to show one reason (merge candidates, links to check, no candidate, kind differs, from the migration, unidentified). **Sort** orders the rows, and the chips remove a filter. The count above the rows follows.
 
 ## What each row asks
 
@@ -20,9 +26,17 @@ Every decision is saved as one event, and the page offers **Undo** straight afte
 
 ## Merge from an item's page
 
-Open the local item and press **Merge into…** in its Links card. The page suggests the likely items; search by number or name for another. Pick one to see **What moves** (copies, part lines, loose stock, wishes, prices, links, with the count of each) and how many rows the other item already has and keep as they are. Press **Merge into …** to confirm. The item you merged into opens with **Undo**.
+Open the local item and press **Merge into…** in its Links card. The page suggests the likely items; search by number or name for another. Pick one to see **What moves** (copies, part lines, loose stock, wishes, prices, links, with the count of each). It also shows how many rows the other item already has, which keep as they are. Press **Merge into …** to confirm. The item you merged into opens with **Undo**.
 
-If the merge is not allowed the page says why in plain words and offers no button: the item is part of the catalogue, the other item was merged already, the kinds differ, a copy holds a line for both items, or a job for one of them is still running. If Brick Work is busy (a sync or a job holds the database) the page says **Busy, try again**; nothing was changed. On a read-only instance the page is closed.
+If the merge is not allowed the page says why in plain words and offers no button. This happens when:
+
+- the item is part of the catalogue
+- the other item was merged already
+- the kinds differ
+- a copy holds a line for both items
+- a job for one of them is still running
+
+If Brick Work is busy (a sync or a job holds the database) the page says **Busy, try again**; nothing was changed. On a read-only instance the page is closed.
 
 ## Unmerge
 
@@ -33,7 +47,7 @@ The item you merged into lists **Merged into this item**, with **Unmerge** for e
 A merge is allowed only for a local item (or one the catalogue has retired), into an item of the same kind that is not merged itself. The local item stays in the database, marked as merged, and its page redirects to the item it went into.
 
 - **Added up.** Loose stock of the same condition, lot and storage becomes one row with the quantities added; the other row is archived. Two wishes for the same list and colour become one with the quantities added.
-- **The catalogue item's row stays.** Where both items hold the same price key, property, picture, link, set preference or status, the catalogue item's row stays and the local one is dropped. A migration guess that asked for this very decision is dropped too.
+- **The catalogue item's row stays.** Where both items hold the same price key, property, picture, link, set preference or status, the catalogue item's row stays and the local one is dropped. A migration guess that asked for this decision is dropped too.
 - **The number is kept.** The local item's own number stays on the catalogue item as a link, so the number still finds it.
 - **Refused.** A copy, a loose figure or a fetched part list that holds a line for both items in one colour. Correct that line by hand first; the message names the copy.
 
@@ -41,8 +55,8 @@ A merge is allowed only for a local item (or one the catalogue has retired), int
 
 ## Moving an item to another kind
 
-An item whose kind was guessed from its theme can be wrong (a set that is really a gear item). When BrickLink says so and the item is already held, **Move to …** changes its kind and replaces the copies by loose stock of the new kind, or the other way round, keeping the condition, storage, price, note, flags and photos. It is refused when it would lose something: a copy with part lines, a damaged piece becoming a copy, or a lot. Undo restores the copies or stock rows exactly.
+An item whose kind was guessed from its theme can be wrong (a set that is in fact a gear item). When BrickLink says so and the item is already held, **Move to …** changes its kind. It replaces the copies by loose stock of the new kind, or the other way round, and keeps the condition, storage, price, note, flags and photos. It is refused when it would lose something: a copy with part lines, a damaged piece becoming a copy, or a lot. Undo restores the copies or stock rows exactly.
 
 ## Two catalogue items for one thing
 
-A merge is for a local item. When both items are catalogue items (an older and a reissued variant of a figure), move what you own from one to the other instead, with **Change variant…** beside **Merge into…** on the item page: [Change an item's variant](change-variant.md).
+A merge is for a local item. When both items are catalogue items (an older and a reissued variant of a figure), move what you own from one to the other instead. Use **Change variant…** beside **Merge into…** on the item page: [Change an item's variant](change-variant.md).

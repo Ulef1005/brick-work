@@ -5,7 +5,7 @@ verified: 1.0
 
 # Brick Work MCP server
 
-Brick Work ships an [MCP](https://modelcontextprotocol.io) server, so an AI assistant can read your collection and, if you allow it, change it. The server is a thin layer over the [REST API](api-v2.md): every tool call is one API request with your token, so scopes, Undo, idempotency and the audit log behave exactly as for any other API client.
+Brick Work ships an [MCP](https://modelcontextprotocol.io) server, so an AI assistant can read your collection and, if you allow it, change it. The server is a thin layer over the [REST API](api-v2.md). Every tool call is one API request with your token, so scopes, Undo, idempotency, and the audit log behave exactly as for any other API client.
 
 ## Before you start
 
@@ -36,7 +36,9 @@ brickwork mcp --api-url http://127.0.0.1:3333/api/v2 --token-file data/mcp-token
 
 In an assistant's MCP settings this is one server entry: the command `brickwork`, the arguments `mcp --in-process --token-file /path/to/mcp-token`, and the working directory of your Brick Work checkout. With Docker, run the same command through `docker compose exec -T brickwork brickwork mcp ...`.
 
+<!-- vale Google.Headings = NO -->
 ### Over the network (HTTP)
+<!-- vale Google.Headings = YES -->
 
 ```sh
 brickwork mcp --transport http --host 127.0.0.1 --port 5000
@@ -48,11 +50,11 @@ This serves the MCP endpoint at `/mcp` next to the app. Each request must carry 
 
 - **Read tools** are always available.
 - **Write tools** appear only when the token has the `write` scope **and** the server runs with `--allow-write` (or `BW_MCP_WRITE=1`). Both are needed: a write token alone does not enable them.
-- **Admin work** (settings, source keys, catalogue import, database export, tokens) is never available as a tool. Use the app or the CLI.
+- **Administrator work** (settings, source keys, catalogue import, database export, tokens) is never available as a tool. Use the app or the command-line tool.
 - Every write returns an `event_id` and, where possible, an `undo_url`. The `undo_event` tool takes that id back.
 - A write tool accepts an optional `idempotency_key`. Pass the same key when retrying a call, and the first result is returned instead of applying the change twice.
 - `archive_*` tools archive. Nothing is hard-deleted through MCP, and archived records can be restored in the app.
-- **Renamed after 0.9.0:** the wishlist tools `post_wishlists`, `patch_wishlists_id`, `delete_wishlists_id`, `post_wishlists_id_restore` and `post_wishlists_id_transfer` are now `create_wishlist`, `edit_wishlist`, `archive_wishlist`, `restore_wishlist` and `transfer_wishes`. A client that calls an old name gets *unknown tool* ([ADR 0017](https://github.com/Ulef1005/brick-work/blob/main/docs/adr/0017-api-v2.md), amendment of 8 Nov 2026).
+- **Renamed after 0.9.0:** the wishlist tools `post_wishlists`, `patch_wishlists_id`, `delete_wishlists_id`, `post_wishlists_id_restore` and `post_wishlists_id_transfer` are now `create_wishlist`, `edit_wishlist`, `archive_wishlist`, `restore_wishlist` and `transfer_wishes`. A client that calls an old name gets *unknown tool* ([ADR 0017](https://github.com/Ulef1005/brick-work/blob/main/docs/adr/0017-api-v2.md), amendment of November 8, 2026).
 
 ## Items go by number
 
@@ -68,14 +70,14 @@ A tool that adds something (`add_copies`, `add_stock`, `add_wish`, `take_for_gap
 
 A merged item answers a read with `moved` and its `survivor`. The tool reports it as an error, so look the number up again.
 
-Copies, stock lines, wishes, wishlists, storages, lots, events, jobs and orders keep their ids. Take them from the `list_*` tools, which also filter by number and provider (`list_copies` with `number`, for example).
+Copies, stock lines, wishes, wishlists, storages, lots, events, jobs, and orders keep their ids. Take them from the `list_*` tools, which also filter by number and provider (`list_copies` with `number`, for example).
 
 ## Data and privacy
 
-The assistant sees what its token can read: your sets, parts, prices, storage locations and notes. Brick Work itself sends nothing to the assistant's provider. The assistant client does, so choose a client and provider you are comfortable sharing your collection with, and prefer a read-only token.
+The assistant sees what its token can read: your sets, parts, prices, storage locations, and notes. Brick Work itself sends nothing to the assistant's provider. The assistant client does, so choose a client and provider you are comfortable sharing your collection with, and prefer a read-only token.
 
 ## Tools and resources
 
-[MCP tools and resources](../developer/mcp-reference.md) lists every read tool, write tool and resource, generated from the server's own tool table when the docs site is built, so it always matches the release.
+[MCP tools and resources](../developer/mcp-reference.md) lists every read tool, write tool, and resource. The list is generated from the server's own tool table when the docs site is built, so it always matches the release.
 
 A resource is a read-only document an assistant can open by its address, for example `brickwork://summary` or `brickwork://items/bricklink/part/3001`.

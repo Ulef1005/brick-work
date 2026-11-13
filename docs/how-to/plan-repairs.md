@@ -7,7 +7,7 @@ verified: 1.0
 
 *Since 0.5.0.*
 
-Do this when several of your sets have gaps (missing or damaged parts, missing figures) and you want to know which repair is worth buying first, and to put the parts on a BrickLink wanted list.
+Do this when several of your sets have gaps (missing or damaged parts, missing figures). Use it to find which repair is worth buying first, and to put the parts on a BrickLink wanted list.
 
 **Planning → Complete sets** lists your copies that have a recorded gap and ranks them by the value a repair gains for each unit of money spent. It works from prices Brick Work already holds: nothing is fetched when you open the page. [Check a set's parts](check-set-parts.md) records the gaps, and [Pictures, prices and where they come from](pictures-and-prices.md) fills in the prices.
 
@@ -50,9 +50,9 @@ When 9 in 10 of a copy's present lines have a used price, **Details** adds **Par
 1. Tick the copies. The button counts them.
 2. Press **Export N · BrickLink XML**. A file `missing-parts.xml` downloads, for a BrickLink wanted list.
 
-Each line is an item, colour and condition with the quantity still to buy: with *Use loose stock* on, the quantity is the gap less your loose parts. A line Brick Work cannot name for BrickLink, because the item has no BrickLink number or its colour has none, is left out of the file and named in the message ("Exported · 1 left out: …"). The rest exports. Exporting works on a read-only instance too.
+Each line is an item, colour and condition with the quantity still to buy: with *Use loose stock* on, the quantity is the gap less your loose parts. Brick Work cannot name some lines for BrickLink, because the item has no BrickLink number or its colour has none. Such a line is left out of the file and named in the message ("Exported · 1 left out: …"). The rest exports. Exporting works on a read-only instance too.
 
-To order the parts of many sets at once, with each line combined and showing which sets it comes from, press **Order missing parts** instead: see [Order the parts all your sets are missing](order-missing-parts.md).
+To order the parts of many sets at once, press **Order missing parts** instead. Each line is combined and shows which sets it comes from. See [Order the parts all your sets are missing](order-missing-parts.md).
 
 **Print missing parts of N** opens a printable list of the same copies; see [Export or print the missing parts](export-missing-parts.md).
 

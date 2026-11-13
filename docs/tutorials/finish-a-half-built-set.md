@@ -9,7 +9,7 @@ Do this when you have a set that is not whole: bought used, or partly built, or 
 
 ## Before you start
 
-You need Brick Work with the catalogue loaded and the copy added with **Add**, with **Completeness** left on **Unknown · from checks** (see [Your first set](first-set.md) if you have not done that). Use a small set. You also need a way to buy parts, such as a BrickLink store.
+You need Brick Work with the catalogue loaded and the copy added with **Add**, with **Completeness** left on **Unknown · from checks**. If you have not done that, see [Your first set](first-set.md). Use a small set. You also need a way to buy parts, such as a BrickLink store.
 
 ## 1. Find the copy
 
@@ -54,7 +54,7 @@ To buy, choose the list chip, select **Export**, choose **BrickLink XML** under 
 
 When the parts arrive, bring the order in and count it.
 
-1. Open **Workbench → Orders**. Under **Import an order**, choose a way in: **Paste order email** and **Read email**, **BrickLink XML upload** and **Import and review**, or **Import a placed order** if you have a BrickLink key.
+1. Open **Workbench → Orders**. Under **Import an order**, choose a way in. Use **Paste order email** and **Read email**, or **BrickLink XML upload** and **Import and review**. If you have a BrickLink key, you can also use **Import a placed order**.
 2. Open the order, then the document under **Documents · resume review**. Match any line marked **Unmatched**, then select **Finish review** and **Save lines**.
 3. Select **Count what arrived**. Set **Received** on each line with **+** and **−**, or select **Mark all received**. Select **Save partial receipt**.
 

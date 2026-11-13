@@ -81,6 +81,6 @@ The `BW_HIDE_*` settings only remove the entry; the pages still open from a link
 
 | Variable | Default | What it does |
 |---|---|---|
-| `BW_PRIVATE_PATTERNS_FILE` | none | A file of extra regular expressions, one per line, that the private-material scans of the source tree, the demo and the documentation site also reject, such as your own host names. |
+| `BW_PRIVATE_PATTERNS_FILE` | none | A file of extra regular expressions, one per line, such as your own host names. The private-material scans of the source tree, the demo and the documentation site also reject them. |
 
 See also: [Command line](cli.md).

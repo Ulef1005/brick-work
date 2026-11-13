@@ -5,7 +5,7 @@ verified: 1.0
 
 # Build from your bulk
 
-You have sets that lack a few parts and a pile of loose parts that might fill the gaps. In this tutorial you give the loose parts a home, pick the missing parts of several sets in one pass through your drawers, and then let Brick Work show which sets your loose stock now finishes.
+You have sets that lack a few parts and a pile of loose parts that might fill the gaps. In this tutorial you give the loose parts a home and pick the missing parts of several sets in one pass through your drawers. Then you let Brick Work show which sets your loose stock now finishes.
 
 It takes about 20 minutes. You need a Brick Work install with some copies that have [recorded missing parts](../how-to/check-set-parts.md) and some loose parts in stock. The pictures come from the invented demo collection, so your numbers will differ.
 

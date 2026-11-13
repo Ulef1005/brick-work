@@ -3,7 +3,7 @@ audience: user
 verified: 1.0
 ---
 
-# The data model: two files and one id per item
+# The data model: Two files and one id per item
 
 *Since 0.6.0.*
 
@@ -22,7 +22,13 @@ The two files are a pair. The collection file is bound to one catalogue, and the
 Every set, part, minifigure, booklet, box and colour has a **Brick Work id**, a running number. Rebrickable and BrickLink numbers are not ids. They are links that point at an item.
 
 - **Catalogue items** are numbered by the catalogue builder. A new download keeps every id it already knows, matched by Rebrickable's number, so an update never renumbers what your collection uses.
-- **Items born in your collection** get numbers from 1,000,000,000 up: an item you added by its BrickLink number only, a set newer than the catalogue fetched through Rebrickable's API, or an item you added before it was identified. The two ranges never meet.
+- **Items born in your collection** get numbers from 1,000,000,000 up:
+
+    - an item you added by its BrickLink number only
+    - a set newer than the catalogue fetched through Rebrickable's API
+    - an item you added before it was identified
+
+    The two ranges never meet.
 - An id is **never reused**. When you merge a duplicate into a catalogue item, the old id points to the new one ([Resolve unresolved items and merge items](../how-to/merge-items.md)).
 
 The item page's address uses this id (`/collection/item/<id>`), and so does API v2.
@@ -40,15 +46,15 @@ A **part list** is what goes into a set or a figure. A copy names the list it wa
 - a Rebrickable version from the catalogue (sets can have several versions), or
 - a list stored in your collection file: BrickLink's list for that set, or Rebrickable's list of a set newer than your catalogue.
 
-A copy's own lines (what is missing, what you checked, what you took from loose stock) belong to the copy, not to the catalogue. When you switch a copy to another list, its lines are updated in place: lines that stay keep their marks, new lines are added and vanished lines are retired, so your check history always points at real lines. A new catalogue never switches a copy by itself. When it changes the list a copy was built from, the copy says so and offers **Switch to the current list**, and you decide ([Choose and switch a part list](../how-to/part-lists.md)).
+A copy's own lines (what is missing, what you checked, what you took from loose stock) belong to the copy, not to the catalogue. When you switch a copy to another list, its lines are updated in place. Lines that stay keep their marks, new lines are added and vanished lines are retired, so your check history always points at real lines. A new catalogue never switches a copy by itself. When it changes the list a copy was built from, the copy says so and offers **Switch to the current list**, and you decide ([Choose and switch a part list](../how-to/part-lists.md)).
 
 ## The collection on top
 
-Copies, minifigures, loose stock, lots, storage, wishes and orders are described in [Sets, copies, lots and stock](collection-model.md). In this model they all name items and colours by Brick Work id, so they work the same for an item from the catalogue, from BrickLink only, or one you have not identified yet.
+Copies, minifigures, loose stock, lots, storage, wishes and orders are described in [Sets, copies, lots and stock](collection-model.md). In this model they all name items and colours by Brick Work id. That is why they work the same for an item from the catalogue, from BrickLink only, or one you have not identified yet.
 
 ## Updating the catalogue
 
-**Re-download** and **Rebuild** in **Tools & Admin → Catalogue** build a new `catalogue.db` beside the old one and swap it in when it is ready, then reconcile your collection with it ([Settings and maintenance](../how-to/settings-and-maintenance.md#catalogue)). A new file is checked before it is swapped in, and one that fails its checks never replaces the old one. **Rebuild** moves the current file aside rather than deleting it. Nothing you own is stored in the catalogue file, so a build never changes your collection.
+**Re-download** and **Rebuild** in **Tools & Admin → Catalogue** build a new `catalogue.db` beside the old one and swap it in when it is ready. Then they reconcile your collection with it ([Settings and maintenance](../how-to/settings-and-maintenance.md#catalogue)). A new file is checked before it is swapped in, and one that fails its checks never replaces the old one. **Rebuild** moves the current file aside rather than deleting it. Nothing you own is stored in the catalogue file, so a build never changes your collection.
 
 ## Every change is an event
 
@@ -56,6 +62,6 @@ A save writes one **event** that names what changed. That is what **Undo** rever
 
 ## From 0.5
 
-A 0.5 collection (schema 3.3) is moved with `brickwork migrate4`. The command reads the old file without changing it, translates every BrickLink number and colour to a Brick Work item and colour, proves the result, and writes a report of everything it could not carry ([CLI](../reference/cli.md#migrate4)).
+A 0.5 collection (schema 3.3) is moved with `brickwork migrate4`. The command reads the old file without changing it and translates every BrickLink number and colour to a Brick Work item and colour. It then proves the result and writes a report of everything it could not carry ([CLI](../reference/cli.md#migrate4)).
 
 The full design, with the tables and the reasoning, is [Data model 4.0 design](../data-model-4.0/data-model-design.md), and the DDL and the estimate are in [`docs/data-model-4.0/`](https://github.com/Ulef1005/brick-work/tree/main/docs/data-model-4.0) on GitHub.

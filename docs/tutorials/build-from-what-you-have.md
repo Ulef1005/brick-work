@@ -5,14 +5,14 @@ verified: 1.0
 
 # Build from what you have, and order the rest
 
-Your loose parts may already make a set you do not own, or a set you own may only lack a handful of parts. In this tutorial you let Build Scout rank the catalogue by how much of each set your stock covers, turn the best one into a copy, and collect the missing parts of several sets into one BrickLink wanted list.
+Your loose parts may already make a set you do not own, or a set you own may only lack a handful of parts. In this tutorial you let Build Scout rank the catalogue by how much of each set your stock covers, and turn the best one into a copy. Then you collect the missing parts of several sets into one BrickLink wanted list.
 
 It takes about 15 minutes. You need a Brick Work install with the catalogue loaded, a good amount of [loose stock](../concepts/collection-model.md) and some copies with [recorded missing parts](../how-to/check-set-parts.md). The pictures come from the invented demo collection, so your numbers will differ.
 
 ## 1. Rank the catalogue by your stock
 
 1. Open **Workbench → Build Scout**.
-2. Each row is a set, best first. The bar and the percentage say how much of its parts your loose stock covers; on the right are the missing parts, the missing minifigures and an approximate cost to complete.
+2. Each row is a set, best first. The bar and the percentage say how much of its parts your loose stock covers. On the right are the missing parts, the missing minifigures and an approximate cost to complete.
 3. Narrow the list: **Parts from** chooses which stock counts (loose stock, lots, storages), **Min** is the least percentage, and **Theme**, **Years** and **Size** keep matching sets only.
 
 ![Build Scout on a desktop: a list of catalogue sets ranked by the percentage of their parts the loose stock makes, with missing parts and cost.](../img/tutorials/scout-list-desktop-1440-light.png#only-light)
@@ -35,7 +35,7 @@ The percentage counts the set's own parts only. A part in another colour is list
 
 1. Open **Planning → Complete sets** and press **Order missing parts**.
 2. Tick the copies whose gaps you want to fill. **Leave out sets to sell or part out** is on by default, so copies you plan to sell stay greyed and unticked.
-3. Read the order list on the right: its heading counts exactly the ticked sets, each line is a part, colour and condition combined over those sets, and a chip per set shows where the quantity comes from.
+3. Read the order list on the right. Its heading counts exactly the ticked sets. Each line is a part, colour and condition combined over those sets, and a chip per set shows where the quantity comes from.
 
 ![Order missing parts on a desktop: sets with gaps on the left with ticks, the combined order list with source set chips on the right.](../img/tutorials/order-missing-desktop-1440-light.png#only-light)
 ![Order missing parts on a desktop: sets with gaps on the left with ticks, the combined order list with source set chips on the right.](../img/tutorials/order-missing-desktop-1440-dark.png#only-dark)

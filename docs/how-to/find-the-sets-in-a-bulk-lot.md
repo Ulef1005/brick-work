@@ -7,12 +7,15 @@ verified: 1.0
 
 *Since 1.1.0.*
 
-A lot is a pile of loose parts bought together. **Set detection** on the lot page ranks the catalogue's sets by how strongly the parts in the lot point to them, so you can see which sets the pile was made from.
+A lot is a pile of loose parts bought together. **Set detection** on the lot page ranks the catalogue's sets by how strongly the parts in the lot point to them. This shows you which sets the pile was made from.
 
 1. Open **Collection → Parts**, group by lot, and open the lot. Below **Parts in this lot** is **Which sets are in this lot?**
 2. Read the candidates, best first. The **score** is the evidence for a set compared with the best candidate (the best scores 100%). It is not a probability.
-3. Under each score the reasons say why: how many of the set's distinctive parts are in the lot (a distinctive part is held by 25 sets or fewer), how many printed parts only this set holds, and how many of the set's part lines the lot has.
-4. Select **Details** to see **Found in the lot** (the distinctive parts the lot has, with pictures), **Not found yet**, and **Swaps, not counted in the score** (the lot has the part in another colour, or as an alternate mould). Select **Open set** to see the set in the catalogue. The best candidate is open already.
+3. Under each score the reasons say why:
+   - how many of the set's distinctive parts are in the lot (a distinctive part is held by 25 sets or fewer)
+   - how many printed parts only this set holds
+   - how many of the set's part lines the lot has
+4. Select **Details** to see **Found in the lot** (the distinctive parts the lot has, with pictures) and **Not found yet**. **Details** also shows **Swaps, not counted in the score** (the lot has the part in another colour, or as an alternate mould). Select **Open set** to see the set in the catalogue. The best candidate is open already.
 
 ## Narrow the list
 

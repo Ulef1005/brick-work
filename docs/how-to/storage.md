@@ -29,7 +29,7 @@ To change a storage later, select it in the list and press **Edit**, change the 
 
 The page's facts then show where it is. A part [lot](../concepts/collection-model.md) has its own page; editing its storage applies to the whole lot.
 
-If the edit gives a loose item the same item, colour, condition, lot and storage as another line of loose stock, the two lines merge into one and the notice says **Merged into existing stock**. Press **Undo** to split them again.
+If the edit gives a loose item the same item, colour, condition, lot and storage as another line of loose stock, the two lines merge into one. The notice says **Merged into existing stock**. Press **Undo** to split them again.
 
 ## Give many things a place
 
@@ -54,7 +54,7 @@ A lot takes its parts with it: loose parts filed in that lot and in the same sto
 
 ## See what's in a storage
 
-Select a storage in the list on **Workbench → Storage**. It shows its type, where it sits, its note, and its contents grouped as **Sets**, **Minifigures**, **Part lots** and **Other** (instructions, boxes and the like), with a search and filters. **Not stored** in the same list shows everything without a place. The name of a set, minifigure, part or other item opens its page; a lot has no page of its own, so its name is plain text. In select mode a click on a name selects the row instead.
+Select a storage in the list on **Workbench → Storage**. It shows its type, where it sits, its note, and its contents grouped as **Sets**, **Minifigures**, **Part lots** and **Other** (instructions, boxes and the like), with a search and filters. **Not stored** in the same list shows everything without a place. The name of a set, minifigure, part or other item opens its page; a lot has no page of its own, so its name is plain text. In select mode, choosing a name selects the row instead.
 
 On the **Collection** lists you can also filter by **Storage** or group by it.
 
@@ -75,7 +75,7 @@ Open **History** at the bottom of **Workbench → Storage**. It lists storages y
 
 Where things came from lives next door. On **Workbench → Storage**, follow **Purchase locations**.
 
-- The list shows each place with its **Kind**, the **Orders** whose store has the same name, the number of **Copies** bought there, when it was **Last used** and what you **Spent** (from the price paid, per currency).
+- The list shows each place with its **Kind** and the **Orders** whose store has the same name. It also shows the number of **Copies** bought there, when it was **Last used** and what you **Spent** (from the price paid, per currency).
 - Choose a **Kind** (BrickLink store, Online shop, Shop, Market, Fair, Private or Other) and it saves at once.
 - Press a place's name to see the sets bought there.
 - **Add location** opens **Tools & Admin**, where purchase places are kept.

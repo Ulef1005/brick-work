@@ -14,7 +14,7 @@ Do this when you saved something by mistake: a wrong count, a copy archived too 
 Undo appears where you made the change:
 
 - **Right after a save.** The notice that confirms a save ends in **Undo** on item pages, in **Manage → Add**, in **Part Spotter** and in **Set Inspector**. On an item page the Undo stays offered while that browser tab is open, also after a reload.
-- **On the planning screens.** After a pin or a change to the repair settings on Complete sets, and after any change to the lists on the Wishlist, **Undo** appears next to the message at the top of the page.
+- **On the planning screens.** **Undo** appears next to the message at the top of the page after a pin or a change to the repair settings on Complete sets. It also appears after any change to the lists on the Wishlist.
 - **In a history list.** **Part Runner** and **Matchmaker** list **Recent saves**. A storage location's page has **History**, and an order has **Allocation history**. Each row that can still be undone has an **Undo** button; rows already undone say **Undone**.
 - **For tokens.** After you revoke an API token, the banner offers **Undo** for 10 minutes.
 - **In Tools & Admin.** After **Save settings** the page offers **Undo**, and after you remove a source key the key's card does. **Unresolved items** offers it after each decision, a merge included ([Resolve unresolved items and merge items](merge-items.md)).
@@ -42,7 +42,7 @@ Every write through the API returns an `event_id` and, when the change can be un
 {"data": {"...": "..."}, "event_id": 4812, "undo_url": "/api/v1/events/4812/undo", "idempotent_replay": false}
 ```
 
-To undo it, send `POST` to that URL with no body, a token with the `write` scope and an `Idempotency-Key` header:
+To undo it, send `POST` to that `undo_url` with no body, a token with the `write` scope and an `Idempotency-Key` header:
 
 ```sh
 curl -X POST http://127.0.0.1:3333/api/v1/events/4812/undo \

@@ -7,7 +7,7 @@ verified: 1.0
 
 *Since 1.1.0.*
 
-Set detection says a set is probably in your bulk lot. The pull list shows which of its parts you still have to find, lets you tick them off as you find them, and ends with an owned copy of the set.
+Set detection says a set is probably in your bulk lot. The pull list shows which of its parts you still have to find and lets you tick them off as you find them. It ends with an owned copy of the set.
 
 ## Open the pull list
 

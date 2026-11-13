@@ -170,6 +170,13 @@ def build_docs(out):
         config = yaml.safe_load((ROOT / 'mkdocs.yml').read_text())
         docs = config.get('docs_dir', 'docs')
         shutil.copytree(ROOT / docs, Path(tmp) / docs)   # the docs folder must lie inside the project root (6 MB)
+        # The site loads no Mermaid renderer (no external requests), so in the copy a diagram becomes a link to GitHub, which
+        # draws it, as on the other pages (mermaid_to_link); the source file keeps its diagram.
+        for page in (Path(tmp) / docs).rglob('*.md'):
+            text = page.read_text()
+            if '```mermaid' in text:
+                resolved = (Path(docs) / page.relative_to(Path(tmp) / docs)).as_posix()
+                page.write_text(mermaid_to_link(text, resolved))
         config['site_dir'] = str(Path(tmp) / 'site')
         path = Path(tmp) / 'mkdocs.yml'
         path.write_text(yaml.safe_dump(config, sort_keys=False, allow_unicode=True))

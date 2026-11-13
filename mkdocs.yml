@@ -1,15 +1,23 @@
-# The user docs (App Standard, Maintenance § Rules, User docs): Zensical reads this file unchanged.
-# No nav: the four Diátaxis sections under docs/ appear on their own, each section's index.md first.
+# The docs site (App Docs Standard, ai-wiki apps/references/app-docs-standard): Zensical reads this file unchanged.
+# Three tabs (Home, User guide, Developers) from the explicit nav: below. Every built page is in nav: and every nav: entry
+# exists: tests/test_docs_nav.py checks it. A new docs page needs its nav: entry in the same change.
 site_name: Brick Work
 docs_dir: docs
+# Repo only (App Docs Standard): ADRs, project records and dated records. A link to one of them points at GitHub.
 exclude_docs: |
   adr/
   approval/
-  brickwork/
-  data-model-4.0/
-  img/readme/
   milestones/
-  pitch/
+  img/readme/
+  pitch/README.md
+  brickwork/api-v1.md
+  brickwork/openapi-v1.yaml
+  brickwork/cutover-4.11j.md
+  brickwork/schema-notes.md
+  data-model-4.0/README.md
+  data-model-4.0/effort.md
+  data-model-4.0/regression-map.md
+  data-model-4.0/schema-4.0.sql
 theme:
   name: material
   font: false  # system fonts: the site makes no external requests
@@ -27,5 +35,77 @@ theme:
         icon: material/brightness-4
         name: Switch to light mode
   logo: assets/app-icon.svg
-  features: [navigation.sections, navigation.indexes, search.highlight]
+  features: [navigation.tabs, navigation.sections, navigation.indexes, search.highlight]
 markdown_extensions: [admonition, tables, toc, attr_list, pymdownx.highlight, pymdownx.superfences]
+nav:
+  - Home:
+      - index.md
+      - "The original pitch (v0.5.0, 22.10.2026)": pitch/brick-work-pitch.pdf
+      # The changelog page is built by scripts/build_site.py beside /docs/, so this link is dead under `zensical serve` alone.
+      - "What's new": ../changelog/
+  - User guide:
+      - Tutorials:
+          - tutorials/index.md
+          - tutorials/first-set.md
+          - tutorials/finish-a-half-built-set.md
+          - tutorials/build-from-your-bulk.md
+          - tutorials/find-the-sets-in-a-bulk-lot.md
+          - tutorials/build-from-what-you-have.md
+      - How-to guides:
+          - how-to/index.md
+          - At the table:
+              - how-to/check-set-parts.md
+              - how-to/pick-parts.md
+              - how-to/match-stock-to-sets.md
+              - how-to/find-sets-to-build.md
+              - how-to/plan-repairs.md
+              - how-to/order-missing-parts.md
+              - how-to/identify-a-minifigure.md
+              - "Check a lot for whole sets": how-to/find-the-sets-in-a-bulk-lot.md
+              - how-to/mark-a-sticker.md
+              - how-to/pull-a-set-out-of-a-lot.md
+              - how-to/part-lists.md
+          - Keeping the collection:
+              - how-to/receive-an-order.md
+              - how-to/manage-wishlists.md
+              - how-to/storage.md
+              - how-to/pictures-and-prices.md
+              - how-to/insurance-report.md
+              - how-to/links-and-preferred-numbers.md
+              - how-to/merge-items.md
+              - how-to/change-variant.md
+              - how-to/migrate.md
+              - how-to/sync-collection.md
+              - how-to/import-from-bricktracker.md
+              - how-to/undo-a-change.md
+          - Running Brick Work:
+              - how-to/install-docker-desktop.md
+              - how-to/settings-and-maintenance.md
+              - how-to/back-up-and-restore.md
+              - how-to/upgrade.md
+              - how-to/connect-an-assistant.md
+      - Concepts:
+          - concepts/index.md
+          - concepts/collection-model.md
+          - concepts/completeness.md
+      - Reference:
+          - reference/index.md
+          - reference/settings.md
+          - reference/metrics.md
+          - reference/set-scoring.md
+  - Developers:
+      - developer/index.md
+      - Tutorials:
+          - tutorials/script-your-collection.md
+      - Concepts:
+          - "The data model": concepts/data-model.md
+          - "Data model 4.0 design": data-model-4.0/data-model-design.md
+          - "User journey on the 4.0 model": data-model-4.0/user-journey.md
+          - "Import pipeline": brickwork/pipeline.md
+          - "Source layer": brickwork/sources.md
+          - "Collection sync": brickwork/sync.md
+          - brickwork/wishlists.md
+      - Reference:
+          - "API v2 contract": brickwork/api-v2.md
+          - "MCP server": brickwork/mcp.md
+          - reference/cli.md

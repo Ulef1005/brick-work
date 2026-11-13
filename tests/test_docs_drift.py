@@ -136,4 +136,7 @@ def test_the_site_builds_with_every_tool(tmp_path):
     assert 'Brick Work 0.6.0' in changelog and 'href="../docs/how-to/receive-an-order/"' in changelog
     design = (site / 'design/data-model-4.0/data-model-design/index.html').read_text()   # no Mermaid renderer on the site
     assert 'This diagram is drawn on GitHub' in design and 'language-mermaid' not in design
+    docs_design = (site / 'docs/data-model-4.0/data-model-design/index.html').read_text()   # the same page in the Developers tab (#319)
+    assert docs_design.count('This diagram is drawn on GitHub') == 2 and 'language-mermaid' not in docs_design
+    assert (site / 'docs/pitch/brick-work-pitch.pdf').is_file() and not (site / 'docs/brickwork/api-v1/index.html').exists()
     assert 'href="../../design/adr/0016-data-model-4/"' in (site / 'design/data-model-4.0/index.html').read_text()

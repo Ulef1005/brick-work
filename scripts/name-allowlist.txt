@@ -53,3 +53,4 @@ README.md	over from Brickset, Rebrickable, BrickLink or BrickTracker	Who-it-is-f
 .github/DISCUSSION_TEMPLATE/show-and-tell.yml	Brickset, Rebrickable, BrickLink, BrickTracker or a spreadsheet	Show and tell form: asks which source a collection came from, the retained importer included.
 README.md	Imports from Brickset, Rebrickable, BrickLink and BrickTracker	For AI assistants: the sources the importers bring a collection over from, the retained importer included.
 scripts/site/llms.md	BrickTracker	llms.txt source: the facts for AI assistants name the retained importer and its source format.
+mkdocs.yml	\bimport-from-bricktracker\.md\b	nav: entry for the retained importer how-to.

@@ -20,7 +20,7 @@ class Node {
 Node.prototype.after=function(n){this.afterNode=n;n.parentElement=this.parentElement;};
 let doc;
 // Invented DOM fixture: the real collection script, without browser or sockets.
-function setup({stored=new Map(),copy='one',blocked=false,count=76}={}) {
+function setup({stored=new Map(),copy='one',blocked=false,count=76,figures=0}={}) {
  doc=new Node();
  const root=new Node(),list=new Node(),container=new Node(),search=new Node(),sort=new Node(),direction=new Node(),actions=new Node();
  root.dataset={editable:'false'};sort.value='number';direction.value='asc';
@@ -35,15 +35,21 @@ function setup({stored=new Map(),copy='one',blocked=false,count=76}={}) {
   }
   return {element,button,body,rows,pager:()=>rows.afterNode,visible:()=>rows.children.filter(n=>!n.hidden)};
  });
+ const figureRows=new Node();figureRows.dataset.bcFigureRows='';container.append(figureRows);
+ for(let i=0;i<figures;i++){
+  const node=new Node();node.dataset={bcRow:'',record:JSON.stringify({type:'M',number:String(2000+i),name:'Figure '+i,quantity:1})};figureRows.append(node);
+ }
+ const tabs=['parts','figures','extras'].map(value=>{const node=new Node();node.dataset.bcTab=value;return node;});
+ const figureBatch={rows:figureRows,pager:()=>figureRows.afterNode,visible:()=>figureRows.children.filter(n=>!n.hidden)};
  const expand=new Node(),collapse=new Node(),colour=new Node();expand.dataset.bcSections='expand';collapse.dataset.bcSections='collapse';colour.dataset.bcFilter='colour';colour.options=[{value:'',textContent:'All'},{value:'Black',textContent:'Black'}];colour.parentElement={firstChild:{textContent:'Colour'}};
  list.nodes={'[data-bc-rows]':container,'[data-bc-inventory-rows]':container,'[data-bc-search]':search,'[data-bc-sort]':sort,'[data-bc-direction]':direction,'[data-bc-section-actions]':actions};
- list.groups={'[data-bc-part-section]':sections.map(s=>s.element),'[data-bc-sections]':[expand,collapse],'[data-bc-filter]':[colour]};list.append(container);
+ list.groups={'[data-bc-part-section]':sections.map(s=>s.element),'[data-bc-sections]':[expand,collapse],'[data-bc-filter]':[colour],'[data-bc-tab]':tabs};list.append(container);
  root.groups={'[data-bc-list]':[list]};
  doc=new Node();doc.querySelector=s=>s==='#bw-collection'?root:null;doc.createElement=tag=>{const n=new Node();n.tagName=tag.toUpperCase();return n;};
  const session=new Map();
  const context={window:{addEventListener(){},scrollY:0},document:doc,location:{pathname:'/collection/item/1',search:'?copy='+copy},URLSearchParams,requestAnimationFrame:f=>f(),sessionStorage:{getItem:k=>session.get(k)||null,setItem:(k,v)=>session.set(k,v)},localStorage:{getItem:k=>{if(blocked)throw Error('unavailable');return stored.get(k)||null;},setItem:(k,v)=>{if(blocked)throw Error('unavailable');stored.set(k,v);}}};
  vm.runInNewContext(fs.readFileSync('static/web/toni/formatting.js','utf8')+fs.readFileSync('static/web/toni/bw-collection.js','utf8'),context);
- return {sections,search,sort,direction,colour,expand,collapse,actions,stored};
+ return {sections,search,sort,direction,colour,expand,collapse,actions,stored,tabs,figureBatch};
 }
 const text=s=>s.pager().children.find(n=>n.tagName==='P').textContent;
 const next=s=>s.pager().children.find(n=>n.className==='bc-page-step bc-page-next');
@@ -71,5 +77,20 @@ const numbers=s=>s.pager().children.find(n=>n.className==='bc-page-numbers').chi
  const many=setup({count:326}).sections[0];assert.deepEqual(numbers(many).map(n=>n.textContent),['1','2','…','14']);
  for(let i=0;i<4;i++)await next(many).trigger();
  assert.deepEqual(numbers(many).map(n=>n.textContent),['1','…','4','5','6','…','14']);
+ // Figures have independent pages, including rows beyond the old 60-row cap.
+ const figureCase=setup({figures:76});
+ await figureCase.tabs[1].trigger();
+ const batch=figureCase.figureBatch,seen=[];
+ assert.ok(batch.pager(),'grouped figures have a pager');
+ assert.equal(batch.visible().length,25);assert.equal(text(batch),'1–25 of 76');
+ for(let page=1;page<=4;page++){
+  seen.push(...batch.visible().map(n=>JSON.parse(n.dataset.record).number));
+  if(page<4)await next(batch).trigger();
+ }
+ assert.equal(new Set(seen).size,76);assert.equal(text(batch),'76–76 of 76');assert.equal(next(batch).disabled,true);
+ figureCase.search.value='Figure 75';await figureCase.search.trigger('input');
+ assert.equal(batch.visible().length,1);assert.equal(batch.pager().hidden,true);
+ const small=setup({figures:25});await small.tabs[1].trigger();assert.equal(small.figureBatch.visible().length,25);assert.equal(small.figureBatch.pager().hidden,true);
+ const onlyFigures=setup({count:0,figures:61});await onlyFigures.tabs[1].trigger();assert.equal(onlyFigures.figureBatch.visible().length,25);
  console.log('part groups runtime ok');
 })().catch(error=>{console.error(error);process.exit(1);});

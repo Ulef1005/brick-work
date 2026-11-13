@@ -7,7 +7,7 @@ import pytest
 
 from brickwork.core import admin, collection, errors, part_groups, undo
 from brickwork.web import admin_ops
-from tests.app4 import app4, client, coll, pair, read, world  # noqa: F401
+from tests.app4 import app4, client, coll, make_pair, read, world, RICH  # noqa: F401
 from tests.api2 import v2, call, write, validate  # noqa: F401
 
 
@@ -161,3 +161,60 @@ def test_section_runtime():
     from tests import rendered
     result = subprocess.run([rendered.need_node(), 'tests/toni_bw_part_groups_runtime.cjs'], check=True, capture_output=True, text=True, timeout=30)
     assert 'part groups runtime ok' in result.stdout
+
+
+@pytest.fixture
+def pair(tmp_path, request):
+    path = make_pair(tmp_path, rich=True, **getattr(request, 'param', {}))
+    if getattr(request, 'param', None):
+        import sqlite3
+        with sqlite3.connect(path.with_name('catalogue.db')) as db:
+            db.execute("UPDATE item SET category_id=NULL WHERE born_key='syn-uncategorised'")
+    return path
+
+
+@pytest.mark.parametrize('pair', [dict(extra_dump={
+    'parts': [['syn-uncategorised', 'Synthetic uncategorised part', 11, 'Plastic']],
+    'inventory_parts': RICH['inventory_parts'] + [[9001, 'syn-uncategorised', 4, 3, 'False', '']],
+})], indirect=True)
+def test_catalogue_reference_groups_use_categories_and_other(coll, client, read):
+    item = coll.item('sets', '1000-1')
+    with read() as db:
+        detail = collection.detail(db, item)
+    assert not detail['selected']
+    groups = {g['name']: g for g in detail['part_groups']}
+    assert set(groups) == {'Bricks', 'Plates', 'Other'}
+    assert [(p['name'], p['quantity']) for p in groups['Other']['rows'] if p['item_type'] != 'M'] == [('Synthetic uncategorised part', 3)]
+    soup = BeautifulSoup(client.get(f'/collection/item/{item}').data, 'html.parser')
+    assert [s['data-bc-part-section'] for s in soup.select('[data-bc-part-section]')] == ['Bricks', 'Plates', 'Other']
+
+
+def test_catalogue_reference_figures_are_separate_from_part_groups(coll, client, read):
+    item = coll.item('sets', '1000-1')
+    with read() as db:
+        detail = collection.detail(db, item)
+    assert any(r['item_type'] == 'M' for r in detail['consists'])
+    assert all(r['item_type'] != 'M' for g in detail['part_groups'] for r in g['rows'])
+    assert sum(len(g['rows']) for g in detail['part_groups']) == 2
+    assert sum(g['pieces'] for g in detail['part_groups']) == 6
+    soup = BeautifulSoup(client.get(f'/collection/item/{item}').data, 'html.parser')
+    rows = soup.select('[data-module=consists] [data-bc-row]')
+    figures = [r for r in rows if json.loads(r['data-record'])['type'] == 'M']
+    assert len(figures) == 1
+    assert not figures[0].find_parent(attrs={'data-bc-part-section': True})
+    assert soup.select_one('[data-bc-tab=figures]')
+
+
+@pytest.mark.parametrize('owned', [False, True])
+def test_group_status_only_for_owned_copy(coll, client, owned):
+    item = coll.item('sets', '1000-1')
+    suffix = f'?copy={coll.add_copy("1000-1")}' if owned else ''
+    soup = BeautifulSoup(client.get(f'/collection/item/{item}{suffix}').data, 'html.parser')
+    sections = soup.select('[data-bc-part-section]')
+    assert sections
+    for section in sections:
+        header = section.select_one('[data-bc-section-toggle]')
+        assert ' rows · ' in header.get_text() and ' pieces' in header.get_text()
+        assert bool(header.select_one('.bc-status')) == owned
+        assert (' checked' in header.get_text()) == owned
+        assert (' to check' in header.get_text()) == owned

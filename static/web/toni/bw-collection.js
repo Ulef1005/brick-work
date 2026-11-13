@@ -291,6 +291,10 @@
       section.setOpen(typeof sectionMemory[name]==='boolean'?sectionMemory[name]:element.dataset.bcDefaultOpen==='true');
       button.addEventListener('click',()=>section.setOpen(body.hidden,true));return section;
     });
+    const figureRows=list.querySelector('[data-bc-figure-rows]');
+    const figureBatch=figureRows?{page:1}:null;
+    if(figureBatch)figureBatch.pager=buildPager(figureRows,figureBatch);
+    const groupedInventory=partSections.length>0||!!figureBatch;
     if(partSections.length){
       const actions=list.querySelector('[data-bc-section-actions]');if(actions)actions.hidden=false;
       list.querySelectorAll('[data-bc-sections]').forEach(button=>button.addEventListener('click',event=>{
@@ -320,7 +324,7 @@
     }
     const canFilter=()=>inventory!=='extras';
     function render(reset=false) {
-      if(reset){limit=60;page=1;partSections.forEach(section=>section.page=1);}
+      if(reset){limit=60;page=1;partSections.forEach(section=>section.page=1);if(figureBatch)figureBatch.page=1;}
       const extras=list.querySelector('[data-bc-tab-extras]'),inventoryPanel=list.querySelector('[data-bc-tab-inventory]');
       if(extras)extras.hidden=inventory!=='extras';
       if(inventoryPanel)inventoryPanel.hidden=inventory==='extras';
@@ -338,9 +342,9 @@
       const result=filterRows(records,search?.value||'',filters(),sort?sort.value:'index',direction?.value,group?.value);
       if(pageSize)page=Math.min(Math.max(1,page),Math.max(1,Math.ceil(result.length/pageSize)));
       const focused=document.activeElement,focusedRow=focused?.closest?.('[data-bc-row]');
-      const sections=inventorySections(result),split=!partSections.length && inventory!=='figures' && !!list.querySelector('[data-bc-missing]') && sections.missing.length>0;
+      const sections=inventorySections(result),split=!groupedInventory && inventory!=='figures' && !!list.querySelector('[data-bc-missing]') && sections.missing.length>0;
       let displayed=visibleSlice(split?[...sections.missing,...sections.present]:result); // one array for retention and render
-      if(partSections.length){
+      if(groupedInventory){
         displayed=[];
         partSections.forEach(section=>{
           const matches=result.filter(r=>r.part_group===section.name && r.type!=='M');
@@ -349,7 +353,13 @@
           updatePager(matches.length,section.pager,section.page,25,true);
           displayed.push(...matches.slice((section.page-1)*25,section.page*25));
         });
-        displayed.push(...visibleSlice(result.filter(r=>r.type==='M')));
+        const figures=result.filter(r=>r.type==='M');
+        if(figureBatch){
+          figureBatch.page=Math.min(Math.max(1,figureBatch.page),Math.max(1,Math.ceil(figures.length/25)));
+          updatePager(figures.length,figureBatch.pager,figureBatch.page,25,true);
+          figureBatch.pager.nav.hidden=inventory!=='figures'||figures.length<=25;
+          displayed.push(...figures.slice((figureBatch.page-1)*25,figureBatch.page*25));
+        }
       }
       if(virtual){
         const matching=new Set(result),shown=new Set(displayed);
@@ -371,7 +381,7 @@
         if(group?.value && !partSections.length) {const name=groupValue(r,group.value)||'Not recorded';if(name!==previous){const h=document.createElement('h3');h.dataset.bcGroupHeading='';const control=filterControls.find(c=>c.dataset.bcFilter===group.value);const headingLabel=control?[...control.options].find(o=>o.value===name)?.textContent||name:name;h.textContent=headingLabel;const n=groupCounts.get(name)||0,noun=singularNoun(root.dataset.type);h.append(Object.assign(document.createElement('span'),{className:'bc-group-count',textContent:' · '+n+' '+(n===1?noun:listNoun(root.dataset.type))}));if(group.value==='lot'&&name!=='null'&&root.dataset.lotBase){const open=document.createElement('a');open.className='bc-group-open';open.textContent='Open';open.setAttribute('aria-label','Open lot '+headingLabel);open.href=root.dataset.lotBase.replace('LOT',encodeURIComponent(name));h.append(open);}container.append(h);previous=name;}}
         const node=virtual?(r.node ||= buildRow(r,root.dataset,selecting,selectionCount)):r.node;
         if(virtual){const check=node.querySelector('[data-bc-selected]');if(check)check.checked=r.selected;const label=node.querySelector('.bc-selection');if(label)label.hidden=!selecting;}
-        node.hidden=false;const partSection=partSections.find(section=>section.name===r.part_group && r.type!=='M');const destination=partSection?partSection.rows:split?(Number(r.missing||0)+Number(r.damaged||0)+Number(r.parts_missing||0)>0?missingRows:inlinePresent.has(r)?presentInline:presentRows):container;destination.append(node);if(virtual)nodes.push(node);
+        node.hidden=false;const partSection=partSections.find(section=>section.name===r.part_group && r.type!=='M');const destination=partSection?partSection.rows:figureRows&&r.type==='M'?figureRows:split?(Number(r.missing||0)+Number(r.damaged||0)+Number(r.parts_missing||0)>0?missingRows:inlinePresent.has(r)?presentInline:presentRows):container;destination.append(node);if(virtual)nodes.push(node);
         bindRow(node);
       });
       if(focusedRow && nodes.includes(focusedRow) && !focusedRow.hidden && document.activeElement!==focused)focused.focus({preventScroll:true});

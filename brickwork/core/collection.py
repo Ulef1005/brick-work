@@ -487,8 +487,9 @@ def part_gap(row, whole_missing=0):
 def _names(db, ids):
     found = {}
     for store in ('main', 'catalogue') if has_catalogue(db) else ('main',):
-        category = 'category_name' if store == 'main' else 'NULL AS category_name'
-        for r in db.execute(f'SELECT id,name,kind,{category} FROM {store}.item WHERE id IN (SELECT value FROM json_each(?))', (_in(ids),)):
+        category = 'i.category_name' if store == 'main' else 'c.name AS category_name'
+        join = '' if store == 'main' else ' LEFT JOIN catalogue.part_category c ON c.id=i.category_id'
+        for r in db.execute(f'SELECT i.id,i.name,i.kind,{category} FROM {store}.item i{join} WHERE i.id IN (SELECT value FROM json_each(?))', (_in(ids),)):
             found.setdefault(r['id'], dict(r))
     return found
 
@@ -692,8 +693,9 @@ def detail(db, item_id, *, colour=None, copy_id=None, stock_id=None, wish_id=Non
     row['part_list_grouping'] = mode if kind == 'set' else 'none'
     grouped = defaultdict(list)
     for entry in consists:
-        entry['group'] = part_groups.group_of(entry.get('category'), row['part_list_grouping'])
-        if not entry.get('minifig_no') and entry['group']:
+        entry['group'] = (None if entry['item_type'] == 'M' or entry.get('minifig_no')
+                          else part_groups.group_of(entry.get('category'), row['part_list_grouping']))
+        if entry['group']:
             grouped[entry['group']].append(entry)
     row['part_groups'] = []
     for name in part_groups.order(grouped, row['part_list_grouping']):

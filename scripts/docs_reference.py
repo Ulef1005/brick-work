@@ -20,7 +20,7 @@ def folded(title, text, language='yaml'):
     """A collapsed block (pymdownx.details) that holds a code block, fenced longer than any backtick run in the text."""
     fence = '`' * max(3, 1 + max((len(run) for run in re.findall('`+', text)), default=0))
     body = '\n'.join('    ' + line if line else '' for line in f'{fence}{language}\n{text.rstrip()}\n{fence}'.splitlines())
-    return f'??? note "{title}"\n\n{body}\n'
+    return f'??? reference "{title}"\n\n{body}\n'
 
 
 def api_v2():

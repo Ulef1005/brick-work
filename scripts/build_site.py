@@ -88,9 +88,33 @@ def render(text):
                              extension_configs={'toc': {'permalink': False}})
 
 
-def page(title, body, depth, *, current, head='', main='doc', absolute=False):
+HOME_DESCRIPTION = ('Brick Work is a free, open-source, self-hosted workbench for your brick collection: check a set\'s parts, pull missing ones from loose stock '
+                    'and see which unfinished sets your stock can complete.')
+MD_DESCRIPTIONS = {'use-cases': 'Eight moments a collector knows, and how Brick Work helps with each: rebuilding used sets, sorted bulk, minifigures, bought collections and orders.',
+                   'impressum': 'Impressum of the Brick Work website.', 'privacy': 'What the Brick Work website loads and what it does not: no tracking cookies, no consent banner.'}
+DEFAULT_DESCRIPTION = 'Brick Work: the workbench for your brick collection: self-hosted, with a REST API and an MCP server.'
+
+
+def seo_head(title, description, path):
+    """Canonical, Open Graph and Twitter tags for a page at `path` (a folder from the site root, '' for the home page). The apex or the Pages address
+    comes from the build's SITE_BASE; a social preview picture is added when scripts/site/social-preview.png exists."""
+    url = origin() + site_base() + path
+    image = f'{origin()}{site_base()}assets/social-preview.png' if (SITE / 'social-preview.png').exists() else None
+    tags = [('og:type', 'website'), ('og:site_name', 'Brick Work'), ('og:title', title), ('og:description', description), ('og:url', url)]
+    if image:
+        tags.append(('og:image', image))
+    tags += [('twitter:card', 'summary_large_image' if image else 'summary'), ('twitter:title', title), ('twitter:description', description)]
+    meta = ''.join(f'<meta {"property" if key.startswith("og:") else "name"}="{key}" content="{html.escape(value, quote=True)}">' for key, value in tags)
+    return f'<link rel="canonical" href="{url}">' + meta
+
+
+def page(title, body, depth, *, current, head='', main='doc', absolute=False, path=None, description=None):
     up = site_base() if absolute else '../' * depth
     repo = repository()
+    description = description or DEFAULT_DESCRIPTION
+    full_title = html.escape(title) + ' · Brick Work' if title != 'Brick Work' else 'Brick Work'
+    if path is not None:
+        head = seo_head(full_title.replace('&#x27;', "'"), description, path) + head
     nav = ''.join(f'<a href="{up}{href}"{" aria-current=\"page\"" if name == current else ""}>{name}</a>' for name, href in NAV)
     menu = nav + f'<a href="https://github.com/{repo}">GitHub</a>'
     col = lambda heading, links: (f'<div><b>{heading}</b><ul>' + ''.join(f'<li><a href="{href}">{label}</a></li>' for label, href in links)
@@ -108,8 +132,8 @@ def page(title, body, depth, *, current, head='', main='doc', absolute=False):
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{html.escape(title) + " · Brick Work" if title != "Brick Work" else "Brick Work"}</title>
-<meta name="description" content="Brick Work: the workbench for your brick collection: self-hosted, with a REST API and an MCP server.">
+<title>{full_title}</title>
+<meta name="description" content="{html.escape(description, quote=True)}">
 <link rel="icon" href="{up}assets/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="{up}assets/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="icon" href="{up}assets/favicon-16.png" sizes="16x16" type="image/png">
@@ -197,7 +221,43 @@ def build_pages(out):
         depth = len(Path(meta['path']).parts)
         folder = out / meta['path']
         folder.mkdir(parents=True, exist_ok=True)
-        (folder / 'index.html').write_text(page(meta['title'], fill(body, '../' * depth), depth, current=meta.get('current') or None, main='home'))
+        (folder / 'index.html').write_text(page(meta['title'], fill(body, '../' * depth), depth, current=meta.get('current') or None, main='home',
+                                                path=meta['path'], description=meta.get('description')))
+
+
+def json_ld():
+    """SoftwareApplication structured data for the home page."""
+    import json
+    from brickwork.version import __version__
+    data = {'@context': 'https://schema.org', '@type': 'SoftwareApplication', 'name': 'Brick Work', 'url': origin() + site_base(),
+            'applicationCategory': 'UtilitiesApplication', 'operatingSystem': 'Docker on Linux, macOS or Windows', 'softwareVersion': __version__,
+            'description': HOME_DESCRIPTION, 'license': 'https://opensource.org/licenses/MIT',
+            'downloadUrl': f'https://github.com/{repository()}', 'offers': {'@type': 'Offer', 'price': '0', 'priceCurrency': 'EUR'},
+            'author': {'@type': 'Person', 'name': 'Ulf Weihbold'}}
+    return '<script type="application/ld+json">' + json.dumps(data, ensure_ascii=False).replace('</', '<\\/') + '</script>'
+
+
+def site_urls(out):
+    """The marketing pages that go into sitemap-pages.xml: every folder with an index.html outside docs/ and demo/, plus the demo's entry."""
+    folders = sorted(p.parent.relative_to(out).as_posix() for p in out.glob('*/index.html')) + sorted(
+        p.parent.relative_to(out).as_posix() for p in out.glob('*/*/index.html') if p.parts[-3] in ('coming-from',))
+    return [''] + [f + '/' for f in folders if f.split('/')[0] not in ('docs', 'demo', 'api', 'mcp')] + ['demo/']
+
+
+def build_seo_files(out):
+    """robots.txt and the sitemaps: /sitemap.xml is an index of sitemap-pages.xml (the pages of this site) and docs/sitemap.xml (Zensical's)."""
+    base = origin() + site_base()
+    (out / 'robots.txt').write_text(f'User-agent: *\nAllow: /\n\nSitemap: {base}sitemap.xml\n')
+    urls = ''.join(f'<url><loc>{base}{path}</loc></url>' for path in site_urls(out))
+    (out / 'sitemap-pages.xml').write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' + urls + '</urlset>\n')
+    (out / 'sitemap.xml').write_text('<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+                                     f'<sitemap><loc>{base}sitemap-pages.xml</loc></sitemap><sitemap><loc>{base}docs/sitemap.xml</loc></sitemap></sitemapindex>\n')
+
+
+def own_address(text):
+    """The site's own address instead of the Pages address (an apex build serves from brick-work.app)."""
+    owner = repository().split('/')[0].lower()
+    return text.replace(f'https://{owner}.github.io/{repository().split("/")[1]}/', origin() + site_base())
 
 
 def stub(title, target):
@@ -271,7 +331,7 @@ def build_changelog(out):
     (out / target).mkdir(parents=True, exist_ok=True)
     rows = []
     for index, (version, schema, date, body) in enumerate(releases()):
-        markdown_body = mermaid_to_link(rewrite_links(body, '', 1), 'CHANGELOG.md')
+        markdown_body = own_address(mermaid_to_link(rewrite_links(body, '', 1), 'CHANGELOG.md'))
         pill = '<span class="pill">Latest</span>' if index == 0 else '<span></span>'
         rows.append(f'<details class="rel" id="v{version}"{" open" if index == 0 else ""}><summary><span class="v">{version}</span>'
                     f'<span class="dt">{date} · <span class="sch">{html.escape(schema)}</span></span>{pill}</summary>'
@@ -282,7 +342,8 @@ def build_changelog(out):
             f'<div class="btns"><a class="link" href="feed.xml">Atom feed</a><a class="link" href="https://github.com/{repository()}/releases">Releases on GitHub</a></div></div>'
             f'<div style="display:flex;flex-direction:column;gap:12px">{"".join(rows)}</div></div></div></div>')
     head = '<link rel="alternate" type="application/atom+xml" title="Brick Work releases" href="feed.xml">'
-    (out / target / 'index.html').write_text(page('Changelog', body, 1, current='Changelog', head=head, main='home'))
+    (out / target / 'index.html').write_text(page('Changelog', body, 1, current='Changelog', head=head, main='home', path='changelog/',
+                                                         description='Every Brick Work release since the first public one, newest first, with an Atom feed.'))
     (out / target / 'feed.xml').write_text(atom_feed())
 
 
@@ -304,7 +365,7 @@ def llms_txt():
     """/llms.txt (llmstxt.org) from scripts/site/llms.md: the facts an AI assistant is most often asked, with the release's version
     filled in and every repository link turned into the raw Markdown file on GitHub, which an assistant reads best."""
     from brickwork.version import __version__
-    text = (SITE / 'llms.md').read_text().replace('{version}', __version__).replace('{repository}', repository())
+    text = (SITE / 'llms.md').read_text().replace('{version}', __version__).replace('{repository}', repository()).replace('{site}', origin() + site_base())
     raw = f'https://raw.githubusercontent.com/{repository()}/main/'
     return re.sub(r'\]\((?!https?://|#)([^)\s]+)\)', lambda m: f']({raw}{m[1]})', text)
 
@@ -345,11 +406,11 @@ def build(out):
 
     build_docs(out / 'docs')
 
-    (out / 'index.html').write_text(page('Brick Work', home(''), 0, current=None, main='home'))
+    (out / 'index.html').write_text(page('Brick Work', home(''), 0, current=None, main='home', path='', head=json_ld(), description=HOME_DESCRIPTION))
     for name, title, current in (('use-cases', 'Use cases', 'Use cases'),
                                  ('impressum', 'Impressum', None), ('privacy', 'Privacy', None)):
         text = (SITE / f'{name}.md').read_text().replace('{repository}', repository())
-        (out / name / 'index.html').write_text(page(title, render(text), 1, current=current, main='marketing'))
+        (out / name / 'index.html').write_text(page(title, render(text), 1, current=current, main='marketing', path=f'{name}/', description=MD_DESCRIPTIONS[name]))
 
     missing = (SITE / '404.md').read_text().replace('{base}', base)
     (out / '404.html').write_text(page('Page not found', render(missing), 0, current=None, absolute=True))
@@ -374,7 +435,10 @@ def build(out):
     for directory in sorted((out / 'demo').rglob('*'), key=lambda p: len(p.parts), reverse=True):
         if directory.is_dir() and unquote(directory.name) != directory.name:
             directory.rename(directory.with_name(unquote(directory.name)))
+    shim = out / 'demo/demo-shim.js'
+    shim.write_text(own_address(shim.read_text()))
     (out / 'llms.txt').write_text(llms_txt())
+    build_seo_files(out)
     (out / '.nojekyll').write_text('')
     return out
 

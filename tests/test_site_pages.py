@@ -534,3 +534,50 @@ def test_about_page_and_the_nav_that_reaches_it(site):
     assert 'Ulf Weihbold, Linz' in text and 'MIT' in text and 'decision records in the repository' in text
     assert 'github.com/' in text and 'aria-current="page"' in text.split('</header>')[0]
     assert '>About</a>' in (site / 'index.html').read_text()
+
+
+def test_every_site_page_has_its_own_description_canonical_and_social_tags_and_no_noindex(site):
+    from scripts.build_site import origin, site_base
+    seen = set()
+    for path in ('', 'install/', 'workflows/', 'changelog/', 'about/', 'use-cases/', 'impressum/', 'privacy/', 'coming-from/rebrickable/',
+                 'coming-from/bricklink/', 'coming-from/bricktracker/', 'coming-from/other/'):
+        text = (site / path / 'index.html').read_text()
+        description = re.search(r'<meta name="description" content="([^"]+)"', text)[1]
+        assert description not in seen, path
+        seen.add(description)
+        assert f'<link rel="canonical" href="{origin() + site_base() + path}">' in text, path
+        for tag in ('og:title', 'og:description', 'og:url', 'twitter:card'):
+            assert tag in text, (path, tag)
+    for file in site.rglob('*.html'):
+        assert 'noindex' not in file.read_text(), file
+
+
+def test_home_page_has_software_application_structured_data(site):
+    import json
+    text = (site / 'index.html').read_text()
+    data = json.loads(re.search(r'<script type="application/ld\+json">(.+?)</script>', text)[1])
+    assert data['@type'] == 'SoftwareApplication' and data['name'] == 'Brick Work' and data['offers']['price'] == '0'
+    assert data['author']['name'] == 'Ulf Weihbold' and data['license'].endswith('/MIT')
+
+
+def test_robots_and_sitemaps_point_at_this_sites_address(site):
+    import xml.etree.ElementTree as ET
+    from scripts.build_site import origin, site_base
+    base = origin() + site_base()
+    assert (site / 'robots.txt').read_text() == f'User-agent: *\nAllow: /\n\nSitemap: {base}sitemap.xml\n'
+    ns = '{http://www.sitemaps.org/schemas/sitemap/0.9}'
+    index = ET.fromstring((site / 'sitemap.xml').read_text())
+    assert [e.find(ns + 'loc').text for e in index] == [f'{base}sitemap-pages.xml', f'{base}docs/sitemap.xml']
+    locs = [e.find(ns + 'loc').text for e in ET.fromstring((site / 'sitemap-pages.xml').read_text())]
+    assert base in locs and f'{base}install/' in locs and f'{base}coming-from/other/' in locs and f'{base}demo/' in locs
+    assert all(loc.startswith(base) for loc in locs) and len(locs) == len(set(locs))
+    assert (site / 'docs/sitemap.xml').is_file()
+
+
+def test_no_page_names_the_pages_address_on_the_apex_build(site):
+    from scripts.build_site import site_base
+    if site_base() != '/':
+        pytest.skip('only the apex build')
+    leaks = [str(f.relative_to(site)) for f in site.rglob('*') if f.suffix in ('.html', '.js', '.json', '.txt', '.xml')
+             and 'github.io' in f.read_text(errors='ignore')]
+    assert not leaks, leaks

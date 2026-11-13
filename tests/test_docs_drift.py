@@ -140,9 +140,9 @@ def test_the_site_builds_with_every_tool(tmp_path):
     assert 'BW_AUTHENTICATION_PASSWORD' in (site / 'docs/reference/settings/index.html').read_text()
     # The changelog keeps its links to docs pages on the site; the ADRs and the 4.0 design are on GitHub, not on the site (ADR 0030).
     changelog = (site / 'changelog/index.html').read_text()
-    assert 'Brick Work 0.6.0' in changelog and 'href="../docs/how-to/receive-an-order/"' in changelog
+    assert 'id="v0.6.0"' in changelog and 'href="../docs/how-to/receive-an-order/"' in changelog
     from scripts.build_site import blob
-    assert f'href="{blob("docs/adr/0030-docs-reference-pages.md")}"' in changelog
+    assert 'href="docs/adr' not in changelog and 'href="../docs/adr' not in changelog    # a repository link never stays relative (ADR 0030)
     assert not (site / 'design').exists()
     docs_design = (site / 'docs/data-model-4.0/data-model-design/index.html').read_text()   # the same page in the Developers tab (#319)
     assert docs_design.count('This diagram is drawn on GitHub') == 2 and 'language-mermaid' not in docs_design

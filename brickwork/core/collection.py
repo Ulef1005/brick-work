@@ -485,13 +485,14 @@ def part_gap(row, whole_missing=0):
 
 
 def _names(db, ids):
+    """Batched item names and categories: prefer the collection, falling back to catalogue categories."""
     found = {}
     for store in ('main', 'catalogue') if has_catalogue(db) else ('main',):
         category = 'i.category_name' if store == 'main' else 'c.name AS category_name'
         join = '' if store == 'main' else ' LEFT JOIN catalogue.part_category c ON c.id=i.category_id'
         for r in db.execute(f'SELECT i.id,i.name,i.kind,{category} FROM {store}.item i{join} WHERE i.id IN (SELECT value FROM json_each(?))', (_in(ids),)):
             entry = found.setdefault(r['id'], dict(r))
-            if store == 'catalogue' and not entry['category_name']:
+            if store == 'catalogue' and not (entry['category_name'] or '').strip():
                 entry['category_name'] = r['category_name']
     return found
 

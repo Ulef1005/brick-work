@@ -8,7 +8,7 @@ Use Set Inspector (was Check Set Parts) to go through one [copy](../concepts/col
 
 1. Open **Workbench → Set Inspector**. The list shows copies **In progress**, **Not checked** and **Checked**; it opens on **Not checked**. Change that under the filter, or sort by **Largest first**, **Number** or **Name**.
 2. Choose a copy.
-3. Under **Order**, pick **Inventory order**, **By colour** or **Largest first**. Then select **Start**.
+3. Under **Order**, pick **Inventory order**, **By colour**, **Largest first** or **Category group**. Then select **Start**.
 4. For each part, set the number you found with **−** and **+**, then select **Found N** (N is your count) to save it. The difference is recorded as missing.
    - **Missing** records the whole line as missing.
    - **Skip for later** leaves the line unanswered.
@@ -52,3 +52,5 @@ On a figure's step, **Check figure parts** opens a check of that figure's own pa
 - [Export or print the missing parts](export-missing-parts.md) to buy them or hand the list on.
 - [Pick parts for several sets](pick-parts.md) to work through the gaps at your drawers.
 - [Find sets your loose stock can finish](match-stock-to-sets.md) to fill gaps from parts you already own.
+
+**Category group** follows the fixed category-group order, with **Other** last, and largest parts first within each group. It is always available, independently of **Group parts by**. Parts without a recorded category go in **Other**.

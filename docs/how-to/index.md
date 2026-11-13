@@ -5,6 +5,7 @@ One task per page, for someone who already knows the app.
 ## At the table
 
 - [Check a set's parts](check-set-parts.md)
+- [Export or print the missing parts](export-missing-parts.md)
 - [Pick parts for several sets](pick-parts.md)
 - [Find sets your loose stock can finish](match-stock-to-sets.md)
 - [Find sets to build from your loose stock](find-sets-to-build.md)

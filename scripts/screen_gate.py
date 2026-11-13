@@ -91,14 +91,14 @@ def world_folder():
 
 # The version the footer shows in the gate's world. The baselines were rendered when the footer said 1.0.0; the constant keeps that text for good.
 GATE_VERSION = '1.0.0'
-WORLDS = ('demo', 'showcase', 'extras', 'edge', 'edge-read-only', 'edge-empty', 'edge-value')
+WORLDS = ('demo', 'showcase', 'extras', 'edge', 'edge-read-only', 'edge-empty', 'edge-value', 'edge-order')
 
 
 def build_store(name: str, store: Path) -> None:
     """Build the invented collection of world `name` at `store` (and its catalogue beside it), with its staged checks. The one place a gate world's data
     is made, so a test can build exactly what the gate renders (tests/test_gate_edge_world.py proves the three older worlds did not change)."""
     from brickwork.demo import checks, dataset, gate_edge, gate_extras, showcase
-    layers = {'demo': None, 'showcase': showcase.layer, 'extras': gate_extras.layer, 'edge': gate_edge.layer, 'edge-read-only': gate_edge.layer, 'edge-empty': gate_edge.empty_layer, 'edge-value': gate_edge.value_layer}
+    layers = {'demo': None, 'showcase': showcase.layer, 'extras': gate_extras.layer, 'edge': gate_edge.layer, 'edge-read-only': gate_edge.layer, 'edge-empty': gate_edge.empty_layer, 'edge-value': gate_edge.value_layer, 'edge-order': gate_edge.order_layer}
     dataset.build(store, layer=layers[name]() if layers[name] else None)
     checks.stage(store, showcase.CHECKS if name != 'demo' else None)
 

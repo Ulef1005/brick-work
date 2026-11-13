@@ -872,7 +872,7 @@
    "world": "demo",
    "path": "/planning/order-missing-parts",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "43-Complete-sets",
@@ -881,7 +881,25 @@
    "world": "demo",
    "path": "/planning/order-missing-parts?step=review",
    "built": true,
-   "approved": true
+   "approved": false
+  },
+  {
+   "screen": "43-Complete-sets",
+   "section": "4c",
+   "state": "order-missing-parts-source",
+   "world": "edge-order",
+   "path": "/planning/order-missing-parts?step=review&prefer=1",
+   "built": true,
+   "approved": false
+  },
+  {
+   "screen": "43-Complete-sets",
+   "section": "4c",
+   "state": "order-missing-parts-pick-a-brick",
+   "world": "edge-order",
+   "path": "/planning/order-missing-parts?step=review&prefer=1&tab=pab",
+   "built": true,
+   "approved": false
   },
   {
    "screen": "44-Complete-sets",

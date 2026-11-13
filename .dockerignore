@@ -31,3 +31,6 @@ LICENSE
 
 # Hidden directories
 .?*
+
+# Rebrickable and LEGO material that is not MIT: never in the image (not-mit/NOTICE.md)
+not-mit/

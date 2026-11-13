@@ -292,9 +292,9 @@ This GitHub repository is the canonical source: changes land here first. The mai
 
 ## Licence and trademarks
 
-MIT; see [LICENSE](LICENSE), which keeps the upstream copyright notice, and [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md) for fonts and icons.
+MIT; see [LICENSE](LICENSE), which keeps the upstream copyright notice, and [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md) for fonts and icons. The folder [`not-mit/`](not-mit/NOTICE.md) is the exception: Rebrickable and LEGO pictures and data for the demo, not under the MIT licence, not part of the app or the image.
 
-LEGO® is a trademark of the LEGO Group of companies, which does not sponsor, authorize or endorse this project. Brick Work bundles no catalogue data or images from BrickLink, Rebrickable or Brickset; each install downloads Rebrickable's public files itself and uses its owner's keys for the rest.
+LEGO® is a trademark of the LEGO Group of companies, which does not sponsor, authorize or endorse this project. Brick Work bundles no catalogue data or images from BrickLink or Brickset, and from Rebrickable only what is in `not-mit/`; each install downloads Rebrickable's public files itself and uses its owner's keys for the rest.
 
 ## Acknowledgements
 

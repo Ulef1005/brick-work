@@ -1,10 +1,15 @@
+---
+audience: developer
+verified: 1.0
+---
+
 # Script your collection
 
 Brick Work has a REST API, a command line and an MCP server for AI assistants. They all work with the same data and the same API tokens. In this tutorial you create a token, use it to read and change your collection from a terminal, and then connect an assistant and ask it about your collection.
 
 ## Before you start
 
-It takes about 20 minutes. You need a running Brick Work install ([README](https://github.com/Ulef1005/brick-work#standalone-installation-with-docker)) with some sets in it, and a terminal on the computer that runs it. Try it on a test collection first: step 3 changes data, though you will undo the change. The outputs below come from the invented demo collection, so your numbers and names will differ. The commands and outputs were run on Brick Work 1.0.1 or later (the main branch on 13 November 2026).
+It takes about 20 minutes. You need a running Brick Work install ([README](https://github.com/Ulef1005/brick-work#standalone-installation-with-docker)) with some sets in it, and a terminal on the computer that runs it. Try it on a test collection first: step 3 changes data, though you undo the change afterward. The outputs below come from the invented demo collection, so your numbers and names differ. The commands and outputs were run on Brick Work 1.0.1 or later (the main branch on November 13, 2026).
 
 In a Docker install, run every `brickwork` command inside the container, like this:
 
@@ -21,7 +26,7 @@ A token lets a script or an assistant call Brick Work without your login. Each t
 1. Open **Manage → Tools & Admin → API tokens**.
 2. Click **Create token**.
 3. Enter a **Name**, for example `tutorial`.
-4. Under **Scopes**, tick **read** and **write**.
+4. Under **Scopes**, tick **read**, then tick **write**.
 5. Click **Create token**.
 6. Under **Your new token**, click **Copy**, then **Done**. The secret is shown once and cannot be shown again.
 7. In your terminal, keep it in a variable for this session:
@@ -48,7 +53,7 @@ curl -s -H "Authorization: Bearer $TOKEN" http://127.0.0.1:3333/api/v2/me
 {"data":{"expires_at":null,"name":"tutorial","scopes":["read","write"]}}
 ```
 
-The answer names your token and its scopes. Reload **API tokens**: **Last used** now has a time. Every API call carries the token this way. The [API v2 reference](../developer/api-v2-reference.md) lists every endpoint.
+The answer names your token and its scopes. Reload **API tokens**. **Last used** now has a time. Every API call carries the token this way. The [API v2 reference](../developer/api-v2-reference.md) lists every endpoint.
 
 ## 3. Read and change the collection
 
@@ -90,7 +95,7 @@ brickwork wishlist list
   ...
 ```
 
-Each list shows its id, name and how many wishes it holds. Add one:
+Each list shows its id, its name, and how many wishes it holds. Add one:
 
 ```sh
 brickwork wishlist create "Spring orders"
@@ -164,7 +169,9 @@ You don't run `brickwork mcp` yourself; the assistant starts it. It offers read 
 
 Start the assistant and ask it:
 
+<!-- vale Google.FirstPerson = NO -->
 > How many of my sets are incomplete?
+<!-- vale Google.FirstPerson = YES -->
 
 The assistant chooses a tool itself. One that fits this question is `get_statistics`, which needs no arguments. Called through the server, it returns the counts of your copies by completeness; the first part of the result is:
 
@@ -180,7 +187,9 @@ The assistant chooses a tool itself. One that fits this question is `get_statist
 }
 ```
 
+<!-- vale Google.FirstPerson = NO -->
 The assistant reads that result and answers in its own words; what it writes is up to the assistant, not Brick Work. Ask a second question, such as *Which of my sets are incomplete, and how many parts is each missing?* A tool that fits is `list_copies` with a `status` of `incomplete`, which returns the same list as the API call in step 3.
+<!-- vale Google.FirstPerson = YES -->
 
 Two things to notice. The assistant names sets and parts by number, never by a Brick Work id. And it can only do what its token allows: a read-only token and no `--allow-write` means it cannot change your collection. If it ever did make a change, the change would carry an `event_id` that `undo_event` takes back.
 
@@ -192,4 +201,4 @@ You created a token, called the API with it, read and changed the collection fro
 
 - [API v2 reference](../developer/api-v2-reference.md) for every endpoint.
 - [Command line](../reference/cli.md) for every `brickwork` command.
-- [Connect an assistant](../how-to/connect-an-assistant.md) for other assistants, the HTTP transport and write access.
+- [Connect an assistant](../how-to/connect-an-assistant.md) for other assistants, the HTTP transport, and write access.

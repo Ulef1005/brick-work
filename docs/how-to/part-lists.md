@@ -47,3 +47,11 @@ Without a BrickLink key the choice is greyed with "needs a BrickLink key".
 ## When a list changed
 
 After a catalogue download, a copy whose list is no longer the one in the catalogue says "Rebrickable changed version 3 of 3 since this copy was built · n lines differ", for the copy and for each figure line. Nothing switches by itself. Press **Switch to the current list** to see what would change and decide. For a copy on BrickLink's list the note says "needs a BrickLink key" instead when no key is set; the page always opens without one.
+
+## Group the parts on a set page
+
+In **Manage → Settings**, **Group parts by** offers **Part groups** (the default twelve groups), **BrickLink categories** (the original names in alphabetical order), or **No grouping** (one list, 15 rows per page). Save the page to apply your choice; **Undo** restores the previous setting.
+
+On a set's **Consists of** list, each group shows its row and piece counts, checked rows and remaining work. Groups with missing parts or unchecked rows start expanded; complete groups start collapsed. Click a group header to open or close it, or use **Expand all** and **Collapse all**. Your browser remembers this separately for each copy. Without JavaScript, every group stays open and shows all its rows.
+
+Each group has pages of 25 rows. Search and filters apply across groups and hide empty groups; sorting orders the rows within each group. On a phone, the headers keep the group name and status while the counts stay out of the way.

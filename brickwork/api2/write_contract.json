@@ -3290,6 +3290,11 @@
         "incomplete_discount_pct": {
           "type": "number"
         },
+        "part_list_grouping": {
+          "type": "string",
+          "enum": ["grouped", "bricklink", "none"],
+          "default": "grouped"
+        },
         "prefer_bricklink_inventory": {
           "description": "New copies take BrickLink's part list when one exists (design 4.4).",
           "type": "boolean"

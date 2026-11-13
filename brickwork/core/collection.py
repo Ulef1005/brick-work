@@ -487,7 +487,7 @@ def part_gap(row, whole_missing=0):
 def _names(db, ids):
     found = {}
     for store in ('main', 'catalogue') if has_catalogue(db) else ('main',):
-        for r in db.execute(f'SELECT id,name,kind FROM {store}.item WHERE id IN (SELECT value FROM json_each(?))', (_in(ids),)):
+        for r in db.execute(f'SELECT id,name,kind,category_name FROM {store}.item WHERE id IN (SELECT value FROM json_each(?))', (_in(ids),)):
             found.setdefault(r['id'], dict(r))
     return found
 
@@ -671,7 +671,8 @@ def detail(db, item_id, *, colour=None, copy_id=None, stock_id=None, wish_id=Non
     names = _names(db, [l['item_id'] for l in lines] + [pid for l in lines for pid in l.get('missing_part_ids', [])])
     consists = []
     for line in lines:
-        entry = dict(line, name=(names.get(line['item_id']) or {}).get('name'))
+        entry = dict(line, name=(names.get(line['item_id']) or {}).get('name'),
+                     category=(names.get(line['item_id']) or {}).get('category_name'))
         if line.get('minifig'):
             entry['missing_part_names'] = list(dict.fromkeys((names.get(i) or {}).get('name') or str(i) for i in line['missing_part_ids']))
         consists.append(entry)
@@ -684,6 +685,23 @@ def detail(db, item_id, *, colour=None, copy_id=None, stock_id=None, wish_id=Non
         entry['deficit'] = 0 if entry['spare'] else part_gap(entry)
         entry['can_take'] = 0
     row.update(_matching(db, item_id, kind, colour, selected, all_instances, consists))
+    from . import part_groups
+    setting = db.execute("SELECT value FROM main.setting WHERE key='part_list_grouping'").fetchone()
+    mode = setting[0] if setting else part_groups.DEFAULT
+    row['part_list_grouping'] = mode if kind == 'set' else 'none'
+    grouped = defaultdict(list)
+    for entry in consists:
+        entry['group'] = part_groups.group_of(entry.get('category'), row['part_list_grouping'])
+        if not entry.get('minifig_no') and entry['group']:
+            grouped[entry['group']].append(entry)
+    row['part_groups'] = []
+    for name in part_groups.order(grouped, row['part_list_grouping']):
+        parts = grouped[name]
+        missing = sum(p['deficit'] for p in parts)
+        checked = sum(bool(p.get('checked')) for p in parts)
+        todo = len(parts) - checked
+        row['part_groups'].append(dict(name=name, rows=parts, pieces=sum(p['quantity'] or 0 for p in parts),
+                                       missing=missing, checked=checked, todo=todo, open=bool(missing or todo)))
     row['consists'] = consists
     row['part_list'] = row['retired_lines'] = None
     if kind == 'set' and selected and selected['entity'] == 'copy':

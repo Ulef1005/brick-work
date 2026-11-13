@@ -242,30 +242,32 @@
     const more=list.querySelector('[data-bc-more]'),loaded=list.querySelector('[data-bc-loaded]');let limit=60,selecting=false;
     /* Paging (4.8d): optional, switched on per list by data-bc-page-size. The main list saves its page with its scroll offset so Back returns to the same page. */
     const pageSize=Math.max(0,Math.floor(Number(list.dataset?.bcPageSize))||0);let page=1;const pager=pageSize?buildPager():null;
-    function buildPager(){
+    function buildPager(target=container, section=null){
       const nav=document.createElement('nav'),prev=document.createElement('button'),next=document.createElement('button'),numbers=document.createElement('div'),text=document.createElement('p');
       nav.className='bc-pager';nav.hidden=true;nav.setAttribute('aria-label','Pages');nav.dataset.bcPager='';
-      const goTo=n=>{page=n;render();const first=container.querySelector('[data-bc-row]');if(first&&typeof first.scrollIntoView==='function'&&list.hasAttribute('data-bc-main'))first.scrollIntoView({block:'start'});};
+      const goTo=n=>{if(section)section.page=n;else page=n;render();const first=container.querySelector('[data-bc-row]');if(first&&typeof first.scrollIntoView==='function'&&list.hasAttribute('data-bc-main'))first.scrollIntoView({block:'start'});};
       // Page buttons are rebuilt on every render: focus returns to the current page when the activated button is gone or disabled.
       const focusCurrent=()=>[...numbers.children].find(c=>c.getAttribute&&c.getAttribute('aria-current')==='page')?.focus({preventScroll:true});
       for(const [b,label,delta] of [[prev,'Previous',-1],[next,'Next',1]]){b.type='button';b.className='bc-page-step bc-page-'+(delta<0?'prev':'next');b.textContent=label;b.setAttribute('aria-label',label+' page');b.addEventListener('click',()=>{goTo(page+delta);if(b.disabled)focusCurrent();});}
       numbers.className='bc-page-numbers';
       text.className='mono';text.dataset.bcPageText='';
-      nav.append(prev,numbers,next,text);container.after(nav);return {nav,prev,next,numbers,text,goTo,focusCurrent};
+      nav.append(prev,numbers,next,text);target.after(nav);return {nav,prev,next,numbers,text,goTo,focusCurrent};
     }
     // The visible range, for example "16 to 30 of 412".
     const rangeText=total=>total?((page-1)*pageSize+1)+' to '+Math.min(total,page*pageSize)+' of '+total:'';
     // First, last and current page with their neighbours; a single skipped page shows as its number, longer gaps as an ellipsis.
-    function pageItems(pages){
+    function pageItems(pages,current=page){
+      const page=current;
       const wanted=[...new Set([1,page-1,page,page+1,pages].filter(n=>n>=1&&n<=pages))].sort((a,b)=>a-b),items=[];
       wanted.forEach((n,i)=>{if(i){const gap=n-wanted[i-1];if(gap===2)items.push(n-1);else if(gap>2)items.push('…');}items.push(n);});
       return items;
     }
     const visibleSlice=rows=>pageSize?rows.slice((page-1)*pageSize,page*pageSize):(!search&&!sort?rows:rows.slice(0,limit));
-    function updatePager(total){
+    function updatePager(total,controls=pager,current=page,size=pageSize,section=false){
+      const pager=controls,page=current,pageSize=size;
       if(!pager)return;const pages=Math.max(1,Math.ceil(total/pageSize));
-      pager.nav.hidden=pages<2;pager.text.textContent=rangeText(total);pager.prev.disabled=page<=1;pager.next.disabled=page>=pages;
-      pager.numbers.replaceChildren(...pageItems(pages).map(n=>{
+      pager.nav.hidden=section?total===0:pages<2;pager.prev.hidden=pager.next.hidden=pager.numbers.hidden=section&&pages<2;pager.text.textContent=section?(total?((page-1)*pageSize+1)+'–'+Math.min(total,page*pageSize)+' of '+total:''):rangeText(total);pager.prev.disabled=page<=1;pager.next.disabled=page>=pages;
+      pager.numbers.replaceChildren(...pageItems(pages,page).map(n=>{
         if(n==='…'){const gap=document.createElement('span');gap.className='bc-page-gap';gap.textContent='…';gap.setAttribute('aria-hidden','true');return gap;}
         const b=document.createElement('button');b.type='button';b.textContent=String(n);b.setAttribute('aria-label','Page '+n);
         b.className='bc-page-number'+(n!==1&&n!==pages&&n!==page?' bc-page-neighbour':'');
@@ -273,6 +275,27 @@
         b.addEventListener('click',()=>{pager.goTo(n);pager.focusCurrent();});return b;
       }));
       if(more)more.hidden=true;if(loaded)loaded.textContent='';
+    }
+    // Section state belongs to this item and selected copy, independent of list filters.
+    const sectionKey='bw-part-sections:'+location.pathname+':'+new URLSearchParams(location.search).get('copy');
+    let sectionMemory={};
+    try {const stored=JSON.parse(localStorage.getItem(sectionKey));if(stored&&typeof stored==='object')sectionMemory=stored;}catch(_){}
+    const partSections=[...list.querySelectorAll('[data-bc-part-section]')].map(element=>{
+      const name=element.dataset.bcPartSection,button=element.querySelector('[data-bc-section-toggle]'),body=element.querySelector('[data-bc-section-body]'),rows=element.querySelector('[data-bc-section-rows]');
+      const section={element,name,button,body,rows,page:1};
+      section.pager=buildPager(rows,section);
+      section.setOpen=(open,remember=false)=>{
+        body.hidden=!open;button.setAttribute('aria-expanded',String(open));
+        if(remember){sectionMemory[name]=open;try{localStorage.setItem(sectionKey,JSON.stringify(sectionMemory));}catch(_){}}
+      };
+      section.setOpen(typeof sectionMemory[name]==='boolean'?sectionMemory[name]:element.dataset.bcDefaultOpen==='true');
+      button.addEventListener('click',()=>section.setOpen(body.hidden,true));return section;
+    });
+    if(partSections.length){
+      const actions=list.querySelector('[data-bc-section-actions]');if(actions)actions.hidden=false;
+      list.querySelectorAll('[data-bc-sections]').forEach(button=>button.addEventListener('click',event=>{
+        event.preventDefault();partSections.forEach(section=>section.setOpen(button.dataset.bcSections==='expand',true));
+      }));
     }
     const key=listStateKey(index);let saved;
     try {saved=JSON.parse(sessionStorage.getItem(key));}catch(_){}
@@ -297,7 +320,7 @@
     }
     const canFilter=()=>inventory!=='extras';
     function render(reset=false) {
-      if(reset){limit=60;page=1;}
+      if(reset){limit=60;page=1;partSections.forEach(section=>section.page=1);}
       const extras=list.querySelector('[data-bc-tab-extras]'),inventoryPanel=list.querySelector('[data-bc-tab-inventory]');
       if(extras)extras.hidden=inventory!=='extras';
       if(inventoryPanel)inventoryPanel.hidden=inventory==='extras';
@@ -315,8 +338,19 @@
       const result=filterRows(records,search?.value||'',filters(),sort?sort.value:'index',direction?.value,group?.value);
       if(pageSize)page=Math.min(Math.max(1,page),Math.max(1,Math.ceil(result.length/pageSize)));
       const focused=document.activeElement,focusedRow=focused?.closest?.('[data-bc-row]');
-      const sections=inventorySections(result),split=inventory!=='figures' && !!list.querySelector('[data-bc-missing]') && sections.missing.length>0;
-      const displayed=visibleSlice(split?[...sections.missing,...sections.present]:result); // one array for retention and render
+      const sections=inventorySections(result),split=!partSections.length && inventory!=='figures' && !!list.querySelector('[data-bc-missing]') && sections.missing.length>0;
+      let displayed=visibleSlice(split?[...sections.missing,...sections.present]:result); // one array for retention and render
+      if(partSections.length){
+        displayed=[];
+        partSections.forEach(section=>{
+          const matches=result.filter(r=>r.part_group===section.name && r.type!=='M');
+          section.element.hidden=inventory==='figures'||!matches.length;
+          section.page=Math.min(Math.max(1,section.page),Math.max(1,Math.ceil(matches.length/25)));
+          updatePager(matches.length,section.pager,section.page,25,true);
+          displayed.push(...matches.slice((section.page-1)*25,section.page*25));
+        });
+        displayed.push(...visibleSlice(result.filter(r=>r.type==='M')));
+      }
       if(virtual){
         const matching=new Set(result),shown=new Set(displayed);
         records.forEach(r=>{if(!matching.has(r))r.selected=false;if(r.node && !shown.has(r))r.node.remove();});
@@ -334,10 +368,10 @@
       let previous;const groupCounts=new Map();
       if(group?.value)result.forEach(r=>{const k=groupValue(r,group.value)||'Not recorded';groupCounts.set(k,(groupCounts.get(k)||0)+1);});
       displayed.forEach(r=>{
-        if(group?.value) {const name=groupValue(r,group.value)||'Not recorded';if(name!==previous){const h=document.createElement('h3');h.dataset.bcGroupHeading='';const control=filterControls.find(c=>c.dataset.bcFilter===group.value);const headingLabel=control?[...control.options].find(o=>o.value===name)?.textContent||name:name;h.textContent=headingLabel;const n=groupCounts.get(name)||0,noun=singularNoun(root.dataset.type);h.append(Object.assign(document.createElement('span'),{className:'bc-group-count',textContent:' · '+n+' '+(n===1?noun:listNoun(root.dataset.type))}));if(group.value==='lot'&&name!=='null'&&root.dataset.lotBase){const open=document.createElement('a');open.className='bc-group-open';open.textContent='Open';open.setAttribute('aria-label','Open lot '+headingLabel);open.href=root.dataset.lotBase.replace('LOT',encodeURIComponent(name));h.append(open);}container.append(h);previous=name;}}
+        if(group?.value && !partSections.length) {const name=groupValue(r,group.value)||'Not recorded';if(name!==previous){const h=document.createElement('h3');h.dataset.bcGroupHeading='';const control=filterControls.find(c=>c.dataset.bcFilter===group.value);const headingLabel=control?[...control.options].find(o=>o.value===name)?.textContent||name:name;h.textContent=headingLabel;const n=groupCounts.get(name)||0,noun=singularNoun(root.dataset.type);h.append(Object.assign(document.createElement('span'),{className:'bc-group-count',textContent:' · '+n+' '+(n===1?noun:listNoun(root.dataset.type))}));if(group.value==='lot'&&name!=='null'&&root.dataset.lotBase){const open=document.createElement('a');open.className='bc-group-open';open.textContent='Open';open.setAttribute('aria-label','Open lot '+headingLabel);open.href=root.dataset.lotBase.replace('LOT',encodeURIComponent(name));h.append(open);}container.append(h);previous=name;}}
         const node=virtual?(r.node ||= buildRow(r,root.dataset,selecting,selectionCount)):r.node;
         if(virtual){const check=node.querySelector('[data-bc-selected]');if(check)check.checked=r.selected;const label=node.querySelector('.bc-selection');if(label)label.hidden=!selecting;}
-        node.hidden=false;const destination=split?(Number(r.missing||0)+Number(r.damaged||0)+Number(r.parts_missing||0)>0?missingRows:inlinePresent.has(r)?presentInline:presentRows):container;destination.append(node);if(virtual)nodes.push(node);
+        node.hidden=false;const partSection=partSections.find(section=>section.name===r.part_group && r.type!=='M');const destination=partSection?partSection.rows:split?(Number(r.missing||0)+Number(r.damaged||0)+Number(r.parts_missing||0)>0?missingRows:inlinePresent.has(r)?presentInline:presentRows):container;destination.append(node);if(virtual)nodes.push(node);
         bindRow(node);
       });
       if(focusedRow && nodes.includes(focusedRow) && !focusedRow.hidden && document.activeElement!==focused)focused.focus({preventScroll:true});

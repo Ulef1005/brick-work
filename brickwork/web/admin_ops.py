@@ -38,6 +38,9 @@ def settings_set(key, value):
     from ..core.pipeline import validate_priority, STEPS, TYPES
     from ..core.sources.base import audit_origin
     with _settings_db() as db, audit_origin('cli'):
+        if key == 'part_list_grouping':
+            admin.patch_settings(db, {key: value})
+            return {key: value}
         if key == 'source_priority':
             parsed = json.loads(value)
             validate_priority(parsed)

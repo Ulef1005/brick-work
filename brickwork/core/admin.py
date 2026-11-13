@@ -237,7 +237,7 @@ def settings(db):
     values = dict(db.execute('SELECT key,value FROM main.setting'))
     from .price_settings import read
     from .candidate_sets import common_max
-    return dict(**read(db), retail_country=values.get('retail_country') or 'DE', candidate_sets_common_max=common_max(db),
+    return dict(**read(db), part_list_grouping=values.get('part_list_grouping') or 'grouped', retail_country=values.get('retail_country') or 'DE', candidate_sets_common_max=common_max(db),
                 priority=effective_priority(values.get('source_priority')),
                 import_order={k.removeprefix('import_order:'): json.loads(v) for k, v in sorted(values.items())
                               if k.startswith('import_order:') and v},
@@ -256,7 +256,7 @@ def patch_settings(db, data):
     from . import errors, price_settings
     from .pipeline import STEPS, TYPES
     allowed = {'retail_country', 'bricklink_region', 'bricklink_currency', 'incomplete_discount_pct',
-               'source_priority', 'import_order', 'freshness', 'repair', 'display_currency', 'prefer_bricklink_inventory', 'candidate_sets_common_max'}
+               'source_priority', 'import_order', 'freshness', 'repair', 'display_currency', 'prefer_bricklink_inventory', 'candidate_sets_common_max', 'part_list_grouping'}
     if not isinstance(data, dict) or not data:
         raise errors.ValidationFailed('Send at least one setting')
     if set(data) - allowed:
@@ -270,7 +270,7 @@ def patch_settings(db, data):
     with transaction(db):
         if price:
             price_settings.save(db, price)
-        if {'retail_country', 'source_priority', 'freshness'} & set(data):
+        if {'retail_country', 'source_priority', 'freshness', 'part_list_grouping'} & set(data):
             current = settings(db)
             rules = [(r['source'], r['kind'], '' if r['max_age_days'] is None else r['max_age_days']) for r in current['freshness']]
             if 'freshness' in data:
@@ -285,7 +285,7 @@ def patch_settings(db, data):
                     rules.append((r.get('source'), r.get('kind'), '' if days is None else days))
             try:
                 save_settings(db, data.get('retail_country', current['retail_country']),
-                              data.get('source_priority', current['priority']), rules)
+                              data.get('source_priority', current['priority']), rules, part_list_grouping=data.get('part_list_grouping'))
             except ValueError as exc:
                 raise errors.ValidationFailed(str(exc)) from None
         if 'display_currency' in data:
@@ -330,9 +330,12 @@ def _stored_freshness(db, which=None):
     return {f'{r[0]}/{r[1]}': r[2] for r in rows if which is None or f'{r[0]}/{r[1]}' in which}
 
 
-def save_settings(db, country, priority, freshness):
+def save_settings(db, country, priority, freshness, part_list_grouping=None):
     """Save the retail country, the source order and the freshness rules from the Settings page; returns the event id (None when nothing
     differs from what is stored). Refused whole on a value that does not fit."""
+    from .part_groups import MODES
+    if part_list_grouping is not None and part_list_grouping not in MODES:
+        raise ValueError('Choose grouped, bricklink or none for part_list_grouping')
     if country not in COUNTRIES:
         raise ValueError('Choose a supported retail country')
     validate_priority(priority)
@@ -348,11 +351,14 @@ def save_settings(db, country, priority, freshness):
             raise ValueError('Freshness days must be zero or more')
         rules[f'{source}/{kind}'] = days
     with transaction(db):
-        stored = _stored_pair(db, ('retail_country', 'source_priority'))
+        stored = _stored_pair(db, ('retail_country', 'source_priority', 'part_list_grouping'))
         wanted = {'retail_country': country, 'source_priority': json.dumps(priority, sort_keys=True)}
         # A value equal to what the screen would show for a setting never stored is not a change.
         shown = {'retail_country': stored['retail_country'] or 'DE',
                  'source_priority': json.dumps(effective_priority(stored['source_priority']), sort_keys=True)}
+        if part_list_grouping is not None:
+            wanted['part_list_grouping'] = part_list_grouping
+            shown['part_list_grouping'] = stored['part_list_grouping'] or 'grouped'
         changed = {k: v for k, v in wanted.items() if v != shown[k]}
         current = _stored_freshness(db)
         unknown = set(rules) - set(current)

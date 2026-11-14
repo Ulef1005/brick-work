@@ -73,10 +73,24 @@ def test_an_answer_the_count_found_one_undo_and_a_retried_request(coll, copy):
     assert db.execute("SELECT count(*) FROM event WHERE entity_kind='part_check' AND json_extract(new_value,'$.operation')='retry-1'").fetchone()[0] == 1
     mutate(db, copy, 'undo')
     assert db.execute('SELECT missing FROM copy_part WHERE id=?', (part['id'],)).fetchone()[0] == 1
+    assert checker.session(db, copy)['misses'] == [part['token']]               # Undo brings the entry back (#383)
     mutate(db, copy, 'undo')
     assert checker.snapshot(db, copy, [part['token']]) == before
     undone = db.execute("SELECT count(*) FROM event_undo u JOIN event e ON e.id=u.event_id WHERE e.entity_kind='part_check'").fetchone()[0]
     assert undone == 2
+
+
+def test_a_part_found_in_full_outside_the_check_leaves_missing_so_far_too(coll, copy):
+    """Found 1 on the copy page lowers the count without touching the session; the list must not keep a part with 0 missing (#383)."""
+    db = coll.db
+    state = start(db, copy)
+    part = next(r for r in state['rows'] if r['kind'] == 'part' and r['quantity'] == 4)
+    mutate(db, copy, 'answer', token=part['token'], found=3)
+    assert checker.view(db, copy)['session']['misses'] == [part['token']]
+    checker.found_one(db, copy, part['token'])                                  # the last missing piece, from the set page's card
+    assert next(r for r in checker.view(db, copy)['rows'] if r['token'] == part['token'])['missing'] == 0
+    assert checker.view(db, copy)['session']['misses'] == []
+    assert mutate(db, copy, 'answer', token=part['token'], found=2)['session']['misses'] == [part['token']]   # missing again: back on the list
 
 
 def test_an_undo_is_retried_without_undoing_a_second_step(coll, copy):

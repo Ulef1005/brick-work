@@ -63,13 +63,20 @@ def sorter(mode, position):
     return lambda r: position[r['token']]
 
 
-def normalise(s, kinds):
+def recovered(inventory):
+    """The tokens of the rows that count a known quantity and have none missing: a miss that was found in full."""
+    return {r['token'] for r in inventory if r.get('quantity') is not None and r.get('missing') == 0}
+
+
+def normalise(s, kinds, found_in_full=()):
     """Read model of a stored session against the current sequence.
 
     Tokens that are no longer part of the sequence (a line a switch retired, or spare rows before the spare question was answered
     "Yes") are dropped from the visible order without error, and the cursor keeps pointing at the same remaining step. A required line the
     session has not met (a switch to another part list added it, design 4.4) joins the end of the walk, so the check can still answer it and
-    finish. Nothing stored is rewritten here; the next save persists the changed form and its receipt keeps the raw old value."""
+    finish. Nothing stored is rewritten here; the next save persists the changed form and its receipt keeps the raw old value.
+    `found_in_full` names the tokens whose missing count is 0 now (`recovered()`): Found 1 on the copy page, Take and an order receipt lower the count
+    without touching the session, and such a part must not stay in Missing so far with 0 missing (#383)."""
     if not s:
         return s
     if s.get('sort') not in ORDERS:
@@ -85,7 +92,7 @@ def normalise(s, kinds):
     if not s.get('scope'):                                              # a missing-only or skipped-only walk is a chosen subset: nothing joins it
         s['order'] += [t for t, kind in kinds.items() if kind != 'spare' and t not in known]
     s['answers'] = {t: a for t, a in s['answers'].items() if visible(t)}
-    s['misses'] = [t for t in s['misses'] if visible(t)]
+    s['misses'] = [t for t in s['misses'] if visible(t) and t not in found_in_full]   # a part found in full leaves Missing so far, whoever lowered its count (#383)
     return s
 
 
@@ -315,7 +322,7 @@ def view(db, copy_id):
     """Return the copy, live checker rows and normalised saved session from the collection store."""
     c = header(db, copy_id)
     inventory = rows(db, copy_id)
-    s = normalise(session(db, copy_id), {r['token']: r['kind'] for r in inventory})
+    s = normalise(session(db, copy_id), {r['token']: r['kind'] for r in inventory}, recovered(inventory))
     saved = db.execute("SELECT at FROM main.event WHERE entity_kind='part_check' AND entity_id=? AND field='save' AND via IN ('app','api','cli') ORDER BY id DESC LIMIT 1",
                        (entity_id(copy_id),)).fetchone() if s else None
     return dict(copy=c, rows=inventory, session=s, saved_at=saved[0] if saved else None)
@@ -332,7 +339,7 @@ def figure_view(db, copy_id, figure_id):
     inventory = rows(db, copy_id, figure=figure_id)
     info = dict(id=figure_id, item_id=whole['item_id'], item_type='M', item_no=label['item_no'], quantity=whole['quantity'], missing=whole['missing'],
                 name=_tidy(label['name']) or label['item_no'], image=label['image'])
-    s = normalise(session(db, copy_id, figure_id), {r['token']: r['kind'] for r in inventory})
+    s = normalise(session(db, copy_id, figure_id), {r['token']: r['kind'] for r in inventory}, recovered(inventory))
     return dict(copy=c, figure=info, rows=inventory, session=s)
 
 
@@ -376,7 +383,7 @@ def choices(db):
 def saved_view(db, copy_id, tokens=(), figure=None):
     """The reply of a save: the changed rows only (the client keeps what it has, pictures included) and the progress counts."""
     inventory = rows(db, copy_id, decorate=False, figure=figure)
-    s = normalise(session(db, copy_id, figure), {r['token']: r['kind'] for r in inventory})
+    s = normalise(session(db, copy_id, figure), {r['token']: r['kind'] for r in inventory}, recovered(inventory))
     counts = dict(found=0, missing=0, skipped=0, remaining=0)
     walked = set(s.get('members') or s['order']) if (s or {}).get('scope') == 'missing' else None      # a missing-only run counts its own parts, as the screen does
     for r in inventory:
@@ -443,7 +450,7 @@ def write(db, copy_id, payload, figure=None):
         all_rows = rows(db, copy_id, decorate=False, figure=figure)
         by_token = {r['token']: r for r in all_rows}
         position = {r['token']: i for i, r in enumerate(all_rows)}
-        s = normalise(session(db, copy_id, figure), {t: r['kind'] for t, r in by_token.items()})
+        s = normalise(session(db, copy_id, figure), {t: r['kind'] for t, r in by_token.items()}, recovered(all_rows))
         token = payload.get('token')
         tokens = [token] if token in by_token else []
 

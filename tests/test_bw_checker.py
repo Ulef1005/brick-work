@@ -69,7 +69,7 @@ def test_an_answer_the_count_found_one_undo_and_a_retried_request(coll, copy):
     checker.write(db, copy, payload)
     again = checker.write(db, copy, payload)                                    # the same operation id: the first answer, not a second
     assert next(r for r in again['rows'] if r['token'] == part['token'])['missing'] == 0
-    assert again['session']['misses'] == [part['token']]                        # a recovered miss stays in the history
+    assert again['session']['misses'] == []                                     # found in full: the part leaves Missing so far (#383)
     assert db.execute("SELECT count(*) FROM event WHERE entity_kind='part_check' AND json_extract(new_value,'$.operation')='retry-1'").fetchone()[0] == 1
     mutate(db, copy, 'undo')
     assert db.execute('SELECT missing FROM copy_part WHERE id=?', (part['id'],)).fetchone()[0] == 1

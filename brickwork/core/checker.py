@@ -526,9 +526,12 @@ def write(db, copy_id, payload, figure=None):
                     else:
                         mark_row(db, 'copy_figure', dict(id=r['id'], copy_id=copy_id), r, dict(missing=missing))
                     s['answers'][token] = 'answered'
-                    # #213: a new miss goes to the top of Missing so far; one already listed keeps its place there.
+                    # #213: a new miss goes to the top of Missing so far; one already listed keeps its place there. A part found in full
+                    # leaves the list (#383).
                     if missing and token not in s['misses']:
                         s['misses'] = [token] + s['misses']
+                    elif not missing:
+                        s['misses'] = [t for t in s['misses'] if t != token]
                     if action == 'answer':
                         s['cursor'] = min(s['order'].index(token) + 1, len(s['order']))
                     settle()

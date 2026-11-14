@@ -152,7 +152,7 @@ def test_a_set_becomes_copies_with_the_preselected_list_and_undo_archives_them(w
     assert result.status_code == 200
     first, second = result.json['receipts']
     assert len(first['copies']) == 2 and len(second['copies']) == 1 and first['stock'] is None
-    assert first['url'] == f"/collection/item/{first['item_id']}" and second['url'] == f"/collection/item/{second['item_id']}"      # the link to the added set (#380)
+    assert first['url'] == f"/collection/item/{first['item_id']}?copy={first['copies'][0]}" and second['url'] == f"/collection/item/{second['item_id']}?copy={second['copies'][0]}"   # the link to the added set (#380)
     assert client.get(first['url']).status_code == 200
     with read() as db:
         new = db.execute('SELECT * FROM copy WHERE id IN (?, ?)', first['copies']).fetchall()
@@ -311,6 +311,7 @@ def test_a_wish_is_added_raised_and_undone(world, client, csrf, read):
     assert proposal['items'][0]['condition'] == 'used'
     batch = confirm(client, csrf, proposal, condition='any', decision='another').json
     wish_id = batch['receipts'][0]['wish']
+    assert batch['receipts'][0]['url'] == f'/collection/wishes/{wish_id}'      # the link opens the wish itself (#380)
     with read() as db:
         wish = db.execute('SELECT * FROM wish WHERE id=?', (wish_id,)).fetchone()
         assert (wish['kind'], wish['condition'], wish['quantity'], wish['wishlist_id']) == ('set', 'any', 1, 'default')

@@ -29,6 +29,7 @@
 .display{font-size:44px;line-height:48px;font-weight:600;letter-spacing:-.02em;text-wrap:balance}
 .display.page{font-size:40px;line-height:44px}
 .clay{color:var(--tw-accent-text)}
+.logo-blue{color:#007187}html.tw-dark .logo-blue{color:#3DB4CC}   /* the headline's second sentence: the logo's blue (design/logo, 5.4:1 on the paper), a lighter step on the dark page (7.7:1 on #111) */
 .lede{color:var(--tw-text-2);max-width:56ch}
 .small{font-size:14px;line-height:20px;color:var(--tw-text-2)}
 .muted{color:var(--tw-text-muted)}

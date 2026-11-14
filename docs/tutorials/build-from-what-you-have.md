@@ -15,8 +15,8 @@ It takes about 15 minutes. You need a Brick Work install with the catalogue load
 2. Each row is a set, best first. The bar and the percentage say how much of its parts your loose stock covers. On the right are the missing parts, the missing minifigures and an approximate cost to complete.
 3. Narrow the list: **Parts from** chooses which stock counts (loose stock, lots, storages), **Min** is the least percentage, and **Theme**, **Years** and **Size** keep matching sets only.
 
-![Build Scout on a desktop: a list of catalogue sets ranked by the percentage of their parts the loose stock makes, with missing parts and cost.](../img/tutorials/scout-list-desktop-1440-light.png#only-light)
-![Build Scout on a desktop: a list of catalogue sets ranked by the percentage of their parts the loose stock makes, with missing parts and cost.](../img/tutorials/scout-list-desktop-1440-dark.png#only-dark)
+<picture data-bw-screens><source media="(max-width: 600px)" srcset="../img/tutorials/tut-scout-list-phone-390-light.png"><img src="../img/tutorials/tut-scout-list-desktop-1024-light.png#only-light" alt="Build Scout: catalogue sets ranked by the percentage of their parts the loose stock makes, with call-out 1 on the score bar of the best set."></picture>
+<picture data-bw-screens><source media="(max-width: 600px)" srcset="../img/tutorials/tut-scout-list-phone-390-dark.png"><img src="../img/tutorials/tut-scout-list-desktop-1024-dark.png#only-dark" alt="Build Scout: catalogue sets ranked by the percentage of their parts the loose stock makes, with call-out 1 on the score bar of the best set."></picture>
 
 The percentage counts the set's own parts only. A part in another colour is listed apart as a swap and never counted, and minifigures count as whole figures, not as their parts.
 

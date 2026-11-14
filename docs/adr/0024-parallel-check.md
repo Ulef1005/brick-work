@@ -55,3 +55,7 @@ The follow-up named above was done. `scripts/capture_screens.cjs`, in the gate's
 ## Links
 
 Issue #254; [ADR 0022](0022-design-roll-out.md) (rendered tests never skip silently, the screen gate); `CONTRIBUTING.md` (running the gate, the group rule, the docs-only path); `design/DESIGN-CHECK.md`.
+
+## Amendment, 2026-11-14 (#364)
+
+The single `check` job turned out to be the slowest part of a pull request (a median of about 600 s for `check.sh`, with pytest the larger share on the 4-vCPU runner). Option 1 above, a split into several jobs, is now done, and its objection no longer holds: `main` has no required-check rule, and the workflow's last job is still named `check`, passes only when all three shard jobs did, and is what a pull request's checks list. `pytest --shard I/N` (`tests/xdist_groups.py`) deals whole xdist groups and whole test files to the jobs, largest cost first; `scripts/check.sh` takes `BW_SHARD=I/N`; shard 1 runs every step that is neither the browser step nor pytest, so each still runs once. `tests/test_shard.py` checks that the shards together hold every test once and that no group is split. The rest of this decision stands: each shard still runs `pytest -n auto --dist loadgroup`.

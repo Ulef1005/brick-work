@@ -14,6 +14,7 @@ from _pytest.nodeid import coerce_node_id
 # on an 8-core machine), else COST_PER_TEST seconds a test. The cost only balances the shards; nothing depends on it being right.
 COST_PER_TEST = 0.3
 SHARD_COST = {'site-pages': 200.0, 'demo': 150.0, 'rendered': 90.0, 'tests/test_docs_drift.py': 70.0}
+SHARD_ONE_EXTRA = 60.0   # seconds of the non-pytest steps that shard 1 alone runs (names, tokens, docs, secrets, API checks)
 CHROME_OFF_COST = {'rendered': 5.0}   # BW_NO_CHROME=1 (a pull request): the Chrome tests skip at once
 
 
@@ -25,7 +26,7 @@ def shard_of(units, count):
     """{unit key: shard number from 1} for `units` ({key: number of tests}) dealt over `count` shards, deterministic."""
     known = {**SHARD_COST, **(CHROME_OFF_COST if os.environ.get('BW_NO_CHROME') == '1' else {})}
     cost = {key: known.get(key, COST_PER_TEST * tests) for key, tests in units.items()}
-    load = [0.0] * count
+    load = [SHARD_ONE_EXTRA] + [0.0] * (count - 1)     # shard 1 also runs the steps that are not pytest
     placed = {}
     for key in sorted(units, key=lambda k: (-cost[k], k)):
         lightest = min(range(count), key=lambda i: (load[i], i))

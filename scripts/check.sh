@@ -32,7 +32,7 @@ echo "Check mode: $mode"
 pytest_args=(-q -n "${BW_TEST_WORKERS:-auto}" --dist loadgroup)
 # BW_SHARD=I/N (CI runs N jobs, #364): this run is the I-th. Every shard runs its share of the pytest tests (`--shard`, tests/xdist_groups.py: whole
 # xdist groups, deterministic, a test file or group is never split, tests/test_shard.py checks the shards add up to the suite). Shard 1 alone runs every
-# other step, so each of them still runs once per pull request; the other shards run the browser step and pytest only.
+# other step except the browser step, so each of them still runs once per pull request; every shard runs the browser step and pytest.
 shard=${BW_SHARD:-}
 shard_args=()
 shard_first=1

@@ -32,13 +32,13 @@ root.querySelector=s=>{
 root.querySelectorAll=s=>{const m=s.match(/input\[name=(\w+)\]/);if(m)return groups[m[1]];return [];};
 const document={querySelector:s=>s==='#bw-add'?root:null,createElement:tag=>new Element(tag),activeElement:new Element('body'),addEventListener(){}};
 const window={addEventListener(){}};
-let searchCount=1, requests=[], responseMode='search', confirmCalls=0, retryCalls=0;
+let searchCount=1, requests=[], responseMode='search', confirmCalls=0, retryCalls=0, searchBox=false;
 const item={item_id:7,kind:'set',number:'123-1',label:'123-1',name:'Synthetic <set>',type_name:'Set',quantity:1,where:'owned',condition:'used',completeness:'',decision:'',owned:0,wished:false,color_id:null};
 const unknown={item_id:null,unknown:true,kind:'set',number:'99999-9',label:'99999-9',name:'99999-9',type_name:'Set',quantity:1,where:'owned',condition:'used',completeness:'',decision:'',owned:0,wished:false,color_id:null,offers:{unidentified:true,fetch:{available:false,why:'Add a Rebrickable key in Tools & Admin first'},help:'Not in the catalogue · add a key'}};
 const flush=()=>new Promise(resolve=>setImmediate(resolve));
 const fetch=async(url,opts={})=>{
  const body=opts.body?JSON.parse(opts.body):null;requests.push({url,body});
- if(url.includes('/search?'))return {ok:true,json:async()=>({count:searchCount,items:[{...item}]})};
+ if(url.includes('/search?'))return {ok:true,json:async()=>({count:searchCount,items:[searchBox?{...item,item_id:null,from_set:7,kind:'box',type_name:'Box'}:{...item}]})};
  if(url.endsWith('/review'))return {ok:true,json:async()=>({token:'signed-review',items:responseMode==='unknown'?[{...unknown}]:[{...item,score:.9}],unresolved:[],candidates:responseMode==='photo'})};
  if(url.endsWith('/confirm')){confirmCalls++;return {ok:true,json:async()=>({batch:'batch',receipts:[{job_id:42,label:item.label,name:item.name,url:'/collection/item/7'}]})};}
  if(url.endsWith('/retry')){retryCalls++;return {ok:true,json:async()=>({})};}
@@ -56,6 +56,14 @@ vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../static/web/toni/bw-ad
  assert.equal(requests.filter(r=>r.url.includes('/search?')).length,0);assert.equal(nodes.results.children.length,0);
  nodes.search.value='castle';await nodes.search.trigger('input');await new Promise(r=>setTimeout(r,200));await flush();
  assert.ok(requests.at(-1).url.includes('q=castle'));assert.equal(nodes.results.children.length,1);
+ { // #382: a box or instructions not made yet is its set; it is selected by the set and goes to the review with its number, never a null id alone.
+  searchBox=true;nodes.search.value='castle box';await nodes.search.trigger('input');await new Promise(r=>setTimeout(r,200));await flush();
+  const virtual=nodes.results.children[0].children.at(-1);await virtual.trigger();assert.equal(nodes.queued.textContent,'1 selected');
+  await nodes.review.trigger();const sentBox=requests.filter(r=>r.url.endsWith('/review')).at(-1).body.items[0];
+  assert.deepEqual(JSON.parse(JSON.stringify(sentBox)),{item_id:null,from_set:7,kind:'box',number:'123-1',color_id:null,quantity:1});
+  await nodes.back.trigger();await virtual.trigger();assert.equal(nodes.queued.textContent,'Nothing selected yet');
+  searchBox=false;nodes.search.value='castle';await nodes.search.trigger('input');await new Promise(r=>setTimeout(r,200));await flush();
+ }
  nodes.search.value='';await nodes.search.trigger('input');await new Promise(r=>setTimeout(r,200));await flush();
  assert.equal(nodes.results.children.length,0);assert.equal(nodes.chips.children.length,0);
  nodes.search.value='castle';await nodes.search.trigger('input');await new Promise(r=>setTimeout(r,200));await flush();

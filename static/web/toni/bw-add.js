@@ -40,7 +40,7 @@
  // The wishlist destination and the wanted-list ids apply only where they change something (Ulf, 2026-10-28).
  const syncOptions = () => root.querySelectorAll('[data-where-only]').forEach(e => { e.hidden = e.dataset.whereOnly !== value('where') || (e.dataset.modeOnly && e.dataset.modeOnly !== value('mode')); });
  const step = name => root.querySelectorAll('[data-step]').forEach(e => { if (e.dataset.step === name) e.setAttribute('aria-current', 'step'); else e.removeAttribute('aria-current'); });
- const selectedKey = row => JSON.stringify([row.item_id, row.color_id ?? null]);
+ const selectedKey = row => JSON.stringify([row.item_id ?? (row.from_set != null ? 'set:' + row.from_set : null), row.color_id ?? null]);   // a box or instructions not made yet is its set (#382)
  const picture = row => {
   if (!row.image) {const tile = el('span', row.label || row.number || '', 'bw-add-picture bw-add-no-image'); if (row.item_id != null) tile.dataset.pictureFor = row.item_id; return tile;}
   const img = el('img', undefined, 'bw-add-picture'); const full = `/manage/images/${row.image}`; img.src = full + '?w=320'; img.srcset = `${full}?w=320 320w, ${full}?w=640 640w`; img.sizes = '160px'; img.dataset.full = full; img.alt = row.name; img.loading = 'lazy';
@@ -90,7 +90,7 @@
    result.items.forEach(row => {
     const wrap = identity(row); const button = el('button', undefined, 'bw-add-select'); button.type='button';
     const show = () => { const on = queued.some(q => selectedKey(q) === selectedKey(row)); button.textContent = on ? 'Selected' : 'Select'; button.setAttribute('aria-pressed', String(on)); button.setAttribute('aria-label', `${on ? 'Selected' : 'Select'} ${row.label || row.number}`); };
-    button.addEventListener('click',() => { const on = queued.some(q => selectedKey(q) === selectedKey(row)); queued = on ? queued.filter(q => selectedKey(q) !== selectedKey(row)) : [...queued, {item_id:row.item_id,color_id:row.color_id ?? null,quantity:1}]; show(); countQueue(); });
+    button.addEventListener('click',() => { const on = queued.some(q => selectedKey(q) === selectedKey(row)); queued = on ? queued.filter(q => selectedKey(q) !== selectedKey(row)) : [...queued, row.from_set != null && row.item_id == null ? {item_id:null,from_set:row.from_set,kind:row.kind,number:row.number,color_id:null,quantity:1} : {item_id:row.item_id,color_id:row.color_id ?? null,quantity:1}]; show(); countQueue(); });
     show(); wrap.append(button); $('results').append(wrap);
    });
   } catch (error) {if(version === searchVersion) message(error.message);}

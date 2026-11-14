@@ -18,6 +18,7 @@ import csv
 import io
 import json
 import re
+import sqlite3
 import uuid
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
@@ -584,7 +585,7 @@ def resolve(db, rows, where, *, list_id='default', map_wanted_ids=True):
                 shown = decorate(db, dict(item_id=parent['item_id'], kind='set'))
                 state, bl_name = _bricklink_box(db, kind, parent['number']) if box_checks < BOX_CHECKS else ('unchecked', None)
                 box_checks += 1
-                flag = [f'BrickLink does not list a {KIND_NAMES[kind].lower()} for set {parent["number"]} · check the number before adding'] if state == 'unknown' else []
+                flag = [f'BrickLink does not list {"an" if kind == "instructions" else "a"} {KIND_NAMES[kind].lower()} for set {parent["number"]} · check the number before adding'] if state == 'unknown' else []
                 resolved.append({**base, 'item_id': None, 'from_set': parent['item_id'], 'kind': kind, 'type_name': KIND_NAMES[kind],
                                  'number': parent['number'], 'name': bl_name or parent['name'], 'label': parent['label'], 'image': shown.get('image'),
                                  'owned': 0, 'wished': False, 'wished_colors': [], 'wished_by_list': {}, 'to_check': False, 'part_list': None,
@@ -764,14 +765,14 @@ def _bricklink_box(db, kind, number):
         return 'known', BrickLink(db).item_name(items.type_of_kind(kind), number)
     except NotFoundAtSource:
         return 'unknown', None
-    except (SourceError, Store4Error, ValueError):
+    except (SourceError, Store4Error, ValueError, OSError, sqlite3.Error):        # a locked database or a dead network never blocks the add
         return 'unchecked', None
 
 
 def _box_item(db, kind, set_id, via, actor, checked=('unchecked', None)):
-    """`(item id, created)` of the box or instructions item of a set (#382): the existing one, else a new local item named as the set. It is
+    """`(item id, created)` of the box or instructions item of a set (#382): the existing one, else a new local item named as the set, or as BrickLink named it when the review (`checked`) found it. It is
     BrickLink-born with the set's number, as every other BrickLink-only box or booklet is (the Workbench booklets, order lines), so booklet files
-    and order lines find it by that number; its link is inferred (the number rule, not a lookup)."""
+    and order lines find it by that number; its link is inferred (the number rule), or `to_check` when the review found that BrickLink does not list it."""
     parent = lookup(db, set_id)
     if parent is None or not parent['number']:
         raise ValueError('Choose a set from the catalogue')

@@ -774,3 +774,48 @@ def test_a_brickset_minifigure_file_the_import_cannot_read_is_refused_plainly(wo
     response = client.post('/manage/add/review', data=dict(csrf_token=csrf, type=kind, where='loose', mode='file', list_id='default',
                            file=(io.BytesIO(data), 'Brickset-myMinifigs-owned.csv')), content_type='multipart/form-data')
     assert response.status_code == 400 and message in response.get_data(as_text=True)
+
+
+def test_a_box_is_checked_at_bricklink_with_a_key_and_never_blocks_the_add(world, client, csrf, read, key, monkeypatch):
+    """#382 part 2: one lookup per pick. BrickLink's name is taken, a box it does not list is flagged and its link left to check, and no key, a
+    failed call or a used-up budget leaves the add exactly as part 1 made it."""
+    from brickwork.core.sources import base
+    asked = []
+
+    def answer(code, data=None):
+        return json.dumps({'meta': {'code': code, 'message': 'x', 'description': 'x'}, 'data': data})
+
+    def net(request):
+        asked.append(request.full_url.split('?')[0].rsplit('/items/', 1)[-1])
+        if asked[-1] == 'ORIGINAL_BOX/1000-2':
+            return answer(200, {'no': '1000-2', 'name': 'Castle &amp; Keep (Box)', 'type': 'ORIGINAL_BOX'})
+        return answer(404)
+    monkeypatch.setattr(base, 'transport', net)
+    proposal = review(client, csrf, '1000-2', type='box').json
+    row = proposal['items'][0]
+    assert asked == ['ORIGINAL_BOX/1000-2'] and row['name'] == 'Castle & Keep (Box)' and row['bricklink'] == 'known'
+    receipt = confirm(client, csrf, proposal).json['receipts'][0]
+    with read() as db:
+        item = db.execute('SELECT name FROM item WHERE id=?', (receipt['item_id'],)).fetchone()[0]
+        status = db.execute('SELECT status FROM item_link WHERE item_id=?', (receipt['item_id'],)).fetchone()[0]
+    assert item == 'Castle & Keep (Box)' and status == 'inferred'
+    proposal = review(client, csrf, '1000-2', type='instructions').json
+    unknown = proposal['items'][0]
+    assert unknown['bricklink'] == 'unknown' and any('does not list' in n for n in unknown['import_notes'])
+    made = confirm(client, csrf, proposal).json['receipts'][0]
+    with read() as db:
+        assert db.execute('SELECT status FROM item_link WHERE item_id=?', (made['item_id'],)).fetchone()[0] == 'to_check'
+    monkeypatch.setattr(base, 'transport', lambda request: (_ for _ in ()).throw(OSError('down')))
+    proposal = review(client, csrf, '1000-1', type='box').json
+    down = proposal['items'][0]               # a failed call: unchecked, the add goes on
+    assert down['bricklink'] == 'unchecked' and not any('does not list' in n for n in down['import_notes'])
+    assert confirm(client, csrf, proposal).status_code == 200
+
+
+def test_a_box_without_a_bricklink_key_makes_no_call(world, client, csrf, monkeypatch):
+    from brickwork.core.sources import base
+    for name in __import__('brickwork.store4.bricklink_api', fromlist=['KEY_ENVS']).KEY_ENVS:
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setattr(base, 'transport', lambda request: (_ for _ in ()).throw(AssertionError('no call without a key')))
+    row = review(client, csrf, '1000-2', type='box').json['items'][0]
+    assert row['bricklink'] == 'unchecked' and row['from_set']

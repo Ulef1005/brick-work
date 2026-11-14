@@ -24,7 +24,7 @@ platformdirs==4.14.5
 python-dateutil==4.0.0
 deepmerge==4.0.0
 Jinja2==3.1.6
-Markdown==3.11.2
+Markdown==3.11.3
 MarkupSafe==3.0.4
 pathspec==1.1.1
 pymdown-extensions==12.3

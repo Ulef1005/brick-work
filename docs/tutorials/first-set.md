@@ -46,7 +46,7 @@ You can set them up later. The note under the step says what you give up without
 5. Select **Review 1 item**. The review shows one row with **Quantity**, **Where**, **Condition** and **Completeness**. Set **Condition** to **New** or **Used**. Leave **Completeness** on **Unknown · from checks**: the check you run next decides it. Under the row, **Part list** shows which part list the copy gets; keep the preselected one.
 6. Select **Add 1 item to the collection**.
 
-The page now reads **Added 1 item** and shows a progress bar while the copy is made. Wait for it to finish. A set the catalogue knows needs no key. Its picture and its part pictures load in the background.
+The page now reads **Added 1 item** and shows a progress bar while the copy is made. An **Open** link under the set's name takes you to its page. Wait for it to finish. A set the catalogue knows needs no key. Its picture and its part pictures load in the background.
 
 ## 5. Open the set
 

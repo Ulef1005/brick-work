@@ -918,10 +918,25 @@ def bw_add_review():
         return jsonify(error=public(error, 'Could not read this input')), 400
 
 
+def _add_receipt_url(receipt):
+    """The link to what an Add saved (#380): the wish on its own page, the first new copy or the loose row on the item's page, else the item.
+    A set still being fetched has no item yet, so no link. (A part held in several colours opens on the colour chooser.)"""
+    if (receipt.get('wish') or {}).get('id'):
+        return url_for('web.bw_collection_wish', identifier=receipt['wish']['id'])
+    if not receipt.get('item_id'):
+        return None
+    if receipt.get('copies'):
+        return url_for('web.bw_collection_item', item_id=receipt['item_id'], copy=receipt['copies'][0])
+    if (receipt.get('stock') or {}).get('id'):
+        return url_for('web.bw_collection_item', item_id=receipt['item_id'], stock=receipt['stock']['id'])
+    return url_for('web.bw_collection_item', item_id=receipt['item_id'])
+
+
 def _add_receipt_view(receipt):
     """What the page needs of a receipt: no row snapshots."""
     keys = ('batch', 'index', 'item_id', 'kind', 'where', 'quantity', 'name', 'label', 'copies', 'job_id', 'fetch_job', 'pending', 'event_id')
     view = {k: receipt.get(k) for k in keys}
+    view['url'] = _add_receipt_url(receipt)
     view['stock'] = (receipt.get('stock') or {}).get('id')
     view['wish'] = (receipt.get('wish') or {}).get('id')
     return view

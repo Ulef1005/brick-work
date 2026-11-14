@@ -103,3 +103,6 @@
 #bw-add .bw-add-bar [data-review]:disabled{opacity:.5}
 @media(max-width:1023px){.bw-add-bar{bottom:var(--bw-bottom);padding-bottom:12px}}
 @media(max-width:767px){.bw-add-bar p{flex-basis:100%}}
+
+/* The link to the added set in a receipt panel (#380). */
+#bw-add .bw-add-open{display:inline-flex;align-items:center;min-height:44px;color:var(--tw-accent-text);font:500 14px var(--tw-font)}

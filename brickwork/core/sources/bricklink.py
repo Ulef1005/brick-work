@@ -88,6 +88,8 @@ class BrickLink(Source):
 
         def consume(data):
             name = data.get('name') if isinstance(data, dict) else None
+            if isinstance(data, dict) and str(data.get('no', number)).lower() != str(number).lower():
+                raise InvalidReply('BrickLink answered for another item')
             if not isinstance(name, str) or not name.strip():
                 raise InvalidReply('BrickLink item has no name')
             return html.unescape(name).strip()

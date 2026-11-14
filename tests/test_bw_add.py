@@ -798,17 +798,17 @@ def test_a_box_is_checked_at_bricklink_with_a_key_and_never_blocks_the_add(world
     with read() as db:
         item = db.execute('SELECT name FROM item WHERE id=?', (receipt['item_id'],)).fetchone()[0]
         status = db.execute('SELECT status FROM item_link WHERE item_id=?', (receipt['item_id'],)).fetchone()[0]
-    assert item == 'Castle & Keep (Box)' and status == 'inferred'
+    assert item == 'Castle & Keep (Box)' and status == 'inferred' and asked == ['ORIGINAL_BOX/1000-2']      # confirm makes no second call
     proposal = review(client, csrf, '1000-2', type='instructions').json
     unknown = proposal['items'][0]
-    assert unknown['bricklink'] == 'unknown' and any('does not list' in n for n in unknown['import_notes'])
+    assert unknown['bricklink'] == 'unknown' and 'does not list' in unknown['check_note']
     made = confirm(client, csrf, proposal).json['receipts'][0]
     with read() as db:
         assert db.execute('SELECT status FROM item_link WHERE item_id=?', (made['item_id'],)).fetchone()[0] == 'to_check'
     monkeypatch.setattr(base, 'transport', lambda request: (_ for _ in ()).throw(OSError('down')))
     proposal = review(client, csrf, '1000-1', type='box').json
     down = proposal['items'][0]               # a failed call: unchecked, the add goes on
-    assert down['bricklink'] == 'unchecked' and not any('does not list' in n for n in down['import_notes'])
+    assert down['bricklink'] == 'unchecked' and not down['check_note']
     assert confirm(client, csrf, proposal).status_code == 200
 
 
@@ -819,3 +819,13 @@ def test_a_box_without_a_bricklink_key_makes_no_call(world, client, csrf, monkey
     monkeypatch.setattr(base, 'transport', lambda request: (_ for _ in ()).throw(AssertionError('no call without a key')))
     row = review(client, csrf, '1000-2', type='box').json['items'][0]
     assert row['bricklink'] == 'unchecked' and row['from_set']
+
+
+def test_a_review_makes_a_capped_number_of_bricklink_lookups(world, client, csrf, key, monkeypatch):
+    from brickwork.core.sources import base
+    asked = []
+    monkeypatch.setattr(add, 'BOX_CHECKS', 1)
+    monkeypatch.setattr(base, 'transport', lambda request: asked.append(request.full_url) or json.dumps(
+        {'meta': {'code': 200, 'message': 'x', 'description': 'x'}, 'data': {'no': request.full_url.rsplit('/', 1)[-1].split('?')[0], 'name': 'Named'}}))
+    rows = review(client, csrf, '1000-1\n1000-2', type='box').json['items']
+    assert len(asked) == 1 and sorted(r['bricklink'] for r in rows) == ['known', 'unchecked']

@@ -527,7 +527,8 @@ def offers(db, kind, number):
 
 
 def resolve(db, rows, where, *, list_id='default', map_wanted_ids=True):
-    """Review proposal for input rows: `{items, unresolved}`. Writes nothing."""
+    """Review proposal for input rows: `{items, unresolved}`. Writes no collection data; with a BrickLink key it makes up to `BOX_CHECKS`
+    BrickLink lookups for box and instruction picks, which count against the source's daily budget (#382)."""
     if where not in WHERE:
         raise ValueError('Choose where to add')
     if not isinstance(rows, list) or len(rows) > 500:
@@ -541,6 +542,7 @@ def resolve(db, rows, where, *, list_id='default', map_wanted_ids=True):
     if where == 'wishlist':
         _require_wishlist(db, list_id)
     resolved, unresolved = [], []
+    box_checks = 0
     for row in rows:
         if not isinstance(row, dict):
             raise ValueError('Choose items from the catalogue')
@@ -580,12 +582,14 @@ def resolve(db, rows, where, *, list_id='default', map_wanted_ids=True):
             if item_id is None and row.get('from_set'):
                 kind, parent = row['kind'], lookup(db, row['from_set'])
                 shown = decorate(db, dict(item_id=parent['item_id'], kind='set'))
-                state, bl_name = _bricklink_box(db, kind, parent['number'])
+                state, bl_name = _bricklink_box(db, kind, parent['number']) if box_checks < BOX_CHECKS else ('unchecked', None)
+                box_checks += 1
                 flag = [f'BrickLink does not list a {KIND_NAMES[kind].lower()} for set {parent["number"]} · check the number before adding'] if state == 'unknown' else []
                 resolved.append({**base, 'item_id': None, 'from_set': parent['item_id'], 'kind': kind, 'type_name': KIND_NAMES[kind],
                                  'number': parent['number'], 'name': bl_name or parent['name'], 'label': parent['label'], 'image': shown.get('image'),
                                  'owned': 0, 'wished': False, 'wished_colors': [], 'wished_by_list': {}, 'to_check': False, 'part_list': None,
-                                 'no_picture': None, 'import_notes': base['import_notes'] + [f'The {KIND_NAMES[kind].lower()} of set {parent["number"]} is created when you add it'] + flag, 'bricklink': state})
+                                 'no_picture': None, 'import_notes': base['import_notes'] + [f'The {KIND_NAMES[kind].lower()} of set {parent["number"]} is created when you add it'], 'bricklink': state, 'bricklink_name': bl_name,
+                                 'check_note': flag[0] if flag else None})
             elif item_id is None:
                 kind, number = row['kind'], str(row['number'])
                 resolved.append({**base, 'item_id': None, 'unknown': True, 'kind': kind, 'type_name': KIND_NAMES[kind], 'number': number,
@@ -748,8 +752,12 @@ def _unidentified_item(db, kind, number, via, actor):
     return new
 
 
+BOX_CHECKS = 20                                    # BrickLink lookups one review makes (spacing 1 s each); the rest show as unchecked
+
+
 def _bricklink_box(db, kind, number):
-    """`(state, name)` of a set's box or instructions at BrickLink (#382): one lookup. `known` with BrickLink's name, `unknown` when BrickLink does not
+    """`(state, name)` of a set's box or instructions at BrickLink (#382): one lookup, made at the review and never at confirm (no HTTP in the
+    write transaction). `known` with BrickLink's name, `unknown` when BrickLink does not
     list it, `unchecked` (no name) with no key, a disabled source, a used-up budget or any other failure: the check never blocks an add."""
     from .sources.bricklink import BrickLink
     try:
@@ -760,7 +768,7 @@ def _bricklink_box(db, kind, number):
         return 'unchecked', None
 
 
-def _box_item(db, kind, set_id, via, actor):
+def _box_item(db, kind, set_id, via, actor, checked=('unchecked', None)):
     """`(item id, created)` of the box or instructions item of a set (#382): the existing one, else a new local item named as the set. It is
     BrickLink-born with the set's number, as every other BrickLink-only box or booklet is (the Workbench booklets, order lines), so booklet files
     and order lines find it by that number; its link is inferred (the number rule, not a lookup)."""
@@ -772,7 +780,7 @@ def _box_item(db, kind, set_id, via, actor):
         return existing, False
     events = Events(db, via, actor)
     letter = items.type_of_kind(kind)
-    state, name = _bricklink_box(db, kind, parent['number'])         # with a key: BrickLink's name, or the link to check when it does not know the box
+    state, name = checked                                            # what the review found at BrickLink: its name, or the link to check when it does not know the box
     new = fetched.create_local_item(db, kind=kind, born_provider='bricklink', born_namespace=letter, born_key=parent['number'], name=name or parent['name'],
                                     kind_source='bricklink', events=events)
     fetched.add_item_link(db, new, provider='bricklink', provider_kind=letter, provider_key=parent['number'],
@@ -877,7 +885,7 @@ def _confirm_row(db, pipeline, row, batch, index, via, actor, photo=None):
         row = {**row, 'item_id': _unidentified_item(db, row['kind'], row['number'], via, actor)}
         receipt.update(item_id=row['item_id'], created_item=row['item_id'])
     elif row.get('from_set'):
-        made, created = _box_item(db, row['kind'], row['from_set'], via, actor)
+        made, created = _box_item(db, row['kind'], row['from_set'], via, actor, (row.get('bricklink') or 'unchecked', row.get('bricklink_name')))
         row = {**row, 'item_id': made}
         receipt.update(item_id=made, created_item=made if created else None)       # an item that was there already is checked like any owned one
     items.ensure(db, row['item_id'])

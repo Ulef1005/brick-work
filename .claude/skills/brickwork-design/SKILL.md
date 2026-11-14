@@ -51,7 +51,7 @@ Known gaps: 12j predates schema 4.0 (the app's first run follows data-model desi
 - **Part Spotter capture:** a Camera selector row and a Recognition switch (Local model | Brickognize) sit above the tabs and in the desktop capture column. Default Local model, works offline.
 - **Part Spotter flow:** snap photo, AI detects, best match shown and confirmed by hand (alternatives on demand), approved pieces go to a verified queue, when a lot is done the batch is confirmed and added to inventory.
 - **Batch confirmation sheet:** "Add 3 pieces to inventory?" with Add to: Loose parts | Assign to a lot, a lot picker row, "New lot", button "Add 3 to Pile A".
-- **Set Inspector:** "Missing so far" is a **history view** (all misses of the check, growing, scrolls), not the last 3. One **Missing pass** replaces the old "already answered" screen: a final pass over answered parts, each row "−n of m" with a "Found 1" button, hint "Found one in the pile? Tap Found 1 and the count drops.", footer "Done · 9 still missing".
+- **Set Inspector:** "Missing so far" is a **history view** (all misses of the check, growing, scrolls; a part found in full leaves it, Ulf 14.11.), not the last 3. One **Missing pass** replaces the old "already answered" screen: a final pass over answered parts, each row "−n of m" with a "Found 1" button, hint "Found one in the pile? Tap Found 1 and the count drops.", footer "Done · 9 still missing".
 - **Part desktop (2b):** a part that completes a set shows a success chip "Completes set" in place of the "· n left" text.
 - **Desktop checker:** answer buttons sit directly under the part name, no empty gap.
 - **Images:** set rows use set covers, part rows part images on a white tile, minifigure rows minifigure images. Never cross categories.

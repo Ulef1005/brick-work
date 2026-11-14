@@ -27,4 +27,4 @@ See the "Not framed" and "Partly" tables in `COVERAGE-brick-work.md`. The larges
 
 
 ## Set Inspector · "Missing so far" list
-This is a **history view**, not a "last 3" list: it shows every part marked missing in the current check, newest first, and keeps growing (scrolls inside the panel). Each row has a "Found n" action to undo a miss. The "3 parts" in the label is the live count of the history.
+This is a **history view**, not a "last 3" list: it shows every part marked missing in the current check, newest first, and keeps growing (scrolls inside the panel); a part found in full leaves the list (Ulf, 14.11.). Each row has a "Found n" action to undo a miss. The "3 parts" in the label is the live count of the history.

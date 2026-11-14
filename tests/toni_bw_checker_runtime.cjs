@@ -15,7 +15,8 @@ apply(state,{action:'answer',token:'m:1',found:0});
 assert.deepEqual(plain(progress(state)),{found:0,missing:2,skipped:1,remaining:0});
 assert.deepEqual(plain(state.session.misses),['m:1','p:1']);
 apply(state,{action:'found_one',token:'p:1'});assert.equal(state.rows[0].missing,0);
-assert.deepEqual(plain(state.session.misses),['m:1','p:1']);
+assert.deepEqual(plain(state.session.misses),['m:1']);   // #383: a part found in full leaves Missing so far
+apply(state,{action:'answer',token:'p:1',found:3});assert.deepEqual(plain(state.session.misses),['p:1','m:1']);   // and a new miss goes back on top
 { // #213: Found 1 in the sidebar, or answering a listed part again, keeps its place in Missing so far; only a new miss goes on top.
   const kept=make();
   apply(kept,{action:'answer',token:'p:1',found:1});apply(kept,{action:'answer',token:'m:1',found:0});

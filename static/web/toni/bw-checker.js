@@ -35,6 +35,7 @@
       const found = payload.action === 'found_one' ? r.quantity - (r.missing || 0) + 1 : payload.found;
       r.missing = r.quantity - found; r.checked = 1; s.answers[r.token] = 'answered';
       if (r.missing && !s.misses.includes(r.token)) s.misses = [r.token, ...s.misses];
+      else if (!r.missing) s.misses = s.misses.filter(t => t !== r.token);   // found in full: the part leaves Missing so far (#383)
       if (payload.action === 'answer') s.cursor = Math.min(s.order.indexOf(r.token)+1, s.order.length);
     } else if (payload.action === 'recheck') {
       // #214: walk the skipped parts (or the named ones) in the part view; the server's order replaces this one once the save returns.

@@ -20,7 +20,7 @@ Use Set Inspector (was Check Set Parts) to go through one [copy](../concepts/col
    - **Back** and **Undo** step back or reverse the last answer.
 5. Minifigures come after the required parts, as a **Figure review**. Count the whole figure like a part.
 6. If the set has spare parts, you are asked **Include spare parts?** Select **No, skip them** or **Yes, check them**. Spares are never counted as missing.
-7. The **Missing so far** list shows every gap, the newest on top. If you find a piece later in the pile, select **Found 1** next to it and the count drops by one; the entry stays where it is in the list.
+7. The **Missing so far** list shows every gap, the newest on top. If you find a piece later in the pile, select **Found 1** next to it and the count drops by one. The entry stays where it is until you have found them all, then it leaves the list.
 8. When the last part is answered, the end of the check has three steps, shown at the top: **1 Skipped**, **2 Missing**, **3 Save**.
    - **Skipped** lists the parts you skipped, each with **Check**. Select **Check the N skipped parts** to walk them in the usual part view, or **Leave them unchecked** to go on. The **Missing so far** list is shown dimmed below as the next step. With nothing skipped, the screen starts at step 2.
    - **Missing** is the **Missing so far** list. Select **Done · N still missing** to continue.

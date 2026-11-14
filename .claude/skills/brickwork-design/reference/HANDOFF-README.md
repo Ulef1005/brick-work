@@ -36,7 +36,7 @@ Layout rule everywhere: phone 390 wide, 20 px side padding; desktop content padd
 **Workbench**
 - *3a Matchmaker, 3c Part Runner (Choose sets, Rank, Pick, Found it):* picker grid shows a count badge per found part; sheet has a stepper per copy.
 - *3b/3e Set Inspector:* Start/Resume, Part (stepper `−` · "Found 4" primary · `+`, Missing, Back, Skip for later, Undo), Count, Figure, Spares, Finish.
-  - **Missing so far** (desktop right panel) is a **history view**: every miss of the current check, newest first, growing, scrollable. Header "MISSING SO FAR · n PARTS · −total". Each row: part image, name, colour dot + number · colour name, "−1 of 2", **Found 1** button; footer hint "Found one in the pile? Tap Found 1 and the count drops."
+  - **Missing so far** (desktop right panel) is a **history view**: every miss of the current check, newest first, growing, scrollable; a part found in full leaves the list (Ulf, 14.11.). Header "MISSING SO FAR · n PARTS · −total". Each row: part image, name, colour dot + number · colour name, "−1 of 2", **Found 1** button; footer hint "Found one in the pile? Tap Found 1 and the count drops."
   - **Missing pass** (phone, replaces the old "already answered" screen): final pass over answered parts. Progress strip "104 of 113 found / 9 missing", list of the same rows, button "Done · 9 still missing", links Back / Undo last. Use case: a pile of parts, add the missing items to a set.
   - Desktop checker: answer buttons sit directly under part name and number (no gap).
 - *3f Part Spotter:* see flow below.

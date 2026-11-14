@@ -15,8 +15,8 @@ It takes about 15 minutes. You need a Brick Work install with the catalogue load
 2. Each row is a set, best first. The bar and the percentage say how much of its parts your loose stock covers. On the right are the missing parts, the missing minifigures and an approximate cost to complete.
 3. Narrow the list: **Parts from** chooses which stock counts (loose stock, lots, storages), **Min** is the least percentage, and **Theme**, **Years** and **Size** keep matching sets only.
 
-<picture data-bw-screens><source media="(max-width: 600px)" srcset="../img/tutorials/tut-scout-list-phone-390-light.png"><img src="../img/tutorials/tut-scout-list-desktop-1024-light.png#only-light" alt="Build Scout: catalogue sets ranked by the percentage of their parts the loose stock makes, with call-out 1 on the score bar of the best set."></picture>
-<picture data-bw-screens><source media="(max-width: 600px)" srcset="../img/tutorials/tut-scout-list-phone-390-dark.png"><img src="../img/tutorials/tut-scout-list-desktop-1024-dark.png#only-dark" alt="Build Scout: catalogue sets ranked by the percentage of their parts the loose stock makes, with call-out 1 on the score bar of the best set."></picture>
+<picture data-bw-screens><source media="(max-width: 600px)" srcset="../img/tutorials/tut-scout-list-phone-390-light.png"><img src="../img/tutorials/tut-scout-list-desktop-1024-light.png#only-light" alt="Build Scout: catalogue sets ranked by the percentage of their parts the loose stock makes, with call-out 1 on the score bar of the best set and, on a wide screen, call-out 2 on its cost."></picture>
+<picture data-bw-screens><source media="(max-width: 600px)" srcset="../img/tutorials/tut-scout-list-phone-390-dark.png"><img src="../img/tutorials/tut-scout-list-desktop-1024-dark.png#only-dark" alt="Build Scout: catalogue sets ranked by the percentage of their parts the loose stock makes, with call-out 1 on the score bar of the best set and, on a wide screen, call-out 2 on its cost."></picture>
 
 The percentage counts the set's own parts only. A part in another colour is listed apart as a swap and never counted, and minifigures count as whole figures, not as their parts.
 
@@ -26,8 +26,8 @@ The percentage counts the set's own parts only. A part in another colour is list
 2. Select **Build it · make a copy**. The parts and whole figures your stock covers move into a new copy, and what the stock lacks is recorded as missing on it.
 3. **Undo** puts the stock back and archives the copy, as long as neither has changed since.
 
-![The details of one set in Build Scout: parts you hold, the biggest missing lines and the actions Build it, Add to wishlist and Missing parts XML.](../img/tutorials/scout-set-desktop-1440-light.png#only-light)
-![The details of one set in Build Scout: parts you hold, the biggest missing lines and the actions Build it, Add to wishlist and Missing parts XML.](../img/tutorials/scout-set-desktop-1440-dark.png#only-dark)
+<picture data-bw-screens><source media="(max-width: 600px)" srcset="../img/tutorials/tut-scout-set-phone-390-light.png"><img src="../img/tutorials/tut-scout-set-desktop-1024-light.png#only-light" alt="The details of Passenger Train in Build Scout: call-out 1 on the bar of the parts you hold, the two biggest missing lines, and call-out 2 on the Build it · make a copy button."></picture>
+<picture data-bw-screens><source media="(max-width: 600px)" srcset="../img/tutorials/tut-scout-set-phone-390-dark.png"><img src="../img/tutorials/tut-scout-set-desktop-1024-dark.png#only-dark" alt="The details of Passenger Train in Build Scout: call-out 1 on the bar of the parts you hold, the two biggest missing lines, and call-out 2 on the Build it · make a copy button."></picture>
 
 **Add to wishlist** notes the set as *Buildable from stock*, and **Missing parts · XML** downloads what is missing as a BrickLink wanted list. [Find sets to build from your loose stock](../how-to/find-sets-to-build.md) has the rest.
 

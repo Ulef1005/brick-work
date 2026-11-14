@@ -17,7 +17,8 @@ def test_the_deal_is_deterministic_complete_and_balanced():
     first = xdist_groups.shard_of(units, COUNT)
     assert first == xdist_groups.shard_of(dict(reversed(list(units.items()))), COUNT)     # the order of collection does not matter
     assert set(first) == set(units) and set(first.values()) == {1, 2, 3}
-    cost = [sum(xdist_groups.SHARD_COST.get(k, xdist_groups.COST_PER_TEST * n) for k, n in units.items() if first[k] == shard) for shard in (1, 2, 3)]
+    known = xdist_groups.unit_costs()
+    cost = [sum(known.get(k, xdist_groups.COST_PER_TEST * n) for k, n in units.items() if first[k] == shard) for shard in (1, 2, 3)]
     cost[0] += xdist_groups.SHARD_ONE_EXTRA                                              # shard 1 also runs the steps that are not pytest
     assert max(cost) < 1.5 * min(cost), cost
 

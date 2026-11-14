@@ -2,7 +2,6 @@
  "demo": 124.4,
  "rendered": 65.6,
  "site-pages": 160.3,
- "tests/importer/test_bricktracker_import.py": 2.9,
  "tests/test_add_fetch_followup.py": 4.4,
  "tests/test_admin_ops.py": 1.5,
  "tests/test_api2_build_scout.py": 4.3,

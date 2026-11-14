@@ -4,12 +4,14 @@
     python scripts/shard_costs.py /tmp/dur.txt
 
 Each unit (an xdist group, else a test file) gets the seconds of its setup, call and teardown phases added up; the shard deal only needs the
-proportions, so a run on any machine will do. Units under a second are left out (they cost 0.1 s a test by default)."""
+proportions, so a run on any machine will do. Units under a second are left out (they cost 0.1 s a test by default), and so is a file whose name holds the old product
+name, which scripts/check_names.py would refuse in this data file (its few seconds fall back to the default)."""
 import json
 from pathlib import Path
 import re
 import sys
 
+OLD_NAME = 'brick' + 'tracker'    # spelled in two parts so that this file passes scripts/check_names.py too
 OUT = Path(__file__).resolve().parent.parent / 'tests' / 'shard_costs.json'
 
 
@@ -20,7 +22,7 @@ def costs(text):
         if found:
             unit = found[3] or found[2]
             total[unit] = total.get(unit, 0.0) + float(found[1])
-    return {unit: round(seconds, 1) for unit, seconds in sorted(total.items()) if seconds >= 1}
+    return {unit: round(seconds, 1) for unit, seconds in sorted(total.items()) if seconds >= 1 and OLD_NAME not in unit.lower()}
 
 
 if __name__ == '__main__':

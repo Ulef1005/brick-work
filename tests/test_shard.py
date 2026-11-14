@@ -68,3 +68,4 @@ def test_the_shards_together_hold_every_test_once_and_keep_each_unit_whole(tmp_p
             homes.setdefault(unit, set()).add(number)
     assert [unit for unit, where in homes.items() if len(where) > 1] == []             # a group, or a file in no group, is never split
     assert {'site-pages', 'demo', 'rendered'} <= set(homes)
+    assert {'site-pages_site-pages-apex', 'demo_demo-base'} <= set(homes)                  # the two builds that run beside the shared ones (#364, item 2): a lost mark would put them back on one worker

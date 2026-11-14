@@ -16,8 +16,8 @@ You need Brick Work with the catalogue loaded and the copy added with **Add**, w
 1. Open **Workbench → Set Inspector**. The list shows your copies under **In progress**, **Not checked** and **Checked**.
 2. Choose your half-built copy under **Not checked**.
 
-![Set Inspector: copies in progress and not checked.](../img/tutorials/tut-inspect-list-phone-390-light.png#only-light){ width="300" }
-![Set Inspector: copies in progress and not checked.](../img/tutorials/tut-inspect-list-phone-390-dark.png#only-dark){ width="300" }
+<picture data-bw-screens><source media="(max-width: 600px)" srcset="../img/tutorials/tut-inspect-list-phone-390-light.png"><img src="../img/tutorials/tut-inspect-list-desktop-1024-light.png#only-light" alt="Set Inspector: copies in progress and not checked."></picture>
+<picture data-bw-screens><source media="(max-width: 600px)" srcset="../img/tutorials/tut-inspect-list-phone-390-dark.png"><img src="../img/tutorials/tut-inspect-list-desktop-1024-dark.png#only-dark" alt="Set Inspector: copies in progress and not checked."></picture>
 
 ## 2. Check its parts
 
@@ -26,8 +26,8 @@ You need Brick Work with the catalogue loaded and the copy added with **Add**, w
 3. After the last part, the end of the check shows **1 Skipped**, **2 Missing** and **3 Save**. Deal with the skipped parts (**Check the N skipped parts** or **Leave them unchecked**).
 4. **Missing so far** now lists every gap: the picture, the colour, the part number, the name and how many are missing of how many. Write down the part numbers and colours. You need them in the next step.
 
-![Missing so far: nine entries, each with Found 1, and the button Done, 15 still missing.](../img/tutorials/tut-inspect-end-phone-390-light.png#only-light){ width="300" }
-![Missing so far: nine entries, each with Found 1, and the button Done, 15 still missing.](../img/tutorials/tut-inspect-end-phone-390-dark.png#only-dark){ width="300" }
+<picture data-bw-screens><source media="(max-width: 600px)" srcset="../img/tutorials/tut-inspect-end-phone-390-light.png"><img src="../img/tutorials/tut-inspect-end-desktop-1024-light.png#only-light" alt="Missing so far: nine entries, each with Found 1, and the button Done, 15 still missing."></picture>
+<picture data-bw-screens><source media="(max-width: 600px)" srcset="../img/tutorials/tut-inspect-end-phone-390-dark.png"><img src="../img/tutorials/tut-inspect-end-desktop-1024-dark.png#only-dark" alt="Missing so far: nine entries, each with Found 1, and the button Done, 15 still missing."></picture>
 
 5. Select **Done · N still missing**. Tick **Set is checked** and select **Done**.
 
@@ -45,8 +45,8 @@ Brick Work does not copy the missing parts onto a wishlist for you. You add each
 
 Open **Planning → Wishlist** to see them. The list chips at the top hold your lists, and **All lists** shows every wish. To keep these parts apart from other wishes, make a list of their own with **Manage lists** and **New list**, then pick it in step 4.
 
-![Planning, Wishlist: the list chips and the Manage lists, Export and Print buttons.](../img/tutorials/tut-wishlist-phone-390-light.png#only-light){ width="300" }
-![Planning, Wishlist: the list chips and the Manage lists, Export and Print buttons.](../img/tutorials/tut-wishlist-phone-390-dark.png#only-dark){ width="300" }
+<picture data-bw-screens><source media="(max-width: 600px)" srcset="../img/tutorials/tut-wishlist-phone-390-light.png"><img src="../img/tutorials/tut-wishlist-desktop-1024-light.png#only-light" alt="Planning, Wishlist: the list chips and the Manage lists, Export and Print buttons."></picture>
+<picture data-bw-screens><source media="(max-width: 600px)" srcset="../img/tutorials/tut-wishlist-phone-390-dark.png"><img src="../img/tutorials/tut-wishlist-desktop-1024-dark.png#only-dark" alt="Planning, Wishlist: the list chips and the Manage lists, Export and Print buttons."></picture>
 
 To buy, choose the list chip, select **Export**, choose **BrickLink XML** under **Format** and select **Export** again. Upload that file as a wanted list on BrickLink and order the parts there. Lists, moving wishes and the Rebrickable CSV are in [Manage wishlists](../how-to/manage-wishlists.md).
 
@@ -58,8 +58,8 @@ When the parts arrive, bring the order in and count it.
 2. Open the order, then the document under **Documents · resume review**. Match any line marked **Unmatched**, then select **Finish review** and **Save lines**.
 3. Select **Count what arrived**. Set **Received** on each line with **+** and **−**, or select **Mark all received**. Select **Save partial receipt**.
 
-![Count what arrived: each order line with its Received count.](../img/tutorials/tut-order-count-phone-390-light.png#only-light){ width="300" }
-![Count what arrived: each order line with its Received count.](../img/tutorials/tut-order-count-phone-390-dark.png#only-dark){ width="300" }
+<picture data-bw-screens><source media="(max-width: 600px)" srcset="../img/tutorials/tut-order-count-phone-390-light.png"><img src="../img/tutorials/tut-order-count-desktop-1024-light.png#only-light" alt="Count what arrived: each order line with its Received count."></picture>
+<picture data-bw-screens><source media="(max-width: 600px)" srcset="../img/tutorials/tut-order-count-phone-390-dark.png"><img src="../img/tutorials/tut-order-count-desktop-1024-dark.png#only-dark" alt="Count what arrived: each order line with its Received count."></picture>
 
 4. Select **Review allocation**. Brick Work suggests where each piece goes: missing parts in your copies first, the rest to **Loose stock**. The suggested quantity for your copy is already filled in. Check each line.
 5. Select **Confirm allocation**. The page says **Allocated N pieces**, with an **Undo** beside it.

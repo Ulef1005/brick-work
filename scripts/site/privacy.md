@@ -1,4 +1,4 @@
-<!-- Copy approved by the owner, 13.11. Clarity paragraph added 14.11. at the owner's decision (no consent banner); the owner has not yet approved this wording. -->
+<!-- Copy approved by the owner, 13.11. Clarity paragraph added 14.11. at the owner's decision (no consent banner); wording approved by the owner, 14.11. -->
 # Privacy
 
 This website shows no consent banner. It uses two analytics services on the marketing pages, one of them with cookies. What it loads:

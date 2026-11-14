@@ -97,6 +97,7 @@ HOME_DESCRIPTION = ('Brick Work is a free, open-source, self-hosted workbench fo
 MD_DESCRIPTIONS = {'use-cases': 'Eight moments a collector knows, and how Brick Work helps with each: rebuilding used sets, sorted bulk, minifigures, bought collections and orders.',
                    'impressum': 'Impressum of the Brick Work website.', 'privacy': 'What the Brick Work website loads and what it does not: no tracking cookies, no consent banner.'}
 DEFAULT_DESCRIPTION = 'Brick Work: the workbench for your brick collection: self-hosted, with a REST API and an MCP server.'
+DEMO_DESCRIPTION = 'Try the real Brick Work interface in your browser on an invented collection around seven real sets; nothing is saved.'
 
 
 def seo_head(title, description, path):
@@ -420,7 +421,7 @@ def add_top_bar(out):
             if area == 'demo' and file.relative_to(out / 'demo').parts[0] == 'static':
                 continue
             text = file.read_text()
-            if 'http-equiv="refresh"' in text[:400]:   # a redirect stub (the demo's /demo/) shows nothing a bar could sit on
+            if 'http-equiv="refresh"' in text and '<body' not in text:   # a redirect stub (the demo's /demo/) shows nothing a bar could sit on
                 continue
             file.write_text(site_nav.inject(text, base, repo, extra))
 
@@ -495,6 +496,13 @@ def build(out):
             directory.rename(directory.with_name(unquote(directory.name)))
     shim = out / 'demo/demo-shim.js'
     shim.write_text(own_address(shim.read_text()))
+    demo_entry = out / 'demo' / 'index.html'
+    entry_text = demo_entry.read_text()
+    title_tag = '<title>Brick Work demo</title>'
+    if title_tag not in entry_text:
+        raise RuntimeError(f'{demo_entry} is missing {title_tag!r}; cannot inject demo SEO tags')
+    demo_head = f'<meta name="description" content="{html.escape(DEMO_DESCRIPTION, quote=True)}">' + seo_head('Brick Work demo', DEMO_DESCRIPTION, 'demo/')
+    demo_entry.write_text(entry_text.replace(title_tag, title_tag + demo_head, 1))
     add_top_bar(out)
     (out / 'llms.txt').write_text(llms_txt())
     (out / 'llms-full.txt').write_text(llms_full())

@@ -26,6 +26,10 @@ def costs(text):
 
 
 if __name__ == '__main__':
+    if len(sys.argv) != 2:
+        raise SystemExit('usage: python scripts/shard_costs.py <pytest --durations=0 log>')
     data = costs(Path(sys.argv[1]).read_text())
+    if not data:
+        raise SystemExit('no test durations found in that log (run pytest with --durations=0); tests/shard_costs.json is unchanged')
     OUT.write_text(json.dumps(data, indent=1) + '\n')
     print(f'{len(data)} units, {sum(data.values()):.0f} s in all, written to {OUT}')

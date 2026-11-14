@@ -43,7 +43,8 @@ def local_target(site, page, url):
     return site / path.lstrip('/') if path.startswith('/') else page.parent / path
 
 
-@pytest.fixture(scope='module', params=['default', 'apex'])
+# The apex build's tests are a group of their own: each build takes about a minute, so the two builds and their tests run on two workers, not one after the other (#364)
+@pytest.fixture(scope='module', params=['default', pytest.param('apex', marks=pytest.mark.xdist_group('site-pages-apex'))])
 def site(tmp_path_factory, request):
     from scripts.build_site import build
     with pytest.MonkeyPatch.context() as env:

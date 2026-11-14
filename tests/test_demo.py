@@ -156,6 +156,7 @@ def test_the_demo_world_is_the_invented_collection_only(tmp_path):
     assert {r[0] for r in db.execute(ids)} == {r[0] for r in sqlite3.connect(tmp_path / 'again' / 'x.db').execute(ids)}
 
 
+@pytest.mark.xdist_group('demo-base')   # its own export takes about 40 s: a group of its own, so it runs beside the shared export's tests, not after them (#364)
 def test_export_without_the_layer_is_the_base_world(tmp_path):
     manifest = export.export(tmp_path / 'plain', BASE, rich=False)
     assert manifest['counts']['copy'] == 19 and '/collection/sets' in manifest['pages']

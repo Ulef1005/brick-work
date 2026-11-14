@@ -237,6 +237,7 @@ const chips=(row,offers)=>{
   message(`Added ${words(result.receipts.length)}`);monitors.forEach(m=>m.destroy());monitors=[];progress.clear();
   result.receipts.forEach(r=>{
    const section=el('section',undefined,'panel');section.append(el('h3',`${r.label || r.name}${r.label && r.name && r.label !== r.name ? ' · ' + r.name : ''}`));
+   if(r.url){const open=el('a',`Open ${r.label || r.name || 'it'}`,'bw-add-open');open.href=r.url;const line=el('p');line.append(open);section.append(line);}
    if(r.fetch_job)section.append(el('p','Fetching this set from Rebrickable · the copy is added when the job is done','secondary'));
    const cloned=$('progress-template').content.cloneNode(true);section.append(cloned);$('job-list').append(section);
    const jobId=r.job_id || r.fetch_job;progress.set(jobId,{completed_steps:0,total_steps:r.fetch_job ? 1 : 6});

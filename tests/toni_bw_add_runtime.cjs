@@ -40,7 +40,7 @@ const fetch=async(url,opts={})=>{
  const body=opts.body?JSON.parse(opts.body):null;requests.push({url,body});
  if(url.includes('/search?'))return {ok:true,json:async()=>({count:searchCount,items:[{...item}]})};
  if(url.endsWith('/review'))return {ok:true,json:async()=>({token:'signed-review',items:responseMode==='unknown'?[{...unknown}]:[{...item,score:.9}],unresolved:[],candidates:responseMode==='photo'})};
- if(url.endsWith('/confirm')){confirmCalls++;return {ok:true,json:async()=>({batch:'batch',receipts:[{job_id:42,label:item.label,name:item.name}]})};}
+ if(url.endsWith('/confirm')){confirmCalls++;return {ok:true,json:async()=>({batch:'batch',receipts:[{job_id:42,label:item.label,name:item.name,url:'/collection/item/7'}]})};}
  if(url.endsWith('/retry')){retryCalls++;return {ok:true,json:async()=>({})};}
  if(url.endsWith('/undo'))return {ok:true,json:async()=>({message:'Undone'})};
  if(url.includes('/jobs/'))return {ok:true,json:async()=>({events:[{job_id:42,step:null,state:'done',completed_steps:6,total_steps:6,message:'Import complete'}]})};
@@ -80,6 +80,8 @@ vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../static/web/toni/bw-ad
  // Filtering the view keeps the proposal; confirm still includes all reviewed rows.
  nodes['review-search'].value='no match';await nodes['review-search'].trigger('input');assert.equal(nodes['review-rows'].children.length,0);
  await nodes.confirm.trigger();assert.equal(confirmCalls,1);const sent=requests.find(r=>r.url.endsWith('/confirm')).body;assert.equal(sent.token,'signed-review');assert.equal(sent.items.length,1);assert.equal(sent.csrf_token,'csrf');assert.equal(nodes.jobs.hidden,false);
+ const added=nodes['job-list'].children[0].children.find(c=>c.tagName==='P'&&c.children[0]&&c.children[0].tagName==='A');   // the link to the added set (#380)
+ assert.ok(added&&added.children[0].href==='/collection/item/7'&&added.children[0].textContent.startsWith('Open '),'the receipt links to the added set');
  await nodes.undo.trigger();assert.equal(nodes.message.textContent,'Undone');
  // An unknown number shows both offers and is not added until one is chosen; nothing is auto-chosen.
  await nodes.back.trigger();responseMode='unknown';nodes['review-search'].value='';await nodes.review.trigger();assert.equal(nodes['review-panel'].hidden,false);assert.equal(confirmCalls,1);

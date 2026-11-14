@@ -152,6 +152,8 @@ def test_a_set_becomes_copies_with_the_preselected_list_and_undo_archives_them(w
     assert result.status_code == 200
     first, second = result.json['receipts']
     assert len(first['copies']) == 2 and len(second['copies']) == 1 and first['stock'] is None
+    assert first['url'] == f"/collection/item/{first['item_id']}" and second['url'] == f"/collection/item/{second['item_id']}"      # the link to the added set (#380)
+    assert client.get(first['url']).status_code == 200
     with read() as db:
         new = db.execute('SELECT * FROM copy WHERE id IN (?, ?)', first['copies']).fetchall()
         assert {(c['inventory_source'], c['completeness'], c['completeness_source'], c['condition']) for c in new} == {('rebrickable', 'complete', 'manual', 'used')}

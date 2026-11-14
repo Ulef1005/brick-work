@@ -922,6 +922,7 @@ def _add_receipt_view(receipt):
     """What the page needs of a receipt: no row snapshots."""
     keys = ('batch', 'index', 'item_id', 'kind', 'where', 'quantity', 'name', 'label', 'copies', 'job_id', 'fetch_job', 'pending', 'event_id')
     view = {k: receipt.get(k) for k in keys}
+    view['url'] = f"/collection/item/{receipt['item_id']}" if receipt.get('item_id') else None    # the link to what was added (#380); a set still being fetched has no item yet
     view['stock'] = (receipt.get('stock') or {}).get('id')
     view['wish'] = (receipt.get('wish') or {}).get('id')
     return view

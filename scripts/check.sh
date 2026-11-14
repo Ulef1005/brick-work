@@ -30,6 +30,21 @@ echo "Check mode: $mode"
 # The tests run in parallel (pytest-xdist; ADR 0024): one worker per core, and the tests of the xdist group `rendered` (Chrome, the screen gate's
 # shared world folder; tests/rendered.py) one at a time on one worker. BW_TEST_WORKERS overrides the count (1 runs them serially).
 pytest_args=(-q -n "${BW_TEST_WORKERS:-auto}" --dist loadgroup)
+# BW_SHARD=I/N (CI runs N jobs, #364): this run is the I-th. Every shard runs its share of the pytest tests (`--shard`, tests/xdist_groups.py: whole
+# xdist groups, deterministic, a test file or group is never split, tests/test_shard.py checks the shards add up to the suite). Shard 1 alone runs every
+# other step, so each of them still runs once per pull request; the other shards run the browser step and pytest only.
+shard=${BW_SHARD:-}
+shard_args=()
+shard_first=1
+if [[ -n $shard ]]; then
+  if [[ $shard =~ ^([1-9][0-9]*)/([1-9][0-9]*)$ ]] && (( BASH_REMATCH[1] <= BASH_REMATCH[2] )); then
+    shard_args=(--shard "$shard")
+    (( BASH_REMATCH[1] == 1 )) || shard_first=0
+  else
+    echo "BW_SHARD must look like 2/3 (the second of three), not $shard"; exit 2
+  fi
+  echo "Shard: $shard"
+fi
 step() {
   local name=$1
   shift
@@ -148,29 +163,34 @@ docs() {
 }
 
 if [[ $mode == docs ]]; then
+  if (( ! shard_first )); then echo "NOTE: docs mode runs on shard 1 only."; exit 0; fi
   step names "$python" scripts/check_names.py
   step docs-tests "$python" -m pytest tests/test_docs_*.py tests/test_vale.py tests/test_site_pages.py tests/test_install_docs.py tests/test_changelog_order.py "${pytest_args[@]}"
   step secrets secrets
   step docs docs
 else
   step chrome browser
-  step names "$python" scripts/check_names.py
-  step tokens "$python" scripts/tokens_base.py check
-  step docs-theme "$python" scripts/docs_theme.py check
-  step brand "$python" scripts/brand_assets.py check
-  step screens "$python" scripts/design_screens.py check
+  if (( shard_first )); then
+    step names "$python" scripts/check_names.py
+    step tokens "$python" scripts/tokens_base.py check
+    step docs-theme "$python" scripts/docs_theme.py check
+    step brand "$python" scripts/brand_assets.py check
+    step screens "$python" scripts/design_screens.py check
+  fi
   # The standalone smoke test (tests/test_standalone_smoke.py) runs inside this step; it has no step of its own, which would only run it twice
   # (every step runs whatever the earlier ones did, so an early smoke step brought no earlier failure; #254).
-  step pytest "$python" -m pytest tests/ --ignore=tests/test_screen_gate.py "${pytest_args[@]}"
+  step pytest "$python" -m pytest tests/ --ignore=tests/test_screen_gate.py "${pytest_args[@]}" ${shard_args[@]+"${shard_args[@]}"}   # the + form: bash 3.2 (macOS) fails an empty array under set -u
   # The screenshot gate (tests/test_screen_gate.py) no longer runs here (Ulf, 2026-11-13: screens are approved from frames in a review artifact).
   # Run it by hand: python -m pytest tests/test_screen_gate.py -q -p no:xdist
-  step quarantine quarantine
-  step suite-size "$python" scripts/check_suite_size.py
-  step runtimes runtimes
-  step secrets secrets
-  step api-contract "$python" scripts/check_api_contract.py
-  step docs docs
-  step api-writes "$python" -m scripts.generate_api_writes
+  if (( shard_first )); then
+    step quarantine quarantine
+    step suite-size "$python" scripts/check_suite_size.py
+    step runtimes runtimes
+    step secrets secrets
+    step api-contract "$python" scripts/check_api_contract.py
+    step docs docs
+    step api-writes "$python" -m scripts.generate_api_writes
+  fi
 fi
 
 echo

@@ -14,9 +14,16 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  check:
+  # The pytest tests run as three parallel jobs (scripts/check.sh with BW_SHARD, tests/xdist_groups.py; #364): shard 1 also runs every other step of the
+  # gate. The job named `check` at the end is the one result: it fails unless all three shards passed, so a pull request's check keeps its name.
+  shard:
+    name: check shard ${{ matrix.shard }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
@@ -66,6 +73,7 @@ jobs:
         run: APP_VENV=.venv bash scripts/check.sh
         env:
           BW_CHECK_MODE: ${{ steps.scope.outputs.mode }}
+          BW_SHARD: ${{ matrix.shard }}/3
           BW_NO_CHROME: ${{ github.event_name == 'pull_request' && '1' || '' }}  # no Chrome test on a pull request (Ulf, 2026-11-13); a push to main still runs them
           BW_CHROME_NO_SANDBOX: "1"  # the runner's user namespaces may be restricted; the pages are our own test fixtures
           DOCS_RANGE: ${{ github.event_name == 'push' && format('{0}..{1}', github.event.before, github.sha) || format('{0}..{1}', github.event.pull_request.base.sha, github.sha) }}
@@ -73,6 +81,20 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
-          name: screen-diffs
+          name: screen-diffs-${{ matrix.shard }}
           path: build/screen-diffs/
           if-no-files-found: ignore
+
+  check:
+    name: check
+    needs: shard
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: All shards passed
+        env:
+          RESULT: ${{ needs.shard.result }}
+        run: |
+          echo "The three shards: $RESULT"
+          [[ $RESULT == success ]]

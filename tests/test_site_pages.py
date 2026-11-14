@@ -127,8 +127,9 @@ def test_landing_sections_and_copy(site):
     body = text.split('<main class="home">')[1].split('</main>')[0]
     plain = re.sub(r'<[^>]+>', '', body)
     assert "Don't just manage your collection. Work with it." in plain
-    assert '<span class="clay">Work with it.</span>' in body
-    assert '.clay{color:var(--tw-accent-text)}' in (site / 'assets/marketing.css').read_text()
+    assert '<span class="logo-blue">Work with it.</span>' in body   # the logo's blue (Ulf, 2026-11-14), not the brand accent
+    css = (site / 'assets/marketing.css').read_text()
+    assert '.logo-blue{color:#007187}' in css and 'html.tw-dark .logo-blue{color:#3DB4CC}' in css and '.clay{color:var(--tw-accent-text)}' in css
     assert "The workbench for your collection that you didn't know existed" in html.unescape(plain)
     for label in ('Who it is for', 'The workbench', 'Install', 'Coming from another tool', 'Documentation', "What's new"):
         assert f'<span class="label">{label}</span>' in body, label

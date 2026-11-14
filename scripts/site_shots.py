@@ -77,6 +77,12 @@ def scout_set(number):
     return lambda base: '/workbench/build-scout?min_percent=10&set=%s' % find(base).rsplit('/', 1)[1]
 
 
+def scout_page(number):
+    """Build Scout's page for one set (what a phone opens instead of the panel beside the list): /workbench/build-scout/<id>."""
+    find = scout_set(number)
+    return lambda base: '/workbench/build-scout/%s?min_percent=10' % find(base).rsplit('set=', 1)[1]
+
+
 def variant_change(old, new):
     """Change variant of the part `old` with the part `new` chosen (both share BrickLink's number of the catalogue): the items' catalogue ids come from their number's redirect."""
     def find(base):
@@ -203,7 +209,7 @@ const areas = %s.flatMap(s => {
 if (!areas.length) throw new Error('no_placeholders: the area matches nothing');
 const pad = 28, box = {l: Math.min(...areas.map(a => a.left)) - pad, t: Math.min(...areas.map(a => a.top)) - pad, r: Math.max(...areas.map(a => a.right)) + pad, b: Math.max(...areas.map(a => a.bottom)) + pad};
 const inside = e => { const r = e.getBoundingClientRect(); return e.checkVisibility() && r.width > 0 && r.height > 0 && r.right > box.l && r.left < box.r && r.bottom > box.t && r.top < box.b; };
-const tiles = [...document.querySelectorAll('.bc-no-image,.bw-no-image,.bc-picture:not(:has(img)),.bw-picture:not(:has(img)),.st-pic:not(:has(img)),.bp-tile:not(:has(img)),.bd-tile:not(:has(img)),.bd-sheet:not(:has(img)),.bd-set-tile:not(:has(img))')].concat(
+const tiles = [...document.querySelectorAll('.bc-no-image,.bw-no-image,.bc-picture:not(:has(img)),.bw-picture:not(:has(img)),.st-pic:not(:has(img)),.bp-tile:not(:has(img)),.bd-tile:not(:has(img)),.bd-sheet:not(:has(img)),.bd-set-tile:not(:has(img)),.bs-tile:not(:has(img))')].concat(
   [...document.querySelectorAll('body *')].filter(e => !e.children.length && /^No image$/i.test((e.textContent || '').trim())));
 const broken = [...document.images].filter(i => inside(i) && (!i.complete || !i.naturalWidth));
 const named = [...tiles.filter(inside), ...broken].map(e => { const row = e.closest('.bp-line,.bd-cand,article,li,tr,form,[data-row]') || e.parentElement.parentElement; return (row.innerText || e.getAttribute('src') || '').replace(/\\s+/g, ' ').trim().slice(0, 130); });
@@ -240,6 +246,10 @@ PULL_WINDOW = ("{ const label = [...document.querySelectorAll('.bp-grp')].find(g
                "if ((e.compareDocumentPosition(label) & Node.DOCUMENT_POSITION_FOLLOWING) || (lines += 1) > 11) e.remove(); } "
                "const open = [...document.querySelectorAll('[data-line]')].find(l => /(^|\\D)0 of \\d+/.test(l.textContent)); if (!open) throw new Error('PULL_WINDOW: no line left to find'); open.setAttribute('data-shot-open', ''); "
                "document.querySelectorAll('.bp-more, .bp-bar').forEach(e => e.remove()); }\n")
+# Order missing parts, the review step (a phone screen): the four copies with gaps, as the first step hands them on.
+ORDER_REVIEW = ('/planning/order-missing-parts?sel=1&' + '&'.join('copy=' + REAL(n) for n in ('10210-1', '7938-1', '7213-1', '31120-1')) + '&was_sell=1&was_gain=0&step=review')
+# Build Scout's panel draws a missing minifigure as a number-only tile and has no picture branch for it, so the shot leaves the figure lines out.
+NO_FIGURE_LINES = "document.querySelectorAll('.bs-panel .bs-gap').forEach(g => { if (g.querySelector('.bs-kind')) g.remove(); });\n"
 BULK_PICKED = '/workbench/part-picker?copy=' + '&copy='.join(REAL(n) for n in ('31120-1', '7938-1', '7213-1'))
 CHOOSE_REAL_SETS = ("document.querySelector('[data-none]').click(); for (const n of ['31120-1', '7938-1', '7213-1']) { "
                     "const box = document.querySelector('[data-number=' + JSON.stringify(n) + '] input'); if (!box) throw new Error('Part Runner does not list ' + n); box.click(); } "
@@ -293,15 +303,30 @@ TUTORIAL_SHOTS = {
     'lot-pull-confirm': (pull('7938-1', '/make-copy'), None, {
         layout: (width, ['.bp-panel'], [('.bp-panel button.bp-lg', 1)], isolate('.bp-confirm'))
         for layout, width in (('desktop', 1024), ('phone', 390))}),
+    'scout-list': ('/workbench/build-scout?min_percent=10', None, {
+        layout: (width, ['.bs-row'], marks, "document.querySelectorAll('.cap2').forEach(e => e.remove()); const filters = document.querySelector('[name=year_from]'); if (filters) filters.closest('form').remove(); const rows = document.querySelector('.bs-rows'); if (!rows) throw new Error('scout-list: no .bs-rows'); document.querySelectorAll('main p, main h1').forEach(e => { if (e.compareDocumentPosition(rows) & Node.DOCUMENT_POSITION_FOLLOWING) e.remove(); });\n")
+        for layout, width, marks in (('desktop', 1024, [('.bs-bar', 1), ('.bs-cost', 2, 'right')]), ('phone', 390, [('.bs-bar', 1)]))}),
+    'scout-set': ({'desktop': scout_set('7938-1'), 'phone': scout_page('7938-1')}, None, {
+        layout: (width, ['.bs-panel'], [('.bs-strip', 1), ('.bs-build', 2)], NO_FIGURE_LINES)
+        for layout, width in (('desktop', 1024), ('phone', 390))}),
     'complete-sets': ('/planning/complete-sets', None, {
         layout: (width, ['[data-bp-row]:first-of-type'], [('[data-bp-row]:first-of-type', 1), ('[data-bp-pin]', 2), ('.bp-repair-details summary', 3)], '')
         for layout, width in (('desktop', 1024), ('phone', 390))}),
+}
+# Tutorial shots defined but not active: each needs pictures the real-sets folder does not hold yet, so the placeholder check fails them. Move an entry
+# into TUTORIAL_SHOTS when its pictures are in. Needed: order-missing and order-missing-review the parts 2540 Black, 3004 Medium Blue, 3008 Dark Brown and
+# 30099 Dark Brown. When one is moved, the page's old `order-missing-*` pictures give way to the `tut-` ones.
+PENDING_TUTORIAL_SHOTS = {
+    'order-missing': ('/planning/order-missing-parts', None, {
+        'desktop': (1024, ['.oo-rows', '.oo-lines'], [('.oo-box', 1), ('.oo-srcs', 2)], '')}),
+    'order-missing-review': (ORDER_REVIEW, None, {
+        'phone': (390, ['.oo-lines'], [('.oo-srcs', 1)], '')}),
 }
 EXTRAS, WORLD_OF = {}, {}
 for _name, (_path, _script, _layouts) in TUTORIAL_SHOTS.items():
     for _layout, (_width, _crop, _marks, _prepare) in _layouts.items():
         _stem = f'tut-{_name}-{_layout}-{_width}'
-        PICTURES[_stem] = (_path, _width, 3000, _script, (TUTORIALS,))
+        PICTURES[_stem] = (_path[_layout] if isinstance(_path, dict) else _path, _width, 3000, _script, (TUTORIALS,))
         WORLD_OF[_stem] = 'real'
         EXTRAS[_stem] = {'scale': LAYOUT_SCALE[_layout], 'crop': _crop, 'crop_pad': 28, 'after': _prepare + no_placeholders(*_crop) + callouts(*_marks)}
 

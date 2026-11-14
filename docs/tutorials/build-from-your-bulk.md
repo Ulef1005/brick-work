@@ -19,8 +19,8 @@ It takes about 20 minutes. You need a Brick Work install with some copies that h
 6. In the bar that appears, under **Change**, choose **Storage**. Under **Value**, choose your drawer. Press **Save**.
 7. Go back to **Workbench → Storage** and select the drawer. The header counts its sets, figures, part lots and pieces, and the list below it shows each one.
 
-![Workbench Storage with Drawer 3 open: the header counts its sets, figures, part lots and pieces.](../img/tutorials/tut-storage-desktop-1024-light.png#only-light)
-![Workbench Storage with Drawer 3 open: the header counts its sets, figures, part lots and pieces.](../img/tutorials/tut-storage-desktop-1024-dark.png#only-dark)
+<picture data-bw-screens><source media="(max-width: 600px)" srcset="../img/tutorials/tut-storage-phone-390-light.png"><img src="../img/tutorials/tut-storage-desktop-1024-light.png#only-light" alt="Workbench Storage with Drawer 3 open: the header counts its sets, figures, part lots and pieces."></picture>
+<picture data-bw-screens><source media="(max-width: 600px)" srcset="../img/tutorials/tut-storage-phone-390-dark.png"><img src="../img/tutorials/tut-storage-desktop-1024-dark.png#only-dark" alt="Workbench Storage with Drawer 3 open: the header counts its sets, figures, part lots and pieces."></picture>
 
 Repeat steps 2 to 6 for each drawer you want Part Runner to know about. [Know where things are](../how-to/storage.md) covers boxes inside boxes, moving things between storages and Undo.
 
@@ -32,21 +32,21 @@ Part Runner collects the missing parts of several sets while you walk along your
 2. Select **Choose sets** and tick three or four sets. (**All incomplete sets** takes every one.)
 3. Select **Continue · N sets**, where N is the number you ticked.
 
-![Part Runner on a phone: Choose sets is on, three sets are ticked and the button reads Continue · 3 sets.](../img/tutorials/tut-runner-sets-phone-390-light.png#only-light){ width="300" }
-![Part Runner on a phone: Choose sets is on, three sets are ticked and the button reads Continue · 3 sets.](../img/tutorials/tut-runner-sets-phone-390-dark.png#only-dark){ width="300" }
+<picture data-bw-screens><source media="(max-width: 600px)" srcset="../img/tutorials/tut-runner-sets-phone-390-light.png"><img src="../img/tutorials/tut-runner-sets-desktop-1024-light.png#only-light" alt="Part Runner: Choose sets is on, three sets are ticked and the button reads Continue · 3 sets."></picture>
+<picture data-bw-screens><source media="(max-width: 600px)" srcset="../img/tutorials/tut-runner-sets-phone-390-dark.png"><img src="../img/tutorials/tut-runner-sets-desktop-1024-dark.png#only-dark" alt="Part Runner: Choose sets is on, three sets are ticked and the button reads Continue · 3 sets."></picture>
 
 4. Under **In what order do you pick?**, you see the keys **Category**, **Category group**, **Colour**, **Size**, **Set** and **Storage**. A line under them says which order you get. Keep **Storage** switched on: it puts the parts that sit in the same drawer next to each other. A key with nothing to sort by is switched off and says why.
 5. Select **Start picking**.
 
-![The pick order on a phone: Category, Colour, Set and Storage are on, Size is off because no part sizes are recorded, and Category group is off.](../img/tutorials/tut-runner-order-phone-390-light.png#only-light){ width="300" }
-![The pick order on a phone: Category, Colour, Set and Storage are on, Size is off because no part sizes are recorded, and Category group is off.](../img/tutorials/tut-runner-order-phone-390-dark.png#only-dark){ width="300" }
+<picture data-bw-screens><source media="(max-width: 600px)" srcset="../img/tutorials/tut-runner-order-phone-390-light.png"><img src="../img/tutorials/tut-runner-order-desktop-1024-light.png#only-light" alt="The pick order: Category, Colour, Set and Storage are on, Size is off because no part sizes are recorded, and Category group is off."></picture>
+<picture data-bw-screens><source media="(max-width: 600px)" srcset="../img/tutorials/tut-runner-order-phone-390-dark.png"><img src="../img/tutorials/tut-runner-order-desktop-1024-dark.png#only-dark" alt="The pick order: Category, Colour, Set and Storage are on, Size is off because no part sizes are recorded, and Category group is off."></picture>
 
 6. Part Runner shows one part at a time: its picture, colour and number, **Pick N**, and which sets need how many. A part that three sets need appears once, with the total.
 7. Find the part in your drawer and select **Found it**.
 8. Choose where it goes. **Add to set** lowers the missing count of the sets that need it. Set how many go to each set with **−** and **+**. Select **Confirm**.
 
-![Found it on a phone: choose Add to set, Add to loose parts or Add to pick list only.](../img/tutorials/tut-runner-found-phone-390-light.png#only-light){ width="300" }
-![Found it on a phone: choose Add to set, Add to loose parts or Add to pick list only.](../img/tutorials/tut-runner-found-phone-390-dark.png#only-dark){ width="300" }
+<picture data-bw-screens><source media="(max-width: 600px)" srcset="../img/tutorials/tut-runner-found-phone-390-light.png"><img src="../img/tutorials/tut-runner-found-desktop-1024-light.png#only-light" alt="Found it: choose Add to set, Add to loose parts or Add to pick list only."></picture>
+<picture data-bw-screens><source media="(max-width: 600px)" srcset="../img/tutorials/tut-runner-found-phone-390-dark.png"><img src="../img/tutorials/tut-runner-found-desktop-1024-dark.png#only-dark" alt="Found it: choose Add to set, Add to loose parts or Add to pick list only."></picture>
 
 9. Part Runner moves to the next part. Use **Skip for later** for a part you cannot find; its missing count stays as it is.
 10. Select **Stop** when you are done. Every save is listed under **Recent saves**, each with its own **Undo**.
@@ -60,8 +60,8 @@ Part Runner takes parts you find. Matchmaker works the other way round: it looks
 1. Open **Workbench → Matchmaker**. The heading says how many copies can be advanced and how many can become complete.
 2. Look at the list. Copies that loose stock can finish come first and carry **Completes checked copy**. Each copy also shows **covers N of M missing**.
 
-![Matchmaker on a desktop: one copy shows Completes checked copy; the others cover only part of their gap.](../img/tutorials/tut-matchmaker-desktop-1024-light.png#only-light)
-![Matchmaker on a desktop: one copy shows Completes checked copy; the others cover only part of their gap.](../img/tutorials/tut-matchmaker-desktop-1024-dark.png#only-dark)
+<picture data-bw-screens><source media="(max-width: 600px)" srcset="../img/tutorials/tut-matchmaker-phone-390-light.png"><img src="../img/tutorials/tut-matchmaker-desktop-1024-light.png#only-light" alt="Matchmaker: one copy shows Completes checked copy; the others cover only part of their gap."></picture>
+<picture data-bw-screens><source media="(max-width: 600px)" srcset="../img/tutorials/tut-matchmaker-phone-390-dark.png"><img src="../img/tutorials/tut-matchmaker-desktop-1024-dark.png#only-dark" alt="Matchmaker: one copy shows Completes checked copy; the others cover only part of their gap."></picture>
 
 3. Select a copy that completes to open it. Each line shows the part and **Needs N · have M**.
 4. Find the part in your stock. Set **Transfer count** if you want to move fewer than suggested.

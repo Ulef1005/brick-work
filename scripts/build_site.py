@@ -92,10 +92,18 @@ def render(text):
 # Cloudflare Web Analytics (cookieless, public site token): on the pages built here only, never on the docs or the demo (see the privacy page).
 ANALYTICS = ('<script defer src="https://static.cloudflareinsights.com/beacon.min.js" '
              'data-cf-beacon=\'{"token": "f09e0d34781b4d658aa5ddd6adce3f44"}\'></script>')   # gitleaks:allow (the site token is public by design: it sits in every page's HTML)
+# Microsoft Clarity (sets cookies, records sessions, no consent banner: Ulf's decision, 14.11.): same pages as above, in the head, never on the docs or the demo; the privacy page says so.
+CLARITY = """<script>
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i+"?ref=bwt";
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "zdj5z3tzsr");
+</script>"""
 HOME_DESCRIPTION = ('Brick Work is a free, open-source, self-hosted workbench for your brick collection: check a set\'s parts, pull missing ones from loose stock '
                     'and see which unfinished sets your stock can complete.')
 MD_DESCRIPTIONS = {'use-cases': 'Eight moments a collector knows, and how Brick Work helps with each: rebuilding used sets, sorted bulk, minifigures, bought collections and orders.',
-                   'impressum': 'Impressum of the Brick Work website.', 'privacy': 'What the Brick Work website loads and what it does not: no tracking cookies, no consent banner.'}
+                   'impressum': 'Impressum of the Brick Work website.', 'privacy': 'What the Brick Work website loads and what it does not: which analytics it uses and which cookies it sets.'}
 DEFAULT_DESCRIPTION = 'Brick Work: the workbench for your brick collection: self-hosted, with a REST API and an MCP server.'
 DEMO_DESCRIPTION = 'Try the real Brick Work interface in your browser on an invented collection around seven real sets; nothing is saved.'
 
@@ -151,6 +159,7 @@ def page(title, body, depth, *, current, head='', main='doc', absolute=False, pa
 <link rel="stylesheet" href="{up}assets/marketing.css">
 <link rel="alternate" type="text/markdown" href="{up}llms.txt" title="Brick Work for AI assistants">
 {head}
+{CLARITY}
 </head>
 <body>
 <div class="site"><header class="top"><a class="brand" href="{up}" aria-label="Brick Work home">{lockup(up)}</a>

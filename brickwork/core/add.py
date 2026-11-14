@@ -36,6 +36,7 @@ from .transaction import transaction
 KIND_NAMES = {'set': 'Set', 'minifigure': 'Minifigure', 'part': 'Part', 'instructions': 'Instruction', 'box': 'Box', 'gear': 'Gear',
               'book': 'Book', 'catalog': 'Catalog'}
 KINDS = tuple(KIND_NAMES)
+FROM_SET = ('box', 'instructions')            # the catalogue holds no box or instruction items: Add offers them from the sets (#382)
 WHERE = ('owned', 'loose', 'wishlist')
 CONDITIONS = {'owned': ('new', 'used'), 'loose': ('new', 'used', 'damaged'), 'wishlist': ('new', 'used', 'any')}
 COMPLETENESS = ('', 'sealed', 'complete', 'incomplete')
@@ -85,6 +86,13 @@ def search(db, kind, query='', sort='number'):
         raise errors.ValidationFailed('Choose an item type and sort')
     require_catalogue(db)
     query = (query or '').strip()
+    if kind in FROM_SET:
+        return _search_from_sets(db, kind, query, sort)
+    return _search_items(db, kind, query, sort)
+
+
+def _search_items(db, kind, query, sort):
+    """The catalogue and local items of one kind that match a query (the body of `search`)."""
     full, partial, rest = size_search.parse(query)
     exact, found, total = [], [], 0
     if full or partial:
@@ -130,6 +138,53 @@ def search(db, kind, query='', sort='number'):
                       key=(lambda i: (rows[i]['name'].lower(), i)) if sort == 'name' else (lambda i: (rows[i]['number'] or '', i)))
     ordered = list(dict.fromkeys(first)) + rest_ids
     return {'items': decorate_rows(db, [rows[i] for i in ordered[:LIMIT]]), 'count': max(len(ordered), total)}
+
+
+def _existing_boxes(db, kind, numbers):
+    """`{number: item id}` of the boxes or instructions the collection holds for these set numbers: an item of that kind that is BrickLink-born with
+    the number, or linked to it by a link that is not a mere guess (`to_check` is no identity, as everywhere else; #382)."""
+    letter = items.type_of_kind(kind)
+    packed = json.dumps(sorted({n for n in numbers if n}))
+    found = {}
+    for r in db.execute("""SELECT i.id, i.born_key AS key FROM main.item i WHERE i.kind=? AND i.merged_into IS NULL AND i.born_provider='bricklink'
+                           AND i.born_namespace=? AND i.born_key IN (SELECT value FROM json_each(?))
+                           UNION
+                           SELECT i.id, l.provider_key FROM main.item i JOIN main.item_link l ON l.item_id=i.id
+                           WHERE i.kind=? AND i.merged_into IS NULL AND l.provider='bricklink' AND l.provider_kind=? AND l.status!='to_check'
+                           AND l.provider_key IN (SELECT value FROM json_each(?)) ORDER BY 1 DESC""", (kind, letter, packed, kind, letter, packed)):
+        found[r['key']] = r['id']                                        # the lowest id wins: the rows come in descending order
+    return found
+
+
+def _existing_from_set(db, kind, number):
+    """The id of the box or instructions item of a set, when the collection already has one (`_existing_boxes`)."""
+    return _existing_boxes(db, kind, [number]).get(number)
+
+
+def _search_from_sets(db, kind, query, sort):
+    """Search for a box or instructions (#382): the items of that kind the catalogue or the collection has, then the sets that match, because a
+    BrickLink box or instructions has its set's number. A set whose box the collection holds already shows as that item; the others show as a pick
+    that creates the item when the add is confirmed."""
+    own = _search_items(db, kind, query, sort)
+    rows = list(own['items'])
+    seen = {r['item_id'] for r in rows}
+    numbers = {r.get('number') for r in rows}
+    found = search(db, 'set', query, sort)
+    hits = [h for h in found['items'] if h.get('number')]                # an unidentified set has no number to give a box
+    existing = _existing_boxes(db, kind, [h['number'] for h in hits])
+    for hit in hits:
+        number = hit['number']
+        if number in existing:
+            if existing[number] not in seen:
+                seen.add(existing[number])
+                rows.extend(decorate_rows(db, [dict(item_id=existing[number], kind=kind)]))
+            continue
+        if number in numbers:                                            # the catalogue has this kind of item for the number already
+            continue
+        rows.append(dict(item_id=None, from_set=hit['item_id'], kind=kind, type_name=KIND_NAMES[kind], number=number, name=hit['name'],
+                         label=hit.get('label') or number, also=None, source=None, unidentified=False, image=hit.get('image'), owned=0,
+                         wished=False, wished_colors=[], wished_by_list={}, to_check=False))
+    return {'items': rows[:LIMIT], 'count': max(own['count'], found['count'], len(rows))}
 
 
 def lookup(db, item_id):
@@ -416,6 +471,7 @@ def _identify(db, row):
         if kind not in KIND_NAMES or not NUMBER.fullmatch(number):
             raise ValueError('Use a number and optional quantity')
         item_id = None
+        row.pop('from_set', None)                                         # only this function says which set a box or instructions comes from (#382)
         if kind == 'part' and row.get('bl_color') is not None:
             try:
                 found = identity.resolve_inverse(db, 'P', number, str(row['bl_color']), exhaustive=True)
@@ -433,7 +489,13 @@ def _identify(db, row):
                 found = None
             if found:
                 item_id, colour = found
-        if item_id is None:
+        if item_id is None and kind in FROM_SET:                        # a box or instructions is its set's number (#382)
+            item_id = _existing_from_set(db, kind, number)
+            if item_id is None:
+                set_id = _pick(db, 'set', number)
+                if set_id is not None:
+                    row['from_set'] = set_id
+        if item_id is None and not row.get('from_set'):
             item_id = _pick(db, kind, number)
         if colour is None:                                              # a known colour stays known for an unknown item too
             if row.get('bl_color') is not None:
@@ -514,7 +576,14 @@ def resolve(db, rows, where, *, list_id='default', map_wanted_ids=True):
                                     (['Create ' + list_name + ' on confirm'] if target.startswith('new-bl:') else []) +
                                     ([row['identity_note']] if row.get('identity_note') else []),
                     'where': where, 'color_id': color, 'note': row.get('note'), 'condition': condition, 'completeness': '', 'decision': ''}
-            if item_id is None:
+            if item_id is None and row.get('from_set'):
+                kind, parent = row['kind'], lookup(db, row['from_set'])
+                shown = decorate(db, dict(item_id=parent['item_id'], kind='set'))
+                resolved.append({**base, 'item_id': None, 'from_set': parent['item_id'], 'kind': kind, 'type_name': KIND_NAMES[kind],
+                                 'number': parent['number'], 'name': parent['name'], 'label': parent['label'], 'image': shown.get('image'),
+                                 'owned': 0, 'wished': False, 'wished_colors': [], 'wished_by_list': {}, 'to_check': False, 'part_list': None,
+                                 'no_picture': None, 'import_notes': base['import_notes'] + [f'The {KIND_NAMES[kind].lower()} of set {parent["number"]} is created when you add it']})
+            elif item_id is None:
                 kind, number = row['kind'], str(row['number'])
                 resolved.append({**base, 'item_id': None, 'unknown': True, 'kind': kind, 'type_name': KIND_NAMES[kind], 'number': number,
                                  'name': number, 'label': number, 'offers': offers(db, kind, number), 'owned': 0, 'wished': False,
@@ -629,6 +698,9 @@ def validate_edits(db, proposal, edits, *, batch=None):
                 raise ValueError((row['offers']['fetch'] or {}).get('why') or f'{row["number"]} cannot be fetched from Rebrickable')
             result.append(row)
             continue
+        if row.get('from_set'):                           # the item does not exist yet: nothing to be a duplicate of (#382)
+            result.append(row)
+            continue
         key = row['item_id'], row['color_id'], row.get('list_id') if row['where'] == 'wishlist' else None
         current = decorate(db, row)
         duplicate = current['owned'] or current['wished'] or key in wishes or key in owned
@@ -671,6 +743,25 @@ def _unidentified_item(db, kind, number, via, actor):
     fetched.add_item_link(db, new, provider='bricklink', provider_kind=letter, provider_key=number, status='to_check', method='typed',
                           origin='user', events=events)
     return new
+
+
+def _box_item(db, kind, set_id, via, actor):
+    """`(item id, created)` of the box or instructions item of a set (#382): the existing one, else a new local item named as the set. It is
+    BrickLink-born with the set's number, as every other BrickLink-only box or booklet is (the Workbench booklets, order lines), so booklet files
+    and order lines find it by that number; its link is inferred (the number rule, not a lookup)."""
+    parent = lookup(db, set_id)
+    if parent is None or not parent['number']:
+        raise ValueError('Choose a set from the catalogue')
+    existing = _existing_from_set(db, kind, parent['number'])
+    if existing is not None:
+        return existing, False
+    events = Events(db, via, actor)
+    letter = items.type_of_kind(kind)
+    new = fetched.create_local_item(db, kind=kind, born_provider='bricklink', born_namespace=letter, born_key=parent['number'], name=parent['name'],
+                                    kind_source='bricklink', events=events)
+    fetched.add_item_link(db, new, provider='bricklink', provider_kind=letter, provider_key=parent['number'], status='inferred', method='set_number',
+                          origin='user', events=events)
+    return new, True
 
 
 def _add_copy(db, row, via, actor):
@@ -769,6 +860,10 @@ def _confirm_row(db, pipeline, row, batch, index, via, actor, photo=None):
             return _save_receipt(db, receipt, via, actor)
         row = {**row, 'item_id': _unidentified_item(db, row['kind'], row['number'], via, actor)}
         receipt.update(item_id=row['item_id'], created_item=row['item_id'])
+    elif row.get('from_set'):
+        made, created = _box_item(db, row['kind'], row['from_set'], via, actor)
+        row = {**row, 'item_id': made}
+        receipt.update(item_id=made, created_item=made if created else None)       # an item that was there already is checked like any owned one
     items.ensure(db, row['item_id'])
     live = decorate(db, row)
     if not receipt['created_item'] and row['decision'] != 'another' and (live['owned'] or live['wished']):

@@ -737,7 +737,7 @@ def survivors(db, loser, text, limit=12):
     if text:
         found = [dict(item_id=f['item_id'], how=f['matched_by']) for f in items.find(db, row['kind'], text, limit=limit + 1)]      # exact numbers first
         try:                                                        # then the Add search: names and sizes (without an active catalogue it cannot run)
-            found += [dict(item_id=h['item_id'], how='search') for h in add.search(db, row['kind'], text)['items']]
+            found += [dict(item_id=h['item_id'], how='search') for h in add.search(db, row['kind'], text)['items'] if h['item_id'] is not None]   # a box pick not made yet is no merge target
         except errors.CatalogueNotLoaded:
             pass
         tokens = re.findall(r'[^\W_]+', text.lower())              # local items by name or number, which the size search leaves out

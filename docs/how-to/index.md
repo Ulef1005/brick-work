@@ -36,6 +36,7 @@ One task per page, for someone who already knows the app.
 - [Sync with Rebrickable and Brickset](sync-collection.md)
 - [Import from BrickTracker](import-from-bricktracker.md)
 - [Undo a change](undo-a-change.md)
+- [Add a box or instructions](add-a-box-or-instructions.md)
 
 ## Running Brick Work
 

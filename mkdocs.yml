@@ -102,6 +102,7 @@ nav:
               - how-to/sync-collection.md
               - how-to/import-from-bricktracker.md
               - how-to/undo-a-change.md
+              - how-to/add-a-box-or-instructions.md
           - Running Brick Work:
               - how-to/install-docker-desktop.md
               - how-to/settings-and-maintenance.md

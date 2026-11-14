@@ -421,7 +421,7 @@ def add_top_bar(out):
             if area == 'demo' and file.relative_to(out / 'demo').parts[0] == 'static':
                 continue
             text = file.read_text()
-            if 'http-equiv="refresh"' in text[:2000]:   # a redirect stub (the demo's /demo/) shows nothing a bar could sit on
+            if 'http-equiv="refresh"' in text and '<body' not in text:   # a redirect stub (the demo's /demo/) shows nothing a bar could sit on
                 continue
             file.write_text(site_nav.inject(text, base, repo, extra))
 

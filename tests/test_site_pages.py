@@ -598,7 +598,7 @@ def test_docs_and_demo_pages_carry_the_site_top_bar(site):
     base = site_base()
     for area in ('docs', 'demo'):
         pages = [f for f in (site / area).rglob('*.html') if not (area == 'demo' and f.relative_to(site / 'demo').parts[0] == 'static')]
-        shown = [f for f in pages if 'http-equiv="refresh"' not in f.read_text()[:2000]]
+        shown = [f for f in pages if not ('http-equiv="refresh"' in f.read_text() and '<body' not in f.read_text())]
         assert len(shown) > 20 and len(pages) - len(shown) <= 2, area
         for file in shown:
             text = file.read_text()
@@ -618,4 +618,7 @@ def test_the_demo_entry_has_share_tags(site):
     assert f'<link rel="canonical" href="{origin() + site_base()}demo/">' in text
     assert 'property="og:image"' in text
     assert 'property="og:title" content="Brick Work demo"' in text
-    assert 'name="description"' in text
+    assert text.count('name="description"') == 1   # one tag: seo_head does not write it, the stub does
+    from scripts.build_site import DEMO_DESCRIPTION
+    assert f'name="description" content="{DEMO_DESCRIPTION}"' in text and f'property="og:description" content="{DEMO_DESCRIPTION}"' in text
+    assert f'property="og:url" content="{origin() + site_base()}demo/"' in text

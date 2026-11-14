@@ -25,4 +25,4 @@ A BrickLink box or instruction has the number of its set, which is why the searc
 
 You can also paste set numbers with **Box** or **Instruction** chosen. A number that no set has is offered as an unidentified item, as for any other type.
 
-**Undo** takes the add back, the item it created included.
+**Undo** takes your copy back. The item it created stays, with none owned, and the next add of the same box uses it.

@@ -125,21 +125,28 @@ def test_a_box_or_instructions_is_found_through_its_set_and_created_when_it_is_a
     receipt = confirm(client, csrf, proposal).json['receipts'][0]
     assert receipt['item_id'] and receipt['kind'] == 'box' and receipt['stock'] and receipt['url'].startswith('/collection/item/')
     with read() as db:
-        item = db.execute('SELECT kind, origin, name, born_key FROM item WHERE id=?', (receipt['item_id'],)).fetchone()
+        item = db.execute('SELECT kind, origin, name, born_key, born_provider, born_namespace FROM item WHERE id=?', (receipt['item_id'],)).fetchone()
         link = db.execute('SELECT provider, provider_kind, provider_key, status, method FROM item_link WHERE item_id=?', (receipt['item_id'],)).fetchone()
-    assert tuple(item) == ('box', 'local', sets['1000-2']['name'], None) and tuple(link) == ('bricklink', 'O', '1000-2', 'inferred', 'set_number')
+    assert tuple(item) == ('box', 'local', sets['1000-2']['name'], '1000-2', 'bricklink', 'O') and tuple(link) == ('bricklink', 'O', '1000-2', 'inferred', 'set_number')
     again = hits('box', 'castle')
     mine = next(r for r in again if r['number'] == '1000-2' or r['item_id'] == receipt['item_id'])
     assert mine['item_id'] == receipt['item_id'] and mine['owned'] == 1 and not mine.get('from_set')        # the owned box is the item now
     twice = review(client, csrf, '1000-2', type='box').json
     assert twice['items'][0]['item_id'] == receipt['item_id'] and twice['items'][0]['owned'] == 1      # a typed number finds the existing box: no second item
     assert confirm(client, csrf, twice).status_code == 400                           # already owned: choose another or skip
-    instructions = review(client, csrf, '1000-1', type='instructions').json
+    booklet = review(client, csrf, '1000-1', type='instructions').json['items'][0]       # the world holds a BrickLink-born booklet for this set already
+    assert booklet['item_id'] and booklet['owned'] == 1 and not booklet.get('from_set')
+    instructions = review(client, csrf, '1000-2', type='instructions').json
     assert instructions['items'][0]['kind'] == 'instructions' and instructions['items'][0]['from_set']
     made = confirm(client, csrf, instructions).json
     with read() as db:
         assert db.execute("SELECT provider_kind FROM item_link WHERE item_id=?", (made['receipts'][0]['item_id'],)).fetchone()[0] == 'I'
     assert undo(client, csrf, made['batch']).status_code == 200
+    with read() as db:                                                                # Undo takes the copy back; the item stays, owned 0
+        assert db.execute('SELECT count(*) FROM item WHERE id=?', (made['receipts'][0]['item_id'],)).fetchone()[0] == 1
+    reply = confirm(client, csrf, review(client, csrf, '1000-2', type='instructions').json)
+    assert reply.status_code == 200, reply.json
+    assert reply.json['receipts'][0]['item_id'] == made['receipts'][0]['item_id']          # the next add reuses it
     assert review(client, csrf, '1000-9', type='box').json['items'][0].get('unknown')             # a number no set has stays the unidentified offer
 
 

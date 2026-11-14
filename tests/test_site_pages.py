@@ -598,7 +598,7 @@ def test_docs_and_demo_pages_carry_the_site_top_bar(site):
     base = site_base()
     for area in ('docs', 'demo'):
         pages = [f for f in (site / area).rglob('*.html') if not (area == 'demo' and f.relative_to(site / 'demo').parts[0] == 'static')]
-        shown = [f for f in pages if 'http-equiv="refresh"' not in f.read_text()[:400]]
+        shown = [f for f in pages if 'http-equiv="refresh"' not in f.read_text()[:2000]]
         assert len(shown) > 20 and len(pages) - len(shown) <= 2, area
         for file in shown:
             text = file.read_text()
@@ -609,3 +609,13 @@ def test_docs_and_demo_pages_carry_the_site_top_bar(site):
     sets = (site / 'demo/collection/sets/index.html').read_text()
     assert '.bs-aside' in sets and '.md-header' not in sets
     assert 'cloudflareinsights' not in docs + sets
+
+
+def test_the_demo_entry_has_share_tags(site):
+    from scripts.build_site import origin, site_base
+    text = (site / 'demo/index.html').read_text()
+    assert 'http-equiv="refresh"' in text
+    assert f'<link rel="canonical" href="{origin() + site_base()}demo/">' in text
+    assert 'property="og:image"' in text
+    assert 'property="og:title" content="Brick Work demo"' in text
+    assert 'name="description"' in text

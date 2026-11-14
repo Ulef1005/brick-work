@@ -158,7 +158,7 @@ const chips=(row,offers)=>{
     if(current!==pre){const use=el('label',undefined,'check-field'),box=el('input');box.type='checkbox';box.checked=row.use_for_new===true;box.addEventListener('change',()=>{row.use_for_new=box.checked;});use.append(box,'Use this for new copies of this set');wrap.append(use);}
     picker=wrap;
    }
-   cell(id);cell(row.type_name);
+   cell(id);if(row.check_note)id.append(el('p',row.check_note,'secondary mono'));cell(row.type_name);
    const qty=el('input');qty.type='number';qty.min='1';qty.max='9999';qty.value=row.quantity;qty.setAttribute('aria-label',`Quantity for ${row.label || row.number}`);qty.addEventListener('input',()=>{row.quantity=qty.value;});cell(qty);
    const destination=cell(choose([['owned','Owned'],['loose','Loose'],['wishlist','Wishlist']],row.where,`Where for ${row.label || row.number}`,v=>{row.where=v;renderReview();}));
    if(row.where==='wishlist'){

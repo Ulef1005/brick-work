@@ -23,6 +23,8 @@ A BrickLink box or instruction has the number of its set, which is why the searc
 2. Press **Add**. The first time, Brick Work creates the item, named as the set. It links the item to BrickLink as `O` (box) or `I` (instructions) with the set's number. Your copy is added as loose stock.
 3. The panel under **Importing** has an **Open** link to the item's page.
 
+**With a BrickLink key**, Brick Work asks BrickLink once for each box or instruction you pick that is not in your collection yet, at the review. If BrickLink knows it, the item takes BrickLink's name. If BrickLink does not list a box or instruction for that set number, the review says so and the item's link is left to check; you can still add it. Without a key, or when BrickLink does not answer, nothing is checked and the item is named as the set. One lookup is one call of the shared daily BrickLink budget, and one review looks up at most 20 picks; the rest are not checked.
+
 You can also paste set numbers with **Box** or **Instruction** chosen. A number that no set has is offered as an unidentified item, as for any other type.
 
 **Undo** takes your copy back. The item it created stays, with none owned, and the next add of the same box uses it.

@@ -7,6 +7,7 @@ reply that proves an `inferred` link right upgrades it to `matched/bricklink_api
 
 The part lists (`/subsets`) are `store4.jobs`' (`bricklink_subsets`); BrickLink's colour table comes with the catalogue builds; this client
 keeps the price guide, the key check and the order endpoints (`list_orders`, `order_items`)."""
+import html
 import json
 import os
 import re
@@ -78,6 +79,21 @@ class BrickLink(Source):
     def check_key(self):
         """Cheapest authenticated read; proves the four values without changing data."""
         return self.call('/colors/1', normalize=lambda row: True)
+
+    def item_name(self, letter, number, *, job_id=None):
+        """BrickLink's name for an item (`ORIGINAL_BOX` / `INSTRUCTION` of a set number, #382): one call, no price. `NotFoundAtSource` when
+        BrickLink does not list it."""
+        if letter not in TYPE_NAMES or not NUMBER.fullmatch(str(number)):
+            raise ValueError('invalid item key')
+
+        def consume(data):
+            name = data.get('name') if isinstance(data, dict) else None
+            if isinstance(data, dict) and str(data.get('no')).lower() != str(number).lower():
+                raise InvalidReply('BrickLink answered for another item')
+            if not isinstance(name, str) or not name.strip():
+                raise InvalidReply('BrickLink item has no name')
+            return html.unescape(name).strip()
+        return self.call(f'/items/{TYPE_NAMES[letter]}/{number}', normalize=consume, job_id=job_id)
 
     def settings(self):
         values = dict(self.db.execute('SELECT key, value FROM setting'))

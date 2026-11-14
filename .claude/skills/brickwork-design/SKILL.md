@@ -108,7 +108,7 @@ The docs site (Zensical, `mkdocs.yml`) wears the same tokens as the app (approve
 - **No colours of its own.** The token classes `.tw-light` and `.tw-dark` become Zensical's colour schemes `default` and `slate`, and every `--md-*` variable is a `var(--tw-*)` (`tests/test_docs_theme.py` checks it). Use the colour tokens themselves in any docs CSS, not tokens defined in terms of another (they resolve on `<html>` and follow the system setting).
 - **Clay** goes on links, the active tab (one 2 px underline) and the selected page (ink on `--tw-accent-soft`). The header is paper with a 0.5 px hairline and keeps the app icon on its teal identity tile. No shadows, as in the app.
 - **Admonitions** take the status soft grounds and status-coloured icons. Folded reference blocks (`??? reference`) are plain surface boxes.
-- **Fonts** are Inter and Geist Mono, copied by `docs_theme.py build` into `docs/assets/fonts/` with their licences. The site makes no external requests, so a docs page must not load a font, script or image from another host.
+- **Fonts** are Inter and Geist Mono, copied by `docs_theme.py build` into `docs/assets/fonts/` with their licences. The docs and the demo make no external requests (the marketing pages load only the two analytics scripts of the privacy page), so a docs page must not load a font, script or image from another host.
 - Every docs page needs an entry in `mkdocs.yml`'s `nav:` (`scripts/check_nav.py`, run by `check.sh` and CI).
 
 ## Rules for new work

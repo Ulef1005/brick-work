@@ -5,7 +5,7 @@ This website shows no consent banner. It uses two analytics services on the mark
 
 - **Cloudflare** serves this site and sees the traffic as a proxy.
 - **Cloudflare Web Analytics**, cookieless, on the marketing pages only.
-- **Microsoft Clarity** on the marketing pages only: it sets the cookies `_clck` and `_clsk` and records how you use the page (clicks, scrolling, page views) as anonymised session replays and heatmaps, processed by Microsoft. See [Microsoft's privacy statement](https://privacy.microsoft.com/privacystatement). The documentation and the demo do not load it. To avoid it, block `clarity.ms` or the two cookies in your browser.
+- **Microsoft Clarity** on the marketing pages, the not-found page and the redirect pages from old addresses: it sets the cookies `_clck` and `_clsk`, keeps identifiers in your browser's local storage and records how you use the page (clicks, scrolling, page views) as pseudonymised session replays and heatmaps, processed by Microsoft. See [Microsoft's privacy statement](https://privacy.microsoft.com/privacystatement). The documentation and the demo pages do not load it. To avoid it, block `clarity.ms` in your browser; deleting the cookies alone does not stop it.
 - **YouTube** loads only after you press play on the tour; its own cookies and policy apply after that.
 - **Pictures** of the demo's sets come from Rebrickable and are served from this site, so your browser does not contact Rebrickable.
 

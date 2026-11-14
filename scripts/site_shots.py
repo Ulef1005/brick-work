@@ -203,7 +203,7 @@ const areas = %s.flatMap(s => {
 if (!areas.length) throw new Error('no_placeholders: the area matches nothing');
 const pad = 28, box = {l: Math.min(...areas.map(a => a.left)) - pad, t: Math.min(...areas.map(a => a.top)) - pad, r: Math.max(...areas.map(a => a.right)) + pad, b: Math.max(...areas.map(a => a.bottom)) + pad};
 const inside = e => { const r = e.getBoundingClientRect(); return e.checkVisibility() && r.width > 0 && r.height > 0 && r.right > box.l && r.left < box.r && r.bottom > box.t && r.top < box.b; };
-const tiles = [...document.querySelectorAll('.bc-no-image,.bw-no-image,.bc-picture:not(:has(img)),.bw-picture:not(:has(img)),.st-pic:not(:has(img)),.bp-tile:not(:has(img)),.bd-tile:not(:has(img))')].concat(
+const tiles = [...document.querySelectorAll('.bc-no-image,.bw-no-image,.bc-picture:not(:has(img)),.bw-picture:not(:has(img)),.st-pic:not(:has(img)),.bp-tile:not(:has(img)),.bd-tile:not(:has(img)),.bd-sheet:not(:has(img)),.bd-set-tile:not(:has(img))')].concat(
   [...document.querySelectorAll('body *')].filter(e => !e.children.length && /^No image$/i.test((e.textContent || '').trim())));
 const broken = [...document.images].filter(i => inside(i) && (!i.complete || !i.naturalWidth));
 const named = [...tiles.filter(inside), ...broken].map(e => { const row = e.closest('.bp-line,.bd-cand,article,li,tr,form,[data-row]') || e.parentElement.parentElement; return (row.innerText || e.getAttribute('src') || '').replace(/\\s+/g, ' ').trim().slice(0, 130); });
@@ -234,9 +234,12 @@ def tag_nth(selector, n, attr='data-shot-area', closest=None):
 REAL = {'real': lambda number: uid('copy', number, 'a')}['real']
 REAL_STARTED, REAL_GAPS = REAL('8043-1'), REAL('7938-1')   # a check about 40 % answered; a check answered to the end, with gaps
 # The pull list shows every part of the set and most parts have no render yet: keep the Bricks group's first eleven lines (the lines that have one) and drop the rest.
-PULL_WINDOW = ("{ let groups = 0, lines = 0; for (const e of [...document.querySelectorAll('.bp-grp, [data-line]')]) { "
-               "if (e.classList.contains('bp-grp')) { groups += 1; if (groups !== 2) e.remove(); continue; } "
-               "if (groups !== 2 || (lines += 1) > 11) e.remove(); } }\n")
+PULL_WINDOW = ("{ const label = [...document.querySelectorAll('.bp-grp')].find(g => /^Bricks/.test(g.textContent.trim())); if (!label) throw new Error('PULL_WINDOW: no Bricks group'); "
+               "let lines = 0; for (const e of [...document.querySelectorAll('.bp-grp, [data-line]')]) { "
+               "if (e === label) continue; if (e.classList.contains('bp-grp')) { e.remove(); continue; } "
+               "if ((e.compareDocumentPosition(label) & Node.DOCUMENT_POSITION_FOLLOWING) || (lines += 1) > 11) e.remove(); } "
+               "const open = [...document.querySelectorAll('[data-line]')].find(l => /(^|\\D)0 of \\d+/.test(l.textContent)); if (!open) throw new Error('PULL_WINDOW: no line left to find'); open.setAttribute('data-shot-open', ''); "
+               "document.querySelectorAll('.bp-more, .bp-bar').forEach(e => e.remove()); }\n")
 BULK_PICKED = '/workbench/part-picker?copy=' + '&copy='.join(REAL(n) for n in ('31120-1', '7938-1', '7213-1'))
 CHOOSE_REAL_SETS = ("document.querySelector('[data-none]').click(); for (const n of ['31120-1', '7938-1', '7213-1']) { "
                     "const box = document.querySelector('[data-number=' + JSON.stringify(n) + '] input'); if (!box) throw new Error('Part Runner does not list ' + n); box.click(); } "
@@ -284,11 +287,8 @@ TUTORIAL_SHOTS = {
     'lot-detect': (LOT_PAGE + '?detect=1&ignore_common=1#set-detection', SHOW_DETECTION, {
         layout: (width, ['.bd-top'], marks, "document.querySelectorAll('.bd-cand details').forEach(d => { d.open = false; });\n")
         for layout, width, marks in (('desktop', 1024, [('.bd-pct', 1, 'above'), ('.bd-toggle', 2)]), ('phone', 390, [('.bd-pct', 1, 'above')]))}),
-    'lot-sticker': (lot_link(re.escape(LOT_PAGE) + r'/sticker/[0-9a-f]+[^"]*', None), None, {
-        layout: (width, ['.bd-panel'], [('.bd-set button', 1)], isolate('.bd-chooser'))
-        for layout, width in (('desktop', 1024), ('phone', 390))}),
     'lot-pull-list': (pull('7938-1', '?show=all'), None, {
-        layout: (width, ['h1', '[data-line]'], [('[data-line] .bp-cb', 1), ('.bp-step button[aria-label^="One more"]', 2)], PULL_WINDOW)
+        layout: (width, ['h1', '[data-line]'], [('[data-shot-open] .bp-cb', 1), ('[data-shot-open] .bp-step button[aria-label^="One more"]', 2)], PULL_WINDOW)
         for layout, width in (('desktop', 1024), ('phone', 390))}),
     'lot-pull-confirm': (pull('7938-1', '/make-copy'), None, {
         layout: (width, ['.bp-panel'], [('.bp-panel button.bp-lg', 1)], isolate('.bp-confirm'))

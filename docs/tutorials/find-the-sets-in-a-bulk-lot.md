@@ -28,9 +28,6 @@ A sticker is the one thing a photo of a part cannot show: you see the base part,
 1. Select **Which sticker?** on the flagged line. The chooser lists the sets that hold that part in its colour and a sticker sheet.
 2. Select **This one** on the set whose sticker you recognise. The line now reads **Sticker · set …**, and the set's reasons say the sticker is confirmed.
 
-![The chooser Which sticker is it? for a yellow plate flagged Sticker: two sets with a sticker sheet and This one on each, with Keep as a hint and Not a sticker below.](../img/tutorials/tut-lot-sticker-desktop-1024-light.png#only-light)
-![The chooser Which sticker is it? for a yellow plate flagged Sticker: two sets with a sticker sheet and This one on each, with Keep as a hint and Not a sticker below.](../img/tutorials/tut-lot-sticker-desktop-1024-dark.png#only-dark)
-
 A confirmed sticker is strong evidence for its set; an open one lifts the sets that could hold it only a little. **Keep as a hint** leaves the part open and **Not a sticker** removes the flag. Choosing is one step with **Undo**. See [Mark a sticker](../how-to/mark-a-sticker.md).
 
 ## 3. Dig the set out with the pull list

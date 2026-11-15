@@ -1,4 +1,6 @@
 """Shared admin services (CLI and browser) on the 4.0 store (M.8i part 1, issue #110): no network."""
+
+from brickwork.store4.connect import SCHEMA_VERSION
 from contextlib import closing
 from pathlib import Path
 import hashlib
@@ -82,7 +84,7 @@ def test_setup_creates_a_4_0_collection_and_names_the_catalogue(where):
     result = ops.setup()
     assert result['catalogue'] == 'missing' and 'catalogue download' in result['next'] and result['database'] == str(where / 'brickwork.db')
     with closing(sqlite3.connect(where / 'brickwork.db')) as db:
-        assert db.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()[0] == '4.2'
+        assert db.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()[0] == SCHEMA_VERSION
         assert db.execute('SELECT count(*) FROM source_freshness').fetchone()[0] == 15
 
 

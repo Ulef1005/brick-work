@@ -7,6 +7,8 @@ the part-out value and manual prices; M.8g) and (M.8b)
 the collection's read side: `/` and the collection lists
 (the first-run page on an empty collection), the item page by id, the wish, lot and purchase-place pages, the jump search. Every other browser
 screen answers 503 until its piece ports it. API v1 answers 410, except `/api/v1/health`."""
+
+from brickwork.store4.connect import SCHEMA_VERSION
 from contextlib import closing
 import os
 from pathlib import Path
@@ -72,7 +74,7 @@ def test_standalone_smoke(tmp_path, monkeypatch, offline, capsys):
     said = capsys.readouterr().out
     assert path.is_file() and 'missing' in said and 'catalogue download' in said
     with sqlite3.connect(path) as db:
-        assert db.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()[0] == '4.2'
+        assert db.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()[0] == SCHEMA_VERSION
     with pytest.raises(Exception, match='No catalogue at .*catalogue.db'):
         connect(path)
     # the fixture catalogue, built offline, goes beside the collection
@@ -83,7 +85,7 @@ def test_standalone_smoke(tmp_path, monkeypatch, offline, capsys):
     # health is the one v1 route that answers: no token, the app version and the 4.0 schema
     health = client.get('/api/v1/health')
     assert health.status_code == 200, health.text
-    assert health.json['data'] == {'status': 'ok', 'api': '1.0.0', 'app': __version__, 'schema': '4.2'}
+    assert health.json['data'] == {'status': 'ok', 'api': '1.0.0', 'app': __version__, 'schema': SCHEMA_VERSION}
     # every other v1 route is gone, with or without a token, and says why
     for method, route in (('get', '/version'), ('get', '/me'), ('get', '/copies'), ('post', '/copies'), ('get', '/events'),
                           ('post', '/events/1/undo'), ('get', '/openapi.yaml'), ('get', '/does-not-exist')):

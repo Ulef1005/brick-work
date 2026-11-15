@@ -12,7 +12,7 @@ import sqlite3
 import pytest
 
 from brickwork.store4 import cli
-from brickwork.store4.connect import connect
+from brickwork.store4.connect import SCHEMA_VERSION, connect
 from brickwork.store4.migrate import MigrationError
 from brickwork.store4.migrate_run import run
 from tests.legacy33 import FIXTURES
@@ -49,9 +49,11 @@ def test_migrates_to_4(fixture, tmp_path, world):
     assert res.result == 'PASS', [(n, p['first_differences'][:2]) for n, p in res.proof['parts'].items() if p['differences']]
     assert res.published and res.out.exists()
     with closing(connect(res.out, catalogue, read_only=True)) as db:
+        assert db.execute('SELECT count(*) FROM storage WHERE short_id IS NULL').fetchone()[0] == 0
+        assert db.execute('SELECT value FROM storage_label_sequence WHERE singleton=1').fetchone()[0] == db.execute('SELECT count(*) FROM storage').fetchone()[0]
         assert db.execute('PRAGMA integrity_check').fetchone()[0] == 'ok'
         assert db.execute('PRAGMA foreign_key_check').fetchall() == []
-        assert db.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()[0] == '4.2'
+        assert db.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()[0] == SCHEMA_VERSION
 
 
 def test_the_command_line_migrates_too(tmp_path, world, capsys):

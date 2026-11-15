@@ -168,7 +168,10 @@ def test_exact_undo(tmp_path, db):
         assert live(db, table) == (1 if table == 'stock' else 0), table
     assert db.execute("SELECT quantity FROM stock s JOIN item i ON i.id=s.item_id WHERE i.born_key='3023' AND s.archived_at IS NULL").fetchone()[0] == 1
     assert not db.execute("SELECT 1 FROM flag WHERE archived_at IS NULL AND name IN ('Invented owner', 'for sale')").fetchone()
-    changed = {t for t, v in table_digest(db).items() if before.get(t) != v}
+    # Label identities are never reused, including after import Undo.
+    intentionally_not_restored = {'storage_label_sequence': 'Monotonic label numbers survive Undo'}
+    assert table_digest(db)['storage_label_sequence'] != before['storage_label_sequence']
+    changed = {t for t, v in table_digest(db).items() if before.get(t) != v} - intentionally_not_restored.keys()
     assert changed <= {'copy', 'copy_part', 'copy_figure', 'copy_flag', 'stock', 'stock_part', 'stock_flag', 'wish', 'wish_flag', 'lot', 'storage', 'place', 'flag',
                        'item', 'item_link', 'item_property', 'item_provider_status', 'color', 'color_link', 'job', 'job_step', 'plan'}, changed
     assert db.execute('PRAGMA foreign_key_check').fetchall() == []

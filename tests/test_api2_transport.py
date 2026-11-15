@@ -2,6 +2,8 @@
 
 Ported to v2 from the transport tests of test_bw_api_m1 and test_app_factory (and the contract-file test of test_runtime_contract); the
 v1 line only answers 410 (tests/test_standalone_smoke.py)."""
+
+from brickwork.store4.connect import SCHEMA_VERSION
 from pathlib import Path
 
 import pytest
@@ -20,7 +22,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_health_needs_no_token_and_names_v2(v2):
     response = v2.get(PREFIX + '/health')
     assert response.status_code == 200
-    assert response.json['data'] == {'status': 'ok', 'api': '2.0.0', 'app': response.json['data']['app'], 'schema': '4.2'}
+    assert response.json['data'] == {'status': 'ok', 'api': '2.0.0', 'app': response.json['data']['app'], 'schema': SCHEMA_VERSION}
     assert response.headers['Cache-Control'] == 'no-store'
 
 
@@ -121,4 +123,4 @@ def test_the_501_placeholder_is_a_problem_that_names_its_piece(app4):
 def test_no_operation_is_left_to_the_501_placeholder(app4):
     assert pending() == []
     assert not [r.rule for r in app4.url_map.iter_rules() if hasattr(app4.view_functions[r.endpoint], 'piece')]
-    assert len(operations()) == 201
+    assert len(operations()) == 203

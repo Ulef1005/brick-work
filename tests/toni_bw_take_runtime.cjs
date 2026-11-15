@@ -63,5 +63,33 @@ assert.equal(build(1, ok).output.textContent, '1');
   await t.go.fire('click');
   assert.equal(t.note.textContent, 'Only 2 are left in loose stock'); assert.equal(t.reloads.length, 0);
   assert.equal(t.go.disabled, false); assert.equal(t.store['bw-collection-receipt'], undefined);
+  // Found all and Found 1 share one row lock, in either order, until success or failure.
+  for (const first of ['one', 'all']) {
+    const root = new Node(), row = new Node(), note = new Node();
+    const buttons = {one: new Node(), all: new Node()};
+    row.nodes['[data-bc-found-message]'] = note;
+    row.groups['[data-bc-found-one], [data-bc-found-all]'] = Object.values(buttons);
+    root.dataset = {saveUrl: '/save/ACTION', csrf: 'token'};
+    for (const [kind, button] of Object.entries(buttons)) {
+      button.parentElement = row; button.dataset.identity = JSON.stringify({copy_id: 'copy', token: 'p:1'});
+      root.groups['[data-bc-found-' + kind + ']'] = [button];
+    }
+    let release, calls = 0, reloads = 0;
+    const context = {window: {}, document: {querySelector: () => root},
+      fetch: () => { calls++; return new Promise(resolve => { release = resolve; }); },
+      location: {pathname: '/collection/item/1', reload: () => { reloads++; }},
+      sessionStorage: {setItem() {}}};
+    vm.runInNewContext(source, context);
+    const pending = buttons[first].fire('click');
+    assert.equal(buttons.one.disabled, true); assert.equal(buttons.all.disabled, true);
+    await buttons[first === 'one' ? 'all' : 'one'].fire('click');
+    assert.equal(calls, 1);
+    release({ok: false, json: async () => ({message: 'Try again'})}); await pending;
+    assert.equal(buttons.one.disabled, false); assert.equal(buttons.all.disabled, false);
+    assert.equal(reloads, 0); assert.equal(note.textContent, 'Try again');
+    const retry = buttons.all.fire('click');
+    release({ok: true, json: async () => ({message: 'Found all', event_id: 2})}); await retry;
+    assert.equal(calls, 2); assert.equal(reloads, 1);
+  }
   console.log('ok');
 })().catch(e => { console.error(e); process.exit(1); });

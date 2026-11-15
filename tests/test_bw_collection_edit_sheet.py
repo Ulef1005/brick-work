@@ -127,18 +127,18 @@ def test_the_system_flag_entry_belongs_to_the_web_save_only(world, coll):
 def test_owners_and_tags_are_multi_select_fields_of_flag_ids(world, coll, client):
     token = csrf(client)
     w = world
-    sandra, ulf = coll.flag('Sandra', 'owner'), coll.flag('Ulf', 'owner')
-    coll.tag('copy', w.copy_a, ulf)
+    alex, sam = coll.flag('Alex', 'owner'), coll.flag('Sam', 'owner')
+    coll.tag('copy', w.copy_a, sam)
     form = sheet(client, copy_url(w, w.copy_a)).select_one('form#bc-edit-form')
     fields = {f.select_one('.bc-label').get_text(): f for f in form.select('.bc-field') if f.select_one('details.bc-multi')}
     assert list(fields) == ['Owners', 'Tags']
     owners = fields['Owners'].select_one('details.bc-multi')
-    assert owners.has_attr('data-bc-multi') and owners.select_one('summary [data-bc-multi-value]').get_text() == 'Ulf'
-    assert [(i['value'], i.has_attr('checked'), i['data-name']) for i in owners.select('input[type=checkbox][name=flags]')] == [(sandra, False, 'Sandra'), (ulf, True, 'Ulf')]
+    assert owners.has_attr('data-bc-multi') and owners.select_one('summary [data-bc-multi-value]').get_text() == 'Sam'
+    assert [(i['value'], i.has_attr('checked'), i['data-name']) for i in owners.select('input[type=checkbox][name=flags]')] == [(alex, False, 'Alex'), (sam, True, 'Sam')]
     assert fields['Tags'].select_one('[data-bc-multi-value]').get_text() == 'collection'
     assert owners.select_one('summary')['aria-labelledby'] == fields['Owners'].select_one('.bc-label')['id']
-    r = post(client, token, 'save', entity='copy', ids=[w.copy_a], values={'flags': [w.checked, sandra, ulf, w.tag]})
-    assert r.status_code == 200 and flag_ids(coll, w.copy_a) == {w.checked, sandra, ulf, w.tag}
+    r = post(client, token, 'save', entity='copy', ids=[w.copy_a], values={'flags': [w.checked, alex, sam, w.tag]})
+    assert r.status_code == 200 and flag_ids(coll, w.copy_a) == {w.checked, alex, sam, w.tag}
     empty = sheet(client, copy_url(w, w.copy_b)).select_one('details.bc-multi [data-bc-multi-value]')
     assert empty.get_text() == 'None' and empty.has_attr('data-empty')
 

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **Storage labels** (#31). Select storages and download A4 PDF sheets or 62 mm tape images. Permanent short ids support Jump search. QR codes open storage contents after login. [Print storage labels](docs/how-to/storage-labels.md)
+
+
 - **Complete or part out** (#55). Complete sets has a Figures tab with values for each loose figure and set copy. Minifigure detail shows the comparison and missing-part costs. API and MCP detail reads include the same comparisons. [Compare minifigures](docs/how-to/plan-repairs.md#compare-minifigures)
 
 

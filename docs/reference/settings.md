@@ -84,3 +84,10 @@ The `BW_HIDE_*` settings only remove the entry; the pages still open from a link
 | `BW_PRIVATE_PATTERNS_FILE` | none | A file of extra regular expressions, one per line, such as your own host names. The private-material scans of the source tree, the demo and the documentation site also reject them. |
 
 See also: [Command line](cli.md).
+
+## Address for labels
+
+In **Tools & Admin > Settings**, set **Address for labels** to an HTTP or HTTPS origin your phone can open.
+Leave it empty to use the incoming request address. Paths, credentials, queries and fragments are refused.
+Localhost and bare IP addresses show a warning in the label dialog.
+Changing this setting affects new labels. Previously printed codes keep their original address.

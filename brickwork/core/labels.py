@@ -47,7 +47,7 @@ LAYOUTS = {
 def validate_address(value):
     value = str(value).strip().rstrip('/')
     parsed = urlsplit(value)
-    if value and (parsed.scheme not in ('http', 'https') or not parsed.hostname or parsed.username or parsed.password
+    if value and (any(c.isspace() for c in value) or parsed.scheme not in ('http', 'https') or not parsed.hostname or parsed.username or parsed.password
                   or parsed.query or parsed.fragment or parsed.path not in ('', '/')):
         raise ValueError('Use an HTTP or HTTPS address without a path, password or query')
     try:
@@ -200,7 +200,7 @@ def download(found, *, matrix_factory=qr_matrix):
     out = BytesIO()
     if found['layout'] != 'tape-62':
         images = [page_image(found, i, matrix_factory=matrix_factory) for i in range(found['pages'])]
-        images[0].save(out, 'PDF', resolution=DPI, save_all=True, append_images=images[1:])
+        images[0].save(out, 'PDF', resolution=DPI, quality=95, save_all=True, append_images=images[1:])
         return out.getvalue(), 'application/pdf', 'storage-labels.pdf'
     images = [(r['short_id'] + '.png', label(r, found['layout'], found['address']['value'], matrix_factory)) for r in found['storages']]
     if len(images) == 1:

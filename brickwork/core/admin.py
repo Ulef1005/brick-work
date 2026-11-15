@@ -238,7 +238,7 @@ def settings(db):
     from . import part_groups
     from .price_settings import read
     from .candidate_sets import common_max
-    return dict(**read(db), part_list_grouping=values.get('part_list_grouping') or 'grouped', part_group_overrides=part_groups.parse_overrides(values.get('part_group_overrides')), retail_country=values.get('retail_country') or 'DE', candidate_sets_common_max=common_max(db),
+    return dict(**read(db), labels_address=values.get('labels_address') or '', part_list_grouping=values.get('part_list_grouping') or 'grouped', part_group_overrides=part_groups.parse_overrides(values.get('part_group_overrides')), retail_country=values.get('retail_country') or 'DE', candidate_sets_common_max=common_max(db),
                 priority=effective_priority(values.get('source_priority')),
                 import_order={k.removeprefix('import_order:'): json.loads(v) for k, v in sorted(values.items())
                               if k.startswith('import_order:') and v},
@@ -256,7 +256,7 @@ def patch_settings(db, data):
     """
     from . import errors, price_settings
     from .pipeline import STEPS, TYPES
-    allowed = {'retail_country', 'bricklink_region', 'bricklink_currency', 'incomplete_discount_pct',
+    allowed = {'labels_address', 'retail_country', 'bricklink_region', 'bricklink_currency', 'incomplete_discount_pct',
                'source_priority', 'import_order', 'freshness', 'repair', 'display_currency', 'prefer_bricklink_inventory', 'candidate_sets_common_max', 'part_list_grouping', 'part_group_overrides'}
     if not isinstance(data, dict) or not data:
         raise errors.ValidationFailed('Send at least one setting')
@@ -298,6 +298,12 @@ def patch_settings(db, data):
                 save_settings(db, data.get('retail_country', current['retail_country']),
                               data.get('source_priority', current['priority']), rules, part_list_grouping=data.get('part_list_grouping'),
                               part_group_overrides=(data['part_group_overrides'] or {}) if 'part_group_overrides' in data else None)
+            except ValueError as exc:
+                raise errors.ValidationFailed(str(exc)) from None
+        if 'labels_address' in data:
+            from .labels import save_address
+            try:
+                save_address(db, data['labels_address'])
             except ValueError as exc:
                 raise errors.ValidationFailed(str(exc)) from None
         if 'display_currency' in data:

@@ -50,7 +50,7 @@ def test_the_tool_surface_is_generated_from_the_v2_contract():
     marked = {op['x-mcp-tool']: (method.upper(), path) for path, methods in CONTRACT['paths'].items()
               for method, op in methods.items() if isinstance(op, dict) and 'x-mcp-tool' in op}
     assert {n: (m, p) for n, (m, p, _) in DEFINITIONS.items()} == marked
-    assert len(READS) + len(WRITES) == 75
+    assert len(READS) + len(WRITES) == 76
     for name, (method, path, op) in DEFINITIONS.items():
         assert op['security'] == [{'bearerAuth': ['read' if method == 'GET' else 'write']}], name   # admin work is never a tool
         assert op['summary'], name

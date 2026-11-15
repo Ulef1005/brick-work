@@ -1,0 +1,18 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const sandbox={window:{},document:{querySelector:()=>null}};
+vm.runInNewContext(fs.readFileSync('static/web/toni/bw-labels.js','utf8'),sandbox);
+const {state,selected,capacity}=sandbox.window.BrickLabels;
+const rows=[{id:'a',checked:false},{id:'b',checked:false},{id:'c',checked:false}];
+assert.equal(selected(rows,'all').filter(r=>r.checked).length,3);
+assert.equal(selected(selected(rows,'all'),'clear').filter(r=>r.checked).length,0);
+assert.equal(selected(rows,'toggle','b').filter(r=>r.checked)[0].id,'b');
+assert.equal(rows.some(r=>r.checked),false);
+for(const phase of ['ready','loading','error','downloading'])assert.equal(state(['a','b','c'],'a4-21',0,phase).phase,phase);
+assert.equal(state([],'a4-21').pages,0);
+assert.equal(state(['a','b','c'],'a4-21').download,'Download PDF');
+assert.equal(state(Array.from({length:22},(_,i)=>String(i)),'a4-21').pages,2);
+assert.equal(state(['a','a','b'],'tape-62').download,'Download 2 PNG');
+assert.equal(state(['a'],'tape-62').pages,1);
+assert.equal(capacity('a4-14'),14);
+assert.equal(state(['a'],'a4-21',0,'error').download,'Download PDF');
+console.log('Storage label selection and dialog states passed');

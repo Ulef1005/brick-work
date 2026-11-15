@@ -32,8 +32,8 @@ def test_table_rows_do_not_run_together_and_select_the_first_storage(world, coll
     coll.storage('Original Box on Display')
     soup = page(client)
     rows = soup.select('.st-table [data-row]')
-    # Each storage is its own anchor row (the old list ran 0 pieces and the next name into one line).
-    assert len(rows) >= 4 and all(r.name == 'a' for r in rows)
+    # Each storage has its own identity link and a separate line for label selection.
+    assert len(rows) >= 4 and all(r.select_one('a.st-name[href]') for r in rows)
     names = [r.select_one('.st-name strong').get_text() for r in rows]
     assert {'Single Carton Box', 'Original Box on Display', 'Shelf A', 'Not stored'} <= set(names) and names[-1] == 'Not stored'
     for row in rows:

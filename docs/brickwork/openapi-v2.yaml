@@ -2701,6 +2701,80 @@ paths:
           $ref: '#/components/responses/Problem'
       x-v1: post_wishes_by_id_to_owned
       x-piece: M.11c
+  /storages/labels.pdf:
+    get:
+      operationId: get_storages_labels_pdf
+      summary: Download A4 storage labels.
+      tags: [Storages]
+      x-piece: M.11b
+      security:
+      - bearerAuth: [read]
+      parameters:
+      - in: query
+        name: ids
+        required: true
+        description: Comma-separated active storage ids, in label order. Maximum 200.
+        schema:
+          type: string
+      - in: query
+        name: layout
+        schema:
+          type: string
+          enum: [a4-21, a4-14]
+          default: a4-21
+      responses:
+        '200':
+          description: Storage labels
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        default:
+          $ref: '#/components/responses/Problem'
+  /storages/labels:
+    get:
+      operationId: get_storages_labels_link
+      summary: Get a storage labels PDF link.
+      tags: [Storages]
+      x-piece: M.11b
+      x-mcp-tool: storage_labels
+      security:
+      - bearerAuth: [read]
+      parameters:
+      - in: query
+        name: ids
+        required: true
+        description: Comma-separated active storage ids, in label order. Maximum 200.
+        schema:
+          type: string
+      - in: query
+        name: layout
+        schema:
+          type: string
+          enum: [a4-21, a4-14]
+          default: a4-21
+      responses:
+        '200':
+          description: Storage labels
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [url, labels, sheets]
+                    properties:
+                      url:
+                        type: string
+                      labels:
+                        type: integer
+                      sheets:
+                        type: integer
+        default:
+          $ref: '#/components/responses/Problem'
   /storages:
     get:
       operationId: get_storages
@@ -9221,6 +9295,9 @@ components:
           type:
           - string
           - 'null'
+        short_id:
+          description: Permanent label identity. Null for Not stored.
+          type: [string, 'null']
         name:
           type:
           - string
@@ -11922,6 +11999,9 @@ components:
     Settings:
       type: object
       properties:
+        labels_address:
+          type: string
+          description: HTTP or HTTPS origin for storage label codes. Empty uses the request origin.
         display_currency:
           type: string
           description: Totals and comparisons across currencies convert into this (#39).
@@ -11972,6 +12052,9 @@ components:
     SettingsPatch:
       type: object
       properties:
+        labels_address:
+          type: string
+          description: HTTP or HTTPS origin for storage label codes. Empty uses the request origin.
         display_currency:
           type: string
           description: Totals and comparisons across currencies convert into this (#39).

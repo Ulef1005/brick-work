@@ -2338,7 +2338,8 @@ def bw_planning_order():
     from ..core import order_missing, planning
     from ..core.admin import database
     from .admin_ops import brickwork_path
-    error=None;rows=[];order=dict(lines=[],skipped=[],pieces=0);settings={};capped=False
+    from ..core import part_groups
+    error=None;rows=[];order=dict(lines=[],skipped=[],pieces=0);settings={};capped=False;grouping='none'
     try:
         with database(brickwork_path(),read_only=True) as db:
             rows=order_missing.candidates(db)
@@ -2348,6 +2349,8 @@ def bw_planning_order():
             order=order_missing.order_list(db,rows,set(choice['chosen']))
             settings=planning.configuration(db)
             order_missing.split(db,order,prefer=choice['prefer'],chosen=choice['src'],config=settings)
+            grouping=part_groups.mode(db)
+            part_groups.annotate(db,order['lines'],grouping,is_part=lambda line: line.get('item_type')!='M')          # #315: a whole figure stays outside the sections
     except (ValueError,sqlite3.Error,OSError) as exc:
         error=public(exc, 'Brick Work database is not available. Check BW_DB_PATH and try again.');choice=bw_order_choice([],request.args)
     base={k:v for k,v in dict(q=choice['q'],theme=choice['theme'],sort=choice['sort'] if choice['sort']!='missing' else '',
@@ -2365,7 +2368,7 @@ def bw_planning_order():
               tab_url=lambda tab: link(**picked,step='review',tab=tab),
               chip_url=lambda line,source: link(**picked,step='review',src=[order_missing.choice_value(k,v) for k,v in {**choice['src'],line['key']:source}.items()]),
               themes=sorted({r['theme'] for r in rows if r['theme']}),sorts=order_missing.SORTS,
-              first=order_missing.FIRST_LINES,sold=sum(1 for r in choice['shown'] if choice['sell'] and r['to_sell']),
+              first=order_missing.FIRST_LINES,grouping=grouping,sections=lambda lines: part_groups.sections(lines,grouping),sold=sum(1 for r in choice['shown'] if choice['sell'] and r['to_sell']),
               sold_flags=sorted({r['to_sell'] for r in choice['shown'] if choice['sell'] and r['to_sell']}),
               ticked=set(choice['chosen']))
     response=current_app.make_response(render_template('web/toni/web/bw_planning_order.html',title='Order missing parts',rows=rows,order=order,

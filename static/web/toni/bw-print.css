@@ -16,10 +16,15 @@
 .pr-qty{font-size:16px;font-weight:600}
 .pr-pic{width:56px}.pr-pic img{width:48px;height:48px;object-fit:contain;background:#fff;display:block}
 .pr-tick{width:28px}.pr-box{display:inline-block;width:16px;height:16px;border:1px solid #666;border-radius:3px}
+.pr-table .pr-sec-head{padding:16px 8px 4px;border-bottom:1px solid var(--tw-text,#1A1816);text-transform:none;letter-spacing:0;color:var(--tw-text,#1A1816);font:600 15px/20px var(--tw-font,inherit)}
+.pr-table .pr-sec-head .pr-sec-count{margin-left:12px;font:400 12px var(--tw-mono,ui-monospace,monospace);color:var(--tw-text-2,#555)}
+.pr-table .pr-sec-head{break-after:avoid}
 .pr-error{padding:12px;border-radius:10px;background:var(--tw-warning-soft,#fbe9c8)}
 @media print{
  @page{size:A4 portrait;margin:14mm 12mm}
  .pr-page{padding:0;max-width:none;background:#fff;color:#000}
  .pr-tools{display:none}
  .pr-head p,.pr-no,.pr-muted,.pr-table th{color:#333}
+ .pr-table .pr-sec-head{color:#000;border-bottom-color:#000}
+ .pr-table .pr-sec-head .pr-sec-count{color:#333}
 }

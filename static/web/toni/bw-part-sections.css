@@ -1,0 +1,14 @@
+/* Sections of the order list and the pull list (#315): the set page's pattern (chevron, name, counts) on a <details>, so it works without a script. */
+.bw-sec { border-top:.5px solid var(--tw-divider); }
+.bw-sec:last-of-type { border-bottom:.5px solid var(--tw-divider); }
+.bw-sec-head { display:flex;align-items:center;gap:12px;min-height:56px;padding:12px 0;cursor:pointer;list-style:none;color:var(--tw-text); }
+.bw-sec-head::-webkit-details-marker { display:none; }
+.bw-sec-head strong { font-weight:600; }
+.bw-sec-count { font-size:12px;font-weight:400;color:var(--tw-text-muted); }
+.bw-sec-chevron { display:flex;transition:transform .12s; }
+.bw-sec:not([open]) > .bw-sec-head .bw-sec-chevron { transform:rotate(-90deg); }
+.bw-sec-tools { display:flex;justify-content:flex-end;gap:6px;margin:0 0 4px;font:400 13px/18px var(--tw-font);color:var(--tw-text-muted); }
+.bw-sec-tools[hidden] { display:none; }
+.bw-sec-tools a { color:var(--tw-accent-text); }
+@media(max-width:600px) { .bw-sec-head { gap:8px; }.bw-sec-count { display:none; } }
+@media(prefers-reduced-motion:reduce) { .bw-sec-chevron { transition:none; } }

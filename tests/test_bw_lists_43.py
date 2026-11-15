@@ -52,7 +52,7 @@ def test_print_view_and_entry_points(world, coll, client):
     page = BeautifulSoup(client.get(f'/lists/missing/print?copy={world.copy_a}').data, 'html.parser')
     assert page.h1.get_text() == 'Missing parts' and page.select_one('[data-pr-print]')
     assert page.select_one('a[href*="/lists/missing.csv"]') and 'pictures=0' in page.find('a', string='Hide pictures')['href']
-    assert page.select_one('.pr-head p').get_text().startswith(f"{len(page.select('tbody tr'))} line")
+    assert page.select_one('.pr-head p').get_text().startswith(f"{len(page.select('tbody tr:not(.pr-sec-row)'))} line")
     assert page.select_one('.pr-no').get_text() == '3001' and 'Red' in page.select_one('.pr-colour').get_text()
     off = BeautifulSoup(client.get(f'/lists/missing/print?copy={world.copy_a}&pictures=0').data, 'html.parser')
     assert not off.select('.pr-pic')
@@ -60,7 +60,7 @@ def test_print_view_and_entry_points(world, coll, client):
     picked = BeautifulSoup(client.get(f'/lists/picker/print?copy={world.copy_a}').data, 'html.parser')
     assert picked.h1.get_text() == 'Part Runner' and picked.select_one('td.pr-num').get_text() == '1'
     wishlist = BeautifulSoup(client.get('/lists/wishlist/print').data, 'html.parser')
-    assert wishlist.h1.get_text() == 'Wishlist' and len(wishlist.select('tbody tr')) == 2
+    assert wishlist.h1.get_text() == 'Wishlist' and len(wishlist.select('tbody tr:not(.pr-sec-row)')) == 2
     assert client.get('/lists/wishlist.csv').mimetype == 'text/csv'
     picker_page = BeautifulSoup(client.get(f'/workbench/part-picker?copy={world.copy_a}&pick=1').data, 'html.parser')
     assert picker_page.select_one('a.bw-print-list')['href'].startswith('/lists/picker/print')

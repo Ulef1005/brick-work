@@ -17,6 +17,8 @@ Use this to turn the gaps you recorded in [Set Inspector](check-set-parts.md) in
    - **Export N · BrickLink XML** downloads `missing-parts.xml` for a BrickLink Wanted List. The file holds every missing or damaged part and every missing figure of the ticked copies, by BrickLink number and colour, with the condition of the copy. Something Brick Work cannot name for BrickLink, because it has no BrickLink number or its colour has none, is left out of the file and named in the message. The rest still exports. With *Use loose stock* on in the repair settings, the quantities are what you still have to buy ([Decide which set to repair first](plan-repairs.md)).
    - **Print missing parts of N** opens a printable list. **Download CSV** on that page saves the same list as a CSV file (item type, number, name, colour, condition, quantity and a note for items not matched yet). Items not matched yet stay on this list, marked.
 
+The printed list puts the parts under group headings such as **Bricks** or **Plates**, each with its lines and pieces. Every group is open on paper, and the table header and columns stay. The Part Runner and wishlist print lists group the same way. A minifigure or a set stays above the groups. The CSV file stays one flat list. Choose **No grouping** under **Group parts by** in **Manage → Settings** to print one list.
+
 The REST API offers the same missing-parts lists as XML, CSV and JSON.
 
 ## What next

@@ -6,7 +6,8 @@ The `bricklink` mode keeps each category name as a group. The `none` mode disabl
 grouping. Other is always last and is only present when a row lands in it.
 
 `group_of` maps one category to its group; `order` orders only the supplied groups.
-These helpers do not read or change the store.
+`mode` reads the setting; `categories` and `annotate` put the category and the group on rows; `sections` folds rows into the ordered sections the
+order, print and pull-list pages draw. None of them writes to the store.
 """
 MODES = ('grouped', 'bricklink', 'none')
 DEFAULT = 'grouped'
@@ -42,3 +43,48 @@ def order(groups, mode=DEFAULT):
         return []
     return sorted(set(groups), key=(lambda g: (g == 'Other', g.casefold())) if mode == 'bricklink'
                   else lambda g: list(GROUPS).index(g))
+
+
+def mode(db):
+    """The saved `part_list_grouping` (a value that is not one of `MODES` reads as the default)."""
+    row = db.execute("SELECT value FROM main.setting WHERE key='part_list_grouping'").fetchone()
+    return row[0] if row and row[0] in MODES else DEFAULT
+
+
+def categories(db, item_ids):
+    """`{item id: category name or None}`: the same name the set parts list groups by (the collection's, else the catalogue's)."""
+    from . import collection
+    ids = list(dict.fromkeys(item_ids))
+    names = collection._names(db, ids) if ids else {}
+    return {i: ((names.get(i) or {}).get('category_name') or '').strip() or None for i in ids}
+
+
+def annotate(db, rows, grouping, *, is_part=lambda row: True):
+    """Put `category` and `group` on every row (in place). A row that is not a part (`is_part` false: a whole figure, a set) has `group` None and stays
+    outside the sections; with `none` every `group` is None."""
+    if grouping == 'none':
+        for row in rows:
+            row['group'] = None
+        return rows
+    found = categories(db, [row['item_id'] for row in rows if is_part(row)])
+    for row in rows:
+        if is_part(row):
+            row['category'] = found.get(row['item_id'])
+            row['group'] = group_of(row['category'], grouping)
+        else:
+            row['group'] = None
+    return rows
+
+
+def sections(rows, grouping, *, pieces=lambda row: row.get('quantity') or 0):
+    """`(outside, sections)`: the rows with no `group` (in their order) and `[dict(name, rows, lines, pieces)]` in `order` for the rest.
+
+    With `none` nothing is grouped: `sections` is empty and `outside` is every row, so a template draws the plain list."""
+    outside, grouped = [], {}
+    for row in rows:
+        if grouping == 'none' or row.get('group') is None:
+            outside.append(row)
+        else:
+            grouped.setdefault(row['group'], []).append(row)
+    return outside, [dict(name=name, rows=grouped[name], lines=len(grouped[name]), pieces=sum(pieces(r) for r in grouped[name]))
+                     for name in order(grouped, grouping)]

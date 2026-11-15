@@ -34,6 +34,7 @@
         const fresh = next.querySelector('[data-oo-filters]');
         if (fresh && open !== undefined) fresh.open = open;
         setup();
+        if (window.bwPartSections) window.bwPartSections(next);
         if (focus) next.querySelector(focus)?.focus({ preventScroll: true });
       } catch (_) { form.submit(); }
     };

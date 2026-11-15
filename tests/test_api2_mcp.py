@@ -247,6 +247,7 @@ def test_revocation_and_read_only(app4, v2, pair, world, monkeypatch):
 def read_arguments(w, pair):
     rebrickable = {'source': 'rebrickable'}
     return {
+        'storage_labels': {'ids': w.shelf, 'layout': 'a4-21'},
         'get_wishlists': {}, 'export_wishlist_xml': {'id': 'default'}, 'export_wishlist_csv': {'id': 'default'}, 'search_catalogue': {'q': '1000'},
         'get_item': {'kind': 'set', 'no': '1000-1'}, 'get_minifigure_detail': {'kind':'minifigure','no':'syn-fig-0004'}, 'list_copies': {}, 'get_copy': {'id': w.copy_a}, 'get_copy_completeness': {'id': w.copy_a},
         'list_copy_parts': {'id': w.copy_a}, 'list_copy_figures': {'id': w.copy_a}, 'list_stock': {}, 'list_minifigures': {}, 'list_gaps': {},

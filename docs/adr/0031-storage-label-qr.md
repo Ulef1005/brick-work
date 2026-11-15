@@ -31,7 +31,7 @@ Backfill orders storages by creation timestamp and primary key. The primary key 
 The additive upgrade also runs after restoring an older backup. New and upgraded files use the same SQL.
 
 The shipped monochrome line mark is rasterised from its SVG rectangles and cross in black.
-Names use bundled Inter 600. Short ids use bundled Geist Mono. Names wrap to two lines, then an ellipsis.
+Names use bundled Inter 600 at 56 pixels for narrow cells, 69 for wide cells and 40 for tape, at 300 dpi. Short ids use bundled Geist Mono. Names wrap to two lines, then an ellipsis.
 
 ## Consequences
 

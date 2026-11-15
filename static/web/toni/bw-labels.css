@@ -5,8 +5,8 @@
 #bw-ledger .lb-bar{display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:12px;background:var(--tw-surface-2);border-radius:12px}
 #bw-ledger .lb-bar [data-label-open]{flex:1 0 100%}
 #bw-ledger .lb-bar button.st-link{border:0;background:transparent;padding:0;cursor:pointer}
-#bw-ledger .lb-dialog{width:752px;max-width:calc(100vw - 32px);padding:24px 32px 28px;border:.5px solid var(--tw-divider-strong);border-radius:16px;background:var(--tw-bg);color:var(--tw-text)}
-#bw-ledger .lb-dialog::backdrop{background:var(--tw-overlay)}
+#bw-ledger.bw-storage dialog.st-sheet.lb-dialog{position:fixed;inset:0;margin:auto;height:fit-content;max-height:calc(100dvh - 48px);gap:0;width:752px;max-width:calc(100vw - 32px);padding:24px 32px 28px;border:.5px solid var(--tw-divider-strong);border-radius:16px;background:var(--tw-bg);color:var(--tw-text)}
+#bw-ledger.bw-storage dialog.st-sheet.lb-dialog::backdrop{background:var(--tw-scrim)}
 #bw-ledger .lb-body{display:grid;grid-template-columns:minmax(0,1fr) 336px;gap:28px;margin:20px 0}
 #bw-ledger .lb-options,#bw-ledger .lb-preview{display:flex;flex-direction:column;gap:20px;min-width:0}
 #bw-ledger .lb-between{display:flex;align-items:center;justify-content:space-between;gap:8px}
@@ -24,4 +24,4 @@
 #bw-ledger .lb-dialog .st-sheet-foot{padding:0;margin-top:20px}
 #bw-ledger .lb-dialog .st-primary{width:240px}
 #bw-ledger .lb-dialog [data-label-download]{background:var(--tw-accent);color:var(--bw-action-ink)}
-@media(max-width:767px){#bw-ledger .lb-dialog{width:100vw;max-width:100vw;height:100dvh;max-height:100dvh;margin:0;border:0;border-radius:0;padding:20px}#bw-ledger .lb-body{grid-template-columns:minmax(0,1fr);gap:24px}#bw-ledger .lb-preview{max-width:336px;width:100%;align-self:center;justify-self:center}#bw-ledger .lb-dialog .st-sheet-foot{position:sticky;bottom:0;background:var(--tw-bg);padding:12px 0}#bw-ledger .lb-dialog .st-primary{width:auto;flex:1}}
+@media(max-width:767px){#bw-ledger.bw-storage dialog.st-sheet.lb-dialog{position:fixed;inset:0;margin:auto;height:fit-content;max-height:calc(100dvh - 48px);gap:0;width:100vw;max-width:100vw;inset:0;height:100dvh;max-height:100dvh;margin:0;border:0;border-radius:0;padding:20px}#bw-ledger .lb-body{grid-template-columns:minmax(0,1fr);gap:24px}#bw-ledger .lb-preview{max-width:336px;width:100%;align-self:center;justify-self:center}#bw-ledger .lb-dialog .st-sheet-foot{position:sticky;bottom:0;background:var(--tw-bg);padding:12px 0}#bw-ledger .lb-dialog .st-primary{width:auto;flex:1}}

@@ -5,7 +5,7 @@
 -- =====================================================================
 
 CREATE TABLE meta(key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL) STRICT;
--- keys: schema_version='4.2' (4.0 before #131, 4.1 before #167/#155; connect() upgrades an older file in place); install_id; catalogue_id (bound at the first build; connect()
+-- keys: schema_version='4.3' (4.0 before #131, 4.1 before #167/#155, 4.2 before #31; connect() upgrades an older file in place); install_id; catalogue_id (bound at the first build; connect()
 -- refuses a catalogue whose catalogue_id differs); catalogue_item_high_water and
 -- catalogue_color_high_water (copied at every activation: a rebuild from scratch mints above
 -- them); migrated_from (3.3 file name, sha256, migration report digest) after the migration.

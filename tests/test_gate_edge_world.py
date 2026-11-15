@@ -66,11 +66,12 @@ def digest(name):
     return hashlib.sha256(repr(sorted((f, sorted(t.items())) for f, t in prints.items())).encode()).hexdigest()
 
 
-# Taken on origin/main (21ac7ce), before the edge worlds were added.
+# Refreshed for schema 4.3 (#31): permanent storage short ids and their counter are now part of each older world.
+# Their source collection data is unchanged; only the new edge states add label bins.
 BEFORE = {
-    'demo': '7df99615330895f2cb8ef3ac0ab561e214c8c98ad3abbd74634e05e1c6321093',
-    'showcase': '92a4f3f53da923af093e09624257e80cf810d610fee70bda7f84d26cd7e833ad',
-    'extras': '56b8fc87611dc171e5b55bc9b1ef74ac52c2d44f0e036cb07ea67ad72b211b94',
+    'demo': '383579f01583ce8b5c91b03b234bc95f2ec9880de88e4663c49292c8410d372c',
+    'showcase': '46fa931fbe8279de404758d246e3efe1c297379a3da7852506cc16fe86aa7476',
+    'extras': 'd08346a28aabb543af149b4dc9170fe434dd412a85d0911d3b2d1f067f1b017a',
 }
 
 
@@ -255,7 +256,7 @@ def test_the_new_states_are_built_in_a_known_world():
 
 def test_only_the_new_states_use_an_edge_world():
     """No state approved before the edge worlds existed was moved into one: its baseline would then depend on the edge data."""
-    assert {(e['screen'], e['state']) for e in gate.load()['states'] if e.get('world', '').startswith('edge')} <= NEW | VALUE | SOURCE | FIGURES
+    assert {(e['screen'], e['state']) for e in gate.load()['states'] if e.get('world', '').startswith('edge')} <= NEW | VALUE | SOURCE | FIGURES | LABELS
 
 
 def test_the_state_left_unbuilt_says_what_is_missing():
@@ -309,3 +310,6 @@ def test_the_edge_order_world_adds_element_ids_to_the_catalogue_and_nothing_else
 
 FIGURES = {('12-Minifigure-detail', state) for state in ('comparison-filled', 'comparison-whole-figure', 'comparison-partly-priced')} | {
     ('43-Complete-sets', state) for state in ('figures-filled', 'figures-empty', 'figures-all-complete', 'figures-needs-evidence')}
+
+
+LABELS = {('34-Storage', 'labels-' + state) for state in ('ready', 'two-sheets', 'error')}

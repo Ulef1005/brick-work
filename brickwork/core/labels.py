@@ -146,7 +146,30 @@ def mark(image, xy, size):
     for rect in root.iter('{http://www.w3.org/2000/svg}rect'):
         x, y, w, h = (float(rect.get(k)) for k in ('x', 'y', 'width', 'height'))
         box = (xy[0] + x * unit, xy[1] + y * unit, xy[0] + (x + w) * unit, xy[1] + (y + h) * unit)
-        draw.rounded_rectangle(box, radius=float(rect.get('rx', 0)) * unit, outline='black', width=max(1, round(3.2 * unit)))
+        stroke = max(1, round(float(rect.get('stroke-width', '3.2')) * unit))
+        radius = float(rect.get('rx', 0)) * unit
+        if rect.get('stroke-dasharray'):
+            # Follow the rounded perimeter, keeping the SVG's dash spacing through corners.
+            points = []
+            for cx, cy, start in ((box[2]-radius,box[1]+radius,-90), (box[2]-radius,box[3]-radius,0),
+                                  (box[0]+radius,box[3]-radius,90), (box[0]+radius,box[1]+radius,180)):
+                for step in range(9):
+                    angle = math.radians(start + step * 90 / 8)
+                    points.append((cx + radius * math.cos(angle), cy + radius * math.sin(angle)))
+            points.append(points[0])
+            dash, gap = (float(v)*unit for v in rect.get('stroke-dasharray').split())
+            distance = 0.0
+            for a, b in zip(points, points[1:]):
+                length = math.dist(a,b)
+                steps = max(1, math.ceil(length * 2))
+                for step in range(steps):
+                    if (distance + length * step / steps) % (dash + gap) < dash:
+                        t, u = step / steps, (step + 1) / steps
+                        draw.line((a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t,
+                                   a[0]+(b[0]-a[0])*u, a[1]+(b[1]-a[1])*u), fill='black', width=stroke)
+                distance += length
+        else:
+            draw.rounded_rectangle(box, radius=radius, outline='black', width=stroke)
     for line in ((60,27,66,33), (60,33,66,27)):
         draw.line(tuple(xy[i % 2] + v * unit for i,v in enumerate(line)), fill='black', width=max(1,round(2.4*unit)))
 
@@ -161,7 +184,7 @@ def label(row, layout, base, matrix_factory=qr_matrix):
     if tape:
         image.paste(qr, ((image.width - qr.width)//2, image.height - qr.height - pad))
         mark(image, (pad, pad), px(7))
-        face = font(30)
+        face = font(40)
         width = image.width - px(30)
         draw.text((px(10), pad), name_lines(row['name'], face, width, 1)[0], font=face, fill='black')
         draw.text((image.width - px(19), pad), row['short_id'], font=font(23, True), fill='black')
@@ -169,7 +192,7 @@ def label(row, layout, base, matrix_factory=qr_matrix):
         image.paste(qr, (image.width - qr.width - pad, (image.height - qr.height)//2))
         width = image.width - qr.width - pad * 3
         mark(image, (pad, px(3)), px(8))
-        face = font(42 if layout == 'a4-21' else 52)
+        face = font(56 if layout == 'a4-21' else 69)
         y = px(12)
         for line in name_lines(row['name'], face, width):
             draw.text((pad, y), line, font=face, fill='black')
@@ -192,7 +215,13 @@ def page_image(found, page=0, *, guides=False, matrix_factory=qr_matrix):
         if i < len(rows):
             image.paste(label(rows[i], found['layout'], found['address']['value'], matrix_factory), (x, y))
         if guides:
-            draw.rectangle((x, y, x + px(spec.width), y + px(spec.height)), outline='#B9B2A5', width=1)
+            right, bottom = x + px(spec.width) - 1, y + px(spec.height) - 1
+            for start in range(x, right, 24):
+                for edge in (y, bottom):
+                    draw.line((start, edge, min(start + 12, right), edge), fill='#B9B2A5', width=3)
+            for start in range(y, bottom, 24):
+                for edge in (x, right):
+                    draw.line((edge, start, edge, min(start + 12, bottom)), fill='#B9B2A5', width=3)
     return image
 
 

@@ -91,6 +91,12 @@ class Layer(gate_extras.Layer):
 
     def edge(self, db):
         with transaction(db):
+            # #31: enough invented bins for a second label sheet. No change to the older worlds.
+            for n in range(1, 23):
+                db.execute('INSERT OR IGNORE INTO storage(id,name,type,created_at) VALUES(?,?,?,?)',
+                           (f'label-bin-{n:02d}', f'Box {n:02d}', 'Box', clock.FIXED_NOW.isoformat(timespec='milliseconds').replace('+00:00', 'Z')))
+            db.execute("INSERT OR REPLACE INTO setting(key,value) VALUES('labels_address','https://bricks.example')")
+
             for number in KINDS:
                 stock.add_loose(db, item_id=dataset.item_by(db, 'sets', number), quantity=1, condition='used', storage_id='storage-box-5', via='cli')
             item = dataset.item_by(db, 'sets', LISTING_BOX[0])

@@ -9,7 +9,7 @@ Open **Workbench > Storage**, then choose **Print labels**. Tick the storages, o
 
 Remove any unwanted storage chips. Choose an A4 layout or 62 mm label tape. Check the preview, then choose **Download PDF** or **Download N PNG**.
 
-Choose at most 200 storages per download. When labels span several sheets, use **Previous** and **Next** to inspect each sheet.
+Choose at most 200 storages per download. If Select all ticks more, remove storages until Download is available. When labels span several sheets, use **Previous** and **Next** to inspect each sheet.
 
 Print sheets at 100 %, without fitting to the page. Cut guides appear only in the preview. Tape downloads contain one PNG per label, zipped for multiple labels.
 

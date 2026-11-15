@@ -904,6 +904,8 @@ Use `a4-14` for wider labels. Choose at most 200 active storages. Archived stora
 
 `GET /storages/labels` takes the same query and returns `data.url`, `data.labels` and `data.sheets`.
 The MCP tool `storage_labels` uses this operation. Fetch the PDF link with your read token.
+If the QR renderer dependency is missing, both operations and the MCP tool return
+`503 labels_unavailable` with a retry message; web previews and downloads also return 503.
 Both downloads and previews use `core.labels`. Codes contain storage URLs, with error correction M and a four-module quiet zone.
 
 `Settings.labels_address` stores the label origin. `PATCH /settings` accepts it with admin scope; empty uses the request origin.

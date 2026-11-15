@@ -6,4 +6,4 @@
 {% macro pieces(n) %}{{ n }} {{ 'piece' if n==1 else 'pieces' }}{% endmacro %}
 {% macro meta(group) %}{{ lines(group.lines) }} · {{ pieces(group.pieces) }}{% endmacro %}
 {% macro section(name, text, open=true) %}<details class="bw-sec" data-bw-section="{{ name }}"{% if open %} open{% endif %}><summary class="bw-sec-head"><span class="bw-sec-chevron" aria-hidden="true">{{ toni_icon('chevron-down') }}</span><strong>{{ name }}</strong><span class="bw-sec-count mono">{{ text }}</span></summary><div class="bw-sec-body">{{ caller() }}</div></details>{% endmacro %}
-{% macro tools() %}<div class="bw-sec-tools" data-bw-sections-actions hidden><a href="#" data-bw-sections-all="expand">Expand all</a> · <a href="#" data-bw-sections-all="collapse">Collapse all</a></div>{% endmacro %}
+{% macro tools() %}<div class="bw-sec-tools" data-bw-sections-actions hidden><a href="#" data-bw-sections-all="expand">Expand all</a><span aria-hidden="true">·</span><a href="#" data-bw-sections-all="collapse">Collapse all</a></div>{% endmacro %}

@@ -264,6 +264,11 @@ def test_present_set_figures_only(figure, coll, read):
     assert row['quantity'] == 1
     assert (row['complete'], row['parts_value'], row['shipping_fees'], row['to_complete'], row['missing_count']) == ('18.00', '6.00', '0.50', '4.00', 1)
     assert [(p['quantity'], p['missing']) for p in row['parts']] == [(1, 0)] * 3 + [(1, 1)]
+    # Match collection's combined missing/damaged gap subtraction for an absent whole figure.
+    coll.sql('UPDATE copy_part SET missing=0,damaged=1 WHERE copy_figure_id=? AND item_id=?', (fid, figure[1][0]))
+    with read() as db:
+        row = next(r for r in figures.compare(db) if r['copy_figure_id'] == fid)
+    assert row['missing_count'] == 1 and row['parts'][0]['damaged'] == 0
     coll.sql('UPDATE copy_figure SET missing=2 WHERE id=?', (fid,))
     with read() as db:
         assert all(r['copy_figure_id'] != fid for r in figures.compare(db))

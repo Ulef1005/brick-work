@@ -69,7 +69,8 @@ def compare(db, item_id=None):
         AND s.archived_at IS NULL
         UNION ALL SELECT 'figure:'||p.copy_figure_id,p.item_id,p.color_id,
         p.quantity-(p.quantity/f.quantity)*f.missing,
-        max(0,p.missing-(p.quantity/f.quantity)*f.missing),p.damaged
+        max(0,p.missing-(p.quantity/f.quantity)*f.missing),
+        max(0,p.damaged-max(0,(p.quantity/f.quantity)*f.missing-p.missing))
         FROM copy_part p JOIN copy_figure f ON f.id=p.copy_figure_id WHERE p.retired_at IS NULL AND p.is_spare=0 AND p.quantity>0
         ''') if r['place'] in places]
     grouped = defaultdict(list)

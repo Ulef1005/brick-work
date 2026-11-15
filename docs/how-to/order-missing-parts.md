@@ -31,9 +31,15 @@ Only the sets you can see count: a set hidden by the search or the theme is not 
 
 The right side (on a phone, the second step, **Review list**) is what you would buy for the ticked sets only. Its heading counts them exactly: **14 lines · 42 pieces from 6 sets**, where a figure counts as one piece each.
 
-Each line is a part, colour and condition, combined over the ticked sets, with the quantity still to buy. It is worked out as in [Decide which set to repair first](plan-repairs.md#export-the-repair-list). With **Use loose stock** on in the repair settings, loose parts are taken off first, from the sets in set-number order. Under the name, a chip per set shows where the quantity comes from, for example `6080-1 ×2`, so you can check a number back to its set. The first four lines show; **Show all** opens the rest.
+Each line is a part, colour and condition, combined over the ticked sets, with the quantity still to buy. It is worked out as in [Decide which set to repair first](plan-repairs.md#export-the-repair-list). With **Use loose stock** on in the repair settings, loose parts are taken off first, from the sets in set-number order. Under the name, a chip per set shows where the quantity comes from, for example `6080-1 ×2`, so you can check a number back to its set. With **Group parts by** set to **No grouping**, the first four lines show and **Show all** opens the rest.
 
 A line Brick Work cannot name for BrickLink is left out of the file. That happens when the item has no BrickLink number or its colour has none. The line is listed in the yellow box with a link to the item, so you can link it and come back.
+
+## Group the lines
+
+With part groups on, which is the default, the lines of each source tab sit under group headings such as **Bricks** or **Plates**. Each heading shows its lines and pieces. Every group starts open, because every line is something to buy.
+
+Select a heading to close its group, or use **Expand all** and **Collapse all** above the lines. Your browser remembers the choice for each tab. A group with more than 25 lines folds the rest behind **Show all**. A minifigure line stays above the groups, and a part with no category sits under **Other**. The totals, the choice chips and the two files do not change; the files stay one flat list. Change the grouping with **Group parts by** in **Manage → Settings**.
 
 ## Choose where each line is bought
 

@@ -1,0 +1,15 @@
+const assert=require('node:assert/strict');
+const fs=require('node:fs');const vm=require('node:vm');const path=require('node:path');
+const source=fs.readFileSync(path.join(__dirname,'../static/web/toni/bw-grouping.js'),'utf8');
+const context={window:{},document:{addEventListener(){}}};vm.runInNewContext(source,context);
+const select=(value,fallback)=>({value,dataset:{default:fallback}});
+assert.equal(context.window.BrickGroupingChanged([select('Plates','Plates'),select('Tiles','Plates')]),1);
+assert.equal(context.window.BrickGroupingChanged([]),0);
+assert.equal(context.window.BrickGroupingLine(1),'Changed: 1 category.');
+assert.equal(context.window.BrickGroupingLine(2),'Changed: 2 categories.');
+let ready;const handlers={};const status={};const list=[select('Tiles','Plates'),select('Plates','Plates')];
+const editor={addEventListener(event,fn){handlers[event]=fn;},querySelector(){return status;},querySelectorAll(){return list;}};
+vm.runInNewContext(source,{window:{},document:{addEventListener(event,fn){ready=fn;},querySelector(){return editor;}}});
+ready();list[1].value='Tiles';handlers.change();assert.equal(status.textContent,'Changed: 2 categories.');
+list[0].value='Plates';list[1].value='Plates';handlers.change();assert.equal(status.textContent,'Changed: 0 categories.');
+console.log('Brick Work grouping editor runtime passed');

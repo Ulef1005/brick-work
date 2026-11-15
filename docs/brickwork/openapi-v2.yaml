@@ -11822,6 +11822,13 @@ components:
           type: string
           enum: [grouped, bricklink, none]
           default: grouped
+        part_group_overrides:
+          type: object
+          maxProperties: 200
+          description: 'Categories you moved to another group, `{category name: group name}`. Only the differences from the built-in table are kept, and they apply when `part_list_grouping` is `grouped`. An entry equal to the default is dropped; `{}` restores the default table.'
+          additionalProperties:
+            type: string
+            enum: [Bricks, Slopes and curves, Plates, Tiles, Technic, "Hinges, bars and connectors", "Windows, doors and panels", Wheels and vehicles, Minifigure parts, Nature and creatures, Decoration and extras, Other]
         prefer_bricklink_inventory:
           type: boolean
           description: New copies take BrickLink's part list when one exists (design 4.4).
@@ -11865,6 +11872,13 @@ components:
           type: string
           enum: [grouped, bricklink, none]
           default: grouped
+        part_group_overrides:
+          type: object
+          maxProperties: 200
+          description: 'Categories you moved to another group, `{category name: group name}`. Only the differences from the built-in table are kept, and they apply when `part_list_grouping` is `grouped`. An entry equal to the default is dropped; `{}` restores the default table.'
+          additionalProperties:
+            type: string
+            enum: [Bricks, Slopes and curves, Plates, Tiles, Technic, "Hinges, bars and connectors", "Windows, doors and panels", Wheels and vehicles, Minifigure parts, Nature and creatures, Decoration and extras, Other]
         prefer_bricklink_inventory:
           type: boolean
           description: New copies take BrickLink's part list when one exists (design 4.4).

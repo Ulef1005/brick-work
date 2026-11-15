@@ -11,8 +11,9 @@ from .views import web_page
 KINDS = {'missing': 'Missing parts', 'picker': 'Part Runner', 'wishlist': 'Wishlist'}
 
 
-def _rows(kind):
-    from ..core import list_exports
+def _rows(kind, grouped=False):
+    """`(rows, copies, grouping)`. With `grouped` (the print page) every part row carries its `group` and `grouping` is the saved mode; the CSV does not group."""
+    from ..core import list_exports, part_groups
     from ..core.admin import database
     from .admin_ops import brickwork_path
     with database(brickwork_path(), read_only=True) as db:
@@ -20,13 +21,17 @@ def _rows(kind):
             copies = request.args.getlist('copy')
             if not copies:
                 raise ValueError('Choose the sets whose missing parts to list')
-            return list_exports.missing(db, copies), copies
-        if kind == 'picker':
+            rows = list_exports.missing(db, copies)
+        elif kind == 'picker':
             copies = request.args.getlist('copy')
             if not copies:
                 raise ValueError('Choose the sets to pick parts for')
-            return list_exports.picker(db, copies, request.args.getlist('rank') or None), copies
-        return list_exports.wishlist(db, request.args.get('list', 'all')), []
+            rows = list_exports.picker(db, copies, request.args.getlist('rank') or None)
+        else:
+            copies, rows = [], list_exports.wishlist(db, request.args.get('list', 'all'))
+        grouping = part_groups.mode(db) if grouped else 'none'
+        part_groups.annotate(db, rows, grouping, is_part=lambda row: row.get('item_type') == 'P')       # #315: a figure or a set stays outside the sections
+        return rows, copies, grouping
 
 
 @web_page.get('/lists/<kind>/print')
@@ -34,11 +39,14 @@ def _rows(kind):
 def bw_list_print(kind):
     if kind not in KINDS:
         abort(404)
-    error, rows, copies = None, [], []
+    error, rows, copies, grouping = None, [], [], 'none'
     try:
-        rows, copies = _rows(kind)
+        rows, copies, grouping = _rows(kind, grouped=True)
+        from ..core import part_groups
+        outside, found = part_groups.sections(rows, grouping)
     except (ValueError, sqlite3.Error) as exc:
         error = public(exc, 'Brick Work database is not available · try again')
+        outside, found = [], []
     pictures = request.args.get('pictures', '1') != '0'
     from .ui import passthrough_args
     args = passthrough_args('kind')
@@ -48,7 +56,7 @@ def bw_list_print(kind):
                 else url_for('web.bw_picker', copy=copies, pick='1') if kind == 'picker'
                 else url_for('web.bw_planning', screen='wishlist', list=request.args.get('list', 'all')))
     response = current_app.make_response(render_template('web/toni/web/bw_print_list.html', kind=kind, title=KINDS[kind],
-        rows=rows, copies=copies, error=error, pictures=pictures, today=date.today().isoformat(),
+        rows=rows, outside=outside, sections=found, copies=copies, error=error, pictures=pictures, today=date.today().isoformat(),
         total=sum(r['quantity'] or 0 for r in rows), toggle_url=toggle_url, back_url=back_url, csv_url=url_for('web.bw_list_csv', kind=kind, **passthrough_args('kind'))))
     response.headers['Cache-Control'] = 'no-store'
     return response
@@ -61,7 +69,7 @@ def bw_list_csv(kind):
     if kind not in KINDS:
         abort(404)
     try:
-        rows, _ = _rows(kind)
+        rows, _, _ = _rows(kind)
     except (ValueError, sqlite3.Error) as exc:
         return current_app.response_class(public(exc, 'Could not build this list · try again'), status=400, mimetype='text/plain')
     response = current_app.response_class(list_exports.to_csv(kind, rows), mimetype='text/csv')

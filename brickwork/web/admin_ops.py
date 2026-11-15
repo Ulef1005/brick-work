@@ -41,6 +41,10 @@ def settings_set(key, value):
         if key == 'part_list_grouping':
             admin.patch_settings(db, {key: value})
             return {key: value}
+        if key == 'part_group_overrides':
+            parsed = json.loads(value)
+            admin.patch_settings(db, {key: parsed})
+            return {key: admin.settings(db)[key]}
         if key == 'source_priority':
             parsed = json.loads(value)
             validate_priority(parsed)
@@ -348,8 +352,9 @@ def tools_read(page, group=None):
         if page == 'values':
             return admin.value_rows(db, group)
         if page == 'settings':
-            from ..core import pictures
-            return {**admin.settings(db), 'pictures': {**pictures.state(db), 'matrix': pictures.matrix(db)}, 'bricklink_list': bricklink_list_switch(db)}
+            from ..core import part_groups, pictures
+            return {**admin.settings(db), 'pictures': {**pictures.state(db), 'matrix': pictures.matrix(db)}, 'bricklink_list': bricklink_list_switch(db),
+                    'grouping': part_groups.editor(db)}
         if page == 'statistics':
             return admin.statistics(db)
         if page == 'database':

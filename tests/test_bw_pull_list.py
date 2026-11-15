@@ -34,7 +34,8 @@ def count(line):
     return line.select_one('.bp-cnt .v').text
 
 
-def test_the_page_shows_the_set_its_progress_the_lines_by_category_and_the_card(client, world):
+def test_the_page_shows_the_set_its_progress_the_lines_by_category_and_the_card(client, world, coll):
+    coll.setting('part_list_grouping', 'none')                                  # #315: with part groups the sections replace these labels (test_part_groups_surfaces.py)
     soup = page(client, world, '?show=all')
     assert soup.select_one('.bp-title').get_text(' ', strip=True).startswith('Stk Set 9401') and '9401-1' in soup.select_one('.bp-title').text
     assert soup.select_one('.bp .lab').text == 'Pull list' and soup.select_one('.crumb a')['href'] == f'/collection/lots/{world.lot}#set-detection'

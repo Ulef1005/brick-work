@@ -92,7 +92,7 @@ def build_parser():
     parser(settings, 'show', 'settings_show')
     sub = parser(settings, 'set', 'settings_set')
     from ..core.items import KINDS
-    sub.add_argument('key', choices=SETTING_KEYS + ('source_priority',) + tuple('import_order:' + kind for kind in KINDS))
+    sub.add_argument('key', choices=SETTING_KEYS + ('source_priority', 'part_list_grouping', 'part_group_overrides') + tuple('import_order:' + kind for kind in KINDS))
     sub.add_argument('value')
     wishes = parser(commands, 'wishlist').add_subparsers(required=True)
     parser(wishes, 'list', 'wishlist_list').add_argument('--archived', action='store_true')

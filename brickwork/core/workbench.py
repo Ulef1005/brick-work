@@ -296,7 +296,7 @@ def picker(db, selected, ranking=None, *, all_gaps=None):
     for g in grouped.values():
         g['rank_set'] = min(r['copy']['set_no'] for r in g['needs'])
         g['rank_storage'] = ' · '.join(sorted(storage_names[identity(g)]))
-    return order_picker(list(grouped.values()), ranking)
+    return order_picker(list(grouped.values()), ranking, part_groups.overrides(db))
 
 
 def picker_keys(rows):
@@ -311,18 +311,18 @@ def picker_keys(rows):
     return [dict(key=k, label='Category group' if k == 'group' else k.capitalize(), reason=reasons.get(k, '')) for k in PICKER_KEYS]
 
 
-def order_picker(rows, ranking=None):
+def order_picker(rows, ranking=None, moved=None):
     """Order picker rows by enabled ranking keys, ignoring unknown or unavailable keys.
 
     `None` uses `PICKER_DEFAULT`, which leaves Category group off. An explicit empty
     ranking uses the completion, item number, colour id and item id tie-breakers.
-    Group ordering follows `part_groups.GROUPS`, with absent categories in Other.
+    Group ordering follows `part_groups.GROUPS`, with absent categories in Other; `moved` (`part_groups.overrides`) are the person's category moves.
     """
     enabled = set(k['key'] for k in picker_keys(rows) if not k['reason'])
     ranking = list(dict.fromkeys(k for k in (PICKER_DEFAULT if ranking is None else ranking) if k in enabled))
 
     def key(row):
-        values = dict(group=list(part_groups.GROUPS).index(part_groups.group_of(row.get('category'))), completes=-row['completes'], colour=row.get('color_name') or '', category=row.get('category') or '', set=row['rank_set'], storage=row['rank_storage'])
+        values = dict(group=list(part_groups.GROUPS).index(part_groups.group_of(row.get('category'), overrides=moved)), completes=-row['completes'], colour=row.get('color_name') or '', category=row.get('category') or '', set=row['rank_set'], storage=row['rank_storage'])
         return tuple((k != 'colour' and values[k] == '', values[k]) for k in ranking) + (-row['completes'], row['item_no'], row['color_id'] or 0, row['item_id'])
     return sorted(rows, key=key)
 

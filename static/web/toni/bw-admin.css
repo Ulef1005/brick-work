@@ -159,3 +159,6 @@ main .bw-chips a[aria-current=page]{background:var(--tw-accent-soft);color:var(-
 [data-jobs-live],[data-jobs-batches],[data-jobs-shown-slot]{display:contents}
 
 #part-list-grouping .bw-toggle-row{justify-content:flex-start;padding-block:8px}
+.bwc-editrow{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:48px;font:500 15px var(--tw-font)}
+.bwc-editrow select{flex:0 1 220px;min-width:0}
+.bwc-grouping-group>summary{min-height:44px;display:flex;align-items:center;cursor:pointer}

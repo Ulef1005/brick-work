@@ -43,17 +43,17 @@ def _figure_of(entity):
 
 # ---------- ordering ----------
 
-def sorter(mode, position):
+def sorter(mode, position, moved=None):
     """Sort key of the rows of one kind for an order mode. Largest first is the physical size from the catalogue name and category
     (`part_size.volume`; the item's `size_key` is the sorted dimensions of the same name and cannot tell a plate from a brick), then
     the larger count, then colour, item number and sequence position. Category group uses the fixed
     `part_groups.GROUPS` order with that same size key within each group; figures come first in their sequence.
-    Unknown modes use sequence position."""
+    `moved` is the person's category moves (`part_groups.overrides`). Unknown modes use sequence position."""
     if mode == 'group':
         largest = sorter('largest', position)
         groups = list(part_groups.GROUPS)
         return lambda r: ((0, position[r['token']]) if r.get('kind') == 'figure' else
-                          (1 + groups.index(part_groups.group_of(r.get('category'))), *largest(r)))
+                          (1 + groups.index(part_groups.group_of(r.get('category'), overrides=moved)), *largest(r)))
     if mode == 'largest':
         from .part_size import volume
         return lambda r: (-volume(r.get('name') or '', r.get('category') or ''), -(r['quantity'] or 0),
@@ -190,7 +190,7 @@ def rows(db, copy_id, images=True, tokens=None, decorate=True, figure=None):
         # Server-computed positions keep optimistic offline spare ordering identical.
         position = {r['token']: i for i, r in enumerate(result)}
         for mode in ('group', 'largest'):
-            for rank, r in enumerate(sorted(result, key=sorter(mode, position))):
+            for rank, r in enumerate(sorted(result, key=sorter(mode, position, part_groups.overrides(db)))):
                 r[mode + '_order'] = rank
     return result
 
@@ -489,7 +489,7 @@ def write(db, copy_id, payload, figure=None):
             order_mode = payload.get('order', 'inventory')
             if order_mode not in ORDERS:
                 raise ValueError('Choose an order')
-            sort = sorter(order_mode, position)
+            sort = sorter(order_mode, position, part_groups.overrides(db))
             ordered = sorted((r for r in all_rows if r['kind'] != 'spare'), key=lambda r: ({'part': 0, 'figure': 1}[r['kind']], sort(r)))
             if figure and not ordered:
                 raise ValueError('This figure has no recorded parts')
@@ -556,7 +556,7 @@ def write(db, copy_id, payload, figure=None):
                     raise ValueError('Choose skipped parts')
                 if not chosen:
                     raise ValueError('Nothing is skipped')
-                sort = sorter(s.get('sort', 'inventory'), position)
+                sort = sorter(s.get('sort', 'inventory'), position, part_groups.overrides(db))
                 ordered = sorted((by_token[t] for t in chosen), key=lambda r: ({'part': 0, 'figure': 1}[r['kind']], sort(r)))
                 s['order'], s['cursor'] = [r['token'] for r in ordered], 0
                 if s.get('scope') != 'missing':                                                        # a missing-only run stays one (badge, heading, counts)
@@ -573,7 +573,7 @@ def write(db, copy_id, payload, figure=None):
                     raise ValueError('Spare parts are already included')
                 s['spares'] = 'yes' if include else 'no'
                 if include:
-                    sort = sorter(s.get('sort', 'inventory'), position)
+                    sort = sorter(s.get('sort', 'inventory'), position, part_groups.overrides(db))
                     s['order'] += [r['token'] for r in sorted(spare, key=sort) if r['token'] not in s['order']]
             elif action == 'finish':
                 if not figure:

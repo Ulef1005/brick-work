@@ -691,13 +691,11 @@ def detail(db, item_id, *, colour=None, copy_id=None, stock_id=None, wish_id=Non
         entry['can_take'] = 0
     row.update(_matching(db, item_id, kind, colour, selected, all_instances, consists))
     from . import part_groups
-    setting = db.execute("SELECT value FROM main.setting WHERE key='part_list_grouping'").fetchone()
-    mode = setting[0] if setting else part_groups.DEFAULT
-    row['part_list_grouping'] = mode if kind == 'set' else 'none'
-    grouped = defaultdict(list)
+    row['part_list_grouping'] = part_groups.mode(db) if kind == 'set' else 'none'
+    grouped, moved = defaultdict(list), part_groups.overrides(db)
     for entry in consists:
         entry['group'] = (None if entry['item_type'] == 'M' or entry.get('minifig_no')
-                          else part_groups.group_of(entry.get('category'), row['part_list_grouping']))
+                          else part_groups.group_of(entry.get('category'), row['part_list_grouping'], moved))
         if entry['group']:
             grouped[entry['group']].append(entry)
     row['part_groups'] = []

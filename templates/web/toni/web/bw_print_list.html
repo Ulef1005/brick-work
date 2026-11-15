@@ -15,20 +15,31 @@
 <button type="button" class="pr-btn pr-primary" data-pr-print>Print</button>
 </div>
 <header class="pr-head"><h1>{{ title }}</h1><p>{{ rows|length }} {{ 'line' if rows|length == 1 else 'lines' }} · {{ total }} {{ 'piece' if total == 1 else 'pieces' }}{% if copies %} · {{ copies|length }} {{ 'set' if copies|length == 1 else 'sets' }}{% endif %} · {{ today }}</p></header>
-{% if error %}<p class="pr-error" role="alert">{{ error }}</p>
-{% elif not rows %}<p class="pr-empty">Nothing on this list.</p>
-{% else %}
-<table class="pr-table{{ ' pr-pictures' if pictures else '' }}">
-<thead><tr>{% if kind == 'picker' %}<th class="pr-num">#</th>{% endif %}{% if pictures %}<th aria-label="Picture"></th>{% endif %}<th>Item</th><th>Colour</th>{% if kind == 'missing' %}<th>Condition</th>{% elif kind == 'picker' %}<th>Sets · Storage</th>{% else %}<th>List · Condition</th>{% endif %}<th class="pr-num">Qty</th><th class="pr-tick" aria-label="Done"></th></tr></thead>
-<tbody>
-{% for r in rows %}{% set image = r.image %}
+{% import 'web/toni/web/_bw_part_sections.html' as sec %}
+{% macro row(r) %}{% set image = r.image %}
 <tr>{% if kind == 'picker' %}<td class="pr-num">{{ r.rank }}</td>{% endif %}{% if pictures %}<td class="pr-pic">{% if image %}<img {{ bw_picture_attrs(image, '48px') }} alt="" loading="eager">{% endif %}</td>{% endif %}
 <td><span class="pr-no">{{ r.number_text or r.item_no }}</span><span class="pr-name">{{ r.name or 'Name not recorded' }}</span>{% if r.unresolved %}<span class="pr-muted">Not matched yet</span>{% endif %}</td>
 <td>{% if r.color_id is not none %}<span class="pr-colour">{{ r.colour or 'Colour ' ~ r.color_id }}</span><span class="pr-no">{{ r.color_id }}</span>{% else %}<span class="pr-muted">No colour</span>{% endif %}</td>
 <td>{% if kind == 'missing' %}{{ (r.condition or '')|capitalize }}{% elif kind == 'picker' %}<span class="pr-no">{{ r.sets }}</span>{% if r.storage %}<span class="pr-muted">{{ r.storage }}</span>{% endif %}{% else %}{{ r.list_name }}{% if r.condition %} · {{ r.condition|capitalize }}{% endif %}{% if r.max_price %}<span class="pr-muted">max {{ r.max_price }} {{ r.max_price_currency or '' }}</span>{% endif %}{% endif %}</td>
 <td class="pr-num pr-qty">{{ r.quantity }}</td><td class="pr-tick"><span class="pr-box" aria-hidden="true"></span></td></tr>
-{% endfor %}
-</tbody></table>
+{% endmacro %}
+{% if error %}<p class="pr-error" role="alert">{{ error }}</p>
+{% elif not rows %}<p class="pr-empty">Nothing on this list.</p>
+{% else %}
+<table class="pr-table{{ ' pr-pictures' if pictures else '' }}">
+<thead><tr>{% if kind == 'picker' %}<th class="pr-num">#</th>{% endif %}{% if pictures %}<th aria-label="Picture"></th>{% endif %}<th>Item</th><th>Colour</th>{% if kind == 'missing' %}<th>Condition</th>{% elif kind == 'picker' %}<th>Sets · Storage</th>{% else %}<th>List · Condition</th>{% endif %}<th class="pr-num">Qty</th><th class="pr-tick" aria-label="Done"></th></tr></thead>
+{% if not sections %}<tbody>
+{% for r in rows %}{{ row(r) }}
+{% endfor %}</tbody>
+{% else %}{# #315: part groups. One table, one header; each group is a body that starts with its heading. All sections are open on paper. #}
+{% set across = 5 + (1 if kind == 'picker' else 0) + (1 if pictures else 0) %}
+{% if outside %}<tbody>{% for r in outside %}{{ row(r) }}
+{% endfor %}</tbody>
+{% endif %}{% for g in sections %}<tbody class="pr-sec" data-pr-section="{{ g.name }}">
+<tr class="pr-sec-row"><th class="pr-sec-head" colspan="{{ across }}" scope="colgroup"><span class="pr-sec-name">{{ g.name }}</span><span class="pr-sec-count">{{ sec.meta(g) }}</span></th></tr>
+{% for r in g.rows %}{{ row(r) }}
+{% endfor %}</tbody>
+{% endfor %}{% endif %}</table>
 {% endif %}
 </body>
 </html>

@@ -1,0 +1,9 @@
+{# The section pattern of the part lists that are not the set page (#315): the order list, the print list and the pull list.
+   One rule groups the rows (`core/part_groups.py`); this file draws them. Use `{% call section(...) %}rows{% endcall %}` for a section you can open and close:
+   a <details>, so it works without JavaScript, and `bw-part-sections.js` adds Expand all / Collapse all and remembers each choice in the browser.
+   The print list has no chevron and draws its section heading rows (`.pr-sec-row`) inside its own table instead. #}
+{% macro lines(n) %}{{ n }} {{ 'line' if n==1 else 'lines' }}{% endmacro %}
+{% macro pieces(n) %}{{ n }} {{ 'piece' if n==1 else 'pieces' }}{% endmacro %}
+{% macro meta(group) %}{{ lines(group.lines) }} · {{ pieces(group.pieces) }}{% endmacro %}
+{% macro section(name, text, open=true) %}<details class="bw-sec" data-bw-section="{{ name }}"{% if open %} open{% endif %}><summary class="bw-sec-head"><span class="bw-sec-chevron" aria-hidden="true">{{ toni_icon('chevron-down') }}</span><strong>{{ name }}</strong><span class="bw-sec-count mono">{{ text }}</span></summary><div class="bw-sec-body">{{ caller() }}</div></details>{% endmacro %}
+{% macro tools() %}<div class="bw-sec-tools" data-bw-sections-actions hidden><a href="#" data-bw-sections-all="expand">Expand all</a><span aria-hidden="true">·</span><a href="#" data-bw-sections-all="collapse">Collapse all</a></div>{% endmacro %}

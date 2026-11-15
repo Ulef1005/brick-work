@@ -102,6 +102,7 @@ def test_more_lines_than_the_first_few_sit_behind_show_all(coll, client):
     """Five lines: used 3001, 3023 and the figure from one copy, new 3001 and 3023 from another."""
     for key, value in SETTINGS.items():
         coll.setting(key, value)
+    coll.setting('part_list_grouping', 'none')                                               # #315: with part groups the sections hold the lines, not this fold
     used, new = coll.add_copy('1000-1', condition='used'), coll.add_copy('1000-1', condition='new')
     for copy in (used, new):
         coll.mark(copy, '3001', '4', missing=1)

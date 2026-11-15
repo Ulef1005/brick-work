@@ -125,7 +125,7 @@ def test_every_documentation_page_links_the_complete_favicon_set(site):
 
 def test_landing_sections_and_copy(site):
     text = (site / 'index.html').read_text()
-    body = text.split('<main class="home">')[1].split('</main>')[0]
+    body = text.split('<main id="main" class="home">')[1].split('</main>')[0]
     plain = re.sub(r'<[^>]+>', '', body)
     assert "Don't just manage your collection. Work with it." in plain
     assert '<span class="logo-blue">Work with it.</span>' in body   # the logo's blue (Ulf, 2026-11-14), not the brand accent
@@ -190,13 +190,18 @@ def test_images_are_local_small_and_dimensioned(site):
     for name in ('index.html', 'use-cases/index.html', 'workflows/index.html'):
         text = (site / name).read_text()
         for tag, attrs in Elements(text).elements:
-            if tag == 'source' and '/img/' in attrs.get('srcset', ''):
+            if tag == 'source' and attrs.get('srcset', '').endswith('.avif'):
+                avif = local_target(site, site / name, attrs['srcset'])      # every capture also comes as AVIF, smaller than its PNG
+                assert avif.read_bytes()[4:12] == b'ftypavif' and avif.stat().st_size < avif.with_suffix('.png').stat().st_size, avif.name
+            elif tag == 'source' and '/img/' in attrs.get('srcset', ''):
                 dimensions = struct.unpack('>II', local_target(site, site / name, attrs['srcset']).read_bytes()[16:24])
                 scale = picture_scale(attrs['srcset'])
                 assert dimensions == (scale * int(attrs['width']), scale * int(attrs['height']))
             if tag != 'img':
                 continue
-            assert attrs.get('loading') == 'lazy' and attrs.get('decoding') == 'async'
+            hero = attrs.get('fetchpriority') == 'high'      # the two screenshots above the fold on the home page load first; every other picture is lazy
+            assert (hero and name == 'index.html' and 'loading' not in attrs) or attrs.get('loading') == 'lazy'
+            assert attrs.get('decoding') == 'async'
             assert int(attrs['width']) > 0 and int(attrs['height']) > 0
             if attrs['src'].endswith('.png'):
                 dimensions = struct.unpack('>II', local_target(site, site / name, attrs['src']).read_bytes()[16:24])
@@ -328,7 +333,7 @@ def test_every_image_the_readme_and_the_pages_show_exists_and_is_a_built_capture
     for source in ('README.md', 'scripts/site/landing.html', 'scripts/site/use-cases.md', 'scripts/site/pages/workflows.html'):
         text = (ROOT / source).read_text()
         names = re.findall(r'(?:src|srcset)="[^"]*?/img/(?:readme/)?([^"/]+\.png)"', text)
-        names += [f'{stem}-{theme}.png' for stem in re.findall(r'\{pic:([^|}]+)\|', text) for theme in ('light', 'dark')]
+        names += [f'{stem.lstrip("!")}-{theme}.png' for stem in re.findall(r'\{pic:([^|}]+)\|', text) for theme in ('light', 'dark')]
         for name in names:
             shown.add(name)
             target = ROOT / ('docs/img/readme' if source == 'README.md' else 'scripts/site/img') / name
@@ -537,7 +542,7 @@ def test_robots_and_sitemaps_point_at_this_sites_address(site):
     import xml.etree.ElementTree as ET
     from scripts.build_site import origin, site_base
     base = origin() + site_base()
-    assert (site / 'robots.txt').read_text() == (f'User-agent: *\nAllow: /\n\n# For AI assistants: {base}llms.txt (the short facts) and {base}llms-full.txt (the key docs in one file)\n'
+    assert (site / 'robots.txt').read_text() == (f'User-agent: *\nContent-Signal: search=yes, ai-input=yes, ai-train=yes\nAllow: /\n\n# For AI assistants: {base}llms.txt (the short facts) and {base}llms-full.txt (the key docs in one file)\n'
                                                 f'Sitemap: {base}sitemap.xml\n')
     ns = '{http://www.sitemaps.org/schemas/sitemap/0.9}'
     index = ET.fromstring((site / 'sitemap.xml').read_text())

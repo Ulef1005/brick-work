@@ -4,6 +4,10 @@
 .site{--r1:6px;--r2:10px;--r3:16px;--hair:.5px solid var(--tw-divider-strong);font-size:17px;line-height:27px;color:var(--tw-text)}
 .site a{color:inherit;text-decoration:none}
 .site h1,.site h2,.site h3,.site p{margin:0}
+:root{--tw-text-muted:#6A655C}   /* light: 5.0:1 on the cream surface; the app's token #8A847A is 3.2:1 there, under WCAG AA for small text (website audit 15.11.) */
+@media (prefers-color-scheme:dark){:root:not(.tw-light){--tw-text-muted:#8C857A}}
+.tw-dark{--tw-text-muted:#8C857A}
+.skip{position:absolute;left:8px;top:-60px;z-index:10;padding:10px 16px;border-radius:var(--r2);background:var(--tw-text);color:var(--tw-bg);text-decoration:none}.skip:focus{top:8px}
 .site :focus-visible{outline:2px solid var(--tw-accent);outline-offset:2px}
 .site .label{font-size:11px;line-height:14px;letter-spacing:.10em;text-transform:uppercase;color:var(--tw-text-muted);font-weight:500}
 .top{display:flex;align-items:center;gap:20px;padding:10px 32px;border-bottom:var(--hair);min-height:60px;flex-wrap:wrap;position:relative}
@@ -100,6 +104,7 @@ pre.code{margin:0;border:var(--hair);border-radius:var(--r2);background:var(--tw
   .display{font-size:34px;line-height:40px}.display.page{font-size:32px;line-height:38px}
   .site{font-size:16px;line-height:25px}
   .hero{grid-template-columns:minmax(0,1fr);gap:28px}
+  .shots{grid-template-columns:minmax(0,1fr)}.shots .shot:first-child{display:none}.shots .shot{max-width:300px;margin:0 auto}   /* one readable phone screenshot instead of two thumbnails */
   .g4,.g3,.g2{grid-template-columns:minmax(0,1fr)}
   .btns .btn{flex:1 1 100%}
   .foot .cols{grid-template-columns:repeat(2,minmax(0,1fr))}

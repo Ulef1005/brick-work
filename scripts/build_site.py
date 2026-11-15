@@ -100,15 +100,20 @@ CLARITY = """<script>
         y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
     })(window, document, "clarity", "script", "zdj5z3tzsr");
 </script>"""
+HOME_TITLE = 'Brick Work: self-hosted brick collection and parts manager'     # the home page's <title> and share title (the other pages end in ' · Brick Work')
 HOME_DESCRIPTION = ('Brick Work is a free, open-source, self-hosted workbench for your brick collection: check a set\'s parts, pull missing ones from loose stock '
-                    'and see which unfinished sets your stock can complete.')
+                    'and see which sets it can complete.')
 MD_DESCRIPTIONS = {'use-cases': 'Eight moments a collector knows, and how Brick Work helps with each: rebuilding used sets, sorted bulk, minifigures, bought collections and orders.',
-                   'impressum': 'Impressum of the Brick Work website.', 'privacy': 'What the Brick Work website loads and what it does not: which analytics it uses and which cookies it sets.'}
+                   'impressum': 'Impressum of the Brick Work website: who is responsible for it, in Linz, Austria.', 'privacy': 'What the Brick Work website loads and what it does not: which analytics it uses and which cookies it sets.'}
 DEFAULT_DESCRIPTION = 'Brick Work: the workbench for your brick collection: self-hosted, with a REST API and an MCP server.'
 DEMO_DESCRIPTION = 'Try the real Brick Work interface in your browser on an invented collection around seven real sets; nothing is saved.'
 
 
-def seo_head(title, description, path):
+# The browser bar's colours: the page background in light and dark (static/web/toni/tokens-v2.css as brick-work.css sets it).
+THEME_LIGHT, THEME_DARK = '#fbf8f2', '#1d1a17'
+
+
+def seo_head(title, description, path, canonical=True):
     """Canonical, Open Graph and Twitter tags for a page at `path` (a folder from the site root, '' for the home page). The apex or the Pages address
     comes from the build's SITE_BASE; a social preview picture is added when scripts/site/social-preview.png exists."""
     url = origin() + site_base() + path
@@ -118,16 +123,17 @@ def seo_head(title, description, path):
         tags.append(('og:image', image))
     tags += [('twitter:card', 'summary_large_image' if image else 'summary'), ('twitter:title', title), ('twitter:description', description)]
     meta = ''.join(f'<meta {"property" if key.startswith("og:") else "name"}="{key}" content="{html.escape(value, quote=True)}">' for key, value in tags)
-    return f'<link rel="canonical" href="{url}">' + meta
+    return (f'<link rel="canonical" href="{url}">' if canonical else '') + meta
 
 
 def page(title, body, depth, *, current, head='', main='doc', absolute=False, path=None, description=None):
     up = site_base() if absolute else '../' * depth
     repo = repository()
     description = description or DEFAULT_DESCRIPTION
-    full_title = html.escape(title) + ' · Brick Work' if title != 'Brick Work' else 'Brick Work'
+    shown = title + ' · Brick Work' if title != 'Brick Work' else HOME_TITLE
+    full_title = html.escape(shown)
     if path is not None:
-        head = seo_head(title + ' · Brick Work' if title != 'Brick Work' else 'Brick Work', description, path) + head
+        head = seo_head(shown, description, path) + head
     head = f'<link rel="alternate" type="application/atom+xml" title="Brick Work releases" href="{up}changelog/feed.xml">' + head   # every page offers the releases feed
     nav = ''.join(f'<a href="{up}{href}"{" aria-current=\"page\"" if name == current else ""}>{name}</a>' for name, href in NAV)
     menu = nav + f'<a href="https://github.com/{repo}">GitHub</a>'
@@ -153,6 +159,10 @@ def page(title, body, depth, *, current, head='', main='doc', absolute=False, pa
 <link rel="icon" href="{up}assets/favicon-16.png" sizes="16x16" type="image/png">
 <link rel="icon" href="{up}assets/favicon.ico" sizes="48x48">
 <link rel="apple-touch-icon" href="{up}assets/apple-touch-icon.png">
+<link rel="preload" href="{up}assets/fonts/inter-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="{up}assets/fonts/inter-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>
+<meta name="theme-color" content="{THEME_LIGHT}" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="{THEME_DARK}" media="(prefers-color-scheme: dark)">
 <link rel="stylesheet" href="{up}assets/tokens-v2.css">
 <link rel="stylesheet" href="{up}assets/brick-work.css">
 <link rel="stylesheet" href="{up}assets/site.css">
@@ -162,9 +172,10 @@ def page(title, body, depth, *, current, head='', main='doc', absolute=False, pa
 {CLARITY}
 </head>
 <body>
+<a class="skip" href="#main">Skip to content</a>
 <div class="site"><header class="top"><a class="brand" href="{up}" aria-label="Brick Work home">{lockup(up)}</a>
 <nav aria-label="Main">{nav}</nav><a class="gh link" href="https://github.com/{repo}">GitHub</a><button class="js-only" type="button" data-theme-toggle aria-label="Switch theme">Theme</button><details class="menu"><summary>Menu</summary><nav class="menu-list" aria-label="Menu">{menu}</nav></details></header></div>
-<main class="{main}">{body}</main>
+<main id="main" class="{main}">{body}</main>
 <div class="site"><footer class="sec foot"><div class="inner"><div class="cols">{footer_cols}</div>
 <p class="small muted fine">Brick Work is an independent project and is not affiliated with the LEGO Group, Rebrickable, Brickset or BrickLink. LEGO® is a trademark of the LEGO Group of companies, which does not sponsor, authorize or endorse this project. Brick Work is MIT-licensed and inspired by BrickTracker. Part and set images: Rebrickable.</p></div></footer></div>
 <script src="{up}assets/site.js" defer></script>
@@ -182,13 +193,28 @@ def lockup(up):
             'loading="lazy" decoding="async"></picture>')
 
 
-def picture(name, alt, up, *, phone=None):
-    """A light/dark screenshot of scripts/site/img as one <picture>, with its real pixel size (phone captures are drawn at twice the pixels)."""
-    light, dark = f'assets/img/{name}-light.png', f'assets/img/{name}-dark.png'
+def picture(name, alt, up, *, phone=None, eager=False):
+    """A light/dark screenshot of scripts/site/img as one <picture> with its real pixel size (phone captures are drawn at twice the pixels). Each
+    comes as AVIF (written beside the PNG at build time, `write_avif`) and PNG; `eager` marks the one above the fold that is the page's largest paint."""
     width, height = struct.unpack('>II', (SITE / 'img' / f'{name}-light.png').read_bytes()[16:24])
     scale = 2 if (phone if phone is not None else 'phone' in name) else 1
-    return (f'<picture><source media="(prefers-color-scheme: dark)" srcset="{up}{dark}" width="{width // scale}" height="{height // scale}">'
-            f'<img alt="{html.escape(alt)}" src="{up}{light}" width="{width // scale}" height="{height // scale}" loading="lazy" decoding="async"></picture>')
+    size = f'width="{width // scale}" height="{height // scale}"'
+    src = lambda mode, ext: f'{up}assets/img/{name}-{mode}.{ext}'
+    loading = 'fetchpriority="high" decoding="async"' if eager else 'loading="lazy" decoding="async"'
+    return ('<picture>'
+            f'<source media="(prefers-color-scheme: dark)" srcset="{src("dark", "avif")}" type="image/avif" {size}>'
+            f'<source media="(prefers-color-scheme: dark)" srcset="{src("dark", "png")}" {size}>'
+            f'<source srcset="{src("light", "avif")}" type="image/avif" {size}>'
+            f'<img alt="{html.escape(alt)}" src="{src("light", "png")}" {size} {loading}></picture>')
+
+
+def write_avif(folder):
+    """An .avif beside every .png of the site's captures: about half the bytes of the palette PNGs at this quality, which keeps the UI text sharp (WebP
+    was measured too and saves only a quarter, lossy, and nothing lossless-safe)."""
+    from PIL import Image
+    for png in sorted(Path(folder).glob('*.png')):
+        with Image.open(png) as image:
+            image.convert('RGB').save(png.with_suffix('.avif'), 'AVIF', quality=55)
 
 
 def latest_release():
@@ -219,7 +245,8 @@ def fill(text, up):
         key = match[1]
         if key.startswith('pic:'):
             name, _, alt = key[4:].partition('|')
-            return picture(name, alt, up)
+            eager = name.startswith('!')      # {pic:!name|alt}: the picture is above the fold, load it first
+            return picture(name.lstrip('!'), alt, up, eager=eager)
         return values.get(key, match[0])
     return re.sub(r'\{([A-Za-z_]+|pic:[^|}]+\|[^}]+)\}', token, text)
 
@@ -250,7 +277,8 @@ def json_ld():
             'applicationCategory': 'UtilitiesApplication', 'operatingSystem': 'Docker on Linux, macOS or Windows', 'softwareVersion': __version__,
             'description': HOME_DESCRIPTION, 'license': 'https://opensource.org/licenses/MIT',
             'downloadUrl': f'https://github.com/{repository()}', 'offers': {'@type': 'Offer', 'price': '0', 'priceCurrency': 'EUR'},
-            'author': {'@type': 'Person', 'name': 'Ulf Weihbold'}}
+            'author': {'@type': 'Person', 'name': 'Ulf Weihbold'}, 'sameAs': [f'https://github.com/{repository()}'],
+            'image': f'{origin()}{site_base()}assets/social-preview.png', 'screenshot': f'{origin()}{site_base()}assets/img/1c-sets-desktop-1440-light.png'}
     return '<script type="application/ld+json">' + json.dumps(data, ensure_ascii=False).replace('</', '<\\/') + '</script>'
 
 
@@ -261,11 +289,32 @@ def site_urls(out):
     return [''] + [f + '/' for f in folders if f.split('/')[0] not in ('docs', 'demo', 'api', 'mcp')] + ['demo/']
 
 
+def lastmod(path):
+    """The date (YYYY-MM-DD) a marketing page's own source last changed in git, the release date for the changelog, None where there is no honest date
+    (the demo, a shallow clone where every file would show the newest commit's date)."""
+    if path == 'changelog/':
+        return latest_release()[2]
+    if path in ('demo/', 'docs/'):
+        return None
+    name = path.strip('/').replace('/', '-') if path else 'landing'
+    sources = [SITE / f'{name}.md', SITE / f'{name}.html', SITE / 'pages' / f'{name}.html']
+    source = next((f for f in sources if f.exists()), None)
+    if source is None:
+        return None
+    try:
+        if subprocess.run(['git', 'rev-parse', '--is-shallow-repository'], cwd=ROOT, capture_output=True, text=True, check=True).stdout.strip() != 'false':
+            return None
+        day = subprocess.run(['git', 'log', '-1', '--format=%cs', '--', str(source)], cwd=ROOT, capture_output=True, text=True, check=True).stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    return day or None
+
+
 def build_seo_files(out):
     """robots.txt and the sitemaps: /sitemap.xml is an index of sitemap-pages.xml (the pages of this site) and docs/sitemap.xml (Zensical's)."""
     base = origin() + site_base()
-    (out / 'robots.txt').write_text(f'User-agent: *\nAllow: /\n\n# For AI assistants: {base}llms.txt (the short facts) and {base}llms-full.txt (the key docs in one file)\nSitemap: {base}sitemap.xml\n')
-    urls = ''.join(f'<url><loc>{base}{path}</loc></url>' for path in site_urls(out))
+    (out / 'robots.txt').write_text(f'User-agent: *\nContent-Signal: search=yes, ai-input=yes, ai-train=yes\nAllow: /\n\n# For AI assistants: {base}llms.txt (the short facts) and {base}llms-full.txt (the key docs in one file)\nSitemap: {base}sitemap.xml\n')
+    urls = ''.join(f'<url><loc>{base}{path}</loc>' + (f'<lastmod>{day}</lastmod>' if (day := lastmod(path)) else '') + '</url>' for path in site_urls(out))
     (out / 'sitemap-pages.xml').write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' + urls + '</urlset>\n')
     (out / 'sitemap.xml').write_text('<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
                                      f'<sitemap><loc>{base}sitemap-pages.xml</loc></sitemap><sitemap><loc>{base}docs/sitemap.xml</loc></sitemap></sitemapindex>\n')
@@ -295,6 +344,9 @@ def build_docs(out):
         shutil.copytree(ROOT / docs, Path(tmp) / docs)   # the docs folder must lie inside the project root (6 MB)
         # The documentation pages make no external requests. In the copy a diagram becomes a link to GitHub, which
         # draws it, as on the other pages (mermaid_to_link); the source file keeps its diagram.
+        index = Path(tmp) / docs / 'index.md'    # the docs home in the build copy: its own title (not "Brick Work - Brick Work") and the site's install page
+        text = index.read_text().replace('(https://github.com/Ulef1005/brick-work#standalone-installation-with-docker)', '(../install/)')
+        index.write_text(text.replace('---\n', '---\ntitle: Brick Work documentation\n', 1) if text.startswith('---\n') else text)
         for page in (Path(tmp) / docs).rglob('*.md'):
             text = page.read_text()
             if '```mermaid' in text:
@@ -420,6 +472,42 @@ def llms_full():
     return '\n---\n\n'.join(parts)
 
 
+def first_paragraph(text, limit=155):
+    """The first paragraph of a rendered docs page as a plain-text description of at most `limit` characters, cut at a word."""
+    article = text[text.find('<h1'):] if '<h1' in text else text
+    for paragraph in re.findall(r'<p>(.*?)</p>', article, flags=re.S):
+        plain = html.unescape(re.sub(r'<[^>]+>', '', paragraph))
+        plain = re.sub(r'\s+', ' ', plain).strip()
+        if len(plain) >= 40:
+            if len(plain) <= limit:
+                return plain
+            cut = plain[:limit - 1].rsplit(' ', 1)[0].rstrip(' ,;:(')
+            return cut + '…'
+    return None
+
+
+def add_docs_seo(out):
+    """The Zensical pages carry a canonical and a title but no description, Open Graph tags or structured data: add them (a description from the page's first
+    paragraph, #348's tags and a TechArticle), on every docs page that has none. A redirect stub and a page without a usable paragraph are left as they are."""
+    import json
+    base = origin() + site_base()
+    for file in sorted((out / 'docs').rglob('*.html')):
+        text = file.read_text()
+        if 'name="description"' in text or '<title>' not in text or 'http-equiv="refresh"' in text and '<body' not in text:
+            continue
+        description = first_paragraph(text)
+        title = html.unescape(re.search(r'<title>(.*?)</title>', text, flags=re.S).group(1)).strip()
+        if not description:
+            continue
+        folder = file.parent.relative_to(out).as_posix()
+        path = folder + '/' if folder != '.' else ''
+        data = {'@context': 'https://schema.org', '@type': 'TechArticle', 'headline': title, 'description': description, 'url': base + path,
+                'isPartOf': {'@type': 'WebSite', 'name': 'Brick Work', 'url': base}, 'author': {'@type': 'Person', 'name': 'Ulf Weihbold'}}
+        tags = (f'<meta name="description" content="{html.escape(description, quote=True)}">' + seo_head(title, description, path, canonical=False)
+                + '<script type="application/ld+json">' + json.dumps(data, ensure_ascii=False).replace('</', '<\\/') + '</script>')
+        file.write_text(text.replace('</head>', tags + '</head>', 1))
+
+
 def add_top_bar(out):
     """The site's top bar on every page of /docs/ and /demo/ (#363), so a visitor can get back to the site. The demo's static/ folder holds the app's
     asset templates (the offline page, head snippets), not pages a visitor opens, and keeps none; a redirect stub keeps none either. A page without <head> and <body> fails the build."""
@@ -471,6 +559,7 @@ def build(out):
     shutil.copy(SITE / 'site.js', out / 'assets/site.js')
     if any((SITE / 'img').glob('*.png')):   # the site's captures (scripts/site_shots.py, on the real-sets world)
         shutil.copytree(SITE / 'img', out / 'assets/img')
+        write_avif(out / 'assets/img')
 
     build_docs(out / 'docs')
 
@@ -512,6 +601,7 @@ def build(out):
         raise RuntimeError(f'{demo_entry} is missing {title_tag!r}; cannot inject demo SEO tags')
     demo_head = f'<meta name="description" content="{html.escape(DEMO_DESCRIPTION, quote=True)}">' + seo_head('Brick Work demo', DEMO_DESCRIPTION, 'demo/')
     demo_entry.write_text(entry_text.replace(title_tag, title_tag + demo_head, 1))
+    add_docs_seo(out)
     add_top_bar(out)
     (out / 'llms.txt').write_text(llms_txt())
     (out / 'llms-full.txt').write_text(llms_full())

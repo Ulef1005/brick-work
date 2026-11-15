@@ -97,10 +97,10 @@ def storages(db):
         FROM main.stock t LEFT JOIN main.lot x ON x.id=t.lot_id AND x.archived_at IS NULL AND x.storage_id IS t.storage_id
         WHERE t.archived_at IS NULL GROUP BY t.storage_id),
       l AS (SELECT storage_id,count(*) AS lots FROM main.lot WHERE archived_at IS NULL GROUP BY storage_id)
-      SELECT p.id,p.name,p.type,p.parent_id,p.note,(SELECT name FROM main.storage q WHERE q.id=p.parent_id) AS parent_name,coalesce(c.copies,0) AS copies,
+      SELECT p.id,p.short_id,p.name,p.type,p.parent_id,p.note,(SELECT name FROM main.storage q WHERE q.id=p.parent_id) AS parent_name,coalesce(c.copies,0) AS copies,
       coalesce(s.entries,0) AS entries,coalesce(s.pieces,0) AS pieces,coalesce(l.lots,0) AS lots,
       coalesce(s.figures,0) AS figures,coalesce(s.loose_parts,0)+coalesce(l.lots,0) AS part_lots,coalesce(s.other,0) AS other
-      FROM (SELECT id,name,type,parent_id,note FROM main.storage WHERE archived_at IS NULL UNION ALL SELECT NULL,'Not stored',NULL,NULL,NULL) p
+      FROM (SELECT id,short_id,name,type,parent_id,note FROM main.storage WHERE archived_at IS NULL UNION ALL SELECT NULL,NULL,'Not stored',NULL,NULL,NULL) p
       LEFT JOIN c ON c.storage_id IS p.id LEFT JOIN s ON s.storage_id IS p.id LEFT JOIN l ON l.storage_id IS p.id ORDER BY p.id IS NULL,p.name,p.id''')]
 
 

@@ -6,10 +6,10 @@
   const COPIED = 'Copied', FAILED = 'Copy failed · select and copy by hand';
 
   // The selection copy for when the clipboard is not available: a field the size of nothing holds the text for the browser's copy command.
-  function selectionCopy(text, doc) {
+  function selectionCopy(text, doc, sheet) {
     const field = doc.createElement('textarea');
     field.value = text; field.setAttribute('readonly', ''); field.style.position = 'fixed'; field.style.opacity = '0';
-    doc.body.appendChild(field); field.select();
+    (sheet && sheet.open ? sheet : doc.body).appendChild(field); field.select();
     let ok = false;
     try { ok = !!(doc.execCommand && doc.execCommand('copy')); } catch { ok = false; }
     field.remove();
@@ -22,7 +22,7 @@
       try { if (clipboard && clipboard.writeText) { await clipboard.writeText(value); return true; } } catch { /* fall through */ }
       return fallback ? fallback() : false;
     });
-    return !!(await copyText(text, env.clipboard, () => selectionCopy(text, env.document)));
+    return !!(await copyText(text, env.clipboard, () => selectionCopy(text, env.document, env.sheet)));
   }
 
   function wire(section, env) {
@@ -41,7 +41,7 @@
     if (reset) reset.addEventListener('click', () => { field.value = generated; refresh(); });
     section.querySelectorAll('[data-bc-sell-copy]').forEach(button => button.addEventListener('click', async () => {
       if (button.disabled) return;
-      const ok = await copyListing(field.value, env);
+      const ok = await copyListing(field.value, {...env, sheet});
       if (ok) { clear(); say(button, COPIED); return; }
       // Copy failed: the preview opens with the text selected, so it can be copied by hand.
       if (sheet && !sheet.open && sheet.showModal) sheet.showModal();

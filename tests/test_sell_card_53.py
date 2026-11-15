@@ -336,3 +336,48 @@ def test_a_failed_read_is_an_error_state_with_retry(coll, client, monkeypatch):
 def test_the_assets_are_precached():
     worker = (ROOT / 'static/web/toni/sw.js').read_text()
     assert '/static/web/toni/bw-sell.js' in worker and '/static/web/toni/bw-sell.css' in worker
+
+@pytest.mark.parametrize('state', ['no_quote', 'no_rate', 'deduction_rate'])
+def test_price_free_preview_names_known_missing_lines(coll, monkeypatch, state):
+    setup(coll, average=None if state == 'no_quote' else '58.00')
+    copy = checked_copy(coll)
+    if state == 'no_rate':
+        coll.sql("UPDATE price_observation SET currency='USD' WHERE item_id=?", (coll.item('sets', '1000-1'),))
+    elif state == 'deduction_rate':
+        monkeypatch.setattr(deductions, 'shown', lambda *args: None)
+    v = card(coll, copy)
+    assert v['state'] == ('no_quote' if state == 'no_quote' else 'no_rate')
+    assert 'Missing parts' in v['text'] and '(3001)' in v['text'] and '(3023)' in v['text']
+    assert '  Missing:' in v['text'] and 'Asking price' not in v['text'] and '€' not in v['text']
+
+
+@pytest.mark.parametrize('rate_missing', [False, True])
+def test_unchecked_pill_survives_unavailable_average(coll, rate_missing):
+    setup(coll, average='58.00' if rate_missing else None)
+    if rate_missing:
+        coll.sql("UPDATE price_observation SET currency='USD' WHERE item_id=?", (coll.item('sets', '1000-1'),))
+    v = card(coll, coll.add_copy('1000-1', condition='used'))
+    assert 'Not checked' in [p['text'] for p in v['pills']]
+
+
+def test_missing_floor_conversion_is_no_rate(coll, monkeypatch):
+    setup(coll)
+    copy = checked_copy(coll)
+    monkeypatch.setattr(selling.partout, 'values', lambda *args: {copy: dict(value=Decimal('6.10'), currency='USD')})
+    v = card(coll, copy)
+    assert v['state'] == 'no_rate' and v['ask']['text'] is None and not v['copy_enabled']
+    assert 'Asking price' not in v['text'] and 'Missing parts' in v['text']
+
+
+@pytest.mark.parametrize('group', ['part', 'figure'])
+def test_damage_is_named_without_claiming_complete(coll, group):
+    setup(coll)
+    copy = checked_copy(coll, brick=0, plate=0, figure=0, completeness='complete')
+    if group == 'part':
+        coll.mark(copy, '3001', '4', damaged=1)
+    else:
+        coll.sql('UPDATE copy_part SET damaged=1 WHERE id=(SELECT min(id) FROM copy_part WHERE copy_id=? AND copy_figure_id IS NOT NULL)', (copy,))
+    v = card(coll, copy)
+    assert dict(text='Complete, 1 damaged', tone='warning') in v['pills']
+    assert 'Completeness: complete, 6 pieces, 1 damaged' in v['text']
+    assert 'Damaged: 1 ' in v['text'] and v['ask']['text'] == '€58.00'

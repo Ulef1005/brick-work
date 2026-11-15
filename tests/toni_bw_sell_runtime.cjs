@@ -7,6 +7,7 @@ class El {
   constructor(attrs = {}) { this.listeners = {}; this.textContent = ''; this.hidden = false; this.disabled = false; this.open = false; this.children = []; Object.assign(this, attrs); }
   addEventListener(type, fn) { (this.listeners[type] ||= []).push(fn); }
   async fire(type) { for (const fn of this.listeners[type] || []) await fn({type}); }
+  appendChild(el) { this.children.push(el); }
   contains(el) { return el === this || this.children.includes(el); }
   focus() { this.focused = true; }
   select() { this.selected = true; }
@@ -65,7 +66,10 @@ function load({clipboard, execCommand, wide = false} = {}) {
 
   // A clipboard that refuses falls through to the selection copy as well.
   ({B, env} = load({clipboard: {writeText: async () => { throw new Error('denied'); }}, execCommand: () => true}));
-  p = page(); B.wire(p.section, env); await p.sheetButton.fire('click');
+  p = page(); p.sheet.showModal(); B.wire(p.section, env); await p.sheetButton.fire('click');
+  assert.ok(p.sheet.contains(p.sheet.children.at(-1)), 'fallback is inside the modal');
+  assert.equal(p.sheet.children.at(-1).value, GENERATED);
+  assert.equal(env.document.body.appended.length, 0);
   assert.equal(p.sheetStatus.textContent, 'Copied');
 
   // Neither works: Copy failed in the preview, which opens with the text selected so it can be copied by hand.

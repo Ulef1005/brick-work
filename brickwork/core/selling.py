@@ -80,16 +80,18 @@ def _line_view(line, display):
                 amount=None if line['shown'] is None else money(line['shown'], display, fixed=True), count=line['missing'] if line['missing'] > 1 else None)
 
 
-def _pills(c, state, incomplete):
+def _pills(c, state, incomplete, checked, damaged):
     pills = []
     if c['condition'] in ('new', 'used'):
         pills.append(dict(text=c['condition'].capitalize(), tone=''))
     if c['completeness'] == 'sealed':
         pills.append(dict(text='Sealed', tone=''))
-    elif state == 'unchecked':
+    elif not checked:
         pills.append(dict(text='Not checked', tone='unknown'))
     elif incomplete:
         pills.append(dict(text='Incomplete', tone='warning'))
+    elif damaged:
+        pills.append(dict(text=f'Complete, {damaged} damaged', tone='warning'))
     elif state == 'filled':
         pills.append(dict(text='Complete', tone='success'))
     return pills
@@ -138,7 +140,20 @@ def card(db, copy_id, stamp=None):
         out['ask'].update(age=short_age((quote['observed_at'] or '')[:10]), stale=bool(quote['stale']))
     checked = c['id'] in deductions.checked(db, [c])
     total, short, figures, figures_short = _count(db, copy_id)
-    sums, lines, asking, after = None, [], None, None
+    raw = deductions.lines(db, [copy_id], stamp)[copy_id] if checked else dict(parts=[], figures=[])
+    lines = _named(db, raw['parts'] + raw['figures'])
+    damaged_lines = []
+    if checked:
+        damaged_lines.extend(dict(r, group='part') for r in db.execute('''SELECT item_id, color_id, sum(damaged) damaged FROM copy_part
+            WHERE copy_id=? AND retired_at IS NULL AND is_spare=0 AND copy_figure_id IS NULL
+            GROUP BY item_id, color_id HAVING sum(damaged)>0''', (copy_id,)))
+        damaged_lines.extend(dict(r, group='figure') for r in db.execute('''SELECT f.item_id, NULL AS color_id, sum(p.damaged) damaged
+            FROM copy_figure f JOIN copy_part p ON p.copy_figure_id=f.id
+            WHERE f.copy_id=? AND f.retired_at IS NULL AND p.retired_at IS NULL AND p.is_spare=0
+            GROUP BY f.item_id HAVING sum(p.damaged)>0''', (copy_id,)))
+    damaged_lines = _named(db, damaged_lines)
+    damaged = sum(l['damaged'] for l in damaged_lines)
+    sums, asking, after = None, None, None
     if average is not None:
         average = average['amount']
         if not checked:
@@ -146,7 +161,7 @@ def card(db, copy_id, stamp=None):
             asking = average
             out['ask']['title'] = f'{valuation.SOURCE_WORDS[wanted].split()[0]} average · not adjusted'
         else:
-            found = deductions.shown(deductions.lines(db, [copy_id], stamp)[copy_id], display, table)
+            found = deductions.shown(raw, display, table)
             if found is None:
                 out['state'], out['ask']['none'] = 'no_rate', 'needs a rate'
                 out['basis_note'] = 'A missing part is priced in a currency with no rate · add one in Settings'
@@ -162,12 +177,16 @@ def card(db, copy_id, stamp=None):
             if made and made['value'] is not None:                  # a value only with enough priced lines
                 converted = fx.convert(made['value'], made['currency'], display, table)
                 floor = _cents(converted['amount']) if converted else None
+                if converted is None:
+                    out['state'], out['ask']['none'] = 'no_rate', 'needs a rate'
+                    out['basis_note'] = 'The part-out value is in a currency with no rate · add one in Settings'
+                    asking = None
             out['floor'] = dict(label='Part-out value of what is present', amount=None if floor is None else money(floor, display, fixed=True), known=floor is not None)
         if floor is not None and after < floor:
             asking = floor
             out['floor'] = None
             out['note'] = f"Set to the part-out value: the deductions would take it to {money(after, display, fixed=True)}."
-        out['ask']['text'] = money(asking, display, fixed=True)
+        out['ask']['text'] = money(asking, display, fixed=True) if asking is not None else None
     if average is not None:
         out['rows'].append(dict(kind='plain', label=f'{valuation.SOURCE_WORDS[wanted].split()[0]} average for this condition', amount=money(average, display, fixed=True)))
     if sums is not None:
@@ -183,10 +202,10 @@ def card(db, copy_id, stamp=None):
             out['rows'].append(dict(kind='plain', label='After deductions', amount=money(after, display, fixed=True)))
         out['rows'].append(dict(kind='sum', label='Asking price · part-out value' if note else 'Asking price', amount=out['ask']['text']))
         out['coverage'] = _coverage(sums, lines)
-    out['pills'] = _pills(c, out['state'], bool(checked and (short or figures_short)))
+    out['pills'] = _pills(c, out['state'], bool(checked and (short or figures_short)), checked, damaged)
     out['copy_enabled'] = out['state'] in ('filled', 'unchecked')
     out['text'] = listing(dict(number=number, name=name, year=c['year'], condition=c['condition'], completeness=c['completeness'], checked=checked,
-                               total=total, short=short, figures=figures, figures_short=figures_short, lines=lines, flags=flags,
+                               total=total, short=short, figures=figures, figures_short=figures_short, lines=lines, damaged_lines=damaged_lines, damaged=damaged, flags=flags,
                                price=out['ask']['text'] if checked and out['state'] == 'filled' else None))
     return out
 
@@ -201,8 +220,8 @@ def listing(facts):
     if not sealed:
         if not facts['checked']:
             rows.append('Completeness: not checked')
-        elif not facts['short']:
-            rows.append(f'Completeness: complete, {pieces} pieces' if pieces else 'Completeness: complete')
+        elif not facts['short'] and not facts['figures_short']:
+            rows.append((f'Completeness: complete, {pieces} pieces' if pieces else 'Completeness: complete') + (f", {facts['damaged']} damaged" if facts.get('damaged') else ''))
         else:
             percent = min(99, int((Decimal(pieces - facts['short']) * 100 / Decimal(pieces)).quantize(Decimal(1), ROUND_HALF_UP))) if pieces else None
             rows.append(f"Completeness: {f'{percent}% complete, ' if percent is not None else ''}{pieces - facts['short']} of {pieces} pieces")
@@ -219,6 +238,8 @@ def listing(facts):
         gone = [(f"{l['missing']} " if l['missing'] > 1 else '') + l['title'] for l in facts['lines'] if l['group'] == 'figure']
         if gone:
             rows.append('  Missing: ' + ', '.join(gone))
+    if facts.get('damaged_lines'):
+        rows.append('Damaged: ' + ', '.join(f"{l['damaged']} {_name(l)}" for l in facts['damaged_lines']))
     rows.append('Box: ' + ('yes' if 'Box present' in facts['flags'] else 'no'))
     rows.append('Instructions: ' + ('yes' if 'Instructions present' in facts['flags'] else 'no'))
     if facts['price']:

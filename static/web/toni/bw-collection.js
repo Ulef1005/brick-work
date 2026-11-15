@@ -200,7 +200,7 @@
     e.preventDefault();const group=form.closest('[data-bc-save-group]')||form;
     if(group.dataset.bcSaving==='true')return;
     group.dataset.bcSaving='true';
-    const buttons=[...group.querySelectorAll('button')].map(button=>({button,disabled:button.disabled})),status=form.querySelector('[data-bc-form-message]');buttons.forEach(({button})=>button.disabled=true);
+    const outside=form.id?[...document.querySelectorAll(`button[form="${form.id}"]`)]:[],buttons=[...new Set([...group.querySelectorAll('button'),...outside])].map(button=>({button,disabled:button.disabled})),status=form.querySelector('[data-bc-form-message]')||(form.id?document.querySelector(`[data-bc-for="${form.id}"]`):null);buttons.forEach(({button})=>button.disabled=true);
     if(status)status.textContent='Saving';
     try {
       const action=form.dataset.bcAction,identity=JSON.parse(form.dataset.identity||'{}');
@@ -208,6 +208,7 @@
       if(action==='photo') {data=new FormData(form);Object.entries(identity).forEach(([k,v])=>data.append(k,v));}
       else {
         const values=Object.fromEntries(new FormData(form));
+        const newPhoto=values.new_photo,newPhotoCaption=values.new_photo_caption||'';delete values.new_photo;delete values.new_photo_caption;        // the photo goes up after the save, from the same button
         if(form.querySelector('[data-bc-flags]'))values.flags=[...form.querySelectorAll('[name=flags]:checked')].map(c=>c.value);
         data=action==='save'?{...identity,values}:{...identity,...values};
       }
@@ -216,6 +217,10 @@
         if(chosen.entity!=='stock'||!chosen.ids.length)throw new Error('Select loose stock for this lot');data.ids=chosen.ids;
       }
       const result=await send(action,data,action==='photo');
+      if(action==='save'&&newPhoto&&newPhoto.size){
+        const upload=new FormData();upload.append('entity',identity.entity);upload.append('identifier',(result.merged_ids||identity.ids)[0]);upload.append('photo',newPhoto);upload.append('caption',newPhotoCaption);
+        try {await send('photo',upload,true);}catch(error){if(status)status.textContent='Saved, but the photo was not added: '+error.message+' · Press Save to try the photo again';return;}
+      }
       if(action==='archive'){stamp(root.dataset.backUrl||location.pathname);location.href=root.dataset.backUrl||location.pathname;}
       else if(result.url)location.href=result.url;
       else location.reload();

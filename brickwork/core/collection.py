@@ -17,7 +17,7 @@ from urllib.parse import quote, urlencode
 
 from . import add, stock, collection_prices, errors, items, pictures
 from . import undo as undoing
-from .currency import configured_currency
+from .currency import configured_currency, display_currency
 from .admin import audit, origin
 from .completeness import derived_state
 from .sources.base import now
@@ -55,7 +55,7 @@ def options(db, *, include_wishlists=False):
                 places=[dict(r) for r in db.execute('SELECT * FROM place WHERE archived_at IS NULL ORDER BY name,id')],
                 lots=[dict(r) for r in db.execute('SELECT * FROM lot WHERE archived_at IS NULL ORDER BY name,id')],
                 flags=[dict(r) for r in db.execute('SELECT * FROM flag WHERE archived_at IS NULL ORDER BY kind,name,id')],
-                colours=colours(db))
+                colours=colours(db), currency=display_currency(db))        # the currency a price saved without one takes (Settings: Display currency)
     if include_wishlists:
         result['wishlists'] = [dict(r) for r in db.execute('SELECT * FROM wishlist WHERE archived_at IS NULL ORDER BY sort,name,id')]
     return result
@@ -1100,7 +1100,7 @@ def _currency(value):
 
 def _pairs(db, edits, old):
     """Money is decimal text with its currency, both or neither (design 2.4 invariant 12): clearing a price clears its currency, a price
-    with no currency takes the one the rows share, else the configured one, and a currency alone needs a price already there."""
+    with no currency takes the one the rows share, else the display currency for a purchase price (Settings, #394) and the configured BrickLink one for an estimate, and a currency alone needs a price already there."""
     for price, currency in PAIRS:
         if price not in edits and currency not in edits:
             continue
@@ -1113,7 +1113,7 @@ def _pairs(db, edits, old):
             else:
                 edits[price] = _price(edits[price], MAXIMA.get(price, 'price'))
                 shared = {r[currency] for r in old}
-                edits[currency] = named or (shared.pop() if len(shared) == 1 and None not in shared else configured_currency(db))
+                edits[currency] = named or (shared.pop() if len(shared) == 1 and None not in shared else (display_currency(db) if currency == 'purchase_currency' else configured_currency(db)))
         elif named is None:
             raise ValueError('Enter a price or clear the currency')
         elif any(r[price] is None for r in old):

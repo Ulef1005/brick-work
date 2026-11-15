@@ -615,3 +615,18 @@ def test_a_checker_event_can_be_undone_through_the_same_call(world, coll, client
     event = checker.session(db, w.copy_a)['undo'][-1]
     assert post(client, token, 'undo', event_id=event).status_code == 200
     assert db.execute('SELECT missing FROM copy_part WHERE id=?', (part['id'],)).fetchone()[0] == part['missing']
+
+
+def test_a_price_paid_without_a_currency_takes_the_display_currency_and_the_sheet_says_so(world, coll, client):
+    """#394: the empty Currency box is the Settings display currency (placeholder), the purchase date is a date picker, an estimate keeps the BrickLink currency."""
+    token = csrf(client)
+    w = world
+    coll.setting('display_currency', 'CHF')
+    coll.setting('bricklink_currency', 'GBP')
+    r = post(client, token, 'save', entity='copy', ids=[w.copy_a], values=dict(purchase_price='20', purchase_currency='', current_value='3'))
+    assert r.status_code == 200, r.json
+    row = coll.db.execute('SELECT purchase_currency, current_value_currency FROM copy WHERE id=?', (w.copy_a,)).fetchone()
+    assert tuple(row) == ('CHF', 'GBP')
+    soup = BeautifulSoup(client.get(item_url(w, copy=w.copy_a)).text, 'html.parser')
+    assert soup.select_one('#bc-edit [name=purchase_date]')['type'] == 'date'
+    assert soup.select_one('#bc-edit [name=purchase_currency]')['placeholder'] == 'CHF'

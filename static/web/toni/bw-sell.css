@@ -1,0 +1,56 @@
+/* #53 Sell this copy: the card on a set's detail and the listing text preview (frames i53). Tokens only; the preview is the Edit sheet's `.bc-sheet`
+   (a side panel from 1024, a sheet below). `main label` and `#bw-collection label` carry rules made for forms, so the text field resets them. */
+#bw-collection .bc-sell { display:flex;flex-direction:column;gap:16px; }
+#bw-collection .bc-sell-pills { display:flex;gap:8px;flex-wrap:wrap;margin-top:-6px; }
+#bw-collection .bc-sell-pill { display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:999px;background:var(--tw-bg);color:var(--tw-text);font:500 12px var(--tw-font); }
+#bw-collection .bc-sell-pill i { width:7px;height:7px;border-radius:50%;background:var(--tw-text-muted); }
+#bw-collection .bc-sell-warning { background:var(--tw-warning-soft); }
+#bw-collection .bc-sell-warning i { background:var(--tw-warning); }
+#bw-collection .bc-sell-success { background:var(--tw-success-soft); }
+#bw-collection .bc-sell-success i { background:var(--tw-success); }
+#bw-collection .bc-sell-unknown { background:transparent;border:1px dashed var(--tw-divider-strong); }
+#bw-collection .bc-sell-ask { display:flex;flex-direction:column;gap:2px; }
+#bw-collection .bc-sell-asklabel { font:600 15px/20px var(--tw-font);color:var(--tw-text); }
+#bw-collection .bc-sell-price { font:500 34px/42px var(--tw-mono);font-variant-numeric:tabular-nums;color:var(--tw-text); }
+#bw-collection .bc-sell-price b { font-weight:500; }
+#bw-collection .bc-sell-price small { font:400 12px var(--tw-mono);color:var(--tw-text-muted); }
+#bw-collection .bc-sell-price em { font:600 12px var(--tw-mono);font-style:normal;color:var(--tw-text); }
+#bw-collection .bc-sell-none { font:400 22px/42px var(--tw-mono);color:var(--tw-text-muted); }
+#bw-collection .bc-sell-basis { font:400 12px/16px var(--tw-font);color:var(--tw-text-muted); }
+#bw-collection .bc-sell-basis.mono { font-family:var(--tw-mono); }
+#bw-collection .bc-sell-calc { display:flex;flex-direction:column; }
+#bw-collection .bc-sell-row,#bw-collection .bc-sell-dis>summary { display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:44px;margin:0;padding:0;border:0;border-top:.5px solid var(--tw-divider);border-radius:0;background:none;font:400 14px/18px var(--tw-font);color:var(--tw-text-2); }
+#bw-collection .bc-sell-dis { border:0;background:none;padding:0; }
+#bw-collection .bc-sell-dis>summary { cursor:pointer;justify-content:space-between;gap:12px;color:var(--tw-text); }
+#bw-collection .bc-sell-dis>summary .bc-sell-rowlabel { flex:1;min-width:0; }
+#bw-collection .bc-sell-amount { font:400 14px var(--tw-mono);font-variant-numeric:tabular-nums;color:var(--tw-text);white-space:nowrap;text-align:right; }
+#bw-collection .bc-sell-sum { border-top:.5px solid var(--tw-text-2);font-weight:600;color:var(--tw-text); }
+#bw-collection .bc-sell-sum .bc-sell-amount { font-weight:600; }
+#bw-collection .bc-sell-dis>.bc-sell-lines { display:flex;flex-direction:column;gap:4px;margin:0;padding:2px 0 10px 20px;border:0; }
+#bw-collection .bc-sell-line { display:flex;align-items:center;gap:8px;min-height:32px;font:400 13px/18px var(--tw-font);color:var(--tw-text); }
+#bw-collection .bc-sell-unpriced { border:1px dashed var(--tw-divider-strong);border-radius:8px;padding:4px 8px;margin-left:-8px; }
+#bw-collection .bc-sell-chip { flex:none;height:22px;padding:0 8px;border-radius:6px;background:var(--tw-surface-2);color:var(--tw-text);font:500 12px/22px var(--tw-font);white-space:nowrap; }
+#bw-collection .bc-sell-name { flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+#bw-collection .bc-sell-number { font:400 12px var(--tw-mono);color:var(--tw-text-muted);white-space:nowrap; }
+#bw-collection .bc-sell-quote { font:400 13px var(--tw-mono);font-variant-numeric:tabular-nums;min-width:48px;text-align:right; }
+#bw-collection .bc-sell-evidence { flex:none;border-radius:999px;padding:0 8px;background:var(--tw-warning-soft);color:var(--tw-text);font:500 12px/20px var(--tw-font); }
+#bw-collection .bc-sell-fine { margin:0;font:400 13px/18px var(--tw-font);color:var(--tw-text-muted); }
+#bw-collection .bc-sell-msg { margin:0;font:400 14px/20px var(--tw-font);color:var(--tw-text-2); }
+#bw-collection .bc-sell-msg b { font-weight:600;color:var(--tw-text); }
+#bw-collection .bc-sell-link { display:flex;align-items:center;min-height:44px;margin:-8px 0;color:var(--tw-accent-text);font:500 14px var(--tw-font); }
+#bw-collection .bc-sell-copy { display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:44px;min-height:44px;border-radius:10px;font:600 15px var(--tw-font); }
+#bw-collection .bc-sell-copy[disabled] { border-color:var(--tw-divider-strong);color:var(--tw-text-muted);cursor:not-allowed; }
+#bw-collection .bc-sell-status { margin:-8px 0 0;min-height:0;font:500 13px/18px var(--tw-font);color:var(--tw-text-2); }
+#bw-collection .bc-sell-status:empty { display:none; }
+#bw-collection .bc-sell-hidden { position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap; }
+/* the preview: a plain-text block you can edit; the label rules of forms do not apply to it */
+#bw-collection .bc-sell-sheet-body { display:flex;flex-direction:column;gap:14px; }
+#bw-collection .bc-sell-sheet .bc-sell-field { display:block;min-height:0;gap:0;font:inherit;letter-spacing:normal;text-transform:none; }
+#bw-collection .bc-sell-text { display:block;box-sizing:border-box;width:100%;min-height:260px;padding:12px;border:.5px solid var(--tw-divider-strong);border-radius:10px;background:var(--tw-surface);color:var(--tw-text);font:400 12px/18px var(--tw-mono);white-space:pre-wrap;resize:vertical; }
+#bw-collection .bc-sell-reset { min-height:44px;padding:0 4px;border:0;background:none;color:var(--tw-accent-text);font:500 13px var(--tw-font); }
+#bw-collection .bc-sell-foot { display:flex;gap:12px;justify-content:space-between; }
+#bw-collection .bc-sell-foot button { flex:1; }
+@media(max-width:767px) {
+  #bw-collection .bc-sell-copy { height:56px;min-height:56px;font-size:16px; }
+  #bw-collection .bc-sell-sheet { padding:16px 20px max(24px,env(safe-area-inset-bottom)); }
+}

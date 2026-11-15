@@ -1,7 +1,7 @@
 {# The section pattern of the part lists that are not the set page (#315): the order list, the print list and the pull list.
    One rule groups the rows (`core/part_groups.py`); this file draws them. Use `{% call section(...) %}rows{% endcall %}` for a section you can open and close:
    a <details>, so it works without JavaScript, and `bw-part-sections.js` adds Expand all / Collapse all and remembers each choice in the browser.
-   The print list has no chevron and draws `heading(...)` inside its table instead. #}
+   The print list has no chevron and draws its section heading rows (`.pr-sec-row`) inside its own table instead. #}
 {% macro lines(n) %}{{ n }} {{ 'line' if n==1 else 'lines' }}{% endmacro %}
 {% macro pieces(n) %}{{ n }} {{ 'piece' if n==1 else 'pieces' }}{% endmacro %}
 {% macro meta(group) %}{{ lines(group.lines) }} · {{ pieces(group.pieces) }}{% endmacro %}

@@ -42,6 +42,8 @@ flip(server.sections[2]);assert.deepEqual(page({stored:server.stored,open:[true,
 // a link to a line inside a closed section opens that section, without remembering it
 const linked=page({open:[false,false,false],hash:'#l-1-0'});assert.deepEqual(linked.sections.map(x=>x.s.open),[false,true,false]);
 assert.equal(linked.stored.size,0);
+// a hash that does not parse (a hand-edited or bookmarked link) never stops the tools from showing
+const broken=page({open:[true,true,true],hash:'#100%'});assert.equal(broken.actions.hidden,false);assert.ok(broken.sections.every(x=>x.s.open));
 // a browser that keeps nothing still toggles and expands
 const blocked=page({blocked:true});flip(blocked.sections[0]);assert.equal(blocked.sections[0].s.open,false);blocked.expand.click();assert.ok(blocked.sections.every(x=>x.s.open));
 // no sections: nothing to show

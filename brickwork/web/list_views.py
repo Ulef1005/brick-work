@@ -42,10 +42,11 @@ def bw_list_print(kind):
     error, rows, copies, grouping = None, [], [], 'none'
     try:
         rows, copies, grouping = _rows(kind, grouped=True)
+        from ..core import part_groups
+        outside, found = part_groups.sections(rows, grouping)
     except (ValueError, sqlite3.Error) as exc:
         error = public(exc, 'Brick Work database is not available · try again')
-    from ..core import part_groups
-    outside, found = part_groups.sections(rows, grouping)
+        outside, found = [], []
     pictures = request.args.get('pictures', '1') != '0'
     from .ui import passthrough_args
     args = passthrough_args('kind')

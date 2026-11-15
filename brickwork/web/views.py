@@ -2356,7 +2356,7 @@ def bw_planning_order():
             settings=planning.configuration(db)
             order_missing.split(db,order,prefer=choice['prefer'],chosen=choice['src'],config=settings)
             grouping=part_groups.mode(db)
-            part_groups.annotate(db,order['lines'],grouping,is_part=lambda line: line.get('item_type')!='M')          # #315: a whole figure stays outside the sections
+            part_groups.annotate(db,order['lines'],grouping,is_part=lambda line: line.get('item_type')=='P')          # #315: a whole figure stays outside the sections
     except (ValueError,sqlite3.Error,OSError) as exc:
         error=public(exc, 'Brick Work database is not available. Check BW_DB_PATH and try again.');choice=bw_order_choice([],request.args)
     base={k:v for k,v in dict(q=choice['q'],theme=choice['theme'],sort=choice['sort'] if choice['sort']!='missing' else '',

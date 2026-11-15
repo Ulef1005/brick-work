@@ -19,7 +19,8 @@
           write(scope, memory);
         });
       });
-      const target = location.hash.length > 1 ? scope.querySelector('[id="' + decodeURIComponent(location.hash.slice(1)).replace(/"/g, '') + '"]') : null;
+      let target = null;
+      try { target = location.hash.length > 1 ? scope.querySelector('[id="' + decodeURIComponent(location.hash.slice(1)).replace(/["\\]/g, '') + '"]') : null; } catch (error) { target = null; }       // a hand-edited or bookmarked hash may not parse
       const holder = target && target.closest('[data-bw-section]');
       if (holder) holder.open = true;
       const actions = scope.querySelector('[data-bw-sections-actions]') || (scope.parentElement && scope.parentElement.querySelector('[data-bw-sections-actions]'));

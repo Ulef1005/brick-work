@@ -1045,7 +1045,6 @@ main .key-need a:not(.button) { min-height:44px;display:inline-flex;align-items:
 @media(max-width:1023px) {
   #bw-collection [data-bc-pl-editing] .bc-inventory-row[data-bc-pl-row]>a:first-of-type { flex:1 0 calc(100% - 124px); }
   #bw-collection [data-bc-pl-editing] .bc-missing-card[data-bc-pl-row]>a:first-of-type { flex:1 0 calc(100% - 68px); }
-  #bw-collection [data-bc-pl-editing] .bc-missing-card[data-bc-pl-row]>:not(.bc-picture):not(a) { order:1; }
   #bw-collection .bc-missing-card>.bc-found { flex-direction:row;flex-wrap:wrap;gap:8px; }
   #bw-collection .bc-missing-card>.bc-found [data-bc-found-message] { flex-basis:100%; }
 }

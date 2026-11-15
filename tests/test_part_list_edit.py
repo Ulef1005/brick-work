@@ -254,7 +254,8 @@ def test_edit_tick_preserves_picture_and_receipt_is_outside_tabs(coll, copy, cli
     for row in page.select('[data-bc-pl-row]'):
         children = row.find_all(recursive=False)
         assert 'bc-picture' in children[0].get('class', [])
-        assert 'bc-pl-tick' in children[1].get('class', [])
+        assert children[1].name == 'a'
+        assert 'bc-pl-tick' in children[2].get('class', [])
     receipt = page.select_one('[data-bc-pl-receipt]')
     assert receipt.find_parent(attrs={'data-bc-tab-inventory': True}) is None
     assert receipt.parent == page.select_one('[data-bc-tab-inventory]').parent

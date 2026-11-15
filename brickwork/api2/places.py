@@ -136,7 +136,10 @@ def get_storages_labels_pdf(db):
     if layout == 'tape-62':
         raise ValueError('Choose an A4 label layout for PDF')
     found = labels.plan(db, args.get('ids', '').split(','), layout, request.host_url)
-    data, mime, name = labels.download(found)
+    try:
+        data, mime, name = labels.download(found)
+    except ImportError:
+        raise errors.LabelsUnavailable(labels.UNAVAILABLE_MESSAGE) from None
     return send_file(BytesIO(data), mimetype=mime, download_name=name, as_attachment=True)
 
 
@@ -151,6 +154,7 @@ def get_storages_labels_link(db):
     if layout == 'tape-62':
         raise ValueError('Choose an A4 label layout for PDF')
     found = labels.plan(db, args.get('ids', '').split(','), layout, request.host_url)
+    labels.qr_module()
     query = urlencode(dict(ids=','.join(r['id'] for r in found['storages']), layout=layout))
     return respond(dict(url=request.host_url.rstrip('/') + '/api/v2/storages/labels.pdf?' + query,
                         labels=len(found['storages']), sheets=found['pages']))

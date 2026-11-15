@@ -270,6 +270,8 @@ def bw_admin_write(page):
             from ..core.admin import database
             with database(admin_ops.brickwork_path(), require_catalogue=False) as db:
                 saved = labels.save_address(db, request.form.get('labels_address', ''))
+            if saved is None:
+                flash('Nothing changed', 'success')
             return redirect(url_for('web.bw_admin', page='settings', saved=saved) + '#labels-address')
         elif page == 'settings' and request.form.get('action') == 'pictures':
             if not bw_collection_editable():
@@ -1600,7 +1602,7 @@ def bw_storage_labels(output):
     from flask import send_file
     from .admin_ops import brickwork_path
     from ..core.admin import database
-    from ..core import labels
+    from ..core import labels, errors
     if output not in ('plan', 'preview.png', 'download'):
         abort(404)
     try:
@@ -1617,10 +1619,10 @@ def bw_storage_labels(output):
         else:
             data, mime, name = labels.download(found)
             response = send_file(BytesIO(data), mimetype=mime, download_name=name, as_attachment=True)
+    except (ImportError, errors.LabelsUnavailable):
+        return jsonify(message=labels.UNAVAILABLE_MESSAGE), 503
     except (ValueError, sqlite3.Error) as exc:
         return jsonify(message=public(exc, 'Labels are unavailable')), 400
-    except ImportError:
-        return jsonify(message='The PDF was not made. Nothing was changed. Retry makes it again.'), 503
     response.headers['Cache-Control'] = 'no-store'
     return response
 

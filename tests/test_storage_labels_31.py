@@ -275,3 +275,41 @@ def test_undo_of_pre_upgrade_storage_edit_keeps_backfilled_identity(tmp_path):
         ledger.undo(db,event)
         row=db.execute('SELECT name,note,short_id FROM storage WHERE id=\'a\'').fetchone()
         assert tuple(row)==('Box 3',None,'S-0001')
+
+
+def test_missing_segno_all_transports(client, app4, v2, coll, pair, monkeypatch):
+    import sys
+    from brickwork.core.mcp import Adapter
+    from brickwork.core.mcp.client import InProcessClient
+    identifier, _ = ledger.storage_save(coll.db, None, 'Box 9')
+    monkeypatch.setitem(sys.modules, 'segno', None)
+    token = stored_token(pair, ['read'])
+    query = '?ids=' + identifier
+    for output in ('preview.png', 'download'):
+        response = client.get('/workbench/storage/labels/' + output + query)
+        assert response.status_code == 503
+        assert response.json['message'] == labels.UNAVAILABLE_MESSAGE
+    for path in ('/storages/labels.pdf', '/storages/labels'):
+        response = call(v2, path + query, token=token)
+        assert response.status_code == 503
+        assert response.json['detail'] == labels.UNAVAILABLE_MESSAGE
+    result = Adapter(InProcessClient(app4, token)).call_tool('storage_labels', dict(ids=identifier))
+    assert result.isError
+    assert 'Retry' in str(result)
+
+
+def test_unchanged_address_has_no_audit_or_undo_banner(client, coll):
+    assert labels.save_address(coll.db, '') is None
+    labels.save_address(coll.db, 'https://bricks.example')
+    before = coll.db.execute('SELECT count(*) FROM event').fetchone()[0]
+    assert labels.save_address(coll.db, ' https://bricks.example/ ') is None
+    assert coll.db.execute('SELECT count(*) FROM event').fetchone()[0] == before
+    with client.application.test_request_context():
+        from flask import url_for
+        target = url_for('web.bw_admin_write', page='settings')
+    response = client.post(target, data=dict(csrf_token=csrf(client), action='labels_address', labels_address='https://bricks.example/'))
+    assert 'saved=' not in response.location
+    page = client.get(response.location).text
+    assert 'Nothing changed' in page
+    assert 'Settings saved' not in page
+    assert coll.db.execute('SELECT count(*) FROM event').fetchone()[0] == before

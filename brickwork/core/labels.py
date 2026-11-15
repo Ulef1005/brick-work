@@ -75,6 +75,8 @@ def save_address(db, value):
     value = validate_address(value)
     with transaction(db):
         old = db.execute("SELECT value FROM main.setting WHERE key='labels_address'").fetchone()
+        if value == validate_address(old[0] if old and old[0] else ''):
+            return None
         db.execute("INSERT OR REPLACE INTO main.setting(key,value) VALUES('labels_address',?)", (value,))
         audit(db, 'settings', 'save', {'setting': {'labels_address': old[0] if old else None}, 'freshness': {}},
               {'setting': {'labels_address': value}, 'freshness': {}})
@@ -99,8 +101,20 @@ def plan(db, ids, layout, request_host):
     return dict(storages=rows, layout=layout, pages=math.ceil(len(rows) / LAYOUTS[layout].capacity), address=address(db, request_host))
 
 
+UNAVAILABLE_MESSAGE = 'The PDF was not made. Nothing was changed. Retry makes it again.'
+
+
+def qr_module():
+    from .errors import LabelsUnavailable
+    try:
+        import segno
+    except ImportError:
+        raise LabelsUnavailable(UNAVAILABLE_MESSAGE) from None
+    return segno
+
+
 def qr_matrix(payload):
-    import segno                         # optional until the image installs the pinned runtime dependency
+    segno = qr_module()
     return tuple(tuple(row) for row in segno.make(payload, error='m', micro=False, boost_error=False).matrix)
 
 

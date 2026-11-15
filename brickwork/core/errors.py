@@ -12,7 +12,7 @@ HTTP_STATUS = MappingProxyType({
     'source_not_configured': 424, 'source_disabled': 424, 'catalogue_not_loaded': 424,
     'idempotency_key_required': 428, 'budget_exhausted': 429, 'source_throttled': 429, 'too_many_attempts': 429,
     'source_error': 502, 'not_set_up': 503, 'api_disabled': 503,
-    'db_unavailable': 503, 'internal_error': 500, 'not_implemented': 501,
+    'labels_unavailable': 503, 'db_unavailable': 503, 'internal_error': 500, 'not_implemented': 501,
 })
 
 

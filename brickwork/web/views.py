@@ -2132,7 +2132,11 @@ def bw_collection_write(action):
     try:
         with database(brickwork_path()) as db:
             if action in ('save','archive'):
-                event=collection.save(db,data.get('entity'),data.get('ids'),data.get('values',{}),archive=action=='archive')
+                photo_edits=collection.check_photo_edits(db,data.get('entity'),data.get('ids'),data.get('photo_captions'),data.get('remove_photos')) if action=='save' else ({},[])
+                event=collection.save(db,data.get('entity'),data.get('ids'),data.get('values',{}),archive=action=='archive',create_system_flags=True)
+                if photo_edits[0] or photo_edits[1]:
+                    also=collection.apply_photo_edits(db,*photo_edits)       # the sheet's caption edits and removals go with its Save; Undo takes them back too
+                    if also: result['also']=also
                 message='Set deleted' if action=='archive' and data.get('entity')=='copy' else ('Archived' if action=='archive' else 'Saved')
                 if action=='save' and data.get('entity')=='stock':
                     merged = collection.merge_result(db,event)

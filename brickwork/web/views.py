@@ -2132,7 +2132,11 @@ def bw_collection_write(action):
     try:
         with database(brickwork_path()) as db:
             if action in ('save','archive'):
-                event=collection.save(db,data.get('entity'),data.get('ids'),data.get('values',{}),archive=action=='archive')
+                if action=='save':
+                    event,also=collection.save_with_photos(db,data.get('entity'),data.get('ids'),data.get('values',{}),data.get('photo_captions'),data.get('remove_photos'),create_system_flags=True)       # one transaction: the details and the photo edits, or nothing
+                    if also: result['also']=also                       # Undo takes them back too, last first
+                else:
+                    event=collection.save(db,data.get('entity'),data.get('ids'),data.get('values',{}),archive=True)
                 message='Set deleted' if action=='archive' and data.get('entity')=='copy' else ('Archived' if action=='archive' else 'Saved')
                 if action=='save' and data.get('entity')=='stock':
                     merged = collection.merge_result(db,event)

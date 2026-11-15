@@ -172,7 +172,7 @@
    "path": "/collection/item/set/7286-1?copy=56325b99-16bc-549b-bb98-f7be2ab38829",
    "script": "document.querySelector(\".bc-info-edit\").click();await new Promise(r=>setTimeout(r,300));",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "12-Minifigure-detail",

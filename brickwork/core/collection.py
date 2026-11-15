@@ -18,7 +18,7 @@ from urllib.parse import quote, urlencode
 from . import add, stock, collection_prices, errors, items, pictures
 from . import undo as undoing
 from .currency import configured_currency, display_currency
-from .admin import audit, origin
+from .admin import SYSTEM_FLAGS, audit, origin
 from .completeness import derived_state
 from .sources.base import now
 from ..store4 import copies as store_copies, identity, part_list_read
@@ -55,13 +55,32 @@ def options(db, *, include_wishlists=False):
                 places=[dict(r) for r in db.execute('SELECT * FROM place WHERE archived_at IS NULL ORDER BY name,id')],
                 lots=[dict(r) for r in db.execute('SELECT * FROM lot WHERE archived_at IS NULL ORDER BY name,id')],
                 flags=[dict(r) for r in db.execute('SELECT * FROM flag WHERE archived_at IS NULL ORDER BY kind,name,id')],
-                colours=colours(db), currency=display_currency(db))        # the currency a price saved without one takes (Settings: Display currency)
+                colours=colours(db), currency=display_currency(db),        # the currency a price saved without one takes (Settings: Display currency)
+                estimate_currency=configured_currency(db))                 # ... and the one an estimate saved without one takes (the BrickLink currency)
+    result['system_flags'] = system_flags(result['flags'])               # the sheet's three switches: each flag's id, or None while the collection has not made it yet
     if include_wishlists:
         result['wishlists'] = [dict(r) for r in db.execute('SELECT * FROM wishlist WHERE archived_at IS NULL ORDER BY sort,name,id')]
     return result
 
 
 # ---------- identity on screen ----------
+
+def _same_system_name(name, other):
+    """Whether a status flag called `other` is the system flag `name`: "Set is checked" by its exact name, as the checker and the set page read it;
+    the other two without regard to case, as `workbench.flag` reads them."""
+    return other == name if name == 'Set is checked' else other.lower() == name.lower()
+
+
+def system_flags(flags):
+    """The three system status flags the app itself reads, in the sheet's order: `[dict(name, id)]`, `id` None until the flag exists. Picks from
+    the live `flags` list `options` already read, so the sheet costs no query. The match is the workbench's (`workbench.flag`): the name without
+    regard to case, and only when exactly one live status flag has it."""
+    found = []
+    for name in SYSTEM_FLAGS:
+        matches = [f['id'] for f in flags if f['kind'] == 'status' and _same_system_name(name, f['name'])]
+        found.append(dict(name=name, id=matches[0] if len(matches) == 1 else None))
+    return found
+
 
 def priorities(db):
     """The whole `source_priority` setting (metadata, market price and picture orders), read once by a screen."""
@@ -1046,6 +1065,8 @@ CONDITIONS = {'copy': (None, 'new', 'used'), 'stock': (None, 'new', 'used', 'dam
 PAIRS = (('purchase_price', 'purchase_currency'), ('current_value', 'current_value_currency'), ('max_price', 'max_price_currency'),
          ('max_price_boxed', 'max_price_boxed_currency'))
 MAXIMA = {'max_price': 'max price', 'max_price_boxed': 'max price with box'}   # a wish's limits: their own words in a refusal
+SYSTEM_PREFIX = 'system:'                                      # a flag entry for a system flag the collection may not have made yet
+MAX_CAPTION = 200
 STAMPED = ('copy', 'stock', 'wish', 'lot')                      # tables with `updated_at`
 
 
@@ -1120,12 +1141,13 @@ def _pairs(db, edits, old):
             edits[currency] = named
 
 
-def save(db, entity, ids, data, *, archive=False):
+def save(db, entity, ids, data, *, archive=False, create_system_flags=False):
     """Edit or archive collection rows (copies, loose stock, wishes, lots), with their flags, under one receipt. Returns the event id.
 
     `data` holds the column values to set (an empty string clears a column) and, for one row, `flags` (the flag ids the row should
     have among the live flags; links to archived flags are left alone). Stock that ends up with another live row's merge key merges into
-    it (`stock.plan_edit`), and the receipt keeps both rows."""
+    it (`stock.plan_edit`), and the receipt keeps both rows. With `create_system_flags` (the web sheet) a flag entry `system:<name>` stands for
+    the system status flag of that name, made in the same transaction when the collection has none yet (a system flag cannot be archived, so Undo drops the link and leaves the flag)."""
     table = entity if entity in FIELDS else None
     if not table or not isinstance(ids, list) or not ids or len(ids) > 2000 or len(set(ids)) != len(ids):
         raise ValueError('Choose collection instances')
@@ -1169,7 +1191,8 @@ def save(db, entity, ids, data, *, archive=False):
         if 'flags' in data:
             if table not in ENTITY_FLAGS or len(ids) != 1 or not isinstance(data['flags'], list):
                 raise ValueError('Edit flags on one instance')
-            flag_change = _set_flags(db, table, str(ids[0]), set(data['flags']))
+            wanted = _system_flags_made(db, data['flags']) if create_system_flags else data['flags']
+            flag_change = _set_flags(db, table, str(ids[0]), set(wanted))
         stamp = stamp_now()
         written = dict(edits)
         if archive:
@@ -1230,6 +1253,32 @@ def _check_wish_edits(db, ids, old, edits):
             raise errors.Conflict('Selected wishes repeat an item and colour')
         for row in old:
             wish_collision(db, 'wish', dict(row, **{k: v for k, v in edits.items() if k in ('wishlist_id', 'color_id')}))
+
+
+def _system_flags_made(db, wanted):
+    """Swap each `system:<name>` entry of a flag list for the id of that system flag, making the flag (as `checker.checked_flag` does) when
+    it does not exist (a system flag cannot be archived, so Undo of the save drops the link and leaves the flag, as after a first check)."""
+    if not isinstance(wanted, list):
+        raise ValueError('Edit flags on one instance')
+    ids = []
+    for entry in wanted:
+        if isinstance(entry, str) and entry.startswith(SYSTEM_PREFIX):
+            name = entry[len(SYSTEM_PREFIX):]
+            if name not in SYSTEM_FLAGS:
+                raise ValueError('Unknown flag')
+            rows = db.execute("SELECT id, name FROM main.flag WHERE archived_at IS NULL AND kind='status' AND lower(name)=lower(?)", (name,)).fetchall()
+            rows = [r for r in rows if _same_system_name(name, r[1])]
+            if len(rows) > 1:                                 # the workbench ignores an ambiguous name too: another flag would not help
+                raise ValueError(f'Two status flags are called {name} · keep one')
+            if rows:
+                entry = rows[0][0]
+            else:
+                flag = dict(id=uuid4().hex, name=name, kind='status', shown_on_grid=1, system=1, created_at=stamp_now())
+                db.execute('INSERT INTO main.flag(id,name,kind,shown_on_grid,system,created_at) VALUES(:id,:name,:kind,:shown_on_grid,:system,:created_at)', flag)
+                audit(db, 'flag:' + flag['id'], 'record', None, flag)
+                entry = flag['id']
+        ids.append(entry)
+    return ids
 
 
 def _set_flags(db, table, owner, wanted):
@@ -1341,7 +1390,7 @@ def _put_back(db, pairs, stamp):
                 db.execute(f'UPDATE main.{table} SET ' + ','.join(f'{c}=?' for c in names) + ' WHERE id=?', (*[r[c] for c in names], r['id']))
 
 
-for _field in ('save', 'archive', 'restore', 'photo', 'caption'):
+for _field in ('save', 'archive', 'restore', 'photo', 'caption', 'remove_photo'):
     undoing.register('collection', _field, _undo_collection)
 
 
@@ -1415,6 +1464,63 @@ def caption(db, identifier, value):
             raise ValueError('Own photo is unavailable')
         db.execute('UPDATE main.photo SET caption=? WHERE id=?', (str(value).strip() or None, identifier))
         return receipt(db, [('photo', old, snapshot(db, 'photo', [identifier]))], 'caption')
+
+
+def remove_photo(db, identifier):
+    """Take an own photo off its copy or stock row: the row is archived, the file stays (it is the user's). Undo puts the row back."""
+    with transaction(db):
+        old = snapshot(db, 'photo', [identifier])
+        if not old or old[0]['archived_at']:
+            raise ValueError('Own photo is unavailable')
+        db.execute('UPDATE main.photo SET archived_at=? WHERE id=?', (stamp_now(), identifier))
+        return receipt(db, [('photo', old, snapshot(db, 'photo', [identifier]))], 'remove_photo')
+
+
+def check_photo_edits(db, entity, ids, captions, removals):
+    """The photo changes the edit sheet sends with its Save, checked before anything is written: every photo must belong to the rows being
+    saved, a caption at most 200 characters. A photo of those rows that is already removed is skipped, so a Save sent again after a lost
+    answer still saves. Returns `(captions, removals)` of what is left to write; a removed photo's caption is dropped."""
+    captions = {} if captions is None else captions
+    removals = [] if removals is None else removals
+    if not isinstance(captions, dict) or not isinstance(removals, list):
+        raise ValueError('Choose photos to change')
+    if not all(isinstance(r, str) for r in removals) or not all(isinstance(v, str) for v in captions.values()):
+        raise ValueError('Choose photos to change')
+    captions = {str(k): v.strip() for k, v in captions.items()}
+    removals = list(dict.fromkeys(removals))
+    wanted = set(captions) | set(removals)
+    if not wanted:
+        return {}, []
+    if entity not in ('copy', 'stock') or not isinstance(ids, list):
+        raise ValueError('Choose an owned instance')
+    held = {r[0]: r[1] is None for r in db.execute(f'SELECT id, archived_at FROM main.photo WHERE {entity}_id IN (SELECT value FROM json_each(?))', (json.dumps(ids),))}
+    if not wanted <= set(held):
+        raise ValueError('Own photo is unavailable')
+    removals = [k for k in removals if held[k]]
+    captions = {k: v for k, v in captions.items() if held[k] and k not in removals}
+    if any(len(v) > MAX_CAPTION for v in captions.values()):
+        raise ValueError(f'Keep a caption to {MAX_CAPTION} characters')
+    return captions, removals
+
+
+def save_with_photos(db, entity, ids, values, captions=None, removals=None, *, create_system_flags=False):
+    """The edit sheet's one Save, all or nothing: the details, then the caption edits and removals, in one transaction (the inner ones are
+    savepoints). Returns `(event id of the details, [event ids of the photo changes])`."""
+    with transaction(db):
+        edits = check_photo_edits(db, entity, ids, captions, removals)
+        event = save(db, entity, ids, values, create_system_flags=create_system_flags)
+        return event, apply_photo_edits(db, *edits)
+
+
+def apply_photo_edits(db, captions, removals):
+    """Write what `check_photo_edits` accepted: a caption event for each photo whose caption really changed, then a removal event for each
+    removed one. Returns the event ids in the order they were made (Undo takes them back in reverse)."""
+    made = []
+    for identifier, value in captions.items():
+        if (snapshot(db, 'photo', [identifier])[0]['caption'] or '') != value:
+            made.append(caption(db, identifier, value))
+    made.extend(remove_photo(db, identifier) for identifier in removals)
+    return made
 
 
 def new_lot(db, ids, data):

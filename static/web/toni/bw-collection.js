@@ -193,9 +193,11 @@
     const result=await response.json();if(!response.ok)throw new Error(result.message||'Not saved · try again');
     if(action!=='undo'&&!quiet)showReceipt(result);return result;
   }
-  undo?.addEventListener('click',async()=>{undo.disabled=true;try {for(const id of [...(receipt.also||[]),receipt.event_id])await send('undo',{event_id:id});sessionStorage.removeItem(receiptKey);message.textContent='Undone';location.reload();}catch(e){message.textContent=e.message;}finally{undo.disabled=false;}});
+  // Undo takes back the last thing the Save did first: the photo, then removals and captions, then the details.
+  undo?.addEventListener('click',async()=>{undo.disabled=true;try {for(const id of [...(receipt.also||[])].reverse().concat(receipt.event_id))await send('undo',{event_id:id});sessionStorage.removeItem(receiptKey);message.textContent='Undone';location.reload();}catch(e){message.textContent=e.message;}finally{undo.disabled=false;}});
   root.querySelectorAll('[data-bw-open]').forEach(b=>b.addEventListener('click',()=>{const dialog=document.getElementById(b.dataset.bwOpen);dialog?.showModal();if(/^[a-z_]+$/.test(b.dataset.bcFocus||'')){const field=dialog?.querySelector(`[name=${b.dataset.bcFocus}]`);const folded=field?.closest?.('details');if(folded)folded.open=true;field?.focus();}}));
   root.querySelectorAll('[data-bw-close]').forEach(b=>b.addEventListener('click',()=>b.closest('dialog')?.close()));
+  let carried=[];                           // events of Saves whose photo is still to be added, oldest first: a Save sent again must not make Undo forget them
   let photoRetry=null;                      // the details are saved and only the photo failed: Save again sends the photo alone, to the row the details ended in
   root.querySelectorAll('form[data-bc-action]').forEach(form=>form.addEventListener('submit',async e=>{
     e.preventDefault();const group=form.closest('[data-bc-save-group]')||form;
@@ -203,6 +205,8 @@
     group.dataset.bcSaving='true';
     const outside=form.id?[...document.querySelectorAll(`button[form="${form.id}"]`)]:[],buttons=[...new Set([...group.querySelectorAll('button'),...outside])].map(button=>({button,disabled:button.disabled})),status=form.querySelector('[data-bc-form-message]')||(form.id?document.querySelector(`[data-bc-for="${form.id}"]`):null);buttons.forEach(({button})=>button.disabled=true);
     if(status)status.textContent='Saving';
+    const banner=root.querySelector('[data-bc-photo-warning]');if(banner)banner.hidden=true;
+    const photoRows=form.id?[...root.querySelectorAll('[data-bc-photo-row]')].filter(r=>r.dataset.bcForm===form.id):[];      // the saved photos of this sheet: their captions and removals go with its Save
     try {
       const action=form.dataset.bcAction,identity=JSON.parse(form.dataset.identity||'{}');
       let data,newPhoto=null,newPhotoCaption='';
@@ -210,8 +214,18 @@
       else {
         const values=Object.fromEntries(new FormData(form));
         newPhoto=values.new_photo;newPhotoCaption=values.new_photo_caption||'';delete values.new_photo;delete values.new_photo_caption;        // the photo goes up after the save, from the same button
-        if(form.querySelector('[data-bc-flags]'))values.flags=[...form.querySelectorAll('[name=flags]:checked')].map(c=>c.value);
+        if(form.dataset.bcFlags!==undefined)values.flags=[...form.querySelectorAll('[name=flags]:checked')].map(c=>c.value);      // switches and the multi-select fields all post the flag ids that stay on
         data=action==='save'?{...identity,values}:{...identity,...values};
+        if(action==='save'&&photoRows.length) {
+          const captions={},removals=[];
+          photoRows.forEach(r=>{
+            const input=r.querySelector('[data-bc-photo-caption]'),remove=r.querySelector('[data-bc-photo-remove]');
+            if(remove&&remove.getAttribute('aria-pressed')==='true')removals.push(r.dataset.photoId);
+            else if(input&&input.value.trim()!==(input.dataset.initial||'').trim())captions[r.dataset.photoId]=input.value;
+          });
+          if(Object.keys(captions).length)data.photo_captions=captions;
+          if(removals.length)data.remove_photos=removals;
+        }
       }
       if(action==='lot'){
         const chosen=mainSelection();
@@ -219,21 +233,71 @@
       }
       const retry=action==='save'&&photoRetry&&photoRetry.result.merged_ids&&newPhoto&&newPhoto.size?photoRetry:null;      // only a row that merged away cannot be saved again
       const result=retry?retry.result:await send(action,data,action==='photo');
+      if(action==='save'&&!retry) {        // the receipt undoes every attempt: event_id is the first save, `also` holds the rest oldest first, and Undo runs them last first
+        const chain=[...carried,result.event_id,...(result.also||[])];carried=chain;
+        receipt={...receipt,event_id:chain[0],also:chain.slice(1)};sessionStorage.setItem(receiptKey,JSON.stringify(receipt));
+      }
       if(action==='save'&&newPhoto&&newPhoto.size){
         const upload=new FormData();upload.append('entity',identity.entity);upload.append('identifier',retry?retry.id:(result.merged_ids||identity.ids)[0]);upload.append('photo',newPhoto);upload.append('caption',newPhotoCaption);
-        try {const added=await send('photo',upload,true,true);photoRetry=null;receipt={...receipt,also:[added.event_id]};sessionStorage.setItem(receiptKey,JSON.stringify(receipt));}      // quiet: the page keeps the details' save as its receipt, and Undo takes the photo back with it
-        catch(error){photoRetry={id:upload.get('identifier'),result};if(status)status.textContent='Details saved, but the photo was not added: '+error.message+' · Press Save to try the photo again';return;}
+        try {const added=await send('photo',upload,true,true);photoRetry=null;receipt={...receipt,also:[...((receipt&&receipt.also)||[]),added.event_id]};sessionStorage.setItem(receiptKey,JSON.stringify(receipt));}      // quiet: the page keeps the details' save as its receipt, and Undo takes the photo back with it
+        catch(error){
+          photoRetry={id:upload.get('identifier'),result};
+          photoRows.forEach(r=>{const input=r.querySelector('[data-bc-photo-caption]'),remove=r.querySelector('[data-bc-photo-remove]');   // those edits are saved: a second Save must not send them again
+            if(remove&&remove.getAttribute('aria-pressed')==='true')r.remove();else if(input)input.dataset.initial=input.value;});
+          photoSummary();
+          const text=banner?banner.querySelector('[data-bc-photo-warning-text]'):null;
+          if(banner&&text){banner.hidden=false;text.textContent=error.message+'. Press Save to try again: it saves the details again and sends the photo.';if(status)status.textContent='';}
+          else if(status)status.textContent='Details saved, but the photo was not added: '+error.message+' · Press Save to try the photo again';
+          return;
+        }
       }
+      carried=[];
       if(action==='archive'){stamp(root.dataset.backUrl||location.pathname);location.href=root.dataset.backUrl||location.pathname;}
       else if(result.url)location.href=result.url;
       else location.reload();
     }catch(error){if(status)status.textContent=error.message+' · Try again';}
     finally{buttons.forEach(({button,disabled})=>button.disabled=disabled);delete group.dataset.bcSaving;}
   }));
-  root.querySelectorAll('[data-bc-photo-file]').forEach(input=>input.addEventListener('change',()=>{
-    const name=input.closest('.bc-photo-picker')?.querySelector('[data-bc-photo-name]');
-    if(name)name.textContent=input.files?.[0]?.name||'No file chosen';
+  // The Photos section of the edit sheet: the chosen photo is a row with a preview until Save sends it, a saved photo's x marks it for removal.
+  function photoSummary() {
+    const count=root.querySelector('[data-bc-photo-count]'),pending=root.querySelector('[data-bc-photo-pending]'),empty=root.querySelector('[data-bc-photo-empty]');
+    const saved=root.querySelectorAll('[data-bc-photo-row]').length,added=pending&&!pending.hidden?1:0;
+    if(count)count.textContent=[saved?saved+' saved':'',added?added+' new':''].filter(Boolean).join(' · ')||'none yet';
+    if(empty)empty.hidden=added>0;
+  }
+  root.querySelectorAll('[data-bc-photo-file]').forEach(input=>{
+    const pending=root.querySelector('[data-bc-photo-pending]'),preview=pending?pending.querySelector('[data-bc-photo-preview]'):null,cancel=pending?pending.querySelector('[data-bc-photo-cancel]'):null,caption=pending?pending.querySelector('[name=new_photo_caption]'):null;
+    let objectUrl=null;
+    const release=()=>{if(objectUrl&&typeof URL!=='undefined'&&URL.revokeObjectURL)URL.revokeObjectURL(objectUrl);objectUrl=null;};
+    const show=file=>{
+      if(!pending)return;
+      release();
+      if(file) {if(typeof URL!=='undefined'&&URL.createObjectURL){objectUrl=URL.createObjectURL(file);if(preview)preview.src=objectUrl;}}
+      else {if(preview)preview.removeAttribute('src');if(caption)caption.value='';}
+      pending.hidden=!file;photoSummary();
+    };
+    input.addEventListener('change',()=>show(input.files&&input.files[0]?input.files[0]:null));
+    if(cancel)cancel.addEventListener('click',()=>{input.value='';show(null);});
+  });
+  root.querySelectorAll('[data-bc-photo-remove]').forEach(button=>button.addEventListener('click',()=>{
+    const marked=button.getAttribute('aria-pressed')!=='true',row=button.closest('[data-bc-photo-row]');
+    button.setAttribute('aria-pressed',marked?'true':'false');
+    if(!row)return;
+    row.dataset.removed=marked?'true':'false';
+    const input=row.querySelector('[data-bc-photo-caption]'),meta=row.querySelector('[data-bc-photo-meta]');
+    if(input)input.disabled=marked;
+    if(meta)meta.textContent=marked?'Removed when you press Save':(meta.dataset.text||'');
   }));
+  // A multi-select field of flags shows the chosen names in its closed state.
+  root.querySelectorAll('[data-bc-multi]').forEach(box=>{
+    const out=box.querySelector('[data-bc-multi-value]');
+    box.addEventListener('change',()=>{
+      const names=[...box.querySelectorAll('input[type=checkbox]')].filter(c=>c.checked).map(c=>c.dataset.name);
+      if(!out)return;
+      out.textContent=names.length?names.join(', '):'None';
+      if(names.length)delete out.dataset.empty;else out.dataset.empty='';
+    });
+  });
   const lists=[];let mainSelection=()=>({ids:[]});
   root.querySelectorAll('[data-bc-list]').forEach((list,index)=>{
     const container=list.querySelector('[data-bc-rows]'); if(!container)return;

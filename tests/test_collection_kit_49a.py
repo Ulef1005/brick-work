@@ -105,17 +105,18 @@ def test_c11_c12_progress_dom_keeps_one_block(coll, client):
     assert first.find_all(recursive=False)[1].get_text() == '1 missing'
 
 
-def test_c13_edit_keeps_estimate_folded(coll, client):
+def test_c13_edit_estimate_is_a_field_of_the_first_group_with_a_currency_prefix(coll, client):
+    """#397 (was c13: folded in a disclosure): the estimate is the last field of group 1, its currency a short prefix input, and Completeness leads to the switches."""
     copy = coll.add_copy('1000-1')
     soup = page(client, f'/collection/item/{coll.item("sets", "1000-1")}', copy=copy)
     form = soup.select_one('#bc-edit form')
     estimate = form.select_one('input[name=current_value]')
-    assert estimate.find_parent('details', class_='bc-estimate-details')
-    assert not estimate.find_parent('details').has_attr('open')
-    assert form.select_one('input[name=current_value_currency]').find_parent('details') is estimate.find_parent('details')
-    legends = [l.get_text() for l in form.select('legend')]
-    assert legends.index('Completeness') < legends.index('Flags')
-    assert form.select_one('details.bc-estimate-details > summary').get_text() == 'Set estimate'
+    assert not estimate.find_parent('details') and not form.select('details.bc-estimate-details')
+    assert form.select_one('input[name=current_value_currency]').find_parent(class_='bc-money') is estimate.find_parent(class_='bc-money')
+    assert 'Set estimate' not in form.get_text()
+    assert [l.get_text() for l in form.select('legend')] == ['Condition', 'Completeness']
+    everything = list(form.descendants)
+    assert everything.index(form.select('fieldset.bc-segments')[1]) < everything.index(form.select_one('.bc-switches'))
 
 
 def test_c14_c15_figure_rows_in_css_and_dom(coll, client):

@@ -29,8 +29,13 @@ const bulkSave=new Node(),bulkField=new Node(),bulkValue=new Node(),select=new N
 bulkField.value='storage_id';bulkValue.value='store';
 Object.assign(list.nodes,{'[data-bc-bulk-save]':bulkSave,'[data-bc-bulk-field]':bulkField,'[data-bc-bulk-value]':bulkValue});list.groups['[data-bc-select]']=[select];list.groups['[data-bc-view]']=[view];list.nodes['[data-bc-selection-bar]']=bar;list.nodes['[data-bc-group]']=group;
 const wishForm=new Node();wishForm.dataset={bcAction:'save',identity:JSON.stringify({entity:'wish',ids:[183]})};wishForm.values={condition:'used'};
-const photoPicker=new Node(),photoInput=new Node(),photoName=new Node();
-photoPicker.className='bc-photo-picker';photoPicker.nodes={'[data-bc-photo-name]':photoName};photoInput.parentElement=photoPicker;
+// #397: the Photos section of the edit sheet: two saved rows (caption input, x), the pending row, its count, the empty text and the failure banner
+const photoInput=new Node(),pendingRow=new Node(),pendingPreview=new Node(),pendingCancel=new Node(),pendingCaption=new Node(),photoCount=new Node(),photoEmpty=new Node(),photoBanner=new Node(),bannerText=new Node();
+pendingRow.hidden=true;pendingRow.nodes={'[data-bc-photo-preview]':pendingPreview,'[data-bc-photo-cancel]':pendingCancel,'[name=new_photo_caption]':pendingCaption};
+photoBanner.hidden=true;photoBanner.nodes={'[data-bc-photo-warning-text]':bannerText};
+const savedPhotos=['p1','p2'].map((id,i)=>{const row=new Node(),input=new Node(),x=new Node(),meta=new Node();row.dataset={bcPhotoRow:'',bcForm:'bc-edit-form',photoId:id};input.dataset={bcPhotoCaption:'',initial:i?'':'Front of the box'};input.value=i?'':'Front of the box';x['aria-pressed']='false';meta.dataset={bcPhotoMeta:'',text:'Added 12 Oct 2026'};meta.textContent='Added 12 Oct 2026';row.nodes={'[data-bc-photo-caption]':input,'[data-bc-photo-remove]':x,'[data-bc-photo-meta]':meta};x.parentElement=row;return {row,input,x,meta};});
+const multiBox=new Node(),multiValue=new Node(),multiChecks=['Sandra','Ulf'].map((name,i)=>{const c=new Node();c.dataset={name};c.checked=i===0;return c;});
+multiBox.dataset={bcMulti:''};multiBox.nodes={'[data-bc-multi-value]':multiValue};multiBox.groups={'input[type=checkbox]':multiChecks};
 const doc=new Node();
 const conditionGroup=new Node();conditionGroup.dataset.bcSaveGroup='';
 const conditionForms=['new','used','any'].map(value=>{
@@ -38,12 +43,13 @@ const conditionForms=['new','used','any'].map(value=>{
  const button=new Node();button.tagName='BUTTON';f.append(button);conditionGroup.append(f);return f;
 });
 const conditionButtons=conditionGroup.querySelectorAll('button');
-const root=new Node();root.dataset={bcCollectionList:'',saveUrl:'/collection/save/ACTION',csrf:'csrf',type:'P',editable:'true',itemBase:'/collection/item/0',wishBase:'/collection/wishes/0',imageBase:'/manage/images/0',lotBase:'/collection/lot/LOT',unresolvedUrl:'/manage/unresolved',backUrl:'/collection/sets'};root.nodes={'[data-bc-message]':message,'[data-bc-undo]':undo};root.groups={'[data-bc-photo-file]':[photoInput],'form[data-bc-action]':[form,...conditionForms],'[data-bc-list]':[list]};
+const root=new Node();root.dataset={bcCollectionList:'',saveUrl:'/collection/save/ACTION',csrf:'csrf',type:'P',editable:'true',itemBase:'/collection/item/0',wishBase:'/collection/wishes/0',imageBase:'/manage/images/0',lotBase:'/collection/lot/LOT',unresolvedUrl:'/manage/unresolved',backUrl:'/collection/sets'};root.nodes={'[data-bc-message]':message,'[data-bc-undo]':undo};root.nodes['[data-bc-photo-pending]']=pendingRow;root.nodes['[data-bc-photo-count]']=photoCount;root.nodes['[data-bc-photo-empty]']=photoEmpty;root.groups={'[data-bc-photo-file]':[photoInput],'[data-bc-photo-row]':savedPhotos.map(r=>r.row),'[data-bc-photo-remove]':savedPhotos.map(r=>r.x),'[data-bc-multi]':[multiBox],'form[data-bc-action]':[form,...conditionForms],'[data-bc-list]':[list]};
 doc.querySelector=s=>s==='#bw-collection'?root:null;doc.createElement=tag=>{const n=new Node();n.tagName=tag.toUpperCase();return n;};
 let observe;
 let tabUrl='';
 let calls=[],fail=false,reloads=0,stored=new Map(),merged=false;
 const context={IntersectionObserver:class{constructor(callback){observe=callback;}observe(){}},window:{history:{replaceState(state,title,url){tabUrl=url;}},IntersectionObserver:true,addEventListener(){},scrollY:0,scrollTo(...args){this.scrolled=args;},innerHeight:900},document:doc,sessionStorage:{getItem:k=>stored.get(k)||null,setItem:(k,v)=>stored.set(k,v),removeItem:k=>stored.delete(k)},location:{pathname:'/collection/P',search:'',reload(){reloads++;}},URLSearchParams,FormData:class {constructor(f){this.entries=Object.entries(f.values);} [Symbol.iterator](){return this.entries[Symbol.iterator]();}},requestAnimationFrame:f=>f(),fetch:async(url,options)=>{calls.push({url,data:JSON.parse(options.body)});return {ok:!fail,json:async()=>fail?{message:'Not saved'}:(merged?{event_id:56,message:'Merged into existing stock',url:'/collection/item/P/bl-part?colour=11&stock=destination'}:{event_id:55,message:'Saved'})};}};
+const revoked=[];context.URL={createObjectURL:f=>'blob:'+f.name,revokeObjectURL:u=>revoked.push(u)};
 const sortOpen=new Node(),sortPanel=new Node(),statusAll=new Node(),statusIncomplete=new Node();
 statusAll.dataset.bcStatus='';statusIncomplete.dataset.bcStatus='incomplete';sortPanel.hidden=true;
 list.nodes['[data-bc-sort-panel]']=sortPanel;list.groups['[data-bc-sort-open]']=[sortOpen];list.groups['[data-bc-status]']=[statusAll,statusIncomplete];
@@ -112,10 +118,26 @@ assert.equal(count.textContent,'130 parts');assert.equal(loaded.textContent,'Loa
  assert.equal(context.window.BrickCollection.resultCount(1),'1 result');
  assert.equal(context.window.BrickCollection.resultCount(0),'0 results');
  assert.equal(context.window.BrickCollection.resultCount(2),'2 results');
- photoInput.files=[{name:'Castle.jpg'}];await photoInput.trigger('change');assert.equal(photoName.textContent,'Castle.jpg');
- photoInput.files=[];await photoInput.trigger('change');assert.equal(photoName.textContent,'No file chosen');
- photoInput.parentElement=null;await photoInput.trigger('change');photoInput.parentElement=photoPicker;
- delete photoPicker.nodes['[data-bc-photo-name]'];await photoInput.trigger('change');photoPicker.nodes['[data-bc-photo-name]']=photoName;
+ { // #397: a chosen photo is a row with a preview and a count until Save; its x cancels the choice
+  assert.equal(pendingRow.hidden,true);
+  photoInput.files=[{name:'Castle.jpg'}];await photoInput.trigger('change');
+  assert.equal(pendingRow.hidden,false);assert.equal(pendingPreview.src,'blob:Castle.jpg');assert.equal(photoCount.textContent,'2 saved · 1 new');assert.equal(photoEmpty.hidden,true);
+  photoInput.files=[{name:'Tower.jpg'}];await photoInput.trigger('change');
+  assert.deepEqual(revoked,['blob:Castle.jpg'],'a new choice frees the old preview');assert.equal(pendingPreview.src,'blob:Tower.jpg');
+  pendingCaption.value='Side, small tear';photoInput.value='Tower.jpg';await pendingCancel.trigger('click');
+  assert.equal(pendingRow.hidden,true);assert.equal(photoInput.value,'');assert.equal(pendingCaption.value,'','the caption goes with the choice');assert.equal(Object.hasOwn(pendingPreview,'src'),false);
+  assert.equal(photoCount.textContent,'2 saved');assert.deepEqual(revoked,['blob:Castle.jpg','blob:Tower.jpg']);
+  photoInput.files=[];await photoInput.trigger('change');assert.equal(pendingRow.hidden,true,'no file chosen: no row');
+  // a saved photo's x marks it for removal and a second press takes the mark back
+  const [first]=savedPhotos;await first.x.trigger('click');
+  assert.equal(first.x['aria-pressed'],'true');assert.equal(first.row.dataset.removed,'true');assert.equal(first.input.disabled,true);assert.equal(first.meta.textContent,'Removed when you press Save');
+  await first.x.trigger('click');
+  assert.equal(first.x['aria-pressed'],'false');assert.equal(first.row.dataset.removed,'false');assert.equal(first.input.disabled,false);assert.equal(first.meta.textContent,'Added 12 Oct 2026');
+  // a multi-select field shows the chosen names, or None
+  await multiBox.trigger('change');assert.equal(multiValue.textContent,'Sandra');assert.equal(Object.hasOwn(multiValue.dataset,'empty'),false);
+  multiChecks[1].checked=true;await multiBox.trigger('change');assert.equal(multiValue.textContent,'Sandra, Ulf');
+  multiChecks.forEach(c=>c.checked=false);await multiBox.trigger('change');assert.equal(multiValue.textContent,'None');assert.equal(Object.hasOwn(multiValue.dataset,'empty'),true);
+ }
  assert.equal(figureHeading.hidden,true);assert.equal(partProgress.hidden,false);
  root.dataset.type='S';await inventoryTabs[1].trigger();
  assert.equal(inventoryCount.hidden,true);assert.equal(inventoryCount.textContent,'');
@@ -246,7 +268,8 @@ assert.equal(count.textContent,'130 parts');assert.equal(loaded.textContent,'Loa
   const realFetch=context.fetch,realFormData=context.FormData,uploads=[],wasMerged=merged;let photoFails=true;merged=false;
   const Multi=class{constructor(f){this.map=new Map(f?Object.entries(f.values):[]);}append(k,v){this.map.set(k,v);}get(k){return this.map.get(k);}[Symbol.iterator](){return this.map.entries();}};
   context.FormData=Multi;
-  context.fetch=async(url,options)=>options.body instanceof Multi?(uploads.push({url,body:options.body}),{ok:!photoFails,json:async()=>photoFails?{message:'Choose a readable photo'}:{event_id:9,message:'Photo added'}}):realFetch(url,options);
+  let saves=0;      // the real server gives every Save its own event: the retry's is 57
+  context.fetch=async(url,options)=>options.body instanceof Multi?(uploads.push({url,body:options.body}),{ok:!photoFails,json:async()=>photoFails?{message:'Choose a readable photo'}:{event_id:9,message:'Photo added'}}):url.endsWith('/save/save')&&++saves===2?(calls.push({url,data:JSON.parse(options.body)}),{ok:true,json:async()=>({event_id:57,message:'Saved'})}):realFetch(url,options);
   const savedValues=form.values,before=calls.length,reloadsBefore=reloads;
   form.values={note:'with photo',new_photo:{size:5,name:'a.jpg'},new_photo_caption:'Front'};
   await form.trigger('submit');
@@ -255,11 +278,46 @@ assert.equal(count.textContent,'130 parts');assert.equal(loaded.textContent,'Loa
   assert.match(formStatus.textContent,/Details saved, but the photo was not added/);assert.equal(reloads,reloadsBefore);assert.equal(save.disabled,false);
   form.values={note:'edited after the failure',new_photo:form.values.new_photo,new_photo_caption:'Front'};photoFails=false;await form.trigger('submit');
   assert.equal(calls.length,before+2,'the retry saves the details again, with the edit made since');assert.equal(calls.at(-1).data.values.note,'edited after the failure');assert.equal(uploads.length,2);assert.equal(reloads,reloadsBefore+1);
-  assert.deepEqual(JSON.parse(stored.get('bw-collection-receipt')).also,[9],'Undo takes the photo back with the details');
-  await undo.trigger();assert.equal(calls.at(-2).url,'/collection/save/undo');assert.equal(calls.at(-2).data.event_id,9,'the photo is undone first');assert.equal(calls.at(-1).data.event_id,55,'then the details save');
+  const kept=JSON.parse(stored.get('bw-collection-receipt'));assert.equal(kept.event_id,55,'the first Save stays the receipt');assert.deepEqual(kept.also,[57,9],'the retry and the photo follow it');
+  await undo.trigger();assert.equal(calls.at(-3).url,'/collection/save/undo');assert.deepEqual(calls.slice(-3).map(c=>c.data.event_id),[9,57,55],'the photo, then the retry, then the first Save');
   form.values={note:'no photo',new_photo:{size:0,name:''},new_photo_caption:''};await form.trigger('submit');
   assert.equal(uploads.length,2,'an empty picker sends no photo');assert.deepEqual(calls.at(-1).data.values,{note:'no photo'});
   context.fetch=realFetch;context.FormData=realFormData;form.values=savedValues;merged=wasMerged;
+ }
+ { // #397: caption edits and removals go with the one Save, a failed photo shows the banner, and Undo takes everything back, last first
+  const realFetch=context.fetch,realFormData=context.FormData,uploads=[],delivered={};let photoFails=true;
+  const Multi=class{constructor(f){this.map=new Map(f?Object.entries(f.values):[]);}append(k,v){this.map.set(k,v);}get(k){return this.map.get(k);}[Symbol.iterator](){return this.map.entries();}};
+  context.FormData=Multi;
+  context.fetch=async(url,options)=>{
+   if(options.body instanceof Multi){uploads.push({url,body:options.body});return {ok:!photoFails,json:async()=>photoFails?{message:'The file is larger than 15 MB'}:{event_id:9,message:'Photo added'}};}
+   const body=JSON.parse(options.body);calls.push({url,data:body});
+   if(!url.endsWith('/save/save'))return {ok:true,json:async()=>({event_id:1,message:'Undone'})};
+   // like the real server: Saves get their own events, and only a request with photo edits returns `also`
+   const first=!Object.hasOwn(delivered,'n');delivered.n=(delivered.n||0)+1;
+   return {ok:true,json:async()=>first?{event_id:55,message:'Saved',also:[21,22]}:{event_id:60+delivered.n,message:'Saved'}};
+  };
+  root.nodes['[data-bc-photo-warning]']=photoBanner;
+  const savedValues=form.values,reloadsBefore=reloads,[one,two]=savedPhotos;form.id='bc-edit-form';
+  one.input.value='Front, new';await two.x.trigger('click');
+  form.values={note:'n',new_photo:{size:5,name:'a.jpg'},new_photo_caption:'Side'};
+  await form.trigger('submit');
+  assert.deepEqual(calls.at(-1).data.photo_captions,{p1:'Front, new'},'only the caption that changed is sent');
+  assert.deepEqual(calls.at(-1).data.remove_photos,['p2'],'a photo marked with the x is sent for removal, not its caption');
+  assert.equal(photoBanner.hidden,false);assert.match(bannerText.textContent,/larger than 15 MB/);assert.equal(formStatus.textContent,'');assert.equal(reloads,reloadsBefore);
+  assert.equal(two.row.removed,true,'the removed row leaves the sheet once the details are saved');assert.equal(one.input.dataset.initial,'Front, new');
+  root.groups['[data-bc-photo-row]']=[one.row];      // the real page has dropped the removed row
+  photoFails=false;const before=calls.length;await form.trigger('submit');
+  assert.equal(photoBanner.hidden,true,'the next Save clears the banner');
+  assert.equal(Object.hasOwn(calls[before].data,'photo_captions'),false);assert.equal(Object.hasOwn(calls[before].data,'remove_photos'),false,'the retry does not send saved edits again');
+  const kept=JSON.parse(stored.get('bw-collection-receipt'));assert.equal(kept.event_id,55);assert.deepEqual(kept.also,[21,22,62,9],'first attempt, then the retry, then the photo');assert.equal(reloads,reloadsBefore+1);
+  await undo.trigger();
+  assert.deepEqual(calls.slice(-5).map(c=>c.data.event_id),[9,62,22,21,55],'photo, retry, removal, caption, then the first details');
+  // a photo that fails twice: nothing is dropped between the attempts
+  photoFails=true;one.input.value='Again';delete delivered.n;
+  await form.trigger('submit');await form.trigger('submit');photoFails=false;await form.trigger('submit');
+  const chained=JSON.parse(stored.get('bw-collection-receipt'));
+  assert.equal(chained.event_id,55);assert.equal(chained.also.at(-1),9);assert.equal(chained.also.length,5,'the first Save\'s two photo events, two retries and the photo');assert.deepEqual(chained.also.slice(0,2),[21,22]);
+  context.fetch=realFetch;context.FormData=realFormData;form.values=savedValues;delete form.id;delete root.nodes['[data-bc-photo-warning]'];
  }
  console.log('Brick Work collection runtime passed');
 // Run 2: data claims follow the actual displayed records, including filtering.

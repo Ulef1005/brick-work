@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Sell this copy** (#53). The page of a set has a Sell this copy card between Prices and Value. It takes the used sold average (new for a new or sealed copy) and takes off the used price of each missing part and figure, line by line. A line without a fresh price is marked needs evidence and left out. The part-out value is the floor. **Preview** shows plain listing text you can edit and copy. **Worth now** of a copy with a part check uses the same deductions; a copy without one keeps the incomplete discount of Settings. [Sell this copy](docs/how-to/pictures-and-prices.md#sell-this-copy)
+
 - **Part list edit fixes** (#401). Edit controls follow the Parts tab without losing ticks. Receipts and Undo remain visible on every inventory tab, unreadable save responses keep the draft, and Found buttons wait together while a row saves.
 
 - **Edit set sheet with photo rows** (#397). The sheet follows the approved design. Three switches (Set is checked, Box present, Instructions present) follow Condition and Completeness. Then come a group for Price paid, Date, Place and Estimate, and a group for Stored in, Owners, Tags and Note. The currency is a short code in front of each amount, and the Estimate is no longer folded away. Owners and Tags are multi-select fields. Photos are rows: edit a caption in place, mark a saved photo with the × to remove it, and see a new photo as a row before it is added. The one Save stores all of it, and one Undo takes it back.

@@ -2,7 +2,8 @@
 
 A copy's **price paid** is its `purchase_price`; a null or zero price is "no price paid". Its **worth** is the copy's own `current_value`
 (source `override`, "Your value") or else the current used or new sold average of the set for the copy's condition and completeness: new for a
-new or sealed copy, used for any other, with the discount for a copy with a gap that the set detail applies (`incomplete_discount_pct`; a missing or damaged line, not the completeness label). The quote
+new or sealed copy, used for any other. A copy with a part check (`deductions.checked`) has the priced missing parts and figures taken off, line by line, as the Sell card
+does (#53); any other copy with a gap has the flat discount the set detail applies (`incomplete_discount_pct`; a missing or damaged line, not the completeness label). The quote
 is the one the Prices card shows (the unvoided observations, then `collection_prices.choose` by source priority, sold first and freshness) and is stale by the
 same rule (`decorate_prices`: older than the source's `max_age_days`). A stale quote still counts, marked.
 
@@ -19,7 +20,7 @@ import io
 import json
 import re
 
-from . import collection, collection_prices, csv_safe, items, planning
+from . import collection, collection_prices, csv_safe, deductions, items, planning
 from . import currency as fx
 from .retail import display_currency
 from .sources.base import now
@@ -108,6 +109,17 @@ def _quotes(db, copies):
     return found
 
 
+def _net(worth, deduction, quote, table):
+    """The money body `worth` (the average) with a checked copy's deductions taken off: the amount is the Sell card's (the average less the two
+    rows, in whole cents). A converted figure keeps its rate and shows the amount as recorded less the deductions in that currency."""
+    taken = deduction['parts'] + deduction['figures']
+    body = dict(worth, amount=deductions.net(worth['amount'], deduction))
+    if body['converted']:
+        back = fx.convert(taken, worth['currency'], quote['currency'], table)
+        body['original'] = dict(body['original'], amount=_cents(max(body['original']['amount'] - (back['amount'] if back else 0), Decimal(0))))
+    return body
+
+
 def _gaps(db, copy_ids):
     """The ids of the copies with a gap, by the rule of the set detail (#123): a part line (spares and a figure's own parts are none) that is
     missing or damaged, or a figure line that is missing, not retired. One query for all."""
@@ -130,6 +142,8 @@ def copies(db, copy_ids=None):
     (the incomplete-set discount applied to the quote, or None),
     `gain` (`{amount, percent, currency}`, worth minus paid, negative for a loss, or None when either is None; `percent` is None when the price paid is 0.00 after conversion).
 
+    Private keys (`_deduction`: the line-by-line deductions of a checked copy, in the display currency, or None) stay out of every JSON body.
+
     A money body is `{amount: Decimal (2 places), currency: display currency, converted: bool, rate: Decimal or None, rate_as_of: day or
     None, original: {amount, currency} as recorded, or None unless converted}`."""
     packed = None if copy_ids is None else json.dumps(list(copy_ids))
@@ -147,6 +161,8 @@ def copies(db, copy_ids=None):
     for c in rows:
         c['condition_wanted'] = 'new' if c['condition'] == 'new' or c['completeness'] == 'sealed' else 'used'
     quotes, gaps = _quotes(db, rows), _gaps(db, [c['id'] for c in rows])
+    checked = deductions.checked(db, rows)
+    per_line = deductions.lines(db, [c['id'] for c in rows if c['id'] in checked and c['id'] in gaps], now())
     out = []
     for c in rows:
         label = labels.get((c['item_id'], None))
@@ -156,7 +172,7 @@ def copies(db, copy_ids=None):
         paid, paid_reason = None, 'no_price_paid'
         if has_paid:
             paid, paid_reason = _money(paid_amount, c['purchase_currency'], display, table)
-        worth, worth_reason, source, date, stale, sales, price_source, applied = None, 'no_quote', None, None, False, None, None, None
+        worth, worth_reason, source, date, stale, sales, price_source, applied, deduction = None, 'no_quote', None, None, False, None, None, None, None
         override = _decimal(c['current_value'])
         if override is not None and c['current_value_currency']:
             worth, worth_reason = _money(override, c['current_value_currency'], display, table)
@@ -165,9 +181,17 @@ def copies(db, copy_ids=None):
             quote = quotes.get((c['item_id'], c['condition_wanted']))
             if quote:
                 amount = quote['amount']
-                if c['id'] in gaps and discount:
+                if c['id'] in checked:
+                    if c['id'] in per_line:                            # a part check: the priced missing lines come off, one by one (#53)
+                        found = deductions.shown(per_line[c['id']], display, table)
+                        deduction = None if found is None else deductions.totals(found)
+                        if found is None:
+                            amount = None
+                elif c['id'] in gaps and discount:
                     amount, applied = amount * (100 - discount) / 100, int(discount) if discount == int(discount) else float(discount)
-                worth, worth_reason = _money(amount, quote['currency'], display, table)
+                worth, worth_reason = (None, 'no_rate') if amount is None else _money(amount, quote['currency'], display, table)
+                if worth is not None and deduction is not None:
+                    worth = _net(worth, deduction, quote, table)
                 source, date, stale, sales, price_source = c['condition_wanted'], (quote['observed_at'] or '')[:10] or None, bool(quote['stale']), quote.get('sold'), quote['source']
         gain = None
         if paid is not None and worth is not None:
@@ -178,7 +202,7 @@ def copies(db, copy_ids=None):
             condition=c['condition'], completeness=c['completeness'], purchase_date=c['purchase_date'], currency=display,
             paid_original=dict(amount=_cents(paid_amount), currency=c['purchase_currency'].upper()) if has_paid else None, paid=paid, paid_reason=paid_reason,
             worth=worth, worth_reason=worth_reason, worth_source=source, worth_date=date,
-            worth_stale=stale, worth_sales=sales, worth_price_source=price_source, worth_discount_pct=applied, gain=gain,
+            worth_stale=stale, worth_sales=sales, worth_price_source=price_source, worth_discount_pct=applied, gain=gain, _deduction=deduction,
             _order=(_natural(number), c['created_at'] or '', c['id'])))
     out.sort(key=lambda r: r.pop('_order'))
     return out
@@ -216,6 +240,7 @@ def _group(rows, label_of):
 
 
 def _row_body(row):
+    row = {k: v for k, v in row.items() if not k.startswith('_')}
     return dict(row, paid=_body(row['paid']), worth=_body(row['worth']),
                 paid_original=None if row['paid_original'] is None else dict(row['paid_original'], amount=_text(row['paid_original']['amount'])),
                 gain=None if row['gain'] is None else dict(row['gain'], amount=_text(row['gain']['amount'])))

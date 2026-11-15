@@ -65,13 +65,19 @@ def options(db, *, include_wishlists=False):
 
 # ---------- identity on screen ----------
 
+def _same_system_name(name, other):
+    """Whether a status flag called `other` is the system flag `name`: "Set is checked" by its exact name, as the checker and the set page read it;
+    the other two without regard to case, as `workbench.flag` reads them."""
+    return other == name if name == 'Set is checked' else other.lower() == name.lower()
+
+
 def system_flags(flags):
     """The three system status flags the app itself reads, in the sheet's order: `[dict(name, id)]`, `id` None until the flag exists. Picks from
     the live `flags` list `options` already read, so the sheet costs no query. The match is the workbench's (`workbench.flag`): the name without
     regard to case, and only when exactly one live status flag has it."""
     found = []
     for name in SYSTEM_FLAGS:
-        matches = [f['id'] for f in flags if f['kind'] == 'status' and f['name'].lower() == name.lower()]
+        matches = [f['id'] for f in flags if f['kind'] == 'status' and _same_system_name(name, f['name'])]
         found.append(dict(name=name, id=matches[0] if len(matches) == 1 else None))
     return found
 
@@ -1260,7 +1266,8 @@ def _system_flags_made(db, wanted):
             name = entry[len(SYSTEM_PREFIX):]
             if name not in SYSTEM_FLAGS:
                 raise ValueError('Unknown flag')
-            rows = db.execute("SELECT id FROM main.flag WHERE archived_at IS NULL AND kind='status' AND lower(name)=lower(?)", (name,)).fetchall()
+            rows = db.execute("SELECT id, name FROM main.flag WHERE archived_at IS NULL AND kind='status' AND lower(name)=lower(?)", (name,)).fetchall()
+            rows = [r for r in rows if _same_system_name(name, r[1])]
             if len(rows) > 1:                                 # the workbench ignores an ambiguous name too: another flag would not help
                 raise ValueError(f'Two status flags are called {name} · keep one')
             if rows:

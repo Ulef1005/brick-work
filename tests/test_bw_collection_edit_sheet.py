@@ -374,3 +374,16 @@ def test_two_live_flags_of_one_system_name_are_refused_not_added_to(world, coll,
     r = post(client, token, 'save', entity='copy', ids=[w.copy_a], values={'flags': ['system:Box present']})
     assert r.status_code == 400 and 'Two status flags' in r.json['message']
     assert coll.db.execute("SELECT COUNT(*) FROM flag WHERE lower(name)='box present'").fetchone()[0] == 2
+
+
+def test_set_is_checked_is_matched_by_its_exact_name_like_the_checker(world, coll, client):
+    token = csrf(client)
+    w = world
+    coll.db.execute("UPDATE flag SET name='set is checked' WHERE id=?", (w.checked,))
+    coll.db.commit()
+    page = sheet(client, copy_url(w, w.copy_a))
+    switch = next(s.select_one('input') for s in page.select('.bc-sw') if 'Set is checked' in s.get_text())
+    assert switch['value'] == 'system:Set is checked', 'a flag in another case is not the one the checker and the set page read'
+    r = post(client, token, 'save', entity='copy', ids=[w.copy_a], values={'flags': ['system:Set is checked']})
+    assert r.status_code == 200
+    assert coll.db.execute("SELECT COUNT(*) FROM flag WHERE name='Set is checked'").fetchone()[0] == 1

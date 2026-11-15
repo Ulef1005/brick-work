@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Purchase date picker, currency from Settings** (#394). In the edit sheet the purchase date is a date picker. The Currency box shows your display currency from Settings as a hint; leave it empty and a new price paid takes that currency (a price that already has one keeps it). [Value and gain of a copy](docs/how-to/pictures-and-prices.md#value-and-gain-of-a-copy).
 - **Microsoft Clarity on the website.** The marketing pages (not the docs or the demo) load Microsoft Clarity for visit statistics: it sets cookies and records sessions as pseudonymised replays and heatmaps, with no consent banner. The privacy page says so. The Brick Work app itself is unchanged and has no telemetry.
 - **BrickLink checks a box or instructions you add** (#382). With a BrickLink key, the Add review asks BrickLink once for each box or instruction pick: it takes BrickLink's name, and flags a box BrickLink does not list (its link is left to check). No key, or no answer, changes nothing. [Add a box or instructions](docs/how-to/add-a-box-or-instructions.md).
 - **A part found in full leaves Missing so far** (#383). In the part check, when you have found every missing piece of a part, it leaves the Missing so far list instead of staying with 0 missing. A part that goes missing again returns to the top, and Undo brings the entry back.

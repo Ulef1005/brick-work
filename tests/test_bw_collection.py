@@ -623,6 +623,7 @@ def test_a_price_paid_without_a_currency_takes_the_display_currency_and_the_shee
     w = world
     coll.setting('display_currency', 'CHF')
     coll.setting('bricklink_currency', 'GBP')
+    post(client, token, 'save', entity='copy', ids=[w.copy_a], values=dict(purchase_price='', purchase_currency=''))        # a row that has a price keeps its own currency
     r = post(client, token, 'save', entity='copy', ids=[w.copy_a], values=dict(purchase_price='20', purchase_currency='', current_value='3'))
     assert r.status_code == 200, r.json
     row = coll.db.execute('SELECT purchase_currency, current_value_currency FROM copy WHERE id=?', (w.copy_a,)).fetchone()
@@ -630,3 +631,7 @@ def test_a_price_paid_without_a_currency_takes_the_display_currency_and_the_shee
     soup = BeautifulSoup(client.get(item_url(w, copy=w.copy_a)).text, 'html.parser')
     assert soup.select_one('#bc-edit [name=purchase_date]')['type'] == 'date'
     assert soup.select_one('#bc-edit [name=purchase_currency]')['placeholder'] == 'CHF'
+    coll.db.execute('UPDATE copy SET purchase_date=? WHERE id=?', ('2024-01-05T10:00:00Z', w.copy_a))
+    coll.db.commit()
+    field = BeautifulSoup(client.get(item_url(w, copy=w.copy_a)).text, 'html.parser').select_one('#bc-edit [name=purchase_date]')
+    assert field.get('type') != 'date' and field['value'] == '2024-01-05T10:00:00Z'          # a stored date-time is kept whole, not cut to a date

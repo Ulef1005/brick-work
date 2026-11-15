@@ -16,6 +16,15 @@ import json
 from . import collection, items, planning
 from .sources.base import now
 
+MARGIN = Decimal('0.10')
+MINIMUM_GAIN = Decimal('5.00')
+
+
+def advantage(value, alternative):
+    """Whether a value beats its alternative by the shared meaningful margin."""
+    return value - alternative >= max(MINIMUM_GAIN, abs(alternative) * MARGIN)
+
+
 COVERAGE = 0.9  # share of lines that need a price before a part-out total is shown
 
 
@@ -90,5 +99,5 @@ def compare(copy, partout, config=None):
     if out['as_is'] is not None:
         gain = D(out['partout']) - D(out['as_is'])
         # A hint only when parting out is clearly worth more: 10 % and at least 5 in the currency.
-        out['hint'] = str(gain.quantize(D('0.01'))) if gain >= max(D(5), D(out['as_is']) / 10) else None
+        out['hint'] = str(gain.quantize(D('0.01'))) if advantage(D(out['partout']), D(out['as_is'])) else None
     return out

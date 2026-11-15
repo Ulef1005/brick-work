@@ -61,3 +61,12 @@ To order the parts of many sets at once, press **Order missing parts** instead. 
 - [Pick parts for several sets](pick-parts.md) to fill the gaps from your drawers before buying.
 - [Find sets your loose stock can finish](match-stock-to-sets.md).
 - [Undo a change](undo-a-change.md).
+
+## Compare minifigures
+
+Open **Planning › Complete sets › Figures** to compare complete value, present parts and the cost to complete each figure.
+Each place has its own row, with loose figures first and set copies next.
+Figures without enough fresh used prices wait under **Needs evidence**.
+
+The comparison uses the repair settings and the same price coverage and meaningful gain rules as set part-out values.
+Open a minifigure to see its **Complete or part out** card and the missing parts behind its cost.

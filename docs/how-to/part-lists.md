@@ -55,8 +55,14 @@ After a catalogue download, a copy whose list is no longer the one in the catalo
 
 ## Group the parts on a set page
 
-In **Manage → Settings**, **Group parts by** offers **Part groups** (the default twelve groups), **BrickLink categories** (the original names in alphabetical order), or **No grouping** (one list, 15 rows per page). Save the page to apply your choice; **Undo** restores the previous setting. From the command line, use `brickwork settings set part_list_grouping grouped` (or `bricklink` or `none`).
+In **Manage → Settings**, **Group parts by** offers **Grouped categories** (the default twelve groups), **BrickLink categories** (the original names in alphabetical order), or **No grouping** (one list, 15 rows per page). Save the page to apply your choice; **Undo** restores the previous setting. From the command line, use `brickwork settings set part_list_grouping grouped` (or `bricklink` or `none`).
 
 On a set's **Consists of** list, each group shows its row and piece counts. For an owned copy it also shows checked rows and remaining work; a reference set without a copy has no checking counters or status pill. Reference parts use their catalogue categories, with uncategorised parts under **Other**. Groups with missing parts or unchecked rows start expanded; complete groups start collapsed. Select a group header to open or close it, or use **Expand all** and **Collapse all**. Your browser remembers this per copy. Without JavaScript, every group stays open and shows all its rows.
 
 Each group has pages of 25 rows. Minifigures stay in their own tab, outside the part groups and their counts, and have a separate pager when there are more than 25 rows. Search and filters apply across groups and hide empty groups; sorting orders the rows within each group. On a phone, the headers keep the group name and status while the counts stay out of the way.
+
+### Move a category to another group
+
+Open **Edit grouping** below **Group parts by** to move a category to another group. Each group lists its categories with a number: how many different parts of that category you hold, in set copies and loose stock. Choose the new group in the list beside the category. The line **Changed** counts the categories that differ from the default table. Press **Save** to apply it. The moves apply to every part list, including print. **Undo** restores the previous grouping, and **Reset to default** removes all your moves.
+
+Only **Grouped categories** uses your moves. **BrickLink categories** and **No grouping** ignore them, and the order of the groups stays fixed. A category the table does not know sits under **Other** until you move it. From the command line, use `brickwork settings set part_group_overrides '{"Plates Special": "Tiles"}'`.

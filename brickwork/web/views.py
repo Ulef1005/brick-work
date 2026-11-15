@@ -317,8 +317,14 @@ def bw_admin_write(page):
                         priority[step][kind] = [s.strip() for s in value.split(',')]
             freshness = [(request.form['source:' + n], request.form['kind:' + n], request.form['days:' + n])
                          for n in request.form.getlist('freshness')]
+            # The category editor (#315) posts one `group_of:<category>` select per category it lists; Reset to default clears the moves.
+            moves = None
+            if request.form.get('reset_grouping'):
+                moves = {}
+            elif request.form.get('edit_grouping'):
+                moves = {k.removeprefix('group_of:'): v for k, v in request.form.items() if k.startswith('group_of:')}
             saved = admin_ops.tools_write('settings', country=request.form['retail_country'], priority=priority, freshness=freshness,
-                                          part_list_grouping=request.form.get('part_list_grouping'))
+                                          part_list_grouping=request.form.get('part_list_grouping'), part_group_overrides=moves)
         elif page == 'refresh':
             admin_ops.tools_write('refresh')
             bw_start_worker()

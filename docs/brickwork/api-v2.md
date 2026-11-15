@@ -525,7 +525,9 @@ Scope `none` means no token. Every path is relative to `/api/v2`. The **v1** col
 | `GET /settings` | Allowed settings and freshness rules. | read | M.11c | same |
 | `PATCH /settings` | Update allowed settings (whitelist). | admin | M.11c | same |
 
-`part_list_grouping` is a settings key: `grouped` (default), `bricklink`, or `none`. PATCH uses the same save and undo event as the Settings page. It changes the set detail list only.
+`part_list_grouping` is a settings key: `grouped` (default), `bricklink`, or `none`. PATCH uses the same save and undo event as the Settings page. It sets the grouping of every part list.
+
+`part_group_overrides` is a settings key too: an object `{category name: group name}` with the categories you moved out of the default group. The group is one of the twelve group names. Send `{}` to restore the default table. An entry equal to the default is dropped, and a read returns the differences only. They apply when `part_list_grouping` is `grouped`.
 
 #### Admin
 

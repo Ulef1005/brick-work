@@ -656,6 +656,51 @@ def found_one(db, copy_id, token):
     return mark(db, copy_id, [(token, dict(missing=row['missing'] - 1))])
 
 
+def save_missing(db, copy_id, rows):
+    """#401: the set page's edit mode saves every tick at once. `rows` is `[{id, missing}]` over the copy's own required part lines (a
+    `copy_part` id, never a spare, a retired line or a figure's own part): `missing` 1 to the line's quantity marks it missing and checked,
+    0 clears it (the line stays as it was checked). Each line once. One receipt, so one Undo takes the whole save back, and the derived
+    completeness follows; "Set is checked" stays the person's own switch. Returns the event id."""
+    if not isinstance(rows, list) or not rows:
+        raise errors.ValidationFailed('Tick at least one part')
+    wanted = {}
+    for entry in rows:
+        if not isinstance(entry, dict):
+            raise errors.ValidationFailed('Choose a part from this copy')
+        line, count = entry.get('id'), entry.get('missing')
+        if type(line) is not int or type(count) is not int:
+            raise errors.ValidationFailed('Choose a part and a whole number of missing pieces')
+        if line in wanted:
+            raise errors.ValidationFailed('Name each part line once')
+        wanted[line] = count
+    copy(db, copy_id)
+    lines = {r['id']: r['quantity'] for r in db.execute(
+        'SELECT id,quantity FROM main.copy_part WHERE copy_id=? AND copy_figure_id IS NULL AND is_spare=0 AND retired_at IS NULL', (copy_id,))}
+    edits = []
+    for line, count in wanted.items():
+        if line not in lines:
+            raise errors.NotFound('No such part line in this copy')
+        if not 0 <= count <= (lines[line] or 0):
+            raise errors.ValidationFailed('Choose a count from 0 to %d' % (lines[line] or 0))
+        edits.append(('p:%d' % line, dict(missing=count, checked=True) if count else dict(missing=0)))
+    return mark(db, copy_id, edits)
+
+
+def found_all(db, copy_id, token):
+    """#401: Found all on a part line that is missing: its missing count goes to 0 as one receipt (Found 1 lowers it by one). Returns the event id."""
+    kind, _, identifier = str(token).partition(':')
+    table = {'p': 'copy_part', 'f': 'copy_figure'}.get(kind)
+    if table is None or not identifier.isdigit():
+        raise errors.ValidationFailed('Choose a part from this copy')
+    copy(db, copy_id)
+    row = db.execute(f'SELECT missing FROM main.{table} WHERE copy_id=? AND id=? AND retired_at IS NULL', (copy_id, int(identifier))).fetchone()
+    if row is None:
+        raise errors.NotFound('No such line in this copy')
+    if not (row['missing'] or 0) > 0:
+        raise errors.ValidationFailed('This part is not missing')
+    return mark(db, copy_id, [(token, dict(missing=0))])
+
+
 def set_checked(db, copy_id, wanted):
     """Set or clear the status flag "Set is checked" on a live copy (made when it does not exist yet and is wanted) and let the derived
     completeness follow. One receipt, also when nothing changes. Returns the event id."""

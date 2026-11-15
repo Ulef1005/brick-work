@@ -2155,6 +2155,21 @@ def bw_collection_write(action):
                 from ..core import checker
                 event=checker.found_one(db,data['copy_id'],data['token'])
                 message='Found 1'
+            elif action=='found-all':
+                from ..core import checker
+                event=checker.found_all(db,data['copy_id'],data['token'])
+                message='Found all'
+            elif action=='mark-missing':                                       # #401: the part list's edit mode, every tick in one receipt
+                from ..core import checker
+                event=checker.save_missing(db,data['copy_id'],data.get('rows'))
+                ticked=sum(1 for r in data['rows'] if r['missing']>0);cleared=len(data['rows'])-ticked
+                message=' · '.join(['Saved']+([f"{ticked} {'part' if ticked==1 else 'parts'} marked missing"] if ticked else [])+([f"{cleared} marked found"] if cleared else []))
+            elif action=='set-checked':                                        # #401: the person's own switch, saved at once
+                from ..core import checker
+                wanted=data.get('wanted')
+                if type(wanted) is not bool: raise ValueError('Choose on or off')
+                event=checker.set_checked(db,data['copy_id'],wanted)
+                message='Set is checked · '+('on' if wanted else 'off')
             elif action=='undo':
                 event=int(data['event_id'])
                 collection.undo(db,event)

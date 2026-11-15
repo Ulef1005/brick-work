@@ -1,6 +1,5 @@
 """Two-file connection of the 4.0 store: initialisation, refusals and the binding checks, with invented files."""
 
-from brickwork.store4.connect import SCHEMA_VERSION
 from contextlib import closing
 import os
 import sqlite3
@@ -9,6 +8,7 @@ import uuid
 import pytest
 
 from tests.legacy33 import create_33
+from brickwork.store4.connect import SCHEMA_VERSION
 from brickwork.store4 import identity
 from brickwork.store4.connect import connect, create_catalogue, has_catalogue
 from brickwork.store4.errors import CatalogueError, CatalogueMismatch, SchemaMismatch, Unsupported

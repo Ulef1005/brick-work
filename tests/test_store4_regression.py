@@ -2,7 +2,6 @@
 and the eight 3.3 lines of probes B5 and B6 through the real migration. `docs/data-model-4.0/regression-map.md` maps every check of the
 design's three scripts to the test that guards it. Invented data, no network: every transport is a fake."""
 
-from brickwork.store4.connect import SCHEMA_VERSION
 from contextlib import closing
 import json
 import shutil
@@ -10,6 +9,7 @@ import shutil
 from cryptography.fernet import Fernet
 import pytest
 
+from brickwork.store4.connect import SCHEMA_VERSION
 from brickwork.core import keys, pipeline
 from brickwork.core.connect import connect
 from brickwork.core.pipeline import Pipeline

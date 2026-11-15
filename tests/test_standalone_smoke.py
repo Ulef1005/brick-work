@@ -8,7 +8,6 @@ the collection's read side: `/` and the collection lists
 (the first-run page on an empty collection), the item page by id, the wish, lot and purchase-place pages, the jump search. Every other browser
 screen answers 503 until its piece ports it. API v1 answers 410, except `/api/v1/health`."""
 
-from brickwork.store4.connect import SCHEMA_VERSION
 from contextlib import closing
 import os
 from pathlib import Path
@@ -22,6 +21,7 @@ from bs4 import BeautifulSoup
 import pytest
 from flask import Flask
 
+from brickwork.store4.connect import SCHEMA_VERSION
 from brickwork.app import setup_app
 from brickwork.core.connect import OldStore, connect
 from brickwork.core.errors import API_V1_RETIRED

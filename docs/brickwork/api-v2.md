@@ -871,6 +871,7 @@ Choices M.11a made where the scope comment and design section 7 were silent:
 | `source_error` | 502 | upstream failure, redacted text |
 | `not_set_up` | 503 | database file missing |
 | `api_disabled` | 503 | no token configured |
+| `labels_unavailable` | 503 | QR renderer dependency missing; retry after repairing the install |
 | `db_unavailable` | 503 | SQLite error |
 | `internal_error` | 500 | anything else, no detail leaked |
 | `not_implemented` | 501 | **new in v2.** the operation's piece has not landed; the body also carries `piece` and `error` |

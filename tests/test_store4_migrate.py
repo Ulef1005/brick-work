@@ -3,7 +3,6 @@
 The 3.3 stores are the frozen regression fixtures (upgraded to 3.3 on open) and a synthetic one built from the 3.3 schema
 (`store4_migrate_fixtures.py`, design 8.11); the catalogue is the fixture catalogue of the mint tests."""
 
-from brickwork.store4.connect import SCHEMA_VERSION
 from contextlib import closing
 import hashlib
 import json
@@ -14,6 +13,7 @@ import sqlite3
 import pytest
 
 from tests.legacy33 import regression_33
+from brickwork.store4.connect import SCHEMA_VERSION
 from brickwork.store4.connect import connect
 from brickwork.store4.errors import SchemaMismatch
 from brickwork.store4.migrate import MigrationError, Migration, NeedsDecision, migrate

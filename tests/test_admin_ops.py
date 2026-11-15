@@ -1,6 +1,5 @@
 """Shared admin services (CLI and browser) on the 4.0 store (M.8i part 1, issue #110): no network."""
 
-from brickwork.store4.connect import SCHEMA_VERSION
 from contextlib import closing
 from pathlib import Path
 import hashlib
@@ -12,6 +11,7 @@ from flask import Flask
 import pytest
 import requests
 
+from brickwork.store4.connect import SCHEMA_VERSION
 from brickwork.core import admin
 from brickwork.core.sources import base
 from brickwork.web import admin_ops as ops

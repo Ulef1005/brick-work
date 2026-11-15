@@ -3,12 +3,12 @@
 Ported to v2 from the transport tests of test_bw_api_m1 and test_app_factory (and the contract-file test of test_runtime_contract); the
 v1 line only answers 410 (tests/test_standalone_smoke.py)."""
 
-from brickwork.store4.connect import SCHEMA_VERSION
 from pathlib import Path
 
 import pytest
 
 from brickwork import api2
+from brickwork.store4.connect import SCHEMA_VERSION
 from brickwork.api2 import operations
 from brickwork.core import throttle
 from brickwork.core.errors import API_V1_RETIRED

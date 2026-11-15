@@ -1,7 +1,6 @@
 """The cut to the 4.0 store (M.8a, issue #110): the connect wrapper, the audit adapter, undo on `event_undo`, the key provider, the
 drainer's poll and the identity facade `core.items`, on the fixture catalogue of `store4_mint_fixtures`. Invented data, no network."""
 
-from brickwork.store4.connect import SCHEMA_VERSION
 from contextlib import closing
 import json
 from pathlib import Path
@@ -12,6 +11,7 @@ import sqlite3
 from cryptography.fernet import Fernet
 import pytest
 
+from brickwork.store4.connect import SCHEMA_VERSION
 from brickwork.core import admin, drainer, errors, items, keys, undo
 from brickwork.core.connect import NoCatalogue, OldStore, catalogue_path, connect
 from brickwork.core.sources.base import audit_origin

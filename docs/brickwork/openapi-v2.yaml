@@ -46,6 +46,7 @@ x-error-status:
   not_implemented: 501
   source_error: 502
   api_disabled: 503
+  labels_unavailable: 503
   db_unavailable: 503
   not_set_up: 503
 servers:
@@ -12147,6 +12148,7 @@ components:
           - source_error
           - not_set_up
           - api_disabled
+          - labels_unavailable
           - db_unavailable
           - internal_error
           - not_implemented

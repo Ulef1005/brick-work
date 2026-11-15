@@ -148,10 +148,13 @@ def card(db, copy_id, stamp=None):
         damaged_lines.extend(dict(r, group='part') for r in db.execute('''SELECT item_id, color_id, sum(damaged) damaged FROM copy_part
             WHERE copy_id=? AND retired_at IS NULL AND is_spare=0 AND copy_figure_id IS NULL
             GROUP BY item_id, color_id HAVING sum(damaged)>0''', (copy_id,)))
-        damaged_lines.extend(dict(r, group='figure') for r in db.execute('''SELECT f.item_id, NULL AS color_id, sum(p.damaged) damaged
-            FROM copy_figure f JOIN copy_part p ON p.copy_figure_id=f.id
-            WHERE f.copy_id=? AND f.retired_at IS NULL AND p.retired_at IS NULL AND p.is_spare=0
-            GROUP BY f.item_id HAVING sum(p.damaged)>0''', (copy_id,)))
+        damaged_lines.extend(dict(r, group='figure') for r in db.execute('''SELECT f.item_id, NULL AS color_id, sum(min(f.quantity-f.missing, (SELECT max(p.damaged) FROM copy_part p
+                WHERE p.copy_figure_id=f.id AND p.retired_at IS NULL AND p.is_spare=0))) damaged
+            FROM copy_figure f
+            WHERE f.copy_id=? AND f.retired_at IS NULL AND f.quantity>f.missing
+            AND EXISTS (SELECT 1 FROM copy_part p WHERE p.copy_figure_id=f.id
+                AND p.retired_at IS NULL AND p.is_spare=0 AND p.damaged>0)
+            GROUP BY f.item_id''', (copy_id,)))
     damaged_lines = _named(db, damaged_lines)
     damaged = sum(l['damaged'] for l in damaged_lines)
     sums, asking, after = None, None, None
@@ -180,9 +183,11 @@ def card(db, copy_id, stamp=None):
                 floor = _cents(converted['amount']) if converted else None
                 if converted is None:
                     out['state'], out['ask']['none'] = 'no_rate', 'needs a rate'
-                    out['basis_note'] = 'The part-out value is in a currency with no rate · add one in Settings'
+                    out['basis_note'] = f"The part-out value is in {made['currency']} with no rate for {display} · add one in Settings"
                     asking = None
             out['floor'] = dict(label='Part-out value of what is present', amount=None if floor is None else money(floor, display, fixed=True), known=floor is not None)
+        if out['state'] == 'no_rate':
+            out['floor'] = None
         if floor is not None and after < floor:
             asking = floor
             out['floor'] = None
@@ -201,7 +206,8 @@ def card(db, copy_id, stamp=None):
                                         lines=[_line_view(l, display) for l in group]))
         if note := out['note']:
             out['rows'].append(dict(kind='plain', label='After deductions', amount=money(after, display, fixed=True)))
-        out['rows'].append(dict(kind='sum', label='Asking price · part-out value' if note else 'Asking price', amount=out['ask']['text']))
+        if asking is not None:
+            out['rows'].append(dict(kind='sum', label='Asking price · part-out value' if note else 'Asking price', amount=out['ask']['text']))
         out['coverage'] = _coverage(sums, lines)
     out['pills'] = _pills(c, out['state'], bool(checked and (short or figures_short)), checked, damaged)
     out['copy_enabled'] = out['state'] in ('filled', 'unchecked')
@@ -223,6 +229,8 @@ def listing(facts):
             rows.append('Completeness: not checked')
         elif not facts['short'] and not facts['figures_short']:
             rows.append((f'Completeness: complete, {pieces} pieces' if pieces else 'Completeness: complete') + (f", {facts['damaged']} damaged" if facts.get('damaged') else ''))
+        elif not facts['short']:
+            rows.append(f'Parts: complete, {pieces} of {pieces} pieces' if pieces else 'Parts: none recorded')
         else:
             percent = min(99, int((Decimal(pieces - facts['short']) * 100 / Decimal(pieces)).quantize(Decimal(1), ROUND_HALF_UP))) if pieces else None
             rows.append(f"Completeness: {f'{percent}% complete, ' if percent is not None else ''}{pieces - facts['short']} of {pieces} pieces")
@@ -241,8 +249,8 @@ def listing(facts):
             rows.append('  Missing: ' + ', '.join(gone))
     if facts.get('damaged_lines'):
         rows.append('Damaged: ' + ', '.join(f"{l['damaged']} {_name(l)}" for l in facts['damaged_lines']))
-    rows.append('Box: ' + ('yes' if 'Box present' in facts['flags'] else 'no'))
-    rows.append('Instructions: ' + ('yes' if 'Instructions present' in facts['flags'] else 'no'))
+    rows.append('Box: ' + ('yes' if any(collection._same_system_name('Box present', flag) for flag in facts['flags']) else 'no'))
+    rows.append('Instructions: ' + ('yes' if any(collection._same_system_name('Instructions present', flag) for flag in facts['flags']) else 'no'))
     if facts['price']:
         rows.append('Asking price: ' + facts['price'])
     return '\n'.join(plain_line(r) for r in rows)

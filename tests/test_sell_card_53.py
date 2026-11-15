@@ -360,13 +360,19 @@ def test_unchecked_pill_survives_unavailable_average(coll, rate_missing):
     assert 'Not checked' in [p['text'] for p in v['pills']]
 
 
-def test_missing_floor_conversion_is_no_rate(coll, monkeypatch):
+def test_missing_floor_conversion_is_no_rate(client, coll, monkeypatch):
     setup(coll)
     copy = checked_copy(coll)
     monkeypatch.setattr(selling.partout, 'values', lambda *args: {copy: dict(value=Decimal('6.10'), currency='USD')})
     v = card(coll, copy)
     assert v['state'] == 'no_rate' and v['ask']['text'] is None and not v['copy_enabled']
     assert 'Asking price' not in v['text'] and 'Missing parts' in v['text']
+    _, node = sell_node(client, coll, copy)
+    assert not node.select('.bc-sell-sum')
+    assert not any('Asking price' in r.get_text() for r in node.select('.bc-sell-calc .bc-sell-row'))
+    assert 'USD with no rate for EUR' in node.get_text()
+    assert 'not known yet' not in node.get_text()
+    assert 'currency of the quote' not in node.get_text()
 
 
 @pytest.mark.parametrize('group', ['part', 'figure'])
@@ -381,3 +387,36 @@ def test_damage_is_named_without_claiming_complete(coll, group):
     assert dict(text='Complete, 1 damaged', tone='warning') in v['pills']
     assert 'Completeness: complete, 6 pieces, 1 damaged' in v['text']
     assert 'Damaged: 1 ' in v['text'] and v['ask']['text'] == '€58.00'
+
+
+@pytest.mark.parametrize('pieces', [6, 0])
+def test_only_figures_missing_has_no_misleading_piece_percentage(coll, pieces):
+    setup(coll)
+    copy = checked_copy(coll, brick=0, plate=0, figure=1)
+    if not pieces:
+        coll.sql('DELETE FROM copy_part WHERE copy_id=? AND copy_figure_id IS NULL', (copy,))
+    text = card(coll, copy)['text']
+    assert ('Parts: complete, 6 of 6 pieces' if pieces else 'Parts: none recorded') in text
+    assert 'Figures: 1 of 2 present' in text
+    assert '99%' not in text and '0 of 0 pieces' not in text
+
+
+@pytest.mark.parametrize('missing, expected', [(0, 1), (1, 1), (2, 0)])
+def test_figure_damage_counts_figures_and_excludes_missing(coll, missing, expected):
+    setup(coll)
+    copy = checked_copy(coll, brick=0, plate=0, figure=missing)
+    coll.sql('UPDATE copy_part SET damaged=1 WHERE copy_id=? AND copy_figure_id IS NOT NULL', (copy,))
+    text = card(coll, copy)['text']
+    if expected:
+        assert 'Damaged: 1 ' in text and 'Damaged: 2 ' not in text
+    else:
+        assert 'Damaged:' not in text
+
+
+def test_lower_case_system_flags_are_present(coll):
+    setup(coll)
+    copy = checked_copy(coll)
+    for name in ('box present', 'instructions present'):
+        coll.tag('copy', copy, coll.flag(name, 'status'))
+    text = card(coll, copy)['text']
+    assert 'Box: yes' in text and 'Instructions: yes' in text

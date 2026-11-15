@@ -297,7 +297,9 @@ def detail_body(db, item_id, kind):
     matches = [m for m in workbench.matches(db, all_gaps=around) if mine(m)] if around else []
     prices = current_rows(db, item_id)
     book = bodies(db, items=[item_id, *(r['item_id'] for r in prices)], colors=[r['color_id'] for r in prices])
-    return {'item': book.item(item_id), 'properties': properties_body(db, item_id), 'counts': {'owned': owned.get(item_id, 0), 'wished': item_id in wished},
+    from ..core import figures
+    return {'figure_comparisons': figures.read_body(db, item_id) if kind == 'minifigure' else [],
+            'item': book.item(item_id), 'properties': properties_body(db, item_id), 'counts': {'owned': owned.get(item_id, 0), 'wished': item_id in wished},
             'copies': copies, 'stock': stock, 'wishes': wishes, 'prices': [current_body(book, r) for r in prices],
             'inventory': inventory_lines(db, item_id) if kind in ('set', 'minifigure') else [], 'links': link_bodies(db, links),
             'used_in': used_in_rows(db, item_id, kind),

@@ -1685,7 +1685,15 @@ def bw_collection_item(item_id):
                 args = passthrough_args('item_id')
                 args['colour'] = colour_choices[0]['color_id']
                 return redirect(url_for('web.bw_collection_item', item_id=item_id, **args))
-            detail = collection.detail(db, item_id, colour=colour, copy_id=request.args.get('copy'), stock_id=request.args.get('stock'))
+            detail = collection.detail(db, item_id, colour=colour, copy_id=request.args.get('copy') if letter!='M' else None, stock_id=request.args.get('stock'))
+            if letter == 'M':
+                from ..core import figures
+                detail['figure_comparisons'] = figures.compare(db, item_id)
+                asked = request.args.get('place') or ('figure:' + request.args['figure'] if request.args.get('figure') else None)
+                detail['figure_comparison'] = next((r for r in detail['figure_comparisons'] if r['place'] == asked or
+                    (not asked and r['copy_id'] == request.args.get('copy') and r['copy_id'])),
+                    next((r for r in detail['figure_comparisons'] if r['stock_id'] == request.args.get('stock')), None) or
+                    next(iter(detail['figure_comparisons']), None))
             detail['colour_choices'] = colour_choices if len(colour_choices) > 1 else []
             choices = collection.options(db)
             from ..core import identity_admin
@@ -2290,6 +2298,8 @@ def bw_planning(screen):
     from .admin_ops import brickwork_path
     if screen not in ('wishlist','prices','complete-sets'): abort(404)
     error=None;rows=[];settings={};available_types=[];lists=[]
+    figures_tab=screen=='complete-sets' and request.args.get('tab')=='figures'
+    figure_page=None
     list_id=request.args.get('list','all')
     kind=request.args.get('kind') or None
     if kind and kind not in collection.TYPES: abort(400)
@@ -2305,9 +2315,16 @@ def bw_planning(screen):
                 # Rows are not rendered here: the page loads compact records and each row's observations on demand.
                 available_types=[collection.type_of(r[0]) for r in db.execute('SELECT DISTINCT i.kind FROM price_current p JOIN item i ON i.id=p.item_id')]
             else:
-                data=planning.ranking(db);rows=data['rows'];settings=data['settings']
+                if figures_tab:
+                    from ..core import figures
+                    from .figure_views import listing
+                    rows=figures.compare(db)
+                    figure_page=listing(rows,request.args)
+                else:
+                    data=planning.ranking(db);rows=data['rows'];settings=data['settings']
     except (ValueError,sqlite3.Error,OSError) as exc: error=public(exc, 'Brick Work database is not available. Check BW_DB_PATH and try again.')
-    response=current_app.make_response(render_template('web/toni/web/bw_prices.html' if screen=='prices' else 'web/toni/web/bw_planning.html',
+    response=current_app.make_response(render_template('web/toni/web/bw_figures.html' if figures_tab else 'web/toni/web/bw_prices.html' if screen=='prices' else 'web/toni/web/bw_planning.html',
+        figure_page=figure_page,
         screen=screen,title={'wishlist':'Wishlist','prices':'Prices','complete-sets':'Complete sets'}[screen],
         rows=rows,settings=settings,error=error,kind=kind,types=collection.TYPES,available_types=available_types, wishlists=lists, list_id=list_id,
         can_edit=bw_collection_editable(),csrf_token=bw_add_token()))

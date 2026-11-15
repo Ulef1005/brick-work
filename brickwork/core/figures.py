@@ -7,7 +7,7 @@ capped at the required quantity. No stale or foreign quote becomes a zero.
 from collections import defaultdict
 from decimal import Decimal as D
 
-from . import collection, partout, planning, items
+from . import collection, partout, planning, items, workbench
 from .sources.base import now
 
 RULE = ('Complete it when complete value less the cost to complete beats the part-out value by 10% and at least €5.00. '
@@ -62,14 +62,14 @@ def compare(db, item_id=None):
         UNION ALL SELECT 'figure:'||f.id,NULL,c.id,f.id,f.item_id,f.quantity,c.storage_id,i.name,i.year,i.theme_name
         FROM copy_figure f JOIN copy c ON c.id=f.copy_id JOIN item i ON i.id=f.item_id
         WHERE c.archived_at IS NULL AND f.retired_at IS NULL AND f.quantity>f.missing
-        AND (? IS NULL OR f.item_id=?) ORDER BY place''', (item_id, item_id, item_id, item_id))]
+        AND (? IS NULL OR f.item_id=?) ORDER BY place''', (None, None, None, None))]
     places = {r['place']: r for r in rows}
     components = [dict(r) for r in db.execute('''SELECT 'stock:'||p.stock_id place,p.item_id,p.color_id,p.quantity,p.missing,p.damaged
         FROM stock_part p JOIN stock s ON s.id=p.stock_id WHERE p.retired_at IS NULL AND p.is_spare=0 AND p.quantity>0
         AND s.archived_at IS NULL AND (? IS NULL OR s.item_id=?)
         UNION ALL SELECT 'figure:'||p.copy_figure_id,p.item_id,p.color_id,p.quantity,p.missing,p.damaged
         FROM copy_part p JOIN copy_figure f ON f.id=p.copy_figure_id WHERE p.retired_at IS NULL AND p.is_spare=0 AND p.quantity>0
-        AND (? IS NULL OR f.item_id=?)''', (item_id, item_id, item_id, item_id)) if r['place'] in places]
+        AND (? IS NULL OR f.item_id=?)''', (None, None, None, None)) if r['place'] in places]
     grouped = defaultdict(list)
     for p in collection.decorate(db, components):
         grouped[p['place']].append(p)
@@ -78,15 +78,42 @@ def compare(db, item_id=None):
     scope = {(r['item_id'], None) for r in rows} | {(p['item_id'], p['color_id']) for p in components}
     market = collection.prices(db, pairs=scope) if scope else {}
     quotes = {k: planning.quote(market.get(k, []), 'used', config, stamp) for k in scope}
+    # Allocate available loose parts once, in the same deterministic place order on every reader.
+    pool = defaultdict(int)
+    if config['repair_use_loose_stock']:
+        for stock in db.execute("SELECT * FROM stock WHERE kind='part' AND archived_at IS NULL"):
+            pool[stock['item_id'], stock['color_id']] += workbench.available(db, stock)
+        for held in db.execute("SELECT item_id,color_id,sum(qty) qty FROM allocation WHERE state='pending' AND kind='missing_part' GROUP BY item_id,color_id"):
+            pool[held['item_id'], held['color_id']] = max(0, pool[held['item_id'], held['color_id']] - held['qty'])
+    identities = items.labels(db, {(r['item_id'], None) for r in rows})
     labels = collection.copy_labels(db, [r['copy_id'] for r in rows if r['copy_id']])
     set_ids = {r['id']: r['item_id'] for r in db.execute('SELECT id,item_id FROM copy WHERE archived_at IS NULL')}
     names = items.labels(db, {(set_ids[r['copy_id']], None) for r in rows if r['copy_id']})
+    rows.sort(key=lambda r: (r['copy_id'] is not None, r['place']))
     for r in rows:
+        label = identities[r['item_id'], None]
+        r['number_text'] = label.bricklink[1] if label.bricklink else label.number
         r['where'] = 'sets' if r['copy_id'] else 'loose'
         r['place_label'] = ('In ' + names[set_ids[r['copy_id']], None].text + ' ' + labels[r['copy_id']]) if r['copy_id'] else 'Loose'
         r['complete_quote'] = quotes.get((r['item_id'], None))
         r['parts'] = grouped[r['place']]
         for p in r['parts']:
-            p['quote'] = quotes.get((p['item_id'], p['color_id']))
+            key = p['item_id'], p['color_id']
+            p['quote'] = quotes.get(key)
+            p['stock_used'] = min(pool[key], min(p['quantity'], p['missing'] + p['damaged']))
+            pool[key] -= p['stock_used']
         project(r, config)
-    return sorted(rows, key=lambda r: (r['needs_evidence'], r['where'] != 'loose', -D(r['gain'] or 0), r['number_text'], r['place']))
+    return sorted([r for r in rows if item_id is None or r['item_id'] == item_id], key=lambda r: (r['needs_evidence'], r['where'] != 'loose', -D(r['gain'] or 0), r['number_text'], r['place']))
+
+
+def read_body(db, item_id):
+    """Stable API/MCP comparison body; money is decimal text in one currency."""
+    fields = ('place', 'stock_id', 'copy_id', 'copy_figure_id', 'place_label', 'currency', 'quantity',
+              'complete', 'parts_value', 'to_complete', 'shipping_fees', 'minimum_order_extra',
+              'gain', 'lines', 'priced', 'enough', 'missing_count', 'needs_evidence', 'recommendation')
+    quote = lambda q: {k: q[k] for k in ('price', 'currency', 'observed_at', 'guide')} if q else None
+    return [dict({k:r[k] for k in fields}, complete_quote=quote(r['complete_quote']),
+                 parts=[dict(item_id=p['item_id'], color_id=p['color_id'], quantity=p['quantity'],
+                             missing=p['missing'], damaged=p['damaged'], need=p['need'], buy=p['buy'],
+                             stock_used=p['stock_used'], quote=quote(p['quote'])) for p in r['parts']])
+            for r in compare(db, item_id)]

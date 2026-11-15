@@ -7501,9 +7501,141 @@ components:
           description: The Rebrickable theme of a set or minifigure from the catalogue (a part has none). Item properties fetched later may name another.
       required:
       - item
+    FigureComparison:
+      type: object
+      properties:
+        place:
+          type: string
+        place_label:
+          type: string
+        currency:
+          type: string
+        stock_id:
+          type: &id001
+          - string
+          - 'null'
+        copy_id:
+          type: *id001
+        complete:
+          type: *id001
+        parts_value:
+          type: *id001
+        to_complete:
+          type: *id001
+        shipping_fees:
+          type: *id001
+        minimum_order_extra:
+          type: *id001
+        gain:
+          type: *id001
+        copy_figure_id:
+          type:
+          - integer
+          - 'null'
+        quantity:
+          type: integer
+        lines:
+          type: integer
+        priced:
+          type: integer
+        missing_count:
+          type: integer
+        enough:
+          type: boolean
+        needs_evidence:
+          type: boolean
+        recommendation:
+          type:
+          - string
+          - 'null'
+          enum:
+          - Complete it
+          - Part out
+          - Keep as is
+          - null
+        complete_quote:
+          $ref: '#/components/schemas/FigureQuote'
+        parts:
+          type: array
+          items:
+            type: object
+            properties:
+              item_id:
+                type: integer
+              color_id:
+                type: integer
+              quantity:
+                type: integer
+              missing:
+                type: integer
+              damaged:
+                type: integer
+              need:
+                type: integer
+              buy:
+                type: integer
+              stock_used:
+                type: integer
+              quote:
+                $ref: '#/components/schemas/FigureQuote'
+            required:
+            - item_id
+            - color_id
+            - quantity
+            - missing
+            - damaged
+            - need
+            - buy
+            - stock_used
+            - quote
+      required:
+      - place
+      - place_label
+      - currency
+      - stock_id
+      - copy_id
+      - complete
+      - parts_value
+      - to_complete
+      - shipping_fees
+      - minimum_order_extra
+      - gain
+      - copy_figure_id
+      - quantity
+      - lines
+      - priced
+      - missing_count
+      - enough
+      - needs_evidence
+      - recommendation
+      - complete_quote
+      - parts
+    FigureQuote:
+      type:
+      - object
+      - 'null'
+      properties:
+        price:
+          type: string
+        currency:
+          type: string
+        observed_at:
+          type: string
+        guide:
+          type: string
+      required:
+      - price
+      - currency
+      - observed_at
+      - guide
     ItemDetail:
       type: object
       properties:
+        figure_comparisons:
+          description: Complete versus part-out value per live figure place, using fresh used quotes and repair settings (#55).
+          type: array
+          items:
+            $ref: '#/components/schemas/FigureComparison'
         item:
           $ref: '#/components/schemas/Item'
         properties: {}

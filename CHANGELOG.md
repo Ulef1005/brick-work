@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **Complete or part out** (#55). Complete sets has a Figures tab with values for each loose figure and set copy. Minifigure detail shows the comparison and missing-part costs. API and MCP detail reads include the same comparisons. [Compare minifigures](docs/how-to/plan-repairs.md#compare-minifigures)
+
+
 - **Sell listing accuracy** (#53). Price-free previews retain known missing parts and figures. Damage is named in the status and listing, unchecked copies keep their status without a quote, and a missing rate for the part-out floor suppresses the asking price. Clipboard fallback works inside the open preview.
 
 - **Sell this copy** (#53). The page of a set has a Sell this copy card between Prices and Value. It takes the used sold average (new for a new or sealed copy) and takes off the used price of each missing part and figure, line by line. A line without a fresh price is marked needs evidence and left out. The part-out value is the floor. **Preview** shows plain listing text you can edit and copy. **Worth now** of a copy with a part check uses the same deductions; a copy without one keeps the incomplete discount of Settings. [Sell this copy](docs/how-to/pictures-and-prices.md#sell-this-copy)

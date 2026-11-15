@@ -213,3 +213,42 @@ def test_edge_candidates_reach_their_states(tmp_path,app4,client,monkeypatch):
         assert 'Needs evidence' in client.get('/planning/complete-sets?tab=figures&recommendation=Needs+evidence').text
     finally:
         clock.thaw_clock(patched)
+
+
+def test_query_choices_sort_chips_and_group_order(figure,coll,read,app4):
+    from brickwork.web.figure_views import listing
+    from werkzeug.datastructures import MultiDict
+    second=coll.local('minifigure','Sam the Chef',born_key='aaa55-chef-test')
+    sid=coll.add_stock('minifigure',second,source='none')
+    for n,part in enumerate(figure[1]):
+        coll.sql('INSERT INTO stock_part(stock_id,item_id,color_id,quantity,missing) VALUES(?,?,?,1,?)',(sid,part,figure[2],int(n==3)))
+    coll.price(second,'2.00',region='eu',observed=now().isoformat())
+    add_place(coll,figure,1)
+    with read() as db: rows=figures.compare(db)
+    with app4.test_request_context():
+        gain=listing(rows,MultiDict())
+        assert gain['rows'][0]['name']=='Alex the Knight'
+        assert gain['rows'][-1]['where']=='sets'
+        assert listing(rows,MultiDict({'sort':'name'}))['rows'][0]['name']=='Alex the Knight'
+        assert listing(rows,MultiDict({'sort':'number'}))['rows'][0]['name']=='Sam the Chef'
+        assert listing(rows,MultiDict({'sort':'parts'}))['rows'][0]['where']=='loose'
+        page=listing(rows,MultiDict({'q':'Knight','where':'loose','sort':'cost'}))
+        assert len(page['rows'])==1 and 'q=Knight' in page['link'](page=2)
+        assert 'q=' not in page['link'](q='') and 'where=loose' in page['link'](q='')
+
+
+def test_shipping_per_figure(figure,coll,read):
+    coll.sql('UPDATE stock SET quantity=2 WHERE id=?',(figure[3],))
+    coll.sql('UPDATE stock_part SET quantity=2,missing=missing*2 WHERE stock_id=?',(figure[3],))
+    r=result(read,figure)
+    assert (r['complete'],r['parts_value'],r['shipping_fees'],r['to_complete'])==('36.00','12.00','1.00','8.00')
+
+
+def test_visible_money_uses_words_and_one_currency(figure,coll,client):
+    import re
+    coll.price(figure[0],'2.00',region='eu',observed=now().isoformat())
+    text=BeautifulSoup(client.get('/planning/complete-sets?tab=figures').data,'html.parser').select_one('#bw-figures').get_text(' ',strip=True)
+    assert 'part out gains €8.00' in text and 'Part out' in text
+    assert not re.search(r'[−–-]\s*€|€\s+\d',text)
+    assert 'USD' not in text and '$' not in text
+    assert figures.RULE=='Complete it when complete value less the cost to complete beats the part-out value by 10% and at least €5.00. Part out when the reverse holds. Otherwise no recommendation.'

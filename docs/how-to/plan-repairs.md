@@ -65,7 +65,7 @@ To order the parts of many sets at once, press **Order missing parts** instead. 
 ## Compare minifigures
 
 Open **Planning › Complete sets › Figures** to compare complete value, present parts and the cost to complete each figure.
-Each place has its own row, with loose figures first and set copies next.
+Each place with missing or damaged parts has its own row, with loose figures first and set copies next.
 Figures without enough fresh used prices wait under **Needs evidence**.
 
 The comparison uses the repair settings and the same price coverage and meaningful gain rules as set part-out values.
@@ -88,7 +88,7 @@ The card's **Copy** picker chooses the loose record or set copy to describe.
 A figure link inside a set copy opens that place's comparison.
 Missing-part lines show the colour first, the part number, and the fresh used quote with its date.
 **Shipping and fees** applies the repair settings per figure.
-A minimum order adjustment appears separately when needed.
+A minimum order adjustment has its own line when needed.
 Complete figures show only Complete and Parts; unidentified figures keep their Info note.
 
 **Fetch prices** queues the missing quotes when a BrickLink key and enough daily budget are available.

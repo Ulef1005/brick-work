@@ -1,6 +1,8 @@
 """Server-side list controls for the Figures planning tab."""
 from decimal import Decimal
-from flask import request, url_for
+from collections import defaultdict
+import json
+from flask import url_for
 from .valuation_views import _page_items
 from ..core.figures import RULE
 
@@ -24,6 +26,8 @@ def listing(rows, args):
         value = r[field] if field else r['number_text'] if params['sort'] == 'number' else r['name'] or ''
         value = Decimal(value) * (-1 if field != 'to_complete' else 1) if field and value is not None else value
         return r['needs_evidence'], r['where'] != 'loose', value is None, value if value is not None else '', r['place']
+    all_complete = bool(shown) and all(not r['missing_count'] for r in shown)
+    shown = [r for r in shown if r['missing_count']]
     shown.sort(key=key)
     total, pages = len(shown), max(1, (len(shown) + 14) // 15)
     try: page = min(pages, max(1, int(args.get('page', 1))))
@@ -36,7 +40,7 @@ def listing(rows, args):
                  items=[dict(n=n, url=link(page=n) if n else None) for n in _page_items(page, pages)])
     best=max((r for r in shown if r['recommendation']=='Complete it'),key=lambda r: Decimal(r['gain']),default=None)
     return dict(best=best, rule=RULE, rows=shown[(page-1)*15:page*15], params=params, options=options, sorts=SORTS, pager=pager, link=link,
-                all_complete=bool(shown) and all(not r['missing_count'] for r in shown), has_rows=bool(rows))
+                all_complete=all_complete, has_rows=bool(rows))
 
 
 def refresh_state(db, rows):
@@ -44,6 +48,15 @@ def refresh_state(db, rows):
     from ..core.sources.bricklink import BrickLink
     state = BrickLink(db).status()
     wanted = sorted({i for r in rows for i in r['unpriced_items']})[:200]
-    state.update(items=wanted, calls=len(wanted)*2)
+    colours = defaultdict(set)
+    for row in db.execute('''SELECT item_id,color_id FROM (
+        SELECT item_id,color_id FROM copy_part WHERE retired_at IS NULL
+        UNION SELECT item_id,color_id FROM stock WHERE archived_at IS NULL AND color_id IS NOT NULL
+        UNION SELECT item_id,color_id FROM stock_part WHERE retired_at IS NULL
+        UNION SELECT item_id,color_id FROM wish WHERE archived_at IS NULL AND color_id IS NOT NULL)
+        WHERE item_id IN (SELECT value FROM json_each(?))''', (json.dumps(wanted),)):
+        colours[row['item_id']].add(row['color_id'])
+    # market_price fetches new and used for every held colour, even when only one is missing here.
+    state.update(items=wanted, calls=sum(2 * max(1, len(colours[i])) for i in wanted))
     state['exhausted'] = state['used_today'] + state['calls'] > state['budget']
     return state

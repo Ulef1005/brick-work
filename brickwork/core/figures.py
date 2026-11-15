@@ -58,18 +58,18 @@ def compare(db, item_id=None):
     rows = [dict(r) for r in db.execute('''SELECT 'stock:'||s.id place, s.id stock_id, NULL copy_id,
         NULL copy_figure_id,s.item_id,s.quantity,s.storage_id,i.name,i.year,i.theme_name theme
         FROM stock s JOIN item i ON i.id=s.item_id WHERE s.kind='minifigure'
-        AND s.archived_at IS NULL AND s.quantity>0 AND (? IS NULL OR s.item_id=?)
+        AND s.archived_at IS NULL AND s.quantity>0
         UNION ALL SELECT 'figure:'||f.id,NULL,c.id,f.id,f.item_id,f.quantity,c.storage_id,i.name,i.year,i.theme_name
         FROM copy_figure f JOIN copy c ON c.id=f.copy_id JOIN item i ON i.id=f.item_id
         WHERE c.archived_at IS NULL AND f.retired_at IS NULL AND f.quantity>f.missing
-        AND (? IS NULL OR f.item_id=?) ORDER BY place''', (None, None, None, None))]
+        ORDER BY place''')]
     places = {r['place']: r for r in rows}
     components = [dict(r) for r in db.execute('''SELECT 'stock:'||p.stock_id place,p.item_id,p.color_id,p.quantity,p.missing,p.damaged
         FROM stock_part p JOIN stock s ON s.id=p.stock_id WHERE p.retired_at IS NULL AND p.is_spare=0 AND p.quantity>0
-        AND s.archived_at IS NULL AND (? IS NULL OR s.item_id=?)
+        AND s.archived_at IS NULL
         UNION ALL SELECT 'figure:'||p.copy_figure_id,p.item_id,p.color_id,p.quantity,p.missing,p.damaged
         FROM copy_part p JOIN copy_figure f ON f.id=p.copy_figure_id WHERE p.retired_at IS NULL AND p.is_spare=0 AND p.quantity>0
-        AND (? IS NULL OR f.item_id=?)''', (None, None, None, None)) if r['place'] in places]
+        ''') if r['place'] in places]
     grouped = defaultdict(list)
     for p in collection.decorate(db, components):
         grouped[p['place']].append(p)

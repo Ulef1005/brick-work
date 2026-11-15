@@ -70,7 +70,8 @@ def test_six_figure_states(coll, figure_world, client, state):
     elif state == 'no-picture':
         coll.sql('DELETE FROM picture WHERE item_id=?', (w.figure,))
     soup = page(client, item_url(item))
-    assert [m['data-module'] for m in soup.select('[data-module]')] == ['status', 'consists', 'used-in', 'prices', 'matching', 'wanted', 'info']
+    expected = ['status', 'consists', 'used-in', 'prices'] + ([] if state == 'unidentified' else ['figure-comparison']) + ['matching', 'wanted', 'info']
+    assert [m['data-module'] for m in soup.select('[data-module]')] == expected
     assert not soup.select('.bc-hero-status .bc-quantity-pill')
     assert 'Grouped by place' not in soup.get_text()
     assert 'rebrickable-translated' not in soup.select_one('[data-module=consists]').get_text()

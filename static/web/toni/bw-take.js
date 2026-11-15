@@ -7,8 +7,14 @@
   const root = document.querySelector('#bw-collection');
   if (!root) return;
   const receiptKey = 'bw-collection-receipt';
+  // The screen a receipt belongs to is the path plus the query parts that choose the copy, stock row or colour (as bw-collection.js reads it, #236).
+  const screenOf = () => {
+    const id = ['copy', 'stock', 'colour'].map(k => { const m = new RegExp('[?&]' + k + '=([^&#]+)').exec(location.search || ''); return m && k + '=' + m[1]; }).filter(Boolean).join('&');
+    return id ? location.pathname + '?' + id : location.pathname;
+  };
   // #215 · Found 1 on a missing line: lowers its missing count by one through the same save route, with Undo; loose stock stays.
-  root.querySelectorAll('[data-bc-found-one]').forEach(button => {
+  // #401 · Found all: the same call with the action found-all, which sets the line's missing count to 0.
+  [['[data-bc-found-one]', 'found-one'], ['[data-bc-found-all]', 'found-all']].forEach(([selector, action]) => root.querySelectorAll(selector).forEach(button => {
     const note = button.parentElement.querySelector('[data-bc-found-message]');
     button.addEventListener('click', async () => {
       if (button.disabled) return;
@@ -16,17 +22,17 @@
       if (note) note.textContent = 'Saving';
       try {
         const data = {...JSON.parse(button.dataset.identity), csrf_token: root.dataset.csrf};
-        const response = await fetch(root.dataset.saveUrl.replace('ACTION', 'found-one'), {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)});
+        const response = await fetch(root.dataset.saveUrl.replace('ACTION', action), {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)});
         const result = await response.json();
         if (!response.ok) throw new Error(result.message || 'Not saved · try again');
-        try { sessionStorage.setItem(receiptKey, JSON.stringify({...result, screen: location.pathname})); } catch (_) {}
+        try { sessionStorage.setItem(receiptKey, JSON.stringify({...result, screen: screenOf()})); } catch (_) {}
         location.reload();
       } catch (error) {
         if (note) note.textContent = error.message;
         button.disabled = false;
       }
     });
-  });
+  }));
   root.querySelectorAll('[data-bc-take]').forEach(box => {
     const max = Number(box.dataset.max), output = box.querySelector('[data-bc-take-value]'),
       go = box.querySelector('[data-bc-take-go]'), note = box.querySelector('[data-bc-take-message]'),
@@ -55,7 +61,7 @@
         const response = await fetch(root.dataset.saveUrl.replace('ACTION', 'take'), {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)});
         const result = await response.json();
         if (!response.ok) throw new Error(result.message || 'Not saved · try again');
-        try { sessionStorage.setItem(receiptKey, JSON.stringify({...result, screen: location.pathname})); } catch (_) {}
+        try { sessionStorage.setItem(receiptKey, JSON.stringify({...result, screen: screenOf()})); } catch (_) {}
         location.reload();
       } catch (error) {
         if (note) note.textContent = error.message;

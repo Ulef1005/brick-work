@@ -258,3 +258,34 @@ def test_print_list_uses_the_move(world, coll, client):
     assert [s[0] for s in sections_of(soup_of(client, PRINT.format('missing'), copy=copy))] == ['Bricks', 'Plates']
     admin.patch_settings(coll.db, {'part_group_overrides': {'Bricks': 'Tiles'}})
     assert [s[0] for s in sections_of(soup_of(client, PRINT.format('missing'), copy=copy))] == ['Plates', 'Tiles']
+
+
+# ---------- review fixes ----------
+
+def test_null_clears_the_moves_like_an_empty_object(coll):
+    admin.patch_settings(coll.db, {'part_group_overrides': {'Plates': 'Bricks'}})
+    assert stored(coll) is not None
+    admin.patch_settings(coll.db, {'part_group_overrides': None})
+    assert stored(coll) is None
+
+
+def test_a_stored_value_too_big_never_blocks_another_settings_save(coll):
+    import json
+    coll.setting('part_group_overrides', json.dumps({f'Category {i:03d}': 'Bricks' for i in range(250)} | {'x' * 120: 'Tiles'}))
+    assert len(part_groups.overrides(coll.db)) == part_groups.MAX_OVERRIDES
+    admin.patch_settings(coll.db, {'retail_country': 'US'})                              # no error: the stored moves are cut to what a save accepts
+    assert admin.settings(coll.db)['retail_country'] == 'US'
+
+
+def test_the_counts_leave_out_an_archived_copy_and_stock_taken_to_zero(coll):
+    coll.add_copy('1000-1')
+    categorise(coll, **{'3001': 'Made up'})
+    assert part_groups.held_counts(coll.db)['Made up'] == 1
+    coll.db.execute("UPDATE main.copy SET archived_at='2026-01-01T00:00:00Z'")
+    assert part_groups.held_counts(coll.db).get('Made up', 0) == 0
+
+
+def test_the_cli_parser_accepts_the_two_part_list_settings():
+    from brickwork.web import cli
+    for key in ('part_list_grouping', 'part_group_overrides'):
+        assert cli.build_parser().parse_args(['settings', 'set', key, '{}']).key == key

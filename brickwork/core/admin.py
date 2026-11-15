@@ -297,7 +297,7 @@ def patch_settings(db, data):
             try:
                 save_settings(db, data.get('retail_country', current['retail_country']),
                               data.get('source_priority', current['priority']), rules, part_list_grouping=data.get('part_list_grouping'),
-                              part_group_overrides=data.get('part_group_overrides'))
+                              part_group_overrides=(data['part_group_overrides'] or {}) if 'part_group_overrides' in data else None)
             except ValueError as exc:
                 raise errors.ValidationFailed(str(exc)) from None
         if 'display_currency' in data:

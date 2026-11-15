@@ -247,7 +247,7 @@ brickwork settings show
 brickwork settings set KEY VALUE
 ```
 
-`KEY` is one of `bricklink_region`, `bricklink_currency`, `incomplete_discount_pct`, `retail_country`, `source_priority`, or `import_order:KIND` with `KIND` one of `set`, `part`, `minifigure`, `instructions`, `box`, `gear`, `book`, `catalog`. The two orders are JSON: `source_priority` is `{"pictures": {"part": ["bricklink"]}}`-shaped (see **Settings** in Tools & Admin), an import order lists the six steps once each. The BrickLink region and currency are locked once chosen; `BW_PRICE_SETTINGS_LOCK=0` unlocks them.
+`KEY` is one of `bricklink_region`, `bricklink_currency`, `incomplete_discount_pct`, `retail_country`, `source_priority`, `part_list_grouping`, `part_group_overrides`, or `import_order:KIND` with `KIND` one of `set`, `part`, `minifigure`, `instructions`, `box`, `gear`, `book`, `catalog`. The two orders are JSON: `source_priority` is `{"pictures": {"part": ["bricklink"]}}`-shaped (see **Settings** in Tools & Admin), an import order lists the six steps once each. The BrickLink region and currency are locked once chosen; `BW_PRICE_SETTINGS_LOCK=0` unlocks them.
 
 ## sync
 

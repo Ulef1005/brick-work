@@ -83,7 +83,8 @@ def parse_overrides(text):
         return {}
     if not isinstance(stored, dict):
         return {}
-    return {c: g for c, g in stored.items() if isinstance(c, str) and c.strip() and isinstance(g, str) and g in GROUPS}
+    kept = {c.strip(): g for c, g in stored.items() if isinstance(c, str) and c.strip() and len(c.strip()) <= MAX_CATEGORY and isinstance(g, str) and g in GROUPS}
+    return dict(sorted(kept.items())[:MAX_OVERRIDES])             # what valid_overrides accepts, so a stored value never blocks another save
 
 
 def overrides(db):
@@ -101,8 +102,9 @@ def encode_overrides(value):
 def held_counts(db):
     """`{category name: parts}`: how many different parts of that category the collection holds (set copies and loose stock) and, with a
     value of 0, every category the catalogue and the table name. A part with no category is not counted. Read-only."""
-    ids = [r[0] for r in db.execute("""SELECT item_id FROM main.copy_part WHERE retired_at IS NULL AND is_spare=0
-                                       UNION SELECT item_id FROM main.stock WHERE kind='part' AND archived_at IS NULL""")]
+    ids = [r[0] for r in db.execute("""SELECT cp.item_id FROM main.copy_part cp JOIN main.copy c ON c.id=cp.copy_id
+                                       WHERE cp.retired_at IS NULL AND cp.is_spare=0 AND c.archived_at IS NULL
+                                       UNION SELECT item_id FROM main.stock WHERE kind='part' AND archived_at IS NULL AND quantity>0""")]
     counts = {category: 0 for categories in GROUPS.values() for category in categories}
     from . import collection
     if collection.has_catalogue(db):

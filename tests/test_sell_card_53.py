@@ -204,6 +204,34 @@ def test_the_value_card_says_what_was_taken_off_and_what_was_not_priced(coll, cl
     assert 'Worth now €52.00' in text and 'missing parts and figures less €6.00' in text and '1 missing line without a price, not taken off' in text
 
 
+@pytest.mark.parametrize('set_currency', ['GBP', 'EUR'])
+def test_worth_now_only_describes_deductions_when_it_has_a_value(coll, client, set_currency):
+    setup(coll, plate=None)
+    coll.setting('bricklink_currency', 'USD')
+    coll.setting('display_currency', 'EUR')
+    coll.sql("UPDATE price_observation SET currency=? WHERE item_id=?", (set_currency, coll.item('sets', '1000-1')))
+    coll.sql("UPDATE price_observation SET currency='USD' WHERE item_id<>?", (coll.item('sets', '1000-1'),))
+    coll.sql("UPDATE price_current SET currency='USD' WHERE item_id<>?", (coll.item('sets', '1000-1'),))
+    coll.sql("INSERT OR REPLACE INTO exchange_rate(currency, per_eur, as_of, source) VALUES('USD', '2', '2026-10-09', 'manual')")
+    copy = checked_copy(coll)
+    r = worth(coll, copy)
+    assert r['_deduction']['parts'] + r['_deduction']['figures'] == Decimal('3.00')
+    assert len(r['_deduction']['unpriced']) == 1
+    page = BeautifulSoup(client.get(f"/collection/item/{coll.item('sets', '1000-1')}?copy={copy}").data, 'html.parser')
+    text = re.sub(r'\s+', ' ', page.select_one('[data-module=value]').get_text(' ', strip=True))
+    if set_currency == 'GBP':
+        assert r['worth'] is None and r['worth_reason'] == 'no_rate'
+        assert 'Worth now needs a rate' in text
+        assert 'The value is in a currency with no rate · add one in Settings' in text
+        assert 'missing parts and figures less' not in text
+        assert 'without a price, not taken off' not in text
+        assert 'no sales' not in text
+    else:
+        assert 'Worth now €55.00' in text
+        assert 'missing parts and figures less €3.00' in text
+        assert '1 missing line without a price, not taken off' in text
+
+
 # ---- the listing text ----
 
 def test_the_listing_text_says_what_the_copy_is_and_lacks(coll):

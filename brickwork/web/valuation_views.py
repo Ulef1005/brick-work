@@ -70,7 +70,7 @@ def module(r, label):
         if r['worth_discount_pct']:
             parts.append(f"incomplete, {r['worth_discount_pct']}% off")
         deduction = r.get('_deduction')
-        if deduction and (deduction['parts'] or deduction['figures']):
+        if r['worth'] is not None and deduction and (deduction['parts'] or deduction['figures']):
             parts.append(f"missing parts and figures less {money(deduction['parts'] + deduction['figures'], r['currency'], fixed=True)}")
         stale = bool(r['worth_stale'])
     elif r['worth_reason'] == 'no_quote':
@@ -87,7 +87,7 @@ def module(r, label):
     if r['worth_reason'] == 'no_rate':
         notes.append('The value is in a currency with no rate · add one in Settings')
     deduction = r.get('_deduction')
-    if deduction and deduction['unpriced'] and r['worth_source'] != 'override':
+    if r['worth'] is not None and deduction and deduction['unpriced'] and r['worth_source'] != 'override':
         notes.append(f"{plural(len(deduction['unpriced']), 'missing line')} without a price, not taken off")
     out['notes'] = notes
     return out

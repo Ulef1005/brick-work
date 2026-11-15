@@ -1007,7 +1007,7 @@ main .key-need a:not(.button) { min-height:44px;display:inline-flex;align-items:
 #bw-collection .bc-pl-acts .bc-take { flex-direction:row;flex-wrap:wrap;align-items:center;gap:8px; }
 #bw-collection .bc-pl-acts .bc-take[data-max="1"] .bc-stepper { display:none; }
 #bw-collection .bc-pl-acts .bc-found { flex-direction:row;flex-wrap:wrap;align-items:center;gap:8px; }
-@media(max-width:767px) {
+@media(max-width:1023px) {
   #bw-collection .bc-missing-card.bc-pl-plain>a { flex:1 0 calc(100% - 68px); }
   #bw-collection .bc-missing-card.bc-pl-plain>.bc-missing-count { flex:1 1 100%;padding-left:68px;text-align:left; }
   #bw-collection [data-bc-pl-editing] [data-bc-pl-row]>a:first-of-type { flex:1 0 calc(100% - 124px); }
@@ -1041,7 +1041,11 @@ main .key-need a:not(.button) { min-height:44px;display:inline-flex;align-items:
 #bw-collection .bc-pl-warn { margin:0;padding:10px 12px;border-radius:10px;background:var(--tw-danger-soft);color:var(--tw-text);font:400 13px/18px var(--tw-font); }
 @media(max-width:1023px) { #bw-collection .bc-pl-bar { bottom:var(--bw-bottom,0px);padding-bottom:12px; } }
 
-/* Keep edit controls in the picture/identity line on phones and tablets. */
+/* Reserve the picture/identity line on phones and tablets; missing-row actions follow it. */
 @media(max-width:1023px) {
   #bw-collection [data-bc-pl-editing] .bc-inventory-row[data-bc-pl-row]>a:first-of-type { flex:1 0 calc(100% - 124px); }
+  #bw-collection [data-bc-pl-editing] .bc-missing-card[data-bc-pl-row]>a:first-of-type { flex:1 0 calc(100% - 68px); }
+  #bw-collection [data-bc-pl-editing] .bc-missing-card[data-bc-pl-row]>:not(.bc-picture):not(a) { order:1; }
+  #bw-collection .bc-missing-card>.bc-found { flex-direction:row;flex-wrap:wrap;gap:8px; }
+  #bw-collection .bc-missing-card>.bc-found [data-bc-found-message] { flex-basis:100%; }
 }

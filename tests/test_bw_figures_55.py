@@ -8,6 +8,7 @@ import pytest
 
 from brickwork.core import figures, partout
 from brickwork.core.sources.base import now
+from tests.api2 import v2, call, validate  # noqa: F401
 from tests.app4 import STAMP, app4, client, coll, pair, read, world  # noqa: F401
 
 
@@ -145,3 +146,70 @@ def test_runtime():
     node=rendered.need_node()
     run=subprocess.run([node,str(Path(__file__).with_name('toni_bw_figures_runtime.cjs'))],capture_output=True,text=True)
     assert run.returncode==0,run.stdout+run.stderr
+
+
+def test_api_and_mcp_share_comparison(figure, v2, app4, read):
+    import json
+    from brickwork.core.mcp import Adapter
+    from brickwork.core.mcp.client import InProcessClient
+    from tests.api2 import BOOTSTRAP
+    response=call(v2,f'/minifigures/{figure[0]}')
+    validate(response,'get_minifigures_by_id')
+    expected=response.json['data']['figure_comparisons']
+    assert expected[0]['gain']=='8.00' and expected[0]['parts'][-1]['quote']['price']=='3.50'
+    other=call(v2,f'/items/{figure[0]}/detail')
+    validate(other,'get_items_by_id_detail')
+    assert other.json['data']['figure_comparisons']==expected
+    adapter=Adapter(InProcessClient(app4,BOOTSTRAP))
+    result=adapter.call_tool('get_minifigure_detail',dict(kind='minifigure',no='syn-55-knight'))
+    assert json.loads(result.content[0].text)['figure_comparisons']==expected
+
+
+def test_loose_stock_minimum_order_damage_and_scope(figure,coll,read):
+    coll.add_stock('part',figure[1][-1],colour=figure[2],quantity=1)
+    coll.setting('repair_use_loose_stock','1')
+    coll.setting('repair_min_order','2.00')
+    r=result(read,figure)
+    assert r['to_complete']=='2.50' and r['minimum_order_extra']=='2.00' and r['parts'][-1]['stock_used']==1
+    coll.sql('UPDATE stock_part SET damaged=1 WHERE stock_id=? AND missing=1',(figure[3],))
+    r=result(read,figure)
+    assert r['missing_count']==1
+    with read() as db:
+        assert figures.compare(db,figure[0])==[r for r in figures.compare(db) if r['item_id']==figure[0]]
+
+
+def test_evidence_card_budget_and_error(figure,coll,client,app4,monkeypatch):
+    coll.sql('DELETE FROM price_current WHERE item_id=?',(figure[1][0],))
+    app4.jinja_env.globals['bw_key_missing']=lambda source:False
+    monkeypatch.setenv('BW_BRICKLINK_DAILY_BUDGET','1')
+    page=BeautifulSoup(client.get('/planning/complete-sets?tab=figures&recommendation=Needs+evidence').data,'html.parser')
+    assert '3 of 4 parts priced' in page.get_text() and 'prices not fetched' in page.get_text()
+    assert page.select_one('[data-bf-fetch]').has_attr('disabled')
+    card=BeautifulSoup(client.get(f'/collection/item/{figure[0]}').data,'html.parser').select_one('[data-module=figure-comparison]')
+    assert card.select_one('.bf-no-sales') and 'Needs evidence' in card.get_text() and not card.select_one('.bf-pill')
+    monkeypatch.setattr(figures,'compare',lambda *a,**k: (_ for _ in ()).throw(ValueError('synthetic database failure')))
+    page=BeautifulSoup(client.get('/planning/complete-sets?tab=figures').data,'html.parser')
+    assert page.select_one('[role=alert]') and 'Retry' in page.get_text()
+
+
+def test_edge_candidates_reach_their_states(tmp_path,app4,client,monkeypatch):
+    from contextlib import closing
+    from brickwork.demo import dataset, gate_edge, clock
+    from brickwork.core.connect import connect
+    folder=tmp_path/'edge';folder.mkdir();path=folder/'brickwork.db'
+    dataset.build(path,layer=gate_edge.layer(pictures=False))
+    monkeypatch.setenv('BW_DB_PATH',str(path))
+    patched=clock.freeze_clock()
+    try:
+        with closing(connect(path)) as db:
+            rows=figures.compare(db)
+            knight=next(r for r in rows if r['name'].startswith('Knight,') and r['number_text']=='syn55-knight')
+            assert (knight['complete'],knight['parts_value'],knight['to_complete'],knight['gain'])==('18.00','6.00','4.00','8.00')
+        for key,text in [('knight','Complete it'),('whole','Complete or part out'),('forestman','3 of 4 parts priced')]:
+            response=client.get('/collection/item/minifigure/syn55-'+key,follow_redirects=True)
+            assert response.status_code==200 and text in response.text
+        response=client.get('/planning/complete-sets?tab=figures&theme=Complete+figures')
+        assert response.status_code==200 and 'Every figure is complete.' in response.text
+        assert 'Needs evidence' in client.get('/planning/complete-sets?tab=figures&recommendation=Needs+evidence').text
+    finally:
+        clock.thaw_clock(patched)

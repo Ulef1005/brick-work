@@ -1689,6 +1689,8 @@ def bw_collection_item(item_id):
             if letter == 'M':
                 from ..core import figures
                 detail['figure_comparisons'] = figures.compare(db, item_id)
+                from .figure_views import refresh_state
+                detail['figure_refresh'] = refresh_state(db, detail['figure_comparisons'])
                 asked = request.args.get('place') or ('figure:' + request.args['figure'] if request.args.get('figure') else None)
                 detail['figure_comparison'] = next((r for r in detail['figure_comparisons'] if r['place'] == asked or
                     (not asked and r['copy_id'] == request.args.get('copy') and r['copy_id'])),
@@ -2317,9 +2319,10 @@ def bw_planning(screen):
             else:
                 if figures_tab:
                     from ..core import figures
-                    from .figure_views import listing
+                    from .figure_views import listing, refresh_state
                     rows=figures.compare(db)
                     figure_page=listing(rows,request.args)
+                    figure_page['refresh']=refresh_state(db,rows)
                 else:
                     data=planning.ranking(db);rows=data['rows'];settings=data['settings']
     except (ValueError,sqlite3.Error,OSError) as exc: error=public(exc, 'Brick Work database is not available. Check BW_DB_PATH and try again.')

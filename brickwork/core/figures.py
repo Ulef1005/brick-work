@@ -10,7 +10,7 @@ from decimal import Decimal as D
 from . import collection, partout, planning, items, workbench
 from .sources.base import now
 
-RULE = ('Complete it when complete value less the cost to complete beats the part-out value by 10% and at least €5.00. '
+RULE = (f'Complete it when complete value less the cost to complete beats the part-out value by {partout.MARGIN * 100:.0f}% and at least €{partout.MINIMUM_GAIN:.2f}. '
         'Part out when the reverse holds. Otherwise no recommendation.')
 
 
@@ -33,7 +33,7 @@ def project(row, config):
             cost += unit * buy
         elif buy:
             cost_known = False
-    fees = D(str(config['repair_shipping'])) + D(str(config['repair_fees'])) if missing else D(0)
+    fees = (D(str(config['repair_shipping'])) + D(str(config['repair_fees']))) * row['quantity'] if missing else D(0)
     minimum = max(D(0), D(str(config['repair_min_order'])) - cost) if missing else D(0)
     total = cost + fees + minimum if cost_known else None
     complete = D(str(row['complete_quote']['price'])) * row['quantity'] if row['complete_quote'] else None
@@ -45,7 +45,7 @@ def project(row, config):
         recommendation = ('Complete it' if partout.advantage(net, parts) else
                           'Part out' if partout.advantage(parts, net) else 'Keep as is')
     amount = lambda v: str(v.quantize(D('0.01'))) if v is not None else None
-    row.update(complete=amount(complete), parts_value=amount(parts), to_complete=amount(total),
+    row.update(minimum_gain=str(partout.MINIMUM_GAIN), margin_percent=int(partout.MARGIN * 100), complete=amount(complete), parts_value=amount(parts), to_complete=amount(total),
                shipping_fees=amount(fees), minimum_order_extra=amount(minimum), gain=amount(gain),
                currency=config['bricklink_currency'], lines=len(lines), priced=priced, enough=enough,
                missing_count=missing, recommendation=recommendation,
@@ -77,7 +77,7 @@ def compare(db, item_id=None):
     config, stamp = planning.configuration(db), now()
     scope = {(r['item_id'], None) for r in rows} | {(p['item_id'], p['color_id']) for p in components}
     market = collection.prices(db, pairs=scope) if scope else {}
-    quotes = {k: planning.quote(market.get(k, []), 'used', config, stamp) for k in scope}
+    quotes = {k: planning.quote([q for q in market.get(k, []) if q.get('slot') != 'boxed'], 'used', config, stamp) for k in scope}
     # Allocate available loose parts once, in the same deterministic place order on every reader.
     pool = defaultdict(int)
     if config['repair_use_loose_stock']:
@@ -85,6 +85,7 @@ def compare(db, item_id=None):
             pool[stock['item_id'], stock['color_id']] += workbench.available(db, stock)
         for held in db.execute("SELECT item_id,color_id,sum(qty) qty FROM allocation WHERE state='pending' AND kind='missing_part' GROUP BY item_id,color_id"):
             pool[held['item_id'], held['color_id']] = max(0, pool[held['item_id'], held['color_id']] - held['qty'])
+    storages = dict(db.execute('SELECT id,name FROM storage WHERE archived_at IS NULL'))
     identities = items.labels(db, {(r['item_id'], None) for r in rows})
     labels = collection.copy_labels(db, [r['copy_id'] for r in rows if r['copy_id']])
     set_ids = {r['id']: r['item_id'] for r in db.execute('SELECT id,item_id FROM copy WHERE archived_at IS NULL')}
@@ -93,6 +94,7 @@ def compare(db, item_id=None):
     for r in rows:
         label = identities[r['item_id'], None]
         r['number_text'] = label.bricklink[1] if label.bricklink else label.number
+        r['storage_name'] = storages.get(r['storage_id'])
         r['where'] = 'sets' if r['copy_id'] else 'loose'
         r['place_label'] = ('In ' + names[set_ids[r['copy_id']], None].text + ' ' + labels[r['copy_id']]) if r['copy_id'] else 'Loose'
         r['complete_quote'] = quotes.get((r['item_id'], None))
@@ -103,6 +105,8 @@ def compare(db, item_id=None):
             p['stock_used'] = min(pool[key], min(p['quantity'], p['missing'] + p['damaged']))
             pool[key] -= p['stock_used']
         project(r, config)
+        r['unpriced_items'] = sorted({p['item_id'] for p in r['parts'] if not p['quote'] and not p['unresolved']} |
+                                     ({r['item_id']} if not r['complete_quote'] else set()))
     return sorted([r for r in rows if item_id is None or r['item_id'] == item_id], key=lambda r: (r['needs_evidence'], r['where'] != 'loose', -D(r['gain'] or 0), r['number_text'], r['place']))
 
 

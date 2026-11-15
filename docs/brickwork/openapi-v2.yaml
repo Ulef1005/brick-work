@@ -1922,6 +1922,7 @@ paths:
   /minifigures/{id}:
     get:
       operationId: get_minifigures_by_id
+      x-mcp-tool: get_minifigure_detail
       summary: 'One figure: sets, loose lines, missing, matches, prices.'
       description: The item detail of a minifigure by its Brick Work id (`used_in` the sets, `stock` the loose lines, `gaps` and `matches`). A merged id is `307` to the survivor's `/minifigures/{id}`; an item that is not a figure is `404`.
       tags:

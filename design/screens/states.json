@@ -1118,6 +1118,69 @@
    "built": false,
    "approved": false,
    "reason": "not in the app: there is no barcode scanner screen (the only camera page is Part Spotter / What is this); needs the feature (#8) and a mocked camera"
+  },
+  {
+   "screen": "43-Complete-sets",
+   "section": "i55",
+   "state": "figures-filled",
+   "world": "edge",
+   "path": "/planning/complete-sets?tab=figures",
+   "built": true,
+   "approved": false
+  },
+  {
+   "screen": "43-Complete-sets",
+   "section": "i55",
+   "state": "figures-empty",
+   "world": "edge-empty",
+   "path": "/planning/complete-sets?tab=figures",
+   "built": true,
+   "approved": false
+  },
+  {
+   "screen": "43-Complete-sets",
+   "section": "i55",
+   "state": "figures-all-complete",
+   "world": "edge",
+   "path": "/planning/complete-sets?tab=figures&theme=Complete+figures",
+   "built": true,
+   "approved": false
+  },
+  {
+   "screen": "43-Complete-sets",
+   "section": "i55",
+   "state": "figures-needs-evidence",
+   "world": "edge",
+   "path": "/planning/complete-sets?tab=figures&recommendation=Needs+evidence",
+   "built": true,
+   "approved": false
+  },
+  {
+   "screen": "12-Minifigure-detail",
+   "section": "i55",
+   "state": "comparison-filled",
+   "world": "edge",
+   "path": "/collection/item/minifigure/syn55-knight",
+   "built": true,
+   "approved": false
+  },
+  {
+   "screen": "12-Minifigure-detail",
+   "section": "i55",
+   "state": "comparison-whole-figure",
+   "world": "edge",
+   "path": "/collection/item/minifigure/syn55-whole",
+   "built": true,
+   "approved": false
+  },
+  {
+   "screen": "12-Minifigure-detail",
+   "section": "i55",
+   "state": "comparison-partly-priced",
+   "world": "edge",
+   "path": "/collection/item/minifigure/syn55-forestman",
+   "built": true,
+   "approved": false
   }
  ]
 }

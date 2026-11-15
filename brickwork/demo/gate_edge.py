@@ -98,6 +98,9 @@ class Layer(gate_extras.Layer):
                              qty=1, sold=0, observed_at='2026-10-10T06:00:00.000Z')
             for number, letter in PINNED:
                 db.execute('UPDATE copy SET pinned=1 WHERE id=?', (showcase.uid('copy', number, letter),))
+        with transaction(db):
+            from .figure_comparisons import seed
+            seed(db)
         self.spare_check(db)
 
     def spare_check(self, db):

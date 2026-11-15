@@ -48,7 +48,7 @@ def tools_of_contract():
 
 def test_every_tool_maps_to_one_operation_and_the_names_are_unique():
     names = [op['x-mcp-tool'] for op in OPERATIONS.values() if 'x-mcp-tool' in op]
-    assert len(names) == len(set(names)) == 74
+    assert len(names) == len(set(names)) == 75
     assert re.fullmatch(r'[a-z][a-z0-9_]*', ''.join(sorted(set(names))).replace('_', ''))
     adapter = Adapter(None)
     assert {name: (method, path) for name, (method, path, _) in adapter.tools.items()} == {n: (m, p) for n, (m, p) in tools_of_contract().items()}

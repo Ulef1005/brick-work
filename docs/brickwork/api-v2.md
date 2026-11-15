@@ -878,13 +878,13 @@ Choices M.11a made where the scope comment and design section 7 were silent:
 
 `GET /minifigures/{id}` and `GET /items/{id}/detail` include `figure_comparisons` for a minifigure.
 Other item kinds return an empty array.
-The MCP minifigure and item detail reads carry the same array.
+The MCP `get_minifigure_detail` tool carries the same array.
 
 Each entry describes a loose stock record or a figure in a set copy.
 `place`, `stock_id`, `copy_id` and `copy_figure_id` identify that place.
 `complete`, `parts_value` and `to_complete` are decimal strings in `currency`, or null without enough evidence.
 `shipping_fees` combines the repair shipping and fees; `minimum_order_extra` records any minimum order adjustment.
-`parts` lists quantities, defects, loose stock used and each fresh used quote.
+`parts` lists quantities, defects, loose stock used, and each fresh used quote.
 `complete_quote` records the whole figure quote.
 `lines` and `priced` describe coverage, with `enough` following the shared 90% rule.
 `needs_evidence` also covers a missing complete quote or repair quote.

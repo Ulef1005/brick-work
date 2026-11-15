@@ -12,7 +12,7 @@
 .bf-table-heading{font-size:12px;color:var(--tw-text-muted)}
 .bf-table-heading>span:not(:first-child){text-align:right}
 .bf-identity{display:flex;gap:12px;min-width:0}
-.bf-identity>.bc-picture{width:64px;height:48px;flex:none;aspect-ratio:4/3;background:var(--tw-image-bg,#fff)}
+.bf-identity>.bc-picture{width:64px;height:48px;flex:none;aspect-ratio:4/3;background:#fff}
 .bf-identity .bc-picture img{object-fit:contain}
 .bf-identity p{margin:4px 0;color:var(--tw-text-muted);font-size:13px}
 .bf-first{font-size:12px;color:var(--tw-text-muted)}

@@ -34,7 +34,7 @@ Keyboard: **F** found all, **M** missing, **1 to 9** count, **S** skip, **Z** un
 
 ## Check only the missing parts
 
-When a copy already has missing parts, **Check missing only** on the set's page (a link under **Check parts** and **Edit parts**, shown only when parts are missing) starts a run over just those parts. Use it after a visit to the pile, or when you have found parts since the last check. The heading reads **Missing part 1 of N** with a **Missing only** tag. The progress line ends with **· missing parts only**. Each part shows **Missing since the last check: X of Y**. Buttons, keys and the end of the check are as above. The other parts keep their answers from the earlier check. Checking the skipped parts inside a missing-only run keeps it a missing-only run. Reloading the page resumes whatever check is running. Starting a missing-only run replaces a check that is in progress; **Undo** brings the earlier check back.
+When a copy already has missing parts, **Check missing only** starts a run over just those parts. It is a link under **Check parts** and **Edit parts** on the set's page, shown only when parts are missing. Use it after a visit to the pile, or when you have found parts since the last check. The heading reads **Missing part 1 of N** with a **Missing only** tag. The progress line ends with **· missing parts only**. Each part shows **Missing since the last check: X of Y**. Buttons, keys and the end of the check are as above. The other parts keep their answers from the earlier check. Checking the skipped parts inside a missing-only run keeps it a missing-only run. Reloading the page resumes whatever check is running. Starting a missing-only run replaces a check that is in progress; **Undo** brings the earlier check back.
 
 ## Mark missing parts on the set's page
 
@@ -47,18 +47,18 @@ You can record missing parts on a copy's page without a check. In the part list 
 
 One save is one step: it shows a receipt line with **Undo**, and **Undo** takes back every part of that save. A ticked part saved as missing also counts as checked, so it leaves the **to check** count of its section. Parts you did not tick stay as they were. If the save fails, your ticks stay and the button reads **Retry**.
 
-**Set is checked** is a switch in the part list header, in both modes. It never turns on by itself, and saving missing parts does not move it. It saves at once, with its own receipt and **Undo**, and **Cancel** does not undo it. A copy with missing parts stays Incomplete even when the switch is on.
+**Set is checked** is a switch in the part list header, in both modes. It never turns on by itself, and saving missing parts does not move it. It saves at once, with its own receipt and **Undo**. If you are editing, your unsaved ticks come back after the page reloads, and **Cancel** does not undo the switch. A copy with missing parts stays Incomplete even when the switch is on.
 
 On an instance where editing is switched off, the part list has no buttons, ticks or switch, and **Check parts** is hidden too.
 
 ## Mark a found part on the set's page
 
-Every missing part row on a copy's page has **Found 1**. A row with more than one part missing also has **Found all**. **Found 1** lowers that part's missing count by one, the same as **Found 1** in Set Inspector. **Found all** sets it to zero. The loose stock is not touched. An **Undo** appears at the top of the page and on the receipt line above the list. A row that has **Take N** (loose stock covers the gap) shows **Take** next to them. See also [Find sets your loose stock can finish](match-stock-to-sets.md).
+Every missing part row on a copy's page has **Found 1**. A row with more than one part missing also has **Found all**. **Found 1** lowers that part's missing count by one, the same as **Found 1** in Set Inspector. **Found all** sets it to zero. The loose stock is not touched. The receipt line with **Undo** sits above the list. A row that has **Take N** (loose stock covers the gap) shows **Take** next to them. See also [Find sets your loose stock can finish](match-stock-to-sets.md).
 
 ## What the check changes
 
 - Each answer sets that line's missing count on the copy. Those counts are what Part Runner, Matchmaker and the exports work from.
-- **Set is checked** can only be ticked once no part or figure is left skipped or unanswered.
+- In Set Inspector, **Set is checked** can only be ticked once no part or figure is left skipped or unanswered. The switch on the set's page has no such rule.
 - With **Set is checked** ticked and nothing missing, the copy's completeness becomes Complete. With gaps it stays Incomplete. If you set the copy's completeness by hand, the check leaves it as it is.
 
 ## Check a minifigure's own parts

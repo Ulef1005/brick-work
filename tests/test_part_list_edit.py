@@ -45,6 +45,8 @@ def test_the_header_offers_edit_parts_beside_check_parts_and_the_switch(coll, co
     assert page.select_one('[data-bc-pl-rule]').get_text(strip=True) == 'Complete needs Set is checked and nothing missing.'
     assert not page.select_one('.bc-pl-missing-only')                        # no parts missing, no link
     assert page.select_one('[data-bc-pl-mode][hidden]') and page.select_one('[data-bc-pl-bar][hidden]')
+    slot = page.select_one('[data-bc-pl-receipt]')
+    assert slot and not slot.select('p, button')                            # the page's own receipt line moves in here by script
     assert page.select_one('script[src*="bw-part-edit.js"]')
 
 
@@ -58,8 +60,6 @@ def test_check_missing_only_is_a_text_link_under_the_buttons_when_parts_are_miss
     link = box.select_one('form.bc-pl-missing-only button')
     assert link.get_text(strip=True) == 'Check missing only' and 'bc-pl-link' in link['class'] and 'bc-outline' not in link['class']
     assert box.select_one('form input[name=scope]')['value'] == 'missing'
-    switch_rule = page.select_one('[data-bc-pl-rule]')
-    assert switch_rule['data-gap'] == '2'
 
 
 def test_a_read_only_instance_has_no_controls(coll, copy, client, app4):

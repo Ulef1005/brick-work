@@ -24,6 +24,9 @@
         if (line && line.count > 0) line.count = clamp(line.count + delta, line.need);
       },
       reset() { all().forEach(line => { line.count = line.start; }); },
+      /* The counts that differ from what is saved, as {id: count}, and the way back in (for a draft kept across a reload). */
+      counts() { return Object.fromEntries(all().filter(line => line.count !== line.start).map(line => [line.id, line.count])); },
+      load(counts) { Object.entries(counts || {}).forEach(([id, count]) => { const line = lines.get(Number(id)); if (line) line.count = Number(count) > 0 ? clamp(count, line.need) : 0; }); },
       totals() {
         const on = all().filter(line => line.count > 0);
         return {parts: on.length, pieces: on.reduce((sum, line) => sum + line.count, 0)};
@@ -49,9 +52,7 @@
   const find = selector => module.querySelector(selector);
   const progress = find('[data-bc-pl-progress]'), mode = find('[data-bc-pl-mode]'), bar = find('[data-bc-pl-bar]'),
     sum = find('[data-bc-pl-sum]'), save = find('[data-bc-pl-save]'), warn = find('[data-bc-pl-warn]'), warnText = find('[data-bc-pl-warn-text]'),
-    edit = find('[data-bc-pl-edit]'), cancel = find('[data-bc-pl-cancel]'), receipt = find('[data-bc-pl-receipt]'),
-    receiptText = find('[data-bc-pl-receipt-text]'), undo = find('[data-bc-pl-undo]'), checked = find('[data-bc-pl-checked]'),
-    rule = find('[data-bc-pl-rule]'), switchNote = find('[data-bc-pl-switch-note]');
+    edit = find('[data-bc-pl-edit]'), cancel = find('[data-bc-pl-cancel]'), checked = find('[data-bc-pl-checked]'), switchNote = find('[data-bc-pl-switch-note]');
   const rowEls = [...module.querySelectorAll('[data-bc-pl-row]')];
   const sectionEls = [...module.querySelectorAll('[data-bc-part-section]')];
   const model = createModel(rowEls.map(el => ({
@@ -141,30 +142,19 @@
     }
   });
 
-  /* The receipt line: shown from the stored receipt after a reload; Undo is the page's own Undo (bw-collection.js), which undoes and reloads. */
-  const showReceipt = (text, onUndo) => {
-    if (!receipt) return;
-    if (receiptText) receiptText.textContent = text;
-    receipt.hidden = false;
-    receipt.undoNow = onUndo || null;
-  };
-  const stored = store(s => JSON.parse(s.getItem(receiptKey) || 'null'));
-  if (stored && stored.message) showReceipt(stored.message);
-  undo?.addEventListener('click', () => {
-    if (receipt?.undoNow) return receipt.undoNow();
-    root.querySelector('[data-bc-undo]')?.click();
-  });
+  /* One receipt line, the page's own: its message and Undo (bw-collection.js) move into the slot above the list, so the receipt of a save,
+     Found 1, Found all or the switch is read and undone where the list is. */
+  const slot = find('[data-bc-pl-receipt]'), message = root.querySelector('[data-bc-message]'), undo = root.querySelector('[data-bc-undo]');
+  if (slot && message && undo) { slot.append(message, undo); undo.classList?.add('bc-pl-link'); }
 
-  /* Set is checked: the person's own switch. It saves at once; outside edit mode the page reloads so the pills follow, inside edit mode it
-     updates in place so the ticks are not lost, and its Undo flips it back in place. */
-  const paintChecked = on => {
-    checked?.setAttribute('aria-checked', String(on));
-    if (rule) {
-      const gap = rule.dataset.gap ? Number(rule.dataset.gap) : 0;
-      const base = 'Complete needs Set is checked and nothing missing.';
-      rule.textContent = on && gap ? 'Stays Incomplete while ' + plural(gap, 'part is', 'parts are') + ' missing. ' + base : base;
-    }
-  };
+  /* Set is checked: the person's own switch. It saves at once and the page reloads so the pills follow. Ticks not yet saved are kept in a
+     draft for that reload and come back in edit mode, so the switch never costs them. */
+  const draftKey = 'bw-part-edit-draft:' + (module.dataset.copy || '');
+  const restore = store(s => { const found = JSON.parse(s.getItem(draftKey) || 'null'); s.removeItem(draftKey); return found; });
+  if (restore && restore.counts) {
+    model.load(restore.counts);
+    setMode(true);
+  }
   checked?.addEventListener('click', async () => {
     if (busy) return;
     const wanted = checked.getAttribute('aria-checked') !== 'true';
@@ -173,18 +163,11 @@
     if (switchNote) switchNote.textContent = '';
     try {
       const result = await post('set-checked', {copy_id: checked.dataset.copy, wanted});
-      if (!editing) { remember(result); location.reload(); return; }
-      paintChecked(wanted);
-      showReceipt(result.message, async () => {
-        try {
-          await post('undo', {event_id: result.event_id});
-          paintChecked(!wanted);
-          if (receipt) receipt.hidden = true;
-        } catch (error) { if (switchNote) switchNote.textContent = error.message; }
-      });
+      if (editing && model.dirty()) store(s => s.setItem(draftKey, JSON.stringify({counts: model.counts()})));
+      remember(result);
+      location.reload();
     } catch (error) {
       if (switchNote) switchNote.textContent = error.message;
-    } finally {
       busy = false;
       checked.disabled = false;
       paint();

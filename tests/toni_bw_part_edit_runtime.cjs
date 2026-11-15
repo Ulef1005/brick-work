@@ -12,20 +12,22 @@ class Node {
   getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; }
   removeAttribute(k) { delete this.attrs[k]; }
   focus() { this.focused = true; }
+  append(...kids) { this.kids = (this.kids || []).concat(kids); }
   click() { this.clicks += 1; return this.events.click?.({}); }
   fire(name, extra = {}) { return this.events[name]?.({preventDefault() { this.prevented = true; }, ...extra}); }
 }
 
 // Three part lines in two sections: 3001 needs 4 (missing 3 already), 3023 needs 2, 3010 needs 1.
-function build({response, search = '', checkedOn = false} = {}) {
+function build({response, draft = null, checkedOn = false} = {}) {
   const root = new Node({saveUrl: '/collection/save/ACTION', csrf: 'token'}), module = new Node({copy: 'copy-1'});
   root.nodes['[data-bc-pl]'] = module;
   const named = {}, add = (key, node) => { named[key] = node; module.nodes[`[data-bc-pl-${key}]`] = node; return node; };
-  ['progress', 'mode', 'bar', 'sum', 'save', 'warn', 'edit', 'cancel', 'receipt', 'undo', 'rule', 'switch-note'].forEach(k => add(k, new Node()));
-  add('warn-text', new Node()); add('receipt-text', new Node());
+  ['progress', 'mode', 'bar', 'sum', 'save', 'warn', 'edit', 'cancel', 'receipt', 'rule', 'switch-note'].forEach(k => add(k, new Node()));
+  add('warn-text', new Node());
   const sw = add('checked', new Node({copy: 'copy-1'})); sw.attrs['aria-checked'] = String(checkedOn);
   named.rule.dataset.gap = '3'; named.bar.hidden = true; named.mode.hidden = true; named.save.textContent = 'Save missing';
-  const globalUndo = new Node(); root.nodes['[data-bc-undo]'] = globalUndo;
+  const globalUndo = new Node(), globalMessage = new Node(); globalUndo.classList = {added: [], add(c) { this.added.push(c); }};
+  root.nodes['[data-bc-undo]'] = globalUndo; root.nodes['[data-bc-message]'] = globalMessage;
   const sections = ['Bricks', 'Plates'].map(name => { const el = new Node({bcPartSection: name}); el.nodes['[data-bc-pl-ticked]'] = new Node(); el.nodes['[data-bc-pl-ticked]'].hidden = true; return el; });
   const mkRow = (id, need, missing, section) => {
     const el = new Node({bcPlRow: String(id), bcPlNeed: String(need), bcPlMissing: String(missing)});
@@ -40,7 +42,7 @@ function build({response, search = '', checkedOn = false} = {}) {
   const rows = [mkRow(11, 4, 3, sections[0]), mkRow(12, 2, 0, sections[0]), mkRow(13, 1, 0, sections[1])];
   module.groups['[data-bc-pl-row]'] = rows; module.groups['[data-bc-part-section]'] = sections;
   const calls = [], store = {}, reloads = [];
-  if (search.startsWith('stored:')) store['bw-collection-receipt'] = search.slice(7);
+  if (draft) store['bw-part-edit-draft:copy-1'] = JSON.stringify(draft);
   const context = {
     window: {}, document: {querySelector: s => s === '#bw-collection' ? root : null},
     sessionStorage: {setItem: (k, v) => { store[k] = v; }, getItem: k => store[k] ?? null, removeItem: k => { delete store[k]; }},
@@ -48,7 +50,7 @@ function build({response, search = '', checkedOn = false} = {}) {
     fetch: async (url, init) => { calls.push({url, body: JSON.parse(init.body)}); if (response instanceof Error) throw response; return typeof response === 'function' ? response(url) : response; },
   };
   vm.runInNewContext(source, context);
-  return {context, root, module, named, rows, sections, calls, store, reloads, globalUndo, sw, tag: i => sections[i].nodes['[data-bc-pl-ticked]']};
+  return {context, root, module, named, rows, sections, calls, store, reloads, globalUndo, globalMessage, sw, tag: i => sections[i].nodes['[data-bc-pl-ticked]']};
 }
 const plain = value => JSON.parse(JSON.stringify(value));   // results of the sandbox have another Object prototype
 const ok = {ok: true, json: async () => ({message: 'Saved · 2 parts marked missing', event_id: 41})};
@@ -136,29 +138,31 @@ const ok = {ok: true, json: async () => ({message: 'Saved · 2 parts marked miss
   t.named.edit.fire('click'); t.rows[2].box.fire('click'); await t.named.save.fire('click');
   assert.equal(t.named['warn-text'].textContent, 'The connection dropped. Your ticks are kept; press Retry.'); assert.equal(t.reloads.length, 0);
 
-  // Set is checked outside edit mode: saved at once with its own request, then the page reloads with the receipt.
-  t = build({response: {ok: true, json: async () => ({message: 'Set is checked · on', event_id: 9})}});
-  await t.sw.fire('click');
-  assert.equal(t.calls[0].url, '/collection/save/set-checked'); assert.deepEqual(t.calls[0].body, {copy_id: 'copy-1', wanted: true, csrf_token: 'token'});
-  assert.equal(JSON.parse(t.store['bw-collection-receipt']).message, 'Set is checked · on'); assert.equal(t.reloads.length, 1);
-  // ...and in edit mode: no reload (the ticks stay), the switch and rule line change, and its Undo flips it back through the undo action.
-  t = build({response: {ok: true, json: async () => ({message: 'Set is checked · on', event_id: 9})}});
-  t.named.edit.fire('click'); t.rows[1].box.fire('click');
-  await t.sw.fire('click');
-  assert.equal(t.reloads.length, 0); assert.equal(t.sw.getAttribute('aria-checked'), 'true'); assert.equal(t.rows[1].box.getAttribute('aria-checked'), 'true');
-  assert.equal(t.named.rule.textContent, 'Stays Incomplete while 3 parts are missing. Complete needs Set is checked and nothing missing.');
-  assert.equal(t.named.receipt.hidden, false); assert.equal(t.named['receipt-text'].textContent, 'Set is checked · on'); assert.equal(t.store['bw-collection-receipt'], undefined);
-  await t.named.undo.fire('click');
-  assert.equal(t.calls[1].url, '/collection/save/undo'); assert.deepEqual(t.calls[1].body, {event_id: 9, csrf_token: 'token'});
-  assert.equal(t.sw.getAttribute('aria-checked'), 'false'); assert.equal(t.named.receipt.hidden, true); assert.equal(t.named.rule.textContent, 'Complete needs Set is checked and nothing missing.');
-  assert.equal(t.rows[1].box.getAttribute('aria-checked'), 'true'); assert.equal(t.calls.every(c => !c.url.endsWith('mark-missing')), true);   // the switch never sends the ticks
-  t = build({response: {ok: false, json: async () => ({message: 'Nope'})}});
-  await t.sw.fire('click'); assert.equal(t.named['switch-note'].textContent, 'Nope'); assert.equal(t.sw.getAttribute('aria-checked'), 'false'); assert.equal(t.sw.disabled, false);
+  // The page's own receipt line (message and Undo) moves into the slot above the list: one receipt, where the list is.
+  t = build();
+  assert.deepEqual(t.named.receipt.kids, [t.globalMessage, t.globalUndo]); assert.deepEqual(plain(t.globalUndo.classList.added), ['bc-pl-link']);
 
-  // The receipt line after a reload mirrors the stored receipt; its Undo is the page's own Undo.
-  t = build({search: 'stored:' + JSON.stringify({message: 'Saved · 2 parts marked missing', event_id: 41, screen: '/collection/item/7?copy=copy-1'})});
-  assert.equal(t.named.receipt.hidden, false); assert.equal(t.named['receipt-text'].textContent, 'Saved · 2 parts marked missing');
-  t.named.undo.fire('click'); assert.equal(t.globalUndo.clicks, 1);
-  t = build(); assert.equal(t.named.receipt.hidden, false);          // no stored receipt: the fake line starts shown, the page's own starts hidden
+  // Set is checked outside edit mode: saved at once with its own request and receipt, then the page reloads.
+  t = build({response: {ok: true, json: async () => ({message: 'Set is checked · on', event_id: 9})}});
+  await t.sw.fire('click');
+  assert.equal(t.calls.length, 1); assert.equal(t.calls[0].url, '/collection/save/set-checked'); assert.deepEqual(plain(t.calls[0].body), {copy_id: 'copy-1', wanted: true, csrf_token: 'token'});
+  assert.deepEqual(JSON.parse(t.store['bw-collection-receipt']), {message: 'Set is checked · on', event_id: 9, screen: '/collection/item/7?copy=copy-1'});
+  assert.equal(t.reloads.length, 1); assert.equal(t.store['bw-part-edit-draft:copy-1'], undefined);
+  t = build({checkedOn: true, response: {ok: true, json: async () => ({message: 'Set is checked · off', event_id: 10})}});
+  await t.sw.fire('click'); assert.equal(t.calls[0].body.wanted, false);
+  // In edit mode the unsaved ticks go into a draft for that reload; the switch itself never sends them.
+  t = build({response: {ok: true, json: async () => ({message: 'Set is checked · on', event_id: 9})}});
+  t.named.edit.fire('click'); t.rows[1].box.fire('click'); t.rows[1].plus.fire('click'); t.rows[0].box.fire('click');
+  await t.sw.fire('click');
+  assert.equal(t.calls.length, 1); assert.equal(t.calls[0].url, '/collection/save/set-checked'); assert.equal(t.reloads.length, 1);
+  assert.deepEqual(JSON.parse(t.store['bw-part-edit-draft:copy-1']), {counts: {11: 0, 12: 2}});
+  // After the reload the draft puts the ticks back in edit mode (and is used up); an impossible count is capped, an unknown line ignored.
+  t = build({draft: {counts: {11: 0, 12: 2, 13: 7, 99: 1}}});
+  assert.equal(t.module.getAttribute('data-bc-pl-editing'), ''); assert.equal(t.named.progress.hidden, true); assert.equal(t.named.bar.hidden, false);
+  assert.equal(t.rows[0].box.getAttribute('aria-checked'), 'false'); assert.equal(t.rows[1].count.textContent, '2'); assert.equal(t.rows[2].count.textContent, '1');
+  assert.equal(t.named.sum.textContent, '2 parts · 3 pieces marked missing'); assert.equal(t.named.save.disabled, false); assert.equal(t.store['bw-part-edit-draft:copy-1'], undefined);
+  // A refused switch says why and stays as it was.
+  t = build({response: {ok: false, json: async () => ({message: 'Nope'})}});
+  await t.sw.fire('click'); assert.equal(t.named['switch-note'].textContent, 'Nope'); assert.equal(t.sw.getAttribute('aria-checked'), 'false'); assert.equal(t.sw.disabled, false); assert.equal(t.reloads.length, 0);
   console.log('part edit runtime ok');
 })().catch(error => { console.error(error); process.exit(1); });

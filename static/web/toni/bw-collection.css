@@ -530,8 +530,6 @@ html[data-web-ui="toni"] #bw-collection .bc-source-details summary { padding-inl
 /* c14, c15 · figure rows in the Minifigures tab: one-line 24 px status pill, identity keeps the flexible width. */
 #bw-collection .bc-figure-status { flex:none;white-space:nowrap;height:24px;min-height:24px;padding:0 10px; }
 #bw-collection a.bc-figure-status { min-height:24px;padding-inline:10px; }
-/* c13 · Edit set: the estimate stays reachable but folded, so Completeness leads to the status switches. */
-#bw-collection .bc-estimate-details { display:flex;flex-direction:column;gap:12px; }
 /* ===== end 4.9a ===== */
 
 /* 4.9d · Collection-side wishlist: recorded maximum price (frame 4a). */
@@ -563,7 +561,6 @@ html[data-web-ui="toni"] #bw-collection .bc-source-details summary { padding-inl
 #bw-collection .bc-photo-picker { display:flex;align-items:center;gap:12px;flex-wrap:wrap; }
 #bw-collection .bc-photo-picker label { display:inline-flex;align-items:center;justify-content:center;min-height:44px;margin:0;padding:0 16px;border-radius:10px;cursor:pointer; }
 #bw-collection .bc-photo-picker:focus-within label { outline:2px solid var(--tw-accent);outline-offset:2px; }
-#bw-collection [data-bc-photo-name] { overflow-wrap:anywhere; }
 #bw-collection[data-type=S] .bc-hero-picture { background:#fff; }
 
 /* Design v1.3 · 12f and shared detail rows. */
@@ -618,7 +615,7 @@ html[data-web-ui="toni"] #bw-collection .bc-source-details summary { padding-inl
 #bw-collection .bc-edit-section { display:flex;flex-direction:column;gap:12px;margin:24px 0 0;padding-top:16px;border-top:.5px solid var(--tw-divider); }
 #bw-collection .bc-edit-section h3 { margin:0;font:500 11px/14px var(--tw-font);letter-spacing:.1em;text-transform:uppercase;color:var(--tw-text-2); }
 #bw-collection .bc-edit-section .bc-row { padding:8px 0;border-bottom:.5px solid var(--tw-divider); }
-#bw-collection .bc-edit-section .bc-photos { grid-template-columns:repeat(auto-fill,minmax(96px,1fr)); }
+#bw-collection .bc-edit-section .bc-photos { display:flex;flex-direction:column;gap:12px; }      /* #397: a row per photo, not a grid */
 
 /* ===== UI-lists · design audit v1.3: cards 1c, pager 12h, parts table 7a, Filters sheet 12i. ===== */
 /* 1c set card: status pill left and price right on one line; gap count left and price date right below; tag chips last. */
@@ -893,6 +890,61 @@ main .key-need a:not(.button) { min-height:44px;display:inline-flex;align-items:
 /* #396: the one Save is the sheet's last control, below the photos; the photo picker is part of that save */
 :where(#bw-collection) .bc-sheet .bc-sheet-footer { margin-top:16px; }
 :where(#bw-collection) .bc-sheet .bc-sheet-footer>button { flex:1; }
-:where(#bw-collection) .bc-sheet .bc-photo-add { display:flex;flex-direction:column;gap:12px;margin-top:12px; }
-#bw-collection .bc-sheet .bc-photo-add>label { font-size:11px;line-height:14px;letter-spacing:.1em;text-transform:uppercase;color:var(--tw-text-2);display:flex;flex-direction:column;gap:6px; }
-:where(#bw-collection) .bc-sheet .bc-photo-hint { margin:0;font-size:12px;line-height:16px;color:var(--tw-text-2); }
+:where(#bw-collection) .bc-sheet .bc-photo-hint { margin:0;font:400 13px/18px var(--tw-font);color:var(--tw-text-muted); }
+
+/* #397 · Edit set built to frame 1e: switches, two groups of fields, a currency prefix on the amounts, multi-select flag fields, a row per photo.
+   Tokens only; every target is 44 px or more. */
+#bw-collection .bc-sheet .bc-field>label,#bw-collection .bc-sheet .bc-label { font-size:11px;line-height:14px;letter-spacing:.1em;text-transform:uppercase;color:var(--tw-text-2); }
+#bw-collection .bc-sheet .bc-hint { margin:0;font:400 13px/18px var(--tw-font);color:var(--tw-text-muted); }
+#bw-collection .bc-sheet .bc-group { display:flex;flex-direction:column;gap:12px;border-top:.5px solid var(--tw-divider);padding-top:16px; }
+#bw-collection .bc-sheet .bc-two { display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px; }
+#bw-collection .bc-sheet .bc-field { display:flex;flex-direction:column;gap:6px;min-width:0;margin:0; }
+#bw-collection .bc-sheet .bc-field>input:not([type=checkbox]):not([type=radio]),#bw-collection .bc-sheet .bc-field>select { min-height:48px; }
+#bw-collection .bc-sheet .bc-money { display:flex;align-items:stretch;min-width:0;border:.5px solid var(--tw-divider-strong);border-radius:10px;background:var(--tw-surface); }
+#bw-collection .bc-sheet .bc-money:focus-within { outline:2px solid var(--tw-accent);outline-offset:2px; }
+#bw-collection .bc-sheet .bc-money input:not([type=checkbox]):not([type=radio]) { min-height:46px;min-width:0;border:0;border-radius:0;background:transparent;outline:0; }
+#bw-collection .bc-sheet .bc-money .bc-money-code { flex:none;width:4.25em;padding-inline:12px 4px;text-transform:uppercase;color:var(--tw-text-2); }
+#bw-collection .bc-sheet .bc-switches { display:flex;flex-direction:column; }
+#bw-collection .bc-sheet .bc-switch { position:relative;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:52px;margin:0;border-top:.5px solid var(--tw-divider);font:400 15px var(--tw-font);letter-spacing:normal;text-transform:none;color:var(--tw-text);cursor:pointer; }
+#bw-collection .bc-sheet .bc-switch input { position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer; }
+#bw-collection .bc-sheet .bc-switch i { flex:none;position:relative;width:51px;height:31px;border-radius:16px;background:var(--tw-viz-n1); }
+#bw-collection .bc-sheet .bc-switch i::after { content:"";position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:var(--tw-bg); }
+#bw-collection .bc-sheet .bc-switch input:checked+i { background:var(--tw-accent); }
+#bw-collection .bc-sheet .bc-switch input:checked+i::after { left:22px; }
+#bw-collection .bc-sheet .bc-switch input:focus-visible+i { outline:2px solid var(--tw-accent);outline-offset:2px; }
+#bw-collection .bc-sheet .bc-multi { border:.5px solid var(--tw-divider-strong);border-radius:10px;background:var(--tw-surface); }
+#bw-collection .bc-sheet .bc-multi>summary { display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:48px;padding:0 12px;font:400 15px var(--tw-font);color:var(--tw-text);cursor:pointer; }
+#bw-collection .bc-sheet .bc-multi>summary::after { content:"";width:8px;height:8px;flex:none;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(45deg); }
+#bw-collection .bc-sheet .bc-multi[open]>summary::after { transform:rotate(225deg); }
+#bw-collection .bc-sheet .bc-multi>summary:focus-visible { outline:2px solid var(--tw-accent);outline-offset:2px;border-radius:10px; }
+#bw-collection .bc-sheet .bc-multi [data-bc-multi-value] { min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+#bw-collection .bc-sheet .bc-multi [data-empty] { color:var(--tw-text-muted); }
+#bw-collection .bc-sheet .bc-multi-list { display:flex;flex-direction:column;border-top:.5px solid var(--tw-divider);padding:4px 0; }
+#bw-collection .bc-sheet .bc-multi-list>.bc-hint { padding:12px; }
+#bw-collection .bc-sheet .bc-multi-item { display:flex;align-items:center;gap:12px;min-height:44px;margin:0;padding:0 12px;font:400 15px var(--tw-font);letter-spacing:normal;text-transform:none;color:var(--tw-text);cursor:pointer; }
+#bw-collection .bc-sheet .bc-multi-item input { flex:none;width:20px;height:20px;margin:0;accent-color:var(--tw-accent); }
+#bw-collection .bc-own-photos { display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:12px;row-gap:12px; }
+#bw-collection .bc-own-photos>* { grid-column:1 / -1; }
+#bw-collection .bc-own-photos>h3 { grid-column:1;align-self:baseline; }
+#bw-collection .bc-own-photos>.bc-photo-count { grid-column:2;grid-row:1;align-self:baseline; }
+#bw-collection .bc-photo-count { font:400 12px/16px var(--tw-mono);color:var(--tw-text-muted); }
+#bw-collection .bc-photo-row { display:flex;gap:12px;align-items:flex-start; }
+#bw-collection .bc-photo-row[hidden],#bw-collection .bc-photo-warning[hidden],#bw-collection .bc-photo-empty[hidden] { display:none; }
+#bw-collection .bc-photo-row[data-removed=true] .bc-thumb,#bw-collection .bc-photo-row[data-removed=true] .bc-photo-mid { opacity:.45; }
+#bw-collection .bc-photos .bc-thumb { flex:none;width:64px;height:64px;min-width:64px;min-height:64px;padding:0;display:grid;place-items:center;overflow:hidden;border:.5px solid var(--tw-divider-strong);border-radius:10px;background:var(--tw-surface); }
+#bw-collection .bc-photos .bc-thumb img { width:100%;height:100%;aspect-ratio:auto;object-fit:contain; }
+#bw-collection .bc-photos .bc-thumb-pending { border:1.5px dashed var(--tw-accent); }
+#bw-collection .bc-photo-mid { flex:1;min-width:0;display:flex;flex-direction:column;gap:6px; }
+#bw-collection .bc-photo-mid input:not([type=checkbox]):not([type=radio]) { min-height:44px; }
+#bw-collection .bc-photo-cap,#bw-collection .bc-photo-meta,#bw-collection .bc-photo-empty { margin:0;font:400 13px/18px var(--tw-font);color:var(--tw-text-muted); }
+#bw-collection .bc-photo-empty { font-size:15px;line-height:20px;color:var(--tw-text-2);padding:4px 0; }
+#bw-collection .bc-pill { display:inline-flex;align-items:center;gap:8px;align-self:flex-start;font:500 13px/18px var(--tw-font);color:var(--tw-text);background:var(--tw-info-soft);padding:3px 10px;border-radius:999px; }
+#bw-collection .bc-pill i { width:8px;height:8px;border-radius:50%;background:var(--tw-info); }
+#bw-collection .bc-photos .bc-photo-x { flex:none;width:44px;height:44px;min-width:44px;min-height:44px;padding:0;margin-right:-10px;border:0;border-radius:10px;background:transparent;color:var(--tw-text-2); }
+#bw-collection .bc-photos .bc-photo-x[aria-pressed=true] { background:var(--tw-accent-soft);color:var(--tw-accent-text); }
+#bw-collection .bc-ic { stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none; }
+#bw-collection .bc-photo-warning { display:flex;gap:10px;background:var(--tw-warning-soft);border-radius:10px;padding:12px;font:400 13px/18px var(--tw-font);color:var(--tw-text); }
+#bw-collection .bc-photo-warning>i { flex:none;width:8px;height:8px;margin-top:5px;border-radius:50%;background:var(--tw-warning); }
+#bw-collection .bc-photo-warning b { display:block;font-weight:600; }
+#bw-collection .bc-own-photos .bc-photo-picker { display:flex; }
+#bw-collection .bc-own-photos .bc-photo-picker label { flex:1;gap:8px;min-height:44px; }

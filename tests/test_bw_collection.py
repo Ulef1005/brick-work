@@ -455,7 +455,8 @@ def test_own_photo_caption_lightbox_undo(world, coll, client, pair):
     html = client.get(item_url(w, copy=w.copy_a)).text
     assert 'At home' in html and 'bc-lightbox' in html and f'/manage/images/{photo["id"]}' in html
     panel = BeautifulSoup(html, 'html.parser').select_one('dialog#bc-edit')
-    assert panel.select_one('.bc-own-photos [data-bc-photo-file][form=bc-edit-form]') and 'At home' in panel.select_one('.bc-own-photos').get_text()
+    assert panel.select_one('.bc-own-photos [data-bc-photo-file][form=bc-edit-form]')
+    assert panel.select_one('.bc-own-photos [data-bc-photo-caption]')['value'] == 'At home'          # the caption is a field of the one Save (#397)
     served = client.get(f'/manage/images/{photo["id"]}?w=320')
     assert served.status_code == 200 and served.data[:2] == b'\xff\xd8'
     c = post(client, token, 'caption', identifier=photo['id'], caption='Finished')
@@ -581,7 +582,7 @@ def test_the_edit_panel_holds_the_instances_and_the_photos_and_the_archive_form(
     soup = BeautifulSoup(client.get(item_url(w, copy=w.copy_a)).text, 'html.parser')
     panel = soup.select_one('dialog#bc-edit')
     headings = [h.get_text() for h in panel.select('.bc-edit-section > h3')]
-    assert any(h.startswith('Instances') for h in headings) and 'Own photos' in headings
+    assert any(h.startswith('Instances') for h in headings) and 'Photos' in headings
     assert panel.select_one('form[data-bc-action=save]') and panel.select_one('.bc-own-photos [name=new_photo][form=bc-edit-form]')
     assert not soup.select_one('#bc-edit [name=completeness_source]') and soup.select_one('#bc-edit [name=completeness]')
     assert soup.select_one('#bc-edit [name=place_id]') and soup.select_one('#bc-edit [name=current_value]')

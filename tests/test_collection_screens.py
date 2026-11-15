@@ -120,7 +120,7 @@ def test_shared_detail_modules(world, coll, client, kind):
     panel = soup.select_one('dialog#bc-edit')
     if panel:
         sections = [h.get_text() for h in panel.select('.bc-edit-section > h3')]
-        assert any(x.startswith('Instances') for x in sections) and 'Own photos' in sections
+        assert any(x.startswith('Instances') for x in sections) and 'Photos' in sections
     message = soup.select_one('[data-bc-message]')
     assert message['role'] == 'status' and not message.has_attr('hidden')
 

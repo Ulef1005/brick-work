@@ -80,7 +80,7 @@ Where things came from lives next door. On **Workbench → Storage**, follow **P
 - Press a place's name to see the sets bought there.
 - **Add location** opens **Tools & Admin**, where purchase places are kept.
 
-To record where a copy came from, open it, press **Edit** and choose its **Purchase location**.
+To record where a copy came from, open it, press **Edit** and choose its **Place**.
 
 ## What next
 

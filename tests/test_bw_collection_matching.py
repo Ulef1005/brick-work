@@ -108,7 +108,7 @@ def test_matching_leaves_set_detail_and_edit_panel_holds_instances_and_photos(wo
         assert not layout.select('.bc-own-photos') and not [h for h in layout.select('h2') if h.get_text().startswith('Instances')]
         panel = page.select_one('dialog#bc-edit')
         headings = [h.get_text() for h in panel.select('.bc-edit-section > h3')]
-        assert any(h.startswith('Instances') for h in headings) and 'Own photos' in headings
+        assert any(h.startswith('Instances') for h in headings) and 'Photos' in headings
         assert panel.select_one('form[data-bc-action=save]') and panel.select_one('.bc-own-photos [name=new_photo][form=bc-edit-form]')
         assert panel.select_one('.bc-edit-section[data-bc-list] [data-bc-rows]')
 

@@ -890,3 +890,9 @@ main .key-need a:not(.button) { min-height:44px;display:inline-flex;align-items:
 .bc-part-group-toggle[aria-expanded="false"] .bc-part-chevron { transform:rotate(-90deg); }
 .bc-part-group [hidden] { display:none; }
 @media(max-width:600px) { .bc-part-group-count { display:none; }.bc-part-group-toggle { gap:8px; } }
+/* #396: the one Save is the sheet's last control, below the photos; the photo picker is part of that save */
+:where(#bw-collection) .bc-sheet .bc-sheet-footer { margin-top:16px; }
+:where(#bw-collection) .bc-sheet .bc-sheet-footer>button { flex:1; }
+:where(#bw-collection) .bc-sheet .bc-photo-add { display:flex;flex-direction:column;gap:12px;margin-top:12px; }
+#bw-collection .bc-sheet .bc-photo-add>label { font-size:11px;line-height:14px;letter-spacing:.1em;text-transform:uppercase;color:var(--tw-text-2);display:flex;flex-direction:column;gap:6px; }
+:where(#bw-collection) .bc-sheet .bc-photo-hint { margin:0;font-size:12px;line-height:16px;color:var(--tw-text-2); }

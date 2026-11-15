@@ -187,27 +187,29 @@
   function stamp(target) {if(!receipt)return;receipt.screen=pathOf(target);sessionStorage.setItem(receiptKey,JSON.stringify(receipt));}
   function showReceipt(data) {receipt={...data,screen:pathOf(data.url||location.pathname+(location.search||''))};sessionStorage.setItem(receiptKey,JSON.stringify(receipt));if(message)message.textContent=data.message;if(undo)undo.hidden=false;}
   if(receipt) {if(message)message.textContent=receipt.message;if(undo)undo.hidden=false;}
-  async function send(action,data,multipart=false) {
+  async function send(action,data,multipart=false,quiet=false) {
     if(multipart)data.append('csrf_token',root.dataset.csrf);else data.csrf_token=root.dataset.csrf;
     const response=await fetch(root.dataset.saveUrl.replace('ACTION',action),{method:'POST',headers:multipart?{}:{'Content-Type':'application/json'},body:multipart?data:JSON.stringify(data)});
     const result=await response.json();if(!response.ok)throw new Error(result.message||'Not saved · try again');
-    if(action!=='undo')showReceipt(result);return result;
+    if(action!=='undo'&&!quiet)showReceipt(result);return result;
   }
-  undo?.addEventListener('click',async()=>{undo.disabled=true;try {await send('undo',{event_id:receipt.event_id});sessionStorage.removeItem(receiptKey);message.textContent='Undone';location.reload();}catch(e){message.textContent=e.message;}finally{undo.disabled=false;}});
+  undo?.addEventListener('click',async()=>{undo.disabled=true;try {for(const id of [...(receipt.also||[]),receipt.event_id])await send('undo',{event_id:id});sessionStorage.removeItem(receiptKey);message.textContent='Undone';location.reload();}catch(e){message.textContent=e.message;}finally{undo.disabled=false;}});
   root.querySelectorAll('[data-bw-open]').forEach(b=>b.addEventListener('click',()=>{const dialog=document.getElementById(b.dataset.bwOpen);dialog?.showModal();if(/^[a-z_]+$/.test(b.dataset.bcFocus||'')){const field=dialog?.querySelector(`[name=${b.dataset.bcFocus}]`);const folded=field?.closest?.('details');if(folded)folded.open=true;field?.focus();}}));
   root.querySelectorAll('[data-bw-close]').forEach(b=>b.addEventListener('click',()=>b.closest('dialog')?.close()));
+  let photoRetry=null;                      // the details are saved and only the photo failed: Save again sends the photo alone, to the row the details ended in
   root.querySelectorAll('form[data-bc-action]').forEach(form=>form.addEventListener('submit',async e=>{
     e.preventDefault();const group=form.closest('[data-bc-save-group]')||form;
     if(group.dataset.bcSaving==='true')return;
     group.dataset.bcSaving='true';
-    const buttons=[...group.querySelectorAll('button')].map(button=>({button,disabled:button.disabled})),status=form.querySelector('[data-bc-form-message]');buttons.forEach(({button})=>button.disabled=true);
+    const outside=form.id?[...document.querySelectorAll(`button[form="${form.id}"]`)]:[],buttons=[...new Set([...group.querySelectorAll('button'),...outside])].map(button=>({button,disabled:button.disabled})),status=form.querySelector('[data-bc-form-message]')||(form.id?document.querySelector(`[data-bc-for="${form.id}"]`):null);buttons.forEach(({button})=>button.disabled=true);
     if(status)status.textContent='Saving';
     try {
       const action=form.dataset.bcAction,identity=JSON.parse(form.dataset.identity||'{}');
-      let data;
+      let data,newPhoto=null,newPhotoCaption='';
       if(action==='photo') {data=new FormData(form);Object.entries(identity).forEach(([k,v])=>data.append(k,v));}
       else {
         const values=Object.fromEntries(new FormData(form));
+        newPhoto=values.new_photo;newPhotoCaption=values.new_photo_caption||'';delete values.new_photo;delete values.new_photo_caption;        // the photo goes up after the save, from the same button
         if(form.querySelector('[data-bc-flags]'))values.flags=[...form.querySelectorAll('[name=flags]:checked')].map(c=>c.value);
         data=action==='save'?{...identity,values}:{...identity,...values};
       }
@@ -215,7 +217,13 @@
         const chosen=mainSelection();
         if(chosen.entity!=='stock'||!chosen.ids.length)throw new Error('Select loose stock for this lot');data.ids=chosen.ids;
       }
-      const result=await send(action,data,action==='photo');
+      const retry=action==='save'&&photoRetry&&photoRetry.result.merged_ids&&newPhoto&&newPhoto.size?photoRetry:null;      // only a row that merged away cannot be saved again
+      const result=retry?retry.result:await send(action,data,action==='photo');
+      if(action==='save'&&newPhoto&&newPhoto.size){
+        const upload=new FormData();upload.append('entity',identity.entity);upload.append('identifier',retry?retry.id:(result.merged_ids||identity.ids)[0]);upload.append('photo',newPhoto);upload.append('caption',newPhotoCaption);
+        try {const added=await send('photo',upload,true,true);photoRetry=null;receipt={...receipt,also:[added.event_id]};sessionStorage.setItem(receiptKey,JSON.stringify(receipt));}      // quiet: the page keeps the details' save as its receipt, and Undo takes the photo back with it
+        catch(error){photoRetry={id:upload.get('identifier'),result};if(status)status.textContent='Details saved, but the photo was not added: '+error.message+' · Press Save to try the photo again';return;}
+      }
       if(action==='archive'){stamp(root.dataset.backUrl||location.pathname);location.href=root.dataset.backUrl||location.pathname;}
       else if(result.url)location.href=result.url;
       else location.reload();

@@ -455,7 +455,7 @@ def test_own_photo_caption_lightbox_undo(world, coll, client, pair):
     html = client.get(item_url(w, copy=w.copy_a)).text
     assert 'At home' in html and 'bc-lightbox' in html and f'/manage/images/{photo["id"]}' in html
     panel = BeautifulSoup(html, 'html.parser').select_one('dialog#bc-edit')
-    assert panel.select_one('.bc-own-photos form[data-bc-action=photo] [data-bc-photo-file]') and 'At home' in panel.select_one('.bc-own-photos').get_text()
+    assert panel.select_one('.bc-own-photos [data-bc-photo-file][form=bc-edit-form]') and 'At home' in panel.select_one('.bc-own-photos').get_text()
     served = client.get(f'/manage/images/{photo["id"]}?w=320')
     assert served.status_code == 200 and served.data[:2] == b'\xff\xd8'
     c = post(client, token, 'caption', identifier=photo['id'], caption='Finished')
@@ -582,7 +582,7 @@ def test_the_edit_panel_holds_the_instances_and_the_photos_and_the_archive_form(
     panel = soup.select_one('dialog#bc-edit')
     headings = [h.get_text() for h in panel.select('.bc-edit-section > h3')]
     assert any(h.startswith('Instances') for h in headings) and 'Own photos' in headings
-    assert panel.select_one('form[data-bc-action=save]') and panel.select_one('.bc-own-photos form[data-bc-action=photo]')
+    assert panel.select_one('form[data-bc-action=save]') and panel.select_one('.bc-own-photos [name=new_photo][form=bc-edit-form]')
     assert not soup.select_one('#bc-edit [name=completeness_source]') and soup.select_one('#bc-edit [name=completeness]')
     assert soup.select_one('#bc-edit [name=place_id]') and soup.select_one('#bc-edit [name=current_value]')
     archive = soup.select_one('#bc-delete form')
@@ -635,3 +635,22 @@ def test_a_price_paid_without_a_currency_takes_the_display_currency_and_the_shee
     coll.db.commit()
     field = BeautifulSoup(client.get(item_url(w, copy=w.copy_a)).text, 'html.parser').select_one('#bc-edit [name=purchase_date]')
     assert field.get('type') != 'date' and field['value'] == '2024-01-05T10:00:00Z'          # a stored date-time is kept whole, not cut to a date
+
+
+def test_the_edit_sheet_has_one_save_below_the_photos_that_also_sends_the_photo(world, coll, client):
+    """#396: the photo picker and its caption belong to the one save form, and Save is the sheet's last control before Delete."""
+    w = world
+    soup = BeautifulSoup(client.get(item_url(w, copy=w.copy_a)).text, 'html.parser')
+    panel = soup.select_one('dialog#bc-edit')
+    assert panel.select_one('form#bc-edit-form[data-bc-action=save]')
+    assert not panel.select_one('form[data-bc-action=photo]') and not panel.select('form#bc-edit-form button.primary')      # no second form, no Save inside the fields
+    save = panel.select_one('button.primary[form=bc-edit-form]')
+    assert save and panel.select_one('[name=new_photo][form=bc-edit-form]') and panel.select_one('[name=new_photo_caption][form=bc-edit-form]')
+    photos, footer = panel.select_one('.bc-own-photos'), panel.select_one('.bc-sheet-footer')
+    assert footer and save in footer.find_all('button')
+    everything = list(panel.descendants)
+    assert everything.index(photos) < everything.index(footer) < everything.index(panel.select_one('[data-bw-open=bc-delete]'))
+    coll.db.execute('UPDATE copy SET purchase_date=? WHERE id=?', ('2024-13-05', w.copy_a))                          # looks like a day, is not one: the picker would blank it
+    coll.db.commit()
+    field = BeautifulSoup(client.get(item_url(w, copy=w.copy_a)).text, 'html.parser').select_one('#bc-edit [name=purchase_date]')
+    assert field.get('type') != 'date' and field['value'] == '2024-13-05'

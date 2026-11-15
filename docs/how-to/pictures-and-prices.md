@@ -51,6 +51,10 @@ The first two need no key and make no API call. Add your keys under **Tools & Ad
 
 Change the order under **Picture source order** in **Manage → Tools & Admin → Settings**, with one list for parts and one for everything else. The page's **Pictures** card shows what is covered, and **Refresh pictures** queues the missing ones or all of them. The setting applies to jobs queued afterward. **Catalogues & keys** shows the same order on its **Pictures** card. Updating from 3.3 keeps your order: the default becomes the one above, and a changed order keeps its sequence with Rebrickable split into the catalogue and then the API.
 
+### Your own photos
+
+In the edit sheet of a set or a loose item, **Own photos** lists your photos, each with a caption you can change. To add one, press **Choose photo**, type an optional caption and press **Save** at the bottom of the sheet. The one **Save** stores your changes to the details and adds the photo together. The photo can fail, for example when the file is too big or is not a picture. The details are saved anyway. The sheet says so and keeps your photo chosen. Press **Save** again: it saves the details again, with any change you made since, and sends the photo. **Undo** takes back both the details change and the photo.
+
 ### A part with no known picture
 
 Before you confirm, the Add review warns **No picture known for this colour** on a part row when no source can serve it. That is when the catalogue has no picture for that colour, BrickLink has no number for the part, and no Rebrickable key is set. The part is still added; a key, or a link to a BrickLink number, lets the picture step find one later.

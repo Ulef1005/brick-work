@@ -46,6 +46,16 @@ def install(app):
         return Markup(source.replace(' xmlns="http://www.w3.org/2000/svg"', '').replace(
             '<svg ', '<svg class="icon" aria-hidden="true" focusable="false" ', 1))
 
+    def plain_day(value):
+        """True for an empty value or a real `yyyy-mm-dd` day: what a date picker can show and send back unchanged."""
+        if not value:
+            return True
+        try:
+            return len(value) == 10 and datetime.strptime(value, '%Y-%m-%d').date().isoformat() == value
+        except (TypeError, ValueError):
+            return False
+
+    env.tests['plain_day'] = plain_day
     icons = {p.stem: inline_icon(p) for p in (ROOT / 'static/web/toni/icons').glob('*.svg')}
     icons.update({p.stem: inline_icon(p) for p in (ROOT / 'static/brickwork/icons-ui').glob('*.svg')
                   if p.stem != 'sprite'})

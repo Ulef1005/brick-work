@@ -51,7 +51,7 @@ def test_the_set_sheet_has_the_approved_order_and_two_groups(world, client):
     top = [n for n in names if n != 'flags']
     assert top == ['condition', 'completeness', 'purchase_currency', 'purchase_price', 'purchase_date', 'place_id', 'current_value_currency', 'current_value', 'storage_id', 'note']
     switches = form.select_one('.bc-switches')
-    assert [s.get_text() for s in switches.select('.bc-switch > span')] == list(SYSTEM)
+    assert [s.get_text() for s in switches.select('.bc-sw > span')] == list(SYSTEM)
     groups = form.select('.bc-group')
     assert len(groups) == 2 and not switches.find_parent(class_='bc-group')
     first, second = groups
@@ -76,7 +76,7 @@ def test_the_sheet_head_has_the_mono_subtitle_and_an_icon_close(world, client):
 def test_the_three_system_flags_are_switches_and_not_in_the_flag_fields(world, coll, client):
     w = world
     form = sheet(client, copy_url(w, w.copy_a)).select_one('form#bc-edit-form')
-    switches = {s.select_one('span').get_text(): s.select_one('input') for s in form.select('.bc-switch')}
+    switches = {s.select_one('span').get_text(): s.select_one('input') for s in form.select('.bc-sw')}
     assert all(i['type'] == 'checkbox' and i['role'] == 'switch' and i['name'] == 'flags' for i in switches.values())
     assert [i['value'] for i in switches.values()] == [w.checked, w.box, w.booklet_flag]
     assert switches['Set is checked'].has_attr('checked') and not switches['Box present'].has_attr('checked')
@@ -90,7 +90,7 @@ def test_a_switch_turns_a_flag_on_and_off_through_the_save(world, coll, client):
     r = post(client, token, 'save', entity='copy', ids=[w.copy_a], values={'flags': [w.tag, w.box]})
     assert r.status_code == 200 and flag_ids(coll, w.copy_a) == {w.tag, w.box}
     form = sheet(client, copy_url(w, w.copy_a))
-    on = {s.select_one('span').get_text() for s in form.select('.bc-switch') if s.select_one('input').has_attr('checked')}
+    on = {s.select_one('span').get_text() for s in form.select('.bc-sw') if s.select_one('input').has_attr('checked')}
     assert on == {'Box present'}
     assert post(client, token, 'undo', event_id=r.json['event_id']).status_code == 200 and flag_ids(coll, w.copy_a) == {w.tag, w.checked}
 
@@ -102,7 +102,7 @@ def test_a_missing_system_flag_still_has_its_switch_and_is_made_by_the_save(worl
     coll.db.execute('DELETE FROM flag WHERE id=?', (w.box,))
     coll.db.commit()
     before = coll.db.execute('SELECT COUNT(*) FROM flag').fetchone()[0]
-    box = next(s.select_one('input') for s in sheet(client, copy_url(w, w.copy_a)).select('.bc-switch') if 'Box present' in s.get_text())
+    box = next(s.select_one('input') for s in sheet(client, copy_url(w, w.copy_a)).select('.bc-sw') if 'Box present' in s.get_text())
     assert box['value'] == 'system:Box present' and not box.has_attr('checked')
     assert coll.db.execute('SELECT COUNT(*) FROM flag').fetchone()[0] == before, 'rendering writes nothing'
     r = post(client, token, 'save', entity='copy', ids=[w.copy_a], values={'flags': [w.checked, 'system:Box present']})

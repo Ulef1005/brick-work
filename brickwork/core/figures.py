@@ -10,7 +10,7 @@ from decimal import Decimal as D
 from . import collection, partout, planning, items, workbench
 from .sources.base import now
 
-RULE = (f'Complete it when complete value less the cost to complete beats the part-out value by {partout.MARGIN * 100:.0f}% and at least €{partout.MINIMUM_GAIN:.2f}. '
+RULE = (f'Complete it when complete value less the cost to complete beats the part-out value by {partout.MARGIN * 100:.0f}% and at least {{minimum_gain}}. '
         'Part out when the reverse holds. Otherwise no recommendation.')
 
 
@@ -46,7 +46,7 @@ def project(row, config):
                           'Part out' if partout.advantage(parts, net) else 'Keep as is')
     amount = lambda v: str(v.quantize(D('0.01'))) if v is not None else None
     row.update(minimum_gain=str(partout.MINIMUM_GAIN), margin_percent=int(partout.MARGIN * 100), complete=amount(complete), parts_value=amount(parts), to_complete=amount(total),
-               shipping_fees=amount(fees), minimum_order_extra=amount(minimum), gain=amount(gain),
+               shipping_fees=amount(fees), minimum_order_extra=amount(minimum) if total is not None else None, gain=amount(gain),
                currency=config['bricklink_currency'], lines=len(lines), priced=priced, enough=enough,
                missing_count=missing, recommendation=recommendation,
                needs_evidence=not enough or complete is None or total is None)
@@ -59,7 +59,7 @@ def compare(db, item_id=None):
         NULL copy_figure_id,s.item_id,s.quantity,s.storage_id,i.name,i.year,i.theme_name theme
         FROM stock s JOIN item i ON i.id=s.item_id WHERE s.kind='minifigure'
         AND s.archived_at IS NULL AND s.quantity>0
-        UNION ALL SELECT 'figure:'||f.id,NULL,c.id,f.id,f.item_id,f.quantity,c.storage_id,i.name,i.year,i.theme_name
+        UNION ALL SELECT 'figure:'||f.id,NULL,c.id,f.id,f.item_id,f.quantity-f.missing,c.storage_id,i.name,i.year,i.theme_name
         FROM copy_figure f JOIN copy c ON c.id=f.copy_id JOIN item i ON i.id=f.item_id
         WHERE c.archived_at IS NULL AND f.retired_at IS NULL AND f.quantity>f.missing
         ORDER BY place''')]
@@ -67,7 +67,9 @@ def compare(db, item_id=None):
     components = [dict(r) for r in db.execute('''SELECT 'stock:'||p.stock_id place,p.item_id,p.color_id,p.quantity,p.missing,p.damaged
         FROM stock_part p JOIN stock s ON s.id=p.stock_id WHERE p.retired_at IS NULL AND p.is_spare=0 AND p.quantity>0
         AND s.archived_at IS NULL
-        UNION ALL SELECT 'figure:'||p.copy_figure_id,p.item_id,p.color_id,p.quantity,p.missing,p.damaged
+        UNION ALL SELECT 'figure:'||p.copy_figure_id,p.item_id,p.color_id,
+        p.quantity-(p.quantity/f.quantity)*f.missing,
+        max(0,p.missing-(p.quantity/f.quantity)*f.missing),p.damaged
         FROM copy_part p JOIN copy_figure f ON f.id=p.copy_figure_id WHERE p.retired_at IS NULL AND p.is_spare=0 AND p.quantity>0
         ''') if r['place'] in places]
     grouped = defaultdict(list)

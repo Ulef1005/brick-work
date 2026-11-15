@@ -1694,7 +1694,7 @@ def bw_collection_item(item_id):
                 asked = request.args.get('place') or ('figure:' + request.args['figure'] if request.args.get('figure') else None)
                 detail['figure_comparison'] = next((r for r in detail['figure_comparisons'] if r['place'] == asked or
                     (not asked and r['copy_id'] == request.args.get('copy') and r['copy_id'])),
-                    next((r for r in detail['figure_comparisons'] if r['stock_id'] == request.args.get('stock')), None) or
+                    next((r for r in detail['figure_comparisons'] if request.args.get('stock') and r['stock_id'] == request.args['stock']), None) or
                     next(iter(detail['figure_comparisons']), None))
             detail['colour_choices'] = colour_choices if len(colour_choices) > 1 else []
             choices = collection.options(db)
@@ -2321,8 +2321,9 @@ def bw_planning(screen):
                     from ..core import figures
                     from .figure_views import listing, refresh_state
                     rows=figures.compare(db)
-                    figure_page=listing(rows,request.args)
-                    figure_page['refresh']=refresh_state(db,rows)
+                    settings=planning.configuration(db)
+                    figure_page=listing(rows,request.args,settings['bricklink_currency'])
+                    figure_page['refresh']=refresh_state(db,figure_page['rows'])
                 else:
                     data=planning.ranking(db);rows=data['rows'];settings=data['settings']
     except (ValueError,sqlite3.Error,OSError) as exc: error=public(exc, 'Brick Work database is not available. Check BW_DB_PATH and try again.')

@@ -5,11 +5,13 @@ import json
 from flask import url_for
 from .valuation_views import _page_items
 from ..core.figures import RULE
+from ..core import partout
+from .formatting import money
 
 SORTS = [('gain', 'Gain from completing'), ('cost', 'Cost to complete'), ('parts', 'Part-out value'), ('number', 'Number'), ('name', 'Name')]
 
 
-def listing(rows, args):
+def listing(rows, args, currency='EUR'):
     params = {k: args.get(k, '').strip()[:100] for k in ('q', 'where', 'recommendation', 'theme', 'storage', 'sort')}
     if params['sort'] not in dict(SORTS):
         params['sort'] = 'gain'
@@ -39,7 +41,7 @@ def listing(rows, args):
                  prev=link(page=page-1) if page>1 else None, next=link(page=page+1) if page<pages else None,
                  items=[dict(n=n, url=link(page=n) if n else None) for n in _page_items(page, pages)])
     best=max((r for r in shown if r['recommendation']=='Complete it'),key=lambda r: Decimal(r['gain']),default=None)
-    return dict(best=best, rule=RULE, rows=shown[(page-1)*15:page*15], params=params, options=options, sorts=SORTS, pager=pager, link=link,
+    return dict(best=best, rule=RULE.format(minimum_gain=money(partout.MINIMUM_GAIN, currency, fixed=True)), rows=shown[(page-1)*15:page*15], params=params, options=options, sorts=SORTS, pager=pager, link=link,
                 all_complete=all_complete, has_rows=bool(rows))
 
 

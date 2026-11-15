@@ -251,4 +251,66 @@ def test_visible_money_uses_words_and_one_currency(figure,coll,client):
     assert 'part out gains €8.00' in text and 'Part out' in text
     assert not re.search(r'[−–-]\s*€|€\s+\d',text)
     assert 'USD' not in text and '$' not in text
-    assert figures.RULE=='Complete it when complete value less the cost to complete beats the part-out value by 10% and at least €5.00. Part out when the reverse holds. Otherwise no recommendation.'
+    assert figures.RULE.format(minimum_gain='€5.00')=='Complete it when complete value less the cost to complete beats the part-out value by 10% and at least €5.00. Part out when the reverse holds. Otherwise no recommendation.'
+
+
+def test_present_set_figures_only(figure, coll, read):
+    copy, fid = add_place(coll, figure, 1)
+    coll.sql('UPDATE copy_figure SET quantity=2,missing=1 WHERE id=?', (fid,))
+    # The absent whole figure accounts for one missing piece on every component line.
+    coll.sql('UPDATE copy_part SET quantity=2,missing=missing+1 WHERE copy_figure_id=?', (fid,))
+    with read() as db:
+        row = next(r for r in figures.compare(db) if r['copy_figure_id'] == fid)
+    assert row['quantity'] == 1
+    assert (row['complete'], row['parts_value'], row['shipping_fees'], row['to_complete'], row['missing_count']) == ('18.00', '6.00', '0.50', '4.00', 1)
+    assert [(p['quantity'], p['missing']) for p in row['parts']] == [(1, 0)] * 3 + [(1, 1)]
+    coll.sql('UPDATE copy_figure SET missing=2 WHERE id=?', (fid,))
+    with read() as db:
+        assert all(r['copy_figure_id'] != fid for r in figures.compare(db))
+
+
+def test_default_loose_card_directly_follows_prices(figure, coll, client):
+    add_place(coll, figure, 1)
+    page = BeautifulSoup(client.get(f'/collection/item/{figure[0]}').data, 'html.parser')
+    card = page.select_one('[data-module=figure-comparison]')
+    assert card.select_one('summary').get_text() == 'Copy: Loose'
+    assert card.parent.name == 'aside'
+    assert card.find_previous_sibling()['data-module'] == 'prices'
+
+
+def test_unknown_cost_hides_minimum_order(figure, coll, read, client):
+    coll.setting('repair_min_order', '10')
+    coll.sql('DELETE FROM price_current WHERE item_id=?', (figure[1][-1],))
+    row = result(read, figure)
+    assert row['to_complete'] is None and row['minimum_order_extra'] is None
+    card = BeautifulSoup(client.get(f'/collection/item/{figure[0]}').data, 'html.parser').select_one('[data-module=figure-comparison]')
+    assert 'no sales' in card.get_text() and 'Minimum order extra' not in card.get_text()
+
+
+@pytest.mark.parametrize('currency,amount', [('EUR', '€5.00'), ('USD', '$5.00')])
+def test_rule_uses_configured_currency(figure, coll, client, currency, amount):
+    coll.setting('bricklink_currency', currency)
+    page = BeautifulSoup(client.get('/planning/complete-sets?tab=figures').data, 'html.parser')
+    assert 'at least ' + amount in page.select_one('[data-bf-rule]').get_text()
+    if currency == 'USD':
+        assert '€' not in page.select_one('#bw-figures').get_text()
+
+
+def test_filtered_refresh_only_visible_incomplete_figure(figure, coll, client, app4, monkeypatch):
+    import json
+    coll.sql('DELETE FROM price_current WHERE item_id=?', (figure[1][-1],))
+    other = coll.local('minifigure', 'Sam unseen figure', born_key='syn55-unseen')
+    sid = coll.add_stock('minifigure', other, source='none')
+    component = coll.local('part', 'Sam unseen part', born_key='syn55-unseen-part')
+    coll.sql('INSERT INTO stock_part(stock_id,item_id,color_id,quantity,missing) VALUES(?,?,?,1,1)', (sid, component, figure[2]))
+    # A complete figure matching the query must also stay outside the refresh scope.
+    whole = coll.local('minifigure', 'Alex complete figure', born_key='syn55-complete-test')
+    sid = coll.add_stock('minifigure', whole, source='none')
+    coll.sql('INSERT INTO stock_part(stock_id,item_id,color_id,quantity) VALUES(?,?,?,1)', (sid, component, figure[2]))
+    app4.jinja_env.globals['bw_key_missing'] = lambda source: False
+    monkeypatch.setenv('BW_BRICKLINK_DAILY_BUDGET', '2')
+    page = BeautifulSoup(client.get('/planning/complete-sets?tab=figures&q=Alex').data, 'html.parser')
+    button = page.select_one('[data-bf-fetch]')
+    assert button and not button.has_attr('disabled')
+    assert json.loads(button['data-bf-fetch']) == [figure[1][-1]]
+    assert '0 of 2 calls used today' in page.get_text()

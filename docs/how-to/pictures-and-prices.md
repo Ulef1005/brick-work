@@ -85,7 +85,7 @@ The page of a set has a **Sell this copy** card for the selected copy, between P
 
 - **Asking price.** The card starts from the used sold average of the set, or the new average for a new or sealed copy. It takes off the used price of each missing part and each missing figure, line by line. The sum row is the asking price.
 - **Missing lines.** **Missing parts** and **Missing figures** open in place. Each line shows its colour, name, part number and price. At 1024 pixels and wider, Missing parts starts open.
-- **Needs evidence.** A missing line with no fresh BrickLink used price is a dashed row marked **needs evidence**. It stays out of the sum. The line under the table says how many missing lines were priced and names the ones that were not. A price refresh for the missing parts fills them in.
+- **Needs evidence.** A missing line with no fresh BrickLink used price is a dashed row marked **needs evidence**. It stays out of the sum. The line under the table says how many missing lines were priced and names the ones that were not.
 - **Damaged parts** are not taken off. Only missing ones are.
 - **Part-out floor.** The card shows the part-out value of what is present, the same figure as **Parted out** in Prices. It needs prices for 90 % of the lines. When the deductions would take the price under it, the part-out value becomes the asking price and the card says so.
 - **No part check yet.** Until you check the copy, the card shows the average as it is, marked not adjusted, with a link to **Check this copy**. A sealed copy needs no check.

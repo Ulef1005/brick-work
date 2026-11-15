@@ -13,6 +13,7 @@ import pytest
 
 from brickwork.core import collection, deductions, selling, valuation
 from brickwork.core.sources.base import now
+from tests import rendered
 from tests.app4 import app4, client, coll, pair, read, world  # noqa: F401  (the fixtures)
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -314,5 +315,24 @@ def test_the_floor_unknown_and_floor_applied_texts_on_the_page(coll, client):
 # ---- the preview script ----
 
 def test_the_preview_script_runs():
+    rendered.need_node()
     result = subprocess.run(['node', 'tests/toni_bw_sell_runtime.cjs'], cwd=ROOT, capture_output=True, text=True, timeout=60)
     assert result.returncode == 0, result.stdout + result.stderr
+    assert 'sell runtime ok' in result.stdout
+
+
+def test_a_failed_read_is_an_error_state_with_retry(coll, client, monkeypatch):
+    import sqlite3
+    setup(coll)
+    copy = checked_copy(coll)
+    def broken(db, copy_id, stamp=None):
+        raise sqlite3.OperationalError('boom')
+    monkeypatch.setattr(selling, 'card', broken)
+    page, node = sell_node(client, coll, copy)
+    assert node['data-state'] == 'error' and 'The asking price did not load.' in node.get_text() and node.select_one('a.bc-outline').get_text() == 'Retry'
+    assert not node.select('dialog')
+
+
+def test_the_assets_are_precached():
+    worker = (ROOT / 'static/web/toni/sw.js').read_text()
+    assert '/static/web/toni/bw-sell.js' in worker and '/static/web/toni/bw-sell.css' in worker

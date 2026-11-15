@@ -77,6 +77,8 @@ const ASSETS = [
   "/static/web/toni/bw-print.css",
   "/static/web/toni/bw-print.js",
   "/static/web/toni/bw-value.css",
+  "/static/web/toni/bw-sell.css",
+  "/static/web/toni/bw-sell.js",
   "/static/web/toni/bw-report-print.css",
   "/static/web/toni/bw-report-print.js",
   "/static/web/toni/bw-places.js",

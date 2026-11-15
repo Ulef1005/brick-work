@@ -85,19 +85,24 @@
     if (save) save.disabled = busy || !model.dirty();
   };
 
+  // Called by the list renderer after paging, filtering and tab changes too.
+  module.bcPartEditVisibility = () => {
+    const parts = !module.dataset.inventory || module.dataset.inventory === 'parts';
+    if (progress) progress.hidden = editing || !parts;
+    if (mode) mode.hidden = !editing || !parts;
+    if (bar) bar.hidden = !editing || !parts;
+  };
   const setMode = on => {
     editing = on;
     if (on) module.setAttribute('data-bc-pl-editing', ''); else module.removeAttribute('data-bc-pl-editing');
-    if (progress) progress.hidden = on;
-    if (mode) mode.hidden = !on;
-    if (bar) bar.hidden = !on;
+    module.bcPartEditVisibility();
     if (warn) warn.hidden = true;
     if (save) save.textContent = 'Save missing';
     if (edit) edit.setAttribute('aria-expanded', String(on));
     paint();
   };
 
-  edit?.addEventListener('click', () => { model.reset(); setMode(true); cancel?.focus?.(); });
+  edit?.addEventListener('click', () => { if (editing) return; model.reset(); setMode(true); cancel?.focus?.(); });
   cancel?.addEventListener('click', () => { if (busy) return; model.reset(); setMode(false); edit?.focus?.(); });
 
   rowEls.forEach(el => {
@@ -118,7 +123,8 @@
       throw Object.assign(new Error('The connection dropped'), {offline: true});
     }
     let result = {};
-    try { result = await response.json(); } catch (_) { /* a non-JSON answer is a failure below */ }
+    try { result = await response.json(); } catch (_) { throw new Error('The server returned an unreadable response'); }
+    if (!result || typeof result !== 'object') throw new Error('The server returned an unreadable response');
     if (!response.ok) throw new Error(result.message || 'The server refused it');
     return result;
   };

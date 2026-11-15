@@ -18,7 +18,8 @@
     const note = button.parentElement.querySelector('[data-bc-found-message]');
     button.addEventListener('click', async () => {
       if (button.disabled) return;
-      button.disabled = true;
+      const buttons = [...button.parentElement.querySelectorAll('[data-bc-found-one], [data-bc-found-all]')];
+      buttons.forEach(b => { b.disabled = true; });
       if (note) note.textContent = 'Saving';
       try {
         const data = {...JSON.parse(button.dataset.identity), csrf_token: root.dataset.csrf};
@@ -29,7 +30,7 @@
         location.reload();
       } catch (error) {
         if (note) note.textContent = error.message;
-        button.disabled = false;
+        buttons.forEach(b => { b.disabled = false; });
       }
     });
   }));

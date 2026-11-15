@@ -647,13 +647,14 @@ def found_one(db, copy_id, token):
     table = {'p': 'copy_part', 'f': 'copy_figure'}.get(kind)
     if table is None or not identifier.isdigit():
         raise errors.ValidationFailed('Choose a part from this copy')
-    copy(db, copy_id)
-    row = db.execute(f'SELECT missing FROM main.{table} WHERE copy_id=? AND id=? AND retired_at IS NULL', (copy_id, int(identifier))).fetchone()
-    if row is None:
-        raise errors.NotFound('No such line in this copy')
-    if not (row['missing'] or 0) > 0:
-        raise errors.ValidationFailed('This part is not missing')
-    return mark(db, copy_id, [(token, dict(missing=row['missing'] - 1))])
+    with transaction(db):
+        copy(db, copy_id)
+        row = db.execute(f'SELECT missing FROM main.{table} WHERE copy_id=? AND id=? AND retired_at IS NULL', (copy_id, int(identifier))).fetchone()
+        if row is None:
+            raise errors.NotFound('No such line in this copy')
+        if not (row['missing'] or 0) > 0:
+            raise errors.ValidationFailed('This part is not missing')
+        return mark(db, copy_id, [(token, dict(missing=row['missing'] - 1))])
 
 
 def save_missing(db, copy_id, rows):
@@ -692,13 +693,14 @@ def found_all(db, copy_id, token):
     table = {'p': 'copy_part', 'f': 'copy_figure'}.get(kind)
     if table is None or not identifier.isdigit():
         raise errors.ValidationFailed('Choose a part from this copy')
-    copy(db, copy_id)
-    row = db.execute(f'SELECT missing FROM main.{table} WHERE copy_id=? AND id=? AND retired_at IS NULL', (copy_id, int(identifier))).fetchone()
-    if row is None:
-        raise errors.NotFound('No such line in this copy')
-    if not (row['missing'] or 0) > 0:
-        raise errors.ValidationFailed('This part is not missing')
-    return mark(db, copy_id, [(token, dict(missing=0))])
+    with transaction(db):
+        copy(db, copy_id)
+        row = db.execute(f'SELECT missing FROM main.{table} WHERE copy_id=? AND id=? AND retired_at IS NULL', (copy_id, int(identifier))).fetchone()
+        if row is None:
+            raise errors.NotFound('No such line in this copy')
+        if not (row['missing'] or 0) > 0:
+            raise errors.ValidationFailed('This part is not missing')
+        return mark(db, copy_id, [(token, dict(missing=0))])
 
 
 def set_checked(db, copy_id, wanted):

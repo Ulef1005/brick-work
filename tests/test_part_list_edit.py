@@ -89,7 +89,7 @@ def test_edit_mode_markup_has_a_tick_per_part_a_stepper_for_more_than_one_and_op
         assert box['aria-checked'] == 'false' and box['aria-label'].startswith('Missing')
         assert row.select_one('[data-bc-pl-need-text]')
         assert row.select_one('[data-bc-pl-line]').has_attr('hidden')
-        assert row.find().name == 'span' and 'bc-pl-tick' in row.find()['class']          # the tick is the row's first item
+        assert 'bc-picture' in row.find()['class']                    # the picture keeps its original position
     assert rows[four['id']]['data-bc-pl-need'] == '4' and rows[four['id']]['data-bc-pl-missing'] == '3'
     assert rows[two['id']]['data-bc-pl-missing'] == '0'
     steppers = {i: r.select_one('.bc-pl-stepper') for i, r in rows.items()}
@@ -239,3 +239,50 @@ def test_the_part_edit_script_and_styles_are_wired(coll, copy, client):
     css = (ROOT / 'static/web/toni/bw-collection.css').read_text()
     assert '#bw-collection .bc-pl-box { width:44px;height:44px' in css and '.bc-pl-bar { position:sticky' in css
     assert 'main label' not in css.split('/* #401')[1]                       # none of the new rules reaches for a bare label
+
+
+def test_part_edit_runtime_harness():
+    import subprocess
+    from tests import rendered
+    rendered.need_node()
+    subprocess.run(['node', str(Path(__file__).with_name('toni_bw_part_edit_runtime.cjs'))],
+                   check=True, capture_output=True, text=True)
+
+
+def test_edit_tick_preserves_picture_and_receipt_is_outside_tabs(coll, copy, client):
+    page = soup(client, coll.db, copy)
+    for row in page.select('[data-bc-pl-row]'):
+        children = row.find_all(recursive=False)
+        assert 'bc-picture' in children[0].get('class', [])
+        assert 'bc-pl-tick' in children[1].get('class', [])
+    receipt = page.select_one('[data-bc-pl-receipt]')
+    assert receipt.find_parent(attrs={'data-bc-tab-inventory': True}) is None
+    assert receipt.parent == page.select_one('[data-bc-tab-inventory]').parent
+
+
+@pytest.mark.parametrize('action', [checker.found_one, checker.found_all])
+def test_found_reads_missing_only_after_taking_write_transaction(coll, copy, monkeypatch, action):
+    from contextlib import contextmanager
+    from brickwork.core import errors
+    db = coll.db
+    line = lines(db, copy)[4]
+    token = f'p:{line["id"]}'
+    checker.mark(db, copy, [(token, dict(missing=3))])
+    original = checker.transaction
+    entered = False
+
+    @contextmanager
+    def competing_found(connection):
+        nonlocal entered
+        # Another request finishes just before this request obtains its write lock.
+        if not entered:
+            entered = True
+            with original(connection):
+                connection.execute('UPDATE copy_part SET missing=0 WHERE id=?', (line['id'],))
+        with original(connection):
+            yield
+
+    monkeypatch.setattr(checker, 'transaction', competing_found)
+    with pytest.raises(errors.ValidationFailed, match='not missing'):
+        action(db, copy, token)
+    assert lines(db, copy)[4]['missing'] == 0

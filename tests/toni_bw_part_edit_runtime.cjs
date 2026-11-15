@@ -164,5 +164,38 @@ const ok = {ok: true, json: async () => ({message: 'Saved · 2 parts marked miss
   // A refused switch says why and stays as it was.
   t = build({response: {ok: false, json: async () => ({message: 'Nope'})}});
   await t.sw.fire('click'); assert.equal(t.named['switch-note'].textContent, 'Nope'); assert.equal(t.sw.getAttribute('aria-checked'), 'false'); assert.equal(t.sw.disabled, false); assert.equal(t.reloads.length, 0);
+  // Rendering another inventory hides all editing chrome without dropping the draft.
+  t = build(); t.named.edit.fire('click'); t.rows[1].box.fire('click');
+  for (const inventory of ['figures', 'extras', 'parts']) {
+    t.module.dataset.inventory = inventory; t.module.bcPartEditVisibility();
+    assert.equal(t.named.progress.hidden, true);
+    assert.equal(t.named.mode.hidden, inventory !== 'parts');
+    assert.equal(t.named.bar.hidden, inventory !== 'parts');
+    assert.equal(t.rows[1].box.getAttribute('aria-checked'), 'true');
+  }
+  t.named.edit.fire('click'); // a repeated Edit cannot reset ticks
+  assert.equal(t.rows[1].box.getAttribute('aria-checked'), 'true');
+  t.module.dataset.inventory = 'extras'; t.module.bcPartEditVisibility();
+  t.named.cancel.fire('click'); assert.equal(t.named.progress.hidden, true);
+  t.module.dataset.inventory = 'parts'; t.module.bcPartEditVisibility();
+  assert.equal(t.named.progress.hidden, false); assert.equal(t.named.bar.hidden, true);
+
+  // A login redirect returning HTML with 200 must keep ticks and write no receipt.
+  const html = {ok: true, json: async () => { throw new SyntaxError('HTML'); }};
+  t = build({response: html}); t.named.edit.fire('click'); t.rows[1].box.fire('click');
+  await t.named.save.fire('click');
+  assert.equal(t.rows[1].box.getAttribute('aria-checked'), 'true');
+  assert.equal(t.named.save.textContent, 'Retry'); assert.equal(t.named.warn.hidden, false);
+  assert.equal(t.reloads.length, 0); assert.equal(t.store['bw-collection-receipt'], undefined);
+  await t.sw.fire('click');
+  assert.match(t.named['switch-note'].textContent, /unreadable/);
+  assert.equal(t.sw.disabled, false); assert.equal(t.reloads.length, 0);
+  assert.equal(t.store['bw-collection-receipt'], undefined);
+
+  // The real template keeps the receipt outside the panel hidden on Extras.
+  const template = fs.readFileSync(path.join(__dirname, '../templates/web/toni/brickwork/collection_modules.html'), 'utf8');
+  assert(template.indexOf('data-bc-pl-receipt') < template.indexOf('<div data-bc-tab-inventory>'));
+  const collection = fs.readFileSync(path.join(__dirname, '../static/web/toni/bw-collection.js'), 'utf8');
+  assert(collection.includes('list.bcPartEditVisibility?.();'));
   console.log('part edit runtime ok');
 })().catch(error => { console.error(error); process.exit(1); });

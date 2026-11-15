@@ -1040,3 +1040,8 @@ main .key-need a:not(.button) { min-height:44px;display:inline-flex;align-items:
 #bw-collection .bc-pl-save:disabled { opacity:.4;cursor:default; }
 #bw-collection .bc-pl-warn { margin:0;padding:10px 12px;border-radius:10px;background:var(--tw-danger-soft);color:var(--tw-text);font:400 13px/18px var(--tw-font); }
 @media(max-width:1023px) { #bw-collection .bc-pl-bar { bottom:var(--bw-bottom,0px);padding-bottom:12px; } }
+
+/* Keep edit controls in the picture/identity line on phones and tablets. */
+@media(max-width:1023px) {
+  #bw-collection [data-bc-pl-editing] .bc-inventory-row[data-bc-pl-row]>a:first-of-type { flex:1 0 calc(100% - 124px); }
+}

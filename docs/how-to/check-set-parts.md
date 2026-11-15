@@ -74,3 +74,8 @@ On a figure's step, **Check figure parts** opens a check of that figure's own pa
 - [Find sets your loose stock can finish](match-stock-to-sets.md) to fill gaps from parts you already own.
 
 **Category group** follows the fixed category-group order, with **Other** last, and largest parts first within each group. It is always available, independently of **Group parts by**. Parts without a recorded category go in **Other**.
+
+Your ticks stay when you switch to Minifigures or Instructions & Box and back to Parts.
+The edit controls show on Parts; the receipt and Undo stay visible on every tab.
+If saving fails, including an unreadable server response, your ticks stay ready for Retry.
+While Found 1 or Found all saves a row, both buttons wait for the result.

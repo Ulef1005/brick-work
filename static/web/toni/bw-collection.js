@@ -404,6 +404,7 @@
       if(figureHeading)figureHeading.hidden=inventory!=='figures';
       if(partProgress)partProgress.hidden=inventory!=='parts';
       list.dataset.inventory=inventory;
+      list.bcPartEditVisibility?.();
       tabs.forEach(t=>t.setAttribute('aria-pressed',String(t.dataset.bcTab===inventory)));
       if(inventory==='extras'){
         if(panel){panel.hidden=true;panel.removeAttribute('aria-modal');}

@@ -4,7 +4,8 @@ The asking price is the copy's used sold average (new for a new or sealed copy; 
 less what its missing parts and figures are worth, priced line by line (`deductions`: the used quote Complete sets prices a repair with). A line with
 no usable quote is a "needs evidence" line, listed and left out of the sum. A damaged line is not deducted. The part-out value of what is present
 (`partout`, shown only when 90 % of the lines have a price) is the floor: when the deductions would take the price under it, the floor is the price.
-Nothing is stored and the copy's own estimate is ignored (it is the owner's worth, not the market's).
+Nothing is stored and the copy's own estimate is ignored (it is the owner's worth, not the market's). Both cards use the same per-line
+deductions, but Worth now honours the owner's own estimate and applies no part-out floor, so its worth can differ from the Sell card's asking price.
 
 One function, `card`, works out the numbers, the words and the listing text, so the card and the text cannot disagree. A copy with no part check yet
 (`deductions.checked`) shows the average, not adjusted, and the card says so. Money is the display currency, whole cents, from the same rates the

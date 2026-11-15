@@ -8,7 +8,8 @@ A line is a set part (item and colour, spares and a figure's own parts excluded,
 `missing` above 0. Its price is the used quote Complete sets prices a repair with (`planning.quote`: fresh, in the BrickLink currency and region);
 no such quote makes the line **needs evidence**: it stays in the list and is left out of the sum. A damaged line is not deducted.
 
-The Sell card (`selling`) and the Value card's Worth now (`valuation`) both read this module, so the two cards cannot disagree about a checked copy.
+The Sell card (`selling`) and the Value card's Worth now (`valuation`) use the same per-line deductions for a checked copy.
+The Sell card additionally raises its asking price to the part-out floor; Worth now honours the owner's own estimate and applies no floor, so the two can differ.
 Batched: the flags, the lines and the quotes are three reads for any number of copies.
 """
 from decimal import Decimal, ROUND_HALF_UP

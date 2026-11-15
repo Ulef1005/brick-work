@@ -3,7 +3,8 @@
 A copy's **price paid** is its `purchase_price`; a null or zero price is "no price paid". Its **worth** is the copy's own `current_value`
 (source `override`, "Your value") or else the current used or new sold average of the set for the copy's condition and completeness: new for a
 new or sealed copy, used for any other. A copy with a part check (`deductions.checked`) has the priced missing parts and figures taken off, line by line, as the Sell card
-does (#53); any other copy with a gap has the flat discount the set detail applies (`incomplete_discount_pct`; a missing or damaged line, not the completeness label). The quote
+does (#53). Both use the same per-line deductions, but the Sell card additionally raises its asking price to the part-out floor. Worth now
+honours the owner's own estimate and applies no floor, so the two can differ; any other copy with a gap has the flat discount the set detail applies (`incomplete_discount_pct`; a missing or damaged line, not the completeness label). The quote
 is the one the Prices card shows (the unvoided observations, then `collection_prices.choose` by source priority, sold first and freshness) and is stale by the
 same rule (`decorate_prices`: older than the source's `max_age_days`). A stale quote still counts, marked.
 

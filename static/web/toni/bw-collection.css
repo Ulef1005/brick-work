@@ -904,7 +904,7 @@ main .key-need a:not(.button) { min-height:44px;display:inline-flex;align-items:
 #bw-collection .bc-sheet .bc-money:focus-within { outline:2px solid var(--tw-accent);outline-offset:2px; }
 #bw-collection .bc-sheet .bc-money input:not([type=checkbox]):not([type=radio]) { min-height:46px;min-width:0;border:0;border-radius:0;background:transparent;outline:0; }
 #bw-collection .bc-sheet .bc-money .bc-money-code { flex:none;width:4.25em;padding-inline:12px 4px;text-transform:uppercase;color:var(--tw-text-2); }
-#bw-collection .bc-sheet .bc-swes { display:flex;flex-direction:column; }
+#bw-collection .bc-sheet .bc-switches { display:flex;flex-direction:column; }
 #bw-collection .bc-sheet .bc-sw { position:relative;display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:12px;min-height:52px;margin:0;border-top:.5px solid var(--tw-divider);font:400 15px var(--tw-font);letter-spacing:normal;text-transform:none;color:var(--tw-text);cursor:pointer; }
 #bw-collection .bc-sheet .bc-sw input { position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer; }
 #bw-collection .bc-sheet .bc-sw i { flex:none;position:relative;width:51px;height:31px;border-radius:16px;background:var(--tw-viz-n1); }

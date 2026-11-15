@@ -34,7 +34,7 @@ const photoInput=new Node(),pendingRow=new Node(),pendingPreview=new Node(),pend
 pendingRow.hidden=true;pendingRow.nodes={'[data-bc-photo-preview]':pendingPreview,'[data-bc-photo-cancel]':pendingCancel,'[name=new_photo_caption]':pendingCaption};
 photoBanner.hidden=true;photoBanner.nodes={'[data-bc-photo-warning-text]':bannerText};
 const savedPhotos=['p1','p2'].map((id,i)=>{const row=new Node(),input=new Node(),x=new Node(),meta=new Node();row.dataset={bcPhotoRow:'',bcForm:'bc-edit-form',photoId:id};input.dataset={bcPhotoCaption:'',initial:i?'':'Front of the box'};input.value=i?'':'Front of the box';x['aria-pressed']='false';meta.dataset={bcPhotoMeta:'',text:'Added 12 Oct 2026'};meta.textContent='Added 12 Oct 2026';row.nodes={'[data-bc-photo-caption]':input,'[data-bc-photo-remove]':x,'[data-bc-photo-meta]':meta};x.parentElement=row;return {row,input,x,meta};});
-const multiBox=new Node(),multiValue=new Node(),multiChecks=['Sandra','Ulf'].map((name,i)=>{const c=new Node();c.dataset={name};c.checked=i===0;return c;});
+const multiBox=new Node(),multiValue=new Node(),multiChecks=['Alex','Sam'].map((name,i)=>{const c=new Node();c.dataset={name};c.checked=i===0;return c;});
 multiBox.dataset={bcMulti:''};multiBox.nodes={'[data-bc-multi-value]':multiValue};multiBox.groups={'input[type=checkbox]':multiChecks};
 const doc=new Node();
 const conditionGroup=new Node();conditionGroup.dataset.bcSaveGroup='';
@@ -134,8 +134,8 @@ assert.equal(count.textContent,'130 parts');assert.equal(loaded.textContent,'Loa
   await first.x.trigger('click');
   assert.equal(first.x['aria-pressed'],'false');assert.equal(first.row.dataset.removed,'false');assert.equal(first.input.disabled,false);assert.equal(first.meta.textContent,'Added 12 Oct 2026');
   // a multi-select field shows the chosen names, or None
-  await multiBox.trigger('change');assert.equal(multiValue.textContent,'Sandra');assert.equal(Object.hasOwn(multiValue.dataset,'empty'),false);
-  multiChecks[1].checked=true;await multiBox.trigger('change');assert.equal(multiValue.textContent,'Sandra, Ulf');
+  await multiBox.trigger('change');assert.equal(multiValue.textContent,'Alex');assert.equal(Object.hasOwn(multiValue.dataset,'empty'),false);
+  multiChecks[1].checked=true;await multiBox.trigger('change');assert.equal(multiValue.textContent,'Alex, Sam');
   multiChecks.forEach(c=>c.checked=false);await multiBox.trigger('change');assert.equal(multiValue.textContent,'None');assert.equal(Object.hasOwn(multiValue.dataset,'empty'),true);
  }
  assert.equal(figureHeading.hidden,true);assert.equal(partProgress.hidden,false);

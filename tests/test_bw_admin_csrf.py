@@ -48,7 +48,7 @@ def test_every_rendered_admin_post_form_has_one_token(client, coll, world, pair,
     from brickwork.core.pipeline import Pipeline
     from brickwork.core.transaction import transaction
     db = coll.db
-    admin.value_write(db, 'owners', 'add', name='Ulf')
+    admin.value_write(db, 'owners', 'add', name='Sam')
     with transaction(db):
         failed = Pipeline(db).queue_steps(world.keep, ('market_price',), via='app')
     db.execute("UPDATE job_step SET state='failed',error='boom',error_code='source_error' WHERE job_id=?", (failed,))

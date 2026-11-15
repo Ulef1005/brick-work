@@ -46,7 +46,7 @@ def build_33(path):
     ins(db, 'lots', id='l1', name='Lot one', created_date='2026-03-01T10:00:00+00:00', storage_id='st1', purchase_location_id='p1',
         purchase_price='5.00')                                        # a price without a currency
     ins(db, 'lots', id='l2', name='Lot two', purchase_currency='USD')  # a currency without a price
-    for flag_id, name, kind in (('f_status', 'Checked', 'status'), ('f_tag', 'for sale', 'tag'), ('f_owner', 'Ulf', 'owner')):
+    for flag_id, name, kind in (('f_status', 'Checked', 'status'), ('f_tag', 'for sale', 'tag'), ('f_owner', 'Sam', 'owner')):
         ins(db, 'flags', id=flag_id, name=name, kind=kind, shown_on_grid=1)
     # ---- copies ----
     ins(db, 'copies', id='copy-bl', item_type='S', set_no='5008074-1', condition='U', completeness='C', completeness_source='manual',

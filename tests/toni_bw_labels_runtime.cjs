@@ -18,6 +18,7 @@ assert.equal(state(['a'],'a4-21',0,'error').download,'Download PDF');
 console.log('Storage label selection and dialog states passed');
 
 // Run the real event handlers with a tiny DOM and queued fetch responses.
+let fileStarts=0;
 class Element {
   constructor(dataset={}){this.dataset=dataset;this.listeners={};this.children=[];this.hidden=false;this.disabled=false;this.textContent='';this.value='';}
   addEventListener(name,fn){this.listeners[name]=fn;}
@@ -29,7 +30,7 @@ class Element {
   setAttribute(key,value){this[key]=value;}
   removeAttribute(key){delete this[key];}
   remove(){}
-  click(){}
+  click(){fileStarts++;}
   closest(){return this.parent;}
 }
 const elements={};
@@ -88,5 +89,53 @@ const flush=async()=>{for(let i=0;i<10;i++)await Promise.resolve();};
   await closeButtons[0].fire('click');assert.equal(dialog.open,false);
   await get('[data-label-select]').fire('click');
   assert.equal(boxes.every(b=>b.parent.hidden),true);
+  // A failed download followed by a failed refresh must retry the preview.
+  await get('[data-label-open]').fire('click');await flush();
+  replies.push({ok:false,json:async()=>({message:'A synthetic server refusal'})});
+  await get('[data-label-download]').fire('click');
+  assert.equal(get('[data-label-status]').textContent,'A synthetic server refusal');
+  replies.push(new Error('offline'));
+  get('[data-label-layout]').value='a4-21';await get('[data-label-layout]').fire('change');await flush();
+  await get('[data-label-download]').fire('click');await flush();
+  assert.match(requests.at(-1),/preview.png/);
+
+  for(const succeeds of [true,false]){
+    let settle;
+    replies.push(new Promise(resolve=>settle=resolve));
+    const before=fileStarts;
+    const pending=get('[data-label-download]').fire('click');await flush();
+    assert.equal(get('[data-label-layout]').disabled,true);
+    assert.equal(closeButtons.every(b=>b.disabled),true);
+    assert.equal(get('[data-label-chips]').children.every(chip=>chip.children[1].disabled),true);
+    const previous=requests.length;
+    await get('[data-label-next]').fire('click');
+    await closeButtons[0].fire('click');
+    assert.equal(dialog.open,true);
+    assert.equal(requests.length,previous);
+    // Forced close/open invalidates a request even if the disabled controls are bypassed.
+    dialog.close();
+    await get('[data-label-open]').fire('click');await flush();
+    settle(succeeds?{ok:true,blob:async()=>({})}:{ok:false,json:async()=>({message:'Old failure'})});
+    await pending;await flush();
+    assert.equal(fileStarts,before);
+    assert.equal(get('[data-label-download]').textContent,'Download PDF');
+    assert.equal(get('[data-label-status]').textContent,'');
+  }
+
+  // Select all can exceed the limit; show the reason and never request a preview/download.
+  for(let i=22;i<201;i++){
+    const box=new Element({labelId:`bin${i}`,labelName:`Box ${i}`});box.parent=new Element();boxes.push(box);
+  }
+  // The production script snapshots the DOM once, so start it again with the larger fixture.
+  vm.runInNewContext(fs.readFileSync('static/web/toni/bw-labels.js','utf8'),context);
+  await get('[data-label-all]').fire('click');
+  assert.match(get('[data-label-count]').children[0].textContent,/201 selected · 200 labels at most per download/);
+  const previous=requests.length;
+  await get('[data-label-open]').fire('click');await flush();
+  assert.equal(get('[data-label-limit]').hidden,false);
+  assert.equal(get('[data-label-download]').disabled,true);
+  assert.equal(get('[data-label-status]').textContent,'200 labels at most per download');
+  await get('[data-label-download]').fire('click');
+  assert.equal(requests.length,previous);
   console.log('Storage label DOM flow, failures, retry, chips, pages and tape passed');
 })().catch(error=>{console.error(error);process.exitCode=1;});

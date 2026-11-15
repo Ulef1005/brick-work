@@ -135,6 +135,9 @@ def test_dialog_selection_markup_archive_and_setting(client,coll):
     ledger.storage_archive(coll.db,archived)
     page=BeautifulSoup(client.get('/workbench/storage').data,'html.parser')
     assert [n['data-label-id'] for n in page.select('[data-label-id]')] == [active]
+    assert '200 labels at most per download' in page.select_one('[data-label-all]').text
+    assert '200 labels at most per download' in page.select_one('[data-label-count]').text
+    assert page.select_one('[data-label-limit]').has_attr('hidden')
     assert page.select_one('[data-label-open]')['disabled'] == ''
     assert page.select_one('[data-label-open]').text == 'Choose storages'
     assert page.select_one('[data-label-single]')['data-label-single'] == active
@@ -174,6 +177,7 @@ def test_api_web_mcp_share_plan_and_read_download(client,app4,v2,coll,pair,monke
     from brickwork.core.mcp.client import InProcessClient
     identifier,_=ledger.storage_save(coll.db,None,'Box 3')
     monkeypatch.setattr(labels,'download',lambda found: (b'%PDF-synthetic','application/pdf','storage-labels.pdf'))
+    monkeypatch.setattr(labels,'qr_module',lambda: object())
     token=stored_token(pair,['read'])
     monkeypatch.setenv('BW_READ_ONLY','1')
     query='?ids='+identifier+'&layout=a4-21'

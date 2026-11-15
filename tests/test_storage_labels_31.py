@@ -209,3 +209,68 @@ def test_missing_segno_is_retryable(client,coll,monkeypatch):
 def test_labels_node_runtime():
     rendered.need_node()
     subprocess.run(['node','tests/toni_bw_labels_runtime.cjs'],check=True,capture_output=True,text=True)
+
+
+def test_address_setting_api_validation_undo_and_read_scope(v2,pair):
+    from tests.api2 import write
+    changed=write(v2,'/settings','patch',body={'labels_address':'https://bricks.example/'})
+    assert changed.status_code==200 and changed.json['data']['labels_address']=='https://bricks.example'
+    event=changed.json['event_id']
+    assert write(v2,f'/events/{event}/undo').status_code==200
+    assert call(v2,'/settings').json['data']['labels_address']==''
+    assert write(v2,'/settings','patch',body={'labels_address':'https://bricks.example/path'}).status_code==422
+    reader=stored_token(pair,['read'])
+    assert write(v2,'/settings','patch',body={'labels_address':''},token=reader).status_code==403
+
+
+def test_new_and_upgraded_storage_schema_match(tmp_path):
+    old=tmp_path/'old.db'
+    with closing(sqlite3.connect(old)) as db:
+        db.executescript((HERE/'brickwork.sql').read_text().split('-- Storage label identities')[0])
+        db.execute("INSERT INTO meta VALUES('schema_version','4.2')")
+        db.commit()
+    upgrade(old)
+    with closing(sqlite3.connect(old)) as upgraded, closing(connect(tmp_path/'new.db',tmp_path/'catalogue.db')) as fresh:
+        for table in ('storage','storage_label_sequence'):
+            assert upgraded.execute(f'PRAGMA table_info({table})').fetchall()==[tuple(r) for r in fresh.execute(f'PRAGMA table_info({table})')]
+        query="SELECT name,sql FROM sqlite_master WHERE name IN ('storage_label_identity','storage_short_id') ORDER BY name"
+        assert upgraded.execute(query).fetchall()==[tuple(r) for r in fresh.execute(query)]
+
+
+def test_label_screen_candidates_are_unapproved_and_edge_has_two_sheets(tmp_path):
+    from scripts import screen_gate
+    states=json.loads(Path('design/screens/states.json').read_text())['states']
+    candidates=[s for s in states if s['screen']=='34-Storage' and s['state'].startswith('labels-')]
+    assert {s['state'] for s in candidates}=={'labels-select-none','labels-select-three','labels-ready','labels-address-warning','labels-two-sheets','labels-error'}
+    assert all(s['built'] and s['approved'] is False and '?labels=' in s['path'] for s in candidates)
+    path=tmp_path/'brickwork.db'
+    screen_gate.build_store('edge',path)
+    with closing(connect(path,tmp_path/'catalogue.db')) as db:
+        ids=[r[0] for r in db.execute("SELECT id FROM storage WHERE id LIKE 'label-bin-%' ORDER BY id")]
+        found=labels.plan(db,ids,'a4-21','http://localhost')
+        assert len(ids)==22 and found['pages']==2 and found['address']==dict(value='https://bricks.example',warning=False)
+
+
+def test_undo_of_pre_upgrade_storage_edit_keeps_backfilled_identity(tmp_path):
+    from brickwork.store4.rowlog import RowLog
+    path=tmp_path/'restored.db'
+    with closing(sqlite3.connect(path)) as db:
+        db.row_factory=sqlite3.Row
+        db.executescript((HERE/'brickwork.sql').read_text().split('-- Storage label identities')[0])
+        db.execute("INSERT INTO meta VALUES('schema_version','4.2')")
+        db.execute("INSERT INTO storage(id,name,created_at) VALUES('a','Box 3','2026-10-01')")
+        db.commit()
+        _,event=ledger.storage_save(db,'a','Drawer 12')
+        log=RowLog(db)
+        log.update('storage',log.select('storage','id=?',('a',))[0],note='Bag 07')
+        db.commit()
+        changes=log.changes
+    upgrade(path)
+    with closing(connect(path,tmp_path/'catalogue.db')) as db:
+        log=RowLog(db,changes)
+        assert log.verify() is None
+        log.restore()
+        db.commit()
+        ledger.undo(db,event)
+        row=db.execute('SELECT name,note,short_id FROM storage WHERE id=\'a\'').fetchone()
+        assert tuple(row)==('Box 3',None,'S-0001')

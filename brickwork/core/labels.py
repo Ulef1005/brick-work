@@ -76,7 +76,9 @@ def save_address(db, value):
     with transaction(db):
         old = db.execute("SELECT value FROM main.setting WHERE key='labels_address'").fetchone()
         db.execute("INSERT OR REPLACE INTO main.setting(key,value) VALUES('labels_address',?)", (value,))
-        audit(db, 'settings', 'save', {'labels_address': old[0] if old else None}, {'labels_address': value})
+        audit(db, 'settings', 'save', {'setting': {'labels_address': old[0] if old else None}, 'freshness': {}},
+              {'setting': {'labels_address': value}, 'freshness': {}})
+        return db.execute('SELECT last_insert_rowid()').fetchone()[0]
 
 
 def selection(db, ids):

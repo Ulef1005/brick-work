@@ -269,8 +269,8 @@ def bw_admin_write(page):
             from ..core import labels
             from ..core.admin import database
             with database(admin_ops.brickwork_path(), require_catalogue=False) as db:
-                labels.save_address(db, request.form.get('labels_address', ''))
-            return redirect(url_for('web.bw_admin', page='settings') + '#labels-address')
+                saved = labels.save_address(db, request.form.get('labels_address', ''))
+            return redirect(url_for('web.bw_admin', page='settings', saved=saved) + '#labels-address')
         elif page == 'settings' and request.form.get('action') == 'pictures':
             if not bw_collection_editable():
                 abort(403, 'Changes are switched off on this instance')

@@ -90,4 +90,4 @@ See also: [Command line](cli.md).
 In **Tools & Admin > Settings**, set **Address for labels** to an HTTP or HTTPS origin your phone can open.
 Leave it empty to use the incoming request address. Paths, credentials, queries and fragments are refused.
 Localhost and bare IP addresses show a warning in the label dialog.
-Changing this setting affects new labels. Previously printed codes keep their original address.
+The save confirmation offers **Undo**. Changing this setting affects new labels. Previously printed codes keep their original address.

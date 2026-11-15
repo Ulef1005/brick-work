@@ -1346,7 +1346,7 @@ def _undo_collection(db, event, via, actor):
             current = links(db, table, sample[LINK_TABLES[table]]) if sample else []
         else:
             current = snapshot(db, table, [r['id'] for r in new['rows']])
-        if current != [as_current(table, r) for r in new['rows']]:          # a receipt from before an upgrade lacks its columns
+        if current != [as_current(table, r, db) for r in new['rows']]:          # a receipt from before an upgrade lacks its columns
             raise ValueError(changed)
         if table == 'wishlist' and not old['rows'] and db.execute('SELECT 1 FROM main.wish WHERE wishlist_id=? AND archived_at IS NULL', (new['rows'][0]['id'],)).fetchone():
             raise ValueError('Wishlist changed · undo its wishes first')
@@ -1385,7 +1385,7 @@ def _put_back(db, pairs, stamp):
             db.executemany(f'UPDATE main.{table} SET {sets} WHERE id=?', [((stamp, stamp, r['id']) if 'updated_at' in names else (stamp, r['id'])) for r in new['rows']])
         else:
             names = [c for c in columns(db, table) if c != 'id']
-            for r in map(lambda row: as_current(table, row), old['rows']):
+            for r in map(lambda row: as_current(table, row, db), old['rows']):
                 if table == 'wish':
                     wish_collision(db, table, r)
                 db.execute(f'UPDATE main.{table} SET ' + ','.join(f'{c}=?' for c in names) + ' WHERE id=?', (*[r[c] for c in names], r['id']))

@@ -79,7 +79,7 @@ class RowLog:
 
     def _same(self, table, found, expected):
         """Rows compare without a `_rowid` that is not the key (an older receipt carries one for every table with a rowid)."""
-        expected = as_current(table, expected)                                   # a log from before an upgrade lacks its columns
+        expected = as_current(table, expected, self.db)                                   # a log from before an upgrade lacks its columns
         if not self.rowid_key(table):
             expected = {k: v for k, v in expected.items() if k != '_rowid'}
         return found == expected
@@ -150,7 +150,7 @@ class RowLog:
 
     def restore(self):
         for change in reversed(self.changes):
-            table, before, after = change['t'], as_current(change['t'], change['b']), change['a']
+            table, before, after = change['t'], as_current(change['t'], change['b'], self.db), change['a']
             if before is None:
                 where, args = self.locator(table, after)
                 self.db.execute(f'DELETE FROM main."{table}" WHERE {where}', args)
@@ -163,7 +163,7 @@ class RowLog:
                                 ([before[c] for c in names] + args))
 
     def insert_row(self, table, row):
-        row = as_current(table, row)
+        row = as_current(table, row, self.db)
         names = self.cols(table)
         with_rowid = self.rowid_key(table)
         columns = (['rowid'] if with_rowid else []) + [f'"{c}"' for c in names]

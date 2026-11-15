@@ -253,8 +253,10 @@ assert.equal(count.textContent,'130 parts');assert.equal(loaded.textContent,'Loa
   assert.equal(calls.length,before+1);assert.deepEqual(calls.at(-1).data.values,{note:'with photo'});
   assert.equal(uploads.length,1);assert.equal(uploads[0].url,'/collection/save/photo');assert.equal(uploads[0].body.get('entity'),'copy');assert.equal(uploads[0].body.get('identifier'),'copy');assert.equal(uploads[0].body.get('caption'),'Front');
   assert.match(formStatus.textContent,/Details saved, but the photo was not added/);assert.equal(reloads,reloadsBefore);assert.equal(save.disabled,false);
-  photoFails=false;await form.trigger('submit');
-  assert.equal(calls.length,before+1,'the retry sends the photo alone, the details are not saved twice');assert.equal(uploads.length,2);assert.equal(reloads,reloadsBefore+1);
+  form.values={note:'edited after the failure',new_photo:form.values.new_photo,new_photo_caption:'Front'};photoFails=false;await form.trigger('submit');
+  assert.equal(calls.length,before+2,'the retry saves the details again, with the edit made since');assert.equal(calls.at(-1).data.values.note,'edited after the failure');assert.equal(uploads.length,2);assert.equal(reloads,reloadsBefore+1);
+  assert.deepEqual(JSON.parse(stored.get('bw-collection-receipt')).also,[9],'Undo takes the photo back with the details');
+  await undo.trigger();assert.equal(calls.at(-2).url,'/collection/save/undo');assert.equal(calls.at(-2).data.event_id,9,'the photo is undone first');assert.equal(calls.at(-1).data.event_id,55,'then the details save');
   form.values={note:'no photo',new_photo:{size:0,name:''},new_photo_caption:''};await form.trigger('submit');
   assert.equal(uploads.length,2,'an empty picker sends no photo');assert.deepEqual(calls.at(-1).data.values,{note:'no photo'});
   context.fetch=realFetch;context.FormData=realFormData;form.values=savedValues;merged=wasMerged;

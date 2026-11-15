@@ -650,3 +650,7 @@ def test_the_edit_sheet_has_one_save_below_the_photos_that_also_sends_the_photo(
     assert footer and save in footer.find_all('button')
     everything = list(panel.descendants)
     assert everything.index(photos) < everything.index(footer) < everything.index(panel.select_one('[data-bw-open=bc-delete]'))
+    coll.db.execute('UPDATE copy SET purchase_date=? WHERE id=?', ('2024-13-05', w.copy_a))                          # looks like a day, is not one: the picker would blank it
+    coll.db.commit()
+    field = BeautifulSoup(client.get(item_url(w, copy=w.copy_a)).text, 'html.parser').select_one('#bc-edit [name=purchase_date]')
+    assert field.get('type') != 'date' and field['value'] == '2024-13-05'

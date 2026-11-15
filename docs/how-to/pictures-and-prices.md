@@ -53,7 +53,7 @@ Change the order under **Picture source order** in **Manage â†’ Tools & Admin â†
 
 ### Your own photos
 
-In the edit sheet of a set or a loose item, **Own photos** lists your photos, each with a caption you can change. To add one, press **Choose photo**, type an optional caption and press **Save** at the bottom of the sheet. The one **Save** stores your changes to the details and adds the photo together. If the details are saved but the photo fails (a file that is too big or not a picture), the sheet says the details are saved and keeps your photo chosen. Press **Save** again to send the photo alone; the details are not saved twice. **Undo** takes back the details change.
+In the edit sheet of a set or a loose item, **Own photos** lists your photos, each with a caption you can change. To add one, press **Choose photo**, type an optional caption and press **Save** at the bottom of the sheet. The one **Save** stores your changes to the details and adds the photo together. If the details are saved but the photo fails (a file that is too big or not a picture), the sheet says the details are saved and keeps your photo chosen. Press **Save** again: it saves the details again (with any change you made since) and sends the photo. **Undo** takes back both the details change and the photo.
 
 ### A part with no known picture
 

@@ -193,7 +193,7 @@
     const result=await response.json();if(!response.ok)throw new Error(result.message||'Not saved · try again');
     if(action!=='undo'&&!quiet)showReceipt(result);return result;
   }
-  undo?.addEventListener('click',async()=>{undo.disabled=true;try {await send('undo',{event_id:receipt.event_id});sessionStorage.removeItem(receiptKey);message.textContent='Undone';location.reload();}catch(e){message.textContent=e.message;}finally{undo.disabled=false;}});
+  undo?.addEventListener('click',async()=>{undo.disabled=true;try {for(const id of [...(receipt.also||[]),receipt.event_id])await send('undo',{event_id:id});sessionStorage.removeItem(receiptKey);message.textContent='Undone';location.reload();}catch(e){message.textContent=e.message;}finally{undo.disabled=false;}});
   root.querySelectorAll('[data-bw-open]').forEach(b=>b.addEventListener('click',()=>{const dialog=document.getElementById(b.dataset.bwOpen);dialog?.showModal();if(/^[a-z_]+$/.test(b.dataset.bcFocus||'')){const field=dialog?.querySelector(`[name=${b.dataset.bcFocus}]`);const folded=field?.closest?.('details');if(folded)folded.open=true;field?.focus();}}));
   root.querySelectorAll('[data-bw-close]').forEach(b=>b.addEventListener('click',()=>b.closest('dialog')?.close()));
   let photoRetry=null;                      // the details are saved and only the photo failed: Save again sends the photo alone, to the row the details ended in
@@ -217,11 +217,11 @@
         const chosen=mainSelection();
         if(chosen.entity!=='stock'||!chosen.ids.length)throw new Error('Select loose stock for this lot');data.ids=chosen.ids;
       }
-      const retry=action==='save'&&photoRetry&&newPhoto&&newPhoto.size?photoRetry:null;
+      const retry=action==='save'&&photoRetry&&photoRetry.result.merged_ids&&newPhoto&&newPhoto.size?photoRetry:null;      // only a row that merged away cannot be saved again
       const result=retry?retry.result:await send(action,data,action==='photo');
       if(action==='save'&&newPhoto&&newPhoto.size){
         const upload=new FormData();upload.append('entity',identity.entity);upload.append('identifier',retry?retry.id:(result.merged_ids||identity.ids)[0]);upload.append('photo',newPhoto);upload.append('caption',newPhotoCaption);
-        try {await send('photo',upload,true,true);photoRetry=null;}      // quiet: the receipt on the page stays the details' save, which Undo takes back
+        try {const added=await send('photo',upload,true,true);photoRetry=null;receipt={...receipt,also:[added.event_id]};sessionStorage.setItem(receiptKey,JSON.stringify(receipt));}      // quiet: the page keeps the details' save as its receipt, and Undo takes the photo back with it
         catch(error){photoRetry={id:upload.get('identifier'),result};if(status)status.textContent='Details saved, but the photo was not added: '+error.message+' · Press Save to try the photo again';return;}
       }
       if(action==='archive'){stamp(root.dataset.backUrl||location.pathname);location.href=root.dataset.backUrl||location.pathname;}

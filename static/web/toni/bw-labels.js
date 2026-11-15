@@ -10,6 +10,8 @@
   if (!root) return;
   const dialog = root.querySelector('[data-label-dialog]');
   const q = selector => dialog.querySelector(selector);
+  const qrIcon = root.querySelector('[data-label-icon]');
+  const addIcon = button => {if (qrIcon) button.prepend(qrIcon.content.cloneNode(true));};
   const boxes = [...root.querySelectorAll('[data-label-id]')];
   const toggle = root.querySelector('[data-label-select]');
   const bar = root.querySelector('[data-label-bar]');
@@ -23,11 +25,12 @@
   const renderBar = () => {
     const count=boxes.filter(b=>b.checked).length;
     root.querySelector('[data-label-count]')?.replaceChildren(document.createTextNode(`${count} selected`));
-    if (opener) {opener.disabled=!count; opener.textContent=count ? `Print labels · ${count}` : 'Choose storages';}
+    if (opener) {opener.disabled=!count; opener.textContent=count ? `Print labels · ${count}` : 'Choose storages';if(count)addIcon(opener);}
   };
   const selectMode = value => {
     selecting=value;
     toggle.textContent=value?'Done':'Print labels';
+    if(!value)addIcon(toggle);
     toggle.setAttribute('aria-pressed',String(value));
     bar.hidden=!value;
     boxes.forEach(b=>b.closest('label').hidden=!value);

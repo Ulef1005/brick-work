@@ -17,6 +17,6 @@ Each label shows a permanent short id and a QR code. Short ids are never reused,
 
 Set **Address for labels** in **Tools & Admin > Settings** to an address your phone can open. An empty setting uses the request address.
 
-Archived storages cannot be selected. An older printed label explains that the storage was archived and links back to Storage.
+Archived storages cannot be selected. An older printed label explains that the storage was archived and links back to Storage. This also works on a phone.
 
 Restoring an older backup assigns short ids in creation order. Earlier storage edits can still be undone without changing those ids.

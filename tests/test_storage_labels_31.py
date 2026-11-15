@@ -146,6 +146,7 @@ def test_dialog_selection_markup_archive_and_setting(client,coll):
     assert page.select_one('[data-label-prev]') and page.select_one('[data-label-next]')
     landing=client.get('/workbench/storage/'+archived).text
     assert 'This storage is not here' in landing and 'was archived' in landing
+    assert 'st-showing-detail' in BeautifulSoup(landing,'html.parser').select_one('#bw-ledger')['class']
     assert 'S-0001' in client.get('/collection/jump?q=s-0001').text
     token=csrf(client)
     # Use the route's URL so this test also follows any future Tools & Admin URL move.

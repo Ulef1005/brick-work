@@ -1,3 +1,4 @@
+<template data-label-icon>{% include 'web/toni/web/bw_label_icon.html' %}</template>
 <dialog id="st-labels" class="st-sheet lb-dialog" aria-labelledby="lb-title" data-label-dialog data-base="{{ url_for('web.bw_storage_labels',output='OUTPUT') }}">
 <div class="st-sheet-head"><h2 id="lb-title">Print labels</h2><button type="button" class="st-close" data-label-close aria-label="Close">{{ toni_icon('close') }}</button></div>
 <div class="lb-body"><div class="lb-options"><div><div class="lb-between"><h3>Storages</h3><span class="mono-soft" data-label-total>0 labels</span></div><div class="lb-chips" data-label-chips></div></div>

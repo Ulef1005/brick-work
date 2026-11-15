@@ -23,6 +23,8 @@ class Element {
   addEventListener(name,fn){this.listeners[name]=fn;}
   async fire(name){return this.listeners[name]?.({currentTarget:this});}
   append(...nodes){this.children.push(...nodes);}
+  prepend(...nodes){this.children.unshift(...nodes);}
+  cloneNode(){return new Element();}
   replaceChildren(...nodes){this.children=[...nodes];}
   setAttribute(key,value){this[key]=value;}
   removeAttribute(key){delete this[key];}
@@ -33,6 +35,7 @@ class Element {
 const elements={};
 const get=key=>elements[key] ||= new Element();
 const boxes=Array.from({length:22},(_,i)=>{const e=new Element({labelId:`bin${i}`,labelName:`Box ${i}`});e.checked=false;e.parent=new Element();return e;});
+get('[data-label-icon]').content=new Element();
 const dialog=get('[data-label-dialog]');dialog.dataset.base='/workbench/storage/labels/OUTPUT';
 dialog.querySelector=get;
 const closeButtons=[new Element(),new Element()];

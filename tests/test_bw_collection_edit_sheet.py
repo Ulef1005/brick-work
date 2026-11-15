@@ -66,6 +66,13 @@ def test_the_set_sheet_has_the_approved_order_and_two_groups(world, client):
     assert not form.select('fieldset[data-bc-flags]') and 'Flags' not in [l.get_text() for l in form.select('legend')]
 
 
+def test_the_sheet_head_has_the_mono_subtitle_and_an_icon_close(world, client):
+    head = sheet(client, copy_url(world, world.copy_a)).select_one('.bc-sheet-head')
+    assert head.select_one('h2').get_text() == 'Edit set' and head.select_one('.bc-sheet-sub.mono').get_text().startswith('1000-1')
+    close = head.select_one('button[data-bw-close]')
+    assert close['aria-label'] == 'Close' and close.select_one('svg') and not close.get_text(strip=True)
+
+
 def test_the_three_system_flags_are_switches_and_not_in_the_flag_fields(world, coll, client):
     w = world
     form = sheet(client, copy_url(w, w.copy_a)).select_one('form#bc-edit-form')

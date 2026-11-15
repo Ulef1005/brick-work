@@ -46,7 +46,8 @@ def test_figure_lines_and_image(coll, client, state):
     assert detail['figure_progress']['present'] == sum(max((r['quantity'] or 0) - (r['missing'] or 0), 0) for r in detail['consists'] if r['kind'] == 'minifigure')
     soup = BeautifulSoup(client.get(f'/collection/item/{set_id}?copy={copy}&inventory=figures').data, 'html.parser')
     fig = figure_row(soup)
-    assert fig.select_one('.bc-figure-identity>a')['href'] == f'/collection/item/{figure}'
+    line = coll.db.execute('SELECT id FROM copy_figure WHERE copy_id=? AND item_id=?', (copy, figure)).fetchone()[0]
+    assert fig.select_one('.bc-figure-identity>a')['href'] == f'/collection/item/{figure}?figure={line}'
     assert not fig.select('a.bc-figure-status')
     assert fig.select_one('.bc-figure-status')['data-figure-state'] == state
     assert bool(fig.select_one('button.bc-check-figure[disabled]')) == missing

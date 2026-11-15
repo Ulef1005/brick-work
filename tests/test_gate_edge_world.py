@@ -255,7 +255,7 @@ def test_the_new_states_are_built_in_a_known_world():
 
 def test_only_the_new_states_use_an_edge_world():
     """No state approved before the edge worlds existed was moved into one: its baseline would then depend on the edge data."""
-    assert {(e['screen'], e['state']) for e in gate.load()['states'] if e.get('world', '').startswith('edge')} <= NEW | VALUE | SOURCE
+    assert {(e['screen'], e['state']) for e in gate.load()['states'] if e.get('world', '').startswith('edge')} <= NEW | VALUE | SOURCE | FIGURES
 
 
 def test_the_state_left_unbuilt_says_what_is_missing():
@@ -305,3 +305,7 @@ def test_the_edge_order_world_adds_element_ids_to_the_catalogue_and_nothing_else
     plain, order = fingerprint('edge'), fingerprint('edge-order')
     assert plain['brickwork.db'] == order['brickwork.db']
     assert {t for t in order['catalogue.db'] if order['catalogue.db'][t] != plain['catalogue.db'].get(t)} == {'element'}
+
+
+FIGURES = {('12-Minifigure-detail', state) for state in ('comparison-filled', 'comparison-whole-figure', 'comparison-partly-priced')} | {
+    ('43-Complete-sets', state) for state in ('figures-filled', 'figures-empty', 'figures-all-complete', 'figures-needs-evidence')}

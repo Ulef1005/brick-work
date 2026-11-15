@@ -111,7 +111,7 @@ def test_shared_detail_modules(world, coll, client, kind):
     assert r.status_code == 200, r.get_data(as_text=True)
     soup = soup_of(r)
     assert [x['data-module'] for x in soup.select('[data-module]')] == (
-        ['status', 'consists', 'used-in', 'prices', 'matching', 'wanted', 'info'] if kind == 'M' else ['info', 'prices', 'matching'] if kind == 'P' else
+        ['status', 'consists', 'used-in', 'prices', 'figure-comparison', 'matching', 'wanted', 'info'] if kind == 'M' else ['info', 'prices', 'matching'] if kind == 'P' else
         ['info', 'part-list', 'prices', 'sell', 'value', 'consists'] if kind == 'S' else ['info', 'prices', 'consists', 'matching'])
     layout = soup.select_one('.bc-detail-layout')
     assert [child.name for child in layout.find_all(recursive=False)] == (['div', 'aside'] if kind == 'M' else ['aside', 'div'])

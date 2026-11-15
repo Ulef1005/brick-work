@@ -45,6 +45,6 @@ def seed(db):
     if copy:
         fid = db.execute("INSERT INTO copy_figure(copy_id,item_id,inventory_source,quantity,updated_at) VALUES(?,?,'none',1,?)",(copy[0],figure,stamp)).lastrowid
         db.execute('''INSERT INTO copy_part(copy_id,copy_figure_id,item_id,color_id,quantity,missing,checked)
-            SELECT ?,?,item_id,color_id,quantity,missing,checked FROM stock_part WHERE stock_id=?''',(copy[0],fid,source))
+            SELECT ?,?,item_id,color_id,quantity,missing,checked FROM stock_part WHERE retired_at IS NULL AND stock_id=?''',(copy[0],fid,source))
     db.executemany('INSERT OR REPLACE INTO setting(key,value) VALUES(?,?)',
                    [('repair_shipping','0.30'),('repair_fees','0.20'),('repair_min_order','0'),('repair_use_loose_stock','0')])

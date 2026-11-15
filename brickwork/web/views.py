@@ -1696,6 +1696,8 @@ def bw_collection_item(item_id):
             detail['identity_notice'] = identity_notice(db, request.args.get('done', ''))
             from . import valuation_views
             detail['value'] = valuation_views.detail_module(db, detail.get('selected')) if letter == 'S' and not detail['colour_choices'] else None
+            from ..core import selling
+            detail['sell'] = selling.module(db, detail.get('selected')) if letter == 'S' and not detail['colour_choices'] else None
     except ValueError as exc:
         abort(404, str(exc))
     return bw_collection_detail_response(detail, choices, collection.TYPES.get(letter, 'Collection'))

@@ -4,7 +4,7 @@ Everything is computed on the server and works without JavaScript: search, Show 
 post that returns to the same place, and the confirm is the same page with the dialog open (a sheet on a phone, a centred dialog on a desktop; CSS only)."""
 from urllib.parse import urlencode
 
-from ..core import collection, pull_list
+from ..core import collection, part_groups, pull_list
 
 SHOW_LABEL = {'find': 'To find', 'found': 'Found', 'all': 'All'}
 SORT_LABEL = {'category': 'Category', 'number': 'Number'}
@@ -39,7 +39,10 @@ def _matches(row, needle):
 
 
 def page(db, lot_id, set_id, args):
-    """The page's data: `dict(info, view, groups, shown, hidden, moves, set_row, numbers)`; `pull_list.state`'s refusals propagate (`errors.NotFound`, `ValueError`)."""
+    """The page's data: `dict(info, view, groups, sections, figures, shown, hidden, moves, set_row)`; `pull_list.state`'s refusals propagate (`errors.NotFound`, `ValueError`).
+
+    With part groups on (the setting) and Sort by category (#315), `sections` is the list of `dict(name, lines, total, to_find, open)` in the catalogue's group order and
+    `figures` the whole-figure lines that stay outside them, first; `groups` is then empty. Otherwise `sections` is None and `groups` is the list as before."""
     from ..api2.ranking import pictures_of
     view = read_args(args)
     info = pull_list.state(db, lot_id, set_id)
@@ -56,9 +59,19 @@ def page(db, lot_id, set_id, args):
                           rgb=row.get('rgb'), ink=row.get('ink'), image=shot.get('id'), to_find=ln['need'] - ln['found'], full=ln['found'] >= ln['need']))
     chosen = [ln for ln in lines if (view['show'] == 'all' or (view['show'] == 'find') != ln['full']) and (not view['q'] or _matches(ln, view['q']))]
     figures_last = lambda ln: ln['kind'] == 'figure'                                     # noqa: E731
+    grouping = part_groups.mode(db)
+    sections = figures = None
     if view['sort'] == 'number':
         chosen.sort(key=lambda ln: (ln['number'], ln['colour']))
         order = [('All parts', chosen)]
+    elif grouping != 'none':
+        part_groups.annotate(db, chosen, grouping, is_part=lambda ln: ln['kind'] == 'part')
+        outside, found = part_groups.sections(chosen, grouping)
+        key = lambda ln: (ln['number'], ln['colour'])                                    # noqa: E731
+        figures = sorted(outside, key=key)
+        sections = [dict(name=g['name'], lines=sorted(g['rows'], key=key), total=g['lines'], to_find=sum(ln['to_find'] for ln in g['rows']),
+                         open=any(not ln['full'] for ln in g['rows'])) for g in found]
+        order = []
     else:
         names = {}
         for ln in chosen:
@@ -72,8 +85,17 @@ def page(db, lot_id, set_id, args):
         part = group[:left]
         left -= len(part)
         groups.append(dict(name=name, lines=part, to_find=sum(ln['to_find'] for ln in part)))
-    shown = sum(len(g['lines']) for g in groups)
+    if sections is not None:                                                             # the same budget, figures first; a header counts its whole group
+        figures, left = figures[:left], left - len(figures[:left])
+        kept = []
+        for g in sections:
+            if left <= 0:
+                break
+            kept.append(dict(g, lines=g['lines'][:left]))
+            left -= len(kept[-1]['lines'])
+        sections = kept
+    shown = sum(len(g['lines']) for g in groups) + (len(figures) + sum(len(g['lines']) for g in sections) if sections is not None else 0)
     identity = book.get((info['set']['id'], None), {})
     set_row = dict(id=info['set']['id'], name=identity.get('name') or info['set']['name'], number=identity.get('number_text') or identity.get('item_no') or '',
                    theme=(facts['name'] if facts else '') or '', year=facts['year'] if facts else None, size=facts['num_parts'] if facts else None)
-    return dict(info=info, view=view, groups=groups, shown=shown, hidden=len(chosen) - shown, total=len(chosen), moves=pull_list.moves(info), set_row=set_row)
+    return dict(info=info, view=view, groups=groups, sections=sections, figures=figures, shown=shown, hidden=len(chosen) - shown, total=len(chosen), moves=pull_list.moves(info), set_row=set_row)

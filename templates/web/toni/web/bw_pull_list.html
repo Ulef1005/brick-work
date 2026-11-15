@@ -1,10 +1,18 @@
 {# The pull list of a set for a lot (#202): server-rendered, no JavaScript needed. The counters are form posts; the confirm is this page with the dialog open. #}
 {% extends 'web/toni/base.html' %}
 {% block title %} · Pull list{% endblock %}
-{% block page_assets %}<link rel="stylesheet" href="{{ bw_static('web/toni/bw-workbench.css') }}"><link rel="stylesheet" href="{{ bw_static('web/toni/bw-pull.css') }}"><script src="{{ bw_static('web/toni/bw-pull.js') }}" defer></script>{% endblock %}
+{% block page_assets %}<link rel="stylesheet" href="{{ bw_static('web/toni/bw-workbench.css') }}"><link rel="stylesheet" href="{{ bw_static('web/toni/bw-pull.css') }}"><link rel="stylesheet" href="{{ bw_static('web/toni/bw-part-sections.css') }}"><script src="{{ bw_static('web/toni/bw-part-sections.js') }}" defer></script><script src="{{ bw_static('web/toni/bw-pull.js') }}" defer></script>{% endblock %}
+{% import 'web/toni/web/_bw_part_sections.html' as sec %}
 {% block content_class %}pull-list-page{% endblock %}
 {% macro back_fields() %}{% if view.q %}<input type="hidden" name="q" value="{{ view.q }}">{% endif %}<input type="hidden" name="show" value="{{ view.show }}"><input type="hidden" name="sort" value="{{ view.sort }}">{% if view.every %}<input type="hidden" name="all" value="1">{% endif %}{% endmacro %}
 {% macro step(ln, value, sign, label, off) %}<form method="post" action="{{ url_for('web.bw_pull_found', identifier=detail.id, set_id=set_row.id) }}" class="bp-step"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="item_id" value="{{ ln.item_id }}"><input type="hidden" name="color_id" value="{{ ln.color_id if ln.color_id is not none }}"><input type="hidden" name="found" value="{{ value }}">{{ back_fields() }}<button type="submit" aria-label="{{ label }}" {% if off %}disabled{% endif %}>{{ sign }}</button></form>{% endmacro %}
+{% macro pull_line(ln) %}<div class="bp-line{{ ' bp-full' if ln.full }}" id="l-{{ ln.item_id }}-{{ ln.color_id or 0 }}" data-line>
+{% if can_edit %}<form method="post" action="{{ url_for('web.bw_pull_found', identifier=detail.id, set_id=set_row.id) }}" class="bp-cbform"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="item_id" value="{{ ln.item_id }}"><input type="hidden" name="color_id" value="{{ ln.color_id if ln.color_id is not none }}"><input type="hidden" name="found" value="{{ ln.held if ln.full else ln.need }}">{{ back_fields() }}<button type="submit" class="bp-cb{{ ' on' if ln.full }}" role="checkbox" aria-checked="{{ 'true' if ln.full else 'false' }}" aria-label="{{ 'All' if not ln.full else 'Not all' }} {{ ln.need }} of {{ ln.name }}{{ ', ' ~ ln.colour if ln.colour }} found" {% if ln.full and ln.held >= ln.need %}disabled{% endif %}></button></form>{% else %}<span class="bp-cb{{ ' on' if ln.full }}" aria-hidden="true"></span>{% endif %}
+<span class="bp-tile">{% if ln.image %}<img {{ bw_picture_attrs(ln.image, '48px') }} alt="" loading="lazy">{% else %}<span class="mono">{{ ln.number }}</span>{% endif %}</span>
+<div class="bp-t"><div class="bp-nm">{{ ln.name }}</div><div class="bp-sub">{% if ln.colour %}<span class="bw-colour" {% if ln.rgb %}style="background:#{{ ln.rgb }};color:{{ ln.ink }}"{% endif %}>{{ ln.colour }}</span> {% endif %}<span class="mono muted bp-no">{{ ln.number }}</span>{% if ln.held %} <span class="muted bp-held">{{ ln.held }} already in the lot</span>{% endif %}</div></div>
+<div class="bp-cnt{{ ' full' if ln.full }}">{% if can_edit %}{{ step(ln, ln.found - 1, '−', 'One less found of ' ~ ln.name, ln.found <= ln.held) }}{% else %}<span class="bp-sign">−</span>{% endif %}<span class="v mono" aria-label="{{ ln.found }} of {{ ln.need }} found">{{ ln.found }} of {{ ln.need }}</span>{% if can_edit %}{{ step(ln, ln.found + 1, '+', 'One more found of ' ~ ln.name, ln.found >= ln.need) }}{% else %}<span class="bp-sign">+</span>{% endif %}</div>
+</div>
+{% endmacro %}
 {% block main %}
 {% set t = info.totals %}{% set m = moves %}
 {% set q = pull_query(view) %}
@@ -30,18 +38,20 @@
 <button type="submit" class="button bw-secondary bp-apply">Apply</button>
 <span class="muted bp-lines">{{ t.lines_to_find }} line{{ '' if t.lines_to_find == 1 else 's' }} to find</span>
 </form>
-{% for g in groups %}
+{% if sections is not none %}{# #315: the lines under part groups. A group with parts still to find starts open, a finished one collapsed; whole figures stay outside, first. #}
+<div data-bw-sections data-bw-sections-key="">{% if sections %}{{ sec.tools() }}{% endif %}
+{% if figures %}{% set fig_find = figures|sum(attribute='to_find') %}<p class="lab bp-grp">Minifigures{% if fig_find %} · {{ fig_find }} <span class="bp-pieces">pieces </span>to find{% else %} · all found{% endif %}</p>
+{% for ln in figures %}{{ pull_line(ln) }}
+{% endfor %}{% endif %}
+{% for g in sections %}{% call sec.section(g.name, sec.lines(g.total) ~ ' · ' ~ (g.to_find ~ (' piece' if g.to_find == 1 else ' pieces') ~ ' to find' if g.to_find else 'all found'), g.open) %}
+{% for ln in g.lines %}{{ pull_line(ln) }}
+{% endfor %}{% endcall %}{% endfor %}</div>
+{% else %}{% for g in groups %}
 <p class="lab bp-grp">{{ g.name }}{% if g.to_find %} · {{ g.to_find }} <span class="bp-pieces">pieces </span>to find{% else %} · all found{% endif %}</p>
-{% for ln in g.lines %}
-<div class="bp-line{{ ' bp-full' if ln.full }}" id="l-{{ ln.item_id }}-{{ ln.color_id or 0 }}" data-line>
-{% if can_edit %}<form method="post" action="{{ url_for('web.bw_pull_found', identifier=detail.id, set_id=set_row.id) }}" class="bp-cbform"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="item_id" value="{{ ln.item_id }}"><input type="hidden" name="color_id" value="{{ ln.color_id if ln.color_id is not none }}"><input type="hidden" name="found" value="{{ ln.held if ln.full else ln.need }}">{{ back_fields() }}<button type="submit" class="bp-cb{{ ' on' if ln.full }}" role="checkbox" aria-checked="{{ 'true' if ln.full else 'false' }}" aria-label="{{ 'All' if not ln.full else 'Not all' }} {{ ln.need }} of {{ ln.name }}{{ ', ' ~ ln.colour if ln.colour }} found" {% if ln.full and ln.held >= ln.need %}disabled{% endif %}></button></form>{% else %}<span class="bp-cb{{ ' on' if ln.full }}" aria-hidden="true"></span>{% endif %}
-<span class="bp-tile">{% if ln.image %}<img {{ bw_picture_attrs(ln.image, '48px') }} alt="" loading="lazy">{% else %}<span class="mono">{{ ln.number }}</span>{% endif %}</span>
-<div class="bp-t"><div class="bp-nm">{{ ln.name }}</div><div class="bp-sub">{% if ln.colour %}<span class="bw-colour" {% if ln.rgb %}style="background:#{{ ln.rgb }};color:{{ ln.ink }}"{% endif %}>{{ ln.colour }}</span> {% endif %}<span class="mono muted bp-no">{{ ln.number }}</span>{% if ln.held %} <span class="muted bp-held">{{ ln.held }} already in the lot</span>{% endif %}</div></div>
-<div class="bp-cnt{{ ' full' if ln.full }}">{% if can_edit %}{{ step(ln, ln.found - 1, '−', 'One less found of ' ~ ln.name, ln.found <= ln.held) }}{% else %}<span class="bp-sign">−</span>{% endif %}<span class="v mono" aria-label="{{ ln.found }} of {{ ln.need }} found">{{ ln.found }} of {{ ln.need }}</span>{% if can_edit %}{{ step(ln, ln.found + 1, '+', 'One more found of ' ~ ln.name, ln.found >= ln.need) }}{% else %}<span class="bp-sign">+</span>{% endif %}</div>
-</div>
+{% for ln in g.lines %}{{ pull_line(ln) }}
 {% endfor %}
-{% endfor %}
-{% if not groups %}<p class="bp-empty">{% if view.q %}No line matches “{{ view.q }}” · <a href="{{ pull_url }}?{{ pull_query(view, q='') }}">Clear the search</a>{% elif view.show == 'find' %}Every piece of this set is found · <a href="{{ pull_url }}?{{ pull_query(view, show='all') }}">Show all lines</a>{% elif view.show == 'found' %}Nothing is found yet · tick the parts you find in the bulk.{% else %}This set has no lines.{% endif %}</p>{% endif %}
+{% endfor %}{% endif %}
+{% if not shown %}<p class="bp-empty">{% if view.q %}No line matches “{{ view.q }}” · <a href="{{ pull_url }}?{{ pull_query(view, q='') }}">Clear the search</a>{% elif view.show == 'find' %}Every piece of this set is found · <a href="{{ pull_url }}?{{ pull_query(view, show='all') }}">Show all lines</a>{% elif view.show == 'found' %}Nothing is found yet · tick the parts you find in the bulk.{% else %}This set has no lines.{% endif %}</p>{% endif %}
 {% if hidden %}<p class="bp-more">+ {{ hidden }} more line{{ '' if hidden == 1 else 's' }} · <a href="{{ pull_url }}?{{ pull_query(view, every=True) }}">Show all</a></p>{% endif %}
 </div>
 <aside class="bp-aside" aria-labelledby="bp-card-title">

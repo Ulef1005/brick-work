@@ -5,7 +5,7 @@
 -- =====================================================================
 
 CREATE TABLE meta(key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL) STRICT;
--- keys: schema_version='4.2' (4.0 before #131, 4.1 before #167/#155; connect() upgrades an older file in place); install_id; catalogue_id (bound at the first build; connect()
+-- keys: schema_version='4.3' (4.0 before #131, 4.1 before #167/#155, 4.2 before #31; connect() upgrades an older file in place); install_id; catalogue_id (bound at the first build; connect()
 -- refuses a catalogue whose catalogue_id differs); catalogue_item_high_water and
 -- catalogue_color_high_water (copied at every activation: a rebuild from scratch mints above
 -- them); migrated_from (3.3 file name, sha256, migration report digest) after the migration.
@@ -816,3 +816,15 @@ CREATE TRIGGER item_redirect_guard BEFORE INSERT ON item_redirect
 -- Not in this file, on purpose: no FTS in the collection file (catalogue search uses
 -- catalogue.item_fts, numbers the user linked by hand are found through item_link_number);
 -- no cross-file foreign keys (brickwork check verifies them); no runtime DDL.
+
+-- Storage label identities survive deletion and Undo; the counter is outside receipts.
+ALTER TABLE storage ADD COLUMN short_id TEXT;
+CREATE UNIQUE INDEX storage_short_id ON storage(short_id);
+CREATE TABLE storage_label_sequence(singleton INTEGER PRIMARY KEY CHECK(singleton=1), value INTEGER NOT NULL) STRICT;
+INSERT INTO storage_label_sequence VALUES(1, (SELECT count(*) FROM storage));
+WITH ranked AS (SELECT id,row_number() OVER (ORDER BY created_at,id) AS n FROM storage)
+UPDATE storage SET short_id=(SELECT printf('S-%04d',n) FROM ranked WHERE ranked.id=storage.id);
+CREATE TRIGGER storage_label_identity AFTER INSERT ON storage WHEN NEW.short_id IS NULL BEGIN
+ UPDATE storage_label_sequence SET value=value+1 WHERE singleton=1;
+ UPDATE storage SET short_id=(SELECT printf('S-%04d',value) FROM storage_label_sequence WHERE singleton=1) WHERE id=NEW.id;
+END;

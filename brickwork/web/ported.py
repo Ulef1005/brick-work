@@ -72,3 +72,5 @@ def install(app):
         if not LoginManager.is_authenticated():
             return None                                   # the screen's own login redirect comes first
         return holding()
+
+PORTED |= {'web.bw_storage_labels'}

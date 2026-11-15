@@ -21,7 +21,7 @@ def test_storages_are_counted_and_the_virtual_not_stored_is_last(v2, world):
     listed = data(call(v2, '/storages'))
     assert [s['name'] for s in listed] == ['Shelf A', 'Not stored'] and listed[1]['id'] == 'unstored'
     shelf = listed[0]
-    assert shelf == {'id': world.shelf, 'name': 'Shelf A', 'type': 'Shelf', 'parent_id': None, 'parent_name': None, 'note': None, 'copies': 1, 'entries': 1,
+    assert shelf == {'id': world.shelf, 'short_id': 'S-0001', 'name': 'Shelf A', 'type': 'Shelf', 'parent_id': None, 'parent_name': None, 'note': None, 'copies': 1, 'entries': 1,
                      'pieces': 3, 'lots': 1, 'figures': 0, 'part_lots': 1, 'archived_at': None}
     assert (listed[1]['copies'], listed[1]['figures'], listed[1]['type']) == (2, 1, None)
     assert [s['id'] for s in data(call(v2, '/storages?direction=desc'))] == ['unstored', world.shelf]

@@ -758,6 +758,8 @@ Operations by piece: M.11a 9, M.11b 64, M.11c 71, M.11d 57 (201 in all). The two
 | `POST /api/v2/stock/{id}/restore` | M.11c | `brickwork.api2.write_collection.post_stock_by_id_restore` |
 | `GET /api/v2/storages` | M.11b | `brickwork.api2.places.get_storages` |
 | `POST /api/v2/storages` | M.11c | `brickwork.api2.write_where.post_storages` |
+| `GET /api/v2/storages/labels` | M.11b | `brickwork.api2.places.get_storages_labels_link` |
+| `GET /api/v2/storages/labels.pdf` | M.11b | `brickwork.api2.places.get_storages_labels_pdf` |
 | `DELETE /api/v2/storages/{id}` | M.11c | `brickwork.api2.write_where.delete_storages_by_id` |
 | `GET /api/v2/storages/{id}` | M.11b | `brickwork.api2.places.get_storages_by_id` |
 | `PATCH /api/v2/storages/{id}` | M.11c | `brickwork.api2.write_where.patch_storages_by_id` |
@@ -869,6 +871,7 @@ Choices M.11a made where the scope comment and design section 7 were silent:
 | `source_error` | 502 | upstream failure, redacted text |
 | `not_set_up` | 503 | database file missing |
 | `api_disabled` | 503 | no token configured |
+| `labels_unavailable` | 503 | QR renderer dependency missing; retry after repairing the install |
 | `db_unavailable` | 503 | SQLite error |
 | `internal_error` | 500 | anything else, no detail leaked |
 | `not_implemented` | 501 | **new in v2.** the operation's piece has not landed; the body also carries `piece` and `error` |
@@ -892,3 +895,18 @@ Each entry describes a loose stock record or a figure in a set copy.
 A complete figure has no recommendation.
 `gain` is complete value less completion cost and present parts value.
 The meaningful gain uses the same 10% and minimum five currency units as set part-out comparisons.
+
+## Storage labels
+
+`Storage.short_id` is a permanent `S-0001` style identity. The storage primary key remains unchanged.
+
+`GET /storages/labels.pdf?ids=<comma-separated ids>&layout=a4-21` returns a PDF with read scope.
+Use `a4-14` for wider labels. Choose at most 200 active storages. Archived storages are refused.
+
+`GET /storages/labels` takes the same query and returns `data.url`, `data.labels` and `data.sheets`.
+The MCP tool `storage_labels` uses this operation. Fetch the PDF link with your read token.
+If the QR renderer dependency is missing, both operations and the MCP tool return
+`503 labels_unavailable` with a retry message; web previews and downloads also return 503.
+Both downloads and previews use `core.labels`. Codes contain storage URLs, with error correction M and a four-module quiet zone.
+
+`Settings.labels_address` stores the label origin. `PATCH /settings` accepts it with admin scope; empty uses the request origin.

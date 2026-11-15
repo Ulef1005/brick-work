@@ -16,13 +16,14 @@ from tests.api2 import app4, coll, pair, world  # noqa: F401
 
 READS = sorted(op for op, o in OPERATION_BY_ID.items() if o['x-piece'] == 'M.11b')
 FILES = {'get_images_by_id_content', 'get_instruction_files_by_id_content', 'get_export_missing_csv', 'get_export_missing_xml', 'get_export_picker_csv',
-         'get_export_wishlist_csv', 'get_wishlists_by_id_export_xml', 'get_wishlists_by_id_export_csv'}
+         'get_export_wishlist_csv', 'get_wishlists_by_id_export_xml', 'get_wishlists_by_id_export_csv', 'get_storages_labels_pdf'}
 
 
 def paths(w):
     """One concrete request per read operation of the contract."""
     copy = w.copy_a
     return {
+        'get_storages_labels_pdf': f'/storages/labels.pdf?ids={w.shelf}', 'get_storages_labels_link': f'/storages/labels?ids={w.shelf}',
         'get_catalogue_items': '/catalogue/items?limit=3', 'get_catalogue_items_by_id': f'/catalogue/items/{w.keep}', 'get_catalogue_status': '/catalogue/status',
         'get_colors': '/colors', 'get_colors_by_color_id': '/colors/4', 'get_items': '/items', 'get_items_by_id_inventory': f'/items/{w.keep}/inventory',
         'get_items_by_id_used_in': f'/items/{w.brick}/used-in', 'get_items_by_id_colors': f'/items/{w.brick}/colors', 'get_items_by_id_images': f'/items/{w.keep}/images',
@@ -56,11 +57,13 @@ def full(coll, world, pair):
 
 
 def test_every_read_operation_has_a_case(world):
-    assert len(READS) == 64 and set(paths(world)) == set(READS)
+    assert len(READS) == 66 and set(paths(world)) == set(READS)
 
 
 @pytest.mark.parametrize('operation', READS)
 def test_the_answer_is_what_the_contract_says(v2, full, operation):
+    if operation == 'get_storages_labels_pdf':
+        pytest.importorskip('segno', reason='segno not installed in this sandbox')
     response = call(v2, paths(full)[operation])
     validate(response, operation)
     assert response.headers['Cache-Control'] == 'no-store'
@@ -79,6 +82,8 @@ def test_a_wrong_token_is_401_and_an_unknown_filter_400(v2, full, operation):
 
 @pytest.mark.parametrize('operation', READS)
 def test_a_read_scope_token_may_read_and_the_instance_may_be_read_only(v2, full, pair, operation, monkeypatch):
+    if operation == 'get_storages_labels_pdf':
+        pytest.importorskip('segno', reason='segno not installed in this sandbox')
     reader = stored_token(pair, ['read'])
     assert call(v2, paths(full)[operation], token=reader).status_code == 200
     monkeypatch.setenv('BW_READ_ONLY', 'true')

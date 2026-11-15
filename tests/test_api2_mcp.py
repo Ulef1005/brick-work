@@ -50,7 +50,7 @@ def test_the_tool_surface_is_generated_from_the_v2_contract():
     marked = {op['x-mcp-tool']: (method.upper(), path) for path, methods in CONTRACT['paths'].items()
               for method, op in methods.items() if isinstance(op, dict) and 'x-mcp-tool' in op}
     assert {n: (m, p) for n, (m, p, _) in DEFINITIONS.items()} == marked
-    assert len(READS) + len(WRITES) == 75
+    assert len(READS) + len(WRITES) == 76
     for name, (method, path, op) in DEFINITIONS.items():
         assert op['security'] == [{'bearerAuth': ['read' if method == 'GET' else 'write']}], name   # admin work is never a tool
         assert op['summary'], name
@@ -247,6 +247,7 @@ def test_revocation_and_read_only(app4, v2, pair, world, monkeypatch):
 def read_arguments(w, pair):
     rebrickable = {'source': 'rebrickable'}
     return {
+        'storage_labels': {'ids': w.shelf, 'layout': 'a4-21'},
         'get_wishlists': {}, 'export_wishlist_xml': {'id': 'default'}, 'export_wishlist_csv': {'id': 'default'}, 'search_catalogue': {'q': '1000'},
         'get_item': {'kind': 'set', 'no': '1000-1'}, 'get_minifigure_detail': {'kind':'minifigure','no':'syn-fig-0004'}, 'list_copies': {}, 'get_copy': {'id': w.copy_a}, 'get_copy_completeness': {'id': w.copy_a},
         'list_copy_parts': {'id': w.copy_a}, 'list_copy_figures': {'id': w.copy_a}, 'list_stock': {}, 'list_minifigures': {}, 'list_gaps': {},

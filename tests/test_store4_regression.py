@@ -1,6 +1,7 @@
 """Design 12 regression coverage that no module test owns (M.9, issue #111): the user journey replayed through the app's own writers
 and the eight 3.3 lines of probes B5 and B6 through the real migration. `docs/data-model-4.0/regression-map.md` maps every check of the
 design's three scripts to the test that guards it. Invented data, no network: every transport is a fake."""
+
 from contextlib import closing
 import json
 import shutil
@@ -8,6 +9,7 @@ import shutil
 from cryptography.fernet import Fernet
 import pytest
 
+from brickwork.store4.connect import SCHEMA_VERSION
 from brickwork.core import keys, pipeline
 from brickwork.core.connect import connect
 from brickwork.core.pipeline import Pipeline
@@ -103,7 +105,7 @@ def test_the_user_journey_replays_through_the_apps_writers(tmp_path, client, tok
     assert admin_ops.setup()['setup'] == 'ok'
     with read() as db:
         assert sorted(tuple(r) for r in db.execute("SELECT name, system FROM flag")) == [('Box present', 1), ('Instructions present', 1), ('Set is checked', 1)]
-        assert one(db, "SELECT value FROM meta WHERE key='schema_version'") == '4.2' and one(db, "SELECT count(*) FROM meta WHERE key='install_id'") == 1
+        assert one(db, "SELECT value FROM meta WHERE key='schema_version'") == SCHEMA_VERSION and one(db, "SELECT count(*) FROM meta WHERE key='install_id'") == 1
         assert [tuple(r) for r in db.execute('SELECT id, born_key FROM color WHERE id<=2 ORDER BY id')] == [(1, '9999'), (2, '-1')]
         assert one(db, "SELECT count(*) FROM source WHERE id='import'") == 1 and one(db, 'SELECT count(*) FROM wishlist') == 1
         assert one(db, 'SELECT count(*) FROM color') == one(db, 'SELECT count(*) FROM catalogue.color')                  # every colour projected

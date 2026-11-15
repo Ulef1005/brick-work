@@ -12,7 +12,7 @@ import sqlite3
 import pytest
 
 from brickwork.store4 import cli
-from brickwork.store4.connect import connect
+from brickwork.store4.connect import SCHEMA_VERSION, connect, upgrade
 from brickwork.store4.migrate import MigrationError
 from brickwork.store4.migrate_run import run
 from tests.legacy33 import FIXTURES
@@ -49,9 +49,27 @@ def test_migrates_to_4(fixture, tmp_path, world):
     assert res.result == 'PASS', [(n, p['first_differences'][:2]) for n, p in res.proof['parts'].items() if p['differences']]
     assert res.published and res.out.exists()
     with closing(connect(res.out, catalogue, read_only=True)) as db:
+        rows = db.execute('SELECT short_id FROM storage ORDER BY created_at,id').fetchall()
+        assert [r[0] for r in rows] == [f'S-{n:04d}' for n in range(1,len(rows)+1)]
+        assert db.execute('SELECT value FROM storage_label_sequence WHERE singleton=1').fetchone()[0] == db.execute('SELECT count(*) FROM storage').fetchone()[0]
         assert db.execute('PRAGMA integrity_check').fetchone()[0] == 'ok'
         assert db.execute('PRAGMA foreign_key_check').fetchall() == []
-        assert db.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()[0] == '4.2'
+        assert db.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()[0] == SCHEMA_VERSION
+
+
+    # Replay the label step from the migrated rows in their pre-label 4.2 shape.
+    older = tmp_path / 'before-labels.db'
+    with closing(sqlite3.connect(res.out)) as source, closing(sqlite3.connect(older)) as db:
+        source.backup(db)
+        db.executescript("""DROP TRIGGER storage_label_identity;
+            DROP INDEX storage_short_id;
+            ALTER TABLE storage DROP COLUMN short_id;
+            DROP TABLE storage_label_sequence;
+            UPDATE meta SET value='4.2' WHERE key='schema_version';""")
+    assert upgrade(older) == SCHEMA_VERSION
+    with closing(sqlite3.connect(older)) as db:
+        assert db.execute('SELECT short_id FROM storage ORDER BY created_at,id').fetchall() == [tuple(r) for r in rows]
+        assert db.execute('SELECT value FROM storage_label_sequence WHERE singleton=1').fetchone()[0] == len(rows)
 
 
 def test_the_command_line_migrates_too(tmp_path, world, capsys):

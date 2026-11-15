@@ -16,7 +16,7 @@ UNSTORED = 'unstored'                                   # the id of the virtual 
 def storage_body(r):
     return {'id': UNSTORED if r['id'] is None else r['id'], 'name': r['name'], 'copies': r['copies'], 'entries': r['entries'], 'pieces': r['pieces'],
             'lots': r['lots'], 'figures': r['figures'], 'part_lots': r['part_lots'], 'type': r['type'], 'parent_id': r['parent_id'],
-            'parent_name': r['parent_name'], 'note': r['note'], 'archived_at': r.get('archived_at')}
+            'parent_name': r['parent_name'], 'note': r['note'], 'short_id': r.get('short_id'), 'archived_at': r.get('archived_at')}
 
 
 def storage_response(db, key):
@@ -123,3 +123,38 @@ def get_flags(db):
                              'count': counts.get(r['id'], 0)})
                for r in db.execute('SELECT * FROM main.flag WHERE archived_at IS NULL ORDER BY kind, name COLLATE NOCASE, id')]
     return page(records, args)
+
+
+@route('/storages/labels.pdf')
+@reading
+def get_storages_labels_pdf(db):
+    from io import BytesIO
+    from flask import request, send_file
+    from ..core import labels
+    args = arguments()
+    layout = args.get('layout', 'a4-21')
+    if layout == 'tape-62':
+        raise ValueError('Choose an A4 label layout for PDF')
+    found = labels.plan(db, args.get('ids', '').split(','), layout, request.host_url)
+    try:
+        data, mime, name = labels.download(found)
+    except ImportError:
+        raise errors.LabelsUnavailable(labels.UNAVAILABLE_MESSAGE) from None
+    return send_file(BytesIO(data), mimetype=mime, download_name=name, as_attachment=True)
+
+
+@route('/storages/labels')
+@reading
+def get_storages_labels_link(db):
+    from urllib.parse import urlencode
+    from flask import request
+    from ..core import labels
+    args = arguments()
+    layout = args.get('layout', 'a4-21')
+    if layout == 'tape-62':
+        raise ValueError('Choose an A4 label layout for PDF')
+    found = labels.plan(db, args.get('ids', '').split(','), layout, request.host_url)
+    labels.qr_module()
+    query = urlencode(dict(ids=','.join(r['id'] for r in found['storages']), layout=layout))
+    return respond(dict(url=request.host_url.rstrip('/') + '/api/v2/storages/labels.pdf?' + query,
+                        labels=len(found['storages']), sheets=found['pages']))

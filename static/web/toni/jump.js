@@ -34,9 +34,9 @@
   results.replaceChildren(); links = []; selected = -1;
   for (const item of data.results) {
    if (dialog.dataset.check === 'true' && item.kind !== 'set') continue;
-   if (item.kind === 'page') {   // a Workbench workflow by its name or its former name
+   if (item.kind === 'page' || item.kind === 'storage') {   // a Workbench workflow by its name or its former name
     const panel = text('section', '', 'jump-result');
-    row(panel, item.name, item.note || '', item.url);
+    row(panel, item.kind === 'storage' ? `${item.number} · ${item.name}` : item.name, item.kind === 'storage' ? 'Storage' : item.note || '', item.url);
     results.append(panel);
     continue;
    }

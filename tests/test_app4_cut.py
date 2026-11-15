@@ -1,5 +1,6 @@
 """The cut to the 4.0 store (M.8a, issue #110): the connect wrapper, the audit adapter, undo on `event_undo`, the key provider, the
 drainer's poll and the identity facade `core.items`, on the fixture catalogue of `store4_mint_fixtures`. Invented data, no network."""
+
 from contextlib import closing
 import json
 from pathlib import Path
@@ -10,6 +11,7 @@ import sqlite3
 from cryptography.fernet import Fernet
 import pytest
 
+from brickwork.store4.connect import SCHEMA_VERSION
 from brickwork.core import admin, drainer, errors, items, keys, undo
 from brickwork.core.connect import NoCatalogue, OldStore, catalogue_path, connect
 from brickwork.core.sources.base import audit_origin
@@ -46,7 +48,7 @@ def live(db):
 def test_connect_creates_a_4_0_collection_with_the_catalogue_beside_it(pair):
     assert not pair.exists()
     with closing(connect(pair)) as db:
-        assert db.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()[0] == '4.2'
+        assert db.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()[0] == SCHEMA_VERSION
         assert has_catalogue(db) and db.execute('PRAGMA foreign_keys').fetchone()[0] == 1
     assert catalogue_path(pair) == pair.with_name('catalogue.db')
 

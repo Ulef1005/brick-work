@@ -120,6 +120,8 @@ def bw_admin(page):
                 from ..core.admin import database
                 with database(admin_ops.brickwork_path(), read_only=True, require_catalogue=False) as rdb:
                     data['currency'] = dict(display=currency.display_currency(rdb), rates=currency.listing(rdb))
+                    data['labels_address'] = rdb.execute("SELECT value FROM main.setting WHERE key='labels_address'").fetchone()
+                    data['labels_address'] = data['labels_address'][0] if data['labels_address'] else ''
                     data['saved'] = settings_undo_offer(rdb, request.args.get('saved', ''))
             if page == 'catalogues':
                 from ..core import keys as key_store, secrets as key_secrets
@@ -261,6 +263,16 @@ def bw_admin_write(page):
             admin_ops.tools_write('database_check')
             flash('Database check finished', 'success')
             return redirect(url_for('web.bw_admin', page='database'))
+        elif page == 'settings' and request.form.get('action') == 'labels_address':
+            if not bw_collection_editable():
+                abort(403, 'Changes are switched off on this instance')
+            from ..core import labels
+            from ..core.admin import database
+            with database(admin_ops.brickwork_path(), require_catalogue=False) as db:
+                saved = labels.save_address(db, request.form.get('labels_address', ''))
+            if saved is None:
+                flash('Nothing changed', 'success')
+            return redirect(url_for('web.bw_admin', page='settings', saved=saved) + '#labels-address')
         elif page == 'settings' and request.form.get('action') == 'pictures':
             if not bw_collection_editable():
                 abort(403, 'Changes are switched off on this instance')
@@ -1561,10 +1573,13 @@ def bw_storages(identifier=None):
     from ..core.admin import database
     from ..core import ledger
     error, rows, detail, history = None, [], None, []
+    from ..core import labels
+    label_address = dict(value=request.host_url.rstrip('/'), warning=False)
     explicit = bool(identifier)
     try:
         with database(brickwork_path(), read_only=True) as db:
             rows = ledger.storages(db)
+            label_address = labels.address(db, request.host_url)
             places = [r for r in rows if r['id']]
             # 12c: the first storage is selected until another is chosen; with none, the empty state.
             if identifier:
@@ -1573,9 +1588,41 @@ def bw_storages(identifier=None):
                 detail = ledger.storage_view(db, places[0]['id'], rows)
             history = ledger.history(db, actions=('storage', 'move', 'archive'))
     except (ValueError, sqlite3.Error) as exc:
-        error = public(exc, 'Brick Work database is not available. Check BW_DB_PATH and try again.')
+        error = ('The storage on this label was archived. Undo it in History, or print a new label for where the items are now.' if str(exc) == 'Location is unavailable' else public(exc, 'Brick Work database is not available. Check BW_DB_PATH and try again.'))
     response = current_app.make_response(render_template('web/toni/web/bw_storage.html', rows=rows, detail=detail, explicit=explicit, history=history, error=error, csrf_token=bw_add_token(),
-        storage_types=_ledger().STORAGE_TYPES))
+        storage_types=_ledger().STORAGE_TYPES, label_address=label_address, label_layouts=labels.LAYOUTS))
+    response.headers['Cache-Control'] = 'no-store'
+    return response
+
+
+@web_page.get('/workbench/storage/labels/<output>')
+@login_required
+def bw_storage_labels(output):
+    from io import BytesIO
+    from flask import send_file
+    from .admin_ops import brickwork_path
+    from ..core.admin import database
+    from ..core import labels, errors
+    if output not in ('plan', 'preview.png', 'download'):
+        abort(404)
+    try:
+        with database(brickwork_path(), read_only=True) as db:
+            found = labels.plan(db, request.args.get('ids', '').split(','), request.args.get('layout', 'a4-21'), request.host_url)
+        if output == 'plan':
+            response = jsonify(found)
+        elif output == 'preview.png':
+            image = labels.page_image(found, int(request.args.get('page', '0')), guides=True)
+            data = BytesIO()
+            image.save(data, 'PNG')
+            data.seek(0)
+            response = send_file(data, mimetype='image/png')
+        else:
+            data, mime, name = labels.download(found)
+            response = send_file(BytesIO(data), mimetype=mime, download_name=name, as_attachment=True)
+    except (ImportError, errors.LabelsUnavailable):
+        return jsonify(message=labels.UNAVAILABLE_MESSAGE), 503
+    except (ValueError, sqlite3.Error) as exc:
+        return jsonify(message=public(exc, 'Labels are unavailable')), 400
     response.headers['Cache-Control'] = 'no-store'
     return response
 
@@ -2268,6 +2315,8 @@ def bw_collection_jump():
     try:
         with database(brickwork_path(),read_only=True) as db:
             result=collection.search(db,request.args.get('q',''))
+            from ..core import ledger
+            storage_hits = ledger.storage_search(db, request.args.get('q',''))
         rows=[]
         for r in result['results']:
             kind=r['item_type']
@@ -2286,7 +2335,7 @@ def bw_collection_jump():
                 row['url']=row['copies'][0]['url'] if len(row['copies'])==1 else None
             else: row['url']=url_for('web.bw_collection_item',**params)
             rows.append(row)
-        result['results']=rows+ui.workflow_matches(request.args.get('q',''))   # the workflow pages come after the items, which keep their `limit`
+        result['results']=rows+[dict(kind='storage', type_label='Storage', number=r['short_id'], name=r['name'], image=None, url=url_for('web.bw_storages', identifier=r['id'])) for r in storage_hits]+ui.workflow_matches(request.args.get('q',''))   # the workflow pages come after the items, which keep their `limit`
     except (sqlite3.Error,OSError,ValueError) as exc:
         return jsonify(message=public(exc, 'Brick Work database is not available · try again')),503
     response=jsonify(result);response.headers['Cache-Control']='no-store';return response

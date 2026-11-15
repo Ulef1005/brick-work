@@ -1,9 +1,9 @@
 """The upgrade path of an install that started on 0.5.x (issue #80): a 3.3 collection through `migrate4`, then the in-place steps 4.0 to 4.1
-(0.7.0) and 4.1 to 4.2 (0.9.0), with the rows counted at every stage and the result held to the app's own `brickwork check`.
+(0.7.0), 4.1 to 4.2 (0.9.0), and 4.2 to 4.3 (storage labels), with the rows counted at every stage and the result held to the app's own `brickwork check`.
 
-One gap, said plainly: `migrate4` of this tree writes the current schema (4.2), not the 4.0 it wrote in 0.6.0, so no real 4.0 file can be made
+One gap, said plainly: `migrate4` of this tree writes the current schema (4.3), not the 4.0 it wrote in 0.6.0, so no real 4.0 file can be made
 here. The 4.0 stage is the migrated file taken back to 4.0 shape: the tables of the 4.0 schema (today's `brickwork.sql` without the lines the 4.1
-and 4.2 steps add, as `test_store4_upgrade` does) filled with every row of the migrated file. The steps themselves are the real ones. The 0.5.0
+4.2 and 4.3 steps add, as `test_store4_upgrade` does) filled with every row of the migrated file. The steps themselves are the real ones. The 0.5.0
 shape of the 3.3 file is `tests/legacy33` (the real 3.3 schema) filled by `store4_migrate_fixtures`. 0.7.0 to 0.8.1 changed no schema."""
 from contextlib import closing
 import shutil
@@ -37,9 +37,9 @@ def mappings(tmp_path):
 
 
 def counts(db):
-    """Rows per table, for every table of the file but `meta` (the schema's own tables, not SQLite's)."""
+    """Rows per table, for every collection table except `meta` and the monotonic label counter (the schema's own tables, not SQLite's)."""
     names = [r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name")]
-    return {name: db.execute(f'SELECT COUNT(*) FROM main."{name}"').fetchone()[0] for name in names if name != 'meta'}   # each step adds a meta row
+    return {name: db.execute(f'SELECT COUNT(*) FROM main."{name}"').fetchone()[0] for name in names if name not in ('meta', 'storage_label_sequence')}   # each step adds a meta row
 
 
 def version(path):
@@ -83,7 +83,7 @@ def test_a_050_collection_reaches_the_current_schema_step_by_step(tmp_path, cata
     assert result.published and old.read_bytes() == digest
 
     migrated = result.out
-    assert version(migrated) == SCHEMA_VERSION == '4.2'
+    assert version(migrated) == SCHEMA_VERSION
     with closing(sqlite3.connect(migrated)) as db:
         carried = counts(db)
     assert carried['copy'] == copies_33 and carried['wish'] == wishes_33 and carried['stock'] >= stock_33 > 0
@@ -112,21 +112,31 @@ def test_a_050_collection_reaches_the_current_schema_step_by_step(tmp_path, cata
         assert counts(db) == carried
         assert db.execute("SELECT COUNT(*) FROM meta WHERE key='upgraded_to_4.1'").fetchone()[0] == 1
 
-    # 4.1 to 4.2 (0.9.0): the first read-write open of the app does the rest
+    # Exercise 4.1 to 4.2 alone before the label identity upgrade.
+    with monkeypatch.context() as patch:
+        patch.setattr(connect_module, 'UPGRADES', {'4.1': connect_module.UPGRADES['4.1']})
+        assert connect_module.upgrade(live) == '4.2'
+    assert version(live) == '4.2'
+    assert 'short_id' not in columns(live, 'storage')
+
+    # 4.2 to 4.3: first read-write open backfills every storage and the counter.
     with closing(connect(live, catalogue)) as db:
-        assert db.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()[0] == '4.2'
+        assert db.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()[0] == SCHEMA_VERSION
         assert counts(db) == carried
         assert db.execute('PRAGMA integrity_check').fetchone()[0] == 'ok'
         assert db.execute('PRAGMA foreign_key_check').fetchall() == []
         assert db.execute("SELECT COUNT(*) FROM meta WHERE key='upgraded_to_4.2'").fetchone()[0] == 1
+        rows = db.execute('SELECT short_id FROM storage ORDER BY created_at,id').fetchall()
+        assert [r[0] for r in rows] == [f'S-{n:04d}' for n in range(1,len(rows)+1)]
+        assert db.execute('SELECT value FROM storage_label_sequence WHERE singleton=1').fetchone()[0] == len(rows)
         checked = check_all(db)                                 # what `brickwork check` runs
         assert check_ok(checked), checked
         assert checked['integrity_check'] == ['ok'] and checked['foreign_key_check'] == []
-    assert version(live) == '4.2'
+    assert version(live) == SCHEMA_VERSION
     for _, (table, added) in STEPS.items():
         assert set(added) <= set(columns(live, table))
 
-    # the upgraded file has the tables and columns of a fresh 4.2 file, and opening it again changes nothing
+    # the upgraded file has the tables and columns of a fresh current-schema file, and opening it again changes nothing
     (tmp_path / 'fresh').mkdir()
     with closing(connect(tmp_path / 'fresh' / 'brickwork.db', catalogue)) as fresh, closing(sqlite3.connect(live)) as db:
         for name in counts(db):

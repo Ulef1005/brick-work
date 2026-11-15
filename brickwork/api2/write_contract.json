@@ -3290,6 +3290,10 @@
         "incomplete_discount_pct": {
           "type": "number"
         },
+        "labels_address": {
+          "description": "HTTP or HTTPS origin for storage label codes. Empty uses the request origin.",
+          "type": "string"
+        },
         "part_group_overrides": {
           "additionalProperties": {
             "enum": [

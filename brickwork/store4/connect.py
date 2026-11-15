@@ -10,9 +10,18 @@ import uuid
 from .errors import CatalogueError, CatalogueMismatch, SchemaMismatch, StaleSchema, Unsupported, UpgradeFailed
 
 MIN_SQLITE = (3, 37, 0)
-SCHEMA_VERSION = '4.2'
+SCHEMA_VERSION = '4.3'
 # In-place upgrades of an older collection, one step per version, each in its own write transaction: {from: (to, statements)}.
 # A step only adds; a fresh file from `brickwork.sql` has the same tables as an upgraded one (tests/test_store4_upgrade.py).
+def _storage_label_statements():
+    statement = ''
+    for line in (Path(__file__).parent / 'storage_labels.sql').read_text().splitlines(True):
+        statement += line
+        if sqlite3.complete_statement(statement):
+            yield statement.strip()
+            statement = ''
+
+
 UPGRADES = {
     '4.0': ('4.1', (                                     # #131: a wish's max price with box, a price with its currency or neither
         'ALTER TABLE wish ADD COLUMN max_price_boxed TEXT',
@@ -21,12 +30,13 @@ UPGRADES = {
         'ALTER TABLE job_owner ADD COLUMN boot_id TEXT',
         'ALTER TABLE job_owner ADD COLUMN start_ticks INTEGER',
         'ALTER TABLE order_line ADD COLUMN unplaced_reason TEXT')),
+    '4.2': ('4.3', tuple(_storage_label_statements())),
 }
 # The columns the steps add, by table: a row recorded before its step (an Undo receipt, a RowLog) lacks them and reads them as NULL.
 ADDED_COLUMNS = {}
 for _target, _statements in UPGRADES.values():
     for _statement in _statements:
-        if (_added := re.match(r'ALTER TABLE (\w+) ADD COLUMN (\w+)', _statement)):
+        if (_added := re.search(r'ALTER TABLE (\w+) ADD COLUMN (\w+)', _statement)):
             ADDED_COLUMNS.setdefault(_added[1], []).append(_added[2])
 CATALOGUE_VERSION = 'catalogue-4.0'
 HERE = Path(__file__).parent
@@ -72,9 +82,12 @@ def check_ids_never_reused(db, path):
         raise StaleSchema(f'{path} predates #124 (made before 2026-10-27): re-run the 3.3 \u2192 4.0 migration to rebuild it')
 
 
-def as_current(table, row):
+def as_current(table, row, db=None):
     """A row of `table` as recorded (a receipt, a RowLog entry), with every column an upgrade added since as NULL: Undo compares and
     restores rows written before the upgrade like rows written after it."""
+    if table == 'storage' and row is not None and 'short_id' not in row and db is not None:
+        found = db.execute('SELECT short_id FROM main.storage WHERE id=?', (row['id'],)).fetchone()
+        row = {**row, 'short_id': found[0] if found else None}
     added = ADDED_COLUMNS.get(table)
     if row is None or not added or all(c in row for c in added):
         return row

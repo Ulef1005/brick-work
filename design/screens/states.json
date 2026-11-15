@@ -1181,6 +1181,60 @@
    "path": "/collection/item/minifigure/syn55-forestman",
    "built": true,
    "approved": false
+  },
+  {
+   "screen": "34-Storage",
+   "section": "i31",
+   "state": "labels-select-none",
+   "world": "showcase",
+   "path": "/workbench/storage?labels=select-none",
+   "built": true,
+   "approved": false
+  },
+  {
+   "screen": "34-Storage",
+   "section": "i31",
+   "state": "labels-select-three",
+   "world": "showcase",
+   "path": "/workbench/storage?labels=select-three",
+   "built": true,
+   "approved": false
+  },
+  {
+   "screen": "34-Storage",
+   "section": "i31",
+   "state": "labels-ready",
+   "world": "edge",
+   "path": "/workbench/storage?labels=ready",
+   "built": true,
+   "approved": false
+  },
+  {
+   "screen": "34-Storage",
+   "section": "i31",
+   "state": "labels-address-warning",
+   "world": "showcase",
+   "path": "/workbench/storage?labels=warning",
+   "built": true,
+   "approved": false
+  },
+  {
+   "screen": "34-Storage",
+   "section": "i31",
+   "state": "labels-two-sheets",
+   "world": "edge",
+   "path": "/workbench/storage?labels=two-sheets",
+   "built": true,
+   "approved": false
+  },
+  {
+   "screen": "34-Storage",
+   "section": "i31",
+   "state": "labels-error",
+   "world": "edge",
+   "path": "/workbench/storage?labels=error",
+   "built": true,
+   "approved": false
   }
  ]
 }

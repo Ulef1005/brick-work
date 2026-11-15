@@ -45,7 +45,7 @@ def settings_body(db):
     """`Settings`: what `admin.settings` reads, under the contract's names."""
     s = admin.settings(db)
     row = db.execute("SELECT value FROM main.setting WHERE key='prefer_bricklink_inventory'").fetchone()
-    return {'display_currency': s['display_currency'], 'retail_country': s['retail_country'], 'bricklink_region': s['bricklink_region'],
+    return {'labels_address': s['labels_address'], 'display_currency': s['display_currency'], 'retail_country': s['retail_country'], 'bricklink_region': s['bricklink_region'],
             'bricklink_currency': s['bricklink_currency'], 'incomplete_discount_pct': s['incomplete_discount_pct'], 'source_priority': s['priority'],
             'import_order': s['import_order'], 'part_list_grouping': s['part_list_grouping'], 'part_group_overrides': s['part_group_overrides'],
             'freshness': [{'source': r['source'], 'kind': r['kind'], 'max_age_days': r['max_age_days']} for r in s['freshness']],

@@ -67,11 +67,12 @@ def options(db, *, include_wishlists=False):
 
 def system_flags(flags):
     """The three system status flags the app itself reads, in the sheet's order: `[dict(name, id)]`, `id` None until the flag exists. Picks from
-    the live `flags` list `options` already read, so the sheet costs no query."""
+    the live `flags` list `options` already read, so the sheet costs no query. The match is the workbench's (`workbench.flag`): the name without
+    regard to case, and only when exactly one live status flag has it."""
     found = []
     for name in SYSTEM_FLAGS:
-        match = next((f['id'] for f in flags if f['kind'] == 'status' and f['name'] == name), None)     # the flags come ordered by id within a name, as the checker's lookup does
-        found.append(dict(name=name, id=match))
+        matches = [f['id'] for f in flags if f['kind'] == 'status' and f['name'].lower() == name.lower()]
+        found.append(dict(name=name, id=matches[0] if len(matches) == 1 else None))
     return found
 
 
@@ -1259,9 +1260,11 @@ def _system_flags_made(db, wanted):
             name = entry[len(SYSTEM_PREFIX):]
             if name not in SYSTEM_FLAGS:
                 raise ValueError('Unknown flag')
-            row = db.execute("SELECT id FROM main.flag WHERE archived_at IS NULL AND kind='status' AND name=? ORDER BY id LIMIT 1", (name,)).fetchone()
-            if row:
-                entry = row[0]
+            rows = db.execute("SELECT id FROM main.flag WHERE archived_at IS NULL AND kind='status' AND lower(name)=lower(?)", (name,)).fetchall()
+            if len(rows) > 1:                                 # the workbench ignores an ambiguous name too: another flag would not help
+                raise ValueError(f'Two status flags are called {name} · keep one')
+            if rows:
+                entry = rows[0][0]
             else:
                 flag = dict(id=uuid4().hex, name=name, kind='status', shown_on_grid=1, system=1, created_at=stamp_now())
                 db.execute('INSERT INTO main.flag(id,name,kind,shown_on_grid,system,created_at) VALUES(:id,:name,:kind,:shown_on_grid,:system,:created_at)', flag)
@@ -1467,8 +1470,9 @@ def remove_photo(db, identifier):
 
 
 def check_photo_edits(db, entity, ids, captions, removals):
-    """The photo changes the edit sheet sends with its Save, checked before anything is written: every photo must be a live one of the rows
-    being saved, a caption at most 200 characters. Returns `(captions, removals)` as clean values; a removed photo's caption is dropped."""
+    """The photo changes the edit sheet sends with its Save, checked before anything is written: every photo must belong to the rows being
+    saved, a caption at most 200 characters. A photo of those rows that is already removed is skipped, so a Save sent again after a lost
+    answer still saves. Returns `(captions, removals)` of what is left to write; a removed photo's caption is dropped."""
     captions = {} if captions is None else captions
     removals = [] if removals is None else removals
     if not isinstance(captions, dict) or not isinstance(removals, list):
@@ -1482,12 +1486,23 @@ def check_photo_edits(db, entity, ids, captions, removals):
         return {}, []
     if entity not in ('copy', 'stock') or not isinstance(ids, list):
         raise ValueError('Choose an owned instance')
-    live = {r[0] for r in db.execute(f'SELECT id FROM main.photo WHERE archived_at IS NULL AND {entity}_id IN (SELECT value FROM json_each(?))', (json.dumps(ids),))}
-    if not wanted <= live:
+    held = {r[0]: r[1] is None for r in db.execute(f'SELECT id, archived_at FROM main.photo WHERE {entity}_id IN (SELECT value FROM json_each(?))', (json.dumps(ids),))}
+    if not wanted <= set(held):
         raise ValueError('Own photo is unavailable')
+    removals = [k for k in removals if held[k]]
+    captions = {k: v for k, v in captions.items() if held[k] and k not in removals}
     if any(len(v) > MAX_CAPTION for v in captions.values()):
         raise ValueError(f'Keep a caption to {MAX_CAPTION} characters')
-    return {k: v for k, v in captions.items() if k not in removals}, removals
+    return captions, removals
+
+
+def save_with_photos(db, entity, ids, values, captions=None, removals=None, *, create_system_flags=False):
+    """The edit sheet's one Save, all or nothing: the details, then the caption edits and removals, in one transaction (the inner ones are
+    savepoints). Returns `(event id of the details, [event ids of the photo changes])`."""
+    with transaction(db):
+        edits = check_photo_edits(db, entity, ids, captions, removals)
+        event = save(db, entity, ids, values, create_system_flags=create_system_flags)
+        return event, apply_photo_edits(db, *edits)
 
 
 def apply_photo_edits(db, captions, removals):

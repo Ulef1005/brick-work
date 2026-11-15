@@ -268,7 +268,8 @@ assert.equal(count.textContent,'130 parts');assert.equal(loaded.textContent,'Loa
   const realFetch=context.fetch,realFormData=context.FormData,uploads=[],wasMerged=merged;let photoFails=true;merged=false;
   const Multi=class{constructor(f){this.map=new Map(f?Object.entries(f.values):[]);}append(k,v){this.map.set(k,v);}get(k){return this.map.get(k);}[Symbol.iterator](){return this.map.entries();}};
   context.FormData=Multi;
-  context.fetch=async(url,options)=>options.body instanceof Multi?(uploads.push({url,body:options.body}),{ok:!photoFails,json:async()=>photoFails?{message:'Choose a readable photo'}:{event_id:9,message:'Photo added'}}):realFetch(url,options);
+  let saves=0;      // the real server gives every Save its own event: the retry's is 57
+  context.fetch=async(url,options)=>options.body instanceof Multi?(uploads.push({url,body:options.body}),{ok:!photoFails,json:async()=>photoFails?{message:'Choose a readable photo'}:{event_id:9,message:'Photo added'}}):url.endsWith('/save/save')&&++saves===2?(calls.push({url,data:JSON.parse(options.body)}),{ok:true,json:async()=>({event_id:57,message:'Saved'})}):realFetch(url,options);
   const savedValues=form.values,before=calls.length,reloadsBefore=reloads;
   form.values={note:'with photo',new_photo:{size:5,name:'a.jpg'},new_photo_caption:'Front'};
   await form.trigger('submit');
@@ -277,19 +278,23 @@ assert.equal(count.textContent,'130 parts');assert.equal(loaded.textContent,'Loa
   assert.match(formStatus.textContent,/Details saved, but the photo was not added/);assert.equal(reloads,reloadsBefore);assert.equal(save.disabled,false);
   form.values={note:'edited after the failure',new_photo:form.values.new_photo,new_photo_caption:'Front'};photoFails=false;await form.trigger('submit');
   assert.equal(calls.length,before+2,'the retry saves the details again, with the edit made since');assert.equal(calls.at(-1).data.values.note,'edited after the failure');assert.equal(uploads.length,2);assert.equal(reloads,reloadsBefore+1);
-  assert.deepEqual(JSON.parse(stored.get('bw-collection-receipt')).also,[9],'Undo takes the photo back with the details');
-  await undo.trigger();assert.equal(calls.at(-2).url,'/collection/save/undo');assert.equal(calls.at(-2).data.event_id,9,'the photo is undone first');assert.equal(calls.at(-1).data.event_id,55,'then the details save');
+  const kept=JSON.parse(stored.get('bw-collection-receipt'));assert.equal(kept.event_id,55,'the first Save stays the receipt');assert.deepEqual(kept.also,[57,9],'the retry and the photo follow it');
+  await undo.trigger();assert.equal(calls.at(-3).url,'/collection/save/undo');assert.deepEqual(calls.slice(-3).map(c=>c.data.event_id),[9,57,55],'the photo, then the retry, then the first Save');
   form.values={note:'no photo',new_photo:{size:0,name:''},new_photo_caption:''};await form.trigger('submit');
   assert.equal(uploads.length,2,'an empty picker sends no photo');assert.deepEqual(calls.at(-1).data.values,{note:'no photo'});
   context.fetch=realFetch;context.FormData=realFormData;form.values=savedValues;merged=wasMerged;
  }
  { // #397: caption edits and removals go with the one Save, a failed photo shows the banner, and Undo takes everything back, last first
-  const realFetch=context.fetch,realFormData=context.FormData,uploads=[];let photoFails=true;
+  const realFetch=context.fetch,realFormData=context.FormData,uploads=[],delivered={};let photoFails=true;
   const Multi=class{constructor(f){this.map=new Map(f?Object.entries(f.values):[]);}append(k,v){this.map.set(k,v);}get(k){return this.map.get(k);}[Symbol.iterator](){return this.map.entries();}};
   context.FormData=Multi;
   context.fetch=async(url,options)=>{
    if(options.body instanceof Multi){uploads.push({url,body:options.body});return {ok:!photoFails,json:async()=>photoFails?{message:'The file is larger than 15 MB'}:{event_id:9,message:'Photo added'}};}
-   calls.push({url,data:JSON.parse(options.body)});return {ok:true,json:async()=>({event_id:55,message:'Saved',also:[21,22]})};
+   const body=JSON.parse(options.body);calls.push({url,data:body});
+   if(!url.endsWith('/save/save'))return {ok:true,json:async()=>({event_id:1,message:'Undone'})};
+   // like the real server: Saves get their own events, and only a request with photo edits returns `also`
+   const first=!Object.hasOwn(delivered,'n');delivered.n=(delivered.n||0)+1;
+   return {ok:true,json:async()=>first?{event_id:55,message:'Saved',also:[21,22]}:{event_id:60+delivered.n,message:'Saved'}};
   };
   root.nodes['[data-bc-photo-warning]']=photoBanner;
   const savedValues=form.values,reloadsBefore=reloads,[one,two]=savedPhotos;form.id='bc-edit-form';
@@ -304,9 +309,14 @@ assert.equal(count.textContent,'130 parts');assert.equal(loaded.textContent,'Loa
   photoFails=false;const before=calls.length;await form.trigger('submit');
   assert.equal(photoBanner.hidden,true,'the next Save clears the banner');
   assert.equal(Object.hasOwn(calls[before].data,'photo_captions'),false);assert.equal(Object.hasOwn(calls[before].data,'remove_photos'),false,'the retry does not send saved edits again');
-  assert.deepEqual(JSON.parse(stored.get('bw-collection-receipt')).also,[21,22,9]);assert.equal(reloads,reloadsBefore+1);
+  const kept=JSON.parse(stored.get('bw-collection-receipt'));assert.equal(kept.event_id,55);assert.deepEqual(kept.also,[21,22,62,9],'first attempt, then the retry, then the photo');assert.equal(reloads,reloadsBefore+1);
   await undo.trigger();
-  assert.deepEqual(calls.slice(-4).map(c=>c.data.event_id),[9,22,21,55],'photo, removal, caption, then the details');
+  assert.deepEqual(calls.slice(-5).map(c=>c.data.event_id),[9,62,22,21,55],'photo, retry, removal, caption, then the first details');
+  // a photo that fails twice: nothing is dropped between the attempts
+  photoFails=true;one.input.value='Again';delete delivered.n;
+  await form.trigger('submit');await form.trigger('submit');photoFails=false;await form.trigger('submit');
+  const chained=JSON.parse(stored.get('bw-collection-receipt'));
+  assert.equal(chained.event_id,55);assert.equal(chained.also.at(-1),9);assert.equal(chained.also.length,5,'the first Save\'s two photo events, two retries and the photo');assert.deepEqual(chained.also.slice(0,2),[21,22]);
   context.fetch=realFetch;context.FormData=realFormData;form.values=savedValues;delete form.id;delete root.nodes['[data-bc-photo-warning]'];
  }
  console.log('Brick Work collection runtime passed');

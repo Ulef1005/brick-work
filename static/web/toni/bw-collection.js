@@ -197,6 +197,7 @@
   undo?.addEventListener('click',async()=>{undo.disabled=true;try {for(const id of [...(receipt.also||[])].reverse().concat(receipt.event_id))await send('undo',{event_id:id});sessionStorage.removeItem(receiptKey);message.textContent='Undone';location.reload();}catch(e){message.textContent=e.message;}finally{undo.disabled=false;}});
   root.querySelectorAll('[data-bw-open]').forEach(b=>b.addEventListener('click',()=>{const dialog=document.getElementById(b.dataset.bwOpen);dialog?.showModal();if(/^[a-z_]+$/.test(b.dataset.bcFocus||'')){const field=dialog?.querySelector(`[name=${b.dataset.bcFocus}]`);const folded=field?.closest?.('details');if(folded)folded.open=true;field?.focus();}}));
   root.querySelectorAll('[data-bw-close]').forEach(b=>b.addEventListener('click',()=>b.closest('dialog')?.close()));
+  let carried=[];                           // events of Saves whose photo is still to be added, oldest first: a Save sent again must not make Undo forget them
   let photoRetry=null;                      // the details are saved and only the photo failed: Save again sends the photo alone, to the row the details ended in
   root.querySelectorAll('form[data-bc-action]').forEach(form=>form.addEventListener('submit',async e=>{
     e.preventDefault();const group=form.closest('[data-bc-save-group]')||form;
@@ -232,6 +233,10 @@
       }
       const retry=action==='save'&&photoRetry&&photoRetry.result.merged_ids&&newPhoto&&newPhoto.size?photoRetry:null;      // only a row that merged away cannot be saved again
       const result=retry?retry.result:await send(action,data,action==='photo');
+      if(action==='save'&&!retry) {        // the receipt undoes every attempt: event_id is the first save, `also` holds the rest oldest first, and Undo runs them last first
+        const chain=[...carried,result.event_id,...(result.also||[])];carried=chain;
+        receipt={...receipt,event_id:chain[0],also:chain.slice(1)};sessionStorage.setItem(receiptKey,JSON.stringify(receipt));
+      }
       if(action==='save'&&newPhoto&&newPhoto.size){
         const upload=new FormData();upload.append('entity',identity.entity);upload.append('identifier',retry?retry.id:(result.merged_ids||identity.ids)[0]);upload.append('photo',newPhoto);upload.append('caption',newPhotoCaption);
         try {const added=await send('photo',upload,true,true);photoRetry=null;receipt={...receipt,also:[...((receipt&&receipt.also)||[]),added.event_id]};sessionStorage.setItem(receiptKey,JSON.stringify(receipt));}      // quiet: the page keeps the details' save as its receipt, and Undo takes the photo back with it
@@ -246,6 +251,7 @@
           return;
         }
       }
+      carried=[];
       if(action==='archive'){stamp(root.dataset.backUrl||location.pathname);location.href=root.dataset.backUrl||location.pathname;}
       else if(result.url)location.href=result.url;
       else location.reload();

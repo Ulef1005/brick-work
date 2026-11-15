@@ -251,7 +251,6 @@ def test_bad_photo_ids_and_captions_are_refused_before_anything_is_saved(world, 
     assert post(client, token, 'save', entity='copy', ids=[w.copy_a], values={'note': 'ok'}, photo_captions={mine: 'x' * 200}).status_code == 200
     again = post(client, token, 'save', entity='copy', ids=[w.copy_a], values={'note': 'ok2'}, remove_photos=[mine])
     assert again.status_code == 200
-    assert post(client, token, 'save', entity='copy', ids=[w.copy_a], values={'note': 'ok3'}, remove_photos=[mine]).status_code == 400      # already removed
     assert post(client, token, 'save', entity='wish', ids=[w.wish_part], values={'note': 'w'}, remove_photos=[mine]).status_code == 400
 
 
@@ -298,3 +297,80 @@ def test_the_wish_sheet_keeps_every_field(world, client):
     assert {'quantity', 'qty_filled_manual', 'color_id', 'max_price', 'max_price_currency', 'condition', 'flags', 'note'} <= names(panel)
     assert 'storage_id' not in names(panel) and not panel.select('.bc-switches')
     assert [l.get_text() for l in panel.select('form#bc-edit-form .bc-group .bc-field > label, form#bc-edit-form .bc-group .bc-field > .bc-label')] == ['Status', 'Owners', 'Tags', 'Note']
+
+
+# ---------- one Save is all or nothing, and a Save sent again still saves ----------
+
+def test_a_failed_photo_edit_rolls_back_the_details_and_every_event(world, coll, client, monkeypatch):
+    token = csrf(client)
+    w = world
+    add_photo(client, token, 'copy', w.copy_a, 'Front')
+    add_photo(client, token, 'copy', w.copy_a, 'Back')
+    one, two = [p['id'] for p in photos(coll)]
+    events_before = coll.db.execute('SELECT COUNT(*) FROM event').fetchone()[0]
+
+    def broken(db, identifier):
+        raise ValueError('Own photo is unavailable')
+    monkeypatch.setattr(collection, 'remove_photo', broken)
+    r = post(client, token, 'save', entity='copy', ids=[w.copy_a], values={'note': 'must not stay'}, photo_captions={one: 'New caption'}, remove_photos=[two])
+    assert r.status_code == 400
+    assert coll.db.execute('SELECT note FROM copy WHERE id=?', (w.copy_a,)).fetchone()[0] == 'Flea market'
+    assert coll.db.execute('SELECT caption FROM photo WHERE id=?', (one,)).fetchone()[0] == 'Front', 'the caption written before the failure is rolled back'
+    assert coll.db.execute('SELECT COUNT(*) FROM event').fetchone()[0] == events_before
+
+
+def test_a_save_sent_again_skips_photos_that_are_already_removed(world, coll, client):
+    token = csrf(client)
+    w = world
+    add_photo(client, token, 'copy', w.copy_a, 'Front')
+    add_photo(client, token, 'copy', w.copy_a, 'Back')
+    one, two = [p['id'] for p in photos(coll)]
+    first = post(client, token, 'save', entity='copy', ids=[w.copy_a], values={'note': 'first'}, photo_captions={one: 'Front, new'}, remove_photos=[two])
+    assert first.status_code == 200 and len(first.json['also']) == 2
+    again = post(client, token, 'save', entity='copy', ids=[w.copy_a], values={'note': 'second'}, photo_captions={one: 'Front, new', two: 'x' * 500}, remove_photos=[two])
+    assert again.status_code == 200, again.json
+    assert 'also' not in again.json, 'nothing is written twice: the caption is the same and the photo is already gone'
+    assert coll.db.execute('SELECT note FROM copy WHERE id=?', (w.copy_a,)).fetchone()[0] == 'second'
+    assert post(client, token, 'save', entity='copy', ids=[w.copy_a], values={'note': 'third'}, photo_captions={two: 'y' * 300}).status_code == 200      # a caption for a removed photo is skipped
+    add_photo(client, token, 'copy', w.copy_b, 'Other')
+    other = photos(coll)[-1]['id']
+    assert post(client, token, 'save', entity='copy', ids=[w.copy_a], values={'note': 'no'}, remove_photos=[other]).status_code == 400      # not this copy's photo: still an error
+
+
+def test_the_caption_length_is_checked_only_for_captions_that_are_written(world, coll, client):
+    token = csrf(client)
+    w = world
+    add_photo(client, token, 'copy', w.copy_a, 'Front')
+    (p,) = photos(coll)
+    long = 'z' * 201
+    assert post(client, token, 'save', entity='copy', ids=[w.copy_a], values={'note': 'a'}, photo_captions={p['id']: long}, remove_photos=[p['id']]).status_code == 200
+    add_photo(client, token, 'copy', w.copy_a, 'Next')
+    nxt = photos(coll)[-1]['id']
+    assert post(client, token, 'save', entity='copy', ids=[w.copy_a], values={'note': 'b'}, photo_captions={nxt: long}).status_code == 400
+
+
+# ---------- the system flags are found the way the workbench finds them ----------
+
+def test_a_system_flag_in_another_case_is_the_switch_and_no_duplicate_is_made(world, coll, client):
+    token = csrf(client)
+    w = world
+    coll.db.execute("UPDATE flag SET name='box present' WHERE id=?", (w.box,))
+    coll.db.commit()
+    page = sheet(client, copy_url(w, w.copy_a))
+    box = next(s.select_one('input') for s in page.select('.bc-sw') if 'Box present' in s.get_text())
+    assert box['value'] == w.box, 'the switch is the flag the workbench reads'
+    assert w.box not in [i['value'] for i in page.select('.bc-multi input')]
+    r = post(client, token, 'save', entity='copy', ids=[w.copy_a], values={'flags': [w.checked, 'system:Box present']})
+    assert r.status_code == 200 and flag_ids(coll, w.copy_a) == {w.checked, w.box}
+    assert coll.db.execute("SELECT COUNT(*) FROM flag WHERE lower(name)='box present'").fetchone()[0] == 1
+
+
+def test_two_live_flags_of_one_system_name_are_refused_not_added_to(world, coll, client):
+    token = csrf(client)
+    w = world
+    coll.flag('BOX PRESENT', 'status')
+    box = next(s.select_one('input') for s in sheet(client, copy_url(w, w.copy_a)).select('.bc-sw') if 'Box present' in s.get_text())
+    assert box['value'] == 'system:Box present'
+    r = post(client, token, 'save', entity='copy', ids=[w.copy_a], values={'flags': ['system:Box present']})
+    assert r.status_code == 400 and 'Two status flags' in r.json['message']
+    assert coll.db.execute("SELECT COUNT(*) FROM flag WHERE lower(name)='box present'").fetchone()[0] == 2

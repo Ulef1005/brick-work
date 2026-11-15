@@ -1,5 +1,6 @@
 ---
-title: Print storage labels
+audience: user
+verified: 1.0
 ---
 
 # Print storage labels

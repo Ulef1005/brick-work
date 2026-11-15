@@ -277,3 +277,11 @@ def storage_archive(db, identifier, *, move_to_unstored=False):
         tracker.touch('storage', identifier)
         db.execute('UPDATE main.storage SET archived_at=? WHERE id=?', (workbench.stamp(), identifier))
         return tracker.write('archive', ENTITY)
+
+
+def storage_search(db, query):
+    query = query.strip().casefold()
+    if not query:
+        return []
+    return [dict(r) for r in db.execute('SELECT id,name,short_id FROM main.storage WHERE archived_at IS NULL ORDER BY short_id')
+            if query in r['name'].casefold() or query in (r['short_id'] or '').casefold()][:20]

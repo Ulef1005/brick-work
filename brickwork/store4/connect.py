@@ -36,7 +36,7 @@ UPGRADES = {
 ADDED_COLUMNS = {}
 for _target, _statements in UPGRADES.values():
     for _statement in _statements:
-        if (_added := re.match(r'ALTER TABLE (\w+) ADD COLUMN (\w+)', _statement)):
+        if (_added := re.search(r'ALTER TABLE (\w+) ADD COLUMN (\w+)', _statement)):
             ADDED_COLUMNS.setdefault(_added[1], []).append(_added[2])
 CATALOGUE_VERSION = 'catalogue-4.0'
 HERE = Path(__file__).parent

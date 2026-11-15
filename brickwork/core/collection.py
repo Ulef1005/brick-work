@@ -704,6 +704,7 @@ def detail(db, item_id, *, colour=None, copy_id=None, stock_id=None, wish_id=Non
     for entry in consists:
         if entry.pop('minifig', None):
             entry['minifig_no'] = entry['item_no'] or str(entry['item_id'])
+            entry['comparison_figure_id'] = entry.get('id')
         entry['contexts'] = [dict(entry, contexts=None)]
         entry['missing_recorded'] = entry['missing'] is not None
         entry['deficit'] = 0 if entry['spare'] else part_gap(entry)

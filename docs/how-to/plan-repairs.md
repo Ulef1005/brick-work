@@ -61,3 +61,36 @@ To order the parts of many sets at once, press **Order missing parts** instead. 
 - [Pick parts for several sets](pick-parts.md) to fill the gaps from your drawers before buying.
 - [Find sets your loose stock can finish](match-stock-to-sets.md).
 - [Undo a change](undo-a-change.md).
+
+## Compare minifigures
+
+Open **Planning › Complete sets › Figures** to compare complete value, present parts and the cost to complete each figure.
+Each place with missing or damaged parts has its own row, with loose figures first and set copies next.
+Figures without enough fresh used prices wait under **Needs evidence**.
+
+The comparison uses the repair settings and the same price coverage and meaningful gain rules as set part-out values.
+Open a minifigure to see its **Complete or part out** card and the missing parts behind its cost.
+
+
+Search by number or name, then use **Filters** for place, recommendation, theme or storage.
+Remove a filter with its chip.
+**Sort** offers gain from completing, cost to complete, part-out value, number and name.
+The list shows 15 places per page.
+
+**How this is decided** explains the shared recommendation rule.
+Completing must beat parting out by 10% and at least €5.00; the reverse supports **Part out**.
+Smaller differences say **Keep as is**.
+In another currency, the minimum is five units of that currency.
+The part-out total needs prices for at least 90% of the component lines.
+One unpriced line in a four-part figure therefore hides the total and recommendation.
+
+The card's **Copy** picker chooses the loose record or set copy to describe.
+A figure link inside a set copy opens that place's comparison.
+Missing-part lines show the colour first, the part number, and the fresh used quote with its date.
+**Shipping and fees** applies the repair settings per figure.
+A minimum order adjustment has its own line when needed.
+Complete figures show only Complete and Parts; unidentified figures keep their Info note.
+
+**Fetch prices** queues the missing quotes when a BrickLink key and enough daily budget are available.
+The budget line explains why fetching is disabled.
+After fetching, reload to see the comparison; **Retry** handles a failed request.

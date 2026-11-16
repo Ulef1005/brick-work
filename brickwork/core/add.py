@@ -845,7 +845,7 @@ def _add_wish(db, row, receipt, via, actor):
     receipt['wish'] = dict(id=wish_id, created=before is None, before=before, after=after)
 
 
-def confirm(db, rows, *, batch, via=None, actor=None, photo=None, keep_photo=False):
+def confirm(db, rows, *, batch, via=None, actor=None, photo=None, keep_photo=False, find_instructions=False):
     """Write the reviewed rows, one transaction each, and return their receipts (a row already saved under this batch returns its
     saved receipt, so a lost response never doubles a row). A row that fails stops the batch; rows before it stay saved.
     `photo` is the picture a photo-mode Add recognised; it is kept as the new item's own photo only with `keep_photo`."""
@@ -863,7 +863,7 @@ def confirm(db, rows, *, batch, via=None, actor=None, photo=None, keep_photo=Fal
                     result.append(saved)
                     continue
                 try:
-                    result.append(_confirm_row(db, pipeline, row, batch, index, via, actor, photo if keep_photo else None))
+                    result.append(_confirm_row(db, pipeline, row, batch, index, via, actor, photo if keep_photo else None, find_instructions))
                 except Store4Error as error:
                     raise errors.ValidationFailed(str(error)) from None
     finally:
@@ -874,9 +874,11 @@ def confirm(db, rows, *, batch, via=None, actor=None, photo=None, keep_photo=Fal
     return result
 
 
-def _confirm_row(db, pipeline, row, batch, index, via, actor, photo=None):
+def _confirm_row(db, pipeline, row, batch, index, via, actor, photo=None, find_instructions=False):
     receipt = dict(batch=batch, index=index, item_id=row.get('item_id'), kind=row['kind'], where=row['where'], quantity=row['quantity'],
                    copies=[], guards={}, stock=None, wish=None, created_wishlist=None, created_item=None, fetch_job=None, job_id=None, pending=[], photos=[])
+    if find_instructions and row['kind'] == 'set':
+        receipt['find_instructions'] = True
     if row.get('unknown'):
         if row['decision'] == 'fetch':
             job, created = jobs.queue_in(db, 'rebrickable_set', payload=row['number'], via=via, actor=actor)
@@ -922,6 +924,9 @@ def _confirm_row(db, pipeline, row, batch, index, via, actor, photo=None):
 
 
 def _save_receipt(db, receipt, via, actor):
+    if receipt.get('find_instructions') and receipt.get('item_id'):
+        from .instructions import queue_find
+        receipt['instruction_jobs'] = queue_find(db, [receipt['item_id']], via=via, actor=actor)
     event = _event(db, 'add:' + receipt['batch'], 'receipt', None, receipt, via, actor)
     return {**receipt, 'event_id': event}
 
@@ -996,6 +1001,9 @@ def _create_fetched(db, event, receipt, item_id, via, actor):
                 if waiting:
                     made['pending'].append(dict(waiting, copy_id=copy_id))
         made['job_id'] = Pipeline(db).queue_steps(item_id, via=via, actor=actor)
+        if receipt.get('find_instructions'):
+            from .instructions import queue_find
+            made['instruction_jobs'] = queue_find(db, [item_id], via=via, actor=actor)
         _event(db, 'add:' + receipt['batch'], 'fetched', None, made, via, actor)
     except BaseException:
         db.execute('ROLLBACK TO fetched')

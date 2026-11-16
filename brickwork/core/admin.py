@@ -238,7 +238,7 @@ def settings(db):
     from . import part_groups
     from .price_settings import read
     from .candidate_sets import common_max
-    return dict(**read(db), labels_address=values.get('labels_address') or '', part_list_grouping=values.get('part_list_grouping') or 'grouped', part_group_overrides=part_groups.parse_overrides(values.get('part_group_overrides')), retail_country=values.get('retail_country') or 'DE', candidate_sets_common_max=common_max(db),
+    return dict(**read(db), official_download_limit_mb=int(values.get('official_download_limit_mb') or 500), labels_address=values.get('labels_address') or '', part_list_grouping=values.get('part_list_grouping') or 'grouped', part_group_overrides=part_groups.parse_overrides(values.get('part_group_overrides')), retail_country=values.get('retail_country') or 'DE', candidate_sets_common_max=common_max(db),
                 priority=effective_priority(values.get('source_priority')),
                 import_order={k.removeprefix('import_order:'): json.loads(v) for k, v in sorted(values.items())
                               if k.startswith('import_order:') and v},
@@ -348,11 +348,15 @@ def _stored_freshness(db, which=None):
     return {f'{r[0]}/{r[1]}': r[2] for r in rows if which is None or f'{r[0]}/{r[1]}' in which}
 
 
-def save_settings(db, country, priority, freshness, part_list_grouping=None, part_group_overrides=None):
+def save_settings(db, country, priority, freshness, part_list_grouping=None, part_group_overrides=None, official_download_limit_mb=None):
     """Save the retail country, the source order, the freshness rules, the part grouping and the category moves (`part_group_overrides`:
     `{category: group}`; `{}` clears them, None leaves them) from the Settings page; returns the event id (None when nothing
     differs from what is stored). Refused whole on a value that does not fit."""
     from .part_groups import MODES, OVERRIDES_KEY, encode_overrides, parse_overrides
+    if official_download_limit_mb is not None:
+        if not str(official_download_limit_mb).isdecimal() or not 1 <= int(official_download_limit_mb) <= 5000:
+            raise ValueError('Choose an Official download limit from 1 to 5000 MB')
+        official_download_limit_mb = str(int(official_download_limit_mb))
     if part_list_grouping is not None and part_list_grouping not in MODES:
         raise ValueError('Choose grouped, bricklink or none for part_list_grouping')
     moves = None if part_group_overrides is None else encode_overrides(part_group_overrides)     # ValueError on a move that does not fit
@@ -371,11 +375,14 @@ def save_settings(db, country, priority, freshness, part_list_grouping=None, par
             raise ValueError('Freshness days must be zero or more')
         rules[f'{source}/{kind}'] = days
     with transaction(db):
-        stored = _stored_pair(db, ('retail_country', 'source_priority', 'part_list_grouping', OVERRIDES_KEY))
+        stored = _stored_pair(db, ('retail_country', 'source_priority', 'part_list_grouping', OVERRIDES_KEY, 'official_download_limit_mb'))
         wanted = {'retail_country': country, 'source_priority': json.dumps(priority, sort_keys=True)}
         # A value equal to what the screen would show for a setting never stored is not a change.
         shown = {'retail_country': stored['retail_country'] or 'DE',
                  'source_priority': json.dumps(effective_priority(stored['source_priority']), sort_keys=True)}
+        if official_download_limit_mb is not None:
+            wanted['official_download_limit_mb'] = official_download_limit_mb
+            shown['official_download_limit_mb'] = stored['official_download_limit_mb'] or '500'
         if part_list_grouping is not None:
             wanted['part_list_grouping'] = part_list_grouping
             shown['part_list_grouping'] = stored['part_list_grouping'] or 'grouped'
@@ -508,7 +515,7 @@ def count_jobs(db, *, batches=True):
     return db.execute("SELECT count(*) FROM main.job" + ('' if batches else f' WHERE {BATCH_SQL} IS NULL')).fetchone()[0]
 
 
-FETCH_HEADINGS = {'rebrickable_set': 'Rebrickable set', 'bricklink_subsets': 'BrickLink part list', 'reconcile': 'Reconcile with the catalogue'}
+FETCH_HEADINGS = {'instruction_download': 'Download instructions', 'rebrickable_set': 'Rebrickable set', 'bricklink_subsets': 'BrickLink part list', 'reconcile': 'Reconcile with the catalogue'}
 
 
 def jobs(db, limit=300, *, batches=True):
@@ -665,11 +672,11 @@ def instruction_set_of(db, item_id):
     raise ValueError('A PDF belongs to a set · choose a set or a booklet')
 
 
-def attach_instruction(db, root, item_id, label, content, *, undoable=False):
+def attach_instruction(db, root, item_id, label, content, *, undoable=False, limit=20 * 1024 * 1024):
     """`instruction_upload` for a set already named by its id (the form names it by a typed number)."""
     from hashlib import sha256
-    if not content.startswith(b'%PDF-') or len(content) > 20 * 1024 * 1024:
-        raise ValueError('Choose a PDF up to 20 MB')
+    if not content.startswith(b'%PDF') or len(content) > limit:
+        raise ValueError('Choose a PDF within the download limit')
     if not label or len(label) > 120:
         raise ValueError('Enter a label of up to 120 characters')
     relative = Path('data/instructions') / (sha256(content).hexdigest() + '.pdf')

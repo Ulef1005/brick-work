@@ -76,6 +76,8 @@ def make_app(store):
     app = Flask('brick-work-demo', template_folder=str(ROOT / 'templates'), static_folder=str(ROOT / 'static'))
     setup_app(app)
     app.config.update(SECRET_KEY='demo-only', TESTING=True)
+    from .instruction_states import install
+    install(app)
     return app
 
 

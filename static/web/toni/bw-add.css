@@ -106,3 +106,6 @@
 
 /* The link to the added set in a receipt panel (#380). */
 #bw-add .bw-add-open{display:inline-flex;align-items:center;min-height:44px;color:var(--tw-accent-text);font:500 14px var(--tw-font)}
+
+.bw-add-instruction-switch {min-height:64px;border-top:.5px solid var(--tw-divider);padding:8px 0}
+.bw-add-instruction-switch small {display:block;color:var(--tw-text-muted)}

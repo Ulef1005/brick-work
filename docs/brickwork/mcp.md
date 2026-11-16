@@ -81,3 +81,12 @@ The assistant sees what its token can read: your sets, parts, prices, storage lo
 [MCP tools and resources](../developer/mcp-reference.md) lists every read tool, write tool, and resource. The list is generated from the server's own tool table when the docs site is built, so it always matches the release.
 
 A resource is a read-only document an assistant can open by its address, for example `brickwork://summary` or `brickwork://items/bricklink/part/3001`.
+
+### Instruction discovery and downloads
+
+`find_instructions` accepts an ordered `items` list using provider, kind, and key. It queues discovery and returns jobs.
+Poll `get_job` for candidates and sources tried. Official is registered by default but needs a configured page renderer. Until then discovery reports “Official needs a page renderer: not set up”. Rebrickable and Peeron require separately configured adapters.
+`download_instructions` accepts only selected `candidate_ids`. An empty list fails validation.
+Use `retry_job` after a failed download; finished files stay finished. Both tools require write permission.
+
+The API jobs drain pass also runs confirmed instruction downloads on headless installs. Booklet discovery targets the set with its number. UK and GB share region defaults. Kind changes refuse sets with discovery references; merges refuse active downloads. A removed candidate fails its download step with “Candidate was removed”.

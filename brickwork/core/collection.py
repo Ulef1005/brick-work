@@ -755,6 +755,13 @@ def detail(db, item_id, *, colour=None, copy_id=None, stock_id=None, wish_id=Non
     row['photos'] = [dict(r, url=None) for r in db.execute(                   # the file route for an own photo comes with M.8d
         'SELECT * FROM photo WHERE item_id=? AND copy_id IS ? AND stock_id IS ? AND archived_at IS NULL ORDER BY created_at,id',
         (item_id, owner['id'] if owner and owner['entity'] == 'copy' else None, owner['id'] if owner and owner['entity'] == 'stock' else None))]
+    row['instruction_set_id'] = None
+    if row['item_type'] == 'I':
+        from .admin import instruction_set_of
+        try:
+            row['instruction_set_id'] = instruction_set_of(db, item_id)
+        except ValueError:
+            pass
     row['instructions'] = instruction_files(db, [item_id]).get(item_id, [])
     consolidated = {}
     for instance in all_instances:

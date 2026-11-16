@@ -217,7 +217,7 @@ What the 60 read operations (M.11b) and the 67 write operations (M.11c, further 
 
 ### 3.1 Summary
 
-201 operations in all (M.11a 9, M.11b 64, M.11c 71, M.11d 57 by piece); v1 had 179 operations.
+205 operations in all (including instruction discovery and confirmed downloads); v1 had 179 operations.
 
 | Group | Operations | Pieces |
 |---|---|---|
@@ -230,7 +230,7 @@ What the 60 read operations (M.11b) and the 67 write operations (M.11c, further 
 | Copy parts | 5 | M.11b 2, M.11c 3 |
 | Loose stock | 13 | M.11b 3, M.11c 10 |
 | Minifigures | 2 | M.11b 2 |
-| Instructions | 7 | M.11b 3, M.11c 4 |
+| Instructions | 9 | M.11b 3, M.11c 4, M.11d 2 |
 | Prices | 9 | M.11b 5, M.11c 2, M.11d 2 |
 | Wishlist | 16 | M.11b 5, M.11c 11 |
 | Storages | 7 | M.11b 2, M.11c 5 |
@@ -364,6 +364,22 @@ Scope `none` means no token. Every path is relative to `/api/v2`. The **v1** col
 | `GET /minifigures/{id}` | One figure: sets, loose lines, missing, matches, prices. | read | M.11b | `GET /minifigures/{no}` |
 
 #### Instructions
+
+`POST /instruction-files/fetch` accepts `{items: [{id: 15011}], region: "AT"}` and returns a job list with status 202.
+Poll each job with `GET /jobs/{id}`. Its `instruction_search` contains candidates, sources tried, and discovery errors.
+Official is registered by default but needs a configured page renderer. Until then discovery reports “Official needs a page renderer: not set up”. Rebrickable and Peeron require separately configured adapters.
+`POST /instruction-files/download` accepts `{candidate_ids: [1, 2]}` and returns one download job with status 202.
+Only explicitly selected candidate ids are downloaded. Empty selections fail validation.
+Retry failed files through `POST /jobs/{id}/retry`; a numeric step names a single candidate.
+Both operations need write scope and support idempotency keys.
+Assistant tools `find_instructions` and `download_instructions` use these operations.
+The find tool follows the item convention: provider, kind and key, resolved through lookup.
+
+| Operation | Purpose | Scope | Piece | v1 |
+| --- | --- | --- | --- | --- |
+| `POST /instruction-files/fetch` | Find PDF candidates only. | write | M.11d | new |
+| `POST /instruction-files/download` | Queue ticked candidates. | write | M.11d | new |
+
 
 | Operation | What it does | Scope | Piece | v1 |
 |---|---|---|---|---|
@@ -652,6 +668,8 @@ Operations by piece: M.11a 9, M.11b 64, M.11c 71, M.11d 57 (201 in all). The two
 | `POST /api/v2/imports/{id}/apply` | M.11d | `brickwork.api2.sync.post_imports_by_id_apply` |
 | `GET /api/v2/instruction-files` | M.11b | `brickwork.api2.instructions.get_instruction_files` |
 | `POST /api/v2/instruction-files` | M.11c | `brickwork.api2.write_where.post_instruction_files` |
+| `POST /api/v2/instruction-files/download` | M.11d | `brickwork.api2.instructions.post_instruction_files_download` |
+| `POST /api/v2/instruction-files/fetch` | M.11d | `brickwork.api2.instructions.post_instruction_files_fetch` |
 | `DELETE /api/v2/instruction-files/{id}` | M.11c | `brickwork.api2.write_where.delete_instruction_files_by_id` |
 | `GET /api/v2/instruction-files/{id}` | M.11b | `brickwork.api2.instructions.get_instruction_files_by_id` |
 | `PATCH /api/v2/instruction-files/{id}` | M.11c | `brickwork.api2.write_where.patch_instruction_files_by_id` |
@@ -918,3 +936,11 @@ Both downloads and previews use `core.labels`. Codes contain storage URLs, with 
 `GET /items/{id}/supersets?color=<id>` requires a Brick Work colour id. It accepts `type=all|sets|minifigures`, `q`, `sort=newest|oldest|name|number`, `limit` (1–100, default 15), and `offset` (default 0). This bounded lookup uses offset paging like set scores. The envelope carries `data` (item bodies, quantity, owned, copy_id, stock_id, label, storage_name, year, theme, on_wishlist), `color`, `counts` (distinct catalogue sets and minifigures), `owned_count` (filtered owned rows), filtered displayed-row `total`, `limit`, `offset`, `catalogue`, and `colour_unmatched`. Owned copies replace the catalogue row, but remain separate copies. Spare parts are excluded; figures and subsets are expanded. No catalogue means owned holders only. The generated read-only MCP tool is `get_part_supersets`. API v2 now implements 204 operations.
 
 For `get_part_supersets`, the assistant supplies a provider, kind, part number and colour number in that provider’s space. The MCP adapter resolves both item and colour through `/lookup` before calling the item-id route. The REST route itself always takes a Brick Work colour id.
+
+Official instruction downloads use `official_download_limit_mb`, initially 500 MB. Other sources retain 20 MB.
+Discovery reports the renderer setup notice until Official has a rendered page fetcher.
+
+`POST /jobs/drain` runs due fetch, import/discovery, and confirmed instruction download jobs in the request, including on headless installs.
+Booklet instruction discovery resolves the booklet to its set, as PDF upload does.
+
+UK and GB use the same instruction region defaults. Kind changes refuse sets with discovery references; merges refuse active instruction downloads. A removed candidate fails its download step with “Candidate was removed”. Schema 4.5 upgrades the database guards on writable open.

@@ -246,7 +246,13 @@ def jobs_list(failed=False):
 def jobs_retry(job, step=None, progress=None):
     from ..core import source_ops
     from ..core.pipeline import retry
+    from ..core.instructions import Downloads, DOWNLOAD_KIND
     source_ops.register_handlers()
+    from ..core.admin import database
+    with database(brickwork_path()) as db:
+        row = db.execute('SELECT kind FROM main.job WHERE id=?', (job,)).fetchone()
+        if row and row['kind'] == DOWNLOAD_KIND:
+            return Downloads(db).retry(job, step)
     return retry(job, step, path=brickwork_path())
 
 
@@ -502,7 +508,9 @@ def _tools_write(operation, **args):
             row = db.execute('SELECT kind FROM main.job WHERE id=?', (args['job'],)).fetchone()
             if row is not None and row['kind'] in fetch_jobs.KINDS:          # a fetch job runs on store4's runner, as Retry on Add does
                 return fetch_jobs.requeue(db, args['job'])
-            return Pipeline(db).queue_retry(args['job'], args.get('step'))
+            from ..core.instructions import Downloads, DOWNLOAD_KIND
+            runner = Downloads(db) if row and row['kind'] == DOWNLOAD_KIND else Pipeline(db)
+            return runner.queue_retry(args['job'], args.get('step'))
         if operation in ('key_save', 'key_remove', 'key_test', 'key_undo', 'key_test_save'):
             from ..core import errors, keys, source_ops
             if operation != 'key_undo':

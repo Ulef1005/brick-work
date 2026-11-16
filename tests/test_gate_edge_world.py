@@ -66,12 +66,12 @@ def digest(name):
     return hashlib.sha256(repr(sorted((f, sorted(t.items())) for f, t in prints.items())).encode()).hexdigest()
 
 
-# Refreshed for schema 4.3 (#31): permanent storage short ids and their counter are now part of each older world.
-# Their source collection data is unchanged; only the new edge states add label bins.
+# Refreshed for schema 4.5 (#25): the 4.5 step adds only triggers; only the schema version row and the two empty instruction tables differ from 4.3.
+# Verified against the previous fingerprints after removing those empty tables and restoring the version to 4.3.
 BEFORE = {
-    'demo': '383579f01583ce8b5c91b03b234bc95f2ec9880de88e4663c49292c8410d372c',
-    'showcase': '46fa931fbe8279de404758d246e3efe1c297379a3da7852506cc16fe86aa7476',
-    'extras': 'd08346a28aabb543af149b4dc9170fe434dd412a85d0911d3b2d1f067f1b017a',
+    'demo': '6be1038389dce9a9a76b2a55ccb8a0f742dfd246aaa30af099b6a0b9928357f8',
+    'showcase': '4e2667e8b0924c0fd5da4c273bf67fb32f379efb9238f63d172a58764269924a',
+    'extras': 'abc1ded02974f920d797c2054a6d371e59a1ea1fce82573b17f23a97a90ddce6',
 }
 
 
@@ -256,7 +256,7 @@ def test_the_new_states_are_built_in_a_known_world():
 
 def test_only_the_new_states_use_an_edge_world():
     """No state approved before the edge worlds existed was moved into one: its baseline would then depend on the edge data."""
-    assert {(e['screen'], e['state']) for e in gate.load()['states'] if e.get('world', '').startswith('edge')} <= NEW | VALUE | SOURCE | FIGURES | LABELS
+    assert {(e['screen'], e['state']) for e in gate.load()['states'] if e.get('world', '').startswith('edge')} <= NEW | VALUE | SOURCE | FIGURES | LABELS | {('48-Tools-and-admin', 'find-instructions-read-only')}
 
 
 def test_the_state_left_unbuilt_says_what_is_missing():

@@ -515,9 +515,9 @@ def test_49e_instruction_files_list_every_booklet_identity(client, coll, pair):
     # w22, w23: no breadcrumb row and no helper paragraph.
     assert not soup.select('nav.breadcrumb, .breadcrumb')
     assert 'Coverage counts recorded booklet identities' not in html
-    # w25, w26: Fetch missing above Upload a PDF; summary restyled past the disclosure chevron rules.
+    # Find instructions above Upload a PDF; summary restyled past the disclosure chevron rules.
     actions = soup.select_one('.bw-instructions-actions')
-    assert [e.get_text() for e in actions.select('button.bw-instructions-fetch, summary')] == ['Fetch missing', 'Upload a PDF']
+    assert [e.get_text() for e in actions.select('a.bw-instructions-fetch, summary')] == ['Find instructions', 'Upload a PDF']
     assert not actions.select('summary.button')
 
 
@@ -590,7 +590,10 @@ def test_49e_fetch_missing_refused_when_read_only(app4, client, coll, pair):
 def test_49e_zero_booklets_shows_no_fetch_button_and_search_finds_fallback_name(client, coll, pair):
     soup = soup_of(client)
     assert soup.select_one('.bw-page-head h1').get_text() == '0 of 0 booklets have a PDF'
-    assert not soup.select('.bw-instructions-fetch')
+    assert not soup.select('button.bw-instructions-fetch')
+    link = soup.select_one('a.bw-instructions-fetch')
+    assert link.get_text() == 'Find instructions'
+    assert link['href'] == '/manage/instructions/find'
     coll.sql("""INSERT INTO item(id,origin,kind,kind_source,name,born_provider,born_namespace,born_key,created_at,updated_at)
                 VALUES(1000000900,'local','instructions','bricklink','','bricklink','I','nameless','2026-10-26T00:00:00.000Z','2026-10-26T00:00:00.000Z')""")
     row = soup_of(client).select_one('.bw-booklet')

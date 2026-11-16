@@ -398,3 +398,28 @@ def test_a_job_in_flight_holds_back_a_merge_an_unmerge_and_a_kind_move(coll, wor
             moves.move_kind(db, world.mystery, 'book', via='app')
     else:
         moves.move_kind(db, world.mystery, 'book', via='app')
+
+
+def test_instruction_searches_and_candidates_merge_and_unmerge(coll, world):
+    db = coll.db
+    loser = coll.local('set', 'Local set', born_key='instructions-1')
+    survivor = world.gate
+    for item in (loser, survivor):
+        job = coll.sql("INSERT INTO job(source,kind,item_id,state,via,created_at,updated_at) VALUES('import','instruction_search',?,'done','app',?,?)",
+                       (item, STAMP, STAMP)).lastrowid
+        coll.sql('INSERT INTO instruction_search(job_id,item_id,updated_at) VALUES(?,?,?)', (job, item, STAMP))
+        urls = ('shared', 'unique') if item == loser else ('shared',)
+        for url in urls:
+            coll.sql("INSERT INTO instruction_candidate(item_id,search_job,source,title,booklet,booklets,url) VALUES(?,?,'import','Booklet',1,1,?)",
+                     (item, job, url))
+    held = db.execute('SELECT id FROM instruction_candidate WHERE item_id=?', (survivor,)).fetchone()[0]
+    before = table_digest(db)
+    result = moves.merge(db, loser, survivor, via='cli')
+    assert count(db, 'instruction_search', item_id=loser) == 0
+    assert count(db, 'instruction_search', item_id=survivor) == 2
+    assert count(db, 'instruction_candidate', item_id=loser) == 0
+    assert [(r['url'], r['item_id']) for r in db.execute('SELECT * FROM instruction_candidate ORDER BY url')] == [('shared', survivor), ('unique', survivor)]
+    assert db.execute("SELECT id FROM instruction_candidate WHERE url='shared'").fetchone()[0] == held
+    assert db.execute('PRAGMA foreign_key_check').fetchall() == []
+    moves.unmerge(db, result['merge_id'], via='cli')
+    assert table_digest(db) == before

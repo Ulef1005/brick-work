@@ -902,3 +902,22 @@ Also tested: the fixed colour ids (C1, L0); the born-key uniqueness and namespac
 - (a) As decided: always switch automatically; the copy page shows "N marks could not be carried over" with the list after the switch.
 - (b) Switch automatically while no line of the copy has been checked or marked. Once any has, the copy shows "BrickLink's list has arrived: switch now?" and the user decides.
 - **Recommendation: (b).** It keeps F's behaviour in the common case and avoids losing marks silently in the rare one. It costs one state on the copy page, and the schema already supports it (the pending columns stay set until the user answers).
+
+
+### Instruction discovery, schema 4.4
+
+`instruction_search` records each find job, its set, sources tried and any error. Empty searches remain visible.
+`instruction_candidate` records the source, title, booklet sequence, language, region, optional byte size and PDF URL.
+Candidates refer to item ids. Their optional `file_id` names an attached download. Discovery never stores PDF content.
+The additive upgrade from schema 4.3 creates both tables. Fresh collections use the same definitions.
+
+Both candidate tables guard set references against merged identities and other item kinds. Every foreign key has a supporting index.
+
+Existing demo worlds gain only the schema version and two empty tables. Their collection rows remain unchanged.
+
+The optional `instructions` pipeline step records discovery without downloading files. Its job payload remembers the region for that search.
+The registry includes Official, marked unavailable until a rendered page fetcher is configured. Other adapters remain injectable.
+Official candidates store the page locale as their region. Source records are added during a successful lookup.
+Download jobs use kind `instruction_download`. Their step names are candidate ids, with one persistent result per file.
+Retry keeps finished steps and requeues failed ones. `file_id` prevents offering an attached candidate again.
+Content hashes deduplicate stored bytes through the existing upload writer. Separate set associations remain separate file records.

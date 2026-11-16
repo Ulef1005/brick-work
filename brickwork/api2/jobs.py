@@ -28,10 +28,19 @@ def job_bodies(db, rows):
     owners = {o['job_id']: (o['pid'], o['boot_id'], o['start_ticks']) for o in db.execute('SELECT job_id, pid, boot_id, start_ticks FROM main.job_owner WHERE job_id IN (SELECT value FROM json_each(?))', (packed,))}
     path = db.execute('PRAGMA database_list').fetchone()['file']
     book = bodies(db, items=[r['item_id'] for r in rows if r['item_id'] is not None])
-    return [{'id': r['id'], 'source': r['source'], 'kind': r['kind'], 'item': book.item(r['item_id']) if r['item_id'] is not None else None,
+    result = [{'id': r['id'], 'source': r['source'], 'kind': r['kind'], 'item': book.item(r['item_id']) if r['item_id'] is not None else None,
              'state': r['state'], 'attempts': r['attempts'], 'retry_at': r['retry_at'], 'error': r['error'], 'created_at': r['created_at'],
              'updated_at': r['updated_at'], 'steps': steps.get(r['id'], []),
              'interrupted': r['state'] == 'running' and not pipeline.owner_pid_alive(*owners.get(r['id'], (None, None, None)), path=path, job=r['id'])} for r in rows]
+
+    from ..core.instructions import candidates
+    searches = {g['job_id']: g for g in candidates(db, ids)}
+    for job in result:
+        if job['id'] in searches:
+            group = searches[job['id']]
+            job['instruction_search'] = {k: group[k] for k in ('job_id', 'item_id', 'sources_tried', 'error', 'candidates')}
+            job['instruction_search']['candidates'] = [{k: v for k, v in c.items() if k != 'search_job'} for c in group['candidates']]
+    return result
 
 
 def job_body(db, identifier):
@@ -85,7 +94,7 @@ def get_jobs_by_id(db, id):
 # ---------- writes ----------
 
 def pipeline_job(db, identifier):
-    row = db.execute('SELECT id FROM main.job WHERE id=? AND kind=?', (integer_id(identifier, 'job'), pipeline.KIND)).fetchone()
+    row = db.execute('SELECT id FROM main.job WHERE id=? AND kind IN (?,?)', (integer_id(identifier, 'job'), pipeline.KIND, 'instruction_download')).fetchone()
     if row is None:
         raise errors.NotFound('No such job')
     return row['id']
@@ -96,7 +105,7 @@ def pipeline_job(db, identifier):
 def post_jobs_by_id_retry(db, body, id):
     """Queue the failed steps again (all, or one); the worker is woken after the commit."""
     identifier, step = pipeline_job(db, id), body.get('step')
-    if step is not None and step not in pipeline.STEPS:
+    if step is not None and step not in pipeline.STEPS + pipeline.OPTIONAL_STEPS and not step.isdecimal():
         raise errors.ValidationFailed('Unknown step')
     job = job_body(db, identifier)
     if step is not None and step not in {s['name'] for s in job['steps']}:
@@ -105,7 +114,9 @@ def post_jobs_by_id_retry(db, body, id):
         raise errors.Conflict('Job is running')
     if not any(s['state'] == 'failed' and (step is None or s['name'] == step) for s in job['steps']):
         raise errors.Conflict('No failed step to retry')
-    Pipeline(db).queue_retry(identifier, step)
+    from ..core.instructions import Downloads, DOWNLOAD_KIND
+    runner = Downloads(db) if job['kind'] == DOWNLOAD_KIND else Pipeline(db)
+    runner.queue_retry(identifier, step)
     admin.audit(db, 'job:' + str(identifier), 'retry', new={'step': step})
     return queued(db, identifier)
 
@@ -130,7 +141,8 @@ def post_jobs_drain(db, body):
     """Run the jobs that are due in this request (the pass the worker makes)."""
     from ..core.transaction import transaction
     source_ops.register_handlers()
-    ran = fetch_jobs.drain(db) + Pipeline(db).drain(100)
+    from ..core.instructions import Downloads
+    ran = fetch_jobs.drain(db) + Pipeline(db).drain(100) + Downloads(db).drain()
     identifiers = [r['id'] for r in ran if 'id' in r]
     with transaction(db):
         admin.audit(db, 'jobs', 'drained', new={'jobs': identifiers})

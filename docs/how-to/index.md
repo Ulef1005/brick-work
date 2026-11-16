@@ -47,3 +47,5 @@ One task per page, for someone who already knows the app.
 - [Back up and restore](back-up-and-restore.md)
 - [Upgrade Brick Work](upgrade.md)
 - [Connect an assistant](connect-an-assistant.md)
+
+Find and download PDFs in [Find and download instructions](add-a-box-or-instructions.md#find-and-download-instructions).

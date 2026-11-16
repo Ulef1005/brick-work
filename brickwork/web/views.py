@@ -336,7 +336,8 @@ def bw_admin_write(page):
             elif request.form.get('edit_grouping'):
                 moves = {k.removeprefix('group_of:'): v for k, v in request.form.items() if k.startswith('group_of:')}
             saved = admin_ops.tools_write('settings', country=request.form['retail_country'], priority=priority, freshness=freshness,
-                                          part_list_grouping=request.form.get('part_list_grouping'), part_group_overrides=moves)
+                                          part_list_grouping=request.form.get('part_list_grouping'), part_group_overrides=moves,
+                                          official_download_limit_mb=request.form.get('official_download_limit_mb'))
         elif page == 'refresh':
             admin_ops.tools_write('refresh')
             bw_start_worker()
@@ -357,7 +358,7 @@ def bw_admin_write(page):
                 abort(403, 'Changes are switched off on this instance')
             job = int(request.form['job'])
             step = request.form.get('step') or None
-            if step is not None and step not in STEPS and step != 'fetch':
+            if step is not None and step not in STEPS + ('instructions',) and step != 'fetch' and not step.isdecimal():
                 raise ValueError('Unknown step')
             # Queue Retry for the same worker used by refresh, without blocking the request.
             if request.form.get('action') == 'resume':
@@ -822,11 +823,13 @@ def bw_add():
                 error = str(exc)
     except (ValueError, sqlite3.Error, OSError):
         error = 'Brick Work database is not available. Check BW_DB_PATH and try again.'
-    from ..core import items
+    from ..core import items, instruction_sources
     asked = request.args.get('type', '')
     asked = items.TYPE_KIND.get(asked, asked) if len(asked) == 1 else asked          # old links carry the BrickLink letter
     response = current_app.make_response(render_template('web/toni/web/bw_add.html', initial_kind=asked if asked in add.KIND_NAMES else 'set',
-        kinds=add.KIND_NAMES, colours=colours, wishlists=lists, error=error, csrf_token=bw_add_token()))
+        kinds=add.KIND_NAMES, colours=colours, wishlists=lists, error=error, csrf_token=bw_add_token(),
+        instruction_sources_ready=any(getattr(a, 'unavailable', None) is None for a in instruction_sources.registry.adapters.values()),
+        instruction_source_reason=' · '.join(a.unavailable for a in instruction_sources.registry.adapters.values() if getattr(a, 'unavailable', None)) or 'No instruction source is set up yet'))
     response.headers['Cache-Control'] = 'no-store'
     return response
 
@@ -952,7 +955,7 @@ def _add_receipt_url(receipt):
 
 def _add_receipt_view(receipt):
     """What the page needs of a receipt: no row snapshots."""
-    keys = ('batch', 'index', 'item_id', 'kind', 'where', 'quantity', 'name', 'label', 'copies', 'job_id', 'fetch_job', 'pending', 'event_id')
+    keys = ('batch', 'index', 'item_id', 'kind', 'where', 'quantity', 'name', 'label', 'copies', 'job_id', 'fetch_job', 'pending', 'event_id', 'instruction_jobs', 'find_instructions')
     view = {k: receipt.get(k) for k in keys}
     view['url'] = _add_receipt_url(receipt)
     view['stock'] = (receipt.get('stock') or {}).get('id')
@@ -983,7 +986,7 @@ def bw_add_confirm():
         with _add_database() as db, audit_origin('app'):
             rows = add.validate_edits(db, original, data.get('items'), batch=proposal['batch'])
             receipts = add.confirm(db, rows, batch=proposal['batch'], photo=base64.b64decode(proposal['photo']) if proposal.get('photo') else None,
-                                   keep_photo=data.get('keep_photo') is True)
+                                   keep_photo=data.get('keep_photo') is True, find_instructions=data.get('find_instructions') is True)
         if receipts:
             bw_start_worker()
         return jsonify(receipts=[_add_receipt_view(r) for r in receipts], batch=proposal['batch'])
@@ -1064,7 +1067,9 @@ def bw_add_retry(job):
             if row is not None and row['kind'] in fetch_jobs.KINDS:      # a fetch job of store4's runner (Fetch from Rebrickable)
                 fetch_jobs.requeue(db, job)
             else:
-                Pipeline(db).queue_retry(job, data.get('step'))
+                from ..core.instructions import Downloads, DOWNLOAD_KIND
+                runner = Downloads(db) if row and row['kind'] == DOWNLOAD_KIND else Pipeline(db)
+                runner.queue_retry(job, data.get('step'))
         bw_start_worker()
         return jsonify(message='Queued')
     except ValueError:
@@ -2710,3 +2715,119 @@ def bw_item_supersets(item_id):
         return response
     except (ValueError, KeyError, errors.BrickWorkError):
         abort(400, 'Choose a valid colour, type, sort and page.')
+
+
+@web_page.get('/manage/instructions/find')
+@login_required
+def bw_instruction_find():
+    from ..core import instructions, instruction_sources
+    with _add_database(read_only=True) as db:
+        region = instructions.region_for(db)
+        groups = instructions.candidates(db, _instruction_ids(request.args.get('jobs', '')))
+        official_limit = instructions.download_limit(db, 'official')
+    return render_template('web/toni/web/bw_instruction_find.html', csrf_token=bw_add_token(),
+                           can_edit=bw_collection_editable(), region=region, groups=groups,
+                           configured=bool(instruction_sources.registry.adapters), official_limit=official_limit,
+                           source_notices=[a.unavailable for a in instruction_sources.registry.adapters.values() if getattr(a, 'unavailable', None)],
+                           initial_item=request.args.get('item', ''), initial_jobs=request.args.get('jobs', ''))
+
+
+def _instruction_ids(value):
+    values = value.split(',') if isinstance(value, str) else value
+    if not isinstance(values, list) or len(values) > 50:
+        raise ValueError('Choose up to 50 files or sets')
+    if any(type(v) not in (int, str) or not str(v).isdecimal() or int(v) <= 0 for v in values if v != ''):
+        raise ValueError('Choose valid files or sets')
+    return [int(v) for v in values if v != '']
+
+
+@web_page.get('/manage/instructions/find/status')
+@login_required
+def bw_instruction_status():
+    from ..core import instructions
+    try:
+        with _add_database(read_only=True) as db:
+            groups = instructions.candidates(db, _instruction_ids(request.args.get('jobs', '')))
+            download = request.args.get('download')
+            runner = instructions.Downloads(db)
+            status = runner.status(int(download)) if download else None
+            if status is not None:
+                status['owner_alive'] = runner.owner_alive(int(download))
+        return jsonify(groups=groups, download=status)
+    except (ValueError, TypeError):
+        abort(400, 'Choose a valid instruction job')
+
+
+@web_page.post('/manage/instructions/find')
+@login_required
+def bw_instruction_find_write():
+    from ..core import instructions, admin
+    from ..store4.errors import NotInCatalogue
+    from ..core.sources.base import audit_origin
+    from ..core.transaction import transaction
+    data = request.get_json(silent=True) or {}
+    bw_add_csrf(data)
+    try:
+        with _add_database() as db, audit_origin('app'), transaction(db):
+            action = data.get('action', 'find')
+            if action == 'cancel':
+                ids = _instruction_ids(data.get('job_ids', []))
+                if len(ids) != 1:
+                    raise ValueError('Choose one job')
+                instructions.Downloads(db).cancel(ids[0])
+                result = dict(download=ids[0])
+            elif action == 'download':
+                job = instructions.queue_download(db, _instruction_ids(data.get('candidate_ids', [])))
+                result = dict(download=job)
+            elif action == 'find':
+                if data.get('item_ids'):
+                    ids = _instruction_ids(data['item_ids'])
+                elif data.get('mode') == 'numbers':
+                    numbers = list(dict.fromkeys(re.split(r'[\s,]+', str(data.get('numbers', '')).strip())))
+                    ids = [admin.instruction_target(db, 'S', no) for no in numbers if no]
+                else:
+                    ids = [r[0] for r in db.execute('''SELECT DISTINCT c.item_id FROM main.copy c JOIN main.item i ON i.id=c.item_id
+                        WHERE c.archived_at IS NULL AND i.kind='set' AND i.merged_into IS NULL AND NOT EXISTS
+                        (SELECT 1 FROM main.instruction_file f WHERE f.item_id=c.item_id AND f.archived_at IS NULL) ORDER BY c.item_id''')]
+                if not ids:
+                    return jsonify(jobs=[], message='Every set has instructions')
+                region = str(data.get('region') or instructions.region_for(db))
+                if not 2 <= len(region) <= 32:
+                    raise ValueError('Choose a region')
+                total = len(ids)
+                all_missing = not data.get('item_ids') and data.get('mode') != 'numbers'
+                selected = ids[:instructions.CAP] if all_missing else ids
+                result = dict(jobs=instructions.queue_find(db, selected, region=region))
+                if all_missing and total > len(selected):
+                    result['message'] = f'{len(selected)} of {total} sets queued, run it again for the rest ({total - len(selected)} remaining)'
+            else:
+                raise ValueError('Choose an instruction action')
+        bw_start_worker()
+        return jsonify(result), 202
+    except (ValueError, TypeError, NotInCatalogue):
+        return jsonify(error='Could not queue instructions · check your selection and try again'), 400
+
+
+@web_page.get('/manage/instructions/find/added')
+@login_required
+def bw_instruction_added():
+    from ..core import instructions, add
+    batch = request.args.get('batch', '')[:100]
+    with _add_database(read_only=True) as db:
+        ids, pending = [], False
+        for row in db.execute("SELECT field,new_value FROM main.event WHERE entity_kind='add' AND entity_id=? AND field IN ('receipt','fetched')", (batch,)):
+            value = json.loads(row['new_value'])
+            ids.extend(value.get('instruction_jobs', []))
+            if value.get('find_instructions') and value.get('fetch_job'):
+                outcome = add.fetch_outcome(db, value['fetch_job'])
+                pending = pending or bool(outcome and outcome['state'] in ('waiting', 'unsettled'))
+        ids = list(dict.fromkeys(ids))
+        groups = instructions.candidates(db, ids)
+        pending = pending or any(g['state'] in ('queued', 'running', 'waiting_for_budget') for g in groups)
+        count = sum(len(g['candidates']) for g in groups)
+        message = 'Looking for instruction files' if pending else f'{count} instruction files found' if count else 'No instruction files found'
+        if not pending and not count:
+            errors = list(dict.fromkeys(g['error'] for g in groups if g['error']))
+            if errors:
+                message = ' · '.join(errors)
+    return jsonify(jobs=ids, pending=pending, message=message)

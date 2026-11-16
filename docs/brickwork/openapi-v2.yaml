@@ -117,6 +117,93 @@ x-mcp:
     up with GET /lookup before the call; a 404 or 409 ambiguous from the lookup is the tool's error. A schema marked x-mcp-item key is an ItemKey; the
     tool takes it as provider, kind and key, never as id.
 paths:
+  /instruction-files/fetch:
+    post:
+      operationId: post_instruction_files_fetch
+      summary: Find candidate PDFs without downloading.
+      tags:
+      - Instructions
+      security:
+      - bearerAuth:
+        - write
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InstructionFind'
+      responses:
+        '202':
+          description: Accepted. The job runs in the background; poll GET /jobs/{id}.
+          headers:
+            Location:
+              description: Poll this job.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WrittenJobList'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Invalid'
+        '424':
+          $ref: '#/components/responses/DependencyFailed'
+        '429':
+          $ref: '#/components/responses/BudgetExhausted'
+        default:
+          $ref: '#/components/responses/Problem'
+      x-piece: M.11d
+      x-mcp-tool: find_instructions
+  /instruction-files/download:
+    post:
+      operationId: post_instruction_files_download
+      summary: Download only confirmed candidate ids.
+      description: Official uses its separate configured file limit, initially 500 MB. Other sources retain 20 MB.
+      tags:
+      - Instructions
+      security:
+      - bearerAuth:
+        - write
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InstructionDownload'
+      responses:
+        '202':
+          description: Accepted. The job runs in the background; poll GET /jobs/{id}.
+          headers:
+            Location:
+              description: Poll this job.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WrittenJob'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Invalid'
+        '424':
+          $ref: '#/components/responses/DependencyFailed'
+        '429':
+          $ref: '#/components/responses/BudgetExhausted'
+        default:
+          $ref: '#/components/responses/Problem'
+      x-piece: M.11d
+      x-mcp-tool: download_instructions
   /wishlists:
     get:
       operationId: get_wishlists
@@ -4952,6 +5039,7 @@ paths:
     post:
       operationId: post_jobs_drain
       summary: Run one drain of due jobs in the request.
+      description: Includes due fetch, import/discovery and confirmed instruction download jobs.
       tags:
       - Jobs
       security:
@@ -7454,6 +7542,109 @@ components:
           schema:
             $ref: '#/components/schemas/Problem'
   schemas:
+    InstructionFind:
+      type: object
+      additionalProperties: false
+      required:
+      - items
+      properties:
+        items:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/ItemKey'
+        region:
+          type: string
+          minLength: 2
+          maxLength: 32
+    InstructionDownload:
+      type: object
+      additionalProperties: false
+      required:
+      - candidate_ids
+      properties:
+        candidate_ids:
+          type: array
+          minItems: 1
+          maxItems: 50
+          uniqueItems: true
+          items:
+            type: integer
+            minimum: 1
+    InstructionSearch:
+      type: object
+      description: >-
+        Discovery result including ordered candidates, sources tried and any
+        source failure. Official is registered by default but needs a page renderer; until configured it reports "Official needs a page renderer: not set up".
+      required:
+      - job_id
+      - item_id
+      - sources_tried
+      - candidates
+      - error
+      properties:
+        job_id:
+          type: integer
+        item_id:
+          type: integer
+        sources_tried:
+          type: array
+          items:
+            type: string
+        error:
+          type:
+          - string
+          - 'null'
+        candidates:
+          type: array
+          items:
+            $ref: '#/components/schemas/InstructionCandidate'
+    InstructionCandidate:
+      type: object
+      required:
+      - id
+      - item_id
+      - source
+      - title
+      - booklet
+      - booklets
+      - language
+      - region
+      - size
+      - url
+      - file_id
+      properties:
+        id:
+          type: integer
+        item_id:
+          type: integer
+        booklet:
+          type: integer
+        booklets:
+          type: integer
+        source:
+          type: string
+        title:
+          type: string
+        url:
+          type: string
+        language:
+          type:
+          - string
+          - 'null'
+        region:
+          type:
+          - string
+          - 'null'
+        size:
+          type:
+          - integer
+          - 'null'
+        file_id:
+          type:
+          - integer
+          - 'null'
     FieldError:
       type: object
       properties:
@@ -10119,6 +10310,8 @@ components:
     Job:
       type: object
       properties:
+        instruction_search:
+          $ref: '#/components/schemas/InstructionSearch'
         id:
           type: integer
         source:

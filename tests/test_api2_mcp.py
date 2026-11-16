@@ -50,7 +50,7 @@ def test_the_tool_surface_is_generated_from_the_v2_contract():
     marked = {op['x-mcp-tool']: (method.upper(), path) for path, methods in CONTRACT['paths'].items()
               for method, op in methods.items() if isinstance(op, dict) and 'x-mcp-tool' in op}
     assert {n: (m, p) for n, (m, p, _) in DEFINITIONS.items()} == marked
-    assert len(READS) + len(WRITES) == 77
+    assert len(READS) + len(WRITES) == 79
     for name, (method, path, op) in DEFINITIONS.items():
         assert op['security'] == [{'bearerAuth': ['read' if method == 'GET' else 'write']}], name   # admin work is never a tool
         assert op['summary'], name
@@ -279,6 +279,8 @@ def write_arguments(w, pair, v2):
     gone = write(v2, '/wishlists', body={'name': 'Gone'}).json['data']['id']
     write(v2, f'/wishlists/{gone}', 'delete')
     return {
+        'find_instructions': {'items': [{'provider': 'rebrickable', 'kind': 'set', 'key': '1000-1'}]},
+        'download_instructions': {'candidate_ids': [999999]},
         'create_wishlist': {'name': 'Synthetic wishlist'}, 'edit_wishlist': {'id': extra, 'name': 'Synthetic renamed'},
         'archive_wishlist': {'id': extra}, 'restore_wishlist': {'id': gone},
         'transfer_wishes': {'id': extra, 'ids': [w.wish_part]},
@@ -309,7 +311,7 @@ def write_arguments(w, pair, v2):
 
 # What the API itself answers for the writes whose set-up is another module's business (a connected source, a failed job, an event with no Undo):
 # a problem with its own code, never a gate, a placeholder or a crash. The writes are tested for real in tests/test_api2_write_*.py.
-API_REFUSALS = {'plan_sync_pull': 'source_not_configured', 'plan_sync_send': 'source_not_configured', 'apply_sync_pull': 'validation_failed',
+API_REFUSALS = {'download_instructions': 'validation_failed', 'plan_sync_pull': 'source_not_configured', 'plan_sync_send': 'source_not_configured', 'apply_sync_pull': 'validation_failed',
                 'retry_job': 'not_found', 'undo_event': 'not_undoable', 'confirm_sticker': 'conflict'}
 
 

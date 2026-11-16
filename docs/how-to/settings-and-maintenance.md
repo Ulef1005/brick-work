@@ -96,7 +96,7 @@ A bulk action (**Bulk refresh prices**, **Refresh pictures**, fetching missing b
 
 ## Instruction files
 
-A PDF is attached to a **set**; a booklet shows the files of the set with its number. **Upload a PDF** takes a set number (or a booklet's number, which names the same set) and a label. **Fetch missing** only refreshes the identity of booklets that have no PDF and downloads nothing.
+A PDF is attached to a **set**; a booklet shows the files of the set with its number. **Upload a PDF** takes a set number (or a booklet's number, which names the same set) and a label. **Find instructions** opens candidate discovery and downloads nothing until you confirm ticked files. No instruction source is set up yet. See [Find and download instructions](add-a-box-or-instructions.md#find-and-download-instructions).
 
 ## Database
 
@@ -111,3 +111,8 @@ A PDF is attached to a **set**; a booklet shows the files of the set with its nu
 - [Undo a change](undo-a-change.md) for what can be taken back.
 - [Pictures, prices and where they come from](pictures-and-prices.md) for the sources behind the settings.
 - [Commands](../reference/cli.md) for `brickwork settings`, `brickwork catalogue` and `brickwork check`.
+
+## Instruction download limit
+
+**Settings → Instruction downloads** controls the Official file limit, initially 500 MB. Values range from 1 to 5000 MB.
+Uploads and other instruction sources retain their 20 MB limit.

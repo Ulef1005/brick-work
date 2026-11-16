@@ -5,7 +5,7 @@ verified: 1.0
 
 # Set scoring
 
-*Unreleased (#199).* For developers. Set scoring ranks the catalogue's sets by how much of a pile of loose parts each one explains. It is one read-only engine that features build on (finding the sets in a lot, Buildable sets); it writes nothing. The code is `brickwork/core/set_scoring.py`.
+*Since 1.1.0 (#199).* For developers. Set scoring ranks the catalogue's sets by how much of a pile of loose parts each one explains. It is one read-only engine that features build on (finding the sets in a lot, Buildable sets); it writes nothing. The code is `brickwork/core/set_scoring.py`.
 
 ## What goes in
 
@@ -120,7 +120,7 @@ The target is under 10 s for such a pile on the machine that serves the app, col
 
 ## Build Scout
 
-*Unreleased (#9).* Build Scout (`brickwork/core/build_scout.py`) answers a different question from the ranking above: not which set a pile came from, but how much of each set the pile already makes. It reads the same catalogue through the same code (`load_rows`, `build_index`), as two indexes built once per catalogue build and process. They are the **parts** index (a set's own parts, sub-sets expanded, spares left out) and the **figures** index (whole figures only, sub-sets expanded). The rarity weight plays no part. ADR 0027 records the definitions.
+*Since 1.1.0 (#9).* Build Scout (`brickwork/core/build_scout.py`) answers a different question from the ranking above: not which set a pile came from, but how much of each set the pile already makes. It reads the same catalogue through the same code (`load_rows`, `build_index`), as two indexes built once per catalogue build and process. They are the **parts** index (a set's own parts, sub-sets expanded, spares left out) and the **figures** index (whole figures only, sub-sets expanded). The rarity weight plays no part. ADR 0027 records the definitions.
 
 | Field | Value |
 |---|---|
@@ -153,7 +153,7 @@ A set with no part line of its own, only whole figures (a figure pack), is not i
 
 ## Pull list
 
-*Unreleased (#202).* The pull list of a candidate set (`brickwork/core/pull_list.py`) is not a score. It reads the set's lines as Build Scout does (own parts with sub-sets expanded, spares left out, whole figures as lines) and compares them with one lot. Per line, `need` is what the set has, and `held` what the lot can give (damaged rows give nothing, capped at `need`). `found` is `held` plus the pieces ticked in the bulk and not filed yet. The ticks are one setting row `pull:<lot id>:<set item id>` (ADR 0029); each is clamped to what the line still lacks. The three numbers of the confirm are `moves` = the sum of `found`, `missing` = the sum of `need` minus `moves`, and `stays` = the pieces the lot holds, plus the ticked ones, minus `moves`. Make it a copy files the ticked pieces in the lot and moves `min(have, need)` per line with `found_copy.make_copy_in`, one event. See [Pull a set out of a lot](../how-to/pull-a-set-out-of-a-lot.md).
+*Since 1.1.0 (#202).* The pull list of a candidate set (`brickwork/core/pull_list.py`) is not a score. It reads the set's lines as Build Scout does (own parts with sub-sets expanded, spares left out, whole figures as lines) and compares them with one lot. Per line, `need` is what the set has, and `held` what the lot can give (damaged rows give nothing, capped at `need`). `found` is `held` plus the pieces ticked in the bulk and not filed yet. The ticks are one setting row `pull:<lot id>:<set item id>` (ADR 0029); each is clamped to what the line still lacks. The three numbers of the confirm are `moves` = the sum of `found`, `missing` = the sum of `need` minus `moves`, and `stays` = the pieces the lot holds, plus the ticked ones, minus `moves`. Make it a copy files the ticked pieces in the lot and moves `min(have, need)` per line with `found_copy.make_copy_in`, one event. See [Pull a set out of a lot](../how-to/pull-a-set-out-of-a-lot.md).
 
 ## Find containers for one part
 

@@ -31,7 +31,7 @@ One task per page, for someone who already knows the app.
 - [Know where things are](storage.md)
 - [Pictures, prices and where they come from](pictures-and-prices.md)
 - [Make an insurance report](insurance-report.md)
-- [Links and the preferred number](links-and-preferred-numbers.md)
+- [See an item's links and choose the preferred number](links-and-preferred-numbers.md)
 - [Resolve unresolved items and merge items](merge-items.md)
 - [Change an item's variant](change-variant.md)
 - [Bring your collection in from another app](migrate.md)

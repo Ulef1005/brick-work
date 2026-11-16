@@ -1,24 +1,24 @@
 ---
 audience: developer
-verified: 0.5
+verified: 1.0
 ---
 
 # Collection sync with Rebrickable and Brickset
 
-Issue #10, backend; on the 4.0 store since M.8j (issue #110). Owned sets and wanted sets only; loose parts, minifigures, missing parts, BrickLink, two-way merge and scheduled sync are out of scope. Code: `brickwork/core/sync/` (service) and `brickwork/core/sync/adapters.py` (remote calls). The API v1 routes named below answer 410 on the 4.0 line until API v2 (M.11); the screens (Tools & Admin → Collection sync) and `brickwork sync` run the same service.
+Issue #10, backend; on the 4.0 store since M.8j (issue #110). Owned sets and wanted sets only; loose parts, minifigures, missing parts, BrickLink, two-way merge and scheduled sync are out of scope. Code: `brickwork/core/sync/` (service) and `brickwork/core/sync/adapters.py` (remote calls). The routes named below are API v2 (`brickwork/api2/`); API v1 is retired and answers 410, except `/api/v2/health`. The screens (Tools & Admin → Collection sync) and `brickwork sync` run the same service.
 
 ## Credentials
 
 Both sites need their API key (Catalogues & keys) and a per-user credential:
 
-- **Connect** (`POST /api/v1/sources/{source}/user/connect`, `brickwork sync <source> connect --username NAME`): the username and password go straight to the site, once. Rebrickable: `POST https://rebrickable.com/api/v3/users/_token/` (form `username`, `password`, header `Authorization: key <api key>`) returns `user_token`. Brickset: `POST https://brickset.com/api/v3.asmx/login` (`apiKey`, `username`, `password`) returns `hash`. Only the token or hash is stored, encrypted like the API keys (`source_key` rows `rebrickable_user`, `brickset_user`). The password is not recorded: the connect call bypasses the recorded transport, the API replay check stores a keyed fingerprint, and the command-line tool asks for it without echo. At most 10 logins per site per UTC day (counted from the day's `sync` events of that kind: an attempt writes one, with no credential in it).
-- **Paste** (`PUT /api/v1/sources/{source}/user`, `brickwork sync <source> paste`): a token or hash generated on the site.
+- **Connect** (`POST /api/v2/sources/{source}/user/connect`, `brickwork sync <source> connect --username NAME`): the username and password go straight to the site, once. Rebrickable: `POST https://rebrickable.com/api/v3/users/_token/` (form `username`, `password`, header `Authorization: key <api key>`) returns `user_token`. Brickset: `POST https://brickset.com/api/v3.asmx/login` (`apiKey`, `username`, `password`) returns `hash`. Only the token or hash is stored, encrypted like the API keys (`source_key` rows `rebrickable_user`, `brickset_user`). The password is not recorded: the connect call bypasses the recorded transport, the API replay check stores a keyed fingerprint, and the command-line tool asks for it without echo. At most 10 logins per site per UTC day (counted from the day's `sync` events of that kind: an attempt writes one, with no credential in it).
+- **Paste** (`PUT /api/v2/sources/{source}/user`, `brickwork sync <source> paste`): a token or hash generated on the site.
 - **Remove** (`DELETE …/user`, Undo restores it) and **Test** (`POST …/user/test`: Rebrickable `GET /users/{token}/setlists/?page_size=1`, Brickset `checkUserHash`).
 - Environment overrides: `BW_REBRICKABLE_USER_TOKEN`, `BW_BRICKSET_USER_HASH`.
 
 ## Link
 
-`PUT /api/v1/sync/{source}/link`. Rebrickable: `owned` (set list ids; empty = every list except the wishlist list), `wishlist` (one set list id), `send_to` (the owned list that receives sends; defaults to the only owned list). Both: `wish_list` (the Brick Work wishlist that pulls and sends wishes, default `default`). `GET /api/v1/sync/rebrickable/lists` lists the set lists.
+`PUT /api/v2/sync/{source}/link`. Rebrickable: `owned` (set list ids; empty = every list except the wishlist list), `wishlist` (one set list id), `send_to` (the owned list that receives sends; defaults to the only owned list). Both: `wish_list` (the Brick Work wishlist that pulls and sends wishes, default `default`). `GET /api/v2/sync/rebrickable/lists` lists the set lists. Plans answer 201 and an unknown source answers 404. The MCP tools `get_sync_status`, `plan_sync_pull`, `apply_sync_pull` and `plan_sync_send` run the same service.
 
 ## Remote calls
 
@@ -51,7 +51,7 @@ A remote set number is a Rebrickable number (Brickset's `number-variant` is the 
 
 The plan is a file under `data/sync/` and expires after 24 hours.
 
-`POST /sync/{source}/pull/apply` (`plan_id`, optional `ticked` row keys; write scope, Idempotency-Key) places each item by its current kind (design § 3.5). A set becomes one copy per missing unit through `store4.copies.create_copy_in` with design § 4.3's preselection (condition and completeness unset, no box, instructions or storage, tag `imported from Rebrickable|Brickset`). Every other kind (a gear, book, catalog, instructions or box item) becomes loose stock of that kind. Missing wishes go to the linked wishlist (or raise a wish's quantity, keeping its condition), the normal pipeline is queued for the new items, and one `sync:<plan>` receipt event is written. Nothing here is deleted or lowered. Undo (`POST /events/{id}/undo`, or the button on the sync page) archives what the pull created and takes the quantities back off stock and wishes. It also removes its flag and puts the baseline back, and it refuses after a later edit to anything the pull wrote. Whether a plan was applied is its `plan` row (`kind=sync_pull`), written in the apply transaction.
+`POST /sync/{source}/pull/apply` (`plan_id`, optional `ticked` row keys; write scope; pull plan, pull apply and send apply take an Idempotency-Key) places each item by its current kind (design § 3.5). A set becomes one copy per missing unit. Each is made by `core/add._add_copy`, which calls `create_copy_in`, with design § 4.3's preselection (condition and completeness unset, no box, instructions or storage, tag `imported from Rebrickable|Brickset`; a set with no part list gets `inventory_source='none'`). Every other kind (a gear, book, catalog, instructions or box item) becomes loose stock of that kind, with the same tag. Missing wishes go to the linked wishlist (or raise a wish's quantity, keeping its condition), the normal pipeline is queued for the new items, and one `sync:<plan>` receipt event is written. Nothing here is deleted or lowered. Undo (`POST /events/{id}/undo`, or the button on the sync page) archives what the pull created and takes the quantities back off stock and wishes. It also removes its flag and puts the baseline back, and it refuses after a later edit to anything the pull wrote. Whether a plan was applied is its `plan` row (`kind=sync_pull`), written in the apply transaction.
 
 ## Send
 

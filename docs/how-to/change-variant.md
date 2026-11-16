@@ -5,7 +5,7 @@ verified: 1.0
 
 # Change an item's variant
 
-*Since 1.1.0.* On the item page of a figure or part, **Identity** has a **Change variant…** button; the same action is on the API (`POST /items/{id}/change-variant`).
+*Since 1.1.0.* On the item page of a figure or part, the **Links** card has a **Change variant…** button; the same action is on the API (`POST /items/{id}/change-variant`).
 
 Do this when the catalogue lists the same figure (or part) twice, an older and a reissued variant, and your collection owns the wrong one. A figure from a reissued set may carry a new Rebrickable number while BrickLink still has one number for it. Unlike a [merge](merge-items.md), both items stay: the item you leave is an ordinary catalogue item afterward, never deleted and never merged.
 

@@ -222,7 +222,7 @@ CREATE VIRTUAL TABLE item_fts USING fts5(item_id UNINDEXED, kind UNINDEXED, name
 -- =====================================================================
 
 CREATE TABLE meta(key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL) STRICT;
--- keys: schema_version='4.4' (4.0 before #131, 4.1 before #167/#155, 4.2 before #31, 4.3 before #25; connect() upgrades an older file in place); install_id; catalogue_id (bound at the first build; connect()
+-- keys: schema_version='4.5' (4.0 before #131, 4.1 before #167/#155, 4.2 before #31, 4.3 before #25; connect() upgrades an older file in place); install_id; catalogue_id (bound at the first build; connect()
 -- refuses a catalogue whose catalogue_id differs); catalogue_item_high_water and
 -- catalogue_color_high_water (copied at every activation: a rebuild from scratch mints above
 -- them); migrated_from (3.3 file name, sha256, migration report digest) after the migration.
@@ -1068,3 +1068,15 @@ CREATE TRIGGER instruction_candidate_item_guard_insert BEFORE INSERT ON instruct
  BEGIN SELECT RAISE(ABORT,'instruction_candidate.item_id: unmerged set needed'); END;
 CREATE TRIGGER instruction_candidate_item_guard_update BEFORE UPDATE OF item_id ON instruction_candidate WHEN ((SELECT merged_into FROM item WHERE id=new.item_id) IS NOT NULL OR (SELECT kind FROM item WHERE id=new.item_id) IS NOT 'set')
  BEGIN SELECT RAISE(ABORT,'instruction_candidate.item_id: unmerged set needed'); END;
+
+-- Instruction discovery references must remain unmerged sets, including direct SQL changes.
+CREATE TRIGGER item_instruction_merge_guard BEFORE UPDATE OF merged_into ON item
+ WHEN new.merged_into IS NOT NULL AND (
+ EXISTS(SELECT 1 FROM instruction_search WHERE item_id=old.id)
+ OR EXISTS(SELECT 1 FROM instruction_candidate WHERE item_id=old.id))
+ BEGIN SELECT RAISE(ABORT,'merge: instruction references must move first'); END;
+CREATE TRIGGER item_instruction_kind_guard BEFORE UPDATE OF kind ON item
+ WHEN new.kind IS NOT old.kind AND new.kind != 'set' AND (
+ EXISTS(SELECT 1 FROM instruction_search WHERE item_id=old.id)
+ OR EXISTS(SELECT 1 FROM instruction_candidate WHERE item_id=old.id))
+ BEGIN SELECT RAISE(ABORT,'kind change refused: instruction references require a set'); END;

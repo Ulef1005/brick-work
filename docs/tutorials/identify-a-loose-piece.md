@@ -12,7 +12,7 @@ It takes about 10 minutes. You need a Brick Work install with the catalogue load
 ## 1. Identify the figure
 
 1. Open the jump search (**Jump to a set, copy, figure or part**, or ⌘K) and choose **What is this? · identify a part by photo**.
-2. Under **Recognise**, choose **Minifigure**.
+2. Switch the **Part | Minifigure** control to **Minifigure**. Part is the default.
 3. Press **Enable camera** and allow camera access. Place the figure inside the guide and press **Take picture**. Or press **Choose a saved photo**.
 4. Read the cards. They list the best match first, with its number, a match score from 0 to 1 and what you already have of it, or **Not in your collection**.
 
@@ -23,7 +23,7 @@ The page saves nothing. If the list says **Nothing identified · try another pho
 1. On the card that shows your figure, press **Open minifigure**.
 2. Read **Consists of**. It lists every part of the figure with its colour and, on each line, a link such as **Found in 12 sets**.
 
-If you also want to keep the figure, **Add to stock** on the same card files it as loose stock. You do not need that for this tutorial.
+If you also want to keep the figure, **Add to stock** on the same card opens **Add** with this figure prefilled as loose stock. You do not need that for this tutorial.
 
 ## 3. Follow a part to the sets that hold it
 
@@ -37,9 +37,9 @@ A rare printed part holds few sets, so its list is short. A common plate holds h
 
 ## 4. Narrow the list
 
-1. Type a name, number or theme under **Search** and press **Apply**.
+1. Type a name, number or theme in the search field (it shows *Number or name*). The list updates as you type.
 2. Open **Filters** and set **Type** to **Sets** or **Minifigures**. A chip shows the filter; remove it to see all types again.
-3. Change **Sort** to **Newest first**, **Oldest first**, **Number** or **Name**, and press **Apply**.
+3. Change **Sort** to **Newest first**, **Oldest first**, **Number** or **Name**, The list updates at once.
 4. Use the page numbers, **Previous** and **Next** to move through the results, 15 at a time.
 
 If the module says **Catalogue list not loaded**, only your owned items appear. Follow **Catalogues & keys** to load the catalogue, then come back.
@@ -55,12 +55,12 @@ You now know which sets the piece may come from and which of them you own. To ch
 
 A single part works the same way, with one difference. A photo does not show the colour, so Brick Work lists your colours of that part instead.
 
-1. Open **What is this?** again and choose **Part** under **Recognise**.
+1. Open **What is this?** again and leave the **Part | Minifigure** control on **Part**.
 2. Take or choose the photo and read the best match.
-3. Press **Open part**. Choose a colour if the page asks for one.
+3. Press **Open part**. If you own the part in several colours, a **Choose a colour** page lists them: pick one. With one colour you go straight to it.
 4. Find **Found in**, below **Used in sets**, and read it as in step 3.
 
-**Used in sets** describes only your own collection. **Found in** also lists sets you do not own, so it helps with a part you have never filed.
+**Used in sets** describes only your own collection. **Found in** also lists sets you do not own, but only for a part you already own in some colour. For a part you have never filed, add it first with **Add to stock**, or open it from a minifigure's **Consists of** list.
 
 ## What next
 

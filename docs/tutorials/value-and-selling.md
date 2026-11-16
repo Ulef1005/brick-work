@@ -38,7 +38,7 @@ Two cases show no comparison. A part list priced in another currency than your s
 ## 4. Read what the copy is worth to you
 
 1. Back on the set page, find the **Value** card for the selected copy. **Paid** is your price paid and **Worth now** is what the copy is worth today.
-2. Read the line under **Worth now**. It names the source: your own **Estimate** from the edit sheet, or the sold average of the set. A copy you have checked has its missing parts taken off one by one.
+2. Read the line under **Worth now**. It names the source: **Your value** (the estimate you set on the edit sheet), or **Used sold average** or **New sold average**. A copy you have checked has its missing parts taken off one by one.
 3. Read **Gain** or **Loss**. It is written in words, with the amount and the percentage.
 
 Set the part-out figure next to **Worth now**. If parting out is higher by more than the effort and the fees are worth to you, parting out wins. If it is close, keeping the set costs you nothing.
@@ -47,13 +47,13 @@ Set the part-out figure next to **Worth now**. If parting out is higher by more 
 
 The **Sell this copy** card sits between **Prices** and **Value**. It changes nothing in your collection. It only suggests a price and writes text.
 
-1. Read the pills at the top. They show the condition and whether the copy is **Complete**, **Incomplete** or **Not checked**. If it says **Not checked**, select **Check this copy** and work through the check first. A sealed copy needs no check.
+1. Read the pills at the top. They show the condition and the state: **Sealed**, **Not checked**, **Incomplete**, **Complete** or **Complete, N damaged**. If it says **Not checked**, select **Check this copy** and work through the check first. A sealed copy needs no check.
 2. Read **Asking price**. The card starts from the used sold average for this condition, or the new average for a new or sealed copy. It then takes off the used price of each missing part and figure.
 3. Open **Missing parts** and **Missing figures** to see each line: colour, name, part number and price. A line with no fresh price is a dashed row marked **needs evidence**. It is left out of the sum.
 4. Read the last row of the sum. If the deductions would take the price below the part-out value of what is present, the card uses that value as the asking price and says so. Parting out is then the floor you never sell under.
-5. If the card shows **no sales** and no asking price, select **Update price** or add the missing rate in Settings. Until then **Copy listing text** stays off.
+5. If the card shows **no sales**, select **Update price**. If it shows **needs a rate**, add the rate in **Tools & Admin → Settings**. Until then **Copy listing text** stays off.
 
-Damaged parts are not taken off the price, but the card and the listing name them. Your own **Estimate** is ignored here. The card shows the market price, not your opinion.
+Damaged parts are not taken off the price, but the card shows how many are damaged in its pill, and the listing names them. Your own **Estimate** is ignored here. The card shows the market price, not your opinion.
 
 ## 6. Write and copy the listing
 

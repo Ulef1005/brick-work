@@ -56,7 +56,7 @@ An upgrade that changes the schema runs on its own when the app first starts rea
 
 ## 5. Check the result
 
-1. Open `/api/v2/health` on your address, for example `http://localhost:3333/api/v2/health`. It needs no token. Read the app version and the schema, for example `"app": "1.0.1"` and `"schema": "4.2"`.
+1. Open `/api/v2/health` on your address, for example `http://localhost:3333/api/v2/health`. It needs no token. Read the app version and the schema, for example `"app": "1.0.1"` and `"schema": "4.6"`.
 2. Run the check from the terminal:
 
     ```sh
@@ -78,7 +78,7 @@ Brick Work has no restore button. A restore means putting the snapshot back by h
     docker compose down
     ```
 
-2. Move the current `brickwork.db` aside, for example to `brickwork.db.rehearsal`. Do not delete it. It holds everything you did since the backup.
+2. Move the current `brickwork.db` aside, for example to `brickwork.db.rehearsal`, together with `brickwork.db-wal` and `brickwork.db-shm` if they exist. Do not delete it. It holds everything you did since the backup.
 3. Put the exported `brickwork.db` and the matching `secret.key` in its place.
 4. Start Brick Work again with `docker compose up -d` and run the check from step 5.
 5. Open **Sets**. The count is the one from your backup. Changes made after the backup are not in it.
@@ -94,7 +94,7 @@ A backup is for big mistakes. For one wrong edit, Undo is faster.
 2. Select **Undo**. The change is reversed and recorded as a new event.
 3. Change it again if you meant it. An Undo cannot be undone itself.
 
-If a later save touched the same rows, Brick Work refuses with a message such as **Item changed · undo the later save first**. Undo the later change first. Undo cannot take back an import, a price lookup or a change sent to Rebrickable or Brickset. For those, the backup is your safety net.
+If a later save touched the same rows, Brick Work refuses with a message such as **Item changed · undo the later save first**. Undo the later change first. Undo cannot take back a price lookup or a change already sent to Rebrickable or Brickset. For those, the backup is your safety net. An import or a pull can be undone from its own page, but only while nothing it made has changed since.
 
 ## What next
 

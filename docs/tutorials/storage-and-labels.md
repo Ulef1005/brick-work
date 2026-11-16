@@ -26,7 +26,7 @@ Add a few more bins the same way. The list shows each storage with the number of
 You can give one item a place, or many at once.
 
 1. Open an item from **Collection**, for example a set copy, and select **Edit**.
-2. Choose its **Storage**, then select **Save**. The page now shows where the item is.
+2. Choose its **Stored in** place, then select **Save**. The page now shows where the item is.
 3. To file many items at once, open a **Collection** list and turn on **Select mode**. Tick the items.
 4. In the bar that appears, under **Change**, choose **Storage**. Under **Value** choose the bin, then select **Save**.
 
@@ -35,7 +35,7 @@ Anything without a place stays under **Not stored** in the Storage list. That en
 ## 3. Print the labels
 
 1. On **Workbench → Storage**, select **Print labels**. A tick box appears on every storage and a bar opens at the bottom. It reads **0 selected · 200 labels at most per download**, and its button says **Choose storages**.
-2. Tick the bins you want, for example three of them. The button now reads **Print labels · 3**. **Clear** unticks everything. **Select all** ticks every storage, up to the limit of 200 labels per download.
+2. Tick the bins you want, for example three of them. The button now reads **Print labels · 3**. **Clear** unticks everything. **Select all** ticks every storage. A download holds 200 labels at most; with more chosen, the sheet asks you to remove storages first.
 3. Select **Print labels · 3**. A sheet opens with one chip for each chosen storage. Select the **×** on a chip to drop that storage.
 4. Under **Layout**, choose an A4 layout: **A4 · 21 labels, 63.5 × 38.1 mm** or **A4 · 14 labels, 99.1 × 38.1 mm**. The other choice is for 62 mm label tape.
 5. Check the preview. With more labels than fit on one sheet, **Previous** and **Next** page through the sheets.
@@ -68,13 +68,13 @@ Each label shows a short id and a QR code. A short id belongs to its storage for
 2. Brick Work asks you to sign in if you are not signed in yet. After you sign in it takes you straight to that storage.
 3. Read the contents, grouped as **Sets**, **Minifigures**, **Part lots** and **Other**.
 
-If you printed a label for a storage you later archived, the page says **This storage is not here** and links back to **Storage**.
+If you printed a label for a storage you later archived, the page says the storage on the label was archived and shows **Back to Storage**. Undo the archive in History, or print a new label.
 
 ## 5. Find a part by where it is stored
 
 Say you need a part and remember only that it is in a bin on the shelf.
 
-1. On **Workbench → Storage**, select the bin. Its page lists what it holds. Use **Search** to narrow a long list, and the filters beside it.
+1. On **Workbench → Storage**, select the bin. Its page lists what it holds. Type in the search field at the top of the list (it shows *In* and the bin's name) to narrow a long list, and use **Filters** beside it.
 2. Select the name of a part, set or minifigure to open its page. The facts there show its storage.
 3. To search the other way round, open a **Collection** list and filter or group it by **Storage**.
 4. If you know only the short id from a label, use **Jump to a set, copy, figure or part** at the top of any page and type the id.

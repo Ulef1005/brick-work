@@ -5,9 +5,6 @@ verified: 1.0
 
 # Find and download the instructions for a set
 
-!!! note "Draft"
-    This tutorial describes the instructions finder as built for 1.1. The wording is checked against the released screens.
-
 You own a set but have no instruction booklets for it in Brick Work. In this tutorial you let Brick Work look for the booklets on the Official source, choose which ones you want, and download them. They end up attached to the set as PDF files.
 
 It takes about 10 minutes. You need a Brick Work install with the catalogue loaded and at least one set in your collection. The install needs network access to the Official source. Every number and name comes from an invented collection, so yours will differ.
@@ -36,21 +33,20 @@ The search runs only when you select the button. Brick Work never looks up a set
 1. Read the sets in the order you chose them. Each booklet shows its title, for example *Mighty Dinosaurs · 2 of 3*, its source, its language and its size.
 2. Check **Region** in the summary. The Official files differ per region, so a German booklet is a different file from the English one. It starts from your retail country in Settings and remembers your last choice.
 3. Tick the booklets you want. Use **Select all** or **Clear** to change the whole list at once. **Search** and **Filter** narrow a long list.
-4. Watch the line **N files ticked · N MB**. It adds up the sizes of the ticked files. A file with an unknown size is counted on their own.
+4. Watch the line **N files ticked · N MB**. It adds up the sizes of the ticked files. A file with an unknown size is not ticked for you.
 
 Booklets can arrive out of order, and a set may list an alternative model as its own group. Brick Work groups them by title, so booklet 1 of 3 comes before 3 of 3.
 
-Nothing is ticked up front, with one exception. A Peeron scan is ticked when it is the only file for its set. Files you already have show **Already have this file** and cannot be ticked.
+Brick Work ticks files for you. It ticks the booklets that match your **Region** and that fit the limit below, and a Peeron scan when it is the only file for its set. Untick what you do not want. Files you already have show **Already have this file** and cannot be ticked.
 
 ## 4. Stay under the download size limit
 
 Some booklets are large. One for a big set can be more than 300 MB, while most are between 1 and 8 MB.
 
-1. The upload limit of 20 MB does not apply here. Downloads from the Official source have their own **download size limit**, which is 500 MB by default.
-2. A file over the limit stays in the list with its size, but you cannot tick it.
-3. Change the limit in **Tools & Admin → Settings** if you want larger files, and check that the disk has room first.
-
-The limit applies to one file, not to the ticked total. The total only helps you see what a run will take.
+1. Files from other sources are limited to 20 MB each. Downloads from the Official source have their own limit, **Official download limit in MB**, which is 500 by default.
+2. A file over its limit stays in the list with its size, for example *Over 500 MB*, but you cannot tick it.
+3. The automatic ticks also stop when the ticked Official files add up to the limit. Tick more by hand if you want them.
+4. Change the limit in **Tools & Admin → Settings**, under **Instruction downloads**. Check that the disk has room first.
 
 ## 5. Download and attach the PDFs
 

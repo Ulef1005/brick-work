@@ -27,7 +27,7 @@ Nothing is downloaded at this point. The search only looks up the booklets and s
 
 1. Open **Tools & Admin → Instruction files** and select **Find instructions**. You can also open it from the **Instructions & Box** tab of one set.
 2. Choose **All sets without instructions**, or choose **These set numbers** and paste them, one per line or separated by commas. The list follows the order you give.
-3. Select **Find instructions**. A line says that the search downloads nothing. Brick Work looks up one set at a time, waits at least one second between requests to the same site and stops after a fixed number of sets in one run.
+3. Select **Find instructions**. A line says that the search downloads nothing. Brick Work looks up one set at a time and waits at least one second between requests to the same site. It stops after a fixed number of sets in one run.
 
 The search runs only when you select the button. Brick Work never looks up a set you did not choose. A set with no booklet stays in the list and says which sources were tried.
 
@@ -36,7 +36,7 @@ The search runs only when you select the button. Brick Work never looks up a set
 1. Read the sets in the order you chose them. Each booklet shows its title, for example *Mighty Dinosaurs · 2 of 3*, its source, its language and its size.
 2. Check **Region** in the summary. The Official files differ per region, so a German booklet is a different file from the English one. It starts from your retail country in Settings and remembers your last choice.
 3. Tick the booklets you want. Use **Select all** or **Clear** to change the whole list at once. **Search** and **Filter** narrow a long list.
-4. Watch the line **N files ticked · N MB**. It adds up the sizes of the ticked files. A file with an unknown size is counted separately.
+4. Watch the line **N files ticked · N MB**. It adds up the sizes of the ticked files. A file with an unknown size is counted on their own.
 
 Booklets can arrive out of order, and a set may list an alternative model as its own group. Brick Work groups them by title, so booklet 1 of 3 comes before 3 of 3.
 
@@ -44,7 +44,7 @@ Nothing is ticked up front, with one exception. A Peeron scan is ticked when it 
 
 ## 4. Stay under the download size limit
 
-Some booklets are large. One for a very big set can be more than 300 MB, while most are between 1 and 8 MB.
+Some booklets are large. One for a big set can be more than 300 MB, while most are between 1 and 8 MB.
 
 1. The upload limit of 20 MB does not apply here. Downloads from the Official source have their own **download size limit**, which is 500 MB by default.
 2. A file over the limit stays in the list with its size, but you cannot tick it.
@@ -60,7 +60,7 @@ The limit applies to one file, not to the ticked total. The total only helps you
 
 Brick Work checks that each file is a real PDF before it keeps it. It stores the file the same way as an upload, so two identical files are kept once. The booklet title becomes the label, and the PDF appears under the set on the **Instructions & Box** tab.
 
-If the Official source says "needs a page renderer: not set up", this instance cannot read its pages yet. Rebrickable and Peeron work without it.
+If the Official source says **needs a page renderer: not set up**, this instance cannot read its pages yet. Rebrickable and Peeron work without it.
 
 ## What next
 

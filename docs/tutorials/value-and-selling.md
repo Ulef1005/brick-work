@@ -5,7 +5,7 @@ verified: 1.0
 
 # Keep it or part it out
 
-You own a used set and wonder whether it is worth more intact or as loose parts. In this tutorial you read what the set is worth, compare that with its part-out value and then let the Sell card suggest an asking price and write the listing text.
+You own a used set and wonder whether it is worth more intact or as loose parts. In this tutorial you read what the set is worth and compare that with its part-out value. Then you let the Sell card suggest an asking price and write the listing text.
 
 It takes about 15 minutes. You need a Brick Work install with a set you own, preferably one you have already [checked part by part](first-set.md), and a BrickLink key under **Tools & Admin → Catalogues & keys**. Prices come from BrickLink, so without the key you only see prices already stored. Your own numbers and names will differ from the examples.
 
@@ -39,7 +39,7 @@ Two cases show no comparison. A part list priced in another currency than your s
 
 1. Back on the set page, find the **Value** card for the selected copy. **Paid** is your price paid and **Worth now** is what the copy is worth today.
 2. Read the line under **Worth now**. It names the source: your own **Estimate** from the edit sheet, or the sold average of the set. A copy you have checked has its missing parts taken off one by one.
-3. Read **Gain** or **Loss**. It is written in words, with the amount and a whole percent.
+3. Read **Gain** or **Loss**. It is written in words, with the amount and the percentage.
 
 Set the part-out figure next to **Worth now**. If parting out is higher by more than the effort and the fees are worth to you, parting out wins. If it is close, keeping the set costs you nothing.
 

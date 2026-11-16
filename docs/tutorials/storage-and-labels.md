@@ -19,7 +19,7 @@ A storage is any place you name: a box, a drawer, a shelf, a room. Storages can 
 4. Select **Add storage** again to save it.
 5. Repeat for a bin on that shelf. Name it *Bin 3*, choose the type **Bin** and set **Inside** to *Shelf A*.
 
-Add a few more bins the same way. The list shows each storage with the number of sets, figures and part lots it holds, and a **Note** field is there for anything you want to remember about a place.
+Add a few more bins the same way. The list shows each storage with the number of sets, figures and part lots it holds. A **Note** field is there for anything you want to remember about a place.
 
 ## 2. Put things in them
 

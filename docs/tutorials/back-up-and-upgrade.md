@@ -3,11 +3,11 @@ audience: user
 verified: 1.0
 ---
 
-# Back up, upgrade and restore safely
+# Back up, upgrade and restore
 
 Your collection is worth more than the time it takes to protect it. In this tutorial you make a backup, move Brick Work to a new version and check that everything came along. Then you rehearse a restore, so you know it works before you need it, and take back a single wrong edit with Undo.
 
-It takes about 30 minutes. You need a Brick Work install with the Docker setup from [Install Docker Desktop](../how-to/install-docker-desktop.md), a collection with at least one set in it, and a terminal open in the folder that holds `compose.yaml`. Version numbers below are examples; yours will differ.
+It takes about 30 minutes. You need a Brick Work install with the Docker setup from [Install Docker Desktop](../how-to/install-docker-desktop.md). You also need a collection with at least one set and a terminal open in the folder that holds `compose.yaml`. Version numbers below are examples; yours will differ.
 
 ## 1. Make a backup
 

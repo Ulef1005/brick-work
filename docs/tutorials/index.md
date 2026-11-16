@@ -16,5 +16,5 @@ Learning by doing: one complete path through the app, start to finish. Each step
 - [Keep it or part it out](value-and-selling.md): read a set's value and part-out value, compare them, and prepare a sale with the Sell card.
 - [Find and download the instructions for a set](find-instructions.md): fetch candidate PDFs, tick the booklets you want and download them.
 - [Identify a loose piece and find where it belongs](identify-a-loose-piece.md): identify a minifigure or part from a photo, then follow Found in to the sets that hold it.
-- [Back up, upgrade and restore safely](back-up-and-upgrade.md): back up, upgrade, check the result, rehearse a restore and undo a single edit.
+- [Back up, upgrade and restore](back-up-and-upgrade.md): back up, upgrade, check the result, rehearse a restore and undo a single edit.
 - [Script your collection](script-your-collection.md): create an API token, read and change the collection from the command line, and connect an assistant.

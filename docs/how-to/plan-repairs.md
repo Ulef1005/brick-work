@@ -43,7 +43,11 @@ The BrickLink region and currency that prices must be in are set in Tools & Admi
 
 ## Know what parting out is worth
 
-When 9 in 10 of a copy's present lines have a used price, **Details** adds **Parted out ≈ …**: the parts and figures you have, one by one, at their used prices. The copy's own page shows it too, beside the complete and as-is values, and says when parting out is worth clearly more. With fewer prices the page says **Not enough prices yet**, and **Fetch part prices** queues the missing ones.
+When 9 in 10 present lines have a used price, the list shows **Parted out ≈ …** below the gap.
+The copy's page compares this total with complete and as-is values when their currencies match.
+It says when parting out is worth clearly more.
+With fewer prices, the copy's page says **Not enough prices yet**.
+**Fetch part prices** queues missing prices and updates the card here when finished.
 
 ## Export the repair list
 

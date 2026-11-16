@@ -122,6 +122,7 @@ def test_pending_card_offers_fetch_part_prices(world, client, app4, monkeypatch)
     button = card.select_one('[data-bc-fetch-prices]')
     assert button.get_text() == 'Fetch part prices' and button['data-bc-fetch-prices'] == f'[{world.brick}, {world.plate}]'
     assert button['data-refresh-url'] == '/planning/action/refresh'
+    assert 'bc-outline' in button['class'] and 'primary' not in button['class']
 
 
 def test_a_complete_copy_is_worth_its_complete_value_as_is(coll, client):
@@ -202,7 +203,8 @@ def test_one_currency_per_total_and_no_comparison(coll, read, client):
     assert compared['no_comparison'] and compared['complete'] is None and compared['as_is'] is None and compared['hint'] is None
     page = BeautifulSoup(client.get(f'/collection/item/{coll.item("sets", "1000-1")}?copy=c1').data, 'html.parser')
     text = page.select_one('[data-bc-partout]').get_text(' ', strip=True)
-    assert '$152.00' in text and 'no comparison' in text and '€' not in text
+    assert '$152.00' in text and '€' not in text
+    assert 'Part prices are in US dollars, so no comparison with the euro prices above.' in text
     assert 'Complete' not in text and 'as is' not in text and 'worth' not in text
 
 
@@ -210,12 +212,14 @@ def test_card_order_age_access_and_no_inventory(world, client, app4, monkeypatch
     result = dict(partout='141.00', currency='EUR', lines=145, priced=138, complete='120.00', as_is='84.00',
                   hint='57.00', oldest_observed='2026-10-12T08:00:00Z', stale=False, unpriced_items=[world.brick])
     monkeypatch.setattr(partout, 'compare', lambda *a: result)
+    monkeypatch.setattr('brickwork.core.collection.retail', lambda *a: dict(country='AT', price='49.00', currency='EUR'))
     monkeypatch.setitem(app4.jinja_env.globals, 'bw_key_missing', lambda source: False)
     def card():
         page = BeautifulSoup(client.get(f'/collection/item/{world.keep}?copy={world.copy_a}').data, 'html.parser')
         return page.select_one('[data-module=prices]')
     filled = card()
     assert filled.select_one('[data-bc-partout]').find_previous_sibling().has_attr('data-bc-condition-prices')
+    assert filled.select_one('[data-bc-partout]').find_next_sibling().has_attr('data-bc-retail')
     assert '12 Oct' in filled.select_one('[data-bc-partout]').get_text()
     assert not filled.select_one('.bc-partout-stale')
     result['stale'] = True
@@ -223,6 +227,7 @@ def test_card_order_age_access_and_no_inventory(world, client, app4, monkeypatch
     result.update(partout=None, complete=None, as_is=None, hint=None, oldest_observed=None, stale=False, priced=4)
     pending = card()
     assert pending.select_one('[data-bc-partout]').find_previous_sibling().has_attr('data-bc-condition-prices')
+    assert pending.select_one('[data-bc-partout]').find_next_sibling().has_attr('data-bc-retail')
     assert not pending.select_one('.bc-partout-stale')
     monkeypatch.setitem(app4.jinja_env.globals, 'bw_key_missing', lambda source: True)
     no_key = card()
@@ -257,3 +262,57 @@ def test_partout_fetch_runtime():
     from tests import rendered
     rendered.need_node()
     subprocess.run(['node', str(Path(__file__).with_name('toni_bw_partout_runtime.cjs'))], check=True, capture_output=True, text=True)
+
+
+def test_candidate_world_reaches_the_partout_states(tmp_path, client, app4, monkeypatch):
+    from brickwork.demo import clock
+    from scripts import screen_gate
+    from brickwork.store4.connect import connect
+    from contextlib import closing
+    folder = tmp_path / 'candidate'
+    folder.mkdir()
+    store = folder / 'brickwork.db'
+    screen_gate.build_store('edge-value', store)
+    monkeypatch.setenv('BW_DB_PATH', str(store))
+    monkeypatch.setitem(app4.jinja_env.globals, 'bw_key_missing', lambda source: False)
+    patched = clock.freeze_clock()
+    try:
+        with closing(connect(store, read_only=True)) as db:
+            results = partout.values(db, ['partout-38-'+s for s in ('hint', 'pending', 'stale', 'other-currency')])
+        assert results['partout-38-hint']['value'] == '141.00'
+        assert results['partout-38-pending']['value'] is None
+        assert results['partout-38-stale']['stale']
+        assert results['partout-38-other-currency']['currency'] == 'USD'
+        for state, number in [('hint', '99101-1'), ('pending', '99112-1'), ('stale', '99103-1'), ('other-currency', '99105-1')]:
+            response = client.get(f'/collection/item/set/{number}?copy=partout-38-{state}', follow_redirects=True)
+            assert response.status_code == 200
+            card = BeautifulSoup(response.data, 'html.parser').select_one('[data-bc-partout]')
+            assert card
+            if state == 'hint': assert card.select_one('.bc-partout-hint')
+            if state == 'pending': assert card.select_one('[data-bc-fetch-prices]')
+            if state == 'stale': assert card.select_one('.bc-partout-stale')
+            if state == 'other-currency': assert 'no comparison' in card.text
+        sorted_page = BeautifulSoup(client.get('/planning/complete-sets?sort=partout').data, 'html.parser')
+        assert sorted_page.select_one('[data-bp-partout]')
+        demo = tmp_path / 'no-key'
+        demo.mkdir()
+        screen_gate.build_store('demo', demo / 'brickwork.db')
+        monkeypatch.setenv('BW_DB_PATH', str(demo / 'brickwork.db'))
+        monkeypatch.setitem(app4.jinja_env.globals, 'bw_key_missing', lambda source: True)
+        page = BeautifulSoup(client.get('/collection/item/set/7286-1?copy=56325b99-16bc-549b-bb98-f7be2ab38829', follow_redirects=True).data, 'html.parser')
+        assert page.select_one('[data-bc-partout] button[disabled]')
+    finally:
+        clock.thaw_clock(patched)
+
+
+
+def test_no_inventory_has_no_parted_out_row(coll, read, client):
+    small_copy(coll)
+    coll.sql('DELETE FROM copy_part')
+    coll.sql('DELETE FROM copy_figure')
+    with read() as db:
+        result = partout.values(db, ['c1'])['c1']
+    assert result['lines'] == 0 and result['oldest_observed'] is None
+    assert partout.compare({}, result) is None
+    page = BeautifulSoup(client.get(f'/collection/item/{coll.item("sets", "1000-1")}?copy=c1').data, 'html.parser')
+    assert not page.select_one('[data-bc-partout]')

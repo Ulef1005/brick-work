@@ -2,7 +2,8 @@
 
 Sum over the copy's required parts (spares excluded, ADR 0011; figure components counted through
 their figure) of the used quote per part and colour, plus each present minifigure as a whole (usual
-BrickLink practice), in the configured BrickLink currency and region. Old cached quotes remain visible with their age mark. Coverage says how many lines had a price; unpriced lines are listed so a
+BrickLink practice), in one currency and the configured region. Prefer the configured currency when coverage is sufficient.
+Old cached quotes remain visible with their age mark. Coverage says how many lines had a price; unpriced lines are listed so a
 price refresh can be queued. Batched: three queries for any number of copies.
 
 A total is given only when at least COVERAGE of the lines have a price: summing the few priced lines of a
@@ -28,7 +29,7 @@ COVERAGE = 0.9  # share of lines that need a price before a part-out total is sh
 
 
 def values(db, copy_ids):
-    """`{copy id: dict(value, currency, lines, priced, enough, unpriced, unpriced_count, unpriced_items)}` for live copies.
+    """`{copy id: dict(value, currency, lines, priced, enough, oldest_observed, stale, unpriced, unpriced_count, unpriced_items)}` for live copies.
 
     Lines are the copy's live set lines (a retired line is no line, spares and a figure's own parts excluded) and its live figure lines,
     each as (item id, colour id): the quantity present is the quantity less the missing. `unpriced` names up to 50 lines
@@ -110,7 +111,8 @@ def compare(copy, partout, config=None):
         return out
     complete_quote = copy.get('complete_quote') or {}
     if copy.get('comparison_currency', complete_quote.get('currency', out['currency'])) != out['currency']:
-        out.update(complete=None, as_is=None, no_comparison=True)
+        out.update(complete=None, as_is=None, no_comparison=True,
+                   comparison_currency=copy.get('comparison_currency', complete_quote.get('currency')))
         return out
     complete = complete_quote.get('price')
     out['complete'] = str(D(str(complete)).quantize(D('0.01'))) if complete is not None else None

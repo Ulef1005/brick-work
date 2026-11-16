@@ -3,24 +3,16 @@
 Core (`order_missing.split`, `pick_a_brick_csv`) and the route. The element ids are invented rows in the fixture catalogue; prices are
 cached quotes of today. Invented data, no network."""
 from decimal import Decimal
-import sqlite3
 from xml.etree import ElementTree as ET
 
 from bs4 import BeautifulSoup
 
 from brickwork.core import order_missing, planning
 from brickwork.core.sources.base import now
-from tests.app4 import app4, client, coll, csrf, pair, read  # noqa: F401 (fixtures)
+from tests.app4 import app4, client, coll, csrf, elements, pair, read  # noqa: F401 (fixtures)
 from tests.test_bw_order_missing_225 import URL, page, scene
 
 RED_3001 = ('3001', '4')
-
-
-def elements(pair, coll, *rows):
-    """Add `(part key, colour key, element id)` rows to the fixture catalogue."""
-    with sqlite3.connect(pair.parent / 'catalogue.db') as db:
-        for part, colour, element in rows:
-            db.execute('INSERT INTO element(element_id,item_id,color_id) VALUES(?,?,?)', (element, coll.item('parts', part), coll.colour(colour)))
 
 
 def quote(coll, part, colour, price, condition='used'):

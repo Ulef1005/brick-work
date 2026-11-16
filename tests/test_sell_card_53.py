@@ -95,12 +95,20 @@ def test_a_set_with_only_unpriced_missing_lines_takes_nothing_off(coll):
     assert v['ask']['text'] == '€58.00' and row(v, 'Missing parts')['amount'] == 'not priced' and v['coverage']['needs'] == 3
 
 
+def test_a_part_out_value_above_the_average_never_raises_the_ask(coll):
+    setup(coll, average='100.00', brick='40.00', plate='0.10', figure='5.30')
+    v = card(coll, checked_copy(coll, brick=0, plate=1, figure=0))
+    assert Decimal(v['ask']['text'].lstrip('€')) <= Decimal('100.00') and v['ask']['text'] == '€100.00'
+    assert v['note'].startswith('Held at the average: the deductions would take it to €99.90, below the part-out value of €')
+    assert v['rows'][-1]['label'] == 'Asking price · held at the average' and v['text'].splitlines()[-1] == 'Asking price: €100.00'
+
+
 def test_the_part_out_value_is_the_floor(coll):
-    setup(coll, average='4.00')
+    setup(coll, average='7.00')
     v = card(coll, checked_copy(coll))
     assert v['ask']['text'] == '€6.10' and v['floor'] is None
-    assert v['note'] == 'Set to the part-out value: the deductions would take it to €0.00.'
-    assert [(r['label'], r['amount']) for r in v['rows'][-2:]] == [('After deductions', '€0.00'), ('Asking price · part-out value', '€6.10')]
+    assert v['note'] == 'Set to the part-out value: the deductions would take it to €0.90.'
+    assert [(r['label'], r['amount']) for r in v['rows'][-2:]] == [('After deductions', '€0.90'), ('Asking price · part-out value', '€6.10')]
     setup_text = v['text']
     assert setup_text.splitlines()[-1] == 'Asking price: €6.10'
 
@@ -334,10 +342,10 @@ def test_a_loose_item_and_a_part_have_no_card(coll, client, world):
 
 
 def test_the_floor_unknown_and_floor_applied_texts_on_the_page(coll, client):
-    setup(coll, average='4.00')
+    setup(coll, average='7.00')
     page, node = sell_node(client, coll, checked_copy(coll))
     text = re.sub(r'\s+', ' ', node.get_text(' ', strip=True))
-    assert 'Set to the part-out value: the deductions would take it to €0.00.' in text and 'Asking price · part-out value €6.10' in text and 'Part-out value of what is present' not in text
+    assert 'Set to the part-out value: the deductions would take it to €0.90.' in text and 'Asking price · part-out value €6.10' in text and 'Part-out value of what is present' not in text
 
 
 # ---- the preview script ----

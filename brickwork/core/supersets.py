@@ -3,7 +3,7 @@
 Headline counts describe the filtered rows. Owned copies replace their catalogue row in the mixed list;
 multiple owned copies remain separate. Paging counts those displayed rows, without capping the total.
 """
-from . import collection, errors, items, pictures, set_scoring
+from . import collection, errors, items, pictures, set_scoring, valuation
 from ..store4.connect import has_catalogue
 
 
@@ -11,6 +11,11 @@ def counts(index, item_id, color_id):
     key = set_scoring.key_of(item_id, color_id)
     return dict(sets=len(index.posting.get(key, ((), ()))[0]),
                 minifigures=len(index.figure_posting.get(key, ((), ()))[0]))
+
+
+def _text_key(text, sort):
+    """The sort key of a name (plain, case-folded) or a number (natural: 7286-1 before 10188-1)."""
+    return text.casefold() if sort == 'name' else valuation._natural(text.casefold())
 
 
 def found_in(db, item_id, color_id, *, type='all', search='', sort='newest', limit=15, offset=0):
@@ -78,7 +83,7 @@ def found_in(db, item_id, color_id, *, type='all', search='', sort='newest', lim
             and (not query or query in ' '.join(str(r.get(k) or '') for k in ('number_text', 'also', 'name', 'theme')).casefold())]
     def key(r):
         tail = ((-(r.get('year') or 0) if sort == 'newest' else r.get('year') or 9999) if sort in ('newest', 'oldest')
-                else str(r.get('name') if sort == 'name' else r.get('number_text') or '').casefold())
+                else _text_key(str((r.get('name') if sort == 'name' else r.get('number_text')) or ''), sort))
         return (r['group'] != 'owned', tail, r['item_id'], r.get('copy_id') or r.get('stock_id') or '')
     totals = dict(sets=sum(r["kind"] == "set" for r in rows),
                   minifigures=sum(r["kind"] == "minifigure" for r in rows))

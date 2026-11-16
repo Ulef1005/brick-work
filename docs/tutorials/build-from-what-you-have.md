@@ -49,10 +49,10 @@ Lines Brick Work cannot name for BrickLink are listed in the yellow box with a l
 
 ## If you own the wrong variant
 
-The catalogue sometimes lists the same part or figure twice, an older and a reissued variant, and your stock sits on the wrong one. On the item's page press **Change variant…** in the Links card, choose the variant you own, check **What moves** and confirm. Everything you own moves to the other item in one step with **Undo**, and the BrickLink number follows.
+The catalogue sometimes lists the same part or figure twice, an older and a reissued variant, and your stock sits on the wrong one. On the item's page press **Change variant…** in the Links card, choose the variant you own, check **What moves** and confirm. Everything you own moves to the other item in one step with **Undo**, and the BrickLink number the old variant prefers follows.
 
-![Change variant on a desktop: the part, the suggested variant chosen and what moves.](../img/tutorials/variant-change-desktop-1440-light.png#only-light)
-![Change variant on a desktop: the part, the suggested variant chosen and what moves.](../img/tutorials/variant-change-desktop-1440-dark.png#only-dark)
+<picture data-bw-screens><source media="(max-width: 600px)" srcset="../img/tutorials/tut-change-variant-phone-390-light.png"><img src="../img/tutorials/tut-change-variant-desktop-1024-light.png#only-light" alt="Change variant: the part 32039 (on a wide screen on the left), the variant 42135 chosen, call-out 1 on the chosen variant, call-out 2 on what moves and call-out 3 on the Change variant button."></picture>
+<picture data-bw-screens><source media="(max-width: 600px)" srcset="../img/tutorials/tut-change-variant-phone-390-dark.png"><img src="../img/tutorials/tut-change-variant-desktop-1024-dark.png#only-dark" alt="Change variant: the part 32039 (on a wide screen on the left), the variant 42135 chosen, call-out 1 on the chosen variant, call-out 2 on what moves and call-out 3 on the Change variant button."></picture>
 
 See [Change an item's variant](../how-to/change-variant.md).
 

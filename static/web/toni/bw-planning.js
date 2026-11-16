@@ -15,6 +15,7 @@
   const root=document.querySelector('#bw-planning');if(!root)return;
   const nodes=[...root.querySelectorAll('[data-bp-row]')],records=nodes.map(node=>({...JSON.parse(node.dataset.record),node}));
   const search=root.querySelector('[data-bp-search]'),sort=root.querySelector('[data-bp-sort]'),order=root.querySelector('[data-bp-order]'),controls=[...root.querySelectorAll('[data-bp-filter]')],panel=root.querySelector('#bp-filters'),message=root.querySelector('[data-bp-message]'),undo=root.querySelector('[data-bp-undo]');
+  if(root.dataset.screen==='complete-sets' && new URLSearchParams(location.search).get('sort')==='partout')sort.value='partout';
   if(root.dataset.screen==='wishlist')window.BrickCollection?.viewSwitch?.(root,root.querySelector('[data-bp-rows]'),'bp',window.BrickCollection.listStateKey?.());
   let receipt=null,visible=records;
   const receiptKey='bw-planning-receipt';

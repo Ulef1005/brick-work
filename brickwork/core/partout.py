@@ -2,8 +2,7 @@
 
 Sum over the copy's required parts (spares excluded, ADR 0011; figure components counted through
 their figure) of the used quote per part and colour, plus each present minifigure as a whole (usual
-BrickLink practice), using the same usable-quote rule as Complete sets (fresh, in the BrickLink
-currency and region). Coverage says how many lines had a price; unpriced lines are listed so a
+BrickLink practice), in the configured BrickLink currency and region. Old cached quotes remain visible with their age mark. Coverage says how many lines had a price; unpriced lines are listed so a
 price refresh can be queued. Batched: three queries for any number of copies.
 
 A total is given only when at least COVERAGE of the lines have a price: summing the few priced lines of a
@@ -51,31 +50,42 @@ def values(db, copy_ids):
     scope = {(i, c) for rows in lines.values() for i, c, _ in rows}
     market = collection.prices(db, pairs=scope) if scope else {}
     config, stamp = planning.configuration(db), now()
-    quotes = {key: planning.quote(market.get(key, []), 'used', config, stamp, allow_old=True) for key in scope}
+    currencies = [config['bricklink_currency']] + sorted({q['currency'] for rows in market.values() for q in rows
+                                                        if q.get('currency') and q['currency'] != config['bricklink_currency']})
+    quotes = {currency: {key: planning.quote(market.get(key, []), 'used', dict(config, bricklink_currency=currency), stamp,
+                                             allow_old=True) for key in scope} for currency in currencies}
     result, unpriced = {}, {}
     for copy_id in copy_ids:
-        total, priced, missing, used = Decimal(0), 0, [], []
-        for item_id, colour, present in lines.get(copy_id, []):
-            q = quotes.get((item_id, colour))
-            if q is None:
-                missing.append(dict(item_id=item_id, color_id=colour))
-                continue
-            total += Decimal(str(q['price'])) * present
-            priced += 1
-            used.append(q)
-        count = len(lines.get(copy_id, []))
-        enough = bool(count) and priced >= COVERAGE * count
-        unpriced[copy_id] = sorted({m['item_id'] for m in missing})
-        result[copy_id] = dict(value=str(total.quantize(Decimal('0.01'))) if enough else None, currency=config['bricklink_currency'],
-                               oldest_observed=min((q['observed_at'] for q in used if q.get('observed_at')), default=None),
-                               stale=any(q.get('stale') for q in used), lines=count, priced=priced, enough=enough, unpriced=missing[:50], unpriced_count=len(missing))
-    # Old cached lines still count, but remain refreshable.
-    for copy_id, rows in lines.items():
-        unpriced[copy_id] = sorted(set(unpriced[copy_id]) | {i for i, c, _ in rows if quotes.get((i, c)) and quotes[i, c].get('stale')})
+        rows = lines.get(copy_id, [])
+        choices = [_summarize(rows, quotes[currency], currency) for currency in currencies]
+        chosen = next((choice for choice in choices if choice['enough']), choices[0])
+        result[copy_id] = chosen
+        selected = quotes[chosen['currency']]
+        # Cached stale lines still count and remain eligible for refresh.
+        unpriced[copy_id] = sorted(chosen.pop('_unpriced_items') |
+                                   {i for i, c, _ in rows if selected.get((i, c)) and selected[i, c].get('stale')})
     refreshable = set(_refreshable(db, sorted({i for ids in unpriced.values() for i in ids})))      # one read for every copy, not one per copy
     for copy_id, wanted in unpriced.items():
         result[copy_id]['unpriced_items'] = [i for i in wanted if i in refreshable][:200]
     return result
+
+
+def _summarize(rows, quotes, currency):
+    """One currency per total; the coverage rule is shared by every presentation."""
+    total, used, missing = Decimal(0), [], []
+    for item_id, colour, present in rows:
+        q = quotes.get((item_id, colour))
+        if q is None:
+            missing.append(dict(item_id=item_id, color_id=colour))
+        else:
+            total += Decimal(str(q['price'])) * present
+            used.append(q)
+    count, priced = len(rows), len(used)
+    enough = bool(count) and priced >= COVERAGE * count
+    return dict(value=str(total.quantize(Decimal('0.01'))) if enough else None, currency=currency,
+                oldest_observed=min((q['observed_at'] for q in used if q.get('observed_at')), default=None),
+                stale=any(q.get('stale') for q in used), lines=count, priced=priced, enough=enough,
+                unpriced=missing[:50], unpriced_count=len(missing), _unpriced_items={m['item_id'] for m in missing})
 
 
 def _refreshable(db, item_ids):
@@ -99,7 +109,7 @@ def compare(copy, partout, config=None):
         out['complete'] = out['as_is'] = None
         return out
     complete_quote = copy.get('complete_quote') or {}
-    if complete_quote.get('currency', out['currency']) != out['currency']:
+    if copy.get('comparison_currency', complete_quote.get('currency', out['currency'])) != out['currency']:
         out.update(complete=None, as_is=None, no_comparison=True)
         return out
     complete = complete_quote.get('price')

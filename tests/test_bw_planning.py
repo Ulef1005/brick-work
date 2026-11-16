@@ -666,8 +666,8 @@ def test_run4_repair_details_preserve_evidence_and_actions(coll, client, read):
         original = next(r for r in expected[record['group']] if r['id'] == record['id'])
         details = row.select_one('.bp-repair-details')
         assert details.summary.select_one('.bp-details-label').text == 'Details' and not details.has_attr('open')
-        assert f"{original['stock_used']} in loose stock" in details.text
-        assert f"{original['missing_count']} to buy" in details.text
+        assert f"{original['stock_used']} in loose stock" in row.select_one('.bp-values').text
+        assert f"{original['missing_count']} to buy" in row.select_one('.bp-values').text
         assert original['label'] in details.text and {'sealed': 'Sealed', 'complete': 'Complete', 'incomplete': 'Incomplete'}.get(original['completeness'], 'Unknown') in details.text
         assert row.select_one('[data-bp-selected]')['value'] == original['id']
         assert row.select_one('[data-bp-pin]')

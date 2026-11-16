@@ -70,14 +70,17 @@ def test_a_total_when_every_line_is_priced_and_what_counts(coll, read):
     assert result['currency'] == 'EUR'
 
 
-def test_a_stale_or_foreign_quote_does_not_price_a_line(coll, read):
+def test_a_stale_quote_counts_with_age_but_a_foreign_quote_does_not(coll, read):
     brick, red, figure = small_copy(coll)
     coll.sql('UPDATE copy_figure SET missing=0')
     coll.price(brick, '2.50', colour=red, region='eu', currency='USD', observed=now().isoformat())
     coll.price(figure, '8.00', region='eu', currency='EUR', observed='2026-01-01T00:00:00+00:00')
+    coll.sql("INSERT OR REPLACE INTO source_freshness(source,kind,max_age_days) VALUES('bricklink','prices',30)")
     with read() as db:
         result = partout.values(db, ['c1'])['c1']
-    assert result['priced'] == 0 and result['unpriced_count'] == 2
+    assert result['priced'] == 1 and result['unpriced_count'] == 1
+    assert result['oldest_observed'] == '2026-01-01T00:00:00+00:00'
+    assert figure in result['unpriced_items']  # old cached prices can be refreshed
 
 
 def test_coverage_threshold():
@@ -112,7 +115,7 @@ def test_partout_card_from_the_stored_prices_on_the_item_page(coll, client):
 def test_pending_card_offers_fetch_part_prices(world, client, app4, monkeypatch):
     monkeypatch.setattr(partout, 'compare', lambda copy, value: dict(partout=None, currency='EUR', lines=54, priced=4, hint=None,
                                                                       complete=None, as_is=None, unpriced_items=[world.brick, world.plate]))
-    app4.jinja_env.globals['bw_key_missing'] = lambda source: False  # fetching prices needs a BrickLink key
+    monkeypatch.setitem(app4.jinja_env.globals, 'bw_key_missing', lambda source: False)  # fetching prices needs a BrickLink key
     card = BeautifulSoup(client.get(f'/collection/item/{world.keep}?copy={world.copy_a}').data, 'html.parser').select_one('[data-bc-partout]')
     text = ' '.join(card.get_text(' ').split())
     assert 'Not enough prices yet' in text and 'prices for 4 of 54 lines' in text and '≈' not in text
@@ -165,3 +168,92 @@ def test_the_items_a_refresh_could_fetch_are_read_once_for_all_copies(coll, read
         assert len(counted) == few
     assert one['c1']['unpriced_items'] == many['c1']['unpriced_items'] == [brick, figure]
     assert all(v['unpriced_items'] == [brick] for k, v in many.items() if k != 'c1')
+
+
+def test_oldest_price_used_and_configured_age(coll, read):
+    from datetime import timedelta
+    brick, red, figure = small_copy(coll)
+    coll.sql('UPDATE copy_figure SET missing=0')
+    oldest = (now() - timedelta(days=3)).isoformat()
+    coll.price(brick, '2.50', colour=red, region='eu', currency='EUR', observed=oldest)
+    quote(coll, figure, '8.00')
+    coll.sql("INSERT OR REPLACE INTO source_freshness(source,kind,max_age_days) VALUES('bricklink','prices',2)")
+    with read() as db:
+        result = partout.values(db, ['c1'])['c1']
+    assert result['oldest_observed'] == oldest and result['stale']
+    assert result['value'] == '13.00'
+    coll.sql("UPDATE source_freshness SET max_age_days=4 WHERE source='bricklink' AND kind='prices'")
+    with read() as db:
+        assert not partout.values(db, ['c1'])['c1']['stale']
+    coll.sql('DELETE FROM price_current')
+    with read() as db:
+        result = partout.values(db, ['c1'])['c1']
+    assert result['oldest_observed'] is None and not result['stale']
+
+
+def test_one_currency_per_total_and_no_comparison(coll, read, client):
+    brick, red, _ = small_copy(coll)
+    coll.price(brick, '76.00', colour=red, region='eu', currency='USD', observed=now().isoformat())
+    quote(coll, coll.item('sets', '1000-1'), '120.00')
+    with read() as db:
+        result = partout.values(db, ['c1'])['c1']
+    assert result['value'] == '152.00' and result['currency'] == 'USD'
+    compared = partout.compare(dict(complete_quote=dict(price='120', currency='EUR'), current_value='84'), result)
+    assert compared['no_comparison'] and compared['complete'] is None and compared['as_is'] is None and compared['hint'] is None
+    page = BeautifulSoup(client.get(f'/collection/item/{coll.item("sets", "1000-1")}?copy=c1').data, 'html.parser')
+    text = page.select_one('[data-bc-partout]').get_text(' ', strip=True)
+    assert '$152.00' in text and 'no comparison' in text and '€' not in text
+    assert 'Complete' not in text and 'as is' not in text and 'worth' not in text
+
+
+def test_card_order_age_access_and_no_inventory(world, client, app4, monkeypatch):
+    result = dict(partout='141.00', currency='EUR', lines=145, priced=138, complete='120.00', as_is='84.00',
+                  hint='57.00', oldest_observed='2026-10-12T08:00:00Z', stale=False, unpriced_items=[world.brick])
+    monkeypatch.setattr(partout, 'compare', lambda *a: result)
+    monkeypatch.setitem(app4.jinja_env.globals, 'bw_key_missing', lambda source: False)
+    def card():
+        page = BeautifulSoup(client.get(f'/collection/item/{world.keep}?copy={world.copy_a}').data, 'html.parser')
+        return page.select_one('[data-module=prices]')
+    filled = card()
+    assert filled.select_one('[data-bc-partout]').find_previous_sibling().has_attr('data-bc-condition-prices')
+    assert '12 Oct' in filled.select_one('[data-bc-partout]').get_text()
+    assert not filled.select_one('.bc-partout-stale')
+    result['stale'] = True
+    assert card().select_one('.bc-partout-stale').get_text() == 'stale'
+    result.update(partout=None, complete=None, as_is=None, hint=None, oldest_observed=None, stale=False, priced=4)
+    pending = card()
+    assert pending.select_one('[data-bc-partout]').find_previous_sibling().has_attr('data-bc-condition-prices')
+    assert not pending.select_one('.bc-partout-stale')
+    monkeypatch.setitem(app4.jinja_env.globals, 'bw_key_missing', lambda source: True)
+    no_key = card()
+    assert no_key.select_one('[data-bc-partout] button').has_attr('disabled')
+    assert 'Needs a BrickLink key' not in no_key.select_one('[data-bc-partout]').get_text()
+    monkeypatch.setattr('brickwork.web.views.bw_collection_editable', lambda: False)
+    viewer = card()
+    assert not viewer.select_one('[data-bc-partout] button')
+    assert 'Update price' not in viewer.get_text()
+    monkeypatch.setattr(partout, 'compare', lambda *a: None)
+    assert not card().select_one('[data-bc-partout]')
+
+
+def test_complete_sets_line_is_visible_below_gap_and_wraps(world, client, monkeypatch):
+    monkeypatch.setattr(partout, 'compare', lambda *a: dict(partout='141.00', currency='EUR', lines=145, priced=138, hint='57.00'))
+    page = BeautifulSoup(client.get('/planning/complete-sets?sort=partout').data, 'html.parser')
+    line = page.select_one('[data-bp-partout]')
+    assert line and 'recorded gap' in line.find_previous_sibling().get_text()
+    assert line.find_parent('details') is None
+    assert line.name == 'p' and 'mono' in line['class']
+    assert 'worth €57.00 more than as is' in line.get_text()
+    assert page.select_one('[data-bp-partout-note]')
+    monkeypatch.setattr(partout, 'compare', lambda *a: dict(partout=None, currency='EUR', lines=145, priced=4, hint=None))
+    page = BeautifulSoup(client.get('/planning/complete-sets').data, 'html.parser')
+    assert not page.select_one('[data-bp-partout]')
+    assert 'Not enough prices yet' not in page.get_text()
+
+
+def test_partout_fetch_runtime():
+    import subprocess
+    from pathlib import Path
+    from tests import rendered
+    rendered.need_node()
+    subprocess.run(['node', str(Path(__file__).with_name('toni_bw_partout_runtime.cjs'))], check=True, capture_output=True, text=True)

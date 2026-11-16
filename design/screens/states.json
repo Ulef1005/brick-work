@@ -1235,6 +1235,70 @@
    "path": "/workbench/storage?labels=error",
    "built": true,
    "approved": false
+  },
+  {
+   "screen": "10-Set-detail",
+   "section": "1d",
+   "state": "partout-hint",
+   "world": "edge-value",
+   "path": "/collection/item/set/99101-1?copy=partout-38-hint",
+   "built": true,
+   "approved": false,
+   "script": "document.querySelector('[data-module=prices]').scrollIntoView();",
+   "max": 2600
+  },
+  {
+   "screen": "10-Set-detail",
+   "section": "1d",
+   "state": "partout-pending",
+   "world": "edge-value",
+   "path": "/collection/item/set/99112-1?copy=partout-38-pending",
+   "built": true,
+   "approved": false,
+   "script": "document.querySelector('[data-module=prices]').scrollIntoView();",
+   "max": 2600
+  },
+  {
+   "screen": "10-Set-detail",
+   "section": "1d",
+   "state": "partout-stale",
+   "world": "edge-value",
+   "path": "/collection/item/set/99103-1?copy=partout-38-stale",
+   "built": true,
+   "approved": false,
+   "script": "document.querySelector('[data-module=prices]').scrollIntoView();",
+   "max": 2600
+  },
+  {
+   "screen": "10-Set-detail",
+   "section": "1d",
+   "state": "partout-other-currency",
+   "world": "edge-value",
+   "path": "/collection/item/set/99105-1?copy=partout-38-other-currency",
+   "built": true,
+   "approved": false,
+   "script": "document.querySelector('[data-module=prices]').scrollIntoView();",
+   "max": 2600
+  },
+  {
+   "screen": "10-Set-detail",
+   "section": "1d",
+   "state": "partout-no-key",
+   "world": "demo",
+   "path": "/collection/item/set/7286-1?copy=56325b99-16bc-549b-bb98-f7be2ab38829",
+   "built": true,
+   "approved": false,
+   "script": "document.querySelector('[data-module=prices]').scrollIntoView();",
+   "max": 2600
+  },
+  {
+   "screen": "44-Complete-sets",
+   "section": "7c",
+   "state": "partout-sort",
+   "world": "edge-value",
+   "path": "/planning/complete-sets?sort=partout",
+   "built": true,
+   "approved": false
   }
  ]
 }

@@ -434,7 +434,7 @@ def ranking(db):
     from . import partout
     values = partout.values(db, [row['id'] for row in decorated])
     for row in decorated:
-        row['partout'] = partout.compare(row, values.get(row['id']))
+        row['partout'] = partout.compare(dict(row, comparison_currency=config['bricklink_currency']), values.get(row['id']))
     data['rows'] = decorated
     return data
 

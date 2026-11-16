@@ -254,9 +254,12 @@ def test_the_new_states_are_built_in_a_known_world():
                                                                                ('36-Check-this-copy', 'javascript-off')}     # script-only states add no data, so they use the showcase
 
 
+PARTOUT = {('10-Set-detail', 'partout-'+s) for s in ('hint', 'pending', 'stale', 'other-currency')} | {('44-Complete-sets', 'partout-sort')}
+
+
 def test_only_the_new_states_use_an_edge_world():
     """No state approved before the edge worlds existed was moved into one: its baseline would then depend on the edge data."""
-    assert {(e['screen'], e['state']) for e in gate.load()['states'] if e.get('world', '').startswith('edge')} <= NEW | VALUE | SOURCE | FIGURES | LABELS
+    assert {(e['screen'], e['state']) for e in gate.load()['states'] if e.get('world', '').startswith('edge')} <= NEW | VALUE | SOURCE | FIGURES | LABELS | PARTOUT
 
 
 def test_the_state_left_unbuilt_says_what_is_missing():

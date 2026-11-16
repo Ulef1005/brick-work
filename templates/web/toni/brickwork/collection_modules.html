@@ -98,18 +98,19 @@
 
 {% macro instruction_cards(row) %}
 {% if row.instructions|length==1 %}{% set f=row.instructions[0] %}<a class="button" href="{{ url_for('web.bw_instruction_download',identifier=f.id) }}">Open PDF · {{ f.label or f.path }}</a>
-{% elif row.instructions %}<div class="bc-booklets" data-bc-booklets>
+{% elif row.instructions %}<p class="bc-booklets-label">Instruction files · {{ row.instructions|length }} booklets</p>
+<div class="bc-booklets" data-bc-booklets>
 {% for f in row.instructions %}
 <article class="bc-booklet{{ ' bc-booklet-card' if row.instructions|length>1 else '' }}" data-file-id="{{ f.id }}" data-thumbnail-state="{{ f.thumbnail_state or 'pending' }}">
 {% if row.instructions|length>1 %}
 {% if f.thumbnail_state=='ready' %}<div class="bc-booklet-tile"><img src="{{ url_for('web.bw_instruction_download',identifier=f.id,thumbnail=1) }}" alt="Page one · {{ f.label }}" width="240" loading="lazy"></div>
 {% elif f.thumbnail_state=='failed' %}<div class="bc-booklet-tile bc-no-image">No image</div>
-{% else %}<div class="bc-booklet-tile" role="status" aria-label="Rendering preview"><progress aria-label="Rendering preview"></progress></div>{% endif %}
+{% else %}<div class="bc-booklet-tile bc-making" role="status" aria-label="Rendering preview"><span>Making preview</span><progress aria-label="Rendering preview"></progress></div>{% endif %}
 {% endif %}
-<div class="bc-booklet-info"><strong>{{ f.label }}</strong><p class="mono">{{ f.size_kb ~ ' KB' if f.size_kb is not none else 'Size unavailable' }}</p>
-<a class="button" href="{{ url_for('web.bw_instruction_download',identifier=f.id) }}">{{ 'Open' if row.instructions|length>1 else 'Open PDF' }}</a>
-{% if can_edit %}<details class="kit-disclosure"><summary>Rename</summary><form data-bc-action="instruction-rename"><input type="hidden" name="identifier" value="{{ f.id }}"><label>Booklet title<input name="label" value="{{ f.label }}" required maxlength="120"></label><button>Save</button><p data-bc-form-message role="status"></p></form></details>
-<details class="kit-disclosure"><summary>Archive</summary><form data-bc-action="instruction-archive"><input type="hidden" name="identifier" value="{{ f.id }}"><p>Archive this booklet?</p><button>Archive booklet</button><p data-bc-form-message role="status"></p></form></details>{% endif %}</div>
+<div class="bc-booklet-info"><strong>{{ f.label }}</strong><p class="mono">{{ 'Size unavailable' if f.size_kb is none else ((f.size_kb / 1024)|round(1) ~ ' MB' if f.size_kb >= 1024 else f.size_kb ~ ' KB') }}</p>
+<a class="button bc-outline" href="{{ url_for('web.bw_instruction_download',identifier=f.id) }}">Open</a>
+{% if can_edit %}<div class="bc-booklet-actions"><details><summary>Rename</summary><form data-bc-action="instruction-rename"><input type="hidden" name="identifier" value="{{ f.id }}"><label>Booklet title<input name="label" value="{{ f.label }}" required maxlength="120"></label><button>Save</button><p data-bc-form-message role="status"></p></form></details>
+<details><summary>Archive</summary><form data-bc-action="instruction-archive"><input type="hidden" name="identifier" value="{{ f.id }}"><p>Archive this booklet?</p><button>Archive booklet</button><p data-bc-form-message role="status"></p></form></details></div>{% endif %}</div>
 </article>{% endfor %}
 </div>{% endif %}
 {% if row.archived_instructions %}<details class="kit-disclosure"><summary>Show archived · {{ row.archived_instructions|length }}</summary>{% for f in row.archived_instructions %}<p>{{ f.label }} · Archived</p>{% endfor %}</details>{% endif %}

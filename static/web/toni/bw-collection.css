@@ -1053,14 +1053,25 @@ main .key-need a:not(.button) { min-height:44px;display:inline-flex;align-items:
 .bc-partout-pending button { min-height:44px; }
 
 /* Instruction page previews: portrait paper, contained without cropping. */
-#bw-collection .bc-booklets { display:flex;flex-wrap:wrap;gap:16px;margin-block:16px; }
+#bw-collection .bc-booklets { display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;margin-block:16px; }
+#bw-collection .bc-booklets-label { margin:16px 0 0;font:500 11px/14px var(--tw-font);letter-spacing:.1em;text-transform:uppercase;color:var(--tw-text-muted); }
 #bw-collection .bc-booklet { min-width:0; }
-#bw-collection .bc-booklet-card { width:min(240px,100%);border:.5px solid var(--tw-divider);border-radius:10px;overflow:hidden; }
+#bw-collection .bc-booklet-card { min-width:0;border:.5px solid var(--tw-divider);border-radius:10px;overflow:hidden; }
 #bw-collection .bc-booklet-tile { aspect-ratio:3/4;display:flex;align-items:center;justify-content:center;background:#fff;padding:12px;box-sizing:border-box; }
 #bw-collection .bc-booklet-tile img { width:100%;height:100%;object-fit:contain; }
 #bw-collection .bc-booklet-tile.bc-no-image { background:var(--tw-surface-2);color:var(--tw-text-muted);border:.5px dashed var(--tw-divider); }
 #bw-collection .bc-booklet-info { padding:12px;overflow-wrap:anywhere; }
 #bw-collection .bc-booklet-info a,#bw-collection .bc-booklet-info summary,#bw-collection .bc-booklet-info button { min-height:44px; }
-@media(max-width:600px) { #bw-collection .bc-booklet-card { width:100%;display:grid;grid-template-columns:minmax(100px,1fr) minmax(0,1fr); } }
+@media(max-width:600px) { #bw-collection .bc-booklets { grid-template-columns:repeat(2,minmax(0,1fr));gap:12px; } }
+#bw-collection .bc-booklet-info > .button { display:flex;justify-content:center;width:100%;box-sizing:border-box; }
+#bw-collection .bc-booklet-info .mono { margin:2px 0 8px; }
+#bw-collection .bc-booklet-actions { display:flex;flex-wrap:wrap;gap:0 16px;margin-top:4px; }
+#bw-collection .bc-booklet-actions details { flex:0 0 auto; }
+#bw-collection .bc-booklet-actions details[open] { flex-basis:100%; }
+#bw-collection .bc-booklet-actions summary { display:inline-flex;align-items:center;list-style:none;cursor:pointer;color:var(--tw-accent-text);font:500 14px var(--tw-font); }
+#bw-collection .bc-booklet-actions summary::-webkit-details-marker,#bw-collection .bc-booklet-actions summary::marker { display:none;content:''; }
 
 #bw-collection .bc-booklet-tile:has(progress) { background:var(--tw-surface-2); }
+#bw-collection .bc-booklet-tile.bc-making { flex-direction:column;gap:8px;color:var(--tw-text-muted);font:400 13px var(--tw-mono); }
+#bw-collection .bc-booklet-tile.bc-making progress { appearance:none;-webkit-appearance:none;width:56%;height:4px;border:0;border-radius:2px;background:linear-gradient(90deg,var(--tw-accent) 0 35%,var(--tw-divider-strong) 35% 100%); }
+#bw-collection .bc-booklet-tile.bc-making progress::-webkit-progress-bar { background:transparent; }

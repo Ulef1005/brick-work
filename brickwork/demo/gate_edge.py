@@ -182,3 +182,63 @@ class OrderLayer(Layer):
 
 def order_layer(data=dataset.DATA, pictures=True):
     return OrderLayer(showcase.Path(data), pictures)
+
+
+# #25 slice 2: sets with instruction booklets in each preview state, one set per screen state (design/screens/states.json, section i25).
+BOOKLET_SETS = {'99101-1': ('ready', 'ready', 'ready'),             # booklet-thumbnails-ready
+                '99102-1': ('pending', 'pending'),                  # ...-pending: the preview worker has not run
+                '99103-1': ('ready', 'failed'),                     # ...-failed: the second PDF cannot be rendered
+                '99104-1': ('ready',),                              # ...-single: one booklet keeps today's row
+                '99105-1': ('ready', 'ready', 'archived')}          # ...-archived: one booklet archived, shown under Show archived
+
+
+def invented_pdf(label: str, shade: int) -> bytes:
+    """A one page PDF of invented bricks and a title; the label makes every file differ (a file is stored under the hash of its bytes)."""
+    colours = ((0.79, 0.10, 0.04), (0.95, 0.80, 0.20), (0.10, 0.30, 0.70), (0.20, 0.55, 0.30))
+    stream = '0.96 0.95 0.92 rg 0 0 300 400 re f\n'
+    for n, (x, y, w) in enumerate(((40, 250, 100), (150, 250, 100), (40, 200, 160), (40, 150, 70))):
+        r, g, b = colours[(n + shade) % len(colours)]
+        stream += f'{r} {g} {b} rg {x} {y} {w} 40 re f\n'
+    stream += f'0.10 0.09 0.09 rg BT /F1 20 Tf 40 340 Td ({label}) Tj ET\n'
+    objects = ['<< /Type /Catalog /Pages 2 0 R >>', '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+               '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 400] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>',
+               f'<< /Length {len(stream)} >>\nstream\n{stream}endstream', '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>']
+    out, offsets = '%PDF-1.4\n', []
+    for n, body in enumerate(objects, 1):
+        offsets.append(len(out))
+        out += f'{n} 0 obj\n{body}\nendobj\n'
+    table = len(out)
+    out += f'xref\n0 {len(objects) + 1}\n0000000000 65535 f \n' + ''.join(f'{o:010d} 00000 n \n' for o in offsets)
+    out += f'trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\nstartxref\n{table}\n%%EOF\n'
+    return out.encode('latin-1')
+
+
+class InstructionLayer(Layer):
+    """The edge layer with instruction booklets in every preview state (#25 slice 2), on showcase sets that carry none. The previews are rendered here by the
+    app's own job (the ready ones), a corrupt PDF ends as failed, and the pending ones are attached last so no job has run for them when the page is served."""
+
+    def edge(self, db):
+        super().edge(db)
+        from ..core import admin, instruction_thumbnails
+        from ..core.media import media_root
+        root = media_root(db)
+        pending = []
+        for number, kinds in BOOKLET_SETS.items():
+            item = dataset.item_by(db, 'sets', number)
+            for n, kind in enumerate(kinds, 1):
+                label = f'Booklet {n} of {len(kinds)}'
+                if kind == 'pending':
+                    pending.append((item, label, invented_pdf(f'{number} · {label}', n)))
+                    continue
+                content = b'%PDF corrupt, not a document' if kind == 'failed' else invented_pdf(f'{number} · {label}', n)
+                identifier = admin.attach_instruction(db, root, item, label, content)
+                if kind == 'archived':
+                    instruction_thumbnails.Thumbnails(db).drain()
+                    admin.instruction_archive(db, identifier)
+        instruction_thumbnails.Thumbnails(db).drain()
+        for item, label, content in pending:
+            admin.attach_instruction(db, root, item, label, content)
+
+
+def instruction_layer(data=dataset.DATA, pictures=True):
+    return InstructionLayer(showcase.Path(data), pictures)

@@ -880,6 +880,9 @@
    "state": "order-missing-parts-review",
    "world": "demo",
    "path": "/planning/order-missing-parts?step=review",
+   "sizes": [
+    390
+   ],
    "built": true,
    "approved": true
   },

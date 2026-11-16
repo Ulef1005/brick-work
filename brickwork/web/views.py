@@ -2206,7 +2206,11 @@ def bw_collection_write(action):
                             r=merged[0]
                             result['url'] = url_for('web.bw_collection_item',item_id=r['item_id'],stock=r['id'],**({'colour':r['color_id']} if r['color_id'] is not None else {}))
             elif action=='wish':
-                event=collection.want(db,int(data['item_id']),data.get('color_id'))
+                from ..core import items
+                from ..core.transaction import transaction
+                with transaction(db):
+                    items.ensure(db, int(data['item_id']))
+                    event=collection.want(db,int(data['item_id']),data.get('color_id'))
                 message='Added to wishlist'
             elif action=='transfer':
                 event=workbench.transfer(db,data['source_id'],data['copy_id'],data['target'],data['target_id'],data['quantity'])
@@ -2676,3 +2680,23 @@ from . import import_views  # noqa: E402,F401 — Import from BrickTracker (#11)
 
 from . import list_views  # noqa: E402,F401 — printable lists and CSV (#43)
 from . import valuation_views  # noqa: E402,F401 — value and gain, Paid vs value, the insurance report (#57)
+
+
+@web_page.get('/collection/item/<int:item_id>/supersets')
+@login_required
+def bw_item_supersets(item_id):
+    from ..core import errors, supersets
+    from ..core.admin import database
+    from .admin_ops import brickwork_path
+    try:
+        color = int(request.args['color'])
+        with database(brickwork_path(), read_only=True, require_catalogue=False) as db:
+            found = supersets.found_in(db, item_id, color, type=request.args.get('type', 'all'),
+                search=request.args.get('q', ''), sort=request.args.get('sort', 'newest'),
+                offset=int(request.args.get('offset', 0)))
+        response = current_app.make_response(render_template('web/toni/brickwork/found_in_results.html',
+            found=found, can_edit=bw_collection_editable()))
+        response.headers['Cache-Control'] = 'no-store'
+        return response
+    except (ValueError, KeyError, errors.BrickWorkError):
+        abort(400, 'Choose a valid colour, type, sort and page.')

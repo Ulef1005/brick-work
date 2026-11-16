@@ -109,15 +109,13 @@ def load_rows(db):
     subsets = [tuple(r) for r in cur.execute(
         """SELECT i.item_id,s.item_id,s.quantity FROM catalogue.inventory i JOIN catalogue.inventory_set s ON s.inventory_id=i.id
            WHERE i.is_latest=1 AND i.retired_at IS NULL""") if r[0] in sets and r[1] in sets]
-    wanted = {f[1] for f in figures}
     figure_parts = defaultdict(list)
     for fig, part, colour, quantity in cur.execute(
             """SELECT i.item_id,p.item_id,p.color_id,p.quantity FROM catalogue.inventory i
                JOIN catalogue.item t ON t.id=i.item_id AND t.kind='minifigure'
                JOIN catalogue.inventory_part p ON p.inventory_id=i.id
-               WHERE i.is_latest=1 AND i.retired_at IS NULL AND p.is_spare=0"""):
-        if fig in wanted:
-            figure_parts[fig].append((part, colour, quantity))
+               WHERE i.is_latest=1 AND i.retired_at IS NULL AND t.retired_at IS NULL AND p.is_spare=0"""):
+        figure_parts[fig].append((part, colour, quantity))
     for inventory_item, part, colour, quantity in cur.execute(
             """SELECT i.item_id,p.item_id,p.color_id,p.quantity FROM catalogue.inventory i
                JOIN catalogue.item t ON t.id=i.item_id AND t.kind='set'
@@ -148,6 +146,7 @@ class Index:
         self.set_keys = []              # position -> array of the set's line keys, and
         self.set_needs = []             # position -> array of their quantities (the forward side: a page reads its sets' lines from here)
         self.posting = {}               # key -> (array of set positions, array of quantities), positions ascending
+        self.figure_posting = {}        # same key -> (figure item ids, quantities), including standalone figures
         self.weight = {}                # key -> w
         self.alternates = {}            # part id -> part ids it swaps with as another mould
         self.position = {}              # set item id -> position
@@ -183,6 +182,14 @@ def build_index(rows):
     index = Index()
     index.key = rows.key
     figure_parts = dict(rows.figure_parts)
+    for figure, parts in figure_parts.items():
+        totals = defaultdict(int)
+        for part, colour, quantity in parts:
+            totals[key_of(part, colour)] += quantity
+        for key, quantity in totals.items():
+            slot = index.figure_posting.setdefault(key, (array('I'), array('I')))
+            slot[0].append(figure)
+            slot[1].append(quantity)
     figures = defaultdict(list)
     for set_id, figure, quantity in rows.figures:
         figures[set_id].append((figure, quantity))

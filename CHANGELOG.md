@@ -4,6 +4,10 @@
 
 - **Part-out prices** (#38). The Prices card keeps its row in place, shows price age, and updates after fetching. Currency comparisons stay consistent. Budget waits and partial failures preserve fetched prices. Capped batches show remaining items. Complete sets restores the previous sort direction. [Pictures and prices](docs/how-to/pictures-and-prices.md#parted-out)
 
+- **Found in fixes** (#40). Catalogue sets and minifigures can be added to the wishlist before their first collection use. Loose figure quantities count each piece once, catalogue-only colours are accepted, owned set pictures omit the part’s colour, and MCP accepts provider colour numbers such as Rebrickable black (`0`).
+
+- **[Found in](docs/how-to/pictures-and-prices.md#part-detail-find-sets-and-minifigures-containing-a-part)** (#40). Part detail lists the sets and minifigures containing a part in its selected colour, with owned holders first, quantities, search, type filters, sorting, paging and wishlist actions. Minifigure components link to the part’s indexed set count. API v2 adds `GET /items/{id}/supersets?color=<id>` and the read-only MCP tool `get_part_supersets`.
+
 - **Storage labels** (#31). Select storages and download A4 PDF sheets or 62 mm tape images. Permanent short ids support Jump search. QR codes open storage contents after login. [Print storage labels](docs/how-to/storage-labels.md)
 
 

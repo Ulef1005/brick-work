@@ -152,3 +152,16 @@ The target is under 10 s for such a pile on the machine that serves the app, col
 ## Pull list
 
 *Unreleased (#202).* The pull list of a candidate set (`brickwork/core/pull_list.py`) is not a score. It reads the set's lines as Build Scout does (own parts with sub-sets expanded, spares left out, whole figures as lines) and compares them with one lot. Per line, `need` is what the set has, and `held` what the lot can give (damaged rows give nothing, capped at `need`). `found` is `held` plus the pieces ticked in the bulk and not filed yet. The ticks are one setting row `pull:<lot id>:<set item id>` (ADR 0029); each is clamped to what the line still lacks. The three numbers of the confirm are `moves` = the sum of `found`, `missing` = the sum of `need` minus `moves`, and `stays` = the pieces the lot holds, plus the ticked ones, minus `moves`. Make it a copy files the ticked pieces in the lot and moves `min(have, need)` per line with `found_copy.make_copy_in`, one event. See [Pull a set out of a lot](../how-to/pull-a-set-out-of-a-lot.md).
+
+## Find containers for one part
+
+The part detail page's **Found in** read reuses the scoring index's postings for a part and colour.
+Standalone minifigure inventories share this index, without changing set scoring weights.
+The read lists owned holders first, then catalogue items by newest year.
+Catalogue counts cover distinct items; each owned copy remains a separate row.
+Spare parts and retired inventory lines do not count.
+
+Colours can come from the collection or the catalogue without a prior projection.
+Owned set pictures describe the set without the searched part’s colour.
+The MCP tool `get_part_supersets` takes a provider colour number, including 0 (Rebrickable black)
+and negative one (unknown); REST still takes the positive Brick Work colour id.

@@ -193,10 +193,19 @@ def test_detail_reads_only_its_item_from_the_instances(store, read, monkeypatch)
             assert len(calls) == 1 and calls[0][1].get('item_id') == item, (item, calls)
 
 
-def test_detail_statement_count_does_not_grow_with_the_number_of_copies(coll, store, read):
+@pytest.mark.parametrize('index_state', ['cold', 'warm'])
+def test_detail_statement_count_does_not_grow_with_the_number_of_copies(coll, store, read, index_state):
+    from brickwork.core import set_scoring
+
+    # Compare like cache states: Found in now shares the process-wide catalogue index.
+    # Exercise both first-use and cached reads without charging a cold build to only one side.
     def statements(item, colour):
         log = []
         with read() as db:
+            if index_state == 'cold':
+                set_scoring._INDEXES.clear()
+            else:
+                set_scoring.index_for(db)
             db.set_trace_callback(log.append)
             collection.detail(db, item, colour=colour)
             db.set_trace_callback(None)

@@ -127,3 +127,19 @@ Finished prices appear even when other jobs fail; the status counts failed or ca
 Each request fetches up to 200 items.
 If more remain, the status says **N parts remain to fetch** and keeps the action.
 Only after all missing items were requested does the status say **N parts have no sales yet**.
+
+## Part detail: Find sets and minifigures containing a part
+
+1. Open **Collection → Parts** and select a part. Choose a colour if the page asks for one.
+2. Find **Found in**, below **Used in sets**. The colour chip and “this colour only” identify the colour being searched.
+3. Read the count of catalogue sets and minifigures. The list puts your owned set copies and loose figures first, with their labels, storage and an **Owned** marker. Catalogue results follow, newest first. Each row shows the quantity of this part; a loose figure row totals the pieces across all copies in that stock row.
+4. Search by name, number or theme. Under **Filters**, choose **Sets** or **Minifigures**; remove the resulting chip to return to all types. **Sort** offers newest, oldest, number and name. Select **Apply** after entering a search.
+5. Use the page numbers or **Previous** and **Next** to browse 15 results at a time. Open a result to see its detail page. **Add to wishlist** adds a catalogue result even if it has never been added to your collection; **On wishlist** means it is already wanted.
+
+The headline counts distinct catalogue items. The result count includes separate owned copies, and an owned item replaces its catalogue row. For example, two owned copies of one set remain two rows. Required parts inside minifigures and subsets count; spare parts do not.
+
+**Used in sets** continues to describe your collection. **Found in** also shows catalogue membership, so it can help with parts you do not own. On minifigure detail, a component’s **Found in N sets** link opens that part in its colour. A component without indexed set membership has no count link.
+
+If the catalogue list is not loaded, owned holders still appear; follow **Catalogues & keys** to load the catalogue. **Colour not matched yet** means the available catalogue evidence cannot be assigned to this named colour. An empty list can mean there is no membership for the colour, or that the current filters found nothing. A missing picture does not hide the result.
+
+The first page is available without JavaScript. Search, filters, paging and wishlist buttons use JavaScript. If a read fails, the last successful results remain visible: select **Retry**.

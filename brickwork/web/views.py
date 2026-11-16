@@ -2426,19 +2426,19 @@ def bw_order_choice(rows,args):
     """What the Order missing parts query asks for, read against `rows`: `dict(q, theme, sort, sell, gain, step, shown, out, chosen)`.
 
     `sell` (leave out sets to sell or part out) is on unless the query says 0 and `gain` (only sets that gain value) is off unless it says
-    1, so a default survives an unticked box (the form sends a 0 before each switch). The choice is the query's `copy` list when `sel=1`,
-    nothing for `sel=none`, else (`sel=all` or no `sel`) every shown copy that is not left out. Only copies on the screen count."""
+    1, so a default survives an unticked box (the form sends a 0 before each switch). The choice is the query's `copy` list when `sel=1`
+    (or, written compactly for a long list, every copy of `rows` but the comma-separated `omit` when `sel=except`), nothing for `sel=none`, else (`sel=all` or no `sel`) every shown copy that is not left out. Only copies on the screen count."""
     from ..core import order_missing
     q=(args.get('q') or '').strip()[:60];theme=(args.get('theme') or '')[:100]
     sort=args.get('sort') if args.get('sort') in dict(order_missing.SORTS) else 'missing'
     sell=(args.getlist('sell') or ['1'])[-1]!='0';gain=(args.getlist('gain') or ['0'])[-1]=='1'
     shown=order_missing.ordered(order_missing.visible(rows,query=q,theme=theme),sort)
     out={r['id']:order_missing.left_out(r,sell=sell,gain=gain) for r in shown}
-    if args.get('sel')=='1':
+    if args.get('sel') in ('1','except'):
         # What the form sends is the page as it was drawn (`was_sell`, `was_gain`): a switch that changed since then moves the copies it
         # leaves out or lets back in, and every other tick stays as it was (a hand-ticked copy that is left out stays ticked).
         was_sell=(args.get('was_sell',('1' if sell else '0'))!='0');was_gain=(args.get('was_gain',('1' if gain else '0'))=='1')
-        asked=set(args.getlist('copy'))
+        asked=set(args.getlist('copy')) if args.get('sel')=='1' else {r['id'] for r in rows}-bw_order_omitted(args)
         for r in shown:
             before=order_missing.left_out(r,sell=was_sell,gain=was_gain)
             if out[r['id']] and not before: asked.discard(r['id'])
@@ -2450,6 +2450,20 @@ def bw_order_choice(rows,args):
     src=order_missing.parse_choices(args.getlist('src'))
     tab=args.get('tab') if args.get('tab') in (order_missing.BL,order_missing.PAB) else ''
     return dict(q=q,theme=theme,sort=sort,sell=sell,gain=gain,prefer=prefer,src=src,src_values=[order_missing.choice_value(k,v) for k,v in src.items()],tab=tab,step='review' if args.get('step')=='review' else 'choose',shown=shown,out=out,chosen=chosen)
+
+
+def bw_order_omitted(args):
+    """The copy ids of a compact selection's `omit` (comma-separated: a link of every copy but a few stays short enough for the server's
+    request-line limit)."""
+    return {i for i in (args.get('omit') or '').split(',')[:ORDER_COPIES_LIMIT*2] if i}
+
+
+def bw_order_selection(rows,chosen):
+    """The query parameters naming `chosen` among `rows`: the copy list, or, when fewer copies are left out than chosen, `sel=except` with
+    the left-out ids in `omit` (the default is every copy with gaps, so a long collection would otherwise overrun the request line)."""
+    keep=set(chosen);omitted=[r['id'] for r in rows if r['id'] not in keep]
+    if len(omitted)<len(chosen): return dict(sel='except',omit=','.join(omitted))
+    return dict(sel='1',copy=chosen)
 
 
 def bw_order_source_query(choice):
@@ -2490,11 +2504,11 @@ def bw_planning_order():
     def link(**change):
         merged={**base,**change}
         return url_for('web.bw_planning_order',**{k:v for k,v in merged.items() if v not in ('',None,[])})
-    picked=dict(sel='1',copy=choice['chosen'],was_sell='1' if choice['sell'] else '0',was_gain='1' if choice['gain'] else '0')
+    picked=dict(**bw_order_selection(rows,choice['chosen']),was_sell='1' if choice['sell'] else '0',was_gain='1' if choice['gain'] else '0')
     page=dict(link=link,base=base,picked=picked,
               all_url=link(sel='all'),clear_url=link(sel='none'),review_url=link(**picked,step='review'),back_url=link(**picked),
-              export_url=url_for('web.bw_planning_order_file',copy=choice['chosen'],**bw_order_source_query(choice)),
-              csv_url=url_for('web.bw_planning_order_pab_file',copy=choice['chosen'],**bw_order_source_query(choice)),
+              export_url=url_for('web.bw_planning_order_file',**{k:v for k,v in bw_order_selection(rows,choice['chosen']).items() if k!='sel' or v!='1'},**bw_order_source_query(choice)),
+              csv_url=url_for('web.bw_planning_order_pab_file',**{k:v for k,v in bw_order_selection(rows,choice['chosen']).items() if k!='sel' or v!='1'},**bw_order_source_query(choice)),
               prefer_url=link(**picked,step='review',prefer='' if choice['prefer'] else '1'),
               tab_url=lambda tab: link(**picked,step='review',tab=tab),
               chip_url=lambda line,source: link(**picked,step='review',src=[order_missing.choice_value(k,v) for k,v in {**choice['src'],line['key']:source}.items()]),
@@ -2512,9 +2526,11 @@ def bw_order_placed(db,args):
     """The order list of the copies in the query's `copy` list, placed by the query's source choices (`prefer`, `src`): what the two
     files hold. Raises ValueError for no copies, too many or a copy that is no longer in the list."""
     from ..core import order_missing, planning
-    ids=args.getlist('copy')
-    if not ids or len(ids)>ORDER_COPIES_LIMIT or len(set(ids))!=len(ids): raise ValueError('Choose copies to export')
     rows=order_missing.candidates(db)
+    if args.get('sel')=='except':
+        omitted=bw_order_omitted(args);ids=[r['id'] for r in rows if r['id'] not in omitted]
+    else: ids=args.getlist('copy')
+    if not ids or len(ids)>ORDER_COPIES_LIMIT or len(set(ids))!=len(ids): raise ValueError('Choose copies to export')
     if not set(ids)<={r['id'] for r in rows}: raise ValueError('Copy is unavailable')
     order=order_missing.order_list(db,rows,set(ids))
     return order_missing.split(db,order,prefer=(args.getlist('prefer') or ['0'])[-1]=='1',chosen=order_missing.parse_choices(args.getlist('src')),config=planning.configuration(db))
@@ -2736,9 +2752,13 @@ def bw_item_supersets(item_id):
 @login_required
 def bw_instruction_find():
     from ..core import instructions, instruction_sources
+    try:
+        job_ids = _instruction_ids(request.args.get('jobs', ''))
+    except (ValueError, TypeError):
+        abort(400, 'Choose a valid instruction job')
     with _add_database(read_only=True) as db:
         region = instructions.region_for(db)
-        groups = instructions.candidates(db, _instruction_ids(request.args.get('jobs', '')))
+        groups = instructions.candidates(db, job_ids)
         official_limit = instructions.download_limit(db, 'official')
     return render_template('web/toni/web/bw_instruction_find.html', csrf_token=bw_add_token(),
                            can_edit=bw_collection_editable(), region=region, groups=groups,

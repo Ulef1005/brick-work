@@ -449,3 +449,16 @@ def test_the_notes_show_under_charts_need_more_data_too(coll, client):
     node, text = section(client)
     assert node['data-state'] == 'few' and 'Charts need more data' in text
     assert [words(n) for n in node.select('.bv-note')] == ['1 copy needs a rate · left out of the totals']
+
+
+def test_the_converted_note_and_totals_count_only_comparable_copies(coll, client):
+    quote(coll, '40.00')
+    rate(coll, 'USD', '1.08')
+    paid_copy(coll, '1000-1', '20.00')
+    paid_copy(coll, '1000-1', '25.00')
+    paid_copy(coll, '1000-1', '30.00')
+    coll.add_copy('1000-2', condition='used', completeness='complete', price='30.00', currency='USD')    # paid in USD but no quote: not in the totals
+    stats = valuation.paid_vs_value(coll.db)
+    assert stats['comparable_copies'] == 3 and stats['converted'] is False and stats['rates_as_of'] is None
+    node, text = section(client)
+    assert 'Converted to' not in text and 'paid in USD' not in text

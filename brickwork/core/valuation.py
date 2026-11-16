@@ -113,11 +113,11 @@ def _quotes(db, copies):
 def _net(worth, deduction, quote, table):
     """The money body `worth` (the average) with a checked copy's deductions taken off: the amount is the Sell card's (the average less the two
     rows, in whole cents). A converted figure keeps its rate and shows the amount as recorded less the deductions in that currency."""
-    taken = deduction['parts'] + deduction['figures']
     body = dict(worth, amount=deductions.net(worth['amount'], deduction))
     if body['converted']:
-        back = fx.convert(taken, worth['currency'], quote['currency'], table)
-        body['original'] = dict(body['original'], amount=_cents(max(body['original']['amount'] - (back['amount'] if back else 0), Decimal(0))))
+        back = fx.convert(body['amount'], worth['currency'], quote['currency'], table)   # the net figure back in the quote's currency
+        original = back['amount'] if back else body['amount'] / body['rate']
+        body['original'] = dict(body['original'], amount=_cents(original))
     return body
 
 
@@ -265,7 +265,7 @@ def paid_vs_value(db, rows=None):
     comparable = _comparable(rows)
     total = _sum(comparable) if comparable else None
     unpaid = [r for r in rows if r['paid_reason'] == 'no_price_paid' and r['worth'] is not None]
-    converted, as_of = _conversion(rows)
+    converted, as_of = _conversion(comparable)
     themes = sorted(_group(comparable, lambda r: r['theme'] or NOT_RECORDED), key=lambda g: (-g['paid'], g['label']))
     years = sorted(_group(comparable, lambda r: (r['purchase_date'] or '')[:4] or NOT_RECORDED), key=lambda g: (g['label'] == NOT_RECORDED, g['label']))
     return dict(currency=display_currency(db), copies=len(rows), comparable_copies=len(comparable), enough=len(comparable) >= MIN_COMPARABLE,

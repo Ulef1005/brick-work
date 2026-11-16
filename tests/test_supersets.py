@@ -96,3 +96,33 @@ def test_headline_counts_match_filtered_owned_rows(world, coll):
         assert result['counts']['sets'] == sum(r['kind'] == 'set' for r in result['results'])
         assert result['counts']['minifigures'] == sum(r['kind'] == 'minifigure' for r in result['results'])
         assert result['owned_count'] == sum(r['owned'] for r in result['results'])
+
+
+def test_only_unknown_and_no_colour_postings_make_a_colour_unmatched(cat, monkeypatch):
+    db, n, *_ = cat
+    part = n.part('3001')
+    for posted, unmatched in ((None, True), (1, True), (2, False)):             # colour 2 is an ordinary named colour
+        index = S.build_index(S.Rows([], figure_parts=[(123, [(part, posted, 1)])]))
+        monkeypatch.setattr(S, 'index_for', lambda db, index=index: (index, False))
+        assert supersets.found_in(db, part, n.colour('4'))['colour_unmatched'] is unmatched, posted
+
+
+@pytest.mark.parametrize('options', [{}, {'sort': 'name'}, {'sort': 'number'}, {'sort': 'oldest'}, {'search': '9106'}, {'type': 'sets'}])
+def test_pages_are_slices_of_the_full_ordered_list(cat, options):
+    db, n, *_ = cat
+    line = n.line('3001', '4')
+    full = supersets.found_in(db, *line, limit=100, **options)
+    assert full['total'] > 3 or options.get('search')
+    pages = [supersets.found_in(db, *line, limit=3, offset=o, **options) for o in range(0, max(full['total'], 1), 3)]
+    assert [r['item_id'] for p in pages for r in p['results']] == [r['item_id'] for r in full['results']]
+    assert all(p['total'] == full['total'] and p['counts'] == full['counts'] for p in pages)
+    assert [r['number_text'] for p in pages for r in p['results']] == [r['number_text'] for r in full['results']]
+
+
+def test_a_stale_offset_lands_on_the_last_page(cat):
+    db, n, *_ = cat
+    line = n.line('3001', '4')
+    total = supersets.found_in(db, *line, limit=100)['total']
+    stale = supersets.found_in(db, *line, limit=3, offset=total + 50)
+    assert stale['results'] and stale['offset'] == (total - 1) // 3 * 3 and stale['total'] == total
+    assert supersets.found_in(db, *n.line('syn-r1', '15'), offset=40)['offset'] == 0

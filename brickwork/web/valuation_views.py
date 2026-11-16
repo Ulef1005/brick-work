@@ -141,7 +141,7 @@ def paid_vs_value(db):
         out['notes'].append(f"{plural(stats['without_rate'], 'copy', 'copies')} {'needs' if stats['without_rate'] == 1 else 'need'} a rate · left out of the totals")
     if stats['converted']:
         paid_in = {}
-        for r in rows:
+        for r in valuation._comparable(rows):                      # the same copies as the totals
             if r['paid'] and r['paid']['converted']:
                 paid_in[r['paid']['original']['currency']] = paid_in.get(r['paid']['original']['currency'], 0) + 1
         note = f"Converted to {cur} at the rates of {short_age(stats['rates_as_of'])}"

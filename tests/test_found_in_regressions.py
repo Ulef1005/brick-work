@@ -74,3 +74,9 @@ def test_owned_set_picture_has_no_part_colour(client, coll, world):
     image = row.select_one('img')
     assert image and image['alt'] == 'Syn Castle Keep'
     assert row.select_one('[data-caption]')['data-caption'] == 'Syn Castle Keep'
+
+
+def test_a_stale_offset_shows_the_last_page_not_an_empty_one(client, coll):
+    part, color = coll.item('parts', '970c03'), coll.colour('0')
+    soup = BeautifulSoup(client.get(f'/collection/item/{part}/supersets?color={color}&offset=900').data, 'html.parser')
+    assert soup.select('article') and 'of' in soup.text

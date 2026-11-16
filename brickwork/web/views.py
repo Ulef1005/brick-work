@@ -2232,6 +2232,9 @@ def bw_collection_write(action):
                 event = (admin.instruction_rename(db, identifier, data['label'], undoable=True)
                          if action=='instruction-rename' else admin.instruction_archive(db, identifier))
                 message = 'Saved' if action=='instruction-rename' else 'Archived'
+            elif action=='instruction-restore':
+                event = collection.restore(db, 'instruction_file', int(data['identifier']))
+                message = 'Restored'
             elif action=='wish':
                 from ..core import items
                 from ..core.transaction import transaction

@@ -1065,6 +1065,9 @@ main .key-need a:not(.button) { min-height:44px;display:inline-flex;align-items:
 @media(max-width:600px) { #bw-collection .bc-booklets { grid-template-columns:repeat(2,minmax(0,1fr));gap:12px; } }
 #bw-collection .bc-booklet-info > .button { display:flex;justify-content:center;width:100%;box-sizing:border-box; }
 #bw-collection .bc-booklet-info .mono { margin:2px 0 8px; }
+#bw-collection .bc-archived-booklet { display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:4px 16px; }
+#bw-collection .bc-archived-booklet > p,#bw-collection .bc-archived-booklet form > p { margin:0; }
+#bw-collection .bc-archived-booklet button { min-height:44px; }
 #bw-collection .bc-booklet-actions { display:flex;flex-wrap:wrap;gap:0 16px;margin-top:4px; }
 #bw-collection .bc-booklet-actions details { flex:0 0 auto; }
 #bw-collection .bc-booklet-actions details[open] { flex-basis:100%; }

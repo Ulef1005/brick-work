@@ -210,4 +210,17 @@ async function cameraRestoreFlow(){
  await nodes.capture.click();await tick();assert.equal(streams.length,2);assert.equal(nodes.capture.textContent,'Take picture');
  streams[1].active=false;await nodes.capture.click();await tick();assert.equal(streams.length,3);
 }
-(async()=>{await hardeningFlow();await cameraRestoreFlow();await flow();await cameraFlow();await cameraErrorFlow();await overlappingStartFlow();console.log('Part Spotter runtime passed');})().catch(e=>{console.error(e);process.exitCode=1;});
+async function lateCameraCheckFlow(){
+ // #313: a camera check that ends late with no camera must not overwrite what the person did while it waited.
+ let release;const navigator={mediaDevices:{enumerateDevices:()=>new Promise(r=>{release=()=>r([]);})}};
+ const {nodes,document}=setup(navigator);await tick();
+ document.activeElement=new Element('body');document.events.keydown({code:'Space',preventDefault(){}});
+ const mine=nodes.message.textContent;assert.match(mine,/start the camera/);
+ release();await tick();await tick();
+ assert.equal(nodes.message.textContent,mine);
+ // Nothing said meanwhile: the camera check still says there is no camera.
+ let free;const quiet={mediaDevices:{enumerateDevices:()=>new Promise(r=>{free=()=>r([]);})}};
+ const second=setup(quiet);await tick();free();await tick();await tick();
+ assert.equal(second.nodes.message.textContent,'No camera · add a saved photo');
+}
+(async()=>{await hardeningFlow();await cameraRestoreFlow();await flow();await cameraFlow();await cameraErrorFlow();await overlappingStartFlow();await lateCameraCheckFlow();console.log('Part Spotter runtime passed');})().catch(e=>{console.error(e);process.exitCode=1;});

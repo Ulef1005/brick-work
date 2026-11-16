@@ -10,7 +10,8 @@
   let active = null, stream = null, startCall = 0, pendingPiece = null, saving = false, undoing = false, receipt = null, batchPieces = [];
   let endpoint = 'parts', queueFilter = '', queueSort = 'piece', destination = 'loose', condition = 'U', cameraId = '', lotId = '', storageId = '';
   const el = (tag, text, cls) => { const n = document.createElement(tag); if (text !== undefined) n.textContent = text; if (cls) n.className = cls; return n; };
-  const message = (text, kind = 'info') => { node('message').textContent = text; node('notice').dataset.kind = kind; node('notice').hidden = !text && node('undo').hidden; };
+  let messages = 0;  // counts message() calls: a late camera check must not overwrite what the person did meanwhile (#313)
+  const message = (text, kind = 'info') => { messages++; node('message').textContent = text; node('notice').dataset.kind = kind; node('notice').hidden = !text && node('undo').hidden; };
   function button(text, action, cls) { const n = el('button', text, cls); n.type = 'button'; n.addEventListener('click', action); return n; }
   const pressed = (nodes, key, value) => nodes.forEach(n => n.setAttribute('aria-pressed', String(n.dataset[key] === value)));
   function tile(image, name, number, cls, retry = true) { const n = el('div', undefined, 'scan-tile' + (cls ? ' ' + cls : '')); if (image) { const i = el('img'); i.src = image; i.dataset.full = image.replace(/\?w=\d+$/, ''); i.alt = name; i.addEventListener('error',()=>n.replaceChildren(el('span','Image did not load'),...(retry?[button('Retry',()=>{i.src=image;n.replaceChildren(i);})]:[]))); n.append(i); } else {n.className+=' scan-no-image';if(number)n.append(el('span',number,'mono'));n.append(el('span', 'No image'));} return n; }
@@ -162,12 +163,13 @@
   }
   function toggleList(toggle, list) { list.hidden = !list.hidden; toggle.setAttribute('aria-expanded', String(!list.hidden)); }
   async function cameras() {
+    const seen=messages;
     const devices=await navigator.mediaDevices.enumerateDevices();let selected=cameraId;try{selected=selected||localStorage.getItem('bw-camera')||'';}catch(e){}
     const inputs=devices.filter(d=>d.kind==='videoinput');
     const options=inputs.map((d,i)=>{const o=button(d.label||`Camera ${i+1}`,()=>{});o.setAttribute('role','option');o.value=d.deviceId;return o;});
     listPicker(node('camera'),node('camera-list'),options,o=>{pickCamera(o.value,o.textContent);try{localStorage.setItem('bw-camera',o.value);}catch(e){}start();});
     const chosen=options.find(o=>o.value===selected)||options[0];
-    if(chosen)pickCamera(chosen.value,chosen.textContent);else{pickCamera('','No camera');message('No camera · add a saved photo','error');}
+    if(chosen)pickCamera(chosen.value,chosen.textContent);else{pickCamera('','No camera');if(messages===seen)message('No camera · add a saved photo','error');}
   }
   function captureLabel() { node('capture').textContent = stream?.active ? 'Take picture' : 'Enable camera'; }
   async function start() {
@@ -244,6 +246,6 @@
   node('drop').addEventListener('dragover',e=>{e.preventDefault();node('drop').classList.add('scan-drop');});node('drop').addEventListener('dragleave',()=>node('drop').classList.remove('scan-drop'));node('drop').addEventListener('drop',e=>{e.preventDefault();node('drop').classList.remove('scan-drop');if(e.dataTransfer.files[0])detect(e.dataTransfer.files[0]);});
   document.addEventListener('keydown',e=>{if(['INPUT','SELECT','TEXTAREA'].includes(document.activeElement?.tagName)||node('batch').open)return;const pageFocus=!document.activeElement||document.activeElement.tagName==='BODY'||document.activeElement===node('review');if(e.code==='Space'&&pageFocus){e.preventDefault();capture();}else if(e.key==='Enter'&&pageFocus&&reviewVisible()&&active?.colour!=null){e.preventDefault();node('review').querySelector('[data-confirm]')?.click();}else if(/^[1-9]$/.test(e.key)&&active&&queue.includes(active)&&!active.pending&&reviewVisible()&&active.candidates[Number(e.key)-1]&&Number(e.key)-1!==active.index){active.index=Number(e.key)-1;active.colour=null;active.status='review';showReview(active);renderQueue();}});
   window.addEventListener('pagehide',()=>{startCall++;if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}captureLabel();});
-  if(navigator.mediaDevices){cameras().catch(()=>message('No camera · add a saved photo','error'));navigator.mediaDevices.addEventListener?.('devicechange',()=>cameras().catch(()=>{}));}else message('No camera · add a saved photo','error');
+  if(navigator.mediaDevices){const seenFirst=messages;cameras().catch(()=>{if(messages===seenFirst)message('No camera · add a saved photo','error');});navigator.mediaDevices.addEventListener?.('devicechange',()=>cameras().catch(()=>{}));}else message('No camera · add a saved photo','error');
   captureLabel();renderQueue();
 })();

@@ -423,3 +423,28 @@ def test_instruction_searches_and_candidates_merge_and_unmerge(coll, world):
     assert db.execute('PRAGMA foreign_key_check').fetchall() == []
     moves.unmerge(db, result['merge_id'], via='cli')
     assert table_digest(db) == before
+
+
+def test_a_shared_booklet_candidate_keeps_the_download_of_the_loser_and_unmerge_restores_both(coll, world):
+    db = coll.db
+    loser = coll.local('set', 'Local set', born_key='instructions-2')
+    survivor = world.gate
+    ids = {}
+    for item in (loser, survivor):
+        job = coll.sql("INSERT INTO job(source,kind,item_id,state,via,created_at,updated_at) VALUES('import','instruction_search',?,'done','app',?,?)",
+                       (item, STAMP, STAMP)).lastrowid
+        coll.sql('INSERT INTO instruction_search(job_id,item_id,updated_at) VALUES(?,?,?)', (job, item, STAMP))
+        file_id = None
+        if item == loser:                                                                 # only the loser's twin was downloaded
+            file_id = coll.sql("INSERT INTO instruction_file(item_id,path,label,added_at) VALUES(?,'data/instructions/shared.pdf','Booklet',?)", (item, STAMP)).lastrowid
+        ids[item] = coll.sql("INSERT INTO instruction_candidate(item_id,search_job,source,title,booklet,booklets,url,file_id) VALUES(?,?,'import','Booklet',1,1,'shared',?)",
+                             (item, job, file_id)).lastrowid
+    file_id = db.execute('SELECT file_id FROM instruction_candidate WHERE id=?', (ids[loser],)).fetchone()[0]
+    before = table_digest(db)
+    result = moves.merge(db, loser, survivor, via='cli')
+    kept = db.execute('SELECT id, item_id, file_id FROM instruction_candidate').fetchall()
+    assert [tuple(r) for r in kept] == [(ids[survivor], survivor, file_id)]
+    assert db.execute('SELECT item_id FROM instruction_file WHERE id=?', (file_id,)).fetchone()[0] == survivor
+    assert db.execute('PRAGMA foreign_key_check').fetchall() == []
+    moves.unmerge(db, result['merge_id'], via='cli')
+    assert table_digest(db) == before

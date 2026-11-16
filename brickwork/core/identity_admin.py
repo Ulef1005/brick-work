@@ -194,6 +194,10 @@ def _run(db, function, *args, **kwargs):
         raise errors.Conflict(str(exc)) from None
     except CatalogueError:
         raise errors.Conflict(NOT_ACTIVATED) from None
+    except sqlite3.OperationalError as exc:
+        if 'no such table' in str(exc) or 'unable to open' in str(exc):           # the catalogue file is not attached: the same answer as the preview's
+            raise errors.Conflict(NOT_ACTIVATED) from None
+        raise
 
 
 def merge_item(db, loser, survivor):
@@ -619,6 +623,13 @@ def explain_variant_refusal(db, text, from_id, to_id):
             if row:
                 return row['name'] or row['born_key'] or f'item {item_id}'
         return f'item {item_id}'
+    live = re.match(r'item (\d+) is not a live catalogue item', text)
+    if live:
+        return (f'{name(int(live.group(1)))} is not a live catalogue item: you added it yourself, or the catalogue has retired it. '
+                'Only live catalogue items change variant. Merge it into the item it is instead.')
+    since = re.match(r'item (\d+) was merged \(into (\d+)\) since the change of variant', text)
+    if since:
+        return f'{name(int(since.group(1)))} was merged into {name(int(since.group(2)))} since the variant was changed. Undo that merge first, then undo this change.'
     if 'become itself' in text:
         return 'An item cannot change to itself. Pick the other variant.'
     if 'is merged already' in text:

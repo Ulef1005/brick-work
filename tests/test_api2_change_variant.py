@@ -89,3 +89,16 @@ def test_a_user_added_or_retired_item_is_409_through_the_api_too(v2, coll, world
         db.execute("UPDATE item SET catalogue_retired_at=NULL WHERE id=?", (variant,))
         db.commit()
     assert digest(pair) == before
+
+
+def test_a_change_with_no_catalogue_attached_is_409_not_a_server_error(v2, world, variant, pair, monkeypatch):
+    import sqlite3
+
+    from brickwork.store4 import variant as store_variant
+
+    def gone(*args, **kwargs):
+        raise sqlite3.OperationalError('no such table: catalogue.inventory')
+    monkeypatch.setattr(store_variant, 'change_variant_in', gone)
+    before = digest(pair)
+    refused = change(v2, world.figure, {'to': {'id': variant}})
+    assert refused.status_code == 409 and "catalogue isn't activated" in refused.json['detail'] and digest(pair) == before

@@ -327,9 +327,9 @@ def own_address(text):
 
 
 def stub(title, target):
-    """The page left at a moved page's old URL: a link to the new one, followed at once by the browser."""
+    """The page left at a moved page's old URL: a link to the new one, followed at once by the browser. It names the new page as its canonical, so Search Console does not report the stub as a duplicate without a user-selected canonical (16.11.)."""
     return page(title, f'<h1>{html.escape(title)}</h1><p>This page has moved to <a href="../{target}">{html.escape(title)} in the docs</a>.</p>',
-                1, current=None, head=f'<meta http-equiv="refresh" content="0; url=../{target}">')
+                1, current=None, head=f'<link rel="canonical" href="{origin()}{site_base()}{target}"><meta http-equiv="refresh" content="0; url=../{target}">')
 
 
 def build_docs(out):

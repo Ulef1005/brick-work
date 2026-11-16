@@ -631,3 +631,12 @@ def test_the_demo_entry_has_share_tags(site):
     from scripts.build_site import DEMO_DESCRIPTION
     assert f'name="description" content="{DEMO_DESCRIPTION}"' in text and f'property="og:description" content="{DEMO_DESCRIPTION}"' in text
     assert f'property="og:url" content="{origin() + site_base()}demo/"' in text
+
+
+def test_moved_page_stubs_name_the_new_page_as_canonical(site):
+    """Search Console (16.11.) reported the /api/ and /mcp/ stubs as 'Duplicate without user-selected canonical': each stub names its target as canonical."""
+    from scripts.build_site import MOVED
+    for folder, _, target in MOVED:
+        text = (site / folder / 'index.html').read_text()
+        assert text.count('rel="canonical"') == 1, folder
+        assert f'rel="canonical" href="https://brick-work.app/{target}"' in text or f'/{target}">' in text, folder

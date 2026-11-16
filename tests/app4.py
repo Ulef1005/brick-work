@@ -13,6 +13,7 @@ after sees it. `app4` is the real app on the pair and `client` a logged-in brows
 """
 from contextlib import closing
 import shutil
+import sqlite3
 import uuid
 
 from flask import Flask
@@ -300,6 +301,13 @@ def pair(tmp_path):
 def coll(pair):
     with closing(connect(pair)) as db:
         yield Coll(db)
+
+
+def elements(pair, coll, *rows):
+    """Add `(part key, colour key, element id)` rows to the fixture catalogue file (#314)."""
+    with sqlite3.connect(pair.parent / 'catalogue.db') as db:
+        for part, colour, element in rows:
+            db.execute('INSERT INTO element(element_id,item_id,color_id) VALUES(?,?,?)', (element, coll.item('parts', part), coll.colour(colour)))
 
 
 @pytest.fixture

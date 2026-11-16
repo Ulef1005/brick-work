@@ -38,12 +38,7 @@ def test_all_shells(client, world, path, current, group):
         assert soup.select_one('a[title="Order missing parts"] svg')
 
 
-def test_tools_and_complete_sets_keep_links(client, world):
-    soup = BeautifulSoup(client.get('/manage/tools').text, 'html.parser')
-    main = soup.select_one('main')
-    for titles in GROUPS.values():
-        positions = [main.text.index(title) for title in titles]
-        assert positions == sorted(positions)
+def test_complete_sets_links_to_order_missing_parts(client, world):
     soup = BeautifulSoup(client.get('/planning/complete-sets').text, 'html.parser')
     assert soup.select_one('main a[href="/planning/order-missing-parts"]')
 

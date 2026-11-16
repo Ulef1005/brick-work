@@ -8,14 +8,14 @@ import time
 from datetime import datetime, timezone
 
 from ..store4 import jobs, reconcile_job
-from . import add, pictures, pipeline, source_ops, instructions
+from . import add, pictures, pipeline, source_ops, instructions, instruction_thumbnails
 from .admin import begin_operation, end_operation
 from .connect import connect
 from .sources.base import audit_origin
 
 # Two runners share the `job` table and each ignores the other's kinds: `store4.jobs` runs the two fetch kinds, `core.pipeline` the
 # app's own `item` jobs (M.8c). Both are looked at here: one poll, one stop.
-PENDING_SQL = (f"SELECT state, retry_at FROM job WHERE (kind IN {jobs.OWN_KINDS} OR kind IN ('{pipeline.KIND}', '{reconcile_job.KIND}', '{instructions.DOWNLOAD_KIND}')) "
+PENDING_SQL = (f"SELECT state, retry_at FROM job WHERE (kind IN {jobs.OWN_KINDS} OR kind IN ('{pipeline.KIND}', '{reconcile_job.KIND}', '{instructions.DOWNLOAD_KIND}', '{instruction_thumbnails.KIND}')) "
                f"AND {jobs.ACTIVE}")
 
 
@@ -45,6 +45,7 @@ def queue_startup_work(path):
     """At start (the embedded drainer's and `brickwork worker`'s): a catalogue swapped in but not reconciled yet becomes one reconcile job
     (design 6.2), run by the drain like any other. Returns the job id, or None when nothing is due."""
     with closing(connect(path, require_catalogue=False)) as db:          # no catalogue file: nothing to reconcile, and the first-run page must still load
+        instruction_thumbnails.queue_missing(db)
         requeue_configured_keys(db)
         return reconcile_job.queue_if_due(db, via='app')
 
@@ -69,7 +70,7 @@ def drain_once(path):
         fetched = jobs.drain(db)
         # #217: a copy that switched to its BrickLink list by itself has new lines; queue the pictures they lack
         switched = [s['copy_id'] for r in fetched for s in r.get('settled') or () if s.get('outcome') == 'switched']
-        ran = fetched + pipeline.drain(db) + instructions.Downloads(db).drain()
+        ran = fetched + pipeline.drain(db) + instructions.Downloads(db).drain() + instruction_thumbnails.Thumbnails(db).drain()
         reconcile_job.drain(db)
         add.settle_fetches(db)
         pictures.queue_for_copies(db, switched)

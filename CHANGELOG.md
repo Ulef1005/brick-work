@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Booklet previews** (#25). Sets with several PDFs show page one, titles, sizes and file actions in Instructions & Box. Bounded PDFium jobs create derived previews. Schema 4.6 stores their state.
+
 - **Part Spotter keeps your message** (#313). A camera check that finishes late and finds no camera no longer replaces the message of something you just did, such as choosing a saved photo. This also removes the flaky sticker state in the screen gate.
 
 - **Navigation** (#412). Workbench adds Lot Sorter for lots, set detection and pull lists. Planning adds Order missing parts, including its review step.

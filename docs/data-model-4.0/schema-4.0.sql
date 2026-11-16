@@ -1080,3 +1080,7 @@ CREATE TRIGGER item_instruction_kind_guard BEFORE UPDATE OF kind ON item
  EXISTS(SELECT 1 FROM instruction_search WHERE item_id=old.id)
  OR EXISTS(SELECT 1 FROM instruction_candidate WHERE item_id=old.id))
  BEGIN SELECT RAISE(ABORT,'kind change refused: instruction references require a set'); END;
+
+-- Instruction thumbnails, schema 4.6
+ALTER TABLE instruction_file ADD COLUMN thumbnail_path TEXT CHECK(thumbnail_path IS NULL OR (thumbnail_path LIKE 'data/instructions/%.thumb.png' AND instr(thumbnail_path,'..')=0));
+ALTER TABLE instruction_file ADD COLUMN thumbnail_state TEXT CHECK(thumbnail_state IS NULL OR thumbnail_state IN ('pending','ready','failed'));

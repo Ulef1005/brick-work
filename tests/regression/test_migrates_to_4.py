@@ -65,6 +65,8 @@ def test_migrates_to_4(fixture, tmp_path, world):
             DROP INDEX storage_short_id;
             ALTER TABLE storage DROP COLUMN short_id;
             DROP TABLE storage_label_sequence;
+            ALTER TABLE instruction_file DROP COLUMN thumbnail_path;
+            ALTER TABLE instruction_file DROP COLUMN thumbnail_state;
             UPDATE meta SET value='4.2' WHERE key='schema_version';""")
     assert upgrade(older) == SCHEMA_VERSION
     with closing(sqlite3.connect(older)) as db:

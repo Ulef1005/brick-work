@@ -515,7 +515,7 @@ def count_jobs(db, *, batches=True):
     return db.execute("SELECT count(*) FROM main.job" + ('' if batches else f' WHERE {BATCH_SQL} IS NULL')).fetchone()[0]
 
 
-FETCH_HEADINGS = {'instruction_download': 'Download instructions', 'rebrickable_set': 'Rebrickable set', 'bricklink_subsets': 'BrickLink part list', 'reconcile': 'Reconcile with the catalogue'}
+FETCH_HEADINGS = {'instruction_thumbnail': 'Instruction preview', 'instruction_download': 'Download instructions', 'rebrickable_set': 'Rebrickable set', 'bricklink_subsets': 'BrickLink part list', 'reconcile': 'Reconcile with the catalogue'}
 
 
 def jobs(db, limit=300, *, batches=True):
@@ -697,6 +697,8 @@ def attach_instruction(db, root, item_id, label, content, *, undoable=False, lim
             items.ensure(db, item_id)
             identifier = db.execute('INSERT INTO main.instruction_file(item_id,path,label,added_at) VALUES(?,?,?,?)',
                 (item_id, relative.as_posix(), label, store4_now())).lastrowid
+            from .instruction_thumbnails import queue
+            queue(db, identifier)
             from .collection import receipt, snapshot
             if undoable:
                 receipt(db, [('instruction_file', [], snapshot(db, 'instruction_file', [identifier]))], 'save')

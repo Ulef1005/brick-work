@@ -246,7 +246,7 @@ PULL_WINDOW = ("{ const sec = [...document.querySelectorAll('details.bw-sec')].f
                "[...document.querySelectorAll('[data-line]')].forEach(l => { if (!sec.contains(l)) l.remove(); }); "
                "[...sec.querySelectorAll('[data-line]')].filter(l => !l.querySelector('img')).forEach(e => e.remove()); [...sec.querySelectorAll('[data-line]')].slice(11).forEach(e => e.remove()); "
                "const open = [...document.querySelectorAll('[data-line]')].find(l => /(^|\\D)0 of \\d+/.test(l.textContent)); if (!open) throw new Error('PULL_WINDOW: no line left to find'); open.setAttribute('data-shot-open', ''); "
-               "document.querySelectorAll('.bp-more, .bp-bar, .bw-sec-tools').forEach(e => e.remove()); }\n")
+               "document.querySelectorAll('.bp-more, .bp-bar, .bw-sec-tools, .bw-sec-count').forEach(e => e.remove()); }\n")
 # Order missing parts, the review step (a phone screen): the four copies with gaps, as the first step hands them on.
 ORDER_REVIEW = ('/planning/order-missing-parts?sel=1&' + '&'.join('copy=' + REAL(n) for n in ('10210-1', '7938-1', '7213-1', '31120-1')) + '&was_sell=1&was_gain=0&step=review')
 # Build Scout's panel draws a missing minifigure as a number-only tile and has no picture branch for it, so the shot leaves the figure lines out.

@@ -39,3 +39,5 @@ One file per decision that binds future work: the API contract, the data model, 
 | [0030](0030-docs-reference-pages.md) | Docs site: generated reference pages, and the hand-built /api/, /mcp/ and /design/ pages retired | accepted | 2026-11-13 |
 
 | [0032](0032-instruction-downloads.md) | Confirmed instruction downloads use the existing job queue | accepted; backup proposal pending | 2026-11-16 |
+
+| [0033](0033-instruction-thumbnails.md) | Instruction thumbnails use PDFium in bounded jobs | accepted | 2026-11-16 |

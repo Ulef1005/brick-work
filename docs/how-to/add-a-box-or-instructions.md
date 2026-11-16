@@ -66,3 +66,10 @@ If a candidate has been removed, its download step fails with “Candidate was r
 Schema 4.5 adds database guards for discovery references; writable opens upgrade older collections automatically.
 
 Add enables Fetch instructions only when at least one adapter is available. Otherwise it shows the adapter setup reason; completion keeps discovery errors visible. A new search clears the previous download address, and Retry failed files appears only after the download owner has stopped.
+
+## Preview several booklets
+
+The Instructions & Box tab shows page one when a set has several PDFs. One PDF keeps its compact row.
+Each card shows the booklet title, size and Open action. Rename changes the title; Archive hides the file under Show archived.
+A progress tile means the preview job is waiting or running. No image means the preview failed; the PDF still opens.
+Previews accept PDFs up to 20 MB and stop after 10 seconds. Pending tiles update automatically for one minute. Reload later if a job is still waiting.

@@ -29,3 +29,5 @@ The term 'BrickLink' is a trademark of the LEGO Group BrickLink. This applicatio
 
 - Segno 1.6.6: BSD-3-Clause, QR matrix generation. Installed from PyPI at image build time. https://github.com/heuer/segno
 - Beautiful Soup 4.15.0 (beautifulsoup4) and Soup Sieve 4.1: MIT, HTML parsing for the Official instructions source. Installed from PyPI at image build time. https://www.crummy.com/software/BeautifulSoup/ and https://github.com/facelessuser/soupsieve
+
+- pypdfium2 5.15.2: BSD-3-Clause or Apache-2.0. PDFium: BSD-3-Clause, with bundled dependency licences included in the installed distribution. Used for instruction previews. https://github.com/pypdfium2-team/pypdfium2

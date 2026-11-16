@@ -68,10 +68,11 @@ def digest(name):
 
 # Refreshed for schema 4.5 (#25): the 4.5 step adds only triggers; only the schema version row and the two empty instruction tables differ from 4.3.
 # Verified against the previous fingerprints after removing those empty tables and restoring the version to 4.3.
+# Refreshed for schema 4.6 (#25 slice 2): the 4.6 step adds two nullable columns to instruction_file; compared table by table with main at 4.5, only `meta` (the version row) differs in each world.
 BEFORE = {
-    'demo': '6be1038389dce9a9a76b2a55ccb8a0f742dfd246aaa30af099b6a0b9928357f8',
-    'showcase': '4e2667e8b0924c0fd5da4c273bf67fb32f379efb9238f63d172a58764269924a',
-    'extras': 'abc1ded02974f920d797c2054a6d371e59a1ea1fce82573b17f23a97a90ddce6',
+    'demo': '91312a91515887f0634673a8d3b05d2174f1021753076e4cf73af2911a1cc67c',
+    'showcase': 'db38f17d2cb2613290dc1976ed64c078fd5eae2e422764dcc21c4e5f12c20159',
+    'extras': '1c3e449631c7eb97d1cbdd36d66af311acc2143f9bc1b133160fb74a36264c8a',
 }
 
 

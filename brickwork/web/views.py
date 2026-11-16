@@ -242,6 +242,7 @@ def bw_admin_write(page):
                 upload = request.files['file']
                 admin_ops.tools_write('instruction_upload', kind=request.form['item_type'], number=request.form['item_no'],
                     label=request.form['label'], content=upload.stream.read(20 * 1024 * 1024 + 1))
+                bw_start_worker()
         elif page == 'values':
             admin_ops.tools_write('value', group=request.form['group'], action=request.form['action'],
                 identifier=request.form.get('id'), name=request.form.get('name'), confirmed=request.form.get('confirm') == 'yes')
@@ -758,13 +759,18 @@ def bw_instruction_download(identifier):
     from flask import send_file
     path = brickwork_path()
     with database(path, read_only=True) as db:
-        row = db.execute('SELECT path FROM instruction_file WHERE id=? AND archived_at IS NULL', (identifier,)).fetchone()
+        row = db.execute('SELECT path,thumbnail_path FROM instruction_file WHERE id=? AND archived_at IS NULL', (identifier,)).fetchone()
     if not row:
         abort(404)
     root = root_for(path)
-    target = (root / row[0]).resolve()
+    thumbnail = request.args.get('thumbnail') == '1'
+    if thumbnail and not row['thumbnail_path']:
+        abort(404)
+    target = (root / (row['thumbnail_path'] if thumbnail else row['path'])).resolve()
     if not target.is_relative_to(root / 'data/instructions') or not target.is_file():
         abort(404)
+    if thumbnail:
+        return send_file(target, mimetype='image/png')
     return send_file(target, as_attachment=True, download_name='instructions.pdf')
 
 
@@ -1067,8 +1073,8 @@ def bw_add_retry(job):
             if row is not None and row['kind'] in fetch_jobs.KINDS:      # a fetch job of store4's runner (Fetch from Rebrickable)
                 fetch_jobs.requeue(db, job)
             else:
-                from ..core.instructions import Downloads, DOWNLOAD_KIND
-                runner = Downloads(db) if row and row['kind'] == DOWNLOAD_KIND else Pipeline(db)
+                from ..core.instruction_thumbnails import runner_for
+                runner = runner_for(db, row['kind'] if row else None)
                 runner.queue_retry(job, data.get('step'))
         bw_start_worker()
         return jsonify(message='Queued')
@@ -2220,6 +2226,12 @@ def bw_collection_write(action):
                         if len(merged)==1:
                             r=merged[0]
                             result['url'] = url_for('web.bw_collection_item',item_id=r['item_id'],stock=r['id'],**({'colour':r['color_id']} if r['color_id'] is not None else {}))
+            elif action in ('instruction-rename','instruction-archive'):
+                from ..core import admin
+                identifier = int(data['identifier'])
+                event = (admin.instruction_rename(db, identifier, data['label'], undoable=True)
+                         if action=='instruction-rename' else admin.instruction_archive(db, identifier))
+                message = 'Saved' if action=='instruction-rename' else 'Archived'
             elif action=='wish':
                 from ..core import items
                 from ..core.transaction import transaction

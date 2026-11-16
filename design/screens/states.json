@@ -1595,6 +1595,86 @@
     390,
     1440
    ]
+  },
+  {
+   "screen": "10-Set-detail",
+   "section": "i25",
+   "state": "booklet-thumbnails-ready",
+   "world": "showcase",
+   "path": "/collection/item/set/99101-1?inventory=extras",
+   "sizes": [
+    390,
+    1024,
+    1440
+   ],
+   "built": true,
+   "approved": false,
+   "reason": "Review fixture required: Attach two invented PDFs and let the thumbnail jobs finish.",
+   "script": "document.querySelector('[data-bc-tab=extras]').click();document.querySelector('[data-bc-booklets]').scrollIntoView();"
+  },
+  {
+   "screen": "10-Set-detail",
+   "section": "i25",
+   "state": "booklet-thumbnails-pending",
+   "world": "showcase",
+   "path": "/collection/item/set/99101-1?inventory=extras",
+   "sizes": [
+    390,
+    1024,
+    1440
+   ],
+   "built": true,
+   "approved": false,
+   "reason": "Review fixture required: Attach two invented PDFs with the worker paused.",
+   "script": "document.querySelector('[data-bc-tab=extras]').click();document.querySelector('[data-bc-booklets]').scrollIntoView();"
+  },
+  {
+   "screen": "10-Set-detail",
+   "section": "i25",
+   "state": "booklet-thumbnails-failed",
+   "world": "showcase",
+   "path": "/collection/item/set/99101-1?inventory=extras",
+   "sizes": [
+    390,
+    1024,
+    1440
+   ],
+   "built": true,
+   "approved": false,
+   "reason": "Review fixture required: Attach one valid PDF and one corrupt PDF, then run the jobs.",
+   "script": "document.querySelector('[data-bc-tab=extras]').click();document.querySelector('[data-bc-booklets]').scrollIntoView();"
+  },
+  {
+   "screen": "10-Set-detail",
+   "section": "i25",
+   "state": "booklet-thumbnails-single",
+   "world": "showcase",
+   "path": "/collection/item/set/99101-1?inventory=extras",
+   "sizes": [
+    390,
+    1024,
+    1440
+   ],
+   "built": true,
+   "approved": false,
+   "reason": "Review fixture required: Attach one invented PDF. Keep the existing row without a preview.",
+   "script": "document.querySelector('[data-bc-tab=extras]').click();document.querySelector('[data-bc-booklets]').scrollIntoView();"
+  },
+  {
+   "screen": "10-Set-detail",
+   "section": "i25",
+   "state": "booklet-thumbnails-archived",
+   "world": "showcase",
+   "path": "/collection/item/set/99101-1?inventory=extras",
+   "sizes": [
+    390,
+    1024,
+    1440
+   ],
+   "built": true,
+   "approved": false,
+   "reason": "Review fixture required: Attach three invented PDFs and archive one. Expand Show archived.",
+   "script": "document.querySelector('[data-bc-tab=extras]').click();document.querySelector('[data-bc-booklets]').scrollIntoView();"
   }
  ]
 }

@@ -624,3 +624,30 @@ document.addEventListener?.('click',async event=>{
   }catch(error){button.disabled=false;button.textContent=label;if(status)status.textContent=error.message;}
   finally{scope?.setAttribute('aria-busy','false');}
 });
+
+// Refresh only derived tiles, preserving open forms and the selected tab.
+(() => {
+  const root=document.querySelector('#bw-collection');
+  if(!root||!root.querySelector)return;
+  let attempts=0;
+  async function refresh(){
+    const pending=[...root.querySelectorAll('.bc-booklet-card[data-thumbnail-state="pending"]')];
+    if(!pending.length||attempts++>=30)return;
+    try{
+      const response=await fetch(location.href,{headers:{'Accept':'text/html'},cache:'no-store'});
+      if(response.ok){  // a failed answer is retried by the next poll, like a network error
+        const page=new DOMParser().parseFromString(await response.text(),'text/html');
+        const fresh=new Map([...page.querySelectorAll('.bc-booklet-card')].map(c=>[c.dataset.fileId,c]));  // matched by file id, never by position
+        root.querySelectorAll('.bc-booklet-card').forEach(card=>{
+          const next=fresh.get(card.dataset.fileId);
+          if(card.dataset.thumbnailState==='pending'&&next&&next.dataset.thumbnailState!=='pending'){
+            card.querySelector('.bc-booklet-tile').replaceWith(next.querySelector('.bc-booklet-tile'));
+            card.dataset.thumbnailState=next.dataset.thumbnailState;
+          }
+        });
+      }
+    }catch(error){ /* A later poll or reload can recover. */ }
+    setTimeout(refresh,2000);
+  }
+  if(root.querySelector('.bc-booklet-card[data-thumbnail-state="pending"]'))setTimeout(refresh,2000);
+})();

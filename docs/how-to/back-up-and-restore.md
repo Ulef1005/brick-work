@@ -80,3 +80,10 @@ An upgrade that changes the schema is one-way. 0.7.0 upgrades a 0.6.0 collection
 - [Connect an assistant](connect-an-assistant.md) to create an `admin` token for scripted exports.
 - [Settings](../reference/settings.md) for `BW_DB_PATH`, `BW_MEDIA_PATH` and `BW_READ_ONLY`.
 - [Commands](../reference/cli.md) for `brickwork check`.
+
+## Derived instruction previews
+
+Instruction thumbnails beside PDFs use the suffix `.thumb.png`. Exclude `data/instructions/*.thumb.png` from the Borg backup unit, accounting for its archive path prefix.
+Keep the database. Original PDFs follow the separate backup proposal in ADR 0032; this exclusion applies only to derived previews.
+After restoring, start the app or worker. Startup queues missing previews, and jobs recreate them from the original PDFs.
+A missing original PDF produces No image while preserving its file record. Restore the original PDF when needed.

@@ -531,9 +531,9 @@ def test_49e_instruction_booklet_with_pdf_and_fetch_missing(client, coll, pair):
     assert soup.select_one('.bw-booklet a.button').get_text() == 'Download PDF'
     # Fetch missing queues the identity step for booklets without a PDF only.
     assert post(client, 'instructions', action='fetch_missing').status_code == 200
-    jobs = [tuple(r) for r in coll.db.execute("SELECT item_id,state FROM job WHERE source='import'")]
+    jobs = [tuple(r) for r in coll.db.execute("SELECT item_id,state FROM job WHERE source='import' AND kind!='instruction_thumbnail'")]   # the PDF upload queued its own preview job
     assert jobs == [(two, 'queued')]
-    assert [r[0] for r in coll.db.execute('SELECT name FROM job_step')] == ['identity']
+    assert [r[0] for r in coll.db.execute("SELECT name FROM job_step WHERE name!='thumbnail'")] == ['identity']
     assert coll.db.execute('SELECT count(*) FROM instruction_file').fetchone()[0] == 1
     assert coll.db.execute('SELECT s.born_key FROM instruction_file f JOIN item s ON s.id=f.item_id').fetchone()[0] == 'b-1'
 

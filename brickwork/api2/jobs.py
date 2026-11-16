@@ -94,7 +94,7 @@ def get_jobs_by_id(db, id):
 # ---------- writes ----------
 
 def pipeline_job(db, identifier):
-    row = db.execute('SELECT id FROM main.job WHERE id=? AND kind IN (?,?)', (integer_id(identifier, 'job'), pipeline.KIND, 'instruction_download')).fetchone()
+    row = db.execute('SELECT id FROM main.job WHERE id=? AND kind IN (?,?,?)', (integer_id(identifier, 'job'), pipeline.KIND, 'instruction_download', 'instruction_thumbnail')).fetchone()
     if row is None:
         raise errors.NotFound('No such job')
     return row['id']
@@ -105,7 +105,7 @@ def pipeline_job(db, identifier):
 def post_jobs_by_id_retry(db, body, id):
     """Queue the failed steps again (all, or one); the worker is woken after the commit."""
     identifier, step = pipeline_job(db, id), body.get('step')
-    if step is not None and step not in pipeline.STEPS + pipeline.OPTIONAL_STEPS and not step.isdecimal():
+    if step is not None and step not in pipeline.STEPS + pipeline.OPTIONAL_STEPS and step != 'thumbnail' and not step.isdecimal():
         raise errors.ValidationFailed('Unknown step')
     job = job_body(db, identifier)
     if step is not None and step not in {s['name'] for s in job['steps']}:
@@ -114,8 +114,8 @@ def post_jobs_by_id_retry(db, body, id):
         raise errors.Conflict('Job is running')
     if not any(s['state'] == 'failed' and (step is None or s['name'] == step) for s in job['steps']):
         raise errors.Conflict('No failed step to retry')
-    from ..core.instructions import Downloads, DOWNLOAD_KIND
-    runner = Downloads(db) if job['kind'] == DOWNLOAD_KIND else Pipeline(db)
+    from ..core.instruction_thumbnails import runner_for
+    runner = runner_for(db, job['kind'])
     runner.queue_retry(identifier, step)
     admin.audit(db, 'job:' + str(identifier), 'retry', new={'step': step})
     return queued(db, identifier)
@@ -142,7 +142,8 @@ def post_jobs_drain(db, body):
     from ..core.transaction import transaction
     source_ops.register_handlers()
     from ..core.instructions import Downloads
-    ran = fetch_jobs.drain(db) + Pipeline(db).drain(100) + Downloads(db).drain()
+    from ..core.instruction_thumbnails import Thumbnails
+    ran = fetch_jobs.drain(db) + Pipeline(db).drain(100) + Downloads(db).drain() + Thumbnails(db).drain()
     identifiers = [r['id'] for r in ran if 'id' in r]
     with transaction(db):
         admin.audit(db, 'jobs', 'drained', new={'jobs': identifiers})

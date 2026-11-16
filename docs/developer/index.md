@@ -22,3 +22,17 @@ These live at the root of the repository on GitHub:
 - [Licence](https://github.com/Ulef1005/brick-work/blob/main/LICENSE): the MIT licence.
 
 Decisions that bind future work are recorded as ADRs in [`docs/adr/`](https://github.com/Ulef1005/brick-work/tree/main/docs/adr) in the repository.
+
+## Instruction previews
+
+Schema 4.6 adds nullable thumbnail path and state columns to `instruction_file` through an additive upgrade.
+The file row owns the derived preview, so the existing file merge transfers it without another item keyed table.
+
+Attachment queues an `instruction_thumbnail` job. The embedded drainer and worker run it through the existing pipeline ownership and recovery rules.
+Each job invokes a child process with argument values, a 10 second deadline, and a 20 MB input limit.
+Only the child opens the PDF. Exceptions, native crashes and deadlines mark the preview failed while preserving the original PDF.
+Worker startup queues absent previews, including derived files excluded from Borg using `data/instructions/*.thumb.png`.
+
+Preview columns are derived state. Receipt and merge comparisons preserve their current values so rendering never invalidates Undo.
+
+Pending tiles poll the page for one minute. Updates replace preview tiles. The selected tab stays active. Rename forms stay open.

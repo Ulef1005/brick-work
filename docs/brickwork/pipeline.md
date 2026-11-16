@@ -80,3 +80,8 @@ spent budget stay.
 ## Fetch from Rebrickable: the copies
 
 An Add row that chose **Fetch from Rebrickable** queues a `rebrickable_set` job (store4's runner) and keeps what the row asked for (`ask`: quantity, condition, completeness, note, destination) in its `add:receipt` event. When the job is `done`, the drainer's next step (`add.settle_fetches`) makes the copies from the fetched list with the same preselection as any Add (or the wish). It also queues the set's own pipeline job and writes one `add:fetched` event, which Undo of the batch reverses like the receipt's rows. Rows that cannot be made are recorded once as `add:fetch_failed` and not tried again. A failed job creates nothing; Retry queues it again and a later pass settles it.
+
+## Instruction preview jobs
+
+`instruction_thumbnail` jobs render page one after attachment. Jobs retries and the API drain use the same bounded renderer as the worker.
+Preview status is browser presentation data; instruction file API bodies retain their existing fields.

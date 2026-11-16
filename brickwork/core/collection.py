@@ -763,6 +763,7 @@ def detail(db, item_id, *, colour=None, copy_id=None, stock_id=None, wish_id=Non
         except ValueError:
             pass
     row['instructions'] = instruction_files(db, [item_id]).get(item_id, [])
+    row['archived_instructions'] = instruction_files(db, [item_id], archived=True).get(item_id, [])
     consolidated = {}
     for instance in all_instances:
         if instance['entity'] != 'stock':
@@ -855,14 +856,21 @@ def _matching(db, item_id, kind, colour, selected, all_instances, consists):
     return out
 
 
-def instruction_files(db, item_ids):
+def instruction_files(db, item_ids, *, archived=False):
     """`{item id: [files]}`: a booklet shares its files with the set of the same number, in both directions (concept: Boxes and instructions)."""
     found = defaultdict(list)
     for r in db.execute("""SELECT a.id AS owner,f.* FROM main.item a JOIN main.item b ON b.id=a.id
         OR (b.born_key=a.born_key AND a.born_key IS NOT NULL AND b.kind IN ('set','instructions') AND a.kind IN ('set','instructions'))
-        JOIN instruction_file f ON f.item_id=b.id AND f.archived_at IS NULL
-        WHERE a.id IN (SELECT value FROM json_each(?)) ORDER BY f.id""", (_in(item_ids),)):
-        found[r['owner']].append(dict(r))
+        JOIN instruction_file f ON f.item_id=b.id AND (f.archived_at IS NOT NULL)=?
+        WHERE a.id IN (SELECT value FROM json_each(?)) ORDER BY f.id""", (int(archived), _in(item_ids))):
+        file = dict(r)
+        from .media import media_root
+        target = (media_root(db) / r['path']).resolve()
+        try:
+            file['size_kb'] = round(target.stat().st_size / 1024) if target.is_relative_to(media_root(db) / 'data/instructions') else None
+        except OSError:
+            file['size_kb'] = None
+        found[r['owner']].append(file)
     return found
 
 

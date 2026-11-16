@@ -17,6 +17,7 @@ MarkupSafe==3.0.4
 packaging==26.3
 pillow==13.0.0
 segno==1.6.6
+pypdfium2==5.15.2
 requests==2.34.2
 soupsieve==4.1
 typing_extensions==4.16.0

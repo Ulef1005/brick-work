@@ -76,3 +76,5 @@ verified as an image before anything is written. The file is written first, then
 Keys can be entered in Manage > Catalogues & keys (`core.keys.save`, `archive`; each is an event with Undo, and an export copy loses
 every key, `keys.strip`). `drainer.start` (the embedded worker) and `brickwork worker` register the source handlers and run the queue
 until nothing is pending; `BW_EMBEDDED_WORKER=0` leaves draining to `brickwork worker`.
+Jobs keep their progress and budget waits in SQLite. For a headless worker, set `BW_EMBEDDED_WORKER=0` and run `docker compose exec brickwork brickwork worker` periodically.
+

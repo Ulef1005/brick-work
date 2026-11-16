@@ -21,6 +21,17 @@ These live at the root of the repository on GitHub:
 - [Changelog](https://github.com/Ulef1005/brick-work/blob/main/CHANGELOG.md): what changed in each release.
 - [Licence](https://github.com/Ulef1005/brick-work/blob/main/LICENSE): the MIT licence.
 
+## Development checks
+
+Run the tests, then the whole gate:
+
+```sh
+.venv/bin/python -m pytest tests -q
+APP_VENV=.venv bash scripts/check.sh
+```
+
+The check script includes the naming gate, a standalone smoke test with sockets blocked, the full Python suite, available JavaScript runtime harnesses, and contract consistency checks. The upgrade from a 0.5.0-shaped collection through every schema step is tested in `tests/test_upgrade_path.py`, which `scripts/check.sh` runs.
+
 Decisions that bind future work are recorded as ADRs in [`docs/adr/`](https://github.com/Ulef1005/brick-work/tree/main/docs/adr) in the repository.
 
 ## Instruction previews

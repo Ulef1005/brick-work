@@ -9,7 +9,7 @@ Do this once, on a new install. You load the catalogue, add one set, check its p
 
 ## Before you start
 
-You need Brick Work running. Follow the install steps in the [README](https://github.com/Ulef1005/brick-work#standalone-installation-with-docker) and come back when `docker compose up -d` has finished. You also need one set you own, preferably a small one. It does not have to be complete.
+You need Brick Work running. Follow the install steps in the [README](https://github.com/Ulef1005/brick-work#install) and come back when `docker compose up -d` has finished. You also need one set you own, preferably a small one. It does not have to be complete.
 
 ## 1. Open Brick Work
 

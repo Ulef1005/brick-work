@@ -119,6 +119,7 @@ def test_build_it_moves_the_parts_and_undo_puts_them_back(client, coll, world):
     assert done.status_code == 200, done.get_data(as_text=True)
     body = done.get_json()
     assert body['message'].startswith('Made a copy · 6 pieces and 1 figure moved out of loose stock') and body['event_id']
+    assert body['message'].endswith('incomplete: 1 figure missing')                        # the copy is told as incomplete, not only the missing parts
     assert body['url'].startswith(f'/collection/item/set/') or f'/{world.keep}' in body['url']
     assert coll.db.execute('SELECT quantity FROM stock WHERE id=?', (world.stock_figure,)).fetchone()[0] == 0
     assert 'Syn Castle Keep' not in ' '.join(names(soup(client)))                         # the parts are in the copy now
@@ -143,6 +144,9 @@ def test_the_writes_refuse_what_they_must(client, coll, world, monkeypatch):
     refused = send(client, f'{PATH}/{world.brick}/build', token)
     assert refused.status_code == 400 and refused.get_json()['message']
     assert send(client, f'{PATH}/{world.keep}/build', token, lots=[1]).status_code == 400
+    for field in ('lots', 'storages'):                                                  # not a list: a 400, not a TypeError 500
+        for value in ('abc', 5, {'a': 1}):
+            assert send(client, f'{PATH}/{world.keep}/build', token, **{field: value}).status_code == 400
     assert coll.db.execute("SELECT count(*) FROM event WHERE field='make_from_stock'").fetchone()[0] == 0
     monkeypatch.setattr('brickwork.api.read_only', lambda: True)
     assert send(client, f'{PATH}/{world.keep}/build', token).status_code == 403

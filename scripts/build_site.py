@@ -450,7 +450,8 @@ def llms_txt():
     return re.sub(r'\]\((?!https?://|#)([^)\s]+)\)', lambda m: f']({raw}{m[1]})', text)
 
 
-LLMS_FULL_LINKED_ONLY = ('docs/brickwork/api-v2.md',)   # about 95 KB: llms-full.txt names it instead of inlining it
+LLMS_FULL_LINKED_ONLY = ('docs/brickwork/api-v2.md',   # about 95 KB: llms-full.txt names it instead of inlining it
+                          'docs/tutorials/build-from-what-you-have.md', 'docs/tutorials/value-and-selling.md')   # the two longest of the seven tutorials added on 16.11.: the file stays under 150 KB
 
 
 def llms_full():

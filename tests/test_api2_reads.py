@@ -19,6 +19,16 @@ FILES = {'get_images_by_id_content', 'get_instruction_files_by_id_content', 'get
          'get_export_wishlist_csv', 'get_wishlists_by_id_export_xml', 'get_wishlists_by_id_export_csv', 'get_storages_labels_pdf'}
 
 
+def save_label_address(pair, operation):
+    """The test client's host is localhost, so label links and PDFs need a saved address (#440)."""
+    if 'labels' in operation:
+        from contextlib import closing
+        from brickwork.core import labels
+        from brickwork.core.connect import connect
+        with closing(connect(pair)) as db:
+            labels.save_address(db, 'https://bricks.example')
+
+
 def paths(w):
     """One concrete request per read operation of the contract."""
     copy = w.copy_a
@@ -61,7 +71,8 @@ def test_every_read_operation_has_a_case(world):
 
 
 @pytest.mark.parametrize('operation', READS)
-def test_the_answer_is_what_the_contract_says(v2, full, operation):
+def test_the_answer_is_what_the_contract_says(v2, full, pair, operation):
+    save_label_address(pair, operation)
     if operation == 'get_storages_labels_pdf':
         pytest.importorskip('segno', reason='segno not installed in this sandbox')
     response = call(v2, paths(full)[operation])
@@ -84,6 +95,7 @@ def test_a_wrong_token_is_401_and_an_unknown_filter_400(v2, full, operation):
 def test_a_read_scope_token_may_read_and_the_instance_may_be_read_only(v2, full, pair, operation, monkeypatch):
     if operation == 'get_storages_labels_pdf':
         pytest.importorskip('segno', reason='segno not installed in this sandbox')
+    save_label_address(pair, operation)
     reader = stored_token(pair, ['read'])
     assert call(v2, paths(full)[operation], token=reader).status_code == 200
     monkeypatch.setenv('BW_READ_ONLY', 'true')

@@ -189,9 +189,14 @@ def card(db, copy_id, stamp=None):
         if out['state'] == 'no_rate':
             out['floor'] = None
         if floor is not None and after < floor:
-            asking = floor
             out['floor'] = None
-            out['note'] = f"Set to the part-out value: the deductions would take it to {money(after, display, fixed=True)}."
+            if floor <= average:
+                asking = floor
+                out['note'] = f"Set to the part-out value: the deductions would take it to {money(after, display, fixed=True)}."
+            else:                                                       # a gap never asks more than the complete copy
+                asking = average
+                out['note'] = (f"Held at the average: the deductions would take it to {money(after, display, fixed=True)}, "
+                               f"below the part-out value of {money(floor, display, fixed=True)}, which is above the average.")
         out['ask']['text'] = money(asking, display, fixed=True) if asking is not None else None
     if average is not None:
         out['rows'].append(dict(kind='plain', label=f'{valuation.SOURCE_WORDS[wanted].split()[0]} average for this condition', amount=money(average, display, fixed=True)))
@@ -207,7 +212,7 @@ def card(db, copy_id, stamp=None):
         if note := out['note']:
             out['rows'].append(dict(kind='plain', label='After deductions', amount=money(after, display, fixed=True)))
         if asking is not None:
-            out['rows'].append(dict(kind='sum', label='Asking price · part-out value' if note else 'Asking price', amount=out['ask']['text']))
+            out['rows'].append(dict(kind='sum', label=('Asking price · part-out value' if asking == floor else 'Asking price · held at the average') if note else 'Asking price', amount=out['ask']['text']))
         out['coverage'] = _coverage(sums, lines)
     out['pills'] = _pills(c, out['state'], bool(checked and (short or figures_short)), checked, damaged)
     out['copy_enabled'] = out['state'] in ('filled', 'unchecked')

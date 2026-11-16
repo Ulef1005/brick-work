@@ -186,13 +186,16 @@ def _merge_statuses(db, log, loser, survivor):
 
 def _merge_shadowed(log, loser, survivor):
     for table, columns in SHADOWED:
-        taken = {tuple(r[c] for c in columns) for r in log.select(table, 'item_id=?', (survivor,))}
+        taken = {tuple(r[c] for c in columns): r for r in log.select(table, 'item_id=?', (survivor,))}
         for row in log.select(table, 'item_id=?', (loser,)):
-            if tuple(row[c] for c in columns) in taken:
+            key = tuple(row[c] for c in columns)
+            if key in taken:
+                kept = taken[key]
+                if table == 'instruction_candidate' and row['file_id'] is not None and kept['file_id'] is None:
+                    taken[key] = log.update(table, kept, file_id=row['file_id'])      # the booklet the loser had downloaded stays downloaded
                 log.delete(table, row)
             else:
-                taken.add(tuple(row[c] for c in columns))
-                log.update(table, row, item_id=survivor)
+                taken[key] = log.update(table, row, item_id=survivor)
 
 
 def _merge_fetched(log, loser, survivor):

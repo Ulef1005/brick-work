@@ -5,6 +5,7 @@ from contextvars import ContextVar
 from datetime import datetime, timezone
 import json
 from pathlib import Path
+import shutil
 import uuid
 
 from .connect import connect
@@ -672,43 +673,80 @@ def instruction_set_of(db, item_id):
     raise ValueError('A PDF belongs to a set · choose a set or a booklet')
 
 
-def attach_instruction(db, root, item_id, label, content, *, undoable=False, limit=20 * 1024 * 1024):
-    """`instruction_upload` for a set already named by its id (the form names it by a typed number)."""
+def store_instruction_file(root, label, content, *, limit=20 * 1024 * 1024):
+    """Hash and write a booklet into the content-addressed store: no database, so no write lock is held while a large file is read and copied.
+
+    `content` is bytes (an upload) or a seekable binary file (a download), hashed and copied in chunks, never held in memory.
+    Returns `(relative path, created)`; `created` is true when this call wrote the file.
+    """
     from hashlib import sha256
-    if not content.startswith(b'%PDF') or len(content) > limit:
+    if isinstance(content, (bytes, bytearray)):
+        head, size, digest = content[:4], len(content), sha256(content)
+    else:
+        content.seek(0)
+        head, digest, size = content.read(4), sha256(), 0
+        content.seek(0)
+        while chunk := content.read(65536):
+            size += len(chunk)
+            digest.update(chunk)
+    if head != b'%PDF' or size > limit:
         raise ValueError('Choose a PDF within the download limit')
     if not label or len(label) > 120:
         raise ValueError('Enter a label of up to 120 characters')
-    relative = Path('data/instructions') / (sha256(content).hexdigest() + '.pdf')
+    relative = Path('data/instructions') / (digest.hexdigest() + '.pdf')
     target = Path(root) / relative
     target.parent.mkdir(parents=True, exist_ok=True)
     created = False
     try:
-        try:
-            with target.open('xb') as output:
-                created = True
+        with target.open('xb') as output:
+            created = True
+            if isinstance(content, (bytes, bytearray)):
                 output.write(content)
-        except FileExistsError:
-            pass
+            else:
+                content.seek(0)
+                shutil.copyfileobj(content, output, 65536)
+    except FileExistsError:
+        pass
+    except BaseException:
+        if created:
+            target.unlink(missing_ok=True)
+        raise
+    return relative.as_posix(), created
+
+
+def discard_instruction_file(db, root, relative, created):
+    """Remove a file this call wrote, unless a row references it (another attach of the same bytes may have recorded it meanwhile)."""
+    if created and not db.execute('SELECT 1 FROM main.instruction_file WHERE path=?', (relative,)).fetchone():
+        (Path(root) / relative).unlink(missing_ok=True)
+
+
+def record_instruction(db, root, item_id, label, relative, created, *, undoable=False):
+    """Insert the `instruction_file` row for a stored booklet, inside the caller's or its own transaction (a rollback discards a new file)."""
+    try:
         with transaction(db):
             from .transaction import on_rollback
-            if created: on_rollback(db, lambda: target.unlink(missing_ok=True))
+            if created: on_rollback(db, lambda: discard_instruction_file(db, root, relative, created))
             from . import items
             items.ensure(db, item_id)
             identifier = db.execute('INSERT INTO main.instruction_file(item_id,path,label,added_at) VALUES(?,?,?,?)',
-                (item_id, relative.as_posix(), label, store4_now())).lastrowid
+                (item_id, relative, label, store4_now())).lastrowid
             from .instruction_thumbnails import queue
             queue(db, identifier)
             from .collection import receipt, snapshot
             if undoable:
                 receipt(db, [('instruction_file', [], snapshot(db, 'instruction_file', [identifier]))], 'save')
             else:
-                audit(db, 'instruction_file:' + str(identifier), 'attach', new={'item_id': item_id, 'path': relative.as_posix(), 'label': label})
+                audit(db, 'instruction_file:' + str(identifier), 'attach', new={'item_id': item_id, 'path': relative, 'label': label})
         return identifier
     except BaseException:
-        if created:
-            target.unlink(missing_ok=True)
+        discard_instruction_file(db, root, relative, created)
         raise
+
+
+def attach_instruction(db, root, item_id, label, content, *, undoable=False, limit=20 * 1024 * 1024):
+    """`instruction_upload` for a set already named by its id (the form names it by a typed number): store the file, then record the row."""
+    relative, created = store_instruction_file(root, label, content, limit=limit)
+    return record_instruction(db, root, item_id, label, relative, created, undoable=undoable)
 
 
 def instruction_overview(db):

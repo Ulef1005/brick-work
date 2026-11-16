@@ -113,5 +113,5 @@
 <details><summary>Archive</summary><form data-bc-action="instruction-archive"><input type="hidden" name="identifier" value="{{ f.id }}"><p>Archive this booklet?</p><button>Archive booklet</button><p data-bc-form-message role="status"></p></form></details></div>{% endif %}</div>
 </article>{% endfor %}
 </div>{% endif %}
-{% if row.archived_instructions %}<details class="kit-disclosure"><summary>Show archived · {{ row.archived_instructions|length }}</summary>{% for f in row.archived_instructions %}<p>{{ f.label }} · Archived</p>{% endfor %}</details>{% endif %}
+{% if row.archived_instructions %}<details class="kit-disclosure"><summary>Show archived · {{ row.archived_instructions|length }}</summary>{% for f in row.archived_instructions %}<div class="bc-archived-booklet"><p>{{ f.label }} · Archived</p>{% if can_edit %}<form data-bc-action="instruction-restore"><input type="hidden" name="identifier" value="{{ f.id }}"><button class="bc-outline" aria-label="Restore {{ f.label }}">Restore</button><p data-bc-form-message role="status"></p></form>{% endif %}</div>{% endfor %}</details>{% endif %}
 {% endmacro %}

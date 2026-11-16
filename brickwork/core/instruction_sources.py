@@ -6,6 +6,7 @@ surfacing HTTP Retry-After as RetryAfter. Tests inject registries, never global 
 from typing import Protocol, BinaryIO
 
 LIMIT = 20 * 1024 * 1024
+TOTAL_TIMEOUT = 300  # seconds for one whole download: the socket timeout of 20 s only bounds a single read
 USER_AGENT = 'BrickWork/1 instruction-download (+https://github.com/Ulef1005/brick-work)'
 DISPLAY_NAMES = {'rebrickable': 'Rebrickable', 'peeron': 'Peeron', 'official': 'Official'}
 
@@ -39,7 +40,7 @@ class Registry:
 
 
 
-def fetch_pdf(url, limit=LIMIT, *, opener=None):
+def fetch_pdf(url, limit=LIMIT, *, opener=None, monotonic=None):
     """Shared bounded HTTP transport for future verified adapters; no redirect guessing."""
     from urllib.request import Request, build_opener
     from urllib.error import HTTPError
@@ -49,17 +50,27 @@ def fetch_pdf(url, limit=LIMIT, *, opener=None):
         raise ValueError('Choose an HTTPS PDF within the download limit')
     request = Request(url, headers={'User-Agent': USER_AGENT, 'Accept': 'application/pdf'})
     open_request = opener or build_opener(NoRedirect()).open
+    import time
+    clock = monotonic or time.monotonic
+    deadline = clock() + TOTAL_TIMEOUT
     try:
         with open_request(request, timeout=20) as response:
             size = response.headers.get('Content-Length')
-            if size and int(size) > limit:
+            try:
+                too_big = bool(size) and int(size) > limit
+            except ValueError:
+                raise ValueError('The source could not download this file') from None
+            if too_big:
                 raise ValueError('File exceeds the download limit')
             from tempfile import TemporaryFile
             content = TemporaryFile()
             try:
                 total = 0
                 while True:
-                    chunk = response.read(min(65536, limit + 1 - total))
+                    if clock() > deadline:
+                        raise ValueError('Download took too long')
+                    # read1 returns what one receive delivered, so the deadline above is checked per chunk, not per 64 KiB
+                    chunk = response.read1(min(65536, limit + 1 - total))
                     if not chunk:
                         break
                     total += len(chunk)

@@ -71,5 +71,6 @@ Add enables Fetch instructions only when at least one adapter is available. Othe
 
 The Instructions & Box tab shows page one when a set has several PDFs. One PDF keeps its compact row.
 Each card shows the booklet title, size and Open action. Rename changes the title; Archive hides the file under Show archived.
+Open Show archived to see archived booklets. Restore puts one back among the cards; Undo reverses it. Restore appears only when changes are switched on.
 A progress tile means the preview job is waiting or running. No image means the preview failed; the PDF still opens.
 Previews accept PDFs up to 20 MB and stop after 10 seconds. Pending tiles update automatically for one minute. Reload later if a job is still waiting.

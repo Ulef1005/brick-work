@@ -156,7 +156,7 @@ def element_ids(db, lines):
     if not wanted:
         return {}
     found = db.execute("""SELECT item_id,color_id,min(CAST(element_id AS INTEGER)) FROM catalogue.element
-                          WHERE item_id IN (SELECT value FROM json_each(?)) GROUP BY item_id,color_id""", (json.dumps(wanted),))
+                          WHERE element_id NOT GLOB '*[^0-9]*' AND element_id!='' AND item_id IN (SELECT value FROM json_each(?)) GROUP BY item_id,color_id""", (json.dumps(wanted),))
     return {(r[0], r[1]): str(r[2]) for r in found}
 
 
@@ -182,12 +182,16 @@ def split(db, order, *, prefer, chosen, config):
     shipping = Decimal(str(config['repair_shipping'])) if parts[BL] else None
     order['split'] = dict(
         bl=dict(lines=len(parts[BL]), pieces=sum(l['quantity'] for l in parts[BL]), total=bl_total, no_sales=sum(1 for l in parts[BL] if l['price'] is None)),
-        pab=dict(lines=len(parts[PAB]), pieces=sum(l['quantity'] for l in parts[PAB])),
+        pab=dict(lines=len(parts[PAB]), rows=len({l['element_id'] for l in parts[PAB]}), pieces=sum(l['quantity'] for l in parts[PAB])),   # rows: the file's, one per element id
         shipping=shipping, estimate=bl_total + (shipping or Decimal(0)), no_element=[l for l in order['lines'] if not l['element_id']])
     return order
 
 
 def pick_a_brick_csv(order):
     """The Pick a Brick upload file of the lines placed on Pick a Brick: `elementId,quantity`, one line each, in the list's order."""
-    rows = ['elementId,quantity'] + [f"{l['element_id']},{l['quantity']}" for l in order['lines'] if l['source'] == PAB]
+    wanted = {}                                              # the same part and colour needed in N and U is two lines, one element id: one row
+    for l in order['lines']:
+        if l['source'] == PAB:
+            wanted[l['element_id']] = wanted.get(l['element_id'], 0) + l['quantity']
+    rows = ['elementId,quantity'] + [f'{element},{quantity}' for element, quantity in wanted.items()]
     return '\r\n'.join(rows) + '\r\n'

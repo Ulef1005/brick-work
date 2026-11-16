@@ -73,3 +73,32 @@ def test_a_change_the_rules_refuse_is_409_and_one_that_names_nothing_is_422(v2, 
     assert change(v2, world.figure, {'to': {'id': variant}, 'extra': 1}).status_code == 422
     assert change(v2, 987654321, {'to': {'id': variant}}).status_code == 404
     assert change(v2, world.figure, {'to': {'id': variant}}, key=False).status_code == 428
+
+
+def test_a_user_added_or_retired_item_is_409_through_the_api_too(v2, coll, world, variant, pair):
+    mine = coll.local('minifigure', 'Mine', born_key='mine')
+    before = digest(pair)
+    added = change(v2, world.figure, {'to': {'id': mine}})
+    assert added.status_code == 409 and 'live catalogue item' in added.json['detail']
+    with closing(connect(pair)) as db:
+        db.execute("UPDATE item SET catalogue_retired_at='2026-11-01T00:00:00.000Z' WHERE id=?", (variant,))
+        db.commit()
+    retired = change(v2, world.figure, {'to': {'id': variant}})
+    assert retired.status_code == 409 and 'live catalogue item' in retired.json['detail']
+    with closing(connect(pair)) as db:
+        db.execute("UPDATE item SET catalogue_retired_at=NULL WHERE id=?", (variant,))
+        db.commit()
+    assert digest(pair) == before
+
+
+def test_a_change_with_no_catalogue_attached_is_409_not_a_server_error(v2, world, variant, pair, monkeypatch):
+    import sqlite3
+
+    from brickwork.store4 import variant as store_variant
+
+    def gone(*args, **kwargs):
+        raise sqlite3.OperationalError('no such table: catalogue.inventory')
+    monkeypatch.setattr(store_variant, 'change_variant_in', gone)
+    before = digest(pair)
+    refused = change(v2, world.figure, {'to': {'id': variant}})
+    assert refused.status_code == 409 and "catalogue isn't activated" in refused.json['detail'] and digest(pair) == before

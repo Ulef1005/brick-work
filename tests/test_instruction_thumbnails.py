@@ -105,6 +105,32 @@ def test_one_multiple_states_and_archive(client, coll, world):
     assert client.get(f'/manage/instructions/{second}/download?thumbnail=1').status_code == 404
 
 
+def test_restore_archived_booklet(client, coll, world, monkeypatch):
+    first = attach(coll, world.keep, label='Booklet 1 of 2')
+    second = attach(coll, world.keep, label='Booklet 2 of 2')
+    url = f'/collection/item/{world.keep}'
+    token = csrf(client)
+    assert client.post('/collection/save/instruction-archive', json=dict(csrf_token=token, identifier=second)).status_code == 200
+    page = BeautifulSoup(client.get(url).data, 'html.parser')
+    form = page.select_one('.kit-disclosure form[data-bc-action="instruction-restore"]')
+    assert form.select_one('[name=identifier]')['value'] == str(second)
+    assert form.select_one('button')['aria-label'] == 'Restore Booklet 2 of 2' and form.select_one('[data-bc-form-message][role=status]') is not None
+    response = client.post('/collection/save/instruction-restore', json=dict(csrf_token=token, identifier=second))
+    assert response.status_code == 200 and response.json['message'] == 'Restored'
+    page = BeautifulSoup(client.get(url).data, 'html.parser')
+    assert len(page.select('.bc-booklet-card')) == 2 and 'Show archived' not in page.text
+    # Undo takes the restore back
+    assert client.post('/collection/save/undo', json=dict(csrf_token=token, event_id=response.json['event_id'])).status_code == 200
+    page = BeautifulSoup(client.get(url).data, 'html.parser')
+    assert 'Show archived · 1' in page.text
+    # a live booklet cannot be restored
+    assert client.post('/collection/save/instruction-restore', json=dict(csrf_token=token, identifier=first)).status_code == 400
+    monkeypatch.setenv('BW_READ_ONLY', '1')
+    page = BeautifulSoup(client.get(url).data, 'html.parser')
+    assert 'Show archived · 1' in page.text and not page.select('form[data-bc-action="instruction-restore"]')
+    assert client.post('/collection/save/instruction-restore', json=dict(csrf_token=token, identifier=second)).status_code == 403
+
+
 def test_merge_carries_file_preview(coll, world):
     from brickwork.store4 import merge
     loser = coll.local('set', 'Local booklet set')
@@ -174,3 +200,35 @@ def test_archive_before_the_job_runs_then_undo_leaves_no_stuck_preview(coll, wor
     collection.undo(coll.db, event)
     row = coll.db.execute('SELECT * FROM instruction_file WHERE id=?', (identifier,)).fetchone()
     assert row['archived_at'] is None and row['thumbnail_state'] == 'ready' and row['thumbnail_path']
+
+
+def test_render_child_is_limited_and_has_a_minimal_environment(coll, world, monkeypatch):
+    seen = {}
+    def run(command, **kwargs):
+        seen.update(kwargs)
+        Path(command[-1]).write_bytes(b'png')
+    monkeypatch.setattr(subprocess, 'run', run)
+    identifier = attach(coll, world.keep)
+    job = coll.db.execute("SELECT id FROM job WHERE kind=? ORDER BY id DESC", (thumbs.KIND,)).fetchone()[0]
+    assert thumbs.Thumbnails(coll.db).run(job)['state'] == 'done'
+    assert seen['env'] == thumbs.CHILD_ENV and 'HOME' not in seen['env']
+
+
+def test_limit_child_sets_limits_and_tolerates_a_refusing_platform(monkeypatch):
+    import resource
+    calls = []
+    monkeypatch.setattr(resource, 'setrlimit', lambda name, value: calls.append((name, value)))
+    thumbs.limit_child()
+    assert calls == [(resource.RLIMIT_AS, (thumbs.MEMORY_LIMIT,) * 2), (resource.RLIMIT_CPU, (thumbs.CPU_LIMIT,) * 2)]
+    def refuse(name, value):
+        raise ValueError('not supported')
+    monkeypatch.setattr(resource, 'setrlimit', refuse)
+    thumbs.limit_child()
+
+
+def test_render_child_works_under_its_limits(tmp_path):
+    source, target = tmp_path / 'a.pdf', tmp_path / 'a.png'
+    source.write_bytes(pdf())
+    subprocess.run([__import__('sys').executable, '-m', thumbs.__name__, str(source), str(target)], check=True, env=thumbs.CHILD_ENV, timeout=60)
+    with Image.open(target) as image:
+        assert image.size == (240, 320)

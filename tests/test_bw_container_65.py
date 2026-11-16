@@ -59,7 +59,7 @@ def test_entrypoint_sets_up_before_gunicorn_without_control_socket(tmp_path):
         'brickwork', 'setup', '--if-missing',
         'gunicorn', '--bind', '127.0.0.1:4321', 'wsgi:application',
         '--worker-class', 'gevent', '--workers', '1', '--timeout', '120',
-        '--no-control-socket', '--log-level', 'debug', '--access-logformat', 'user argument',
+        '--limit-request-line', '8190', '--no-control-socket', '--log-level', 'debug', '--access-logformat', 'user argument',
     ]
 
 

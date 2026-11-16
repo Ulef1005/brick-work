@@ -3,7 +3,7 @@
 Headline counts describe the filtered rows. Owned copies replace their catalogue row in the mixed list;
 multiple owned copies remain separate. Paging counts those displayed rows, without capping the total.
 """
-from . import collection, errors, items, pictures, set_scoring
+from . import collection, errors, items, pictures, set_scoring, valuation
 from ..store4.connect import has_catalogue
 
 
@@ -11,6 +11,11 @@ def counts(index, item_id, color_id):
     key = set_scoring.key_of(item_id, color_id)
     return dict(sets=len(index.posting.get(key, ((), ()))[0]),
                 minifigures=len(index.figure_posting.get(key, ((), ()))[0]))
+
+
+def _text_key(text, sort):
+    """The sort key of a name (plain, case-folded) or a number (natural: 7286-1 before 10188-1)."""
+    return text.casefold() if sort == 'name' else valuation._natural(text.casefold())
 
 
 def found_in(db, item_id, color_id, *, type='all', search='', sort='newest', limit=15, offset=0):
@@ -28,7 +33,8 @@ def found_in(db, item_id, color_id, *, type='all', search='', sort='newest', lim
     # Keep Used in sets unchanged. This read adds storage and loose figure holders.
     owned = [dict(r, group='owned', owned=True, stock_id=None, color_id=None) for r in collection._used_in(db, item_id, color_id, 'part')]
     storage = {r['id']: r['storage_name'] for r in db.execute('''SELECT c.id,s.name AS storage_name FROM main.copy c
-        LEFT JOIN main.storage s ON s.id=c.storage_id WHERE c.archived_at IS NULL''')}
+        LEFT JOIN main.storage s ON s.id=c.storage_id WHERE c.archived_at IS NULL AND c.id IN (SELECT value FROM json_each(?))''',
+        (collection._in(r['copy_id'] for r in owned),))}
     for r in owned:
         r['storage_name'] = storage.get(r['copy_id'])
     for r in db.execute('''SELECT s.id AS stock_id,s.item_id,sum(p.quantity) AS quantity,t.name AS storage_name
@@ -43,12 +49,12 @@ def found_in(db, item_id, color_id, *, type='all', search='', sort='newest', lim
         index, _ = set_scoring.index_for(db)
         key = set_scoring.key_of(item_id, color_id)
         positions, amounts = index.posting.get(key, ((), ()))
-        catalogue += [dict(item_id=index.set_item[p], quantity=q) for p, q in zip(positions, amounts)]
+        catalogue += [dict(item_id=index.set_item[p], quantity=q, kind='set') for p, q in zip(positions, amounts)]
         figures, amounts = index.figure_posting.get(key, ((), ()))
-        catalogue += [dict(item_id=i, quantity=q) for i, q in zip(figures, amounts)]
-        # An unknown/no-colour posting is not evidence for any named colour.
+        catalogue += [dict(item_id=i, quantity=q, kind='minifigure') for i, q in zip(figures, amounts)]
+        # Only an unknown colour (None) and "[No Color/Any Color]" (1) are no evidence for a named colour; colour 2 is an ordinary one.
         unmatched = not catalogue and any(set_scoring.key_of(item_id, c) in posting
-            for posting in (index.posting, index.figure_posting) for c in (None, 1, 2))
+            for posting in (index.posting, index.figure_posting) for c in (None, collection.NO_COLOUR))
     owned_ids = {r['item_id'] for r in owned}
     rows = owned + [dict(r, group='catalogue', owned=False, copy_id=None, stock_id=None, label=None, storage_name=None)
                     for r in catalogue if r['item_id'] not in owned_ids]
@@ -61,21 +67,33 @@ def found_in(db, item_id, color_id, *, type='all', search='', sort='newest', lim
             sql = 'SELECT id,year,theme_name AS theme FROM main.item'
         for r in db.execute(sql + ' WHERE ' + ('i.' if store == 'catalogue' else '') + 'id IN (SELECT value FROM json_each(?))', (ids,)):
             facts[r['id']] = dict(r)
-    wanted = {r[0] for r in db.execute('SELECT item_id FROM main.wish WHERE archived_at IS NULL')}
-    rows = collection.decorate(db, rows)
     for r in rows:
+        r.setdefault('kind', 'minifigure')                                      # a loose-figure holder row has no copy to read it from
         r.update(facts.get(r['item_id'], {}))
-        r['on_wishlist'] = r['item_id'] in wanted
-        r['type_word'] = 'Set' if r['kind'] == 'set' else 'Minifigure'
     query = search.strip().casefold()
+    if query or sort in ('name', 'number'):                                     # identity is only read for every row when a filter or the order needs it
+        labels = items.labels(db, {(r['item_id'], None) for r in rows})
+        for r in rows:
+            label = labels.get((r['item_id'], None))
+            if label is not None:
+                r.setdefault('name', label.name)
+                r['name'] = r['name'] or label.name
+                r['number_text'], r['also'] = label.text, label.also
     rows = [r for r in rows if (type == 'all' or r['kind'] == {'sets': 'set', 'minifigures': 'minifigure'}[type])
             and (not query or query in ' '.join(str(r.get(k) or '') for k in ('number_text', 'also', 'name', 'theme')).casefold())]
     def key(r):
         tail = ((-(r.get('year') or 0) if sort == 'newest' else r.get('year') or 9999) if sort in ('newest', 'oldest')
-                else str(r.get('name') if sort == 'name' else r.get('number_text') or '').casefold())
+                else _text_key(str((r.get('name') if sort == 'name' else r.get('number_text')) or ''), sort))
         return (r['group'] != 'owned', tail, r['item_id'], r.get('copy_id') or r.get('stock_id') or '')
     totals = dict(sets=sum(r["kind"] == "set" for r in rows),
                   minifigures=sum(r["kind"] == "minifigure" for r in rows))
     rows.sort(key=key)
-    return dict(catalogue=available, colour_unmatched=unmatched, counts=totals, owned_count=sum(r['owned'] for r in rows),
-                total=len(rows), limit=limit, offset=offset, results=rows[offset:offset + limit])
+    total, owned_count = len(rows), sum(r['owned'] for r in rows)
+    offset = min(offset, (total - 1) // limit * limit) if total else 0           # a stale pager lands on the last page, not an empty one
+    page = collection.decorate(db, rows[offset:offset + limit])
+    wanted = {r[0] for r in db.execute('SELECT item_id FROM main.wish WHERE archived_at IS NULL')}
+    for r in page:
+        r['on_wishlist'] = r['item_id'] in wanted
+        r['type_word'] = 'Set' if r['kind'] == 'set' else 'Minifigure'
+    return dict(catalogue=available, colour_unmatched=unmatched, counts=totals, owned_count=owned_count,
+                total=total, limit=limit, offset=offset, results=page)

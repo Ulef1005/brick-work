@@ -123,6 +123,21 @@ def _bars(groups, currency, key='worth'):
     return rows
 
 
+def _conversion_note(rows, cur):
+    """The 'Converted to ...' note over the copies a state actually sums, or None when none of their figures was converted."""
+    converted, as_of = valuation._conversion(rows)
+    if not converted:
+        return None
+    paid_in = {}
+    for r in rows:
+        if r['paid'] and r['paid']['converted']:
+            paid_in[r['paid']['original']['currency']] = paid_in.get(r['paid']['original']['currency'], 0) + 1
+    note = f"Converted to {cur} at the rates of {short_age(as_of)}"
+    if paid_in:
+        note += ' · ' + ', '.join((f'{plural(count, "copy", "copies")} paid in {name}' if i == 0 else f'{count} in {name}') for i, (name, count) in enumerate(sorted(paid_in.items())))
+    return note
+
+
 def paid_vs_value(db):
     """The Statistics section as a dict for `_bw_paid_vs_value.html`, or None when there is nothing to show (no copy) or the read failed (`error`).
 
@@ -139,22 +154,14 @@ def paid_vs_value(db):
                rates=url_for('web.bw_admin', page='settings'), notes=[], paid=None, worth=None, gain=None, title='', sub='', themes=[], years=[], foot='', state='filled')
     if stats['without_rate']:
         out['notes'].append(f"{plural(stats['without_rate'], 'copy', 'copies')} {'needs' if stats['without_rate'] == 1 else 'need'} a rate · left out of the totals")
-    if stats['converted']:
-        paid_in = {}
-        for r in rows:
-            if r['paid'] and r['paid']['converted']:
-                paid_in[r['paid']['original']['currency']] = paid_in.get(r['paid']['original']['currency'], 0) + 1
-        note = f"Converted to {cur} at the rates of {short_age(stats['rates_as_of'])}"
-        if paid_in:
-            parts = sorted(paid_in.items())
-            note += ' · ' + ', '.join((f'{plural(count, "copy", "copies")} paid in {name}' if i == 0 else f'{count} in {name}') for i, (name, count) in enumerate(parts))
-        out['notes'].insert(0, note)
     if stats['without_quote'] == n:
         out['state'] = 'no_quotes'
         out['title'] = f'No worth yet for {n} {"copy" if n == 1 else "copies"}'
         out['sub'] = 'No sold prices are stored, so gain is hidden'
         paid_all = sum((r['paid']['amount'] for r in rows if r['paid']), Decimal(0))
         out['paid'] = text(paid_all, cur) if any(r['paid'] for r in rows) else None
+        if note := _conversion_note([r for r in rows if r['paid']], cur):
+            out['notes'].insert(0, note)
         out['update_url'] = url_for('web.bw_admin', page='refresh')
         return out
     worth_only = [r for r in rows if r['worth'] is not None and r['paid_reason'] == 'no_price_paid']
@@ -162,6 +169,8 @@ def paid_vs_value(db):
         out['state'] = 'no_price'
         total = sum((r['worth']['amount'] for r in worth_only), Decimal(0))
         out['worth'] = text(total, cur)
+        if note := _conversion_note(worth_only, cur):
+            out['notes'].insert(0, note)
         out['title'] = f'Worth {out["worth"]} across {n} {"copy" if n == 1 else "copies"}'
         out['sub'] = 'No copy has a price paid, so there is no gain · used and new sold averages'
         by_theme = {}
@@ -171,6 +180,8 @@ def paid_vs_value(db):
         out['themes'] = _bars(groups, cur)
         out['foot'] = "Add a price paid in a copy's Edit sheet to compare."
         return out
+    if note := _conversion_note(valuation._comparable(rows), cur):         # the same copies as the totals
+        out['notes'].insert(0, note)
     if not stats['enough']:
         out['state'] = 'few'
         out['few'] = f"Paid against value needs {valuation.MIN_COMPARABLE} copies with a price paid and a quote. You have {stats['comparable_copies']}."

@@ -18,7 +18,7 @@ Do this once you have recorded a good amount of [loose stock](../concepts/collec
 3. Sets are sorted by the percentage available, then by the fewest missing parts.
 4. On a wide screen the set you select shows its details beside the list; on a phone, open the set. The details give **Parts you hold**, the biggest missing lines with their colours (**−6**), **Show all** for the rest, and the figures you hold of those the set needs.
 
-**What counts as a part.** A set's parts are its own part lines, with spare parts left out and the parts of any sets inside it counted. The parts of its minifigures are not counted here: a minifigure is counted on its own, as one whole figure. A loose whole minifigure in your stock counts as one of the set's figures; loose parts that would make up a figure do not. So **398 of 430 parts** is parts only, and **1 of 3 figures** is figures only.
+**What counts as a part.** A set's parts are its own part lines, with spare parts left out and the parts of any sets inside it counted. The parts of its minifigures are not counted here: a minifigure is counted on its own, as one whole figure. A loose whole minifigure in your stock counts as one of the set's figures; loose parts that would make up a figure do not. So **398 of 430 parts** is parts only, and **1 of 3 figures** is figures only. A set that has no part of its own, only whole minifigures (a figure pack), is listed too: it shows **0 of 0 parts**, and its percentage is its figures'.
 
 **Swaps are never in the percentage.** The same part in another colour, or an alternate mould of it, would not be the set's own part. When your stock holds such a part, the set's details say **Swaps, not in the %** and name an example (**Dark Bluish Gray for Black**).
 
@@ -26,7 +26,7 @@ Do this once you have recorded a good amount of [loose stock](../concepts/collec
 
 ## Choose the stock and narrow the list
 
-- **Parts from** chooses which loose stock is counted: **Loose stock** (stock that is in no lot and no storage), any **lots** and any **storages** (with the storages inside them). Choose none to count all your loose stock. **Count damaged parts too** adds stock marked damaged; it is off by default, as in Matchmaker. A loose minifigure with missing or damaged parts is never counted.
+- **Parts from** chooses which loose stock is counted: **Loose stock** (stock that is in no lot and no storage), any **lots** and any **storages** (with the storages inside them). Choose none to count all your loose stock. **Count damaged parts too** adds stock marked damaged; it is off by default, as in Matchmaker. Build it moves such parts into the copy marked as damaged (so the copy is not complete and Matchmaker still lists them for replacement). A loose minifigure with missing or damaged parts is never counted, and a whole figure marked damaged is never taken.
 - **Min** is the least percentage of a set's parts that must be available. It starts at 60.
 - **Max missing** is the most missing parts a set may have.
 - **Theme** takes a theme name or number and includes its sub-themes.

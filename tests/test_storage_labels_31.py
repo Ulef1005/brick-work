@@ -112,7 +112,8 @@ def test_layouts_geometry_pdf_pages_tape_and_long_umlaut_name(coll):
     def matrix(payload):seen.append(payload);return MATRIX
     data,mime,name=labels.download(found,matrix_factory=matrix)
     assert data.startswith(b'%PDF') and mime=='application/pdf'
-    assert len(re.findall(rb'/Type /Page\b',data)) == 2
+    import pypdfium2
+    assert len(pypdfium2.PdfDocument(data)) == 2
     assert seen == ['https://bricks.example/workbench/storage/'+i for i in ids]
     assert labels.page_image(found,0,matrix_factory=matrix).tobytes() != labels.page_image(found,0,guides=True,matrix_factory=matrix).tobytes()
     tape=labels.plan(coll.db,ids[:1],'tape-62','https://bricks.example')
@@ -179,6 +180,7 @@ def test_api_web_mcp_share_plan_and_read_download(client,app4,v2,coll,pair,monke
     from brickwork.core.mcp import Adapter
     from brickwork.core.mcp.client import InProcessClient
     identifier,_=ledger.storage_save(coll.db,None,'Box 3')
+    labels.save_address(coll.db,'https://bricks.example')
     monkeypatch.setattr(labels,'download',lambda found: (b'%PDF-synthetic','application/pdf','storage-labels.pdf'))
     monkeypatch.setattr(labels,'qr_module',lambda: object())
     token=stored_token(pair,['read'])
@@ -289,6 +291,7 @@ def test_missing_segno_all_transports(client, app4, v2, coll, pair, monkeypatch)
     from brickwork.core.mcp import Adapter
     from brickwork.core.mcp.client import InProcessClient
     identifier, _ = ledger.storage_save(coll.db, None, 'Box 9')
+    labels.save_address(coll.db, 'https://bricks.example')
     monkeypatch.setitem(sys.modules, 'segno', None)
     token = stored_token(pair, ['read'])
     query = '?ids=' + identifier
@@ -336,3 +339,57 @@ def test_label_routes_require_selection(client, output, query):
     response = client.get('/workbench/storage/labels/' + output, query_string=query)
     assert response.status_code == 400
     assert response.json['message'] == 'Choose between 1 and 200 storages'
+
+
+def test_api_and_mcp_refuse_labels_without_a_usable_address(app4, v2, coll, pair):
+    from brickwork.core.mcp import Adapter
+    from brickwork.core.mcp.client import InProcessClient
+    identifier, _ = ledger.storage_save(coll.db, None, 'Box 3')
+    token = stored_token(pair, ['read'])
+    query = '?ids=' + identifier
+    for path in ('/storages/labels.pdf', '/storages/labels'):
+        response = call(v2, path + query, token=token)
+        assert response.status_code == 422
+        assert 'Set the label address in Settings first' in response.json['detail']
+    # The MCP in-process client's host is http://localhost; the real, unpatched download must not run.
+    result = Adapter(InProcessClient(app4, token)).call_tool('storage_labels', dict(ids=identifier))
+    assert result.isError and 'Set the label address in Settings first' in str(result)
+    labels.save_address(coll.db, 'https://bricks.example')
+    assert call(v2, '/storages/labels' + query, token=token).status_code == 200
+    pdf = call(v2, '/storages/labels.pdf' + query, token=token)
+    assert pdf.status_code == 200 and pdf.data.startswith(b'%PDF')
+    result = Adapter(InProcessClient(app4, token)).call_tool('storage_labels', dict(ids=identifier))
+    assert not result.isError
+
+
+def test_real_200_storages_a4_14_pdf_within_a_time_bound(coll):
+    import time
+    import pypdfium2
+    ids = [ledger.storage_save(coll.db, None, f'Box {n:03d}')[0] for n in range(200)]
+    found = labels.plan(coll.db, ids, 'a4-14', 'https://bricks.example')
+    assert found['pages'] == 15
+    start = time.monotonic()
+    data, mime, name = labels.download(found)
+    assert time.monotonic() - start < 120
+    assert mime == 'application/pdf' and len(pypdfium2.PdfDocument(data)) == 15
+
+
+def test_pdf_pages_match_the_page_images(coll):
+    import pypdfium2
+    from PIL import ImageChops
+    ids = [ledger.storage_save(coll.db, None, f'Box {n}')[0] for n in range(30)]
+    found = labels.plan(coll.db, ids, 'a4-21', 'https://bricks.example')
+    document = pypdfium2.PdfDocument(labels.download(found, matrix_factory=lambda payload: MATRIX)[0])
+    assert len(document) == found['pages'] == 2
+    for i in range(2):
+        expected = labels.page_image(found, i, matrix_factory=lambda payload: MATRIX)
+        rendered_page = document[i].render(scale=labels.DPI / 72).to_pil().convert('RGB').resize(expected.size)
+        diff = ImageChops.difference(rendered_page, expected).convert('L')
+        assert sum(diff.histogram()[100:]) < expected.width * expected.height * 0.02
+
+
+def test_mark_and_fonts_are_loaded_once():
+    labels.mark_rects.cache_clear()
+    assert labels.font(40) is labels.font(40) and labels.font(23, True) is labels.font(23, True)
+    assert labels.mark_rects() is labels.mark_rects()
+    assert labels.mark_rects.cache_info().misses == 1

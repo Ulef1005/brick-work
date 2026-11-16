@@ -52,6 +52,12 @@ def _item(db, item_id):
     return item
 
 
+def live_catalogue_item(row):
+    """True for an item row that may change variant: it came from the catalogue and the catalogue has not retired it (the one rule the screen's
+    `variant_blocker` shares with the change itself, so the API, MCP and CLI cannot go around it)."""
+    return row['origin'] == 'catalogue' and row['catalogue_retired_at'] is None
+
+
 def _plan_stock(db, log, a, b):
     """The rows of `a` that move; refuses what would meet a live row of `b` on its key."""
     rows = log.select('stock', 'item_id=? ORDER BY created_at, id', (a,))
@@ -161,6 +167,10 @@ def change_variant_in(db, from_id, to_id, *, via, actor=None, operation_key=None
         raise MergeRefused(f'item {from_id} is a {old["kind"]} and item {to_id} a {new["kind"]}: a variant changes only to one of its own kind')
     if old['kind'] == 'set':
         raise MergeRefused('a set cannot change variant here: a copy\'s part list is its set\'s own')
+    for item_id, row in ((from_id, old), (to_id, new)):
+        if not live_catalogue_item(row):
+            raise MergeRefused(f'item {item_id} is not a live catalogue item (one you added yourself, or one the catalogue has retired): '
+                               'only live catalogue items change variant · merge it into the item it is instead')
     moves._refuse_double_lines(db, from_id, to_id, LINES)
     moves._refuse_active_jobs(db, from_id, to_id)
     db.execute('PRAGMA defer_foreign_keys=ON')
@@ -188,6 +198,10 @@ def undo_change_variant_in(db, event_id, *, via, actor=None, operation_key=None)
     if db.execute('SELECT 1 FROM main.event_undo WHERE event_id=?', (event_id,)).fetchone():
         raise MergeRefused(f'event {event_id} was undone already')
     receipt = json.loads(event['new_value'])
+    for item_id in (receipt['from'], receipt['to']):
+        merged = db.execute('SELECT merged_into FROM main.item WHERE id=?', (item_id,)).fetchone()
+        if merged is not None and merged['merged_into'] is not None:
+            raise MergeRefused(f'item {item_id} was merged (into {merged["merged_into"]}) since the change of variant · undo the merge first')
     moves._refuse_active_jobs(db, receipt['from'], receipt['to'])
     log = RowLog(db, receipt['changes'])
     changed = log.verify()

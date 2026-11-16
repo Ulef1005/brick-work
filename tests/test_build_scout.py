@@ -5,6 +5,7 @@ Sets (own parts, spares left out): 9101-1 holds 3001 red x4, 3023 white x2, syn-
 and syn-m1 red x2 (3); 9106-1 two of 9101-1 and 970c22 red x1 (15, made of a set); 9107-1 3001, syn-r1, syn-r2 red x1 each (3). Years 2001 to 2007, theme Castle."""
 from contextlib import closing
 import json
+from decimal import Decimal
 
 import pytest
 
@@ -143,6 +144,17 @@ def test_a_price_in_another_currency_is_left_out(world):
     w.coll.price(w.part('3001'), '0.10', colour=w.red)
     assert B.price_map(w.db, [(w.part('3023'), w.white), (w.part('syn-r1'), w.red), (w.part('3001'), w.red)])['currency'] == 'EUR'
     assert len(B.price_map(w.db, [(w.part('3023'), w.white), (w.part('syn-r1'), w.red), (w.part('3001'), w.red)])['prices']) == 2
+
+
+def test_a_line_priced_best_in_a_minority_currency_keeps_its_majority_currency_price(world):
+    w = world
+    w.coll.price(w.part('3001'), '0.10', colour=w.red)
+    w.coll.price(w.part('3023'), '0.30', colour=w.white)
+    w.coll.price(w.part('3023'), '0.20', colour=w.white, currency='USD')                # a newer USD observation outranks the EUR one
+    pairs = [(w.part('3001'), w.red), (w.part('3023'), w.white)]
+    answer = B.price_map(w.db, pairs)
+    assert answer['currency'] == 'EUR'                                                  # two EUR lines to one USD row
+    assert answer['prices'] == {(w.part('3001'), w.red): Decimal('0.10'), (w.part('3023'), w.white): Decimal('0.30')}
 
 
 # ---------- filters ----------
@@ -400,3 +412,84 @@ def test_the_wish_check_and_the_write_are_one_transaction(world, monkeypatch):
     monkeypatch.setattr(add, 'confirm', lambda db, *a, **k: (seen.append(db.in_transaction), real(db, *a, **k))[1])
     assert B.wish_set(w.db, w.set('9101-1'))['already'] is False
     assert seen == [True]
+
+
+def test_a_build_from_damaged_rows_records_them_as_damaged_on_the_copy(world):
+    w = world
+    w.stock('3001', w.red, 4, condition='used')
+    w.stock('3023', w.white, 2, condition='damaged')
+    made = B.build_set(w.db, w.set('9102-1'), damaged=True)
+    assert (made['pieces'], made['missing_parts'], made['damaged_parts'], made['completeness']) == (5, 0, 1, 'incomplete')
+    rows = {r['item_id']: r for r in w.db.execute('SELECT * FROM copy_part WHERE copy_id=?', (made['copy_id'],))}
+    assert (rows[w.part('3023')]['missing'], rows[w.part('3023')]['damaged']) == (0, 1)
+    assert rows[w.part('3001')]['damaged'] == 0
+    assert w.db.execute('SELECT completeness FROM copy WHERE id=?', (made['copy_id'],)).fetchone()[0] == 'incomplete'
+
+
+def test_a_build_takes_good_rows_before_damaged_ones(world):
+    w = world
+    big = w.stock('3001', w.red, 10, condition='damaged')
+    good = w.stock('3001', w.red, 4, condition='used')
+    w.stock('3023', w.white, 2, condition='used')
+    rows = B.stock_rows(w.db, damaged=True)
+    assert {r['id']: r['condition'] for r in rows}[big] == 'damaged'
+    takes, _ = B.plan_takes(w.db, w.set('9102-1'), rows)
+    assert (good, 4) in takes and all(sid != big for sid, _ in takes)
+    made = B.build_set(w.db, w.set('9102-1'), damaged=True)
+    assert (made['missing_parts'], made['damaged_parts'], made['completeness']) == (0, 0, 'complete')
+
+
+def test_the_scout_index_is_built_outside_the_write_transaction(world, monkeypatch):
+    w = world
+    w.fill()
+    seen = []
+    real = B.scout_for
+    monkeypatch.setattr(B, 'scout_for', lambda db: (seen.append(db.in_transaction), real(db))[1])
+    B.build_set(w.db, w.set('9102-1'))
+    assert seen[0] is False
+
+
+def test_a_damaged_whole_figure_is_never_given(world):
+    w = world
+    w.figure(1, condition='damaged')
+    assert B.stock_rows(w.db, damaged=True) == []
+
+
+def test_the_price_lookup_is_driven_by_the_wanted_pairs(world):
+    w = world
+    plan = ' '.join(r[3] for r in w.db.execute("""EXPLAIN QUERY PLAN SELECT p.item_id FROM json_each(?) j JOIN price_current p
+        ON p.item_id=json_extract(j.value,'$[0]') AND p.color_key=json_extract(j.value,'$[1]')""", ('[]',)))
+    assert 'price_current_key' in plan
+    assert B.price_map(w.db, []) == dict(prices={}, currency=None)
+
+
+def figure_pack_dump():
+    import copy
+    from tests import test_set_scoring as TS
+    dump = copy.deepcopy(TS.SYN)
+    dump['sets'].append(['9108-1', 'Syn Figure Pack', 2008, 600, 0, ''])
+    dump['inventories'].append([9108, 1, '9108-1'])
+    dump['inventory_minifigs'].append([9108, 'fig-000004', 2])
+    return dump
+
+
+def test_a_figures_only_set_is_ranked_detailed_exported_and_built(tmp_path):
+    path = make_pair(tmp_path, extra_dump=figure_pack_dump())
+    with closing(connect(path)) as db:
+        coll = Coll(db)
+        pack = item_id(db, 'sets', '9108-1')
+        figure = coll.add_stock('minifigure', item_id(db, 'minifigs', 'fig-000004'), quantity=1)
+        assert B.scout_for(db).figure_only == [pack]
+        row = next(r for r in B.scout(db, min_percent=0)['results'] if r['set_item_id'] == pack)
+        assert (row['parts_total'], row['percent'], row['figures_available'], row['figures_required']) == (0, 50.0, 1, 2)
+        assert all(r['set_item_id'] != pack for r in B.scout(db, min_percent=60)['results'])
+        assert all(r['set_item_id'] != pack for r in B.scout(db, min_percent=0, size_from=1)['results'])
+        detail = B.set_detail(db, pack)
+        assert (detail['parts_total'], detail['percent'], detail['missing_figures'], detail['gaps']) == (0, 50.0, 1, [])
+        assert [g['need'] for g in detail['figure_gaps']] == [2]
+        shown = next(r for r in B.scout(db, min_percent=0, detail=5)['results'] if r['set_item_id'] == pack)
+        assert shown['figure_gaps'] and shown['gaps'] == []
+        assert len(B.missing_export(db, pack)['lines']) == 1
+        made = B.build_set(db, pack)
+        assert (made['pieces'], made['figures'], made['missing_figures']) == (0, 1, 1)
+        assert db.execute('SELECT quantity FROM stock WHERE id=?', (figure,)).fetchone()[0] == 0

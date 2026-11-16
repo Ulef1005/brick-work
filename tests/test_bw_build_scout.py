@@ -143,6 +143,9 @@ def test_the_writes_refuse_what_they_must(client, coll, world, monkeypatch):
     refused = send(client, f'{PATH}/{world.brick}/build', token)
     assert refused.status_code == 400 and refused.get_json()['message']
     assert send(client, f'{PATH}/{world.keep}/build', token, lots=[1]).status_code == 400
+    for field in ('lots', 'storages'):                                                  # not a list: a 400, not a TypeError 500
+        for value in ('abc', 5, {'a': 1}):
+            assert send(client, f'{PATH}/{world.keep}/build', token, **{field: value}).status_code == 400
     assert coll.db.execute("SELECT count(*) FROM event WHERE field='make_from_stock'").fetchone()[0] == 0
     monkeypatch.setattr('brickwork.api.read_only', lambda: True)
     assert send(client, f'{PATH}/{world.keep}/build', token).status_code == 403

@@ -6,7 +6,7 @@ this function writes:
 
 * the copy of the set from the catalogue's latest Rebrickable list (the list the Scout ranked with), its figure lines and its part lines
   (`copies.build_target`, the same target `create_copy_in` writes), every line starting as missing;
-* the taken parts and whole figures into the lines that name them, lowering `missing` (a figure line's missing figures, and the missing parts
+* the taken parts and whole figures into the lines that name them, lowering `missing` (pieces taken from a stock row of condition `damaged` are set as `copy_part.damaged`; a figure line's missing figures, and the missing parts
   of those figures, as `workbench.reduce_gap` does);
 * the stock rows' quantities down by what was taken (a row that reaches 0 stays, as a Take leaves it);
 * one `stock_transfer` row per take and line, kept as provenance as the Workbench keeps them;
@@ -15,7 +15,7 @@ this function writes:
 Undo (`undo_make_copy_in`) puts the stock rows back and archives the copy, as the Add flow's Undo does (a copy is archived, never deleted); it
 is refused when any row it changed differs now, or the copy has since been given flags, a check, photos or other transfers.
 
-The copy gets condition `used`, completeness `complete` when nothing is missing and else `incomplete` (set by hand: the derived rule needs a
+The copy gets condition `used`, completeness `complete` when nothing is missing or damaged and else `incomplete` (set by hand: the derived rule needs a
 Set is checked flag), and `note`. Refused (`MergeRefused`): a take that names no live stock row or more than the row holds, a take that matches no
 line of the copy or more than the line needs, a set with no catalogue part list."""
 import json
@@ -100,7 +100,7 @@ def make_copy_in(db, set_item_id, takes, *, via, actor=None, operation_key=None,
         figure_rows[fig.item_id] = (row['id'], fig.quantity, missing)
         for stock_id, amount in figure_taken[fig.item_id]:
             transfers.append(('figure', stock_id, 'copy_figure', row['id'], fig.item_id, None, amount))
-    missing_parts = 0
+    missing_parts = damaged_parts = 0
     for (figure, item, colour, spare), quantity in sorted(lines.items(), key=lambda kv: tuple(-1 if x is None else x for x in kv[0])):
         figure_id, missing = None, 0
         if figure is not None:
@@ -110,7 +110,12 @@ def make_copy_in(db, set_item_id, takes, *, via, actor=None, operation_key=None,
             got = draw((item, colour), quantity)
             missing = quantity - sum(a for _, a in got)
             missing_parts += missing
-        part = log.insert('copy_part', copy_id=copy_id, copy_figure_id=figure_id, item_id=item, color_id=colour, is_spare=spare, quantity=quantity, missing=missing)
+        hurt = 0
+        if figure is None and not spare:                            # pieces taken from a damaged stock row arrive damaged (present, to be replaced)
+            hurt = sum(a for s, a in got if rows[s]['condition'] == 'damaged')
+            damaged_parts += hurt
+        part = log.insert('copy_part', copy_id=copy_id, copy_figure_id=figure_id, item_id=item, color_id=colour, is_spare=spare, quantity=quantity, missing=missing,
+                          damaged=hurt)
         if figure is None and not spare:
             for stock_id, amount in got:
                 transfers.append(('part', stock_id, 'copy_part', part['id'], item, colour, amount))
@@ -118,7 +123,7 @@ def make_copy_in(db, set_item_id, takes, *, via, actor=None, operation_key=None,
     if left:
         key, entry = left[0]
         raise MergeRefused(f'stock {entry[0]} gives {entry[1]} more of item {key[0]} than the copy has lines for')
-    complete = not missing_parts and not missing_figures
+    complete = not missing_parts and not missing_figures and not damaged_parts
     if complete:
         log.update('copy', log_copy, completeness='complete')
     before = {}
@@ -129,7 +134,7 @@ def make_copy_in(db, set_item_id, takes, *, via, actor=None, operation_key=None,
     pieces = sum(a for t in transfers if t[0] == 'part' for a in (t[6],))
     figures = sum(t[6] for t in transfers if t[0] == 'figure')
     receipt = dict(copy=copy_id, item=set_item_id, taken=[[s, a] for s, a in taken.items()], pieces=pieces, figures=figures, missing_parts=missing_parts,
-                   missing_figures=missing_figures, changes=log.changes)
+                   missing_figures=missing_figures, damaged_parts=damaged_parts, changes=log.changes)
     event = moves._event(db, via, actor, operation_key or uuid.uuid4().hex, 'copy', copy_id, FIELD, None, receipt)
     for kind, stock_id, table, line_id, item, colour, amount in transfers:
         db.execute('''INSERT INTO main.stock_transfer(at, kind, stock_id, copy_id, copy_part_id, copy_figure_id, stock_part_id, item_id, color_id, quantity,
@@ -137,7 +142,7 @@ def make_copy_in(db, set_item_id, takes, *, via, actor=None, operation_key=None,
                    (stamp, kind, stock_id, copy_id, line_id if table == 'copy_part' else None, line_id if table == 'copy_figure' else None, item, colour,
                     amount, before[stock_id], event))
     return dict(event_id=event, copy_id=copy_id, pieces=pieces, figures=figures, missing_parts=missing_parts, missing_figures=missing_figures,
-                completeness='complete' if complete else 'incomplete')
+                damaged_parts=damaged_parts, completeness='complete' if complete else 'incomplete')
 
 
 def undo_make_copy_in(db, event_id, *, via, actor=None, operation_key=None):

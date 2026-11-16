@@ -13,8 +13,9 @@ evidence; Build Scout ranks by how much of a set the stock covers, and its numbe
   priced in, with the number of missing lines left unpriced. It is worked out for the page shown, never for the whole catalogue.
 
 The stock is one eligibility rule (`stock_rows`) shared by the ranking and by Build it, so the pieces on the screen are the pieces that move:
-live loose parts and minifigures, with `workbench.available` (damaged rows give nothing unless asked for, a figure with defective parts none, a
-row's missing and damaged counts are taken off). A source selection is the union of the stock kept in no lot or storage (`loose`), the chosen
+live loose parts and minifigures, with `workbench.available` (damaged rows give nothing unless asked for, and then only damaged parts, never a whole
+figure, and Build it records what they give as damaged on the copy's lines; a figure with defective parts gives none, a row's missing and damaged
+counts are taken off). A source selection is the union of the stock kept in no lot or storage (`loose`), the chosen
 lots and the chosen storages with the storages inside them; none chosen means all loose stock.
 
 Two indexes are built from the engine's loader with the engine's `build_index`, once per catalogue build and process: the parts one (the sets'
@@ -63,6 +64,8 @@ def stock_rows(db, *, lots=(), storages=(), loose=False, damaged=False):
     defective = workbench.defective_figures(db)
     found = []
     for row in rows:
+        if damaged and row['condition'] == 'damaged' and row['kind'] == 'minifigure':
+            continue                                    # a copy's figure line has nowhere to carry damage: a damaged whole figure is never given
         have = workbench.available(db, dict(row, condition='used') if damaged and row['condition'] == 'damaged' else row, defective=defective)
         if have:
             found.append(dict(id=row['id'], item_id=row['item_id'], color_id=None if row['kind'] == 'minifigure' else row['color_id'], kind=row['kind'],
@@ -101,6 +104,8 @@ class Scout:
         sets = list(rows.sets)
         self.parts = set_scoring.build_index(set_scoring.Rows(sets, (), rows.subsets, (), rows.relations, rows.key))
         self.figures = set_scoring.build_index(set_scoring.Rows([(s, []) for s, _ in sets], rows.figures, rows.subsets, (), (), rows.key))
+        # a set with no part line of its own, only whole figures (a figure pack): the parts index omits it, the figures one has it
+        self.figure_only = sorted(set(self.figures.position) - set(self.parts.position))
         cur = db.cursor()
         cur.row_factory = None
         # a set made of other sets, from the catalogue's own records: the engine's list leaves out a child that is not scorable, but a copy still lacks it
@@ -176,8 +181,9 @@ def _whole(value, name, low=0):
 
 
 def ranked(scout, pile, *, min_percent=DEFAULT_MIN_PERCENT, max_missing=None, theme=None, year_from=None, year_to=None, size_from=None, size_to=None):
-    """Every set that shares a part line with the pile and passes the filters, best first: `[(position, covered, complete lines)]` and the count of sets
-    that share a line. Sorted by percent available, then fewest missing pieces, then set id."""
+    """Every set that shares a part line (or, for a set of whole figures only, a figure line) with the pile and passes the filters, best first:
+    `[(set item id, position, covered, complete lines)]` and the count of sets that share a line. Sorted by percent available, then fewest missing pieces, then set id.
+    A figures-only set has `position` None (no parts index entry), no parts (covered 0, size 0) and its percent is its figures' (`percent_of`)."""
     index = scout.parts
     min_percent = 0 if min_percent is None else min_percent
     if not 0 <= min_percent <= 100:
@@ -198,9 +204,30 @@ def ranked(scout, pile, *, min_percent=DEFAULT_MIN_PERCENT, max_missing=None, th
             continue
         if themes is not None and theme_id not in themes:
             continue
-        found.append((-pieces / size, size - pieces, item[position], position, pieces, complete[position]))
+        found.append((-pieces / size, size - pieces, item[position], item[position], position, pieces, complete[position]))
+    sharing = len(covered)
+    if scout.figure_only:
+        figures, _ = figures_of(scout, pile)
+        for item_id in scout.figure_only:
+            have_f, need_f = figures[item_id]
+            if not have_f:
+                continue
+            sharing += 1
+            year, theme_id = scout.meta.get(item_id, (None, None))
+            if have_f * 100 < min_percent * need_f or size_from is not None and size_from > 0:
+                continue
+            if (year_from is not None or year_to is not None) and (year is None or (year_from is not None and year < year_from) or (year_to is not None and year > year_to)):
+                continue
+            if themes is not None and theme_id not in themes:
+                continue
+            found.append((-have_f / need_f, 0, item_id, item_id, None, 0, 0))
     found.sort(key=lambda r: r[:3])
-    return [r[3:] for r in found], len(covered)
+    return [r[3:] for r in found], sharing
+
+
+def percent_of(pieces, size, have_f, need_f):
+    """The percent shown: the parts' (`pieces` of `size`), or the figures' for a set with no part of its own."""
+    return round(100 * pieces / size, 1) if size else round(100 * have_f / need_f, 1) if need_f else 0.0
 
 
 def figures_of(scout, pile):
@@ -241,19 +268,18 @@ def scout(db, *, lots=(), storages=(), loose=False, damaged=False, limit=20, off
 
 def _present(db, chosen, pile, page, offset, figures, detail, cost=False):
     index = chosen.parts
-    prices = _prices(db, chosen, [p for p, _, _ in page], pile) if detail or cost else None
+    prices = _prices(db, chosen, [(item, position) for item, position, _, _ in page], pile) if detail or cost else None
     out = []
-    for n, (position, pieces, complete) in enumerate(page):
-        item = index.set_item[position]
-        size = index.set_quantity[position]
+    for n, (item, position, pieces, complete) in enumerate(page):
+        size = 0 if position is None else index.set_quantity[position]
         have_f, need_f = figures.get(item, (0, 0))
         year, theme_id = chosen.meta.get(item, (None, None))
         row = dict(rank=offset + n + 1, set_item_id=item, year=year, theme=chosen.theme_name(theme_id), theme_id=theme_id,
-                   parts_available=pieces, parts_total=size, percent=round(100 * pieces / size, 1), missing_parts=size - pieces,
-                   missing_lines=index.set_lines[position] - complete, figures_available=have_f, figures_required=need_f, missing_figures=need_f - have_f,
+                   parts_available=pieces, parts_total=size, percent=percent_of(pieces, size, have_f, need_f), missing_parts=size - pieces,
+                   missing_lines=0 if position is None else index.set_lines[position] - complete, figures_available=have_f, figures_required=need_f, missing_figures=need_f - have_f,
                    nested=item in chosen.nested)
         if detail:
-            row.update(set_detail_in(db, chosen, position, pile, lines_shown=detail, prices=prices))
+            row.update(set_detail_in(db, chosen, item, position, pile, lines_shown=detail, prices=prices))
         elif cost:
             row['cost'] = cost_of([(k, gap) for k, _, _, gap in missing_lines(chosen, position, pile) + figure_lines_missing(chosen, item, pile)], prices)
         out.append(row)
@@ -263,9 +289,11 @@ def _present(db, chosen, pile, page, offset, figures, detail, cost=False):
 # ---------- one set ----------
 
 def missing_lines(chosen, position, pile):
-    """The set's part lines the pile does not cover in full: `[(key, need, have, missing)]`, the biggest gap first."""
+    """The set's part lines the pile does not cover in full: `[(key, need, have, missing)]`, the biggest gap first (none for a figures-only set, `position` None)."""
     index = chosen.parts
     lines = []
+    if position is None:
+        return lines
     for key, need in zip(index.set_keys[position], index.set_needs[position]):
         have = min(pile.get(key, 0), need)
         if have < need:
@@ -283,13 +311,13 @@ def figure_lines(chosen, item, pile):
     return [(k, need, min(pile.get(k, 0), need), need - min(pile.get(k, 0), need)) for k, need in zip(index.set_keys[position], index.set_needs[position])]
 
 
-def _prices(db, chosen, positions, pile):
-    """`price_map` over the missing lines (parts and figures) of the page's sets: one lookup for the page (see the module doc)."""
+def _prices(db, chosen, sets, pile):
+    """`price_map` over the missing lines (parts and figures) of the page's sets, `[(item id, position)]`: one lookup for the page (see the module doc)."""
     pairs = set()
-    for position in positions:
+    for item, position in sets:
         for key, _, _, _ in missing_lines(chosen, position, pile):
             pairs.add(set_scoring.unkey(key))
-        for key, _, _, _ in figure_lines_missing(chosen, chosen.parts.set_item[position], pile):
+        for key, _, _, _ in figure_lines_missing(chosen, item, pile):
             pairs.add(set_scoring.unkey(key))
     return price_map(db, pairs)
 
@@ -302,10 +330,10 @@ def price_map(db, pairs):
         return dict(prices={}, currency=None)
     wanted = json.dumps([[i, c or 0] for i, c in pairs])
     best = {}
-    for row in db.execute("""SELECT p.item_id, coalesce(p.color_id,0) AS color_id, p.condition, p.guide, o.price, o.currency, o.id
-        FROM price_current p JOIN price_observation o ON o.id=p.observation_id
-        WHERE o.voided_at IS NULL AND coalesce(o.error,'')='' AND o.price IS NOT NULL AND coalesce(o.slot,'')!='boxed' AND p.guide IN ('sold','stock')
-        AND EXISTS(SELECT 1 FROM json_each(?) j WHERE json_extract(j.value,'$[0]')=p.item_id AND json_extract(j.value,'$[1]')=coalesce(p.color_id,0))""", (wanted,)):
+    for row in db.execute("""SELECT p.item_id, p.color_key AS color_id, p.condition, p.guide, o.price, o.currency, o.id
+        FROM json_each(?) j JOIN price_current p ON p.item_id=json_extract(j.value,'$[0]') AND p.color_key=json_extract(j.value,'$[1]')
+        JOIN price_observation o ON o.id=p.observation_id
+        WHERE o.voided_at IS NULL AND coalesce(o.error,'')='' AND o.price IS NOT NULL AND coalesce(o.slot,'')!='boxed' AND p.guide IN ('sold','stock')""", (wanted,)):
         try:
             value = Decimal(row['price'])
         except (InvalidOperation, TypeError):
@@ -339,14 +367,14 @@ def cost_of(missing, prices):
                 priced_lines=priced, unpriced_lines=unpriced)
 
 
-def set_detail_in(db, chosen, position, pile, *, lines_shown=MAX_LINES, prices=None):
-    """What a set adds to a row: its biggest missing part lines, its missing figure lines, the cost to complete and its swaps."""
+def set_detail_in(db, chosen, item, position, pile, *, lines_shown=MAX_LINES, prices=None):
+    """What a set adds to a row: its biggest missing part lines, its missing figure lines, the cost to complete and its swaps (none for a figures-only set)."""
     index = chosen.parts
-    item = index.set_item[position]
     missing = missing_lines(chosen, position, pile)
     figs = figure_lines_missing(chosen, item, pile)
     prices = prices if prices is not None else price_map(db, [set_scoring.unkey(k) for k, *_ in missing + figs])
-    swaps = set_scoring._swaps(index, position, pile, dict(zip(index.set_keys[position], index.set_needs[position])), set_scoring.by_item_of(pile))
+    swaps = dict(lines=0, quantity=0, items=[]) if position is None else set_scoring._swaps(
+        index, position, pile, dict(zip(index.set_keys[position], index.set_needs[position])), set_scoring.by_item_of(pile))
     return dict(gaps=[dict(item_id=set_scoring.unkey(k)[0], color_id=set_scoring.unkey(k)[1], need=need, have=have, missing=gap) for k, need, have, gap in missing[:lines_shown]],
                 figure_gaps=[dict(item_id=set_scoring.unkey(k)[0], need=need, have=have, missing=gap) for k, need, have, gap in figs],
                 cost=cost_of([(k, gap) for k, _, _, gap in missing + figs], prices), swaps=swaps)
@@ -357,21 +385,23 @@ def set_detail(db, set_item_id, *, lots=(), storages=(), loose=False, damaged=Fa
     chosen = scout_for(db)
     rows = stock_rows(db, lots=lots, storages=storages, loose=loose, damaged=damaged)
     pile = pile_of(rows)
-    position = chosen.parts.position.get(int(set_item_id))
-    if position is None:
+    item = int(set_item_id)
+    position = chosen.parts.position.get(item)
+    if position is None and item not in chosen.figure_only:
         raise ValueError('This set has no part list to compare')
     index = chosen.parts
     covered, complete = covered_by(index, pile)
     pieces = covered.get(position, 0)
-    size = index.set_quantity[position]
+    size = 0 if position is None else index.set_quantity[position]
     figures, _ = figures_of(chosen, pile)
     have_f, need_f = figures.get(int(set_item_id), (0, 0))
     year, theme_id = chosen.meta.get(int(set_item_id), (None, None))
     return dict(set_item_id=int(set_item_id), year=year, theme=chosen.theme_name(theme_id), parts_available=pieces, parts_total=size,
-                percent=round(100 * pieces / size, 1), missing_parts=size - pieces, missing_lines=index.set_lines[position] - complete.get(position, 0),
+                percent=percent_of(pieces, size, have_f, need_f), missing_parts=size - pieces,
+                missing_lines=0 if position is None else index.set_lines[position] - complete.get(position, 0),
                 figures_available=have_f, figures_required=need_f, missing_figures=need_f - have_f, nested=int(set_item_id) in chosen.nested,
                 input=dict(pieces=sum(v for k, v in pile.items() if k & ((1 << 32) - 1))),
-                **set_detail_in(db, chosen, position, pile))
+                **set_detail_in(db, chosen, item, position, pile))
 
 
 def missing_export(db, set_item_id, **sources):
@@ -380,7 +410,7 @@ def missing_export(db, set_item_id, **sources):
     chosen = scout_for(db)
     pile = pile_of(stock_rows(db, **sources))
     position = chosen.parts.position.get(int(set_item_id))
-    if position is None:
+    if position is None and int(set_item_id) not in chosen.figure_only:
         raise ValueError('This set has no part list to compare')
     total = defaultdict(int)
     for key, _, _, gap in missing_lines(chosen, position, pile) + figure_lines_missing(chosen, int(set_item_id), pile):
@@ -422,14 +452,14 @@ def plan_takes(db, set_item_id, rows):
     min(have, need), the largest usable row first and then the lowest id (the Matchmaker's order), and the totals taken."""
     chosen = scout_for(db)
     position = chosen.parts.position.get(int(set_item_id))
-    if position is None:
+    if position is None and int(set_item_id) not in chosen.figure_only:
         raise ValueError('This set has no part list to build from')
     if int(set_item_id) in chosen.nested:
         raise ValueError('This set is made of other sets · Build it does not handle those yet')
     by_key = defaultdict(list)
     for row in rows:
         by_key[set_scoring.key_of(row['item_id'], row['color_id'])].append(dict(row))
-    needs = list(zip(chosen.parts.set_keys[position], chosen.parts.set_needs[position]))
+    needs = [] if position is None else list(zip(chosen.parts.set_keys[position], chosen.parts.set_needs[position]))
     fig = chosen.figures.position.get(int(set_item_id))
     if fig is not None:
         needs += list(zip(chosen.figures.set_keys[fig], chosen.figures.set_needs[fig]))

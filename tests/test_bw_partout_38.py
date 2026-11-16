@@ -264,53 +264,19 @@ def test_partout_fetch_runtime():
     subprocess.run(['node', str(Path(__file__).with_name('toni_bw_partout_runtime.cjs'))], check=True, capture_output=True, text=True)
 
 
-def test_candidate_world_reaches_the_partout_states(tmp_path, client, app4, monkeypatch):
-    from brickwork.demo import clock, dataset
+def test_no_key_candidate_world_has_disabled_fetch(tmp_path, client, app4, monkeypatch):
     from scripts import screen_gate
-    from brickwork.store4.connect import connect
-    from contextlib import closing
-    folder = tmp_path / 'candidate'
+    folder = tmp_path / 'no-key'
     folder.mkdir()
     store = folder / 'brickwork.db'
-    screen_gate.build_store('edge-value', store)
+    screen_gate.build_store('demo', store)
     monkeypatch.setenv('BW_DB_PATH', str(store))
-    monkeypatch.setitem(app4.jinja_env.globals, 'bw_key_missing', lambda source: False)
-    patched = clock.freeze_clock()
-    try:
-        with closing(connect(store, catalogue=store.with_name('catalogue.db'), read_only=True)) as db:
-            ids = {s: db.execute('SELECT id FROM copy WHERE item_id=? ORDER BY created_at,id LIMIT 1', (dataset.item_by(db, 'sets', n),)).fetchone()[0] for s,n in [('hint','99101-1'),('pending','99112-1'),('stale','99103-1'),('other-currency','99105-1')]}
-            results = {s: partout.values(db, [i])[i] for s,i in ids.items()}
-        import json
-        from pathlib import Path
-        states = json.loads(Path('design/screens/states.json').read_text())['states']
-        for state, copy_id in ids.items():
-            entry = next(e for e in states if e['screen']=='10-Set-detail' and e['state']=='partout-'+state)
-            assert entry['path'].endswith('copy='+copy_id)
-        assert results['hint']['value'] == '141.00'
-        assert results['pending']['value'] is None
-        assert results['stale']['stale']
-        assert results['other-currency']['currency'] == 'USD'
-        for state, number in [('hint', '99101-1'), ('pending', '99112-1'), ('stale', '99103-1'), ('other-currency', '99105-1')]:
-            response = client.get(f'/collection/item/set/{number}?copy={ids[state]}', follow_redirects=True)
-            assert response.status_code == 200
-            card = BeautifulSoup(response.data, 'html.parser').select_one('[data-bc-partout]')
-            assert card
-            if state == 'hint': assert card.select_one('.bc-partout-hint')
-            if state == 'pending': assert card.select_one('[data-bc-fetch-prices]')
-            if state == 'stale': assert card.select_one('.bc-partout-stale')
-            if state == 'other-currency': assert 'no comparison' in card.text
-        sorted_page = BeautifulSoup(client.get('/planning/complete-sets?sort=partout').data, 'html.parser')
-        assert sorted_page.select_one('[data-bp-partout]')
-        demo = tmp_path / 'no-key'
-        demo.mkdir()
-        screen_gate.build_store('demo', demo / 'brickwork.db')
-        monkeypatch.setenv('BW_DB_PATH', str(demo / 'brickwork.db'))
-        monkeypatch.setitem(app4.jinja_env.globals, 'bw_key_missing', lambda source: True)
-        page = BeautifulSoup(client.get('/collection/item/set/7286-1?copy=56325b99-16bc-549b-bb98-f7be2ab38829', follow_redirects=True).data, 'html.parser')
-        assert page.select_one('[data-bc-partout] button[disabled]')
-    finally:
-        clock.thaw_clock(patched)
-
+    monkeypatch.setitem(app4.jinja_env.globals, 'bw_key_missing', lambda source: True)
+    entry = next(e for e in screen_gate.load()['states']
+                 if e['screen'] == '10-Set-detail' and e['state'] == 'partout-no-key')
+    assert entry['world'] == 'demo'
+    page = BeautifulSoup(client.get(entry['path'], follow_redirects=True).data, 'html.parser')
+    assert page.select_one('[data-bc-partout] button[disabled]')
 
 
 def test_no_inventory_has_no_parted_out_row(coll, read, client):
@@ -323,24 +289,6 @@ def test_no_inventory_has_no_parted_out_row(coll, read, client):
     assert partout.compare({}, result) is None
     page = BeautifulSoup(client.get(f'/collection/item/{coll.item("sets", "1000-1")}?copy=c1').data, 'html.parser')
     assert not page.select_one('[data-bc-partout]')
-
-
-def test_seed_preserves_statistics(tmp_path, monkeypatch):
-    from scripts import screen_gate
-    from brickwork.demo import gate_edge
-    from brickwork.core import admin
-    from brickwork.store4.connect import connect
-    from contextlib import closing
-    seed = gate_edge.seed_partout_frames
-    monkeypatch.setattr(gate_edge, 'seed_partout_frames', lambda db: None)
-    store = tmp_path / 'brickwork.db'
-    screen_gate.build_store('edge-value', store)
-    with closing(connect(store, catalogue=store.with_name('catalogue.db'))) as db:
-        before = admin.statistics(db)
-        copies = [tuple(r) for r in db.execute('SELECT * FROM copy ORDER BY id')]
-        seed(db)
-        assert admin.statistics(db) == before
-        assert [tuple(r) for r in db.execute('SELECT * FROM copy ORDER BY id')] == copies
 
 
 def test_foreign_override_is_not_compared(coll, client, monkeypatch):

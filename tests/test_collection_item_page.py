@@ -140,7 +140,9 @@ def test_prices_freshest_priority_records_and_real_history(coll, client, monkeyp
     assert '2026-05-01' in chart.get_text() and '2026-10-08' in chart.get_text()
     assert '2025-10-01' not in chart.get_text() and '45.00' not in chart.get_text()
     assert 'Axis starts at €10.00.' in chart.get_text()
-    assert card.select_one('[data-bc-condition-prices]').find_next_sibling() == chart
+    parted_out = card.select_one('[data-bc-partout]')
+    assert card.select_one('[data-bc-condition-prices]').find_next_sibling() == parted_out
+    assert parted_out.find_next_sibling() == chart
     # The source setting controls the condition selection, not an arbitrary source name.
     coll.setting('source_priority', json.dumps({'market_price': {'*': ['rebrickable', 'bricklink']}}))
     soup = item_page(client, keep)

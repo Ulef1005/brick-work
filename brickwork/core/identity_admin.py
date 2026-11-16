@@ -561,7 +561,7 @@ def variant_blocker(db, item_id):
         return 'This item is merged into another one already.'
     if row['kind'] not in VARIANT_KINDS:
         return 'Only a figure or a part changes variant.'
-    if row['origin'] != 'catalogue' or row['catalogue_retired_at'] is not None:
+    if not variant.live_catalogue_item(row):
         return 'Only an item of the live catalogue changes variant. An item you added yourself, or one the catalogue has retired, is merged into the item it is.'
     return None
 

@@ -14,7 +14,7 @@ from mcp.shared.memory import create_connected_server_and_client_session
 import pytest
 from starlette.testclient import TestClient
 
-from brickwork.core import tokens
+from brickwork.core import labels, tokens
 from brickwork.core.connect import connect
 from brickwork.core.mcp import Adapter, contract
 from brickwork.core.mcp.client import HTTPClient, InProcessClient
@@ -265,6 +265,9 @@ def test_every_read_tool_has_a_round_trip_case(world, pair):
 
 @pytest.mark.parametrize('name', READS)
 def test_every_read_round_trip(adapter, world, pair, name):
+    if name == 'storage_labels':                    # the in-process host is localhost: labels need a saved address
+        with closing(connect(pair)) as db:
+            labels.save_address(db, 'https://bricks.example')
     result = run_tool(adapter, name, read_arguments(world, pair)[name])
     if name == 'get_order':
         assert result.isError and payload(result)['code'] == 'not_found'              # no order in the fixture: the API's own answer

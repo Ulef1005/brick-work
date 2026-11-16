@@ -136,6 +136,7 @@ def get_storages_labels_pdf(db):
     if layout == 'tape-62':
         raise ValueError('Choose an A4 label layout for PDF')
     found = labels.plan(db, args.get('ids', '').split(','), layout, request.host_url)
+    labels.require_address(db, found)
     try:
         data, mime, name = labels.download(found)
     except ImportError:
@@ -155,6 +156,7 @@ def get_storages_labels_link(db):
         raise ValueError('Choose an A4 label layout for PDF')
     found = labels.plan(db, args.get('ids', '').split(','), layout, request.host_url)
     labels.qr_module()
+    labels.require_address(db, found)
     query = urlencode(dict(ids=','.join(r['id'] for r in found['storages']), layout=layout))
     return respond(dict(url=request.host_url.rstrip('/') + '/api/v2/storages/labels.pdf?' + query,
                         labels=len(found['storages']), sheets=found['pages']))

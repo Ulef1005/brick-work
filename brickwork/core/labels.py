@@ -1,9 +1,11 @@
 """Storage labels: one source for web previews, downloads, API and MCP links."""
 from dataclasses import dataclass
+from functools import lru_cache
 from io import BytesIO
 import ipaddress
 import json
 import math
+import threading
 from pathlib import Path
 from urllib.parse import urlsplit
 from zipfile import ZipFile
@@ -130,9 +132,16 @@ def qr_image(matrix):
     return image
 
 
+_fonts = threading.local()
+
+
 def font(size, mono=False):
-    name = 'geist-mono-latin-400-normal.woff2' if mono else 'inter-latin-600-normal.woff2'
-    return ImageFont.truetype(str(ROOT / 'static/web/toni/fonts' / name), size)
+    # Loaded once per thread and size: a FreeType face is not safe to share between threads.
+    cache = _fonts.__dict__.setdefault('faces', {})
+    if (size, mono) not in cache:
+        name = 'geist-mono-latin-400-normal.woff2' if mono else 'inter-latin-600-normal.woff2'
+        cache[size, mono] = ImageFont.truetype(str(ROOT / 'static/web/toni/fonts' / name), size)
+    return cache[size, mono]
 
 
 def name_lines(name, face, width, count=2):
@@ -154,17 +163,23 @@ def name_lines(name, face, width, count=2):
     return lines
 
 
+@lru_cache(maxsize=1)
+def mark_rects():
+    """The shipped mark's rectangles as plain tuples: (x, y, width, height, stroke-width, rx, dasharray or None)."""
+    root = ET.parse(ROOT / 'static/brickwork/mark-line.svg').getroot()
+    return tuple((*(float(rect.get(k)) for k in ('x', 'y', 'width', 'height')), float(rect.get('stroke-width', '3.2')),
+                  float(rect.get('rx', 0)), rect.get('stroke-dasharray')) for rect in root.iter('{http://www.w3.org/2000/svg}rect'))
+
+
 def mark(image, xy, size):
     """Rasterise the shipped monochrome line mark's rectangles and cross in black."""
-    root = ET.parse(ROOT / 'static/brickwork/mark-line.svg').getroot()
     draw = ImageDraw.Draw(image)
     unit = size / 96
-    for rect in root.iter('{http://www.w3.org/2000/svg}rect'):
-        x, y, w, h = (float(rect.get(k)) for k in ('x', 'y', 'width', 'height'))
+    for x, y, w, h, stroke_width, rx, dasharray in mark_rects():
         box = (xy[0] + x * unit, xy[1] + y * unit, xy[0] + (x + w) * unit, xy[1] + (y + h) * unit)
-        stroke = max(1, round(float(rect.get('stroke-width', '3.2')) * unit))
-        radius = float(rect.get('rx', 0)) * unit
-        if rect.get('stroke-dasharray'):
+        stroke = max(1, round(stroke_width * unit))
+        radius = rx * unit
+        if dasharray:
             # Follow the rounded perimeter, keeping the SVG's dash spacing through corners.
             points = []
             for cx, cy, start in ((box[2]-radius,box[1]+radius,-90), (box[2]-radius,box[3]-radius,0),
@@ -173,7 +188,7 @@ def mark(image, xy, size):
                     angle = math.radians(start + step * 90 / 8)
                     points.append((cx + radius * math.cos(angle), cy + radius * math.sin(angle)))
             points.append(points[0])
-            dash, gap = (float(v)*unit for v in rect.get('stroke-dasharray').split())
+            dash, gap = (float(v)*unit for v in dasharray.split())
             distance = 0.0
             for a, b in zip(points, points[1:]):
                 length = math.dist(a,b)
@@ -244,8 +259,10 @@ def page_image(found, page=0, *, guides=False, matrix_factory=qr_matrix):
 def download(found, *, matrix_factory=qr_matrix):
     out = BytesIO()
     if found['layout'] != 'tape-62':
-        images = [page_image(found, i, matrix_factory=matrix_factory) for i in range(found['pages'])]
-        images[0].save(out, 'PDF', resolution=DPI, quality=95, save_all=True, append_images=images[1:])
+        # One page in memory at a time: a full page is about 26 MB, so 15 pages at once are not affordable.
+        # Pillow's append mode adds each page to the file; the pages are the same images as before.
+        for i in range(found['pages']):
+            page_image(found, i, matrix_factory=matrix_factory).save(out, 'PDF', resolution=DPI, quality=95, append=bool(i))
         return out.getvalue(), 'application/pdf', 'storage-labels.pdf'
     images = [(r['short_id'] + '.png', label(r, found['layout'], found['address']['value'], matrix_factory)) for r in found['storages']]
     if len(images) == 1:
@@ -257,3 +274,11 @@ def download(found, *, matrix_factory=qr_matrix):
             image.save(data, 'PNG', dpi=(DPI, DPI))
             archive.writestr(name, data.getvalue())
     return out.getvalue(), 'application/zip', 'storage-labels.zip'
+
+
+def require_address(db, found):
+    """API and MCP only: refuse labels whose QR codes would point at localhost or an IP the phone cannot open."""
+    from .errors import BrickWorkError
+    saved = db.execute("SELECT value FROM main.setting WHERE key='labels_address'").fetchone()
+    if found['address']['warning'] and not (saved and saved[0]):
+        raise BrickWorkError('Set the label address in Settings first')

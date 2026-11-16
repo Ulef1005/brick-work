@@ -50,6 +50,7 @@ async function fetchCase({priced=139,lines=145,failed=false,pending=false}={}){
   const filter=context.window.BrickPlanning.filter;
   const rows=[{number:'20',partout:null},{number:'10',partout:'96.40'},{number:'2',partout:'141.00'},{number:'1',partout:null}];
   assert.deepEqual(Array.from(filter(rows,'',{},'partout'),r=>r.number),['2','10','1','20']);
+  assert.deepEqual(Array.from(filter(rows,'',{},'partout',false),r=>r.number),['10','2','1','20']);
   assert.deepEqual(Array.from(filter(rows.map(r=>({...r,partout:null})),'',{},'partout'),r=>r.number),['1','2','10','20']);
   console.log('part-out runtime passed');
 })().catch(e=>{console.error(e);process.exitCode=1;});

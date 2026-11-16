@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  function filter(rows, query, filters, sort, descending=false) {
+  function filter(rows, query, filters, sort, descending=sort==='partout') {
     const text=query.trim().toLocaleLowerCase();
     const numeric=new Set(['rank','gap','cost','max','undermax','partout']);
     return rows.filter(r=>(!text || [r.number,r.also,r.name,r.colour].join(' ').toLocaleLowerCase().includes(text)) && Object.entries(filters).every(([k,v])=>!v || (k==='pinned'?String(r[k])===(v==='true'?'1':'0'):Array.isArray(r[k])?r[k].includes(v):String(r[k])===v))).sort((a,b)=>{
@@ -8,14 +8,14 @@
       const missing=x=>x==null || x==='' || x==='None';
       if(numeric.has(sort) && missing(a[sort])!==missing(b[sort]))return missing(a[sort])?1:-1;
       const diff=numeric.has(sort)?Number(a[sort])-Number(b[sort]):String(a[sort]||'').localeCompare(String(b[sort]||''),undefined,{numeric:true});
-      return diff*((descending || sort==='partout')?-1:1) || String(a.number).localeCompare(String(b.number),undefined,{numeric:true});
+      return diff*(descending?-1:1) || String(a.number).localeCompare(String(b.number),undefined,{numeric:true});
     });
   }
   window.BrickPlanning={filter};
   const root=document.querySelector('#bw-planning');if(!root)return;
   const nodes=[...root.querySelectorAll('[data-bp-row]')],records=nodes.map(node=>({...JSON.parse(node.dataset.record),node}));
   const search=root.querySelector('[data-bp-search]'),sort=root.querySelector('[data-bp-sort]'),order=root.querySelector('[data-bp-order]'),controls=[...root.querySelectorAll('[data-bp-filter]')],panel=root.querySelector('#bp-filters'),message=root.querySelector('[data-bp-message]'),undo=root.querySelector('[data-bp-undo]');
-  if(root.dataset.screen==='complete-sets' && new URLSearchParams(location.search).get('sort')==='partout')sort.value='partout';
+  if(root.dataset.screen==='complete-sets' && new URLSearchParams(location.search).get('sort')==='partout'){sort.value='partout';order.value='desc';}
   if(root.dataset.screen==='wishlist')window.BrickCollection?.viewSwitch?.(root,root.querySelector('[data-bp-rows]'),'bp',window.BrickCollection.listStateKey?.());
   let receipt=null,visible=records;
   const receiptKey='bw-planning-receipt';
@@ -49,7 +49,8 @@
     const chips=root.querySelector('[data-bp-chips]');chips.replaceChildren();
     [...controls,search].forEach(c=>{if(!c.value)return;const b=document.createElement('button');b.type='button';b.textContent=(c===search?'Search: '+c.value:c.closest('label').firstChild.textContent.trim()+': '+c.selectedOptions[0].textContent)+' ×';b.setAttribute('aria-label','Remove '+b.textContent);b.addEventListener('click',()=>{c.value='';render();});chips.append(b);});
   }
-  [...controls,search,sort,order].filter(Boolean).forEach(c=>c.addEventListener(c===search?'input':'change',render));
+  sort?.addEventListener('change',()=>{if(sort.value==='partout')order.value='desc';render();});
+  [...controls,search,order].filter(Boolean).forEach(c=>c.addEventListener(c===search?'input':'change',render));
   root.querySelectorAll('[data-bp-pick]').forEach(b=>b.addEventListener('click',()=>{
     const c=controls.find(c=>c.dataset.bpFilter===b.dataset.bpPick);if(!c)return;
     c.value=c.value===b.dataset.value?'':b.dataset.value;render();

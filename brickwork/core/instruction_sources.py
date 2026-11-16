@@ -56,7 +56,11 @@ def fetch_pdf(url, limit=LIMIT, *, opener=None, monotonic=None):
     try:
         with open_request(request, timeout=20) as response:
             size = response.headers.get('Content-Length')
-            if size and int(size) > limit:
+            try:
+                too_big = bool(size) and int(size) > limit
+            except ValueError:
+                raise ValueError('The source could not download this file') from None
+            if too_big:
                 raise ValueError('File exceeds the download limit')
             from tempfile import TemporaryFile
             content = TemporaryFile()
@@ -65,7 +69,8 @@ def fetch_pdf(url, limit=LIMIT, *, opener=None, monotonic=None):
                 while True:
                     if clock() > deadline:
                         raise ValueError('Download took too long')
-                    chunk = response.read(min(65536, limit + 1 - total))
+                    # read1 returns what one receive delivered, so the deadline above is checked per chunk, not per 64 KiB
+                    chunk = response.read1(min(65536, limit + 1 - total))
                     if not chunk:
                         break
                     total += len(chunk)

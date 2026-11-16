@@ -113,10 +113,32 @@ def test_download_has_a_total_time_limit():
         headers = {}
     now = [0.0]
     class Slow(Response):
-        def read(self, size=-1):
+        def read1(self, size=-1):
             now[0] += 100  # a throttled source: each read stays inside the socket timeout
-            return super().read(1)
+            return super().read1(1)
     def opener(request, timeout):
         return Slow(b'%PDF-' + b'x' * 1000)
     with pytest.raises(ValueError, match='too long'):
         src.fetch_pdf(BASE + 'product.bi.core.pdf/1.pdf', 10000, opener=opener, monotonic=lambda: now[0])
+
+
+def test_deadline_is_checked_per_received_chunk():
+    """A server dripping a byte at a time must hit the deadline: the fetch uses read1, never a blocking read(n)."""
+    now = [0.0]
+    class Drip(BytesIO):
+        headers = {}
+        def read(self, size=-1):
+            raise AssertionError('read(n) blocks until n bytes; use read1')
+        def read1(self, size=-1):
+            now[0] += 19
+            return super().read1(1)
+    with pytest.raises(ValueError, match='too long'):
+        src.fetch_pdf(BASE + 'product.bi.core.pdf/1.pdf', 10000, opener=lambda r, timeout: Drip(b'%PDF-' + b'x' * 1000), monotonic=lambda: now[0])
+
+
+def test_a_non_numeric_content_length_gives_the_fixed_message():
+    class Response(BytesIO):
+        headers = {'Content-Length': 'secret-header-value'}
+    with pytest.raises(ValueError) as error:
+        src.fetch_pdf(BASE + 'product.bi.core.pdf/1.pdf', 100, opener=lambda r, timeout: Response(b'%PDF-1.4'))
+    assert str(error.value) == 'The source could not download this file'

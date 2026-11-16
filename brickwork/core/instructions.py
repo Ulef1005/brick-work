@@ -137,7 +137,7 @@ def queue_download(db, candidate_ids, *, via='app', actor=None):
             raise ValueError('Choose files within their source download limit')
         busy = db.execute("""SELECT 1 FROM main.job_step s JOIN main.job j ON j.id=s.job_id
             WHERE j.kind=? AND s.name=? AND s.state IN ('queued','running','waiting_for_budget') AND j.state NOT IN ('done','failed')""",
-            (DOWNLOAD_KIND, str(identifier))).fetchone()
+            (DOWNLOAD_KIND, str(row['id']))).fetchone()
         if busy:
             raise ValueError('A download of this file is already queued')
         rows.append(row)
@@ -207,22 +207,29 @@ class Downloads(Pipeline):
             limit = download_limit(self.db, row['source'])
             content = adapter.fetch(row['url'], limit)
             try:
-                from .admin import attach_instruction
-                with transaction(self.db):
-                    # A second job may have attached this candidate while the file downloaded: look again under the write lock.
-                    if self.db.execute('SELECT file_id FROM main.instruction_candidate WHERE id=?', (row['id'],)).fetchone()['file_id']:
+                from .admin import store_instruction_file, record_instruction, discard_instruction_file
+                # Hash and copy the file before any write lock: a large booklet must not block every other write.
+                relative, created = store_instruction_file(self.root, row['title'], content, limit=limit)
+                try:
+                    with transaction(self.db):
+                        # A second job may have attached this candidate while the file downloaded: look again under the write lock.
+                        if self.db.execute('SELECT file_id FROM main.instruction_candidate WHERE id=?', (row['id'],)).fetchone()['file_id']:
+                            discard_instruction_file(self.db, self.root, relative, created)
+                            self._put(job['id'], name, 'done', source=row['source'], count=1)
+                            return
+                        file_id = record_instruction(self.db, self.root, row['item_id'], row['title'], relative, created)
+                        self.db.execute('UPDATE main.instruction_candidate SET file_id=? WHERE id=?', (file_id, row['id']))
                         self._put(job['id'], name, 'done', source=row['source'], count=1)
-                        return
-                    file_id = attach_instruction(self.db, self.root, row['item_id'], row['title'], content, limit=limit)
-                    self.db.execute('UPDATE main.instruction_candidate SET file_id=? WHERE id=?', (file_id, row['id']))
-                    self._put(job['id'], name, 'done', source=row['source'], count=1)
+                except BaseException:
+                    discard_instruction_file(self.db, self.root, relative, created)
+                    raise
             finally:
                 if not isinstance(content, bytes):
                     content.close()
         except sources.RetryAfter as wait:
             try:
-                deadline = datetime.now(timezone.utc) + timedelta(seconds=max(1, int(wait.value)))
-            except (ValueError, TypeError):
+                deadline = datetime.now(timezone.utc) + timedelta(seconds=min(max(1, int(wait.value)), int(MAX_PAUSE.total_seconds())))
+            except (ValueError, TypeError, OverflowError):
                 try:
                     deadline = parsedate_to_datetime(wait.value)
                     if deadline.tzinfo is None:

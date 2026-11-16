@@ -251,3 +251,64 @@ def test_a_streamed_download_is_copied_in_chunks(coll, tmp_path):
         stream.write(b'Alex')
         with transaction(coll.db):
             attach_instruction(coll.db, tmp_path, coll.item('sets', '1000-1'), 'Not a PDF', stream)
+
+
+@pytest.mark.parametrize('value', ['1' + '0' * 12, '1' + '0' * 20])
+def test_a_huge_retry_after_is_clamped_not_dropped(coll, tmp_path, value):
+    from datetime import datetime, timedelta, timezone
+    reg, fake = registry()
+    _, rows = discover(coll, reg)
+    job = download(coll, rows)
+    fake.failure = src.RetryAfter(value)
+    result = ins.Downloads(coll.db, registry=reg, root=tmp_path).run(job)
+    assert result['state'] == 'waiting_for_budget'
+    retry = datetime.strptime(result['retry_at'], '%Y-%m-%dT%H:%M:%S.%fZ').replace(tzinfo=timezone.utc)
+    assert retry <= datetime.now(timezone.utc) + timedelta(hours=1, seconds=5)
+    assert retry >= datetime.now(timezone.utc) + timedelta(minutes=59)
+
+
+def test_duplicate_download_check_uses_the_row_id(coll):
+    reg, fake = registry()
+    _, rows = discover(coll, reg)
+    download(coll, rows[:1])
+    with pytest.raises(ValueError, match='already queued'), transaction(coll.db):
+        ins.queue_download(coll.db, [float(rows[0]['id'])])
+
+
+def test_attach_does_not_hold_the_write_lock_while_the_file_is_copied(coll, tmp_path):
+    import sqlite3
+    reg, fake = registry()
+    _, rows = discover(coll, reg)
+    job = download(coll, rows[:1])
+    path = coll.db.execute('PRAGMA database_list').fetchone()[2]
+    seen = []
+
+    class Slow(BytesIO):
+        def read(self, size=-1):
+            data = super().read(size)
+            if not seen:
+                seen.append(True)
+                other = sqlite3.connect(path, timeout=0.2)
+                try:
+                    other.execute('BEGIN IMMEDIATE')  # raises 'database is locked' while the downloader holds the write lock
+                    other.rollback()
+                    seen.append('free')
+                finally:
+                    other.close()
+            return data
+    fake.fetch = lambda url, limit: Slow(fake.content)
+    assert ins.Downloads(coll.db, registry=reg, root=tmp_path).run(job)['state'] == 'done'
+    assert seen == [True, 'free']
+
+
+def test_a_rolled_back_attach_keeps_a_file_another_row_references(coll, tmp_path):
+    from brickwork.core.admin import attach_instruction
+    item = coll.item('sets', '1000-1')
+    data = b'%PDF-1.4\nshared'
+    with transaction(coll.db):
+        attach_instruction(coll.db, tmp_path, item, 'First', data)
+    with pytest.raises(RuntimeError), transaction(coll.db):
+        attach_instruction(coll.db, tmp_path, item, 'Second', data)
+        raise RuntimeError('boom')
+    assert len(list((tmp_path / 'data/instructions').glob('*.pdf'))) == 1
+    assert coll.db.execute('SELECT count(*) FROM instruction_file').fetchone()[0] == 1

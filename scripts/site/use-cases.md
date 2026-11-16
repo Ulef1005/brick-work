@@ -1,11 +1,11 @@
 
 <section class="layout-115">
 <span class="layout-19">Use cases</span>
-<h1 class="layout-116">Eight moments a collector knows.</h1>
+<h1 class="layout-116">Nine moments a collector knows.</h1>
 <p class="layout-117">Each case says what you have in front of you, what you do, and which part of the app does it.</p>
 <div class="layout-118">
 <a class="layout-119" href="#uc-table">At the table<span class="layout-120">3</span></a>
-<a class="layout-119" href="#uc-plan">Planning and keeping<span class="layout-120">3</span></a>
+<a class="layout-119" href="#uc-plan">Planning and keeping<span class="layout-120">4</span></a>
 <a class="layout-119" href="#uc-scripts">Scripts and assistants<span class="layout-120">2</span></a>
 </div>
 </section>
@@ -66,6 +66,18 @@
 <span class="layout-49">Prices</span>
 <span class="layout-49">Complete sets</span>
 </div>
+</div>
+</article>
+<article class="layout-124">
+<div class="layout-127">
+<h3 class="layout-39">Keep it, sell it or part it out</h3>
+<p class="layout-128">A copy has gaps, and you wonder what it is worth.</p>
+<p class="layout-129">Value shows what you paid, what the copy is worth now and the gain or loss in words. Sell this copy suggests an asking price from BrickLink's sold average less the used price of each missing part, and writes the listing text. Nothing is posted and your collection does not change.</p>
+<div class="layout-130">
+<span class="layout-49">Value</span>
+<span class="layout-49">Sell this copy</span>
+</div>
+<a class="layout-131" href="../docs/tutorials/value-and-selling/">Keep it or part it out</a>
 </div>
 </article>
 <article class="layout-124">
@@ -145,7 +157,7 @@ Old database unchanged</pre>
 <div class="layout-136">
 <div class="layout-137">
 <span class="layout-113">Planned</span>
-<span class="layout-32">Buildable sets, collection sync with BrickLink and a pile check by photo are planned and not built.</span>
+<span class="layout-32">Sync with BrickLink and a pile check by photo are planned and not built.</span>
 </div>
 <a class="layout-138" href="https://github.com/Ulef1005/brick-work/milestones">Public roadmap</a>
 </div>

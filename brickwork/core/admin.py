@@ -5,6 +5,7 @@ from contextvars import ContextVar
 from datetime import datetime, timezone
 import json
 from pathlib import Path
+import shutil
 import uuid
 
 from .connect import connect
@@ -673,13 +674,25 @@ def instruction_set_of(db, item_id):
 
 
 def attach_instruction(db, root, item_id, label, content, *, undoable=False, limit=20 * 1024 * 1024):
-    """`instruction_upload` for a set already named by its id (the form names it by a typed number)."""
+    """`instruction_upload` for a set already named by its id (the form names it by a typed number).
+
+    `content` is bytes (an upload) or a seekable binary file (a download), which is hashed and copied in chunks, never held in memory.
+    """
     from hashlib import sha256
-    if not content.startswith(b'%PDF') or len(content) > limit:
+    if isinstance(content, (bytes, bytearray)):
+        head, size, digest = content[:4], len(content), sha256(content)
+    else:
+        content.seek(0)
+        head, digest, size = content.read(4), sha256(), 0
+        content.seek(0)
+        while chunk := content.read(65536):
+            size += len(chunk)
+            digest.update(chunk)
+    if head != b'%PDF' or size > limit:
         raise ValueError('Choose a PDF within the download limit')
     if not label or len(label) > 120:
         raise ValueError('Enter a label of up to 120 characters')
-    relative = Path('data/instructions') / (sha256(content).hexdigest() + '.pdf')
+    relative = Path('data/instructions') / (digest.hexdigest() + '.pdf')
     target = Path(root) / relative
     target.parent.mkdir(parents=True, exist_ok=True)
     created = False
@@ -687,7 +700,11 @@ def attach_instruction(db, root, item_id, label, content, *, undoable=False, lim
         try:
             with target.open('xb') as output:
                 created = True
-                output.write(content)
+                if isinstance(content, (bytes, bytearray)):
+                    output.write(content)
+                else:
+                    content.seek(0)
+                    shutil.copyfileobj(content, output, 65536)
         except FileExistsError:
             pass
         with transaction(db):

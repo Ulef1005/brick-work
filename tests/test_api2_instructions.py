@@ -42,3 +42,9 @@ def test_invalid_ticks_and_write_scope(v2, pair):
     assert write(v2, '/instruction-files/download', body={'candidate_ids': []}).status_code == 422
     token = stored_token(pair, ['read'])
     assert call(v2, '/instruction-files/fetch', 'post', token=token, json={'items': [{'id': 1}]}).status_code == 403
+
+
+def test_fetch_rejects_an_unknown_region(v2, coll):
+    item = coll.item('sets', '1000-1')
+    response = write(v2, '/instruction-files/fetch', body={'items': [{'id': item}], 'region': 'XX'})
+    assert response.status_code == 422 and 'region' in str(response.json).lower()

@@ -12,6 +12,23 @@ from ..store4.connect import now
 KIND = 'instruction_thumbnail'
 MAX_BYTES = 20 * 1024 * 1024
 TIMEOUT = 10
+MEMORY_LIMIT = 1024 * 1024 * 1024  # address space of the render child
+CPU_LIMIT = 20  # CPU seconds of the render child
+CHILD_ENV = {'PATH': '/usr/bin:/bin', 'LANG': 'C.UTF-8'}
+
+
+def limit_child():
+    """Cap the render child's memory and CPU before it parses an untrusted PDF.
+
+    Runs inside the child itself (not as the parent's preexec_fn, which is unsafe in a threaded server). A platform that
+    refuses a limit (macOS does not enforce RLIMIT_AS) keeps running without it.
+    """
+    import resource
+    for name, value in (('RLIMIT_AS', MEMORY_LIMIT), ('RLIMIT_CPU', CPU_LIMIT)):
+        try:
+            resource.setrlimit(getattr(resource, name), (value, value))
+        except (ValueError, OSError, AttributeError):
+            pass
 
 
 def render(source, target):
@@ -77,7 +94,7 @@ class Thumbnails(Pipeline):
             target = source.with_suffix('.thumb.png')
             temporary = target.with_name(target.name + f'.{job["id"]}.tmp')
             subprocess.run([sys.executable, '-m', __name__, str(source), str(temporary)],
-                           timeout=TIMEOUT, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                           timeout=TIMEOUT, check=True, env=CHILD_ENV, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             temporary.replace(target)
             with transaction(self.db):
                 self.db.execute("UPDATE main.instruction_file SET thumbnail_path=?,thumbnail_state='ready' WHERE id=?",
@@ -103,6 +120,7 @@ def runner_for(db, kind):
 
 if __name__ == '__main__':
     try:
+        limit_child()
         render(sys.argv[1], sys.argv[2])
     except Exception:
         sys.exit(1)

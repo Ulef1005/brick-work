@@ -1231,7 +1231,7 @@ def bw_build_scout_write(item_id, action):
                 done = build_scout.wish_set(db, item_id)
                 return jsonify(message='Already on the wishlist' if done['already'] else 'Added to the wishlist', event_id=done['event_id'], already=done['already'])
             lots, storages = data.get('lots') or [], data.get('storages') or []
-            if not all(isinstance(v, str) for v in lots + storages):
+            if not isinstance(lots, list) or not isinstance(storages, list) or not all(isinstance(v, str) for v in lots + storages):
                 raise ValueError('Choose lots and storages by id')
             made = build_scout.build_set(db, item_id, lots=lots, storages=storages, loose=data.get('loose') is True, damaged=data.get('damaged') is True)
         pieces = f'{made["pieces"]} piece{"" if made["pieces"] == 1 else "s"}'

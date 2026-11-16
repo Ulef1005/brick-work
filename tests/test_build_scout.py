@@ -400,3 +400,61 @@ def test_the_wish_check_and_the_write_are_one_transaction(world, monkeypatch):
     monkeypatch.setattr(add, 'confirm', lambda db, *a, **k: (seen.append(db.in_transaction), real(db, *a, **k))[1])
     assert B.wish_set(w.db, w.set('9101-1'))['already'] is False
     assert seen == [True]
+
+
+def test_a_build_from_damaged_rows_records_them_as_damaged_on_the_copy(world):
+    w = world
+    w.stock('3001', w.red, 4, condition='used')
+    w.stock('3023', w.white, 2, condition='damaged')
+    made = B.build_set(w.db, w.set('9102-1'), damaged=True)
+    assert (made['pieces'], made['missing_parts'], made['damaged_parts'], made['completeness']) == (5, 0, 1, 'incomplete')
+    rows = {r['item_id']: r for r in w.db.execute('SELECT * FROM copy_part WHERE copy_id=?', (made['copy_id'],))}
+    assert (rows[w.part('3023')]['missing'], rows[w.part('3023')]['damaged']) == (0, 1)
+    assert rows[w.part('3001')]['damaged'] == 0
+    assert w.db.execute('SELECT completeness FROM copy WHERE id=?', (made['copy_id'],)).fetchone()[0] == 'incomplete'
+
+
+def test_a_damaged_whole_figure_is_never_given(world):
+    w = world
+    w.figure(1, condition='damaged')
+    assert B.stock_rows(w.db, damaged=True) == []
+
+
+def test_the_price_lookup_is_driven_by_the_wanted_pairs(world):
+    w = world
+    plan = ' '.join(r[3] for r in w.db.execute("""EXPLAIN QUERY PLAN SELECT p.item_id FROM json_each(?) j JOIN price_current p
+        ON p.item_id=json_extract(j.value,'$[0]') AND p.color_key=json_extract(j.value,'$[1]')""", ('[]',)))
+    assert 'price_current_key' in plan
+    assert B.price_map(w.db, []) == dict(prices={}, currency=None)
+
+
+def figure_pack_dump():
+    import copy
+    from tests import test_set_scoring as TS
+    dump = copy.deepcopy(TS.SYN)
+    dump['sets'].append(['9108-1', 'Syn Figure Pack', 2008, 600, 0, ''])
+    dump['inventories'].append([9108, 1, '9108-1'])
+    dump['inventory_minifigs'].append([9108, 'fig-000004', 2])
+    return dump
+
+
+def test_a_figures_only_set_is_ranked_detailed_exported_and_built(tmp_path):
+    path = make_pair(tmp_path, extra_dump=figure_pack_dump())
+    with closing(connect(path)) as db:
+        coll = Coll(db)
+        pack = item_id(db, 'sets', '9108-1')
+        figure = coll.add_stock('minifigure', item_id(db, 'minifigs', 'fig-000004'), quantity=1)
+        assert B.scout_for(db).figure_only == [pack]
+        row = next(r for r in B.scout(db, min_percent=0)['results'] if r['set_item_id'] == pack)
+        assert (row['parts_total'], row['percent'], row['figures_available'], row['figures_required']) == (0, 50.0, 1, 2)
+        assert all(r['set_item_id'] != pack for r in B.scout(db, min_percent=60)['results'])
+        assert all(r['set_item_id'] != pack for r in B.scout(db, min_percent=0, size_from=1)['results'])
+        detail = B.set_detail(db, pack)
+        assert (detail['parts_total'], detail['percent'], detail['missing_figures'], detail['gaps']) == (0, 50.0, 1, [])
+        assert [g['need'] for g in detail['figure_gaps']] == [2]
+        shown = next(r for r in B.scout(db, min_percent=0, detail=5)['results'] if r['set_item_id'] == pack)
+        assert shown['figure_gaps'] and shown['gaps'] == []
+        assert len(B.missing_export(db, pack)['lines']) == 1
+        made = B.build_set(db, pack)
+        assert (made['pieces'], made['figures'], made['missing_figures']) == (0, 1, 1)
+        assert db.execute('SELECT quantity FROM stock WHERE id=?', (figure,)).fetchone()[0] == 0

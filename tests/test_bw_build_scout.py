@@ -119,6 +119,7 @@ def test_build_it_moves_the_parts_and_undo_puts_them_back(client, coll, world):
     assert done.status_code == 200, done.get_data(as_text=True)
     body = done.get_json()
     assert body['message'].startswith('Made a copy · 6 pieces and 1 figure moved out of loose stock') and body['event_id']
+    assert body['message'].endswith('incomplete: 1 figure missing')                        # the copy is told as incomplete, not only the missing parts
     assert body['url'].startswith(f'/collection/item/set/') or f'/{world.keep}' in body['url']
     assert coll.db.execute('SELECT quantity FROM stock WHERE id=?', (world.stock_figure,)).fetchone()[0] == 0
     assert 'Syn Castle Keep' not in ' '.join(names(soup(client)))                         # the parts are in the copy now

@@ -136,6 +136,7 @@ def set_found(db, lot_id, set_item_id, item_id, color_id, found):
     has as they are. Idempotent, writes no event. Returns the line as `state` shows it. `ValueError`: the line is not on the list or the count is out of range."""
     if isinstance(found, bool) or not isinstance(found, int) or not 0 <= found <= MAX_FOUND:
         raise ValueError(f'found is a whole number from 0 to {MAX_FOUND}')
+    build_scout.scout_for(db)                           # the index is built outside the write transaction
     with transaction(db):
         info = state(db, lot_id, set_item_id)
         key = key_text(item_id, color_id)
@@ -183,6 +184,7 @@ def make_copy(db, lot_id, set_item_id):
     `dict(event_id, copy_id, pieces, figures, missing_parts, missing_figures, completeness, stays)`. Refused (`ValueError`, nothing written): a set made of
     other sets, nothing found yet, no part list; `errors.NotFound` for a lot or set that is not there."""
     via, actor = origin()
+    build_scout.scout_for(db)                           # the index is built outside the write transaction
     with transaction(db):
         info = state(db, lot_id, set_item_id)
         if info['refusal']:

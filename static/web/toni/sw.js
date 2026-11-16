@@ -27,6 +27,7 @@ const ASSETS = [
   "/static/brickwork/icons-ui/grid.svg",
   "/static/brickwork/icons-ui/instr.svg",
   "/static/brickwork/icons-ui/list.svg",
+  "/static/brickwork/icons-ui/lot-sorter.svg",
   "/static/brickwork/icons-ui/manage.svg",
   "/static/brickwork/icons-ui/match.svg",
   "/static/brickwork/icons-ui/minifig.svg",

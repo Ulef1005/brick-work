@@ -103,7 +103,8 @@ def test_list_controls_paging_empty_and_placeholder(figure,coll,client):
     base='/planning/complete-sets?tab=figures'
     page=BeautifulSoup(client.get(base).data,'html.parser')
     assert page.select_one('#bw-figures') and 'Complete it' in page.get_text()
-    assert all(s not in page.get_text() for s in ('Export selected','Order missing parts','Print'))
+    main=page.select_one('#bw-figures').get_text()      # the shell's navigation names Order missing parts since #412; the figures list itself must not
+    assert all(s not in main for s in ('Export selected','Order missing parts','Print'))
     for query in ('q=zzz','where=sets','recommendation=Part+out','theme=zzz','storage=zzz'):
         assert 'No figures match these filters.' in client.get(base+'&'+query).text
     for n in range(16):

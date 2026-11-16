@@ -11,7 +11,7 @@ It takes about 15 minutes. You need a Brick Work install with the catalogue load
 
 ## 1. See which sets the lot may hold
 
-1. Open **Collection → Parts**, group by lot, and open the lot. Below **Parts in this lot** is **Which sets are in this lot?**
+1. Open **Workbench > Lot Sorter** and open the lot. Below **Parts in this lot** is **Which sets are in this lot?**
 2. Read the first candidate. The bar and the percentage are the evidence for that set compared with the best candidate, which scores 100%. It is not a probability.
 3. Read the reasons under it, for example *20 of 133 distinctive parts found*. A distinctive part is one that 25 sets or fewer hold, so a rare printed part says far more than a common brick.
 4. Select **Details** on a candidate. **Found in the lot** shows the distinctive parts the lot has, **Not found yet** the ones you would still have to dig for.

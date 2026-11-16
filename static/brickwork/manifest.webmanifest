@@ -53,6 +53,14 @@
     {
       "name": "Add",
       "url": "/manage/add"
+    },
+    {
+      "name": "Lot Sorter",
+      "url": "/workbench/lot-sorter"
+    },
+    {
+      "name": "Order missing parts",
+      "url": "/planning/order-missing-parts"
     }
   ]
 }

@@ -9,7 +9,7 @@ verified: 1.0
 
 A lot is a pile of loose parts bought together. **Set detection** on the lot page ranks the catalogue's sets by how strongly the parts in the lot point to them. This shows you which sets the pile was made from.
 
-1. Open **Collection → Parts**, group by lot, and open the lot. Below **Parts in this lot** is **Which sets are in this lot?**
+1. Open **Workbench > Lot Sorter** and open the lot. Below **Parts in this lot** is **Which sets are in this lot?**
 2. Read the candidates, best first. The **score** is the evidence for a set compared with the best candidate (the best scores 100%). It is not a probability.
 3. Under each score the reasons say why:
    - how many of the set's distinctive parts are in the lot (a distinctive part is held by 25 sets or fewer)

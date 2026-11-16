@@ -33,7 +33,7 @@ The percentage counts the set's own parts only. A part in another colour is list
 
 ## 3. Order what is still missing
 
-1. Open **Planning → Complete sets** and press **Order missing parts**.
+1. Open **Planning > Order missing parts**.
 2. Tick the copies whose gaps you want to fill. **Leave out sets to sell or part out** is on by default, so copies you plan to sell stay greyed and unticked.
 3. Read the order list on the right. Its heading counts exactly the ticked sets. Each line is a part, colour and condition combined over those sets, and a chip per set shows where the quantity comes from.
 

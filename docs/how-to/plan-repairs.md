@@ -56,7 +56,7 @@ With fewer prices, the copy's page says **Not enough prices yet**.
 
 Each line is an item, colour and condition with the quantity still to buy: with *Use loose stock* on, the quantity is the gap less your loose parts. Brick Work cannot name some lines for BrickLink, because the item has no BrickLink number or its colour has none. Such a line is left out of the file and named in the message ("Exported · 1 left out: …"). The rest exports. Exporting works on a read-only instance too.
 
-To order the parts of many sets at once, press **Order missing parts** instead. Each line is combined and shows which sets it comes from. See [Order the parts all your sets are missing](order-missing-parts.md).
+To order the parts of many sets at once, open **Planning > Order missing parts**. Each line is combined and shows which sets it comes from. See [Order the parts all your sets are missing](order-missing-parts.md).
 
 **Print missing parts of N** opens a printable list of the same copies; see [Export or print the missing parts](export-missing-parts.md).
 

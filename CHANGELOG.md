@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Navigation** (#412). Workbench adds Lot Sorter for lots, set detection and pull lists. Planning adds Order missing parts, including its review step.
+
 - **Review follow-ups** (#407). The checked switch stays on Parts. Figure Found and Take preserve unsaved part ticks. Receipts decode query values consistently. Invalid part quantities fail validation under the write lock. Unreadable Found responses show a plain retry message. Label addresses reject empty query, fragment and user information markers. Label routes explain missing selections and invalid sheets. The move bar no longer shows the label download limit.
 
 - **Found in and minifigure card polish** (#40, #55). Counts agree with filtered rows and use singular nouns for one result. Controls apply immediately and stack on phones. Result identities, quantities and wishlist actions have separate lines. Comparison values keep their no-sales pills within each cell.

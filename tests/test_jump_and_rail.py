@@ -10,7 +10,10 @@ from tests.app4 import app4, client, coll, pair, read, world  # noqa: F401  (the
 
 
 @pytest.mark.parametrize('path,current', [
-    ('/planning/complete-sets', 'Complete sets'), ('/workbench/orders', 'Orders'),
+    ('/planning/complete-sets', 'Complete sets'),
+    ('/workbench/lot-sorter', 'Lot Sorter'),
+    ('/planning/order-missing-parts', 'Order missing parts'),
+    ('/planning/order-missing-parts?step=review', 'Order missing parts'), ('/workbench/orders', 'Orders'),
     ('/workbench/storage', 'Storage'),
     ('/planning/prices', 'Prices'), ('/planning/wishlist', 'Wishlist'),
     ('/manage/tools', 'Tools & Admin'),
@@ -30,7 +33,7 @@ def test_rail_destinations_and_current_state(app4, client, world, path, current)
         links = [link for _, links in groups for link in links]
         titles = [link['title'] for link in links]
         for expected in ('Sets', 'Minifigures', 'Parts', 'Instructions', 'Boxes', 'Part Spotter', 'Set Inspector',
-                         'Part Runner', 'Matchmaker', 'Orders', 'Storage', 'Wishlist', 'Prices', 'Complete sets', 'Add', 'Tools & Admin'):
+                         'Lot Sorter', 'Part Runner', 'Matchmaker', 'Orders', 'Storage', 'Wishlist', 'Prices', 'Complete sets', 'Order missing parts', 'Add', 'Tools & Admin'):
             assert expected in titles
         assert [link['title'] for link in links if link['active']] == [current]
     response = client.get(path, follow_redirects=True)

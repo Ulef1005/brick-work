@@ -149,14 +149,14 @@ def test_the_page_is_a_read_it_stays_on_a_read_only_instance_and_needs_login(col
     assert client.get(URL + '/missing-parts.xml', query_string=dict(copy=[s['first']])).status_code == 200
 
 
-def test_the_nav_keeps_complete_sets_current_and_complete_sets_links_here(coll, client):
+def test_the_nav_marks_order_missing_parts_current_and_complete_sets_links_here(coll, client):
     scene(coll)
     soup = page(client)
-    current = [a for a in soup.select('a[href="/planning/complete-sets"]') if a.get('aria-current')]
-    assert current
-    assert soup.select_one(f'a[href="{URL}"]') is None                                       # the page does not link to itself
+    current = [a for a in soup.select(f'a[href="{URL}"]') if a.get('aria-current')]          # #412: its own entry in Planning
+    assert current and not [a for a in soup.select('a[href="/planning/complete-sets"]') if a.get('aria-current')]
+    assert soup.select_one(f'main a[href="{URL}"]') is None                                  # the page body does not link to itself
     complete = BeautifulSoup(client.get('/planning/complete-sets').data, 'html.parser')
-    assert complete.select_one(f'a[href="{URL}"]').text == 'Order missing parts'
+    assert complete.select_one(f'main a[href="{URL}"]').text == 'Order missing parts'
 
 
 def test_an_empty_collection_says_so(coll, client):

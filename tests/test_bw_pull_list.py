@@ -157,3 +157,12 @@ def test_a_read_only_instance_shows_the_list_without_writes(client, world, app4)
 def test_search_finds_a_line_by_its_number_and_its_colour(client, world):
     assert set(lines(page(client, world, '?show=all&q=stk-bar'))) == {'Stk bar'}                # the number is not in the name
     assert set(lines(page(client, world, '?show=all&q=red'))) == {'Stk tile'}                 # the colour name: only the tile has a colour in the set
+
+
+def test_lot_sorter_active_on_lot_and_pull_steps(client, world):
+    for path in [f'/collection/lots/{world.lot}', base(world), base(world) + '/make-copy']:
+        response = client.get(path)
+        assert response.status_code == 200
+        soup = BeautifulSoup(response.text, 'html.parser')
+        for panel in soup.select('[data-rail-group="Workbench"], [data-group-panel="Workbench"], [data-nav-sheet="Workbench"]'):
+            assert [a.select_one('.nav-title').text for a in panel.select('a[aria-current="page"]')] == ['Lot Sorter']

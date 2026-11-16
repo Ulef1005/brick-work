@@ -25,3 +25,5 @@ The REST API offers the same missing-parts lists as XML, CSV and JSON.
 
 - [Decide which set to repair first](plan-repairs.md) to rank the copies by what a repair is worth.
 - [Order the parts all your sets are missing](order-missing-parts.md) to combine the gaps of several sets in one order.
+
+Open **Planning > Order missing parts** to combine gaps across copies and review where to buy them.

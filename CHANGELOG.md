@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Part Spotter keeps your message** (#313). A camera check that finishes late and finds no camera no longer replaces the message of something you just did, such as choosing a saved photo. This also removes the flaky sticker state in the screen gate.
+
 - **Navigation** (#412). Workbench adds Lot Sorter for lots, set detection and pull lists. Planning adds Order missing parts, including its review step.
 
 - **Review follow-ups** (#407). The checked switch stays on Parts. Figure Found and Take preserve unsaved part ticks. Receipts decode query values consistently. Invalid part quantities fail validation under the write lock. Unreadable Found responses show a plain retry message. Label addresses reject empty query, fragment and user information markers. Label routes explain missing selections and invalid sheets. The move bar no longer shows the label download limit.

@@ -28,3 +28,4 @@ LEGO® is a trademark of the LEGO Group of companies, which does not sponsor, au
 The term 'BrickLink' is a trademark of the LEGO Group BrickLink. This application uses the BrickLink API but is not endorsed or certified by LEGO BrickLink, Inc. (BrickLink API terms; the same notice is in the app under Tools & Admin → About.)
 
 - Segno 1.6.6: BSD-3-Clause, QR matrix generation. Installed from PyPI at image build time. https://github.com/heuer/segno
+- Beautiful Soup 4.15.0 (beautifulsoup4) and Soup Sieve 4.1: MIT, HTML parsing for the Official instructions source. Installed from PyPI at image build time. https://www.crummy.com/software/BeautifulSoup/ and https://github.com/facelessuser/soupsieve

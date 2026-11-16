@@ -30,7 +30,5 @@ pathspec==1.1.1
 pymdown-extensions==13.1
 Pygments==2.21.0
 tomli==2.5.0
-# HTML parsing in the test suite only
-beautifulsoup4==4.15.0
+# bs4 is the metapackage the tests' import name resolves through; beautifulsoup4 and soupsieve moved to requirements.txt (the Official instructions source parses HTML at runtime)
 bs4==0.0.2
-soupsieve==4.1

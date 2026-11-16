@@ -28,4 +28,4 @@ then
 fi
 
 # Execute the WSGI server
-exec gunicorn --bind "${BW_HOST}:${BW_PORT}" "wsgi:application" --worker-class "gevent" --workers 1 --timeout 120 --no-control-socket "$@"
+exec gunicorn --bind "${BW_HOST}:${BW_PORT}" "wsgi:application" --worker-class "gevent" --workers 1 --timeout 120 --limit-request-line 8190 --no-control-socket "$@"

@@ -264,15 +264,16 @@ def download(found, *, matrix_factory=qr_matrix):
         for i in range(found['pages']):
             page_image(found, i, matrix_factory=matrix_factory).save(out, 'PDF', resolution=DPI, quality=95, append=bool(i))
         return out.getvalue(), 'application/pdf', 'storage-labels.pdf'
-    images = [(r['short_id'] + '.png', label(r, found['layout'], found['address']['value'], matrix_factory)) for r in found['storages']]
-    if len(images) == 1:
-        images[0][1].save(out, 'PNG', dpi=(DPI, DPI))
-        return out.getvalue(), 'image/png', images[0][0]
+    rows, address = found['storages'], found['address']['value']
+    if len(rows) == 1:
+        label(rows[0], found['layout'], address, matrix_factory).save(out, 'PNG', dpi=(DPI, DPI))
+        return out.getvalue(), 'image/png', rows[0]['short_id'] + '.png'
     with ZipFile(out, 'w') as archive:
-        for name, image in images:
+        # Each label is made, written and dropped in turn: 200 of them at once are about 230 MB.
+        for row in rows:
             data = BytesIO()
-            image.save(data, 'PNG', dpi=(DPI, DPI))
-            archive.writestr(name, data.getvalue())
+            label(row, found['layout'], address, matrix_factory).save(data, 'PNG', dpi=(DPI, DPI))
+            archive.writestr(row['short_id'] + '.png', data.getvalue())
     return out.getvalue(), 'application/zip', 'storage-labels.zip'
 
 

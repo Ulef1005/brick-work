@@ -20,7 +20,7 @@ An assistant that should know Brick Work can read [llms.txt](https://brick-work.
 
 ## Navigation
 
-The sidebar and phone navigation share four groups: Collection, Workbench, Planning and Manage.
+The sidebar, Tools lists and phone navigation share four groups: Collection, Workbench, Planning and Manage.
 
 Open **Workbench > Lot Sorter** to browse parts grouped by lot. Open a lot for **Which sets are in this lot?**, then its pull list.
 

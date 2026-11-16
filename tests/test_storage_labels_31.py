@@ -245,12 +245,12 @@ def test_new_and_upgraded_storage_schema_match(tmp_path):
         assert upgraded.execute(query).fetchall()==[tuple(r) for r in fresh.execute(query)]
 
 
-def test_label_screen_candidates_are_unapproved_and_edge_has_two_sheets(tmp_path):
+def test_label_screen_candidates_are_unapproved_except_the_approved_error_and_edge_has_two_sheets(tmp_path):
     from scripts import screen_gate
     states=json.loads(Path('design/screens/states.json').read_text())['states']
     candidates=[s for s in states if s['screen']=='34-Storage' and s['state'].startswith('labels-')]
     assert {s['state'] for s in candidates}=={'labels-select-none','labels-select-three','labels-ready','labels-address-warning','labels-two-sheets','labels-error'}
-    assert all(s['built'] and s['approved'] is False and '?labels=' in s['path'] for s in candidates)
+    assert all(s['built'] and s['approved'] is (s['state']=='labels-error') and '?labels=' in s['path'] for s in candidates)
     path=tmp_path/'brickwork.db'
     screen_gate.build_store('edge',path)
     with closing(connect(path,tmp_path/'catalogue.db')) as db:

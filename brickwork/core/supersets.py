@@ -1,6 +1,6 @@
 """Found in (#40): one colour, owned holders first, then the scoring index's catalogue postings.
 
-Catalogue counts name distinct items. Owned copies replace their catalogue row in the mixed list;
+Headline counts describe the filtered rows. Owned copies replace their catalogue row in the mixed list;
 multiple owned copies remain separate. Paging counts those displayed rows, without capping the total.
 """
 from . import collection, errors, items, pictures, set_scoring
@@ -37,12 +37,10 @@ def found_in(db, item_id, color_id, *, type='all', search='', sort='newest', lim
         AND s.kind='minifigure' AND s.archived_at IS NULL AND s.quantity>0 GROUP BY s.id ORDER BY s.created_at,s.id''', (item_id, color_id)):
         owned.append(dict(r, copy_id=None, label='loose', color_id=None, group='owned', owned=True))
     available = has_catalogue(db)
-    totals = dict(sets=0, minifigures=0)
     catalogue = []
     unmatched = False
     if available:
         index, _ = set_scoring.index_for(db)
-        totals = counts(index, item_id, color_id)
         key = set_scoring.key_of(item_id, color_id)
         positions, amounts = index.posting.get(key, ((), ()))
         catalogue += [dict(item_id=index.set_item[p], quantity=q) for p, q in zip(positions, amounts)]
@@ -76,6 +74,8 @@ def found_in(db, item_id, color_id, *, type='all', search='', sort='newest', lim
         tail = ((-(r.get('year') or 0) if sort == 'newest' else r.get('year') or 9999) if sort in ('newest', 'oldest')
                 else str(r.get('name') if sort == 'name' else r.get('number_text') or '').casefold())
         return (r['group'] != 'owned', tail, r['item_id'], r.get('copy_id') or r.get('stock_id') or '')
+    totals = dict(sets=sum(r["kind"] == "set" for r in rows),
+                  minifigures=sum(r["kind"] == "minifigure" for r in rows))
     rows.sort(key=key)
     return dict(catalogue=available, colour_unmatched=unmatched, counts=totals, owned_count=sum(r['owned'] for r in rows),
                 total=len(rows), limit=limit, offset=offset, results=rows[offset:offset + limit])

@@ -1,11 +1,21 @@
-.bc-found form,.bc-found-pager{display:flex;gap:var(--space-3,12px);flex-wrap:wrap;align-items:end}
-.bc-found label{display:flex;flex-direction:column;gap:4px}
-.bc-found input{max-width:100%;min-width:0}
-.bc-found-row{display:grid;grid-template-columns:64px minmax(0,1fr) auto;gap:12px}
-.bc-found-row .bc-picture{width:64px;height:64px}
-.bc-found-row a,.bc-found-link{display:block}
-.bc-found-row p{margin:4px 0}
-.bc-found-link{font-size:.85rem;font-weight:400;margin-top:4px}
-.bc-found-pager{justify-content:space-between;margin-top:16px}
+/* Scoped to beat the shared row rules, regardless of stylesheet load order. */
+#bw-collection .bc-found-controls{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(120px,160px);gap:8px;align-items:center;margin-block:16px 8px}
+#bw-collection .bc-found-controls label{display:flex;flex-direction:column;gap:8px;min-width:0}
+#bw-collection .bc-found-controls :is(input,select,button){box-sizing:border-box;min-height:44px;width:100%;min-width:0;background:var(--tw-surface);border:.5px solid var(--tw-divider-strong);border-radius:10px;color:var(--tw-text);padding:8px 12px}
+#bw-collection .bc-found-filter{display:flex;gap:8px;align-items:center;justify-content:center}
+#bw-collection .bc-found-filter[aria-expanded=true]{background:var(--tw-accent-soft);color:var(--tw-accent-text)}
+#bw-collection .bc-found-type{grid-column:1/-1;padding:12px;background:var(--tw-surface);border-radius:10px}
+#bw-collection .bc-found-chip{min-height:44px;border-radius:999px;background:var(--tw-accent-soft);color:var(--tw-accent-text);border:0;padding:8px 12px}
+#bw-collection .bc-found-row{display:grid;grid-template-columns:64px minmax(0,1fr);gap:12px;align-items:start}
+#bw-collection .bc-found-row .bc-picture{width:64px;height:48px;aspect-ratio:4/3}
+#bw-collection .bc-found-row[data-found-kind=minifigure] .bc-picture{width:48px;height:48px;margin-inline:8px;aspect-ratio:1}
+#bw-collection .bc-found-row .bc-picture img{object-fit:contain}
+#bw-collection .bc-found-identity{display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:0}
+#bw-collection .bc-found-identity>a{font:600 15px/20px var(--tw-font)}
+#bw-collection .bc-found-number{font-size:12px;color:var(--tw-text-muted)}
+#bw-collection .bc-found-meta{font:400 13px/18px var(--tw-font);color:var(--tw-text-muted)}
+#bw-collection .bc-found-row p{margin:0}
+#bw-collection .bc-found-identity>button{min-height:44px;margin-top:4px}
+.bc-found-link{display:block;font-size:.85rem;font-weight:400;margin-top:4px}
 .bc-found [aria-busy=true]{opacity:.65}
-@media(max-width:700px){.bc-found form>label:first-child{width:100%}}
+@media(max-width:767px){#bw-collection .bc-found-controls{grid-template-columns:minmax(0,1fr)}}

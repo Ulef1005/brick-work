@@ -62,15 +62,17 @@ def test_owned_first_storage_loose_figures_and_no_duplicate_catalogue(world, col
 def test_common_part_true_count_and_disjoint_pages(cat, monkeypatch):
     db, n, *_ = cat
     # Repeated synthetic candidates exercise paging without manufacturing thousands of DB rows.
-    index = S.build_index(S.Rows([(i, [(n.part('3001'), n.colour('4'), 2)]) for i in range(1, 6231)]))
+    index = S.build_index(S.Rows([(i, [(n.part('3001'), n.colour('4'), 2)]) for i in range(1, 6019)],
+        figure_parts=[(i, [(n.part('3001'), n.colour('4'), 1)]) for i in range(6019, 6231)]))
     monkeypatch.setattr(S, 'index_for', lambda db: (index, False))
     # Supply identities for the synthetic index through the normal decorator boundary.
     def decorate(db, rows):
-        return [dict(r, kind='set', name='Sam', number_text=str(r['item_id'])) for r in rows]
+        return [dict(r, kind='set' if r['item_id'] <= 6018 else 'minifigure', name='Sam', number_text=str(r['item_id'])) for r in rows]
     monkeypatch.setattr(supersets.collection, 'decorate', decorate)
     a = supersets.found_in(db, *n.line('3001', '4'))
     b = supersets.found_in(db, *n.line('3001', '4'), offset=15)
-    assert a['total'] == a['counts']['sets'] == 6230 and len(a['results']) == len(b['results']) == 15
+    assert a['total'] == 6230 and a['counts'] == dict(sets=6018, minifigures=212)
+    assert len(a['results']) == len(b['results']) == 15
     assert not {r['item_id'] for r in a['results']} & {r['item_id'] for r in b['results']}
 
 
@@ -82,3 +84,15 @@ def test_colour_unmatched_and_standalone_figure_index(cat, monkeypatch):
     monkeypatch.setattr(S, 'index_for', lambda db: (index, False))
     result = supersets.found_in(db, part, n.colour('4'))
     assert result['colour_unmatched'] and result['total'] == 0
+
+
+def test_headline_counts_match_filtered_owned_rows(world, coll):
+    coll.add_copy('1000-1')
+    coll.add_copy('1000-1')
+    part, colour = coll.item('parts', '970c03'), coll.colour('0')
+    for options in ({}, {'type': 'sets'}, {'type': 'minifigures'}, {'search': 'no such holder'}):
+        result = supersets.found_in(coll.db, part, colour, limit=100, **options)
+        assert sum(result['counts'].values()) == result['total']
+        assert result['counts']['sets'] == sum(r['kind'] == 'set' for r in result['results'])
+        assert result['counts']['minifigures'] == sum(r['kind'] == 'minifigure' for r in result['results'])
+        assert result['owned_count'] == sum(r['owned'] for r in result['results'])

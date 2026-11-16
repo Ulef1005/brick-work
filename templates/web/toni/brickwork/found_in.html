@@ -1,13 +1,13 @@
 <section class="bc-module bc-found" id="found-in" data-found-in data-url="{{ url_for('web.bw_item_supersets',item_id=detail.item_id,color=detail.color_id) }}">
 <h2>Found in</h2>
 <p>{{ colour_chip(detail) }} <span class="mono">{{ detail.number_text }}</span> · this colour only</p>
-<form data-found-form role="search">
-<label>Search <input name="q" type="search" placeholder="Search sets and minifigures"></label>
-<details><summary>Filters</summary><label>Type <select name="type"><option value="all">All</option><option value="sets">Sets</option><option value="minifigures">Minifigures</option></select></label></details>
-<label>Sort <select name="sort"><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="number">Number</option><option value="name">Name</option></select></label>
-<button>Apply</button>
+<form class="bc-found-controls" data-found-form role="search">
+<label class="bc-search"><span class="bc-visually-hidden">Search</span><input name="q" type="search" aria-label="Search sets and minifigures" placeholder="Number or name"></label>
+<button class="bc-found-filter" type="button" data-found-filters aria-expanded="false" aria-controls="found-type">{{ toni_icon('filter') }}<span>Filters</span></button>
+<label><span class="bc-visually-hidden">Sort</span><select name="sort" aria-label="Sort"><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="number">Number</option><option value="name">Name</option></select></label>
+<div id="found-type" class="bc-found-type" hidden><label>Type <select name="type"><option value="all">All</option><option value="sets">Sets</option><option value="minifigures">Minifigures</option></select></label></div>
 </form>
-<button type="button" data-found-clear hidden></button>
+<button class="bc-found-chip" type="button" data-found-clear hidden></button>
 <p data-found-status role="status" aria-live="polite"></p><button type="button" data-found-retry hidden>Retry</button>
 <div data-found-results>{% set found=detail.found_in %}{% include 'web/toni/brickwork/found_in_results.html' %}</div>
 </section>

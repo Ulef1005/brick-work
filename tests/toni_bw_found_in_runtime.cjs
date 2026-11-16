@@ -4,17 +4,25 @@ class Node{
  addEventListener(k,v){this.events[k]=v;}
  setAttribute(k,v){this[k]=v;}
 }
+const filters=new Node(),panel=new Node();panel.hidden=true;
 const form=new Node(),results=new Node(),status=new Node(),retry=new Node(),clear=new Node(),root=new Node();
 form.elements={type:{value:'all'}};
 root.dataset.url='/collection/item/1/supersets?color=4';
-const nodes={'[data-found-form]':form,'[data-found-results]':results,'[data-found-status]':status,'[data-found-retry]':retry,'[data-found-clear]':clear};
+const nodes={'[data-found-form]':form,'[data-found-results]':results,'[data-found-status]':status,'[data-found-retry]':retry,'[data-found-clear]':clear,'[data-found-filters]':filters,'#found-type':panel};
 root.querySelector=k=>nodes[k];
 let requests=[],pending=[],fail=false;
-const ctx={module:{exports:{}},document:{querySelectorAll:()=>[]},location:{href:'http://example.test/collection/item/1'},URL,FormData:class{forEach(fn){fn(form.elements.type.value,'type');}},
+let scheduled;
+const ctx={setTimeout:fn=>{scheduled=fn;return 1;},clearTimeout:()=>{scheduled=null;},module:{exports:{}},document:{querySelectorAll:()=>[]},location:{href:'http://example.test/collection/item/1'},URL,FormData:class{forEach(fn){fn(form.elements.type.value,'type');}},
  fetch:(url)=>{requests.push(String(url));if(fail)return Promise.resolve({ok:false});return new Promise(resolve=>pending.push(resolve));}};
 vm.runInNewContext(fs.readFileSync('static/web/toni/bw-found-in.js','utf8'),ctx);
 (async()=>{
  const {load}=ctx.module.exports.mount(root);
+ filters.events.click();assert.equal(panel.hidden,false);assert.equal(filters['aria-expanded'],'true');
+ filters.events.click();assert.equal(panel.hidden,true);
+ form.events.input({target:{name:'q'}});assert.equal(typeof scheduled,'function');
+ scheduled();assert.equal(requests.length,1);
+ pending[0]({ok:true,text:async()=>'<p>search</p>'});
+ await new Promise(resolve=>setImmediate(resolve));requests=[];pending=[];
  const first=load(15);assert.match(status.textContent,/Loading/);assert.match(requests[0],/offset=15/);
  form.elements.type.value='minifigures';
  const second=load(0);assert.equal(clear.textContent,'Minifigures only ×');

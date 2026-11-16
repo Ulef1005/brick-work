@@ -166,7 +166,7 @@ class ValueLayer(Layer):
 
 
 def seed_partout_frames(db):
-    """Invented copies and isolated prices for the #38 candidates, only in edge-value."""
+    """Existing copies and isolated prices for the #38 candidates, only in edge-value."""
     from ..store4 import fetched
     stamp = clock.FIXED_NOW.isoformat(timespec='milliseconds').replace('+00:00', 'Z')
     red = dataset.colour_by(db, 4)
@@ -175,11 +175,11 @@ def seed_partout_frames(db):
             ('other-currency', DOLLAR_SET, 'USD', stamp), ('pending', NO_QUOTE_SET, 'EUR', None)):
         part = fetched.create_local_item(db, kind='part', born_provider='bricklink', born_namespace='P',
                                          born_key='syn-38-'+state, name='Alex part '+state, kind_source='bricklink')
-        copy_id = 'partout-38-'+state
-        db.execute("""INSERT INTO copy(id,item_id,inventory_source,inventory_digest,condition,current_value,current_value_currency,created_at,updated_at)
-                      VALUES(?,?,'migrated','i38','used','84.00','EUR',?,?)""",
-                   (copy_id, dataset.item_by(db, 'sets', number), stamp, stamp))
-        db.execute('INSERT INTO copy_part(copy_id,item_id,color_id,quantity,missing) VALUES(?,?,?,2,1)', (copy_id, part, red))
+        copy_id = db.execute('SELECT id FROM copy WHERE item_id=? ORDER BY created_at, id LIMIT 1',
+                             (dataset.item_by(db, 'sets', number),)).fetchone()[0]
+        db.execute('UPDATE copy_part SET retired_at=? WHERE copy_id=?', (stamp, copy_id))
+        db.execute('UPDATE copy_figure SET retired_at=? WHERE copy_id=?', (stamp, copy_id))
+        db.execute('INSERT INTO copy_part(copy_id,item_id,color_id,quantity,missing) VALUES(?,?,?,?,?)', (copy_id, part, red, 2 if state == 'stale' else 1, 1 if state == 'stale' else 0))
         if observed:
             base.observation(db, 'bricklink', part, guide='sold', price='141.00', currency=currency, color_id=red,
                              condition='U', slot='bricklink_used', region='eu', qty=5, sold=5, observed_at=observed)

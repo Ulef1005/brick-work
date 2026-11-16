@@ -15,7 +15,8 @@
   const root=document.querySelector('#bw-planning');if(!root)return;
   const nodes=[...root.querySelectorAll('[data-bp-row]')],records=nodes.map(node=>({...JSON.parse(node.dataset.record),node}));
   const search=root.querySelector('[data-bp-search]'),sort=root.querySelector('[data-bp-sort]'),order=root.querySelector('[data-bp-order]'),controls=[...root.querySelectorAll('[data-bp-filter]')],panel=root.querySelector('#bp-filters'),message=root.querySelector('[data-bp-message]'),undo=root.querySelector('[data-bp-undo]');
-  if(root.dataset.screen==='complete-sets' && new URLSearchParams(location.search).get('sort')==='partout'){sort.value='partout';order.value='desc';}
+  let previousSort=sort?.value, previousOrder=order?.value || 'asc';
+  if(sort && order && root.dataset.screen==='complete-sets' && new URLSearchParams(location.search).get('sort')==='partout'){sort.value='partout';order.value='desc';previousSort='partout';}
   if(root.dataset.screen==='wishlist')window.BrickCollection?.viewSwitch?.(root,root.querySelector('[data-bp-rows]'),'bp',window.BrickCollection.listStateKey?.());
   let receipt=null,visible=records;
   const receiptKey='bw-planning-receipt';
@@ -49,7 +50,7 @@
     const chips=root.querySelector('[data-bp-chips]');chips.replaceChildren();
     [...controls,search].forEach(c=>{if(!c.value)return;const b=document.createElement('button');b.type='button';b.textContent=(c===search?'Search: '+c.value:c.closest('label').firstChild.textContent.trim()+': '+c.selectedOptions[0].textContent)+' ×';b.setAttribute('aria-label','Remove '+b.textContent);b.addEventListener('click',()=>{c.value='';render();});chips.append(b);});
   }
-  sort?.addEventListener('change',()=>{if(sort.value==='partout')order.value='desc';render();});
+  sort?.addEventListener('change',()=>{if(order){if(sort.value==='partout'){previousOrder=order.value || 'asc';order.value='desc';}else if(previousSort==='partout')order.value=previousOrder;}previousSort=sort.value;render();});
   [...controls,search,order].filter(Boolean).forEach(c=>c.addEventListener(c===search?'input':'change',render));
   root.querySelectorAll('[data-bp-pick]').forEach(b=>b.addEventListener('click',()=>{
     const c=controls.find(c=>c.dataset.bpFilter===b.dataset.bpPick);if(!c)return;

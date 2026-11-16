@@ -122,4 +122,8 @@ Prices in another currency show no comparison.
 A total uses one currency throughout, preferring your configured currency when it has enough prices.
 A copy without a part list has no Parted out row.
 The card updates here when fetching finishes and reports prices found and parts without sales.
-If coverage remains below 90 %, the action disappears until you leave the page.
+A budget wait stops polling and restores the action: **BrickLink budget reached · the worker continues later**.
+Finished prices appear even when other jobs fail; the status counts failed or cancelled jobs.
+Each request fetches up to 200 items.
+If more remain, the status says **N parts remain to fetch** and keeps the action.
+Only after all missing items were requested does the status say **N parts have no sales yet**.

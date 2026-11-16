@@ -33,7 +33,7 @@ def values(db, copy_ids):
 
     Lines are the copy's live set lines (a retired line is no line, spares and a figure's own parts excluded) and its live figure lines,
     each as (item id, colour id): the quantity present is the quantity less the missing. `unpriced` names up to 50 lines
-    (`dict(item_id, color_id)`); `unpriced_items` is the item ids (up to 200) a price refresh could fetch, an unidentified item left out."""
+    (`dict(item_id, color_id)`); `unpriced_items_count` counts all missing or stale item ids; `unpriced_items` is the item ids (up to 200) a price refresh could fetch, an unidentified item left out."""
     copy_ids = sorted(set(copy_ids))
     if not copy_ids:
         return {}
@@ -67,6 +67,7 @@ def values(db, copy_ids):
                                    {i for i, c, _ in rows if selected.get((i, c)) and selected[i, c].get('stale')})
     refreshable = set(_refreshable(db, sorted({i for ids in unpriced.values() for i in ids})))      # one read for every copy, not one per copy
     for copy_id, wanted in unpriced.items():
+        result[copy_id]['unpriced_items_count'] = len(wanted)
         result[copy_id]['unpriced_items'] = [i for i in wanted if i in refreshable][:200]
     return result
 
@@ -103,7 +104,7 @@ def compare(copy, partout, config=None):
     if not partout or not partout.get('lines'):
         return None
     out = dict(partout=partout.get('value'), currency=partout['currency'], lines=partout['lines'], priced=partout['priced'],
-               unpriced_items=partout.get('unpriced_items', []), hint=None,
+               unpriced_items=partout.get('unpriced_items', []), unpriced_items_count=partout.get('unpriced_items_count', len(partout.get('unpriced_items', []))), hint=None,
                oldest_observed=partout.get('oldest_observed'), stale=partout.get('stale', False), no_comparison=False)
     if out['partout'] is None:
         # Not enough prices for a total: the card says so and offers to fetch the missing ones.

@@ -580,7 +580,7 @@ document.addEventListener?.('click',async event=>{
     if(!response.ok)throw new Error(result.message||'Could not queue the price refresh');
     const urls=result.status_urls || [];
     if(!urls.length)throw new Error('Could not read the price refresh status');
-    let finished=false;
+    let finished=false,failed=0,budget=false;
     while(!finished){
       const events=await Promise.all(urls.map(async url=>{
         const response=await fetch(url,{cache:'no-store'});
@@ -588,8 +588,9 @@ document.addEventListener?.('click',async event=>{
         return (await response.json()).events;
       }));
       const states=events.map(events=>events[events.length-1]?.job_state);
-      if(states.some(state=>state==='failed' || state==='cancelled'))throw new Error('Price refresh needs attention · try again');
-      finished=states.every(state=>state==='done');
+      failed=states.filter(state=>state==='failed' || state==='cancelled').length;
+      budget=states.includes('waiting_for_budget');
+      finished=budget || states.every(state=>['done','failed','cancelled'].includes(state));
       if(!finished)await new Promise(resolve=>setTimeout(resolve,2000));
     }
     const page=await fetch(location.href,{cache:'no-store'});
@@ -598,15 +599,28 @@ document.addEventListener?.('click',async event=>{
     const fresh=doc.querySelector('[data-module="prices"]');
     if(!fresh)throw new Error('Could not update the Prices card · try again');
     const updated=fresh.querySelector('[data-bc-partout]');
+    const notes=[];
+    if(budget)notes.push('BrickLink budget reached · the worker continues later');
+    if(failed)notes.push(`${failed} price refresh jobs failed or were cancelled`);
     if(pending && updated){
       const priced=Number(updated.dataset.priced),missing=Number(updated.dataset.lines)-priced;
-      updated.querySelector('[data-bc-fetch-prices]')?.remove();
-      updated.querySelector('[data-bc-fetch-status]')?.remove();
-      const note=document.createElement('p');note.className='secondary';note.setAttribute('role','status');
-      note.textContent=`Fetched ${Math.max(0,priced-before)} part prices`+(missing?` · ${missing} ${missing===1?'part has':'parts have'} no sales${updated.hasAttribute('data-bc-partout-pending')?' yet, so there is nothing left to fetch':''}`:'');
-      updated.append(note);
+      const remaining=Math.max(0,Number(pending.dataset.unpricedItemsCount || items.length)-items.length);
+      const complete=!budget && !failed && !remaining;
+      if(complete){
+        updated.querySelector('[data-bc-fetch-prices]')?.remove();
+        updated.querySelector('[data-bc-fetch-status]')?.remove();
+      }
+      notes.unshift(`Fetched ${Math.max(0,priced-before)} part prices`);
+      if(remaining)notes.push(`${remaining} parts remain to fetch`);
+      else if(complete && missing)notes.push(`${missing} ${missing===1?'part has':'parts have'} no sales yet`);
     }
-    scope.closest('[data-module="prices"]').replaceWith(fresh);
+    if(notes.length){
+      const note=document.createElement('p');note.className='secondary';note.setAttribute('role','status');
+      note.textContent=notes.join(' · ');(updated || fresh).append(note);
+    }
+    const card=scope?.closest('[data-module="prices"]') || document.querySelector('[data-module="prices"]');
+    card?.replaceWith(fresh);
+    button.disabled=false;button.textContent=label;
   }catch(error){button.disabled=false;button.textContent=label;if(status)status.textContent=error.message;}
   finally{scope?.setAttribute('aria-busy','false');}
 });

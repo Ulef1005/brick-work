@@ -61,7 +61,8 @@ let checkedCount=0;Object.defineProperty(root.groups,'[data-bp-selected]:checked
 doc.querySelector=selector=>selector==='#bw-planning'?root:null;
 vm.runInNewContext(fs.readFileSync('static/web/toni/formatting.js','utf8')+fs.readFileSync('static/web/toni/bw-collection.js','utf8')+fs.readFileSync('static/web/toni/bw-planning.js','utf8'),context);
 const api=context.window.BrickPlanning;
-assert.equal(partoutNote.hidden,true);sort.value='partout';sort.events.change();assert.equal(partoutNote.hidden,false);assert.equal(order.value,'desc');order.value='asc';sort.value='number';sort.events.change();assert.equal(partoutNote.hidden,true);
+assert.equal(partoutNote.hidden,true);sort.value='partout';sort.events.change();assert.equal(partoutNote.hidden,false);assert.equal(order.value,'desc');sort.value='number';sort.events.change();assert.equal(order.value,'asc');assert.equal(partoutNote.hidden,true);
+order.value='desc';sort.value='partout';sort.events.change();sort.value='number';sort.events.change();assert.equal(order.value,'desc');order.value='asc';
 assert.equal(api.filter(rows,'red',{},'number').length,1);
 assert.equal(api.filter(rows,'',{collection:'wanted'},'number')[0].number,'20');
 assert.equal(api.filter(rows,'',{stale:'true'},'number')[0].number,'3004');
@@ -161,3 +162,11 @@ assert.equal(count.textContent,'1 set');search.value='no match';await search.tri
  assert.equal(undo.hidden,false);assert.equal(message.textContent,'Saved');
  console.log('Brick Work Planning runtime passed');
 })().catch(e=>{console.error(e);process.exitCode=1;});
+
+// Complete-set links can load a shell without sort controls.
+const shell=new Node();shell.dataset={screen:'complete-sets'};
+vm.runInNewContext(fs.readFileSync('static/web/toni/bw-planning.js','utf8'),{
+ window:{},document:{querySelector:()=>shell,addEventListener(){}},
+ URLSearchParams,location:{search:'?sort=partout',pathname:'/planning/complete-sets'},
+ sessionStorage:{getItem:()=>null}
+});

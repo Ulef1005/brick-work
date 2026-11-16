@@ -89,6 +89,7 @@ def compute(copies, config, now):
         override = c.get('current_value')
         if override is not None and c.get('current_value_currency') != config['bricklink_currency']:
             c['reasons'].append('Currency mismatch · current-value override')
+            c['current_value'] = None  # Never relabel a foreign override as the part-out currency.
         total = Decimal(0)
         for r in lines:
             if not r['missing']:

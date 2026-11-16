@@ -562,17 +562,51 @@
 
   });
 })();
-// Fetch part prices (part-out value): queue a market price refresh for the parts that have none yet.
+// Fetch prices in place; polling uses the existing durable job status contract.
 document.addEventListener?.('click',async event=>{
   const button=event.target.closest('[data-bc-fetch-prices]');
-  if(!button)return;
-  const root=document.getElementById('bw-collection'),status=button.closest('[data-bc-fetch-scope]')?.querySelector('[data-bc-fetch-status]');
-  const items=JSON.parse(button.dataset.bcFetchPrices);
+  if(!button || button.disabled)return;
+  const root=document.getElementById('bw-collection'),scope=button.closest('[data-bc-fetch-scope]');
+  const status=scope?.querySelector('[data-bc-fetch-status]'),pending=button.closest('[data-bc-partout]');
+  const items=JSON.parse(button.dataset.bcFetchPrices),label=button.textContent;
+  const before=Number(pending?.dataset.priced || 0);
   button.disabled=true;
+  if(pending)button.textContent=`Fetching ${items.length} part prices`;
+  if(status)status.textContent='Queued with the market price refresh · the card updates here';
+  scope?.setAttribute('aria-busy','true');
   try{
     const response=await fetch(button.dataset.refreshUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items,csrf_token:root.dataset.csrf})});
     const result=await response.json().catch(()=>({}));
     if(!response.ok)throw new Error(result.message||'Could not queue the price refresh');
-    if(status)status.textContent=button.dataset.bcFetchNoun==='price'?'Fetching the price · reload in a few minutes':`Fetching prices for ${items.length} ${items.length===1?'part':'parts'} · reload in a few minutes`;
-  }catch(error){button.disabled=false;if(status)status.textContent=error.message;}
+    const urls=result.status_urls || [];
+    if(!urls.length)throw new Error('Could not read the price refresh status');
+    let finished=false;
+    while(!finished){
+      const events=await Promise.all(urls.map(async url=>{
+        const response=await fetch(url,{cache:'no-store'});
+        if(!response.ok)throw new Error('Could not read the price refresh status');
+        return (await response.json()).events;
+      }));
+      const states=events.map(events=>events[events.length-1]?.job_state);
+      if(states.some(state=>state==='failed' || state==='cancelled'))throw new Error('Price refresh needs attention · try again');
+      finished=states.every(state=>state==='done');
+      if(!finished)await new Promise(resolve=>setTimeout(resolve,2000));
+    }
+    const page=await fetch(location.href,{cache:'no-store'});
+    if(!page.ok)throw new Error('Could not update the Prices card · try again');
+    const doc=new DOMParser().parseFromString(await page.text(),'text/html');
+    const fresh=doc.querySelector('[data-module="prices"]');
+    if(!fresh)throw new Error('Could not update the Prices card · try again');
+    const updated=fresh.querySelector('[data-bc-partout]');
+    if(pending && updated){
+      const priced=Number(updated.dataset.priced),missing=Number(updated.dataset.lines)-priced;
+      updated.querySelector('[data-bc-fetch-prices]')?.remove();
+      updated.querySelector('[data-bc-fetch-status]')?.remove();
+      const note=document.createElement('p');note.className='secondary';note.setAttribute('role','status');
+      note.textContent=`Fetched ${Math.max(0,priced-before)} part prices`+(missing?` · ${missing} ${missing===1?'part has':'parts have'} no sales${updated.hasAttribute('data-bc-partout-pending')?' yet, so there is nothing left to fetch':''}`:'');
+      updated.append(note);
+    }
+    scope.closest('[data-module="prices"]').replaceWith(fresh);
+  }catch(error){button.disabled=false;button.textContent=label;if(status)status.textContent=error.message;}
+  finally{scope?.setAttribute('aria-busy','false');}
 });

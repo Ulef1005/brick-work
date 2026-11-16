@@ -1048,3 +1048,6 @@ main .key-need a:not(.button) { min-height:44px;display:inline-flex;align-items:
   #bw-collection .bc-missing-card>.bc-found { flex-direction:row;flex-wrap:wrap;gap:8px; }
   #bw-collection .bc-missing-card>.bc-found [data-bc-found-message] { flex-basis:100%; }
 }
+
+.bc-partout-stale { color:var(--tw-text); }
+.bc-partout-pending button { min-height:44px; }

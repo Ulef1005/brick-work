@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Part-out prices** (#38). The Prices card keeps its row in place, shows price age, and updates after fetching. Complete sets explains sorting without totals. [Pictures and prices](docs/how-to/pictures-and-prices.md#parted-out)
+
 - **Storage labels** (#31). Select storages and download A4 PDF sheets or 62 mm tape images. Permanent short ids support Jump search. QR codes open storage contents after login. [Print storage labels](docs/how-to/storage-labels.md)
 
 

@@ -8,7 +8,7 @@
       const missing=x=>x==null || x==='' || x==='None';
       if(numeric.has(sort) && missing(a[sort])!==missing(b[sort]))return missing(a[sort])?1:-1;
       const diff=numeric.has(sort)?Number(a[sort])-Number(b[sort]):String(a[sort]||'').localeCompare(String(b[sort]||''),undefined,{numeric:true});
-      return diff*(descending?-1:1) || String(a.number).localeCompare(String(b.number),undefined,{numeric:true});
+      return diff*((descending || sort==='partout')?-1:1) || String(a.number).localeCompare(String(b.number),undefined,{numeric:true});
     });
   }
   window.BrickPlanning={filter};
@@ -38,6 +38,8 @@
     const filters=Object.fromEntries(controls.map(c=>[c.dataset.bpFilter,c.value]));
     root.querySelectorAll('[data-bp-pick]').forEach(b=>b.setAttribute('aria-pressed',String(filters[b.dataset.bpPick]===b.dataset.value)));
     visible=filter(records,search.value,filters,sort.value,order.value==='desc');
+    const note=root.querySelector('[data-bp-partout-note]');
+    if(note)note.hidden=sort.value!=='partout' || records.some(r=>r.partout!=null);
     const matching=new Set(visible.map(r=>r.node));
     nodes.forEach(n=>{n.hidden=!matching.has(n);const wish=n.querySelector('[data-wl-selected]');if(wish && n.hidden && wish.checked){wish.checked=false;wish.dispatchEvent?.(new Event('change',{bubbles:true}));}const selected=n.querySelector('[data-bp-selected]');if(selected && n.hidden)selected.checked=false;});
     syncExport();

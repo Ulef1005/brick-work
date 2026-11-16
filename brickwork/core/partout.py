@@ -51,7 +51,7 @@ def values(db, copy_ids):
     scope = {(i, c) for rows in lines.values() for i, c, _ in rows}
     market = collection.prices(db, pairs=scope) if scope else {}
     config, stamp = planning.configuration(db), now()
-    quotes = {key: planning.quote(market.get(key, []), 'used', config, stamp) for key in scope}
+    quotes = {key: planning.quote(market.get(key, []), 'used', config, stamp, allow_old=True) for key in scope}
     result, unpriced = {}, {}
     for copy_id in copy_ids:
         total, priced, missing, used = Decimal(0), 0, [], []
@@ -69,6 +69,9 @@ def values(db, copy_ids):
         result[copy_id] = dict(value=str(total.quantize(Decimal('0.01'))) if enough else None, currency=config['bricklink_currency'],
                                oldest_observed=min((q['observed_at'] for q in used if q.get('observed_at')), default=None),
                                stale=any(q.get('stale') for q in used), lines=count, priced=priced, enough=enough, unpriced=missing[:50], unpriced_count=len(missing))
+    # Old cached lines still count, but remain refreshable.
+    for copy_id, rows in lines.items():
+        unpriced[copy_id] = sorted(set(unpriced[copy_id]) | {i for i, c, _ in rows if quotes.get((i, c)) and quotes[i, c].get('stale')})
     refreshable = set(_refreshable(db, sorted({i for ids in unpriced.values() for i in ids})))      # one read for every copy, not one per copy
     for copy_id, wanted in unpriced.items():
         result[copy_id]['unpriced_items'] = [i for i in wanted if i in refreshable][:200]

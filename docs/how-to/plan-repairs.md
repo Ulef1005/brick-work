@@ -94,3 +94,10 @@ Complete figures show only Complete and Parts; unidentified figures keep their I
 **Fetch prices** queues the missing quotes when a BrickLink key and enough daily budget are available.
 The budget line explains why fetching is disabled.
 After fetching, reload to see the comparison; **Retry** handles a failed request.
+
+### Sort copies by part-out value
+
+Choose **Part-out value** in Sort for the highest total first.
+Copies without a total come last.
+The part-out line sits below the gap and wraps on narrow screens.
+If no copy has a total, the list keeps number order and points to **Fetch part prices** on a set page.

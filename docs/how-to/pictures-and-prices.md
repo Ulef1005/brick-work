@@ -119,3 +119,5 @@ Without enough prices, **Fetch part prices** queues the missing prices.
 The action is disabled without a BrickLink key and hidden for read-only viewers.
 Prices in another currency show no comparison.
 A copy without a part list has no Parted out row.
+The card updates here when fetching finishes and reports prices found and parts without sales.
+If coverage remains below 90 %, the action disappears until you leave the page.

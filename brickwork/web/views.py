@@ -2603,9 +2603,10 @@ def bw_planning_write(action):
                 except core_items.errors.NotFound: raise ValueError('Choose item identities') from None
                 pipeline=Pipeline(db)
                 with transaction(db):
-                    jobs=[pipeline.queue_steps(i,['market_price'],via='app') for i in ids if live_import_job(db,i) is None]
+                    jobs=[live_import_job(db,i) or pipeline.queue_steps(i,['market_price'],via='app') for i in ids]
             bw_start_worker()
-            return jsonify(message='Price refresh queued · budgets checked by the worker',jobs=jobs)
+            return jsonify(message='Price refresh queued · budgets checked by the worker',jobs=jobs,
+                           status_urls=[url_for('web.bw_add_job',job=j) for j in jobs])
         if action=='export':
             with database(brickwork_path(),read_only=True) as db:
                 result=planning.export(db,data.get('ids'))

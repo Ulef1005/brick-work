@@ -126,3 +126,9 @@ def test_a_stale_offset_lands_on_the_last_page(cat):
     stale = supersets.found_in(db, *line, limit=3, offset=total + 50)
     assert stale['results'] and stale['offset'] == (total - 1) // 3 * 3 and stale['total'] == total
     assert supersets.found_in(db, *n.line('syn-r1', '15'), offset=40)['offset'] == 0
+
+
+def test_the_sort_key_is_natural_for_numbers_and_never_the_word_none():
+    key = supersets._text_key
+    assert sorted(['10188-1', '7286-1', '9106-1'], key=lambda t: key(t, 'number')) == ['7286-1', '9106-1', '10188-1']
+    assert key(str(None or ''), 'name') == ''

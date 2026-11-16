@@ -239,13 +239,14 @@ def tag_nth(selector, n, attr='data-shot-area', closest=None):
 # `tut-<name>-<layout>-<width>-<theme>.png`; a mark is a (selector, number) pair.
 REAL = {'real': lambda number: uid('copy', number, 'a')}['real']
 REAL_STARTED, REAL_GAPS = REAL('8043-1'), REAL('7938-1')   # a check about 40 % answered; a check answered to the end, with gaps
-# The pull list shows every part of the set and most parts have no render yet: keep the Bricks group's first eleven lines (the lines that have one) and drop the rest.
-PULL_WINDOW = ("{ const label = [...document.querySelectorAll('.bp-grp')].find(g => /^Bricks/.test(g.textContent.trim())); if (!label) throw new Error('PULL_WINDOW: no Bricks group'); "
-               "let lines = 0; for (const e of [...document.querySelectorAll('.bp-grp, [data-line]')]) { "
-               "if (e === label) continue; if (e.classList.contains('bp-grp')) { e.remove(); continue; } "
-               "if ((e.compareDocumentPosition(label) & Node.DOCUMENT_POSITION_FOLLOWING) || (lines += 1) > 11) e.remove(); } "
+# The pull list shows every part of the set and most parts have no render yet: keep the Bricks section's first eleven lines that have one (since the part lists are grouped by category, #400, the lines without a render are dropped first) and drop the rest.
+PULL_WINDOW = ("{ const sec = [...document.querySelectorAll('details.bw-sec')].find(d => /^Bricks/.test(d.dataset.bwSection || '')); if (!sec) throw new Error('PULL_WINDOW: no Bricks section'); sec.open = true; "
+               "document.querySelectorAll('.bp-grp').forEach(e => e.remove()); "
+               "[...document.querySelectorAll('details.bw-sec')].forEach(d => { if (d !== sec) d.remove(); }); "
+               "[...document.querySelectorAll('[data-line]')].forEach(l => { if (!sec.contains(l)) l.remove(); }); "
+               "[...sec.querySelectorAll('[data-line]')].filter(l => !l.querySelector('img')).forEach(e => e.remove()); [...sec.querySelectorAll('[data-line]')].slice(11).forEach(e => e.remove()); "
                "const open = [...document.querySelectorAll('[data-line]')].find(l => /(^|\\D)0 of \\d+/.test(l.textContent)); if (!open) throw new Error('PULL_WINDOW: no line left to find'); open.setAttribute('data-shot-open', ''); "
-               "document.querySelectorAll('.bp-more, .bp-bar').forEach(e => e.remove()); }\n")
+               "document.querySelectorAll('.bp-more, .bp-bar, .bw-sec-tools, .bw-sec-count').forEach(e => e.remove()); }\n")
 # Order missing parts, the review step (a phone screen): the four copies with gaps, as the first step hands them on.
 ORDER_REVIEW = ('/planning/order-missing-parts?sel=1&' + '&'.join('copy=' + REAL(n) for n in ('10210-1', '7938-1', '7213-1', '31120-1')) + '&was_sell=1&was_gain=0&step=review')
 # Build Scout's panel draws a missing minifigure as a number-only tile and has no picture branch for it, so the shot leaves the figure lines out.

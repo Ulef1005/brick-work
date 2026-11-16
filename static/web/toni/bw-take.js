@@ -9,8 +9,14 @@
   const receiptKey = 'bw-collection-receipt';
   // The screen a receipt belongs to is the path plus the query parts that choose the copy, stock row or colour (as bw-collection.js reads it, #236).
   const screenOf = () => {
-    const id = ['copy', 'stock', 'colour'].map(k => { const m = new RegExp('[?&]' + k + '=([^&#]+)').exec(location.search || ''); return m && k + '=' + m[1]; }).filter(Boolean).join('&');
+    const id = ['copy', 'stock', 'colour'].map(k => { const value = new URLSearchParams(location.search || '').get(k); return value && k + '=' + value; }).filter(Boolean).join('&');
     return id ? location.pathname + '?' + id : location.pathname;
+  };
+  const readResult = async response => {
+    let result;
+    try { result = await response.json(); } catch (_) { throw new Error('The server did not answer · try again'); }
+    if (!result || typeof result !== 'object' || Array.isArray(result)) throw new Error('The server did not answer · try again');
+    return result;
   };
   // #215 · Found 1 on a missing line: lowers its missing count by one through the same save route, with Undo; loose stock stays.
   // #401 · Found all: the same call with the action found-all, which sets the line's missing count to 0.
@@ -24,9 +30,10 @@
       try {
         const data = {...JSON.parse(button.dataset.identity), csrf_token: root.dataset.csrf};
         const response = await fetch(root.dataset.saveUrl.replace('ACTION', action), {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)});
-        const result = await response.json();
+        const result = await readResult(response);
         if (!response.ok) throw new Error(result.message || 'Not saved · try again');
         try { sessionStorage.setItem(receiptKey, JSON.stringify({...result, screen: screenOf()})); } catch (_) {}
+        root.querySelector('[data-bc-pl]')?.bcPartEditKeepDraft?.();
         location.reload();
       } catch (error) {
         if (note) note.textContent = error.message;
@@ -60,9 +67,10 @@
       try {
         const data = {...JSON.parse(box.dataset.identity), quantity: value, csrf_token: root.dataset.csrf};
         const response = await fetch(root.dataset.saveUrl.replace('ACTION', 'take'), {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)});
-        const result = await response.json();
+        const result = await readResult(response);
         if (!response.ok) throw new Error(result.message || 'Not saved · try again');
         try { sessionStorage.setItem(receiptKey, JSON.stringify({...result, screen: screenOf()})); } catch (_) {}
+        root.querySelector('[data-bc-pl]')?.bcPartEditKeepDraft?.();
         location.reload();
       } catch (error) {
         if (note) note.textContent = error.message;

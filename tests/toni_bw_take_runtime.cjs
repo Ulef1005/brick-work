@@ -17,7 +17,7 @@ function build(max, response) {
   root.dataset = {saveUrl: '/collection/save/ACTION', csrf: 'token'};
   root.groups = {'[data-bc-take]': [box]};
   const calls = [], store = {}, reloads = [];
-  const context = {window: {}, document: {querySelector: s => s === '#bw-collection' ? root : null},
+  const context = {URLSearchParams, window: {}, document: {querySelector: s => s === '#bw-collection' ? root : null},
     sessionStorage: {setItem: (k, v) => { store[k] = v; }, getItem: k => store[k]},
     location: {pathname: '/collection/item/P/bl-part', reload: () => reloads.push(1)},
     fetch: async (url, init) => { calls.push({url, body: JSON.parse(init.body)}); return response; }};
@@ -75,7 +75,7 @@ assert.equal(build(1, ok).output.textContent, '1');
       root.groups['[data-bc-found-' + kind + ']'] = [button];
     }
     let release, calls = 0, reloads = 0;
-    const context = {window: {}, document: {querySelector: () => root},
+    const context = {URLSearchParams, window: {}, document: {querySelector: () => root},
       fetch: () => { calls++; return new Promise(resolve => { release = resolve; }); },
       location: {pathname: '/collection/item/1', reload: () => { reloads++; }},
       sessionStorage: {setItem() {}}};
@@ -87,9 +87,16 @@ assert.equal(build(1, ok).output.textContent, '1');
     release({ok: false, json: async () => ({message: 'Try again'})}); await pending;
     assert.equal(buttons.one.disabled, false); assert.equal(buttons.all.disabled, false);
     assert.equal(reloads, 0); assert.equal(note.textContent, 'Try again');
+    for (const payload of ['html', null, []]) {
+      const bad = buttons[first].fire('click');
+      release({ok: true, json: async () => { if (payload === 'html') throw new SyntaxError('Unexpected token <'); return payload; }});
+      await bad;
+      assert.equal(note.textContent, 'The server did not answer · try again');
+      assert.equal(reloads, 0); assert.equal(buttons.one.disabled, false); assert.equal(buttons.all.disabled, false);
+    }
     const retry = buttons.all.fire('click');
     release({ok: true, json: async () => ({message: 'Found all', event_id: 2})}); await retry;
-    assert.equal(calls, 2); assert.equal(reloads, 1);
+    assert.equal(calls, 5); assert.equal(reloads, 1);
   }
   console.log('ok');
 })().catch(e => { console.error(e); process.exit(1); });

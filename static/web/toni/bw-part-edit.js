@@ -39,7 +39,7 @@
   }
   /* The screen a receipt belongs to: the path plus the query parts that choose the copy, stock row or colour (as bw-collection.js reads it, #236). */
   const screenOf = loc => {
-    const id = ['copy', 'stock', 'colour'].map(k => { const m = new RegExp('[?&]' + k + '=([^&#]+)').exec(loc.search || ''); return m && k + '=' + m[1]; }).filter(Boolean).join('&');
+    const id = ['copy', 'stock', 'colour'].map(k => { const value = new URLSearchParams(loc.search || '').get(k); return value && k + '=' + value; }).filter(Boolean).join('&');
     return id ? loc.pathname + '?' + id : loc.pathname;
   };
   window.BrickPartEdit = {clamp, createModel, summary, screenOf};
@@ -89,6 +89,10 @@
   module.bcPartEditVisibility = () => {
     const parts = !module.dataset.inventory || module.dataset.inventory === 'parts';
     if (progress) progress.hidden = editing || !parts;
+    for (const selector of ['[data-bc-pl-checked-row]', '[data-bc-pl-switch-note]']) {
+      const node = find(selector);
+      if (node) node.hidden = !parts;
+    }
     if (mode) mode.hidden = !editing || !parts;
     if (bar) bar.hidden = !editing || !parts;
   };
@@ -161,6 +165,10 @@
     model.load(restore.counts);
     setMode(true);
   }
+  module.bcPartEditKeepDraft = () => {
+    if (editing && model.dirty()) store(s => s.setItem(draftKey, JSON.stringify({counts: model.counts()})));
+  };
+  module.bcPartEditVisibility();
   checked?.addEventListener('click', async () => {
     if (busy) return;
     const wanted = checked.getAttribute('aria-checked') !== 'true';
@@ -169,7 +177,7 @@
     if (switchNote) switchNote.textContent = '';
     try {
       const result = await post('set-checked', {copy_id: checked.dataset.copy, wanted});
-      if (editing && model.dirty()) store(s => s.setItem(draftKey, JSON.stringify({counts: model.counts()})));
+      module.bcPartEditKeepDraft();
       remember(result);
       location.reload();
     } catch (error) {

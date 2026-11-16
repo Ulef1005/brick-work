@@ -82,7 +82,7 @@ def test_request_address_fallback_and_warning(coll,host,warning):
     assert labels.address(coll.db,host)['value'] == host
 
 
-@pytest.mark.parametrize('value', ['file:///tmp/box','https://alex:secret@bricks.example','https://bricks.example/path','https://bricks.example?q=1','https://bricks.example#bin'])
+@pytest.mark.parametrize('value', ['https://host/?', 'https://host/#', 'https://@host', 'file:///tmp/box','https://alex:secret@bricks.example','https://bricks.example/path','https://bricks.example?q=1','https://bricks.example#bin'])
 def test_setting_rejects_non_origin_addresses(value):
     with pytest.raises(ValueError): labels.validate_address(value)
 
@@ -137,6 +137,9 @@ def test_dialog_selection_markup_archive_and_setting(client,coll):
     assert [n['data-label-id'] for n in page.select('[data-label-id]')] == [active]
     assert '200 labels at most per download' in page.select_one('[data-label-all]').text
     assert '200 labels at most per download' in page.select_one('[data-label-count]').text
+    coll.add_copy('1000-1', storage=active)
+    contents = BeautifulSoup(client.get('/workbench/storage/' + active).data, 'html.parser')
+    assert contents.select_one('[data-selected-count]').text == '0 selected'
     assert page.select_one('[data-label-limit]').has_attr('hidden')
     assert page.select_one('[data-label-open]')['disabled'] == ''
     assert page.select_one('[data-label-open]').text == 'Choose storages'
@@ -317,3 +320,19 @@ def test_unchanged_address_has_no_audit_or_undo_banner(client, coll):
     assert 'Nothing changed' in page
     assert 'Settings saved' not in page
     assert coll.db.execute('SELECT count(*) FROM event').fetchone()[0] == before
+
+
+@pytest.mark.parametrize('page', ['bad', '', '1.5', '-1', '999'])
+def test_preview_sheet_validation(client, coll, page):
+    identifier, _ = ledger.storage_save(coll.db, None, 'Box')
+    response = client.get('/workbench/storage/labels/preview.png', query_string=dict(ids=identifier, page=page))
+    assert response.status_code == 400
+    assert response.json['message'] == 'Choose a preview sheet'
+
+
+@pytest.mark.parametrize('output', ['plan', 'preview.png', 'download'])
+@pytest.mark.parametrize('query', [{}, {'ids': ''}])
+def test_label_routes_require_selection(client, output, query):
+    response = client.get('/workbench/storage/labels/' + output, query_string=query)
+    assert response.status_code == 400
+    assert response.json['message'] == 'Choose between 1 and 200 storages'

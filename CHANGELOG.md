@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Review follow-ups** (#407). The checked switch stays on Parts. Figure Found and Take preserve unsaved part ticks. Receipts decode query values consistently. Invalid part quantities fail validation under the write lock. Unreadable Found responses show a plain retry message. Label addresses reject empty query, fragment and user information markers. Label routes explain missing selections and invalid sheets. The move bar no longer shows the label download limit.
+
 - **Part-out prices** (#38). The Prices card keeps its row in place, shows price age, and updates after fetching. Currency comparisons stay consistent. Budget waits and partial failures preserve fetched prices. Capped batches show remaining items. Complete sets restores the previous sort direction. [Pictures and prices](docs/how-to/pictures-and-prices.md#parted-out)
 
 - **Found in fixes** (#40). Catalogue sets and minifigures can be added to the wishlist before their first collection use. Loose figure quantities count each piece once, catalogue-only colours are accepted, owned set pictures omit the part’s colour, and MCP accepts provider colour numbers such as Rebrickable black (`0`).

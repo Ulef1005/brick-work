@@ -32,7 +32,7 @@
   </a>
 </p>
 
-<p align="center"><sub>The screenshots show the demo's placeholder drawings; a real install loads pictures from BrickLink and Rebrickable (no key needed).</sub></p>
+<p align="center"><sub>The screenshots show the demo's invented collection with real Rebrickable set and part pictures; a real install loads pictures from BrickLink and Rebrickable (no key needed).</sub></p>
 <!-- /site:skip -->
 
 # Brick Work
@@ -57,7 +57,7 @@ It brings your collection over from Brickset, Rebrickable and BrickTracker, plus
 
 ## In pictures
 
-These screenshots show the built app on the demo's invented collection with real Rebrickable set and part pictures; the demo itself shows placeholder drawings.
+These screenshots show the built app on the demo's invented collection, with real Rebrickable set and part pictures.
 
 <p align="center">
   <picture>

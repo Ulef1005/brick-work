@@ -342,16 +342,17 @@ def test_every_image_the_readme_and_the_pages_show_exists_and_is_a_built_capture
     assert len(shown) >= 2
 
 
-NOTE = re.compile(r'placeholder drawings.*?BrickLink and Rebrickable', re.S)   # the README's captures are still the old demo's until they are retaken (#332)
+NOTE = re.compile(r'real Rebrickable set and part pictures.*?BrickLink and Rebrickable', re.S)   # the README's top captures were retaken on the real-sets demo (#332, Ulf 2026-11-16)
 REAL_NOTE = re.compile(r"Rebrickable.*?(plain tile|does not sponsor, authorize or endorse)", re.S)
 
 
 def test_the_picture_notes_are_on_the_readme_the_landing_page_and_the_demo_banner(site):
     """The demo shows seven real sets with Rebrickable's pictures: the landing page and the demo's banner say so (the banner with the LEGO disclaimer, the
-    Fair Play policy's wording), and the README keeps its placeholder note under screenshots that are still of the old demo."""
+    Fair Play policy's wording), and the README's note under its top screenshots says the pictures are real Rebrickable ones."""
     readme = (ROOT / 'README.md').read_text()
     top = readme.split('<!-- /site:skip -->')[0]
     assert NOTE.search(top.split('</picture>')[-1]), 'the README says it right under the screenshots, inside the block GitHub shows'
+    assert 'placeholder' not in readme, 'the README shows no placeholder drawings any more'
     landing = (site / 'index.html').read_text()
     assert REAL_NOTE.search(landing) and 'placeholder drawings' not in landing
     shim = (site / 'demo' / 'demo-shim.js').read_text()

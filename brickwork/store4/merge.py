@@ -32,9 +32,9 @@ from .rowlog import RowLog
 
 MOVES = (('copy', 'item_id'), ('copy_figure', 'item_id'), ('copy_part', 'item_id'), ('stock_part', 'item_id'),
          ('fetched_inventory_part', 'item_id'), ('fetched_inventory_figure', 'item_id'), ('allocation', 'item_id'),
-         ('identification_action', 'item_id'), ('instruction_file', 'item_id'), ('job', 'item_id'), ('order_line', 'item_id'),
+         ('identification_action', 'item_id'), ('instruction_file', 'item_id'), ('instruction_search', 'item_id'), ('job', 'item_id'), ('order_line', 'item_id'),
          ('order_line', 'sticker_set_item_id'), ('photo', 'item_id'), ('price_observation', 'item_id'), ('stock_transfer', 'item_id'))
-SHADOWED = (('item_property', ('key', 'source')), ('picture', ('color_id', 'source', 'kind')), ('set_preference', ()),
+SHADOWED = (('instruction_candidate', ('source', 'url')), ('item_property', ('key', 'source')), ('picture', ('color_id', 'source', 'kind')), ('set_preference', ()),
             ('price_current', ('color_id', 'condition', 'guide', 'slot', 'region', 'currency')), ('price_watch', ('color_id', 'condition')))
 
 
@@ -71,8 +71,10 @@ def _refuse_active_jobs(db, *item_ids):
     """A job in flight (queued, running, waiting for budget, or failed and due a retry) for an item writes to the id it was queued with; the
     guards would reject it after a merge or a kind move, so the change waits for the job."""
     marks = ','.join('?' * len(item_ids))
-    job = db.execute(f"""SELECT id, kind, state, item_id FROM main.job WHERE item_id IN ({marks}) AND (state IN ('queued','running','waiting_for_budget')
-                         OR (state='failed' AND retry_at IS NOT NULL)) ORDER BY id LIMIT 1""", item_ids).fetchone()
+    job = db.execute(f"""SELECT id, kind, state, item_id FROM main.job WHERE (item_id IN ({marks}) OR (kind='instruction_download' AND EXISTS(
+                         SELECT 1 FROM main.job_step s JOIN main.instruction_candidate c ON c.id=CAST(s.name AS INTEGER)
+                         WHERE s.job_id=job.id AND c.item_id IN ({marks})))) AND (state IN ('queued','running','waiting_for_budget')
+                         OR (state='failed' AND retry_at IS NOT NULL)) ORDER BY id LIMIT 1""", (*item_ids, *item_ids)).fetchone()
     if job is not None:
         raise MergeRefused(f'job {job["id"]} ({job["kind"]}, {job["state"]}) is still in flight for item {job["item_id"]} · '
                            'let it finish, or cancel it, then try again')
@@ -473,7 +475,7 @@ def move_kind_in(db, item_id, new_kind, *, via, actor=None, operation_key=None):
     if old not in MOVABLE or new_kind not in MOVABLE:
         raise MergeRefused(f'only {", ".join(MOVABLE)} change into one another; a {old} cannot become a {new_kind}')
     if old == 'set':
-        for table in ('fetched_inventory', 'instruction_file', 'set_preference'):
+        for table in ('fetched_inventory', 'instruction_file', 'instruction_search', 'instruction_candidate', 'set_preference'):
             if _children(db, table, 'item_id', item_id):
                 raise MergeRefused(f'the set has {table.replace("_", " ")} rows, which only a set can hold')
     db.execute('PRAGMA defer_foreign_keys=ON')

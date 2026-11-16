@@ -31,6 +31,7 @@ from . import items
 from .connect import connect
 from .transaction import transaction
 
+OPTIONAL_STEPS = ('instructions',)
 STEPS = ('identity', 'inventory', 'matching', 'pictures', 'metadata', 'market_price')
 TYPES = set(items.KINDS)                        # the keys of `import_order:<kind>` and of the per-kind source lists
 KIND, SOURCE = 'item', 'import'                  # design 5.2 and the user journey: `job(source=import, kind=item, item_id)` + six `job_step`
@@ -165,6 +166,8 @@ def sources_for(db, step, kind):
 
 
 class Pipeline:
+    kind = KIND
+
     def __init__(self, db, *, handlers=None):
         self.db = db
         self.path = Path(db.execute('PRAGMA database_list').fetchone()['file'])
@@ -183,12 +186,12 @@ class Pipeline:
         items.ensure(self.db, item_id)
         kind = self.db.execute('SELECT kind FROM main.item WHERE id=?', (item_id,)).fetchone()['kind']
         steps = list(steps) if steps is not None else order_for(self.db, kind)
-        if not steps or any(s not in STEPS for s in steps) or len(set(steps)) != len(steps):
+        if not steps or any(s not in STEPS + OPTIONAL_STEPS for s in steps) or len(set(steps)) != len(steps):
             raise ValueError('invalid refresh steps')
         stamp, actor = now(), actor if via == 'api' else None
         job = self.db.execute('''INSERT INTO main.job(source, kind, item_id, state, payload, via, actor, created_at, updated_at)
                                  VALUES(?, ?, ?, 'queued', ?, ?, ?, ?, ?)''',
-                              (SOURCE, KIND, item_id, json.dumps({'steps': steps, **({'refresh': True} if refresh else {}), **({'batch': batch} if batch else {})}), via, actor, stamp, stamp)).lastrowid
+                              (SOURCE, self.kind, item_id, json.dumps({'steps': steps, **({'refresh': True} if refresh else {}), **({'batch': batch} if batch else {})}), via, actor, stamp, stamp)).lastrowid
         for position, step in enumerate(steps):
             self.db.execute('INSERT INTO main.job_step(job_id, name, position, sources, total, updated_at) VALUES(?, ?, ?, ?, 1, ?)',
                             (job, step, position, json.dumps(sources_for(self.db, step, kind)), stamp))
@@ -196,7 +199,7 @@ class Pipeline:
         return job
 
     def status(self, job):
-        row = self.db.execute('SELECT * FROM main.job WHERE id=? AND kind=?', (job, KIND)).fetchone()
+        row = self.db.execute('SELECT * FROM main.job WHERE id=? AND kind=?', (job, self.kind)).fetchone()
         if not row:
             raise ValueError('unknown import job')
         return {**dict(row), 'steps': [dict(s) for s in self.db.execute('SELECT * FROM main.job_step WHERE job_id=? ORDER BY position', (job,))]}
@@ -204,7 +207,7 @@ class Pipeline:
     def list_jobs(self, failed=False):
         return [self.status(r[0]) for r in self.db.execute(
             "SELECT id FROM main.job WHERE kind=? AND (?=0 OR state='failed' OR EXISTS "
-            "(SELECT 1 FROM main.job_step WHERE job_id=job.id AND state='failed')) ORDER BY id DESC", (KIND, int(failed)))]
+            "(SELECT 1 FROM main.job_step WHERE job_id=job.id AND state='failed')) ORDER BY id DESC", (self.kind, int(failed)))]
 
     def queue_retry(self, job, step=None):
         """Put the failed steps (or the named failed step) back to queued, and the job with them."""
@@ -263,7 +266,12 @@ class Pipeline:
                     continue
                 if saved['state'] == 'waiting_for_budget' and saved['retry_at'] and saved['retry_at'] > now():
                     continue
-                self._step(snapshot, saved)
+                current = next(s for s in self.status(job)['steps'] if s['name'] == saved['name'])
+                if current['state'] in ('done', 'failed'):
+                    continue
+                if current['state'] == 'waiting_for_budget' and current['retry_at'] and current['retry_at'] > now():
+                    continue
+                self._step(snapshot, current)
             steps = self.status(job)['steps']
             waits = [s['retry_at'] for s in steps if s['state'] == 'waiting_for_budget' and s['retry_at']]
             failures = [s for s in steps if s['state'] == 'failed']
@@ -288,6 +296,11 @@ class Pipeline:
 
     def _step(self, job, saved):
         name, sources = saved['name'], json.loads(saved['sources'])
+        if name == 'instructions':
+            from .instructions import find
+            message = find(self.db, job)
+            self._put(job['id'], name, 'done', error=message, count=1)
+            return
         self._put(job['id'], name, 'running', source=sources[saved['source_index']] if saved['source_index'] < len(sources) else None)
         if name in LOCAL:
             with transaction(self.db):                                   # the step's own writes and its state commit together
@@ -341,7 +354,7 @@ class Pipeline:
             row = self.db.execute(f'''SELECT id, {BATCH_SQL} IS NOT NULL batch FROM main.job WHERE kind=? AND (state IN ('queued','running')
                 OR (state IN ('waiting_for_budget','failed') AND retry_at IS NOT NULL AND retry_at<=?))
                 AND id NOT IN (SELECT value FROM json_each(?)) ORDER BY {BATCH_SQL} IS NOT NULL, id LIMIT 1''',
-                                  (KIND, now(), json.dumps(seen))).fetchone()
+                                  (self.kind, now(), json.dumps(seen))).fetchone()
             if row is None:
                 break
             if row['batch'] and fetch_waiting(self.db):

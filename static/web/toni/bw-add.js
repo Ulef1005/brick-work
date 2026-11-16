@@ -232,8 +232,12 @@ const chips=(row,offers)=>{
  channel.on('import_progress',data=>{if(progress.has(data.job_id)){progress.set(data.job_id,data);updateOverall();}});
  const poll=async()=>{await Promise.all(monitors.map(async m=>{try{const result=await api(`/jobs/${m.jobId}`);result.events.forEach(e=>dispatch('import_progress',e));}catch{message('Progress could not be loaded · Jobs keeps the imports');}}));};
  $('confirm').addEventListener('click',()=>guarded($('confirm'),async()=>{
-  const result=await api('/confirm',{token,items:rows,candidate,keep_photo:$('keep').checked});batch=result.batch;
+  const result=await api('/confirm',{token,items:rows,candidate,keep_photo:$('keep').checked,find_instructions:!!$('find-instructions')?.checked});batch=result.batch;
   $('review-panel').hidden=true;$('intake').hidden=true;$('jobs').hidden=false;step('added');$('job-list').replaceChildren();$('undo').disabled=false;$('undo').hidden=false;
+  const instructionLine=$('instruction-result');
+  if(instructionLine){instructionLine.hidden=!$('find-instructions')?.checked;if(!instructionLine.hidden){
+   const instructionPoll=async()=>{try{const response=await fetch('/manage/instructions/find/added?batch='+encodeURIComponent(batch));if(!response.ok)throw Error();const data=await response.json();instructionLine.replaceChildren(document.createTextNode(data.message));if(data.jobs.length){const link=el('a','Review');link.href='/manage/instructions/find?jobs='+data.jobs.join(',');instructionLine.append(document.createTextNode(' · '),link);}if(data.pending)setTimeout(instructionPoll,1000);}catch{instructionLine.textContent='Instruction results could not be loaded · open Find instructions';}};instructionPoll();
+  }}
   message(`Added ${words(result.receipts.length)}`);monitors.forEach(m=>m.destroy());monitors=[];progress.clear();
   result.receipts.forEach(r=>{
    const section=el('section',undefined,'panel');section.append(el('h3',`${r.label || r.name}${r.label && r.name && r.label !== r.name ? ' · ' + r.name : ''}`));

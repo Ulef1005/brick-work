@@ -290,7 +290,8 @@ def test_info_edit_panel_instructions_tab_and_archive_form(coll, client):
     assert not soup.select_one('.bc-detail-hero [data-bw-open=bc-delete]')
     extras = soup.select_one('[data-bc-tab-extras]')
     assert extras.has_attr('hidden')
-    assert extras.select_one('a[href="/manage/instructions"]')
+    assert extras.select_one(f'a[href="/manage/instructions/find?item={keep}"]').get_text() == 'Find instructions'
+    assert extras.select_one('a[href="/manage/instructions#upload"]').get_text() == 'Upload a PDF'
     archive = soup.select_one('#bc-delete form')
     assert archive['data-bc-action'] == 'archive'
     assert json.loads(archive['data-identity']) == {'entity': 'copy', 'ids': [cid]}
@@ -314,7 +315,8 @@ def test_instruction_files_are_in_extras(coll, client):
     extras = soup.select_one('[data-bc-tab-extras]')
     assert 'Open PDF · Recorded guide' in extras.get_text()
     assert str(identifier) in extras.select_one('a.button')['href']
-    assert extras.select_one('a[href="/manage/instructions"]')
+    assert extras.select_one(f'a[href="/manage/instructions/find?item={keep}"]').get_text() == 'Find instructions'
+    assert extras.select_one('a[href="/manage/instructions#upload"]').get_text() == 'Upload a PDF'
     assert not soup.select_one('[data-module=info]').select('a')
 
 

@@ -1347,6 +1347,254 @@
    "path": "/collection/item/minifigure/fig-001714",
    "built": true,
    "approved": false
+  },
+  {
+   "screen": "48-Tools-and-admin",
+   "section": "6a",
+   "state": "find-instructions-tick-list",
+   "world": "demo",
+   "path": "/manage/instructions/find",
+   "script": "const fixture=await (await fetch('/demo/instruction-state/tick-list')).json();\nconst real=window.fetch.bind(window);\nwindow.fetch=async(url,options)=>{const u=String(url);if(u.includes('/manage/instructions/find/status'))return new Response(JSON.stringify(fixture),{headers:{'Content-Type':'application/json'}});if(u==='/manage/instructions/find'&&options?.method==='POST')return new Response(JSON.stringify(options.body.includes('download')?{download:9010}:{jobs:fixture.groups.map(g=>g.job_id)}),{status:202,headers:{'Content-Type':'application/json'}});return real(url,options);};\ndocument.querySelector('[data-no-source]')?.remove();\ndocument.querySelector('[data-if-find]').click();\nawait new Promise(r=>setTimeout(r,300));\n",
+   "built": true,
+   "approved": false,
+   "sizes": [
+    390,
+    1440
+   ]
+  },
+  {
+   "screen": "48-Tools-and-admin",
+   "section": "6a",
+   "state": "find-instructions-searching",
+   "world": "demo",
+   "path": "/manage/instructions/find",
+   "script": "const fixture=await (await fetch('/demo/instruction-state/searching')).json();\nconst real=window.fetch.bind(window);\nwindow.fetch=async(url,options)=>{const u=String(url);if(u.includes('/manage/instructions/find/status'))return new Response(JSON.stringify(fixture),{headers:{'Content-Type':'application/json'}});if(u==='/manage/instructions/find'&&options?.method==='POST')return new Response(JSON.stringify(options.body.includes('download')?{download:9010}:{jobs:fixture.groups.map(g=>g.job_id)}),{status:202,headers:{'Content-Type':'application/json'}});return real(url,options);};\ndocument.querySelector('[data-no-source]')?.remove();\ndocument.querySelector('[data-if-find]').click();\nawait new Promise(r=>setTimeout(r,300));\n",
+   "built": true,
+   "approved": false,
+   "sizes": [
+    390,
+    1440
+   ]
+  },
+  {
+   "screen": "48-Tools-and-admin",
+   "section": "6a",
+   "state": "find-instructions-nothing-found",
+   "world": "demo",
+   "path": "/manage/instructions/find",
+   "script": "const fixture=await (await fetch('/demo/instruction-state/nothing-found')).json();\nconst real=window.fetch.bind(window);\nwindow.fetch=async(url,options)=>{const u=String(url);if(u.includes('/manage/instructions/find/status'))return new Response(JSON.stringify(fixture),{headers:{'Content-Type':'application/json'}});if(u==='/manage/instructions/find'&&options?.method==='POST')return new Response(JSON.stringify(options.body.includes('download')?{download:9010}:{jobs:fixture.groups.map(g=>g.job_id)}),{status:202,headers:{'Content-Type':'application/json'}});return real(url,options);};\ndocument.querySelector('[data-no-source]')?.remove();\ndocument.querySelector('[data-if-find]').click();\nawait new Promise(r=>setTimeout(r,300));\n",
+   "built": true,
+   "approved": false,
+   "sizes": [
+    390,
+    1440
+   ]
+  },
+  {
+   "screen": "48-Tools-and-admin",
+   "section": "6a",
+   "state": "find-instructions-partly-found",
+   "world": "demo",
+   "path": "/manage/instructions/find",
+   "script": "const fixture=await (await fetch('/demo/instruction-state/partly-found')).json();\nconst real=window.fetch.bind(window);\nwindow.fetch=async(url,options)=>{const u=String(url);if(u.includes('/manage/instructions/find/status'))return new Response(JSON.stringify(fixture),{headers:{'Content-Type':'application/json'}});if(u==='/manage/instructions/find'&&options?.method==='POST')return new Response(JSON.stringify(options.body.includes('download')?{download:9010}:{jobs:fixture.groups.map(g=>g.job_id)}),{status:202,headers:{'Content-Type':'application/json'}});return real(url,options);};\ndocument.querySelector('[data-no-source]')?.remove();\ndocument.querySelector('[data-if-find]').click();\nawait new Promise(r=>setTimeout(r,300));\n",
+   "built": true,
+   "approved": false,
+   "sizes": [
+    390,
+    1440
+   ]
+  },
+  {
+   "screen": "48-Tools-and-admin",
+   "section": "6a",
+   "state": "find-instructions-disabled-rows",
+   "world": "demo",
+   "path": "/manage/instructions/find",
+   "script": "const fixture=await (await fetch('/demo/instruction-state/disabled-rows')).json();\nconst real=window.fetch.bind(window);\nwindow.fetch=async(url,options)=>{const u=String(url);if(u.includes('/manage/instructions/find/status'))return new Response(JSON.stringify(fixture),{headers:{'Content-Type':'application/json'}});if(u==='/manage/instructions/find'&&options?.method==='POST')return new Response(JSON.stringify(options.body.includes('download')?{download:9010}:{jobs:fixture.groups.map(g=>g.job_id)}),{status:202,headers:{'Content-Type':'application/json'}});return real(url,options);};\ndocument.querySelector('[data-no-source]')?.remove();\ndocument.querySelector('[data-if-find]').click();\nawait new Promise(r=>setTimeout(r,300));\n",
+   "built": true,
+   "approved": false,
+   "sizes": [
+    390,
+    1440
+   ]
+  },
+  {
+   "screen": "48-Tools-and-admin",
+   "section": "6a",
+   "state": "find-instructions-one-set",
+   "world": "demo",
+   "path": "/manage/instructions/find",
+   "script": "const fixture=await (await fetch('/demo/instruction-state/one-set')).json();\nconst real=window.fetch.bind(window);\nwindow.fetch=async(url,options)=>{const u=String(url);if(u.includes('/manage/instructions/find/status'))return new Response(JSON.stringify(fixture),{headers:{'Content-Type':'application/json'}});if(u==='/manage/instructions/find'&&options?.method==='POST')return new Response(JSON.stringify(options.body.includes('download')?{download:9010}:{jobs:fixture.groups.map(g=>g.job_id)}),{status:202,headers:{'Content-Type':'application/json'}});return real(url,options);};\ndocument.querySelector('[data-no-source]')?.remove();\ndocument.querySelector('[data-if-find]').click();\nawait new Promise(r=>setTimeout(r,300));\n",
+   "built": true,
+   "approved": false,
+   "sizes": [
+    390,
+    1440
+   ]
+  },
+  {
+   "screen": "48-Tools-and-admin",
+   "section": "6a",
+   "state": "find-instructions-nothing-ticked",
+   "world": "demo",
+   "path": "/manage/instructions/find",
+   "script": "const fixture=await (await fetch('/demo/instruction-state/tick-list')).json();\nconst real=window.fetch.bind(window);\nwindow.fetch=async(url,options)=>{const u=String(url);if(u.includes('/manage/instructions/find/status'))return new Response(JSON.stringify(fixture),{headers:{'Content-Type':'application/json'}});if(u==='/manage/instructions/find'&&options?.method==='POST')return new Response(JSON.stringify(options.body.includes('download')?{download:9010}:{jobs:fixture.groups.map(g=>g.job_id)}),{status:202,headers:{'Content-Type':'application/json'}});return real(url,options);};\ndocument.querySelector('[data-no-source]')?.remove();\ndocument.querySelector('[data-if-find]').click();\nawait new Promise(r=>setTimeout(r,300));\ndocument.querySelector('[data-if-clear]').click();\n",
+   "built": true,
+   "approved": false,
+   "sizes": [
+    390,
+    1440
+   ]
+  },
+  {
+   "screen": "48-Tools-and-admin",
+   "section": "6a",
+   "state": "find-instructions-downloading",
+   "world": "demo",
+   "path": "/manage/instructions/find",
+   "script": "const fixture=await (await fetch('/demo/instruction-state/downloading')).json();\nconst real=window.fetch.bind(window);\nwindow.fetch=async(url,options)=>{const u=String(url);if(u.includes('/manage/instructions/find/status'))return new Response(JSON.stringify(fixture),{headers:{'Content-Type':'application/json'}});if(u==='/manage/instructions/find'&&options?.method==='POST')return new Response(JSON.stringify(options.body.includes('download')?{download:9010}:{jobs:fixture.groups.map(g=>g.job_id)}),{status:202,headers:{'Content-Type':'application/json'}});return real(url,options);};\ndocument.querySelector('[data-no-source]')?.remove();\ndocument.querySelector('[data-if-find]').click();\nawait new Promise(r=>setTimeout(r,300));\ndocument.querySelector('[data-if-download]').click();await new Promise(r=>setTimeout(r,300));\n",
+   "built": true,
+   "approved": false,
+   "sizes": [
+    390,
+    1440
+   ]
+  },
+  {
+   "screen": "48-Tools-and-admin",
+   "section": "6a",
+   "state": "find-instructions-finished",
+   "world": "demo",
+   "path": "/manage/instructions/find",
+   "script": "const fixture=await (await fetch('/demo/instruction-state/finished')).json();\nconst real=window.fetch.bind(window);\nwindow.fetch=async(url,options)=>{const u=String(url);if(u.includes('/manage/instructions/find/status'))return new Response(JSON.stringify(fixture),{headers:{'Content-Type':'application/json'}});if(u==='/manage/instructions/find'&&options?.method==='POST')return new Response(JSON.stringify(options.body.includes('download')?{download:9010}:{jobs:fixture.groups.map(g=>g.job_id)}),{status:202,headers:{'Content-Type':'application/json'}});return real(url,options);};\ndocument.querySelector('[data-no-source]')?.remove();\ndocument.querySelector('[data-if-find]').click();\nawait new Promise(r=>setTimeout(r,300));\ndocument.querySelector('[data-if-download]').click();await new Promise(r=>setTimeout(r,300));\n",
+   "built": true,
+   "approved": false,
+   "sizes": [
+    390,
+    1440
+   ]
+  },
+  {
+   "screen": "48-Tools-and-admin",
+   "section": "6a",
+   "state": "find-instructions-failed",
+   "world": "demo",
+   "path": "/manage/instructions/find",
+   "script": "const fixture=await (await fetch('/demo/instruction-state/failed')).json();\nconst real=window.fetch.bind(window);\nwindow.fetch=async(url,options)=>{const u=String(url);if(u.includes('/manage/instructions/find/status'))return new Response(JSON.stringify(fixture),{headers:{'Content-Type':'application/json'}});if(u==='/manage/instructions/find'&&options?.method==='POST')return new Response(JSON.stringify(options.body.includes('download')?{download:9010}:{jobs:fixture.groups.map(g=>g.job_id)}),{status:202,headers:{'Content-Type':'application/json'}});return real(url,options);};\ndocument.querySelector('[data-no-source]')?.remove();\ndocument.querySelector('[data-if-find]').click();\nawait new Promise(r=>setTimeout(r,300));\ndocument.querySelector('[data-if-download]').click();await new Promise(r=>setTimeout(r,300));\n",
+   "built": true,
+   "approved": false,
+   "sizes": [
+    390,
+    1440
+   ]
+  },
+  {
+   "screen": "48-Tools-and-admin",
+   "section": "6a",
+   "state": "find-instructions-no-network",
+   "world": "demo",
+   "path": "/manage/instructions/find",
+   "script": "const fixture=await (await fetch('/demo/instruction-state/tick-list')).json();\nconst real=window.fetch.bind(window);\nwindow.fetch=async(url,options)=>{const u=String(url);if(u.includes('/manage/instructions/find/status'))return new Response(JSON.stringify(fixture),{headers:{'Content-Type':'application/json'}});if(u==='/manage/instructions/find'&&options?.method==='POST')return new Response(JSON.stringify(options.body.includes('download')?{download:9010}:{jobs:fixture.groups.map(g=>g.job_id)}),{status:202,headers:{'Content-Type':'application/json'}});return real(url,options);};\ndocument.querySelector('[data-no-source]')?.remove();\ndocument.querySelector('[data-if-find]').click();\nawait new Promise(r=>setTimeout(r,300));\nwindow.fetch=async()=>{throw Error('invented offline');};document.querySelector('[data-if-find]').click();await new Promise(r=>setTimeout(r,300));\n",
+   "built": true,
+   "approved": false,
+   "sizes": [
+    390,
+    1440
+   ]
+  },
+  {
+   "screen": "48-Tools-and-admin",
+   "section": "6a",
+   "state": "find-instructions-choose-sets",
+   "world": "demo",
+   "path": "/manage/instructions/find",
+   "built": true,
+   "approved": false,
+   "sizes": [
+    390,
+    1440
+   ]
+  },
+  {
+   "screen": "48-Tools-and-admin",
+   "section": "6a",
+   "state": "find-instructions-no-source",
+   "world": "demo",
+   "path": "/manage/instructions/find",
+   "built": true,
+   "approved": false,
+   "sizes": [
+    390,
+    1440
+   ]
+  },
+  {
+   "screen": "48-Tools-and-admin",
+   "section": "6a",
+   "state": "find-instructions-read-only",
+   "world": "edge-read-only",
+   "path": "/manage/instructions/find",
+   "built": true,
+   "approved": false,
+   "sizes": [
+    390,
+    1440
+   ]
+  },
+  {
+   "screen": "47-Add",
+   "section": "5a",
+   "state": "instruction-switch-off",
+   "world": "demo",
+   "path": "/manage/add",
+   "script": "document.querySelector('[data-intake]').hidden=true;document.querySelector('[data-review-panel]').hidden=false;",
+   "built": true,
+   "approved": false,
+   "sizes": [
+    390,
+    1440
+   ]
+  },
+  {
+   "screen": "47-Add",
+   "section": "5a",
+   "state": "instruction-switch-on",
+   "world": "demo",
+   "path": "/manage/add",
+   "script": "document.querySelector('[data-intake]').hidden=true;document.querySelector('[data-review-panel]').hidden=false;const input=document.querySelector('[data-find-instructions]');input.disabled=false;input.checked=true;",
+   "built": true,
+   "approved": false,
+   "sizes": [
+    390,
+    1440
+   ]
+  },
+  {
+   "screen": "47-Add",
+   "section": "5a",
+   "state": "instruction-switch-no-source",
+   "world": "demo",
+   "path": "/manage/add",
+   "script": "document.querySelector('[data-intake]').hidden=true;document.querySelector('[data-review-panel]').hidden=false;",
+   "built": true,
+   "approved": false,
+   "sizes": [
+    390,
+    1440
+   ]
+  },
+  {
+   "screen": "48-Tools-and-admin",
+   "section": "6a",
+   "state": "find-instructions-needs-renderer",
+   "world": "demo",
+   "path": "/manage/instructions/find",
+   "built": true,
+   "approved": false,
+   "sizes": [
+    390,
+    1440
+   ]
   }
  ]
 }

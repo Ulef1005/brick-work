@@ -35,7 +35,7 @@ def test_every_write_operation_of_the_pieces_done_has_a_view_and_a_spec():
     from tests.api2 import PREFIX
     for operation in writes.SPEC.values():
         assert operation['method'] == spec[operation['endpoint']]['method'] and operation['path'] == spec[operation['endpoint']]['path']
-    assert len(writes.SPEC) == 108                                  # M.11c 70 and M.11d 38
+    assert len(writes.SPEC) == 110                                  # M.11c 70 and M.11d 40
 
 
 def test_the_operations_that_need_an_idempotency_key_are_the_documented_ones():
@@ -380,3 +380,16 @@ def test_an_ordinary_write_honours_an_active_claim_of_a_detached_write_with_the_
     assert seen['same'].status_code == 409 and seen['same'].json['code'] == 'idempotency_conflict'
     assert rows(pair, "SELECT 1 FROM event WHERE entity_kind='bw_api' AND field='op:shared-key'") != []
     assert len(rows(pair, "SELECT 1 FROM event WHERE entity_kind='bw_api' AND field='op:shared-key'")) == 1
+
+
+def test_drain_runs_confirmed_instruction_download(v2, coll, monkeypatch):
+    from brickwork.core import instruction_sources as src
+    from tests.test_find_instructions import discover, download
+    from tests.instruction_fakes import registry
+    reg, _ = registry()
+    monkeypatch.setattr(src, 'registry', reg)
+    _, candidates = discover(coll, reg)
+    job = download(coll, candidates[:1])
+    response = write(v2, '/jobs/drain', 'post', None)
+    assert response.status_code == 200
+    assert coll.db.execute('SELECT state FROM job WHERE id=?', (job,)).fetchone()[0] == 'done'

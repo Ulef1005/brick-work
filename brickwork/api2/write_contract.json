@@ -1,6 +1,42 @@
 {
   "operations": [
     {
+      "endpoint": "post_instruction_files_fetch",
+      "event_nullable": true,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/instruction-files/fetch",
+      "piece": "M.11d",
+      "query": [],
+      "required": false,
+      "schema": {
+        "$ref": "#/components/schemas/InstructionFind"
+      },
+      "statuses": [
+        202
+      ],
+      "undo_nullable": true
+    },
+    {
+      "endpoint": "post_instruction_files_download",
+      "event_nullable": true,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/instruction-files/download",
+      "piece": "M.11d",
+      "query": [],
+      "required": false,
+      "schema": {
+        "$ref": "#/components/schemas/InstructionDownload"
+      },
+      "statuses": [
+        202
+      ],
+      "undo_nullable": true
+    },
+    {
       "endpoint": "post_wishlists",
       "event_nullable": false,
       "if_match": false,
@@ -2560,6 +2596,47 @@
           "type": "array"
         }
       },
+      "type": "object"
+    },
+    "InstructionDownload": {
+      "additionalProperties": false,
+      "properties": {
+        "candidate_ids": {
+          "items": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "maxItems": 50,
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "candidate_ids"
+      ],
+      "type": "object"
+    },
+    "InstructionFind": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/components/schemas/ItemKey"
+          },
+          "maxItems": 50,
+          "minItems": 1,
+          "type": "array"
+        },
+        "region": {
+          "maxLength": 32,
+          "minLength": 2,
+          "type": "string"
+        }
+      },
+      "required": [
+        "items"
+      ],
       "type": "object"
     },
     "InstructionPatch": {

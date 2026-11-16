@@ -91,3 +91,8 @@ In **Tools & Admin > Settings**, set **Address for labels** to an HTTP or HTTPS 
 Leave it empty to use the incoming request address. Paths, credentials, queries and fragments are refused.
 Localhost and bare IP addresses show a warning in the label dialog.
 The save confirmation offers **Undo**. Saving the same address after trimming whitespace and trailing slashes says **Nothing changed**, without a new History entry or Undo banner. Changing this setting affects new labels. Previously printed codes keep their original address.
+
+## Instruction download limit
+
+**Settings → Instruction downloads** controls the Official file limit, initially 500 MB. Values range from 1 to 5000 MB.
+Uploads and other instruction sources retain their 20 MB limit.

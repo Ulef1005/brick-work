@@ -97,7 +97,7 @@ def test_a_050_collection_reaches_the_current_schema_step_by_step(tmp_path, cata
         assert not set(added) & set(columns(live, table))
     with closing(sqlite3.connect(live)) as db:
         at_40 = counts(db)
-    assert at_40 == carried                                     # every row came across; only the later columns are missing
+    assert at_40 | {'instruction_candidate': 0, 'instruction_search': 0} == carried                                     # every row came across; only the later columns are missing
     with pytest.raises(UpgradeFailed):                          # a read-only open never upgrades (the app's read-only instance)
         connect(live, catalogue, read_only=True)
     assert version(live) == '4.0'
@@ -109,7 +109,7 @@ def test_a_050_collection_reaches_the_current_schema_step_by_step(tmp_path, cata
     assert version(live) == '4.1'
     assert set(STEPS['4.1'][1]) <= set(columns(live, 'wish')) and not set(STEPS['4.2'][1]) & set(columns(live, 'order_line'))
     with closing(sqlite3.connect(live)) as db:
-        assert counts(db) == carried
+        assert counts(db) == at_40
         assert db.execute("SELECT COUNT(*) FROM meta WHERE key='upgraded_to_4.1'").fetchone()[0] == 1
 
     # Exercise 4.1 to 4.2 alone before the label identity upgrade.

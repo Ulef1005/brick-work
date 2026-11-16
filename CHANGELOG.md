@@ -8,6 +8,12 @@
 
 - **Found in and minifigure card polish** (#40, #55). Counts agree with filtered rows and use singular nouns for one result. Controls apply immediately and stack on phones. Result identities, quantities and wishlist actions have separate lines. Comparison values keep their no-sales pills within each cell.
 
+- **Instruction review fixes** (#25). Cap all-missing searches at 50 and report remaining sets; resolve booklet searches to sets; include confirmed downloads in API drain. Preserve renderer setup notices, support UK regions, guard discovery references (schema 4.5), refuse active download merges, and fail removed candidates safely. New searches clear old download URLs; Retry stays hidden while the download owner is alive.
+
+- **Official instruction adapter** (#25). Parses rendered booklet lists through an injectable fetcher, with a separate 500 MB download limit and a clear renderer setup notice.
+
+- **Find instructions** (#25). Find candidates, choose a region and tick files before downloading. Downloads use Jobs, bounded PDFs and shared upload storage. Add can queue discovery. Schema 4.4 stores searches and candidates. Official is registered by default and needs a configured page renderer; until then discovery reports “Official needs a page renderer: not set up” and the Add switch stays disabled with that reason.
+
 - **Part-out prices** (#38). The Prices card keeps its row in place, shows price age, and updates after fetching. Currency comparisons stay consistent. Budget waits and partial failures preserve fetched prices. Capped batches show remaining items. Complete sets restores the previous sort direction. [Pictures and prices](docs/how-to/pictures-and-prices.md#parted-out)
 
 - **Found in fixes** (#40). Catalogue sets and minifigures can be added to the wishlist before their first collection use. Loose figure quantities count each piece once, catalogue-only colours are accepted, owned set pictures omit the part’s colour, and MCP accepts provider colour numbers such as Rebrickable black (`0`).

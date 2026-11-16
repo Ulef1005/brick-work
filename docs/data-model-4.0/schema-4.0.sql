@@ -222,7 +222,7 @@ CREATE VIRTUAL TABLE item_fts USING fts5(item_id UNINDEXED, kind UNINDEXED, name
 -- =====================================================================
 
 CREATE TABLE meta(key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL) STRICT;
--- keys: schema_version='4.3' (4.0 before #131, 4.1 before #167/#155, 4.2 before #31; connect() upgrades an older file in place); install_id; catalogue_id (bound at the first build; connect()
+-- keys: schema_version='4.5' (4.0 before #131, 4.1 before #167/#155, 4.2 before #31, 4.3 before #25; connect() upgrades an older file in place); install_id; catalogue_id (bound at the first build; connect()
 -- refuses a catalogue whose catalogue_id differs); catalogue_item_high_water and
 -- catalogue_color_high_water (copied at every activation: a rebuild from scratch mints above
 -- them); migrated_from (3.3 file name, sha256, migration report digest) after the migration.
@@ -1045,3 +1045,38 @@ CREATE TRIGGER storage_label_identity AFTER INSERT ON storage WHEN NEW.short_id 
  UPDATE storage_label_sequence SET value=value+1 WHERE singleton=1;
  UPDATE storage SET short_id=(SELECT printf('S-%04d',value) FROM storage_label_sequence WHERE singleton=1) WHERE id=NEW.id;
 END;
+
+-- Instruction discovery, schema 4.4
+CREATE TABLE instruction_search(
+ job_id INTEGER PRIMARY KEY REFERENCES job(id), item_id INTEGER NOT NULL REFERENCES item(id),
+ sources_tried TEXT NOT NULL DEFAULT '[]', error TEXT, updated_at TEXT NOT NULL) STRICT;
+CREATE TABLE instruction_candidate(
+ id INTEGER PRIMARY KEY AUTOINCREMENT, item_id INTEGER NOT NULL REFERENCES item(id),
+ search_job INTEGER NOT NULL REFERENCES job(id), source TEXT NOT NULL REFERENCES source(id),
+ title TEXT NOT NULL, booklet INTEGER NOT NULL CHECK(booklet>0), booklets INTEGER NOT NULL CHECK(booklets>=booklet),
+ language TEXT, region TEXT, size INTEGER CHECK(size IS NULL OR size>=0), url TEXT NOT NULL,
+ file_id INTEGER REFERENCES instruction_file(id), UNIQUE(item_id,source,url)) STRICT;
+CREATE INDEX instruction_candidate_search ON instruction_candidate(search_job,booklet,id);
+CREATE INDEX instruction_search_item ON instruction_search(item_id);
+CREATE INDEX instruction_candidate_source ON instruction_candidate(source);
+CREATE INDEX instruction_candidate_file ON instruction_candidate(file_id);
+CREATE TRIGGER instruction_search_item_guard_insert BEFORE INSERT ON instruction_search WHEN ((SELECT merged_into FROM item WHERE id=new.item_id) IS NOT NULL OR (SELECT kind FROM item WHERE id=new.item_id) IS NOT 'set')
+ BEGIN SELECT RAISE(ABORT,'instruction_search.item_id: unmerged set needed'); END;
+CREATE TRIGGER instruction_search_item_guard_update BEFORE UPDATE OF item_id ON instruction_search WHEN ((SELECT merged_into FROM item WHERE id=new.item_id) IS NOT NULL OR (SELECT kind FROM item WHERE id=new.item_id) IS NOT 'set')
+ BEGIN SELECT RAISE(ABORT,'instruction_search.item_id: unmerged set needed'); END;
+CREATE TRIGGER instruction_candidate_item_guard_insert BEFORE INSERT ON instruction_candidate WHEN ((SELECT merged_into FROM item WHERE id=new.item_id) IS NOT NULL OR (SELECT kind FROM item WHERE id=new.item_id) IS NOT 'set')
+ BEGIN SELECT RAISE(ABORT,'instruction_candidate.item_id: unmerged set needed'); END;
+CREATE TRIGGER instruction_candidate_item_guard_update BEFORE UPDATE OF item_id ON instruction_candidate WHEN ((SELECT merged_into FROM item WHERE id=new.item_id) IS NOT NULL OR (SELECT kind FROM item WHERE id=new.item_id) IS NOT 'set')
+ BEGIN SELECT RAISE(ABORT,'instruction_candidate.item_id: unmerged set needed'); END;
+
+-- Instruction discovery references must remain unmerged sets, including direct SQL changes.
+CREATE TRIGGER item_instruction_merge_guard BEFORE UPDATE OF merged_into ON item
+ WHEN new.merged_into IS NOT NULL AND (
+ EXISTS(SELECT 1 FROM instruction_search WHERE item_id=old.id)
+ OR EXISTS(SELECT 1 FROM instruction_candidate WHERE item_id=old.id))
+ BEGIN SELECT RAISE(ABORT,'merge: instruction references must move first'); END;
+CREATE TRIGGER item_instruction_kind_guard BEFORE UPDATE OF kind ON item
+ WHEN new.kind IS NOT old.kind AND new.kind != 'set' AND (
+ EXISTS(SELECT 1 FROM instruction_search WHERE item_id=old.id)
+ OR EXISTS(SELECT 1 FROM instruction_candidate WHERE item_id=old.id))
+ BEGIN SELECT RAISE(ABORT,'kind change refused: instruction references require a set'); END;

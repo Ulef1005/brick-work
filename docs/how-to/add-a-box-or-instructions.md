@@ -28,3 +28,41 @@ A BrickLink box or instruction has the number of its set, which is why the searc
 You can also paste set numbers with **Box** or **Instruction** chosen. A number that no set has is offered as an unidentified item, as for any other type.
 
 **Undo** takes your copy back. The item it created stays, with none owned, and the next add of the same box uses it.
+
+## Find and download instructions
+
+Find instructions separates finding candidate PDFs from downloading them. Finding never downloads a file.
+Official is registered but needs a rendered page fetcher. Until configured, the list says **Official needs a page renderer: not set up**.
+Rebrickable and Peeron adapter interfaces remain available for verified integrations.
+
+Discovery uses the existing job queue and stores the sources tried, including searches with no candidates.
+Downloads require a confirmed list of ticked files. Each file has its own result and can be retried after failure.
+PDFs use the upload storage path and content hash. Official downloads have a separate limit, initially 500 MB; uploads retain 20 MB.
+
+1. Open **Tools & Admin → Instruction files → Find instructions**.
+2. Choose all owned sets without PDFs, or paste set numbers in your preferred order.
+3. Choose a region and tick the files you want. Press **Download N files** to confirm.
+4. Follow progress here or in **Tools & Admin → Jobs**. Retry failed files without repeating finished ones.
+
+The Instructions & Box tab also links to **Find instructions · Upload a PDF** for that set.
+On Add, **Fetch instructions** starts off. Turning it on finds files for the added sets and adds a **Review** link.
+Finding still downloads nothing. Official searches show the renderer setup message until a renderer is configured.
+
+The region starts from your retail country. This browser remembers your last choice as a preference.
+Changing the region preserves choices you changed by hand and updates only untouched rows.
+A Peeron scan is ticked initially only when it is the sole candidate for its set.
+Files above their source limit and candidates already attached cannot be ticked.
+Untouched defaults fit within the Official limit in total. Files with unknown sizes start unticked.
+Unknown file sizes have their own count outside the known total.
+
+Downloads allow 50 files per job. Requests to the same host wait at least one second between starts.
+Sources receive the fixed Brick Work identification header. A source's Retry-After pauses the remaining files until its deadline.
+
+“All sets without instructions” queues up to 50 sets per request. For larger selections it reports the total and the number remaining; run it again for the rest.
+
+Booklet discovery uses the set with the booklet's number, just like PDF upload. UK and GB use the same region defaults.
+Sets with instruction searches or candidates cannot change kind. Merges wait while a confirmed download for either set is active.
+If a candidate has been removed, its download step fails with “Candidate was removed” and other files can continue.
+Schema 4.5 adds database guards for discovery references; writable opens upgrade older collections automatically.
+
+Add enables Fetch instructions only when at least one adapter is available. Otherwise it shows the adapter setup reason; completion keeps discovery errors visible. A new search clears the previous download address, and Retry failed files appears only after the download owner has stopped.

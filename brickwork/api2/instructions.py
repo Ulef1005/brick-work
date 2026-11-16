@@ -74,3 +74,24 @@ def get_instruction_files_by_id_content(db, id):
     if row['archived_at'] or not on_disk(root, row):
         raise errors.NotFound('No such instruction file')
     return send_file((root / row['path']).resolve(), mimetype='application/pdf', as_attachment=True, download_name='instructions.pdf')
+
+
+from .writes import Done, item_of, write
+from .jobs import job_list, queued
+from ..core import instructions as discovery
+
+
+@route('/instruction-files/fetch', 'POST')
+@write
+def post_instruction_files_fetch(db, body):
+    via, actor = admin.origin()
+    ids = [item_of(db, item) for item in body['items']]
+    jobs = discovery.queue_find(db, ids, region=body.get('region'), via=via, actor=actor)
+    return Done(job_list(db, jobs), status=202)
+
+
+@route('/instruction-files/download', 'POST')
+@write
+def post_instruction_files_download(db, body):
+    via, actor = admin.origin()
+    return queued(db, discovery.queue_download(db, body['candidate_ids'], via=via, actor=actor))

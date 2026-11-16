@@ -212,3 +212,39 @@ def test_a_retired_catalogue_item_is_not_offered_as_a_variant(coll, client, worl
         other.execute("UPDATE item SET retired_at='2026-11-01T00:00:00.000Z' WHERE born_key='fig-000005'")
         other.commit()
     assert page(client, url(world.figure, q='fig-000005')).select('.bi-result') == []
+
+
+def test_a_post_with_no_catalogue_attached_is_the_catalogue_refusal_not_a_server_error(coll, client, world, other, monkeypatch):
+    import sqlite3
+
+    def gone(*args, **kwargs):
+        raise sqlite3.OperationalError('no such table: catalogue.inventory')
+    monkeypatch.setattr(store_variant, 'change_variant_in', gone)
+    before = table_digest(coll.db)
+    response = post(client, world.figure, action='change_variant', target=str(other))
+    assert response.status_code == 302
+    assert "catalogue isn't activated yet" in page(client, response.headers['Location']).get_text()
+    assert table_digest(coll.db) == before
+
+
+def test_a_sqlite_error_that_is_not_the_missing_catalogue_is_not_hidden(coll, world):
+    import sqlite3
+
+    from brickwork.core import identity_admin
+
+    def broken(*args, **kwargs):
+        raise sqlite3.OperationalError('disk I/O error')
+    with pytest.raises(sqlite3.OperationalError, match='disk I/O'):
+        identity_admin._run(coll.db, broken)
+
+
+def test_the_refusals_of_a_live_item_and_of_an_undo_after_a_merge_are_in_plain_words(coll, client, world, other):
+    mine = coll.local('minifigure', 'Mine Figure', born_key='mine-fig')
+    response = post(client, world.figure, action='change_variant', target=str(mine))
+    soup = page(client, response.headers['Location'])
+    text = soup.get_text(' ', strip=True)
+    assert 'Mine Figure is not a live catalogue item' in text and f'item {mine} is not' not in text
+
+    from brickwork.core import identity_admin
+    plain = identity_admin.explain_variant_refusal(coll.db, f'item {other} was merged (into {mine}) since the change of variant · undo the merge first', world.figure, other)
+    assert 'Syn Reissue Figure was merged into Mine Figure' in plain and str(mine) not in plain and 'Undo that merge first' in plain

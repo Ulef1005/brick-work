@@ -182,7 +182,7 @@ def split(db, order, *, prefer, chosen, config):
     shipping = Decimal(str(config['repair_shipping'])) if parts[BL] else None
     order['split'] = dict(
         bl=dict(lines=len(parts[BL]), pieces=sum(l['quantity'] for l in parts[BL]), total=bl_total, no_sales=sum(1 for l in parts[BL] if l['price'] is None)),
-        pab=dict(lines=len(parts[PAB]), pieces=sum(l['quantity'] for l in parts[PAB])),
+        pab=dict(lines=len(parts[PAB]), rows=len({l['element_id'] for l in parts[PAB]}), pieces=sum(l['quantity'] for l in parts[PAB])),   # rows: the file's, one per element id
         shipping=shipping, estimate=bl_total + (shipping or Decimal(0)), no_element=[l for l in order['lines'] if not l['element_id']])
     return order
 

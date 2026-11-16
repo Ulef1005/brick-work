@@ -1885,6 +1885,21 @@ def bw_item_change_variant(item_id):
     return response
 
 
+def _identity_refusal(exc, action, item_id, target):
+    """The refusal text of a decision on an item page: the change of a variant, and Undo (which may undo one), in plain words; any other as it is."""
+    from ..core import errors, identity_admin
+    from ..core.admin import database
+    from .admin_ops import brickwork_path
+    text = str(exc)
+    if not isinstance(exc, errors.Conflict) or not (action == 'change_variant' or (action == 'undo' and 'since the change of variant' in text)):
+        return text
+    try:
+        with database(brickwork_path(), require_catalogue=False) as db:
+            return identity_admin.explain_variant_refusal(db, text, item_id, int(target) if target and target.isdigit() else None)
+    except Exception:                                                                # the plain words are a courtesy: never lose the refusal itself
+        return text
+
+
 @web_page.post('/collection/item/<int:item_id>/identity')
 @login_required
 def bw_item_identity(item_id):
@@ -1905,7 +1920,7 @@ def bw_item_identity(item_id):
     try:
         result = admin_ops.tools_write('identity', action=action, item=str(item_id), **{k: request.form.get(k) or None for k in fields})
     except (errors.BrickWorkError, ValueError, TypeError) as exc:
-        flash('Not saved · ' + (str(exc) if isinstance(exc, errors.BrickWorkError) else 'Check the values and try again.'), 'error')
+        flash('Not saved · ' + (_identity_refusal(exc, action, item_id, request.form.get('target')) if isinstance(exc, errors.BrickWorkError) else 'Check the values and try again.'), 'error')
         if action in ('merge', 'change_variant'):
             return redirect(url_for('web.bw_item_merge' if action == 'merge' else 'web.bw_item_change_variant', item_id=item_id, target=request.form.get('target')))
         return redirect(back)

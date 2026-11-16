@@ -73,7 +73,7 @@ def test_the_bricklink_part_is_priced_with_its_shipping_and_pick_a_brick_has_no_
     quote(coll, '3001', '4', '0.40')
     order = placed(read, [s['first'], s['second'], s['gate_new']], prefer=True)
     sp = order['split']
-    assert sp['pab'] == dict(lines=1, pieces=3) and sp['bl']['lines'] == 1 and sp['bl']['pieces'] == 1
+    assert sp['pab'] == dict(lines=1, rows=1, pieces=3) and sp['bl']['lines'] == 1 and sp['bl']['pieces'] == 1
     assert sp['bl']['total'] == 0 and sp['bl']['no_sales'] == 1 and sp['shipping'] == Decimal(3) and sp['estimate'] == Decimal(3)
     every = placed(read, [s['first'], s['second'], s['gate_new']])['split']
     assert every['bl']['total'] == Decimal('1.20') and every['bl']['no_sales'] == 1 and every['estimate'] == Decimal('4.20')
@@ -197,3 +197,15 @@ def test_a_non_numeric_element_id_is_never_the_lowest_one_nor_zero(coll, pair, r
     elements(pair, coll, (*RED_3001, 'x-12'), (*RED_3001, '300126'), ('3023', '15', 'abc'))
     order = by_part(placed(read, [s['first'], s['gate_new']], prefer=True))
     assert order['3001']['element_id'] == '300126' and order['3023']['element_id'] is None
+
+
+def test_the_download_figure_counts_the_rows_of_the_file_not_the_lines_of_the_list(coll, pair, read, client):
+    s = scene(coll)
+    elements(pair, coll, (*RED_3001, '300126'))
+    new = coll.add_copy('1000-2', condition='new')
+    coll.mark(new, '3001', '4', missing=1)                                                    # the same part and colour in N and U: two lines, one row
+    ids = [s['first'], s['second'], s['gate'], new]
+    order = placed(read, ids, prefer=True)
+    assert order['split']['pab']['lines'] == 2 and order['split']['pab']['rows'] == 1
+    soup = page(client, sel='1', copy=ids, step='review', prefer='1')
+    assert '1 row · 5 pieces' in soup.select_one('.oo-export').text and '2 lines' not in soup.select_one('.oo-export').text

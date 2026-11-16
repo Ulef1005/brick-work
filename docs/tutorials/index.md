@@ -12,4 +12,9 @@ Learning by doing: one complete path through the app, start to finish. Each step
 - [Build from your bulk](build-from-your-bulk.md): give loose parts a drawer, pick the missing parts of several sets in one pass, and see which sets your loose stock finishes.
 - [Find the sets in a bulk lot](find-the-sets-in-a-bulk-lot.md): let set detection rank the sets a bag of loose parts may hold. Confirm a sticker, tick off one set's parts on its pull list and make it a copy.
 - [Build from what you have, and order the rest](build-from-what-you-have.md): rank the catalogue by your loose stock with Build Scout. Build a set from it, and combine the missing parts of several sets into one BrickLink wanted list.
+- [Give every bin a place, then label it](storage-and-labels.md): add storage places, print QR labels, scan one to open its bin and find a part by where it is stored.
+- [Keep it or part it out](value-and-selling.md): read a set's value and part-out value, compare them, and prepare a sale with the Sell card.
+- [Find and download the instructions for a set](find-instructions.md): fetch candidate PDFs, tick the booklets you want and download them.
+- [Identify a loose piece and find where it belongs](identify-a-loose-piece.md): identify a minifigure or part from a photo, then follow Found in to the sets that hold it.
+- [Back up, upgrade and restore safely](back-up-and-upgrade.md): back up, upgrade, check the result, rehearse a restore and undo a single edit.
 - [Script your collection](script-your-collection.md): create an API token, read and change the collection from the command line, and connect an assistant.

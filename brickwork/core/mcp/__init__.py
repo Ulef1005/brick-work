@@ -90,7 +90,9 @@ class Adapter:
                 elif item and p['name'] == 'provider':
                     continue                                    # the item's provider is also this query's (get_prices: the colour space)
                 else:
-                    properties[p['name']] = p['schema']
+                    # MCP resolves provider colour numbers (including 0 and -1) to REST ids.
+                    properties[p['name']] = ({'type': 'integer'} if p.get('x-mcp-color') == 'brickwork'
+                                             else p['schema'])
                     if p.get('required'):
                         required.append(p['name'])
             elif p['name'] == 'If-Match':
@@ -141,7 +143,7 @@ class Adapter:
             if status != 200:
                 return self.result(status, found)
             values[item['name']] = found['data']['id']
-            if scoped and body_colour:
+            if scoped and (body_colour or any(p.get('x-mcp-color') == 'brickwork' for p in parameters)):
                 # On an /items/{id} path a body colour is Brick Work's (decision 4): the lookup's resolved colour, never the caller's number.
                 arguments = {**arguments, 'color': found['data']['color']['id']}
         for key, value in values.items():

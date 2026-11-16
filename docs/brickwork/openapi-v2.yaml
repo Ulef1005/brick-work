@@ -717,6 +717,63 @@ paths:
           $ref: '#/components/responses/Problem'
       x-v1: get_items_by_type_by_no_used_in
       x-piece: M.11b
+  /items/{id}/supersets:
+    get:
+      operationId: get_items_by_id_supersets
+      summary: Sets and minifigures containing this part in one colour, owned holders first.
+      x-piece: M.11b
+      x-mcp-tool: get_part_supersets
+      tags: [Items]
+      security:
+      - bearerAuth: [read]
+      parameters:
+      - $ref: '#/components/parameters/Path_item_id'
+      - name: color
+        x-mcp-color: brickwork
+        in: query
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      - name: type
+        in: query
+        schema:
+          type: string
+          enum: [all, sets, minifigures]
+      - name: q
+        in: query
+        schema:
+          type: string
+      - name: sort
+        in: query
+        schema:
+          type: string
+          enum: [newest, oldest, name, number]
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 15
+      - name: offset
+        in: query
+        schema:
+          type: integer
+          minimum: 0
+      responses:
+        '200':
+          description: Bounded page; counts are distinct catalogue items, total counts filtered displayed rows including owned copies.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Supersets'
+        '307':
+          $ref: '#/components/responses/Moved'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Problem'
   /items/{id}/colors:
     get:
       operationId: get_items_by_id_colors
@@ -7784,6 +7841,58 @@ components:
           type: integer
         source:
           type: string
+    Supersets:
+      type: object
+      required: [data, color, catalogue, colour_unmatched, counts, owned_count, total, limit, offset]
+      properties:
+        color:
+          $ref: '#/components/schemas/Color'
+        catalogue:
+          type: boolean
+        colour_unmatched:
+          type: boolean
+        counts:
+          type: object
+          required: [sets, minifigures]
+          properties:
+            sets:
+              type: integer
+            minifigures:
+              type: integer
+        owned_count:
+          type: integer
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+        data:
+          type: array
+          items:
+            type: object
+            required: [item, quantity, owned, copy_id, stock_id, label, storage_name, year, theme, on_wishlist]
+            properties:
+              item:
+                $ref: '#/components/schemas/Item'
+              quantity:
+                type: integer
+              owned:
+                type: boolean
+              on_wishlist:
+                type: boolean
+              copy_id:
+                type: [string, 'null']
+              stock_id:
+                type: [string, 'null']
+              label:
+                type: [string, 'null']
+              storage_name:
+                type: [string, 'null']
+              theme:
+                type: [string, 'null']
+              year:
+                type: [integer, 'null']
     UsedIn:
       type: object
       properties:

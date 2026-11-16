@@ -50,7 +50,7 @@ def test_the_tool_surface_is_generated_from_the_v2_contract():
     marked = {op['x-mcp-tool']: (method.upper(), path) for path, methods in CONTRACT['paths'].items()
               for method, op in methods.items() if isinstance(op, dict) and 'x-mcp-tool' in op}
     assert {n: (m, p) for n, (m, p, _) in DEFINITIONS.items()} == marked
-    assert len(READS) + len(WRITES) == 76
+    assert len(READS) + len(WRITES) == 77
     for name, (method, path, op) in DEFINITIONS.items():
         assert op['security'] == [{'bearerAuth': ['read' if method == 'GET' else 'write']}], name   # admin work is never a tool
         assert op['summary'], name
@@ -72,7 +72,7 @@ def test_no_tool_takes_a_brick_work_item_id():
                 assert set(value['properties']) == {'provider', 'kind', 'key'} and value['required'] == ['kind', 'key'], name
     # the by-id item paths are exactly the marked ones
     assert sorted(n for n, (m, p, op) in DEFINITIONS.items() if Adapter(None).item_parameter(op)) == [
-        'get_item', 'get_lot_pull_list', 'get_minifigure_detail', 'get_prices', 'import_item', 'make_copy_from_lot', 'record_price', 'refresh_price', 'set_figure_missing']
+        'get_item', 'get_lot_pull_list', 'get_minifigure_detail', 'get_part_supersets', 'get_prices', 'import_item', 'make_copy_from_lot', 'record_price', 'refresh_price', 'set_figure_missing']
     # a tool never shows the id member of an ItemKey, anywhere in its body
     for name in ('add_copies', 'add_stock', 'add_wish', 'take_for_gap'):
         assert 'id' not in adapter.schema(DEFINITIONS[name][2])['properties']['item']['properties']
@@ -247,6 +247,7 @@ def test_revocation_and_read_only(app4, v2, pair, world, monkeypatch):
 def read_arguments(w, pair):
     rebrickable = {'source': 'rebrickable'}
     return {
+        'get_part_supersets': {'kind': 'part', 'no': '3001', 'color': RED},
         'storage_labels': {'ids': w.shelf, 'layout': 'a4-21'},
         'get_wishlists': {}, 'export_wishlist_xml': {'id': 'default'}, 'export_wishlist_csv': {'id': 'default'}, 'search_catalogue': {'q': '1000'},
         'get_item': {'kind': 'set', 'no': '1000-1'}, 'get_minifigure_detail': {'kind':'minifigure','no':'syn-fig-0004'}, 'list_copies': {}, 'get_copy': {'id': w.copy_a}, 'get_copy_completeness': {'id': w.copy_a},

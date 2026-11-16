@@ -768,6 +768,9 @@ def detail(db, item_id, *, colour=None, copy_id=None, stock_id=None, wish_id=Non
     row['used_in'] = _used_in(db, item_id, colour, kind)
     if kind == 'minifigure':
         figure_detail(db, row)
+    if kind == 'part' and colour is not None:
+        from . import supersets
+        row['found_in'] = supersets.found_in(db, item_id, colour)
     return row
 
 
@@ -904,6 +907,12 @@ def figure_detail(db, row):
             part['warnings'].append(warning)
     names = _names(db, [k[0] for k in parts])
     row['figure_components'] = decorate(db, [dict(p, name=names.get(p['item_id'], {}).get('name')) for p in parts.values()])
+    if has_catalogue(db):
+        from . import set_scoring, supersets
+        index, _ = set_scoring.index_for(db)
+        for part in row['figure_components']:
+            if part['color_id'] is not None:
+                part['found_in_sets'] = supersets.counts(index, part['item_id'], part['color_id'])['sets']
     for used in row['used_in']:
         used['parts_missing'] = sum((p['missing'] or 0) + (p['damaged'] or 0) for p in components if p['copy_id'] == used['copy_id'])
     row['loose_count'] = sum(r['quantity'] or 0 for r in row['instances'])

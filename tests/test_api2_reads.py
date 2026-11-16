@@ -26,7 +26,7 @@ def paths(w):
         'get_storages_labels_pdf': f'/storages/labels.pdf?ids={w.shelf}', 'get_storages_labels_link': f'/storages/labels?ids={w.shelf}',
         'get_catalogue_items': '/catalogue/items?limit=3', 'get_catalogue_items_by_id': f'/catalogue/items/{w.keep}', 'get_catalogue_status': '/catalogue/status',
         'get_colors': '/colors', 'get_colors_by_color_id': '/colors/4', 'get_items': '/items', 'get_items_by_id_inventory': f'/items/{w.keep}/inventory',
-        'get_items_by_id_used_in': f'/items/{w.brick}/used-in', 'get_items_by_id_colors': f'/items/{w.brick}/colors', 'get_items_by_id_images': f'/items/{w.keep}/images',
+        'get_items_by_id_used_in': f'/items/{w.brick}/used-in', 'get_items_by_id_supersets': f'/items/{w.brick}/supersets?color={w.red}', 'get_items_by_id_colors': f'/items/{w.brick}/colors', 'get_items_by_id_images': f'/items/{w.keep}/images',
         'get_images_by_id_content': '/images/1/content', 'get_copies': '/copies', 'get_copies_by_id': f'/copies/{copy}',
         'get_copies_by_id_completeness': f'/copies/{copy}/completeness', 'get_copies_by_id_check': f'/copies/{copy}/check', 'get_copies_by_id_gaps': f'/copies/{copy}/gaps',
         'get_copies_by_id_matches': f'/copies/{copy}/matches', 'get_copies_by_id_parts': f'/copies/{copy}/parts', 'get_copies_by_id_figures': f'/copies/{copy}/figures',
@@ -57,7 +57,7 @@ def full(coll, world, pair):
 
 
 def test_every_read_operation_has_a_case(world):
-    assert len(READS) == 66 and set(paths(world)) == set(READS)
+    assert len(READS) == 67 and set(paths(world)) == set(READS)
 
 
 @pytest.mark.parametrize('operation', READS)
@@ -302,7 +302,7 @@ def test_a_merged_id_answers_what_the_contract_says_on_every_path_that_lists_307
     coll.db.commit()
     listed = sorted(op for op in READS if '307' in OPERATION_BY_ID[op]['responses'])
     assert listed == ['get_items_by_id_colors', 'get_items_by_id_detail', 'get_items_by_id_images', 'get_items_by_id_inventory', 'get_items_by_id_links',
-                      'get_items_by_id_prices', 'get_items_by_id_prices_history', 'get_items_by_id_provider_status', 'get_items_by_id_used_in',
+                      'get_items_by_id_prices', 'get_items_by_id_prices_history', 'get_items_by_id_provider_status', 'get_items_by_id_supersets', 'get_items_by_id_used_in',
                       'get_minifigures_by_id']
     for operation in listed:
         template = next(p for p, methods in CONTRACT['paths'].items() for m in methods.values() if isinstance(m, dict) and m['operationId'] == operation)

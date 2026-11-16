@@ -9,6 +9,8 @@ One task per page, for someone who already knows the app.
 
 ## At the table
 
+- [Find where a part is used](pictures-and-prices.md#part-detail-find-sets-and-minifigures-containing-a-part)
+
 - [Check a set's parts](check-set-parts.md)
 - [Export or print the missing parts](export-missing-parts.md)
 - [Pick parts for several sets](pick-parts.md)

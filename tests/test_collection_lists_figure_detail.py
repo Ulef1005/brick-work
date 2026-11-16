@@ -160,6 +160,7 @@ def test_figure_detail_queries_do_not_grow_per_component_or_copy(coll, figure_wo
             finally:
                 db.set_trace_callback(None)
         return len(queries)
+    measured()  # Warm the shared catalogue membership index before comparing query growth.
     before = measured()
     for _ in range(20):
         coll.add_copy('1000-1')

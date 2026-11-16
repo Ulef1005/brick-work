@@ -323,3 +323,27 @@ def get_minifigures_by_id(db, id):
     if kind != 'minifigure':
         raise errors.NotFound('No such minifigure')
     return respond(detail_body(db, item_id, kind))
+
+
+@route('/items/<id>/supersets')
+@reading
+def get_items_by_id_supersets(db, id):
+    """Colour-scoped catalogue membership and live owned holders (#40)."""
+    from ..core import supersets
+    args = arguments()
+    item_id = live(db, id)
+    try:
+        color = int(args['color'])
+        limit = int(args.get('limit', 15))
+        offset = int(args.get('offset', 0))
+    except (KeyError, TypeError, ValueError):
+        raise errors.BadRequest('color is required; color, limit and offset must be integers') from None
+    result = supersets.found_in(db, item_id, color, type=args.get('type', 'all'),
+        search=args.get('q', ''), sort=args.get('sort', 'newest'), limit=limit, offset=offset)
+    rows = result.pop('results')
+    book = bodies(db, items=[r['item_id'] for r in rows], colors=[color])
+    data = [dict(item=book.item(r['item_id']), quantity=r['quantity'], owned=r['owned'],
+        copy_id=r.get('copy_id'), stock_id=r.get('stock_id'), label=r.get('label'),
+        storage_name=r.get('storage_name'), year=r.get('year'), theme=r.get('theme'),
+        on_wishlist=r['on_wishlist']) for r in rows]
+    return respond(data, color=book.color(color), **result)

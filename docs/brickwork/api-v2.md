@@ -281,6 +281,7 @@ Scope `none` means no token. Every path is relative to `/api/v2`. The **v1** col
 | `GET /items/{id}/images` | Local pictures of the item. | read | M.11b | `GET /items/{type}/{no}/images` |
 | `POST /items/{id}/import` | Create the item identity and queue the six import steps. | write | M.11d | `POST /items/{type}/{no}/import` |
 | `GET /items/{id}/inventory` | Parts and figures the item is made of (inventory lines). | read | M.11b | `GET /items/{type}/{no}/inventory` |
+| `GET /items/{id}/supersets` | Colour-scoped catalogue sets and minifigures, owned holders first. | read | M.11b | new (#40) |
 | `GET /items/{id}/used-in` | Owned copies that contain this part or figure. | read | M.11b | `GET /items/{type}/{no}/used-in` |
 
 #### Identity
@@ -578,7 +579,7 @@ The `?` item type and the `item_type`, `item_no` and `color_id` members are gone
 | Piece | What | Operations |
 |---|---|---|
 | **M.11a** | This contract and the OpenAPI twin; the `/api/v2` blueprint (auth, scopes, throttle, read-only, audit origin, envelopes, errors, body caps). Meta; item addressing and the item and colour serializers; the merged-id `307`; v1's 410 names v2; the contract check covers v2 | 9 |
-| **M.11b** | Reads: catalogue, colours, items (detail, inventory, used-in, colours, images, links, provider status), copies, stock, minifigures, gaps and matches, instructions, prices. Further reads: wishes and wishlists, storages, lots, places, flags, planning, exports, events, statistics, set scores, candidate sets of a lot | 59 |
+| **M.11b** | Reads: catalogue, colours, items (detail, inventory, used-in, colours, images, links, provider status), copies, stock, minifigures, gaps and matches, instructions, prices. Further reads: wishes and wishlists, storages, lots, places, flags, planning, exports, events, statistics, set scores, candidate sets of a lot | 60 |
 | **M.11c** | Writes: the v2 write contract, create by numbers with `422 unidentified`, the copy inventory switch and cancel, links, merge and unmerge, settings, undo | 65 |
 | **M.11d** | Orders, jobs, sources and keys, sync, imports, identifications, tokens, administration; the dead v1 callers removed | 57 |
 | **M.11e** | The MCP regenerated from this file, the v2 parity test, and the API and MCP docs. **Done** (2026-10-28) | none |
@@ -673,6 +674,7 @@ Operations by piece: M.11a 9, M.11b 64, M.11c 71, M.11d 57 (201 in all). The two
 | `GET /api/v2/items/{id}/prices/history` | M.11b | `brickwork.api2.prices.get_items_by_id_prices_history` |
 | `POST /api/v2/items/{id}/prices/refresh` | M.11d | `brickwork.api2.jobs.post_items_by_id_prices_refresh` |
 | `GET /api/v2/items/{id}/provider-status` | M.11b | `brickwork.api2.item_views.get_items_by_id_provider_status` |
+| `GET /api/v2/items/{id}/supersets` | M.11b | `brickwork.api2.item_views.get_items_by_id_supersets` |
 | `POST /api/v2/items/{id}/unmerge` | M.11c | `brickwork.api2.write_identity.post_items_by_id_unmerge` |
 | `GET /api/v2/items/{id}/used-in` | M.11b | `brickwork.api2.item_views.get_items_by_id_used_in` |
 | `GET /api/v2/jobs` | M.11d | `brickwork.api2.jobs.get_jobs` |
@@ -910,3 +912,9 @@ If the QR renderer dependency is missing, both operations and the MCP tool retur
 Both downloads and previews use `core.labels`. Codes contain storage URLs, with error correction M and a four-module quiet zone.
 
 `Settings.labels_address` stores the label origin. `PATCH /settings` accepts it with admin scope; empty uses the request origin.
+
+### Part membership (#40)
+
+`GET /items/{id}/supersets?color=<id>` requires a Brick Work colour id. It accepts `type=all|sets|minifigures`, `q`, `sort=newest|oldest|name|number`, `limit` (1–100, default 15), and `offset` (default 0). This bounded lookup uses offset paging like set scores. The envelope carries `data` (item bodies, quantity, owned, copy_id, stock_id, label, storage_name, year, theme, on_wishlist), `color`, `counts` (distinct catalogue sets and minifigures), `owned_count` (filtered owned rows), filtered displayed-row `total`, `limit`, `offset`, `catalogue`, and `colour_unmatched`. Owned copies replace the catalogue row, but remain separate copies. Spare parts are excluded; figures and subsets are expanded. No catalogue means owned holders only. The generated read-only MCP tool is `get_part_supersets`. API v2 now implements 204 operations.
+
+For `get_part_supersets`, the assistant supplies a provider, kind, part number and colour number in that provider’s space. The MCP adapter resolves both item and colour through `/lookup` before calling the item-id route. The REST route itself always takes a Brick Work colour id.

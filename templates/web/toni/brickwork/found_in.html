@@ -1,0 +1,13 @@
+<section class="bc-module bc-found" id="found-in" data-found-in data-url="{{ url_for('web.bw_item_supersets',item_id=detail.item_id,color=detail.color_id) }}">
+<h2>Found in</h2>
+<p>{{ colour_chip(detail) }} <span class="mono">{{ detail.number_text }}</span> · this colour only</p>
+<form data-found-form role="search">
+<label>Search <input name="q" type="search" placeholder="Search sets and minifigures"></label>
+<details><summary>Filters</summary><label>Type <select name="type"><option value="all">All</option><option value="sets">Sets</option><option value="minifigures">Minifigures</option></select></label></details>
+<label>Sort <select name="sort"><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="number">Number</option><option value="name">Name</option></select></label>
+<button>Apply</button>
+</form>
+<button type="button" data-found-clear hidden></button>
+<p data-found-status role="status" aria-live="polite"></p><button type="button" data-found-retry hidden>Retry</button>
+<div data-found-results>{% set found=detail.found_in %}{% include 'web/toni/brickwork/found_in_results.html' %}</div>
+</section>

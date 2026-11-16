@@ -22,6 +22,13 @@ Facts an assistant is most often asked:
 - [README](README.md): the full overview, install and settings
 - [Install on your computer with Docker Desktop](docs/how-to/install-docker-desktop.md): Windows or Mac, no Git
 - [Your first set, start to finish](docs/tutorials/first-set.md): the first-run tutorial
+- [Find the sets in a bulk lot](docs/tutorials/find-the-sets-in-a-bulk-lot.md): set detection, stickers and the pull list
+- [Build from what you have, and order the rest](docs/tutorials/build-from-what-you-have.md): Build Scout and one order list
+- [Give every bin a place, then label it](docs/tutorials/storage-and-labels.md): storage and printed labels
+- [Keep it or part it out](docs/tutorials/value-and-selling.md): value and selling a copy
+- [Find and download the instructions for a set](docs/tutorials/find-instructions.md): booklets from the Official source
+- [Identify a loose piece and find where it belongs](docs/tutorials/identify-a-loose-piece.md): Part Spotter and Found in
+- [Back up, upgrade and restore](docs/tutorials/back-up-and-upgrade.md): a backup, an upgrade and a restore rehearsal
 
 ## Docs
 

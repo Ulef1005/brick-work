@@ -172,7 +172,7 @@
    "path": "/collection/item/set/7286-1?copy=56325b99-16bc-549b-bb98-f7be2ab38829",
    "script": "document.querySelector(\".bc-info-edit\").click();await new Promise(r=>setTimeout(r,300));",
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "12-Minifigure-detail",
@@ -256,7 +256,7 @@
    "world": "showcase",
    "path": "/collection/lots/9637c558-464c-59a7-a79b-e1b57f4aff0c/pull/11",
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "15-Part-lot",
@@ -266,7 +266,7 @@
    "path": "/collection/lots/9637c558-464c-59a7-a79b-e1b57f4aff0c/pull/11/make-copy#bp-confirm",
    "max": 900,
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "16-Module-states",
@@ -631,7 +631,7 @@
    "world": "demo",
    "path": "/workbench/check-parts/56325b99-16bc-549b-bb98-f7be2ab38829",
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "31-Part-to-inventory",
@@ -742,7 +742,7 @@
    "world": "showcase",
    "path": "/workbench/check-parts/79f5df76-b75b-5fd5-bf6c-d3f4506e1406",
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "36-Check-this-copy",
@@ -751,7 +751,7 @@
    "world": "extras",
    "path": "/workbench/check-parts/9d6269ab-614d-549e-90ce-ca84e84afded",
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "36-Check-this-copy",
@@ -760,7 +760,7 @@
    "world": "showcase",
    "path": "/workbench/check-parts/60b6e39e-1532-5baf-a0df-08566d2328a2",
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "36-Check-this-copy",
@@ -789,7 +789,7 @@
    "path": "/workbench/check-parts/60b6e39e-1532-5baf-a0df-08566d2328a2",
    "javascript": false,
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "37-Orders-at-macbook-and-ipad-size",
@@ -872,7 +872,7 @@
    "world": "demo",
    "path": "/planning/order-missing-parts",
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "43-Complete-sets",
@@ -881,7 +881,7 @@
    "world": "demo",
    "path": "/planning/order-missing-parts?step=review",
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "43-Complete-sets",
@@ -890,7 +890,7 @@
    "world": "edge-order",
    "path": "/planning/order-missing-parts?step=review&prefer=1",
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "43-Complete-sets",
@@ -899,7 +899,7 @@
    "world": "edge-order",
    "path": "/planning/order-missing-parts?step=review&prefer=1&tab=pab",
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "44-Complete-sets",
@@ -1126,7 +1126,7 @@
    "world": "edge",
    "path": "/planning/complete-sets?tab=figures",
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "43-Complete-sets",
@@ -1135,7 +1135,7 @@
    "world": "edge-empty",
    "path": "/planning/complete-sets?tab=figures",
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "43-Complete-sets",
@@ -1144,7 +1144,7 @@
    "world": "edge",
    "path": "/planning/complete-sets?tab=figures&theme=Complete+figures",
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "43-Complete-sets",
@@ -1153,7 +1153,7 @@
    "world": "edge",
    "path": "/planning/complete-sets?tab=figures&recommendation=Needs+evidence",
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "12-Minifigure-detail",
@@ -1234,7 +1234,7 @@
    "world": "edge",
    "path": "/workbench/storage?labels=error",
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "10-Set-detail",

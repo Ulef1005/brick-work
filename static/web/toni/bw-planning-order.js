@@ -36,7 +36,7 @@
         setup();
         if (window.bwPartSections) window.bwPartSections(next);
         if (focus) next.querySelector(focus)?.focus({ preventScroll: true });
-      } catch (_) { form.submit(); }
+      } catch (_) { if (mine !== latest) return; form.submit(); }
     };
     form.addEventListener('change', (event) => {
       const target = event.target;

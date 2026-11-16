@@ -180,3 +180,20 @@ def test_the_source_controls_stay_on_the_review_step(coll, pair, client):
     soup = page(client, sel='1', copy=copies(s, 'first'), step='review')
     links = [soup.select_one('.oo-prefer')['href']] + [a['href'] for a in soup.select('.oo-tabs a')] + [a['href'] for a in soup.select('a.oo-sc')]
     assert links and all('step=review' in href for href in links)
+
+
+def test_the_same_element_on_two_lines_is_one_row_in_the_pick_a_brick_file(coll, pair, read):
+    s = scene(coll)
+    elements(pair, coll, (*RED_3001, '300126'))
+    new = coll.add_copy('1000-2', condition='new')
+    coll.mark(new, '3001', '4', missing=1)                                                    # the same part and colour needed in N and U: two lines
+    order = placed(read, [s['first'], s['second'], s['gate'], new], prefer=True)
+    assert [l['element_id'] for l in order['lines'] if l['number_text'] == '3001'] == ['300126', '300126']
+    assert order_missing.pick_a_brick_csv(order) == 'elementId,quantity\r\n300126,5\r\n'
+
+
+def test_a_non_numeric_element_id_is_never_the_lowest_one_nor_zero(coll, pair, read):
+    s = scene(coll)
+    elements(pair, coll, (*RED_3001, 'x-12'), (*RED_3001, '300126'), ('3023', '15', 'abc'))
+    order = by_part(placed(read, [s['first'], s['gate_new']], prefer=True))
+    assert order['3001']['element_id'] == '300126' and order['3023']['element_id'] is None

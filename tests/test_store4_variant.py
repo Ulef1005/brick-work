@@ -263,3 +263,30 @@ def test_the_preview_does_not_open_inside_a_transaction(coll, world):
     with pytest.raises(Store4Error, match='own transaction'):
         variant.preview_change_variant(coll.db, a, b)
     coll.db.rollback()
+
+
+def test_only_a_live_catalogue_item_changes_variant_in_the_core_whoever_calls(coll, world):
+    db = coll.db
+    a, b, _ = figures(coll, world)
+    mine = coll.local('minifigure', 'Mine', born_key='mine')
+    before = table_digest(db)
+    for source, target in ((a, mine), (mine, b)):                                               # a user-added target, a user-added source
+        with pytest.raises(MergeRefused, match='not a live catalogue item'):
+            variant.change_variant(db, source, target, via='api')
+    coll.sql("UPDATE item SET catalogue_retired_at=? WHERE id=?", (STAMP, b))                    # a retired target
+    with pytest.raises(MergeRefused, match='not a live catalogue item'):
+        variant.change_variant(db, a, b, via='api')
+    coll.sql("UPDATE item SET catalogue_retired_at=NULL WHERE id=?", (b,))
+    assert table_digest(db) == before
+
+
+def test_an_undo_is_refused_when_an_item_of_the_receipt_was_merged_since(coll, world):
+    db = coll.db
+    a, b, _ = figures(coll, world)
+    result = variant.change_variant(db, a, b, via='cli')
+    coll.sql("UPDATE item SET catalogue_retired_at=? WHERE id=?", (STAMP, a))
+    moves.merge(db, a, coll.local('minifigure', 'Other', born_key='other'), via='cli')          # a owns nothing now and is merged away
+    db.execute('BEGIN IMMEDIATE')
+    with pytest.raises(MergeRefused, match='undo the merge first'):
+        variant.undo_change_variant_in(db, result['event_id'], via='cli')
+    db.rollback()

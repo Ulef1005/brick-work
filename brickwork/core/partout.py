@@ -54,7 +54,7 @@ def values(db, copy_ids):
     quotes = {key: planning.quote(market.get(key, []), 'used', config, stamp) for key in scope}
     result, unpriced = {}, {}
     for copy_id in copy_ids:
-        total, priced, missing = Decimal(0), 0, []
+        total, priced, missing, used = Decimal(0), 0, [], []
         for item_id, colour, present in lines.get(copy_id, []):
             q = quotes.get((item_id, colour))
             if q is None:
@@ -62,11 +62,13 @@ def values(db, copy_ids):
                 continue
             total += Decimal(str(q['price'])) * present
             priced += 1
+            used.append(q)
         count = len(lines.get(copy_id, []))
         enough = bool(count) and priced >= COVERAGE * count
         unpriced[copy_id] = sorted({m['item_id'] for m in missing})
         result[copy_id] = dict(value=str(total.quantize(Decimal('0.01'))) if enough else None, currency=config['bricklink_currency'],
-                               lines=count, priced=priced, enough=enough, unpriced=missing[:50], unpriced_count=len(missing))
+                               oldest_observed=min((q['observed_at'] for q in used if q.get('observed_at')), default=None),
+                               stale=any(q.get('stale') for q in used), lines=count, priced=priced, enough=enough, unpriced=missing[:50], unpriced_count=len(missing))
     refreshable = set(_refreshable(db, sorted({i for ids in unpriced.values() for i in ids})))      # one read for every copy, not one per copy
     for copy_id, wanted in unpriced.items():
         result[copy_id]['unpriced_items'] = [i for i in wanted if i in refreshable][:200]
@@ -87,12 +89,17 @@ def compare(copy, partout, config=None):
     if not partout or not partout.get('lines'):
         return None
     out = dict(partout=partout.get('value'), currency=partout['currency'], lines=partout['lines'], priced=partout['priced'],
-               unpriced_items=partout.get('unpriced_items', []), hint=None)
+               unpriced_items=partout.get('unpriced_items', []), hint=None,
+               oldest_observed=partout.get('oldest_observed'), stale=partout.get('stale', False), no_comparison=False)
     if out['partout'] is None:
         # Not enough prices for a total: the card says so and offers to fetch the missing ones.
         out['complete'] = out['as_is'] = None
         return out
-    complete = (copy.get('complete_quote') or {}).get('price')
+    complete_quote = copy.get('complete_quote') or {}
+    if complete_quote.get('currency', out['currency']) != out['currency']:
+        out.update(complete=None, as_is=None, no_comparison=True)
+        return out
+    complete = complete_quote.get('price')
     out['complete'] = str(D(str(complete)).quantize(D('0.01'))) if complete is not None else None
     as_is = copy.get('current_value')
     out['as_is'] = str(D(str(as_is)).quantize(D('0.01'))) if as_is is not None else None

@@ -5,6 +5,7 @@ Sets (own parts, spares left out): 9101-1 holds 3001 red x4, 3023 white x2, syn-
 and syn-m1 red x2 (3); 9106-1 two of 9101-1 and 970c22 red x1 (15, made of a set); 9107-1 3001, syn-r1, syn-r2 red x1 each (3). Years 2001 to 2007, theme Castle."""
 from contextlib import closing
 import json
+from decimal import Decimal
 
 import pytest
 
@@ -143,6 +144,17 @@ def test_a_price_in_another_currency_is_left_out(world):
     w.coll.price(w.part('3001'), '0.10', colour=w.red)
     assert B.price_map(w.db, [(w.part('3023'), w.white), (w.part('syn-r1'), w.red), (w.part('3001'), w.red)])['currency'] == 'EUR'
     assert len(B.price_map(w.db, [(w.part('3023'), w.white), (w.part('syn-r1'), w.red), (w.part('3001'), w.red)])['prices']) == 2
+
+
+def test_a_line_priced_best_in_a_minority_currency_keeps_its_majority_currency_price(world):
+    w = world
+    w.coll.price(w.part('3001'), '0.10', colour=w.red)
+    w.coll.price(w.part('3023'), '0.30', colour=w.white)
+    w.coll.price(w.part('3023'), '0.20', colour=w.white, currency='USD')                # a newer USD observation outranks the EUR one
+    pairs = [(w.part('3001'), w.red), (w.part('3023'), w.white)]
+    answer = B.price_map(w.db, pairs)
+    assert answer['currency'] == 'EUR'                                                  # two EUR lines to one USD row
+    assert answer['prices'] == {(w.part('3001'), w.red): Decimal('0.10'), (w.part('3023'), w.white): Decimal('0.30')}
 
 
 # ---------- filters ----------
@@ -412,6 +424,29 @@ def test_a_build_from_damaged_rows_records_them_as_damaged_on_the_copy(world):
     assert (rows[w.part('3023')]['missing'], rows[w.part('3023')]['damaged']) == (0, 1)
     assert rows[w.part('3001')]['damaged'] == 0
     assert w.db.execute('SELECT completeness FROM copy WHERE id=?', (made['copy_id'],)).fetchone()[0] == 'incomplete'
+
+
+def test_a_build_takes_good_rows_before_damaged_ones(world):
+    w = world
+    big = w.stock('3001', w.red, 10, condition='damaged')
+    good = w.stock('3001', w.red, 4, condition='used')
+    w.stock('3023', w.white, 2, condition='used')
+    rows = B.stock_rows(w.db, damaged=True)
+    assert {r['id']: r['condition'] for r in rows}[big] == 'damaged'
+    takes, _ = B.plan_takes(w.db, w.set('9102-1'), rows)
+    assert (good, 4) in takes and all(sid != big for sid, _ in takes)
+    made = B.build_set(w.db, w.set('9102-1'), damaged=True)
+    assert (made['missing_parts'], made['damaged_parts'], made['completeness']) == (0, 0, 'complete')
+
+
+def test_the_scout_index_is_built_outside_the_write_transaction(world, monkeypatch):
+    w = world
+    w.fill()
+    seen = []
+    real = B.scout_for
+    monkeypatch.setattr(B, 'scout_for', lambda db: (seen.append(db.in_transaction), real(db))[1])
+    B.build_set(w.db, w.set('9102-1'))
+    assert seen[0] is False
 
 
 def test_a_damaged_whole_figure_is_never_given(world):

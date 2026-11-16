@@ -1237,7 +1237,9 @@ def bw_build_scout_write(item_id, action):
         pieces = f'{made["pieces"]} piece{"" if made["pieces"] == 1 else "s"}'
         figures = f' and {made["figures"]} figure{"" if made["figures"] == 1 else "s"}' if made['figures'] else ''
         missing = f' · {made["missing_parts"]} still missing' if made['missing_parts'] else ''
-        return jsonify(message=f'Made a copy · {pieces}{figures} moved out of loose stock{missing}', event_id=made['event_id'],
+        gaps = [f'{n} {noun}{"" if n == 1 else "s"} {what}' for n, noun, what in ((made.get('missing_figures', 0), 'figure', 'missing'), (made.get('damaged_parts', 0), 'piece', 'damaged')) if n]
+        incomplete = f' · incomplete: {", ".join(gaps)}' if gaps else ''
+        return jsonify(message=f'Made a copy · {pieces}{figures} moved out of loose stock{missing}{incomplete}', event_id=made['event_id'],
                        url=url_for('web.bw_collection_item', item_id=item_id, copy=made['copy_id']))
     except (ValueError, Store4Error) as error:
         return jsonify(message=public(error, 'Nothing was saved · the stock may have changed. Review and try again.')), 400

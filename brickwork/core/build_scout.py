@@ -43,7 +43,7 @@ MISSING_LINES_SHOWN = 12
 # ---------- the stock ----------
 
 def stock_rows(db, *, lots=(), storages=(), loose=False, damaged=False):
-    """The live loose rows the chosen sources hold, each `dict(id, item_id, color_id, kind, have, lot_id, storage_id)`, `have` being what can be given
+    """The live loose rows the chosen sources hold, each `dict(id, item_id, color_id, kind, have, lot_id, storage_id, condition)`, `have` being what can be given
     (`workbench.available`). With no source chosen: all loose stock. A row in a chosen lot and a chosen storage is one row."""
     lots, storages = list(dict.fromkeys(lots)), list(dict.fromkeys(storages))
     where, params = '', []
@@ -69,7 +69,7 @@ def stock_rows(db, *, lots=(), storages=(), loose=False, damaged=False):
         have = workbench.available(db, dict(row, condition='used') if damaged and row['condition'] == 'damaged' else row, defective=defective)
         if have:
             found.append(dict(id=row['id'], item_id=row['item_id'], color_id=None if row['kind'] == 'minifigure' else row['color_id'], kind=row['kind'],
-                              have=have, lot_id=row['lot_id'], storage_id=row['storage_id']))
+                              have=have, lot_id=row['lot_id'], storage_id=row['storage_id'], condition=row['condition']))
     return found
 
 
@@ -339,16 +339,16 @@ def price_map(db, pairs):
         except (InvalidOperation, TypeError):
             continue
         rank = (row['condition'] != 'used', row['guide'] != 'sold', -row['id'])
-        key = (row['item_id'], row['color_id'])
+        key = (row['item_id'], row['color_id'], row['currency'] or '')
         if key not in best or rank < best[key][0]:
-            best[key] = (rank, value, row['currency'] or '')
+            best[key] = (rank, value)
     if not best:
         return dict(prices={}, currency=None)
     counts = defaultdict(int)
-    for _, _, currency in best.values():
+    for _, _, currency in best:
         counts[currency] += 1
     currency = max(counts, key=lambda c: (counts[c], c))
-    return dict(prices={k: v for k, (_, v, c) in best.items() if c == currency}, currency=currency or None)
+    return dict(prices={(i, c): v for (i, c, cur), (_, v) in best.items() if cur == currency}, currency=currency or None)
 
 
 def cost_of(missing, prices):
@@ -449,7 +449,7 @@ def wish_set(db, set_item_id):
 
 def plan_takes(db, set_item_id, rows):
     """How a Build it takes from `rows` (`stock_rows`): `[(stock id, amount)]` so that every part line gets min(have, need) and every figure line
-    min(have, need), the largest usable row first and then the lowest id (the Matchmaker's order), and the totals taken."""
+    min(have, need), good rows before damaged ones, then the largest usable row first and then the lowest id (the Matchmaker's order), and the totals taken."""
     chosen = scout_for(db)
     position = chosen.parts.position.get(int(set_item_id))
     if position is None and int(set_item_id) not in chosen.figure_only:
@@ -466,7 +466,7 @@ def plan_takes(db, set_item_id, rows):
     takes, pieces, figures = [], 0, 0
     for key, need in needs:
         left = need
-        for row in sorted(by_key.get(key, ()), key=lambda r: (-min(r['have'], need), r['id'])):
+        for row in sorted(by_key.get(key, ()), key=lambda r: (r['condition'] == 'damaged', -min(r['have'], need), r['id'])):
             step = min(left, row['have'])
             if step:
                 takes.append((row['id'], step))
@@ -486,6 +486,7 @@ def build_set(db, set_item_id, *, lots=(), storages=(), loose=False, damaged=Fal
     the copy, as one transaction and one undoable event (`found_copy.make_copy_in`). Returns `dict(event_id, copy_id, pieces, figures, missing_parts,
     missing_figures)`; a `ValueError` is a refusal that wrote nothing (a set with no part list or made of sets, nothing in stock for it)."""
     via, actor = origin()
+    scout_for(db)                                       # the index is built outside the write transaction
     with transaction(db):
         rows = stock_rows(db, lots=lots, storages=storages, loose=loose, damaged=damaged)
         takes, totals = plan_takes(db, set_item_id, rows)

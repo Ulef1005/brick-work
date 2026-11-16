@@ -1,6 +1,6 @@
 ---
 audience: user
-verified: 0.5
+verified: 1.0
 ---
 
 # Metrics
@@ -14,8 +14,8 @@ verified: 0.5
 | Unit | State (Sealed, Complete, Incomplete, Not checked) |
 | Good | Complete |
 | Since | 0.5.0 |
-| Code | `brickwork/core/completeness.py::derived_state` |
+| Code | `brickwork/store4/copies.py::derived_completeness` |
 
-A copy added without a completeness starts as derived Incomplete; choosing a value makes it manual. The API returns both the stored and the derived value at `GET /api/v1/copies/{id}/completeness`.
+A copy added without a completeness shows Not checked. Choosing a value makes it manual; choosing the value a derived copy already has keeps it derived. The API returns the stored and the derived value at `GET /api/v2/copies/{id}/completeness`, with `completeness_source`, `checked`, `missing`, `damaged` and `missing_figures`.
 
 Plain-language explanation: [Concepts › Completeness](../concepts/completeness.md).

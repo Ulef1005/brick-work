@@ -14,4 +14,4 @@ Exact definitions, one section per item.
 
 <!-- reference/metrics.md: one ## section per metric with a table of
 Definition, Formula, Unit, Good (what good looks like), Since (version) and Code (file::function).
-The code that computes the metric links this section, and the section links its concept page. Worked example: docs/examples/metric-reference.md. -->
+The code that computes the metric links this section, and the section links its concept page. -->

@@ -310,6 +310,9 @@ TUTORIAL_SHOTS = {
     'scout-set': ({'desktop': scout_set('7938-1'), 'phone': scout_page('7938-1')}, None, {
         layout: (width, ['.bs-panel'], [('.bs-strip', 1), ('.bs-build', 2)], NO_FIGURE_LINES)
         for layout, width in (('desktop', 1024), ('phone', 390))}),
+    'change-variant': (variant_change('32039', '42135'), None, {
+        layout: (width, ['.bi-layout'], [('.bi-result[aria-current]', 1), ('.bi-moves', 2), ('.bi-confirm button', 3)], '')
+        for layout, width in (('desktop', 1024), ('phone', 390))}),
     'complete-sets': ('/planning/complete-sets', None, {
         layout: (width, ['[data-bp-row]:first-of-type'], [('[data-bp-row]:first-of-type', 1), ('[data-bp-pin]', 2), ('.bp-repair-details summary', 3)], '')
         for layout, width in (('desktop', 1024), ('phone', 390))}),

@@ -39,6 +39,8 @@ COPIES = {
 SECOND_COPY = {'7213-1': ('built', 'Study shelf')}
 STATUS = {'complete': ['built'], 'gaps': ['built', 'needs-check'], 'progress': ['in-pieces', 'needs-check'], 'unchecked': ['in-pieces'], 'sealed': ['sealed']}
 CHECKED_SETS = ('7938-1', '10210-1', '7213-1')        # the copies the loose stock can finish: a finished check is behind them
+# Parts whose picture is also stored without a colour: the Change variant screen shows an item with no colour chosen, and looks for (item, NULL) before (item, colour).
+COLOURLESS = {('32039', '0'), ('42135', '0')}
 FINISHING = {'7938-1': 1.0, '10210-1': 1.0, '7213-1': 0.5}
 STICKER_SETS = ('7938-1', '8043-1', '7213-1')          # the sets that hold a sticker sheet (a part of the category Stickers)
 LOT = uid('lot', 'flea-market-bag')
@@ -261,6 +263,9 @@ class Layer(showcase.Layer):
                 width, height = size_of(images / file)
                 db.execute('INSERT OR IGNORE INTO picture(item_id, color_id, source, kind, local_path, url, width, height, fetched_at) VALUES(?, ?, ?, ?, ?, NULL, ?, ?, ?)',
                            (row['item_id'], row['color_id'], SOURCE, 'photo' if row['kind'] == 'part' else 'render', 'data/images/' + name, width, height, dataset.STAMP))
+                if (row['born_key'], row['colour_key']) in COLOURLESS:
+                    db.execute('INSERT INTO picture(item_id, color_id, source, kind, local_path, url, width, height, fetched_at) VALUES(?, NULL, ?, ?, ?, NULL, ?, ?, ?)',
+                               (row['item_id'], SOURCE, 'render', 'data/images/' + name, width, height, dataset.STAMP))
 
 
 def size_of(path):

@@ -9,7 +9,7 @@ verified: 1.0
 
 Do this when several of your sets have gaps and you want one list for the parts of the sets you choose. Each line is combined across those sets and shows which sets it comes from. You also get a BrickLink wanted list and a Pick a Brick file to buy the parts with.
 
-Open **Planning → Complete sets** and press **Order missing parts**, or open `/planning/order-missing-parts`. The page only reads: it changes nothing in your collection, and it works on a read-only instance too. [Check a set's parts](check-set-parts.md) records the gaps it works from.
+Open **Planning > Order missing parts**, or open `/planning/order-missing-parts`. The page only reads: it changes nothing in your collection, and it works on a read-only instance too. [Check a set's parts](check-set-parts.md) records the gaps it works from.
 
 ## Choose the sets
 

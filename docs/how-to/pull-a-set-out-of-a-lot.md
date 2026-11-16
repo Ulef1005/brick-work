@@ -11,7 +11,7 @@ Set detection says a set is probably in your bulk lot. The pull list shows which
 
 ## Open the pull list
 
-1. Open the lot and go to **Which sets are in this lot?**
+1. Open **Workbench > Lot Sorter**, open the lot, and go to **Which sets are in this lot?**
 2. On a candidate set, select **Pull list**.
 
 The list has every part of the set (the latest part list, spare parts left out, whole minifigures as their own lines) grouped by part group with pictures. Each line shows a counter, for example **2 of 4**: the pieces found of the pieces the set has. Pieces the lot already holds count as found and are marked *already in the lot*. A line with all its pieces found turns green and ticked.

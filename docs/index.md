@@ -17,3 +17,11 @@ Installation is in the [README](https://github.com/Ulef1005/brick-work#standalon
 ## Use with AI assistants
 
 An assistant that should know Brick Work can read [llms.txt](https://brick-work.app/llms.txt), the short facts about the app with links to the key pages, or [llms-full.txt](https://brick-work.app/llms-full.txt), the same facts and those pages in one file. To let an assistant work with a collection, connect it through the [MCP server](brickwork/mcp.md), or script it against the [API v2 reference](developer/api-v2-reference.md) and its [OpenAPI contract](https://github.com/Ulef1005/brick-work/blob/main/docs/brickwork/openapi-v2.yaml).
+
+## Navigation
+
+The sidebar and phone navigation share four groups: Collection, Workbench, Planning and Manage.
+
+Open **Workbench > Lot Sorter** to browse parts grouped by lot. Open a lot for **Which sets are in this lot?**, then its pull list.
+
+Open **Planning > Order missing parts**, after **Complete sets**, to choose copies and review their missing parts. Complete sets keeps its ordering link.

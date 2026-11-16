@@ -105,3 +105,5 @@ Choose **Part-out value** in Sort for the highest total first.
 Copies without a total come last.
 The part-out line sits below the gap and wraps on narrow screens.
 If no copy has a total, the list keeps number order and points to **Fetch part prices** on a set page.
+
+Open **Planning > Order missing parts** to combine gaps across copies and review where to buy them.

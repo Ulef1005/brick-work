@@ -39,7 +39,7 @@
 
 **Don't just manage your collection. Work with it.** Brick Work is a self-hosted web app for your brick collection. Check a set's parts, pull the missing ones from your loose stock, and see which unfinished sets that stock can complete. Every app does inventory; Brick Work also helps at the table.
 
-It is for private collectors who rebuild used and vintage sets, build from sorted bulk, or keep a messy collection spread over spreadsheets and sites. Rebrickable and Brickset stay where the catalogue and the market live; Brick Work is where your own copies, parts and drawers live, on your own computer, and it brings your collection over from Brickset, Rebrickable, BrickLink or BrickTracker. Free and open source (MIT).
+It is for private collectors who rebuild used and vintage sets, build from sorted bulk, or keep a messy collection spread over spreadsheets and sites. Rebrickable and Brickset stay where the catalogue and the market live; Brick Work is where your own copies, parts and drawers live, on your own computer, and it brings your collection over from Brickset, Rebrickable, BrickLink or BrickTracker. Free and open source (MIT). Built with Claude Code and reviewed by its maintainer, who uses it daily.
 
 **[Try the demo](https://brick-work.app/demo/)**: the real interface on an invented collection, in your browser. Nothing is saved. Or **[watch the tour](https://www.youtube.com/watch?v=R5Q_6GUB1OQ)** (1:36): the four workflows on the same invented collection.
 
@@ -63,7 +63,7 @@ Four named workflows on the **Workbench** do the work at the table. Each one is 
 
 ## In pictures
 
-The screenshots show the built app on the demo's invented collection, with Rebrickable's set and part pictures.
+These screenshots show the built app on the demo's invented collection with real Rebrickable set and part pictures; the demo itself shows placeholder drawings.
 
 <p align="center">
   <picture>
@@ -101,7 +101,8 @@ The screenshots show the built app on the demo's invented collection, with Rebri
 
 Release 1.1 (schema 4.6) builds on 1.0, the first release after its maintainer's real collection was set up from scratch through **Get started** on a test install and every workflow was run on it (milestone B). The schema is stable, upgrades from 0.5.x are tested, and you install by pulling the published multi-arch image from GHCR, with build provenance and an SBOM you can verify. Its maintainer uses Brick Work daily for a collection of about 200 set copies. What 1.1 adds since 1.0.1 is under **New in 1.1** below. Read the [CHANGELOG](CHANGELOG.md) before upgrading.
 
-- **Shipped:** the Collection (sets, minifigures, parts, gear, books and catalogs), the Workbench (Part Spotter, Set Inspector, Lot Sorter, Part Runner, Matchmaker, Build Scout, Orders, Storage), Planning (Wishlist, Prices, Complete sets, Order missing parts) and Manage screens; **Get started**, a guided first run; an installable web app with its own look on phone and desktop; a versioned REST API with scoped tokens and Undo; an admin CLI; an MCP server; orders from your BrickLink account, a confirmation e-mail or the order XML; optional BrickLink item lists; a read-only importer for an older tracker database; collection sync of owned and wanted sets with Rebrickable and Brickset; **New in 1.1:** set detection, stickers and the pull list for a bulk lot; Build Scout and **Build it**; Order missing parts with a BrickLink or Pick a Brick source per line; Change variant; part groups; Sell this copy; Value and gain, and the insurance report; Found in on part detail; complete-or-part-out figures for minifigures; storage labels with QR codes; Find instructions with booklet previews; user docs with eleven tutorials.
+- **New in 1.1:** set detection, stickers and the pull list for a bulk lot; Build Scout and **Build it**; Order missing parts with a BrickLink or Pick a Brick source per line; Change variant; part groups; Sell this copy; Value and gain, and the insurance report; Found in on part detail; complete-or-part-out figures for minifigures; storage labels with QR codes; Find instructions with booklet previews (the Official source needs a page renderer you set up); user docs with eleven tutorials.
+- **Shipped:** the Collection (sets, minifigures, parts, gear, books and catalogs), the Workbench (Part Spotter, Set Inspector, Lot Sorter, Part Runner, Matchmaker, Build Scout, Orders, Storage), Planning (Wishlist, Prices, Complete sets, Order missing parts) and Manage screens; **Get started**, a guided first run; an installable web app with its own look on phone and desktop; a versioned REST API with scoped tokens and Undo; an admin CLI; an MCP server; orders from your BrickLink account, a confirmation e-mail or the order XML; optional BrickLink item lists; a read-only importer for an older tracker database; collection sync of owned and wanted sets with Rebrickable and Brickset.
 - **Planned, not built:** sync with BrickLink (#143, open) and a pile check by photo. The order is kept in the [GitHub milestones](https://github.com/Ulef1005/brick-work/milestones) and the issues' priority labels (`now`, `next`, `later`); there are no dates.
 
 It is self-hosted, single-user and meant for a home network or a VPN, not the open internet.

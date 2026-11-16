@@ -601,6 +601,12 @@ def build(out):
         raise RuntimeError(f'{demo_entry} is missing {title_tag!r}; cannot inject demo SEO tags')
     demo_head = f'<meta name="description" content="{html.escape(DEMO_DESCRIPTION, quote=True)}">' + seo_head('Brick Work demo', DEMO_DESCRIPTION, 'demo/')
     demo_entry.write_text(entry_text.replace(title_tag, title_tag + demo_head, 1))
+    demo_canonical = f'<link rel="canonical" href="{origin()}{site_base()}demo/">'      # the entry (in the sitemap) is every demo page's canonical
+    for page_file in (out / 'demo').rglob('*.html'):      # the app's own pages (/demo/collection/sets/ ...): Search Console (16.11.) listed them as 'Duplicate without user-selected canonical'
+        if page_file != demo_entry and page_file.relative_to(out / 'demo').parts[0] != 'static':
+            text = page_file.read_text()
+            if 'rel="canonical"' not in text and '</head>' in text:
+                page_file.write_text(text.replace('</head>', demo_canonical + '</head>', 1))
     add_docs_seo(out)
     add_top_bar(out)
     (out / 'llms.txt').write_text(llms_txt())

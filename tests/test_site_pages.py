@@ -640,3 +640,13 @@ def test_moved_page_stubs_name_the_new_page_as_canonical(site):
         text = (site / folder / 'index.html').read_text()
         assert text.count('rel="canonical"') == 1, folder
         assert f'rel="canonical" href="https://brick-work.app/{target}"' in text or f'/{target}">' in text, folder
+
+
+def test_every_demo_page_names_the_demo_entry_as_canonical(site):
+    """Search Console (16.11.) listed /demo/collection/sets/ as 'Duplicate without user-selected canonical': the demo's pages show one invented collection, so each names the entry, /demo/, as canonical."""
+    from scripts.build_site import origin, site_base
+    canonical = f'rel="canonical" href="{origin()}{site_base()}demo/"'
+    pages = [p for p in (site / 'demo').rglob('*.html') if p.relative_to(site / 'demo').parts[0] != 'static']
+    assert len(pages) > 5
+    for page in pages:
+        assert page.read_text().count(canonical) == 1, page

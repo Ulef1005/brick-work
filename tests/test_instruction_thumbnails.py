@@ -105,6 +105,32 @@ def test_one_multiple_states_and_archive(client, coll, world):
     assert client.get(f'/manage/instructions/{second}/download?thumbnail=1').status_code == 404
 
 
+def test_restore_archived_booklet(client, coll, world, monkeypatch):
+    first = attach(coll, world.keep, label='Booklet 1 of 2')
+    second = attach(coll, world.keep, label='Booklet 2 of 2')
+    url = f'/collection/item/{world.keep}'
+    token = csrf(client)
+    assert client.post('/collection/save/instruction-archive', json=dict(csrf_token=token, identifier=second)).status_code == 200
+    page = BeautifulSoup(client.get(url).data, 'html.parser')
+    form = page.select_one('.kit-disclosure form[data-bc-action="instruction-restore"]')
+    assert form.select_one('[name=identifier]')['value'] == str(second)
+    assert form.select_one('button')['aria-label'] == 'Restore Booklet 2 of 2' and form.select_one('[data-bc-form-message][role=status]') is not None
+    response = client.post('/collection/save/instruction-restore', json=dict(csrf_token=token, identifier=second))
+    assert response.status_code == 200 and response.json['message'] == 'Restored'
+    page = BeautifulSoup(client.get(url).data, 'html.parser')
+    assert len(page.select('.bc-booklet-card')) == 2 and 'Show archived' not in page.text
+    # Undo takes the restore back
+    assert client.post('/collection/save/undo', json=dict(csrf_token=token, event_id=response.json['event_id'])).status_code == 200
+    page = BeautifulSoup(client.get(url).data, 'html.parser')
+    assert 'Show archived · 1' in page.text
+    # a live booklet cannot be restored
+    assert client.post('/collection/save/instruction-restore', json=dict(csrf_token=token, identifier=first)).status_code == 400
+    monkeypatch.setenv('BW_READ_ONLY', '1')
+    page = BeautifulSoup(client.get(url).data, 'html.parser')
+    assert 'Show archived · 1' in page.text and not page.select('form[data-bc-action="instruction-restore"]')
+    assert client.post('/collection/save/instruction-restore', json=dict(csrf_token=token, identifier=second)).status_code == 403
+
+
 def test_merge_carries_file_preview(coll, world):
     from brickwork.store4 import merge
     loser = coll.local('set', 'Local booklet set')

@@ -255,9 +255,13 @@ def test_the_new_states_are_built_in_a_known_world():
                                                                                ('36-Check-this-copy', 'javascript-off')}     # script-only states add no data, so they use the showcase
 
 
+# #25 slice 2: the booklet preview states, each on its own set of the edge-instructions world.
+BOOKLETS = {('10-Set-detail', f'booklet-thumbnails-{k}') for k in ('ready', 'pending', 'failed', 'single', 'archived')}
+
+
 def test_only_the_new_states_use_an_edge_world():
     """No state approved before the edge worlds existed was moved into one: its baseline would then depend on the edge data."""
-    assert {(e['screen'], e['state']) for e in gate.load()['states'] if e.get('world', '').startswith('edge')} <= NEW | VALUE | SOURCE | FIGURES | LABELS | {('48-Tools-and-admin', 'find-instructions-read-only')}
+    assert {(e['screen'], e['state']) for e in gate.load()['states'] if e.get('world', '').startswith('edge')} <= NEW | VALUE | SOURCE | FIGURES | LABELS | {('48-Tools-and-admin', 'find-instructions-read-only')} | BOOKLETS
 
 
 def test_the_state_left_unbuilt_says_what_is_missing():
@@ -314,3 +318,17 @@ FIGURES = {('12-Minifigure-detail', state) for state in ('comparison-filled', 'c
 
 
 LABELS = {('34-Storage', 'labels-' + state) for state in ('ready', 'two-sheets', 'error')}
+
+
+def test_the_instruction_world_has_each_preview_state(tmp_path):
+    """#25 slice 2: the sets of edge-instructions carry booklets as ready, pending (no job has run), failed (a corrupt PDF), one alone, and one archived."""
+    store = tmp_path / 'brickwork.db'
+    gate.build_store('edge-instructions', store)
+    with closing(sqlite3.connect(store)) as db:
+        db.row_factory = sqlite3.Row
+        with closing(sqlite3.connect(tmp_path / 'catalogue.db')) as cat:
+            ids = {number: item for number, item in cat.execute("SELECT born_key, id FROM item WHERE born_namespace='sets'")}
+        seen = {number: sorted((r['thumbnail_state'], bool(r['archived_at'])) for r in db.execute('SELECT * FROM instruction_file WHERE item_id=?', (ids[number],)))
+                for number in ('99101-1', '99102-1', '99103-1', '99104-1', '99105-1')}
+    assert seen == {'99101-1': [('ready', False)] * 3, '99102-1': [('pending', False)] * 2, '99103-1': [('failed', False), ('ready', False)],
+                    '99104-1': [('ready', False)], '99105-1': [('ready', False), ('ready', False), ('ready', True)]}

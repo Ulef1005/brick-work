@@ -52,9 +52,9 @@ def found_in(db, item_id, color_id, *, type='all', search='', sort='newest', lim
         catalogue += [dict(item_id=index.set_item[p], quantity=q, kind='set') for p, q in zip(positions, amounts)]
         figures, amounts = index.figure_posting.get(key, ((), ()))
         catalogue += [dict(item_id=i, quantity=q, kind='minifigure') for i, q in zip(figures, amounts)]
-        # Only an unknown colour (None) and "[No Color/Any Color]" (1) are no evidence for a named colour; colour 2 is an ordinary one.
+        # Only an unknown colour (None), "[No Color/Any Color]" (1) and "[Unknown]" (2) are no evidence for a named colour.
         unmatched = not catalogue and any(set_scoring.key_of(item_id, c) in posting
-            for posting in (index.posting, index.figure_posting) for c in (None, collection.NO_COLOUR))
+            for posting in (index.posting, index.figure_posting) for c in (None, collection.NO_COLOUR, 2))
     owned_ids = {r['item_id'] for r in owned}
     rows = owned + [dict(r, group='catalogue', owned=False, copy_id=None, stock_id=None, label=None, storage_name=None)
                     for r in catalogue if r['item_id'] not in owned_ids]

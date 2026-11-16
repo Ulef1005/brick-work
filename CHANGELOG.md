@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Found in: a part known only in the unknown colour** (#40). The note "Colour not matched yet" now also appears when the catalogue lists the part only in the colour "[Unknown]" (id 2), as it does for "[No Color/Any Color]". The 1.1.0 build wrongly treated that colour as an ordinary one.
+
 ## Brick Work 1.1.0 (schema 4.6) · 2026-11-16
 
 A feature release. The schema moves from 4.2 to 4.6 in place at the first read/write start, and an older version cannot open a 4.6 file, so back up before you upgrade.

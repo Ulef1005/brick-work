@@ -101,7 +101,7 @@ def test_headline_counts_match_filtered_owned_rows(world, coll):
 def test_only_unknown_and_no_colour_postings_make_a_colour_unmatched(cat, monkeypatch):
     db, n, *_ = cat
     part = n.part('3001')
-    for posted, unmatched in ((None, True), (1, True), (2, False)):             # colour 2 is an ordinary named colour
+    for posted, unmatched in ((None, True), (1, True), (2, True), (3, False)):  # 1 is "[No Color/Any Color]", 2 is "[Unknown]", 3 is Black
         index = S.build_index(S.Rows([], figure_parts=[(123, [(part, posted, 1)])]))
         monkeypatch.setattr(S, 'index_for', lambda db, index=index: (index, False))
         assert supersets.found_in(db, part, n.colour('4'))['colour_unmatched'] is unmatched, posted

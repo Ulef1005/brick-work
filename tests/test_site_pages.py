@@ -564,14 +564,18 @@ def test_no_page_names_the_pages_address_on_the_apex_build(site):
 
 def test_analytics_script_is_on_the_site_pages_only_and_the_privacy_page_matches(site):
     tag = 'static.cloudflareinsights.com/beacon.min.js'
-    for path in ('', 'install/', 'workflows/', 'changelog/', 'about/', 'privacy/'):
+    for path in ('', 'install/', 'workflows/', 'changelog/', 'about/', 'privacy/', 'coming-from/rebrickable/'):
         text = (site / path / 'index.html').read_text()
         assert text.count(tag) == 1, path
         assert text.count('clarity.ms/tag/') == 1 and text.index('clarity.ms/tag/') < text.index('</head>'), path
+        assert text.count('googletagmanager.com/gtm.js') == 1 and text.index('googletagmanager.com/gtm.js') < text.index('</head>'), path
+        assert text.index("gtag('consent', 'default'") < text.index('googletagmanager.com/gtm.js'), path     # consent is denied before the container loads
+        default = text[text.index("gtag('consent', 'default'"):text.index('wait_for_update')]
+        assert default.count("'denied'") == 4 and "'granted'" not in default, path
     for file in list((site / 'docs').rglob('*.html')) + list((site / 'demo').rglob('*.html')):
-        assert tag not in file.read_text() and 'clarity.ms' not in file.read_text(), file
+        assert tag not in file.read_text() and 'clarity.ms' not in file.read_text() and 'googletagmanager' not in file.read_text(), file
     privacy = (site / 'privacy/index.html').read_text()
-    assert 'Cloudflare Web Analytics' in privacy and 'Microsoft Clarity' in privacy and '_clck' in privacy and 'hosted here' not in privacy     # the picture line waits for the Rebrickable pictures (#332)
+    assert 'Cloudflare Web Analytics' in privacy and 'Microsoft Clarity' in privacy and '_clck' in privacy and 'Google Tag Manager' in privacy and 'Google Analytics' in privacy and 'hosted here' not in privacy     # the picture line waits for the Rebrickable pictures (#332)
 
 
 def test_every_site_page_offers_the_releases_feed_once(site):

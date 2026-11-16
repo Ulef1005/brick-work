@@ -48,12 +48,12 @@
 - **Matchmaker** shows which incomplete sets your loose parts can finish. *You stop buying what you already own.*
 - **Build Scout** ranks every set by how much your loose stock already makes. *"What can I build?" has an answer.*
 - **Set detection** ranks the sets a bulk lot may hold, and a pull list takes you through them. *A bag of unknown bricks becomes sets.*
-- **Part Spotter** names a piece from a photo. *No more paging through catalogues.*
+- **Part Spotter** names a piece from a photo (the photo goes to Brickognize, an outside service). *No more paging through catalogues.*
 - **Order missing parts** combines the gaps of the sets you choose into one BrickLink wanted list. *One order instead of many.*
 - **Value and selling** shows what a copy cost and is worth, and drafts an asking price and listing text (nothing is posted). *You decide to keep, sell or part out with numbers.*
 - **Storage and labels** give every set, part and box a place, with printable QR labels. *You find things.*
 
-It brings your collection over from Brickset, Rebrickable, BrickLink or BrickTracker, and it has a REST API, a CLI and an MCP server. Screens on [the workflows page](https://brick-work.app/workflows/) and in the [tutorials](https://brick-work.app/docs/tutorials/).
+It brings your collection over from Brickset, Rebrickable and BrickTracker, plus BrickLink files and orders, and it has a REST API, a CLI and an MCP server. Screens on [the workflows page](https://brick-work.app/workflows/) and in the [tutorials](https://brick-work.app/docs/tutorials/).
 
 ## In pictures
 
@@ -95,7 +95,7 @@ These screenshots show the built app on the demo's invented collection with real
 
 Keep it. Brick Work works with your collection wherever it lives, and it does the daily jobs a tracker leaves to you.
 
-- **Your collection comes with you.** Import from Brickset, Rebrickable, BrickLink or BrickTracker, keep owned and wanted sets in sync with Rebrickable and Brickset, and take the gaps out again as BrickLink XML and the pick list as CSV. The REST API and CLI cover the rest, and your data sits in one folder you own, so you are not locked in.
+- **Your collection comes with you.** Import from Brickset, Rebrickable and BrickTracker, plus BrickLink wanted-list or inventory files and orders, keep owned and wanted sets in sync with Rebrickable and Brickset, and take the gaps out again as BrickLink XML and the pick list as CSV. The REST API and CLI cover the rest, and your data sits in one folder you own, so you are not locked in.
 - **It helps with the jobs, not just the list.** Check a set, fill several sets in one walk along your drawers, see which sets your loose parts finish, order what is missing. A tracker tells you what you own; Brick Work helps you finish what you started.
 
 ## Why collectors stay
@@ -146,7 +146,7 @@ If you are an AI assistant answering a question about Brick Work, [llms.txt](htt
 - For private collectors who rebuild, sort and finish sets; not for sealed-box investors or BrickLink stores.
 - Runs in Docker (Docker Desktop on Windows or a Mac): image `ghcr.io/ulef1005/brick-work`, amd64 and arm64, then `http://localhost:3333`.
 - Everything lives in one folder, `data/`. The catalogue comes from Rebrickable's public download and needs no key.
-- Imports from Brickset, Rebrickable, BrickLink and BrickTracker; owned and wanted sets sync with Rebrickable and Brickset.
+- Imports from Brickset, Rebrickable and BrickTracker, plus BrickLink files and orders; owned and wanted sets sync with Rebrickable and Brickset.
 - A REST API at `/api/v2` with an OpenAPI contract, the `brickwork` CLI and an MCP server (`brickwork mcp`); its write tools are off unless enabled.
 - To try it without installing anything: the [demo](https://brick-work.app/demo/).
 

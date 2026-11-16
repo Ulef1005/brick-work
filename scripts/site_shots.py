@@ -117,23 +117,9 @@ await new Promise(r => setTimeout(r, 150));
 # stem: (path, width, max CSS height, script, destination)
 PICTURES = {
     '1c-sets-desktop-1440': ('/collection/sets', 1440, 1020, None, (README,)),
-    # The two tutorials (docs/tutorials/): the Add search, Set Inspector, Complete sets, the wishlist and an order being counted, on the same invented world
     '3c-picker-pick-390': (PICKED + '&pick=1', 390, 950, None, (README,)),
-    'bulk-storage-desktop-1440': (STORAGE, 1440, 900, None, (TUTORIALS,)),
-    'bulk-runner-sets-phone-390': ('/workbench/part-picker', 390, 1700, CHOOSE_SETS, (TUTORIALS,)),
-    'bulk-runner-order-phone-390': (PICKED, 390, 844, None, (TUTORIALS,)),
-    'bulk-runner-found-phone-390': (PICKED + '&pick=1', 390, 844, OPEN_FOUND, (TUTORIALS,)),
-    'bulk-matchmaker-desktop-1440': ('/workbench/match', 1440, 900, None, (TUTORIALS,)),
-    # The tutorial for the new functions (docs/tutorials/): a bag of loose parts, the sets it may come from, the sticker, the pull list; Build Scout; ordering what is missing; a part's variant
-    'lot-detect-desktop-1440': (LOT_PAGE + '?detect=1&ignore_common=1#set-detection', 1440, 1500, SHOW_DETECTION, (TUTORIALS,)),
-    'lot-sticker-chooser-desktop-1440': (lot_link(re.escape(LOT_PAGE) + r'/sticker/[0-9a-f]+[^"]*', None), 1440, 900, None, (TUTORIALS,)),
-    'lot-pull-list-phone-390': (pull(BEST, '?show=all'), 390, 1700, None, (TUTORIALS,)),
-    'lot-pull-confirm-phone-390': (pull(BEST, '/make-copy'), 390, 844, None, (TUTORIALS,)),
-    'scout-list-desktop-1440': ('/workbench/build-scout?min_percent=10', 1440, 900, None, (TUTORIALS,)),
+    # The tutorials' pictures are the tut-* ones generated below (real world, call-outs); the old invented-world pictures were removed (#290, Ulf 2026-11-16)
     'scout-set-desktop-1440': (scout_set(SECOND), 1440, 900, None, (TUTORIALS,)),
-    'variant-change-desktop-1440': (variant_change('4287c', '4287b'), 1440, 1000, None, (TUTORIALS,)),
-    'order-missing-desktop-1440': ('/planning/order-missing-parts', 1440, 1000, None, (TUTORIALS,)),
-    'order-missing-review-phone-390': ('/planning/order-missing-parts?step=review', 390, 1500, None, (TUTORIALS,)),
 }
 
 

@@ -4,9 +4,11 @@
 function mount(root){
  const form=root.querySelector('[data-found-form]'),results=root.querySelector('[data-found-results]'),
  status=root.querySelector('[data-found-status]'),retry=root.querySelector('[data-found-retry]'),clear=root.querySelector('[data-found-clear]');
- let offset=0,version=0;
+ const filters=root.querySelector('[data-found-filters]'),panel=root.querySelector('#found-type');
+ if(filters)filters.addEventListener('click',()=>{panel.hidden=!panel.hidden;filters.setAttribute('aria-expanded',String(!panel.hidden));});
+ let offset=0,version=0,searchTimer;
  async function load(next=0){
-  offset=next;const current=++version,url=new URL(root.dataset.url,location.href);
+  clearTimeout(searchTimer);offset=next;const current=++version,url=new URL(root.dataset.url,location.href);
   new FormData(form).forEach((value,key)=>url.searchParams.set(key,value));
   url.searchParams.set('offset',offset);
   status.textContent='Loading…';retry.hidden=true;results.setAttribute('aria-busy','true');
@@ -22,7 +24,8 @@ function mount(root){
   finally{if(current===version)results.setAttribute('aria-busy','false');}
  }
  form.addEventListener('submit',event=>{event.preventDefault();load();});
- form.addEventListener('change',()=>load());
+ form.addEventListener('change',event=>{if(event.target.name!=='q')load();});
+ form.addEventListener('input',event=>{if(event.target.name==='q'){clearTimeout(searchTimer);searchTimer=setTimeout(()=>load(),250);}});
  clear.addEventListener('click',()=>{form.elements.type.value='all';load();});
  retry.addEventListener('click',()=>load(offset));
  root.addEventListener('click',async event=>{

@@ -1,16 +1,17 @@
 {% from 'web/toni/brickwork/collection_modules.html' import picture with context %}
-<p>In {{ found.counts.sets }} sets and {{ found.counts.minifigures }} minifigures</p>
-<p>{{ found.total }} items, of which {{ found.owned_count }} owned</p>
+<p>In {{ toni_plural(found.counts.sets, "set") }} and {{ toni_plural(found.counts.minifigures, "minifigure") }}</p>
+<p>{{ toni_plural(found.total, "item") }}, of which {{ found.owned_count }} owned</p>
 {% if not found.catalogue %}<p>Catalogue list not loaded. <a href="{{ url_for('web.bw_admin',page='catalogues') }}">Catalogues &amp; keys</a></p>{% elif found.colour_unmatched %}<p>Colour not matched yet. Results for other colours are not shown.</p>{% endif %}
 {% set ns=namespace(group='') %}{% for r in found.results %}
 {% if ns.group!=r.group %}<h3>{{ 'Owned' if r.owned else 'Catalogue' }}</h3>{% set ns.group=r.group %}{% endif %}
-<article class="bc-row bc-found-row">
+<article class="bc-row bc-found-row" data-found-kind="{{ r.kind }}">
 {{ picture(r) }}
-<div><span class="mono">{{ r.number_text }}{% if r.owned %} · {{ r.label }}{% endif %}</span>
+<div class="bc-found-identity"><span class="mono bc-found-number">{{ r.number_text }}</span>
 <a href="{{ url_for('web.bw_collection_item',item_id=r.item_id,**({'copy':r.copy_id} if r.copy_id else {'stock':r.stock_id} if r.stock_id else {})) }}">{{ r.name or r.number_text }}</a>
-<p>{{ r.type_word }}{% if r.owned %} · {{ r.storage_name or 'Not stored' }}{% else %}{% if r.theme %} · {{ r.theme }}{% endif %}{% if r.year %} · {{ r.year }}{% endif %}{% endif %}</p>
-{% if r.owned %}<span class="bc-status">Owned</span>{% elif r.on_wishlist %}<span>On wishlist</span>{% elif can_edit %}<button class="bc-outline" type="button" data-found-wish="{{ r.item_id }}">Add to wishlist</button>{% endif %}
-</div><span class="mono">×{{ r.quantity }}</span>
+<p class="bc-found-meta">{{ r.type_word }}{% if r.theme %} · {{ r.theme }}{% endif %}{% if r.year %} · {{ r.year }}{% endif %}</p>
+<p class="mono bc-found-quantity">×{{ r.quantity }}</p>
+{% if r.owned %}<span class="bc-status complete">Owned</span><p class="bc-found-meta">{{ r.label }} · {{ r.storage_name or 'Not stored' }}</p>{% elif r.on_wishlist %}<span>On wishlist</span>{% elif can_edit %}<button class="bc-outline" type="button" data-found-wish="{{ r.item_id }}">Add to wishlist</button>{% endif %}
+</div>
 </article>
 {% else %}<p>Not found in any set or minifigure for this colour and these filters.</p>{% endfor %}
 
@@ -19,5 +20,5 @@
 <button class="bc-page-step bc-page-prev" type="button" data-found-offset="{{ [0,found.offset-15]|max }}" {% if current==1 %}disabled{% endif %} aria-label="Previous page">Previous</button>
 <div class="bc-page-numbers">{% set pg=namespace(last=0) %}{% for n in range(1,pages+1) %}{% if n==1 or n==pages or (n-current)|abs<=1 %}{% if pg.last and n-pg.last>1 %}<span class="bc-page-gap" aria-hidden="true">…</span>{% endif %}<button type="button" class="bc-page-number{{ ' bc-page-neighbour' if n!=1 and n!=pages and n!=current else '' }}" data-found-offset="{{ (n-1)*15 }}"{% if n==current %} aria-current="page"{% endif %} aria-label="Page {{ n }}">{{ n }}</button>{% set pg.last=n %}{% endif %}{% endfor %}</div>
 <button class="bc-page-step bc-page-next" type="button" data-found-offset="{{ found.offset+15 }}" {% if current>=pages %}disabled{% endif %} aria-label="Next page">Next</button>
-<p>{{ found.offset+1 }}–{{ [found.offset+15,found.total]|min }} of {{ found.total }}</p>
+<p>{{ found.offset+1 }} to {{ [found.offset+15,found.total]|min }} of {{ "{:,}".format(found.total) }}</p>
 </nav>{% endif %}

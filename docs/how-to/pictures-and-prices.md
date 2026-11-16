@@ -132,11 +132,11 @@ Only after all missing items were requested does the status say **N parts have n
 
 1. Open **Collection → Parts** and select a part. Choose a colour if the page asks for one.
 2. Find **Found in**, below **Used in sets**. The colour chip and “this colour only” identify the colour being searched.
-3. Read the count of catalogue sets and minifigures. The list puts your owned set copies and loose figures first, with their labels, storage and an **Owned** marker. Catalogue results follow, newest first. Each row shows the quantity of this part; a loose figure row totals the pieces across all copies in that stock row.
-4. Search by name, number or theme. Under **Filters**, choose **Sets** or **Minifigures**; remove the resulting chip to return to all types. **Sort** offers newest, oldest, number and name. Select **Apply** after entering a search.
+3. Read the count of catalogue sets and minifigures. The list puts your owned set copies and loose figures first, with their labels, storage and an **Owned** marker. Catalogue results follow, newest first. Each row shows the quantity of this part below its identity. A loose figure row totals the pieces across all copies in that stock row.
+4. Search by name, number or theme. Under **Filters**, choose **Sets** or **Minifigures**; remove the resulting chip to return to all types. **Sort** offers newest, oldest, number and name. Search and filter changes apply immediately. On phones, each control has its own row.
 5. Use the page numbers or **Previous** and **Next** to browse 15 results at a time. Open a result to see its detail page. **Add to wishlist** adds a catalogue result even if it has never been added to your collection; **On wishlist** means it is already wanted.
 
-The headline counts distinct catalogue items. The result count includes separate owned copies, and an owned item replaces its catalogue row. For example, two owned copies of one set remain two rows. Required parts inside minifigures and subsets count; spare parts do not.
+The headline and result count describe the same filtered list. Both include separate owned copies, and an owned item replaces its catalogue row. For example, two owned copies of one set remain two rows. Required parts inside minifigures and subsets count; spare parts do not.
 
 **Used in sets** continues to describe your collection. **Found in** also shows catalogue membership, so it can help with parts you do not own. On minifigure detail, a component’s **Found in N sets** link opens that part in its colour. A component without indexed set membership has no count link.
 

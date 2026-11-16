@@ -1667,6 +1667,12 @@ def bw_sets():
     return bw_collection('S')
 
 
+@web_page.get('/workbench/lot-sorter')
+@login_required
+def bw_lot_sorter():
+    return bw_collection('P')
+
+
 @web_page.get('/collection/<kind>')
 @login_required
 def bw_collection(kind):
@@ -1691,7 +1697,7 @@ def bw_collection(kind):
     except (sqlite3.Error, OSError, ValueError) as exc:
         error = public(exc, 'Brick Work database is not available. Check BW_DB_PATH and try again.')
     response = current_app.make_response(render_template('web/toni/web/bw_collection.html',
-        title=collection.TYPES[kind], kind=kind, rows=rows, records=ui.bw_collection_records(rows), choices=choices, error=error,
+        title='Lot Sorter' if request.endpoint == 'web.bw_lot_sorter' else collection.TYPES[kind], kind=kind, rows=rows, records=ui.bw_collection_records(rows), choices=choices, error=error,
         lot_total=ui.lot_total(rows) if kind == 'P' else 0,
         csrf_token=bw_add_token(), can_edit=bw_collection_editable(), detail=None,
         first_run=setup_state.first_run(bw_collection_editable()) if kind == 'S' and not rows and not error else None))

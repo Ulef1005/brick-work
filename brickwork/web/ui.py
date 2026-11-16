@@ -165,6 +165,7 @@ def passthrough_args(*route_params):
 WORKFLOW_PAGES = (
     ('Part Spotter', 'web.bw_inventory', ('Part to Inventory',)),
     ('Set Inspector', 'web.bw_check_parts', ('Check Set Parts',)),
+    ('Lot Sorter', 'web.bw_lot_sorter', ()),
     ('Part Runner', 'web.bw_picker', ('Part Picker',)),
     ('Matchmaker', 'web.bw_matcher', ('Matcher',)),
     ('Build Scout', 'web.bw_build_scout', ()),
@@ -198,6 +199,7 @@ def navigation():
             ('Boxes', 'web.bw_collection', 'box', (), {'kind':'O'})]),
         ('Workbench', [
             ('Part Spotter', 'web.bw_inventory', 'scan', (), {}),
+            ('Lot Sorter', 'web.bw_lot_sorter', 'lot-sorter', (), {}),
             ('Part Runner', 'web.bw_picker', 'pick', (), {}),
             ('Matchmaker', 'web.bw_matcher', 'match', (), {}),
             ('Build Scout', 'web.bw_build_scout', 'scout', (), {}),
@@ -206,14 +208,15 @@ def navigation():
         ('Planning', [
             ('Wishlist', 'web.bw_planning', 'wish', ('HIDE_WISHES',), {'screen':'wishlist'}),
             ('Prices', 'web.bw_planning', 'price', (), {'screen':'prices'}),
-            ('Complete sets', 'web.bw_planning', 'done', ('HIDE_ALL_PROBLEMS_PARTS',), {'screen':'complete-sets'})]),
+            ('Complete sets', 'web.bw_planning', 'done', ('HIDE_ALL_PROBLEMS_PARTS',), {'screen':'complete-sets'}),
+            ('Order missing parts', 'web.bw_planning_order', 'cart', (), {})]),
         ('Manage', [
             ('Add', 'web.bw_add', 'add', ('HIDE_ADD_SET',), {}),
             ('Tools & Admin', 'web.bw_tools', 'tools', (), {})])]
     endpoint = request.endpoint or ''
     area = endpoint.split('.')[0]
     if endpoint in ('web.bw_planning_order','web.bw_planning_order_file'):
-        current='Complete sets'
+        current='Order missing parts'
     elif endpoint=='web.bw_planning':
         current={'wishlist':'Wishlist','prices':'Prices','complete-sets':'Complete sets'}.get((request.view_args or {}).get('screen'),'Wishlist')
     elif endpoint.startswith('web.bw_collection_wish'):
@@ -224,8 +227,10 @@ def navigation():
         current = {'S':'Sets','M':'Minifigures','P':'Parts','I':'Instructions','O':'Boxes','G':'Gear','B':'Books','C':'Catalogs'}.get(letter.upper(),'Sets')
     elif endpoint in ('web.bw_sets','index.index','web.collection_legacy_home'):
         current = 'Sets'
+    elif endpoint == 'web.bw_lot_sorter':
+        current = 'Lot Sorter'
     elif endpoint in ('web.bw_collection_lot','web.bw_collection_places','web.bw_lot_sticker','web.bw_pull_list','web.bw_pull_confirm'):
-        current = 'Parts' if endpoint.endswith(('lot','sticker','list','confirm')) else 'Storage'
+        current = 'Lot Sorter' if endpoint.endswith(('lot','sticker','list','confirm')) else 'Storage'
     elif endpoint.startswith('web.bw_add'):
         current = 'Add'
     elif endpoint in ('web.parts_scanner_page', 'web.bw_inventory', 'web.bw_what_is_this'):   # What is this? identifies by photo too (#142)

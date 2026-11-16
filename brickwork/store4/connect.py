@@ -146,6 +146,14 @@ def bring_up_to_date(path):
                             f'in place ({exc}); {hint}') from exc
 
 
+def _newer(version):
+    """True when `version` is a 4.x schema number above this image's; anything unparsable counts as not newer."""
+    try:
+        return tuple(map(int, version.split('.'))) > tuple(map(int, SCHEMA_VERSION.split('.')))
+    except (AttributeError, ValueError):
+        return False
+
+
 def connect(path='brickwork.db', catalogue='catalogue.db', *, read_only=False):
     check_environment()
     path, catalogue = Path(path), Path(catalogue)
@@ -163,6 +171,8 @@ def connect(path='brickwork.db', catalogue='catalogue.db', *, read_only=False):
         version = (_meta(db) or {}).get('schema_version')
     try:
         # Check the version before any pragma that writes: a refused file is left exactly as it was.
+        if version != SCHEMA_VERSION and _newer(version):
+            raise SchemaMismatch(f'{path} is schema {version}, newer than this image ({SCHEMA_VERSION}); run a newer image')
         if version != SCHEMA_VERSION:
             raise SchemaMismatch(f'{path} is not a Brick Work {SCHEMA_VERSION} collection (schema_version={version!r}); '
                                  'a 3.3 file must be migrated, never opened')

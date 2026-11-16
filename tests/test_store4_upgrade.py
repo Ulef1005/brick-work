@@ -226,3 +226,45 @@ def test_43_instruction_upgrade_matches_fresh_schema(tmp_path):
         assert upgraded.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()[0] == '4.6'
         assert upgraded.execute("SELECT value FROM meta WHERE key='upgraded_to_4.4'").fetchone()[0].endswith('Z')
     assert upgrade(old) == '4.6'
+
+
+def make_42(path):
+    with closing(sqlite3.connect(path)) as db:
+        db.executescript((HERE / 'brickwork.sql').read_text().split('-- Storage label identities')[0])
+        db.execute("INSERT INTO meta(key,value) VALUES('schema_version','4.2')")
+        db.commit()
+    return path
+
+
+def master(db):
+    return sorted(db.execute('SELECT type, name, sql FROM sqlite_master').fetchall(), key=lambda r: (r[0], r[1]))
+
+
+def test_42_upgrade_to_46_has_the_same_schema_as_a_fresh_file(tmp_path):
+    """The whole sqlite_master (tables, indexes, the 4.4 to 4.5 guard triggers, the 4.5 to 4.6 instruction_file columns) matches a fresh 4.6 file.
+    Compared exactly: ALTER TABLE keeps the added column text verbatim, so no whitespace tolerance was needed."""
+    old = make_42(tmp_path / 'old.db')
+    with closing(connect(old, tmp_path / 'catalogue.db')) as upgraded, \
+            closing(connect(tmp_path / 'fresh.db', tmp_path / 'catalogue.db')) as fresh:
+        up, new = master(upgraded), master(fresh)
+        assert {r[1] for r in up if r[0] == 'trigger'} >= {'item_instruction_merge_guard', 'item_instruction_kind_guard'}
+        assert 'thumbnail_state' in {r[1] for r in upgraded.execute('PRAGMA main.table_xinfo(instruction_file)')}
+        assert [r[:2] for r in up] == [r[:2] for r in new]
+        for a, b in zip(up, new):
+            assert a[2] == b[2], a[:2]
+
+
+def test_a_failed_later_step_leaves_the_file_at_the_earlier_version_and_it_finishes_next_open(tmp_path, monkeypatch):
+    path = make_42(tmp_path / 'brickwork.db')
+    with monkeypatch.context() as patch:
+        patch.setitem(UPGRADES, '4.4', ('4.5', (UPGRADES['4.4'][1][0], 'ALTER TABLE no_such_table ADD COLUMN x TEXT')))
+        with pytest.raises(sqlite3.OperationalError):
+            upgrade(path)
+    with closing(sqlite3.connect(path)) as raw:
+        assert raw.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()[0] == '4.4'
+        assert raw.execute('PRAGMA integrity_check').fetchone()[0] == 'ok'
+        assert raw.execute("SELECT name FROM sqlite_master WHERE name='instruction_candidate'").fetchone()
+        assert not raw.execute("SELECT name FROM sqlite_master WHERE name='item_instruction_merge_guard'").fetchone()
+    with closing(connect(path, tmp_path / 'catalogue.db')) as db:
+        assert db.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()[0] == '4.6'
+        assert db.execute('PRAGMA integrity_check').fetchone()[0] == 'ok'

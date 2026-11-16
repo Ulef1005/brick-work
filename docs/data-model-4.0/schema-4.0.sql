@@ -222,7 +222,7 @@ CREATE VIRTUAL TABLE item_fts USING fts5(item_id UNINDEXED, kind UNINDEXED, name
 -- =====================================================================
 
 CREATE TABLE meta(key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL) STRICT;
--- keys: schema_version='4.5' (4.0 before #131, 4.1 before #167/#155, 4.2 before #31, 4.3 before #25; connect() upgrades an older file in place); install_id; catalogue_id (bound at the first build; connect()
+-- keys: schema_version='4.6' (4.0 before #131, 4.1 before #167/#155, 4.2 before #31, 4.3 before #25, 4.5 before the instruction thumbnails; connect() upgrades an older file in place); install_id; catalogue_id (bound at the first build; connect()
 -- refuses a catalogue whose catalogue_id differs); catalogue_item_high_water and
 -- catalogue_color_high_water (copied at every activation: a rebuild from scratch mints above
 -- them); migrated_from (3.3 file name, sha256, migration report digest) after the migration.

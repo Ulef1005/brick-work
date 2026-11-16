@@ -132,10 +132,10 @@ def test_landing_sections_and_copy(site):
     css = (site / 'assets/marketing.css').read_text()
     assert '.logo-blue{color:#007187}' in css and 'html.tw-dark .logo-blue{color:#3DB4CC}' in css and '.clay{color:var(--tw-accent-text)}' in css
     assert "The workbench for your collection that you didn't know existed" in html.unescape(plain)
-    for label in ('Who it is for', 'The workbench', 'Install', 'Coming from another tool', 'Documentation', "What's new"):
+    for label in ('Who it is for', 'The workbench', 'Install', 'Already use a collection tracker?', 'Documentation', "What's new"):
         assert f'<span class="label">{label}</span>' in body, label
     assert body.count('class="card"><h3>You ') == 6          # the six "Who it is for" boxes
-    assert body.count('class="card wf-card"') == 9           # nine workflow cards
+    assert body.count('class="card wf-card"') == 12          # six workflows and six more at the table
     assert 'id="install"' in body and 'href="demo/"' in body and 'href="install/"' in body
     assert 'LEGO' not in body
     assert 'not affiliated with the LEGO Group, Rebrickable, Brickset or BrickLink' in text
@@ -154,9 +154,9 @@ def test_workflow_walkthroughs_are_complete_without_javascript(site):
     assert 'The rest of the workbench.' in text
 
 
-def test_use_cases_have_eight_cards_in_three_groups(site):
+def test_use_cases_have_nine_cards_in_three_groups(site):
     text = (site / 'use-cases/index.html').read_text()
-    assert text.count('<article') == 8
+    assert text.count('<article') == 9
     for group in ('uc-table', 'uc-plan', 'uc-scripts'):
         assert f'id="{group}"' in text
     assert 'Planned' in text

@@ -109,3 +109,21 @@ A number that is in neither the catalogue nor your collection shows **Not in the
 Add a set Brick Work does not know yet (newer than your catalogue), and the row offers **Fetch from Rebrickable** when a Rebrickable key is set. It queues one job: the set, its parts and its figures (three calls and one more for each figure the catalogue lacks).
 
 When the job is done the copies you asked for are made, with the condition, completeness and note you chose, from the list it fetched. A wish row makes the wish. The job's progress line says **Fetched · 2 copies added**. **Undo** on the Add page takes them back. If the job fails, nothing is added and the line says **Fetch failed · nothing was added**; **Retry** queues it again and the copies follow when it succeeds.
+
+### Parted out
+
+The Prices card keeps **Parted out** below Used and New, above Retail.
+A total needs prices for at least 90 % of the present lines.
+A total carries the date of its oldest price.
+Cached prices still count after their source age limit and carry **stale** in ink.
+Without enough prices, **Fetch part prices** queues the missing prices.
+The action is disabled without a BrickLink key and hidden for read-only viewers.
+Prices in another currency show no comparison.
+A total uses one currency throughout, preferring your configured currency when it has enough prices.
+A copy without a part list has no Parted out row.
+The card updates here when fetching finishes and reports prices found and parts without sales.
+A budget wait stops polling and restores the action: **BrickLink budget reached · the worker continues later**.
+Finished prices appear even when other jobs fail; the status counts failed or cancelled jobs.
+Each request fetches up to 200 items.
+If more remain, the status says **N parts remain to fetch** and keeps the action.
+Only after all missing items were requested does the status say **N parts have no sales yet**.

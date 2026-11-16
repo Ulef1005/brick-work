@@ -36,7 +36,7 @@ def ratio_cap(ratios):
         percentile += (ratios[lower + 1] - percentile) * (position - lower)
     return max(Decimal(5), percentile.to_integral_value(rounding=ROUND_CEILING))
 
-def usable(quote, config, now):
+def usable(quote, config, now, *, allow_old=False):
     if not quote or quote.get('price') is None:
         return 'no cached price'
     if quote.get('currency') != config['bricklink_currency']:
@@ -47,7 +47,7 @@ def usable(quote, config, now):
         return 'unsuitable quote'
     try:
         observed = datetime.fromisoformat(quote['observed_at'])
-        if observed.utcoffset() is None or observed < now - timedelta(days=7) or observed > now:
+        if observed.utcoffset() is None or (not allow_old and observed < now - timedelta(days=7)) or observed > now:
             return 'stale quote'
     except (KeyError, TypeError, ValueError):
         return 'stale quote'
@@ -89,6 +89,7 @@ def compute(copies, config, now):
         override = c.get('current_value')
         if override is not None and c.get('current_value_currency') != config['bricklink_currency']:
             c['reasons'].append('Currency mismatch · current-value override')
+            c['current_value'] = None  # Never relabel a foreign override as the part-out currency.
         total = Decimal(0)
         for r in lines:
             if not r['missing']:
@@ -371,13 +372,13 @@ def wishes(db):
     return sorted(rows, key=lambda r: r['filled'])
 
 
-def quote(quotes, condition, config, stamp):
+def quote(quotes, condition, config, stamp, *, allow_old=False):
     candidates = []
     for original in quotes:
-        if original['condition'] != condition or original['guide'] not in ('sold','stock') or original['error'] or original['stale']:
+        if original['condition'] != condition or original['guide'] not in ('sold','stock') or original['error'] or (original['stale'] and not allow_old):
             continue
         q = dict(original, source='bricklink_stock' if original['source']=='bricklink' and original['guide']=='stock' else original['source'])
-        if usable(q, config, stamp) is None:
+        if usable(q, config, stamp, allow_old=allow_old) is None:
             candidates.append(q)
     return max(candidates, key=lambda q:(q['guide']=='sold',q['observed_at']), default=None)
 
@@ -434,7 +435,7 @@ def ranking(db):
     from . import partout
     values = partout.values(db, [row['id'] for row in decorated])
     for row in decorated:
-        row['partout'] = partout.compare(row, values.get(row['id']))
+        row['partout'] = partout.compare(dict(row, comparison_currency=config['bricklink_currency']), values.get(row['id']))
     data['rows'] = decorated
     return data
 

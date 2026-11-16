@@ -44,6 +44,7 @@ const rows=[{type:'P',number:'3004',name:'Brick',colour:'Red',pinned:'0',rank:2,
 const nodes=rows.map(r=>{const n=new Node();n.nodes={'[data-bp-selected]':Object.assign(new Node(),{checked:false})};n.tagName='ARTICLE';n.closest=()=>n;n.dataset.record=JSON.stringify(r);return n;});
 const count=new Node(),chips=new Node(),empty=new Node(),container=new Node();root.nodes={'[data-bp-search]':search,'[data-bp-sort]':sort,'[data-bp-order]':order,'#bp-filters':panel,'[data-bp-message]':message,'[data-bp-undo]':undo,'[data-bp-count]':count,'[data-bp-chips]':chips,'[data-bp-empty]':empty,'[data-bp-rows]':container};root.groups={'[data-bp-row]':nodes,'[data-bp-filter]':[filterControl],'[data-bp-filters]':[toggle],'[data-bp-pin]':[pin],'[data-bp-refresh]':[refresh],'[data-bp-archive]':[archive]};
 const sortPanel=new Node(),sortToggle=new Node(),sortDone=new Node();sortPanel.hidden=true;sortPanel.nodes={'button, input, select':sort};
+const partoutNote=new Node();root.nodes['[data-bp-partout-note]']=partoutNote;
 root.nodes['[data-bp-sort-panel]']=sortPanel;root.groups['[data-bp-sort-open]']=[sortToggle,sortDone];
 const condition=new Node(),ownership=new Node();condition.dataset.bpFilter='condition';ownership.dataset.bpFilter='collection';
 for(const [control,label] of [[condition,'Condition'],[ownership,'Collection']]){control.closest=()=>({firstChild:{textContent:label}});control.selectedOptions=[{textContent:label}];}
@@ -60,6 +61,8 @@ let checkedCount=0;Object.defineProperty(root.groups,'[data-bp-selected]:checked
 doc.querySelector=selector=>selector==='#bw-planning'?root:null;
 vm.runInNewContext(fs.readFileSync('static/web/toni/formatting.js','utf8')+fs.readFileSync('static/web/toni/bw-collection.js','utf8')+fs.readFileSync('static/web/toni/bw-planning.js','utf8'),context);
 const api=context.window.BrickPlanning;
+assert.equal(partoutNote.hidden,true);sort.value='partout';sort.events.change();assert.equal(partoutNote.hidden,false);assert.equal(order.value,'desc');sort.value='number';sort.events.change();assert.equal(order.value,'asc');assert.equal(partoutNote.hidden,true);
+order.value='desc';sort.value='partout';sort.events.change();sort.value='number';sort.events.change();assert.equal(order.value,'desc');order.value='asc';
 assert.equal(api.filter(rows,'red',{},'number').length,1);
 assert.equal(api.filter(rows,'',{collection:'wanted'},'number')[0].number,'20');
 assert.equal(api.filter(rows,'',{stale:'true'},'number')[0].number,'3004');
@@ -159,3 +162,11 @@ assert.equal(count.textContent,'1 set');search.value='no match';await search.tri
  assert.equal(undo.hidden,false);assert.equal(message.textContent,'Saved');
  console.log('Brick Work Planning runtime passed');
 })().catch(e=>{console.error(e);process.exitCode=1;});
+
+// Complete-set links can load a shell without sort controls.
+const shell=new Node();shell.dataset={screen:'complete-sets'};
+vm.runInNewContext(fs.readFileSync('static/web/toni/bw-planning.js','utf8'),{
+ window:{},document:{querySelector:()=>shell,addEventListener(){}},
+ URLSearchParams,location:{search:'?sort=partout',pathname:'/planning/complete-sets'},
+ sessionStorage:{getItem:()=>null}
+});

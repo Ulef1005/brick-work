@@ -1235,6 +1235,17 @@
    "path": "/workbench/storage?labels=error",
    "built": true,
    "approved": false
+  },
+  {
+   "screen": "10-Set-detail",
+   "section": "1d",
+   "state": "partout-no-key",
+   "world": "demo",
+   "path": "/collection/item/set/7286-1?copy=56325b99-16bc-549b-bb98-f7be2ab38829",
+   "built": true,
+   "approved": false,
+   "script": "document.querySelector('[data-module=prices]').scrollIntoView();",
+   "max": 2600
   }
  ]
 }

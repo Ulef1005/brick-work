@@ -564,7 +564,7 @@ def test_no_page_names_the_pages_address_on_the_apex_build(site):
 
 def test_analytics_script_is_on_the_site_pages_only_and_the_privacy_page_matches(site):
     tag = 'static.cloudflareinsights.com/beacon.min.js'
-    for path in ('', 'install/', 'workflows/', 'changelog/', 'about/', 'privacy/'):
+    for path in ('', 'install/', 'workflows/', 'changelog/', 'about/', 'privacy/', 'coming-from/rebrickable/'):
         text = (site / path / 'index.html').read_text()
         assert text.count(tag) == 1, path
         assert text.count('clarity.ms/tag/') == 1 and text.index('clarity.ms/tag/') < text.index('</head>'), path

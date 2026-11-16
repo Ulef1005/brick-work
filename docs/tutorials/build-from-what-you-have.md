@@ -37,13 +37,13 @@ The percentage counts the set's own parts only. A part in another colour is list
 2. Tick the copies whose gaps you want to fill. **Leave out sets to sell or part out** is on by default, so copies you plan to sell stay greyed and unticked.
 3. Read the order list on the right. Its heading counts exactly the ticked sets. Each line is a part, colour and condition combined over those sets, and a chip per set shows where the quantity comes from.
 
-![Order missing parts on a desktop: sets with gaps on the left with ticks, the combined order list with source set chips on the right.](../img/tutorials/order-missing-desktop-1440-light.png#only-light)
-![Order missing parts on a desktop: sets with gaps on the left with ticks, the combined order list with source set chips on the right.](../img/tutorials/order-missing-desktop-1440-dark.png#only-dark)
+![Order missing parts on a desktop: the sets with gaps on the left, call-out 1 on a ticked set, and the combined order list on the right, call-out 2 on the chip that names the set a line comes from.](../img/tutorials/tut-order-missing-desktop-1024-light.png#only-light)
+![Order missing parts on a desktop: the sets with gaps on the left, call-out 1 on a ticked set, and the combined order list on the right, call-out 2 on the chip that names the set a line comes from.](../img/tutorials/tut-order-missing-desktop-1024-dark.png#only-dark)
 
 4. On a phone, select **Review list** for the second step, then **Export · BrickLink XML**. The file `missing-parts.xml` is the same one Complete sets exports for those copies.
 
-![The review step of Order missing parts on a phone: the combined lines and the export button.](../img/tutorials/order-missing-review-phone-390-light.png#only-light)
-![The review step of Order missing parts on a phone: the combined lines and the export button.](../img/tutorials/order-missing-review-phone-390-dark.png#only-dark)
+![The review step of Order missing parts on a phone: the combined lines, call-out 1 on the chip that names the set a line comes from.](../img/tutorials/tut-order-missing-review-phone-390-light.png#only-light)
+![The review step of Order missing parts on a phone: the combined lines, call-out 1 on the chip that names the set a line comes from.](../img/tutorials/tut-order-missing-review-phone-390-dark.png#only-dark)
 
 Lines Brick Work cannot name for BrickLink are listed in the yellow box with a link to the item, so you can link it and come back. The page only reads, so nothing in your collection changes.
 

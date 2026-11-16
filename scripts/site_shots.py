@@ -247,6 +247,16 @@ PULL_WINDOW = ("{ const sec = [...document.querySelectorAll('details.bw-sec')].f
                "[...sec.querySelectorAll('[data-line]')].filter(l => !l.querySelector('img')).forEach(e => e.remove()); [...sec.querySelectorAll('[data-line]')].slice(11).forEach(e => e.remove()); "
                "const open = [...document.querySelectorAll('[data-line]')].find(l => /(^|\\D)0 of \\d+/.test(l.textContent)); if (!open) throw new Error('PULL_WINDOW: no line left to find'); open.setAttribute('data-shot-open', ''); "
                "document.querySelectorAll('.bp-more, .bp-bar, .bw-sec-tools, .bw-sec-count').forEach(e => e.remove()); }\n")
+# Order missing parts lists every missing line, most of them without a render (the page groups by category since #400): keep the first six lines that have one,
+# drop the rest, the sections left empty and the "show all" tails.
+ORDER_WINDOW = ("[...document.querySelectorAll('.oo-line')].forEach(l => { if (!l.querySelector('img')) l.remove(); }); "
+                "let kept = 0; [...document.querySelectorAll('.oo-line')].forEach(l => { if ((kept += 1) > 6) l.remove(); }); "
+                "document.querySelectorAll('.oo-more, .bw-sec-tools, .bw-sec-count').forEach(e => e.remove()); "
+                "document.querySelectorAll('details.bw-sec').forEach(d => { if (!d.querySelector('.oo-line')) d.remove(); else d.open = true; }); "
+                "document.querySelectorAll('ul.oo-lines').forEach(u => { if (!u.querySelector('.oo-line')) u.remove(); });\n")
+# The desktop shot shows the sets with ticks beside the order lines: the review column's header, switch, tabs and totals above the lines are hidden, so that the
+# crop (which starts at the sets' list) does not begin in the middle of them.
+ORDER_DESKTOP = ORDER_WINDOW + "document.querySelectorAll('.oo-crumb, .oo-label, .oo-review h2, .oo-sub-top, .oo-prefer, .oo-tabs, .oo-tots').forEach(e => e.remove()); document.querySelectorAll('.bw-sec-head').forEach(e => { e.style.display = 'none'; });\n"
 # Order missing parts, the review step (a phone screen): the four copies with gaps, as the first step hands them on.
 ORDER_REVIEW = ('/planning/order-missing-parts?sel=1&' + '&'.join('copy=' + REAL(n) for n in ('10210-1', '7938-1', '7213-1', '31120-1')) + '&was_sell=1&was_gain=0&step=review')
 # Build Scout's panel draws a missing minifigure as a number-only tile and has no picture branch for it, so the shot leaves the figure lines out.
@@ -316,15 +326,10 @@ TUTORIAL_SHOTS = {
     'complete-sets': ('/planning/complete-sets', None, {
         layout: (width, ['[data-bp-row]:first-of-type'], [('[data-bp-row]:first-of-type', 1), ('[data-bp-pin]', 2), ('.bp-repair-details summary', 3)], '')
         for layout, width in (('desktop', 1024), ('phone', 390))}),
-}
-# Tutorial shots defined but not active: each needs pictures the real-sets folder does not hold yet, so the placeholder check fails them. Move an entry
-# into TUTORIAL_SHOTS when its pictures are in. Needed: order-missing and order-missing-review the parts 2540 Black, 3004 Medium Blue, 3008 Dark Brown and
-# 30099 Dark Brown. When one is moved, the page's old `order-missing-*` pictures give way to the `tut-` ones.
-PENDING_TUTORIAL_SHOTS = {
     'order-missing': ('/planning/order-missing-parts', None, {
-        'desktop': (1024, ['.oo-rows', '.oo-lines'], [('.oo-box', 1), ('.oo-srcs', 2)], '')}),
+        'desktop': (1024, ['.oo-rows', '.oo-lines'], [('.oo-box', 1), ('.oo-srcs', 2)], ORDER_DESKTOP)}),
     'order-missing-review': (ORDER_REVIEW, None, {
-        'phone': (390, ['.oo-lines'], [('.oo-srcs', 1)], '')}),
+        'phone': (390, ['details.bw-sec'], [('.oo-srcs', 1)], ORDER_WINDOW)}),
 }
 EXTRAS, WORLD_OF = {}, {}
 for _name, (_path, _script, _layouts) in TUTORIAL_SHOTS.items():

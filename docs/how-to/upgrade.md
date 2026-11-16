@@ -26,6 +26,7 @@ The backup is also the way back. An upgrade that changes the schema is one-way.
 | 0.8.x | 0.9.0 | 4.1 to 4.2 | In place, at the first read/write start. | Restore the backup. 0.8.x cannot open a 4.2 file. |
 | 0.9.0 | 1.0.0 | none (stays 4.2) | Nothing. | Start the older version on the same file. |
 | 1.0.0 | 1.0.1 | none (stays 4.2) | Nothing. | Start the older version on the same file. |
+| 1.0.1 | 1.1.0 | 4.2 to 4.6 | In place, at the first read/write start, one step per version. | Restore the backup. An older version cannot open the 4.6 file. |
 
 You can skip versions from 0.6.0 on. Starting 0.9.0 on a 4.0 file runs both in-place steps one after the other, each in its own transaction. A step that fails leaves the file at the version before it. From 0.5.x you always run `brickwork migrate4` first, and it writes the schema of the version you are moving to.
 

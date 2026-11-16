@@ -9,7 +9,7 @@ Brick Work has a REST API, a command line and an MCP server for AI assistants. T
 
 ## Before you start
 
-It takes about 20 minutes. You need a running Brick Work install ([README](https://github.com/Ulef1005/brick-work#standalone-installation-with-docker)) with some sets in it, and a terminal on the computer that runs it. Try it on a test collection first: step 3 changes data, though you undo the change afterward. The outputs below come from the invented demo collection, so your numbers and names differ. The commands and outputs were run on Brick Work 1.0.1 or later (the main branch on November 13, 2026).
+It takes about 20 minutes. You need a running Brick Work install ([README](https://github.com/Ulef1005/brick-work#install)) with some sets in it, and a terminal on the computer that runs it. Try it on a test collection first: step 3 changes data, though you undo the change afterward. The outputs below come from the invented demo collection, so your numbers and names differ. The commands and outputs were run on Brick Work 1.0.1 or later (the main branch on November 13, 2026).
 
 In a Docker install, run every `brickwork` command inside the container, like this:
 

@@ -17,6 +17,8 @@ Do this before an upgrade, before a large import, and on a regular schedule. A b
 
 The export is a consistent copy of the whole database, taken while the app runs. It is one SQLite file that opens on its own. You don't need to stop Brick Work first.
 
+`brickwork.db` is a SQLite file in WAL mode. Copy the bare file only with Brick Work stopped. While it runs, use the export, never a plain file copy.
+
 The export leaves out:
 
 - **Your source keys.** BrickLink, Rebrickable and Brickset keys never leave the app, not even encrypted. Keep your keys somewhere safe so you can enter them again.

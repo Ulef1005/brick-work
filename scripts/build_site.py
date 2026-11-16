@@ -357,7 +357,7 @@ def build_docs(out):
         # The documentation pages make no external requests. In the copy a diagram becomes a link to GitHub, which
         # draws it, as on the other pages (mermaid_to_link); the source file keeps its diagram.
         index = Path(tmp) / docs / 'index.md'    # the docs home in the build copy: its own title (not "Brick Work - Brick Work") and the site's install page
-        text = index.read_text().replace('(https://github.com/Ulef1005/brick-work#standalone-installation-with-docker)', '(../install/)')
+        text = index.read_text().replace('(https://github.com/Ulef1005/brick-work#install)', '(../install/)')
         index.write_text(text.replace('---\n', '---\ntitle: Brick Work documentation\n', 1) if text.startswith('---\n') else text)
         for page in (Path(tmp) / docs).rglob('*.md'):
             text = page.read_text()

@@ -26,6 +26,14 @@ On/off settings take `1` for on. Where a setting accepts more spellings, the tab
 | `BW_API_TOKEN` | none | A bootstrap API token with admin scope, also used by `brickwork mcp` when no `--token-file` is given. Optional: stored tokens are created in the app or with `brickwork token create`. It cannot be revoked through the API. |
 | `BW_MCP_WRITE` | off | `1` turns on the MCP server's write tools, as `brickwork mcp --allow-write` does. Only `1` counts. |
 
+The back-off counts per client address, for failed logins and for failed API token checks. The counters live in the app process, so a restart clears them and each worker process keeps its own count. Keep the app behind a VPN or a rate-limiting proxy when it is reachable from the internet.
+
+With Docker, make the `BW_SECRET_KEY` key with this command, put it in `data/.env` and retain it securely:
+
+```sh
+docker compose run --rm --entrypoint python brickwork -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'
+```
+
 ## Serving
 
 | Variable | Default | What it does |
@@ -53,6 +61,21 @@ The `BW_HIDE_*` settings only remove the entry; the pages still open from a link
 | `BW_DB_PATH` | `data/brickwork.db` | The database file. The catalogue (`catalogue.db`), the session key, import and sync plans live in the same folder. |
 | `BW_MEDIA_PATH` | the database folder | Where pictures, thumbnails, your own photos, identification thumbnails and instruction PDFs live, under its `data/` folder. Moving media means moving `data/images`, `data/thumbs`, `data/instructions` and `data/identifications` there; nothing in the database changes. |
 | `BW_MIGRATION_REPORT` | `migration-report/` beside the database | The folder Tools & Admin reads the migration report from (`summary.md`, `proof.json` and the CSV files a 3.3 to 4.0 migration writes). Read only; the report download links serve only files in this folder. |
+
+To keep the database on fast local storage and the pictures and PDFs on a NAS, set `BW_MEDIA_PATH` and mount both folders:
+
+```yaml
+services:
+  brickwork:
+    environment:
+      BW_DB_PATH: /app/data/brickwork.db
+      BW_MEDIA_PATH: /media/brickwork      # pictures and PDFs in /media/brickwork/data/...
+    volumes:
+      - ./data:/app/data                   # database, catalogue, import and sync plans
+      - /mnt/nas/brickwork:/media/brickwork
+```
+
+Stored paths are relative, so moving the media means moving the four folders. The database snapshot in **Tools & Admin** and the `brickwork` exports never include media. Back the media folder up on its own: see [Back up the media folder](../how-to/back-up-and-restore.md#back-up-the-media-folder).
 
 ## Sources and budgets
 

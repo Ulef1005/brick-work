@@ -29,6 +29,14 @@ The BrickLink region and currency and the repair settings of Complete sets are s
 
 **Tools & Admin → Catalogues & keys** shows each source with its daily budget, its last success and its last error, and a switch to turn a source off. A card per key lets you enter a key: it is write-only, tested once and stored encrypted, and it is never shown again. **Replace** and **Remove** are there afterward, and **Undo** right after a removal.
 
+### Getting keys
+
+Keys are optional, and each service's own terms apply. Brickognize needs no key.
+
+- **BrickLink** gives API access to registered sellers. Each access token is tied to one registered static IP address, so register the address your server calls from.
+- **Rebrickable** asks for about one request per second. Brick Work's own daily cap for it is `BW_REBRICKABLE_DAILY_BUDGET`.
+- **Brickset** keys allow 100 `getSets` calls a day unless Brickset raises the limit for you.
+
 The **Catalogue** card says what the catalogue file beside your collection holds, when it was built and last reconciled, and whether the optional BrickLink item lists are loaded. The pages below do the rest from the browser.
 
 ## Catalogue

@@ -20,3 +20,8 @@ Set **Address for labels** in **Tools & Admin > Settings** to an address your ph
 Archived storages cannot be selected. An older printed label explains that the storage was archived and links back to Storage. This also works on a phone.
 
 Restoring an older backup assigns short ids in creation order. Earlier storage edits can still be undone without changing those ids.
+
+The label address must use HTTP or HTTPS, without a path, user information, query or fragment.
+Even empty query, fragment and user information markers are rejected.
+Missing selections show **Choose between 1 and 200 storages**. Invalid preview sheet numbers show **Choose a preview sheet**.
+The download limit appears in the label selection bar; the item move bar shows only the selected count.

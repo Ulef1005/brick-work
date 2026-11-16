@@ -79,3 +79,7 @@ Your ticks stay when you switch to Minifigures or Instructions & Box and back to
 The edit controls show on Parts; the receipt and Undo stay visible on every tab.
 If saving fails, including an unreadable server response, your ticks stay ready for Retry.
 While Found 1 or Found all saves a row, both buttons wait for the result.
+
+The **Set is checked** switch appears only on Parts.
+Found and Take on a minifigure keep your unsaved part ticks across the reload, just like the switch.
+If Found receives an unreadable response, it shows **The server did not answer · try again**.

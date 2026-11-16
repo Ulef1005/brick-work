@@ -22,7 +22,7 @@ function build({response, draft = null, checkedOn = false} = {}) {
   const root = new Node({saveUrl: '/collection/save/ACTION', csrf: 'token'}), module = new Node({copy: 'copy-1'});
   root.nodes['[data-bc-pl]'] = module;
   const named = {}, add = (key, node) => { named[key] = node; module.nodes[`[data-bc-pl-${key}]`] = node; return node; };
-  ['progress', 'mode', 'bar', 'sum', 'save', 'warn', 'edit', 'cancel', 'receipt', 'rule', 'switch-note'].forEach(k => add(k, new Node()));
+  ['checked-row', 'progress', 'mode', 'bar', 'sum', 'save', 'warn', 'edit', 'cancel', 'receipt', 'rule', 'switch-note'].forEach(k => add(k, new Node()));
   add('warn-text', new Node());
   const sw = add('checked', new Node({copy: 'copy-1'})); sw.attrs['aria-checked'] = String(checkedOn);
   named.rule.dataset.gap = '3'; named.bar.hidden = true; named.mode.hidden = true; named.save.textContent = 'Save missing';
@@ -44,7 +44,7 @@ function build({response, draft = null, checkedOn = false} = {}) {
   const calls = [], store = {}, reloads = [];
   if (draft) store['bw-part-edit-draft:copy-1'] = JSON.stringify(draft);
   const context = {
-    window: {}, document: {querySelector: s => s === '#bw-collection' ? root : null},
+    URLSearchParams, window: {}, document: {querySelector: s => s === '#bw-collection' ? root : null},
     sessionStorage: {setItem: (k, v) => { store[k] = v; }, getItem: k => store[k] ?? null, removeItem: k => { delete store[k]; }},
     location: {pathname: '/collection/item/7', search: '?copy=copy-1&inventory=parts', reload: () => reloads.push(1)},
     fetch: async (url, init) => { calls.push({url, body: JSON.parse(init.body)}); if (response instanceof Error) throw response; return typeof response === 'function' ? response(url) : response; },
@@ -73,6 +73,7 @@ const ok = {ok: true, json: async () => ({message: 'Saved · 2 parts marked miss
   m.reset(); assert.equal(m.dirty(), false); assert.equal(m.count(2), 0); assert.equal(m.count(1), 3);
   assert.equal(summary(1, 1), '1 part · 1 piece marked missing'); assert.equal(summary(7, 8), '7 parts · 8 pieces marked missing'); assert.equal(summary(0, 0), '0 parts · 0 pieces marked missing');
   assert.equal(screenOf({pathname: '/collection/item/7', search: '?copy=abc&inventory=parts'}), '/collection/item/7?copy=abc');
+  assert.equal(screenOf({pathname: '/collection/item/7', search: '?copy=a%2Fb+c&stock=%C3%A4&colour=4'}), '/collection/item/7?copy=a/b c&stock=ä&colour=4');
   assert.equal(screenOf({pathname: '/collection/item/7', search: ''}), '/collection/item/7');
 }
 
@@ -169,6 +170,8 @@ const ok = {ok: true, json: async () => ({message: 'Saved · 2 parts marked miss
   for (const inventory of ['figures', 'extras', 'parts']) {
     t.module.dataset.inventory = inventory; t.module.bcPartEditVisibility();
     assert.equal(t.named.progress.hidden, true);
+    assert.equal(t.named['checked-row'].hidden, inventory !== 'parts');
+    assert.equal(t.named['switch-note'].hidden, inventory !== 'parts');
     assert.equal(t.named.mode.hidden, inventory !== 'parts');
     assert.equal(t.named.bar.hidden, inventory !== 'parts');
     assert.equal(t.rows[1].box.getAttribute('aria-checked'), 'true');
@@ -197,5 +200,34 @@ const ok = {ok: true, json: async () => ({message: 'Saved · 2 parts marked miss
   assert(template.indexOf('data-bc-pl-receipt') < template.indexOf('<div data-bc-tab-inventory>'));
   const collection = fs.readFileSync(path.join(__dirname, '../static/web/toni/bw-collection.js'), 'utf8');
   assert(collection.includes('list.bcPartEditVisibility?.();'));
+  // Figure actions use the same draft and restore path as the switch.
+  const takeSource = fs.readFileSync(path.join(__dirname, '../static/web/toni/bw-take.js'), 'utf8');
+  for (const action of ['found-one', 'found-all', 'take']) {
+    t = build({response: ok});
+    t.named.edit.fire('click'); t.rows[1].box.fire('click'); t.rows[1].plus.fire('click'); t.rows[0].box.fire('click');
+    t.module.dataset.inventory = 'figures'; t.module.bcPartEditVisibility();
+    const box = new Node({identity: JSON.stringify({copy_id: 'copy-1', token: 'f:1'}), max: '1'});
+    const button = new Node(), note = new Node();
+    if (action === 'take') {
+      box.nodes['[data-bc-take-value]'] = new Node(); box.nodes['[data-bc-take-go]'] = button;
+      t.root.groups['[data-bc-take]'] = [box];
+    } else {
+      button.dataset.identity = box.dataset.identity; button.parentElement = box;
+      box.nodes['[data-bc-found-message]'] = note;
+      box.groups['[data-bc-found-one], [data-bc-found-all]'] = [button];
+      t.root.groups['[data-bc-' + action + ']'] = [button];
+    }
+    t.context.location.search = '?copy=copy%2D1';
+    vm.runInNewContext(takeSource, t.context);
+    await button.fire('click');
+    assert.equal(t.reloads.length, 1);
+    assert.equal(JSON.parse(t.store['bw-collection-receipt']).screen, '/collection/item/7?copy=copy-1');
+    const draft = JSON.parse(t.store['bw-part-edit-draft:copy-1']);
+    assert.deepEqual(draft, {counts: {11: 0, 12: 2}});
+    const restored = build({draft});
+    assert.equal(restored.rows[0].box.getAttribute('aria-checked'), 'false');
+    assert.equal(restored.rows[1].count.textContent, '2');
+    assert.equal(restored.named.mode.hidden, false);
+  }
   console.log('part edit runtime ok');
 })().catch(error => { console.error(error); process.exit(1); });

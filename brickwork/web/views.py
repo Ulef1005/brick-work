@@ -1607,11 +1607,15 @@ def bw_storage_labels(output):
         abort(404)
     try:
         with database(brickwork_path(), read_only=True) as db:
-            found = labels.plan(db, request.args.get('ids', '').split(','), request.args.get('layout', 'a4-21'), request.host_url)
+            found = labels.plan(db, (request.args.get('ids') or '').split(',') if request.args.get('ids') else [], request.args.get('layout', 'a4-21'), request.host_url)
         if output == 'plan':
             response = jsonify(found)
         elif output == 'preview.png':
-            image = labels.page_image(found, int(request.args.get('page', '0')), guides=True)
+            try:
+                page = int(request.args.get('page', '0'))
+            except ValueError:
+                raise ValueError('Choose a preview sheet') from None
+            image = labels.page_image(found, page, guides=True)
             data = BytesIO()
             image.save(data, 'PNG')
             data.seek(0)

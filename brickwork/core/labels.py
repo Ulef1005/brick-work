@@ -48,7 +48,7 @@ def validate_address(value):
     value = str(value).strip().rstrip('/')
     parsed = urlsplit(value)
     if value and (any(c.isspace() for c in value) or parsed.scheme not in ('http', 'https') or not parsed.hostname or parsed.username or parsed.password
-                  or parsed.query or parsed.fragment or parsed.path not in ('', '/')):
+                  or '?' in value or '#' in value or '@' in parsed.netloc or parsed.path not in ('', '/')):
         raise ValueError('Use an HTTP or HTTPS address without a path, password or query')
     try:
         parsed.port

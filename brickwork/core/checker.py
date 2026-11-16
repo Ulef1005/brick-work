@@ -662,29 +662,32 @@ def save_missing(db, copy_id, rows):
     `copy_part` id, never a spare, a retired line or a figure's own part): `missing` 1 to the line's quantity marks it missing and checked,
     0 clears it (the line stays as it was checked). Each line once. One receipt, so one Undo takes the whole save back, and the derived
     completeness follows; "Set is checked" stays the person's own switch. Returns the event id."""
-    if not isinstance(rows, list) or not rows:
-        raise errors.ValidationFailed('Tick at least one part')
-    wanted = {}
-    for entry in rows:
-        if not isinstance(entry, dict):
-            raise errors.ValidationFailed('Choose a part from this copy')
-        line, count = entry.get('id'), entry.get('missing')
-        if type(line) is not int or type(count) is not int:
-            raise errors.ValidationFailed('Choose a part and a whole number of missing pieces')
-        if line in wanted:
-            raise errors.ValidationFailed('Name each part line once')
-        wanted[line] = count
-    copy(db, copy_id)
-    lines = {r['id']: r['quantity'] for r in db.execute(
-        'SELECT id,quantity FROM main.copy_part WHERE copy_id=? AND copy_figure_id IS NULL AND is_spare=0 AND retired_at IS NULL', (copy_id,))}
-    edits = []
-    for line, count in wanted.items():
-        if line not in lines:
-            raise errors.NotFound('No such part line in this copy')
-        if not 0 <= count <= (lines[line] or 0):
-            raise errors.ValidationFailed('Choose a count from 0 to %d' % (lines[line] or 0))
-        edits.append(('p:%d' % line, dict(missing=count, checked=True) if count else dict(missing=0)))
-    return mark(db, copy_id, edits)
+    with transaction(db):
+        if not isinstance(rows, list) or not rows:
+            raise errors.ValidationFailed('Tick at least one part')
+        wanted = {}
+        for entry in rows:
+            if not isinstance(entry, dict):
+                raise errors.ValidationFailed('Choose a part from this copy')
+            line, count = entry.get('id'), entry.get('missing')
+            if type(line) is not int or type(count) is not int:
+                raise errors.ValidationFailed('Choose a part and a whole number of missing pieces')
+            if line in wanted:
+                raise errors.ValidationFailed('Name each part line once')
+            wanted[line] = count
+        copy(db, copy_id)
+        lines = {r['id']: r['quantity'] for r in db.execute(
+            'SELECT id,quantity FROM main.copy_part WHERE copy_id=? AND copy_figure_id IS NULL AND is_spare=0 AND retired_at IS NULL', (copy_id,))}
+        edits = []
+        for line, count in wanted.items():
+            if line not in lines:
+                raise errors.NotFound('No such part line in this copy')
+            if type(lines[line]) is not int:
+                raise errors.ValidationFailed('Choose a whole number for the part quantity')
+            if not 0 <= count <= lines[line]:
+                raise errors.ValidationFailed('Choose a count from 0 to %d' % (lines[line] or 0))
+            edits.append(('p:%d' % line, dict(missing=count, checked=True) if count else dict(missing=0)))
+        return mark(db, copy_id, edits)
 
 
 def found_all(db, copy_id, token):

@@ -287,3 +287,31 @@ def test_found_reads_missing_only_after_taking_write_transaction(coll, copy, mon
     with pytest.raises(errors.ValidationFailed, match='not missing'):
         action(db, copy, token)
     assert lines(db, copy)[4]['missing'] == 0
+
+
+@pytest.mark.parametrize('quantity', [None, 1.5, 'unknown'])
+def test_save_missing_rejects_invalid_quantity_under_write_lock(quantity, monkeypatch):
+    import sqlite3
+    from brickwork.core import errors
+    # A permissive source models malformed quantities from older collection files.
+    db = sqlite3.connect(':memory:')
+    db.row_factory = sqlite3.Row
+    db.execute('CREATE TABLE copy_part(id, quantity, copy_id, copy_figure_id, is_spare, retired_at, missing)')
+    db.execute('INSERT INTO copy_part VALUES(1, ?, "copy", NULL, 0, NULL, 0)', (quantity,))
+    db.commit()
+    def check_copy(connection, identifier):
+        assert connection.in_transaction
+        assert identifier == 'copy'
+    monkeypatch.setattr(checker, 'copy', check_copy)
+    statements = []
+    db.set_trace_callback(statements.append)
+    try:
+        with pytest.raises(errors.ValidationFailed, match='whole number'):
+            checker.save_missing(db, 'copy', [dict(id=1, missing=1)])
+        begin = next(i for i, sql in enumerate(statements) if sql == 'BEGIN IMMEDIATE')
+        read = next(i for i, sql in enumerate(statements) if 'SELECT id,quantity FROM main.copy_part' in sql)
+        assert begin < read
+        assert db.execute('SELECT missing FROM copy_part WHERE id=1').fetchone()[0] == 0
+        assert not db.in_transaction
+    finally:
+        db.close()

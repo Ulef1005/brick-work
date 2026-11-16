@@ -325,6 +325,24 @@ for _name, (_path, _script, _layouts) in TUTORIAL_SHOTS.items():
         WORLD_OF[_stem] = 'real'
         EXTRAS[_stem] = {'scale': LAYOUT_SCALE[_layout], 'crop': _crop, 'crop_pad': 28, 'after': _prepare + no_placeholders(*_crop) + callouts(*_marks)}
 
+# The README's feature pictures: the same real-sets world and crops as the tutorials' shots, without call-outs (the README has captions instead).
+# The file is `readme-<name>-<width>-<theme>.png`, in docs/img/readme/ so that the README does not depend on the tutorials' folder.
+SELL_PATH = '/collection/item/set/7938-1?copy=' + REAL('7938-1')
+README_SHOTS = {
+    'lot-detect': (LOT_PAGE + '?detect=1&ignore_common=1#set-detection', SHOW_DETECTION, 1024, ['.bd-top'],
+                   "document.querySelectorAll('.bd-cand details').forEach(d => { d.open = false; });\n"),
+    'scout-set': (scout_set('7938-1'), None, 1024, ['.bs-rows', '.bs-panel'], NO_FIGURE_LINES
+                  + "const rows = [...document.querySelectorAll('.bs-row')]; const keep = rows.findIndex(r => r.matches('[aria-current], .is-selected, .on')); "
+                  "rows.forEach((r, i) => { if (i >= 5 && i !== keep) r.remove(); });\n"),
+    'sell-value': (SELL_PATH, None, 390, ['.bc-sell', '.bc-value'], ''),
+    'order-missing': ('/planning/order-missing-parts', None, 1024, ['.oo-rows', '.oo-lines'], ORDER_DESKTOP),
+}
+for _name, (_path, _script, _width, _crop, _prepare) in README_SHOTS.items():
+    _stem = f'readme-{_name}-{_width}'
+    PICTURES[_stem] = (_path, _width, 3000, _script, (README,))
+    WORLD_OF[_stem] = 'real'
+    EXTRAS[_stem] = {'scale': 2, 'crop': _crop, 'crop_pad': 28, 'after': _prepare + no_placeholders(*_crop)}
+
 
 def optimise(path: Path) -> None:
     """Palette PNG: the app's flat colours quantise without visible loss and weigh a fraction."""

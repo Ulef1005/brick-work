@@ -49,20 +49,60 @@ Four named workflows on the **Workbench** do the work at the table. Each one is 
 
 **Part Spotter** (was Part to Inventory) names the piece in your hand. Photograph it with the camera or add a saved photo, and Brickognize, an outside recognition service, suggests the part and its colour, or the minifigure when **Identify** is set to **Figures**. Photos queue up while you work; you review each result, confirm part and colour, and add the batch to your loose parts, a lot or a place in one step, with Undo. Only the photo you choose leaves your network, resized, and each one uses one request of the daily budget. [Identify a minifigure from a photo](docs/how-to/identify-a-minifigure.md) shows it with a minifigure.
 
-**Set Inspector** (was Check Set Parts) tells you what a copy is missing. It goes through the copy part by part against its inventory: for each part you say **Found**, with how many, or **Missing**, or skip it for later. Answers are saved as you go, so you can stop and resume; spare parts never count as missing. At the end you deal with the skipped parts, read what is missing, and tick **Set is checked**: from then on the copy turns **Complete** by itself once nothing is missing or damaged. A copy with gaps can start a check of only its missing parts, or mark one found straight from its missing list. [Check a set's parts](docs/how-to/check-set-parts.md) has every variant.
+**Set Inspector** (was Check Set Parts) tells you what a copy is missing. It goes through the copy part by part against its inventory: for each part you say **Found**, with how many, or **Missing**, or skip it for later. Answers are saved as you go, so you can stop and resume; spare parts never count as missing. At the end you deal with the skipped parts, read what is missing, and tick **Set is checked**: from then on the copy turns **Complete** by itself once nothing is missing or damaged. A copy with gaps can start a check of only its missing parts, or mark one found straight from its missing list; **Edit parts** on the set page ticks the missing parts of a copy in one go, with Undo. [Check a set's parts](docs/how-to/check-set-parts.md) has every variant.
 
 **Part Runner** (was Part Picker) fills several sets in one walk along your drawers. Tick the incomplete sets you want to work on, or all of them, and choose the pick order: category, colour, size, set and storage, so the parts in one drawer come together. Each part shows once with the total and which sets need how many; **Found it** puts it into those sets, into your loose parts, or only onto the pick list. The list also prints, or saves as CSV for the table. [Pick parts for several sets](docs/how-to/pick-parts.md) explains the order and the keys.
 
 **Matchmaker** (was Matcher) works the other way round: it looks at the loose stock you already hold and shows which incomplete copies it can finish. Copies it completes come first and say so; every copy shows how many of its missing parts the stock covers. Open one, check each line against your stock, and give the parts to the copy, with Undo; a match is a suggestion, not a reservation, so work through one copy at a time. [Find sets your loose stock can finish](docs/how-to/match-stock-to-sets.md) covers it.
 
-**More at the table.** **Build Scout** ranks every set in the catalogue by how much of it your loose stock already makes, with the missing parts and an approximate cost, and **Build it** turns a set into a copy as one undoable step ([Find sets to build](docs/how-to/find-sets-to-build.md)). On a bulk lot, **Set detection** ranks the sets the pile may hold, a flagged sticker helps pick the right one, and the **Pull list** takes you through the set's parts to an owned copy ([Find the sets in a bulk lot](docs/how-to/find-the-sets-in-a-bulk-lot.md), [Pull a set out of a lot](docs/how-to/pull-a-set-out-of-a-lot.md)). **Order missing parts** combines the gaps of the sets you choose into one BrickLink wanted list ([Order the parts all your sets are missing](docs/how-to/order-missing-parts.md)), and **Change variant** moves what you own from one catalogue variant of a figure or part to another ([Change an item's variant](docs/how-to/change-variant.md)). Two tutorials walk through them: [Find the sets in a bulk lot](docs/tutorials/find-the-sets-in-a-bulk-lot.md) and [Build from what you have, and order the rest](docs/tutorials/build-from-what-you-have.md).
+**More at the table.** **Build Scout** ranks every set in the catalogue by how much of it your loose stock already makes, with the missing parts and an approximate cost, and **Build it** turns a set into a copy as one undoable step ([Find sets to build](docs/how-to/find-sets-to-build.md)). On a bulk lot, **Set detection** ranks the sets the pile may hold, a flagged sticker helps pick the right one, and the **Pull list** takes you through the set's parts to an owned copy ([Find the sets in a bulk lot](docs/how-to/find-the-sets-in-a-bulk-lot.md), [Pull a set out of a lot](docs/how-to/pull-a-set-out-of-a-lot.md)). **Order missing parts** combines the gaps of the sets you choose into one BrickLink wanted list ([Order the parts all your sets are missing](docs/how-to/order-missing-parts.md)), and **Change variant** moves what you own from one catalogue variant of a figure or part to another ([Change an item's variant](docs/how-to/change-variant.md)). A **Sticker** tag on a filed part helps pick the right set, and with **Group parts by** in Settings the part lists, the pull list, the order list and the printouts sit under part groups you can edit. Tutorials walk through them: [Find the sets in a bulk lot](docs/tutorials/find-the-sets-in-a-bulk-lot.md) and [Build from what you have, and order the rest](docs/tutorials/build-from-what-you-have.md).
+
+**Value and selling.** A set's page has a **Value** card (what you paid, what the copy is worth now, the gain or loss in words) and a **Sell this copy** card that suggests an asking price from BrickLink's sold average less the used price of each missing part and figure, and writes the listing text; nothing is posted and your collection does not change ([Keep it or part it out](docs/tutorials/value-and-selling.md)). **Complete sets** compares completing with parting out, for minifigures too, and the **insurance report** lists what your copies are worth ([Make an insurance report](docs/how-to/insurance-report.md)). Part detail has **Found in**: the sets and minifigures that contain a part in its colour, yours first.
+
+**Labels and instructions.** Select storages and download A4 label sheets or 62 mm tape images with a QR code that opens the storage's contents after login ([Print storage labels](docs/how-to/storage-labels.md)). **Find instructions** lists candidate PDFs for a set, lets you tick the files to download and shows a preview of each booklet; the **Official** source needs a page renderer that you set up yourself ([Find and download instructions](docs/tutorials/find-instructions.md)).
+
+## In pictures
+
+The screenshots show the built app on the demo's invented collection, with Rebrickable's set and part pictures.
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/img/readme/readme-lot-detect-1024-dark.png">
+    <img src="docs/img/readme/readme-lot-detect-1024-light.png" alt="Set detection on a bulk lot: the candidate sets with a score bar, here the Passenger Train at 100 % and the Motorized Excavator at 52 %, each with a Details button" width="620">
+  </picture>
+  <br><sub><strong>Set detection.</strong> Which sets may a pile of parts have come from? Candidates ranked by score, with the parts that tell them apart.</sub>
+</p>
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/img/readme/readme-scout-set-1024-dark.png">
+    <img src="docs/img/readme/readme-scout-set-1024-light.png" alt="Build Scout: sets ranked by how much of them your loose stock makes, with the selected Passenger Train, its missing parts and the Build it button" width="620">
+  </picture>
+  <br><sub><strong>Build Scout.</strong> Which sets can your loose stock build, or nearly build? The selected set shows what is missing, and <strong>Build it</strong> makes the copy in one undoable step.</sub>
+</p>
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/img/readme/readme-order-missing-1024-dark.png">
+    <img src="docs/img/readme/readme-order-missing-1024-light.png" alt="Order missing parts: four sets with gaps ticked on the left and the combined part lines on the right, each with a BrickLink price and a Pick a Brick choice" width="620">
+  </picture>
+  <br><sub><strong>Order missing parts.</strong> The gaps of the sets you tick, combined into one list, each line going to BrickLink or Pick a Brick.</sub>
+</p>
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/img/readme/readme-sell-value-390-dark.png">
+    <img src="docs/img/readme/readme-sell-value-390-light.png" alt="The Sell this copy card with an asking price built from the used sold average less the missing parts, and the Value card with Paid, Worth now and Gain" width="300">
+  </picture>
+  <br><sub><strong>Sell this copy and Value.</strong> An asking price worked out line by line, and what the copy has gained since you bought it.</sub>
+</p>
 
 ## Where we stand
 
-Release 1.0.0 (9 November 2026, schema 4.2) is the first release after its maintainer's real collection was set up from scratch through **Get started** on a test install and every workflow was run on it (milestone B). The schema is stable, upgrades from 0.5.x are tested, and it is the first release you install by pulling the published multi-arch image from GHCR, with build provenance and an SBOM you can verify. Its maintainer uses Brick Work daily for a collection of about 200 set copies. Read the [CHANGELOG](CHANGELOG.md) before upgrading.
+Release 1.1 (schema 4.6) builds on 1.0, the first release after its maintainer's real collection was set up from scratch through **Get started** on a test install and every workflow was run on it (milestone B). The schema is stable, upgrades from 0.5.x are tested, and you install by pulling the published multi-arch image from GHCR, with build provenance and an SBOM you can verify. Its maintainer uses Brick Work daily for a collection of about 200 set copies. What 1.1 adds since 1.0.1 is under **New in 1.1** below. Read the [CHANGELOG](CHANGELOG.md) before upgrading.
 
-- **Shipped:** the Collection (sets, minifigures, parts, gear, books and catalogs), the Workbench (Part Spotter, Set Inspector, Part Runner, Matchmaker, Orders, Storage), Planning and Manage screens; **Get started**, a guided first run; an installable web app with its own look on phone and desktop; a versioned REST API with scoped tokens and Undo; an admin CLI; an MCP server; orders from your BrickLink account, a confirmation e-mail or the order XML; optional BrickLink item lists; a read-only importer for an older tracker database; collection sync of owned and wanted sets with Rebrickable and Brickset; user docs with four tutorials.
-- **Planned, not built:** Buildable sets, sync with BrickLink (#143, open), changing which catalogue figure a copy holds (#151), a pile check by photo, a sale price for a used copy, complete-or-part-out for minifigures and sets, and one shopping list for missing parts. The order is kept in the [GitHub milestones](https://github.com/Ulef1005/brick-work/milestones) and the issues' priority labels (`now`, `next`, `later`); there are no dates.
+- **Shipped:** the Collection (sets, minifigures, parts, gear, books and catalogs), the Workbench (Part Spotter, Set Inspector, Lot Sorter, Part Runner, Matchmaker, Build Scout, Orders, Storage), Planning (Wishlist, Prices, Complete sets, Order missing parts) and Manage screens; **Get started**, a guided first run; an installable web app with its own look on phone and desktop; a versioned REST API with scoped tokens and Undo; an admin CLI; an MCP server; orders from your BrickLink account, a confirmation e-mail or the order XML; optional BrickLink item lists; a read-only importer for an older tracker database; collection sync of owned and wanted sets with Rebrickable and Brickset; **New in 1.1:** set detection, stickers and the pull list for a bulk lot; Build Scout and **Build it**; Order missing parts with a BrickLink or Pick a Brick source per line; Change variant; part groups; Sell this copy; Value and gain, and the insurance report; Found in on part detail; complete-or-part-out figures for minifigures; storage labels with QR codes; Find instructions with booklet previews; user docs with eleven tutorials.
+- **Planned, not built:** sync with BrickLink (#143, open) and a pile check by photo. The order is kept in the [GitHub milestones](https://github.com/Ulef1005/brick-work/milestones) and the issues' priority labels (`now`, `next`, `later`); there are no dates.
 
 It is self-hosted, single-user and meant for a home network or a VPN, not the open internet.
 
@@ -125,7 +165,7 @@ Nothing until you ask. **Download the catalogue** fetches Rebrickable's public f
 With Git and Docker Compose installed:
 
 ```sh
-git clone --branch v1.0.1 https://github.com/Ulef1005/brick-work.git
+git clone --branch v1.1.0 https://github.com/Ulef1005/brick-work.git
 cd brick-work
 mkdir -p data
 sudo chown 1000:1000 data   # the container runs as uid 1000; as root, leave out sudo
@@ -137,7 +177,7 @@ docker compose up -d
 
 For NAS users whose shared folder is not owned by uid 1000, set `user: "<uid>:<gid>"` in `compose.yaml` (or `--user <uid>:<gid>` with `docker run`) to the folder owner's ids instead of changing ownership; Unraid uses `99:100`.
 
-The clone is still needed: it holds `compose.yaml` and `.env.sample`. `docker compose pull` fetches the published image `ghcr.io/ulef1005/brick-work:1.0.1` (multi-arch, amd64 and arm64); `docker compose build` builds the same image from the source you cloned instead. You can check the published image's provenance with `gh attestation verify oci://ghcr.io/ulef1005/brick-work:1.0.1 --owner Ulef1005`, and its SBOM by adding `--predicate-type https://spdx.dev/Document/v2.3` ([Upgrade Brick Work](docs/how-to/upgrade.md#move-to-the-new-version)). Releases up to 0.9.0 build from source: their `compose.yaml` does not pull.
+The clone is still needed: it holds `compose.yaml` and `.env.sample`. `docker compose pull` fetches the published image `ghcr.io/ulef1005/brick-work:1.1.0` (multi-arch, amd64 and arm64); `docker compose build` builds the same image from the source you cloned instead. You can check the published image's provenance with `gh attestation verify oci://ghcr.io/ulef1005/brick-work:1.1.0 --owner Ulef1005`, and its SBOM by adding `--predicate-type https://spdx.dev/Document/v2.3` ([Upgrade Brick Work](docs/how-to/upgrade.md#move-to-the-new-version)). Releases up to 0.9.0 build from source: their `compose.yaml` does not pull.
 
 Then open `http://localhost:3333` and sign in with that password; an empty install greets you with **Download the catalogue** (no key needed); after it, add a set by number and check its parts. The container runs as uid 1000 and writes only to `data/`; if an older image (which ran as root) created that folder, run `sudo chown -R 1000:1000 data` once. The `data` volume holds the database, local catalogue index, photos, PDFs and job state. Back it up together with your environment configuration. No separate application or service is required. The offline smoke test covers a fresh installation without source credentials.
 
@@ -222,12 +262,12 @@ Back up first (next section), then check out the new release, build or pull its 
 
 ```sh
 git fetch
-git checkout v1.0.1          # the release's tag
+git checkout v1.1.0          # the release's tag
 docker compose pull          # 0.9.0 and older: docker compose build
 docker compose up -d
 ```
 
-A schema change inside 4.x (4.0 to 4.1 in 0.7.0, 4.1 to 4.2 in 0.9.0) runs in place at the first read-write start, one step per version. It is one-way: an older version cannot open the upgraded file, so going back means restoring the backup, checking out the older tag and, refreshing its image before you start it: `docker compose pull` from 1.0.0 on, `docker compose build` for 0.9.0 and older. A 0.5.x (schema 3.3) collection is not upgraded by starting 0.6.0 or later: run `brickwork migrate4` on a copy first; the 3.3 file is never changed. To check the result, open `/api/v2/health` (it shows the app version and the schema) and run `brickwork check`. The steps for every version are in [Upgrade Brick Work](docs/how-to/upgrade.md); `CHANGELOG.md` names any step a release needs. The upgrade from a 0.5.0-shaped collection through every schema step is tested in `tests/test_upgrade_path.py`, which `scripts/check.sh` runs.
+A schema change inside 4.x (4.0 to 4.1 in 0.7.0, 4.1 to 4.2 in 0.9.0, 4.2 up to 4.6 in 1.1.0) runs in place at the first read-write start, one step per version. It is one-way: an older version cannot open the upgraded file, so going back means restoring the backup, checking out the older tag and, refreshing its image before you start it: `docker compose pull` from 1.0.0 on, `docker compose build` for 0.9.0 and older. A 0.5.x (schema 3.3) collection is not upgraded by starting 0.6.0 or later: run `brickwork migrate4` on a copy first; the 3.3 file is never changed. To check the result, open `/api/v2/health` (it shows the app version and the schema) and run `brickwork check`. The steps for every version are in [Upgrade Brick Work](docs/how-to/upgrade.md); `CHANGELOG.md` names any step a release needs. The upgrade from a 0.5.0-shaped collection through every schema step is tested in `tests/test_upgrade_path.py`, which `scripts/check.sh` runs.
 
 ## Backup and restore
 
@@ -292,7 +332,7 @@ This GitHub repository is the canonical source: changes land here first. The mai
 
 ## Licence and trademarks
 
-MIT; see [LICENSE](LICENSE), which keeps the upstream copyright notice, and [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md) for fonts and icons. The folders [`not-mit/`](not-mit/NOTICE.md) and [`docs/img/tutorials/`](docs/img/tutorials/NOTICE.md) are the exception: Rebrickable and LEGO pictures and data for the demo, and screenshots of them, not under the MIT licence, not part of the app or the image.
+MIT; see [LICENSE](LICENSE), which keeps the upstream copyright notice, and [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md) for fonts and icons. The folders [`not-mit/`](not-mit/NOTICE.md), [`docs/img/tutorials/`](docs/img/tutorials/NOTICE.md) and [`docs/img/readme/`](docs/img/readme/NOTICE.md) are the exception: Rebrickable and LEGO pictures and data for the demo, and screenshots of them, not under the MIT licence, not part of the app or the image.
 
 LEGO® is a trademark of the LEGO Group of companies, which does not sponsor, authorize or endorse this project. Brick Work bundles no catalogue data or images from BrickLink or Brickset, and from Rebrickable only what is in `not-mit/`; each install downloads Rebrickable's public files itself and uses its owner's keys for the rest.
 

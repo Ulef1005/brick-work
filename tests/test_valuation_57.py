@@ -359,3 +359,18 @@ def test_copies_can_be_limited_to_the_given_copy_ids_with_the_same_rows(coll):
     only = valuation.copies(coll.db, [second])
     assert [r['id'] for r in only] == [second] and only[0] == everything[second] and first in everything
     assert valuation.copies(coll.db, []) == []
+
+
+def test_a_checked_copy_with_a_converted_quote_shows_the_net_original(coll, monkeypatch):
+    from decimal import Decimal
+    from brickwork.core import currency
+    table = {'EUR': dict(per_eur=Decimal(1), as_of='2026-10-20'), 'USD': dict(per_eur=Decimal('1.25'), as_of='2026-10-20')}
+    worth, _ = valuation._money(Decimal('100.00'), 'USD', 'EUR', table)
+    quote = dict(currency='USD')
+    deduction = dict(parts=Decimal('10.00'), figures=Decimal('0'))
+    net = valuation._net(worth, deduction, quote, table)
+    assert (str(net['amount']), str(net['original']['amount']), net['original']['currency']) == ('70.00', '87.50', 'USD')
+    real = currency.convert
+    monkeypatch.setattr(currency, 'convert', lambda amount, source, target, t: None if (source, target) == ('EUR', 'USD') else real(amount, source, target, t))
+    net = valuation._net(worth, deduction, quote, table)                          # no reverse rate: the original follows the shown net, not the average
+    assert (str(net['amount']), str(net['original']['amount'])) == ('70.00', '87.50')

@@ -1,4 +1,4 @@
-<!-- Google paragraph drafted 16.11. (GTM + GA4, cookieless, no banner: Ulf's decision); wording awaits the owner's approval. -->
+<!-- Google paragraph added 16.11. (GTM + GA4, cookieless, no banner: Ulf's decision); wording approved by the owner, 16.11. -->
 <!-- Copy approved by the owner, 13.11. Clarity paragraph added 14.11. at the owner's decision (no consent banner); wording approved by the owner, 14.11. -->
 # Privacy
 

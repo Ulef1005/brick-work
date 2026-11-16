@@ -100,6 +100,17 @@ CLARITY = """<script>
         y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
     })(window, document, "clarity", "script", "zdj5z3tzsr");
 </script>"""
+# Google Tag Manager with Consent Mode v2 (Ulf, 16.11.: GA4 cookieless, no banner): every consent signal is set to denied BEFORE the container loads, so the GA4 tag in the container
+# sends cookieless pings only. Same pages as the tags above, in the head, never on the docs or the demo; the privacy page says so. The container id is public in every page's HTML.
+GTM = """<script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('consent', 'default', {'ad_storage': 'denied', 'ad_user_data': 'denied', 'ad_personalization': 'denied', 'analytics_storage': 'denied', 'wait_for_update': 500});
+    gtag('set', 'ads_data_redaction', true);
+    (function(w,d,s,l,i){w[l].push({'gtm.start': new Date().getTime(), event: 'gtm.js'});
+        var f=d.getElementsByTagName(s)[0], j=d.createElement(s);j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i;f.parentNode.insertBefore(j,f);
+    })(window,document,'script','dataLayer','GTM-PKVSLMMS');
+</script>"""
 HOME_TITLE = 'Brick Work: self-hosted brick collection and parts manager'     # the home page's <title> and share title (the other pages end in ' · Brick Work')
 HOME_DESCRIPTION = ('Brick Work is a free, open-source, self-hosted workbench for your brick collection: check a set\'s parts, pull missing ones from loose stock '
                     'and see which sets it can complete.')
@@ -169,6 +180,7 @@ def page(title, body, depth, *, current, head='', main='doc', absolute=False, pa
 <link rel="stylesheet" href="{up}assets/marketing.css">
 <link rel="alternate" type="text/markdown" href="{up}llms.txt" title="Brick Work for AI assistants">
 {head}
+{GTM}
 {CLARITY}
 </head>
 <body>

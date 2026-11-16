@@ -106,3 +106,17 @@ def test_transport_retry_after():
     with pytest.raises(src.RetryAfter) as error:
         src.fetch_pdf(BASE + 'product.bi.core.pdf/1.pdf', opener=opener)
     assert error.value.value == '120'
+
+
+def test_download_has_a_total_time_limit():
+    class Response(BytesIO):
+        headers = {}
+    now = [0.0]
+    class Slow(Response):
+        def read(self, size=-1):
+            now[0] += 100  # a throttled source: each read stays inside the socket timeout
+            return super().read(1)
+    def opener(request, timeout):
+        return Slow(b'%PDF-' + b'x' * 1000)
+    with pytest.raises(ValueError, match='too long'):
+        src.fetch_pdf(BASE + 'product.bi.core.pdf/1.pdf', 10000, opener=opener, monotonic=lambda: now[0])

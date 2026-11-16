@@ -179,3 +179,75 @@ def test_merge_refuses_active_download(coll):
 def test_uk_and_gb_region_defaults_are_equivalent(candidate_region):
     candidate = dict(id=1, source='rebrickable', region=candidate_region, language='English', size=100, file_id=None)
     assert ins.tick_defaults([candidate], 'UK') == ins.tick_defaults([candidate], 'GB') == [1]
+
+
+def test_region_is_validated_at_queue_time(coll):
+    for bad in ('XX', 'de', ['AT']):
+        with pytest.raises(ValueError, match='region'), transaction(coll.db):
+            ins.queue_find(coll.db, [coll.item('sets', '1000-1')], region=bad)
+    assert coll.db.execute('SELECT count(*) FROM instruction_search').fetchone()[0] == 0
+
+
+def test_retry_after_is_capped_at_one_hour(coll, tmp_path):
+    from datetime import datetime, timedelta, timezone
+    reg, fake = registry()
+    _, rows = discover(coll, reg)
+    job = download(coll, rows)
+    fake.failure = src.RetryAfter('99999999')
+    result = ins.Downloads(coll.db, registry=reg, root=tmp_path).run(job)
+    retry = datetime.strptime(result['retry_at'], '%Y-%m-%dT%H:%M:%S.%fZ').replace(tzinfo=timezone.utc)
+    assert retry <= datetime.now(timezone.utc) + timedelta(hours=1, seconds=5)
+
+
+def test_candidate_in_an_active_download_is_not_queued_twice(coll, tmp_path):
+    reg, fake = registry()
+    _, rows = discover(coll, reg)
+    job = download(coll, rows[:1])
+    with pytest.raises(ValueError, match='already queued'), transaction(coll.db):
+        ins.queue_download(coll.db, [rows[0]['id']])
+    with transaction(coll.db):
+        ins.queue_download(coll.db, [rows[1]['id']])
+    runner = ins.Downloads(coll.db, registry=reg, root=tmp_path)
+    runner.cancel(job)
+    with transaction(coll.db):
+        ins.queue_download(coll.db, [rows[0]['id']])
+
+
+def test_attach_rechecks_the_candidate_and_streams_the_file(coll, tmp_path):
+    from tempfile import TemporaryFile
+    from brickwork.core.admin import attach_instruction
+    reg, fake = registry()
+    _, rows = discover(coll, reg)
+    job = download(coll, rows[:1])
+    streams = []
+    def fetch(url, limit):
+        stream = TemporaryFile()
+        stream.write(fake.content)
+        stream.seek(0)
+        streams.append(stream)
+        # Another job finishes the same candidate while this file downloads.
+        with transaction(coll.db):
+            other = attach_instruction(coll.db, tmp_path, rows[0]['item_id'], 'Other job', fake.content)
+            coll.db.execute('UPDATE instruction_candidate SET file_id=? WHERE id=?', (other, rows[0]['id']))
+        return stream
+    fake.fetch = fetch
+    assert ins.Downloads(coll.db, registry=reg, root=tmp_path).run(job)['state'] == 'done'
+    assert coll.db.execute('SELECT count(*) FROM instruction_file').fetchone()[0] == 1
+    assert streams and all(s.closed for s in streams)
+
+
+def test_a_streamed_download_is_copied_in_chunks(coll, tmp_path):
+    from hashlib import sha256
+    from tempfile import TemporaryFile
+    from brickwork.core.admin import attach_instruction
+    data = b'%PDF-1.4\n' + b'x' * 200000
+    with TemporaryFile() as stream:
+        stream.write(data)
+        stream.seek(0)
+        with transaction(coll.db):
+            attach_instruction(coll.db, tmp_path, coll.item('sets', '1000-1'), 'Streamed', stream)
+    assert (tmp_path / 'data/instructions' / (sha256(data).hexdigest() + '.pdf')).read_bytes() == data
+    with TemporaryFile() as stream, pytest.raises(ValueError):
+        stream.write(b'Alex')
+        with transaction(coll.db):
+            attach_instruction(coll.db, tmp_path, coll.item('sets', '1000-1'), 'Not a PDF', stream)

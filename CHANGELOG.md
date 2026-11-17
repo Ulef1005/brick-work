@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **The focus line is blue.** The line around the field, button or link that has the focus is now the blue of the logo instead of orange, in the app and on the docs site. Orange stays the colour of buttons, links and selected states.
+
 - **Price fields read as two fields** (#461). In the Edit sheet, the currency and the amount of a price are set apart by a line and a quieter ground, and the one you are typing in is underlined.
 
 - **Settings open with the two refreshes** (#460). A Refresh card at the top of Settings says how many prices are out of date and how many pictures are missing, with **Refresh prices** and **Refresh pictures** beside it. Refresh pictures moved there from the Pictures section.

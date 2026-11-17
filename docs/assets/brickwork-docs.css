@@ -166,7 +166,7 @@
 
     --tw-focus-width:  2px;
   --tw-focus-offset: 2px;
-  --tw-focus-color:  var(--tw-accent);
+  --tw-focus-color:  oklch(0.50 0.10 215);
 
     --tw-viz-1:  oklch(0.92 0.04 55);
   --tw-viz-2:  oklch(0.83 0.09 52);
@@ -258,7 +258,7 @@
     --tw-on-accent: #111111;
     --tw-toast-bg: var(--tw-text);
     --tw-toast-fg: var(--tw-bg);
-    --tw-focus-color: var(--tw-accent);
+    --tw-focus-color: oklch(0.76 0.10 215);
     --tw-viz-ac: #F2F2F2;
     --tw-viz-py: #8C8C8C;
   }
@@ -268,7 +268,7 @@
   --tw-on-accent: #111111;
   --tw-toast-bg: var(--tw-text);
   --tw-toast-fg: var(--tw-bg);
-  --tw-focus-color: var(--tw-accent);
+  --tw-focus-color: oklch(0.76 0.10 215);
   --tw-viz-ac: #F2F2F2;
   --tw-viz-py: #8C8C8C;
 }
@@ -277,7 +277,7 @@
   --tw-on-accent: #FFFFFF;
   --tw-toast-bg: var(--tw-text);
   --tw-toast-fg: var(--tw-bg);
-  --tw-focus-color: var(--tw-accent);
+  --tw-focus-color: oklch(0.50 0.10 215);
   --tw-viz-ac: #111111;
   --tw-viz-py: #8C8C8C;
 }

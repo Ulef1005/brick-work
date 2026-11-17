@@ -7,7 +7,7 @@
 .bw-add-segments input {position:absolute;opacity:0;width:1px;height:1px}
 .bw-add-segments span {display:flex;align-items:center;justify-content:center;min-height:44px;padding:0 14px;background:var(--tw-surface);border-radius:10px}
 .bw-add-segments input:checked + span {background:var(--tw-accent-soft);color:var(--tw-accent-text);outline:1px solid var(--tw-accent)}
-.bw-add-segments input:focus-visible + span {outline:2px solid var(--tw-accent);outline-offset:2px}
+.bw-add-segments input:focus-visible + span {outline:2px solid var(--tw-focus-color);outline-offset:2px}
 .bw-add-drop {min-height:160px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;border:1.5px dashed var(--tw-divider-strong);border-radius:16px;padding:20px}
 .bw-add-drop.dragging {border-color:var(--tw-accent);background:var(--tw-accent-soft)}
 .bw-add-item {display:flex;align-items:center;gap:12px;min-height:80px;border-bottom:.5px solid var(--tw-divider);padding:8px 0}
@@ -41,9 +41,9 @@
 #bw-add .bw-add-continuous label{flex:1;min-width:0}
 #bw-add .bw-add-continuous span{height:44px;min-height:44px;padding:0;border-radius:8px;background:transparent;color:var(--tw-text-2);font:500 13px var(--tw-font);white-space:nowrap}
 #bw-add .bw-add-continuous input:checked + span{background:var(--tw-accent-soft);color:var(--tw-accent-text);outline:none}
-#bw-add .bw-add-continuous input:focus-visible + span{outline:2px solid var(--tw-accent)}
+#bw-add .bw-add-continuous input:focus-visible + span{outline:2px solid var(--tw-focus-color)}
 .bw-add-search-field{display:flex;align-items:center;gap:10px;height:48px;border-radius:10px;background:var(--tw-surface);padding:0 14px}
-.bw-add-search-field:focus-within{outline:2px solid var(--tw-accent)}
+.bw-add-search-field:focus-within{outline:2px solid var(--tw-focus-color)}
 .bw-add-search-field .icon{width:18px;height:18px;flex:none;color:var(--tw-text-muted)}
 #bw-add [data-search]{flex:1;width:100%;min-width:0;min-height:0;background:none;border:0;padding:0;font:400 16px var(--tw-font)}
 /* M.10 A · the Part list picker and the picture warning in the review (design 4.3, 6.8). */

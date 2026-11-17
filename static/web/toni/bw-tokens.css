@@ -38,13 +38,13 @@
 .bw-tk-field{display:flex;flex-direction:column;gap:6px;min-width:0}
 .bw-tk-field>span,.bw-tk-legend{font:500 13px var(--tw-font);color:var(--tw-text-2)}
 .bw-tk-field input{height:44px;border-radius:10px;background:var(--tw-bg);border:.5px solid var(--tw-divider-strong);padding:0 12px;box-sizing:border-box;font:400 15px var(--tw-font);color:var(--tw-text);width:100%}
-.bw-tk-field input:focus{border-color:var(--tw-accent);outline:none}
+.bw-tk-field input:focus{border-color:var(--tw-focus-color);outline:none}
 .bw-tk-scopes{border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:8px}
 .bw-tk-scope{display:flex;gap:12px;align-items:center;min-height:52px;border-top:.5px solid var(--tw-divider);cursor:pointer}
 .bw-tk-scope input{appearance:none;width:22px;height:22px;border-radius:6px;flex:none;border:1.5px solid var(--tw-text-muted);box-sizing:border-box;margin:0;display:grid;place-items:center;background:transparent}
 .bw-tk-scope input:checked{background:var(--tw-accent);border-color:var(--tw-accent)}
 .bw-tk-scope input:checked::after{content:"";width:6px;height:11px;border:solid #1A1816;border-width:0 2px 2px 0;transform:rotate(45deg) translate(-1px,-1px)}
-.bw-tk-scope input:focus-visible{outline:2px solid var(--tw-accent);outline-offset:2px}
+.bw-tk-scope input:focus-visible{outline:2px solid var(--tw-focus-color);outline-offset:2px}
 .bw-tk-scope b{display:block;font:500 14px var(--tw-mono)}
 .bw-tk-scope small{display:block;font:400 13px/18px var(--tw-font);color:var(--tw-text-muted)}
 .bw-tk-grow{flex:1}

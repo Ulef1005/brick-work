@@ -33,6 +33,8 @@ A **loose minifigure** is a figure you own on its own. It can carry its own list
 
 Part Runner, the Matchmaker and Complete sets look in loose stock for parts that your copies are missing.
 
+The **Parts** and **Minifigures** lists show your loose stock. The line under the title says how many parts or figures that is, and it is the number beside the list in the side menu. The chip **In sets** switches to the parts and figures that sit inside your set copies, and **Loose** switches back. To look for a part or figure wherever it is, use the Jump button at the top of every page.
+
 ## Lots
 
 A **lot** is a named group of loose stock that came together, such as "Flea market bag, March." It can have its own storage and purchase details. Putting stock in a lot keeps the quantities and the original lines; it only groups them.

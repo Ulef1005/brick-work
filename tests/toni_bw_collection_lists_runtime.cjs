@@ -20,7 +20,7 @@ class Node {
  async trigger(n='click',extra={}){return this.events[n]?.({preventDefault(){},currentTarget:this,target:this,...extra});}
 }
 const texts=node=>[node.textContent,...node.children.flatMap(texts)].filter(Boolean);
-function load(records,{kind='P',pageSize=15,defaultGroup='',groupOptions=null,saved=null,detail=false}={}){
+function load(records,{kind='P',pageSize=15,defaultGroup='',groupOptions=null,saved=null,detail=false,scope=false,query=''}={}){
  const list=new Node(),container=new Node(),search=new Node(),sort=new Node(),direction=new Node(),group=new Node(),source=new Node(),count=new Node();
  sort.value='number';direction.value='asc';
  list.dataset.bcPageSize=String(pageSize);if(defaultGroup)list.dataset.bcDefaultGroup=defaultGroup;
@@ -32,18 +32,22 @@ function load(records,{kind='P',pageSize=15,defaultGroup='',groupOptions=null,sa
  const problem=control('problem',['','damaged','missing']),lot=control('lot',['','any','null','lot-1','lot-2']);
  lot.options=[{value:'',textContent:'All'},{value:'any',textContent:'In a lot'},{value:'null',textContent:'No lot'},{value:'lot-1',textContent:'Lot 1'},{value:'lot-2',textContent:'Lot 2'}];
  const picks=['','lot'].map(v=>{const b=new Node();b.tagName='BUTTON';b.dataset.bcGroupPick=v;return b;});
- const quick=[['',''],['problem:damaged',''],['lot:any',''],['lot:null','']].map(([v])=>{const b=new Node();b.tagName='BUTTON';b.dataset.bcQuick=v;return b;});
+ const quick=[['',''],['problem:damaged',''],['lot:any',''],['lot:null','']].map(([v])=>{const b=new Node();b.tagName='BUTTON';b.dataset.bcQuick=v;const total=new Node();total.className='mono';b.append(total);return b;});
  const apply=new Node(),toggle=new Node(),cancel=new Node(),bar=new Node();toggle.setAttribute('role','switch');toggle.dataset.bcSelect='';cancel.dataset.bcSelect='';
  list.nodes={'[data-bc-rows]':container,'[data-bc-records]':source,'[data-bc-search]':search,'[data-bc-sort]':sort,'[data-bc-direction]':direction,'[data-bc-count]':count,'[data-bc-group]':group,'[data-bc-apply]':apply,'[data-bc-selection-bar]':bar};
- list.groups={'[data-bc-filter]':[problem,lot],'[data-bc-group-pick]':picks,'[data-bc-quick]':quick,'[data-bc-select]':[toggle,cancel]};
+ // Parts and Minifigures (#20): the Stock scope has a default (loose), two chips and a headline that follows it.
+ const stock=control('stock',['loose','sets']);stock.dataset.bcDefault='loose';stock.value='loose';
+ const scopePicks=['loose','sets'].map(v=>{const b=new Node();b.tagName='BUTTON';b.dataset.bcPick='stock';b.dataset.value=v;return b;});
+ const headline=new Node(),subline=new Node();
+ list.groups={'[data-bc-filter]':scope?[problem,lot,stock]:[problem,lot],'[data-bc-pick]':scope?scopePicks:[],'[data-bc-group-pick]':picks,'[data-bc-quick]':quick,'[data-bc-select]':[toggle,cancel]};
  const root=new Node();root.dataset={bcCollectionList:'',saveUrl:'/x/ACTION',csrf:'c',type:kind,editable:'true',itemBase:'/i/0',imageBase:'/img/0',lotBase:'/lots/LOT',wishBase:'/w/0',unresolvedUrl:'/u'};root.groups={'[data-bc-list]':[list]};if(detail)delete root.dataset.bcCollectionList;
  const doc=new Node();doc.querySelector=s=>s==='#bw-collection'?root:null;doc.createElement=tag=>{const n=new Node();n.tagName=tag.toUpperCase();return n;};
  const stored=new Map();if(saved)stored.set('bw-collection-list:/collection/'+kind+':0',JSON.stringify(saved));
- const basis=new Node();root.nodes['[data-bc-price-basis]']=basis;if(groupOptions)group.options=groupOptions.map(value=>({value}));
- const context={window:{addEventListener(){},scrollY:0,scrollTo(){},history:{replaceState(){}}},document:doc,sessionStorage:{getItem:k=>stored.get(k)||null,setItem:(k,v)=>stored.set(k,v),removeItem:k=>stored.delete(k)},location:{pathname:'/collection/'+kind,search:'',reload(){}},URLSearchParams,requestAnimationFrame:f=>f(),fetch:async()=>({})};
+ const basis=new Node();root.nodes['[data-bc-price-basis]']=basis;if(scope){root.nodes['[data-bc-headline]']=headline;root.nodes['[data-bc-subline]']=subline;}if(groupOptions)group.options=groupOptions.map(value=>({value}));
+ const context={window:{addEventListener(){},scrollY:0,scrollTo(){},history:{replaceState(){}}},document:doc,sessionStorage:{getItem:k=>stored.get(k)||null,setItem:(k,v)=>stored.set(k,v),removeItem:k=>stored.delete(k)},location:{pathname:'/collection/'+kind,search:query,reload(){}},URLSearchParams,requestAnimationFrame:f=>f(),fetch:async()=>({})};
  vm.runInNewContext(fs.readFileSync('static/web/toni/images.js','utf8'),context);
  vm.runInNewContext(fs.readFileSync('static/web/toni/formatting.js','utf8')+fs.readFileSync('static/web/toni/bw-collection.js','utf8'),context);
- return {basis,container,group,picks,quick,problem,lot,count,apply,toggle,cancel,bar,root,api:context.window.BrickCollection,rows:()=>container.querySelectorAll('[data-bc-row]'),headings:()=>container.querySelectorAll('[data-bc-group-heading]')};
+ return {stock,scopePicks,headline,subline,basis,container,group,picks,quick,problem,lot,count,apply,toggle,cancel,bar,root,api:context.window.BrickCollection,rows:()=>container.querySelectorAll('[data-bc-row]'),headings:()=>container.querySelectorAll('[data-bc-group-heading]')};
 }
 (async()=>{
  // Kit 1c set card: subline "theme / sub-theme · year", pill left and price right, gap count and date below, tags last.
@@ -136,5 +140,30 @@ function load(records,{kind='P',pageSize=15,defaultGroup='',groupOptions=null,sa
  // #180: a count of 1 takes the singular noun, in the subtitle count and the Show button, for every kind.
  for(const [kind,one,many] of [['S','set','sets'],['M','minifigure','minifigures'],['P','part','parts'],['I','booklet','booklets'],['O','box','boxes'],['G','gear','gear'],['B','book','books'],['C','catalog','catalogs'],['?','item','unresolved items'],['wish','wish','wishes']])
   for(const [n,noun] of [[1,one],[2,many]]){const h=load(Array.from({length:n},()=>({type:kind})),{kind,pageSize:0});assert.equal(h.count.textContent,n+' '+noun,kind+' count '+n);assert.equal(h.apply.textContent,'Show '+n+' '+noun,kind+' button '+n);}
+ // #20: Parts and Minifigures open on loose stock; In sets shows what sits inside set copies; the headline follows the scope.
+ const mix=[{quantity:30,in_sets:4,damaged:1,lot:['lot-1']},{quantity:2},{quantity:0,in_sets:10},{quantity:0,in_sets:5,damaged:2}];
+ const S=load(mix,{scope:true});
+ assert.equal(S.stock.value,'loose');assert.equal(S.count.textContent,'1 to 2 of 2','the default view lists the loose rows only');
+ assert.equal(S.headline.textContent,'1 part has damaged pieces');assert.equal(S.subline.textContent,'32 loose parts · 2 entries in 1 lot','the loose total is the rail count');
+ assert.deepEqual(S.quick.map(b=>b.children[0].textContent),['2','1','1','1'],'quick chip counts follow the scope');
+ assert.deepEqual(S.scopePicks.map(b=>b.getAttribute('aria-pressed')),['true','false']);
+ await S.scopePicks[1].trigger();
+ assert.equal(S.stock.value,'sets');assert.equal(S.count.textContent,'1 to 3 of 3');assert.equal(S.headline.textContent,'19 parts in sets');assert.equal(S.subline.textContent,'3 entries · 32 loose');
+ assert.deepEqual(S.quick.map(b=>b.children[0].textContent),['3','2','1','2']);
+ assert.deepEqual(S.scopePicks.map(b=>b.getAttribute('aria-pressed')),['false','true']);
+ const inSetsRow=texts(S.rows()[0]).join('|');assert.ok(inSetsRow.includes('×4')||inSetsRow.includes('×10')||inSetsRow.includes('×5'),'the quantity cell shows the count in sets: '+inSetsRow);
+ assert.ok(!texts(S.rows()[0]).some(t=>t==='×0'),'a row held only in sets never reads ×0');
+ await S.scopePicks[1].trigger();assert.equal(S.stock.value,'loose','the active In sets chip goes back to loose, never to Any');
+ // A stored list state from before has a Stock filter of '' or none at all: both open on loose. A stored In sets stays.
+ for(const old of [{filters:{problem:''}},{filters:{stock:''}}]){const o=load(mix,{scope:true,saved:old});assert.equal(o.stock.value,'loose');assert.equal(o.count.textContent,'1 to 2 of 2');}
+ const kept=load(mix,{scope:true,saved:{filters:{stock:'sets'}}});assert.equal(kept.stock.value,'sets');assert.equal(kept.count.textContent,'1 to 3 of 3');
+ // A link asks for the In sets scope with ?stock=sets; an empty parameter still opens on loose.
+ const linked=load(mix,{scope:true,query:'?stock=sets'});assert.equal(linked.stock.value,'sets');assert.equal(linked.count.textContent,'1 to 3 of 3');assert.equal(linked.headline.textContent,'19 parts in sets');
+ const empty=load(mix,{scope:true,query:'?stock='});assert.equal(empty.stock.value,'loose');assert.equal(empty.count.textContent,'1 to 2 of 2');
+ // Minifigures: the same scope, the headline counts figures.
+ const M=load([{quantity:3},{quantity:0,in_sets:2},{quantity:1,in_sets:1}],{kind:'M',scope:true});
+ assert.equal(M.headline.textContent,'4 loose minifigures');assert.equal(M.subline.textContent,'2 different minifigures · 3 in sets');
+ await M.scopePicks[1].trigger();assert.equal(M.headline.textContent,'3 minifigures in sets');assert.equal(M.subline.textContent,'2 different minifigures · 4 loose');
+ const one=api.scopeHeadline('M',[{stock:['loose'],quantity:1}],'loose');assert.equal(one.title,'1 loose minifigure');assert.equal(one.sub,'1 different minifigure · 0 in sets');
  console.log('lists runtime ok');
 })().catch(e=>{console.error(e);process.exit(1);});

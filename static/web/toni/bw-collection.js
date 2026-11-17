@@ -112,7 +112,7 @@
       foot.append(main);if(left||r.price)foot.append(sub);
       if((r.tags||[]).length){const tags=el('div','bc-tags');r.tags.forEach(t=>tags.append(el('span','bc-tag',t)));foot.append(tags);}
     }else {
-      const stock=el('span','bc-stock-count mono',r.quantity+' loose'+(r.in_sets?' · '+r.in_sets+' in sets':''));foot.append(stock);
+      const stock=el('span','bc-stock-count mono',r.scope==='sets'?r.in_sets+' in sets'+(r.quantity?' · '+r.quantity+' loose':''):r.quantity+' loose'+(r.in_sets?' · '+r.in_sets+' in sets':''));foot.append(stock);
       if(config.type==='I')foot.append(el('span','bc-pdf',r.pdf_available?'PDF available':'No PDF'));
     }
     if(r.entity!=='wish' && config.type!=='S' && r.defects)foot.append(el('span','mono',r.defects));
@@ -137,9 +137,22 @@
     if(r.lot_links.length)r.lot_links.forEach(([id,name])=>{const link=el('a','bc-lot-link',name);link.href=config.lotBase.replace('LOT',encodeURIComponent(id));lot.append(link);});
     else{const none=el('span','secondary','—');none.setAttribute('aria-hidden','true');lot.append(none);}
     if(r.price){price.append(el('span','bc-cell-money mono',r.price[4]),el('span','mono bc-age',r.price[5]+(r.price[3]?' · stale':'')));}else price.append(el('span','secondary','no sales'));
-    qty.append(el('span','mono bc-cell-qty-main','×'+r.quantity));
-    if(r.in_sets)qty.append(el('span','mono bc-age',r.in_sets+' in sets'));
+    const inSets=r.scope==='sets';
+    qty.append(el('span','mono bc-cell-qty-main','×'+(inSets?r.in_sets:r.quantity)));
+    if(inSets?r.quantity:r.in_sets)qty.append(el('span','mono bc-age',inSets?r.quantity+' loose':r.in_sets+' in sets'));
     return [damaged,lot,price,qty];
+  }
+  // Parts and Minifigures list what you own loose by default and the parts and figures inside set copies under In sets (#20). The headline follows the scope;
+  // its loose total is the number the navigation rail shows. `records` are all rows, the scope picks the ones it counts.
+  function scopeHeadline(kind, records, scope) {
+    const inSets=scope==='sets',plural=(n,one,many)=>n+' '+(n===1?one:many);
+    const rows=records.filter(r=>(r.stock||[]).includes(inSets?'sets':'loose'));
+    const loose=records.reduce((n,r)=>n+Number(r.quantity||0),0),held=records.reduce((n,r)=>n+Number(r.in_sets||0),0),pieces=inSets?held:loose,other=inSets?loose:held;
+    if(kind==='M')return {title:inSets?plural(pieces,'minifigure','minifigures')+' in sets':pieces+' loose '+(pieces===1?'minifigure':'minifigures'),
+      sub:plural(rows.length,'different minifigure','different minifigures')+' · '+other+(inSets?' loose':' in sets')};
+    const damaged=rows.filter(r=>Number(r.damaged)>0).length,lots=new Set(rows.flatMap(r=>(r.lot||[]).map(String).filter(x=>x!=='null').map(x=>x.toLowerCase()))).size;
+    return {title:inSets?plural(pieces,'part','parts')+' in sets':damaged?damaged+' '+(damaged===1?'part has':'parts have')+' damaged pieces':'No parts have damaged pieces',
+      sub:inSets?plural(rows.length,'entry','entries')+' · '+other+' loose':pieces+' loose '+(pieces===1?'part':'parts')+' · '+plural(rows.length,'entry','entries')+(lots?' in '+plural(lots,'lot','lots'):'')};
   }
   function priceBasis(rows) {
     const prices=rows.filter(r=>r.price).map(r=>r.price_basis||[]);
@@ -176,7 +189,7 @@
   }
   /* Typing in the search box renders on a pause, not on every key. Without timers (the test harness) it runs at once. */
   function debounce(fn,ms){let timer;return (...args)=>{if(typeof setTimeout!=='function'){fn(...args);return;}clearTimeout(timer);timer=setTimeout(()=>fn(...args),ms);};}
-  window.BrickCollection={debounce,groupValue,singularNoun,listStateKey,viewSwitch,nowrapTail,filterRows,selectedInstances,decodeRecords,buildRow,priceBasis,inventorySections,missingSummary,resultNoun,listNoun,resultCount};
+  window.BrickCollection={debounce,groupValue,singularNoun,listStateKey,viewSwitch,nowrapTail,filterRows,selectedInstances,decodeRecords,buildRow,priceBasis,inventorySections,scopeHeadline,missingSummary,resultNoun,listNoun,resultCount};
   const root=document.querySelector('#bw-collection'); if (!root) return;
   const message=root.querySelector('[data-bc-message]'),undo=root.querySelector('[data-bc-undo]');
   const receiptKey='bw-collection-receipt';let receipt;
@@ -306,7 +319,10 @@
     const records=virtual?decodeRecords(JSON.parse(source.textContent)):nodes.map((node,i)=>({...JSON.parse(node.dataset.record||'{}'),node,index:i}));
     const search=list.querySelector('[data-bc-search]'),sort=list.querySelector('[data-bc-sort]'),direction=list.querySelector('[data-bc-direction]'),group=list.querySelector('[data-bc-group]');
     const filterControls=[...list.querySelectorAll('[data-bc-filter]')],chips=list.querySelector('[data-bc-chips]'),count=list.querySelector('[data-bc-count]'),panel=list.querySelector('[data-bc-panel]');
-    let inventory='parts';
+    let inventory='parts',shownScope;
+    // A filter with a default (the Stock scope of Parts and Minifigures, #20) returns to it instead of to Any.
+    const preset=c=>c.dataset.bcDefault||'';
+    const scopeControl=filterControls.find(c=>c.dataset.bcFilter==='stock'&&c.dataset.bcDefault);
     const picks=[...list.querySelectorAll('[data-bc-pick]')],groupPicks=[...list.querySelectorAll('[data-bc-group-pick]')];
     // Quick chips (Parts, kit 7a) set one of a small family of filters; All clears the family.
     const quick=[...list.querySelectorAll('[data-bc-quick]')],quickKeys=[...new Set(quick.map(b=>b.dataset.bcQuick.split(':')[0]).filter(Boolean))];
@@ -379,14 +395,14 @@
       [...new Set(records.map(r=>String(r[c.dataset.bcFilter]||'')).filter(Boolean))].sort().forEach(value=>{const o=document.createElement('option');o.value=value;o.textContent=value;c.append(o);});
     });
     if(!saved && list.querySelector('[data-bc-inventory-rows]') && sort)sort.value='missing';
-    if(saved) {if(search)search.value=saved.query||'';if(sort)sort.value=saved.sort||'number';if(direction)direction.value=saved.direction||'asc';if(group)group.value=saved.group||'';filterControls.forEach(c=>c.value=saved.filters?.[c.dataset.bcFilter]||'');limit=saved.limit||60;if(saved.view)container.dataset.view=saved.view;}
+    if(saved) {if(search)search.value=saved.query||'';if(sort)sort.value=saved.sort||'number';if(direction)direction.value=saved.direction||'asc';if(group)group.value=saved.group||'';filterControls.forEach(c=>c.value=saved.filters?.[c.dataset.bcFilter]||preset(c));limit=saved.limit||60;if(saved.view)container.dataset.view=saved.view;}
     if(pageSize && saved?.page && list.hasAttribute('data-bc-main'))page=Math.max(1,Math.floor(Number(saved.page))||1);
     if(!saved && list.dataset?.bcDefaultGroup && group)group.value=list.dataset.bcDefaultGroup;
     // A grouping the list does not offer (Lot on Sets and the Wishlist) falls back to None.
     if(group && group.value && group.options?.length && ![...group.options].some(o=>o.value===group.value))group.value='';
     const params=new URLSearchParams(location.search);
     if(tabs.length){const requested=params.get('inventory')||saved?.filters?.inventory;if(tabs.some(t=>t.dataset.bcTab===requested))inventory=requested;}
-    filterControls.forEach(c=>{if(params.has(c.dataset.bcFilter))c.value=params.get(c.dataset.bcFilter);});
+    filterControls.forEach(c=>{if(params.has(c.dataset.bcFilter)){c.value=params.get(c.dataset.bcFilter);if(!c.value)c.value=preset(c);}});
     function filters(){return {...Object.fromEntries(filterControls.map(c=>[c.dataset.bcFilter,c.value])),...(tabs.length && inventory!=='extras'?{inventory}:{})};}
     function selection(){if(virtual)return selectedInstances(records.map(r=>({checked:r.selected,entity:r.entity,ids:r.ids})));return selectedInstances([...list.querySelectorAll('[data-bc-selected]')].map(c=>({checked:c.checked,hidden:c.closest('[data-bc-row]').hidden,entity:c.dataset.entity,ids:JSON.parse(c.value)})));}
     if(virtual)mainSelection=selection;
@@ -411,6 +427,15 @@
         list.querySelectorAll('[data-bc-filters]').forEach(b=>b.setAttribute('aria-expanded','false'));
         saveState();
         return;
+      }
+      const scope=scopeControl?scopeControl.value:'';
+      if(virtual&&scope!==shownScope){
+        records.forEach(r=>{r.scope=scope;if(r.node){r.node.remove();r.node=null;}});shownScope=scope;
+        if(scopeControl&&list.hasAttribute('data-bc-main')){
+          const head=scopeHeadline(root.dataset.type,records,scope),title=root.querySelector('[data-bc-headline]'),sub=root.querySelector('[data-bc-subline]');
+          if(title)title.textContent=head.title;if(sub)sub.textContent=head.sub;
+          quick.forEach(b=>{const total=b.querySelector('.mono'),[k,v]=b.dataset.bcQuick.split(':');if(total)total.textContent=String(filterRows(records,'',{stock:scope,...(k?{[k]:v}:{})}).length);});
+        }
       }
       const result=filterRows(records,search?.value||'',filters(),sort?sort.value:'index',direction?.value,group?.value);
       if(pageSize)page=Math.min(Math.max(1,page),Math.max(1,Math.ceil(result.length/pageSize)));
@@ -464,7 +489,7 @@
       const apply=list.querySelector('[data-bc-apply]');if(apply)apply.textContent='Show '+resultCount(result.length,listNoun(root.dataset.type),singularNoun(root.dataset.type));if(loaded)loaded.textContent='Loaded '+Math.min(limit,result.length)+' of '+result.length;
       if(more)more.hidden=limit>=result.length;updatePager(result.length);
       const empty=list.querySelector('[data-bc-empty]');if(empty)empty.hidden=result.length>0;
-      if(chips){chips.replaceChildren();const active=[...(search?.value?[{label:'Search: '+search.value,clear:()=>search.value=''}]:[]),...filterControls.filter(c=>c.value).map(c=>({label:c.parentElement.firstChild.textContent.trim()+': '+c.options[c.selectedIndex].textContent,clear:()=>c.value=''}))];active.forEach(a=>{const b=document.createElement('button');b.type='button';b.textContent=a.label+' ×';b.setAttribute('aria-label','Remove '+a.label);b.addEventListener('click',()=>{a.clear();render(true);});chips.append(b);});}
+      if(chips){chips.replaceChildren();const active=[...(search?.value?[{label:'Search: '+search.value,clear:()=>search.value=''}]:[]),...filterControls.filter(c=>c.value&&c.value!==preset(c)).map(c=>({label:c.parentElement.firstChild.textContent.trim()+': '+c.options[c.selectedIndex].textContent,clear:()=>c.value=preset(c)}))];active.forEach(a=>{const b=document.createElement('button');b.type='button';b.textContent=a.label+' ×';b.setAttribute('aria-label','Remove '+a.label);b.addEventListener('click',()=>{a.clear();render(true);});chips.append(b);});}
       picks.forEach(b=>b.setAttribute('aria-pressed',String(filters()[b.dataset.bcPick]===b.dataset.value)));
       groupPicks.forEach(b=>b.setAttribute('aria-pressed',String((group?.value||'')===b.dataset.bcGroupPick)));
       quick.forEach(b=>{const [k,v]=b.dataset.bcQuick.split(':');b.setAttribute('aria-pressed',String(k?filters()[k]===v:quickKeys.every(x=>!filters()[x])));});
@@ -505,7 +530,7 @@
     list.querySelector('[data-bc-apply]')?.addEventListener('click',()=>{closeSheets();list.querySelector('[data-bc-filters]')?.focus();});
     list.querySelectorAll('[data-bc-sort-pick]').forEach(b=>b.addEventListener('click',()=>{sort.value=b.dataset.bcSortPick;sorted();}));
     list.querySelectorAll('[data-bc-order-pick]').forEach(b=>b.addEventListener('click',()=>{direction.value=b.dataset.bcOrderPick;render(true);}));
-    picks.forEach(b=>b.addEventListener('click',()=>{const control=filterControls.find(c=>c.dataset.bcFilter===b.dataset.bcPick);if(control)control.value=control.value===b.dataset.value?'':b.dataset.value;render(true);}));
+    picks.forEach(b=>b.addEventListener('click',()=>{const control=filterControls.find(c=>c.dataset.bcFilter===b.dataset.bcPick);if(control)control.value=control.value===b.dataset.value?preset(control):b.dataset.value;render(true);}));
     groupPicks.forEach(b=>b.addEventListener('click',()=>{if(group){group.value=b.dataset.bcGroupPick;render(true);}}));
     quick.forEach(b=>b.addEventListener('click',()=>{
       const setFilter=(k,v)=>{const control=filterControls.find(c=>c.dataset.bcFilter===k);if(control)control.value=v;};
@@ -513,7 +538,7 @@
     }));
     statusButtons.forEach(b=>b.addEventListener('click',()=>{const control=filterControls.find(c=>c.dataset.bcFilter==='status');if(control)control.value=b.dataset.bcStatus;render(true);}));
     tabs.forEach(b=>b.addEventListener('click',()=>{inventory=b.dataset.bcTab;render(true);const query=new URLSearchParams(location.search);query.set('inventory',inventory);try{window.history?.replaceState(null,'',location.pathname+'?'+query.toString()+ (location.hash||''));}catch(_){}}));
-    list.querySelector('[data-bc-reset]')?.addEventListener('click',()=>{filterControls.forEach(c=>c.value='');if(search)search.value='';render(true);});
+    list.querySelector('[data-bc-reset]')?.addEventListener('click',()=>{filterControls.forEach(c=>c.value=preset(c));if(search)search.value='';render(true);});
     viewSwitch(list,container,'bc',key,root.dataset.type);
     const reveal=()=>{limit+=60;render();};more?.addEventListener('click',reveal);
     if(more && 'IntersectionObserver' in window)new IntersectionObserver(entries=>{if(entries.some(e=>e.isIntersecting)&&!more.hidden)reveal();},{rootMargin:'300px'}).observe(more);

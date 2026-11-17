@@ -78,6 +78,10 @@ function load(records,{kind='P',pageSize=15,defaultGroup='',groupOptions=null,sa
  assert.equal(row.querySelector('.bc-identity-top').children[0].textContent,'Black');
  const loose=P.api.buildRow(P.api.decodeRecords({fields:['type','number','quantity','entity','ids'],rows:[{0:'P',1:'x',2:3,3:'stock',4:['s']}]})[0],P.root.dataset,false,()=>{});
  assert.deepEqual(loose.children.filter(c=>c.className.split(' ').includes('bc-cell')).map(texts).map(t=>t.join(' ')),['No damaged pieces','No lot —','Used price  no sales','Quantity  ×3']);
+ // #20 review: under In sets a row's ids are the loose stock, so it offers no selection (a bulk action would hit the wrong pieces).
+ { const held=P.api.decodeRecords({fields:['type','number','quantity','in_sets','entity','ids'],rows:[{0:'P',1:'x',2:2,3:10,4:'stock',5:['s']}]})[0];
+   assert.ok(P.api.buildRow(held,P.root.dataset,true,()=>{}).querySelector('[data-bc-selected]'));
+   held.scope='sets';assert.equal(P.api.buildRow(held,P.root.dataset,true,()=>{}).querySelector('[data-bc-selected]'),null); }
  // Gear, Books and Catalogs: a card without a picture shows the number once, in the tile; with a picture or for other kinds nothing changes (#153).
  for (const [type,number] of [['G','gear-01'],['B','ISBN 9780000000001'],['C','1976 Catalog']]) {
   const K=load([{}],{kind:type});

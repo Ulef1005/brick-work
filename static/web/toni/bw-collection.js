@@ -76,7 +76,7 @@
     const name=r.type==='P'?window.BrickFormatting.partName(r.name):r.name;
     const label=numberLabel(r),displayName=name||label||'Unidentified item';
     const row=el('article','bc-card');row.dataset.bcRow='';row.tabIndex=0;
-    if(config.editable==='true' && r.ids.length){
+    if(config.editable==='true' && r.ids.length && r.scope!=='sets'){   // under In sets a row shows the pieces inside set copies: its ids are the loose stock, so no selection (#20 review)
       const label=el('label','bc-selection'),check=el('input');label.hidden=!selecting;check.type='checkbox';check.dataset.bcSelected='';check.checked=r.selected;
       check.setAttribute('aria-label','Select '+displayName);check.addEventListener('change',()=>{r.selected=check.checked;changed();});label.append(check,el('span','','Select'));row.append(label);
     }
@@ -434,7 +434,7 @@
       }
       const scope=scopeControl?scopeControl.value:'';
       if(virtual&&scope!==shownScope){
-        records.forEach(r=>{r.scope=scope;if(r.node){r.node.remove();r.node=null;}});shownScope=scope;
+        records.forEach(r=>{r.scope=scope;if(scope==='sets')r.selected=false;if(r.node){r.node.remove();r.node=null;}});shownScope=scope;
         if(scopeControl&&list.hasAttribute('data-bc-main')){
           const head=scopeHeadline(root.dataset.type,records,scope),title=root.querySelector('[data-bc-headline]'),sub=root.querySelector('[data-bc-subline]');
           if(title)title.textContent=head.title;if(sub)sub.textContent=head.sub;
@@ -483,7 +483,7 @@
         if(group?.value && !partSections.length) {const name=groupValue(r,group.value)||'Not recorded';if(name!==previous){const h=document.createElement('h3');h.dataset.bcGroupHeading='';const control=filterControls.find(c=>c.dataset.bcFilter===group.value);const headingLabel=control?[...control.options].find(o=>o.value===name)?.textContent||name:name;h.textContent=headingLabel;const n=groupCounts.get(name)||0,noun=singularNoun(root.dataset.type);h.append(Object.assign(document.createElement('span'),{className:'bc-group-count',textContent:' · '+n+' '+(n===1?noun:listNoun(root.dataset.type))}));if(group.value==='lot'&&name!=='null'&&root.dataset.lotBase){const open=document.createElement('a');open.className='bc-group-open';open.textContent='Open';open.setAttribute('aria-label','Open lot '+headingLabel);open.href=root.dataset.lotBase.replace('LOT',encodeURIComponent(name));h.append(open);}container.append(h);previous=name;}}
         const node=virtual?(r.node ||= buildRow(r,root.dataset,selecting,selectionCount)):r.node;
         if(virtual){const check=node.querySelector('[data-bc-selected]');if(check)check.checked=r.selected;const label=node.querySelector('.bc-selection');if(label)label.hidden=!selecting;}
-        node.hidden=false;const partSection=partSections.find(section=>section.name===r.part_group && r.type!=='M');const destination=partSection?partSection.rows:figureRows&&r.type==='M'?figureRows:split?(Number(r.missing||0)+Number(r.damaged||0)+Number(r.parts_missing||0)>0?missingRows:inlinePresent.has(r)?presentInline:presentRows):container;destination.append(node);if(virtual)nodes.push(node);
+        node.hidden=false;const partSection=partSections.find(section=>section.name===r.part_group && r.type!=='M');const destination=partSection?partSection.rows:figureRows&&r.type==='M'?figureRows:split?(defect(r,'missing')+defect(r,'damaged')+Number(r.parts_missing||0)>0?missingRows:inlinePresent.has(r)?presentInline:presentRows):container;destination.append(node);if(virtual)nodes.push(node);
         bindRow(node);
       });
       if(focusedRow && nodes.includes(focusedRow) && !focusedRow.hidden && document.activeElement!==focused)focused.focus({preventScroll:true});

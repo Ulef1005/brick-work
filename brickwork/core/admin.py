@@ -90,9 +90,9 @@ def audit(db, entity, field, old=None, new=None, *, via=None, actor=None):
 
 # ---------- identity admin (M.8i part 2): the list and the decisions are in `core/identity_admin.py` ----------
 
-def unresolved(db):
+def unresolved(db, root=None):
     from . import identity_admin
-    return identity_admin.unresolved(db)
+    return identity_admin.unresolved(db, root)
 
 
 def count_unresolved(db):

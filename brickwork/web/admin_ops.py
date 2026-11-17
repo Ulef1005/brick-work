@@ -392,7 +392,7 @@ def tools_read(page, group=None):
                 {**job, 'interrupted': (job['state'] == 'running' or job['state'] == 'waiting_for_budget' and job['id'] in owners)
                  and not live.get(job['id'], False)} for job in jobs])
         if page == 'unresolved':
-            return dict(items=admin.unresolved(db))
+            return dict(items=admin.unresolved(db, _media_root()))
         if page == 'history':
             return admin.history(db)
         if page == 'instructions':
@@ -455,6 +455,10 @@ def identity_write(db, *, action, item=None, target=None, number=None, link=None
         return identity.confirm_link(db, int(link))
     if action == 'reject':
         return identity.reject_link(db, int(link))
+    if action == 'choose':
+        return identity.choose_link(db, int(link))
+    if action == 'reject_all':
+        return identity.reject_links(db, int(item))
     if action == 'link':
         return identity.add_link(db, int(item), number)
     if action == 'prefer':

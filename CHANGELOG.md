@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Unresolved items show the pictures** (#459). The title says how many items wait for a decision. Each item shows its own picture large, and every BrickLink guess is a card with its picture, number, name and reason. **This one** keeps that guess and drops the item's other guesses in one step with one **Undo**. **None of these** drops all guesses the same way. Merge candidates use the same cards with **Merge into this**. A part shows the colours your collection holds it in as colour chips. Guess pictures are fetched from BrickLink when a card comes into view and kept in the media folder.
+
 - **Price fields read as two fields** (#461). In the Edit sheet, the currency and the amount of a price are set apart by a line and a quieter ground, and the one you are typing in is underlined.
 
 - **Settings open with the two refreshes** (#460). A Refresh card at the top of Settings says how many prices are out of date and how many pictures are missing, with **Refresh prices** and **Refresh pictures** beside it. Refresh pictures moved there from the Pictures section.

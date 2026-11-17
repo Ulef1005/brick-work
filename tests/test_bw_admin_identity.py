@@ -172,14 +172,14 @@ def test_the_screen_renders_every_kind_of_row_and_its_forms_carry_one_token(coll
     response = client.get('/manage/unresolved')
     assert response.status_code == 200
     soup = BeautifulSoup(response.data, 'html.parser')
-    assert soup.select_one('main h1').get_text() == 'Unresolved items'
+    assert soup.select_one('main h1').get_text() == '3 items to decide'
     token = csrf(client)
     forms = soup.select('form[method=post]')
     assert len(forms) >= 6
     for form in forms:
         assert [f['value'] for f in form.select('input[name=csrf_token]')] == [token]
     text = soup.get_text(' ')
-    assert 'Merge into this' in text and 'Confirm' in text and 'Reject' in text and 'Keep as unmatched' in text and 'Link BrickLink number' in text
+    assert 'Merge into this' in text and 'This one' in text and 'None of these' in text and 'Keep as unmatched' in text and 'Link BrickLink number' in text
 
 
 def test_the_hub_row_counts_the_list(coll, client, world):
@@ -205,7 +205,7 @@ def test_the_candidates_carry_the_items_own_name_and_number(coll, world):
     assert candidate['name'] == 'Brick 2 x 4' and candidate['number_text'].startswith('3001')
 
 
-@pytest.mark.parametrize('action', ['merge', 'confirm', 'reject', 'settle', 'link', 'move_kind', 'undo'])
+@pytest.mark.parametrize('action', ['merge', 'confirm', 'reject', 'choose', 'reject_all', 'settle', 'link', 'move_kind', 'undo'])
 @pytest.mark.parametrize('token', [None, 'wrong'])
 def test_unresolved_csrf_rejects_before_dispatch_without_writes(client, world, pair, monkeypatch, action, token):
     client.get('/manage/unresolved')

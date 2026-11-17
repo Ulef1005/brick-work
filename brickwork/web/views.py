@@ -750,6 +750,42 @@ def bw_image(image_id):
     return response
 
 
+@web_page.get('/manage/guess-pictures/<letter>/<number>/<int:colour>')
+@login_required
+def bw_guess_picture(letter, number, colour):
+    """The cached picture of a guessed BrickLink number (Unresolved items). Serves a file the cache holds and nothing else: no fetch, no 200 without a file."""
+    from .admin_ops import brickwork_path
+    from ..core import guess_pictures
+    from ..core.media import root_for
+    from flask import send_file
+    if not guess_pictures.valid(letter, number, colour):
+        abort(404)
+    state, path = guess_pictures.lookup(root_for(brickwork_path()), letter, number, colour)
+    if state != 'ready':
+        abort(404)
+    response = send_file(path, mimetype=guess_pictures.MIMETYPES[path.suffix[1:]], max_age=86400)
+    response.cache_control.public = None
+    response.cache_control.private = True
+    return response
+
+
+@web_page.post('/manage/guess-pictures')
+@login_required
+def bw_guess_picture_fetch():
+    """Fetch the picture of one guessed BrickLink number into the cache (the Unresolved page asks once per card that has none cached). JSON in and out;
+    `img.bricklink.com` only, no key, one call at a time. A failure is cached as "no picture" for a day."""
+    from .admin_ops import brickwork_path
+    from ..core import guess_pictures
+    from ..core.media import root_for
+    data = request.get_json(silent=True)
+    bw_add_csrf(data)
+    letter, number, colour = data.get('letter'), data.get('number'), data.get('colour')
+    if not isinstance(letter, str) or not isinstance(number, str) or not isinstance(colour, int) or isinstance(colour, bool) or not guess_pictures.valid(letter, number, colour):
+        return jsonify(error='Not a picture to fetch'), 400
+    state, _ = guess_pictures.fetch(root_for(brickwork_path()), letter, number, colour)
+    return jsonify(state=state, url=url_for('web.bw_guess_picture', letter=letter, number=number, colour=colour) if state == 'ready' else None)
+
+
 @web_page.get('/manage/instructions/<int:identifier>/download')
 @login_required
 def bw_instruction_download(identifier):

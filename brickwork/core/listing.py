@@ -103,7 +103,8 @@ def filter_rows(rows, query='', filters=None, sort='number', direction='asc', gr
                 types = ('M', '?') if value == 'figures' else ('M', '?', 'I', 'O') if value == 'parts' else ('I', 'O')
                 if (r.get('type') in types) != (value != 'parts'): return False
             elif key == 'problem':
-                if float(r.get(value) or 0) <= 0: return False
+                held = 'in_sets_' + value if str(filters.get('stock')) == 'sets' and 'in_sets_' + value in r else value     # #463: the pieces inside sets under In sets
+                if float(r.get(held) or 0) <= 0: return False
             elif key == 'duplicates':
                 if str(bool(r.get(key))).lower() != value: return False
             elif key == 'archived':

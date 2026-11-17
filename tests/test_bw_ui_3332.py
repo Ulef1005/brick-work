@@ -58,7 +58,9 @@ def test_figure_lines_and_image(coll, client, state):
         line = coll.db.execute('SELECT id FROM copy_figure WHERE copy_id=? AND item_id=?', (copy, figure)).fetchone()[0]
         assert fig.select_one('.bc-check-figure')['href'] == f'/workbench/check-parts/{copy}/figure/{line}'
         if state == 'parts-missing':
-            assert fig.select_one('.bc-figure-parts').get_text() == torso
+            # #34: the line shows the short body-part name, the title keeps the full name.
+            assert fig.select_one('.bc-figure-parts').get_text() == 'Legs'
+            assert fig.select_one('.bc-figure-parts')['title'] == torso
         else:
             assert not fig.select_one('.bc-figure-parts')
     # The figure's picture and its /manage/images file are M.8f; the row itself keeps its picture frame.

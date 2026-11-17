@@ -36,7 +36,7 @@ def test_list_records_carry_subtheme_and_tags_only_as_display_fields(coll, world
     coll.prop(world.keep, 'subtheme', 'Lion Knights')
     with read() as db:
         rows = collection.listing(db, 'S')
-    assert FIELDS[-6:] == ['subtheme', 'tags', 'item_id', 'also', 'source', 'added']
+    assert FIELDS[-9:] == ['subtheme', 'tags', 'item_id', 'also', 'source', 'added', 'in_sets_missing', 'in_sets_damaged', 'in_sets_defects']
     data = json.loads(payload(rows))
     index = {name: i for i, name in enumerate(data['fields'])}
     castle = next(r for r in data['rows'] if r.get(str(index['item_id'])) == world.keep and r.get(str(index['number'])) == '1000-1')
@@ -88,6 +88,7 @@ def test_filter_panel_uses_chips_and_pickers_and_keeps_every_filter(world, clien
     assert [b['data-value'] for b in panel.select('[data-bc-pick=condition]')] == ['new', 'used', 'damaged']
     assert [b['data-value'] for b in panel.select('[data-bc-pick=problem]')] == ['damaged', 'missing']
     assert [b['data-value'] for b in panel.select('[data-bc-pick=stock]')] == ['loose', 'sets']
+    assert [b.get_text(' ', strip=True) for b in panel.select('[data-bc-pick=stock]')] == ['Loose', 'In sets']
     for name in ('condition', 'problem', 'stock', 'status', 'type'):
         select = panel.select_one(f'select[data-bc-filter={name}]')
         assert hidden_inside(select, panel), name
@@ -123,9 +124,11 @@ def test_parts_list_is_a_table_by_default_with_quick_chips_and_by_lot(coll, worl
     chips = {b['data-bc-quick']: b.get_text(' ', strip=True) for b in soup.select('.bc-quick-chips button')}
     data = records(soup)
     index = {name: i for i, name in enumerate(data['fields'])}
-    total = len(data['rows'])
-    damaged = sum(1 for r in data['rows'] if r.get(str(index['damaged'])))
-    lots = [r.get(str(index['lot']), ['null']) for r in data['rows']]
+    loose = [r for r in data['rows'] if r.get(str(index['quantity']))]          # #20: the default scope is loose stock
+    assert 0 < len(loose) < len(data['rows'])
+    total = len(loose)
+    damaged = sum(1 for r in loose if r.get(str(index['damaged'])))
+    lots = [r.get(str(index['lot']), ['null']) for r in loose]
     lotted = sum(1 for x in lots if any(v != 'null' for v in x))
     unlotted = sum(1 for x in lots if 'null' in x)
     assert damaged >= 1 and lotted >= 1
@@ -204,3 +207,89 @@ def test_lists_runtime_harness():
     node = rendered.need_node()
     done = subprocess.run([node, str(ROOT / 'tests/toni_bw_collection_lists_runtime.cjs')], check=True, capture_output=True, text=True, cwd=ROOT)
     assert 'lists runtime ok' in done.stdout
+
+
+def rail_count(soup, letter):
+    label = soup.select_one(f'.rail a[href$="/collection/{letter}"]')['aria-label']
+    return int(label.rsplit(', ', 1)[1].replace(',', ''))
+
+
+@pytest.mark.parametrize('letter', ['P', 'M'])
+def test_parts_and_minifigures_open_on_loose_stock_and_the_headline_is_the_rail_count(world, client, letter):
+    """#20 option A: the default view lists what you own loose, and its headline says the number the rail shows."""
+    soup = page(client, '/collection/' + letter)
+    data = records(soup)
+    index = {name: i for i, name in enumerate(data['fields'])}
+    loose = sum(r.get(str(index['quantity']), 0) for r in data['rows'])
+    held = sum(r.get(str(index['in_sets']), 0) for r in data['rows'])
+    assert loose == rail_count(soup, letter) and held > 0
+    stock = soup.select_one('select[data-bc-filter=stock]')
+    assert stock['data-bc-default'] == 'loose' and [o['value'] for o in stock.select('option')] == ['loose', 'sets']
+    assert stock.select_one('option[selected]')['value'] == 'loose'
+    head = soup.select_one('.bc-heading')
+    noun = ('part' if letter == 'P' else 'minifigure') + ('' if loose == 1 else 's')
+    text = head.select_one('h1').get_text() + ' | ' + head.select_one('.secondary').get_text()
+    assert f'{loose} loose {noun}' in text and f'{held} in sets' not in head.select_one('h1').get_text()
+    # The visible scope chips carry both totals; Loose is the pressed one.
+    chips = soup.select('.bc-scope-chips [data-bc-pick=stock]')
+    assert [(b['data-value'], b.get_text(' ', strip=True), b['aria-pressed']) for b in chips] == [('loose', f'Loose {loose}', 'true'), ('sets', f'In sets {held}', 'false')]
+    # The result count names the loose rows only: the chip counts and the list's own rows are not the in-set ones.
+    entries = sum(1 for r in data['rows'] if r.get(str(index['quantity'])))
+    if letter == 'P':
+        assert entries < len(data['rows'])
+        assert head.select_one('.secondary').get_text().startswith(f'{loose} loose parts · {entries} entr')
+        assert soup.select_one('[data-bc-quick=""]').get_text(' ', strip=True) == f'All {entries}'
+    else:
+        assert f'{entries} different' in head.select_one('.secondary').get_text()
+
+
+def test_other_kinds_keep_stock_any_and_no_scope_chips(world, client):
+    for letter in 'IO':
+        soup = page(client, '/collection/' + letter)
+        stock = soup.select_one('select[data-bc-filter=stock]')
+        assert not stock.has_attr('data-bc-default') and stock.select_one('option')['value'] == ''
+        assert not soup.select('.bc-scope-chips')
+
+
+def test_the_list_script_defaults_to_loose_and_keeps_an_explicit_in_sets_choice():
+    """The script returns a filter to its default (Reset, chip removal, a second tap) and reads a stored state without a scope as loose."""
+    js = (ROOT / 'static/web/toni/bw-collection.js').read_text()
+    assert "c.value=saved.filters?.[c.dataset.bcFilter]||preset(c)" in js
+    assert "control.value===b.dataset.value?preset(control)" in js and "filterControls.forEach(c=>c.value=preset(c))" in js
+    assert "scopeHeadline" in js
+
+
+def test_a_link_asks_for_in_sets_with_the_stock_parameter(world, client):
+    """`?stock=sets` is the URL form of the In sets scope; the script reads any filter parameter from the query."""
+    soup = page(client, '/collection/P?stock=sets')
+    assert soup.select_one('select[data-bc-filter=stock]')['data-bc-default'] == 'loose'
+    js = (ROOT / 'static/web/toni/bw-collection.js').read_text()
+    assert "if(params.has(c.dataset.bcFilter)){c.value=params.get(c.dataset.bcFilter);if(!c.value)c.value=preset(c);}" in js
+
+
+def test_lot_sorter_keeps_its_title_and_has_no_scope_chips(world, client):
+    soup = page(client, '/workbench/lot-sorter')
+    assert soup.select_one('.bc-heading h1').get_text() == 'Lot Sorter'
+    assert not soup.select('[data-bc-headline], [data-bc-subline], .bc-scope-chips')
+
+
+def test_back_to_the_list_asks_for_in_sets_when_the_item_is_held_only_there(coll, world, client):
+    """A figure with no loose copy is not on the loose list, so its Back link opens the In sets scope."""
+    assert 'href="/collection/M"' in client.get(f'/collection/item/{world.figure}').get_data(as_text=True)
+    coll.sql("UPDATE stock SET archived_at='2026-11-17T00:00:00.000000Z' WHERE id=?", (world.stock_figure,))
+    soup = page(client, f'/collection/item/{world.figure}')
+    assert soup.select_one('a.bc-detail-back')['href'] == '/collection/M?stock=sets'
+    assert soup.select_one('[data-back-url]')['data-back-url'] == '/collection/M?stock=sets'
+
+
+def test_list_records_carry_the_in_set_defects_beside_the_loose_ones(coll, world, read):
+    """#463: the packed record's missing, damaged and defects are loose; the in-set pair is at the end."""
+    coll.mark(world.copy_a, '3023', '15', missing=1, damaged=2)
+    with read() as db:
+        rows = collection.listing(db, 'P')
+    data = json.loads(payload(rows))
+    index = {name: i for i, name in enumerate(data['fields'])}
+    held = [r for r in data['rows'] if r.get(str(index['in_sets_damaged']))]
+    assert held and all(not r.get(str(index['damaged'])) and not r.get(str(index['defects'])) for r in held)
+    assert sum(r[str(index['in_sets_damaged'])] for r in held) == 2
+    assert any('2 damaged' in r.get(str(index['in_sets_defects']), '') for r in held)

@@ -646,11 +646,11 @@ html[data-web-ui="toni"] #bw-collection .bc-source-details summary { padding-inl
 }
 
 /* 7a quick chips (Parts) and the Flat / By lot grouping heading. */
-#bw-collection .bc-quick-chips { display:flex;gap:8px;overflow:auto;scrollbar-width:none;min-width:0;max-width:100%;margin-block:12px 0; }
-#bw-collection .bc-quick-chips button { flex:none;display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 14px;border:0;border-radius:10px;background:var(--tw-surface);color:var(--tw-text);font:500 14px var(--tw-font); }
-#bw-collection .bc-quick-chips button[aria-pressed=true] { background:var(--tw-accent-soft);color:var(--tw-accent-text); }
-#bw-collection .bc-quick-chips .mono { font:400 13px var(--tw-mono);opacity:.75; }
-@media(min-width:1024px) { #bw-collection [data-bc-main]>.bc-quick-chips { grid-column:1/-1; } }
+#bw-collection .bc-quick-chips,#bw-collection .bc-scope-chips { display:flex;gap:8px;overflow:auto;scrollbar-width:none;min-width:0;max-width:100%;margin-block:12px 0; }
+#bw-collection .bc-quick-chips button,#bw-collection .bc-scope-chips button { flex:none;display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 14px;border:0;border-radius:10px;background:var(--tw-surface);color:var(--tw-text);font:500 14px var(--tw-font); }
+#bw-collection .bc-quick-chips button[aria-pressed=true],#bw-collection .bc-scope-chips button[aria-pressed=true] { background:var(--tw-accent-soft);color:var(--tw-accent-text); }
+#bw-collection .bc-quick-chips .mono,#bw-collection .bc-scope-chips .mono { font:400 13px var(--tw-mono);opacity:.75; }
+@media(min-width:1024px) { #bw-collection [data-bc-main]>.bc-quick-chips,#bw-collection [data-bc-main]>.bc-scope-chips { grid-column:1/-1; } }
 #bw-collection .bc-cards>[data-bc-group-heading] { display:flex;align-items:center;min-height:44px;margin:0;font:500 11px/14px var(--tw-font);letter-spacing:.1em;text-transform:uppercase;color:var(--tw-text-muted); }
 #bw-collection .bc-group-open { margin-left:auto;min-height:44px;display:inline-flex;align-items:center;padding:0 12px;letter-spacing:0;text-transform:none;font:500 14px var(--tw-font); }
 

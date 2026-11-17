@@ -15,7 +15,7 @@ from pathlib import Path
 from uuid import uuid4
 from urllib.parse import quote, urlencode
 
-from . import add, stock, collection_prices, errors, items, pictures
+from . import add, figure_parts, stock, collection_prices, errors, items, pictures
 from . import undo as undoing
 from .currency import configured_currency, display_currency
 from .admin import SYSTEM_FLAGS, audit, origin
@@ -438,8 +438,8 @@ def listing(db, type_letter, *, wishes=False):
                 row = grouped[key] = _blank(dict(base[raw['item_id']], color_id=raw['color_id'], entity='stock'))
                 rows.append(row)
             row['in_sets'] = (row.get('in_sets') or 0) + (raw['quantity'] or 0)
-            row['missing'] += raw['missing'] or 0
-            row['damaged'] += raw['damaged'] or 0
+            row['in_sets_missing'] = row.get('in_sets_missing', 0) + (raw['missing'] or 0)      # #463: a row's missing/damaged are the loose pieces; these are the ones inside set copies
+            row['in_sets_damaged'] = row.get('in_sets_damaged', 0) + (raw['damaged'] or 0)
         rows = decorate(db, rows, loaded)
         if kind != 'set':
             for row in rows:
@@ -700,6 +700,9 @@ def detail(db, item_id, *, colour=None, copy_id=None, stock_id=None, wish_id=Non
                      category=(names.get(line['item_id']) or {}).get('category_name'))
         if line.get('minifig'):
             entry['missing_part_names'] = list(dict.fromkeys((names.get(i) or {}).get('name') or str(i) for i in line['missing_part_ids']))
+            # #34: the line shows short body-part names, from the categories already fetched for the whole page.
+            entry['missing_part_short'] = figure_parts.short_names(
+                [((names.get(i) or {}).get('category_name'), (names.get(i) or {}).get('name') or str(i)) for i in dict.fromkeys(line['missing_part_ids'])])
         consists.append(entry)
     consists = decorate(db, consists)
     for entry in consists:

@@ -358,7 +358,7 @@
    "state": "problems",
    "world": "showcase",
    "path": "/collection/P",
-   "script": "[...document.querySelectorAll('button')].find(b=>b.textContent.trim().startsWith('Damaged')).click();await new Promise(r=>setTimeout(r,300));",
+   "script": "[...document.querySelectorAll('button')].find(b=>b.textContent.trim().startsWith('In sets')).click();await new Promise(r=>setTimeout(r,300));[...document.querySelectorAll('button')].find(b=>b.textContent.trim().startsWith('Damaged')).click();await new Promise(r=>setTimeout(r,300));",
    "built": true,
    "approved": true
   },
@@ -535,7 +535,8 @@
    "world": "demo",
    "path": "/collection/M",
    "built": true,
-   "approved": true
+   "approved": true,
+   "script": "[...document.querySelectorAll('button')].find(b=>b.textContent.trim().startsWith('In sets')).click();await new Promise(r=>setTimeout(r,300));"
   },
   {
    "screen": "25-Sets-filters-where-select-and-group-go",
@@ -1608,7 +1609,7 @@
     1440
    ],
    "built": true,
-   "approved": false,
+   "approved": true,
    "script": "document.querySelector('[data-bc-tab=extras]').click();",
    "max": 3600
   },
@@ -1624,7 +1625,7 @@
     1440
    ],
    "built": true,
-   "approved": false,
+   "approved": true,
    "script": "document.querySelector('[data-bc-tab=extras]').click();",
    "max": 3600
   },
@@ -1640,7 +1641,7 @@
     1440
    ],
    "built": true,
-   "approved": false,
+   "approved": true,
    "script": "document.querySelector('[data-bc-tab=extras]').click();",
    "max": 3600
   },
@@ -1656,7 +1657,7 @@
     1440
    ],
    "built": true,
-   "approved": false,
+   "approved": true,
    "script": "document.querySelector('[data-bc-tab=extras]').click();",
    "max": 3600
   },
@@ -1672,7 +1673,7 @@
     1440
    ],
    "built": true,
-   "approved": false,
+   "approved": true,
    "script": "document.querySelector('[data-bc-tab=extras]').click();document.querySelector('[data-bc-booklets] ~ details').open=true;",
    "max": 3600
   }

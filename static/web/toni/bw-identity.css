@@ -132,6 +132,8 @@
 .bu-guess strong{font:600 14px/20px var(--tw-font);overflow-wrap:anywhere}
 .bu-guess .bi-tag{height:auto;min-height:22px;padding:2px 8px;white-space:normal;align-self:flex-start}
 .bu-guess .bi-btn-wide{margin-top:auto}
+/* The admin page's generic button rule outranks .bi-outline; the guess and candidate cards keep the approved outline (frame #459). */
+.bu-guess.bu-guess button.bi-outline.bi-outline{background:transparent;border-color:var(--tw-accent);color:var(--tw-accent-text)}
 .bu-moves,.bu-neither{border-style:dashed;justify-content:center;align-items:flex-start}
 .bu-moves .bi-btn,.bu-neither .bi-btn{border:0;background:transparent;color:var(--tw-accent-text);padding:0 8px;margin-left:-8px}
 .bu-neither{grid-column:1/-1;border:0;background:none;padding:0;flex-direction:row;flex-wrap:wrap;align-items:center;gap:0 8px}

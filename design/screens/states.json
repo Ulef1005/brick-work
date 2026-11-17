@@ -331,7 +331,7 @@
    "world": "demo",
    "path": "/collection/P",
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "18-Copy-chooser",
@@ -350,7 +350,7 @@
    "path": "/collection/M",
    "script": "document.querySelector(\"[data-bc-view=\\\"grid\\\"]\").click();await new Promise(r=>setTimeout(r,300));",
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "19-Item-lists",
@@ -360,7 +360,7 @@
    "path": "/collection/P",
    "script": "[...document.querySelectorAll('button')].find(b=>b.textContent.trim().startsWith('In sets')).click();await new Promise(r=>setTimeout(r,300));[...document.querySelectorAll('button')].find(b=>b.textContent.trim().startsWith('Damaged')).click();await new Promise(r=>setTimeout(r,300));",
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "19-Item-lists",
@@ -370,7 +370,7 @@
    "path": "/collection/P",
    "script": "document.querySelector(\"[data-bc-options-open]\").click();await new Promise(r=>setTimeout(r,300));document.querySelector(\"[data-bc-select]\").click();await new Promise(r=>setTimeout(r,300));",
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "19-Item-lists",
@@ -379,7 +379,7 @@
    "world": "edge-read-only",
    "path": "/collection/P",
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "19-Item-lists",
@@ -472,7 +472,7 @@
    "script": "document.querySelector(\"[data-bc-filters]\").click();await new Promise(r=>setTimeout(r,300));",
    "sheet_below": 600,
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "21-Collection-capabilities",
@@ -535,7 +535,7 @@
    "world": "demo",
    "path": "/collection/M",
    "built": true,
-   "approved": false,
+   "approved": true,
    "script": "[...document.querySelectorAll('button')].find(b=>b.textContent.trim().startsWith('In sets')).click();await new Promise(r=>setTimeout(r,300));"
   },
   {

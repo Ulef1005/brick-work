@@ -98,6 +98,11 @@ function load(records,{kind='P',pageSize=15,defaultGroup='',groupOptions=null,sa
  assert.deepEqual(api.filterRows(rows,'',{lot:'null'}).map(r=>r.number),['a','c']);
  assert.equal(api.groupValue({lot:['null','lot-2']},'lot'),'lot-2');assert.equal(api.groupValue({lot:['null']},'lot'),'null');assert.equal(api.groupValue({lot:[]},'lot'),'');
  assert.deepEqual(api.filterRows(rows,'',{},'number','asc','lot').map(r=>r.number),['b','c','a'],'lots sort by name, rows without a lot last');
+{ // #20 review: Quantity sorts by the count the scope shows (loose, or in sets)
+  const held=[{number:'a',name:'A',quantity:20,in_sets:1,stock:['loose','sets']},{number:'b',name:'B',quantity:0,in_sets:100,stock:['sets']},{number:'c',name:'C',quantity:5,in_sets:7,stock:['loose','sets']}];
+  assert.deepEqual(api.filterRows(held,'',{stock:'sets'},'quantity','asc').map(r=>r.number),['a','c','b'],'In sets sorts by in-set count');
+  assert.deepEqual(api.filterRows(held,'',{stock:'loose'},'quantity','asc').map(r=>r.number),['c','a'],'Loose sorts by loose count');
+}
  // By lot grouping with counts, Open links and the Flat toggle.
  const parts=[...Array.from({length:3},(_,i)=>({lot:['lot-1'],lot_links:[['lot-1','Lot 1']],damaged:i?0:1})),{lot:['lot-2'],lot_links:[['lot-2','Lot 2']]},{},{}];
  const h=load(parts,{defaultGroup:'lot'});

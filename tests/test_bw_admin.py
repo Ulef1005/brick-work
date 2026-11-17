@@ -405,16 +405,142 @@ def test_stale_freshness_and_archives(coll, world):
 
 
 def test_settings_opens_with_the_two_refreshes(client, coll, world):
-    """#460: Refresh prices and Refresh pictures are the first card of Settings; the picture dialog has one opener."""
+    """#460: the Refresh card is first, two cells with a number and a line each; Refresh prices is the page's one primary button."""
     soup = BeautifulSoup(client.get('/manage/settings').data, 'html.parser')
     first = soup.select('section.bw-card')[0]
     assert first['id'] == 'refresh'
-    prices = first.select_one('a.button')
-    assert prices.get_text(strip=True) == 'Refresh prices' and prices['href'].endswith('/manage/refresh')
-    assert first.select_one('button[data-picture-open]').get_text(strip=True) == 'Refresh pictures'
-    assert len(soup.select('[data-picture-open]')) == 1 and soup.select_one('#pictures a[href="#refresh"]')
+    cells = first.select('.bw-refresh-cell')
     stale = len({r['item_id'] for r in admin.stale_prices(coll.db)})
-    assert f'{stale} out of date' in first.get_text(' ', strip=True).replace('Prices: ', '')
+    missing = sum(r['missing'] for r in admin_ops.tools_read('settings')['pictures']['summary'])
+    assert [c.select_one('.bw-refresh-num').get_text() for c in cells] == [str(stale), str(missing)]
+    assert cells[0].select_one('.bw-refresh-line').get_text() == ('price' if stale == 1 else 'prices') + ' out of date'
+    assert cells[1].select_one('.bw-refresh-line').get_text() == ('picture' if missing == 1 else 'pictures') + ' missing'
+    prices = cells[0].select_one('a.button.primary')
+    assert prices.get_text(strip=True) == 'Refresh prices' and prices['href'].endswith('/manage/refresh')
+    opener = cells[1].select_one('button[data-picture-open]')
+    assert opener.get_text(strip=True) == 'Refresh pictures' and 'primary' not in opener['class'] and not opener.has_attr('disabled')
+    assert len(soup.select('[data-picture-open]')) == 1 and soup.select_one('#pictures a[href="#refresh"]')
+    assert [b for b in soup.select('main .primary') if not b.find_parent('dialog')] == [prices]
+    assert first.select_one('dialog[data-picture-dialog]')
+
+
+def test_settings_singular_refresh_wording(client, coll, world, monkeypatch):
+    real = admin_ops.tools_read
+    def one(page, group=None):
+        data = real(page, group)
+        if page == 'settings':
+            data = {**data, 'stale': 1, 'pictures': {**data['pictures'], 'summary': [{**r, 'missing': 0} for r in data['pictures']['summary']][:1] + [{**data['pictures']['summary'][1], 'missing': 1}] + [{**r, 'missing': 0} for r in data['pictures']['summary'][2:]]}}
+        return data
+    monkeypatch.setattr(admin_ops, 'tools_read', one)
+    soup = BeautifulSoup(client.get('/manage/settings').data, 'html.parser')
+    assert [c.select_one('.bw-refresh-line').get_text() for c in soup.select('.bw-refresh-cell')] == ['price out of date', 'picture missing']
+
+
+ROWS = [('Everyday', [('currencies', 'Display currency'), ('retail-country', 'Retail country'), ('part-lists', 'Part lists'), ('labels-address', 'Address for labels')]),
+        ('Sources and freshness', [('pictures', 'Pictures'), ('picture-priority', 'Picture source order'), ('source-priority', 'Source priority'),
+                                   ('freshness', 'Freshness'), ('instruction-downloads', 'Instruction downloads')])]
+
+
+def test_settings_is_two_groups_of_nine_exclusive_rows_with_their_summaries(client, coll, world):
+    seed(coll)
+    soup = BeautifulSoup(client.get('/manage/settings').data, 'html.parser')
+    groups = soup.select('.bw-set-groups > .bw-set-group')
+    assert [(g.select_one('h2').get_text(), [(d['id'], d.select_one('.bw-set-title').get_text()) for d in g.select('details.bw-set')]) for g in groups] == ROWS
+    rows = soup.select('details.bw-set')
+    assert len(rows) == 9 and {d['name'] for d in rows} == {'bw-settings'} and not [d for d in rows if d.has_attr('open')]
+    summary = admin_ops.settings_summaries({**admin_ops.tools_read('settings'), 'currency': {'display': 'EUR', 'rates': []}, 'labels_address': ''})
+    shown = {d['id']: d.select_one('.bw-set-value').get_text() for d in rows}
+    assert shown['currencies'] == 'EUR · no rates yet' and shown['retail-country'] == 'DE' and shown['labels-address'] == 'Uses the request address'
+    assert shown['part-lists'] == "Rebrickable's list first · grouped by category"
+    assert re.fullmatch(r'[\d,]+ with a picture · [\d,]+ without', shown['pictures'])
+    assert shown['picture-priority'] == 'Rebrickable catalogue, BrickLink, Rebrickable API' and shown['source-priority'] == 'Default order'
+    assert shown['freshness'] == summary['freshness'] and shown['instruction-downloads'] == 'Up to 500 MB per file'
+    assert set(summary) == {d['id'] for d in rows}
+
+
+def test_settings_summaries_from_the_data():
+    data = dict(currency={'display': 'USD', 'rates': [{'currency': 'GBP', 'as_of': '2026-11-07', 'source': 'manual'}, {'currency': 'CHF', 'as_of': '2026-11-14', 'source': 'ecb'}, {'currency': 'JPY', 'as_of': None, 'source': 'manual'}]},
+                labels_address='https://bricks.example', retail_country='US', bricklink_list={'on': True, 'key': True}, part_list_grouping='none',
+                pictures={'summary': [{'with_picture': 4800, 'missing': 2}, {'with_picture': 12, 'missing': 10}]}, official_download_limit_mb=40,
+                priority={'pictures': {'part': ['bricklink', 'rebrickable_api'], '*': []}, 'metadata': {'set': ['brickset']}, 'market_price': {'*': ['bricklink']}},
+                freshness=[{'source': 'bricklink', 'kind': 'prices', 'max_age_days': 30}, {'source': 'brickset', 'kind': 'metadata', 'max_age_days': 365},
+                           {'source': 'bricklink', 'kind': 'pictures', 'max_age_days': None}, {'source': 'x', 'kind': 'prices', 'max_age_days': 1}])
+    summary = admin_ops.settings_summaries(data)
+    assert summary['currencies'] == 'USD · 3 rates, ECB 14 Nov' and summary['retail-country'] == 'US'
+    assert summary['part-lists'] == "BrickLink's list preferred · not grouped" and summary['labels-address'] == 'https://bricks.example'
+    assert summary['pictures'] == '4,812 with a picture · 12 without' and summary['picture-priority'] == 'BrickLink, Rebrickable API'
+    assert summary['source-priority'] == 'Default order' and summary['instruction-downloads'] == 'Up to 40 MB per file'
+    assert summary['freshness'] == 'Prices 1 to 30 days · metadata 365 days'
+    data['priority'] = {**data['priority'], 'metadata': {'set': ['bricklink'], 'part': ['brickset']}, 'market_price': {'*': ['brickset']}}
+    assert admin_ops.settings_summaries(data)['source-priority'] == 'Changed for 3 kinds'
+    data['priority'] = {**data['priority'], 'metadata': {'set': ['brickset']}, 'market_price': {'*': ['bricklink']}}
+    data['currency'] = {'display': 'EUR', 'rates': [{'currency': 'USD', 'as_of': '2026-11-14', 'source': 'ecb'}]}
+    assert admin_ops.settings_summaries(data)['currencies'] == 'EUR · 1 rate, ECB 14 Nov'
+
+
+def test_settings_rows_keep_the_ids_links_point_to(client, coll, world):
+    soup = BeautifulSoup(client.get('/manage/settings').data, 'html.parser')
+    for anchor, row in {'currencies': 'currencies', 'labels-address': 'labels-address', 'pictures': 'pictures', 'part-lists': 'part-lists',
+                        'part-list-grouping': 'part-lists', 'edit-grouping': 'part-lists', 'picture-priority': 'picture-priority', 'freshness': 'freshness'}.items():
+        assert soup.select_one('details.bw-set#' + row).select_one('#' + anchor) or anchor == row
+    assert soup.select_one('#pictures a[href="#picture-priority"]')
+
+
+def test_settings_big_form_saves_from_a_row_and_opens_that_row_again(client, coll, world):
+    seed(coll)
+    soup = BeautifulSoup(client.get('/manage/settings').data, 'html.parser')
+    form = soup.select_one('form#bw-settings-form')
+    assert form and not form.select('select, [name=retail_country]')              # the rows own the fields, the form is the target
+    owned = [f for f in soup.select('[form=bw-settings-form]') if not f.find_parent('form')]
+    names = {f.get('name') for f in owned}
+    assert {'retail_country', 'part_list_grouping', 'official_download_limit_mb', 'priority:pictures:part', 'priority:pictures:*', 'priority:metadata:set', 'freshness', 'days:1', 'edit_grouping'} <= names
+    assert not soup.select('form form') and all(b.get('form') == 'bw-settings-form' for b in soup.select('details.bw-set > .bw-set-body button') if b.get_text() == 'Save settings')
+    assert len(soup.select('button[form=bw-settings-form]')) >= 6
+    data = {'csrf_token': form.select_one('[name=csrf_token]')['value'], 'row': 'retail-country'}
+    for f in owned:
+        if f.name == 'button' or not f.get('name'):
+            continue
+        if f.get('type') in ('radio', 'checkbox') and not f.has_attr('checked'):
+            continue
+        if f.name == 'select':
+            data[f['name']] = (f.select_one('option[selected]') or f.select_one('option'))['value']
+        else:
+            data[f['name']] = f.get('value', '')
+    data['retail_country'] = 'US'
+    response = client.post('/manage/settings', data=data)
+    assert response.status_code == 302 and re.search(r'\?saved=\d+#retail-country$', response.location)
+    assert admin.settings(coll.db)['retail_country'] == 'US'
+    page = BeautifulSoup(client.get('/manage/settings?saved=' + re.search(r'saved=(\d+)', response.location).group(1)).data, 'html.parser')
+    assert page.select_one('[data-settings-saved]') and page.select_one('[data-settings-saved] input[name=action][value=undo]')
+    event = re.search(r'saved=(\d+)', response.location).group(1)
+    assert client.post('/manage/settings', data={'csrf_token': data['csrf_token'], 'action': 'undo', 'event': event}).status_code == 302
+    assert admin.settings(coll.db)['retail_country'] == 'DE'
+    data['row'] = 'not-a-row'
+    assert '#' not in client.post('/manage/settings', data=data).location
+
+
+def test_settings_own_form_row_saves_and_offers_undo(client, coll, world):
+    response = client.post('/manage/settings', data={'csrf_token': token(client), 'action': 'labels_address', 'labels_address': 'https://bricks.example'})
+    assert response.status_code == 302 and response.location.endswith('#labels-address') and 'saved=' in response.location
+    page = BeautifulSoup(client.get('/manage/settings?' + response.location.split('?')[1].split('#')[0]).data, 'html.parser')
+    assert page.select_one('[data-settings-saved] input[value=undo]')
+    assert page.select_one('#labels-address .bw-set-value').get_text() == 'https://bricks.example'
+    event = re.search(r'saved=(\d+)', response.location).group(1)
+    assert client.post('/manage/settings', data={'csrf_token': token(client), 'action': 'undo', 'event': event}).status_code == 302
+    assert BeautifulSoup(client.get('/manage/settings').data, 'html.parser').select_one('#labels-address .bw-set-value').get_text() == 'Uses the request address'
+
+
+def test_settings_read_only_shows_the_rows_without_forms(app4, client, coll, world):
+    app4.config['BW_READ_ONLY'] = True
+    try:
+        soup = BeautifulSoup(client.get('/manage/settings').data, 'html.parser')
+        assert len(soup.select('details.bw-set')) == 9 and soup.select_one('#currencies .bw-set-value').get_text()
+        assert not soup.select('form#bw-settings-form') and not soup.select('button[form=bw-settings-form]')
+        assert [f['class'] for f in soup.select('details.bw-set form')] == [['bwc-switch-form']]              # the part-list switch, as before, with its controls disabled
+        assert all(c.has_attr('disabled') for c in soup.select('details.bw-set form button, details.bw-set form input[type=checkbox]'))
+        assert soup.select_one('button[data-picture-open]').has_attr('disabled')
+    finally:
+        app4.config['BW_READ_ONLY'] = False
 
 
 def test_refresh_pictures_queues_one_job_per_item_and_checks_the_estimate(client, coll, world):

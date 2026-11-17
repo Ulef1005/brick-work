@@ -169,6 +169,14 @@
 {{ save_settings() }}
 {% endcall %}
 </section>
+<section class="bw-set-group" aria-labelledby="set-sync"><h2 class="bw-label" id="set-sync">Sync</h2>
+{# #457: which count a Rebrickable pull keeps when it brings in Lost Parts. #}
+{% call set_row('sync', 'Lost Parts from Rebrickable', summary['sync']) %}
+<p>When a pull from Rebrickable brings in your Lost Parts, this rule says which missing count is kept. The pull preview shows what it will change before you pull, and one Undo takes it back. The switch for bringing them in is on <a href="{{ url_for('web.bw_sync') }}">Collection sync</a>.</p>
+<fieldset class="bw-set-rules"><legend class="bw-label">Rule</legend>{% for value,label,note in data.lost_parts_rules %}<label class="bw-set-rule"><input form="{{ F }}" type="radio" name="rebrickable_lost_parts_rule" value="{{ value }}" {% if value == data.rebrickable_lost_parts_rule %}checked{% endif %} {% if not can_edit %}disabled{% endif %}><span><strong>{{ label }}</strong><span class="secondary">{{ note }}</span></span></label>{% endfor %}</fieldset>
+{{ save_settings() }}
+{% endcall %}
+</section>
 </div>
 {# The one form of the rows above that save together; their fields and Save buttons point at it with the form attribute. #}
 {% if can_edit %}<form method="post" id="bw-settings-form" class="stack" data-settings-form><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="row" value="" data-settings-row></form>{% endif %}

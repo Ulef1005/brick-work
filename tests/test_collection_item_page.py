@@ -844,7 +844,7 @@ def test_collection_style_contract():
     assert 'var(--tw-accent-soft)' in rule('#bw-collection .bc-view-switch button[aria-pressed=true]')
     assert 'border:0' in rule('#bw-collection[data-type=S] .bc-card>.bc-picture')
     assert 'text-decoration:none' in rule('#bw-collection .bc-row a,#bw-collection .bc-card a')
-    assert 'outline:2px solid var(--tw-accent)' in rule('#bw-collection .bc-row a:focus-visible,#bw-collection .bc-card a:focus-visible')
+    assert 'outline:2px solid var(--tw-focus-color)' in rule('#bw-collection .bc-row a:focus-visible,#bw-collection .bc-card a:focus-visible')
     assert 'border-left:.5px solid var(--tw-divider)' in text
     assert not re.search(r'(?:^|[;{])\s*order\s*:', text)
     assert 'display:contents' not in text

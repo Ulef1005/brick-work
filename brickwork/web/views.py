@@ -162,7 +162,7 @@ def identity_undo_offer(text):
     return identifier if found else None
 
 
-SETTINGS_ROWS = ('retail-country', 'part-lists', 'pictures', 'picture-priority', 'source-priority', 'freshness', 'instruction-downloads')
+SETTINGS_ROWS = ('retail-country', 'part-lists', 'pictures', 'picture-priority', 'source-priority', 'freshness', 'instruction-downloads', 'sync')
 
 
 def settings_undo_offer(db, text):

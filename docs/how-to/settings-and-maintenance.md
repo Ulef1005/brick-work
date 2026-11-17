@@ -11,7 +11,7 @@ Do this to change how Brick Work behaves (the retail country, where pictures com
 
 ## Settings
 
-**Tools & Admin → Settings** holds the preferences that are yours to choose. It opens with a **Refresh** card, then two groups of rows. Each row shows its title and its current value on one line, so most visits need no row opened. Select a row to open it in place and change it. Only one row is open at a time, and a link such as `Settings#pictures` opens the row it names.
+**Tools & Admin → Settings** holds the preferences that are yours to choose. It opens with a **Refresh** card, then three groups of rows: Everyday, Sources and freshness, and Sync. Each row shows its title and its current value on one line, so most visits need no row opened. Select a row to open it in place and change it. Only one row is open at a time, and a link such as `Settings#pictures` opens the row it names.
 
 Some rows have their own **Save** button and save at once: **Display currency**, each rate, **Load ECB reference rates**, **Address for labels** and the BrickLink switch in **Part lists**. The other rows save together. They are **Retail country**, the part grouping in **Part lists**, **Picture source order**, **Source priority**, **Freshness** and **Instruction downloads**. Press **Save settings** in any of them and every change in those rows is saved. The page then opens the row you saved and says **Settings saved** with an **Undo** next to it. Undo puts back exactly what was there before. It is refused with **Item changed · undo the later save first** once you have saved again.
 

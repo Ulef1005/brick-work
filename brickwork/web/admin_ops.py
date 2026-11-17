@@ -363,7 +363,8 @@ def tools_read(page, group=None):
             return admin.value_rows(db, group)
         if page == 'settings':
             from ..core import part_groups, pictures
-            return {**admin.settings(db), 'stale': len({r['item_id'] for r in admin.stale_prices(db)}), 'pictures': {**pictures.state(db), 'matrix': pictures.matrix(db)}, 'bricklink_list': bricklink_list_switch(db),
+            from ..core.sync import lost_parts
+            return {**admin.settings(db), 'lost_parts_rules': lost_parts.RULES, 'stale': len({r['item_id'] for r in admin.stale_prices(db)}), 'pictures': {**pictures.state(db), 'matrix': pictures.matrix(db)}, 'bricklink_list': bricklink_list_switch(db),
                     'grouping': part_groups.editor(db)}
         if page == 'statistics':
             return admin.statistics(db)
@@ -682,6 +683,8 @@ def settings_summaries(data):
     else:
         line += 'no rates yet'
     summary = {'currencies': line, 'retail-country': data.get('retail_country') or 'DE'}
+    from ..core.sync import lost_parts
+    summary['sync'] = lost_parts.RULE_LABELS.get(data.get('rebrickable_lost_parts_rule'), lost_parts.RULE_LABELS['per_part'])
     lists = data.get('bricklink_list') or {}
     summary['part-lists'] = ("BrickLink's list preferred" if lists.get('on') and lists.get('key') else "Rebrickable's list first") \
         + ' · ' + GROUPING_WORDS.get(data.get('part_list_grouping'), GROUPING_WORDS['grouped'])

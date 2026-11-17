@@ -438,16 +438,17 @@ def test_settings_singular_refresh_wording(client, coll, world, monkeypatch):
 
 ROWS = [('Everyday', [('currencies', 'Display currency'), ('retail-country', 'Retail country'), ('part-lists', 'Part lists'), ('labels-address', 'Address for labels')]),
         ('Sources and freshness', [('pictures', 'Pictures'), ('picture-priority', 'Picture source order'), ('source-priority', 'Source priority'),
-                                   ('freshness', 'Freshness'), ('instruction-downloads', 'Instruction downloads')])]
+                                   ('freshness', 'Freshness'), ('instruction-downloads', 'Instruction downloads')]),
+        ('Sync', [('sync', 'Lost Parts from Rebrickable')])]
 
 
-def test_settings_is_two_groups_of_nine_exclusive_rows_with_their_summaries(client, coll, world):
+def test_settings_is_three_groups_of_ten_exclusive_rows_with_their_summaries(client, coll, world):
     seed(coll)
     soup = BeautifulSoup(client.get('/manage/settings').data, 'html.parser')
     groups = soup.select('.bw-set-groups > .bw-set-group')
     assert [(g.select_one('h2').get_text(), [(d['id'], d.select_one('.bw-set-title').get_text()) for d in g.select('details.bw-set')]) for g in groups] == ROWS
     rows = soup.select('details.bw-set')
-    assert len(rows) == 9 and {d['name'] for d in rows} == {'bw-settings'} and not [d for d in rows if d.has_attr('open')]
+    assert len(rows) == 10 and {d['name'] for d in rows} == {'bw-settings'} and not [d for d in rows if d.has_attr('open')]
     summary = admin_ops.settings_summaries({**admin_ops.tools_read('settings'), 'currency': {'display': 'EUR', 'rates': []}, 'labels_address': ''})
     shown = {d['id']: d.select_one('.bw-set-value').get_text() for d in rows}
     assert shown['currencies'] == 'EUR · no rates yet' and shown['retail-country'] == 'DE' and shown['labels-address'] == 'Uses the request address'
@@ -455,6 +456,9 @@ def test_settings_is_two_groups_of_nine_exclusive_rows_with_their_summaries(clie
     assert re.fullmatch(r'[\d,]+ with a picture · [\d,]+ without', shown['pictures'])
     assert shown['picture-priority'] == 'Rebrickable catalogue, BrickLink, Rebrickable API' and shown['source-priority'] == 'Default order'
     assert shown['freshness'] == summary['freshness'] and shown['instruction-downloads'] == 'Up to 500 MB per file'
+    assert shown['sync'] == 'Rebrickable wins per part'
+    assert [i['value'] for i in soup.select('#sync input[name=rebrickable_lost_parts_rule]')] == ['add_only', 'per_part', 'per_set', 'everything']
+    assert soup.select_one('#sync input[checked]')['value'] == 'per_part' and soup.select_one('#sync input')['form'] == 'bw-settings-form'
     assert set(summary) == {d['id'] for d in rows}
 
 
@@ -534,7 +538,7 @@ def test_settings_read_only_shows_the_rows_without_forms(app4, client, coll, wor
     app4.config['BW_READ_ONLY'] = True
     try:
         soup = BeautifulSoup(client.get('/manage/settings').data, 'html.parser')
-        assert len(soup.select('details.bw-set')) == 9 and soup.select_one('#currencies .bw-set-value').get_text()
+        assert len(soup.select('details.bw-set')) == 10 and soup.select_one('#currencies .bw-set-value').get_text()
         assert not soup.select('form#bw-settings-form') and not soup.select('button[form=bw-settings-form]')
         assert [f['class'] for f in soup.select('details.bw-set form')] == [['bwc-switch-form']]              # the part-list switch, as before, with its controls disabled
         assert all(c.has_attr('disabled') for c in soup.select('details.bw-set form button, details.bw-set form input[type=checkbox]'))
@@ -748,3 +752,20 @@ def test_49e_booklet_picture_ignores_own_photos(client, coll, pair):
              (one, copy))
     img = soup_of(client).select_one('.bw-booklet img')
     assert img['src'].split('?')[0].endswith(f'/{catalogue}') and img['loading'] == 'lazy' and img.has_attr('data-bw-fallback')
+
+
+def test_settings_saves_the_lost_parts_rule_from_its_row(client, coll, world):
+    """#457: the Sync row's radios belong to the one settings form; a save changes the rule, reopens the row and Undo puts it back."""
+    seed(coll)
+    soup = BeautifulSoup(client.get('/manage/settings').data, 'html.parser')
+    data = {i['name']: i.get('value', '') for i in soup.select('input[form=bw-settings-form], select[form=bw-settings-form]')
+            if i.get('name') and i.get('type') not in ('radio', 'checkbox')}
+    for i in soup.select('input[form=bw-settings-form][type=radio][checked], input[form=bw-settings-form][type=checkbox][checked]'):
+        data.setdefault(i['name'], i.get('value', 'on'))
+    for s in soup.select('select[form=bw-settings-form]'):
+        chosen = s.select_one('option[selected]') or s.select_one('option')
+        data[s['name']] = chosen.get('value', chosen.get_text()) if chosen else ''
+    data.update(rebrickable_lost_parts_rule='per_set', row='sync')
+    response = client.post('/manage/settings', data={**data, 'csrf_token': token(client)}, follow_redirects=False)
+    assert response.status_code in (302, 303) and response.headers['Location'].endswith('#sync')
+    assert admin.settings(coll.db)['rebrickable_lost_parts_rule'] == 'per_set'

@@ -46,7 +46,7 @@ Some booklets are large. One for a big set can be more than 300 MB, while most a
 1. Files from other sources are limited to 20 MB each. Downloads from the Official source have their own limit, **Official download limit in MB**, which is 500 by default.
 2. A file over its limit stays in the list with its size, for example *Over 500 MB*, but you cannot tick it.
 3. The automatic ticks also stop when the ticked Official files add up to the limit. Tick more by hand if you want them.
-4. Change the limit in **Tools & Admin → Settings**, under **Instruction downloads**. Check that the disk has room first.
+4. Change the limit in **Tools & Admin → Settings**, under **Largest instruction download**. Check that the disk has room first.
 
 ## 5. Download and attach the PDFs
 

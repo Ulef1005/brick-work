@@ -6,6 +6,7 @@ import pytest
 
 from brickwork.core import admin
 from tests.app4 import app4, client, coll, csrf, pair, read, world  # noqa: F401  (the fixtures)
+from tests.sources4 import keyed
 
 
 def test_hub_counts_equal_list_lengths(coll, world):
@@ -15,9 +16,10 @@ def test_hub_counts_equal_list_lengths(coll, world):
     assert admin.count_jobs(coll.db) == len(admin.jobs(coll.db)) == 1
 
 
-def test_the_hub_shows_the_counts(client, world):
-    text = BeautifulSoup(client.get('/manage/tools').data, 'html.parser').select_one('.bw-hub').get_text(' ')
-    assert '7 stale' in text
+def test_the_hub_shows_the_counts(client, world, monkeypatch):
+    keyed(monkeypatch, 'bricklink')
+    soup = BeautifulSoup(client.get('/manage/tools').data, 'html.parser')
+    assert soup.select_one('.bw-refresh-num').get_text() == '7' and '7 prices out of date' in soup.select_one('.bw-refresh').get_text(' ', strip=True)
 
 
 def test_database_page_does_not_check_on_get_and_runs_on_button(client, coll, world, monkeypatch):

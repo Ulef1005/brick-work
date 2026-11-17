@@ -101,7 +101,11 @@ def bw_admin(page):
             if page == 'hub':
                 from . import setup_state
                 flow = setup_state.first_run(bw_collection_editable())
-                data['get_started'] = 'done' if flow['done'] == flow['total'] else f"{flow['done']} of {flow['total']} done"
+                data['get_started'] = 'done' if flow['finished'] else f"{flow['done']} of {flow['total']} done"
+                # #460: the intro card shows only while set-up is open and the install can be edited; Refresh waits for a collection.
+                from . import onboarding
+                data['show_intro'] = bw_collection_editable() and not flow['finished']
+                data['collection_started'] = onboarding.collection_started()
             if page == 'statistics':
                 from . import stats_charts
                 data['headline'] = stats_charts.headline(data['completeness'])
@@ -162,7 +166,7 @@ def identity_undo_offer(text):
     return identifier if found else None
 
 
-SETTINGS_ROWS = ('retail-country', 'part-lists', 'pictures', 'picture-priority', 'source-priority', 'freshness', 'instruction-downloads', 'sync')
+SETTINGS_ROWS = ('retail-country', 'part-list-grouping', 'part-lists', 'pictures', 'picture-priority', 'source-priority', 'freshness', 'instruction-downloads', 'sync')
 
 
 def settings_undo_offer(db, text):
@@ -198,6 +202,7 @@ def bw_admin_write(page):
         'catalogues': {'source': 'Source toggle', 'key_save': 'Source key', 'key_test_save': 'Source key', 'key_remove': 'Source key',
                        'key_undo': 'Source key', 'key_test': 'Source key test'}.get(action, 'Catalogues & keys'),
         'settings': 'Picture refresh' if action == 'pictures' else 'Settings',
+        'hub': 'Picture refresh',
         'unresolved': 'Identity decision',
         'refresh': 'Price refresh',
         'jobs': 'Job resume' if action == 'resume' else 'Job retry',
@@ -278,7 +283,8 @@ def bw_admin_write(page):
             if saved is None:
                 flash('Nothing changed', 'success')
             return redirect(url_for('web.bw_admin', page='settings', saved=saved) + '#labels-address')
-        elif page == 'settings' and request.form.get('action') == 'pictures':
+        elif page in ('hub', 'settings') and request.form.get('action') == 'pictures':
+            # #460: the picture dialog lives on Tools & Admin and posts to /manage/hub; /manage/settings still takes the same post.
             if not bw_collection_editable():
                 abort(403, 'Changes are switched off on this instance')
             try:
@@ -286,7 +292,7 @@ def bw_admin_write(page):
                     expected_count=request.form.get('expected_count') or None)
             except ValueError as exc:                   # written for people: "N items now match, not M"
                 flash('Picture refresh · ' + str(exc), 'error')
-                return redirect(url_for('web.bw_admin', page='settings') + '#pictures')
+                return redirect(url_for('web.bw_tools') + '#refresh')
             bw_start_worker()
             flash(f'{len(jobs)} picture jobs queued for {count} items · No Undo for picture refresh; existing files are kept', 'success')
             return redirect(url_for('web.bw_admin', page='jobs'))

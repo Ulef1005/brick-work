@@ -195,11 +195,15 @@
  const openForHash = () => {
   const id = decodeURIComponent(location.hash.slice(1));
   const target = id && document.getElementById(id);
-  const row = target?.closest('details.bw-set');
-  if (!row) return;
-  // Without exclusive-accordion support the other rows are closed by hand.
-  rows.forEach(other => { if (other !== row) other.open = false; });
-  row.open = true;
+  if (!target) return;
+  const row = target.closest('details.bw-set');
+  if (row) {
+   // Without exclusive-accordion support the other rows are closed by hand.
+   rows.forEach(other => { if (other !== row) other.open = false; });
+   row.open = true;
+  }
+  // The section anchors (#set-sources) name a collapsed group, or a section holding rows: open the group itself and every one around it.
+  if (target.tagName === 'DETAILS') target.open = true;
   for (let node = target.parentElement?.closest('details'); node; node = node.parentElement?.closest('details')) node.open = true;
   target.scrollIntoView?.({block: 'start'});
  };

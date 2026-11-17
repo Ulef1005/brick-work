@@ -8,7 +8,7 @@ from tests.app4 import app4, client, coll, pair, read, world  # noqa: F401  (the
 
 PAGES = ['tools', 'about', 'catalogues', 'jobs', 'refresh', 'unresolved', 'statistics', 'values',
          'database', 'settings', 'appearance', 'history', 'instructions', 'tokens']
-HUB_TARGETS = ['/manage/about', '/manage/refresh', '/manage/catalogues', '/manage/jobs', '/manage/instructions',
+HUB_TARGETS = ['/manage/about', '/manage/catalogues', '/manage/jobs', '/manage/instructions',
                '/manage/history', '/manage/unresolved', '/manage/statistics', '/manage/values',
                '/manage/tokens', '/manage/database', '/manage/settings', '/manage/appearance']
 
@@ -36,23 +36,22 @@ def test_p6_pages_have_header_and_no_breadcrumb(client, world, page):
 
 def test_p6_hub_tiles_link_to_every_page(client, world):
     soup = soup_of(client, '/manage/tools')
-    hrefs = [a['href'] for a in soup.select('.bw-hub a.bw-hub-row')]
+    hrefs = [a['href'].split('#')[0] for a in soup.select('.bw-hub a.bw-hub-row')]
     for target in HUB_TARGETS:
         assert target in hrefs, target
     assert any(h.endswith('/manage/import-legacy') or 'import' in h for h in hrefs)
     labels = [h.get_text() for h in soup.select('.bw-hub h2.bw-label')]
-    assert labels == ['Refresh', 'Catalogue', 'Instructions', 'Reports', 'Administration']
+    assert labels == ['Refresh', 'Your collection', 'Settings', 'Maintenance', 'About']         # #460: groups by what you do; the intro card has no heading
     cards = [(c.select_one('.bw-hub-eyebrow').get_text(), c.select_one('.bw-hub-title').get_text()) for c in soup.select('.bw-hub-top a.bw-hub-card')]
-    assert cards == [('Get started', 'Get started'), ('Insight', 'Statistics')]      # #83, #219: both cards on top, whole card a link
-    assert ' stale' in soup.select_one('.bw-hub').get_text()
+    assert cards == [('Get started', 'Get started')]                 # #83: while set-up is open the card is on top, the whole card a link
 
 
 def test_p6_settings_controls(client, world):
     soup = soup_of(client, '/manage/settings')
     assert not soup.select('select[name=retail_country]')
     assert soup.select('.bw-seg input[name=retail_country][value=DE]')
-    assert soup.select('.bw-seg input[name=scope]')
-    assert soup.select('input[type=checkbox][role=switch][name=types]')
+    assert not soup.select('.bw-seg input[name=scope]') and not soup.select('[data-picture-dialog]')          # #460: the picture dialog is on Tools & Admin
+    assert soup_of(client, '/manage/tools').select('.bw-seg input[name=scope]')
     assert not soup.select('.bw-seg input[name=source]')                                # a refresh follows the source order: no source to pick
 
 

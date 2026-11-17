@@ -30,6 +30,29 @@ A set becomes one **copy** per missing unit, with the part list the set has. Its
 
 **Undo this pull** (shown on the sync page right after a pull) archives the copies, takes the stock and wish quantities back and removes the tag. It is refused once you have changed any of them (**Something from this sync has changed since**).
 
+## Lost Parts from Rebrickable
+
+Rebrickable keeps a list of the parts you lost. A Rebrickable pull can bring it in and mark those parts as missing on the matching copy. On the **Rebrickable** card, the switch **Bring in Lost Parts** sits beside **Pull**. It is on by default, and Brick Work remembers your choice. Under the switch, one line says what it does and which rule applies. It links to **Settings**, where you choose the rule. With the switch off, Brick Work does not read your Lost Parts at all.
+
+The preview shows a **Lost Parts from Rebrickable** section before anything is written. For each set it lists the parts that will be marked, the counts that change, the marks that will be cleared and the parts that cannot be matched.
+
+**Rebrickable wins, and the rule says how far that goes.** Choose it under **Settings → Sync**. It is one of four, and each one can clear something different:
+
+- **Add only.** The sync adds missing marks and keeps the larger count where both sides have one. It never lowers or clears a mark.
+- **Rebrickable wins per part** (the default). For a part Rebrickable lists as lost, Rebrickable's count replaces yours, also when it is smaller. Marks on parts Rebrickable does not list stay. A count can go down, and it can go to the lower number Rebrickable says, but no other mark is cleared.
+- **Rebrickable wins per set.** A set that has at least one Lost Part on Rebrickable becomes exactly Rebrickable's list. Every other missing mark on that copy is cleared. Sets with no Lost Parts on Rebrickable stay as they are.
+- **Rebrickable wins everywhere.** Every synced Rebrickable set (a set with one copy, or the copy you pick) becomes exactly Rebrickable's list. A set with no Lost Parts there loses all its missing marks. The preview says how many marks and pieces it will clear before you pull.
+
+Nothing is cleared when Brick Work could not read the whole list. If Rebrickable could not be reached, or any row of the list could not be read, the preview says so and that pull clears nothing. The sets and wishes are pulled as usual.
+
+**Several copies of one set.** Rebrickable records a lost part against a set, not a copy. With exactly one copy of the set, the marks go to that copy. With several, the preview lists that set's lost parts and a chooser asks which copy to use. A set with no copy picked is left out, and the result lists it as **Choose a copy**. Sync again to pick one. Archived copies do not count. A copy this pull adds never gets marks. Each copy in the chooser says what choosing it would do, for example **adds 2, clears 1 mark**.
+
+**A copy that changed after the preview.** The pull writes a copy only when its missing parts are still what the preview showed. If you changed them in between, that set is left out and the result says so. Preview the pull again.
+
+**Parts that cannot be matched.** A lost part is matched to a line of the copy by part and colour. Brick Work uses the numbers it knows for Rebrickable, so a copy on BrickLink's part list matches too. A spare part matches a spare line. Four cases are listed with the reason, never dropped. They are a part with no matching line, a count above the line's quantity, a set that is not in Brick Work, and a set with no copy yet. A set with a part that cannot be matched is not cleared, because the line it names may be one you marked.
+
+**Undo.** **Undo this pull** takes the Lost Parts marks back with the copies, stock and wishes of the same pull, in one step. Each marked copy also keeps its own entry in its history. Undo is refused when a mark was changed after the pull (**Something from this sync has changed since**).
+
 ## Send
 
 **Review and send** on the site's card lists the remote changes first; **Send** on that screen sends them: sets to add there, counts to change and removals. Removals stay unticked until you tick them. An item with no number yet (a local item added without one) cannot be named to a site. It is listed as *Not on Rebrickable* and cannot be ticked. Link a number in **Unresolved items** first. A daily budget that runs out pauses the rest of the send, and a rejected token stops it; **Retry** sends only what was not sent. **Brick Work's Undo cannot reverse a change made at a site.**
@@ -42,6 +65,8 @@ Condition, completeness, box, instructions and storage never leave Brick Work.
 brickwork sync rebrickable status
 brickwork sync rebrickable pull                 # make a plan
 brickwork sync rebrickable pull --apply PLAN    # apply it (--tick ROW to choose rows)
+brickwork sync rebrickable pull --lost-parts off   # leave the Lost Parts out (remembered)
+brickwork sync rebrickable pull --apply PLAN --pick 2070-1=COPY_ID   # the copy for a set with several copies
 ```
 
 See the [CLI reference](../reference/cli.md#sync).

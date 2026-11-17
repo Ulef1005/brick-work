@@ -60,8 +60,9 @@ Known gaps: 12j predates schema 4.0 (the app's first run follows data-model desi
 ## Brand
 
 - **Mark (direction D, "Courses in progress").** Three courses of a running-bond wall in hand-stitched line with abstract studs. The top course is half laid: one brick set, the next outlined and cross-stitched. Paper line on the accent tile in light, `#1A1816` line on the lighter accent in dark. Don't recolour, outline, add gradients or shadows. The dashed outline plus stitched cross doubles as the "missing / to place" pictogram.
-- **Accent (identity surfaces only).** `--bw-accent` light `oklch(0.50 0.10 215)`, dark `oklch(0.76 0.10 215)`; `--bw-accent-soft` `oklch(0.89 0.045 215)` / `oklch(0.35 0.065 215)`; `--bw-on-accent` `#FAFAF8` / `#1A1816` (`static/brickwork/brick-work.css`). Used for the logo, app icon, splash, lockup and the 24 px mark beside the app name in the top bar. Never on controls, data, charts or status.
-- **Clay stays the interaction colour:** buttons, links, focus, selected state.
+- **Accent (identity surfaces only).** `--bw-accent` light `oklch(0.50 0.10 215)`, dark `oklch(0.76 0.10 215)`; `--bw-accent-soft` `oklch(0.89 0.045 215)` / `oklch(0.35 0.065 215)`; `--bw-on-accent` `#FAFAF8` / `#1A1816` (`static/brickwork/brick-work.css`). Used for the logo, app icon, splash, lockup and the 24 px mark beside the app name in the top bar, and as the focus line (below). Never on controls otherwise, nor on data, charts or status.
+- **Clay stays the interaction colour:** buttons, links, selected state.
+- **Focus is the logo blue** (Ulf, 2026-11-17): the 2 px focus line around any focused field, button or link is `--tw-focus-color`, the identity accent's value (light `oklch(0.50 0.10 215)`, dark `oklch(0.76 0.10 215)`), so focus never reads as a selected or primary state. Always use the token, never `--tw-accent`, for a focus outline, border or underline.
 - **Wordmark:** "Brick Work" in Patrick Hand on brand surfaces only (splash, lockup, about). The product top bar uses Inter 600 beside the mark.
 - **No LEGO trademarks:** never the word "LEGO", its logo, red-and-yellow, a minifigure likeness or a photo-real 2 × 4 brick. Say "set", "part", "minifigure".
 - **No** second interaction colour, gradients, shadows, emoji or mascot.

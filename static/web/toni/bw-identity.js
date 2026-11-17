@@ -47,3 +47,37 @@
   update(list);
  });
 })();
+// Pictures of guesses: a card whose picture is not cached yet asks the server for it once, when it scrolls into view, one card at a time.
+(() => {
+ const list = document.querySelector('[data-bu-list][data-guess-url]');
+ if (!list) return;
+ const queue = [];
+ let busy = false;
+ async function next() {
+  if (busy || !queue.length) return;
+  busy = true;
+  const tile = queue.shift();
+  try {
+   const response = await fetch(list.dataset.guessUrl, {method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({letter: tile.dataset.letter, number: tile.dataset.number, colour: Number(tile.dataset.colour), csrf_token: list.dataset.csrf})});
+   const answer = response.ok ? await response.json() : {};
+   if (answer.state === 'ready' && answer.url) {
+    const image = document.createElement('img');
+    image.alt = '';
+    image.src = answer.url;
+    tile.replaceChildren(image);
+   }
+  } catch (error) { /* the tile keeps "No image"; the next visit asks again */ }
+  busy = false;
+  next();
+ }
+ const seen = new IntersectionObserver(entries => {
+  for (const entry of entries) {
+   if (!entry.isIntersecting) continue;
+   seen.unobserve(entry.target);
+   queue.push(entry.target);
+  }
+  next();
+ }, {rootMargin: '200px'});
+ list.querySelectorAll('[data-bu-pic]').forEach(tile => seen.observe(tile));
+})();

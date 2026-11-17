@@ -5337,6 +5337,9 @@ paths:
                   - 'null'
                 wish_list:
                   type: string
+                lost_parts:
+                  type: boolean
+                  description: 'Rebrickable only: the remembered switch "Bring in Lost Parts" of a pull (#457). On when never set.'
       responses:
         '200':
           description: OK
@@ -5424,6 +5427,16 @@ paths:
                 ticked:
                   type: array
                   items:
+                    type: string
+                lost_ticked:
+                  type: array
+                  description: 'Lost Parts sets to write, by set number. Left out: every set that has one copy to use.'
+                  items:
+                    type: string
+                copy_picks:
+                  type: object
+                  description: 'Lost Parts: the copy to use for a set with several copies, `{set number: copy id}`. A set without a pick is left out and listed.'
+                  additionalProperties:
                     type: string
       responses:
         '200':
@@ -11750,6 +11763,9 @@ components:
         state:
           type: object
           description: On a send plan, the baseline the plan was made against.
+        lost:
+          type: object
+          description: 'On a Rebrickable pull plan, the Lost Parts section (#457): `on`, `rule`, `status` (`off`, `read`, `failed`), `message`, `unreadable`, `clearing`, `sets` (one per set with something to write: `copies`, `copy_id`, `state` `ready` or `pick`, `preview`), `unmatched_sets` and a `summary`.'
 
     SyncApplied:
       type: object
@@ -12338,6 +12354,11 @@ components:
           type: string
           enum: [grouped, bricklink, none]
           default: grouped
+        rebrickable_lost_parts_rule:
+          type: string
+          enum: [add_only, per_part, per_set, everything]
+          default: per_part
+          description: 'Which count a Rebrickable pull keeps for Lost Parts (#457). `add_only` adds marks and keeps the larger count. `per_part` lets Rebrickable''s count replace yours for a part it lists as lost. `per_set` makes a set with Lost Parts on Rebrickable exactly Rebrickable''s list. `everything` does that for every synced set.'
         part_group_overrides:
           type: object
           maxProperties: 200
@@ -12391,6 +12412,11 @@ components:
           type: string
           enum: [grouped, bricklink, none]
           default: grouped
+        rebrickable_lost_parts_rule:
+          type: string
+          enum: [add_only, per_part, per_set, everything]
+          default: per_part
+          description: 'Which count a Rebrickable pull keeps for Lost Parts (#457). `add_only` adds marks and keeps the larger count. `per_part` lets Rebrickable''s count replace yours for a part it lists as lost. `per_set` makes a set with Lost Parts on Rebrickable exactly Rebrickable''s list. `everything` does that for every synced set.'
         part_group_overrides:
           type: object
           maxProperties: 200

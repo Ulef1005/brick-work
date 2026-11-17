@@ -212,8 +212,8 @@ def test_m10b5_unresolved_list_pattern_and_what_the_copies_use(coll, client, wor
     assert soup.select_one('[data-bu-search]') and soup.select_one('[data-bu-open=filters]') and soup.select_one('[data-bu-open=sort]') and soup.select_one('[data-bu-count]')
     assert {i['value'] for i in soup.select('[data-bu-filter]')} >= {'', 'merge', 'unidentified'}
     row = soup.select_one(f'#item-{local}')
-    assert 'merge' in row['data-facets'] and len(row.select('.bu-cand')) == 2
-    text = [c.get_text(' ', strip=True) for c in row.select('.bu-cand')]
+    assert 'merge' in row['data-facets'] and len(row.select('.bu-grid form.bu-guess')) == 2
+    text = [c.get_text(' ', strip=True) for c in row.select('.bu-grid form.bu-guess')]
     assert any('Your copies use this one' in t and 'Same BrickLink number' in t for t in text) and any('Not used in your copies' in t and 'Migration guess' in t for t in text)
     assert row.select_one('button[value=merge]') and row.select_one('input[name=number]')
     link_row = soup.select_one(f'#item-{world.mystery}')
@@ -224,7 +224,7 @@ def test_m10b5_unresolved_confirm_and_reject_rows(coll, client, world):
     coll.link(world.figure, 'syn-fig-guess', kind='M', status='to_check')
     soup = page(client, '/manage/unresolved')
     row = soup.select_one(f'#item-{world.figure}')
-    assert row.select_one('button[value=confirm]') and row.select_one('button[value=reject]') and 'to check' in row.get_text()
+    assert row.select_one('button[value=choose]') and row.select_one('button[value=reject_all]') and '1 guess' in row.get_text()
 
 
 def test_m10b6_the_unidentified_item_explains_and_offers_two_ways(coll, client, world):

@@ -38,7 +38,7 @@ def settings_set(key, value):
     from ..core.pipeline import validate_priority, STEPS, TYPES
     from ..core.sources.base import audit_origin
     with _settings_db() as db, audit_origin('cli'):
-        if key == 'part_list_grouping':
+        if key in ('part_list_grouping', 'rebrickable_lost_parts_rule'):
             admin.patch_settings(db, {key: value})
             return {key: value}
         if key == 'part_group_overrides':
@@ -165,10 +165,12 @@ def import_bricktracker(source=None, plan_only=False, plan_id=None, decisions=No
 
 
 def sync_command(source, action, plan_id=None, tick=None, owned=None, wishlist=None, send_to=None, wish_list=None,
-                 username=None, prompt=None):
+                 username=None, prompt=None, lost_parts=None, pick=None):
     """`brickwork sync <source> <action>`: status, lists, link, pull, send, connect, paste, remove, test.
 
     connect asks for the password and paste for the token/hash without echo; neither is ever an argument.
+    `lost_parts` (on or off) is the remembered switch "Bring in Lost Parts" of a Rebrickable pull (link or pull plan); `pick` is
+    `SET_NUMBER=COPY_ID` for a set with several copies when applying a plan (#457).
     """
     import getpass
     from ..core.connect import connect
@@ -181,7 +183,8 @@ def sync_command(source, action, plan_id=None, tick=None, owned=None, wishlist=N
         if action == 'lists':
             return sync.lists(db, source)
         if action == 'link':
-            options = {k: v for k, v in dict(owned=owned, wishlist=wishlist, send_to=send_to, wish_list=wish_list).items()
+            options = {k: v for k, v in dict(owned=owned, wishlist=wishlist, send_to=send_to, wish_list=wish_list,
+                                             lost_parts=None if lost_parts is None else lost_parts == 'on').items()
                        if v is not None}
             return sync.link(db, source, options)
         if action == 'connect':
@@ -196,8 +199,9 @@ def sync_command(source, action, plan_id=None, tick=None, owned=None, wishlist=N
             return sync.test(db, source)
         if action == 'pull':
             if plan_id:
-                return sync.apply_pull(db, plan_id, tick)
-            return sync.plan_pull(db, source)
+                picks = dict(p.split('=', 1) for p in pick or [])
+                return sync.apply_pull(db, plan_id, tick, picks=picks or None)
+            return sync.plan_pull(db, source, lost_parts_switch=None if lost_parts is None else lost_parts == 'on')
         if plan_id:
             return sync.apply_send(db, plan_id, tick)
         return sync.plan_send(db, source)
@@ -359,7 +363,8 @@ def tools_read(page, group=None):
             return admin.value_rows(db, group)
         if page == 'settings':
             from ..core import part_groups, pictures
-            return {**admin.settings(db), 'pictures': {**pictures.state(db), 'matrix': pictures.matrix(db)}, 'bricklink_list': bricklink_list_switch(db),
+            from ..core.sync import lost_parts
+            return {**admin.settings(db), 'lost_parts_rules': lost_parts.RULES, 'stale': len({r['item_id'] for r in admin.stale_prices(db)}), 'pictures': {**pictures.state(db), 'matrix': pictures.matrix(db)}, 'bricklink_list': bricklink_list_switch(db),
                     'grouping': part_groups.editor(db)}
         if page == 'statistics':
             return admin.statistics(db)
@@ -392,7 +397,7 @@ def tools_read(page, group=None):
                 {**job, 'interrupted': (job['state'] == 'running' or job['state'] == 'waiting_for_budget' and job['id'] in owners)
                  and not live.get(job['id'], False)} for job in jobs])
         if page == 'unresolved':
-            return dict(items=admin.unresolved(db))
+            return dict(items=admin.unresolved(db, _media_root()))
         if page == 'history':
             return admin.history(db)
         if page == 'instructions':
@@ -455,6 +460,10 @@ def identity_write(db, *, action, item=None, target=None, number=None, link=None
         return identity.confirm_link(db, int(link))
     if action == 'reject':
         return identity.reject_link(db, int(link))
+    if action == 'choose':
+        return identity.choose_link(db, int(link))
+    if action == 'reject_all':
+        return identity.reject_links(db, int(item))
     if action == 'link':
         return identity.add_link(db, int(item), number)
     if action == 'prefer':
@@ -647,6 +656,61 @@ def bricklink_list_switch(db):
     from ..store4 import jobs
     row = db.execute("SELECT value FROM main.setting WHERE key='prefer_bricklink_inventory'").fetchone()
     return dict(on=bool(row and row[0] == 'true'), key=bool(jobs._configured('bricklink')))
+
+
+PICTURE_SOURCE_NAMES = {'bricklink': 'BrickLink', 'rebrickable_dump': 'Rebrickable catalogue', 'rebrickable_api': 'Rebrickable API'}
+GROUPING_WORDS = {'grouped': 'grouped by category', 'bricklink': 'grouped by BrickLink category', 'none': 'not grouped'}
+
+
+def settings_summaries(data):
+    """The one muted line each Settings row shows while it is closed (#460), worked out from the settings view data: `currency`,
+    `labels_address`, `pictures`, `bricklink_list`, `part_list_grouping`, `priority`, `freshness`, `retail_country` and
+    `official_download_limit_mb`. Keys are the row ids."""
+    from ..core.pipeline import DEFAULT_PRIORITY
+    cur = data.get('currency') or {}
+    rates = cur.get('rates') or []
+    line = f"{cur.get('display', 'EUR')} · "
+    if rates:
+        newest = max(rates, key=lambda r: r.get('as_of') or '')
+        when = ''
+        if newest.get('as_of'):
+            try:
+                day = datetime.strptime(newest['as_of'][:10], '%Y-%m-%d')
+                when = f' {day.day} {day:%b}'
+            except ValueError:
+                when = ' ' + newest['as_of']
+        line += f"{len(rates)} {'rate' if len(rates) == 1 else 'rates'}, {'ECB' if newest.get('source') == 'ecb' else 'by hand'}{when}"
+    else:
+        line += 'no rates yet'
+    summary = {'currencies': line, 'retail-country': data.get('retail_country') or 'DE'}
+    from ..core.sync import lost_parts
+    summary['sync'] = lost_parts.RULE_LABELS.get(data.get('rebrickable_lost_parts_rule'), lost_parts.RULE_LABELS['per_part'])
+    lists = data.get('bricklink_list') or {}
+    summary['part-lists'] = ("BrickLink's list preferred" if lists.get('on') and lists.get('key') else "Rebrickable's list first") \
+        + ' · ' + GROUPING_WORDS.get(data.get('part_list_grouping'), GROUPING_WORDS['grouped'])
+    summary['labels-address'] = data.get('labels_address') or 'Uses the request address'
+    rows = (data.get('pictures') or {}).get('summary') or []
+    summary['pictures'] = f"{sum(r['with_picture'] for r in rows):,} with a picture · {sum(r['missing'] for r in rows):,} without"
+    priority = data.get('priority') or {}
+    order = (priority.get('pictures') or {}).get('part') or []
+    summary['picture-priority'] = ', '.join(PICTURE_SOURCE_NAMES.get(k, k) for k in order) or 'No picture source in use'
+    changed = set()
+    for step, table in priority.items():
+        if step == 'pictures':
+            continue
+        default = DEFAULT_PRIORITY.get(step, {})
+        changed |= {kind for kind in {*table, *default} if (table.get(kind) or []) != default.get(kind, [])}
+    summary['source-priority'] = 'Default order' if not changed else f"Changed for {len(changed)} {'kind' if len(changed) == 1 else 'kinds'}"
+    spans = {}
+    for rule in data.get('freshness') or []:
+        if rule.get('max_age_days') is not None:
+            spans.setdefault(rule['kind'], []).append(int(rule['max_age_days']))
+    parts = [f"{kind.replace('_', ' ').capitalize() if i == 0 else kind.replace('_', ' ')} "
+             + (f'{min(days)} to {max(days)} days' if min(days) != max(days) else f"{days[0]} day{'' if days[0] == 1 else 's'}")
+             for i, (kind, days) in enumerate(sorted(spans.items(), key=lambda kv: (('prices', 'metadata', 'pictures').index(kv[0]) if kv[0] in ('prices', 'metadata', 'pictures') else 9, kv[0])))]
+    summary['freshness'] = ' · '.join(parts) or 'No expiry set'
+    summary['instruction-downloads'] = f"Up to {data.get('official_download_limit_mb', 500)} MB per file"
+    return summary
 
 
 def set_prefer_bricklink(enabled):

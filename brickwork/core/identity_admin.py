@@ -35,6 +35,12 @@ def _stores(db):
     return ('main', 'catalogue') if has_catalogue(db) else ('main',)
 
 
+def is_guess(db, letter, number):
+    """Whether a `to_check` BrickLink link names this number: the only numbers the Unresolved screen may fetch a guess picture for."""
+    return any(db.execute(f"SELECT 1 FROM {store}.item_link WHERE provider='bricklink' AND provider_kind=? AND provider_key=? AND status='to_check' LIMIT 1",
+                          (letter, number)).fetchone() for store in _stores(db))
+
+
 def _candidates(db, item):
     """Items a local item may be: `[dict(item_id, how)]`, one per item, same kind, never a merged item.
 
@@ -122,16 +128,66 @@ def _evidence(status):
     return value if isinstance(value, dict) else {}
 
 
-def unresolved(db):
+def _guess_name(db, letter, number):
+    """What the catalogue knows a BrickLink item by: its name in the BrickLink list when one is loaded, else the name of an item a confirmed link
+    names with that number. None when neither knows it."""
+    if has_catalogue(db):
+        row = db.execute('SELECT name FROM catalogue.bricklink_item WHERE item_type=? AND item_no=?', (letter, number)).fetchone()
+        if row:
+            return row[0]
+    for store in _stores(db):
+        row = db.execute(f"SELECT i.name FROM {store}.item_link k JOIN {store}.item i ON i.id=k.item_id WHERE k.provider='bricklink' AND k.provider_kind=? "
+                         f"AND k.provider_key=? AND k.status!='to_check' AND i.name IS NOT NULL LIMIT 1", (letter, number)).fetchone()
+        if row:
+            return row[0]
+    return None
+
+
+def _guess(db, link, colours, root):
+    """A `to_check` link as the guess card shows it: the BrickLink number, its name when known, its colour chip and where its picture is."""
+    from . import guess_pictures
+    guess = dict(link, name=None, colour=colours.get(link['color_id']), picture=None)
+    if link['provider'] != 'bricklink':
+        return guess
+    letter = (link['provider_kind'] or '').upper()
+    guess['name'] = _guess_name(db, letter, link['provider_key'])
+    colour = int(items._colour_key(db, link['color_id']) or 0) if letter == 'P' and link['color_id'] is not None else 0
+    if guess_pictures.valid(letter, link['provider_key'], colour):
+        guess['picture'] = dict(letter=letter, number=link['provider_key'], colour=colour,
+                                state=guess_pictures.lookup(root, letter, link['provider_key'], colour)[0] if root is not None else 'missing')
+    return guess
+
+
+def colours_by_item(db, item_ids):
+    """`{item id: [dict(name, rgb, ink, color_id)]}`: the colours the collection holds each part in (copy lines, loose stock, loose figures' parts,
+    wishes), from one query over all the ids, ordered by colour id."""
+    if not item_ids:
+        return {}
+    sources = (('copy_part', 'retired_at'), ('stock', 'archived_at'), ('stock_part', 'retired_at'), ('wish', 'archived_at'))
+    sql = ' UNION '.join(f'SELECT item_id, color_id FROM main.{t} WHERE {live} IS NULL AND color_id IS NOT NULL AND item_id IN (SELECT value FROM json_each(:ids))'
+                         for t, live in sources) + ' ORDER BY 1, 2'
+    rows = db.execute(sql, {'ids': json.dumps(sorted(item_ids))}).fetchall()
+    known = _colours(db, {r['color_id'] for r in rows})
+    found = {}
+    for r in rows:
+        if r['color_id'] in known:
+            found.setdefault(r['item_id'], []).append(dict(known[r['color_id']], color_id=r['color_id']))
+    return found
+
+
+def unresolved(db, root=None):
     """The list the Unresolved screen shows: one dict per item, ordered by kind and name.
 
     `item_id`, `kind`, `name`, `number_text`, `image`, `local`, `reasons`, `facets` (what the screen filters by: the reasons, with `status` replaced by
     the status reasons `no_candidate`, `kind_differs`, `migration`), `candidates` (with name, number, picture and `uses`: what the user's copies
     hold of that candidate), `links` (the `to_check` links to confirm or reject), `statuses`, `references` (collection rows that name the item)
-    and `uses`."""
+    and `uses`. With a media `root`, a BrickLink guess in `links` says whether its picture is cached (`picture.state`: ready, none or missing; nothing is
+    fetched here). A part carries `colours`: the colours the collection holds it in."""
     scan = _scan(db)
     if not scan:
         return []
+    chips = colours_by_item(db, [i for i, e in scan.items() if e['item']['kind'] == 'part'])
+    link_colours = _colours(db, {l['color_id'] for e in scan.values() for l in e['links']})
     wanted = list(scan) + [c['item_id'] for e in scan.values() for c in e['candidates']]
     decorated = {r['item_id']: r for r in collection.decorate(db, [dict(item_id=i) for i in dict.fromkeys(wanted)])}
     references = {}
@@ -150,7 +206,7 @@ def unresolved(db):
                                    uses=uses(db, c['item_id'])))
         statuses = [dict(s, to=_evidence(s).get('to')) for s in e['statuses']]
         result.append(dict(item_id=item_id, kind=e['item']['kind'], name=row.get('name'), number_text=row.get('number_text'), item_no=row.get('number_text') or '',
-                           image=row.get('image'), local=e['item']['origin'] == 'local', reasons=e['reasons'], candidates=candidates, links=e['links'], statuses=statuses,
+                           image=row.get('image'), local=e['item']['origin'] == 'local', reasons=e['reasons'], candidates=candidates, links=[_guess(db, l, link_colours, root) for l in e['links']], statuses=statuses, colours=chips.get(item_id, []),
                            references=references.get(item_id, 0), uses=uses(db, item_id),
                            facets=list(dict.fromkeys([r for r in e['reasons'] if r != 'status'] + [x['reason'] for x in statuses]))))
     result.sort(key=lambda r: (r['kind'], (r['name'] or '').lower(), r['item_id']))
@@ -252,6 +308,51 @@ def reject_link(db, link_id):
         log.delete('item_link', rows[0])
         return dict(event_id=_logged(db, 'item_link', link_id, 'reject', 'to_check', dict(item=rows[0]['item_id']), log, via=via, actor=actor,
                                      operation_key=operation_key), item_id=rows[0]['item_id'])
+    return _in(db, action)
+
+
+def _listed_links(db, item_id):
+    """The `to_check` links of an item the Unresolved screen lists as guesses: a Rebrickable link of a local item that has merge candidates is a
+    candidate (a merge), not a guess."""
+    item = db.execute('SELECT * FROM main.item WHERE id=?', (item_id,)).fetchone()
+    rows = [dict(r) for r in db.execute("SELECT * FROM main.item_link WHERE item_id=? AND status='to_check' ORDER BY id", (item_id,))]
+    if item is not None and item['origin'] == 'local' and any(r['provider'] == 'rebrickable' for r in rows) and _candidates(db, item):
+        rows = [r for r in rows if r['provider'] != 'rebrickable']
+    return rows
+
+
+def choose_link(db, link_id):
+    """"This one": a `to_check` link becomes the user's (`manual`) and the item's other guesses of the same colour scope are rejected, in one
+    transaction and one event, so one Undo puts all of it back. Returns `{event_id, item_id, rejected}`."""
+    def action(db, *, via, actor, operation_key):
+        log = RowLog(db)
+        rows = log.select('item_link', 'id=?', (link_id,))
+        if not rows or rows[0]['status'] != 'to_check':
+            raise errors.Conflict('This link is no longer to check')
+        link = rows[0]
+        item = db.execute('SELECT origin FROM main.item WHERE id=?', (link['item_id'],)).fetchone()
+        if link['provider'] == 'rebrickable' and item['origin'] == 'local':
+            raise errors.ValidationFailed('This says the local item is a catalogue item · merge it into that item instead')
+        others = [r for r in _listed_links(db, link['item_id']) if r['id'] != link_id and r['color_id'] == link['color_id']]
+        log.update('item_link', link, status='manual', method='user', origin='user', decided_at=now(), decided_by='user')
+        for other in others:
+            log.delete('item_link', log.select('item_link', 'id=?', (other['id'],))[0])
+        return dict(event_id=_logged(db, 'item_link', link_id, 'choose', 'to_check', dict(item=link['item_id'], rejected=[o['id'] for o in others]), log,
+                                     via=via, actor=actor, operation_key=operation_key), item_id=link['item_id'], rejected=len(others))
+    return _in(db, action)
+
+
+def reject_links(db, item_id):
+    """"None of these": every guess the screen lists for the item is removed, in one transaction and one event (one Undo)."""
+    def action(db, *, via, actor, operation_key):
+        log = RowLog(db)
+        rows = _listed_links(db, item_id)
+        if not rows:
+            raise errors.Conflict('This item has no guess to reject')
+        for row in rows:
+            log.delete('item_link', log.select('item_link', 'id=?', (row['id'],))[0])
+        return dict(event_id=_logged(db, 'item_link', rows[0]['id'], 'reject_all', 'to_check', dict(item=item_id, rejected=[r['id'] for r in rows]), log,
+                                     via=via, actor=actor, operation_key=operation_key), item_id=item_id, rejected=len(rows))
     return _in(db, action)
 
 
@@ -383,7 +484,7 @@ def _undo_logged(db, event, via, actor):
 undoing.register('item', 'merge', _undo_merge)
 undoing.register('item', moves.KIND_FIELD, _undo_kind_move)
 undoing.register('item', variant.FIELD, _undo_change_variant)
-for _entity, _field in (('item_link', 'confirm'), ('item_link', 'reject'), ('item_link', 'add'), ('item_link', 'prefer'), ('item_provider_status', 'settle')):
+for _entity, _field in (('item_link', 'confirm'), ('item_link', 'reject'), ('item_link', 'choose'), ('item_link', 'reject_all'), ('item_link', 'add'), ('item_link', 'prefer'), ('item_provider_status', 'settle')):
     undoing.register(_entity, _field, _undo_logged)
 
 

@@ -77,10 +77,10 @@
   --tw-toast-bg:     var(--tw-text);      /* inverted ink — separates by contrast, not elevation */
   --tw-toast-fg:     var(--tw-bg);
 
-  /* Focus: accent, 2px, 2px offset */
+  /* Focus: the logo blue (the identity accent, Ulf 2026-11-17), 2px, 2px offset. Clay stays the interaction colour. */
   --tw-focus-width:  2px;
   --tw-focus-offset: 2px;
-  --tw-focus-color:  var(--tw-accent);
+  --tw-focus-color:  oklch(0.50 0.10 215);
 
   /* Data viz: sequential clay ramp (light → deep) + two neutrals.
      One series: --tw-viz-4. Two series: primary --tw-viz-4 solid, comparison --tw-viz-n2 dashed.
@@ -183,7 +183,7 @@
     --tw-on-accent: #111111;
     --tw-toast-bg: var(--tw-text);
     --tw-toast-fg: var(--tw-bg);
-    --tw-focus-color: var(--tw-accent);
+    --tw-focus-color: oklch(0.76 0.10 215);
     --tw-viz-ac: #F2F2F2;
     --tw-viz-py: #8C8C8C;
   }
@@ -193,7 +193,7 @@
   --tw-on-accent: #111111;
   --tw-toast-bg: var(--tw-text);
   --tw-toast-fg: var(--tw-bg);
-  --tw-focus-color: var(--tw-accent);
+  --tw-focus-color: oklch(0.76 0.10 215);
   --tw-viz-ac: #F2F2F2;
   --tw-viz-py: #8C8C8C;
 }
@@ -202,7 +202,7 @@
   --tw-on-accent: #FFFFFF;
   --tw-toast-bg: var(--tw-text);
   --tw-toast-fg: var(--tw-bg);
-  --tw-focus-color: var(--tw-accent);
+  --tw-focus-color: oklch(0.50 0.10 215);
   --tw-viz-ac: #111111;
   --tw-viz-py: #8C8C8C;
 }

@@ -18,7 +18,7 @@
       });
     };
     const count = () => {
-      const ticked = form.querySelectorAll('[data-sy-tick]:checked').length;
+      const ticked = form.querySelectorAll('[data-sy-tick]:checked').length + [...form.querySelectorAll('[data-sy-pick]')].filter((pick) => pick.value).length;
       if (submit) {
         const verb = submit.dataset.syVerb;
         submit.textContent = ticked ? verb + ' ' + ticked + ('syPlain' in submit.dataset ? '' : ticked === 1 ? ' change' : ' changes') : verb;

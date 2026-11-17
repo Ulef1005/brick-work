@@ -123,6 +123,7 @@ def bw_admin(page):
                     data['labels_address'] = rdb.execute("SELECT value FROM main.setting WHERE key='labels_address'").fetchone()
                     data['labels_address'] = data['labels_address'][0] if data['labels_address'] else ''
                     data['saved'] = settings_undo_offer(rdb, request.args.get('saved', ''))
+                data['summary'] = admin_ops.settings_summaries(data)
             if page == 'catalogues':
                 from ..core import keys as key_store, secrets as key_secrets
                 data['view'] = admin_ops.catalogues_view(data, key_store.field_map(), key_secrets.entry_available(),
@@ -159,6 +160,9 @@ def identity_undo_offer(text):
         found = db.execute(f"SELECT 1 FROM main.event e WHERE e.id=? AND {undoing.undoable_sql('e')} AND NOT {undoing.undone_sql('e')} "
                            "AND e.entity_kind IN ('item','item_link','item_provider_status')", (identifier,)).fetchone()
     return identifier if found else None
+
+
+SETTINGS_ROWS = ('retail-country', 'part-lists', 'pictures', 'picture-priority', 'source-priority', 'freshness', 'instruction-downloads', 'sync')
 
 
 def settings_undo_offer(db, text):
@@ -338,7 +342,8 @@ def bw_admin_write(page):
                 moves = {k.removeprefix('group_of:'): v for k, v in request.form.items() if k.startswith('group_of:')}
             saved = admin_ops.tools_write('settings', country=request.form['retail_country'], priority=priority, freshness=freshness,
                                           part_list_grouping=request.form.get('part_list_grouping'), part_group_overrides=moves,
-                                          official_download_limit_mb=request.form.get('official_download_limit_mb'))
+                                          official_download_limit_mb=request.form.get('official_download_limit_mb'),
+                                          rebrickable_lost_parts_rule=request.form.get('rebrickable_lost_parts_rule') or None)
         elif page == 'refresh':
             admin_ops.tools_write('refresh')
             bw_start_worker()
@@ -425,7 +430,9 @@ def bw_admin_write(page):
         return redirect(key_return(request.form.get('source', '')))
     target = 'jobs' if page in ('refresh', 'jobs') else page
     extra = {'group': request.form.get('group', 'owners')} if page == 'values' else {'saved': saved} if page == 'settings' and saved else {}
-    return redirect(url_for('web.bw_admin', page=target, **extra))
+    # #460: the row that was saved opens again (the id comes from the row's Save button; anything else is dropped).
+    row = request.form.get('row', '') if page == 'settings' else ''
+    return redirect(url_for('web.bw_admin', page=target, **extra) + ('#' + row if row in SETTINGS_ROWS else ''))
 
 
 def catalogue_write(page, action):
@@ -748,6 +755,48 @@ def bw_image(image_id):
     response.cache_control.public = None
     response.cache_control.private = True
     return response
+
+
+@web_page.get('/manage/guess-pictures/<letter>/<number>/<int:colour>')
+@login_required
+def bw_guess_picture(letter, number, colour):
+    """The cached picture of a guessed BrickLink number (Unresolved items). Serves a file the cache holds and nothing else: no fetch, no 200 without a file."""
+    from .admin_ops import brickwork_path
+    from ..core import guess_pictures
+    from ..core.media import root_for
+    from flask import send_file
+    if not guess_pictures.valid(letter, number, colour):
+        abort(404)
+    state, path = guess_pictures.lookup(root_for(brickwork_path()), letter, number, colour)
+    if state != 'ready':
+        abort(404)
+    response = send_file(path, mimetype=guess_pictures.MIMETYPES[path.suffix[1:]], max_age=86400)
+    response.cache_control.public = None
+    response.cache_control.private = True
+    return response
+
+
+@web_page.post('/manage/guess-pictures')
+@login_required
+def bw_guess_picture_fetch():
+    """Fetch the picture of one guessed BrickLink number into the cache (the Unresolved page asks once per card that has none cached). JSON in and out;
+    `img.bricklink.com` only, no key, one call at a time. A failure is cached as "no picture" for a day."""
+    from .admin_ops import brickwork_path
+    from ..core import guess_pictures
+    from ..core.media import root_for
+    data = request.get_json(silent=True)
+    bw_add_csrf(data)
+    letter, number, colour = data.get('letter'), data.get('number'), data.get('colour')
+    if not isinstance(letter, str) or not isinstance(number, str) or not isinstance(colour, int) or isinstance(colour, bool) or not guess_pictures.valid(letter, number, colour):
+        return jsonify(error='Not a picture to fetch'), 400
+    # Only a number that is an open guess is fetched, so the endpoint cannot be used to fill the media folder with other pictures.
+    from ..core import identity_admin
+    from ..core.admin import database
+    with database(brickwork_path(), read_only=True, require_catalogue=False) as rdb:
+        if not identity_admin.is_guess(rdb, letter, number):
+            return jsonify(error='Not a picture to fetch'), 400
+    state, _ = guess_pictures.fetch(root_for(brickwork_path()), letter, number, colour)
+    return jsonify(state=state, url=url_for('web.bw_guess_picture', letter=letter, number=number, colour=colour) if state == 'ready' else None)
 
 
 @web_page.get('/manage/instructions/<int:identifier>/download')

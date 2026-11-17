@@ -13,16 +13,17 @@ Do this when Brick Work holds an item it cannot yet name:
 - an item you added without a number
 - a local item that is a catalogue item under another number
 
-Open **Manage → Tools & Admin → Unresolved items**. The list holds only what needs a decision: the hub row says how many. Use the search box to find an item and **Filters** to show one reason (merge candidates, links to check, no candidate, kind differs, from the migration, unidentified). **Sort** orders the rows, and the chips remove a filter. The count above the rows follows.
+Open **Manage → Tools & Admin → Unresolved items**. The list holds only what needs a decision: the hub row says how many. The page title says how many items wait for a decision. Use the search box to find an item and **Filters** to show one reason (merge candidates, links to check, no candidate, kind differs, from the migration, unidentified). **Sort** orders the rows, and the chips remove a filter. The count above the rows follows.
 
 ## What each row asks
 
-- **May be this catalogue item** (a local item with candidates). A candidate is a catalogue item the migration suggested, or one whose BrickLink number is the same as this item's. A candidate says whether it is a migration guess or has the same BrickLink number, and whether your copies already use it ("Your copies use this one · 2 part lines"). **See what moves** opens the merge page for that pair. **Merge into this** moves everything that named the local item (copies, loose stock, wishes, prices, links, pictures) onto the catalogue item. You can also type a number in the box under the row and press **Merge into the item with this number**.
-- **A link to check** (**Confirm** / **Reject**). Confirm makes the link yours (it is no longer replaced by a catalogue refresh); Reject removes it.
+- **May be this catalogue item** (a local item with candidates). Each candidate is a card with its picture, number and name. A candidate is a catalogue item the migration suggested, or one whose BrickLink number is the same as this item's. The card says which, and whether your copies already use it (*Your copies use this one · 2 part lines*). **Merge into this** moves everything that named the local item (copies, loose stock, wishes, prices, links, pictures) onto the catalogue item. The dashed card beside it has **See what moves**, which opens the merge page for that pair. You can also type a number in the box under the row and press **Merge into the item with this number**.
+- **Guesses to check.** The question above the cards is *Which BrickLink figure is it?* (or set, or part). The row shows the item's own picture, large. Each guess is a card with its BrickLink picture, number, name and the reason it was guessed. **This one** makes that guess yours, so a catalogue refresh no longer replaces it. It also removes the item's other guesses for the same colour. That is one decision with one **Undo**. **None of these** removes every guess of the item, also with one Undo. **Type a number** lets you give the item a BrickLink number yourself. A guess whose picture BrickLink does not have shows a *No image* tile and can still be chosen. A guess for a local item that names a Rebrickable number cannot be chosen: merge the item into that catalogue item instead.
+- **Colours.** A part row shows the colours your collection holds the part in, each as a colour chip with its name. A guess for one colour only shows that colour on its card.
 - **A status to check.** **Keep as unmatched** records that you looked and the item stays as it is. When BrickLink and the catalogue disagree on an item's kind, **Move to …** changes the kind.
 - **No number at all** (an item added as unidentified). Type its BrickLink number and press **Link BrickLink number**, or merge it into the catalogue item that it is.
 
-Every decision is saved as one event, and the page offers **Undo** straight after it ([Undo a change](undo-a-change.md)).
+The pictures of guesses come from BrickLink. The page shows the ones it already has and asks for the missing ones when a card comes into view, one at a time. It keeps what it fetches in the media folder, and a picture BrickLink does not have is not asked for again for a day. Every decision is saved as one event, and the page offers **Undo** straight after it ([Undo a change](undo-a-change.md)).
 
 ## Merge from an item's page
 

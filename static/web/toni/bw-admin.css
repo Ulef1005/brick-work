@@ -162,3 +162,41 @@ main .bw-chips a[aria-current=page]{background:var(--tw-accent-soft);color:var(-
 .bwc-editrow{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:48px;font:500 15px var(--tw-font)}
 .bwc-editrow select{flex:0 1 220px;min-width:0}
 .bwc-grouping-group>summary{min-height:44px;display:flex;align-items:center;cursor:pointer}
+/* #460 · Settings: the refresh card, then two groups of rows. A row shows its value and opens in place; one is open at a time. */
+.bw-refresh{max-width:560px}
+.bw-refresh-cells{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.bw-refresh-cell{background:var(--tw-bg);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.bw-refresh-num{font:500 20px/26px var(--tw-mono)}
+.bw-refresh-line{font:400 13px/18px var(--tw-font);color:var(--tw-text-2)}
+.bw-refresh-cell.bw-refresh-cell :where(a.button,button){width:100%;padding:0 8px;white-space:nowrap;font-size:14px}
+.bw-refresh-cell.bw-refresh-cell a.button.primary{background:var(--tw-accent);border-color:var(--tw-accent);color:#1A1816;font-weight:600}
+.bw-refresh-cell.bw-refresh-cell button.bw-outline{background:transparent;border-color:var(--tw-accent);color:var(--tw-accent-text)}
+.bw-refresh-cell.bw-refresh-cell button.bw-outline:disabled{opacity:.5}
+.bw-set-groups{display:grid;grid-template-columns:minmax(0,1fr);gap:8px 40px;align-items:start}
+.bw-set-group{display:flex;flex-direction:column;min-width:0}
+.bw-set-group>.bw-label{padding:14px 0 8px;margin:0}
+.bw-set-rules{border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:4px}
+.bw-set-rule{display:flex;align-items:flex-start;gap:12px;min-height:44px;padding:8px 0;border-top:.5px solid var(--tw-divider)}
+.bw-set-rule>span{display:flex;flex-direction:column;gap:2px;min-width:0}
+.bw-set-rule input{flex:none;margin-top:4px}
+html[data-web-ui="toni"] details.bw-set>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:60px;padding:0;border:0;border-top:.5px solid var(--tw-divider);cursor:pointer;list-style:none;color:var(--tw-text)}
+html[data-web-ui="toni"] details.bw-set>summary::-webkit-details-marker{display:none}
+html[data-web-ui="toni"] details.bw-set>summary::before{content:none}
+html[data-web-ui="toni"] details.bw-set>summary::after{content:'';display:block;border:0;transform:none;width:16px;height:16px;flex:none;background:var(--tw-text-muted);-webkit-mask:url('icons/chevron-right.svg') center/contain no-repeat;mask:url('icons/chevron-right.svg') center/contain no-repeat;transition:transform var(--tw-dur-fast) var(--tw-ease)}
+html[data-web-ui="toni"] details.bw-set[open]>summary::after{transform:rotate(90deg)}
+html[data-web-ui="toni"] details.bw-set>summary:focus-visible{outline:2px solid var(--tw-focus-color);outline-offset:2px}
+.bw-set-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;padding:8px 0}
+.bw-set-title{font:500 15px/20px var(--tw-font);color:var(--tw-text)}
+.bw-set-value{font:400 13px/18px var(--tw-font);color:var(--tw-text-2);overflow-wrap:anywhere}
+html[data-web-ui="toni"] details.bw-set>.bw-set-body{padding:4px 0 16px;border:0;min-width:0}
+.bw-set-body>:first-child{margin-top:0}
+.bw-set-body form{margin-top:12px}
+.bw-set-body input:not([type=checkbox]):not([type=radio]),.bw-set-body select{max-width:100%;box-sizing:border-box}
+.bw-set-body .actions{margin-top:16px}
+@media(min-width:900px){.bw-set-groups{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.bw-set-body>*+*{margin-top:12px}
+.bw-set-body h3{margin:16px 0 4px}
+.bw-set-body p{margin-block:0}
+.bw-set-body .secondary{font:400 13px/18px var(--tw-font);color:var(--tw-text-2)}
+.bw-set-body .bwc-setting{margin-top:20px}
+.bw-set-body .bwc-switch-form .bk-btn{margin-top:8px}

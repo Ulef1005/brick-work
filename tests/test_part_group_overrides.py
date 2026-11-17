@@ -112,7 +112,7 @@ def test_cli_uses_the_shared_writer(coll, monkeypatch, pair):
 def settings_form(client, **extra):
     page = BeautifulSoup(client.get('/manage/settings').data, 'html.parser')
     form = {}
-    for field in page.select('form.stack input, form.stack select'):
+    for field in page.select('form.stack input, form.stack select, input[form=bw-settings-form], select[form=bw-settings-form]'):
         name = field.get('name')
         if not name or field.get('type') in ('submit', 'button'):
             continue

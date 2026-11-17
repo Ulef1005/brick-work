@@ -105,21 +105,42 @@
 .bu-chips button{display:inline-flex;align-items:center;gap:6px;height:32px;min-height:32px;padding:0 10px;border-radius:999px;border:.5px solid var(--tw-divider-strong);background:var(--tw-surface);color:var(--tw-text);font:500 13px var(--tw-font);cursor:pointer}
 .bu-chips svg{width:14px;height:14px}
 .bu-rows{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
-@media(min-width:1100px){.bu-rows{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .bu-row{background:var(--tw-surface);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:14px;min-width:0;margin:0}
 .bu-row[hidden]{display:none}
-.bu-head{display:flex;gap:12px;align-items:flex-start;min-width:0}
-.bu-head img,.bu-head .bi-noimg{width:56px;height:56px;border-radius:10px;background:var(--tw-surface-2);flex:none;object-fit:cover}
-.bu-head .bi-noimg{width:56px;height:56px;font-size:10px}
-.bu-title{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.bu-ident,.bu-decide{display:flex;flex-direction:column;gap:14px;min-width:0}
+.bu-head{display:flex;gap:14px;align-items:flex-start;min-width:0}
+.bu-tile{display:grid;place-items:center;overflow:hidden;border-radius:10px;background:#fff;flex:none;box-sizing:border-box}
+.bu-tile img{display:block;width:100%;height:100%;object-fit:contain}
+.bu-tile .bi-noimg{width:100%;height:100%;border-radius:0;background:var(--tw-surface-2);font-size:11px}
+.bu-tile-item{width:112px;height:112px}
+.bu-title{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1;align-items:flex-start}
+.bu-colours{display:flex;gap:6px;flex-wrap:wrap}
+.bu-colours .bc-colour,.bu-guess .bc-colour{display:inline-flex;align-items:center;height:22px;box-sizing:border-box;padding:0 8px;border-radius:6px;border:.5px solid var(--tw-divider-strong);font:500 12px/16px var(--tw-font);white-space:nowrap;align-self:flex-start}
+@media(min-width:1100px){.bu-row{display:grid;grid-template-columns:300px minmax(0,1fr);gap:20px;align-items:start}.bu-tile-item{width:128px;height:128px}}
 .bu-title .mono{font:400 12px/16px var(--tw-mono);color:var(--tw-text-muted)}.bu-title strong{font:600 16px/22px var(--tw-font);overflow-wrap:anywhere}
 .bu-title a{color:inherit;text-decoration:none}.bu-title a:hover strong{color:var(--tw-accent-text)}
 .bu-pills{display:flex;gap:6px;flex-wrap:wrap}
 .bu-uses{font:400 13px/18px var(--tw-font);color:var(--tw-text-muted);margin:0}
 .bu-block{display:flex;flex-direction:column;gap:8px;border-top:.5px solid var(--tw-divider);padding-top:12px}
 .bu-block h4{margin:0;font:500 11px/14px var(--tw-font);letter-spacing:.1em;text-transform:uppercase;color:var(--tw-text-2)}
-.bu-cand{display:flex;flex-direction:column;gap:10px;margin:0;padding:10px 0}
-.bu-cand+.bu-cand{border-top:.5px solid var(--tw-divider)}
+/* guess and merge-candidate cards: a picture tile, the number, the name, a tag and one button */
+.bu-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+@media(min-width:1100px){.bu-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.bu-guess{background:var(--tw-bg);border:.5px solid var(--tw-divider-strong);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:8px;min-width:0;margin:0}
+.bu-guess .bu-tile{width:100%;aspect-ratio:1}
+.bu-guess .mono{font:400 12px/16px var(--tw-mono);color:var(--tw-text-muted);overflow-wrap:anywhere}
+.bu-guess strong{font:600 14px/20px var(--tw-font);overflow-wrap:anywhere}
+.bu-guess .bi-tag{height:auto;min-height:22px;padding:2px 8px;white-space:normal;align-self:flex-start}
+.bu-guess .bi-btn-wide{margin-top:auto}
+/* The admin page's generic button rule outranks .bi-outline; the guess and candidate cards keep the approved outline (frame #459). */
+.bu-guess.bu-guess button.bi-outline.bi-outline{background:transparent;border-color:var(--tw-accent);color:var(--tw-accent-text)}
+.bu-moves,.bu-neither{border-style:dashed;justify-content:center;align-items:flex-start}
+.bu-moves .bi-btn,.bu-neither .bi-btn{border:0;background:transparent;color:var(--tw-accent-text);padding:0 8px;margin-left:-8px}
+.bu-neither{grid-column:1/-1;border:0;background:none;padding:0;flex-direction:row;flex-wrap:wrap;align-items:center;gap:0 8px}
+.bu-neither>.bi-note{display:none}
+.bu-neither .bu-more{flex-basis:auto}
+.bu-neither:has(details[open]){display:flex;flex-direction:column;align-items:stretch}
+@media(min-width:1100px){.bu-neither{grid-column:auto;border:.5px dashed var(--tw-divider-strong);border-radius:12px;padding:10px;background:var(--tw-bg);flex-direction:column;align-items:flex-start;gap:4px}.bu-neither>.bi-note{display:block}.bu-neither:has(details[open]){grid-column:1/-1}}
 .bu-cand-tags{display:flex;gap:6px;flex-wrap:wrap}
 .bu-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .bu-actions form{margin:0;display:contents}

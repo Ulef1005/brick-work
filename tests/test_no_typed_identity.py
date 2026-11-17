@@ -48,6 +48,7 @@ EXCLUDED.update(WIRE)
 
 # (file, qualified function) -> why it is a display / sorting / border use and not an identity.
 ALLOWED = {
+    ('brickwork/core/identity_admin.py', '_guess_name'): "reads the BrickLink catalogue table `catalogue.bricklink_item`, the provider's own (type, number) list, for the name of a guessed BrickLink number that is not an item yet (#459)",
     ('brickwork/core/list_records.py', 'payload'): 'positional display record of the client lists: the letter and the number text are two columns of a row whose identity is its item_id / ids',
     ('brickwork/core/listing.py', '<module>'): "the lists' filter vocabulary (a set of query-parameter names, `item_no` and `item_type` among them): names, not keys",
     ('brickwork/core/workbench.py', 'booklet_item'): "reads the BrickLink catalogue table `catalogue.bricklink_item`, the provider's own (type, number) list, for a booklet that has no item yet",

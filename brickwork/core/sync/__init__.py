@@ -25,7 +25,7 @@ from .. import undo as undoing
 from ..admin import audit
 from ..sources.base import KeyRejected, SourceError, WaitingForBudget, now
 from ..transaction import transaction
-from . import adapters
+from . import adapters, lost_parts
 
 SOURCES = ('rebrickable', 'brickset')
 LABELS = {'rebrickable': 'Rebrickable', 'brickset': 'Brickset'}
@@ -106,11 +106,12 @@ def credential_state(db, source):
 def link(db, source, options):
     """Which remote lists are used. Rebrickable: owned (list ids, empty = all but the wishlist list),
     wishlist (one list id or null), send_to (the owned list that receives sends). Both sources:
-    wish_list (the Brick Work wishlist that pulls and sends wishes, default 'default')."""
+    wish_list (the Brick Work wishlist that pulls and sends wishes, default 'default'). Rebrickable also takes lost_parts (true or false): the
+    remembered switch "Bring in Lost Parts" of a pull (#457), on when never set."""
     _source(source)
     if not isinstance(options, dict):
         raise errors.ValidationFailed('Send the link options as an object')
-    allowed = {'owned', 'wishlist', 'send_to', 'wish_list'} if source == 'rebrickable' else {'wish_list'}
+    allowed = {'owned', 'wishlist', 'send_to', 'wish_list', 'lost_parts'} if source == 'rebrickable' else {'wish_list'}
     if set(options) - allowed:
         raise errors.ValidationFailed('Unknown link option: ' + ', '.join(sorted(set(options) - allowed)))
     value = dict(_setting(db, source, 'link', {}), **options)
@@ -126,6 +127,8 @@ def link(db, source, options):
         if value.get('send_to') and owned and value['send_to'] not in owned:
             raise errors.ValidationFailed('Send to one of the owned lists')
     from .. import wishlists
+    if 'lost_parts' in value and type(value['lost_parts']) is not bool:
+        raise errors.ValidationFailed('lost_parts is true or false')
     wishlists.require(db, value.get('wish_list') or 'default')
     with transaction(db):
         before = _setting(db, source, 'link')
@@ -295,11 +298,42 @@ def _changed_both(row):
             and row['remote'] != row['here'])
 
 
-def plan_pull(db, source, *, http=None):
-    """What the site has that Brick Work lacks. Writes nothing to the collection."""
+def lost_parts_on(db, source):
+    """The remembered switch "Bring in Lost Parts": a Rebrickable pull reads the Lost Parts list unless the link says false (on by default)."""
+    return source == 'rebrickable' and _setting(db, source, 'link', {}).get('lost_parts', True) is not False
+
+
+def _why(exc):
+    """A sentence for the reason the Lost Parts list was not read; never carries the token or the key."""
+    if isinstance(exc, WaitingForBudget):
+        return 'Rebrickable is paused (the daily budget is used up or it asked to wait)'
+    if isinstance(exc, KeyRejected):
+        return 'Rebrickable refused the key or user token'
+    return 'Rebrickable could not be read'
+
+
+def plan_pull(db, source, *, http=None, lost_parts_switch=None):
+    """What the site has that Brick Work lacks. Writes nothing to the collection. A Rebrickable plan also holds the Lost Parts section
+    (`plan['lost']`, `lost_parts.plan_section`) unless the switch is off: `lost_parts_switch` (true or false) sets and remembers the switch,
+    None keeps the remembered one. A Lost Parts list that cannot be read never stops the set comparison."""
     _source(source)
-    _, link_value, remote = _fetch(db, source, http)
+    if lost_parts_switch is not None and source == 'rebrickable' and lost_parts_switch != lost_parts_on(db, source):
+        link(db, source, {'lost_parts': bool(lost_parts_switch)})
+    client, link_value, remote = _fetch(db, source, http)
     rows, unmatched, _ = _compare(db, source, link_value, remote)
+    section = None
+    if source == 'rebrickable':
+        on, read = lost_parts_on(db, source), None
+        if on:
+            try:
+                read = client.lost_parts()
+            except SourceError as failure:
+                read = _why(failure)
+        section = lost_parts.plan_section(db, read, remote['owned'], translate, how=lost_parts.rule(db), on=on)
+        names = _names(db, [e['item_id'] for e in section['sets']])
+        for entry in section['sets']:
+            entry['number'], entry['name'] = names.get(entry['item_id'], (None, None))
+            entry['number'] = entry['number'] or entry['set_no']
     out = []
     for row in rows:
         r, h = row['remote'], row['here']
@@ -317,6 +351,8 @@ def plan_pull(db, source, *, http=None):
     plan = dict(id=uuid4().hex, created_at=now().isoformat(), direction='pull', source=source, link=link_value,
                 remote=dict(owned=remote['owned'], wanted=remote['wanted']), rows=out, unmatched=unmatched,
                 summary=_summary(out, unmatched, rows))
+    if section is not None:
+        plan['lost'] = section
     return _save_plan(db, plan)
 
 
@@ -368,9 +404,14 @@ def _placed_wish(db, wish_list, item_id, kind, count, via, actor):
     return scratch['wish']
 
 
-def apply_pull(db, plan_id, ticked=None, *, via=None, actor=None):
+def apply_pull(db, plan_id, ticked=None, *, lost=None, picks=None, via=None, actor=None):
     """Place one copy per missing unit of a set (design 4.3's preselection; flagged, condition and completeness unset), loose stock of the
-    other kinds, and the missing wishes, in one transaction with one receipt. Never deletes or lowers anything here."""
+    other kinds, and the missing wishes, in one transaction with one receipt. Never deletes or lowers a set, stock or wish count here.
+
+    Lost Parts (#457): a Rebrickable plan that read them also writes the missing marks of the ticked sets (`lost`: set numbers, None for every
+    set that has a copy to use) on the copy the plan names, or on the copy `picks` ({set number: copy id}) chooses for a set with several. That
+    can lower or clear a mark, by the rule the plan froze. Each copy's marks are one `checker.mark` receipt; this pull's receipt keeps their
+    event ids, so its one Undo takes the sets, stock, wishes and marks back together."""
     from .. import add, pictures, plans
     from ..admin import origin
     from ..pipeline import queue_new_items
@@ -414,12 +455,19 @@ def apply_pull(db, plan_id, ticked=None, *, via=None, actor=None):
                 if not db.execute('SELECT 1 FROM main.stock_flag WHERE stock_id=? AND flag_id=?', (change['id'], flag)).fetchone():
                     db.execute('INSERT INTO main.stock_flag(stock_id, flag_id) VALUES(?, ?)', (change['id'], flag))
                     receipt['stock_flags'].append([change['id'], flag])
+        section = plan.get('lost')
+        if section and section.get('on'):
+            receipt['lost'] = _lost_report(section, lost_parts.apply(db, section, lost, picks, new_copies=set(receipt['copies'])))
         receipt['jobs'] = queue_new_items(db, touched)
         receipt['baseline_before'] = _setting(db, source, 'baseline')
         _put(db, source, 'baseline', _baseline(db, plan, wish_list))
         counts = dict(copies=len(receipt['copies']), stock=sum(c['quantity'] for c in receipt['stock']),
                       wishes_added=sum(1 for w in receipt['wishes'] if w['created']),
                       wishes_changed=sum(1 for w in receipt['wishes'] if not w['created']))
+        if receipt.get('lost', {}).get('sets'):
+            lost_counts = receipt['lost']
+            counts.update(lost_sets=len(lost_counts['sets']), lost_added=lost_counts['added'], lost_replaced=lost_counts['replaced'],
+                          lost_cleared=lost_counts['cleared'])
         receipt['counts'] = counts
         _put(db, source, 'last_pull', dict(at=stamp, plan=plan_id, counts=counts))
         audit(db, 'sync:' + plan_id, 'receipt', None, receipt, via=via, actor=actor)
@@ -429,6 +477,14 @@ def apply_pull(db, plan_id, ticked=None, *, via=None, actor=None):
     plan['applied'] = dict(event_id=event, counts=counts, at=stamp)
     _store_plan(db, plan)
     return dict(event_id=event, already_applied=False, counts=counts)
+
+
+def _lost_report(section, report):
+    """What the pull's receipt (and its result page) keeps of the Lost Parts step."""
+    return dict(status=section['status'], message=section.get('message'), rule=section['rule'], clearing=section['clearing'],
+                unreadable=section['unreadable'], events=report['events'], sets=report['sets'], added=report['added'], replaced=report['replaced'],
+                cleared=report['cleared'], unmatched=report['unmatched'], left_out=report['left_out'], skipped=report['skipped'],
+                unmatched_sets=section['unmatched_sets'])
 
 
 def _baseline(db, plan, wish_list):
@@ -452,6 +508,11 @@ def _undo_pull(db, event, via, actor):
     r = json.loads(event['new_value'])
     stamp = store_now()
     changed = 'Something from this sync has changed since · undo the later change first'
+    for event_id in reversed((r.get('lost') or {}).get('events', [])):        # #457: the missing marks first; refused whole when a mark changed since
+        try:
+            undoing.undo_event(db, event_id, via=via, actor=actor)
+        except errors.UndoBlocked:
+            raise ValueError(changed) from None
     for entry in r['wishes']:
         row = db.execute('SELECT * FROM main.wish WHERE id=?', (entry['id'],)).fetchone()
         if row is None or dict(row) != as_current('wish', entry['after']):

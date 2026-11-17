@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Price fields read as two fields** (#461). In the Edit sheet, the currency and the amount of a price are set apart by a line and a quieter ground, and the one you are typing in is underlined.
+
+- **Settings open with the two refreshes** (#460). A Refresh card at the top of Settings says how many prices are out of date and how many pictures are missing, with **Refresh prices** and **Refresh pictures** beside it. Refresh pictures moved there from the Pictures section.
+
 - **Found in: a part known only in the unknown colour** (#40). The note "Colour not matched yet" now also appears when the catalogue lists the part only in the colour "[Unknown]" (id 2), as it does for "[No Color/Any Color]". The 1.1.0 build wrongly treated that colour as an ordinary one.
 
 ## Brick Work 1.1.0 (schema 4.6) · 2026-11-16

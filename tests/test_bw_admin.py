@@ -404,6 +404,19 @@ def test_stale_freshness_and_archives(coll, world):
     assert keep() == []
 
 
+def test_settings_opens_with_the_two_refreshes(client, coll, world):
+    """#460: Refresh prices and Refresh pictures are the first card of Settings; the picture dialog has one opener."""
+    soup = BeautifulSoup(client.get('/manage/settings').data, 'html.parser')
+    first = soup.select('section.bw-card')[0]
+    assert first['id'] == 'refresh'
+    prices = first.select_one('a.button')
+    assert prices.get_text(strip=True) == 'Refresh prices' and prices['href'].endswith('/manage/refresh')
+    assert first.select_one('button[data-picture-open]').get_text(strip=True) == 'Refresh pictures'
+    assert len(soup.select('[data-picture-open]')) == 1 and soup.select_one('#pictures a[href="#refresh"]')
+    stale = len({r['item_id'] for r in admin.stale_prices(coll.db)})
+    assert f'{stale} out of date' in first.get_text(' ', strip=True).replace('Prices: ', '')
+
+
 def test_refresh_pictures_queues_one_job_per_item_and_checks_the_estimate(client, coll, world):
     from brickwork.core import pictures
     matrix = pictures.matrix(coll.db)

@@ -903,7 +903,10 @@ main .key-need a:not(.button) { min-height:44px;display:inline-flex;align-items:
 #bw-collection .bc-sheet .bc-money { display:flex;align-items:stretch;min-width:0;border:.5px solid var(--tw-divider-strong);border-radius:10px;background:var(--tw-surface); }
 #bw-collection .bc-sheet .bc-money:focus-within { outline:2px solid var(--tw-accent);outline-offset:2px; }
 #bw-collection .bc-sheet .bc-money input:not([type=checkbox]):not([type=radio]) { min-height:46px;min-width:0;border:0;border-radius:0;background:transparent;outline:0; }
-#bw-collection .bc-sheet .bc-money .bc-money-code { flex:none;width:4.25em;padding-inline:12px 4px;text-transform:uppercase;color:var(--tw-text-2); }
+/* The currency and the amount are two fields in one frame: a hairline and a quieter ground set the currency apart, and the focused one is underlined. */
+#bw-collection .bc-sheet .bc-money { overflow:hidden; }
+#bw-collection .bc-sheet .bc-money input.bc-money-code:not([type=checkbox]):not([type=radio]) { flex:none;width:4.75em;padding-inline:12px 8px;text-transform:uppercase;color:var(--tw-text-2);background:var(--tw-surface-2);border-right:.5px solid var(--tw-divider-strong); }
+#bw-collection .bc-sheet .bc-money input:not([type=checkbox]):not([type=radio]):focus { box-shadow:inset 0 -2px 0 var(--tw-accent); }
 #bw-collection .bc-sheet .bc-switches { display:flex;flex-direction:column; }
 #bw-collection .bc-sheet .bc-sw { position:relative;display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:12px;min-height:52px;margin:0;border-top:.5px solid var(--tw-divider);font:400 15px var(--tw-font);letter-spacing:normal;text-transform:none;color:var(--tw-text);cursor:pointer; }
 #bw-collection .bc-sheet .bc-sw input { position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer; }
@@ -960,7 +963,7 @@ main .key-need a:not(.button) { min-height:44px;display:inline-flex;align-items:
 
 /* #397: toni.css gives every label in main a 44 px minimum height, which opened a gap above each input; the field label is plain text */
 #bw-collection .bc-sheet .bc-field>label { min-height:0;margin:0;padding:0; }
-#bw-collection .bc-sheet .bc-money input[inputmode=decimal] { flex:1 1 auto;width:auto;min-width:0; }
+#bw-collection .bc-sheet .bc-money input[inputmode=decimal] { flex:1 1 auto;width:auto;min-width:0;padding-inline-start:12px; }
 #bw-collection .bc-sheet .bc-photo-picker label.bc-outline { flex-direction:row;justify-content:center;align-items:center;gap:8px; }
 /* #401 · The set page's part list: Edit parts, the edit mode, Found all and the Set is checked switch. Prefix bc-pl-. */
 #bw-collection .bc-check-actions { flex-direction:column;align-items:flex-end;gap:2px; }

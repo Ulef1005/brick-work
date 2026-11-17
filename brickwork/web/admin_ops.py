@@ -359,7 +359,7 @@ def tools_read(page, group=None):
             return admin.value_rows(db, group)
         if page == 'settings':
             from ..core import part_groups, pictures
-            return {**admin.settings(db), 'pictures': {**pictures.state(db), 'matrix': pictures.matrix(db)}, 'bricklink_list': bricklink_list_switch(db),
+            return {**admin.settings(db), 'stale': len({r['item_id'] for r in admin.stale_prices(db)}), 'pictures': {**pictures.state(db), 'matrix': pictures.matrix(db)}, 'bricklink_list': bricklink_list_switch(db),
                     'grouping': part_groups.editor(db)}
         if page == 'statistics':
             return admin.statistics(db)

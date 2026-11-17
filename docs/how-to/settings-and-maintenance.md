@@ -13,6 +13,7 @@ Do this to change how Brick Work behaves (the retail country, where pictures com
 
 **Tools & Admin → Settings** holds the preferences that are yours to choose. Change what you want and press **Save settings**. The page then says **Settings saved** with an **Undo** next to it. Undo puts back exactly what was there before. It is refused with **Item changed · undo the later save first** once you have saved again.
 
+- **Refresh.** The first card on the page. It says how many prices are out of date and how many pictures are missing, and holds the two refreshes: **Refresh prices** opens **Bulk refresh prices**, and **Refresh pictures** opens the picture refresh described under **Pictures** below.
 - **Currencies.** The currency amounts are shown in, and the exchange rates used to compare amounts in different currencies. A rate is per one euro. **Load ECB reference rates** fetches the European Central Bank's daily rates (no key); a rate you entered by hand is kept. Stored amounts never change currency.
 <!-- vale Microsoft.We = NO -->
 - **Retail country.** DE, US, UK or CA: which LEGO price Brickset's retail figure uses.
@@ -21,7 +22,7 @@ Do this to change how Brick Work behaves (the retail country, where pictures com
 - **Picture source order.** Where Brick Work looks for a picture, first to last: for **Parts**, and for **Everything else**. Each list names the three sources in plain words (the Rebrickable catalogue, BrickLink, the Rebrickable API). Use the switch to leave a source out and the arrows to move it, then press **Save settings**. The first source that has a picture wins. The setting applies to jobs queued afterward. See [Pictures, prices and where they come from](pictures-and-prices.md).
 - **Source priority.** For the other steps that call a source (metadata, market price) and each kind of item, the sources to try, first to last, separated by commas. A blank kind uses the default list.
 - **Freshness.** Days before a source's data counts as stale, per source and kind of data. Empty means it never goes stale. A fresh install starts with prices 30 days, metadata 365 days and pictures never. **Bulk refresh prices** lists what is stale by these rules.
-- **Pictures.** How many of the things you hold have a picture and from which source. **Refresh pictures** queues a job for the missing pictures, or for every item; the dialog says how many items that is before you confirm. There is no Undo for a refresh, and existing files are kept.
+- **Pictures.** How many of the things you hold have a picture and from which source. **Refresh pictures**, in the **Refresh** card at the top of the page, queues a job for the missing pictures, or for every item; the dialog says how many items that is before you confirm. There is no Undo for a refresh, and existing files are kept.
 
 The BrickLink region and currency and the repair settings of Complete sets are set where they are used (the [command line](../reference/cli.md#settings) and the planning screens).
 

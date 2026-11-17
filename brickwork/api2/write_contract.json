@@ -1323,6 +1323,10 @@
       "schema": {
         "additionalProperties": false,
         "properties": {
+          "lost_parts": {
+            "description": "Rebrickable only: the remembered switch \"Bring in Lost Parts\" of a pull (#457). On when never set.",
+            "type": "boolean"
+          },
           "owned": {
             "items": {
               "type": "integer"
@@ -1381,6 +1385,20 @@
       "schema": {
         "additionalProperties": false,
         "properties": {
+          "copy_picks": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Lost Parts: the copy to use for a set with several copies, `{set number: copy id}`. A set without a pick is left out and listed.",
+            "type": "object"
+          },
+          "lost_ticked": {
+            "description": "Lost Parts sets to write, by set number. Left out: every set that has one copy to use.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "plan_id": {
             "type": "string"
           },
@@ -3405,6 +3423,17 @@
         "prefer_bricklink_inventory": {
           "description": "New copies take BrickLink's part list when one exists (design 4.4).",
           "type": "boolean"
+        },
+        "rebrickable_lost_parts_rule": {
+          "default": "per_part",
+          "description": "Which count a Rebrickable pull keeps for Lost Parts (#457). `add_only` adds marks and keeps the larger count. `per_part` lets Rebrickable's count replace yours for a part it lists as lost. `per_set` makes a set with Lost Parts on Rebrickable exactly Rebrickable's list. `everything` does that for every synced set.",
+          "enum": [
+            "add_only",
+            "per_part",
+            "per_set",
+            "everything"
+          ],
+          "type": "string"
         },
         "repair": {},
         "retail_country": {

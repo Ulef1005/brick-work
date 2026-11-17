@@ -34,7 +34,11 @@ Some rows have their own **Save** button and save at once: **Display currency**,
 - **Freshness.** The row gives the days for prices, metadata and pictures. Days before a source's data counts as stale, per source and kind of data. Empty means it never goes stale. A fresh install starts with prices 30 days, metadata 365 days and pictures never. **Bulk refresh prices** lists what is stale by these rules.
 - **Instruction downloads.** The Official file limit, initially 500 MB per file. See [Instruction download limit](#instruction-download-limit).
 
-On a wide screen the two groups sit side by side, and a row opens below itself in its own column.
+**Sync** holds one row.
+
+- **Lost Parts from Rebrickable.** The row names the rule in use. Which count a Rebrickable pull keeps when it brings in your Lost Parts. **Add only** adds missing marks and keeps the larger count, and clears nothing. **Rebrickable wins per part** (the default) lets Rebrickable's count replace yours for each part it lists as lost, also when it is smaller, and leaves the other marks alone. **Rebrickable wins per set** makes a set that has Lost Parts on Rebrickable exactly Rebrickable's list, so its other missing marks are cleared. **Rebrickable wins everywhere** does that for every synced set, so a set with no Lost Parts there loses its missing marks. The pull preview says how many marks it will clear before you pull. Undo takes them back. From the command line: `brickwork settings set rebrickable_lost_parts_rule per_part`. See [Lost Parts from Rebrickable](sync-collection.md#lost-parts-from-rebrickable).
+
+On a wide screen the groups sit side by side, and a row opens below itself in its own column.
 
 The BrickLink region and currency and the repair settings of Complete sets are set where they are used (the [command line](../reference/cli.md#settings) and the planning screens).
 

@@ -8,6 +8,17 @@
 .sy-dates{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:0}.sy-dates div{display:flex;flex-direction:column;gap:2px}.sy-dates dt{font:500 12px var(--tw-font);color:var(--tw-text-muted)}.sy-dates dd{margin:0;font-size:14px}
 .sy-actions{display:flex;gap:8px;flex-wrap:wrap}.sy-actions form{margin:0}
 .sy-undo{margin:0 0 16px}
+.sy-pull{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
+.sy-lost-switch{display:inline-flex;align-items:center;gap:10px;min-height:44px;font:500 14px var(--tw-font);cursor:pointer}
+.sy-lost-note{margin:8px 0 0;font-size:13px;color:var(--tw-text-2)}
+.sy-lost,.sy-lost-result{margin:0 0 24px;max-width:960px}
+.sy-lost-result{margin-bottom:16px}
+.sy-lost-summary{margin:0}
+.sy-lost-list{grid-column:1 / -1;margin:0;padding:0 0 0 18px;font:400 13px/20px var(--tw-font);color:var(--tw-text-2)}
+.sy-lost-list:empty{display:none}
+.sy-pick{display:flex;flex-direction:column;align-items:flex-end;gap:4px;font:500 13px var(--tw-font)}
+.sy-pick select{min-height:44px;max-width:100%;padding:0 12px;border-radius:10px;border:.5px solid var(--tw-divider-strong);background:var(--tw-surface);color:var(--tw-text);font:400 14px var(--tw-font)}
+.sy-pick select:focus-visible,.sy-lost-switch:focus-within{outline:2px solid var(--tw-focus-color);outline-offset:2px}
 .sy-log{margin:0 0 24px;display:flex;flex-direction:column}
 .sy-log .bk-eyebrow{margin-bottom:8px}
 .sy-log-head,.sy-log-row{display:grid;grid-template-columns:130px 110px 90px minmax(0,1fr) auto;gap:12px;align-items:center;min-height:44px;border-bottom:.5px solid var(--tw-divider);font:400 14px/20px var(--tw-font)}

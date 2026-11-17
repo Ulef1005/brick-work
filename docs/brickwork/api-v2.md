@@ -546,6 +546,8 @@ The find tool follows the item convention: provider, kind and key, resolved thro
 
 `part_group_overrides` is a settings key too: an object `{category name: group name}` with the categories you moved out of the default group. The group is one of the twelve group names. Send `{}` to restore the default table. An entry equal to the default is dropped, and a read returns the differences only. They apply when `part_list_grouping` is `grouped`.
 
+`rebrickable_lost_parts_rule` is a settings key too (#457): `add_only`, `per_part` (default), `per_set` or `everything`. It decides which count a Rebrickable pull keeps when it brings in your Lost Parts. PATCH uses the same save and undo event as the Settings page. The pull plan, the link option `lost_parts` and the apply fields `lost_ticked` and `copy_picks` are described in [Collection sync](sync.md#lost-parts-from-rebrickable).
+
 #### Admin
 
 | Operation | What it does | Scope | Piece | v1 |

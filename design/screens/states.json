@@ -535,7 +535,8 @@
    "world": "demo",
    "path": "/collection/M",
    "built": true,
-   "approved": false
+   "approved": false,
+   "script": "[...document.querySelectorAll('button')].find(b=>b.textContent.trim().startsWith('In sets')).click();await new Promise(r=>setTimeout(r,300));"
   },
   {
    "screen": "25-Sets-filters-where-select-and-group-go",

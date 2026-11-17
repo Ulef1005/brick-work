@@ -123,6 +123,7 @@ def bw_admin(page):
                     data['labels_address'] = rdb.execute("SELECT value FROM main.setting WHERE key='labels_address'").fetchone()
                     data['labels_address'] = data['labels_address'][0] if data['labels_address'] else ''
                     data['saved'] = settings_undo_offer(rdb, request.args.get('saved', ''))
+                data['summary'] = admin_ops.settings_summaries(data)
             if page == 'catalogues':
                 from ..core import keys as key_store, secrets as key_secrets
                 data['view'] = admin_ops.catalogues_view(data, key_store.field_map(), key_secrets.entry_available(),
@@ -159,6 +160,9 @@ def identity_undo_offer(text):
         found = db.execute(f"SELECT 1 FROM main.event e WHERE e.id=? AND {undoing.undoable_sql('e')} AND NOT {undoing.undone_sql('e')} "
                            "AND e.entity_kind IN ('item','item_link','item_provider_status')", (identifier,)).fetchone()
     return identifier if found else None
+
+
+SETTINGS_ROWS = ('retail-country', 'part-lists', 'pictures', 'picture-priority', 'source-priority', 'freshness', 'instruction-downloads')
 
 
 def settings_undo_offer(db, text):
@@ -425,7 +429,9 @@ def bw_admin_write(page):
         return redirect(key_return(request.form.get('source', '')))
     target = 'jobs' if page in ('refresh', 'jobs') else page
     extra = {'group': request.form.get('group', 'owners')} if page == 'values' else {'saved': saved} if page == 'settings' and saved else {}
-    return redirect(url_for('web.bw_admin', page=target, **extra))
+    # #460: the row that was saved opens again (the id comes from the row's Save button; anything else is dropped).
+    row = request.form.get('row', '') if page == 'settings' else ''
+    return redirect(url_for('web.bw_admin', page=target, **extra) + ('#' + row if row in SETTINGS_ROWS else ''))
 
 
 def catalogue_write(page, action):

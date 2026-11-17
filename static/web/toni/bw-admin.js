@@ -186,3 +186,32 @@
   const note = form.querySelector('[data-busy-note]');
   if (note) note.hidden = false;
 }));
+
+/* #460 · Settings rows: the row the URL hash names is open (also when the hash names something inside a row), and a save
+   tells the server which row it came from so that row is open again afterwards. `name` on the rows makes them exclusive. */
+(() => {
+ const rows = [...(document.querySelectorAll?.('details.bw-set') || [])];
+ if (!rows.length) return;
+ const openForHash = () => {
+  const id = decodeURIComponent(location.hash.slice(1));
+  const target = id && document.getElementById(id);
+  const row = target?.closest('details.bw-set');
+  if (!row) return;
+  // Without exclusive-accordion support the other rows are closed by hand.
+  rows.forEach(other => { if (other !== row) other.open = false; });
+  row.open = true;
+  for (let node = target.parentElement?.closest('details'); node; node = node.parentElement?.closest('details')) node.open = true;
+  target.scrollIntoView?.({block: 'start'});
+ };
+ openForHash();
+ window.addEventListener('hashchange', openForHash);
+ for (const row of rows) row.addEventListener('toggle', () => {
+  if (row.open) rows.forEach(other => { if (other !== row) other.open = false; });
+ });
+ const form = document.querySelector('[data-settings-form]');
+ form?.addEventListener('submit', event => {
+  const from = (event.submitter || document.activeElement)?.closest?.('details.bw-set');
+  const field = form.querySelector('[data-settings-row]');
+  if (from?.id && field) field.value = from.id;
+ });
+})();

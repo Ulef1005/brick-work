@@ -653,6 +653,59 @@ def bricklink_list_switch(db):
     return dict(on=bool(row and row[0] == 'true'), key=bool(jobs._configured('bricklink')))
 
 
+PICTURE_SOURCE_NAMES = {'bricklink': 'BrickLink', 'rebrickable_dump': 'Rebrickable catalogue', 'rebrickable_api': 'Rebrickable API'}
+GROUPING_WORDS = {'grouped': 'grouped by category', 'bricklink': 'grouped by BrickLink category', 'none': 'not grouped'}
+
+
+def settings_summaries(data):
+    """The one muted line each Settings row shows while it is closed (#460), worked out from the settings view data: `currency`,
+    `labels_address`, `pictures`, `bricklink_list`, `part_list_grouping`, `priority`, `freshness`, `retail_country` and
+    `official_download_limit_mb`. Keys are the row ids."""
+    from ..core.pipeline import DEFAULT_PRIORITY
+    cur = data.get('currency') or {}
+    rates = cur.get('rates') or []
+    line = f"{cur.get('display', 'EUR')} · "
+    if rates:
+        newest = max(rates, key=lambda r: r.get('as_of') or '')
+        when = ''
+        if newest.get('as_of'):
+            try:
+                day = datetime.strptime(newest['as_of'][:10], '%Y-%m-%d')
+                when = f' {day.day} {day:%b}'
+            except ValueError:
+                when = ' ' + newest['as_of']
+        line += f"{len(rates)} {'rate' if len(rates) == 1 else 'rates'}, {'ECB' if newest.get('source') == 'ecb' else 'by hand'}{when}"
+    else:
+        line += 'no rates yet'
+    summary = {'currencies': line, 'retail-country': data.get('retail_country') or 'DE'}
+    lists = data.get('bricklink_list') or {}
+    summary['part-lists'] = ("BrickLink's list preferred" if lists.get('on') and lists.get('key') else "Rebrickable's list first") \
+        + ' · ' + GROUPING_WORDS.get(data.get('part_list_grouping'), GROUPING_WORDS['grouped'])
+    summary['labels-address'] = data.get('labels_address') or 'Uses the request address'
+    rows = (data.get('pictures') or {}).get('summary') or []
+    summary['pictures'] = f"{sum(r['with_picture'] for r in rows):,} with a picture · {sum(r['missing'] for r in rows):,} without"
+    priority = data.get('priority') or {}
+    order = (priority.get('pictures') or {}).get('part') or []
+    summary['picture-priority'] = ', '.join(PICTURE_SOURCE_NAMES.get(k, k) for k in order) or 'No picture source in use'
+    changed = set()
+    for step, table in priority.items():
+        if step == 'pictures':
+            continue
+        default = DEFAULT_PRIORITY.get(step, {})
+        changed |= {kind for kind in {*table, *default} if (table.get(kind) or []) != default.get(kind, [])}
+    summary['source-priority'] = 'Default order' if not changed else f"Changed for {len(changed)} {'kind' if len(changed) == 1 else 'kinds'}"
+    spans = {}
+    for rule in data.get('freshness') or []:
+        if rule.get('max_age_days') is not None:
+            spans.setdefault(rule['kind'], []).append(int(rule['max_age_days']))
+    parts = [f"{kind.replace('_', ' ').capitalize() if i == 0 else kind.replace('_', ' ')} "
+             + (f'{min(days)} to {max(days)} days' if min(days) != max(days) else f"{days[0]} day{'' if days[0] == 1 else 's'}")
+             for i, (kind, days) in enumerate(sorted(spans.items(), key=lambda kv: (('prices', 'metadata', 'pictures').index(kv[0]) if kv[0] in ('prices', 'metadata', 'pictures') else 9, kv[0])))]
+    summary['freshness'] = ' · '.join(parts) or 'No expiry set'
+    summary['instruction-downloads'] = f"Up to {data.get('official_download_limit_mb', 500)} MB per file"
+    return summary
+
+
 def set_prefer_bricklink(enabled):
     """Flip the switch through the core writer (one event, undoable like any setting event)."""
     from contextlib import closing

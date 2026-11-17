@@ -11,18 +11,30 @@ Do this to change how Brick Work behaves (the retail country, where pictures com
 
 ## Settings
 
-**Tools & Admin → Settings** holds the preferences that are yours to choose. Change what you want and press **Save settings**. The page then says **Settings saved** with an **Undo** next to it. Undo puts back exactly what was there before. It is refused with **Item changed · undo the later save first** once you have saved again.
+**Tools & Admin → Settings** holds the preferences that are yours to choose. It opens with a **Refresh** card, then two groups of rows. Each row shows its title and its current value on one line, so most visits need no row opened. Select a row to open it in place and change it. Only one row is open at a time, and a link such as `Settings#pictures` opens the row it names.
 
-- **Refresh.** The first card on the page. It says how many prices are out of date and how many pictures are missing, and holds the two refreshes: **Refresh prices** opens **Bulk refresh prices**, and **Refresh pictures** opens the picture refresh described under **Pictures** below.
-- **Currencies.** The currency amounts are shown in, and the exchange rates used to compare amounts in different currencies. A rate is per one euro. **Load ECB reference rates** fetches the European Central Bank's daily rates (no key); a rate you entered by hand is kept. Stored amounts never change currency.
+Some rows have their own **Save** button and save at once: **Display currency**, each rate, **Load ECB reference rates**, **Address for labels** and the BrickLink switch in **Part lists**. The other rows save together. They are **Retail country**, the part grouping in **Part lists**, **Picture source order**, **Source priority**, **Freshness** and **Instruction downloads**. Press **Save settings** in any of them and every change in those rows is saved. The page then opens the row you saved and says **Settings saved** with an **Undo** next to it. Undo puts back exactly what was there before. It is refused with **Item changed · undo the later save first** once you have saved again.
+
+**Refresh.** The first card on the page. Each of its two cells shows a number and a line: how many prices are out of date, and how many pictures are missing. **Refresh prices** opens **Bulk refresh prices** and is the one main button of the page. **Refresh pictures** opens the picture refresh described under **Pictures** below.
+
+**Everyday**
+
+- **Display currency.** The row reads like "EUR · 3 rates, ECB 14 Nov": the display currency, how many rates you have and where the newest one came from. Open it to set the currency amounts are shown in, and the exchange rates used to compare amounts in different currencies. A rate is per one euro. **Load ECB reference rates** fetches the European Central Bank's daily rates (no key); a rate you entered by hand is kept. Stored amounts never change currency.
 <!-- vale Microsoft.We = NO -->
 - **Retail country.** DE, US, UK or CA: which LEGO price Brickset's retail figure uses.
 <!-- vale Microsoft.We = YES -->
-- **Part lists.** **Prefer BrickLink's part list for new copies.** When it is on, a new copy of a set starts on Rebrickable's list and switches to BrickLink's list as soon as it arrives. A set's own pinned choice still comes first. The switch needs a BrickLink key: without one it is off and says so, with a link to **Catalogues & keys**. It has its own **Save** button and saves at once, with no Undo; turn it off again the same way.
-- **Picture source order.** Where Brick Work looks for a picture, first to last: for **Parts**, and for **Everything else**. Each list names the three sources in plain words (the Rebrickable catalogue, BrickLink, the Rebrickable API). Use the switch to leave a source out and the arrows to move it, then press **Save settings**. The first source that has a picture wins. The setting applies to jobs queued afterward. See [Pictures, prices and where they come from](pictures-and-prices.md).
-- **Source priority.** For the other steps that call a source (metadata, market price) and each kind of item, the sources to try, first to last, separated by commas. A blank kind uses the default list.
-- **Freshness.** Days before a source's data counts as stale, per source and kind of data. Empty means it never goes stale. A fresh install starts with prices 30 days, metadata 365 days and pictures never. **Bulk refresh prices** lists what is stale by these rules.
-- **Pictures.** How many of the things you hold have a picture and from which source. **Refresh pictures**, in the **Refresh** card at the top of the page, queues a job for the missing pictures, or for every item; the dialog says how many items that is before you confirm. There is no Undo for a refresh, and existing files are kept.
+- **Part lists.** The row says whether BrickLink's list is preferred and how parts are grouped. Open it for **Prefer BrickLink's part list for new copies**. When it is on, a new copy of a set starts on Rebrickable's list and switches to BrickLink's list as soon as it arrives. A set's own pinned choice still comes first. The switch needs a BrickLink key: without one it is off and says so, with a link to **Catalogues & keys**. It has its own **Save** button and saves at once, with no Undo; turn it off again the same way. The same row holds **Group parts by** and **Edit grouping**, described in [Part lists](part-lists.md).
+- **Address for labels.** The address, or "Uses the request address" when it is empty. See [Storage labels](storage-labels.md).
+
+**Sources and freshness**
+
+- **Pictures.** The row says how many of the things you hold have a picture and how many have none. Open it for the counts per kind of item and source, the items that cannot be identified, and a link to the import jobs. **Refresh pictures**, in the **Refresh** card at the top of the page, queues a job for the missing pictures, or for every item. The dialog says how many items that is before you confirm. There is no Undo for a refresh, and existing files are kept.
+- **Picture source order.** The row lists the sources for parts in order. Open it to see where Brick Work looks for a picture, first to last: for **Parts**, and for **Everything else**. Each list names the three sources in plain words (the Rebrickable catalogue, BrickLink, the Rebrickable API). Use the switch to leave a source out and the arrows to move it, then press **Save settings**. The first source that has a picture wins. The setting applies to jobs queued afterward. See [Pictures, prices and where they come from](pictures-and-prices.md).
+- **Source priority.** The row says **Default order**, or how many kinds of item differ from it. For the other steps that call a source (metadata, market price) and each kind of item, the sources to try, first to last, separated by commas. A blank kind uses the default list.
+- **Freshness.** The row gives the days for prices, metadata and pictures. Days before a source's data counts as stale, per source and kind of data. Empty means it never goes stale. A fresh install starts with prices 30 days, metadata 365 days and pictures never. **Bulk refresh prices** lists what is stale by these rules.
+- **Instruction downloads.** The Official file limit, initially 500 MB per file. See [Instruction download limit](#instruction-download-limit).
+
+On a wide screen the two groups sit side by side, and a row opens below itself in its own column.
 
 The BrickLink region and currency and the repair settings of Complete sets are set where they are used (the [command line](../reference/cli.md#settings) and the planning screens).
 
@@ -123,5 +135,5 @@ A PDF is attached to a **set**; a booklet shows the files of the set with its nu
 
 ## Instruction download limit
 
-**Settings → Instruction downloads** controls the Official file limit, initially 500 MB. Values range from 1 to 5000 MB.
+**Settings → Instruction downloads** (a row in **Sources and freshness**) controls the Official file limit, initially 500 MB. Values range from 1 to 5000 MB.
 Uploads and other instruction sources retain their 20 MB limit.

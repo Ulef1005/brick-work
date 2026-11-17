@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Lost Parts from Rebrickable** (#457). When you pull your collection from Rebrickable, Brick Work can also bring in your Lost Parts and mark them as missing on the matching copy. The switch **Bring in Lost Parts** sits beside **Pull** on Collection sync. It is on by default and remembers your choice. A set with one copy is marked straight away. With several copies, you pick the copy in the preview. Parts that match no line are listed with the reason. You choose how far Rebrickable wins in **Settings → Sync**: add only, per part (the default), per set, or everywhere. The preview says how many marks it will clear before you pull. One Undo takes the marks back with the rest of the pull.
+
 - **The focus line is blue.** The line around the field, button or link that has the focus is now the blue of the logo instead of orange, in the app and on the docs site. Orange stays the colour of buttons, links and selected states.
 
 - **Price fields read as two fields** (#461). In the Edit sheet, the currency and the amount of a price are set apart by a line and a quieter ground, and the one you are typing in is underlined.

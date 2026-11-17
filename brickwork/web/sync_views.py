@@ -60,7 +60,8 @@ def _log(db, limit=20):
                 f"{c.get('copies', 0)} {'copy' if c.get('copies') == 1 else 'copies'} added" if c.get('copies') else '',
                 f"{c.get('stock', 0)} loose added" if c.get('stock') else '',
                 f"{c.get('wishes_added', 0)} {'wish' if c.get('wishes_added') == 1 else 'wishes'} added" if c.get('wishes_added') else '',
-                f"{c.get('wishes_changed', 0)} wish quantities raised" if c.get('wishes_changed') else '') if p) or 'Nothing new'
+                f"{c.get('wishes_changed', 0)} wish quantities raised" if c.get('wishes_changed') else '',
+                _lost_words(c)) if p) or 'Nothing new'
             rows.append(dict(at=r['at'], source=value['source'], direction='Pulled', what=what, state='Undone' if r['undone'] else 'Done', event=r['id']))
         elif r['field'] == 'undo':
             rows.append(dict(at=r['at'], source='', direction='Undone', what='Pull ' + str(value['undoes']) + ' undone', state='Done', event=None))
@@ -72,6 +73,23 @@ def _log(db, limit=20):
             state = 'Done' if not problems else 'Waiting for you'
             rows.append(dict(at=r['at'], source=r['entity_id'], direction='Sent', what=what, state=state, event=None))
     return rows
+
+
+def _lost_words(c):
+    """The Lost Parts part of a log line: parts marked on how many sets."""
+    marked = c.get('lost_added', 0) + c.get('lost_replaced', 0)
+    if not c.get('lost_sets'):
+        return ''
+    words = f"Lost Parts: {marked} {'part' if marked == 1 else 'parts'} marked on {c['lost_sets']} {'set' if c['lost_sets'] == 1 else 'sets'}"
+    return words + (f", {c['lost_cleared']} cleared" if c.get('lost_cleared') else '')
+
+
+def lost_result(db, event_id):
+    """The Lost Parts step of one pull as its receipt kept it (None: that pull had none), for the result card."""
+    if not str(event_id).isdigit():
+        return None
+    row = db.execute("SELECT new_value FROM event WHERE id=? AND entity_kind='sync' AND field='receipt'", (int(event_id),)).fetchone()
+    return (json.loads(row['new_value']) if row and row['new_value'] else {}).get('lost')
 
 
 def stamp(value):
@@ -98,14 +116,19 @@ def _page(template, **context):
 @_unavailable
 def bw_sync():
     from ..core import sync
+    from ..core.sync import lost_parts
     from .setup_state import key_missing
     with _db() as db:
         cards = []
         for source in SOURCES:
             status = sync.status(db, source)
-            cards.append(dict(status, key_gap=key_missing(source), user=status['credentials']['user']['configured']))
+            cards.append(dict(status, key_gap=key_missing(source), user=status['credentials']['user']['configured'],
+                              lost_on=sync.lost_parts_on(db, source)))
+        rule = lost_parts.rule(db)
         log = _log(db)
-    return _page('web/toni/web/bw_sync.html', screen='sources', title='Collection sync', cards=cards, log=log)
+        result = lost_result(db, request.args.get('pulled', ''))
+    return _page('web/toni/web/bw_sync.html', screen='sources', title='Collection sync', cards=cards, log=log, lost_result=result, rule_labels=lost_parts.RULE_LABELS,
+                 lost_rule=dict(value=rule, label=lost_parts.RULE_LABELS[rule], note=lost_parts.RULE_NOTES[rule]))
 
 
 @web_page.get('/manage/sync/<source>/link')
@@ -134,6 +157,7 @@ def bw_sync_link(source):
 @login_required
 def bw_sync_plan(source, plan_id):
     from ..core import sync
+    from ..core.sync import lost_parts
     _source(source)
     with _db() as db:
         try:
@@ -147,7 +171,7 @@ def bw_sync_plan(source, plan_id):
         status = sync.status(db, source)
     return _page('web/toni/web/bw_sync.html', screen=plan['direction'], title=('Pull from ' if plan['direction'] == 'pull' else 'Send to ') + sync.LABELS[source],
                  source=source, label=sync.LABELS[source], plan=plan, budget=budget, status=status,
-                 results=plan.get('results', {}), receipt=request.args.get('event'))
+                 results=plan.get('results', {}), receipt=request.args.get('event'), rule_labels=lost_parts.RULE_LABELS)
 
 
 def _message(exc, source):
@@ -200,21 +224,25 @@ def bw_sync_write(source, action):
                         send_to = form.get('send_to', '')
                         options['send_to'] = int(send_to) if send_to.isdigit() else (options['owned'][0] if len(options['owned']) == 1 else None)
                     sync.link(db, source, options)
-                plan = sync.plan_pull(db, source)
+                # The switch posts a hidden 0 before its checkbox's 1: the last value wins, and a form without the field keeps the remembered one.
+                switch = form.getlist('lost_parts')[-1:] if action == 'pull' else []
+                plan = sync.plan_pull(db, source, lost_parts_switch=(switch[0] == '1') if switch else None)
                 return redirect(url_for('web.bw_sync_plan', source=source, plan_id=plan['id']))
             elif action == 'send':
                 plan = sync.plan_send(db, source)
                 return redirect(url_for('web.bw_sync_plan', source=source, plan_id=plan['id']))
             elif action == 'apply':
                 plan_id = form.get('plan_id', '')
-                result = sync.apply_pull(db, plan_id, form.getlist('tick'))
+                picks = {k.removeprefix('copy:'): v for k, v in form.items() if k.startswith('copy:') and v}
+                result = sync.apply_pull(db, plan_id, form.getlist('tick'), lost=form.getlist('lost') if form.get('lost_listed') else None,
+                                         picks=picks or None)
                 c = result['counts']
                 if result.get('already_applied'):
                     flash('This plan was already pulled; nothing was added again.', 'info')
                     return redirect(url_for('web.bw_sync', pulled=result['event_id']))
                 flash(f"Pulled · {c['copies']} {'copy' if c['copies'] == 1 else 'copies'}"
                       + (f", {c['stock']} loose" if c.get('stock') else '') + f" and {c['wishes_added'] + c['wishes_changed']} "
-                      f"{'wish' if c['wishes_added'] + c['wishes_changed'] == 1 else 'wishes'} added here.", 'success')
+                      f"{'wish' if c['wishes_added'] + c['wishes_changed'] == 1 else 'wishes'} added here." + (' ' + _lost_words(c) + '.' if c.get('lost_sets') else ''), 'success')
                 return redirect(url_for('web.bw_sync', pulled=result['event_id']))
             elif action == 'send_apply':
                 plan_id = form.get('plan_id', '')

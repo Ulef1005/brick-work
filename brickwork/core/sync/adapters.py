@@ -49,9 +49,37 @@ def _number(value):
     return value
 
 
+def parse_lost_part(row):
+    """One row of `GET /users/{token}/lost_parts/` as `dict(set_no, part_no, color_id, quantity, is_spare)`, or None when it cannot be read.
+
+    ASSUMED SHAPE (Rebrickable's documentation; the OpenAPI file does not describe the items and the test instance has no user token, so it
+    was not checked live): `{lost_part_id, lost_quantity, inv_part: {id, inv_part_id, part: {part_num, ...}, color: {id, ...}, set_num,
+    quantity, is_spare, element_id}}`. The set number is read from `inv_part.set_num`, else `set_num` or
+    `set.set_num` on the row itself. If Rebrickable's reply differs, fix this one function; a row it returns None for is
+    counted by the caller and reported as "could not be read", and a run with such a row clears nothing."""
+    try:
+        inv = row['inv_part']
+        quantity = row['lost_quantity']
+        part_no = str(inv['part']['part_num'])
+        color_id = inv['color']['id']
+        spare = inv.get('is_spare', False)
+        found = inv.get('set_num') or row.get('set_num') or (row.get('set') or {}).get('set_num')
+        if found is None:
+            return None
+        if type(quantity) is str and quantity.isdecimal():
+            quantity = int(quantity)
+        if type(color_id) is str and color_id.lstrip('-').isdecimal():
+            color_id = int(color_id)
+        if type(quantity) is not int or quantity < 1 or type(color_id) is not int or not isinstance(spare, bool):
+            return None
+        return dict(set_no=_number(found), part_no=_number(part_no), color_id=color_id, quantity=quantity, is_spare=spare)
+    except (KeyError, TypeError, AttributeError, SourceError):
+        return None
+
+
 class RebrickableUser(Rebrickable):
     """User endpoints under /api/v3/users/ (set lists and their sets)."""
-    TEMPLATES = re.compile(r'/(?:setlists/|setlists/[0-9]+/sets/|setlists/[0-9]+/sets/[A-Za-z0-9.-]+/|sets/)')
+    TEMPLATES = re.compile(r'/(?:setlists/|setlists/[0-9]+/sets/|setlists/[0-9]+/sets/[A-Za-z0-9.-]+/|sets/|lost_parts/)')
 
     def __init__(self, db, **kwargs):
         super().__init__(db, **kwargs)
@@ -109,6 +137,22 @@ class RebrickableUser(Rebrickable):
             page += 1
             if page > 200:
                 raise SourceError('Rebrickable list is too long')
+
+    def lost_parts(self):
+        """The user's Lost Parts: `dict(rows, unreadable)`. `rows` are `parse_lost_part` results, one per set, part, colour and spare flag (a
+        repeated one is summed); `unreadable` counts the rows it could not read. Read with `pages`, so every call is budgeted and recorded."""
+        merged, unreadable = {}, 0
+        for raw in self.pages('/lost_parts/'):
+            row = parse_lost_part(raw) if isinstance(raw, dict) else None
+            if row is None:
+                unreadable += 1
+                continue
+            key = (row['set_no'], row['part_no'], row['color_id'], row['is_spare'])
+            if key in merged:
+                merged[key]['quantity'] += row['quantity']
+            else:
+                merged[key] = row
+        return dict(rows=list(merged.values()), unreadable=unreadable)
 
     # The adapter surface used by the sync service.
     def connect(self, username, password):

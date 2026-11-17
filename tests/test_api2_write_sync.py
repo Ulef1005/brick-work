@@ -188,3 +188,44 @@ def test_identification_limits_types_and_failures(v2, world, wire):
     failed = upload(v2, '/identifications', png(), key='bad-reply')
     assert failed.status_code >= 400 and failed.json['code'] in ('source_error', 'validation_failed')
     assert call(v2, '/identifications').json['data'] == []
+
+
+def test_lost_parts_through_the_api(v2, pair, remote, monkeypatch):
+    """#457: the remembered switch is a link option, the plan carries `lost`, apply takes `lost_ticked` and `copy_picks`, and the rule is a setting."""
+    from brickwork.core.sync import adapters
+    from tests.test_bw_sync_lost_parts import Remote, copy_of, marks, raw, two_copies_line
+    fake = Remote()
+    monkeypatch.setattr(adapters, 'transport', fake)
+    with closing(connect(pair)) as db:
+        one = copy_of(db, '1000-1')
+        copies, row_two = two_copies_line(db)
+    fake.lost = [raw('1000-1', '3001', 4, 2), row_two]
+    write(v2, '/sources/rebrickable/user', 'put', {'value': TOKEN})
+    write(v2, '/sync/rebrickable/link', 'put', {'owned': [1, 2], 'wishlist': 9, 'send_to': 1})
+    off = write(v2, '/sync/rebrickable/link', 'put', {'lost_parts': False})
+    validate(off, 'put_sync_by_source_link')
+    assert off.json['data']['link']['lost_parts'] is False and write(v2, '/sync/rebrickable/link', 'put', {'lost_parts': 'no'}).status_code == 422
+    plan = write(v2, '/sync/rebrickable/pull/plan')
+    validate(plan, 'post_sync_by_source_pull_plan', '201')
+    assert plan.json['data']['lost']['status'] == 'off' and not fake.lost_calls()
+    write(v2, '/sync/rebrickable/link', 'put', {'lost_parts': True})
+    plan = write(v2, '/sync/rebrickable/pull/plan')
+    validate(plan, 'post_sync_by_source_pull_plan', '201')
+    lost = plan.json['data']['lost']
+    assert lost['status'] == 'read' and [e['state'] for e in lost['sets']] == ['ready', 'pick'] and len(fake.lost_calls()) == 1
+    bad = write(v2, '/sync/rebrickable/pull/apply', body={'plan_id': plan.json['data']['id'], 'copy_picks': {'2070-1': one}})
+    assert bad.status_code == 422
+    applied = write(v2, '/sync/rebrickable/pull/apply', body={'plan_id': plan.json['data']['id'], 'ticked': [], 'lost_ticked': ['1000-1'],
+                                                              'copy_picks': {'2070-1': copies[0]}})
+    assert applied.status_code == 200, applied.json
+    validate(applied, 'post_sync_by_source_pull_apply')
+    assert applied.json['data']['counts']['lost_sets'] == 2
+    with closing(connect(pair, read_only=True)) as db:
+        assert marks(db, one) == {('3001', '4', False): 2} and marks(db, copies[0]) and not marks(db, copies[1])
+    assert write(v2, f"/events/{applied.json['event_id']}/undo").status_code == 200
+    with closing(connect(pair, read_only=True)) as db:
+        assert not marks(db, one) and not marks(db, copies[0])
+    patched = write(v2, '/settings', 'patch', {'rebrickable_lost_parts_rule': 'per_set'})
+    validate(patched, 'patch_settings')
+    assert patched.json['data']['rebrickable_lost_parts_rule'] == 'per_set' and call(v2, '/settings').json['data']['rebrickable_lost_parts_rule'] == 'per_set'
+    assert write(v2, '/settings', 'patch', {'rebrickable_lost_parts_rule': 'nope'}).status_code == 422

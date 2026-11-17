@@ -78,6 +78,8 @@ def build_parser():
     sub.add_argument('--owned', type=int, action='append', help='link: an owned Rebrickable set list id (repeat)')
     sub.add_argument('--wishlist', type=int, help='link: the Rebrickable wishlist set list id')
     sub.add_argument('--send-to', type=int, help='link: the owned list that receives sends')
+    sub.add_argument('--lost-parts', choices=('on', 'off'), help='link or pull: bring in the Rebrickable Lost Parts (remembered; on when never set)')
+    sub.add_argument('--pick', action='append', help='pull --apply: SET_NUMBER=COPY_ID, the copy that takes the Lost Parts of a set with several copies (repeat)')
     sub.add_argument('--wish-list', help='link: the Brick Work wishlist id (default: default)')
     sub.add_argument('--username', help='connect: your username on the site (the password is asked for)')
     jobs = parser(commands, 'jobs', 'jobs_list')
@@ -92,7 +94,7 @@ def build_parser():
     parser(settings, 'show', 'settings_show')
     sub = parser(settings, 'set', 'settings_set')
     from ..core.items import KINDS
-    sub.add_argument('key', choices=SETTING_KEYS + ('source_priority', 'part_list_grouping', 'part_group_overrides') + tuple('import_order:' + kind for kind in KINDS))
+    sub.add_argument('key', choices=SETTING_KEYS + ('source_priority', 'part_list_grouping', 'part_group_overrides', 'rebrickable_lost_parts_rule') + tuple('import_order:' + kind for kind in KINDS))
     sub.add_argument('value')
     wishes = parser(commands, 'wishlist').add_subparsers(required=True)
     parser(wishes, 'list', 'wishlist_list').add_argument('--archived', action='store_true')

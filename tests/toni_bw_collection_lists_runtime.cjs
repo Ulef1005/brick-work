@@ -146,7 +146,7 @@ function load(records,{kind='P',pageSize=15,defaultGroup='',groupOptions=null,sa
  for(const [kind,one,many] of [['S','set','sets'],['M','minifigure','minifigures'],['P','part','parts'],['I','booklet','booklets'],['O','box','boxes'],['G','gear','gear'],['B','book','books'],['C','catalog','catalogs'],['?','item','unresolved items'],['wish','wish','wishes']])
   for(const [n,noun] of [[1,one],[2,many]]){const h=load(Array.from({length:n},()=>({type:kind})),{kind,pageSize:0});assert.equal(h.count.textContent,n+' '+noun,kind+' count '+n);assert.equal(h.apply.textContent,'Show '+n+' '+noun,kind+' button '+n);}
  // #20: Parts and Minifigures open on loose stock; In sets shows what sits inside set copies; the headline follows the scope.
- const mix=[{quantity:30,in_sets:4,damaged:1,lot:['lot-1']},{quantity:2},{quantity:0,in_sets:10},{quantity:0,in_sets:5,damaged:2}];
+ const mix=[{quantity:30,in_sets:4,damaged:1,lot:['lot-1']},{quantity:2},{quantity:0,in_sets:10},{quantity:0,in_sets:5,in_sets_damaged:2}];
  const S=load(mix,{scope:true});
  assert.equal(S.stock.value,'loose');assert.equal(S.count.textContent,'1 to 2 of 2','the default view lists the loose rows only');
  assert.equal(S.headline.textContent,'1 part has damaged pieces');assert.equal(S.subline.textContent,'32 loose parts · 2 entries in 1 lot','the loose total is the rail count');
@@ -154,7 +154,12 @@ function load(records,{kind='P',pageSize=15,defaultGroup='',groupOptions=null,sa
  assert.deepEqual(S.scopePicks.map(b=>b.getAttribute('aria-pressed')),['true','false']);
  await S.scopePicks[1].trigger();
  assert.equal(S.stock.value,'sets');assert.equal(S.count.textContent,'1 to 3 of 3');assert.equal(S.headline.textContent,'19 parts in sets');assert.equal(S.subline.textContent,'3 entries · 32 loose');
- assert.deepEqual(S.quick.map(b=>b.children[0].textContent),['3','2','1','2']);
+ assert.deepEqual(S.quick.map(b=>b.children[0].textContent),['3','1','1','2'],'#463: the Damaged chip counts the pieces inside sets only (the loose damage of the first row is not one)');
+ const tagged=mix.map(r=>({...r,stock:[...(r.quantity?['loose']:[]),...(r.in_sets?['sets']:[])]}));
+ assert.equal(S.api.filterRows(tagged,'',{stock:'sets',problem:'damaged'}).length,1,'#463: the problem filter counts in-set pieces under In sets');
+ assert.equal(S.api.filterRows(tagged,'',{stock:'loose',problem:'damaged'}).length,1,'#463: and loose pieces under Loose');
+ assert.equal(S.api.scopeHeadline('P',tagged,'sets').title,'19 parts in sets');
+ assert.equal(S.api.scopeHeadline('P',[{stock:['loose'],quantity:3,in_sets:2,in_sets_damaged:1}],'loose').title,'No parts have damaged pieces','#463: damage inside a set is not loose damage');
  assert.deepEqual(S.scopePicks.map(b=>b.getAttribute('aria-pressed')),['false','true']);
  const inSetsRow=texts(S.rows()[0]).join('|');assert.ok(inSetsRow.includes('×4')||inSetsRow.includes('×10')||inSetsRow.includes('×5'),'the quantity cell shows the count in sets: '+inSetsRow);
  assert.ok(!texts(S.rows()[0]).some(t=>t==='×0'),'a row held only in sets never reads ×0');

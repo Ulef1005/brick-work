@@ -438,8 +438,8 @@ def listing(db, type_letter, *, wishes=False):
                 row = grouped[key] = _blank(dict(base[raw['item_id']], color_id=raw['color_id'], entity='stock'))
                 rows.append(row)
             row['in_sets'] = (row.get('in_sets') or 0) + (raw['quantity'] or 0)
-            row['missing'] += raw['missing'] or 0
-            row['damaged'] += raw['damaged'] or 0
+            row['in_sets_missing'] = row.get('in_sets_missing', 0) + (raw['missing'] or 0)      # #463: a row's missing/damaged are the loose pieces; these are the ones inside set copies
+            row['in_sets_damaged'] = row.get('in_sets_damaged', 0) + (raw['damaged'] or 0)
         rows = decorate(db, rows, loaded)
         if kind != 'set':
             for row in rows:

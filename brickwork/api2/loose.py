@@ -67,7 +67,7 @@ def get_stock_by_id_parts(db, id):
 def figure_bodies(db, rows):
     book = bodies(db, items=[r['item_id'] for r in rows])
     return [{'item': book.item(r['item_id']), 'name': r['name'], 'theme': r['theme'] or None, 'year': r['year'], 'quantity': r['quantity'] or 0,
-             'in_sets': r.get('in_sets') or 0, 'missing': r['missing'] or 0, 'damaged': r['damaged'] or 0, 'image_id': r['image']} for r in rows]
+             'in_sets': r.get('in_sets') or 0, 'missing': (r['missing'] or 0) + (r.get('in_sets_missing') or 0), 'damaged': (r['damaged'] or 0) + (r.get('in_sets_damaged') or 0), 'image_id': r['image']} for r in rows]
 
 
 @route('/minifigures')
@@ -77,7 +77,7 @@ def get_minifigures(db):
     items, color = identity_filter(db, args)
     rows = collection.listing(db, 'M')
     records = [record(r['item_id'], r['number'] or '', also=r['also'] or '', name=r['name'] or '', colour='', type='M', theme=r['theme'] or '', category=r['category'] or '',
-                      year=r['year'], quantity=r['quantity'] or 0, missing=r['missing'] or 0, damaged=r['damaged'] or 0, in_sets=r.get('in_sets') or 0,
+                      year=r['year'], quantity=r['quantity'] or 0, missing=(r['missing'] or 0) + (r.get('in_sets_missing') or 0), damaged=(r['damaged'] or 0) + (r.get('in_sets_damaged') or 0), in_sets=r.get('in_sets') or 0,
                       item_id=r['item_id'], color_id=None, _row=r) for r in rows]
     records = narrow(records, items, color)
     if args.get('sort') == 'used_price':

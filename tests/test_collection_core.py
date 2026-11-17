@@ -140,7 +140,7 @@ def test_the_parts_list_has_loose_stock_and_parts_held_only_in_sets(world, read)
     with read() as db:
         rows = collection.listing(db, 'P')
         red_brick = [r for r in rows if r['item_id'] == world.brick and r['color_id'] == world.red]
-        assert len(red_brick) == 1 and red_brick[0]['quantity'] == 5 and red_brick[0]['in_sets'] == 8 and red_brick[0]['missing'] == 1
+        assert len(red_brick) == 1 and red_brick[0]['quantity'] == 5 and red_brick[0]['in_sets'] == 8 and red_brick[0]['missing'] == 0 and red_brick[0]['in_sets_missing'] == 1      # #463: the missing brick sits in a set copy, not in loose stock
         assert red_brick[0]['color_name'] == 'Red' and red_brick[0]['rgb'] == 'C91A09' and red_brick[0]['ink'] in ('#1A1816', '#FAFAF8')
         assert red_brick[0]['price']['price'] == '0.40' and len(red_brick[0]['instances']) == 2
         in_sets_only = [r for r in rows if r['quantity'] == 0 and r['in_sets']]
@@ -181,7 +181,7 @@ def test_list_records_are_words_with_both_numbers_and_the_item_id(world, read):
         rows = collection.listing(db, 'M')
     data = json.loads(list_records.payload(rows))
     fields = data['fields']
-    assert fields[-4:] == ['item_id', 'also', 'source', 'added'] and 'purchase_location_id' not in fields   # added: #226
+    assert fields[-7:-3] == ['item_id', 'also', 'source', 'added'] and 'purchase_location_id' not in fields   # added: #226
     record = decoded(list_records.payload(rows))[0]
     assert record['item_id'] == world.figure and record['also'] == 'syn-fig-0004' and record['condition'] == ['used'] and record['number'] == 'fig-000004'
     for key in ('condition', 'status'):
@@ -449,3 +449,15 @@ def test_derived_completeness_is_complete_only_when_checked_and_nothing_is_missi
     coll.tag('copy', world.copy_b, world.checked)
     with read() as db:
         assert completeness.derived_state(db, world.copy_a) == 'complete' and completeness.derived_state(db, world.copy_b) == 'complete'
+
+
+def test_a_parts_row_keeps_loose_and_in_set_defects_apart(world, coll, read):
+    """#463: a row's missing and damaged are loose pieces only; the pieces inside set copies are `in_sets_missing` and `in_sets_damaged`."""
+    coll.mark(world.copy_a, '3023', '15', missing=1, damaged=2)
+    with read() as db:
+        rows = collection.listing(db, 'P')
+    marked = [r for r in rows if r.get('in_sets_damaged')]
+    assert marked and all(r['damaged'] == 0 for r in marked)                                   # the loose pieces of that part are not damaged
+    assert sum(r['in_sets_damaged'] for r in marked) == 2 and sum(r.get('in_sets_missing', 0) for r in rows) >= 1
+    for r in rows:
+        assert r['damaged'] == 0 or not r.get('in_sets_damaged')                                # only loose damage is counted on the row itself

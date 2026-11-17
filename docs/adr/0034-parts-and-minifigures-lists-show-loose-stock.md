@@ -26,7 +26,7 @@ Option A. Parts and Minifigures open on **Loose**. The chips **Loose** and **In 
 - Parts and figures inside sets stay one tap away and in the jump bar.
 - Other lists (Instructions, Boxes) keep their Stock filter with Any, since they have nothing inside sets.
 - The page still sends every row to the browser. The scope is applied there, so switching is instant.
-- Damaged and missing counts on a row still add loose and in-set pieces. Splitting them is a later change.
+- Damaged and missing counts follow the scope (issue #463, which replaced the first cut that added loose and in-set pieces). Under Loose they count loose pieces only, so the title "N parts have damaged pieces", the Damaged chip, the row defects and the problem filter ignore damage inside set copies. Under In sets they count the pieces inside set copies. A list row keeps `missing` and `damaged` as the loose pieces and carries the in-set pieces as `in_sets_missing` and `in_sets_damaged`; the browser record has them at the end, with `in_sets_defects`. The v2 API still reports both added together.
 
 ## Links
 

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Damaged and missing follow the Loose and In sets view** (#463). On Loose, the Parts title ("N parts have damaged pieces"), the **Damaged** chip, a row's damaged and missing and the problem filter count loose pieces only, so a part that is damaged only inside a set no longer shows there. On **In sets** they count the pieces inside your set copies. The design is unchanged.
+
 - **Short part names on a figure's line** (#34). When a minifigure in a set has missing parts, its line now names them as body parts, such as **Torso · Legs**, instead of the long catalogue names. A part whose category is not a body part shows the first words of its name. Point at the names to see the full catalogue names. The check of the figure's parts still lists the full names.
 
 - **Parts and Minifigures list your loose stock** (#20). The lists open on what you own loose, and the line under the title gives the number beside the list in the side menu. The chip **In sets** shows the parts and figures inside your set copies instead, and **Loose** brings the first view back. A list you opened before keeps its filters and opens on Loose.

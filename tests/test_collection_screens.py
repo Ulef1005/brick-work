@@ -241,7 +241,7 @@ def test_parts_listing_shape_and_query_count(world, coll):
     assert len(rows) == len(by_number) and ('3001', 'Red') in by_number and ('x999', 'Red') in by_number
     brick = by_number['3001', 'Red']
     assert (brick['item_id'], brick['color_id'], brick['kind'], brick['item_type']) == (world.brick, world.red, 'part', 'P')
-    assert (brick['quantity'], brick['in_sets'], brick['missing'], sorted(brick['conditions']), len(brick['instances'])) == (5, 8, 1, ['new', 'used'], 2)
+    assert (brick['quantity'], brick['in_sets'], brick['missing'], sorted(brick['conditions']), len(brick['instances'])) == (5, 8, 0, ['new', 'used'], 2)
     assert brick['price']['price'] == '0.40' and brick['price']['condition'] == 'used' and brick['price']['guide'] == 'sold'
     assert by_number['3023', 'White']['quantity'] == 2 and by_number['3023', 'White']['price'] is None
     held_only_in_sets = [r for r in rows if not r['quantity']]

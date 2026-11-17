@@ -15,11 +15,11 @@
       if (key==='status' && value==='unknown') return (r.status||[]).includes('');
       if (key==='tag' || key==='has') return (r.flags||[]).includes(value);
       if (key==='lot' && value==='any') return (r.lot||[]).some(x=>String(x)!=='null');
-      if (key==='problem') return Number(r[value])>0;
+      if (key==='problem') return defect(r,value,filters.stock)>0;
       if (key==='duplicates') return String(!!r.duplicates)===value;
       return (Array.isArray(r[key])?r[key].map(String):[String(r[key]??'')]).includes(value);
     }));
-    const compare=(a,b,key)=>['lot','storage','place'].includes(key)?(groupValue(a,key)==='null')-(groupValue(b,key)==='null')||groupValue(a,key).localeCompare(groupValue(b,key),undefined,{numeric:true}):key==='index'?Number(a.index||0)-Number(b.index||0):key==='used_price'?comparePrice(a,b):key==='missing'?(Number(a.missing||0)+Number(a.damaged||0))-(Number(b.missing||0)+Number(b.damaged||0)):key==='quantity'?Number((filters.stock==='sets'?a.in_sets:a.quantity)||0)-Number((filters.stock==='sets'?b.in_sets:b.quantity)||0):['missing','year','damaged'].includes(key)?Number(a[key]||0)-Number(b[key]||0):String(a[key]||'').localeCompare(String(b[key]||''),undefined,{numeric:true});
+    const compare=(a,b,key)=>['lot','storage','place'].includes(key)?(groupValue(a,key)==='null')-(groupValue(b,key)==='null')||groupValue(a,key).localeCompare(groupValue(b,key),undefined,{numeric:true}):key==='index'?Number(a.index||0)-Number(b.index||0):key==='used_price'?comparePrice(a,b):key==='missing'?(defect(a,'missing')+defect(a,'damaged'))-(defect(b,'missing')+defect(b,'damaged')):key==='quantity'?Number((filters.stock==='sets'?a.in_sets:a.quantity)||0)-Number((filters.stock==='sets'?b.in_sets:b.quantity)||0):['missing','damaged'].includes(key)?defect(a,key)-defect(b,key):key==='year'?Number(a[key]||0)-Number(b[key]||0):String(a[key]||'').localeCompare(String(b[key]||''),undefined,{numeric:true});
     return matches.sort((a,b)=> (group?compare(a,b,group):0) || (sort==='used_price' && (!a.price || !b.price)?Number(!a.price)-Number(!b.price):0) || (compare(a,b,sort)*(direction==='desc' || sort==='missing'?-1:1)) || compare(a,b,'number') || compare(a,b,'id'));
   }
   // Array-valued fields (lot, storage, place) group by their first recorded value; 'null' means none.
@@ -59,6 +59,9 @@
     if (new Set(selected.map(c=>c.entity)).size>1) throw new Error('Choose one instance type at a time');
     return {entity:selected[0]?.entity,ids:[...new Set(selected.flatMap(c=>c.ids))]};
   }
+  // #463: a row's missing and damaged are the loose pieces; the ones inside set copies sit beside them. The scope (a filter's stock, else the row's own) picks the pair.
+  const heldIn=(r,stock)=>(stock||r.scope)==='sets';
+  const defect=(r,key,stock)=>Number(heldIn(r,stock)?r['in_sets_'+key]:r[key])||0;
   function decodeRecords(data) {
     return data.rows.map(packed=>{
       const r={quantity:0,missing:0,damaged:0,in_sets:0,condition:[''],status:[''],storage:['null'],place:['null'],flags:[],lot:['null'],ids:[],lot_links:[],selected:false};
@@ -115,7 +118,7 @@
       const stock=el('span','bc-stock-count mono',r.scope==='sets'?r.in_sets+' in sets'+(r.quantity?' · '+r.quantity+' loose':''):r.quantity+' loose'+(r.in_sets?' · '+r.in_sets+' in sets':''));foot.append(stock);
       if(config.type==='I')foot.append(el('span','bc-pdf',r.pdf_available?'PDF available':'No PDF'));
     }
-    if(r.entity!=='wish' && config.type!=='S' && r.defects)foot.append(el('span','mono',r.defects));
+    {const shown=heldIn(r)?r.in_sets_defects:r.defects;if(r.entity!=='wish' && config.type!=='S' && shown)foot.append(el('span','mono',shown));}
     if(config.type!=='S'){
       if(r.price){const price=el('span','bc-card-money mono');price.append(el('span','',r.price[4]),el('span','bc-age',r.price[5]+(r.price[3]?' · stale':'')));foot.append(price);}else foot.append(el('span','secondary','no sales'));
     }
@@ -130,10 +133,11 @@
     // The header row is aria-hidden, so each cell names its own column for assistive technology.
     const hid=(cell,text)=>cell.append(el('span','bc-visually-hidden',text));
     const damaged=el('span','bc-cell bc-cell-damaged'),lot=el('span','bc-cell bc-cell-lot'),price=el('span','bc-cell bc-cell-price'),qty=el('span','bc-cell bc-cell-qty');
-    hid(damaged,Number(r.damaged)>0||Number(r.missing)>0?'Damaged or missing ':'No damaged pieces');
+    const hurt=defect(r,'damaged'),lost=defect(r,'missing');
+    hid(damaged,hurt>0||lost>0?'Damaged or missing ':'No damaged pieces');
     hid(lot,r.lot_links.length?'Lot ':'No lot');hid(price,'Used price ');hid(qty,'Quantity ');
-    if(Number(r.damaged)>0)damaged.append(el('span','bc-status incomplete',r.damaged+' damaged'));
-    if(Number(r.missing)>0)damaged.append(el('span','mono bc-cell-missing',r.missing+' missing'));
+    if(hurt>0)damaged.append(el('span','bc-status incomplete',hurt+' damaged'));
+    if(lost>0)damaged.append(el('span','mono bc-cell-missing',lost+' missing'));
     if(r.lot_links.length)r.lot_links.forEach(([id,name])=>{const link=el('a','bc-lot-link',name);link.href=config.lotBase.replace('LOT',encodeURIComponent(id));lot.append(link);});
     else{const none=el('span','secondary','—');none.setAttribute('aria-hidden','true');lot.append(none);}
     if(r.price){price.append(el('span','bc-cell-money mono',r.price[4]),el('span','mono bc-age',r.price[5]+(r.price[3]?' · stale':'')));}else price.append(el('span','secondary','no sales'));
@@ -150,7 +154,7 @@
     const loose=records.reduce((n,r)=>n+Number(r.quantity||0),0),held=records.reduce((n,r)=>n+Number(r.in_sets||0),0),pieces=inSets?held:loose,other=inSets?loose:held;
     if(kind==='M')return {title:inSets?plural(pieces,'minifigure','minifigures')+' in sets':pieces+' loose '+(pieces===1?'minifigure':'minifigures'),
       sub:plural(rows.length,'different minifigure','different minifigures')+' · '+other+(inSets?' loose':' in sets')};
-    const damaged=rows.filter(r=>Number(r.damaged)>0).length,lots=new Set(rows.flatMap(r=>(r.lot||[]).map(String).filter(x=>x!=='null').map(x=>x.toLowerCase()))).size;
+    const damaged=rows.filter(r=>defect(r,'damaged',scope)>0).length,lots=new Set(rows.flatMap(r=>(r.lot||[]).map(String).filter(x=>x!=='null').map(x=>x.toLowerCase()))).size;
     return {title:inSets?plural(pieces,'part','parts')+' in sets':damaged?damaged+' '+(damaged===1?'part has':'parts have')+' damaged pieces':'No parts have damaged pieces',
       sub:inSets?plural(rows.length,'entry','entries')+' · '+other+' loose':pieces+' loose '+(pieces===1?'part':'parts')+' · '+plural(rows.length,'entry','entries')+(lots?' in '+plural(lots,'lot','lots'):'')};
   }

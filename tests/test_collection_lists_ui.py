@@ -36,7 +36,7 @@ def test_list_records_carry_subtheme_and_tags_only_as_display_fields(coll, world
     coll.prop(world.keep, 'subtheme', 'Lion Knights')
     with read() as db:
         rows = collection.listing(db, 'S')
-    assert FIELDS[-6:] == ['subtheme', 'tags', 'item_id', 'also', 'source', 'added']
+    assert FIELDS[-9:] == ['subtheme', 'tags', 'item_id', 'also', 'source', 'added', 'in_sets_missing', 'in_sets_damaged', 'in_sets_defects']
     data = json.loads(payload(rows))
     index = {name: i for i, name in enumerate(data['fields'])}
     castle = next(r for r in data['rows'] if r.get(str(index['item_id'])) == world.keep and r.get(str(index['number'])) == '1000-1')
@@ -280,3 +280,16 @@ def test_back_to_the_list_asks_for_in_sets_when_the_item_is_held_only_there(coll
     soup = page(client, f'/collection/item/{world.figure}')
     assert soup.select_one('a.bc-detail-back')['href'] == '/collection/M?stock=sets'
     assert soup.select_one('[data-back-url]')['data-back-url'] == '/collection/M?stock=sets'
+
+
+def test_list_records_carry_the_in_set_defects_beside_the_loose_ones(coll, world, read):
+    """#463: the packed record's missing, damaged and defects are loose; the in-set pair is at the end."""
+    coll.mark(world.copy_a, '3023', '15', missing=1, damaged=2)
+    with read() as db:
+        rows = collection.listing(db, 'P')
+    data = json.loads(payload(rows))
+    index = {name: i for i, name in enumerate(data['fields'])}
+    held = [r for r in data['rows'] if r.get(str(index['in_sets_damaged']))]
+    assert held and all(not r.get(str(index['damaged'])) and not r.get(str(index['defects'])) for r in held)
+    assert sum(r[str(index['in_sets_damaged'])] for r in held) == 2
+    assert any('2 damaged' in r.get(str(index['in_sets_defects']), '') for r in held)

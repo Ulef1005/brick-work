@@ -65,7 +65,7 @@ Every missing part row on a copy's page has **Found 1**. A row with more than on
 
 *Since 0.5.0.*
 
-On a figure's step, **Check figure parts** opens a check of that figure's own parts, if the catalogue lists them. Parts missing from a figure count on the figure, not on the set, so they do not change the set's missing count or completeness. **Done** takes you back to the set's figures.
+On a figure's step, **Check figure parts** opens a check of that figure's own parts, if the catalogue lists them. Parts missing from a figure count on the figure, not on the set, so they do not change the set's missing count or completeness. On the set's page, the figure's line names the missing parts in short, such as **Torso · Legs**. Point at the line to see the full catalogue names. The check itself lists the full names. **Done** takes you back to the set's figures.
 
 ## What next
 

@@ -15,7 +15,7 @@ from pathlib import Path
 from uuid import uuid4
 from urllib.parse import quote, urlencode
 
-from . import add, stock, collection_prices, errors, items, pictures
+from . import add, figure_parts, stock, collection_prices, errors, items, pictures
 from . import undo as undoing
 from .currency import configured_currency, display_currency
 from .admin import SYSTEM_FLAGS, audit, origin
@@ -700,6 +700,9 @@ def detail(db, item_id, *, colour=None, copy_id=None, stock_id=None, wish_id=Non
                      category=(names.get(line['item_id']) or {}).get('category_name'))
         if line.get('minifig'):
             entry['missing_part_names'] = list(dict.fromkeys((names.get(i) or {}).get('name') or str(i) for i in line['missing_part_ids']))
+            # #34: the line shows short body-part names, from the categories already fetched for the whole page.
+            entry['missing_part_short'] = figure_parts.short_names(
+                [((names.get(i) or {}).get('category_name'), (names.get(i) or {}).get('name') or str(i)) for i in dict.fromkeys(line['missing_part_ids'])])
         consists.append(entry)
     consists = decorate(db, consists)
     for entry in consists:

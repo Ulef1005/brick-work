@@ -35,6 +35,12 @@ def _stores(db):
     return ('main', 'catalogue') if has_catalogue(db) else ('main',)
 
 
+def is_guess(db, letter, number):
+    """Whether a `to_check` BrickLink link names this number: the only numbers the Unresolved screen may fetch a guess picture for."""
+    return any(db.execute(f"SELECT 1 FROM {store}.item_link WHERE provider='bricklink' AND provider_kind=? AND provider_key=? AND status='to_check' LIMIT 1",
+                          (letter, number)).fetchone() for store in _stores(db))
+
+
 def _candidates(db, item):
     """Items a local item may be: `[dict(item_id, how)]`, one per item, same kind, never a merged item.
 

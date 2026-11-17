@@ -45,7 +45,9 @@ The preview shows a **Lost Parts from Rebrickable** section before anything is w
 
 Nothing is cleared when Brick Work could not read the whole list. If Rebrickable could not be reached, or any row of the list could not be read, the preview says so and that pull clears nothing. The sets and wishes are pulled as usual.
 
-**Several copies of one set.** Rebrickable records a lost part against a set, not a copy. With exactly one copy of the set, the marks go to that copy. With several, the preview lists that set's lost parts and a chooser asks which copy to use. A set with no copy picked is left out, and the result lists it as **Choose a copy**. Sync again to pick one. Archived copies do not count. A copy this pull adds never gets marks.
+**Several copies of one set.** Rebrickable records a lost part against a set, not a copy. With exactly one copy of the set, the marks go to that copy. With several, the preview lists that set's lost parts and a chooser asks which copy to use. A set with no copy picked is left out, and the result lists it as **Choose a copy**. Sync again to pick one. Archived copies do not count. A copy this pull adds never gets marks. Each copy in the chooser says what choosing it would do, for example "adds 2, clears 1 mark".
+
+**A copy that changed after the preview.** The pull writes a copy only when its missing parts are still what the preview showed. If you changed them in between, that set is left out and the result says so. Preview the pull again.
 
 **Parts that cannot be matched.** A lost part is matched to a line of the copy by part and colour. Brick Work uses the numbers it knows for Rebrickable, so a copy on BrickLink's part list matches too. A spare part matches a spare line. Four cases are listed with the reason, never dropped. They are a part with no matching line, a count above the line's quantity, a set that is not in Brick Work, and a set with no copy yet. A set with a part that cannot be matched is not cleared, because the line it names may be one you marked.
 

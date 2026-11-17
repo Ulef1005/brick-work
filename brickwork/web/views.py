@@ -789,6 +789,12 @@ def bw_guess_picture_fetch():
     letter, number, colour = data.get('letter'), data.get('number'), data.get('colour')
     if not isinstance(letter, str) or not isinstance(number, str) or not isinstance(colour, int) or isinstance(colour, bool) or not guess_pictures.valid(letter, number, colour):
         return jsonify(error='Not a picture to fetch'), 400
+    # Only a number that is an open guess is fetched, so the endpoint cannot be used to fill the media folder with other pictures.
+    from ..core import identity_admin
+    from ..core.admin import database
+    with database(brickwork_path(), read_only=True, require_catalogue=False) as rdb:
+        if not identity_admin.is_guess(rdb, letter, number):
+            return jsonify(error='Not a picture to fetch'), 400
     state, _ = guess_pictures.fetch(root_for(brickwork_path()), letter, number, colour)
     return jsonify(state=state, url=url_for('web.bw_guess_picture', letter=letter, number=number, colour=colour) if state == 'ready' else None)
 

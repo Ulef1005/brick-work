@@ -155,7 +155,9 @@ def test_the_cache_asks_the_allowed_host_once_and_remembers_a_failure(pair):
 def test_the_fetch_endpoint_needs_the_token_and_fills_the_cache_without_the_network(coll, client, world, monkeypatch):
     calls = []
     monkeypatch.setattr(images, 'transport', lambda request: calls.append(request.full_url) or png())
+    guesses(coll, world)
     token = csrf(client)
+    assert client.post('/manage/guess-pictures', json=dict(letter='M', number='sw0001', colour=0, csrf_token=token)).status_code == 400   # not an open guess
     assert client.post('/manage/guess-pictures', json=dict(letter='M', number='nex025', colour=0)).status_code == 400
     assert client.post('/manage/guess-pictures', json=dict(letter='M', number='nex025', colour=0, csrf_token='wrong')).status_code == 400
     assert client.post('/manage/guess-pictures', json=dict(letter='M', number='../x', colour=0, csrf_token=token)).status_code == 400

@@ -405,3 +405,55 @@ def test_the_rule_in_the_api_body_and_the_cli(store, tmp_path, monkeypatch):
     assert admin.settings(store)['rebrickable_lost_parts_rule'] == 'per_set'
     with pytest.raises(errors.ValidationFailed):
         admin_ops.settings_set('rebrickable_lost_parts_rule', 'nope')
+
+
+# Review fixes (2026-11-17) ---------------------------------------------------------------------
+
+def test_fingerprint_is_the_edits_as_plain_data():
+    assert lost_parts.fingerprint(dict(trail=[['p:9', 2, 0], ['p:3', 0, 2]])) == [['p:3', 0, 2], ['p:9', 2, 0]]
+
+
+def test_a_mark_made_after_the_preview_is_not_cleared(store):
+    """Review P1: the pull writes a copy only when the copy still gives the edits the preview showed."""
+    one, two, remote = scenario(store)
+    plan = planned(store, remote, 'per_set')
+    line = store.execute('SELECT p.id FROM copy_part p JOIN item i ON i.id=p.item_id WHERE p.copy_id=? AND p.copy_figure_id IS NULL AND i.born_key=? AND p.is_spare=0',
+                         (one, '3023')).fetchone()[0]
+    checker.mark(store, one, [('p:%d' % line, dict(missing=1, checked=True))])           # 2 missing at the preview, 1 now
+    before = marks(store, one)
+    result = sync.apply_pull(store, plan['id'], [])
+    assert marks(store, one) == before                                           # the new mark and the old ones stay
+    receipt = json.loads(store.execute('SELECT new_value FROM event WHERE id=?', (result['event_id'],)).fetchone()[0])['lost']
+    assert receipt['skipped'] == [dict(set_no='1000-1', reason='The missing parts of this copy changed since the preview. Preview the pull again')]
+    assert not receipt['events']
+
+
+def test_the_copy_chooser_says_what_each_copy_would_change(store):
+    """Review P2: a set with several copies has a preview per copy, shown on the option, and a changed copy is skipped at apply."""
+    copies, row = two_copies_line(store)
+    plan = planned(store, Remote([row]))
+    entry = plan['lost']['sets'][0]
+    assert set(entry['previews']) == set(copies) and all(p['added'] == 1 and p['cleared'] == 0 for p in entry['previews'].values())
+    assert [c['effect'] for c in entry['copies']] == ['adds 1', 'adds 1']
+    line = store.execute('SELECT id FROM copy_part WHERE copy_id=? AND copy_figure_id IS NULL AND retired_at IS NULL AND is_spare=0 ORDER BY id LIMIT 1', (copies[1],)).fetchone()[0]
+    checker.mark(store, copies[1], [('p:%d' % line, dict(missing=1, checked=True))])      # the pick's own line changes after the preview
+    result = sync.apply_pull(store, plan['id'], [], picks={'2070-1': copies[1]})
+    receipt = json.loads(store.execute('SELECT new_value FROM event WHERE id=?', (result['event_id'],)).fetchone()[0])['lost']
+    assert [s['set_no'] for s in receipt['skipped']] == ['2070-1'] and not receipt['events']
+
+
+def test_two_remote_rows_for_one_line_are_one_count(store):
+    """Review P2: rows that resolve to the same line (an item with several Rebrickable numbers) are summed, never two edits on one line."""
+    one = copy_of(store, '1000-1')
+    index = lost_parts._lines(store, one)[1]
+    key, lines = next((k, v) for k, v in index.items() if not k[2] and len(v) == 1 and v[0]['quantity'] >= 3)
+    alias = dict(index)
+    alias[('alias-number', key[1], False)] = lines
+    rows = [dict(part_no=key[0], color_id=int(key[1]), is_spare=False, quantity=2), dict(part_no='alias-number', color_id=int(key[1]), is_spare=False, quantity=1)]
+    original = lost_parts._lines
+    lost_parts._lines = lambda db, copy_id: (original(db, copy_id)[0], alias)
+    try:
+        result = lost_parts.changes(store, one, rows, 'add_only')
+    finally:
+        lost_parts._lines = original
+    assert result['edits'] == [('p:%d' % lines[0]['id'], dict(missing=3, checked=True))] and len(result['added']) == 1

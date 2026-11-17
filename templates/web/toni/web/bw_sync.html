@@ -134,7 +134,7 @@
 <div class="sy-id"><span class="mono">{{ e.number }}{% if e.set_no != e.number %} · {{ label }} {{ e.set_no }}{% endif %}</span><strong>{{ e.name or 'Name not recorded' }}</strong><span class="sy-kind">Lost Parts</span></div>
 <div class="sy-state">{% if e.state == 'pick' %}{{ pill('warning', 'Choose a copy') }}<span class="mono sy-counts">{{ e.parts }} {{ 'part' if e.parts == 1 else 'parts' }} · {{ e.pieces }} {{ 'piece' if e.pieces == 1 else 'pieces' }}</span>
 {% else %}{{ pill('info', 'Lost Parts') }}<span class="mono sy-counts">{{ pv.added }} added · {{ pv.replaced }} replaced{% if pv.cleared %} · {{ pv.cleared }} cleared{% endif %}</span>{% endif %}</div>
-<div class="sy-do">{% if e.state == 'pick' %}<label class="sy-pick"><span>Mark the parts on</span><select name="copy:{{ e.set_no }}" data-sy-pick><option value="">Choose a copy</option>{% for c in e.copies %}<option value="{{ c.id }}">{{ c.label }}</option>{% endfor %}</select></label>
+<div class="sy-do">{% if e.state == 'pick' %}<label class="sy-pick"><span>Mark the parts on</span><select name="copy:{{ e.set_no }}" data-sy-pick><option value="">Choose a copy</option>{% for c in e.copies %}<option value="{{ c.id }}">{{ c.label }}{% if c.effect %} · {{ c.effect }}{% endif %}</option>{% endfor %}</select></label>
 {% elif pv.added or pv.replaced or pv.cleared %}<label class="sy-tick"><input type="checkbox" name="lost" value="{{ e.set_no }}" checked data-sy-tick><span>Mark {{ pv.added + pv.replaced }} {{ 'part' if pv.added + pv.replaced == 1 else 'parts' }}{% if pv.cleared %}, clear {{ pv.cleared }}{% endif %}</span></label>
 {% else %}<span class="sy-muted">Nothing to change</span>{% endif %}</div>
 <ul class="sy-lost-list">

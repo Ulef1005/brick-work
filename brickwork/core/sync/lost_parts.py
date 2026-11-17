@@ -86,12 +86,15 @@ def changes(db, copy_id, rows, how, *, clear_set=False):
     that clears is passed as `per_part` when clearing is off). `clear_set` is true when the rule clears this set's other marks. A set with an
     unmatched lost part is not cleared (`not_cleared` says so): the line it names may be one that is marked here."""
     lines, index = _lines(db, copy_id)
-    out = dict(edits=[], added=[], replaced=[], cleared=[], unmatched=[], same=0, not_cleared=None)
+    out = dict(edits=[], trail=[], added=[], replaced=[], cleared=[], unmatched=[], same=0, not_cleared=None)
     listed = set()
 
     def record(bucket, line, part_no, colour, after):
         out[bucket].append(dict(part_no=part_no, color_id=colour, is_spare=bool(line['is_spare']), before=line['missing'], after=after))
         out['edits'].append(('p:%d' % line['id'], dict(missing=after, checked=True) if after else dict(missing=0)))
+        out['trail'].append(['p:%d' % line['id'], line['missing'], after])
+    # An item can have several Rebrickable numbers, so two lost rows can name one line: they are one lost count on that line, never two edits.
+    resolved = {}
     for row in rows:
         key = (row['part_no'], str(row['color_id']), bool(row['is_spare']))
         found = index.get(key, [])
@@ -103,6 +106,12 @@ def changes(db, copy_id, rows, how, *, clear_set=False):
             out['unmatched'].append(dict(shown, reason='Several lines of the copy match this part and colour'))
             continue
         line = found[0]
+        if line['id'] in resolved:
+            resolved[line['id']][1]['quantity'] += row['quantity']
+        else:
+            resolved[line['id']] = (line, dict(row))
+    for line, row in resolved.values():
+        shown = dict(part_no=row['part_no'], color_id=row['color_id'], is_spare=bool(row['is_spare']), quantity=row['quantity'])
         listed.add(line['id'])
         if row['quantity'] > line['quantity']:
             out['unmatched'].append(dict(shown, reason=f"Rebrickable lost {row['quantity']} but the copy's line holds {line['quantity']}"))
@@ -125,7 +134,14 @@ def changes(db, copy_id, rows, how, *, clear_set=False):
                     part_no = sorted(numbers.get(line['item_id'], {''}))[0]
                     out['cleared'].append(dict(part_no=part_no, color_id=None, is_spare=bool(line['is_spare']), before=line['missing'], after=0))
                     out['edits'].append(('p:%d' % line['id'], dict(missing=0)))
+                    out['trail'].append(['p:%d' % line['id'], line['missing'], 0])
     return out
+
+
+def fingerprint(result):
+    """The edits of one `changes` result as plain data, `[line token, missing before, missing after]`: the plan keeps it, and the apply writes a copy only when the copy still gives the same
+    edits, so a mark made after the preview is never cleared by a pull that did not show it."""
+    return sorted(result['trail'])
 
 
 def short(result):
@@ -195,13 +211,23 @@ def plan_section(db, read, owned_numbers, translate, *, how, on):
             entry['state'] = 'pick'
             entry['lost'] = [dict(part_no=r['part_no'], color_id=r['color_id'], quantity=r['quantity'], is_spare=r['is_spare']) for r in mine]
             summary['pick'] += 1
+            # What choosing each copy would do, so the chooser says what it clears before the pull and the apply can tell a changed copy.
+            entry['previews'] = {}
+            for c, shown_copy in zip(held, entry['copies']):
+                result = changes(db, c['id'], mine, effective, clear_set=clears(effective, bool(mine)))
+                entry['previews'][c['id']] = dict(short(result), fingerprint=fingerprint(result))
+                words = [w for w in ('adds %d' % len(result['added']) if result['added'] else '',
+                                     'replaces %d' % len(result['replaced']) if result['replaced'] else '',
+                                     'clears %d %s' % (len(result['cleared']), 'mark' if len(result['cleared']) == 1 else 'marks') if result['cleared'] else '',
+                                     '%d not matched' % len(result['unmatched']) if result['unmatched'] else '') if w]
+                shown_copy['effect'] = ', '.join(words) or 'no change'
         else:
             entry['copy_id'] = held[0]['id']
             result = changes(db, held[0]['id'], mine, effective, clear_set=clears(effective, bool(mine)))
             nothing = not (result['added'] or result['replaced'] or result['cleared'] or result['unmatched'])
             if nothing:
                 continue
-            entry['preview'] = dict(short(result), unmatched_list=result['unmatched'], not_cleared=result['not_cleared'],
+            entry['preview'] = dict(short(result), fingerprint=fingerprint(result), unmatched_list=result['unmatched'], not_cleared=result['not_cleared'],
                                     parts=result['added'] + result['replaced'], cleared_list=result['cleared'])
             for name in ('added', 'replaced', 'cleared', 'cleared_pieces', 'unmatched'):
                 summary[name] += entry['preview'][name]
@@ -252,6 +278,10 @@ def apply(db, section, ticked, picks, *, new_copies=()):
             copy_id = entry['copy_id']
         mine = grouped.get(number, [])
         result = changes(db, copy_id, mine, how, clear_set=clears(how, bool(mine)))
+        previewed = (entry.get('previews') or {}).get(copy_id) if entry['state'] == 'pick' else entry.get('preview')
+        if previewed is not None and 'fingerprint' in previewed and [list(e) for e in previewed['fingerprint']] != fingerprint(result):
+            report['skipped'].append(dict(set_no=number, reason='The missing parts of this copy changed since the preview. Preview the pull again'))
+            continue
         report['unmatched'] += [dict(u, set_no=number) for u in result['unmatched']]
         if result['edits']:
             report['events'].append(checker.mark(db, copy_id, result['edits']))

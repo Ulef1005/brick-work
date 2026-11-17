@@ -587,7 +587,8 @@
    "world": "demo",
    "path": "/workbench/build-scout?min_percent=0",
    "built": true,
-   "approved": true
+   "approved": false,
+   "script": "document.querySelector('.bs-more').open=true;await new Promise(r=>setTimeout(r,300));"
   },
   {
    "screen": "27-Matcher",

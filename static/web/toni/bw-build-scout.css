@@ -25,11 +25,11 @@ summary.bs-fbtn { cursor: pointer; }
 .bs-fields { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; }
 .bs-more-summary { display: none; }
 .bs label { text-transform: none; letter-spacing: normal; font-size: 14px; line-height: 20px; }
-.bs label.bs-fbtn { flex: 0 0 auto; min-height: 36px; }
+.bs label.bs-fbtn { flex: 0 0 auto; min-height: 44px; }
 .bs label.bs-check { flex: 0 0 auto; min-height: 36px; }
 .bs-field { display: inline-flex; align-items: center; gap: 6px; }
-.bs .bs-field input:not([type=checkbox]):not([type=radio]) { width: 64px; min-height: 28px; padding: 0 4px; border: 0; border-bottom: 0.5px solid var(--tw-divider-strong); background: transparent; border-radius: 0; font-size: 14px; }
-.bs .bs-field input[type=text] { width: 110px; }
+.bs .bs-field input:not([type=checkbox]):not([type=radio]) { width: 64px; min-height: 40px; padding: 0 4px; border: 0; border-bottom: 0.5px solid var(--tw-divider-strong); background: transparent; border-radius: 0; font-size: 14px; }
+.bs .bs-field input[type=text]:not([type=checkbox]):not([type=radio]) { width: min(200px, 46vw); }
 .bs .bs-field input:focus-visible { outline: 2px solid var(--tw-focus-color); outline-offset: 2px; }
 .bs-sort { color: var(--tw-text-muted); }
 

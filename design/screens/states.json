@@ -1022,7 +1022,7 @@
    "world": "demo",
    "path": "/manage/settings",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "50-Tools-and-admin-pages",

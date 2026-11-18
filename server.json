@@ -2,7 +2,7 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.ulef1005/brick-work",
   "title": "Brick Work",
-  "description": "Read your brick collection through your own Brick Work install: sets, loose parts, missing parts, storage and wishes. Write tools are off unless you enable them.",
+  "description": "Ask an assistant about your brick collection through your own Brick Work install.",
   "repository": {
     "url": "https://github.com/Ulef1005/brick-work",
     "source": "github"
@@ -16,6 +16,7 @@
       "transport": {
         "type": "stdio"
       },
+      "runtimeHint": "docker",
       "runtimeArguments": [
         {
           "type": "named",

@@ -59,3 +59,5 @@ tests/test_site_pages.py	BrickTracker|\bbricktracker\b	Site tests name the comin
 CHANGELOG.md	a page each for Rebrickable or Brickset, BrickLink, BrickTracker and another app	Changelog entry of the website coming-from pages (#345): the retained importer's source name.
 README.md	Import from Brickset, Rebrickable and BrickTracker	Tracker-user section: the sources the importers bring a collection over from, the retained importer included.
 docs/index.md	\[BrickTracker\]\(https://gitea\.baerentsen\.space/FrederikBaerentsen/BrickTracker\)	Docs home: names the self-hosted tracker Brick Work grew from, as the README did.
+server.json	host\.docker\.internal	Docker's standard name for the host computer, used by the MCP Registry entry to reach the running install.
+docs/brickwork/mcp.md	host\.docker\.internal	The same Docker host name, in the MCP guide section for the registry entry.

@@ -26,3 +26,9 @@ def test_server_json_runs_the_brickwork_command_over_stdio():
 def test_image_label_matches_the_server_name():
     label = f'LABEL io.modelcontextprotocol.server.name="{SERVER["name"]}"'
     assert label in (ROOT / "Dockerfile").read_text().splitlines()
+
+
+def test_server_json_fits_the_registry_schema_limits():
+    assert len(SERVER["description"]) <= 100 and len(SERVER["title"]) <= 100   # maxLength in the registry's server.schema.json
+    (package,) = SERVER["packages"]
+    assert package["runtimeHint"] == "docker"   # the schema asks for a hint whenever runtimeArguments are present

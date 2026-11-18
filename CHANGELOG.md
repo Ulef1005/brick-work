@@ -2,7 +2,9 @@
 
 ## Unreleased
 
-- **Listed in the MCP Registry** (#477). The repository has a `server.json` for the registry, and the image carries the matching `io.modelcontextprotocol.server.name` label. The entry starts `brickwork mcp` from the published image and talks to your running install. The listing itself is published after the release. The README no longer promises a pile check by photo (#478); it is built only on request (#77).
+- **Ready for the MCP Registry** (#477). The repository has a `server.json` for the registry, and the image carries the matching `io.modelcontextprotocol.server.name` label. The entry starts `brickwork mcp` from the published image and talks to your running install. The listing goes up after this release.
+
+- **The README no longer promises a pile check by photo** (#478). It is built only on request (#77).
 
 - **Build Scout's filter fields are easier to hit.** The Theme field and the other filter fields in Build Scout are now 44 pixels tall and the Theme field is wider, so it is easy to tap on a phone.
 

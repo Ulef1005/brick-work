@@ -38,9 +38,13 @@ In an assistant's MCP settings this is one server entry: the command `brickwork`
 
 ### From the MCP Registry (Docker)
 
-Brick Work is listed in the MCP Registry as `io.github.ulef1005/brick-work`. The entry starts the published image over stdio and talks to the Brick Work that already runs on your computer.
+Brick Work's entry in the MCP Registry is `io.github.ulef1005/brick-work`. It starts the published image over stdio and talks to the Brick Work that already runs on your computer.
 
-It runs `brickwork mcp` in the container, reads the token from a file you mount read only, and reaches the app at `http://host.docker.internal:3333/api/v2`. Change that address if your install listens elsewhere.
+It runs `brickwork mcp` in the container, reads the token from the file you mount read-only (your `data/mcp-token`), and reaches the app at `http://host.docker.internal:3333/api/v2`. Change that address if your install listens elsewhere.
+
+On Docker Desktop that address reaches an install published on `127.0.0.1`. On Linux it reaches the Docker bridge instead, so the install must listen there, or use the address of your computer.
+
+The container runs as user 1000, so that user must be able to read the token file.
 
 <!-- vale Google.Headings = NO -->
 ### Over the network (HTTP)

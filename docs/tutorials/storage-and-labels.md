@@ -49,7 +49,7 @@ Under **Address on the codes** the sheet shows where the QR codes lead, as *addr
 If the address uses localhost or a bare IP number, the sheet warns **This address uses localhost or a bare IP. Your phone may not open it.** A code printed now would only work on the computer that runs Brick Work.
 
 1. Select **Change** next to the address. This opens **Tools & Admin → Settings**.
-2. Under **Address for labels**, enter an address your phone can open, for example *https://bricks.example*. Use HTTP or HTTPS, with no path. Select **Save**.
+2. Under **Address on printed labels**, enter an address your phone can open, for example *https://bricks.example*. Use HTTP or HTTPS, with no path. Select **Save**.
 3. Go back to **Workbench → Storage** and open the label sheet again. The warning is gone.
 
 Leave the setting empty to use the address you opened Brick Work on.

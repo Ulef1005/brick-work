@@ -170,9 +170,18 @@ main .bw-chips a[aria-current=page]{background:var(--tw-accent-soft);color:var(-
 .bw-refresh-line{font:400 13px/18px var(--tw-font);color:var(--tw-text-2)}
 .bw-refresh-cell.bw-refresh-cell :where(a.button,button){width:100%;padding:0 8px;white-space:nowrap;font-size:14px}
 .bw-refresh-cell.bw-refresh-cell a.button.primary{background:var(--tw-accent);border-color:var(--tw-accent);color:#1A1816;font-weight:600}
-.bw-refresh-cell.bw-refresh-cell button.bw-outline{background:transparent;border-color:var(--tw-accent);color:var(--tw-accent-text)}
+.bw-refresh-cell.bw-refresh-cell :where(a.button,button).bw-outline{background:transparent;border-color:var(--tw-accent);color:var(--tw-accent-text)}
 .bw-refresh-cell.bw-refresh-cell button.bw-outline:disabled{opacity:.5}
-.bw-set-groups{display:grid;grid-template-columns:minmax(0,1fr);gap:8px 40px;align-items:start}
+/* #460 · Tools & Admin: the Refresh block spans the page, groups carry a hint, Maintenance and the expert Settings section are disclosures. */
+.bw-hub-wide{grid-column:1/-1}
+.bw-hub .bw-refresh{max-width:none;padding:14px}
+.bw-refresh-off{margin:8px 0 0;font:400 13px/18px var(--tw-font);color:var(--tw-text-2)}
+.bw-hub-hint{margin:0 0 8px;font:400 13px/18px var(--tw-font);color:var(--tw-text-muted)}
+html[data-web-ui="toni"] details.bw-hub-more>summary,html[data-web-ui="toni"] details.bw-set-expert>summary{min-height:52px}
+.bw-hub-more-body{display:grid;grid-template-columns:minmax(0,1fr)}
+@media(min-width:900px){.bw-hub-more-body{grid-template-columns:repeat(2,minmax(0,1fr));gap:0 40px}}
+.bw-tag{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:99px;background:var(--tw-divider);color:var(--tw-text);font:400 11px/16px var(--tw-font);letter-spacing:0;text-transform:none;vertical-align:middle}
+.bw-set-groups{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;max-width:720px}
 .bw-set-group{display:flex;flex-direction:column;min-width:0}
 .bw-set-group>.bw-label{padding:14px 0 8px;margin:0}
 .bw-set-rules{border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:4px}
@@ -193,7 +202,6 @@ html[data-web-ui="toni"] details.bw-set>.bw-set-body{padding:4px 0 16px;border:0
 .bw-set-body form{margin-top:12px}
 .bw-set-body input:not([type=checkbox]):not([type=radio]),.bw-set-body select{max-width:100%;box-sizing:border-box}
 .bw-set-body .actions{margin-top:16px}
-@media(min-width:900px){.bw-set-groups{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .bw-set-body>*+*{margin-top:12px}
 .bw-set-body h3{margin:16px 0 4px}
 .bw-set-body p{margin-block:0}

@@ -404,55 +404,27 @@ def test_stale_freshness_and_archives(coll, world):
     assert keep() == []
 
 
-def test_settings_opens_with_the_two_refreshes(client, coll, world):
-    """#460: the Refresh card is first, two cells with a number and a line each; Refresh prices is the page's one primary button."""
-    soup = BeautifulSoup(client.get('/manage/settings').data, 'html.parser')
-    first = soup.select('section.bw-card')[0]
-    assert first['id'] == 'refresh'
-    cells = first.select('.bw-refresh-cell')
-    stale = len({r['item_id'] for r in admin.stale_prices(coll.db)})
-    missing = sum(r['missing'] for r in admin_ops.tools_read('settings')['pictures']['summary'])
-    assert [c.select_one('.bw-refresh-num').get_text() for c in cells] == [str(stale), str(missing)]
-    assert cells[0].select_one('.bw-refresh-line').get_text() == ('price' if stale == 1 else 'prices') + ' out of date'
-    assert cells[1].select_one('.bw-refresh-line').get_text() == ('picture' if missing == 1 else 'pictures') + ' missing'
-    prices = cells[0].select_one('a.button.primary')
-    assert prices.get_text(strip=True) == 'Refresh prices' and prices['href'].endswith('/manage/refresh')
-    opener = cells[1].select_one('button[data-picture-open]')
-    assert opener.get_text(strip=True) == 'Refresh pictures' and 'primary' not in opener['class'] and not opener.has_attr('disabled')
-    assert len(soup.select('[data-picture-open]')) == 1 and soup.select_one('#pictures a[href="#refresh"]')
-    assert [b for b in soup.select('main .primary') if not b.find_parent('dialog')] == [prices]
-    assert first.select_one('dialog[data-picture-dialog]')
+ROWS = [('Money and prices', [('currencies', 'Display currency and rates'), ('retail-country', 'Country for retail prices')]),
+        ('Sets and parts', [('part-list-grouping', 'Group parts by'), ('part-lists', 'Part list for a new set'), ('sync', 'Lost Parts from Rebrickable')]),
+        ('Labels and instructions', [('labels-address', 'Address on printed labels'), ('instruction-downloads', 'Largest instruction download')]),
+        ('Where data comes from for experts', [('pictures', 'Pictures you have'), ('picture-priority', 'Where pictures come from'),
+                                               ('source-priority', 'Where set details and prices come from'), ('freshness', 'When data counts as out of date')])]
 
 
-def test_settings_singular_refresh_wording(client, coll, world, monkeypatch):
-    real = admin_ops.tools_read
-    def one(page, group=None):
-        data = real(page, group)
-        if page == 'settings':
-            data = {**data, 'stale': 1, 'pictures': {**data['pictures'], 'summary': [{**r, 'missing': 0} for r in data['pictures']['summary']][:1] + [{**data['pictures']['summary'][1], 'missing': 1}] + [{**r, 'missing': 0} for r in data['pictures']['summary'][2:]]}}
-        return data
-    monkeypatch.setattr(admin_ops, 'tools_read', one)
-    soup = BeautifulSoup(client.get('/manage/settings').data, 'html.parser')
-    assert [c.select_one('.bw-refresh-line').get_text() for c in soup.select('.bw-refresh-cell')] == ['price out of date', 'picture missing']
-
-
-ROWS = [('Everyday', [('currencies', 'Display currency'), ('retail-country', 'Retail country'), ('part-lists', 'Part lists'), ('labels-address', 'Address for labels')]),
-        ('Sources and freshness', [('pictures', 'Pictures'), ('picture-priority', 'Picture source order'), ('source-priority', 'Source priority'),
-                                   ('freshness', 'Freshness'), ('instruction-downloads', 'Instruction downloads')]),
-        ('Sync', [('sync', 'Lost Parts from Rebrickable')])]
-
-
-def test_settings_is_three_groups_of_ten_exclusive_rows_with_their_summaries(client, coll, world):
+def test_settings_is_four_sections_of_eleven_exclusive_rows_with_their_summaries(client, coll, world):
     seed(coll)
     soup = BeautifulSoup(client.get('/manage/settings').data, 'html.parser')
     groups = soup.select('.bw-set-groups > .bw-set-group')
-    assert [(g.select_one('h2').get_text(), [(d['id'], d.select_one('.bw-set-title').get_text()) for d in g.select('details.bw-set')]) for g in groups] == ROWS
+    assert [(g.select_one('h2').get_text(' ', strip=True), [(d['id'], d.select_one('.bw-set-title').get_text()) for d in g.select('details.bw-set')]) for g in groups] == ROWS
+    assert [g.get('id') for g in groups[:3]] == ['set-money', 'set-parts', 'set-labels'] and soup.select_one('details#set-sources') and not soup.select_one('details#set-sources').has_attr('open')
+    assert not soup.select('#refresh, [data-picture-open], [data-picture-dialog]') and 'Refresh prices' not in soup.get_text()          # the refreshes are on Tools & Admin
     rows = soup.select('details.bw-set')
-    assert len(rows) == 10 and {d['name'] for d in rows} == {'bw-settings'} and not [d for d in rows if d.has_attr('open')]
+    assert len(rows) == 11 and {d['name'] for d in rows} == {'bw-settings'} and not [d for d in rows if d.has_attr('open')]
+    assert len(soup.select('form#bw-settings-form')) == 1
     summary = admin_ops.settings_summaries({**admin_ops.tools_read('settings'), 'currency': {'display': 'EUR', 'rates': []}, 'labels_address': ''})
     shown = {d['id']: d.select_one('.bw-set-value').get_text() for d in rows}
     assert shown['currencies'] == 'EUR · no rates yet' and shown['retail-country'] == 'DE' and shown['labels-address'] == 'Uses the request address'
-    assert shown['part-lists'] == "Rebrickable's list first · grouped by category"
+    assert shown['part-lists'] == "Rebrickable's list first" and shown['part-list-grouping'] == 'Grouped categories'
     assert re.fullmatch(r'[\d,]+ with a picture · [\d,]+ without', shown['pictures'])
     assert shown['picture-priority'] == 'Rebrickable catalogue, BrickLink, Rebrickable API' and shown['source-priority'] == 'Default order'
     assert shown['freshness'] == summary['freshness'] and shown['instruction-downloads'] == 'Up to 500 MB per file'
@@ -460,6 +432,8 @@ def test_settings_is_three_groups_of_ten_exclusive_rows_with_their_summaries(cli
     assert [i['value'] for i in soup.select('#sync input[name=rebrickable_lost_parts_rule]')] == ['add_only', 'per_part', 'per_set', 'everything']
     assert soup.select_one('#sync input[checked]')['value'] == 'per_part' and soup.select_one('#sync input')['form'] == 'bw-settings-form'
     assert set(summary) == {d['id'] for d in rows}
+    text = soup.get_text(' ')
+    assert 'metadata' not in text.lower() and 'market price' not in text.lower()          # visible words: set details, prices
 
 
 def test_settings_summaries_from_the_data():
@@ -471,13 +445,15 @@ def test_settings_summaries_from_the_data():
                            {'source': 'bricklink', 'kind': 'pictures', 'max_age_days': None}, {'source': 'x', 'kind': 'prices', 'max_age_days': 1}])
     summary = admin_ops.settings_summaries(data)
     assert summary['currencies'] == 'USD · 3 rates, ECB 14 Nov' and summary['retail-country'] == 'US'
-    assert summary['part-lists'] == "BrickLink's list preferred · not grouped" and summary['labels-address'] == 'https://bricks.example'
+    assert summary['part-lists'] == "BrickLink's list preferred" and summary['part-list-grouping'] == 'No grouping' and summary['labels-address'] == 'https://bricks.example'
     assert summary['pictures'] == '4,812 with a picture · 12 without' and summary['picture-priority'] == 'BrickLink, Rebrickable API'
     assert summary['source-priority'] == 'Default order' and summary['instruction-downloads'] == 'Up to 40 MB per file'
-    assert summary['freshness'] == 'Prices 1 to 30 days · metadata 365 days'
+    assert summary['freshness'] == 'Prices 1 to 30 days · set details 365 days'
     data['priority'] = {**data['priority'], 'metadata': {'set': ['bricklink'], 'part': ['brickset']}, 'market_price': {'*': ['brickset']}}
     assert admin_ops.settings_summaries(data)['source-priority'] == 'Changed for 3 kinds'
     data['priority'] = {**data['priority'], 'metadata': {'set': ['brickset']}, 'market_price': {'*': ['bricklink']}}
+    data['part_list_grouping'], data['part_group_overrides'] = 'grouped', {'Plate, Round': 'Bricks', 'Tile': 'Bricks'}
+    assert admin_ops.settings_summaries(data)['part-list-grouping'] == 'Grouped categories · 2 moved'
     data['currency'] = {'display': 'EUR', 'rates': [{'currency': 'USD', 'as_of': '2026-11-14', 'source': 'ecb'}]}
     assert admin_ops.settings_summaries(data)['currencies'] == 'EUR · 1 rate, ECB 14 Nov'
 
@@ -485,9 +461,16 @@ def test_settings_summaries_from_the_data():
 def test_settings_rows_keep_the_ids_links_point_to(client, coll, world):
     soup = BeautifulSoup(client.get('/manage/settings').data, 'html.parser')
     for anchor, row in {'currencies': 'currencies', 'labels-address': 'labels-address', 'pictures': 'pictures', 'part-lists': 'part-lists',
-                        'part-list-grouping': 'part-lists', 'edit-grouping': 'part-lists', 'picture-priority': 'picture-priority', 'freshness': 'freshness'}.items():
+                        'part-list-grouping': 'part-list-grouping', 'edit-grouping': 'part-list-grouping', 'picture-priority': 'picture-priority',
+                        'freshness': 'freshness', 'sync': 'sync', 'retail-country': 'retail-country', 'instruction-downloads': 'instruction-downloads',
+                        'source-priority': 'source-priority'}.items():
         assert soup.select_one('details.bw-set#' + row).select_one('#' + anchor) or anchor == row
+    for anchor in ('currencies', 'labels-address', 'pictures', 'part-lists', 'part-list-grouping', 'edit-grouping', 'picture-priority', 'freshness', 'sync',
+                   'set-money', 'set-parts', 'set-labels', 'set-sources'):
+        assert len(soup.select('[id="' + anchor + '"]')) == 1, anchor               # every anchor a link points to is on the page once
     assert soup.select_one('#pictures a[href="#picture-priority"]')
+    assert soup.select_one('#pictures a[href$="/manage/tools#refresh"]')           # Refresh pictures now lives on Tools & Admin
+    assert [r.find_parent('details', id='set-sources')['id'] for r in soup.select('details.bw-set') if r['id'] in ('pictures', 'picture-priority', 'source-priority', 'freshness')] == ['set-sources'] * 4
 
 
 def test_settings_big_form_saves_from_a_row_and_opens_that_row_again(client, coll, world):
@@ -538,11 +521,10 @@ def test_settings_read_only_shows_the_rows_without_forms(app4, client, coll, wor
     app4.config['BW_READ_ONLY'] = True
     try:
         soup = BeautifulSoup(client.get('/manage/settings').data, 'html.parser')
-        assert len(soup.select('details.bw-set')) == 10 and soup.select_one('#currencies .bw-set-value').get_text()
+        assert len(soup.select('details.bw-set')) == 11 and soup.select_one('#currencies .bw-set-value').get_text()
         assert not soup.select('form#bw-settings-form') and not soup.select('button[form=bw-settings-form]')
         assert [f['class'] for f in soup.select('details.bw-set form')] == [['bwc-switch-form']]              # the part-list switch, as before, with its controls disabled
         assert all(c.has_attr('disabled') for c in soup.select('details.bw-set form button, details.bw-set form input[type=checkbox]'))
-        assert soup.select_one('button[data-picture-open]').has_attr('disabled')
     finally:
         app4.config['BW_READ_ONLY'] = False
 
@@ -552,20 +534,21 @@ def test_refresh_pictures_queues_one_job_per_item_and_checks_the_estimate(client
     matrix = pictures.matrix(coll.db)
     sets = matrix['set']['missing']
     assert sets['count'] == 3 and sets['unresolved'] == 0 and matrix['gear']['all']['unresolved'] == 1 and matrix['?']['all'] == dict(count=0, unresolved=0, unknown_colour=0)
-    soup = BeautifulSoup(client.get('/manage/settings').data, 'html.parser')
+    soup = BeautifulSoup(client.get('/manage/tools').data, 'html.parser')
     assert json.loads(soup.select_one('[data-picture-counts]').string)['set']['all']['count'] == 3
+    assert soup.select_one('[data-picture-form]')['action'].endswith('/manage/hub')
     assert {i['value'] for i in soup.select('input[name=types]')} >= {'set', 'part', 'minifigure'}
     # A stale estimate is refused whole; nothing is queued.
-    response = post(client, 'settings', action='pictures', scope='missing', types=['set'], expected_count='99')
+    response = post(client, 'hub', action='pictures', scope='missing', types=['set'], expected_count='99')
     assert 'Picture refresh · 3 items now match, not 99' in response.get_data(as_text=True)
     assert coll.db.execute('SELECT count(*) FROM job').fetchone()[0] == 0
-    response = post(client, 'settings', action='pictures', scope='missing', types=['set'], expected_count='3')
+    response = post(client, 'hub', action='pictures', scope='missing', types=['set'], expected_count='3')
     assert 'picture jobs queued for 3 items' in response.get_data(as_text=True)
     jobs = coll.db.execute("SELECT j.id,s.name FROM job j JOIN job_step s ON s.job_id=j.id WHERE j.kind='item'").fetchall()
     assert len(jobs) == 3 and {j['name'] for j in jobs} == {'pictures'}
-    post(client, 'settings', action='pictures', scope='missing', types=['set'])
+    post(client, 'hub', action='pictures', scope='missing', types=['set'])
     assert coll.db.execute('SELECT count(*) FROM job').fetchone()[0] == 3          # each item has a live pictures job: none is queued twice
-    assert post(client, 'settings', action='pictures', scope='all', types=[]).status_code == 200
+    assert post(client, 'hub', action='pictures', scope='all', types=[]).status_code == 200
     assert coll.db.execute('SELECT count(*) FROM job').fetchone()[0] == 3
 
 

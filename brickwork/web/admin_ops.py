@@ -364,7 +364,7 @@ def tools_read(page, group=None):
         if page == 'settings':
             from ..core import part_groups, pictures
             from ..core.sync import lost_parts
-            return {**admin.settings(db), 'lost_parts_rules': lost_parts.RULES, 'stale': len({r['item_id'] for r in admin.stale_prices(db)}), 'pictures': {**pictures.state(db), 'matrix': pictures.matrix(db)}, 'bricklink_list': bricklink_list_switch(db),
+            return {**admin.settings(db), 'lost_parts_rules': lost_parts.RULES, 'pictures': pictures.state(db), 'bricklink_list': bricklink_list_switch(db),
                     'grouping': part_groups.editor(db)}
         if page == 'statistics':
             return admin.statistics(db)
@@ -410,8 +410,13 @@ def tools_read(page, group=None):
                 sources.append({**source_ops.view(db, source), 'last_error': dict(last) if last else None})
             settings = admin.settings(db)
             return dict(sources=sources, catalogue=catalogue_card(db), freshness=settings['freshness'], priority=settings['priority'])
+        # #460: the hub leads with the two refreshes, so it also reads what the picture dialog adds up and whether prices have a key.
+        from ..core import pictures
+        state = pictures.state(db)
         return dict(stale=len({r['item_id'] for r in admin.stale_prices(db)}), jobs=admin.count_jobs(db), unresolved=admin.count_unresolved(db),
-                    instructions=db.execute('SELECT count(*) FROM instruction_file WHERE archived_at IS NULL').fetchone()[0])
+                    instructions=db.execute('SELECT count(*) FROM instruction_file WHERE archived_at IS NULL').fetchone()[0],
+                    missing=sum(row['missing'] for row in state['summary']), pictures={**state, 'matrix': pictures.matrix(db)},
+                    price_key=bricklink_list_switch(db)['key'])
 
 
 def catalogue_card(db):
@@ -659,12 +664,12 @@ def bricklink_list_switch(db):
 
 
 PICTURE_SOURCE_NAMES = {'bricklink': 'BrickLink', 'rebrickable_dump': 'Rebrickable catalogue', 'rebrickable_api': 'Rebrickable API'}
-GROUPING_WORDS = {'grouped': 'grouped by category', 'bricklink': 'grouped by BrickLink category', 'none': 'not grouped'}
+GROUPING_WORDS = {'grouped': 'Grouped categories', 'bricklink': 'BrickLink categories', 'none': 'No grouping'}
 
 
 def settings_summaries(data):
     """The one muted line each Settings row shows while it is closed (#460), worked out from the settings view data: `currency`,
-    `labels_address`, `pictures`, `bricklink_list`, `part_list_grouping`, `priority`, `freshness`, `retail_country` and
+    `labels_address`, `pictures`, `bricklink_list`, `part_list_grouping`, `part_group_overrides`, `priority`, `freshness`, `retail_country` and
     `official_download_limit_mb`. Keys are the row ids."""
     from ..core.pipeline import DEFAULT_PRIORITY
     cur = data.get('currency') or {}
@@ -686,8 +691,11 @@ def settings_summaries(data):
     from ..core.sync import lost_parts
     summary['sync'] = lost_parts.RULE_LABELS.get(data.get('rebrickable_lost_parts_rule'), lost_parts.RULE_LABELS['per_part'])
     lists = data.get('bricklink_list') or {}
-    summary['part-lists'] = ("BrickLink's list preferred" if lists.get('on') and lists.get('key') else "Rebrickable's list first") \
-        + ' · ' + GROUPING_WORDS.get(data.get('part_list_grouping'), GROUPING_WORDS['grouped'])
+    summary['part-lists'] = "BrickLink's list preferred" if lists.get('on') and lists.get('key') else "Rebrickable's list first"
+    summary['part-list-grouping'] = GROUPING_WORDS.get(data.get('part_list_grouping'), GROUPING_WORDS['grouped'])
+    moved = len(data.get('part_group_overrides') or {})
+    if moved and data.get('part_list_grouping', 'grouped') == 'grouped':
+        summary['part-list-grouping'] += f' · {moved} moved'
     summary['labels-address'] = data.get('labels_address') or 'Uses the request address'
     rows = (data.get('pictures') or {}).get('summary') or []
     summary['pictures'] = f"{sum(r['with_picture'] for r in rows):,} with a picture · {sum(r['missing'] for r in rows):,} without"
@@ -705,7 +713,8 @@ def settings_summaries(data):
     for rule in data.get('freshness') or []:
         if rule.get('max_age_days') is not None:
             spans.setdefault(rule['kind'], []).append(int(rule['max_age_days']))
-    parts = [f"{kind.replace('_', ' ').capitalize() if i == 0 else kind.replace('_', ' ')} "
+    words = {'metadata': 'set details'}
+    parts = [f"{words.get(kind, kind).replace('_', ' ').capitalize() if i == 0 else words.get(kind, kind).replace('_', ' ')} "
              + (f'{min(days)} to {max(days)} days' if min(days) != max(days) else f"{days[0]} day{'' if days[0] == 1 else 's'}")
              for i, (kind, days) in enumerate(sorted(spans.items(), key=lambda kv: (('prices', 'metadata', 'pictures').index(kv[0]) if kv[0] in ('prices', 'metadata', 'pictures') else 9, kv[0])))]
     summary['freshness'] = ' · '.join(parts) or 'No expiry set'

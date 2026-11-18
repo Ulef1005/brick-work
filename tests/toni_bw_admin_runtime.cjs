@@ -117,3 +117,20 @@ console.log('Instruction files optional toolbar and search passed');
  assert.equal(submit.disabled,true);assert.equal(clear.hidden,true);assert.equal(text.textContent,'Not set');
  console.log('Brick Work admin key entry passed');
 }
+{
+ // #460: a section anchor (#set-sources) opens the collapsed group itself; a row anchor opens the row and the group around it; the other rows close.
+ const node=(id,tag,cls,parent)=>({id,tagName:tag,cls,open:false,parentElement:parent||null,scrolled:0,addEventListener(){},scrollIntoView(){this.scrolled++;},
+  closest(selector){for(let n=this;n;n=n.parentElement){if(selector==='details.bw-set'?(n.tagName==='DETAILS'&&n.cls==='bw-set'):(selector==='details'&&n.tagName==='DETAILS'))return n;}return null;}});
+ const expert=node('set-sources','DETAILS','bw-set-expert'),fresh=node('freshness','DETAILS','bw-set',expert),money=node('currencies','DETAILS','bw-set'),section=node('set-money','SECTION','');
+ const byId={'set-sources':expert,freshness:fresh,currencies:money,'set-money':section};
+ const open=hash=>{const location={hash};const listeners={};
+  vm.runInNewContext(fs.readFileSync(require('node:path').join(__dirname,'../static/web/toni/bw-admin.js'),'utf8'),{window:{addEventListener(e,f){listeners[e]=f;}},location,document:{addEventListener(){},getElementById:id=>byId[id]||null,querySelector:()=>null,
+   querySelectorAll:s=>s==='details.bw-set'?[fresh,money]:[]}});};
+ money.open=true;open('#set-sources');
+ assert.equal(expert.open,true);assert.equal(expert.scrolled,1);assert.equal(money.open,true);   // the group opens; no row is touched
+ expert.open=false;open('#freshness');
+ assert.equal(fresh.open,true);assert.equal(expert.open,true);assert.equal(money.open,false);
+ money.open=true;open('#set-money');
+ assert.equal(section.scrolled,1);assert.equal(money.open,true);                                 // a plain section anchor only scrolls
+ console.log('Brick Work Settings section anchors passed');
+}

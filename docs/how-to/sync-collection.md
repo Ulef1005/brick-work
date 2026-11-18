@@ -36,7 +36,7 @@ Rebrickable keeps a list of the parts you lost. A Rebrickable pull can bring it 
 
 The preview shows a **Lost Parts from Rebrickable** section before anything is written. For each set it lists the parts that will be marked, the counts that change, the marks that will be cleared and the parts that cannot be matched.
 
-**Rebrickable wins, and the rule says how far that goes.** Choose it under **Settings → Sync**. It is one of four, and each one can clear something different:
+**Rebrickable wins, and the rule says how far that goes.** Choose it under **Settings → Sets and parts → Lost Parts from Rebrickable**. It is one of four, and each one can clear something different:
 
 - **Add only.** The sync adds missing marks and keeps the larger count where both sides have one. It never lowers or clears a mark.
 - **Rebrickable wins per part** (the default). For a part Rebrickable lists as lost, Rebrickable's count replaces yours, also when it is smaller. Marks on parts Rebrickable does not list stay. A count can go down, and it can go to the lower number Rebrickable says, but no other mark is cleared.

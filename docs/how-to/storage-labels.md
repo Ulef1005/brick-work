@@ -15,7 +15,7 @@ Print sheets at 100 %, without fitting to the page. Cut guides appear only in th
 
 Each label shows a permanent short id and a QR code. Short ids are never reused, even after deletion. Find one through Jump search. Scan the code with your phone camera to open the storage contents. Login returns you there.
 
-Set **Address for labels** in **Tools & Admin > Settings** to an address your phone can open. An empty setting uses the request address on the web screen, which warns when that address is localhost or an IP. The API and MCP refuse to make labels in that case and answer **Set the label address in Settings first**.
+Set **Address on printed labels** in **Tools & Admin > Settings > Labels and instructions** to an address your phone can open. An empty setting uses the request address on the web screen, which warns when that address is localhost or an IP. The API and MCP refuse to make labels in that case and answer **Set the label address in Settings first**.
 
 Archived storages cannot be selected. An older printed label explains that the storage was archived and links back to Storage. This also works on a phone.
 

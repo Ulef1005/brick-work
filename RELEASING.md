@@ -30,7 +30,7 @@ Use it as a copy-and-tick list in the release pull request.
 
 One pull request, "Release X.Y.Z", that changes only version pins and release text:
 
-- [ ] `brickwork/version.py` and the image tag in `compose.yaml` (`tests/test_compose_image.py` fails if they differ).
+- [ ] `brickwork/version.py`, the image tag in `compose.yaml` (`tests/test_compose_image.py` fails if they differ) and the version and image tag in `server.json` (`tests/test_server_json.py`).
 - [ ] The version the install steps pin: the README's and the landing page's `git clone --branch vX.Y.Z`, the `compose.yaml` link in [Install on your computer with Docker Desktop](docs/how-to/install-docker-desktop.md), `docs/reference/cli.md`, `scripts/site/llms.md` (`tests/test_install_docs.py` fails if one is left behind).
 - [ ] The changelog heading, the upgrade table row and the `Since` labels of section 2.
 - [ ] `scripts/check.sh` green, the pull request green, merged. Note the merge commit: that commit is the release.

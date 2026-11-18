@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Ready for the MCP Registry** (#477). The repository has a `server.json` for the registry, and the image carries the matching `io.modelcontextprotocol.server.name` label. The entry starts `brickwork mcp` from the published image and talks to your running install. The listing goes up after this release.
+
+- **The README no longer promises a pile check by photo** (#478). It is built only on request (#77).
+
 - **Build Scout's filter fields are easier to hit.** The Theme field and the other filter fields in Build Scout are now 44 pixels tall and the Theme field is wider, so it is easy to tap on a phone.
 
 - **Damaged and missing follow the Loose and In sets view** (#463). On Loose, the Parts title ("N parts have damaged pieces"), the **Damaged** chip, a row's damaged and missing and the problem filter count loose pieces only, so a part that is damaged only inside a set no longer shows there. On **In sets** they count the pieces inside your set copies. The design is unchanged.

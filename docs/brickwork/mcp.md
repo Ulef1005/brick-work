@@ -36,6 +36,12 @@ brickwork mcp --api-url http://127.0.0.1:3333/api/v2 --token-file data/mcp-token
 
 In an assistant's MCP settings this is one server entry: the command `brickwork`, the arguments `mcp --in-process --token-file /path/to/mcp-token`, and the working directory of your Brick Work checkout. With Docker, run the same command through `docker compose exec -T brickwork brickwork mcp ...`.
 
+### From the MCP Registry (Docker)
+
+Brick Work is listed in the MCP Registry as `io.github.ulef1005/brick-work`. The entry starts the published image over stdio and talks to the Brick Work that already runs on your computer.
+
+It runs `brickwork mcp` in the container, reads the token from a file you mount read only, and reaches the app at `http://host.docker.internal:3333/api/v2`. Change that address if your install listens elsewhere.
+
 <!-- vale Google.Headings = NO -->
 ### Over the network (HTTP)
 <!-- vale Google.Headings = YES -->

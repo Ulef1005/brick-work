@@ -24,6 +24,9 @@ RUN chmod -R a+rX,go-w /app \
 
 USER 1000:1000
 
+# The MCP Registry checks this label against the name in server.json (#477).
+LABEL io.modelcontextprotocol.server.name="io.github.ulef1005/brick-work"
+
 # The API health route answers without a token; the slim image has no curl.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
     CMD python -c "import os, urllib.request; urllib.request.urlopen('http://127.0.0.1:' + os.environ.get('BW_PORT', '3333') + '/api/v1/health', timeout=4)"

@@ -1,0 +1,78 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.ulef1005/brick-work",
+  "title": "Brick Work",
+  "description": "Read your brick collection through your own Brick Work install: sets, loose parts, missing parts, storage and wishes. Write tools are off unless you enable them.",
+  "repository": {
+    "url": "https://github.com/Ulef1005/brick-work",
+    "source": "github"
+  },
+  "websiteUrl": "https://brick-work.app",
+  "version": "1.1.0",
+  "packages": [
+    {
+      "registryType": "oci",
+      "identifier": "ghcr.io/ulef1005/brick-work:1.1.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "runtimeArguments": [
+        {
+          "type": "named",
+          "description": "Run the brickwork command instead of the web server",
+          "name": "--entrypoint",
+          "value": "brickwork",
+          "isRequired": true
+        },
+        {
+          "type": "named",
+          "description": "Let the container reach the Brick Work that runs on this computer",
+          "name": "--add-host",
+          "value": "host.docker.internal:host-gateway",
+          "isRequired": true
+        },
+        {
+          "type": "named",
+          "description": "File with an API token, read only",
+          "name": "--mount",
+          "value": "type=bind,src={token_file},dst=/run/mcp-token,readonly",
+          "isRequired": true,
+          "variables": {
+            "token_file": {
+              "description": "Path of a file that holds an API token. Create one in Tools & Admin, API tokens, or with brickwork token create.",
+              "format": "filepath",
+              "isRequired": true
+            }
+          }
+        }
+      ],
+      "packageArguments": [
+        {
+          "type": "positional",
+          "valueHint": "command",
+          "value": "mcp"
+        },
+        {
+          "type": "named",
+          "name": "--api-url",
+          "description": "API address of your running Brick Work, ending in /api/v2",
+          "value": "{api_url}",
+          "isRequired": true,
+          "variables": {
+            "api_url": {
+              "description": "API address of your running Brick Work",
+              "default": "http://host.docker.internal:3333/api/v2",
+              "isRequired": true
+            }
+          }
+        },
+        {
+          "type": "named",
+          "name": "--token-file",
+          "value": "/run/mcp-token",
+          "isRequired": true
+        }
+      ]
+    }
+  ]
+}

@@ -25,8 +25,8 @@ LOGO, ICON = DESIGN / 'logo', DESIGN / 'app-icon'
 VIOLET = '#7334CF'            # the mark on light grounds
 VIOLET_ON_DARK = '#B995F6'    # the mark on dark grounds
 INK = '#111214'
-PAPER = '#FAFAF8'
-DARK = '#111214'
+PAPER = '#F8F8F6'
+DARK = '#1F2322'
 LIGHT_TEXT = '#EDEDEF'
 WHITE = '#FFFFFF'
 # The web manifest's theme and background colour: the B′ app bar surface, --tw-surface (W-Q7, Ulf 19.11.: "App bar surface (Recommended)").

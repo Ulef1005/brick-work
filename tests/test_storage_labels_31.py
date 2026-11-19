@@ -389,10 +389,10 @@ def test_pdf_pages_match_the_page_images(coll):
 
 
 def test_mark_and_fonts_are_loaded_once():
-    labels.mark_rects.cache_clear()
+    labels._mark_svg.cache_clear()
     assert labels.font(40) is labels.font(40) and labels.font(23, True) is labels.font(23, True)
-    assert labels.mark_rects() is labels.mark_rects()
-    assert labels.mark_rects.cache_info().misses == 1
+    assert labels._mark_svg() is labels._mark_svg()
+    assert labels._mark_svg.cache_info().misses == 1
 
 
 def test_mark_reads_the_shipped_svg_as_three_plates_with_one_masked():
@@ -425,6 +425,6 @@ def test_mark_draws_the_cut_out_x_from_32_px_and_not_below():
     def centre(size):   # the middle of the X on the masked plate, in viewBox units (63.65, 30.3)
         image = Image.new('RGB', (200, 200), 'white')
         labels.mark(image, (0, 0), size)
-        return image.getpixel((round(63.65 * size / 100), round(30.3 * size / 100)))[0], image.getpixel((round(15 * size / 100), round(65 * size / 100)))[0]
+        return image.getpixel((int(63.65 * size / 100), int(30.29 * size / 100)))[0], image.getpixel((int(15 * size / 100), int(65 * size / 100)))[0]
     assert centre(labels.MARK_X_MIN_SIZE - 1)[0] < 30 and centre(labels.MARK_X_MIN_SIZE)[0] > 100   # X appears at 32
     assert centre(83)[0] > 240 and centre(83)[1] < 5   # printed size: X cut clear, plate solid black

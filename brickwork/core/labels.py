@@ -187,7 +187,7 @@ def _mark_svg():
     the cut is (segments in the plate's own units, stroke width) of the mask's X."""
     root = ET.parse(ROOT / 'static/brickwork/mark-line.svg').getroot()
     box = [float(v) for v in root.get('viewBox', '').split()]
-    if len(box) != 4 or box[0] != 0 or box[1] != 0 or box[2] != box[3]:
+    if len(box) != 4 or box[0] != 0 or box[1] != 0 or box[2] != box[3] or box[2] <= 0:
         raise ValueError('mark-line.svg: expected a square viewBox from 0 0')
     defs = [e for e in root if e.tag == SVG + 'defs']
     rects = [e for d in defs for e in d if e.tag == SVG + 'rect']
@@ -215,6 +215,8 @@ def _mark_svg():
             if child.get('mask'):
                 if child.get('mask') != f'url(#{mask.get("id")})':
                     raise ValueError('mark-line.svg: unknown mask')
+                if child.tag != SVG + 'use' or child.get('transform'):   # the cut is placed in the use's parent space only
+                    raise ValueError('mark-line.svg: a mask only on a use without its own transform')
                 flag = True
             if child.tag == SVG + 'g':
                 walk(child, here, flag)
@@ -231,7 +233,6 @@ def _mark_svg():
     return box[2], tuple(plates), cut
 
 
-@lru_cache(maxsize=1)
 def mark_rects():
     """The shipped mark's plates as plain tuples in viewBox units: (x, y, width, height, rx, masked)."""
     return tuple(plate[:6] for plate in _mark_svg()[1])

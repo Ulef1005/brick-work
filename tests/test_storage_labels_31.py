@@ -449,3 +449,11 @@ def test_only_a_name_beyond_the_floor_size_gets_an_ellipsis():
     assert face.size == 26 and len(lines) == 2 and lines[-1].endswith('…')
     face, lines = labels.fit_name('Drawer A3', 40, 26, 400, 120, 2)
     assert face.size == 40 and lines == ['Drawer A3']
+
+
+def test_fit_name_keeps_a_trailing_ellipsis_and_an_empty_name():
+    """A name that ends in its own '…' keeps the largest size; an empty name fits with no lines (#482 review)."""
+    face, lines = labels.fit_name('Box A…', 56, 34, 600, 200, 2)
+    assert face.size == 56 and lines == ['Box A…']
+    face, lines = labels.fit_name('', 56, 34, 600, 200, 2)
+    assert face.size == 56 and lines == []

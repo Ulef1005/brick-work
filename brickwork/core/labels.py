@@ -164,6 +164,23 @@ def name_lines(name, face, width, count=2):
     return lines
 
 
+LINE_GAP = 6   # px between name lines
+
+
+def fit_name(name, size, floor, width, height, count):
+    """The largest face from `size` down to `floor` (2 px steps) at which the whole name fits in `count` lines of `width` within
+    `height`, and those lines. Only when the floor cannot hold it all is the last line cut with an ellipsis (Ulf, 2026-11-19: "the copy
+    must not be cut-off, maybe smaller font size?")."""
+    for step in range(size, floor - 1, -2):
+        face = font(step)
+        lines = name_lines(name, face, width, count + 1)
+        if len(lines) <= count and not lines[-1].endswith('…') and len(lines) * (step + LINE_GAP) - LINE_GAP <= height:
+            return face, lines
+    face = font(floor)
+    rows = max(1, min(count, (height + LINE_GAP) // (floor + LINE_GAP)))
+    return face, name_lines(name, face, width, rows)
+
+
 SVG = '{http://www.w3.org/2000/svg}'
 MARK_X_MIN_SIZE = 32   # the small mark drops its cut-out X below this many pixels (Ulf's approved rule)
 _TRANSFORM = re.compile(r'^translate\(\s*(-?[\d.]+)[\s,]+(-?[\d.]+)\s*\)\s*rotate\(\s*(-?[\d.]+)\s*\)\s*scale\(\s*(-?[\d.]+)\s*\)$')
@@ -269,19 +286,23 @@ def label(row, layout, base, matrix_factory=qr_matrix):
     if tape:
         image.paste(qr, ((image.width - qr.width)//2, image.height - qr.height - pad))
         mark(image, (pad, pad), px(7))
-        face = font(40)
         width = image.width - px(30)
-        draw.text((px(10), pad), name_lines(row['name'], face, width, 1)[0], font=face, fill='black')
+        face, lines = fit_name(row['name'], 40, 26, width, image.height - qr.height - pad * 3, 2)
+        y = pad
+        for line in lines:
+            draw.text((px(10), y), line, font=face, fill='black')
+            y += face.size + LINE_GAP
         draw.text((image.width - px(19), pad), row['short_id'], font=font(23, True), fill='black')
     else:
         image.paste(qr, (image.width - qr.width - pad, (image.height - qr.height)//2))
         width = image.width - qr.width - pad * 3
         mark(image, (pad, px(3)), px(8))
-        face = font(56 if layout == 'a4-21' else 69)
+        size = 56 if layout == 'a4-21' else 69
+        face, lines = fit_name(row['name'], size, round(size * 0.6), width, px(30) - px(12) - pad, 3)
         y = px(12)
-        for line in name_lines(row['name'], face, width):
+        for line in lines:
             draw.text((pad, y), line, font=face, fill='black')
-            y += face.size + 6
+            y += face.size + LINE_GAP
         draw.text((pad, px(30)), row['short_id'], font=font(28, True), fill='black')
     return image
 

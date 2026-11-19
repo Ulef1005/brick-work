@@ -429,3 +429,23 @@ def test_mark_draws_the_cut_out_x_from_32_px_and_not_below():
         return image.getpixel((int(63.65 * size / 100), int(30.29 * size / 100)))[0], image.getpixel((int(15 * size / 100), int(65 * size / 100)))[0]
     assert centre(labels.MARK_X_MIN_SIZE - 1)[0] < 30 and centre(labels.MARK_X_MIN_SIZE)[0] > 100   # X appears at 32
     assert centre(83)[0] > 240 and centre(83)[1] < 5   # printed size: X cut clear, plate solid black
+
+
+@pytest.mark.parametrize('layout', ['tape-62', 'a4-21', 'a4-14'])
+def test_a_long_storage_name_is_never_cut_off_on_a_label(layout, monkeypatch):
+    """Ulf, 2026-11-19: "the copy must not be cut-off, maybe smaller font size?" The font steps down and wraps before any ellipsis."""
+    seen = []
+    real = labels.fit_name
+    monkeypatch.setattr(labels, 'fit_name', lambda *a, **k: seen.append(real(*a, **k)) or seen[-1])
+    for name in ('Drawer A3 · Technic beams', 'Billy shelf 3 · Technic beams, pins and axles (black)',
+                 'Äußere Schublade 12 · Größere Platten und Fliesen'):
+        labels.label({'id': 'x', 'name': name, 'short_id': 'A3'}, layout, 'https://bricks.example', matrix_factory=lambda payload: MATRIX)
+        face, lines = seen[-1]
+        assert ' '.join(lines).replace('  ', ' ') == name and not lines[-1].endswith('…'), (layout, name, lines)
+
+
+def test_only_a_name_beyond_the_floor_size_gets_an_ellipsis():
+    face, lines = labels.fit_name('Schublade ' * 30, 40, 26, 400, 120, 2)
+    assert face.size == 26 and len(lines) == 2 and lines[-1].endswith('…')
+    face, lines = labels.fit_name('Drawer A3', 40, 26, 400, 120, 2)
+    assert face.size == 40 and lines == ['Drawer A3']

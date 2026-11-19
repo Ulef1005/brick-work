@@ -517,8 +517,119 @@ def nostore_body(phone):
             f'<div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px">{tiles}</div></div>')
 
 
+# ---- screens round 4 (approved 2026-11-19, Ulf: "round 4 approved"): Matchmaker, Build Scout, Storage.
+# Built on round 3's components; the shipped "−245 parts" becomes "245 parts missing" (no minus before a number).
+def cover(have, need, total_txt):
+    """A coverage bar: violet what loose stock covers, hatched what is still missing."""
+    f = have / need * 100
+    return (f'<div class="bar" style="height:8px"><i style="width:{f:.1f}%;background:var(--tw-accent)"></i>'
+            f'<i style="flex:1;background:{HATCH};box-shadow:inset 0 0 0 1px var(--tw-text)"></i></div><div class="bartxt">{total_txt}</div>')
+
+
+# ---- Matchmaker ------------------------------------------------------------------------------------------------------
+MATCH = [('7213-1', 'Copy 2', 'Off-Road Fire Truck & Fireboat', 'set-7213-1.png', 7, 12, 'covers 7 of 12 missing'),
+         ('10210-1', 'Copy 1', 'Imperial Flagship', 'set-10210-1.png', 11, 33, 'covers 11 of 33 missing'),
+         ('7938-1', 'Copy 1', 'Passenger Train', 'set-7938-1.png', 2, 14, 'covers 2 of 14 missing')]
+
+
+def match_body(phone):
+    head = ('<div class="head"><div><div class="lbl">Workbench · Matchmaker</div><h1>3 copies can be advanced, 0 can become complete</h1>'
+            '<p>Loose stock finds, set detail takes</p></div></div>')
+    rows = ''.join(f'<div style="display:flex;gap:14px;align-items:center;padding:12px 0;border-bottom:1px solid var(--tw-divider)">'
+                   f'<div style="width:{72 if phone else 96}px;flex:none">{pic(img, 54 if phone else 72, 4)}</div><div style="flex:1;min-width:0">'
+                   f'<div class="mono" style="font:600 {16 if phone else 18}px var(--tw-mono)">{n} <span style="font:400 12px var(--tw-mono);color:var(--tw-text-muted)">· {cp}</span></div>'
+                   f'<div style="font:500 14px var(--tw-font);margin-bottom:6px">{name}</div>{cover(h, m, txt)}</div>'
+                   f'<span class="chev" style="color:var(--tw-text-muted)">{ic("chev")}</span></div>' for n, cp, name, img, h, m, txt in MATCH)
+    tools = (f'<div style="display:flex;gap:10px;align-items:center"><span class="input" style="flex:1;height:38px;color:var(--tw-text-muted)">Name, number or colour</span>'
+             f'<span class="btn sec sm">Filter</span><span class="btn sec sm">Sort</span></div>')
+    lst = (f'<div class="group"><div class="tape">Completable first, then coverage<span class="mono">3 copies</span></div>{rows}</div>'
+           f'<div class="row"><span class="chev" style="color:var(--tw-text)">{ic("chev")}</span><div class="t">How matching works</div></div>')
+    saves = ('<div class="group"><div class="lbl">Recent saves</div><div style="font-size:13px;color:var(--tw-text-muted);padding:10px 0">'
+             'No saves yet. A part you move from loose stock into a copy shows here, with Undo.</div></div>')
+    booklets = ('<div class="group"><div class="lbl">Add instruction booklets</div><p class="hint">Physical booklets · one catalogue booklet number per line. '
+                'Use the full number when a set has multiple booklets. A comma and quantity can override the count for a line.</p>'
+                '<label class="field" style="margin-top:8px">Set numbers<span class="input" style="height:88px;align-items:flex-start;padding-top:10px;color:var(--tw-text-muted)">For example 6081-1</span></label>'
+                '<div style="display:flex;gap:10px;align-items:flex-end;margin-top:10px"><label class="field" style="width:160px">Quantity per line<span class="input">1</span></label>'
+                '<span class="btn">Add booklets</span></div></div>')
+    if phone:
+        return f'<div style="padding:14px 16px 0;display:flex;flex-direction:column;gap:14px">{head.replace("font:600 30px", "font:600 24px")}{tools}{lst}</div>'
+    return (f'<div style="padding:24px 32px 0;display:flex;flex-direction:column;gap:18px;max-width:980px">{head}{tools}{lst}{booklets}{saves}</div>')
+
+
+# ---- Build Scout -----------------------------------------------------------------------------------------------------
+SCOUT = [('21028-1', 'New York City', 'Skylines · 2016 · 598 parts', 'set-21028-1.png', 412, 598, '186 parts missing · no figures', '€6.10 · 12 lines unpriced'),
+         ('31120-1', 'Medieval Castle', 'Creator 3-in-1 · 2021 · 1,426 parts', 'set-31120-1.png', 503, 1426, '923 parts missing · 4 of 4 figures missing', '€41.20 · 31 lines unpriced'),
+         ('8043-1', 'Motorized Excavator', 'Technic · 2010 · 1,123 parts', 'set-8043-1.png', 97, 1123, '1,026 parts missing · 1 of 1 figure missing', 'not priced'),
+         ('10254-1', 'Winter Holiday Train', 'Creator · 2016 · 714 parts', 'set-10254-1.png', 30, 714, '684 parts missing · 5 of 5 figures missing', 'not priced')]
+
+
+def scout_body(phone):
+    head = ('<div class="head"><div><div class="lbl">Workbench · Build Scout</div><h1>Build Scout</h1>'
+            '<p>Which sets can you build, or nearly build, from the parts you hold loose</p></div></div>')
+    filt = ('<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">'
+            + ''.join(f'<label class="field" style="width:{w}px">{k}<span class="input" style="height:38px">{v}</span></label>'
+                      for k, v, w in [('Parts from', 'All loose stock', 200), ('Min', '0 %', 90), ('Max missing', 'any', 110), ('Theme', 'All', 150), ('Years', 'any – any', 130), ('Sort', '% available', 140)])
+            + '<span class="btn sec sm">Apply</span></div>')
+
+    def res(n, name, meta, img, have, need, miss, price, on=False):
+        st = 'background:var(--tw-accent-soft);box-shadow:inset 3px 0 0 var(--tw-accent);' if on else ''
+        return (f'<div style="display:flex;gap:14px;align-items:center;padding:12px 10px;border-bottom:1px solid var(--tw-divider);{st}">'
+                f'<div style="width:{64 if phone else 84}px;flex:none">{pic(img, 50 if phone else 64, 4)}</div><div style="flex:1;min-width:0">'
+                f'<div style="display:flex;gap:10px;align-items:baseline"><span class="mono" style="font:600 16px var(--tw-mono)">{n}</span><span style="font:600 14px var(--tw-font)">{name}</span></div>'
+                f'<div style="font-size:12.5px;color:var(--tw-text-2);margin:2px 0 6px">{meta}</div>{cover(have, need, f"{have:,} of {need:,} · {have / need * 100:.0f} %")}</div>'
+                + ('' if phone else f'<div style="text-align:right;font-size:12.5px;color:var(--tw-text-2);width:230px"><div style="font:600 13px var(--tw-font);color:var(--tw-text)">{miss}</div><div class="mono" style="margin-top:2px">{price}</div></div>')
+                + '</div>')
+    rows = ''.join(res(*s, on=(i == 0)) for i, s in enumerate(SCOUT))
+    summary = '<p style="font-size:13px;color:var(--tw-text-muted)">4 of 7 sets · 1,042 loose pieces counted · figures shown separately · swaps listed in the set, never in the %</p>'
+    if phone:
+        return f'<div style="padding:14px 16px 0;display:flex;flex-direction:column;gap:12px">{head.replace("font:600 30px", "font:600 26px")}<span class="btn sec sm" style="align-self:flex-start">Filters · 6</span>{rows}</div>'
+    lines = [('part-3009-lbg.png', 'Brick 1 × 6', 'Light Bluish Gray', '3009', 14), ('part-3010-dbg.png', 'Brick 1 × 4', 'Dark Bluish Gray', '3010', 9),
+             ('part-87619-white.png', 'Slope 45° 2 × 2', 'White', '87619', 6)]
+    lr = ''.join(f'<div style="display:flex;gap:12px;align-items:center;padding:8px 0;border-bottom:1px solid var(--tw-divider)"><div style="width:44px;flex:none">{pic(i, 44, 3)}</div>'
+                 f'<div style="flex:1;min-width:0"><div style="font:500 14px var(--tw-font)">{n}</div><div style="font-size:12px;color:var(--tw-text-2)">{c} · <span class="mono">{num}</span></div></div>'
+                 f'<span class="mono" style="font:600 13px var(--tw-mono)">{q} missing</span></div>' for i, n, c, num, q in lines)
+    panel = (f'<div class="card" style="width:400px;flex:none;padding:16px;display:flex;flex-direction:column;gap:12px;align-self:flex-start">'
+             f'<div class="lbl">Selected</div><div><span class="mono" style="font:600 18px var(--tw-mono)">21028-1</span> <span style="font:600 16px var(--tw-font)">New York City</span>'
+             f'<div style="font-size:13px;color:var(--tw-text-2)">Skylines · 2016 · 598 parts</div></div>'
+             f'<div class="lbl" style="color:var(--tw-text-2)">Parts you hold</div>{cover(412, 598, "412 of 598 · 186 missing in 23 lines")}'
+             f'<div style="font-size:13px;color:var(--tw-text-2)">No figures in this set</div><div>{lr}<div style="font-size:13px;color:var(--tw-accent-text);padding-top:8px">+ 20 more lines · Show all</div></div>'
+             f'<div class="mono" style="font-size:12.5px;color:var(--tw-text-2)">≈ €6.10 · 12 lines unpriced</div>'
+             f'<span class="btn" style="height:52px">Build it · make a copy</span><div style="display:flex;gap:10px"><span class="btn sec sm" style="flex:1">Add to wishlist</span>'
+             f'<span class="btn sec sm" style="flex:1">Missing parts · XML</span></div>'
+             f'<p style="font-size:12.5px;color:var(--tw-text-muted)">Build it moves the 412 matching pieces out of loose stock into a new copy, as one step you can undo.</p></div>')
+    return (f'<div style="padding:22px 32px 0;display:flex;flex-direction:column;gap:14px">{head}{filt}{summary}'
+            f'<div style="display:flex;gap:24px"><div style="flex:1;min-width:0">{rows}</div>{panel}</div></div>')
+
+
+# ---- Storage ---------------------------------------------------------------------------------------------------------
+STORES = [('S-0001', 'Shelf A1 – Castle', 'Shelf', 2, 0, 0), ('S-0002', 'Shelf A2 – Town', 'Shelf', 3, 0, 0), ('S-0003', 'Parts drawer unit', 'Drawer unit', 0, 0, 6),
+          ('S-0004', 'Display case', 'Shelf', 1, 0, 0), ('S-0005', 'Technic crate', 'Box', 1, 0, 0), ('S-0006', 'Bag 07', 'Bag', 0, 0, 0)]
+
+
+def storage_body(phone):
+    head = (f'<div class="head"><div><div class="lbl">Workbench · Storage</div><h1>Storage</h1><p>6 storages · 7 sets · 0 figures · 6 part lots</p></div>'
+            + ('' if phone else f'<div style="margin-left:auto;display:flex;gap:10px"><span class="btn sec sm">Purchase locations</span><span class="btn sm">{ic("plus", 16)}Add storage</span></div>') + '</div>')
+    th = ('<div style="display:grid;grid-template-columns:70px 1fr 48px 48px 64px;gap:8px;padding:8px 6px;border-bottom:1.5px solid var(--tw-rule)" class="lbl">'
+          '<span>Code</span><span>Storage</span><span style="text-align:right">Sets</span><span style="text-align:right">Figs</span><span style="text-align:right">Lots</span></div>')
+    rows = ''.join(f'<div style="display:grid;grid-template-columns:70px 1fr 48px 48px 64px;gap:8px;padding:9px 6px;border-bottom:1px solid var(--tw-divider);align-items:center;'
+                   f'{"background:var(--tw-accent-soft);box-shadow:inset 3px 0 0 var(--tw-accent);" if sid == "S-0002" else ""}">'
+                   f'<span class="mono" style="font-size:12px;color:var(--tw-text-muted)">{sid}</span><span><span style="font:600 14px var(--tw-font)">{n}</span>'
+                   f'<span style="display:block;font-size:12px;color:var(--tw-text-2)">{k}</span></span>'
+                   + ''.join(f'<span class="mono" style="text-align:right;font-size:13px">{v if v else "—"}</span>' for v in (s, f, l)) + '</div>' for sid, n, k, s, f, l in STORES)
+    table = f'<div style="{"" if phone else "width:430px;flex:none"}">{th}{rows}<div class="row"><span class="chev" style="color:var(--tw-text)">{ic("chev")}</span><div class="t">History</div></div></div>'
+    if phone:
+        return f'<div style="padding:14px 16px 0;display:flex;flex-direction:column;gap:12px">{head.replace("font:600 30px", "font:600 26px")}<span class="btn sm" style="align-self:flex-start">{ic("plus", 16)}Add storage</span>{table}</div>'
+    tiles = ''.join(tile(SETS[n], w=196, img_h=96) for n in ('7213-1', '7938-1', '10254-1'))
+    detail = (f'<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:12px">{tape("S-0002", "Shelf A2 – Town", 3)}'
+              f'<div style="display:flex;gap:10px;align-items:center;font-size:13px;color:var(--tw-text-2)">Shelf · 3 sets · 4 copies · 0 figures · 0 part lots'
+              f'<span style="margin-left:auto;display:flex;gap:8px"><span class="btn sec sm">Print label</span><span class="btn sec sm">Edit</span></span></div>'
+              f'<div style="display:flex;gap:12px">{tiles}</div>'
+              f'<p style="font-size:13px;color:var(--tw-text-muted)">Move sets, figures or part lots here from their detail page, or from another storage in select mode.</p></div>')
+    return f'<div style="padding:22px 32px 0;display:flex;flex-direction:column;gap:16px">{head}<div style="display:flex;gap:28px">{table}{detail}</div></div>'
+
+
 def page3(body, w, h):
-    """Round 3 frames: round 2's page plus EXTRA_CSS, so the approved round 2 files stay byte-identical."""
+    """Round 3 and later frames: round 2's page plus EXTRA_CSS, so the approved round 2 files stay byte-identical."""
     return page(body, w, h).replace('</style>', EXTRA_CSS + '</style>', 1)
 
 
@@ -526,7 +637,9 @@ FRAMES = [('01-tools-and-admin', 'Manage', 'Tools & Admin', tools_body), ('02-se
           ('03-find-instructions', 'Manage', 'Tools & Admin', finder_body),
           ('04-sets', 'Collection', 'Sets', sets_body), ('05-sets-without-storage', 'Collection', 'Sets', nostore_body),
           ('06-set-inspector', 'Workbench', 'Set Inspector', inspector_body), ('07-part-runner', 'Workbench', 'Part Runner', runner_body),
-          ('08-sets-empty', 'Collection', 'Sets', empty_body)]
+          ('08-sets-empty', 'Collection', 'Sets', empty_body),
+          ('09-matchmaker', 'Workbench', 'Matchmaker', match_body), ('10-build-scout', 'Workbench', 'Build Scout', scout_body),
+          ('11-storage', 'Workbench', 'Storage', storage_body)]
 SIZES = ((False, 1440, 1000), (True, 390, 844))
 
 

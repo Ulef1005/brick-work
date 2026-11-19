@@ -13,5 +13,8 @@ The approved frames of commission U, built by `../sources/b/b_frames.py` (`build
 | `06-set-inspector/` | R3-02 Set Inspector | round 3 |
 | `07-part-runner/` | R3-03 Part Runner | round 3 |
 | `08-sets-empty/` | R3-04 Sets, empty | round 3 |
+| `09-matchmaker/` | R4-01 Matchmaker: coverage bars, completable first | round 4 |
+| `10-build-scout/` | R4-02 Build Scout: coverage bars, list with detail panel | round 4 |
+| `11-storage/` | R4-03 Storage: short code first, detail under its label tape | round 4 |
 
 These frames replace the v1.3 frames in `../screens/` screen by screen as each is approved; `../screens/` and its manifest stay the record of what is built today until the app is rebuilt (milestone U). Set pictures are empty white tiles with their alt text, because this public repo carries no catalogue pictures; the review showed the real pictures (https://claude.ai/artifact/FX8PAj3J9cgVkY42oPGc8a, version 3).

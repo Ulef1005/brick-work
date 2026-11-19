@@ -7,7 +7,7 @@ verified: 1.0
 
 You own a used set and wonder whether it is worth more intact or as loose parts. In this tutorial you read what the set is worth and compare that with its part-out value. Then you let the Sell card suggest an asking price and write the listing text.
 
-It takes about 15 minutes. You need a Brick Work install with a set you own, preferably one you have already [checked part by part](first-set.md), and a BrickLink key under **Tools & Admin → Catalogues & keys**. Prices come from BrickLink, so without the key you only see prices already stored. Your own numbers and names will differ from the examples.
+It takes about 15 minutes. You need a Brick Work install with a set you own, preferably one you have already [checked part by part](first-set.md). You also need a BrickLink key under **Tools & Admin → Settings → Keys and sources**. Prices come from BrickLink, so without the key you only see prices already stored. Your own numbers and names will differ from the examples.
 
 ## 1. Open the set and read its prices
 
@@ -51,7 +51,7 @@ The **Sell this copy** card sits between **Prices** and **Value**. It changes no
 2. Read **Asking price**. The card starts from the used sold average for this condition, or the new average for a new or sealed copy. It then takes off the used price of each missing part and figure.
 3. Open **Missing parts** and **Missing figures** to see each line: colour, name, part number and price. A line with no fresh price is a dashed row marked **needs evidence**. It is left out of the sum.
 4. Read the last row of the sum. If the deductions would take the price below the part-out value of what is present, the card uses that value as the asking price and says so. Parting out is then the floor you never sell under.
-5. If the card shows **no sales**, select **Update price**. If it shows **needs a rate**, add the rate in **Tools & Admin → Settings**. Until then **Copy listing text** stays off.
+5. If the card shows **no sales**, select **Update price**. If it shows **needs a rate**, add the rate in **Tools & Admin → Settings → Money and prices**. Until then **Copy listing text** stays off.
 
 Damaged parts are not taken off the price, but the card shows how many are damaged in its pill, and the listing names them. Your own **Estimate** is ignored here. The card shows the market price, not your opinion.
 

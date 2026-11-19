@@ -49,7 +49,7 @@ A match whose number names more than one catalogue item is not guessed: it is li
 
 ## Look back at saved identifications
 
-Open **Manage → Tools & Admin → Identify history**. It lists saved identifications, newest first, with the candidates Brickognize offered and their match scores.
+Open **Manage → Tools & Admin → Maintenance → Part Spotter history** (the **Identify history** page). It lists saved identifications, newest first, with the candidates Brickognize offered and their match scores.
 
 Only Part Spotter batches and API identifications are saved; **What is this?** results are not. Archived ones are hidden.
 
@@ -57,7 +57,7 @@ Only Part Spotter batches and API identifications are saved; **What is this?** r
 
 Brick Work allows 100 Brickognize requests a day by default. Change it with `BW_BRICKOGNIZE_DAILY_BUDGET`. Every photo counts, whether you keep the result or not; Undo does not give requests back.
 
-**Manage → Tools & Admin → Catalogues & keys** shows Brickognize's **Budget today**. When it is used up, Brick Work sends no more photos until it resets at 00:00 UTC.
+**Manage → Tools & Admin → Settings → Keys and sources** (the **Catalogues & keys** page) shows Brickognize's **Budget today**. When it is used up, Brick Work sends no more photos until it resets at 00:00 UTC.
 
 ## Through the API
 

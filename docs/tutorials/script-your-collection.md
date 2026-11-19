@@ -23,7 +23,7 @@ The commands below are written without the `docker compose exec brickwork` part.
 
 A token lets a script or an assistant call Brick Work without your login. Each token has its own scopes: **read** reads, **write** changes things.
 
-1. Open **Manage → Tools & Admin → API tokens**.
+1. Open **Manage → Tools & Admin → Maintenance → API tokens**.
 2. Click **Create token**.
 3. Enter a **Name**, for example `tutorial`.
 4. Under **Scopes**, tick **read**, then tick **write**.

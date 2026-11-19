@@ -15,7 +15,7 @@ Brick Work keeps what anyone could download apart from what only you have. That 
 
 **`brickwork.db`, your collection.** Copies, loose stock, lots, storage, wishes, orders, prices, your decisions about numbers, part lists that cost an API call, items that exist only in your collection, keys, tokens and settings. It cannot be rebuilt from anywhere else: this is the file you back up. Pictures, your own photos and instruction PDFs are files in the media folder (`data/images`, `data/thumbs`, `data/instructions`, `data/identifications`) that the database points to; back them up with it ([Back up the media folder](../how-to/back-up-and-restore.md#back-up-the-media-folder)).
 
-The two files are a pair. The collection file is bound to one catalogue, and the **Database** check in **Tools & Admin** confirms that they belong together ([Back up and restore](../how-to/back-up-and-restore.md#check-the-database)).
+The two files are a pair. The collection file is bound to one catalogue, and the **Backup and database check** in **Tools & Admin** confirms that they belong together ([Back up and restore](../how-to/back-up-and-restore.md#check-the-database)).
 
 ## A Brick Work id for every item and colour
 
@@ -54,7 +54,7 @@ Copies, minifigures, loose stock, lots, storage, wishes and orders are described
 
 ## Updating the catalogue
 
-**Re-download** and **Rebuild** in **Tools & Admin → Catalogue** build a new `catalogue.db` beside the old one and swap it in when it is ready. Then they reconcile your collection with it ([Settings and maintenance](../how-to/settings-and-maintenance.md#catalogue)). A new file is checked before it is swapped in, and one that fails its checks never replaces the old one. **Rebuild** moves the current file aside rather than deleting it. Nothing you own is stored in the catalogue file, so a build never changes your collection.
+**Re-download** and **Rebuild** in **Tools & Admin → Maintenance → Catalogue** build a new `catalogue.db` beside the old one and swap it in when it is ready. Then they reconcile your collection with it ([Settings and maintenance](../how-to/settings-and-maintenance.md#catalogue)). A new file is checked before it is swapped in, and one that fails its checks never replaces the old one. **Rebuild** moves the current file aside rather than deleting it. Nothing you own is stored in the catalogue file, so a build never changes your collection.
 
 ## Every change is an event
 

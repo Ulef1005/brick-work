@@ -11,7 +11,7 @@ Do this before an upgrade, before a large import, and on a regular schedule. A b
 
 ## Export the database
 
-1. Open **Manage → Tools & Admin → Database**.
+1. Open **Manage → Tools & Admin → Maintenance → Backup and database check** (the **Database** page).
 2. Press **Export database**.
 3. Keep the downloaded `brickwork.db` somewhere outside the Brick Work folder.
 
@@ -50,7 +50,7 @@ Also keep your settings file (`data/.env`, or wherever you set your `BW_*` varia
 
 ## Check the database
 
-1. Open **Manage → Tools & Admin → Database**.
+1. Open **Manage → Tools & Admin → Maintenance → Backup and database check** (the **Database** page).
 2. Press **Run integrity check**.
 
 The check reads the whole file, so it runs only when you ask. Afterward the page shows **Database checks passed** or **Database needs attention**, along with:

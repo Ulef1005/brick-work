@@ -11,7 +11,7 @@ Do this when a new version is out and you want to move to it. Most upgrades need
 
 ## Before you upgrade
 
-1. Back up. Export the database (**Manage → Tools & Admin → Database → Export database**) and copy `secret.key` and the media folders. [Back up and restore](back-up-and-restore.md) has the steps.
+1. Back up. Export the database (**Manage → Tools & Admin → Maintenance → Backup and database check → Export database**) and copy `secret.key` and the media folders. [Back up and restore](back-up-and-restore.md) has the steps.
 2. Read the entry for the new version in the [changelog](https://github.com/Ulef1005/brick-work/blob/main/CHANGELOG.md). It names any step you must take.
 
 The backup is also the way back. An upgrade that changes the schema is one-way.
@@ -67,7 +67,7 @@ The first command checks the build provenance: the image was built by this repos
 ## Check the result
 
 1. Open `/api/v2/health` (no token). It shows the app version and the schema, for example `"app": "1.1.0"` and `"schema": "4.6"`. `/api/v1/health` answers the same.
-2. Run `brickwork check` (with Docker: `docker compose exec brickwork brickwork check`), or press **Run integrity check** under **Manage → Tools & Admin → Database**. Both must pass.
+2. Run `brickwork check` (with Docker: `docker compose exec brickwork brickwork check`), or press **Run integrity check** under **Manage → Tools & Admin → Maintenance → Backup and database check**. Both must pass.
 3. Open **Sets** and compare what you see with your last export if you kept a note of the counts.
 
 ## Go back

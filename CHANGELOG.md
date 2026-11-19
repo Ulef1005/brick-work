@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- **New logo and app icon.** The logo and the app icon are now the approved violet Bond mark, three bricks with the cut-out X on the top one. Storage labels print the new mark; below 32 pixels the small mark drops the X.
+- **New logo and app icon.** The logo and the app icon are now the approved violet Bond mark, three bricks with the cut-out X on the top one. Storage labels print the new mark. Below 32 pixels the small mark drops the X, so the app bar shows the three bricks alone.
 
 - **Ready for the MCP Registry** (#477). The repository has a `server.json` for the registry, and the image carries the matching `io.modelcontextprotocol.server.name` label. The entry starts `brickwork mcp` from the published image and talks to your running install. The listing goes up after this release.
 

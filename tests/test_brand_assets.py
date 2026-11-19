@@ -108,3 +108,8 @@ def test_no_handler_with_a_path_argument_serves_the_brand_files(app4):
     """Only Flask's own static route (the one that served these files before the move) and the collection's item-number route take a path."""
     rules = {rule.rule for rule in app4.url_map.iter_rules() if '<path:' in rule.rule or '<filename' in rule.rule}
     assert rules == {'/static/<path:filename>', '/collection/item/<kind>/<path:number>'}
+
+
+def test_docs_site_icons_are_generated_copies_of_the_app_icon():
+    for copy, source in brand_assets.DOCS_COPIES.items():
+        assert (brand_assets.ROOT / copy).read_bytes() == (brand_assets.ROOT / source).read_bytes(), copy

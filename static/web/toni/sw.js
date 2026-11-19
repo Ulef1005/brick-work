@@ -58,6 +58,8 @@ const ASSETS = [
   "/static/brickwork/lockup-horizontal.svg",
   "/static/brickwork/mark-dark.svg",
   "/static/brickwork/mark-line.svg",
+  "/static/brickwork/mark-small-dark.svg",
+  "/static/brickwork/mark-small.svg",
   "/static/brickwork/mark.svg",
   "/static/web/toni/bw-add.css",
   "/static/web/toni/bw-add.js",

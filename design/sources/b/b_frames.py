@@ -36,9 +36,9 @@ TOKENS = {
     '--tw-on-accent': ('#FFFFFF', '#FFFFFF', 'text on violet, 6.7:1'),
     '--tw-focus-color': ('teal oklch(0.50 0.10 215)', '#1A1E1E', 'ink: 2 px ring, 2 px offset, so focus never reads as violet selection'),
     '--tw-danger': ('oklch(0.62 0.18 25)', '#8B4F54', 'errors only; with a word, never colour alone'),
-    '--tw-field': ('#FFFFFF', '#FFFFFF', 'new: the ground of fields and the camera box (#492)'),
-    '--tw-tile': ('#FFFFFF', '#FFFFFF', 'new: picture tiles (#492)'),
-    '--tw-tile-ink': ('#8A847A', '#59615F', 'new: alt text on a tile (#492)'),
+    '--tw-field': ('none', '#FFFFFF', 'new: the ground of fields and the camera box (#492)'),
+    '--tw-tile': ('none', '#FFFFFF', 'new: picture tiles (#492)'),
+    '--tw-tile-ink': ('none', '#59615F', 'new: alt text on a tile (#492)'),
     '--tw-r-1': ('6px', '3px', 'controls, tags, tape'),
     '--tw-r-2': ('10px', '4px', 'cards, tiles'),
     '--tw-r-3': ('16px', '8px', 'sheets'),
@@ -103,7 +103,7 @@ B_COMPONENTS = (
 .big{font:600 28px/32px var(--tw-mono);letter-spacing:-.02em}
 .field{display:flex;flex-direction:column;gap:6px;font:500 13px var(--tw-font);color:var(--tw-text-2)}
 .input{height:44px;border:1px solid var(--tw-text-muted);border-radius:var(--tw-r-1);background:var(--tw-field);display:flex;align-items:center;padding:0 12px;font:400 15px var(--tw-font);color:var(--tw-text)}
-.tile{background:var(--tw-tile);display:flex;align-items:center;justify-content:center;border-radius:2px;overflow:hidden}
+.tile{background:var(--tw-tile);color:var(--tw-tile-ink);display:flex;align-items:center;justify-content:center;border-radius:2px;overflow:hidden}
 .tile img{max-width:100%;max-height:100%;object-fit:contain}
 .ext{display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 12px;border-radius:var(--tw-r-1);box-shadow:inset 0 0 0 1.5px var(--tw-text);font:600 14px var(--tw-font);color:var(--tw-text);white-space:nowrap}
 /* phone */

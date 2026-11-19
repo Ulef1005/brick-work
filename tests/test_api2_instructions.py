@@ -48,3 +48,73 @@ def test_fetch_rejects_an_unknown_region(v2, coll):
     item = coll.item('sets', '1000-1')
     response = write(v2, '/instruction-files/fetch', body={'items': [{'id': item}], 'region': 'XX'})
     assert response.status_code == 422 and 'region' in str(response.json).lower()
+
+
+def test_instruction_links_for_a_set(v2, coll):
+    item = coll.item('sets', '1000-1')
+    response = call(v2, f'/items/{item}/instruction-links')
+    validate(response, 'get_items_by_id_instruction_links')
+    data = response.json['data']
+    assert data['set_no'] == '1000-1' and data['region'] == 'DE'
+    assert [(link['source'], link['url']) for link in data['links']] == [
+        ('lego', 'https://www.lego.com/de-de/service/building-instructions/1000?age-gate=grown_up'), ('rebrickable', 'https://rebrickable.com/sets/1000-1/')]
+    response = call(v2, f'/items/{item}/instruction-links?region=AT')
+    assert response.json['data']['region'] == 'AT' and '/en-gb/' in response.json['data']['links'][0]['url']
+
+
+def test_instruction_links_refuse_what_they_cannot_link(v2, coll):
+    item = coll.item('sets', '1000-1')
+    assert call(v2, f'/items/{item}/instruction-links?region=XX').status_code == 422
+    assert call(v2, '/items/999999/instruction-links').status_code == 404
+    part = coll.item('parts', '3001')
+    assert call(v2, f'/items/{part}/instruction-links').status_code == 422
+    assert call(v2, f'/items/{item}/instruction-links?bogus=1').status_code == 400
+
+
+def test_instruction_links_follow_the_retail_country(v2, coll, pair):
+    item = coll.item('sets', '1000-1')
+    with closing(connect(pair)) as db:
+        db.execute("INSERT OR REPLACE INTO main.setting(key,value) VALUES('retail_country','US')")
+        db.commit()
+    assert call(v2, f'/items/{item}/instruction-links').json['data']['region'] == 'US'
+    with closing(connect(pair)) as db:
+        db.execute("UPDATE main.setting SET value='NL' WHERE key='retail_country'")
+        db.commit()
+    assert call(v2, f'/items/{item}/instruction-links').json['data']['region'] == 'DE'
+
+
+def test_an_empty_region_is_refused_not_defaulted(v2, coll):
+    item = coll.item('sets', '1000-1')
+    assert call(v2, f'/items/{item}/instruction-links?region=').status_code == 422
+
+
+def test_a_booklet_shares_its_sets_number_without_the_set(v2, coll):
+    booklet = coll.local('instructions', 'Booklet 1', born_key='9999-1')            # no set 9999-1 is stored
+    data = call(v2, f'/items/{booklet}/instruction-links').json['data']
+    assert data['set_no'] == '9999-1' and [l['source'] for l in data['links']] == ['lego', 'rebrickable']
+    other = coll.local('gear', 'Tool', born_key='g1')
+    assert call(v2, f'/items/{other}/instruction-links').status_code == 422
+
+
+def test_a_set_known_only_by_a_confirmed_bricklink_link(v2, coll):
+    mystery = coll.local('set', 'Mystery set')
+    assert call(v2, f'/items/{mystery}/instruction-links').status_code == 422
+    coll.link(mystery, '75192-1', kind='S')
+    data = call(v2, f'/items/{mystery}/instruction-links').json['data']
+    assert data['set_no'] == '75192-1' and data['links'][1]['url'] == 'https://rebrickable.com/sets/75192-1/'
+    booklet = coll.local('instructions', 'Mystery booklet')
+    coll.link(booklet, '6086-1', kind='I')
+    assert call(v2, f'/items/{booklet}/instruction-links').json['data']['set_no'] == '6086-1'
+    wrong = coll.local('set', 'Wrong type')
+    coll.link(wrong, '3001', kind='P')
+    assert call(v2, f'/items/{wrong}/instruction-links').status_code == 422
+
+
+def test_an_alphanumeric_set_returns_one_link_over_the_api(v2, coll):
+    promo = coll.local('set', 'Promo', born_key='COMCON034-1')
+    data = call(v2, f'/items/{promo}/instruction-links').json['data']
+    assert [l['source'] for l in data['links']] == ['rebrickable']
+
+
+def test_a_missing_item_is_404_not_422(v2, coll):
+    assert call(v2, '/items/987654321/instruction-links').status_code == 404

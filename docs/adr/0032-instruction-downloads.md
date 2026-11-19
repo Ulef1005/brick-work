@@ -1,6 +1,6 @@
 # 0032. Confirmed instruction downloads use the existing job queue
 
-- **Status:** accepted; backup proposal to be confirmed before prod
+- **Status:** accepted; backup proposal to be confirmed before prod; amended by [0035](0035-instructions-link-out.md) (Find instructions links out)
 - **Date:** 2026-11-16
 - **Decided by:** Ulf, issue #25 approved brief
 

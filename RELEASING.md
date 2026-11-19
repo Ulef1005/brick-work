@@ -9,7 +9,7 @@ Use it as a copy-and-tick list in the release pull request.
 - [ ] The version number: a patch (`X.Y.Z+1`) for fixes, a minor (`X.Y+1.0`) for new functions, a major only when something users rely on breaks.
 - [ ] The milestone's issues are closed or moved, and its gate issue says the phase is done.
 - [ ] **Schema:** does the release change the schema (`SCHEMA_VERSION` in `brickwork/store4/connect.py`)? If so there is an in-place step in `store4.connect.UPGRADES`, a migration test, and the way back is the backup, not an older version.
-- [ ] `main` is green (the `check` workflow) and the Codex review of everything since the last tag is done.
+- [ ] `main` is green (the `check` workflow) and every change since the last tag had its code review, each pull request and any commit pushed straight to `main` (Gemini, then a read-only Sonnet subagent when Gemini gives no report; Codex until 2026-11-19).
 
 ## 2. Write the documents
 
@@ -23,8 +23,8 @@ Use it as a copy-and-tick list in the release pull request.
 
 - [ ] **Pictures:** if a screen changed, regenerate the README, Pages and tutorial pictures with `python scripts/site_shots.py` (the README and tutorial pictures are captures of the demo's richer world, the Pages pictures of the real-sets world; none are gate baselines; `python scripts/site_social.py` remakes the social preview) and open each one to check it.
 - [ ] **Chrome tests and screen gate:** the pull request check skips every Chrome test and every Node test (`BW_NO_CHROME=1`; the push to `main` runs them), so run `scripts/check.sh` without it on a Linux machine before the release and have it green. **Screen gate:** every changed approved screen has its baselines replaced with the maintainer's written approval recorded in `design/APPROVALS.md`. The screen gate is not part of the `check` workflow any more (2026-11-13): run it by hand before the release (`python -m pytest tests/test_screen_gate.py -q -p no:xdist`, on Linux, which decides) and have it green.
-- [ ] **Website:** the Pages site is built from `main` by the `pages` workflow (landing page, workflows, use cases, user docs, API reference, MCP guide, changelog, design pages, `llms.txt`). Edit the sources in `scripts/site/` where the text changed; the landing page carries the version (`scripts/site/landing.html`).
-- [ ] **Demo:** the static demo (`scripts/build_demo.py`) is rebuilt by the same workflow from the app on `main`, so it shows the release's screens. Run `scripts/check_demo_pages.py` locally when a screen changed, and open the demo after the deploy.
+- [ ] **Website:** the Pages site is built from the release tag by the `pages` workflow, never on a push to `main` (since 2026-11-19) (landing page, workflows, use cases, user docs, API reference, MCP guide, changelog, design pages, `llms.txt`). Edit the sources in `scripts/site/` where the text changed; the landing page carries the version (`scripts/site/landing.html`).
+- [ ] **Demo:** the static demo (`scripts/build_demo.py`) is rebuilt by the same workflow from the tagged app, so it shows the release's screens. Run `scripts/check_demo_pages.py` locally when a screen changed, and open the demo after the deploy.
 
 ## 4. The release pull request
 
@@ -45,7 +45,7 @@ One pull request, "Release X.Y.Z", that changes only version pins and release te
 
 ## 6. After the tag
 
-- [ ] **Pages:** the `pages` workflow ran on the release pull request's merge. Check the live site: the version on the landing page, the changelog page, the new docs and tutorials, the demo.
+- [ ] **Pages:** the `pages` workflow ran on the tag push (stable tags only; a pre-release tag does not deploy). A fix to the site between releases goes on a branch off the release tag, never on what `main` has since: run the workflow by hand from `main` (the environment allows only `main` and release tags) with `ref` set to that branch. Check the live site: the version on the landing page, the changelog page, the new docs and tutorials, the demo.
 - [ ] **Unraid template:** if the template's requirements changed (the minimum version, a new setting or path), update the Community Applications template repository and its README; the image tag it pulls is `latest`.
 - [ ] **Announce:** the release notes page, and where the project is discussed, link the changelog section.
 - [ ] **Issues:** each issue the release closes has an implemented note: what changed, its tests, the version, screenshots for screens.

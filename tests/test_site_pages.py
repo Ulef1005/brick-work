@@ -678,3 +678,13 @@ def test_feed_summary_of_a_release_that_opens_with_entries(tmp_path, monkeypatch
     monkeypatch.setattr(build_site, 'ROOT', tmp_path)
     feed = build_site.atom_feed()
     assert '<summary>One pull marks the Lost Parts.</summary>' in feed and '**' not in feed
+
+
+def test_the_use_cases_heading_and_description_count_the_cards_alike():
+    """The number of moments is said twice (the h1 and the page description); both follow the cards (marketing, #526)."""
+    from scripts import build_site
+    source = (ROOT / 'scripts' / 'site' / 'use-cases.md').read_text()
+    words = ('zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve')
+    count = len(re.findall(r'<h3 class="layout-39">', source))
+    heading = re.search(r'<h1[^>]*>(\w+) moments', source).group(1).lower()
+    assert heading == words[count] and build_site.MD_DESCRIPTIONS['use-cases'].lower().startswith(f'{words[count]} moments')

@@ -1012,6 +1012,37 @@ def setdetail_body(phone):
             f'<div style="width:400px;flex:none;display:flex;flex-direction:column;gap:10px">{cards[3]}{cards[4]}{cards[0]}{cards[2]}{cards[1]}{cards[5]}</div></div></div>')
 
 
+def parts6_body(_phone=False):
+    """Step 7: the second components sheet, the parts rounds 5 and 6 brought in (approved with round 6; the chart bars with round 5)."""
+    def cell(title, inner, note=''):
+        return (f'<div style="display:flex;flex-direction:column;gap:10px;min-width:0"><div class="lbl">{title}</div>'
+                f'<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;min-height:48px">{inner}</div>'
+                f'<div style="font-size:12.5px;color:var(--tw-text-2)">{note}</div></div>')
+    tint = HATCH.replace('var(--tw-text)', 'rgba(26,30,30,.18)')
+    sheet = ('<div style="position:relative;width:230px;height:92px;border:1px solid var(--tw-divider);border-radius:var(--tw-r-2);overflow:hidden;background:var(--tw-surface-2)">'
+             '<div class="sheet" style="padding:8px 12px 10px"><div style="width:30px;height:3px;border-radius:2px;background:var(--tw-divider);margin:0 auto 8px"></div>'
+             '<div style="font:600 14px var(--tw-font)">Make 7938-1 a copy?</div><div style="font-size:12px;color:var(--tw-text-2)">One step you can undo.</div></div></div>')
+
+    def hbar(label, n, total, st):
+        return (f'<div style="display:grid;grid-template-columns:96px 1fr 24px;gap:8px;align-items:center;font-size:12.5px"><span>{label}</span>'
+                f'<div style="height:10px;display:flex"><i style="display:block;width:{n / total * 100:.0f}%;{st}"></i></div><span class="mono" style="text-align:right">{n}</span></div>')
+    chart = ('<div style="width:300px;display:flex;flex-direction:column;gap:5px">'
+             + hbar('Complete', 3, 8, 'background:var(--tw-accent)') + hbar('Incomplete', 3, 8, f'background:{HATCH};box-shadow:inset 0 0 0 1px var(--tw-text)')
+             + hbar('Not checked', 2, 8, 'border:1.5px dashed var(--tw-text-2)') + hbar('Castle', 5, 8, 'background:var(--tw-text)') + '</div>')
+    grid = [
+        cell('Switch', f'{sw(True)}<span style="font-size:14px">On</span>{sw(False)}<span style="font-size:14px">Off</span>', 'Violet when on, ink outline when off. 40 × 24, in a 44 px row.'),
+        cell('Checkbox', f'{cb(True)}{cb(False)}', 'Violet when ticked, ink outline when not. 22 px, in a 44 px row.'),
+        cell('Source choice', '<div class="src" style="width:300px"><span class="on">BrickLink<small>€0.07 · 12 Oct</small></span><span>Pick a Brick<small>301040</small></span></div>',
+             'One of two. The chosen one in violet soft with a violet edge.'),
+        cell('Hatched status', f'<span class="tag" style="background:{tint}">Incomplete</span><span class="tag" style="background:{tint}">3 short</span>',
+             'Something missing: hatched, as on the bars, always with a word.'),
+        cell('Part colour', colour('Red') + colour('Light Bluish Gray') + colour('White'), 'The part’s own colour with its name in it, ink or white, whichever reads.'),
+        cell('Bottom sheet', sheet, 'Phone only: a confirm or a panel rises from the bottom, with a handle, over a scrim.'),
+        cell('Chart bars', chart, 'Ink bars from zero; violet only where a bar means found or complete; status bars by shape.'),
+    ]
+    return ('<div style="padding:28px 32px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:28px 36px">' + ''.join(grid) + '</div>')
+
+
 FRAMES = [('01-tools-and-admin', 'Manage', 'Tools & Admin', tools_body), ('02-settings', 'Manage', 'Tools & Admin', settings_body),
           ('03-find-instructions', 'Manage', 'Tools & Admin', finder_body),
           ('04-sets', 'Collection', 'Sets', sets_body), ('05-sets-without-storage', 'Collection', 'Sets', nostore_body),
@@ -1044,16 +1075,17 @@ html{color-scheme:dark}
 .xchip svg path,.cb svg path{stroke:var(--tw-on-accent)}
 '''
 SWAPS = [
+    # step 7: the sheet's shadow and the scrim first, then the hatched tag's tint (the tint swap had turned the sheet's shadow light)
+    ('box-shadow:0 -8px 24px rgba(26,30,30,.18)', 'box-shadow:0 -8px 24px rgba(0,0,0,.5)'),
+    ('.scrim{position:absolute;inset:0;background:rgba(26,30,30,.38)}', '.scrim{position:absolute;inset:0;background:rgba(0,0,0,.55)}'),
+    ('rgba(26,30,30,.18)', 'rgba(227,230,226,.24)'),       # the hatched tag's tint
     ('.input{height:44px;border:1px solid var(--tw-text-muted);border-radius:var(--tw-r-1);background:#fff;',
      '.input{height:44px;border:1px solid var(--tw-text-muted);border-radius:var(--tw-r-1);background:var(--tw-field);'),
     ('.tile{background:#fff;', '.tile{background:var(--tw-tile);'),
     ('.ptile{width:44px;height:44px;flex:none;background:#fff;', '.ptile{width:44px;height:44px;flex:none;background:var(--tw-tile);'),
-    ('rgba(26,30,30,.18)', 'rgba(227,230,226,.24)'),       # the hatched tag's tint
-    ('.scrim{position:absolute;inset:0;background:rgba(26,30,30,.38)}', '.scrim{position:absolute;inset:0;background:rgba(0,0,0,.55)}'),
-    ('box-shadow:0 -8px 24px rgba(26,30,30,.18)', 'box-shadow:0 -8px 24px rgba(0,0,0,.5)'),
     ('height:250px;background:#fff;border:1.5px solid var(--tw-text)', 'height:250px;background:var(--tw-field);border:1.5px solid var(--tw-text)'),
-    ('border:1.5px dashed var(--tw-text-2);background:#fff', 'border:1.5px dashed var(--tw-text-2);background:var(--tw-tile)'),
 ]
+DARK_WORDS = [('White on violet, 6.7:1.', 'Ink on violet, 6.5:1.'), ('the logo\u2019s X, white on a violet square', 'the logo\u2019s X, ink on a violet square')]   # step 7
 LOCKUP_DARK = (DESIGN / 'logo' / 'lockup-horizontal-dark.svg').read_text()
 
 
@@ -1061,6 +1093,8 @@ def darken(html):
     assert ':root{' + VARS + '}' in html
     html = html.replace(':root{' + VARS + '}', ':root{' + DARK_VARS + '}', 1)
     for a, b in SWAPS:
+        html = html.replace(a, b)
+    for a, b in DARK_WORDS:
         html = html.replace(a, b)
     return html.replace('</style>', DARK_CSS + '</style>', 1)
 
@@ -1073,6 +1107,7 @@ def sources():
             make = page6 if folder >= '12' else page3 if folder >= '04' else page
             out[f'{folder}/light-{w}.html'] = (make((phone_shell if phone else desk_shell)(g, sub, fn(phone)), w, h), w, h)
     out['00-components/light-1440.html'] = (page(parts_body(), 1440, 520), 1440, 520)
+    out['00b-components-2/light-1440.html'] = (page6(parts6_body(), 1440, 600), 1440, 600)   # step 7
     return out
 
 

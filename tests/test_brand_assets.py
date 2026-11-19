@@ -56,6 +56,7 @@ def test_every_url_served_before_the_move_answers_with_the_same_bytes(app4):
             expected['shortcuts'] += [
                 dict(name='Lot Sorter', url='/workbench/lot-sorter'),
                 dict(name='Order missing parts', url='/planning/order-missing-parts')]
+            expected.update(theme_color='#F8F8F6', background_color='#F8F8F6')   # W-Q7 (#492): the app bar surface
             assert response.json == expected, url
         else:
             assert response.get_data() == content, url

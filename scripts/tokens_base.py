@@ -9,7 +9,7 @@ Three files, one direction:
   unchanged below a provenance header (source path, ai-wiki commit, SHA-256). Never edited. A newer base is only noted;
   Brick Work switches its base as its own step, with a frame comparison (App Design Standard), never by a silent sync.
 - design/tokens/brickwork-tokens.css: Brick Work's layer, loaded after the base. It redefines every colour role, the type
-  and the radii; its values are the stylesheet the app served before the roll-out (no visual change, ADR 0022).
+  and the radii; since #492 its values are B′ Drawer Tag, from design/sources/b/b_frames.py (pinned by tests/test_design_tokens.py).
 - static/web/toni/tokens-v2.css (served, generated): the base's body followed by the layer. design/tokens/brickwork-tokens.json
   (generated): every custom property per theme block, for tools.
 

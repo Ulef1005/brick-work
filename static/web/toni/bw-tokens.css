@@ -3,7 +3,7 @@
 .bw-tokens-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
 .bw-tokens-head h1{margin:0;font:600 28px/34px var(--tw-font);letter-spacing:-.3px}
 .bw-tokens-head p{margin:6px 0 0;font:400 15px/22px var(--tw-font);color:var(--tw-text-2)}
-.bw-tokens .bw-tk-primary,.bw-tokens .bw-tk-primary:visited{height:48px;min-height:48px;padding:0 24px;border-radius:10px;border:0;background:var(--tw-accent);color:#1A1816;display:inline-flex;align-items:center;justify-content:center;gap:8px;font:600 16px var(--tw-font);white-space:nowrap;text-decoration:none;cursor:pointer}
+.bw-tokens .bw-tk-primary,.bw-tokens .bw-tk-primary:visited{height:48px;min-height:48px;padding:0 24px;border-radius:10px;border:0;background:var(--tw-accent);color:var(--tw-on-accent);display:inline-flex;align-items:center;justify-content:center;gap:8px;font:600 16px var(--tw-font);white-space:nowrap;text-decoration:none;cursor:pointer}
 .bw-tokens .bw-tk-quiet{height:44px;min-height:44px;padding:0 16px;border-radius:10px;border:0;background:var(--tw-surface-2);color:var(--tw-text);display:inline-flex;align-items:center;justify-content:center;gap:6px;font:500 14px var(--tw-font);white-space:nowrap;text-decoration:none;cursor:pointer}
 .bw-tokens .bw-tk-outline{height:44px;min-height:44px;padding:0 16px;border-radius:10px;border:.5px solid var(--tw-accent);background:transparent;color:var(--tw-accent-text);display:inline-flex;align-items:center;justify-content:center;gap:6px;font:500 14px var(--tw-font);white-space:nowrap;text-decoration:none;cursor:pointer}
 .bw-tokens button:disabled{opacity:.5;cursor:default}
@@ -43,7 +43,7 @@
 .bw-tk-scope{display:flex;gap:12px;align-items:center;min-height:52px;border-top:.5px solid var(--tw-divider);cursor:pointer}
 .bw-tk-scope input{appearance:none;width:22px;height:22px;border-radius:6px;flex:none;border:1.5px solid var(--tw-text-muted);box-sizing:border-box;margin:0;display:grid;place-items:center;background:transparent}
 .bw-tk-scope input:checked{background:var(--tw-accent);border-color:var(--tw-accent)}
-.bw-tk-scope input:checked::after{content:"";width:6px;height:11px;border:solid #1A1816;border-width:0 2px 2px 0;transform:rotate(45deg) translate(-1px,-1px)}
+.bw-tk-scope input:checked::after{content:"";width:6px;height:11px;border:solid var(--tw-on-accent);border-width:0 2px 2px 0;transform:rotate(45deg) translate(-1px,-1px)}
 .bw-tk-scope input:focus-visible{outline:2px solid var(--tw-focus-color);outline-offset:2px}
 .bw-tk-scope b{display:block;font:500 14px var(--tw-mono)}
 .bw-tk-scope small{display:block;font:400 13px/18px var(--tw-font);color:var(--tw-text-muted)}

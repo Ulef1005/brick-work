@@ -6,9 +6,10 @@ Brick Work is MIT-licensed ([LICENSE](LICENSE)). It was inspired by and started 
 
 | Asset | Where | Licence |
 |---|---|---|
-| Inter 5.3.0 (latin subset, from @fontsource) | `static/web/toni/fonts/` | SIL Open Font License 1.1, `LICENSE-Inter.txt` |
-| Geist Mono 5.3.0 (latin subset, from @fontsource) | `static/web/toni/fonts/` | SIL Open Font License 1.1, `LICENSE-GeistMono.txt` |
-| Patrick Hand, © 2010-2012 Patrick Wagesreiter | `static/fonts/` | SIL Open Font License 1.1, `OFL-PatrickHand.txt` |
+| IBM Plex Sans, Sans Condensed and Mono 1.1.0, © 2017 IBM Corp., Reserved Font Name "Plex" (unmodified, from @ibm/plex-*) | `design/fonts/` (served from `static/brickwork/fonts/`, copied to `docs/assets/fonts/`) | SIL Open Font License 1.1, `OFL-IBMPlex.txt` |
+| Inter 5.3.0 (latin subset, from @fontsource), for printed labels and the website | `static/web/toni/fonts/` | SIL Open Font License 1.1, `LICENSE-Inter.txt` |
+| Geist Mono 5.3.0 (latin subset, from @fontsource), for printed labels and the website | `static/web/toni/fonts/` | SIL Open Font License 1.1, `LICENSE-GeistMono.txt` |
+| Patrick Hand, © 2010-2012 Patrick Wagesreiter, for the website | `static/fonts/` | SIL Open Font License 1.1, `OFL-PatrickHand.txt` |
 | UI icons (24 px stroke icons) | `static/web/toni/icons/`, `design/components/icons/` (served from `static/brickwork/icons-ui/`) | Drawn for this project; MIT, as the project |
 | App icons and Brick Work mark | `design/app-icon/icons/`, `design/logo/` (served from `static/brickwork/`) | Drawn for this project; MIT, as the project |
 | Demo illustrations (sets, figures, parts of the invented demo collection) | `design/demo-art/` (drawn by `scripts/demo_art.py`) | Original artwork made for the demo; MIT, as the project. Nothing in them comes from, or is traced from, BrickLink, Rebrickable, Brickset or LEGO pictures |

@@ -1,9 +1,13 @@
 /* Port of approved ui_kits/admin/admin.css, 2026-10-05. */
-@font-face{font-family:'Inter';font-style:normal;font-weight:400;font-display:swap;src:url('fonts/inter-latin-400-normal.woff2') format('woff2')}
-@font-face{font-family:'Inter';font-style:normal;font-weight:500;font-display:swap;src:url('fonts/inter-latin-500-normal.woff2') format('woff2')}
-@font-face{font-family:'Inter';font-style:normal;font-weight:600;font-display:swap;src:url('fonts/inter-latin-600-normal.woff2') format('woff2')}
-@font-face{font-family:'Geist Mono';font-style:normal;font-weight:400;font-display:swap;src:url('fonts/geist-mono-latin-400-normal.woff2') format('woff2')}
-@font-face{font-family:'Geist Mono';font-style:normal;font-weight:500;font-display:swap;src:url('fonts/geist-mono-latin-500-normal.woff2') format('woff2')}
+@font-face{font-family:'IBM Plex Sans';font-style:normal;font-weight:400;font-display:swap;src:url('../../brickwork/fonts/IBMPlexSans-Regular.woff2') format('woff2')}
+@font-face{font-family:'IBM Plex Sans';font-style:normal;font-weight:500;font-display:swap;src:url('../../brickwork/fonts/IBMPlexSans-Medium.woff2') format('woff2')}
+@font-face{font-family:'IBM Plex Sans';font-style:normal;font-weight:600;font-display:swap;src:url('../../brickwork/fonts/IBMPlexSans-SemiBold.woff2') format('woff2')}
+@font-face{font-family:'IBM Plex Sans';font-style:normal;font-weight:700;font-display:swap;src:url('../../brickwork/fonts/IBMPlexSans-Bold.woff2') format('woff2')}
+@font-face{font-family:'IBM Plex Sans Condensed';font-style:normal;font-weight:500;font-display:swap;src:url('../../brickwork/fonts/IBMPlexSansCondensed-Medium.woff2') format('woff2')}
+@font-face{font-family:'IBM Plex Sans Condensed';font-style:normal;font-weight:600;font-display:swap;src:url('../../brickwork/fonts/IBMPlexSansCondensed-SemiBold.woff2') format('woff2')}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:400;font-display:swap;src:url('../../brickwork/fonts/IBMPlexMono-Regular.woff2') format('woff2')}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:500;font-display:swap;src:url('../../brickwork/fonts/IBMPlexMono-Medium.woff2') format('woff2')}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:600;font-display:swap;src:url('../../brickwork/fonts/IBMPlexMono-SemiBold.woff2') format('woff2')}
 /* Only authoritative ../../tokens.css variables; loaded directly from ../../tokens.css.
    No separate colour/type scale. Breakpoint constants cannot use CSS var(). */
 :root{--admin-rail:calc(7 * var(--tw-s-7));--admin-standard:calc(32 * var(--tw-s-7));--admin-wide:calc(40 * var(--tw-s-7));--admin-card:calc(8 * var(--tw-s-7));--admin-dialog:calc(14 * var(--tw-s-7));--admin-dialog-form:calc(20 * var(--tw-s-7));--admin-image:calc(4 * var(--tw-s-8));--admin-primary:var(--tw-accent-text);--admin-icon-sm:var(--tw-s-4);--admin-icon:var(--tw-s-5);--admin-icon-lg:var(--tw-s-6);color-scheme:light}
@@ -125,8 +129,8 @@ details.kit-disclosure[open]>summary::after{transform:rotate(225deg)}
 /* Shared picture enlargement, including dynamically rendered scanner results. */
 .lightbox-stage img{width:100%;height:65vh;max-width:100%;max-height:75vh;object-fit:contain;cursor:zoom-out}#content img:not([src*="/icons/"]):not([data-no-lightbox]){cursor:zoom-in}
 
-/* Reusable kit primary action: ink remains ink in both themes. */
-:root { --bw-action-ink:#1A1816; }
+/* Reusable kit primary action: the text on the accent, white on violet in light, ink in dark (B′, #492). */
+:root,.tw-light,.tw-dark { --bw-action-ink:var(--tw-on-accent); }
 button.bw-primary,.button.bw-primary { background:var(--tw-accent);color:var(--bw-action-ink);border-color:var(--tw-accent);min-height:var(--tw-hit-lg); }
 button.bw-primary:active,.button.bw-primary:active { background:var(--tw-viz-5); }
 button.bw-primary:disabled,.button.bw-primary:disabled { background:var(--tw-surface-2);color:var(--tw-text-muted);border-color:var(--tw-divider); }

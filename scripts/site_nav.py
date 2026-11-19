@@ -14,12 +14,12 @@ LINKS = (('Home', ''), ('Install', 'install/'), ('Demo', 'demo/'), ('Use cases',
 
 STYLE = f'''<style data-bw-topbar-style>
 :root{{--bw-topbar-h:{HEIGHT}px}}
-.bw-topbar{{--bw-bg:#fbf8f2;--bw-fg:#2a2622;--bw-line:#d9d2c5;--bw-light:block;--bw-dark:none;
+.bw-topbar{{--bw-bg:#F8F8F6;--bw-fg:#1A1E1E;--bw-line:#C9CDC8;--bw-light:block;--bw-dark:none;
 position:sticky;top:0;z-index:2000;box-sizing:border-box;height:var(--bw-topbar-h);display:flex;align-items:center;gap:8px;padding:0 16px;
 background:var(--bw-bg);color:var(--bw-fg);border-bottom:1px solid var(--bw-line);font:14px/1.2 system-ui,-apple-system,"Segoe UI",sans-serif}}
 /* The pages' own theme switch wins over the system setting: Zensical sets data-md-color-scheme on <body>, the app and the demo set tw-dark / tw-light on <html>. */
-@media (prefers-color-scheme:dark){{:root:not(.tw-light) body:not([data-md-color-scheme="default"]) .bw-topbar{{--bw-bg:#1d1a17;--bw-fg:#f1ece3;--bw-line:#3b362f;--bw-light:none;--bw-dark:block}}}}
-html.tw-dark .bw-topbar,body[data-md-color-scheme="slate"] .bw-topbar{{--bw-bg:#1d1a17;--bw-fg:#f1ece3;--bw-line:#3b362f;--bw-light:none;--bw-dark:block}}
+@media (prefers-color-scheme:dark){{:root:not(.tw-light) body:not([data-md-color-scheme="default"]) .bw-topbar{{--bw-bg:#1F2322;--bw-fg:#E3E6E2;--bw-line:#3E4442;--bw-light:none;--bw-dark:block}}}}
+html.tw-dark .bw-topbar,body[data-md-color-scheme="slate"] .bw-topbar{{--bw-bg:#1F2322;--bw-fg:#E3E6E2;--bw-line:#3E4442;--bw-light:none;--bw-dark:block}}
 .bw-topbar a{{color:inherit;text-decoration:none}}
 .bw-topbar .bw-brand{{display:flex;align-items:center;margin-right:8px}}
 .bw-topbar .bw-brand img{{height:26px;width:auto}}

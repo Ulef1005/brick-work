@@ -62,7 +62,7 @@ def test_counts_read_only_one_query_per_request(app4, world, monkeypatch):
         assert len(statements) == 1 and statements[0].lstrip().startswith("SELECT 'Sets'")
 
 
-@pytest.mark.parametrize('theme,color', [('', '#FAFAF8'), ('?theme=dark', '#1A1816')])
+@pytest.mark.parametrize('theme,color', [('', '#F8F8F6'), ('?theme=dark', '#1F2322')])
 def test_manifest_fields_and_assets(app4, theme, color):
     app = app4
     response = app.test_client().get('/manifest.webmanifest' + theme)

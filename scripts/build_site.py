@@ -120,8 +120,12 @@ DEFAULT_DESCRIPTION = 'Brick Work: the workbench for your brick collection: self
 DEMO_DESCRIPTION = 'Try the real Brick Work interface in your browser on an invented collection around seven real sets; nothing is saved.'
 
 
-# The browser bar's colours: the page background in light and dark (static/web/toni/tokens-v2.css as brick-work.css sets it).
-THEME_LIGHT, THEME_DARK = '#fbf8f2', '#1d1a17'
+# The walkthrough video: one source for the home page's tour card and /llms.txt, set when the video is reshot (#526; brick-work-marketing
+# sends the length). Filled as {tour_url} and {tour_length}.
+TOUR_URL, TOUR_LENGTH = 'https://www.youtube.com/watch?v=R5Q_6GUB1OQ', '1:36'
+
+# The browser bar's colours: the B′ app bar surface, --tw-surface, in light and dark (#526, W-Q7; design/BRAND.md § 3).
+THEME_LIGHT, THEME_DARK = '#F8F8F6', '#1F2322'
 
 
 def seo_head(title, description, path, canonical=True):
@@ -170,8 +174,8 @@ def page(title, body, depth, *, current, head='', main='doc', absolute=False, pa
 <link rel="icon" href="{up}assets/favicon-16.png" sizes="16x16" type="image/png">
 <link rel="icon" href="{up}assets/favicon.ico" sizes="48x48">
 <link rel="apple-touch-icon" href="{up}assets/apple-touch-icon.png">
-<link rel="preload" href="{up}assets/fonts/inter-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="{up}assets/fonts/inter-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="{up}assets/fonts/IBMPlexSans-Regular.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="{up}assets/fonts/IBMPlexSans-SemiBold.woff2" as="font" type="font/woff2" crossorigin>
 <meta name="theme-color" content="{THEME_LIGHT}" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="{THEME_DARK}" media="(prefers-color-scheme: dark)">
 <link rel="stylesheet" href="{up}assets/tokens-v2.css">
@@ -257,7 +261,7 @@ def fill(text, up):
     from brickwork.version import __version__
     version, schema, date, summary = latest_release()
     values = {'repository': repository(), 'up': up, 'version': __version__, 'release_version': version, 'release_date': date,
-              'release_summary': html.escape(summary), 'release_schema': schema}
+              'release_summary': html.escape(summary), 'release_schema': schema, 'tour_url': TOUR_URL, 'tour_length': TOUR_LENGTH}
     values['count_adr'] = str(len(list((ROOT / 'docs/adr').glob('[0-9]*.md'))))
     for section in ('tutorials', 'how-to', 'concepts', 'reference'):
         values['count_' + section.replace('-', '_')] = str(docs_count(section))
@@ -454,7 +458,7 @@ def llms_txt():
     """/llms.txt (llmstxt.org) from scripts/site/llms.md: the facts an AI assistant is most often asked, with the release's version
     filled in and every repository link turned into the raw Markdown file on GitHub, which an assistant reads best."""
     from brickwork.version import __version__
-    text = (SITE / 'llms.md').read_text().replace('{version}', __version__).replace('{repository}', repository()).replace('{site}', origin() + site_base())
+    text = (SITE / 'llms.md').read_text().replace('{version}', __version__).replace('{repository}', repository()).replace('{site}', origin() + site_base()).replace('{tour_url}', TOUR_URL).replace('{tour_length}', TOUR_LENGTH)
     raw = f'https://raw.githubusercontent.com/{repository()}/main/'
     return re.sub(r'\]\((?!https?://|#)([^)\s]+)\)', lambda m: f']({raw}{m[1]})', text)
 
@@ -564,8 +568,9 @@ def build(out):
     (out / 'mcp').mkdir()
     static = ROOT / 'static'
     shutil.copy(static / 'web/toni/tokens-v2.css', out / 'assets/tokens-v2.css')
-    for font in (static / 'web/toni/fonts').glob('*'):
-        shutil.copy(font, out / 'assets/fonts' / font.name)
+    for font in (static / 'brickwork/fonts').glob('*'):   # IBM Plex, B′ (#526); generated from design/fonts by scripts/brand_assets.py
+        if font.name != 'README.md':
+            shutil.copy(font, out / 'assets/fonts' / font.name)
     for name in ('app-icon.svg', 'favicon.svg', 'favicon.ico', 'favicon-16.png', 'favicon-32.png',
                  'lockup-horizontal-light.png', 'lockup-horizontal-dark.png'):
         shutil.copy(static / 'brickwork' / name, out / 'assets' / name)

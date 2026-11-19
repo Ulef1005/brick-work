@@ -11,6 +11,7 @@ any row that could not be read turns clearing off for that run, so a changed rep
 takes every one of them back."""
 import json
 
+from ...store4.errors import Store4Error
 from .. import checker, wishlists
 
 KEY = 'rebrickable_lost_parts_rule'
@@ -65,10 +66,12 @@ def copy_label(copy):
     return ' · '.join(words)
 
 
-def _lines(db, copy_id):
-    """The copy's live set lines (a figure's own parts are not Rebrickable's set lines) and the Rebrickable numbers of their items and colours."""
-    lines = [dict(r) for r in db.execute('''SELECT id, item_id, color_id, is_spare, quantity, missing FROM main.copy_part
-                                            WHERE copy_id=? AND copy_figure_id IS NULL AND retired_at IS NULL ORDER BY id''', (copy_id,))]
+def _lines(db, copy_id, lines=None):
+    """The copy's live set lines (a figure's own parts are not Rebrickable's set lines) and the Rebrickable numbers of their items and colours.
+    `lines` are the lines of a copy not made yet (`preview_new`), in the same shape."""
+    if lines is None:
+        lines = [dict(r) for r in db.execute('''SELECT id, item_id, color_id, is_spare, quantity, missing FROM main.copy_part
+                                                WHERE copy_id=? AND copy_figure_id IS NULL AND retired_at IS NULL ORDER BY id''', (copy_id,))]
     numbers = wishlists._rebrickable_numbers(db, {l['item_id'] for l in lines})
     colours = wishlists._rebrickable_colours(db, {l['color_id'] for l in lines})
     index = {}
@@ -79,13 +82,45 @@ def _lines(db, copy_id):
     return lines, index
 
 
-def changes(db, copy_id, rows, how, *, clear_set=False):
+def preview_new(db, item_id, rows, how):
+    """What `changes` would do on the copy a pull is about to make of the set (the Add preselection `add._add_copy` uses): the copy's lines
+    are built and their items and colours projected as `create_copy_in` does, inside a savepoint that is rolled back, so it writes nothing.
+    None when the set has no part list yet (its copy is made without lines)."""
+    from ...store4 import copies as store_copies
+    try:
+        choice = store_copies.part_list_choices(db, item_id)['preselected']
+        if choice is None:
+            return None
+        try:
+            target = store_copies.build_target(db, item_id, choice)
+        except store_copies.BrickLinkPending:
+            target = store_copies.build_target(db, item_id, store_copies._pending_base(db, item_id))
+    except Store4Error:                                 # no part list, or one the catalogue cannot give: never stops the pull preview
+        return None
+    found = sorted(((item, colour, spare), quantity) for (figure, item, colour, spare), quantity in target.lines().items() if figure is None)
+    if not found:
+        return None
+    lines = [dict(id=-n, item_id=item, color_id=colour, is_spare=spare, quantity=quantity, missing=0)
+             for n, ((item, colour, spare), quantity) in enumerate(found, 1)]
+    db.execute('SAVEPOINT lost_parts_preview')
+    try:
+        store_copies._project(db, target)               # the Rebrickable numbers of items and colours the collection does not hold yet
+        return changes(db, None, rows, how, lines=lines)
+    except Store4Error:
+        return None
+    finally:
+        db.execute('ROLLBACK TO lost_parts_preview')
+        db.execute('RELEASE lost_parts_preview')
+
+
+def changes(db, copy_id, rows, how, *, clear_set=False, lines=None):
     """What the rule does to one copy, from the set's lost rows `rows` (may be empty): `dict(edits, added, replaced, cleared, unmatched, same,
     not_cleared)`. `edits` is `[(token, fields)]` for `checker.mark`; `added`/`replaced`/`cleared` are lists of `dict(part_no, color_id,
     is_spare, before, after)`; `unmatched` lists `dict(part_no, color_id, is_spare, quantity, reason)`. `how` is the rule that applies (a rule
     that clears is passed as `per_part` when clearing is off). `clear_set` is true when the rule clears this set's other marks. A set with an
-    unmatched lost part is not cleared (`not_cleared` says so): the line it names may be one that is marked here."""
-    lines, index = _lines(db, copy_id)
+    unmatched lost part is not cleared (`not_cleared` says so): the line it names may be one that is marked here. `lines` (with `copy_id`
+    None) previews a copy the pull has not made yet."""
+    lines, index = _lines(db, copy_id, lines)
     out = dict(edits=[], trail=[], added=[], replaced=[], cleared=[], unmatched=[], same=0, not_cleared=None)
     listed = set()
 
@@ -164,9 +199,12 @@ def by_set(rows):
     return grouped
 
 
-def plan_section(db, read, owned_numbers, translate, *, how, on):
+def plan_section(db, read, owned_numbers, translate, *, how, on, adds=None):
     """The `lost` part of a pull plan. `read` is the adapter's answer (`dict(rows, unreadable)`) or the reason it failed (text), None when off;
-    `owned_numbers` are the synced owned set numbers (what the everything rule works on); `translate` maps set numbers to item ids."""
+    `owned_numbers` are the synced owned set numbers (what the everything rule works on); `translate` maps set numbers to item ids. `adds`
+    (`{item id: copies}`) are the copies the same pull adds (#513): a set with no copy here that the pull brings in once is matched against
+    the lines that copy will get (state `new`), so one pull marks it."""
+    adds = adds or {}
     section = dict(on=on, rule=how, status='off', message=None, unreadable=0, rows=[], sets=[], unmatched_sets=[], clearing=True,
                    summary=dict(sets=0, added=0, replaced=0, cleared=0, cleared_pieces=0, unmatched=0, pick=0, unreadable=0))
     if not on:
@@ -198,10 +236,23 @@ def plan_section(db, read, owned_numbers, translate, *, how, on):
             continue
         held = copies.get(item, [])
         if not held:
-            if mine:
-                section['unmatched_sets'].append(dict(set_no=number, parts=len(mine), pieces=sum(r['quantity'] for r in mine),
-                                                      reason='No copy of this set in the collection yet. Pull its copy first, then sync again'))
-                summary['unmatched'] += len(mine)
+            if not mine:
+                continue                                    # a copy the pull makes has no marks to clear
+            coming = adds.get(item, 0)
+            result = preview_new(db, item, mine, effective) if coming == 1 else None
+            if result is not None:
+                entry = dict(set_no=number, item_id=item, parts=len(mine), pieces=sum(r['quantity'] for r in mine), copies=[], copy_id=None,
+                             state='new', preview=dict(short(result), unmatched_list=result['unmatched'], not_cleared=None,
+                                                       parts=result['added'], cleared_list=[]))
+                for name in ('added', 'unmatched'):
+                    summary[name] += entry['preview'][name]
+                section['sets'].append(entry)
+                continue
+            reason = ('No copy of this set in the collection yet. Pull its copy first, then sync again' if not coming else
+                      'This pull adds %d copies of this set. Sync again afterwards and choose the copy' % coming if coming > 1 else
+                      'The set has no part list yet. Sync again once its copy has one')
+            section['unmatched_sets'].append(dict(set_no=number, parts=len(mine), pieces=sum(r['quantity'] for r in mine), reason=reason))
+            summary['unmatched'] += len(mine)
             continue
         entry = dict(set_no=number, item_id=item, parts=len(mine), pieces=sum(r['quantity'] for r in mine),
                      copies=[dict(id=c['id'], label=copy_label(c)) for c in held], copy_id=None, state='ready', preview=None)
@@ -242,7 +293,8 @@ def apply(db, section, ticked, picks, *, new_copies=()):
     """Write the ticked sets' marks inside the open pull transaction. `ticked` is the list of set numbers (None: every set that has a copy to
     use), `picks` maps a set number to the chosen copy id. Returns `dict(events, sets, added, replaced, cleared, unmatched, left_out)`; `events`
     are the `part_check` receipts the pull's Undo takes back. Everything is recomputed against what the collection holds now, with the rule
-    the plan froze. A copy this pull just made is never written."""
+    the plan froze. A copy this pull just made (`new_copies`) is written only for a set the plan marked `new` (#513): the set had no copy and
+    the pull made exactly one."""
     from .. import errors
     report = dict(events=[], sets=[], added=0, replaced=0, cleared=0, unmatched=[], left_out=[], skipped=[])
     if section.get('status') != 'read':
@@ -262,9 +314,19 @@ def apply(db, section, ticked, picks, *, new_copies=()):
     for number, entry in wanted.items():
         if ticked is not None and entry['state'] != 'pick' and number not in ticked:
             continue                                        # a set with several copies has no tick: its pick (or none) says
-        held = [c for c in _copies(db, [entry['item_id']]).get(entry['item_id'], []) if c['id'] not in new_copies]
+        live = _copies(db, [entry['item_id']]).get(entry['item_id'], [])
+        held = [c for c in live if c['id'] not in new_copies]
         ids = [c['id'] for c in held]
-        if entry['state'] == 'pick':
+        if entry['state'] == 'new':
+            made = [c['id'] for c in live if c['id'] in new_copies]
+            if held or len(made) > 1:
+                report['skipped'].append(dict(set_no=number, reason='The copies of this set changed since the plan was made'))
+                continue
+            if not made:
+                report['skipped'].append(dict(set_no=number, reason='Its copy was not pulled this time, so its Lost Parts wait for the next sync'))
+                continue
+            copy_id = made[0]
+        elif entry['state'] == 'pick':
             copy_id = picks.get(number)
             if not copy_id:
                 report['left_out'].append(dict(set_no=number, parts=entry['parts'], reason='Choose a copy'))
@@ -277,7 +339,7 @@ def apply(db, section, ticked, picks, *, new_copies=()):
                 continue
             copy_id = entry['copy_id']
         mine = grouped.get(number, [])
-        result = changes(db, copy_id, mine, how, clear_set=clears(how, bool(mine)))
+        result = changes(db, copy_id, mine, how, clear_set=entry['state'] != 'new' and clears(how, bool(mine)))   # a new copy has nothing to clear
         previewed = (entry.get('previews') or {}).get(copy_id) if entry['state'] == 'pick' else entry.get('preview')
         if previewed is not None and 'fingerprint' in previewed and [list(e) for e in previewed['fingerprint']] != fingerprint(result):
             report['skipped'].append(dict(set_no=number, reason='The missing parts of this copy changed since the preview. Preview the pull again'))

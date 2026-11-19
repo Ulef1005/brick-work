@@ -7,7 +7,7 @@ verified: 1.0
 
 *Since 0.6.0.*
 
-Do this to bring a collection kept in BrickTracker into this one. BrickTracker stores Rebrickable numbers, and Brick Work's catalogue is built on Rebrickable's numbers, so nothing is translated. Every set, part, figure and colour the catalogue knows is placed exactly, and what it does not know is listed and left out. Open **Manage → Tools & Admin → Import from BrickTracker**.
+Do this to bring a collection kept in BrickTracker into this one. BrickTracker stores Rebrickable numbers, and Brick Work's catalogue is built on Rebrickable's numbers, so nothing is translated. Every set, part, figure and colour the catalogue knows is placed exactly, and what it does not know is listed and left out. Open **Manage → Tools & Admin → Maintenance → Import from BrickTracker**.
 
 ## Upload and read the preview
 

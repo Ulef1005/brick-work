@@ -145,3 +145,22 @@ def test_the_new_fields_need_csrf(client, remote):
     linked(client)
     assert client.post('/manage/sync/rebrickable/pull', data={'lost_parts': '1'}).status_code == 400
     assert client.post('/manage/sync/rebrickable/apply', data={'plan_id': 'x' * 32, 'lost_listed': '1', 'lost': ['1000-1']}).status_code == 400
+
+
+def test_a_set_the_pull_brings_in_is_marked_from_the_page(client, remote, pair):
+    """#513: 1000-2 has no copy here and Rebrickable owns it once, so one pull adds the copy and marks its Lost Parts."""
+    csrf = linked(client)
+    remote.lost = [raw('1000-2', '3001', 4, 1)]
+    plan = soup(client.get(client.post('/manage/sync/rebrickable/pull', data={'csrf_token': csrf}).location))
+    section = plan.select_one('.sy-lost')
+    rows = {r.select_one('.sy-id .mono').get_text(strip=True): r for r in section.select('[data-sy-row]')}
+    assert rows['1000-2'].select_one('input[name=lost][data-sy-tick]').has_attr('checked')
+    assert 'Mark 1 part' in rows['1000-2'].select_one('.sy-do').get_text(' ', strip=True)
+    assert 'No copy of this set' not in section.get_text()
+    ticks = [i['value'] for i in plan.select('input[name=tick][checked]')]
+    response = client.post('/manage/sync/rebrickable/apply', data={'csrf_token': csrf, 'plan_id': plan.select_one('input[name=plan_id]')['value'],
+                                                                    'tick': ticks, 'lost_listed': '1', 'lost': ['1000-2']})
+    assert response.status_code == 302
+    with closing(connect(pair)) as db:
+        (copy,) = [r[0] for r in db.execute("SELECT c.id FROM copy c JOIN item i ON i.id=c.item_id WHERE i.born_key='1000-2' AND c.archived_at IS NULL")]
+        assert marks(db, copy) == {('3001', '4', False): 1}

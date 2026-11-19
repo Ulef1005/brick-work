@@ -1,6 +1,6 @@
 # Screens, direction B′ Drawer Tag
 
-The approved frames of commission U, built by `../sources/b/b_frames.py` (`build`, `check`). One folder per screen, `<theme>-<width>.html` and `.png` (device scale 2). Light only: Ulf approves light, one phone and one desktop view per screen; dark mode and the other widths are built from them (App Design Standard, review scope).
+The approved frames of commission U, built by `../sources/b/b_frames.py` (`build`, `check`). One folder per screen, `<theme>-<width>.html` and `.png` (device scale 2). Light and dark: Ulf approved light, one phone and one desktop view per screen, and then, at his request, every frame in dark (the dark round, #512). The dark frames are the light ones with the dark token values, the on-dark lockup and, for catalogue pictures, a light grey tile with the picture multiplied. The other widths are built from them (App Design Standard, review scope).
 
 | Folder | Item | Approved |
 |---|---|---|

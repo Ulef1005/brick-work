@@ -1025,6 +1025,46 @@ FRAMES = [('01-tools-and-admin', 'Manage', 'Tools & Admin', tools_body), ('02-se
 SIZES = ((False, 1440, 1000), (True, 390, 844))
 
 
+# ==== Dark (approved 2026-11-19, Ulf: "B" for the picture tiles, then "rest is also approved"; artifact version 14) ====
+# The dark frames are the light ones with the dark token values, the on-dark lockup (LG03) and the few literal colours swapped.
+DARK = {
+    '--tw-bg': '#161918', '--tw-surface': '#1F2322', '--tw-surface-2': '#292E2C', '--tw-divider': '#3E4442',
+    '--tw-rule': '#E3E6E2', '--tw-text': '#E3E6E2', '--tw-text-2': '#BAC1BD', '--tw-text-muted': '#9AA29E',
+    '--tw-accent': '#C080FE', '--tw-accent-soft': '#2F2547', '--tw-accent-text': '#C080FE', '--tw-on-accent': '#161918',
+    '--tw-focus-color': '#E3E6E2', '--tw-danger': '#E8A3AA',
+    # new roles for literals the light frames carry as #fff
+    '--tw-field': '#101312', '--tw-tile': '#E4E6E2', '--tw-tile-ink': '#4A524F',
+}
+DARK_VARS = ';'.join(f'{k}:{DARK.get(k, v[1])}' for k, v in TOKENS.items()) + ';' + ';'.join(
+    f'{k}:{v}' for k, v in DARK.items() if k not in TOKENS)
+DARK_CSS = '''
+html{color-scheme:dark}
+.tile span{color:var(--tw-tile-ink)!important}
+.tile img{mix-blend-mode:multiply}   /* catalogue pictures only; Ulf 19.11.: "B" (light grey tile, multiply) */
+.xchip svg path,.cb svg path{stroke:var(--tw-on-accent)}
+'''
+SWAPS = [
+    ('.input{height:44px;border:1px solid var(--tw-text-muted);border-radius:var(--tw-r-1);background:#fff;',
+     '.input{height:44px;border:1px solid var(--tw-text-muted);border-radius:var(--tw-r-1);background:var(--tw-field);'),
+    ('.tile{background:#fff;', '.tile{background:var(--tw-tile);'),
+    ('.ptile{width:44px;height:44px;flex:none;background:#fff;', '.ptile{width:44px;height:44px;flex:none;background:var(--tw-tile);'),
+    ('rgba(26,30,30,.18)', 'rgba(227,230,226,.24)'),       # the hatched tag's tint
+    ('.scrim{position:absolute;inset:0;background:rgba(26,30,30,.38)}', '.scrim{position:absolute;inset:0;background:rgba(0,0,0,.55)}'),
+    ('box-shadow:0 -8px 24px rgba(26,30,30,.18)', 'box-shadow:0 -8px 24px rgba(0,0,0,.5)'),
+    ('height:250px;background:#fff;border:1.5px solid var(--tw-text)', 'height:250px;background:var(--tw-field);border:1.5px solid var(--tw-text)'),
+    ('border:1.5px dashed var(--tw-text-2);background:#fff', 'border:1.5px dashed var(--tw-text-2);background:var(--tw-tile)'),
+]
+LOCKUP_DARK = (DESIGN / 'logo' / 'lockup-horizontal-dark.svg').read_text()
+
+
+def darken(html):
+    assert ':root{' + VARS + '}' in html
+    html = html.replace(':root{' + VARS + '}', ':root{' + DARK_VARS + '}', 1)
+    for a, b in SWAPS:
+        html = html.replace(a, b)
+    return html.replace('</style>', DARK_CSS + '</style>', 1)
+
+
 def sources():
     """{path relative to design/screens-b: (html, w, h)} for every approved frame, plus the components sheet."""
     out = {}
@@ -1033,6 +1073,18 @@ def sources():
             make = page6 if folder >= '12' else page3 if folder >= '04' else page
             out[f'{folder}/light-{w}.html'] = (make((phone_shell if phone else desk_shell)(g, sub, fn(phone)), w, h), w, h)
     out['00-components/light-1440.html'] = (page(parts_body(), 1440, 520), 1440, 520)
+    return out
+
+
+def all_sources():
+    """sources() plus each frame in dark (dark-<width>.html), built with the on-dark lockup."""
+    global LOCKUP
+    out = sources()
+    light_lockup, LOCKUP = LOCKUP, LOCKUP_DARK
+    try:
+        out.update({k.replace('/light-', '/dark-'): (darken(h), w, hh) for k, (h, w, hh) in sources().items()})
+    finally:
+        LOCKUP = light_lockup
     return out
 
 
@@ -1045,7 +1097,7 @@ def render(items):
         b = pw.chromium.launch(executable_path=exe) if exe else pw.chromium.launch()
         for key, (html, w, h) in items.items():
             path = OUT / key
-            pg = b.new_page(viewport={'width': w, 'height': h}, device_scale_factor=2, color_scheme='light', reduced_motion='reduce')
+            pg = b.new_page(viewport={'width': w, 'height': h}, device_scale_factor=2, color_scheme='dark' if '/dark-' in key else 'light', reduced_motion='reduce')
             pg.goto(path.as_uri(), wait_until='load')
             pg.evaluate("Promise.all(document.fonts ? [...document.fonts].map(f => f.load()) : []).then(() => document.fonts.ready)")
             pg.wait_for_timeout(100)
@@ -1067,14 +1119,14 @@ def same_pixels(a, b, tolerance=0.001):
 
 
 def main(cmd):
-    items = sources()
+    items = all_sources()
     if cmd == 'build':
         for key, (html, w, h) in items.items():
             (OUT / key).parent.mkdir(parents=True, exist_ok=True)
             (OUT / key).write_text(html)
         for key, png in render(items).items():
             (OUT / key).with_suffix('.png').write_bytes(png)
-        print(f'Built {len(items)} B′ frames in design/screens-b/')
+        print(f'Built {len(items)} B′ frames (light and dark) in design/screens-b/')
         return 0
     bad = [k for k, (html, _, _) in items.items() if not (OUT / k).exists() or (OUT / k).read_text() != html]
     if not bad:

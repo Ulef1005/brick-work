@@ -17,7 +17,7 @@ def instruction_links(set_no, region=None):
     The Rebrickable pattern `https://rebrickable.com/sets/<number>-<n>/` is NOT verified against the live site (it refuses scripted
     requests); Ulf is to confirm it in a browser (ADR 0035). A number without a suffix gets `-1`.
     A number that is not `[A-Za-z0-9]+` with an optional `-N` is a `ValueError`."""
-    number = re.fullmatch(r'([A-Za-z0-9]+)(-\d+)?', set_no) if isinstance(set_no, str) else None
+    number = re.fullmatch(r'([A-Za-z0-9]+)(-[0-9]+)?', set_no) if isinstance(set_no, str) else None
     if not number:
         raise ValueError('Choose a set number such as 6086-1')
     region = DEFAULT_REGION if region is None else region

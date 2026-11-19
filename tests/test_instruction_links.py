@@ -59,3 +59,13 @@ def test_the_link_labels_are_the_approved_names():
     """Ulf, 2026-11-19: "\\"Official instructions\\" (Recommended)" for the LEGO link; Rebrickable's stays its set page."""
     from brickwork.core.instruction_links import instruction_links
     assert [link['label'] for link in instruction_links('6086-1', 'DE')] == ['Official instructions', 'Rebrickable set page']
+
+
+@pytest.mark.parametrize('set_no', ['1000-١', '١٠٠٠-1'])
+def test_non_ascii_digits_are_refused(set_no):
+    """Set numbers take ASCII digits only, so no link carries other scripts' digits (#487 review)."""
+    from brickwork.core.official_instructions import page_url
+    with pytest.raises(ValueError):
+        instruction_links(set_no, DEFAULT_REGION)
+    with pytest.raises(ValueError):
+        page_url(set_no, DEFAULT_REGION)

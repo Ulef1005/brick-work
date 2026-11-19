@@ -17,7 +17,7 @@ class NeedsRenderer(ValueError):
 def page_url(set_no, region):
     """The fixed URL of a set's instructions page on lego.com: the number without its -N suffix, the locale of `region`. The one place that
     builds it, for the renderer-backed finder below and for the link-out (`instruction_links.py`)."""
-    number = re.fullmatch(r'(\d+)(?:-\d+)?', set_no) if isinstance(set_no, str) else None
+    number = re.fullmatch(r'([0-9]+)(?:-[0-9]+)?', set_no) if isinstance(set_no, str) else None
     if not number or region not in LOCALES:
         raise ValueError('Choose a supported set number and region')
     return f'https://www.lego.com/{LOCALES[region]}/service/building-instructions/{number[1]}?age-gate=grown_up'

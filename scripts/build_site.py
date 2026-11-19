@@ -111,9 +111,9 @@ GTM = """<script>
         var f=d.getElementsByTagName(s)[0], j=d.createElement(s);j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i;f.parentNode.insertBefore(j,f);
     })(window,document,'script','dataLayer','GTM-PKVSLMMS');
 </script>"""
-HOME_TITLE = 'Brick Work: self-hosted brick collection and parts manager'     # the home page's <title> and share title (the other pages end in ' · Brick Work')
-HOME_DESCRIPTION = ('Brick Work is a free, open-source, self-hosted workbench for your brick collection: check a set\'s parts, pull missing ones from loose stock '
-                    'and see which sets it can complete.')
+HOME_TITLE = 'Brick Work: free, open-source, self-hosted app for your brick collection and its missing parts'     # the home page's <title> and share title (the other pages end in ' · Brick Work')
+HOME_DESCRIPTION = ('Free, open-source, self-hosted app for your brick collection and its missing parts. Check sets, pull parts from loose stock, '
+                    'see what you can finish.')
 MD_DESCRIPTIONS = {'use-cases': 'Eight moments a collector knows, and how Brick Work helps with each: rebuilding used sets, sorted bulk, minifigures, bought collections and orders.',
                    'impressum': 'Impressum of the Brick Work website: who is responsible for it, in Linz, Austria.', 'privacy': 'What the Brick Work website loads and what it does not: which analytics it uses and which cookies it sets.'}
 DEFAULT_DESCRIPTION = 'Brick Work: the workbench for your brick collection: self-hosted, with a REST API and an MCP server.'

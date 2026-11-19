@@ -5,7 +5,7 @@
  function themeManifest() {
   const dark = window.adminTheme.mode === 'dark' || (window.adminTheme.mode === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
   document.querySelectorAll('meta[name="theme-color"]').forEach(meta => {
-   meta.content = window.adminTheme.mode === 'system' ? (meta.media.includes('dark') ? '#1A1816' : '#FAFAF8') : (dark ? '#1A1816' : '#FAFAF8');
+   meta.content = window.adminTheme.mode === 'system' ? (meta.media.includes('dark') ? '#1F2322' : '#F8F8F6') : (dark ? '#1F2322' : '#F8F8F6');
   });
   manifest.href = '/manifest.webmanifest' + (dark ? '?theme=dark' : '');
  }

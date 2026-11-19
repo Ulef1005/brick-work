@@ -183,3 +183,15 @@ def test_every_theme_block_sets_the_same_properties():
     names = {selector: set(block(selector)) for selector in DARK_BLOCKS + ('.tw-light',)}
     assert len(set(map(frozenset, names.values()))) == 1, names
     assert names['.tw-light'] <= set(block(':root'))
+
+
+def test_the_install_colours_are_the_app_bar_surface():
+    # W-Q7 (Ulf, 19.11.: "App bar surface"): the manifest, the ?theme=dark manifest and the theme-color metas take --tw-surface.
+    import json
+    light, dark = block(':root')['--tw-surface'], block('.tw-dark')['--tw-surface']
+    manifest = json.loads((ROOT / 'static/brickwork/manifest.webmanifest').read_text(encoding='utf-8'))
+    assert manifest['theme_color'] == manifest['background_color'] == light
+    assert f"theme_color='{dark}', background_color='{dark}'" in (ROOT / 'brickwork/web/views.py').read_text(encoding='utf-8')
+    head = (ROOT / 'templates/web/toni/pwa-head.html').read_text(encoding='utf-8')
+    assert f'content="{light}" media="(prefers-color-scheme: light)"' in head and f'content="{dark}" media="(prefers-color-scheme: dark)"' in head
+    assert f"'{dark}' : '{light}'" in (ROOT / 'static/web/toni/pwa.js').read_text(encoding='utf-8')

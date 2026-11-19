@@ -41,7 +41,7 @@ def web_manifest():
     from .ui import ROOT
     data = json.loads((ROOT / 'static/brickwork/manifest.webmanifest').read_text())
     if request.args.get('theme') == 'dark':
-        data.update(theme_color='#1A1816', background_color='#1A1816')
+        data.update(theme_color='#1F2322', background_color='#1F2322')
     response = jsonify(data)
     response.mimetype = 'application/manifest+json'
     response.headers['Cache-Control'] = 'no-cache'

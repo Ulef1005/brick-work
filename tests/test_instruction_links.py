@@ -53,3 +53,9 @@ def test_an_unsupported_region_is_refused(region):
 def test_an_alphanumeric_set_gets_the_rebrickable_link_only(number, full):
     links = instruction_links(number, 'DE')
     assert [link['source'] for link in links] == ['rebrickable'] and links[0]['url'] == f'https://rebrickable.com/sets/{full}/'
+
+
+def test_the_link_labels_are_the_approved_names():
+    """Ulf, 2026-11-19: "\\"Official instructions\\" (Recommended)" for the LEGO link; Rebrickable's stays its set page."""
+    from brickwork.core.instruction_links import instruction_links
+    assert [link['label'] for link in instruction_links('6086-1', 'DE')] == ['Official instructions', 'Rebrickable set page']

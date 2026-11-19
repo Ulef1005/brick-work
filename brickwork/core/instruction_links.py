@@ -26,5 +26,5 @@ def instruction_links(set_no, region=None):
     full = number[1] + (number[2] or '-1')
     links = [{'source': 'rebrickable', 'label': 'Rebrickable set page', 'url': f'https://rebrickable.com/sets/{full}/'}]
     if number[1].isdigit():
-        links.insert(0, {'source': 'lego', 'label': 'LEGO building instructions', 'url': page_url(set_no, region)})
+        links.insert(0, {'source': 'lego', 'label': 'Official instructions', 'url': page_url(set_no, region)})
     return links

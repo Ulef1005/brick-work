@@ -82,7 +82,7 @@ The first run is one flow of four steps:
 
 **Got it** at its end marks it read. Each step shows whether it is done, where the flow picks up, or what it waits for: bringing your collection in waits for the catalogue. **Skip for now** sets a step aside, and **Back into the flow** takes it back. Once your collection holds something, the flow lives on **Tools & Admin › Get started**, with how many steps are done, and it resumes at the first open step. When set-up is over, it is under **About › Set-up steps**. A step counts as done only when it happened. That means a catalogue is switched on, a key is stored, the collection holds a copy or loose stock, or the guide was read. Skipped steps are remembered in `onboarding.json` beside the collection file. **What the catalogue is**, under the first step, says what the catalogue holds and how Brick Work ids relate to the BrickLink, Rebrickable and Brickset numbers. It also says what comes later: pictures, prices and newer sets. Once the catalogue is active, the step shows how many items and colours it holds and the date of Rebrickable's files it came from. A download keeps running when you leave the page; coming back shows its progress, and a failed one shows the error and the button to try again. On **Get started**, the keys step has a card per source, as on **Catalogues & keys**. Each card has what the key gives you, a link to the site's page where you make it, the fields and **Test and save**. For a saved key it has **Test key**, **Replace** and **Remove**. A rejected key shows the site's reason on its card. Every key action comes back to the flow. Until a key is stored the step says what is missing without one: prices, and part lists for sets newer than the catalogue.
 
-**Tools & Admin → Maintenance → Catalogue → Build** shows the current catalogue. It shows when it was built, the date of the Rebrickable download it came from and how many items and colours it holds. It also shows how many retired items it keeps (items that left Rebrickable's files keep their ids), and when your collection was last reconciled with it.
+**Tools & Admin → Maintenance → Catalogue** shows the current catalogue under **Current build**. It shows when it was built, the date of the Rebrickable download it came from and how many items and colours it holds. It also shows how many retired items it keeps (items that left Rebrickable's files keep their ids), and when your collection was last reconciled with it.
 
 - **Re-download** fetches Rebrickable's twelve files again (about 17 MB, no login) and builds the catalogue from them, then reconciles your collection. Rebrickable asks for at most one download a day: if today's files are on disk already, they are used instead.
 - **Rebuild** builds the catalogue again from the files already downloaded, with no network. The current file is moved aside as `catalogue.db.damaged-DATE`, never deleted. It is disabled until a download is on disk.
@@ -138,11 +138,11 @@ A PDF is attached to a **set**; a booklet shows the files of the set with its nu
 
 ## Database
 
-**Run integrity check** checks the collection file and the catalogue file and keeps the result, with its time, on the page. **Export database** downloads a consistent copy of the collection (never your keys). See [Back up and restore](back-up-and-restore.md).
+**Tools & Admin → Maintenance → Backup and database check** opens the **Database** page. **Run integrity check** checks the collection file and the catalogue file and keeps the result, with its time, on the page. **Export database** downloads a consistent copy of the collection (never your keys). See [Back up and restore](back-up-and-restore.md).
 
 ## API tokens
 
-**API tokens** creates and revokes the tokens scripts and assistants use. A new token's secret is shown once. After a revoke the banner offers **Undo** for 10 minutes. See [Connect an assistant](connect-an-assistant.md).
+**Tools & Admin → Maintenance → API tokens** creates and revokes the tokens scripts and assistants use. A new token's secret is shown once. After a revoke the banner offers **Undo** for 10 minutes. See [Connect an assistant](connect-an-assistant.md).
 
 ## What next
 
@@ -152,5 +152,5 @@ A PDF is attached to a **set**; a booklet shows the files of the set with its nu
 
 ## Instruction download limit
 
-**Settings → Instruction downloads** (a row in **Sources and freshness**) controls the Official file limit, initially 500 MB. Values range from 1 to 5000 MB.
+**Settings → Labels and instructions → Largest instruction download** controls the Official file limit, initially 500 MB. Values range from 1 to 5000 MB.
 Uploads and other instruction sources retain their 20 MB limit.

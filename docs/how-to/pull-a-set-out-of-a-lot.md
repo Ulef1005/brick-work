@@ -18,7 +18,7 @@ The list has every part of the set (the latest part list, spare parts left out, 
 
 With **Sort** on **Category**, the parts sit under group headings such as **Bricks** or **Plates**. Each heading shows its lines and the pieces still to find. A group with pieces left to find starts open. A group with everything found starts closed and says **all found**.
 
-Select a heading to open or close its group, or use **Expand all** and **Collapse all**. Your browser remembers the choice for this page. Whole minifigures stay above the groups. **Sort** on **Number** shows one list, and **No grouping** under **Group parts by** in **Manage → Settings** gives the category labels. The counters, search and **Show** work inside every group, open or closed.
+Select a heading to open or close its group, or use **Expand all** and **Collapse all**. Your browser remembers the choice for this page. Whole minifigures stay above the groups. **Sort** on **Number** shows one list, and **No grouping** under **Group parts by** in **Manage → Tools & Admin → Settings → Sets and parts** gives the category labels. The counters, search and **Show** work inside every group, open or closed.
 
 ## Tick parts as you find them
 

@@ -13,7 +13,7 @@ It takes about 30 minutes. You need a Brick Work install with the Docker setup f
 
 A backup has three parts: a copy of the database, your `secret.key` and the media folders.
 
-1. Open **Manage → Tools & Admin → Database** and select **Export database**.
+1. Open **Manage → Tools & Admin → Maintenance → Backup and database check** and select **Export database**.
 2. Keep the downloaded `brickwork.db` somewhere outside the Brick Work folder, for example on an external drive. You do not need to stop Brick Work first.
 3. Copy `secret.key` and the `data/` folders `images`, `thumbs`, `instructions` and `identifications` to the same place. Copy your settings file `data/.env` too.
 

@@ -39,7 +39,7 @@ A line Brick Work cannot name for BrickLink is left out of the file. That happen
 
 With part groups on, which is the default, the lines of each source tab sit under group headings such as **Bricks** or **Plates**. Each heading shows its lines and pieces. Every group starts open, because every line is something to buy.
 
-Select a heading to close its group, or use **Expand all** and **Collapse all** above the lines. Your browser remembers the choice for each tab. A group with more than 25 lines folds the rest behind **Show all**. A minifigure line stays above the groups, and a part with no category sits under **Other**. The totals, the choice chips and the two files do not change; the files stay one flat list. Change the grouping with **Group parts by** in **Manage → Settings**.
+Select a heading to close its group, or use **Expand all** and **Collapse all** above the lines. Your browser remembers the choice for each tab. A group with more than 25 lines folds the rest behind **Show all**. A minifigure line stays above the groups, and a part with no category sits under **Other**. The totals, the choice chips and the two files do not change; the files stay one flat list. Change the grouping with **Group parts by** in **Manage → Tools & Admin → Settings → Sets and parts**.
 
 ## Choose where each line is bought
 

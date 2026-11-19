@@ -1,6 +1,6 @@
 # Screens, direction B′ Drawer Tag
 
-The approved frames of commission U, built by `../sources/b/b_frames.py` (`build`, `check`). One folder per screen, `<theme>-<width>.html` and `.png` (device scale 2). Light and dark: Ulf approved light, one phone and one desktop view per screen, and then, at his request, every frame in dark (the dark round, #512). The dark frames are the light ones with the dark token values, the on-dark lockup and, for catalogue pictures, a light grey tile with the picture multiplied. The other widths are built from them (App Design Standard, review scope).
+The approved frames of commission U, built by `../sources/b/b_frames.py` (`build`, `check`), and of commission N (below). One folder per screen, `<theme>-<width>.html` and `.png` (device scale 2). Light and dark: Ulf approved light, one phone and one desktop view per screen, and then, at his request, every frame in dark (the dark round, #512). The dark frames are the light ones with the dark token values, the on-dark lockup and, for catalogue pictures, a light grey tile with the picture multiplied. The other widths are built from them (App Design Standard, review scope).
 
 | Folder | Item | Approved |
 |---|---|---|
@@ -21,5 +21,15 @@ The approved frames of commission U, built by `../sources/b/b_frames.py` (`build
 | `14-lot-sorter/` | R6-03 Lot Sorter: Set detection, ink score bar, Make a copy sheet | round 6 |
 | `15-order-missing-parts/` | R6-01 Order missing parts: missing bars, order list, source choice | round 6 |
 | `16-orders/` | R6-04 Orders: Count what arrived, status by shape | round 6 |
+| `17-sync-hub/` | N1-01 Workbench · Sync, the hub (#518) | N round 1 |
+| `18-rebrickable/` | N1-02 Rebrickable, the page at rest (#519) | N round 1 |
+| `19-rebrickable-connect/` | N1-03 Rebrickable step 1, Connect, with the step bar | N round 1 |
+| `20-rebrickable-choose-what/` | N1-04 Rebrickable step 2, Choose what, with the Lost Parts rule moved from Settings | N round 1 |
+| `21-rebrickable-pick-sets/` | N1-05 Rebrickable step 3, Pick sets | N round 1 |
+| `22-rebrickable-preview/` | N1-06 Rebrickable step 4, Preview, with the three-way conflict choice | N round 1 |
+| `23-rebrickable-run/` | N1-07 Rebrickable step 5, Run | N round 1 |
+| `24-rebrickable-result/` | N1-08 Rebrickable step 6, Result | N round 1 |
+
+Commission N (Sync and files, #517) adds `17` to `24`, built by `../sources/n/n_frames.py` (`build`, `check`, `narrow`), which imports `b_frames.py`; its review artifact is https://claude.ai/artifact/1sWRRsfiYxkEgHXxKxrsUn. Round 1 also changed approved frames: Sync is the last Workbench entry in `06`, `07`, `09`, `10`, `11`, `13`, `14` and `16` (C-01), Tools & Admin drops Collection sync (C-02, `01`) and Settings points to Sync (C-03, `02`). Its new components NC-01 to NC-06 (step bar, radio row, select field, filter chip, three-way choice, info box) are drawn inside the frames; `BUILD-NOTES.md` describes them.
 
 These frames replace the v1.3 frames in `../screens/` screen by screen as each is approved; `../screens/` and its manifest stay the record of what is built today until the app is rebuilt (milestone U). Set pictures are empty white tiles with their alt text, because this public repo carries no catalogue pictures; the review showed the real pictures (https://claude.ai/artifact/FX8PAj3J9cgVkY42oPGc8a, version 3).

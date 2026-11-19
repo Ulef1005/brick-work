@@ -1,6 +1,6 @@
 # Build notes, B′ screens
 
-Generated from the review rounds of commission U (review artifact https://claude.ai/artifact/FX8PAj3J9cgVkY42oPGc8a); the approvals are in `../APPROVALS.md`. For each approved item: every difference from the shipped screen, as listed under it in its round. A shipped text or control not named here stays as shipped, restyled through the tokens.
+Generated from the review rounds of commission U (review artifact https://claude.ai/artifact/FX8PAj3J9cgVkY42oPGc8a) and commission N (https://claude.ai/artifact/1sWRRsfiYxkEgHXxKxrsUn); the approvals are in `../APPROVALS.md`. For each approved item: every difference from the shipped screen, as listed under it in its round. A shipped text or control not named here stays as shipped, restyled through the tokens.
 
 ## Round 2
 
@@ -162,11 +162,103 @@ These screens keep their layout and every shipped control and are rebuilt throug
 | T6 | Planning | Wishlist, Prices, wanted watch, your max price | `41-Wishlist`, `42-Prices`, `45-Wanted-watch-and-alert`, `46-Your-max-price-with-a-currency` | Lists of rows; Prices’ filter chips become the R3-01 status tabs; the part colour chip uses R3-02’s colour block. |
 | T7 | Manage | Add, Scan a set barcode, first run without keys | `47-Add`, `57-Scan-a-set-barcode`, `26-First-run-without-keys` | Forms and R3-04’s empty-state pattern (what is empty, what works, the ways out). |
 | T8 | Manage | Statistics | `49-Statistics` | Charts as shipped (bars from zero, one scale); no marketing surface shows it. Needs the chart colour (question 2) before it is built. |
-| T9 | Manage | Tools & Admin pages: Identify history, Jobs, Catalogues & keys, API tokens, Collection sync, Appearance, Not found | `50-Tools-and-admin-pages:identify-history`, `51-System-pages`, `53-Jobs-and-maintenance`, `54-Catalogues-and-keys`, `55-Api-tokens`, `56-Collection-sync` | R2-05 and R2-06: the rows, the label column, the sub-page header. |
+| T9 | Manage | Tools & Admin pages: Identify history, Jobs, Catalogues & keys, API tokens, Appearance, Not found (Collection sync is now Workbench · Sync, N1-01, commission N) | `50-Tools-and-admin-pages:identify-history`, `51-System-pages`, `53-Jobs-and-maintenance`, `54-Catalogues-and-keys`, `55-Api-tokens` (`56-Collection-sync`: N1-01 `17-sync-hub`) | R2-05 and R2-06: the rows, the label column, the sub-page header. |
 | T10 | Shell | Jump results and the module states (loading, error, stale, thin data, no data, listings only) | `06-App-shell:jump`, `16-Module-states` | R2-01 shell and R2-04 status (shape and word); a loading state is a dashed box, an error the danger word. |
 
 T8 Statistics: the chart colour is decided (ink bars, violet only where a bar means found or complete; BRAND.md § 10).
 
+## Commission N, round 1 (#517)
+
+The Sync hub and the Rebrickable page in B′ (review artifact https://claude.ai/artifact/1sWRRsfiYxkEgHXxKxrsUn, version 4), built by `../sources/n/n_frames.py`. The shipped screen is Tools & Admin · Collection sync (`../screens/56-Collection-sync`); every frame below is new, built on the approved round 0 wireframes (`../mockups/`).
+
+### N1-01 Workbench · Sync, the hub (`17-sync-hub`, #518)
+
+- **Drawn:** W0-01 in B′: the four site cards in one row, Import & export as its own wide card, the Sync log as a table (a list on the phone), then How sync works.
+- **Text (brick-work-marketing, 19.11.):** one form for waiting changes, "3 changes waiting"; the Import & export card carries no tag, since "Files" is not a state.
+- **Rule-decided:** every card button is the ink outline (Open, Connect). Violet stays for the one action of a page; four violet buttons in a row would be four primaries (Simplify).
+- **Rule-decided:** status by shape: Connected and In sync and Done solid, Not connected and waiting dashed (BRAND.md § 10).
+- **Phone:** the Workbench row is shown scrolled to Sync, so the active entry is in view (round 0 did the same); the row itself is round 2’s.
+- **SUCCESS:** Say: where each site stands. Unify: every card has the same parts in the same order, tags as everywhere in B′. Condense: four cards in one row at 1440. Simplify: no violet on the hub but the active tab. Pass.
+
+### N1-02 Rebrickable, the page at rest (`18-rebrickable`, #519)
+
+- **Drawn:** W0-02 in B′: Start a sync is the page’s one violet action; the account and the last runs side by side, What syncs as a table under them.
+- **Kept:** every text of W0-02 as approved, with the sample values.
+- **SUCCESS:** Say: this site’s state and its one action. Structure: account, history, then the rules. Check: the budget is shown as used of the day’s 2,000. Pass.
+
+### N1-03 Step 1, Connect (`19-rebrickable-connect`, #519)
+
+- **Drawn:** W0-03 in B′, with the new step bar. The key and the account are two cards side by side at 1440. Per product (19.11.), the key lives only here; Prices’ "Add a key" and Get started’s keys step open this step and come back.
+- **New component:** the step bar (see NC-01).
+- **Kept:** all approved copy; Next is the ink outline, Connect the step’s violet action.
+- **SUCCESS:** Say: connect this account. Check: the password is never kept, said where it is typed. Pass.
+
+### N1-04 Step 2, Choose what (`20-rebrickable-choose-what`, #519, #471, #469)
+
+- **Drawn:** W0-04 in B′: the direction segment per kind of data (the approved segment control), the four Lost Parts rules as radio rows, loose stock Into Brick Work or Off (#471 decision 1), one lot per part list (#471 decision 2).
+- **New component:** the radio row (NC-02) and the select field (NC-03).
+- **Moved here:** the Lost Parts rule from Settings (#469); Settings keeps only the pointer row, C-03.
+- **SUCCESS:** Express: one of four is a radio list, one of few a segment, on/off of lists a checkbox. Structure: what you own, then what you want, then loose, then the rules. Say: the step’s choices are the controls; Next is the ink outline, violet stays for Connect and Run. Pass.
+
+### N1-05 Step 3, Pick sets (`21-rebrickable-pick-sets`, #519)
+
+- **Drawn:** W0-05 in B′: By theme with four themes chosen picks 4 of the 7 sets; the picked count and what else comes along in a note above Next.
+- **New component:** the filter chip (NC-04), chosen in violet soft as the source choice is.
+- **SUCCESS:** Say: which sets this run covers. Check: the count matches the ticks (4 of 7, the four sets the Preview compares). Pass; Next is the ink outline, since the step’s choice is the ticks, not a button.
+
+### N1-06 Step 4, Preview (`22-rebrickable-preview`, #519)
+
+- **Drawn:** W0-06 in B′. The conflict comes first, so the three-way choice is above the fold at 1440 (marketing’s screenshot 2). 9 differences: 6 into Brick Work, 2 to Rebrickable, 1 changed in both places; 7 are chosen, so the button reads "Run 7 changes".
+- **New component:** the three-way conflict choice is the approved source choice with three options (NC-05); the info box for "Before you send" (NC-06).
+- **Text (brick-work-marketing, 19.11.):** the choice names the number and the place in each option: "Keep 2 here" / "Nothing sent", "Take 1 from Rebrickable" / "Brick Work becomes 1", "Send 2 to Rebrickable" / "Rebrickable becomes 2".
+- **Moved:** the conflict block from under the list to the top (screenshot 2).
+- **Changed from round 0, approved as drawn:** W0-06’s row "Only here · Removes there" cannot happen (a set only here is not there to remove). Drawn as two rows: "Only here · Add 1 there" (10254-1, ticked) and "Gone there · Remove here" (31120-1, hatched, unticked, since nothing here is deleted unless you choose).
+- **SUCCESS:** Say: what will change, and the one choice that needs you. Check: the counts add up (6 + 2 + 1 = 9; 7 chosen; about 9 requests). Unify: the conflict choice looks like the source choice. Pass.
+
+### N1-07 Step 5, Run (`23-rebrickable-run`, #519)
+
+- **Drawn:** W0-07 in B′: one progress bar for the run, one per direction; violet what is done, dashed what is still to do, to scale (4 of 7, 4 of 5, 0 of 2).
+- **Kept:** all approved copy.
+- **SUCCESS:** Check: bars to scale from zero, the same notation as the copy bars. Say: how far, how long, and that you can leave. Pass.
+
+### N1-08 Step 6, Result (`24-rebrickable-result`, #519)
+
+- **Drawn:** W0-08 in B′: here and there side by side; the failed send hatched with its word and a Retry; the no-undo sentence for Rebrickable in the info box.
+- **Kept:** all approved copy; "Open the set" is singular for the one set of the sample.
+- **SUCCESS:** Say: what changed where, and what failed. Check: 6 of 7 done, 1 failed, as the parts add up. Pass.
+
+### Changed approved frames
+
+**C-01 The Workbench row gains "Sync"** (frames 06, 07, 09, 10, 11, 13, 14, 16)
+
+- **Change:** Sync is the last entry of the Workbench row (round 0, question 3). 0.010 % of each 1440 frame changes; the 390 frames do not change in view, since the phone row scrolls and Sync sits past the right edge until scrolled to.
+- **How:** `../sources/b/b_frames.py` builds them; the round 1 changes are its defaults since the approval.
+- **SUCCESS:** Unify: Sync looks like every other Workbench entry. Pass.
+
+**C-02 Tools & Admin (R2-05)** (frame 01)
+
+- **Dropped:** the "Collection sync" row from Your collection; its old page redirects to the hub (#518).
+- **Text (brick-work-marketing, 19.11.):** the group hint "Bring it in, keep it in step, see it counted." becomes "See it counted and keep its details tidy."; Sets and parts loses "Lost Parts from Rebrickable": "How parts are grouped and which part list a new set starts on."; Keys and sources: "See how the local catalogue stands and which sites have a key." (no key is entered there now, per product).
+- **Phone:** the change is below the 390 frame’s fold, so the 390 frame does not change in view.
+- **SUCCESS:** Say: the group says only what it still does. Pass.
+
+**C-03 Settings (R2-06)** (frame 02)
+
+- **Dropped:** "Lost Parts from Rebrickable" from Sets and parts; the rule is on the Rebrickable page (N1-04).
+- **New:** a group "Sync" with one pointer row, "Keys and sync rules are on each site's page", note "Open Sync to connect a site or change what it syncs.", leading to Workbench · Sync (#517; note brick-work-marketing, 19.11.).
+- **Derived:** on the phone, the expert group moves below the 390 fold.
+- **SUCCESS:** Say: one place for every sync rule. Pass.
+
+### New components
+
+Drawn inside the frames above; there is no separate sheet for them.
+
+- **NC-01 Step bar:** Six labelled segments: ink and a tick for done, violet for the current step, divider for later ones. On the phone: "Step n of 6 · name · next: name" over six short segments.
+- **NC-02 Radio row:** One of several long options: a 22 px ring, violet ring and dot when chosen, title and note.
+- **NC-03 Select field:** The input’s box with a chevron, for a choice from a list.
+- **NC-04 Filter chip:** A 34 px chip with a count; chosen in violet soft with a violet edge, as the source choice.
+- **NC-05 Three-way choice:** The approved source choice with three options and a line under each.
+- **NC-06 Info box:** An ink rule on the left over the pressed-row ground, for the one sentence a step must not hide.
 ## Dark
 
 Every frame above also exists in dark (`dark-<width>`); the dark values and the picture-tile rule are in `../BRAND.md` § 3. R2-03’s “Dark mode: built from these roles after your approval … not shown” is superseded: the dark round (#512) drew dark and Ulf approved it.

@@ -125,8 +125,8 @@ details.kit-disclosure[open]>summary::after{transform:rotate(225deg)}
 /* Shared picture enlargement, including dynamically rendered scanner results. */
 .lightbox-stage img{width:100%;height:65vh;max-width:100%;max-height:75vh;object-fit:contain;cursor:zoom-out}#content img:not([src*="/icons/"]):not([data-no-lightbox]){cursor:zoom-in}
 
-/* Reusable kit primary action: ink remains ink in both themes. */
-:root { --bw-action-ink:#1A1816; }
+/* Reusable kit primary action: the text on the accent, white on violet in light, ink in dark (B′, #492). */
+:root,.tw-light,.tw-dark { --bw-action-ink:var(--tw-on-accent); }
 button.bw-primary,.button.bw-primary { background:var(--tw-accent);color:var(--bw-action-ink);border-color:var(--tw-accent);min-height:var(--tw-hit-lg); }
 button.bw-primary:active,.button.bw-primary:active { background:var(--tw-viz-5); }
 button.bw-primary:disabled,.button.bw-primary:disabled { background:var(--tw-surface-2);color:var(--tw-text-muted);border-color:var(--tw-divider); }

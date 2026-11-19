@@ -71,8 +71,8 @@ html[data-web-ui="toni"] details.kit-disclosure.bw-instructions-upload>summary::
 .bk-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:44px;min-height:44px;padding:0 16px;border-radius:10px;border:.5px solid transparent;background:transparent;color:var(--tw-text);font:500 14px var(--tw-font);white-space:nowrap;text-decoration:none;cursor:pointer;box-sizing:border-box}
 .bk-btn svg{width:16px;height:16px}
 .bk-quiet{background:var(--tw-surface-2)}.bk-outline{border-color:var(--tw-accent);color:var(--tw-accent-text)}
-.bk-primary{background:var(--tw-accent);color:#1A1816;border-color:var(--tw-accent);font-weight:600}.bk-lg{height:48px;min-height:48px;padding:0 24px;font-size:16px}
-.bk-btn:disabled{opacity:.4;cursor:default;border-style:solid}.bk-primary:disabled{background:var(--tw-accent);color:#1A1816}.bk-outline:disabled{background:transparent;color:var(--tw-accent-text)}
+.bk-primary{background:var(--tw-accent);color:var(--tw-on-accent);border-color:var(--tw-accent);font-weight:600}.bk-lg{height:48px;min-height:48px;padding:0 24px;font-size:16px}
+.bk-btn:disabled{opacity:.4;cursor:default;border-style:solid}.bk-primary:disabled{background:var(--tw-accent);color:var(--tw-on-accent)}.bk-outline:disabled{background:transparent;color:var(--tw-accent-text)}
 .bk-btn:focus-visible{outline:2px solid var(--tw-focus-color);outline-offset:2px}
 .bk-card{background:var(--tw-surface);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:16px;min-width:0}
 .bk-card form{margin:0}.bk-card-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.bk-card h3{font:600 16px/22px var(--tw-font);margin:0}
@@ -131,7 +131,7 @@ main .bw-chips a[aria-current=page]{background:var(--tw-accent-soft);color:var(-
 /* Manage pages: the kit's neutral secondary (frame 12l "Save", "Remove"): surface-2, ink, no border; .primary is the clay primary. */
 :where(.bw-admin-page,.bw-picture-dialog) :where(button,a.button):not([class*=bk-]):not(.bw-hub-row):not(.bw-chips a){display:inline-flex;align-items:center;justify-content:center;gap:6px;height:44px;min-height:44px;padding:0 16px;border-radius:10px;border:.5px solid transparent;background:var(--tw-surface-2);color:var(--tw-text);font:500 14px var(--tw-font);text-decoration:none;cursor:pointer;box-sizing:border-box}
 :where(.bw-admin-page,.bw-picture-dialog) :where(button,a.button).primary:not([class*=bk-]){background:var(--tw-accent);border-color:var(--tw-accent);color:var(--bw-action-ink,#1A1816);font-weight:600}
-:where(.bw-admin-page,.bw-picture-dialog) :where(button.primary):not([class*=bk-]){background:var(--tw-accent);border-color:var(--tw-accent);color:#1A1816;font-weight:600}
+:where(.bw-admin-page,.bw-picture-dialog) :where(button.primary):not([class*=bk-]){background:var(--tw-accent);border-color:var(--tw-accent);color:var(--tw-on-accent);font-weight:600}
 :where(.bw-admin-page,.bw-picture-dialog) button:disabled:not([class*=bk-]){opacity:.4;border-style:solid}
 :where(.bw-admin-page,.bw-picture-dialog) input:not([type=checkbox]):not([type=radio]):not([class*=bk-]):not([type=hidden]):not([type=file]),:where(.bw-admin-page,.bw-picture-dialog) select{height:44px;border-radius:10px;border:.5px solid var(--tw-divider-strong);background:var(--tw-bg);padding:0 12px;font-size:15px}
 .bk-busy-note{flex-basis:100%;margin:8px 0 0}
@@ -169,7 +169,7 @@ main .bw-chips a[aria-current=page]{background:var(--tw-accent-soft);color:var(-
 .bw-refresh-num{font:500 20px/26px var(--tw-mono)}
 .bw-refresh-line{font:400 13px/18px var(--tw-font);color:var(--tw-text-2)}
 .bw-refresh-cell.bw-refresh-cell :where(a.button,button){width:100%;padding:0 8px;white-space:nowrap;font-size:14px}
-.bw-refresh-cell.bw-refresh-cell a.button.primary{background:var(--tw-accent);border-color:var(--tw-accent);color:#1A1816;font-weight:600}
+.bw-refresh-cell.bw-refresh-cell a.button.primary{background:var(--tw-accent);border-color:var(--tw-accent);color:var(--tw-on-accent);font-weight:600}
 .bw-refresh-cell.bw-refresh-cell :where(a.button,button).bw-outline{background:transparent;border-color:var(--tw-accent);color:var(--tw-accent-text)}
 .bw-refresh-cell.bw-refresh-cell button.bw-outline:disabled{opacity:.5}
 /* #460 · Tools & Admin: the Refresh block spans the page, groups carry a hint, Maintenance and the expert Settings section are disclosures. */

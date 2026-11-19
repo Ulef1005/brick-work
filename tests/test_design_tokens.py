@@ -177,3 +177,9 @@ def test_the_retired_faces_are_gone():
     text = tb.LAYER.read_text(encoding='utf-8')
     for face in ('Inter', 'Geist', 'Patrick Hand'):
         assert not re.search(rf"'{face}[ ']", text), face
+
+
+def test_every_theme_block_sets_the_same_properties():
+    names = {selector: set(block(selector)) for selector in DARK_BLOCKS + ('.tw-light',)}
+    assert len(set(map(frozenset, names.values()))) == 1, names
+    assert names['.tw-light'] <= set(block(':root'))

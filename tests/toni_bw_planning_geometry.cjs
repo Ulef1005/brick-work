@@ -60,7 +60,7 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
  await call('Page.navigate',{url:'file://'+path.join(dir,'wishlist.html')});
  for(let i=0;i<100;i++){if(await evaluate("document.readyState==='complete' && location.pathname.endsWith('/wishlist.html') && !!document.querySelector('.bp-wish-range-labels')"))break;await delay(20);}
  const range=await evaluate(`(()=>{const l=document.querySelector('.bp-wish-range-labels'),b=document.querySelector('.bp-wish-track b');return {height:l.getBoundingClientRect().height,fill:getComputedStyle(b).backgroundColor,fillHeight:b.getBoundingClientRect().height};})()`);
- assert.equal(range.height,28);assert.equal(range.fillHeight,6);assert.ok(range.fill.includes('0.83'),range.fill);
+ assert.equal(range.height,28);assert.equal(range.fillHeight,6);assert.equal(range.fill,'rgb(89, 97, 95)');  // --tw-viz-2, muted ink since B′ (#492)
  // #141: on a phone the lists row and the action row stack directly; the lists' 360 px flex-basis is a width in the desktop row, a height in the phone column.
  const stack=async width=>{
   await call('Emulation.setDeviceMetricsOverride',{width,height:844,deviceScaleFactor:1,mobile:false});

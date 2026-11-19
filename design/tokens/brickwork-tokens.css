@@ -58,10 +58,6 @@
 
   --tw-r-1: 3px; --tw-r-2: 4px; --tw-r-3: 8px;
 
-  /* Lines: 1 px hairlines, the 1.5 px ink rule under headers, tiles and the app bar */
-  --tw-hairline: 1px;
-  --tw-rule-width: 1.5px;
-
   /* Status, kept for the screens not rebuilt yet (see the header); shipped values */
   --tw-success:      oklch(0.55 0.08 150);
   --tw-success-soft: oklch(0.94 0.025 150);
@@ -70,8 +66,9 @@
   --tw-info:         oklch(0.54 0.06 245);
   --tw-info-soft:    oklch(0.94 0.015 245);
 
-  /* Control outlines and overlay edges: 3:1 on the ground, as the frames' field border */
-  --tw-divider-strong: var(--tw-text-muted);
+  /* Group lines, pills, tracks and overlay edges on the screens not rebuilt yet: the B′ hairline (fields take
+     --tw-text-muted as they are rebuilt, as the frames' .input) */
+  --tw-divider-strong: var(--tw-divider);
 
   /* Touch */
   --tw-hit:    44px;   /* minimum hit area, every tappable thing */
@@ -82,9 +79,9 @@
   --tw-dur-fast:  120ms;  /* state changes, pressed */
   --tw-dur-base:  240ms;  /* sheets, drawers, pushes */
 
-  /* Overlays: the scrim, the sheet's ground and a 1 px edge (the frames' sheet and scrim) */
+  /* Overlays: the frames' scrim and sheet ground (.sheet: var(--tw-bg)); a 1 px edge */
   --tw-scrim:        rgba(26, 30, 30, 0.38);
-  --tw-sheet-bg:     var(--tw-surface);
+  --tw-sheet-bg:     var(--tw-bg);
   --tw-sheet-edge:   1px solid var(--tw-divider);
   --tw-sheet-radius: var(--tw-r-3);
   --tw-toast-bg:     var(--tw-text);      /* inverted ink: separates by contrast, not elevation */
@@ -98,8 +95,8 @@
   /* Data viz: ink (BRAND.md § 10). One series --tw-viz-4; a comparison --tw-viz-n2 dashed; violet only where a bar
      means found or complete (use --tw-accent there). */
   --tw-viz-1:  var(--tw-surface-2);
-  --tw-viz-2:  var(--tw-divider);
-  --tw-viz-3:  var(--tw-text-muted);
+  --tw-viz-2:  var(--tw-text-muted);
+  --tw-viz-3:  var(--tw-text-2);
   --tw-viz-4:  var(--tw-text);
   --tw-viz-5:  var(--tw-text);
   --tw-viz-n1: var(--tw-divider);   /* track, gridlines */
@@ -134,13 +131,13 @@
     --tw-success: oklch(0.76 0.09 150); --tw-success-soft: oklch(0.30 0.04 150);
     --tw-warning: oklch(0.80 0.10 82);  --tw-warning-soft: oklch(0.31 0.045 80);
     --tw-info:    oklch(0.76 0.06 245); --tw-info-soft:    oklch(0.30 0.03 245);
-    --tw-divider-strong: var(--tw-text-muted);
+    --tw-divider-strong: var(--tw-divider);
     --tw-scrim: rgba(0, 0, 0, 0.55);
-    --tw-sheet-bg: var(--tw-surface);
+    --tw-sheet-bg: var(--tw-bg);
     --tw-toast-bg: var(--tw-text);
     --tw-toast-fg: var(--tw-bg);
     --tw-focus-color: #E3E6E2;
-    --tw-viz-1: var(--tw-surface-2); --tw-viz-2: var(--tw-divider); --tw-viz-3: var(--tw-text-muted);
+    --tw-viz-1: var(--tw-surface-2); --tw-viz-2: var(--tw-text-muted); --tw-viz-3: var(--tw-text-2);
     --tw-viz-4: var(--tw-text); --tw-viz-5: var(--tw-text);
     --tw-viz-n1: var(--tw-divider); --tw-viz-n2: var(--tw-text-muted);
     --tw-viz-ac: #E3E6E2;
@@ -157,13 +154,13 @@
   --tw-success: oklch(0.55 0.08 150); --tw-success-soft: oklch(0.94 0.025 150);
   --tw-warning: oklch(0.64 0.10 80);  --tw-warning-soft: oklch(0.94 0.035 85);
   --tw-info:    oklch(0.54 0.06 245); --tw-info-soft:    oklch(0.94 0.015 245);
-  --tw-divider-strong: var(--tw-text-muted);
+  --tw-divider-strong: var(--tw-divider);
   --tw-scrim: rgba(26, 30, 30, 0.38);
-  --tw-sheet-bg: var(--tw-surface);
+  --tw-sheet-bg: var(--tw-bg);
   --tw-toast-bg: var(--tw-text);
   --tw-toast-fg: var(--tw-bg);
   --tw-focus-color: #1A1E1E;
-  --tw-viz-1: var(--tw-surface-2); --tw-viz-2: var(--tw-divider); --tw-viz-3: var(--tw-text-muted);
+  --tw-viz-1: var(--tw-surface-2); --tw-viz-2: var(--tw-text-muted); --tw-viz-3: var(--tw-text-2);
   --tw-viz-4: var(--tw-text); --tw-viz-5: var(--tw-text);
   --tw-viz-n1: var(--tw-divider); --tw-viz-n2: var(--tw-text-muted);
   --tw-viz-ac: #1A1E1E;
@@ -179,13 +176,13 @@
   --tw-success: oklch(0.76 0.09 150); --tw-success-soft: oklch(0.30 0.04 150);
   --tw-warning: oklch(0.80 0.10 82);  --tw-warning-soft: oklch(0.31 0.045 80);
   --tw-info:    oklch(0.76 0.06 245); --tw-info-soft:    oklch(0.30 0.03 245);
-  --tw-divider-strong: var(--tw-text-muted);
+  --tw-divider-strong: var(--tw-divider);
   --tw-scrim: rgba(0, 0, 0, 0.55);
-  --tw-sheet-bg: var(--tw-surface);
+  --tw-sheet-bg: var(--tw-bg);
   --tw-toast-bg: var(--tw-text);
   --tw-toast-fg: var(--tw-bg);
   --tw-focus-color: #E3E6E2;
-  --tw-viz-1: var(--tw-surface-2); --tw-viz-2: var(--tw-divider); --tw-viz-3: var(--tw-text-muted);
+  --tw-viz-1: var(--tw-surface-2); --tw-viz-2: var(--tw-text-muted); --tw-viz-3: var(--tw-text-2);
   --tw-viz-4: var(--tw-text); --tw-viz-5: var(--tw-text);
   --tw-viz-n1: var(--tw-divider); --tw-viz-n2: var(--tw-text-muted);
   --tw-viz-ac: #E3E6E2;

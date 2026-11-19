@@ -61,3 +61,6 @@ README.md	Import from Brickset, Rebrickable and BrickTracker	Tracker-user sectio
 docs/index.md	\[BrickTracker\]\(https://gitea\.baerentsen\.space/FrederikBaerentsen/BrickTracker\)	Docs home: names the self-hosted tracker Brick Work grew from, as the README did.
 server.json	host\.docker\.internal	Docker's standard name for the host computer, used by the MCP Registry entry to reach the running install.
 docs/brickwork/mcp.md	host\.docker\.internal	The same Docker host name, in the MCP guide section for the registry entry.
+design/screens-b/08-sets-empty/*	Rebrickable, Brickset, BrickTracker or a BrickLink file	Approved empty-Sets copy (commission U round 3): the retained importer's name.
+design/sources/b/b_frames.py	Rebrickable, Brickset, BrickTracker or a BrickLink file	Frame source of the approved empty-Sets copy.
+design/screens-b/BUILD-NOTES.md	Rebrickable, Brickset, BrickTracker and a BrickLink file	Build notes of the empty-Sets screen.

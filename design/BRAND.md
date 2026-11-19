@@ -1,10 +1,20 @@
 # Brick Work brand guide
 
-Brick Work has its own design, outside Toni's World (Ulf, 2026-11-03; ADR 0022). This guide follows the App Design Standard's order (P1). It is being filled in during the roll-out (#158 D1 → #161 D4): until a section is approved under the standard, it names where the current, previously approved design lives and reads **Not yet approved under the standard**. Approvals are recorded in [APPROVALS.md](APPROVALS.md). The rules for building with it are the `brickwork-design` skill (`.claude/skills/brickwork-design/SKILL.md`).
+Brick Work has its own design, outside Toni's World (Ulf, 2026-11-03; ADR 0022). **Direction: B′ Drawer Tag** (approved 2026-11-19): the app is labelled like your drawers. Storage groups sit under violet label tape, found parts are violet, status is told by shape (filled, hatched, dashed) and a word, and the logo's X marks a set or copy not checked yet. Violet is the one accent, for identity and action; ink and a pale grey ground carry the rest (Ulf: "B it is", "Retire clay", "Yes, X = not checked", "Caps on tape and tabs only"). This guide follows the App Design Standard's order (P1); every section below is approved, light and dark, and records where its files are and which approval carries it ([APPROVALS.md](APPROVALS.md)). The app is rebuilt to it in milestone U: a screen not rebuilt yet still looks as shipped (the v1.3 frames in `screens/`, the rules in [DESIGN-CHECK.md](DESIGN-CHECK.md) § Until a screen is rebuilt). The rules for building with it are the `brickwork-design` skill (`.claude/skills/brickwork-design/SKILL.md`).
 
 ## SUCCESS
 
-Hichert's SUCCESS governs this design. The per-rule lines are written when the brand guide is approved (workflow step 7). Not yet approved under the standard.
+Hichert's SUCCESS governs this whole design, not only its charts. How Brick Work meets each rule, in one line each:
+
+- **Say:** every screen states its one message in its heading, often as the answer itself ("3 of 7 sets incomplete", "10 parts missing, 4 in loose stock"); the primary action is the one violet button.
+- **Unify:** one bar language everywhere (violet found, hatched missing, dashed still to check), one label tape for every storage group, one status family by shape, one word per thing ("Copy 1", "Workbench · Orders").
+- **Condense:** the content fills the screen; chrome is one app bar, one row of pages and 1 px hairlines; numbers sit in mono beside what they count.
+- **Check:** bars start at zero and are to scale, percentages come from the same numbers, no minus before a number, every text pair passes 4.5:1 in light and dark, and violet is never used for something that is not found, complete, chosen or an action.
+- **Express:** shape for status, tape for a place, cells for parts, a stepper for a count, a switch for on and off, a segment for one of few, tiles where you recognise a thing by its picture.
+- **Simplify:** no shadows except sheets and the scrim, no gradients, no icons without a job, no second accent; the X has one meaning.
+- **Structure:** each screen in the task's order (the copy, then its parts, then its money; choose, then review); one grid, one column on the phone; tokens grouped by role.
+
+Approval: the step 7 line in APPROVALS.md. Each section below ends with a **SUCCESS** line naming the rules it carries most.
 
 ## 1. Logo
 
@@ -36,35 +46,78 @@ Approved in logo round 5 (review artifact https://claude.ai/artifact/LVHh16j6JvB
 
 ## 3. Colour
 
-Roles and tokens, light and dark: `tokens/brickwork-tokens.css` and the generated `tokens/brickwork-tokens.json`, loaded after the pinned neutral base `tokens/tokens.css` (`scripts/tokens_base.py`; the served stylesheet is generated from the two). The values are the ones Brick Work served before the roll-out, unchanged. Not yet approved under the standard.
+The roles and their values, light (round 2, R2-03) and dark (the dark round, D-01). The values live in `sources/b/b_frames.py` (`TOKENS`, `DARK`); `tokens/brickwork-tokens.css` takes them when the app is rebuilt in milestone U, and until then serves the values from before the redesign.
+
+| Role | Light | Dark | Job |
+|---|---|---|---|
+| `--tw-bg` | `#EDEEEB` | `#161918` | ground |
+| `--tw-surface` | `#F8F8F6` | `#1F2322` | cards, bars, the tab bar |
+| `--tw-surface-2` | `#E3E5E1` | `#292E2C` | wells, pressed rows |
+| `--tw-divider` | `#C9CDC8` | `#3E4442` | 1 px hairlines |
+| `--tw-rule` | `#1A1E1E` | `#E3E6E2` | the 1.5 px rule under headers, tiles and the app bar |
+| `--tw-text` | `#1A1E1E` | `#E3E6E2` | ink; also chart bars (§ 10) |
+| `--tw-text-2` | `#434A4A` | `#BAC1BD` | secondary text |
+| `--tw-text-muted` | `#59615F` (5.5:1) | `#9AA29E` (6.8:1) | muted text |
+| `--tw-accent` | `#7334CF` | `#C080FE` | violet: identity, action, found, chosen |
+| `--tw-accent-soft` | `#F0EAFB` | `#2F2547` | selected rows, the X chip, a chosen source |
+| `--tw-accent-text` | `#7334CF` | `#C080FE` | links |
+| `--tw-on-accent` | `#FFFFFF` (6.7:1) | `#161918` (6.5:1) | text on violet: white in light, ink in dark |
+| `--tw-focus-color` | `#1A1E1E` | `#E3E6E2` | the 2 px focus ring, never violet |
+| `--tw-danger` | `#8B4F54` | `#E8A3AA` | errors only, always with a word |
+| `--tw-field` | `#FFFFFF` | `#101312` | fields |
+| `--tw-tile` | `#FFFFFF` | `#E4E6E2` | picture tiles |
+| `--tw-tile-ink` | `#59615F` | `#4A524F` | alt text on a tile |
+
+Success, warning and info have no colours: status is shape and a word. Every text pair passes 4.5:1 and every UI part 3:1 in both themes. Every colour is checked against the 30 most-used LEGO part colours (ΔE OKLab under 0.10 and hue within 20° is rejected), so a violet bar never reads as a violet part. That rule is why dark has two violets on purpose: the logo keeps its approved on-dark `#B995F6` (LG03), and the accent is `#C080FE`, because `#B995F6` sits too close to LEGO Medium Violet `#9391E4`.
+
+**Pictures.** Catalogue pictures sit on white tiles in light. In dark the tile is `#E4E6E2` and the picture is multiplied onto it (`mix-blend-mode: multiply`), so its white ground takes the tile's colour (Ulf, dark round: "B"). The user's own photos (a copy's photos, Part Spotter's "Your photo") are never blended, inverted or filtered. Pictures without their white ground (#516) may change the dark tile again, with Ulf's approval.
+
+SUCCESS: Say (violet means found or act), Unify (one role, one token, the same names light and dark), Check (every pair's contrast recorded and passing), Express (colour for meaning only).
 
 ## 4. Type
 
-Inter (text), Geist Mono (numbers and codes), Patrick Hand (brand surfaces only), as set in `tokens/brickwork-tokens.css`. The font files and licences are in `static/fonts/` today. Not yet approved under the standard.
+Approved for B′ (round 2, R2-03): IBM Plex Sans for text, IBM Plex Sans Condensed in capitals for tape, tabs and small section labels only, IBM Plex Mono for numbers, codes and set numbers (tabular). Set names and headings are sentence case. The files and their licence are in `fonts/` (`fonts/README.md`). The app serves Inter, Geist Mono and Patrick Hand until it is rebuilt in milestone U. SUCCESS: Unify, Structure.
 
 ## 5. Layout
 
-Spacing, safe areas, 44 px targets and the bars, as set in `tokens/brickwork-tokens.css`. Not yet approved under the standard.
+Approved for B′ (round 2, R2-01): four tabs across the top (Collection, Workbench, Planning, Manage), the open group's pages in a row under them; on the phone the same four groups in the tab bar and the group's pages as a scrolling row. The lockup at 32 px leads the app bar. Every page opens with its group and page in small capitals above the heading ("Workbench · Orders"). Radii 3, 4 and 8 px; 1 px hairlines and a 1.5 px ink rule under headers, tiles and the app bar; 44 px targets, 52 to 56 px for the main phone action. Desktop puts a list beside its detail where the decision needs both (Build Scout, Storage, Orders, Order missing parts); the phone shows one step at a time and puts sticky bars above the tab bar, never over it. Frames: `screens-b/`. SUCCESS: Condense, Structure.
 
 ## 6. Components
 
-The built components, as the design kit v1.3 frames show them (`sources/frames.json`, the HTML in `screens/NN-<screen>/`). Not yet approved under the standard.
+Approved for B′ (round 2, R2-04; round 6): primary violet and secondary ink-outline buttons, the ink focus ring (2 px, 2 px offset), tabs, label tape, tags and dashed tags, the X chip for "not checked" (the logo's X on a violet square, white in light and ink in dark; a thin line X without a square means close or stop), progress per copy to scale, one cell per part, fields (sheet: `screens-b/00-components/`); the switch, the checkbox, the source choice, the hatched status tag ("Incomplete", "3 short"), the part colour chip, the bottom sheet and the chart bars (sheet: `screens-b/00b-components-2/`). The stepper (− count +) and the colour block in the part's own colour come from Set Inspector (round 3). SUCCESS: Unify, Express, Simplify.
 
 ## 7. Screens
 
-The v1.3 frames: 57 sections in `sources/frames.json`, PNGs in `screens/NN-<screen>/` (light and dark, 1440 / 1024 / 390), listed in the generated `screens/manifest.json` (`scripts/design_screens.py`); the screenshot gate (#160) compares the built app with approved captures per screen. Not yet approved under the standard.
+Every B′ screen in `screens-b/`, one folder per screen, light and dark at 1440 and 390 (`<theme>-<width>.html` and `.png`, generated by `sources/b/b_frames.py`, which checks them in step: HTML byte for byte, PNGs within 0.1 %):
+
+| Folder | Screen | Round |
+|---|---|---|
+| `01` to `03` | Tools & Admin, Settings, Find instructions | 2 |
+| `04`, `05`, `08` | Sets, Sets without storage, Sets empty | 3 |
+| `06`, `07` | Set Inspector, Part Runner | 3 |
+| `09` to `11` | Matchmaker, Build Scout, Storage | 4 |
+| `12` to `16` | Set detail, Part Spotter, Lot Sorter, Order missing parts, Orders | 6 |
+
+Every other shipped screen is **tokens only** (round 5, #501): it keeps its layout and every control and is rebuilt through the tokens and components above, on the approved frame its row names (`screens-b/BUILD-NOTES.md`). Each round's differences from the shipped screens (what changed, what is kept, the phone) are in `screens-b/BUILD-NOTES.md`. Other widths are built from the two approved ones. The v1.3 frames in `screens/` stay the record of the shipped app until each screen is rebuilt. SUCCESS: all seven, per screen, in each round's review.
 
 ## 8. Icons
 
-The UI icons (1.6 px stroke, 24 px grid) in `components/icons/` (served from `static/brickwork/icons-ui/`, generated by `scripts/brand_assets.py`). Not yet approved under the standard.
+The UI icons keep the shipped set (1.6 px stroke, round caps and joins, 24 px grid) in `components/icons/` (served from `static/brickwork/icons-ui/`, generated by `scripts/brand_assets.py`); B′ adds no icon and changes none: the phone tab bar uses the shipped group icons (`sets` Collection, `tools` Workbench, `price` Planning, `manage` Manage); the frames draw stand-ins of the same weight there, and the app keeps its own files. An icon takes the text colour of what it sits in and never carries a status or a meaning of its own; the X chip is not an icon but the logo's X. SUCCESS: Unify, Simplify.
 
 ## 9. Wording
 
-Sentence case, empty states that say what is empty, what still works and one way out; errors in words. Not yet approved under the standard.
+- **Voice:** English, short, sentence case, bare counts, mid-dots, no exclamation marks, no superlatives, no "private" (say "free and open source"); capitals only where they mimic labels (tape, tabs, small section labels).
+- **Category line:** "Free, self-hosted app for your brick collection and its missing parts." under the lockup on the README, as the site's first sentence, on the social preview and at the start of the Unraid overview; the tagline "Don't just manage your collection. Work with it." stays (Ulf to brick-work-marketing, 19.11.: "A: missing parts (Recommended)").
+- **Names:** Collection, Workbench, Planning, Manage; Part Spotter, Set Inspector, Lot Sorter, Part Runner, Matchmaker, Build Scout, Orders, Storage; Storage index (the storage places beside Sets); Drawers and Ledger (the Sets view switch); "Copy 1", "Copy 2" for copies; "Official instructions" and "Rebrickable" for the instruction links. The name is "Brick Work" in running text; lowercase "brick work" only in the logo. Never the word "LEGO", except in the trademark disclaimer "Not affiliated with the LEGO Group."; in running text say "brick collection", never "LEGO" as a noun.
+- **Fixed lines:** the AI disclosure "Built with Claude Code; I review it and use it daily." and the trademark disclaimer above, word for word wherever they appear.
+- **Numbers:** no minus before a number ("245 parts missing", not "−245 parts"); nothing counted is "0 of 0" ("no figures"); money currency first, unspaced (`€8.53`), with its age.
+- **Empty states and errors:** say what is empty, what still works and one way out; errors in words, with "Nothing was changed" when nothing was.
+
+SUCCESS: Say, Simplify.
 
 ## 10. Data and charts
 
-The IBCS notation of the design builder's `base/charts.md`, on Brick Work's colours. Not yet approved under the standard.
+The IBCS notation of the design builder's `base/charts.md`, on B′: bars start at zero on one shared scale and are drawn in ink (`--tw-text`: 14.4:1 on the light ground, 14.1:1 on the dark); violet only where a bar means found or complete; a status breakdown uses the status shapes (complete violet, incomplete hatched, not checked dashed); a long tail folds into one outlined row; titles state the takeaway from the data ("3 of 8 copies are incomplete"), neutral when there is none. The charts the app draws: Statistics (completeness, theme, storage, place), the per-copy and coverage bars, Set detail's price history (an ink line with its high and low) and range bar (ink band, tick at the average). B′ has no good or bad colours; a variance is a word and a sign-free number. Approval: round 5 (ink bars, "Approve list, draw round 6"), the sheet in step 7. SUCCESS: Check, Express, Condense.
 
 ## 11. Approvals
 

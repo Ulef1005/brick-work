@@ -49,7 +49,26 @@ The gate compares the **built app** with **approved baseline captures** of the b
 - When the gate fails in CI, the `screen-diffs-1`, `screen-diffs-2` and `screen-diffs-3` artifacts of the run (one per shard job; only the shard that ran the gate has images) holds the diff images.
 - An intended visual change updates the candidates (`approved` back to false), and the maintainer approves them again.
 
-## Rules that apply everywhere
+## B′ screens (milestone U)
+
+Direction B′ Drawer Tag is approved, light and dark (2026-11-19). A screen rebuilt to it is checked against its frame in `screens-b/` and the rules in `BRAND.md` § 3 to 10:
+
+| What | Path |
+|---|---|
+| The approved frames, light and dark, 1440 and 390 | `design/screens-b/NN-<screen>/<theme>-<width>.png` (and `.html` with exact values) |
+| What each frame changes from the shipped screen; the tokens-only screens | `design/screens-b/BUILD-NOTES.md` |
+| The frame source and its check | `design/sources/b/b_frames.py` (`check`: HTML byte for byte, PNGs within 0.1 %) |
+
+1. Open the frame at the width and theme you are checking and a screenshot of the built app at the same width and theme, with the same sample content.
+2. Everything `BUILD-NOTES.md` lists as changed must match the frame; everything it lists as kept must still be there; every other shipped text and control stays.
+3. Report differences as a list: frame folder, what differs, expected, actual. A frame that disagrees with the app's real copy goes back to a review round.
+4. A tokens-only screen (#501) is checked against the tokens and components of the frame its row names, not against a frame of its own.
+
+The app-vs-frame test per screen (design-builder's `app_check.cjs`) and the "design gate: N of M approved screens built" line in `scripts/check.sh` come with the build in milestone U; they belong to the app's build, not to this file.
+
+## Until a screen is rebuilt
+
+These rules describe the shipped app. A screen rebuilt to B′ follows the section above instead.
 
 - Colours only from `design/tokens/` (served as `tokens-v2.css`). Clay (`--tw-accent`) is the only interaction colour: buttons, links, selected states. Status uses the status tokens, never clay.
 - Inter for UI, Geist Mono for identifiers, counts, money and dates.

@@ -114,7 +114,7 @@ GTM = """<script>
 HOME_TITLE = 'Brick Work: free, open-source, self-hosted app for your brick collection and its missing parts'     # the home page's <title> and share title (the other pages end in ' · Brick Work')
 HOME_DESCRIPTION = ('Free, open-source, self-hosted app for your brick collection and its missing parts. Check sets, pull parts from loose stock, '
                     'see what you can finish.')
-MD_DESCRIPTIONS = {'use-cases': 'Eight moments a collector knows, and how Brick Work helps with each: rebuilding used sets, sorted bulk, minifigures, bought collections and orders.',
+MD_DESCRIPTIONS = {'use-cases': 'Nine moments a collector knows, and how Brick Work helps with each: rebuilding used sets, sorted bulk, minifigures, bought collections and orders.',
                    'impressum': 'Impressum of the Brick Work website: who is responsible for it, in Linz, Austria.', 'privacy': 'What the Brick Work website loads and what it does not: which analytics it uses and which cookies it sets.'}
 DEFAULT_DESCRIPTION = 'Brick Work: the workbench for your brick collection: self-hosted, with a REST API and an MCP server.'
 DEMO_DESCRIPTION = 'Try the real Brick Work interface in your browser on an invented collection around seven real sets; nothing is saved.'

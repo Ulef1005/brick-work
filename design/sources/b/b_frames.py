@@ -198,8 +198,10 @@ def page(body, w, h):
             f'<style>{font_css("../../fonts")}:root{{{VARS}}}{B_CSS}html,body{{width:{w}px;height:{h}px}}</style></head><body>{body}</body></html>')
 
 
+# Commission N round 1 (#517, approved 2026-11-19): Sync last in the Workbench row, no Collection sync row, keys and the Lost
+# Parts rule on each site's page, Settings pointing there. Wording: brick-work-marketing; rows: brick-work-product.
 GROUPS = {'Collection': ['Sets', 'Minifigures', 'Parts', 'Instructions', 'Boxes'],
-          'Workbench': ['Part Spotter', 'Set Inspector', 'Lot Sorter', 'Part Runner', 'Matchmaker', 'Build Scout', 'Orders', 'Storage'],
+          'Workbench': ['Part Spotter', 'Set Inspector', 'Lot Sorter', 'Part Runner', 'Matchmaker', 'Build Scout', 'Orders', 'Storage', 'Sync'],
           'Planning': ['Wishlist', 'Prices', 'Complete sets', 'Order missing parts'],
           'Manage': ['Add', 'Tools & Admin', 'Appearance']}
 
@@ -226,15 +228,14 @@ def row(title, note, sig='', chev=True):
 
 # ---- Tools & Admin (bw_admin.html page == 'hub', intro on, demo world) ------------------------------------------------
 COLLECTION = [('Statistics', 'See your collection counted by theme, storage location and purchase place.', ''),
-              ('Collection sync', 'Bring a collection in from Rebrickable or Brickset and send your changes back.', ''),
               ('Unresolved items', 'Decide which catalogue item a local item is, and confirm or reject guesses.', '0 to decide'),
               ('Instruction files', 'Upload or rename the PDF booklets, or open each set’s official or Rebrickable instructions page.', '0'),
               ('Owners, tags and places', 'Edit the owners, statuses, tags, storage locations and purchase places the forms offer.', '')]
 SETTINGS = [('Money and prices', 'Display currency and rates, country for retail prices.', ''),
-            ('Sets and parts', 'How parts are grouped, which part list a new set starts on, Lost Parts from Rebrickable.', ''),
+            ('Sets and parts', 'How parts are grouped and which part list a new set starts on.', ''),
             ('Labels', 'The address on printed labels.', ''),
             ('Where data comes from', 'Pictures you have, sources, and when data counts as out of date.', 'for experts'),
-            ('Keys and sources', 'Add your BrickLink, Rebrickable and Brickset keys and see how the local catalogue stands.', ''),
+            ('Keys and sources', 'See how the local catalogue stands and which sites have a key.', ''),
             ('Appearance', 'Choose light, dark or the device setting for this device.', '')]
 
 
@@ -249,7 +250,7 @@ def tools_body(phone):
              '<div><span class="big">1,517</span> <span style="font-size:14px;color:var(--tw-text-2)">pictures missing</span></div><span class="btn sec sm" style="align-self:flex-start">Refresh pictures</span></div>')
     jobs = row('Jobs', 'Follow imports and price refreshes, and retry or resume the ones that stopped.', '0')
     refresh = (f'<div class="group"><div class="lbl">Refresh</div><div style="display:flex;gap:12px;margin-top:12px;{"flex-direction:column" if phone else ""}">{cell1}{cell2}</div>{jobs}</div>')
-    coll = '<div class="group"><div class="lbl">Your collection</div><p class="hint">Bring it in, keep it in step, see it counted.</p>' + ''.join(row(*r) for r in COLLECTION) + '</div>'
+    coll = '<div class="group"><div class="lbl">Your collection</div><p class="hint">See it counted and keep its details tidy.</p>' + ''.join(row(*r) for r in COLLECTION) + '</div>'
     sett = '<div class="group"><div class="lbl">Settings</div><p class="hint">What Brick Work shows and how it counts.</p>' + ''.join(row(*r) for r in SETTINGS) + '</div>'
     maint = ('<div class="group"><div class="lbl">Maintenance</div><p class="hint">Catalogue, backup, tokens, reports</p>'
              f'<div class="row"><span class="chev" style="color:var(--tw-text)">{ic("chev")}</span><div class="t">Show 8 tools</div></div></div>')
@@ -263,9 +264,9 @@ def tools_body(phone):
 
 # ---- Settings (page == 'settings'), "Largest instruction download" dropped ------------------------------------------
 SET_GROUPS = [('Money and prices', [('Display currency and rates', 'EUR · no rates yet'), ('Country for retail prices', 'DE')]),
-              ('Sets and parts', [('Group parts by', 'Grouped categories'), ('Part list for a new set', "Rebrickable's list first"),
-                                  ('Lost Parts from Rebrickable', 'Rebrickable wins per part')]),
-              ('Labels', [('Address on printed labels', 'Uses the request address')])]
+              ('Sets and parts', [('Group parts by', 'Grouped categories'), ('Part list for a new set', "Rebrickable's list first")]),
+              ('Labels', [('Address on printed labels', 'Uses the request address')]),
+              ('Sync', [("Keys and sync rules are on each site's page", 'Open Sync to connect a site or change what it syncs.')])]
 
 
 def settings_body(phone):

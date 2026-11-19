@@ -1,6 +1,6 @@
 """#158: the design builder base, Brick Work's layer and the served stylesheet made from them. The base never shows through:
-in every theme and motion context the served file resolves each of the layer's properties exactly as the layer alone does,
-so the roll-out changes no page (ADR 0022). The drift check runs without an ai-wiki checkout."""
+in every theme and motion context the served file resolves each of the layer's properties exactly as the layer alone does
+(B′ values since #492, pinned to the frames below). The drift check runs without an ai-wiki checkout."""
 import importlib.util
 import re
 import shutil
@@ -97,3 +97,83 @@ def test_a_layer_that_misses_a_base_property_is_refused(tmp_path, monkeypatch):
 def test_the_copy_carries_its_provenance():
     head = tb.COPY.read_text(encoding='utf-8').split('*/', 1)[0]
     assert tb.BASE_PATH in head and re.search(r'ai-wiki commit [0-9a-f]{7,40}', head) and re.search(r'source SHA-256: [0-9a-f]{64}', head)
+
+
+# ---- B′ (#492): the layer takes its values from the frames' source, never a copy that can drift ----
+
+import ast  # noqa: E402
+
+FRAMES = ROOT / 'design' / 'sources' / 'b' / 'b_frames.py'
+BRAND = ROOT / 'design' / 'BRAND.md'
+
+
+def frame_values():
+    """TOKENS (light: the B′ value is each tuple's second item) and DARK from b_frames.py, read with ast: importing it
+    would read the logo and font files and build nothing we need."""
+    found = {}
+    for node in ast.parse(FRAMES.read_text(encoding='utf-8')).body:
+        if isinstance(node, ast.Assign) and len(node.targets) == 1 and getattr(node.targets[0], 'id', None) in ('TOKENS', 'DARK'):
+            found[node.targets[0].id] = ast.literal_eval(node.value)
+    light = {k: v[1] for k, v in found['TOKENS'].items() if not v[1].startswith('none')}
+    return light, found['DARK']
+
+
+def brand_light():
+    """The light column of BRAND.md § 3 for the roles TOKENS does not carry (field, tile, tile ink)."""
+    rows = re.findall(r'^\| `(--tw-[a-z0-9-]+)` \| `(#[0-9A-Fa-f]{6})`', BRAND.read_text(encoding='utf-8'), re.M)
+    return dict(rows)
+
+
+def family(value):
+    return value.split(',')[0].strip()
+
+
+def block(selector):
+    return {k: v for k, v in tb.blocks(tb.LAYER.read_text(encoding='utf-8')).get(selector, {}).items()}
+
+
+LIGHT_BLOCKS = (':root', '.tw-light')
+DARK_BLOCKS = ('@media (prefers-color-scheme: dark) >> :root:not(.tw-light)', '.tw-dark')
+
+
+@pytest.mark.parametrize('selector', LIGHT_BLOCKS)
+def test_the_light_blocks_carry_the_frames_values(selector):
+    light, _ = frame_values()
+    have = block(selector)
+    for name, value in light.items():
+        if name.startswith('--tw-font') or name == '--tw-mono':
+            if selector == ':root':
+                assert family(have[name]) == value, name
+            continue
+        if name.startswith('--tw-r-'):
+            if selector == ':root':
+                assert have[name] == value, name
+            continue
+        assert have[name].upper() == value.upper(), f'{selector} {name}: {have.get(name)} is not the frames\' {value}'
+    for name in ('--tw-field', '--tw-tile', '--tw-tile-ink'):
+        assert have[name].upper() == brand_light()[name].upper(), f'{selector} {name} is not BRAND.md § 3'
+
+
+@pytest.mark.parametrize('selector', DARK_BLOCKS)
+def test_the_dark_blocks_carry_the_frames_values(selector):
+    _, dark = frame_values()
+    have = block(selector)
+    for name, value in dark.items():
+        assert have[name].upper() == value.upper(), f'{selector} {name}: {have.get(name)} is not the frames\' {value}'
+
+
+def test_the_forced_blocks_equal_the_system_blocks():
+    assert block('.tw-light') == {k: v for k, v in block(':root').items() if k in block('.tw-light')}
+    assert block('.tw-dark') == block(DARK_BLOCKS[0])
+
+
+def test_focus_is_ink_never_violet():
+    for selector in LIGHT_BLOCKS + DARK_BLOCKS:
+        have = block(selector)
+        assert have['--tw-focus-color'] == have['--tw-text'] != have['--tw-accent'], selector
+
+
+def test_the_retired_faces_are_gone():
+    text = tb.LAYER.read_text(encoding='utf-8')
+    for face in ('Inter', 'Geist', 'Patrick Hand'):
+        assert not re.search(rf"'{face}[ ']", text), face

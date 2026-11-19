@@ -14,7 +14,7 @@ Round 1 is approved (Ulf, 2026-11-19, version 4 of the N review artifact): FRAME
 An OUTDIR outside design/ needs OUTDIR/../fonts pointing at design/fonts (the frames load ../../fonts).
 Renderer: Playwright Chromium at device scale 2 (BRAND_CHROMIUM may name a Chromium binary).
 """
-import math, pathlib, sys
+import math, pathlib, shutil, sys, tempfile
 
 HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / 'b'))
@@ -448,7 +448,7 @@ def narrow(out):
             for w in (320, 375):
                 path = out / 'narrow' / f'{rid}-{w}.html'
                 path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_text(page(frame(fn, True), w, 3200).replace('../../fonts', '../fonts'))
+                path.write_text(page(frame(fn, True), w, 3200))   # OUTDIR/narrow/ is two levels below OUTDIR/.., as the frames
                 pg = b.new_page(viewport={'width': w, 'height': 900})
                 pg.goto(path.as_uri(), wait_until='load')
                 pg.evaluate("document.fonts.ready")
@@ -461,7 +461,9 @@ def narrow(out):
     return 1 if bad else 0
 
 
-def main(cmd, out=None):
+def main(cmd='check', out=None):
+    if cmd not in ('build', 'check', 'narrow'):
+        raise SystemExit(f'n_frames: unknown command {cmd!r} (build, check or narrow)')
     out = pathlib.Path(out).resolve() if out else B.OUT.resolve()
     inside = out == B.DESIGN.resolve() or B.DESIGN.resolve() in out.parents
     if cmd == 'narrow':
@@ -469,17 +471,24 @@ def main(cmd, out=None):
             raise SystemExit('n_frames: narrow writes OUTDIR/narrow, so OUTDIR must lie outside design/')
         return narrow(out)
     frames = FRAMES + ([] if inside else DRAFTS)
-    items = build_items(out, frames)
-    if cmd == 'build':
-        for key, png in render(items, out).items():
-            (out / key).with_suffix('.png').write_bytes(png)
-        print(f'Built {len(items)} N frames in {out}')
-        return 0
-    bad = [k for k, (html, _, _) in items.items() if not (out / k).exists() or (out / k).read_text() != html]
-    if not bad:
-        for key, png in render(items, out).items():
-            if not B.same_pixels((out / key).with_suffix('.png').read_bytes(), png):
-                bad.append(key.replace('.html', '.png'))
+    # Probes and renders go to a scratch folder beside OUTDIR (same depth, so ../../fonts resolves the same); check never writes OUTDIR.
+    work = pathlib.Path(tempfile.mkdtemp(prefix='.n_frames-', dir=out.parent))
+    try:
+        items = build_items(work, frames)
+        if cmd == 'build':
+            for key, png in render(items, work).items():
+                (out / key).parent.mkdir(parents=True, exist_ok=True)
+                (out / key).write_text(items[key][0])
+                (out / key).with_suffix('.png').write_bytes(png)
+            print(f'Built {len(items)} N frames in {out}')
+            return 0
+        bad = [k for k, (html, _, _) in items.items() if not (out / k).exists() or (out / k).read_text() != html]
+        if not bad:
+            for key, png in render(items, work).items():
+                if not B.same_pixels((out / key).with_suffix('.png').read_bytes(), png):
+                    bad.append(key.replace('.html', '.png'))
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
     print('N frames OK' if not bad else f'{len(bad)} N frames drift: {bad}')
     return 1 if bad else 0
 

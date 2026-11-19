@@ -236,7 +236,10 @@ def main(cmd):
             continue    # rebuilt from the PNGs, which are checked
         elif p.read_bytes() != data:
             bad.append(f'{k}: differs')
-    if (HERE / 'manifest-snippet.json').read_text() != snippet:
+    ms = HERE / 'manifest-snippet.json'
+    if not ms.exists():
+        bad.append('sources/logo/manifest-snippet.json: missing')
+    elif ms.read_text() != snippet:
         bad.append('sources/logo/manifest-snippet.json: differs')
     for line in bad:
         print('LOGO:', line)

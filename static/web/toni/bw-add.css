@@ -23,7 +23,7 @@
 #bw-add .secondary {color:var(--tw-text-2)}
 #bw-add .identity .mono {display:block;margin-bottom:4px}
 #bw-add button {color:var(--tw-accent-text)}
-#bw-add button.primary {color:var(--tw-on-accent)}
+#bw-add button.primary:not(:disabled):not(:active) {color:var(--tw-on-accent)}
 @media(max-width:1023px){.bw-add-choices{grid-template-columns:1fr}.bw-add-segments label{flex:none}#bw-add [data-review],#bw-add [data-confirm]{min-height:56px;flex:1}}
 @media(prefers-reduced-motion:reduce){#bw-add *{transition:none}}
 .bw-add-palette {display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;max-height:50vh;overflow:auto;padding:4px}

@@ -2,7 +2,7 @@
 .rp-page { margin:0;padding:24px 16px 48px;background:var(--tw-bg);color:var(--tw-text);font:400 12px/16px var(--tw-font);max-width:794px;margin-inline:auto; }
 .rp-tools { display:flex;gap:8px;flex-wrap:wrap;margin:0 0 24px; }
 .rp-btn { display:inline-flex;align-items:center;height:44px;padding:0 16px;border-radius:10px;border:1px solid var(--tw-accent);background:transparent;color:var(--tw-accent-text);font:500 14px var(--tw-font);text-decoration:none;cursor:pointer; }
-.rp-primary { background:var(--tw-accent);color:var(--bw-action-ink,#1A1816);font-weight:600; }
+.rp-primary { background:var(--tw-accent);color:var(--tw-on-accent);font-weight:600; }
 .rp-title { margin:0 0 12px;font:600 22px/28px var(--tw-font);letter-spacing:-.2px; }
 .rp-facts { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;border-block:.5px solid var(--tw-divider);padding:12px 0;margin:0; }
 .rp-facts div { display:flex;flex-direction:column;gap:2px;min-width:0; }

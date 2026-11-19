@@ -51,6 +51,8 @@ The gate compares the **built app** with **approved baseline captures** of the b
 
 ## Rules that apply everywhere
 
+**Direction B′ Drawer Tag is approved (2026-11-19) and is built in milestone U.** Until a screen is rebuilt, the rules below describe the app as it is; a rebuilt screen follows `BRAND.md` sections 3 to 6 and its frame in `screens-b/` instead: violet `#7334CF` is the one accent (clay is retired), IBM Plex Sans, Sans Condensed and Mono replace Inter and Geist Mono, hairlines are 1 px with a 1.5 px ink rule, radii 3 / 4 / 8, focus is an ink ring, status is shape and a word.
+
 - Colours only from `design/tokens/` (served as `tokens-v2.css`). Clay (`--tw-accent`) is the only interaction colour: buttons, links, selected states. Status uses the status tokens, never clay.
 - Inter for UI, Geist Mono for identifiers, counts, money and dates.
 - Hairlines are 0.5 px. Radii 6 / 10 / 16 / pill. No shadows except sheets, menus and the scrim. No gradients, no emoji.

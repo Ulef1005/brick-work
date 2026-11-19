@@ -1,6 +1,6 @@
 # Brick Work brand guide
 
-Brick Work has its own design, outside Toni's World (Ulf, 2026-11-03; ADR 0022). This guide follows the App Design Standard's order (P1). It is being filled in during the roll-out (#158 D1 → #161 D4): until a section is approved under the standard, it names where the current, previously approved design lives and reads **Not yet approved under the standard**. Approvals are recorded in [APPROVALS.md](APPROVALS.md). The rules for building with it are the `brickwork-design` skill (`.claude/skills/brickwork-design/SKILL.md`).
+Brick Work has its own design, outside Toni's World (Ulf, 2026-11-03; ADR 0022). **Direction: B′ Drawer Tag** (approved 2026-11-19): the app is labelled like your drawers. Storage groups sit under violet label tape, found parts are violet, status is told by shape (filled, hatched, dashed) and a word, and the logo's X marks a set or copy not checked yet. Violet `#7334CF` is the one accent, for identity and action; ink and a pale grey ground carry the rest (Ulf: "B it is", "Retire clay", "Yes, X = not checked", "Caps on tape and tabs only"). This guide follows the App Design Standard's order (P1). It is being filled in during the roll-out (#158 D1 → #161 D4): until a section is approved under the standard, it names where the current, previously approved design lives and reads **Not yet approved under the standard**. Approvals are recorded in [APPROVALS.md](APPROVALS.md). The rules for building with it are the `brickwork-design` skill (`.claude/skills/brickwork-design/SKILL.md`).
 
 ## SUCCESS
 
@@ -36,19 +36,19 @@ Approved in logo round 5 (review artifact https://claude.ai/artifact/LVHh16j6JvB
 
 ## 3. Colour
 
-Roles and tokens, light and dark: `tokens/brickwork-tokens.css` and the generated `tokens/brickwork-tokens.json`, loaded after the pinned neutral base `tokens/tokens.css` (`scripts/tokens_base.py`; the served stylesheet is generated from the two). The values are the ones Brick Work served before the roll-out, unchanged. Not yet approved under the standard.
+Approved for B′ (round 2, R2-03): ground `#EDEEEB`, surface `#F8F8F6`, surface-2 `#E3E5E1`, divider `#C9CDC8`, ink `#1A1E1E`, secondary `#434A4A`, muted `#59615F` (5.5:1 on the ground), accent violet `#7334CF` with soft `#F0EAFB` (identity, action, links, selected), on-accent white (6.7:1), focus ink, danger `#8B4F54` (errors only, always with a word). Success, warning and info have no colours: status is shape and a word. Every colour is checked against the 30 most-used LEGO part colours (ΔE OKLab under 0.10 and hue within 20° is rejected). The values are listed beside the shipped ones in the review (R2-03); `tokens/brickwork-tokens.css` takes them when the app is rebuilt in milestone U, and until then serves the values from before the redesign. Dark mode is derived from these roles.
 
 ## 4. Type
 
-Inter (text), Geist Mono (numbers and codes), Patrick Hand (brand surfaces only), as set in `tokens/brickwork-tokens.css`. The font files and licences are in `static/fonts/` today. Not yet approved under the standard.
+Approved for B′ (round 2, R2-03): IBM Plex Sans for text, IBM Plex Sans Condensed in capitals for tape, tabs and small section labels only, IBM Plex Mono for numbers, codes and set numbers. Set names and headings are sentence case. The files and their licence are in `fonts/` (`fonts/README.md`). The app serves Inter, Geist Mono and Patrick Hand until it is rebuilt in milestone U.
 
 ## 5. Layout
 
-Spacing, safe areas, 44 px targets and the bars, as set in `tokens/brickwork-tokens.css`. Not yet approved under the standard.
+Approved for B′ (round 2, R2-01): four tabs across the top (Collection, Workbench, Planning, Manage), the open group's pages in a row under them; on the phone the same four groups in the tab bar and the group's pages as a scrolling row. The lockup at 32 px leads the app bar. Radii 3, 4 and 8 px; 1 px hairlines and a 1.5 px ink rule under headers, tiles and the app bar; 44 px targets. Frames: `screens-b/`.
 
 ## 6. Components
 
-The built components, as the design kit v1.3 frames show them (`sources/frames.json`, the HTML in `screens/NN-<screen>/`). Not yet approved under the standard.
+Approved for B′ (round 2, R2-04): primary violet and secondary ink-outline buttons, the ink focus ring (2 px, 2 px offset), tabs, label tape, tags and dashed tags, the X chip for "not checked" (the logo's X, white on a violet square; a thin line X without a square means close or stop), progress per copy to scale, one cell per part, fields. Sheet: `screens-b/00-components/`.
 
 ## 7. Screens
 

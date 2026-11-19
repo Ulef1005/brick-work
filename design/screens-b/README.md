@@ -16,5 +16,10 @@ The approved frames of commission U, built by `../sources/b/b_frames.py` (`build
 | `09-matchmaker/` | R4-01 Matchmaker: coverage bars, completable first | round 4 |
 | `10-build-scout/` | R4-02 Build Scout: coverage bars, list with detail panel | round 4 |
 | `11-storage/` | R4-03 Storage: short code first, detail under its label tape | round 4 |
+| `12-set-detail/` | R6-02 Set detail: copy bar under the hero, Sell this copy and Value first | round 6 |
+| `13-part-spotter/` | R6-05 Part Spotter: panels side by side, colour swatches | round 6 |
+| `14-lot-sorter/` | R6-03 Lot Sorter: Set detection, ink score bar, Make a copy sheet | round 6 |
+| `15-order-missing-parts/` | R6-01 Order missing parts: missing bars, order list, source choice | round 6 |
+| `16-orders/` | R6-04 Orders: Count what arrived, status by shape | round 6 |
 
 These frames replace the v1.3 frames in `../screens/` screen by screen as each is approved; `../screens/` and its manifest stay the record of what is built today until the app is rebuilt (milestone U). Set pictures are empty white tiles with their alt text, because this public repo carries no catalogue pictures; the review showed the real pictures (https://claude.ai/artifact/FX8PAj3J9cgVkY42oPGc8a, version 3).

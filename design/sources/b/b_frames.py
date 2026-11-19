@@ -633,13 +633,395 @@ def page3(body, w, h):
     return page(body, w, h).replace('</style>', EXTRA_CSS + '</style>', 1)
 
 
+# ==== Round 6 (approved 2026-11-19, Ulf: "approved"; artifact version 11): Set detail, Part Spotter, Lot Sorter, Order missing parts, Orders ====
+CSS6 = '''
+.sw{width:40px;height:24px;border-radius:12px;border:1.5px solid var(--tw-text);position:relative;flex:none;background:var(--tw-surface)}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:15px;height:15px;border-radius:50%;background:var(--tw-text)}
+.sw.on{background:var(--tw-accent);border-color:var(--tw-accent)} .sw.on::after{left:19px;background:var(--tw-on-accent)}
+.cb{width:22px;height:22px;border:1.5px solid var(--tw-text);border-radius:3px;flex:none;display:flex;align-items:center;justify-content:center}
+.cb.on{background:var(--tw-accent);border-color:var(--tw-accent)}
+.src{display:flex;gap:8px} .src span{flex:1;min-width:0;border:1.5px solid var(--tw-divider);border-radius:3px;padding:5px 9px;font:600 13px var(--tw-font);color:var(--tw-text-2)}
+.src span small{display:block;font:400 11.5px var(--tw-mono);color:var(--tw-text-muted)}
+.src span.on{border-color:var(--tw-accent);background:var(--tw-accent-soft);color:var(--tw-accent)} .src span.on small{color:var(--tw-text-2)}
+.src span.off{border-style:solid;color:var(--tw-text-muted);background:transparent}
+.stat{border-top:1.5px solid var(--tw-rule);padding-top:6px;min-width:0}
+.stat .v{font:600 22px/28px var(--tw-mono);letter-spacing:-.02em} .stat .s{font:400 11.5px var(--tw-mono);color:var(--tw-text-2)}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--tw-bg);border-radius:var(--tw-r-3) var(--tw-r-3) 0 0;border-top:1.5px solid var(--tw-rule);padding:10px 16px 24px;box-shadow:0 -8px 24px rgba(26,30,30,.18)}
+.scrim{position:absolute;inset:0;background:rgba(26,30,30,.38)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 18px;font-size:13.5px} .kv dt{color:var(--tw-text-2)} .kv dd{font-weight:500}
+.chip{display:inline-flex;align-items:center;height:22px;padding:0 7px;border-radius:3px;font:500 12px var(--tw-font);white-space:nowrap}
+.ptile{width:44px;height:44px;flex:none;background:#fff;border:1px solid var(--tw-divider);border-radius:2px;display:flex;align-items:flex-end;justify-content:center;font:400 9px var(--tw-mono);color:var(--tw-text-muted);padding-bottom:3px}
+'''
+CHECK = '<svg width="14" height="14" viewBox="0 0 14 14"><path d="M3 7.2l2.6 2.6L11 4.4" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+COL = {'Black': '#1B2A34', 'White': '#F4F4F4', 'Red': '#C91A09', 'Yellow': '#F2CD37', 'Tan': '#E4CD9E', 'Light Bluish Gray': '#A0A5A9',
+       'Dark Bluish Gray': '#6C6E68', 'Medium Nougat': '#AA7D55', 'Dark Tan': '#958A73'}
+
+
+def page6(body, w, h):
+    """Round 6 frames: round 3's page plus CSS6, so the approved earlier files stay byte-identical."""
+    return page3(body, w, h).replace('</style>', CSS6 + '</style>', 1)
+
+
+def colour(name):
+    """The part colour as a chip in its own colour (round 3's name block, small)."""
+    return f'<span class="chip" style="{colour_fill(COL[name])};box-shadow:inset 0 0 0 1px rgba(26,30,30,.25)">{name}</span>'
+
+
+def cb(on=True):
+    return f'<span class="cb{" on" if on else ""}">{CHECK if on else ""}</span>'
+
+
+def sw(on):
+    return f'<span class="sw{" on" if on else ""}" role="switch" aria-checked="{str(on).lower()}"></span>'
+
+
+def missbar(missing, total):
+    """A set's gap, to scale: hatched what is missing, the rest found."""
+    m = missing / total * 100
+    return (f'<div class="bar" style="height:6px"><i style="flex:1;background:var(--tw-accent)"></i><i style="width:{max(m, 1.2):.1f}%;background:{HATCH};'
+            f'box-shadow:inset 0 0 0 1px var(--tw-text)"></i></div>')
+
+
+# ---- N4 Order missing parts ------------------------------------------------------------------------------------------
+GAPS = [('7213-1', 'Off-Road Fire Truck & Fireboat', 'Fire · 2010', 'set-7213-1.png', 'Copy 2', 12, 375, '12 parts missing', 'gain +€7.39', False),
+        ('10210-1', 'Imperial Flagship', 'Pirates II · 2010', 'set-10210-1.png', 'Copy 1', 33, 1623, '33 parts missing · 1 figure missing', '', True),
+        ('7938-1', 'Passenger Train', 'Trains · 2010', 'set-7938-1.png', 'Copy 1', 14, 657, '14 parts missing', 'gain +€4.24', False)]
+ORDER = [('Bricks', [('Brick 1 × 4', 'Dark Bluish Gray', '3010', 'used', '7213-1 ×2', 2, ('BrickLink', '€0.07 · 12 Oct'), ('Pick a Brick', '301040'), 0),
+                     ('Brick 1 × 8', 'Red', '3008', 'used', '10210-1 ×1', 1, ('BrickLink', '€0.19 · 12 Oct'), ('Pick a Brick', 'no element id'), 0)]),
+         ('Slopes and curves', [('Slope 45° 2 × 2', 'White', '87619', 'used', '7938-1 ×4', 4, ('BrickLink', 'no sales'), ('Pick a Brick', '4121966'), 1)])]
+
+
+def oml_body(phone):
+    head = ('<div class="head"><div><div class="lbl">Planning · Order missing parts</div><h1>Order missing parts</h1>'
+            '<p>3 sets have gaps · 3 in the list</p></div></div>')
+    filt = (f'<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center"><span class="input" style="height:38px;width:{"100%" if phone else "240px"};color:var(--tw-text-muted)">{ic("search", 16)}&nbsp; Search sets</span>'
+            + ('' if phone else '<label class="field" style="flex-direction:row;align-items:center;gap:8px">Theme<span class="input" style="height:38px;width:120px">All</span></label>'
+               f'<span style="display:flex;gap:8px;align-items:center;font-size:14px">{sw(True)}Leave out sets to sell or part out</span>'
+               f'<span style="display:flex;gap:8px;align-items:center;font-size:14px">{sw(False)}Only sets that gain value</span>'
+               '<label class="field" style="flex-direction:row;align-items:center;gap:8px">Sort<span class="input" style="height:38px;width:140px">Most missing</span></label>')
+            + '</div>')
+    sel = ('<div style="display:flex;gap:14px;align-items:baseline;font-size:13px"><span class="mono" style="color:var(--tw-text-2)">3 of 3 sets</span>'
+           '<span style="color:var(--tw-accent-text);font-weight:600">Select all</span><span style="color:var(--tw-accent-text);font-weight:600">Clear</span></div>')
+
+    def gap(n, name, meta, img, cp, miss, total, txt, gain, check):
+        return (f'<div style="display:flex;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--tw-divider)">{cb()}'
+                f'<div style="width:{52 if phone else 64}px;flex:none">{pic(img, 42 if phone else 50, 3)}</div><div style="flex:1;min-width:0">'
+                f'<div style="display:flex;gap:8px;align-items:baseline"><span class="mono" style="font:600 14px var(--tw-mono)">{n}</span><span style="font:600 14px var(--tw-font);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{name}</span></div>'
+                f'<div style="font-size:12px;color:var(--tw-text-2);margin:1px 0 5px">{meta} · {cp}{" · <span class=\"tag dash\" style=\"height:18px;font-size:10px\">Check in progress</span>" if check else ""}</div>'
+                f'{missbar(miss, total)}<div class="bartxt" style="margin-bottom:0">{txt}{(" · " + gain) if gain else ""}</div></div></div>')
+    sets = ''.join(gap(*g) for g in GAPS)
+
+    def line(name, col, num, cond, used_in, q, a, b, pick):
+        srcs = ''.join(f'<span class="{"on" if i == pick else ("off" if s[1] == "no element id" else "")}">{s[0]}<small>{s[1]}</small></span>' for i, s in enumerate((a, b)))
+        return (f'<div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--tw-divider)"><span class="ptile">{num}</span><div style="flex:1;min-width:0">'
+                f'<div style="display:flex;justify-content:space-between;gap:8px"><span style="font:600 14px var(--tw-font)">{name}</span><span class="mono" style="font-weight:600">×{q}</span></div>'
+                f'<div style="display:flex;gap:8px;align-items:center;margin:4px 0 6px;font-size:12px;color:var(--tw-text-2)">{colour(col)}<span class="mono">{num} · {cond} · for {used_in}</span></div>'
+                f'<div class="src">{srcs}</div></div></div>')
+    def group(g, ls):
+        return (f'<div class="lbl" style="margin-top:12px;padding-bottom:6px;border-bottom:1px solid var(--tw-divider);display:flex;justify-content:space-between">{g}'
+                    f'<span class="mono" style="letter-spacing:0;text-transform:none">{len(ls)} line{"s" if len(ls) > 1 else ""} · {sum(l[5] for l in ls)} piece{"s" if sum(l[5] for l in ls) > 1 else ""}</span></div>'
+                + ''.join(line(*l) for l in ls))
+    lines = ''.join(group(g, ls) for g, ls in ORDER)
+    stats = ('<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px 18px">'
+             '<div class="stat"><div class="lbl">BrickLink</div><div class="v">€3.69</div><div class="s">26 lines · 32 pieces</div></div>'
+             '<div class="stat"><div class="lbl">Pick a Brick</div><div class="v" style="color:var(--tw-text-muted)">no price</div><div class="s">33 lines · 27 pieces</div></div>'
+             '<div class="stat"><div class="lbl">Shipping, estimate</div><div class="v">€3.00</div><div class="s">BrickLink order only · Repair settings</div></div>'
+             '<div class="stat"><div class="lbl">Estimated total</div><div class="v">€6.69</div><div class="s">parts and shipping · BrickLink only</div></div></div>')
+    pref = (f'<div style="display:flex;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--tw-divider)"><div style="flex:1">'
+            f'<div style="font:600 14px var(--tw-font)">Prefer Pick a Brick where a line has an element id</div>'
+            f'<div style="font-size:12.5px;color:var(--tw-text-2)">On: lines with an element id start on Pick a Brick. Change a single line with its source.</div></div>{sw(True)}</div>')
+    seg = '<div class="seg" style="align-self:flex-start"><span class="on">All 59</span><span>BrickLink 26</span><span>Pick a Brick 33</span></div>'
+    panel = (f'<div style="display:flex;flex-direction:column;gap:12px">'
+             f'<div class="tape">Order list<span class="mono">59 lines · 59 pieces from 3 sets</span></div>'
+             f'<p style="font-size:13px;color:var(--tw-text-2)">Same part, colour and condition are combined. Each line goes to one source. Loose stock is not counted (Repair settings).</p>'
+             f'{pref}{seg}{stats}<div style="display:flex;justify-content:flex-end;gap:14px;font:600 13px var(--tw-font);color:var(--tw-accent-text)"><span>Expand all</span><span>Collapse all</span></div>{lines}</div>')
+    if phone:
+        return (f'<div style="padding:14px 16px 0;display:flex;flex-direction:column;gap:12px">{head.replace("<h1>", "<h1 style=\"font-size:26px\">")}'
+                f'{filt}<span class="btn sec sm" style="align-self:flex-start">Filters · 4</span>{sel}{sets}'
+                f'</div><div style="position:absolute;left:0;right:0;bottom:78px;background:var(--tw-surface);border-top:1.5px solid var(--tw-rule);padding:10px 16px;display:flex;align-items:center;gap:12px">'
+                f'<div class="mono" style="flex:1;font-size:12.5px"><b>3 sets</b><div style="color:var(--tw-text-2)">59 lines · 59 pieces</div></div><span class="btn">Review list</span></div>')
+    return (f'<div style="padding:22px 32px 0;display:flex;gap:32px"><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:14px">{head}{filt}{sel}<div>{sets}</div></div>'
+            f'<div style="width:560px;flex:none">{panel}</div></div>')
+
+
+# ---- N5 Orders: the order list and Count what arrived (20 count-audit, 33) -------------------------------------------
+ORDERS = [('9900103', '10 Oct 2026', 'Demo Brick Outlet', '0 lines', '€9.90', 'Draft', 'dash'),
+          ('9900102', '5 Oct 2026', 'Example Parts Depot', '5 lines', '€14.54', 'Counting', 'dash'),
+          ('9900101', '28 Sep 2026', 'Sample Bricks Store', '7 lines', '€17.73', 'Reconciled', '')]
+COUNT = [('Wedge Plate 4 × 2 Right', 'Light Bluish Gray', '41769', 6, 6), ('Brick 1 × 3', 'Tan', '3622', 11, 11),
+         ('Brick 1 × 2', 'Light Bluish Gray', '3004', 16, 13), ('Plate 2 × 14', 'Tan', '91988', 26, 26),
+         ('Brick 1 × 4', 'Dark Bluish Gray', '3010', 36, 0)]
+
+
+def orders_body(phone):
+    def o(num, date, store, lines, total, st, cls, on=False):
+        sel = 'background:var(--tw-accent-soft);box-shadow:inset 3px 0 0 var(--tw-accent);' if on else ''
+        return (f'<div style="display:flex;gap:10px;padding:10px;border-bottom:1px solid var(--tw-divider);{sel}"><div style="flex:1;min-width:0">'
+                f'<div class="mono" style="font-size:12px;color:var(--tw-text-muted)">{num} · {date}</div><div style="font:600 14px var(--tw-font)">{store}</div>'
+                f'<div class="mono" style="font-size:12px;color:var(--tw-text-2)">{lines}</div></div><div style="text-align:right;display:flex;flex-direction:column;gap:6px;align-items:flex-end">'
+                f'<span class="mono" style="font-weight:600">{total}</span><span class="tag {cls}">{st}</span></div></div>')
+    olist = ''.join(o(*r, on=(i == 1)) for i, r in enumerate(ORDERS))
+    left = (f'<div style="width:330px;flex:none;display:flex;flex-direction:column;gap:12px"><div class="head"><div><div class="lbl">Workbench · Orders</div><h1>Orders</h1>'
+            f'<p>3 imported · 1 to count</p></div></div><span class="input" style="height:38px;color:var(--tw-text-muted)">{ic("search", 16)}&nbsp; Number or name</span>'
+            f'<div>{olist}</div><span class="btn sec sm" style="align-self:flex-start">{ic("plus", 16)}Import an order</span></div>')
+    ordered = sum(c[3] for c in COUNT)
+    got = sum(c[4] for c in COUNT)
+
+    def c(name, col, num, need, have):
+        short = need - have
+        st = ('<span class="tag">Complete</span>' if not short else
+              f'<span class="tag" style="border-style:solid;background:{HATCH.replace("var(--tw-text)", "rgba(26,30,30,.18)")}">{short} short</span>')
+        stp = f'<div class="step" style="height:44px"><b style="width:44px">−</b><span style="min-width:52px;font-size:18px">{have}</span><b style="width:44px">+</b></div>'
+        return (f'<div style="display:flex;gap:12px;align-items:center;padding:9px 0;border-bottom:1px solid var(--tw-divider)"><span class="ptile">{num}</span>'
+                f'<div style="flex:1;min-width:0"><div style="font:600 14px var(--tw-font)">{name}</div><div style="display:flex;gap:8px;align-items:center;margin-top:3px">{colour(col)}'
+                f'<span class="mono" style="font-size:12px;color:var(--tw-text-2)">{num}</span></div>{f"<div class=\"mono\" style=\"font-size:12px;color:var(--tw-text-2);margin-top:2px\">ordered {need}</div>" if phone else ""}</div>'
+                + ('' if phone else f'<span class="mono" style="width:60px;text-align:right">{need}</span>') + f'{stp}' + ('' if phone else f'<span style="width:96px;text-align:right">{st}</span>') + '</div>')
+    th = ('' if phone else '<div class="lbl" style="display:flex;gap:12px;padding:8px 0;border-bottom:1.5px solid var(--tw-rule)"><span style="flex:1;padding-left:56px">Part</span>'
+          '<span style="width:60px;text-align:right">Ordered</span><span style="width:144px;text-align:center">Received</span><span style="width:96px;text-align:right">Status</span></div>')
+    rows = ''.join(c(*r) for r in COUNT)
+    tabs = '<div class="stabs"><span>Order detail</span><span class="on">Count what arrived</span><span>Review allocation</span><span>Allocations and reconcile</span></div>'
+    ohead = (f'<div style="display:flex;gap:16px;align-items:flex-end"><div style="flex:1;min-width:0"><div class="mono" style="font-size:12.5px;color:var(--tw-text-muted)">BrickLink 9900102 · 5 Oct 2026 · 5 lines</div>'
+             f'<div style="font:600 {22 if phone else 28}px/1.2 var(--tw-font);margin-top:2px">Example Parts Depot</div><div style="display:flex;gap:6px;margin-top:6px"><span class="tag dash">Counting</span><span class="tag">EUR</span></div></div>'
+             + ('' if phone else f'<div style="text-align:right"><div class="big">€14.54</div><div class="mono" style="font-size:12px;color:var(--tw-text-2)">Ordered {ordered} · received {got} · allocated 0</div></div>') + '</div>')
+    prog = (f'<div><div class="bar" style="height:10px"><i style="width:{got / ordered * 100:.1f}%;background:var(--tw-accent)"></i><i style="flex:1;border:1.5px dashed var(--tw-text-2)"></i></div>'
+            f'<div class="bartxt">{got} of {ordered} pieces counted · {ordered - got} still to count</div></div>')
+    acts = (f'<div style="display:flex;gap:10px;flex-wrap:wrap"><span class="btn">Save partial receipt</span><span class="btn sec">Mark all received</span></div>'
+            f'<p style="font-size:13px;color:var(--tw-text-2)">Short lines stay open. Count them again when the rest arrives.</p>')
+    audit = ('<div class="group"><div class="lbl">Count audit</div><div style="display:flex;gap:14px;align-items:center;padding:8px 0;font-size:14px">'
+             '<span class="mono">today, 08:00</span>Received counts saved<span class="btn sec sm" style="margin-left:auto">Undo</span></div></div>')
+    main = (f'<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:14px">{ohead}{tabs}'
+            f'<div style="font:600 18px var(--tw-font)">Count what arrived</div>{prog}'
+            f'<span class="input" style="height:38px;color:var(--tw-text-muted)">{ic("search", 16)}&nbsp; Number or name</span><div>{th}{rows}</div>{acts}{audit}</div>')
+    if phone:
+        return (f'<div style="padding:12px 16px 0;display:flex;flex-direction:column;gap:12px"><div class="mono" style="font-size:13px;color:var(--tw-accent-text)">‹ Orders</div>'
+                f'{main.replace("<div class=\"stabs\">", "<div class=\"stabs\" style=\"overflow:hidden\">")}</div>')
+    return f'<div style="padding:22px 32px 0;display:flex;gap:32px">{left}{main}</div>'
+
+
+# ---- N2 Part Spotter: camera, queue and the batch (31) ---------------------------------------------------------------
+QUEUE = [('part-3005-red.png', 'Piece 1 · 3005', 'Brick 1 × 1', 'Red', 'Confirmed', ''), ('part-3009-lbg.png', 'Piece 2 · 3009', 'Brick 1 × 6', 'Light Bluish Gray', 'To review', 'dash'),
+         ('part-3010-dbg.png', 'Piece 3', 'Recognizing', None, 'To review', 'dash')]
+SWATCH = ['Light Bluish Gray', 'Dark Bluish Gray', 'White', 'Black', 'Tan', 'Red']
+
+
+def spotter_body(phone):
+    head = ('<div class="head"><div><div class="lbl">Workbench · Part Spotter</div><h1>Part Spotter</h1><p>Photograph a piece, confirm part and colour</p></div>'
+            + ('' if phone else '<p style="margin-left:auto;font-size:13px;color:var(--tw-text-2)">Confirmed pieces are added to loose parts after you review the batch.</p>') + '</div>')
+    segs = ('<div style="display:flex;flex-direction:column;gap:10px">'
+            '<label class="field">Camera<span class="input" style="height:40px">Back camera</span></label>'
+            '<div style="display:flex;gap:16px;flex-wrap:wrap"><div class="field">Recognition<div class="seg"><span style="color:var(--tw-text-muted)">Local model</span><span class="on">Brickognize</span></div></div>'
+            '<div class="field">Identify<div class="seg"><span class="on">Parts</span><span>Figures</span></div></div></div>'
+            '<div class="mono" style="font-size:11.5px;color:var(--tw-text-muted)">Local model · Not available yet</div></div>')
+    vf = ('<div style="position:relative;height:250px;background:#fff;border:1.5px solid var(--tw-text);border-radius:var(--tw-r-2);overflow:hidden">'
+          '<div style="position:absolute;inset:18px;border:1.5px dashed var(--tw-text-2);border-radius:3px"></div>'
+          '<div class="tape" style="position:absolute;left:10px;top:10px">Piece 4</div></div>')
+    shoot = ('<span class="btn" style="width:100%;height:52px">Take picture</span>'
+             '<div style="display:flex;justify-content:space-between;align-items:center;font-size:13px"><span style="font-weight:600;color:var(--tw-accent-text)">Add a saved photo</span>'
+             '<span class="mono" style="font-size:11.5px;color:var(--tw-text-muted)">Photos go to api.brickognize.com</span></div>'
+             '<div class="mono" style="font-size:11.5px;color:var(--tw-text-muted)">Space · take picture · Queue limit 6</div>')
+
+    def q(img, ident, name, col, st, cls):
+        sub = colour(col) if col else '<span style="font-size:12px;color:var(--tw-text-muted)">being read</span>'
+        return (f'<div style="display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--tw-divider)"><div style="width:44px;flex:none">{pic(img, 44, 3)}</div>'
+                f'<div style="flex:1;min-width:0"><div class="mono" style="font-size:11.5px;color:var(--tw-text-muted)">{ident}</div><div style="font:600 13.5px var(--tw-font)">{name}</div>'
+                f'<div style="margin-top:2px">{sub}</div></div><span class="tag {cls}">{st}</span></div>')
+    queue = ('<div class="group"><div class="lbl">Queue · 3</div>' + ''.join(q(*r) for r in QUEUE)
+             + '<div style="display:flex;gap:14px;align-items:center;margin-top:10px"><span class="btn sec sm">Start reviewing</span><span style="font:600 13px var(--tw-font);color:var(--tw-text-2)">Empty queue</span></div></div>')
+    results = ('<div class="group"><div class="lbl">Results · 1</div><div style="display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--tw-divider)">'
+               f'<div style="width:44px;flex:none">{pic("part-3005-red.png", 44, 3)}</div><div style="flex:1"><div style="font:600 13.5px var(--tw-font)">Brick 1 × 1</div>'
+               f'<div style="display:flex;gap:8px;align-items:center;margin-top:2px">{colour("Red")}<span class="mono" style="font-size:12px;color:var(--tw-text-2)">3005 · ×1</span></div></div>'
+               '<span class="tag">Confirmed</span></div></div><span class="btn" style="width:100%">Review inventory batch</span><span style="font:600 14px var(--tw-font);color:var(--tw-text-2)">Done</span>')
+    sw_ = ''.join(f'<span style="display:flex;align-items:center;gap:6px;height:36px;padding:0 10px;border-radius:3px;font:500 13px var(--tw-font);'
+                  f'{"box-shadow:inset 0 0 0 2px var(--tw-accent);background:var(--tw-accent-soft);color:var(--tw-accent);font-weight:600" if i == 0 else "box-shadow:inset 0 0 0 1px var(--tw-divider)"}">'
+                  f'<i style="width:16px;height:16px;border-radius:2px;background:{COL[c]};box-shadow:inset 0 0 0 1px rgba(26,30,30,.3)"></i>{c}</span>' for i, c in enumerate(SWATCH))
+    review = (f'<div class="card" style="padding:16px;display:flex;flex-direction:column;gap:12px"><div style="display:flex;align-items:baseline;gap:4px 10px;flex-wrap:wrap">'
+              f'<span style="font:600 20px var(--tw-font);white-space:nowrap">Piece 2 of 3</span><span style="font-size:13px;color:var(--tw-text-2)">Confirm the part, then pick the colour</span></div>'
+              f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div><div class="lbl" style="margin-bottom:6px">Reference · best match</div>{pic("part-3009-lbg.png", 104 if phone else 150, 10)}</div>'
+              f'<div><div class="lbl" style="margin-bottom:6px">Your photo</div><div class="tile" style="height:{104 if phone else 150}px;background:var(--tw-surface-2)"></div></div></div>'
+              f'<div><div style="font:600 16px var(--tw-font)">Brick 1 × 6</div><div class="mono" style="font-size:12.5px;color:var(--tw-text-2)">3009 · Light Bluish Gray · 0.87 match</div></div>'
+              f'<div style="font-size:13px;color:var(--tw-text-2);border-top:1px solid var(--tw-divider);padding-top:8px">You have 14 in 3 colours: Light Bluish Gray 8 (S-0003), Red 4, White 2 · '
+              f'<span style="color:var(--tw-accent-text);font-weight:600">Fills a gap in 1 copy · Matchmaker</span></div>'
+              f'<div class="lbl">Colour · you choose</div><div style="display:flex;gap:6px;flex-wrap:wrap">{sw_}</div>'
+              f'<div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap"><div class="step" style="height:44px"><b style="width:44px">−</b><span style="min-width:52px;font-size:18px">1</span><b style="width:44px">+</b></div>'
+              f'<span style="display:flex;gap:8px;align-items:center;font-size:14px">{sw(False)}Has a sticker</span></div>'
+              f'<span class="btn" style="width:100%;height:52px">Confirm · Light Bluish Gray ×1</span>'
+              f'<div style="display:flex;justify-content:space-between;font-size:13px"><span style="font-weight:600;color:var(--tw-text-2)">Delete picture</span>'
+              f'<span class="mono" style="font-size:11.5px;color:var(--tw-text-muted)">Enter · confirm · 1 to 9 · choose a candidate</span></div></div>')
+    if phone:
+        tabs = '<div class="seg" style="align-self:stretch"><span style="flex:1;text-align:center">Capture</span><span style="flex:1;text-align:center">Queue 3</span><span class="on" style="flex:1;text-align:center">Review</span><span style="flex:1;text-align:center">Results 1</span></div>'
+        return (f'<div style="padding:14px 16px 0;display:flex;flex-direction:column;gap:12px">{head.replace("<h1>", "<h1 style=\"font-size:24px\">")}{tabs}{review}</div>')
+    return (f'<div style="padding:22px 32px 0;display:flex;flex-direction:column;gap:16px">{head}<div style="display:flex;gap:28px">'
+            f'<div style="width:380px;flex:none;display:flex;flex-direction:column;gap:12px">{segs}{vf}{shoot}</div>'
+            f'<div style="width:340px;flex:none;display:flex;flex-direction:column;gap:18px">{queue}{results}</div>'
+            f'<div style="flex:1;min-width:0">{review}</div></div></div>')
+
+
+# ---- N3 Lot Sorter: a lot with Set detection (15), the phone Make a copy confirm (15 pull-list-confirm) -------------------
+CANDS = [('7213-1', 'Off-Road Fire Truck & Fireboat', 'Fire · 2010 · 375 parts', 'set-7213-1.png', 100, '14 of 45 distinctive parts found · 10 parts only in this set · 14 of 45 part lines of the set are in the lot', True),
+         ('7938-1', 'Passenger Train', 'Trains · 2010 · 657 parts', 'set-7938-1.png', 68, '9 of 71 distinctive parts found · 9 parts only in this set · 9 of 71 part lines of the set are in the lot', False),
+         ('31120-1', 'Medieval Castle', 'Creator 3-in-1 · 2021 · 1,426 parts', 'set-31120-1.png', 38, '5 of 86 distinctive parts found · 5 parts only in this set · 5 of 86 part lines of the set are in the lot', False)]
+FOUND = ['3010', '3004', '3005', '3009', '87619', '3008', '3622', '41769', '91988', '3633', '2431', '3700', '6141', '2453a']
+NOTYET = ['3034', '32000', '32607', '4216', '4510', '60481', '88930', '2449', '2540', '3666', '3832', '41682', '4286', '11476', '92280', '20310']
+
+
+def lot_body(phone):
+    if phone:
+        return lot_phone()
+    head = ('<div class="head"><div><div class="lbl">Workbench · Lot Sorter</div><h1>Flea market bag</h1><p>84 parts · 28 original lines · 1 with a sticker</p></div>'
+            '<span class="btn sec sm" style="margin-left:auto">Edit</span></div>')
+    info = ('<div style="display:flex;gap:40px;font-size:13.5px;flex-wrap:wrap">'
+            + ''.join(f'<div><div class="lbl" style="font-size:11px">{k}</div><div style="margin-top:2px;{"color:var(--tw-text-muted)" if v == "Not recorded" else "font-weight:500"}">{v}</div></div>'
+                      for k, v in [('Storage', 'Not recorded'), ('Place', 'Not recorded'), ('Bought', 'Not recorded'), ('Price', 'Not recorded'), ('Note', 'One bag, no list')])
+            + '<div style="font-size:12.5px;color:var(--tw-text-muted);align-self:flex-end">Edit applies to the lot; prices stay per part.</div></div>')
+    filt = ('<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">'
+            + ''.join(f'<label class="field" style="width:{w}px">{k}<span class="input" style="height:38px">{v}</span></label>'
+                      for k, v, w in [('Min score', '30 %', 110), ('Theme', 'All', 150), ('Years', 'any – any', 130), ('Size', 'any – any', 130)])
+            + f'<span style="display:flex;gap:8px;align-items:center;font-size:14px;height:38px">{sw(False)}Ignore common parts</span><span class="btn sec sm">Apply</span></div>')
+
+    def tiles(nums, found):
+        st = 'border-bottom:3px solid var(--tw-accent)' if found else f'border:1.5px solid var(--tw-text);background:#fff;box-shadow:inset 0 -6px 0 0 transparent'
+        return '<div style="display:flex;gap:6px;flex-wrap:wrap">' + ''.join(
+            f'<span class="ptile" style="{st}">{n}</span>' if found else f'<span class="ptile" style="border:1.5px dashed var(--tw-text-2)">{n}</span>' for n in nums) + '</div>'
+
+    def cand(n, name, meta, img, score, txt, open_):
+        sc = (f'<div style="width:190px;flex:none"><div style="display:flex;align-items:baseline;justify-content:space-between"><span class="big" style="font-size:22px">{score} %</span>'
+              f'<span style="font-size:12px;color:var(--tw-text-muted)">{"best match" if score == 100 else ""}</span></div>'
+              f'<div class="bar" style="height:6px;margin-top:4px"><i style="width:{score}%;background:var(--tw-text)"></i><i style="flex:1;background:var(--tw-divider)"></i></div></div>')
+        body = (f'<div style="display:flex;gap:14px;align-items:center"><div style="width:72px;flex:none">{pic(img, 54, 4)}</div><div style="flex:1;min-width:0">'
+                f'<div style="display:flex;gap:10px;align-items:baseline"><span class="mono" style="font:600 15px var(--tw-mono)">{n}</span><span style="font:600 15px var(--tw-font)">{name}</span></div>'
+                f'<div style="font-size:12.5px;color:var(--tw-text-2)">{meta}</div><div style="font-size:13px;margin-top:3px">{txt}</div></div>{sc}'
+                f'<span class="btn sec sm">{"Hide details" if open_ else "Details"}</span></div>')
+        det = ''
+        if open_:
+            det = (f'<div style="padding:10px 0 0 86px;display:flex;flex-direction:column;gap:8px"><div class="lbl">Found in the lot · 14</div>{tiles(FOUND, True)}'
+                   f'<div class="lbl">Not found yet · 31</div>{tiles(NOTYET, False)}<div style="font-size:12px;color:var(--tw-text-muted)">+ 15 more</div>'
+                   f'<div class="lbl">Swaps, not counted in the score · 0</div><div style="font-size:13px;color:var(--tw-text-2)">No part of the lot fits this set in another colour or mould.</div>'
+                   f'<div style="display:flex;gap:10px"><span class="btn sm">Pull list</span><span class="btn sec sm">Open set {n}</span></div></div>')
+        return f'<div style="padding:12px 0;border-bottom:1px solid var(--tw-divider)">{body}{det}</div>'
+    det = (f'<div style="display:flex;flex-direction:column;gap:12px"><div class="tape">Set detection<span class="mono">3 candidate sets</span></div>'
+           f'<div style="font:600 20px var(--tw-font)">Which sets are in this lot?</div>'
+           f'<p style="font-size:13px;color:var(--tw-text-2);max-width:640px">The score shows how strongly the parts in this lot point to a set, compared with the best candidate. It is not a probability.</p>'
+           f'{filt}<div>{"".join(cand(*c) for c in CANDS)}</div></div>')
+    return f'<div style="padding:22px 32px 0;display:flex;flex-direction:column;gap:16px;max-width:1300px">{head}{info}{det}</div>'
+
+
+def lot_phone():
+    under = ('<div style="padding:14px 16px 0;display:flex;flex-direction:column;gap:10px"><div style="font:600 14px var(--tw-font);color:var(--tw-accent-text)">‹ Which sets are in this lot?</div>'
+             '<div class="lbl">Pull list</div><div style="font:600 26px/1.2 var(--tw-font)">Passenger Train <span class="mono" style="font-size:15px;color:var(--tw-text-muted)">7938-1</span></div>'
+             '<div style="font-size:13px;color:var(--tw-text-2)">Trains · 2010 · 657 parts</div>'
+             f'<div class="bar" style="height:8px"><i style="width:2.6%;background:var(--tw-accent)"></i><i style="flex:1;border:1.5px dashed var(--tw-text-2)"></i></div><div class="bartxt">17 of 657 found · 640 to find</div>'
+             f'<span class="input" style="height:40px;color:var(--tw-text-muted)">Search parts</span></div>')
+    rows = ''.join(f'<div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--tw-divider);font-size:15px"><span>{k}</span><span class="mono" style="font-weight:600">{v}</span></div>'
+                   for k, v in [('Found pieces move out of the lot', 17), ('Recorded as missing on the copy', 640), ('Stay in the lot', 67)])
+    sheet = ('<div class="scrim"></div><div class="sheet" style="bottom:0"><div style="width:40px;height:4px;border-radius:2px;background:var(--tw-divider);margin:0 auto 14px"></div>'
+             '<div style="font:600 22px/1.2 var(--tw-font)">Make 7938-1 a copy?</div><div style="font-size:13.5px;color:var(--tw-text-2);margin:2px 0 10px">Passenger Train · Trains · 2010</div>'
+             f'<div style="border-top:1.5px solid var(--tw-rule)">{rows}</div>'
+             f'<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:13.5px;color:var(--tw-text-2);margin:12px 0 4px">The copy starts as '
+             f'<span class="tag" style="background:{HATCH.replace("var(--tw-text)", "rgba(26,30,30,.18)")}">Incomplete</span>{xchip("Not checked")}</div>'
+             '<p style="font-size:13px;color:var(--tw-text-2)">Missing parts appear in Matchmaker, Complete sets and the missing-parts XML. One step you can undo.</p>'
+             '<span class="btn" style="width:100%;height:52px;margin-top:14px">Make copy of 7938-1</span></div>')
+    return f'<div style="position:absolute;inset:0;top:0">{under}</div>' if False else (under + '<div style="position:absolute;inset:0;z-index:5">' + sheet + '</div>')
+
+
+# ---- N1 Set detail: 7213-1, copy 1 of 2, checked with 10 parts missing (10, 23) ---------------------------------------
+PARTS_MISSING = [('part-3008-red.png', 'Brick 1 × 8', 'Red', '3008', 2, 2, 1), ('part-3633-dbg.png', 'Fence Lattice 1 × 4 × 1', 'Dark Bluish Gray', '3633', 4, 3, 2)]
+PARTS_GROUP = [('part-3005-red.png', 'Brick 1 × 1', 'Red', '3005', 6), ('part-3004-red.png', 'Brick 1 × 2', 'Red', '3004', 8), ('part-3010-dbg.png', 'Brick 1 × 4', 'Dark Bluish Gray', '3010', 4)]
+
+
+def card(title, body, action='', pad=14):
+    act = f'<span class="btn sec sm" style="margin-left:auto;height:32px">{action}</span>' if action else ''
+    return (f'<div class="card" style="padding:{pad}px;display:flex;flex-direction:column;gap:10px"><div style="display:flex;align-items:center;gap:10px">'
+            f'<span class="lbl" style="color:var(--tw-text)">{title}</span>{act}</div>{body}</div>')
+
+
+def money_row(k, v, small='', bold=False):
+    w = '600' if bold else '400'
+    return (f'<div style="display:flex;align-items:baseline;gap:8px;padding:5px 0;border-bottom:1px solid var(--tw-divider);font-size:13.5px;font-weight:{w}"><span style="flex:1">{k}</span>'
+            f'{f"<span style=\"font-size:11.5px;color:var(--tw-text-muted)\" class=\"mono\">{small}</span>" if small else ""}<span class="mono" style="font-weight:600">{v}</span></div>')
+
+
+def detail_cards(phone):
+    info = card('Info', '<dl class="kv" style="grid-template-columns:auto 1fr auto 1fr"><dt>Condition</dt><dd>Used</dd><dt>Parts check</dt><dd>Checked</dd>'
+                '<dt>Box</dt><dd>No</dd><dt>Instructions</dt><dd>Yes</dd><dt>Tags</dt><dd>Not recorded</dd></dl>'
+                '<div style="font-size:12px;color:var(--tw-text-muted)">Not recorded: place</div>', 'Edit')
+    plist = card('Part list', '<div style="display:flex;gap:8px;align-items:center;font:600 14px var(--tw-font)">Rebrickable · version 1 of 1<span class="tag">Latest</span></div>'
+                 '<div class="mono" style="font-size:12.5px;color:var(--tw-text-2)">131 lines · 4 minifigures · 9 spare</div>')
+    prices = card('Prices', money_row('Used', '€48.58', '9 sold · 6 months · 12 Oct') + money_row('New', '€112.00', '3 sold · 6 months · 12 Oct')
+                  + money_row('Parted out', '≈ €61.20', 'prices for 118 of 131 lines')
+                  + '<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--tw-text-2)"><span>With box: not set</span><span style="font-weight:600;color:var(--tw-accent-text)">Set estimate</span></div>'
+                  '<div style="font-size:13px;color:var(--tw-text-2);display:flex;gap:6px;align-items:center">' + ic('chev', 14) + 'Price records · 2</div>', 'Update price')
+    sell = card('Sell this copy · Copy 1',
+                '<div style="display:flex;gap:6px"><span class="tag">Used</span>'
+                f'<span class="tag" style="background:{HATCH.replace("var(--tw-text)", "rgba(26,30,30,.18)")}">Incomplete</span></div>'
+                '<div style="display:flex;align-items:baseline;gap:10px;border-top:1.5px solid var(--tw-rule);padding-top:8px"><span class="lbl">Asking price</span>'
+                '<span class="big" style="margin-left:auto">€46.18</span></div><div class="mono" style="font-size:11.5px;color:var(--tw-text-2);margin-top:-6px">Used sold average · 9 sold · 6 months</div>'
+                + money_row('Used average for this condition', '€48.58') + money_row(f'{ic("chev", 12)} Missing parts · 10 pieces', 'less €2.40') + money_row('Asking price', '€46.18', bold=True)
+                + '<div style="font-size:12.5px;color:var(--tw-text-2)">Part-out value of what is present €58.80 · Priced 8 of 8 missing lines</div>'
+                '<span class="btn sm" style="align-self:flex-start">Copy listing text</span>', 'Preview')
+    value = card('Value · Copy 1', money_row('Paid', '€35.00', '9 Mar 2025') + money_row('Worth now', '€46.18', '12 Oct') + money_row('Gain', '€11.18 · 32 %', bold=True)
+                 + '<div style="font-size:12px;color:var(--tw-text-muted)">Used sold average · 9 sales · 12 Oct · missing parts and figures less €2.40</div>')
+    links = card('Links', '<div style="display:flex;gap:8px;font-size:13px"><span style="font-weight:600">BrickLink</span><span class="mono">7213-1</span><span class="tag" style="height:18px;font-size:10px">Matched</span>'
+                 '<span style="margin-left:14px;font-weight:600">Brickset</span><span class="mono">7213-1</span></div>'
+                 '<div style="font-size:12.5px;color:var(--tw-accent-text);font-weight:600">Merge into… · Change variant…</div>')
+    return [info, plist, prices, sell, value, links]
+
+
+def setdetail_body(phone):
+    links = f'<span class="ext" style="height:32px">BrickLink {ic("ext", 14)}</span><span class="ext" style="height:32px">Brickset {ic("ext", 14)}</span>'
+    hero = (f'<div style="font:600 13px var(--tw-font);color:var(--tw-accent-text);display:flex;align-items:center;gap:4px">{ic("back", 16)}Sets</div>'
+            f'<div style="display:flex;gap:20px;align-items:{"flex-start" if phone else "center"}">'
+            f'<div style="width:{110 if phone else 200}px;flex:none">{pic("set-7213-1.png", 84 if phone else 150, 8)}</div><div style="flex:1;min-width:0">'
+            f'<div class="mono" style="font-size:13px;color:var(--tw-text-muted)">7213-1 · 2010 · Fire</div>'
+            f'<h1 style="font:600 {22 if phone else 34}px/1.15 var(--tw-font);letter-spacing:-.015em;margin:3px 0 10px">Off-Road Fire Truck &amp; Fireboat</h1>'
+            f'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><div class="seg"><span class="on">Copy 1</span><span>Copy 2</span></div>'
+            f'<span class="tag" style="background:{HATCH.replace("var(--tw-text)", "rgba(26,30,30,.18)")}">Incomplete</span><span class="tag">Used</span><span class="tag">Checked</span>'
+            + ('' if phone else f'<span style="margin-left:12px;display:flex;gap:8px">{links}</span>') + '</div></div></div>'
+            + (f'<div style="display:flex;gap:8px">{links}</div>' if phone else ''))
+    copybar = (f'<div style="border-top:1.5px solid var(--tw-rule);padding-top:12px;display:flex;gap:{14 if phone else 24}px;{"flex-direction:column" if phone else "align-items:flex-end"}">'
+               f'<div style="flex:1;min-width:0"><div style="font:600 18px var(--tw-font);margin-bottom:6px">10 parts missing, 4 in loose stock</div>'
+               f'{bar(365, 10, 375)}<div style="display:flex;gap:14px;font:400 12px var(--tw-mono);color:var(--tw-text-2)"><span>4 can be taken</span><span>6 to order</span></div></div>'
+               f'<div style="display:flex;gap:10px;flex-wrap:wrap"><span class="btn">Check parts</span><span class="btn sec">Edit parts</span>'
+               + ('' if phone else '<span class="btn sec">Check missing only</span>') + '</div></div>')
+    tabs = ('<div class="stabs"><span class="on">Parts <span class="mono" style="font-size:12px;color:var(--tw-text-muted)">375</span></span>'
+            '<span>Minifigures <span class="mono" style="font-size:12px;color:var(--tw-text-muted)">4</span></span><span>Instructions &amp; Box</span></div>')
+    tools = (f'<div style="display:flex;gap:10px;align-items:center"><span class="input" style="flex:1;height:38px;color:var(--tw-text-muted)">{ic("search", 16)}&nbsp; Name, number or colour</span>'
+             '<span class="btn sec sm">Filters</span><span class="btn sec sm">Sort</span></div>')
+
+    def miss(img, name, col, num, need, nmiss, stock):
+        return (f'<div class="card" style="padding:10px;display:flex;gap:12px;align-items:center"><div style="width:60px;flex:none">{pic(img, 60, 4)}</div>'
+                f'<div style="flex:1;min-width:0;border-radius:3px;padding:6px 9px;{colour_fill(COL[col])}"><div style="font:600 14px var(--tw-font)">{name}</div>'
+                f'<div style="font-size:12.5px">{col} · <span class="mono">{num}</span> · needs {need} · {nmiss} missing</div></div>'
+                f'<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end"><span class="mono" style="font-size:12px;color:var(--tw-text-2)">{stock} in loose stock</span>'
+                f'<span class="btn sec sm" style="height:34px">Take {stock}</span></div></div>')
+
+    def prow(img, name, col, num, q):
+        return (f'<div style="display:flex;gap:12px;align-items:center;padding:8px 0;border-bottom:1px solid var(--tw-divider)"><div style="width:44px;flex:none">{pic(img, 44, 3)}</div>'
+                f'<div style="flex:1;min-width:0"><div style="font:500 14px var(--tw-font)">{name}</div><div style="display:flex;gap:8px;align-items:center;margin-top:2px">{colour(col)}'
+                f'<span class="mono" style="font-size:12px;color:var(--tw-text-2)">{num}</span></div></div><span class="mono" style="font-size:12.5px;color:var(--tw-text-2)">{q} · checked</span></div>')
+    group = (f'<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1.5px solid var(--tw-rule)">{ic("chev", 16)}<span style="font:600 15px var(--tw-font)">Bricks</span>'
+             f'<span class="mono" style="font-size:12px;color:var(--tw-text-2)">12 rows · 48 pieces · 12 of 12 checked</span><span class="tag" style="margin-left:auto">Complete</span></div>'
+             + ''.join(prow(*r) for r in PARTS_GROUP))
+    consists = (f'<div style="display:flex;flex-direction:column;gap:12px">{tabs}{tools}<div class="lbl" style="color:var(--tw-text-2)">Missing parts · 8 lines</div>'
+                f'{"".join(miss(*m) for m in PARTS_MISSING)}<div style="font-size:13px;color:var(--tw-accent-text);font-weight:600">+ 6 more missing lines</div>'
+                f'<div style="display:flex;justify-content:flex-end;gap:14px;font:600 13px var(--tw-font);color:var(--tw-accent-text)"><span>Expand all</span><span>Collapse all</span></div>{group}</div>')
+    cards = detail_cards(phone)
+    if phone:
+        return (f'<div style="padding:12px 16px 0;display:flex;flex-direction:column;gap:12px">{hero}{copybar}{cards[3]}</div>')
+    return (f'<div style="padding:18px 32px 0;display:flex;flex-direction:column;gap:14px">{hero}{copybar}'
+            f'<div style="display:flex;gap:28px"><div style="flex:1;min-width:0">{consists}</div>'
+            f'<div style="width:400px;flex:none;display:flex;flex-direction:column;gap:10px">{cards[3]}{cards[4]}{cards[0]}{cards[2]}{cards[1]}{cards[5]}</div></div></div>')
+
+
 FRAMES = [('01-tools-and-admin', 'Manage', 'Tools & Admin', tools_body), ('02-settings', 'Manage', 'Tools & Admin', settings_body),
           ('03-find-instructions', 'Manage', 'Tools & Admin', finder_body),
           ('04-sets', 'Collection', 'Sets', sets_body), ('05-sets-without-storage', 'Collection', 'Sets', nostore_body),
           ('06-set-inspector', 'Workbench', 'Set Inspector', inspector_body), ('07-part-runner', 'Workbench', 'Part Runner', runner_body),
           ('08-sets-empty', 'Collection', 'Sets', empty_body),
           ('09-matchmaker', 'Workbench', 'Matchmaker', match_body), ('10-build-scout', 'Workbench', 'Build Scout', scout_body),
-          ('11-storage', 'Workbench', 'Storage', storage_body)]
+          ('11-storage', 'Workbench', 'Storage', storage_body),
+          ('12-set-detail', 'Collection', 'Sets', setdetail_body), ('13-part-spotter', 'Workbench', 'Part Spotter', spotter_body),
+          ('14-lot-sorter', 'Workbench', 'Lot Sorter', lot_body), ('15-order-missing-parts', 'Planning', 'Order missing parts', oml_body),
+          ('16-orders', 'Workbench', 'Orders', orders_body)]
 SIZES = ((False, 1440, 1000), (True, 390, 844))
 
 
@@ -648,7 +1030,7 @@ def sources():
     out = {}
     for folder, g, sub, fn in FRAMES:
         for phone, w, h in SIZES:
-            make = page3 if folder >= '04' else page
+            make = page6 if folder >= '12' else page3 if folder >= '04' else page
             out[f'{folder}/light-{w}.html'] = (make((phone_shell if phone else desk_shell)(g, sub, fn(phone)), w, h), w, h)
     out['00-components/light-1440.html'] = (page(parts_body(), 1440, 520), 1440, 520)
     return out

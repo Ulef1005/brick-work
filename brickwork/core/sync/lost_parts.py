@@ -11,6 +11,7 @@ any row that could not be read turns clearing off for that run, so a changed rep
 takes every one of them back."""
 import json
 
+from ...store4.errors import Store4Error
 from .. import checker, wishlists
 
 KEY = 'rebrickable_lost_parts_rule'
@@ -86,15 +87,15 @@ def preview_new(db, item_id, rows, how):
     are built and their items and colours projected as `create_copy_in` does, inside a savepoint that is rolled back, so it writes nothing.
     None when the set has no part list yet (its copy is made without lines)."""
     from ...store4 import copies as store_copies
-    choice = store_copies.part_list_choices(db, item_id)['preselected']
-    if choice is None:
-        return None
     try:
+        choice = store_copies.part_list_choices(db, item_id)['preselected']
+        if choice is None:
+            return None
         try:
             target = store_copies.build_target(db, item_id, choice)
         except store_copies.BrickLinkPending:
             target = store_copies.build_target(db, item_id, store_copies._pending_base(db, item_id))
-    except store_copies.NoPartList:
+    except Store4Error:                                 # no part list, or one the catalogue cannot give: never stops the pull preview
         return None
     found = sorted(((item, colour, spare), quantity) for (figure, item, colour, spare), quantity in target.lines().items() if figure is None)
     if not found:
@@ -105,6 +106,8 @@ def preview_new(db, item_id, rows, how):
     try:
         store_copies._project(db, target)               # the Rebrickable numbers of items and colours the collection does not hold yet
         return changes(db, None, rows, how, lines=lines)
+    except Store4Error:
+        return None
     finally:
         db.execute('ROLLBACK TO lost_parts_preview')
         db.execute('RELEASE lost_parts_preview')

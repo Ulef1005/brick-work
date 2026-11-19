@@ -533,6 +533,17 @@ def test_a_new_copy_under_a_clearing_rule_says_nothing_about_clearing(store):
     assert written['not_cleared'] is None and written['added'] == 1 and written['unmatched'] == 1
 
 
+def test_a_catalogue_that_cannot_build_the_new_copy_never_stops_the_preview(store, monkeypatch):
+    from brickwork.store4 import copies as store_copies
+    from brickwork.store4.errors import NotInCatalogue
+    for name in ('_project', 'part_list_choices'):                              # the projection, then the choice itself
+        monkeypatch.setattr(store_copies, name, lambda *args, **kwargs: (_ for _ in ()).throw(NotInCatalogue('invented')))
+        plan = planned(store, Remote([raw('1000-2', '3001', 4, 1)]))
+        (waiting,) = plan['lost']['unmatched_sets']
+        assert waiting['set_no'] == '1000-2' and waiting['reason'].startswith('The set has no part list yet')
+        assert plan['rows']                                                     # the set comparison is whole
+
+
 def test_a_set_not_owned_on_rebrickable_still_says_pull_its_copy_first(store):
     plan = planned(store, Remote([raw('1000-3', '3001', 4, 1)]))              # 1000-3 is only on the wishlist there
     (waiting,) = plan['lost']['unmatched_sets']

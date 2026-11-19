@@ -1,11 +1,14 @@
 /* Brick Work documentation site. Colours, type and spacing come from tokens-v2.css (the app's design
    tokens, light and dark); this file only lays out the reading page. */
-@font-face{font-family:'Inter';font-style:normal;font-weight:400;font-display:swap;src:url('fonts/inter-latin-400-normal.woff2') format('woff2')}
-@font-face{font-family:'Inter';font-style:normal;font-weight:500;font-display:swap;src:url('fonts/inter-latin-500-normal.woff2') format('woff2')}
-@font-face{font-family:'Inter';font-style:normal;font-weight:600;font-display:swap;src:url('fonts/inter-latin-600-normal.woff2') format('woff2')}
-@font-face{font-family:'Geist Mono';font-style:normal;font-weight:400;font-display:swap;src:url('fonts/geist-mono-latin-400-normal.woff2') format('woff2')}
-
-@font-face{font-family:'Patrick Hand';font-style:normal;font-weight:400;font-display:swap;src:url('fonts/PatrickHand-Regular.woff2') format('woff2')}
+@font-face{font-family:'IBM Plex Sans';font-style:normal;font-weight:400;font-display:swap;src:url('fonts/IBMPlexSans-Regular.woff2') format('woff2')}
+@font-face{font-family:'IBM Plex Sans';font-style:normal;font-weight:500;font-display:swap;src:url('fonts/IBMPlexSans-Medium.woff2') format('woff2')}
+@font-face{font-family:'IBM Plex Sans';font-style:normal;font-weight:600;font-display:swap;src:url('fonts/IBMPlexSans-SemiBold.woff2') format('woff2')}
+@font-face{font-family:'IBM Plex Sans';font-style:normal;font-weight:700;font-display:swap;src:url('fonts/IBMPlexSans-Bold.woff2') format('woff2')}
+@font-face{font-family:'IBM Plex Sans Condensed';font-style:normal;font-weight:500;font-display:swap;src:url('fonts/IBMPlexSansCondensed-Medium.woff2') format('woff2')}
+@font-face{font-family:'IBM Plex Sans Condensed';font-style:normal;font-weight:600;font-display:swap;src:url('fonts/IBMPlexSansCondensed-SemiBold.woff2') format('woff2')}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:400;font-display:swap;src:url('fonts/IBMPlexMono-Regular.woff2') format('woff2')}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:500;font-display:swap;src:url('fonts/IBMPlexMono-Medium.woff2') format('woff2')}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:600;font-display:swap;src:url('fonts/IBMPlexMono-SemiBold.woff2') format('woff2')}
 
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}

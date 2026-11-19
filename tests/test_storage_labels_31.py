@@ -393,3 +393,38 @@ def test_mark_and_fonts_are_loaded_once():
     assert labels.font(40) is labels.font(40) and labels.font(23, True) is labels.font(23, True)
     assert labels.mark_rects() is labels.mark_rects()
     assert labels.mark_rects.cache_info().misses == 1
+
+
+def test_mark_reads_the_shipped_svg_as_three_plates_with_one_masked():
+    plates = labels.mark_rects()
+    assert len(plates) == 3 and [p[5] for p in plates] == [False, False, True]
+    for x, y, w, h, rx, masked in plates:
+        assert (round(w, 1), round(h, 1), round(rx, 1)) == (44.5, 26.3, 9.1) and 0 <= x and x + w <= 100 and 0 <= y and y + h <= 100
+
+
+@pytest.mark.parametrize('svg', [
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 100"><defs><rect id="u" width="4" height="4"/><mask id="m"><rect/><path d="M0 0L1 1"/></mask></defs></svg>',
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><rect id="u" width="4" height="4"/><mask id="m"><rect/><path d="M0 0L1 1"/></mask></defs>'
+    '<use href="#u" transform="translate(1 1) rotate(15) scale(1)"/></svg>',
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><rect id="u" width="4" height="4"/><mask id="m"><rect/><path d="M0 0L1 1"/></mask></defs>'
+    '<circle r="3"/></svg>'])
+def test_mark_fails_clearly_on_a_structure_it_does_not_know(monkeypatch, tmp_path, svg):
+    (tmp_path / 'static/brickwork').mkdir(parents=True)
+    (tmp_path / 'static/brickwork/mark-line.svg').write_text(svg)
+    monkeypatch.setattr(labels, 'ROOT', tmp_path)
+    labels._mark_svg.cache_clear()
+    try:
+        with pytest.raises(ValueError, match='mark-line.svg'):
+            labels._mark_svg()
+    finally:
+        monkeypatch.undo()
+        labels._mark_svg.cache_clear()
+
+
+def test_mark_draws_the_cut_out_x_from_32_px_and_not_below():
+    def centre(size):   # the middle of the X on the masked plate, in viewBox units (63.65, 30.3)
+        image = Image.new('RGB', (200, 200), 'white')
+        labels.mark(image, (0, 0), size)
+        return image.getpixel((round(63.65 * size / 100), round(30.3 * size / 100)))[0], image.getpixel((round(15 * size / 100), round(65 * size / 100)))[0]
+    assert centre(labels.MARK_X_MIN_SIZE - 1)[0] < 30 and centre(labels.MARK_X_MIN_SIZE)[0] > 100   # X appears at 32
+    assert centre(83)[0] > 240 and centre(83)[1] < 5   # printed size: X cut clear, plate solid black

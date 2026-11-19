@@ -12,6 +12,18 @@ from tests.app4 import app4, pair  # noqa: F401
 ROOT = Path(__file__).resolve().parents[1]
 BEFORE = 'd97bf65'   # main before D2
 GROWN = {'/static/brickwork/icons-ui/sprite.svg', '/static/brickwork/icons-ui/README.md'}
+# The logo swap (the approved violet Bond mark) replaced the bytes of these on purpose; they still answer at the same URL.
+SWAPPED = {'/static/brickwork/' + name for name in (
+    'app-icon.svg', 'favicon-16.png', 'favicon-32.png', 'favicon-48.png', 'favicon.ico', 'favicon.svg',
+    'icons/icon-1024.png', 'icons/icon-152.png', 'icons/icon-180.png', 'icons/icon-192.png', 'icons/icon-512.png',
+    'icons/icon-maskable-192.png', 'icons/icon-maskable-512.png', 'lockup-horizontal-dark.png', 'lockup-horizontal-dark.svg',
+    'lockup-horizontal-light.png', 'lockup-horizontal.svg', 'mark-dark.svg', 'mark-line.svg', 'mark.svg',
+    'splash/splash-ipad-landscape-2048x1536-dark.png', 'splash/splash-ipad-landscape-2048x1536-light.png',
+    'splash/splash-ipad-portrait-1536x2048-dark.png', 'splash/splash-ipad-portrait-1536x2048-light.png',
+    'splash/splash-iphone16-1179x2556-dark.png', 'splash/splash-iphone16-1179x2556-light.png')}
+# The stacked lockup and the cut favicon are retired (design/*/retired/) and no longer served.
+RETIRED_URLS = {'/static/brickwork/' + name for name in (
+    'favicon-small-cut.svg', 'lockup-stacked-dark.png', 'lockup-stacked-dark.svg', 'lockup-stacked-light.png', 'lockup-stacked.svg')}
 sys.path.insert(0, str(ROOT / 'scripts'))
 import brand_assets  # noqa: E402
 
@@ -29,11 +41,18 @@ def test_every_url_served_before_the_move_answers_with_the_same_bytes(app4):
     client = app4.test_client()
     for url, content in before.items():
         response = client.get(url)
+        if url in RETIRED_URLS:
+            assert response.status_code == 404, url
+            response.close()
+            continue
         assert response.status_code == 200, url
         if url in GROWN:   # the icon set has grown since (#153: gear, book, catalog): every line served before is still there
             assert set(content.decode().splitlines()) <= set(response.get_data().decode().splitlines()), url
+        elif url in SWAPPED:   # new bytes, served from the file on disk
+            assert response.get_data() == brand_assets.mapping()[url.removeprefix('/static/brickwork/')].read_bytes() != content, url
         elif url.endswith('/manifest.webmanifest'):   # workflow naming (#204) and direct workflow shortcuts (#412)
             expected = json.loads(content.replace(b'Part to Inventory', b'Part Spotter'))
+            expected['icons'] += [dict(src='/static/brickwork/icons/icon-maskable-1024.png', sizes='1024x1024', type='image/png', purpose='maskable')]
             expected['shortcuts'] += [
                 dict(name='Lot Sorter', url='/workbench/lot-sorter'),
                 dict(name='Order missing parts', url='/planning/order-missing-parts')]
@@ -46,7 +65,7 @@ def test_every_url_served_before_the_move_answers_with_the_same_bytes(app4):
 def test_the_served_files_are_generated_from_design():
     assert brand_assets.problems() == []
     on_disk = {p.relative_to(brand_assets.SERVED).as_posix() for p in brand_assets.SERVED.rglob('*') if p.is_file()}
-    assert on_disk == set(brand_assets.mapping()) | brand_assets.APP_OWNED   # 68 generated + brick-work.css + manifest.webmanifest
+    assert on_disk == set(brand_assets.mapping()) | brand_assets.APP_OWNED   # generated + brick-work.css + manifest.webmanifest
 
 
 def test_check_finds_a_drifted_a_stray_and_a_missing_file(tmp_path, monkeypatch):
@@ -81,7 +100,7 @@ def test_a_path_like_parameter_reaches_no_file_outside(app4, path):
 
 def test_a_query_parameter_never_changes_which_file_is_served(app4):
     response = app4.test_client().get('/static/brickwork/mark.svg?path=/etc/passwd&file=../../app.py')
-    assert response.status_code == 200 and response.get_data() == (ROOT / 'design/logo/mark.svg').read_bytes()
+    assert response.status_code == 200 and response.get_data() == brand_assets.mapping()['mark.svg'].read_bytes()
     response.close()
 
 

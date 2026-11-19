@@ -291,8 +291,242 @@ def parts_body(_phone=False):
     return ('<div style="padding:28px 32px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:28px 36px">' + ''.join(grid) + '</div>')
 
 
+# ---- screens round 3 (approved 2026-11-19, Ulf: "round 3 approved"): Sets, Sets without storage, Set Inspector,
+# Part Runner, empty Sets. Built on the round 2 stylesheet; EXTRA_CSS adds round 3's components.
+HATCH = 'repeating-linear-gradient(45deg,var(--tw-text) 0 1.5px,transparent 1.5px 4px)'
+
+EXTRA_CSS = '''
+.seg{display:flex;border:1.5px solid var(--tw-text);border-radius:3px;font:600 12px var(--tw-font-label);letter-spacing:.08em;text-transform:uppercase}
+.seg span{padding:6px 10px} .seg span.on{background:var(--tw-text);color:var(--tw-bg)}
+.stabs{display:flex;gap:24px;font:500 14px var(--tw-font);border-bottom:1px solid var(--tw-divider)}
+.stabs span{padding:10px 0 9px;color:var(--tw-text-2);border-bottom:2px solid transparent;white-space:nowrap}
+.stabs span.on{color:var(--tw-text);font-weight:600;border-bottom-color:var(--tw-accent)}
+.stile{background:var(--tw-surface);border:1px solid var(--tw-divider);border-radius:var(--tw-r-2);padding:9px;display:flex;flex-direction:column;min-width:0}
+.stile .num{border-top:1.5px solid var(--tw-rule);margin-top:8px;padding-top:6px;display:flex;align-items:baseline;justify-content:space-between;font:600 18px var(--tw-mono)}
+.stile .nm{font:600 14px/18px var(--tw-font);margin:3px 0 2px;min-height:36px}
+.stile .meta{font-size:12.5px;color:var(--tw-text-2);margin-bottom:8px}
+.bar{display:flex;height:8px} .bar i{display:block}
+.bartxt{font:400 12px var(--tw-mono);color:var(--tw-text-2);margin:4px 0 6px;white-space:nowrap;display:flex;align-items:center;gap:6px}
+.idx{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--tw-divider);font:500 14px var(--tw-font)}
+.idx.on{color:var(--tw-accent);font-weight:600}
+.cells{display:flex;flex-wrap:wrap;gap:3px}
+.cells i{display:block;width:11px;height:11px;border-radius:2px}
+.cells .f{background:var(--tw-accent)} .cells .m{border:1.5px solid var(--tw-text);background:''' + HATCH + '''} .cells .u{border:1.5px dashed var(--tw-text-2)}
+.cnt{display:flex;align-items:stretch;border:1.5px solid var(--tw-text);border-radius:3px}
+.cnt .k{padding:8px 12px;border-right:1.5px solid var(--tw-text)} .cnt .v{padding:9px 12px;flex:1;min-width:0}
+.step{display:flex;align-items:center;border:1.5px solid var(--tw-text);border-radius:3px;height:56px}
+.step b{width:56px;height:100%;display:flex;align-items:center;justify-content:center;font:600 24px var(--tw-font)}
+.step span{min-width:56px;text-align:center;font:600 22px var(--tw-mono);border-left:1.5px solid var(--tw-text);border-right:1.5px solid var(--tw-text);height:100%;display:flex;align-items:center;justify-content:center}
+'''
+
+
+def colour_fill(hex_):
+    """The part's own colour as the ground of its name block, text in white or ink, whichever reads (Ulf, round 3 comment)."""
+    r, g, b = (int(hex_[i:i + 2], 16) / 255 for i in (1, 3, 5))
+    lum = sum(w * (c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4) for w, c in zip((0.2126, 0.7152, 0.0722), (r, g, b)))
+    ink = '#FFFFFF' if (1.05 / (lum + 0.05)) >= (lum + 0.05) / 0.0617 else '#1A1E1E'
+    return f'background:{hex_};color:{ink}'
+
+
+def found_row(n, fs):
+    """The old stepper (Ulf, round 3 comment): Found ×n is the button in the middle; − and + beside it change n."""
+    side = 'width:56px;height:56px;padding:0;font:600 24px var(--tw-font)'
+    return (f'<div style="display:flex;gap:8px;align-items:center"><span class="btn sec" style="{side}" aria-label="One fewer">−</span>'
+            f'<span class="btn" style="flex:1;height:56px;font-size:{fs}px">Found ×{n}</span><span class="btn sec" style="{side}" aria-label="One more">+</span></div>')
+
+
+
+def pic(img, h, pad=6):
+    alt = 'Part picture' if img.startswith('part-') else 'Set picture'
+    return f'<div class="tile" style="height:{h}px;padding:{pad}px">{picture(img, alt)}</div>'
+
+
+SETS = {s['n']: s for s in [
+    dict(n='7213-1', name='Off-Road Fire Truck & Fireboat', meta='Fire · 2010', img='set-7213-1.png', price='€48.58', copies=[(365, 10, 375), (130, 12, 375)]),
+    dict(n='7938-1', name='Passenger Train', meta='Trains · 2010', img='set-7938-1.png', price='€65.73', copies=[(643, 14, 657)]),
+    dict(n='10254-1', name='Winter Holiday Train', meta='Creator · 2016', img='set-10254-1.png', price='€99.53', copies=[], sealed=True),
+    dict(n='10210-1', name='Imperial Flagship', meta='Pirates II · 2010', img='set-10210-1.png', price='€194.31', copies=[(1590, 33, 1623)]),
+    dict(n='31120-1', name='Medieval Castle', meta='Creator 3-in-1 · 2021', img='set-31120-1.png', price='€127.00', copies=[(1426, 0, 1426)]),
+    dict(n='8043-1', name='Motorized Excavator', meta='Technic · 2010', img='set-8043-1.png', price='€123.40', copies=[(0, 0, 1123)]),
+    dict(n='21028-1', name='New York City', meta='Skylines · 2016', img='set-21028-1.png', price='€53.94', copies=[(0, 0, 598)]),
+]}
+STORAGE_GROUPS = [('S-0002', 'Shelf A2 – Town', ['7213-1', '7938-1', '10254-1']), ('S-0001', 'Shelf A1 – Castle', ['10210-1', '31120-1']),
+          ('S-0005', 'Technic crate', ['8043-1']), ('S-0004', 'Display case', ['21028-1'])]
+
+
+def bar(found, missing, total, label=''):
+    """One copy, to scale: violet found, hatched missing, dashed still to check; a copy never checked carries the X."""
+    if found + missing == 0:
+        return (f'<div class="bar"><i style="flex:1;border:1.5px dashed var(--tw-text-2)"></i></div>'
+                f'<div class="bartxt">{xchip("Not checked")}<span>{label}0/{total:,}</span></div>')
+    f, m = found / total * 100, missing / total * 100
+    rest = '' if found + missing == total else '<i style="flex:1;border:1.5px dashed var(--tw-text-2);border-left:none"></i>'
+    txt = f'{label}{found:,}/{total:,}' + (f' · {missing} missing' if missing else ' · complete')
+    return (f'<div class="bar"><i style="width:{f:.2f}%;background:var(--tw-accent)"></i><i style="width:{m:.2f}%;background:{HATCH};'
+            f'box-shadow:inset 0 0 0 1px var(--tw-text)"></i>{rest}</div><div class="bartxt">{txt}</div>')
+
+
+def tile(s, w=None, img_h=112):
+    if s.get('sealed'):
+        bars = '<span class="tag" style="align-self:flex-start">Sealed</span>'
+    else:
+        many = len(s['copies']) > 1
+        bars = ''.join(bar(*c, label=f'#{i + 1} ' if many else '') for i, c in enumerate(s['copies']))
+    width = f'width:{w}px;' if w else ''
+    return (f'<div class="stile" style="{width}">{pic(s["img"], img_h)}<div class="num"><span>{s["n"]}</span>'
+            f'<span style="font:500 12px var(--tw-mono);color:var(--tw-text-2)">{s["price"]}</span></div><div class="nm">{s["name"]}</div>'
+            f'<div class="meta">{s["meta"]}{" · " + str(len(s["copies"])) + " copies" if len(s["copies"]) > 1 else ""}</div>{bars}</div>')
+
+
+def tape(sid, name, n):
+    return f'<div class="tape"><span class="mono" style="margin:0;opacity:1;font-weight:600">{sid}</span>{name}<span class="mono">{n} {"set" if n == 1 else "sets"}</span></div>'
+
+
+def sets_body(phone):
+    stabs = '<div class="stabs">' + ''.join(f'<span class="{"on" if i == 0 else ""}">{t} <span class="mono" style="color:var(--tw-text-muted);padding:0;border:0">{n}</span></span>'
+                                            for i, (t, n) in enumerate([('All', 7), ('Incomplete', 3), ('Not checked', 2), ('Complete', 1), ('Sealed', 1)])) + '</div>'
+    head = ('<div class="head"><div><div class="lbl">Collection · Sets</div><h1>3 of 7 sets incomplete</h1>'
+            '<p>8 copies · 69 parts missing in view · prices are used averages from BrickLink</p></div>'
+            + ('' if phone else f'<div style="margin-left:auto;display:flex;gap:10px;align-items:center"><div class="seg"><span class="on">Drawers</span><span>Ledger</span></div>'
+                                f'<span class="btn sec sm">{ic("search", 16)}Filter</span><span class="btn sm">{ic("plus", 16)}Add set</span></div>') + '</div>')
+    if phone:
+        g = STORAGE_GROUPS[0]
+        tiles = ''.join(tile(SETS[n], img_h=90) for n in g[2][:2])
+        body = (f'<div style="padding:16px 16px 0;display:flex;flex-direction:column;gap:14px">{head.replace("font:600 30px", "font:600 26px")}'
+                f'<div style="display:flex;gap:8px;align-items:center"><div class="seg"><span class="on">Drawers</span><span>Ledger</span></div><span class="btn sec sm" style="margin-left:auto">{ic("search", 16)}Filter</span></div>'
+                f'<div style="overflow:hidden">{stabs}</div><div style="display:flex;gap:8px;align-items:center;font:500 13px var(--tw-font);color:var(--tw-text-2)">{ic("sliders", 16)}Storage: all <span class="mono" style="margin-left:auto">5 storages</span></div>'
+                f'{tape(*g[:2], len(g[2]))}<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">{tiles}</div></div>')
+        return body
+    idx = ''.join(f'<div class="idx"><span class="mono" style="color:var(--tw-text-muted);font-size:12px;padding-top:2px">{sid}</span><span>{name}</span>'
+                  f'<span class="mono" style="margin-left:auto;font-size:12px">{len(nums) + (1 if sid == "S-0002" else 0)}</span></div>' for sid, name, nums in STORAGE_GROUPS)
+    idx = ('<div class="idx on"><span class="mono" style="font-size:12px;padding-top:2px">All</span><span>Every storage</span><span class="mono" style="margin-left:auto;font-size:12px">8</span></div>'
+           + idx + '<div class="idx" style="color:var(--tw-text-2)"><span class="mono" style="color:var(--tw-text-muted);font-size:12px;padding-top:2px">—</span><span>No storage</span><span class="mono" style="margin-left:auto;font-size:12px">0</span></div>')
+    left = (f'<div style="width:230px;flex:none;border-right:1px solid var(--tw-divider);padding:22px 20px;background:var(--tw-surface);min-height:900px">'
+            f'<div class="lbl">Storage index</div><div style="margin-top:8px">{idx}</div><div class="lbl" style="margin-top:24px">Copies counted</div>'
+            '<div style="font-size:13px;color:var(--tw-text-2);margin-top:6px">Each copy once, in the storage it sits in.</div>'
+            '<div class="lbl" style="margin-top:24px">Key</div><div style="font-size:13px;line-height:19px;color:var(--tw-text-2);margin-top:6px">One bar per copy, to scale.<br>'
+            'Violet: found. Hatched: missing.<br>Dashed: still to check.</div></div>')
+    groups = ''.join(f'<div style="display:flex;flex-direction:column;gap:10px">{tape(sid, name, len(nums))}<div style="display:flex;gap:12px">'
+                     + ''.join(tile(SETS[n], w=206) for n in nums) + '</div></div>' for sid, name, nums in STORAGE_GROUPS)
+    main = (f'<div style="flex:1;padding:22px 28px 0;min-width:0;display:flex;flex-direction:column;gap:14px">{head}'
+            f'<div style="display:flex;align-items:flex-end;gap:16px">{stabs}<span class="input" style="margin-left:auto;width:260px;height:38px;color:var(--tw-text-muted)">Number or name</span>'
+            f'<span class="btn sec sm">Sort: number</span></div><div style="display:flex;flex-wrap:wrap;gap:20px 28px">{groups}</div></div>')
+    return f'<div style="display:flex">{left}{main}</div>'
+
+
+# ---- Set Inspector: copy 2 of 7213-1 mid-check; one cell per part line; missing lines as larger cards (O10b) --------
+LINES = (54, 4, 73)    # found, missing, still to check: 131 part lines of 7213-1 (sample)
+
+
+def inspector_body(phone):
+    f, m, u = LINES
+    cells = '<div class="cells">' + '<i class="f"></i>' * f + '<i class="m"></i>' * m + '<i class="u"></i>' * u + '</div>'
+    head = (f'<div class="lbl">Workbench · Set Inspector</div><div style="display:flex;gap:18px;align-items:center;margin-top:6px">'
+            f'<div style="width:{96 if phone else 140}px;flex:none">{pic("set-7213-1.png", 72 if phone else 104)}</div><div style="min-width:0">'
+            f'<div class="mono" style="font-size:13px;color:var(--tw-text-muted)">7213-1 · Copy 2 of 2{"" if phone else " · bought used, Flohmarkt Mauerpark"}</div>'
+            f'<h1 style="font:600 {24 if phone else 32}px/1.2 var(--tw-font);letter-spacing:-.015em;margin:2px 0 6px">Off-Road Fire Truck &amp; Fireboat</h1>'
+            f'<span class="tag dash">Check in progress</span></div></div>')
+    prog = (f'<div style="border-top:1.5px solid var(--tw-rule);padding-top:12px;display:flex;align-items:flex-end;gap:22px;flex-wrap:wrap">'
+            f'<div><div class="lbl">Checked</div><div style="font:600 {36 if phone else 44}px/1 var(--tw-mono);letter-spacing:-.03em">142<span style="color:var(--tw-text-muted);font-size:22px"> of 375 parts</span></div></div>'
+            f'<div style="display:flex;gap:16px;font:500 13px var(--tw-font);color:var(--tw-text-2);padding-bottom:4px;flex-wrap:wrap">'
+            f'<span>{f} lines found</span><span>{m} missing</span><span>{u} to check</span></div>'
+            + ('' if phone else '<div style="margin-left:auto;font-size:13px;color:var(--tw-text-muted);padding-bottom:4px">Saved 14:20 · resume any time</div>') + '</div>')
+    current = (f'<div class="card" style="padding:14px;{"" if phone else "width:430px;flex:none"}"><div style="display:flex;justify-content:space-between">'
+               f'<span class="lbl">Part line 59 of 131</span><span style="font-size:12px;color:var(--tw-text-muted)">{"" if phone else "keys 1 to 9 count"}</span></div>'
+               f'<div style="margin-top:10px">{pic("part-3633-dbg.png", 150 if phone else 180, 14)}</div>'
+               f'<div class="cnt" style="margin-top:12px"><div class="k"><div class="lbl" style="font-size:11px">Need</div><div style="font:600 34px/36px var(--tw-mono)">2</div></div>'
+               f'<div class="v" style="{colour_fill("#6C6E68")}"><div style="font:600 15px/19px var(--tw-font)">Fence Lattice 1 × 4 × 1</div><div style="display:flex;gap:8px;align-items:center;margin-top:6px">'
+               f'<span style="font:600 14px var(--tw-font)">Dark Bluish Gray</span>'
+               f'<span class="mono" style="margin-left:auto;font-weight:600">3633</span></div></div></div>'
+               f'<div style="margin-top:14px">{found_row(2, 15)}</div>'
+               f'<span class="btn sec" style="width:100%;height:56px;margin-top:10px">Missing</span>'
+               f'<div style="display:flex;justify-content:space-between;margin-top:12px;font:500 14px var(--tw-font);color:var(--tw-text-2)"><span>Back</span><span>Skip for later</span><span>Undo</span></div></div>')
+    if phone:
+        return (f'<div style="padding:14px 16px 0;display:flex;flex-direction:column;gap:14px">{head}{prog}{current}</div>')
+    missing_card = (f'<div class="card" style="padding:12px;display:flex;gap:14px;align-items:center;margin-top:8px"><div style="width:96px;flex:none">{pic("part-3008-red.png", 96, 6)}</div>'
+                    f'<div style="flex:1;min-width:0;align-self:stretch;border-radius:3px;padding:8px 10px;{colour_fill("#C91A09")}"><div style="font:600 15px var(--tw-font)">Brick 1 × 8</div><div style="font-size:13px">Red · <span class="mono">3008</span> · need 2</div>'
+                    f'<div style="margin-top:6px;font:600 12px var(--tw-font)">1 missing</div></div><div class="step"><b>−</b><span>1</span><b>+</b></div></div>')
+    done = [('part-3005-red.png', 'Brick 1 × 1', 'Red', '3005', 6), ('part-3004-red.png', 'Brick 1 × 2', 'Red', '3004', 8), ('part-3010-dbg.png', 'Brick 1 × 4', 'Dark Bluish Gray', '3010', 4)]
+    rows = ''.join(f'<div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--tw-divider)"><div style="width:44px;flex:none">{pic(i, 44, 3)}</div>'
+                   f'<div style="flex:1"><div style="font:500 14px var(--tw-font)">{n}</div><div style="font-size:12px;color:var(--tw-text-2)">{c} · <span class="mono">{num}</span></div></div>'
+                   f'<span class="mono" style="font-size:12px;color:var(--tw-text-2)">{q} of {q}</span></div>' for i, n, c, num, q in done)
+    right = (f'<div style="flex:1;min-width:0"><div style="display:flex;justify-content:space-between"><span class="lbl">Checked so far</span><span style="font-size:12px;color:var(--tw-text-muted)">newest first</span></div>'
+             f'<div class="lbl" style="margin-top:12px;color:var(--tw-text-2)">Missing · larger, so the count stays editable</div>{missing_card}'
+             f'<div class="lbl" style="margin-top:16px;color:var(--tw-text-2)">Found</div>{rows}</div>')
+    return (f'<div style="padding:22px 32px 0;display:flex;flex-direction:column;gap:16px;max-width:1240px">{head}{prog}'
+            f'<div><div class="lbl" style="margin-bottom:6px">One cell per part line · 131 lines</div>{cells}</div><div style="display:flex;gap:28px">{current}{right}</div></div>')
+
+
+# ---- Part Runner: run 7 of 52 across 4 sets -----------------------------------------------------------------------
+def runner_body(phone):
+    strip = ('<div style="display:flex;gap:1.5px">' + '<i style="flex:1;height:10px;background:var(--tw-accent)"></i>' * 6
+             + '<i style="flex:1;height:10px;background:var(--tw-text)"></i>' + '<i style="flex:1;height:10px;border:1px dashed var(--tw-text-muted)"></i>' * 45 + '</div>')
+    card = (f'<div class="card" style="padding:10px">{pic("part-3633-dbg.png", 250 if phone else 300, 14)}'
+            f'<div class="cnt" style="margin-top:10px"><div class="k"><div class="lbl" style="font-size:11px">Pick</div><div style="font:600 40px/40px var(--tw-mono)">3</div></div>'
+            f'<div class="v" style="{colour_fill("#6C6E68")}"><div style="font:600 16px/20px var(--tw-font)">Fence Lattice 1 × 4 × 1</div><div style="display:flex;align-items:center;gap:8px;margin-top:6px">'
+            f'<span style="font:600 15px var(--tw-font)">Dark Bluish Gray</span>'
+            f'<span class="mono" style="margin-left:auto;font:600 16px var(--tw-mono)">3633</span></div></div></div>'
+            f'<div class="mono" style="font-size:12px;color:var(--tw-text-2);margin-top:8px">for 10210-1 · copy 1 · 3 missing</div></div>')
+    top = (f'<div style="display:flex;align-items:center;gap:10px"><span class="lbl" style="color:var(--tw-text)">Part 7 / 52</span>'
+           f'<span style="margin-left:auto;font:600 14px var(--tw-font);display:flex;gap:6px;align-items:center;color:var(--tw-text-2)">Print list</span>'
+           f'<span style="font:600 14px var(--tw-font);display:flex;gap:4px;align-items:center;color:var(--tw-text-2);margin-left:12px">{ic("close", 18)}Stop</span></div>')
+    found = ('<div style="display:flex;flex-direction:column;gap:10px">' + found_row(3, 17) + '<span class="btn sec" style="width:100%;height:56px">Missing</span></div>')
+    if phone:
+        return (f'<div style="padding:12px 16px 0;display:flex;flex-direction:column;gap:12px"><div class="lbl">Workbench · Part Runner · 4 sets</div>{top}{strip}{card}{found}</div>')
+    nxt = [('part-3010-dbg.png', 'Brick 1 × 4', 'Dark Bluish Gray', '3010', 2, 'S-0002 · drawer 3'), ('part-3009-lbg.png', 'Brick 1 × 6', 'Light Bluish Gray', '3009', 1, 'S-0002 · drawer 3'),
+           ('part-87619-white.png', 'Slope 45° 2 × 2', 'White', '87619', 4, 'S-0001 · drawer 1')]
+    rows = ''.join(f'<div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--tw-divider)"><div style="width:44px;flex:none">{pic(i, 44, 3)}</div>'
+                   f'<div style="flex:1"><div style="font:500 14px var(--tw-font)">{n}</div><div style="font-size:12px;color:var(--tw-text-2)">{c} · <span class="mono">{num}</span> · {loc}</div></div>'
+                   f'<span class="mono" style="font-weight:600">{q}×</span></div>' for i, n, c, num, q, loc in nxt)
+    return (f'<div style="padding:22px 32px 0;display:flex;flex-direction:column;gap:14px;max-width:1240px">'
+            f'<div class="head"><div><div class="lbl">Workbench · Part Runner</div><h1>Collecting for 4 sets</h1><p>Storage order: parts come in the order of your drawers.</p></div></div>'
+            f'{top}{strip}<div style="display:flex;gap:28px"><div style="width:480px;flex:none;display:flex;flex-direction:column;gap:12px">{card}{found}</div>'
+            f'<div style="flex:1;min-width:0">{tape("S-0002", "Shelf A2 – Town", 3).replace(" sets</span>", " parts next</span>")}{rows}</div></div></div>')
+
+
+# ---- Empty Sets: a new install with the catalogue loaded and no sets ----------------------------------------------
+def empty_body(phone):
+    gs = ('<div class="card" style="overflow:hidden;max-width:560px"><div class="tape" style="border-radius:0">Get started<span class="mono">1 of 4 done</span></div>'
+          '<div style="padding:12px 14px 14px"><div style="font:600 16px var(--tw-font)">Get started</div><div style="font-size:13px;color:var(--tw-text-2);margin-top:2px">'
+          'Load the catalogue, add your keys and bring your collection in, where you left off.</div></div></div>')
+    box = ('<div style="border:1.5px dashed var(--tw-text-2);border-radius:var(--tw-r-2);padding:22px;display:flex;flex-direction:column;gap:12px;max-width:560px">'
+           f'<div style="display:flex;gap:10px;align-items:center"><span class="tag dash">No sets yet</span></div>'
+           '<div style="font:600 20px var(--tw-font)">Your shelves are empty</div>'
+           '<p style="font-size:14px;color:var(--tw-text-2)">Add a set by its number, or bring your collection in from Rebrickable, Brickset, BrickTracker or a BrickLink file. The catalogue is loaded, so parts and pictures come with each set.</p>'
+           f'<div style="display:flex;gap:10px;flex-wrap:wrap"><span class="btn">{ic("plus", 16)}Add a set</span><span class="btn sec">Bring your collection in</span></div></div>')
+    head = '<div class="head"><div><div class="lbl">Collection · Sets</div><h1>Sets</h1><p>No sets in your collection yet.</p></div></div>'
+    pad = 'padding:16px 16px 0' if phone else 'padding:26px 32px 0;max-width:1180px'
+    return f'<div style="{pad};display:flex;flex-direction:column;gap:20px">{head}{box}{gs}</div>'
+
+
+def nostore_body(phone):
+    """Sets when no storage is set at all: no storage index and no label tape, one grid (Ulf, round 3 comment). A set
+    without storage, among stored ones, sits in the grid after the groups, also without tape."""
+    head = ('<div class="head"><div><div class="lbl">Collection · Sets</div><h1>3 of 7 sets incomplete</h1>'
+            '<p>8 copies · 69 parts missing in view · prices are used averages from BrickLink</p></div>'
+            + ('' if phone else f'<div style="margin-left:auto;display:flex;gap:10px;align-items:center"><div class="seg"><span class="on">Drawers</span><span>Ledger</span></div>'
+                                f'<span class="btn sec sm">{ic("search", 16)}Filter</span><span class="btn sm">{ic("plus", 16)}Add set</span></div>') + '</div>')
+    order = ['7213-1', '7938-1', '10254-1', '10210-1', '31120-1', '8043-1', '21028-1']
+    if phone:
+        tiles = ''.join(tile(SETS[n], img_h=90) for n in order[:2])
+        return (f'<div style="padding:16px 16px 0;display:flex;flex-direction:column;gap:14px">{head.replace("font:600 30px", "font:600 26px")}'
+                f'<div style="display:flex;gap:8px;align-items:center"><div class="seg"><span class="on">Drawers</span><span>Ledger</span></div><span class="btn sec sm" style="margin-left:auto">{ic("search", 16)}Filter</span></div>'
+                f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">{tiles}</div></div>')
+    tiles = ''.join(tile(SETS[n]) for n in order)
+    return (f'<div style="padding:22px 28px 0;display:flex;flex-direction:column;gap:14px">{head}'
+            f'<div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px">{tiles}</div></div>')
+
+
+def page3(body, w, h):
+    """Round 3 frames: round 2's page plus EXTRA_CSS, so the approved round 2 files stay byte-identical."""
+    return page(body, w, h).replace('</style>', EXTRA_CSS + '</style>', 1)
+
+
 FRAMES = [('01-tools-and-admin', 'Manage', 'Tools & Admin', tools_body), ('02-settings', 'Manage', 'Tools & Admin', settings_body),
-          ('03-find-instructions', 'Manage', 'Tools & Admin', finder_body)]
+          ('03-find-instructions', 'Manage', 'Tools & Admin', finder_body),
+          ('04-sets', 'Collection', 'Sets', sets_body), ('05-sets-without-storage', 'Collection', 'Sets', nostore_body),
+          ('06-set-inspector', 'Workbench', 'Set Inspector', inspector_body), ('07-part-runner', 'Workbench', 'Part Runner', runner_body),
+          ('08-sets-empty', 'Collection', 'Sets', empty_body)]
 SIZES = ((False, 1440, 1000), (True, 390, 844))
 
 
@@ -301,7 +535,8 @@ def sources():
     out = {}
     for folder, g, sub, fn in FRAMES:
         for phone, w, h in SIZES:
-            out[f'{folder}/light-{w}.html'] = (page((phone_shell if phone else desk_shell)(g, sub, fn(phone)), w, h), w, h)
+            make = page3 if folder >= '04' else page
+            out[f'{folder}/light-{w}.html'] = (make((phone_shell if phone else desk_shell)(g, sub, fn(phone)), w, h), w, h)
     out['00-components/light-1440.html'] = (page(parts_body(), 1440, 520), 1440, 520)
     return out
 

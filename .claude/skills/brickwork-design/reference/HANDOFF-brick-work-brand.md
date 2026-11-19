@@ -1,5 +1,7 @@
 # Handoff: Brick Work brand (direction D)
 
+> **Superseded for the logo and app icon** by `design/BRAND.md` sections 1 and 2 (the violet Bond mark with the cut-out X, commission U, approved 2026-11-18 and 2026-11-19). This file is kept as the record of the retired cross-stitch brand; its files are in `design/logo/retired/` and `design/app-icon/retired/`.
+
 Answers `2026-10-brick-work-brand-handoff`. The owner chose **D, Courses in progress**; A, B and C were dropped. Screens brief (Phase 2b) builds on this.
 
 ## Decided

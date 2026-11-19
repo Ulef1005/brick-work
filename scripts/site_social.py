@@ -44,8 +44,8 @@ HTML = """<!doctype html>
     padding: 0;
   }
   html, body {
-    width: 1200px;
-    height: 630px;
+    width: __WIDTH__px;
+    height: __HEIGHT__px;
     overflow: hidden;
     background: #FAF9F6;
     color: #1C1B19;
@@ -54,8 +54,8 @@ HTML = """<!doctype html>
   }
   .canvas {
     position: relative;
-    width: 1200px;
-    height: 630px;
+    width: __WIDTH__px;
+    height: __HEIGHT__px;
     overflow: hidden;
     background: #FAF9F6;
   }
@@ -96,7 +96,7 @@ HTML = """<!doctype html>
     color: #1C1B19;
   }
   .clay {
-    color: #007187;   /* the logo's blue (design/logo, rgb 0 113 135) */
+    color: #1C1B19;   /* ink, as the line above: the old logo blue is retired, the brand's colour roles are still open (#482) */
   }
   .subtitle {
     margin-top: 20px;
@@ -117,7 +117,7 @@ HTML = """<!doctype html>
   }
   .shot-desktop {
     position: absolute;
-    left: 560px;
+    left: calc(560px + __SHIFT__px);   /* the screenshots stay flush right on a wider canvas */
     top: 150px;
     width: 640px;
     height: 400px;
@@ -128,7 +128,7 @@ HTML = """<!doctype html>
   }
   .shot-phone {
     position: absolute;
-    left: 470px;
+    left: calc(470px + __SHIFT__px);
     top: 250px;
     width: 260px;
     border-radius: 24px;
@@ -183,7 +183,7 @@ def optimise(path: Path) -> None:
         image.quantize(colors=256, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).save(path, optimize=True)
 
 
-def build_html(folder: Path) -> str:
+def build_html(folder: Path, width: int = 1200, height: int = 630) -> str:
     """Stage local fonts and images into `folder` and return the self-contained HTML page."""
     icon = first_existing([ROOT / 'design' / 'logo' / 'lockup-horizontal-light.png'])
     icon_tag = f'<img class="brand-icon" src="{stage(icon, folder)}" alt="">' if icon else ''
@@ -192,6 +192,9 @@ def build_html(folder: Path) -> str:
         '__INTER_600__': stage(ROOT / 'docs' / 'assets' / 'fonts' / 'inter-latin-600-normal.woff2', folder),
         '__PATRICK_HAND__': stage(ROOT / 'static' / 'fonts' / 'PatrickHand-Regular.woff2', folder),
         '__ICON_TAG__': icon_tag,
+        '__WIDTH__': str(width),
+        '__HEIGHT__': str(height),
+        '__SHIFT__': str(width - 1200),
         '__DESKTOP_IMG__': stage(ROOT / 'scripts' / 'site' / 'img' / '1c-sets-desktop-1440-light.png', folder),
         '__PHONE_IMG__': stage(ROOT / 'scripts' / 'site' / 'img' / '3a-matcher-phone-390-light.png', folder),
     }
@@ -204,7 +207,9 @@ def build_html(folder: Path) -> str:
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument('--out', default=str(DEFAULT_OUT), help='output PNG path')
+    parser.add_argument('--size', default='1200x630', help='WIDTHxHEIGHT; 1280x640 is GitHub\'s social preview')
     options = parser.parse_args(argv)
+    width, height = (int(v) for v in options.size.lower().split('x'))
     chrome = subprocess.run([sys.executable, str(ROOT / 'scripts' / 'chrome.py'), 'pinned'], capture_output=True, text=True)
     if chrome.returncode:
         print(chrome.stderr.strip())
@@ -214,7 +219,7 @@ def main(argv: list[str]) -> int:
         folder = Path(scratch)
         tmp_html = folder / 'social.html'
         tmp_png = folder / 'social.png'
-        tmp_html.write_text(build_html(folder), encoding='utf-8')
+        tmp_html.write_text(build_html(folder, width, height), encoding='utf-8')
         result = subprocess.run([
             binary,
             '--headless=new',
@@ -222,7 +227,7 @@ def main(argv: list[str]) -> int:
             '--hide-scrollbars',
             '--force-device-scale-factor=1',
             '--virtual-time-budget=8000',
-            '--window-size=1200,630',
+            f'--window-size={width},{height}',
             f'--screenshot={tmp_png}',
             tmp_html.as_uri(),
         ], capture_output=True, text=True, timeout=120)

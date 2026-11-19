@@ -9,7 +9,7 @@ Use it as a copy-and-tick list in the release pull request.
 - [ ] The version number: a patch (`X.Y.Z+1`) for fixes, a minor (`X.Y+1.0`) for new functions, a major only when something users rely on breaks.
 - [ ] The milestone's issues are closed or moved, and its gate issue says the phase is done.
 - [ ] **Schema:** does the release change the schema (`SCHEMA_VERSION` in `brickwork/store4/connect.py`)? If so there is an in-place step in `store4.connect.UPGRADES`, a migration test, and the way back is the backup, not an older version.
-- [ ] `main` is green (the `check` workflow) and the Codex review of everything since the last tag is done.
+- [ ] `main` is green (the `check` workflow) and every change since the last tag had its code review, each pull request and any commit pushed straight to `main` (Gemini, then a read-only Sonnet subagent when Gemini gives no report; Codex until 2026-11-19).
 
 ## 2. Write the documents
 

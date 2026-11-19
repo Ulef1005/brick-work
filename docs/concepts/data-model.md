@@ -15,7 +15,7 @@ Brick Work keeps what anyone could download apart from what only you have. That 
 
 **`brickwork.db`, your collection.** Copies, loose stock, lots, storage, wishes, orders, prices, your decisions about numbers, part lists that cost an API call, items that exist only in your collection, keys, tokens and settings. It cannot be rebuilt from anywhere else: this is the file you back up. Pictures, your own photos and instruction PDFs are files in the media folder (`data/images`, `data/thumbs`, `data/instructions`, `data/identifications`) that the database points to; back them up with it ([Back up the media folder](../how-to/back-up-and-restore.md#back-up-the-media-folder)).
 
-The two files are a pair. The collection file is bound to one catalogue, and the **Backup and database check** in **Tools & Admin** confirms that they belong together ([Back up and restore](../how-to/back-up-and-restore.md#check-the-database)).
+The two files are a pair. The collection file is bound to one catalogue. **Run integrity check** on the **Database** page (**Tools & Admin → Maintenance → Backup and database check**) confirms that they belong together ([Back up and restore](../how-to/back-up-and-restore.md#check-the-database)).
 
 ## A Brick Work id for every item and colour
 

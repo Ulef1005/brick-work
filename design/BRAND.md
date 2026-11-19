@@ -46,7 +46,7 @@ Approved in logo round 5 (review artifact https://claude.ai/artifact/LVHh16j6JvB
 
 ## 3. Colour
 
-The roles and their values, light (round 2, R2-03) and dark (the dark round, D-01). The values live in `sources/b/b_frames.py` (`TOKENS`, `DARK`); `tokens/brickwork-tokens.css` takes them when the app is rebuilt in milestone U, and until then serves the values from before the redesign.
+The roles and their values, light (round 2, R2-03) and dark (the dark round, D-01). The values live in `sources/b/b_frames.py` (`TOKENS`, `DARK`); the app's token layer (`tokens/brickwork-tokens.css`, served as `tokens-v2.css`) serves them, light and dark, since #492 part 1 (PR #539).
 
 | Role | Light | Dark | Job |
 |---|---|---|---|
@@ -78,7 +78,7 @@ SUCCESS: Say (violet means found or act), Unify (one role, one token, the same n
 
 ## 4. Type
 
-Approved for B′ (round 2, R2-03): IBM Plex Sans for text, IBM Plex Sans Condensed in capitals for tape, tabs and small section labels only, IBM Plex Mono for numbers, codes and set numbers (tabular). Set names and headings are sentence case. The files and their licence are in `fonts/` (`fonts/README.md`). The app serves Inter, Geist Mono and Patrick Hand until it is rebuilt in milestone U. SUCCESS: Unify, Structure.
+Approved for B′ (round 2, R2-03): IBM Plex Sans for text, IBM Plex Sans Condensed in capitals for tape, tabs and small section labels only, IBM Plex Mono for numbers, codes and set numbers (tabular). Set names and headings are sentence case. The files and their licence are in `fonts/` (`fonts/README.md`). The app serves IBM Plex since #492 part 1 (PR #539); Inter and Geist Mono remain only on the printed labels and the website, and Patrick Hand only on the website. SUCCESS: Unify, Structure.
 
 ## 5. Layout
 

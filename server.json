@@ -1,6 +1,6 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.ulef1005/brick-work",
+  "name": "io.github.Ulef1005/brick-work",
   "title": "Brick Work",
   "description": "Ask an assistant about your brick collection through your own Brick Work install.",
   "repository": {

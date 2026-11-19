@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **The new look begins: colours and type** (#492). Brick Work takes the colours of its new design, B′: violet for what you act on and what is found, ink and a pale grey ground for the rest, and a dark mode of its own. Text is set in IBM Plex Sans and IBM Plex Mono, which the app serves itself. The focus ring is ink, buttons on violet have white text, and the app's install colour is the app bar's. The layout of each screen stays as it is until its screen is rebuilt in this release.
+
+- **The MCP Registry entry has the right name** (#536). The registry's namespace is case-sensitive, so `server.json` and the image label now say `io.github.Ulef1005/brick-work`, as the GitHub login is spelled. The image name on ghcr.io stays lowercase.
+
 - **Instruction links in the API and the assistant tools** (#465). `GET /items/{id}/instruction-links` and the assistant tool `get_instruction_links` return the links to a set's instructions page on LEGO (for your region) and its Rebrickable page. Nothing is fetched. You download the PDF there and attach it with Upload a PDF.
 
 - **New logo and app icon.** The logo and the app icon are now the approved violet Bond mark, three bricks with the cut-out X on the top one. Storage labels print the new mark, and a long storage name now shrinks and wraps instead of being cut off. Below 32 pixels the small mark drops the X, so the app bar shows the three bricks alone.

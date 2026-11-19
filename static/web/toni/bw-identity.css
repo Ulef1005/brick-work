@@ -15,7 +15,7 @@
 /* buttons */
 .bi-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:44px;min-height:44px;padding:0 16px;border-radius:10px;border:.5px solid transparent;background:var(--tw-surface-2);color:var(--tw-text);font:500 14px var(--tw-font);text-decoration:none;cursor:pointer;box-sizing:border-box;white-space:nowrap}
 .bi-btn svg{width:16px;height:16px;flex:none}
-.bi-primary{background:var(--tw-accent);border-color:var(--tw-accent);color:#1A1816;font-weight:600}
+.bi-primary{background:var(--tw-accent);border-color:var(--tw-accent);color:var(--tw-on-accent);font-weight:600}
 .bi-outline{background:transparent;border-color:var(--tw-accent);color:var(--tw-accent-text)}
 .bi-quiet{background:transparent;border-color:var(--tw-divider-strong)}
 .bi-btn:disabled{opacity:.4;cursor:default}

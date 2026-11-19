@@ -90,7 +90,7 @@ main .bw-page-head .bw-back{margin-bottom:0}
 .system-page .system-lead{font:400 15px/22px var(--tw-font);color:var(--tw-text-2)}
 .system-page .actions{margin-top:8px}
 .system-page .actions .button{height:48px;min-height:48px;padding:0 24px;border-radius:10px;font:600 16px var(--tw-font);display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
-.system-page .actions .button.primary{background:var(--tw-accent);color:#1A1816;border:.5px solid var(--tw-accent)}
+.system-page .actions .button.primary{background:var(--tw-accent);color:var(--tw-on-accent);border:.5px solid var(--tw-accent)}
 .system-page .actions .button:not(.primary){background:none;border-color:transparent;color:var(--tw-accent-text);font-weight:500;font-size:14px}
 .system-code{font:400 12px/16px var(--tw-mono);color:var(--tw-danger)}
 .system-trace{margin:0;max-width:100%;box-sizing:border-box;background:var(--tw-surface);border-radius:12px;padding:12px;font:400 12px/18px var(--tw-mono);color:var(--tw-text-2);white-space:pre-wrap;overflow-wrap:anywhere}

@@ -6,7 +6,7 @@
 The docs CSS is the served tokens (static/web/toni/tokens-v2.css, itself built from design/tokens/ by scripts/tokens_base.py)
 with their light and dark classes moved onto Zensical's colour schemes (`default` and `slate`), then the mapping of those
 tokens onto Zensical's own variables and a few rules of the brickwork-design skill (paper header with an ink hairline, clay
-for links and the active tab, no shadows, Inter and Geist Mono, status colours on the admonitions). No colour is written
+for links and the active tab, no shadows, IBM Plex Sans and Plex Mono (B′, #492), status colours on the admonitions). No colour is written
 here by hand: every value is a var(--tw-*). The fonts are the app's own files, so the documentation pages make no external requests.
 
 Zensical puts the scheme on <body>, so the tokens' OS-preference block still sets <html> from the system setting; the body's
@@ -23,23 +23,29 @@ TOKENS = ROOT / 'static/web/toni/tokens-v2.css'
 FONTS = ROOT / 'static/web/toni/fonts'
 OUT = ROOT / 'docs/assets/brickwork-docs.css'
 OUT_FONTS = ROOT / 'docs/assets/fonts'
-FONT_FILES = ('inter-latin-400-normal.woff2', 'inter-latin-500-normal.woff2', 'inter-latin-600-normal.woff2',
-              'geist-mono-latin-400-normal.woff2', 'geist-mono-latin-500-normal.woff2', 'LICENSE-Inter.txt', 'LICENSE-GeistMono.txt')
+PLEX = ROOT / 'design/fonts'
+# The docs pages use IBM Plex (B′, #492). Inter and Geist Mono are still copied because the website build (scripts/build_site.py,
+# scripts/site_social.py, scripts/site/site.css) reads them from docs/assets/fonts/ until the website moves to B′ (#526).
+FONT_SOURCES = {name: FONTS / name for name in ('inter-latin-400-normal.woff2', 'inter-latin-500-normal.woff2', 'inter-latin-600-normal.woff2',
+                'geist-mono-latin-400-normal.woff2', 'geist-mono-latin-500-normal.woff2', 'LICENSE-Inter.txt', 'LICENSE-GeistMono.txt')}
+FONT_SOURCES |= {name: PLEX / name for name in ('IBMPlexSans-Regular.woff2', 'IBMPlexSans-Medium.woff2', 'IBMPlexSans-SemiBold.woff2',
+                 'IBMPlexMono-Regular.woff2', 'IBMPlexMono-Medium.woff2', 'IBMPlexMono-SemiBold.woff2', 'OFL-IBMPlex.txt')}
+FONT_FILES = tuple(FONT_SOURCES)
 LIGHT, DARK = '[data-md-color-scheme="default"]', '[data-md-color-scheme="slate"]'
 
 FACES = ''.join(
     f"@font-face{{font-family:'{family}';font-style:normal;font-weight:{weight};font-display:swap;"
     f"src:url('fonts/{name}') format('woff2')}}\n"
-    for family, weight, name in (('Inter', 400, 'inter-latin-400-normal.woff2'), ('Inter', 500, 'inter-latin-500-normal.woff2'),
-                                 ('Inter', 600, 'inter-latin-600-normal.woff2'), ('Geist Mono', 400, 'geist-mono-latin-400-normal.woff2'),
-                                 ('Geist Mono', 500, 'geist-mono-latin-500-normal.woff2')))
+    for family, weight, name in (('IBM Plex Sans', 400, 'IBMPlexSans-Regular.woff2'), ('IBM Plex Sans', 500, 'IBMPlexSans-Medium.woff2'),
+                                 ('IBM Plex Sans', 600, 'IBMPlexSans-SemiBold.woff2'), ('IBM Plex Mono', 400, 'IBMPlexMono-Regular.woff2'),
+                                 ('IBM Plex Mono', 500, 'IBMPlexMono-Medium.woff2'), ('IBM Plex Mono', 600, 'IBMPlexMono-SemiBold.woff2')))
 
 MAPPING = f'''
 /* Zensical's variables, from the tokens above (both schemes: the tokens differ, the mapping does not). Zensical's own
    palette rules name the scheme and the primary colour, so these name both to come after them at the same weight. */
 {LIGHT}, {DARK}, {LIGHT}[data-md-color-primary], {DARK}[data-md-color-primary] {{
-  --md-text-font: "Inter";
-  --md-code-font: "Geist Mono";
+  --md-text-font: "IBM Plex Sans";
+  --md-code-font: "IBM Plex Mono";
   --md-default-bg-color: var(--tw-bg);
   --md-default-fg-color: var(--tw-text);
   --md-default-fg-color--light: var(--tw-text-2);
@@ -137,7 +143,7 @@ def build():
     OUT.write_text(css())
     OUT_FONTS.mkdir(exist_ok=True)
     for name in FONT_FILES:
-        shutil.copy(FONTS / name, OUT_FONTS / name)
+        shutil.copy(FONT_SOURCES[name], OUT_FONTS / name)
 
 
 def check():
@@ -145,10 +151,11 @@ def check():
     if not OUT.is_file() or OUT.read_text() != css():
         problems.append(f'{OUT.relative_to(ROOT)} is out of date: run python scripts/docs_theme.py build')
     for name in FONT_FILES:
-        if not (FONTS / name).is_file():
-            problems.append(f'static/web/toni/fonts/{name} is missing: FONT_FILES names a font the app no longer has')
-        elif not (OUT_FONTS / name).is_file() or (OUT_FONTS / name).read_bytes() != (FONTS / name).read_bytes():
-            problems.append(f'docs/assets/fonts/{name} differs from static/web/toni/fonts/{name}')
+        source = FONT_SOURCES[name]
+        if not source.is_file():
+            problems.append(f'{source.relative_to(ROOT)} is missing: FONT_SOURCES names a font the repo no longer has')
+        elif not (OUT_FONTS / name).is_file() or (OUT_FONTS / name).read_bytes() != source.read_bytes():
+            problems.append(f'docs/assets/fonts/{name} differs from {source.relative_to(ROOT)}')
     extra = sorted(p.name for p in OUT_FONTS.glob('*') if p.name not in FONT_FILES) if OUT_FONTS.is_dir() else []
     problems += [f'docs/assets/fonts/{name} is not in FONT_FILES: remove it' for name in extra]
     return problems

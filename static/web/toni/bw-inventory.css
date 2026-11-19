@@ -55,7 +55,7 @@
 .guide {position:absolute;inset:20px;border:1.5px dashed var(--tw-divider-strong);border-radius:10px;pointer-events:none}
 .inv-slot {position:absolute;left:12px;top:12px;height:32px;padding:0 12px;border-radius:8px;background:var(--tw-text);color:var(--tw-bg);display:flex;align-items:center;font:500 16px var(--tw-mono)}
 .scan-drop {outline:2px dashed var(--tw-accent)}
-#bw-inventory .inv-primary {width:100%;min-height:56px;border-radius:10px;border-color:var(--tw-accent);background:var(--tw-accent);color:#1A1816;font:600 16px var(--tw-font)}
+#bw-inventory .inv-primary {width:100%;min-height:56px;border-radius:10px;border-color:var(--tw-accent);background:var(--tw-accent);color:var(--tw-on-accent);font:600 16px var(--tw-font)}
 #bw-inventory .inv-primary:disabled {background:var(--tw-surface-2);border-color:var(--tw-surface-2);color:var(--tw-text-muted);cursor:default}
 #bw-inventory .inv-link,#bw-inventory a.inv-link {min-height:44px;padding:0 12px;border:0;background:transparent;color:var(--tw-accent-text);font:500 14px var(--tw-font);display:inline-flex;align-items:center;text-decoration:none;cursor:pointer}
 #bw-inventory .inv-link:focus-within {outline:var(--tw-focus-width) solid var(--tw-focus-color);outline-offset:var(--tw-focus-offset)}

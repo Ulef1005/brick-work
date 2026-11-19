@@ -261,7 +261,7 @@ def fill(text, up):
     from brickwork.version import __version__
     version, schema, date, summary = latest_release()
     values = {'repository': repository(), 'up': up, 'version': __version__, 'release_version': version, 'release_date': date,
-              'release_summary': html.escape(summary), 'release_schema': schema, 'tour_url': TOUR_URL, 'tour_length': TOUR_LENGTH}
+              'release_summary': html.escape(summary), 'release_schema': schema, 'tour_url': html.escape(TOUR_URL), 'tour_length': html.escape(TOUR_LENGTH)}
     values['count_adr'] = str(len(list((ROOT / 'docs/adr').glob('[0-9]*.md'))))
     for section in ('tutorials', 'how-to', 'concepts', 'reference'):
         values['count_' + section.replace('-', '_')] = str(docs_count(section))
@@ -473,7 +473,7 @@ def llms_full():
     raw = f'https://raw.githubusercontent.com/{repository()}/main/'
     source = (SITE / 'llms.md').read_text()
     paths = []
-    for link in re.findall(r'\]\((?!https?://|#|\{site\})([^)\s]+)\)', source.split('\n## Optional')[0]):
+    for link in re.findall(r'\]\((?!https?://|#|\{site\}|\{tour_url\})([^)\s]+)\)', source.split('\n## Optional')[0]):
         if link.endswith('.md') and link not in paths:
             paths.append(link)
     parts = [llms_txt().split('\n## Try it')[0].rstrip() + '\n']

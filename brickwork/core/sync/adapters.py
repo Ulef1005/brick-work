@@ -209,7 +209,8 @@ class RebrickableUser(Rebrickable):
         """Set the count of one set on the target list: POST (new), PUT (count) or DELETE (0)."""
         list_id = link.get('wishlist') if row['kind'] == 'wanted' else link.get('send_to') or state.get('send_to')
         if not list_id:
-            raise errors.ValidationFailed('Choose the Rebrickable set list to send to')
+            raise errors.ValidationFailed('Link a Rebrickable wishlist to send wishes to' if row['kind'] == 'wanted' else
+                                          'Choose the Rebrickable set list to send to')
         current = state['per_list'].get(str(list_id), {}).get(row['remote_no'], 0)
         others = (row['remote'] or 0) - current
         target = row['send'] - others

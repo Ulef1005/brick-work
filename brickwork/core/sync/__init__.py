@@ -329,7 +329,11 @@ def plan_pull(db, source, *, http=None, lost_parts_switch=None):
                 read = client.lost_parts()
             except SourceError as failure:
                 read = _why(failure)
-        section = lost_parts.plan_section(db, read, remote['owned'], translate, how=lost_parts.rule(db), on=on)
+        adds = {}                                       # #513: the copies this pull adds by default, so their Lost Parts are marked in the same pull
+        for row in rows:
+            if row['kind'] == 'owned' and row['remote'] > row['here'] and not _changed_both(row):
+                adds[row['item_id']] = adds.get(row['item_id'], 0) + row['remote'] - row['here']
+        section = lost_parts.plan_section(db, read, remote['owned'], translate, how=lost_parts.rule(db), on=on, adds=adds)
         names = _names(db, [e['item_id'] for e in section['sets']])
         for entry in section['sets']:
             entry['number'], entry['name'] = names.get(entry['item_id'], (None, None))
@@ -602,6 +606,10 @@ def plan_send(db, source, *, http=None):
             for row in out:
                 if row['kind'] == 'owned' and row['action']:
                     row.update(action=None, tickable=False, reason='Link one owned Rebrickable list to send to')
+        if not link_value.get('wishlist'):                # #514: with no wishlist linked a wish has nowhere to go, so it is not offered
+            for row in out:
+                if row['kind'] == 'wanted' and row['action']:
+                    row.update(action=None, tickable=False, reason='Link a Rebrickable wishlist to send wishes to')
     plan = dict(id=uuid4().hex, created_at=now().isoformat(), direction='send', source=source, link=link_value,
                 remote=dict(owned=remote['owned'], wanted=remote['wanted']), state=extra, rows=out, unmatched=unmatched,
                 summary=_summary(out, unmatched, rows),
@@ -642,7 +650,7 @@ def apply_send(db, plan_id, ticked=None, *, http=None):
     for value in results.values():
         summary[value['result']] = summary.get(value['result'], 0) + 1
     report = dict(at=stamp, plan=plan_id, counts=summary,
-                  rows=[dict(key=k, result=v['result']) for k, v in results.items()])
+                  rows=[dict(key=k, result=v['result'], detail=v.get('detail')) for k, v in results.items()])   # #514: the reason stays with the row
     with transaction(db):
         baseline = _setting(db, source, 'baseline', {'remote': {'owned': {}, 'wanted': {}}, 'here': {'owned': {}, 'wanted': {}}})
         for row in sent:

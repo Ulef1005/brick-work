@@ -451,9 +451,82 @@ def test_two_remote_rows_for_one_line_are_one_count(store):
     alias[('alias-number', key[1], False)] = lines
     rows = [dict(part_no=key[0], color_id=int(key[1]), is_spare=False, quantity=2), dict(part_no='alias-number', color_id=int(key[1]), is_spare=False, quantity=1)]
     original = lost_parts._lines
-    lost_parts._lines = lambda db, copy_id: (original(db, copy_id)[0], alias)
+    lost_parts._lines = lambda db, copy_id, lines=None: (original(db, copy_id, lines)[0], alias)
     try:
         result = lost_parts.changes(store, one, rows, 'add_only')
     finally:
         lost_parts._lines = original
     assert result['edits'] == [('p:%d' % lines[0]['id'], dict(missing=3, checked=True))] and len(result['added']) == 1
+
+
+# --- a set the same pull brings in (#513) ---------------------------------------------------------
+
+def lost_receipt(store, event_id):
+    return json.loads(store.execute('SELECT new_value FROM event WHERE id=?', (event_id,)).fetchone()[0])['lost']
+
+
+def new_copies_of(store, number):
+    return [r[0] for r in store.execute("SELECT c.id FROM copy c JOIN item i ON i.id=c.item_id WHERE i.born_key=? AND c.archived_at IS NULL", (number,))]
+
+
+def test_one_pull_marks_the_set_it_brings_in(store):
+    assert not new_copies_of(store, '1000-2')                              # Rebrickable owns 1000-2 once; here there is no copy yet
+    remote = rebrickable_ready(store, Remote([raw('1000-2', '3001', 4, 1)]))
+    held = [store.execute(f'SELECT count(*) FROM {t}').fetchone()[0] for t in ('item', 'color', 'copy', 'copy_part', 'event')]
+    plan = sync.plan_pull(store, 'rebrickable', http=remote)
+    assert [store.execute(f'SELECT count(*) FROM {t}').fetchone()[0] for t in ('item', 'color', 'copy', 'copy_part', 'event')] == held
+    lost = plan['lost']
+    entry = next(e for e in lost['sets'] if e['set_no'] == '1000-2')
+    assert entry['state'] == 'new' and entry['copy_id'] is None and entry['preview']['added'] == 1
+    assert [(p['part_no'], p['before'], p['after']) for p in entry['preview']['parts']] == [('3001', 0, 1)]
+    assert lost['summary']['added'] == 1 and not lost['unmatched_sets']    # the preview counts it as the apply will
+    assert not new_copies_of(store, '1000-2')                              # the plan writes nothing
+    result = sync.apply_pull(store, plan['id'])
+    (copy,) = new_copies_of(store, '1000-2')
+    assert marks(store, copy) == {('3001', '4', False): 1}
+    assert result['counts']['lost_sets'] == 1 and result['counts']['lost_added'] == 1
+    undone = sync.undo(store, result['event_id'])                         # one Undo takes the mark and the copy back
+    assert not undone['already_undone'] and not new_copies_of(store, '1000-2')
+
+
+def test_an_unmatched_part_on_the_new_copy_is_listed(store):
+    plan = planned(store, Remote([raw('1000-2', '3001', 4, 1, number=1), raw('1000-2', '9999', 4, 1, number=2)]))
+    entry = next(e for e in plan['lost']['sets'] if e['set_no'] == '1000-2')
+    assert [u['part_no'] for u in entry['preview']['unmatched_list']] == ['9999'] and plan['lost']['summary']['unmatched'] == 1
+    result = sync.apply_pull(store, plan['id'])
+    assert [u['part_no'] for u in lost_receipt(store, result['event_id'])['unmatched']] == ['9999']
+    (copy,) = new_copies_of(store, '1000-2')
+    assert marks(store, copy) == {('3001', '4', False): 1}
+
+
+def test_a_set_the_pull_brings_in_twice_waits_for_a_pick(store):
+    plan = planned(store, Remote([raw('1000-1', '3001', 4, 1)]))              # Rebrickable owns 1000-1 twice
+    assert not [e for e in plan['lost']['sets'] if e['set_no'] == '1000-1']
+    (waiting,) = plan['lost']['unmatched_sets']
+    assert waiting['set_no'] == '1000-1' and 'adds 2 copies' in waiting['reason']
+    sync.apply_pull(store, plan['id'])
+    assert len(new_copies_of(store, '1000-1')) == 2 and not any(marks(store, c) for c in new_copies_of(store, '1000-1'))
+    entry = planned(store, Remote([raw('1000-1', '3001', 4, 1)]))['lost']['sets'][0]
+    assert entry['set_no'] == '1000-1' and entry['state'] == 'pick'                 # the next sync offers the copy pick
+
+
+def test_a_set_whose_copy_is_not_pulled_keeps_its_lost_parts_for_the_next_sync(store):
+    plan = planned(store, Remote([raw('1000-2', '3001', 4, 1)]))
+    result = sync.apply_pull(store, plan['id'], [])                           # no set row ticked: no copy is made
+    assert not new_copies_of(store, '1000-2')
+    assert lost_receipt(store, result['event_id'])['skipped'] == [
+        dict(set_no='1000-2', reason='Its copy was not pulled this time, so its Lost Parts wait for the next sync')]
+
+
+def test_a_copy_added_after_the_plan_is_not_guessed(store):
+    plan = planned(store, Remote([raw('1000-2', '3001', 4, 1)]))
+    mine = copy_of(store, '1000-2')                                           # added by hand between the preview and the pull
+    result = sync.apply_pull(store, plan['id'])
+    assert lost_receipt(store, result['event_id'])['skipped'][0]['reason'] == 'The copies of this set changed since the plan was made'
+    assert not any(marks(store, c) for c in new_copies_of(store, '1000-2')) and mine in new_copies_of(store, '1000-2')
+
+
+def test_a_set_not_owned_on_rebrickable_still_says_pull_its_copy_first(store):
+    plan = planned(store, Remote([raw('1000-3', '3001', 4, 1)]))              # 1000-3 is only on the wishlist there
+    (waiting,) = plan['lost']['unmatched_sets']
+    assert waiting['reason'] == 'No copy of this set in the collection yet. Pull its copy first, then sync again'

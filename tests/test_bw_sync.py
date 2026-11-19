@@ -314,6 +314,8 @@ def test_send_plan_untick_removal_and_results(store):
     outcome = {r['key']: r['result'] for r in result['rows']}
     assert outcome == {ticked[0]: 'sent', ticked[1]: 'failed'}
     assert sync.status(store, 'rebrickable')['waiting'] == 1
+    last = json.loads(store.execute("SELECT last_send_json FROM sync_state WHERE source='rebrickable'").fetchone()[0])
+    assert {r['key']: r['detail'] for r in last['rows']}[ticked[1]] == 'Other linked lists hold more · change them on Rebrickable'   # #514
     baseline = json.loads(store.execute("SELECT baseline_json FROM sync_state WHERE source='rebrickable'").fetchone()[0])
     assert baseline['remote']['owned'][str(key(store, '2070-1'))] == 1
 
@@ -504,3 +506,18 @@ def test_a_pull_queues_no_picture_step_for_an_item_with_its_picture_and_an_old_j
     remote = rebrickable_ready(store)
     sync.apply_pull(store, sync.plan_pull(store, 'rebrickable', http=remote)['id'])
     assert pictures_jobs(store, '1000-2') == 0
+
+
+def test_a_wish_is_not_offered_for_sending_without_a_linked_wishlist(store):
+    """#514: on lego-test 184 wishes were offered with no Rebrickable wishlist linked, and every one failed."""
+    remote = rebrickable_ready(store)
+    sync.link(store, 'rebrickable', {'wishlist': None})
+    coll = Coll(store)
+    coll.add_wish(coll.item('sets', '1000-1'))
+    store.commit()
+    plan = sync.plan_send(store, 'rebrickable', http=remote)
+    wishes = [r for r in plan['rows'] if r['kind'] == 'wanted']
+    assert wishes and all(not r['tickable'] and r['action'] is None for r in wishes)
+    assert {r['reason'] for r in wishes} == {'Link a Rebrickable wishlist to send wishes to'}
+    with pytest.raises(errors.ValidationFailed, match='Only rows with something to do'):
+        sync.apply_send(store, plan['id'], [wishes[0]['key']], http=remote)

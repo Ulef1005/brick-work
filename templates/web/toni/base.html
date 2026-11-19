@@ -27,7 +27,7 @@
   <a class="button skip" href="#content">Skip to content</a>
   {% from 'web/toni/shell-components.html' import theme_picker with context %}
   <header class="header">
-    <a class="brand" href="{{ url_for('web.bw_sets') }}"><img class="brand-mark" src="{{ url_for('static', filename='brickwork/mark.svg') }}" data-light="{{ url_for('static', filename='brickwork/mark.svg') }}" data-dark="{{ url_for('static', filename='brickwork/mark-dark.svg') }}" width="24" height="24" alt=""><span>Brick Work</span></a>
+    <a class="brand" href="{{ url_for('web.bw_sets') }}"><img class="brand-mark" src="{{ url_for('static', filename='brickwork/mark-small.svg') }}" data-light="{{ url_for('static', filename='brickwork/mark-small.svg') }}" data-dark="{{ url_for('static', filename='brickwork/mark-small-dark.svg') }}" width="24" height="24" alt=""><span>Brick Work</span></a>
     <button class="jump-trigger" data-open="global-jump" aria-controls="global-jump" aria-expanded="false" aria-label="Jump to a set, copy, figure or part">{{ toni_icon('search') }}<span>Jump to a set, copy, figure or part</span><kbd>⌘K</kbd></button>
     {% if not config.get('HIDE_ADD_SET') %}<a class="button primary shell-add" href="{{ url_for('web.bw_add') }}" aria-label="Add">{{ toni_icon('add') }}<span>Add</span></a>{% endif %}
   </header>

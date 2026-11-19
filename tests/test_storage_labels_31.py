@@ -252,7 +252,8 @@ def test_label_screen_candidates_are_unapproved_except_the_approved_error_and_ed
     states=json.loads(Path('design/screens/states.json').read_text())['states']
     candidates=[s for s in states if s['screen']=='34-Storage' and s['state'].startswith('labels-')]
     assert {s['state'] for s in candidates}=={'labels-select-none','labels-select-three','labels-ready','labels-address-warning','labels-two-sheets','labels-error'}
-    assert all(s['built'] and s['approved'] is (s['state']=='labels-error') and '?labels=' in s['path'] for s in candidates)
+    # labels-error is the one approved state; an approval round (such as the logo swap's) may set it back to false for a while
+    assert all(s['built'] and '?labels=' in s['path'] and (s['state']=='labels-error' or s['approved'] is False) for s in candidates)
     path=tmp_path/'brickwork.db'
     screen_gate.build_store('edge',path)
     with closing(connect(path,tmp_path/'catalogue.db')) as db:
@@ -389,7 +390,70 @@ def test_pdf_pages_match_the_page_images(coll):
 
 
 def test_mark_and_fonts_are_loaded_once():
-    labels.mark_rects.cache_clear()
+    labels._mark_svg.cache_clear()
     assert labels.font(40) is labels.font(40) and labels.font(23, True) is labels.font(23, True)
-    assert labels.mark_rects() is labels.mark_rects()
-    assert labels.mark_rects.cache_info().misses == 1
+    assert labels._mark_svg() is labels._mark_svg()
+    assert labels._mark_svg.cache_info().misses == 1
+
+
+def test_mark_reads_the_shipped_svg_as_three_plates_with_one_masked():
+    plates = labels.mark_rects()
+    assert len(plates) == 3 and [p[5] for p in plates] == [False, False, True]
+    for x, y, w, h, rx, masked in plates:
+        assert (round(w, 1), round(h, 1), round(rx, 1)) == (44.5, 26.3, 9.1) and 0 <= x and x + w <= 100 and 0 <= y and y + h <= 100
+
+
+@pytest.mark.parametrize('svg', [
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 100"><defs><rect id="u" width="4" height="4"/><mask id="m"><rect/><path d="M0 0L1 1"/></mask></defs></svg>',
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><rect id="u" width="4" height="4"/><mask id="m"><rect/><path d="M0 0L1 1"/></mask></defs>'
+    '<use href="#u" transform="translate(1 1) rotate(15) scale(1)"/></svg>',
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><rect id="u" width="4" height="4"/><mask id="m"><rect/><path d="M0 0L1 1"/></mask></defs>'
+    '<circle r="3"/></svg>'])
+def test_mark_fails_clearly_on_a_structure_it_does_not_know(monkeypatch, tmp_path, svg):
+    (tmp_path / 'static/brickwork').mkdir(parents=True)
+    (tmp_path / 'static/brickwork/mark-line.svg').write_text(svg)
+    monkeypatch.setattr(labels, 'ROOT', tmp_path)
+    labels._mark_svg.cache_clear()
+    try:
+        with pytest.raises(ValueError, match='mark-line.svg'):
+            labels._mark_svg()
+    finally:
+        monkeypatch.undo()
+        labels._mark_svg.cache_clear()
+
+
+def test_mark_draws_the_cut_out_x_from_32_px_and_not_below():
+    def centre(size):   # the middle of the X on the masked plate, in viewBox units (63.65, 30.3)
+        image = Image.new('RGB', (200, 200), 'white')
+        labels.mark(image, (0, 0), size)
+        return image.getpixel((int(63.65 * size / 100), int(30.29 * size / 100)))[0], image.getpixel((int(15 * size / 100), int(65 * size / 100)))[0]
+    assert centre(labels.MARK_X_MIN_SIZE - 1)[0] < 30 and centre(labels.MARK_X_MIN_SIZE)[0] > 100   # X appears at 32
+    assert centre(83)[0] > 240 and centre(83)[1] < 5   # printed size: X cut clear, plate solid black
+
+
+@pytest.mark.parametrize('layout', ['tape-62', 'a4-21', 'a4-14'])
+def test_a_long_storage_name_is_never_cut_off_on_a_label(layout, monkeypatch):
+    """Ulf, 2026-11-19: "the copy must not be cut-off, maybe smaller font size?" The font steps down and wraps before any ellipsis."""
+    seen = []
+    real = labels.fit_name
+    monkeypatch.setattr(labels, 'fit_name', lambda *a, **k: seen.append(real(*a, **k)) or seen[-1])
+    for name in ('Drawer A3 · Technic beams', 'Billy shelf 3 · Technic beams, pins and axles (black)',
+                 'Äußere Schublade 12 · Größere Platten und Fliesen'):
+        labels.label({'id': 'x', 'name': name, 'short_id': 'A3'}, layout, 'https://bricks.example', matrix_factory=lambda payload: MATRIX)
+        face, lines = seen[-1]
+        assert ' '.join(lines).replace('  ', ' ') == name and not lines[-1].endswith('…'), (layout, name, lines)
+
+
+def test_only_a_name_beyond_the_floor_size_gets_an_ellipsis():
+    face, lines = labels.fit_name('Schublade ' * 30, 40, 26, 400, 120, 2)
+    assert face.size == 26 and len(lines) == 2 and lines[-1].endswith('…')
+    face, lines = labels.fit_name('Drawer A3', 40, 26, 400, 120, 2)
+    assert face.size == 40 and lines == ['Drawer A3']
+
+
+def test_fit_name_keeps_a_trailing_ellipsis_and_an_empty_name():
+    """A name that ends in its own '…' keeps the largest size; an empty name fits with no lines (#482 review)."""
+    face, lines = labels.fit_name('Box A…', 56, 34, 600, 200, 2)
+    assert face.size == 56 and lines == ['Box A…']
+    face, lines = labels.fit_name('', 56, 34, 600, 200, 2)
+    assert face.size == 56 and lines == []

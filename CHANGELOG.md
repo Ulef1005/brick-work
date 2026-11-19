@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **New logo and app icon.** The logo and the app icon are now the approved violet Bond mark, three bricks with the cut-out X on the top one. Storage labels print the new mark, and a long storage name now shrinks and wraps instead of being cut off. Below 32 pixels the small mark drops the X, so the app bar shows the three bricks alone.
+
 ## Brick Work 1.1.1 (schema 4.6) · 2026-11-19
 
 - **One Rebrickable pull marks the Lost Parts of the sets it brings in** (#513). A set that had no copy here before the pull used to come back as *No copy of this set in the collection yet* until a second pull. Now the pull marks its Lost Parts on the copy it adds, and the preview counts them the same way. A set the pull adds more than once still asks you to pick the copy on the next sync.

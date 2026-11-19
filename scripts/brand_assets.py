@@ -4,7 +4,8 @@
     python3 scripts/brand_assets.py build    write every served file from its design/ source
 
 The design files live in design/ (logo, app icon, UI icons). The app serves them at the paths it always has, /static/brickwork/...,
-so no page, manifest or service worker changes. Those served files are GENERATED copies: build writes each byte for byte from its
+so no page, manifest or service worker changes. Those served files, and the docs site's app-icon.svg and favicon.svg in docs/assets/
+(DOCS_COPIES), are GENERATED copies: build writes each byte for byte from its
 source; never edit one. Three source folders, each mapped to a served folder with the same relative paths:
 
     design/logo/              -> static/brickwork/               marks and lockups (svg, png)
@@ -23,6 +24,8 @@ ROOT = Path(__file__).resolve().parent.parent
 SERVED = ROOT / 'static' / 'brickwork'
 SOURCES = (('design/logo', ''), ('design/app-icon', ''), ('design/components/icons', 'icons-ui'))   # source folder -> served subfolder
 APP_OWNED = {'brick-work.css', 'manifest.webmanifest'}
+DOCS_COPIES = {'docs/assets/app-icon.svg': 'design/app-icon/app-icon.svg',   # the docs site's logo and favicon (mkdocs theme), also generated
+               'docs/assets/favicon.svg': 'design/app-icon/favicon.svg'}
 RETIRED = 'retired'
 
 
@@ -51,7 +54,10 @@ def build() -> int:
         target = SERVED / served
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(source.read_bytes())
-    print(f'Built {len(files)} files in static/brickwork/ from design/')
+    for copy, source in DOCS_COPIES.items():
+        (ROOT / copy).parent.mkdir(parents=True, exist_ok=True)
+        (ROOT / copy).write_bytes((ROOT / source).read_bytes())
+    print(f'Built {len(files)} files in static/brickwork/ and {len(DOCS_COPIES)} in docs/assets/ from design/')
     return 0
 
 
@@ -69,8 +75,19 @@ def problems() -> list[str]:
     return found
 
 
+def docs_problems() -> list[str]:
+    """The docs site's generated copies (DOCS_COPIES) that are missing, drifted or have no source."""
+    found = []
+    for copy, source in DOCS_COPIES.items():
+        if not (ROOT / source).is_file():
+            found.append(f'{source} is missing (the source of {copy})')
+        elif not (ROOT / copy).is_file() or (ROOT / copy).read_bytes() != (ROOT / source).read_bytes():
+            found.append(f'{copy} differs from {source} (it is generated; edit the source, then build)')
+    return found
+
+
 def check() -> int:
-    found = problems()
+    found = problems() + docs_problems()
     for line in found:
         print('BRAND: ' + line)
     if found:

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## Brick Work 1.1.1 (schema 4.6) · 2026-11-19
+
 - **One Rebrickable pull marks the Lost Parts of the sets it brings in** (#513). A set that had no copy here before the pull used to come back as *No copy of this set in the collection yet* until a second pull. Now the pull marks its Lost Parts on the copy it adds, and the preview counts them the same way. A set the pull adds more than once still asks you to pick the copy on the next sync.
 
 - **A failed send to Rebrickable says why** (#514). Each failed row keeps its reason in the record of the last send. Wishes are no longer offered for sending while no Rebrickable wishlist is linked: they are listed with *Link a Rebrickable wishlist to send wishes to* instead of all failing.

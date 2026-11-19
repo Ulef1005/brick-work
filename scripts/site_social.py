@@ -204,12 +204,23 @@ def build_html(folder: Path, width: int = 1200, height: int = 630) -> str:
     return page
 
 
+def canvas(text: str) -> tuple[int, int]:
+    """`WIDTHxHEIGHT`, at least 1200x630: the layout is drawn for that canvas and only grows to the right."""
+    parts = text.lower().split('x')
+    if len(parts) != 2 or not all(part.isdigit() for part in parts):
+        raise argparse.ArgumentTypeError(f'{text!r} is not WIDTHxHEIGHT')
+    width, height = int(parts[0]), int(parts[1])
+    if width < 1200 or height < 630:
+        raise argparse.ArgumentTypeError(f'{text!r} is smaller than 1200x630, the layout\'s canvas')
+    return width, height
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument('--out', default=str(DEFAULT_OUT), help='output PNG path')
-    parser.add_argument('--size', default='1200x630', help='WIDTHxHEIGHT; 1280x640 is GitHub\'s social preview')
+    parser.add_argument('--size', default='1200x630', type=canvas, help='WIDTHxHEIGHT, at least 1200x630; 1280x640 is GitHub\'s social preview')
     options = parser.parse_args(argv)
-    width, height = (int(v) for v in options.size.lower().split('x'))
+    width, height = options.size
     chrome = subprocess.run([sys.executable, str(ROOT / 'scripts' / 'chrome.py'), 'pinned'], capture_output=True, text=True)
     if chrome.returncode:
         print(chrome.stderr.strip())

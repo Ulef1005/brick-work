@@ -252,7 +252,8 @@ def test_label_screen_candidates_are_unapproved_except_the_approved_error_and_ed
     states=json.loads(Path('design/screens/states.json').read_text())['states']
     candidates=[s for s in states if s['screen']=='34-Storage' and s['state'].startswith('labels-')]
     assert {s['state'] for s in candidates}=={'labels-select-none','labels-select-three','labels-ready','labels-address-warning','labels-two-sheets','labels-error'}
-    assert all(s['built'] and s['approved'] is (s['state']=='labels-error') and '?labels=' in s['path'] for s in candidates)
+    # labels-error is the one approved state; an approval round (such as the logo swap's) may set it back to false for a while
+    assert all(s['built'] and '?labels=' in s['path'] and (s['state']=='labels-error' or s['approved'] is False) for s in candidates)
     path=tmp_path/'brickwork.db'
     screen_gate.build_store('edge',path)
     with closing(connect(path,tmp_path/'catalogue.db')) as db:

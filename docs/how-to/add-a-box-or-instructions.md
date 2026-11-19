@@ -31,9 +31,11 @@ You can also paste set numbers with **Box** or **Instruction** chosen. A number 
 
 ## Find and download instructions
 
+**Not available yet.** On an install today no instruction source is set up, so **Find instructions** finds nothing. Download the PDF yourself and use **Upload a PDF** ([Instruction files](settings-and-maintenance.md#instruction-files)). Links to each set's instructions pages are planned ([#465](https://github.com/Ulef1005/brick-work/issues/465)). The rest of this section describes the finder for when a source is added in a later release.
+
 Find instructions separates finding candidate PDFs from downloading them. Finding never downloads a file.
 Official is registered but needs a rendered page fetcher. Until configured, the list says **Official needs a page renderer: not set up**.
-Rebrickable and Peeron adapter interfaces remain available for verified integrations.
+No other source is registered.
 
 Discovery uses the existing job queue and stores the sources tried, including searches with no candidates.
 Downloads require a confirmed list of ticked files. Each file has its own result and can be retried after failure.

@@ -26,7 +26,7 @@ def test_jump_has_no_helper_copy_keyboard_line_or_add(client):
 
 
 def test_bottom_bar_and_jump_sheet_css():
-    css = (ROOT / 'static/web/toni/shell.css').read_text()
+    css = (ROOT / 'static/web/toni/shell.css').read_text().replace(':where(:not(.b-prime,.b-prime *))', '')
     region = css[css.index('4.9f'):]
     assert '--bw-bottom-inset:var(--tw-safe-bottom)' in region
     # #245: no rule forces a minimum under the bar; the inset is the phone's own (0 in a browser toolbar).
@@ -60,7 +60,7 @@ def test_shell_chromium_geometry(client, tmp_path):
 
 
 def test_fixed_clearances_follow_bottom_bar_variable():
-    css = {n: (ROOT / 'static/web/toni' / n).read_text() for n in
+    css = {n: (ROOT / 'static/web/toni' / n).read_text().replace(':where(:not(.b-prime,.b-prime *))', '') for n in
            ('toni.css', 'shell.css', 'bw-collection.css')}
     assert '.savebar{bottom:var(--bw-bottom)}.toast-live{bottom:calc(var(--bw-bottom) + var(--tw-s-4))}' in css['toni.css']
     assert 'calc(var(--bw-bottom) + 35px)' in css['bw-collection.css']

@@ -60,7 +60,7 @@ def test_approved_icon_registered(client, world):
 
 
 def test_selection_uses_ink_on_soft_and_keeps_phone_touch_targets():
-    css = (ROOT / 'static/web/toni/shell.css').read_text()
+    css = (ROOT / 'static/web/toni/shell.css').read_text().replace(':where(:not(.b-prime,.b-prime *))', '')
     rule = css.split('/* #412:')[1]
     assert '[href="/workbench/lot-sorter"]' in rule
     assert '[href="/planning/order-missing-parts"]' in rule

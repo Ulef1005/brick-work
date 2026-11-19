@@ -88,7 +88,7 @@ def test_assets_have_no_remote_references():
     assets = ROOT / 'static/web/toni'
     tokens = (assets / 'tokens-v2.css').read_text()
     assert '@import' not in tokens and 'fonts.googleapis' not in tokens
-    css = (assets / 'toni.css').read_text()
+    css = (assets / 'toni.css').read_text().replace(':where(:not(.b-prime,.b-prime *))', '')
     for filename in re.findall(r"url\('([^']+)'\)", css):
         assert (assets / filename).is_file()
     for file in assets.glob('*'):

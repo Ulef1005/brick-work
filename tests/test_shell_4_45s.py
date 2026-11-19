@@ -46,7 +46,7 @@ def test_shared_rail_column_and_scroll_contract(app4, client, world, path):
 
 def test_rail_css_source_checks():
     # These assertions inspect CSS source; browser geometry is checked after deploy.
-    css = (ROOT / 'static/web/toni/shell.css').read_text()
+    css = (ROOT / 'static/web/toni/shell.css').read_text().replace(':where(:not(.b-prime,.b-prime *))', '')
 
     def rule(selector):
         body = re.search(re.escape(selector) + r'\{([^}]+)\}', css)[1]

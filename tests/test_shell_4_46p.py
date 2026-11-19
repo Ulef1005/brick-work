@@ -63,10 +63,10 @@ def test_sheet_runtime():
 def test_four_columns_and_scrolling_sheet_css():
     # Both phone defaults and the later phone/iPad shell rule use four columns.
     for filename in ['toni.css', 'shell.css']:
-        css = (ROOT / 'static/web/toni' / filename).read_text()
+        css = (ROOT / 'static/web/toni' / filename).read_text().replace(':where(:not(.b-prime,.b-prime *))', '')
         columns = re.findall(r'\.mobile-bottom\{[^}]*grid-template-columns:([^;}]+)', css)
         assert columns and set(columns) == {'repeat(4,minmax(0,1fr))'}
-    css = (ROOT / 'static/web/toni/shell.css').read_text()
+    css = (ROOT / 'static/web/toni/shell.css').read_text().replace(':where(:not(.b-prime,.b-prime *))', '')
     assert 'max-width:1023.98px' in css
     assert 'min-height:49px' in css
     assert '.workbench-sheet[open]{display:flex;flex-direction:column' in css

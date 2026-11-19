@@ -869,7 +869,7 @@ def test_price_css_contract():
 
 def test_navigation_css_contract():
     text = css()
-    shell = Path('static/web/toni/shell.css').read_text()
+    shell = Path('static/web/toni/shell.css').read_text().replace(':where(:not(.b-prime,.b-prime *))', '')
     assert '.header .shell-add { width:44px;min-height:44px;background:transparent;border-color:transparent;color:var(--tw-accent-text)' in shell
     assert '.bc-detail-back { display:flex;align-items:center;gap:2px;min-height:44px;text-decoration:none' in text
     assert 'body:has(.bc-detail-hero) .layout>main { padding-top:0' in text
@@ -906,7 +906,7 @@ def test_consists_css_contract():
 
 
 def test_disclosure_marker_has_standalone_shape_and_open_rotation():
-    remaining = Path('static/web/toni/remaining.css').read_text()
+    remaining = Path('static/web/toni/remaining.css').read_text().replace(':where(:not(.b-prime,.b-prime *))', '')
     selector = 'html[data-web-ui="toni"] details.kit-disclosure'
     closed = re.search(re.escape(selector + '>summary::before') + r'\{([^}]+)\}', remaining)[1]
     opened = re.search(re.escape(selector + '[open]>summary::before') + r'\{([^}]+)\}', remaining)[1]

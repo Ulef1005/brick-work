@@ -20,7 +20,7 @@ def test_shell_review_frames(client, world):
     manage = soup.select_one('[data-nav-group=Manage] svg')
     assert manage.select_one('rect')['width'] == '16'
     assert manage.select_one('path')['d'].endswith('M4 13h16')
-    css = (ROOT / 'static/web/toni/shell.css').read_text()
+    css = (ROOT / 'static/web/toni/shell.css').read_text().replace(':where(:not(.b-prime,.b-prime *))', '')
     for rule in ['inset:auto 0 var(--bw-bottom)', 'z-index:23', 'gap:12px',
                  'min-height:96px', 'text-transform:uppercase', 'font:500 11px/14px',
                  'font:500 15px', 'background:var(--tw-surface-2)']:

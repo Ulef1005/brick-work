@@ -173,7 +173,7 @@ def test_home_screen_head_and_local_token_source(client):
         assert (ROOT / urlsplit(source).path.lstrip('/')).is_file()
     tokens = (ROOT / 'static/web/toni/tokens-v2.css').read_text()
     assert '@import' not in tokens and 'fonts.googleapis' not in tokens
-    css = (ROOT / 'static/web/toni/shell.css').read_text()
+    css = (ROOT / 'static/web/toni/shell.css').read_text().replace(':where(:not(.b-prime,.b-prime *))', '')
     assert 'grid-template-columns:232px' in css and 'grid-template-columns:64px' in css
     assert 'max-width:1023.98px' in css and 'repeat(4,minmax(0,1fr))' in css
     assert 'var(--tw-safe-top)' in css and 'var(--tw-safe-bottom)' in css

@@ -51,7 +51,7 @@ def test_build_scout_uses_its_own_icon_in_the_rail_and_the_phone_strip(client, w
 
 
 def test_the_small_tile_rule_is_shared_in_the_global_stylesheet():
-    shell = (ROOT / 'static/web/toni/shell.css').read_text()
+    shell = (ROOT / 'static/web/toni/shell.css').read_text().replace(':where(:not(.b-prime,.b-prime *))', '')
     assert '.bc-picture,.bw-picture,.check-picture,.scan-tile { container-type:inline-size; }' in shell
     assert '@container (max-width:80px)' in shell
 

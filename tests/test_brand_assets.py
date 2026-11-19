@@ -110,6 +110,13 @@ def test_no_handler_with_a_path_argument_serves_the_brand_files(app4):
     assert rules == {'/static/<path:filename>', '/collection/item/<kind>/<path:number>'}
 
 
-def test_docs_site_icons_are_generated_copies_of_the_app_icon():
-    for copy, source in brand_assets.DOCS_COPIES.items():
-        assert (brand_assets.ROOT / copy).read_bytes() == (brand_assets.ROOT / source).read_bytes(), copy
+def test_docs_site_icons_are_generated_copies_of_the_app_icon(tmp_path, monkeypatch):
+    assert brand_assets.docs_problems() == []
+    (tmp_path / 'design').mkdir()
+    (tmp_path / 'design' / 'icon.svg').write_text('<svg/>')
+    (tmp_path / 'drift.svg').write_text('<svg>old</svg>')
+    monkeypatch.setattr(brand_assets, 'ROOT', tmp_path)
+    monkeypatch.setattr(brand_assets, 'DOCS_COPIES', {'drift.svg': 'design/icon.svg', 'docs/new/missing.svg': 'design/icon.svg',
+                                                      'orphan.svg': 'design/gone.svg'})
+    found = brand_assets.docs_problems()
+    assert len(found) == 3 and 'drift.svg differs' in found[0] and 'missing.svg differs' in found[1] and 'design/gone.svg is missing' in found[2]

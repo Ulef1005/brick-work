@@ -55,6 +55,7 @@ def build() -> int:
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(source.read_bytes())
     for copy, source in DOCS_COPIES.items():
+        (ROOT / copy).parent.mkdir(parents=True, exist_ok=True)
         (ROOT / copy).write_bytes((ROOT / source).read_bytes())
     print(f'Built {len(files)} files in static/brickwork/ and {len(DOCS_COPIES)} in docs/assets/ from design/')
     return 0
@@ -69,16 +70,24 @@ def problems() -> list[str]:
             found.append(f'static/brickwork/{served} is missing: run `python3 scripts/brand_assets.py build` ({source.relative_to(ROOT)})')
         elif target.read_bytes() != source.read_bytes():
             found.append(f'static/brickwork/{served} differs from {source.relative_to(ROOT)} (it is generated; edit the source, then build)')
-    for copy, source in DOCS_COPIES.items():
-        if not (ROOT / copy).is_file() or (ROOT / copy).read_bytes() != (ROOT / source).read_bytes():
-            found.append(f'{copy} differs from {source} (it is generated; edit the source, then build)')
     for served in sorted(served_files() - set(files)):
         found.append(f'static/brickwork/{served} has no source in design/ (add the source, or it is not a served brand file)')
     return found
 
 
+def docs_problems() -> list[str]:
+    """The docs site's generated copies (DOCS_COPIES) that are missing, drifted or have no source."""
+    found = []
+    for copy, source in DOCS_COPIES.items():
+        if not (ROOT / source).is_file():
+            found.append(f'{source} is missing (the source of {copy})')
+        elif not (ROOT / copy).is_file() or (ROOT / copy).read_bytes() != (ROOT / source).read_bytes():
+            found.append(f'{copy} differs from {source} (it is generated; edit the source, then build)')
+    return found
+
+
 def check() -> int:
-    found = problems()
+    found = problems() + docs_problems()
     for line in found:
         print('BRAND: ' + line)
     if found:

@@ -174,3 +174,5 @@ Every frame above also exists in dark (`dark-<width>`); the dark values and the 
 ## The stylesheet for the app (#492)
 
 `../sources/b/b_frames.py` exports the frames' CSS as plain string literals, read by ast: `B_RESETS` (the frame page only) and `B_COMPONENTS`, a tuple of the round 2, round 3 and round 6 rules in cascade order, from which the app writes `static/brickwork/b-prime.css` scoped under `.bp`. `.bp` sets the base font (400 15px/1.45 var(--tw-font)) and colour itself, since they sit in the frame's `html,body` reset. Fields, picture tiles and their alt text use `--tw-field`, `--tw-tile` and `--tw-tile-ink`, now in TOKENS. The only dark swaps left in `SWAPS` are the three rgba values with no token: the sheet's shadow, the scrim and the hatched tag's tint. The split changed no pixel, light or dark.
+
+W-Q6 (#526 round, approved 19.11.): a part tile's (`.ptile`) number in dark is `--tw-tile-ink`, #4A524F on the #E4E6E2 tile, 6.4:1. Before, it was the muted text colour at 2.08:1. Light is unchanged, because the light tile ink is the muted text colour. It changed the dark frames 14, 15 and 16.

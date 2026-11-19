@@ -1,8 +1,8 @@
 <!-- site:skip -->
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="static/brickwork/lockup-stacked-dark.png">
-    <img src="static/brickwork/lockup-stacked-light.png" alt="Brick Work" width="320">
+    <source media="(prefers-color-scheme: dark)" srcset="static/brickwork/lockup-horizontal-dark.png">
+    <img src="static/brickwork/lockup-horizontal-light.png" alt="Brick Work" width="520">
   </picture>
 </p>
 
@@ -116,7 +116,7 @@ Release 1.1 (schema 4.6). The schema is stable, upgrades are tested, and you ins
 On Windows or a Mac with no Git: [install with Docker Desktop](docs/how-to/install-docker-desktop.md), about 15 minutes. With Git and Docker Compose:
 
 ```sh
-git clone --branch v1.1.0 https://github.com/Ulef1005/brick-work.git
+git clone --branch v1.1.1 https://github.com/Ulef1005/brick-work.git
 cd brick-work
 mkdir -p data
 sudo chown 1000:1000 data    # the container runs as uid 1000

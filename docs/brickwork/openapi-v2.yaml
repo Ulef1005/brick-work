@@ -11837,7 +11837,7 @@ components:
           description: On a send plan, the baseline the plan was made against.
         lost:
           type: object
-          description: 'On a Rebrickable pull plan, the Lost Parts section (#457): `on`, `rule`, `status` (`off`, `read`, `failed`), `message`, `unreadable`, `clearing`, `sets` (one per set with something to write: `copies`, `copy_id`, `state` `ready` or `pick`, `preview`), `unmatched_sets` and a `summary`.'
+          description: 'On a Rebrickable pull plan, the Lost Parts section (#457): `on`, `rule`, `status` (`off`, `read`, `failed`), `message`, `unreadable`, `clearing`, `sets` (one per set with something to write: `copies`, `copy_id`, `state` `ready`, `pick` or `new` (a set this pull adds once, #513), `preview`), `unmatched_sets` and a `summary`.'
 
     SyncApplied:
       type: object

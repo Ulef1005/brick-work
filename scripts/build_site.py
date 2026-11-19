@@ -229,12 +229,21 @@ def write_avif(folder):
             image.convert('RGB').save(png.with_suffix('.avif'), 'AVIF', quality=55)
 
 
+def plain_lead(paragraph):
+    """A release's opening paragraph as plain text: links become their text, code loses its backticks, and a release that opens with
+    its entries (`- **Title** (#n). …`) gives the first entry's bold title as a sentence."""
+    bullet = re.match(r'- \*\*(.+?)\*\*', paragraph)
+    text = re.sub(r'\[([^\]]+)\]\([^)]*\)', r'\1', bullet.group(1) if bullet else paragraph).replace('`', '')
+    return text if not bullet or text.endswith(('.', '?', '!')) else text + '.'
+
+
 def latest_release():
-    """(version, schema, date, summary) of the newest release heading in CHANGELOG.md; the summary is the paragraph under it."""
+    """(version, schema, date, summary) of the newest release heading in CHANGELOG.md; the summary is the paragraph under it,
+    or the bold title of its first entry when the release has no paragraph of its own."""
     text = (ROOT / 'CHANGELOG.md').read_text()
     match = re.search(r'^## Brick Work (\S+) \(schema ([^)]+)\) · (\d{4}-\d{2}-\d{2})\n\n(.+?)\n', text, flags=re.M)
     version, schema, date, summary = match.groups()
-    summary = re.sub(r'\[([^\]]+)\]\([^)]*\)', r'\1', summary).replace('`', '')
+    summary = plain_lead(summary)
     first = re.match(r'(.+?\.)\s(?=[A-Z])', summary + ' X')
     return version, schema, date, first.group(1) if first else summary
 
@@ -432,7 +441,7 @@ def atom_feed():
     base = origin() + site_base()
     entries = []
     for version, schema, date, body in releases()[:20]:
-        first = re.sub(r'\[([^\]]+)\]\([^)]*\)', r'\1', body.split('\n\n', 1)[0]).replace('`', '')
+        first = plain_lead(body.split('\n\n', 1)[0])
         entries.append(f'<entry><title>Brick Work {version}</title><id>tag:{origin().removeprefix("https://")},{date}:{version}</id>'
                        f'<link href="{base}changelog/#v{version}"/><updated>{date}T00:00:00Z</updated><summary>{html.escape(first)}</summary></entry>')
     latest = releases()[0][2]

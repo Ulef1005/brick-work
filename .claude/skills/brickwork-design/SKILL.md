@@ -1,121 +1,91 @@
 ---
 name: brickwork-design
-description: Brick Work's own design kit (App Design Standard: its own base and tokens, outside Toni's World). Use for any visual work on Brick Work - a new or changed screen, component or style, brand assets, the data-type language, a mock-up of a Brick Work screen, or a check of the built app against the frames - so the result follows the approved frames, the brand and the data-type language.
+description: Brick Work's design system (direction B′ Drawer Tag, App Design Standard, its own base and tokens outside Toni's World). Use for any visual work on Brick Work - a new or changed screen, component or style, brand assets, a mock-up of a Brick Work screen, a screen rebuilt to B′ in milestone U, or a check of the built app against its approved frame - so the result follows the approved files in design/ and Hichert's SUCCESS rules.
 ---
 
-# Brick Work design kit
+# Brick Work design
 
-Brick Work has its own design, outside Toni's World (Ulf, 2026-11-03; ADR 0022). Its tokens are two files: the design builder's neutral base `design/tokens/tokens.css` (pinned, never edited) and Brick Work's layer `design/tokens/brickwork-tokens.css`, which redefines every colour role light and dark, the type (Inter, Geist Mono), the paper-and-ink surfaces, the 0.5 px hairlines, spacing, motion, safe areas and the 44 px touch rule. The app is served `static/web/toni/tokens-v2.css`, generated from the two by `scripts/tokens_base.py` (its `build`; the `check` step keeps them in step). Charts follow the design builder's `base/charts.md` (ai-wiki `.claude/skills/design-builder/`). This kit adds a mark, one identity accent, a data-type language and the screens. The frames were approved on 2026-10-12 (v1.2) and updated to v1.3 on 2026-10-16, the current reference.
+This skill is Brick Work's only design authority. It builds on Brick Work's approved files in `design/` and nothing else; the one shared piece is the design builder's neutral base `design/tokens/tokens.css`, pinned by its drift check, under Brick Work's layer `design/tokens/brickwork-tokens.css`. It loads no parent kit. The direction is **B′ Drawer Tag** (approved 2026-11-19): the app is labelled like your drawers. It is built in milestone U; until a screen is rebuilt, that screen still follows the shipped design (§ Until a screen is rebuilt).
 
-**Sources of truth, not copies.** The design project's export is `design/sources/` and is never hand-edited here (`CLAUDE.md`): report a gap instead. `design/` is organised per the App Design Standard's P2 by scripts, and the brand assets the app ships in `static/brickwork/` are generated from it. This skill points at `design/` in place. Only the kit's own documents, which exist nowhere else in the repo, sit beside it in `reference/` (`tests/test_design_skill.py` keeps it so).
+## Rule 1: SUCCESS
 
-## Where things are
+Hichert's SUCCESS governs every design artifact here, not only charts: **Say** (one message per screen), **Unify** (the same thing looks and is named the same), **Condense** (dense without clutter), **Check** (visually honest, contrast passing), **Express** (the right control, table or chart), **Simplify** (nothing decorative), **Structure** (the task's order, on the grid). How Brick Work meets each: `design/BRAND.md` § SUCCESS. Every new or changed screen is checked against all seven before review.
+
+## Sources of truth, not copies
 
 | What | Where |
-|---|---|
-| Tokens: the pinned base and Brick Work's layer (light, dark, status, viz, safe areas). Edit only the layer, then `python3 scripts/tokens_base.py build`; never add a colour outside it | `design/tokens/tokens.css`, `design/tokens/brickwork-tokens.css` (+ generated `.json`) |
-| The design project's own token export, kept as the export's copy so its pages render; its differences from the served tokens are listed for Ulf | `design/sources/tokens-v2.css` |
-| The screens, one page per nav group (each workflow is one row: phone frames, then 1440 and 1024 desktop; theme tweak = light/dark) | `design/sources/BW Guide.dc.html`, `design/sources/BW Collection.dc.html`, `design/sources/BW Workbench.dc.html`, `design/sources/BW Planning.dc.html`, `design/sources/BW Manage.dc.html` |
-| Frames view (deep link `#/<id>?w=1440&t=dark`), the export's manifest, start page | `design/sources/BW Navigator.dc.html`, `design/sources/frames.json`, `design/sources/index.html` |
-| Exported frames, PNG, light and dark at 1440 / 1024 / 390, one folder per section, with the generated manifest | `design/screens/` (`NN-<screen>/`, `manifest.json`) |
-| Exact values of the v1.3 sections | the HTML in the section's folder, `design/screens/NN-<screen>/NN-<Screen>.html` |
-| Clickable phone and desktop flows | `design/sources/Brick Work Clickdummy.dc.html` |
-| Screens of the built app for approval | `design/screens/approval/` |
-| How to check the built app against the design | `design/DESIGN-CHECK.md` |
-| Sample content (sets, orders, wishlist, checker scenarios, part to inventory, empty states, edge cases, colours). Use it instead of inventing content | `design/sources/test-data/` |
-| Missing-image tiles | `design/sources/assets/data/placeholders/` |
-| Mark and lockups (use the PNG lockups: the SVG lockup clips the "k") | `design/logo/` |
-| App icon, favicons, the head block, app icons 152 to 1024 and the iPhone and iPad splash screens | `design/app-icon/` (`icons/`, `splash/`) |
+| --- | --- |
+| Brand guide: direction, logo, colour (light and dark), type, layout, components, screens, icons, wording, charts | `design/BRAND.md` |
+| Approval log, one line per approved item with Ulf's words | `design/APPROVALS.md` |
+| B′ frames, light and dark, 1440 and 390, one folder per screen; the components sheets `00-components` and `00b-components-2` | `design/screens-b/` |
+| What each approved frame changes from the shipped screen, and the tokens-only screens with the frame each builds on | `design/screens-b/BUILD-NOTES.md` |
+| The frame source and its check (`build`, `check`: HTML byte for byte, PNGs within 0.1 %); the B′ token values (`TOKENS`, `DARK`) | `design/sources/b/b_frames.py` |
+| Tokens the app is served: the pinned base and Brick Work's layer (built by `scripts/tokens_base.py`); they take the B′ values when the app is rebuilt in milestone U | `design/tokens/tokens.css`, `design/tokens/brickwork-tokens.css` |
+| Fonts, IBM Plex, with licences | `design/fonts/` |
+| Mark, small mark (below 32 px, no X) and lockups, generated by `design/sources/logo/brand_logo.py`; the retired cross-stitch set in `retired/` | `design/logo/` |
+| App icon, favicons, splash | `design/app-icon/` |
 | UI icons (1.6 px stroke, 24 px grid), with the sprite | `design/components/icons/` |
-| What the app serves of these (generated by `scripts/brand_assets.py`; the accent CSS `brick-work.css` and `manifest.webmanifest` are the app's own) | `static/brickwork/` |
-| Patrick Hand (brand surfaces only) and its licence | `static/fonts/` |
-| The handoff, build spec, coverage, section index, frames by device, brand decisions, brand panel and specimen | `reference/` beside this file (paths inside them follow the kit's old layout: `design_files/` and `reference/` are `design/`, `assets/brick-work/` is `design/logo/`, `design/app-icon/` and `design/components/icons/`); the brand panel and specimen pages are `design/components/BW Panel.dc.html` and `design/components/Brick Work Specimen.dc.html` (preview pages, not design exports, so not in `sources/`) |
+| What the app serves of these (generated by `scripts/brand_assets.py`) | `static/brickwork/` |
+| How to check the built app against the design | `design/DESIGN-CHECK.md` |
 
-**Catalogue images are not in the repo.** The pages load set, part and minifigure pictures from `design/sources/assets/data/{parts,sets,minifigs,photos}/`. They are Rebrickable CDN images for mock-ups only, so `.gitignore` keeps them out, and the frames fall back to the placeholders. To see the pages with pictures, put the images into those git-ignored folders locally. The design project's export (`brickwork-design-3.zip`) has them under `assets/data/`, and ai-wiki's history keeps the old kit's copy under `.claude/skills/brickwork-design/reference/assets/data/`. Never commit them.
+## Rules
 
-## Page map (section ids)
+- Only what Ulf approved in writing is in `design/`. A new or changed screen goes through a review round (P3 artifact, light and dark, one phone and one desktop view, SUCCESS verdict per item) and moves in only with his words and its `design/APPROVALS.md` line.
+- Build a B′ screen from its frame in `design/screens-b/`: reuse the frame's classes, take the CSS from the frame's own CSS, and keep every shipped control and text that `design/screens-b/BUILD-NOTES.md` does not change. A tokens-only screen keeps its layout and takes the tokens and components of the frame its row names.
+- Colours only from the tokens, never a literal. Violet means found, complete, chosen or an action; status is shape and a word (filled, hatched, dashed, the logo's X for "not checked"); chart bars are ink (`design/BRAND.md` § 10). Catalogue pictures in dark sit on the tile with `mix-blend-mode: multiply`; the user's own photos are never blended.
+- Check light and dark, 390 px and 1440 px, and the longest real content at 320 and 375 px: nothing runs past the right edge.
+- This skill records no exceptions to the approved design. A gap between app and design is an issue in the repo.
+- Derived assets are generated by their scripts, never copied by hand.
+- **Functionality before pixel perfection** (Ulf, 2026-11-03): a change is fine when it helps the user or makes things easier. A decision while building frames that this answers is the session's, listed in the round with the rule as its reason; only the rest goes to Ulf, and approving frames stays his.
+- A frame for a shipped feature lists every difference from the app, found by checking every user-visible text and control in every state; fixed app copy is never bracketed; a frame that disagrees with the app's real copy goes back to a round, never through a test's tolerance.
+- **Catalogue images are not in the repo.** Committed frames show empty tiles with their alt text. Set, part and minifigure pictures for mock-ups go in the git-ignored folders under `design/sources/assets/data/`, never in a commit.
 
-- **Guide:** G1 to G4 (principles, colour, tokens, navigation), 1a data-type language, 1b app shell, 6a icons, 9a devices.
-- **Collection:** 1c Sets, 1d Set detail, 1e, 2a Minifigure, 2b Part, 2c Instruction and box, 2d Part lot, 2e Module states, 7a/7b lists and copy chooser, 8a item lists, 8c lot and order sheets.
-- **Workbench:** 3a Matchmaker, 3b Set Inspector, 3c Part Runner, 3e Set parts checker, 3f Part Spotter, 5a Orders, 5d Storage, 7d Orders detail.
-- **Planning:** 4a Wishlist, 4b Prices, 4c Complete sets, 7c.
-- **Manage:** 4d Add, 5b Tools & Admin, 5c Statistics, 7e/7f system pages, 8b forms.
-- **v1.3:** Workbench 12a Check this copy, 12b Orders desktop/iPad, 12c Storage desktop/iPad, 12d Include spare parts?, 12e Check figure parts; Collection 12f Minifigure detail, 12g Minifigures in a set, 12h Pager, 12i Sets filters (Select, Group), 12j First run without keys; Planning 12k Max price with currency; Manage 12l Catalogues & keys, 12m API tokens, 12n Collection sync (issue #10), 12o Scan a set barcode (issue #8).
+## Behaviour decisions that stand
 
-Known gaps: 12j predates schema 4.0 (the app's first run follows data-model design § 6.1), and no frame shows a wish's **Max with box** (#131; a proposal is in #136).
+These were decided before B′ and are not changed by it.
 
-## Decisions since v1
+- **Prices card** is the same everywhere (set, minifigure, part, instruction, box): label, value with unit, the min to max range for sold rows, a sub-line with count, window and age. "With box" and "Set estimate" are set-only.
+- **Part Spotter:** photograph, recognise, confirm by hand (the reference large, your photo beside it, Other possibilities below, best match not repeated), confirmed pieces go to the batch, the batch is added to loose parts or a lot in one sheet.
+- **Set Inspector:** "Missing so far" is a history of every miss in the check (a part found in full leaves it); one Missing pass at the end lists answered parts with "Found 1".
+- **Counter on the button:** − · the primary button carrying the count · +. No separate count screen.
+- **Take and give:** one transfer path from loose stock, started from either side, capped at what is needed and what is held.
+- **Every list** has search, filter, sort, removable chips and a result count, 15 per page with the shared pager.
+- **Completes set:** on a part's page, a part that completes a set shows a "Completes set" tag in place of "· n left".
+- **Status model:** Complete needs "Set is checked" and nothing missing; a missing minifigure makes a copy incomplete even when checked.
+- **Pictures:** never cropped, `object-fit: contain`; set rows show set pictures, part rows part pictures, figure rows figure pictures.
 
-- **Prices card** is identical everywhere (set, minifigure, part, instruction, box): label, value with unit, min/avg/max range bar for sold rows, sub-line with count, window and age. "With box" and "Set estimate" are set-only.
-- **Part Spotter review:** the reference part is large on top with the user's photo smaller beside it (2:1); "Other possibilities" are listed below. Best match is not repeated in the list.
-- **Part Spotter capture:** a Camera selector row and a Recognition switch (Local model | Brickognize) sit above the tabs and in the desktop capture column. Default Local model, works offline.
-- **Part Spotter flow:** snap photo, AI detects, best match shown and confirmed by hand (alternatives on demand), approved pieces go to a verified queue, when a lot is done the batch is confirmed and added to inventory.
-- **Batch confirmation sheet:** "Add 3 pieces to inventory?" with Add to: Loose parts | Assign to a lot, a lot picker row, "New lot", button "Add 3 to Pile A".
-- **Set Inspector:** "Missing so far" is a **history view** (all misses of the check, growing, scrolls; a part found in full leaves it, Ulf 14.11.), not the last 3. One **Missing pass** replaces the old "already answered" screen: a final pass over answered parts, each row "−n of m" with a "Found 1" button, hint "Found one in the pile? Tap Found 1 and the count drops.", footer "Done · 9 still missing".
-- **Part desktop (2b):** a part that completes a set shows a success chip "Completes set" in place of the "· n left" text.
-- **Desktop checker:** answer buttons sit directly under the part name, no empty gap.
-- **Images:** set rows use set covers, part rows part images on a white tile, minifigure rows minifigure images. Never cross categories.
-- **Workflows show all sizes together** (phone, 1440, 1024) in one row.
+## Until a screen is rebuilt
 
-## Brand
+The shipped design stays the record of every screen not yet rebuilt to B′; follow `design/DESIGN-CHECK.md` § Until a screen is rebuilt. Its files:
 
-- **Mark (direction D, "Courses in progress").** Three courses of a running-bond wall in hand-stitched line with abstract studs. The top course is half laid: one brick set, the next outlined and cross-stitched. Paper line on the accent tile in light, `#1A1816` line on the lighter accent in dark. Don't recolour, outline, add gradients or shadows. The dashed outline plus stitched cross doubles as the "missing / to place" pictogram.
-- **Accent (identity surfaces only).** `--bw-accent` light `oklch(0.50 0.10 215)`, dark `oklch(0.76 0.10 215)`; `--bw-accent-soft` `oklch(0.89 0.045 215)` / `oklch(0.35 0.065 215)`; `--bw-on-accent` `#FAFAF8` / `#1A1816` (`static/brickwork/brick-work.css`). Used for the logo, app icon, splash, lockup and the 24 px mark beside the app name in the top bar, and as the focus line (below). Never on controls otherwise, nor on data, charts or status.
-- **Clay stays the interaction colour:** buttons, links, selected state.
-- **Focus is the logo blue** (Ulf, 2026-11-17): the 2 px focus line around any focused field, button or link is `--tw-focus-color`, the identity accent's value (light `oklch(0.50 0.10 215)`, dark `oklch(0.76 0.10 215)`), so focus never reads as a selected or primary state. Always use the token, never `--tw-accent`, for a focus outline, border or underline.
-- **Wordmark:** "Brick Work" in Patrick Hand on brand surfaces only (splash, lockup, about). The product top bar uses Inter 600 beside the mark.
-- **No LEGO trademarks:** never the word "LEGO", its logo, red-and-yellow, a minifigure likeness or a photo-real 2 × 4 brick. Say "set", "part", "minifigure".
-- **No** second interaction colour, gradients, shadows, emoji or mascot.
-- **Voice:** warm, short, sentence case, bare counts, mid-dots, no exclamation marks. Names: "Tools & Admin", "Part Spotter", "Wishlist", "Set 1" for a copy.
+| What | Where |
+| --- | --- |
+| The design project's export, never hand-edited: pages per nav group, frames view and start page | `design/sources/frames.json`, `design/sources/index.html`, `design/sources/BW Navigator.dc.html` |
+| The export's own token copy | `design/sources/tokens-v2.css` |
+| The v1.3 frames, light and dark at 1440, 1024 and 390, with the generated manifest | `design/screens/` |
+| Captures of the built app for approval | `design/screens/approval/` |
+| Sample content | `design/sources/test-data/` |
+| Missing-image tiles | `design/sources/assets/data/placeholders/` |
+| Patrick Hand (the retired wordmark's face, leaves with U) | `static/fonts/` |
+| The old kit's handoff, build spec, coverage and section index | `reference/` beside this file |
 
-## Data-type language (apply on every screen)
-
-One form per kind of data, in the same place everywhere (frames: `1a`).
-
-- **Identity:** picture left or on top; number in mono above the name; theme and year muted below. Never coloured.
-- **Status:** one pill family, dot and word on a soft ground, ink text. Complete = success, Incomplete = warning, Sealed = info. Unknown = dashed outline.
-- **Counts:** mono, tabular, right-aligned in lists. Deficits carry a minus sign: "needs 6 · −4". Bare numbers.
-- **Money:** mono, currency first, age mark always ("€8.53 8 Oct"). Stale says "stale" in ink. Listings are labelled "listings". No data reads "no sales". Never mix currencies in one figure.
-- **Actions:** clay only. 44 px minimum, 56 px for steppers and the main phone action. One primary per screen. Destructive confirm is the only place a danger tint sits on a button.
-- **Colour:** a part colour is a swatch **filled with that colour with its name inside** (ink `#1A1816` on light colours, `#FAFAF8` on dark). Inline chip 22 px, radius 6; choice chip 56 px with a 3 px clay outline and tick when selected; the required colour on a part screen is a tile at least 96 px tall. Never a bare dot, never a colour without its name. **Colour first, part number second** everywhere. Hex values come from Rebrickable `colors.csv` (the sample colours: `design/sources/test-data/colors.json`).
-
-## Patterns
-
-Charts follow the design builder's `base/charts.md`: bars start at zero, clay is the actual value, titles state the takeaway ("12 of 40 sets incomplete"); with no message use a neutral title.
-
-- **Segmented progress strip:** found (`--tw-viz-4`), missing (`--tw-warning`), skipped (outline), to go (`--tw-viz-n1`), 8 px, gap 2 px, mono legend.
-- **Part-to-whole bar:** solid for what can be done now, outline for the rest.
-- **Range bar with average and own max:** floating min to max band, solid tick at the average, dashed line at your max, the difference next to the max with a success or warning dot.
-- **Counter on the button:** `−` · primary button carrying the count · `+`. No separate count screen.
-- **Thumb zone:** the main phone answer sits in the bottom third; sticky bars never overlap the tab bar.
-- **Take / Give:** one transfer path from loose stock, started from either side, capped at min(needs, have).
-- **Every list is filterable and sortable:** search, Filters button (sheet on phone, docked panel on desktop), Sort button, removable chips, result count.
-
-## Navigation
-
-Four groups: **Collection** (Sets, Minifigures, Parts, Instructions, Boxes), **Workbench** (Part Spotter, Set Inspector, Part Runner, Matchmaker, Orders, Storage), **Planning** (Wishlist, Prices, Complete sets), **Manage** (Add, Tools & Admin). Phone: bottom bar of the four groups with the group's items in a scrolling row under the top bar, Jump search top right. Desktop: rail with counts, collapsing to icons at 1024 px. Home is the Sets list. Theme switcher: three icon segments (auto, sun, moon), no text, in Manage and at the foot of the desktop rail.
-
-Status model: Complete requires "Set is checked" and nothing missing; a missing minifigure makes a copy incomplete even when checked. Do not change it. One person and one collection; a home-screen web app on the phone and a desktop app; English UI.
-
-## Dark mode
-
-`tw-dark` on the root, with the mark colours (`--bw-g` `oklch(0.76 0.10 215)`, `--bw-i` `#1A1816`). In bottom sheets and side panels `--tw-sheet-bg` equals `--tw-surface` in dark, so set `--tw-surface: var(--tw-surface-2)` on the sheet container so chips and segments stay visible. Use `--tw-text-muted`, not `--tw-text-faint`, for any text.
+- **Dark in the shipped app:** `tw-dark` on the root. In bottom sheets and side panels `--tw-sheet-bg` equals `--tw-surface` in dark, so set `--tw-surface: var(--tw-surface-2)` on the sheet container so chips and segments stay visible; use `--tw-text-muted`, not `--tw-text-faint`, for any text.
+- **Known v1.3 gaps:** 12j (first run) predates schema 4.0, and no v1.3 frame shows a wish's Max with box (#131, #136); both screens are tokens only in B′ (rows T7 and T6).
 
 ## Docs site
 
-The docs site (Zensical, `mkdocs.yml`) wears the same tokens as the app (approved by Ulf, 13.11., B2 of the App Docs Standard).
+The docs site (Zensical, `mkdocs.yml`) wears the app's tokens (approved by Ulf, 13.11., B2 of the App Docs Standard), so it takes B′ with them in milestone U.
 
-- **The theme is generated.** `docs/assets/brickwork-docs.css` comes from `static/web/toni/tokens-v2.css` through `scripts/docs_theme.py`. Never edit the CSS by hand: change a token in `design/tokens/brickwork-tokens.css`, run `python3 scripts/tokens_base.py build`, then `python3 scripts/docs_theme.py build`. The `docs-theme` step of `scripts/check.sh` fails when the committed files drift from what `build` writes.
-- **No colours of its own.** The token classes `.tw-light` and `.tw-dark` become Zensical's colour schemes `default` and `slate`, and every `--md-*` variable is a `var(--tw-*)` (`tests/test_docs_theme.py` checks it). Use the colour tokens themselves in any docs CSS, not tokens defined in terms of another (they resolve on `<html>` and follow the system setting).
-- **Clay** goes on links, the active tab (one 2 px underline) and the selected page (ink on `--tw-accent-soft`). The header is paper with a 0.5 px hairline and keeps the app icon on its teal identity tile. No shadows, as in the app.
-- **Admonitions** take the status soft grounds and status-coloured icons. Folded reference blocks (`??? reference`) are plain surface boxes.
-- **Fonts** are Inter and Geist Mono, copied by `docs_theme.py build` into `docs/assets/fonts/` with their licences. The docs and the demo make no external requests (the marketing pages load only the three analytics scripts of the privacy page: Cloudflare Web Analytics, Microsoft Clarity and Google Tag Manager), so a docs page must not load a font, script or image from another host.
-- Every docs page needs an entry in `mkdocs.yml`'s `nav:` (`scripts/check_nav.py`, run by `check.sh` and CI).
+- **The theme is generated.** `docs/assets/brickwork-docs.css` comes from `static/web/toni/tokens-v2.css` through `scripts/docs_theme.py`. Never edit the CSS by hand: change a token in `design/tokens/brickwork-tokens.css`, run `python3 scripts/tokens_base.py build`, then `python3 scripts/docs_theme.py build`. The `docs-theme` step of `scripts/check.sh` fails when the committed files drift.
+- **No colours of its own.** `.tw-light` and `.tw-dark` become Zensical's `default` and `slate`, and every `--md-*` variable is a `var(--tw-*)` (`tests/test_docs_theme.py`).
+- The accent goes on links, the active tab and the selected page; admonitions take the status treatment of the tokens; no shadows.
+- **Fonts** are copied by `docs_theme.py build` into `docs/assets/fonts/` with their licences. The docs and the demo make no external requests (the marketing pages load only the three analytics scripts of the privacy page), so a docs page loads no font, script or image from another host.
+- Every docs page needs an entry in `mkdocs.yml`'s `nav:` (`scripts/check_nav.py`).
 
 ## Rules for new work
 
-1. Find the screen in `design/sources/frames.json` (or `design/screens/manifest.json`), compare against its PNGs in `design/screens/` (light and dark, 1440 / 1024 / 390), take exact values from the HTML in its screen folder or the matching `design/sources/BW *.dc.html` page, and follow `design/DESIGN-CHECK.md`.
-2. Reuse a pattern from the frames before inventing one; the section map is in `reference/INDEX-brick-work-screens.md`.
-3. Use `design/sources/test-data/` for content; images must match the row category.
-4. Check light and dark, 390 px and 1440 px.
-5. New UI gets a Claude Design hand-off on its issue; list any new component and why it is needed. Where the frames have no answer, report the gap rather than editing `design/sources/`.
+1. Find the screen: a B′ frame in `design/screens-b/` (its row in `design/screens-b/BUILD-NOTES.md`), or, for a screen not yet rebuilt, its v1.3 frame in `design/screens/`.
+2. Reuse a component from the sheets before inventing one; a new component goes through a review round.
+3. Use the sample content, not invented data; images match the row's category.
+4. Check light and dark, 390 and 1440, and the narrow widths.
+5. Where the frames have no answer, report the gap on the issue rather than editing an approved frame.

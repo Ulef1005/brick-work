@@ -4,6 +4,14 @@
 
 - **Instruction links in the API and the assistant tools** (#465). `GET /items/{id}/instruction-links` and the assistant tool `get_instruction_links` return the links to a set's instructions page on LEGO (for your region) and its Rebrickable page. Nothing is fetched. You download the PDF there and attach it with Upload a PDF.
 
+- **New logo and app icon.** The logo and the app icon are now the approved violet Bond mark, three bricks with the cut-out X on the top one. Storage labels print the new mark, and a long storage name now shrinks and wraps instead of being cut off. Below 32 pixels the small mark drops the X, so the app bar shows the three bricks alone.
+
+## Brick Work 1.1.1 (schema 4.6) · 2026-11-19
+
+- **One Rebrickable pull marks the Lost Parts of the sets it brings in** (#513). A set that had no copy here before the pull used to come back as *No copy of this set in the collection yet* until a second pull. Now the pull marks its Lost Parts on the copy it adds, and the preview counts them the same way. A set the pull adds more than once still asks you to pick the copy on the next sync.
+
+- **A failed send to Rebrickable says why** (#514). Each failed row keeps its reason in the record of the last send. Wishes are no longer offered for sending while no Rebrickable wishlist is linked: they are listed with *Link a Rebrickable wishlist to send wishes to* instead of all failing.
+
 - **Ready for the MCP Registry** (#477). The repository has a `server.json` for the registry, and the image carries the matching `io.modelcontextprotocol.server.name` label. The entry starts `brickwork mcp` from the published image and talks to your running install. The listing goes up after this release.
 
 - **The README no longer promises a pile check by photo** (#478). It is built only on request (#77).
@@ -18,7 +26,7 @@
 
 - **Lost Parts from Rebrickable** (#457). When you pull your collection from Rebrickable, Brick Work can also bring in your Lost Parts and mark them as missing on the matching copy. The switch **Bring in Lost Parts** sits beside **Pull** on Collection sync. It is on by default and remembers your choice. A set with one copy is marked straight away. With several copies, you pick the copy in the preview. Parts that match no line are listed with the reason. You choose how far Rebrickable wins in **Settings → Sets and parts → Lost Parts from Rebrickable**: add only, per part (the default), per set, or everywhere. The preview says how many marks it will clear before you pull. One Undo takes the marks back with the rest of the pull.
 
-- **The focus line is blue.** The line around the field, button or link that has the focus is now the blue of the logo instead of orange, in the app and on the docs site. Orange stays the colour of buttons, links and selected states.
+- **The focus line is blue.** The line around the field, button or link that has the focus is now blue instead of orange, in the app and on the docs site, so it stands apart from the orange of buttons, links and selected states.
 
 - **Unresolved items show the pictures** (#459). The title says how many items wait for a decision. Each item shows its own picture large, and every BrickLink guess is a card with its picture, number, name and reason. **This one** keeps that guess and drops the item's other guesses in one step with one **Undo**. **None of these** drops all guesses the same way. Merge candidates use the same cards with **Merge into this**. A part shows the colours your collection holds it in as colour chips. Guess pictures are fetched from BrickLink when a card comes into view and kept in the media folder.
 

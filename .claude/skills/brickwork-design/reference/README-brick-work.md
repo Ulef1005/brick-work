@@ -1,5 +1,7 @@
 # Brick Work: brand section
 
+> **Superseded for the logo and app icon** by `design/BRAND.md` sections 1 and 2 (the violet Bond mark with the cut-out X, commission U, approved 2026-11-18 and 2026-11-19). This file is kept as the record of the retired cross-stitch brand; its files are in `design/logo/retired/` and `design/app-icon/retired/`.
+
 Sub-brand of Toni's World. Direction **D, "Courses, in progress"**. Assets in `assets/brick-work/`.
 
 ## Mark

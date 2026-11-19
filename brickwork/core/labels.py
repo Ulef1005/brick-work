@@ -5,13 +5,14 @@ from io import BytesIO
 import ipaddress
 import json
 import math
+import re
 import threading
 from pathlib import Path
 from urllib.parse import urlsplit
 from zipfile import ZipFile
 import xml.etree.ElementTree as ET
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageChops, ImageDraw, ImageFont
 
 from .transaction import transaction
 
@@ -163,46 +164,118 @@ def name_lines(name, face, width, count=2):
     return lines
 
 
+LINE_GAP = 6   # px between name lines
+
+
+def fit_name(name, size, floor, width, height, count):
+    """The largest face from `size` down to `floor` (2 px steps) at which the whole name fits in `count` lines of `width` within
+    `height`, and those lines. Only when the floor cannot hold it all is the last line cut with an ellipsis (Ulf, 2026-11-19: "the copy
+    must not be cut-off, maybe smaller font size?")."""
+    for step in range(size, floor - 1, -2):
+        face = font(step)
+        lines = name_lines(name, face, width, count + 1)
+        # `count + 1` lines leave room to see an overflow: only then does name_lines add its ellipsis, so a name that itself ends
+        # in '…' still fits, and an empty name is no lines at all.
+        if len(lines) <= count and len(lines) * (step + LINE_GAP) - LINE_GAP <= height:
+            return face, lines
+    face = font(floor)
+    rows = max(1, min(count, (height + LINE_GAP) // (floor + LINE_GAP)))
+    return face, name_lines(name, face, width, rows)
+
+
+SVG = '{http://www.w3.org/2000/svg}'
+MARK_X_MIN_SIZE = 32   # the small mark drops its cut-out X below this many pixels (Ulf's approved rule)
+_TRANSFORM = re.compile(r'^translate\(\s*(-?[\d.]+)[\s,]+(-?[\d.]+)\s*\)\s*rotate\(\s*(-?[\d.]+)\s*\)\s*scale\(\s*(-?[\d.]+)\s*\)$')
+
+
+def _transform(text):
+    """`translate(tx ty) rotate(0) scale(s)` as (tx, ty, s); any other form, or a rotation, is an error rather than a guess."""
+    found = _TRANSFORM.match((text or 'translate(0 0) rotate(0) scale(1)').strip())
+    if not found or float(found[3]) != 0 or float(found[4]) <= 0:
+        raise ValueError(f'mark-line.svg: unsupported transform {text!r}')
+    return float(found[1]), float(found[2]), float(found[4])
+
+
+def _then(outer, inner):
+    return outer[0] + outer[2] * inner[0], outer[1] + outer[2] * inner[1], outer[2] * inner[2]
+
+
 @lru_cache(maxsize=1)
-def mark_rects():
-    """The shipped mark's rectangles as plain tuples: (x, y, width, height, stroke-width, rx, dasharray or None)."""
+def _mark_svg():
+    """Parse static/brickwork/mark-line.svg: (viewbox size, plates, cut). A plate is (x, y, width, height, rx, masked) in viewBox units;
+    the cut is (segments in the plate's own units, stroke width) of the mask's X."""
     root = ET.parse(ROOT / 'static/brickwork/mark-line.svg').getroot()
-    return tuple((*(float(rect.get(k)) for k in ('x', 'y', 'width', 'height')), float(rect.get('stroke-width', '3.2')),
-                  float(rect.get('rx', 0)), rect.get('stroke-dasharray')) for rect in root.iter('{http://www.w3.org/2000/svg}rect'))
+    box = [float(v) for v in root.get('viewBox', '').split()]
+    if len(box) != 4 or box[0] != 0 or box[1] != 0 or box[2] != box[3] or box[2] <= 0:
+        raise ValueError('mark-line.svg: expected a square viewBox from 0 0')
+    defs = [e for e in root if e.tag == SVG + 'defs']
+    rects = [e for d in defs for e in d if e.tag == SVG + 'rect']
+    masks = [e for d in defs for e in d if e.tag == SVG + 'mask']
+    if len(defs) != 1 or len(rects) != 1 or len(masks) != 1 or len(defs[0]) != 2:
+        raise ValueError('mark-line.svg: expected one rect and one mask in defs')
+    rect, mask = rects[0], masks[0]
+    unit = tuple(float(rect.get(k, 0)) for k in ('x', 'y', 'width', 'height', 'rx'))
+    paths = [e for e in mask if e.tag == SVG + 'path']
+    if len(paths) != 1 or len(mask) != 2:
+        raise ValueError('mark-line.svg: expected the mask to hold one rect and one path')
+    numbers = re.findall(r'[-+]?\d*\.?\d+', paths[0].get('d', ''))
+    if re.sub(r'[-+\d.\sML,]', '', paths[0].get('d', '')) or len(numbers) % 4:
+        raise ValueError('mark-line.svg: the mask path must be M/L line segments only')
+    points = [float(v) for v in numbers]
+    cut = (tuple(tuple(points[i:i + 4]) for i in range(0, len(points), 4)), float(paths[0].get('stroke-width', 1)))
+    plates = []
+
+    def walk(element, matrix, masked):
+        for child in element:
+            if child.tag == SVG + 'defs':
+                continue
+            here = _then(matrix, _transform(child.get('transform'))) if child.tag in (SVG + 'g', SVG + 'use') else matrix
+            flag = masked
+            if child.get('mask'):
+                if child.get('mask') != f'url(#{mask.get("id")})':
+                    raise ValueError('mark-line.svg: unknown mask')
+                if child.tag != SVG + 'use' or child.get('transform'):   # the cut is placed in the use's parent space only
+                    raise ValueError('mark-line.svg: a mask only on a use without its own transform')
+                flag = True
+            if child.tag == SVG + 'g':
+                walk(child, here, flag)
+            elif child.tag == SVG + 'use':
+                if child.get('href', child.get('{http://www.w3.org/1999/xlink}href')) != f'#{rect.get("id")}':
+                    raise ValueError('mark-line.svg: a use that is not the plate')
+                tx, ty, scale = here
+                plates.append((tx + scale * unit[0], ty + scale * unit[1], scale * unit[2], scale * unit[3], scale * unit[4], flag, scale, tx, ty))
+            else:
+                raise ValueError(f'mark-line.svg: unknown element {child.tag}')
+    walk(root, (0.0, 0.0, 1.0), False)
+    if not plates:
+        raise ValueError('mark-line.svg: no plates')
+    return box[2], tuple(plates), cut
+
+
+def mark_rects():
+    """The shipped mark's plates as plain tuples in viewBox units: (x, y, width, height, rx, masked)."""
+    return tuple(plate[:6] for plate in _mark_svg()[1])
 
 
 def mark(image, xy, size):
-    """Rasterise the shipped monochrome line mark's rectangles and cross in black."""
-    draw = ImageDraw.Draw(image)
-    unit = size / 96
-    for x, y, w, h, stroke_width, rx, dasharray in mark_rects():
-        box = (xy[0] + x * unit, xy[1] + y * unit, xy[0] + (x + w) * unit, xy[1] + (y + h) * unit)
-        stroke = max(1, round(stroke_width * unit))
-        radius = rx * unit
-        if dasharray:
-            # Follow the rounded perimeter, keeping the SVG's dash spacing through corners.
-            points = []
-            for cx, cy, start in ((box[2]-radius,box[1]+radius,-90), (box[2]-radius,box[3]-radius,0),
-                                  (box[0]+radius,box[3]-radius,90), (box[0]+radius,box[1]+radius,180)):
-                for step in range(9):
-                    angle = math.radians(start + step * 90 / 8)
-                    points.append((cx + radius * math.cos(angle), cy + radius * math.sin(angle)))
-            points.append(points[0])
-            dash, gap = (float(v)*unit for v in dasharray.split())
-            distance = 0.0
-            for a, b in zip(points, points[1:]):
-                length = math.dist(a,b)
-                steps = max(1, math.ceil(length * 2))
-                for step in range(steps):
-                    if (distance + length * step / steps) % (dash + gap) < dash:
-                        t, u = step / steps, (step + 1) / steps
-                        draw.line((a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t,
-                                   a[0]+(b[0]-a[0])*u, a[1]+(b[1]-a[1])*u), fill='black', width=stroke)
-                distance += length
-        else:
-            draw.rounded_rectangle(box, radius=radius, outline='black', width=stroke)
-    for line in ((60,27,66,33), (60,33,66,27)):
-        draw.line(tuple(xy[i % 2] + v * unit for i,v in enumerate(line)), fill='black', width=max(1,round(2.4*unit)))
+    """Rasterise the shipped monochrome mark in black: three rounded plates, the third with its X cut out (from MARK_X_MIN_SIZE px up)."""
+    viewbox, plates, (segments, stroke) = _mark_svg()
+    side, grid = math.ceil(size), 4   # drawn 4x as a mask, then scaled down, for smooth edges
+    unit = side * grid / viewbox
+    total = Image.new('L', (side * grid,) * 2, 0)
+    for x, y, w, h, rx, masked, scale, tx, ty in plates:
+        layer = Image.new('L', total.size, 0)
+        draw = ImageDraw.Draw(layer)
+        draw.rounded_rectangle((x * unit, y * unit, (x + w) * unit - 1, (y + h) * unit - 1), radius=rx * unit, fill=255)
+        if masked and size >= MARK_X_MIN_SIZE:
+            width = stroke * scale * unit
+            for x1, y1, x2, y2 in segments:
+                p1, p2 = ((tx + scale * x1) * unit, (ty + scale * y1) * unit), ((tx + scale * x2) * unit, (ty + scale * y2) * unit)
+                draw.line((p1, p2), fill=0, width=round(width))
+                for cx, cy in (p1, p2):   # round caps
+                    draw.ellipse((cx - width / 2, cy - width / 2, cx + width / 2, cy + width / 2), fill=0)
+        total = ImageChops.lighter(total, layer)
+    image.paste('black', (round(xy[0]), round(xy[1])), total.resize((side, side), Image.LANCZOS))
 
 
 def label(row, layout, base, matrix_factory=qr_matrix):
@@ -215,19 +288,23 @@ def label(row, layout, base, matrix_factory=qr_matrix):
     if tape:
         image.paste(qr, ((image.width - qr.width)//2, image.height - qr.height - pad))
         mark(image, (pad, pad), px(7))
-        face = font(40)
         width = image.width - px(30)
-        draw.text((px(10), pad), name_lines(row['name'], face, width, 1)[0], font=face, fill='black')
+        face, lines = fit_name(row['name'], 40, 26, width, image.height - qr.height - pad * 3, 2)
+        y = pad
+        for line in lines:
+            draw.text((px(10), y), line, font=face, fill='black')
+            y += face.size + LINE_GAP
         draw.text((image.width - px(19), pad), row['short_id'], font=font(23, True), fill='black')
     else:
         image.paste(qr, (image.width - qr.width - pad, (image.height - qr.height)//2))
         width = image.width - qr.width - pad * 3
         mark(image, (pad, px(3)), px(8))
-        face = font(56 if layout == 'a4-21' else 69)
+        size = 56 if layout == 'a4-21' else 69
+        face, lines = fit_name(row['name'], size, round(size * 0.6), width, px(30) - px(12) - pad, 3)
         y = px(12)
-        for line in name_lines(row['name'], face, width):
+        for line in lines:
             draw.text((pad, y), line, font=face, fill='black')
-            y += face.size + 6
+            y += face.size + LINE_GAP
         draw.text((pad, px(30)), row['short_id'], font=font(28, True), fill='black')
     return image
 

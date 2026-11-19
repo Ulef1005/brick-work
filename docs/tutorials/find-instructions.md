@@ -5,7 +5,7 @@ verified: 1.0
 
 # Find and download the instructions for a set
 
-**Not available yet.** On an install today Brick Work cannot find or download booklets, because no source is set up. To add the instructions for a set, download the PDF yourself and use **Upload a PDF** under **Tools & Admin → Instruction files** ([Instruction files](../how-to/settings-and-maintenance.md#instruction-files)). Finding instructions comes back as links to each set's instructions pages ([#465](https://github.com/Ulef1005/brick-work/issues/465)). The steps below describe the finder as it is built.
+**Not available yet.** On an install today Brick Work cannot find or download instructions, because no source is set up. To add the instructions for a set, download the PDF yourself and use **Upload a PDF** under **Tools & Admin → Instruction files** ([Instruction files](../how-to/settings-and-maintenance.md#instruction-files)). Links to each set's instructions pages are planned ([#465](https://github.com/Ulef1005/brick-work/issues/465)). The steps below describe the finder for when a source is added in a later release.
 
 You own a set but have no instruction booklets for it in Brick Work. In this tutorial you let Brick Work look for the booklets on the Official source, choose which ones you want, and download them. They end up attached to the set as PDF files.
 

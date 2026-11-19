@@ -41,7 +41,7 @@ Checks the database: the SQLite integrity and foreign keys of the collection, th
 - `inventory_keys`: every part list the collection names (a set or figure and a version) exists in the catalogue.
 - `digests`: projected items agree with the catalogue row they came from (once the collection is reconciled), and the part lists the collection names agree with their own lines.
 
-A failed check prints what is wrong and the fix (restore the pair from one archive, or `catalogue rebuild`, or reconcile). A copy whose part list changed in the catalogue is counted, not a failure. Opens the files read-only. Exits with status 1 when a check finds a problem. The **Database** page of Tools & Admin runs the same check and keeps its result; this command does not.
+A failed check prints what is wrong and the fix (restore the pair from one archive, or `catalogue rebuild`, or reconcile). A copy whose part list changed in the catalogue is counted, not a failure. Opens the files read-only. Exits with status 1 when a check finds a problem. The **Database** page (**Tools & Admin → Maintenance → Backup and database check**) runs the same check and keeps its result; this command does not.
 
 ```text
 brickwork check
@@ -183,7 +183,7 @@ brickwork catalogue status
 brickwork catalogue import bricklink --from DIRECTORY
 ```
 
-`status` prints the catalogue's builds, the activations in the collection, the last reconcile, and the newest Rebrickable download. `import bricklink` builds a new catalogue with the BrickLink item lists found in `DIRECTORY`, activates it, and reconciles the collection with it. The Rebrickable download and build are `python -m brickwork.store4 --data DIR catalogue download` and `catalogue import`; a catalogue copied in by hand needs `catalogue reconcile` once. **Tools & Admin → Catalogue** does the download, the build, the rebuild, the BrickLink lists, and the reconcile from the browser ([Settings and maintenance](../how-to/settings-and-maintenance.md#catalogue)). The app also reconciles a catalogue that is not reconciled yet when it starts, and `brickwork worker` does the same.
+`status` prints the catalogue's builds, the activations in the collection, the last reconcile, and the newest Rebrickable download. `import bricklink` builds a new catalogue with the BrickLink item lists found in `DIRECTORY`, activates it, and reconciles the collection with it. The Rebrickable download and build are `python -m brickwork.store4 --data DIR catalogue download` and `catalogue import`; a catalogue copied in by hand needs `catalogue reconcile` once. **Tools & Admin → Maintenance → Catalogue** does the download, the build, the rebuild and the reconcile from the browser, and **Maintenance → BrickLink item lists** loads the BrickLink lists ([Settings and maintenance](../how-to/settings-and-maintenance.md#catalogue)). The app also reconciles a catalogue that is not reconciled yet when it starts, and `brickwork worker` does the same.
 
 ## sources
 

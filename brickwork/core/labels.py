@@ -174,7 +174,9 @@ def fit_name(name, size, floor, width, height, count):
     for step in range(size, floor - 1, -2):
         face = font(step)
         lines = name_lines(name, face, width, count + 1)
-        if len(lines) <= count and not lines[-1].endswith('…') and len(lines) * (step + LINE_GAP) - LINE_GAP <= height:
+        # `count + 1` lines leave room to see an overflow: only then does name_lines add its ellipsis, so a name that itself ends
+        # in '…' still fits, and an empty name is no lines at all.
+        if len(lines) <= count and len(lines) * (step + LINE_GAP) - LINE_GAP <= height:
             return face, lines
     face = font(floor)
     rows = max(1, min(count, (height + LINE_GAP) // (floor + LINE_GAP)))

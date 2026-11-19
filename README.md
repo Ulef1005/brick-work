@@ -116,7 +116,7 @@ Release 1.1 (schema 4.6). The schema is stable, upgrades are tested, and you ins
 On Windows or a Mac with no Git: [install with Docker Desktop](docs/how-to/install-docker-desktop.md), about 15 minutes. With Git and Docker Compose:
 
 ```sh
-git clone --branch v1.1.0 https://github.com/Ulef1005/brick-work.git
+git clone --branch v1.1.1 https://github.com/Ulef1005/brick-work.git
 cd brick-work
 mkdir -p data
 sudo chown 1000:1000 data    # the container runs as uid 1000

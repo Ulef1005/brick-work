@@ -78,7 +78,7 @@ Where things came from lives next door. On **Workbench → Storage**, follow **P
 - The list shows each place with its **Kind** and the **Orders** whose store has the same name. It also shows the number of **Copies** bought there, when it was **Last used** and what you **Spent** (from the price paid, per currency).
 - Choose a **Kind** (BrickLink store, Online shop, Shop, Market, Fair, Private or Other) and it saves at once.
 - Press a place's name to see the sets bought there.
-- **Add location** opens **Tools & Admin**, where purchase places are kept.
+- **Add location** opens **Tools & Admin → Owners, tags and places** (the **Values** page) on the purchase places.
 
 To record where a copy came from, open it, press **Edit** and choose its **Place**.
 

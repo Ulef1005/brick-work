@@ -39,7 +39,7 @@ Press **Pin** on a row to list that copy first whatever its ratio; the title the
 
 Open **Repair settings** above the list: **Shipping**, **Fees**, **Minimum order** and the **Incomplete discount**, and **Use loose stock**. With *Use loose stock* on, parts you hold loose count against a gap before anything is bought, so a gap your loose parts cover costs nothing but the fixed charges. Parts already promised to an incoming order are not counted. Press **Save settings**; **Undo** puts the old values back unless you saved again since.
 
-The BrickLink region and currency that prices must be in are set in Tools & Admin → Settings, not on this page.
+The BrickLink region and currency that prices must be in are set on the [command line](../reference/cli.md#settings) (`bricklink_region`, `bricklink_currency`), not on this page.
 
 ## Know what parting out is worth
 

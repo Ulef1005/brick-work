@@ -1,12 +1,21 @@
 # The documentation site on GitHub Pages: the README, the API reference and the MCP guide.
-# Built on every push to main; deployed only once the repository is public (Pages needs a public
+# Built for a release tag, or by hand; deployed only once the repository is public (Pages needs a public
 # repository on the current plan, and a Pages site is always public).
+# Release only since 2026-11-19 (the maintainer): a push to main no longer deploys, so the public site and
+# demo show what the latest release has, never half of a redesign. Only a stable tag (vX.Y.Z) deploys; a
+# pre-release tag does not. A hand run builds the `ref` it is given (a tag, or a branch off the release
+# tag that carries a site fix), never main by default. A tag push deploys once the github-pages environment has a v* tag rule beside main
+# (the maintainer adds it in the repository settings); a hand run starts from main.
 name: pages
 
 on:
   push:
-    branches: [main]
+    tags: ['v[0-9]+.[0-9]+.[0-9]+']   # stable releases only, as release.yml moves `latest`
   workflow_dispatch:
+    inputs:
+      ref:
+        description: "The release tag to build (e.g. v1.1.1), or a branch off it that carries a site fix"
+        required: true
 
 permissions:
   contents: read
@@ -23,6 +32,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
+          ref: ${{ inputs.ref || github.ref }}   # a tag push builds its tag
           fetch-depth: 0   # the sitemap's lastmod dates come from git history
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
         with:

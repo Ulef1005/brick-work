@@ -13,7 +13,7 @@ It takes about 30 minutes. You need a Brick Work install with the Docker setup f
 
 A backup has three parts: a copy of the database, your `secret.key` and the media folders.
 
-1. Open **Manage → Tools & Admin → Database** and select **Export database**.
+1. Open **Manage → Tools & Admin → Maintenance → Backup and database check** and select **Export database**.
 2. Keep the downloaded `brickwork.db` somewhere outside the Brick Work folder, for example on an external drive. You do not need to stop Brick Work first.
 3. Copy `secret.key` and the `data/` folders `images`, `thumbs`, `instructions` and `identifications` to the same place. Copy your settings file `data/.env` too.
 
@@ -40,7 +40,7 @@ Some upgrades change the schema and cannot be reversed by starting the old versi
 
     ```sh
     git fetch
-    git checkout v1.1.0
+    git checkout v1.1.1
     ```
 
 2. Pull the new image and restart. Up to 0.9.0 the setup builds from source, so run `docker compose build` instead of `docker compose pull`:
@@ -56,7 +56,7 @@ An upgrade that changes the schema runs on its own when the app first starts rea
 
 ## 5. Check the result
 
-1. Open `/api/v2/health` on your address, for example `http://localhost:3333/api/v2/health`. It needs no token. Read the app version and the schema, for example `"app": "1.1.0"` and `"schema": "4.6"`.
+1. Open `/api/v2/health` on your address, for example `http://localhost:3333/api/v2/health`. It needs no token. Read the app version and the schema, for example `"app": "1.1.1"` and `"schema": "4.6"`.
 2. Run the check from the terminal:
 
     ```sh

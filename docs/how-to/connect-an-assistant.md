@@ -13,7 +13,7 @@ Do this when you want an AI assistant, such as Claude Desktop or Claude Code, to
 
 Give each assistant its own token with only the scopes it needs.
 
-1. Open **Manage → Tools & Admin → API tokens**.
+1. Open **Manage → Tools & Admin → Maintenance → API tokens**.
 2. Press **Create token**.
 3. Enter a **Name**, for example `assistant`.
 4. Under **Scopes**, tick **read**. Tick **write** as well only if the assistant may change things. Assistants never need **admin**.

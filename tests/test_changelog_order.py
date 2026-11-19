@@ -5,9 +5,10 @@ from pathlib import Path
 def test_task_entries_follow_unreleased_title_newest_first():
     lines = (Path(__file__).parents[1] / 'CHANGELOG.md').read_text().splitlines()
     headings = [line for line in lines if line.startswith('#')]
-    assert headings[:14] == [
+    assert headings[:15] == [
         '# Changelog',
         '## Unreleased',
+        '## Brick Work 1.1.1 (schema 4.6) · 2026-11-19',
         '## Brick Work 1.1.0 (schema 4.6) · 2026-11-16',
         '## Brick Work 1.0.1 (schema 4.2) · 2026-11-10',
         '## Brick Work 1.0.0 (schema 4.2) · 2026-11-09',

@@ -5,6 +5,8 @@ verified: 1.0
 
 # Find and download the instructions for a set
 
+**Not available yet.** On an install today Brick Work cannot find or download booklets, because no source is set up. To add the instructions for a set, download the PDF yourself and use **Upload a PDF** under **Tools & Admin → Instruction files** ([Instruction files](../how-to/settings-and-maintenance.md#instruction-files)). Finding instructions comes back as links to each set's instructions pages ([#465](https://github.com/Ulef1005/brick-work/issues/465)). The steps below describe the finder as it is built.
+
 You own a set but have no instruction booklets for it in Brick Work. In this tutorial you let Brick Work look for the booklets on the Official source, choose which ones you want, and download them. They end up attached to the set as PDF files.
 
 It takes about 10 minutes. You need a Brick Work install with the catalogue loaded and at least one set in your collection. The install needs network access to the Official source. Every number and name comes from an invented collection, so yours will differ.
@@ -56,7 +58,7 @@ Some booklets are large. One for a big set can be more than 300 MB, while most a
 
 Brick Work checks that each file is a real PDF before it keeps it. It stores the file the same way as an upload, so two identical files are kept once. The booklet title becomes the label, and the PDF appears under the set on the **Instructions & Box** tab.
 
-If the Official source says **needs a page renderer: not set up**, this instance cannot read its pages yet. Rebrickable and Peeron work without it.
+If the Official source says **needs a page renderer: not set up**, this instance cannot read its pages yet, and no other source is set up.
 
 ## What next
 

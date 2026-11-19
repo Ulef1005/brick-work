@@ -4,8 +4,8 @@
     python3 b_frames.py check     rebuild in memory, compare the HTML byte for byte and the PNGs within 0.1 % (exit 1 on drift)
 
 Approved 2026-11-19 (Ulf: "Approve all as shown (Recommended)"; review artifact https://claude.ai/artifact/FX8PAj3J9cgVkY42oPGc8a,
-version 3; design/APPROVALS.md). The frames use one stylesheet (B_CSS) on the app's own token names (--tw-*), so the app's CSS can be
-generated from it. Copy comes from the shipped templates, changed only where an approved item says. Fonts are the self-hosted IBM Plex
+version 3; design/APPROVALS.md). The frames use one stylesheet on the app's own token names (--tw-*): B_RESETS for the frame page
+and B_COMPONENTS (rounds 2, 3 and 6, plain literals), from which the app generates static/brickwork/b-prime.css (#492). Copy comes from the shipped templates, changed only where an approved item says. Fonts are the self-hosted IBM Plex
 files in design/fonts. Set pictures are drawn as empty white tiles with their alt text: the review showed catalogue pictures, which
 this public repo does not carry (design-builder: committed frames carry synthetic content; the layout is the approved one).
 Renderer: Playwright Chromium at device scale 2 (BRAND_CHROMIUM may name a Chromium binary).
@@ -36,6 +36,9 @@ TOKENS = {
     '--tw-on-accent': ('#FFFFFF', '#FFFFFF', 'text on violet, 6.7:1'),
     '--tw-focus-color': ('teal oklch(0.50 0.10 215)', '#1A1E1E', 'ink: 2 px ring, 2 px offset, so focus never reads as violet selection'),
     '--tw-danger': ('oklch(0.62 0.18 25)', '#8B4F54', 'errors only; with a word, never colour alone'),
+    '--tw-field': ('none', '#FFFFFF', 'new: the ground of fields and the camera box (#492)'),
+    '--tw-tile': ('none', '#FFFFFF', 'new: picture tiles (#492)'),
+    '--tw-tile-ink': ('none', '#59615F', 'new: alt text on a tile (#492)'),
     '--tw-r-1': ('6px', '3px', 'controls, tags, tape'),
     '--tw-r-2': ('10px', '4px', 'cards, tiles'),
     '--tw-r-3': ('16px', '8px', 'sheets'),
@@ -52,11 +55,16 @@ FACES = [('IBM Plex Sans', w, f'IBMPlexSans-{n}.woff2') for w, n in ((400, 'Regu
 def font_css(rel):
     return ''.join(f"@font-face{{font-family:'{f}';font-weight:{w};src:url('{rel}/{file}') format('woff2')}}" for f, w, file in FACES)
 
-B_CSS = '''
+# The stylesheet, in two parts (#492): B_RESETS is the frame page's own (box model, the frame ground, the base font), kept in page();
+# B_COMPONENTS holds the shell and component rules, round 2, round 3 and round 6 in cascade order, as plain string literals so the
+# app's generator reads them by ast and writes static/brickwork/b-prime.css from them. Tokens only, except the literals SWAPS swaps for dark.
+B_RESETS = '''
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{background:var(--tw-bg);color:var(--tw-text);font:400 15px/1.45 var(--tw-font),system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow:hidden}
 img{display:block}
-.mono{font-family:var(--tw-mono),ui-monospace,monospace;font-variant-numeric:tabular-nums}
+'''
+B_COMPONENTS = (
+'''.mono{font-family:var(--tw-mono),ui-monospace,monospace;font-variant-numeric:tabular-nums}
 .ic{flex:none}
 /* shell */
 .top{height:60px;background:var(--tw-surface);border-bottom:1.5px solid var(--tw-rule);display:flex;align-items:center;gap:34px;padding:0 28px}
@@ -94,8 +102,8 @@ img{display:block}
 .xchip i{width:16px;height:16px;border-radius:3px;background:var(--tw-accent);display:flex;align-items:center;justify-content:center}
 .big{font:600 28px/32px var(--tw-mono);letter-spacing:-.02em}
 .field{display:flex;flex-direction:column;gap:6px;font:500 13px var(--tw-font);color:var(--tw-text-2)}
-.input{height:44px;border:1px solid var(--tw-text-muted);border-radius:var(--tw-r-1);background:#fff;display:flex;align-items:center;padding:0 12px;font:400 15px var(--tw-font);color:var(--tw-text)}
-.tile{background:#fff;display:flex;align-items:center;justify-content:center;border-radius:2px;overflow:hidden}
+.input{height:44px;border:1px solid var(--tw-text-muted);border-radius:var(--tw-r-1);background:var(--tw-field);display:flex;align-items:center;padding:0 12px;font:400 15px var(--tw-font);color:var(--tw-text)}
+.tile{background:var(--tw-tile);color:var(--tw-tile-ink);display:flex;align-items:center;justify-content:center;border-radius:2px;overflow:hidden}
 .tile img{max-width:100%;max-height:100%;object-fit:contain}
 .ext{display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 12px;border-radius:var(--tw-r-1);box-shadow:inset 0 0 0 1.5px var(--tw-text);font:600 14px var(--tw-font);color:var(--tw-text);white-space:nowrap}
 /* phone */
@@ -106,7 +114,51 @@ img{display:block}
 .tabbar{position:absolute;left:0;right:0;bottom:0;height:78px;border-top:1px solid var(--tw-divider);background:var(--tw-surface);display:flex;padding-top:9px}
 .tabbar div{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;font:500 11px var(--tw-font);color:var(--tw-text-muted)}
 .tabbar div.on{color:var(--tw-text)} .tabbar div.on b{display:block;width:18px;height:3px;border-radius:2px;background:var(--tw-accent);margin-top:1px}
-'''
+
+''',
+'''.seg{display:flex;border:1.5px solid var(--tw-text);border-radius:3px;font:600 12px var(--tw-font-label);letter-spacing:.08em;text-transform:uppercase}
+.seg span{padding:6px 10px} .seg span.on{background:var(--tw-text);color:var(--tw-bg)}
+.stabs{display:flex;gap:24px;font:500 14px var(--tw-font);border-bottom:1px solid var(--tw-divider)}
+.stabs span{padding:10px 0 9px;color:var(--tw-text-2);border-bottom:2px solid transparent;white-space:nowrap}
+.stabs span.on{color:var(--tw-text);font-weight:600;border-bottom-color:var(--tw-accent)}
+.stile{background:var(--tw-surface);border:1px solid var(--tw-divider);border-radius:var(--tw-r-2);padding:9px;display:flex;flex-direction:column;min-width:0}
+.stile .num{border-top:1.5px solid var(--tw-rule);margin-top:8px;padding-top:6px;display:flex;align-items:baseline;justify-content:space-between;font:600 18px var(--tw-mono)}
+.stile .nm{font:600 14px/18px var(--tw-font);margin:3px 0 2px;min-height:36px}
+.stile .meta{font-size:12.5px;color:var(--tw-text-2);margin-bottom:8px}
+.bar{display:flex;height:8px} .bar i{display:block}
+.bartxt{font:400 12px var(--tw-mono);color:var(--tw-text-2);margin:4px 0 6px;white-space:nowrap;display:flex;align-items:center;gap:6px}
+.idx{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--tw-divider);font:500 14px var(--tw-font)}
+.idx.on{color:var(--tw-accent);font-weight:600}
+.cells{display:flex;flex-wrap:wrap;gap:3px}
+.cells i{display:block;width:11px;height:11px;border-radius:2px}
+.cells .f{background:var(--tw-accent)} .cells .m{border:1.5px solid var(--tw-text);background:repeating-linear-gradient(45deg,var(--tw-text) 0 1.5px,transparent 1.5px 4px)} .cells .u{border:1.5px dashed var(--tw-text-2)}
+.cnt{display:flex;align-items:stretch;border:1.5px solid var(--tw-text);border-radius:3px}
+.cnt .k{padding:8px 12px;border-right:1.5px solid var(--tw-text)} .cnt .v{padding:9px 12px;flex:1;min-width:0}
+.step{display:flex;align-items:center;border:1.5px solid var(--tw-text);border-radius:3px;height:56px}
+.step b{width:56px;height:100%;display:flex;align-items:center;justify-content:center;font:600 24px var(--tw-font)}
+.step span{min-width:56px;text-align:center;font:600 22px var(--tw-mono);border-left:1.5px solid var(--tw-text);border-right:1.5px solid var(--tw-text);height:100%;display:flex;align-items:center;justify-content:center}
+
+''',
+'''.sw{width:40px;height:24px;border-radius:12px;border:1.5px solid var(--tw-text);position:relative;flex:none;background:var(--tw-surface)}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:15px;height:15px;border-radius:50%;background:var(--tw-text)}
+.sw.on{background:var(--tw-accent);border-color:var(--tw-accent)} .sw.on::after{left:19px;background:var(--tw-on-accent)}
+.cb{width:22px;height:22px;border:1.5px solid var(--tw-text);border-radius:3px;flex:none;display:flex;align-items:center;justify-content:center}
+.cb.on{background:var(--tw-accent);border-color:var(--tw-accent)}
+.src{display:flex;gap:8px} .src span{flex:1;min-width:0;border:1.5px solid var(--tw-divider);border-radius:3px;padding:5px 9px;font:600 13px var(--tw-font);color:var(--tw-text-2)}
+.src span small{display:block;font:400 11.5px var(--tw-mono);color:var(--tw-text-muted)}
+.src span.on{border-color:var(--tw-accent);background:var(--tw-accent-soft);color:var(--tw-accent)} .src span.on small{color:var(--tw-text-2)}
+.src span.off{border-style:solid;color:var(--tw-text-muted);background:transparent}
+.stat{border-top:1.5px solid var(--tw-rule);padding-top:6px;min-width:0}
+.stat .v{font:600 22px/28px var(--tw-mono);letter-spacing:-.02em} .stat .s{font:400 11.5px var(--tw-mono);color:var(--tw-text-2)}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--tw-bg);border-radius:var(--tw-r-3) var(--tw-r-3) 0 0;border-top:1.5px solid var(--tw-rule);padding:10px 16px 24px;box-shadow:0 -8px 24px rgba(26,30,30,.18)}
+.scrim{position:absolute;inset:0;background:rgba(26,30,30,.38)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 18px;font-size:13.5px} .kv dt{color:var(--tw-text-2)} .kv dd{font-weight:500}
+.chip{display:inline-flex;align-items:center;height:22px;padding:0 7px;border-radius:3px;font:500 12px var(--tw-font);white-space:nowrap}
+.ptile{width:44px;height:44px;flex:none;background:var(--tw-tile);border:1px solid var(--tw-divider);border-radius:2px;display:flex;align-items:flex-end;justify-content:center;font:400 9px var(--tw-mono);color:var(--tw-tile-ink);padding-bottom:3px}
+
+''',
+)
+B_CSS = B_RESETS + B_COMPONENTS[0]
 
 IC = {
     'search': '<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/>', 'plus': '<path d="M12 5v14M5 12h14"/>',
@@ -130,7 +182,7 @@ def lockup(h=32):
 
 def picture(img, alt):
     """A set picture's box with its alt text: the committed frames carry no catalogue pictures."""
-    return f'<span style="font:400 11px var(--tw-font);color:var(--tw-text-muted);text-align:center;padding:4px">{alt}</span>'
+    return f'<span style="font:400 11px var(--tw-font);color:var(--tw-tile-ink);text-align:center;padding:4px">{alt}</span>'
 
 
 XGLYPH = ('<svg width="10" height="10" viewBox="0 0 10 10"><path d="M2.6 2.6l4.8 4.8M7.4 2.6l-4.8 4.8" stroke="#fff" '
@@ -296,29 +348,8 @@ def parts_body(_phone=False):
 # Part Runner, empty Sets. Built on the round 2 stylesheet; EXTRA_CSS adds round 3's components.
 HATCH = 'repeating-linear-gradient(45deg,var(--tw-text) 0 1.5px,transparent 1.5px 4px)'
 
-EXTRA_CSS = '''
-.seg{display:flex;border:1.5px solid var(--tw-text);border-radius:3px;font:600 12px var(--tw-font-label);letter-spacing:.08em;text-transform:uppercase}
-.seg span{padding:6px 10px} .seg span.on{background:var(--tw-text);color:var(--tw-bg)}
-.stabs{display:flex;gap:24px;font:500 14px var(--tw-font);border-bottom:1px solid var(--tw-divider)}
-.stabs span{padding:10px 0 9px;color:var(--tw-text-2);border-bottom:2px solid transparent;white-space:nowrap}
-.stabs span.on{color:var(--tw-text);font-weight:600;border-bottom-color:var(--tw-accent)}
-.stile{background:var(--tw-surface);border:1px solid var(--tw-divider);border-radius:var(--tw-r-2);padding:9px;display:flex;flex-direction:column;min-width:0}
-.stile .num{border-top:1.5px solid var(--tw-rule);margin-top:8px;padding-top:6px;display:flex;align-items:baseline;justify-content:space-between;font:600 18px var(--tw-mono)}
-.stile .nm{font:600 14px/18px var(--tw-font);margin:3px 0 2px;min-height:36px}
-.stile .meta{font-size:12.5px;color:var(--tw-text-2);margin-bottom:8px}
-.bar{display:flex;height:8px} .bar i{display:block}
-.bartxt{font:400 12px var(--tw-mono);color:var(--tw-text-2);margin:4px 0 6px;white-space:nowrap;display:flex;align-items:center;gap:6px}
-.idx{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--tw-divider);font:500 14px var(--tw-font)}
-.idx.on{color:var(--tw-accent);font-weight:600}
-.cells{display:flex;flex-wrap:wrap;gap:3px}
-.cells i{display:block;width:11px;height:11px;border-radius:2px}
-.cells .f{background:var(--tw-accent)} .cells .m{border:1.5px solid var(--tw-text);background:''' + HATCH + '''} .cells .u{border:1.5px dashed var(--tw-text-2)}
-.cnt{display:flex;align-items:stretch;border:1.5px solid var(--tw-text);border-radius:3px}
-.cnt .k{padding:8px 12px;border-right:1.5px solid var(--tw-text)} .cnt .v{padding:9px 12px;flex:1;min-width:0}
-.step{display:flex;align-items:center;border:1.5px solid var(--tw-text);border-radius:3px;height:56px}
-.step b{width:56px;height:100%;display:flex;align-items:center;justify-content:center;font:600 24px var(--tw-font)}
-.step span{min-width:56px;text-align:center;font:600 22px var(--tw-mono);border-left:1.5px solid var(--tw-text);border-right:1.5px solid var(--tw-text);height:100%;display:flex;align-items:center;justify-content:center}
-'''
+EXTRA_CSS = '\n' + B_COMPONENTS[1]
+assert HATCH in EXTRA_CSS   # B_COMPONENTS writes HATCH out as a literal
 
 
 def colour_fill(hex_):
@@ -635,24 +666,7 @@ def page3(body, w, h):
 
 
 # ==== Round 6 (approved 2026-11-19, Ulf: "approved"; artifact version 11): Set detail, Part Spotter, Lot Sorter, Order missing parts, Orders ====
-CSS6 = '''
-.sw{width:40px;height:24px;border-radius:12px;border:1.5px solid var(--tw-text);position:relative;flex:none;background:var(--tw-surface)}
-.sw::after{content:"";position:absolute;top:3px;left:3px;width:15px;height:15px;border-radius:50%;background:var(--tw-text)}
-.sw.on{background:var(--tw-accent);border-color:var(--tw-accent)} .sw.on::after{left:19px;background:var(--tw-on-accent)}
-.cb{width:22px;height:22px;border:1.5px solid var(--tw-text);border-radius:3px;flex:none;display:flex;align-items:center;justify-content:center}
-.cb.on{background:var(--tw-accent);border-color:var(--tw-accent)}
-.src{display:flex;gap:8px} .src span{flex:1;min-width:0;border:1.5px solid var(--tw-divider);border-radius:3px;padding:5px 9px;font:600 13px var(--tw-font);color:var(--tw-text-2)}
-.src span small{display:block;font:400 11.5px var(--tw-mono);color:var(--tw-text-muted)}
-.src span.on{border-color:var(--tw-accent);background:var(--tw-accent-soft);color:var(--tw-accent)} .src span.on small{color:var(--tw-text-2)}
-.src span.off{border-style:solid;color:var(--tw-text-muted);background:transparent}
-.stat{border-top:1.5px solid var(--tw-rule);padding-top:6px;min-width:0}
-.stat .v{font:600 22px/28px var(--tw-mono);letter-spacing:-.02em} .stat .s{font:400 11.5px var(--tw-mono);color:var(--tw-text-2)}
-.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--tw-bg);border-radius:var(--tw-r-3) var(--tw-r-3) 0 0;border-top:1.5px solid var(--tw-rule);padding:10px 16px 24px;box-shadow:0 -8px 24px rgba(26,30,30,.18)}
-.scrim{position:absolute;inset:0;background:rgba(26,30,30,.38)}
-.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 18px;font-size:13.5px} .kv dt{color:var(--tw-text-2)} .kv dd{font-weight:500}
-.chip{display:inline-flex;align-items:center;height:22px;padding:0 7px;border-radius:3px;font:500 12px var(--tw-font);white-space:nowrap}
-.ptile{width:44px;height:44px;flex:none;background:#fff;border:1px solid var(--tw-divider);border-radius:2px;display:flex;align-items:flex-end;justify-content:center;font:400 9px var(--tw-mono);color:var(--tw-text-muted);padding-bottom:3px}
-'''
+CSS6 = B_COMPONENTS[2]
 CHECK = '<svg width="14" height="14" viewBox="0 0 14 14"><path d="M3 7.2l2.6 2.6L11 4.4" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>'
 COL = {'Black': '#1B2A34', 'White': '#F4F4F4', 'Red': '#C91A09', 'Yellow': '#F2CD37', 'Tan': '#E4CD9E', 'Light Bluish Gray': '#A0A5A9',
        'Dark Bluish Gray': '#6C6E68', 'Medium Nougat': '#AA7D55', 'Dark Tan': '#958A73'}
@@ -813,7 +827,7 @@ def spotter_body(phone):
             '<div style="display:flex;gap:16px;flex-wrap:wrap"><div class="field">Recognition<div class="seg"><span style="color:var(--tw-text-muted)">Local model</span><span class="on">Brickognize</span></div></div>'
             '<div class="field">Identify<div class="seg"><span class="on">Parts</span><span>Figures</span></div></div></div>'
             '<div class="mono" style="font-size:11.5px;color:var(--tw-text-muted)">Local model · Not available yet</div></div>')
-    vf = ('<div style="position:relative;height:250px;background:#fff;border:1.5px solid var(--tw-text);border-radius:var(--tw-r-2);overflow:hidden">'
+    vf = ('<div style="position:relative;height:250px;background:var(--tw-field);border:1.5px solid var(--tw-text);border-radius:var(--tw-r-2);overflow:hidden">'
           '<div style="position:absolute;inset:18px;border:1.5px dashed var(--tw-text-2);border-radius:3px"></div>'
           '<div class="tape" style="position:absolute;left:10px;top:10px">Piece 4</div></div>')
     shoot = ('<span class="btn" style="width:100%;height:52px">Take picture</span>'
@@ -1071,7 +1085,6 @@ DARK_VARS = ';'.join(f'{k}:{DARK.get(k, v[1])}' for k, v in TOKENS.items()) + ';
     f'{k}:{v}' for k, v in DARK.items() if k not in TOKENS)
 DARK_CSS = '''
 html{color-scheme:dark}
-.tile span{color:var(--tw-tile-ink)!important}
 .tile img{mix-blend-mode:multiply}   /* catalogue pictures only; Ulf 19.11.: "B" (light grey tile, multiply) */
 .xchip svg path,.cb svg path{stroke:var(--tw-on-accent)}
 '''
@@ -1080,11 +1093,6 @@ SWAPS = [
     ('box-shadow:0 -8px 24px rgba(26,30,30,.18)', 'box-shadow:0 -8px 24px rgba(0,0,0,.5)'),
     ('.scrim{position:absolute;inset:0;background:rgba(26,30,30,.38)}', '.scrim{position:absolute;inset:0;background:rgba(0,0,0,.55)}'),
     ('rgba(26,30,30,.18)', 'rgba(227,230,226,.24)'),       # the hatched tag's tint
-    ('.input{height:44px;border:1px solid var(--tw-text-muted);border-radius:var(--tw-r-1);background:#fff;',
-     '.input{height:44px;border:1px solid var(--tw-text-muted);border-radius:var(--tw-r-1);background:var(--tw-field);'),
-    ('.tile{background:#fff;', '.tile{background:var(--tw-tile);'),
-    ('.ptile{width:44px;height:44px;flex:none;background:#fff;', '.ptile{width:44px;height:44px;flex:none;background:var(--tw-tile);'),
-    ('height:250px;background:#fff;border:1.5px solid var(--tw-text)', 'height:250px;background:var(--tw-field);border:1.5px solid var(--tw-text)'),
 ]
 DARK_WORDS = [('White on violet, 6.7:1.', 'Ink on violet, 6.5:1.'), ('the logo\u2019s X, white on a violet square', 'the logo\u2019s X, ink on a violet square')]   # step 7
 LOCKUP_DARK = (DESIGN / 'logo' / 'lockup-horizontal-dark.svg').read_text()

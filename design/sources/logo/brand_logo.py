@@ -29,6 +29,9 @@ PAPER = '#FAFAF8'
 DARK = '#111214'
 LIGHT_TEXT = '#EDEDEF'
 WHITE = '#FFFFFF'
+# The web manifest's theme and background colour: the B′ app bar surface, --tw-surface (W-Q7, Ulf 19.11.: "App bar surface (Recommended)").
+# A manifest holds one value; the dark one, #1F2322, goes in the app's <meta name="theme-color" media="(prefers-color-scheme: dark)">.
+MANIFEST_LIGHT, MANIFEST_DARK = '#F8F8F6', '#1F2322'
 
 # One unit (w, h, r) and its three placements (cx, cy, rotation), fitted into the 100 x 100 box with a 4-unit margin.
 UNIT = (44, 26, 9)
@@ -156,7 +159,7 @@ def manifest_snippet():
     icons = [{'src': f'icons/icon-{s}.png', 'sizes': f'{s}x{s}', 'type': 'image/png', 'purpose': 'any'} for s in (192, 512, 1024)]
     icons += [{'src': f'icons/icon-maskable-{s}.png', 'sizes': f'{s}x{s}', 'type': 'image/png', 'purpose': 'maskable'}
               for s in (192, 512, 1024)]
-    return json.dumps({'icons': icons, 'theme_color': VIOLET, 'background_color': PAPER}, indent=2) + '\n'
+    return json.dumps({'icons': icons, 'theme_color': MANIFEST_LIGHT, 'background_color': MANIFEST_LIGHT}, indent=2) + '\n'
 
 
 def render(items):
@@ -236,7 +239,10 @@ def main(cmd):
             continue    # rebuilt from the PNGs, which are checked
         elif p.read_bytes() != data:
             bad.append(f'{k}: differs')
-    if (HERE / 'manifest-snippet.json').read_text() != snippet:
+    ms = HERE / 'manifest-snippet.json'
+    if not ms.exists():
+        bad.append('sources/logo/manifest-snippet.json: missing')
+    elif ms.read_text() != snippet:
         bad.append('sources/logo/manifest-snippet.json: differs')
     for line in bad:
         print('LOGO:', line)

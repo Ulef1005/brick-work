@@ -2,6 +2,7 @@
 const CACHE = 'brickwork-shell-4.1a-__ASSET_VERSION__';
 const ASSETS = [
   "/static/brickwork/app-icon.svg",
+  "/static/brickwork/b-prime.css",
   "/static/brickwork/brick-work.css",
   "/static/brickwork/favicon-16.png",
   "/static/brickwork/favicon-32.png",

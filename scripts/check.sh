@@ -175,6 +175,7 @@ else
     step tokens "$python" scripts/tokens_base.py check
     step docs-theme "$python" scripts/docs_theme.py check
     step brand "$python" scripts/brand_assets.py check
+    step b-prime "$python" scripts/b_prime_css.py check
     step screens "$python" scripts/design_screens.py check
   fi
   # The standalone smoke test (tests/test_standalone_smoke.py) runs inside this step; it has no step of its own, which would only run it twice

@@ -104,7 +104,6 @@ def test_the_copy_carries_its_provenance():
 import ast  # noqa: E402
 
 FRAMES = ROOT / 'design' / 'sources' / 'b' / 'b_frames.py'
-BRAND = ROOT / 'design' / 'BRAND.md'
 
 
 def frame_values():
@@ -116,12 +115,6 @@ def frame_values():
             found[node.targets[0].id] = ast.literal_eval(node.value)
     light = {k: v[1] for k, v in found['TOKENS'].items() if not v[1].startswith('none')}
     return light, found['DARK']
-
-
-def brand_light():
-    """The light column of BRAND.md § 3 for the roles TOKENS does not carry (field, tile, tile ink)."""
-    rows = re.findall(r'^\| `(--tw-[a-z0-9-]+)` \| `(#[0-9A-Fa-f]{6})`', BRAND.read_text(encoding='utf-8'), re.M)
-    return dict(rows)
 
 
 def family(value):
@@ -150,8 +143,7 @@ def test_the_light_blocks_carry_the_frames_values(selector):
                 assert have[name] == value, name
             continue
         assert have[name].upper() == value.upper(), f'{selector} {name}: {have.get(name)} is not the frames\' {value}'
-    for name in ('--tw-field', '--tw-tile', '--tw-tile-ink'):
-        assert have[name].upper() == brand_light()[name].upper(), f'{selector} {name} is not BRAND.md § 3'
+    assert {'--tw-field', '--tw-tile', '--tw-tile-ink'} <= set(light)   # in TOKENS since #537
 
 
 @pytest.mark.parametrize('selector', DARK_BLOCKS)

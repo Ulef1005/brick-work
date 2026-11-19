@@ -156,7 +156,7 @@
 /* Brick Work layer · design tokens, B′ Drawer Tag (#492; approved 2026-11-19, design/BRAND.md § 3 and § 4).
    Loaded after design/tokens/tokens.css (the design builder's neutral base). It redefines every colour role light and
    dark, the type and the radii. The B′ roles take their values from design/sources/b/b_frames.py (TOKENS light, DARK
-   dark) and design/BRAND.md § 3; tests/test_design_tokens.py pins them, so a change starts in the frames.
+   dark) (field, tile and tile ink included); tests/test_design_tokens.py pins them, so a change starts in the frames.
    The --tw-* names are the house's contract names and carry no Toni's World brand here.
 
    Kept for the screens not rebuilt to B′ yet (DESIGN-CHECK § Until a screen is rebuilt: "Status uses the status tokens"):

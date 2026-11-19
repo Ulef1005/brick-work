@@ -50,10 +50,6 @@ def test_every_url_served_before_the_move_answers_with_the_same_bytes(app4):
             assert set(content.decode().splitlines()) <= set(response.get_data().decode().splitlines()), url
         elif url in SWAPPED:   # new bytes, served from the file on disk
             assert response.get_data() == brand_assets.mapping()[url.removeprefix('/static/brickwork/')].read_bytes() != content, url
-        elif url.endswith('/brick-work.css'):   # #492: the retired identity (the teal --bw-accent, Patrick Hand, .bw-wordmark) left; every other line stays
-            gone = {line for line in content.decode().splitlines() if any(k in line for k in ('--bw-accent', 'Patrick Hand', '.bw-wordmark', 'secondary accent'))}
-            assert len(gone) == 6, gone
-            assert set(response.get_data().decode().splitlines()) - {''} == set(content.decode().splitlines()) - gone - {''}, url
         elif url.endswith('/manifest.webmanifest'):   # workflow naming (#204) and direct workflow shortcuts (#412)
             expected = json.loads(content.replace(b'Part to Inventory', b'Part Spotter'))
             expected['icons'] += [dict(src='/static/brickwork/icons/icon-maskable-1024.png', sizes='1024x1024', type='image/png', purpose='maskable')]

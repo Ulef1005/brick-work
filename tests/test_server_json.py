@@ -32,3 +32,12 @@ def test_server_json_fits_the_registry_schema_limits():
     assert len(SERVER["description"]) <= 100 and len(SERVER["title"]) <= 100   # maxLength in the registry's server.schema.json
     (package,) = SERVER["packages"]
     assert package["runtimeHint"] == "docker"   # the schema asks for a hint whenever runtimeArguments are present
+
+
+def test_server_name_namespace_matches_the_github_login_exactly():
+    # The MCP Registry's namespace is case-sensitive: io.github.<login>/ must spell the login as GitHub does (#536); the
+    # image name on ghcr.io stays lowercase, as container registries require.
+    owner = SERVER["repository"]["url"].removeprefix("https://github.com/").split("/")[0]
+    assert owner == "Ulef1005"
+    assert SERVER["name"] == f"io.github.{owner}/brick-work"
+    assert SERVER["packages"][0]["identifier"].startswith(f"ghcr.io/{owner.lower()}/")

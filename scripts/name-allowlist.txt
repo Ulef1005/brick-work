@@ -64,3 +64,4 @@ docs/brickwork/mcp.md	host\.docker\.internal	The same Docker host name, in the M
 design/screens-b/08-sets-empty/*	Rebrickable, Brickset, BrickTracker or a BrickLink file	Approved empty-Sets copy (commission U round 3): the retained importer's name.
 design/sources/b/b_frames.py	Rebrickable, Brickset, BrickTracker or a BrickLink file	Frame source of the approved empty-Sets copy.
 design/screens-b/BUILD-NOTES.md	Rebrickable, Brickset, BrickTracker and a BrickLink file	Build notes of the empty-Sets screen.
+design/website/*	inspired by BrickTracker|coming-from/bricktracker/|<b>BrickTracker</b>	The approved #526 site frames (W-01 home, W-02 install) carry the shipped site's footer credit and its coming-from link.

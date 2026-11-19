@@ -21,7 +21,7 @@
     if (!box) {
       box = document.createElement('p');
       box.id = 'bw-demo-toast'; box.setAttribute('role', 'status');
-      box.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:2147483647;margin:0;padding:12px 16px;border-radius:12px;background:#1A1816;color:#FAFAF8;font:500 14px/20px Inter,system-ui,sans-serif;max-width:calc(100% - 32px);text-align:center';
+      box.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:2147483647;margin:0;padding:12px 16px;border-radius:12px;background:var(--tw-toast-bg);color:var(--tw-toast-fg);font:500 14px/20px var(--tw-font),system-ui,sans-serif;max-width:calc(100% - 32px);text-align:center';
       document.body.append(box);
     }
     box.textContent = text; box.hidden = false;
@@ -32,7 +32,7 @@
   document.addEventListener('DOMContentLoaded', () => {
     const bar = document.createElement('p');
     bar.id = 'bw-demo-banner';
-    bar.style.cssText = 'margin:0;padding:8px 16px;background:#E8E2D6;color:#1A1816;font:500 13px/18px Inter,system-ui,sans-serif;text-align:center';
+    bar.style.cssText = 'margin:0;padding:8px 16px;background:var(--tw-surface-2);color:var(--tw-text);font:500 13px/18px var(--tw-font),system-ui,sans-serif;text-align:center';
     bar.append('Demo with sample data · changes are not saved · Set pictures: Rebrickable · LEGO® is a trademark of the LEGO Group of companies, which does not sponsor, authorize or endorse this site · ');
     const link = document.createElement('a');
     link.href = 'https://github.com/Ulef1005/brick-work'; link.textContent = 'Brick Work on GitHub'; link.style.color = 'inherit';

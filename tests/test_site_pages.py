@@ -655,3 +655,26 @@ def test_every_demo_page_names_the_demo_entry_as_canonical(site):
     assert len(pages) > 5
     for page in pages:
         assert page.read_text().count(canonical) == 1, page
+
+
+@pytest.mark.parametrize('opening,summary', [
+    ('A feature release. The schema moves in place.', 'A feature release.'),
+    ('- **One pull marks the Lost Parts** (#513). A set that had no copy.', 'One pull marks the Lost Parts.'),
+    ('- **Is `config.yml` read?** (#1). More.', 'Is config.yml read?'),
+])
+def test_latest_release_summary_is_plain_text(tmp_path, monkeypatch, opening, summary):
+    """The home page's What's new lede is prose: a release that opens with its entries gives the first entry's title, not raw Markdown."""
+    import scripts.build_site as build_site
+    (tmp_path / 'CHANGELOG.md').write_text(f'# Changelog\n\n## Unreleased\n\n## Brick Work 9.9.9 (schema 4.6) · 2026-11-19\n\n{opening}\n')
+    monkeypatch.setattr(build_site, 'ROOT', tmp_path)
+    assert build_site.latest_release() == ('9.9.9', '4.6', '2026-11-19', summary)
+
+
+def test_feed_summary_of_a_release_that_opens_with_entries(tmp_path, monkeypatch):
+    """The Atom feed's summary is plain text too: the first entry's title, no Markdown bullet or bold (#482 review of the lede fix)."""
+    import scripts.build_site as build_site
+    (tmp_path / 'CHANGELOG.md').write_text('# Changelog\n\n## Unreleased\n\n## Brick Work 9.9.9 (schema 4.6) · 2026-11-19\n\n'
+                                           '- **One pull marks the Lost Parts** (#513). More.\n\n- **Second** (#514).\n')
+    monkeypatch.setattr(build_site, 'ROOT', tmp_path)
+    feed = build_site.atom_feed()
+    assert '<summary>One pull marks the Lost Parts.</summary>' in feed and '**' not in feed

@@ -12,7 +12,7 @@ ADR 0032 built Find instructions on discovery: a page renderer fetches the set's
 
 Find instructions links out. For a set it offers the set's instructions page on LEGO, by region, and its page on Rebrickable. The user downloads the PDF there and the existing Upload a PDF takes the file. Brick Work fetches nothing and scrapes nothing, so no renderer and no terms-of-use issue arise.
 
-- `instruction_links(set_no, region)` in `brickwork/core/instruction_links.py` is a pure function that returns `[{source, label, url}]`, LEGO first. The LEGO URL comes from `official_instructions.page_url`, the one place that builds it (the locales are not duplicated). The region defaults to the retail country setting, and to `DE` when that country has no LEGO locale. A malformed set number or an unsupported region is a `ValueError`.
+- `instruction_links(set_no, region)` in `brickwork/core/instruction_links.py` is a pure function that returns `[{source, label, url}]`, LEGO first. The LEGO URL comes from `official_instructions.page_url`, the one place that builds it (the locales are not duplicated). The region defaults to the retail country setting, and to `DE` when that country has no LEGO locale. A malformed set number or an unsupported region is a `ValueError`. A booklet shares its set's number; an item with no born number uses its confirmed BrickLink set or booklet link.
 - The links are read-only in API v2 (`GET /items/{id}/instruction-links`) and in the assistant tools (`get_instruction_links`).
 - The Official source, the adapter registry, the discovery and download operations and the `find_instructions` and `download_instructions` tools stay as they are. Removing them is a separate decision.
 
@@ -20,5 +20,5 @@ Find instructions links out. For a set it offers the set's instructions page on 
 
 - The Find instructions screen and the three controls that become dead ends move to #484: Add's Fetch instructions switch, the Largest instruction download setting, and the bulk fetch of missing booklets. Until #484 they still exist and do nothing useful.
 - The user tutorial and how-to wording is changed by #486, not here.
-- **Unverified:** the Rebrickable link `https://rebrickable.com/sets/<number>-<n>/` is a pattern, not checked against the live site, which refuses scripted requests. Ulf is to confirm it in a browser before the screen (#484) shows it. A number without a suffix gets `-1`.
+- **Unverified:** the Rebrickable link `https://rebrickable.com/sets/<number>-<n>/` is a pattern, not checked against the live site, which refuses scripted requests. Ulf is to confirm it in a browser before the screen (#484) shows it. A number without a suffix gets `-1`. Alphanumeric (promotional) numbers such as `COMCON034-1` get this link only, because the LEGO page takes numeric numbers; `links` holds one or two entries.
 - The LEGO page is `https://www.lego.com/<locale>/service/building-instructions/<number>?age-gate=grown_up`, the URL the finder already used; it is likewise not re-verified here, and no network check ran in this worktree.

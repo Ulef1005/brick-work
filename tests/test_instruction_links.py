@@ -37,7 +37,7 @@ def test_every_url_is_plain_https():
     assert all(link['url'].startswith('https://') for link in instruction_links('1000-1', 'AT'))
 
 
-@pytest.mark.parametrize('bad', ['', 'abc', '1000-', '-1', '1000-1-2', '1000-a', ' 1000-1', '1000-1\n', '10/00', None, 1000, '1000-1?x=1'])
+@pytest.mark.parametrize('bad', ['', '1000-', '-1', '1000-1-2', '1000-a', 'COMCON-a', 'ab_c', ' 1000-1', '1000-1\n', '10/00', None, 1000, '1000-1?x=1'])
 def test_malformed_set_numbers_are_refused(bad):
     with pytest.raises(ValueError):
         instruction_links(bad, 'DE')
@@ -47,3 +47,9 @@ def test_malformed_set_numbers_are_refused(bad):
 def test_an_unsupported_region_is_refused(region):
     with pytest.raises(ValueError, match='region'):
         instruction_links('1000-1', region)
+
+
+@pytest.mark.parametrize('number, full', [('COMCON034-1', 'COMCON034-1'), ('comcon034', 'comcon034-1'), ('Promo7-3', 'Promo7-3'), ('abc', 'abc-1')])
+def test_an_alphanumeric_set_gets_the_rebrickable_link_only(number, full):
+    links = instruction_links(number, 'DE')
+    assert [link['source'] for link in links] == ['rebrickable'] and links[0]['url'] == f'https://rebrickable.com/sets/{full}/'

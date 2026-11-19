@@ -924,7 +924,7 @@ paths:
       operationId: get_items_by_id_instruction_links
       x-mcp-tool: get_instruction_links
       summary: Links to the set's instructions pages (LEGO, Rebrickable); nothing is fetched.
-      description: A booklet names its set. `region` defaults to the retail country setting. The Rebrickable link pattern is not verified against the live site (ADR 0035).
+      description: A booklet shares its set's number. `region` defaults to the retail country setting when absent; an empty or unsupported one is refused. An alphanumeric (promotional) set number gets the Rebrickable link only. The Rebrickable link pattern is not verified against the live site (ADR 0035).
       tags:
       - Instructions
       security:

@@ -105,7 +105,9 @@ def get_items_by_id_instruction_links(db, id):
     args = arguments()
     item_id = live(db, id)
     try:
-        found = discovery.links_for(db, item_id, args.get('region') or None)
+        found = discovery.links_for(db, item_id, args.get('region'))
+    except errors.BrickWorkError:
+        raise
     except ValueError as error:
         raise errors.ValidationFailed(str(error)) from None
     return respond(found)

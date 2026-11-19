@@ -195,4 +195,4 @@ def test_the_docs_and_demo_top_bar_takes_the_layer_values():
     for selector in ('.tw-light', '.tw-dark'):
         have = block(selector)
         want = f"--bw-bg:{have['--tw-surface']};--bw-fg:{have['--tw-text']};--bw-line:{have['--tw-divider']};"
-        assert want in bar, (selector, want)
+        assert bar.count(want) == (1 if selector == '.tw-light' else 2), (selector, want)   # dark: the media query and the forced class

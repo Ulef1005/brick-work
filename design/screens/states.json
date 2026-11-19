@@ -67,7 +67,7 @@
    "path": "/collection/sets",
    "script": "document.querySelector(\"[data-open=\\\"global-jump\\\"]\").click();await new Promise(r=>setTimeout(r,300));",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "07-New-navigation-icons",
@@ -93,7 +93,7 @@
    "world": "demo",
    "path": "/collection/sets",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "10-Set-detail",
@@ -102,7 +102,7 @@
    "world": "demo",
    "path": "/collection/item/set/7286-1?copy=56325b99-16bc-549b-bb98-f7be2ab38829",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "10-Set-detail",
@@ -112,7 +112,7 @@
    "path": "/collection/item/set/99121-1?copy=9d6269ab-614d-549e-90ce-ca84e84afded",
    "max": 2600,
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "10-Set-detail",
@@ -122,7 +122,7 @@
    "path": "/collection/item/set/99104-1?copy=02a8e1f2-1a00-591a-93b8-9647f7f03d14",
    "max": 2600,
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "10-Set-detail",
@@ -132,7 +132,7 @@
    "path": "/collection/item/set/99112-1?copy=2e46e1e6-3019-5315-aa7d-c596a5d6a280",
    "max": 2600,
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "10-Set-detail",
@@ -142,7 +142,7 @@
    "path": "/collection/item/set/99101-1?copy=0133c51c-12df-57b3-97c1-93ce94e8691d",
    "max": 2600,
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "10-Set-detail",
@@ -152,7 +152,7 @@
    "path": "/collection/item/set/99103-1?copy=f1d1b5b5-8a1f-5819-96d4-8e6d5e444b60",
    "max": 2600,
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "10-Set-detail",
@@ -162,7 +162,7 @@
    "path": "/collection/item/set/99105-1?copy=d0e368ec-42c1-5320-a57b-2b1572e6b6ef",
    "max": 2600,
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "11-Edit-sheet",
@@ -172,7 +172,7 @@
    "path": "/collection/item/set/7286-1?copy=56325b99-16bc-549b-bb98-f7be2ab38829",
    "script": "document.querySelector(\".bc-info-edit\").click();await new Promise(r=>setTimeout(r,300));",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "12-Minifigure-detail",
@@ -181,7 +181,7 @@
    "world": "demo",
    "path": "/collection/item/minifigure/fig-001714",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "13-Part-detail",
@@ -190,7 +190,7 @@
    "world": "demo",
    "path": "/collection/item/part/3010",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "13-Part-detail",
@@ -199,7 +199,7 @@
    "world": "demo",
    "path": "/collection/item/174/change-variant?target=594",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "14-Instruction-and-box-detail",
@@ -208,7 +208,7 @@
    "world": "extras",
    "path": "/collection/item/instructions/99801-1",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "14-Instruction-and-box-detail",
@@ -217,7 +217,7 @@
    "world": "extras",
    "path": "/collection/item/box/99802-1",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "15-Part-lot",
@@ -226,7 +226,7 @@
    "world": "showcase",
    "path": "/collection/lots/9637c558-464c-59a7-a79b-e1b57f4aff0c",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "15-Part-lot",
@@ -237,7 +237,7 @@
    "script": "document.querySelector(\"[data-bc-list]\").hidden=true;await Promise.all([...document.images].map(i=>{i.loading=\"eager\";return i.complete?null:new Promise(r=>{i.onload=i.onerror=r;setTimeout(r,8000);});}));await Promise.all([...document.images].map(i=>i.decode?i.decode().catch(()=>0):0));",
    "max": 3000,
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "15-Part-lot",
@@ -247,7 +247,7 @@
    "path": "/collection/lots/9637c558-464c-59a7-a79b-e1b57f4aff0c/sticker/1d0e754ba9bf470290784927428ff05b#sticker-chooser",
    "max": 900,
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "15-Part-lot",
@@ -256,7 +256,7 @@
    "world": "showcase",
    "path": "/collection/lots/9637c558-464c-59a7-a79b-e1b57f4aff0c/pull/11",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "15-Part-lot",
@@ -266,7 +266,7 @@
    "path": "/collection/lots/9637c558-464c-59a7-a79b-e1b57f4aff0c/pull/11/make-copy#bp-confirm",
    "max": 900,
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "16-Module-states",
@@ -275,7 +275,7 @@
    "world": "extras",
    "path": "/collection/item/instructions/99801-1",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "16-Module-states",
@@ -284,7 +284,7 @@
    "world": "extras",
    "path": "/collection/item/box/99802-1",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "16-Module-states",
@@ -293,7 +293,7 @@
    "world": "extras",
    "path": "/collection/item/box/99803-1",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "16-Module-states",
@@ -303,7 +303,7 @@
    "path": "/collection/item/instructions/99872-1",
    "script": "window.fetch=()=>Promise.resolve(new Response('{}',{status:200,headers:{'Content-Type':'application/json'}}));document.querySelector('[data-bc-fetch-prices]').click();await new Promise(r=>setTimeout(r,300));",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "16-Module-states",
@@ -313,7 +313,7 @@
    "path": "/collection/item/instructions/99872-1",
    "script": "window.fetch=()=>Promise.resolve(new Response(JSON.stringify({message:\"BrickLink did not answer \\u00b7 timeout\"}),{status:502,headers:{'Content-Type':'application/json'}}));document.querySelector('[data-bc-fetch-prices]').click();await new Promise(r=>setTimeout(r,300));",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "16-Module-states",
@@ -322,7 +322,7 @@
    "world": "edge",
    "path": "/collection/item/box/99871-1",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "17-Item-lists",
@@ -331,7 +331,7 @@
    "world": "demo",
    "path": "/collection/P",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "18-Copy-chooser",
@@ -340,7 +340,7 @@
    "world": "showcase",
    "path": "/collection/item/set/99102-1",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "19-Item-lists",
@@ -350,7 +350,7 @@
    "path": "/collection/M",
    "script": "document.querySelector(\"[data-bc-view=\\\"grid\\\"]\").click();await new Promise(r=>setTimeout(r,300));",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "19-Item-lists",
@@ -360,7 +360,7 @@
    "path": "/collection/P",
    "script": "[...document.querySelectorAll('button')].find(b=>b.textContent.trim().startsWith('In sets')).click();await new Promise(r=>setTimeout(r,300));[...document.querySelectorAll('button')].find(b=>b.textContent.trim().startsWith('Damaged')).click();await new Promise(r=>setTimeout(r,300));",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "19-Item-lists",
@@ -370,7 +370,7 @@
    "path": "/collection/P",
    "script": "document.querySelector(\"[data-bc-options-open]\").click();await new Promise(r=>setTimeout(r,300));document.querySelector(\"[data-bc-select]\").click();await new Promise(r=>setTimeout(r,300));",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "19-Item-lists",
@@ -379,7 +379,7 @@
    "world": "edge-read-only",
    "path": "/collection/P",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "19-Item-lists",
@@ -397,7 +397,7 @@
    "path": "/collection/item/set/99102-1?copy=941e4ebc-0ac0-5258-809e-b586f2e6254c",
    "script": "document.querySelector(\"[data-bc-focus=current_value]\").click();await new Promise(r=>setTimeout(r,300));",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "20-Add-into-a-lot",
@@ -407,7 +407,7 @@
    "path": "/manage/instructions",
    "script": "document.querySelector(\"summary\").click();await new Promise(r=>setTimeout(r,300));",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "20-Add-into-a-lot",
@@ -416,7 +416,7 @@
    "world": "showcase",
    "path": "/workbench/orders/1?view=count",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "20-Add-into-a-lot",
@@ -425,7 +425,7 @@
    "world": "showcase",
    "path": "/workbench/orders/2?view=allocation",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "20-Add-into-a-lot",
@@ -451,7 +451,7 @@
    "path": "/manage/add",
    "script": "const wait=async(f,n=100)=>{for(let i=0;i<n&&!f();i++)await new Promise(r=>setTimeout(r,50));};\nconst real=window.fetch.bind(window);\nwindow.fetch=(url,opts)=>{const u=String(url);\n if(u.endsWith('/confirm'))return Promise.resolve(new Response(JSON.stringify({batch:'gate-batch',receipts:[{label:'99851-1',name:\"Lighthouse Keeper's Cabin\",job_id:9001},{label:'99852-1',name:'Sample Set',job_id:9002},{label:'99853-1',name:'Storm Watch Station',job_id:9003}]}),{status:200,headers:{'Content-Type':'application/json'}}));\n const m=u.match(/\\/jobs\\/(\\d+)$/);\n if(m){const id=Number(m[1]),done=id<9003,part=id===9003;\n  const event=done?{job_id:id,step:null,state:'done',total_steps:6,completed_steps:6,message:'Added'}:{job_id:id,step:'inventory',state:'progress',total_steps:6,completed_steps:2,total:112,count:38,message:'Fetching parts from BrickLink · 38 of 112'};\n  return Promise.resolve(new Response(JSON.stringify({events:[event]}),{status:200,headers:{'Content-Type':'application/json'}}));}\n return real(url,opts);};\ndocument.querySelector('input[name=mode][value=paste]').click();\ndocument.querySelector('input[name=where][value=owned]').click();\ndocument.querySelector('[data-paste]').value='99851-1\\n99852-1\\n99853-1';\ndocument.querySelector('[data-paste]').dispatchEvent(new Event('input',{bubbles:true}));\ndocument.querySelector('[data-review]').click();\nawait wait(()=>!document.querySelector('[data-review-panel]').hidden);\ndocument.querySelector('[data-confirm]').click();\nawait wait(()=>!document.querySelector('[data-jobs]').hidden);\nawait new Promise(r=>setTimeout(r,300));",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "21-Collection-capabilities",
@@ -461,7 +461,7 @@
    "path": "/collection/sets",
    "script": "document.querySelector(\"[data-bc-options-open]\").click();await new Promise(r=>setTimeout(r,300));document.querySelector(\"[data-bc-group-pick=\\\"theme\\\"]\").click();await new Promise(r=>setTimeout(r,300));",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "21-Collection-capabilities",
@@ -472,7 +472,7 @@
    "script": "document.querySelector(\"[data-bc-filters]\").click();await new Promise(r=>setTimeout(r,300));",
    "sheet_below": 600,
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "21-Collection-capabilities",
@@ -526,7 +526,7 @@
    "path": "/collection/item/set/7286-1?copy=56325b99-16bc-549b-bb98-f7be2ab38829",
    "script": "document.querySelector('[data-bc-tab=figures]').click();await new Promise(r=>setTimeout(r,200));",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "24-Pager",
@@ -535,7 +535,7 @@
    "world": "demo",
    "path": "/collection/M",
    "built": true,
-   "approved": true,
+   "approved": false,
    "script": "[...document.querySelectorAll('button')].find(b=>b.textContent.trim().startsWith('In sets')).click();await new Promise(r=>setTimeout(r,300));"
   },
   {
@@ -547,7 +547,7 @@
    "script": "document.querySelector(\"[data-bc-filters]\").click();await new Promise(r=>setTimeout(r,300));",
    "sheet_below": 600,
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "25-Sets-filters-where-select-and-group-go",
@@ -560,7 +560,7 @@
     1024
    ],
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "26-First-run-without-keys",
@@ -569,7 +569,7 @@
    "world": "demo",
    "path": "/manage/get-started",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "27-Matcher",
@@ -578,7 +578,7 @@
    "world": "demo",
    "path": "/workbench/matcher",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "27-Matcher",
@@ -587,7 +587,7 @@
    "world": "demo",
    "path": "/workbench/build-scout?min_percent=0",
    "built": true,
-   "approved": true,
+   "approved": false,
    "script": "document.querySelector('.bs-more').open=true;await new Promise(r=>setTimeout(r,300));"
   },
   {
@@ -597,7 +597,7 @@
    "world": "demo",
    "path": "/workbench/build-scout/12?min_percent=0",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "27-Matcher",
@@ -606,7 +606,7 @@
    "world": "demo",
    "path": "/workbench/build-scout",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "28-Check-set-parts",
@@ -615,7 +615,7 @@
    "world": "demo",
    "path": "/workbench/check-parts",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "29-Part-picker",
@@ -624,7 +624,7 @@
    "world": "demo",
    "path": "/workbench/part-picker",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "30-Set-parts-checker",
@@ -633,7 +633,7 @@
    "world": "demo",
    "path": "/workbench/check-parts/56325b99-16bc-549b-bb98-f7be2ab38829",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "31-Part-to-inventory",
@@ -642,7 +642,7 @@
    "world": "demo",
    "path": "/workbench/part-to-inventory",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "31-Part-to-inventory",
@@ -652,7 +652,7 @@
    "path": "/workbench/part-to-inventory",
    "script": "const wait=async(f,n=100)=>{for(let i=0;i<n&&!f();i++)await new Promise(r=>setTimeout(r,50));};\nconst canvas=document.createElement('canvas');canvas.width=64;canvas.height=64;const g=canvas.getContext('2d');g.fillStyle='#8a8d8f';g.fillRect(0,0,64,64);g.fillStyle='#d4d6d8';g.fillRect(8,24,48,16);\nconst blob=await new Promise(r=>canvas.toBlob(r,'image/png'));\nconst input=document.querySelector('[data-file]');const transfer=new DataTransfer();transfer.items.add(new File([blob],'piece.png',{type:'image/png'}));input.files=transfer.files;input.dispatchEvent(new Event('change',{bubbles:true}));\nawait wait(()=>document.querySelector('.scan-colours button'));\n[...document.querySelectorAll('.scan-colours button')].find(b=>b.textContent.startsWith('Light Bluish Gray')).click();\nawait wait(()=>document.querySelector('[data-sticker]'));\nconst box=document.querySelector('[data-sticker]');box.click();\nawait new Promise(r=>setTimeout(r,300));",
    "built": true,
-   "approved": true,
+   "approved": false,
    "max": 3000
   },
   {
@@ -662,7 +662,7 @@
    "world": "demo",
    "path": "/workbench/orders",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "33-Orders",
@@ -671,7 +671,7 @@
    "world": "showcase",
    "path": "/workbench/orders/2",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "33-Orders",
@@ -680,7 +680,7 @@
    "world": "showcase",
    "path": "/workbench/orders/3",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "33-Orders",
@@ -689,7 +689,7 @@
    "world": "showcase",
    "path": "/workbench/orders/1?view=allocation",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "33-Orders",
@@ -698,7 +698,7 @@
    "world": "showcase",
    "path": "/workbench/orders/1?view=history",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "34-Storage",
@@ -707,7 +707,7 @@
    "world": "demo",
    "path": "/workbench/storage",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "35-Orders-capabilities",
@@ -716,7 +716,7 @@
    "world": "showcase",
    "path": "/workbench/orders",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "35-Orders-capabilities",
@@ -725,7 +725,7 @@
    "world": "showcase",
    "path": "/workbench/orders/1?view=history",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "35-Orders-capabilities",
@@ -735,7 +735,7 @@
    "path": "/workbench/orders",
    "script": "document.querySelectorAll('details.order-link').forEach(d=>{d.open=true});await new Promise(r=>setTimeout(r,300));",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "36-Check-this-copy",
@@ -744,7 +744,7 @@
    "world": "showcase",
    "path": "/workbench/check-parts/79f5df76-b75b-5fd5-bf6c-d3f4506e1406",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "36-Check-this-copy",
@@ -753,7 +753,7 @@
    "world": "extras",
    "path": "/workbench/check-parts/9d6269ab-614d-549e-90ce-ca84e84afded",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "36-Check-this-copy",
@@ -762,7 +762,7 @@
    "world": "showcase",
    "path": "/workbench/check-parts/60b6e39e-1532-5baf-a0df-08566d2328a2",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "36-Check-this-copy",
@@ -771,7 +771,7 @@
    "world": "edge-empty",
    "path": "/workbench/check-parts",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "36-Check-this-copy",
@@ -781,7 +781,7 @@
    "path": "/workbench/check-parts/79f5df76-b75b-5fd5-bf6c-d3f4506e1406",
    "script": "document.querySelector('[data-resume]').click();await new Promise(r=>setTimeout(r,300));window.fetch=()=>Promise.resolve(new Response(JSON.stringify({error:'The answer could not be saved. Retry.'}),{status:500,headers:{'Content-Type':'application/json'}}));document.querySelector('[data-action=answer]').click();await new Promise(r=>setTimeout(r,300));",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "36-Check-this-copy",
@@ -791,7 +791,7 @@
    "path": "/workbench/check-parts/60b6e39e-1532-5baf-a0df-08566d2328a2",
    "javascript": false,
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "37-Orders-at-macbook-and-ipad-size",
@@ -809,7 +809,7 @@
    "world": "demo",
    "path": "/workbench/storage/storage-shelf-a1---castle",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "39-Include-spare-parts",
@@ -819,7 +819,7 @@
    "path": "/workbench/check-parts/0133c51c-12df-57b3-97c1-93ce94e8691d",
    "script": "document.querySelector(\"[data-resume]\").click();await new Promise(r=>setTimeout(r,300));",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "39-Include-spare-parts",
@@ -829,7 +829,7 @@
    "path": "/workbench/check-parts/0c757f44-7e9e-5993-ac24-c40810a6cb5e",
    "script": "document.querySelector('[data-resume]').click();await new Promise(r=>setTimeout(r,300));",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "40-Check-figure-parts",
@@ -838,7 +838,7 @@
    "world": "extras",
    "path": "/workbench/check-parts/2e46e1e6-3019-5315-aa7d-c596a5d6a280/figure/26",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "41-Wishlist",
@@ -847,7 +847,7 @@
    "world": "demo",
    "path": "/planning/wishlist",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "42-Prices",
@@ -856,7 +856,7 @@
    "world": "demo",
    "path": "/planning/prices",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "43-Complete-sets",
@@ -865,7 +865,7 @@
    "world": "demo",
    "path": "/planning/complete-sets",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "43-Complete-sets",
@@ -874,7 +874,7 @@
    "world": "demo",
    "path": "/planning/order-missing-parts",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "43-Complete-sets",
@@ -886,7 +886,7 @@
     390
    ],
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "43-Complete-sets",
@@ -895,7 +895,7 @@
    "world": "edge-order",
    "path": "/planning/order-missing-parts?step=review&prefer=1",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "43-Complete-sets",
@@ -904,7 +904,7 @@
    "world": "edge-order",
    "path": "/planning/order-missing-parts?step=review&prefer=1&tab=pab",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "44-Complete-sets",
@@ -914,7 +914,7 @@
    "path": "/planning/complete-sets",
    "script": "document.querySelectorAll('[data-bp-selected]').forEach((b,i)=>{if(i<2)b.click()});await new Promise(r=>setTimeout(r,300));",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "44-Complete-sets",
@@ -924,7 +924,7 @@
    "path": "/planning/complete-sets",
    "script": "document.querySelector(\"summary\").click();await new Promise(r=>setTimeout(r,300));",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "44-Complete-sets",
@@ -934,7 +934,7 @@
    "path": "/planning/complete-sets",
    "script": "const f=document.querySelector('[data-bp-filter=pinned]');f.value='true';f.dispatchEvent(new Event('input',{bubbles:true}));f.dispatchEvent(new Event('change',{bubbles:true}));await new Promise(r=>setTimeout(r,300));",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "45-Wanted-watch-and-alert",
@@ -951,7 +951,7 @@
    "world": "extras",
    "path": "/planning/wishlist?list=wl-birthday",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "46-Your-max-price-with-a-currency",
@@ -960,7 +960,7 @@
    "world": "extras",
    "path": "/collection/wishes/wish-usd-pier",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "47-Add",
@@ -969,7 +969,7 @@
    "world": "demo",
    "path": "/manage/add",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "48-Tools-and-admin",
@@ -978,7 +978,7 @@
    "world": "demo",
    "path": "/manage/tools",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "49-Statistics",
@@ -987,7 +987,7 @@
    "world": "demo",
    "path": "/manage/statistics",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "49-Statistics",
@@ -997,7 +997,7 @@
    "path": "/manage/statistics",
    "max": 4600,
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "49-Statistics",
@@ -1006,7 +1006,7 @@
    "world": "edge-value",
    "path": "/manage/insurance-report",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "49-Statistics",
@@ -1015,7 +1015,7 @@
    "world": "edge-empty",
    "path": "/manage/insurance-report",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "50-Tools-and-admin-pages",
@@ -1024,7 +1024,7 @@
    "world": "demo",
    "path": "/manage/settings",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "50-Tools-and-admin-pages",
@@ -1033,7 +1033,7 @@
    "world": "demo",
    "path": "/manage/history",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "51-System-pages",
@@ -1042,7 +1042,7 @@
    "world": "demo",
    "path": "/nothing-here",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "52-Place",
@@ -1051,7 +1051,7 @@
    "world": "demo",
    "path": "/collection/purchase-places",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "52-Place",
@@ -1060,7 +1060,7 @@
    "world": "demo",
    "path": "/manage/appearance",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "53-Jobs-and-maintenance",
@@ -1069,7 +1069,7 @@
    "world": "demo",
    "path": "/manage/refresh",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "53-Jobs-and-maintenance",
@@ -1078,7 +1078,7 @@
    "world": "demo",
    "path": "/manage/jobs",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "54-Catalogues-and-keys",
@@ -1087,7 +1087,7 @@
    "world": "demo",
    "path": "/manage/catalogues",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "55-Api-tokens",
@@ -1096,7 +1096,7 @@
    "world": "demo",
    "path": "/manage/tokens",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "55-Api-tokens",
@@ -1105,7 +1105,7 @@
    "world": "demo",
    "path": "/manage/tokens?create=1",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "56-Collection-sync",
@@ -1114,7 +1114,7 @@
    "world": "demo",
    "path": "/manage/sync",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "57-Scan-a-set-barcode",
@@ -1131,7 +1131,7 @@
    "world": "edge",
    "path": "/planning/complete-sets?tab=figures",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "43-Complete-sets",
@@ -1140,7 +1140,7 @@
    "world": "edge-empty",
    "path": "/planning/complete-sets?tab=figures",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "43-Complete-sets",
@@ -1149,7 +1149,7 @@
    "world": "edge",
    "path": "/planning/complete-sets?tab=figures&theme=Complete+figures",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "43-Complete-sets",
@@ -1158,7 +1158,7 @@
    "world": "edge",
    "path": "/planning/complete-sets?tab=figures&recommendation=Needs+evidence",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "12-Minifigure-detail",
@@ -1239,7 +1239,7 @@
    "world": "edge",
    "path": "/workbench/storage?labels=error",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "10-Set-detail",
@@ -1610,7 +1610,7 @@
     1440
    ],
    "built": true,
-   "approved": true,
+   "approved": false,
    "script": "document.querySelector('[data-bc-tab=extras]').click();",
    "max": 3600
   },
@@ -1626,7 +1626,7 @@
     1440
    ],
    "built": true,
-   "approved": true,
+   "approved": false,
    "script": "document.querySelector('[data-bc-tab=extras]').click();",
    "max": 3600
   },
@@ -1642,7 +1642,7 @@
     1440
    ],
    "built": true,
-   "approved": true,
+   "approved": false,
    "script": "document.querySelector('[data-bc-tab=extras]').click();",
    "max": 3600
   },
@@ -1658,7 +1658,7 @@
     1440
    ],
    "built": true,
-   "approved": true,
+   "approved": false,
    "script": "document.querySelector('[data-bc-tab=extras]').click();",
    "max": 3600
   },
@@ -1674,7 +1674,7 @@
     1440
    ],
    "built": true,
-   "approved": true,
+   "approved": false,
    "script": "document.querySelector('[data-bc-tab=extras]').click();document.querySelector('[data-bc-booklets] ~ details').open=true;",
    "max": 3600
   }

@@ -604,11 +604,11 @@ def plan_send(db, source, *, http=None):
         extra['send_to'] = link_value.get('send_to') or (owned_lists[0] if len(owned_lists) == 1 else None)
         if extra['send_to'] is None:
             for row in out:
-                if row['kind'] == 'owned' and row['action']:
+                if row['kind'] == 'owned' and row['tickable']:         # a removal or a conflict too: none of them has a list to go to
                     row.update(action=None, tickable=False, reason='Link one owned Rebrickable list to send to')
         if not link_value.get('wishlist'):                # #514: with no wishlist linked a wish has nowhere to go, so it is not offered
             for row in out:
-                if row['kind'] == 'wanted' and row['action']:
+                if row['kind'] == 'wanted' and row['tickable']:
                     row.update(action=None, tickable=False, reason='Link a Rebrickable wishlist to send wishes to')
     plan = dict(id=uuid4().hex, created_at=now().isoformat(), direction='send', source=source, link=link_value,
                 remote=dict(owned=remote['owned'], wanted=remote['wanted']), state=extra, rows=out, unmatched=unmatched,

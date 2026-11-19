@@ -526,6 +526,13 @@ def test_a_copy_added_after_the_plan_is_not_guessed(store):
     assert not any(marks(store, c) for c in new_copies_of(store, '1000-2')) and mine in new_copies_of(store, '1000-2')
 
 
+def test_a_new_copy_under_a_clearing_rule_says_nothing_about_clearing(store):
+    plan = planned(store, Remote([raw('1000-2', '3001', 4, 1, number=1), raw('1000-2', '9999', 4, 1, number=2)]), 'per_set')
+    result = sync.apply_pull(store, plan['id'])
+    (written,) = [s for s in lost_receipt(store, result['event_id'])['sets'] if s['set_no'] == '1000-2']
+    assert written['not_cleared'] is None and written['added'] == 1 and written['unmatched'] == 1
+
+
 def test_a_set_not_owned_on_rebrickable_still_says_pull_its_copy_first(store):
     plan = planned(store, Remote([raw('1000-3', '3001', 4, 1)]))              # 1000-3 is only on the wishlist there
     (waiting,) = plan['lost']['unmatched_sets']

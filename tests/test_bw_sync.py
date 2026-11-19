@@ -519,5 +519,12 @@ def test_a_wish_is_not_offered_for_sending_without_a_linked_wishlist(store):
     wishes = [r for r in plan['rows'] if r['kind'] == 'wanted']
     assert wishes and all(not r['tickable'] and r['action'] is None for r in wishes)
     assert {r['reason'] for r in wishes} == {'Link a Rebrickable wishlist to send wishes to'}
+    sync.link(store, 'rebrickable', {'wishlist': 9})                          # a conflict or a removal of a wish is not offered either
+    sync.apply_send(store, sync.plan_send(store, 'rebrickable', http=remote)['id'], [w['key'] for w in wishes], http=remote)
+    sync.link(store, 'rebrickable', {'wishlist': None})                       # the review's case: unlinked, then the wish raised to 2
+    store.execute('UPDATE wish SET quantity=2 WHERE archived_at IS NULL')
+    store.commit()
+    conflict = [r for r in sync.plan_send(store, 'rebrickable', http=remote)['rows'] if r['kind'] == 'wanted']
+    assert [r['state'] for r in conflict] == ['conflict'] and not conflict[0]['tickable']
     with pytest.raises(errors.ValidationFailed, match='Only rows with something to do'):
         sync.apply_send(store, plan['id'], [wishes[0]['key']], http=remote)

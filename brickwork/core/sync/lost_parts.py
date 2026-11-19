@@ -336,7 +336,7 @@ def apply(db, section, ticked, picks, *, new_copies=()):
                 continue
             copy_id = entry['copy_id']
         mine = grouped.get(number, [])
-        result = changes(db, copy_id, mine, how, clear_set=clears(how, bool(mine)))
+        result = changes(db, copy_id, mine, how, clear_set=entry['state'] != 'new' and clears(how, bool(mine)))   # a new copy has nothing to clear
         previewed = (entry.get('previews') or {}).get(copy_id) if entry['state'] == 'pick' else entry.get('preview')
         if previewed is not None and 'fingerprint' in previewed and [list(e) for e in previewed['fingerprint']] != fingerprint(result):
             report['skipped'].append(dict(set_no=number, reason='The missing parts of this copy changed since the preview. Preview the pull again'))

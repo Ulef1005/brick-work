@@ -20,7 +20,7 @@ Hichert's SUCCESS governs this design. The per-rule lines are written when the b
 | LG04 on the brand field | `lockup-brand-field.svg` | All white on violet: headers, splash, slides |
 | LG05 one colour, ink | `lockup-mono-ink.svg`, `mark-line.svg` | One-colour print and labels |
 | LG06 one colour, white | `lockup-mono-white.svg` | Photos and dark prints where violet does not hold |
-| LG07 small mark | `../app-icon/favicon.svg`, `favicon-16.png`, `favicon-24.png` | Below 32 px the X is dropped |
+| LG07 small mark | `mark-small.svg`, `mark-small-dark.svg`, `../app-icon/favicon.svg`, `favicon-16.png`, `favicon-24.png` | Below 32 px the X is dropped (the app bar's 24 px mark, tab icons) |
 
 **Clear space:** one top-plate height (26.3 units on the 100-unit box) on every side of the visible plates. **Minimum size:** the mark with the X from 32 px; below that the small mark without the X; the lockup from 120 px wide. **Misuse:** never recolour the plates outside the variants, add studs, move, enlarge or recolour the X, paint the X on instead of cutting it, rotate or stretch the mark, set the name in another face or case, or place the light lockup on a ground that fails contrast.
 

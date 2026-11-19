@@ -109,6 +109,8 @@ SVGS = {
     'logo/mark.svg': lambda: mark(),                                    # LG02, mark alone on light
     'logo/mark-dark.svg': lambda: mark(VIOLET_ON_DARK),                 # LG03's mark, on dark
     'logo/mark-line.svg': lambda: mark(INK),                            # LG05's mark, one colour ink (labels, print)
+    'logo/mark-small.svg': lambda: mark(with_x=False),                  # LG07, bare mark below 32 px (app bar), no X
+    'logo/mark-small-dark.svg': lambda: mark(VIOLET_ON_DARK, with_x=False),   # LG07 on dark grounds
     'logo/lockup-horizontal.svg': lambda: lockup(),                     # LG01, primary lockup
     'logo/lockup-horizontal-dark.svg': lambda: lockup(VIOLET_ON_DARK, LIGHT_TEXT),   # LG03
     'logo/lockup-brand-field.svg': lambda: lockup(WHITE, WHITE, bg=VIOLET, pad=26),  # LG04, white on the violet field

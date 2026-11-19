@@ -4,13 +4,14 @@
     python3 scripts/brand_assets.py build    write every served file from its design/ source
 
 The design files live in design/ (logo, app icon, UI icons). The app serves them at the paths it always has, /static/brickwork/...,
-so no page, manifest or service worker changes. Those served files, and the docs site's app-icon.svg and favicon.svg in docs/assets/
+so no page, manifest or service worker changes (the fonts, since #492, at /static/brickwork/fonts/). Those served files, and the docs site's app-icon.svg and favicon.svg in docs/assets/
 (DOCS_COPIES), are GENERATED copies: build writes each byte for byte from its
-source; never edit one. Three source folders, each mapped to a served folder with the same relative paths:
+source; never edit one. Four source folders, each mapped to a served folder with the same relative paths:
 
     design/logo/              -> static/brickwork/               marks and lockups (svg, png)
     design/app-icon/          -> static/brickwork/               app icon, favicons, icons/, splash/, head-block.html
     design/components/icons/  -> static/brickwork/icons-ui/      the UI icon set, its sprite and README
+    design/fonts/             -> static/brickwork/fonts/         IBM Plex (B′, #492), its licence and README
 
 Two files in static/brickwork/ are the app's own, not design assets, and have no source: brick-work.css (the accent stylesheet every
 page links) and manifest.webmanifest (served through the app's manifest view). A folder named `retired` in a source folder keeps old
@@ -22,7 +23,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SERVED = ROOT / 'static' / 'brickwork'
-SOURCES = (('design/logo', ''), ('design/app-icon', ''), ('design/components/icons', 'icons-ui'))   # source folder -> served subfolder
+SOURCES = (('design/logo', ''), ('design/app-icon', ''), ('design/components/icons', 'icons-ui'), ('design/fonts', 'fonts'))   # source folder -> served subfolder
 APP_OWNED = {'brick-work.css', 'manifest.webmanifest'}
 DOCS_COPIES = {'docs/assets/app-icon.svg': 'design/app-icon/app-icon.svg',   # the docs site's logo and favicon (mkdocs theme), also generated
                'docs/assets/favicon.svg': 'design/app-icon/favicon.svg'}

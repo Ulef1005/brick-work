@@ -217,7 +217,7 @@ What the 60 read operations (M.11b) and the 67 write operations (M.11c, further 
 
 ### 3.1 Summary
 
-205 operations in all (including instruction discovery and confirmed downloads); v1 had 179 operations.
+207 operations in all (including instruction discovery, confirmed downloads and the instruction links); v1 had 179 operations.
 
 | Group | Operations | Pieces |
 |---|---|---|
@@ -230,7 +230,7 @@ What the 60 read operations (M.11b) and the 67 write operations (M.11c, further 
 | Copy parts | 5 | M.11b 2, M.11c 3 |
 | Loose stock | 13 | M.11b 3, M.11c 10 |
 | Minifigures | 2 | M.11b 2 |
-| Instructions | 9 | M.11b 3, M.11c 4, M.11d 2 |
+| Instructions | 10 | M.11b 4, M.11c 4, M.11d 2 |
 | Prices | 9 | M.11b 5, M.11c 2, M.11d 2 |
 | Wishlist | 16 | M.11b 5, M.11c 11 |
 | Storages | 7 | M.11b 2, M.11c 5 |
@@ -374,6 +374,8 @@ Retry failed files through `POST /jobs/{id}/retry`; a numeric step names a singl
 Both operations need write scope and support idempotency keys.
 Assistant tools `find_instructions` and `download_instructions` use these operations.
 The find tool follows the item convention: provider, kind and key, resolved through lookup.
+
+`GET /items/{id}/instruction-links` (read scope; tool `get_instruction_links`, which takes provider, kind and number) is how Find instructions links out (#465, [ADR 0035](https://github.com/Ulef1005/brick-work/blob/main/docs/adr/0035-instructions-link-out.md)). It returns `{data: {set_no, region, links: [{source, label, url}]}}`: the set's instructions page on LEGO for the region, then its Rebrickable set page, both plain `https` URLs. Nothing is fetched or downloaded; the user downloads the PDF there and attaches it with `POST /instruction-files`. A booklet names its set. `region` is optional (a key of the LEGO locales, such as `AT`, `DE`, `GB`, `US`); it defaults to the retail country setting, and to `DE` when that country has no LEGO locale. An unsupported `region` is `422`. The Rebrickable link pattern is not verified against the live site. The discovery operations above stay as they are.
 
 | Operation | Purpose | Scope | Piece | v1 |
 | --- | --- | --- | --- | --- |
@@ -685,6 +687,7 @@ Operations by piece: M.11a 9, M.11b 64, M.11c 71, M.11d 57 (201 in all). The two
 | `GET /api/v2/items/{id}/detail` | M.11b | `brickwork.api2.item_views.get_items_by_id_detail` |
 | `GET /api/v2/items/{id}/images` | M.11b | `brickwork.api2.item_views.get_items_by_id_images` |
 | `POST /api/v2/items/{id}/import` | M.11d | `brickwork.api2.jobs.post_items_by_id_import` |
+| `GET /api/v2/items/{id}/instruction-links` | M.11b | `brickwork.api2.instructions.get_items_by_id_instruction_links` |
 | `GET /api/v2/items/{id}/inventory` | M.11b | `brickwork.api2.item_views.get_items_by_id_inventory` |
 | `GET /api/v2/items/{id}/links` | M.11b | `brickwork.api2.item_views.get_items_by_id_links` |
 | `PUT /api/v2/items/{id}/links` | M.11c | `brickwork.api2.write_identity.put_items_by_id_links` |

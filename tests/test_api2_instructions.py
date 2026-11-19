@@ -48,3 +48,36 @@ def test_fetch_rejects_an_unknown_region(v2, coll):
     item = coll.item('sets', '1000-1')
     response = write(v2, '/instruction-files/fetch', body={'items': [{'id': item}], 'region': 'XX'})
     assert response.status_code == 422 and 'region' in str(response.json).lower()
+
+
+def test_instruction_links_for_a_set(v2, coll):
+    item = coll.item('sets', '1000-1')
+    response = call(v2, f'/items/{item}/instruction-links')
+    validate(response, 'get_items_by_id_instruction_links')
+    data = response.json['data']
+    assert data['set_no'] == '1000-1' and data['region'] == 'DE'
+    assert [(link['source'], link['url']) for link in data['links']] == [
+        ('lego', 'https://www.lego.com/de-de/service/building-instructions/1000?age-gate=grown_up'), ('rebrickable', 'https://rebrickable.com/sets/1000-1/')]
+    response = call(v2, f'/items/{item}/instruction-links?region=AT')
+    assert response.json['data']['region'] == 'AT' and '/en-gb/' in response.json['data']['links'][0]['url']
+
+
+def test_instruction_links_refuse_what_they_cannot_link(v2, coll):
+    item = coll.item('sets', '1000-1')
+    assert call(v2, f'/items/{item}/instruction-links?region=XX').status_code == 422
+    assert call(v2, '/items/999999/instruction-links').status_code == 404
+    part = coll.item('parts', '3001')
+    assert call(v2, f'/items/{part}/instruction-links').status_code == 422
+    assert call(v2, f'/items/{item}/instruction-links?bogus=1').status_code == 400
+
+
+def test_instruction_links_follow_the_retail_country(v2, coll, pair):
+    item = coll.item('sets', '1000-1')
+    with closing(connect(pair)) as db:
+        db.execute("INSERT OR REPLACE INTO main.setting(key,value) VALUES('retail_country','US')")
+        db.commit()
+    assert call(v2, f'/items/{item}/instruction-links').json['data']['region'] == 'US'
+    with closing(connect(pair)) as db:
+        db.execute("UPDATE main.setting SET value='NL' WHERE key='retail_country'")
+        db.commit()
+    assert call(v2, f'/items/{item}/instruction-links').json['data']['region'] == 'DE'

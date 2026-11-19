@@ -50,7 +50,7 @@ def test_the_tool_surface_is_generated_from_the_v2_contract():
     marked = {op['x-mcp-tool']: (method.upper(), path) for path, methods in CONTRACT['paths'].items()
               for method, op in methods.items() if isinstance(op, dict) and 'x-mcp-tool' in op}
     assert {n: (m, p) for n, (m, p, _) in DEFINITIONS.items()} == marked
-    assert len(READS) + len(WRITES) == 79
+    assert len(READS) + len(WRITES) == 80
     for name, (method, path, op) in DEFINITIONS.items():
         assert op['security'] == [{'bearerAuth': ['read' if method == 'GET' else 'write']}], name   # admin work is never a tool
         assert op['summary'], name
@@ -72,7 +72,7 @@ def test_no_tool_takes_a_brick_work_item_id():
                 assert set(value['properties']) == {'provider', 'kind', 'key'} and value['required'] == ['kind', 'key'], name
     # the by-id item paths are exactly the marked ones
     assert sorted(n for n, (m, p, op) in DEFINITIONS.items() if Adapter(None).item_parameter(op)) == [
-        'get_item', 'get_lot_pull_list', 'get_minifigure_detail', 'get_part_supersets', 'get_prices', 'import_item', 'make_copy_from_lot', 'record_price', 'refresh_price', 'set_figure_missing']
+        'get_instruction_links', 'get_item', 'get_lot_pull_list', 'get_minifigure_detail', 'get_part_supersets', 'get_prices', 'import_item', 'make_copy_from_lot', 'record_price', 'refresh_price', 'set_figure_missing']
     # a tool never shows the id member of an ItemKey, anywhere in its body
     for name in ('add_copies', 'add_stock', 'add_wish', 'take_for_gap'):
         assert 'id' not in adapter.schema(DEFINITIONS[name][2])['properties']['item']['properties']
@@ -252,7 +252,7 @@ def read_arguments(w, pair):
         'get_wishlists': {}, 'export_wishlist_xml': {'id': 'default'}, 'export_wishlist_csv': {'id': 'default'}, 'search_catalogue': {'q': '1000'},
         'get_item': {'kind': 'set', 'no': '1000-1'}, 'get_minifigure_detail': {'kind':'minifigure','no':'syn-fig-0004'}, 'list_copies': {}, 'get_copy': {'id': w.copy_a}, 'get_copy_completeness': {'id': w.copy_a},
         'list_copy_parts': {'id': w.copy_a}, 'list_copy_figures': {'id': w.copy_a}, 'list_stock': {}, 'list_minifigures': {}, 'list_gaps': {},
-        'list_matches': {}, 'list_instruction_files': {}, 'get_prices': {'kind': 'set', 'no': '1000-1'}, 'list_stale_prices': {}, 'list_wishes': {},
+        'list_matches': {}, 'list_instruction_files': {}, 'get_instruction_links': {'kind': 'set', 'no': '1000-1'}, 'get_prices': {'kind': 'set', 'no': '1000-1'}, 'list_stale_prices': {}, 'list_wishes': {},
         'list_storages': {}, 'list_lots': {}, 'list_places': {}, 'list_flags': {}, 'get_planning_ranking': {}, 'get_planning_set_scores': {'loose': True}, 'get_planning_build_scout': {}, 'get_valuation': {}, 'get_lot_candidate_sets': {'id': w.bag}, 'list_sticker_candidates': {'id': w.bag, 'stock_id': w.stock_brick}, 'get_lot_pull_list': {'id': w.bag, 'kind': 'set', 'no': '1000-1'}, 'list_orders': {},
         'get_order': {'id': 99999}, 'list_events': {}, 'list_jobs': {}, 'get_sources': {}, 'get_sync_status': rebrickable, 'get_settings': {},
         'get_statistics': {}, 'get_set_by_number': {'no': '1000-1'}, 'get_part_by_number': {'no': '3001'},

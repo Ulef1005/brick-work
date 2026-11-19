@@ -24,6 +24,29 @@ def region_for(db):
     return row[0] if row and row[0] else 'DE'
 
 
+def links_for(db, identifier, region=None):
+    """`{set_no, region, links}` for a set (or a booklet, which names its set), from the stored number and the retail country: no network,
+    no write (the catalogue's row serves a set not yet in the collection). A stored country that LEGO has no locale for falls back to the
+    default; a region the caller names must be supported."""
+    from . import admin
+    from ..store4 import lookup
+    from .instruction_links import DEFAULT_REGION, instruction_links
+    found = lookup.item_row(db, identifier)
+    if found is None:
+        raise ValueError('Choose an existing item')
+    row = found[1]
+    if row['kind'] == 'instructions' and row['born_key']:
+        row = lookup.item_row(db, admin.instruction_target(db, 'I', row['born_key']))[1]
+    if row['kind'] != 'set':
+        raise ValueError('Instructions belong to a set · choose a set or a booklet')
+    if not row['born_key']:
+        raise ValueError('This set has no number')
+    if region is None:
+        region = region_for(db)
+        region = region if region in LOCALES else DEFAULT_REGION
+    return {'set_no': row['born_key'], 'region': region, 'links': instruction_links(row['born_key'], region)}
+
+
 def queue_find(db, item_ids, *, region=None, via='app', actor=None):
     ids = list(dict.fromkeys(item_ids))
     if not ids or len(ids) > CAP:

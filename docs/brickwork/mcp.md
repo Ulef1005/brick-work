@@ -92,6 +92,10 @@ The assistant sees what its token can read: your sets, parts, prices, storage lo
 
 A resource is a read-only document an assistant can open by its address, for example `brickwork://summary` or `brickwork://items/bricklink/part/3001`.
 
+### Instruction links
+
+`get_instruction_links` (read) takes `provider`, `kind` and `no` of a set (a booklet names its set) and an optional `region`. It returns the set's instructions page on LEGO for that region (the retail country setting by default) and its Rebrickable set page, as plain `https` links. Nothing is fetched. The user downloads the PDF there and attaches it with the Upload a PDF operation ([ADR 0035](https://github.com/Ulef1005/brick-work/blob/main/docs/adr/0035-instructions-link-out.md)).
+
 ### Instruction discovery and downloads
 
 `find_instructions` accepts an ordered `items` list using provider, kind, and key. It queues discovery and returns jobs.

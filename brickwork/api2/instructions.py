@@ -8,6 +8,7 @@ from ..core import admin, errors
 from ..core.media import media_root
 from ..store4 import lookup
 from . import route
+from .items import live
 from .read import (also, arguments, bodies, flag, identity_filter, integer_id, narrow, page, reading, record, respond)
 
 SELECT = '''SELECT f.*, i.name, i.kind FROM main.instruction_file f JOIN main.item i ON i.id=f.item_id'''
@@ -95,3 +96,16 @@ def post_instruction_files_fetch(db, body):
 def post_instruction_files_download(db, body):
     via, actor = admin.origin()
     return queued(db, discovery.queue_download(db, body['candidate_ids'], via=via, actor=actor))
+
+
+@route('/items/<id>/instruction-links')
+@reading
+def get_items_by_id_instruction_links(db, id):
+    """Where to download the set's instructions (#465, ADR 0035): links only, nothing is fetched. A booklet names its set."""
+    args = arguments()
+    item_id = live(db, id)
+    try:
+        found = discovery.links_for(db, item_id, args.get('region') or None)
+    except ValueError as error:
+        raise errors.ValidationFailed(str(error)) from None
+    return respond(found)

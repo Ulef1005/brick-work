@@ -919,6 +919,41 @@ paths:
           $ref: '#/components/responses/Problem'
       x-v1: get_items_by_type_by_no_images
       x-piece: M.11b
+  /items/{id}/instruction-links:
+    get:
+      operationId: get_items_by_id_instruction_links
+      x-mcp-tool: get_instruction_links
+      summary: Links to the set's instructions pages (LEGO, Rebrickable); nothing is fetched.
+      description: A booklet names its set. `region` defaults to the retail country setting. The Rebrickable link pattern is not verified against the live site (ADR 0035).
+      tags:
+      - Instructions
+      security:
+      - bearerAuth:
+        - read
+      parameters:
+      - $ref: '#/components/parameters/Path_item_id'
+      - name: region
+        in: query
+        schema:
+          type: string
+          minLength: 2
+          maxLength: 32
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OneInstructionLinks'
+        '307':
+          $ref: '#/components/responses/Moved'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Invalid'
+        default:
+          $ref: '#/components/responses/Problem'
+      x-piece: M.11b
   /items/{id}/import:
     post:
       operationId: post_items_by_id_import
@@ -11027,6 +11062,43 @@ components:
           required:
           - total
           - covered
+    InstructionLinks:
+      type: object
+      required:
+      - set_no
+      - region
+      - links
+      properties:
+        set_no:
+          type: string
+        region:
+          type: string
+        links:
+          type: array
+          items:
+            type: object
+            required:
+            - source
+            - label
+            - url
+            properties:
+              source:
+                type: string
+                enum:
+                - lego
+                - rebrickable
+              label:
+                type: string
+              url:
+                type: string
+                format: uri
+    OneInstructionLinks:
+      type: object
+      required:
+      - data
+      properties:
+        data:
+          $ref: '#/components/schemas/InstructionLinks'
     OneInstructionFile:
       type: object
       required:

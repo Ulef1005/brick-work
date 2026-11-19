@@ -42,3 +42,4 @@ One file per decision that binds future work: the API contract, the data model, 
 
 | [0033](0033-instruction-thumbnails.md) | Instruction thumbnails use PDFium in bounded jobs | accepted | 2026-11-16 |
 | [0034](0034-parts-and-minifigures-lists-show-loose-stock.md) | Parts and Minifigures list loose stock by default, with an In sets scope | accepted | 2026-11-17 |
+| [0035](0035-instructions-link-out.md) | Find instructions links out instead of fetching | accepted | 2026-11-19 |

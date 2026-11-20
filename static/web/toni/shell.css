@@ -55,4 +55,4 @@ main .bw-page-head .bw-back:where(:not(.b-prime,.b-prime *)){margin-bottom:0}
    .mono:not(img)+span:where(:not(.b-prime,.b-prime *)) { font-size:9px !important;line-height:12px !important; }
 }
 .footer:where(:not(.b-prime,.b-prime *)){padding:20px 32px}
-@media(max-width:1023.98px){.layout>main:where(:not(.b-prime,.b-prime *)){padding:24px 20px}.footer:where(:not(.b-prime,.b-prime *)){padding:20px 20px calc(20px + var(--bw-bottom))}}
+@media(max-width:1023.98px){body{padding-bottom:var(--bw-bottom)}.layout>main:where(:not(.b-prime,.b-prime *)){padding:24px 20px}.footer:where(:not(.b-prime,.b-prime *)){padding:20px 20px calc(20px + var(--bw-bottom))}}

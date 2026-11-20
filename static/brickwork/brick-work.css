@@ -18,7 +18,8 @@
 .bp-shell.b-prime:not(#_):not(#_):not(#_) .lockup{height:32px;width:129px;max-width:none}
 .bp-shell.b-prime:not(#_):not(#_):not(#_) .lockup-dark{display:none}
 .bp-shell.b-prime:not(#_):not(#_):not(#_) .tabs a{display:block}
-.bp-shell.b-prime:not(#_):not(#_):not(#_) .search{width:340px;text-align:left;font-family:inherit}
+.bp-shell.b-prime:not(#_):not(#_):not(#_) .search{width:340px;flex:0 1 340px;min-width:0;text-align:left;font-family:inherit}
+.bp-shell.b-prime:not(#_):not(#_):not(#_) .search span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bp-shell.b-prime:not(#_):not(#_):not(#_) .sub{overflow-x:auto;scrollbar-width:none;white-space:nowrap}
 .bp-shell.b-prime:not(#_):not(#_):not(#_) .sub a,.bp-shell.b-prime:not(#_):not(#_):not(#_) .psub a{flex:none}
 .bp-shell.b-prime:not(#_):not(#_):not(#_) .psub{overflow-x:auto;scrollbar-width:none}

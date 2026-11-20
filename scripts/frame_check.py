@@ -35,6 +35,8 @@ SIZES = (1440, 390)
 
 # folder -> (app path, world). A screen joins the table when its issue builds it (the data of its frame goes into the `frames` world then).
 TARGETS = {'01-tools-and-admin': ('/manage/tools', 'frames')}
+# Screens whose PAGE BODY is built to the frame (their issue sets it): until then a target serves only the shell-band check, and the count does not count it.
+BODY_BUILT: set[str] = set()
 
 
 def frame_file(folder: str, theme: str, width: int) -> Path:
@@ -110,7 +112,7 @@ def verdict(result: dict) -> str:
 def count_line() -> str:
     """Approved screens = the numbered folders of design/screens-b (design's record; 00-* are component sheets); built = those with a TARGETS entry."""
     screens = sorted(p.name for p in FRAMES.iterdir() if p.is_dir() and p.name[:2].isdigit() and not p.name.startswith('00'))
-    built = [f for f in screens if f in TARGETS]
+    built = [f for f in screens if f in TARGETS and f in BODY_BUILT]
     return f'design gate: {len(built)} of {len(screens)} approved screens built'
 
 
@@ -121,6 +123,10 @@ def run(only: list[str], band: bool, report: bool, keep: str = '') -> int:
         return 1
     chrome = chrome.stdout.strip()
     lines, worst = [], 'ok'
+    unknown = [name for name in only if name not in TARGETS]
+    if unknown:
+        print('frame check: no such target: ' + ', '.join(unknown) + ' (known: ' + ', '.join(TARGETS) + ')')
+        return 2
     with tempfile.TemporaryDirectory(prefix='bw-frames-') as scratch:
         for folder, (path, world) in TARGETS.items():
             if only and folder not in only:

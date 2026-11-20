@@ -26,7 +26,7 @@
  document.querySelectorAll('dialog').forEach(dialog => {
   dialog.addEventListener('close', () => {
    const opener = openers.get(dialog);
-   opener?.setAttribute('aria-expanded', 'false');
+   if (!dialog.open) opener?.setAttribute('aria-expanded', 'false');   // a stale close after the dialog was opened again must not clear it
    // The close event fires after close(): if another dialog is open again by then (Escape, then Enter at once), focus is already
    // where it belongs, so the stale close must not pull it back to the opener.
    if (![...document.querySelectorAll('dialog')].some(open => open.open)) opener?.focus();

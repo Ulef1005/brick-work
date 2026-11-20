@@ -4,6 +4,8 @@
 .b-prime:not(#_):not(#_):not(#_){font:400 15px/1.45 var(--tw-font),system-ui,sans-serif;color:var(--tw-text);-webkit-font-smoothing:antialiased}
 .b-prime:not(#_):not(#_):not(#_) *,.b-prime:not(#_):not(#_):not(#_) *::before,.b-prime:not(#_):not(#_):not(#_) *::after{box-sizing:border-box;margin:0;padding:0}
 .b-prime:not(#_):not(#_):not(#_) img{display:block}
+.b-prime:not(#_):not(#_):not(#_) [hidden]{display:none!important}
+@media(prefers-reduced-motion:reduce){.b-prime:not(#_):not(#_):not(#_),.b-prime:not(#_):not(#_):not(#_) *,.b-prime:not(#_):not(#_):not(#_) *::before,.b-prime:not(#_):not(#_):not(#_) *::after{animation:none!important;transition:none!important}}
 .b-prime:not(#_):not(#_):not(#_) a{color:inherit;text-decoration:none}
 .b-prime:not(#_):not(#_):not(#_) button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .b-prime:not(#_):not(#_):not(#_) :focus-visible{outline:var(--tw-focus-width) solid var(--tw-focus-color);outline-offset:var(--tw-focus-offset)}

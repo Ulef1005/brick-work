@@ -19,6 +19,6 @@ The approved frames draw the shell as four groups in a top bar, a row of entries
 
 ## Consequences
 
-- Frame 01, shell band: 0.02 % at 1440 (pass), about 0.4 % at 390 in light and dark (note: the search and add icons sit 1.5 px from the frames' centres, because two 41 px targets must not overlap where the frames put the icons 38 px apart).
+- Frame 01, shell band: 0.02 % at 1440 (pass), 0.96 % at 390 in light and dark (note: the search and add icons of the lockup bar sit a few px from the frames' centres, because two 41 px targets must not overlap where the frames put the icons 38 px apart; the tab bar matches).
 - The shell's page bodies are not part of this step; each screen issue brings its own frame data into the `frames` world of the gate.
 - Tests of the removed sidebar, sheets and scrim are deleted or replaced by tests of the new links; `tests/test_shell_b.py` holds the new contract.

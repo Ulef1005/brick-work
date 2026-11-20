@@ -84,7 +84,7 @@ h1.bs-set-title { font-size: 24px; line-height: 30px; }
 
 @media (min-width: 1024px) {
   .bs-main { grid-template-columns: minmax(0, 1fr) 430px; gap: 30px; }
-  .bs-aside { position: sticky; top: 16px; }
+  .bs-aside { position: sticky; top: calc(var(--bw-bars) + 16px); }
 }
 @media (min-width: 1024px) and (max-width: 1279px) {
   .bs-main { grid-template-columns: minmax(0, 1fr) 360px; gap: 20px; }

@@ -46,5 +46,5 @@ def test_what_cannot_be_scoped_fails_the_build(bad):
 
 def test_a_swap_is_applied_in_order_and_only_changed_rules_go_dark():
     out = bp.generate({'B_COMPONENTS': ('.a{color:red}.b{box-shadow:0 0 1px rgba(1,1,1,.5)}',), 'SWAPS': [('rgba(1,1,1,.5)', 'blue')], 'DARK_CSS': 'html{color-scheme:dark}.c{x:y}'})
-    dark = out.split('\n@media', 1)[1]
+    dark = out.split('\n@media (prefers-color-scheme: dark)', 1)[1]
     assert 'blue' in dark and '.b{' in dark and '.a{' not in dark and '.c{x:y}' in dark and '{color-scheme:' not in dark

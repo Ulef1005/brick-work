@@ -42,9 +42,17 @@ def test_p6_hub_tiles_link_to_every_page(client, world):
     assert any(h.endswith('/manage/import-legacy') or 'import' in h for h in hrefs)
     labels = [h.get_text() for h in soup.select('.bw-hub h2.bw-label')]
     assert labels == ['Refresh', 'Your collection', 'Settings', 'Maintenance', 'About']         # #460: groups by what you do; the intro card has no heading
-    cards = [(c.select_one('.bw-hub-eyebrow').get_text(), c.select_one('.bw-hub-title').get_text()) for c in soup.select('.bw-hub-top a.bw-hub-card')]
+    cards = [(next(c.select_one('.bw-hub-eyebrow').stripped_strings), c.select_one('.bw-hub-title').get_text()) for c in soup.select('.bw-hub-top a.bw-hub-card')]
     assert cards == [('Get started', 'Get started')]                 # #83: while set-up is open the card is on top, the whole card a link
 
+
+def test_493_hub_is_built_to_frame_01(client, world):
+    soup = soup_of(client, '/manage/tools')
+    assert soup.select_one('.bw-hub-head .bw-hub-kicker').get_text() == 'Manage'      # #493: the page names its place above the heading
+    assert [c.get_text() for c in soup.select('.bw-refresh-cell .bw-refresh-label')] == ['Prices', 'Pictures']
+    tape = soup.select_one('.bw-hub-top a.bw-hub-card .bw-hub-eyebrow')
+    assert tape.select_one('.bw-hub-signal').get_text().endswith('done')          # the progress sits on the tape, not in the card body
+    assert soup.select_one('.bw-refresh-fig .bw-refresh-num') is not None and soup.select_one('.bw-refresh-fig .bw-refresh-line') is not None
 
 def test_p6_settings_controls(client, world):
     soup = soup_of(client, '/manage/settings')

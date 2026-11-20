@@ -111,6 +111,8 @@ nav:
               - how-to/add-a-box-or-instructions.md
           - Running Brick Work:
               - how-to/install-docker-desktop.md
+              - how-to/install-unraid.md
+              - how-to/install-nas.md
               - how-to/settings-and-maintenance.md
               - how-to/back-up-and-restore.md
               - how-to/upgrade.md

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **The Sets page in the new design** (#494). Sets sit under the label of their storage, with a storage index on the left (on a phone, a Storage row). Each set tile shows one bar for each copy, drawn to scale: violet for what you found, hatched for what is missing, dashed for what is still to check, with the numbers under it. A copy you never checked says so, and a sealed copy has the Sealed tag. The status filter is a row of tabs with counts, the grid and list switch is now called Drawers and Ledger, and the filters, Select mode and grouping open from the Filter button. With no storage set on any copy, there are no labels and no index. See [Browse your sets](docs/how-to/browse-your-sets.md).
+
 - **The new navigation: four groups on top, and the sidebar is gone** (#492). The top bar now carries the logo, the four groups (Collection, Workbench, Planning and Manage), Jump and Add, and the row under it lists the entries of the group you are in. On a phone the groups are the tab bar at the foot and the same row sits under the logo. The sidebar and the group sheets are gone; every page keeps its address. The light, dark or automatic setting moved to **Manage › Appearance**, and the counts that stood beside the entries are on the pages themselves.
 
 - **The new look begins: colours and type** (#492). Brick Work takes the colours of its new design, B′: violet for what you act on and what is found, ink and a pale grey ground for the rest, and a dark mode of its own. Text is set in IBM Plex Sans and IBM Plex Mono, which the app serves itself. The focus ring is ink, buttons on violet have white text, and the app's install colour is the app bar's. The layout of each screen stays as it is until its screen is rebuilt in this release.

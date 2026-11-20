@@ -4,7 +4,7 @@
   const nowrapTail = window.BrickFormatting.nowrapTail;
   // The Rebrickable number first, the BrickLink number beside it where it differs, a local BrickLink-born item marked (core/items.py).
   function numberLabel(r){return !r.number?'':r.source==='bricklink'?r.number+' (BrickLink)':r.also?r.number+' · BrickLink '+r.also:r.number;}
-  function filterRows(rows, query='', filters={}, sort='number', direction='asc', group='') {
+  function filterRows(rows, query='', filters={}, sort='number', direction='asc', group='', rank=null) {   // `rank`: storage id -> place in the Sets page's storage order (#494)
     // #41: a size in the query ("2x1", "1 2", "1*2", "x2") matches by size key; other words as text.
     const size=(typeof window!=='undefined'&&window.BrickSize)?window.BrickSize.parse(query):{full:null,partial:null,rest:query};
     const sized=size.full||size.partial,term=(sized?size.rest:query).trim().toLocaleLowerCase();
@@ -19,7 +19,7 @@
       if (key==='duplicates') return String(!!r.duplicates)===value;
       return (Array.isArray(r[key])?r[key].map(String):[String(r[key]??'')]).includes(value);
     }));
-    const compare=(a,b,key)=>['lot','storage','place'].includes(key)?(groupValue(a,key)==='null')-(groupValue(b,key)==='null')||groupValue(a,key).localeCompare(groupValue(b,key),undefined,{numeric:true}):key==='index'?Number(a.index||0)-Number(b.index||0):key==='used_price'?comparePrice(a,b):key==='missing'?(defect(a,'missing')+defect(a,'damaged'))-(defect(b,'missing')+defect(b,'damaged')):key==='quantity'?Number((filters.stock==='sets'?a.in_sets:a.quantity)||0)-Number((filters.stock==='sets'?b.in_sets:b.quantity)||0):['missing','damaged'].includes(key)?defect(a,key)-defect(b,key):key==='year'?Number(a[key]||0)-Number(b[key]||0):String(a[key]||'').localeCompare(String(b[key]||''),undefined,{numeric:true});
+    const compare=(a,b,key)=>key==='storage'&&rank?(rank.get(groupValue(a,key))??1e9)-(rank.get(groupValue(b,key))??1e9):['lot','storage','place'].includes(key)?(groupValue(a,key)==='null')-(groupValue(b,key)==='null')||groupValue(a,key).localeCompare(groupValue(b,key),undefined,{numeric:true}):key==='index'?Number(a.index||0)-Number(b.index||0):key==='used_price'?comparePrice(a,b):key==='missing'?(defect(a,'missing')+defect(a,'damaged'))-(defect(b,'missing')+defect(b,'damaged')):key==='quantity'?Number((filters.stock==='sets'?a.in_sets:a.quantity)||0)-Number((filters.stock==='sets'?b.in_sets:b.quantity)||0):['missing','damaged'].includes(key)?defect(a,key)-defect(b,key):key==='year'?Number(a[key]||0)-Number(b[key]||0):String(a[key]||'').localeCompare(String(b[key]||''),undefined,{numeric:true});
     return matches.sort((a,b)=> (group?compare(a,b,group):0) || (sort==='used_price' && (!a.price || !b.price)?Number(!a.price)-Number(!b.price):0) || (compare(a,b,sort)*(direction==='desc' || sort==='missing'?-1:1)) || compare(a,b,'number') || compare(a,b,'id'));
   }
   // Array-valued fields (lot, storage, place) group by their first recorded value; 'null' means none.
@@ -72,6 +72,7 @@
   // One row builder for every Collection kind, including wishes. Record values
   // are always text or DOM properties; no HTML parsing is involved.
   function buildRow(r, config, selecting, changed) {
+    if(config.bpSets==='true'&&r.entity!=='wish')return buildSetTile(r,config,selecting,changed);
     const el=(tag,cls,text)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=String(text);return n;};
     const name=r.type==='P'?window.BrickFormatting.partName(r.name):r.name;
     const label=numberLabel(r),displayName=name||label||'Unidentified item';
@@ -126,6 +127,66 @@
     row.append(foot);
     if(config.type==='P' && r.entity!=='wish')row.append(...partCells(r,config,el));
     return row;
+  }
+
+  // The Sets page's tile (R3-01, #494): the picture, the set number in mono with the used price, the name, one bar per copy to scale (violet found, hatched
+  // missing, dashed still to check), the Sealed tag for a sealed copy. The classes are the frames' (b-prime.css); the numbers are the row's `bars`
+  // (core/collection.py `_copy_bars`): [found, missing, total, figures missing] per copy, in the order of the row's statuses.
+  const fmt=n=>Number(n).toLocaleString('en-US');
+  function copyLine(bar,index,several){
+    const [found,missing,total,figures]=bar,prefix=several?'#'+(index+1)+' ':'',lost=Number(missing)||0,fig=Number(figures)||0;
+    const parts=[lost?lost+' missing':'',fig?fig+(fig===1?' figure':' figures')+' missing':''].filter(Boolean);
+    if(!parts.length)parts.push(found>=total?'complete':(total-found)+' to check');
+    return prefix+fmt(found)+'/'+fmt(total)+' · '+parts.join(' · ');
+  }
+  function copyBar(bar,index,several){
+    const el=(tag,cls,text)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=String(text);return n;};
+    const [found,missing,total,figures]=bar,bartxt=el('div','bartxt'),track=el('div','bar');
+    const never=!found&&!missing&&!figures,pct=n=>(Math.round(n/total*10000)/100).toFixed(2)+'%';
+    if(never){
+      track.append(el('i','c'));
+      const chip=el('span','xchip'),box=document.createElement('i'),svg=document.createElementNS('http://www.w3.org/2000/svg','svg'),path=document.createElementNS('http://www.w3.org/2000/svg','path');
+      svg.setAttribute('width','10');svg.setAttribute('height','10');svg.setAttribute('viewBox','0 0 10 10');svg.setAttribute('aria-hidden','true');
+      path.setAttribute('d','M2.6 2.6l4.8 4.8M7.4 2.6l-4.8 4.8');path.setAttribute('stroke','#fff');path.setAttribute('stroke-width','1.9');path.setAttribute('stroke-linecap','round');
+      svg.append(path);box.append(svg);chip.append(box,'Not checked');
+      bartxt.append(chip,el('span','',(several?'#'+(index+1)+' ':'')+'0/'+fmt(total)));
+    }else{
+      const found_=el('i','f'),lost=el('i','m'),rest=total-found-missing;
+      found_.style.width=pct(found);track.append(found_);
+      if(missing){lost.style.width=pct(missing);track.append(lost);}
+      if(rest>0){const todo=el('i','c');if(found||missing)todo.classList.add('after');track.append(todo);}
+      bartxt.textContent=copyLine(bar,index,several);bartxt.title=bartxt.textContent;
+    }
+    return [track,bartxt];
+  }
+  function buildSetTile(r, config, selecting, changed) {
+    const el=(tag,cls,text)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=String(text);return n;};
+    const label=numberLabel(r),displayName=r.name||label||'Unidentified item';
+    const tile=el('article','stile bp-tile');tile.dataset.bcRow='';tile.tabIndex=0;
+    if(config.editable==='true' && r.ids.length){
+      const pick=el('label','bc-selection bp-select'),check=el('input');pick.hidden=!selecting;check.type='checkbox';check.dataset.bcSelected='';check.checked=r.selected;
+      check.setAttribute('aria-label','Select '+displayName);check.addEventListener('change',()=>{r.selected=check.checked;changed();});pick.append(check,el('span','bc-visually-hidden','Select'));tile.append(pick);
+    }
+    const picture=el('div','tile bp-pic');picture.dataset.itemNo=r.number;
+    if(r.image){const button=el('button'),img=el('img');button.type='button';button.dataset.bwLightbox=config.imageBase.replace(/0$/,r.image);button.dataset.caption=displayName;button.setAttribute('aria-label','View '+displayName);const full=button.dataset.bwLightbox;img.src=full+'?w=320';img.srcset=full+'?w=320 320w, '+full+'?w=640 640w';img.sizes='206px';img.dataset.full=full;img.alt=displayName;img.loading='lazy';button.append(img);picture.append(button);button.addEventListener('click',()=>openPicture(button));}
+    else picture.append(el('span','bp-alt','Set picture'));
+    tile.append(picture);
+    const link=el('a','bp-link');link.dataset.bcItemLink='';link.href=config.itemBase.replace(/0$/,r.item_id);
+    const num=el('div','num');num.append(el('span','',label||'—'),el('span','bp-price',r.price?r.price[4]:'no sales'));
+    const theme=[r.theme||r.category,r.subtheme].filter(Boolean).join(' / '),copies=r.quantity>1?r.quantity+' copies':'';
+    link.append(num,el('div','nm',r.name||''),el('div','meta',[theme,r.year,copies].filter(Boolean).join(' · ')));
+    tile.append(link);
+    if(r.unresolved)tile.append(el('span','tag dash bp-self',r.number?'To check':'Unidentified'));
+    const several=(r.status||[]).length>1;
+    (r.status||['']).forEach((status,i)=>{
+      if(status==='sealed'){tile.append(el('span','tag bp-self','Sealed'));return;}
+      let bar=(r.bars||[])[i];
+      if(bar&&status==='complete'&&bar[0]+bar[1]<bar[2])bar=[bar[2]-bar[1],bar[1],bar[2],bar[3]];   // marked Complete by hand: the whole list counts as found
+      if(!bar||!bar[2]){tile.append(el('span','tag dash bp-self',(several?'#'+(i+1)+' ':'')+'No part list'));return;}
+      tile.append(...copyBar(bar,i,several));
+    });
+    if((r.tags||[]).length){const tags=el('div','bp-tags');r.tags.forEach(t=>tags.append(el('span','tag dash',t)));tile.append(tags);}
+    return tile;
   }
   // Parts table (kit 7a): damaged, lot, used price and quantity as cells of the row grid.
   // The grid view hides them and shows the card foot instead; the table view does the reverse.
@@ -183,7 +244,8 @@
     // 49b: Instructions and Parts open as compact rows on a phone (kit 7a); the switch still offers the grid.
     if(['I','P'].includes(type)&&typeof matchMedia==='function'&&matchMedia('(max-width: 767px)').matches)container.dataset.view='list';
     try {const saved=JSON.parse(sessionStorage.getItem(key));if(['grid','list'].includes(saved?.view))container.dataset.view=saved.view;}catch(_){}
-    const update=()=>buttons.forEach(b=>b.setAttribute('aria-pressed',String(b.dataset[prefix+'View']===container.dataset.view)));
+    const bp=!!container.closest?.('[data-bp-sets]');   // the Sets page's switch is drawn with a class (b-prime.css `.seg button.on`)
+    const update=()=>buttons.forEach(b=>{const on=b.dataset[prefix+'View']===container.dataset.view;b.setAttribute('aria-pressed',String(on));if(bp)b.classList.toggle('on',on);});
     buttons.forEach(b=>b.addEventListener('click',()=>{
       container.dataset.view=b.dataset[prefix+'View'];update();
       let state={};try{state=JSON.parse(sessionStorage.getItem(key))||{};}catch(_){}
@@ -415,6 +477,53 @@
       sessionStorage.setItem(key,JSON.stringify({query:search?.value,sort:sort?.value,direction:direction?.value,group:group?.value,filters:{...filters(),...(tabs.length?{inventory}:{})},limit,view:container.dataset.view,page:pageSize&&list.hasAttribute('data-bc-main')?page:undefined,scroll:window.scrollY}));
     }
     const canFilter=()=>inventory!=='extras';
+    // The Sets page (R3-01, #494): the sets sit under their storage's label tape in the storage index's order, under a plain label for another grouping, or in
+    // one grid with no storage set at all. The index, the phone's "Storage: all" row and the status tabs drive the same filters as the sheet.
+    const bpSets=root.dataset.bpSets==='true';
+    const bpStorages=bpSets?JSON.parse(list.querySelector('[data-bp-storages]')?.textContent||'[]'):[];
+    const bpRank=bpStorages.length?new Map(bpStorages.map((s,i)=>[s.id,i])):null,bpById=new Map(bpStorages.map(s=>[s.id,s]));
+    const bpStorageFilter=filterControls.find(c=>c.dataset.bcFilter==='storage');
+    function bpGroups(result){
+      const made=new Map(),counts=new Map(),byStorage=group?.value==='storage'&&bpStorages.length>0;
+      const flat=group?.value==='storage'&&!bpStorages.length,keyOf=r=>group?.value&&!flat?(groupValue(r,group.value)||'Not recorded'):'';   // storage grouping with no storage set at all is one flat grid, no label
+      if(group?.value&&!flat)result.forEach(r=>counts.set(keyOf(r),(counts.get(keyOf(r))||0)+1));
+      container.dataset.bpFlow=byStorage?'drawers':group?.value&&!flat?'sections':'flat';
+      return r=>{
+        const key=keyOf(r);
+        if(!made.has(key)){
+          const section=document.createElement('section'),tiles=document.createElement('div'),n=counts.get(key)||0,count=n+' '+(n===1?'set':'sets');
+          section.className='bp-group group';section.dataset.bpGroup=key;tiles.className='bp-tiles';
+          if(byStorage&&bpById.has(key)){
+            const storage=bpById.get(key),tape=document.createElement('div'),code=document.createElement('span'),name=document.createElement('span'),total=document.createElement('span');
+            tape.className='tape';code.className='mono bp-code';code.textContent=storage.code;name.className='bp-tape-name';name.textContent=storage.name;total.className='mono';total.textContent=count;
+            tape.append(code,name,total);section.append(tape);
+          }else if(group?.value&&!byStorage&&!flat){
+            const control=filterControls.find(c=>c.dataset.bcFilter===group.value),head=document.createElement('div'),total=document.createElement('span');
+            head.className='lbl';head.textContent=control?[...control.options].find(o=>o.value===key)?.textContent||key:key;total.className='mono';total.textContent=' · '+count;head.append(total);section.append(head);
+          }
+          section.append(tiles);container.append(section);made.set(key,tiles);
+        }
+        return made.get(key);
+      };
+    }
+    // What the page says about the sets in view, which storage is chosen, and what Sort is set to.
+    function bpState(result){
+      const copies=result.reduce((n,r)=>n+Number(r.quantity||0),0),lost=result.reduce((n,r)=>n+Number(r.missing_parts||0),0);
+      const summary=list.querySelector('[data-bp-view-summary]');if(summary)summary.textContent=copies+' '+(copies===1?'copy':'copies')+' · '+lost+' '+(lost===1?'part':'parts')+' missing in view';
+      const chosen=bpStorageFilter?bpStorageFilter.value:'';
+      list.querySelectorAll('[data-bp-storage]').forEach(b=>{const on=b.dataset.bpStorage===chosen;b.setAttribute('aria-pressed',String(on));b.classList.toggle('on',on);});
+      const pick=list.querySelector('[data-bp-storage-select]');if(pick)pick.value=chosen;
+      const label=list.querySelector('[data-bp-storage-label]');if(label)label.textContent='Storage: '+(chosen===''?'all':chosen==='null'?'none':(bpById.get(chosen)?.name||'chosen'));
+      const sorted=list.querySelector('[data-bp-sort-label]');if(sorted&&sort)sorted.textContent=(sort.options[sort.selectedIndex]?.textContent||'').toLowerCase();
+    }
+    list.querySelectorAll('[data-bp-storage]').forEach(b=>b.addEventListener('click',()=>{if(bpStorageFilter){bpStorageFilter.value=b.dataset.bpStorage;render(true);}}));
+    list.querySelector('[data-bp-storage-select]')?.addEventListener('change',e=>{if(bpStorageFilter){bpStorageFilter.value=e.target.value;render(true);}});
+    // Search and Sort sit beside the tabs on a desktop and at the top of the Filter sheet on a phone.
+    const bpFind=list.querySelector('[data-bp-find]');
+    if(bpFind&&panel&&typeof matchMedia==='function'){
+      const home=bpFind.parentElement,wide=matchMedia('(min-width: 1024px)'),place=()=>{if(wide.matches)home.append(bpFind);else panel.querySelector('.actions')?.after(bpFind);};
+      place();wide.addEventListener?.('change',place);
+    }
     function render(reset=false) {
       if(reset){limit=60;page=1;partSections.forEach(section=>section.page=1);if(figureBatch)figureBatch.page=1;}
       const extras=list.querySelector('[data-bc-tab-extras]'),inventoryPanel=list.querySelector('[data-bc-tab-inventory]');
@@ -441,7 +550,7 @@
           quick.forEach(b=>{const total=b.querySelector('.mono'),[k,v]=b.dataset.bcQuick.split(':');if(total)total.textContent=String(filterRows(records,'',{stock:scope,...(k?{[k]:v}:{})}).length);});
         }
       }
-      const result=filterRows(records,search?.value||'',filters(),sort?sort.value:'index',direction?.value,group?.value);
+      const result=filterRows(records,search?.value||'',filters(),sort?sort.value:'index',direction?.value,group?.value,bpRank);
       if(pageSize)page=Math.min(Math.max(1,page),Math.max(1,Math.ceil(result.length/pageSize)));
       const focused=document.activeElement,focusedRow=focused?.closest?.('[data-bc-row]');
       const sections=inventorySections(result),split=!groupedInventory && inventory!=='figures' && !!list.querySelector('[data-bc-missing]') && sections.missing.length>0;
@@ -468,7 +577,7 @@
         records.forEach(r=>{if(!matching.has(r))r.selected=false;if(r.node && !shown.has(r))r.node.remove();});
         nodes=[];
       }
-      else nodes.forEach(n=>n.hidden=true);container.querySelectorAll('[data-bc-group-heading]').forEach(n=>n.remove());
+      else nodes.forEach(n=>n.hidden=true);container.querySelectorAll('[data-bc-group-heading]').forEach(n=>n.remove());if(bpSets)container.querySelectorAll('[data-bp-group]').forEach(n=>n.remove());   // the tiles are kept by their records and placed again
       const missingSection=list.querySelector('[data-bc-missing]'),presentSection=list.querySelector('[data-bc-present]'),missingRows=list.querySelector('[data-bc-missing-rows]'),presentRows=list.querySelector('[data-bc-present-rows]');
       // #33 (frame 1d): the first three present lines show inline above "Show all N present parts".
       const presentInline=list.querySelector('[data-bc-present-inline]'),inlinePresent=new Set(split&&presentInline?displayed.filter(r=>Number(r.missing||0)+Number(r.damaged||0)+Number(r.parts_missing||0)===0).slice(0,3):[]);
@@ -477,13 +586,13 @@
       if(missingSection){const label='Missing '+(inventory==='figures'?'minifigures':'parts');missingSection.setAttribute('aria-label',label);}
       if(presentSection){presentSection.hidden=!split || sections.present.length<=inlinePresent.size;list.querySelector('[data-bc-present-summary]').textContent='Show all '+sections.present.length+(sections.present.some(r=>r.missing_recorded===false)?' other ':' present ')+(inventory==='figures'?'minifigures':'parts');}
       const basis=root.querySelector('[data-bc-price-basis]');if(basis && list.hasAttribute('data-bc-main'))basis.textContent=priceBasis(result);
-      let previous;const groupCounts=new Map();
+      let previous;const groupCounts=new Map();const bpTiles=bpSets?bpGroups(result):null;
       if(group?.value)result.forEach(r=>{const k=groupValue(r,group.value)||'Not recorded';groupCounts.set(k,(groupCounts.get(k)||0)+1);});
       displayed.forEach(r=>{
-        if(group?.value && !partSections.length) {const name=groupValue(r,group.value)||'Not recorded';if(name!==previous){const h=document.createElement('h3');h.dataset.bcGroupHeading='';const control=filterControls.find(c=>c.dataset.bcFilter===group.value);const headingLabel=control?[...control.options].find(o=>o.value===name)?.textContent||name:name;h.textContent=headingLabel;const n=groupCounts.get(name)||0,noun=singularNoun(root.dataset.type);h.append(Object.assign(document.createElement('span'),{className:'bc-group-count',textContent:' · '+n+' '+(n===1?noun:listNoun(root.dataset.type))}));if(group.value==='lot'&&name!=='null'&&root.dataset.lotBase){const open=document.createElement('a');open.className='bc-group-open';open.textContent='Open';open.setAttribute('aria-label','Open lot '+headingLabel);open.href=root.dataset.lotBase.replace('LOT',encodeURIComponent(name));h.append(open);}container.append(h);previous=name;}}
+        if(group?.value && !partSections.length && !bpSets) {const name=groupValue(r,group.value)||'Not recorded';if(name!==previous){const h=document.createElement('h3');h.dataset.bcGroupHeading='';const control=filterControls.find(c=>c.dataset.bcFilter===group.value);const headingLabel=control?[...control.options].find(o=>o.value===name)?.textContent||name:name;h.textContent=headingLabel;const n=groupCounts.get(name)||0,noun=singularNoun(root.dataset.type);h.append(Object.assign(document.createElement('span'),{className:'bc-group-count',textContent:' · '+n+' '+(n===1?noun:listNoun(root.dataset.type))}));if(group.value==='lot'&&name!=='null'&&root.dataset.lotBase){const open=document.createElement('a');open.className='bc-group-open';open.textContent='Open';open.setAttribute('aria-label','Open lot '+headingLabel);open.href=root.dataset.lotBase.replace('LOT',encodeURIComponent(name));h.append(open);}container.append(h);previous=name;}}
         const node=virtual?(r.node ||= buildRow(r,root.dataset,selecting,selectionCount)):r.node;
         if(virtual){const check=node.querySelector('[data-bc-selected]');if(check)check.checked=r.selected;const label=node.querySelector('.bc-selection');if(label)label.hidden=!selecting;}
-        node.hidden=false;const partSection=partSections.find(section=>section.name===r.part_group && r.type!=='M');const destination=partSection?partSection.rows:figureRows&&r.type==='M'?figureRows:split?(defect(r,'missing')+defect(r,'damaged')+Number(r.parts_missing||0)>0?missingRows:inlinePresent.has(r)?presentInline:presentRows):container;destination.append(node);if(virtual)nodes.push(node);
+        node.hidden=false;const partSection=partSections.find(section=>section.name===r.part_group && r.type!=='M');const destination=partSection?partSection.rows:figureRows&&r.type==='M'?figureRows:split?(defect(r,'missing')+defect(r,'damaged')+Number(r.parts_missing||0)>0?missingRows:inlinePresent.has(r)?presentInline:presentRows):(bpSets?bpTiles(r):container);destination.append(node);if(virtual)nodes.push(node);
         bindRow(node);
       });
       if(focusedRow && nodes.includes(focusedRow) && !focusedRow.hidden && document.activeElement!==focused)focused.focus({preventScroll:true});
@@ -497,8 +606,9 @@
       picks.forEach(b=>b.setAttribute('aria-pressed',String(filters()[b.dataset.bcPick]===b.dataset.value)));
       groupPicks.forEach(b=>b.setAttribute('aria-pressed',String((group?.value||'')===b.dataset.bcGroupPick)));
       quick.forEach(b=>{const [k,v]=b.dataset.bcQuick.split(':');b.setAttribute('aria-pressed',String(k?filters()[k]===v:quickKeys.every(x=>!filters()[x])));});
-      statusButtons.forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.bcStatus===(filters().status||''))));
-      list.querySelectorAll('[data-bc-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.bcView===container.dataset.view)));
+      statusButtons.forEach(b=>{const on=b.dataset.bcStatus===(filters().status||'');b.setAttribute('aria-pressed',String(on));if(bpSets)b.classList.toggle('on',on);});
+      list.querySelectorAll('[data-bc-view]').forEach(b=>{const on=b.dataset.bcView===container.dataset.view;b.setAttribute('aria-pressed',String(on));if(bpSets)b.classList.toggle('on',on);});
+      if(bpSets)bpState(result);
       list.querySelectorAll('[data-bc-sort-pick]').forEach(b=>b.setAttribute('aria-pressed',String(sort?.value===b.dataset.bcSortPick)));
       list.querySelectorAll('[data-bc-order-pick]').forEach(b=>b.setAttribute('aria-pressed',String(direction?.value===b.dataset.bcOrderPick)));
       selectionCount();saveState();
@@ -510,7 +620,7 @@
     const scrim=list.querySelector('[data-bc-sheet-scrim]');
     const sortPanel=list.querySelector('[data-bc-sort-panel]');
     function syncSheets(){if(scrim)scrim.hidden=(panel.hidden||desktop())&&(!sortPanel||sortPanel.hidden||desktop());}
-    const desktop=()=>list.hasAttribute('data-bc-main') && typeof matchMedia==='function' && matchMedia('(min-width: 1024px)').matches;
+    const desktop=()=>list.hasAttribute('data-bc-main') && !bpSets && typeof matchMedia==='function' && matchMedia('(min-width: 1024px)').matches;
     function togglePanel(){
       if(!canFilter())return;
       if(desktop()) {panel.hidden=false;panel.setAttribute('role','region');panel.removeAttribute('aria-modal');panel.querySelector('[data-bc-pick],select')?.focus();return;}

@@ -480,6 +480,26 @@ def listing(db, type_letter, *, wishes=False):
     return rows
 
 
+def storage_index(rows, storages):
+    """The storages of the Sets page's index (R3-01), from the set rows `listing` returned and `options()['storages']`: every storage that holds a copy,
+    with the code on its label (`short_id`), its name, how many copies it holds (each copy once, in the storage it sits in) and how many sets are filed
+    under it. A set whose copies sit in two storages is filed under the first one that is set, as the grouping does (core/list_records.py `storages`).
+    The order is the page's: most sets first, then most copies, then the lowest set number, then the code. Empty when no copy has a storage."""
+    by_id = {s['id']: s for s in storages}
+    copies, sets, first = {}, {}, {}
+    for row in rows:
+        held = [s for s in row.get('storages', []) if s != 'null' and s in by_id]
+        for s in held:
+            copies[s] = copies.get(s, 0) + 1
+        if held:
+            number = row.get('item_no') or ''
+            key = (int(re.match(r'\d*', number).group() or 0), number)
+            sets[held[0]] = sets.get(held[0], 0) + 1
+            first[held[0]] = min(first.get(held[0], key), key)
+    order = sorted(copies, key=lambda s: (-sets.get(s, 0), -copies[s], first.get(s, (0, '')), by_id[s].get('short_id') or '', s))
+    return [dict(id=s, code=by_id[s].get('short_id') or '', name=by_id[s]['name'], copies=copies[s], sets=sets.get(s, 0)) for s in order]
+
+
 def part_colours(db, item_id):
     """Active colours of a part from stock, set lines and wishes, in one read."""
     return [dict(r, ink=add.colour_ink(r['rgb'])) for r in db.execute("""SELECT x.color_id,c.name AS color_name,c.rgb,

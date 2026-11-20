@@ -35,7 +35,7 @@ If the edit gives a loose item the same item, colour, condition, lot and storage
 
 On any **Collection** list:
 
-1. Turn on **Select mode**.
+1. Turn on **Select mode**. On **Sets** it is in the **Filter** sheet.
 2. Tick the items.
 3. In the bar that appears, under **Change**, choose **Storage**, then the storage under **Value**.
 4. Press **Save**.

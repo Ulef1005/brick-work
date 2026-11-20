@@ -61,11 +61,11 @@
 .b-prime:not(#_):not(#_):not(#_) .tabbar div.on,.b-prime:not(#_):not(#_):not(#_) .tabbar a.on{color:var(--tw-text)}
 .b-prime:not(#_):not(#_):not(#_) .tabbar div.on b,.b-prime:not(#_):not(#_):not(#_) .tabbar a.on b{display:block;width:18px;height:3px;border-radius:2px;background:var(--tw-accent);margin-top:1px}
 .b-prime:not(#_):not(#_):not(#_) .seg{display:flex;border:1.5px solid var(--tw-text);border-radius:3px;font:600 12px var(--tw-font-label);letter-spacing:.08em;text-transform:uppercase}
-.b-prime:not(#_):not(#_):not(#_) .seg span{padding:6px 10px}
-.b-prime:not(#_):not(#_):not(#_) .seg span.on{background:var(--tw-text);color:var(--tw-bg)}
+.b-prime:not(#_):not(#_):not(#_) .seg span,.b-prime:not(#_):not(#_):not(#_) .seg button{padding:6px 10px}
+.b-prime:not(#_):not(#_):not(#_) .seg span.on,.b-prime:not(#_):not(#_):not(#_) .seg button.on{background:var(--tw-text);color:var(--tw-bg)}
 .b-prime:not(#_):not(#_):not(#_) .stabs{display:flex;gap:24px;font:500 14px var(--tw-font);border-bottom:1px solid var(--tw-divider)}
-.b-prime:not(#_):not(#_):not(#_) .stabs span{padding:10px 0 9px;color:var(--tw-text-2);border-bottom:2px solid transparent;white-space:nowrap}
-.b-prime:not(#_):not(#_):not(#_) .stabs span.on{color:var(--tw-text);font-weight:600;border-bottom-color:var(--tw-accent)}
+.b-prime:not(#_):not(#_):not(#_) .stabs span,.b-prime:not(#_):not(#_):not(#_) .stabs button{padding:10px 0 9px;color:var(--tw-text-2);border-bottom:2px solid transparent;white-space:nowrap}
+.b-prime:not(#_):not(#_):not(#_) .stabs span.on,.b-prime:not(#_):not(#_):not(#_) .stabs button.on{color:var(--tw-text);font-weight:600;border-bottom-color:var(--tw-accent)}
 .b-prime:not(#_):not(#_):not(#_) .stile{background:var(--tw-surface);border:1px solid var(--tw-divider);border-radius:var(--tw-r-2);padding:9px;display:flex;flex-direction:column;min-width:0}
 .b-prime:not(#_):not(#_):not(#_) .stile .num{border-top:1.5px solid var(--tw-rule);margin-top:8px;padding-top:6px;display:flex;align-items:baseline;justify-content:space-between;font:600 18px var(--tw-mono)}
 .b-prime:not(#_):not(#_):not(#_) .stile .nm{font:600 14px/18px var(--tw-font);margin:3px 0 2px;min-height:36px}

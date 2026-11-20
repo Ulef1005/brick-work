@@ -39,6 +39,7 @@ def test_set_cards_show_each_copys_status(world, coll, client, tmp_path):
     result = subprocess.run(['node', 'tests/toni_bw_set_status_pills.cjs', executable, str(page)], capture_output=True, text=True, timeout=180, cwd=ROOT)
     assert result.returncode == 0, result.stdout + result.stderr
     cards = {card["number"]: card["pills"] for card in json.loads(result.stdout.splitlines()[0])}
-    # The world: 1000-1 has an incomplete and a sealed copy; 2070-1 a complete one, and the unchecked copy added above.
-    assert sorted((p['text'], p['state']) for p in cards['1000-1']) == [('Incomplete', 'incomplete'), ('Sealed', 'sealed')], cards
-    assert sorted((p['text'], p['state']) for p in cards['2070-1']) == [('Complete', 'complete'), ('Not checked', 'unknown')], cards
+    # The world: 1000-1 has an incomplete and a sealed copy; 2070-1 a complete one, and the unchecked copy added above (a bar for each, the Sealed tag for the sealed one).
+    assert [(p['text'], p['state']) for p in cards['1000-1'] if p['text'] != 'collection'] == [('#1 5/6 · 1 missing', 'bar'), ('Sealed', 'sealed')], cards
+    texts = sorted(p['text'] for p in cards['2070-1'])
+    assert texts == ['#1 4/4 · complete', 'Not checked#2 0/4'] or texts == ['#2 4/4 · complete', 'Not checked#1 0/4'], cards

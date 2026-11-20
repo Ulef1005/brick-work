@@ -67,10 +67,7 @@ def test_c27_status_distribution_says_not_checked(coll, client):
     coll.add_copy('1000-1', condition='used')                      # completeness not recorded: a set nobody has checked
     coll.add_copy('1000-2', condition='new', completeness='sealed')
     soup = sets_page(client)
-    strip = soup.select_one('.bc-status-strip')
-    assert any(s['title'].startswith('Not checked · ') for s in strip.select('.bc-segment'))
-    assert 'Unknown' not in strip.get_text() + str([s['title'] for s in strip.select('.bc-segment')])
-    chips = [b.get_text(' ', strip=True) for b in soup.select('.bc-status-chips button')]
+    chips = [b.get_text(' ', strip=True) for b in soup.select('.stabs button')]   # the status tabs of R3-01 (#494) replace the chips and the distribution strip
     assert any(c.startswith('Not checked ') for c in chips) and not any(c.startswith('Unknown') for c in chips)
 
 

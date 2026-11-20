@@ -75,7 +75,7 @@ class Layer(real.Layer):
         nth = {}
         for copy in copies:
             index = nth[copy['number']] = nth.get(copy['number'], -1) + 1
-            db.execute('UPDATE copy_part SET checked=0, missing=0, damaged=0 WHERE copy_id=? AND copy_figure_id IS NULL', (copy['id'],))
+            db.execute('UPDATE copy_part SET checked=0, missing=0, damaged=0 WHERE copy_id=? AND copy_figure_id IS NULL AND retired_at IS NULL', (copy['id'],))
             db.execute('DELETE FROM copy_flag WHERE copy_id=? AND flag_id=?', (copy['id'], flag))
             _, found, missing = FRAME[copy['number']][index]
             sealed = db.execute('SELECT completeness FROM copy WHERE id=?', (copy['id'],)).fetchone()[0] == 'sealed'

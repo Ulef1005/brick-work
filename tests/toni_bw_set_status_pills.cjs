@@ -1,4 +1,4 @@
-/* #258: the status pills a set card shows in real Chromium, from the Sets page the server rendered (records inline). Prints one JSON line:
+/* #258: the status pills a set tile shows per copy in real Chromium (R3-01, #494: the bar or tag of each copy), from the Sets page the server rendered (records inline). Prints one JSON line:
    [{number, pills: [{text, state}]}] for every card on the page. */
 const fs=require('node:fs'),path=require('node:path'),{spawn}=require('node:child_process'),{pathToFileURL}=require('node:url'),assert=require('node:assert/strict');
 const [chrome,page]=process.argv.slice(2);
@@ -24,8 +24,7 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
  let cards=[];
  for(let i=0;i<150;i++){
   // The navigation replaces the blank page's context; a poll that lands in between is retried.
-  try{cards=await evaluate(`document.readyState==='complete'&&location.pathname.endsWith('/sets.html')?[...document.querySelectorAll('.bc-card-foot')].map(foot=>{const card=foot.parentElement;
-   return {number:(card.querySelector('.bc-identity .mono')||{}).textContent||'',pills:[...foot.querySelectorAll('.bc-foot-pills .bc-status')].map(p=>({text:p.textContent,state:p.className.replace('bc-status','').trim()}))};}):[]`);}catch{cards=[];}
+  try{cards=await evaluate(`document.readyState==='complete'&&location.pathname.endsWith('/sets.html')?[...document.querySelectorAll('.stile')].map(tile=>({number:(tile.querySelector('.num span')||{}).textContent||'',pills:[...tile.querySelectorAll('.bartxt,.tag')].map(p=>({text:p.textContent.trim(),state:p.classList.contains('tag')?(p.textContent.trim()==='Sealed'?'sealed':'none'):'bar'}))})):[]`);}catch{cards=[];}
   if(cards.length)break;await delay(20);
  }
  process.stdout.write(JSON.stringify(cards)+'\n');

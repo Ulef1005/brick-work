@@ -352,12 +352,11 @@ def test_missing_static_falls_back(app4):
 
 def test_review_collection_controls_and_source_disclosure(world, coll, client):
     soup = soup_of(client.get('/'))
-    assert soup.select_one('.bc-status-strip')
-    assert [b['data-bc-status'] for b in soup.select('[data-bc-status]')] == ['', 'sealed', 'complete', 'incomplete', 'unknown']
-    assert len(soup.select('.bc-toolbar [data-bc-search]')) == 1
+    assert [b['data-bc-status'] for b in soup.select('[data-bc-status]')] == ['', 'incomplete', 'unknown', 'complete', 'sealed']   # the tabs of R3-01 (#494)
+    assert len(soup.select('[data-bc-search]')) == 1
     assert soup.select_one('[data-bc-panel] [data-bc-group]')
     assert soup.select_one('[data-bc-sort-panel] [data-bc-direction]')
-    assert soup.select_one('[data-bc-view=grid]')['aria-label'] == 'Grid'
+    assert soup.select_one('[data-bc-view=grid]').get_text(strip=True) == 'Drawers'
     coll.prop(world.keep, 'source_modified_at', 'Recorded timestamp', source='rebrickable')
     coll.prop(world.keep, 'name', 'Alternative name', source='rebrickable')
     coll.tag('copy', world.copy_a, world.box)

@@ -209,9 +209,9 @@ main #bw-workbench .bw-copy-summary .bw-identity>a { display:flex;flex-direction
    the stepper and Missing (.bp-run-act, the stepper rules are bw-bp-stepper.css, shared with the Set Inspector) and the next parts (.bp-run-next). The destination dialog, the
    message, Undo, the Back / Skip row and Details stay outside it. The scope's reset outranks a class rule, so a margin, a padding or a size carries four :not(#_). */
 body:has(#bw-workbench[data-bp-run]) .layout>main.bp-flush { padding:0; }
-#bw-workbench[data-bp-run] { max-width:1240px;padding:22px 32px 0;display:flex;flex-direction:column;gap:14px; }
+#bw-workbench[data-bp-run] { min-width:0;max-width:1240px;padding:22px 32px 0;display:flex;flex-direction:column;gap:14px; }
 #bw-workbench[data-bp-run] [data-message] { position:absolute;top:18px;right:32px;z-index:5;margin:0;padding:8px 12px;background:var(--tw-surface);border:1px solid var(--tw-divider-strong);border-radius:8px; }
-#bw-workbench[data-bp-run] [data-pick] { display:flex;flex-direction:column;gap:14px;margin:0; }
+#bw-workbench[data-bp-run] [data-pick] { display:flex;flex-direction:column;gap:14px;margin:0;min-width:0; }
 #bw-workbench[data-bp-run] [data-pick] .bw-grid { display:block; }
 #bw-workbench[data-bp-run] .bw-pick-card { display:flex;flex-direction:row;gap:28px;align-items:flex-start;padding:0; }
 #bw-workbench[data-bp-run] .bw-pick-card[hidden] { display:none; }

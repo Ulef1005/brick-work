@@ -421,3 +421,14 @@ Brickset, BrickLink, Brick Owl, Import & export, the complete export and the lis
 - **Change:** the list tag under the set’s name, and the Info card’s Tags row now shows it (the approved frame said "Not recorded").
 - **Inherited:** the 320 and 375 overflow of the approved frame, as for Sets.
 - **SUCCESS:** Check: the Tags row and the list tag say the same thing.
+
+### List-name rules of #531 (detailed, Ulf: "approved - add detailed descriptions in the docs", 2026-11-20)
+
+- **Where a list name comes from:** a Rebrickable list the set is in. A set in two lists carries two names; a set in no list carries none. The names are kept only when "Keep each set's Rebrickable list names as tags on its copy" is ticked on the Pick sets step (N2-13).
+- **Rename at Rebrickable:** the next run shows one line in the Preview (N2-16) for the list: "Renamed at Rebrickable to <new name>; <n> sets carry the tag", with the choice "Rename the tag". The new name replaces the old on every set that carries it, picked or not; nothing else on a copy changes (copies, counts and fields stay).
+- **Removal at Rebrickable:** one line "Removed at Rebrickable; <n> sets carry the tag", with the choice "Drop the tag". The tag is removed from every set that carries it; the sets stay.
+- **Unchanged list:** one line, "Unchanged; <n> sets carry the tag", choice "Skip".
+- **Never touched:** the user's own tags. A tag that came from a list is read-only in Tags admin (no rename, no delete), with the note "managed by Rebrickable sync"; only the one row is drawn, in a following round, the rest of the screen is the app's as it is today.
+- **Approved sentence of N1-05 that changes:** "Sets you do not pick stay as they are on both sides" becomes "A set you do not pick keeps its copies, counts and fields; only its list name follows its list" (N2-13).
+- **Display:** the list names show as chips on Pick sets and Sets (N2-13, N2-14) and as a tag on Set detail with the Info card's Tags row reading the same (N2-15). Under #551 the same names become the detail of the Rebrickable source ("Last synced from Rebrickable: <list>, <date>", N2-20); whether the tag form is replaced by that detail waits for Ulf (next round).
+

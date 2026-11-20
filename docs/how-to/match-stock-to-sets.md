@@ -15,7 +15,7 @@ Matchmaker works from the gaps recorded on your copies: missing and damaged part
 
 ## Move loose stock into a copy
 
-The page opens with a heading that gives the answer, such as "3 copies can be advanced, 0 can become complete". Copies sit under one tape labelled "Completable first, then coverage". Each copy has a bar drawn to scale, violet for what your loose stock covers and hatched for what is still missing, with text like "covers 7 of 12 missing".
+The page opens with a heading that gives the answer, such as **3 copies can be advanced, 0 can become complete**. Copies sit under one tape labelled **Completable first, then coverage**. Each copy has a bar drawn to scale. Violet is what your loose stock covers and hatched is what is still missing. Text like **covers 7 of 12 missing** sits under it.
 
 1. Open **Workbench → Matchmaker**. (The addresses `/workbench/matcher` and `/workbench/match` open the same page.)
 2. The heading tells you how many copies can be advanced and how many can become complete. Copies that loose stock can finish come first, then the rest by how much of their gap your stock covers.

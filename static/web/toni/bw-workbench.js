@@ -124,6 +124,7 @@
       }
       const count=list.querySelector('[data-count]');
       if(count)count.textContent = pages && shown.length>PAGE ? rangeText(shown.length,page) : window.BrickFormatting.resultCount(shown.length);
+      const tapeCount=list.querySelector('[data-tape-count]');if(tapeCount)tapeCount.textContent=`${shown.length} ${shown.length===1?'copy':'copies'}`;
       const chips = list.querySelector('[data-chips]');chips.replaceChildren();
       [search,filter].filter(control=>control.value).forEach(control => {
         const chip = document.createElement('button');chip.type='button';chip.textContent=`${control.value} ×`;chip.setAttribute('aria-label',`Remove filter ${control.value}`);

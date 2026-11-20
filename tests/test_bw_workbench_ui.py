@@ -55,7 +55,7 @@ def test_matcher_groups_copies_with_their_coverage_and_kinds(world, coll, client
         disclosure = page.find('summary', string='How matching works').parent
         assert not disclosure.has_attr('open') and 'not reservations' in disclosure.text
         group = page.select_one(f'[data-copy-id="{world.copy_a}"]')
-        assert 'Set 1' in group.text
+        assert 'Copy 1' in group.text, 'frame 09 names the copy as Copy N'
         assert group.select_one('[role="img"]')['aria-label'] == 'Covers 2 of 3 missing'
         assert {'Parts', 'Instruction'} == {n.text for n in group.select('.bw-kind')}
         assert group.select_one('[data-action="transfer"]') and 'Give' in group.text and 'Take' in group.text

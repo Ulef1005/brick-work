@@ -4,7 +4,8 @@ from ..core.admin import database
 from ..core.stock import add_loose
 from ..core.transaction import transaction
 from . import clock, dataset
-from .frames import INSPECTOR
+from .frames import INSPECTOR, Layer
+from .showcase import seeded_uuids
 
 COVER = (
     ('3660', 72, 4),
@@ -21,6 +22,7 @@ def stage_matcher(store):
     in that order, while copy 1 of 7213-1 gets none.
     """
     patched = clock.freeze_clock()
+    layer = Layer(pictures=False)
     try:
         with database(store) as db:
             with transaction(db):
@@ -33,15 +35,16 @@ def stage_matcher(store):
                         "UPDATE stock SET archived_at=? WHERE kind='part' AND item_id=? AND color_id=? AND archived_at IS NULL",
                         (dataset.STAMP, item_id, color_id),
                     )
-                for part, color, quantity in COVER:
-                    row = db.execute(
-                        'SELECT p.item_id,p.color_id FROM copy_part p JOIN item i ON i.id=p.item_id JOIN color c ON c.id=p.color_id '
-                        'WHERE i.born_key=? AND c.born_key=? AND p.missing>0 AND p.retired_at IS NULL LIMIT 1',
-                        (part, str(color)),
-                    ).fetchone()
-                    if row is None:
-                        raise ValueError(f'frames-matcher: no missing line for {(part, color)}')
-                    add_loose(db, item_id=row[0], color_id=row[1], quantity=quantity, condition='used', storage_id='storage-bag-07', via='cli')
+                with seeded_uuids(layer.rng):
+                    for part, color, quantity in COVER:
+                        row = db.execute(
+                            'SELECT p.item_id,p.color_id FROM copy_part p JOIN item i ON i.id=p.item_id JOIN color c ON c.id=p.color_id '
+                            'WHERE i.born_key=? AND c.born_key=? AND p.missing>0 AND p.retired_at IS NULL LIMIT 1',
+                            (part, str(color)),
+                        ).fetchone()
+                        if row is None:
+                            raise ValueError(f'frames-matcher: no missing line for {(part, color)}')
+                        add_loose(db, item_id=row[0], color_id=row[1], quantity=quantity, condition='used', storage_id='storage-bag-07', via='cli')
                 leaked = db.execute(
                     'SELECT DISTINCT i.born_key, c.born_key FROM copy_part p '
                     'JOIN copy cp ON cp.id=p.copy_id '

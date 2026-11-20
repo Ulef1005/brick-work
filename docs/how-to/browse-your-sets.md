@@ -17,7 +17,7 @@ Each set is a tile with its picture, its number, the used average price and its 
 - hatched is what is missing;
 - dashed is what is still to check.
 
-The text under a bar gives the numbers, for example *#1 365/375 · 10 missing* or *1,426/1,426 · complete*. A set with two copies shows two bars, *#1* and *#2*. A copy you never checked has a dashed bar, the **Not checked** mark and a count such as *0/1,123*. A sealed copy shows the **Sealed** tag and no bar. On a narrow screen a long line is cut at the edge of the tile; open the set to read it in full.
+The text under a bar gives the numbers, for example *#1 365/375 · 10 missing* or *1,426/1,426 · complete*. A set with two copies shows two bars, *#1* and *#2*. A copy you never checked has a dashed bar, the **Not checked** mark and a count such as *0/1,123*. A sealed copy shows the **Sealed** tag and no bar. A copy a Rebrickable pull checked has a line under its bar, **Checked on Rebrickable**. Its Lost Parts are the missing parts, and a copy with none is complete. If you check the copy or mark a part yourself, the line goes. See [Lost Parts from Rebrickable](sync-collection.md#lost-parts-from-rebrickable). On a narrow screen a long line is cut at the edge of the tile; open the set to read it in full.
 
 ## Find the sets in a storage
 

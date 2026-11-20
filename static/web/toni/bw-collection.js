@@ -155,7 +155,10 @@
       found_.style.width=pct(found);track.append(found_);
       if(missing){lost.style.width=pct(missing);track.append(lost);}
       if(rest>0){const todo=el('i','c');if(found||missing)todo.classList.add('after');track.append(todo);}
-      bartxt.textContent=copyLine(bar,index,several);bartxt.title=bartxt.textContent;
+      const line=copyLine(bar,index,several),cut=line.indexOf(' · ');
+      if(line.length>21&&cut>0){bartxt.append(el('span','',line.slice(0,cut)),el('span','',line.slice(cut+3)));bartxt.classList.add('two');}   // a phone tile holds 21 characters in mono 12 px: a longer line wraps at its dot, nothing is cut (design, 2026-11-20)
+      else bartxt.textContent=line;
+      bartxt.title=line;
     }
     // #489: a copy a Rebrickable pull checked says so under the bar (frame 48); a copy Brick Work checked itself carries no such line.
     return bar[5]==='rebrickable'?[track,bartxt,el('div','bar-src mono','Checked on Rebrickable')]:[track,bartxt];

@@ -10,7 +10,7 @@ import uuid
 from .errors import CatalogueError, CatalogueMismatch, SchemaMismatch, StaleSchema, Unsupported, UpgradeFailed
 
 MIN_SQLITE = (3, 37, 0)
-SCHEMA_VERSION = '4.6'
+SCHEMA_VERSION = '4.7'
 # In-place upgrades of an older collection, one step per version, each in its own write transaction: {from: (to, statements)}.
 # A step only adds; a fresh file from `brickwork.sql` has the same tables as an upgraded one (tests/test_store4_upgrade.py).
 def _storage_label_statements(filename='storage_labels.sql'):
@@ -34,6 +34,7 @@ UPGRADES = {
     '4.3': ('4.4', tuple(_storage_label_statements('instruction_candidates.sql'))),
     '4.4': ('4.5', tuple(_storage_label_statements('instruction_guards.sql'))),
     '4.5': ('4.6', tuple(_storage_label_statements('instruction_thumbnails.sql'))),
+    '4.6': ('4.7', tuple(_storage_label_statements('checked_by.sql'))),             # #489: who checked a copy; NULL for every copy already there
 }
 # The columns the steps add, by table: a row recorded before its step (an Undo receipt, a RowLog) lacks them and reads them as NULL.
 ADDED_COLUMNS = {}

@@ -427,13 +427,14 @@ def preview_switch(db, copy_id, choice):
 
 
 def derived_completeness(db, copy_id):
-    """The 3.3 rule (`core/completeness.py`) on 4.0 tables: 'complete' when the copy has the status flag "Set is checked" and no
+    """The 3.3 rule (`core/completeness.py`) on 4.0 tables: 'complete' when the copy has the status flag "Set is checked" (or was checked by a
+    Rebrickable pull, `checked_by`, #489) and no
     live, non-spare, non-figure line is missing or damaged and no live figure line is missing, else 'incomplete'. Retired rows
     are not lines of the copy. None unless the copy's completeness is derived."""
     copy = _copy_row(db, copy_id)
     if copy['completeness_source'] != 'derived':
         return None
-    checked = db.execute('''SELECT 1 FROM main.copy_flag cf JOIN main.flag f ON f.id=cf.flag_id AND f.archived_at IS NULL
+    checked = copy['checked_by'] or db.execute('''SELECT 1 FROM main.copy_flag cf JOIN main.flag f ON f.id=cf.flag_id AND f.archived_at IS NULL
                             WHERE cf.copy_id=? AND f.kind='status' AND f.name='Set is checked' ''', (copy_id,)).fetchone()
     defects = db.execute('''SELECT 1 FROM main.copy_part WHERE copy_id=? AND retired_at IS NULL AND is_spare=0 AND copy_figure_id IS NULL
                             AND (missing>0 OR damaged>0)

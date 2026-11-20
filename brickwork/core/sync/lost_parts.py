@@ -205,7 +205,7 @@ def plan_section(db, read, owned_numbers, translate, *, how, on, adds=None):
     (`{item id: copies}`) are the copies the same pull adds (#513): a set with no copy here that the pull brings in once is matched against
     the lines that copy will get (state `new`), so one pull marks it."""
     adds = adds or {}
-    section = dict(on=on, rule=how, status='off', message=None, unreadable=0, rows=[], sets=[], unmatched_sets=[], clearing=True,
+    section = dict(on=on, rule=how, status='off', owned=[], message=None, unreadable=0, rows=[], sets=[], unmatched_sets=[], clearing=True,
                    summary=dict(sets=0, added=0, replaced=0, cleared=0, cleared_pieces=0, unmatched=0, pick=0, unreadable=0))
     if not on:
         return section
@@ -213,7 +213,7 @@ def plan_section(db, read, owned_numbers, translate, *, how, on, adds=None):
         section.update(status='failed', message='Lost Parts were not read: ' + (read or 'no answer') + '. Nothing was changed for them.', clearing=False)
         return section
     rows = read['rows']
-    section.update(status='read', rows=rows, unreadable=read['unreadable'])
+    section.update(status='read', rows=rows, unreadable=read['unreadable'], owned=sorted(owned_numbers))
     if read['unreadable']:
         section['clearing'] = False
         section['message'] = '%d %s could not be read, so nothing is cleared this time.' % (
@@ -289,14 +289,19 @@ def plan_section(db, read, owned_numbers, translate, *, how, on, adds=None):
 
 # The apply --------------------------------------------------------------------------------------
 
-def apply(db, section, ticked, picks, *, new_copies=()):
+def apply(db, section, ticked, picks, *, new_copies=(), translate=None, flag_name=None):
     """Write the ticked sets' marks inside the open pull transaction. `ticked` is the list of set numbers (None: every set that has a copy to
     use), `picks` maps a set number to the chosen copy id. Returns `dict(events, sets, added, replaced, cleared, unmatched, left_out)`; `events`
     are the `part_check` receipts the pull's Undo takes back. Everything is recomputed against what the collection holds now, with the rule
     the plan froze. A copy this pull just made (`new_copies`) is written only for a set the plan marked `new` (#513): the set had no copy and
-    the pull made exactly one."""
+    the pull made exactly one.
+
+    #489: a copy that gets marks is labelled `checked_by='rebrickable'` (`checker.mark_pulled`), and so is the pulled copy of an owned set that has no Lost
+    Parts at all, but only when the whole list was read and the set has one live copy that carries the pull's tag `flag_name` and that nobody has checked or
+    marked (`labelled`). A set's other copies are never labelled: a Lost Part belongs to the set, and only the copy that received it is the pulled one."""
     from .. import errors
-    report = dict(events=[], sets=[], added=0, replaced=0, cleared=0, unmatched=[], left_out=[], skipped=[])
+    report = dict(events=[], sets=[], added=0, replaced=0, cleared=0, unmatched=[], left_out=[], skipped=[], labelled=[])
+    whole = section.get('unreadable') == 0
     if section.get('status') != 'read':
         return report
     how = section['rule'] if section['clearing'] else ('per_part' if section['rule'] in ('per_set', 'everything') else section['rule'])
@@ -346,9 +351,40 @@ def apply(db, section, ticked, picks, *, new_copies=()):
             continue
         report['unmatched'] += [dict(u, set_no=number) for u in result['unmatched']]
         if result['edits']:
-            report['events'].append(checker.mark(db, copy_id, result['edits']))
+            report['events'].append(checker.mark_pulled(db, copy_id, result['edits'], 'rebrickable' if whole else checker.KEEP))
         counted = short(result)
         report['sets'].append(dict(set_no=number, copy_id=copy_id, **counted, not_cleared=result['not_cleared']))
         for name in ('added', 'replaced', 'cleared'):
             report[name] += counted[name]
+    if whole and translate is not None and flag_name:
+        _label_without_lost_parts(db, section, translate, flag_name, new_copies, grouped, report)
     return report
+
+
+def _label_without_lost_parts(db, section, translate, flag_name, new_copies, grouped, report):
+    """The pulled copy of each owned set that has no Lost Parts on Rebrickable counts as checked there (#489): the list was read whole and holds nothing against it.
+    Only a set with exactly one live copy, tagged by the pull and with nothing checked or marked on it, so a copy the person made or checked is never relabelled."""
+    numbers = [n for n in section.get('owned', ()) if n not in grouped]
+    mapping = translate(db, set(numbers))
+    items = sorted({mapping[n] for n in numbers if mapping.get(n)})
+    copies = _copies(db, items)
+    for number in numbers:
+        item = mapping.get(number)
+        live = copies.get(item, []) if item else []
+        if len(live) != 1:
+            continue
+        copy_id = live[0]['id']
+        row = db.execute("""SELECT c.completeness,c.completeness_source,c.checked_by,
+                (SELECT 1 FROM main.copy_flag cf JOIN main.flag f ON f.id=cf.flag_id AND f.archived_at IS NULL
+                  WHERE cf.copy_id=c.id AND f.kind='tag' AND f.name=?) AS pulled,
+                (SELECT 1 FROM main.copy_flag cf JOIN main.flag f ON f.id=cf.flag_id AND f.archived_at IS NULL
+                  WHERE cf.copy_id=c.id AND f.kind='status' AND f.name='Set is checked') AS flagged,
+                (SELECT 1 FROM main.copy_part WHERE copy_id=c.id AND retired_at IS NULL AND (checked>0 OR missing>0 OR damaged>0)
+                 UNION ALL SELECT 1 FROM main.copy_figure WHERE copy_id=c.id AND retired_at IS NULL AND missing>0 LIMIT 1) AS marked
+                FROM main.copy c WHERE c.id=?""", (flag_name, copy_id)).fetchone()
+        if (not row['pulled'] or row['flagged'] or row['marked'] or row['checked_by'] or row['completeness'] == 'sealed' or row['completeness_source']):
+            continue
+        event = checker.mark_pulled(db, copy_id, [], 'rebrickable')
+        if event is not None:
+            report['events'].append(event)
+            report['labelled'].append(dict(set_no=number, copy_id=copy_id))

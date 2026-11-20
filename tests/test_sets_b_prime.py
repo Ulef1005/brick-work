@@ -24,10 +24,10 @@ def built(tmp_path, name):
 def test_each_copy_has_its_bar_and_the_bars_add_up_to_the_heading(tmp_path):
     with database(built(tmp_path, 'frames'), read_only=True) as db:
         rows = {r['item_no']: r for r in collection.listing(db, 'S')}
-    assert rows['7213-1']['bars'] == [[365, 10, 375, 0, 0], [130, 12, 375, 0, 0]]      # two copies, two bars; the second still has pieces to check
-    assert rows['7938-1']['bars'] == [[643, 14, 657, 0, 0]]
-    assert rows['31120-1']['bars'] == [[1426, 0, 1426, 0, 0]]                        # "Set is checked" and nothing missing: complete
-    assert rows['8043-1']['bars'] == [[0, 0, 1123, 0, 0]]                            # never checked
+    assert rows['7213-1']['bars'] == [[365, 10, 375, 0, 0, None], [130, 12, 375, 0, 0, None]]      # two copies, two bars; the second still has pieces to check
+    assert rows['7938-1']['bars'] == [[643, 14, 657, 0, 0, None]]
+    assert rows['31120-1']['bars'] == [[1426, 0, 1426, 0, 0, None]]                        # "Set is checked" and nothing missing: complete
+    assert rows['8043-1']['bars'] == [[0, 0, 1123, 0, 0, None]]                            # never checked
     assert rows['10254-1']['statuses'] == ['sealed']
     assert sum(b[1] for r in rows.values() for b in r['bars'] if b) == sum(r['missing_parts'] for r in rows.values()) == 69
 

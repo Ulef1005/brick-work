@@ -45,3 +45,4 @@ One file per decision that binds future work: the API contract, the data model, 
 | [0035](0035-instructions-link-out.md) | Find instructions links out instead of fetching | accepted | 2026-11-19 |
 | [0036](0036-b-prime-tokens-and-type.md) | B′ tokens and type: the layer takes the frames' values, IBM Plex is served | accepted; amends 0022 | 2026-11-19 |
 | [0037](0037-b-prime-shell-and-scoping.md) | The B′ shell: scoped component CSS, guarded legacy rules, four groups on top | accepted; builds on 0036 | 2026-11-20 |
+| [0038](0038-checked-by.md) | A copy records who checked it: a nullable `copy.checked_by`, schema 4.7 | accepted | 2026-11-20 |

@@ -461,7 +461,8 @@ def apply_pull(db, plan_id, ticked=None, *, lost=None, picks=None, via=None, act
                     receipt['stock_flags'].append([change['id'], flag])
         section = plan.get('lost')
         if section and section.get('on'):
-            receipt['lost'] = _lost_report(section, lost_parts.apply(db, section, lost, picks, new_copies=set(receipt['copies'])))
+            receipt['lost'] = _lost_report(section, lost_parts.apply(db, section, lost, picks, new_copies=set(receipt['copies']),
+                                                                    translate=translate, flag_name='imported from ' + LABELS[source]))
         receipt['jobs'] = queue_new_items(db, touched)
         receipt['baseline_before'] = _setting(db, source, 'baseline')
         _put(db, source, 'baseline', _baseline(db, plan, wish_list))
@@ -487,7 +488,7 @@ def _lost_report(section, report):
     """What the pull's receipt (and its result page) keeps of the Lost Parts step."""
     return dict(status=section['status'], message=section.get('message'), rule=section['rule'], clearing=section['clearing'],
                 unreadable=section['unreadable'], events=report['events'], sets=report['sets'], added=report['added'], replaced=report['replaced'],
-                cleared=report['cleared'], unmatched=report['unmatched'], left_out=report['left_out'], skipped=report['skipped'],
+                cleared=report['cleared'], unmatched=report['unmatched'], left_out=report['left_out'], skipped=report['skipped'], labelled=report['labelled'],
                 unmatched_sets=section['unmatched_sets'])
 
 

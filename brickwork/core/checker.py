@@ -284,7 +284,7 @@ def snapshot(db, copy_id, tokens=(), figure=None):
     result = dict(session=_row_state(_session_row(db, copy_id, figure)), parts=parts, figures=figures)
     if not figure:
         # A figure check never touches the set's checked flag or completeness.
-        result.update(checked_flag=checked(db, copy_id), copy={k: c[k] for k in ('completeness', 'completeness_source', 'updated_at')})
+        result.update(checked_flag=checked(db, copy_id), copy={k: c[k] for k in ('completeness', 'completeness_source', 'checked_by', 'updated_at')})
     return result
 
 
@@ -301,12 +301,19 @@ def _restore(db, copy_id, value, figure=None):
         db.execute('UPDATE main.copy_figure SET missing=?,updated_at=? WHERE copy_id=? AND id=?', (r['missing'], r['updated_at'], copy_id, r['id']))
     if 'copy' in value:
         c = value['copy']
-        db.execute('UPDATE main.copy SET completeness=?,completeness_source=?,updated_at=? WHERE id=?', (c['completeness'], c['completeness_source'], c['updated_at'], copy_id))
+        db.execute('UPDATE main.copy SET completeness=?,completeness_source=?,checked_by=?,updated_at=? WHERE id=?',
+                   (c['completeness'], c['completeness_source'], c.get('checked_by'), c['updated_at'], copy_id))      # a receipt from before schema 4.7 has no checked_by: NULL
     _restore_session(db, copy_id, figure, value['session'])
 
 
 def _tokens(value):
     return ['p:' + str(r['id']) for r in value['parts']] + ['f:' + str(r['id']) for r in value['figures']]
+
+
+def unlabel(db, copy_id):
+    """#489: a check or mark by hand makes the copy Brick Work's own, so "Checked on Rebrickable" goes (NULL = Brick Work). Inside the caller's write; the receipt
+    it records holds the column, so Undo brings the label back."""
+    db.execute('UPDATE main.copy SET checked_by=NULL WHERE id=? AND checked_by IS NOT NULL', (copy_id,))
 
 
 def recompute(db, copy_id):
@@ -533,6 +540,8 @@ def write(db, copy_id, payload, figure=None):
                     else:
                         mark_row(db, 'copy_figure', dict(id=r['id'], copy_id=copy_id), r, dict(missing=missing))
                     s['answers'][token] = 'answered'
+                    if not figure:
+                        unlabel(db, copy_id)
                     # #213: a new miss goes to the top of Missing so far; one already listed keeps its place there. A part found in full
                     # leaves the list (#383).
                     if missing and token not in s['misses']:
@@ -583,6 +592,7 @@ def write(db, copy_id, payload, figure=None):
                         raise ValueError('Choose whether the set is checked')
                     if wants and any(s['answers'].get(r['token']) != 'answered' for r in required):
                         raise ValueError('Answer the skipped and unchecked parts and figures first')
+                    unlabel(db, copy_id)
                     flag = checked_flag(db)
                     if wants:
                         db.execute('INSERT OR IGNORE INTO main.copy_flag(copy_id,flag_id) VALUES(?,?)', (copy_id, flag))
@@ -622,9 +632,24 @@ def _record(db, copy_id, old, new):
 def mark(db, copy_id, edits):
     """Set counts on lines of a live copy: `edits` is `[(token, fields)]`, a token `p:<copy_part id>` or `f:<copy_figure id>` (a figure
     line takes `missing` only) and fields among `missing`, `damaged` (each 0 to the line's quantity) and `checked`. One receipt; the derived
-    completeness follows. A token that is no live line of the copy is `NotFound`. Returns the event id."""
+    completeness follows. A token that is no live line of the copy is `NotFound`. A mark by hand takes "Checked on Rebrickable" off the copy
+    (#489). Returns the event id."""
+    return _mark(db, copy_id, edits, None)
+
+
+KEEP = 'keep'                                                 # mark_pulled: write the marks, leave `checked_by` alone
+
+
+def mark_pulled(db, copy_id, edits, source='rebrickable'):
+    """The marks of a pull (`edits` as `mark`, may be empty) and the label of its source on the copy (`checked_by`, #489): the copy counts every piece that is not
+    missing as found, and its completeness is derived unless the person chose it (a manual or sealed copy keeps its word and gets no label). One receipt, so
+    Undo takes marks and label back together. `source` KEEP writes the marks and leaves the label as it is. Returns the event id, None when nothing at all would change."""
+    return _mark(db, copy_id, edits, source)
+
+
+def _mark(db, copy_id, edits, source):
     with transaction(db):
-        copy(db, copy_id)
+        current = copy(db, copy_id)
         tokens = [token for token, _ in edits]
         old = snapshot(db, copy_id, tokens)
         for token, fields in edits:
@@ -636,8 +661,15 @@ def mark(db, copy_id, edits):
             if table == 'copy_figure' and set(fields) - {'missing'}:
                 raise errors.ValidationFailed('A whole figure has a missing count only')
             mark_row(db, table, dict(id=row['id'], copy_id=copy_id), row, fields)
+        if source is None:
+            unlabel(db, copy_id)
+        elif source != KEEP and current['completeness'] != 'sealed' and current['completeness_source'] != 'manual':
+            db.execute("UPDATE main.copy SET checked_by=?, completeness_source=coalesce(completeness_source,'derived') WHERE id=?", (source, copy_id))
         recompute(db, copy_id)
-        return _record(db, copy_id, old, snapshot(db, copy_id, tokens))
+        new = snapshot(db, copy_id, tokens)
+        if not edits and new == old:
+            return None
+        return _record(db, copy_id, old, new)
 
 
 def found_one(db, copy_id, token):
@@ -713,6 +745,7 @@ def set_checked(db, copy_id, wanted):
         copy(db, copy_id)
         flag = checked_flag(db, create=bool(wanted))
         old = snapshot(db, copy_id)
+        unlabel(db, copy_id)
         if flag:
             db.execute('DELETE FROM main.copy_flag WHERE copy_id=? AND flag_id=?', (copy_id, flag))
             if wanted:
@@ -752,6 +785,9 @@ def _undo_save(db, event, via, actor):
     copy_id, figure = _figure_of(event['entity_id'])
     previous, following = json.loads(event['old_value']), json.loads(event['new_value'])
     following.pop('operation', None)
+    for state in (previous, following):
+        if 'copy' in state:
+            state['copy'].setdefault('checked_by', None)          # a receipt from before schema 4.7
     if snapshot(db, copy_id, _tokens(following), figure) != following:
         raise ValueError('This answer changed elsewhere. Reload before undoing.')
     _restore(db, copy_id, previous, figure)

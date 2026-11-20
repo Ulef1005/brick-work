@@ -292,15 +292,18 @@ def _copy_defects(db, where, params):
 
 
 def _copy_bars(db, ids):
-    """`{copy id: [found, missing, total, figures missing, damaged]}` for the sets list's bar, one query. The lines are the ones `_copy_defects` counts (live, not spare, not a
+    """`{copy id: [found, missing, total, figures missing, damaged, checked by]}` for the sets list's bar, one query. The lines are the ones `_copy_defects` counts (live, not spare, not a
     figure's), so the bars add up to the heading's "parts missing". `missing` is every missing piece on those lines; `found` the pieces of the lines the
-    check has answered (`checked`) less their missing, or, where the person switched "Set is checked" on, every piece that is not missing: that switch is
-    the person's word that the whole list was looked at. The rest of `total` is still to check. The last number is the figures missing (a figure is no part
-    of the bar, but a copy without one is not complete); the damaged pieces are present, so they leave the bar alone, but they are a gap by the completeness rule, so the line names them. A copy with no part list has no entry."""
-    return {r['copy_id']: [r['found'], r['missing'], r['total'], r['figures'], r['damaged']] for r in db.execute('''SELECT p.copy_id,sum(p.quantity) AS total,sum(p.missing) AS missing,sum(p.damaged) AS damaged,
-        sum(CASE WHEN p.checked=1 OR f.copy_id IS NOT NULL THEN p.quantity-p.missing ELSE 0 END) AS found,
+    check has answered (`checked`) less their missing, or, where the person switched "Set is checked" on or a Rebrickable pull checked the copy (`checked_by`, #489),
+    every piece that is not missing: that switch is the person's word that the whole list was looked at, and a pull reads Rebrickable's Lost Parts as the whole list.
+    The rest of `total` is still to check. The figures missing come next (a figure is no part of the bar, but a copy without one is not complete); the damaged pieces are
+    present, so they leave the bar alone, but they are a gap by the completeness rule, so the line names them. The last entry is who checked the copy: 'rebrickable'
+    after a pull, else None (Brick Work, or nobody). A copy with no part list has no entry."""
+    return {r['copy_id']: [r['found'], r['missing'], r['total'], r['figures'], r['damaged'], r['checked_by']] for r in db.execute('''SELECT p.copy_id,sum(p.quantity) AS total,sum(p.missing) AS missing,sum(p.damaged) AS damaged,
+        sum(CASE WHEN p.checked=1 OR f.copy_id IS NOT NULL OR c.checked_by IS NOT NULL THEN p.quantity-p.missing ELSE 0 END) AS found,c.checked_by AS checked_by,
         (SELECT coalesce(sum(g.missing),0) FROM copy_figure g WHERE g.copy_id=p.copy_id AND g.retired_at IS NULL) AS figures
-        FROM copy_part p LEFT JOIN (SELECT DISTINCT cf.copy_id FROM copy_flag cf JOIN flag g ON g.id=cf.flag_id AND g.archived_at IS NULL
+        FROM copy_part p JOIN copy c ON c.id=p.copy_id
+        LEFT JOIN (SELECT DISTINCT cf.copy_id FROM copy_flag cf JOIN flag g ON g.id=cf.flag_id AND g.archived_at IS NULL
                                     WHERE g.kind='status' AND g.name='Set is checked') f ON f.copy_id=p.copy_id
         WHERE p.retired_at IS NULL AND p.is_spare=0 AND p.copy_figure_id IS NULL AND p.copy_id IN (SELECT value FROM json_each(?))
         GROUP BY p.copy_id HAVING total>0''', (_in(ids),))}
@@ -1256,17 +1259,25 @@ def save(db, entity, ids, data, *, archive=False, create_system_flags=False):
             raise ValueError('Name the lot')
         changes = []
         flag_change = None
+        hand_check = False                                   # #489: the person's own word on completeness or "Set is checked" takes "Checked on Rebrickable" off a copy
+        if table == 'copy' and len(ids) == 1 and old[0]['checked_by']:
+            hand_check = 'completeness' in edits and edits['completeness'] != old[0]['completeness']
         if 'flags' in data:
             if table not in ENTITY_FLAGS or len(ids) != 1 or not isinstance(data['flags'], list):
                 raise ValueError('Edit flags on one instance')
             wanted = _system_flags_made(db, data['flags']) if create_system_flags else data['flags']
+            before_checked = table == 'copy' and _set_checked(db, str(ids[0]))
             flag_change = _set_flags(db, table, str(ids[0]), set(wanted))
+            if table == 'copy' and old[0]['checked_by'] and _set_checked(db, str(ids[0])) != before_checked:
+                hand_check = True
         stamp = stamp_now()
         written = dict(edits)
         if archive:
             written['archived_at'] = stamp
         if table in STAMPED:
             written['updated_at'] = stamp
+        if hand_check:
+            written['checked_by'] = None
         everything = old
         if table == 'stock' and edits and not archive:
             plan = stock.plan_edit(db, old, edits)
@@ -1347,6 +1358,12 @@ def _system_flags_made(db, wanted):
                 entry = flag['id']
         ids.append(entry)
     return ids
+
+
+def _set_checked(db, copy_id):
+    """Whether the copy has the status flag "Set is checked"."""
+    return db.execute("""SELECT 1 FROM main.copy_flag cf JOIN main.flag f ON f.id=cf.flag_id AND f.archived_at IS NULL
+                         WHERE cf.copy_id=? AND f.kind='status' AND f.name='Set is checked'""", (copy_id,)).fetchone() is not None
 
 
 def _set_flags(db, table, owner, wanted):

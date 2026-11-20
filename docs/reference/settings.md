@@ -110,12 +110,7 @@ See also: [Command line](cli.md).
 
 ## Address for labels
 
-In **Tools & Admin > Settings > Labels and instructions**, set **Address on printed labels** to an HTTP or HTTPS origin your phone can open.
+In **Tools & Admin > Settings > Labels**, set **Address on printed labels** to an HTTP or HTTPS origin your phone can open.
 Leave it empty to use the incoming request address. Paths, credentials, queries and fragments are refused.
 Localhost and bare IP addresses show a warning in the label dialog.
 The save confirmation offers **Undo**. Saving the same address after trimming whitespace and trailing slashes says **Nothing changed**, without a new History entry or Undo banner. Changing this setting affects new labels. Previously printed codes keep their original address.
-
-## Instruction download limit
-
-**Settings → Labels and instructions → Largest instruction download** controls the Official file limit, initially 500 MB. Values range from 1 to 5000 MB.
-Uploads and other instruction sources retain their 20 MB limit.

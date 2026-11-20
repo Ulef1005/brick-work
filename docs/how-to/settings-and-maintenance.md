@@ -39,10 +39,9 @@ Some rows have their own **Save** button and save at once. They are **Display cu
 - **Part list for a new set.** The row says whether BrickLink's list is preferred. Open it for **Prefer BrickLink's part list for new copies**. When it is on, a new copy of a set starts on Rebrickable's list and switches to BrickLink's list as soon as it arrives. A set's own pinned choice still comes first. The switch needs a BrickLink key: without one it is off and says so, with a link to **Keys and sources**. It has its own **Save** button and saves at once, with no Undo; turn it off again the same way.
 - **Lost Parts from Rebrickable.** The row names the rule in use. Which count a Rebrickable pull keeps when it brings in your Lost Parts. **Add only** adds missing marks and keeps the larger count, and clears nothing. **Rebrickable wins per part** (the default) lets Rebrickable's count replace yours for each part it lists as lost, also when it is smaller, and leaves the other marks alone. **Rebrickable wins per set** makes a set that has Lost Parts on Rebrickable exactly Rebrickable's list, so its other missing marks are cleared. **Rebrickable wins everywhere** does that for every synced set, so a set with no Lost Parts there loses its missing marks. The pull preview says how many marks it will clear before you pull. Undo takes them back. From the command line: `brickwork settings set rebrickable_lost_parts_rule per_part`. See [Lost Parts from Rebrickable](sync-collection.md#lost-parts-from-rebrickable).
 
-**Labels and instructions**
+**Labels**
 
 - **Address on printed labels.** The address, or "Uses the request address" when it is empty. See [Storage labels](storage-labels.md).
-- **Largest instruction download.** The Official file limit, initially 500 MB per file. See [Instruction download limit](#instruction-download-limit).
 
 **Where data comes from** is for experts and starts collapsed. **Show 4 settings** opens it.
 
@@ -134,7 +133,7 @@ A bulk action (**Bulk refresh prices**, **Refresh pictures**, fetching missing b
 
 ## Instruction files
 
-A PDF is attached to a **set**; a booklet shows the files of the set with its number. **Upload a PDF** takes a set number (or a booklet's number, which names the same set) and a label. **Find instructions** opens candidate discovery and downloads nothing until you confirm ticked files. No instruction source is set up yet. See [Find and download instructions](add-a-box-or-instructions.md#find-and-download-instructions).
+A PDF is attached to a **set**; a booklet shows the files of the set with its number. **Upload a PDF** takes a set number (or a booklet's number, which names the same set) and a label. **Find instructions** lists the sets that have no PDF, each with a link to its official instructions page and to its Rebrickable page; you download the PDF there and attach it with **Upload a PDF**. See [Find the instructions for a set](add-a-box-or-instructions.md#find-the-instructions-for-a-set).
 
 ## Database
 
@@ -149,8 +148,3 @@ A PDF is attached to a **set**; a booklet shows the files of the set with its nu
 - [Undo a change](undo-a-change.md) for what can be taken back.
 - [Pictures, prices and where they come from](pictures-and-prices.md) for the sources behind the settings.
 - [Commands](../reference/cli.md) for `brickwork settings`, `brickwork catalogue` and `brickwork check`.
-
-## Instruction download limit
-
-**Settings → Labels and instructions → Largest instruction download** controls the Official file limit, initially 500 MB. Values range from 1 to 5000 MB.
-Uploads and other instruction sources retain their 20 MB limit.

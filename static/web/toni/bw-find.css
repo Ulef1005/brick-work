@@ -1,0 +1,42 @@
+/* Find instructions (frame 03) */
+.bw-find{-webkit-font-smoothing:antialiased;box-sizing:border-box;width:100%;display:flex;flex-direction:column;gap:18px;max-width:1036px;margin:-8px auto 0 0;padding:0}
+.bw-find *,.bw-find *::before,.bw-find *::after{box-sizing:border-box}
+@media(min-width:900px){.bw-find{margin-top:-6px}}
+.bw-find .bw-find-head{display:flex;flex-direction:column;align-items:stretch;gap:0;margin:0;padding:0 0 12px;border:0;border-bottom:1.5px solid var(--tw-rule);background:transparent}
+.bw-find .bw-find-head .bw-find-kicker{display:block;margin:0;font:600 12px/14px var(--tw-font-label);letter-spacing:.14em;text-transform:uppercase;color:var(--tw-text-muted)}
+.bw-find .bw-find-head h1{margin:4px 0 0;font:600 30px/36px var(--tw-font);letter-spacing:-.015em;color:var(--tw-text)}
+.bw-find .bw-find-head p{margin:2px 0 0;font:400 14px/1.45 var(--tw-font);color:var(--tw-text-2)}
+.bw-find .bw-find-form{position:relative;display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin:0}
+.bw-find .bw-find-field{display:flex;flex-direction:column;gap:6px;margin:0;min-width:0;font:500 13px var(--tw-font);color:var(--tw-text-2)}
+.bw-find .bw-find-field-set{flex:1 1 200px;min-width:200px}
+.bw-find .bw-find-field-region{flex:0 0 240px;width:240px}
+@media(max-width:599px){.bw-find .bw-find-field-set{flex:1 1 100%;width:100%;min-width:0}}
+.bw-find .bw-find-field input,.bw-find .bw-find-field select{width:100%;height:44px;margin:0;padding:0 12px;border:1px solid var(--tw-text-muted);border-radius:var(--tw-r-1);background:var(--tw-field);font:400 15px var(--tw-font);color:var(--tw-text)}
+.bw-find .bw-find-field input::placeholder{color:var(--tw-text-muted)}
+.bw-find .bw-find-field input:focus-visible,.bw-find .bw-find-field select:focus-visible{outline:2px solid var(--tw-focus-color);outline-offset:2px}
+.bw-find .bw-find-sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
+.bw-find .bw-find-sr:focus-visible{position:static;width:auto;height:44px;margin:0;padding:0 14px;overflow:visible;clip-path:none;border-radius:var(--tw-r-1);background:var(--tw-accent);color:var(--tw-on-accent);font:600 14px var(--tw-font);outline:2px solid var(--tw-focus-color);outline-offset:2px}
+.bw-find .notice{margin:0;padding:10px 14px;border-radius:var(--tw-r-2);background:var(--tw-danger-soft,var(--tw-surface));border:1px solid var(--tw-danger);color:var(--tw-text);font:500 14px/1.45 var(--tw-font)}
+.bw-find .bw-find-group{display:flex;flex-direction:column;gap:0}
+.bw-find .bw-find-tape{display:flex;align-items:center;gap:10px;padding:6px 10px;border-radius:0;background:var(--tw-accent);color:var(--tw-on-accent);font:600 13px var(--tw-font-label);letter-spacing:.1em;text-transform:uppercase}
+.bw-find .bw-find-tape .bw-find-count{margin-left:auto;font:500 12px var(--tw-mono);font-variant-numeric:tabular-nums;letter-spacing:0;text-transform:none;opacity:.9;white-space:nowrap}
+.bw-find .bw-find-row{margin:0;display:flex;align-items:center;gap:16px;padding:12px 0;border-bottom:1px solid var(--tw-divider)}
+.bw-find .bw-find-tile{box-sizing:border-box;flex:none;width:96px;height:72px;padding:4px;border-radius:var(--tw-r-1);background:var(--tw-tile);color:var(--tw-tile-ink);display:flex;align-items:center;justify-content:center;overflow:hidden}
+.bw-find .bw-find-tile img{display:block;max-width:100%;max-height:100%;object-fit:contain}
+.bw-find .bw-find-tile-empty{font:400 11px/1.25 var(--tw-font);color:var(--tw-tile-ink);text-align:center;padding:4px}
+.bw-find .bw-find-info{flex:1;min-width:0}
+.bw-find .bw-find-no{font:600 18px/1.3 var(--tw-mono);font-variant-numeric:tabular-nums;color:var(--tw-text)}
+.bw-find .bw-find-name{font:500 15px var(--tw-font);color:var(--tw-text)}
+.bw-find .bw-find-meta{font:400 13px/1.45 var(--tw-font);color:var(--tw-text-2)}
+.bw-find .bw-find-actions{display:flex;flex-wrap:wrap;gap:8px;flex:none;margin-left:auto}
+.bw-find .ic{flex:none}
+main .bw-find .bw-find-actions a.bw-find-ext,main .bw-find .bw-find-actions a.bw-find-upload{display:inline-flex;align-items:center;justify-content:center;gap:8px;box-sizing:border-box;height:38px;min-height:0;padding:0 14px;border-radius:var(--tw-r-1);font:600 14px var(--tw-font);text-decoration:none;white-space:nowrap}
+main .bw-find .bw-find-actions a.bw-find-ext{padding:0 12px;background:transparent;color:var(--tw-text);box-shadow:inset 0 0 0 1.5px var(--tw-text)}
+main .bw-find .bw-find-actions a.bw-find-upload{background:var(--tw-accent);color:var(--tw-on-accent)}
+.bw-find .bw-find-ext:focus-visible,.bw-find .bw-find-upload:focus-visible{outline:2px solid var(--tw-focus-color);outline-offset:2px}
+@media(max-width:699px){.bw-find .bw-find-no{font-size:16px}.bw-find .bw-find-name{font-size:14px}.bw-find .bw-find-tile-empty{font-size:13px;padding:0;white-space:nowrap}.bw-find .bw-find-row{flex-wrap:wrap;gap:10px 12px}.bw-find .bw-find-tile{width:72px;height:54px;padding:3px}.bw-find .bw-find-info{flex:1 1 0;min-width:0}.bw-find .bw-find-actions{flex:1 1 100%;margin-left:0}}
+.bw-find .bw-find-note{margin:0;font:400 13px/1.45 var(--tw-font);color:var(--tw-text-muted)}
+.bw-find .bw-find-short{display:none}
+.bw-find .bw-find-field select{appearance:none;-webkit-appearance:none}
+@media(max-width:699px){.bw-find .bw-find-long{display:none}.bw-find .bw-find-short{display:inline}.bw-find .bw-find-row .bw-find-meta{display:none}}
+@media(max-width:899px){.bw-find{width:auto;max-width:none;margin:-8px -4px 0}}

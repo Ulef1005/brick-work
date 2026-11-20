@@ -1,28 +1,6 @@
 {% extends 'web/toni/base.html' %}
 {% block title %} · Find instructions{% endblock %}
-{% block page_assets %}<link rel="stylesheet" href="{{ bw_static('web/toni/bw-instructions.css') }}"><script src="{{ bw_static('web/toni/bw-instructions.js') }}" defer></script>{% endblock %}
+{% block page_assets %}<link rel="stylesheet" href="{{ bw_static('web/toni/bw-find.css') }}"><script src="{{ bw_static('web/toni/bw-find.js') }}" defer></script>{% endblock %}
 {% block main %}
-<div id="bw-instructions" data-official-limit="{{ official_limit }}" data-url="{{ url_for('web.bw_instruction_find') }}" data-csrf="{{ csrf_token }}" data-region="{{ region }}" data-edit="{{ 'yes' if can_edit else 'no' }}" data-item="{{ initial_item }}" data-jobs="{{ initial_jobs }}">
-<header><p>Tools &amp; Admin</p><h1>Find instructions</h1><p>Nothing is downloaded until you choose Download.</p></header>
-<ol class="if-steps" aria-label="Steps"><li>Choose sets</li><li>Tick files</li><li>Download</li></ol>
-{% if not can_edit %}<p class="notice">Changes are switched off on this instance.</p>{% endif %}
-{% if not configured %}<p class="notice" data-no-source>No instruction source is set up yet</p>{% endif %}
-{% for notice in source_notices %}<p class="notice" data-source-notice>{{ notice }}</p>{% endfor %}
-<p data-if-message role="status" aria-live="polite"></p>
-{% if can_edit %}<form data-if-choose class="stack">
-<label class="if-control"><input type="radio" name="mode" value="missing" checked>All sets without instructions</label>
-<label class="if-control"><input type="radio" name="mode" value="numbers">These set numbers</label>
-<label>One per line or comma separated<textarea name="numbers" rows="3" maxlength="4000"></textarea></label>
-<button class="primary" data-if-find>Find instructions</button><p>Looks up files and downloads nothing.</p>
-</form>{% endif %}
-<div data-if-results hidden class="if-layout"><div class="if-list">
-<div class="actions"><label>Number, name or file<input type="search" data-if-search></label><label>Filter<select data-if-filter><option value="">All files</option><option value="available">Available</option><option value="rebrickable">Rebrickable</option><option value="peeron">Peeron</option><option value="official">Official</option></select></label><label>Sort<select data-if-sort><option value="chosen">Chosen order</option><option value="name">Name</option></select></label></div>
-{% if can_edit %}<div class="actions"><button type="button" data-if-all>Select all</button><button type="button" data-if-clear>Clear</button></div>{% endif %}
-<p class="mono" data-if-count></p><div data-if-groups></div>
-</div><aside class="if-summary"><h2>Summary</h2><label>Region<select data-if-region><option value="AT">Austria · English</option><option value="DE">Germany · German</option><option value="UK">United Kingdom · English</option><option value="GB">United Kingdom · English</option><option value="US">United States · English</option><option value="FR">France · French</option><option value="CA">Canada · English</option><option value="AU">Australia · English</option></select></label>
-<p class="mono" data-if-total aria-live="polite">0 files ticked · 0 MB</p><div data-if-summary></div>
-{% if can_edit %}<button class="primary" data-if-download disabled>Download 0 files</button><p data-if-hint>Tick at least one file.</p><button type="button" data-if-change>Change sets</button>{% endif %}
-<p>Runs as a job. You can leave this page and follow it in Tools &amp; Admin &gt; Jobs.</p></aside></div>
-<section data-if-progress hidden><h2 data-if-heading>Downloading</h2><progress data-if-bar max="1" value="0"></progress><div data-if-files></div>{% if can_edit %}<button data-if-cancel type="button" hidden>Cancel not started files</button><button data-if-retry type="button" hidden>Retry failed files</button>{% endif %}<p><a href="{{ url_for('web.bw_admin',page='instructions') }}">Instruction files</a> · <a href="{{ url_for('web.bw_admin',page='jobs') }}">Jobs</a></p></section>
-</div>
+{% include 'web/toni/web/_bw_find_body.html' %}
 {% endblock %}

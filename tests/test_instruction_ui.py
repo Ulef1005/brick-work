@@ -20,8 +20,8 @@ def test_entry_and_no_source(client, world):
     assert page.find('a', string='Find instructions')['href'] == '/manage/instructions/find'
     assert 'Fetch missing' not in page.get_text()
     page = BeautifulSoup(client.get('/manage/instructions/find').data, 'html.parser')
-    assert page.select_one('[data-source-notice]').text == 'Official needs a page renderer: not set up'
-    assert page.select_one('[data-if-download]').has_attr('disabled')
+    assert page.select_one('.bw-find h1').text == 'Find instructions'          # #484: the screen links out; the download flow's steps and ticks are gone
+    assert not page.select('[data-if-download], .if-steps, [data-if-groups]')
     page = BeautifulSoup(client.get(f'/collection/item/{world.keep}').data, 'html.parser')
     assert page.find('a', string='Find instructions')['href'].endswith(f'item={world.keep}')
 
@@ -29,7 +29,7 @@ def test_entry_and_no_source(client, world):
 def test_read_only_has_no_actions_and_refuses_posts(client, monkeypatch):
     monkeypatch.setenv('BW_READ_ONLY', '1')
     page = BeautifulSoup(client.get('/manage/instructions/find').data, 'html.parser')
-    assert not page.select_one('#bw-instructions').select('button, input[type=checkbox], form')
+    assert not page.select('.bw-find-upload, input[type=checkbox]')           # a read-only instance offers the links, not the upload
     assert client.post('/manage/instructions/find', json={}).status_code == 403
 
 

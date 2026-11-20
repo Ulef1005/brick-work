@@ -1,0 +1,65 @@
+{% macro render_actions(item_number, links) %}
+  <div class="bw-find-actions">
+    {% for link in links %}
+      <a class="bw-find-ext" href="{{ link.url }}" target="_blank" rel="noopener noreferrer"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v6H4V6h6"/></svg>{{ 'Official instructions' if link.source == 'lego' else ('Rebrickable' if link.source == 'rebrickable' else link.label) }}</a>
+    {% endfor %}
+    {% if can_edit %}
+      <a class="bw-find-upload" href="{{ url_for('web.bw_admin', page='instructions', item_type='S', item_no=item_number) }}#upload"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></svg>Upload a PDF</a>
+    {% endif %}
+  </div>
+{% endmacro %}
+<div class="bw-find">
+  <header class="bw-page-head bw-find-head">
+    <div class="bw-find-kicker">Tools &amp; Admin</div>
+    <h1>Find instructions</h1>
+    {% if not missing %}
+      <p>Every set in your collection has a booklet.</p>
+    {% else %}
+      <p><span class="bw-find-count-text">{{ missing|length }} {{ 'set has' if missing|length == 1 else 'sets have' }} no booklet.</span> <span class="bw-find-long">Open the set’s official instructions page or its Rebrickable page, download the PDF there, then upload it here.</span><span class="bw-find-short">Open a set’s official instructions or Rebrickable page, get the PDF, then upload it.</span></p>
+    {% endif %}
+  </header>
+  <form class="bw-find-form" method="get" action="{{ url_for('web.bw_instruction_find') }}">
+    <label class="bw-find-field bw-find-field-set">Set number<input type="search" name="set" value="{{ number or '' }}" placeholder="For example 6081-1"></label>
+    <label class="bw-find-field bw-find-field-region">Region for official instructions<select name="region" data-find-region>
+      {% set seen = namespace(labels=[]) %}
+      {% for code, label in regions.items() %}
+        {% if label not in seen.labels %}
+          {% set seen.labels = seen.labels + [label] %}
+          <option value="{{ code }}"{% if code == region or regions.get(region) == label %} selected{% endif %}>{{ label }}</option>
+        {% endif %}
+      {% endfor %}
+    </select></label>
+    <button type="submit" class="bw-find-sr">Show links</button>
+  </form>
+  {% if problem %}
+    <p class="notice" role="alert">{{ problem }}</p>
+  {% endif %}
+  {% if looked_up %}
+    <div class="bw-find-row bw-find-lookup">
+      <div class="bw-find-info">
+        <div class="bw-find-no">{{ looked_up.number }}</div>
+        <div class="bw-find-meta">Links for this number</div>
+      </div>
+      {{ render_actions(looked_up.number, looked_up.links) }}
+    </div>
+  {% endif %}
+  {% if missing %}
+    <section class="bw-find-group">
+      <div class="bw-find-tape">Sets without a booklet<span class="bw-find-count">{{ missing|length }} {{ 'set' if missing|length == 1 else 'sets' }}</span></div>
+      {% for item in missing %}
+        <div class="bw-find-row">
+          <div class="bw-find-tile">{% if item.picture %}<img {{ bw_picture_attrs(item.picture, '96px') }} alt="">{% else %}<span class="bw-find-tile-empty">Set picture</span>{% endif %}</div>
+          <div class="bw-find-info">
+            <div class="bw-find-no">{{ item.number }}</div>
+            <div class="bw-find-name">{{ item.name }}</div>
+            {% if item.theme or item.year %}
+              <div class="bw-find-meta">{% if item.theme and item.year %}{{ item.theme }} · {{ item.year }}{% elif item.theme %}{{ item.theme }}{% else %}{{ item.year }}{% endif %}</div>
+            {% endif %}
+          </div>
+          {{ render_actions(item.number, item.links) }}
+        </div>
+      {% endfor %}
+    </section>
+  {% endif %}
+  <p class="bw-find-note">Brick Work downloads nothing itself. The links open the set's instructions page in a new tab.</p>
+</div>

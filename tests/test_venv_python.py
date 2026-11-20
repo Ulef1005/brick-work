@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'scripts'))
 import venv_python  # noqa: E402
 
@@ -55,3 +56,19 @@ def test_ensure_runs_the_script_again_under_the_venv_python_once(tmp_path):
     env = {k: v for k, v in os.environ.items() if k != venv_python.GUARD}
     out = subprocess.run([sys._base_executable, str(script), 'x'], env={**env, 'APP_VENV': str(venv)}, capture_output=True, text=True)
     assert out.stdout.strip() == f'reexec guard=1 args={script} x', out.stdout + out.stderr
+
+
+def test_the_scripts_that_import_the_app_start_under_a_python_without_the_app_s_packages():
+    base = Path(sys.base_prefix) / 'bin' / 'python3'
+    if not base.exists():
+        pytest.skip(f'base python not found: {base}')
+    if subprocess.run([str(base), '-c', 'import PIL'], capture_output=True).returncode == 0:
+        pytest.skip('base python already has PIL')
+    ROOT = Path(__file__).resolve().parent.parent
+    env = {k: v for k, v in os.environ.items() if k != venv_python.GUARD}
+    env['APP_VENV'] = sys.prefix
+    for name in ('frame_check.py', 'screen_gate.py', 'check_api_contract.py', 'bench.py'):
+        script = ROOT / 'scripts' / name
+        out = subprocess.run([str(base), str(script), '--help'], capture_output=True, text=True, env=env, cwd=ROOT, timeout=300)
+        assert 'ModuleNotFoundError' not in out.stderr, f'{name}: {out.stderr}'
+        assert 'Traceback' not in out.stderr, f'{name}: {out.stderr}'

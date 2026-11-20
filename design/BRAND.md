@@ -99,6 +99,8 @@ Every B′ screen in `screens-b/`, one folder per screen, light and dark at 1440
 | `06`, `07` | Set Inspector, Part Runner | 3 |
 | `09` to `11` | Matchmaker, Build Scout, Storage | 4 |
 | `12` to `16` | Set detail, Part Spotter, Lot Sorter, Order missing parts, Orders | 6 |
+| `17` to `24` | Sync hub and the Rebrickable page with its six steps | N round 1 |
+| `25` to `43` | Brickset, BrickLink, Brick Owl, Import & export, the complete export, the list tags (#531), when a run stops | N round 2 |
 
 Every other shipped screen is **tokens only** (round 5, #501): it keeps its layout and every control and is rebuilt through the tokens and components above, on the approved frame its row names (`screens-b/BUILD-NOTES.md`). Each round's differences from the shipped screens (what changed, what is kept, the phone) are in `screens-b/BUILD-NOTES.md`. Other widths are built from the two approved ones. The v1.3 frames in `screens/` stay the record of the shipped app until each screen is rebuilt. SUCCESS: all seven, per screen, in each round's review.
 

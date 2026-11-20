@@ -29,7 +29,26 @@ The approved frames of commission U, built by `../sources/b/b_frames.py` (`build
 | `22-rebrickable-preview/` | N1-06 Rebrickable step 4, Preview, with the three-way conflict choice | N round 1 |
 | `23-rebrickable-run/` | N1-07 Rebrickable step 5, Run | N round 1 |
 | `24-rebrickable-result/` | N1-08 Rebrickable step 6, Result | N round 1 |
+| `25-brickset/` | N2-01 Brickset, the page at rest | N round 2 |
+| `26-brickset-choose-what/` | N2-02 Brickset, choose what | N round 2 |
+| `27-bricklink/` | N2-03 BrickLink, the page at rest | N round 2 |
+| `28-bricklink-connect/` | N2-04 BrickLink, connect (IP-bound token) | N round 2 |
+| `29-bricklink-choose-what/` | N2-05 BrickLink, choose what | N round 2 |
+| `30-bricklink-wanted-file/` | N2-06 BrickLink, wanted list by file | N round 2 |
+| `31-brickowl/` | N2-07 Brick Owl, the page at rest | N round 2 |
+| `32-brickowl-choose-what/` | N2-08 Brick Owl, choose what | N round 2 |
+| `33-brickowl-run/` | N2-09 Brick Owl, run with a daily budget | N round 2 |
+| `34-import-export/` | N2-10 Import & export | N round 2 |
+| `35-own-export/` | N2-11 The complete export | N round 2 |
+| `36-re-import-preview/` | N2-12 Re-import, preview | N round 2 |
+| `37-rebrickable-pick-lists/` | N2-13 Step 3, Pick sets, by list | N round 2 |
+| `38-sets-list-filter/` | N2-14 Sets, with a list filter | N round 2 |
+| `39-set-detail-lists/` | N2-15 Set detail, with the list tags | N round 2 |
+| `40-rebrickable-preview-lists/` | N2-16 Rebrickable, preview of list tags | N round 2 |
+| `41-bricklink-pick-lots/` | N2-17 BrickLink, pick orders and lots | N round 2 |
+| `42-bricklink-preview/` | N2-18 BrickLink, preview | N round 2 |
+| `43-sync-errors/` | N2-19 When a run stops | N round 2 |
 
-Commission N (Sync and files, #517) adds `17` to `24`, built by `../sources/n/n_frames.py` (`build`, `check`, `narrow`), which imports `b_frames.py`; its review artifact is https://claude.ai/artifact/1sWRRsfiYxkEgHXxKxrsUn. Round 1 also changed approved frames: Sync is the last Workbench entry in `06`, `07`, `09`, `10`, `11`, `13`, `14` and `16` (C-01), Tools & Admin drops Collection sync (C-02, `01`) and Settings points to Sync (C-03, `02`). Its new components NC-01 to NC-06 (step bar, radio row, select field, filter chip, three-way choice, info box) are drawn inside the frames; `BUILD-NOTES.md` describes them.
+Commission N (Sync and files, #517) adds `17` to `24` (round 1), built by `../sources/n/n_frames.py` (`build`, `check`, `narrow`), which imports `b_frames.py`, and `25` to `43` (round 2: Brickset, BrickLink, Brick Owl, Import & export, the complete export and the list tags of #531), built by `../sources/n/n2_frames.py` (same commands, default folder `screens-b`); its review artifact is https://claude.ai/artifact/1sWRRsfiYxkEgHXxKxrsUn. Round 1 also changed approved frames: Sync is the last Workbench entry in `06`, `07`, `09`, `10`, `11`, `13`, `14` and `16` (C-01), Tools & Admin drops Collection sync (C-02, `01`) and Settings points to Sync (C-03, `02`). Its new components NC-01 to NC-06 (step bar, radio row, select field, filter chip, three-way choice, info box) are drawn inside the frames; `BUILD-NOTES.md` describes them.
 
 These frames replace the v1.3 frames in `../screens/` screen by screen as each is approved; `../screens/` and its manifest stay the record of what is built today until the app is rebuilt (milestone U). Set pictures are empty white tiles with their alt text, because this public repo carries no catalogue pictures; the review showed the real pictures (https://claude.ai/artifact/FX8PAj3J9cgVkY42oPGc8a, version 3).

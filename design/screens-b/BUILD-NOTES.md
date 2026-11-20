@@ -304,3 +304,120 @@ Every frame above also exists in dark (`dark-<width>`); the dark values and the 
 `../sources/b/b_frames.py` exports the frames' CSS as plain string literals, read by ast: `B_RESETS` (the frame page only) and `B_COMPONENTS`, a tuple of the round 2, round 3 and round 6 rules in cascade order, from which the app writes `static/brickwork/b-prime.css` scoped under `.bp`. `.bp` sets the base font (400 15px/1.45 var(--tw-font)) and colour itself, since they sit in the frame's `html,body` reset. Fields, picture tiles and their alt text use `--tw-field`, `--tw-tile` and `--tw-tile-ink`, now in TOKENS. The only dark swaps left in `SWAPS` are the three rgba values with no token: the sheet's shadow, the scrim and the hatched tag's tint. The split changed no pixel, light or dark.
 
 W-Q6 (#526 round, approved 19.11.): a part tile's (`.ptile`) number in dark is `--tw-tile-ink`, #4A524F on the #E4E6E2 tile, 6.4:1. Before, it was the muted text colour at 2.08:1. Light is unchanged, because the light tile ink is the muted text colour. It changed the dark frames 14, 15 and 16 (b_frames.py) and 21, 22 and 24 (n_frames.py, at the merge of main); rebuild both generators after a change to `.ptile` or `--tw-tile-ink`.
+
+## Commission N, round 2 (#517, #520 to #524, #531)
+Brickset, BrickLink, Brick Owl, Import & export, the complete export and the list tags of #531 in B′ (review artifact https://claude.ai/artifact/1sWRRsfiYxkEgHXxKxrsUn, version 5; approved 2026-11-20), built by `../sources/n/n2_frames.py`. Every frame is new except three that change approved frames (N2-13 to N2-15, new folders beside `21`, `04` and `12`). A step that differs from the Rebrickable one only by the site's name is not drawn again: Brickset connect, pick, preview, run and result are N1-03 and N1-05 to N1-08; Brick Owl connect, pick and preview are N2-04 and N2-17 and N2-18 with collection lots and its budget line. Collector-first (Ulf, 2026-11-20, #521): no seller features. Wording by brick-work-marketing, facts by brick-work-product.
+
+### N2-01 Brickset, the page at rest (`25-brickset`, #520)
+
+- **Drawn:** The Rebrickable page at rest in the same parts: account, last runs, What syncs. Brickset has no purchase date, price or condition field; the page says so once.
+- **Fact:** the daily budget is 100 calls, only getSets is charged (shipped docs); drawn as "0 of 100 calls".
+- **SUCCESS:** Say: this site’s state and its one action. Unify: the same parts as N1-02. Pass.
+
+### N2-02 Brickset, choose what (`26-brickset-choose-what`, #520)
+
+- **Drawn:** Fields per direction for Sets, the eight flags (names are yours at Brickset, shown as tags on the copy), minifigures, and what happens when both sides differ.
+- **Open (product):** "New and used counts" is drawn without a direction: the field name is unconfirmed and the app session checks it with a live call; if it fails, the row goes.
+- **SUCCESS:** Express: fields are checkboxes, direction a segment. Say: what is never sent. Pass.
+
+### N2-03 BrickLink, the page at rest (`27-bricklink`, #521)
+
+- **Drawn:** Account, last runs, What syncs, and the wanted-list file. Collector-first (your decision of 20.11.): orders come in; store inventory is only your own loose stock, labelled that way; no order-fulfilment tools.
+- **Fact:** the daily budget is 4,400 calls, a margin under the account’s 5,000.
+- **State:** drawn after connecting and before the first sync, a later state than the hub card ("Not connected").
+- **SUCCESS:** Say: connected, not synced yet, and what a file import last did. Pass.
+
+### N2-04 BrickLink, connect (`28-bricklink-connect`, #521)
+
+- **Drawn:** BrickLink ties the token to one IP address: the page shows this install’s address to register, then the four values.
+- **Open (product):** whether BrickLink’s API needs a store registration is unconfirmed; the page says only what is confirmed.
+- **SUCCESS:** Say: why a token can stop working. Check: nothing but the four values is typed. Pass.
+
+### N2-05 BrickLink, choose what (`29-bricklink-choose-what`, #521)
+
+- **Drawn:** Orders in, loose stock in or both ways, price guide in (region, condition, stock guide when nothing sold). BrickLink’s API offers no wanted lists and no collection, so wanted lists go by file.
+- **Cut:** status and payment back to BrickLink (a seller action).
+- **Open (product):** "Orders since" is a Brick Work setting and "Received and paid" its default; neither exists in the app yet.
+- **SUCCESS:** Express: direction by segment, rules by checkbox and select. Pass.
+
+### N2-06 BrickLink, wanted list by file (`30-bricklink-wanted-file`, #143, #521)
+
+- **Drawn:** Pick a wishlist, see the file, download it, then upload it on BrickLink’s website; Brick Work does not see what happens there.
+- **Sample:** the XML is a sample; #143 defines the real file.
+- **SUCCESS:** Say: three steps, one per card. Pass.
+
+### N2-07 Brick Owl, the page at rest (`31-brickowl`, #522)
+
+- **Drawn:** Account, today’s budget, What syncs. Brick Owl has a real collection and wishlist API.
+- **Fact:** 600 requests a minute and 2,000 collection reads a day; the other kinds read "per-endpoint quota" (product).
+- **Cut:** inventory for sellers (collector-first).
+- **SUCCESS:** Say: what is left of the day. Check: no number that is not published. Pass.
+
+### N2-08 Brick Owl, choose what (`32-brickowl-choose-what`, #522)
+
+- **Drawn:** Collection in or both ways, each wishlist linked to a Brick Work wishlist, orders in.
+- **Cut:** tracking, note, status and feedback back to Brick Owl; the inventory card.
+- **SUCCESS:** Express: direction by segment. Pass.
+
+### N2-09 Brick Owl, run with a budget (`33-brickowl-run`, #522)
+
+- **Drawn:** A run that stops by itself at the day’s collection-read budget; the rest waits for tomorrow, and nothing is lost if it stops early.
+- **SUCCESS:** Say: how far, how many reads are left, and that stopping is safe. Pass.
+
+### N2-10 Import & export (`34-import-export`, #523)
+
+- **Drawn:** Every file the issues name, in and out, in one place, each with Choose; every file goes through the same steps.
+- **Open:** only formats an issue names are drawn; the file type of "Part Runner and order files" is not confirmed.
+- **SUCCESS:** Condense: one page for all files. Pass.
+
+### N2-11 The complete export (`35-own-export`, #524)
+
+- **Drawn:** What to include with counts, one zip with a manifest, a JSON file and one CSV per table. Keys and passwords never leave Brick Work. Marketing’s screenshot 3 at 390.
+- **SUCCESS:** Say: what is in the file and what never is. Pass.
+
+### N2-12 Re-import, preview (`36-re-import-preview`, #524)
+
+- **Drawn:** The same preview as every sync: differences, one choice per row or for all, one Undo.
+- **SUCCESS:** Unify: the Preview of N1-06. Pass.
+
+### N2-16 Rebrickable, preview of list tags (`40-rebrickable-preview-lists`, #531)
+
+- **Drawn:** A list renamed or removed at Rebrickable shows as one line with the number of sets that carry its tag.
+- **Rule (product, 20.11.):** the tag changes on every set that carries it, picked or not; nothing else on a copy changes.
+- **SUCCESS:** Say: what happens to the tags before it happens. Pass.
+
+### N2-17 BrickLink, pick orders and lots (`41-bricklink-pick-lots`, #521)
+
+- **Drawn:** The pick step of the lots flow: orders to pull and BrickLink lots that changed, each ticked or not. Brick Owl’s pick and preview are the same with collection lots, so they are not drawn again.
+- **SUCCESS:** Say: which orders and lots this run covers. Pass.
+
+### N2-18 BrickLink, preview (`42-bricklink-preview`, #521)
+
+- **Drawn:** Orders in, a lot that differs, a lot gone at BrickLink; a lot gone there is never removed here unless you tick it.
+- **SUCCESS:** Say: what will change. Pass.
+
+### N2-19 When a run stops (`43-sync-errors`, #521 to #523)
+
+- **Drawn:** Bad token, too little budget, the site down: each says what happened and ends "Nothing was changed." (marketing). Brickset and Brick Owl say the same with their names.
+- **SUCCESS:** Say: what happened, what to do, that nothing was lost. Pass.
+
+### N2-13 Step 3, Pick sets, by list (`37-rebrickable-pick-lists`, #531)
+
+- **Drawn:** Changes the approved `21-rebrickable-pick-sets`: see Change.
+- **Change:** the list names (Main collection 5, Bought 2026 2, Lent to a friend 1) are the chips; each set shows the list or lists it is in; a checkbox keeps them as tags on the copy.
+- **Changed approved text, your call:** N1-05 said "Sets you do not pick stay as they are on both sides." It now says a set you do not pick keeps its copies, counts and fields; only its list name follows its list (product, 20.11.).
+- **SUCCESS:** Check: 6 of 7 picked, as the chips Main collection and Bought 2026 tick every set of those lists.
+
+### N2-14 Sets, with a list filter (`38-sets-list-filter`, #531)
+
+- **Drawn:** Changes the approved `04-sets`: see Change.
+- **Change:** one row of list chips under the tabs, no list chosen (all 7 sets).
+- **Inherited:** the approved Sets frame overflows at 320 and 375 (tape, tags, section tabs); this frame keeps it. Rule for the app: each element handles its own width (wrap tags and tape text, the tab strip scrolls inside itself); nothing changes at 390 and above.
+- **SUCCESS:** Unify: the chips are the filter chips of N1-05.
+
+### N2-15 Set detail, with the list tags (`39-set-detail-lists`, #531)
+
+- **Drawn:** Changes the approved `12-set-detail`: see Change.
+- **Change:** the list tag under the set’s name, and the Info card’s Tags row now shows it (the approved frame said "Not recorded").
+- **Inherited:** the 320 and 375 overflow of the approved frame, as for Sets.
+- **SUCCESS:** Check: the Tags row and the list tag say the same thing.

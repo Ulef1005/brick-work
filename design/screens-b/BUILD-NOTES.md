@@ -380,12 +380,6 @@ Brickset, BrickLink, Brick Owl, Import & export, the complete export and the lis
 - **Drawn:** The same preview as every sync: differences, one choice per row or for all, one Undo.
 - **SUCCESS:** Unify: the Preview of N1-06. Pass.
 
-### N2-16 Rebrickable, preview of list tags (`40-rebrickable-preview-lists`, #531)
-
-- **Drawn:** A list renamed or removed at Rebrickable shows as one line with the number of sets that carry its tag.
-- **Rule (product, 20.11.):** the tag changes on every set that carries it, picked or not; nothing else on a copy changes.
-- **SUCCESS:** Say: what happens to the tags before it happens. Pass.
-
 ### N2-17 BrickLink, pick orders and lots (`41-bricklink-pick-lots`, #521)
 
 - **Drawn:** The pick step of the lots flow: orders to pull and BrickLink lots that changed, each ticked or not. Brick Owl’s pick and preview are the same with collection lots, so they are not drawn again.
@@ -401,34 +395,42 @@ Brickset, BrickLink, Brick Owl, Import & export, the complete export and the lis
 - **Drawn:** Bad token, too little budget, the site down: each says what happened and ends "Nothing was changed." (marketing). Brickset and Brick Owl say the same with their names.
 - **SUCCESS:** Say: what happened, what to do, that nothing was lost. Pass.
 
-### N2-13 Step 3, Pick sets, by list (`37-rebrickable-pick-lists`, #531)
+### N2-20 Set detail, the source of a copy (`44-source-chip`, #551, #489)
 
-- **Drawn:** Changes the approved `21-rebrickable-pick-sets`: see Change.
-- **Change:** the list names (Main collection 5, Bought 2026 2, Lent to a friend 1) are the chips; each set shows the list or lists it is in; a checkbox keeps them as tags on the copy.
-- **Changed approved text, your call:** N1-05 said "Sets you do not pick stay as they are on both sides." It now says a set you do not pick keeps its copies, counts and fields; only its list name follows its list (product, 20.11.).
-- **SUCCESS:** Check: 6 of 7 picked, as the chips Main collection and Bought 2026 tick every set of those lists.
+- **Drawn:** Added via is one fixed value that never changes, shown as a chip (Added via Rebrickable sync, BrickLink file, By hand, Before this release); Last synced from is a separate line with the site, the list names and the date ("Last synced from Rebrickable: Main collection, 18 Nov, 21:40"). The copy states how it was checked: "Checked on Rebrickable" in the header and the Info card.
+- **Changed from the first form (`39`):** no list tag under the name; the Info card reads "Tags: Not recorded" again, since a list name is source detail, not a tag.
+- **Open (product):** whether a row can have more than one "last synced from" (a set in two lists, or from two sites).
+- **SUCCESS:** Say: where this copy came from, when it last met a site and who checked it. Unify: the chip is a tag as everywhere in B′.
 
-### N2-14 Sets, with a list filter (`38-sets-list-filter`, #531)
+### N2-21 Sets, the Source filter (`45-sets-source-filter`, #551)
 
-- **Drawn:** Changes the approved `04-sets`: see Change.
-- **Change:** one row of list chips under the tabs, no list chosen (all 7 sets).
-- **Inherited:** the approved Sets frame overflows at 320 and 375 (tape, tags, section tabs); this frame keeps it. Rule for the app: each element handles its own width (wrap tags and tape text, the tab strip scrolls inside itself); nothing changes at 390 and above.
-- **SUCCESS:** Unify: the chips are the filter chips of N1-05.
+- **Drawn:** two rows of chips with counts under the tabs, nothing chosen: Added via (By hand 2, Rebrickable sync 4, Before this release 1) and Last synced from (Rebrickable · Main collection 5, Bought 2026 2, Lent to a friend 1). The two are separate facts: a set added by hand can be matched by a later sync. A chip with no rows is not shown. The item lists (tokens-only screens, #501) take the same row.
+- **Inherited:** the 320 and 375 overflow of the approved Sets frame (`04`).
+- **SUCCESS:** Condense: two rows replace the list chips. Say: filter by how it arrived and by the list it was last synced from.
 
-### N2-15 Set detail, with the list tags (`39-set-detail-lists`, #531)
+### N2-22 Step 3, Pick sets, the list names as source detail (`46-rebrickable-pick-sources`, #531, #551)
 
-- **Drawn:** Changes the approved `12-set-detail`: see Change.
-- **Change:** the list tag under the set’s name, and the Info card’s Tags row now shows it (the approved frame said "Not recorded").
-- **Inherited:** the 320 and 375 overflow of the approved frame, as for Sets.
-- **SUCCESS:** Check: the Tags row and the list tag say the same thing.
+- **Drawn:** each set row names the Rebrickable lists it is in as a plain line; the checkbox keeps them as the set's source detail. 6 of 7 picked.
+- **Changed approved text:** N1-05's "Sets you do not pick stay as they are on both sides" reads "A set you do not pick keeps its copies, counts and fields; only its list names follow their lists" (Ulf, 2026-11-20: "approved - add detailed descriptions in the docs").
+- **SUCCESS:** Say: which lists each set is in; the names are not a second kind of tag.
 
-### List-name rules of #531 (detailed, Ulf: "approved - add detailed descriptions in the docs", 2026-11-20)
+### N2-23 Step 4, Preview of list names (`47-rebrickable-preview-sources`, #531, #551)
 
-- **Where a list name comes from:** a Rebrickable list the set is in. A set in two lists carries two names; a set in no list carries none. The names are kept only when "Keep each set's Rebrickable list names as tags on its copy" is ticked on the Pick sets step (N2-13).
-- **Rename at Rebrickable:** the next run shows one line in the Preview (N2-16) for the list: "Renamed at Rebrickable to <new name>; <n> sets carry the tag", with the choice "Rename the tag". The new name replaces the old on every set that carries it, picked or not; nothing else on a copy changes (copies, counts and fields stay).
-- **Removal at Rebrickable:** one line "Removed at Rebrickable; <n> sets carry the tag", with the choice "Drop the tag". The tag is removed from every set that carries it; the sets stay.
-- **Unchanged list:** one line, "Unchanged; <n> sets carry the tag", choice "Skip".
-- **Never touched:** the user's own tags. A tag that came from a list is read-only in Tags admin (no rename, no delete), with the note "managed by Rebrickable sync"; only the one row is drawn, in a following round, the rest of the screen is the app's as it is today.
-- **Approved sentence of N1-05 that changes:** "Sets you do not pick stay as they are on both sides" becomes "A set you do not pick keeps its copies, counts and fields; only its list name follows its list" (N2-13).
-- **Display:** the list names show as chips on Pick sets and Sets (N2-13, N2-14) and as a tag on Set detail with the Info card's Tags row reading the same (N2-15). Under #551 the same names become the detail of the Rebrickable source ("Last synced from Rebrickable: <list>, <date>", N2-20); whether the tag form is replaced by that detail waits for Ulf (next round).
+- **Drawn:** one line per list, renamed, removed or unchanged, with the number of sets whose source detail changes; "Rename it" and "Drop the name".
+- **SUCCESS:** Say: what happens to the names before it happens.
+
+### N2-24 Sets, the label of a pulled copy (`48-sets-pulled-copy`, #489)
+
+- **Drawn:** a pulled copy shows as checked by Rebrickable: its Lost Parts are the missing parts on the bar, a pulled copy without Lost Parts shows as complete, and a line under the bar names the source, "Checked on Rebrickable". A copy Brick Work checked itself has no label. 8043-1 is pulled without Lost Parts (complete), 21028-1 with 9; the header counts follow (4 of 7 incomplete, none unchecked, 2 complete). Place: under the bar on the Sets tile and as the parts-check tag on Set detail (N2-20).
+- **Separate:** the label is the origin of the check, not the origin of the copy (the Added via chip) and not the status filter of #489.
+- **SUCCESS:** Say: who checked this copy. Check: no label on copies Brick Work checked itself.
+
+### List-name rules of #531 (detailed; Ulf: "approved - add detailed descriptions in the docs", 2026-11-20; source form decided the same day, "Source detail (Recommended)")
+
+- **Where a list name comes from:** a Rebrickable list the set is in. A set in two lists carries two names; a set in no list carries none. The names are kept as the set's source detail ("Last synced from Rebrickable: <lists>, <date>") only when "Keep each set's Rebrickable list names as its source detail" is ticked on the Pick sets step (N2-22).
+- **Rename at Rebrickable:** the next run shows one line in the Preview (N2-23): "Renamed at Rebrickable to <new name>; the source detail of <n> sets changes", with the choice "Rename it". The new name replaces the old on every set whose source detail carries it, picked or not; nothing else on a copy changes (copies, counts and fields stay).
+- **Removal at Rebrickable:** one line "Removed at Rebrickable; the source detail of <n> sets changes", with the choice "Drop the name"; the sets stay.
+- **Unchanged list:** one line, "Unchanged; the source detail of <n> set(s)", choice "Skip".
+- **No tags:** the list names are not tags on the copy, so there is no read-only tag in Tags admin and rule (b) of #531 is dropped (Ulf, version 8). The user's own tags are never touched.
+- **Filter:** the Sets Source filter offers the lists under "Last synced from" (N2-21).
 

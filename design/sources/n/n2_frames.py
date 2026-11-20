@@ -1,4 +1,4 @@
-"""Commission N (Sync and files, #517), round 2 (approved 2026-11-20): Brickset, BrickLink, Brick Owl, Import & export, the complete export (#520 to #524) and #531 (list tags on the copy). Folders 25 to 43.
+"""Commission N (Sync and files, #517), round 2 (approved 2026-11-20): Brickset, BrickLink, Brick Owl, Import & export, the complete export (#520 to #524) and #531 (list tags on the copy). Folders 25 to 36 and 41 to 48 (37 to 40 were replaced by 44 to 47 on 2026-11-20: the list names are the detail of the source, #551).
 
 Built on round 1's model (n_frames.py: its components, steps and tokens are imported, never copied). A step that differs from the Rebrickable
 frame only by the site's name is not drawn: the review lists it as "as N1-0x".
@@ -294,51 +294,9 @@ LISTOF = {'7213-1': ['Main collection'], '7938-1': ['Main collection', 'Bought 2
 LPICKED = {n for n, ls in LISTOF.items() if 'Main collection' in ls or 'Bought 2026' in ls}
 
 
-def pick_lists(ph):
-    """N1-05 with 'By list': the list names are the chips, each set row shows the list or lists it is in, and a checkbox keeps the names."""
-    by = seg('List', ['All', 'List', 'Theme', 'Year', 'One']) if ph else seg('By list', ['All linked', 'By list', 'By theme', 'By year', 'One by one'])
-    chips = '<div class="fchips">' + ''.join(f'<span class="fchip{" on" if on else ""}">{t} <span class="mono">{n}</span></span>' for t, n, on in LISTS) + '</div>'
-    rows_in = [(n, LISTOF[n]) for n in N.ORDER]
-    rows = ''.join(f'<div class="nrow">{N.cb(n in LPICKED)}{N.ptile(n)}<div class="id"><b>{N.S(n)["name"]}</b><span><span class="mono">{n}</span> · {N.S(n)["meta"]}</span>'
-                   f'<div class="tags" style="margin-top:6px">{"".join(tag(l) for l in ls)}</div></div></div>' for n, ls in rows_in)
-    keep = card('Keep the list names', chk('Keep each set’s Rebrickable list names as tags on its copy', True)
-                + '<p class="n">A set in two lists gets two tags. A list renamed or removed at Rebrickable updates or drops its tag on the next run; the preview shows it first.</p>')
-    count = f'<div class="ninfo"><b>6 of 7 sets picked</b> · tags kept: Main collection, Bought 2026</div>'
-    return (head('Rebrickable', 'Pick the sets this run covers. A set you do not pick keeps its copies, counts and fields; only its list name follows its list.', ph) + steps('Pick sets', ph)
-            + f'<div class="ncard"><h2>Which sets</h2>{by}{chips}<div>{rows}</div></div>' + keep + count + foot(btn('‹ Back', 'q'), btn('Next: preview', 'sec')))
-
-
-def preview_lists(ph):
-    """The tag changes a run would make, as the Rebrickable preview shows them (#531: a list renamed or removed at Rebrickable)."""
-    rows = [('Main collection', 'Renamed at Rebrickable to "Home collection"; 5 sets carry the tag', tag('Renamed', 'dash'), 'Rename the tag ▾'),
-            ('Bought 2026', 'Removed at Rebrickable; 2 sets carry the tag', tag('Removed', 'dash'), 'Drop the tag ▾'),
-            ('Lent to a friend', 'Unchanged; 1 set carries the tag', tag('Same'), 'Skip')]
-    body = ''.join(drow(N.cb(i < 2), a, b, c, d, ph, 150) for i, (a, b, c, d) in enumerate(rows))
-    return (head('Rebrickable', 'Preview of what the run would change, list names first.', ph) + steps('Preview', ph)
-            + card('Tags from Rebrickable lists', '<p class="n">A tag follows its list on every set that carries it, picked or not. Nothing is removed from a copy except the tag; your own tags are never touched.</p>' + body)
-            + foot(btn('‹ Back', 'q'), btn('Next: run', 'sec')))
-
-
 def _once(html, old, new):
     assert old in html, old
     return html.replace(old, new, 1)
-
-
-def sets_lists(ph):
-    body = B.sets_body(ph)
-    chips = ('<div class="fchips" style="align-items:center"><span class="lbl" style="margin-right:4px">Lists</span>'
-             '<span class="fchip">Main collection <span class="mono">5</span></span><span class="fchip">Bought 2026 <span class="mono">2</span></span>'
-             '<span class="fchip">Lent to a friend <span class="mono">1</span></span></div>')
-    if ph:
-        return _once(body, '<div style="display:flex;gap:8px;align-items:center;font:500 13px', chips + '<div style="display:flex;gap:8px;align-items:center;font:500 13px')
-    return _once(body, '<div style="display:flex;flex-wrap:wrap;gap:20px 28px">', chips + '<div style="display:flex;flex-wrap:wrap;gap:20px 28px">')
-
-
-def detail_lists(ph):
-    body = B.setdetail_body(ph)
-    if not ph:
-        body = _once(body, '<dt>Tags</dt><dd>Not recorded</dd>', '<dt>Tags</dt><dd>Main collection</dd>')
-    return _once(body, '<span class="tag">Checked</span>', '<span class="tag">Checked</span><span style="display:flex;flex-basis:100%;gap:8px;align-items:center;flex-wrap:wrap"><span class="lbl">Lists</span><span class="tag">Main collection</span></span>')
 
 
 def _shell(g, sub, fn):
@@ -359,14 +317,95 @@ def _frame(fn, ph):
 N.frame = _frame
 
 
+# the sample world: added via. 7213-1, 7938-1, 10210-1 and 8043-1 came from a Rebrickable sync; 10254-1 and 31120-1 were added by hand;
+# 21028-1 is from before this release. A set added by hand can still be matched by a later sync, which is the "last synced from" line.
+SOURCES = [('By hand', 2), ('Rebrickable sync', 4), ('Before this release', 1)]
+
+
+def detail_source(ph):
+    """N2-15's Set detail with the source in place of the list tag: 'Added via' as a chip, 'last synced from' as its detail."""
+    body = B.setdetail_body(ph)
+    body = _once(body, '<span class="tag">Checked</span>', '<span class="tag">Checked on Rebrickable</span>')   # #489: a pulled copy names the source of its check
+    if not ph:   # the Info card is on the desktop frame only
+        body = _once(body, '<dd>Checked</dd>', '<dd>Checked on Rebrickable</dd>')
+    row = ('<span style="display:flex;flex-basis:100%;gap:8px 10px;align-items:center;flex-wrap:wrap"><span class="lbl">Source</span>'
+           f'{tag("Added via Rebrickable sync")}<span class="mono" style="font-size:12.5px;color:var(--tw-text-2)">Last synced from Rebrickable: Main collection · 18 Nov, 21:40</span></span>')
+    return _once(body, '<span class="tag">Checked on Rebrickable</span>', '<span class="tag">Checked on Rebrickable</span>' + row)
+
+
+def sets_source(ph):
+    """The approved Sets frame with the Source filter: how a row arrived, and which Rebrickable lists it was last synced from (the list names are the detail
+    of the source, not tags). No source chosen (all 7 sets)."""
+    body = B.sets_body(ph)
+    chip = lambda t, n: f'<span class="fchip">{t} <span class="mono">{n}</span></span>'
+    rows = ('<div class="fchips" style="align-items:center"><span class="lbl" style="margin-right:4px">Added via</span>' + ''.join(chip(t, n) for t, n in SOURCES) + '</div>'
+            '<div class="fchips" style="align-items:center"><span class="lbl" style="margin-right:4px">Last synced from</span>'
+            + ''.join(chip('Rebrickable · ' + t, n) for t, n in [('Main collection', 5), ('Bought 2026', 2), ('Lent to a friend', 1)]) + '</div>')
+    if ph:
+        return _once(body, '<div style="display:flex;gap:8px;align-items:center;font:500 13px', rows + '<div style="display:flex;gap:8px;align-items:center;font:500 13px')
+    return _once(body, '<div style="display:flex;flex-wrap:wrap;gap:20px 28px">', rows + '<div style="display:flex;flex-wrap:wrap;gap:20px 28px">')
+
+
+def _srcline(n):
+    return ', '.join(LISTOF[n])
+
+
+def pick_source(ph):
+    """N2-13 in the source form: each set row names the Rebrickable lists it is in as a plain line (not tags); the checkbox keeps them as the source detail."""
+    by = N.seg('List', ['All', 'List', 'Theme', 'Year', 'One']) if ph else N.seg('By list', ['All linked', 'By list', 'By theme', 'By year', 'One by one'])
+    chips = '<div class="fchips">' + ''.join(f'<span class="fchip{" on" if on else ""}">{t} <span class="mono">{n}</span></span>' for t, n, on in LISTS) + '</div>'
+    rows = ''.join(f'<div class="nrow">{N.cb(n in LPICKED)}{N.ptile(n)}<div class="id"><b>{N.S(n)["name"]}</b><span><span class="mono">{n}</span> · {N.S(n)["meta"]}</span>'
+                   f'<div class="mono" style="font-size:12px;color:var(--tw-text-2);margin-top:4px">Rebrickable: {_srcline(n)}</div></div></div>' for n in N.ORDER)
+    keep = card('Keep the list names', N.chk('Keep each set’s Rebrickable list names as its source detail', True)
+                   + '<p class="n">A set in two lists keeps both names. A list renamed or removed at Rebrickable updates or drops its name on the next run; the preview shows it first.</p>')
+    count = '<div class="ninfo"><b>6 of 7 sets picked</b> · list names kept: Main collection, Bought 2026</div>'
+    return (N.head('Rebrickable', 'Pick the sets this run covers. A set you do not pick keeps its copies, counts and fields; only its list names follow their lists.', ph) + N.steps('Pick sets', ph)
+            + f'<div class="ncard"><h2>Which sets</h2>{by}{chips}<div>{rows}</div></div>' + keep + count + N.foot(N.btn('‹ Back', 'q'), N.btn('Next: preview', 'sec')))
+
+
+def preview_source(ph):
+    """N2-16 in the source form: the line per list says whose source detail changes."""
+    rows = [('Main collection', 'Renamed at Rebrickable to "Home collection"; the source detail of 5 sets changes', tag('Renamed', 'dash'), 'Rename it ▾'),
+            ('Bought 2026', 'Removed at Rebrickable; the source detail of 2 sets changes', tag('Removed', 'dash'), 'Drop the name ▾'),
+            ('Lent to a friend', 'Unchanged; the source detail of 1 set', tag('Same'), 'Skip')]
+    body = ''.join(N.drow(N.cb(i < 2), a, b, c, d, ph, 150) for i, (a, b, c, d) in enumerate(rows))
+    return (N.head('Rebrickable', 'Preview of what the run would change, list names first.', ph) + N.steps('Preview', ph)
+            + card('Rebrickable lists', '<p class="n">A list name follows its list on every set whose source detail carries it, picked or not. Nothing else on a copy changes.</p>' + body)
+            + N.foot(N.btn('‹ Back', 'q'), N.btn('Next: run', 'sec')))
+
+
+def sets_pulled(ph):
+    """#489: the bar of a pulled copy. A pulled copy shows as checked by Rebrickable (its Lost Parts are the missing parts, none means complete) and says so
+    under its bar; a copy Brick Work checked itself carries no label. 8043-1 is pulled without Lost Parts, 21028-1 with 9."""
+    keep = {n: B.SETS[n]['copies'] for n in ('8043-1', '21028-1')}
+    B.SETS['8043-1']['copies'] = [(1123, 0, 1123)]
+    B.SETS['21028-1']['copies'] = [(589, 9, 598)]
+    try:
+        body = B.sets_body(ph)
+    finally:
+        for n, c in keep.items():
+            B.SETS[n]['copies'] = c
+    lab = '<div class="mono" style="font-size:11.5px;color:var(--tw-text-2);margin-top:2px">Checked on Rebrickable</div>'
+    for old, new in [('3 of 7 sets incomplete', '4 of 7 sets incomplete'), ('8 copies · 69 parts missing', '8 copies · 78 parts missing'),
+                     ('Incomplete <span', 'Incomplete <span'), ('1,123/1,123 · complete</div>', '1,123/1,123 · complete</div>' + lab), ('589/598 · 9 missing</div>', '589/598 · 9 missing</div>' + lab)]:
+        if old in body:
+            body = body.replace(old, new)
+    for a, b in [('>Incomplete <span class="mono" style="color:var(--tw-text-muted);padding:0;border:0">3<', '>Incomplete <span class="mono" style="color:var(--tw-text-muted);padding:0;border:0">4<'),
+                 ('>Not checked <span class="mono" style="color:var(--tw-text-muted);padding:0;border:0">2<', '>Not checked <span class="mono" style="color:var(--tw-text-muted);padding:0;border:0">0<'),
+                 ('>Complete <span class="mono" style="color:var(--tw-text-muted);padding:0;border:0">1<', '>Complete <span class="mono" style="color:var(--tw-text-muted);padding:0;border:0">2<')]:
+        body = body.replace(a, b)
+    return body
+
+
 FRAMES2 = [('N2-01', '25-brickset', bs_rest), ('N2-02', '26-brickset-choose-what', bs_choose),
            ('N2-03', '27-bricklink', bl_rest), ('N2-04', '28-bricklink-connect', bl_connect), ('N2-05', '29-bricklink-choose-what', bl_choose),
            ('N2-06', '30-bricklink-wanted-file', bl_file),
            ('N2-07', '31-brickowl', bo_rest), ('N2-08', '32-brickowl-choose-what', bo_choose), ('N2-09', '33-brickowl-run', bo_run),
            ('N2-10', '34-import-export', ie_page), ('N2-11', '35-own-export', own_export), ('N2-12', '36-re-import-preview', re_import),
-           ('N2-13', '37-rebrickable-pick-lists', pick_lists), ('N2-14', '38-sets-list-filter', _shell('Collection', 'Sets', sets_lists)),
-           ('N2-15', '39-set-detail-lists', _shell('Collection', 'Sets', detail_lists)), ('N2-16', '40-rebrickable-preview-lists', preview_lists),
-           ('N2-17', '41-bricklink-pick-lots', bl_pick), ('N2-18', '42-bricklink-preview', bl_preview), ('N2-19', '43-sync-errors', sync_errors)]
+           ('N2-17', '41-bricklink-pick-lots', bl_pick), ('N2-18', '42-bricklink-preview', bl_preview), ('N2-19', '43-sync-errors', sync_errors),
+           ('N2-20', '44-source-chip', _shell('Collection', 'Sets', detail_source)), ('N2-21', '45-sets-source-filter', _shell('Collection', 'Sets', sets_source)),
+           ('N2-22', '46-rebrickable-pick-sources', pick_source), ('N2-23', '47-rebrickable-preview-sources', preview_source),
+           ('N2-24', '48-sets-pulled-copy', _shell('Collection', 'Sets', sets_pulled))]
 N.FRAMES = FRAMES2   # round 2's frames replace round 1's list here, so build and check cover folders 25 to 43 (n_frames.py itself covers 17 to 24)
 N.DRAFTS = []
 

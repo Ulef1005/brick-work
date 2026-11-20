@@ -292,12 +292,12 @@ def _copy_defects(db, where, params):
 
 
 def _copy_bars(db, ids):
-    """`{copy id: [found, missing, total, figures missing]}` for the sets list's bar, one query. The lines are the ones `_copy_defects` counts (live, not spare, not a
+    """`{copy id: [found, missing, total, figures missing, damaged]}` for the sets list's bar, one query. The lines are the ones `_copy_defects` counts (live, not spare, not a
     figure's), so the bars add up to the heading's "parts missing". `missing` is every missing piece on those lines; `found` the pieces of the lines the
     check has answered (`checked`) less their missing, or, where the person switched "Set is checked" on, every piece that is not missing: that switch is
     the person's word that the whole list was looked at. The rest of `total` is still to check. The last number is the figures missing (a figure is no part
-    of the bar, but a copy without one is not complete). A copy with no part list has no entry."""
-    return {r['copy_id']: [r['found'], r['missing'], r['total'], r['figures']] for r in db.execute('''SELECT p.copy_id,sum(p.quantity) AS total,sum(p.missing) AS missing,
+    of the bar, but a copy without one is not complete); the damaged pieces are present, so they leave the bar alone, but they are a gap by the completeness rule, so the line names them. A copy with no part list has no entry."""
+    return {r['copy_id']: [r['found'], r['missing'], r['total'], r['figures'], r['damaged']] for r in db.execute('''SELECT p.copy_id,sum(p.quantity) AS total,sum(p.missing) AS missing,sum(p.damaged) AS damaged,
         sum(CASE WHEN p.checked=1 OR f.copy_id IS NOT NULL THEN p.quantity-p.missing ELSE 0 END) AS found,
         (SELECT coalesce(sum(g.missing),0) FROM copy_figure g WHERE g.copy_id=p.copy_id AND g.retired_at IS NULL) AS figures
         FROM copy_part p LEFT JOIN (SELECT DISTINCT cf.copy_id FROM copy_flag cf JOIN flag g ON g.id=cf.flag_id AND g.archived_at IS NULL

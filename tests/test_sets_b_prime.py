@@ -24,12 +24,34 @@ def built(tmp_path, name):
 def test_each_copy_has_its_bar_and_the_bars_add_up_to_the_heading(tmp_path):
     with database(built(tmp_path, 'frames'), read_only=True) as db:
         rows = {r['item_no']: r for r in collection.listing(db, 'S')}
-    assert rows['7213-1']['bars'] == [[365, 10, 375, 0], [130, 12, 375, 0]]      # two copies, two bars; the second still has pieces to check
-    assert rows['7938-1']['bars'] == [[643, 14, 657, 0]]
-    assert rows['31120-1']['bars'] == [[1426, 0, 1426, 0]]                        # "Set is checked" and nothing missing: complete
-    assert rows['8043-1']['bars'] == [[0, 0, 1123, 0]]                            # never checked
+    assert rows['7213-1']['bars'] == [[365, 10, 375, 0, 0], [130, 12, 375, 0, 0]]      # two copies, two bars; the second still has pieces to check
+    assert rows['7938-1']['bars'] == [[643, 14, 657, 0, 0]]
+    assert rows['31120-1']['bars'] == [[1426, 0, 1426, 0, 0]]                        # "Set is checked" and nothing missing: complete
+    assert rows['8043-1']['bars'] == [[0, 0, 1123, 0, 0]]                            # never checked
     assert rows['10254-1']['statuses'] == ['sealed']
     assert sum(b[1] for r in rows.values() for b in r['bars'] if b) == sum(r['missing_parts'] for r in rows.values()) == 69
+
+
+def test_a_damaged_piece_is_a_gap_and_the_bar_line_names_it(tmp_path):
+    """Damaged pieces are present (the bar's found stays) but a gap by the completeness rule, so a copy with only damage is not "complete" (review of #494)."""
+    with database(built(tmp_path, 'frames')) as db:
+        ids = [r[0] for r in db.execute('SELECT id FROM copy ORDER BY id')]
+        copy = next(i for i, bar in collection._copy_bars(db, ids).items() if bar[:4] == [1426, 0, 1426, 0])   # 31120-1, the complete copy
+        line = db.execute('SELECT id FROM copy_part WHERE copy_id=? AND retired_at IS NULL AND is_spare=0 AND copy_figure_id IS NULL LIMIT 1', (copy,)).fetchone()[0]
+        db.execute('UPDATE copy_part SET damaged=2 WHERE id=?', (line,))
+        bar = collection._copy_bars(db, [copy])[copy]
+    assert bar[1] == 0 and bar[4] == 2                                              # nothing missing, two damaged
+    js = (ROOT / 'static/web/toni/bw-collection.js').read_text()
+    assert "dmg?dmg+' damaged'" in js                                                # the line says "2 damaged" instead of "complete"
+
+
+def test_the_lightbox_and_the_picker_sheet_stay_outside_the_b_prime_scope():
+    """Review of #494: .b-prime's reset strips a dialog's margin and padding and a button's, so feedback() (message, Undo, lightbox) and the Filter sheet sit outside it."""
+    html = (ROOT / 'templates/web/toni/web/bw_sets.html').read_text()
+    scope = html[html.index('<div class="bp-sets b-prime"'):html.index('{{ toolbar(')]
+    assert '{{ feedback() }}' not in scope
+    js = (ROOT / 'static/web/toni/bw-collection.js').read_text()
+    assert "slot.className='bp-sets b-prime bp-find-slot'" in js                       # the moved search and sort bring their own scope into the sheet
 
 
 def test_a_copy_without_a_part_list_has_no_bar(tmp_path):

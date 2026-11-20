@@ -134,8 +134,8 @@
   // (core/collection.py `_copy_bars`): [found, missing, total, figures missing] per copy, in the order of the row's statuses.
   const fmt=n=>Number(n).toLocaleString('en-US');
   function copyLine(bar,index,several){
-    const [found,missing,total,figures]=bar,prefix=several?'#'+(index+1)+' ':'',lost=Number(missing)||0,fig=Number(figures)||0;
-    const parts=[lost?lost+' missing':'',fig?fig+(fig===1?' figure':' figures')+' missing':''].filter(Boolean);
+    const [found,missing,total,figures,damaged]=bar,prefix=several?'#'+(index+1)+' ':'',lost=Number(missing)||0,fig=Number(figures)||0,dmg=Number(damaged)||0;
+    const parts=[lost?lost+' missing':'',fig?fig+(fig===1?' figure':' figures')+' missing':'',dmg?dmg+' damaged':''].filter(Boolean);   // damaged pieces are a gap by the completeness rule
     if(!parts.length)parts.push(found>=total?'complete':(total-found)+' to check');
     return prefix+fmt(found)+'/'+fmt(total)+' · '+parts.join(' · ');
   }
@@ -521,7 +521,9 @@
     // Search and Sort sit beside the tabs on a desktop and at the top of the Filter sheet on a phone.
     const bpFind=list.querySelector('[data-bp-find]');
     if(bpFind&&panel&&typeof matchMedia==='function'){
-      const home=bpFind.parentElement,wide=matchMedia('(min-width: 1024px)'),place=()=>{if(wide.matches)home.append(bpFind);else panel.querySelector('.actions')?.after(bpFind);};
+      const home=bpFind.parentElement,wide=matchMedia('(min-width: 1024px)'),slot=document.createElement('div');
+      slot.className='bp-sets b-prime bp-find-slot';   // the sheet is outside .b-prime: the moved block brings its own scope, so the frame's rules still match it
+      const place=()=>{if(wide.matches){home.append(bpFind);slot.remove();}else{panel.querySelector('.actions')?.after(slot);slot.append(bpFind);}};
       place();wide.addEventListener?.('change',place);
     }
     function render(reset=false) {
@@ -629,7 +631,7 @@
       syncSheets();
       list.querySelectorAll('[data-bc-filters]').forEach(t=>t.setAttribute('aria-expanded',String(!panel.hidden)));
       panel.setAttribute('role','dialog');panel.setAttribute('aria-modal',String(!panel.hidden));
-      if(!panel.hidden)panel.querySelector('button,select')?.focus();else list.querySelector('[data-bc-filters]')?.focus();
+      if(!panel.hidden)panel.querySelector('button,select')?.focus();else [...list.querySelectorAll('[data-bc-filters]')].find(b=>b.offsetParent)?.focus();
     }
     list.querySelectorAll('[data-bc-filters]').forEach(b=>b.addEventListener('click',togglePanel));
     if(panel&&desktop()){panel.hidden=false;panel.setAttribute('role','region');list.querySelectorAll('[data-bc-filters]').forEach(b=>b.setAttribute('aria-expanded','true'));}
@@ -641,7 +643,7 @@
       syncSheets();
     }
     scrim?.addEventListener('click',closeSheets);
-    list.querySelector('[data-bc-apply]')?.addEventListener('click',()=>{closeSheets();list.querySelector('[data-bc-filters]')?.focus();});
+    list.querySelector('[data-bc-apply]')?.addEventListener('click',()=>{closeSheets();[...list.querySelectorAll('[data-bc-filters]')].find(b=>b.offsetParent)?.focus();});
     list.querySelectorAll('[data-bc-sort-pick]').forEach(b=>b.addEventListener('click',()=>{sort.value=b.dataset.bcSortPick;sorted();}));
     list.querySelectorAll('[data-bc-order-pick]').forEach(b=>b.addEventListener('click',()=>{direction.value=b.dataset.bcOrderPick;render(true);}));
     picks.forEach(b=>b.addEventListener('click',()=>{const control=filterControls.find(c=>c.dataset.bcFilter===b.dataset.bcPick);if(control)control.value=control.value===b.dataset.value?preset(control):b.dataset.value;render(true);}));
@@ -689,7 +691,7 @@
   document.addEventListener('keydown',e=>{
     if(lightbox?.open){if(e.key==='ArrowLeft')showPicture(pictureIndex-1);if(e.key==='ArrowRight')showPicture(pictureIndex+1);if(e.key==='+')changeZoom(1);if(e.key==='-')changeZoom(-1);return;}
     if(e.key==='Escape'){lists.forEach(l=>{if(l.sortPanel&&!l.sortPanel.hidden){l.sortPanel.hidden=true;l.list.querySelectorAll('[data-bc-sort-open]').forEach(b=>b.setAttribute('aria-expanded','false'));l.list.querySelector('[data-bc-sort-open]')?.focus();}
-      if(l.panel&&!l.panel.hidden&&!l.desktop()){l.panel.hidden=true;l.list.querySelectorAll('[data-bc-filters]').forEach(b=>b.setAttribute('aria-expanded','false'));l.list.querySelector('[data-bc-filters]')?.focus();}l.syncSheets();});return;}
+      if(l.panel&&!l.panel.hidden&&!l.desktop()){l.panel.hidden=true;l.list.querySelectorAll('[data-bc-filters]').forEach(b=>b.setAttribute('aria-expanded','false'));[...l.list.querySelectorAll('[data-bc-filters]')].find(b=>b.offsetParent)?.focus();}l.syncSheets();});return;}
     const activePanel=lists.map(l=>({...l,panel:l.sortPanel&&!l.sortPanel.hidden?l.sortPanel:l.panel})).find(l=>l.panel&&!l.panel.hidden);
     if(e.key==='Tab'&&activePanel&&typeof matchMedia==='function'&&matchMedia('(max-width: 1023px)').matches){
       const controls=[...activePanel.panel.querySelectorAll('button,input,select,textarea,a[href]')].filter(n=>!n.disabled&&!n.hidden&&(!n.getClientRects||n.getClientRects().length)),first=controls[0],last=controls.at(-1);

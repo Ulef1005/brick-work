@@ -1159,6 +1159,8 @@ body:has(#bw-collection[data-bp-sets]) .layout>main.bp-flush { padding:0; }
 .bp-sets:not(#_):not(#_):not(#_):not(#_) .bp-select { position:absolute;top:14px;left:14px;z-index:1;display:flex;flex-direction:row;align-items:center;gap:0;min-width:32px;min-height:32px;justify-content:center;background:var(--tw-bg);border-radius:3px;box-shadow:inset 0 0 0 1px var(--tw-text-muted); }
 /* the Ledger: one row per set, the picture small on the left */
 .bp-sets:not(#_):not(#_):not(#_):not(#_) .bp-groups[data-view=list] .bp-tiles { display:flex;flex-direction:column;gap:8px; }
+.bp-sets:not(#_):not(#_):not(#_):not(#_) .bp-groups[data-view=list] { display:block; }   /* Ledger: the drawers stack, one full-width row per set, not side by side */
+.bp-sets:not(#_):not(#_):not(#_):not(#_) .bp-groups[data-view=list] .bp-group+.bp-group { margin-top:24px; }
 .bp-sets:not(#_):not(#_):not(#_):not(#_) .bp-groups[data-view=list] .bp-tile { width:auto; display:grid;grid-template-columns:64px minmax(0,1fr);column-gap:12px;align-content:start; }
 .bp-sets:not(#_):not(#_):not(#_):not(#_) .bp-groups[data-view=list] .bp-tile>* { grid-column:2; }
 .bp-sets:not(#_):not(#_):not(#_):not(#_) .bp-groups[data-view=list] .bp-tile>.bp-pic { grid-column:1;grid-row:1/span 12;height:64px;padding:2px; }

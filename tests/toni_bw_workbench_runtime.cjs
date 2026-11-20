@@ -117,7 +117,7 @@ assert.deepEqual([...api.pageItems(3,1)],[1,2,3]);assert.deepEqual([...api.pageI
   card.dataset={name:index?'Brick':'Plate',number:String(3020+index),filterValue:'Black',colour:'Black'};
   count.value=quantity.value='2';assign.value='2';assign.max='2';assign.dataset={assignment:String(index+10)};set.checked=true;
   form.dataset={action:'found',identity:JSON.stringify({item_type:'P',item_no:card.dataset.number,color_id:11})};form.elements={quantity,destination:{value:'set'}};
-  form.nodes={'[data-selector-count]':new Node(),'[data-quantity]':quantityLabel,'.bw-assignments':assignments,'input[name=destination]':set,'input[value="set"]':set,'input[value="loose"]':loose,'input[value="list"]':only,'[data-form-message]':new Node()};
+  const setOption=new Node();form.nodes={'.bw-destination':setOption,'[data-selector-count]':new Node(),'[data-quantity]':quantityLabel,'.bw-assignments':assignments,'input[name=destination]':set,'input[value="set"]':set,'input[value="loose"]':loose,'input[value="list"]':only,'[data-form-message]':new Node()};
   const choices=[set,loose,only].map(input=>({querySelector:()=>input,classList:{toggle(){}}}));
   form.groups={'[data-assignment]':[assign],'input[name=destination]':[set,loose,only],'.bw-destination':choices,button:[new Node()]};
   form.closest=sel=>sel==='dialog'?(isDesktop?null:dialog):card;assign.closest=()=>form;
@@ -168,7 +168,13 @@ assert.deepEqual([...api.pageItems(3,1)],[1,2,3]);assert.deepEqual([...api.pageI
  form.elements.destination.value='loose';form.nodes['input[value="loose"]'].trigger('change');assert.equal(form.nodes['[data-quantity]'].hidden,false);assert.equal(form.nodes['.bw-assignments'].hidden,true);
  form.elements.destination.value='set';form.nodes['input[value="set"]'].trigger('change');
  const sheet=cards[0].nodes['[data-mobile-selector]'];
- sheet.trigger('click',{target:{}});assert.equal(sheet.open,true,'a click inside the dialog keeps it');sheet.trigger('click',{target:sheet});assert.equal(sheet.open,false,'a click on the backdrop closes it');
+ sheet.getBoundingClientRect=()=>({left:100,right:500,top:100,bottom:500});
+ const press=(down,up)=>{sheet.trigger('mousedown',{target:sheet,clientX:down[0],clientY:down[1]});sheet.trigger('click',{target:sheet,clientX:up[0],clientY:up[1]});};
+ sheet.trigger('click',{target:{},clientX:10,clientY:10});assert.equal(sheet.open,true,'a click on something inside the dialog keeps it');
+ press([200,200],[200,200]);assert.equal(sheet.open,true,'a click in the dialog\'s own padding keeps it');
+ press([200,200],[10,10]);assert.equal(sheet.open,true,'a drag that starts inside and ends outside keeps it');
+ press([10,10],[200,200]);assert.equal(sheet.open,true,'a drag that starts outside and ends inside keeps it');
+ press([10,10],[10,10]);assert.equal(sheet.open,false,'a press and release on the backdrop closes it');
  d.trigger('keydown',{key:'Enter',target:{tagName:'BODY'}});assert.equal(sheet.open,true,'Enter opens the closed dialog');
  form.elements.destination.value='list';d.trigger('keydown',{key:'3',target:{tagName:'BODY'}});assert.equal(form.nodes['input[value="list"]'].checked,true);
  cards[0].nodes['[data-selector]'].nodes['[data-selector-close]'].trigger();assert.equal(cards[0].nodes['[data-mobile-selector]'].open,false);
@@ -192,7 +198,23 @@ assert.deepEqual([...api.pageItems(3,1)],[1,2,3]);assert.deepEqual([...api.pageI
  // a part saved in full has nothing missing: Found ×N stays reachable for surplus pieces, and only loose parts and the pick list are offered
  {const form1=cards[1].nodes['form[data-action="found"]'],assigned=form1.groups['[data-assignment]'][0];skip.trigger();assigned.max='0';assigned.value='0';cards[1].plus.trigger();
   assert.equal(form1.elements.destination.value,'loose');assert.equal(cards[1].foundButton.disabled,false);assert.equal(cards[1].foundButton.textContent,'Found ×3');
-  assigned.max='2';assigned.value='2';form1.elements.destination.value='set';back.trigger();}
+  assert.equal(form1.nodes['.bw-destination'].hidden,true,'with nothing missing the set option is not offered');
+  cards[1].nodes['[data-open]'].click();const set1=form1.nodes['input[value="set"]'];set1.checked=false;form1.elements.destination.value='loose';d.trigger('keydown',{key:'1',target:{tagName:'BODY'}});assert.equal(set1.checked,false,'key 1 does nothing while the set option is hidden');cards[1].nodes['[data-mobile-selector]'].close();
+  assigned.max='2';assigned.value='2';form1.elements.destination.value='set';cards[1].plus.trigger();form1.nodes['.bw-destination'].hidden=false;}
+
+ // the card's Found ×N follows the count written, in every destination
+ {const form1=cards[1].nodes['form[data-action="found"]'],assigned=form1.groups['[data-assignment]'][0],button=cards[1].foundButton,count1=cards[1].nodes['[data-found-count]'];
+  form1.elements.destination.value='set';form1.nodes['input[value="set"]'].trigger('change');
+  form1.elements.destination.value='loose';form1.nodes['input[value="loose"]'].trigger('change');
+  for(let i=0;i<12;i++)cards[1].minus.trigger();assert.equal(button.textContent,'Found ×1','loose parts need one piece at least');assert.equal(button.disabled,false);
+  d.trigger('keydown',{key:'9',target:{tagName:'BODY'}});assert.equal(button.textContent,'Found ×9','a surplus above what is missing is kept for loose parts');assert.equal(Number(count1.value),9);
+  form1.elements.quantity.value='';form1.elements.quantity.trigger('input');assert.equal(Number(form1.elements.quantity.value),9,'an empty value keeps the last valid count');assert.equal(button.textContent,'Found ×9');
+  form1.elements.quantity.value='0';form1.elements.quantity.trigger('input');assert.equal(Number(form1.elements.quantity.value),9);assert.equal(button.disabled,false);
+  form1.elements.destination.value='set';form1.nodes['input[value="set"]'].trigger('change');assigned.max='2';assigned.value='0';assigned.trigger('input');
+  assert.equal(Number(count1.value),0);assert.equal(button.textContent,'Found ×0');assert.equal(button.disabled,true,'the assignment steppers reaching 0 disable Found, as setFound does');
+  assigned.value='2';assigned.trigger('input');assert.equal(button.disabled,false);assert.equal(button.textContent,'Found ×2');}
+ // no part on screen (a search matches nothing): the digit keys do nothing and say nothing
+ {r.nodes['[data-message]'].textContent='before';search.value='zzzz';search.trigger('input');d.trigger('keydown',{key:'3',target:{tagName:'BODY'}});assert.equal(r.nodes['[data-message]'].textContent,'before');search.value='';search.trigger('input');}
  // A desktop count shortcut must keep the set payload equal to its copy allocations.
  const extra=new Node();extra.value='1';extra.max='1';extra.dataset={assignment:'other-copy'};
  form.groups['[data-assignment]'].push(extra);

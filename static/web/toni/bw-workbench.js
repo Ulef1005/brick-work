@@ -148,12 +148,20 @@
     drawRun(rows,picker?.rows);
     rows[active].node.focus();
   };
+  // Found ×N on the card: label and enabled state come from the count actually written (never from the number asked for); an unresolved part stays disabled.
+  const syncFoundButton = card => {
+    const found=card?.querySelector('[data-run-found]'),count=card?.querySelector('[data-found-count]');
+    if(!found||!count)return;
+    found.textContent=`Found ×${count.value}`;
+    if(!found.hasAttribute('data-unresolved'))found.disabled=!(Number(count.value)>0);
+  };
   const syncSelectorCount = form => {
+    const card=form.closest('[data-row]'),count=card?.querySelector('[data-found-count]');
+    // loose parts and the pick list need at least one piece: an empty or 0 value keeps the last valid count (the set destination may reach 0, which is Missing)
+    if(form.elements.destination.value!=='set'&&!(Number(form.elements.quantity.value)>=1))form.elements.quantity.value=Math.max(1,Number(count?.value)||0);
     const label=form.querySelector('[data-selector-count]');if(label)label.textContent=form.elements.quantity.value;
-    // the card's Found ×N and the dialog's count are one number, whichever side changes it
-    const card=form.closest('[data-row]'),count=card?.querySelector('[data-found-count]'),found=card?.querySelector('[data-run-found]');
-    if(count)count.value=form.elements.quantity.value;
-    if(found)found.textContent=`Found ×${form.elements.quantity.value}`;
+    if(count)count.value=form.elements.quantity.value;   // the card's Found ×N and the dialog's count are one number, whichever side changes it
+    syncFoundButton(card);
   };
   const setDestination = form => {
     let isSet=form.elements.destination.value==='set';
@@ -175,12 +183,11 @@
     const form=card.querySelector('form[data-action="found"]'),count=card.querySelector('[data-found-count]');
     if(!form||!count)return 0;
     const inputs=Array.from(form.querySelectorAll('[data-assignment]')),max=inputs.reduce((sum,n)=>sum+Number(n.max),0);
-    const n=Math.max(0,Math.min(max>0?max:9999,Number(wanted)||0));   // with nothing missing the count is for surplus pieces (loose parts, pick list)
+    // a set destination stays inside what is missing; loose parts and the pick list take surplus pieces (up to 9999), and so does a part with nothing missing
+    const n=Math.max(0,Math.min(form.elements.destination.value==='set'&&max>0?max:9999,Number(wanted)||0));
     let left=n;inputs.forEach(input=>{const v=Math.min(Number(input.max),left);input.value=v;left-=v;});
-    count.value=n;setDestination(form);
-    const found=card.querySelector('[data-run-found]');if(found)found.textContent=`Found ×${form.elements.quantity.value}`;   // the − and + stay as drawn at the ends (the clamp above keeps the count inside); Found ×0 is the Missing button
-    if(found&&!found.hasAttribute('data-unresolved'))found.disabled=n<=0&&max>0;
-    return n;
+    count.value=n;setDestination(form);syncFoundButton(card);   // the − and + stay as drawn at the ends; Found ×0 is the Missing button
+    return Number(count.value);
   };
   const openPart = () => {
     const node=visible()[active]?.node,button=node?.querySelector('[data-open]');
@@ -202,8 +209,11 @@
       count.addEventListener('input',()=>{form.elements.quantity.value=count.value;syncSelectorCount(form);});
       const dialog=card.querySelector('[data-mobile-selector]');
       selector.querySelector('[data-selector-close]').addEventListener('click',()=>dialog.close());
-      dialog.addEventListener('click',event=>{if(event.target===dialog)dialog.close();});   // a click on the backdrop closes it
-      form.elements.quantity.addEventListener('input',()=>{count.value=form.elements.quantity.value;syncSelectorCount(form);});
+      // a click on the backdrop closes it: the pointer went down and came up outside the dialog's box (its padding, its scrollbar and a drag that ends outside never close it)
+      let down=false;const outside=event=>{const r=dialog.getBoundingClientRect();return event.target===dialog&&(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom);};
+      dialog.addEventListener('mousedown',event=>{down=outside(event);});
+      dialog.addEventListener('click',event=>{const closing=down&&outside(event);down=false;if(closing)dialog.close();});
+      form.elements.quantity.addEventListener('input',()=>syncSelectorCount(form));
     });
   }
   const selection = root.querySelector('[data-selection]');
@@ -317,7 +327,9 @@
     const dialog=root.querySelector('dialog[open]');
     const destinationForm=dialog?.querySelector('form');
     if(destinationForm && ['1','2','3'].includes(event.key) && (!['INPUT','TEXTAREA','SELECT'].includes(event.target.tagName) || event.target.type==='radio')) {
-      const value=['set','loose','list'][Number(event.key)-1];destinationForm.querySelector(`input[value="${value}"]`).checked=true;setDestination(destinationForm);event.preventDefault();return;
+      const value=['set','loose','list'][Number(event.key)-1];
+      if(value==='set'&&destinationForm.querySelector('.bw-destination')?.hidden){event.preventDefault();return;}   // nothing is missing: the set option is not offered
+      destinationForm.querySelector(`input[value="${value}"]`).checked=true;setDestination(destinationForm);event.preventDefault();return;
     }
     if(['INPUT','TEXTAREA','SELECT'].includes(event.target.tagName))return;
     const key=event.key.toLowerCase();
@@ -325,8 +337,9 @@
     if(key==='enter' && event.target.tagName==='BUTTON')return;
     if(root.dataset.mode!=='picker' || root.querySelector('[data-pick]')?.hidden || dialog)return;
     if(/^[1-9]$/.test(key)){
+      const node=visible()[active]?.node;if(!node)return;   // no part on screen: nothing to count
       event.preventDefault();
-      const node=visible()[active]?.node,requested=Number(key),n=node?setFound(node,requested):requested;
+      const requested=Number(key),n=setFound(node,requested);
       announce(n===requested?`Found count ${n} · Enter to choose a destination`:`Found count ${n} · it cannot be more than is still missing`);
     }
     else if(key==='enter' || key==='f'){event.preventDefault();openPart();}

@@ -172,14 +172,22 @@ def test_building_the_frames_world_twice_gives_the_run_stock_the_same_ids_and_st
 
 @rendered.group
 @pytest.mark.parametrize('width,visible', [(1440, True), (390, False)])
-def test_the_destination_dialog_has_a_visible_close_from_768_px_and_closes_on_the_backdrop(tmp_path, width, visible):
+def test_the_destination_dialog_has_a_visible_close_from_768_px_and_closes_only_on_the_backdrop(tmp_path, width, visible):
+    """The visible card's dialog (not the first card's). A press at a point of the backdrop closes it; a press in its own padding, and a drag that starts inside, do not.
+    The points are hit-tested with elementFromPoint (the backdrop answers as the dialog) and the events carry their coordinates; the capture has no mouse of its own."""
     chrome = rendered.chrome()
-    script = ("const open=document.querySelector('[data-run-found]');open.click();await new Promise(r=>setTimeout(r,200));"
-              "const d=document.querySelector('dialog[open]');if(!d)throw new Error('the dialog did not open');"
+    script = ("document.head.insertAdjacentHTML('beforeend','<style>dialog,dialog[open]{animation:none!important;transition:none!important;opacity:1!important;transform:none!important;scale:none!important}</style>');"
+              "const open=document.querySelector('[data-row]:not([hidden]) [data-run-found]');if(!open)throw new Error('no Found button on the visible card');"
+              "const fire=(el,type,x,y)=>el.dispatchEvent(new MouseEvent(type,{bubbles:true,clientX:x,clientY:y}));"
+              "const press=(from,to)=>{const a=document.elementFromPoint(...from),b=document.elementFromPoint(...to);if(a!==d||b!==d)throw new Error('the points should hit the dialog or its backdrop');fire(a,'mousedown',...from);fire(b,'mouseup',...to);fire(b,'click',...to);};"
+              "open.click();await new Promise(r=>setTimeout(r,300));const d=document.querySelector('dialog[open]');if(!d||!d.closest('[data-row]:not([hidden])'))throw new Error('the visible card\\'s dialog did not open');"
               "const x=d.querySelector('[data-selector-close]'),cs=getComputedStyle(x),shown=cs.clipPath==='none'&&cs.position==='static'&&parseFloat(cs.height)>=40;"
               f"if(shown!=={str(visible).lower()})throw new Error('close control visible: '+shown+' at {width}');"
-              "d.dispatchEvent(new MouseEvent('click',{bubbles:true}));await new Promise(r=>setTimeout(r,100));"
-              "if(document.querySelector('dialog[open]'))throw new Error('a click on the backdrop should close the dialog');")
+              "const r=d.getBoundingClientRect();if(r.width<100)throw new Error('the dialog has no box: '+r.width);"
+              "const inside=[r.left+4,r.top+4],outsidePoint=[2,2];"
+              "press(inside,inside);if(!d.open)throw new Error('a press in the dialog\\'s padding must not close it');"
+              "press(inside,outsidePoint);if(!d.open)throw new Error('a drag that starts inside must not close it');"
+              "press(outsidePoint,outsidePoint);if(d.open)throw new Error('a press on the backdrop should close the dialog');")
     with screen_gate.world('frames') as base:
         jobs = {'jobs': [{'url': base + PATH, 'out': str(tmp_path / 'x.png'), 'width': width, 'theme': 'light', 'wait': 'main', 'script': script}]}
         (tmp_path / 'jobs.json').write_text(json.dumps(jobs))

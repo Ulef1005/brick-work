@@ -131,7 +131,7 @@
 
   // The Sets page's tile (R3-01, #494): the picture, the set number in mono with the used price, the name, one bar per copy to scale (violet found, hatched
   // missing, dashed still to check), the Sealed tag for a sealed copy. The classes are the frames' (b-prime.css); the numbers are the row's `bars`
-  // (core/collection.py `_copy_bars`): [found, missing, total, figures missing] per copy, in the order of the row's statuses.
+  // (core/collection.py `_copy_bars`): [found, missing, total, figures missing, damaged, checked by] per copy, in the order of the row's statuses.
   const fmt=n=>Number(n).toLocaleString('en-US');
   function copyLine(bar,index,several){
     const [found,missing,total,figures,damaged]=bar,prefix=several?'#'+(index+1)+' ':'',lost=Number(missing)||0,fig=Number(figures)||0,dmg=Number(damaged)||0;
@@ -157,7 +157,8 @@
       if(rest>0){const todo=el('i','c');if(found||missing)todo.classList.add('after');track.append(todo);}
       bartxt.textContent=copyLine(bar,index,several);bartxt.title=bartxt.textContent;
     }
-    return [track,bartxt];
+    // #489: a copy a Rebrickable pull checked says so under the bar (frame 48); a copy Brick Work checked itself carries no such line.
+    return bar[5]==='rebrickable'?[track,bartxt,el('div','bar-src mono','Checked on Rebrickable')]:[track,bartxt];
   }
   function buildSetTile(r, config, selecting, changed) {
     const el=(tag,cls,text)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=String(text);return n;};
@@ -181,7 +182,7 @@
     (r.status||['']).forEach((status,i)=>{
       if(status==='sealed'){tile.append(el('span','tag bp-self','Sealed'));return;}
       let bar=(r.bars||[])[i];
-      if(bar&&status==='complete'&&bar[0]+bar[1]<bar[2])bar=[bar[2]-bar[1],bar[1],bar[2],bar[3]];   // marked Complete by hand: the whole list counts as found
+      if(bar&&status==='complete'&&bar[0]+bar[1]<bar[2])bar=[bar[2]-bar[1],bar[1],bar[2],bar[3],0,bar[5]];   // marked Complete by hand: the whole list counts as found
       if(!bar||!bar[2]){tile.append(el('span','tag dash bp-self',(several?'#'+(i+1)+' ':'')+'No part list'));return;}
       tile.append(...copyBar(bar,i,several));
     });

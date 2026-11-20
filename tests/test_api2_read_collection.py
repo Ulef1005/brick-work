@@ -32,6 +32,7 @@ def test_a_copy_is_the_copy_body_with_words_prices_as_text_and_the_item_body(v2,
     copy = data(call(v2, f'/copies/{world.copy_a}'))
     assert copy['item']['id'] == world.keep and copy['item']['rebrickable'] == {'key': '1000-1'} and copy['name'] == 'Syn Castle Keep'
     assert (copy['condition'], copy['completeness'], copy['completeness_source']) == ('used', 'incomplete', 'manual')
+    assert copy['checked_by'] is None                                            # #489: read only; NULL when Brick Work (or nobody) checked it
     assert (copy['storage_id'], copy['purchase_location_id'], copy['purchase_price'], copy['purchase_currency'], copy['purchase_date'], copy['note']) == (
         world.shelf, world.shop, '12.50', 'EUR', '2024-05-01', 'Flea market')
     assert (copy['missing'], copy['damaged'], copy['pinned'], copy['archived_at']) == (1, 0, False, None)
@@ -161,7 +162,7 @@ def test_unrecorded_states_read_as_null(v2, coll, world):
 # --- completeness and the check
 def test_completeness_says_stored_derived_checked_and_counts(v2, coll, world):
     assert data(call(v2, f'/copies/{world.copy_a}/completeness')) == {
-        'stored': 'incomplete', 'completeness_source': 'manual', 'derived': None, 'checked': True, 'missing': 1, 'damaged': 0, 'missing_figures': 0}
+        'stored': 'incomplete', 'completeness_source': 'manual', 'derived': None, 'checked': True, 'checked_by': None, 'missing': 1, 'damaged': 0, 'missing_figures': 0}
     coll.sql("UPDATE copy SET completeness_source='derived' WHERE id=?", (world.copy_a,))
     assert data(call(v2, f'/copies/{world.copy_a}/completeness'))['derived'] == 'incomplete'
     coll.mark(world.copy_a, '3001', '4', missing=0)

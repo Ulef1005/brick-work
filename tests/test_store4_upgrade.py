@@ -56,14 +56,14 @@ def shape(db, table='wish'):
 
 
 def test_the_version_is_42_and_the_steps_chain_from_40():
-    assert SCHEMA_VERSION == '4.6' and list(UPGRADES) == ['4.0', '4.1', '4.2', '4.3', '4.4', '4.5'] and UPGRADES['4.0'][0] == '4.1' and UPGRADES['4.1'][0] == '4.2'
+    assert SCHEMA_VERSION == '4.7' and list(UPGRADES) == ['4.0', '4.1', '4.2', '4.3', '4.4', '4.5', '4.6'] and UPGRADES['4.0'][0] == '4.1' and UPGRADES['4.1'][0] == '4.2'
 
 
 def test_a_40_file_is_upgraded_on_open_and_keeps_its_wishes(tmp_path):
     path = make_40(tmp_path / 'brickwork.db')
     with closing(connect(path, tmp_path / 'catalogue.db')) as db:
         meta = dict(db.execute('SELECT key, value FROM meta').fetchall())
-        assert meta['schema_version'] == '4.6' and meta['upgraded_to_4.1'].endswith('Z') and meta['upgraded_to_4.2'].endswith('Z')
+        assert meta['schema_version'] == '4.7' and meta['upgraded_to_4.1'].endswith('Z') and meta['upgraded_to_4.2'].endswith('Z')
         row = db.execute('SELECT * FROM wish').fetchone()
         assert (row['max_price'], row['max_price_currency'], row['max_price_boxed'], row['max_price_boxed_currency']) == ('40.00', 'EUR', None, None)
         with pytest.raises(sqlite3.IntegrityError):                       # the pair rule holds on an upgraded file too
@@ -75,7 +75,7 @@ def test_a_41_file_is_upgraded_and_keeps_its_claims_and_order_lines(tmp_path):
     path = make_41(tmp_path / 'brickwork.db')
     with closing(connect(path, tmp_path / 'catalogue.db')) as db:
         meta = dict(db.execute('SELECT key, value FROM meta').fetchall())
-        assert meta['schema_version'] == '4.6' and meta['upgraded_to_4.2'].endswith('Z') and 'upgraded_to_4.1' not in meta
+        assert meta['schema_version'] == '4.7' and meta['upgraded_to_4.2'].endswith('Z') and 'upgraded_to_4.1' not in meta
         assert tuple(db.execute('SELECT job_id, pid, claimed_at, boot_id, start_ticks FROM job_owner').fetchone()) == (1, 4242, '2026-10-26T12:00:00.000Z', None, None)
         assert tuple(db.execute('SELECT id, state, qty, unplaced_reason FROM order_line').fetchone()) == (1, 'held', 2, None)
 
@@ -105,7 +105,7 @@ def test_a_read_only_open_never_writes_and_a_write_open_upgrades_once(tmp_path):
     connect(path, tmp_path / 'catalogue.db').close()
     with closing(connect(path, tmp_path / 'catalogue.db', read_only=True)) as db:
         assert {r[1] for r in db.execute('PRAGMA table_xinfo(wish)')} >= set(NEW)
-    assert upgrade(path) == '4.6'                                         # nothing left to do: no second ALTER
+    assert upgrade(path) == '4.7'                                         # nothing left to do: no second ALTER
     with closing(sqlite3.connect(path)) as raw:
         assert raw.execute("SELECT count(*) FROM pragma_table_xinfo('wish') WHERE name LIKE 'max_price_boxed%'").fetchone()[0] == 2
 
@@ -115,7 +115,7 @@ def test_app_start_upgrades_and_a_read_only_instance_refuses(tmp_path, monkeypat
     path = make_40(tmp_path / 'brickwork.db')
     start_upgrade(path)
     with closing(sqlite3.connect(path)) as raw:
-        assert raw.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()[0] == '4.6'
+        assert raw.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()[0] == '4.7'
     start_upgrade(path)                                                   # current: a no-op
     old = make_40(tmp_path / 'other.db')
     monkeypatch.setenv('BW_READ_ONLY', '1')
@@ -223,9 +223,9 @@ def test_43_instruction_upgrade_matches_fresh_schema(tmp_path):
             definitions = [db.execute('SELECT sql FROM sqlite_master WHERE name=?', (table,)).fetchone()[0]
                            for db in (upgraded, fresh)]
             assert definitions[0] == definitions[1]
-        assert upgraded.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()[0] == '4.6'
+        assert upgraded.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()[0] == '4.7'
         assert upgraded.execute("SELECT value FROM meta WHERE key='upgraded_to_4.4'").fetchone()[0].endswith('Z')
-    assert upgrade(old) == '4.6'
+    assert upgrade(old) == '4.7'
 
 
 def make_42(path):
@@ -266,5 +266,5 @@ def test_a_failed_later_step_leaves_the_file_at_the_earlier_version_and_it_finis
         assert raw.execute("SELECT name FROM sqlite_master WHERE name='instruction_candidate'").fetchone()
         assert not raw.execute("SELECT name FROM sqlite_master WHERE name='item_instruction_merge_guard'").fetchone()
     with closing(connect(path, tmp_path / 'catalogue.db')) as db:
-        assert db.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()[0] == '4.6'
+        assert db.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()[0] == '4.7'
         assert db.execute('PRAGMA integrity_check').fetchone()[0] == 'ok'

@@ -1155,6 +1155,7 @@ body:has(#bw-collection[data-bp-sets]) .layout>main.bp-flush { padding:0; }
 .bp-sets:not(#_):not(#_):not(#_):not(#_) .bar i.c.after { border-left:none; }
 .bp-sets:not(#_):not(#_):not(#_):not(#_) .bartxt { min-width:0;overflow:hidden;text-overflow:ellipsis; }
 .bp-sets:not(#_):not(#_):not(#_):not(#_) .bartxt:not(:has(.xchip)) { display:block;white-space:nowrap; }   /* a text-only line truncates with an ellipsis (a flex line cannot) */
+.bp-sets:not(#_):not(#_):not(#_):not(#_) .bar-src { display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:400 11.5px var(--tw-mono);color:var(--tw-text-2);margin-top:2px; }   /* #489, frame 48: the origin of the check under the bar */
 .bp-sets:not(#_):not(#_):not(#_):not(#_) .bp-tags { display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px; }
 .bp-sets:not(#_):not(#_):not(#_):not(#_) .bp-select { position:absolute;top:14px;left:14px;z-index:1;display:flex;flex-direction:row;align-items:center;gap:0;min-width:32px;min-height:32px;justify-content:center;background:var(--tw-bg);border-radius:3px;box-shadow:inset 0 0 0 1px var(--tw-text-muted); }
 /* the Ledger: one row per set, the picture small on the left */

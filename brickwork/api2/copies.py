@@ -60,7 +60,7 @@ def get_copies_by_id(db, id):
 def completeness_body(db, row):
     """`Completeness` of a copy row: what is stored, what the lines derive, whether the set is checked and what is missing."""
     return {'stored': row['completeness'], 'completeness_source': row['completeness_source'], 'derived': completeness.derived_state(db, row['id']),
-            'checked': checker.checked(db, row['id']), 'missing': row['missing'], 'damaged': row['damaged'], 'missing_figures': row['missing_figures']}
+            'checked': checker.checked(db, row['id']), 'checked_by': row['checked_by'], 'missing': row['missing'], 'damaged': row['damaged'], 'missing_figures': row['missing_figures']}
 
 
 @route('/copies/<id>/completeness')

@@ -49,7 +49,7 @@ def copy_bodies(db, rows, *, single=False):
     out = []
     for r in rows:
         body = {'id': r['id'], 'item': book.item(r['item_id']), 'name': r['name'], 'condition': r['condition'], 'completeness': r['completeness'],
-                'completeness_source': r['completeness_source'], 'storage_id': r['storage_id'], 'purchase_location_id': r['place_id'],
+                'completeness_source': r['completeness_source'], 'checked_by': r['checked_by'], 'storage_id': r['storage_id'], 'purchase_location_id': r['place_id'],
                 'purchase_date': r['purchase_date'], 'purchase_price': r['purchase_price'], 'purchase_currency': r['purchase_currency'], 'note': r['note'],
                 'current_value': r['current_value'], 'current_value_currency': r['current_value_currency'], 'pinned': bool(r['pinned']),
                 'flags': flag_ids(r['flags']), 'missing': r['missing'], 'damaged': r['damaged'], 'updated_at': r['updated_at'],

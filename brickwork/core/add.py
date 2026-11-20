@@ -1051,7 +1051,7 @@ def _copy_untouched(db, copy_id, snapshot):
     if row is None:
         return False
     columns = COPY_USER_COLUMNS + (('completeness',) if snapshot['completeness_source'] == 'manual' else ())
-    if any(row[c] != snapshot[c] for c in columns):
+    if any(row[c] != snapshot[c] for c in columns) or row['checked_by'] is not None:      # #489: a later pull's label is a change too
         return False
     return not any(db.execute(sql, (copy_id,)).fetchone() for sql in (
         'SELECT 1 FROM main.copy_part WHERE copy_id=? AND (missing>0 OR damaged>0 OR checked=1) LIMIT 1',

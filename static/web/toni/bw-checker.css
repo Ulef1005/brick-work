@@ -181,6 +181,7 @@ body:has(#bw-checker[data-bp-checker]) .layout>main.bp-flush { padding:0; }
 .bp-chk:not(#_):not(#_):not(#_):not(#_) .chk-head { display:flex;gap:18px;align-items:center;margin-top:6px; }
 .bp-chk:not(#_):not(#_):not(#_):not(#_) .chk-set { width:140px;flex:none; }
 .bp-chk:not(#_):not(#_):not(#_):not(#_) .chk-set .tile { height:104px;padding:6px; }
+.bp-chk:not(#_):not(#_):not(#_):not(#_) .chk-set .tile img { width:100%;height:100%; }   /* a fixed box, so the picture is laid out once and rasterised the same every time (the no-script capture differed by a few pixels) */
 .bp-chk:not(#_):not(#_):not(#_):not(#_) .chk-alt { font:400 11px var(--tw-font);color:var(--tw-tile-ink);text-align:center;padding:4px; }
 .bp-chk:not(#_):not(#_):not(#_):not(#_) .chk-id { min-width:0; }
 .bp-chk:not(#_):not(#_):not(#_):not(#_) .chk-line { font-size:13px;color:var(--tw-text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block; }
@@ -227,7 +228,7 @@ body:has(#bw-checker[data-bp-checker]) .layout>main.bp-flush { padding:0; }
 .bp-chk:not(#_):not(#_):not(#_):not(#_) .chk-sm44 { width:44px;flex:none; }
 .bp-chk:not(#_):not(#_):not(#_):not(#_) .chk-sm44 .tile { height:44px;padding:3px; }
 .bp-chk:not(#_):not(#_):not(#_):not(#_) .chk-mname { flex:1;min-width:0;align-self:stretch;border-radius:3px;padding:8px 10px; }
-.bp-chk:not(#_):not(#_):not(#_):not(#_) .chk-mname.chk-plain { background:var(--tw-surface-2);color:var(--tw-text); }
+.bp-chk:not(#_):not(#_):not(#_):not(#_) .chk-mname.chk-plain,.chk-block .v.chk-plain,.v.chk-plain { background:var(--tw-surface-2);color:var(--tw-text); }
 .bp-chk:not(#_):not(#_):not(#_):not(#_) .chk-mn1 { font:600 15px var(--tw-font);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
 .bp-chk:not(#_):not(#_):not(#_):not(#_) .chk-mn2 { font-size:13px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
 .bp-chk:not(#_):not(#_):not(#_):not(#_) .chk-mn3 { margin-top:6px;font:600 12px var(--tw-font); }

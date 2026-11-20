@@ -1,6 +1,7 @@
 """The Set Inspector of the B′ frames (R3-02, #495): the frame's check in the `frames` world, the top block, the answer card, the history of the last answers and
 the editable missing count, and a phone that never scrolls sideways."""
 import json
+import re
 from pathlib import Path
 import subprocess
 import urllib.request
@@ -45,7 +46,7 @@ def test_the_frame_copys_bar_on_the_sets_page_is_unchanged(tmp_path):
     from brickwork.core import collection
     with database(built(tmp_path), read_only=True) as db:
         rows = {r['item_no']: r for r in collection.listing(db, 'S')}
-    assert rows['7213-1']['bars'] == [[365, 10, 375, 0, 0], [130, 12, 375, 0, 0]]
+    assert rows['7213-1']['bars'] == [[365, 10, 375, 0, 0, None], [130, 12, 375, 0, 0, None]]
 
 
 def test_set_count_changes_a_listed_line_without_moving_the_cursor(tmp_path):
@@ -133,7 +134,17 @@ def test_a_copy_never_checked_has_the_x_device_and_a_figure_check_keeps_its_prog
     with screen_gate.world('frames') as base:
         never = fetch(base, f'/workbench/check-parts/{uid("copy", "7213-1", "a")}')
         fig = fetch(base, f'/workbench/check-parts/{figure[0]}/figure/{figure[1]}')
-    chip = never.select_one('[data-chk-tag]')
+    chip = never.select_one('[data-chk-tag]')   # copy a carries the status "Set is checked" and 365 checked pieces: with no session it says so (a copy checked by hand is not "Not checked")
+    assert 'xchip' not in chip['class'] and chip.get_text(strip=True) == 'Set is checked'
+    with database(store, read_only=True) as db:
+        blank = db.execute('''SELECT c.id FROM copy c WHERE c.archived_at IS NULL AND c.checked_by IS NULL
+            AND NOT EXISTS (SELECT 1 FROM copy_flag f JOIN flag g ON g.id=f.flag_id WHERE f.copy_id=c.id AND g.name='Set is checked')
+            AND NOT EXISTS (SELECT 1 FROM copy_part p WHERE p.copy_id=c.id AND (p.checked>0 OR p.missing>0)) AND NOT EXISTS (SELECT 1 FROM part_check k WHERE k.copy_id=c.id)
+            AND EXISTS (SELECT 1 FROM copy_part p WHERE p.copy_id=c.id) ORDER BY c.id LIMIT 1''').fetchone()
+    assert blank, 'the frames world has a copy nobody checked'
+    with screen_gate.world('frames') as base:
+        fresh = fetch(base, f'/workbench/check-parts/{blank[0]}')
+    chip = fresh.select_one('[data-chk-tag]')
     assert 'xchip' in chip['class'] and chip.get_text(strip=True) == 'Not checked' and chip.select_one('svg path')   # the X of the Sets bar, not a dashed tag
     assert fig.select_one('#bw-checker [data-chk-big]') and fig.select_one('#bw-checker [data-legend]') and fig.select_one('#bw-checker .cells[data-progress]')
     assert not fig.select_one('[data-save-feedback]').find_parent(class_='b-prime')

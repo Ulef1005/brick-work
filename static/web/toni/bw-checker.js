@@ -7,7 +7,7 @@
     // #222: a missing-only run counts the parts it walks, as the server's progress does.
     const walked = state.session?.scope === 'missing' ? new Set(state.session.members || state.session.order) : null;
     for (const r of state.rows.filter(r => r.kind !== 'spare' && (!walked || walked.has(r.token)))) {
-      const answer = state.session?.answers[r.token];
+      const answer = state.session ? state.session.answers[r.token] : (r.checked || r.missing > 0 ? 'answered' : undefined);   // no session: the marks the copy already has (Edit parts, a Rebrickable pull)
       if (!answer) counts.remaining++;
       else if (answer === 'skipped') counts.skipped++;
       else if (r.missing > 0) counts.missing++;
@@ -19,12 +19,13 @@
   // line is a part line, or a figure line; only part lines have pieces. The same lines as progress().
   function summary(state) {
     const counts = progress(state), answers = state.session?.answers || {};
+    const marked = r => state.session ? answers[r.token] === 'answered' : (r.checked || r.missing > 0);
     const walked = state.session?.scope === 'missing' ? new Set(state.session.members || state.session.order) : null;
     let pieces = 0, total = 0;
     for (const r of state.rows) {
       if (r.kind !== 'part' || (walked && !walked.has(r.token))) continue;
       total += r.quantity || 0;
-      if (answers[r.token] === 'answered') pieces += r.quantity || 0;
+      if (marked(r)) pieces += r.quantity || 0;
     }
     return {...counts, pieces, total, lines: counts.found + counts.missing + counts.skipped + counts.remaining, figures: state.rows.some(r => r.kind === 'figure')};
   }
@@ -274,7 +275,8 @@
       history.replaceChildren();const s=state.session;if(!s)return;
       // The answered lines, the one answered last first. A line a narrowed walk (missing only, skipped) left out of `order` has no place in it: it follows the others.
       const byToken=new Map(state.rows.map(r=>[r.token,r])),place=t=>s.order.indexOf(t);
-      const answered=Object.keys(s.answers).filter(t=>s.answers[t]==='answered').sort((a,b)=>place(b)-place(a)).map(t=>byToken.get(t)).filter(r=>r&&r.kind!=='spare');
+      const walked=s.scope==='missing'?new Set(s.members||s.order):null,keys=Object.keys(s.answers),seq=t=>keys.indexOf(t);
+      const answered=keys.filter(t=>s.answers[t]==='answered'&&(!walked||walked.has(t))).sort((a,b)=>(place(a)<0)!==(place(b)<0)?(place(a)<0?1:-1):place(a)<0?seq(b)-seq(a):place(b)-place(a)).map(t=>byToken.get(t)).filter(r=>r&&r.kind!=='spare');
       const shown=allChecked?answered:answered.slice(0,RECENT);
       const misses=shown.filter(r=>(r.missing||0)>0),found=shown.filter(r=>!(r.missing>0)),older=answered.filter(r=>(r.missing||0)>0&&!shown.includes(r)).length;
       const wrap=el('div',undefined,'bp-chk b-prime chk-hist'),head=el('div',undefined,'chk-hhead');head.append(el('h2','Checked so far','lbl'),el('span','newest first','chk-note12'));wrap.append(head);
@@ -339,7 +341,7 @@
         // 3e: a running check shows the set line, the name and the progress; the status pill returns at the finish.
         copyStatus.hidden=!(s&&s.finished);
       }
-      if(!s){stage.replaceChildren(el('h2','Check undone'));const a=el('a','Start again','button primary');a.href=root.dataset.endpoint;stage.append(a);history.hidden=true;return;}
+      if(!s){renderTop(root,state);const tg=root.querySelector('[data-chk-tag]'),w=root.querySelector('[data-chk-saved]');if(tg){tg.textContent=state.copy.set_checked?'Set is checked':'Not checked';tg.className='tag dash';}if(w)w.textContent='';stage.replaceChildren(el('h2','Check undone'));const a=el('a','Start again','button primary');a.href=root.dataset.endpoint;stage.append(a);history.hidden=true;return;}
       renderTop(root,state);
       stage.replaceChildren();fillHistory();root.dataset.chkMode='other';
       if(s.finished) {
@@ -418,7 +420,7 @@
       clearTimeout(savedTimer);
       if(error){status.className='check-waiting';status.textContent='Not saved · waiting for network · '+error.message;retry.hidden=false;return;}
       confirmed=merge(confirmed,result);
-      if(!pending){state=clone(confirmed);localStorage.setItem(stateKey,JSON.stringify(state));root.dataset.direction='none';render();status.className='';status.textContent=completed?.action==='undo'?'✓ Undone':'✓ Saved';const when=root.querySelector('[data-chk-saved]');if(when)when.textContent='Saved just now · resume any time';retry.hidden=true;saveUndo.hidden=false;savedTimer=setTimeout(()=>{status.textContent='';saveUndo.hidden=true;},5000);}
+      if(!pending){state=clone(confirmed);localStorage.setItem(stateKey,JSON.stringify(state));root.dataset.direction='none';render();status.className='';status.textContent=completed?.action==='undo'?'✓ Undone':'✓ Saved';const when=root.querySelector('[data-chk-saved]');if(when)when.textContent=state.session&&!state.session.finished?'Saved just now · resume any time':'';retry.hidden=true;saveUndo.hidden=false;savedTimer=setTimeout(()=>{status.textContent='';saveUndo.hidden=true;},5000);}
     }
     try {
       queue=new Queue(localStorage,storageKey,send,saved);

@@ -386,7 +386,7 @@ STORAGE_GROUPS = [('S-0002', 'Shelf A2 – Town', ['7213-1', '7938-1', '10254-1'
           ('S-0005', 'Technic crate', ['8043-1']), ('S-0004', 'Display case', ['21028-1'])]
 
 
-def bar(found, missing, total, label=''):
+def bar(found, missing, total, label='', wrap=False):
     """One copy, to scale: violet found, hatched missing, dashed still to check; a copy never checked carries the X."""
     if found + missing == 0:
         return (f'<div class="bar"><i style="flex:1;border:1.5px dashed var(--tw-text-2)"></i></div>'
@@ -394,16 +394,19 @@ def bar(found, missing, total, label=''):
     f, m = found / total * 100, missing / total * 100
     rest = '' if found + missing == total else '<i style="flex:1;border:1.5px dashed var(--tw-text-2);border-left:none"></i>'
     txt = f'{label}{found:,}/{total:,}' + (f' · {missing} missing' if missing else ' · complete')
+    if wrap and len(txt) > 21:    # a phone tile holds 21 characters of this mono text: the count goes on a second line, nothing is cut (#494)
+        txt = txt.replace(' · ', '<br>', 1)
+    tx = '<div class="bartxt" style="display:block;line-height:16px">' if '<br>' in txt else '<div class="bartxt">'
     return (f'<div class="bar"><i style="width:{f:.2f}%;background:var(--tw-accent)"></i><i style="width:{m:.2f}%;background:{HATCH};'
-            f'box-shadow:inset 0 0 0 1px var(--tw-text)"></i>{rest}</div><div class="bartxt">{txt}</div>')
+            f'box-shadow:inset 0 0 0 1px var(--tw-text)"></i>{rest}</div>{tx}{txt}</div>')
 
 
-def tile(s, w=None, img_h=112):
+def tile(s, w=None, img_h=112, wrap=False):
     if s.get('sealed'):
         bars = '<span class="tag" style="align-self:flex-start">Sealed</span>'
     else:
         many = len(s['copies']) > 1
-        bars = ''.join(bar(*c, label=f'#{i + 1} ' if many else '') for i, c in enumerate(s['copies']))
+        bars = ''.join(bar(*c, label=f'#{i + 1} ' if many else '', wrap=wrap) for i, c in enumerate(s['copies']))
     width = f'width:{w}px;' if w else ''
     return (f'<div class="stile" style="{width}">{pic(s["img"], img_h)}<div class="num"><span>{s["n"]}</span>'
             f'<span style="font:500 12px var(--tw-mono);color:var(--tw-text-2)">{s["price"]}</span></div><div class="nm">{s["name"]}</div>'
@@ -423,7 +426,7 @@ def sets_body(phone):
                                 f'<span class="btn sec sm">{ic("sliders", 16)}Filter</span><span class="btn sm">{ic("plus", 16)}Add set</span></div>') + '</div>')
     if phone:
         g = STORAGE_GROUPS[0]
-        tiles = ''.join(tile(SETS[n], img_h=90) for n in g[2][:2])
+        tiles = ''.join(tile(SETS[n], img_h=90, wrap=True) for n in g[2][:2])
         body = (f'<div style="padding:16px 16px 0;display:flex;flex-direction:column;gap:14px">{head.replace("font:600 30px", "font:600 26px")}'
                 f'<div style="display:flex;gap:8px;align-items:center"><div class="seg"><span class="on">Drawers</span><span>Ledger</span></div><span class="btn sec sm" style="margin-left:auto">{ic("sliders", 16)}Filter</span></div>'
                 f'<div style="overflow:hidden">{stabs}</div><div style="display:flex;gap:8px;align-items:center;font:500 13px var(--tw-font);color:var(--tw-text-2)">{ic("sliders", 16)}Storage: all <span class="mono" style="margin-left:auto">4 storages</span></div>'
@@ -540,9 +543,9 @@ def nostore_body(phone):
             '<p>8 copies · 69 parts missing in view · prices are used averages from BrickLink</p></div>'
             + ('' if phone else f'<div style="margin-left:auto;display:flex;gap:10px;align-items:center"><div class="seg"><span class="on">Drawers</span><span>Ledger</span></div>'
                                 f'<span class="btn sec sm">{ic("sliders", 16)}Filter</span><span class="btn sm">{ic("plus", 16)}Add set</span></div>') + '</div>')
-    order = ['7213-1', '7938-1', '10254-1', '10210-1', '31120-1', '8043-1', '21028-1']
+    order = ['7213-1', '7938-1', '8043-1', '10210-1', '10254-1', '21028-1', '31120-1']    # by number, as the Sort button says
     if phone:
-        tiles = ''.join(tile(SETS[n], img_h=90) for n in order[:2])
+        tiles = ''.join(tile(SETS[n], img_h=90, wrap=True) for n in order[:2])
         return (f'<div style="padding:16px 16px 0;display:flex;flex-direction:column;gap:14px">{head.replace("font:600 30px", "font:600 26px")}'
                 f'<div style="display:flex;gap:8px;align-items:center"><div class="seg"><span class="on">Drawers</span><span>Ledger</span></div><span class="btn sec sm" style="margin-left:auto">{ic("sliders", 16)}Filter</span></div>'
                 f'<div style="overflow:hidden">{stabs}</div>'

@@ -419,13 +419,13 @@ def sets_body(phone):
     head = ('<div class="head"><div><div class="lbl">Collection · Sets</div><h1>3 of 7 sets incomplete</h1>'
             '<p>8 copies · 69 parts missing in view · prices are used averages from BrickLink</p></div>'
             + ('' if phone else f'<div style="margin-left:auto;display:flex;gap:10px;align-items:center"><div class="seg"><span class="on">Drawers</span><span>Ledger</span></div>'
-                                f'<span class="btn sec sm">{ic("search", 16)}Filter</span><span class="btn sm">{ic("plus", 16)}Add set</span></div>') + '</div>')
+                                f'<span class="btn sec sm">{ic("sliders", 16)}Filter</span><span class="btn sm">{ic("plus", 16)}Add set</span></div>') + '</div>')
     if phone:
         g = STORAGE_GROUPS[0]
         tiles = ''.join(tile(SETS[n], img_h=90) for n in g[2][:2])
         body = (f'<div style="padding:16px 16px 0;display:flex;flex-direction:column;gap:14px">{head.replace("font:600 30px", "font:600 26px")}'
-                f'<div style="display:flex;gap:8px;align-items:center"><div class="seg"><span class="on">Drawers</span><span>Ledger</span></div><span class="btn sec sm" style="margin-left:auto">{ic("search", 16)}Filter</span></div>'
-                f'<div style="overflow:hidden">{stabs}</div><div style="display:flex;gap:8px;align-items:center;font:500 13px var(--tw-font);color:var(--tw-text-2)">{ic("sliders", 16)}Storage: all <span class="mono" style="margin-left:auto">5 storages</span></div>'
+                f'<div style="display:flex;gap:8px;align-items:center"><div class="seg"><span class="on">Drawers</span><span>Ledger</span></div><span class="btn sec sm" style="margin-left:auto">{ic("sliders", 16)}Filter</span></div>'
+                f'<div style="overflow:hidden">{stabs}</div><div style="display:flex;gap:8px;align-items:center;font:500 13px var(--tw-font);color:var(--tw-text-2)">{ic("sliders", 16)}Storage: all <span class="mono" style="margin-left:auto">4 storages</span></div>'
                 f'{tape(*g[:2], len(g[2]))}<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">{tiles}</div></div>')
         return body
     idx = ''.join(f'<div class="idx"><span class="mono" style="color:var(--tw-text-muted);font-size:12px;padding-top:2px">{sid}</span><span>{name}</span>'
@@ -533,18 +533,23 @@ def empty_body(phone):
 def nostore_body(phone):
     """Sets when no storage is set at all: no storage index and no label tape, one grid (Ulf, round 3 comment). A set
     without storage, among stored ones, sits in the grid after the groups, also without tape."""
+    stabs = '<div class="stabs">' + ''.join(f'<span class="{"on" if i == 0 else ""}">{t} <span class="mono" style="color:var(--tw-text-muted);padding:0;border:0">{n}</span></span>'
+                                            for i, (t, n) in enumerate([('All', 7), ('Incomplete', 3), ('Not checked', 2), ('Complete', 1), ('Sealed', 1)])) + '</div>'
     head = ('<div class="head"><div><div class="lbl">Collection · Sets</div><h1>3 of 7 sets incomplete</h1>'
             '<p>8 copies · 69 parts missing in view · prices are used averages from BrickLink</p></div>'
             + ('' if phone else f'<div style="margin-left:auto;display:flex;gap:10px;align-items:center"><div class="seg"><span class="on">Drawers</span><span>Ledger</span></div>'
-                                f'<span class="btn sec sm">{ic("search", 16)}Filter</span><span class="btn sm">{ic("plus", 16)}Add set</span></div>') + '</div>')
+                                f'<span class="btn sec sm">{ic("sliders", 16)}Filter</span><span class="btn sm">{ic("plus", 16)}Add set</span></div>') + '</div>')
     order = ['7213-1', '7938-1', '10254-1', '10210-1', '31120-1', '8043-1', '21028-1']
     if phone:
         tiles = ''.join(tile(SETS[n], img_h=90) for n in order[:2])
         return (f'<div style="padding:16px 16px 0;display:flex;flex-direction:column;gap:14px">{head.replace("font:600 30px", "font:600 26px")}'
-                f'<div style="display:flex;gap:8px;align-items:center"><div class="seg"><span class="on">Drawers</span><span>Ledger</span></div><span class="btn sec sm" style="margin-left:auto">{ic("search", 16)}Filter</span></div>'
+                f'<div style="display:flex;gap:8px;align-items:center"><div class="seg"><span class="on">Drawers</span><span>Ledger</span></div><span class="btn sec sm" style="margin-left:auto">{ic("sliders", 16)}Filter</span></div>'
+                f'<div style="overflow:hidden">{stabs}</div>'
                 f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">{tiles}</div></div>')
     tiles = ''.join(tile(SETS[n]) for n in order)
     return (f'<div style="padding:22px 28px 0;display:flex;flex-direction:column;gap:14px">{head}'
+            f'<div style="display:flex;align-items:flex-end;gap:16px">{stabs}<span class="input" style="margin-left:auto;width:260px;height:38px;color:var(--tw-text-muted)">Number or name</span>'
+            f'<span class="btn sec sm">Sort: number</span></div>'
             f'<div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px">{tiles}</div></div>')
 
 

@@ -60,6 +60,8 @@ Generated from the review rounds of commission U (review artifact https://claude
 - **Kept:** the price on each tile (used average from BrickLink), search by number or name, Sort, the counts in the heading.
 - **SUCCESS:** Say: “3 of 7 sets incomplete”. Check: bars to scale, 10 missing of 375 is a 2.7 % sliver; the counts add up (69 = 10 + 12 + 14 + 33). Express: the drawer is the structure. Structure: storage, then set, then copy.
 
+- **Corrected 2026-11-20 (#494, C-1 and C-2):** `04` says "4 storages" (the storages that hold sets), the Filter button has the sliders icon on both frames (the phone app bar already has a magnifier), and `05` shows the status tabs and, on desktop, search and Sort: only the storage tape and index are absent with no storage. `04` at 390 is an excerpt of the page (two of the three S-0002 tiles): compare down to the last drawn tile row. Search and Sort sit in the Filter sheet below 1024 px. Frame figures are sample data: the app shows its own.
+
 ### R3-02 Set Inspector (`06-set-inspector`)
 
 - **Your comments:** the old stepper is back on phone and desktop: “Found ×2” in the middle, − and + on either side change the count, Missing below; the part’s name block is filled with the part’s own colour (Dark Bluish Gray, Red), text in white or ink, whichever reads.

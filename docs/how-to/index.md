@@ -28,6 +28,7 @@ One task per page, for someone who already knows the app.
 
 - [Receive a parts order](receive-an-order.md)
 - [Manage wishlists](manage-wishlists.md)
+- [Browse your sets](browse-your-sets.md)
 - [Know where things are](storage.md)
 - [Pictures, prices and where they come from](pictures-and-prices.md)
 - [Make an insurance report](insurance-report.md)

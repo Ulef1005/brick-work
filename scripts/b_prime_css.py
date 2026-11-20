@@ -107,7 +107,8 @@ def rules(css: str) -> list[tuple[str, str]]:
 
 
 # The frames draw the phone sub row's entries as <span> and the tab bar's as <div>; the app uses links there. Each such rule also applies to the link.
-ALIASES = (('.psub span', '.psub a'), ('.tabbar div', '.tabbar a'))
+# The frames draw the Drawers/Ledger switch and the status tabs of the Sets page (R3-01) as <span>; the app uses buttons (#494).
+ALIASES = (('.psub span', '.psub a'), ('.tabbar div', '.tabbar a'), ('.seg span', '.seg button'), ('.stabs span', '.stabs button'))
 
 
 def scope(selector: str, prefix: str = SCOPE) -> str:

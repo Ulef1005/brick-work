@@ -79,10 +79,7 @@ def test_set_controls_match_1c_structure(world, client):
     soup = BeautifulSoup(client.get('/collection/sets').data, 'html.parser')
     root = soup.select_one('#bw-collection')
     assert root.select_one('[data-bc-search]')['placeholder'] == 'Number or name'
-    assert root.select_one('.bc-search .icon')
-    summary = root.select_one('[data-bc-missing-summary]')
-    strip = root.select_one('.bc-status-strip')
-    assert summary.find_next_sibling() == strip
+    assert root.select_one('.bp-search')   # R3-01 (#494): the search is a field beside the tabs; the missing summary and the distribution strip are gone
     panel = root.select_one('[data-bc-panel]')
     assert 'bc-collection-sheet' in panel['class']
     assert panel.select_one('.bc-sheet-handle')

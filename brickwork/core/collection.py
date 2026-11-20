@@ -291,6 +291,21 @@ def _copy_defects(db, where, params):
         WHERE copy_id IN (SELECT c.id FROM copy c WHERE {where}) GROUP BY copy_id''', params)}
 
 
+def _copy_bars(db, ids):
+    """`{copy id: [found, missing, total, figures missing, damaged]}` for the sets list's bar, one query. The lines are the ones `_copy_defects` counts (live, not spare, not a
+    figure's), so the bars add up to the heading's "parts missing". `missing` is every missing piece on those lines; `found` the pieces of the lines the
+    check has answered (`checked`) less their missing, or, where the person switched "Set is checked" on, every piece that is not missing: that switch is
+    the person's word that the whole list was looked at. The rest of `total` is still to check. The last number is the figures missing (a figure is no part
+    of the bar, but a copy without one is not complete); the damaged pieces are present, so they leave the bar alone, but they are a gap by the completeness rule, so the line names them. A copy with no part list has no entry."""
+    return {r['copy_id']: [r['found'], r['missing'], r['total'], r['figures'], r['damaged']] for r in db.execute('''SELECT p.copy_id,sum(p.quantity) AS total,sum(p.missing) AS missing,sum(p.damaged) AS damaged,
+        sum(CASE WHEN p.checked=1 OR f.copy_id IS NOT NULL THEN p.quantity-p.missing ELSE 0 END) AS found,
+        (SELECT coalesce(sum(g.missing),0) FROM copy_figure g WHERE g.copy_id=p.copy_id AND g.retired_at IS NULL) AS figures
+        FROM copy_part p LEFT JOIN (SELECT DISTINCT cf.copy_id FROM copy_flag cf JOIN flag g ON g.id=cf.flag_id AND g.archived_at IS NULL
+                                    WHERE g.kind='status' AND g.name='Set is checked') f ON f.copy_id=p.copy_id
+        WHERE p.retired_at IS NULL AND p.is_spare=0 AND p.copy_figure_id IS NULL AND p.copy_id IN (SELECT value FROM json_each(?))
+        GROUP BY p.copy_id HAVING total>0''', (_in(ids),))}
+
+
 _COPY = '''SELECT c.*,i.kind,i.name,i.year,i.theme_name AS theme,i.category_name AS category,
     s.name AS storage_name,p.name AS place_name,NULL AS color_id,1 AS quantity,'copy' AS entity
     FROM copy c JOIN item i ON i.id=c.item_id LEFT JOIN storage s ON s.id=c.storage_id LEFT JOIN place p ON p.id=c.place_id'''
@@ -418,6 +433,10 @@ def listing(db, type_letter, *, wishes=False):
             if kind == 'set':                                                        # #226: the newest copy's date added, sets only
                 row['added'] = max(row.get('added') or '', r.get('created_at') or '')
         rows = list(grouped.values())
+        if kind == 'set':                                                            # the bar of each copy, in the order of the row's instances (core/list_records.py)
+            bars = _copy_bars(db, [i['id'] for r in rows for i in r['instances']])
+            for row in rows:
+                row['bars'] = [bars.get(i['id']) for i in row['instances']]
         in_sets = []
         if kind == 'part':
             in_sets = [dict(r) for r in db.execute('''SELECT p.item_id,p.color_id,sum(p.quantity) AS quantity,sum(p.missing) AS missing,sum(p.damaged) AS damaged
@@ -459,6 +478,26 @@ def listing(db, type_letter, *, wishes=False):
         row['prices'] = market.get((row['item_id'], row.get('color_id')), [])
         row['price'] = collection_prices.choose([p for p in row['prices'] if p['guide'] == 'sold' and p.get('slot') != 'boxed'], row['kind'], price_priority, 'used')
     return rows
+
+
+def storage_index(rows, storages):
+    """The storages of the Sets page's index (R3-01), from the set rows `listing` returned and `options()['storages']`: every storage that holds a copy,
+    with the code on its label (`short_id`), its name, how many copies it holds (each copy once, in the storage it sits in) and how many sets are filed
+    under it. A set whose copies sit in two storages is filed under the first one that is set, as the grouping does (core/list_records.py `storages`).
+    The order is the page's: most sets first, then most copies, then the lowest set number, then the code. Empty when no copy has a storage."""
+    by_id = {s['id']: s for s in storages}
+    copies, sets, first = {}, {}, {}
+    for row in rows:
+        held = [s for s in row.get('storages', []) if s != 'null' and s in by_id]
+        for s in held:
+            copies[s] = copies.get(s, 0) + 1
+        if held:
+            number = row.get('item_no') or ''
+            key = (int(re.match(r'\d*', number).group() or 0), number)
+            sets[held[0]] = sets.get(held[0], 0) + 1
+            first[held[0]] = min(first.get(held[0], key), key)
+    order = sorted(copies, key=lambda s: (-sets.get(s, 0), -copies[s], first.get(s, (0, '')), by_id[s].get('short_id') or '', s))
+    return [dict(id=s, code=by_id[s].get('short_id') or '', name=by_id[s]['name'], copies=copies[s], sets=sets.get(s, 0)) for s in order]
 
 
 def part_colours(db, item_id):

@@ -14,11 +14,8 @@ KEYS = ('BW_BRICKLINK_CONSUMER_KEY', 'BW_BRICKLINK_CONSUMER_SECRET', 'BW_BRICKLI
 
 def test_options_menu_on_the_sets_toolbar(client, world):
     soup = BeautifulSoup(client.get('/collection/sets').data, 'html.parser')
-    toolbar = soup.select_one('.bc-toolbar')
-    button = toolbar.select_one('[data-bc-options-open]')
-    assert button.get_text(strip=True) == 'Options' and button['aria-haspopup'] == 'menu'
-    assert toolbar.select_one('[data-bc-options-menu]').has_attr('hidden')
-    # The View block (Group by, Select) still exists for the phone sheet; the menu drives it.
+    assert not soup.select_one('[data-bc-options-open]')   # R3-01 (#494): Options moved into the Filter sheet; the Sets page has no menu of its own
+    # The View block (Group by, Select mode) is in the Filter sheet.
     assert soup.select('.bc-view-group [data-bc-group-pick]') and soup.select_one('[data-bc-select][role=switch]')
     assert soup.find('script', src=lambda s: s and 'bw-options-menu.js' in s)
     css = (ROOT / 'static/web/toni/bw-collection.css').read_text()

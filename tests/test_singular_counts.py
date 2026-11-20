@@ -15,7 +15,8 @@ def page(client, route):
 
 def texts(client, kind):
     soup = page(client, '/collection/' + kind)
-    return soup.select_one('header p.secondary').get_text(' ', strip=True), soup.select_one('[data-bc-apply]').get_text(strip=True)
+    line = soup.select_one('header p.secondary') or soup.select_one('.bp-sub')   # the Sets page (#494) has the frames' own heading
+    return line.get_text(' ', strip=True), soup.select_one('[data-bc-apply]').get_text(strip=True)
 
 
 @pytest.mark.parametrize('kind,add,one,many', [('B', 'book', 'book', 'books'), ('C', 'catalog', 'catalog', 'catalogs')])
@@ -56,4 +57,4 @@ def test_the_wishlist_says_wish_for_one_and_wishes_for_two_before_any_script_run
 
 def test_the_sets_show_button_and_subtitle_are_singular_for_exactly_one_copy(client, coll):  # noqa: F811
     coll.add_copy('2070-1')
-    assert texts(client, 'S') == ('1 copy', 'Show 1 set')
+    assert texts(client, 'S') == ('1 copy · 0 parts missing in view', 'Show 1 set')

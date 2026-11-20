@@ -93,10 +93,11 @@ def test_sets_list_filter_mapping_toolbar_and_subtitle(coll, client):
     coll.add_copy('1000-1')
     coll.price(keep, '12', condition='used', observed='2026-10-08')
     soup = soup_of(client, '/collection/sets')
-    assert soup.select_one('.bc-heading>.button.primary').get_text(strip=True) == 'Add'
-    assert 'prices are used averages from BrickLink' in soup.select_one('.bc-heading').get_text()
-    toolbar = soup.select_one('.bc-toolbar')
-    assert toolbar.select_one('[data-bc-search]') and toolbar.select_one('[data-bc-count]') and toolbar.select_one('.bc-view-switch')
+    assert soup.select_one('.head .btn').get_text(strip=True) in ('Filter', 'Drawers') and soup.select_one('.head a.btn').get_text(strip=True) == 'Add set'
+    assert 'prices are used averages from BrickLink' in soup.select_one('.head').get_text()
+    find = soup.select_one('.bp-find')   # R3-01 (#494): Search and Sort beside the tabs; Drawers and Ledger name the grid and list switch
+    assert find.select_one('[data-bc-search]') and find.select_one('[data-bc-sort-open]')
+    assert [b.get_text(strip=True) for b in soup.select('.bp-head-actions [data-bc-view]')] == ['Drawers', 'Ledger']
     panel = soup.select_one('[data-bc-panel]')
     assert [h.get_text() for h in panel.select('h4')] == ['Status', 'Condition', 'Copies', 'Tags', 'Has', 'View']
     for key in ['type', 'condition', 'status', 'colour', 'problem', 'flags', 'storage', 'place', 'lot', 'duplicates', 'stock', 'category', 'theme', 'year']:

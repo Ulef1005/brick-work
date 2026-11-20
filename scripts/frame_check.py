@@ -24,6 +24,8 @@ import tempfile
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / 'scripts'))
+import venv_python  # noqa: E402
+venv_python.ensure()   # the app's venv, as check.sh picks it (APP_VENV, .venv, the canonical checkout's)
 import screen_gate as gate  # noqa: E402
 
 FRAMES = ROOT / 'design' / 'screens-b'

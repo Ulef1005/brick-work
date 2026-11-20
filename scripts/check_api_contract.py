@@ -10,6 +10,9 @@ import sys
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / 'scripts'))
+import venv_python  # noqa: E402
+venv_python.ensure()   # the app's venv, as check.sh picks it
 V2_TABLES = {'implemented': ('<!-- api2-implemented:start -->', '<!-- api2-implemented:end -->'),
              'pending': ('<!-- api2-pending:start -->', '<!-- api2-pending:end -->')}
 PIECES = ('M.11a', 'M.11b', 'M.11c', 'M.11d')

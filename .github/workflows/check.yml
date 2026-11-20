@@ -14,8 +14,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # The pytest tests run as three parallel jobs (scripts/check.sh with BW_SHARD, tests/xdist_groups.py; #364): shard 1 also runs every other step of the
-  # gate. The job named `check` at the end is the one result: it fails unless all three shards passed, so a pull request's check keeps its name.
+  # The pytest tests run as four parallel jobs (three until 2026-11-20: the shards were 5.4, 6.6 and 6.3 minutes, a fourth cuts the longest by about a minute) (scripts/check.sh with BW_SHARD, tests/xdist_groups.py; #364): shard 1 also runs every other step of the
+  # gate. The job named `check` at the end is the one result: it fails unless all four shards passed, so a pull request's check keeps its name.
   shard:
     name: check shard ${{ matrix.shard }}
     runs-on: ubuntu-latest
@@ -23,7 +23,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
@@ -73,7 +73,7 @@ jobs:
         run: APP_VENV=.venv bash scripts/check.sh
         env:
           BW_CHECK_MODE: ${{ steps.scope.outputs.mode }}
-          BW_SHARD: ${{ matrix.shard }}/3
+          BW_SHARD: ${{ matrix.shard }}/4
           BW_NO_CHROME: ${{ github.event_name == 'pull_request' && '1' || '' }}  # no Chrome test on a pull request (Ulf, 2026-11-13); a push to main still runs them
           BW_CHROME_NO_SANDBOX: "1"  # the runner's user namespaces may be restricted; the pages are our own test fixtures
           DOCS_RANGE: ${{ github.event_name == 'push' && format('{0}..{1}', github.event.before, github.sha) || format('{0}..{1}', github.event.pull_request.base.sha, github.sha) }}
@@ -96,5 +96,5 @@ jobs:
         env:
           RESULT: ${{ needs.shard.result }}
         run: |
-          echo "The three shards: $RESULT"
+          echo "The four shards: $RESULT"
           [[ $RESULT == success ]]

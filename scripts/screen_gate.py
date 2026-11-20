@@ -358,4 +358,7 @@ def main(argv: list[str]) -> int:
 
 
 if __name__ == '__main__':
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import venv_python
+    venv_python.ensure()   # the app's venv, as check.sh picks it
     sys.exit(main(sys.argv[1:]))

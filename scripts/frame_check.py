@@ -194,4 +194,6 @@ def main(argv: list[str]) -> int:
 
 
 if __name__ == '__main__':
+    import venv_python
+    venv_python.ensure()   # the app's venv, as check.sh picks it (APP_VENV, .venv, the canonical checkout's); only when run as a script, never on import
     sys.exit(main(sys.argv[1:]))

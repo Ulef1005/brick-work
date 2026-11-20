@@ -374,15 +374,15 @@ def _label_without_lost_parts(db, section, translate, flag_name, new_copies, gro
         if len(live) != 1:
             continue
         copy_id = live[0]['id']
-        row = db.execute("""SELECT c.completeness,c.completeness_source,c.checked_by,
+        row = db.execute("""SELECT c.completeness,c.completeness_source,c.checked_by,c.inventory_source,
                 (SELECT 1 FROM main.copy_flag cf JOIN main.flag f ON f.id=cf.flag_id AND f.archived_at IS NULL
-                  WHERE cf.copy_id=c.id AND f.kind='tag' AND f.name=?) AS pulled,
+                  WHERE cf.copy_id=c.id AND f.kind='tag' AND lower(f.name)=lower(?)) AS pulled,
                 (SELECT 1 FROM main.copy_flag cf JOIN main.flag f ON f.id=cf.flag_id AND f.archived_at IS NULL
                   WHERE cf.copy_id=c.id AND f.kind='status' AND f.name='Set is checked') AS flagged,
                 (SELECT 1 FROM main.copy_part WHERE copy_id=c.id AND retired_at IS NULL AND (checked>0 OR missing>0 OR damaged>0)
                  UNION ALL SELECT 1 FROM main.copy_figure WHERE copy_id=c.id AND retired_at IS NULL AND missing>0 LIMIT 1) AS marked
                 FROM main.copy c WHERE c.id=?""", (flag_name, copy_id)).fetchone()
-        if (not row['pulled'] or row['flagged'] or row['marked'] or row['checked_by'] or row['completeness'] == 'sealed' or row['completeness_source']):
+        if (not row['pulled'] or row['flagged'] or row['marked'] or row['checked_by'] or row['inventory_source'] == 'none' or row['completeness'] == 'sealed' or row['completeness_source']):
             continue
         event = checker.mark_pulled(db, copy_id, [], 'rebrickable')
         if event is not None:

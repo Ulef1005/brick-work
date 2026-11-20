@@ -988,7 +988,7 @@ def _undo(db, event, via, actor):
         if _current(db, new['table'], new['rows']) != new['rows']:
             raise ValueError(CHANGED)
     for old, new in pairs:
-        if new['table'] == 'guard' and copy_guard(db, [g['id'] for g in new['rows']]) != new['rows']:
+        if new['table'] == 'guard' and copy_guard(db, [g['id'] for g in new['rows']]) != [dict(g, copy=as_current('copy', g['copy'])) for g in new['rows']]:   # a pre-4.7 receipt lacks checked_by
             raise ValueError('The copy status changed after saving · review it before undoing')
     tables = {n['table']: (o, n) for o, n in mine}
     if 'line_receipt' in tables:                                     # a count cannot be taken back below what is allocated

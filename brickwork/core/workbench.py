@@ -187,6 +187,7 @@ def completion_context(db, all_gaps):
             counts[gap['copy_id']][identity(gap)] += 1
     identifier = flag(db, 'Set is checked')
     checked = {r[0] for r in db.execute('SELECT copy_id FROM main.copy_flag WHERE flag_id=?', (identifier,))} if identifier else set()
+    checked |= {r[0] for r in db.execute('SELECT id FROM main.copy WHERE checked_by IS NOT NULL AND archived_at IS NULL')}      # #489: a Rebrickable pull checked it
     return counts, checked
 
 

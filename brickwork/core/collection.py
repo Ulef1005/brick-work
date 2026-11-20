@@ -783,7 +783,7 @@ def detail(db, item_id, *, colour=None, copy_id=None, stock_id=None, wish_id=Non
     required = [p for p in consists if p['item_type'] != 'M' and not p.get('minifig_no') and not p['spare']]
     flag_names = [f['name'] for f in (selected or {}).get('flags', []) if f['kind'] == 'status']
     check_recorded = bool(selected and selected['entity'] == 'copy' and (
-        any(r['checked'] or r['missing'] or r['damaged'] for r in consists if r['missing'] is not None) or 'Set is checked' in flag_names))
+        any(r['checked'] or r['missing'] or r['damaged'] for r in consists if r['missing'] is not None) or 'Set is checked' in flag_names or selected.get('checked_by')))
     row['progress'] = dict(
         total=sum(p['quantity'] or 0 for p in required), missing=sum(p['deficit'] for p in required),
         checked=sum(p['quantity'] or 0 for p in required if p.get('checked')), can_take=sum(p['can_take'] for p in required),
@@ -795,7 +795,7 @@ def detail(db, item_id, *, colour=None, copy_id=None, stock_id=None, wish_id=Non
     row['figure_progress'] = dict(total=sum(p['quantity'] or 0 for p in figures),
                                   present=sum(max((p['quantity'] or 0)-(p['missing'] or 0), 0) for p in figures))
     row['progress']['known'] = bool(required) and bool(selected and selected['entity'] == 'copy') and (
-        row['progress']['missing'] > 0 or row['progress']['checked'] > 0 or 'Set is checked' in flag_names)
+        row['progress']['missing'] > 0 or row['progress']['checked'] > 0 or 'Set is checked' in flag_names or bool(selected.get('checked_by')))
     owner = selected if selected and selected['entity'] in ('copy', 'stock') else None
     row['photos'] = [dict(r, url=None) for r in db.execute(                   # the file route for an own photo comes with M.8d
         'SELECT * FROM photo WHERE item_id=? AND copy_id IS ? AND stock_id IS ? AND archived_at IS NULL ORDER BY created_at,id',
@@ -1261,7 +1261,7 @@ def save(db, entity, ids, data, *, archive=False, create_system_flags=False):
         flag_change = None
         hand_check = False                                   # #489: the person's own word on completeness or "Set is checked" takes "Checked on Rebrickable" off a copy
         if table == 'copy' and len(ids) == 1 and old[0]['checked_by']:
-            hand_check = 'completeness' in edits and edits['completeness'] != old[0]['completeness']
+            hand_check = ('completeness' in edits and edits['completeness'] != old[0]['completeness']) or edits.get('completeness_source') == 'manual'
         if 'flags' in data:
             if table not in ENTITY_FLAGS or len(ids) != 1 or not isinstance(data['flags'], list):
                 raise ValueError('Edit flags on one instance')

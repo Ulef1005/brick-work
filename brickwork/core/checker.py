@@ -663,7 +663,7 @@ def _mark(db, copy_id, edits, source):
             mark_row(db, table, dict(id=row['id'], copy_id=copy_id), row, fields)
         if source is None:
             unlabel(db, copy_id)
-        elif source != KEEP and current['completeness'] != 'sealed' and current['completeness_source'] != 'manual':
+        elif source != KEEP and current['completeness'] != 'sealed' and current['completeness_source'] != 'manual' and not checked(db, copy_id):   # a copy Brick Work checked keeps no label
             db.execute("UPDATE main.copy SET checked_by=?, completeness_source=coalesce(completeness_source,'derived') WHERE id=?", (source, copy_id))
         recompute(db, copy_id)
         new = snapshot(db, copy_id, tokens)

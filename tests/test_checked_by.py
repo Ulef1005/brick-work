@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from brickwork.core import checker, collection, sync
+from brickwork.core.sync import lost_parts
 from brickwork.store4.connect import HERE, SCHEMA_VERSION, connect, upgrade
 from tests.test_bw_sync import rebrickable_ready, store  # noqa: F401
 from tests.test_bw_sync import pair  # noqa: F401
@@ -188,3 +189,68 @@ def test_the_frames_pulled_world_has_frame_48s_two_copies(tmp_path):
         assert rows['8043-1']['bars'] == [[1123, 0, 1123, 0, 0, 'rebrickable']] and rows['8043-1']['statuses'] == ['complete']
         assert rows['21028-1']['bars'] == [[589, 9, 598, 0, 0, 'rebrickable']] and rows['21028-1']['statuses'] == ['incomplete']
         assert rows['7213-1']['bars'][0][5] is None and rows['31120-1']['bars'][0][5] is None   # a copy Brick Work checked itself has no label
+
+
+# --- review fixes of the pull (#489) ------------------------------------------------------------
+
+def relabel_before_the_label_step(monkeypatch, sql):
+    """Run `sql` on the pull's copies just before the label step reads them (the copy and its tag exist by then)."""
+    real = lost_parts._copies
+
+    def copies(db, items):
+        if items:
+            db.execute(sql)
+        return real(db, items)
+    monkeypatch.setattr(lost_parts, '_copies', copies)
+
+
+def test_a_copy_without_a_part_list_is_not_labelled(store, monkeypatch):
+    relabel_before_the_label_step(monkeypatch, "UPDATE copy SET inventory_source='none', inventory_version=NULL")
+    sync.apply_pull(store, planned(store, Remote([]))['id'])
+    (made,) = new_copies_of(store, '1000-2')
+    assert column(store, made)[0] is None
+
+
+def test_an_import_tag_in_another_case_still_lets_the_new_copy_be_labelled(store, monkeypatch):
+    relabel_before_the_label_step(monkeypatch, "UPDATE flag SET name='Imported from Rebrickable' WHERE kind='tag' AND lower(name)='imported from rebrickable'")
+    sync.apply_pull(store, planned(store, Remote([]))['id'])
+    (made,) = new_copies_of(store, '1000-2')
+    assert column(store, made)[0] == 'rebrickable'
+
+
+def test_a_copy_brick_work_checked_gets_no_label_from_a_pull(store):
+    one = copy_of(store, '1000-1')
+    checker.set_checked(store, one, True)
+    checker.mark_pulled(store, one, [], 'rebrickable')
+    assert column(store, one)[0] is None
+
+
+def test_a_label_counts_as_a_change_for_the_undo_of_an_add(store):
+    from brickwork.core import add
+    one = copy_of(store, '1000-1')
+    snapshot = dict(store.execute('SELECT * FROM copy WHERE id=?', (one,)).fetchone())
+    assert add._copy_untouched(store, one, snapshot)
+    store.execute("UPDATE copy SET checked_by='rebrickable' WHERE id=?", (one,))
+    assert not add._copy_untouched(store, one, snapshot)
+
+
+def test_a_labelled_copy_is_checked_for_the_workbench_and_the_deductions(store):
+    from brickwork.core import deductions, workbench
+    made = labelled_copy(store)
+    assert made in workbench.completion_context(store, [])[1]
+    assert made in deductions.checked(store, [dict(id=made, completeness='complete')])
+    store.execute("UPDATE copy SET checked_by=NULL WHERE id=?", (made,))
+    assert made not in workbench.completion_context(store, [])[1]
+
+
+def test_a_labelled_copy_has_known_progress_and_a_recorded_check(store):
+    made = labelled_copy(store)
+    item = store.execute('SELECT item_id FROM copy WHERE id=?', (made,)).fetchone()[0]
+    progress = collection.detail(store, item, copy_id=made)['progress']
+    assert progress['known'] and progress['check_recorded']
+
+
+def test_choosing_manual_completeness_clears_the_label(store):
+    made = labelled_copy(store)
+    collection.save(store, 'copy', [made], dict(completeness_source='manual'))
+    assert column(store, made)[0] is None

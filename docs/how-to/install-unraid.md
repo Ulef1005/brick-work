@@ -22,11 +22,11 @@ The template shows three fields. Change only the password.
 
 | Field | Value | What it is |
 |---|---|---|
-| **WebUI port** | `3333` | The port of the web interface, the API and the MCP server. Change it if another container uses 3333. |
+| **WebUI port** | `3333` | The port of the web interface and the API. Change it if another container uses 3333. |
 | **Data** | `/mnt/user/appdata/brick-work` | Your collection, the catalogue, photos and PDFs. This is the folder to back up. |
 | **Password** | one of your own | The password you sign in with. Without one the server refuses to start. |
 
-The template also runs the container as user `99:100` (`nobody:users`), the owner of Unraid's appdata folders, so you do not change any folder ownership. Choose **Apply**.
+The template also runs the container as user `99:100` (`nobody:users`), the owner of Unraid's appdata folders. Choose **Apply**. If the log then says the folder is not writable, see [When something goes wrong](#when-something-goes-wrong).
 
 ## 3. Open it
 
@@ -36,12 +36,12 @@ Brick Work is for a home network or a VPN: do not forward its port to the intern
 
 ## Keeping it up to date
 
-Unraid shows an update on the **Docker** tab when a new image is published. Read the [upgrade guide](upgrade.md) first, and back up the data folder before you update.
+The template uses the image tag `latest`, so Unraid offers each new release on the **Docker** tab. Read the [upgrade guide](upgrade.md) first and back up the **Data** folder before you update. To stay on one release, edit the container and put its version after the repository name, for example `ghcr.io/ulef1005/brick-work:1.1.1`. The upgrade guide's Git steps do not apply to you.
 
 ## When something goes wrong
 
 - **The container stops at once, and its log asks for a password:** the **Password** field is empty. Edit the container, fill it in and apply.
-- **It cannot write its folder:** the **Data** folder is not writable for user `99:100`. Unraid's appdata is by default; a folder you made by hand elsewhere may not be.
+- **It cannot write its folder:** the **Data** folder is not writable for user `99:100` (`nobody:users`). Docker can create a missing folder owned by root. Make the folder yourself in the Unraid file manager and give it to `nobody:users`, then start the container again.
 - **Port 3333 is in use:** change **WebUI port** and open the new port.
 - **Logs:** the container's menu on the **Docker** tab has **Logs**.
 

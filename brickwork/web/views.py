@@ -166,7 +166,7 @@ def identity_undo_offer(text):
     return identifier if found else None
 
 
-SETTINGS_ROWS = ('retail-country', 'part-list-grouping', 'part-lists', 'pictures', 'picture-priority', 'source-priority', 'freshness', 'instruction-downloads', 'sync')
+SETTINGS_ROWS = ('retail-country', 'part-list-grouping', 'part-lists', 'pictures', 'picture-priority', 'source-priority', 'freshness', 'sync')
 
 
 def settings_undo_offer(db, text):
@@ -2828,20 +2828,34 @@ def bw_item_supersets(item_id):
 @web_page.get('/manage/instructions/find')
 @login_required
 def bw_instruction_find():
-    from ..core import instructions, instruction_sources
+    """Find instructions links out (ADR 0035, #484): the sets in the collection that have no PDF, each with its LEGO and Rebrickable pages, and a set
+    number lookup. Brick Work fetches nothing here; the PDF is uploaded afterwards (the Instruction files page)."""
+    from ..core import instructions
+    from ..core.instruction_links import instruction_links
     try:
-        job_ids = _instruction_ids(request.args.get('jobs', ''))
+        _instruction_ids(request.args.get('jobs', ''))   # a link from the old download flow (?jobs=1,2) still has to be a valid list
     except (ValueError, TypeError):
         abort(400, 'Choose a valid instruction job')
+    number = request.args.get('set', '').strip()
     with _add_database(read_only=True) as db:
-        region = instructions.region_for(db)
-        groups = instructions.candidates(db, job_ids)
-        official_limit = instructions.download_limit(db, 'official')
-    return render_template('web/toni/web/bw_instruction_find.html', csrf_token=bw_add_token(),
-                           can_edit=bw_collection_editable(), region=region, groups=groups,
-                           configured=bool(instruction_sources.registry.adapters), official_limit=official_limit,
-                           source_notices=[a.unavailable for a in instruction_sources.registry.adapters.values() if getattr(a, 'unavailable', None)],
-                           initial_item=request.args.get('item', ''), initial_jobs=request.args.get('jobs', ''))
+        region = instructions.usable_region(db, request.args.get('region') or None)
+        missing = instructions.sets_without_booklet(db, region)
+    looked_up, problem = None, None
+    item = request.args.get('item', '').strip()
+    if item.isdecimal() and not number:   # the Instructions & Box tab of a set or booklet links here with ?item=<id>: look that set up
+        try:
+            with _add_database(read_only=True) as db:
+                number = instructions.links_for(db, int(item), region)['set_no']
+        except ValueError as error:
+            problem = str(error)
+    if number:
+        full = number if re.search(r'-[0-9]+$', number) else number + '-1'   # the upload form takes the Rebrickable number, which carries the suffix
+        try:
+            looked_up = dict(number=full, links=instruction_links(number, region))
+        except ValueError as error:
+            problem = str(error)
+    return render_template('web/toni/web/bw_instruction_find.html', can_edit=bw_collection_editable(), region=region,
+                           regions=instructions.REGION_LABELS, missing=missing, number=number, looked_up=looked_up, problem=problem)
 
 
 def _instruction_ids(value):

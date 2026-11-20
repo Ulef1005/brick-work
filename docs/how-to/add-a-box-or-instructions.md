@@ -29,45 +29,24 @@ You can also paste set numbers with **Box** or **Instruction** chosen. A number 
 
 **Undo** takes your copy back. The item it created stays, with none owned, and the next add of the same box uses it.
 
-## Find and download instructions
+## Find the instructions for a set
 
-**Not available yet.** On an install today no instruction source is set up, so **Find instructions** finds nothing. Download the PDF yourself and use **Upload a PDF** ([Instruction files](settings-and-maintenance.md#instruction-files)). Links to each set's instructions pages are planned ([#465](https://github.com/Ulef1005/brick-work/issues/465)). The rest of this section describes the finder for when a source is added in a later release.
+**Tools & Admin → Instruction files → Find instructions** lists the sets in your collection that have no PDF. Each row has the set's number, name, theme and year, and three actions:
 
-Find instructions separates finding candidate PDFs from downloading them. Finding never downloads a file.
-Official is registered but needs a rendered page fetcher. Until configured, the list says **Official needs a page renderer: not set up**.
-No other source is registered.
+- **Official instructions** opens the set's instructions page on lego.com for the region you chose.
+- **Rebrickable** opens the set's page on Rebrickable.
+- **Upload a PDF** opens the upload form on **Instruction files** with the set's number filled in.
 
-Discovery uses the existing job queue and stores the sources tried, including searches with no candidates.
-Downloads require a confirmed list of ticked files. Each file has its own result and can be retried after failure.
-PDFs use the upload storage path and content hash. Official downloads have a separate limit, initially 500 MB; uploads retain 20 MB.
+Brick Work downloads nothing itself. The links open in a new tab. Download the PDF there, then upload it here.
 
 1. Open **Tools & Admin → Instruction files → Find instructions**.
-2. Choose all owned sets without PDFs, or paste set numbers in your preferred order.
-3. Choose a region and tick the files you want. Press **Download N files** to confirm.
-4. Follow progress here or in **Tools & Admin → Jobs**. Retry failed files without repeating finished ones.
+2. Choose the **Region for official instructions**. It starts from your retail country in Settings.
+3. To look up a set that is not in the list, type its number, for example `6081-1`, and press Enter. The page shows the same two links for that number.
+4. Open a link, download the PDF, and choose **Upload a PDF**. Select the file and attach it.
 
-The Instructions & Box tab also links to **Find instructions · Upload a PDF** for that set.
-On Add, **Fetch instructions** starts off. Turning it on finds files for the added sets and adds a **Review** link.
-Finding still downloads nothing. Official searches show the renderer setup message until a renderer is configured.
+A promotional set with a number such as `COMCON034-1` has no official instructions page, so it shows the Rebrickable link only.
 
-The region starts from your retail country. This browser remembers your last choice as a preference.
-Changing the region preserves choices you changed by hand and updates only untouched rows.
-A Peeron scan is ticked initially only when it is the sole candidate for its set.
-Files above their source limit and candidates already attached cannot be ticked.
-Untouched defaults fit within the Official limit in total. Files with unknown sizes start unticked.
-Unknown file sizes have their own count outside the known total.
-
-Downloads allow 50 files per job. Requests to the same host wait at least one second between starts.
-Sources receive the fixed Brick Work identification header. A source's Retry-After pauses the remaining files until its deadline.
-
-“All sets without instructions” queues up to 50 sets per request. For larger selections it reports the total and the number remaining; run it again for the rest.
-
-Booklet discovery uses the set with the booklet's number, just like PDF upload. UK and GB use the same region defaults.
-Sets with instruction searches or candidates cannot change kind. Merges wait while a confirmed download for either set is active.
-If a candidate has been removed, its download step fails with “Candidate was removed” and other files can continue.
-Schema 4.5 adds database guards for discovery references; writable opens upgrade older collections automatically.
-
-Add enables Fetch instructions only when at least one adapter is available. Otherwise it shows the adapter setup reason; completion keeps discovery errors visible. A new search clears the previous download address, and Retry failed files appears only after the download owner has stopped.
+The Instructions & Box tab of a set also links to **Find instructions** and **Upload a PDF** for that set.
 
 ## Preview several booklets
 

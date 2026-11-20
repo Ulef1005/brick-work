@@ -51,4 +51,4 @@ One task per page, for someone who already knows the app.
 - [Upgrade Brick Work](upgrade.md)
 - [Connect an assistant](connect-an-assistant.md)
 
-Find and download PDFs in [Find and download instructions](add-a-box-or-instructions.md#find-and-download-instructions).
+Find a set's instructions pages in [Find the instructions for a set](add-a-box-or-instructions.md#find-the-instructions-for-a-set).

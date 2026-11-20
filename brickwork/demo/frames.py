@@ -264,6 +264,11 @@ def matcher_layer(folder=real.FOLDER, pictures=False):
     return Layer(folder, pictures)
 
 
+def instructions_layer(folder=real.FOLDER, pictures=False):
+    """Frame 03's collection: the Sets frame's (frames_instructions.stage_instructions gives three of its sets a booklet, so four have none)."""
+    return Layer(folder, pictures)
+
+
 def stage_inspector(store):
     """Frame 06: the running check of copy 2 of 7213-1, answered through the app's own checker calls (as checks.stage does), then put on the frame's 59th line.
     The answers are made in `walk` order; the session's order is then the walk, the line to answer and the rest, with the cursor on the 59th, and the saves

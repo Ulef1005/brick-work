@@ -7,7 +7,7 @@
 {% set copy_total=rows|sum(attribute='quantity') %}{% set missing_total=rows|sum(attribute='missing_parts') %}
 {% set stored=storage_index|length>0 %}{% set stored_copies=storage_index|sum(attribute='copies') %}
 {% macro view_switch() %}<div class="seg" role="group" aria-label="View"><button type="button" class="on" data-bc-view="grid" aria-pressed="true">Drawers</button><button type="button" data-bc-view="list" aria-pressed="false">Ledger</button></div>{% endmacro %}
-{% macro filter_button() %}<button type="button" class="btn sec sm" data-bc-filters aria-expanded="false">{{ bp_icon('search',16) }}Filter</button>{% endmacro %}
+{% macro filter_button() %}<button type="button" class="btn sec sm" data-bc-filters aria-expanded="false">{#- sliders, not the frame's magnifier: the phone app bar has one (design 2026-11-20, pending Ulf's yes on the frame swap) -#}{{ bp_icon('sliders',16) }}Filter</button>{% endmacro %}
 <div data-bc-list data-bc-main data-bc-page-size="15" data-bc-default-group="storage"{% if rows|length > 15 %} data-bc-pending{% endif %}>
 {# the message, Undo and the picture lightbox stay outside .b-prime: its reset would strip the dialog's margin and padding and the buttons #}{{ feedback() }}
 <div class="bp-sets b-prime" data-bp-sets data-bp-stored="{{ 'true' if stored else 'false' }}">

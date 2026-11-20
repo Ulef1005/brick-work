@@ -41,6 +41,27 @@ def test_a_height_difference_is_cropped_to_the_shorter_shot(tmp_path):
     assert result['ratio'] == 0 and result['dh'] == 100 and result['tall'] == 300
 
 
+def test_a_crop_limit_leaves_the_rows_below_it_uncompared(tmp_path):
+    """Design's rule for an excerpt frame (04-sets at 390): compare down to the drawn tile row, not the tile the frame cuts (#494)."""
+    a = shot(tmp_path / 'a.png', 1000)
+    b = shot(tmp_path / 'b.png', 1000, [(10, 300)])        # a mark at 150 CSS px (scale 2), far above the tab bar at the foot
+    assert fc.compare(a, b, 390, band=False)['ratio'] > 0
+    assert fc.compare(a, b, 390, band=False, limit=100)['ratio'] == 0   # the limit is 100 CSS px: the mark lies below it
+    assert fc.compare(a, b, 390, band=False, limit=200)['ratio'] > 0
+    assert fc.CROP_BELOW == {('04-sets', 390): 700} and '04-sets' in fc.BODY_BUILT
+    assert fc.compare(a, b, 390, band=False, limit=-5)['ratio'] > 0     # a non-positive limit means no limit
+
+
+def test_a_crop_limit_still_compares_the_phone_tab_bar_at_the_foot(tmp_path):
+    """Review of the follow-up: the excerpt's cut must not hide a broken tab bar."""
+    h = fc.band_rows(390)
+    foot = next(px for where, px in h if where == 'foot')
+    a = shot(tmp_path / 'a.png', 1688)                       # 844 CSS px at scale 2
+    b = shot(tmp_path / 'b.png', 1688, [(10, 1688 - 3)])     # a mark in the tab bar
+    assert fc.compare(a, b, 390, band=False, viewport=844, limit=700)['ratio'] > 0
+    assert foot * 2 > 3
+
+
 def test_the_foot_band_is_measured_from_each_shots_own_bottom(tmp_path):
     a = shot(tmp_path / 'a.png', 1000, [(10, 995)])        # a mark in the tab bar of the shorter shot
     b = shot(tmp_path / 'b.png', 1400, [(10, 1395)])       # the same mark in the foot of the taller one

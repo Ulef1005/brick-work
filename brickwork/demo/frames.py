@@ -157,7 +157,7 @@ class Layer(real.Layer):
                      LEFT JOIN color c ON c.id=p.color_id WHERE p.copy_id=? AND p.copy_figure_id IS NULL AND p.retired_at IS NULL AND p.is_spare=0 AND p.checked=1 ORDER BY p.id''', (copy_id,))]
             for r in lines:
                 r['identity'] = (r['part'], int(r['colour']))
-            db.execute('UPDATE copy_part SET missing=0 WHERE copy_id=? AND copy_figure_id IS NULL', (copy_id,))
+            db.execute('UPDATE copy_part SET missing=0 WHERE copy_id=? AND copy_figure_id IS NULL AND retired_at IS NULL', (copy_id,))
             chosen = [r for r in lines if r['identity'] in shown]
             assert len(chosen) == len(shown), f'frames world: {number} has no checked line for {sorted(shown)}'
             rest = [r for r in lines if r['identity'] not in shown and r['identity'] not in used and r['quantity'] >= 2]
@@ -169,14 +169,14 @@ class Layer(real.Layer):
                 assignment[identifier] = 2
             assert sum(assignment.values()) == target, f'frames world: {number} does not add up to {target} missing'
             for identifier, missing in assignment.items():
-                db.execute('UPDATE copy_part SET missing=? WHERE id=?', (missing, identifier))
+                db.execute('UPDATE copy_part SET missing=? WHERE id=? AND retired_at IS NULL', (missing, identifier))
             used |= {r['identity'] for r in chosen}
             picks += [r for r in chosen if r['identity'] not in shown]
         assert len(used) - len(reserved) == 48
-        gaps = {(r[0], r[1]) for number in RUNNER for r in db.execute('SELECT item_id,color_id FROM copy_part WHERE copy_id=? AND missing>0', (real.uid('copy', number, 'a'),))}
+        gaps = {(r[0], r[1]) for number in RUNNER for r in db.execute('SELECT item_id,color_id FROM copy_part WHERE copy_id=? AND missing>0 AND retired_at IS NULL', (real.uid('copy', number, 'a'),))}
         for part, colour in reserved:
             gaps |= {(r[0], r[1]) for r in db.execute('''SELECT p.item_id,p.color_id FROM copy_part p JOIN item i ON i.id=p.item_id JOIN color c ON c.id=p.color_id
-                     WHERE p.copy_id=? AND i.born_key=? AND c.born_key=?''', (INSPECTOR['copy'], part, str(colour)))}
+                     WHERE p.copy_id=? AND p.retired_at IS NULL AND i.born_key=? AND c.born_key=?''', (INSPECTOR['copy'], part, str(colour)))}
         for item_id, colour_id in gaps:      # no other stock may sit among the run's parts
             db.execute('UPDATE stock SET archived_at=? WHERE kind=? AND item_id=? AND color_id=? AND archived_at IS NULL', (dataset.STAMP, 'part', item_id, colour_id))
         for name, parent in (('Drawer 2', 'Shelf A2 – Town'), ('Drawer 3', 'Shelf A2 – Town'), ('Drawer 4', 'Shelf A1 – Castle'), ('Box 5', None)):
@@ -189,7 +189,7 @@ class Layer(real.Layer):
             stock.add_loose(db, item_id=item_id, color_id=colour_id, quantity=5, condition='used', storage_id='storage-' + dataset.slug(drawer), via='cli')
         for (part, colour), (drawer, _) in RUNNER_DRAWERS.items():
             row = db.execute('''SELECT p.item_id,p.color_id FROM copy_part p JOIN item i ON i.id=p.item_id JOIN color c ON c.id=p.color_id WHERE i.born_key=? AND c.born_key=?
-                                AND p.missing>0 LIMIT 1''', (part, str(colour))).fetchone()
+                                AND p.missing>0 AND p.retired_at IS NULL LIMIT 1''', (part, str(colour))).fetchone()
             stock_of(row[0], row[1], drawer)
         for r in picks[:6]:
             stock_of(r['item_id'], r['color_id'], 'Box 5')

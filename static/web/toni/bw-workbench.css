@@ -206,7 +206,7 @@ main #bw-workbench .bw-copy-summary .bw-identity>a { display:flex;flex-direction
 
 /* ===== The Part Runner in the B′ design (R3-03, #496) =====
    Four places carry `.b-prime` (b-prime.css, generated from the frames: .lbl, .head, .tape, .card, .tile, .cnt, .btn): the top block (.bp-run), the card of the part (.bp-run-card),
-   the stepper and Missing (.bp-run-act, the stepper rules are bw-bp-stepper.css, shared with the Set Inspector) and the next parts (.bp-run-next). The destination dialog, the
+   the stepper and Missing (.bp-run-act, which is also .bp-chk: the stepper rules of bw-checker.css are the Set Inspector's own, loaded on this page and not copied) and the next parts (.bp-run-next). The destination dialog, the
    message, Undo, the Back / Skip row and Details stay outside it. The scope's reset outranks a class rule, so a margin, a padding or a size carries four :not(#_). */
 body:has(#bw-workbench[data-bp-run]) .layout>main.bp-flush { padding:0; }
 #bw-workbench[data-bp-run] { min-width:0;max-width:1240px;padding:22px 32px 0;display:flex;flex-direction:column;gap:14px; }

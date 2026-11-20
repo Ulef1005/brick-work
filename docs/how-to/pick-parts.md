@@ -17,7 +17,9 @@ Collect the missing parts of several sets in one pass through your drawers. Part
 2. Keep **All incomplete sets**, or select **Choose sets** and tick the copies you want. The list shows 15 sets a page; ticks on other pages stay.
 3. Select **Continue · N sets**.
 4. Under **In what order do you pick?**, switch the sort keys on or off and drag them into order: **Category**, **Category group**, **Colour**, **Size**, **Set**, **Storage**. The line under the keys shows the order you get. Select **Start picking**.
-5. Part Runner shows one part at a time. Above it, **Collecting for N sets** and **Part 7 / 52** say how far you are, with a strip of one segment per part: violet for the parts you found or marked missing, the current one dark, the rest dashed. The part's picture, then **Pick N** beside its name in the part's own colour, the colour and the number, and a line such as "for 10210-1 · copy 1 · 3 missing" say what to take and for which copy. On a wide screen the next three parts sit beside it under the tape of their storage ("S-0002 Shelf A2 – Town · 3 parts next"), so you can see where to walk next; a phone shows one part at a time.
+5. Part Runner shows one part at a time. Above it, **Collecting for N sets** and **Part 7 / 52** say how far you are. A strip has one segment per part: violet for parts you found or marked missing, dark for the current one, dashed for the rest.
+   The part's picture comes first. Beside its name, in the part's own colour, **Pick N** says how many to take. A line such as "for 10210-1 · copy 1 · 3 missing" says which copy needs them.
+   On a wide screen the next three parts sit beside it under a tape with the code of their storage, such as "S-0002 Shelf A2 · 3 parts next." A phone shows one part at a time.
 6. Take the parts you need and set the count with **−** and **+**; the middle button says **Found ×N**. Select it and choose where the parts go:
    - **Add to set** lowers the missing count of the copies that need it. The count is shared out over the copies in order; change how many go to each copy with **−** and **+**.
    - **Add to loose parts** adds them to your loose stock instead. Enter the **Found count**.
@@ -27,7 +29,8 @@ Collect the missing parts of several sets in one pass through your drawers. Part
 8. Use **Skip for later** for a part you cannot find now; its missing count stays as it is. **Back** returns to the previous part. A link with `?part=7` opens the run on its 7th part.
 9. Select **Stop** when you are done.
 
-Keyboard: **F** or **Enter** opens the destination form for the count shown on **Found ×N**, **1** to **9** set that count, **1**, **2**, **3** choose the destination while it is open, **M** leaves the part missing, **S** skips, **Z** undoes, **←** and **→** move between parts.
+Keyboard: **F** or **Enter** opens the destination form for the count shown on **Found ×N**, and **1** to **9** set that count. While the form is open, **1**, **2**, **3** choose the destination.
+**M** leaves the part missing, **S** skips, **Z** undoes, and **←** and **→** move between parts.
 
 Every save appears under **Recent saves**, each with its own **Undo**.
 

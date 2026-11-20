@@ -201,6 +201,9 @@ def header(db, copy_id):
     base = collection.decorate(db, [dict(item_id=c['item_id'])])[0]
     siblings = [r[0] for r in db.execute('SELECT id FROM main.copy WHERE item_id=? AND archived_at IS NULL ORDER BY created_at,id', (c['item_id'],))]
     c['label'] = 'Set ' + str(siblings.index(copy_id) + 1)
+    c['copy_no'], c['copy_count'] = siblings.index(copy_id) + 1, len(siblings)          # "Copy 2 of 2" on the Set Inspector's header
+    place = db.execute('SELECT name FROM main.place WHERE id=?', (c['place_id'],)).fetchone() if c.get('place_id') else None
+    c['place'] = place[0] if place else None
     c['name'] = _tidy(base['name']) or base['number_text']
     c['set_no'] = base['number_text'] or ''
     c['item_type'] = 'S'
@@ -515,8 +518,8 @@ def write(db, copy_id, payload, figure=None):
         else:
             if not s or payload.get('session') != s['id']:
                 raise ValueError('This check changed. Reload to continue.')
-            if action in ('answer', 'found_one', 'skip', 'select'):
-                if not tokens or (action not in ('found_one', 'select') and token not in s['order']):     # Found 1 on Missing so far also reaches a part outside a narrowed walk
+            if action in ('answer', 'found_one', 'set_count', 'skip', 'select'):
+                if not tokens or (action not in ('found_one', 'set_count', 'select') and token not in s['order']):     # Found 1 and the stepper of Missing so far also reach a part outside a narrowed walk
                     raise ValueError('Choose a part from this copy')
                 r = by_token[token]
                 if action == 'select':

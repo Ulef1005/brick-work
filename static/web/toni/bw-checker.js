@@ -7,13 +7,39 @@
     // #222: a missing-only run counts the parts it walks, as the server's progress does.
     const walked = state.session?.scope === 'missing' ? new Set(state.session.members || state.session.order) : null;
     for (const r of state.rows.filter(r => r.kind !== 'spare' && (!walked || walked.has(r.token)))) {
-      const answer = state.session?.answers[r.token];
+      const answer = state.session ? state.session.answers[r.token] : (r.checked || r.missing > 0 ? 'answered' : undefined);   // no session: the marks the copy already has (Edit parts, a Rebrickable pull)
       if (!answer) counts.remaining++;
       else if (answer === 'skipped') counts.skipped++;
       else if (r.missing > 0) counts.missing++;
       else counts.found++;
     }
     return counts;
+  }
+  // The top block's numbers (R3-02): the pieces of the answered lines of the pieces of all lines, and the lines found, missing and still to check. A
+  // line is a part line, or a figure line; only part lines have pieces. The same lines as progress().
+  function summary(state) {
+    const counts = progress(state), answers = state.session?.answers || {};
+    const marked = r => state.session ? answers[r.token] === 'answered' : (r.checked || r.missing > 0);
+    const walked = state.session?.scope === 'missing' ? new Set(state.session.members || state.session.order) : null;
+    let pieces = 0, total = 0;
+    for (const r of state.rows) {
+      if (r.kind !== 'part' || (walked && !walked.has(r.token))) continue;
+      total += r.quantity || 0;
+      if (marked(r)) pieces += r.quantity || 0;
+    }
+    return {...counts, pieces, total, lines: counts.found + counts.missing + counts.skipped + counts.remaining, figures: state.rows.some(r => r.kind === 'figure')};
+  }
+  // One cell per line, found first, then missing, then still to check; a long list is grouped so the strip stays a strip (375 parts never become 375 cells,
+  // 900 lines never become 900). A cell that holds several lines is still to check when any of them is, else missing when any is.
+  const CELL_CAP = 240;
+  function cells(counts, cap = CELL_CAP) {
+    const todo = counts.skipped + counts.remaining, lines = counts.found + counts.missing + todo, per = Math.max(1, Math.ceil(lines / cap));
+    const marks = [...Array(counts.found).fill('f'), ...Array(counts.missing).fill('m'), ...Array(todo).fill('u')], result = [];
+    for (let i = 0; i < marks.length; i += per) {
+      const group = marks.slice(i, i + per);
+      result.push(group.includes('u') ? 'u' : group.includes('m') ? 'm' : 'f');
+    }
+    return {marks: result, per, lines};
   }
   // The spare pass walks in the order chosen at start; the server is authoritative
   // and replaces this optimistic order with its own once the save returns.
@@ -31,7 +57,7 @@
   }
   function apply(state, payload) {
     const s = state.session, r = state.rows.find(r => r.token === payload.token);
-    if (['answer','found_one'].includes(payload.action)) {
+    if (['answer','found_one','set_count'].includes(payload.action)) {
       const found = payload.action === 'found_one' ? r.quantity - (r.missing || 0) + 1 : payload.found;
       r.missing = r.quantity - found; r.checked = 1; s.answers[r.token] = 'answered';
       if (r.missing && !s.misses.includes(r.token)) s.misses = [r.token, ...s.misses];
@@ -97,7 +123,7 @@
     if(/^[1-9]$/.test(k)&&quantity!==null)return {count:Math.min(Number(k),quantity)};
     return null;
   }
-  window.BrickChecker = {nowrapTail,progress, apply, merge, Queue, keyCommand, spareOrder};
+  window.BrickChecker = {nowrapTail,progress, summary, cells, apply, merge, Queue, keyCommand, spareOrder};
   function lists(root) {
     const search=root.querySelector('[data-search]') || root.querySelector('[data-check-search]'), filter=root.querySelector('[data-filter]'), sort=root.querySelector('[data-sort]') || root.querySelector('[data-check-sort]');
     const direction=root.querySelector('[data-check-order]');
@@ -164,8 +190,30 @@
     });
     update();
   }
+  const count = n => Number(n).toLocaleString('en');
+  const make = (tag, text, cls) => {const n = document.createElement(tag); if (text !== undefined) n.textContent = text; if (cls) n.className = cls; return n;};
+  // The top block of the Set Inspector (R3-02): "142 of 375 parts", the lines found, missing and to check, and one cell per line.
+  function renderTop(root, state) {
+    const big = root.querySelector('[data-chk-big]');
+    if (!big) return;
+    const sum = summary(state), strip = root.querySelector('[data-progress]'), shape = cells(sum);
+    big.replaceChildren(make('span', count(sum.pieces), 'chk-n'), make('span', ' of ' + count(sum.total) + (sum.total === 1 ? ' part' : ' parts')));
+    const todo = sum.skipped + sum.remaining, legend = root.querySelector('[data-legend]');
+    legend.replaceChildren(make('span', sum.found + (sum.found === 1 ? ' line found' : ' lines found')), make('span', sum.missing + ' missing'), make('span', todo + ' to check'),
+      ...(state.session?.scope === 'missing' ? [make('span', 'missing parts only')] : []));
+    const per = shape.per, noun = sum.figures ? 'line' : 'part line';
+    root.querySelector('[data-chk-cells-label]').textContent = 'One cell per ' + (per > 1 ? per + ' ' + noun + 's' : noun) + ' · ' + sum.lines + (sum.lines === 1 ? ' line' : ' lines');
+    strip.replaceChildren(...shape.marks.map(kind => make('i', undefined, kind)));
+    strip.setAttribute('aria-label', sum.found + ' found · ' + sum.missing + ' missing · ' + sum.skipped + ' skipped · ' + sum.remaining + ' remaining');
+    const tag = root.querySelector('[data-chk-tag]'), finished = state.session?.finished;
+    if (tag && state.session) {
+      tag.textContent = finished ? (state.copy.set_checked ? 'Set is checked' : 'Check finished') : state.session ? 'Check in progress' : 'Not checked';
+      tag.className = 'tag' + (finished && state.copy.set_checked ? '' : ' dash');
+    }
+  }
   function mount(root) {
     let state=JSON.parse(root.querySelector('[data-check-state]').textContent);
+    renderTop(root,state);
     if (!state.session) return;
     let running=root.dataset.checkStage==='running';
     let confirmed=clone(state);
@@ -194,6 +242,50 @@
       n.append(identity,el('span',(r.missing||0)+' missing of '+(r.quantity??'Unknown'),'mono'));
       const b=button(recovery?'Found 1':'Review',recovery?'found_one':'select',r.token);
       b.disabled=recovery && (!(r.missing>0) || r.quantity===null);n.append(b);return n;
+    }
+    const btn=(label,action,token,cls)=>{const b=el('button',label,cls);b.type='button';b.dataset.action=action;if(token)b.dataset.token=token;return b;};
+    // a name block, a tile, a missing card and a found row of the frame (R3-02): the part's own colour fills the name block, white or ink, whichever reads
+    const paint=(n,r)=>{if(r.rgb&&r.kind!=='figure'){n.style.backgroundColor=r.rgb;if(r.ink)n.style.color=r.ink;}else n.className+=' chk-plain';};
+    function pic(r,size) {
+      const wrap=el('div',undefined,'chk-pic '+size),tile=el('div',undefined,'tile');wrap.append(tile);
+      if(r.image){const img=el('img'),full=root.dataset.imageUrl.replace(/\/0$/,'/'+r.image);img.src=full+'?w=320';img.srcset=full+'?w=320 320w, '+full+'?w=640 640w';img.sizes='(max-width:767px) 100vw, 400px';img.dataset.full=full;img.alt=r.name+(r.kind!=='figure'?' · '+r.color_name:'');tile.append(img);
+        img.onerror=()=>{tile.replaceChildren(el('span','Image did not load','chk-alt'),btn('Retry','image_retry',r.token,'chk-link'));};}
+      else tile.append(el('span',r.kind==='figure'?'Figure picture':'Part picture','chk-alt'));
+      return wrap;
+    }
+    const nameBlock=(r,extra)=>{const n=el('div',undefined,'chk-mname');paint(n,r);n.append(el('div',(r.name||'').trim()||r.item_no,'chk-mn1'));
+      const line=el('div',undefined,'chk-mn2');if(r.kind!=='figure')line.append(el('span',r.color_name+' · '));line.append(el('span',r.item_no,'mono'));if(extra)line.append(el('span',extra));n.append(line);return n;};
+    function missCard(r) {
+      const card=el('div',undefined,'card chk-miss'),n=nameBlock(r,' · need '+(r.quantity??'?')),step=el('div',undefined,'step'),gap=r.missing||0;
+      n.append(el('div',gap+' missing','chk-mn3'));
+      const less=el('button','−'),more=el('button','+'),mid=el('span',String(gap));
+      for(const [b,delta,label] of [[less,-1,'One fewer missing'],[more,1,'One more missing']]){b.type='button';b.dataset.action='set_count';b.dataset.token=r.token;b.dataset.delta=String(delta);b.setAttribute('aria-label',label+', '+r.color_name+' '+r.item_no);}
+      less.disabled=r.quantity===null;more.disabled=r.quantity===null||gap>=r.quantity;
+      const bl=el('b'),br=el('b');bl.append(less);br.append(more);step.append(bl,mid,br);
+      card.append(pic(r,'chk-sm96'),n,step);return card;
+    }
+    function foundRow(r) {
+      const n=el('div',undefined,'chk-found-row'),text=el('div',undefined,'chk-ft'),sub=el('div',undefined,'chk-fs');
+      if(r.kind!=='figure')sub.append(el('span',r.color_name+' · '));sub.append(el('span',r.item_no,'mono'));
+      text.append(el('div',(r.name||'').trim()||r.item_no,'chk-fn'),sub);n.append(pic(r,'chk-sm44'),text,el('span',(r.quantity??'?')+' of '+(r.quantity??'?'),'mono chk-of'));return n;
+    }
+    // "Checked so far": the lines with a missing count first, as larger cards with a stepper so the count stays editable (O10b), then the found lines, newest first.
+    const RECENT=4;let allChecked=false;   // the frame draws the last four answers; the rest is one button away
+    function fillHistory() {
+      history.replaceChildren();const s=state.session;if(!s)return;
+      // The answered lines, the one answered last first. A line a narrowed walk (missing only, skipped) left out of `order` has no place in it: it follows the others.
+      const byToken=new Map(state.rows.map(r=>[r.token,r])),place=t=>s.order.indexOf(t);
+      const walked=s.scope==='missing'?new Set(s.members||s.order):null,keys=Object.keys(s.answers),seq=t=>keys.indexOf(t);
+      const answered=keys.filter(t=>s.answers[t]==='answered'&&(!walked||walked.has(t))).sort((a,b)=>(place(a)<0)!==(place(b)<0)?(place(a)<0?1:-1):place(a)<0?seq(b)-seq(a):place(b)-place(a)).map(t=>byToken.get(t)).filter(r=>r&&r.kind!=='spare');
+      const shown=allChecked?answered:answered.slice(0,RECENT);
+      const misses=shown.filter(r=>(r.missing||0)>0),found=shown.filter(r=>!(r.missing>0)),older=answered.filter(r=>(r.missing||0)>0&&!shown.includes(r)).length;
+      const wrap=el('div',undefined,'bp-chk b-prime chk-hist'),head=el('div',undefined,'chk-hhead');head.append(el('h2','Checked so far','lbl'),el('span','newest first','chk-note12'));wrap.append(head);
+      if(!answered.length)wrap.append(el('p','Nothing checked yet.','chk-note12'));
+      if(misses.length){wrap.append(el('h3','Missing · larger, so the count stays editable','lbl chk-gl'));misses.forEach(r=>wrap.append(missCard(r)));}
+      if(found.length){wrap.append(el('h3','Found','lbl chk-gl chk-gl2'));found.forEach(r=>wrap.append(foundRow(r)));}
+      // every line with parts missing stays one button away, so no missing count is out of reach
+      if(answered.length>shown.length)wrap.append(btn('Show all '+answered.length+' checked lines'+(older?' · '+older+' more with missing parts':''),'show_found',null,'chk-link chk-more'));
+      history.append(wrap);
     }
     const skippedRows=()=>state.rows.filter(r=>r.kind!=='spare'&&state.session.answers[r.token]==='skipped');
     // #214: the end of a check is three steps, 1 Skipped, 2 Missing, 3 Save; the current one is marked, an earlier one is done.
@@ -249,18 +341,9 @@
         // 3e: a running check shows the set line, the name and the progress; the status pill returns at the finish.
         copyStatus.hidden=!(s&&s.finished);
       }
-      if(!s){stage.replaceChildren(el('h2','Check undone'));const a=el('a','Start again','button primary');a.href=root.dataset.endpoint;stage.append(a);history.hidden=true;return;}
-      const p=progress(state), strip=root.querySelector('[data-progress]');
-      const segments=[...strip.children];let segmentIndex=0;
-      for(const [kind,n] of Object.entries(p)){
-        const seg=segments[segmentIndex++]||el('span');
-        seg.className='check-segment '+kind+(n?'':' empty');seg.style.flexGrow=n;
-        if(!segments.includes(seg))strip.append(seg);
-      }
-      const legend=s.scope==='missing' ? p.found+' found · '+p.missing+' still missing · '+p.skipped+' skipped · '+p.remaining+' to go · missing parts only'
-        : p.found+' found · '+p.missing+' missing · '+p.skipped+' skipped · '+p.remaining+' remaining';
-      root.querySelector('[data-progress]').setAttribute('aria-label',legend);root.querySelector('[data-legend]').textContent=legend;
-      stage.replaceChildren();missingList(history);
+      if(!s){renderTop(root,state);const tg=root.querySelector('[data-chk-tag]'),w=root.querySelector('[data-chk-saved]');if(tg){tg.textContent=state.copy.set_checked?'Set is checked':'Not checked';tg.className='tag dash';}if(w)w.textContent='';stage.replaceChildren(el('h2','Check undone'));const a=el('a','Start again','button primary');a.href=root.dataset.endpoint;stage.append(a);history.hidden=true;return;}
+      renderTop(root,state);
+      stage.replaceChildren();fillHistory();root.dataset.chkMode='other';
       if(s.finished) {
         history.hidden=true;stage.append(el('h2',queue.items.length?'Finish waiting to save':'Check saved'),el('p',figureMode?'Figure parts checked':state.copy.set_checked?'Set is checked':'Set is not checked'));
         if(figureMode)stage.append(el('p','The set’s numbers and status are unchanged.'));
@@ -297,28 +380,32 @@
       const r=state.rows.find(r=>r.token===s.order[s.cursor]);if(!r){stage.append(el('p','This inventory changed. Reload to continue.'));return;}
       if(current!==r.token){count=r.quantity;current=r.token;}
       const missingRun=s.scope==='missing'&&r.kind!=='spare';
-      const heading=r.kind==='figure'?'Figure review':r.kind==='spare'?'Spare pass · optional · not counted':(missingRun?'Missing part ':'Part ')+(s.cursor+1)+' of '+s.order.length;
-      const title=el('h2',heading);if(missingRun)title.append(el('span','Missing only','check-scope-tag'));stage.append(title);const layout=el('div',undefined,'check-answer-layout');layout.append(image(r));const identity=el('div',undefined,'check-identity');
-      if(r.kind!=='figure')identity.append(colour(r));
-      const name=(r.name||'').trim();
-      identity.append(el('h2',nowrapTail(name||r.item_no)));
-      if(name && name!==r.item_no)identity.append(el('p',r.item_no,'mono'));
-      const quantity=el('span',r.quantity===null?'Unknown':r.quantity+'×','check-quantity mono');
-      identity.append(quantity);
-      if(r.parent_minifig)identity.append(el('p','Figure parts · '+r.parent_minifig));
-      if(r.unresolved){const a=el('a','Unresolved · review in Tools & Admin');a.href=root.dataset.unresolvedUrl;identity.append(a);}
-      identity.append(el('p',s.answers[r.token]==='answered'?'Recorded · '+r.missing+' missing':s.answers[r.token]==='skipped'?'Skipped · still unchecked':missingRun?'Missing since the last check: '+r.missing+' of '+r.quantity:'Not answered yet'));
-      const stepper=el('div',undefined,'check-stepper');const minus=button('−','decrease'),found=button('Found '+(count??'?'),'answer',r.token,true),plus=button('+','increase');
+      root.dataset.chkMode='part';
+      // The card of R3-02: the line, its picture, Need beside the part's name block in the part's own colour, the old stepper, Missing, Back, Skip, Undo.
+      const heading=r.kind==='figure'?'Figure review':r.kind==='spare'?'Spare pass · optional · not counted':(missingRun?'Missing part line ':'Part line ')+(s.cursor+1)+' of '+s.order.length;
+      const scope=el('div',undefined,'bp-chk b-prime'),card=el('div',undefined,'card chk-card'),head=el('div',undefined,'chk-cardhead'),title=el('h2',heading,'lbl');
+      if(missingRun)title.append(el('span','Missing only','tag chk-scope'));
+      head.append(title,el('span','keys 1 to 9 count','chk-keys-note'));card.append(head,pic(r,'chk-bigpic'));
+      const need=el('div',undefined,'cnt'),k=el('div',undefined,'k'),v=el('div',undefined,'v');
+      k.append(el('div','Need','lbl'),el('div',r.quantity===null?'?':String(r.quantity),'chk-need'));
+      const name=(r.name||'').trim()||r.item_no;paint(v,r);v.append(el('div',name,'chk-nm'));
+      const sub=el('div',undefined,'chk-sub');if(r.kind!=='figure')sub.append(el('span',r.color_name,'chk-colour'));sub.append(el('span',r.item_no,'mono chk-no'));v.append(sub);need.append(k,v);card.append(need);
+      const stepper=el('div',undefined,'chk-stepper'),minus=btn('−','decrease',null,'btn sec chk-sq'),found=btn('Found ×'+(count??'?'),'answer',r.token,'btn chk-found'),plus=btn('+','increase',null,'btn sec chk-sq');
       minus.setAttribute('aria-label','Found count, '+count+', decrease');plus.setAttribute('aria-label','Found count, '+count+', increase');
-      minus.disabled=count===null||count<=0;plus.disabled=count===null||count>=r.quantity;found.disabled=count===null;stepper.append(minus,found,plus);identity.append(stepper);
-      const miss=button('Missing','missing',r.token);miss.className='check-missing';miss.disabled=count===null;identity.append(miss);
-      const actions=el('div',undefined,'check-answer-nav');actions.append(button('Back','back'),button('Skip for later','skip',r.token),button('Undo','undo'));identity.append(actions);
+      minus.disabled=count===null;plus.disabled=count===null;found.disabled=count===null;/* the buttons stay as drawn at the ends; action() keeps the count inside 0 and the quantity */stepper.append(minus,found,plus);card.append(stepper);
+      const miss=btn('Missing','missing',r.token,'btn sec chk-missing');miss.disabled=count===null;card.append(miss);
+      const nav=el('div',undefined,'chk-nav');nav.append(btn('Back','back',null,'chk-link'),btn('Skip for later','skip',r.token,'chk-link'),btn('Undo','undo',null,'chk-link'));card.append(nav);
+      const state_line=s.answers[r.token]==='answered'?'Recorded · '+r.missing+' missing':s.answers[r.token]==='skipped'?'Skipped · still unchecked':missingRun?'Missing since the last check: '+r.missing+' of '+r.quantity:'';
+      if(state_line)card.append(el('p',state_line,'chk-note'));
+      if(r.parent_minifig)card.append(el('p','Figure parts · '+r.parent_minifig,'chk-note'));
+      if(r.unresolved){const a=el('a','Unresolved · review in Tools & Admin','chk-note');a.href=root.dataset.unresolvedUrl;card.append(a);}
+      if(r.kind==='spare')card.append(el('p','Spare · optional','chk-note'));
       if(r.kind==='figure') {
-        if(r.parts_missing>0)identity.append(el('p',r.parts_missing+(r.parts_missing===1?' part missing':' parts missing'),'check-figure-parts'));
-        if(r.parts_lines&&root.dataset.figureUrl){const link=el('a','Check figure parts','button');link.href=root.dataset.figureUrl.replace(/\/0$/,'/'+encodeURIComponent(r.id));identity.append(link);}
+        if(r.parts_missing>0)card.append(el('p',r.parts_missing+(r.parts_missing===1?' part missing':' parts missing'),'chk-note chk-figure-parts'));
+        if(r.parts_lines&&root.dataset.figureUrl){const link=el('a','Check figure parts','btn sec sm chk-figlink');link.href=root.dataset.figureUrl.replace(/\/0$/,'/'+encodeURIComponent(r.id));card.append(link);}
       }
-      if(r.quantity===null)identity.append(el('p','Required count unavailable · resolve the inventory first.'));
-      layout.append(identity);stage.append(layout);
+      if(r.quantity===null)card.append(el('p','Required count unavailable · resolve the inventory first.','chk-note'));
+      stage.append(scope);scope.append(card);
     }
     const send=async payload=>{
       clearTimeout(slowTimer);slowTimer=setTimeout(()=>{status.className='check-saving';status.textContent='Saving';},400);
@@ -333,15 +420,16 @@
       clearTimeout(savedTimer);
       if(error){status.className='check-waiting';status.textContent='Not saved · waiting for network · '+error.message;retry.hidden=false;return;}
       confirmed=merge(confirmed,result);
-      if(!pending){state=clone(confirmed);localStorage.setItem(stateKey,JSON.stringify(state));root.dataset.direction='none';render();status.className='';status.textContent=completed?.action==='undo'?'✓ Undone':'✓ Saved';retry.hidden=true;saveUndo.hidden=false;savedTimer=setTimeout(()=>{status.textContent='';saveUndo.hidden=true;},5000);}
+      if(!pending){state=clone(confirmed);localStorage.setItem(stateKey,JSON.stringify(state));root.dataset.direction='none';render();status.className='';status.textContent=completed?.action==='undo'?'✓ Undone':'✓ Saved';const when=root.querySelector('[data-chk-saved]');if(when)when.textContent=state.session&&!state.session.finished?'Saved just now · resume any time':'';retry.hidden=true;saveUndo.hidden=false;savedTimer=setTimeout(()=>{status.textContent='';saveUndo.hidden=true;},5000);}
     }
     try {
       queue=new Queue(localStorage,storageKey,send,saved);
       if(queue.items.length){const cached=JSON.parse(localStorage.getItem(stateKey)||'null');if(cached)state=cached;else queue.items.forEach(p=>{if(p.action!=='undo')apply(state,p);});}
     } catch(error){status.textContent='Local storage is unavailable. Enable storage and reload before checking.';return;}
-    function action(name,token) {
+    function action(name,token,delta) {
       if(!state.session)return;
       root.dataset.direction=['back','undo'].includes(name)?'back':['answer','missing','skip','next','select','check_skipped','check_one'].includes(name)?'forward':'none';
+      if(name==='show_found'){allChecked=true;render();return;}
       if(name==='finish_view'){mode='finish';render();return;}
       if(name==='missing_view'){mode='missing';render();return;}
       if(name==='image_retry'){render();return;}
@@ -352,6 +440,7 @@
       if(name==='select')mode='part';
       const payload={action:name,token:token||current,operation:crypto.randomUUID(),session:state.session.id};
       if(name==='missing'){payload.action='answer';payload.found=0;}
+      if(name==='set_count'){const line=state.rows.find(r=>r.token===token);if(!line||line.quantity===null)return;payload.found=line.quantity-Math.max(0,Math.min(line.quantity,(line.missing||0)+Number(delta)));}
       if(name==='answer')payload.found=count;
       if(name==='check_skipped'||name==='check_one'){payload.action='recheck';payload.token=null;if(name==='check_one')payload.tokens=[token];mode='part';}
       if(name==='spares_yes'||name==='spares_no'){payload.action='spares';payload.include=name==='spares_yes';mode='part';}
@@ -367,7 +456,7 @@
       clearTimeout(savedTimer);saveUndo.hidden=true;status.className='';status.textContent='Saving';render();
     }
     root.querySelector('[data-resume]')?.addEventListener('click',event=>{event.preventDefault();running=true;root.querySelector('[data-start]').hidden=true;body.hidden=false;render();});
-    root.addEventListener('click',event=>{const b=event.target.closest('[data-action]');if(b&&!b.disabled)action(b.dataset.action,b.dataset.token);});
+    root.addEventListener('click',event=>{const b=event.target.closest('[data-action]');if(b&&!b.disabled)action(b.dataset.action,b.dataset.token,b.dataset.delta);});
     retry.onclick=()=>queue.flush();window.addEventListener('online',()=>queue.flush());
     document.addEventListener('keydown',event=>{
       if(!running||/INPUT|TEXTAREA|SELECT/.test(event.target.tagName)||event.target.isContentEditable||document.querySelector('dialog[open]'))return;

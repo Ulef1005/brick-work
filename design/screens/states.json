@@ -779,7 +779,7 @@
    "state": "save-error",
    "world": "showcase",
    "path": "/workbench/check-parts/79f5df76-b75b-5fd5-bf6c-d3f4506e1406",
-   "script": "document.querySelector('[data-resume]').click();await new Promise(r=>setTimeout(r,300));window.fetch=()=>Promise.resolve(new Response(JSON.stringify({error:'The answer could not be saved. Retry.'}),{status:500,headers:{'Content-Type':'application/json'}}));document.querySelector('[data-action=answer]').click();await new Promise(r=>setTimeout(r,300));",
+   "script": "document.querySelector('[data-resume]').click();await new Promise(r=>setTimeout(r,300));window.fetch=()=>Promise.resolve(new Response(JSON.stringify({error:'The answer could not be saved. Retry.'}),{status:500,headers:{'Content-Type':'application/json'}}));document.querySelector('[data-action=answer]').click();await new Promise(r=>setTimeout(r,300));await Promise.all([...document.images].map(i=>i.complete?(i.decode?i.decode().catch(()=>0):0):new Promise(r=>{i.onload=i.onerror=r;})));await new Promise(r=>setTimeout(r,300));",
    "built": true,
    "approved": false
   },
@@ -827,7 +827,7 @@
    "state": "spare-pass",
    "world": "edge",
    "path": "/workbench/check-parts/0c757f44-7e9e-5993-ac24-c40810a6cb5e",
-   "script": "document.querySelector('[data-resume]').click();await new Promise(r=>setTimeout(r,300));",
+   "script": "document.querySelector('[data-resume]').click();await new Promise(r=>setTimeout(r,300));await Promise.all([...document.images].map(i=>i.complete?(i.decode?i.decode().catch(()=>0):0):new Promise(r=>{i.onload=i.onerror=r;})));await new Promise(r=>setTimeout(r,300));",
    "built": true,
    "approved": false
   },

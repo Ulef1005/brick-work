@@ -101,6 +101,8 @@ def build_store(name: str, store: Path) -> None:
     layers = {'real': real.layer, 'demo': None, 'showcase': showcase.layer, 'extras': gate_extras.layer, 'edge': gate_edge.layer, 'edge-read-only': gate_edge.layer, 'edge-empty': gate_edge.empty_layer, 'edge-value': gate_edge.value_layer, 'edge-order': gate_edge.order_layer, 'edge-instructions': gate_edge.instruction_layer, 'frames': frames.layer, 'frames-no-storage': frames.unstored_layer, 'frames-pulled': frames.pulled_layer}
     dataset.build(store, layer=layers[name]() if layers[name] else None)
     checks.stage(store, real.CHECKS if name == 'real' else showcase.CHECKS if name not in ('demo', 'frames', 'frames-no-storage', 'frames-pulled') else None)
+    if name in ('frames', 'frames-no-storage'):
+        frames.stage_inspector(store)   # frame 06's running check, answered through the checker like the staged ones
 
 
 @contextmanager

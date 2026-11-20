@@ -156,7 +156,7 @@
       if(missing){lost.style.width=pct(missing);track.append(lost);}
       if(rest>0){const todo=el('i','c');if(found||missing)todo.classList.add('after');track.append(todo);}
       const line=copyLine(bar,index,several),cut=line.indexOf(' · ');
-      if(line.length>21&&cut>0){bartxt.append(el('span','',line.slice(0,cut)),el('span','',line.slice(cut+3)));bartxt.classList.add('two');}   // a phone tile holds 21 characters in mono 12 px: a longer line wraps at its dot, nothing is cut (design, 2026-11-20)
+      if(line.length>21&&cut>0){bartxt.append(el('span','',line.slice(0,cut)),el('span','sep',' · '),el('span','',line.slice(cut+3)));bartxt.classList.add('two');}   // a phone tile holds 21 characters in mono 12 px: a longer line wraps at its dot, nothing is cut (design, 2026-11-20)
       else bartxt.textContent=line;
       bartxt.title=line;
     }

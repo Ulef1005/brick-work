@@ -43,3 +43,15 @@ def test_set_cards_show_each_copys_status(world, coll, client, tmp_path):
     assert [(p['text'], p['state']) for p in cards['1000-1'] if p['text'] != 'collection'] == [('#1 5/6 · 1 missing', 'bar'), ('Sealed', 'sealed')], cards
     texts = sorted(p['text'] for p in cards['2070-1'])
     assert texts == ['#1 4/4 · complete', 'Not checked#2 0/4'] or texts == ['#2 4/4 · complete', 'Not checked#1 0/4'], cards
+
+
+def test_a_copy_line_over_21_characters_wraps_on_a_phone_drawers_tile_and_keeps_its_dot_in_the_text():
+    """#494 (design, 2026-11-20): the line under a tile's bar is copy and pieces, the dot, the missing count as three spans; only the phone Drawers tile hides the dot and
+    breaks the line (frame_check proves the pixels), so the text a person copies, finds or reads aloud keeps "365/375 · 10 missing", and a Ledger row stays one line."""
+    js = (ROOT / 'static/web/toni/bw-collection.js').read_text()
+    assert "line.length>21" in js and "el('span','sep',' · ')" in js
+    css = (ROOT / 'static/web/toni/bw-collection.css').read_text()
+    phone = css[css.index('a line over 21 characters'):]
+    phone = phone[:phone.index('\n}\n')]
+    assert '.bp-groups:not([data-view=list]) .bartxt.two > .sep { display:none; }' in phone
+    assert '.bp-groups:not([data-view=list]) .bartxt.two > span { display:block;line-height:16px;white-space:normal; }' in phone

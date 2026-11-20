@@ -1155,10 +1155,9 @@ body:has(#bw-collection[data-bp-sets]) .layout>main.bp-flush { padding:0; }
 .bp-sets:not(#_):not(#_):not(#_):not(#_) .bar i.c.after { border-left:none; }
 .bp-sets:not(#_):not(#_):not(#_):not(#_) .bartxt { min-width:0;overflow:hidden;text-overflow:ellipsis; }
 .bp-sets:not(#_):not(#_):not(#_):not(#_) .bartxt:not(:has(.xchip)) { display:block;white-space:nowrap; }
-.bp-sets:not(#_):not(#_):not(#_):not(#_) .bartxt.two > span + span::before { content:' · '; }   /* a line over 21 characters is two spans: one line on a desktop tile, ... */
-@media(max-width:767px) {
-  .bp-sets:not(#_):not(#_):not(#_):not(#_) .bartxt.two > span { display:block;line-height:16px; }   /* ... and two on a phone tile (it holds 21 characters in mono 12 px): copy and pieces, then the missing count */
-  .bp-sets:not(#_):not(#_):not(#_):not(#_) .bartxt.two > span + span::before { content:none; }
+@media(max-width:767px) {   /* a line over 21 characters (a phone tile holds 21 in mono 12 px) is three spans, copy and pieces, the dot, the missing count: on a Drawers tile the dot goes and the count takes a line of its own, wrapping if it is long; the Ledger rows are wide enough for one line */
+  .bp-sets:not(#_):not(#_):not(#_):not(#_) .bp-groups:not([data-view=list]) .bartxt.two > span { display:block;line-height:16px;white-space:normal; }
+  .bp-sets:not(#_):not(#_):not(#_):not(#_) .bp-groups:not([data-view=list]) .bartxt.two > .sep { display:none; }
 }
 .bp-sets:not(#_):not(#_):not(#_):not(#_) .bar-src { display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:400 11.5px var(--tw-mono);color:var(--tw-text-2);margin-top:2px; }   /* #489, frame 48: the origin of the check under the bar */
 .bp-sets:not(#_):not(#_):not(#_):not(#_) .bp-tags { display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px; }

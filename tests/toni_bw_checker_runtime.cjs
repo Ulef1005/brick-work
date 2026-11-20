@@ -3,7 +3,7 @@ const fs=require('node:fs');
 const vm=require('node:vm');
 const context={window:{},document:{addEventListener(){}}};
 vm.runInNewContext((fs.readFileSync('static/web/toni/formatting.js','utf8')+fs.readFileSync(require('node:path').join(__dirname,'../static/web/toni/bw-checker.js'),'utf8')),context);
-const {progress,apply,merge,Queue,keyCommand}=context.window.BrickChecker;
+const {progress,summary,cells,apply,merge,Queue,keyCommand}=context.window.BrickChecker;
 const make=()=>({rows:[{token:'p:1',kind:'part',quantity:4,missing:0},{token:'p:2',kind:'part',quantity:2,missing:0},{token:'m:1',kind:'figure',quantity:1,missing:0},{token:'p:3',kind:'spare',quantity:1,missing:1,color_name:'Red',item_no:'b'},{token:'p:4',kind:'spare',quantity:3,missing:0,color_name:'Blue',item_no:'a'}],session:{id:'session',order:['p:1','p:2','m:1'],cursor:0,answers:{},misses:[],undo:[],spares:null,sort:'inventory'}});
 const plain=x=>JSON.parse(JSON.stringify(x));
 const state=make();
@@ -17,6 +17,19 @@ assert.deepEqual(plain(state.session.misses),['m:1','p:1']);
 apply(state,{action:'found_one',token:'p:1'});assert.equal(state.rows[0].missing,0);
 assert.deepEqual(plain(state.session.misses),['m:1']);   // #383: a part found in full leaves Missing so far
 apply(state,{action:'answer',token:'p:1',found:3});assert.deepEqual(plain(state.session.misses),['p:1','m:1']);   // and a new miss goes back on top
+{ // R3-02: "142 of 375 parts" counts the pieces of the answered part lines, and the strip is one cell per line, never one per piece.
+ const s=make(), before=plain(summary(s));
+ assert.deepEqual([before.pieces,before.total,before.lines,before.figures],[0,6,3,true]);
+ apply(s,{action:'answer',token:'p:1',found:3});apply(s,{action:'skip',token:'p:2'});
+ const after=plain(summary(s));
+ assert.deepEqual([after.pieces,after.total,after.missing,after.skipped,after.remaining],[4,6,1,1,1]);   // a skipped line is still to check; its pieces are not counted
+ const cursor=s.session.cursor;apply(s,{action:'set_count',token:'p:1',found:4});
+ assert.equal(s.rows[0].missing,0);assert.equal(s.session.cursor,cursor,'editing a listed line leaves the cursor where it is');assert.deepEqual(plain(s.session.misses),['m:1'].filter(t=>s.session.misses.includes(t)));
+ const frame=plain(cells({found:54,missing:4,skipped:0,remaining:73}));
+ assert.equal(frame.marks.length,131);assert.equal(frame.per,1);assert.equal(frame.marks.slice(0,54).join(''),'f'.repeat(54));assert.equal(frame.marks.slice(54,58).join(''),'mmmm');assert.equal(frame.marks.slice(58).join(''),'u'.repeat(73));
+ const big=plain(cells({found:600,missing:10,skipped:0,remaining:290}));
+ assert(big.marks.length<=240);assert.equal(big.per,4);assert.equal(big.marks[0],'f');assert.equal(big.marks[big.marks.length-1],'u');   // 900 lines stay a strip of at most 240 cells
+}
 { // #213: Found 1 in the sidebar, or answering a listed part again, keeps its place in Missing so far; only a new miss goes on top.
   const kept=make();
   apply(kept,{action:'answer',token:'p:1',found:1});apply(kept,{action:'answer',token:'m:1',found:0});
@@ -173,7 +186,7 @@ class Element {
  const root=new Element();root.id='bw-checker';root.dataset={checkStage:'running',endpoint:'/check/copy',imageUrl:'/images/0',unresolvedUrl:'/unresolved'};
  const initial=make();initial.copy={id:'copy',completeness_source:'manual'};
  const stateEl=new Element('script');stateEl.dataset.checkState='';stateEl.textContent=JSON.stringify(initial);root.append(stateEl);
- for(const key of ['copyStatus','checkBody','stage','history','progress','legend']){const n=new Element();n.dataset[key]='';root.append(n);}
+ for(const key of ['copyStatus','checkBody','stage','history','progress','legend','chkBig','chkCellsLabel','chkTag']){const n=new Element();n.dataset[key]='';root.append(n);}
  const feedback=new Element();feedback.dataset.saveFeedback='';root.children.unshift(feedback);
  for(const key of ['saveStatus','saveUndo','retry']){const n=new Element(key==='saveStatus'?'span':'button');n.dataset[key]='';n.hidden=key!=='saveStatus';if(key==='saveUndo')n.dataset.action='undo';feedback.append(n);}
  const undoButton=feedback.querySelector('[data-save-undo]');
@@ -187,11 +200,13 @@ class Element {
  localStorage:{getItem:k=>data.get(k)||null,setItem:(k,v)=>data.set(k,v)},crypto:{randomUUID:()=>String(++receipt)},setTimeout:(fn,ms)=>{const id=++timerId;timers.set(id,{fn,ms});return id;},clearTimeout:id=>timers.delete(id),
  fetch:async(url,options)=>{const payload=JSON.parse(options.body);if(payload.action==='undo')throw Error('offline');apply(server,payload);if(payload.action==='finish')server.copy.completeness='complete';server.session.undo.push(receipt);return {ok:true,json:async()=>({state:{partial:true,copy:plain(server.copy),session:plain(server.session),rows:server.rows.filter(r=>r.token===payload.token).map(r=>plain(r))}})};}};
  vm.runInNewContext((fs.readFileSync('static/web/toni/formatting.js','utf8')+fs.readFileSync(require('node:path').join(__dirname,'../static/web/toni/bw-checker.js'),'utf8')),browser);handlers.DOMContentLoaded();
- const strip=root.querySelector('[data-progress]'), originalSegment=strip.children[0];
- const stage=root.querySelector('[data-stage]');assert(stage.text.includes('Found 4'));assert(stage.text.includes('Part 1'));
- const identity=()=>stage.children[1].children[1];
- assert.deepEqual(identity().children.slice(0,3).map(n=>n.textContent),['Tan','Plate 2\u00a0x\u00a04','3020']);
- assert.equal(identity().children[1].tagName,'H2');
+  const stage=root.querySelector('[data-stage]');assert(stage.text.includes('Found ×4'));assert(stage.text.includes('Part line 1'));
+ // R3-02: the answer card is its own .b-prime scope: head, picture, Need beside the name block, the old stepper, Missing, Back / Skip / Undo.
+ const card=()=>stage.children[0].children[0], block=()=>card().children[2].children[1];
+ assert.equal(stage.children[0].className,'bp-chk b-prime');
+ assert.deepEqual([block().children[0].textContent,block().children[1].children.map(n=>n.textContent).join('|')],['Plate 2 x 4','Tan|3020']);
+ assert.equal(block().style.backgroundColor,undefined,'no colour in the test data: the plain block');
+ assert(block().className.includes('chk-plain'));
  assert.equal(root.querySelector('[data-toast]'),null);
  assert(root.children.indexOf(feedback)<root.children.indexOf(stage),'Top status precedes the part heading');
  const template=fs.readFileSync(require('node:path').join(__dirname,'../templates/web/toni/web/bw_checker.html'),'utf8');
@@ -199,35 +214,34 @@ class Element {
  assert(template.indexOf('data-save-feedback')<template.indexOf('data-stage'));
  const css=fs.readFileSync(require('node:path').join(__dirname,'../static/web/toni/bw-checker.css'),'utf8');
  assert(!css.includes('.check-toast'));
- for(const rule of css.matchAll(/\.check-(?:stepper|save-feedback)\{([^}]*)\}/g))assert(!/position:(?:sticky|fixed|absolute)/.test(rule[1]),'Feedback and answers stay in flow at every width');
+ // The frame has no row for the message (R3-02), so the bar is hidden while empty and floats at the top right of the page, beside the label, while it shows; nothing sticks to the stepper.
+ assert(!/\.check-stepper\{[^}]*position:(?:sticky|fixed|absolute)/.test(css));assert(/data-bp-checker\] \.check-save-feedback \{ position:absolute/.test(css));
  assert(!root.querySelector('[data-legend]').text.includes('to go'));
  const click=action=>{const target=root.querySelectorAll('[data-action]').find(b=>b.dataset.action===action&&!b.disabled);assert(target,'Action '+action+' exists');root.handlers.click({target});};
  const primaryAnswer=stage.querySelectorAll('[data-action]').find(n=>n.dataset.action==='answer');
- assert.equal(primaryAnswer.className,'primary bw-primary');
- assert.equal(identity().children.find(n=>n.className==='check-quantity mono').textContent,'4×');
+ assert.equal(primaryAnswer.className,'btn chk-found');
+ assert.equal(card().children[2].children[0].children[1].textContent,'4');   // Need 4
  assert(!stage.text.includes('4 required'));
  const missingButton=stage.querySelectorAll('[data-action]').find(n=>n.dataset.action==='missing');
- assert.equal(missingButton.className,'check-missing');
- const nav=identity().children.find(n=>n.className==='check-answer-nav');
+ assert.equal(missingButton.className,'btn sec chk-missing');
+ const nav=card().children.find(n=>n.className==='chk-nav');
  assert.deepEqual(nav.children.map(n=>n.textContent),['Back','Skip for later','Undo']);
  const history=root.querySelector('[data-history]');
- assert(history.text.includes('Missing so far · 0 entries · 0 missing'));
+ assert(history.text.includes('Checked so far'));assert(history.text.includes('Nothing checked yet.'));
  assert.equal(history.querySelectorAll('SELECT').length,0);
  assert.equal(history.querySelectorAll('INPUT').length,0);
  assert(!history.text.includes('results'));
  assert(!/[−–-]\d/.test(stage.text+' '+root.querySelector('[data-history]').text));
- click('decrease');assert(stage.text.includes('Found 3'));click('answer');
- await new Promise(resolve=>setImmediate(resolve));assert.equal(server.rows[0].missing,1);assert.equal(server.rows[0].checked,1);assert(history.text.includes('Missing so far · 1 entry · 1 missing'));assert(history.text.includes('Found 1'));assert.equal(strip.children[0],originalSegment);assert(stage.text.includes('Found 2'));
+ click('decrease');assert(stage.text.includes('Found ×3'));click('answer');
+ await new Promise(resolve=>setImmediate(resolve));assert.equal(server.rows[0].missing,1);assert.equal(server.rows[0].checked,1);assert(history.text.includes('Missing · larger, so the count stays editable'));assert(history.text.includes('1 missing'));assert.equal(history.querySelectorAll('[data-action]').filter(b=>b.dataset.action==='set_count').length,2);assert(stage.text.includes('Found ×2'));
  assert.equal(undoButton.hidden,false);assert(root.querySelector('[data-save-status]').text.includes('Saved'));
  assert.equal(feedback.querySelector('[data-action]'),undoButton);
- assert.deepEqual(identity().children.slice(0,2).map(n=>n.textContent),['Pearl Dark Gray','98313']);
- assert.equal(identity().children.filter(n=>n.textContent==='98313').length,1);
+ assert.deepEqual([block().children[0].textContent,block().children[1].children.map(n=>n.textContent).join('|')],['98313','Pearl Dark Gray|98313']);
  const expiry=[...timers.values()].find(t=>t.ms===5000);assert(expiry);expiry.fn();
  assert.equal(undoButton.hidden,true);assert.equal(root.querySelector('[data-save-status]').textContent,'');
  const key=k=>handlers.keydown({key:k,target:new Element(),preventDefault(){}});
  key('m');await new Promise(resolve=>setImmediate(resolve));assert.equal(server.rows[1].missing,2);
- assert.equal(identity().children[0].textContent,'figure-1');assert.equal(identity().children[0].tagName,'H2');
- assert.equal(identity().children.filter(n=>n.textContent==='figure-1').length,1);
+ assert.equal(block().children[0].textContent,'figure-1');
  key('f');await new Promise(resolve=>setImmediate(resolve));assert.equal(server.rows[2].missing,0);
  // The final step: two buttons, "No" first, primary and focused; "Yes" outlined.
  assert(stage.text.includes('Include spare parts?'));assert(!stage.text.includes('Spare pass'));
@@ -250,7 +264,7 @@ class Element {
 function boot(initial, dataset) {
  const root=new Element();root.id='bw-checker';root.dataset={checkStage:dataset.landing==='true'?'start':'running',...dataset};
  const stateEl=new Element('script');stateEl.dataset.checkState='';stateEl.textContent=JSON.stringify(initial);root.append(stateEl);
- for(const key of ['copyStatus','checkBody','stage','history','progress','legend']){const n=new Element();n.dataset[key]='';root.append(n);}
+ for(const key of ['copyStatus','checkBody','stage','history','progress','legend','chkBig','chkCellsLabel','chkTag']){const n=new Element();n.dataset[key]='';root.append(n);}
  const feedback=new Element();feedback.dataset.saveFeedback='';root.children.unshift(feedback);
  for(const key of ['saveStatus','saveUndo','retry']){const n=new Element(key==='saveStatus'?'span':'button');n.dataset[key]='';n.hidden=key!=='saveStatus';if(key==='saveUndo')n.dataset.action='undo';feedback.append(n);}
  if(root.dataset.checkStage==='start'){
@@ -288,7 +302,7 @@ function boot(initial, dataset) {
          {token:'p:9',kind:'spare',quantity:1,missing:0,name:'Spare',item_no:'s',color_name:'Red'}],
   session:{id:'fig-session',order:['p:1','p:2'],cursor:0,answers:{},misses:[],undo:[],spares:null,sort:'inventory'}};
  screen=boot(figure,{endpoint:'/check/copy/figure/M/fig-1',doneUrl:'/set?inventory=figures',imageUrl:'/images/0',unresolvedUrl:'/unresolved'});
- assert(screen.stage.text.includes('Part 1 of 2'));
+ assert(screen.stage.text.includes('Part line 1 of 2'));
  screen.click('decrease');screen.click('answer');await screen.settle();
  assert.equal(screen.server().rows[0].missing,1);assert.equal(screen.sent[0].url,'/check/copy/figure/M/fig-1');
  screen.click('answer');await screen.settle();
@@ -323,7 +337,7 @@ function boot(initial, dataset) {
  screen.root.querySelector('[data-resume]').click();
  assert.equal(screen.root.querySelector('[data-check-body]').hidden,false);
  assert.equal(screen.root.querySelector('[data-start]').hidden,true);
- assert(screen.stage.text.includes('Part 2 of 3'));
+ assert(screen.stage.text.includes('Part line 2 of 3'));
  assert.equal(screen.sent.length,0);
  assert.equal(screen.server().session.cursor,1);
 }
@@ -341,13 +355,28 @@ for(const figureMode of [false,true]) {
 // Mixed missing history counts entries, including figures, with unsigned totals.
 {
  const initial=make();initial.copy={id:'copy'};
- initial.session.misses=['p:1','p:2','m:1'];
+ initial.session.misses=['p:1','p:2','m:1'];initial.session.answers={'p:1':'answered','p:2':'answered','m:1':'answered'};initial.session.order=['p:1','p:2','m:1'];
  initial.rows.filter(r=>initial.session.misses.includes(r.token)).forEach(r=>r.missing=1);
  const screen=boot(initial,{endpoint:'/check/copy',imageUrl:'/images/0'});
- assert(screen.root.querySelector('[data-history]').text.includes('3 entries · 3 missing'));
+ assert.equal(screen.root.querySelector('[data-history]').text.split('1 missing').length-1,3);   // three larger cards, each with its own stepper
  assert(!/[−–-]\d/.test(screen.root.querySelector('[data-history]').text));
 }
 
+// R3-02: "Checked so far" shows the last four answers; a line with missing parts older than that stays one button away, and a miss a narrowed walk left out of `order` is reachable too.
+{
+ const initial=make();initial.copy={id:'copy'};
+ for(let i=10;i<16;i++)initial.rows.push({token:'p:'+i,kind:'part',quantity:2,missing:i===10||i===99?1:0,name:'Part '+i,item_no:String(i),color_name:'Red'});
+ initial.rows.push({token:'p:99',kind:'part',quantity:2,missing:1,name:'Left out',item_no:'99',color_name:'Red'});
+ initial.session.order=['p:10','p:11','p:12','p:13','p:14','p:15'];initial.session.cursor=6;initial.session.misses=['p:99','p:10'];
+ initial.session.answers={'p:99':'answered'};for(const t of initial.session.order)initial.session.answers[t]='answered';
+ const screen=boot(initial,{endpoint:'/check/copy',imageUrl:'/images/0'});
+ const history=screen.root.querySelector('[data-history]');
+ assert(history.text.includes('Show all 7 checked lines · 2 more with missing parts'));
+ assert.equal(history.querySelectorAll('[data-action]').filter(b=>b.dataset.action==='set_count').length,0,'none of the last four has a missing count');
+ screen.root.handlers.click({target:history.querySelectorAll('[data-action]').find(b=>b.dataset.action==='show_found')});
+ const all=screen.root.querySelector('[data-history]');
+ assert.equal(all.querySelectorAll('[data-action]').filter(b=>b.dataset.action==='set_count').length,4,'both missing lines, the one left out of the walk too, have a stepper');
+}
 // #222: a missing-only run counts the parts it walks. #214: Check on skipped parts walks them in the part view.
 {
   const run=make();run.session.scope='missing';run.session.order=['p:1'];run.session.answers={'p:2':'answered'};
@@ -385,9 +414,9 @@ for(const figureMode of [false,true]) {
  // A missing-only run: heading with the tag, the part's missing count, its own legend.
  const run=ended();run.session.scope='missing';run.session.order=['p:2'];run.session.cursor=0;run.session.answers={'p:1':'answered'};run.rows[1].quantity=3;
  screen=boot(run,{endpoint:'/check/copy',imageUrl:'/images/0'});
- assert(screen.stage.text.includes('Missing part 1 of 1'));assert(screen.stage.text.includes('Missing only'));
- assert(screen.stage.text.includes('Missing since the last check: 1 of 3'));assert(screen.stage.text.includes('Found 3'));
- assert.equal(screen.root.querySelector('[data-legend]').textContent,'0 found · 0 still missing · 0 skipped · 1 to go · missing parts only');
+ assert(screen.stage.text.includes('Missing part line 1 of 1'));assert(screen.stage.text.includes('Missing only'));
+ assert(screen.stage.text.includes('Missing since the last check: 1 of 3'));assert(screen.stage.text.includes('Found ×3'));
+ assert.equal(screen.root.querySelector('[data-legend]').children.map(n=>n.textContent).join(' · '),'0 lines found · 0 missing · 1 to check · missing parts only');
  console.log('Brick Work checker end steps and missing-only run passed');
 })().catch(error=>{console.error(error);process.exitCode=1;});
 

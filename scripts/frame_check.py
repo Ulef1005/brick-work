@@ -37,17 +37,18 @@ SIZES = (1440, 390)
 TARGETS = {'01-tools-and-admin': ('/manage/tools', 'frames'),
            '04-sets': ('/collection/sets', 'frames'),
            '05-sets-without-storage': ('/collection/sets', 'frames-no-storage'),
-           '48-sets-pulled-copy': ('/collection/sets', 'frames-pulled')}
+           '48-sets-pulled-copy': ('/collection/sets', 'frames-pulled'),
+           '06-set-inspector': ('/workbench/check-parts/d1121673-830b-5aaa-80be-ee68396eec34?run=1', 'frames')}   # copy 2 of 7213-1 in its running check (brickwork/demo/frames.py INSPECTOR)
 # Frames that draw one screen as the device shows it (the frame's own size, the rest of the page cut off, the phone's tab bar at the foot of that size): the
 # frame and app are both captured as one viewport (capture_screens.cjs `sheet_below`), not grown to the whole height of their scrollable content. A frame that draws the whole page is not listed.
-VIEWPORT = {'04-sets', '05-sets-without-storage', '48-sets-pulled-copy'}
+VIEWPORT = {'04-sets', '05-sets-without-storage', '48-sets-pulled-copy', '06-set-inspector'}
 # The frame is an excerpt: 04-sets at 390 draws two of the three tiles its S-0002 tape counts and cuts the rest. Design's rule (2026-11-20): compare down to the
 # bottom of the drawn tile row (CSS px from the top); the app shows all three tiles, so what lies below that row is not compared.
 CROP_BELOW = {('04-sets', 390): 700, ('48-sets-pulled-copy', 390): 700}   # frame 48 is built on frame 04: the same two tiles are drawn at 390
 # Screens whose PAGE BODY is built to the frame (their issue sets it): until then a target serves only the shell-band check, and the count does not count it.
 # The viewport height of a frame that is taller than the usual one (CSS px): frame 48 draws the rows of the pulled copies below the first screen (its frame-size is 1440 x 1052).
 TALL = {('48-sets-pulled-copy', 1440): 1052}
-BODY_BUILT: set[str] = {'04-sets', '48-sets-pulled-copy'}   # 05-sets-without-storage waits for design's redrawn frame (tabs, search and Sort drawn)
+BODY_BUILT: set[str] = {'04-sets', '48-sets-pulled-copy', '06-set-inspector'}   # 05-sets-without-storage waits for design's redrawn frame (tabs, search and Sort drawn)
 
 
 def frame_file(folder: str, theme: str, width: int) -> Path:

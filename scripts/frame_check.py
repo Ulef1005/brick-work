@@ -34,7 +34,12 @@ THEMES = ('light', 'dark')
 SIZES = (1440, 390)
 
 # folder -> (app path, world). A screen joins the table when its issue builds it (the data of its frame goes into the `frames` world then).
-TARGETS = {'01-tools-and-admin': ('/manage/tools', 'frames')}
+TARGETS = {'01-tools-and-admin': ('/manage/tools', 'frames'),
+           '04-sets': ('/collection/sets', 'frames'),
+           '05-sets-without-storage': ('/collection/sets', 'frames-no-storage')}
+# Frames that draw one screen as the device shows it (the frame's own size, the rest of the page cut off, the phone's tab bar at the foot of that size): the
+# frame and app are both captured as one viewport (capture_screens.cjs `sheet_below`), not grown to the whole height of their scrollable content. A frame that draws the whole page is not listed.
+VIEWPORT = {'04-sets', '05-sets-without-storage'}
 # Screens whose PAGE BODY is built to the frame (their issue sets it): until then a target serves only the shell-band check, and the count does not count it.
 BODY_BUILT: set[str] = set()
 
@@ -138,7 +143,7 @@ def run(only: list[str], band: bool, report: bool, keep: str = '') -> int:
                         frame_png = Path(scratch) / folder / f'frame-{theme}-{width}.png'
                         app_png = Path(scratch) / folder / f'app-{theme}-{width}.png'
                         height = {1440: 900, 390: 844}[width]
-                        common = {'width': width, 'height': height, 'theme': theme, 'scale': SCALE, 'max': 3000}
+                        common = {'width': width, 'height': height, 'theme': theme, 'scale': SCALE, 'max': 3000, **({'sheet_below': 100000} if folder in VIEWPORT else {})}
                         jobs.append({'url': frame_file(folder, theme, width).as_uri(), 'out': str(frame_png), **common})
                         jobs.append({'url': base + path, 'out': str(app_png), 'wait': 'main', **common})
                         pairs.append((width, theme, frame_png, app_png))

@@ -11,8 +11,8 @@ Where a frame disagrees with the data it was drawn from, the data follows the fr
 the frame says 1,426, so one line of the copy holds 18 more pieces here. Everything is deterministic (the real world's seed and the demo clock)."""
 from ..core import stock
 from ..core.transaction import transaction
-from . import dataset, real
-from .showcase import uid
+from . import clock, dataset, real
+from .showcase import seeded_uuids, uid
 
 # number: (copy 1 and 2 as (storage, found, missing); a copy with found and missing 0 is never checked). Sealed copies have no check.
 FRAME = {
@@ -140,7 +140,12 @@ class Layer(real.Layer):
             self.codes(db)
             self.checks_to_frame(db)
             if self.runner:
-                self.runner_gaps(db)
+                patched = clock.freeze_clock()   # the layer's own fill has thawed the clock and the uuids: stock saved here is stamped and numbered the same in every build
+                try:
+                    with seeded_uuids(self.rng):
+                        self.runner_gaps(db)
+                finally:
+                    clock.thaw_clock(patched)
             if not self.stored:
                 db.execute('UPDATE copy SET storage_id=NULL')
 

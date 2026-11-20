@@ -60,8 +60,15 @@
       strip.setAttribute('aria-label', `Part ${shown.length ? active + 1 : 0} of ${shown.length}`);
     }
     const node = shown[active]?.node, box = node?.querySelector('[data-next]');
-    if (!box || (all && shown.length === all.length && shown.every((r, index) => r === all[index]))) return;   // in the run's own order each card already carries its next parts
+    if (!box) return;
+    // The card's own next list (the server drew it in the run's order) is kept the first time it is touched, so the run's own order restores it; the templates sit beside [data-next], never in it.
+    if (!nextOwn.has(node)) nextOwn.set(node, Array.from(box.children || []).map(child => child.cloneNode(true)));
+    if (all && shown.length === all.length && shown.every((r, index) => r === all[index])) {
+      if (box.dataset.filtered) {box.replaceChildren(...nextOwn.get(node).map(child => child.cloneNode(true))); delete box.dataset.filtered;}
+      return;
+    }
     const items = shown.slice(active + 1, active + 4).map(r => r.node.querySelector('template[data-nx-item]')).filter(Boolean);
+    box.dataset.filtered = '1';
     box.replaceChildren();
     if (!items.length) return;
     const tape = document.createElement('div'), count = document.createElement('span');
@@ -72,9 +79,9 @@
   }
   const message = root.querySelector('[data-message]');
   const undoButton = root.querySelector('[data-undo]');
-  let lastEvent = null, busy = false, active = Number(root.dataset.start || 0) || 0, foundCount = null;
+  let lastEvent = null, busy = false, active = Number(root.dataset.start || 0) || 0;
   // The run strip (R3-03): a part is done once it is found or marked missing; a run opened on a later part (?part=7) has the parts before it behind it.
-  const done = new WeakSet();
+  const done = new WeakSet(), nextOwn = new WeakMap();
   let seeded = false;
   const lists = [];
   const announce = text => {if(message)message.textContent = text;};
@@ -143,15 +150,23 @@
   };
   const syncSelectorCount = form => {
     const label=form.querySelector('[data-selector-count]');if(label)label.textContent=form.elements.quantity.value;
+    // the card's Found ×N and the dialog's count are one number, whichever side changes it
+    const card=form.closest('[data-row]'),count=card?.querySelector('[data-found-count]'),found=card?.querySelector('[data-run-found]');
+    if(count)count.value=form.elements.quantity.value;
+    if(found)found.textContent=`Found ×${form.elements.quantity.value}`;
   };
   const setDestination = form => {
-    const isSet=form.elements.destination.value==='set';
+    let isSet=form.elements.destination.value==='set';
+    // nothing is missing any more (a part saved in full): only loose parts and the pick list are offered, for surplus pieces
+    const capacity=Array.from(form.querySelectorAll('[data-assignment]')).reduce((sum,n)=>sum+Number(n.max),0),setOption=form.querySelector('.bw-destination');
+    if(setOption)setOption.hidden=capacity===0;
+    if(capacity===0&&isSet){const loose=form.querySelector('input[value="loose"]');if(loose){loose.checked=true;form.elements.destination.value='loose';isSet=false;}}
     const quantity=form.querySelector('[data-quantity]');if(quantity)quantity.hidden=isSet;
     const assignments=form.querySelector('.bw-assignments');if(assignments)assignments.hidden=!isSet;
     if(isSet)form.elements.quantity.value=Array.from(form.querySelectorAll('[data-assignment]')).reduce((sum,n)=>sum+Number(n.value),0);
     const card=form.closest('[data-row]');
     const count=card?.querySelector('[data-found-count]');
-    if(!isSet&&count)form.elements.quantity.value=count.value;
+    if(!isSet&&count)form.elements.quantity.value=Math.max(1,Number(count.value)||0);
     syncSelectorCount(form);
     form.querySelectorAll('.bw-destination').forEach(node=>node.classList.toggle('is-selected',node.querySelector('input').checked));
   };
@@ -160,21 +175,16 @@
     const form=card.querySelector('form[data-action="found"]'),count=card.querySelector('[data-found-count]');
     if(!form||!count)return 0;
     const inputs=Array.from(form.querySelectorAll('[data-assignment]')),max=inputs.reduce((sum,n)=>sum+Number(n.max),0);
-    const n=Math.max(0,Math.min(max,Number(wanted)||0));
+    const n=Math.max(0,Math.min(max>0?max:9999,Number(wanted)||0));   // with nothing missing the count is for surplus pieces (loose parts, pick list)
     let left=n;inputs.forEach(input=>{const v=Math.min(Number(input.max),left);input.value=v;left-=v;});
     count.value=n;setDestination(form);
-    const found=card.querySelector('[data-run-found]');if(found)found.textContent=`Found ×${n}`;   // the − and + stay as drawn at the ends (the clamp above keeps the count inside); Found ×0 is the Missing button
-    if(found&&!found.hasAttribute('data-unresolved'))found.disabled=n<=0;
+    const found=card.querySelector('[data-run-found]');if(found)found.textContent=`Found ×${form.elements.quantity.value}`;   // the − and + stay as drawn at the ends (the clamp above keeps the count inside); Found ×0 is the Missing button
+    if(found&&!found.hasAttribute('data-unresolved'))found.disabled=n<=0&&max>0;
     return n;
   };
   const openPart = () => {
     const node=visible()[active]?.node,button=node?.querySelector('[data-open]');
     if(!button || button.disabled)return;
-    if(foundCount!==null){
-      const requested=foundCount;foundCount=null;
-      const n=setFound(node,requested);
-      if(n!==requested)announce(`Found count ${n} · it cannot be more than is still missing`);
-    }
     button.click();
   };
   const selectors = Array.from(root.querySelectorAll('[data-selector]'));
@@ -190,7 +200,9 @@
       form.querySelectorAll('input[name=destination]').forEach(n=>n.addEventListener('change',()=>setDestination(form)));
       const card=selector.closest('[data-row]'),count=card.querySelector('[data-found-count]');
       count.addEventListener('input',()=>{form.elements.quantity.value=count.value;syncSelectorCount(form);});
-      selector.querySelector('[data-selector-close]').addEventListener('click',()=>card.querySelector('[data-mobile-selector]').close());
+      const dialog=card.querySelector('[data-mobile-selector]');
+      selector.querySelector('[data-selector-close]').addEventListener('click',()=>dialog.close());
+      dialog.addEventListener('click',event=>{if(event.target===dialog)dialog.close();});   // a click on the backdrop closes it
       form.elements.quantity.addEventListener('input',()=>{count.value=form.elements.quantity.value;syncSelectorCount(form);});
     });
   }
@@ -312,7 +324,11 @@
     if(key==='z' && lastEvent){event.preventDefault();undo(lastEvent);return;}
     if(key==='enter' && event.target.tagName==='BUTTON')return;
     if(root.dataset.mode!=='picker' || root.querySelector('[data-pick]')?.hidden || dialog)return;
-    if(/^[1-9]$/.test(key)){event.preventDefault();foundCount=Number(key);announce(`Found count ${foundCount} · Enter to choose a destination`);}
+    if(/^[1-9]$/.test(key)){
+      event.preventDefault();
+      const node=visible()[active]?.node,requested=Number(key),n=node?setFound(node,requested):requested;
+      announce(n===requested?`Found count ${n} · Enter to choose a destination`:`Found count ${n} · it cannot be more than is still missing`);
+    }
     else if(key==='enter' || key==='f'){event.preventDefault();openPart();}
     else if(key==='arrowleft'){event.preventDefault();focusPart(-1);}
     else if(key==='arrowright' || key==='s'){event.preventDefault();focusPart(1);}

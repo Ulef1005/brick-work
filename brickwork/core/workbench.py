@@ -312,11 +312,14 @@ def picker_places(db, rows):
         source = dict(raw)
         key = (source['item_id'], source['color_id'])
         if key in wanted and available(db, source, defective=defective):
-            top, seen = storages[source['storage_id']], set()
+            leaf = storages.get(source['storage_id'])
+            if leaf is None:      # a lot whose storage is gone from the list: no location rather than an error
+                continue
+            top, seen = leaf, set()
             while top['parent_id'] in storages and top['id'] not in seen:
                 seen.add(top['id'])
                 top = storages[top['parent_id']]
-            found[key][source['storage_id']] = dict(code=top['short_id'], root=top['name'], leaf=storages[source['storage_id']]['name'])
+            found[key][source['storage_id']] = dict(code=top['short_id'], root=top['name'], leaf=leaf['name'])
     return {key: sorted(places.values(), key=lambda p: p['leaf']) for key, places in found.items()}
 
 

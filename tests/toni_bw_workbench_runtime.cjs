@@ -126,14 +126,21 @@ assert.deepEqual([...api.pageItems(3,1)],[1,2,3]);assert.deepEqual([...api.pageI
   details.insertBefore=node=>{node.parentNode=details;};dialog.append=node=>{node.parentNode=dialog;};dialog.close=()=>{dialog.open=false;};dialog.nodes={form};
   opener.click=()=>{dialog.open=true;};set.focus=()=>{};
   card.nodes={'[data-part-position]':new Node(),'[data-part-progress]':new Node(),'[data-selector]':selector,'[data-mobile-selector]':dialog,'.bw-picker-details':details,'[data-found-count]':count,'[data-open]':opener,'form[data-action="found"]':form,'[data-badge]':new Node(),'[data-remaining]':new Node()};
+  // the run's parts: the card's own next list (kept apart from the template), the Found ×N button and the stepper
+  const box=new Node();const own=()=>({tag:'orig'+index,cloneNode:own});box.children=[own()];box.replaceChildren=(...nodes)=>{box.children=nodes;};box.append=(...nodes)=>{box.children.push(...nodes);};
+  const tpl=new Node();tpl.dataset={code:'S-0002',root:'Shelf'};tpl.content={firstElementChild:{cloneNode:()=>({tag:'item'+index})}};
+  const foundButton=new Node(),minus=new Node(),plus=new Node(),missing=new Node();foundButton.hasAttribute=()=>false;minus.dataset={runStep:'-1'};plus.dataset={runStep:'1'};minus.closest=plus.closest=missing.closest=()=>card;
+  Object.assign(card.nodes,{'[data-next]':box,'template[data-nx-item]':tpl,'[data-run-found]':foundButton});card.box=box;card.foundButton=foundButton;card.minus=minus;card.plus=plus;card.missing=missing;
   card.focus=()=>card.trigger('focus');
   return card;
  });
  container.groups={'[data-row]':cards};container.children=[...cards];container.append=node=>{container.children=container.children.filter(n=>n!==node);container.children.push(node);};
  r.nodes={'[data-message]':new Node(),'[data-back]':back,'[data-skip]':skip,'[data-pick]':list};
- r.groups={'[data-assignment]':cards.flatMap(c=>c.nodes['form[data-action="found"]'].groups['[data-assignment]']),'[data-step]':cards.map(c=>c.decrement),'[data-list]':[list],'[data-selector]':cards.map(c=>c.nodes['[data-selector]']),'form[data-action]':cards.map(c=>c.nodes['form[data-action="found"]'])};
+ const top=new Node(),label=new Node(),strip=new Node();strip.children=[];strip.append=node=>{node.remove=()=>{strip.children.pop();};strip.children.push(node);};strip.setAttribute=()=>{};Object.defineProperty(strip,'lastChild',{get:()=>strip.children[strip.children.length-1]});top.nodes={'[data-run-label]':label,'[data-run-strip]':strip};
+ r.nodes['[data-run-top]']=top;
+ r.groups={'[data-run-step]':cards.flatMap(c=>[c.minus,c.plus]),'[data-run-missing]':cards.map(c=>c.missing),'[data-assignment]':cards.flatMap(c=>c.nodes['form[data-action="found"]'].groups['[data-assignment]']),'[data-step]':cards.map(c=>c.decrement),'[data-list]':[list],'[data-selector]':cards.map(c=>c.nodes['[data-selector]']),'form[data-action]':cards.map(c=>c.nodes['form[data-action="found"]'])};
  r.querySelector=selector=>selector==='dialog[open]'?cards.map(c=>c.nodes['[data-mobile-selector]']).find(n=>n.open)||null:r.nodes[selector]||null;d.querySelector=()=>r;
- d.createElement=()=>{const n=new Node();n.setAttribute=()=>{};return n;};
+ d.createElement=()=>{const n=new Node();n.setAttribute=()=>{};n.append=()=>{};return n;};
  const context={window:{},document:d,matchMedia:()=>({get matches(){return isDesktop;},addEventListener(type,fn){mediaListener=fn;}}),fetch:async(url,options)=>{calls.push(JSON.parse(options.body));return {ok:true,json:async()=>({event_id:99})};}};
  vm.runInNewContext((fs.readFileSync('static/web/toni/formatting.js','utf8')+fs.readFileSync('static/web/toni/bw-workbench.js','utf8')),context);
  filterToggle.trigger();assert.equal(list.nodes['[data-filter-panel]'].hidden,false);assert.equal(doneFilter['aria-expanded'],'true');
@@ -160,12 +167,32 @@ assert.deepEqual([...api.pageItems(3,1)],[1,2,3]);assert.deepEqual([...api.pageI
  d.trigger('keydown',{key:'2',target:{tagName:'INPUT',type:'radio'}});assert.equal(form.nodes['input[value="loose"]'].checked,true);
  form.elements.destination.value='loose';form.nodes['input[value="loose"]'].trigger('change');assert.equal(form.nodes['[data-quantity]'].hidden,false);assert.equal(form.nodes['.bw-assignments'].hidden,true);
  form.elements.destination.value='set';form.nodes['input[value="set"]'].trigger('change');
- d.trigger('keydown',{key:'Enter',target:{tagName:'BODY'}});assert.equal(cards[0].nodes['[data-mobile-selector]'].open,true);
+ const sheet=cards[0].nodes['[data-mobile-selector]'];
+ sheet.trigger('click',{target:{}});assert.equal(sheet.open,true,'a click inside the dialog keeps it');sheet.trigger('click',{target:sheet});assert.equal(sheet.open,false,'a click on the backdrop closes it');
+ d.trigger('keydown',{key:'Enter',target:{tagName:'BODY'}});assert.equal(sheet.open,true,'Enter opens the closed dialog');
  form.elements.destination.value='list';d.trigger('keydown',{key:'3',target:{tagName:'BODY'}});assert.equal(form.nodes['input[value="list"]'].checked,true);
  cards[0].nodes['[data-selector]'].nodes['[data-selector-close]'].trigger();assert.equal(cards[0].nodes['[data-mobile-selector]'].open,false);
  assert.equal(cards[0].nodes['[data-selector]'].parentNode,cards[0].nodes['[data-mobile-selector]']);
  search.value='Brick';search.trigger('input');assert.equal(list.nodes['[data-count]'].textContent,'1 result');assert.equal(cards[1].nodes['[data-part-position]'].textContent,'Part 1 of 1');
  search.value='';search.trigger('input');
+  // the strip and the next parts: a search and a sort change the order, clearing them gives every card its own list back
+ assert.equal(label.textContent,'Part 1 / 2');assert.equal(strip.children.length,2);assert.equal(strip.children[0].className,'c');
+ search.value='Brick';search.trigger('input');assert.equal(label.textContent,'Part 1 / 1');assert.equal(strip.children.length,1);assert.equal(cards[1].box.children.length,0,'the only part has no next parts');
+ search.value='';search.trigger('input');skip.trigger();assert.deepEqual(cards[1].box.children.map(n=>n.tag),['orig1'],'its own next list is back');back.trigger();
+ sort.value='name';sort.trigger('change');assert.equal(cards[1].hidden,false);assert.deepEqual(cards[1].box.children.map(n=>n.tag||n.className),['tape','item0'],'sorted by name the next part is the other card');
+ sort.value='number';sort.trigger('change');assert.equal(cards[0].hidden,false);skip.trigger();assert.deepEqual(cards[1].box.children.map(n=>n.tag),['orig1'],'sorted by number again, the own list is back');back.trigger();sort.value='rank';sort.trigger('change');
+ // the digit keys set the count of the part on screen at once (never a later part's); Found ×0 does not deadlock the keys
+ d.trigger('keydown',{key:'1',target:{tagName:'BODY'}});assert.equal(cards[0].foundButton.textContent,'Found ×1');
+ skip.trigger();assert.equal(Number(cards[1].nodes['[data-found-count]'].value),2);d.trigger('keydown',{key:'Enter',target:{tagName:'BODY'}});assert.equal(Number(cards[1].nodes['[data-found-count]'].value),2,'Enter keeps part 2\'s own count');cards[1].nodes['[data-mobile-selector]'].close();
+ cards[1].minus.trigger();cards[1].minus.trigger();assert.equal(cards[1].foundButton.disabled,true,'Found ×0 is the Missing button');assert.equal(cards[1].foundButton.textContent,'Found ×0');
+ d.trigger('keydown',{key:'2',target:{tagName:'BODY'}});assert.equal(cards[1].foundButton.disabled,false);assert.equal(cards[1].foundButton.textContent,'Found ×2');d.trigger('keydown',{key:'Enter',target:{tagName:'BODY'}});assert.equal(cards[1].nodes['[data-mobile-selector]'].open,true);cards[1].nodes['[data-mobile-selector]'].close();
+ cards[1].plus.trigger();assert.equal(cards[1].foundButton.textContent,'Found ×2','the count stays inside what is missing');back.trigger();
+ // Missing is key M: the part is done, the run moves on
+ cards[0].missing.trigger();assert.equal(cards[1].hidden,false);assert.equal(r.nodes['[data-message]'].textContent,'Still missing · count unchanged');assert.equal(strip.children[0].className,'f');assert.equal(strip.children[1].className,'c');back.trigger();
+ // a part saved in full has nothing missing: Found ×N stays reachable for surplus pieces, and only loose parts and the pick list are offered
+ {const form1=cards[1].nodes['form[data-action="found"]'],assigned=form1.groups['[data-assignment]'][0];skip.trigger();assigned.max='0';assigned.value='0';cards[1].plus.trigger();
+  assert.equal(form1.elements.destination.value,'loose');assert.equal(cards[1].foundButton.disabled,false);assert.equal(cards[1].foundButton.textContent,'Found ×3');
+  assigned.max='2';assigned.value='2';form1.elements.destination.value='set';back.trigger();}
  // A desktop count shortcut must keep the set payload equal to its copy allocations.
  const extra=new Node();extra.value='1';extra.max='1';extra.dataset={assignment:'other-copy'};
  form.groups['[data-assignment]'].push(extra);

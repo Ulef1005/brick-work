@@ -209,7 +209,7 @@ main #bw-workbench .bw-copy-summary .bw-identity>a { display:flex;flex-direction
    the stepper and Missing (.bp-run-act, which is also .bp-chk: the stepper rules of bw-checker.css are the Set Inspector's own, loaded on this page and not copied) and the next parts (.bp-run-next). The destination dialog, the
    message, Undo, the Back / Skip row and Details stay outside it. The scope's reset outranks a class rule, so a margin, a padding or a size carries four :not(#_). */
 body:has(#bw-workbench[data-bp-run]) .layout>main.bp-flush { padding:0; }
-#bw-workbench[data-bp-run] { min-width:0;max-width:1240px;padding:22px 32px 0;display:flex;flex-direction:column;gap:14px; }
+#bw-workbench[data-bp-run] { position:relative;min-width:0;max-width:1240px;padding:22px 32px 0;display:flex;flex-direction:column;gap:14px; }
 #bw-workbench[data-bp-run] [data-message] { position:absolute;top:18px;right:32px;z-index:5;margin:0;padding:8px 12px;background:var(--tw-surface);border:1px solid var(--tw-divider-strong);border-radius:8px; }
 #bw-workbench[data-bp-run] [data-pick] { display:flex;flex-direction:column;gap:14px;margin:0;min-width:0; }
 #bw-workbench[data-bp-run] [data-pick] .bw-grid { display:block; }
@@ -278,3 +278,8 @@ body:has(#bw-workbench[data-bp-run]) .layout>main.bp-flush { padding:0; }
  .bp-run:not(#_):not(#_):not(#_):not(#_) .run-head { display:none; }
  .bp-run-card:not(#_):not(#_):not(#_):not(#_) .run-card .tile { height:250px; }
 }
+
+/* The destination dialog's close control: visible from 768 px (a phone keeps its sheet handle and a tap outside), hidden from sight below. */
+#bw-workbench .bw-selector-x { position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0; }
+@media(min-width:768px) { #bw-workbench .bw-selector-x { position:static;width:auto;height:44px;padding:0 12px;margin:0;overflow:visible;clip-path:none;white-space:normal;background:none;color:var(--tw-text-2);font:500 14px var(--tw-font); } }
+.bp-run-card:not(#_):not(#_):not(#_):not(#_) .run-status { display:inline-block;margin-top:8px;font:600 12px var(--tw-font);color:var(--tw-accent-text); }

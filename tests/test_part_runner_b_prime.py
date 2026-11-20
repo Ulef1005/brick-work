@@ -88,12 +88,14 @@ def test_the_page_names_the_feature_the_run_and_the_next_parts_and_keeps_the_dia
     assert [b.get_text(strip=True) for b in act.select('button')] == ['−', 'Found ×3', '+', 'Missing']
     tape = card.select_one('.bp-run-next.b-prime [data-next-tape]')
     assert tape.get_text(' ', strip=True) == 'S-0002 Shelf A2 – Town 3 parts next'
-    assert [r.select_one('.run-nx-name').get_text().replace('\xa0', ' ') for r in card.select('.bp-run-next > [data-nx-row]')] == ['Brick 1 × 4', 'Brick 1 × 6', 'Slope 45° 2 × 2']
-    assert [r.select_one('.run-nx-n').get_text() for r in card.select('.bp-run-next > [data-nx-row]')] == ['2×', '1×', '4×']
+    assert [r.select_one('.run-nx-name').get_text().replace('\xa0', ' ') for r in card.select('.bp-run-next [data-next] > [data-nx-row]')] == ['Brick 1 × 4', 'Brick 1 × 6', 'Slope 45° 2 × 2']
+    assert [r.select_one('.run-nx-n').get_text() for r in card.select('.bp-run-next [data-next] > [data-nx-row]')] == ['2×', '1×', '4×']
     assert card.select_one('[data-nx-row] .run-nx-sub').get_text(' ', strip=True) == 'Dark Bluish Gray · 3010 · S-0002 · drawer 3'
     # the destination dialog and the message are outside every .b-prime scope, whose reset would strip their padding
     assert all(not d.find_parent(class_='b-prime') for d in root.select('dialog')) and not root.select_one('[data-message]').find_parent(class_='b-prime')
     assert not root.select_one('.bw-keys').find_parent(class_='b-prime')
+    # the templates the JS builds a filtered next list from sit beside [data-next], never in it
+    assert card.select_one('.bp-run-next > template[data-nx-item]') and not card.select('[data-next] template')
 
 
 @rendered.group
@@ -150,3 +152,36 @@ def test_the_run_strip_scrolls_inside_itself_at_320_and_fits_at_375(tmp_path):
             (tmp_path / f'jobs{width}.json').write_text(json.dumps(jobs))
             result = subprocess.run(['node', str(ROOT / 'scripts' / 'capture_screens.cjs'), chrome, str(tmp_path / f'jobs{width}.json')], capture_output=True, text=True)
             assert result.returncode == 0, str(width) + result.stdout + result.stderr
+
+
+def test_building_the_frames_world_twice_gives_the_run_stock_the_same_ids_and_stamps(tmp_path):
+    """The run's loose stock is saved after the layer's own fill thawed the clock and the uuids; it is stamped and numbered the same in every build."""
+    def stock_rows(folder):
+        store = folder / 'brickwork.db'
+        folder.mkdir()
+        screen_gate.build_store('frames', store)
+        with database(store, read_only=True) as db:
+            rows, places = run_rows(store)
+            wanted = {(r['item_id'], r['color_id']) for r in rows[:10]}
+            return sorted((r['id'], r['created_at'], r['updated_at'], r['item_id'], r['color_id'], r['storage_id'], r['quantity']) for r in db.execute(
+                "SELECT * FROM stock WHERE kind='part' AND archived_at IS NULL") if (r['item_id'], r['color_id']) in wanted)
+    first, second = stock_rows(tmp_path / 'a'), stock_rows(tmp_path / 'b')
+    assert len(first) == 10 and first == second
+    assert all(row[1].startswith('2026-10-12') for row in first), 'stamped with the demo clock, not the day of the build'
+
+
+@rendered.group
+@pytest.mark.parametrize('width,visible', [(1440, True), (390, False)])
+def test_the_destination_dialog_has_a_visible_close_from_768_px_and_closes_on_the_backdrop(tmp_path, width, visible):
+    chrome = rendered.chrome()
+    script = ("const open=document.querySelector('[data-run-found]');open.click();await new Promise(r=>setTimeout(r,200));"
+              "const d=document.querySelector('dialog[open]');if(!d)throw new Error('the dialog did not open');"
+              "const x=d.querySelector('[data-selector-close]'),cs=getComputedStyle(x),shown=cs.clipPath==='none'&&cs.position==='static'&&parseFloat(cs.height)>=40;"
+              f"if(shown!=={str(visible).lower()})throw new Error('close control visible: '+shown+' at {width}');"
+              "d.dispatchEvent(new MouseEvent('click',{bubbles:true}));await new Promise(r=>setTimeout(r,100));"
+              "if(document.querySelector('dialog[open]'))throw new Error('a click on the backdrop should close the dialog');")
+    with screen_gate.world('frames') as base:
+        jobs = {'jobs': [{'url': base + PATH, 'out': str(tmp_path / 'x.png'), 'width': width, 'theme': 'light', 'wait': 'main', 'script': script}]}
+        (tmp_path / 'jobs.json').write_text(json.dumps(jobs))
+        result = subprocess.run(['node', str(ROOT / 'scripts' / 'capture_screens.cjs'), chrome, str(tmp_path / 'jobs.json')], capture_output=True, text=True)
+    assert result.returncode == 0, result.stdout + result.stderr

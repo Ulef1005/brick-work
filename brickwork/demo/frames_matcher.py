@@ -21,8 +21,8 @@ def stage_matcher(store):
     copy 2 of 7213-1 (7 of 12 missing), 10210-1 (11 of 33), and 7938-1 (2 of 14),
     in that order, while copy 1 of 7213-1 gets none.
     """
+    layer = Layer(pictures=False)   # built before the clock is frozen, so a failure here leaves nothing patched
     patched = clock.freeze_clock()
-    layer = Layer(pictures=False)
     try:
         with database(store) as db:
             with transaction(db):

@@ -90,9 +90,15 @@ def compare(frame: Path, app: Path, width: int, band: bool, viewport: int = 0, l
         differing = total = 0
         regions = []
         if not band:
-            rows = min(short, limit * SCALE) if limit else short   # CROP_BELOW: only the rows above `limit` CSS px are compared; the heights are still checked whole
+            rows = min(short, limit * SCALE) if 0 < limit else short   # CROP_BELOW: only the rows above `limit` CSS px are compared; the heights are still checked whole
             d, t, mask = diff_share(a.crop((0, 0, a.width, rows)), b.crop((0, 0, b.width, rows)))
             differing, total, regions = d, t, regions_of(mask)
+            if 0 < limit:   # the excerpt's cut does not hide the phone tab bar: its foot band is still compared, from each shot's own bottom
+                for where, px in band_rows(width):
+                    if where == 'foot':
+                        foot, tab = (viewport * SCALE if viewport else a.height), px * SCALE
+                        d, t, mask = diff_share(a.crop((0, foot - tab, a.width, foot)), b.crop((0, b.height - tab, b.width, b.height)))
+                        differing, total, regions = differing + d, total + t, regions + [f'foot {r}' for r in regions_of(mask)]
         else:
             for where, px in band_rows(width):
                 rows = px * SCALE

@@ -69,3 +69,16 @@ def test_add_hides_the_fetch_switch_and_settings_drops_the_download_limit(client
     settings = page(client, '/manage/settings')
     assert 'Largest instruction download' not in settings.get_text() and 'official_download_limit_mb' not in str(settings)
     assert [h.text for h in settings.select('h2.bw-label')].count('Labels') == 1
+
+
+def test_a_set_page_links_here_with_its_item_and_the_page_looks_that_set_up(client, world):   # review round 1: ?item=<id> of the Instructions & Box tab
+    soup = page(client, f'/manage/instructions/find?item={world.keep}')
+    row = soup.select_one('.bw-find-lookup')
+    assert row is not None and [a.text.strip() for a in row.select('.bw-find-ext')][-1] == 'Rebrickable'
+    assert page(client, '/manage/instructions/find?item=999999999').select_one('[role=alert]') is not None
+
+
+def test_a_number_without_a_suffix_is_filled_into_the_upload_form_with_its_suffix(client, world):   # review round 1
+    soup = page(client, '/manage/instructions/find?set=6081')
+    assert soup.select_one('.bw-find-lookup .bw-find-no').text == '6081-1'
+    assert 'item_no=6081-1' in soup.select_one('.bw-find-lookup .bw-find-upload')['href']

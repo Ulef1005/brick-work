@@ -24,7 +24,7 @@ The page is for things you do. Choices you make once are under **Settings**. Fro
 
 **Tools & Admin → Settings** holds the preferences that are yours to choose, in four sections. Each row shows its title and its current value on one line, so most visits need no row opened. Select a row to open it in place and change it. Only one row is open at a time. A link such as `Settings#pictures` opens the row it names, and the four section rows on **Tools & Admin** open the page at their section.
 
-Some rows have their own **Save** button and save at once. They are **Display currency and rates** (the currency, each rate and **Load ECB reference rates**), **Address on printed labels** and the BrickLink switch in **Part list for a new set**. The other rows save together: **Country for retail prices**, **Group parts by**, **Lost Parts from Rebrickable** and **Largest instruction download**. So do the three expert rows: **Where pictures come from**, **Where set details and prices come from** and **When data counts as out of date**. Press **Save settings** in any of them and every change in those rows is saved. The page then opens the row you saved and says **Settings saved** with an **Undo** next to it. Undo puts back exactly what was there before. It is refused with **Item changed · undo the later save first** once you have saved again.
+Some rows have their own **Save** button and save at once. They are **Display currency and rates** (the currency, each rate and **Load ECB reference rates**), **Address on printed labels** and the BrickLink switch in **Part list for a new set**. The other rows save together: **Country for retail prices**, **Group parts by**, and **Lost Parts from Rebrickable**. So do the three expert rows: **Where pictures come from**, **Where set details and prices come from** and **When data counts as out of date**. Press **Save settings** in any of them and every change in those rows is saved. The page then opens the row you saved and says **Settings saved** with an **Undo** next to it. Undo puts back exactly what was there before. It is refused with **Item changed · undo the later save first** once you have saved again.
 
 **Money and prices**
 
@@ -133,7 +133,7 @@ A bulk action (**Bulk refresh prices**, **Refresh pictures**, fetching missing b
 
 ## Instruction files
 
-A PDF is attached to a **set**; a booklet shows the files of the set with its number. **Upload a PDF** takes a set number (or a booklet's number, which names the same set) and a label. **Find instructions** lists the sets that have no PDF, each with a link to its official instructions page and to its Rebrickable page; you download the PDF there and attach it with **Upload a PDF**. See [Find the instructions for a set](add-a-box-or-instructions.md#find-the-instructions-for-a-set).
+A PDF is attached to a **set**; a booklet shows the files of the set with its number. **Upload a PDF** takes a set number (or a booklet's number, which names the same set) and a label. **Find instructions** lists the sets that have no PDF. Each row links to the set's official instructions page and to its Rebrickable page. Download the PDF there, then attach it with **Upload a PDF**. See [Find the instructions for a set](add-a-box-or-instructions.md#find-the-instructions-for-a-set).
 
 ## Database
 

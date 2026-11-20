@@ -406,12 +406,12 @@ def test_stale_freshness_and_archives(coll, world):
 
 ROWS = [('Money and prices', [('currencies', 'Display currency and rates'), ('retail-country', 'Country for retail prices')]),
         ('Sets and parts', [('part-list-grouping', 'Group parts by'), ('part-lists', 'Part list for a new set'), ('sync', 'Lost Parts from Rebrickable')]),
-        ('Labels and instructions', [('labels-address', 'Address on printed labels'), ('instruction-downloads', 'Largest instruction download')]),
+        ('Labels', [('labels-address', 'Address on printed labels')]),
         ('Where data comes from for experts', [('pictures', 'Pictures you have'), ('picture-priority', 'Where pictures come from'),
                                                ('source-priority', 'Where set details and prices come from'), ('freshness', 'When data counts as out of date')])]
 
 
-def test_settings_is_four_sections_of_eleven_exclusive_rows_with_their_summaries(client, coll, world):
+def test_settings_is_four_sections_of_ten_exclusive_rows_with_their_summaries(client, coll, world):
     seed(coll)
     soup = BeautifulSoup(client.get('/manage/settings').data, 'html.parser')
     groups = soup.select('.bw-set-groups > .bw-set-group')
@@ -419,7 +419,7 @@ def test_settings_is_four_sections_of_eleven_exclusive_rows_with_their_summaries
     assert [g.get('id') for g in groups[:3]] == ['set-money', 'set-parts', 'set-labels'] and soup.select_one('details#set-sources') and not soup.select_one('details#set-sources').has_attr('open')
     assert not soup.select('#refresh, [data-picture-open], [data-picture-dialog]') and 'Refresh prices' not in soup.get_text()          # the refreshes are on Tools & Admin
     rows = soup.select('details.bw-set')
-    assert len(rows) == 11 and {d['name'] for d in rows} == {'bw-settings'} and not [d for d in rows if d.has_attr('open')]
+    assert len(rows) == 10 and {d['name'] for d in rows} == {'bw-settings'} and not [d for d in rows if d.has_attr('open')]
     assert len(soup.select('form#bw-settings-form')) == 1
     summary = admin_ops.settings_summaries({**admin_ops.tools_read('settings'), 'currency': {'display': 'EUR', 'rates': []}, 'labels_address': ''})
     shown = {d['id']: d.select_one('.bw-set-value').get_text() for d in rows}
@@ -427,7 +427,7 @@ def test_settings_is_four_sections_of_eleven_exclusive_rows_with_their_summaries
     assert shown['part-lists'] == "Rebrickable's list first" and shown['part-list-grouping'] == 'Grouped categories'
     assert re.fullmatch(r'[\d,]+ with a picture · [\d,]+ without', shown['pictures'])
     assert shown['picture-priority'] == 'Rebrickable catalogue, BrickLink, Rebrickable API' and shown['source-priority'] == 'Default order'
-    assert shown['freshness'] == summary['freshness'] and shown['instruction-downloads'] == 'Up to 500 MB per file'
+    assert shown['freshness'] == summary['freshness']
     assert shown['sync'] == 'Rebrickable wins per part'
     assert [i['value'] for i in soup.select('#sync input[name=rebrickable_lost_parts_rule]')] == ['add_only', 'per_part', 'per_set', 'everything']
     assert soup.select_one('#sync input[checked]')['value'] == 'per_part' and soup.select_one('#sync input')['form'] == 'bw-settings-form'
@@ -447,7 +447,7 @@ def test_settings_summaries_from_the_data():
     assert summary['currencies'] == 'USD · 3 rates, ECB 14 Nov' and summary['retail-country'] == 'US'
     assert summary['part-lists'] == "BrickLink's list preferred" and summary['part-list-grouping'] == 'No grouping' and summary['labels-address'] == 'https://bricks.example'
     assert summary['pictures'] == '4,812 with a picture · 12 without' and summary['picture-priority'] == 'BrickLink, Rebrickable API'
-    assert summary['source-priority'] == 'Default order' and summary['instruction-downloads'] == 'Up to 40 MB per file'
+    assert summary['source-priority'] == 'Default order'
     assert summary['freshness'] == 'Prices 1 to 30 days · set details 365 days'
     data['priority'] = {**data['priority'], 'metadata': {'set': ['bricklink'], 'part': ['brickset']}, 'market_price': {'*': ['brickset']}}
     assert admin_ops.settings_summaries(data)['source-priority'] == 'Changed for 3 kinds'
@@ -462,7 +462,7 @@ def test_settings_rows_keep_the_ids_links_point_to(client, coll, world):
     soup = BeautifulSoup(client.get('/manage/settings').data, 'html.parser')
     for anchor, row in {'currencies': 'currencies', 'labels-address': 'labels-address', 'pictures': 'pictures', 'part-lists': 'part-lists',
                         'part-list-grouping': 'part-list-grouping', 'edit-grouping': 'part-list-grouping', 'picture-priority': 'picture-priority',
-                        'freshness': 'freshness', 'sync': 'sync', 'retail-country': 'retail-country', 'instruction-downloads': 'instruction-downloads',
+                        'freshness': 'freshness', 'sync': 'sync', 'retail-country': 'retail-country',
                         'source-priority': 'source-priority'}.items():
         assert soup.select_one('details.bw-set#' + row).select_one('#' + anchor) or anchor == row
     for anchor in ('currencies', 'labels-address', 'pictures', 'part-lists', 'part-list-grouping', 'edit-grouping', 'picture-priority', 'freshness', 'sync',
@@ -480,7 +480,7 @@ def test_settings_big_form_saves_from_a_row_and_opens_that_row_again(client, col
     assert form and not form.select('select, [name=retail_country]')              # the rows own the fields, the form is the target
     owned = [f for f in soup.select('[form=bw-settings-form]') if not f.find_parent('form')]
     names = {f.get('name') for f in owned}
-    assert {'retail_country', 'part_list_grouping', 'official_download_limit_mb', 'priority:pictures:part', 'priority:pictures:*', 'priority:metadata:set', 'freshness', 'days:1', 'edit_grouping'} <= names
+    assert {'retail_country', 'part_list_grouping', 'priority:pictures:part', 'priority:pictures:*', 'priority:metadata:set', 'freshness', 'days:1', 'edit_grouping'} <= names
     assert not soup.select('form form') and all(b.get('form') == 'bw-settings-form' for b in soup.select('details.bw-set > .bw-set-body button') if b.get_text() == 'Save settings')
     assert len(soup.select('button[form=bw-settings-form]')) >= 6
     data = {'csrf_token': form.select_one('[name=csrf_token]')['value'], 'row': 'retail-country'}
@@ -521,7 +521,7 @@ def test_settings_read_only_shows_the_rows_without_forms(app4, client, coll, wor
     app4.config['BW_READ_ONLY'] = True
     try:
         soup = BeautifulSoup(client.get('/manage/settings').data, 'html.parser')
-        assert len(soup.select('details.bw-set')) == 11 and soup.select_one('#currencies .bw-set-value').get_text()
+        assert len(soup.select('details.bw-set')) == 10 and soup.select_one('#currencies .bw-set-value').get_text()
         assert not soup.select('form#bw-settings-form') and not soup.select('button[form=bw-settings-form]')
         assert [f['class'] for f in soup.select('details.bw-set form')] == [['bwc-switch-form']]              # the part-list switch, as before, with its controls disabled
         assert all(c.has_attr('disabled') for c in soup.select('details.bw-set form button, details.bw-set form input[type=checkbox]'))

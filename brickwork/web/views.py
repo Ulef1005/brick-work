@@ -166,7 +166,7 @@ def identity_undo_offer(text):
     return identifier if found else None
 
 
-SETTINGS_ROWS = ('retail-country', 'part-list-grouping', 'part-lists', 'pictures', 'picture-priority', 'source-priority', 'freshness', 'instruction-downloads', 'sync')
+SETTINGS_ROWS = ('retail-country', 'part-list-grouping', 'part-lists', 'pictures', 'picture-priority', 'source-priority', 'freshness', 'sync')
 
 
 def settings_undo_offer(db, text):
@@ -2841,9 +2841,17 @@ def bw_instruction_find():
         region = instructions.usable_region(db, request.args.get('region') or None)
         missing = instructions.sets_without_booklet(db, region)
     looked_up, problem = None, None
-    if number:
+    item = request.args.get('item', '').strip()
+    if item.isdecimal() and not number:   # the Instructions & Box tab of a set or booklet links here with ?item=<id>: look that set up
         try:
-            looked_up = dict(number=number, links=instruction_links(number, region))
+            with _add_database(read_only=True) as db:
+                number = instructions.links_for(db, int(item), region)['set_no']
+        except ValueError as error:
+            problem = str(error)
+    if number:
+        full = number if re.search(r'-[0-9]+$', number) else number + '-1'   # the upload form takes the Rebrickable number, which carries the suffix
+        try:
+            looked_up = dict(number=full, links=instruction_links(number, region))
         except ValueError as error:
             problem = str(error)
     return render_template('web/toni/web/bw_instruction_find.html', can_edit=bw_collection_editable(), region=region,

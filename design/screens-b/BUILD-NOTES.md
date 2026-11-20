@@ -176,3 +176,20 @@ Every frame above also exists in dark (`dark-<width>`); the dark values and the 
 `../sources/b/b_frames.py` exports the frames' CSS as plain string literals, read by ast: `B_RESETS` (the frame page only) and `B_COMPONENTS`, a tuple of the round 2, round 3 and round 6 rules in cascade order, from which the app writes `static/brickwork/b-prime.css` scoped under `.bp`. `.bp` sets the base font (400 15px/1.45 var(--tw-font)) and colour itself, since they sit in the frame's `html,body` reset. Fields, picture tiles and their alt text use `--tw-field`, `--tw-tile` and `--tw-tile-ink`, now in TOKENS. The only dark swaps left in `SWAPS` are the three rgba values with no token: the sheet's shadow, the scrim and the hatched tag's tint. The split changed no pixel, light or dark.
 
 W-Q6 (#526 round, approved 19.11.): a part tile's (`.ptile`) number in dark is `--tw-tile-ink`, #4A524F on the #E4E6E2 tile, 6.4:1. Before, it was the muted text colour at 2.08:1. Light is unchanged, because the light tile ink is the muted text colour. It changed the dark frames 14, 15 and 16.
+
+## Commission N round 2, early landing for U (#489, #551)
+
+Two frames of N round 2 land on main ahead of the rest of commission N, because #489 (the completeness bar of a pulled copy, with its "Checked on Rebrickable" label) is built in U for v1.2. Approved by Ulf on 2026-11-20 ("version 8 approved", [review artifact](https://claude.ai/artifact/1sWRRsfiYxkEgHXxKxrsUn) version 8). The other round 2 frames, the sources that build them (`sources/n/n_frames.py`, `n2_frames.py`, which need round 1's changed `b_frames.py`) and their notes stay on `design/sync-n` (draft PR #528) until N's build. Frame `48` is built on the approved Sets frame (`04`) and frame `44` on the approved Set detail frame (`12`); everything not named below is as in those frames.
+
+### N2-20 Set detail, the source of a copy (`44-source-chip`, #551, #489)
+
+- **Drawn:** Added via is one fixed value that never changes, shown as a chip (Added via Rebrickable sync, BrickLink file, By hand, Before this release); Last synced from is a separate line with the site, the list names and the date ("Last synced from Rebrickable: Main collection, 18 Nov, 21:40"). The copy states how it was checked: "Checked on Rebrickable" in the header and the Info card.
+- **Changed from the first form (`39`):** no list tag under the name; the Info card reads "Tags: Not recorded" again, since a list name is source detail, not a tag.
+- **Open (product):** whether a row can have more than one "last synced from" (a set in two lists, or from two sites).
+- **SUCCESS:** Say: where this copy came from, when it last met a site and who checked it. Unify: the chip is a tag as everywhere in B′.
+
+### N2-24 Sets, the label of a pulled copy (`48-sets-pulled-copy`, #489)
+
+- **Drawn:** a pulled copy shows as checked by Rebrickable: its Lost Parts are the missing parts on the bar, a pulled copy without Lost Parts shows as complete, and a line under the bar names the source, "Checked on Rebrickable". A copy Brick Work checked itself has no label. 8043-1 is pulled without Lost Parts (complete), 21028-1 with 9; the header counts follow (4 of 7 incomplete, none unchecked, 2 complete). Place: under the bar on the Sets tile and as the parts-check tag on Set detail (N2-20).
+- **Separate:** the label is the origin of the check, not the origin of the copy (the Added via chip) and not the status filter of #489.
+- **SUCCESS:** Say: who checked this copy. Check: no label on copies Brick Work checked itself.

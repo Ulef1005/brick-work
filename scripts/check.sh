@@ -177,6 +177,7 @@ else
     step brand "$python" scripts/brand_assets.py check
     step b-prime "$python" scripts/b_prime_css.py check
     step legacy-guard "$python" scripts/legacy_guard.py check
+    step design-gate-count "$python" scripts/frame_check.py --count   # the count only; the render stays by hand (B11)
     step screens "$python" scripts/design_screens.py check
   fi
   # The standalone smoke test (tests/test_standalone_smoke.py) runs inside this step; it has no step of its own, which would only run it twice

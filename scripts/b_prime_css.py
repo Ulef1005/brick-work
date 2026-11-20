@@ -44,6 +44,24 @@ def literals(path: Path = SOURCE) -> dict:
     return found
 
 
+PSUB_MEASURED = 40   # the phone sub row has no height of its own (padding, a 13 px label, a 3 px underline): measured in the pinned Chrome 157 on frame 01, 390 wide
+
+
+def shell_heights(path: Path = SOURCE) -> dict:
+    """The shell's heights in CSS px, read from the frames' own rules (`.top`, `.sub`, `.ptop`, `.tabbar`), for the app-vs-frame band
+    (scripts/frame_check.py) and for the offsets the unrebuilt pages use. The phone sub row is the measured constant above."""
+    css = literals(path)['B_COMPONENTS']
+    css = css if isinstance(css, str) else ''.join(css)
+    found = {}
+    for key, selector in (('top', '.top'), ('sub', '.sub'), ('ptop', '.ptop'), ('tabbar', '.tabbar')):
+        m = re.search(r'(?<![\w.-])' + re.escape(selector) + r'\{(?:[^}]*;)?height:(\d+)px', css)
+        if not m:
+            raise SystemExit(f'B-PRIME: no height on {selector} in {rel(path)}')
+        found[key] = int(m.group(1))
+    found['psub'] = PSUB_MEASURED
+    return found
+
+
 def rel(path: Path) -> str:
     try:
         return str(path.relative_to(ROOT))

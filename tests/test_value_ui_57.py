@@ -332,7 +332,7 @@ def test_the_print_view_is_a_light_a4_document_that_prints_itself(coll, client):
     response = client.get('/manage/insurance-report?print=1')
     page = BeautifulSoup(response.data, 'html.parser')
     assert page.html['class'] == ['tw-light'] and page.body.has_attr('data-rp-auto') and page.select_one('script[src*=bw-report-print]')
-    assert not page.select_one('.header, .rail') and words(page.select_one('.rp-title')) == 'Insurance report'
+    assert not page.select_one('.bp-shell, .layout > .rail') and words(page.select_one('.rp-title')) == 'Insurance report'
     assert {words(d) for d in page.select('.rp-facts dt')} == {'Generated', 'Copies', 'Total paid', 'Total worth'}
     assert [words(th) for th in page.select('.rp-table thead th')][:3] == ['Set', 'Name', 'Year']
     style = page.select_one('style').get_text()

@@ -81,11 +81,12 @@ def test_the_set_page_shows_the_panel_alone_with_a_way_back(client, world):
     assert client.get(f'{PATH}/987654').status_code == 404
 
 
-def test_the_rail_has_build_scout_beside_matchmaker(client, world):
+def test_the_workbench_row_has_build_scout_beside_matchmaker(client, world):
     page = soup(client)
-    rail = [a.get('title') for a in page.select('aside.rail nav a')]
-    assert rail.index('Build Scout') == rail.index('Matchmaker') + 1
-    assert page.select_one('aside.rail a[aria-current="page"], aside.rail a.active') is not None
+    for row in ('nav.sub', 'nav.psub'):
+        entries = [a.get_text(strip=True) for a in page.select(f'{row} a')]
+        assert entries.index('Build Scout') == entries.index('Matchmaker') + 1
+        assert page.select_one(f'{row} a[aria-current="page"]').get_text(strip=True) == 'Build Scout'
 
 
 def test_the_jump_search_finds_build_scout(client, world):

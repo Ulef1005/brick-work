@@ -335,7 +335,7 @@ def test_detail_navigation_and_identity(coll, client, kind):
     assert back.span.get_text() == parent
     assert back.select_one('svg path')['d'] == 'M15 6l-6 6 6 6'
     assert back['href'] == '/collection/' + letter
-    assert soup.select_one('.header .shell-add .icon')
+    assert soup.select_one('.bp-shell .shell-add svg')
     hero = soup.select_one('.bc-detail-hero')
     assert not hero.select('[data-bw-open=bc-edit], [data-bw-open=bc-delete]')
     if kind == 'set':
@@ -838,7 +838,7 @@ def test_collection_style_contract():
 
     def rule(selector):
         return re.search(re.escape(selector) + r'\s*\{([^}]+)', text).group(1)
-    assert 'display:none' in rule('body:has(#bw-collection[data-bc-collection-list]) .shell-add')
+    assert '.shell-add' not in text      # the frames keep Add in the top bar on every page (#492)
     assert '.bc-heading>.button { display:none' not in text
     assert 'width:89px' in rule('#bw-collection .bc-heading>.button')
     assert 'var(--tw-accent-soft)' in rule('#bw-collection .bc-view-switch button[aria-pressed=true]')
@@ -869,8 +869,7 @@ def test_price_css_contract():
 
 def test_navigation_css_contract():
     text = css()
-    shell = Path('static/web/toni/shell.css').read_text()
-    assert '.header .shell-add { width:44px;min-height:44px;background:transparent;border-color:transparent;color:var(--tw-accent-text)' in shell
+    shell = Path('static/web/toni/shell.css').read_text().replace(':where(:not(.b-prime,.b-prime *))', '')
     assert '.bc-detail-back { display:flex;align-items:center;gap:2px;min-height:44px;text-decoration:none' in text
     assert 'body:has(.bc-detail-hero) .layout>main { padding-top:0' in text
     # Beat the earlier body:has(#bw-collection) selector (one ID), not just source order.
@@ -906,7 +905,7 @@ def test_consists_css_contract():
 
 
 def test_disclosure_marker_has_standalone_shape_and_open_rotation():
-    remaining = Path('static/web/toni/remaining.css').read_text()
+    remaining = Path('static/web/toni/remaining.css').read_text().replace(':where(:not(.b-prime,.b-prime *))', '')
     selector = 'html[data-web-ui="toni"] details.kit-disclosure'
     closed = re.search(re.escape(selector + '>summary::before') + r'\{([^}]+)\}', remaining)[1]
     opened = re.search(re.escape(selector + '[open]>summary::before') + r'\{([^}]+)\}', remaining)[1]

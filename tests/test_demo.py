@@ -81,7 +81,7 @@ def test_pages_point_inside_the_demo(site):
         assert not re.search(r'(?:href|src|action)="/(?!brick-work/demo/)', text), path
         assert 'rel="manifest"' not in text
     sets = (out / 'collection/sets/index.html').read_text()
-    assert f'href="{BASE}workbench/check-parts/"' in sets and 'href="#demo-not-included"' in sets
+    assert f'href="{BASE}workbench/part-to-inventory/"' in sets and 'href="#demo-not-included"' in sets
     assert export.check(out) == []
 
 

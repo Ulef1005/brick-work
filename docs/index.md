@@ -70,7 +70,7 @@ An assistant that should know Brick Work can read [llms.txt](https://brick-work.
 
 ## Navigation
 
-The sidebar, Tools lists and phone navigation share four groups: Collection, Workbench, Planning and Manage.
+The top bar, the row of entries under it and the phone's tab bar share four groups: Collection, Workbench, Planning and Manage. Pick a group to see its entries in the row under the bar; on a phone the groups are the tab bar at the foot. The light, dark or automatic setting is the page **Manage › Appearance**.
 
 Open **Workbench > Lot Sorter** to browse parts grouped by lot. Open a lot for **Which sets are in this lot?**, then its pull list.
 

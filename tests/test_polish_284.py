@@ -1,4 +1,4 @@
-"""#284: Build Scout has its own icon in the rail and the phone strip, and the "No image" text fits a small thumbnail tile."""
+"""#284: Build Scout has its own icon, and the "No image" text fits a small thumbnail tile."""
 import json
 from pathlib import Path
 import re
@@ -37,21 +37,17 @@ def test_the_scout_icon_differs_from_sets_and_search():
     assert (ROOT / 'static/brickwork/icons-ui/scout.svg').read_bytes() != (ROOT / 'static/brickwork/icons-ui/search.svg').read_bytes()
 
 
-def test_build_scout_uses_its_own_icon_in_the_rail_and_the_phone_strip(client, world):
-    soup = BeautifulSoup(client.get('/sets').data, 'html.parser')
-    scout = icon_paths('scout')
-    for selector in ('.rail', '.group-items'):
-        link = soup.select_one(f'{selector} a[href$="/workbench/build-scout"]') or next(
-            (a for a in soup.select(f'{selector} a') if a.get('title') == 'Build Scout'), None)
-        assert link is not None, selector
-        shape = [e.get('d') or e.get('x') or e.get('cx') for e in link.select('svg path, svg rect, svg circle')]
-        assert shape == scout, selector
-    sets = next(a for a in soup.select('.rail a') if a.get('title') == 'Sets')
-    assert [e.get('d') or e.get('x') or e.get('cx') for e in sets.select('svg path, svg rect, svg circle')] == icon_paths('sets')
+def test_build_scout_keeps_its_own_icon_name(app4, client, world):
+    """The shell draws no icon beside an entry since #492, but the entries still name theirs (the icons stay for the pages that draw them)."""
+    with app4.test_request_context('/sets'):
+        from brickwork.web.ui import navigation
+        icons = {link['title']: link['icon'] for _, links in navigation() for link in links}
+    assert icons['Build Scout'] == 'scout' and icons['Sets'] == 'sets'
+    assert icon_paths(icons['Build Scout']) and icon_paths(icons['Build Scout']) != icon_paths(icons['Sets'])
 
 
 def test_the_small_tile_rule_is_shared_in_the_global_stylesheet():
-    shell = (ROOT / 'static/web/toni/shell.css').read_text()
+    shell = (ROOT / 'static/web/toni/shell.css').read_text().replace(':where(:not(.b-prime,.b-prime *))', '')
     assert '.bc-picture,.bw-picture,.check-picture,.scan-tile { container-type:inline-size; }' in shell
     assert '@container (max-width:80px)' in shell
 

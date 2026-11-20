@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **The new navigation: four groups on top, and the sidebar is gone** (#492). The top bar now carries the logo, the four groups (Collection, Workbench, Planning and Manage), Jump and Add, and the row under it lists the entries of the group you are in. On a phone the groups are the tab bar at the foot and the same row sits under the logo. The sidebar and the group sheets are gone; every page keeps its address. The light, dark or automatic setting moved to **Manage › Appearance**, and the counts that stood beside the entries are on the pages themselves.
+
 - **The new look begins: colours and type** (#492). Brick Work takes the colours of its new design, B′: violet for what you act on and what is found, ink and a pale grey ground for the rest, and a dark mode of its own. Text is set in IBM Plex Sans and IBM Plex Mono, which the app serves itself. The focus ring is ink, buttons on violet have white text, and the app's install colour is the app bar's. The layout of each screen stays as it is until its screen is rebuilt in this release.
 
 - **The MCP Registry entry has the right name** (#536). The registry's namespace is case-sensitive, so `server.json` and the image label now say `io.github.Ulef1005/brick-work`, as the GitHub login is spelled. The image name on ghcr.io stays lowercase.

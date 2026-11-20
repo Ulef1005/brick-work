@@ -1,68 +1,68 @@
 /* Phase 11.7d. Tokens are the vendored authoritative toni-design tokens.css.
    Native disclosure reset applies to all toni pages, including retained 11.7b/c. */
-details{margin:0;border:0;border-radius:0;padding:0;background:none}
-summary{list-style:none;margin:0;padding:0;border:0;border-radius:0;background:none;min-height:var(--tw-hit)}
-summary::marker{content:''}summary::-webkit-details-marker{display:none}
-html[data-web-ui="toni"] details.kit-disclosure{margin:0;padding:0;border:0;border-radius:0;background:none}
-html[data-web-ui="toni"] details.kit-disclosure>summary{position:static;justify-content:flex-start;align-items:baseline;min-height:var(--tw-hit);margin:0;padding:var(--tw-s-3) 0;border:0;border-bottom:0.5px solid var(--tw-divider);background:none;gap:var(--tw-s-2)}
-html[data-web-ui="toni"] details.kit-disclosure>summary::after{content:none}
-html[data-web-ui="toni"] details.kit-disclosure>summary::before{content:'';display:inline-block;width:16px;height:16px;flex:none;align-self:center;background:currentColor;-webkit-mask:url('icons/chevron-right.svg') center/contain no-repeat;mask:url('icons/chevron-right.svg') center/contain no-repeat;transform:rotate(0deg);transition:transform var(--tw-dur-fast) var(--tw-ease)}
-html[data-web-ui="toni"] details.kit-disclosure[open]>summary::before{transform:rotate(90deg)}
-html[data-web-ui="toni"] details.kit-disclosure>:not(summary){margin:0;padding:var(--tw-s-3) 0;border:0}
-.remaining-section{margin-block:var(--tw-s-4);padding-block:var(--tw-s-3);border-top:0.5px solid var(--tw-divider);min-width:0;scroll-margin-top:64px}
-.remaining-section h3{margin-block:0 var(--tw-s-2)}
-.related-row{display:flex;align-items:center;justify-content:space-between;gap:var(--tw-s-3);min-height:var(--tw-hit);padding-block:var(--tw-s-2);border-bottom:0.5px solid var(--tw-divider);text-decoration:none;color:var(--tw-text)}
-.related-row>span{min-width:0;overflow-wrap:anywhere}.related-row small{display:block;color:var(--tw-text-2)}
-.collection-control{display:inline-flex;align-items:center;flex-wrap:wrap;gap:var(--tw-s-2)}
-.remaining-sheet{padding:0;max-height:calc(100dvh - 32px);width:min(640px,calc(100vw - 32px));overflow:hidden}
-.remaining-sheet[open]{display:flex;flex-direction:column}
-.sheet-heading,.sheet-footer{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--tw-s-2);padding:var(--tw-s-3) var(--tw-s-4);flex:none;background:var(--tw-sheet-bg)}
-.sheet-heading h2{margin:0}.sheet-body{overflow:auto;min-height:0;padding:var(--tw-s-4)}
-.sheet-body .toolbar{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--tw-s-3)}
-.sheet-body .toolbar>div,.sheet-body select,.sheet-body input{min-width:0;width:100%}.sheet-body .toolbar>div>div{display:flex;flex-wrap:wrap;gap:var(--tw-s-2)}
-.sheet-body label{flex-basis:100%}.sheet-body .filter-toggle{width:auto}
-.remainder-trigger{width:100%;justify-content:flex-start;border:0;border-bottom:0.5px solid var(--tw-divider);background:none;border-radius:0}
-.remaining-menu{position:relative}.remaining-menu>button{min-height:var(--tw-hit);min-width:var(--tw-hit)}
-.remaining-menu [data-reveal-panel]{background:var(--tw-sheet-bg);padding:var(--tw-s-3);border:0.5px solid var(--tw-divider-strong)}
-img{object-fit:contain;pointer-events:auto}
-#quickAddPartImage{width:64px;height:64px;max-width:64px}
-.remaining-section pre{white-space:pre-wrap;overflow-wrap:anywhere;max-width:100%}
+details:where(:not(.b-prime,.b-prime *)){margin:0;border:0;border-radius:0;padding:0;background:none}
+summary:where(:not(.b-prime,.b-prime *)){list-style:none;margin:0;padding:0;border:0;border-radius:0;background:none;min-height:var(--tw-hit)}
+summary:where(:not(.b-prime,.b-prime *))::marker{content:''}summary:where(:not(.b-prime,.b-prime *))::-webkit-details-marker{display:none}
+html[data-web-ui="toni"] details.kit-disclosure:where(:not(.b-prime,.b-prime *)){margin:0;padding:0;border:0;border-radius:0;background:none}
+html[data-web-ui="toni"] details.kit-disclosure>summary:where(:not(.b-prime,.b-prime *)){position:static;justify-content:flex-start;align-items:baseline;min-height:var(--tw-hit);margin:0;padding:var(--tw-s-3) 0;border:0;border-bottom:0.5px solid var(--tw-divider);background:none;gap:var(--tw-s-2)}
+html[data-web-ui="toni"] details.kit-disclosure>summary:where(:not(.b-prime,.b-prime *))::after{content:none}
+html[data-web-ui="toni"] details.kit-disclosure>summary:where(:not(.b-prime,.b-prime *))::before{content:'';display:inline-block;width:16px;height:16px;flex:none;align-self:center;background:currentColor;-webkit-mask:url('icons/chevron-right.svg') center/contain no-repeat;mask:url('icons/chevron-right.svg') center/contain no-repeat;transform:rotate(0deg);transition:transform var(--tw-dur-fast) var(--tw-ease)}
+html[data-web-ui="toni"] details.kit-disclosure[open]>summary:where(:not(.b-prime,.b-prime *))::before{transform:rotate(90deg)}
+html[data-web-ui="toni"] details.kit-disclosure>:not(summary):where(:not(.b-prime,.b-prime *)){margin:0;padding:var(--tw-s-3) 0;border:0}
+.remaining-section:where(:not(.b-prime,.b-prime *)){margin-block:var(--tw-s-4);padding-block:var(--tw-s-3);border-top:0.5px solid var(--tw-divider);min-width:0;scroll-margin-top:64px}
+.remaining-section h3:where(:not(.b-prime,.b-prime *)){margin-block:0 var(--tw-s-2)}
+.related-row:where(:not(.b-prime,.b-prime *)){display:flex;align-items:center;justify-content:space-between;gap:var(--tw-s-3);min-height:var(--tw-hit);padding-block:var(--tw-s-2);border-bottom:0.5px solid var(--tw-divider);text-decoration:none;color:var(--tw-text)}
+.related-row>span:where(:not(.b-prime,.b-prime *)){min-width:0;overflow-wrap:anywhere}.related-row small:where(:not(.b-prime,.b-prime *)){display:block;color:var(--tw-text-2)}
+.collection-control:where(:not(.b-prime,.b-prime *)){display:inline-flex;align-items:center;flex-wrap:wrap;gap:var(--tw-s-2)}
+.remaining-sheet:where(:not(.b-prime,.b-prime *)){padding:0;max-height:calc(100dvh - 32px);width:min(640px,calc(100vw - 32px));overflow:hidden}
+.remaining-sheet[open]:where(:not(.b-prime,.b-prime *)){display:flex;flex-direction:column}
+.sheet-heading:where(:not(.b-prime,.b-prime *)),.sheet-footer:where(:not(.b-prime,.b-prime *)){display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--tw-s-2);padding:var(--tw-s-3) var(--tw-s-4);flex:none;background:var(--tw-sheet-bg)}
+.sheet-heading h2:where(:not(.b-prime,.b-prime *)){margin:0}.sheet-body:where(:not(.b-prime,.b-prime *)){overflow:auto;min-height:0;padding:var(--tw-s-4)}
+.sheet-body .toolbar:where(:not(.b-prime,.b-prime *)){display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--tw-s-3)}
+.sheet-body .toolbar>div:where(:not(.b-prime,.b-prime *)),.sheet-body select:where(:not(.b-prime,.b-prime *)),.sheet-body input:where(:not(.b-prime,.b-prime *)){min-width:0;width:100%}.sheet-body .toolbar>div>div:where(:not(.b-prime,.b-prime *)){display:flex;flex-wrap:wrap;gap:var(--tw-s-2)}
+.sheet-body label:where(:not(.b-prime,.b-prime *)){flex-basis:100%}.sheet-body .filter-toggle:where(:not(.b-prime,.b-prime *)){width:auto}
+.remainder-trigger:where(:not(.b-prime,.b-prime *)){width:100%;justify-content:flex-start;border:0;border-bottom:0.5px solid var(--tw-divider);background:none;border-radius:0}
+.remaining-menu:where(:not(.b-prime,.b-prime *)){position:relative}.remaining-menu>button:where(:not(.b-prime,.b-prime *)){min-height:var(--tw-hit);min-width:var(--tw-hit)}
+.remaining-menu [data-reveal-panel]:where(:not(.b-prime,.b-prime *)){background:var(--tw-sheet-bg);padding:var(--tw-s-3);border:0.5px solid var(--tw-divider-strong)}
+img:where(:not(.b-prime,.b-prime *)){object-fit:contain;pointer-events:auto}
+#quickAddPartImage:where(:not(.b-prime,.b-prime *)){width:64px;height:64px;max-width:64px}
+.remaining-section pre:where(:not(.b-prime,.b-prime *)){white-space:pre-wrap;overflow-wrap:anywhere;max-width:100%}
 @media(max-width:767px){
- .remaining-sheet{margin:auto 0 0;width:100%;max-width:100%;max-height:calc(100dvh - env(safe-area-inset-top) - 16px);border-radius:var(--tw-r-3) var(--tw-r-3) 0 0}
- .sheet-footer{padding-bottom:calc(var(--tw-s-3) + env(safe-area-inset-bottom))}.sheet-body .toolbar{grid-template-columns:minmax(0,1fr)}
- .remaining-section .grid{grid-template-columns:minmax(0,1fr)}
- /* Legacy constituents/lot tables become normal-flow compact records on phone. */
- .remaining-section .table-region{overflow:visible;border:0}.remaining-section table.inventory{min-width:0;display:block;width:100%}
- .remaining-section table.inventory thead{display:none}.remaining-section table.inventory tbody{display:block}
- .remaining-section table.inventory tr{display:grid;grid-template-columns:64px minmax(0,1fr);gap:var(--tw-s-2);padding:var(--tw-s-3) 0;border-bottom:0.5px solid var(--tw-divider)}
- .remaining-section table.inventory td{display:flex;align-items:center;flex-wrap:wrap;gap:var(--tw-s-2);border:0;padding:0;min-width:0;height:auto;min-height:var(--tw-hit);overflow-wrap:anywhere}
- .remaining-section table.inventory td:first-child{grid-row:span 2}.remaining-section table.inventory td:not(:first-child){grid-column:2}
- .remaining-section table.inventory td[data-col]::before{content:attr(data-col);color:var(--tw-text-2);text-transform:capitalize}
- .remaining-section table.inventory td input{max-width:100%;min-width:0}
+ .remaining-sheet:where(:not(.b-prime,.b-prime *)){margin:auto 0 0;width:100%;max-width:100%;max-height:calc(100dvh - env(safe-area-inset-top) - 16px);border-radius:var(--tw-r-3) var(--tw-r-3) 0 0}
+ .sheet-footer:where(:not(.b-prime,.b-prime *)){padding-bottom:calc(var(--tw-s-3) + env(safe-area-inset-bottom))}.sheet-body .toolbar:where(:not(.b-prime,.b-prime *)){grid-template-columns:minmax(0,1fr)}
+ .remaining-section .grid:where(:not(.b-prime,.b-prime *)){grid-template-columns:minmax(0,1fr)}/* Legacy constituents/lot tables become normal-flow compact records on phone. */
+ 
+ .remaining-section .table-region:where(:not(.b-prime,.b-prime *)){overflow:visible;border:0}.remaining-section table.inventory:where(:not(.b-prime,.b-prime *)){min-width:0;display:block;width:100%}
+ .remaining-section table.inventory thead:where(:not(.b-prime,.b-prime *)){display:none}.remaining-section table.inventory tbody:where(:not(.b-prime,.b-prime *)){display:block}
+ .remaining-section table.inventory tr:where(:not(.b-prime,.b-prime *)){display:grid;grid-template-columns:64px minmax(0,1fr);gap:var(--tw-s-2);padding:var(--tw-s-3) 0;border-bottom:0.5px solid var(--tw-divider)}
+ .remaining-section table.inventory td:where(:not(.b-prime,.b-prime *)){display:flex;align-items:center;flex-wrap:wrap;gap:var(--tw-s-2);border:0;padding:0;min-width:0;height:auto;min-height:var(--tw-hit);overflow-wrap:anywhere}
+ .remaining-section table.inventory td:first-child:where(:not(.b-prime,.b-prime *)){grid-row:span 2}.remaining-section table.inventory td:not(:first-child):where(:not(.b-prime,.b-prime *)){grid-column:2}
+ .remaining-section table.inventory td[data-col]:where(:not(.b-prime,.b-prime *))::before{content:attr(data-col);color:var(--tw-text-2);text-transform:capitalize}
+ .remaining-section table.inventory td input:where(:not(.b-prime,.b-prime *)){max-width:100%;min-width:0}
 }
-@media(prefers-reduced-motion:reduce){html[data-web-ui="toni"] details.kit-disclosure>summary::before{transition:none}}
-.capture-modes{border:0;border-top:0.5px solid var(--tw-divider);padding:var(--tw-s-3) 0;min-width:0}
-.capture-modes .check{min-height:var(--tw-hit);padding:var(--tw-s-2);border:0.5px solid var(--tw-divider);border-radius:var(--tw-r-2)}
-.lot-previews{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--tw-s-2)}
-.lot-previews>div{min-width:0}.lot-preview-image{width:100%;height:72px;object-fit:contain;pointer-events:auto}
-.remaining-section table.inventory td[data-col=name]::before{content:none}
+@media(prefers-reduced-motion:reduce){html[data-web-ui="toni"] details.kit-disclosure>summary:where(:not(.b-prime,.b-prime *))::before{transition:none}}
+.capture-modes:where(:not(.b-prime,.b-prime *)){border:0;border-top:0.5px solid var(--tw-divider);padding:var(--tw-s-3) 0;min-width:0}
+.capture-modes .check:where(:not(.b-prime,.b-prime *)){min-height:var(--tw-hit);padding:var(--tw-s-2);border:0.5px solid var(--tw-divider);border-radius:var(--tw-r-2)}
+.lot-previews:where(:not(.b-prime,.b-prime *)){display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--tw-s-2)}
+.lot-previews>div:where(:not(.b-prime,.b-prime *)){min-width:0}.lot-preview-image:where(:not(.b-prime,.b-prime *)){width:100%;height:72px;object-fit:contain;pointer-events:auto}
+.remaining-section table.inventory td[data-col=name]:where(:not(.b-prime,.b-prime *))::before{content:none}
 @media(max-width:767px){
- section[data-collection=maintenance] .table-region:has(#instructions){overflow:visible;border:0}
- #instructions{display:block;min-width:0}#instructions thead{display:none}#instructions tbody{display:block}
- #instructions tr{display:grid;grid-template-columns:minmax(0,1fr);padding:var(--tw-s-3) 0;border-bottom:0.5px solid var(--tw-divider)}
- #instructions td{height:auto;min-height:var(--tw-hit);min-width:0;border:0;padding:var(--tw-s-2) 0;overflow-wrap:anywhere}
- #instructions td .collection-image{width:64px;height:64px}
- .remaining-section .input-group{display:flex;flex-wrap:wrap;min-width:0;gap:var(--tw-s-2)}
- .remaining-section .input-group input,.remaining-section .input-group select{min-width:0;max-width:100%;flex:1 1 100%}
+ section[data-collection=maintenance] .table-region:has(#instructions):where(:not(.b-prime,.b-prime *)){overflow:visible;border:0}
+ #instructions:where(:not(.b-prime,.b-prime *)){display:block;min-width:0}#instructions thead:where(:not(.b-prime,.b-prime *)){display:none}#instructions tbody:where(:not(.b-prime,.b-prime *)){display:block}
+ #instructions tr:where(:not(.b-prime,.b-prime *)){display:grid;grid-template-columns:minmax(0,1fr);padding:var(--tw-s-3) 0;border-bottom:0.5px solid var(--tw-divider)}
+ #instructions td:where(:not(.b-prime,.b-prime *)){height:auto;min-height:var(--tw-hit);min-width:0;border:0;padding:var(--tw-s-2) 0;overflow-wrap:anywhere}
+ #instructions td .collection-image:where(:not(.b-prime,.b-prime *)){width:64px;height:64px}
+ .remaining-section .input-group:where(:not(.b-prime,.b-prime *)){display:flex;flex-wrap:wrap;min-width:0;gap:var(--tw-s-2)}
+ .remaining-section .input-group input:where(:not(.b-prime,.b-prime *)),.remaining-section .input-group select:where(:not(.b-prime,.b-prime *)){min-width:0;max-width:100%;flex:1 1 100%}
 }
 @media(max-width:767px){
- :is([data-collection=parts],[data-collection=minifigures],[data-collection=problems])>.table-region{overflow:visible;border:0}
- :is([data-collection=parts],[data-collection=minifigures],[data-collection=problems]) table{display:block;min-width:0;width:100%}
- :is([data-collection=parts],[data-collection=minifigures],[data-collection=problems]) thead{display:none}
- :is([data-collection=parts],[data-collection=minifigures],[data-collection=problems]) tbody{display:block}
- :is([data-collection=parts],[data-collection=minifigures],[data-collection=problems]) tr{display:grid;grid-template-columns:64px minmax(0,1fr);gap:var(--tw-s-2);border-bottom:0.5px solid var(--tw-divider);padding:var(--tw-s-3) 0}
- :is([data-collection=parts],[data-collection=minifigures],[data-collection=problems]) td{display:flex;align-items:center;flex-wrap:wrap;gap:var(--tw-s-2);height:auto;min-height:var(--tw-hit);padding:0;border:0;min-width:0;overflow-wrap:anywhere}
- :is([data-collection=parts],[data-collection=minifigures],[data-collection=problems]) td:first-child{grid-row:span 2}
- :is([data-collection=parts],[data-collection=minifigures],[data-collection=problems]) td:not(:first-child){grid-column:2}
- :is([data-collection=parts],[data-collection=minifigures],[data-collection=problems]) td[data-column]:not([data-column=name])::before{content:attr(data-column);text-transform:capitalize;color:var(--tw-text-2)}
+ :is([data-collection=parts],[data-collection=minifigures],[data-collection=problems])>.table-region:where(:not(.b-prime,.b-prime *)){overflow:visible;border:0}
+ :is([data-collection=parts],[data-collection=minifigures],[data-collection=problems]) table:where(:not(.b-prime,.b-prime *)){display:block;min-width:0;width:100%}
+ :is([data-collection=parts],[data-collection=minifigures],[data-collection=problems]) thead:where(:not(.b-prime,.b-prime *)){display:none}
+ :is([data-collection=parts],[data-collection=minifigures],[data-collection=problems]) tbody:where(:not(.b-prime,.b-prime *)){display:block}
+ :is([data-collection=parts],[data-collection=minifigures],[data-collection=problems]) tr:where(:not(.b-prime,.b-prime *)){display:grid;grid-template-columns:64px minmax(0,1fr);gap:var(--tw-s-2);border-bottom:0.5px solid var(--tw-divider);padding:var(--tw-s-3) 0}
+ :is([data-collection=parts],[data-collection=minifigures],[data-collection=problems]) td:where(:not(.b-prime,.b-prime *)){display:flex;align-items:center;flex-wrap:wrap;gap:var(--tw-s-2);height:auto;min-height:var(--tw-hit);padding:0;border:0;min-width:0;overflow-wrap:anywhere}
+ :is([data-collection=parts],[data-collection=minifigures],[data-collection=problems]) td:first-child:where(:not(.b-prime,.b-prime *)){grid-row:span 2}
+ :is([data-collection=parts],[data-collection=minifigures],[data-collection=problems]) td:not(:first-child):where(:not(.b-prime,.b-prime *)){grid-column:2}
+ :is([data-collection=parts],[data-collection=minifigures],[data-collection=problems]) td[data-column]:not([data-column=name]):where(:not(.b-prime,.b-prime *))::before{content:attr(data-column);text-transform:capitalize;color:var(--tw-text-2)}
 }

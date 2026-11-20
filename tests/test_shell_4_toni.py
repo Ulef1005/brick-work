@@ -7,6 +7,7 @@ import re
 from flask import g, render_template
 from jinja2 import meta, nodes
 import pytest
+from bs4 import BeautifulSoup
 
 from tests import rendered
 
@@ -27,7 +28,7 @@ def render(app, name, **context):
 def test_pages_use_the_local_shell_and_assets(app, name):
     html = render(app, name, error='Example', message='Saved', next='/collection/sets')
     assert 'data-web-ui="toni"' in html
-    assert '<title>Brick Work' in html and '<span>Brick Work</span></a>' in html
+    assert '<title>Brick Work' in html and 'class="brand" href="/collection/sets" aria-label="Brick Work"' in html
     assert 'Brick Work (' in html
     assert 'Frederik' + 'Baerentsen' not in html  # the upstream credit lives in the README
     assert 'bootstrap' not in html.lower() and 'remixicon' not in html.lower()
@@ -35,7 +36,7 @@ def test_pages_use_the_local_shell_and_assets(app, name):
     assert html.index('web/toni/theme.js') < html.index('rel="stylesheet"') < html.index('</head>')
     assert 'defer' not in html.split('web/toni/theme.js')[0].split('<script')[-1]
     for group in ('Collection', 'Workbench', 'Planning', 'Manage'):
-        assert f'>{group}</p>' in html
+        assert f'>{group}</a>' in html
 
 
 def test_unknown_route_renders_the_shell(app):
@@ -79,8 +80,12 @@ def test_login_post_and_failure(app):
 def test_visibility_links_and_auth(app):
     app.config.update(HIDE_ALL_SETS=True, HIDE_ADD_SET=True)
     html = render(app, 'web/toni/error.html', error='Example')
-    assert '>Sets</a>' not in html and '>Set Inspector</a>' not in html
-    assert 'href="/workbench/orders"' in html
+    titles = [t.text for t in BeautifulSoup(html, 'html.parser').select('nav.sub .nav-title, nav.psub .nav-title')]
+    assert titles and 'Sets' not in titles and 'Set Inspector' not in titles
+    tabs = BeautifulSoup(html, 'html.parser').select('nav.tabs a.tab')
+    assert [t.text for t in tabs] == ['Collection', 'Workbench', 'Planning', 'Manage']
+    assert tabs[0]['href'] != '/collection/sets' and tabs[1]['href'] == '/workbench/part-to-inventory'     # a tab follows the first entry still shown
+    assert not BeautifulSoup(html, 'html.parser').select('a.shell-add, a.add-icon')     # the Add button is hidden too
     app.config['LOGIN_DISABLED'] = True
 
 
@@ -88,7 +93,7 @@ def test_assets_have_no_remote_references():
     assets = ROOT / 'static/web/toni'
     tokens = (assets / 'tokens-v2.css').read_text()
     assert '@import' not in tokens and 'fonts.googleapis' not in tokens
-    css = (assets / 'toni.css').read_text()
+    css = (assets / 'toni.css').read_text().replace(':where(:not(.b-prime,.b-prime *))', '')
     for filename in re.findall(r"url\('([^']+)'\)", css):
         assert (assets / filename).is_file()
     for file in assets.glob('*'):

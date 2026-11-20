@@ -9,9 +9,10 @@ Rebrickable (8043-1 with no Lost Parts, 21028-1 with 9 missing parts), so they c
 
 Where a frame disagrees with the data it was drawn from, the data follows the frame: Rebrickable's non-spare lines of 31120-1 add up to 1,408 pieces,
 the frame says 1,426, so one line of the copy holds 18 more pieces here. Everything is deterministic (the real world's seed and the demo clock)."""
+from ..core import stock
 from ..core.transaction import transaction
-from . import dataset, real
-from .showcase import uid
+from . import clock, dataset, real
+from .showcase import seeded_uuids, uid
 
 # number: (copy 1 and 2 as (storage, found, missing); a copy with found and missing 0 is never checked). Sealed copies have no check.
 FRAME = {
@@ -33,13 +34,29 @@ INSPECTOR = {'set': '7213-1', 'copy': uid('copy', '7213-1', 'b'), 'place': 'Floh
              'lines': 131, 'found': 54, 'missing_pieces': 12, 'checked_pieces': 142}
 BLUISH = {'id': 72, 'name': 'Dark Bluish Gray', 'rgb': '#6C6E68', 'transparent': False}
 RED = {'id': 4, 'name': 'Red', 'rgb': '#C91A09', 'transparent': False}
+# Frame 07 (the Part Runner): the four incomplete copies (7213-1 twice, 7938-1, 10210-1; 10 + 12 + 14 + 33 = 69 pieces) as one run of 52 parts (one line per
+# part and colour), in storage order. The run is on its 7th part: Fence Lattice 1 × 4 × 1, 3633, Dark Bluish Gray, 3 for 10210-1 (copy 1); the frame's
+# next three are Brick 1 × 4 (3010, 2 from 7213-1), Brick 1 × 6 (3009, 1) and Slope 45° 2 × 2 (87619, 4). Their drawers are the loose stock the picker orders by:
+# six parts in Box 5 come first, then Drawer 2, Drawer 3 (two parts) and Drawer 4. Per copy: (missing pieces, lines with a gap, the shown parts: (part, colour id) -> missing)
+# and the lines that get 2 missing (the rest 1). Copy 2 of 7213-1 keeps frame 06's four lines (3008 and three larger ones).
+RUNNER = {'7213-1': (10, 9, {('3010', 72): 2}, 0), '7938-1': (14, 11, {('87619', 15): 4, ('3009', 71): 1}, 0), '10210-1': (33, 28, {('3633', 72): 3}, 3)}
+RUNNER_NAMES = {'3633': 'Fence Lattice 1 × 4 × 1', '3009': 'Brick 1 × 6', '87619': 'Slope 45° 2 × 2', '3010': 'Brick 1 × 4'}
+RUNNER_DRAWERS = {('3633', 72): ('Drawer 2', 'Shelf A2 – Town'), ('3010', 72): ('Drawer 3', 'Shelf A2 – Town'), ('3009', 71): ('Drawer 3', 'Shelf A2 – Town'),
+                  ('87619', 15): ('Drawer 4', 'Shelf A1 – Castle')}
 PRICES = {'7213-1': 48.58, '7938-1': 65.73, '10254-1': 99.53, '10210-1': 194.31, '31120-1': 127.00, '8043-1': 123.40, '21028-1': 53.94}
 
 
+def runner_path():
+    """The Part Runner of frame 07: the four incomplete copies, picked in storage order (then colour), the run on its 7th part."""
+    copies = [real.uid('copy', '7213-1', 'a'), INSPECTOR['copy'], real.uid('copy', '7938-1', 'a'), real.uid('copy', '10210-1', 'a')]
+    return '/workbench/part-picker?pick=1&ranked=1&rank=storage&rank=colour&part=7&' + '&'.join('copy=' + c for c in copies)
+
+
 class Layer(real.Layer):
-    def __init__(self, folder=real.FOLDER, pictures=False, stored=True, pulled=False):
+    def __init__(self, folder=real.FOLDER, pictures=False, stored=True, pulled=False, runner=False):
         super().__init__(folder, pictures)
         self.stored = stored
+        self.runner = runner
         self.frame = dict(FRAME, **PULLED) if pulled else FRAME
         self.pulled = PULLED if pulled else {}
         for entry in self.sets:
@@ -47,6 +64,12 @@ class Layer(real.Layer):
         line = next(r for r in self.inventories['31120-1']['parts'] if not r['spare'])
         line['quantity'] += 18                       # 1,408 pieces in Rebrickable's list, 1,426 on the frame
         self.inspector_lines()
+        if runner:   # the frame wants 4 of 87619 in White from 7938-1, which lists 2: two pieces move over from its largest line, the copy's total stays
+            lines = [r for r in self.inventories['7938-1']['parts'] if not r['spare']]
+            big = max(lines, key=lambda r: (r['quantity'], r['part']))
+            slope = next(r for r in lines if (r['part'], r['color']['id']) == ('87619', 15))
+            big['quantity'] -= 2
+            slope['quantity'] += 2
 
     def inspector_lines(self):
         """Frame 06's copy: Rebrickable lists 144 required lines for 7213-1, the frame says 131 of the same 375 pieces and names its parts by hand. So the
@@ -116,8 +139,65 @@ class Layer(real.Layer):
             dataset.put(db, 'storage', 'storage-bag-07', 'Bag 07')
             self.codes(db)
             self.checks_to_frame(db)
+            if self.runner:
+                patched = clock.freeze_clock()   # the layer's own fill has thawed the clock and the uuids: stock saved here is stamped and numbered the same in every build
+                try:
+                    with seeded_uuids(self.rng):
+                        self.runner_gaps(db)
+                finally:
+                    clock.thaw_clock(patched)
             if not self.stored:
                 db.execute('UPDATE copy SET storage_id=NULL')
+
+    def runner_gaps(self, db):
+        """Frame 07's run: the missing pieces of 7213-1 (copy 1), 7938-1 and 10210-1 are spread over 9, 11 and 28 lines (one line per part and colour, no two copies
+        sharing one), on lines the copy's check has answered, so each copy's bar (found, missing, total) is the Sets frame's. The shown parts get the frame's counts,
+        the loose stock of every part in the run is replaced by the drawers above (so the picker's storage order is the frame's), and the shown names get the
+        multiplication sign. Copy 2 of 7213-1 keeps frame 06's four lines (stage_inspector)."""
+        reserved = {(part, colour) for part, colour, missing in self.walk if missing}                     # frame 06's gaps stay theirs
+        used, picks = set(reserved), []
+        for number, (target, count, shown, twos) in RUNNER.items():
+            copy_id = real.uid('copy', number, 'a')
+            lines = [dict(r) for r in db.execute('''SELECT p.id,p.quantity,p.item_id,p.color_id,i.born_key AS part,c.born_key AS colour FROM copy_part p JOIN item i ON i.id=p.item_id
+                     LEFT JOIN color c ON c.id=p.color_id WHERE p.copy_id=? AND p.copy_figure_id IS NULL AND p.retired_at IS NULL AND p.is_spare=0 AND p.checked=1 ORDER BY p.id''', (copy_id,))]
+            for r in lines:
+                r['identity'] = (r['part'], int(r['colour']))
+            db.execute('UPDATE copy_part SET missing=0 WHERE copy_id=? AND copy_figure_id IS NULL AND retired_at IS NULL', (copy_id,))
+            chosen = [r for r in lines if r['identity'] in shown]
+            assert len(chosen) == len(shown), f'frames world: {number} has no checked line for {sorted(shown)}'
+            rest = [r for r in lines if r['identity'] not in shown and r['identity'] not in used and r['quantity'] >= 2]
+            chosen += rest[:count - len(chosen)]
+            assert len(chosen) == count, f'frames world: {number} has too few checked lines for {count} gaps'
+            assignment = {r['id']: shown.get(r['identity'], 1) for r in chosen}
+            bumped = [r['id'] for r in chosen if r['identity'] not in shown][:twos]
+            for identifier in bumped:
+                assignment[identifier] = 2
+            assert sum(assignment.values()) == target, f'frames world: {number} does not add up to {target} missing'
+            for identifier, missing in assignment.items():
+                db.execute('UPDATE copy_part SET missing=? WHERE id=? AND retired_at IS NULL', (missing, identifier))
+            used |= {r['identity'] for r in chosen}
+            picks += [r for r in chosen if r['identity'] not in shown]
+        assert len(used) - len(reserved) == 48
+        gaps = {(r[0], r[1]) for number in RUNNER for r in db.execute('SELECT item_id,color_id FROM copy_part WHERE copy_id=? AND missing>0 AND retired_at IS NULL', (real.uid('copy', number, 'a'),))}
+        for part, colour in reserved:
+            gaps |= {(r[0], r[1]) for r in db.execute('''SELECT p.item_id,p.color_id FROM copy_part p JOIN item i ON i.id=p.item_id JOIN color c ON c.id=p.color_id
+                     WHERE p.copy_id=? AND p.retired_at IS NULL AND i.born_key=? AND c.born_key=?''', (INSPECTOR['copy'], part, str(colour)))}
+        for item_id, colour_id in gaps:      # no other stock may sit among the run's parts
+            db.execute('UPDATE stock SET archived_at=? WHERE kind=? AND item_id=? AND color_id=? AND archived_at IS NULL', (dataset.STAMP, 'part', item_id, colour_id))
+        for name, parent in (('Drawer 2', 'Shelf A2 – Town'), ('Drawer 3', 'Shelf A2 – Town'), ('Drawer 4', 'Shelf A1 – Castle'), ('Box 5', None)):
+            dataset.put(db, 'storage', 'storage-' + dataset.slug(name), name, type='Box' if name.startswith('Box') else 'Drawer')
+            if parent:
+                db.execute('UPDATE storage SET parent_id=? WHERE id=?', ('storage-' + dataset.slug(parent), 'storage-' + dataset.slug(name)))
+        for part, name in RUNNER_NAMES.items():
+            db.execute("UPDATE item SET name=? WHERE born_provider='rebrickable' AND born_key=?", (name, part))
+        def stock_of(item_id, colour_id, drawer):
+            stock.add_loose(db, item_id=item_id, color_id=colour_id, quantity=5, condition='used', storage_id='storage-' + dataset.slug(drawer), via='cli')
+        for (part, colour), (drawer, _) in RUNNER_DRAWERS.items():
+            row = db.execute('''SELECT p.item_id,p.color_id FROM copy_part p JOIN item i ON i.id=p.item_id JOIN color c ON c.id=p.color_id WHERE i.born_key=? AND c.born_key=?
+                                AND p.missing>0 AND p.retired_at IS NULL LIMIT 1''', (part, str(colour))).fetchone()
+            stock_of(row[0], row[1], drawer)
+        for r in picks[:6]:
+            stock_of(r['item_id'], r['color_id'], 'Box 5')
 
     def codes(self, db):
         """Renumber the label codes (`storage.short_id`, S-0001 and on) so the frame's storages carry the frame's codes; the others follow in their order."""
@@ -168,7 +248,7 @@ class Layer(real.Layer):
 
 
 def layer(folder=real.FOLDER, pictures=False):
-    return Layer(folder, pictures)
+    return Layer(folder, pictures, runner=True)
 
 
 def unstored_layer(folder=real.FOLDER, pictures=False):

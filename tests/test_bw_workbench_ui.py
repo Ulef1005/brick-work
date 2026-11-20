@@ -90,10 +90,9 @@ def test_picker_selection_primary_and_single_part_layout(world, coll, client):
     assert len(cards) == 2 and sum(not c.has_attr('hidden') for c in cards) == 1
     assert cards[0].select_one('[data-part-position]').text == 'Part 1 of 2'
     for card in cards:
-        assert [n['class'][0] for n in card.find_all('div', recursive=False)] == ['bw-picker-media', 'bw-picker-details']
-        identity = card.select_one('.bw-identity')
-        assert identity.select_one('.bw-colour').find_next_sibling('span')['class'] == ['mono']
-        assert not identity.select_one('strong'), 'the part name appears once'
+        assert [n['class'][0] for n in card.find_all('div', recursive=False)] == ['bp-run-col', 'bp-run-next']   # the part and its stepper, the next parts (R3-03)
+        assert [n['class'][0] for n in card.select_one('.bp-run-col').find_all('div', recursive=False)] == ['bp-run-card', 'bp-run-act', 'bw-picker-details']
+        assert card.select_one('.run-colour') and card.select_one('.run-no.mono') and len(card.select('.run-nm')) == 1, 'the part name appears once'
         selector = card.select_one('[data-selector]')
         assert not selector.select('.bw-picture, .bw-identity') and selector.select_one('[data-quantity]').has_attr('hidden')
         assert [n['value'] for n in selector.select('[name=destination]')] == ['set', 'loose', 'list']

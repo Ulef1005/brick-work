@@ -300,6 +300,26 @@ def picker(db, selected, ranking=None, *, all_gaps=None):
     return order_picker(list(grouped.values()), ranking, part_groups.overrides(db))
 
 
+def picker_places(db, rows):
+    """Where each part of a picker snapshot sits: `{(item_id, color_id): [{code, root, leaf}]}`, the usable loose lots' storages in the order the picker ranks them by
+    (by name). `leaf` is the storage the lot is in (a drawer), `root` the top storage that holds it (a shelf) and `code` its label code."""
+    storages = {r['id']: dict(r) for r in db.execute('SELECT id,name,short_id,parent_id FROM main.storage WHERE archived_at IS NULL')}
+    wanted = {(r['item_id'], r['color_id']) for r in rows}
+    defective = defective_figures(db)
+    found = defaultdict(dict)
+    for raw in db.execute('''SELECT s.*,t.name AS storage_name FROM main.stock s JOIN main.storage t ON t.id=s.storage_id
+                             WHERE s.kind='part' AND s.archived_at IS NULL AND t.archived_at IS NULL AND t.name IS NOT NULL'''):
+        source = dict(raw)
+        key = (source['item_id'], source['color_id'])
+        if key in wanted and available(db, source, defective=defective):
+            top, seen = storages[source['storage_id']], set()
+            while top['parent_id'] in storages and top['id'] not in seen:
+                seen.add(top['id'])
+                top = storages[top['parent_id']]
+            found[key][source['storage_id']] = dict(code=top['short_id'], root=top['name'], leaf=storages[source['storage_id']]['name'])
+    return {key: sorted(places.values(), key=lambda p: p['leaf']) for key, places in found.items()}
+
+
 def picker_keys(rows):
     """Return ranking keys, labels and unavailable reasons for a picker snapshot.
 

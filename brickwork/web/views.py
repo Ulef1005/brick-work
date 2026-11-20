@@ -1219,12 +1219,16 @@ def bw_workbench_page(mode):
             rows = workbench.picker(db, selected, ranking, all_gaps=all_gaps) if mode == 'picker' else workbench.matches(db, all_gaps=all_gaps)
             if mode == 'picker':
                 rank_keys = workbench.picker_keys(rows)
+                places = workbench.picker_places(db, rows)
+                for row in rows:   # where each part sits (the next-parts list of the run); additive, the rows the print list reads are unchanged
+                    row['places'] = places.get((row['item_id'], row['color_id']), [])
             if mode == 'matcher':
                 match_groups = workbench.group_matches(db, rows, all_gaps)
             history = workbench.history(db)
     except (ValueError, sqlite3.Error, OSError):
         error = 'Brick Work database is not available. Check BW_DB_PATH and try again.'
-    response = current_app.make_response(render_template('web/toni/web/bw_workbench.html', mode=mode,
+    start = min(max(request.args.get('part', 1, type=int) - 1, 0), max(len(rows) - 1, 0)) if mode == 'picker' else 0   # ?part=7 puts the run on its 7th part (a reload, a link)
+    response = current_app.make_response(render_template('web/toni/web/bw_workbench.html', mode=mode, start=start,
         rows=rows, ranking=ranking, rank_keys=rank_keys, picking=request.args.get('pick') == '1', match_groups=match_groups, copies=copies,
         selected=selected, history=history, error=error, csrf_token=bw_add_token()))
     response.headers['Cache-Control'] = 'no-store'

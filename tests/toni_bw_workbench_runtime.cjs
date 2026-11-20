@@ -111,7 +111,7 @@ assert.deepEqual([...api.pageItems(3,1)],[1,2,3]);assert.deepEqual([...api.pageI
  filterToggle.setAttribute=(key,value)=>{filterToggle[key]=value;};doneFilter.setAttribute=(key,value)=>{doneFilter[key]=value;};filter.focus=()=>{};
  list.groups['[data-filters]']=[filterToggle,doneFilter];list.nodes['[data-filter-panel]'].hidden=true;
  const direction=new Node();direction.value='asc';list.nodes['[data-direction]']=direction;
- let isDesktop=true,mediaListener,calls=[];
+ let isDesktop=false,mediaListener,calls=[];   // the destination form is a dialog at every width (R3-03)
  const cards=[0,1].map(index=>{
   const card=new Node(),selector=new Node(),dialog=new Node(),details=new Node(),form=new Node(),quantity=new Node(),count=new Node(),set=new Node(),loose=new Node(),only=new Node(),assign=new Node(),quantityLabel=new Node(),assignments=new Node(),opener=new Node(),close=new Node();
   card.dataset={name:index?'Brick':'Plate',number:String(3020+index),filterValue:'Black',colour:'Black'};
@@ -144,7 +144,7 @@ assert.deepEqual([...api.pageItems(3,1)],[1,2,3]);assert.deepEqual([...api.pageI
  assert.equal(list.nodes['[data-sort-toggle]']['aria-expanded'],'false');assert.equal(doneSort['aria-expanded'],'false');
  direction.value='desc';direction.trigger('change');assert.equal(cards[1].hidden,false);direction.value='asc';direction.trigger('change');assert.equal(cards[0].hidden,false);
  assert.equal(cards.filter(c=>!c.hidden).length,1);assert.equal(cards[0].nodes['[data-part-position]'].textContent,'Part 1 of 2');
- assert.equal(cards[0].nodes['[data-selector]'].parentNode,cards[0].nodes['.bw-picker-details']);
+ assert.equal(cards[0].nodes['[data-selector]'].parentNode,cards[0].nodes['[data-mobile-selector]']);
  skip.trigger();assert.equal(cards[1].hidden,false);assert.equal(cards[1].nodes['[data-part-position]'].textContent,'Part 2 of 2');
  back.trigger();assert.equal(cards[0].hidden,false);
  const form=cards[0].nodes['form[data-action="found"]'];
@@ -156,14 +156,14 @@ assert.deepEqual([...api.pageItems(3,1)],[1,2,3]);assert.deepEqual([...api.pageI
  cards[0].decrement.trigger();assert.equal(Number(form.nodes['[data-selector-count]'].textContent),1);
  const allocated=form.groups['[data-assignment]'][0];allocated.value='2';allocated.trigger('input');assert.equal(Number(form.nodes['[data-selector-count]'].textContent),2);
  let prevented=false;d.trigger('keydown',{key:'Enter',target:{tagName:'BUTTON'},preventDefault(){prevented=true;}});assert.equal(prevented,false);
+ cards[0].nodes['[data-open]'].click();   // the destination keys work while the dialog is open
  d.trigger('keydown',{key:'2',target:{tagName:'INPUT',type:'radio'}});assert.equal(form.nodes['input[value="loose"]'].checked,true);
  form.elements.destination.value='loose';form.nodes['input[value="loose"]'].trigger('change');assert.equal(form.nodes['[data-quantity]'].hidden,false);assert.equal(form.nodes['.bw-assignments'].hidden,true);
  form.elements.destination.value='set';form.nodes['input[value="set"]'].trigger('change');
- isDesktop=false;mediaListener();assert.equal(cards[0].nodes['[data-selector]'].parentNode,cards[0].nodes['[data-mobile-selector]']);
  d.trigger('keydown',{key:'Enter',target:{tagName:'BODY'}});assert.equal(cards[0].nodes['[data-mobile-selector]'].open,true);
  form.elements.destination.value='list';d.trigger('keydown',{key:'3',target:{tagName:'BODY'}});assert.equal(form.nodes['input[value="list"]'].checked,true);
  cards[0].nodes['[data-selector]'].nodes['[data-selector-close]'].trigger();assert.equal(cards[0].nodes['[data-mobile-selector]'].open,false);
- isDesktop=true;mediaListener();assert.equal(cards[0].nodes['[data-selector]'].parentNode,cards[0].nodes['.bw-picker-details']);
+ assert.equal(cards[0].nodes['[data-selector]'].parentNode,cards[0].nodes['[data-mobile-selector]']);
  search.value='Brick';search.trigger('input');assert.equal(list.nodes['[data-count]'].textContent,'1 result');assert.equal(cards[1].nodes['[data-part-position]'].textContent,'Part 1 of 1');
  search.value='';search.trigger('input');
  // A desktop count shortcut must keep the set payload equal to its copy allocations.
@@ -173,7 +173,7 @@ assert.deepEqual([...api.pageItems(3,1)],[1,2,3]);assert.deepEqual([...api.pageI
  d.trigger('keydown',{key:'4',target:{tagName:'BODY'}});
  d.trigger('keydown',{key:'Enter',target:{tagName:'BODY'}});
  assert.equal(Number(form.elements.quantity.value),3);
- assert.ok(r.nodes['[data-message]'].textContent.includes('copy assignments'));
+ assert.ok(r.nodes['[data-message]'].textContent.includes('still missing'));
  (async()=>{await form.trigger('submit');assert.equal(calls[0].destination,'set');assert.equal(Number(calls[0].quantity),Object.values(calls[0].assignments).reduce((sum,n)=>sum+Number(n),0));assert.equal(Number(calls[0].quantity),3);assert.equal(cards[1].hidden,false);assert.equal(cards[0].nodes['[data-badge]'].textContent,'3 found');})().catch(error=>{console.error(error);process.exitCode=1;});
 }
 

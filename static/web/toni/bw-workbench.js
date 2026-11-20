@@ -47,9 +47,35 @@
   }
   const root = document.querySelector('#bw-workbench');
   if (!root) return;
+  // The top block of the run: "Part N / M", the strip (one segment per part: done, current, to come) and, once a search or a filter changes the order, the next parts.
+  function drawRun(shown, all) {
+    const top = root.querySelector('[data-run-top]');
+    if (!top) return;
+    const label = top.querySelector('[data-run-label]'), strip = top.querySelector('[data-run-strip]');
+    if (label) label.textContent = `Part ${shown.length ? active + 1 : 0} / ${shown.length}`;
+    if (strip) {
+      while (strip.children.length < shown.length) strip.append(document.createElement('i'));
+      while (strip.children.length > shown.length) strip.lastChild.remove();
+      shown.forEach((r, index) => {strip.children[index].className = index === active ? 'c' : done.has(r.node) ? 'f' : 'u';});
+      strip.setAttribute('aria-label', `Part ${shown.length ? active + 1 : 0} of ${shown.length}`);
+    }
+    const node = shown[active]?.node, box = node?.querySelector('[data-next]');
+    if (!box || (all && shown.length === all.length && shown.every((r, index) => r === all[index]))) return;   // in the run's own order each card already carries its next parts
+    const items = shown.slice(active + 1, active + 4).map(r => r.node.querySelector('template[data-nx-item]')).filter(Boolean);
+    box.replaceChildren();
+    if (!items.length) return;
+    const tape = document.createElement('div'), count = document.createElement('span');
+    tape.className = 'tape'; count.className = 'mono'; count.textContent = `${items.length} ${items.length === 1 ? 'part' : 'parts'} next`;
+    if (items[0].dataset.code) {const code = document.createElement('span'); code.className = 'mono run-code'; code.textContent = items[0].dataset.code; tape.append(code, items[0].dataset.root || '');} else tape.append('Next parts');
+    tape.append(count);
+    box.append(tape, ...items.map(t => t.content.firstElementChild.cloneNode(true)));
+  }
   const message = root.querySelector('[data-message]');
   const undoButton = root.querySelector('[data-undo]');
-  let lastEvent = null, busy = false, active = 0, foundCount = null;
+  let lastEvent = null, busy = false, active = Number(root.dataset.start || 0) || 0, foundCount = null;
+  // The run strip (R3-03): a part is done once it is found or marked missing; a run opened on a later part (?part=7) has the parts before it behind it.
+  const done = new WeakSet();
+  let seeded = false;
   const lists = [];
   const announce = text => {if(message)message.textContent = text;};
   const save = async (action, data) => {
@@ -86,6 +112,8 @@
           r.node.querySelector('[data-part-position]').textContent=`Part ${index+1} of ${shown.length}`;
           const progress=r.node.querySelector('[data-part-progress]');progress.max=shown.length;progress.value=index+1;
         });
+        if(!seeded){seeded=true;shown.slice(0,active).forEach(r=>done.add(r.node));}
+        drawRun(shown,rows);
       }
       const count=list.querySelector('[data-count]');
       if(count)count.textContent = pages && shown.length>PAGE ? rangeText(shown.length,page) : window.BrickFormatting.resultCount(shown.length);
@@ -110,9 +138,9 @@
     const rows=visible();if(!rows.length)return;
     active=(active+delta+rows.length)%rows.length;
     rows.forEach((r,index)=>{r.node.hidden=index!==active;});
+    drawRun(rows,picker?.rows);
     rows[active].node.focus();
   };
-  const desktop = () => typeof matchMedia==='function' && matchMedia('(min-width: 1024px)').matches;
   const syncSelectorCount = form => {
     const label=form.querySelector('[data-selector-count]');if(label)label.textContent=form.elements.quantity.value;
   };
@@ -127,27 +155,36 @@
     syncSelectorCount(form);
     form.querySelectorAll('.bw-destination').forEach(node=>node.classList.toggle('is-selected',node.querySelector('input').checked));
   };
+  // The stepper of the card (− Found ×N +): N is the count the destination form opens with, shared out over the copies in order; it stays inside what is still missing.
+  const setFound = (card, wanted) => {
+    const form=card.querySelector('form[data-action="found"]'),count=card.querySelector('[data-found-count]');
+    if(!form||!count)return 0;
+    const inputs=Array.from(form.querySelectorAll('[data-assignment]')),max=inputs.reduce((sum,n)=>sum+Number(n.max),0);
+    const n=Math.max(0,Math.min(max,Number(wanted)||0));
+    let left=n;inputs.forEach(input=>{const v=Math.min(Number(input.max),left);input.value=v;left-=v;});
+    count.value=n;setDestination(form);
+    const found=card.querySelector('[data-run-found]');if(found)found.textContent=`Found ×${n}`;   // the − and + stay as drawn at the ends (the clamp above keeps the count inside); Found ×0 is the Missing button
+    if(found&&!found.hasAttribute('data-unresolved'))found.disabled=n<=0;
+    return n;
+  };
   const openPart = () => {
-    const node=visible()[active]?.node,form=node?.querySelector('form[data-action="found"]'),button=node?.querySelector('[data-open]');
+    const node=visible()[active]?.node,button=node?.querySelector('[data-open]');
     if(!button || button.disabled)return;
     if(foundCount!==null){
-      const requested=foundCount;
-      const count=node.querySelector('[data-found-count]');if(count)count.value=requested;
-      form.elements.quantity.value=requested;setDestination(form);foundCount=null;
-      if(Number(form.elements.quantity.value)!==requested)announce(`Found count ${form.elements.quantity.value} · set count follows copy assignments; adjust the steppers to change it`);
+      const requested=foundCount;foundCount=null;
+      const n=setFound(node,requested);
+      if(n!==requested)announce(`Found count ${n} · it cannot be more than is still missing`);
     }
-    if(desktop())form.querySelector('input[name=destination]').focus();else button.click();
+    button.click();
   };
   const selectors = Array.from(root.querySelectorAll('[data-selector]'));
   const placeSelectors = () => selectors.forEach(selector=>{
     const card=selector.closest('[data-row]'),dialog=card.querySelector('[data-mobile-selector]');
     if(dialog.open)dialog.close();
-    if(desktop())card.querySelector('.bw-picker-details').insertBefore(selector,dialog);
-    else dialog.append(selector);
+    dialog.append(selector);
   });
   if(selectors.length){
     placeSelectors();
-    if(typeof matchMedia==='function')matchMedia('(min-width: 1024px)').addEventListener('change',placeSelectors);
     selectors.forEach(selector=>{
       const form=selector.querySelector('form');setDestination(form);
       form.querySelectorAll('input[name=destination]').forEach(n=>n.addEventListener('change',()=>setDestination(form)));
@@ -220,6 +257,11 @@
   if (root.dataset.mode==='picker') picker?.rows.forEach(row=>row.node.addEventListener('focus',()=>{active=visible().findIndex(r=>r.node===row.node);}));
   root.querySelector('[data-back]')?.addEventListener('click',()=>focusPart(-1));
   root.querySelector('[data-skip]')?.addEventListener('click',()=>{announce('Skipped for later · missing count unchanged');focusPart(1);});
+  root.querySelectorAll('[data-run-step]').forEach(button=>button.addEventListener('click',()=>{
+    const card=button.closest('[data-row]');setFound(card,Number(card.querySelector('[data-found-count]').value)+Number(button.dataset.runStep));
+  }));
+  const missing = () => {const node=visible()[active]?.node;if(node)done.add(node);announce('Still missing · count unchanged');focusPart(1);};
+  root.querySelectorAll('[data-run-missing]').forEach(button=>button.addEventListener('click',missing));
   root.querySelectorAll('[data-step]').forEach(button=>button.addEventListener('click',()=>{
     const input=button.parentNode.querySelector('input');input.value=step(input.value,Number(button.dataset.step),Number(input.max));
     const form=button.closest('form');form.elements.quantity.value=Array.from(form.querySelectorAll('[data-assignment]')).reduce((sum,n)=>sum+Number(n.value),0);syncSelectorCount(form);
@@ -242,8 +284,10 @@
         if(data.destination==='set') {
           form.querySelectorAll('[data-assignment]').forEach(input=>{input.max=Number(input.max)-Number(input.value);input.value=0;});
           const remaining=Array.from(form.querySelectorAll('[data-assignment]')).reduce((sum,n)=>sum+Number(n.max),0);
-          card.dataset.need=remaining;card.querySelector('[data-remaining]').textContent=`Pick ${remaining} still missing`;
+          card.dataset.need=remaining;card.querySelector('[data-remaining]').textContent=String(remaining);
+          setFound(card,remaining);
         }
+        done.add(card);
         form.closest('dialog')?.close();
         if(root.dataset.mode==='picker')focusPart(1);
       } else {
@@ -259,7 +303,7 @@
   document.addEventListener('keydown',event=>{
     if(event.altKey || event.ctrlKey && !event.metaKey && event.key.toLowerCase()!=='z')return;
     const dialog=root.querySelector('dialog[open]');
-    const destinationForm=dialog?.querySelector('form') || (desktop() && visible()[active]?.node.querySelector('form[data-action="found"]'));
+    const destinationForm=dialog?.querySelector('form');
     if(destinationForm && ['1','2','3'].includes(event.key) && (!['INPUT','TEXTAREA','SELECT'].includes(event.target.tagName) || event.target.type==='radio')) {
       const value=['set','loose','list'][Number(event.key)-1];destinationForm.querySelector(`input[value="${value}"]`).checked=true;setDestination(destinationForm);event.preventDefault();return;
     }
@@ -272,7 +316,7 @@
     else if(key==='enter' || key==='f'){event.preventDefault();openPart();}
     else if(key==='arrowleft'){event.preventDefault();focusPart(-1);}
     else if(key==='arrowright' || key==='s'){event.preventDefault();focusPart(1);}
-    else if(key==='m'){announce('Still missing · count unchanged');focusPart(1);}
+    else if(key==='m')missing();
     else if(key==='/'){event.preventDefault();picker?.list.querySelector('[data-search]')?.focus();}
   });
 })();

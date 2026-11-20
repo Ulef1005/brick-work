@@ -207,11 +207,6 @@ body:has(#bw-checker[data-bp-checker]) .layout>main.bp-flush { padding:0; }
 .bp-chk:not(#_):not(#_):not(#_):not(#_) .chk-sub { display:flex;gap:8px;align-items:center;margin-top:6px; }
 .bp-chk:not(#_):not(#_):not(#_):not(#_) .chk-colour { font:600 14px var(--tw-font);min-width:0;overflow-wrap:anywhere; }
 .bp-chk:not(#_):not(#_):not(#_):not(#_) .chk-no { margin-left:auto;font-weight:600;flex:none; }
-.bp-chk:not(#_):not(#_):not(#_):not(#_) .chk-stepper { display:flex;gap:8px;align-items:center;margin-top:14px; }
-.bp-chk:not(#_):not(#_):not(#_):not(#_) .btn.chk-sq { width:56px;height:56px;padding:0;font:600 24px var(--tw-font);flex:none;min-height:0; }
-.bp-chk:not(#_):not(#_):not(#_):not(#_) .btn.chk-found { flex:1;height:56px;font-size:15px;min-height:0; }
-.bp-chk:not(#_):not(#_):not(#_):not(#_) .btn.chk-missing { width:100%;height:56px;margin-top:10px;min-height:0; }
-.bp-chk:not(#_):not(#_):not(#_):not(#_) .btn:disabled { opacity:.4;cursor:default; }
 .bp-chk:not(#_):not(#_):not(#_):not(#_) .chk-nav { display:flex;justify-content:space-between;margin-top:12px;font:500 14px var(--tw-font);color:var(--tw-text-2); }
 .bp-chk:not(#_):not(#_):not(#_):not(#_) .chk-link { position:relative;font:500 14px var(--tw-font);color:var(--tw-text-2);background:none;border:0;cursor:pointer;min-height:0; }
 .bp-chk:not(#_):not(#_):not(#_):not(#_) .chk-link::after { content:'';position:absolute;inset:-13px -8px; }

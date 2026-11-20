@@ -68,11 +68,11 @@ The app-vs-frame test per screen (design-builder's `app_check.cjs`) and the "des
 
 ## Until a screen is rebuilt
 
-These rules describe the shipped app. A screen rebuilt to B′ follows the section above instead.
+These rules describe a screen not yet rebuilt to B′. Since #492 part 1 (PR #539) those screens already take B′'s token layer: violet is the interaction colour, IBM Plex the type, radii 3 / 4 / 8; their layouts, status-token use and controls are unchanged. A screen rebuilt to B′ follows the section above instead.
 
-- Colours only from `design/tokens/` (served as `tokens-v2.css`). Clay (`--tw-accent`) is the only interaction colour: buttons, links, selected states. Status uses the status tokens, never clay.
-- Inter for UI, Geist Mono for identifiers, counts, money and dates.
-- Hairlines are 0.5 px. Radii 6 / 10 / 16 / pill. No shadows except sheets, menus and the scrim. No gradients, no emoji.
+- Colours only from `design/tokens/` (served as `tokens-v2.css`). Violet (`--tw-accent`) is the only interaction colour: buttons, links, selected states. Status uses the status tokens, never violet.
+- IBM Plex Sans for UI, IBM Plex Mono for identifiers, counts, money and dates.
+- Hairlines are 0.5 px. Radii 3 / 4 / 8 / pill. No shadows except sheets, menus and the scrim. No gradients, no emoji.
 - Targets at least 44 px (56 px for primary checker actions). Tab bar labels 11 px.
 - Set, figure and part images: never cropped, `object-fit: contain` on a white tile; sets 4:3.
 - Money unspaced, symbol first: `€8.53`. Never mix currencies in one comparison.

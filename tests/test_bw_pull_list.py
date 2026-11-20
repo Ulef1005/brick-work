@@ -164,5 +164,7 @@ def test_lot_sorter_active_on_lot_and_pull_steps(client, world):
         response = client.get(path)
         assert response.status_code == 200
         soup = BeautifulSoup(response.text, 'html.parser')
-        for panel in soup.select('[data-rail-group="Workbench"], [data-group-panel="Workbench"], [data-nav-sheet="Workbench"]'):
+        panels = soup.select('nav.sub, nav.psub')
+        assert len(panels) == 2
+        for panel in panels:
             assert [a.select_one('.nav-title').text for a in panel.select('a[aria-current="page"]')] == ['Lot Sorter']

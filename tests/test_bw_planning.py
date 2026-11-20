@@ -417,7 +417,7 @@ def test_constant_list_queries(coll, read, project):
 
 def test_shell_footer_clearance():
     shell = (ROOT / 'static/web/toni/shell.css').read_text().replace(':where(:not(.b-prime,.b-prime *))', '')
-    assert '.footer{padding-bottom:calc(20px + var(--bw-bottom))}' in shell
+    assert '.footer{padding:20px 20px calc(20px + var(--bw-bottom))}' in shell
     assert '[data-bc-list] { padding-bottom:' not in (ROOT / 'static/web/toni/bw-collection.css').read_text()
 
 

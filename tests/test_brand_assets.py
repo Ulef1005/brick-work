@@ -11,7 +11,7 @@ from tests.app4 import app4, pair  # noqa: F401
 
 ROOT = Path(__file__).resolve().parents[1]
 BEFORE = 'd97bf65'   # main before D2
-GROWN = {'/static/brickwork/icons-ui/sprite.svg', '/static/brickwork/icons-ui/README.md'}
+GROWN = {'/static/brickwork/icons-ui/sprite.svg', '/static/brickwork/icons-ui/README.md', '/static/brickwork/brick-work.css'}   # brick-work.css: the B′ shell rules were added (#492)
 # The logo swap (the approved violet Bond mark) replaced the bytes of these on purpose; they still answer at the same URL.
 SWAPPED = {'/static/brickwork/' + name for name in (
     'app-icon.svg', 'favicon-16.png', 'favicon-32.png', 'favicon-48.png', 'favicon.ico', 'favicon.svg',

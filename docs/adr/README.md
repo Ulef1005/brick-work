@@ -44,3 +44,4 @@ One file per decision that binds future work: the API contract, the data model, 
 | [0034](0034-parts-and-minifigures-lists-show-loose-stock.md) | Parts and Minifigures list loose stock by default, with an In sets scope | accepted | 2026-11-17 |
 | [0035](0035-instructions-link-out.md) | Find instructions links out instead of fetching | accepted | 2026-11-19 |
 | [0036](0036-b-prime-tokens-and-type.md) | B′ tokens and type: the layer takes the frames' values, IBM Plex is served | accepted; amends 0022 | 2026-11-19 |
+| [0037](0037-b-prime-shell-and-scoping.md) | The B′ shell: scoped component CSS, guarded legacy rules, four groups on top | accepted; builds on 0036 | 2026-11-20 |

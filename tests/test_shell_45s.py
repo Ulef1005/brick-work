@@ -1,4 +1,4 @@
-"""Shared rail reserves theme space while all navigation remains scrollable, on the ported Workbench and planning screens (M.8e, M.8g; issue #110).
+"""The shell navigation lists the active group in the sub row and every group in the top bar, on the ported Workbench and planning screens (M.8e, M.8g; issue #110).
 
 The Tools and Admin path of the 3.3 file is in `test_shell_45s_tools.py` (M.8i)."""
 from pathlib import Path
@@ -15,16 +15,13 @@ PORTED = ['/workbench/storage', '/workbench/part-picker', '/workbench/matcher', 
 
 
 @pytest.mark.parametrize('path', PORTED)
-def test_shared_rail_column_and_scroll_contract(world, app4, client, path):
+def test_shell_navigation_follows_the_active_group(world, app4, client, path):
     response = client.get(path)
     assert response.status_code == 200
     soup = BeautifulSoup(response.data, 'html.parser')
-    rail = soup.select_one('.layout > .rail')
-    nav, theme = rail.find_all(recursive=False)
-    assert nav.name == 'nav' and nav['aria-label'] == 'Main'
-    assert theme['class'] == ['rail-theme']
-    assert [b['data-theme-mode'] for b in theme.select('button')] == ['system', 'light', 'dark']
-    assert not nav.select('.theme-segments')
+    nav = soup.select_one('header.top nav.tabs')
+    assert nav['aria-label'] == 'Main'
+    assert not soup.select('.layout > .rail, .rail-theme')       # no sidebar, no theme picker in the shell (the theme is the Appearance page)
     with app4.test_request_context(path):
         # The same logged-in view as the page: counts (and the item kinds they add) show only after login.
         from flask import session
@@ -32,12 +29,14 @@ def test_shared_rail_column_and_scroll_contract(world, app4, client, path):
         session['_user_id'] = 'admin'
         session[SESSION_PASSWORD] = password_mark(app4.config['AUTHENTICATION_PASSWORD'])
         groups = ui.navigation()
-    assert len(nav.select('.navgroup')) == len(groups)
-    assert len(nav.select('a')) == sum(len(links) for _, links in groups)
-    for target in ['/workbench/orders', '/workbench/storage', '/planning/wishlist', '/manage/tools']:
-        assert nav.select_one(f'a[href="{target}"]')
-    # Shell rules load after page assets and apply at both rail widths.
-    assert urlsplit(soup.select('link[rel="stylesheet"]')[-1]['href']).path.endswith('/shell.css')
+    assert [a.text for a in nav.select('a.tab')] == [name for name, _ in groups]
+    active = [links for name, links in groups if name == nav.select_one('a.tab.on').text][0]
+    for row in ('nav.sub', 'nav.psub'):
+        assert [a['href'] for a in soup.select(f'{row} a')] == [link['url'] for link in active]
+    # Every group is reachable from the top bar: each tab points at the first entry of its group.
+    assert [a['href'] for a in nav.select('a.tab')] == [links[0]['url'] for _, links in groups]
+    # Shell rules load after the page assets.
+    assert urlsplit(soup.select('link[rel="stylesheet"]')[-1]['href']).path.endswith(('/shell.css', '/b-prime.css'))
 
 
 @pytest.mark.parametrize('path', ['/workbench/part-to-inventory', '/workbench/storage', '/planning/prices', '/planning/wishlist', '/planning/complete-sets'])

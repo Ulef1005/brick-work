@@ -69,7 +69,8 @@ def regions_of(mask, offset: int = 0) -> list[str]:
     return found
 
 
-def compare(frame: Path, app: Path, width: int, band: bool) -> dict:
+def compare(frame: Path, app: Path, width: int, band: bool, viewport: int = 0) -> dict:
+    """`viewport`: the frame's viewport height in CSS px. A frame draws its tab bar at the foot of that viewport, the page's own at the foot of the grown capture."""
     from PIL import Image
     with Image.open(frame) as a, Image.open(app) as b:
         a, b = a.convert('RGB'), b.convert('RGB')
@@ -88,11 +89,12 @@ def compare(frame: Path, app: Path, width: int, band: bool) -> dict:
                     d, t, mask = diff_share(a.crop((0, 0, a.width, rows)), b.crop((0, 0, b.width, rows)))
                     regions += [f'top {r}' for r in regions_of(mask)]
                 else:
-                    d, t, mask = diff_share(a.crop((0, a.height - rows, a.width, a.height)), b.crop((0, b.height - rows, b.width, b.height)))
+                    foot = (viewport * SCALE if viewport else a.height)
+                    d, t, mask = diff_share(a.crop((0, foot - rows, a.width, foot)), b.crop((0, b.height - rows, b.width, b.height)))
                     regions += [f'foot {r}' for r in regions_of(mask)]
                 differing += d
                 total += t
-        return {'ratio': differing / total if total else 0.0, 'dh': (tall - short) // SCALE, 'tall': tall // SCALE, 'regions': regions}
+        return {'ratio': differing / total if total else 0.0, 'dh': 0 if band else (tall - short) // SCALE, 'tall': tall // SCALE, 'regions': regions}
 
 
 def verdict(result: dict) -> str:
@@ -112,7 +114,7 @@ def count_line() -> str:
     return f'design gate: {len(built)} of {len(screens)} approved screens built'
 
 
-def run(only: list[str], band: bool, report: bool) -> int:
+def run(only: list[str], band: bool, report: bool, keep: str = '') -> int:
     chrome = subprocess.run([sys.executable, str(ROOT / 'scripts' / 'chrome.py'), 'pinned'], capture_output=True, text=True)
     if chrome.returncode:
         print(chrome.stderr.strip())
@@ -136,7 +138,12 @@ def run(only: list[str], band: bool, report: bool) -> int:
                         pairs.append((width, theme, frame_png, app_png))
                 gate.run_jobs(jobs, jobs_dir, chrome)
             for width, theme, frame_png, app_png in pairs:
-                result = compare(frame_png, app_png, width, band)
+                if keep:   # the captures, for looking at (a folder; nothing else reads them)
+                    import shutil
+                    Path(keep).mkdir(parents=True, exist_ok=True)
+                    for png in (frame_png, app_png):
+                        shutil.copyfile(png, Path(keep) / f'{folder}-{png.name}')
+                result = compare(frame_png, app_png, width, band, {1440: 900, 390: 844}[width])
                 state = verdict(result)
                 worst = 'FAIL' if 'FAIL' in (worst, state) else 'NOTE' if 'NOTE' in (worst, state) else 'ok'
                 where = f' regions {", ".join(result["regions"][:6])}' if state != 'ok' and result['regions'] else ''
@@ -153,11 +160,12 @@ def main(argv: list[str]) -> int:
     parser.add_argument('--report', action='store_true', help='print the result and exit 0 (while a screen is being built)')
     parser.add_argument('--count', action='store_true', help='print the "N of M approved screens built" line, no rendering')
     parser.add_argument('--only', nargs='*', default=[])
+    parser.add_argument('--keep', default='', help='copy the captures into this folder')
     args = parser.parse_args(argv)
     if args.count:
         print(count_line())
         return 0
-    return run(args.only, args.band, args.report)
+    return run(args.only, args.band, args.report, args.keep)
 
 
 if __name__ == '__main__':

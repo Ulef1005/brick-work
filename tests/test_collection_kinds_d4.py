@@ -57,16 +57,13 @@ def test_the_three_icons_differ_from_parts_and_from_each_other():
     assert all(shapes.values()) and len({tuple(v) for v in shapes.values()}) == 4
 
 
-def test_the_sidebar_entries_use_their_own_icons(client, all_kinds):
+def test_gear_books_catalogs_are_in_the_sub_row_and_the_phone_strip(client, all_kinds):
+    """The shell draws no icon beside an entry since #492; the icons are keyed in the test below; Gear, Books and Catalogs are in the sub row and the phone strip."""
     soup = page(client, '/collection/G')
     for letter, (title, icon) in KINDS.items():
-        link = soup.select_one(f'.rail a[href$="/collection/{letter}"]')
-        assert link and title in link.get_text(), title
-        assert [p.get('d') for p in link.select('svg path')] == icon_paths(icon), title
-        strip = soup.select_one(f'.group-items a[href$="/collection/{letter}"]')
-        assert strip and strip.get('title') == title
-    parts = soup.select_one('.rail a[href$="/collection/P"]')
-    assert [p.get('d') for p in parts.select('svg path')] == icon_paths('parts')
+        for row in ('nav.sub', 'nav.psub'):
+            link = soup.select_one(f'{row} a[href$="/collection/{letter}"]')
+            assert link and link.select_one('.nav-title').text == title, (row, title)
 
 
 def test_navigation_keys_the_three_entries_to_their_icons(app4, client, all_kinds):

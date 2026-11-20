@@ -1,79 +1,31 @@
-/* Brick Work 4.1a: Guide 1b, G4 and 9a. */
-:root{--admin-rail:232px;--tw-topbar-h:56px;--bw-bars:calc(100px + var(--tw-safe-top));--bw-bottom:calc(var(--tw-tabbar-h) + var(--tw-safe-bottom))}
-.header:where(:not(.b-prime,.b-prime *)){position:sticky;top:0;z-index:20;display:flex;flex-wrap:nowrap;gap:24px;min-height:calc(56px + var(--tw-safe-top));padding:var(--tw-safe-top) max(20px,env(safe-area-inset-right)) 0 max(20px,env(safe-area-inset-left));background:var(--tw-bg);border-bottom:.5px solid var(--tw-divider)}
-.brand:where(:not(.b-prime,.b-prime *)){display:flex;align-items:center;gap:10px;min-height:44px;font:600 17px/24px var(--tw-font);letter-spacing:-.2px;color:var(--tw-text);text-decoration:none;flex:none;width:192px}.brand-mark:where(:not(.b-prime,.b-prime *)){width:24px;height:24px;display:block}
-.jump-trigger:where(:not(.b-prime,.b-prime *)){display:flex;align-items:center;gap:10px;flex:1;max-width:520px;min-height:44px;padding:0 12px;background:var(--tw-surface);color:var(--tw-text-2);border:0;border-radius:10px;font:400 14px/20px var(--tw-font)}.jump-trigger span:where(:not(.b-prime,.b-prime *)){flex:1;text-align:left}.jump-trigger kbd:where(:not(.b-prime,.b-prime *)){font:400 12px var(--tw-mono)}.header .shell-add:where(:not(.b-prime,.b-prime *)){min-height:44px;margin-left:auto}
-.layout:where(:not(.b-prime,.b-prime *)){display:grid;grid-template-columns:232px minmax(0,1fr);min-height:calc(100dvh - 56px - var(--tw-safe-top))}.layout>main:where(:not(.b-prime,.b-prime *)){min-width:0;padding:32px;max-width:none;width:100%}/* Only navigation scrolls; the theme picker reserves space below it. */
-
-.rail:where(:not(.b-prime,.b-prime *)){display:flex;flex-direction:column;position:sticky;top:calc(56px + var(--tw-safe-top));height:calc(100dvh - 56px - var(--tw-safe-top));min-height:0;padding:16px 12px max(16px,var(--tw-safe-bottom));border-right:.5px solid var(--tw-divider);overflow:hidden;gap:16px;background:var(--tw-bg)}.rail>nav:where(:not(.b-prime,.b-prime *)){display:flex;flex-direction:column;gap:14px;flex:1 1 0;min-height:0;overflow-y:auto;overflow-x:hidden}.rail .navgroup:where(:not(.b-prime,.b-prime *)){display:grid;gap:2px;flex:none;margin-bottom:0}.rail .navgroup p:where(:not(.b-prime,.b-prime *)){margin:0;padding:0 8px 4px;font:500 11px/14px var(--tw-font);letter-spacing:.1em;color:var(--tw-text-2)}
-.rail nav a:where(:not(.b-prime,.b-prime *)){display:flex;align-items:center;gap:12px;min-height:34px;padding:0 8px;border-radius:10px;color:var(--tw-text);font:500 14px/20px var(--tw-font);text-decoration:none}.rail a .icon:where(:not(.b-prime,.b-prime *)){width:20px;height:20px;flex:none}.nav-title:where(:not(.b-prime,.b-prime *)){flex:1}.nav-count:where(:not(.b-prime,.b-prime *)){font:400 12px var(--tw-mono);font-variant-numeric:tabular-nums;color:var(--tw-text-2);text-align:right}.rail nav a[aria-current=page]:where(:not(.b-prime,.b-prime *)){background:var(--tw-accent-soft);color:var(--tw-text)}.rail-theme:where(:not(.b-prime,.b-prime *)){margin-top:auto;padding:0 8px;flex:none}
-.theme-segments:where(:not(.b-prime,.b-prime *)){display:flex;gap:2px;padding:2px;background:var(--tw-surface);border-radius:10px}.theme-segments button:where(:not(.b-prime,.b-prime *)){flex:1;min-width:44px;min-height:44px;border:0;background:transparent;color:var(--tw-text-2);display:grid;place-items:center;border-radius:8px}.theme-segments button[aria-pressed=true]:where(:not(.b-prime,.b-prime *)){background:var(--tw-accent-soft);color:var(--tw-text)}
-.group-items:where(:not(.b-prime,.b-prime *)),.mobile-bottom:where(:not(.b-prime,.b-prime *)){display:none}.footer:where(:not(.b-prime,.b-prime *)){margin-left:232px;padding:20px 32px}.workbench-grid:where(:not(.b-prime,.b-prime *)){display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.workbench-grid :is(a,button):where(:not(.b-prime,.b-prime *)){min-height:96px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:8px;background:var(--tw-surface-2);border-radius:16px;color:var(--tw-text);text-align:center;text-decoration:none}.workbench-grid .nav-title:where(:not(.b-prime,.b-prime *)){flex:none}
-dialog:where(:not(.b-prime,.b-prime *)){background:var(--tw-sheet-bg);border:var(--tw-sheet-edge);box-shadow:none;animation:shell-sheet 240ms var(--tw-ease)}dialog:where(:not(.b-prime,.b-prime *))::backdrop{background:var(--tw-scrim)}.tw-dark dialog:where(:not(.b-prime,.b-prime *)){--tw-surface:var(--tw-surface-2)}@media(prefers-color-scheme:dark){:root:not(.tw-light) dialog:where(:not(.b-prime,.b-prime *)){--tw-surface:var(--tw-surface-2)}}
+/* Brick Work shell, page chrome that is not the shell bar itself. The bars (top bar, sub row, phone bar, tab bar) are the B′ frames' own CSS, generated into
+   brickwork/b-prime.css (#492); the sidebar, the group sheets and the old header are gone. */
+:root{--tw-topbar-h:60px;--bw-sub-h:44px;--tw-tabbar-h:78px;--bw-bars:calc(var(--tw-topbar-h) + var(--bw-sub-h) + var(--tw-safe-top));--bw-bottom:0px}
+@media(max-width:1023.98px){:root{--tw-topbar-h:56px;--bw-sub-h:40px;--bw-bottom:calc(var(--tw-tabbar-h) + var(--tw-safe-bottom))}}
+.layout:where(:not(.b-prime,.b-prime *)){display:block;min-height:calc(100dvh - var(--bw-bars))}
+.layout>main:where(:not(.b-prime,.b-prime *)){min-width:0;padding:32px;max-width:none;width:100%}
+.theme-segments:where(:not(.b-prime,.b-prime *)){display:flex;gap:2px;padding:2px;background:var(--tw-surface);border-radius:10px}
+.theme-segments button:where(:not(.b-prime,.b-prime *)){flex:1;min-width:44px;min-height:44px;border:0;background:transparent;color:var(--tw-text-2);display:grid;place-items:center;border-radius:8px}
+.theme-segments button[aria-pressed=true]:where(:not(.b-prime,.b-prime *)){background:var(--tw-accent-soft);color:var(--tw-text)}
+dialog:where(:not(.b-prime,.b-prime *)){background:var(--tw-sheet-bg);border:var(--tw-sheet-edge);box-shadow:none;animation:shell-sheet 240ms var(--tw-ease)}
+dialog:where(:not(.b-prime,.b-prime *))::backdrop{background:var(--tw-scrim)}
+.tw-dark dialog:where(:not(.b-prime,.b-prime *)){--tw-surface:var(--tw-surface-2)}
+@media(prefers-color-scheme:dark){:root:not(.tw-light) dialog:where(:not(.b-prime,.b-prime *)){--tw-surface:var(--tw-surface-2)}}
 @keyframes shell-sheet{from{transform:translateY(24px);opacity:0}to{transform:translateY(0);opacity:1}}
-.rail a:active:where(:not(.b-prime,.b-prime *)),.group-items a:active:where(:not(.b-prime,.b-prime *)),.mobile-bottom a:active:where(:not(.b-prime,.b-prime *)){background:var(--tw-accent-soft);transition:background 120ms var(--tw-ease)}
-@media(hover:hover){.rail a:hover:where(:not(.b-prime,.b-prime *)),.mobile-bottom a:hover:where(:not(.b-prime,.b-prime *)),.jump-trigger:hover:where(:not(.b-prime,.b-prime *)){opacity:.7}}
-.system-page:where(:not(.b-prime,.b-prime *)){max-width:560px;margin:56px auto;display:grid;gap:20px}.system-page h1:where(:not(.b-prime,.b-prime *)),.system-page p:where(:not(.b-prime,.b-prime *)){margin:0}.system-code:where(:not(.b-prime,.b-prime *)){color:var(--tw-danger);font-family:var(--tw-mono)}
-@media(min-width:1024px) and (max-width:1279.98px){:root{--admin-rail:64px}.layout:where(:not(.b-prime,.b-prime *)){grid-template-columns:64px minmax(0,1fr)}.rail:where(:not(.b-prime,.b-prime *)){padding:16px 8px}.rail nav a:where(:not(.b-prime,.b-prime *)){width:44px;justify-content:center;padding:0}.rail .nav-title:where(:not(.b-prime,.b-prime *)),.rail .nav-count:where(:not(.b-prime,.b-prime *)){position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}.rail .navgroup p:where(:not(.b-prime,.b-prime *)){display:none}.rail-theme:where(:not(.b-prime,.b-prime *)){padding:0}.rail .theme-segments:where(:not(.b-prime,.b-prime *)){flex-direction:column}.footer:where(:not(.b-prime,.b-prime *)){margin-left:64px}.brand:where(:not(.b-prime,.b-prime *)){width:auto}.header:where(:not(.b-prime,.b-prime *)){gap:24px}}
-@media(max-width:1023.98px){.layout:where(:not(.b-prime,.b-prime *)){grid-template-columns:minmax(0,1fr);min-height:calc(100dvh - var(--bw-bars) - var(--bw-bottom))}.rail:where(:not(.b-prime,.b-prime *)){display:none}.layout>main:where(:not(.b-prime,.b-prime *)){padding:24px 20px}.header:where(:not(.b-prime,.b-prime *)){gap:4px}.brand:where(:not(.b-prime,.b-prime *)){width:auto;margin-right:auto}.header .jump-trigger:where(:not(.b-prime,.b-prime *)){flex:none;width:44px;min-height:44px;padding:0;justify-content:center;background:transparent}.jump-trigger span:where(:not(.b-prime,.b-prime *)),.jump-trigger kbd:where(:not(.b-prime,.b-prime *)),.shell-add span:where(:not(.b-prime,.b-prime *)){display:none}.header .shell-add:where(:not(.b-prime,.b-prime *)){width:44px;padding:0;justify-content:center;margin:0;min-height:44px}.group-items:where(:not(.b-prime,.b-prime *)){display:block;position:sticky;top:calc(56px + var(--tw-safe-top));z-index:19;background:var(--tw-bg);border-bottom:.5px solid var(--tw-divider)}.group-items>div:not([hidden]):where(:not(.b-prime,.b-prime *)){display:flex;overflow:auto;gap:4px;padding:0 max(12px,env(safe-area-inset-left));scrollbar-width:none}.group-items a:where(:not(.b-prime,.b-prime *)),.group-items button:where(:not(.b-prime,.b-prime *)){flex:none;min-height:44px;display:flex;align-items:center;padding:0 12px;color:var(--tw-text-2);font:500 14px/20px var(--tw-font);text-decoration:none;white-space:nowrap;border:0;background:none;border-radius:0}.group-items .icon:where(:not(.b-prime,.b-prime *)){display:none}.group-items a[aria-current=page]:where(:not(.b-prime,.b-prime *)){color:var(--tw-accent-text);border-bottom:2px solid var(--tw-accent)}.mobile-bottom:where(:not(.b-prime,.b-prime *)){display:grid;grid-template-columns:repeat(4,minmax(0,1fr));position:fixed;bottom:0;left:0;right:0;z-index:20;background:var(--tw-bg);border-top:.5px solid var(--tw-divider);padding:0 env(safe-area-inset-right) var(--tw-safe-bottom) env(safe-area-inset-left)}.mobile-bottom a:where(:not(.b-prime,.b-prime *)){display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:49px;padding:2px 0;color:var(--tw-text-2);text-decoration:none;font:500 11px/14px var(--tw-font)}.mobile-bottom .icon:where(:not(.b-prime,.b-prime *)){width:22px;height:22px}.mobile-bottom a[aria-current=true]:where(:not(.b-prime,.b-prime *)){color:var(--tw-accent-text)}body{padding-bottom:var(--bw-bottom)}.footer:where(:not(.b-prime,.b-prime *)){margin:0;padding:20px}.workbench-sheet:where(:not(.b-prime,.b-prime *)){width:100%;max-width:none;margin:auto 0 0;border-radius:16px 16px 0 0;padding:20px max(20px,env(safe-area-inset-right)) calc(20px + var(--tw-safe-bottom)) max(20px,env(safe-area-inset-left))}.toast-live:where(:not(.b-prime,.b-prime *)){bottom:calc(var(--bw-bottom) + 16px)}.savebar:where(:not(.b-prime,.b-prime *)){bottom:var(--bw-bottom)}}/* Existing checker content keeps its layout inside the new shell. */
-
-body:has([data-checker])>.header:where(:not(.b-prime,.b-prime *)){display:flex}body:has([data-checker]) .rail:where(:not(.b-prime,.b-prime *)){display:flex}body:has([data-checker]) .layout:where(:not(.b-prime,.b-prime *)){display:grid;min-height:calc(100dvh - 56px)}
-@media(max-width:1023.98px){body:has([data-checker]) .rail:where(:not(.b-prime,.b-prime *)){display:none}body:has([data-checker])>.mobile-bottom:where(:not(.b-prime,.b-prime *)){display:grid}.checker-count [data-checker-save]>.checker-save:where(:not(.b-prime,.b-prime *)){bottom:var(--bw-bottom)}.checker:where(:not(.b-prime,.b-prime *)){padding-bottom:calc(88px + var(--bw-bottom))}}
+.system-page:where(:not(.b-prime,.b-prime *)){max-width:560px;margin:56px auto;display:grid;gap:20px}
+.system-page h1:where(:not(.b-prime,.b-prime *)),.system-page p:where(:not(.b-prime,.b-prime *)){margin:0}
+.system-code:where(:not(.b-prime,.b-prime *)){color:var(--tw-danger);font-family:var(--tw-mono)}
 @media(prefers-reduced-motion:reduce){*:where(:not(.b-prime,.b-prime *)),*:where(:not(.b-prime,.b-prime *))::before,*:where(:not(.b-prime,.b-prime *))::after{animation:none!important;transition:none!important}}
-.rail-tooltip:where(:not(.b-prime,.b-prime *)){position:fixed;left:64px;z-index:30;padding:12px;background:var(--tw-sheet-bg);color:var(--tw-text);border:var(--tw-sheet-edge);border-radius:10px;font:500 14px var(--tw-font)}
-
-/* The shell owns clearance after the footer on every mobile page. */
-@media(max-width:1023.98px){.footer:where(:not(.b-prime,.b-prime *)){padding-bottom:calc(20px + var(--bw-bottom))}}
-
-/* Keep Jump at the start of desktop content when the page has no shell Add. */
-@media(min-width:1280px) { .header:where(:not(.b-prime,.b-prime *)) { column-gap:52px; }.header .brand:where(:not(.b-prime,.b-prime *)) { width:192px; }.header .jump-trigger:where(:not(.b-prime,.b-prime *)) { margin-left:0;margin-right:auto; } }
-
-/* 4.6l · shared phone Add, Collection / Workbench / Planning / Manage. */
-@media(max-width:767px) {
-  .header .shell-add:where(:not(.b-prime,.b-prime *)) { width:44px;min-height:44px;background:transparent;border-color:transparent;color:var(--tw-accent-text); }
-}/* Group sheets end above the always tappable bottom bar. */
-
-
-.workbench-sheet:where(:not(.b-prime,.b-prime *)){max-height:calc(100dvh - var(--tw-safe-top) - 24px);overflow:hidden}
-.workbench-sheet[open]:where(:not(.b-prime,.b-prime *)){display:flex;flex-direction:column;gap:12px}
-.workbench-sheet .sheet-header:where(:not(.b-prime,.b-prime *)){flex:none}/* Keep the 2px outline plus 2px offset inside the scrollport, with tiles in place. */
-
-.workbench-sheet .workbench-grid:where(:not(.b-prime,.b-prime *)){min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:4px;margin:-4px;scroll-padding:4px}
-.workbench-sheet:focus:where(:not(.b-prime,.b-prime *)){outline:none}
-.workbench-grid :is(a,button):where(:not(.b-prime,.b-prime *)){padding:8px;overflow-wrap:anywhere}
-.workbench-grid a[aria-current=page]:where(:not(.b-prime,.b-prime *)){background:var(--tw-accent-soft);color:var(--tw-accent-text)}
-
-.workbench-grid button:where(:not(.b-prime,.b-prime *)){border:0;font:inherit;cursor:pointer}
-
-.workbench-sheet .sheet-header:where(:not(.b-prime,.b-prime *)){margin:0}
-.workbench-sheet h2:where(:not(.b-prime,.b-prime *)){margin:0;font:500 11px/14px var(--tw-font);letter-spacing:.1em;text-transform:uppercase;color:var(--tw-text-muted)}
-.workbench-grid :is(a,button):where(:not(.b-prime,.b-prime *)){font:500 14px var(--tw-font)}
-.workbench-grid .icon:where(:not(.b-prime,.b-prime *)){width:26px;height:26px}
-.navigation-scrim:where(:not(.b-prime,.b-prime *)){position:fixed;inset:0;z-index:21;background:var(--tw-scrim)}
-@media(max-width:1023.98px){
- .workbench-sheet:where(:not(.b-prime,.b-prime *)){position:fixed;inset:auto 0 var(--bw-bottom);margin:0;width:100%;border:0;border-top:.5px solid var(--tw-divider-strong);padding:16px 20px 20px;z-index:22;max-height:calc(100dvh - var(--bw-bottom) - var(--tw-safe-top) - 24px)}
- body:has(.workbench-sheet[open]) .mobile-bottom:where(:not(.b-prime,.b-prime *)){z-index:23}
-}
-@media(min-width:768px) and (max-width:1023.98px){.workbench-grid:where(:not(.b-prime,.b-prime *)){grid-template-columns:repeat(3,minmax(0,1fr))}}
 .jump-search-row:where(:not(.b-prime,.b-prime *)){display:flex;align-items:center;gap:8px}
 .jump-search-field:where(:not(.b-prime,.b-prime *)){flex:1;min-width:0;height:48px;border-radius:10px;background:var(--tw-surface);outline:1px solid var(--tw-accent-text);display:flex;align-items:center;gap:10px;padding:0 14px;box-sizing:border-box}
 .jump-search-field .icon:where(:not(.b-prime,.b-prime *)){width:20px;height:20px;color:var(--tw-text-muted);flex:none}
 #global-jump #jump-query:where(:not(.b-prime,.b-prime *)){flex:1;min-width:0;min-height:0;width:100%;border:0;background:none;padding:0;font:400 16px var(--tw-font);color:var(--tw-text)}
-#global-jump .jump-cancel:where(:not(.b-prime,.b-prime *)){height:44px;min-height:44px;padding:0 4px;border:0;background:none;color:var(--tw-accent-text);font:500 15px var(--tw-font)}/* ===== 4.9f: shell bottom navigation and phone Jump sheet (kit frame 1b) ===== */
-
-
-:root{--bw-bottom-inset:var(--tw-safe-bottom)}
-@media(max-width:1023.98px){:root{--bw-bottom:calc(49px + var(--bw-bottom-inset))}}
+#global-jump .jump-cancel:where(:not(.b-prime,.b-prime *)){height:44px;min-height:44px;padding:0 4px;border:0;background:none;color:var(--tw-accent-text);font:500 15px var(--tw-font)}
 #jump-message:empty:where(:not(.b-prime,.b-prime *)){display:none}
-@media(max-width:1023.98px){
- .mobile-bottom:where(:not(.b-prime,.b-prime *)){box-sizing:border-box;height:var(--bw-bottom);padding-bottom:var(--bw-bottom-inset)}
- .mobile-bottom a:where(:not(.b-prime,.b-prime *)){min-height:0;gap:3px;font:500 11px/12px var(--tw-font)}
-}
 @media(max-width:767.98px){
  #global-jump:where(:not(.b-prime,.b-prime *)){position:fixed;inset:0;box-sizing:border-box;width:100%;height:100dvh;max-width:none;max-height:none;margin:0;border:0;border-radius:0;background:var(--tw-bg);padding:calc(12px + var(--tw-safe-top)) max(20px,env(safe-area-inset-right,0px)) calc(12px + var(--tw-safe-bottom)) max(20px,env(safe-area-inset-left,0px))}
  #global-jump>.stack:where(:not(.b-prime,.b-prime *)){gap:20px}
 }/* UI-P6 · shared Tools & Admin page header (Manage 5b/7e): back link on the phone, title and one line below. */
-
 
 .bw-page-head:where(:not(.b-prime,.b-prime *)){display:flex;flex-direction:column;gap:4px;margin:0}
 .bw-page-head h1:where(:not(.b-prime,.b-prime *)){margin:0;font:600 22px/28px var(--tw-font);letter-spacing:-.2px}
@@ -83,7 +35,6 @@ main .bw-page-head .bw-back:where(:not(.b-prime,.b-prime *)){margin-bottom:0}
 @media(max-width:767px){main .bw-back:where(:not(.b-prime,.b-prime *)){display:inline-flex}main>.bw-back:where(:not(.b-prime,.b-prime *)){margin-bottom:-16px}}
 @media(min-width:768px){.bw-page-head h1:where(:not(.b-prime,.b-prime *)){font-size:28px;line-height:34px}}
 .bw-label:where(:not(.b-prime,.b-prime *)){margin:0;font:500 11px/14px var(--tw-font);letter-spacing:.1em;text-transform:uppercase;color:var(--tw-text-2)}/* UI-P6 · system pages (Manage 7f). */
-
 
 .system-page:where(:not(.b-prime,.b-prime *)){max-width:560px;margin:0;padding:48px 4px;display:flex;flex-direction:column;align-items:flex-start;gap:12px}
 .system-page h1:where(:not(.b-prime,.b-prime *)){font:600 22px/28px var(--tw-font);letter-spacing:-.2px}
@@ -102,8 +53,6 @@ main .bw-page-head .bw-back:where(:not(.b-prime,.b-prime *)){margin-bottom:0}
   .mono:not(img):where(:not(.b-prime,.b-prime *)),.mono:not(img)+span:where(:not(.b-prime,.b-prime *)) { max-width:100%;box-sizing:border-box;padding:0 3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center; }
   .mono:not(img):where(:not(.b-prime,.b-prime *)) { font-size:11px !important;line-height:14px !important; }/* !important: the pages' own `.mono` rules (one with an id) set 12 px */
    .mono:not(img)+span:where(:not(.b-prime,.b-prime *)) { font-size:9px !important;line-height:12px !important; }
-}/* #412: the workflow destination stays selected across its steps. */
-
-
-.group-items a:is([href="/workbench/lot-sorter"],[href="/planning/order-missing-parts"])[aria-current=page]:where(:not(.b-prime,.b-prime *)),
-.workbench-grid a:is([href="/workbench/lot-sorter"],[href="/planning/order-missing-parts"])[aria-current=page]:where(:not(.b-prime,.b-prime *)){background:var(--tw-accent-soft);color:var(--tw-text)}
+}
+.footer:where(:not(.b-prime,.b-prime *)){padding:20px 32px}
+@media(max-width:1023.98px){.layout>main:where(:not(.b-prime,.b-prime *)){padding:24px 20px}.footer:where(:not(.b-prime,.b-prime *)){padding:20px 20px calc(20px + var(--bw-bottom))}}

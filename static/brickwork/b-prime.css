@@ -52,12 +52,12 @@
 .b-prime:not(#_):not(#_):not(#_) .ext{display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 12px;border-radius:var(--tw-r-1);box-shadow:inset 0 0 0 1.5px var(--tw-text);font:600 14px var(--tw-font);color:var(--tw-text);white-space:nowrap}
 .b-prime:not(#_):not(#_):not(#_) .ptop{height:56px;background:var(--tw-surface);display:flex;align-items:center;gap:16px;padding:0 16px}
 .b-prime:not(#_):not(#_):not(#_) .psub{display:flex;gap:22px;padding:0 16px;border-bottom:1.5px solid var(--tw-rule);background:var(--tw-surface);overflow:hidden;white-space:nowrap}
-.b-prime:not(#_):not(#_):not(#_) .psub span{font:600 13px var(--tw-font-label);letter-spacing:.1em;text-transform:uppercase;color:var(--tw-text-muted);padding:10px 0 9px;border-bottom:3px solid transparent}
-.b-prime:not(#_):not(#_):not(#_) .psub span.on{color:var(--tw-text);border-bottom-color:var(--tw-accent)}
+.b-prime:not(#_):not(#_):not(#_) .psub span,.b-prime:not(#_):not(#_):not(#_) .psub a{font:600 13px var(--tw-font-label);letter-spacing:.1em;text-transform:uppercase;color:var(--tw-text-muted);padding:10px 0 9px;border-bottom:3px solid transparent}
+.b-prime:not(#_):not(#_):not(#_) .psub span.on,.b-prime:not(#_):not(#_):not(#_) .psub a.on{color:var(--tw-text);border-bottom-color:var(--tw-accent)}
 .b-prime:not(#_):not(#_):not(#_) .tabbar{position:absolute;left:0;right:0;bottom:0;height:78px;border-top:1px solid var(--tw-divider);background:var(--tw-surface);display:flex;padding-top:9px}
-.b-prime:not(#_):not(#_):not(#_) .tabbar div{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;font:500 11px var(--tw-font);color:var(--tw-text-muted)}
-.b-prime:not(#_):not(#_):not(#_) .tabbar div.on{color:var(--tw-text)}
-.b-prime:not(#_):not(#_):not(#_) .tabbar div.on b{display:block;width:18px;height:3px;border-radius:2px;background:var(--tw-accent);margin-top:1px}
+.b-prime:not(#_):not(#_):not(#_) .tabbar div,.b-prime:not(#_):not(#_):not(#_) .tabbar a{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;font:500 11px var(--tw-font);color:var(--tw-text-muted)}
+.b-prime:not(#_):not(#_):not(#_) .tabbar div.on,.b-prime:not(#_):not(#_):not(#_) .tabbar a.on{color:var(--tw-text)}
+.b-prime:not(#_):not(#_):not(#_) .tabbar div.on b,.b-prime:not(#_):not(#_):not(#_) .tabbar a.on b{display:block;width:18px;height:3px;border-radius:2px;background:var(--tw-accent);margin-top:1px}
 .b-prime:not(#_):not(#_):not(#_) .seg{display:flex;border:1.5px solid var(--tw-text);border-radius:3px;font:600 12px var(--tw-font-label);letter-spacing:.08em;text-transform:uppercase}
 .b-prime:not(#_):not(#_):not(#_) .seg span{padding:6px 10px}
 .b-prime:not(#_):not(#_):not(#_) .seg span.on{background:var(--tw-text);color:var(--tw-bg)}

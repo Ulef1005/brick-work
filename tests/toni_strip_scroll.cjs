@@ -1,4 +1,4 @@
-/* #153 Q5: at 390 px the phone top strip scrolls the active entry (Catalogs) into view on load, instant, page not scrolled. */
+/* #153 Q5: at 390 px the phone sub row (psub) scrolls the active entry (Catalogs) into view on load, instant, page not scrolled. */
 const fs=require('node:fs'),path=require('node:path'),{spawn}=require('node:child_process'),assert=require('node:assert/strict');
 const [chrome,dir]=process.argv.slice(2);
 const {launch}=require('../scripts/chrome_launch.cjs');   // starts Chrome and retries a failed start (#293)
@@ -17,15 +17,15 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
  const settled=async expression=>{for(let i=0;i<40;i++){if(await evaluate(expression)===true)return true;await delay(50);}return evaluate(expression);};   // focus moves after the event is handled: wait up to 2 s, never longer
  await call('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:false});
  const probe=`(()=>{
-  const strip=[...document.querySelectorAll('.group-items > div')].find(d=>!d.hidden),link=strip.querySelector('a[aria-current=page]');
+  const strip=document.querySelector('.bp-shell .psub'),link=strip.querySelector('a[aria-current=page]');
   const box=strip.getBoundingClientRect(),at=link.getBoundingClientRect();
-  return {title:link.title,overflow:strip.scrollWidth>strip.clientWidth,left:strip.scrollLeft,inside:at.left>=box.left-.5&&at.right<=box.right+.5,pageY:scrollY,pageX:scrollX};
+  return {title:link.textContent.trim(),overflow:strip.scrollWidth>strip.clientWidth,left:strip.scrollLeft,inside:at.left>=box.left-.5&&at.right<=box.right+.5,pageY:scrollY,pageX:scrollX};
  })()`;
  for (const reduced of [false,true]) {
   await call('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:reduced?'reduce':'no-preference'}]});
   await call('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:false});
   await call('Page.navigate',{url:'file://'+path.join(dir,'shell.html')});
-  for(let i=0;i<100;i++){if(await evaluate("document.readyState==='complete' && !!document.querySelector('.group-items')"))break;await delay(20);}
+  for(let i=0;i<100;i++){if(await evaluate("document.readyState==='complete' && !!document.querySelector('.bp-shell .psub')"))break;await delay(20);}
   await delay(100);
   const m=await evaluate(probe);
   assert.equal(m.title,'Catalogs');
@@ -37,7 +37,7 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
  // Opened wide, then narrowed into the phone layout: the reveal runs again on resize (Codex review).
  await call('Emulation.setDeviceMetricsOverride',{width:1440,height:900,deviceScaleFactor:1,mobile:false});
  await call('Page.navigate',{url:'file://'+path.join(dir,'shell.html')});
- for(let i=0;i<100;i++){if(await evaluate("document.readyState==='complete' && !!document.querySelector('.group-items')"))break;await delay(20);}
+ for(let i=0;i<100;i++){if(await evaluate("document.readyState==='complete' && !!document.querySelector('.bp-shell .psub')"))break;await delay(20);}
  await delay(100);
  await call('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:false});
  assert.ok(await settled(`(()=>{const m=${probe};return m.left>0&&m.inside;})()`),'Catalogs revealed after narrowing to 390 px: '+JSON.stringify(await evaluate(probe)));

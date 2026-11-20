@@ -102,8 +102,13 @@ def rules(css: str) -> list[tuple[str, str]]:
     return out
 
 
+# The frames draw the phone sub row's entries as <span> and the tab bar's as <div>; the app uses links there. Each such rule also applies to the link.
+ALIASES = (('.psub span', '.psub a'), ('.tabbar div', '.tabbar a'))
+
+
 def scope(selector: str, prefix: str = SCOPE) -> str:
     parts = split_top(selector)
+    parts += [part.replace(old, new) for part in parts for old, new in ALIASES if old in part]
     for part in parts:
         if re.match(r'(html|body|:root)\b', part):
             raise SystemExit(f'B-PRIME: cannot scope {part!r}: a page-level selector')

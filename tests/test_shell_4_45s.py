@@ -1,4 +1,4 @@
-"""Shared rail reserves theme space while all navigation remains scrollable (ported from test_shell_45s, M.8b).
+"""The shell navigation lists the active group in the sub row and every group in the top bar (ported from test_shell_45s, M.8b; the sidebar went with #492).
 
 Run on the screens ported so far: the home screen, the Sets screen and the wish list (`/collection/wishes`). The paths of screens still
 answering 503 stay in `test_shell_45s.py` with their pieces."""
@@ -16,18 +16,14 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 @pytest.mark.parametrize('path', ['/', '/collection/sets', '/collection/wishes'])
-def test_shared_rail_column_and_scroll_contract(app4, client, world, path):
+def test_shell_navigation_follows_the_active_group(app4, client, world, path):
     app = app4
     response = client.get(path)
     assert response.status_code == 200
     soup = BeautifulSoup(response.data, 'html.parser')
-    rail = soup.select_one('.layout > .rail')
-    nav, theme = rail.find_all(recursive=False)
-    assert nav.name == 'nav' and nav['aria-label'] == 'Main'
-    assert theme['class'] == ['rail-theme']
-    assert [b['data-theme-mode'] for b in theme.select('button')] == [
-        'system', 'light', 'dark']
-    assert not nav.select('.theme-segments')
+    nav = soup.select_one('header.top nav.tabs')
+    assert nav['aria-label'] == 'Main'
+    assert not soup.select('.layout > .rail, .rail-theme')       # no sidebar, no theme picker in the shell (the theme is the Appearance page)
     with app.test_request_context(path):
         # The same logged-in view as the page: counts (and the item kinds they add) show only after login.
         from flask import session
@@ -35,36 +31,14 @@ def test_shared_rail_column_and_scroll_contract(app4, client, world, path):
         session['_user_id'] = 'admin'
         session[SESSION_PASSWORD] = password_mark(app.config['AUTHENTICATION_PASSWORD'])
         groups = ui.navigation()
-    assert len(nav.select('.navgroup')) == len(groups)
-    assert len(nav.select('a')) == sum(len(links) for _, links in groups)
-    for target in ['/workbench/orders', '/workbench/storage',
-                   '/planning/wishlist', '/manage/tools']:
-        assert nav.select_one(f'a[href="{target}"]')
-    # Shell rules load after page assets and apply at both rail widths.
-    assert urlsplit(soup.select('link[rel="stylesheet"]')[-1]['href']).path.endswith('/shell.css')
-
-
-def test_rail_css_source_checks():
-    # These assertions inspect CSS source; browser geometry is checked after deploy.
-    css = (ROOT / 'static/web/toni/shell.css').read_text().replace(':where(:not(.b-prime,.b-prime *))', '')
-
-    def rule(selector):
-        body = re.search(re.escape(selector) + r'\{([^}]+)\}', css)[1]
-        return dict(declaration.split(':', 1) for declaration in body.split(';')
-                    if declaration)
-
-    column = rule('.rail')
-    assert column['display'] == 'flex' and column['flex-direction'] == 'column'
-    assert column['height'] == 'calc(100dvh - 56px - var(--tw-safe-top))'
-    assert column['min-height'] == '0'
-    scrolling = rule('.rail>nav')
-    assert scrolling['display'] == 'flex' and scrolling['flex-direction'] == 'column'
-    assert scrolling['flex'] == '1 1 0' and scrolling['min-height'] == '0'
-    assert scrolling['overflow-y'] == 'auto' and scrolling['overflow-x'] == 'hidden'
-    assert rule('.rail .navgroup')['flex'] == 'none'
-    assert rule('.rail-theme')['flex'] == 'none'
-    assert '@media(max-width:1023.98px){.layout' in css
-    assert '.rail{display:none}' in css
+    assert [a.text for a in nav.select('a.tab')] == [name for name, _ in groups]
+    active = [links for name, links in groups if name == nav.select_one('a.tab.on').text][0]
+    for row in ('nav.sub', 'nav.psub'):
+        assert [a['href'] for a in soup.select(f'{row} a')] == [link['url'] for link in active]
+    # Every group is reachable from the top bar: each tab points at the first entry of its group.
+    assert [a['href'] for a in nav.select('a.tab')] == [links[0]['url'] for _, links in groups]
+    # Shell rules load after the page assets.
+    assert urlsplit(soup.select('link[rel="stylesheet"]')[-1]['href']).path.endswith(('/shell.css', '/b-prime.css'))
 
 
 @pytest.mark.parametrize('path', ['/', '/collection/sets'])

@@ -24,18 +24,17 @@ def test_all_shells(client, world, path, current, group):
     response = client.get(path)
     assert response.status_code == 200
     soup = BeautifulSoup(response.text, 'html.parser')
-    for name, titles in GROUPS.items():
-        for selector in [f'[data-rail-group="{name}"]', f'[data-group-panel="{name}"]',
-                         f'[data-nav-sheet="{name}"]']:
-            panel = soup.select_one(selector)
-            assert [n.text for n in panel.select('.nav-title')] == titles
-            assert [a.select_one('.nav-title').text for a in panel.select('a[aria-current="page"]')] == ([current] if name == group else [])
-    assert soup.select_one('.mobile-bottom [aria-current="true"]')['data-nav-group'] == group
+    titles = GROUPS[group]
+    for row in ('nav.sub', 'nav.psub'):    # only the active group's entries are in the page, once for the desktop row and once for the phone strip
+        assert [n.text for n in soup.select(f'{row} .nav-title')] == titles
+        assert [a.select_one('.nav-title').text for a in soup.select(f'{row} a[aria-current="page"]')] == [current]
+    assert [t.text for t in soup.select('nav.tabs a.tab[aria-current="true"]')] == [group]
+    assert soup.select_one('.bp-tabbar [aria-current="true"]')['data-nav-group'] == group
     if current == 'Lot Sorter':
         assert soup.h1.text == 'Lot Sorter'
         assert soup.select_one('[data-bc-default-group="lot"]')
     else:
-        assert soup.select_one('a[title="Order missing parts"] svg')
+        assert soup.select_one('nav.sub a.on .nav-title').text == 'Order missing parts'
 
 
 def test_complete_sets_links_to_order_missing_parts(client, world):
@@ -43,7 +42,7 @@ def test_complete_sets_links_to_order_missing_parts(client, world):
     assert soup.select_one('main a[href="/planning/order-missing-parts"]')
 
 
-def test_approved_icon_registered(client, world):
+def test_approved_icon_registered(app4, world):
     paths = [ROOT / folder / 'lot-sorter.svg' for folder in
              ['design/components/icons', 'static/web/toni/icons', 'static/brickwork/icons-ui']]
     assert len({p.read_bytes() for p in paths}) == 1
@@ -55,16 +54,6 @@ def test_approved_icon_registered(client, world):
     for folder in ['design/components/icons', 'static/brickwork/icons-ui']:
         sprite = ET.fromstring((ROOT / folder / 'sprite.svg').read_text())
         assert sprite.find("{http://www.w3.org/2000/svg}symbol[@id='bw-lot-sorter']") is not None
-    soup = BeautifulSoup(client.get('/workbench/lot-sorter').text, 'html.parser')
-    assert soup.select_one('a[title="Lot Sorter"] svg path')['d'] == 'M9 12v8M15 12v8'
-
-
-def test_selection_uses_ink_on_soft_and_keeps_phone_touch_targets():
-    css = (ROOT / 'static/web/toni/shell.css').read_text().replace(':where(:not(.b-prime,.b-prime *))', '')
-    rule = css.split('/* #412:')[1]
-    assert '[href="/workbench/lot-sorter"]' in rule
-    assert '[href="/planning/order-missing-parts"]' in rule
-    assert 'background:var(--tw-accent-soft);color:var(--tw-text)' in rule
-    assert 'min-height:44px' in css
-    import re
-    assert not re.search(r'(?<![-\w])order\s*:', css)
+    with app4.test_request_context('/workbench/lot-sorter'):    # the entries carry the icon's name; the shell draws none of them since #492
+        from brickwork.web.ui import navigation
+        assert [l['icon'] for _, links in navigation() for l in links if l['title'] == 'Lot Sorter'] == ['lot-sorter']

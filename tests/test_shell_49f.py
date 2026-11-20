@@ -1,4 +1,4 @@
-"""4.9f: phone bottom bar (kit frame 1b: 83px, 12px label line) and the Jump sheet without helper copy."""
+"""The shell geometry (#492: top bar 60, sub row 44, phone bar 56 + 40, tab bar 78) and the Jump sheet without helper copy."""
 import os
 from pathlib import Path
 import re
@@ -25,18 +25,14 @@ def test_jump_has_no_helper_copy_keyboard_line_or_add(client):
     assert jump.select_one('#jump-query[placeholder]') and jump.select_one('.jump-cancel')
 
 
-def test_bottom_bar_and_jump_sheet_css():
+def test_bottom_bar_variable_and_jump_sheet_css():
     css = (ROOT / 'static/web/toni/shell.css').read_text().replace(':where(:not(.b-prime,.b-prime *))', '')
-    region = css[css.index('4.9f'):]
-    assert '--bw-bottom-inset:var(--tw-safe-bottom)' in region
-    # #245: no rule forces a minimum under the bar; the inset is the phone's own (0 in a browser toolbar).
-    assert not re.search(r'--bw-bottom-inset:[^;}]*(max|min)\(', css) and 'max(34px' not in css
-    assert '--bw-bottom:calc(49px + var(--bw-bottom-inset))' in region
-    assert 'font:500 11px/12px var(--tw-font)' in region
-    assert 'height:var(--bw-bottom)' in region and 'padding-bottom:var(--bw-bottom-inset)' in region
-    sheet = re.search(r'#global-jump\{([^}]+)\}', region).group(1)
-    for value in ('position:fixed', 'inset:0', 'width:100%', 'height:100dvh', 'max-width:none',
-                  'max-height:none', 'border-radius:0'):
+    # The shell's own variables: no bar under a desktop, the frame's tab bar (--tw-tabbar-h) plus the phone's inset below 1024 px (#245: no forced minimum).
+    assert re.search(r'^:root\{[^}]*--bw-bottom:0px', css, re.M)
+    assert '@media(max-width:1023.98px){:root{--tw-topbar-h:56px;--bw-sub-h:40px;--bw-bottom:calc(var(--tw-tabbar-h) + var(--tw-safe-bottom))}}' in css
+    assert not re.search(r'--bw-bottom-inset', css) and 'max(34px' not in css
+    sheet = re.search(r'#global-jump\{([^}]+)\}', css[css.index('@media(max-width:767.98px)'):]).group(1)
+    for value in ('position:fixed', 'inset:0', 'width:100%', 'height:100dvh', 'max-width:none', 'max-height:none', 'border-radius:0'):
         assert value in sheet
 
 
@@ -61,10 +57,9 @@ def test_shell_chromium_geometry(client, tmp_path):
 
 def test_fixed_clearances_follow_bottom_bar_variable():
     css = {n: (ROOT / 'static/web/toni' / n).read_text().replace(':where(:not(.b-prime,.b-prime *))', '') for n in
-           ('toni.css', 'shell.css', 'bw-collection.css')}
-    assert '.savebar{bottom:var(--bw-bottom)}.toast-live{bottom:calc(var(--bw-bottom) + var(--tw-s-4))}' in css['toni.css']
-    assert 'calc(var(--bw-bottom) + 35px)' in css['bw-collection.css']
-    assert 'calc(84px' not in css['bw-collection.css']
-    # Outside the phone/iPad media query --bw-bottom keeps its original definition.
-    assert re.search(r'^:root\{[^}]*--bw-bottom:calc\(var\(--tw-tabbar-h\) \+ var\(--tw-safe-bottom\)\)', css['shell.css'], re.M)
-    assert '@media(max-width:1023.98px){:root{--bw-bottom:calc(49px + var(--bw-bottom-inset))}}' in css['shell.css']
+           ('toni.css', 'shell.css', 'bw-planning.css')}
+    assert '.savebar{bottom:var(--bw-bottom)}' in css['toni.css'] and '.toast-live{bottom:calc(var(--bw-bottom) + var(--tw-s-4))}' in css['toni.css']
+    assert 'calc(var(--bw-bottom) + 35px)' in css['bw-planning.css']
+    assert 'calc(84px' not in css['bw-planning.css']
+    # The footer clears the tab bar below 1024 px by the same variable.
+    assert '.footer{padding:20px 20px calc(20px + var(--bw-bottom))}' in css['shell.css']

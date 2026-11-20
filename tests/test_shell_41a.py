@@ -27,7 +27,7 @@ def test_groups_order_and_copy_chooser(app4, client, world):
             ('Collection', ['Sets', 'Minifigures', 'Parts', 'Instructions', 'Boxes', 'Gear']),
             ('Workbench', ['Part Spotter', 'Set Inspector', 'Lot Sorter', 'Part Runner', 'Matchmaker', 'Build Scout', 'Orders', 'Storage']),
             ('Planning', ['Wishlist', 'Prices', 'Complete sets', 'Order missing parts']),
-            ('Manage', ['Add', 'Tools & Admin'])]
+            ('Manage', ['Add', 'Tools & Admin', 'Appearance'])]
         check = groups[1][1][1]
         assert not check.get('chooser') and check['endpoint'] == 'web.bw_check_parts'
         assert check['url'] == '/workbench/check-parts'
@@ -147,7 +147,7 @@ def test_system_pages_in_shell(app4, client):
     assert missing.status_code == 404
     html = missing.get_data(as_text=True)
     assert 'Page not found' in html
-    assert 'data-web-ui="toni"' in html and 'class="mobile-bottom"' in html
+    assert 'data-web-ui="toni"' in html and 'class="tabbar"' in html
     assert 'web/toni/shell.css' in html and 'id="global-jump"' in html
     with app.test_request_context('/missing'):
         app.preprocess_request()
@@ -174,8 +174,7 @@ def test_home_screen_head_and_local_token_source(client):
     tokens = (ROOT / 'static/web/toni/tokens-v2.css').read_text()
     assert '@import' not in tokens and 'fonts.googleapis' not in tokens
     css = (ROOT / 'static/web/toni/shell.css').read_text().replace(':where(:not(.b-prime,.b-prime *))', '')
-    assert 'grid-template-columns:232px' in css and 'grid-template-columns:64px' in css
-    assert 'max-width:1023.98px' in css and 'repeat(4,minmax(0,1fr))' in css
+    assert 'max-width:1023.98px' in css      # the one breakpoint of the shell (#492): the bars change here, there is no 232/64 px sidebar any more
     assert 'var(--tw-safe-top)' in css and 'var(--tw-safe-bottom)' in css
 
 

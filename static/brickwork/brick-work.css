@@ -9,3 +9,30 @@
 /* #86: the way back to Get started on the pages a step-3 choice opens. */
 .flow-return { margin:0 0 8px; }
 .flow-return a { min-height:44px;display:inline-flex;align-items:center;color:var(--tw-accent-text);font:500 15px var(--tw-font);text-decoration:none; }
+
+/* The B′ shell (#492): the frames' own rules are in b-prime.css; this places the bars in the page. A desktop shows the top bar and the sub row, a phone the
+   lockup bar, the sub row and the tab bar. The scope is repeated so these rules outrank the generated ones. */
+.bp-shell.b-prime:not(#_):not(#_):not(#_){position:sticky;top:0;z-index:20;padding-top:var(--tw-safe-top);background:var(--tw-surface)}
+.bp-shell.b-prime:not(#_):not(#_):not(#_) .ptop,.bp-shell.b-prime:not(#_):not(#_):not(#_) .psub{display:none}
+.bp-shell.b-prime:not(#_):not(#_):not(#_) .brand{display:flex;flex:none}
+.bp-shell.b-prime:not(#_):not(#_):not(#_) .lockup{height:32px;width:129px;max-width:none}
+.bp-shell.b-prime:not(#_):not(#_):not(#_) .lockup-dark{display:none}
+.bp-shell.b-prime:not(#_):not(#_):not(#_) .tabs a{display:block}
+.bp-shell.b-prime:not(#_):not(#_):not(#_) .search{width:340px;text-align:left;font-family:inherit}
+.bp-shell.b-prime:not(#_):not(#_):not(#_) .sub{overflow-x:auto;scrollbar-width:none;white-space:nowrap}
+.bp-shell.b-prime:not(#_):not(#_):not(#_) .sub a,.bp-shell.b-prime:not(#_):not(#_):not(#_) .psub a{flex:none}
+.bp-shell.b-prime:not(#_):not(#_):not(#_) .psub{overflow-x:auto;scrollbar-width:none}
+.bp-shell.b-prime:not(#_):not(#_):not(#_) .psub a{display:block}
+.bp-shell.b-prime:not(#_):not(#_):not(#_) .jump-icon,.bp-shell.b-prime:not(#_):not(#_):not(#_) .add-icon{display:inline-flex;align-items:center;justify-content:center;min-width:41px;min-height:44px;color:var(--tw-text-2)}
+.bp-shell.b-prime:not(#_):not(#_):not(#_) .jump-icon{margin-left:auto;margin-right:-16px}
+.bp-shell.b-prime:not(#_):not(#_):not(#_) .add-icon{margin-right:-11px}
+.bp-tabbar.b-prime:not(#_):not(#_):not(#_){display:contents}
+.bp-tabbar.b-prime:not(#_):not(#_):not(#_) .tabbar{display:none}
+@media(max-width:1023.98px){
+  .bp-shell.b-prime:not(#_):not(#_):not(#_) .top,.bp-shell.b-prime:not(#_):not(#_):not(#_) .sub{display:none}
+  .bp-shell.b-prime:not(#_):not(#_):not(#_) .ptop,.bp-shell.b-prime:not(#_):not(#_):not(#_) .psub{display:flex}
+  .bp-tabbar.b-prime:not(#_):not(#_):not(#_) .tabbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:20;height:calc(var(--tw-tabbar-h) + var(--tw-safe-bottom));padding-bottom:var(--tw-safe-bottom);box-sizing:border-box}
+  .bp-tabbar.b-prime:not(#_):not(#_):not(#_) .tabbar a{min-height:44px}
+}
+@media(prefers-color-scheme:dark){:root:not(.tw-light) .bp-shell.b-prime:not(#_):not(#_):not(#_) .lockup-light{display:none}:root:not(.tw-light) .bp-shell.b-prime:not(#_):not(#_):not(#_) .lockup-dark{display:block}}
+.tw-dark .bp-shell.b-prime:not(#_):not(#_):not(#_) .lockup-light{display:none}.tw-dark .bp-shell.b-prime:not(#_):not(#_):not(#_) .lockup-dark{display:block}

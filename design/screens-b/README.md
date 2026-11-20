@@ -21,5 +21,7 @@ The approved frames of commission U, built by `../sources/b/b_frames.py` (`build
 | `14-lot-sorter/` | R6-03 Lot Sorter: Set detection, ink score bar, Make a copy sheet | round 6 |
 | `15-order-missing-parts/` | R6-01 Order missing parts: missing bars, order list, source choice | round 6 |
 | `16-orders/` | R6-04 Orders: Count what arrived, status by shape | round 6 |
+| `44-source-chip/` | N2-20 Set detail with the source of a copy: Added via, Last synced from, Checked on Rebrickable (#551, #489); early landing for U, the rest of N round 2 is on `design/sync-n` | N round 2 |
+| `48-sets-pulled-copy/` | N2-24 Sets with the label of a pulled copy, "Checked on Rebrickable" (#489); early landing for U | N round 2 |
 
 These frames replace the v1.3 frames in `../screens/` screen by screen as each is approved; `../screens/` and its manifest stay the record of what is built today until the app is rebuilt (milestone U). Set pictures are empty white tiles with their alt text, because this public repo carries no catalogue pictures; the review showed the real pictures (https://claude.ai/artifact/FX8PAj3J9cgVkY42oPGc8a, version 3).

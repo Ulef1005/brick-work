@@ -113,7 +113,13 @@ Release 1.1 (schema 4.6). The schema is stable, upgrades are tested, and you ins
 
 ## Install
 
-On Windows or a Mac with no Git: [install with Docker Desktop](docs/how-to/install-docker-desktop.md), about 15 minutes. With Git and Docker Compose:
+Pick your platform, none of these needs Git:
+
+- **Unraid:** find **Brick Work** in Community Applications. [Unraid guide](docs/how-to/install-unraid.md).
+- **Synology, other NAS and Portainer:** paste one compose file. [NAS and Portainer guide](docs/how-to/install-nas.md).
+- **Windows or a Mac:** [install with Docker Desktop](docs/how-to/install-docker-desktop.md), about 15 minutes.
+
+With Git and Docker Compose:
 
 ```sh
 git clone --branch v1.1.1 https://github.com/Ulef1005/brick-work.git

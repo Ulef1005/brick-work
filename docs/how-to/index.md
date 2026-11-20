@@ -43,6 +43,8 @@ One task per page, for someone who already knows the app.
 ## Running Brick Work
 
 - [Install on your computer with Docker Desktop](install-docker-desktop.md)
+- [Install on Unraid](install-unraid.md)
+- [Install on a NAS or with Portainer](install-nas.md)
 - [Settings and maintenance](settings-and-maintenance.md)
 - [Back up and restore](back-up-and-restore.md)
 - [Upgrade Brick Work](upgrade.md)

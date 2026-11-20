@@ -13,26 +13,35 @@ ROOT = Path(__file__).resolve().parent.parent
 GUARD = 'BW_VENV_REEXEC'
 
 
+def runnable(path):
+    """check.sh's `-x`: an executable file."""
+    return path.is_file() and os.access(path, os.X_OK)
+
+
 def find(root=ROOT, environ=os.environ):
     """The venv python check.sh would use, or None."""
     app = environ.get('APP_VENV')
-    if app and (Path(app) / 'bin' / 'python').exists():
+    if app and runnable(Path(app) / 'bin' / 'python'):
         return str(Path(app) / 'bin' / 'python')
     own = Path(root) / '.venv' / 'bin' / 'python'
-    if own.exists():
+    if runnable(own):
         return str(own)
     try:
-        common = subprocess.run(['git', '-C', str(root), 'rev-parse', '--path-format=absolute', '--git-common-dir'], capture_output=True, text=True, check=True).stdout.strip()
+        clean = {k: v for k, v in environ.items() if k not in ('GIT_DIR', 'GIT_WORK_TREE')}   # a hook or a rebase --exec exports them, and `git -C` would then ignore `root`
+        common = subprocess.run(['git', '-C', str(root), 'rev-parse', '--path-format=absolute', '--git-common-dir'], capture_output=True, text=True, check=True, env=clean).stdout.strip()
     except (OSError, subprocess.CalledProcessError):
         return None
     canonical = Path(common).parent / '.venv' / 'bin' / 'python'
-    return str(canonical) if canonical.exists() else None
+    return str(canonical) if runnable(canonical) else None
 
 
 def ensure():
-    if sys.prefix != sys.base_prefix or os.environ.get(GUARD):
+    if sys.prefix != sys.base_prefix:
+        os.environ.pop(GUARD, None)   # arrived after the re-exec: the guard must not leak into a child that starts with the system python
+        return
+    if os.environ.get(GUARD):
         return
     python = find()
     if python:
-        os.environ[GUARD] = '1'
+        os.environ[GUARD] = '1'   # the guard stops a second re-exec if the venv python itself is not in a venv
         os.execv(python, [python] + sys.argv)

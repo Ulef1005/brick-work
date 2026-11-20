@@ -1,0 +1,18 @@
+<div class="bp-match-tail b-prime">
+<details class="kit-disclosure bp-match-how"><summary class="row"><span class="bp-match-chev" aria-hidden="true">{{ toni_icon('chevron-right') }}</span><span class="t">How matching works</span></summary>
+<div class="bp-match-how-body">
+<p>Match your loose inventory to the owned sets that need it.</p>
+<p>These are candidates from current stock, not reservations. The same loose item can appear against several sets. Parts match by exact part and colour; figures by catalogue identity; booklets and boxes by exact set number. Review the physical item before assigning it.</p>
+<p>Coverage counts recorded missing and damaged items, capped by usable stock within each copy. Complete requires Set is checked and no required part or minifigure gaps. Manual completeness stays unchanged.</p>
+<div class="actions"><a class="btn sec sm bw-secondary" href="{{ url_for('web.bw_inventory') }}">Scan loose parts</a><a class="btn sec sm bw-secondary" href="{{ url_for('web.bw_collection',kind='I') }}">Instructions</a><a class="btn sec sm bw-secondary" href="{{ url_for('web.bw_collection',kind='O') }}">Boxes</a></div>
+</div>
+</details>
+<section class="group bp-match-booklets"><h2 class="lbl">Add instruction booklets</h2>
+<p class="hint">Physical booklets · one catalogue booklet number per line. Use the full number when a set has multiple booklets. A comma and quantity can override the count for a line.</p>
+<form data-action="booklets"><label class="field bp-match-textarea-field">Set numbers<textarea class="input bp-match-textarea" name="text" rows="4" maxlength="20000" placeholder="For example 6081-1" required></textarea></label>
+<div class="bp-match-booklet-row"><label class="field bp-match-qty-field">Quantity per line<input class="input" name="quantity" type="number" min="1" max="99" value="1" required></label>
+<button class="btn primary">Add booklets</button></div>
+<p data-form-message role="status"></p>
+</form>
+</section>
+</div>

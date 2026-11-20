@@ -48,7 +48,7 @@ def test_a_crop_limit_leaves_the_rows_below_it_uncompared(tmp_path):
     assert fc.compare(a, b, 390, band=False)['ratio'] > 0
     assert fc.compare(a, b, 390, band=False, limit=100)['ratio'] == 0   # the limit is 100 CSS px: the mark lies below it
     assert fc.compare(a, b, 390, band=False, limit=200)['ratio'] > 0
-    assert fc.CROP_BELOW == {('04-sets', 390): 700, ('48-sets-pulled-copy', 390): 700} and '04-sets' in fc.BODY_BUILT
+    assert fc.CROP_BELOW == {('04-sets', 390): 731, ('05-sets-without-storage', 390): 657, ('48-sets-pulled-copy', 390): 700} and {'04-sets', '05-sets-without-storage'} <= fc.BODY_BUILT
     assert fc.compare(a, b, 390, band=False, limit=-5)['ratio'] > 0     # a non-positive limit means no limit
 
 

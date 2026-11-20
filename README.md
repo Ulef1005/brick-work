@@ -1,8 +1,8 @@
 <!-- site:skip -->
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="static/brickwork/lockup-horizontal-dark.png">
-    <img src="static/brickwork/lockup-horizontal-light.png" alt="Brick Work" width="520">
+    <source media="(prefers-color-scheme: dark)" srcset="design/logo/retired/lockup-stacked-dark.png">
+    <img src="design/logo/retired/lockup-stacked-light.png" alt="Brick Work" width="320">
   </picture>
 </p>
 

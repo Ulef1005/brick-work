@@ -31,7 +31,7 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
  })()`);
  assert.deepEqual(m.bar,[78,844,844]);assert.equal(m.pos,'fixed');assert.equal(m.save,'78px');assert.equal(m.toast,'94px');
  assert.ok(m.link>=44,'link '+m.link);
- assert.equal(m.ptop,56);assert.ok(Math.abs(m.psub-40)<=1.5,'psub '+m.psub);   // content height (padding, a 13 px label, a 3 px rule): 40 with the shipped fonts, 39 with this offline page's fallback font
+ assert.equal(m.ptop,56);assert.ok(m.psub>=37&&m.psub<=41,'psub '+m.psub);   // content height (padding, a 13 px label, a 3 px rule): 40 with the shipped fonts, 39 with this offline page's fallback font on a Mac, 38 with the Ubuntu runner's (the push run on main is the only CI run that has Chrome: a pull request sets BW_NO_CHROME)
  assert.equal(m.top,'none');assert.equal(m.sub,'none');assert.ok(m.scrollX<=0,'page scrolls sideways');
  assert.deepEqual(m.jump,[0,0,390,844]);
  assert.equal(m.message,'none');assert.equal(m.add,false);

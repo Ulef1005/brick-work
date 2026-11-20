@@ -40,8 +40,11 @@ TARGETS = {'01-tools-and-admin': ('/manage/tools', 'frames'),
 # Frames that draw one screen as the device shows it (the frame's own size, the rest of the page cut off, the phone's tab bar at the foot of that size): the
 # frame and app are both captured as one viewport (capture_screens.cjs `sheet_below`), not grown to the whole height of their scrollable content. A frame that draws the whole page is not listed.
 VIEWPORT = {'04-sets', '05-sets-without-storage'}
+# The frame is an excerpt: 04-sets at 390 draws two of the three tiles its S-0002 tape counts and cuts the rest. Design's rule (2026-11-20): compare down to the
+# bottom of the drawn tile row (CSS px from the top); the app shows all three tiles, so what lies below that row is not compared.
+CROP_BELOW = {('04-sets', 390): 700}
 # Screens whose PAGE BODY is built to the frame (their issue sets it): until then a target serves only the shell-band check, and the count does not count it.
-BODY_BUILT: set[str] = set()
+BODY_BUILT: set[str] = {'04-sets'}   # 05-sets-without-storage waits for design's redrawn frame (tabs, search and Sort drawn)
 
 
 def frame_file(folder: str, theme: str, width: int) -> Path:
@@ -76,7 +79,7 @@ def regions_of(mask, offset: int = 0) -> list[str]:
     return found
 
 
-def compare(frame: Path, app: Path, width: int, band: bool, viewport: int = 0) -> dict:
+def compare(frame: Path, app: Path, width: int, band: bool, viewport: int = 0, limit: int = 0) -> dict:
     """`viewport`: the frame's viewport height in CSS px. A frame draws its tab bar at the foot of that viewport, the page's own at the foot of the grown capture."""
     from PIL import Image
     with Image.open(frame) as a, Image.open(app) as b:
@@ -87,7 +90,8 @@ def compare(frame: Path, app: Path, width: int, band: bool, viewport: int = 0) -
         differing = total = 0
         regions = []
         if not band:
-            d, t, mask = diff_share(a.crop((0, 0, a.width, short)), b.crop((0, 0, b.width, short)))
+            rows = min(short, limit * SCALE) if limit else short   # CROP_BELOW: only the rows above `limit` CSS px are compared; the heights are still checked whole
+            d, t, mask = diff_share(a.crop((0, 0, a.width, rows)), b.crop((0, 0, b.width, rows)))
             differing, total, regions = d, t, regions_of(mask)
         else:
             for where, px in band_rows(width):
@@ -154,7 +158,7 @@ def run(only: list[str], band: bool, report: bool, keep: str = '') -> int:
                     Path(keep).mkdir(parents=True, exist_ok=True)
                     for png in (frame_png, app_png):
                         shutil.copyfile(png, Path(keep) / f'{folder}-{png.name}')
-                result = compare(frame_png, app_png, width, band, {1440: 900, 390: 844}[width])
+                result = compare(frame_png, app_png, width, band, {1440: 900, 390: 844}[width], CROP_BELOW.get((folder, width), 0))
                 state = verdict(result)
                 worst = 'FAIL' if 'FAIL' in (worst, state) else 'NOTE' if 'NOTE' in (worst, state) else 'ok'
                 where = f' regions {", ".join(result["regions"][:6])}' if state != 'ok' and result['regions'] else ''

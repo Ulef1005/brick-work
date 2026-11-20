@@ -19,6 +19,7 @@ Each line cost a review round or a red run once. Newest at the bottom of its gro
 - Check a frame with `python3 scripts/frame_check.py --only <folder> --report --keep <dir>` (it picks the venv itself), then open every capture: light and dark, 1440 and 390, frame and app side by side. A NOTE (0.1 % to 2 %) needs its regions named in the PR; no masks, no hidden elements.
 - The registries in `scripts/frame_check.py` (TARGETS, VIEWPORT, TALL, CROP_BELOW, BODY_BUILT) and in `brickwork/demo/frames.py` are additive: on a rebase conflict keep both sides. A 390 frame that is an excerpt gets a CROP_BELOW entry (the bottom of the drawn tile row), not a mask.
 - A picture in a tile has a fixed box (`width:100%;height:100%`, `object-fit:contain`) and a picture at the top of the page is `loading="eager"`. Otherwise the no-script capture rasterises it differently from run to run and `test_the_edge_states_render_the_same_twice` flakes.
+- `test_the_edge_states_render_the_same_twice` is strict (0.01 %) in CI, on Linux and with `BW_GATE_STRICT=1`, and allows 0.05 % only on a developer Mac, where a picture is sometimes rasterised 0.02 % differently from one capture to the next; the push run on main is the judge, never loosen the CI limit or add a retry.
 - A state that waits for images in `design/screens/states.json` needs the wait in its script; a no-script state cannot have one, so give the image a fixed box instead.
 
 **Data**

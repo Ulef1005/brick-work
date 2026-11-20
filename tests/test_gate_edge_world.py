@@ -8,6 +8,8 @@ import hashlib
 import http.cookiejar
 import io
 import json
+import os
+import sys
 import re
 import sqlite3
 import tempfile
@@ -270,8 +272,23 @@ def test_the_state_left_unbuilt_says_what_is_missing():
     assert entry['built'] is False and 'switch' in entry['reason'] and 'not in the app' in entry['reason']
 
 
+# Two captures of one state agree to 0.01 % of the pixels in CI (the limit stays strict there). On a Mac a picture is sometimes rasterised differently from one
+# capture to the next, measured at 0.02 % (the Set Inspector's set picture, a sticker part), in a different state each run; a Mac run may differ by 0.05 %.
+# The push run on main is the judge if the local value ever hides a real regression (wiki-agent, 2026-11-20).
+SAME_TWICE_LOCAL = 0.0005   # 0.05 % of the pixels
+
+
+def same_twice_limit():
+    """Strict (0.01 %) in CI, on Linux and when BW_GATE_STRICT=1; the wider limit only on a developer Mac (the noise was measured there)."""
+    in_ci = os.environ.get('CI', '').lower() not in ('', '0', 'false', 'no')
+    if in_ci or not sys.platform.startswith('darwin') or os.environ.get('BW_GATE_STRICT') == '1':
+        return gate.TOLERANCE['pixels'] / 5
+    return SAME_TWICE_LOCAL
+
+
 def test_the_edge_states_render_the_same_twice(tmp_path, monkeypatch):
-    """Each new state is captured twice at one size (the scripts, the staged recognition and the staged progress included): the two captures agree."""
+    """Each new state is captured twice at one size (the scripts, the staged recognition and the staged progress included): the two captures agree
+    (0.01 % in CI and on Linux, 0.05 % on a developer Mac, SAME_TWICE_LOCAL)."""
     chrome = rendered.chrome(pinned=True)
     monkeypatch.setattr(gate, 'WIDTHS', (1440,))
     monkeypatch.setattr(gate, 'THEMES', ('light',))
@@ -281,7 +298,8 @@ def test_the_edge_states_render_the_same_twice(tmp_path, monkeypatch):
     second = gate.render(entries, lambda e, w, t: tmp_path / '2' / gate.filename(e['screen'], e['state'], w, t), chrome)
     for one, two in zip(first, second):
         result = gate.compare_images(one, two)
-        assert not result['size_differs'] and result['share'] <= gate.TOLERANCE['pixels'] / 5, (one.name, result)
+        limit = same_twice_limit()
+        assert not result['size_differs'] and result['share'] <= limit, (one.name, result)
 
 
 def test_a_capture_without_javascript_does_not_leak_into_the_next_one(tmp_path):

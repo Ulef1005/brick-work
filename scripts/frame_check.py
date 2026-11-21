@@ -58,7 +58,7 @@ CROP_BELOW = {('01-tools-and-admin', 390): 757, ('02-settings', 390): 714, ('02-
 # Screens whose PAGE BODY is built to the frame (their issue sets it): until then a target serves only the shell-band check, and the count does not count it.
 # The viewport height of a frame that is taller than the usual one (CSS px): frame 48 draws the rows of the pulled copies below the first screen (its frame-size is 1440 x 1052).
 TALL = {('48-sets-pulled-copy', 1440): 1052, ('07-part-runner', 1440): 1000}
-BODY_BUILT: set[str] = {'08-sets-empty', '01-tools-and-admin', '02-settings', '03-find-instructions', '09-matchmaker', '04-sets', '05-sets-without-storage', '48-sets-pulled-copy', '06-set-inspector', '07-part-runner'}
+BODY_BUILT: set[str] = {'10-build-scout', '08-sets-empty', '01-tools-and-admin', '02-settings', '03-find-instructions', '09-matchmaker', '04-sets', '05-sets-without-storage', '48-sets-pulled-copy', '06-set-inspector', '07-part-runner'}
 
 
 def frame_file(folder: str, theme: str, width: int) -> Path:

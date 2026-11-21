@@ -134,7 +134,7 @@ class ScoutLayer(Layer):
             for line_key in self.priced['31120-1'][:PRICED_31120]:
                 price(line_key[0], line_key[1], Decimal('0.20'))
             # 21028-1: the three named lines and eight more cost 6.10 together, in whole cents per piece
-            quantity = {key(r): r['quantity'] for r in self.inventories['21028-1']['parts']}
+            quantity = {key(r): r['quantity'] for r in self.inventories['21028-1']['parts'] if not r['spare']}
             costed = [(part, colour) for part, colour, _ in NAMED] + self.priced['21028-1'][:8]
             for line_key, cents in zip(costed, cents_for([quantity[k] for k in costed], 610)):
                 price(line_key[0], line_key[1], Decimal(cents) * CENT)

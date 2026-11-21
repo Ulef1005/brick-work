@@ -158,6 +158,8 @@ Generated from the review rounds of commission U (review artifact https://claude
 
 - **Corrected 2026-11-21 (#508, found by brick-work's build; pending Ulf's picture check):** the queue tags carry the shipped statuses, as this note says: piece 1 reads "Ready" (the frame said "Confirmed") and the piece being read reads "Recognizing" (it said "To review"); "Confirmed" stays on the Results row. Decided without a picture because they change no layout: the delete cross on a queue row, the chevron on the camera field and the way to the other colours (a "More colours" link on the colour label row that opens the searchable list, the six swatches first and any other colour you hold) are shipped controls the frame left out; the "More colours" link is the one addition and is shown on the next review round. The phone header icons are at the same pixels in frames 04, 10, 11 and 13 (search 636,36 to 665,65; plus 712,36 to 739,63 at 2x).
 
+- **Corrected 2026-11-21 (#509, found by brick-work's frame check; pending Ulf's picture check):** the 390 frame of the pull list left out shipped controls behind the scrim: under the Search parts field the tools row (To find, Category and Apply), the line "Expand all · Collapse all" and the first group header ("Brick · 120 to find", sample numbers). The phone sheet has no Cancel link: the scrim above it closes it, so the app hides Cancel on phones.
+
 ## Round 5: tokens only (#501)
 
 These screens keep their layout and every shipped control and are rebuilt through the tokens and components, on the approved frames named. Shipped screen folders are those of `../screens/`.

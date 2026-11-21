@@ -122,3 +122,4 @@ def test_the_empty_sets_page_leaves_the_catalogue_sentence_out_on_a_fresh_instal
     assert page.select_one('.bp-empty-box h2').get_text() == 'Your shelves are empty'
     assert 'catalogue is loaded' not in page.select_one('.bp-empty-box').get_text() and not page.select('[data-first-run]')
     assert page.select_one('a.bp-empty-start')['href'] == '/manage/get-started' and page.select_one('.bp-empty-start .tape').get_text(' ', strip=True) == 'Get started 0 of 4 done'
+    assert page.select_one('[data-bc-message]') and page.select_one('[data-bc-undo]')      # the status and Undo region of every collection page

@@ -85,7 +85,7 @@ def test_a_fresh_install_reaches_a_checkable_set_with_no_key(fresh):
     assert button.get_text(strip=True) == 'Download the catalogue' and not button.has_attr('disabled')
     assert 'at most one download a day' in load.get_text()
     started = client.post('/manage/first-run/catalogue', data={'csrf_token': token(client), 'action': 'first'})
-    assert started.status_code == 302 and started.location.endswith('/collection/sets')
+    assert started.status_code == 302 and started.location.endswith('/manage/get-started')      # the job's progress shows on the flow page (#497)
     state = wait(paths)
     assert state['state'] == 'done' and state['kind'] == 'first', state
     assert len(fetched) == 12 and {p.name for p in data.glob('*.db')} == {'brickwork.db', 'catalogue.db'}

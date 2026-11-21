@@ -1,6 +1,8 @@
 {# The empty Sets page of the B′ frame 08 (R3-04, #497): what is empty, what still works, the ways out, and the Get started card while set-up is open. Included by
    bw_collection.html for the Sets list with no copy and no error; the classes are b-prime.css's (generated from the frames) and bw-collection.css's `.bp-empty` rules. #}
 {% from 'web/toni/shell-components.html' import bp_icon with context %}
+{% from 'web/toni/brickwork/collection_modules.html' import feedback with context %}
+{# the message, Undo and the picture lightbox stay outside .b-prime, as on the populated page #}{{ feedback() }}
 <div class="bp-sets bp-empty b-prime" data-bp-empty>
 <div class="bp-main"><div class="bp-stack">
 <div class="head"><div><div class="lbl">Collection · Sets</div><h1>Sets</h1><p>No sets in your collection yet.</p></div></div>

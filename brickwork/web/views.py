@@ -474,7 +474,7 @@ def bw_first_run_catalogue():
         catalogue_jobs.start(admin_ops.store4_paths(), kind)
     except Store4Error as exc:
         flash(catalogue_jobs.KINDS[kind] + ' · ' + str(exc), 'error')
-    return redirect(url_for('web.bw_sets'))
+    return redirect(url_for('web.bw_get_started'))      # the job's progress and failure show on the flow page (the empty Sets page only links to it, #497)
 
 
 @web_page.get('/manage/get-started')

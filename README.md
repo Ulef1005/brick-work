@@ -6,7 +6,7 @@
   </picture>
 </p>
 
-<p align="center"><strong>The workbench for your brick collection.</strong></p>
+<p align="center"><strong>Free, self-hosted app for your brick collection and its missing parts.</strong></p>
 
 <p align="center">
   <a href="https://github.com/Ulef1005/brick-work/releases/latest"><img src="https://img.shields.io/github/v/release/Ulef1005/brick-work?label=release" alt="Latest release"></a>

@@ -101,6 +101,8 @@ Generated from the review rounds of commission U (review artifact https://claude
 - **Kept:** every filter (Parts from, Min, Max missing, Theme, Years, Sort, Apply), the summary line, the panel’s part lines, “+ 20 more lines · Show all”, the price estimate, Build it · make a copy, Add to wishlist, Missing parts · XML and its undo note. On the phone the filters fold into “Filters · 6” and the panel opens as a sheet.
 - **SUCCESS:** Check: bars to scale, percentages from the same numbers. Express: list plus detail, because the decision needs both.
 
+- **Corrected 2026-11-21 (#499, found by brick-work's frame check; pending Ulf's picture check):** the shipped Size filter (fewest and most parts) was left out of the frame by omission although this note says every filter is kept: it sits beside Years (`Size any – any`), and the phone's button reads "Filters · 7". The panel's numbers add up: 186 missing in 23 lines with the largest gaps 14, 12 and 11 (they were 14, 9 and 6, which cannot lead 23 lines that sum to 186). Frame figures are sample data; the frame shows Min 0 %, the app's default is 60 %, so the check opens the page at `?min_percent=0`.
+
 ### R4-03 Storage (`11-storage`)
 
 - **Changed:** the storage table has the label’s short code first, then name and type, then sets, figures and part lots in mono; the selected storage is marked in violet soft; its detail opens under its own label tape with its sets as tiles with their per-copy bars.

@@ -94,13 +94,15 @@ def test_standalone_smoke(tmp_path, monkeypatch, offline, capsys):
         assert response.mimetype == 'application/problem+json'
         assert response.json['code'] == 'api_retired' and API_V1_RETIRED in response.json['detail']
     assert client.get('/api/v1/copies').status_code == 410                       # not even a token is asked for
-    # the first-run page is what renders on an empty collection
+    # an empty collection: the Sets page says what is empty and links to the Get started flow (#497), whose page holds the four steps
     for route in ('/', '/collection/sets'):
-        first_run = client.get(route)
-        assert first_run.status_code == 200, route
-        html = first_run.get_data(as_text=True)
-        assert 'data-first-run' in html and 'Nothing here yet.' in html and 'href="/manage/get-started#keys"' in html
-        assert html.count('class="fr-step"') + html.count('class="fr-step ') == 4
+        empty = client.get(route)
+        assert empty.status_code == 200, route
+        html = empty.get_data(as_text=True)
+        assert 'data-bp-empty' in html and 'Your shelves are empty' in html and 'href="/manage/get-started"' in html, route
+    flow = client.get('/manage/get-started').get_data(as_text=True)
+    assert 'data-first-run' in flow and 'data-flow-keys' in flow
+    assert flow.count('class="fr-step"') + flow.count('class="fr-step ') == 4
     assert 'Cache-Control' in client.get('/').headers
     # every screen is ported since M.8j; one that is not says so, in the app's own shell
     assert client.get('/manage/sync').status_code == 200

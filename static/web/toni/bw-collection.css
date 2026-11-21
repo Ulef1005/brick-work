@@ -1085,7 +1085,7 @@ main .key-need a:not(.button) { min-height:44px;display:inline-flex;align-items:
    The storage index, the heading, the tabs and the tiles sit in `.bp-sets.b-prime`: b-prime.css (generated from the frames) draws .head, .lbl, .seg, .stabs, .tape,
    .stile, .tile, .num, .nm, .meta, .bar, .bartxt, .xchip, .tag, .idx and .btn. Its reset (`*{margin:0;padding:0}`, three :not(#_)) outranks every class rule of this file,
    so a rule here that sets a margin or a padding inside the page carries four. The sheets, the selection bar and the dialogs sit outside it and keep the page's own rules. */
-body:has(#bw-collection[data-bp-sets]) .layout>main.bp-flush { padding:0; }
+body:has(#bw-collection[data-bp-sets]) .layout>main.bp-flush,body:has(#bw-collection[data-bp-empty]) .layout>main.bp-flush { padding:0; }
 #bw-collection[data-bp-sets] [data-bc-main] { display:block; }
 :where(.bp-sets) button { background:none;border:0;color:inherit;font:inherit;text-align:inherit;cursor:pointer; }
 #bw-collection .bp-sets button,#bw-collection .bp-sets input { min-height:0; }
@@ -1183,11 +1183,25 @@ body:has(#bw-collection[data-bp-sets]) .layout>main.bp-flush { padding:0; }
   #bw-collection[data-bp-sets] .bc-sort-options.bc-collection-sheet { gap:12px;align-items:stretch; }
   #bw-collection[data-bp-sets] .bc-filter-pair { flex-direction:row; }
 }
+/* The empty Sets page (frame 08, #497): a dashed box that says what is empty and what still works, and the Get started card under its tape. */
+.bp-empty:not(#_):not(#_):not(#_):not(#_) .bp-main { padding:26px 32px 0;max-width:1244px; }
+.bp-empty:not(#_):not(#_):not(#_):not(#_) .bp-stack { gap:20px; }
+.bp-empty:not(#_):not(#_):not(#_):not(#_) .bp-empty-box { border:1.5px dashed var(--tw-text-2);border-radius:var(--tw-r-2);padding:22px;display:flex;flex-direction:column;gap:12px;max-width:560px; }
+.bp-empty:not(#_):not(#_):not(#_):not(#_) .bp-empty-box h2 { font:600 20px var(--tw-font); }
+.bp-empty:not(#_):not(#_):not(#_):not(#_) .bp-empty-box p { font-size:14px;color:var(--tw-text-2); }
+.bp-empty:not(#_):not(#_):not(#_):not(#_) .bp-empty-tags { display:flex;gap:10px;align-items:center; }
+.bp-empty:not(#_):not(#_):not(#_):not(#_) .bp-empty-actions { display:flex;gap:10px;flex-wrap:wrap; }
+.bp-empty:not(#_):not(#_):not(#_):not(#_) .bp-empty-start { display:block;overflow:hidden;max-width:560px;color:inherit;text-decoration:none;min-height:0; }
+.bp-empty:not(#_):not(#_):not(#_):not(#_) .bp-empty-start .tape { border-radius:0; }
+.bp-empty:not(#_):not(#_):not(#_):not(#_) .bp-empty-start-body { padding:12px 14px 14px; }
+.bp-empty:not(#_):not(#_):not(#_):not(#_) .bp-empty-start-title { font:600 16px var(--tw-font); }
+.bp-empty:not(#_):not(#_):not(#_):not(#_) .bp-empty-start-text { font-size:13px;color:var(--tw-text-2);margin-top:2px; }
 /* a phone and a tablet: no storage index (the "Storage: all" row stands for it), the view switch and Filter on a row of their own */
 @media(max-width:1023px) {
   .bp-sets:not(#_):not(#_):not(#_):not(#_) { display:block; }
   .bp-sets:not(#_):not(#_):not(#_):not(#_) .bp-index,.bp-sets:not(#_):not(#_):not(#_):not(#_) .bp-head-actions { display:none; }
   .bp-sets:not(#_):not(#_):not(#_):not(#_) .bp-main { padding:16px 16px calc(var(--tw-tabbar-h,78px) + 24px); }
+  .bp-empty:not(#_):not(#_):not(#_):not(#_) .bp-main { padding:16px 16px calc(var(--tw-tabbar-h,78px) + 24px); }
   .bp-sets:not(#_):not(#_):not(#_):not(#_) .bp-controls { display:flex;gap:8px;align-items:center; }
   .bp-sets:not(#_):not(#_):not(#_):not(#_) .bp-controls .btn.sec { margin-left:auto; }
   .bp-sets:not(#_):not(#_):not(#_):not(#_) .bp-tabrow { display:block; }

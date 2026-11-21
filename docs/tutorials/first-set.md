@@ -14,9 +14,9 @@ You need Brick Work running. Follow the install steps in the [README](https://gi
 ## 1. Open Brick Work
 
 1. Open `http://localhost:3333` in your browser and sign in with the password you set in `data/.env`.
-2. You land on **Sets**. It says **0 sets**. Under **Nothing here yet.** it shows four numbered steps: **Load the catalogue**, **Set up your keys (optional)**, **Bring your collection in** and **See how the inventory works**. This is **Get started**. You can come back to it later under **Tools & Admin → Get started**, and once set-up is over under **Tools & Admin → About → Set-up steps**.
+2. You land on **Sets**. It says **No sets in your collection yet.** and, in a dashed box, **Your shelves are empty**, with **Add a set** and **Bring your collection in**. Under it a card says **Get started** and how many of the four steps are done. Select it. This opens **Get started**: four numbered steps, **Load the catalogue**, **Set up your keys (optional)**, **Bring your collection in** and **See how the inventory works**. You can come back to it later under **Tools & Admin → Get started**, and once set-up is over under **Tools & Admin → About → Set-up steps**.
 
-The collection is empty, so the third step shows **Add a set** greyed out until the catalogue is loaded.
+The collection is empty, so on **Get started** the third step shows **Add a set** greyed out until the catalogue is loaded.
 
 ## 2. Load the catalogue
 

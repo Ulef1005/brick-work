@@ -51,6 +51,7 @@ TARGETS = {'01-tools-and-admin': ('/manage/tools', 'frames'),
            '06-set-inspector': ('/workbench/check-parts/d1121673-830b-5aaa-80be-ee68396eec34?run=1', 'frames'),   # copy 2 of 7213-1 in its running check (brickwork/demo/frames.py INSPECTOR)
            '13-part-spotter': ('/workbench/part-to-inventory', 'frames'),   # the queue is the page's own (client-side): SCRIPT below feeds it the frame's three pieces
            '14-lot-sorter': ('/collection/lots/' + frames.real.LOT + '?detect=1', 'frames-lot'),   # the Flea market bag with its Set detection (brickwork/demo/frames_lot.py)
+           '15-order-missing-parts': ('/planning/order-missing-parts', 'frames-order'),   # the three copies of frame 15 (brickwork/demo/frames_order.py)
            '07-part-runner': (frames.runner_path(), 'frames')}   # the four incomplete copies as one run of 52 parts, on the 7th (brickwork/demo/frames.py RUNNER)
 # JS run in the app's page before its capture (capture_screens.cjs `script`) when the frame draws a state the page keeps in the browser. Part Spotter's queue is
 # filled through the page's own code: `fetch` answers the recognition calls with the frame's candidates, and the photos go in through the file input.
@@ -76,7 +77,7 @@ PHONE_PATH = {'11-storage': '/workbench/storage',
               '14-lot-sorter': '/collection/lots/' + frames.real.LOT + '/pull/11/make-copy'}   # frame 14 at 390 is the Make a copy confirm over 7938-1's pull list (catalogue item 11)
 # Frames that draw one screen as the device shows it (the frame's own size, the rest of the page cut off, the phone's tab bar at the foot of that size): the
 # frame and app are both captured as one viewport (capture_screens.cjs `sheet_below`), not grown to the whole height of their scrollable content. A frame that draws the whole page is not listed.
-VIEWPORT = {'14-lot-sorter', '13-part-spotter', '11-storage', '10-build-scout', '08-sets-empty', '01-tools-and-admin', '02-settings', '03-find-instructions', '09-matchmaker', '04-sets', '05-sets-without-storage', '48-sets-pulled-copy', '06-set-inspector', '07-part-runner'}
+VIEWPORT = {'15-order-missing-parts', '14-lot-sorter', '13-part-spotter', '11-storage', '10-build-scout', '08-sets-empty', '01-tools-and-admin', '02-settings', '03-find-instructions', '09-matchmaker', '04-sets', '05-sets-without-storage', '48-sets-pulled-copy', '06-set-inspector', '07-part-runner'}
 # The frame is an excerpt: 04-sets at 390 draws two of the three tiles its S-0002 tape counts and cuts the rest. Design's rule (2026-11-20): compare down to the
 # bottom of the drawn tile row (CSS px from the top); the app shows all three tiles, so what lies below that row is not compared.
 CROP_BELOW = {('01-tools-and-admin', 390): 757, ('02-settings', 390): 714, ('02-settings', 1440): 732, ('09-matchmaker', 390): 710, ('04-sets', 390): 731, ('05-sets-without-storage', 390): 657, ('48-sets-pulled-copy', 390): 731}   # frame 48 is built on frame 04: the same two tiles are drawn at 390

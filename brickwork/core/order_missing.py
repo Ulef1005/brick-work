@@ -25,7 +25,7 @@ def sell_flag(name):
 
 
 def candidates(db):
-    """Every live copy with a gap, in set-number order: the ranking row plus `parts` and `figures` (the recorded gap), `gain` (the net
+    """Every live copy with a gap, in set-number order: the ranking row plus `parts` and `figures` (the recorded gap), `size` (the copy's pieces), `gain` (the net
     gain of repairing it, or None where the ranking gives none), `to_sell` (the matching flag's name or None) and `checking`."""
     rows = [dict(r) for r in planning.ranking(db)['rows']]
     ids = [r['id'] for r in rows]
@@ -34,11 +34,14 @@ def candidates(db):
                            WHERE f.kind IN ('status','tag') AND cf.copy_id IN (SELECT value FROM json_each(?)) ORDER BY f.name''', (json.dumps(ids),)):
         flags[r[0]].append(r[1])
     checking = {r[0] for r in db.execute('SELECT copy_id FROM part_check WHERE copy_figure_id IS NULL AND finished=0')}
+    size = {r[0]: r[1] for r in db.execute('''SELECT copy_id,sum(quantity) FROM copy_part WHERE copy_figure_id IS NULL AND is_spare=0 AND retired_at IS NULL
+                                              AND copy_id IN (SELECT value FROM json_each(?)) GROUP BY copy_id''', (json.dumps(ids),))}
     sets = defaultdict(int)
     for r in rows:
         sets[r['item_no']] += 1
         r['parts'] = sum(i['original_gap'] for i in r['items'] if i['type'] != 'M')
         r['figures'] = sum(i['original_gap'] for i in r['items'] if i['type'] == 'M')
+        r['size'] = size.get(r['id'], 0)                                                 # the copy's pieces: the row's bar is drawn to this scale
         r['gain'] = r['net_gain'] if r['group'] in ('ranked', 'free_repairs') and r['net_gain'] > 0 else None
         r['to_sell'] = next((n for n in flags[r['id']] if sell_flag(n)), None)
         r['checking'] = r['id'] in checking

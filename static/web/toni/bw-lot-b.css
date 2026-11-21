@@ -102,7 +102,7 @@ body:has(#lot-b) #bw-collection>.bc-module,body:has(#lot-b) #bw-collection>[data
   #set-detection:not(#_):not(#_):not(#_):not(#_) .bd-set-tile {width:64px;height:48px}
   #set-detection:not(#_):not(#_):not(#_):not(#_) .bd-who {flex:1 1 calc(100% - 78px)}
   #set-detection:not(#_):not(#_):not(#_):not(#_) .bd-score {flex:1 1 0;min-width:0;width:auto}
-  #set-detection:not(#_):not(#_):not(#_):not(#_) .bd-toggle {flex:none}
+  #set-detection:not(#_):not(#_):not(#_):not(#_) .bd-toggle {flex:none;width:auto}
   #set-detection:not(#_):not(#_):not(#_):not(#_) .bd-more {padding-left:0}
   #set-detection:not(#_):not(#_):not(#_):not(#_) .bd-filters-button {display:none}
   #set-detection:not(#_):not(#_):not(#_):not(#_) .bd-filters {gap:8px}
@@ -110,3 +110,4 @@ body:has(#lot-b) #bw-collection>.bc-module,body:has(#lot-b) #bw-collection>[data
   #lot-b:not(#_):not(#_):not(#_):not(#_) .lb-facts {gap:16px 28px}
 }
 #set-detection:not(#_):not(#_):not(#_):not(#_) .lb-pic {white-space:nowrap;padding:0}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .lb-box {overflow:hidden}

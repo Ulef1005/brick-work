@@ -67,26 +67,28 @@
     result.forEach((entry, index) => {
       const group = groups[index], container = group.node.querySelector('[data-items]');
       const shown = new Set(entry.shown);
-      // A set tile shows all its copies or none (the limit counts whole tiles): copies of one set match alike.
+      // The set group counts whole tiles: the limit is on tiles (LIMIT of them, or all under a search, a filter or Show all), a tile with a checked copy always shows,
+      // and a tile shows all its copies or none (copies of one set match alike).
       const tileOf = item => item.node.closest('.stile');
-      const shownTiles = new Set(group.key === 'set' ? entry.shown.map(tileOf) : []);
-      if (group.key === 'set') group.items.forEach(item => { if (shownTiles.has(tileOf(item))) shown.add(item); });
+      let shownTiles = new Set(), tiles = [];
+      if (group.key === 'set') {
+        tiles = [...new Set(entry.matches.map(tileOf))];
+        shownTiles = new Set(query || kind || expanded.includes('set') ? tiles : tiles.slice(0, LIMIT));
+        group.items.filter(item => item.checked).forEach(item => shownTiles.add(tileOf(item)));
+        shown.clear();
+        group.items.forEach(item => { if (shownTiles.has(tileOf(item))) shown.add(item); });
+      }
       group.items.forEach(item => { item.node.hidden = !shown.has(item); });
       if (group.key === 'set') {
         container.querySelectorAll('.stile').forEach(tile => {
           tile.hidden = Array.from(tile.querySelectorAll('[data-item]')).every(c => c.hidden);
         });
-        const moved = new Set();
-        entry.shown.forEach(item => {
-          const tile = item.node.closest('.stile');
-          if (tile) { if (!moved.has(tile)) { moved.add(tile); container.append(tile); } }
-          else { container.append(item.node); }
-        });
+        [...tiles.filter(tile => shownTiles.has(tile)), ...[...shownTiles].filter(tile => !tiles.includes(tile))].forEach(tile => container.append(tile));   // in the sort order, a checked tile the filter hides after them
       } else {
         entry.shown.forEach(item => container.append(item.node));
       }
-      total += entry.shown.length;
-      group.node.hidden = !entry.shown.length;
+      total += shown.size;
+      group.node.hidden = !shown.size;
       group.counter.textContent = String(group.items.filter(i => !i.lot).length);
       const units = group.key === 'set' ? new Set(entry.matches.map(tileOf)) : entry.matches;
       const more = Math.max(0, (group.key === 'set' ? units.size - shownTiles.size : entry.matches.length - entry.shown.filter(i => entry.matches.includes(i)).length));

@@ -112,6 +112,8 @@ Generated from the review rounds of commission U (review artifact https://claude
 
 - **Corrected 2026-11-21 (#500, decided by brick-work-product):** the storage type reads "Drawer", an existing type (Box, Shelf, Drawer, Bin, Bag, Case, Cabinet, Room, Other), not "Drawer unit"; the storage's own name "Parts drawer unit" stays. Pending Ulf's picture check.
 
+- **N2-25 Select mode on a Storage tile (`49-storage-select-mode`, #500, asked by brick-work-product; draft, pending Ulf's picture check):** a checkbox beside each copy's bar is the select target (copy 2 of 7213-1 and the one copy of 7938-1 are picked), beside the Sealed tag for a sealed set; a bar "2 copies picked" with Move to another storage and Cancel; Select is the button beside Print label and Edit. On the phone a storage's page is drawn for the first time (the list of storages stays as in `11`). The copy text wraps at 14 characters on the phone and stays on one line on desktop, the room left beside the checkbox.
+
 ## Round 6
 
 ### R6-01 Order missing parts (`15-order-missing-parts`)

@@ -394,7 +394,7 @@ def bar(found, missing, total, label='', wrap=False):
     f, m = found / total * 100, missing / total * 100
     rest = '' if found + missing == total else '<i style="flex:1;border:1.5px dashed var(--tw-text-2);border-left:none"></i>'
     txt = f'{label}{found:,}/{total:,}' + (f' · {missing} missing' if missing else ' · complete')
-    if wrap and len(txt) > 21:    # a phone tile holds 21 characters of this mono text: the count goes on a second line, nothing is cut (#494)
+    if wrap and len(txt) > (21 if wrap is True else wrap):    # a phone tile holds 21 characters of this mono text (wrap=True; an int sets another limit): the count goes on a second line, nothing is cut (#494)
         txt = txt.replace(' · ', '<br>', 1)
     tx = '<div class="bartxt" style="display:block;line-height:16px">' if '<br>' in txt else '<div class="bartxt">'
     return (f'<div class="bar"><i style="width:{f:.2f}%;background:var(--tw-accent)"></i><i style="width:{m:.2f}%;background:{HATCH};'

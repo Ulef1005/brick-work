@@ -397,6 +397,45 @@ def sets_pulled(ph):
     return body
 
 
+def sel_tile(s, picks, w=None, img_h=112, limit=21):
+    """A Sets tile in select mode (#500): a checkbox beside each copy's bar is the select target; a sealed set carries it beside its tag.
+    The copy text wraps at `limit` characters, the room that is left beside the checkbox."""
+    many = len(s['copies']) > 1
+    if s.get('sealed'):
+        bars = f'<div style="display:flex;gap:8px;align-items:center">{B.cb((s["n"], 0) in picks)}<span class="tag">Sealed</span></div>'
+    else:
+        bars = ''.join(f'<div style="display:flex;gap:8px;align-items:flex-start;margin-top:{6 if i else 0}px">{B.cb((s["n"], i) in picks)}'
+                       f'<div style="flex:1;min-width:0">{B.bar(*c, label=f"#{i + 1} " if many else "", wrap=limit)}</div></div>' for i, c in enumerate(s['copies']))
+    width = f'width:{w}px;' if w else ''
+    return (f'<div class="stile" style="{width}">{B.pic(s["img"], img_h)}<div class="num"><span>{s["n"]}</span>'
+            f'<span style="font:500 12px var(--tw-mono);color:var(--tw-text-2)">{s["price"]}</span></div><div class="nm">{s["name"]}</div>'
+            f'<div class="meta">{s["meta"]}{" · " + str(len(s["copies"])) + " copies" if many else ""}</div>{bars}</div>')
+
+
+def storage_select(ph):
+    """#500, asked by brick-work-product: Select mode on a Storage tile with several copies. A checkbox beside each copy's bar is the select
+    target (copy 2 of 7213-1 and the one copy of 7938-1 are picked); a bar above the tiles says what is picked and offers Move to another storage."""
+    picks = {('7213-1', 1), ('7938-1', 0)}
+    names = ('7213-1', '7938-1', '10254-1')
+    bar_sel = (f'<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;border:1.5px solid var(--tw-text);border-radius:var(--tw-r-2);padding:10px 12px;background:var(--tw-accent-soft)">'
+               f'<b style="font:600 14px var(--tw-font)">2 copies picked</b><span style="font-size:13px;color:var(--tw-text-2)">from 2 sets in S-0002</span>'
+               f'<span style="margin-left:auto;display:flex;gap:8px"><span class="btn sm">Move to another storage</span><span class="btn sec sm">Cancel</span></span></div>')
+    note = '<p style="font-size:13px;color:var(--tw-text-muted)">Pick copies, figures or part lots, then choose where they go. A set with two copies can be split between storages.</p>'
+    if ph:
+        tiles = ''.join(sel_tile(B.SETS[n], picks, img_h=90, limit=14) for n in names[:2])
+        return (f'<div style="padding:14px 16px 0;display:flex;flex-direction:column;gap:12px"><div class="head"><div><div class="lbl">Workbench · Storage</div>'
+                f'<h1 style="font:600 26px/1.15 var(--tw-font)">Shelf A2 – Town</h1><p>Shelf · 3 sets · 4 copies</p></div></div>'
+                f'{B.tape("S-0002", "Shelf A2 – Town", 3)}<div style="display:flex;gap:8px;align-items:center"><span class="btn sec sm on">Select</span>'
+                f'<span style="font-size:13px;color:var(--tw-text-2)">2 of 4 copies</span></div>{bar_sel}'
+                f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">{tiles}</div>{note}</div>')
+    tiles = ''.join(sel_tile(B.SETS[n], picks, w=232, img_h=96, limit=40) for n in names)
+    return (f'<div style="padding:22px 32px 0;display:flex;flex-direction:column;gap:16px"><div class="head"><div><div class="lbl">Workbench · Storage</div><h1>Storage</h1>'
+            f'<p>6 storages · 7 sets · 0 figures · 6 part lots</p></div></div><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:12px">'
+            f'{B.tape("S-0002", "Shelf A2 – Town", 3)}<div style="display:flex;gap:10px;align-items:center;font-size:13px;color:var(--tw-text-2)">Shelf · 3 sets · 4 copies · 0 figures · 0 part lots'
+            f'<span style="margin-left:auto;display:flex;gap:8px"><span class="btn sec sm">Print label</span><span class="btn sec sm">Edit</span><span class="btn sm">Select</span></span></div>'
+            f'{bar_sel}<div style="display:flex;gap:12px">{tiles}</div>{note}</div></div>')
+
+
 FRAMES2 = [('N2-01', '25-brickset', bs_rest), ('N2-02', '26-brickset-choose-what', bs_choose),
            ('N2-03', '27-bricklink', bl_rest), ('N2-04', '28-bricklink-connect', bl_connect), ('N2-05', '29-bricklink-choose-what', bl_choose),
            ('N2-06', '30-bricklink-wanted-file', bl_file),
@@ -405,7 +444,8 @@ FRAMES2 = [('N2-01', '25-brickset', bs_rest), ('N2-02', '26-brickset-choose-what
            ('N2-17', '41-bricklink-pick-lots', bl_pick), ('N2-18', '42-bricklink-preview', bl_preview), ('N2-19', '43-sync-errors', sync_errors),
            ('N2-20', '44-source-chip', _shell('Collection', 'Sets', detail_source)), ('N2-21', '45-sets-source-filter', _shell('Collection', 'Sets', sets_source)),
            ('N2-22', '46-rebrickable-pick-sources', pick_source), ('N2-23', '47-rebrickable-preview-sources', preview_source),
-           ('N2-24', '48-sets-pulled-copy', _shell('Collection', 'Sets', sets_pulled))]
+           ('N2-24', '48-sets-pulled-copy', _shell('Collection', 'Sets', sets_pulled)),
+           ('N2-25', '49-storage-select-mode', _shell('Workbench', 'Storage', storage_select))]
 N.FRAMES = FRAMES2   # round 2's frames replace round 1's list here, so build and check cover folders 25 to 43 (n_frames.py itself covers 17 to 24)
 N.DRAFTS = []
 

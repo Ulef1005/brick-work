@@ -6,7 +6,7 @@ execnet==2.1.2
 PyYAML>=6,<7
 jsonschema>=4,<5
 # The documentation site (scripts/build_site.py): Python-Markdown for the marketing pages, Zensical for the user docs
-zensical==0.1.1
+zensical==0.1.2
 # The generated API v2 and MCP reference pages (docs/developer/, scripts/docs_reference.py)
 markdown-exec==1.13.0
 # The code reference (docs/developer/code-reference.md, ADR 0030): mkdocstrings and what it needs, MkDocs 1.6 included (only its plugin API is used)

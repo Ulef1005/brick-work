@@ -255,6 +255,22 @@ def unstored_layer(folder=real.FOLDER, pictures=False):
     return Layer(folder, pictures, stored=False)
 
 
+class EmptyLayer(Layer):
+    """Frame 08's collection (#497): the catalogue the frames use and nothing owned, no copy, no stock, no wish. No keys either (the `edge` worlds are the ones that
+    look keyed), so Get started reads 1 of 4 done: the catalogue is loaded."""
+
+    def __init__(self, folder=real.FOLDER, pictures=False):
+        super().__init__(folder, pictures)
+        self.sets, self.inventories = [], {}
+
+    def fill(self, db, ids):
+        pass
+
+
+def empty_layer(folder=real.FOLDER, pictures=False):
+    return EmptyLayer(folder, pictures)
+
+
 def pulled_layer(folder=real.FOLDER, pictures=False):
     return Layer(folder, pictures, pulled=True)
 

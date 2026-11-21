@@ -78,7 +78,7 @@ def test_a_fresh_install_reaches_a_checkable_set_with_no_key(fresh):
     client, data, fetched = fresh
     paths = cli.Paths(data)
     assert list(data.glob('*.db')) == []
-    page = soup(client, '/collection/sets')                                   # step 1: no file at all, and the button is there with no key set
+    page = soup(client, '/manage/get-started')                                   # step 1: no file at all, and the button is there with no key set
     load, keys = step(page, 1), step(page, 2)                               # #83: the catalogue first, keys optional after it
     assert load['data-state'] == 'current' and keys['data-state'] == 'open' and step(page, 3)['data-state'] == 'waiting'
     button = load.select_one('.fr-actions button')
@@ -93,7 +93,7 @@ def test_a_fresh_install_reaches_a_checkable_set_with_no_key(fresh):
         assert db.execute('SELECT count(*) FROM main.catalogue_build').fetchone()[0] == 1
         assert db.execute("SELECT value FROM main.meta WHERE key='catalogue_id'").fetchone() is not None
         assert db.execute("SELECT count(*) FROM main.flag WHERE system=1").fetchone()[0] == 3
-    page = soup(client, '/collection/sets')                                   # step 1 done: the flow resumes at the keys, adding opens
+    page = soup(client, '/manage/get-started')                                   # step 1 done: the flow resumes at the keys, adding opens
     assert [step(page, n)['data-state'] for n in (1, 2, 3)] == ['done', 'current', 'open']
     assert [a['href'] for a in step(page, 3).select('.fr-actions a')] == ['/manage/get-started/collection', '/manage/add']
     csrf = token(client)                                                       # add a set by number, as the Add page does
@@ -119,7 +119,7 @@ def test_todays_files_on_disk_are_offered_and_not_fetched_again(fresh):
     assert catalogue_jobs.start(paths, 'first', background=False)['state'] == 'done'
     assert len(fetched) == 12
     (data / 'catalogue.db').unlink()                                           # the catalogue is lost, today's files are not
-    page = soup(client, '/collection/sets')
+    page = soup(client, '/manage/get-started')
     assert step(page, 1).select_one('.fr-actions button').get_text(strip=True) == "Build from today's files"
     client.post('/manage/first-run/catalogue', data={'csrf_token': token(client), 'action': 'first'})
     state = wait(paths)
@@ -135,11 +135,11 @@ def test_a_catalogue_file_that_is_not_active_is_activated_by_the_button(fresh):
         part.unlink()
     from brickwork.core import admin
     admin.ensure_collection(data / 'brickwork.db')
-    page = soup(client, '/collection/sets')
+    page = soup(client, '/manage/get-started')
     assert step(page, 1)['data-state'] == 'current' and step(page, 1).select_one('.fr-actions button').get_text(strip=True) == 'Activate the catalogue'
     client.post('/manage/first-run/catalogue', data={'csrf_token': token(client), 'action': 'activate'})
     assert wait(paths)['state'] == 'done'
-    assert step(soup(client, '/collection/sets'), 1)['data-state'] == 'done'
+    assert step(soup(client, '/manage/get-started'), 1)['data-state'] == 'done'
 
 
 def test_a_failed_download_is_shown_with_the_button_to_try_again_and_a_catalogue_refuses_a_first_import(fresh, monkeypatch):
@@ -148,7 +148,7 @@ def test_a_failed_download_is_shown_with_the_button_to_try_again_and_a_catalogue
     monkeypatch.setattr(catalogue_jobs, 'FETCH', lambda url: (_ for _ in ()).throw(OSError('network is down')))
     client.post('/manage/first-run/catalogue', data={'csrf_token': token(client), 'action': 'first'})
     assert wait(paths)['state'] == 'failed'
-    page = soup(client, '/collection/sets')
+    page = soup(client, '/manage/get-started')
     assert 'download' in page.select_one('[data-job-failed]').get_text().lower() and step(page, 1).select_one('.fr-actions button')   # the error, and the button to try again
     assert not (data / 'catalogue.db').exists()
     (data / 'catalogue.db').write_bytes(b'x')

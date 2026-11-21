@@ -157,8 +157,8 @@ def test_a_screen_that_is_not_ported_says_so_and_every_screen_is_ported_since_m8
         assert client.get(served).status_code != 503, served
 
 
-def test_a_collection_with_no_catalogue_file_gets_the_first_run_page_on_sets(pair, client):
+def test_a_collection_with_no_catalogue_file_gets_the_empty_sets_page_on_sets(pair, client):
     pair.with_name('catalogue.db').unlink()
     page = client.get('/collection/sets')
-    assert page.status_code == 200 and 'data-first-run' in page.get_data(as_text=True)
+    assert page.status_code == 200 and 'data-bp-empty' in page.get_data(as_text=True)      # #497: the empty state with the Get started card (the steps are on /manage/get-started)
     assert client.get('/collection/wishes').status_code == 200                       # says what is missing in its own words, in the shell

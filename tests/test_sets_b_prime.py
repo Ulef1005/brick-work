@@ -98,6 +98,20 @@ def test_the_page_has_drawers_ledger_tabs_and_the_index_only_where_storage_is_se
 
 
 @rendered.group
+def test_an_empty_collection_says_what_is_empty_and_what_still_works():
+    with screen_gate.world('frames-empty') as base:      # nothing owned, the catalogue loaded, no keys (frame 08, #497)
+        page = fetch(base, '/collection/sets')
+        assert page.select_one('#bw-collection[data-bp-empty]') and page.select_one('.bp-empty.b-prime') and not page.select('[data-bp-sets], [data-first-run]')
+        assert page.select_one('h1').get_text() == 'Sets' and page.select_one('.head p').get_text() == 'No sets in your collection yet.'
+        assert page.select_one('.bp-empty-box .tag.dash').get_text() == 'No sets yet' and page.select_one('.bp-empty-box h2').get_text() == 'Your shelves are empty'
+        assert 'The catalogue is loaded, so parts and pictures come with each set.' in page.select_one('.bp-empty-box p').get_text()
+        actions = page.select('.bp-empty-actions a')
+        assert [(a.get_text(strip=True), a['href']) for a in actions] == [('Add a set', '/manage/add'), ('Bring your collection in', '/manage/get-started/collection')]
+        card = page.select_one('a.bp-empty-start')
+        assert card['href'] == '/manage/get-started' and card.select_one('.tape').get_text(' ', strip=True) == 'Get started 1 of 4 done'
+
+
+@rendered.group
 def test_the_other_kinds_keep_their_page():
     with screen_gate.world('frames') as base:
         for kind in 'MPI':

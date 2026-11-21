@@ -1,0 +1,13 @@
+{# The empty Sets page of the B′ frame 08 (R3-04, #497): what is empty, what still works, the ways out, and the Get started card while set-up is open. Included by
+   bw_collection.html for the Sets list with no copy and no error; the classes are b-prime.css's (generated from the frames) and bw-collection.css's `.bp-empty` rules. #}
+{% from 'web/toni/shell-components.html' import bp_icon with context %}
+<div class="bp-sets bp-empty b-prime" data-bp-empty>
+<div class="bp-main"><div class="bp-stack">
+<div class="head"><div><div class="lbl">Collection · Sets</div><h1>Sets</h1><p>No sets in your collection yet.</p></div></div>
+{% if not can_edit %}<p class="bp-note">Read only · Changes are switched off on this instance.</p>{% endif %}
+<section class="bp-empty-box" aria-labelledby="bp-empty-title"><div class="bp-empty-tags"><span class="tag dash">No sets yet</span></div>
+<h2 id="bp-empty-title">Your shelves are empty</h2>
+<p>{% if can_edit %}Add a set by its number, or bring your collection in{% else %}Bring your collection in{% endif %} from Rebrickable, Brickset, BrickTracker or a BrickLink file.{% if first_run.loaded %} The catalogue is loaded, so parts and pictures come with each set.{% endif %}</p>
+{% if can_edit %}<div class="bp-empty-actions"><a class="btn" href="{{ url_for('web.bw_add') }}">{{ bp_icon('plus',16) }}Add a set</a><a class="btn sec" href="{{ url_for('web.bw_get_started_collection') }}">Bring your collection in</a></div>{% endif %}</section>
+{% if not first_run.finished %}<a class="card bp-empty-start" href="{{ url_for('web.bw_get_started') }}"><div class="tape">Get started<span class="mono">{{ first_run.done }} of {{ first_run.total }} done</span></div><div class="bp-empty-start-body"><div class="bp-empty-start-title">Get started</div><div class="bp-empty-start-text">Load the catalogue, add your keys and bring your collection in, where you left off.</div></div></a>{% endif %}
+</div></div></div>

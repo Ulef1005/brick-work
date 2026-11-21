@@ -933,7 +933,12 @@ def lot_phone():
              '<div class="lbl">Pull list</div><div style="font:600 26px/1.2 var(--tw-font)">Passenger Train <span class="mono" style="font-size:15px;color:var(--tw-text-muted)">7938-1</span></div>'
              '<div style="font-size:13px;color:var(--tw-text-2)">Trains · 2010 · 657 parts</div>'
              f'<div class="bar" style="height:8px"><i style="width:2.6%;background:var(--tw-accent)"></i><i style="flex:1;border:1.5px dashed var(--tw-text-2)"></i></div><div class="bartxt">17 of 657 found · 640 to find</div>'
-             f'<span class="input" style="height:40px;color:var(--tw-text-muted)">Search parts</span></div>')
+             f'<span class="input" style="height:40px;color:var(--tw-text-muted)">Search parts</span>'
+             # the shipped controls of the pull list under the search field, behind the scrim (brick-work's #509 frame check)
+             f'<div style="display:flex;gap:8px;align-items:flex-end"><label class="field" style="flex:1;min-width:0">To find<span class="input" style="height:40px">All</span></label>'
+             f'<label class="field" style="flex:1;min-width:0">Category<span class="input" style="height:40px">All</span></label><span class="btn sec sm" style="height:40px">Apply</span></div>'
+             f'<div style="font-size:13px;color:var(--tw-accent-text)">Expand all · Collapse all</div>'
+             f'<div class="tape">Brick<span class="mono">120 to find</span></div></div>')
     rows = ''.join(f'<div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--tw-divider);font-size:15px"><span>{k}</span><span class="mono" style="font-weight:600">{v}</span></div>'
                    for k, v in [('Found pieces move out of the lot', 17), ('Recorded as missing on the copy', 640), ('Stay in the lot', 67)])
     sheet = ('<div class="scrim"></div><div class="sheet" style="bottom:0"><div style="width:40px;height:4px;border-radius:2px;background:var(--tw-divider);margin:0 auto 14px"></div>'

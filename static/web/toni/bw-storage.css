@@ -10,7 +10,7 @@
 #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-head p{color:var(--tw-text-2);font-size:14px;margin:2px 0 0}
 #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-actions{margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-layout{display:flex;gap:28px;align-items:flex-start;margin-top:16px}
-#bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-list{width:430px;flex:none;min-width:0;display:flex;flex-direction:column;gap:12px}
+#bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-list{width:430px;flex:none;min-width:0;display:flex;flex-direction:column;gap:0}
 #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-link,#bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-back{color:var(--tw-accent);font:500 14px var(--tw-font);text-decoration:none;min-height:44px;display:inline-flex;align-items:center;gap:4px}
 #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-back{display:none}
 #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-back svg{width:18px;height:18px}
@@ -42,13 +42,13 @@
 #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-thead,#bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-row{display:grid;grid-template-columns:70px 1fr 48px 48px 64px;gap:8px;align-items:center}
 #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-thead{padding:8px 6px;border-bottom:1.5px solid var(--tw-rule)}
 #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-thead .st-col-num{text-align:right}
-#bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-row{padding:9px 6px;border-bottom:1px solid var(--tw-divider);color:var(--tw-text);text-decoration:none;font:400 14px/20px var(--tw-font)}
+#bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-row{padding:9px 6px;border-bottom:1px solid var(--tw-divider);color:var(--tw-text);text-decoration:none;font:400 14px/1.45 var(--tw-font)}
 #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-row.is-selected{background:var(--tw-accent-soft);box-shadow:inset 3px 0 0 var(--tw-accent)}
 #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-row:focus-visible{outline:2px solid var(--tw-focus-color);outline-offset:-2px}
 #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-code{font-size:12px;color:var(--tw-text-muted)}
 #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-name{display:block;min-width:0;color:inherit;text-decoration:none}
-#bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-name strong{display:block;font:600 14px/1.35 var(--tw-font);overflow-wrap:anywhere}
-#bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-type{display:block;font-size:12px;color:var(--tw-text-2)}
+#bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-name strong{display:block;font:600 14px/21.75px var(--tw-font);overflow-wrap:anywhere}
+#bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-type{display:block;font:400 12px/1.45 var(--tw-font);color:var(--tw-text-2)}
 #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-num{text-align:right;font-size:13px;color:var(--tw-text)}
 #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-none{color:var(--tw-text-muted)}
 #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .lb-pick{grid-column:1 / -1}
@@ -62,7 +62,7 @@
 #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-buttons{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
 #bw-ledger:not(#_):not(#_):not(#_) .st-tiles{display:flex;flex-wrap:wrap;gap:12px}
 #bw-ledger:not(#_):not(#_):not(#_) .st-tiles .stile{width:196px;flex:none}
-#bw-ledger:not(#_):not(#_):not(#_) .stile .tile{height:96px;padding:6px}
+#bw-ledger:not(#_):not(#_):not(#_) .stile .tile{height:96px;padding:6px;box-sizing:border-box}
 #bw-ledger:not(#_):not(#_):not(#_) .st-tile-alt{font:400 11px var(--tw-font);color:var(--tw-text-muted);text-align:center;padding:4px}
 #bw-ledger:not(#_):not(#_):not(#_) .st-price{font:500 12px var(--tw-mono);color:var(--tw-text-2)}
 #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-item.st-copy{display:flex;align-items:flex-start;gap:8px;min-height:0;padding:0;border-top:0;margin:0}
@@ -200,7 +200,14 @@
   #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-head{flex-direction:column;align-items:stretch;border-bottom:0;padding-bottom:0;gap:12px}
   #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-head-title{border-bottom:1.5px solid var(--tw-rule);padding-bottom:12px}
   #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-actions{margin-left:0}
-  #bw-ledger.bw-storage:not(#_):not(#_):not(#_) [data-open="st-add"]{order:-1}
+  /* The frame draws only Add storage above the table on a phone: Purchase locations and Print labels follow the list (the header and its actions flatten into the page's column) */
+  #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-prime{display:flex;flex-direction:column;gap:12px}
+  #bw-ledger.bw-storage:not(.st-showing-detail):not(#_):not(#_):not(#_) .st-head,#bw-ledger.bw-storage:not(.st-showing-detail):not(#_):not(#_):not(#_) .st-actions{display:contents}
+  #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-head-title{order:0}
+  #bw-ledger.bw-storage:not(#_):not(#_):not(#_) [data-open="st-add"]{order:1;align-self:flex-start}
+  #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-layout{order:2;margin-top:0}
+  #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-actions>a.btn{order:3;align-self:flex-start}
+  #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-actions>[data-label-select]{order:4;align-self:flex-start}
   #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-layout{display:block}
   #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-list{width:100%}
   #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-pane{display:none}
@@ -246,4 +253,5 @@
 #bw-ledger.bw-storage:not(#_):not(#_):not(#_) [data-detail-tools].st-quiet{display:none}
 #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-quiet .st-tools,#bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-quiet .st-count,#bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-quiet .st-filter{display:none}
 #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-detail-meta{margin:0}
-#bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-where,#bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-type{font:inherit;color:inherit}
+#bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-where{font:inherit;color:inherit}
+#bw-ledger.bw-storage:not(#_):not(#_):not(#_) .btn.sm{height:38px;min-height:38px}

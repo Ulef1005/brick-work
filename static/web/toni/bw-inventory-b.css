@@ -24,10 +24,10 @@ body:has(#bw-inventory) .layout>main {padding:0}
 /* Tabs (phone and tablet only) */
 #bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-tabs {display:none}
 /* 3-column desktop layout */
-#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-grid {display:flex;gap:28px;align-items:flex-start}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-grid {display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}
 #bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-col-1 {width:380px;flex:none;display:flex;flex-direction:column;gap:12px}
 #bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-col-2 {width:340px;flex:none;display:flex;flex-direction:column;gap:18px}
-#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-col-3 {flex:1;min-width:0}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-col-3 {flex:1 1 420px;min-width:min(420px,100%)}
 #bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-source,#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-capture,#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-queue,#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-review,#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-results {display:flex;flex-direction:column;gap:12px;min-width:0;margin:0}
 /* Camera row, picker lists, segments */
 #bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-seg-row {display:flex;gap:16px;flex-wrap:wrap}

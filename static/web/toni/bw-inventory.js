@@ -40,9 +40,9 @@
     COMMON_COLOURS.forEach(name => add(colours.find(r => r.name === name)));
     (owned?.colours || []).forEach(o => add(colours.find(r => r.color_id === o.color_id)));
     if (!list.length) colours.slice(0, 6).forEach(add);
-    const top = list.slice(0, 8);
+    const top = list.slice(0, 12);
     const chosen = chosenId != null ? colours.find(r => r.color_id === chosenId) : null;
-    if (chosen && !top.some(c => c.color_id === chosen.color_id)) return top.length >= 8 ? [...top.slice(0, 7), chosen] : [...top, chosen];
+    if (chosen && !top.some(c => c.color_id === chosen.color_id)) return top.length >= 12 ? [...top.slice(0, 11), chosen] : [...top, chosen];
     return top;
   }
   function segment(options, current, set, label) {
@@ -161,7 +161,7 @@
     node('slot').textContent=`Piece ${queue.length+1}`;
     const q=node('search').value.toLowerCase();
     const pieces=queue.filter(p=>(!queueFilter||p.status===queueFilter)&&JSON.stringify(p.candidates).toLowerCase().includes(q));
-    if(queueSort==='name')pieces.sort((a,b)=>(a.candidates[a.index]?.name||'').localeCompare(b.candidates[b.index]?.name||''));
+    if(queueSort==='name'&&queue.length>3)pieces.sort((a,b)=>(a.candidates[a.index]?.name||'').localeCompare(b.candidates[b.index]?.name||''));
     if(node('search').value)node('chips').append(button(`${node('search').value} ×`,()=>{node('search').value='';renderQueue();}));
     if(queueFilter)node('chips').append(button(`${STATUS[queueFilter][0]} ×`,()=>setQueueFilter('')));
     node('toolbar').hidden=queue.length<4;node('queue-actions').hidden=!queue.length;

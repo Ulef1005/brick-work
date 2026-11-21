@@ -647,21 +647,21 @@ STORES = [('S-0001', 'Shelf A1 – Castle', 'Shelf', 2, 0, 0), ('S-0002', 'Shelf
 
 def storage_body(phone):
     head = (f'<div class="head"><div><div class="lbl">Workbench · Storage</div><h1>Storage</h1><p>6 storages · 7 sets · 0 figures · 6 part lots</p></div>'
-            + ('' if phone else f'<div style="margin-left:auto;display:flex;gap:10px"><span class="btn sec sm">Purchase locations</span><span class="btn sm">{ic("plus", 16)}Add storage</span></div>') + '</div>')
+            + ('' if phone else f'<div style="margin-left:auto;display:flex;gap:10px"><span class="btn sec sm">Purchase locations</span><span class="btn sec sm">Print labels</span><span class="btn sm">{ic("plus", 16)}Add storage</span></div>') + '</div>')
     th = ('<div style="display:grid;grid-template-columns:70px 1fr 48px 48px 64px;gap:8px;padding:8px 6px;border-bottom:1.5px solid var(--tw-rule)" class="lbl">'
           '<span>Code</span><span>Storage</span><span style="text-align:right">Sets</span><span style="text-align:right">Figs</span><span style="text-align:right">Lots</span></div>')
     rows = ''.join(f'<div style="display:grid;grid-template-columns:70px 1fr 48px 48px 64px;gap:8px;padding:9px 6px;border-bottom:1px solid var(--tw-divider);align-items:center;'
-                   f'{"background:var(--tw-accent-soft);box-shadow:inset 3px 0 0 var(--tw-accent);" if sid == "S-0002" else ""}">'
+                   f'{"background:var(--tw-accent-soft);box-shadow:inset 3px 0 0 var(--tw-accent);" if sid == "S-0002" and not phone else ""}">'
                    f'<span class="mono" style="font-size:12px;color:var(--tw-text-muted)">{sid}</span><span><span style="font:600 14px var(--tw-font)">{n}</span>'
                    f'<span style="display:block;font-size:12px;color:var(--tw-text-2)">{k}</span></span>'
                    + ''.join(f'<span class="mono" style="text-align:right;font-size:13px">{v if v else "—"}</span>' for v in (s, f, l)) + '</div>' for sid, n, k, s, f, l in STORES)
     table = f'<div style="{"" if phone else "width:430px;flex:none"}">{th}{rows}<div class="row"><span class="chev" style="color:var(--tw-text)">{ic("chev")}</span><div class="t">History</div></div></div>'
     if phone:
-        return f'<div style="padding:14px 16px 0;display:flex;flex-direction:column;gap:12px">{head.replace("font:600 30px", "font:600 26px")}<span class="btn sm" style="align-self:flex-start">{ic("plus", 16)}Add storage</span>{table}</div>'
+        return f'<div style="padding:14px 16px 0;display:flex;flex-direction:column;gap:12px">{head.replace("font:600 30px", "font:600 26px")}<span class="btn sm" style="align-self:flex-start">{ic("plus", 16)}Add storage</span>{table}<span class="btn sec sm" style="align-self:flex-start">Print labels</span></div>'
     tiles = ''.join(tile(SETS[n], w=196, img_h=96) for n in ('7213-1', '7938-1', '10254-1'))
     detail = (f'<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:12px">{tape("S-0002", "Shelf A2 – Town", 3)}'
               f'<div style="display:flex;gap:10px;align-items:center;font-size:13px;color:var(--tw-text-2)">Shelf · 3 sets · 4 copies · 0 figures · 0 part lots'
-              f'<span style="margin-left:auto;display:flex;gap:8px"><span class="btn sec sm">Print label</span><span class="btn sec sm">Edit</span></span></div>'
+              f'<span style="margin-left:auto;display:flex;gap:8px"><span class="btn sec sm">Print label</span><span class="btn sec sm">Edit</span><span class="btn sec sm">Select</span></span></div>'
               f'<div style="display:flex;gap:12px">{tiles}</div>'
               f'<p style="font-size:13px;color:var(--tw-text-muted)">Move sets, figures or part lots here from their detail page, or from another storage in select mode.</p></div>')
     return f'<div style="padding:22px 32px 0;display:flex;flex-direction:column;gap:16px">{head}<div style="display:flex;gap:28px">{table}{detail}</div></div>'

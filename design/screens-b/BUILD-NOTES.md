@@ -112,6 +112,8 @@ Generated from the review rounds of commission U (review artifact https://claude
 
 - **Corrected 2026-11-21 (#500, decided by brick-work-product):** the storage type reads "Drawer", an existing type (Box, Shelf, Drawer, Bin, Bag, Case, Cabinet, Room, Other), not "Drawer unit"; the storage's own name "Parts drawer unit" stays. Pending Ulf's picture check.
 
+- **Corrected 2026-11-21 (#500, found by brick-work's frame check; pending Ulf's picture check):** the controls the app keeps were left out of the frame by omission: Print labels sits beside Purchase locations in the header on desktop and under the list on the phone (below the fold of the 390 frame), and Select sits beside Print label and Edit. On the phone the list has no detail pane beside it, so no storage row is marked (the frame marked S-0002). The tile shows no copy condition (New/Used), as the approved Sets tile of R3-01 does; the condition is on Set detail.
+
 ## Round 6
 
 ### R6-01 Order missing parts (`15-order-missing-parts`)

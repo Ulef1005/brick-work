@@ -134,8 +134,8 @@ def test_page_renders_3f_structure_without_old_controls(world, coll, client):
     # Old chrome is gone: breadcrumb, fieldset and native dropdowns.
     assert 'class="breadcrumb"' not in html
     assert '<fieldset' not in main and '<select' not in main and '<legend' not in main
-    # Camera row and recognition switch above the tabs; Local model is shown as not available.
-    assert main.index('data-camera') < main.index('Recognition') < main.index('data-tab="capture"') < main.index('data-panel="capture"')
+    # The four tabs sit under the header (frame 13, #508); camera row and recognition switch are in the Capture panel's column; Local model is shown as not available.
+    assert main.index('data-tab="capture"') < main.index('data-camera') < main.index('Recognition') < main.index('data-panel="capture"')
     assert 'role="listbox"' in main and 'Local model' in main and main.count('Not available yet') >= 1
     assert 'disabled aria-disabled="true"' in main and 'Brickognize</button>' in main
     for marker_text in ['data-panel="capture"', 'data-panel="queue"', 'data-panel="review"', 'data-panel="results"', 'class="guide"', 'data-slot', 'data-file', 'Add a saved photo', 'Enable camera',
@@ -143,7 +143,7 @@ def test_page_renders_3f_structure_without_old_controls(world, coll, client):
         assert marker_text in main, marker_text
     for marker_text in ['data-tab="queue"', 'data-tab="review"', 'data-tab="results"', 'data-endpoint="figs"', 'data-filter="error"', 'data-sort="name"', 'data-lot-option', 'Pile A']:
         assert marker_text in main, marker_text
-    assert 'bw-inventory.css' in html and 'bw-inventory.js' in html
+    assert 'bw-inventory-b.css' in html and 'bw-inventory.js' in html
     assert 'data-notice data-kind="info" hidden' in html
 
 

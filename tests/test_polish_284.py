@@ -55,12 +55,12 @@ def test_the_small_tile_rule_is_shared_in_the_global_stylesheet():
 @rendered.group
 @pytest.mark.parametrize('wrap', ['{}', '<label class="bw-copy">{}</label>', '<div class="bw-copy-summary">{}</div>',
                                   '<div id="bw-check-choices"><a class="check-copy">{}</a></div>'])
-@pytest.mark.parametrize('tile', ['bc-picture', 'bw-picture', 'check-picture', 'scan-tile'])
+@pytest.mark.parametrize('tile', ['bc-picture', 'bw-picture', 'check-picture'])   # Part Spotter's tile (scan-tile) is the kit's one-line 'Part picture' tile since #508, no number line
 def test_a_56_px_no_image_tile_holds_the_number_on_one_line_and_the_note_inside(tile, wrap, tmp_path):
     """The shared tiles of the lists and the workbench, drawn with the shipped stylesheets, in the pinned Chrome."""
     chrome = rendered.chrome()
     css = ''.join((ROOT / 'static/web/toni' / name).read_text() for name in
-                  ('tokens-v2.css', 'toni.css', 'bw-collection.css', 'bw-workbench.css', 'bw-checker.css', 'bw-inventory.css', 'bw-planning.css', 'shell.css'))
+                  ('tokens-v2.css', 'toni.css', 'bw-collection.css', 'bw-workbench.css', 'bw-checker.css', 'bw-inventory-b.css', 'bw-planning.css', 'shell.css'))
     numbers = ['1592-1', '40567-1', '75192-1']
     tiles = ''.join(f'<div class="{tile}" style="width:56px;height:56px"><span class="mono">{n}</span><span>No image</span></div>' for n in numbers)
     if tile == 'bc-picture':   # Complete sets draws it as the first cell of a row

@@ -70,7 +70,8 @@
 #bw-ledger:not(#_):not(#_):not(#_) .st-copy-body .tag{align-self:flex-start;margin-bottom:4px}
 #bw-ledger:not(#_):not(#_):not(#_) .bar-src{font-size:11px;line-height:14px;color:var(--tw-text-muted);margin:-2px 0 6px}
 #bw-ledger:not(#_):not(#_):not(#_) .stile[hidden],#bw-ledger:not(#_):not(#_):not(#_) .st-item[hidden]{display:none}
-#bw-ledger:not(#_):not(#_):not(#_).is-selecting .bartxt{white-space:normal;flex-wrap:wrap}
+#bw-ledger.bw-storage:not(#_):not(#_):not(#_).is-selecting .bartxt:not(:has(.xchip)){white-space:normal}
+#bw-ledger:not(#_):not(#_):not(#_).is-selecting .bartxt{flex-wrap:wrap}
 #bw-ledger:not(#_):not(#_):not(#_) .st-unresolved{align-self:flex-start;margin-bottom:6px;font-size:12px}
 #bw-ledger:not(#_):not(#_):not(#_) .st-move-hint{font-size:13px;color:var(--tw-text-2);margin:12px 0 0}
 #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-group{display:flex;flex-direction:column;gap:4px;margin-top:24px}

@@ -67,6 +67,10 @@
     result.forEach((entry, index) => {
       const group = groups[index], container = group.node.querySelector('[data-items]');
       const shown = new Set(entry.shown);
+      // A set tile shows all its copies or none (the limit counts whole tiles): copies of one set match alike.
+      const tileOf = item => item.node.closest('.stile');
+      const shownTiles = new Set(group.key === 'set' ? entry.shown.map(tileOf) : []);
+      if (group.key === 'set') group.items.forEach(item => { if (shownTiles.has(tileOf(item))) shown.add(item); });
       group.items.forEach(item => { item.node.hidden = !shown.has(item); });
       if (group.key === 'set') {
         container.querySelectorAll('.stile').forEach(tile => {
@@ -84,9 +88,10 @@
       total += entry.shown.length;
       group.node.hidden = !entry.shown.length;
       group.counter.textContent = String(group.items.filter(i => !i.lot).length);
-      const more = Math.max(0, entry.matches.length - entry.shown.filter(i => entry.matches.includes(i)).length);
+      const units = group.key === 'set' ? new Set(entry.matches.map(tileOf)) : entry.matches;
+      const more = Math.max(0, (group.key === 'set' ? units.size - shownTiles.size : entry.matches.length - entry.shown.filter(i => entry.matches.includes(i)).length));
       group.more.hidden = more === 0;
-      group.more.querySelector('span').textContent = `Show all ${entry.matches.length} ${group.noun}`;
+      group.more.querySelector('span').textContent = `Show all ${group.key === 'set' ? units.size : entry.matches.length} ${group.noun}`;
     });
     count.textContent = window.BrickLedger.countText(count, total);
     root.querySelector('[data-nomatch]').hidden = total > 0;

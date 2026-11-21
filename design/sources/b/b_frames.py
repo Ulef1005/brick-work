@@ -608,7 +608,7 @@ def scout_body(phone):
             '<p>Which sets can you build, or nearly build, from the parts you hold loose</p></div></div>')
     filt = ('<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">'
             + ''.join(f'<label class="field" style="width:{w}px">{k}<span class="input" style="height:38px">{v}</span></label>'
-                      for k, v, w in [('Parts from', 'All loose stock', 200), ('Min', '0 %', 90), ('Max missing', 'any', 110), ('Theme', 'All', 150), ('Years', 'any – any', 130), ('Sort', '% available', 140)])
+                      for k, v, w in [('Parts from', 'All loose stock', 200), ('Min', '0 %', 90), ('Max missing', 'any', 110), ('Theme', 'All', 150), ('Years', 'any – any', 130), ('Size', 'any – any', 130), ('Sort', '% available', 140)])
             + '<span class="btn sec sm">Apply</span></div>')
 
     def res(n, name, meta, img, have, need, miss, price, on=False):
@@ -622,9 +622,9 @@ def scout_body(phone):
     rows = ''.join(res(*s, on=(i == 0)) for i, s in enumerate(SCOUT))
     summary = '<p style="font-size:13px;color:var(--tw-text-muted)">4 of 7 sets · 1,042 loose pieces counted · figures shown separately · swaps listed in the set, never in the %</p>'
     if phone:
-        return f'<div style="padding:14px 16px 0;display:flex;flex-direction:column;gap:12px">{head.replace("font:600 30px", "font:600 26px")}<span class="btn sec sm" style="align-self:flex-start">Filters · 6</span>{rows}</div>'
-    lines = [('part-3009-lbg.png', 'Brick 1 × 6', 'Light Bluish Gray', '3009', 14), ('part-3010-dbg.png', 'Brick 1 × 4', 'Dark Bluish Gray', '3010', 9),
-             ('part-87619-white.png', 'Slope 45° 2 × 2', 'White', '87619', 6)]
+        return f'<div style="padding:14px 16px 0;display:flex;flex-direction:column;gap:12px">{head.replace("font:600 30px", "font:600 26px")}<span class="btn sec sm" style="align-self:flex-start">Filters · 7</span>{rows}</div>'
+    lines = [('part-3009-lbg.png', 'Brick 1 × 6', 'Light Bluish Gray', '3009', 14), ('part-3010-dbg.png', 'Brick 1 × 4', 'Dark Bluish Gray', '3010', 12),
+             ('part-87619-white.png', 'Slope 45° 2 × 2', 'White', '87619', 11)]    # 14 + 12 + 11, then 20 lines of 11 or fewer that sum to the other 149 of 186
     lr = ''.join(f'<div style="display:flex;gap:12px;align-items:center;padding:8px 0;border-bottom:1px solid var(--tw-divider)"><div style="width:44px;flex:none">{pic(i, 44, 3)}</div>'
                  f'<div style="flex:1;min-width:0"><div style="font:500 14px var(--tw-font)">{n}</div><div style="font-size:12px;color:var(--tw-text-2)">{c} · <span class="mono">{num}</span></div></div>'
                  f'<span class="mono" style="font:600 13px var(--tw-mono)">{q} missing</span></div>' for i, n, c, num, q in lines)

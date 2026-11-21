@@ -821,8 +821,8 @@ def orders_body(phone):
 
 
 # ---- N2 Part Spotter: camera, queue and the batch (31) ---------------------------------------------------------------
-QUEUE = [('part-3005-red.png', 'Piece 1 · 3005', 'Brick 1 × 1', 'Red', 'Confirmed', ''), ('part-3009-lbg.png', 'Piece 2 · 3009', 'Brick 1 × 6', 'Light Bluish Gray', 'To review', 'dash'),
-         ('part-3010-dbg.png', 'Piece 3', 'Recognizing', None, 'To review', 'dash')]
+QUEUE = [('part-3005-red.png', 'Piece 1 · 3005', 'Brick 1 × 1', 'Red', 'Ready', ''), ('part-3009-lbg.png', 'Piece 2 · 3009', 'Brick 1 × 6', 'Light Bluish Gray', 'To review', 'dash'),
+         ('part-3010-dbg.png', 'Piece 3', 'Recognizing', None, 'Recognizing', 'dash')]
 SWATCH = ['Light Bluish Gray', 'Dark Bluish Gray', 'White', 'Black', 'Tan', 'Red']
 
 

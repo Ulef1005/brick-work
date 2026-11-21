@@ -22,7 +22,7 @@ def test_the_frame_world_draws_the_lot_the_frame_draws():
         head = page.select_one('#lot-b .head')
         assert head.select_one('.lbl').get_text() == 'Workbench · Lot Sorter' and head.select_one('h1').get_text() == 'Flea market bag'
         assert head.select_one('p').get_text() == '84 parts · 28 original lines · 1 with a sticker'
-        facts = [(d.select_one('dt').get_text(), d.select_one('dd').get_text()) for d in page.select('#lot-b .lb-facts > div')]
+        facts = [(d.select_one('dt').get_text(), d.select_one('dd').get_text()) for d in page.select('#lot-b .lb-facts dl > div')]
         assert facts == [('Storage', 'Not recorded'), ('Place', 'Not recorded'), ('Bought', 'Not recorded'), ('Price', 'Not recorded'), ('Note', 'One bag, no list')]
         assert page.select_one('#set-detection .tape').get_text(' ', strip=True) == 'Set detection 3 candidate sets'
         rows = page.select('.bd-cand')

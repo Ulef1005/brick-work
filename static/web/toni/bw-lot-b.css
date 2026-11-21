@@ -6,7 +6,8 @@ body:has(#lot-b) #bw-collection {padding:22px 32px 40px;max-width:1300px;box-siz
 body:has(#lot-b) #bw-collection>.bc-module,body:has(#lot-b) #bw-collection>[data-bc-list] {margin-top:32px}
 #lot-b:not(#_):not(#_):not(#_):not(#_) {display:flex;flex-direction:column;gap:16px;max-width:1300px}
 #lot-b:not(#_):not(#_):not(#_):not(#_) .lb-facts {display:flex;gap:40px;flex-wrap:wrap;font-size:13.5px;margin:0}
-#lot-b:not(#_):not(#_):not(#_):not(#_) .lb-facts>div {display:block}
+#lot-b:not(#_):not(#_):not(#_):not(#_) .lb-facts dl {display:contents}
+#lot-b:not(#_):not(#_):not(#_):not(#_) .lb-facts dl>div {display:block}
 #lot-b:not(#_):not(#_):not(#_):not(#_) .lb-facts dt {font-size:11px;line-height:14px}
 #lot-b:not(#_):not(#_):not(#_):not(#_) .lb-facts dd {margin-top:2px;font-weight:500;color:var(--tw-text)}
 #lot-b:not(#_):not(#_):not(#_):not(#_) .lb-facts dd.lb-none {font-weight:400;color:var(--tw-text-muted)}
@@ -82,3 +83,30 @@ body:has(#lot-b) #bw-collection>.bc-module,body:has(#lot-b) #bw-collection>[data
 #set-detection:not(#_):not(#_):not(#_):not(#_) .lb-f-theme .lb-box {width:150px}
 #set-detection:not(#_):not(#_):not(#_):not(#_) .lb-f-years .lb-box,#set-detection:not(#_):not(#_):not(#_):not(#_) .lb-f-size .lb-box {width:130px;gap:4px}
 #set-detection:not(#_):not(#_):not(#_):not(#_) .bd-apply {height:38px;min-height:0;padding:0 14px}
+
+/* Chooser docked beside the lot from 1024 px (bw-detect.css reserves its room) */
+@media (min-width:1024px) {
+  body:has(#lot-b) #bw-collection.bd-with-chooser {padding-right:532px}
+}
+/* Browsers without field-sizing: the inputs keep a width that fits their box */
+@supports not (field-sizing:content) {
+  #set-detection:not(#_):not(#_):not(#_):not(#_) .lb-f-years .lb-box input,#set-detection:not(#_):not(#_):not(#_):not(#_) .lb-f-size .lb-box input {width:38px}
+  #set-detection:not(#_):not(#_):not(#_):not(#_) .lb-f-score .lb-box input {width:58px}
+  #set-detection:not(#_):not(#_):not(#_):not(#_) .lb-f-theme .lb-box input {width:118px}
+}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .lb-box input {max-width:100%}
+/* A phone: the candidate row stacks (tile and name, then the score and the button), the fields wrap, the details start at the left */
+@media (max-width:767px) {
+  body:has(#lot-b) #bw-collection {padding:14px 16px 32px}
+  #set-detection:not(#_):not(#_):not(#_):not(#_) .bd-cand summary {flex-wrap:wrap;row-gap:10px}
+  #set-detection:not(#_):not(#_):not(#_):not(#_) .bd-set-tile {width:64px;height:48px}
+  #set-detection:not(#_):not(#_):not(#_):not(#_) .bd-who {flex:1 1 calc(100% - 78px)}
+  #set-detection:not(#_):not(#_):not(#_):not(#_) .bd-score {flex:1 1 0;min-width:0;width:auto}
+  #set-detection:not(#_):not(#_):not(#_):not(#_) .bd-toggle {flex:none}
+  #set-detection:not(#_):not(#_):not(#_):not(#_) .bd-more {padding-left:0}
+  #set-detection:not(#_):not(#_):not(#_):not(#_) .bd-filters-button {display:none}
+  #set-detection:not(#_):not(#_):not(#_):not(#_) .bd-filters {gap:8px}
+  #lot-b:not(#_):not(#_):not(#_):not(#_) .head {flex-wrap:wrap}
+  #lot-b:not(#_):not(#_):not(#_):not(#_) .lb-facts {gap:16px 28px}
+}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .lb-pic {white-space:nowrap;padding:0}

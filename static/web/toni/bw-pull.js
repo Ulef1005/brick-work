@@ -6,4 +6,9 @@
       select.addEventListener('change', function () { form.submit(); });
     });
   });
+  // The confirm is a dialog made of a link and a panel: Escape leaves it by the Cancel link (hidden on a phone, where the dimmed page above the sheet is the link).
+  document.addEventListener('keydown', function (event) {
+    var cancel = event.key === 'Escape' && document.querySelector('#bp-confirm .bp-cancel');
+    if (cancel) window.location.assign(cancel.href);
+  });
 })();

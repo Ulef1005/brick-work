@@ -22,7 +22,9 @@
 #bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-apply {border-radius:var(--tw-r-1)}
 /* the confirm */
 #bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-scrim {background:rgba(26,30,30,.38)}
-#bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-panel {padding:10px 16px calc(24px + env(safe-area-inset-bottom,0px));border:0;border-top:1.5px solid var(--tw-rule);border-radius:var(--tw-r-3) var(--tw-r-3) 0 0;box-shadow:0 -8px 24px rgba(26,30,30,.18)}
+@media (max-width:1023px) {
+  #bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-panel {padding:10px 16px calc(24px + env(safe-area-inset-bottom,0px));border:0;border-top:1.5px solid var(--tw-rule);border-radius:var(--tw-r-3) var(--tw-r-3) 0 0;box-shadow:0 -8px 24px rgba(26,30,30,.18)}
+}
 #bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-grab {margin:0 auto 14px;background:var(--tw-divider)}
 #bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-panel h2 {margin:0;font:600 22px/1.2 var(--tw-font)}
 #bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-sub2 {margin:2px 0 10px;font-size:13.5px;color:var(--tw-text-2)}
@@ -60,3 +62,5 @@
 }
 
 #bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-panel form {display:block;margin:0}
+
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-strip i[style='flex:0'] {display:none}

@@ -1,0 +1,113 @@
+/* Lot Sorter in the B′ design (frame 14, #509): the lot's head and facts and the Set detection section, on the kit's primitives and --tw-* tokens.
+   Both blocks are `.b-prime` roots, so the kit's reset zeroes margins and padding inside them: every rule here sets its own spacing. The chooser and the
+   parts list below stay in bw-detect.css and bw-collection.css. */
+body:has(#lot-b) .layout>main {padding:0}
+body:has(#lot-b) #bw-collection {padding:22px 32px 40px;max-width:1300px;box-sizing:border-box}
+body:has(#lot-b) #bw-collection>.bc-module,body:has(#lot-b) #bw-collection>[data-bc-list] {margin-top:32px}
+#lot-b:not(#_):not(#_):not(#_):not(#_) {display:flex;flex-direction:column;gap:16px;max-width:1300px}
+#lot-b:not(#_):not(#_):not(#_):not(#_) .lb-facts {display:flex;gap:40px;flex-wrap:wrap;font-size:13.5px;margin:0}
+#lot-b:not(#_):not(#_):not(#_):not(#_) .lb-facts dl {display:contents}
+#lot-b:not(#_):not(#_):not(#_):not(#_) .lb-facts dl>div {display:block}
+#lot-b:not(#_):not(#_):not(#_):not(#_) .lb-facts dt {font-size:11px;line-height:14px}
+#lot-b:not(#_):not(#_):not(#_):not(#_) .lb-facts dd {margin-top:2px;font-weight:500;color:var(--tw-text)}
+#lot-b:not(#_):not(#_):not(#_):not(#_) .lb-facts dd.lb-none {font-weight:400;color:var(--tw-text-muted)}
+#lot-b:not(#_):not(#_):not(#_):not(#_) .lb-hint {font-size:12.5px;color:var(--tw-text-muted);align-self:flex-end}
+#lot-b:not(#_):not(#_):not(#_):not(#_) .lb-edit {margin-left:auto}
+#set-detection:not(#_):not(#_):not(#_):not(#_) {display:flex;flex-direction:column;gap:12px;max-width:1300px;margin:16px 0 0;padding:0;border:0}
+#set-detection:not(#_):not(#_):not(#_):not(#_) >.tape {margin:0}
+#set-detection:not(#_):not(#_):not(#_):not(#_) h2 {font:600 20px var(--tw-font);margin:0}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-lead {font-size:13px;line-height:1.45;color:var(--tw-text-2);max-width:640px;margin:0}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-note {font-size:13px;color:var(--tw-text-2);margin:0}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-empty {padding:14px 16px;border-radius:var(--tw-r-1);background:var(--tw-surface);font-size:14px;color:var(--tw-text-2);margin:0}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-empty a {color:var(--tw-accent-text);text-decoration:underline}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-filters {display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin:0}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-fields {display:contents}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-filters-toggle,#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-filters-button {display:none}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-field {display:flex;flex-direction:column;flex-wrap:nowrap;align-items:flex-start;gap:6px;width:auto;min-height:0;height:auto;padding:0;border:0;border-radius:0;background:none;font:500 13px var(--tw-font);color:var(--tw-text-2);white-space:normal}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-switch-field {display:flex;flex-direction:row;align-items:center;gap:8px;width:auto;min-height:38px;padding:0;border:0;font:400 14px var(--tw-font);cursor:pointer;white-space:nowrap}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-switch {position:relative;display:flex;align-items:center;min-width:40px;min-height:24px;flex:none}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-switch input {position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer;z-index:1}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-track {position:relative;width:40px;height:24px;border-radius:12px;border:1.5px solid var(--tw-text);background:var(--tw-surface);box-sizing:border-box;flex:none}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-track::after {content:"";position:absolute;top:3px;left:3px;width:15px;height:15px;border-radius:50%;background:var(--tw-text);box-shadow:none}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-switch input:checked+.bd-track {background:var(--tw-accent);border-color:var(--tw-accent)}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-switch input:checked+.bd-track::after {left:19px;right:auto;background:var(--tw-on-accent)}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-switch input:focus-visible+.bd-track {outline:var(--tw-focus-width) solid var(--tw-focus-color);outline-offset:var(--tw-focus-offset)}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-cand {padding:12px 0;border:0;border-bottom:1px solid var(--tw-divider)}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-cand summary {display:flex;gap:14px;align-items:center;list-style:none;cursor:pointer;grid-template-columns:none}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-cand summary::-webkit-details-marker {display:none}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-set-tile {width:72px;height:54px;flex:none;padding:4px;overflow:hidden;border:0;border-radius:2px;background:var(--tw-tile)}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-set-tile img {max-width:100%;max-height:100%;object-fit:contain}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .lb-pic {font:400 11px var(--tw-font);color:var(--tw-tile-ink);text-align:center;padding:4px}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-who {flex:1;min-width:0;display:block}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-name {display:flex;gap:10px;align-items:baseline;font:600 15px var(--tw-font)}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-number {font:600 15px var(--tw-mono);color:var(--tw-text);margin:0}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-meta {display:block;font-size:12.5px;line-height:1.45;color:var(--tw-text-2)}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-reasons {display:block;font-size:13px;line-height:1.45;margin-top:3px;color:var(--tw-text)}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-score {width:190px;flex:none;display:block}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-score-row {display:flex;align-items:baseline;justify-content:space-between}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-pct {font:600 22px/32px var(--tw-mono);letter-spacing:-.02em}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-best {font-size:12px;color:var(--tw-text-muted)}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-bar {height:6px;margin-top:4px;border-radius:0;background:none;overflow:visible}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-bar i {background:var(--tw-text)}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-bar i.lb-rest {flex:1;background:var(--tw-divider)}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-toggle {flex:none;min-height:0;padding:0 14px}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-more {margin:0;padding:10px 0 0 86px;display:flex;flex-direction:column;gap:8px}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-label {margin:0;font-size:12px}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-tiles {display:flex;gap:6px;flex-wrap:wrap;list-style:none;margin:0;padding:0}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-tiles li {display:block;width:auto}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-tile {overflow:hidden;background:var(--tw-tile);word-break:normal;align-items:flex-end}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-tile img {width:100%;height:100%;object-fit:contain}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-tile.bd-yes {border-bottom:3px solid var(--tw-accent)}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-tile.bd-no {border:1.5px dashed var(--tw-text-2);background:var(--tw-tile)}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .lb-more {font-size:12px;color:var(--tw-text-muted)}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-none,#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-swaps {font-size:13px;line-height:1.45;color:var(--tw-text-2)}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-swaps {padding-left:18px}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-actions {display:flex;gap:10px;margin:0}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-more-link {font-size:13px;color:var(--tw-text-muted);margin:0}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-more-link a {color:var(--tw-accent-text);text-decoration:underline}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-close-text {display:none}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-cand details[open] .bd-close-text {display:inline}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-cand details[open] .bd-open-text {display:none}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-field>span:first-child {flex:none}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .lb-box {display:flex;align-items:center;gap:6px;height:38px;padding:0 12px;border:1px solid var(--tw-text-muted);border-radius:var(--tw-r-1);background:var(--tw-field);color:var(--tw-text);font:400 15px var(--tw-font)}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .lb-box:focus-within {outline:var(--tw-focus-width) solid var(--tw-focus-color);outline-offset:var(--tw-focus-offset)}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .lb-box input::-webkit-outer-spin-button,#set-detection:not(#_):not(#_):not(#_):not(#_) .lb-box input::-webkit-inner-spin-button {appearance:none;margin:0}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .lb-box input::placeholder {color:var(--tw-text);opacity:1}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-unit {color:var(--tw-text);font:400 15px var(--tw-font)}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-eyebrow .bd-count {color:inherit;opacity:.9;font:500 12px var(--tw-mono);letter-spacing:0;text-transform:none;margin:0 0 0 auto}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-tile {white-space:nowrap;text-overflow:clip;padding:0 2px 3px;overflow:hidden}
+
+#set-detection:not(#_):not(#_):not(#_):not(#_) .lb-box input {width:auto;min-width:2ch;field-sizing:content;height:34px;min-height:0;padding:0;margin:0;border:0;border-radius:0;background:none;box-shadow:none;color:var(--tw-text);font:400 15px var(--tw-font);outline:none;appearance:textfield;-moz-appearance:textfield}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .lb-box input[type=text] {min-width:6ch}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .lb-f-score .lb-box {width:110px}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .lb-f-theme .lb-box {width:150px}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .lb-f-years .lb-box,#set-detection:not(#_):not(#_):not(#_):not(#_) .lb-f-size .lb-box {width:130px;gap:4px}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .bd-apply {height:38px;min-height:0;padding:0 14px}
+
+/* Chooser docked beside the lot from 1024 px (bw-detect.css reserves its room) */
+@media (min-width:1024px) {
+  body:has(#lot-b) #bw-collection.bd-with-chooser {padding-right:532px}
+}
+/* Browsers without field-sizing: the inputs keep a width that fits their box */
+@supports not (field-sizing:content) {
+  #set-detection:not(#_):not(#_):not(#_):not(#_) .lb-f-years .lb-box input,#set-detection:not(#_):not(#_):not(#_):not(#_) .lb-f-size .lb-box input {width:38px}
+  #set-detection:not(#_):not(#_):not(#_):not(#_) .lb-f-score .lb-box input {width:58px}
+  #set-detection:not(#_):not(#_):not(#_):not(#_) .lb-f-theme .lb-box input {width:118px}
+}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .lb-box input {max-width:100%}
+/* A phone: the candidate row stacks (tile and name, then the score and the button), the fields wrap, the details start at the left */
+@media (max-width:767px) {
+  body:has(#lot-b) #bw-collection {padding:14px 16px 32px}
+  #set-detection:not(#_):not(#_):not(#_):not(#_) .bd-cand summary {flex-wrap:wrap;row-gap:10px}
+  #set-detection:not(#_):not(#_):not(#_):not(#_) .bd-set-tile {width:64px;height:48px}
+  #set-detection:not(#_):not(#_):not(#_):not(#_) .bd-who {flex:1 1 calc(100% - 78px)}
+  #set-detection:not(#_):not(#_):not(#_):not(#_) .bd-score {flex:1 1 0;min-width:0;width:auto}
+  #set-detection:not(#_):not(#_):not(#_):not(#_) .bd-toggle {flex:none;width:auto}
+  #set-detection:not(#_):not(#_):not(#_):not(#_) .bd-more {padding-left:0}
+  #set-detection:not(#_):not(#_):not(#_):not(#_) .bd-filters-button {display:none}
+  #set-detection:not(#_):not(#_):not(#_):not(#_) .bd-filters {gap:8px}
+  #lot-b:not(#_):not(#_):not(#_):not(#_) .head {flex-wrap:wrap}
+  #lot-b:not(#_):not(#_):not(#_):not(#_) .lb-facts {gap:16px 28px}
+}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .lb-pic {white-space:nowrap;padding:0}
+#set-detection:not(#_):not(#_):not(#_):not(#_) .lb-box {overflow:hidden}

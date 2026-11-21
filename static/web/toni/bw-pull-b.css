@@ -1,0 +1,83 @@
+/* The pull list in the B′ design (frame 14, phone: the Make a copy confirm over 7938-1's pull list, #509): the head, the strip, the search, the confirm sheet
+   and the pull lines' counter and tick in the kit's look, on --tw-* tokens. Loaded after bw-pull.css, which keeps the layout (card on a wide screen, bar and
+   sheet on a phone). The page is not a `.b-prime` root; the status line is, for the kit's tag and X chip. */
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .crumb {margin:0 0 10px;line-height:1.3}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .crumb a {min-height:0;font:600 14px var(--tw-font);color:var(--tw-accent-text);text-decoration:none}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .lab {margin:0 0 10px;font:600 12px/14px var(--tw-font-label);letter-spacing:.14em;color:var(--tw-text-muted)}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-title {margin:0 0 10px;font:600 32px/1.2 var(--tw-font);letter-spacing:-.015em}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-title-no {font:inherit;font-family:var(--tw-mono);font-size:18px;letter-spacing:0;color:var(--tw-text-muted)}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .sub {margin:0 0 10px;font-size:13px;line-height:1.45;color:var(--tw-text-2)}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-strip {gap:0;height:8px;margin:0 0 10px}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-strip i {border-radius:0;background:none;border:1.5px dashed var(--tw-text-2)}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-strip i.f {border:0;background:var(--tw-accent)}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-prog {display:flex;justify-content:flex-start;gap:6px;margin:4px 0 16px;font:400 12px var(--tw-mono);color:var(--tw-text-2);white-space:nowrap}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-prog b {font-weight:400}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-prog .mono {font:inherit}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-tofind::before {content:"· "}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-tools {gap:10px;margin:0 0 10px}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-tools input[type=search] {height:40px;min-height:0;padding:0 12px;border:1px solid var(--tw-text-muted);border-radius:var(--tw-r-1);background:var(--tw-field);color:var(--tw-text);font:400 15px var(--tw-font)}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-tools input[type=search]::placeholder {color:var(--tw-text-muted);opacity:1}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-sel {border:1px solid var(--tw-text-muted);border-radius:var(--tw-r-1);background:var(--tw-field)}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-sel select {font:500 14px var(--tw-font)}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-apply {border-radius:var(--tw-r-1)}
+/* the confirm */
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-scrim {background:rgba(26,30,30,.38)}
+@media (max-width:1023px) {
+  #bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-panel {padding:10px 16px calc(24px + env(safe-area-inset-bottom,0px));border:0;border-top:1.5px solid var(--tw-rule);border-radius:var(--tw-r-3) var(--tw-r-3) 0 0;box-shadow:0 -8px 24px rgba(26,30,30,.18)}
+}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-grab {margin:0 auto 14px;background:var(--tw-divider)}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-panel h2 {margin:0;font:600 22px/1.2 var(--tw-font)}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-sub2 {margin:2px 0 10px;font-size:13.5px;color:var(--tw-text-2)}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-panel .bp-mv {padding:11px 0;border:0;border-bottom:1px solid var(--tw-divider);font-size:15px}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-panel .bp-sub2+.bp-mv {border-top:1.5px solid var(--tw-rule)}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-panel .bp-mv .mono {font:600 15px var(--tw-mono)}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-status {display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:12px 0 0 !important;row-gap:4px;font-size:13.5px;line-height:1.45;color:var(--tw-text-2)}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-status .tag {height:22px;padding:0 7px;color:var(--tw-text)}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-status .bp-tag-gap {background:repeating-linear-gradient(45deg,rgba(26,30,30,.18) 0 1.5px,transparent 1.5px 4px)}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-status-text {flex:0 0 100%;margin-top:0;font-size:13px;line-height:1.45}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-panel .bp-lg {height:52px;min-height:0;margin-top:14px;border-radius:var(--tw-r-1);font:600 15px var(--tw-font)}
+
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-panel .bp-mv {line-height:1.45}
+@media (prefers-color-scheme:dark) {
+  :root:not(.tw-light) #bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-scrim {background:rgba(0,0,0,.55)}
+  :root:not(.tw-light) #bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-panel {box-shadow:0 -8px 24px rgba(0,0,0,.5)}
+  :root:not(.tw-light) #bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-status .bp-tag-gap {background:repeating-linear-gradient(45deg,rgba(255,255,255,.22) 0 1.5px,transparent 1.5px 4px)}
+}
+.tw-dark #bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-scrim {background:rgba(0,0,0,.55)}
+.tw-dark #bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-panel {box-shadow:0 -8px 24px rgba(0,0,0,.5)}
+.tw-dark #bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-status .bp-tag-gap {background:repeating-linear-gradient(45deg,rgba(255,255,255,.22) 0 1.5px,transparent 1.5px 4px)}
+@media (max-width:767px) {
+  #bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-title {font-size:26px;letter-spacing:0}
+  #bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-title-no {font-size:15px}
+}
+/* the frame draws the phone sheet with its one button and no Cancel link: the scrim above it closes it (it is a link) and so does Escape */
+@media (max-width:1023px) {
+  #bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-cancel {display:none}
+}
+
+/* the page's own padding, as the frames set it */
+.layout>main.pull-list-page {padding:22px 32px}
+@media (max-width:1023px) {
+  .layout>main.pull-list-page {padding:14px 16px}
+}
+
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-panel form {display:block;margin:0}
+
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-strip i[style='flex:0'] {display:none}
+
+/* the tools row as frame 14 draws it: labels over the selects, a bordered Apply, then Expand all and the group tape */
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-tools {align-items:flex-end;gap:10px 8px;margin:0 0 10px}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-search {flex:1 1 100%}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-sel {flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:stretch;gap:6px;padding:0;border:0;background:none;font:500 13px var(--tw-font);color:var(--tw-text-2)}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-sel .bp-sel-name {display:block}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-sel select {width:100%;height:40px;min-height:0;padding:0 12px;border:1px solid var(--tw-text-muted);border-radius:var(--tw-r-1);background-color:var(--tw-field);color:var(--tw-text);font:400 15px var(--tw-font)}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-apply {height:40px;min-height:0;padding:0 14px;border:0;background:transparent;box-shadow:inset 0 0 0 1.5px var(--tw-text);color:var(--tw-text);font:600 14px var(--tw-font)}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-lines {flex:0 0 100%}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bw-sec-tools {justify-content:flex-start;margin:0 0 10px;font:400 13px/1.45 var(--tw-font);color:var(--tw-accent-text)}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bw-sec-tools a {min-height:0;color:var(--tw-accent-text);text-decoration:none}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bw-sec {border:0;margin-top:10px}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bw-sec:last-of-type {border:0}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bw-sec-head {min-height:0;gap:10px;padding:6px 10px;border-radius:var(--tw-r-1);background:var(--tw-accent);color:var(--tw-on-accent);font:600 13px var(--tw-font-label);letter-spacing:.1em;text-transform:uppercase}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bw-sec-head strong {font-weight:600}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bw-sec-count {display:inline;margin-left:auto;font:500 12px var(--tw-mono);letter-spacing:0;text-transform:none;color:var(--tw-on-accent);opacity:.9}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bw-sec-chevron svg {width:16px;height:16px}

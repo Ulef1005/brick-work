@@ -49,7 +49,7 @@ def test_the_page_shows_the_set_its_progress_the_lines_by_category_and_the_card(
     assert numbers(soup) == ['2', '5', '1'] and soup.select_one('.bp-card .button.bw-primary').text == 'Make it a copy'
     assert soup.select_one('.bp-card h2').text == 'Make it a copy' and 'Creates your copy of 9401-1 from the 2 pieces found' in soup.select_one('.bp-lead').text
     assert soup.select_one('.bp-bar .bp-bar-count').get_text(' ', strip=True) == '2 found 5 to find'
-    assert 'Missing parts show up in Matcher, Complete sets and the missing-parts XML.' in soup.select_one('.bp-note').text
+    assert 'Missing parts show up in Matchmaker, Complete sets and the missing-parts XML.' in soup.select_one('.bp-note').text
     assert not soup.select('#bp-confirm')
 
 

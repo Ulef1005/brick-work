@@ -1,6 +1,6 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 class Element {
- constructor(tag='div'){this.tagName=tag.toUpperCase();this.children=[];this.events={};this.dataset={};this.style={};this.value='';this.hidden=false;this.disabled=false;this.checked=false;this.textContent='';this.classList={add(){},remove(){}};}
+ constructor(tag='div'){this.tagName=tag.toUpperCase();this.children=[];this.events={};this.dataset={};this.style={};this.value='';this.hidden=false;this.disabled=false;this.checked=false;this.textContent='';this.classList={add(){},remove(){},toggle(){}};}
  append(...n){this.children.push(...n.map(c=>typeof c==='string'?{textContent:c,children:[]}:c));}replaceChildren(...n){this.children=n;}setAttribute(k,v){this[k]=v;}addEventListener(k,v){this.events[k]=v;}async fire(k,e={}){return this.events[k]?.(e);}click(){if(!this.disabled)return this.fire('click');}focus(){}showModal(){this.open=true;}close(){this.open=false;this.fire('close');}querySelector(s){if(s==='[data-confirm]')return this.children.find(n=>n.dataset?.confirm!==undefined);return null;}
 }
 const text=n=>[n.textContent||'',...(n.children||[]).map(text)].join(' ');
@@ -39,19 +39,19 @@ async function flow(){
  assert.match(text(nodes.review),/1 to 9/);assert.match(text(nodes.review),/Piece 1 of 1/);assert.match(text(nodes.review),/Confirm the part, then pick the colour/);
  assert.doesNotMatch(text(nodes.review),/(?:^|[\s(\[·])[-−–—]\d/);
  assert.equal(nodes.total.textContent,1);assert.equal(nodes.review.querySelector('[data-confirm]').disabled,true);assert.equal(nodes.review.querySelector('[data-confirm]').textContent,'Choose a colour');
- const reference=()=>nodes.review.children[2];
+ const reference=()=>nodes.review.children[1];
  assert.equal(reference().children[0].children[1].children[0].src,'/manage/images/7?w=640');
  assert.equal(reference().children[1].children[1].children[0].src,'blob:photo');
- const best=()=>reference().children[0].children[2].textContent;
+ const best=()=>nodes.review.children[2].children[0].textContent;
  assert.equal(best(),'Part');
  document.activeElement=new Element('input');document.events.keydown({key:'2'});assert.equal(best(),'Part');
  document.activeElement=new Element('button');document.events.keydown({key:'2'});assert.equal(best(),'Other');assert.equal(nodes.review.querySelector('[data-confirm]').disabled,true);
- const colourBlock=()=>nodes.review.children.find(n=>n.children[0]?.textContent==='Colour · you choose');
- const chips=()=>colourBlock().children[1].children[3];
- assert.equal(chips().className,'scan-colours');assert.equal(colourBlock().children[1].children[0].hidden,true);
+ const colourBlock=()=>nodes.review.children.find(n=>n.children[0]?.children?.[0]?.textContent==='Colour · you choose');
+ const chips=()=>colourBlock().children[1];
+ assert.equal(chips().className,'inv-swatch-row');assert.equal(colourBlock().children[2].hidden,true);
  await chips().children[0].click();
  assert.equal(nodes.review.querySelector('[data-confirm]').disabled,false);assert.equal(nodes.review.querySelector('[data-confirm]').textContent,'Confirm · Synthetic blue ×1');
- const stepper=()=>nodes.review.children.find(n=>n.children[0]?.textContent==='Quantity').children[1];
+ const stepper=()=>nodes.review.children.find(n=>n.className==='inv-qty-row').children[0];
  await stepper().children[2].click();assert.equal(nodes.review.querySelector('[data-confirm]').textContent,'Confirm · Synthetic blue ×2');
  await stepper().children[0].click();await stepper().children[0].click();assert.equal(stepper().children[1].value,1);
  prevented=false;document.events.keydown({key:'Enter',preventDefault(){prevented=true;}});assert.equal(prevented,false);
@@ -139,7 +139,7 @@ async function overlappingStartFlow(){
 const findButton=(n,t)=>n.textContent===t&&n.tagName==='BUTTON'?n:(n.children||[]).map(c=>findButton(c,t)).find(Boolean);
 async function pick(ctx){ // detect a piece, choose the first colour, leave it unconfirmed
  const {nodes}=ctx;nodes.file.files=[{}];await nodes.file.fire('change');await tick();
- const block=nodes.review.children.find(n=>n.children[0]?.textContent==='Colour · you choose');await block.children[1].children[3].children[0].click();
+ const block=nodes.review.children.find(n=>n.children[0]?.children?.[0]?.textContent==='Colour · you choose');await block.children[1].children[0].click();
 }
 const confirmPiece=async ctx=>{await ctx.nodes.review.querySelector('[data-confirm]').click();};
 async function hardeningFlow(){
@@ -156,7 +156,7 @@ async function hardeningFlow(){
  const calls=env.calls.length;await nodes.file.fire('change');assert.match(nodes.message.textContent,/Saving the batch/);assert.equal(env.calls.length,calls);
  document.activeElement=new Element('body');document.events.keydown({code:'Space',preventDefault(){}});assert.match(nodes.message.textContent,/Saving the batch/);
  // Edits made while saving: confirm the second piece.
- const block=nodes.review.children.find(n=>n.children[0]?.textContent==='Colour · you choose');await block.children[1].children[3].children[0].click();await confirmPiece(ctx);
+ const block=nodes.review.children.find(n=>n.children[0]?.children?.[0]?.textContent==='Colour · you choose');await block.children[1].children[0].click();await confirmPiece(ctx);
  release();await saving;await tick();env.saveGate=null;
  const sent=JSON.parse(env.calls.find(c=>c.url.endsWith('/save')).options.body);assert.equal(sent.pieces.length,1);
  assert.equal(nodes.total.textContent,1);assert.equal(nodes.batch.open,false);assert.equal(nodes['results-total'].textContent,1);
@@ -192,7 +192,7 @@ async function hardeningFlow(){
  // 5. Typing a quantity does not rebuild the review, so the next Confirm click lands.
  ctx=setup({});({nodes,groups,document,env,window,root}=ctx);
  await pick(ctx);const confirmBefore=nodes.review.querySelector('[data-confirm]');
- const qtyInput=nodes.review.children.find(n=>n.children[0]?.textContent==='Quantity').children[1].children[1];qtyInput.value='3';await qtyInput.fire('change');
+ const qtyInput=nodes.review.children.find(n=>n.className==='inv-qty-row').children[0].children[1];qtyInput.value='3';await qtyInput.fire('change');
  assert.equal(nodes.review.querySelector('[data-confirm]'),confirmBefore);assert.match(confirmBefore.textContent,/×3/);
  await confirmBefore.click();assert.match(text(nodes.queue),/Ready/);
  // 10. Per-row delete sits outside the row button.

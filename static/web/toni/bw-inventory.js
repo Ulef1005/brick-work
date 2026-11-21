@@ -1,20 +1,23 @@
 (() => {
   'use strict';
   const nowrapTail = window.BrickFormatting.nowrapTail;
+  const partName = name => nowrapTail(typeof name === 'string' ? name.replace(/ x /g, ' × ') : name);   // the frame writes a part's size with ×
   const root = document.querySelector('#bw-inventory');
   if (!root) return;
   const node = key => root.querySelector(`[data-${key}]`);
   const all = selector => Array.from(root.querySelectorAll(selector));
   const colours = JSON.parse(root.dataset.colours), queue = [];
-  const STATUS = { verified: ['Ready', 'ok'], review: ['To review', 'queued'], error: ['Unidentified', 'warn'], pending: ['Recognizing', 'info'] };
+  const STATUS = { verified: ['Ready', ''], review: ['To review', 'dash'], error: ['Unidentified', 'inv-tag-danger'], pending: ['Recognizing', 'dash'] };
+  const COMMON_COLOURS = ['Light Bluish Gray', 'Dark Bluish Gray', 'White', 'Black', 'Tan', 'Red'];
   let active = null, stream = null, startCall = 0, pendingPiece = null, saving = false, undoing = false, receipt = null, batchPieces = [];
   let endpoint = 'parts', queueFilter = '', queueSort = 'piece', destination = 'loose', condition = 'U', cameraId = '', lotId = '', storageId = '';
   const el = (tag, text, cls) => { const n = document.createElement(tag); if (text !== undefined) n.textContent = text; if (cls) n.className = cls; return n; };
   let messages = 0;  // counts message() calls: a late camera check must not overwrite what the person did meanwhile (#313)
   const message = (text, kind = 'info') => { messages++; node('message').textContent = text; node('notice').dataset.kind = kind; node('notice').hidden = !text && node('undo').hidden; };
   function button(text, action, cls) { const n = el('button', text, cls); n.type = 'button'; n.addEventListener('click', action); return n; }
-  const pressed = (nodes, key, value) => nodes.forEach(n => n.setAttribute('aria-pressed', String(n.dataset[key] === value)));
-  function tile(image, name, number, cls, retry = true) { const n = el('div', undefined, 'scan-tile' + (cls ? ' ' + cls : '')); if (image) { const i = el('img'); i.src = image; i.dataset.full = image.replace(/\?w=\d+$/, ''); i.alt = name; i.addEventListener('error',()=>n.replaceChildren(el('span','Image did not load'),...(retry?[button('Retry',()=>{i.src=image;n.replaceChildren(i);})]:[]))); n.append(i); } else {n.className+=' scan-no-image';if(number)n.append(el('span',number,'mono'));n.append(el('span', 'No image'));} return n; }
+  const pressed = (nodes, key, value) => nodes.forEach(n => { const on = n.dataset[key] === value; n.setAttribute('aria-pressed', String(on)); n.classList.toggle('on', on); });
+  // scan-tile stays on the tile beside the kit's: the shell's container rule and the demo shim name it
+  function tile(image, name, number, cls, retry = true) { const n = el('div', undefined, 'tile scan-tile' + (cls ? ' ' + cls : '')); if (image) { const i = el('img'); i.src = image; i.dataset.full = image.replace(/\?w=\d+$/, ''); i.alt = name; i.addEventListener('error',()=>n.replaceChildren(el('span','Image did not load'),...(retry?[button('Retry',()=>{i.src=image;n.replaceChildren(i);})]:[]))); n.append(i); } else {n.className+=' inv-no-image';n.append(el('span', 'Part picture'));} return n; }
   const image = c => c.image ? `/manage/images/${c.image}?w=640` : null;
   function swatch(n, c) {
     if (!/^[0-9a-f]{6}$/i.test(c.rgb || '')) return;
@@ -22,17 +25,37 @@
     const channels = c.rgb.match(/../g).map(v => { const x = parseInt(v,16)/255; return x <= .04045 ? x/12.92 : ((x+.055)/1.055)**2.4; });
     n.style.color = channels[0]*.2126 + channels[1]*.7152 + channels[2]*.0722 > .45 ? '#1A1816' : '#FAFAF8';
   }
+  function swatchButton(c, chosen, action) {
+    const b = button(undefined, action, 'inv-swatch');
+    const dot = el('i');
+    dot.setAttribute('aria-hidden', 'true');
+    if (/^[0-9a-f]{6}$/i.test(c.rgb || '')) dot.style.backgroundColor = '#' + c.rgb;
+    b.append(dot, document.createTextNode(c.name || `Unknown colour · ${c.color_id}`));
+    b.setAttribute('aria-pressed', String(chosen));
+    return b;
+  }
+  function quickColours(owned, chosenId) {
+    const list = [], seen = new Set();
+    const add = c => { if (c && !seen.has(c.color_id)) { seen.add(c.color_id); list.push(c); } };
+    COMMON_COLOURS.forEach(name => add(colours.find(r => r.name === name)));
+    (owned?.colours || []).forEach(o => add(colours.find(r => r.color_id === o.color_id)));
+    if (!list.length) colours.slice(0, 6).forEach(add);
+    const top = list.slice(0, 12);
+    const chosen = chosenId != null ? colours.find(r => r.color_id === chosenId) : null;
+    if (chosen && !top.some(c => c.color_id === chosen.color_id)) return top.length >= 12 ? [...top.slice(0, 11), chosen] : [...top, chosen];
+    return top;
+  }
   function segment(options, current, set, label) {
-    const group = el('div', undefined, 'inv-seg'); group.setAttribute('role', 'group'); group.setAttribute('aria-label', label);
-    const buttons = options.map(([value, text]) => { const b = button(text, () => { set(value); buttons.forEach(x => x.setAttribute('aria-pressed', String(x.value === value))); }); b.value = value; b.setAttribute('aria-pressed', String(value === current)); return b; });
+    const group = el('div', undefined, 'seg'); group.setAttribute('role', 'group'); group.setAttribute('aria-label', label);
+    const buttons = options.map(([value, text]) => { const b = button(text, () => { set(value); buttons.forEach(x => { const on = x.value === value; x.setAttribute('aria-pressed', String(on)); x.classList.toggle('on', on); }); }); b.value = value; const on = value === current; b.setAttribute('aria-pressed', String(on)); b.classList.toggle('on', on); return b; });
     group.append(...buttons); return group;
   }
-  function statusPill(piece) { const [text, kind] = STATUS[piece.pending ? 'pending' : piece.status]; const pill = el('span', undefined, `inv-status inv-status-${kind}`); pill.append(el('i'), document.createTextNode(text)); return pill; }
-  function chip(c) { const n = el('span', c.name || `Colour ${c.color_id}`, 'scan-swatch'); swatch(n, c); return n; }
+  function statusTag(piece) { const [text, cls] = STATUS[piece.pending ? 'pending' : piece.status]; return el('span', text, 'tag' + (cls ? ' ' + cls : '')); }
+  function chip(c) { const n = el('span', c.name || `Colour ${c.color_id}`, 'chip inv-chip'); swatch(n, c); return n; }
   function listControls(rows, render, name, defaultSort='name') {
     const wrapper=el('div',undefined,'inv-stack'), toolbar=el('div',undefined,'inv-toolbar'), search=el('input'), chips=el('div',undefined,'inv-chips'), count=el('p',undefined,'mono inv-note'), content=el('div',undefined,name==='colours'?'scan-colours':'inv-options');
     let filterValue='', sortValue=defaultSort;
-    search.type='search';search.placeholder=`Search ${name}`;search.setAttribute('aria-label',`Search ${name}`);
+    search.type='search';search.className='input inv-search';search.placeholder=`Search ${name}`;search.setAttribute('aria-label',`Search ${name}`);
     const update=()=>{const selected=rows.filter(r=>`${r.name||'Unknown colour'} ${r.item_no??r.color_id}`.toLowerCase().includes(search.value.toLowerCase())&&(!filterValue||r.image || (name==='colours' && r.rgb)));selected.sort((a,b)=>sortValue==='score'?b.score-a.score:sortValue==='number'?String(a.item_no??a.color_id).localeCompare(String(b.item_no??b.color_id),undefined,{numeric:true}):(a.name||'').localeCompare(b.name||''));content.replaceChildren(...selected.map(render));count.textContent=`${selected.length} ${name}`;chips.replaceChildren();if(search.value)chips.append(button(`${search.value} ×`,()=>{search.value='';update();}));};
     const filters=segment([['','All'],['image','With image']],'',v=>{filterValue=v;update();},`Filter ${name}`);
     const sorts=segment([['name','Name'],['number','Number'],...(defaultSort==='score'?[['score','Score']]:[])],defaultSort,v=>{sortValue=v;update();},`Sort ${name}`);
@@ -49,11 +72,11 @@
   function emptyState(text) { const n = el('div', undefined, 'inv-empty'); n.append(el('p', text)); return n; }
   function setView(view) { root.dataset.view = view; pressed(all('[data-tab]'), 'tab', view); }
   function quantityStepper(piece, onChange) {
-    const wrap = el('div', undefined, 'inv-qty'), qty = el('input');
+    const wrap = el('div', undefined, 'step inv-qty'), qty = el('input');
     qty.type = 'number'; qty.min = '1'; qty.max = '9999'; qty.value = piece.quantity; qty.setAttribute('aria-label', 'Quantity');
     const set = v => { piece.quantity = Math.min(9999, Math.max(1, Number(v) || 1)); qty.value = piece.quantity; piece.status = 'review'; renderQueue(); onChange(); };
     qty.addEventListener('change', () => set(qty.value));
-    const minus = button('', () => set(piece.quantity - 1), 'inv-step inv-step-minus'), plus = button('', () => set(piece.quantity + 1), 'inv-step inv-step-plus');
+    const minus = button('−', () => set(piece.quantity - 1)), plus = button('+', () => set(piece.quantity + 1));
     minus.setAttribute('aria-label', 'Decrease quantity'); plus.setAttribute('aria-label', 'Increase quantity');
     wrap.append(minus, qty, plus); return wrap;
   }
@@ -63,48 +86,49 @@
     setView('review');
     const position = `Piece ${queue.indexOf(piece) + 1} of ${queue.length}`;
     const c = piece.candidates[piece.index];
-    if (piece.pending) { out.append(el('h2', position), el('p', 'Recognizing', 'secondary'), tile(null, 'Piece', null, 'inv-big'), button('Delete picture', () => remove(piece), 'inv-link')); return; }
+    const headRow = el('div', undefined, 'inv-review-head');
+    if (piece.pending) { headRow.append(el('h2', position), el('span', 'Recognizing', 'inv-review-sub')); out.append(headRow, tile(null, 'Piece', null, 'inv-big'), button('Delete picture', () => remove(piece), 'inv-link inv-link-muted')); return; }
     if (!c) {
       const banner = el('p', piece.error || 'Nothing identified · try another photo', 'inv-banner');
-      const retake = button('Retake', () => { remove(piece); node('file').click(); }, 'button primary inv-primary');
-      out.append(el('h2', position), el('p', 'Not recognised', 'secondary'), tile(piece.photo, 'Your photo', null, 'inv-big'), banner, retake, button('Delete picture', () => remove(piece), 'inv-link'));
+      const retake = button('Retake', () => { remove(piece); node('file').click(); }, 'btn inv-primary');
+      headRow.append(el('h2', position), el('span', 'Not recognised', 'inv-review-sub'));
+      out.append(headRow, tile(piece.photo, 'Your photo', null, 'inv-big'), banner, retake, button('Delete picture', () => remove(piece), 'inv-link inv-link-muted'));
       return;
     }
     const colour = colours.find(r=>r.color_id===piece.colour);
-    const best = el('div', undefined, 'inv-best'); best.append(el('span', 'Reference · best match', 'inv-label'), tile(image(c),c.name,c.item_no), el('h3', nowrapTail(c.name)), el('span', `${c.item_no} · ${colour ? colour.name : 'Choose a colour'} · ${c.score.toFixed(2)} match`, 'mono inv-note'));
-    const photo = el('div', undefined, 'inv-photo'); photo.append(el('span', 'Your photo', 'inv-label'), tile(piece.photo, 'Your photo'));
+    const best = el('div', undefined, 'inv-best'); best.append(el('span', 'Reference · best match', 'lbl'), tile(image(c),c.name,c.item_no));
+    const photo = el('div', undefined, 'inv-photo'); photo.append(el('span', 'Your photo', 'lbl'), tile(piece.photo, 'Your photo'));
     const reference = el('div', undefined, 'scan-reference'); reference.append(best, photo);
-    out.append(el('h2', position), el('p', 'Confirm the part, then pick the colour', 'secondary'), reference);
-    // #45: what you already have of this part, across colours; an owned colour is one tap.
+    const meta = el('div', undefined, 'inv-part-meta'); meta.append(el('h3', partName(c.name)), el('div', `${c.item_no} · ${colour ? colour.name : 'Choose a colour'} · ${c.score.toFixed(2)} match`, 'mono inv-part-sub'));
+    headRow.append(el('h2', position), el('span', 'Confirm the part, then pick the colour', 'inv-review-sub'));
+    out.append(headRow, reference, meta);
     const owned=c.owned_summary;
-    if(owned){const box=el('div',undefined,'inv-owned');box.append(el('p',owned.text,'inv-owned-text'));
-      const picks=el('div',undefined,'inv-owned-picks');
-      (owned.colours||[]).slice(0,6).forEach(o=>{const known=colours.find(r=>r.color_id===o.color_id);if(!known)return;
-        const b=button(`${known.name} · have ${o.quantity}`,()=>{piece.colour=o.color_id;piece.status='review';showReview(piece);renderQueue();});
-        swatch(b,known);b.setAttribute('aria-pressed',String(o.color_id===piece.colour));picks.append(b);});
-      if(picks.children.length)box.append(picks);
-      if(owned.needed_count){const a=el('a',`Fills a gap in ${owned.needed_count} ${owned.needed_count===1?'copy':'copies'} · Matchmaker`,'inv-owned-need');a.href='/workbench/matcher';box.append(a);}
-      out.append(box);}
+    if(owned){const box=el('p',owned.text,'inv-owned');if(owned.needed_count){const a=el('a',`Fills a gap in ${owned.needed_count} ${owned.needed_count===1?'copy':'copies'} · Matchmaker`,'inv-owned-need');a.href='/workbench/matcher';box.append(' · ',a);}out.append(box);}
+    const pickColour = id => { piece.colour = id; piece.status = 'review'; showReview(piece); renderQueue(); };
+    const swatchRow = el('div', undefined, 'inv-swatch-row');
+    swatchRow.append(...quickColours(owned, piece.colour).map(r => swatchButton(r, r.color_id === piece.colour, () => pickColour(r.color_id))));
+    const choices=listControls(colours,r=>swatchButton(r,r.color_id===piece.colour,()=>pickColour(r.color_id)),'colours');
+    choices.hidden = true;
+    const more = button('More colours', () => { choices.hidden = !choices.hidden; more.setAttribute('aria-expanded', String(!choices.hidden)); }, 'inv-link inv-more-colours');
+    more.setAttribute('aria-expanded', 'false'); more.dataset.moreColours = '';
+    const colourBlock = el('div', undefined, 'inv-stack'); const colourHead = el('div', undefined, 'inv-split'); colourHead.append(el('h3', 'Colour · you choose', 'lbl'), more); colourBlock.append(colourHead, swatchRow, choices);
+    const confirmText=()=>colour?`Confirm · ${colour.name} ×${piece.quantity}${piece.sticker?' · sticker':''}`:'Choose a colour';
+    const confirm=button(confirmText(),()=>{piece.status='verified';renderQueue();const next=queue.find(p=>p.status==='review');showReview(next || piece);});confirm.disabled=!colour;confirm.className='btn inv-primary';confirm.dataset.confirm='';
+    // #201: the print on a part is a clue to the set that only the person can read; the sticker itself is chosen on the lot page after saving
+    const sticker = el('label', undefined, 'inv-switch-row'), toggle = el('span', undefined, 'sw' + (piece.sticker === true ? ' on' : '')), box = el('input');
+    box.type = 'checkbox'; box.setAttribute('role', 'switch'); box.checked = piece.sticker === true; box.dataset.sticker = '';
+    box.addEventListener('change', () => { piece.sticker = box.checked; toggle.classList.toggle('on', box.checked); confirm.textContent = confirmText(); renderResults(); });
+    toggle.append(box);
+    sticker.append(toggle, el('span', 'Has a sticker', 'inv-switch-title'));
+    const qtyRow = el('div', undefined, 'inv-qty-row'); qtyRow.append(quantityStepper(piece, () => { confirm.textContent = confirmText(); }), sticker);
+    const links = el('div', undefined, 'inv-split'); links.append(button('Delete picture',()=>remove(piece),'inv-link inv-link-muted'), el('span','Enter · confirm · 1 to 9 · choose a candidate','mono inv-note'));
     const alternatives=piece.candidates.map((candidate,i)=>({...candidate,index:i})).filter(c=>c.index!==piece.index);
     if (alternatives.length) {
-      const block = el('div', undefined, 'inv-stack'); block.append(el('h3', 'Other possibilities', 'inv-label'));
-      block.append(listControls(alternatives,candidate=>{const b=button('',()=>{piece.index=candidate.index;piece.colour=null;piece.status='review';showReview(piece);renderQueue();});b.className='scan-alternative';const identity=el('span',undefined,'inv-grow');identity.append(el('span',nowrapTail(candidate.name),'inv-name'),el('span',`${candidate.index+1} · ${candidate.item_no}`,'mono inv-note'));b.append(tile(image(candidate),candidate.name,candidate.item_no,'',false),identity,el('span',candidate.score.toFixed(2),'mono inv-score'));return b;},'possibilities','score'));
+      const block = el('div', undefined, 'inv-stack'); block.append(el('h3', 'Other possibilities', 'lbl'));
+      block.append(listControls(alternatives,candidate=>{const b=button('',()=>{piece.index=candidate.index;piece.colour=null;piece.status='review';showReview(piece);renderQueue();});b.className='scan-alternative';const identity=el('span',undefined,'inv-grow');identity.append(el('span',partName(candidate.name),'inv-name'),el('span',`${candidate.index+1} · ${candidate.item_no}`,'mono inv-note'));b.append(tile(image(candidate),candidate.name,candidate.item_no,'',false),identity,el('span',candidate.score.toFixed(2),'mono inv-score'));return b;},'possibilities','score'));
       out.append(block);
     }
-    const choices=listControls(colours,c=>{const b=button(c.name||`Unknown colour · ${c.color_id}`,()=>{piece.colour=c.color_id;piece.status='review';showReview(piece);renderQueue();});swatch(b,c);b.setAttribute('aria-pressed',String(c.color_id===piece.colour));if(c.color_id===piece.colour)b.append(el('span',undefined,'inv-tick'));return b;},'colours');
-    const colourBlock = el('div', undefined, 'inv-stack'); colourBlock.append(el('h3', 'Colour · you choose', 'inv-label'), choices);
-    const confirmText=()=>colour?`Confirm · ${colour.name} ×${piece.quantity}${piece.sticker?' · sticker':''}`:'Choose a colour';
-    const confirm=button(confirmText(),()=>{piece.status='verified';renderQueue();const next=queue.find(p=>p.status==='review');showReview(next || piece);});confirm.disabled=!colour;confirm.className='button primary inv-primary';confirm.dataset.confirm='';
-    const qtyRow = el('div', undefined, 'inv-split'); qtyRow.append(el('span', 'Quantity', 'inv-label'), quantityStepper(piece, () => { confirm.textContent = confirmText(); }));
-    // #201: the print on a part is a clue to the set that only the person can read; the sticker itself is chosen on the lot page after saving
-    const sticker = el('label', undefined, 'inv-switch-row'), words = el('span', undefined, 'inv-grow'), toggle = el('span', undefined, 'inv-switch'), box = el('input');
-    box.type = 'checkbox'; box.setAttribute('role', 'switch'); box.checked = piece.sticker === true; box.dataset.sticker = '';
-    box.addEventListener('change', () => { piece.sticker = box.checked; confirm.textContent = confirmText(); renderResults(); });
-    words.append(el('span', 'Has a sticker', 'inv-switch-title'), el('span', 'The print is a clue to the set. You pick the sticker after saving.', 'inv-note'));
-    toggle.append(box, el('span', undefined, 'inv-track'));
-    sticker.append(words, toggle);
-    const links = el('div', undefined, 'inv-split'); links.append(button('Delete picture',()=>remove(piece),'inv-link'));
-    out.append(colourBlock, qtyRow, sticker, confirm, links, el('p','Enter · confirm · 1 to 9 · choose a candidate','mono inv-note'));
+    out.append(colourBlock, qtyRow, confirm, links);
   }
   function drop(piece) {const at=queue.indexOf(piece);if(at<0)return false;queue.splice(at,1);URL.revokeObjectURL(piece.photo);release(piece);return true;}
   function release(piece) {if(pendingPiece!==piece)return;piece.abort?.abort();pendingPiece=null;node('capture').disabled=false;}
@@ -112,19 +136,20 @@
   function emptyQueue() {queue.slice().forEach(drop);showReview(null);renderQueue();}
   function identity(piece) {
     const c=piece.candidates[piece.index], colour=colours.find(r=>r.color_id===piece.colour), box=el('div',undefined,'identity');
-    box.append(el('span',`Piece ${queue.indexOf(piece)+1}${c?.item_no ? ' · ' + c.item_no : ''}`,'mono inv-note'),el('span',c?.name ? nowrapTail(c.name) : (piece.pending ? 'Recognizing' : (piece.error || 'Unidentified')),'inv-name'));
-    if (colour) box.append(chip(colour)); return box;
+    box.append(el('span',`Piece ${queue.indexOf(piece)+1}${c?.item_no ? ' · ' + c.item_no : ''}`,'mono inv-note'),el('span',c?.name ? partName(c.name) : (piece.pending ? 'Recognizing' : (piece.error || 'Unidentified')),'inv-name'));
+    if (colour) box.append(chip(colour)); else if (piece.pending) box.append(el('span', 'being read', 'inv-being-read')); return box;
   }
   function queueRow(piece) {
     const c=piece.candidates[piece.index], r=button('',()=>showReview(piece),'scan-row'), wrap=el('div',undefined,'inv-queue-row');
-    r.append(tile(c ? image(c) : null,c?.name||'Unidentified',c?.item_no,'',false),el('span',String(queue.indexOf(piece)+1),'inv-number mono'),identity(piece),statusPill(piece));
+    r.append(tile(c ? image(c) : null,c?.name||'Unidentified',c?.item_no,'',false),identity(piece),statusTag(piece));
     const del=button('',()=>remove(piece),'inv-delete');del.setAttribute('aria-label',`Delete piece ${queue.indexOf(piece)+1}`);wrap.append(r,del);return wrap;
   }
   function resultRow(piece, label) {
-    const c=piece.candidates[piece.index], r=el('div',undefined,'scan-row');
-    r.append(tile(c ? image(c) : null,c?.name||'Unidentified',c?.item_no),identity(piece));
-    const right=el('div',undefined,'inv-right');right.append(el('span',`×${piece.quantity}${piece.sticker?' · sticker':''}`,'mono inv-qty-text'));if(label){const pill=el('span',undefined,'inv-status inv-status-ok');pill.append(el('i'),document.createTextNode(label));right.append(pill);}
-    r.append(right);return r;
+    const c=piece.candidates[piece.index], colour=colours.find(r=>r.color_id===piece.colour), r=el('div',undefined,'scan-row'), box=el('div',undefined,'identity'), meta=el('div',undefined,'inv-result-meta-row');
+    box.append(el('span',c?.name ? partName(c.name) : 'Unidentified','inv-name'));
+    if(colour)meta.append(chip(colour));
+    meta.append(el('span',`${c?.item_no ? c.item_no + ' · ' : ''}×${piece.quantity}${piece.sticker?' · sticker':''}`,'mono inv-result-meta'));
+    box.append(meta);r.append(tile(c ? image(c) : null,c?.name||'Unidentified',c?.item_no),box);if(label)r.append(el('span',label,'tag'));return r;
   }
   function renderResults() {
     const done = queue.filter(p => p.status === 'verified');
@@ -136,11 +161,11 @@
     node('slot').textContent=`Piece ${queue.length+1}`;
     const q=node('search').value.toLowerCase();
     const pieces=queue.filter(p=>(!queueFilter||p.status===queueFilter)&&JSON.stringify(p.candidates).toLowerCase().includes(q));
-    if(queueSort==='name')pieces.sort((a,b)=>(a.candidates[a.index]?.name||'').localeCompare(b.candidates[b.index]?.name||''));
+    if(queueSort==='name'&&queue.length>3)pieces.sort((a,b)=>(a.candidates[a.index]?.name||'').localeCompare(b.candidates[b.index]?.name||''));
     if(node('search').value)node('chips').append(button(`${node('search').value} ×`,()=>{node('search').value='';renderQueue();}));
     if(queueFilter)node('chips').append(button(`${STATUS[queueFilter][0]} ×`,()=>setQueueFilter('')));
-    node('toolbar').hidden=!queue.length;node('queue-actions').hidden=!queue.length;
-    node('count').textContent=queue.length?`${pieces.length} pieces`:'';
+    node('toolbar').hidden=queue.length<4;node('queue-actions').hidden=!queue.length;
+    node('count').textContent=queue.length>3?`${pieces.length} pieces`:'';
     if(!queue.length){node('queue').append(emptyState('No pieces queued · take a picture or add a saved photo'));}
     else if(!pieces.length){node('queue').append(emptyState('No pieces match · clear the search or filter'));}
     else node('queue').append(...pieces.map(queueRow));

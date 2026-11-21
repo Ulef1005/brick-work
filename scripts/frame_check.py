@@ -49,19 +49,39 @@ TARGETS = {'01-tools-and-admin': ('/manage/tools', 'frames'),
            '10-build-scout': ('/workbench/build-scout?min_percent=0', 'frames-scout'),
            '09-matchmaker': ('/workbench/matcher', 'frames-matcher'),
            '06-set-inspector': ('/workbench/check-parts/d1121673-830b-5aaa-80be-ee68396eec34?run=1', 'frames'),   # copy 2 of 7213-1 in its running check (brickwork/demo/frames.py INSPECTOR)
+           '13-part-spotter': ('/workbench/part-to-inventory', 'frames'),   # the queue is the page's own (client-side): SCRIPT below feeds it the frame's three pieces
            '07-part-runner': (frames.runner_path(), 'frames')}   # the four incomplete copies as one run of 52 parts, on the 7th (brickwork/demo/frames.py RUNNER)
+# JS run in the app's page before its capture (capture_screens.cjs `script`) when the frame draws a state the page keeps in the browser. Part Spotter's queue is
+# filled through the page's own code: `fetch` answers the recognition calls with the frame's candidates, and the photos go in through the file input.
+SPOTTER_SEED = r"""
+const png = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGNgAAIAAAUAAXpeqz8AAAAASUVORK5CYII='), c => c.charCodeAt(0));
+const cid = name => JSON.parse(document.querySelector('#bw-inventory').dataset.colours).find(c => c.name === name).color_id;
+const own = {total: 14, colours: [{color_id: cid('Light Bluish Gray'), quantity: 8}, {color_id: cid('Red'), quantity: 4}, {color_id: cid('White'), quantity: 2}], needed_count: 1, needed_by: [],
+             text: 'You have 14 in 3 colours: Light Bluish Gray 8 (S-0003), Red 4, White 2'};
+const replies = [{name: 'Brick 1 x 1', item_no: '3005', score: 0.91, image: null}, {name: 'Brick 1 x 6', item_no: '3009', score: 0.87, image: null, owned_summary: own}];
+const realFetch = window.fetch; let call = 0;
+window.fetch = (url, options) => /\/detect$/.test(String(url)) ? (call < replies.length ? Promise.resolve(new Response(JSON.stringify({candidates: [replies[call++]], token: 't' + call, unresolved: []}), {status: 200, headers: {'Content-Type': 'application/json'}})) : new Promise(() => {})) : realFetch(url, options);
+const root = document.querySelector('#bw-inventory'), pause = ms => new Promise(r => setTimeout(r, ms));
+const add = async () => { const input = root.querySelector('[data-file]'), data = new DataTransfer(); data.items.add(new File([png], 'p.png', {type: 'image/png'})); input.files = data.files; input.dispatchEvent(new Event('change', {bubbles: true})); await pause(300); };
+const pick = name => [...root.querySelectorAll('.inv-swatch-row button')].find(b => b.textContent.trim() === name).click();
+await add(); pick('Red'); root.querySelector('[data-confirm]').click(); await pause(100);
+await add(); pick('Light Bluish Gray'); await pause(100);
+await add(); await pause(100);
+root.querySelectorAll('.scan-row')[1].click(); await pause(300); root.querySelector('[data-notice]').hidden = true; root.querySelector('[data-camera-label]').textContent = 'Back camera'; { const take = root.querySelector('[data-capture]'); take.disabled = false; take.textContent = 'Take picture'; }
+"""
+SCRIPT = {'13-part-spotter': SPOTTER_SEED}
 # A frame whose phone drawing is another page than its desktop one: the storage list opens as the page on a phone (a storage's own screen only when one is chosen).
 PHONE_PATH = {'11-storage': '/workbench/storage'}
 # Frames that draw one screen as the device shows it (the frame's own size, the rest of the page cut off, the phone's tab bar at the foot of that size): the
 # frame and app are both captured as one viewport (capture_screens.cjs `sheet_below`), not grown to the whole height of their scrollable content. A frame that draws the whole page is not listed.
-VIEWPORT = {'11-storage', '10-build-scout', '08-sets-empty', '01-tools-and-admin', '02-settings', '03-find-instructions', '09-matchmaker', '04-sets', '05-sets-without-storage', '48-sets-pulled-copy', '06-set-inspector', '07-part-runner'}
+VIEWPORT = {'13-part-spotter', '11-storage', '10-build-scout', '08-sets-empty', '01-tools-and-admin', '02-settings', '03-find-instructions', '09-matchmaker', '04-sets', '05-sets-without-storage', '48-sets-pulled-copy', '06-set-inspector', '07-part-runner'}
 # The frame is an excerpt: 04-sets at 390 draws two of the three tiles its S-0002 tape counts and cuts the rest. Design's rule (2026-11-20): compare down to the
 # bottom of the drawn tile row (CSS px from the top); the app shows all three tiles, so what lies below that row is not compared.
 CROP_BELOW = {('01-tools-and-admin', 390): 757, ('02-settings', 390): 714, ('02-settings', 1440): 732, ('09-matchmaker', 390): 710, ('04-sets', 390): 731, ('05-sets-without-storage', 390): 657, ('48-sets-pulled-copy', 390): 731}   # frame 48 is built on frame 04: the same two tiles are drawn at 390
 # Screens whose PAGE BODY is built to the frame (their issue sets it): until then a target serves only the shell-band check, and the count does not count it.
 # The viewport height of a frame that is taller than the usual one (CSS px): frame 48 draws the rows of the pulled copies below the first screen (its frame-size is 1440 x 1052).
-TALL = {('48-sets-pulled-copy', 1440): 1052, ('07-part-runner', 1440): 1000}
-BODY_BUILT: set[str] = {'11-storage', '10-build-scout', '08-sets-empty', '01-tools-and-admin', '02-settings', '03-find-instructions', '09-matchmaker', '04-sets', '05-sets-without-storage', '48-sets-pulled-copy', '06-set-inspector', '07-part-runner'}
+TALL = {('48-sets-pulled-copy', 1440): 1052, ('07-part-runner', 1440): 1000, ('13-part-spotter', 1440): 1000}
+BODY_BUILT: set[str] = {'13-part-spotter', '11-storage', '10-build-scout', '08-sets-empty', '01-tools-and-admin', '02-settings', '03-find-instructions', '09-matchmaker', '04-sets', '05-sets-without-storage', '48-sets-pulled-copy', '06-set-inspector', '07-part-runner'}
 
 
 def frame_file(folder: str, theme: str, width: int) -> Path:
@@ -172,7 +192,7 @@ def run(only: list[str], band: bool, report: bool, keep: str = '') -> int:
                         height = TALL.get((folder, width), {1440: 900, 390: 844}[width])
                         common = {'width': width, 'height': height, 'theme': theme, 'scale': SCALE, 'max': 3000, **({'sheet_below': 100000} if folder in VIEWPORT else {})}
                         jobs.append({'url': frame_file(folder, theme, width).as_uri(), 'out': str(frame_png), **common})
-                        jobs.append({'url': base + (PHONE_PATH[folder] if width == 390 and folder in PHONE_PATH else path), 'out': str(app_png), 'wait': 'main', **common})
+                        jobs.append({'url': base + (PHONE_PATH[folder] if width == 390 and folder in PHONE_PATH else path), 'out': str(app_png), 'wait': 'main', **({'script': SCRIPT[folder]} if folder in SCRIPT else {}), **common})
                         pairs.append((width, theme, frame_png, app_png))
                 gate.run_jobs(jobs, jobs_dir, chrome)
             for width, theme, frame_png, app_png in pairs:

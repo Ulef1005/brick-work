@@ -13,10 +13,10 @@ Do this once you have recorded a good amount of [loose stock](../concepts/collec
 
 ## Read the list
 
-1. Open **Workbench → Build Scout**: pick **Workbench** in the top bar, then **Build Scout** in the row under it. On a phone, the row sits under the logo.
-2. Each row is a set, best first. The bar and the percentage say how much of the set's parts your stock covers (**85%**, **398 of 430 parts**). On the right are the parts still missing (**−32 parts**) and how many of its minifigures are missing (**2 of 3 figures missing**). The right side also gives an approximate cost to complete (**≈ €31.20 · 3 lines unpriced**).
+1. Open **Workbench → Build Scout**: pick **Workbench** in the top bar, then **Build Scout** in the row under it. On a phone, the row sits under the logo, and the filters fold behind one **Filters** button.
+2. Each row is a set, best first. The bar and the percentage say how much of the set's parts your stock covers (**398 of 430 · 93 %**). On the right are the parts still missing (**32 parts missing**) and the minifigures missing (**2 of 3 figures missing**, or **no figures**). It also gives an approximate cost to complete (**€31.20 · 3 lines unpriced**), or **not priced**.
 3. Sets are sorted by the percentage available, then by the fewest missing parts.
-4. On a wide screen the set you select shows its details beside the list; on a phone, open the set. The details give **Parts you hold**, the biggest missing lines with their colours (**−6**), **Show all** for the rest, and the figures you hold of those the set needs.
+4. On a wide screen the set you select shows its details beside the list; on a phone, open the set. The details give **Parts you hold**, the biggest missing lines with their colours (**6 missing**), **Show all** for the rest, and the figures you hold of those the set needs.
 
 **What counts as a part.** A set's parts are its own part lines, with spare parts left out and the parts of any sets inside it counted. The parts of its minifigures are not counted here: a minifigure is counted on its own, as one whole figure. A loose whole minifigure in your stock counts as one of the set's figures; loose parts that would make up a figure do not. So **398 of 430 parts** is parts only, and **1 of 3 figures** is figures only. A set that has no part of its own, only whole minifigures (a figure pack), is listed too: it shows **0 of 0 parts**, and its percentage is its figures'.
 

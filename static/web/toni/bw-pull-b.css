@@ -31,7 +31,7 @@
 #bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-panel .bp-mv {padding:11px 0;border:0;border-bottom:1px solid var(--tw-divider);font-size:15px}
 #bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-panel .bp-sub2+.bp-mv {border-top:1.5px solid var(--tw-rule)}
 #bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-panel .bp-mv .mono {font:600 15px var(--tw-mono)}
-#bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-status {display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:16px 0 0;row-gap:4px;font-size:13.5px;line-height:1.45;color:var(--tw-text-2)}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-status {display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:12px 0 0 !important;row-gap:4px;font-size:13.5px;line-height:1.45;color:var(--tw-text-2)}
 #bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-status .tag {height:22px;padding:0 7px;color:var(--tw-text)}
 #bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-status .bp-tag-gap {background:repeating-linear-gradient(45deg,rgba(26,30,30,.18) 0 1.5px,transparent 1.5px 4px)}
 #bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-status-text {flex:0 0 100%;margin-top:0;font-size:13px;line-height:1.45}
@@ -64,3 +64,20 @@
 #bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-panel form {display:block;margin:0}
 
 #bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-strip i[style='flex:0'] {display:none}
+
+/* the tools row as frame 14 draws it: labels over the selects, a bordered Apply, then Expand all and the group tape */
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-tools {align-items:flex-end;gap:10px 8px;margin:0 0 10px}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-search {flex:1 1 100%}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-sel {flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:stretch;gap:6px;padding:0;border:0;background:none;font:500 13px var(--tw-font);color:var(--tw-text-2)}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-sel .bp-sel-name {display:block}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-sel select {width:100%;height:40px;min-height:0;padding:0 12px;border:1px solid var(--tw-text-muted);border-radius:var(--tw-r-1);background-color:var(--tw-field);color:var(--tw-text);font:400 15px var(--tw-font)}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-apply {height:40px;min-height:0;padding:0 14px;border:0;background:transparent;box-shadow:inset 0 0 0 1.5px var(--tw-text);color:var(--tw-text);font:600 14px var(--tw-font)}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bp-lines {flex:0 0 100%}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bw-sec-tools {justify-content:flex-start;margin:0 0 10px;font:400 13px/1.45 var(--tw-font);color:var(--tw-accent-text)}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bw-sec-tools a {min-height:0;color:var(--tw-accent-text);text-decoration:none}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bw-sec {border:0;margin-top:10px}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bw-sec:last-of-type {border:0}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bw-sec-head {min-height:0;gap:10px;padding:6px 10px;border-radius:var(--tw-r-1);background:var(--tw-accent);color:var(--tw-on-accent);font:600 13px var(--tw-font-label);letter-spacing:.1em;text-transform:uppercase}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bw-sec-head strong {font-weight:600}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bw-sec-count {display:inline;margin-left:auto;font:500 12px var(--tw-mono);letter-spacing:0;text-transform:none;color:var(--tw-on-accent);opacity:.9}
+#bw-pull:not(#_):not(#_):not(#_):not(#_) .bw-sec-chevron svg {width:16px;height:16px}

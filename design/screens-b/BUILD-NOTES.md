@@ -110,6 +110,8 @@ Generated from the review rounds of commission U (review artifact https://claude
 - **Empty storage:** a storage with nothing in it keeps the shipped empty state (“Bag 07 is empty.” and how to move things in), restyled; not drawn separately.
 - **SUCCESS:** Unify: the same tape as Sets, so a shelf looks the same in both. Structure: storage, then contents.
 
+- **Corrected 2026-11-21 (#500, decided by brick-work-product):** the storage type reads "Drawer", an existing type (Box, Shelf, Drawer, Bin, Bag, Case, Cabinet, Room, Other), not "Drawer unit"; the storage's own name "Parts drawer unit" stays. Pending Ulf's picture check.
+
 ## Round 6
 
 ### R6-01 Order missing parts (`15-order-missing-parts`)

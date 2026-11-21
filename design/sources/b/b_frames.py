@@ -641,7 +641,7 @@ def scout_body(phone):
 
 
 # ---- Storage ---------------------------------------------------------------------------------------------------------
-STORES = [('S-0001', 'Shelf A1 – Castle', 'Shelf', 2, 0, 0), ('S-0002', 'Shelf A2 – Town', 'Shelf', 3, 0, 0), ('S-0003', 'Parts drawer unit', 'Drawer unit', 0, 0, 6),
+STORES = [('S-0001', 'Shelf A1 – Castle', 'Shelf', 2, 0, 0), ('S-0002', 'Shelf A2 – Town', 'Shelf', 3, 0, 0), ('S-0003', 'Parts drawer unit', 'Drawer', 0, 0, 6),
           ('S-0004', 'Display case', 'Shelf', 1, 0, 0), ('S-0005', 'Technic crate', 'Box', 1, 0, 0), ('S-0006', 'Bag 07', 'Bag', 0, 0, 0)]
 
 

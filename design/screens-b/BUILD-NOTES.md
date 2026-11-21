@@ -156,6 +156,8 @@ Generated from the review rounds of commission U (review artifact https://claude
 - **Phone:** one panel at a time, as shipped: Capture, Queue 3, Review and Results 1 as a segment, Review open.
 - **SUCCESS:** Say: one piece at a time. Express: swatches for the colour, the one choice the photo cannot make. Unify: the colour block from Set Inspector, the tags from Sets.
 
+- **Corrected 2026-11-21 (#508, found by brick-work's build; pending Ulf's picture check):** the queue tags carry the shipped statuses, as this note says: piece 1 reads "Ready" (the frame said "Confirmed") and the piece being read reads "Recognizing" (it said "To review"); "Confirmed" stays on the Results row. Decided without a picture because they change no layout: the delete cross on a queue row, the chevron on the camera field and the way to the other colours (a "More colours" link on the colour label row that opens the searchable list, the six swatches first and any other colour you hold) are shipped controls the frame left out; the "More colours" link is the one addition and is shown on the next review round. The phone header icons are at the same pixels in frames 04, 10, 11 and 13 (search 636,36 to 665,65; plus 712,36 to 739,63 at 2x).
+
 ## Round 5: tokens only (#501)
 
 These screens keep their layout and every shipped control and are rebuilt through the tokens and components, on the approved frames named. Shipped screen folders are those of `../screens/`.

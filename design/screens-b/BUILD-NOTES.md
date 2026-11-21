@@ -114,6 +114,8 @@ Generated from the review rounds of commission U (review artifact https://claude
 
 - **N2-25 Select mode on a Storage tile (`49-storage-select-mode`, #500, asked by brick-work-product; draft, pending Ulf's picture check):** a checkbox beside each copy's bar is the select target (copy 2 of 7213-1 and the one copy of 7938-1 are picked), beside the Sealed tag for a sealed set; a bar "2 copies picked" with Move to another storage and Cancel; Select is the button beside Print label and Edit. On the phone a storage's page is drawn for the first time (the list of storages stays as in `11`). The copy text wraps at 14 characters on the phone and stays on one line on desktop, the room left beside the checkbox.
 
+- **Corrected 2026-11-21 (#500, found by brick-work's frame check; pending Ulf's picture check):** the controls the app keeps were left out of the frame by omission: Print labels sits beside Purchase locations in the header on desktop and under the list on the phone (below the fold of the 390 frame), and Select sits beside Print label and Edit. On the phone the list has no detail pane beside it, so no storage row is marked (the frame marked S-0002). The tile shows no copy condition (New/Used), as the approved Sets tile of R3-01 does; the condition is on Set detail.
+
 ## Round 6
 
 ### R6-01 Order missing parts (`15-order-missing-parts`)

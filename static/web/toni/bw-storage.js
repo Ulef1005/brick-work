@@ -68,7 +68,19 @@
       const group = groups[index], container = group.node.querySelector('[data-items]');
       const shown = new Set(entry.shown);
       group.items.forEach(item => { item.node.hidden = !shown.has(item); });
-      entry.shown.forEach(item => container.append(item.node));
+      if (group.key === 'set') {
+        container.querySelectorAll('.stile').forEach(tile => {
+          tile.hidden = Array.from(tile.querySelectorAll('[data-item]')).every(c => c.hidden);
+        });
+        const moved = new Set();
+        entry.shown.forEach(item => {
+          const tile = item.node.closest('.stile');
+          if (tile) { if (!moved.has(tile)) { moved.add(tile); container.append(tile); } }
+          else { container.append(item.node); }
+        });
+      } else {
+        entry.shown.forEach(item => container.append(item.node));
+      }
       total += entry.shown.length;
       group.node.hidden = !entry.shown.length;
       group.counter.textContent = String(group.items.filter(i => !i.lot).length);

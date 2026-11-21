@@ -38,7 +38,7 @@ def test_table_rows_do_not_run_together_and_select_the_first_storage(world, coll
     assert {'Single Carton Box', 'Original Box on Display', 'Shelf A', 'Not stored'} <= set(names) and names[-1] == 'Not stored'
     for row in rows:
         assert row.select_one('.st-name strong') and len(row.select('.st-num')) == 3
-    assert [text(n) for n in soup.select('.st-thead [role=columnheader]')] == ['Storage', 'Sets', 'Figures', 'Part lots']
+    assert [text(n) for n in soup.select('.st-thead [role=columnheader]')] == ['Code', 'Storage', 'Sets', 'Figs', 'Lots']
     selected = soup.select('.st-row.is-selected')
     assert len(selected) == 1 and selected[0]['aria-current'] == 'page'
     assert soup.select_one('.st-pane h1').get_text() == selected[0].select_one('strong').get_text()
@@ -54,7 +54,8 @@ def test_contents_panel_groups_sets_figures_and_part_lots(world, coll, client):
     groups = {g['data-group']: g for g in soup.select('.st-group')}
     assert set(groups) >= {'set', 'figure', 'part'}
     assert 'Sets · 1' in text(groups['set'].select_one('h2'))
-    assert 'Used' in text(groups['set'])                                     # condition shown on the set row
+    tile = groups['set'].select_one('.stile')                                  # #500: a set is a tile (frame 11): number, price, name, theme and year, one bar per copy
+    assert tile.select_one('.num span').get_text() and tile.select_one('.nm') and tile.select_one('.st-copy')
     assert 'Minifigures' in text(groups['figure'].select_one('h2')) and groups['figure'].select_one('.st-pill').get_text() == 'Used'
     part = groups['part']
     assert 'Bag' in text(part) and 'Lot ·' in text(part)                      # lots sit with the part lots
@@ -62,7 +63,7 @@ def test_contents_panel_groups_sets_figures_and_part_lots(world, coll, client):
     assert '×' in text(part)
     for img in soup.select('.st-pic img'):
         assert img['alt'] == '' and 'cover' not in str(img)
-    assert 'sets ·' in text(soup.select_one('.st-detail-head p'))
+    assert 'set ·' in text(soup.select_one('.st-detail-head p'))
     assert soup.select_one('[data-select]').get_text() == 'Select' and soup.select_one('[data-open=st-edit]')
     for box in soup.select('.st-check'):
         assert box['data-selection'] and box['aria-label'].startswith('Select ')
@@ -180,7 +181,7 @@ def test_storage_counts_and_queries(world, coll):
     shelf = next(r for r in ledger.storages(db) if r['id'] == world.shelf)
     assert shelf['figures'] == 1 and shelf['part_lots'] >= 1 and shelf['other'] == 0
     assert trace(lambda: ledger.storages(db)) == 1
-    assert trace(lambda: ledger.storage_view(db, world.shelf)) < 20
+    assert trace(lambda: ledger.storage_view(db, world.shelf)) < 40          # #500: the set tiles take the Sets list's price, theme and year (a constant number of queries)
     view = ledger.storage_view(db, world.shelf)
     assert view['total'] == len(view['sets']) + len(view['figures']) + len(view['part_lots']) + len(view['other'])
     assert [r['id'] for r in view['rows']] == [r['id'] for r in ledger.storage_detail(db, world.shelf)['rows']]
@@ -284,9 +285,9 @@ def test_contents_rows_link_to_their_detail_pages(world, coll, client):
     coll.sql('UPDATE stock SET storage_id=? WHERE id=?', (world.shelf, world.stock_figure))
     soup = page(client, f'/workbench/storage/{world.shelf}')
     groups = {g['data-group']: g for g in soup.select('.st-group')}
-    set_link = groups['set'].select_one('.st-item .st-open')
-    copy_id = json.loads(set_link.find_parent('label').select_one('[data-selection]')['data-selection'])['id']
-    assert set_link.select_one('strong') and f'copy={copy_id}' in set_link['href']
+    set_link = groups['set'].select_one('.stile .st-open')
+    copy_id = json.loads(set_link.find_parent(class_='stile').select_one('[data-selection]')['data-selection'])['id']
+    assert f'copy={copy_id}' in set_link['href']
     figure_link = groups['figure'].select_one('.st-item .st-open')
     assert f'stock={world.stock_figure}' in figure_link['href']
     parts = [i.select_one('.st-open') for i in groups['part'].select('.st-item') if 'Lot ·' not in text(i)]

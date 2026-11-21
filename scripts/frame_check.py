@@ -45,13 +45,16 @@ TARGETS = {'01-tools-and-admin': ('/manage/tools', 'frames'),
            '05-sets-without-storage': ('/collection/sets', 'frames-no-storage'),
            '48-sets-pulled-copy': ('/collection/sets', 'frames-pulled'),
            '08-sets-empty': ('/collection/sets', 'frames-empty'),   # nothing owned, no keys, the catalogue loaded (brickwork/demo/frames.py EmptyLayer)
+           '11-storage': ('/workbench/storage/storage-shelf-a2---town', 'frames-storage'),   # S-0002 selected, as the frame draws it
            '10-build-scout': ('/workbench/build-scout?min_percent=0', 'frames-scout'),
            '09-matchmaker': ('/workbench/matcher', 'frames-matcher'),
            '06-set-inspector': ('/workbench/check-parts/d1121673-830b-5aaa-80be-ee68396eec34?run=1', 'frames'),   # copy 2 of 7213-1 in its running check (brickwork/demo/frames.py INSPECTOR)
            '07-part-runner': (frames.runner_path(), 'frames')}   # the four incomplete copies as one run of 52 parts, on the 7th (brickwork/demo/frames.py RUNNER)
+# A frame whose phone drawing is another page than its desktop one: the storage list opens as the page on a phone (a storage's own screen only when one is chosen).
+PHONE_PATH = {'11-storage': '/workbench/storage'}
 # Frames that draw one screen as the device shows it (the frame's own size, the rest of the page cut off, the phone's tab bar at the foot of that size): the
 # frame and app are both captured as one viewport (capture_screens.cjs `sheet_below`), not grown to the whole height of their scrollable content. A frame that draws the whole page is not listed.
-VIEWPORT = {'10-build-scout', '08-sets-empty', '01-tools-and-admin', '02-settings', '03-find-instructions', '09-matchmaker', '04-sets', '05-sets-without-storage', '48-sets-pulled-copy', '06-set-inspector', '07-part-runner'}
+VIEWPORT = {'11-storage', '10-build-scout', '08-sets-empty', '01-tools-and-admin', '02-settings', '03-find-instructions', '09-matchmaker', '04-sets', '05-sets-without-storage', '48-sets-pulled-copy', '06-set-inspector', '07-part-runner'}
 # The frame is an excerpt: 04-sets at 390 draws two of the three tiles its S-0002 tape counts and cuts the rest. Design's rule (2026-11-20): compare down to the
 # bottom of the drawn tile row (CSS px from the top); the app shows all three tiles, so what lies below that row is not compared.
 CROP_BELOW = {('01-tools-and-admin', 390): 757, ('02-settings', 390): 714, ('02-settings', 1440): 732, ('09-matchmaker', 390): 710, ('04-sets', 390): 731, ('05-sets-without-storage', 390): 657, ('48-sets-pulled-copy', 390): 731}   # frame 48 is built on frame 04: the same two tiles are drawn at 390
@@ -160,7 +163,7 @@ def run(only: list[str], band: bool, report: bool, keep: str = '') -> int:
         for folder, (path, world) in TARGETS.items():
             if only and folder not in only:
                 continue
-            with gate.world(world, [path]) as base, tempfile.TemporaryDirectory(prefix='bw-jobs-') as jobs_dir:
+            with gate.world(world, [path, *([PHONE_PATH[folder]] if folder in PHONE_PATH else [])]) as base, tempfile.TemporaryDirectory(prefix='bw-jobs-') as jobs_dir:
                 jobs, pairs = [], []
                 for width in SIZES:
                     for theme in THEMES:
@@ -169,7 +172,7 @@ def run(only: list[str], band: bool, report: bool, keep: str = '') -> int:
                         height = TALL.get((folder, width), {1440: 900, 390: 844}[width])
                         common = {'width': width, 'height': height, 'theme': theme, 'scale': SCALE, 'max': 3000, **({'sheet_below': 100000} if folder in VIEWPORT else {})}
                         jobs.append({'url': frame_file(folder, theme, width).as_uri(), 'out': str(frame_png), **common})
-                        jobs.append({'url': base + path, 'out': str(app_png), 'wait': 'main', **common})
+                        jobs.append({'url': base + (PHONE_PATH[folder] if width == 390 and folder in PHONE_PATH else path), 'out': str(app_png), 'wait': 'main', **common})
                         pairs.append((width, theme, frame_png, app_png))
                 gate.run_jobs(jobs, jobs_dir, chrome)
             for width, theme, frame_png, app_png in pairs:

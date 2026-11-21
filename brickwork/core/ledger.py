@@ -89,7 +89,7 @@ def storages(db):
     """Per-storage counts. ``part_lots`` is lots plus loose parts that are not inside a lot kept in the same storage.
 
     Figures are minifigures; ``other`` is instructions, boxes, gear, books and catalogues. The last row is the virtual "Not stored"."""
-    return [dict(r) for r in db.execute('''WITH c AS (SELECT storage_id,count(*) AS copies FROM main.copy WHERE archived_at IS NULL GROUP BY storage_id),
+    return [dict(r) for r in db.execute('''WITH c AS (SELECT storage_id,count(*) AS copies,count(DISTINCT item_id) AS sets FROM main.copy WHERE archived_at IS NULL GROUP BY storage_id),
       s AS (SELECT t.storage_id,count(*) AS entries,coalesce(sum(t.quantity),0) AS pieces,
         coalesce(sum(t.kind='minifigure'),0) AS figures,
         coalesce(sum(t.kind='part' AND x.id IS NULL),0) AS loose_parts,
@@ -97,11 +97,11 @@ def storages(db):
         FROM main.stock t LEFT JOIN main.lot x ON x.id=t.lot_id AND x.archived_at IS NULL AND x.storage_id IS t.storage_id
         WHERE t.archived_at IS NULL GROUP BY t.storage_id),
       l AS (SELECT storage_id,count(*) AS lots FROM main.lot WHERE archived_at IS NULL GROUP BY storage_id)
-      SELECT p.id,p.short_id,p.name,p.type,p.parent_id,p.note,(SELECT name FROM main.storage q WHERE q.id=p.parent_id) AS parent_name,coalesce(c.copies,0) AS copies,
+      SELECT p.id,p.short_id,p.name,p.type,p.parent_id,p.note,(SELECT name FROM main.storage q WHERE q.id=p.parent_id) AS parent_name,coalesce(c.copies,0) AS copies,coalesce(c.sets,0) AS sets,
       coalesce(s.entries,0) AS entries,coalesce(s.pieces,0) AS pieces,coalesce(l.lots,0) AS lots,
       coalesce(s.figures,0) AS figures,coalesce(s.loose_parts,0)+coalesce(l.lots,0) AS part_lots,coalesce(s.other,0) AS other
       FROM (SELECT id,short_id,name,type,parent_id,note FROM main.storage WHERE archived_at IS NULL UNION ALL SELECT NULL,NULL,'Not stored',NULL,NULL,NULL) p
-      LEFT JOIN c ON c.storage_id IS p.id LEFT JOIN s ON s.storage_id IS p.id LEFT JOIN l ON l.storage_id IS p.id ORDER BY p.id IS NULL,p.name,p.id''')]
+      LEFT JOIN c ON c.storage_id IS p.id LEFT JOIN s ON s.storage_id IS p.id LEFT JOIN l ON l.storage_id IS p.id ORDER BY p.id IS NULL,p.short_id,p.name,p.id''')]
 
 
 def storage_detail(db, identifier, rows=None):
@@ -130,11 +130,42 @@ def storage_view(db, identifier, rows=None):
     rows = detail['rows']
     stock = [r for r in rows if r['entity'] == 'stock']
     detail['sets'] = [r for r in rows if r['entity'] == 'copy']
+    detail['set_tiles'] = set_tiles(db, detail['sets'])
     detail['figures'] = [r for r in stock if r['kind'] == 'minifigure']
     detail['part_lots'] = lots + [r for r in stock if r['kind'] == 'part']
     detail['other'] = [r for r in stock if r['kind'] in OTHER_KINDS]
     detail['total'] = len(detail['sets']) + len(detail['figures']) + len(detail['part_lots']) + len(detail['other'])
     return detail
+
+
+def set_tiles(db, copies):
+    """The Storage page's set tiles (frame 11, #500): the copies stored here grouped by set, each tile with the numbers the Sets page's tile draws: the set's theme,
+    year and used price, and one bar per copy ([found, missing, total, figures missing, damaged, checked by], core/collection.py `_copy_bars`; None for a copy with no
+    part list). Only the copies in this storage count, so a set with copies in two storages has a tile in each, with its own bars."""
+    from ..web.formatting import money
+    if not copies:
+        return []
+    bars = collection._copy_bars(db, [c['id'] for c in copies])
+    listed = {r['item_id']: r for r in collection.listing(db, 'S')}
+    tiles = {}
+    for copy in copies:
+        tile = tiles.get(copy['item_id'])
+        if tile is None:
+            row = listed.get(copy['item_id'], {})
+            price = row.get('price')
+            subtheme = ((row.get('properties') or {}).get('subtheme') or {}).get('value')
+            tile = tiles[copy['item_id']] = dict(
+                item_id=copy['item_id'], item_no=copy.get('item_no') or '', name=copy.get('name') or row.get('name') or '', image=copy.get('image'),
+                unresolved=copy.get('unresolved'), unidentified=copy.get('unidentified'),
+                theme=' / '.join(x for x in (row.get('theme') or row.get('category'), subtheme) if x), year=row.get('year'),
+                price=money(price['price'], price.get('currency') or 'Currency not recorded', fixed=True) if price else None, copies=[])
+        tile['copies'].append(dict(copy, bar=bars.get(copy['id'])))
+
+    def natural(tile):
+        number = tile['item_no'] or ''
+        head = number.split('-')[0]
+        return (0, int(head), number) if head.isdigit() else (1, 0, number or tile['name'])
+    return sorted(tiles.values(), key=natural)
 
 
 def storage_contents(db, identifier):

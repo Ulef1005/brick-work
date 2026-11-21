@@ -91,16 +91,16 @@ def world_folder():
 
 # The version the footer shows in the gate's world. The baselines were rendered when the footer said 1.0.0; the constant keeps that text for good.
 GATE_VERSION = '1.0.0'
-WORLDS = ('demo', 'showcase', 'extras', 'edge', 'edge-read-only', 'edge-empty', 'edge-value', 'edge-order', 'edge-instructions', 'real', 'frames', 'frames-no-storage', 'frames-pulled', 'frames-matcher', 'frames-instructions', 'frames-empty', 'frames-scout', 'frames-storage')
+WORLDS = ('demo', 'showcase', 'extras', 'edge', 'edge-read-only', 'edge-empty', 'edge-value', 'edge-order', 'edge-instructions', 'real', 'frames', 'frames-no-storage', 'frames-pulled', 'frames-matcher', 'frames-instructions', 'frames-empty', 'frames-scout', 'frames-storage', 'frames-lot')
 
 
 def build_store(name: str, store: Path) -> None:
     """Build the invented collection of world `name` at `store` (and its catalogue beside it), with its staged checks. The one place a gate world's data
     is made, so a test can build exactly what the gate renders (tests/test_gate_edge_world.py proves the three older worlds did not change)."""
-    from brickwork.demo import checks, dataset, frames, frames_scout, frames_storage, gate_edge, gate_extras, real, showcase
-    layers = {'real': real.layer, 'demo': None, 'showcase': showcase.layer, 'extras': gate_extras.layer, 'edge': gate_edge.layer, 'edge-read-only': gate_edge.layer, 'edge-empty': gate_edge.empty_layer, 'edge-value': gate_edge.value_layer, 'edge-order': gate_edge.order_layer, 'edge-instructions': gate_edge.instruction_layer, 'frames': frames.layer, 'frames-no-storage': frames.unstored_layer, 'frames-pulled': frames.pulled_layer, 'frames-matcher': frames.matcher_layer, 'frames-instructions': frames.instructions_layer, 'frames-empty': frames.empty_layer, 'frames-scout': frames_scout.scout_layer, 'frames-storage': frames_storage.storage_layer}
+    from brickwork.demo import checks, dataset, frames, frames_lot, frames_scout, frames_storage, gate_edge, gate_extras, real, showcase
+    layers = {'real': real.layer, 'demo': None, 'showcase': showcase.layer, 'extras': gate_extras.layer, 'edge': gate_edge.layer, 'edge-read-only': gate_edge.layer, 'edge-empty': gate_edge.empty_layer, 'edge-value': gate_edge.value_layer, 'edge-order': gate_edge.order_layer, 'edge-instructions': gate_edge.instruction_layer, 'frames': frames.layer, 'frames-no-storage': frames.unstored_layer, 'frames-pulled': frames.pulled_layer, 'frames-matcher': frames.matcher_layer, 'frames-instructions': frames.instructions_layer, 'frames-empty': frames.empty_layer, 'frames-scout': frames_scout.scout_layer, 'frames-storage': frames_storage.storage_layer, 'frames-lot': frames_lot.lot_layer}
     dataset.build(store, layer=layers[name]() if layers[name] else None)
-    checks.stage(store, real.CHECKS if name == 'real' else showcase.CHECKS if name not in ('demo', 'frames', 'frames-no-storage', 'frames-pulled', 'frames-matcher', 'frames-instructions', 'frames-empty', 'frames-storage') else None)
+    checks.stage(store, real.CHECKS if name == 'real' else showcase.CHECKS if name not in ('demo', 'frames', 'frames-no-storage', 'frames-pulled', 'frames-matcher', 'frames-instructions', 'frames-empty', 'frames-storage', 'frames-lot') else None)
     if name in ('frames', 'frames-no-storage', 'frames-matcher'):
         frames.stage_inspector(store)   # frame 06's running check, answered through the checker like the staged ones
     if name == 'frames-matcher':

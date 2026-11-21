@@ -31,10 +31,10 @@ A piece you tick is not filed in the lot until you make the copy. Saving progres
 ## Make it a copy
 
 1. Select **Make it a copy** (the card on the right, the bar at the foot of a phone).
-2. The confirm shows three numbers: the found pieces that move out of the lot, the pieces recorded as missing on the copy, and the pieces that stay in the lot.
+2. The confirm shows three numbers: the found pieces that move out of the lot, the pieces recorded as missing on the copy, and the pieces that stay in the lot. On a phone it is a sheet from the bottom; tap the page above it to leave it.
 3. Select **Make copy of 6080-1**.
 
-One step does everything: the pieces you ticked are filed in the lot, then exactly the found pieces move from this lot into a new copy of the set. Everything the set has and you did not find is recorded as missing on the copy, so it shows in Matcher, Complete sets and the missing-parts XML. The copy starts as incomplete (complete when nothing is missing) and not checked. The lot keeps the leftovers; run set detection again to find the next set. Nothing in another lot is touched.
+One step does everything: the pieces you ticked are filed in the lot, then exactly the found pieces move from this lot into a new copy of the set. Everything the set has and you did not find is recorded as missing on the copy, so it shows in Matchmaker, Complete sets and the missing-parts XML. The copy starts as incomplete (complete when nothing is missing) and not checked. The lot keeps the leftovers; run set detection again to find the next set. Nothing in another lot is touched.
 
 The page you return to shows **Open the copy** and **Undo**. Undo puts the pieces back in the lot and archives the copy. The pieces you ticked in the bulk stay filed in the lot, so they count as found if you pull the set again.
 

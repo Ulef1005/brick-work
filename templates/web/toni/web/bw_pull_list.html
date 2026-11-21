@@ -1,7 +1,7 @@
 {# The pull list of a set for a lot (#202): server-rendered, no JavaScript needed. The counters are form posts; the confirm is this page with the dialog open. #}
 {% extends 'web/toni/base.html' %}
 {% block title %} · Pull list{% endblock %}
-{% block page_assets %}<link rel="stylesheet" href="{{ bw_static('web/toni/bw-workbench.css') }}"><link rel="stylesheet" href="{{ bw_static('web/toni/bw-pull.css') }}"><link rel="stylesheet" href="{{ bw_static('web/toni/bw-part-sections.css') }}"><script src="{{ bw_static('web/toni/bw-part-sections.js') }}" defer></script><script src="{{ bw_static('web/toni/bw-pull.js') }}" defer></script>{% endblock %}
+{% block page_assets %}<link rel="stylesheet" href="{{ bw_static('web/toni/bw-workbench.css') }}"><link rel="stylesheet" href="{{ bw_static('web/toni/bw-pull.css') }}"><link rel="stylesheet" href="{{ bw_static('web/toni/bw-pull-b.css') }}"><link rel="stylesheet" href="{{ bw_static('web/toni/bw-part-sections.css') }}"><script src="{{ bw_static('web/toni/bw-part-sections.js') }}" defer></script><script src="{{ bw_static('web/toni/bw-pull.js') }}" defer></script>{% endblock %}
 {% import 'web/toni/web/_bw_part_sections.html' as sec %}
 {% block content_class %}pull-list-page{% endblock %}
 {% macro back_fields() %}{% if view.q %}<input type="hidden" name="q" value="{{ view.q }}">{% endif %}<input type="hidden" name="show" value="{{ view.show }}"><input type="hidden" name="sort" value="{{ view.sort }}">{% if view.every %}<input type="hidden" name="all" value="1">{% endif %}{% endmacro %}
@@ -29,8 +29,9 @@
 {% if done and copy %}<div class="bp-done" role="status"><span>Copy made · {{ request.args.get('pieces') }} piece{{ '' if request.args.get('pieces') == '1' else 's' }} moved out of the lot{% if request.args.get('missing') and request.args.get('missing') != '0' %} · {{ request.args.get('missing') }} recorded as missing{% endif %}</span>
 <span class="bp-done-actions"><a href="{{ url_for('web.bw_collection_item', item_id=set_row.id, copy=copy.id) }}">Open the copy</a>{% if can_edit %}<form method="post" action="{{ url_for('web.bw_pull_undo', identifier=detail.id, set_id=set_row.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="event_id" value="{{ done }}"><button type="submit" class="bp-link">Undo</button></form>{% endif %}</span></div>
 {% elif undone %}<div class="bp-done" role="status"><span>Undone · the copy is archived and its pieces are back in the lot</span></div>{% endif %}
-<div class="bp-prog"><span><b class="mono">{{ t.found }}</b> of <span class="mono">{{ t.need }}</span> <span class="bp-pieces">pieces </span>found</span><span class="muted">{{ t.to_find }} to find</span></div>
+
 <div class="bp-strip" role="img" aria-label="{{ t.found }} of {{ t.need }} pieces found"><i class="f" style="flex:{{ t.found }}"></i><i style="flex:{{ t.to_find }}"></i></div>
+<div class="bp-prog"><span><b class="mono">{{ t.found }}</b> of <span class="mono">{{ t.need }}</span> <span class="bp-pieces">pieces </span>found</span><span class="muted bp-tofind">{{ t.to_find }} to find</span></div>
 <form class="bp-tools" method="get" action="{{ pull_url }}" data-bp-form>
 <span class="bp-search"><input type="search" name="q" value="{{ view.q }}" placeholder="Search parts" aria-label="Search parts" autocomplete="off"></span>
 <label class="bp-sel"><span class="bp-sel-name">Show </span><select name="show" aria-label="Show">{% for value, label in show_label.items() %}<option value="{{ value }}" {% if view.show == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
@@ -80,7 +81,7 @@
 <div class="bp-mv"><span>Found pieces move out of the lot</span><span class="mono">{{ m.moves }}</span></div>
 <div class="bp-mv"><span>Recorded as missing on the copy</span><span class="mono">{{ m.missing }}</span></div>
 <div class="bp-mv"><span>Stay in the lot</span><span class="mono">{{ m.stays }}</span></div>
-<p class="sub bp-status">The copy starts as {% if m.missing %}<span class="bp-pill warn"><i></i>Incomplete</span>{% else %}<span class="bp-pill ok"><i></i>Complete</span>{% endif %} <span class="bp-pill dash"><i></i>Not checked</span>. Missing parts appear in Matcher, Complete sets and the missing-parts XML. One step you can undo.</p>
+<p class="sub bp-status b-prime">The copy starts as {% if m.missing %}<span class="tag bp-tag-gap">Incomplete</span>{% else %}<span class="tag">Complete</span>{% endif %} <span class="xchip"><i><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2.6 2.6l4.8 4.8M7.4 2.6l-4.8 4.8" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/></svg></i>Not checked</span><span class="bp-status-text">Missing parts appear in Matchmaker, Complete sets and the missing-parts XML. One step you can undo.</span></p>
 <form method="post" action="{{ url_for('web.bw_pull_make_copy', identifier=detail.id, set_id=set_row.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}">{{ back_fields() }}<button type="submit" class="button bw-primary bp-lg" autofocus>Make copy of {{ mine }}</button></form>
 <a class="bp-cancel" href="{{ back }}">Cancel</a></div></aside>
 {% endif %}

@@ -77,7 +77,7 @@ These rules describe a screen not yet rebuilt to B′. Since #492 part 1 (PR #53
 - Set, figure and part images: never cropped, `object-fit: contain` on a white tile; sets 4:3.
 - Money unspaced, symbol first: `€8.53`. Never mix currencies in one comparison.
 - No minus, hyphen or dash before a number in visible text: "4 missing", "needs 6 · 4 left". Hyphens inside identifiers stay (6081-1). A lone dash for an empty value stays.
-- Copy: English, sentence case, short, bare counts, mid-dots, no exclamation marks, never the word "LEGO". Exception, the question pages (#544): "LEGO®" as an adjective in titles, H1s, descriptions and text, with ® on every use, never in a URL, the long footer disclaimer on the page; "the LEGO Group" as in the disclaimer. Everywhere else never the word "LEGO".
+- Copy: English, sentence case, short, bare counts, mid-dots, no exclamation marks, never the word "LEGO". Exception, the question pages (#544): "LEGO®" as an adjective in titles, H1s, descriptions and text, with ® on every use, never in a URL, the long footer disclaimer on the page; "the LEGO Group" as in the disclaimer.
 - Every list: search, filter, sort, removable chips and a result count; 15 per page with the shared pager.
 - Light and dark both supported; dark uses the same tokens under `.tw-dark`.
 

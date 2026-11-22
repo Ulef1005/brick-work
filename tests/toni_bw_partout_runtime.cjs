@@ -37,7 +37,7 @@ async function fetchCase({priced=139,lines=145,failed=false,pending=false,states
   await operation;
   assert.equal(calls.filter(c=>c.url==='/refresh').length,1);
   assert.equal(scope.attrs['aria-busy'],'false');
-  if(failed){assert.equal(button.disabled,false);assert.equal(button.textContent,'Fetch part prices');assert.equal(status.textContent,'Could not queue');assert.equal(replaced,null);return;}
+  if(failed){assert.equal(button.disabled,false);assert.equal(button.textContent,'Fetch part prices');assert.equal(status.textContent,'Could not queue');assert.equal(status.dataset.state,'error');assert.equal(replaced,null);return;}
   assert.equal(replaced,fresh);assert.equal(button.disabled,false);
   assert.equal(waits,states?0:1);
   const budget=states?.includes('waiting_for_budget'),bad=states?.filter(s=>['failed','cancelled'].includes(s)).length;
@@ -45,6 +45,7 @@ async function fetchCase({priced=139,lines=145,failed=false,pending=false,states
   const note=updated.children[0].textContent;
   if(budget)assert.match(note,/BrickLink budget reached · the worker continues later/);
   if(bad)assert.match(note,new RegExp(`${bad} price refresh jobs failed`));
+  assert.equal(updated.children[0].dataset.state,bad?'error':undefined);   // a failed or cancelled job is said in the danger colour (R2-04)
   if(remaining){assert.match(note,new RegExp(`${remaining} parts remain to fetch`));assert.doesNotMatch(note,/no sales yet/);}
   else if(!budget&&!bad&&lines>priced)assert.match(note,/parts have no sales yet/);
 }

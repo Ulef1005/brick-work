@@ -777,7 +777,7 @@ document.addEventListener?.('click',async event=>{
       else if(complete && missing)notes.push(`${missing} ${missing===1?'part has':'parts have'} no sales yet`);
     }
     if(notes.length){
-      const note=document.createElement('p');note.className='secondary';note.setAttribute('role','status');
+      const note=document.createElement('p');note.className='secondary';note.setAttribute('role','status');if(failed)note.dataset.state='error';   // a job the worker failed or cancelled is said in the danger colour (R2-04)
       note.textContent=notes.join(' · ');(updated || fresh).append(note);
     }
     const card=scope?.closest('[data-module="prices"]') || document.querySelector('[data-module="prices"]');

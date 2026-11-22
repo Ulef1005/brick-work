@@ -194,3 +194,48 @@ def test_a_kind_move_keeps_added_via_and_last_synced_from(store):
         merge.move_kind_in(store, gear, 'gear', via='app')                                # and back: the stock row carries both again
     (back,) = store.execute('SELECT id, added_via FROM stock WHERE item_id=? AND archived_at IS NULL', (gear,)).fetchall()
     assert back['added_via'] == 'brickset' and store.execute('SELECT site FROM synced_from WHERE stock_id=?', (back['id'],)).fetchone()[0] == 'brickset'
+
+
+# --- review round: older receipts, a later sync, ids never reused ---------------------------------
+
+def test_undo_of_a_kind_move_is_refused_when_a_later_sync_matched_the_row_it_made(store):
+    from brickwork.store4 import merge
+    gear = store.execute('SELECT id FROM catalogue.item WHERE born_key=?', (GEAR,)).fetchone()[0]
+    with transaction(store):
+        row = stock.add_loose(store, item_id=gear, quantity=1, condition='new')
+        origins.touch(store, 'stock', row['id'], 'brickset', at='2026-11-22T10:00:00.000Z')
+    with transaction(store):
+        moved = merge.move_kind_in(store, gear, 'set', via='app')
+    (made,) = store.execute('SELECT id FROM copy WHERE item_id=? AND archived_at IS NULL', (gear,)).fetchall()
+    with transaction(store):
+        origins.touch(store, 'copy', made['id'], 'rebrickable', at='2026-11-22T11:00:00.000Z')
+    with pytest.raises(merge.MergeRefused, match='undo that sync first'):
+        with transaction(store):
+            merge.undo_kind_move_in(store, moved['event_id'], via='app')
+    store.execute("DELETE FROM synced_from WHERE site='rebrickable'")
+    with transaction(store):
+        merge.undo_kind_move_in(store, moved['event_id'], via='app')                   # its own moved line does not block it
+    assert store.execute('SELECT site FROM synced_from WHERE stock_id=?', (row['id'],)).fetchone()[0] == 'brickset'
+
+
+def test_undo_of_a_stock_add_saved_before_48_compares_through_as_current(store):
+    gear = store.execute('SELECT id FROM catalogue.item WHERE born_key=?', (GEAR,)).fetchone()[0]
+    with transaction(store):
+        change = stock.add_loose(store, item_id=gear, quantity=1, condition='new')
+    change = json.loads(json.dumps(change))
+    change['after'].pop('added_via')                                                      # as a 4.7 receipt has it, on a row
+    store.execute('DROP TRIGGER stock_added_via_fixed')                                   # the 4.8 step left NULL
+    store.execute('UPDATE stock SET added_via=NULL WHERE id=?', (change['id'],))
+    with transaction(store):
+        stock.undo_added(store, change, via='app')
+    assert not store.execute('SELECT 1 FROM stock WHERE id=? AND archived_at IS NULL', (change['id'],)).fetchone()
+
+
+def test_a_synced_from_id_is_never_reused(store):
+    copy_id = live_copies(store, '2070-1')[0]['id']
+    with transaction(store):
+        origins.touch(store, 'copy', copy_id, 'rebrickable', at='x', list_key='1', list_name='A')
+        store.execute("DELETE FROM synced_from WHERE list_key='1'")                    # a dropped list name; Undo puts it back under its id
+        origins.touch(store, 'copy', copy_id, 'rebrickable', at='y', list_key='2', list_name='B')
+    ids = [r[0] for r in store.execute('SELECT id FROM synced_from ORDER BY id')]
+    assert ids and min(ids) > 1                                                           # the first id went with the dropped line

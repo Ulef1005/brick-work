@@ -570,7 +570,7 @@ def _undo_import(db, event, via, actor):
         row = db.execute('SELECT * FROM main.copy WHERE id=?', (copy_id,)).fetchone()
         if row is None:
             raise ValueError(changed)
-        if row['archived_at'] is None and (dict(row) != guard['row'] or _line_digest(db, copy_id) != guard['lines'] or _flag_ids(db, copy_id) != guard['flags']
+        if row['archived_at'] is None and (dict(row) != as_current('copy', guard['row']) or _line_digest(db, copy_id) != guard['lines'] or _flag_ids(db, copy_id) != guard['flags']
                                            or any(db.execute(sql, (copy_id,)).fetchone() for sql in (
                                                'SELECT 1 FROM main.part_check WHERE copy_id=? LIMIT 1', 'SELECT 1 FROM main.stock_transfer WHERE copy_id=? LIMIT 1',
                                                'SELECT 1 FROM main.photo WHERE copy_id=? AND archived_at IS NULL LIMIT 1', 'SELECT 1 FROM main.allocation WHERE copy_id=? LIMIT 1'))):

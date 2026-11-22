@@ -7,7 +7,7 @@ import json
 import uuid
 
 from ..store4 import copies, identity, origins
-from ..store4.connect import now
+from ..store4.connect import as_current, now
 from .admin import OPERATION_KEY, audit, origin
 
 MERGE_FIELDS = ('item_id', 'color_id', 'condition', 'lot_id', 'storage_id')
@@ -94,7 +94,7 @@ def undo_added(db, change, *, via=None, actor=None):
     figure's part lines differ from what the add left, or when a Take / Give or an allocation points at the row or its lines."""
     row = db.execute('SELECT * FROM main.stock WHERE id=?', (change['id'],)).fetchone()
     current = dict(row) if row else None
-    if current != change['after']:
+    if current != as_current('stock', change['after']):                 # a receipt from before 4.8 lacks added_via
         raise ValueError('Stock changed since this save · undo the later change first')
     if change['created'] and (dependents(db, change['id']) or (change.get('parts') is not None and part_digest(db, change['id']) != change['parts'])):
         raise ValueError('Stock changed since this save · undo the later change first')

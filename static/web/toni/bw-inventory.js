@@ -92,12 +92,12 @@
       const banner = el('p', piece.error || 'Nothing identified · try another photo', 'inv-banner');
       const retake = button('Retake', () => { remove(piece); node('file').click(); }, 'btn inv-primary');
       headRow.append(el('h2', position), el('span', 'Not recognised', 'inv-review-sub'));
-      out.append(headRow, tile(piece.photo, 'Your photo', null, 'inv-big'), banner, retake, button('Delete picture', () => remove(piece), 'inv-link inv-link-muted'));
+      out.append(headRow, tile(piece.photo, 'Your photo', null, 'inv-big inv-own'), banner, retake, button('Delete picture', () => remove(piece), 'inv-link inv-link-muted'));
       return;
     }
     const colour = colours.find(r=>r.color_id===piece.colour);
     const best = el('div', undefined, 'inv-best'); best.append(el('span', 'Reference · best match', 'lbl'), tile(image(c),c.name,c.item_no));
-    const photo = el('div', undefined, 'inv-photo'); photo.append(el('span', 'Your photo', 'lbl'), tile(piece.photo, 'Your photo'));
+    const photo = el('div', undefined, 'inv-photo'); photo.append(el('span', 'Your photo', 'lbl'), tile(piece.photo, 'Your photo', null, 'inv-own'));
     const reference = el('div', undefined, 'scan-reference'); reference.append(best, photo);
     const meta = el('div', undefined, 'inv-part-meta'); meta.append(el('h3', partName(c.name)), el('div', `${c.item_no} · ${colour ? colour.name : 'Choose a colour'} · ${c.score.toFixed(2)} match`, 'mono inv-part-sub'));
     headRow.append(el('h2', position), el('span', 'Confirm the part, then pick the colour', 'inv-review-sub'));

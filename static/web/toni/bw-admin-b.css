@@ -33,10 +33,22 @@
 #content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) :is(button,a.button,.bk-btn,.bi-btn):where(:not([role=switch],.bw-back,.kit-disclosure>summary,[data-bw-lightbox],[data-theme-mode],.bw-outline,.br-actions *)) {display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:38px;height:auto;padding:0 14px;border:0;border-radius:var(--tw-r-1);background:transparent;box-shadow:inset 0 0 0 1.5px var(--tw-text);color:var(--tw-text);font:600 14px var(--tw-font);text-decoration:none;white-space:nowrap;cursor:pointer}
 #content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) :is(button,a.button,.bk-btn,.bi-btn):is(.primary,.bw-primary,.bk-primary,.bi-primary) {background:var(--tw-accent);box-shadow:none;color:var(--tw-on-accent)}
 #content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) :is(button,a.button,.bk-btn,.bi-btn):is(:disabled,[aria-disabled=true]) {background:transparent;box-shadow:none;color:var(--tw-text-muted);outline:1.5px dashed var(--tw-text-muted);outline-offset:-1.5px;opacity:1;cursor:default}
-/* The chosen chip or tab (a value group's sub-navigation, the Sync tabs) is filled ink, as the B′ segments are. The exclusions above sit in :where so
+/* The chosen tab of a choice (the Sync tabs) is filled ink, as the B′ segments are. The exclusions above sit in :where so
    they add no weight: the primary, disabled and chosen rules below the base rule win over it. */
-#content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) :is(button,a.button):is([aria-current=page],[aria-pressed=true]):not([data-theme-mode]) {background:var(--tw-text);box-shadow:none;color:var(--tw-bg)}
+#content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) button[aria-pressed=true]:not([data-theme-mode]) {background:var(--tw-text);box-shadow:none;color:var(--tw-bg)}
+/* A row of pages (a value group's sub-navigation, the Catalogues pages) reads as the sub row: ink text, the open one ink 600 with a violet underline, no
+   fill (BRAND.md § 6, design 22.11.). */
+#content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) nav.bw-chips {gap:26px;border-bottom:1px solid var(--tw-divider)}
+#content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) nav.bw-chips a.button {min-height:0;height:auto;padding:12px 0 10px;border-radius:0;background:transparent;box-shadow:none;border-bottom:2px solid transparent;color:var(--tw-text-2);font:500 14px var(--tw-font)}
+#content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) nav.bw-chips a.button[aria-current=page] {color:var(--tw-text);font-weight:600;border-bottom-color:var(--tw-accent)}
 #content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) :is(button,a.button,.bk-btn,.bi-btn) svg {width:16px;height:16px}
+/* API tokens opens as every admin page (frame 01's .head): the title and the intro over a 1.5 px rule, the create button at the end of the row. */
+#content:has(>.bw-tokens) .bw-tokens-head {align-items:flex-end;padding-bottom:12px;border-bottom:1.5px solid var(--tw-rule)}
+#content:has(>.bw-tokens):not(#_)>a.bw-back {margin-bottom:-17px}   /* the back link sits outside the head here, in #content's grid with a 32 px row gap: its row
+   folds to 0 and the head moves up the rest, so the title sits where every admin page has it (167 px at 1440, measured against Jobs) */
+#content:has(>.bw-tokens):not(#_)>.bw-tokens {margin-top:-5px}
+#content:has(>.bw-tokens) .bw-tokens-head h1 {margin:4px 0 0;font:600 30px/36px var(--tw-font);letter-spacing:-.015em;color:var(--tw-text)}
+#content:has(>.bw-tokens) .bw-tokens-head p {margin:2px 0 0;font:400 14px/1.45 var(--tw-font);color:var(--tw-text-2)}
 #content:has(>.bw-tokens) .bw-tk-primary {display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 14px;border-radius:var(--tw-r-1);background:var(--tw-accent);color:var(--tw-on-accent);box-shadow:none;font:600 14px var(--tw-font);text-decoration:none}
 #content:has(>.bw-tokens) .bw-tk-primary svg {width:16px;height:16px}
 #content:has(>.bw-tokens) :is(.bw-tk-quiet,.bw-tk-outline) {height:38px;min-height:38px;padding:0 14px;border:0;border-radius:var(--tw-r-1);background:transparent;box-shadow:inset 0 0 0 1.5px var(--tw-text);color:var(--tw-text);font:600 14px var(--tw-font)}
@@ -71,5 +83,8 @@
 #content.bw-admin-page .bw-charts h3 {font:600 18px/1.3 var(--tw-font);color:var(--tw-text)}
 
 @media(max-width:767.98px) {
+  #content:has(>.bw-tokens) .bw-tokens-head h1 {font-size:24px;line-height:30px}
+  #content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) nav.bw-chips {flex-wrap:nowrap;overflow-x:auto;gap:20px}   /* as the phone's sub row: one scrolling row */
+  #content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) nav.bw-chips a.button {flex:none}
   #content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) header.bw-page-head>h1 {font-size:24px;line-height:30px}
 }

@@ -34,7 +34,7 @@
 @media not all and (max-width:767px){#bw-ledger.bw-storage:not(#_) dialog.st-sheet.lb-dialog{border:1px solid var(--tw-divider);border-radius:var(--tw-r-2)}}   /* a phone keeps the full-screen sheet without border or radius */
 #bw-ledger:not(#_) .lb-dialog .st-sheet-head{padding-bottom:12px;border-bottom:1.5px solid var(--tw-rule)}
 #bw-ledger:not(#_) .lb-dialog h3{font:600 12px/14px var(--tw-font-label);letter-spacing:.14em;text-transform:uppercase;color:var(--tw-text-muted)}
-#bw-ledger.bw-storage:not(#_):not(#_):not(#_) dialog.lb-dialog select{min-height:38px;border:1px solid var(--tw-text-muted);border-radius:var(--tw-r-1);background:var(--tw-field)}
+#bw-ledger.bw-storage:not(#_):not(#_):not(#_) dialog.lb-dialog select{border:1px solid var(--tw-text-muted);border-radius:var(--tw-r-1);background:var(--tw-field)}
 #bw-ledger:not(#_) .lb-chip{border:1.5px solid var(--tw-text);border-radius:3px;background:transparent}
 #bw-ledger:not(#_) .lb-warning{border:1.5px dashed var(--tw-text-muted);border-radius:var(--tw-r-1);background:transparent}
 #bw-ledger.bw-storage:not(#_):not(#_):not(#_) dialog.lb-dialog .st-soft{border:0;border-radius:var(--tw-r-1);background:transparent;box-shadow:inset 0 0 0 1.5px var(--tw-text);color:var(--tw-text);font:600 14px var(--tw-font)}

@@ -65,7 +65,9 @@ class SetDetailLayer(frames.Layer):
             assert row['quantity'] >= missing, f'frames-setdetail: {identity} has quantity {row["quantity"]} < {missing}'
             db.execute('UPDATE copy_part SET missing=? WHERE id=? AND retired_at IS NULL', (missing, row['id']))
 
-        item = dataset.item_by(db, 'sets', '7213-1')    # the frame's quotes, after dataset.fill's own (see `prices`)
+        item = dataset.item_by(db, 'sets', '7213-1')    # the frame's quotes replace dataset.fill's own (see `prices`), as gate_edge.ValueLayer clears a set's
+        db.execute('DELETE FROM price_current WHERE item_id=?', (item,))
+        db.execute('DELETE FROM price_observation WHERE item_id=?', (item,))
         dataset.price(db, item, None, 'U', SET_USED[0], SET_USED[1], dataset.STAMP)
         dataset.price(db, item, None, 'N', SET_NEW[0], SET_NEW[1], dataset.STAMP)
         db.execute("UPDATE copy SET purchase_date=?, purchase_price=?, purchase_currency='EUR' WHERE id=?", (PAID[0], PAID[1], COPY))

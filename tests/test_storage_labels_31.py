@@ -60,7 +60,7 @@ def test_upgrade_fixture_copy_backfills_creation_order_and_is_idempotent(tmp_pat
         db.commit()
     target = tmp_path/'restored.db'
     shutil.copyfile(fixture,target)
-    assert upgrade(target) == upgrade(target) == '4.7'
+    assert upgrade(target) == upgrade(target) == '4.8'
     with closing(sqlite3.connect(target)) as db:
         assert db.execute('SELECT id,short_id FROM storage ORDER BY short_id').fetchall() == [('a','S-0001'),('c','S-0002'),('b','S-0003')]
         with pytest.raises(sqlite3.IntegrityError):

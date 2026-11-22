@@ -24,7 +24,7 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
-from ..store4 import copies, fetched, identity, jobs, part_list_read, pending
+from ..store4 import copies, fetched, identity, jobs, origins, part_list_read, pending
 from ..store4.audit import Events
 from ..store4.connect import as_current, has_catalogue, now
 from ..store4.errors import AmbiguousIdentity, Store4Error
@@ -799,9 +799,9 @@ def _add_copy(db, row, via, actor):
         receipt = copies.create_copy_in(db, row['item_id'], choice, via=via, actor=actor, condition=condition, completeness=completeness, note=row.get('note'))
         return receipt['copy']['id'], receipt.get('pending')
     copy_id, stamp = str(uuid.uuid4()), now()
-    db.execute("""INSERT INTO main.copy(id, item_id, inventory_source, condition, completeness, completeness_source, note, created_at, updated_at)
-                  VALUES(?, ?, 'none', ?, ?, ?, ?, ?, ?)""", (copy_id, row['item_id'], condition, completeness, 'manual' if completeness else None,
-                                                             row.get('note'), stamp, stamp))
+    db.execute("""INSERT INTO main.copy(id, item_id, inventory_source, condition, completeness, completeness_source, note, created_at, updated_at, added_via)
+                  VALUES(?, ?, 'none', ?, ?, ?, ?, ?, ?, ?)""", (copy_id, row['item_id'], condition, completeness, 'manual' if completeness else None,
+                                                                row.get('note'), stamp, stamp, origins.current()))
     Events(db, via, actor).write('copy', copy_id, 'add', new={'copy': {'id': copy_id, 'item_id': row['item_id'], 'inventory_source': 'none',
                                                                          'condition': condition, 'completeness': completeness, 'note': row.get('note')},
                                                               'figures': [], 'parts': {'columns': copies.PART_COLUMNS, 'rows': []}})
@@ -837,9 +837,10 @@ def _add_wish(db, row, receipt, via, actor):
     else:
         before, wish_id = None, uuid.uuid4().hex
         db.execute('''INSERT INTO main.wish(id, wishlist_id, kind, item_id, color_id, quantity, condition, max_price, max_price_currency,
-                      qty_filled_manual, note, added_at, updated_at) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                      qty_filled_manual, note, added_at, updated_at, added_via) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
                    (wish_id, target, row['kind'], row['item_id'], row['color_id'], row['quantity'], row['condition'], row.get('max_price'),
-                    row.get('max_price_currency') if row.get('max_price') is not None else None, row.get('qty_filled'), row.get('note'), stamp, stamp))
+                    row.get('max_price_currency') if row.get('max_price') is not None else None, row.get('qty_filled'), row.get('note'), stamp, stamp,
+                    origins.current()))
     after = dict(db.execute('SELECT * FROM main.wish WHERE id=?', (wish_id,)).fetchone())
     audit(db, 'wish:' + wish_id, 'added', before, after, via=via, actor=actor)
     receipt['wish'] = dict(id=wish_id, created=before is None, before=before, after=after)

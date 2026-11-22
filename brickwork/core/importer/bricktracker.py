@@ -25,7 +25,7 @@ import shutil
 import sqlite3
 from uuid import uuid4
 
-from ...store4 import copies, pending
+from ...store4 import copies, origins, pending
 from ...store4.connect import as_current, has_catalogue, now as store_now
 from .. import errors, items, stock
 from .. import undo as undoing
@@ -437,7 +437,7 @@ def apply(db, plan_id, decisions=None, *, queue=True):
     stamp = store_now()
     receipt = dict(plan=plan_id, source=meta['source'], origin={}, copies=[], guards={}, stock=[], lots=[], storages=[], places=[], flags=[], wishes=[],
                    copy_flags=[], stock_flags=[], wish_flags=[], unplaced_marks=[], pending=[], jobs=[])
-    with transaction(db):
+    with transaction(db), origins.adding('bricktracker'):     # #551: every row this import makes reads Added via BrickTracker
         done = plans.applied(db, 'import', plan_id)              # checked again under the write lock: a second submit waits here and finds the marker
         if done:
             return dict(event_id=done['event_id'], already_applied=True, counts=done['counts'])

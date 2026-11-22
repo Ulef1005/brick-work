@@ -18,7 +18,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from uuid import uuid4
 
-from ...store4 import pending
+from ...store4 import origins, pending
 from ...store4.connect import as_current, has_catalogue, now as store_now
 from .. import errors, items, keys, stock
 from .. import undo as undoing
@@ -429,9 +429,9 @@ def apply_pull(db, plan_id, ticked=None, *, lost=None, picks=None, via=None, act
     source, stamp = plan['source'], store_now()
     wish_list = plan['link'].get('wish_list') or 'default'
     receipt = dict(plan=plan_id, source=source, copies=[], stock=[], wishes=[], pending=[], flag=None, flag_created=None, baseline_before=None,
-                   stock_flags=[], guards={}, jobs=[])
+                   stock_flags=[], guards={}, jobs=[], synced=[])
     from .. import wishlists
-    with transaction(db):
+    with transaction(db), origins.adding(source):      # #551: every row this pull makes reads Added via <site>
         done = plans.applied(db, 'sync', plan_id)       # checked again under the write lock: a second submit waits here and finds the first one's marker
         if done:
             return dict(event_id=done['event_id'], already_applied=True, counts=done['counts'])
@@ -463,6 +463,7 @@ def apply_pull(db, plan_id, ticked=None, *, lost=None, picks=None, via=None, act
         if section and section.get('on'):
             receipt['lost'] = _lost_report(section, lost_parts.apply(db, section, lost, picks, new_copies=set(receipt['copies']),
                                                                     translate=translate, flag_name='imported from ' + LABELS[source]))
+        receipt['synced'] = _mark_synced(db, plan, wish_list, stamp, left={(r['kind'], r['item_id']) for r in plan['rows'] if r['tickable']} - {(r['kind'], r['item_id']) for r in rows})
         receipt['jobs'] = queue_new_items(db, touched)
         receipt['baseline_before'] = _setting(db, source, 'baseline')
         _put(db, source, 'baseline', _baseline(db, plan, wish_list))
@@ -482,6 +483,23 @@ def apply_pull(db, plan_id, ticked=None, *, lost=None, picks=None, via=None, act
     plan['applied'] = dict(event_id=event, counts=counts, at=stamp)
     _store_plan(db, plan)
     return dict(event_id=event, already_applied=False, counts=counts)
+
+
+def _mark_synced(db, plan, wish_list, stamp, left=frozenset()):
+    """Last synced from (#551): every live copy, set-like stock row and wish of the linked list whose item the site holds now reads as
+    matched to the site at this pull, whether this pull made it or not; a row the person left unticked (`left`: (kind, item id)) is not
+    touched. Returns `{table: [touch entries]}` for the receipt."""
+    source = plan['source']
+    mapping = translate(db, set(plan['remote']['owned']) | set(plan['remote']['wanted']))
+    owned = json.dumps(sorted({mapping[n] for n, q in plan['remote']['owned'].items() if q and mapping.get(n) and ('owned', mapping[n]) not in left}))
+    wanted = json.dumps(sorted({mapping[n] for n, q in plan['remote']['wanted'].items() if q and mapping.get(n) and ('wanted', mapping[n]) not in left}))
+    rows = dict(
+        copy=[r[0] for r in db.execute('SELECT id FROM main.copy WHERE archived_at IS NULL AND item_id IN (SELECT value FROM json_each(?)) ORDER BY id', (owned,))],
+        stock=[r[0] for r in db.execute(f'SELECT id FROM main.stock WHERE archived_at IS NULL AND kind IN ({_KINDS_SQL}) '
+                                        'AND item_id IN (SELECT value FROM json_each(?)) ORDER BY id', (owned,))],
+        wish=[r[0] for r in db.execute(f'SELECT id FROM main.wish WHERE archived_at IS NULL AND wishlist_id=? AND kind IN ({_KINDS_SQL}) '
+                                       'AND item_id IN (SELECT value FROM json_each(?)) ORDER BY id', (wish_list, wanted))])
+    return {table: [origins.touch(db, table, row_id, source, at=stamp) for row_id in ids] for table, ids in rows.items()}
 
 
 def _lost_report(section, report):
@@ -548,6 +566,9 @@ def _undo_pull(db, event, via, actor):
         audit(db, 'copy:' + copy_id, 'archived_at', None, stamp, via=via, actor=actor)
     if r.get('flag_created') and not any(db.execute(f'SELECT 1 FROM main.{t} WHERE flag_id=? LIMIT 1', (flag,)).fetchone() for t in ('copy_flag', 'stock_flag', 'wish_flag')):
         db.execute('DELETE FROM main.flag WHERE id=?', (r['flag_created'],))
+    for entries in (r.get('synced') or {}).values():   # a pull saved before 4.8 has none
+        for entry in reversed(entries):
+            origins.untouch(db, entry)
     _put(db, r['source'], 'baseline', r['baseline_before'])
     audit(db, 'sync:' + r['plan'], 'undo', None, {'undoes': event['id']}, via=via, actor=actor)
     undo_id = db.execute('SELECT last_insert_rowid()').fetchone()[0]

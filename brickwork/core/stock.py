@@ -6,7 +6,7 @@ The merge key of a live stock row is `(item, colour, condition, lot, storage)` w
 import json
 import uuid
 
-from ..store4 import copies, identity
+from ..store4 import copies, identity, origins
 from ..store4.connect import now
 from .admin import OPERATION_KEY, audit, origin
 
@@ -74,7 +74,7 @@ def add_loose(db, *, item_id, color_id=None, quantity, condition, lot_id=None, s
         db.execute('UPDATE main.stock SET quantity=?, updated_at=? WHERE id=?', (before['quantity'] + quantity, stamp, stock_id))
     else:
         columns = dict(id=stock_id, kind=kind, item_id=item_id, color_id=color_id, quantity=quantity, condition=condition,
-                       storage_id=storage_id, lot_id=lot_id, note=note, created_at=stamp, updated_at=stamp)
+                       storage_id=storage_id, lot_id=lot_id, note=note, created_at=stamp, updated_at=stamp, added_via=origins.current())
         lines = []
         if kind == 'minifigure':
             lists, lines = _figure_list(db, item_id, quantity)

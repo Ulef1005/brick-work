@@ -12,7 +12,7 @@ import json
 import uuid
 from pathlib import Path
 
-from . import add, collection, identify, pictures, stickers, stock
+from . import add, collection, identify, items, pictures, stickers, stock
 from . import undo as undoing
 from .admin import audit
 from .media import media_root
@@ -85,7 +85,13 @@ def save(db, pieces, *, batch, condition='used', lot_id=None, new_lot=None, keep
             sticker = chosen.get('sticker', False)
             if not isinstance(sticker, bool):
                 raise ValueError('Has a sticker is on or off')
-            validated.append((piece, identity, colour if identity['kind'] == 'part' else None, add.quantity(chosen.get('quantity', 1)), sticker and identity['kind'] == 'part'))
+            into = None
+            if chosen.get('into') is not None:                  # #42 B: "add here", onto an owned row of the same part, colour and condition
+                into = db.execute("SELECT lot_id, storage_id FROM main.stock WHERE id=? AND kind='part' AND item_id=? AND color_id IS ? AND condition IS ? "
+                                  'AND archived_at IS NULL', (str(chosen['into']), identity['item_id'], colour, condition)).fetchone()
+                if into is None or identity['kind'] != 'part':
+                    raise ValueError('That stock changed · review the piece again')
+            validated.append((piece, identity, colour if identity['kind'] == 'part' else None, add.quantity(chosen.get('quantity', 1)), sticker and identity['kind'] == 'part', into))
         stamp = stamp_now()
         created_lot = None
         if new_lot:
@@ -104,12 +110,13 @@ def save(db, pieces, *, batch, condition='used', lot_id=None, new_lot=None, keep
             raise ValueError('Choose an available lot')
         root = media_root(db)
         stock_changes, records, photos, stock_flags, flag_created = [], [], [], [], None
-        for piece, identity, colour, amount, sticker in validated:
+        for piece, identity, colour, amount, sticker, into in validated:
             identifier = piece['id']
             prior = db.execute('SELECT archived_at FROM main.identification WHERE id=?', (identifier,)).fetchone()
             if prior and prior['archived_at'] is None:
                 raise ValueError('This piece was already added')
-            change = stock.add_loose(db, item_id=identity['item_id'], color_id=colour, quantity=amount, condition=condition, lot_id=lot_id)
+            change = (stock.add_loose(db, item_id=identity['item_id'], color_id=colour, quantity=amount, condition=condition, lot_id=into['lot_id'], storage_id=into['storage_id'])
+                      if into else stock.add_loose(db, item_id=identity['item_id'], color_id=colour, quantity=amount, condition=condition, lot_id=lot_id))
             stock_changes.append(change)
             if sticker:                                     # #201: the Sticker flag marks the line (a merged row keeps one flag for all its pieces)
                 flag, made = stickers.ensure_flag(db)
@@ -131,7 +138,7 @@ def save(db, pieces, *, batch, condition='used', lot_id=None, new_lot=None, keep
         receipt = dict(batch=batch, stock=stock_changes, lot=created_lot, identifications=records, photos=photos, stock_flags=stock_flags, flag_created=flag_created)
         audit(db, 'part_inventory:' + batch, 'receipt', None, receipt)
         event = db.execute('SELECT last_insert_rowid()').fetchone()[0]
-    pictures.queue_missing(db, [identity['item_id'] for _, identity, _, _, _ in validated])      # #183: after the receipt commits; an Undo leaves a harmless job
+    pictures.queue_missing(db, [v[1]['item_id'] for v in validated])      # #183: after the receipt commits; an Undo leaves a harmless job
     return event
 
 
@@ -166,3 +173,45 @@ def undo(db, event_id):
     if row is None or row['entity_kind'] != 'part_inventory':
         raise ValueError('Choose a batch receipt')
     return undoing.undo_event(db, int(event_id), via='app')
+
+
+# ---------- faster part entry (#42): what the review step can infer ----------
+
+def known_colours(db, item_id):
+    """The colours the catalogue knows a part in (#42 variant A): its element ids and the set inventories that list it (the catalogue is
+    Rebrickable's), plus any colour the collection already holds it in. Returns `{colours: [{color_id, name, rgb}], single: color_id | None,
+    known: bool}`: `single` is the one colour to preselect when there is exactly one, `known` is False when no colour is known (no catalogue,
+    a local item), so the screen falls back to every colour."""
+    from ..store4.connect import has_catalogue
+    ids = set()
+    if has_catalogue(db):
+        ids |= {r[0] for r in db.execute('''SELECT color_id FROM catalogue.element WHERE item_id=:i
+                                            UNION SELECT color_id FROM catalogue.inventory_part WHERE item_id=:i''', {'i': item_id})}
+    held = [c for c in items.colours_held(db, item_id) if c is not None]
+    ids |= set(held)
+    colours = [dict(r) for r in db.execute('SELECT id AS color_id, name, rgb FROM main.color WHERE id IN (SELECT value FROM json_each(?)) ORDER BY name, id',
+                                          (json.dumps(sorted(ids)),))]
+    return dict(colours=colours, single=colours[0]['color_id'] if len(colours) == 1 else None, known=bool(colours))
+
+
+def existing_rows(db, item_id, color_id, condition):
+    """Where the same part, colour and condition already sits as loose stock (#42 variant B): `{rows, total, other_conditions}`.
+
+    `rows` are the live loose stock rows, most first: `{stock_id, quantity, storage_id, storage, lot_id, lot}`; the first is the default "add
+    here". `other_conditions` is `{condition: quantity}` of the same part and colour in another condition (the muted line "You have 5 new · you
+    are adding used"). A piece saved with `chosen.into` set to a row's id (`save`) takes that row's storage and lot, so `stock.add_loose`
+    merges it into the row: the existing merge, no new rule."""
+    wanted = CONDITIONS.get(condition)
+    if wanted is None:
+        raise ValueError('Choose used or new')
+    rows, other = [], {}
+    for r in db.execute('''SELECT s.id, s.quantity, s.condition, s.storage_id, st.name AS storage, s.lot_id, l.name AS lot
+                           FROM main.stock s LEFT JOIN main.storage st ON st.id=s.storage_id LEFT JOIN main.lot l ON l.id=s.lot_id
+                           WHERE s.kind='part' AND s.item_id=? AND s.color_id IS ? AND s.archived_at IS NULL AND s.quantity>0
+                           ORDER BY s.quantity DESC, st.name, s.id''', (item_id, color_id)):
+        if r['condition'] == wanted:
+            rows.append(dict(stock_id=r['id'], quantity=r['quantity'], storage_id=r['storage_id'], storage=r['storage'], lot_id=r['lot_id'], lot=r['lot']))
+        else:
+            key = r['condition'] or 'not recorded'
+            other[key] = other.get(key, 0) + r['quantity']
+    return dict(rows=rows, total=sum(r['quantity'] for r in rows), other_conditions=other)

@@ -1110,7 +1110,7 @@ CREATE TRIGGER wish_added_via_fixed BEFORE UPDATE OF added_via ON wish WHEN old.
 -- Last synced from: one row per site and list a row was matched to at a sync (a set in two lists has two). list_key '' is the site's
 -- collection as a whole (no list); list_name is the site's name for the list as last read (#531). A run's receipt keeps the rows it changed.
 CREATE TABLE synced_from(
- id INTEGER PRIMARY KEY,
+ id INTEGER PRIMARY KEY AUTOINCREMENT,                 -- never reused: an Undo puts a dropped row back under its id
  copy_id TEXT REFERENCES copy(id), stock_id TEXT REFERENCES stock(id), wish_id TEXT REFERENCES wish(id),
  site TEXT NOT NULL REFERENCES origin(id),
  list_key TEXT NOT NULL DEFAULT '', list_name TEXT,

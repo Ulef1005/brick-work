@@ -557,6 +557,16 @@ def move_kind_in(db, item_id, new_kind, *, via, actor=None, operation_key=None):
     return {'event_id': event, 'from': old, 'to': new_kind, 'counts': counts}
 
 
+def _refuse_later_sync(db, changes):
+    """#551: a sync that matched a row the kind move made (a Last synced from line the move did not write) would dangle once the row goes."""
+    made = {(c['t'], c['a']['id']) for c in changes if c['b'] is None and c['t'] in ('copy', 'stock', 'wish')}
+    own = {c['a'].get('id', c['a'].get('_rowid')) for c in changes if c['a'] is not None and c['t'] == 'synced_from'}
+    for table, row_id in sorted(made):
+        for (sid,) in db.execute(f'SELECT id FROM main.synced_from WHERE {table}_id=?', (row_id,)).fetchall():
+            if sid not in own:
+                raise MergeRefused(f'a sync matched the {table} the kind move made · undo that sync first')
+
+
 def undo_kind_move_in(db, event_id, *, via, actor=None, operation_key=None):
     """Put a kind move back from its receipt (the event's `new_value`); refused when any row it changed differs now."""
     _need_transaction(db, 'undo_kind_move_in')
@@ -571,6 +581,7 @@ def undo_kind_move_in(db, event_id, *, via, actor=None, operation_key=None):
     changed = log.verify()
     if changed is not None:
         raise MergeRefused(f'{changed["t"]} changed since the kind move · undo the later change first')
+    _refuse_later_sync(db, receipt['changes'])
     db.execute('PRAGMA defer_foreign_keys=ON')
     log.restore()
     _foreign_keys(db, log.tables())

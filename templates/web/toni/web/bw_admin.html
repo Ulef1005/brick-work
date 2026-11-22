@@ -6,7 +6,7 @@
 {% from 'web/toni/brickwork/collection_modules.html' import colour_chip %}
 {% block title %} · {{ title }}{% endblock %}{% block content_class %}standard bw-admin-page{% endblock %}
 {% block page_assets %}
-<link rel="stylesheet" href="{{ bw_static('web/toni/bw-admin.css') }}">{% if page == 'statistics' %}<link rel="stylesheet" href="{{ bw_static('web/toni/bw-value.css') }}">{% endif %}{% if page == 'unresolved' %}<link rel="stylesheet" href="{{ bw_static('web/toni/bw-identity.css') }}"><script src="{{ bw_static('web/toni/bw-identity.js') }}" defer></script>{% endif %}
+<link rel="stylesheet" href="{{ bw_static('web/toni/bw-admin.css') }}"><link rel="stylesheet" href="{{ bw_static('web/toni/bw-admin-b.css') }}">{% if page == 'statistics' %}<link rel="stylesheet" href="{{ bw_static('web/toni/bw-value.css') }}">{% endif %}{% if page == 'unresolved' %}<link rel="stylesheet" href="{{ bw_static('web/toni/bw-identity.css') }}"><script src="{{ bw_static('web/toni/bw-identity.js') }}" defer></script>{% endif %}
 <script src="{{ bw_static('web/toni/import-progress.js') }}" defer></script>
 <script src="{{ bw_static('web/toni/bw-admin.js') }}" defer></script>
 {% if page in ('catalogue', 'catalogue-lists') %}<link rel="stylesheet" href="{{ bw_static('web/toni/bw-catalogue.css') }}"><script src="{{ bw_static('web/toni/bw-catalogue.js') }}" defer></script>{% elif page in ('catalogue-mappings', 'migration') %}<link rel="stylesheet" href="{{ bw_static('web/toni/bw-catalogue.css') }}">{% elif page == 'settings' %}<link rel="stylesheet" href="{{ bw_static('web/toni/bw-catalogue.css') }}"><script src="{{ bw_static('web/toni/bw-catalogue.js') }}" defer></script>{% endif %}

@@ -1,0 +1,55 @@
+/* Tools & Admin pages in B′ (#501 T9: Identify history, Jobs, Catalogues & keys, Collection sync, the other admin pages; API tokens). Tokens
+   only: each page keeps its layout and every shipped control, and takes R2-05 and R2-06 (design/screens-b/01-tools-and-admin, 02-settings):
+   the sub-page header with the violet back link and the 1.5 px rule, the label column and group labels, hairline rows, the field, outlined
+   ink buttons, a violet primary, tags whose status is shape and a word. Tools & Admin itself and Settings are already built (#493) and are
+   left out. `#content` makes each rule beat bw-admin.css's class rules; colours only from the tokens, dark follows from them. */
+
+/* The sub-page header (R2-06 header): back link violet, 30 px title, the line, the rule */
+#content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) header.bw-page-head {display:flex;flex-direction:column;align-items:stretch;gap:0;margin:0;padding:0 0 12px;border:0;border-bottom:1.5px solid var(--tw-rule);background:transparent}
+:is(#content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) header.bw-page-head,#content:has(>.bw-tokens),#content:has(>[data-tokens])) a.bw-back {display:inline-flex;align-items:center;align-self:flex-start;gap:6px;min-height:0;height:auto;margin:0 0 10px;padding:0;border:0;background:transparent;color:var(--tw-accent-text);font:600 14px var(--tw-font);text-decoration:none}
+:is(#content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) header.bw-page-head,#content:has(>.bw-tokens),#content:has(>[data-tokens])) a.bw-back svg {width:16px;height:16px;flex:none}
+#content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) header.bw-page-head>h1 {margin:4px 0 0;font:600 30px/36px var(--tw-font);letter-spacing:-.015em;color:var(--tw-text)}
+#content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) header.bw-page-head>p {margin:2px 0 0;font:400 14px/1.45 var(--tw-font);color:var(--tw-text-2)}
+#content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) header.bw-page-head>p.mono {font:400 13px/1.45 var(--tw-mono),ui-monospace,monospace}
+
+/* Group labels and the label column (R2-05 .bw-label): condensed caps, muted, a hairline under a group's label */
+#content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) :is(.bw-label,th) {font:600 12px/14px var(--tw-font-label);letter-spacing:.14em;text-transform:uppercase;color:var(--tw-text-muted)}
+#content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) :is(h2,h3).bw-label {margin:0;padding:0 0 6px;border-bottom:1px solid var(--tw-divider)}
+#content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) table {border-collapse:collapse}
+#content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) th {padding-bottom:6px;border-bottom:1px solid var(--tw-divider);text-align:left}
+#content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) td {border-bottom:1px solid var(--tw-divider)}
+
+/* Cards: surface, hairline, radius 8, no shadow */
+#content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) :is(.bw-card,.bk-card) {background:var(--tw-surface);border:1px solid var(--tw-divider);border-radius:var(--tw-r-2);box-shadow:none}
+#content:has(>.bw-tokens) .bw-tokens :is(.bw-tk-empty,.bw-tk-secret) {border:1px solid var(--tw-divider);border-radius:var(--tw-r-2);box-shadow:none}
+
+/* Fields (R3-01 .input): 38 px, text-muted hairline, the field colour */
+#content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) :is(input:not([type=checkbox],[type=radio],[type=hidden],[type=file]),select,textarea) {min-height:38px;border:1px solid var(--tw-text-muted);border-radius:var(--tw-r-1);background:var(--tw-field);box-shadow:none;color:var(--tw-text);font:400 15px var(--tw-font)}
+#content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) :is(input,textarea)::placeholder {color:var(--tw-text-muted);opacity:1}
+#content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) .bw-toolbar label {font:600 12px/14px var(--tw-font-label);letter-spacing:.14em;text-transform:uppercase;color:var(--tw-text-muted)}
+#content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) .bw-toolbar :is(input,select) {letter-spacing:0;text-transform:none}
+
+/* Buttons: outlined ink by default, violet primary, dashed when it cannot be used (R3-01 .btn) */
+#content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) :is(button,a.button,.bk-btn,.bi-btn):not([role=switch],.bw-back,.kit-disclosure>summary,[data-bw-lightbox]) {display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:38px;height:auto;padding:0 14px;border:0;border-radius:var(--tw-r-1);background:transparent;box-shadow:inset 0 0 0 1.5px var(--tw-text);color:var(--tw-text);font:600 14px var(--tw-font);text-decoration:none;white-space:nowrap;cursor:pointer}
+#content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) :is(button,a.button,.bk-btn,.bi-btn):is(.primary,.bw-primary,.bk-primary,.bi-primary) {background:var(--tw-accent);box-shadow:none;color:var(--tw-on-accent)}
+#content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) :is(button,a.button,.bk-btn,.bi-btn):is(:disabled,[aria-disabled=true]) {background:transparent;box-shadow:none;color:var(--tw-text-muted);outline:1.5px dashed var(--tw-text-muted);outline-offset:-1.5px;opacity:1;cursor:default}
+#content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) :is(button,a.button,.bk-btn,.bi-btn) svg {width:16px;height:16px}
+#content:has(>.bw-tokens) .bw-tk-primary {display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 14px;border-radius:var(--tw-r-1);background:var(--tw-accent);color:var(--tw-on-accent);box-shadow:none;font:600 14px var(--tw-font);text-decoration:none}
+#content:has(>.bw-tokens) .bw-tk-primary svg {width:16px;height:16px}
+#content:has(>.bw-tokens) :is(.bw-tk-quiet,.bw-tk-outline) {height:38px;min-height:38px;padding:0 14px;border:0;border-radius:var(--tw-r-1);background:transparent;box-shadow:inset 0 0 0 1.5px var(--tw-text);color:var(--tw-text);font:600 14px var(--tw-font)}
+#content:has(>.bw-tokens) .bw-tk-chip {display:inline-flex;align-items:center;height:22px;padding:0 7px;border:1.5px solid var(--tw-text);border-radius:3px;background:transparent;color:var(--tw-text);font:500 12px var(--tw-mono),ui-monospace,monospace}
+
+/* States: an ink tag; done solid, needs attention dashed, unknown dashed muted; no green or amber (R2-03) */
+#content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) :is(.bw-state,.bi-tag,.bk-pill) {display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 7px;border:1.5px solid var(--tw-text);border-radius:3px;background:transparent;color:var(--tw-text);font:600 11px var(--tw-font-label);letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+#content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) :is(.bw-state>span,.bk-pill>.bk-dot) {display:none}
+#content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) :is(.bw-state-warning,.bk-pill.bk-warning,.bk-pill.bk-info) {border-style:dashed}
+#content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) .bk-pill.bk-danger {border-color:var(--tw-danger);color:var(--tw-danger)}
+#content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) :is(.bw-state-unknown,.bk-pill.bk-unknown) {border-style:dashed;border-color:var(--tw-text-muted);color:var(--tw-text-2)}
+
+/* A notice is a word in a dashed box, not a coloured band; an error keeps the danger word */
+#content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) :is(.notice:not([role=alert]),.bk-banner:not(.bk-danger)),#content:has(>.bw-tokens) .bw-tk-banner {background:transparent;border:1.5px dashed var(--tw-text-muted);border-radius:var(--tw-r-1);box-shadow:none;color:var(--tw-text)}
+#content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) .bk-banner.bk-danger,#content:has(>.bw-tokens) .bw-tk-error {background:transparent;border:1.5px solid var(--tw-danger);border-radius:var(--tw-r-1);color:var(--tw-danger)}
+
+@media(max-width:767.98px) {
+  #content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) header.bw-page-head>h1 {font-size:24px;line-height:30px}
+}

@@ -22,7 +22,7 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
   await call('Page.navigate',{url:'file://'+path.join(dir,'detail.html')});
   for(let i=0;i<100;i++){if(await evaluate("document.readyState==='complete' && location.pathname.endsWith('/detail.html') && !!document.querySelector('#bw-collection')"))break;await delay(20);}
   const chipHeights=await evaluate('[...document.querySelectorAll(".bc-copy-chip")].map(n=>n.getBoundingClientRect().height)');
-  assert.ok(chipHeights.length>0,'copy chips missing at '+width);assert.ok(chipHeights.every(h=>h===32),'copy chip height at '+width+': '+chipHeights);   // #507: the copy segment of frame 12 (32 px)
+  assert.ok(chipHeights.length>0,'copy chips missing at '+width);assert.ok(chipHeights.every(h=>Math.abs(h-27)<=1),'copy chip height at '+width+': '+chipHeights);   // #507: the copy segment of frame 12 (27 px: 12 px label, 6 px padding)
  }
  for(const kind of ['S','M','P','I','detail']){
   for(const width of kind==='detail'?[360,390,768,820,1024,1440]:[360,390]){

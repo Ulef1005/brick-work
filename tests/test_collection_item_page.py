@@ -661,7 +661,7 @@ def test_copy_chips(coll, client, count):
     assert len(chips) == (count if count > 1 else 0)
     assert 'Choose copy' not in soup.get_text()
     if chips:
-        assert [c.get_text() for c in chips] == [f'Set {n}' for n in range(1, count + 1)]
+        assert [c.get_text() for c in chips] == [f'Copy {n}' for n in range(1, count + 1)]   # frame 12: the switcher reads Copy n (#507)
         assert len(soup.select('.bc-copy-chip[aria-current=page]')) == 1
         other = next(c for c in chips if not c.has_attr('aria-current'))
         switched = soup_of(client, other['href'])

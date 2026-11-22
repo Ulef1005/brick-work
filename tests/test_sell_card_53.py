@@ -302,7 +302,7 @@ def test_the_card_leads_the_aside_with_the_arithmetic_and_the_preview(coll, clie
     modules = [m['data-module'] for m in page.select('aside [data-module]')]
     assert modules[:2] == ['sell', 'value'] and modules.index('prices') > modules.index('value')      # #507 (frame 12): Sell this copy and Value first
     text = re.sub(r'\s+', ' ', node.get_text(' ', strip=True))
-    assert text.startswith('Sell this copy · Set 1 Preview Used Incomplete Asking price €52.00')
+    assert text.startswith('Sell this copy · Copy 1 Preview Used Incomplete Asking price €52.00')
     assert 'Used sold average · 14 sold · 6 months' in text and 'Missing parts · 3 pieces less €0.70' in text and 'Missing figures · 1 less €5.30' in text
     assert 'Priced 2 of 3 missing lines · 1 needs evidence: White' in text and ', not counted' in text and 'needs evidence' in text
     assert node.select('.bc-sell-unpriced') and len(node.select('details.bc-sell-dis')) == 2 and not node.select('details[open]')

@@ -60,7 +60,7 @@ def test_the_module_shows_paid_worth_and_gain_after_the_sell_card(coll, client):
     quote(coll)
     copy = coll.add_copy('1000-1', condition='used', completeness='complete', price='24.00', currency='EUR', date='2025-03-09')
     text, node = module(client, coll, copy)
-    assert text == 'Value · Set 1 Paid €24.00 9 Mar 2025 Worth now €61.00 9 Oct Gain €37.00 · 154% Used sold average · 14 sales · 9 Oct'
+    assert text == 'Value · Copy 1 Paid €24.00 9 Mar 2025 Worth now €61.00 9 Oct Gain €37.00 · 154% Used sold average · 14 sales · 9 Oct'
     page = soup(client, f"/collection/item/{coll.item('sets', '1000-1')}?copy={copy}")
     modules = [m['data-module'] for m in page.select('aside [data-module]')]
     assert modules.index('value') == modules.index('sell') + 1 and modules.index('prices') > modules.index('value')      # #507 (frame 12): Sell, then Value, then the rest
@@ -79,14 +79,14 @@ def test_a_copy_with_no_price_paid_shows_the_worth_alone(coll, client):
     quote(coll)
     copy = coll.add_copy('1000-1', condition='used', completeness='complete')
     text, node = module(client, coll, copy)
-    assert text == 'Value · Set 1 Paid No price paid Worth now €61.00 9 Oct Used sold average · 14 sales · 9 Oct'
+    assert text == 'Value · Copy 1 Paid No price paid Worth now €61.00 9 Oct Used sold average · 14 sales · 9 Oct'
     assert not node.select('.bc-value-gain')
 
 
 def test_a_copy_with_no_quote_reads_no_sales_and_hides_the_gain(coll, client):
     copy = coll.add_copy('1000-1', condition='used', completeness='complete', price='24.00', currency='EUR', date='2025-03-09')
     text, node = module(client, coll, copy)
-    assert text == 'Value · Set 1 Paid €24.00 9 Mar 2025 Worth now no sales Used · no sales'
+    assert text == 'Value · Copy 1 Paid €24.00 9 Mar 2025 Worth now no sales Used · no sales'
     assert not node.select('.bc-value-gain')
 
 
@@ -94,7 +94,7 @@ def test_an_override_reads_your_value(coll, client):
     quote(coll)
     copy = coll.add_copy('1000-1', condition='used', completeness='complete', price='119.90', currency='EUR', date='2023-11-18', current_value='142.00', current_value_currency='EUR')
     text, node = module(client, coll, copy)
-    assert text == 'Value · Set 1 Paid €119.90 18 Nov 2023 Worth now €142.00 your value Gain €22.10 · 18% Your value'
+    assert text == 'Value · Copy 1 Paid €119.90 18 Nov 2023 Worth now €142.00 your value Gain €22.10 · 18% Your value'
 
 
 def test_a_stale_quote_is_marked_stale_in_ink(coll, client):

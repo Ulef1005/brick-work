@@ -44,6 +44,9 @@
 #content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) :is(button,a.button,.bk-btn,.bi-btn) svg {width:16px;height:16px}
 /* API tokens opens as every admin page (frame 01's .head): the title and the intro over a 1.5 px rule, the create button at the end of the row. */
 #content:has(>.bw-tokens) .bw-tokens-head {align-items:flex-end;padding-bottom:12px;border-bottom:1.5px solid var(--tw-rule)}
+#content:has(>.bw-tokens):not(#_)>a.bw-back {margin-bottom:-17px}   /* the back link sits outside the head here, in #content's grid with a 32 px row gap: its row
+   folds to 0 and the head moves up the rest, so the title sits where every admin page has it (167 px at 1440, measured against Jobs) */
+#content:has(>.bw-tokens):not(#_)>.bw-tokens {margin-top:-5px}
 #content:has(>.bw-tokens) .bw-tokens-head h1 {margin:4px 0 0;font:600 30px/36px var(--tw-font);letter-spacing:-.015em;color:var(--tw-text)}
 #content:has(>.bw-tokens) .bw-tokens-head p {margin:2px 0 0;font:400 14px/1.45 var(--tw-font);color:var(--tw-text-2)}
 #content:has(>.bw-tokens) .bw-tk-primary {display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 14px;border-radius:var(--tw-r-1);background:var(--tw-accent);color:var(--tw-on-accent);box-shadow:none;font:600 14px var(--tw-font);text-decoration:none}

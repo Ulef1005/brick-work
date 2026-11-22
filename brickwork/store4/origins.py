@@ -100,6 +100,33 @@ def rename_list(db, site, list_key, list_name):
     return out
 
 
+def drop_list(db, site, list_key):
+    """A list removed at the site (#531, "Drop the name"): every row's source detail for it goes; the rows themselves stay. Returns the
+    removed `synced_from` rows whole, for `restore`."""
+    rows = [dict(r) for r in db.execute('SELECT * FROM main.synced_from WHERE site=? AND list_key=? ORDER BY id', (site, list_key))]
+    db.execute('DELETE FROM main.synced_from WHERE site=? AND list_key=?', (site, list_key))
+    return rows
+
+
+def restore(db, rows):
+    """Put back rows `drop_list` removed, unless a later run made a row for the same row, site and list meanwhile."""
+    for row in rows:
+        column = next(c for c in TABLES.values() if row[c] is not None)
+        if db.execute(f'SELECT 1 FROM main.synced_from WHERE {column}=? AND site=? AND list_key=?',
+                      (row[column], row['site'], row['list_key'])).fetchone():
+            continue
+        db.execute('INSERT INTO main.synced_from(id, copy_id, stock_id, wish_id, site, list_key, list_name, synced_at) VALUES(?, ?, ?, ?, ?, ?, ?, ?)',
+                   (row['id'], row['copy_id'], row['stock_id'], row['wish_id'], row['site'], row['list_key'], row['list_name'], row['synced_at']))
+
+
+def lists_of(db, site):
+    """`{list_key: (list_name, number of items carrying it)}` for the site's named lists as this collection last recorded them."""
+    return {r['list_key']: (r['name'], r['n']) for r in db.execute(
+        '''SELECT f.list_key, max(f.list_name) AS name, count(DISTINCT coalesce(c.item_id, s.item_id, w.item_id)) AS n FROM main.synced_from f
+           LEFT JOIN main.copy c ON c.id=f.copy_id LEFT JOIN main.stock s ON s.id=f.stock_id LEFT JOIN main.wish w ON w.id=f.wish_id
+           WHERE f.site=? AND f.list_key!='' GROUP BY f.list_key ORDER BY f.list_key''', (site,))}
+
+
 def sources_of(db, table, ids):
     """`{row id: [{site, list_key, list_name, synced_at}, ...]}`, newest first, for the given rows of `table`."""
     column = _column(table)

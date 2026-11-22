@@ -212,6 +212,8 @@
   #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-layout{display:block}
   #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-list{width:100%}
   #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-pane{display:none}
+  /* No pane beside the list here, so no row is marked as the one shown (frame 11 at 390, BUILD-NOTES R4 correction 2026-11-21; #512 pass) */
+  #bw-ledger.bw-storage:not(.st-showing-detail):not(#_):not(#_):not(#_) .st-row.is-selected{background:none;box-shadow:none}
   #bw-ledger.bw-storage:not(#_):not(#_):not(#_).st-showing-detail .st-pane{display:flex}
   #bw-ledger.bw-storage:not(#_):not(#_):not(#_).st-showing-detail .st-list,#bw-ledger.bw-storage:not(#_):not(#_):not(#_).st-showing-detail .st-head{display:none}
   #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .st-back{display:inline-flex}

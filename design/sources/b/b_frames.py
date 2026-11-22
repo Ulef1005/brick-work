@@ -1022,7 +1022,8 @@ def setdetail_body(phone):
                 f'<div style="flex:1;min-width:0;border-radius:3px;padding:6px 9px;{colour_fill(COL[col])}"><div style="font:600 14px var(--tw-font)">{name}</div>'
                 f'<div style="font-size:12.5px">{col} · <span class="mono">{num}</span> · needs {need} · {nmiss} missing</div></div>'
                 f'<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end"><span class="mono" style="font-size:12px;color:var(--tw-text-2)">{stock} in loose stock</span>'
-                f'<span class="btn sec sm" style="height:34px">Take {stock}</span></div></div>')
+                f'<div style="display:flex;gap:10px;align-items:center;justify-content:flex-end;flex-wrap:wrap"><span style="font:600 12.5px var(--tw-font);color:var(--tw-text-2)">Found 1</span>'
+                f'<span style="font:600 12.5px var(--tw-font);color:var(--tw-text-2)">Found all</span><span class="btn sec sm" style="height:34px">Take {stock}</span></div></div></div>')
 
     def prow(img, name, col, num, q):
         return (f'<div style="display:flex;gap:12px;align-items:center;padding:8px 0;border-bottom:1px solid var(--tw-divider)"><div style="width:44px;flex:none">{pic(img, 44, 3)}</div>'

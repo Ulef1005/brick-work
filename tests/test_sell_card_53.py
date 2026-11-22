@@ -295,12 +295,12 @@ def sell_node(client, coll, copy):
     return page, page.select_one('[data-module=sell]')
 
 
-def test_the_card_sits_between_prices_and_value_with_the_arithmetic_and_the_preview(coll, client):
+def test_the_card_leads_the_aside_with_the_arithmetic_and_the_preview(coll, client):
     setup(coll, plate=None)
     copy = checked_copy(coll)
     page, node = sell_node(client, coll, copy)
     modules = [m['data-module'] for m in page.select('aside [data-module]')]
-    assert modules.index('sell') == modules.index('prices') + 1 and modules.index('value') == modules.index('sell') + 1
+    assert modules[:2] == ['sell', 'value'] and modules.index('prices') > modules.index('value')      # #507 (frame 12): Sell this copy and Value first
     text = re.sub(r'\s+', ' ', node.get_text(' ', strip=True))
     assert text.startswith('Sell this copy · Set 1 Preview Used Incomplete Asking price €52.00')
     assert 'Used sold average · 14 sold · 6 months' in text and 'Missing parts · 3 pieces less €0.70' in text and 'Missing figures · 1 less €5.30' in text

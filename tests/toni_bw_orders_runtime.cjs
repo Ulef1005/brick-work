@@ -38,9 +38,9 @@ assert.deepEqual(JSON.parse(JSON.stringify(suggest([{available:0,gaps:[]},{avail
 (async()=>{
  assert.equal(gap.value,2);assert.equal(stock.value,0);
  gap.value='0';await reset.trigger();assert.equal(gap.value,2);
- await mark.trigger();assert.equal(received.value,'7');assert.equal(chip.textContent,'Complete');assert.equal(progress.textContent,'7 of 7 pieces counted');assert.equal(bar.style.width,'100%');
+ await mark.trigger();assert.equal(received.value,'7');assert.equal(chip.textContent,'Complete');assert.equal(chip.dataset.state,'complete');assert.equal(progress.textContent,'7 of 7 pieces counted');assert.equal(bar.style.width,'100%');
  await stepInput.minus.trigger();assert.equal(stepInput.value,'1');await stepInput.plus.trigger();await stepInput.plus.trigger();assert.equal(stepInput.value,'3');stepInput.value='0';await stepInput.trigger('input');
- received.value='3';await stepInput.trigger('input');assert.equal(chip.textContent,'4 short');
+ received.value='3';await stepInput.trigger('input');assert.equal(chip.textContent,'4 short');assert.equal(chip.dataset.state,'short');assert.equal(progress.textContent,'3 of 7 pieces counted · 4 still to count');
  assert.equal(select.hidden,true);const box=select.afterNode,opener=box.children[0],menu=box.children[1];
  await opener.trigger();assert.equal(menu.hidden,false);assert.equal(opener.attributes['aria-expanded'],'true');
  await menu.children[1].trigger();assert.equal(select.value,'name');assert.equal(menu.hidden,true);assert.equal(opener.focused,true);

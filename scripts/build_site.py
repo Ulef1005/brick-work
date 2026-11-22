@@ -303,10 +303,14 @@ def json_ld():
     return '<script type="application/ld+json">' + json.dumps(data, ensure_ascii=False).replace('</', '<\\/') + '</script>'
 
 
+# The folders whose pages sit one level down (coming-from/<tool>/, questions/<slug>/) and go into the sitemap.
+SECOND_LEVEL = ('coming-from', 'questions')
+
+
 def site_urls(out):
     """The marketing pages that go into sitemap-pages.xml: every folder with an index.html outside docs/ and demo/, plus the demo's entry."""
     folders = sorted(p.parent.relative_to(out).as_posix() for p in out.glob('*/index.html')) + sorted(
-        p.parent.relative_to(out).as_posix() for p in out.glob('*/*/index.html') if p.parts[-3] in ('coming-from',))
+        p.parent.relative_to(out).as_posix() for p in out.glob('*/*/index.html') if p.parts[-3] in SECOND_LEVEL)
     return [''] + [f + '/' for f in folders if f.split('/')[0] not in ('docs', 'demo', 'api', 'mcp')] + ['demo/']
 
 

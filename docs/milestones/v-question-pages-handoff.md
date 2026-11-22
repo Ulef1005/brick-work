@@ -23,7 +23,7 @@ The full state is on GitHub, in [#544's handoff comment](https://github.com/Ulef
 
 ## The marketing decision-log entry
 - Target: ai-wiki `wiki/agentic/roles/marketing/brick-work/marketing-brick-work-log.md`, section `## Log`, as the last entry.
-- It was appended, uncommitted, on 2026-11-22 to `/Users/ulf/Workspace/ai-wiki` on `ulfs-macbook-pro-local` (main at `c2111f81`). That is not the checkout the wiki-agent uses, so the wiki-agent copies it from the appendix below.
+- It was appended, uncommitted, on 2026-11-22 to a local ai-wiki checkout on Ulf's computer that is not the one the wiki-agent uses, so the wiki-agent copies it from the appendix below.
 
 ## Waiting, and on whom
 1. **brick-work-marketing**

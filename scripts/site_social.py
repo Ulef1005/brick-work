@@ -180,8 +180,8 @@ def build_html(folder: Path, width: int = 1200, height: int = 630) -> str:
         '__WIDTH__': str(width),
         '__HEIGHT__': str(height),
         '__SHIFT__': str(width - 1200),
-        '__DESKTOP_IMG__': stage(ROOT / 'scripts' / 'site' / 'img' / '1c-sets-desktop-1440-light.png', folder),
-        '__PHONE_IMG__': stage(ROOT / 'scripts' / 'site' / 'img' / '3a-matcher-phone-390-light.png', folder),
+        '__DESKTOP_IMG__': stage(ROOT / 'docs' / 'img' / 'readme' / '3e-part-desktop-1440-light.png', folder),
+        '__PHONE_IMG__': stage(ROOT / 'docs' / 'img' / 'readme' / '3c-picker-pick-phone-390-light.png', folder),
     }
     page = HTML
     for key, value in tokens.items():

@@ -28,12 +28,12 @@
 <p align="center">
   <a href="https://brick-work.app/demo/">
     <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="docs/img/readme/1c-sets-desktop-1440-dark.png">
-      <img src="docs/img/readme/1c-sets-desktop-1440-light.png" alt="Brick Work: the sets list on an invented collection" width="620">
+      <source media="(prefers-color-scheme: dark)" srcset="docs/img/readme/3e-part-desktop-1440-dark.png">
+      <img src="docs/img/readme/3e-part-desktop-1440-light.png" alt="Brick Work: Set Inspector in the middle of a part check, the Motorized Excavator at part line 57 of 140 with Found and Missing buttons" width="620">
     </picture>
     <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="docs/img/readme/3c-picker-pick-390-dark.png">
-      <img src="docs/img/readme/3c-picker-pick-390-light.png" alt="Brick Work: Part Runner on a phone" width="190">
+      <source media="(prefers-color-scheme: dark)" srcset="docs/img/readme/3c-picker-pick-phone-390-dark.png">
+      <img src="docs/img/readme/3c-picker-pick-phone-390-light.png" alt="Brick Work: Part Runner on a phone, a fence lattice to pick for three sets" width="190">
     </picture>
   </a>
 </p>
@@ -64,6 +64,14 @@ It brings your collection over from Brickset, Rebrickable and BrickTracker, plus
 ## In pictures
 
 These screenshots show the built app on the demo's invented collection, with real Rebrickable set and part pictures.
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/img/readme/1c-sets-desktop-1440-dark.png">
+    <img src="docs/img/readme/1c-sets-desktop-1440-light.png" alt="Brick Work: the sets list on an invented collection" width="620">
+  </picture>
+  <br><sub><strong>Your sets.</strong> The whole collection in one list, searchable and sorted the way you choose.</sub>
+</p>
 
 <p align="center">
   <picture>

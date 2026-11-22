@@ -13,3 +13,9 @@ The decks are Slides artifacts on claude.ai (private to the owner); the PDFs her
 | 1.0 — Stability release | Stable schema, tested upgrades from 0.5.x, published image | 2–3 weeks (built 4–5 Nov; v0.9.0 tagged 5 Nov, the gate waits on the first GHCR push) | [deck](https://claude.ai/artifact/HNUr6aVaeDdsXbAwxZMyfp) | [status report PDF](1.0-stability-release.pdf) |
 | C — New functionality | The new functionality chosen after B ships: set detection, Build Scout, one order list, Change variant, grouped part lists, the docs standard | 11–16 Nov (scope decided 11 Nov, #98; built and closed 16 Nov; ships on prod with 1.1 together with D) | [deck](https://claude.ai/artifact/T43hZkMmcZAD9zzmDjAKif) | [status report PDF](c-new-functionality.pdf) |
 | D — Value, selling and custom sets | Value and gain per copy with an insurance report, Sell this copy, part out, Found in, storage labels with QR codes and instruction downloads, then a code review of everything built for C and D | Decided 12 Nov that C and D ship together as 1.1; built and reviewed by 16 Nov; its gate (#430) passes when 1.1 is on prod | [deck](https://claude.ai/artifact/FqAkwCdLQsosc3u91sKjuD) | none: the deck is the status report (Ulf, 17 Nov) |
+
+## Handoffs
+
+A milestone built by several agents keeps its handoff here, next to its deck: what is done, the PR merge order, the schema step order, open guesses and the next steps per issue. The same text is the umbrella comment on the milestone gate.
+
+- [N: Sync and files](n-handoff.md), gate #525

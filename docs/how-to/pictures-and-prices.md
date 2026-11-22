@@ -89,7 +89,7 @@ Brick Work works out, per copy, what you paid, what it is worth now and the gain
 
 ## Sell this copy
 
-The page of a set has a **Sell this copy** card for the selected copy, at the top of the right column, with **Value** under it and then Info, Prices, Part list and Links. It suggests an asking price and writes the listing text. It changes nothing in your collection.
+The page of a set has a **Sell this copy** card for the selected copy, at the top of the right column. **Value** comes under it, then Info, Prices, Part list and Links. It suggests an asking price and writes the listing text. It changes nothing in your collection.
 
 - **Asking price.** The card starts from the used sold average of the set, or the new average for a new or sealed copy. It takes off the used price of each missing part and each missing figure, line by line. The sum row is the asking price.
 - **Missing lines.** **Missing parts** and **Missing figures** open in place. Each line shows its colour, name, part number and price. At 1024 pixels and wider, Missing parts starts open.

@@ -56,3 +56,37 @@ main .bw-page-head .bw-back:where(:not(.b-prime,.b-prime *)){margin-bottom:0}
 }
 .footer:where(:not(.b-prime,.b-prime *)){padding:20px 32px}
 @media(max-width:1023.98px){body{padding-bottom:var(--bw-bottom)}.layout>main:where(:not(.b-prime,.b-prime *)){padding:24px 20px}.footer:where(:not(.b-prime,.b-prime *)){padding:20px 20px calc(20px + var(--bw-bottom))}}
+
+/* B′ parts of the shell. The Jump dialog in B′ (#501 T10, R2-01 shell): tokens only, the layout, the results and every control stay. The dialog sits outside the
+   `.b-prime` scope, so it takes the components here: radius 8 and a hairline, the field (one text-muted hairline, the focus ring on the
+   field, not on the input inside it), results as hairline rows instead of cards, the picture on the white tile, the chosen copy violet soft
+   with a violet bar (as a selected storage row). Colours only from the tokens; dark follows from them. */
+#global-jump:not(#_) {border:1px solid var(--tw-divider);border-radius:var(--tw-r-2);background:var(--tw-bg);box-shadow:none;color:var(--tw-text)}
+#global-jump:not(#_) .jump-search-field {height:44px;border:1px solid var(--tw-text-muted);border-radius:var(--tw-r-1);background:var(--tw-field);outline:0}
+#global-jump:not(#_) .jump-search-field:focus-within {outline:2px solid var(--tw-focus-color);outline-offset:2px}
+#global-jump:not(#_) #jump-query {outline:0;box-shadow:none;border:0;background:none}
+#global-jump:not(#_) #jump-query::placeholder {color:var(--tw-text-muted);opacity:1}
+#global-jump:not(#_) .jump-cancel {font:600 14px var(--tw-font)}
+#global-jump:not(#_) #jump-message {font:400 13px var(--tw-mono),ui-monospace,monospace;color:var(--tw-text-2)}
+#global-jump:not(#_) #jump-results {gap:0;border-top:1.5px solid var(--tw-rule)}
+#global-jump:not(#_) #jump-results:empty {border-top:0}
+#global-jump:not(#_) .jump-result {padding:12px 0;border:0;border-bottom:1px solid var(--tw-divider);border-radius:0;background:transparent}
+#global-jump:not(#_) .jump-result h3 {margin:0;font:600 16px/1.3 var(--tw-font);color:var(--tw-text)}
+#global-jump:not(#_) .jump-result-head .mono {font:400 12px var(--tw-mono),ui-monospace,monospace;color:var(--tw-text-2)}
+#global-jump:not(#_) .jump-image {width:56px;height:56px;padding:4px;box-sizing:border-box;border-radius:var(--tw-r-1);background:var(--tw-tile);color:var(--tw-tile-ink);font:400 11px/1.2 var(--tw-font);text-align:center}
+#global-jump:not(#_) .jump-image img {width:100%;height:100%;object-fit:contain}
+#global-jump:not(#_) .jump-copy {margin-top:6px;padding:8px 12px;border-radius:0;box-shadow:inset 1.5px 0 0 var(--tw-divider)}
+#global-jump:not(#_) .jump-copy:hover {background:var(--tw-surface)}
+#global-jump:not(#_) .jump-copy.selected {background:var(--tw-accent-soft);box-shadow:inset 3px 0 0 var(--tw-accent)}
+#global-jump:not(#_) .jump-copy:focus-visible {outline:2px solid var(--tw-focus-color);outline-offset:-2px}
+#global-jump:not(#_) .jump-copy strong {font:600 14px var(--tw-font)}
+#global-jump:not(#_) .jump-copy .secondary {font:400 13px var(--tw-font);color:var(--tw-text-2)}
+@media(max-width:767.98px) {
+  #global-jump:not(#_) {border:0;border-radius:0}
+}
+
+/* Module states (#501 T10, R2-04 status: shape and a word), on a set's and an item's Prices card: while a price refresh runs its line is a
+   dashed box; a failed refresh is the danger word; a stale price says "stale" in a dashed ink tag. No colour carries a state alone. */
+#bw-collection:is([data-b-detail],[data-b-copy]):not(#_):not(#_) [data-module=prices][aria-busy=true] [data-bc-fetch-status]:not(:empty),#bw-collection:is([data-b-detail],[data-b-copy]):not(#_):not(#_) [data-bc-fetch-scope][aria-busy=true] [data-bc-fetch-status]:not(:empty) {padding:8px 10px;border:1.5px dashed var(--tw-text-muted);border-radius:var(--tw-r-1);color:var(--tw-text-2)}
+#bw-collection:is([data-b-detail],[data-b-copy]):not(#_):not(#_) [data-bc-fetch-status][data-state=error] {color:var(--tw-danger);font-weight:600}
+#bw-collection:is([data-b-detail],[data-b-copy]):not(#_):not(#_) :is(.bc-stale,.bc-partout-stale) {display:inline-flex;align-items:center;height:18px;padding:0 5px;border:1.5px dashed var(--tw-text);border-radius:3px;color:var(--tw-text);font:600 10px var(--tw-font-label);letter-spacing:.08em;text-transform:uppercase;vertical-align:1px}

@@ -734,7 +734,7 @@ document.addEventListener?.('click',async event=>{
   const before=Number(pending?.dataset.priced || 0);
   button.disabled=true;
   if(pending)button.textContent=`Fetching ${items.length} part prices`;
-  if(status)status.textContent='Queued with the market price refresh · the card updates here';
+  if(status){status.textContent='Queued with the market price refresh · the card updates here';delete status.dataset.state;}
   scope?.setAttribute('aria-busy','true');
   try{
     const response=await fetch(button.dataset.refreshUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items,csrf_token:root.dataset.csrf})});
@@ -783,7 +783,7 @@ document.addEventListener?.('click',async event=>{
     const card=scope?.closest('[data-module="prices"]') || document.querySelector('[data-module="prices"]');
     card?.replaceWith(fresh);
     button.disabled=false;button.textContent=label;
-  }catch(error){button.disabled=false;button.textContent=label;if(status)status.textContent=error.message;}
+  }catch(error){button.disabled=false;button.textContent=label;if(status){status.textContent=error.message;status.dataset.state='error';}}
   finally{scope?.setAttribute('aria-busy','false');}
 });
 

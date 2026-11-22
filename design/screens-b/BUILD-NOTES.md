@@ -447,4 +447,4 @@ Brickset, BrickLink, Brick Owl, Import & export, the complete export and the lis
 - **Unchanged list:** one line, "Unchanged; the source detail of <n> set(s)", choice "Skip".
 - **No tags:** the list names are not tags on the copy, so there is no read-only tag in Tags admin and rule (b) of #531 is dropped (Ulf, version 8). The user's own tags are never touched.
 - **Filter:** the Sets Source filter offers the lists under "Last synced from" (N2-21).
-
+- **Frame 13, 2026-11-22 (#508, pending Ulf's picture check):** the colour row draws the shipped "More colours" link at the right of the label "Colour · you choose" (it opens the full colour list under the swatches). Generator output; no other frame changed.

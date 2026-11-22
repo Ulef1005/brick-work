@@ -864,7 +864,7 @@ def spotter_body(phone):
               f'<div><div style="font:600 16px var(--tw-font)">Brick 1 × 6</div><div class="mono" style="font-size:12.5px;color:var(--tw-text-2)">3009 · Light Bluish Gray · 0.87 match</div></div>'
               f'<div style="font-size:13px;color:var(--tw-text-2);border-top:1px solid var(--tw-divider);padding-top:8px">You have 14 in 3 colours: Light Bluish Gray 8 (S-0003), Red 4, White 2 · '
               f'<span style="color:var(--tw-accent-text);font-weight:600">Fills a gap in 1 copy · Matchmaker</span></div>'
-              f'<div class="lbl">Colour · you choose</div><div style="display:flex;gap:6px;flex-wrap:wrap">{sw_}</div>'
+              f'<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px"><div class="lbl">Colour · you choose</div><span style="font:600 13px var(--tw-font);color:var(--tw-accent-text)">More colours</span></div><div style="display:flex;gap:6px;flex-wrap:wrap">{sw_}</div>'
               f'<div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap"><div class="step" style="height:44px"><b style="width:44px">−</b><span style="min-width:52px;font-size:18px">1</span><b style="width:44px">+</b></div>'
               f'<span style="display:flex;gap:8px;align-items:center;font-size:14px">{sw(False)}Has a sticker</span></div>'
               f'<span class="btn" style="width:100%;height:52px">Confirm · Light Bluish Gray ×1</span>'

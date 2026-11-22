@@ -1,6 +1,6 @@
 /* Order missing parts in the B′ design (frame 15, #510): the set rows with a bar to scale, the order list under one tape, the source choice as the kit's segment and
    boxes. `#bw-planning` is not a `.b-prime` root, so only the page's own rules (bw-planning.css) are overridden: each is written as `#bw-planning[data-screen=order] .x`
-   (id and attribute beat the single-class rules before it). Tokens only; the dark theme follows from them. */
+   (id and attribute beat the single-class rules before it). Tokens only; the dark theme follows from them. Type sizes as frame 15 draws them, measured per element (#501, 22.11.). */
 #bw-planning[data-screen=order] {--oo-gap:32px}
 @media(min-width:1024px) {
   body:has(#bw-planning[data-screen=order]) .layout>main {padding:0}
@@ -18,12 +18,12 @@
 #bw-planning[data-screen=order] .oo-back {display:none}
 @media(max-width:1023.98px) {#bw-planning[data-screen=order][data-step=review] .oo-back {display:flex;align-items:center;height:auto;min-height:44px;margin:0}}
 #bw-planning[data-screen=order] h1 {font:600 30px/36px var(--tw-font);letter-spacing:-.015em;margin:0}
-#bw-planning[data-screen=order] .oo-choose>.bp-subtitle {margin:2px 0 0;padding-bottom:14px;border-bottom:1.5px solid var(--tw-rule);font:400 15px/20px var(--tw-font);color:var(--tw-text-2)}
+#bw-planning[data-screen=order] .oo-choose>.bp-subtitle {margin:2px 0 0;padding-bottom:14px;border-bottom:1.5px solid var(--tw-rule);font:400 14px/20px var(--tw-font);color:var(--tw-text-2)}
 #bw-planning[data-screen=order] .oo-controls {margin:14px 0 14px;gap:10px}
 #bw-planning[data-screen=order] .oo-search input {height:38px;min-height:38px;padding-left:36px;border:1.5px solid var(--tw-text);border-radius:3px;background:var(--tw-surface);font:400 15px var(--tw-font)}
 #bw-planning[data-screen=order] .oo-search svg {top:11px}
 #bw-planning[data-screen=order] .oo-select,#bw-planning[data-screen=order] .oo-switch {min-height:0;padding:0;border:0;border-radius:0;background:none;gap:8px;font:400 14px var(--tw-font)}
-#bw-planning[data-screen=order] .oo-select>span {color:var(--tw-text-2)}
+#bw-planning[data-screen=order] .oo-select>span {font:500 13px var(--tw-font);color:var(--tw-text-2)}
 #bw-planning[data-screen=order] .oo-select select {width:120px;height:38px;min-height:38px;padding:0 10px;border:1.5px solid var(--tw-text);border-radius:3px;background:var(--tw-surface);font:400 15px var(--tw-font)}
 #bw-planning[data-screen=order] .oo-switch .bk-switch {min-width:40px;min-height:24px}
 #bw-planning[data-screen=order] .oo-switch .bk-track,#bw-planning[data-screen=order] .oo-prefer .bk-track {width:40px;height:24px;border:1.5px solid var(--tw-text);border-radius:12px;background:var(--tw-surface)}
@@ -62,43 +62,43 @@
   #bw-planning[data-screen=order] .oo-review {top:calc(var(--bw-bars) + 16px);padding:0;border-radius:0;background:none}
 }
 #bw-planning[data-screen=order] .oo-tape {display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 16px;border-radius:3px;background:var(--tw-accent);color:var(--tw-on-accent)}
-#bw-planning[data-screen=order] .oo-label {display:block;margin:0;font:600 14px var(--tw-font-label);letter-spacing:.1em;text-transform:uppercase;color:inherit}
-#bw-planning[data-screen=order] .oo-review h2 {margin:0;font:400 14px var(--tw-mono);letter-spacing:.04em;color:inherit;text-align:right}
-#bw-planning[data-screen=order] .oo-sub-top {margin:14px 0 18px;font:400 14.5px/21px var(--tw-font);color:var(--tw-text-2)}
+#bw-planning[data-screen=order] .oo-label {display:block;margin:0;font:600 13px var(--tw-font-label);letter-spacing:.1em;text-transform:uppercase;color:inherit}
+#bw-planning[data-screen=order] .oo-review h2 {margin:0;font:500 12px var(--tw-mono);letter-spacing:.04em;color:inherit;text-align:right}
+#bw-planning[data-screen=order] .oo-sub-top {margin:14px 0 18px;font:400 13px/19px var(--tw-font);color:var(--tw-text-2)}
 #bw-planning[data-screen=order] .oo-prefer {padding:0 0 14px;margin-bottom:14px;border-bottom:1px solid var(--tw-divider)}
-#bw-planning[data-screen=order] .oo-prefer-text strong {font:600 16px/22px var(--tw-font)}
-#bw-planning[data-screen=order] .oo-prefer-text span {font:400 14px/20px var(--tw-font);color:var(--tw-text-2)}
+#bw-planning[data-screen=order] .oo-prefer-text strong {font:600 14px/20px var(--tw-font)}
+#bw-planning[data-screen=order] .oo-prefer-text span {font:400 12.5px/18px var(--tw-font);color:var(--tw-text-2)}
 #bw-planning[data-screen=order] .oo-tabs {display:inline-flex;gap:0;padding:0;border:1.5px solid var(--tw-text);border-radius:3px;background:none;margin-bottom:14px}
 #bw-planning[data-screen=order] .oo-tabs a.oo-tab {flex:none;min-height:0;padding:6px 12px;border-radius:0;box-shadow:none;background:none;color:var(--tw-text);font:600 12px var(--tw-font-label);letter-spacing:.08em;text-transform:uppercase}
 #bw-planning[data-screen=order] .oo-tabs a.oo-tab.on {background:var(--tw-text);color:var(--tw-bg)}
 #bw-planning[data-screen=order] .oo-tabs a i {color:inherit;font:inherit}
 #bw-planning[data-screen=order] .oo-tots {gap:0 32px}
 #bw-planning[data-screen=order] .oo-tot {padding:6px 0 10px;border-radius:0;background:none;border-top:1.5px solid var(--tw-rule);gap:2px}
-#bw-planning[data-screen=order] .oo-tot span {font:600 13px var(--tw-font-label);letter-spacing:.1em;text-transform:uppercase;color:var(--tw-text-2)}
+#bw-planning[data-screen=order] .oo-tot span {font:600 12px var(--tw-font-label);letter-spacing:.1em;text-transform:uppercase;color:var(--tw-text-2)}
 #bw-planning[data-screen=order] .oo-tot b,#bw-planning[data-screen=order] .oo-tot em {font:600 22px/28px var(--tw-mono);letter-spacing:-.02em}
 #bw-planning[data-screen=order] .oo-tot em {color:var(--tw-text-2)}
 #bw-planning[data-screen=order] .oo-tot i {font:400 11.5px/16px var(--tw-mono);color:var(--tw-text-2)}
 #bw-planning[data-screen=order] .oo-tot.oo-wide {grid-column:auto}
 #bw-planning[data-screen=order] .oo-line {grid-template-columns:44px minmax(0,1fr) auto;padding:16px 0;border-top:0;border-bottom:1px solid var(--tw-divider)}
 #bw-planning[data-screen=order] .oo-tile {width:44px;height:44px;border:1px solid var(--tw-divider);border-radius:2px;background:var(--tw-tile);color:var(--tw-tile-ink)}
-#bw-planning[data-screen=order] .oo-what strong {font:600 17px/22px var(--tw-font)}
-#bw-planning[data-screen=order] .oo-qty {font:600 20px/24px var(--tw-mono)}
+#bw-planning[data-screen=order] .oo-what strong {font:600 14px/20px var(--tw-font)}
+#bw-planning[data-screen=order] .oo-qty {font:600 15px/20px var(--tw-mono)}
 #bw-planning[data-screen=order] .oo-sc {border:1.5px solid var(--tw-divider);border-radius:3px;background:none;padding:5px 9px;box-shadow:none}
-#bw-planning[data-screen=order] .oo-sc b {font:600 14px/20px var(--tw-font);color:var(--tw-text-2)}
+#bw-planning[data-screen=order] .oo-sc b {font:600 13px/18px var(--tw-font);color:var(--tw-text-2)}
 #bw-planning[data-screen=order] .oo-sc i {font:400 11.5px/16px var(--tw-mono);color:var(--tw-text-muted)}
 #bw-planning[data-screen=order] .oo-sc.on {border-color:var(--tw-accent);background:var(--tw-accent-soft);box-shadow:none}
 #bw-planning[data-screen=order] .oo-sc.on b {color:var(--tw-accent-text)}
 #bw-planning[data-screen=order] .oo-sc.on b::before {content:none}
 #bw-planning[data-screen=order] .oo-sc.dis {border-style:solid;background:none}
 @media(max-width:1023.98px) {
-  #bw-planning[data-screen=order] h1 {font-size:30px;line-height:36px}
-  #bw-planning[data-screen=order] .oo-filter-box>summary {min-height:0;height:38px;padding:0 14px;border:1.5px solid var(--tw-text);border-radius:3px;background:none;font:600 15px var(--tw-font)}
+  #bw-planning[data-screen=order] h1 {font-size:26px;line-height:36px}
+  #bw-planning[data-screen=order] .oo-filter-box>summary {min-height:0;height:38px;padding:0 14px;border:1.5px solid var(--tw-text);border-radius:3px;background:none;font:600 14px var(--tw-font)}
   #bw-planning[data-screen=order] .oo-search {flex:1 1 100%;max-width:none}
   #bw-planning[data-screen=order] .oo-filter-box>summary {color:var(--tw-text)}
   #bw-planning[data-screen=order] .oo-bar {left:0;right:0;bottom:var(--bw-bottom);width:auto;margin:0 calc(-1 * var(--tw-s-6));padding:12px 16px;border:0;border-top:1.5px solid var(--tw-rule);border-radius:0;box-shadow:none;background:var(--tw-surface);align-items:center;gap:16px}
-  #bw-planning[data-screen=order] .oo-bar-text .mono {font:600 16px var(--tw-mono)}
-  #bw-planning[data-screen=order] .oo-bar-text .oo-sub {font:400 13px var(--tw-mono);color:var(--tw-text-2)}
-  #bw-planning[data-screen=order] .oo-bar .primary {flex:none;min-height:44px;padding:0 22px;border:0;border-radius:3px;background:var(--tw-accent);color:var(--tw-on-accent);font:600 17px var(--tw-font)}
+  #bw-planning[data-screen=order] .oo-bar-text .mono {font:700 12.5px/18px var(--tw-mono)}
+  #bw-planning[data-screen=order] .oo-bar-text .oo-sub {font:400 12.5px/18px var(--tw-mono);color:var(--tw-text-2)}
+  #bw-planning[data-screen=order] .oo-bar .primary {flex:none;min-height:44px;padding:0 22px;border:0;border-radius:3px;background:var(--tw-accent);color:var(--tw-on-accent);font:600 15px var(--tw-font)}
   #bw-planning[data-screen=order] .oo-row {grid-template-columns:22px 52px minmax(0,1fr)}
   #bw-planning[data-screen=order] .oo-row .bc-picture {display:flex;width:52px;height:42px}
 }
@@ -109,10 +109,10 @@
 #bw-planning[data-screen=order] .bw-sec {border-top:0}
 #bw-planning[data-screen=order] .bw-sec:last-of-type {border-bottom:0}
 #bw-planning[data-screen=order] .bw-sec-head {min-height:0;padding:22px 0 8px;gap:10px;border-bottom:1.5px solid var(--tw-rule)}
-#bw-planning[data-screen=order] .bw-sec-head strong {font:600 13px var(--tw-font-label);letter-spacing:.12em;text-transform:uppercase;color:var(--tw-text-2)}
-#bw-planning[data-screen=order] .bw-sec-count {margin-left:auto;font:400 13px var(--tw-mono);color:var(--tw-text-2)}
+#bw-planning[data-screen=order] .bw-sec-head strong {font:600 12px var(--tw-font-label);letter-spacing:.12em;text-transform:uppercase;color:var(--tw-text-2)}
+#bw-planning[data-screen=order] .bw-sec-count {margin-left:auto;font:600 12px var(--tw-mono);color:var(--tw-text-2)}
 #bw-planning[data-screen=order] .bw-sec-chevron {order:3;color:var(--tw-text-muted)}
-#bw-planning[data-screen=order] .bw-sec-tools {gap:14px;margin:0 0 4px;font:600 14px var(--tw-font)}
+#bw-planning[data-screen=order] .bw-sec-tools {gap:14px;margin:0 0 4px;font:600 13px var(--tw-font)}
 #bw-planning[data-screen=order] .bw-sec-tools a {text-decoration:none}
 #bw-planning[data-screen=order] .bw-sec-tools span {display:none}
 #bw-planning[data-screen=order] .oo-src {padding:0;border-radius:0;background:none;font:400 12px var(--tw-mono);color:var(--tw-text-2)}

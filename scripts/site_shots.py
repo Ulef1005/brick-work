@@ -136,8 +136,9 @@ SITE_PICTURES = {
     '3a-matcher-phone-390': ('/workbench/match', 390, 844, None, (SITE,)),
     '3e-start-phone-390': ('/workbench/check-parts/' + R_FRESH, 390, 844, None, (SITE,)),
     '3e-part-phone-390': ('/workbench/check-parts/%s?run=1' % R_STARTED, 390, 844, None, (SITE,)),
+    '3e-part-desktop-1440': ('/workbench/check-parts/%s?run=1' % R_STARTED, 1440, 900, None, (README,)),   # README and social previews (#502)
     '3c-picker-sets-phone-390': ('/workbench/part-picker', 390, 844, None, (SITE,)),
-    '3c-picker-pick-phone-390': (R_PICKED + '&pick=1', 390, 950, None, (SITE,)),
+    '3c-picker-pick-phone-390': (R_PICKED + '&pick=1', 390, 950, None, (SITE, README)),   # also the README's and the social previews' (#502)
     '12b-count-what-arrived-desktop-1440': ('/workbench/orders/2', 1440, 1050, None, (SITE,)),
     '12c-list-and-detail-desktop-1440': ('/workbench/storage/storage-shelf-b', 1440, 900, None, (SITE,)),
     'scout-list-desktop-1440': ('/workbench/build-scout?min_percent=10', 1440, 900, HIDE_PANEL, (SITE,)),

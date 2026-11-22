@@ -983,7 +983,7 @@ def detail_cards(phone):
                 '<div style="display:flex;align-items:baseline;gap:10px;border-top:1.5px solid var(--tw-rule);padding-top:8px"><span class="lbl">Asking price</span>'
                 '<span class="big" style="margin-left:auto">€46.18</span></div><div class="mono" style="font-size:11.5px;color:var(--tw-text-2);margin-top:-6px">Used sold average · 9 sold · 6 months</div>'
                 + money_row('Used average for this condition', '€48.58') + money_row(f'{ic("chev", 12)} Missing parts · 10 pieces', 'less €2.40') + money_row('Asking price', '€46.18', bold=True)
-                + '<div style="font-size:12.5px;color:var(--tw-text-2)">Part-out value of what is present €58.80 · Priced 8 of 8 missing lines</div>'
+                + '<div style="font-size:12.5px;color:var(--tw-text-2)">Part-out value of what is present €58.80 · Priced 7 of 7 missing lines</div>'
                 '<span class="btn sm" style="align-self:flex-start">Copy listing text</span>', 'Preview')
     value = card('Value · Copy 1', money_row('Paid', '€35.00', '9 Mar 2025') + money_row('Worth now', '€46.18', '12 Oct') + money_row('Gain', '€11.18 · 32 %', bold=True)
                  + '<div style="font-size:12px;color:var(--tw-text-muted)">Used sold average · 9 sales · 12 Oct · missing parts and figures less €2.40</div>')
@@ -1028,8 +1028,8 @@ def setdetail_body(phone):
     group = (f'<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1.5px solid var(--tw-rule)">{ic("chev", 16)}<span style="font:600 15px var(--tw-font)">Bricks</span>'
              f'<span class="mono" style="font-size:12px;color:var(--tw-text-2)">12 rows · 48 pieces · 12 of 12 checked</span><span class="tag" style="margin-left:auto">Complete</span></div>'
              + ''.join(prow(*r) for r in PARTS_GROUP))
-    consists = (f'<div style="display:flex;flex-direction:column;gap:12px">{tabs}{tools}<div class="lbl" style="color:var(--tw-text-2)">Missing parts · 8 lines</div>'
-                f'{"".join(miss(*m) for m in PARTS_MISSING)}<div style="font-size:13px;color:var(--tw-accent-text);font-weight:600">+ 6 more missing lines</div>'
+    consists = (f'<div style="display:flex;flex-direction:column;gap:12px">{tabs}{tools}<div class="lbl" style="color:var(--tw-text-2)">Missing parts · 7 lines</div>'
+                f'{"".join(miss(*m) for m in PARTS_MISSING)}<div style="font-size:13px;color:var(--tw-accent-text);font-weight:600">+ 5 more missing lines</div>'
                 f'<div style="display:flex;justify-content:flex-end;gap:14px;font:600 13px var(--tw-font);color:var(--tw-accent-text)"><span>Expand all</span><span>Collapse all</span></div>{group}</div>')
     cards = detail_cards(phone)
     if phone:

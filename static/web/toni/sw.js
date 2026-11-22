@@ -107,6 +107,7 @@ const ASSETS = [
   "/static/web/toni/bw-setdetail-b.css",
   "/static/web/toni/bw-detail-b.css",
   "/static/web/toni/bw-list-b.css",
+  "/static/web/toni/bw-planning-b.css",
   "/static/web/toni/bw-planning.js",
   "/static/web/toni/bw-planning-order.js",
   "/static/web/toni/bw-prices.js",

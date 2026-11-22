@@ -1,0 +1,75 @@
+/* Planning in B′ (#501 T4 Complete sets, T6 Wishlist and Prices). Tokens only: each screen keeps its layout and every shipped control. The
+   toolbar, field, filter sheet and Drawers / Ledger come from bw-list-b.css (T1, same scope); this file adds what only Planning has: the
+   heading rule, the quick filters as R3-01 status tabs, the list chips, the action rows, the ink tags and the R3-02 colour block.
+   `#bw-planning` is not a `.b-prime` root, so every rule carries three `:not(#_)` to beat bw-collection.css, bw-planning.css and the chips of bw-list-b.css. Colours only from
+   the tokens; status is shape and a word, so the under / over dots are ink (filled, open, dashed). */
+
+/* Heading: eyebrow, title, subtitle, the 1.5 px rule (R3-01 .head) */
+:is(#bw-planning,#bw-figures):not(#_):not(#_):not(#_) .bc-eyebrow {margin:0 0 6px;font:600 12px/14px var(--tw-font-label);letter-spacing:.14em;text-transform:uppercase;color:var(--tw-text-muted)}
+:is(#bw-planning,#bw-figures):not(#_):not(#_):not(#_)>h1 {margin:0;font:600 34px/1.15 var(--tw-font);letter-spacing:-.015em;color:var(--tw-text)}
+:is(#bw-planning,#bw-figures):not(#_):not(#_):not(#_)>h1+p {margin:4px 0 0;padding:0 0 12px;border-bottom:1.5px solid var(--tw-rule);font:400 15px/1.45 var(--tw-font);color:var(--tw-text-2)}
+
+/* Quick filters, the list chips and Sets / Figures become status tabs (R3-01 .stabs): underline, text-2, the count muted mono */
+:is(#bw-planning,#bw-figures):not(#_):not(#_):not(#_) :is(.bp-visible-chips:not(.bp-price-filter *),.wl-lists,.bf-tabs) {display:flex;flex-wrap:nowrap;gap:24px;margin:12px 0 0;padding:0;border:0;border-bottom:1px solid var(--tw-divider);border-radius:0;background:none;box-shadow:none;overflow-x:auto;scrollbar-width:none}
+:is(#bw-planning,#bw-figures):not(#_):not(#_):not(#_) :is(.bp-visible-chips:not(.bp-price-filter *),.wl-lists,.bf-tabs)::-webkit-scrollbar {display:none}
+:is(#bw-planning,#bw-figures):not(#_):not(#_):not(#_) :is(.bp-visible-chips:not(.bp-price-filter *),.wl-lists,.bf-tabs)>:is(button,a) {flex:none;display:inline-flex;align-items:baseline;justify-content:flex-start;gap:6px;height:auto;min-height:0;min-width:0;padding:10px 0 9px;border:0;border-bottom:2px solid transparent;border-radius:0;background:none;box-shadow:none;color:var(--tw-text-2);font:500 14px/20.3px var(--tw-font);text-decoration:none;white-space:nowrap;cursor:pointer}
+:is(#bw-planning,#bw-figures):not(#_):not(#_):not(#_) :is(.bp-visible-chips:not(.bp-price-filter *),.wl-lists,.bf-tabs)>:is([aria-pressed=true],[aria-current=page]) {color:var(--tw-text);font-weight:600;border-bottom-color:var(--tw-accent);background:none}
+:is(#bw-planning,#bw-figures):not(#_):not(#_):not(#_) :is(.bp-visible-chips:not(.bp-price-filter *),.wl-lists,.bf-tabs)>:is(button,a):disabled {color:var(--tw-text-muted);cursor:default}
+:is(#bw-planning,#bw-figures):not(#_):not(#_):not(#_) :is(.bp-visible-chips,.wl-lists) :is(.mono,.bp-chip-count) {font:400 12px/1 var(--tw-mono),ui-monospace,monospace;color:var(--tw-text-muted);padding:0;background:none}
+#bw-planning:not(#_):not(#_):not(#_) .wl-head {align-items:flex-end;gap:12px}
+#bw-planning:not(#_):not(#_):not(#_) .wl-head .wl-lists {flex:1 1 auto;min-width:0}
+
+/* The price filter of the Wishlist stays a row of chips: the label style, the outlined chip, the chosen one violet soft (R3-01's sheet) */
+#bw-planning:not(#_):not(#_):not(#_) .bp-price-filter-label {margin:14px 0 8px;font:600 12px/14px var(--tw-font-label);letter-spacing:.14em;text-transform:uppercase;color:var(--tw-text-muted)}
+#bw-planning:not(#_):not(#_):not(#_) .bp-price-filter .bp-visible-chips {display:flex;flex-wrap:wrap;gap:8px;margin:0;padding:0;background:none;box-shadow:none}
+#bw-planning:not(#_):not(#_):not(#_) .bp-price-filter .bp-visible-chips>button {height:34px;min-height:34px;padding:0 10px;border:1.5px solid var(--tw-text-muted);border-radius:3px;background:transparent;box-shadow:none;color:var(--tw-text);font:500 13px var(--tw-font)}
+#bw-planning:not(#_):not(#_):not(#_) .bp-price-filter .bp-visible-chips>button[aria-pressed=true] {border-color:var(--tw-accent);background:var(--tw-accent-soft);color:var(--tw-accent-text)}
+
+/* Buttons: violet primary, outlined ink secondary, disabled dashed muted (R3-01 .btn, .btn.sec) */
+:is(#bw-planning,#bw-figures):not(#_):not(#_):not(#_) :is(.wl-toolbar>:is(button,a.button),.actions>a.button.bw-secondary,.actions>button:not(.primary),.bp-lookup-action,.bf-controls a.button) {display:inline-flex;align-items:center;justify-content:center;gap:6px;height:38px;min-height:38px;padding:0 14px;border:0;border-radius:var(--tw-r-1);background:transparent;box-shadow:inset 0 0 0 1.5px var(--tw-text);color:var(--tw-text);font:600 14px var(--tw-font);text-decoration:none;white-space:nowrap;cursor:pointer}
+:is(#bw-planning,#bw-figures):not(#_):not(#_):not(#_) :is(.actions>button.primary,.bp-settings button.primary) {display:inline-flex;align-items:center;justify-content:center;gap:8px;height:38px;min-height:38px;padding:0 14px;border:0;border-radius:var(--tw-r-1);background:var(--tw-accent);box-shadow:none;color:var(--tw-on-accent);font:600 14px var(--tw-font);white-space:nowrap;cursor:pointer}
+:is(#bw-planning,#bw-figures):not(#_):not(#_):not(#_) :is(.actions>button,.actions>a.button,.bp-lookup-action):is(:disabled,[aria-disabled=true]) {background:transparent;box-shadow:none;color:var(--tw-text-muted);outline:1.5px dashed var(--tw-text-muted);outline-offset:-1.5px;cursor:default}
+:is(#bw-planning,#bw-figures):not(#_):not(#_):not(#_) .actions>a:not(.button) {font:600 14px var(--tw-font);color:var(--tw-accent-text);text-decoration:none}
+/* In a row: the small outlined button (Pin, Update) */
+#bw-planning:not(#_):not(#_):not(#_) .bp-row :is(:is(.bp-row-actions,.actions)>button:not(.primary),[data-bp-refresh]) {height:32px;min-height:32px;padding:0 12px;border:0;border-radius:var(--tw-r-1);background:transparent;box-shadow:inset 0 0 0 1.5px var(--tw-text);color:var(--tw-text);font:600 13px var(--tw-font);white-space:nowrap}
+#bw-planning:not(#_):not(#_):not(#_) .bp-row :is(:is(.bp-row-actions,.actions)>button:not(.primary),[data-bp-refresh]):disabled {box-shadow:none;color:var(--tw-text-muted);outline:1.5px dashed var(--tw-text-muted);outline-offset:-1.5px}
+
+/* The Figures tab's Filters and Sort are disclosures: their summaries take the outlined button */
+#bw-figures:not(#_):not(#_):not(#_) .bf-control>summary {display:inline-flex;align-items:center;height:38px;min-height:38px;padding:0 14px;border-radius:var(--tw-r-1);box-shadow:inset 0 0 0 1.5px var(--tw-text);color:var(--tw-text);font:600 14px var(--tw-font);list-style:none;cursor:pointer}
+#bw-figures:not(#_):not(#_):not(#_) .bf-control>summary::-webkit-details-marker {display:none}
+#bw-figures:not(#_):not(#_):not(#_) .bf-control[open]>summary {background:var(--tw-accent-soft);box-shadow:inset 0 0 0 1.5px var(--tw-accent);color:var(--tw-accent-text)}
+
+/* Prices' lookup: the field (R3-01 .input) */
+#bw-planning:not(#_):not(#_):not(#_) .bp-lookup input {height:38px;min-height:38px;border:1px solid var(--tw-text-muted);border-radius:var(--tw-r-1);background:var(--tw-field);box-shadow:none;font:400 15px var(--tw-font);color:var(--tw-text)}
+#bw-planning:not(#_):not(#_):not(#_) .bp-lookup input::placeholder {color:var(--tw-text-muted);opacity:1}
+
+/* Rows: hairlines, the white catalogue tile, column heads as labels */
+:is(#bw-planning,#bw-figures):not(#_):not(#_):not(#_) .bc-picture {background:var(--tw-tile)!important;color:var(--tw-tile-ink);border:1px solid var(--tw-divider)!important;border-radius:2px;box-shadow:none}
+:is(#bw-planning,#bw-figures):not(#_):not(#_):not(#_) .bc-picture img {object-fit:contain}
+@media(prefers-color-scheme:dark) {
+  :root:not(.tw-light) :is(#bw-planning,#bw-figures):not(#_):not(#_):not(#_) .bc-picture img {mix-blend-mode:multiply}
+}
+.tw-dark :is(#bw-planning,#bw-figures):not(#_):not(#_):not(#_) .bc-picture img {mix-blend-mode:multiply}
+#bw-planning:not(#_):not(#_):not(#_) .bp-price-columns {font:600 12px/14px var(--tw-font-label);letter-spacing:.14em;text-transform:uppercase;color:var(--tw-text-muted)}
+#bw-planning:not(#_):not(#_):not(#_) .bp-list:not(.bp-wishlist) .bp-row {border-radius:0;box-shadow:none;background:none;border-bottom:1px solid var(--tw-divider)}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wishlist .bp-row {border-radius:var(--tw-r-2);box-shadow:none;background:var(--tw-surface);border:1px solid var(--tw-divider)}
+
+/* Tags: ink outline, label type (R3-01 .tag); a verdict is a word with an ink dot: under filled, over open, not comparable dashed */
+:is(#bw-planning,#bw-figures):not(#_):not(#_):not(#_) :is(.bc-status,.bf-phone-pill) {display:inline-flex;align-items:center;gap:6px;height:22px;min-height:0;padding:0 7px;border:1.5px solid var(--tw-text);border-radius:3px;background:transparent;box-shadow:none;color:var(--tw-text);font:600 11px var(--tw-font-label);letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+:is(#bw-planning,#bw-figures):not(#_):not(#_):not(#_) .bc-status::before {content:none}
+#bw-planning:not(#_):not(#_):not(#_) .bp-verdict.differs {border-style:dashed}
+#bw-planning:not(#_):not(#_):not(#_) .bp-max-dot {display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--tw-text);border:1.5px solid var(--tw-text);box-sizing:border-box}
+#bw-planning:not(#_):not(#_):not(#_) .bp-max-dot:is(.over,.differs) {background:transparent}
+#bw-planning:not(#_):not(#_):not(#_) .bp-max-dot.differs {border-style:dashed}
+
+/* The part colour: R3-02's colour block, the colour with its name in ink on it, a hairline so white shows */
+#bw-planning:not(#_):not(#_):not(#_) .bc-colour {display:inline-flex;align-items:center;height:22px;min-height:0;padding:0 7px;border:0;border-radius:3px;box-shadow:inset 0 0 0 1px var(--tw-divider-strong);font:500 12px var(--tw-font);white-space:nowrap}
+
+/* Bars: ink on the track (BRAND § 10) */
+#bw-planning:not(#_):not(#_):not(#_) :is(.bp-ratio-track,.bp-filled-track,.bp-wish-track) {background:var(--tw-surface-2);border-radius:0}
+#bw-planning:not(#_):not(#_):not(#_) .bp-ratio-track i {background:var(--tw-text);border-radius:0}
+
+@media(max-width:767.98px) {
+  #bw-planning:not(#_):not(#_):not(#_) .wl-head .wl-lists {flex:1 1 100%;width:100%;margin-left:0}
+  :is(#bw-planning,#bw-figures):not(#_):not(#_):not(#_)>h1 {font-size:26px}
+}

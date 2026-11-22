@@ -686,6 +686,9 @@ NAME_ALLOWED = re.compile(r'LEGO® (?=\w)|(?<=\b[Tt]he )LEGO(?= Group\b)')
 NAME_ANY = re.compile(r'lego', re.I)
 DISCLAIMER = 'LEGO® is a trademark of the LEGO Group of companies, which does not sponsor, authorize or endorse this project.'
 TITLE_SUFFIX = ' · Brick Work'
+# The seven pages in the launch kit's order (marketing, § Question pages; Ulf, 2026-11-20: "All seven as ranked").
+QUESTION_SLUGS = ('missing-parts-used-set', 'used-set-worth', 'sets-in-a-bulk-lot', 'buy-missing-parts', 'store-and-label-parts',
+                  'build-from-loose-parts', 'track-your-collection')
 
 
 class Readable(HTMLParser):
@@ -763,6 +766,8 @@ def test_a_question_page_rendered_by_the_site_passes_the_name_rule_and_carries_t
 def test_question_pages_name_the_brand_correctly_and_carry_the_disclaimer(site):
     from scripts.build_site import site_urls
     pages = sorted(site.glob('questions/*/index.html'))
+    assert [file.parent.name for file in pages] == sorted(QUESTION_SLUGS)
+    llms = (site / 'llms.txt').read_text()
     for file in pages:
         slug = file.parent.name
         text = file.read_text()
@@ -772,7 +777,10 @@ def test_question_pages_name_the_brand_correctly_and_carry_the_disclaimer(site):
         title = html.unescape(re.search(r'<title>(.+?)</title>', text)[1])
         h1 = html.unescape(re.sub(r'<[^>]+>', '', re.search(r'<h1[^>]*>(.+?)</h1>', text, re.S)[1])).strip()
         assert title.endswith(TITLE_SUFFIX) and len(title) - len(TITLE_SUFFIX) <= 47 and title.removesuffix(TITLE_SUFFIX) == h1, slug
-        assert f'questions/{slug}/' in site_urls(site), slug
+        assert f'questions/{slug}/' in site_urls(site) and f'questions/{slug}/)' in llms, slug
+        # The last step is the demo or, where the demo cannot show the feature, the docs; never the install (#544).
+        last = re.findall(r'<a class="btn primary" href="([^"]+)"', text)[-1]
+        assert re.match(r'(\.\./)+(demo|docs)/', last), (slug, last)
     # The footer every site page shares passes the rule too, so the disclaimer's own wording is allowed where it stands.
     footer = (site / 'about/index.html').read_text().split('<footer', 1)[1]
     assert name_use_errors(footer) == []

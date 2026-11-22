@@ -32,6 +32,18 @@ Facts an assistant is most often asked:
 - [Identify a loose piece and find where it belongs](docs/tutorials/identify-a-loose-piece.md): Part Spotter and Found in
 - [Back up, upgrade and restore](docs/tutorials/back-up-and-upgrade.md): a backup, an upgrade and a restore rehearsal
 
+## Questions
+
+Short answers to common questions, each with how Brick Work does it:
+
+- [Which parts is my used set missing?]({site}questions/missing-parts-used-set/): check a copy line by line with Set Inspector
+- [What is my incomplete set worth?]({site}questions/used-set-worth/): used sales less what is missing, and the part-out floor
+- [Which sets could my bulk lot be from?]({site}questions/sets-in-a-bulk-lot/): Lot Sorter's set detection and pull list
+- [Missing parts: Pick a Brick or BrickLink?]({site}questions/buy-missing-parts/): one order list across sets, split by source
+- [How should I store and label loose parts?]({site}questions/store-and-label-parts/): Storage and QR bin labels
+- [Which sets can my loose parts build?]({site}questions/build-from-loose-parts/): Build Scout and Matchmaker
+- [How do I keep my collection in one list?]({site}questions/track-your-collection/): sync with Rebrickable and Brickset, and imports
+
 ## Docs
 
 - [Everything in one file]({site}llms-full.txt): this page's facts and the full text of the pages below, for one fetch

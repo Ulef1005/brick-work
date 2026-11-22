@@ -47,9 +47,11 @@ Some items exist only on BrickLink: instruction booklets, and some sticker and p
 
 ## Count what arrived
 
-1. Press **Count what arrived**.
+1. Open the **Count what arrived** tab. An order has four tabs: **Order detail**, **Count what arrived**, **Review allocation** and **Allocations and reconcile**.
 2. Set the **Received** number on each line with **+** and **−**, or press **Mark all received** if everything is there.
 3. Press **Save partial receipt**.
+
+The bar above the lines grows as you count: violet for what is counted, a dashed outline for what is still to count. The line under it says how far you are, such as **56 of 95 pieces counted · 39 still to count**. Each line's status is a tag: **Complete**, **3 short** (hatched) or, before anything is counted, **Not counted** (dashed). On a phone the order fills the screen, and **‹ Orders** takes you back to the list. Its tabs scroll sideways, and each line shows **ordered 16** under its name.
 
 Short lines stay open. Count them again when the rest arrives. Each save is listed under **Count audit** with an **Undo**.
 
@@ -74,7 +76,7 @@ Under **Allocations and reconcile**, every line where received and allocated dif
 
 The same view lists the **Allocation history**, with **Undo operation** per allocation, and the order's full **History**.
 
-The order list shows each order's state: Draft, Reviewed, Open, Counting, Allocated, Held or Reconciled.
+The order list shows each order's state as a tag: Draft, Reviewed, Open, Counting, Allocated, Held or Reconciled. A finished order (Reconciled) has a solid tag; an order still in progress has a dashed one.
 
 ## Export orders as CSV
 

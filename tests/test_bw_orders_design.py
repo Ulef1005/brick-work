@@ -23,8 +23,10 @@ def page(client, oid, view='detail'):
     assert soup.select_one('.order-layout .order-sidebar')
     panels = soup.select('[data-order-panel]')
     assert all((p.has_attr('hidden')) == (p['data-order-panel'] != view) for p in panels)
+    tabs = soup.select('.order-actions .order-tab')                                   # #511: all four tabs, the current one marked
+    assert [t.get_text() for t in tabs] == ['Order detail', 'Count what arrived', 'Review allocation', 'Allocations and reconcile']
     current = soup.select_one('.order-actions [aria-current="page"]')
-    assert (current is None) if view == 'detail' else current['href'].endswith('view=' + view)
+    assert current['href'].endswith(f'/workbench/orders/{oid}') if view == 'detail' else current['href'].endswith('view=' + view)
     return soup
 
 
@@ -78,8 +80,8 @@ def test_12b_header_actions_list_item_and_count_chips(world, client, coll):
     oid, _, lid = saved(coll.db)
     orders.received(coll.db, oid, {lid: 2})
     detail = page(client, oid)
-    assert [a.text for a in detail.select('.order-actions a.button')] == ['Count what arrived', 'Review allocation', 'Allocations and reconcile']
-    assert detail.select_one('.order-actions a.button.primary').text == 'Count what arrived'
+    assert not detail.select('.order-actions a.button')                              # #511: the tabs are tabs (frame 16), not buttons
+    assert detail.select_one('.order-actions a.order-tab[aria-current=page]').text == 'Order detail'
     assert not detail.select('.order-tabs')
     item = detail.select_one('.order-list-item[aria-current]')
     assert item.select_one('.order-list-ref') and item.select_one('.order-list-side b') and item.select_one('.order-list-side .status')

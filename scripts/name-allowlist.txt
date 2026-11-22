@@ -67,3 +67,4 @@ design/screens-b/BUILD-NOTES.md	Rebrickable, Brickset, BrickTracker and a BrickL
 design/website/*	inspired by BrickTracker|coming-from/bricktracker/|<b>BrickTracker</b>	The approved #526 site frames (W-01 home, W-02 install) carry the shipped site's footer credit and its coming-from link.
 CHANGELOG.md	BrickTracker or a BrickLink file	Changelog entry of the empty Sets page (#497): names the retained importer source, as the page does.
 templates/web/toni/web/bw_sets_empty.html	BrickTracker	Empty Sets page (frame 08): lists the sources the import reaches, BrickTracker among them.
+docs/milestones/v-question-pages-marketing-advice.md	BrickTracker	The #544 marketing advice quotes the P7 question page and its docs path, which name the retained BrickTracker importer.

@@ -974,7 +974,7 @@ def detail_cards(phone):
     plist = card('Part list', '<div style="display:flex;gap:8px;align-items:center;font:600 14px var(--tw-font)">Rebrickable · version 1 of 1<span class="tag">Latest</span></div>'
                  '<div class="mono" style="font-size:12.5px;color:var(--tw-text-2)">131 lines · 4 minifigures · 9 spare</div>')
     prices = card('Prices', money_row('Used', '€48.58', '9 sold · 6 months · 12 Oct') + money_row('New', '€112.00', '3 sold · 6 months · 12 Oct')
-                  + money_row('Parted out', '≈ €44.20', 'prices for 118 of 131 lines')
+                  + money_row('Parted out', '≈ €41.80', 'prices for 117 of 130 lines')
                   + '<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--tw-text-2)"><span>With box: not set</span><span style="font-weight:600;color:var(--tw-accent-text)">Set estimate</span></div>'
                   '<div style="font-size:13px;color:var(--tw-text-2);display:flex;gap:6px;align-items:center">' + ic('chev', 14) + 'Price records · 2</div>', 'Update price')
     sell = card('Sell this copy · Copy 1',

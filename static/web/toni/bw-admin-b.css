@@ -30,9 +30,12 @@
 #content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) .bw-toolbar :is(input,select) {letter-spacing:0;text-transform:none}
 
 /* Buttons: outlined ink by default, violet primary, dashed when it cannot be used (R3-01 .btn) */
-#content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) :is(button,a.button,.bk-btn,.bi-btn):not([role=switch],.bw-back,.kit-disclosure>summary,[data-bw-lightbox],[data-theme-mode],.bw-outline,.br-actions *) {display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:38px;height:auto;padding:0 14px;border:0;border-radius:var(--tw-r-1);background:transparent;box-shadow:inset 0 0 0 1.5px var(--tw-text);color:var(--tw-text);font:600 14px var(--tw-font);text-decoration:none;white-space:nowrap;cursor:pointer}
+#content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) :is(button,a.button,.bk-btn,.bi-btn):where(:not([role=switch],.bw-back,.kit-disclosure>summary,[data-bw-lightbox],[data-theme-mode],.bw-outline,.br-actions *)) {display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:38px;height:auto;padding:0 14px;border:0;border-radius:var(--tw-r-1);background:transparent;box-shadow:inset 0 0 0 1.5px var(--tw-text);color:var(--tw-text);font:600 14px var(--tw-font);text-decoration:none;white-space:nowrap;cursor:pointer}
 #content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) :is(button,a.button,.bk-btn,.bi-btn):is(.primary,.bw-primary,.bk-primary,.bi-primary) {background:var(--tw-accent);box-shadow:none;color:var(--tw-on-accent)}
 #content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) :is(button,a.button,.bk-btn,.bi-btn):is(:disabled,[aria-disabled=true]) {background:transparent;box-shadow:none;color:var(--tw-text-muted);outline:1.5px dashed var(--tw-text-muted);outline-offset:-1.5px;opacity:1;cursor:default}
+/* The chosen chip or tab (a value group's sub-navigation, the Sync tabs) is filled ink, as the B′ segments are. The exclusions above sit in :where so
+   they add no weight: the primary, disabled and chosen rules below the base rule win over it. */
+#content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) :is(button,a.button):is([aria-current=page],[aria-pressed=true]):not([data-theme-mode]) {background:var(--tw-text);box-shadow:none;color:var(--tw-bg)}
 #content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) :is(button,a.button,.bk-btn,.bi-btn) svg {width:16px;height:16px}
 #content:has(>.bw-tokens) .bw-tk-primary {display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 14px;border-radius:var(--tw-r-1);background:var(--tw-accent);color:var(--tw-on-accent);box-shadow:none;font:600 14px var(--tw-font);text-decoration:none}
 #content:has(>.bw-tokens) .bw-tk-primary svg {width:16px;height:16px}

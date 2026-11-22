@@ -35,14 +35,14 @@ def test_every_write_operation_of_the_pieces_done_has_a_view_and_a_spec():
     from tests.api2 import PREFIX
     for operation in writes.SPEC.values():
         assert operation['method'] == spec[operation['endpoint']]['method'] and operation['path'] == spec[operation['endpoint']]['path']
-    assert len(writes.SPEC) == 110                                  # M.11c 70 and M.11d 40
+    assert len(writes.SPEC) == 112                                  # M.11c 70 and M.11d 42 (#58 adds two)
 
 
 def test_the_operations_that_need_an_idempotency_key_are_the_documented_ones():
     required = {i for i, o in writes.SPEC.items() if o['required']}
     assert required == {
         'post_wishlists', 'patch_wishlists_by_id', 'delete_wishlists_by_id', 'post_wishlists_by_id_restore', 'post_wishlists_by_id_transfer',
-        'post_copies', 'post_stock', 'post_wishes', 'post_found', 'post_stock_booklets', 'post_lots',
+        'post_copies', 'post_stock', 'post_wishes', 'patch_copies', 'patch_stock', 'post_found', 'post_stock_booklets', 'post_lots',
         'post_copies_by_id_take', 'post_stock_by_id_give', 'post_wishes_by_id_to_owned', 'post_storages_by_id_contents', 'post_copies_by_id_parts_bulk',
         'post_prices_observations', 'post_items_by_id_prices', 'post_events_by_id_undo',
         'put_items_by_id_links', 'post_items_by_id_merge', 'post_items_by_id_unmerge', 'post_items_by_id_change_variant', 'post_items_by_id_build', 'post_lots_by_id_pull_list_by_set_id_make_copy', 'post_copies_by_id_inventory',

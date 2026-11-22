@@ -160,6 +160,24 @@
       "undo_nullable": true
     },
     {
+      "endpoint": "patch_copies",
+      "event_nullable": true,
+      "if_match": false,
+      "method": "PATCH",
+      "multipart": false,
+      "path": "/copies",
+      "piece": "M.11d",
+      "query": [],
+      "required": true,
+      "schema": {
+        "$ref": "#/components/schemas/CopyBulkEdit"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": true
+    },
+    {
       "endpoint": "patch_copies_by_id",
       "event_nullable": false,
       "if_match": true,
@@ -370,6 +388,24 @@
         201
       ],
       "undo_nullable": false
+    },
+    {
+      "endpoint": "patch_stock",
+      "event_nullable": true,
+      "if_match": false,
+      "method": "PATCH",
+      "multipart": false,
+      "path": "/stock",
+      "piece": "M.11d",
+      "query": [],
+      "required": true,
+      "schema": {
+        "$ref": "#/components/schemas/StockBulkEdit"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": true
     },
     {
       "endpoint": "patch_stock_by_id",
@@ -2111,18 +2147,43 @@
             "type": "string"
           },
           "maxItems": 500,
-          "type": "array",
-          "uniqueItems": true
+          "type": "array"
         },
         "storages": {
           "items": {
             "type": "string"
           },
           "maxItems": 500,
-          "type": "array",
-          "uniqueItems": true
+          "type": "array"
         }
       },
+      "type": "object"
+    },
+    "BulkFlagChange": {
+      "additionalProperties": false,
+      "properties": {
+        "ids": {
+          "description": "Flag ids; a status may be system:<name> (Set is checked, Box present, Instructions present), made when the collection has none.",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 100,
+          "type": "array"
+        },
+        "mode": {
+          "description": "replace swaps only the flags of this kind (tags or statuses) and keeps the others.",
+          "enum": [
+            "add",
+            "remove",
+            "replace"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "mode",
+        "ids"
+      ],
       "type": "object"
     },
     "ChangeVariantRequest": {
@@ -2208,6 +2269,74 @@
       },
       "required": [
         "checked"
+      ],
+      "type": "object"
+    },
+    "CopyBulkEdit": {
+      "additionalProperties": false,
+      "properties": {
+        "changes": {
+          "additionalProperties": false,
+          "minProperties": 1,
+          "properties": {
+            "archive": {
+              "const": true,
+              "description": "Archive the rows; on its own, with no other change.",
+              "type": "boolean"
+            },
+            "completeness": {
+              "description": "Becomes the person's own (manual); takes \"Checked on Rebrickable\" off a copy whose completeness changes.",
+              "enum": [
+                "sealed",
+                "complete",
+                "incomplete"
+              ],
+              "type": "string"
+            },
+            "condition": {
+              "enum": [
+                "new",
+                "used"
+              ],
+              "type": "string"
+            },
+            "purchase_location_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "statuses": {
+              "$ref": "#/components/schemas/BulkFlagChange"
+            },
+            "storage_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "tags": {
+              "$ref": "#/components/schemas/BulkFlagChange"
+            }
+          },
+          "type": "object"
+        },
+        "dry_run": {
+          "default": false,
+          "type": "boolean"
+        },
+        "ids": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 500,
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": [
+        "ids",
+        "changes"
       ],
       "type": "object"
     },
@@ -2626,8 +2755,7 @@
           },
           "maxItems": 50,
           "minItems": 1,
-          "type": "array",
-          "uniqueItems": true
+          "type": "array"
         }
       },
       "required": [
@@ -3525,6 +3653,66 @@
       "required": [
         "set_item_id",
         "sheet_item_id"
+      ],
+      "type": "object"
+    },
+    "StockBulkEdit": {
+      "additionalProperties": false,
+      "properties": {
+        "changes": {
+          "additionalProperties": false,
+          "minProperties": 1,
+          "properties": {
+            "archive": {
+              "const": true,
+              "description": "Archive the rows; on its own, with no other change.",
+              "type": "boolean"
+            },
+            "condition": {
+              "enum": [
+                "new",
+                "used",
+                "damaged"
+              ],
+              "type": "string"
+            },
+            "purchase_location_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "statuses": {
+              "$ref": "#/components/schemas/BulkFlagChange"
+            },
+            "storage_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "tags": {
+              "$ref": "#/components/schemas/BulkFlagChange"
+            }
+          },
+          "type": "object"
+        },
+        "dry_run": {
+          "default": false,
+          "type": "boolean"
+        },
+        "ids": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 500,
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": [
+        "ids",
+        "changes"
       ],
       "type": "object"
     },

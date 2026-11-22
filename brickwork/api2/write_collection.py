@@ -174,6 +174,26 @@ def post_wishes(db, body):
 
 # ---------- copies ----------
 
+@route('/copies', 'PATCH')
+@write
+def patch_copies(db, body):
+    return bulk_edit(db, 'copy', body)
+
+
+@route('/stock', 'PATCH')
+@write
+def patch_stock(db, body):
+    return bulk_edit(db, 'stock', body)
+
+
+def bulk_edit(db, table, body):
+    """#58: one core bulk edit (`collection.bulk_update`); `dry_run` is the same call rolled back by the transport."""
+    result = collection.bulk_update(db, table, list(body['ids']), column_edits(body['changes']))
+    preview = body.get('dry_run') is True
+    event = result['event_id']
+    return Done({**result, 'dry_run': preview, 'event_id': None if preview else event}, event)
+
+
 @route('/copies/<id>', 'PATCH')
 @write
 def patch_copies_by_id(db, body, id):

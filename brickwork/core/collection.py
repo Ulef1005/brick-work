@@ -1219,8 +1219,14 @@ def save(db, entity, ids, data, *, archive=False, create_system_flags=False):
     have among the live flags; links to archived flags are left alone). Stock that ends up with another live row's merge key merges into
     it (`stock.plan_edit`), and the receipt keeps both rows. With `create_system_flags` (the web sheet) a flag entry `system:<name>` stands for
     the system status flag of that name, made in the same transaction when the collection has none yet (a system flag cannot be archived, so Undo drops the link and leaves the flag)."""
+    with transaction(db):
+        return receipt(db, _save_changes(db, entity, ids, data, archive=archive, create_system_flags=create_system_flags), 'archive' if archive else 'save')
+
+
+def _save_changes(db, entity, ids, data, *, archive=False, create_system_flags=False, limit=2000):
+    """`save` without its receipt: checks and writes the change, returns the receipt's `[(table, before, after)]` (#58 adds to it)."""
     table = entity if entity in FIELDS else None
-    if not table or not isinstance(ids, list) or not ids or len(ids) > 2000 or len(set(ids)) != len(ids):
+    if not table or not isinstance(ids, list) or not ids or len(ids) > limit or len(set(ids)) != len(ids):
         raise ValueError('Choose collection instances')
     if not isinstance(data, dict):
         raise ValueError('Choose fields to save')
@@ -1301,7 +1307,7 @@ def save(db, entity, ids, data, *, archive=False, create_system_flags=False):
         changes.append((table, everything, snapshot(db, table, [r['id'] for r in everything])))
         if flag_change:
             changes.append(flag_change)
-        return receipt(db, changes, 'archive' if archive else 'save')
+        return changes
 
 
 def _check_wish_edits(db, ids, old, edits):
@@ -1586,6 +1592,130 @@ def check_photo_edits(db, entity, ids, captions, removals):
     if any(len(v) > MAX_CAPTION for v in captions.values()):
         raise ValueError(f'Keep a caption to {MAX_CAPTION} characters')
     return captions, removals
+
+
+# ---------- bulk edit (#58): several fields on up to BULK_LIMIT copies or loose stock rows, one receipt, so one Undo ----------
+
+BULK_LIMIT = 500                                                 # one edit, one transaction, one Undo stay small (Ulf, 22.11., #58)
+BULK_COLUMNS = {'copy': ('storage_id', 'condition', 'place_id', 'completeness'), 'stock': ('storage_id', 'condition', 'place_id')}
+BULK_FLAGS = {'tags': 'tag', 'statuses': 'status'}               # a change of `tags` touches only tags, of `statuses` only statuses
+BULK_MODES = ('add', 'remove', 'replace')
+COMPLETENESS = ('sealed', 'complete', 'incomplete')
+
+
+def _bulk_flags(db, kind, change):
+    """The checked `(mode, flag ids)` of a `tags` or `statuses` change: live flags of that kind (a status may be `system:<name>`, made when missing)."""
+    if not isinstance(change, dict) or change.get('mode') not in BULK_MODES or not isinstance(change.get('ids'), list) or len(change['ids']) > 100:
+        raise ValueError(f'Choose add, remove or replace and the {kind}s')
+    if change['mode'] != 'replace' and not change['ids']:
+        raise ValueError(f'Choose the {kind}s to {change["mode"]}')
+    wanted = _system_flags_made(db, change['ids']) if kind == 'status' else list(change['ids'])
+    live = {r[0] for r in db.execute('SELECT id FROM main.flag WHERE archived_at IS NULL AND kind=?', (kind,))}
+    if not set(wanted) <= live:
+        raise ValueError(f'Unknown {kind}')
+    return change['mode'], set(wanted)
+
+
+def _held(db, table, ids):
+    """`{row id: {live flag id: kind}}` of the rows."""
+    link = ENTITY_FLAGS[table]
+    column = LINK_TABLES[link]
+    held = {i: {} for i in ids}
+    sql = (f'SELECT l.{column}, f.id, f.kind FROM main.{link} l JOIN main.flag f ON f.id=l.flag_id AND f.archived_at IS NULL '
+           f'WHERE l.{column} IN (SELECT value FROM json_each(?))')
+    for owner, flag, kind in db.execute(sql, (json.dumps(ids),)):
+        held[owner][flag] = kind
+    return held
+
+
+def bulk_update(db, entity, ids, changes):
+    """Change the same fields on many copies (`entity` `copy`) or loose stock rows (`stock`) in one transaction under one receipt (#58).
+
+    `changes` takes `storage_id`, `condition`, `place_id` (the purchase location), for copies `completeness` (it becomes the person's own,
+    `manual`), `tags` and `statuses` as `{mode: add|remove|replace, ids: [flag ids]}` (replace swaps only flags of that kind), or `archive: true`
+    on its own. An empty string clears a column. Returns `{event_id, rows, changed, fields}`, where each field names how many rows it changes
+    and how many `already` have it; `event_id` is None when no row changes. The preview of a bulk edit is this call rolled back (API `dry_run`).
+    A copy whose completeness or "Set is checked" changes loses "Checked on Rebrickable" (`checked_by`), as one copy's save does (#489)."""
+    if entity not in BULK_COLUMNS:
+        raise ValueError('Choose copies or loose stock')
+    if not isinstance(ids, list) or not ids or len({str(i) for i in ids}) != len(ids):
+        raise ValueError('Choose collection instances')
+    if len(ids) > BULK_LIMIT:
+        raise ValueError(f'{BULK_LIMIT} is the most one edit changes · narrow the filter or select fewer')
+    if not isinstance(changes, dict) or not changes:
+        raise ValueError('Choose a change to save')
+    unknown = set(changes) - set(BULK_COLUMNS[entity]) - set(BULK_FLAGS) - {'archive'}
+    if unknown:
+        raise ValueError('These fields are not edited in bulk: ' + ', '.join(sorted(unknown)))
+    if 'archive' in changes and (changes['archive'] is not True or len(changes) > 1):
+        raise ValueError('Archive on its own')
+    ids = [str(i) for i in ids]
+    with transaction(db):
+        old = snapshot(db, entity, ids)
+        if len(old) != len(ids) or any(r['archived_at'] for r in old):
+            raise ValueError('Instance is unavailable')
+        if changes.get('archive') is True:
+            event = receipt(db, _save_changes(db, entity, ids, {}, archive=True, limit=BULK_LIMIT), 'archive')
+            return dict(event_id=event, rows=len(ids), changed=len(ids), fields=[dict(field='archive', changes=len(ids), already=0)])
+        columns = {k: (v if v != '' else None) for k, v in changes.items() if k in BULK_COLUMNS[entity]}
+        completeness = columns.pop('completeness') if 'completeness' in columns else False
+        if completeness is not False and completeness not in COMPLETENESS:
+            raise ValueError('Choose completeness')
+        plans = {name: _bulk_flags(db, BULK_FLAGS[name], changes[name]) for name in BULK_FLAGS if name in changes}
+        fields, touched = [], set()
+        for key, value in columns.items():
+            rows = {r['id'] for r in old if r[key] != value}
+            touched |= rows
+            fields.append(dict(field=key, changes=len(rows), already=len(old) - len(rows)))
+        if completeness is not False:
+            rows = {r['id'] for r in old if r['completeness'] != completeness}
+            touched |= rows
+            fields.append(dict(field='completeness', changes=len(rows), already=len(old) - len(rows)))
+        held = _held(db, entity, ids)
+        flag_sets = {}
+        for name, (mode, chosen) in plans.items():
+            kind, rows = BULK_FLAGS[name], set()
+            for owner in ids:
+                current = set(flag_sets.get(owner, held[owner]))
+                of_kind = {f for f, k in held[owner].items() if k == kind}
+                after = current | chosen if mode == 'add' else current - chosen if mode == 'remove' else (current - of_kind) | chosen
+                if after != current:
+                    rows.add(owner)
+                    flag_sets[owner] = after
+            touched |= rows
+            fields.append(dict(field=name, changes=len(rows), already=len(old) - len(rows)))
+        if not touched:
+            return dict(event_id=None, rows=len(ids), changed=0, fields=fields)
+        stamp = stamp_now()
+        receipt_changes = []
+        checked_before = {i: _set_checked(db, i) for i in ids} if entity == 'copy' else {}
+        for owner in sorted(flag_sets):                             # flags first: a stock row that merges below keeps its links in the receipt
+            change = _set_flags(db, entity, owner, flag_sets[owner])
+            if change:
+                receipt_changes.append(change)
+        moved = [r['id'] for r in old if any(r[k] != v for k, v in columns.items())]
+        column_changes = _save_changes(db, entity, moved, columns, limit=BULK_LIMIT) if moved else []
+        if entity == 'copy':
+            by_id = {r['id']: r for r in old}
+            for copy_id in sorted(touched):
+                row, written = by_id[copy_id], {}
+                if completeness is not False and row['completeness'] != completeness:
+                    written.update(completeness=completeness, completeness_source='manual')
+                if row['checked_by'] and ('completeness' in written or _set_checked(db, copy_id) != checked_before[copy_id]):
+                    written['checked_by'] = None
+                if copy_id in flag_sets or written:
+                    written['updated_at'] = stamp
+                if written:
+                    db.execute('UPDATE main.copy SET ' + ','.join(f'{k}=?' for k in written) + ' WHERE id=?', (*written.values(), copy_id))
+                if copy_id in flag_sets and 'completeness' not in written:
+                    state = derived_state(db, copy_id)                # a derived copy follows its flags, as one copy's save does
+                    if state is not None:
+                        db.execute('UPDATE main.copy SET completeness=? WHERE id=?', (state, copy_id))
+            receipt_changes.append(('copy', old, snapshot(db, 'copy', ids)))    # one row set, from before every write to after the last
+        else:
+            receipt_changes.extend(column_changes)
+        event = receipt(db, receipt_changes, 'save')
+        return dict(event_id=event, rows=len(ids), changed=len(touched), fields=fields)
 
 
 def save_with_photos(db, entity, ids, values, captions=None, removals=None, *, create_system_flags=False):

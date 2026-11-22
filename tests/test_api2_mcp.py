@@ -50,7 +50,7 @@ def test_the_tool_surface_is_generated_from_the_v2_contract():
     marked = {op['x-mcp-tool']: (method.upper(), path) for path, methods in CONTRACT['paths'].items()
               for method, op in methods.items() if isinstance(op, dict) and 'x-mcp-tool' in op}
     assert {n: (m, p) for n, (m, p, _) in DEFINITIONS.items()} == marked
-    assert len(READS) + len(WRITES) == 80
+    assert len(READS) + len(WRITES) == 82
     for name, (method, path, op) in DEFINITIONS.items():
         assert op['security'] == [{'bearerAuth': ['read' if method == 'GET' else 'write']}], name   # admin work is never a tool
         assert op['summary'], name
@@ -296,6 +296,8 @@ def write_arguments(w, pair, v2):
         'set_figure_missing': {'id': w.copy_a, 'provider': 'rebrickable', 'kind': 'minifigure', 'no': 'fig-000004', 'missing': 1},
         'add_stock': {'item': {'kind': 'part', 'key': '3001'}, 'color': RED, 'quantity': 1},
         'update_stock': {'id': w.stock_brick, 'fields': {'note': 'Synthetic note'}},
+        'bulk_edit_copies': {'ids': [w.copy_a, w.copy_c], 'changes': {'condition': 'new'}},
+        'bulk_edit_stock': {'ids': [w.stock_plate], 'changes': {'condition': 'used'}},
         'give_from_stock': {'id': w.stock_brick, 'copy_id': w.copy_a, 'target': 'part', 'target_id': brick, 'quantity': 1},
         'record_price': {'kind': 'set', 'no': '1000-1', 'condition': 'used', 'guide': 'manual', 'price': '12', 'currency': 'EUR'},
         'refresh_price': {'kind': 'set', 'no': '1000-1'},

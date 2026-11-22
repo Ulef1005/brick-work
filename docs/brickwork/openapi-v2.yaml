@@ -1097,6 +1097,40 @@ paths:
           $ref: '#/components/responses/Problem'
       x-v1: post_copies
       x-piece: M.11c
+    patch:
+      operationId: patch_copies
+      x-mcp-tool: bulk_edit_copies
+      summary: 'Bulk edit (#58): the same changes on up to 500 copies in one save and one Undo; dry_run previews the counts.'
+      description: Storage, condition and purchase location, completeness, tags and statuses (add, remove or replace),
+        or archive on its own. Each field in the answer says how many rows it changes and how many already have it; nothing is written when no row
+        changes (event_id null). The whole edit is refused when one row is unavailable (archived or unknown).
+      tags:
+      - Copies
+      security:
+      - bearerAuth:
+        - write
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKeyRequired'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CopyBulkEdit'
+      responses:
+        '200':
+          description: Done, or previewed with dry_run. One transaction, one events row.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WrittenBulkEdit'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Invalid'
+        default:
+          $ref: '#/components/responses/Problem'
+      x-piece: M.11d
   /copies/{id}:
     get:
       operationId: get_copies_by_id
@@ -1744,6 +1778,40 @@ paths:
           $ref: '#/components/responses/Problem'
       x-v1: post_stock
       x-piece: M.11c
+    patch:
+      operationId: patch_stock
+      x-mcp-tool: bulk_edit_stock
+      summary: 'Bulk edit (#58): the same changes on up to 500 loose stock rows in one save and one Undo; dry_run previews the counts.'
+      description: Storage, condition and purchase location, tags and statuses (add, remove or replace),
+        or archive on its own. Each field in the answer says how many rows it changes and how many already have it; nothing is written when no row
+        changes (event_id null). The whole edit is refused when one row is unavailable (archived or unknown).
+      tags:
+      - Stock
+      security:
+      - bearerAuth:
+        - write
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKeyRequired'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StockBulkEdit'
+      responses:
+        '200':
+          description: Done, or previewed with dry_run. One transaction, one events row.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WrittenBulkEdit'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Invalid'
+        default:
+          $ref: '#/components/responses/Problem'
+      x-piece: M.11d
   /stock/{id}:
     get:
       operationId: get_stock_by_id
@@ -3588,7 +3656,6 @@ paths:
           items:
             type: string
           maxItems: 5000
-          uniqueItems: true
       - name: limit
         in: query
         schema:
@@ -3739,7 +3806,6 @@ paths:
           items:
             type: string
           maxItems: 500
-          uniqueItems: true
       - name: storage
         in: query
         description: Storage ids (repeated); the stock kept in them and in the storages inside them.
@@ -3750,7 +3816,6 @@ paths:
           items:
             type: string
           maxItems: 500
-          uniqueItems: true
       - name: loose
         in: query
         description: true adds the stock kept in no lot or storage.
@@ -4134,7 +4199,6 @@ paths:
           items:
             type: string
           maxItems: 2000
-          uniqueItems: true
       - name: ids
         in: query
         description: Comma-separated copy IDs; alternative to copy_id.
@@ -4171,7 +4235,6 @@ paths:
           items:
             type: string
           maxItems: 2000
-          uniqueItems: true
       - name: rank
         in: query
         description: Pick order keys (category, group, colour, size, set, storage); group means Category group (fixed catalogue order, Other last). Default category, colour, size, set, storage; group is off. Unknown keys are ignored.
@@ -4244,7 +4307,6 @@ paths:
           items:
             type: string
           maxItems: 2000
-          uniqueItems: true
       responses:
         '200':
           description: Missing items.
@@ -4346,7 +4408,6 @@ paths:
           items:
             type: string
           maxItems: 2000
-          uniqueItems: true
       - name: ids
         in: query
         description: Comma-separated copy IDs; alternative to repeated copy_id.
@@ -7616,7 +7677,6 @@ components:
           type: array
           minItems: 1
           maxItems: 50
-          uniqueItems: true
           items:
             type: integer
             minimum: 1
@@ -7693,6 +7753,171 @@ components:
           type:
           - integer
           - 'null'
+    CopyBulkEdit:
+      type: object
+      properties:
+        ids:
+          type: array
+          items:
+            type: string
+          minItems: 1
+          maxItems: 500
+        changes:
+          type: object
+          properties:
+            storage_id:
+              type:
+              - string
+              - 'null'
+            purchase_location_id:
+              type:
+              - string
+              - 'null'
+            condition:
+              type: string
+              enum:
+              - new
+              - used
+            completeness:
+              type: string
+              enum:
+              - sealed
+              - complete
+              - incomplete
+              description: Becomes the person's own (manual); takes "Checked on Rebrickable" off a copy whose completeness changes.
+            tags:
+              $ref: '#/components/schemas/BulkFlagChange'
+            statuses:
+              $ref: '#/components/schemas/BulkFlagChange'
+            archive:
+              type: boolean
+              const: true
+              description: Archive the rows; on its own, with no other change.
+          additionalProperties: false
+          minProperties: 1
+        dry_run:
+          type: boolean
+          default: false
+      required:
+      - ids
+      - changes
+      additionalProperties: false
+    StockBulkEdit:
+      type: object
+      properties:
+        ids:
+          type: array
+          items:
+            type: string
+          minItems: 1
+          maxItems: 500
+        changes:
+          type: object
+          properties:
+            storage_id:
+              type:
+              - string
+              - 'null'
+            purchase_location_id:
+              type:
+              - string
+              - 'null'
+            condition:
+              type: string
+              enum:
+              - new
+              - used
+              - damaged
+            tags:
+              $ref: '#/components/schemas/BulkFlagChange'
+            statuses:
+              $ref: '#/components/schemas/BulkFlagChange'
+            archive:
+              type: boolean
+              const: true
+              description: Archive the rows; on its own, with no other change.
+          additionalProperties: false
+          minProperties: 1
+        dry_run:
+          type: boolean
+          default: false
+      required:
+      - ids
+      - changes
+      additionalProperties: false
+    BulkFlagChange:
+      type: object
+      properties:
+        mode:
+          type: string
+          enum:
+          - add
+          - remove
+          - replace
+          description: replace swaps only the flags of this kind (tags or statuses) and keeps the others.
+        ids:
+          type: array
+          items:
+            type: string
+          maxItems: 100
+          description: Flag ids; a status may be system:<name> (Set is checked, Box present, Instructions present), made when the collection has none.
+      required:
+      - mode
+      - ids
+      additionalProperties: false
+    BulkEditResult:
+      type: object
+      properties:
+        rows:
+          type: integer
+        changed:
+          type: integer
+          description: Rows at least one change applies to.
+        fields:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              changes:
+                type: integer
+              already:
+                type: integer
+            required:
+            - field
+            - changes
+            - already
+        dry_run:
+          type: boolean
+        event_id:
+          type:
+          - integer
+          - 'null'
+      required:
+      - rows
+      - changed
+      - fields
+      - dry_run
+      - event_id
+    WrittenBulkEdit:
+      type: object
+      required:
+      - data
+      - event_id
+      properties:
+        data:
+          $ref: '#/components/schemas/BulkEditResult'
+        event_id:
+          type:
+          - integer
+          - 'null'
+        undo_url:
+          type:
+          - string
+          - 'null'
+        idempotent_replay:
+          type: boolean
     FieldError:
       type: object
       properties:
@@ -14221,13 +14446,11 @@ components:
           items:
             type: string
           maxItems: 500
-          uniqueItems: true
         storages:
           type: array
           items:
             type: string
           maxItems: 500
-          uniqueItems: true
         loose:
           type: boolean
         damaged:

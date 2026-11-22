@@ -217,7 +217,7 @@ What the 60 read operations (M.11b) and the 67 write operations (M.11c, further 
 
 ### 3.1 Summary
 
-207 operations in all (including instruction discovery, confirmed downloads and the instruction links); v1 had 179 operations.
+209 operations in all (including instruction discovery, confirmed downloads, the instruction links and the bulk edit of copies and loose stock); v1 had 179 operations.
 
 | Group | Operations | Pieces |
 |---|---|---|
@@ -226,9 +226,9 @@ What the 60 read operations (M.11b) and the 67 write operations (M.11c, further 
 | Items | 8 | M.11a 1, M.11b 6, M.11d 1 |
 | Identity | 11 | M.11a 4, M.11b 3, M.11c 4 |
 | Images | 1 | M.11b 1 |
-| Copies | 19 | M.11b 6, M.11c 13 |
+| Copies | 20 | M.11b 6, M.11c 13, M.11d 1 |
 | Copy parts | 5 | M.11b 2, M.11c 3 |
-| Loose stock | 13 | M.11b 3, M.11c 10 |
+| Loose stock | 14 | M.11b 3, M.11c 10, M.11d 1 |
 | Minifigures | 2 | M.11b 2 |
 | Instructions | 10 | M.11b 4, M.11c 4, M.11d 2 |
 | Prices | 9 | M.11b 5, M.11c 2, M.11d 2 |
@@ -311,6 +311,7 @@ Scope `none` means no token. Every path is relative to `/api/v2`. The **v1** col
 |---|---|---|---|---|
 | `GET /copies` | Owned set copies. | read | M.11b | same |
 | `POST /copies` | Add owned copies of a set (quantity N makes N copies) and queue its import. | write | M.11c | same |
+| `PATCH /copies` | Bulk edit (#58): the same changes on up to 500 copies, one Undo; `dry_run` previews the counts. | write | M.11d | new |
 | `DELETE /copies/{id}` | Archive the copy (the UI calls this deleting a set). | write | M.11c | same |
 | `GET /copies/{id}` | One copy. | read | M.11b | same |
 | `PATCH /copies/{id}` | Edit condition, completeness, storage, purchase and estimate fields, note. | write | M.11c | same |
@@ -345,6 +346,7 @@ Scope `none` means no token. Every path is relative to `/api/v2`. The **v1** col
 | `POST /found` | Record found parts into copies, a loose line, or a list. | write | M.11c | same |
 | `GET /stock` | Loose stock lines (parts, minifigures, booklets, anything). | read | M.11b | same |
 | `POST /stock` | Add loose stock; identical lines merge. | write | M.11c | same |
+| `PATCH /stock` | Bulk edit (#58): the same changes on up to 500 loose stock rows, one Undo; `dry_run` previews the counts. | write | M.11d | new |
 | `POST /stock/booklets` | Add loose booklets from "set number, quantity" lines. | write | M.11c | same |
 | `DELETE /stock/{id}` | Archive the line. | write | M.11c | same |
 | `GET /stock/{id}` | One stock line. | read | M.11b | same |
@@ -618,6 +620,7 @@ Operations by piece: M.11a 9, M.11b 64, M.11c 71, M.11d 57 (201 in all). The two
 | `GET /api/v2/colors` | M.11b | `brickwork.api2.catalogue.get_colors` |
 | `GET /api/v2/colors/{color_id}` | M.11b | `brickwork.api2.catalogue.get_colors_by_color_id` |
 | `GET /api/v2/copies` | M.11b | `brickwork.api2.copies.get_copies` |
+| `PATCH /api/v2/copies` | M.11d | `brickwork.api2.write_collection.patch_copies` |
 | `POST /api/v2/copies` | M.11c | `brickwork.api2.write_collection.post_copies` |
 | `DELETE /api/v2/copies/{id}` | M.11c | `brickwork.api2.write_collection.delete_copies_by_id` |
 | `GET /api/v2/copies/{id}` | M.11b | `brickwork.api2.copies.get_copies_by_id` |
@@ -770,6 +773,7 @@ Operations by piece: M.11a 9, M.11b 64, M.11c 71, M.11d 57 (201 in all). The two
 | `POST /api/v2/sources/{source}/user/test` | M.11d | `brickwork.api2.sources.post_sources_by_source_user_test` |
 | `GET /api/v2/statistics` | M.11b | `brickwork.api2.history.get_statistics` |
 | `GET /api/v2/stock` | M.11b | `brickwork.api2.loose.get_stock` |
+| `PATCH /api/v2/stock` | M.11d | `brickwork.api2.write_collection.patch_stock` |
 | `POST /api/v2/stock` | M.11c | `brickwork.api2.write_collection.post_stock` |
 | `POST /api/v2/stock/booklets` | M.11c | `brickwork.api2.write_collection.post_stock_booklets` |
 | `DELETE /api/v2/stock/{id}` | M.11c | `brickwork.api2.write_collection.delete_stock_by_id` |

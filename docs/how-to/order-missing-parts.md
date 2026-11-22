@@ -13,7 +13,7 @@ Open **Planning > Order missing parts**, or open `/planning/order-missing-parts`
 
 ## Choose the sets
 
-The left side lists every copy that has a recorded gap, one row per copy ("Set 2" is your second copy of a set). A row shows the set number and name, its theme and year, and the gap: **12 parts missing**, or **9 parts missing · 1 figure missing** when a minifigure is missing. A copy whose Set Inspector check is not finished says **Check in progress**; its gaps may still change. Under the gap, **gain +€18.40** is the net gain the [repair ranking](plan-repairs.md) works out for that copy.
+The left side lists every copy that has a recorded gap, one row per copy ("Set 2" is your second copy of a set). A row shows the set number and name, its theme and year. Under them is a bar to scale: violet for the parts it has, hatched for the gap. The gap follows in words: **12 parts missing**, or **9 parts missing · 1 figure missing** when a minifigure is missing. A copy whose Set Inspector check is not finished says **Check in progress**; its gaps may still change. Under the gap, **gain +€18.40** is the net gain the [repair ranking](plan-repairs.md) works out for that copy.
 
 Tick the copies you want. **Select all** ticks every set on the screen that is not left out, **Clear** unticks everything. The subtitle counts: **7 sets have gaps · 6 in the list**.
 

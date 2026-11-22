@@ -1,0 +1,118 @@
+/* Order missing parts in the B′ design (frame 15, #510): the set rows with a bar to scale, the order list under one tape, the source choice as the kit's segment and
+   boxes. `#bw-planning` is not a `.b-prime` root, so only the page's own rules (bw-planning.css) are overridden: each is written as `#bw-planning[data-screen=order] .x`
+   (id and attribute beat the single-class rules before it). Tokens only; the dark theme follows from them. */
+#bw-planning[data-screen=order] {--oo-gap:32px}
+@media(min-width:1024px) {
+  body:has(#bw-planning[data-screen=order]) .layout>main {padding:0}
+  #bw-planning[data-screen=order] {padding:17px 32px 40px;max-width:none;box-sizing:border-box}
+  #bw-planning[data-screen=order] .oo-choose>.oo-crumb {margin-top:5px}
+  #bw-planning[data-screen=order] .oo-filter-box {flex:1 1 0}
+  #bw-planning[data-screen=order] .oo-more-controls {gap:10px 14px}
+  #bw-planning[data-screen=order] .oo-search {flex:none;width:240px;max-width:240px}
+}
+@media(min-width:1280px) {#bw-planning[data-screen=order] {grid-template-columns:minmax(0,1fr) 560px}}
+#bw-planning[data-screen=order] .oo-crumb {display:block;height:16px;min-height:0;padding:0;margin:0 0 2px;font:600 12px/16px var(--tw-font-label);letter-spacing:.1em;text-transform:uppercase;color:var(--tw-text-muted)}
+#bw-planning[data-screen=order] .oo-choose,#bw-planning[data-screen=order] .oo-review {display:block}
+#bw-planning[data-screen=order][data-step=choose] .oo-review,#bw-planning[data-screen=order][data-step=review] .oo-choose {display:none}
+@media(min-width:1024px) {#bw-planning[data-screen=order][data-step] .oo-review,#bw-planning[data-screen=order][data-step] .oo-choose {display:block}}
+#bw-planning[data-screen=order] .oo-back {display:none}
+@media(max-width:1023.98px) {#bw-planning[data-screen=order][data-step=review] .oo-back {display:flex;align-items:center;height:auto;min-height:44px;margin:0}}
+#bw-planning[data-screen=order] h1 {font:600 30px/36px var(--tw-font);letter-spacing:-.015em;margin:0}
+#bw-planning[data-screen=order] .oo-choose>.bp-subtitle {margin:2px 0 0;padding-bottom:14px;border-bottom:1.5px solid var(--tw-rule);font:400 15px/20px var(--tw-font);color:var(--tw-text-2)}
+#bw-planning[data-screen=order] .oo-controls {margin:14px 0 14px;gap:10px}
+#bw-planning[data-screen=order] .oo-search input {height:38px;min-height:38px;padding-left:36px;border:1.5px solid var(--tw-text);border-radius:3px;background:var(--tw-surface);font:400 15px var(--tw-font)}
+#bw-planning[data-screen=order] .oo-search svg {top:11px}
+#bw-planning[data-screen=order] .oo-select,#bw-planning[data-screen=order] .oo-switch {min-height:0;padding:0;border:0;border-radius:0;background:none;gap:8px;font:400 14px var(--tw-font)}
+#bw-planning[data-screen=order] .oo-select>span {color:var(--tw-text-2)}
+#bw-planning[data-screen=order] .oo-select select {width:120px;height:38px;min-height:38px;padding:0 10px;border:1.5px solid var(--tw-text);border-radius:3px;background:var(--tw-surface);font:400 15px var(--tw-font)}
+#bw-planning[data-screen=order] .oo-switch .bk-switch {min-width:40px;min-height:24px}
+#bw-planning[data-screen=order] .oo-switch .bk-track,#bw-planning[data-screen=order] .oo-prefer .bk-track {width:40px;height:24px;border:1.5px solid var(--tw-text);border-radius:12px;background:var(--tw-surface)}
+#bw-planning[data-screen=order] .oo-switch .bk-track::after,#bw-planning[data-screen=order] .oo-prefer .bk-track::after {top:3px;left:3px;width:15px;height:15px;background:var(--tw-text);box-shadow:none}
+#bw-planning[data-screen=order] .oo-switch input:checked+.bk-track,#bw-planning[data-screen=order] .oo-prefer[aria-checked=true] .bk-track {background:var(--tw-accent);border-color:var(--tw-accent)}
+#bw-planning[data-screen=order] .oo-switch input:checked+.bk-track::after,#bw-planning[data-screen=order] .oo-prefer[aria-checked=true] .bk-track::after {left:19px;right:auto;background:var(--tw-on-accent)}
+#bw-planning[data-screen=order] .oo-update {min-height:38px;border:1.5px solid var(--tw-text);border-radius:3px;background:var(--tw-surface);font:600 14px var(--tw-font)}
+#bw-planning[data-screen=order] .oo-chips {margin:0 0 4px;gap:8px 14px}
+#bw-planning[data-screen=order] .oo-count {margin:0;font:400 13px var(--tw-mono);color:var(--tw-text-2)}
+#bw-planning[data-screen=order] .oo-text {padding:0;font-weight:600;color:var(--tw-accent-text);text-decoration:none}
+#bw-planning[data-screen=order] .oo-rows>li {border-top:0;border-bottom:1px solid var(--tw-divider)}
+#bw-planning[data-screen=order] .oo-row {grid-template-columns:22px 64px minmax(0,1fr);gap:12px;align-items:center;min-height:0;padding:10px 0}
+#bw-planning[data-screen=order] .oo-row input[type=checkbox] {width:22px;height:22px}
+#bw-planning[data-screen=order] .oo-box {margin:0;width:22px;height:22px;border:1.5px solid var(--tw-text);border-radius:3px;background:var(--tw-surface)}
+#bw-planning[data-screen=order] .oo-row input:checked+.oo-box {background:var(--tw-accent);border-color:var(--tw-accent)}
+#bw-planning[data-screen=order] .oo-row input:checked+.oo-box::after {border-color:var(--tw-on-accent);width:5px;height:10px}
+#bw-planning[data-screen=order] .oo-row .bc-picture {width:64px;height:50px;padding:3px;border:0;border-radius:2px;background:var(--tw-tile);color:var(--tw-tile-ink)}
+#bw-planning[data-screen=order] .oo-who {gap:0}
+#bw-planning[data-screen=order] .oo-name {display:flex;gap:8px;align-items:baseline}
+#bw-planning[data-screen=order] .oo-name .mono {font:600 14px var(--tw-mono);color:var(--tw-text);white-space:nowrap;flex:none}
+#bw-planning[data-screen=order] .oo-name strong {min-width:0;font:600 14px/20px var(--tw-font);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#bw-planning[data-screen=order] .oo-meta {margin:1px 0 5px;font:400 12px/16px var(--tw-font);color:var(--tw-text-2)}
+#bw-planning[data-screen=order] .oo-meta .bc-status {display:inline-flex;align-items:center;height:18px;padding:0 6px;border:1.5px dashed var(--tw-text-2);border-radius:3px;background:none;color:var(--tw-text-2);font:600 10px var(--tw-font-label);letter-spacing:.08em;text-transform:uppercase}
+#bw-planning[data-screen=order] .oo-meta .bc-status::before {content:none}
+#bw-planning[data-screen=order] .oo-bar-scale {display:flex;height:6px}
+#bw-planning[data-screen=order] .oo-bar-scale i {display:block}
+#bw-planning[data-screen=order] .oo-found {background:var(--tw-accent)}
+#bw-planning[data-screen=order] .oo-gone {background:repeating-linear-gradient(45deg,var(--tw-text) 0 1.5px,transparent 1.5px 4px);box-shadow:inset 0 0 0 1px var(--tw-text)}
+#bw-planning[data-screen=order] .oo-num {display:block;margin-top:4px;text-align:left;font:400 12px var(--tw-mono);color:var(--tw-text-2)}
+#bw-planning[data-screen=order] .oo-num .mono,#bw-planning[data-screen=order] .oo-num .oo-sub {display:inline;font:400 12px var(--tw-mono);color:var(--tw-text-2)}
+#bw-planning[data-screen=order] .oo-gap {display:inline}
+#bw-planning[data-screen=order] .oo-gap b {font-weight:400}
+#bw-planning[data-screen=order] .oo-num .oo-sub:not(:empty)::before {content:" · "}
+@media(min-width:1024px) {
+  #bw-planning[data-screen=order] .oo-row .bc-picture {display:flex}
+  #bw-planning[data-screen=order] .oo-review {top:calc(var(--bw-bars) + 16px);padding:0;border-radius:0;background:none}
+}
+#bw-planning[data-screen=order] .oo-tape {display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 16px;border-radius:3px;background:var(--tw-accent);color:var(--tw-on-accent)}
+#bw-planning[data-screen=order] .oo-label {display:block;margin:0;font:600 14px var(--tw-font-label);letter-spacing:.1em;text-transform:uppercase;color:inherit}
+#bw-planning[data-screen=order] .oo-review h2 {margin:0;font:400 14px var(--tw-mono);letter-spacing:.04em;color:inherit;text-align:right}
+#bw-planning[data-screen=order] .oo-sub-top {margin:14px 0 18px;font:400 14.5px/21px var(--tw-font);color:var(--tw-text-2)}
+#bw-planning[data-screen=order] .oo-prefer {padding:0 0 14px;margin-bottom:14px;border-bottom:1px solid var(--tw-divider)}
+#bw-planning[data-screen=order] .oo-prefer-text strong {font:600 16px/22px var(--tw-font)}
+#bw-planning[data-screen=order] .oo-prefer-text span {font:400 14px/20px var(--tw-font);color:var(--tw-text-2)}
+#bw-planning[data-screen=order] .oo-tabs {display:inline-flex;gap:0;padding:0;border:1.5px solid var(--tw-text);border-radius:3px;background:none;margin-bottom:14px}
+#bw-planning[data-screen=order] .oo-tabs a.oo-tab {flex:none;min-height:0;padding:6px 12px;border-radius:0;box-shadow:none;background:none;color:var(--tw-text);font:600 12px var(--tw-font-label);letter-spacing:.08em;text-transform:uppercase}
+#bw-planning[data-screen=order] .oo-tabs a.oo-tab.on {background:var(--tw-text);color:var(--tw-bg)}
+#bw-planning[data-screen=order] .oo-tabs a i {color:inherit;font:inherit}
+#bw-planning[data-screen=order] .oo-tots {gap:0 32px}
+#bw-planning[data-screen=order] .oo-tot {padding:6px 0 10px;border-radius:0;background:none;border-top:1.5px solid var(--tw-rule);gap:2px}
+#bw-planning[data-screen=order] .oo-tot span {font:600 13px var(--tw-font-label);letter-spacing:.1em;text-transform:uppercase;color:var(--tw-text-2)}
+#bw-planning[data-screen=order] .oo-tot b,#bw-planning[data-screen=order] .oo-tot em {font:600 22px/28px var(--tw-mono);letter-spacing:-.02em}
+#bw-planning[data-screen=order] .oo-tot em {color:var(--tw-text-2)}
+#bw-planning[data-screen=order] .oo-tot i {font:400 11.5px/16px var(--tw-mono);color:var(--tw-text-2)}
+#bw-planning[data-screen=order] .oo-tot.oo-wide {grid-column:auto}
+#bw-planning[data-screen=order] .oo-line {grid-template-columns:44px minmax(0,1fr) auto;padding:16px 0;border-top:0;border-bottom:1px solid var(--tw-divider)}
+#bw-planning[data-screen=order] .oo-tile {width:44px;height:44px;border:1px solid var(--tw-divider);border-radius:2px;background:var(--tw-tile);color:var(--tw-tile-ink)}
+#bw-planning[data-screen=order] .oo-what strong {font:600 17px/22px var(--tw-font)}
+#bw-planning[data-screen=order] .oo-qty {font:600 20px/24px var(--tw-mono)}
+#bw-planning[data-screen=order] .oo-sc {border:1.5px solid var(--tw-divider);border-radius:3px;background:none;padding:5px 9px;box-shadow:none}
+#bw-planning[data-screen=order] .oo-sc b {font:600 14px/20px var(--tw-font);color:var(--tw-text-2)}
+#bw-planning[data-screen=order] .oo-sc i {font:400 11.5px/16px var(--tw-mono);color:var(--tw-text-muted)}
+#bw-planning[data-screen=order] .oo-sc.on {border-color:var(--tw-accent);background:var(--tw-accent-soft);box-shadow:none}
+#bw-planning[data-screen=order] .oo-sc.on b {color:var(--tw-accent-text)}
+#bw-planning[data-screen=order] .oo-sc.on b::before {content:none}
+#bw-planning[data-screen=order] .oo-sc.dis {border-style:solid;background:none}
+@media(max-width:1023.98px) {
+  #bw-planning[data-screen=order] h1 {font-size:30px;line-height:36px}
+  #bw-planning[data-screen=order] .oo-filter-box>summary {min-height:0;height:38px;padding:0 14px;border:1.5px solid var(--tw-text);border-radius:3px;background:none;font:600 15px var(--tw-font)}
+  #bw-planning[data-screen=order] .oo-search {flex:1 1 100%;max-width:none}
+  #bw-planning[data-screen=order] .oo-filter-box>summary {color:var(--tw-text)}
+  #bw-planning[data-screen=order] .oo-bar {left:0;right:0;bottom:var(--bw-bottom);width:auto;margin:0 calc(-1 * var(--tw-s-6));padding:12px 16px;border:0;border-top:1.5px solid var(--tw-rule);border-radius:0;box-shadow:none;background:var(--tw-surface);align-items:center;gap:16px}
+  #bw-planning[data-screen=order] .oo-bar-text .mono {font:600 16px var(--tw-mono)}
+  #bw-planning[data-screen=order] .oo-bar-text .oo-sub {font:400 13px var(--tw-mono);color:var(--tw-text-2)}
+  #bw-planning[data-screen=order] .oo-bar .primary {flex:none;min-height:44px;padding:0 22px;border:0;border-radius:3px;background:var(--tw-accent);color:var(--tw-on-accent);font:600 17px var(--tw-font)}
+  #bw-planning[data-screen=order] .oo-row {grid-template-columns:22px 52px minmax(0,1fr)}
+  #bw-planning[data-screen=order] .oo-row .bc-picture {display:flex;width:52px;height:42px}
+}
+/* the bar is sticky inside main: its negative margins match main's side padding, so it runs edge to edge (#510 review) */
+@media(max-width:767.98px) {#bw-planning[data-screen=order] .oo-bar {margin:0 calc(-1 * var(--tw-s-4))}}
+#bw-planning[data-screen=order] .oo-select:last-of-type select {width:140px}
+/* the part sections: a mono label, the counts at the right, the chevron after them (the frame draws no chevron; the section still folds) */
+#bw-planning[data-screen=order] .bw-sec {border-top:0}
+#bw-planning[data-screen=order] .bw-sec:last-of-type {border-bottom:0}
+#bw-planning[data-screen=order] .bw-sec-head {min-height:0;padding:22px 0 8px;gap:10px;border-bottom:1.5px solid var(--tw-rule)}
+#bw-planning[data-screen=order] .bw-sec-head strong {font:600 13px var(--tw-font-label);letter-spacing:.12em;text-transform:uppercase;color:var(--tw-text-2)}
+#bw-planning[data-screen=order] .bw-sec-count {margin-left:auto;font:400 13px var(--tw-mono);color:var(--tw-text-2)}
+#bw-planning[data-screen=order] .bw-sec-chevron {order:3;color:var(--tw-text-muted)}
+#bw-planning[data-screen=order] .bw-sec-tools {gap:14px;margin:0 0 4px;font:600 14px var(--tw-font)}
+#bw-planning[data-screen=order] .bw-sec-tools a {text-decoration:none}
+#bw-planning[data-screen=order] .bw-sec-tools span {display:none}
+#bw-planning[data-screen=order] .oo-src {padding:0;border-radius:0;background:none;font:400 12px var(--tw-mono);color:var(--tw-text-2)}

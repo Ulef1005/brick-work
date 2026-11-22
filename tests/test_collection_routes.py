@@ -43,7 +43,7 @@ def test_the_item_page_by_id_shows_the_copy_asked_for(world, client):
     page = client.get(f'/collection/item/{world.keep}?copy={world.copy_b}')
     html = soup(page)
     assert page.status_code == 200 and html.select_one('h1').get_text(strip=True).replace('\xa0', ' ') == 'Syn Castle Keep'
-    assert 'Sealed' in html.get_text() and html.select_one('a.bc-copy-chip[aria-current=page]').get_text(strip=True) == 'Set 2'
+    assert 'Sealed' in html.get_text() and html.select_one('a.bc-copy-chip[aria-current=page]').get_text(strip=True) == 'Copy 2'
     chips = [a['href'] for a in html.select('a.bc-copy-chip')]
     assert chips == [f'/collection/item/{world.keep}?copy={world.copy_a}', f'/collection/item/{world.keep}?copy={world.copy_b}']
     assert page.headers['Cache-Control'] == 'no-store'

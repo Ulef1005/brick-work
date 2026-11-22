@@ -112,7 +112,7 @@ def test_shared_detail_modules(world, coll, client, kind):
     soup = soup_of(r)
     assert [x['data-module'] for x in soup.select('[data-module]')] == (
         ['status', 'consists', 'used-in', 'prices', 'figure-comparison', 'matching', 'wanted', 'info'] if kind == 'M' else ['info', 'prices', 'matching'] if kind == 'P' else
-        ['info', 'part-list', 'prices', 'sell', 'value', 'consists'] if kind == 'S' else ['info', 'prices', 'consists', 'matching'])
+        ['sell', 'value', 'info', 'prices', 'part-list', 'consists'] if kind == 'S' else ['info', 'prices', 'consists', 'matching'])
     layout = soup.select_one('.bc-detail-layout')
     assert [child.name for child in layout.find_all(recursive=False)] == (['div', 'aside'] if kind == 'M' else ['aside', 'div'])
     assert layout.select_one('aside [data-module=info]')
@@ -373,7 +373,7 @@ def test_review_collection_controls_and_source_disclosure(world, coll, client):
     assert facts['Parts check'] == 'Checked' and facts['Box'] == facts['Instructions'] == 'Yes'
     assert [b.get_text() for b in soup.select('[data-bc-tab]')][1:] == ['Minifigures', 'Instructions & Box']
     assert soup.select_one('[data-bc-tab=parts] .bc-tab-count')
-    assert soup.select_one('[data-module=consists] [aria-label="Copy progress"]')
+    assert soup.select_one('[data-bc-copy-head] [aria-label="Copy progress"]')   # #507: the copy head above the tabs
     soup = soup_of(client.get(f'/collection/item/{world.brick}?colour={world.red}'))
     assert not soup.select('[data-module=consists]')
     assert [m['data-module'] for m in soup.select('[data-module]')] == ['info', 'prices', 'matching']
@@ -555,8 +555,9 @@ def test_49a_chromium_geometry_measured(collection_chromium_geometry):
         assert m['figure']['linkWidth'] >= 150 and m['figure']['wordSplit'] is False, m
         assert all(m['missingCard'].values()), m
         assert m['progress']['presentBeforeMissing'], m
-        # The coverage bar and its captions ("can be taken", "to order") came with M.8e: the captions sit 6 px under the bar.
-        assert m['progress']['captionsBelowCoverage'], m
+        # The coverage bar and its captions ("can be taken", "to order") came with M.8e; the B′ set copy (#507, frame 12) draws no
+        # coverage bar, so the captions are the line under "365/375 · 10 missing".
+        assert m['progress']['captionsBelowPresent'], m
 
 
 @rendered.group

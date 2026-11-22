@@ -49,7 +49,7 @@
   const module = root.querySelector('[data-bc-pl]');
   if (!module) return;
   const receiptKey = 'bw-collection-receipt';
-  const find = selector => module.querySelector(selector);
+  const find = selector => module.querySelector(selector) || root.querySelector('[data-bc-copy-head] ' + selector);
   const progress = find('[data-bc-pl-progress]'), mode = find('[data-bc-pl-mode]'), bar = find('[data-bc-pl-bar]'),
     sum = find('[data-bc-pl-sum]'), save = find('[data-bc-pl-save]'), warn = find('[data-bc-pl-warn]'), warnText = find('[data-bc-pl-warn-text]'),
     edit = find('[data-bc-pl-edit]'), cancel = find('[data-bc-pl-cancel]'), checked = find('[data-bc-pl-checked]'), switchNote = find('[data-bc-pl-switch-note]');
@@ -57,7 +57,7 @@
   const sectionEls = [...module.querySelectorAll('[data-bc-part-section]')];
   const model = createModel(rowEls.map(el => ({
     id: Number(el.dataset.bcPlRow), need: Number(el.dataset.bcPlNeed), missing: Number(el.dataset.bcPlMissing),
-    section: el.closest('[data-bc-part-section]')?.dataset.bcPartSection || '',
+    section: JSON.parse(el.dataset.record || '{}').part_group || el.closest('[data-bc-part-section]')?.dataset.bcPartSection || '',
   })));
   let editing = false, busy = false;
   const store = fn => { try { return fn(sessionStorage); } catch (_) { return null; } };
@@ -87,19 +87,23 @@
 
   // Called by the list renderer after paging, filtering and tab changes too.
   module.bcPartEditVisibility = () => {
+    const inModule = node => typeof module.contains !== 'function' || module.contains(node);   // #507: the copy head sits outside the tabbed module
     const parts = !module.dataset.inventory || module.dataset.inventory === 'parts';
-    if (progress) progress.hidden = editing || !parts;
+    if (progress) progress.hidden = editing || (!parts && inModule(progress));
     for (const selector of ['[data-bc-pl-checked-row]', '[data-bc-pl-switch-note]']) {
       const node = find(selector);
-      if (node) node.hidden = !parts;
+      if (node) node.hidden = !parts && inModule(node);
     }
     if (mode) mode.hidden = !editing || !parts;
+    const actions = root.querySelector('[data-bc-copy-head] .bc-check-actions');   // #507: the set copy's buttons sit outside the progress section; they hide with it while editing
+    if (actions) actions.hidden = editing;
     if (bar) bar.hidden = !editing || !parts;
   };
   const setMode = on => {
     editing = on;
     if (on) module.setAttribute('data-bc-pl-editing', ''); else module.removeAttribute('data-bc-pl-editing');
     module.bcPartEditVisibility();
+    module.bcRender?.();
     if (warn) warn.hidden = true;
     if (save) save.textContent = 'Save missing';
     if (edit) edit.setAttribute('aria-expanded', String(on));

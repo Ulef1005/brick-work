@@ -100,6 +100,7 @@ def test_set_sections_render_counts_and_no_script_fallback(coll, client, read, g
     # a set copy's view mode lifts missing lines into the cards (#507): Technic's only line is missing, so its group lists nothing and starts folded
     assert [s['data-bc-default-open'] for s in sections] == ['false', 'false']
     assert all(s.select_one('button')['aria-expanded'] == 'true' for s in sections)
+    assert all(s.select_one('[data-bc-view-only]').has_attr('hidden') for s in sections)   # no script: the full counts, not the view-mode header
     assert all(not s.select_one('[data-bc-section-body]').has_attr('hidden') for s in sections)
     assert len(module.select('[data-bc-row]')) == len(detail['consists'])
     assert sections[0].select_one('.bc-status.complete').get_text() == 'Complete'

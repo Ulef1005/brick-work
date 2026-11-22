@@ -94,7 +94,7 @@
       const node = find(selector);
       if (node) node.hidden = !parts && inModule(node);
     }
-    if (mode) mode.hidden = !editing || !parts;
+    if (mode) mode.hidden = !editing || (!parts && inModule(mode));   // in the copy head the editing bar and Cancel stay on every tab
     const actions = root.querySelector('[data-bc-copy-head] .bc-check-actions');   // #507: the set copy's buttons sit outside the progress section; they hide with it while editing
     if (actions) actions.hidden = editing;
     if (bar) bar.hidden = !editing || !parts;

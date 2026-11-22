@@ -974,7 +974,7 @@ def detail_cards(phone):
     plist = card('Part list', '<div style="display:flex;gap:8px;align-items:center;font:600 14px var(--tw-font)">Rebrickable · version 1 of 1<span class="tag">Latest</span></div>'
                  '<div class="mono" style="font-size:12.5px;color:var(--tw-text-2)">131 lines · 4 minifigures · 9 spare</div>')
     prices = card('Prices', money_row('Used', '€48.58', '9 sold · 6 months · 12 Oct') + money_row('New', '€112.00', '3 sold · 6 months · 12 Oct')
-                  + money_row('Parted out', '≈ €61.20', 'prices for 118 of 131 lines')
+                  + money_row('Parted out', '≈ €44.20', 'prices for 118 of 131 lines')
                   + '<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--tw-text-2)"><span>With box: not set</span><span style="font-weight:600;color:var(--tw-accent-text)">Set estimate</span></div>'
                   '<div style="font-size:13px;color:var(--tw-text-2);display:flex;gap:6px;align-items:center">' + ic('chev', 14) + 'Price records · 2</div>', 'Update price')
     sell = card('Sell this copy · Copy 1',
@@ -983,7 +983,7 @@ def detail_cards(phone):
                 '<div style="display:flex;align-items:baseline;gap:10px;border-top:1.5px solid var(--tw-rule);padding-top:8px"><span class="lbl">Asking price</span>'
                 '<span class="big" style="margin-left:auto">€46.18</span></div><div class="mono" style="font-size:11.5px;color:var(--tw-text-2);margin-top:-6px">Used sold average · 9 sold · 6 months</div>'
                 + money_row('Used average for this condition', '€48.58') + money_row(f'{ic("chev", 12)} Missing parts · 10 pieces', 'less €2.40') + money_row('Asking price', '€46.18', bold=True)
-                + '<div style="font-size:12.5px;color:var(--tw-text-2)">Part-out value of what is present €58.80 · Priced 8 of 8 missing lines</div>'
+                + '<div style="font-size:12.5px;color:var(--tw-text-2)">Part-out value of what is present €41.80 · Priced 7 of 7 missing lines</div>'
                 '<span class="btn sm" style="align-self:flex-start">Copy listing text</span>', 'Preview')
     value = card('Value · Copy 1', money_row('Paid', '€35.00', '9 Mar 2025') + money_row('Worth now', '€46.18', '12 Oct') + money_row('Gain', '€11.18 · 32 %', bold=True)
                  + '<div style="font-size:12px;color:var(--tw-text-muted)">Used sold average · 9 sales · 12 Oct · missing parts and figures less €2.40</div>')
@@ -1006,9 +1006,12 @@ def setdetail_body(phone):
             + (f'<div style="display:flex;gap:8px">{links}</div>' if phone else ''))
     copybar = (f'<div style="border-top:1.5px solid var(--tw-rule);padding-top:12px;display:flex;gap:{14 if phone else 24}px;{"flex-direction:column" if phone else "align-items:flex-end"}">'
                f'<div style="flex:1;min-width:0"><div style="font:600 18px var(--tw-font);margin-bottom:6px">10 parts missing, 4 in loose stock</div>'
-               f'{bar(365, 10, 375)}<div style="display:flex;gap:14px;font:400 12px var(--tw-mono);color:var(--tw-text-2)"><span>4 can be taken</span><span>6 to order</span></div></div>'
+               f'{bar(365, 10, 375)}<div style="display:flex;gap:14px;font:400 12px var(--tw-mono);color:var(--tw-text-2)"><span>4 can be taken</span><span>6 to order</span></div>'
+               f'<div style="font:400 12px var(--tw-mono);color:var(--tw-text-2);margin-top:4px">131 different parts · all checked</div>'
+               f'<div style="display:flex;gap:12px;align-items:center;margin-top:10px">{sw(True)}<div><div style="font:500 14px var(--tw-font)">Set is checked</div>'
+               f'<div style="font-size:12.5px;color:var(--tw-text-muted)">Stays Incomplete while 10 parts are missing. Complete needs Set is checked and nothing missing.</div></div></div></div>'
                f'<div style="display:flex;gap:10px;flex-wrap:wrap"><span class="btn">Check parts</span><span class="btn sec">Edit parts</span>'
-               + ('' if phone else '<span class="btn sec">Check missing only</span>') + '</div></div>')
+               + '<span class="btn sec">Check missing only</span></div></div>')
     tabs = ('<div class="stabs"><span class="on">Parts <span class="mono" style="font-size:12px;color:var(--tw-text-muted)">375</span></span>'
             '<span>Minifigures <span class="mono" style="font-size:12px;color:var(--tw-text-muted)">4</span></span><span>Instructions &amp; Box</span></div>')
     tools = (f'<div style="display:flex;gap:10px;align-items:center"><span class="input" style="flex:1;height:38px;color:var(--tw-text-muted)">{ic("search", 16)}&nbsp; Name, number or colour</span>'
@@ -1028,8 +1031,8 @@ def setdetail_body(phone):
     group = (f'<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1.5px solid var(--tw-rule)">{ic("chev", 16)}<span style="font:600 15px var(--tw-font)">Bricks</span>'
              f'<span class="mono" style="font-size:12px;color:var(--tw-text-2)">12 rows · 48 pieces · 12 of 12 checked</span><span class="tag" style="margin-left:auto">Complete</span></div>'
              + ''.join(prow(*r) for r in PARTS_GROUP))
-    consists = (f'<div style="display:flex;flex-direction:column;gap:12px">{tabs}{tools}<div class="lbl" style="color:var(--tw-text-2)">Missing parts · 8 lines</div>'
-                f'{"".join(miss(*m) for m in PARTS_MISSING)}<div style="font-size:13px;color:var(--tw-accent-text);font-weight:600">+ 6 more missing lines</div>'
+    consists = (f'<div style="display:flex;flex-direction:column;gap:12px">{tabs}{tools}<div class="lbl" style="color:var(--tw-text-2)">Missing parts · 7 lines</div>'
+                f'{"".join(miss(*m) for m in PARTS_MISSING)}<div style="font-size:13px;color:var(--tw-accent-text);font-weight:600">+ 5 more missing lines</div>'
                 f'<div style="display:flex;justify-content:flex-end;gap:14px;font:600 13px var(--tw-font);color:var(--tw-accent-text)"><span>Expand all</span><span>Collapse all</span></div>{group}</div>')
     cards = detail_cards(phone)
     if phone:

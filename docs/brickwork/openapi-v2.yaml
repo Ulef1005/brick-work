@@ -562,7 +562,7 @@ paths:
     get:
       operationId: get_catalogue_items
       x-mcp-tool: search_catalogue
-      summary: Search the local BrickLink catalogue file by type and text.
+      summary: Search the local BrickLink catalogue file by type and text; an element id finds its part and colour.
       tags:
       - Catalogue
       security:
@@ -7871,6 +7871,24 @@ components:
           - string
           - 'null'
           description: The Rebrickable theme of a set or minifigure from the catalogue (a part has none). Item properties fetched later may name another.
+        element:
+          type: object
+          description: 'Only when q is an element id (#546, 5 to 7 digits): the part and colour it names. That part comes first.'
+          properties:
+            id:
+              type: string
+              description: The element id searched for.
+            color:
+              $ref: '#/components/schemas/Color'
+            element_ids:
+              type: array
+              items:
+                type: string
+              description: Every element id of this part in this colour, lowest first.
+          required:
+          - id
+          - color
+          - element_ids
       required:
       - item
     FigureComparison:

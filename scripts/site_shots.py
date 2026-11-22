@@ -131,13 +131,18 @@ R_STARTED = real.uid('copy', '8043-1', 'a')
 R_PICKED = '/workbench/part-picker?copy=' + '&copy='.join(real.uid('copy', n, 'a') for n in ('7938-1', '10210-1', '7213-1'))
 R_LOT_PAGE = '/collection/lots/' + real.LOT
 
+# The README's Set Inspector at 1440 (#502): the real world has no pictures for the found lines (32557, 32556, 32526), and a first screen shows no
+# missing-picture tile, so the "Checked so far" list keeps only its "Show all n checked lines" link (marketing, 22.11.).
+NO_FOUND_ROWS = ("for (let i = 0; i < 100 && !document.querySelector('.chk-found-row'); i++) await new Promise(r => setTimeout(r, 50));\n"
+                 "document.querySelectorAll('.chk-hist .chk-found-row, .chk-hist .chk-gl2').forEach(e => e.remove());\n")
 SITE_PICTURES = {
     '1c-sets-desktop-1440': ('/collection/sets', 1440, 1020, None, (SITE,)),
     '3a-matcher-phone-390': ('/workbench/match', 390, 844, None, (SITE,)),
     '3e-start-phone-390': ('/workbench/check-parts/' + R_FRESH, 390, 844, None, (SITE,)),
     '3e-part-phone-390': ('/workbench/check-parts/%s?run=1' % R_STARTED, 390, 844, None, (SITE,)),
+    '3e-part-desktop-1440': ('/workbench/check-parts/%s?run=1' % R_STARTED, 1440, 900, NO_FOUND_ROWS, (README,)),   # README and social previews (#502)
     '3c-picker-sets-phone-390': ('/workbench/part-picker', 390, 844, None, (SITE,)),
-    '3c-picker-pick-phone-390': (R_PICKED + '&pick=1', 390, 950, None, (SITE,)),
+    '3c-picker-pick-phone-390': (R_PICKED + '&pick=1', 390, 950, None, (SITE, README)),   # also the README's and the social previews' (#502)
     '12b-count-what-arrived-desktop-1440': ('/workbench/orders/2', 1440, 1050, None, (SITE,)),
     '12c-list-and-detail-desktop-1440': ('/workbench/storage/storage-shelf-b', 1440, 900, None, (SITE,)),
     'scout-list-desktop-1440': ('/workbench/build-scout?min_percent=10', 1440, 900, HIDE_PANEL, (SITE,)),

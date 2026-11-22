@@ -270,7 +270,6 @@
   #bw-ledger.bw-places .pl-row>:nth-child(n+3)::before{font:600 11px var(--tw-font-label);letter-spacing:.08em;text-transform:uppercase;color:var(--tw-text-muted)}
   #bw-ledger.bw-places .pl-row .st-spent{flex-direction:row;gap:8px}
 }
-}
 
 /* The set tile's bar (the Sets page's rules, scoped to this page: bw-collection.css gives them to .bp-sets only) */
 #bw-ledger.bw-storage:not(#_):not(#_):not(#_) .bar i.f{background:var(--tw-accent)}

@@ -29,13 +29,14 @@
 @media(max-width:999px){#bw-ledger .lb-bar{bottom:calc(72px + var(--tw-safe-bottom,0px))}}
 /* Print labels in B′ (#501 T5): tokens only, the layout and every control stay. The dialog sits outside the `.b-prime` scope, so it takes the
    components here: radius 8 and a hairline, the ruled heading, the field, the chip as an outlined tag, a notice as a dashed box, outlined
-   ink Cancel, the violet primary. */
-#bw-ledger.bw-storage:not(#_) dialog.st-sheet.lb-dialog{border:1px solid var(--tw-divider);border-radius:var(--tw-r-2);box-shadow:none}
+   ink Cancel, the violet primary. The controls carry bw-storage.css's weight (three :not(#_)), or its .st-sheet rules would win. */
+#bw-ledger.bw-storage:not(#_) dialog.st-sheet.lb-dialog{box-shadow:none}
+@media not all and (max-width:767px){#bw-ledger.bw-storage:not(#_) dialog.st-sheet.lb-dialog{border:1px solid var(--tw-divider);border-radius:var(--tw-r-2)}}   /* a phone keeps the full-screen sheet without border or radius */
 #bw-ledger:not(#_) .lb-dialog .st-sheet-head{padding-bottom:12px;border-bottom:1.5px solid var(--tw-rule)}
 #bw-ledger:not(#_) .lb-dialog h3{font:600 12px/14px var(--tw-font-label);letter-spacing:.14em;text-transform:uppercase;color:var(--tw-text-muted)}
-#bw-ledger:not(#_) .lb-dialog select{min-height:38px;border:1px solid var(--tw-text-muted);border-radius:var(--tw-r-1);background:var(--tw-field)}
+#bw-ledger.bw-storage:not(#_):not(#_):not(#_) dialog.lb-dialog select{min-height:38px;border:1px solid var(--tw-text-muted);border-radius:var(--tw-r-1);background:var(--tw-field)}
 #bw-ledger:not(#_) .lb-chip{border:1.5px solid var(--tw-text);border-radius:3px;background:transparent}
 #bw-ledger:not(#_) .lb-warning{border:1.5px dashed var(--tw-text-muted);border-radius:var(--tw-r-1);background:transparent}
-#bw-ledger:not(#_) .lb-dialog .st-soft{border:0;border-radius:var(--tw-r-1);background:transparent;box-shadow:inset 0 0 0 1.5px var(--tw-text);color:var(--tw-text);font:600 14px var(--tw-font)}
-#bw-ledger:not(#_) .lb-dialog .st-primary{border-radius:var(--tw-r-1);background:var(--tw-accent);color:var(--tw-on-accent);font:600 14px var(--tw-font)}
-#bw-ledger:not(#_) .lb-dialog .st-primary:disabled{background:transparent;color:var(--tw-text-muted);outline:1.5px dashed var(--tw-text-muted);outline-offset:-1.5px}
+#bw-ledger.bw-storage:not(#_):not(#_):not(#_) dialog.lb-dialog .st-soft{border:0;border-radius:var(--tw-r-1);background:transparent;box-shadow:inset 0 0 0 1.5px var(--tw-text);color:var(--tw-text);font:600 14px var(--tw-font)}
+#bw-ledger.bw-storage:not(#_):not(#_):not(#_) dialog.lb-dialog .st-primary{border-radius:var(--tw-r-1);background:var(--tw-accent);color:var(--tw-on-accent);font:600 14px var(--tw-font)}
+#bw-ledger.bw-storage:not(#_):not(#_):not(#_) dialog.lb-dialog .st-primary:disabled{background:transparent;color:var(--tw-text-muted);outline:1.5px dashed var(--tw-text-muted);outline-offset:-1.5px;opacity:1}

@@ -44,7 +44,7 @@ When you put selected loose stock into a new lot, the **Put selected stock in a 
 
 ### Many changes at once, through the API or an assistant
 
-`PATCH /api/v2/copies` and `PATCH /api/v2/stock` (the assistant tools `bulk_edit_copies` and `bulk_edit_stock`) change up to 500 rows in one save: storage, condition and purchase location, for copies also completeness, and tags and statuses (add, remove or replace; replace swaps only flags of that kind). Archive goes on its own. Send `dry_run: true` first to see, per field, how many rows it changes and how many already have the value. One **Undo** takes the whole change back. A copy whose completeness or **Set is checked** changes loses **Checked on Rebrickable**, as it does when you edit one copy. The list screens keep their one-field bar until the new bulk bar is designed.
+`PATCH /api/v2/copies` and `PATCH /api/v2/stock` (the assistant tools `bulk_edit_copies` and `bulk_edit_stock`) change up to 500 rows in one save. They set storage, condition and purchase location, and for copies also completeness. Tags and statuses can be added, removed or replaced; replace swaps only flags of that kind. Archive goes on its own. Send `dry_run: true` first to see, per field, how many rows it changes and how many already have the value. One **Undo** takes the whole change back. A copy whose completeness or **Set is checked** changes loses **Checked on Rebrickable**, as it does when you edit one copy. The list screens keep their one-field bar until the new bulk bar is designed.
 
 ## Move things between storages
 

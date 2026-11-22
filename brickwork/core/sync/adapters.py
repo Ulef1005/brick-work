@@ -77,9 +77,26 @@ def parse_lost_part(row):
         return None
 
 
+def parse_part_list_row(row):
+    """One row of `GET /users/{token}/partlists/{id}/parts/` as `dict(part_no, color_id, quantity)`, or None when it cannot be read (#471).
+
+    ASSUMED SHAPE (Rebrickable's documentation, not checked live): `{quantity, part: {part_num, ...}, color: {id, ...}, element_id}`."""
+    try:
+        quantity, colour = row['quantity'], row['color']['id']
+        if type(quantity) is str and quantity.isdecimal():
+            quantity = int(quantity)
+        if type(colour) is str and colour.lstrip('-').isdecimal():
+            colour = int(colour)
+        if type(quantity) is not int or quantity < 1 or type(colour) is not int:
+            return None
+        return dict(part_no=_number(str(row['part']['part_num'])), color_id=colour, quantity=quantity)
+    except (KeyError, TypeError, AttributeError, SourceError):
+        return None
+
+
 class RebrickableUser(Rebrickable):
     """User endpoints under /api/v3/users/ (set lists and their sets)."""
-    TEMPLATES = re.compile(r'/(?:setlists/|setlists/[0-9]+/sets/|setlists/[0-9]+/sets/[A-Za-z0-9.-]+/|sets/|lost_parts/)')
+    TEMPLATES = re.compile(r'/(?:setlists/|setlists/[0-9]+/sets/|setlists/[0-9]+/sets/[A-Za-z0-9.-]+/|sets/|lost_parts/|partlists/|partlists/[0-9]+/parts/)')
 
     def __init__(self, db, **kwargs):
         super().__init__(db, **kwargs)
@@ -185,6 +202,14 @@ class RebrickableUser(Rebrickable):
     def lists(self):
         return [dict(id=int(r['id']), name=r.get('name') or '', sets=r.get('num_sets'))
                 for r in self.pages('/setlists/')]
+
+    def part_lists(self):
+        """The user's part lists (#471): `[{id, name, parts}]`."""
+        return [dict(id=int(r['id']), name=r.get('name') or '', parts=r.get('num_parts')) for r in self.pages('/partlists/')]
+
+    def part_list_parts(self, list_id):
+        """The rows of one part list, each `parse_part_list_row` (None for a row that cannot be read)."""
+        return [parse_part_list_row(r) if isinstance(r, dict) else None for r in self.pages(f'/partlists/{int(list_id)}/parts/')]
 
     def fetch(self, link):
         """Remote counts: owned = the linked owned lists (all but the wishlist list when unset)."""

@@ -46,6 +46,22 @@ If you keep your sets in several Rebrickable set lists, each set keeps the names
 
 A rename or a removal changes only the list name: copies, counts and every other field stay as they are, on sets you pick and sets you do not. **Undo this pull** puts the names back as they were before the pull.
 
+## Loose parts from Rebrickable part lists
+
+Brick Work can bring your Rebrickable part lists in as loose parts. It only reads them: nothing goes back to Rebrickable.
+
+**Choose the lists.** None is chosen until you choose. Each chosen list lands in a lot of its own, made at the first pull and named after the list. The lot is remembered, so the next pull compares with it.
+
+**The preview** compares each list with the loose parts in its lot, by part and colour:
+
+- **New there**: Rebrickable lists more. The row is ticked with the difference.
+- **Different**: you hold more here. **Only here**: the list has none. Nothing is pulled for either.
+- **Not matched**: a part number or colour that Brick Work does not know, with the reason. It is never guessed.
+
+A row can go into another lot of yours instead. A second pull with nothing changed lists nothing.
+
+**Apply** adds the ticked rows in one step. Each new row reads *Added via Rebrickable sync*, carries the tag *imported from Rebrickable* and is *last synced from* its list. **Undo** takes the parts back off the stock, removes the tag and archives a lot the pull made once it is empty. Undo is refused once you have changed one of those rows.
+
 ## Lost Parts from Rebrickable
 
 Rebrickable keeps a list of the parts you lost. A Rebrickable pull can bring it in and mark those parts as missing on the matching copy. On the **Rebrickable** card, the switch **Bring in Lost Parts** sits beside **Pull**. It is on by default, and Brick Work remembers your choice. Under the switch, one line says what it does and which rule applies. It links to **Settings**, where you choose the rule. With the switch off, Brick Work does not read your Lost Parts at all.

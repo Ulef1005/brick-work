@@ -16,7 +16,7 @@
 #bw-planning[data-screen=order][data-step=choose] .oo-review,#bw-planning[data-screen=order][data-step=review] .oo-choose {display:none}
 @media(min-width:1024px) {#bw-planning[data-screen=order][data-step] .oo-review,#bw-planning[data-screen=order][data-step] .oo-choose {display:block}}
 #bw-planning[data-screen=order] .oo-back {display:none}
-@media(max-width:1023.98px) {#bw-planning[data-screen=order][data-step=review] .oo-back {display:block}}
+@media(max-width:1023.98px) {#bw-planning[data-screen=order][data-step=review] .oo-back {display:flex;align-items:center;height:auto;min-height:44px;margin:0}}
 #bw-planning[data-screen=order] h1 {font:600 30px/36px var(--tw-font);letter-spacing:-.015em;margin:0}
 #bw-planning[data-screen=order] .oo-choose>.bp-subtitle {margin:2px 0 0;padding-bottom:14px;border-bottom:1.5px solid var(--tw-rule);font:400 15px/20px var(--tw-font);color:var(--tw-text-2)}
 #bw-planning[data-screen=order] .oo-controls {margin:14px 0 14px;gap:10px}
@@ -39,7 +39,7 @@
 #bw-planning[data-screen=order] .oo-row input[type=checkbox] {width:22px;height:22px}
 #bw-planning[data-screen=order] .oo-box {margin:0;width:22px;height:22px;border:1.5px solid var(--tw-text);border-radius:3px;background:var(--tw-surface)}
 #bw-planning[data-screen=order] .oo-row input:checked+.oo-box {background:var(--tw-accent);border-color:var(--tw-accent)}
-#bw-planning[data-screen=order] .oo-row input:checked+.oo-box::after {border-color:#fff;width:5px;height:10px}
+#bw-planning[data-screen=order] .oo-row input:checked+.oo-box::after {border-color:var(--tw-on-accent);width:5px;height:10px}
 #bw-planning[data-screen=order] .oo-row .bc-picture {width:64px;height:50px;padding:3px;border:0;border-radius:2px;background:var(--tw-tile);color:var(--tw-tile-ink)}
 #bw-planning[data-screen=order] .oo-who {gap:0}
 #bw-planning[data-screen=order] .oo-name {display:flex;gap:8px;align-items:baseline}
@@ -62,7 +62,7 @@
   #bw-planning[data-screen=order] .oo-review {top:calc(var(--bw-bars) + 16px);padding:0;border-radius:0;background:none}
 }
 #bw-planning[data-screen=order] .oo-tape {display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 16px;border-radius:3px;background:var(--tw-accent);color:var(--tw-on-accent)}
-#bw-planning[data-screen=order] .oo-label {margin:0;font:600 14px var(--tw-font-label);letter-spacing:.1em;text-transform:uppercase;color:inherit}
+#bw-planning[data-screen=order] .oo-label {display:block;margin:0;font:600 14px var(--tw-font-label);letter-spacing:.1em;text-transform:uppercase;color:inherit}
 #bw-planning[data-screen=order] .oo-review h2 {margin:0;font:400 14px var(--tw-mono);letter-spacing:.04em;color:inherit;text-align:right}
 #bw-planning[data-screen=order] .oo-sub-top {margin:14px 0 18px;font:400 14.5px/21px var(--tw-font);color:var(--tw-text-2)}
 #bw-planning[data-screen=order] .oo-prefer {padding:0 0 14px;margin-bottom:14px;border-bottom:1px solid var(--tw-divider)}
@@ -95,13 +95,15 @@
   #bw-planning[data-screen=order] .oo-filter-box>summary {min-height:0;height:38px;padding:0 14px;border:1.5px solid var(--tw-text);border-radius:3px;background:none;font:600 15px var(--tw-font)}
   #bw-planning[data-screen=order] .oo-search {flex:1 1 100%;max-width:none}
   #bw-planning[data-screen=order] .oo-filter-box>summary {color:var(--tw-text)}
-  #bw-planning[data-screen=order] .oo-bar {left:0;right:0;bottom:var(--bw-bottom);width:auto;margin:0;padding:12px 16px;border:0;border-top:1.5px solid var(--tw-rule);border-radius:0;box-shadow:none;background:var(--tw-surface);align-items:center;gap:16px}
+  #bw-planning[data-screen=order] .oo-bar {left:0;right:0;bottom:var(--bw-bottom);width:auto;margin:0 calc(-1 * var(--tw-s-6));padding:12px 16px;border:0;border-top:1.5px solid var(--tw-rule);border-radius:0;box-shadow:none;background:var(--tw-surface);align-items:center;gap:16px}
   #bw-planning[data-screen=order] .oo-bar-text .mono {font:600 16px var(--tw-mono)}
   #bw-planning[data-screen=order] .oo-bar-text .oo-sub {font:400 13px var(--tw-mono);color:var(--tw-text-2)}
   #bw-planning[data-screen=order] .oo-bar .primary {flex:none;min-height:44px;padding:0 22px;border:0;border-radius:3px;background:var(--tw-accent);color:var(--tw-on-accent);font:600 17px var(--tw-font)}
   #bw-planning[data-screen=order] .oo-row {grid-template-columns:22px 52px minmax(0,1fr)}
   #bw-planning[data-screen=order] .oo-row .bc-picture {display:flex;width:52px;height:42px}
 }
+/* the bar is sticky inside main: its negative margins match main's side padding, so it runs edge to edge (#510 review) */
+@media(max-width:767.98px) {#bw-planning[data-screen=order] .oo-bar {margin:0 calc(-1 * var(--tw-s-4))}}
 #bw-planning[data-screen=order] .oo-select:last-of-type select {width:140px}
 /* the part sections: a mono label, the counts at the right, the chevron after them (the frame draws no chevron; the section still folds) */
 #bw-planning[data-screen=order] .bw-sec {border-top:0}

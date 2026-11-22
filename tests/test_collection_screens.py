@@ -371,7 +371,7 @@ def test_review_collection_controls_and_source_disclosure(world, coll, client):
     visible = info.find('dl', recursive=False)
     facts = {f.dt.get_text(): f.dd.get_text() for f in visible.select('.bc-fact')}
     assert facts['Parts check'] == 'Checked' and facts['Box'] == facts['Instructions'] == 'Yes'
-    assert [b.get_text() for b in soup.select('[data-bc-tab]')][1:] == ['Minifigures', 'Instructions & Box']
+    assert [b.find(string=True, recursive=False) for b in soup.select('[data-bc-tab]')][1:] == ['Minifigures', 'Instructions & Box']   # the labels; the figures tab may carry a count (#507)
     assert soup.select_one('[data-bc-tab=parts] .bc-tab-count')
     assert soup.select_one('[data-bc-copy-head] [aria-label="Copy progress"]')   # #507: the copy head above the tabs
     soup = soup_of(client.get(f'/collection/item/{world.brick}?colour={world.red}'))

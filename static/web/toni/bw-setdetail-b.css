@@ -231,6 +231,20 @@
 #bw-collection[data-b-copy] [data-bc-missing-rows] .bc-missing-card :is([data-bc-found-message],[data-bc-take-message]):empty {display:none}
 #bw-collection[data-b-copy] .bc-missing-more {align-self:flex-start;margin:12px 0 0;min-height:0;height:auto;padding:0;border:0;border-radius:0;background:none;box-shadow:none;font:600 13px var(--tw-font);color:var(--tw-accent-text);cursor:pointer}
 
+/* Edit parts mode (kept, restyled): the editing header, its Cancel and the save bar */
+#bw-collection[data-b-copy] .bc-missing-need {display:none}
+#bw-collection[data-b-copy] [data-bc-missing-rows] .bc-missing-card .bc-missing-need {display:inline}
+#bw-collection[data-b-copy] .bc-pl-mode {display:flex;align-items:center;gap:12px;padding:0;margin:0;border:0;background:none}
+#bw-collection[data-b-copy] .bc-pl-mode[hidden] {display:none}
+#bw-collection[data-b-copy] .bc-pl-mode>div {flex:1 1 auto;min-width:0}
+#bw-collection[data-b-copy] .bc-pl-mode h3 {margin:0 0 4px;font:600 18px/23px var(--tw-font);color:var(--tw-text)}
+#bw-collection[data-b-copy] .bc-pl-mode p {margin:0;font:400 12.5px/1.4 var(--tw-font);color:var(--tw-text-muted)}
+#bw-collection[data-b-copy] .bc-pl-mode .bc-pl-cancel {flex:none;display:inline-flex;align-items:center;justify-content:center;height:44px;min-height:0;padding:0 18px;border:0;border-radius:var(--tw-r-1);background:transparent;color:var(--tw-text);box-shadow:inset 0 0 0 1.5px var(--tw-text);font:600 15px var(--tw-font);cursor:pointer}
+#bw-collection[data-b-copy] .bc-part-group h3 .bc-pl-ticked:not([hidden])::before {content:" · ";white-space:pre;color:var(--tw-text-2)}
+#bw-collection[data-b-copy] .bc-pl-bar {border-top:1.5px solid var(--tw-rule)}
+#bw-collection[data-b-copy] .bc-pl-bar .bc-pl-sum {font:400 12.5px var(--tw-mono);color:var(--tw-text-2)}
+#bw-collection[data-b-copy] .bc-pl-bar .bc-pl-save {height:44px;min-height:0;padding:0 18px;border:0;border-radius:var(--tw-r-1);background:var(--tw-accent);color:var(--tw-on-accent);box-shadow:none;font:600 15px var(--tw-font)}
+
 /* Part groups and rows */
 #bw-collection[data-b-copy] .bc-part-group {margin:12px 0 0}
 #bw-collection[data-b-copy] .bc-part-group h3 {margin:0}

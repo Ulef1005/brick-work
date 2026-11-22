@@ -584,3 +584,42 @@ def test_a_create_that_fails_on_a_later_field_adds_nothing(v2, world, pair):
     wish = write(v2, '/wishes', body={'item': {'kind': 'set', 'key': '1000-1'}, 'max_price_currency': 'USD', 'decision': 'another'})
     assert wish.status_code == 422 and 'price' in wish.json['detail']
     assert digest(pair) == before and len(events(pair)) == count
+
+
+# ---------- bulk edit (#58) ----------
+
+def test_a_bulk_edit_previews_its_counts_then_writes_one_undoable_event(v2, world, pair):
+    body = {'ids': [world.copy_a, world.copy_b, world.copy_c], 'changes': {'storage_id': world.shelf, 'completeness': 'complete',
+            'statuses': {'mode': 'add', 'ids': ['system:Box present']}}, 'dry_run': True}
+    before, count = digest(pair), len(events(pair))
+    preview = write(v2, '/copies', 'patch', body)
+    validate(preview, 'patch_copies')
+    fields = {f['field']: (f['changes'], f['already']) for f in preview.json['data']['fields']}
+    assert fields == {'storage_id': (2, 1), 'completeness': (2, 1), 'statuses': (3, 0)}
+    assert preview.json['data']['dry_run'] is True and preview.json['event_id'] is None and preview.json['undo_url'] is None
+    assert digest(pair) == before and len(events(pair)) == count                                      # a preview leaves nothing at all
+    done = write(v2, '/copies', 'patch', dict(body, dry_run=False))
+    validate(done, 'patch_copies')
+    assert done.json['data']['changed'] == 3 and done.json['event_id'] == done.json['data']['event_id'] and done.json['undo_url']
+    assert {r['storage_id'] for r in rows(pair, 'SELECT storage_id FROM main.copy WHERE archived_at IS NULL')} == {world.shelf}
+    replay = write(v2, '/copies', 'patch', dict(body, dry_run=False), key=done.request.headers['Idempotency-Key'])
+    assert replay.json['idempotent_replay'] is True and replay.json['event_id'] == done.json['event_id']
+    assert undo(v2, done).status_code == 200
+    assert digest(pair) == before
+
+
+@pytest.mark.parametrize('body, status', [
+    ({'ids': [], 'changes': {'condition': 'new'}}, 422),
+    ({'ids': ['x'], 'changes': {}}, 422),
+    ({'ids': ['x'], 'changes': {'note': 'no'}}, 422),
+    ({'ids': ['x'] * 501, 'changes': {'condition': 'new'}}, 422),
+    ({'ids': ['nope'], 'changes': {'condition': 'new'}}, 422),
+])
+def test_a_bad_bulk_edit_is_refused(v2, world, pair, body, status):
+    before = digest(pair)
+    assert write(v2, '/copies', 'patch', body).status_code == status
+    assert digest(pair) == before
+
+
+def test_completeness_is_not_a_bulk_field_of_loose_stock(v2, world):
+    assert write(v2, '/stock', 'patch', {'ids': [world.stock_plate], 'changes': {'completeness': 'complete'}}).status_code == 422

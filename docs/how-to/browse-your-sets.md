@@ -35,4 +35,4 @@ When no copy has a storage, the label and the index do not appear and the sets s
 
 ## Drawers and Ledger
 
-**Drawers** shows the sets as tiles under their labels. **Ledger** shows the same sets as one row each. Your choice stays while the tab is open.
+**Drawers** shows the sets as tiles under their labels. **Ledger** shows the same sets as one row each. Your choice stays while the tab is open. The other lists under **Collection** (Minifigures, Parts, Instructions, Boxes) have the same switch: **Drawers** for tiles, **Ledger** for rows.

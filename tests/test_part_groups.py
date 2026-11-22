@@ -97,7 +97,8 @@ def test_set_sections_render_counts_and_no_script_fallback(coll, client, read, g
         assert module['data-bc-page-size'] == '15'
         return
     assert [s['data-bc-part-section'] for s in sections] == ['Bricks', 'Technic' if mode == 'grouped' else 'Technic Pins']
-    assert [s['data-bc-default-open'] for s in sections] == ['false', 'true']
+    # a set copy's view mode lifts missing lines into the cards (#507): Technic's only line is missing, so its group lists nothing and starts folded
+    assert [s['data-bc-default-open'] for s in sections] == ['false', 'false']
     assert all(s.select_one('button')['aria-expanded'] == 'true' for s in sections)
     assert all(not s.select_one('[data-bc-section-body]').has_attr('hidden') for s in sections)
     assert len(module.select('[data-bc-row]')) == len(detail['consists'])
@@ -148,7 +149,7 @@ def test_query_count_stays_fixed_with_hundreds_of_parts(coll, read, grouped_copy
 
 # On a set copy the missing lines are lifted into the cards above the groups (#507), so a group opens by default only while it has lines to check:
 # a checked group with missing lines starts folded, as frame 12 draws Bricks.
-@pytest.mark.parametrize('checked,missing,expected,status,opened', [(1, 2, 'Missing 2', 'incomplete', 'false'), (0, 0, '1 to check', 'unknown', 'true')])
+@pytest.mark.parametrize('checked,missing,expected,status,opened', [(1, 2, 'Missing 2', 'incomplete', 'false'), (0, 2, 'Missing 2 · 1 to check', 'incomplete', 'false'), (0, 0, '1 to check', 'unknown', 'true')])
 def test_section_status_variants(coll, client, grouped_copy, checked, missing, expected, status, opened):
     coll.db.execute("UPDATE copy_part SET checked=?,missing=?,damaged=0 WHERE copy_id=? AND item_id IN (SELECT id FROM item WHERE category_name='Bricks')", (checked, missing, grouped_copy))
     coll.db.commit()
@@ -156,6 +157,8 @@ def test_section_status_variants(coll, client, grouped_copy, checked, missing, e
     section = page.select_one('[data-bc-part-section=Bricks]')
     assert section.select_one('.bc-status.' + status).get_text() == expected
     assert section['data-bc-default-open'] == opened
+    assert section.select_one('[data-bc-view-only]').has_attr('hidden')   # without script the full counts show; the script swaps in the view-mode header
+    assert not section.select_one('[data-bc-edit-only]').has_attr('hidden')
 
 
 def test_section_runtime():

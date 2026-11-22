@@ -21,12 +21,8 @@
   <a href="#install">Install</a> ·
   <a href="CHANGELOG.md">Changelog</a> ·
   <a href="https://github.com/Ulef1005/brick-work/milestones">Roadmap</a> ·
-  <a href="https://brick-work.app/">Website</a> ·
-  <a href="https://www.youtube.com/watch?v=R5Q_6GUB1OQ">Video</a> ·
   <a href="https://brick-work.app/docs/">Docs</a> ·
-  <a href="https://brick-work.app/workflows/">Workflows</a> ·
-  <a href="https://brick-work.app/docs/developer/api-v2-reference/">API</a> ·
-  <a href="https://brick-work.app/docs/brickwork/mcp/">MCP</a>
+  <a href="https://brick-work.app/">Website</a>
 </p>
 
 <p align="center">
@@ -49,7 +45,7 @@
 
 **Don't just manage your collection. Work with it.** Brick Work is a free, open-source (MIT) web app for your own computer or NAS. It helps you finish your sets, not only list them. Built with Claude Code; I review it and use it daily. I use it for my collection of about 200 sets.
 
-**[Try the demo](https://brick-work.app/demo/)** (the real interface on an invented collection, nothing saved) or **[watch the tour](https://www.youtube.com/watch?v=R5Q_6GUB1OQ)** (1:36).
+**[Try the demo](https://brick-work.app/demo/)** (the real interface on an invented collection, nothing saved) or **[watch the tour](https://www.youtube.com/watch?v=R5Q_6GUB1OQ)** (1:36, recorded on v1.1).
 
 ## What it does, and why collectors like it
 
@@ -59,11 +55,11 @@
 - **Build Scout** ranks every set by how much your loose stock already makes. *"What can I build?" has an answer.*
 - **Set detection** ranks the sets a bulk lot may hold, and a pull list takes you through them. *A bag of unknown bricks becomes sets.*
 - **Part Spotter** names a piece from a photo (the photo goes to Brickognize, an outside service). *No more paging through catalogues.*
-- **Order missing parts** combines the gaps of the sets you choose into one BrickLink wanted list. *One order instead of many.*
+- **Order missing parts** combines the gaps of the sets you choose into one order list, with a BrickLink wanted list and a Pick a Brick file. *One order instead of many.*
 - **Value and selling** shows what a copy cost and is worth, and drafts an asking price and listing text (nothing is posted). *You decide to keep, sell or part out with numbers.*
 - **Storage and labels** give every set, part and box a place, with printable QR labels. *You find things.*
 
-It brings your collection over from Brickset, Rebrickable and BrickTracker, plus BrickLink files and orders, and it has a REST API, a CLI and an MCP server. Screens on [the workflows page](https://brick-work.app/workflows/) and in the [tutorials](https://brick-work.app/docs/tutorials/).
+It brings your collection over from Brickset, Rebrickable and BrickTracker, plus BrickLink files and orders, and it has a [REST API](https://brick-work.app/docs/developer/api-v2-reference/), a CLI and an [MCP server](https://brick-work.app/docs/brickwork/mcp/). Screens on [the workflows page](https://brick-work.app/workflows/) and in the [tutorials](https://brick-work.app/docs/tutorials/).
 
 ## In pictures
 

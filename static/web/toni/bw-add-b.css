@@ -1,0 +1,49 @@
+/* Add in B′ (#501 T7: Add, its search, paste, file and photo, review and added steps). Tokens only: the layout, the steps and every
+   control stay; the components come from R3-01 and the components sheets: the ruled heading, the field, the ink segment for a choice of
+   one (How, Where), small outlined choices for What (the chosen one violet soft), the violet primary (dashed while it cannot be used), the
+   dashed drop box, label type for legends and table heads. `#bw-add` is not a `.b-prime` root, so every rule carries `:not(#_)` to beat
+   bw-add.css. Colours only from the tokens; dark follows from them. */
+
+#bw-add:not(#_):not(#_) {font:400 15px/1.45 var(--tw-font),system-ui,sans-serif;color:var(--tw-text);-webkit-font-smoothing:antialiased}
+
+/* Heading: eyebrow, title, line, the 1.5 px rule */
+#bw-add:not(#_):not(#_)>header {padding:0 0 12px;border-bottom:1.5px solid var(--tw-rule)}
+#bw-add:not(#_):not(#_)>header .bc-eyebrow {margin:0 0 6px;font:600 12px/14px var(--tw-font-label);letter-spacing:.14em;text-transform:uppercase;color:var(--tw-text-muted)}
+#bw-add:not(#_):not(#_)>header h1 {margin:0;font:600 34px/1.15 var(--tw-font);letter-spacing:-.015em;color:var(--tw-text)}
+#bw-add:not(#_):not(#_)>header p {margin:4px 0 0;font:400 15px/1.45 var(--tw-font);color:var(--tw-text-2)}
+
+/* Labels: legends and table heads in the label type */
+#bw-add:not(#_):not(#_) :is(legend.label,th) {font:600 12px/14px var(--tw-font-label);letter-spacing:.14em;text-transform:uppercase;color:var(--tw-text-muted)}
+
+/* A choice of one (How, Where): the ink segment, the chosen part filled ink */
+#bw-add:not(#_):not(#_) .bw-add-segments.bw-add-continuous {gap:0;padding:0;border:1.5px solid var(--tw-text);border-radius:3px;overflow:hidden;background:none}
+#bw-add:not(#_):not(#_) .bw-add-segments.bw-add-continuous label+label span {border-left:1.5px solid var(--tw-text)}
+#bw-add:not(#_):not(#_) .bw-add-segments.bw-add-continuous span {height:38px;min-height:38px;padding:0 14px;border-radius:0;background:transparent;outline:0;color:var(--tw-text);font:600 12px var(--tw-font-label);letter-spacing:.08em;text-transform:uppercase}
+#bw-add:not(#_):not(#_) .bw-add-segments.bw-add-continuous input:checked+span {background:var(--tw-text);color:var(--tw-bg);outline:0}
+/* What: small outlined choices, the chosen one violet soft (R3-01's sheet) */
+#bw-add:not(#_):not(#_) .bw-add-segments:not(.bw-add-continuous) span {min-height:34px;padding:0 10px;border:1.5px solid var(--tw-text-muted);border-radius:3px;background:transparent;outline:0;color:var(--tw-text);font:500 13px var(--tw-font)}
+#bw-add:not(#_):not(#_) .bw-add-segments:not(.bw-add-continuous) input:checked+span {border-color:var(--tw-accent);background:var(--tw-accent-soft);color:var(--tw-accent-text);outline:0}
+#bw-add:not(#_):not(#_) .bw-add-segments input:focus-visible+span {outline:2px solid var(--tw-focus-color);outline-offset:2px}
+
+/* Fields (R3-01 .input) */
+#bw-add:not(#_):not(#_) .bw-add-search-field {height:44px;border:1px solid var(--tw-text-muted);border-radius:var(--tw-r-1);background:var(--tw-field)}
+#bw-add:not(#_):not(#_) .bw-add-search-field input {color:var(--tw-text);font:400 15px var(--tw-font)}
+#bw-add:not(#_):not(#_) :is(textarea,select,input:not([type=checkbox],[type=radio],[type=file],[type=hidden],[data-search])) {border:1px solid var(--tw-text-muted);border-radius:var(--tw-r-1);background:var(--tw-field);box-shadow:none;color:var(--tw-text)}
+#bw-add:not(#_):not(#_) :is(input,textarea)::placeholder {color:var(--tw-text-muted);opacity:1}
+
+/* The drop box: a dashed box, as R3-04's empty state */
+#bw-add:not(#_):not(#_) .bw-add-drop {border:1.5px dashed var(--tw-text-muted);border-radius:var(--tw-r-2);background:transparent}
+
+/* Buttons: violet primary, outlined ink for the rest, dashed while it cannot be used */
+#bw-add:not(#_):not(#_) :is(button,a.button):not(.primary,[role=switch]) {min-height:38px;padding:0 14px;border:0;border-radius:var(--tw-r-1);background:transparent;box-shadow:inset 0 0 0 1.5px var(--tw-text);color:var(--tw-text);font:600 14px var(--tw-font)}
+#bw-add:not(#_):not(#_) :is(button,a.button).primary {min-height:38px;padding:0 16px;border:0;border-radius:var(--tw-r-1);background:var(--tw-accent);box-shadow:none;color:var(--tw-on-accent);font:600 14px var(--tw-font)}
+#bw-add:not(#_):not(#_) :is(button,a.button):disabled {background:transparent;box-shadow:none;color:var(--tw-text-muted);outline:1.5px dashed var(--tw-text-muted);outline-offset:-1.5px;opacity:1}
+#bw-add:not(#_):not(#_) .bw-add-bar {border-top:1px solid var(--tw-divider)}
+
+/* The steps: number in a ring, the current one violet (an action in progress) */
+#bw-add:not(#_):not(#_) .bw-add-steps li {color:var(--tw-text-2)}
+#bw-add:not(#_):not(#_) .bw-add-steps li[aria-current] {color:var(--tw-text);font-weight:600}
+
+@media(max-width:767.98px) {
+  #bw-add:not(#_):not(#_)>header h1 {font-size:26px}
+}

@@ -56,14 +56,14 @@ def module(client, coll, copy_id, set_key='1000-1'):
 
 # ---- A. the Value module on a set's detail ----
 
-def test_the_module_shows_paid_worth_and_gain_after_the_prices_card(coll, client):
+def test_the_module_shows_paid_worth_and_gain_after_the_sell_card(coll, client):
     quote(coll)
     copy = coll.add_copy('1000-1', condition='used', completeness='complete', price='24.00', currency='EUR', date='2025-03-09')
     text, node = module(client, coll, copy)
     assert text == 'Value · Set 1 Paid €24.00 9 Mar 2025 Worth now €61.00 9 Oct Gain €37.00 · 154% Used sold average · 14 sales · 9 Oct'
     page = soup(client, f"/collection/item/{coll.item('sets', '1000-1')}?copy={copy}")
     modules = [m['data-module'] for m in page.select('aside [data-module]')]
-    assert modules.index('value') == modules.index('prices') + 2 and modules[modules.index('prices') + 1] == 'sell'      # the Sell card (#53) sits between
+    assert modules.index('value') == modules.index('sell') + 1 and modules.index('prices') > modules.index('value')      # #507 (frame 12): Sell, then Value, then the rest
     assert node.select_one('.bc-value-gain b').get_text() == '€37.00 · 154%'
 
 

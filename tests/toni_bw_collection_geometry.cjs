@@ -22,7 +22,7 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
   await call('Page.navigate',{url:'file://'+path.join(dir,'detail.html')});
   for(let i=0;i<100;i++){if(await evaluate("document.readyState==='complete' && location.pathname.endsWith('/detail.html') && !!document.querySelector('#bw-collection')"))break;await delay(20);}
   const chipHeights=await evaluate('[...document.querySelectorAll(".bc-copy-chip")].map(n=>n.getBoundingClientRect().height)');
-  assert.ok(chipHeights.length>0,'copy chips missing at '+width);assert.ok(chipHeights.every(h=>h===36),'copy chip height at '+width+': '+chipHeights);
+  assert.ok(chipHeights.length>0,'copy chips missing at '+width);assert.ok(chipHeights.every(h=>h===32),'copy chip height at '+width+': '+chipHeights);   // #507: the copy segment of frame 12 (32 px)
  }
  for(const kind of ['S','M','P','I','detail']){
   for(const width of kind==='detail'?[360,390,768,820,1024,1440]:[360,390]){
@@ -71,8 +71,8 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
      row.style.width=previous;
      const block=document.querySelector('.bc-progress-block'),present=block.querySelector('.bc-progress-present'),spans=[...block.querySelectorAll('.bc-progress-stats span')],coverage=block.querySelector('.bc-coverage');
      const missing=spans[0],taken=spans[1];
-     const progress={presentBeforeMissing:rect(present).left<rect(missing).left&&Math.abs(rect(present).top-rect(missing).top)<1&&Math.abs(rect(missing).right-rect(block).right)<1,
-      captionsBelowCoverage:!!coverage&&rect(taken).top>=rect(coverage).bottom&&Math.abs(rect(taken).top-rect(coverage).bottom-6)<1.5&&rect(coverage).top>=rect(present).bottom};
+     const progress={presentBeforeMissing:rect(present).left<rect(missing).left&&Math.abs(rect(present).top-rect(missing).top)<1&&rect(missing).right<=rect(block).right+.5,   /* #507: "365/375 · 10 missing" reads as one line (frame 12), no longer flush right */
+      captionsBelowPresent:!coverage.checkVisibility()&&rect(taken).top>=rect(present).bottom};   /* #507: frame 12 draws no coverage bar; "4 can be taken · 6 to order" is the next line */
      const card=[...document.querySelectorAll('.bc-figure-row')].find(n=>n.querySelector('[data-figure-state=parts-missing]'));
      if(!card)throw new Error('no missing figure card in the fixture');
      const cardLink=card.querySelector('.bc-figure-identity>a'),inside=r=>r.left>=rect(card).left-.5&&r.right<=rect(card).right+.5;
@@ -144,7 +144,7 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
      }
      const visibleFacts=sourceFacts.filter(n=>n.checkVisibility()&&rect(n).height>0);
      for(let i=1;i<visibleFacts.length;i++)if(rect(visibleFacts[i-1]).bottom>rect(visibleFacts[i]).top+.5)errors.push('source fact row overlap');
-     for(const fact of [...aside.querySelectorAll('.bc-fact'),...sourceFacts]){const dt=fact.querySelector('dt'),dd=fact.querySelector('dd');if(rect(dt).height&&rect(dt).bottom>rect(dd).top+.5)errors.push('fact overlap');}
+     for(const fact of [...aside.querySelectorAll('.bc-fact'),...sourceFacts]){const dt=fact.querySelector('dt'),dd=fact.querySelector('dd');if(rect(dt).height&&rect(dt).bottom>rect(dd).top+.5&&rect(dt).right>rect(dd).left+.5)errors.push('fact overlap');   /* #507: B′ puts a term beside its value (frame 12 .kv); only boxes that cross overlap */}
      for(const price of aside.querySelectorAll('.bc-price')){const children=[...price.children];for(let i=1;i<children.length;i++)if(rect(children[i-1]).bottom>rect(children[i]).top+.5)errors.push('price overlap');}
      return errors;
     })()`);
@@ -154,5 +154,5 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
   }
  }
  console.log(JSON.stringify({identityMeasurements,review49a}));
- console.log('Collection geometry: list shells at 360/390; detail and inventory at 360/390/768/820/1024/1440, copy chips 36px at 1024/1440, source details closed/open passed');
+ console.log('Collection geometry: list shells at 360/390; detail and inventory at 360/390/768/820/1024/1440, copy chips 32px at 1024/1440, source details closed/open passed');
 })().catch(e=>{console.error(e);process.exitCode=1;}).finally(()=>{socket?.close();child?.kill();});

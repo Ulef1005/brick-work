@@ -7,6 +7,8 @@ from brickwork.core import partout, selling
 from brickwork.core.admin import database
 from brickwork.demo import clock, frames_setdetail
 from scripts import screen_gate
+from tests import rendered
+from tests.test_orders_frame import fetch
 
 COPY = frames_setdetail.COPY
 
@@ -62,6 +64,33 @@ def test_setdetail_world_database_and_values(store):
             card = selling.card(db, COPY)
             assert card['ask']['text'] == '€46.18'
             assert [r['amount'] for r in card['rows'] if r['kind'] == 'deduction'] == ['less €2.40']
-            assert Decimal(partout.values(db, [COPY])[COPY]['value']) == Decimal('41.80')
+            made = partout.values(db, [COPY])[COPY]
+            assert Decimal(made['value']) == Decimal('41.80') and (made['priced'], made['lines']) == (117, 130)   # the Prices card: 117 of 130 lines (part and colour)
     finally:
         clock.thaw_clock(patched)
+
+
+@rendered.group
+def test_the_page_carries_the_shapes_of_frame_12():
+    """The copy head above the tabs, the card order of the right column and the missing-card section (#507)."""
+    with screen_gate.world('frames-setdetail') as base:
+        page = fetch(base, '/collection/item/set/7213-1')
+        root = page.select_one('#bw-collection')
+        assert root.has_attr('data-b-copy')
+        assert any('bw-setdetail-b.css' in link['href'] for link in page.select('link[rel=stylesheet]'))
+        head = root.select_one('[data-bc-copy-head]')
+        assert head and head.find_previous_sibling(class_='bc-detail-hero') and head.find_next_sibling(class_='bc-detail-layout')
+        assert head.select_one('h3').get_text() == '10 parts missing, 4 in loose stock'
+        assert head.select_one('.bc-progress-present').get_text() == '365/375'
+        assert [b.get_text(strip=True) for b in head.select('.bc-check-actions a, .bc-check-actions button')] == ['Check parts', 'Edit parts', 'Check missing only']
+        assert head.select_one('[data-bc-pl-checked]')['aria-checked'] == 'true'
+        assert not root.select_one('[data-module=consists] [data-bc-pl-progress]')
+        assert [m['data-module'] for m in root.select('.bc-detail-aside > [data-module]')][:5] == ['sell', 'value', 'info', 'prices', 'part-list']
+        assert root.select_one('nav.bc-copy-seg [aria-current=page]')
+        section = root.select_one('[data-module=consists] [data-bc-missing]')
+        assert section.select_one('[data-bc-missing-label]') and section.select_one('[data-bc-missing-more]')
+        cards = [c for c in root.select('.bc-missing-card') if c.select_one('.bc-missing-need')]
+        assert len(cards) == 7 and all('--part-rgb:#' in c['style'] for c in cards)
+        needs = {c.select_one('.bc-missing-meta .mono').get_text(): c.select_one('.bc-missing-need').get_text() for c in cards}
+        assert needs['3008'] == 'needs 2 · 2 missing' and needs['3633'] == 'needs 4 · 3 missing'
+        assert sorted(c.select_one('.bc-take-go').get_text() for c in cards if c.select_one('.bc-take-go')) == ['Take 1', 'Take 1', 'Take 2']

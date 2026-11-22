@@ -1,4 +1,6 @@
 """Orders in the B′ design (frame 16, #511): the 'frames-orders' world draws order 9900102 as the frame counts it, and the page carries the frame's shapes."""
+import http.cookiejar
+import json
 import urllib.request
 
 from bs4 import BeautifulSoup
@@ -7,8 +9,11 @@ from scripts import screen_gate
 from tests import rendered
 
 
+OPENER = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
+
+
 def fetch(base, path):
-    with urllib.request.urlopen(base + path) as response:
+    with OPENER.open(base + path) as response:
         return BeautifulSoup(response.read().decode(), 'html.parser')
 
 
@@ -29,3 +34,8 @@ def test_the_frame_world_draws_the_order_of_the_frame():
         assert shapes == {'Demo Brick Outlet': 'dash', 'Example Parts Depot': 'dash', 'Sample Bricks Store': 'solid'}
         audit = [r for r in page.select('[data-order-panel=count] > .bw-ledger-row') if 'Received counts saved' in r.get_text()]
         assert len(audit) == 1 and audit[0].select_one('[data-undo-event]')            # one save, with its Undo
+        undo = urllib.request.Request(base + '/workbench/orders/action/undo', method='POST', headers={'Content-Type': 'application/json'},
+                                      data=json.dumps({'csrf_token': page.select_one('#bw-ledger')['data-csrf'], 'event_id': int(audit[0].select_one('[data-undo-event]')['data-undo-event'])}).encode())
+        with OPENER.open(undo) as response:                                           # the staged save is journalled: its Undo works
+            assert response.status == 200
+        assert fetch(base, '/workbench/orders/2?view=count').select_one('[data-progress]').get_text() == '0 of 95 pieces counted · 95 still to count'

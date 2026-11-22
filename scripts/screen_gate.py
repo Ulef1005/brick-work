@@ -97,8 +97,8 @@ WORLDS = ('demo', 'showcase', 'extras', 'edge', 'edge-read-only', 'edge-empty', 
 def build_store(name: str, store: Path) -> None:
     """Build the invented collection of world `name` at `store` (and its catalogue beside it), with its staged checks. The one place a gate world's data
     is made, so a test can build exactly what the gate renders (tests/test_gate_edge_world.py proves the three older worlds did not change)."""
-    from brickwork.demo import checks, dataset, frames, frames_lot, frames_scout, frames_storage, gate_edge, gate_extras, real, showcase
-    layers = {'real': real.layer, 'demo': None, 'showcase': showcase.layer, 'extras': gate_extras.layer, 'edge': gate_edge.layer, 'edge-read-only': gate_edge.layer, 'edge-empty': gate_edge.empty_layer, 'edge-value': gate_edge.value_layer, 'edge-order': gate_edge.order_layer, 'edge-instructions': gate_edge.instruction_layer, 'frames': frames.layer, 'frames-no-storage': frames.unstored_layer, 'frames-pulled': frames.pulled_layer, 'frames-matcher': frames.matcher_layer, 'frames-instructions': frames.instructions_layer, 'frames-empty': frames.empty_layer, 'frames-scout': frames_scout.scout_layer, 'frames-storage': frames_storage.storage_layer, 'frames-lot': frames_lot.lot_layer, 'frames-order': frames.layer, 'frames-orders': frames.layer}
+    from brickwork.demo import checks, dataset, frames, frames_lot, frames_orders, frames_scout, frames_storage, gate_edge, gate_extras, real, showcase
+    layers = {'real': real.layer, 'demo': None, 'showcase': showcase.layer, 'extras': gate_extras.layer, 'edge': gate_edge.layer, 'edge-read-only': gate_edge.layer, 'edge-empty': gate_edge.empty_layer, 'edge-value': gate_edge.value_layer, 'edge-order': gate_edge.order_layer, 'edge-instructions': gate_edge.instruction_layer, 'frames': frames.layer, 'frames-no-storage': frames.unstored_layer, 'frames-pulled': frames.pulled_layer, 'frames-matcher': frames.matcher_layer, 'frames-instructions': frames.instructions_layer, 'frames-empty': frames.empty_layer, 'frames-scout': frames_scout.scout_layer, 'frames-storage': frames_storage.storage_layer, 'frames-lot': frames_lot.lot_layer, 'frames-order': frames.layer, 'frames-orders': frames_orders.orders_layer}
     dataset.build(store, layer=layers[name]() if layers[name] else None)
     checks.stage(store, real.CHECKS if name == 'real' else showcase.CHECKS if name not in ('demo', 'frames', 'frames-no-storage', 'frames-pulled', 'frames-matcher', 'frames-instructions', 'frames-empty', 'frames-storage', 'frames-lot', 'frames-order', 'frames-orders') else None)
     if name in ('frames', 'frames-no-storage', 'frames-matcher', 'frames-order'):
@@ -106,9 +106,6 @@ def build_store(name: str, store: Path) -> None:
     if name == 'frames-order':
         from brickwork.demo import frames_order
         frames_order.stage_order(store)   # frame 15: three copies with gaps, the running check on 10210-1
-    if name == 'frames-orders':
-        from brickwork.demo import frames_orders
-        frames_orders.stage_orders(store)   # frame 16: order 9900102's five lines, 56 of 95 counted
     if name == 'frames-matcher':
         from brickwork.demo import frames_matcher
         frames_matcher.stage_matcher(store)   # frame 09's loose stock, on the gap lines the checks and the inspector have just made

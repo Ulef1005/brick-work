@@ -19,8 +19,8 @@
 #bw-ledger.bw-orders[data-b] [data-chips]:empty {display:none}
 #bw-ledger.bw-orders[data-b] .bw-toolbar {margin:0;grid-template-columns:minmax(0,1fr) 38px 38px;align-items:end}
 /* the labels' own words (Search, Sort) are visually hidden but kept 20 px of height above the fields; the fields carry aria-labels */
-#bw-ledger.bw-orders[data-b] .bw-toolbar>label {font-size:0;line-height:0;gap:0}
-#bw-ledger.bw-orders[data-b] .bw-toolbar>label:first-child input {height:38px;min-height:38px;padding:0 12px 0 36px;border:1px solid var(--tw-text-muted);border-radius:var(--tw-r-1);background-color:var(--tw-field);background-position:12px center;font:400 15px var(--tw-font);color:var(--tw-text)}
+#bw-ledger.bw-orders[data-b] .bw-toolbar>label {font-size:0;line-height:0;gap:0;min-height:0}
+#bw-ledger.bw-orders[data-b] .bw-toolbar>label:first-child input {display:block;width:100%;box-sizing:border-box;height:38px;min-height:38px;padding:0 12px 0 36px;border:1px solid var(--tw-text-muted);border-radius:var(--tw-r-1);background-color:var(--tw-field);background-position:12px center;font:400 15px var(--tw-font);color:var(--tw-text)}
 #bw-ledger.bw-orders[data-b] .bw-toolbar [data-filters],#bw-ledger.bw-orders[data-b] .bw-toolbar .order-select,#bw-ledger.bw-orders[data-b] .bw-toolbar .order-select>button {width:38px;min-width:38px;height:38px;min-height:38px;padding:0;margin:0;border-radius:var(--tw-r-1)}
 #bw-ledger.bw-orders[data-b] .bw-toolbar [data-filters],#bw-ledger.bw-orders[data-b] .bw-toolbar .order-select>button {border:1px solid var(--tw-divider);background-color:var(--tw-surface)}
 #bw-ledger.bw-orders[data-b] .bw-toolbar [data-count] {padding:0;font:400 12px var(--tw-mono);color:var(--tw-text-muted)}
@@ -117,5 +117,6 @@
   #bw-ledger.bw-orders[data-b] [data-order-panel=count] .order-ordered {display:none}
   #bw-ledger.bw-orders[data-b] [data-order-panel=count] .order-ordered-sub {display:block;grid-column:2;grid-row:2;font:400 12px/1.45 var(--tw-mono);color:var(--tw-text-2)}
   #bw-ledger.bw-orders[data-b] [data-order-panel=count] .order-stepper {grid-column:3;grid-row:1/3;align-self:center}
-  #bw-ledger.bw-orders[data-b] [data-order-panel=count] .order-count-state {display:none}
+  /* the frame draws no status on a phone; it stays for screen readers (visually hidden, not display:none) */
+  #bw-ledger.bw-orders[data-b] [data-order-panel=count] .order-count-state {position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0!important}
 }

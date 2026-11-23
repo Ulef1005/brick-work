@@ -627,6 +627,23 @@ def test_required_card_counts_agree(coll, client, read, context):
     assert sum('bc-missing-card' in c.get('class', []) for c in part_cards) == expected == len(part_cards)
 
 
+def test_figures_tab_counts_the_figures(coll, client):
+    """The Minifigures tab carries the copy's figure count, as frame 12 draws it ("Minifigures 4"; #507): the figures the tab lists."""
+    keep = coll.item('sets', '1000-1')
+    cid = coll.add_copy('1000-1')
+    def count(soup):
+        tag = soup.select_one('[data-bc-tab=figures] .bc-tab-count')
+        return int(tag.get_text()) if tag else 0
+    def listed(soup):   # figures, as the Parts tab counts pieces: each listed figure line's quantity
+        return sum(int(json.loads(a['data-record'])['quantity'] or 0) for a in soup.select('article.bc-figure-row'))
+    soup = item_page(client, keep, copy=cid)
+    before = listed(soup)
+    assert count(soup) == before
+    add_figure(coll, cid, coll.local('minifigure', 'Bl figure', born_key='bl-figure'))
+    soup = item_page(client, keep, copy=cid)
+    assert count(soup) == listed(soup) > before
+
+
 @pytest.mark.parametrize('missing,stock', [(0, 0), (2, 0), (2, 1), (2, 20)])
 def test_inventory_counts_and_coverage(coll, client, read, missing, stock):
     """The progress counts of a copy, and what loose stock could cover of the gap (`.bc-coverage`, 'can be taken', 'to order'; M.8e)."""
@@ -638,7 +655,7 @@ def test_inventory_counts_and_coverage(coll, client, read, missing, stock):
     p = detail(read, keep, copy_id=cid)['progress']
     soup = item_page(client, keep, copy=cid)
     assert soup.select_one('[data-bc-tab=parts] .bc-tab-count').get_text() == str(p['total']) == '6'
-    assert not soup.select_one('[data-bc-tab=figures] .bc-tab-count')
+    assert soup.select_one('[data-bc-tab=figures] .bc-tab-count').get_text() == str(sum(int(json.loads(a['data-record'])['quantity'] or 0) for a in soup.select('article.bc-figure-row')))   # the tab counts the figures it lists (#507)
     take = min(stock, missing)                                              # only the red 3001 line is in stock; it is missing `missing`
     assert p['missing'] == missing * 2 and p['can_take'] == take
     if p['missing']:
@@ -711,7 +728,7 @@ def test_phone_identity_width_from_css_and_real_dom(coll, client):
     assert basis, 'identity must have a nonshrinking basis within the phone media rule'
     reserved_width = 390 - 2 * 20 - 2 * 20 - int(basis[1])
     for name in ['Tire Smooth Small Dually', 'Brick 2 x 4 without Cross Support']:
-        identity = next(n for n in soup.select('.bc-inventory-row > a:first-of-type .bc-identity') if name in n.get_text().replace('\xa0', ' '))
+        identity = next(n for n in soup.select('.bc-inventory-row > a:first-of-type .bc-identity') if name in n.get_text().replace('\xa0', ' ').replace('×', 'x'))   # names show x as ×
         assert reserved_width >= 150, (name, reserved_width)
         chip = identity.select_one('.bc-colour')
         assert chip and chip.get_text(strip=True) in ['Black', 'Pastel Blue']
@@ -759,7 +776,7 @@ def test_matching_headline_counts_copies_once(rows, expected):
 def test_part_names_display_only_on_detail_and_cards(coll, client, read):
     from brickwork.web.formatting import nowrap_tail, part_name
     name = 'Bracket 1 x 2 - 1 x 2 Inverted'
-    expected = 'Bracket 1 x 2 · 1 x 2 Inverted'
+    expected = 'Bracket 1 × 2 · 1 × 2 Inverted'   # shown with the times sign (#501)
     assert nowrap_tail(part_name(name)) == expected
     assert part_name('600-2') == '600-2'
     assert part_name('Plate - Modified') == 'Plate - Modified'

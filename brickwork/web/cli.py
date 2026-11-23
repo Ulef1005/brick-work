@@ -195,6 +195,7 @@ def main(argv=None):
                 if not path.is_file():
                     raise ValueError("Run 'brickwork setup' first")
                 with closing(connect(path, read_only=True)) as db:
+                    db.execute('BEGIN')
                     result = own_export.build(db, sections=args.get('sections'))
                 Path(args['output']).write_bytes(result['content'])
                 summary = {'counts': result['counts'], 'sections': result['sections'], 'total': sum(result['counts'].values())}

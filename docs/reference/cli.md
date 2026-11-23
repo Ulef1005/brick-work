@@ -140,7 +140,7 @@ brickwork export-all --output FILE [--sections places,flags,collection,wishes]
 | `--output` | Required. The zip file to write. |
 | `--sections` | Comma-separated sections. All four when absent. |
 
-The file holds places and storage, flags, lots, copies with their part-line marks, loose stock, and wishlists with their wishes. Items and colours are named by provider and number, not by this install's ids. Orders, part checks, prices, photos, secrets and history are not in it. A summary of row counts goes to standard error. The same file comes from `GET /export/brickwork.zip`.
+The file holds places and storage, flags, lots, copies with their part-line marks, loose stock, and wishlists with their wishes. Items and colours are named by provider and number, not by this install's ids. Orders, part checks, market prices, photos, secrets and history are not in it. The prices you paid and the values you recorded are. A summary of row counts goes to standard error. The same file comes from `GET /export/brickwork.zip`.
 
 ## migrate4
 

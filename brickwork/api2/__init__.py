@@ -74,7 +74,7 @@ def operations():
 
 
 def scope_of(endpoint, method):
-    return operations().get(endpoint.split('.', 1)[1], {}).get('scope') or 'read'
+    return operations()[endpoint.split('.', 1)[1]]['scope'] or 'read'
 
 
 def authorize():

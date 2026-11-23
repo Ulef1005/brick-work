@@ -4368,7 +4368,7 @@ paths:
     get:
       operationId: get_export_brickwork_zip
       summary: "Brick Work's own export (#524) as a zip: places, flags, the collection and the wishes, as JSON Lines with a manifest."
-      description: 'Live rows only. Items and colours are named by provider, namespace, key and kind, never by this install''s ids. A copy carries its part-line marks, not its inventory provenance. Orders, part checks, prices, photos, secrets and history are not in version 1. A stored credential in a note is written as [set].'
+      description: 'Live rows only. Items and colours are named by provider, namespace, key and kind, never by this install''s ids. A copy carries its part-line marks and the word for where its list came from, not the list itself. Orders, part checks, market prices, photos, secrets and history are not in version 1; the prices you paid and the values you recorded are. A stored credential in a note is written as [set].'
       security:
       - bearerAuth:
         - read

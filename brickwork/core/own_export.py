@@ -49,11 +49,11 @@ def _schema_version(db):
 def _items(db):
     out = {}
     for r in db.execute('SELECT id, origin, kind, name, born_provider, born_namespace, born_key FROM main.item'):
-        unresolved = r['born_key'] is None or r['origin'] == 'local'
         out[r['id']] = {
-            'provider': None if unresolved else r['born_provider'],
-            'namespace': None if unresolved else r['born_namespace'],
-            'key': None if unresolved else r['born_key'],
+            'provider': r['born_provider'],
+            'namespace': r['born_namespace'],
+            'key': r['born_key'],
+            'local': r['origin'] == 'local',
             'kind': r['kind'],
             'name': r['name'],
         }
@@ -237,12 +237,12 @@ def _stock_rows(db, items, colors, secrets):
 
 
 def _wishlist_rows(db, secrets):
-    rows = db.execute('''SELECT id, name, note, sort, bricklink_id, created_at
+    rows = db.execute('''SELECT id, name, note, sort, created_at
                          FROM main.wishlist WHERE archived_at IS NULL ORDER BY id''')
     return [
         {
             'id': r['id'], 'name': r['name'], 'note': _note(r['note'], secrets),
-            'sort': r['sort'], 'bricklink_id': r['bricklink_id'], 'created_at': r['created_at'],
+            'sort': r['sort'], 'created_at': r['created_at'],
         }
         for r in rows
     ]
@@ -280,6 +280,23 @@ def _jsonl(rows):
     return '\n'.join(json.dumps(row, sort_keys=True, ensure_ascii=False) for row in rows) + '\n'
 
 
+REFERENCES = (('storage', 'parent_id', 'storage'), ('lot', 'storage_id', 'storage'), ('lot', 'place_id', 'place'),
+              ('copy', 'storage_id', 'storage'), ('copy', 'place_id', 'place'), ('stock', 'storage_id', 'storage'),
+              ('stock', 'place_id', 'place'), ('stock', 'lot_id', 'lot'))
+
+
+def _drop_dangling(tables):
+    """A parent that is archived, or in a section left out, is not in the file: its id names nothing there, so it is written as null."""
+    rows = dict(tables)
+    for table, column, parent in REFERENCES:
+        if table not in rows or parent not in rows:
+            continue
+        known = {r['id'] for r in rows[parent]}
+        for r in rows[table]:
+            if r.get(column) is not None and r[column] not in known:
+                r[column] = None
+
+
 def build(db, sections=None):
     """Build the portable export zip for the selected sections."""
     chosen = _parse_sections(sections)
@@ -303,6 +320,7 @@ def build(db, sections=None):
             ('wishlist', _wishlist_rows(db, secrets)),
             ('wish', _wish_rows(db, items, colors, secrets)),
         ])
+    _drop_dangling(tables)
     counts = {name: len(rows) for name, rows in tables}
     manifest = {
         'format': FORMAT,

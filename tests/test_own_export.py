@@ -13,7 +13,7 @@ FORBIDDEN_COPY_KEYS = {
     'inventory_source', 'inventory_version', 'fetched_inventory_id', 'inventory_digest',
     'inventory_pending', 'pending_job_id', 'materialised_at', 'checked_by', 'item_id',
 }
-ITEM_REF_KEYS = {'provider', 'namespace', 'key', 'kind', 'name'}
+ITEM_REF_KEYS = {'provider', 'namespace', 'key', 'local', 'kind', 'name'}
 COLOR_REF_KEYS = {'provider', 'key', 'name'}
 
 
@@ -67,7 +67,7 @@ def test_build_manifest_tables_lines_and_refs(coll, world, read):
         assert any(line['item']['key'] == '3023' and line['spare'] for line in parts)
         assert not any(line['item']['key'] == '3023' and line['color']['key'] == '15' for line in copies[world.copy_b]['lines']['parts'])
         stocks = {r['id']: r for r in _jsonl(zf, 'data/stock.jsonl')}
-        assert stocks[world.stock_local]['item']['key'] is None
+        assert stocks[world.stock_local]['item']['key'] and stocks[world.stock_local]['item']['local'] is True
         assert stocks[world.stock_local]['item']['name'] == 'Only on BrickLink'
         assert stocks[world.stock_mystery]['item']['key'] is None
         assert stocks[world.stock_mystery]['item']['kind'] == 'gear'
@@ -118,3 +118,15 @@ def test_api_route_and_cli(app4, coll, world, tmp_path, capsys):
     assert target.is_file() and summary['counts'] == manifest['counts']
     with _open(target.read_bytes()) as zf:
         assert 'data/copy.jsonl' in zf.namelist()
+
+
+def test_a_reference_to_an_archived_parent_is_written_as_null_and_the_wishlist_has_no_bricklink_id(app4, coll, world):
+    lot = coll.db.execute('SELECT lot_id FROM stock WHERE lot_id IS NOT NULL LIMIT 1').fetchone()
+    assert lot is not None
+    coll.sql('UPDATE lot SET archived_at=? WHERE id=?', ('2026-11-01T00:00:00Z', lot[0]))
+    data = own_export.build(coll.db, 'collection')
+    with zipfile.ZipFile(io.BytesIO(data['content'])) as zf:
+        assert all(r['lot_id'] != lot[0] for r in _jsonl(zf, 'data/stock.jsonl'))
+    wishes = own_export.build(coll.db, 'wishes')
+    with zipfile.ZipFile(io.BytesIO(wishes['content'])) as zf:
+        assert all('bricklink_id' not in r for r in _jsonl(zf, 'data/wishlist.jsonl'))

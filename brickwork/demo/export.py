@@ -249,7 +249,7 @@ def check(out):
 def export(out, base='/brick-work/demo/', data=dataset.DATA, rich=True, world='showcase'):
     """Build the demo into `out` (which must not exist). Returns the manifest; raises on findings. `rich` adds the showcase layer
     (showcase.py) to the design test data's world; the screen gate renders the world without it. `world='real'` builds the real-sets world instead (real.py, #332)."""
-    layer, plan = (real.layer(), real.CHECKS) if world == 'real' else (showcase.layer(data), showcase.CHECKS)
+    layer, plan = (real.layer(demo=True), real.CHECKS) if world == 'real' else (showcase.layer(data), showcase.CHECKS)
     out = Path(out)
     if out.exists():
         raise FileExistsError(out)

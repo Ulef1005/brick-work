@@ -147,6 +147,4 @@ def test_the_real_demo_reaches_lot_sorter_build_scout_and_order_missing_parts(tm
     assert lots and 'candidate sets' in lots[0].read_text() and 'Pull list' in lots[0].read_text()
     assert list(lots[0].parent.parent.glob('pull/*/index.html'))
     assert re.search(r'Order list [1-9]\d* lines', text('planning/order-missing-parts'))
-    months = set(re.findall(r'\b\d{1,2} (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b', text('collection/item/1')))
-    assert len(months) >= 4, months   # the rows' dates are spread over the months before the demo's 12 Oct, not all one day
     assert manifest['skipped'] == {}

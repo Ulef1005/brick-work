@@ -14,7 +14,6 @@ import itertools
 import json
 import random
 import shutil
-import sqlite3
 import struct
 from pathlib import Path
 
@@ -42,8 +41,6 @@ STATUS = {'complete': ['built'], 'gaps': ['built', 'needs-check'], 'progress': [
 CHECKED_SETS = ('7938-1', '10210-1', '7213-1')        # the copies the loose stock can finish: a finished check is behind them
 # Parts whose picture is also stored without a colour: the Change variant screen shows an item with no colour chosen, and looks for (item, NULL) before (item, colour).
 COLOURLESS = {('32039', '0'), ('42135', '0')}
-# The shop names the shared showcase world uses read like placeholders; the real-sets world renames them (the ids, made from the old names, stay unseen)
-SHOPS = {'Sample Bricks Store': 'Marlow Parts & Plates', 'Example Parts Depot': 'Hollis Brick Supply', 'Demo Brick Outlet': 'Norden Brick Outlet'}
 # Build Scout: sets whose parts sit loose in a drawer, with the share of their pieces the loose stock covers (the screen lists sets from 60 %)
 SCOUT_STOCK = {'10254-1': 0.72, '21028-1': 0.8, '8043-1': 0.66}   # none of the three the finishing stock works on, so the Matchmaker's numbers stay as they were
 FINISHING = {'7938-1': 1.0, '10210-1': 1.0, '7213-1': 0.5}
@@ -80,8 +77,10 @@ class Layer(showcase.Layer):
 
     It reuses the showcase layer's storage, loose-stock and order steps (which draw from `stockpool`) and replaces everything that names a set."""
 
-    def __init__(self, folder=FOLDER, pictures=True):   # does not call the showcase's __init__: its sets are invented ones
-        self.folder, self.pictures = Path(folder), pictures
+    def __init__(self, folder=FOLDER, pictures=True, demo=False):   # does not call the showcase's __init__: its sets are invented ones
+        # `demo`: the exported public demo only. The screen gate's frames worlds and the site's pictures build on this layer and pin its numbers, so the demo's own
+        # touches (Build Scout stock, no damage on Complete copies, no queued picture job) stay out of them.
+        self.folder, self.pictures, self.demo = Path(folder), pictures, demo
         rng = self.rng = random.Random(SEED)
         data = snapshot(self.folder)
         self.sets, self.catalogue, self.inventories, self.figures = [], [], {}, []
@@ -93,7 +92,7 @@ class Layer(showcase.Layer):
             checked, missing, damaged = mark(counted, rng, state)
             for rows in figure_lines.values():
                 mark([r for r in rows if not r['spare']], rng, 'complete' if state in ('complete', 'gaps') else state)
-            if state == 'complete':   # Complete is about parts and damage is its own fact (#638), but a demo set that reads Complete and damaged looks like a contradiction (product, 2026-11-23)
+            if self.demo and state == 'complete':   # Complete is about parts and damage is its own fact (#638), but a demo set that reads Complete and damaged looks like a contradiction (product, 2026-11-23)
                 for row in counted + [r for rows in figure_lines.values() for r in rows]:
                     row['damaged'] = 0
                 damaged = 0
@@ -142,7 +141,8 @@ class Layer(showcase.Layer):
                 self.loose_parts(db)
                 self.loose_figures(db, ids)
                 self.finishing_stock(db)
-                self.scout_stock(db)
+                if self.demo:
+                    self.scout_stock(db)
                 self.finished_checks(db)
                 self.prices(db)
                 self.damaged_prices(db)
@@ -152,9 +152,8 @@ class Layer(showcase.Layer):
                 self.flea_market(db)
                 if self.pictures:
                     self.illustrate(db)
-                self.clear_picture_queue(db)
-                self.rename_shops(db)
-                self.spread_dates(db)
+                if self.demo:
+                    self.clear_picture_queue(db)
         finally:
             clock.thaw_clock(patched)
 
@@ -272,35 +271,6 @@ class Layer(showcase.Layer):
 
     # ---------- the pictures ----------
 
-    def rename_shops(self, db):
-        """Every text column that holds one of the placeholder shop names (places, orders, notes) gets the real-sounding one."""
-        with transaction(db):
-            for table, in db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").fetchall():
-                for column, kind in [(c[1], c[2]) for c in db.execute(f'PRAGMA table_info("{table}")')]:
-                    if kind.upper() not in ('TEXT', ''):
-                        continue
-                    for old, new in SHOPS.items():
-                        try:
-                            db.execute(f'UPDATE "{table}" SET "{column}" = REPLACE("{column}", ?, ?) WHERE "{column}" LIKE ?', (old, new, f'%{old}%'))
-                        except sqlite3.IntegrityError:
-                            pass   # the history tables are append-only: what happened stays as it was written
-
-    def spread_dates(self, db):
-        """The world is built under one frozen clock, so every row reads 12 Oct. Each row that carries exactly that stamp moves back by a fixed number of
-        days from its own row number (0 to 119), the same for every column of the row, so created never comes after updated and nothing reads the real clock."""
-        with transaction(db):
-            for table, in db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").fetchall():
-                info = db.execute(f'PRAGMA table_info("{table}")').fetchall()
-                stamped = [c[1] for c in info if c[1] in ('created_at', 'updated_at', 'fetched_at', 'at', 'checked_at', 'purchased_at')]
-                if not stamped:
-                    continue
-                for column in stamped:
-                    try:
-                        db.execute(f'''UPDATE "{table}" SET "{column}" = strftime('%Y-%m-%dT%H:%M:%S.000Z', datetime(substr("{column}", 1, 19), '-' || ((rowid * 37) % 120) || ' days'))
-                                       WHERE "{column}" = ?''', (dataset.STAMP,))
-                    except sqlite3.Error:
-                        pass   # append-only history tables, and tables without a rowid, keep what was written
-
     def clear_picture_queue(self, db):
         """Adding the stock queued a picture job for each item that had none while the world was built; a static demo has no worker, so the Jobs page would
         show 'running, 0 of 7' for ever. The pictures the folder holds are already in place, so the queue is dropped."""
@@ -361,5 +331,5 @@ def size_of(path):
     raise ValueError('not a PNG or JPEG: %s' % path)
 
 
-def layer(folder=FOLDER, pictures=True):
-    return Layer(folder, pictures)
+def layer(folder=FOLDER, pictures=True, demo=False):
+    return Layer(folder, pictures, demo)

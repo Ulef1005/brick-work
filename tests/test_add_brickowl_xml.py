@@ -46,15 +46,23 @@ def test_file_rows_reads_set_and_marks_non_set_unresolved():
             'quantity': 1,
             'condition': 'new',
             'note': None,
-            'brickowl_boid': '300001',
         },
         {
-            'unresolved': 'LEGO Red Brick 2 x 4',
-            'reason': 'Brick Owl lot with no set number in its name',
+            'unresolved': '1 lots without a set number in their name (LEGO Red Brick 2 x 4)',
+            'reason': 'A Brick Owl backup has no BrickLink or Rebrickable numbers, so only sets are read',
         },
     ]
-    # Non-set kind still returns the parsed rows so the caller reports the kind mismatch.
-    assert add.file_rows(data, 'brickowl-inventory.xml', 'part') == rows
+    with pytest.raises(ValueError, match='choose Set'):
+        add.file_rows(data, 'brickowl-inventory.xml', 'part')
+
+
+def test_many_other_lots_make_one_line_and_long_set_numbers_and_empty_files_are_handled():
+    parts = [_lot(lot_id=str(i), name=f'LEGO Brick {i}') for i in range(600)]
+    rows = add.file_rows(_backup(_lot(name='LEGO Gift set 4002016-1'), *parts), 'b.xml', 'set')
+    assert len(rows) == 2 and rows[0]['number'] == '4002016-1'
+    assert rows[1]['unresolved'].startswith('600 lots without a set number') and 'and 597 more' in rows[1]['unresolved']
+    with pytest.raises(ValueError, match='no lots'):
+        add.file_rows(_backup(), 'empty.xml', 'set')
 
 
 def test_file_rows_maps_conditions_variant_quantity_note_and_lot_id_fallback():
@@ -84,7 +92,6 @@ def test_file_rows_maps_conditions_variant_quantity_note_and_lot_id_fallback():
             'quantity': 3,
             'condition': 'used',
             'note': 'Top shelf',
-            'brickowl_boid': '300010',
         },
         {
             'kind': 'set',
@@ -92,11 +99,10 @@ def test_file_rows_maps_conditions_variant_quantity_note_and_lot_id_fallback():
             'quantity': 1,
             'condition': 'any',
             'note': None,
-            'brickowl_boid': '300011',
         },
         {
-            'unresolved': '100012',
-            'reason': 'Brick Owl lot with no set number in its name',
+            'unresolved': '1 lots without a set number in their name (100012)',
+            'reason': 'A Brick Owl backup has no BrickLink or Rebrickable numbers, so only sets are read',
         },
     ]
 

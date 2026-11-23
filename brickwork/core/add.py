@@ -386,7 +386,7 @@ def brickset_minifig_rows(text, kind, where):
     return result
 
 
-BRICKOWL_SET = re.compile(r'\bSet\s+([0-9]{3,6}(?:-[0-9]+)?)(?![A-Za-z0-9-])')
+BRICKOWL_SET = re.compile(r'\bSet\s+([0-9]{3,7}(?:-[0-9]+)?)(?![A-Za-z0-9-])', re.IGNORECASE)
 
 
 def _brickowl_condition(code):
@@ -400,13 +400,15 @@ def _brickowl_condition(code):
 
 def _brickowl_rows(root):
     """Sets from a Brick Owl inventory XML backup. Lots without Set <number> in their name are unresolved."""
-    result = []
-    for entry in root.findall('lot'):
+    result, others = [], []
+    lots = root.findall('lot')
+    if not lots:
+        raise ValueError('This Brick Owl file has no lots')
+    for entry in lots:
         name = (entry.findtext('name') or '').strip()
         match = BRICKOWL_SET.search(name)
         if not match:
-            lot_id = (entry.findtext('lot_id') or '').strip()
-            result.append(dict(unresolved=name or lot_id or 'lot', reason='Brick Owl lot with no set number in its name'))
+            others.append(name or (entry.findtext('lot_id') or '').strip() or 'lot')
             continue
         number = match[1] if '-' in match[1] else f'{match[1]}-1'
         result.append(dict(
@@ -415,8 +417,10 @@ def _brickowl_rows(root):
             quantity=quantity((entry.findtext('quantity') or '').strip() or '1'),
             condition=_brickowl_condition(entry.findtext('condition')),
             note=(entry.findtext('personal_note') or '').strip() or None,
-            brickowl_boid=(entry.findtext('boid') or '').strip() or None,
         ))
+    if others:
+        shown = ', '.join(others[:3]) + (f' and {len(others) - 3} more' if len(others) > 3 else '')
+        result.append(dict(unresolved=f'{len(others)} lots without a set number in their name ({shown})', reason='A Brick Owl backup has no BrickLink or Rebrickable numbers, so only sets are read'))
     return result
 
 
@@ -428,6 +432,8 @@ def file_rows(data, filename, kind, where='owned'):
             raise ValueError('Choose XML without document declarations')
         root = ET.fromstring(text)
         if root.tag == 'inventory':
+            if kind != 'set':
+                raise ValueError('A Brick Owl file lists sets · choose Set')
             return _brickowl_rows(root)
         if root.tag not in ('INVENTORY', 'WANTEDLIST'):
             raise ValueError('Choose a BrickLink wanted list or inventory, or a Brick Owl inventory')
@@ -445,7 +451,7 @@ def file_rows(data, filename, kind, where='owned'):
                 qtyfilled=entry.findtext('QTYFILLED')))
         return result
     if not filename.lower().endswith('.csv'):
-        raise ValueError('Choose BrickLink XML, Rebrickable CSV or Brickset CSV')
+        raise ValueError('Choose BrickLink XML, Brick Owl XML, Rebrickable CSV or Brickset CSV')
     header = next(csv.reader(io.StringIO(text)), [])
     if 'SetID' in header and 'Number' in header:
         return brickset_rows(text, kind, where)

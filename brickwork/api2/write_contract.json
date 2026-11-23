@@ -1337,6 +1337,16 @@
             },
             "type": "array"
           },
+          "part_lists": {
+            "description": "Rebrickable only: the ids of the part lists to pull into loose stock (#471). null clears the choice.",
+            "items": {
+              "type": "integer"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
           "send_to": {
             "type": [
               "integer",

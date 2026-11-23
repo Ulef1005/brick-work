@@ -5378,6 +5378,13 @@ paths:
                 keep_list_names:
                   type: boolean
                   description: 'Rebrickable only: the remembered switch "Keep each set''s Rebrickable list names as its source detail" (#531). On when never set.'
+                part_lists:
+                  type:
+                  - array
+                  - 'null'
+                  items:
+                    type: integer
+                  description: 'Rebrickable only: the ids of the part lists to pull into loose stock (#471). null clears the choice.'
       responses:
         '200':
           description: OK

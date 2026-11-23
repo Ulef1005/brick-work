@@ -217,7 +217,7 @@ What the 60 read operations (M.11b) and the 67 write operations (M.11c, further 
 
 ### 3.1 Summary
 
-207 operations in all (including instruction discovery, confirmed downloads and the instruction links); v1 had 179 operations.
+209 operations in all (including instruction discovery, confirmed downloads and the instruction links); v1 had 179 operations.
 
 | Group | Operations | Pieces |
 |---|---|---|

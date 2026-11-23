@@ -115,3 +115,14 @@ def test_part_lists_apply_rejects_unknown_and_pull_plans(v2, pair, remote):
     assert pull.status_code == 201, pull.json
     wrong = write(v2, '/sync/rebrickable/parts/apply', body={'plan_id': pull.json['data']['id']}, token=writer)
     assert wrong.status_code == 422 and 'This is a pull plan' in wrong.text
+
+
+def test_part_lists_are_chosen_through_the_link_write(v2, pair, remote):
+    writer = stored_token(pair, ['read', 'write'], 'writer')
+    put = write(v2, '/sync/rebrickable/link', 'put', {'part_lists': [11]}, token=writer)
+    assert put.status_code == 200, put.text
+    with closing(connect(pair)) as db:
+        assert sync._setting(db, 'rebrickable', 'link', {}).get('part_lists') == [11]
+    assert write(v2, '/sync/rebrickable/link', 'put', {'part_lists': [11, 11]}, token=writer).status_code == 422
+    set_link(pair, part_lists=False)
+    assert write(v2, '/sync/rebrickable/link', 'put', {'lost_parts': True}, token=writer).status_code == 200

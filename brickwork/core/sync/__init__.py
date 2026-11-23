@@ -134,7 +134,7 @@ def link(db, source, options):
     if 'keep_list_names' in value and type(value['keep_list_names']) is not bool:
         raise errors.ValidationFailed('keep_list_names is true or false')
     parts = value.get('part_lists')
-    if parts is not None and (not isinstance(parts, list) or any(type(i) is not int or i <= 0 for i in parts) or len(set(parts)) != len(parts)):
+    if 'part_lists' in options and parts is not None and (not isinstance(parts, list) or any(type(i) is not int or i <= 0 for i in parts) or len(set(parts)) != len(parts)):
         raise errors.ValidationFailed('Choose part lists by id, once each')
     wishlists.require(db, value.get('wish_list') or 'default')
     with transaction(db):
@@ -561,6 +561,8 @@ def _apply_lists(db, plan, choices):
     out = dict(renamed=[], dropped=[])
     names = (plan.get('lists') or {}).get('names', {})
     for key, action in choices.items():
+        if str(key).startswith('part:'):
+            continue
         if action == 'rename':
             out['renamed'] += origins.rename_list(db, 'rebrickable', key, names[key])
         elif action == 'drop':

@@ -83,6 +83,8 @@ def parse_part_list_row(row):
     ASSUMED SHAPE (Rebrickable's documentation, not checked live): `{quantity, part: {part_num, ...}, color: {id, ...}, element_id}`."""
     try:
         quantity, colour, part_no = row['quantity'], row['color']['id'], row['part']['part_num']
+        if type(part_no) is int:
+            part_no = str(part_no)
         if type(quantity) is str and quantity.isdecimal():
             quantity = int(quantity)
         if type(colour) is str and re.fullmatch(r'-?\d+', colour):

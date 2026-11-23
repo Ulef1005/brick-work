@@ -128,9 +128,9 @@ def test_landing_sections_and_copy(site):
     body = text.split('<main id="main" class="home">')[1].split('</main>')[0]
     plain = re.sub(r'<[^>]+>', '', body)
     assert "Don't just manage your collection. Work with it." in plain
-    assert '<span class="logo-blue">Work with it.</span>' in body   # the logo's blue (Ulf, 2026-11-14), not the brand accent
+    assert '<span class="logo-blue">Work with it.</span>' in body   # ink in B′ (#526 W-Q1, Ulf 2026-11-19), was the logo's blue
     css = (site / 'assets/marketing.css').read_text()
-    assert '.logo-blue{color:#007187}' in css and 'html.tw-dark .logo-blue{color:#3DB4CC}' in css and '.clay{color:var(--tw-accent-text)}' in css
+    assert '.logo-blue{color:var(--tw-text)}' in css and '#007187' not in css and '#3DB4CC' not in css
     assert "The workbench for your collection that you didn't know existed" in html.unescape(plain)
     for label in ('Who it is for', 'The workbench', 'Install', 'Already use a collection tracker?', 'Documentation', "What's new"):
         assert f'<span class="label">{label}</span>' in body, label
@@ -784,3 +784,13 @@ def test_question_pages_name_the_brand_correctly_and_carry_the_disclaimer(site):
     # The footer every site page shares passes the rule too, so the disclaimer's own wording is allowed where it stands.
     footer = (site / 'about/index.html').read_text().split('<footer', 1)[1]
     assert name_use_errors(footer) == []
+
+
+def test_the_use_cases_heading_and_description_count_the_cards_alike():
+    """The number of moments is said twice (the h1 and the page description); both follow the cards (marketing, #526)."""
+    from scripts import build_site
+    source = (ROOT / 'scripts' / 'site' / 'use-cases.md').read_text()
+    words = ('zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve')
+    count = len(re.findall(r'<h3 class="layout-39">', source))
+    heading = re.search(r'<h1[^>]*>(\w+) moments', source).group(1).lower()
+    assert heading == words[count] and build_site.MD_DESCRIPTIONS['use-cases'].lower().startswith(f'{words[count]} moments')

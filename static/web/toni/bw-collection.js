@@ -397,7 +397,7 @@
     // Quick chips (Parts, kit 7a) set one of a small family of filters; All clears the family.
     const quick=[...list.querySelectorAll('[data-bc-quick]')],quickKeys=[...new Set(quick.map(b=>b.dataset.bcQuick.split(':')[0]).filter(Boolean))];
     const tabs=[...list.querySelectorAll('[data-bc-tab]')],statusButtons=[...list.querySelectorAll('[data-bc-status]')];
-    const more=list.querySelector('[data-bc-more]'),loaded=list.querySelector('[data-bc-loaded]');let limit=60,selecting=false;
+    const more=list.querySelector('[data-bc-more]'),loaded=list.querySelector('[data-bc-loaded]');let limit=60,selecting=false,missingExpanded=false;
     /* Paging (4.8d): optional, switched on per list by data-bc-page-size. The main list saves its page with its scroll offset so Back returns to the same page. */
     const pageSize=Math.max(0,Math.floor(Number(list.dataset?.bcPageSize))||0);let page=1;const pager=pageSize?buildPager():null;
     function buildPager(target=container, section=null){
@@ -559,12 +559,14 @@
       const result=filterRows(records,search?.value||'',filters(),sort?sort.value:'index',direction?.value,group?.value,bpRank);
       if(pageSize)page=Math.min(Math.max(1,page),Math.max(1,Math.ceil(result.length/pageSize)));
       const focused=document.activeElement,focusedRow=focused?.closest?.('[data-bc-row]');
-      const sections=inventorySections(result),split=!groupedInventory && inventory!=='figures' && !!list.querySelector('[data-bc-missing]') && sections.missing.length>0;
+      const copyCards=groupedInventory && root.hasAttribute('data-b-copy') && !list.hasAttribute('data-bc-pl-editing') && inventory!=='figures' && !!list.querySelector('[data-bc-missing]');
+      const sections=inventorySections(result),split=(!groupedInventory || copyCards) && inventory!=='figures' && !!list.querySelector('[data-bc-missing]') && sections.missing.length>0;
+      const missingSet=new Set(sections.missing);
       let displayed=visibleSlice(split?[...sections.missing,...sections.present]:result); // one array for retention and render
       if(groupedInventory){
         displayed=[];
         partSections.forEach(section=>{
-          const matches=result.filter(r=>r.part_group===section.name && r.type!=='M');
+          const matches=result.filter(r=>r.part_group===section.name && r.type!=='M' && !(copyCards && split && missingSet.has(r)));
           section.element.hidden=inventory==='figures'||!matches.length;
           section.page=Math.min(Math.max(1,section.page),Math.max(1,Math.ceil(matches.length/25)));
           updatePager(matches.length,section.pager,section.page,25,true);
@@ -577,6 +579,7 @@
           figureBatch.pager.nav.hidden=inventory!=='figures'||figures.length<=25;
           displayed.push(...figures.slice((figureBatch.page-1)*25,figureBatch.page*25));
         }
+        if(copyCards && split)displayed.push(...sections.missing);
       }
       if(virtual){
         const matching=new Set(result),shown=new Set(displayed);
@@ -586,11 +589,11 @@
       else nodes.forEach(n=>n.hidden=true);container.querySelectorAll('[data-bc-group-heading]').forEach(n=>n.remove());if(bpSets)container.querySelectorAll('[data-bp-group]').forEach(n=>n.remove());   // the tiles are kept by their records and placed again
       const missingSection=list.querySelector('[data-bc-missing]'),presentSection=list.querySelector('[data-bc-present]'),missingRows=list.querySelector('[data-bc-missing-rows]'),presentRows=list.querySelector('[data-bc-present-rows]');
       // #33 (frame 1d): the first three present lines show inline above "Show all N present parts".
-      const presentInline=list.querySelector('[data-bc-present-inline]'),inlinePresent=new Set(split&&presentInline?displayed.filter(r=>Number(r.missing||0)+Number(r.damaged||0)+Number(r.parts_missing||0)===0).slice(0,3):[]);
-      if(presentInline)presentInline.hidden=!inlinePresent.size;
+      const presentInline=list.querySelector('[data-bc-present-inline]'),inlinePresent=new Set(split&&!copyCards&&presentInline?displayed.filter(r=>Number(r.missing||0)+Number(r.damaged||0)+Number(r.parts_missing||0)===0).slice(0,3):[]);
+      if(presentInline)presentInline.hidden=copyCards || !inlinePresent.size;
       if(missingSection)missingSection.hidden=!split;
       if(missingSection){const label='Missing '+(inventory==='figures'?'minifigures':'parts');missingSection.setAttribute('aria-label',label);}
-      if(presentSection){presentSection.hidden=!split || sections.present.length<=inlinePresent.size;list.querySelector('[data-bc-present-summary]').textContent='Show all '+sections.present.length+(sections.present.some(r=>r.missing_recorded===false)?' other ':' present ')+(inventory==='figures'?'minifigures':'parts');}
+      if(presentSection){presentSection.hidden=copyCards || !split || sections.present.length<=inlinePresent.size;list.querySelector('[data-bc-present-summary]').textContent='Show all '+sections.present.length+(sections.present.some(r=>r.missing_recorded===false)?' other ':' present ')+(inventory==='figures'?'minifigures':'parts');}
       const basis=root.querySelector('[data-bc-price-basis]');if(basis && list.hasAttribute('data-bc-main'))basis.textContent=priceBasis(result);
       let previous;const groupCounts=new Map();const bpTiles=bpSets?bpGroups(result):null;
       if(group?.value)result.forEach(r=>{const k=groupValue(r,group.value)||'Not recorded';groupCounts.set(k,(groupCounts.get(k)||0)+1);});
@@ -598,9 +601,21 @@
         if(group?.value && !partSections.length && !bpSets) {const name=groupValue(r,group.value)||'Not recorded';if(name!==previous){const h=document.createElement('h3');h.dataset.bcGroupHeading='';const control=filterControls.find(c=>c.dataset.bcFilter===group.value);const headingLabel=control?[...control.options].find(o=>o.value===name)?.textContent||name:name;h.textContent=headingLabel;const n=groupCounts.get(name)||0,noun=singularNoun(root.dataset.type);h.append(Object.assign(document.createElement('span'),{className:'bc-group-count',textContent:' · '+n+' '+(n===1?noun:listNoun(root.dataset.type))}));if(group.value==='lot'&&name!=='null'&&root.dataset.lotBase){const open=document.createElement('a');open.className='bc-group-open';open.textContent='Open';open.setAttribute('aria-label','Open lot '+headingLabel);open.href=root.dataset.lotBase.replace('LOT',encodeURIComponent(name));h.append(open);}container.append(h);previous=name;}}
         const node=virtual?(r.node ||= buildRow(r,root.dataset,selecting,selectionCount)):r.node;
         if(virtual){const check=node.querySelector('[data-bc-selected]');if(check)check.checked=r.selected;const label=node.querySelector('.bc-selection');if(label)label.hidden=!selecting;}
-        node.hidden=false;const partSection=partSections.find(section=>section.name===r.part_group && r.type!=='M');const destination=partSection?partSection.rows:figureRows&&r.type==='M'?figureRows:split?(defect(r,'missing')+defect(r,'damaged')+Number(r.parts_missing||0)>0?missingRows:inlinePresent.has(r)?presentInline:presentRows):(bpSets?bpTiles(r):container);destination.append(node);if(virtual)nodes.push(node);
+        node.hidden=false;const partSection=partSections.find(section=>section.name===r.part_group && r.type!=='M');const destination=(copyCards && split && missingSet.has(r))?missingRows:partSection?partSection.rows:figureRows&&r.type==='M'?figureRows:split?(defect(r,'missing')+defect(r,'damaged')+Number(r.parts_missing||0)>0?missingRows:inlinePresent.has(r)?presentInline:presentRows):(bpSets?bpTiles(r):container);destination.append(node);if(virtual)nodes.push(node);
         bindRow(node);
       });
+      const missingLabel=list.querySelector('[data-bc-missing-label]'),missingMore=list.querySelector('[data-bc-missing-more]');
+      if(copyCards && split){
+        const n=sections.missing.length,unfiltered=!search?.value && filterControls.every(c=>!c.value || c.value===preset(c));
+        if(missingLabel){missingLabel.textContent='Missing parts · '+n+(n===1?' line':' lines');missingLabel.hidden=false;}
+        if(unfiltered && !missingExpanded)sections.missing.slice(2).forEach(r=>{if(r.node)r.node.hidden=true;});
+        if(missingMore){const canCollapse=unfiltered && n>2;missingMore.hidden=!canCollapse;if(canCollapse)missingMore.textContent=missingExpanded?'Show fewer':'+ '+(n-2)+' more missing lines';}
+      }else{
+        if(missingLabel)missingLabel.hidden=true;
+        if(missingMore)missingMore.hidden=true;
+      }
+      list.querySelectorAll('[data-bc-view-only]').forEach(n=>n.hidden=!copyCards);
+      list.querySelectorAll('[data-bc-edit-only]').forEach(n=>n.hidden=copyCards);
       if(focusedRow && nodes.includes(focusedRow) && !focusedRow.hidden && document.activeElement!==focused)focused.focus({preventScroll:true});
       list.querySelectorAll('[data-bc-selected]').forEach(c=>{if(c.closest('[data-bc-row]').hidden)c.checked=false;});
       if(count){const countKind=root.dataset.bcCollectionList!==undefined?root.dataset.type:'',countNoun=tabs.length?(inventory==='figures'?'minifigures':'parts'):listNoun(countKind),countOne=tabs.length?(inventory==='figures'?'minifigure':'part'):singularNoun(countKind),noun=resultCount(result.length,countNoun,countOne);count.hidden=root.dataset.type==='S' && tabs.length>0;count.textContent=count.hidden?'':(pageSize&&result.length?rangeText(result.length):noun);if(pageSize&&result.length)count.setAttribute('aria-label',rangeText(result.length)+' '+(result.length===1?countOne:countNoun));else count.removeAttribute('aria-label');}
@@ -619,6 +634,8 @@
       list.querySelectorAll('[data-bc-order-pick]').forEach(b=>b.setAttribute('aria-pressed',String(direction?.value===b.dataset.bcOrderPick)));
       selectionCount();saveState();
     }
+    list.bcRender=()=>render();
+    list.querySelector('[data-bc-missing-more]')?.addEventListener('click',()=>{missingExpanded=!missingExpanded;render();});
     const searchRender=debounce(()=>render(true),120);
     // #226: Date added starts newest first; the order buttons still turn it round.
     const sorted=()=>{if(sort?.value==='added'&&direction)direction.value='desc';render(true);};
@@ -717,7 +734,7 @@ document.addEventListener?.('click',async event=>{
   const before=Number(pending?.dataset.priced || 0);
   button.disabled=true;
   if(pending)button.textContent=`Fetching ${items.length} part prices`;
-  if(status)status.textContent='Queued with the market price refresh · the card updates here';
+  if(status){status.textContent='Queued with the market price refresh · the card updates here';delete status.dataset.state;}
   scope?.setAttribute('aria-busy','true');
   try{
     const response=await fetch(button.dataset.refreshUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items,csrf_token:root.dataset.csrf})});
@@ -760,13 +777,13 @@ document.addEventListener?.('click',async event=>{
       else if(complete && missing)notes.push(`${missing} ${missing===1?'part has':'parts have'} no sales yet`);
     }
     if(notes.length){
-      const note=document.createElement('p');note.className='secondary';note.setAttribute('role','status');
+      const note=document.createElement('p');note.className='secondary';note.setAttribute('role','status');if(failed)note.dataset.state='error';   // a job the worker failed or cancelled is said in the danger colour (R2-04)
       note.textContent=notes.join(' · ');(updated || fresh).append(note);
     }
     const card=scope?.closest('[data-module="prices"]') || document.querySelector('[data-module="prices"]');
     card?.replaceWith(fresh);
     button.disabled=false;button.textContent=label;
-  }catch(error){button.disabled=false;button.textContent=label;if(status)status.textContent=error.message;}
+  }catch(error){button.disabled=false;button.textContent=label;if(status){status.textContent=error.message;status.dataset.state='error';}}
   finally{scope?.setAttribute('aria-busy','false');}
 });
 

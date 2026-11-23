@@ -403,7 +403,9 @@ def test_missing_inventory_projection_and_no_invented_progress(coll, client, rea
         assert not any(r['deficit'] for r in d['consists'])
     soup = item_page(client, keep, copy=cid)
     progress = soup.select_one('[aria-label="Copy progress"]')
-    assert 'primary' in progress.select_one('a.button')['class']
+    # #507 (frame 12): the progress and its buttons sit in the copy head under the hero, outside the Parts tab.
+    assert progress.find_parent(attrs={'data-bc-copy-head': True}) and not progress.find_parent(attrs={'data-module': 'consists'})
+    assert 'primary' in soup.select_one('[data-bc-copy-head] .bc-check-actions a.button')['class']
     assert not soup.select_one('[data-module=consists]>.actions a.button.primary')
     if state in ('unchecked', 'empty'):
         assert progress.h3.get_text() == 'Parts not checked'
@@ -447,11 +449,11 @@ def test_consists_text_and_reading_order(coll, client, read, checked):
     d = detail(read, keep, copy_id=cid)
     soup = item_page(client, keep, copy=cid)
     module = soup.select_one('[data-module=consists]')
-    progress = module.select_one('[aria-label="Copy progress"]')
+    progress = soup.select_one('[data-bc-copy-head] [aria-label="Copy progress"]')   # #507: the copy head, outside the Parts tab
     p = d['progress']
     assert p['can_take'] == 0
     assert progress.h3.get_text() == f"{p['missing']} parts missing, 0 in loose stock"
-    assert progress.select_one('.bc-progress-present').get_text() == f"{p['total'] - p['missing']} of {p['total']} parts present"
+    assert progress.select_one('.bc-progress-present').get_text() == f"{p['total'] - p['missing']}/{p['total']}"   # frame 12: "365/375 · 10 missing"
     assert progress.select_one('.bc-progress-subline').get_text() == f"{p['different']} different parts · " + ('all checked' if checked else '0 checked')
     assert [n.get_text() for n in progress.select_one('.bc-progress-stats').select('span')] == [f"{p['missing']} missing"]
     stats = ' '.join(n.get_text() for n in progress.select_one('.bc-progress-stats').select('span'))
@@ -475,7 +477,9 @@ def test_consists_text_and_reading_order(coll, client, read, checked):
             assert meta.find_all(recursive=False)[0]['class'] == ['bc-colour']
             if part.get('rgb'):
                 assert meta.select_one('.bc-colour')['style'] == f"background:#{part['rgb']};color:{part['ink']}"
-        assert meta.find_all(recursive=False)[-1]['class'] == ['mono']
+        kids = meta.find_all(recursive=False)
+        assert kids[-2]['class'] == ['mono'] and kids[-1]['class'] == ['bc-missing-need']    # #507: on a set copy the meta line ends "· needs n · n missing"
+        assert kids[-1].get_text() == card.select_one('.bc-missing-count').get_text()
         count = card.select_one('.bc-missing-count')
         assert count.get_text().startswith('needs ')
         assert ' missing' in count.get_text() and '−' not in count.get_text()
@@ -657,7 +661,7 @@ def test_copy_chips(coll, client, count):
     assert len(chips) == (count if count > 1 else 0)
     assert 'Choose copy' not in soup.get_text()
     if chips:
-        assert [c.get_text() for c in chips] == [f'Set {n}' for n in range(1, count + 1)]
+        assert [c.get_text() for c in chips] == [f'Copy {n}' for n in range(1, count + 1)]   # frame 12: the switcher reads Copy n (#507)
         assert len(soup.select('.bc-copy-chip[aria-current=page]')) == 1
         other = next(c for c in chips if not c.has_attr('aria-current'))
         switched = soup_of(client, other['href'])

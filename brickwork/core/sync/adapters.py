@@ -181,11 +181,15 @@ class RebrickableUser(Rebrickable):
         """Add one Lost Parts row on Rebrickable.
 
         ASSUMED SHAPE (Rebrickable's documentation; not checked live because the test instance has no user token):
-        `POST /users/{token}/lost_parts/` with form fields `inv_part_id` and `lost_quantity`."""
+        `POST /users/{token}/lost_parts/` with form fields `inv_part_id` and `lost_quantity`.
+        After a 2xx the write is done, so only an error body fails; `lost_part_id` in the reply is optional."""
         reply = self.user_call('/lost_parts/', method='POST',
                                data={'inv_part_id': int(inv_part_id), 'lost_quantity': int(quantity)})
-        lost_id = reply.get('lost_part_id') if isinstance(reply, dict) else None
-        if type(lost_id) is not int or lost_id < 1:
+        if isinstance(reply, dict) and (
+            'detail' in reply
+            or 'non_field_errors' in reply
+            or any(k in reply and not (type(reply[k]) is int and reply[k] >= 1) for k in ('inv_part_id', 'lost_quantity'))
+        ):
             raise SourceError('Rebrickable refused the Lost Part')
         return reply
 

@@ -1261,7 +1261,8 @@
    "path": "/collection/item/part/3001?colour=11#found-in",
    "built": true,
    "approved": false,
-   "state": "found-in-filled"
+   "state": "found-in-filled",
+   "max": 2400
   },
   {
    "screen": "13-Part-detail",
@@ -1271,7 +1272,8 @@
    "built": true,
    "approved": false,
    "state": "found-in-minifigures",
-   "script": "const r=document.querySelector('[data-found-in]');const t=r.querySelector('[name=type]');t.value='minifigures';t.dispatchEvent(new Event('change',{bubbles:true}));await new Promise(r=>setTimeout(r,300));"
+   "script": "const r=document.querySelector('[data-found-in]');const t=r.querySelector('[name=type]');t.value='minifigures';t.dispatchEvent(new Event('change',{bubbles:true}));await new Promise(r=>setTimeout(r,300));",
+   "max": 2400
   },
   {
    "screen": "13-Part-detail",
@@ -1281,7 +1283,8 @@
    "built": true,
    "approved": false,
    "state": "found-in-no-picture",
-   "script": "document.querySelectorAll('.bc-found-row .bc-picture').forEach(p=>{p.replaceChildren(document.createTextNode('No image'));p.classList.add('bc-no-image')});"
+   "script": "document.querySelectorAll('.bc-found-row .bc-picture').forEach(p=>{p.replaceChildren(document.createTextNode('No image'));p.classList.add('bc-no-image')});",
+   "max": 2400
   },
   {
    "screen": "13-Part-detail",
@@ -1291,7 +1294,8 @@
    "built": true,
    "approved": false,
    "state": "found-in-loading",
-   "script": "window.fetch=()=>new Promise(()=>{});document.querySelector('[data-found-form]').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));await new Promise(r=>setTimeout(r,300));"
+   "script": "window.fetch=()=>new Promise(()=>{});document.querySelector('[data-found-form]').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));await new Promise(r=>setTimeout(r,300));",
+   "max": 2400
   },
   {
    "screen": "13-Part-detail",
@@ -1301,7 +1305,8 @@
    "built": true,
    "approved": false,
    "state": "found-in-error",
-   "script": "window.fetch=()=>Promise.reject(new Error('offline'));document.querySelector('[data-found-form]').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));await new Promise(r=>setTimeout(r,300));"
+   "script": "window.fetch=()=>Promise.reject(new Error('offline'));document.querySelector('[data-found-form]').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));await new Promise(r=>setTimeout(r,300));",
+   "max": 2400
   },
   {
    "screen": "13-Part-detail",
@@ -1311,7 +1316,8 @@
    "built": true,
    "approved": false,
    "state": "found-in-empty",
-   "script": "window.fetch=()=>Promise.resolve(new Response(\"<p>In 0 sets and 0 minifigures</p><p>0 items, of which 0 owned</p><p>Not found in any set or minifigure for this colour and these filters.</p>\",{status:200}));document.querySelector('[data-found-form]').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));await new Promise(r=>setTimeout(r,300));"
+   "script": "window.fetch=()=>Promise.resolve(new Response(\"<p>In 0 sets and 0 minifigures</p><p>0 items, of which 0 owned</p><p>Not found in any set or minifigure for this colour and these filters.</p>\",{status:200}));document.querySelector('[data-found-form]').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));await new Promise(r=>setTimeout(r,300));",
+   "max": 2400
   },
   {
    "screen": "13-Part-detail",
@@ -1321,7 +1327,8 @@
    "built": true,
    "approved": false,
    "state": "found-in-colour-unmatched",
-   "script": "window.fetch=()=>Promise.resolve(new Response(\"<p>In 0 sets and 0 minifigures</p><p>Colour not matched yet. Results for other colours are not shown.</p>\",{status:200}));document.querySelector('[data-found-form]').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));await new Promise(r=>setTimeout(r,300));"
+   "script": "window.fetch=()=>Promise.resolve(new Response(\"<p>In 0 sets and 0 minifigures</p><p>Colour not matched yet. Results for other colours are not shown.</p>\",{status:200}));document.querySelector('[data-found-form]').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));await new Promise(r=>setTimeout(r,300));",
+   "max": 2400
   },
   {
    "screen": "13-Part-detail",
@@ -1331,7 +1338,8 @@
    "built": true,
    "approved": false,
    "state": "found-in-owned-only",
-   "script": "const box=document.querySelector('[data-found-results]').cloneNode(true);let catalogue=false;[...box.children].forEach(n=>{if(n.tagName==='H3'&&n.textContent==='Catalogue')catalogue=true;if(catalogue||n.tagName==='NAV')n.remove()});const count=box.querySelectorAll('.bc-found-row').length;const paragraphs=box.querySelectorAll('p');paragraphs[0].textContent='In 0 sets and 0 minifigures';paragraphs[1].textContent=count+' items, of which '+count+' owned';const note=document.createElement('p');note.innerHTML='Catalogue list not loaded. <a href=\"/manage/catalogues\">Catalogues &amp; keys</a>';box.prepend(note);window.fetch=()=>Promise.resolve(new Response(box.innerHTML,{status:200}));document.querySelector('[data-found-form]').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));await new Promise(r=>setTimeout(r,300));"
+   "script": "const box=document.querySelector('[data-found-results]').cloneNode(true);let catalogue=false;[...box.children].forEach(n=>{if(n.tagName==='H3'&&n.textContent==='Catalogue')catalogue=true;if(catalogue||n.tagName==='NAV')n.remove()});const count=box.querySelectorAll('.bc-found-row').length;const paragraphs=box.querySelectorAll('p');paragraphs[0].textContent='In 0 sets and 0 minifigures';paragraphs[1].textContent=count+' items, of which '+count+' owned';const note=document.createElement('p');note.innerHTML='Catalogue list not loaded. <a href=\"/manage/catalogues\">Catalogues &amp; keys</a>';box.prepend(note);window.fetch=()=>Promise.resolve(new Response(box.innerHTML,{status:200}));document.querySelector('[data-found-form]').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));await new Promise(r=>setTimeout(r,300));",
+   "max": 2400
   },
   {
    "screen": "13-Part-detail",
@@ -1341,7 +1349,8 @@
    "built": true,
    "approved": false,
    "state": "found-in-common-part",
-   "script": "const r=document.querySelector('[data-found-results]');r.querySelectorAll('p')[1].textContent='6,230 items, of which 0 owned';const n=document.createElement('nav');n.className='bc-found-pager';n.setAttribute('aria-label','Found in pages');n.textContent='Previous · 1–15 of 6,230 · Next';r.append(n);"
+   "script": "const r=document.querySelector('[data-found-results]');r.querySelectorAll('p')[1].textContent='6,230 items, of which 0 owned';const n=document.createElement('nav');n.className='bc-found-pager';n.setAttribute('aria-label','Found in pages');n.textContent='Previous · 1–15 of 6,230 · Next';r.append(n);",
+   "max": 2400
   },
   {
    "screen": "12-Minifigure-detail",

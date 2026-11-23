@@ -8,13 +8,13 @@ by script although not-mit/NOTICE.md and Rebrickable's terms (section 5.2) say o
 this script keeps: only the (part, colour) pairs and minifigures the seven sets of `not-mit/rebrickable/sets.json` list and the folder does not hold
 yet, one request per second, one run, no retry storm (a failing request is skipped and reported). Nothing is fetched for a pair that has a picture.
 
-The API key is read at run time with `op-homelab read` (vault homelab, item rebrickable) and kept in this process only. Pictures land in OUT as
+The API key is read from the environment variable REBRICKABLE_API_KEY and kept in this process only. Pictures land in OUT as
 parts/<part>-<colour>.png and minifigs/<fig>.jpg with a `manifest.json` in the folder's own format, for review before they move into
 not-mit/rebrickable/images/ (nothing here writes there).
 """
 import argparse
 import json
-import subprocess
+import os
 import sys
 import time
 import urllib.error
@@ -24,7 +24,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 FOLDER = ROOT / 'not-mit' / 'rebrickable'
 API = 'https://rebrickable.com/api/v3/lego'
-KEY_REF = 'op://homelab/rebrickable/credential'
 PAUSE = 1.1
 
 
@@ -64,7 +63,9 @@ def main(argv=None):
     out = Path(options.out)
     pairs, figures = wanted()
     print(f'{len(pairs)} part pictures and {len(figures)} minifigure pictures wanted', file=sys.stderr)
-    key = subprocess.run(['op-homelab', 'read', KEY_REF], capture_output=True, text=True, check=True).stdout.strip()
+    key = os.environ.get('REBRICKABLE_API_KEY', '').strip()
+    if not key:
+        parser.error('set REBRICKABLE_API_KEY')
     manifest_path = out / 'manifest.json'
     manifest = json.loads(manifest_path.read_text()) if manifest_path.exists() else {}
     (out / 'parts').mkdir(parents=True, exist_ok=True)

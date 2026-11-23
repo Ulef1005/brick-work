@@ -103,16 +103,15 @@ def test_shim_answers_writes_and_carries_the_manifest(site):
 def test_the_shim_keys_a_url_like_the_export_does():
     """keyOf in shim.js (run in Node) and export.key_of give the same route for the same URL, query order and repeated names included: Continue in the
     Part Runner picker sends the copies in checkbox order and the export keys them by name and value."""
-    import shutil
     import subprocess
-    if shutil.which('node') is None:
-        pytest.skip('Node is not installed')
+    from tests import rendered
+    node = rendered.need_node()
     shim = (Path(__file__).resolve().parents[1] / 'brickwork/demo/shim.js').read_text()
     key_js = shim[shim.index('  const keyOf = href => {'):shim.index('  const isPage')]
     urls = ['collection/item/P/3001?colour=4', 'workbench/part-picker?copy=b&copy=a&copy=c', 'workbench/part-picker?copy=zz-2&copy=aa-9&x=1', 'collection/sets/', 'collection/item/P/3001?colour=4&colour=1']
     program = ("const base = '/demo/'; const location = {href: 'https://demo.test/demo/', origin: 'https://demo.test'};\n" + key_js
                + "\nconsole.log(JSON.stringify(" + json.dumps(urls) + ".map(u => keyOf('https://demo.test/demo/' + u))));")
-    shown = json.loads(subprocess.run(['node', '-e', program], capture_output=True, text=True, check=True).stdout)
+    shown = json.loads(subprocess.run([node, '-e', program], capture_output=True, text=True, check=True).stdout)
     assert shown == [export.key_of('/demo/' + u.replace('&', '&amp;'), '/demo/') for u in urls]   # the export reads HTML attributes, where & is written &amp;
 
 

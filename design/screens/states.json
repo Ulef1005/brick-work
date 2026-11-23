@@ -208,7 +208,7 @@
    "world": "extras",
    "path": "/collection/item/instructions/99801-1",
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "14-Instruction-and-box-detail",
@@ -275,7 +275,7 @@
    "world": "extras",
    "path": "/collection/item/instructions/99801-1",
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "16-Module-states",
@@ -425,7 +425,7 @@
    "world": "showcase",
    "path": "/workbench/orders/2?view=allocation",
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "20-Add-into-a-lot",
@@ -527,7 +527,7 @@
    "path": "/collection/item/set/7286-1?copy=56325b99-16bc-549b-bb98-f7be2ab38829",
    "script": "document.querySelector('[data-bc-tab=figures]').click();await new Promise(r=>setTimeout(r,200));",
    "built": true,
-   "approved": false,
+   "approved": true,
    "max": 2800
   },
   {
@@ -1045,7 +1045,7 @@
    "world": "demo",
    "path": "/nothing-here?variant=A",
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "51-System-pages",
@@ -1054,7 +1054,7 @@
    "world": "demo",
    "path": "/nothing-here?variant=B",
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "51-System-pages",
@@ -1063,7 +1063,7 @@
    "world": "demo",
    "path": "/nothing-here?variant=C",
    "built": true,
-   "approved": false
+   "approved": true
   },
   {
    "screen": "52-Place",
@@ -1279,7 +1279,7 @@
    "world": "demo",
    "path": "/collection/item/part/3001?colour=11#found-in",
    "built": true,
-   "approved": false,
+   "approved": true,
    "state": "found-in-filled",
    "max": 2400
   },
@@ -1289,7 +1289,7 @@
    "world": "demo",
    "path": "/collection/item/part/3001?colour=11#found-in",
    "built": true,
-   "approved": false,
+   "approved": true,
    "state": "found-in-minifigures",
    "script": "const r=document.querySelector('[data-found-in]');const t=r.querySelector('[name=type]');t.value='minifigures';t.dispatchEvent(new Event('change',{bubbles:true}));await new Promise(r=>setTimeout(r,300));",
    "max": 2400
@@ -1300,7 +1300,7 @@
    "world": "demo",
    "path": "/collection/item/part/3001?colour=11#found-in",
    "built": true,
-   "approved": false,
+   "approved": true,
    "state": "found-in-no-picture",
    "script": "document.querySelectorAll('.bc-found-row .bc-picture').forEach(p=>{p.replaceChildren(document.createTextNode('No image'));p.classList.add('bc-no-image')});",
    "max": 2400
@@ -1311,7 +1311,7 @@
    "world": "demo",
    "path": "/collection/item/part/3001?colour=11#found-in",
    "built": true,
-   "approved": false,
+   "approved": true,
    "state": "found-in-loading",
    "script": "window.fetch=()=>new Promise(()=>{});document.querySelector('[data-found-form]').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));await new Promise(r=>setTimeout(r,300));",
    "max": 2400
@@ -1322,7 +1322,7 @@
    "world": "demo",
    "path": "/collection/item/part/3001?colour=11#found-in",
    "built": true,
-   "approved": false,
+   "approved": true,
    "state": "found-in-error",
    "script": "window.fetch=()=>Promise.reject(new Error('offline'));document.querySelector('[data-found-form]').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));await new Promise(r=>setTimeout(r,300));",
    "max": 2400
@@ -1333,7 +1333,7 @@
    "world": "demo",
    "path": "/collection/item/part/3001?colour=11#found-in",
    "built": true,
-   "approved": false,
+   "approved": true,
    "state": "found-in-empty",
    "script": "window.fetch=()=>Promise.resolve(new Response(\"<p>In 0 sets and 0 minifigures</p><p>0 items, of which 0 owned</p><p>Not found in any set or minifigure for this colour and these filters.</p>\",{status:200}));document.querySelector('[data-found-form]').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));await new Promise(r=>setTimeout(r,300));",
    "max": 2400
@@ -1344,7 +1344,7 @@
    "world": "demo",
    "path": "/collection/item/part/3001?colour=11#found-in",
    "built": true,
-   "approved": false,
+   "approved": true,
    "state": "found-in-colour-unmatched",
    "script": "window.fetch=()=>Promise.resolve(new Response(\"<p>In 0 sets and 0 minifigures</p><p>Colour not matched yet. Results for other colours are not shown.</p>\",{status:200}));document.querySelector('[data-found-form]').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));await new Promise(r=>setTimeout(r,300));",
    "max": 2400
@@ -1355,7 +1355,7 @@
    "world": "demo",
    "path": "/collection/item/part/3001?colour=11#found-in",
    "built": true,
-   "approved": false,
+   "approved": true,
    "state": "found-in-owned-only",
    "script": "const box=document.querySelector('[data-found-results]').cloneNode(true);let catalogue=false;[...box.children].forEach(n=>{if(n.tagName==='H3'&&n.textContent==='Catalogue')catalogue=true;if(catalogue||n.tagName==='NAV')n.remove()});const count=box.querySelectorAll('.bc-found-row').length;const paragraphs=box.querySelectorAll('p');paragraphs[0].textContent='In 0 sets and 0 minifigures';paragraphs[1].textContent=count+' items, of which '+count+' owned';const note=document.createElement('p');note.innerHTML='Catalogue list not loaded. <a href=\"/manage/catalogues\">Catalogues &amp; keys</a>';box.prepend(note);window.fetch=()=>Promise.resolve(new Response(box.innerHTML,{status:200}));document.querySelector('[data-found-form]').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));await new Promise(r=>setTimeout(r,300));",
    "max": 2400
@@ -1366,7 +1366,7 @@
    "world": "demo",
    "path": "/collection/item/part/3001?colour=11#found-in",
    "built": true,
-   "approved": false,
+   "approved": true,
    "state": "found-in-common-part",
    "script": "const r=document.querySelector('[data-found-results]');r.querySelectorAll('p')[1].textContent='6,230 items, of which 0 owned';const n=document.createElement('nav');n.className='bc-found-pager';n.setAttribute('aria-label','Found in pages');n.textContent='Previous · 1–15 of 6,230 · Next';r.append(n);",
    "max": 2400

@@ -16,6 +16,13 @@
 :is(#bw-planning,#bw-figures):not(#_):not(#_):not(#_) :is(.bp-visible-chips:not(.bp-price-filter *),.wl-lists,.bf-tabs)>:is([aria-pressed=true],[aria-current=page]) {color:var(--tw-text);font-weight:600;border-bottom-color:var(--tw-accent);background:none}
 :is(#bw-planning,#bw-figures):not(#_):not(#_):not(#_) :is(.bp-visible-chips:not(.bp-price-filter *),.wl-lists,.bf-tabs)>:is(button,a):disabled {color:var(--tw-text-muted);cursor:default}
 :is(#bw-planning,#bw-figures):not(#_):not(#_):not(#_) :is(.bp-visible-chips,.wl-lists) :is(.mono,.bp-chip-count) {font:400 12px/1 var(--tw-mono),ui-monospace,monospace;color:var(--tw-text-muted);padding:0;background:none}
+/* #650: a grid item of #content; without this a long row of lists (it scrolls on its own) widened the page past a phone's edge */
+#bw-planning:not(#_):not(#_):not(#_) {min-width:0}
+/* A wish tile's number line: the number stays on one line and the tags (Wants used, Under max) wrap under it when the tile is narrow;
+   before, two tags squeezed the number into one digit per line and ran past the tile on a phone */
+#bw-planning:not(#_):not(#_):not(#_) .bp-wish-number {flex-wrap:wrap;row-gap:4px;min-width:0}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wish-number>.mono {white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wish-number .bc-status {max-width:100%;white-space:normal}   /* a flex pill cannot end in an ellipsis: a long tag wraps inside the tile */
 #bw-planning:not(#_):not(#_):not(#_) .wl-head {align-items:flex-end;gap:12px}
 #bw-planning:not(#_):not(#_):not(#_) .wl-head .wl-lists {flex:1 1 auto;min-width:0}
 
@@ -58,7 +65,9 @@
 :is(#bw-planning,#bw-figures):not(#_):not(#_):not(#_) :is(.bc-status,.bf-phone-pill) {display:inline-flex;align-items:center;gap:6px;height:22px;min-height:0;padding:0 7px;border:1.5px solid var(--tw-text);border-radius:3px;background:transparent;box-shadow:none;color:var(--tw-text);font:600 11px var(--tw-font-label);letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
 :is(#bw-planning,#bw-figures):not(#_):not(#_):not(#_) .bc-status::before {content:none}
 #bw-planning:not(#_):not(#_):not(#_) .bp-verdict.differs {border-style:dashed}
-#bw-planning:not(#_):not(#_):not(#_) .bp-max-dot {display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--tw-text);border:1.5px solid var(--tw-text);box-sizing:border-box}
+/* #653: a wish with no max says so in body text; the 20px mono stays for an amount */
+#bw-planning:not(#_):not(#_):not(#_) .bp-max-none {font:400 14px/20px var(--tw-font);color:var(--tw-text-2)}
+#bw-planning:not(#_):not(#_):not(#_) .bp-max-dot {flex:none;display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--tw-text);border:1.5px solid var(--tw-text);box-sizing:border-box}
 #bw-planning:not(#_):not(#_):not(#_) .bp-max-dot:is(.over,.differs) {background:transparent}
 #bw-planning:not(#_):not(#_):not(#_) .bp-max-dot.differs {border-style:dashed}
 
@@ -70,6 +79,10 @@
 #bw-planning:not(#_):not(#_):not(#_) .bp-ratio-track i {background:var(--tw-text);border-radius:0}
 
 @media(max-width:767.98px) {
-  #bw-planning:not(#_):not(#_):not(#_) .wl-head .wl-lists {flex:1 1 100%;width:100%;margin-left:0}
+  /* #650: on a phone the head is one column at the content width. Many lists scroll in their own row instead of widening the page, and
+     the actions start at the left edge (Manage lists first) and wrap. */
+  #bw-planning:not(#_):not(#_):not(#_) .wl-head {flex-direction:column;align-items:stretch;min-width:0;max-width:100%}
+  #bw-planning:not(#_):not(#_):not(#_) .wl-head .wl-lists {flex:none;width:auto;max-width:100%;margin-left:0}
+  #bw-planning:not(#_):not(#_):not(#_) .wl-head .wl-toolbar {justify-content:flex-start;flex-wrap:wrap;max-width:100%}
   :is(#bw-planning,#bw-figures):not(#_):not(#_):not(#_)>h1 {font-size:26px}
 }

@@ -632,7 +632,7 @@ def test_run4_wishlist_hierarchy_and_details(coll, world, client):
         assert 'Keep this wish note' in facts.text and '3 wanted' in facts.text
         assert detail.select_one('#bc-edit form[data-bc-action=save]')
         assert row.select_one('.bp-max-label').text == 'Your max price'
-        assert row.select_one('.bp-max strong.mono')
+        assert row.select_one('.bp-max .bp-max-none').text == 'Not recorded'   # #653: body text, not the mono of an amount
         assert row.select_one('.bp-wish-number .bc-status').text == 'Wants unknown'
         assert 'Currency not recorded' not in row.text and '3 wanted' not in row.text
         assert 'Keep this wish note' not in row.text

@@ -1523,12 +1523,13 @@
    "state": "find-instructions-choose-sets",
    "world": "demo",
    "path": "/manage/instructions/find",
-   "built": true,
+   "built": false,
    "approved": false,
    "sizes": [
     390,
     1440
-   ]
+   ],
+   "reason": "Retired 23.11. (#503, Ulf): Find instructions links out to the sources since #572 (#484); the page no longer varies with a source or a renderer, so this state rendered as its siblings."
   },
   {
    "screen": "48-Tools-and-admin",
@@ -1536,12 +1537,13 @@
    "state": "find-instructions-no-source",
    "world": "demo",
    "path": "/manage/instructions/find",
-   "built": true,
+   "built": false,
    "approved": false,
    "sizes": [
     390,
     1440
-   ]
+   ],
+   "reason": "Retired 23.11. (#503, Ulf): Find instructions links out to the sources since #572 (#484); the page no longer varies with a source or a renderer, so this state rendered as its siblings."
   },
   {
    "screen": "48-Tools-and-admin",
@@ -1563,12 +1565,13 @@
    "world": "demo",
    "path": "/manage/add",
    "script": "document.querySelector('[data-intake]').hidden=true;document.querySelector('[data-review-panel]').hidden=false;",
-   "built": true,
+   "built": false,
    "approved": false,
    "sizes": [
     390,
     1440
-   ]
+   ],
+   "reason": "Retired 23.11. (#503, Ulf): the Add page's Fetch instructions switch is hidden since #572 (#484), when Find instructions became links out; this state captured the same panel as its siblings."
   },
   {
    "screen": "47-Add",
@@ -1577,12 +1580,13 @@
    "world": "demo",
    "path": "/manage/add",
    "script": "document.querySelector('[data-intake]').hidden=true;document.querySelector('[data-review-panel]').hidden=false;const input=document.querySelector('[data-find-instructions]');input.disabled=false;input.checked=true;",
-   "built": true,
+   "built": false,
    "approved": false,
    "sizes": [
     390,
     1440
-   ]
+   ],
+   "reason": "Retired 23.11. (#503, Ulf): the Add page's Fetch instructions switch is hidden since #572 (#484), when Find instructions became links out; this state captured the same panel as its siblings."
   },
   {
    "screen": "47-Add",
@@ -1591,12 +1595,13 @@
    "world": "demo",
    "path": "/manage/add",
    "script": "document.querySelector('[data-intake]').hidden=true;document.querySelector('[data-review-panel]').hidden=false;",
-   "built": true,
+   "built": false,
    "approved": false,
    "sizes": [
     390,
     1440
-   ]
+   ],
+   "reason": "Retired 23.11. (#503, Ulf): the Add page's Fetch instructions switch is hidden since #572 (#484), when Find instructions became links out; this state captured the same panel as its siblings."
   },
   {
    "screen": "48-Tools-and-admin",
@@ -1604,12 +1609,13 @@
    "state": "find-instructions-needs-renderer",
    "world": "demo",
    "path": "/manage/instructions/find",
-   "built": true,
+   "built": false,
    "approved": false,
    "sizes": [
     390,
     1440
-   ]
+   ],
+   "reason": "Retired 23.11. (#503, Ulf): Find instructions links out to the sources since #572 (#484); the page no longer varies with a source or a renderer, so this state rendered as its siblings."
   },
   {
    "screen": "10-Set-detail",

@@ -1,12 +1,11 @@
 """Sending Lost Parts to Rebrickable (#469 part B): pure planner and remote apply.
 
 Invented data against the `store` fixture and a fake client; no network."""
-import json
-import sqlite3
 
 import pytest
 
 from brickwork.core.sync import adapters, lost_parts_send
+from brickwork.store4 import fetched, rebrickable_api
 from tests.app4 import Coll
 from tests.test_bw_sync import pair, store  # noqa: F401
 from tests.test_bw_sync_lost_parts import copy_of
@@ -158,6 +157,12 @@ def test_untranslatable_line_is_listed_and_never_sent(store):
     assert planned['rows'] == []
     (unmatched,) = planned['unmatched']
     assert unmatched['set_no'] == '1000-1' and unmatched['missing'] == 2 and 'No Rebrickable number' in unmatched['reason']
+    assert set(unmatched) == {
+        'set_no', 'reason', 'parts', 'pieces', 'copy_id', 'copy_label', 'item_id', 'color_id', 'is_spare', 'missing',
+    }
+    assert unmatched['parts'] == 1 and unmatched['pieces'] == 2 and unmatched['copy_id'] == copy_id
+    assert unmatched['item_id'] == unlinked and unmatched['is_spare'] is False
+    assert planned['summary']['unmatched'] == 1
     client = FakeClient()
     report = lost_parts_send.apply(store, client, planned, None, via='test', actor='tester')
     assert client.calls == [] and report['sent'] == []
@@ -187,7 +192,7 @@ def test_switch_off_returns_off_and_setting_default_is_off(store):
 
     copy_of(store, '1000-1', marks=[('3001', '4', 2)])
     planned = lost_parts_send.plan(store, remote_read(), translate, rule='everything', on=False)
-    assert planned['status'] == 'off' and planned['rows'] == []
+    assert planned['status'] == 'off' and planned['clearing'] is False and planned['rows'] == []
 
 
 def test_apply_sends_only_ticked_and_fails_missing_inv_part_id(store):
@@ -327,7 +332,7 @@ def test_add_without_inv_part_id_is_untickable_with_reason(store):
 
 def test_marks_of_two_copies_add_up_and_a_matching_remote_plans_nothing(store):
     """A copy's `missing` is capped at the line quantity by the schema (CHECK missing<=quantity), so the sum of several copies is the only
-    way to exceed one line; a remote that holds that sum plans no change."""
+    way to exceed one line; a remote that holds that sum plans no change, while a planned sum above the set line quantity is untickable."""
     first = copy_of(store, '1000-1', marks=[('3001', '4', 3)])
     second = copy_of(store, '1000-1', marks=[('3001', '4', 2)])
     same = lost_parts_send.plan(
@@ -347,6 +352,12 @@ def test_marks_of_two_copies_add_up_and_a_matching_remote_plans_nothing(store):
     )
     (row,) = planned['rows']
     assert row['after'] == 5 and {c['id']: c['missing'] for c in row['copies']} == {first: 3, second: 2}
+    assert row['tickable'] is False and row['ticked'] is False
+    assert row['reason'] == 'The copies together miss more than the set holds'
+    client = FakeClient()
+    assert lost_parts_send.apply(store, client, planned, None, via='test', actor='tester')['sent'] == []
+    forced = lost_parts_send.apply(store, client, planned, [row['key']], via='test', actor='tester')
+    assert client.calls == [] and forced['sent'] == [] and len(forced['failed']) == 1
 
 
 def test_no_removal_planned_when_live_copy_has_no_part_list(store):
@@ -366,6 +377,12 @@ def test_no_removal_planned_when_live_copy_has_no_part_list(store):
             ('1000-1', 'The set has no part list yet'),
             ('1000-2', 'The set has no part list yet'),
         }
+        for u in planned['unmatched']:
+            assert set(u) == {
+                'set_no', 'reason', 'parts', 'pieces', 'copy_id', 'copy_label', 'item_id', 'color_id', 'is_spare', 'missing',
+            }
+            assert u['parts'] == 1 and u['pieces'] == 1
+            assert u['copy_id'] is None and u['copy_label'] is None and u['item_id'] is None and u['missing'] is None
 
 
 def test_change_adds_before_removing_and_add_only_posts_difference(store):
@@ -607,33 +624,40 @@ def test_apply_catches_unexpected_client_exception_and_retry_never_reposts(store
 
 
 def test_lookup_inv_part_id_uses_newest_record_caches_payload_and_skips_remove(store, monkeypatch):
-    mem = sqlite3.connect(':memory:')
-    mem.execute('CREATE TABLE source_record(id INTEGER PRIMARY KEY, kind TEXT, key TEXT, payload TEXT)')
-    old_payload = json.dumps({'results': [{'part': {'part_num': '3001'}, 'color': {'id': 4}, 'is_spare': False, 'inv_part_id': 111}]})
-    new_payload = json.dumps({'results': [
-        {'part': {'part_num': '3001'}, 'color': {'id': 4}, 'is_spare': False, 'inv_part_id': 222},
-        {'part': {'part_num': '3023'}, 'color': {'id': 4}, 'is_spare': True, 'inv_part_id': 333},
-    ]})
-    mem.execute("INSERT INTO source_record(id, kind, key, payload) VALUES(1, 'rebrickable_set_parts', '1000-1', ?)", (old_payload,))
-    mem.execute("INSERT INTO source_record(id, kind, key, payload) VALUES(2, 'rebrickable_set_parts', '1000-1', ?)", (new_payload,))
+    old_pages = [{'count': 1, 'next': None, 'previous': None, 'results': [
+        {'id': 9001, 'inv_part_id': 111, 'part': {'part_num': '3001'}, 'color': {'id': 4}, 'is_spare': False},
+    ]}]
+    new_pages = [
+        {'count': 3, 'next': 'https://rebrickable.com/api/v3/lego/sets/1000-1/parts/?page=2', 'previous': None, 'results': [
+            {'id': 9002, 'inv_part_id': 222, 'part': {'part_num': '3001'}, 'color': {'id': 4}, 'is_spare': False},
+        ]},
+        {'count': 3, 'next': None, 'previous': None, 'results': [
+            {'id': 9003, 'inv_part_id': 333, 'part': {'part_num': '3023'}, 'color': {'id': 4}, 'is_spare': True},
+            {'id': 9004, 'part': {'part_num': '3023'}, 'color': {'id': 15}, 'is_spare': False},
+        ]},
+    ]
+    fetched.store_source_record(store, source='rebrickable', kind='set_parts', key='1000-1', payload=rebrickable_api._joined(old_pages))
+    fetched.store_source_record(store, source='rebrickable', kind='set_parts', key='1000-1', payload=rebrickable_api._joined(new_pages))
+    store.commit()
 
     parses = []
     real_loads = lost_parts_send.json.loads
     monkeypatch.setattr(lost_parts_send.json, 'loads', lambda text: (parses.append(text), real_loads(text))[1])
     cache = {}
-    assert lost_parts_send._lookup_inv_part_id(mem, '1000-1', '3001', 4, False, {}, cache) == 222
-    assert lost_parts_send._lookup_inv_part_id(mem, '1000-1', '3023', 4, True, {}, cache) == 333
+    assert lost_parts_send._lookup_inv_part_id(store, '1000-1', '3001', 4, False, {}, cache) == 222
+    assert lost_parts_send._lookup_inv_part_id(store, '1000-1', '3023', 4, True, {}, cache) == 333
+    assert lost_parts_send._lookup_inv_part_id(store, '1000-1', '3023', 15, False, {}, cache) is None
     assert len(parses) == 1
-    mem.close()
 
     copy_of(store, '1000-1', marks=[('3001', '4', 2), ('3023', '4', 1, True)])
     copy_of(store, '1000-2')
     remote = remote_read([remote_row('1000-2', '3001', 4, 1, ids=[88], inv_part_id=None)])
     seen_sets = []
+    real_set_parts_map = lost_parts_send._set_parts_map
     monkeypatch.setattr(
         lost_parts_send,
         '_set_parts_map',
-        lambda db, set_no: (seen_sets.append(set_no), {('3001', 4, False): 222, ('3023', 4, True): 333})[1],
+        lambda db, set_no: (seen_sets.append(set_no), real_set_parts_map(db, set_no))[1],
     )
     planned = lost_parts_send.plan(store, remote, translate, rule='everything', on=True)
     assert seen_sets == ['1000-1']

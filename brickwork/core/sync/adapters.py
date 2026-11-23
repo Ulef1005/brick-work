@@ -80,10 +80,9 @@ def parse_lost_part(row):
             color_id = int(color_id)
         if type(quantity) is not int or quantity < 1 or type(color_id) is not int or not isinstance(spare, bool):
             return None
-        raw_inv_id = inv.get('inv_part_id') if inv.get('inv_part_id') is not None else inv.get('id')
         return dict(set_no=_number(found), part_no=_number(part_no), color_id=color_id, quantity=quantity, is_spare=spare,
                     lost_part_id=_optional_id(row.get('lost_part_id')),
-                    inv_part_id=_optional_id(raw_inv_id))
+                    inv_part_id=_optional_id(inv.get('inv_part_id')))
     except (KeyError, TypeError, AttributeError, SourceError):
         return None
 

@@ -16,11 +16,15 @@ Rule mapping (`RULES`, mirroring `lost_parts.RULES` in the send direction):
   remaining remote Lost Parts on candidate sets whose live copies have a part list).
 
 Limits:
-The plan is recomputed by the caller just before `apply` (`apply` sends the plan's numbers as planned). The inventory part id of a new
-Lost Part comes from the cached set parts (`RebrickableUser.lost_parts()` returns none for parts not yet on Rebrickable). The endpoint
-shapes are assumed from Rebrickable's documentation; a DELETE with an empty reply cannot be told from an empty-bodied error, and the live
-behaviour of POST and DELETE (including whether POST creates a second row or updates an existing one) must be tried with a real user token
-before the switch is offered. Candidate sets are the sets of all live copies that have a Rebrickable number, not only the sets on a linked list.
+`apply` keeps no progress between requests: the page must persist per-row progress (as `sync.apply_send` does with the plan file) and
+re-plan before `apply`. The inventory part id of a new Lost Part comes from the cached set parts (`source_record` with
+`source='rebrickable'` and `kind='set_parts'`, written when a set newer than the catalogue was fetched; `RebrickableUser.lost_parts()`
+returns none for parts not yet on Rebrickable). A catalogue set the catalogue already had has no such record and stays at "Rebrickable
+inventory part id unknown": the page needs a live `GET /sets/<num>/parts/` lookup for those. The settings `rebrickable_lost_parts_send`
+and `rebrickable_lost_parts_send_rule` must be added to `admin.patch_settings`' allowlist with the page. The endpoint shapes are assumed
+from Rebrickable's documentation; a DELETE with an empty reply cannot be told from an empty-bodied error, and the live behaviour of POST
+and DELETE (including whether POST creates a second row or updates an existing one) must be tried with a real user token before the switch
+is offered. Candidate sets are the sets of all live copies that have a Rebrickable number, not only the sets on a linked list.
 """
 import json
 import sqlite3
@@ -96,11 +100,13 @@ def _set_parts_map(db, set_no):
     index = {}
     try:
         row = db.execute(
-            "SELECT payload FROM main.source_record WHERE kind='rebrickable_set_parts' AND key=? ORDER BY id DESC LIMIT 1",
+            "SELECT payload FROM main.source_record WHERE source='rebrickable' AND kind='set_parts' AND key=? ORDER BY id DESC LIMIT 1",
             (set_no,),
         ).fetchone()
         if row and row[0]:
-            for entry in json.loads(row[0]).get('results') or ():
+            loaded = json.loads(row[0])
+            entries = loaded.get('results') if isinstance(loaded, dict) else loaded if isinstance(loaded, list) else None
+            for entry in entries or ():
                 if not isinstance(entry, dict):
                     continue
                 part = (entry.get('part') or {}).get('part_num')
@@ -109,7 +115,7 @@ def _set_parts_map(db, set_no):
                     continue
                 key = (str(part), colour, bool(entry.get('is_spare')))
                 if key not in index:
-                    inv_id = entry.get('inv_part_id') or entry.get('id')
+                    inv_id = adapters._optional_id(entry.get('inv_part_id'))
                     if inv_id is not None:
                         index[key] = inv_id
     except (sqlite3.Error, ValueError, TypeError, AttributeError):
@@ -130,10 +136,27 @@ def _lookup_inv_part_id(db, set_no, part_no, color_id, is_spare, remote_inv_part
     return parts_map.get((str(part_no), int(color_id), bool(is_spare)))
 
 
+def _unmatched_entry(set_no, reason, *, parts=1, pieces=0, copy_id=None, copy_label=None, item_id=None, color_id=None, is_spare=None,
+                     missing=None):
+    return dict(
+        set_no=set_no,
+        reason=reason,
+        parts=int(parts),
+        pieces=int(pieces),
+        copy_id=copy_id,
+        copy_label=copy_label,
+        item_id=item_id,
+        color_id=color_id,
+        is_spare=is_spare,
+        missing=missing,
+    )
+
+
 def _collect_set_lines(db, set_no, held):
     """Aggregate live set lines across all live `held` copies of one set into Rebrickable coordinates."""
     aggregated = {}
     present_keys = set()
+    line_quantities = {}
     unmatched = []
     missing_part_list = False
     for copy in held:
@@ -152,36 +175,42 @@ def _collect_set_lines(db, set_no, held):
             part_nos = sorted(numbers.get(line['item_id'], ()))
             colour_ids = sorted(colours.get(line['color_id'], ()), key=_colour_sort_key)
             spare = bool(line['is_spare'])
-            capped = min(line['missing'], max(0, line['quantity']))
+            line_qty = max(0, line['quantity'])
+            capped = min(line['missing'], line_qty)
             if len(part_nos) != 1 or len(colour_ids) != 1:
                 if capped > 0:
                     reason = ('No Rebrickable number for this part or colour'
                               if not part_nos or not colour_ids else
                               'Several Rebrickable numbers match this part or colour')
-                    unmatched.append(dict(set_no=set_no, copy_id=copy['id'], copy_label=label, item_id=line['item_id'],
-                                          color_id=line['color_id'], is_spare=spare, missing=capped, reason=reason))
+                    unmatched.append(_unmatched_entry(
+                        set_no, reason, parts=1, pieces=capped, copy_id=copy['id'], copy_label=label,
+                        item_id=line['item_id'], color_id=line['color_id'], is_spare=spare, missing=capped,
+                    ))
                 continue
             parsed_colour = _parse_colour_id(colour_ids[0])
             if parsed_colour is None:
                 if capped > 0:
-                    unmatched.append(dict(set_no=set_no, copy_id=copy['id'], copy_label=label, item_id=line['item_id'],
-                                          color_id=line['color_id'], is_spare=spare, missing=capped,
-                                          reason='Rebrickable colour number is not an integer'))
+                    unmatched.append(_unmatched_entry(
+                        set_no, 'Rebrickable colour number is not an integer', parts=1, pieces=capped,
+                        copy_id=copy['id'], copy_label=label, item_id=line['item_id'], color_id=line['color_id'],
+                        is_spare=spare, missing=capped,
+                    ))
                 continue
             key = (part_nos[0], parsed_colour, spare)
             present_keys.add(key)
+            line_quantities[key] = max(line_quantities.get(key, 0), line_qty)
             if capped > 0:
                 bucket = aggregated.setdefault(key, dict(missing=0, copies={}, inv_part_id=None))
                 bucket['missing'] += capped
                 entry = bucket['copies'].setdefault(copy['id'], dict(id=copy['id'], label=label, missing=0))
                 entry['missing'] += capped
-    return aggregated, present_keys, unmatched, missing_part_list
+    return aggregated, present_keys, line_quantities, unmatched, missing_part_list
 
 
 def plan(db, remote, translate, *, rule=None, on=True):
     """Build the pure send plan comparing local missing set-line sums with `remote` (`RebrickableUser.lost_parts()` or failure text)."""
     how = valid_rule(send_rule(db) if rule is None else rule)
-    out = dict(on=bool(on), rule=how, status='off', message=None, unreadable=0, clearing=True, rows=[], unmatched=[],
+    out = dict(on=bool(on), rule=how, status='off', message=None, unreadable=0, clearing=False, rows=[], unmatched=[],
                summary=dict(add=0, change=0, remove=0, unmatched=0, unreadable=0))
     if not on:
         return out
@@ -198,7 +227,7 @@ def plan(db, remote, translate, *, rule=None, on=True):
         return out
     remote_rows = list(remote.get('rows') or ())
     remote_inv_parts = dict(remote.get('inv_parts') or {})
-    out.update(status='read', unreadable=0)
+    out.update(status='read', unreadable=0, clearing=True)
 
     remote_by_set = lost_parts.by_set(remote_rows)
     numbers = _candidate_set_numbers(db, remote_rows)
@@ -213,7 +242,7 @@ def plan(db, remote, translate, *, rule=None, on=True):
         held = copies_by_item.get(item_id, [])
         if not held:
             continue
-        local_map, present_keys, unmatched, missing_part_list = _collect_set_lines(db, set_no, held)
+        local_map, present_keys, line_quantities, unmatched, missing_part_list = _collect_set_lines(db, set_no, held)
         out['unmatched'].extend(unmatched)
         remote_map = {}
         for r in remote_by_set.get(set_no, ()):
@@ -226,11 +255,10 @@ def plan(db, remote, translate, *, rule=None, on=True):
         has_remote_marks = bool(remote_map)
         noted_missing_list = False
         if missing_part_list and has_remote_marks and how in ('per_set', 'everything'):
-            out['unmatched'].append(dict(
-                set_no=set_no,
+            out['unmatched'].append(_unmatched_entry(
+                set_no, 'The set has no part list yet',
                 parts=len(remote_map),
                 pieces=sum(int(r['quantity']) for r in remote_map.values()),
-                reason='The set has no part list yet',
             ))
             noted_missing_list = True
         all_keys = sorted(set(local_map) | set(remote_map))
@@ -249,11 +277,10 @@ def plan(db, remote, translate, *, rule=None, on=True):
                         continue
                     if unmatched or missing_part_list:
                         if missing_part_list and not noted_missing_list:
-                            out['unmatched'].append(dict(
-                                set_no=set_no,
+                            out['unmatched'].append(_unmatched_entry(
+                                set_no, 'The set has no part list yet',
                                 parts=len(remote_map),
                                 pieces=sum(int(r['quantity']) for r in remote_map.values()),
-                                reason='The set has no part list yet',
                             ))
                             noted_missing_list = True
                         continue
@@ -267,11 +294,10 @@ def plan(db, remote, translate, *, rule=None, on=True):
                     continue
                 if unmatched or missing_part_list:
                     if missing_part_list and not noted_missing_list:
-                        out['unmatched'].append(dict(
-                            set_no=set_no,
+                        out['unmatched'].append(_unmatched_entry(
+                            set_no, 'The set has no part list yet',
                             parts=len(remote_map),
                             pieces=sum(int(r['quantity']) for r in remote_map.values()),
-                            reason='The set has no part list yet',
                         ))
                         noted_missing_list = True
                     continue
@@ -285,8 +311,13 @@ def plan(db, remote, translate, *, rule=None, on=True):
             ids = list(remote_entry.get('ids') or ()) if remote_entry else []
             ids_complete = (bool(remote_entry.get('ids_complete', bool(ids))) and bool(ids)) if remote_entry else True
             reason = None
+            line_qty = line_quantities.get((part_no, color_id, is_spare))
             needs_remove = state == 'remove' or (state == 'change' and how != 'add_only')
-            if needs_remove and not ids_complete:
+            if state in ('add', 'change') and line_qty is not None and local_qty > line_qty:
+                tickable = False
+                ticked = False
+                reason = 'The copies together miss more than the set holds'
+            elif needs_remove and not ids_complete:
                 tickable = False
                 ticked = False
                 reason = 'Missing Rebrickable lost part id'

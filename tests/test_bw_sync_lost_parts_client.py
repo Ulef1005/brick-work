@@ -32,11 +32,11 @@ class WriteRemote(Remote):
 def test_parse_lost_part_keeps_lost_part_id_and_inv_part_id():
     row = adapters.parse_lost_part(raw('1000-1', '3001', 4, 2, number=17))
     assert row['lost_part_id'] == 17 and row['inv_part_id'] == 17
-    fallback = raw('1000-1', '3001', 4, 2, number=17)
-    del fallback['inv_part']['inv_part_id']
-    fallback['inv_part']['id'] = '42'
-    parsed = adapters.parse_lost_part(fallback)
-    assert parsed['lost_part_id'] == 17 and parsed['inv_part_id'] == 42
+    no_fallback = raw('1000-1', '3001', 4, 2, number=17)
+    del no_fallback['inv_part']['inv_part_id']
+    no_fallback['inv_part']['id'] = '42'
+    parsed = adapters.parse_lost_part(no_fallback)
+    assert parsed['lost_part_id'] == 17 and parsed['inv_part_id'] is None
     without = raw('1000-1', '3001', 4, 2)
     without['lost_part_id'] = None
     without['inv_part']['inv_part_id'] = None

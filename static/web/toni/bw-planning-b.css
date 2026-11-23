@@ -21,8 +21,8 @@
 /* A wish tile's number line: the number stays on one line and the tags (Wants used, Under max) wrap under it when the tile is narrow;
    before, two tags squeezed the number into one digit per line and ran past the tile on a phone */
 #bw-planning:not(#_):not(#_):not(#_) .bp-wish-number {flex-wrap:wrap;row-gap:4px;min-width:0}
-#bw-planning:not(#_):not(#_):not(#_) .bp-wish-number>.mono {white-space:nowrap}
-#bw-planning:not(#_):not(#_):not(#_) .bp-wish-number .bc-status {max-width:100%}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wish-number>.mono {white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wish-number .bc-status {max-width:100%;overflow:hidden;text-overflow:ellipsis}
 #bw-planning:not(#_):not(#_):not(#_) .wl-head {align-items:flex-end;gap:12px}
 #bw-planning:not(#_):not(#_):not(#_) .wl-head .wl-lists {flex:1 1 auto;min-width:0}
 
@@ -79,7 +79,7 @@
 @media(max-width:767.98px) {
   /* #650: on a phone the head is one column at the content width. Many lists scroll in their own row instead of widening the page, and
      the actions start at the left edge (Manage lists first) and wrap. */
-  #bw-planning:not(#_):not(#_):not(#_) .wl-head {align-items:stretch;min-width:0;max-width:100%}
+  #bw-planning:not(#_):not(#_):not(#_) .wl-head {flex-direction:column;align-items:stretch;min-width:0;max-width:100%}
   #bw-planning:not(#_):not(#_):not(#_) .wl-head .wl-lists {flex:none;width:auto;max-width:100%;margin-left:0}
   #bw-planning:not(#_):not(#_):not(#_) .wl-head .wl-toolbar {justify-content:flex-start;flex-wrap:wrap;max-width:100%}
   :is(#bw-planning,#bw-figures):not(#_):not(#_):not(#_)>h1 {font-size:26px}

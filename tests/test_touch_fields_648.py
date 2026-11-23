@@ -20,6 +20,7 @@ def test_text_fields_are_16px_on_a_touch_screen_only():
     assert rule.strip() == 'font-size:16px!important'                    # iOS zooms below 16px; beats the B′ and legacy field rules
     parts = [p.strip() for p in re.split(r',(?![^(]*\))', selector)]
     assert parts[1:] == ['select', 'textarea']
+    assert ':not(.inv-qty *,.order-stepper *)' in parts[0]                    # the 18px steppers keep their size
     for kind in ('checkbox', 'radio', 'range', 'color', 'file', 'hidden', 'button', 'submit', 'reset', 'image'):
         assert f'[type={kind}]' in parts[0]                               # text-like fields only
 

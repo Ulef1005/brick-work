@@ -554,6 +554,19 @@ def test_robots_and_sitemaps_point_at_this_sites_address(site):
     assert (site / 'docs/sitemap.xml').is_file()
 
 
+def test_every_sitemap_page_but_the_demo_has_a_lastmod_on_a_full_clone(site):
+    import subprocess
+    import xml.etree.ElementTree as ET
+    from scripts.build_site import ROOT
+    if subprocess.run(['git', 'rev-parse', '--is-shallow-repository'], cwd=ROOT, capture_output=True, text=True).stdout.strip() != 'false':
+        pytest.skip('lastmod is left out on a shallow clone')
+    ns = '{http://www.sitemaps.org/schemas/sitemap/0.9}'
+    entries = {e.find(ns + 'loc').text: e.find(ns + 'lastmod') for e in ET.fromstring((site / 'sitemap-pages.xml').read_text())}
+    missing = [loc for loc, mod in entries.items() if mod is None and not loc.endswith('/demo/')]
+    assert missing == []
+    assert len([loc for loc in entries if '/questions/' in loc]) == len(QUESTION_SLUGS)
+
+
 def test_no_page_names_the_pages_address_on_the_apex_build(site):
     from scripts.build_site import site_base
     if site_base() != '/':

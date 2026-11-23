@@ -110,6 +110,9 @@ def build_parser():
     sub.add_argument('--format', choices=('bricklink','rebrickable'), required=True)
     sub.add_argument('--kind', choices=('sets','parts'), default='parts')
     parser(wishes, 'undo', 'wishlist_undo').add_argument('event_id', type=int)
+    sub = parser(commands, 'export-all', 'collection_export_all')
+    sub.add_argument('--sections', help='comma-separated sections: places, flags, collection, wishes')
+    sub.add_argument('--output', help='output zip file path')
     return root
 
 
@@ -178,6 +181,28 @@ def main(argv=None):
             print(f'MCP error: {error}', file=sys.stderr)
             return 1
         return 0
+    if operation == 'collection_export_all':
+        from contextlib import closing
+        from pathlib import Path
+        from ..core import own_export
+        from ..core.connect import connect
+        if not args.get('output'):
+            print('Export error: Give --output FILE', file=sys.stderr)
+            return 1
+        try:
+            with application_context(operation):
+                path = admin_ops.brickwork_path()
+                if not path.is_file():
+                    raise ValueError("Run 'brickwork setup' first")
+                with closing(connect(path, read_only=True)) as db:
+                    result = own_export.build(db, sections=args.get('sections'))
+                Path(args['output']).write_bytes(result['content'])
+                summary = {'counts': result['counts'], 'sections': result['sections'], 'total': sum(result['counts'].values())}
+                print(json.dumps(summary), file=sys.stderr)
+            return 0
+        except Exception as error:
+            print('Export error: ' + _safe_error(error), file=sys.stderr)
+            return 1
     if operation.startswith('wishlist_'):
         from contextlib import closing
         from ..core import wishlists, collection

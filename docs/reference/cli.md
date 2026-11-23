@@ -127,6 +127,21 @@ brickwork wishlist undo EVENT_ID
 
 `export` prints the file to standard output and a summary (exported and omitted lines) to standard error.
 
+## export-all
+
+Writes Brick Work's own export file: a zip with a manifest and one JSON Lines file per table. Run `brickwork setup` first. It reads only, so it works on a read-only instance.
+
+```text
+brickwork export-all --output FILE [--sections places,flags,collection,wishes]
+```
+
+| Argument | Meaning |
+|---|---|
+| `--output` | Required. The zip file to write. |
+| `--sections` | Comma-separated sections. All four when absent. |
+
+The file holds places and storage, flags, lots, copies with their part-line marks, loose stock, and wishlists with their wishes. Items and colours are named by provider and number, not by this install's ids. Orders, part checks, prices, photos, secrets and history are not in it. A summary of row counts goes to standard error. The same file comes from `GET /export/brickwork.zip`.
+
 ## migrate4
 
 *Since 0.6.0.*

@@ -128,5 +128,25 @@
     navigator.serviceWorker.register = () => Promise.resolve({unregister: () => Promise.resolve(true)});
     navigator.serviceWorker.getRegistrations?.().then(list => list.forEach(r => r.unregister())).catch(() => {});
   }
+  // A write the demo refuses must not read like a broken install: the Set Inspector's "Not saved · waiting for network" and Jump's "Search unavailable"
+  // say what the demo does instead, and the retry button that could never succeed is hidden.
+  const REWRITE = [[/^Not saved · waiting for network.*$/, 'Demo: this answer is shown here and not saved'], [/^Search unavailable\. Try again\.$/, 'Search is not part of the demo'],
+    [/^Authentication disabled$/, 'Demo: nothing is saved'], [/^(Set and part data from Rebrickable) · \d+ ?m?s$/, '$1']];
+  function calmNode(node) {
+    const text = node.nodeValue.trim();
+    for (const [pattern, say] of REWRITE) if (pattern.test(text)) { node.nodeValue = text.replace(pattern, say); node.parentElement?.closest('[data-save-status]')?.parentElement?.querySelectorAll('[data-retry]').forEach(b => { b.hidden = true; }); }
+  }
+  function calmTree(root) {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) calmNode(node);
+  }
+  document.addEventListener('DOMContentLoaded', () => {
+    new MutationObserver(records => records.forEach(r => {
+      if (r.type === 'characterData') calmNode(r.target);
+      else r.addedNodes.forEach(n => { if (n.nodeType === 3) calmNode(n); else if (n.nodeType === 1) calmTree(n); });
+      if (r.type === 'childList' && r.target.nodeType === 1) calmTree(r.target);
+    })).observe(document.body, {childList: true, subtree: true, characterData: true});
+  });
+
   window.BrickWorkDemo = {keyOf, toast, note: demo.note};
 })();

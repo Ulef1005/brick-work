@@ -145,6 +145,7 @@ class Layer(showcase.Layer):
                 self.flea_market(db)
                 if self.pictures:
                     self.illustrate(db)
+                self.clear_picture_queue(db)
         finally:
             clock.thaw_clock(patched)
 
@@ -261,6 +262,13 @@ class Layer(showcase.Layer):
             pull_list.set_found(db, LOT, best, dataset.item_by(db, 'parts', row['part']), dataset.colour_by(db, row['color']['id']), row['quantity'])
 
     # ---------- the pictures ----------
+
+    def clear_picture_queue(self, db):
+        """Adding the stock queued a picture job for each item that had none while the world was built; a static demo has no worker, so the Jobs page would
+        show 'running, 0 of 7' for ever. The pictures the folder holds are already in place, so the queue is dropped."""
+        with transaction(db):
+            db.execute("DELETE FROM job_step WHERE job_id IN (SELECT id FROM job WHERE state IN ('queued', 'waiting_for_budget', 'running'))")
+            db.execute("DELETE FROM job WHERE state IN ('queued', 'waiting_for_budget', 'running')")
 
     def illustrate(self, db):
         """The pictures of not-mit/rebrickable/images/, stored the way the app stores any picture: a file under data/images/ in the media folder and a

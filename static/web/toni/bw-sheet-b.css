@@ -13,7 +13,7 @@
 #bw-collection:is([data-b-detail],[data-b-copy]):not(#_):not(#_) .bc-sheet .bc-money>:first-child {border-right:1px solid var(--tw-divider)}
 #bw-collection:is([data-b-detail],[data-b-copy]):not(#_):not(#_) .bc-sheet .bc-segments>div {gap:0;padding:0;border:1.5px solid var(--tw-text);border-radius:3px;background:none;overflow:hidden}
 #bw-collection:is([data-b-detail],[data-b-copy]):not(#_):not(#_) .bc-sheet .bc-segments label+label span {border-left:1.5px solid var(--tw-text)}
-/* #667: the span fills its part to the full height of the bar, so the dividers and the filled part meet the outline (equal parts: desktop, below) */
+/* #667: the span fills its part to the full height of the bar, so the dividers and the filled part meet the outline (the parts are equal: flex:1 in bw-collection.css) */
 #bw-collection:is([data-b-detail],[data-b-copy]):not(#_):not(#_) .bc-sheet .bc-segments label {display:flex;min-height:0;margin:0}
 #bw-collection:is([data-b-detail],[data-b-copy]):not(#_):not(#_) .bc-sheet .bc-segments label>span {flex:1;min-width:0}
 #bw-collection:is([data-b-detail],[data-b-copy]):not(#_):not(#_) .bc-sheet .bc-segments span {min-height:38px;padding:0 8px;border-radius:0;background:transparent;color:var(--tw-text);font:600 12px var(--tw-font-label);letter-spacing:.08em;text-transform:uppercase}
@@ -36,7 +36,6 @@
 @media(min-width:1024px) {
   #bw-collection:is([data-b-detail],[data-b-copy]):not(#_):not(#_) .bc-sheet {border-width:0 0 0 1px;border-radius:0}
   #bw-collection:is([data-b-detail],[data-b-copy]):not(#_):not(#_) .bc-sheet .bc-sheet-close {display:grid;place-items:center}   /* the phone sheet keeps closing with Discard */
-  #bw-collection:is([data-b-detail],[data-b-copy]):not(#_):not(#_) .bc-sheet .bc-segments label {flex:1 1 0}   /* each part as wide as the next; a phone keeps room for INCOMPLETE */
 }
 @media(max-width:1023.98px) {
   #bw-collection:is([data-b-detail],[data-b-copy]):not(#_):not(#_) .bc-sheet {border-radius:var(--tw-r-2) var(--tw-r-2) 0 0}

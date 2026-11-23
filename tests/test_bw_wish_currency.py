@@ -407,8 +407,18 @@ def test_edit_wish_hides_the_currency_status_and_owners_and_keeps_their_values(c
     soup = BeautifulSoup(client.get(f'/collection/wishes/{wish}').data, 'html.parser')
     form = soup.select_one('#bc-edit-form')
     assert form.select_one('input[name=max_price_currency]') is None and form.select_one('input[name=max_price_boxed_currency]') is None
-    assert form.select_one('#bc-owners') is None and form.select_one('#bc-status-flags') is None and form.select_one('#bc-tags-label')
+    assert form.select_one('#bc-owners-label') is None and form.select_one('#bc-status-flags-label') is None and form.select_one('#bc-tags-label')
     assert sorted(i['value'] for i in form.select('input[type=hidden][name=flags]')) == sorted([owner, status])
     coll.sql("UPDATE wish SET max_price_currency='USD' WHERE id=?", (wish,))
     soup = BeautifulSoup(client.get(f'/collection/wishes/{wish}').data, 'html.parser')
     assert soup.select_one('#bc-edit-form input[name=max_price_currency]')['value'] == 'USD'      # another currency shows, so Not comparable is explainable
+
+
+def test_a_wish_sheet_without_the_currency_field_still_clears_and_sets_its_max(coll, wish, client):
+    """#670 review: the sheet posts no currency when it matches Settings; clearing the max clears the currency, a new max takes Settings'."""
+    coll.setting('bricklink_currency', 'EUR')
+    token = csrf(client)
+    assert post(client, token, 'save', entity='wish', ids=[wish], values=dict(max_price='')).status_code == 200
+    assert pair_of(coll, wish) == (None, None)
+    assert post(client, token, 'save', entity='wish', ids=[wish], values=dict(max_price='12')).status_code == 200
+    assert pair_of(coll, wish) == ('12', 'EUR')

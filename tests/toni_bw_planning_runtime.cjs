@@ -40,7 +40,7 @@ filterControl.dataset.bpFilter='type';filterControl.closest=()=>({firstChild:{te
 search.closest=()=>null;sort.value='number';order.value='asc';panel.hidden=true;panel.nodes={'button, input, select':new Node()};
 pin.dataset={bpPin:'copy',pinned:'false'};refresh.dataset.bpRefresh='["P","3004"]';archive.dataset.bpArchive='w7';
 const root=new Node();root.dataset={csrf:'token',screen:'prices',saveUrl:'/planning/action/ACTION',collectionUrl:'/collection/save/ACTION'};
-const rows=[{type:'P',number:'3004',name:'Brick',colour:'Red',pinned:'0',rank:2,gap:4,cost:'12',max:'40',collection:['owned'],stale:'true'},{type:'S',number:'20',name:'Set',colour:'',pinned:'1',rank:4,gap:1,cost:'2',max:null,collection:['wanted'],stale:'false'}];
+const rows=[{type:'P',number:'3004',name:'Brick',colour:'Red',pinned:'0',rank:2,gap:4,cost:'12',max:'40',collection:['owned'],stale:'true',under:'under'},{type:'S',number:'20',name:'Set',colour:'',pinned:'1',rank:4,gap:1,cost:'2',max:null,collection:['wanted'],stale:'false',under:'noprice'}];
 const nodes=rows.map(r=>{const n=new Node();n.nodes={'[data-bp-selected]':Object.assign(new Node(),{checked:false})};n.tagName='ARTICLE';n.closest=()=>n;n.dataset.record=JSON.stringify(r);return n;});
 const count=new Node(),chips=new Node(),empty=new Node(),container=new Node();root.nodes={'[data-bp-search]':search,'[data-bp-sort]':sort,'[data-bp-order]':order,'#bp-filters':panel,'[data-bp-message]':message,'[data-bp-undo]':undo,'[data-bp-count]':count,'[data-bp-chips]':chips,'[data-bp-empty]':empty,'[data-bp-rows]':container};root.groups={'[data-bp-row]':nodes,'[data-bp-filter]':[filterControl],'[data-bp-filters]':[toggle],'[data-bp-pin]':[pin],'[data-bp-refresh]':[refresh],'[data-bp-archive]':[archive]};
 const sortPanel=new Node(),sortToggle=new Node(),sortDone=new Node();sortPanel.hidden=true;sortPanel.nodes={'button, input, select':sort};
@@ -63,6 +63,8 @@ vm.runInNewContext(fs.readFileSync('static/web/toni/formatting.js','utf8')+fs.re
 const api=context.window.BrickPlanning;
 assert.equal(partoutNote.hidden,true);sort.value='partout';sort.events.change();assert.equal(partoutNote.hidden,false);assert.equal(order.value,'desc');sort.value='number';sort.events.change();assert.equal(order.value,'asc');assert.equal(partoutNote.hidden,true);
 order.value='desc';sort.value='partout';sort.events.change();sort.value='number';sort.events.change();assert.equal(order.value,'desc');order.value='asc';
+// #654: the Wishlist's default sort, buy now first: the rank comes from each record's `under` (the chips' order), not from a column the page sends.
+sort.value='state';sort.events.change();assert.deepEqual(container.children.slice(-2).map(n=>JSON.parse(n.dataset.record).number),['3004','20']);sort.value='number';sort.events.change();assert.deepEqual(container.children.slice(-2).map(n=>JSON.parse(n.dataset.record).number),['20','3004']);
 assert.equal(api.filter(rows,'red',{},'number').length,1);
 assert.equal(api.filter(rows,'',{collection:'wanted'},'number')[0].number,'20');
 assert.equal(api.filter(rows,'',{stale:'true'},'number')[0].number,'3004');
@@ -72,6 +74,11 @@ const under=[{type:'S',number:'1',name:'A',colour:'',under:'over',undermax:'30'}
 assert.deepEqual(api.filter(under,'',{under:'under'},'undermax').map(r=>r.number),['2','4']);
 assert.deepEqual(api.filter(under,'',{under:'differs'},'undermax').map(r=>r.number),['3']);
 assert.deepEqual(api.filter(under,'',{},'undermax').map(r=>r.number),['2','4','1','3']);
+// #654: a wish with a max and no price is its own state (the No price chip), and the default sort puts buy now first.
+const states=[{type:'S',number:'1',name:'A',colour:'',under:'noprice',state:4},{type:'S',number:'2',name:'B',colour:'',under:'over',state:1},{type:'S',number:'3',name:'C',colour:'',under:'under',state:0},{type:'S',number:'4',name:'D',colour:'',under:'nomax',state:2},{type:'S',number:'5',name:'E',colour:'',under:'differs',state:3},{type:'S',number:'6',name:'F',colour:'',under:'under',state:0}];
+assert.deepEqual(api.filter(states,'',{under:'noprice'},'state').map(r=>r.number),['1']);
+assert.deepEqual(api.filter(states,'',{under:'nomax'},'state').map(r=>r.number),['4']);
+assert.deepEqual(api.filter(states,'',{},'state').map(r=>r.number),['3','6','2','4','5','1']);
 assert.equal(api.filter(rows,'',{},'cost')[0].number,'20');
 (async()=>{
  assert.equal(count.textContent,'2 results');

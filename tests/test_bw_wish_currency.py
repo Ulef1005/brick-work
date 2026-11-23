@@ -130,60 +130,86 @@ def test_wishlist_card_shows_currency_and_under_max(coll, wish, client):
     priced(coll, wish, 'EUR', '80', 'EUR')
     soup = wish_page(client)
     row = soup.select_one('[data-bp-row]')
-    assert row.select_one('.bp-max strong').text == '€100.00'
-    assert '€20.00 under max' in row.select_one('.bp-max-diff').text
+    assert row.select_one('.bp-wl-max strong').text == '€100.00'
+    assert row.select_one('.bp-gap').text == '€20.00 under your max'
     record = json.loads(row['data-record'])
     assert record['under'] == 'under' and record['undermax'] == '-20' and record['max'] == '100'
-    assert not row.select('.bp-max-note')
     assert 'no recorded currency' not in soup.get_text()
-    assert [o['value'] for o in soup.select('[data-bp-filter=under] option')] == ['', 'under', 'over', 'nomax', 'differs']
-    assert [(b['data-value'], b.text) for b in soup.select('.bp-price-filter [data-bp-pick=under]')] == [('under', 'Under max'), ('over', 'Over max'), ('nomax', 'No max set'), ('differs', 'Not comparable')]
-    assert soup.select_one('.bp-price-filter-label').text == 'Price filter'
-    assert not soup.select('.bp-price-note')
-    assert row.select_one('.bp-verdict').text == 'Under max'
-    assert ('undermax', 'Under max') in [(o['value'], o.text) for o in soup.select('[data-bp-sort] option')]
+    assert [o['value'] for o in soup.select('[data-bp-filter=under] option')] == ['', 'under', 'over', 'nomax', 'differs', 'noprice']
+    assert [(b['data-value'], b.get_text(strip=True)) for b in soup.select('.bp-price-filter [data-bp-pick=under]')] == [
+        ('', 'All1'), ('under', 'Buy now1'), ('over', 'Wait0'), ('nomax', 'No max0'), ('differs', 'Not comparable0'), ('noprice', 'No price0')]
+    assert soup.select_one('.bp-price-filter-label').text == 'State'
+    assert row.select_one('.bp-wish-number .bp-state-under').text == 'Buy now'
+    assert ('undermax', 'Gap to max') in [(o['value'], o.text) for o in soup.select('[data-bp-sort] option')]
+    assert soup.select_one('[data-bp-sort] option').get('value') == 'state'                      # the default sort: buy now first
 
 
 def test_wishlist_card_over_and_differing_currency(coll, wish, client):
     priced(coll, wish, 'EUR', '130', 'EUR')
     row = wish_page(client).select_one('[data-bp-row]')
-    assert '€30.00 over max' in row.select_one('.bp-max-diff').text
-    assert row.select_one('.bp-verdict.over').text == 'Over max'
+    assert row.select_one('.bp-gap').text == '€30.00 over your max'
+    assert row.select_one('.bp-state-over').text == 'Wait' and 'bp-state-under' not in row.select_one('.bp-state')['class']
     assert json.loads(row['data-record'])['under'] == 'over'
     priced(coll, wish, 'EUR', '130', 'USD')
     row = wish_page(client).select_one('[data-bp-row]')
-    assert row.select_one('.bp-max strong').text == '$100.00'
-    assert row.select_one('.bp-max-note').text == 'Max in USD, price in EUR'
-    assert not row.select('.bp-max-diff')
+    assert row.select_one('.bp-wl-max strong').text == '$100.00'
+    assert row.select_one('.bp-gap').text == 'Max in USD, price in EUR'
     record = json.loads(row['data-record'])
     assert record['under'] == 'differs' and record['undermax'] is None
-    assert row.select_one('.bp-verdict.differs').text == 'Not comparable'
-    assert 'No verdict is given' in wish_page(client).select_one('.bp-price-note').text
+    assert row.select_one('.bp-state-differs').text == 'Not comparable'
 
 
-def test_wishlist_no_max_has_no_verdict(coll, wish, client):
+def test_wishlist_no_max_has_the_no_max_tag(coll, wish, client):
     priced(coll, wish, 'EUR', '80', 'EUR', maximum=None)
     row = wish_page(client).select_one('[data-bp-row]')
-    assert not row.select('.bp-verdict')
+    assert row.select_one('.bp-state-nomax').text == 'No max'
+    assert row.select_one('.bp-wl-max .bp-max-none').text == 'No max set' and row.select_one('.bp-wl-max a').text == 'Set max'
+    assert row.select_one('.bp-gap').text == 'No max to compare with'
     assert json.loads(row['data-record'])['under'] == 'nomax'
 
 
-def test_wishlist_max_without_comparable_price_has_no_verdict(coll, wish, client):
+def test_wishlist_max_without_a_price_is_its_own_state(coll, wish, client):
     coll.sql('DELETE FROM price_current')
     coll.sql('UPDATE wish SET max_price=?,max_price_currency=?,condition=? WHERE id=?', ('100', 'EUR', 'used', wish))
     soup = wish_page(client)
     row = soup.select_one('[data-bp-row]')
-    assert not row.select('.bp-verdict')
-    assert not row.select('.bp-max-note')
+    assert row.select_one('.bp-state-noprice').text == 'No price'
+    assert row.select_one('.bp-wl-price').text.startswith('No sales yet') and row.select_one('.bp-gap').text == 'No sales recorded yet'
     assert json.loads(row['data-record'])['under'] == 'noprice'
-    assert 'noprice' not in [b['data-value'] for b in soup.select('.bp-price-filter [data-bp-pick=under]')]
-    assert not soup.select('.bp-price-note')
+    assert 'noprice' in [b['data-value'] for b in soup.select('.bp-price-filter [data-bp-pick=under]')]
+    assert soup.select_one('[data-bp-pick=under][data-value=noprice] .bp-chip-count').text == '1'
+
+
+def test_noprice_is_a_state_of_the_planning_row_and_not_of_the_api(coll, wish, read, client):
+    """#654: a wish with a max and no price has its own state (it was None, the same as no max); the API still says nothing about it."""
+    coll.sql('DELETE FROM price_current')
+    coll.sql('UPDATE wish SET max_price=?,max_price_currency=? WHERE id=?', ('100', 'EUR', wish))
+    with read() as db:
+        row = planning.wishes(db)[0]
+        assert (row['max_state'], row['max_margin'], row['wish_state']) == ('noprice', None, 'noprice')
+        assert planning.max_comparison(dict(row, display_price=dict(price='5', currency=None)))[0] == 'differs'      # a price without a currency cannot be compared
+        assert planning.max_comparison(dict(row, max_price=None))[0] is None                                          # no max: no state
+        from brickwork.api2 import shapes
+        api_rows = shapes.wish_rows(db)
+        assert api_rows[0]['max_state'] == 'noprice'
+        with client.application.app_context():
+            assert shapes.wish_bodies(db, api_rows)[0]['under_max'] is None                                   # the API's under_max: still null, as for no max
+
+
+def test_the_wishlist_lists_buy_now_first(coll, wish, client):
+    """The wish added first has a max and no price (No price); the one added second is Buy now and leads the list."""
+    coll.sql("UPDATE wish SET max_price=?,max_price_currency=?,condition=? WHERE id=?", ('100', 'EUR', 'used', wish))
+    other = coll.add_wish(coll.local('set', 'Second', born_key='second-wish'), quantity=1, condition='used', max_price='100', currency='EUR')
+    coll.price(coll.db.execute('SELECT item_id FROM wish WHERE id=?', (other,)).fetchone()[0], '80', currency='EUR', region='eu', observed=planning.now().isoformat())
+    rows = wish_page(client).select('[data-bp-row]')
+    assert [json.loads(r['data-record'])['id'] for r in rows] == [other, wish]
+    assert [r.select_one('.bp-state').text for r in rows] == ['Buy now', 'No price']
 
 
 def test_wanted_card_and_edit_form_carry_currency(coll, wish, client):
     priced(coll, wish, 'EUR', '80', 'USD')
     soup = BeautifulSoup(client.get(f'/collection/wishes/{wish}').data, 'html.parser')
-    assert soup.select_one('.bc-wanted-max strong').text == '$100.00'
+    assert soup.select_one('[data-module=wanted] [data-bc-wish-limit=max_price] strong').text == '$100.00'
     assert soup.select_one('input[name=max_price_currency]')['value'] == 'USD'
     assert soup.select_one('input[name=max_price_currency]')['maxlength'] == '8'
     assert 'Currency is not stored' not in soup.get_text()
@@ -192,7 +218,7 @@ def test_wanted_card_and_edit_form_carry_currency(coll, wish, client):
     response = post(client, token, 'save', entity='wish', ids=[wish], values=dict(max_price='101', max_price_currency='gbp'))
     assert response.status_code == 200
     soup = BeautifulSoup(client.get(f'/collection/wishes/{wish}').data, 'html.parser')
-    assert soup.select_one('.bc-wanted-max strong').text == '£101.00'
+    assert soup.select_one('[data-module=wanted] [data-bc-wish-limit=max_price] strong').text == '£101.00'
     bad = post(client, token, 'save', entity='wish', ids=[wish], values=dict(max_price='5', max_price_currency='1'))
     assert bad.status_code == 400 and '3 to 8 letters' in bad.json['message']
     assert post(client, token, 'undo', event_id=response.json['event_id']).status_code == 200
@@ -224,3 +250,68 @@ def test_wishlist_queries_constant(coll, wish, client, monkeypatch):
     small = count()
     bulk(5, 45)
     assert count() <= small + 2
+
+
+def test_the_wish_page_opens_with_the_answer(coll, wish, client):
+    """#655, frame 62: the answer first, its state beside the condition in the hero, then Your wish and the Prices card."""
+    priced(coll, wish, 'EUR', '80', 'EUR')
+    soup = BeautifulSoup(client.get(f'/collection/wishes/{wish}').data, 'html.parser')
+    answer = soup.select_one('[data-wish-answer]')
+    assert answer.h2.text == '€20.00 under your max'
+    assert answer.p.text.startswith('Used avg €80.00 · ') and answer.p.text.endswith(' · your max €100.00')
+    assert answer.find_next(class_='bc-detail-layout') and answer.find_previous(class_='bc-hero-status')
+    assert [t.text for t in soup.select('.bc-hero-status .bc-status')] == ['Wants used', 'Buy now']
+    assert soup.select_one('.bc-hero-status .bp-state-under')
+    card = soup.select_one('[data-module=wanted]')
+    assert card.h2.text == 'Your wish' and not card.select('.bc-wanted-segments')
+    assert card.select_one('details.bc-wish-facts summary').text == 'Wish details'               # inside the card, not a card of its own
+    assert not soup.select('[data-module=prices] .bc-price-footer, [data-module=prices] [data-bc-wish-limit]')    # the max lives on Your wish only
+
+
+def test_the_wish_page_states_the_gap_for_every_state(coll, wish, client):
+    gaps = {}
+    for state, args in {'over': ('130', 'EUR', 'EUR'), 'differs': ('130', 'EUR', 'USD')}.items():
+        priced(coll, wish, args[1], args[0], args[2])
+        soup = BeautifulSoup(client.get(f'/collection/wishes/{wish}').data, 'html.parser')
+        gaps[state] = (soup.select_one('[data-wish-answer] h2').text, soup.select_one('.bc-hero-status .bp-state').text)
+    assert gaps == {'over': ('€30.00 over your max', 'Wait'), 'differs': ('Max in USD, price in EUR', 'Not comparable')}
+    priced(coll, wish, 'EUR', '80', 'EUR', maximum=None)
+    soup = BeautifulSoup(client.get(f'/collection/wishes/{wish}').data, 'html.parser')
+    assert soup.select_one('[data-wish-answer] h2').text == 'No max to compare with' and soup.select_one('.bc-hero-status .bp-state').text == 'No max'
+    assert soup.select_one('[data-wish-answer] p').text.endswith('no max set')
+    coll.sql('DELETE FROM price_current')
+    coll.sql('DELETE FROM price_observation')
+    coll.sql('UPDATE wish SET max_price=?,max_price_currency=? WHERE id=?', ('100', 'EUR', wish))
+    soup = BeautifulSoup(client.get(f'/collection/wishes/{wish}').data, 'html.parser')
+    assert soup.select_one('[data-wish-answer] h2').text == 'No sales recorded yet' and soup.select_one('.bc-hero-status .bp-state').text == 'No price'
+
+
+def test_the_wish_prices_card_says_no_sales_and_one_price_in_words(coll, wish, client):
+    priced(coll, wish, 'EUR', '80', 'EUR')
+    soup = BeautifulSoup(client.get(f'/collection/wishes/{wish}').data, 'html.parser')
+    sales = soup.select('[data-module=prices] .bc-no-sales')
+    assert [s.get_text(' ', strip=True) for s in sales] == ['New No sales']                       # the condition without a price, in small type
+    single = soup.select_one('[data-bc-price-single]')
+    assert single and single.text.startswith('One price so far') and 'Single price point' not in soup.text and not single.select('svg')
+    assert '€80.00' not in single.text                              # the amount is on the card above: the sentence does not repeat it
+
+
+def test_a_list_of_sets_and_parts_counts_wishes_not_pieces(coll, world, client):
+    """The heading counts wishes (rows), never pieces: five of a part is one wish."""
+    coll.sql('UPDATE wish SET quantity=5')
+    soup = BeautifulSoup(client.get('/planning/wishlist').data, 'html.parser')
+    rows = soup.select('[data-bp-row]')
+    assert len(rows) > 1 and soup.select_one('.bp-subtitle').text.startswith(f'{len(rows)} wanted · ')
+    coll.sql("UPDATE wish SET archived_at=? WHERE kind=?", ('2026-10-27T00:00:00.000Z', 'part'))
+    soup = BeautifulSoup(client.get('/planning/wishlist').data, 'html.parser')
+    assert soup.select_one('.bp-subtitle').text.startswith('1 set wanted · ')
+
+
+def test_an_empty_wishlist_says_so_and_drops_the_controls(coll, wish, client):
+    """Frame 61: nothing on the wishlist is one sentence of what to do, not a toolbar over "Nothing here yet"."""
+    coll.sql('UPDATE wish SET archived_at=? WHERE id=?', ('2026-10-27T00:00:00.000Z', wish))
+    soup = wish_page(client)
+    assert soup.h1.text == 'Nothing is on your wishlist yet'
+    assert soup.select_one('.bp-subtitle').text.endswith('work as before.')
+    assert not soup.select('[data-bp-search], .bp-price-filter, [data-bp-row]') and soup.select_one('[data-bp-empty]').has_attr('hidden')
+    assert soup.select_one('.wl-lists')                                                          # the lists stay: a list can still be made

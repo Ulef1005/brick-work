@@ -99,7 +99,7 @@
     if(r.unresolved)identity.append(el('span','status',r.number?'To check':'Unidentified'));
     link.append(identity);row.append(link);
     if(r.unresolved){const unresolved=el('a','','Unresolved items');unresolved.href=config.unresolvedUrl;row.append(unresolved);}
-    if(r.entity==='wish'){const max=el('div','bc-wish-max');max.append(el('span','bc-wish-max-label','Your max price'),el('strong','mono',r.max_price||'Not recorded'));row.append(max);}
+    if(r.entity==='wish'){const max=el('div','bc-wish-max');max.append(el('span','bc-wish-max-label','Your max price'),(r.max_price?el('strong','mono',r.max_price):el('span','bc-wish-max-none','No max set')));row.append(max);}
     const foot=el('div','bc-card-foot');
     if(r.entity==='wish'){
       foot.append(el('span','mono',r.defects||r.quantity+' wanted'));

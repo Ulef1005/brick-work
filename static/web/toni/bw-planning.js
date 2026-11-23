@@ -2,7 +2,7 @@
   'use strict';
   function filter(rows, query, filters, sort, descending=sort==='partout') {
     const text=query.trim().toLocaleLowerCase();
-    const numeric=new Set(['rank','gap','cost','max','undermax','partout']);
+    const numeric=new Set(['state','rank','gap','cost','max','undermax','partout']);
     return rows.filter(r=>(!text || [r.number,r.also,r.name,r.colour].join(' ').toLocaleLowerCase().includes(text)) && Object.entries(filters).every(([k,v])=>!v || (k==='pinned'?String(r[k])===(v==='true'?'1':'0'):Array.isArray(r[k])?r[k].includes(v):String(r[k])===v))).sort((a,b)=>{
       if(sort==='rank' && a.pinned!==b.pinned)return Number(b.pinned)-Number(a.pinned);
       const missing=x=>x==null || x==='' || x==='None';
@@ -11,9 +11,11 @@
       return diff*(descending?-1:1) || String(a.number).localeCompare(String(b.number),undefined,{numeric:true});
     });
   }
+  // #654: the Wishlist's default sort, buy now first; the order of the state chips.
+  const STATES=['under','over','nomax','differs','noprice'];
   window.BrickPlanning={filter};
   const root=document.querySelector('#bw-planning');if(!root)return;
-  const nodes=[...root.querySelectorAll('[data-bp-row]')],records=nodes.map(node=>({...JSON.parse(node.dataset.record),node}));
+  const nodes=[...root.querySelectorAll('[data-bp-row]')],records=nodes.map(node=>{const r=JSON.parse(node.dataset.record);return {...r,state:STATES.indexOf(r.under),node};});
   const search=root.querySelector('[data-bp-search]'),sort=root.querySelector('[data-bp-sort]'),order=root.querySelector('[data-bp-order]'),controls=[...root.querySelectorAll('[data-bp-filter]')],panel=root.querySelector('#bp-filters'),message=root.querySelector('[data-bp-message]'),undo=root.querySelector('[data-bp-undo]');
   let previousSort=sort?.value, previousOrder=order?.value || 'asc';
   if(sort && order && root.dataset.screen==='complete-sets' && new URLSearchParams(location.search).get('sort')==='partout'){sort.value='partout';order.value='desc';previousSort='partout';}

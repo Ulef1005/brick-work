@@ -11,6 +11,20 @@ Do this when one wishlist is no longer enough. Use separate lists for a project,
 
 Open **Planning → Wishlist**. The lists sit at the top as chips, each with its count. **All lists** shows every wish from every active list and labels each one with its list's name.
 
+## Read a wish: can I buy it now?
+
+Each wish answers one question: can you buy this set now at a price you accept. The tile shows the picture, the number with one **state** tag, the name, the theme and year (and, under **All lists**, the list), what you want (the condition and how many you have of how many), your max or **No max set** with **Set max**, the price now for that condition (**Used avg**, **Used listings**, **New avg** or **New listings**) and the gap to your max in words. The heading says how many wishes are under your max, and the line under it names where the prices come from.
+
+| Tag | Meaning |
+|---|---|
+| **Buy now** (filled) | The price now is at or under your max. |
+| **Wait** (outlined) | The price now is over your max. |
+| **No max** (dashed) | The wish has no max, so there is nothing to compare with. |
+| **Not comparable** (dashed) | The max and the price are in different currencies and no exchange rate covers them, or a currency is not recorded. |
+| **No price** (dashed) | The wish has a max, but there is no sale or listing for the condition you want yet. |
+
+The **State** chips under the condition chips filter by these tags and show how many wishes each holds. The list is sorted **Buy now first** until you pick another sort under **Sort**. Press the wish to open its page: the answer comes first, then **Your wish** (condition, how many are filled, list, max and max with box, with **Edit**) and **Prices**, with one strip from the lowest to the highest sale and a mark at the average. A condition with no sales says **No sales**; with a single price, the page says so instead of drawing a trend line.
+
 ## Create, rename and archive lists
 
 1. Press **Manage lists**.

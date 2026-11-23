@@ -154,15 +154,14 @@ def page(client, url):
 
 def test_a_wishs_card_offers_both_maxima_as_buttons(coll, wish, client):
     soup = page(client, f'/collection/wishes/{wish}')
-    footer = soup.select_one('.bc-price-footer')
-    limits = {s['data-bc-wish-limit']: s for s in footer.select('[data-bc-wish-limit]')}
-    assert list(limits) == ['max_price', 'max_price_boxed']
-    for field, label in (('max_price', 'Your max price'), ('max_price_boxed', 'Max with box')):
-        button = limits[field].select_one('button[data-bw-open=bc-edit]')
+    card = soup.select_one('[data-module=wanted]')                                                     # #655: both maxima sit on Your wish, no footer on the prices card
+    limits = {s['data-bc-wish-limit']: s for s in card.select('[data-bc-wish-limit]')}
+    assert list(limits) == ['max_price', 'max_price_boxed'] and not soup.select('.bc-price-footer')
+    for field, label in (('max_price', 'Your max'), ('max_price_boxed', 'Max with box')):
+        button = limits[field].find_previous_sibling('dt').select_one('button[data-bw-open=bc-edit]')
         assert button.text == label and button['data-bc-focus'] == field
         assert soup.select_one(f'#bc-edit input[name={field}]') and soup.select_one(f'#bc-edit input[name={field}_currency]')
-    assert '€100.00' in limits['max_price'].text and 'not set' in limits['max_price_boxed'].text
-    assert 'Set estimate' not in footer.text and not footer.select('.bc-estimate > span:not(.mono):not(.bc-estimate-label)')
+    assert '€100.00' in limits['max_price'].text and 'Not set' in limits['max_price_boxed'].text
     labels = [l.contents[0].strip() for l in soup.select('#bc-edit label') if l.select_one('input[name^=max_price]')]
     assert labels == ['Your max price', 'Max price currency', 'Max price with box', 'Max with box currency']
 
@@ -172,8 +171,8 @@ def test_a_wishs_max_with_box_saves_from_the_sheet_and_shows_on_the_card(coll, w
     saved = post(client, token, 'save', entity='wish', ids=[wish], values=dict(max_price_boxed='120.5', max_price_boxed_currency='gbp'))
     assert saved.status_code == 200, saved.get_data(as_text=True)
     assert boxed_pair(coll, wish) == ('120.5', 'GBP')
-    footer = page(client, f'/collection/wishes/{wish}').select_one('.bc-price-footer')
-    assert '£120.50' in footer.select_one('[data-bc-wish-limit=max_price_boxed]').text
+    card = page(client, f'/collection/wishes/{wish}').select_one('[data-module=wanted]')
+    assert '£120.50' in card.select_one('[data-bc-wish-limit=max_price_boxed]').text
 
 
 def test_an_owned_copys_card_keeps_its_estimate_button(coll, client):
@@ -188,19 +187,20 @@ def test_without_edit_rights_no_footer_label_looks_like_an_action(coll, wish, cl
     monkeypatch.setattr('brickwork.web.views.bw_collection_editable', lambda: False)
     keep = coll.item('sets', '1000-1')
     copy = coll.add_copy('1000-1')
-    for url in (f'/collection/wishes/{wish}', f'/collection/item/{keep}?copy={copy}'):
-        footer = page(client, url).select_one('.bc-price-footer')
-        assert not footer.select('button') and 'Set estimate' not in footer.text
-        assert footer.select('.bc-estimate-label')                           # plain text in the secondary colour (bw-collection.css)
+    footer = page(client, f'/collection/item/{keep}?copy={copy}').select_one('.bc-price-footer')
+    assert not footer.select('button') and 'Set estimate' not in footer.text
+    assert footer.select('.bc-estimate-label')                               # plain text in the secondary colour (bw-collection.css)
+    card = page(client, f'/collection/wishes/{wish}').select_one('[data-module=wanted]')
+    assert not card.select('dl.bc-wish-kv button') and card.select_one('dl.bc-wish-kv dt').text == 'Wants'      # the max labels are plain text, not actions
 
 
 def test_a_wishs_card_still_shows_the_sets_estimate(coll, wish, client):
     quotes(coll, wish, boxed='55')                                          # Brickset's value with box is the card's "With box"
     item = coll.db.execute('SELECT item_id FROM wish WHERE id=?', (wish,)).fetchone()[0]
     coll.price(item, '48', guide='valuation', currency='EUR', source='brickset', observed=planning.now().isoformat())
-    footer = page(client, f'/collection/wishes/{wish}').select_one('.bc-price-footer')
-    estimate = footer.select_one('[data-bc-wish-estimate]')
-    assert estimate and '€48.00' in estimate.text and not estimate.select('button')   # shown, not an action, beside the two maxima
+    soup = page(client, f'/collection/wishes/{wish}')
+    assert not soup.select('.bc-price-footer, [data-bc-wish-estimate]')              # #655: the card keeps its quotes; the estimate and With box lines left the wish page
+    assert '€48.00' in soup.select_one('.bc-price-records').text and '€55.00' in soup.select_one('.bc-price-records').text
 
 
 # ---------- the app's own wishlist export ----------

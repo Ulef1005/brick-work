@@ -9,6 +9,7 @@ exclude_docs: |
   approval/
   milestones/
   img/readme/
+  assets/social-preview-github-1280x640.png
   img/tutorials/NOTICE.md
   pitch/README.md
   brickwork/api-v1.md

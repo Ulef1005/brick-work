@@ -116,8 +116,6 @@ await new Promise(r => setTimeout(r, 150));
 
 # stem: (path, width, max CSS height, script, destination)
 PICTURES = {
-    '1c-sets-desktop-1440': ('/collection/sets', 1440, 1020, None, (README,)),
-    '3c-picker-pick-390': (PICKED + '&pick=1', 390, 950, None, (README,)),
     # The tutorials' pictures are the tut-* ones generated below (real world, call-outs); the old invented-world pictures were removed (#290, Ulf 2026-11-16)
     'scout-set-desktop-1440': (scout_set(SECOND), 1440, 900, None, (TUTORIALS,)),
 }
@@ -136,14 +134,14 @@ R_LOT_PAGE = '/collection/lots/' + real.LOT
 NO_FOUND_ROWS = ("for (let i = 0; i < 100 && !document.querySelector('.chk-found-row'); i++) await new Promise(r => setTimeout(r, 50));\n"
                  "document.querySelectorAll('.chk-hist .chk-found-row, .chk-hist .chk-gl2').forEach(e => e.remove());\n")
 SITE_PICTURES = {
-    '1c-sets-desktop-1440': ('/collection/sets', 1440, 1020, None, (SITE,)),
+    '1c-sets-desktop-1440': ('/collection/sets', 1440, 1020, None, (SITE, README)),   # also the README's sets list (#502)
     '3a-matcher-phone-390': ('/workbench/match', 390, 844, None, (SITE,)),
     '3e-start-phone-390': ('/workbench/check-parts/' + R_FRESH, 390, 844, None, (SITE,)),
     '3e-part-phone-390': ('/workbench/check-parts/%s?run=1' % R_STARTED, 390, 844, None, (SITE,)),
     'part-spotter-phone-390': ('/workbench/part-to-inventory', 390, 844, None, (SITE,)),   # the website's Part Spotter tile (#526): its start screen; a result needs a photo and Brickognize
     '3e-part-desktop-1440': ('/workbench/check-parts/%s?run=1' % R_STARTED, 1440, 900, NO_FOUND_ROWS, (README,)),   # README and social previews (#502)
     '3c-picker-sets-phone-390': ('/workbench/part-picker', 390, 844, None, (SITE,)),
-    '3c-picker-pick-phone-390': (R_PICKED + '&pick=1', 390, 950, None, (SITE, README)),   # also the README's and the social previews' (#502)
+    '3c-picker-pick-phone-390': (R_PICKED + '&pick=1', 390, 950, "document.querySelectorAll('.psub').forEach(e => { e.style.display = 'none'; });\n", (SITE, README)),   # also the README's and the social previews' (#502)
     '12b-count-what-arrived-desktop-1440': ('/workbench/orders/2', 1024, 768, None, (SITE,)),   # 1024 wide, cut at 768 high: the 4:3 tile shows the top left at a readable size (design, 2026-11-23)
     '12c-list-and-detail-desktop-1440': ('/workbench/storage/storage-shelf-b', 1024, 768, None, (SITE,)),
     'scout-list-desktop-1440': ('/workbench/build-scout?min_percent=10', 1024, 768, HIDE_PANEL, (SITE,)),

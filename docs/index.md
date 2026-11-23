@@ -16,7 +16,7 @@ Installation is in the [README](https://github.com/Ulef1005/brick-work#install).
 
 ## Where Brick Work stands
 
-Release 1.1 (schema 4.6) builds on 1.0. That was the first release after its maintainer set up a real collection from scratch through **Get started** on a test install and ran every workflow on it (milestone B).
+Release 1.2 (schema 4.7) builds on 1.1: the new design on every screen, and Lost Parts from Rebrickable. Release 1.0 was the first after its maintainer set up a real collection from scratch through **Get started** on a test install and ran every workflow on it (milestone B).
 
 The schema is stable and upgrades from 0.5.x are tested. You install by pulling the published multi-arch image from GHCR, with build provenance and an SBOM you can verify. Its maintainer uses Brick Work daily for a collection of about 200 set copies. Read the [CHANGELOG](https://github.com/Ulef1005/brick-work/blob/main/CHANGELOG.md) before upgrading.
 

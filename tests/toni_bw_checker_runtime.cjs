@@ -204,7 +204,7 @@ class Element {
  // R3-02: the answer card is its own .b-prime scope: head, picture, Need beside the name block, the old stepper, Missing, Back / Skip / Undo.
  const card=()=>stage.children[0].children[0], block=()=>card().children[2].children[1];
  assert.equal(stage.children[0].className,'bp-chk b-prime');
- assert.deepEqual([block().children[0].textContent,block().children[1].children.map(n=>n.textContent).join('|')],['Plate 2 x 4','Tan|3020']);
+ assert.deepEqual([block().children[0].textContent,block().children[1].children.map(n=>n.textContent).join('|')],['Plate 2\u00a0×\u00a04','Tan|3020']);   // the card shows a name as every name does: × and the tail kept together (#630)
  assert.equal(block().style.backgroundColor,undefined,'no colour in the test data: the plain block');
  assert(block().className.includes('chk-plain'));
  assert.equal(root.querySelector('[data-toast]'),null);

@@ -32,3 +32,8 @@ def test_a_copy_with_only_damaged_parts_reads_its_damage(app4):
 
 def test_a_copy_never_checked_still_reads_not_checked(app4):
     assert 'Not checked' in tile_text(app4, dict(completeness=None, bar=[0, 0, 375, 0, 0, '']))
+
+
+def test_a_copy_marked_complete_by_hand_hides_its_damage_as_the_sets_list_does(app4):
+    text = tile_text(app4, dict(completeness='complete', bar=[0, 0, 375, 0, 2, '']))
+    assert '375/375' in text and 'damaged' not in text and 'complete' in text

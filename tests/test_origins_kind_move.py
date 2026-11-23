@@ -3,7 +3,7 @@ import uuid
 
 import pytest
 
-from brickwork.core import stock
+from brickwork.core import stock, sync
 from brickwork.core.transaction import transaction
 from brickwork.store4 import identity, merge, origins
 from tests.test_origins import GEAR, pair, store, synced  # noqa: F401
@@ -95,3 +95,39 @@ def test_later_sync_on_new_copy_still_refuses_undo_of_kind_move(store):
         merge.undo_kind_move_in(store, moved['event_id'], via='app')
     assert store.execute('SELECT id, stock_id, copy_id, site FROM synced_from').fetchone()[:] == (
         entry['id'], row['id'], None, 'brickset')
+
+
+def test_stock_quantity_two_to_set_copies_synced_from_to_every_copy_and_undoes_cleanly(store):
+    gear = _gear_id(store)
+    with transaction(store):
+        row = stock.add_loose(store, item_id=gear, quantity=2, condition='new')
+        entry = origins.touch(store, 'stock', row['id'], 'brickset', at='2026-11-22T10:00:00.000Z', list_key='7', list_name='Shelf')
+    with transaction(store):
+        moved = merge.move_kind_in(store, gear, 'set', via='app')
+    made = [r['id'] for r in store.execute('SELECT id FROM copy WHERE item_id=? AND archived_at IS NULL ORDER BY id', (gear,)).fetchall()]
+    assert len(made) == 2
+    lines = store.execute('SELECT id, copy_id, stock_id, site, list_key, list_name, synced_at FROM synced_from ORDER BY id').fetchall()
+    assert len(lines) == 2
+    assert {r['copy_id'] for r in lines} == set(made)
+    assert all(r['stock_id'] is None for r in lines)
+    assert all((r['site'], r['list_key'], r['list_name'], r['synced_at']) == ('brickset', '7', 'Shelf', '2026-11-22T10:00:00.000Z') for r in lines)
+    assert entry['id'] in {r['id'] for r in lines}
+    with transaction(store):
+        merge.undo_kind_move_in(store, moved['event_id'], via='app')
+    assert store.execute('SELECT count(*) FROM copy WHERE item_id=?', (gear,)).fetchone()[0] == 0
+    restored = store.execute('SELECT id, kind, quantity FROM stock WHERE item_id=? AND archived_at IS NULL', (gear,)).fetchall()
+    assert [tuple(r) for r in restored] == [(row['id'], 'gear', 2)]
+    assert [tuple(r) for r in store.execute('SELECT id, copy_id, stock_id, site, list_key, list_name, synced_at FROM synced_from').fetchall()] == [
+        (entry['id'], None, row['id'], 'brickset', '7', 'Shelf', '2026-11-22T10:00:00.000Z')]
+
+
+def test_mark_synced_skips_zero_quantity_stock_row(store):
+    gear = _gear_id(store)
+    with transaction(store):
+        live = stock.add_loose(store, item_id=gear, quantity=1, condition='new')
+        zero = stock.add_loose(store, item_id=gear, quantity=1, condition='used')
+        store.execute('UPDATE main.stock SET quantity=0 WHERE id=?', (zero['id'],))
+        plan = {'source': 'rebrickable', 'remote': {'owned': {GEAR: 1}, 'wanted': {}}}
+        touched = sync._mark_synced(store, plan, 'default', '2026-11-22T10:00:00.000Z')
+    assert len(touched['stock']) == 1
+    assert [r[0] for r in store.execute('SELECT stock_id FROM synced_from WHERE stock_id IS NOT NULL')] == [live['id']]

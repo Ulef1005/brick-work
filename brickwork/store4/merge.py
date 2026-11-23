@@ -520,6 +520,7 @@ def move_kind_in(db, item_id, new_kind, *, via, actor=None, operation_key=None):
         _insert_stock(log, item_id, new_kind, plan)
     elif new_kind == 'set':
         for row, photos, flags in plan:
+            synced_rows = log.select('synced_from', 'stock_id=? ORDER BY id', (row['id'],))  # #551: Last synced from follows every copy
             for number in range(row['quantity']):
                 copy_id = str(uuid.uuid4())
                 log.insert('copy', id=copy_id, item_id=item_id, inventory_source='none', inventory_version=None, fetched_inventory_id=None,
@@ -531,10 +532,14 @@ def move_kind_in(db, item_id, new_kind, *, via, actor=None, operation_key=None):
                 for flag in flags:
                     log.insert('copy_flag', copy_id=copy_id, flag_id=flag['flag_id'])
                 if number == 0:
-                    for synced in log.select('synced_from', 'stock_id=?', (row['id'],)):  # #551: Last synced from follows the row
+                    for synced in synced_rows:
                         log.update('synced_from', synced, copy_id=copy_id, stock_id=None)
                     for photo in log.select('photo', 'id IN (%s)' % ','.join('?' * len(photos)) if photos else '0', [p['id'] for p in photos]):
                         log.update('photo', photo, copy_id=copy_id)
+                else:
+                    for synced in synced_rows:
+                        log.insert('synced_from', copy_id=copy_id, stock_id=None, wish_id=None, site=synced['site'],
+                                   list_key=synced['list_key'], list_name=synced['list_name'], synced_at=synced['synced_at'])
     else:
         for row in stock_rows:
             log.insert('stock', **{**{c: row[c] for c in log.cols('stock')}, 'kind': new_kind})

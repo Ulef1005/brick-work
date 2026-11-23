@@ -495,7 +495,7 @@ def _mark_synced(db, plan, wish_list, stamp, left=frozenset()):
     wanted = json.dumps(sorted({mapping[n] for n, q in plan['remote']['wanted'].items() if q and mapping.get(n) and ('wanted', mapping[n]) not in left}))
     rows = dict(
         copy=[r[0] for r in db.execute('SELECT id FROM main.copy WHERE archived_at IS NULL AND item_id IN (SELECT value FROM json_each(?)) ORDER BY id', (owned,))],
-        stock=[r[0] for r in db.execute(f'SELECT id FROM main.stock WHERE archived_at IS NULL AND kind IN ({_KINDS_SQL}) '
+        stock=[r[0] for r in db.execute(f'SELECT id FROM main.stock WHERE archived_at IS NULL AND quantity>0 AND kind IN ({_KINDS_SQL}) '
                                         'AND item_id IN (SELECT value FROM json_each(?)) ORDER BY id', (owned,))],
         wish=[r[0] for r in db.execute(f'SELECT id FROM main.wish WHERE archived_at IS NULL AND wishlist_id=? AND kind IN ({_KINDS_SQL}) '
                                        'AND item_id IN (SELECT value FROM json_each(?)) ORDER BY id', (wish_list, wanted))])

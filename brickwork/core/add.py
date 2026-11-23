@@ -915,8 +915,11 @@ def _confirm_row(db, pipeline, row, batch, index, via, actor, photo=None, find_i
     if row.get('unknown'):
         if row['decision'] == 'fetch':
             job, created = jobs.queue_in(db, 'rebrickable_set', payload=row['number'], via=via, actor=actor)
+            ask = {k: row.get(k) for k in ASK_KEYS}
+            if origins.current() != origins.HAND:
+                ask['origin'] = origins.current()
             receipt.update(fetch_job=job, name=row['number'], label=row['number'], job_reused=not created,
-                           ask={k: row.get(k) for k in ASK_KEYS})            # what to create when the job is done (`settle_fetches`)
+                           ask=ask)            # what to create when the job is done (`settle_fetches`)
             return _save_receipt(db, receipt, via, actor)
         row = {**row, 'item_id': _unidentified_item(db, row['kind'], row['number'], via, actor)}
         receipt.update(item_id=row['item_id'], created_item=row['item_id'])
@@ -1024,15 +1027,17 @@ def _create_fetched(db, event, receipt, item_id, via, actor):
         items.ensure(db, item_id)
         live = decorate(db, row)
         made.update(name=live['name'], label=live['label'])
-        if ask.get('where') == 'wishlist':
-            _add_wish(db, row, made, via, actor)
-        else:
-            for _ in range(row['quantity']):
-                copy_id, waiting = _add_copy(db, row, via, actor)
-                made['copies'].append(copy_id)
-                made['guards'][copy_id] = dict(db.execute('SELECT * FROM main.copy WHERE id=?', (copy_id,)).fetchone())
-                if waiting:
-                    made['pending'].append(dict(waiting, copy_id=copy_id))
+        saved_origin = ask.get('origin')
+        with origins.adding(saved_origin) if isinstance(saved_origin, str) and saved_origin in origins.ORIGINS else nullcontext():
+            if ask.get('where') == 'wishlist':
+                _add_wish(db, row, made, via, actor)
+            else:
+                for _ in range(row['quantity']):
+                    copy_id, waiting = _add_copy(db, row, via, actor)
+                    made['copies'].append(copy_id)
+                    made['guards'][copy_id] = dict(db.execute('SELECT * FROM main.copy WHERE id=?', (copy_id,)).fetchone())
+                    if waiting:
+                        made['pending'].append(dict(waiting, copy_id=copy_id))
         made['job_id'] = Pipeline(db).queue_steps(item_id, via=via, actor=actor)
         if receipt.get('find_instructions'):
             from .instructions import queue_find

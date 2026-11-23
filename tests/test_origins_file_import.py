@@ -197,3 +197,60 @@ def test_transfer_copy_sets_current_origin_and_preserves_source(coll):
             ).fetchone()
             assert original['added_via'] == source_origin
             assert copied['added_via'] == 'hand'
+
+
+def test_file_import_fetch_keeps_file_origin_when_settled(client, csrf, coll, read, monkeypatch):
+    from brickwork.store4 import jobs
+
+    monkeypatch.setattr(jobs, '_configured', lambda *a, **kw: True)
+    unknown_xml = b'<INVENTORY><ITEM><ITEMTYPE>S</ITEMTYPE><ITEMID>99999-1</ITEMID><MINQTY>1</MINQTY></ITEM></INVENTORY>'
+    resp = client.post(
+        '/manage/add/review',
+        data={
+            'csrf_token': csrf,
+            'mode': 'file',
+            'type': 'set',
+            'where': 'owned',
+            'list_id': 'default',
+            'file': (io.BytesIO(unknown_xml), 'wanted.xml'),
+        },
+        content_type='multipart/form-data',
+    )
+    assert resp.status_code == 200, resp.get_json()
+    body = resp.get_json()
+    assert len(body['items']) == 1 and body['items'][0]['unknown'] is True
+    assert body['items'][0]['offers']['fetch']['available'] is True
+    items = json.loads(json.dumps(body['items']))
+    items[0]['decision'] = 'fetch'
+    confirm = client.post(
+        '/manage/add/confirm',
+        json={'csrf_token': csrf, 'token': body['token'], 'items': items},
+    )
+    assert confirm.status_code == 200, confirm.get_json()
+    with read() as db:
+        assert db.execute('SELECT count(*) FROM main.copy').fetchone()[0] == 0
+        event = db.execute("SELECT new_value FROM main.event WHERE entity_kind='add' AND field='receipt' ORDER BY id DESC LIMIT 1").fetchone()
+    receipt = json.loads(event['new_value'])
+    assert receipt['ask']['origin'] == 'bricklink_xml'
+    assert receipt['fetch_job'] is not None
+    fetched_set = coll.project(coll.item('sets', '1000-1'))
+    with transaction(coll.db):
+        coll.db.execute("UPDATE main.job SET state='done', item_id=? WHERE id=?", (fetched_set, receipt['fetch_job']))
+    assert add.settle_fetches(coll.db) == 1
+    with read() as db:
+        rows = db.execute('SELECT added_via FROM main.copy WHERE item_id=? AND archived_at IS NULL', (fetched_set,)).fetchall()
+    assert [r['added_via'] for r in rows] == ['bricklink_xml']
+
+    other_set = coll.project(coll.item('sets', '1000-2'))
+    with transaction(coll.db):
+        made = add._create_fetched(
+            coll.db,
+            {'id': 0},
+            {'batch': uuid.uuid4().hex, 'index': 0, 'fetch_job': receipt['fetch_job'],
+             'ask': {'where': 'owned', 'quantity': 1, 'condition': 'used', 'completeness': '', 'origin': 'not_a_real_origin'}},
+            other_set,
+            'app',
+            None,
+        )
+    with read() as db:
+        assert db.execute('SELECT added_via FROM main.copy WHERE id=?', (made[0],)).fetchone()['added_via'] == 'hand'

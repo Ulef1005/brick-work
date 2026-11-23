@@ -247,11 +247,11 @@ ORDER_WINDOW = ("[...document.querySelectorAll('.oo-line')].forEach(l => { if (!
                 "document.querySelectorAll('ul.oo-lines').forEach(u => { if (!u.querySelector('.oo-line')) u.remove(); });\n")
 # The desktop shot shows the sets with ticks beside the order lines: the review column's header, switch, tabs and totals above the lines are hidden, so that the
 # crop (which starts at the sets' list) does not begin in the middle of them.
-ORDER_DESKTOP = ORDER_WINDOW + "document.querySelectorAll('.oo-crumb, .oo-label, .oo-review h2, .oo-sub-top, .oo-prefer, .oo-tabs, .oo-tots').forEach(e => e.remove()); document.querySelectorAll('.bw-sec-head').forEach(e => { e.style.display = 'none'; });\n"
+ORDER_DESKTOP = ORDER_WINDOW + "document.querySelectorAll('.oo-crumb, .oo-review h2, .oo-sub-top, .oo-prefer, .oo-tabs, .oo-tots').forEach(e => e.remove()); document.querySelectorAll('.bw-sec-head').forEach(e => { e.style.display = 'none'; });\n"
 # Order missing parts, the review step (a phone screen): the four copies with gaps, as the first step hands them on.
 ORDER_REVIEW = ('/planning/order-missing-parts?sel=1&' + '&'.join('copy=' + REAL(n) for n in ('10210-1', '7938-1', '7213-1', '31120-1')) + '&was_sell=1&was_gain=0&step=review')
 # Build Scout's panel draws a missing minifigure as a number-only tile and has no picture branch for it, so the shot leaves the figure lines out.
-NO_FIGURE_LINES = "document.querySelectorAll('.bs-panel .bs-gap').forEach(g => { if (g.querySelector('.bs-kind')) g.remove(); });\n"
+NO_FIGURE_LINES = "document.querySelectorAll('.bs-panel .bs-gap').forEach(g => { if (g.querySelector('.bs-kind, .bs-tile-alt')) g.remove(); });\n"
 BULK_PICKED = '/workbench/part-picker?copy=' + '&copy='.join(REAL(n) for n in ('31120-1', '7938-1', '7213-1'))
 CHOOSE_REAL_SETS = ("document.querySelector('[data-none]').click(); for (const n of ['31120-1', '7938-1', '7213-1']) { "
                     "const box = document.querySelector('[data-number=' + JSON.stringify(n) + '] input'); if (!box) throw new Error('Part Runner does not list ' + n); box.click(); } "
@@ -294,7 +294,7 @@ TUTORIAL_SHOTS = {
         layout: (width, ['.bw-pick-card'], [('[data-selector] [name=destination]', 1), ('[data-selector] [data-step="1"]', 2), ('[data-selector] .bw-primary', 3)], '')
         for layout, width in (('desktop', 1024), ('phone', 390))}),
     'matchmaker': ('/workbench/match', None, {
-        layout: (width, ['h1', '.bw-copy-summary'], [('.bw-badge', 1), ('.bw-coverage', 2)], "document.querySelectorAll('.bw-match-details').forEach(d => { d.open = false; });\n")
+        layout: (width, ['h1', '.bw-copy-summary'], [('.bw-badge', 1), ('.bartxt > span:first-child', 2)], "document.querySelectorAll('.bw-match-details').forEach(d => { d.open = false; });\n")
         for layout, width in (('desktop', 1024), ('phone', 390))}),
     'lot-detect': (LOT_PAGE + '?detect=1&ignore_common=1#set-detection', SHOW_DETECTION, {
         layout: (width, ['.bd-top'], marks, "document.querySelectorAll('.bd-cand details').forEach(d => { d.open = false; });\n")
@@ -309,7 +309,7 @@ TUTORIAL_SHOTS = {
         layout: (width, ['.bs-row'], marks, "document.querySelectorAll('.cap2').forEach(e => e.remove()); const filters = document.querySelector('[name=year_from]'); if (filters) filters.closest('form').remove(); const rows = document.querySelector('.bs-rows'); if (!rows) throw new Error('scout-list: no .bs-rows'); document.querySelectorAll('main p, main h1').forEach(e => { if (e.compareDocumentPosition(rows) & Node.DOCUMENT_POSITION_FOLLOWING) e.remove(); });\n")
         for layout, width, marks in (('desktop', 1024, [('.bs-bar', 1), ('.bs-cost', 2, 'right')]), ('phone', 390, [('.bs-bar', 1)]))}),
     'scout-set': ({'desktop': scout_set('7938-1'), 'phone': scout_page('7938-1')}, None, {
-        layout: (width, ['.bs-panel'], [('.bs-strip', 1), ('.bs-build', 2)], NO_FIGURE_LINES)
+        layout: (width, ['.bs-panel'], [('.bs-panel .bar', 1), ('.bs-build', 2)], NO_FIGURE_LINES)
         for layout, width in (('desktop', 1024), ('phone', 390))}),
     'change-variant': (variant_change('32039', '42135'), None, {
         layout: (width, ['.bi-layout'], [('.bi-result[aria-current]', 1), ('.bi-moves', 2), ('.bi-confirm button', 3)], '')
@@ -340,13 +340,14 @@ README_SHOTS = {
                   + "const rows = [...document.querySelectorAll('.bs-row')]; const keep = rows.findIndex(r => r.matches('[aria-current], .is-selected, .on')); "
                   "rows.forEach((r, i) => { if (i >= 5 && i !== keep) r.remove(); });\n"),
     'sell-value': (SELL_PATH, None, 390, ['.bc-sell', '.bc-value'], ''),
-    'order-missing': ('/planning/order-missing-parts', None, 1024, ['.oo-rows', '.oo-lines'], ORDER_DESKTOP),
+    'order-missing': ('/planning/order-missing-parts', None, 1024, ['.oo-choose', '.oo-lines'], ORDER_DESKTOP
+                      + "document.querySelectorAll('.oo-review summary').forEach(e => { if (e.textContent.trim() === 'Details') e.style.display = 'none'; });\n"),
 }
 for _name, (_path, _script, _width, _crop, _prepare) in README_SHOTS.items():
     _stem = f'readme-{_name}-{_width}'
     PICTURES[_stem] = (_path, _width, 3000, _script, (README,))
     WORLD_OF[_stem] = 'real'
-    EXTRAS[_stem] = {'scale': 2, 'crop': _crop, 'crop_pad': 28, 'after': _prepare + no_placeholders(*_crop)}
+    EXTRAS[_stem] = {'scale': 2, 'crop': _crop, 'crop_pad': 8, 'after': _prepare + no_placeholders(*_crop)}   # 8: the B′ pages carry a caption or a button row just above the crop (#502)
 
 
 def optimise(path: Path) -> None:

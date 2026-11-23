@@ -92,9 +92,9 @@ These screenshots show the built app on the demo's invented collection, with rea
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/img/readme/readme-order-missing-1024-dark.png">
-    <img src="docs/img/readme/readme-order-missing-1024-light.png" alt="Order missing parts: four sets with gaps ticked on the left and the combined part lines on the right, each with a BrickLink price and a Pick a Brick choice" width="620">
+    <img src="docs/img/readme/readme-order-missing-1024-light.png" alt="Order missing parts: four sets with gaps ticked on the left and the combined part lines on the right, each with its BrickLink price; Pick a Brick shows &quot;no element id&quot; here, as the demo parts carry none" width="620">
   </picture>
-  <br><sub><strong>Order missing parts.</strong> The gaps of the sets you tick in one list, each line going to BrickLink or Pick a Brick.</sub>
+  <br><sub><strong>Order missing parts.</strong> The gaps of the sets you tick in one list; each line goes to BrickLink, and lines with an element id can go to Pick a Brick.</sub>
 </p>
 
 <p align="center">

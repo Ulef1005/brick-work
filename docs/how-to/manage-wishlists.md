@@ -25,6 +25,8 @@ Each wish answers one question: can you buy this set now at a price you accept. 
 
 The **State** chips under the condition chips filter by these tags and show how many wishes each holds. The list is sorted **Buy now first** until you pick another sort under **Sort**. Press the wish to open its page: the answer comes first, then **Your wish** (condition, how many are filled, list, max and max with box, with **Edit**) and **Prices**, with one strip from the lowest to the highest sale and a mark at the average. A condition with no sales says **No sales**; with a single price, the page says so instead of drawing a trend line.
 
+The heading counts wishes, never pieces: a list of sets says "2 of 5 wanted sets are under your max" and **5 sets wanted**; a list that also holds parts says "wanted items" and **14 wanted**, however many pieces each part wish asks for. To change the condition you want (New, Used or Any), the max or the max with box, press **Edit** on the wish's page.
+
 ## Create, rename and archive lists
 
 1. Press **Manage lists**.

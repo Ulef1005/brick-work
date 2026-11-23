@@ -85,7 +85,7 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
     document.querySelector('[data-bc-present]').open=true;
     const rows=[...document.querySelectorAll('.bc-inventory-row')];
     for(const row of rows)row.hidden=false;
-    return rows.map(row=>row.textContent.replaceAll('\u00a0',' '));
+    return rows.map(row=>row.textContent.replaceAll('\u00a0',' ').replaceAll('×','x'));   // names show x as × (#501)
    })()`);
    for(const name of ['Tire Smooth Small Dually','Brick 2 x 4 without Cross Support'])assert.ok(inventory.some(text=>text.includes(name)),name+' missing');
    const measure=`(()=>[...document.querySelectorAll('.bc-inventory-row')].map(row=>{

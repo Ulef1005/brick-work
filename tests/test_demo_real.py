@@ -130,3 +130,21 @@ def test_size_of_reads_png_and_jpeg_headers_and_refuses_the_rest(tmp_path):
         with pytest.raises(ValueError):
             real.size_of(tmp_path / name)
     assert real.size_of(real.FOLDER / 'images' / 'sets' / '31120-1.jpg') == (900, 668)
+
+
+def test_the_real_demo_reaches_lot_sorter_build_scout_and_order_missing_parts(tmp_path):
+    """#643: the three workbench features the README shows are exported with data, not a 'Not part of the demo' toast: Build Scout lists sets from the
+    loose stock, the lot page shows Set detection with a pull list behind it, Order missing parts has an order list."""
+    import re
+    from brickwork.demo import export
+    out = tmp_path / 'site'
+    manifest = export.export(out, '/demo/', world='real')
+
+    def text(path):
+        return re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', ' ', re.sub(r'<(script|style)[^>]*>.*?</\1>', '', (out / path / 'index.html').read_text(), flags=re.S)))
+    assert re.search(r'[1-9] of 7 sets', text('workbench/build-scout')) and 'No set reaches' not in text('workbench/build-scout')
+    lots = list((out / 'collection' / 'lots').glob('*/_detect-1/index.html'))
+    assert lots and 'candidate sets' in lots[0].read_text() and 'Pull list' in lots[0].read_text()
+    assert list(lots[0].parent.parent.glob('pull/*/index.html'))
+    assert re.search(r'Order list [1-9]\d* lines', text('planning/order-missing-parts'))
+    assert manifest['skipped'] == {}

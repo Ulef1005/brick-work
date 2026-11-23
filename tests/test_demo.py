@@ -96,8 +96,28 @@ def test_shim_answers_writes_and_carries_the_manifest(site):
     assert 'target' not in banner
     assert "document.querySelector('[data-bw-topbar]')" in banner and 'top.after(bar)' in banner and 'document.body.prepend(bar)' in banner   # under the site's top bar when there is one
     assert 'html.tw-dark #bw-demo-banner' in banner and 'prefers-color-scheme:dark' in banner   # the banner follows the dark theme
+    assert "keyOf(location.href) === '/collection/sets'" in banner and 'bw-demo-start' in banner   # the first screen says what the app is for and where to start
+    for path in ('workbench/check-parts/', 'workbench/build-scout/', 'workbench/lot-sorter/', 'planning/order-missing-parts/'):
+        assert path in banner, path
     # The demo draws no sentence where a picture is missing.
     assert 'Loads from BrickLink' not in shim and 'Loads from Rebrickable or BrickLink' not in shim
+
+
+def test_the_shim_rewrites_the_footer_and_the_error_texts():
+    """The REWRITE table of shim.js (run in Node) turns the server-rendered footer and the refused-write texts into the demo's own wording."""
+    import subprocess
+    from tests import rendered
+    node = rendered.need_node()
+    shim = (Path(__file__).resolve().parents[1] / 'brickwork/demo/shim.js').read_text()
+    table = shim[shim.index('  const REWRITE = ['):shim.index('  function calmNode')]
+    samples = ['Authentication disabled', 'Set and part data from Rebrickable · 14 ms', 'Set and part data from Rebrickable · 9ms',
+               'Not saved · waiting for network · The answer could not be saved. Retry.', 'Search unavailable. Try again.', 'Sets']
+    program = table + "\nconst say = text => { for (const [pattern, to] of REWRITE) if (pattern.test(text)) return text.replace(pattern, to); return text; };\n" \
+        + f"console.log(JSON.stringify({json.dumps(samples)}.map(say)));"
+    shown = json.loads(subprocess.run([node, '-e', program], capture_output=True, text=True, check=True).stdout)
+    assert shown == ['Demo: nothing is saved', 'Set and part data from Rebrickable', 'Set and part data from Rebrickable', 'Demo: this answer is shown here and not saved',
+                     'Search is not part of the demo', 'Sets']
+    assert 'calmTree(document.body)' in shim   # the footer is server-rendered, so it is rewritten once at load
 
 
 def test_the_shim_keys_a_url_like_the_export_does():

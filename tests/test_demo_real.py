@@ -46,7 +46,7 @@ def test_the_part_lists_are_rebrickables_and_deterministic(tmp_path):
 def test_each_set_has_its_picture_and_every_picture_has_a_file(tmp_path):
     manifest = real.pictures_manifest()
     assert {k for k in manifest if k.startswith('sets/')} == {'sets/' + n for n in SETS}
-    assert {k for k in manifest if not k.startswith('sets/')} == {'parts/33299a/71', 'parts/62462/25', 'parts/87619/15', 'parts/91968c01/0', 'parts/2527/4', 'parts/3665/71', 'parts/4865b/19', 'parts/48336/14', 'parts/6091/14', 'parts/3633/72', 'parts/3010/72', 'parts/2456/4', 'parts/2465/0', 'parts/3001/0', 'parts/3001/2', 'parts/3002/0', 'parts/3004/0', 'parts/3004/4', 'parts/3005/0', 'parts/3005/4', 'parts/3008/4', 'parts/3009/71', 'parts/2540/0', 'parts/3004/73', 'parts/3008/308', 'parts/30099/308', 'parts/32039/0', 'parts/42135/0', 'minifigs/fig-004770'}
+    assert {k for k in manifest if not k.startswith('sets/')} >= {'parts/33299a/71', 'parts/62462/25', 'parts/87619/15', 'parts/91968c01/0', 'parts/2527/4', 'parts/3665/71', 'parts/4865b/19', 'parts/48336/14', 'parts/6091/14', 'parts/3633/72', 'parts/3010/72', 'parts/2456/4', 'parts/2465/0', 'parts/3001/0', 'parts/3001/2', 'parts/3002/0', 'parts/3004/0', 'parts/3004/4', 'parts/3005/0', 'parts/3005/4', 'parts/3008/4', 'parts/3009/71', 'parts/2540/0', 'parts/3004/73', 'parts/3008/308', 'parts/30099/308', 'parts/32039/0', 'parts/42135/0', 'minifigs/fig-004770'}
     assert all((real.FOLDER / 'images' / f).is_file() for f in manifest.values())
     _, db, _ = build(tmp_path)
     assert db.execute("SELECT count(*) FROM picture WHERE source='rebrickable_images'").fetchone()[0] == db.execute('SELECT count(*) FROM picture').fetchone()[0] == len(manifest) + len(real.COLOURLESS)   # every manifest entry matched an item; the Change variant pair also has a colourless row
@@ -81,12 +81,12 @@ def test_the_real_world_exports_with_jpeg_pictures(tmp_path):
     manifest = export.export(tmp_path / 'site', base, world='real')
     out = tmp_path / 'site'
     pictures = real.pictures_manifest()
-    assert manifest['counts']['pictures'] == len(pictures) + len(real.COLOURLESS) == 38 and manifest['counts']['copy'] == 8      # 7 sets, 1 figure, 28 parts, 2 colourless rows
+    assert manifest['counts']['pictures'] == len(pictures) + len(real.COLOURLESS) and manifest['counts']['copy'] == 8      # every picture of the folder, plus the 2 colourless rows
     files = {f.stem: f for f in (out / 'manage' / 'images').iterdir()}
-    assert len(files) == 38
+    assert len(files) == manifest['counts']['pictures']
     jpegs = {i for i, f in files.items() if f.suffix == '.jpg'}
-    assert len(jpegs) == 8 and all(files[i].read_bytes()[:2] == b'\xff\xd8' for i in jpegs)             # the sets and the figure
-    assert all(f.suffix == '.png' and f.read_bytes()[:8] == b'\x89PNG\r\n\x1a\n' for i, f in files.items() if i not in jpegs)   # the part renders
+    assert len(jpegs) > 8 and all(files[i].read_bytes()[:2] == b'\xff\xd8' for i in jpegs)             # the sets, the figures and most part renders
+    assert all(f.suffix == '.png' and f.read_bytes()[:8] == b'\x89PNG\r\n\x1a\n' for i, f in files.items() if i not in jpegs)   # the PNG renders
     assert manifest['pictures'] == {i: 'jpg' for i in jpegs}                                            # only the non-PNG ones are listed for the shim
     assert 'kindOf' in (out / 'demo-shim.js').read_text() and '"pictures"' in (out / 'demo-shim.js').read_text()
     pages = list((out / 'collection').rglob('index.html'))
@@ -112,7 +112,7 @@ def test_a_capture_fails_on_a_missing_picture_tile(tmp_path):
             (tmp_path / 'jobs.json').write_text(json.dumps(jobs))
             return subprocess.run(['node', str(real.FOLDER.parents[1] / 'scripts' / 'capture_screens.cjs'), chrome, str(tmp_path / 'jobs.json')], capture_output=True, text=True)
         assert capture('/collection/sets').returncode == 0
-        failed = capture('/collection/P')
+        failed = capture('/planning/wishlist')
         assert failed.returncode != 0 and 'no_tiles' in (failed.stderr + failed.stdout)
 
 

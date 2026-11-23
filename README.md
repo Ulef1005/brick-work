@@ -119,7 +119,7 @@ Not built for sealed-box investors, BrickLink store fulfilment or social profile
 
 ## Where we stand
 
-Release 1.2 (schema 4.7). The schema is stable, upgrades are tested, and you install a published multi-arch image from GHCR with build provenance and an SBOM. Planned: milestone N, sync with Rebrickable, Brickset, BrickLink and Brick Owl, with no dates; the order is in the [GitHub milestones](https://github.com/Ulef1005/brick-work/milestones). Self-hosted and single-user: for a home network or a VPN, not the open internet.
+Release 1.2 (schema 4.7). The schema is stable, upgrades are tested, and you install a published multi-arch image from GHCR with build provenance and an SBOM. Planned: milestone N, two-way sync and files for BrickLink and Brick Owl alongside Rebrickable and Brickset, with no dates; the order is in the [GitHub milestones](https://github.com/Ulef1005/brick-work/milestones). Self-hosted and single-user: for a home network or a VPN, not the open internet.
 
 ## Install
 

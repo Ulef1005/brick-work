@@ -142,7 +142,7 @@
   function copyBar(bar,index,several){
     const el=(tag,cls,text)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=String(text);return n;};
     const [found,missing,total,figures]=bar,bartxt=el('div','bartxt'),track=el('div','bar');
-    const never=!found&&!missing&&!figures,pct=n=>(Math.round(n/total*10000)/100).toFixed(2)+'%';
+    const never=!found&&!missing&&!figures&&!bar[4],pct=n=>(Math.round(n/total*10000)/100).toFixed(2)+'%';
     if(never){
       track.append(el('i','c'));
       const chip=el('span','xchip'),box=document.createElement('i'),svg=document.createElementNS('http://www.w3.org/2000/svg','svg'),path=document.createElementNS('http://www.w3.org/2000/svg','path');

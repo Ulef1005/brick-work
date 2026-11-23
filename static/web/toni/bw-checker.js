@@ -7,7 +7,7 @@
     // #222: a missing-only run counts the parts it walks, as the server's progress does.
     const walked = state.session?.scope === 'missing' ? new Set(state.session.members || state.session.order) : null;
     for (const r of state.rows.filter(r => r.kind !== 'spare' && (!walked || walked.has(r.token)))) {
-      const answer = state.session ? state.session.answers[r.token] : (r.checked || r.missing > 0 ? 'answered' : undefined);   // no session: the marks the copy already has (Edit parts, a Rebrickable pull)
+      const answer = state.session ? state.session.answers[r.token] : (r.checked || r.missing > 0 || state.copy?.checked_by ? 'answered' : undefined);   // no session: the marks the copy already has (Edit parts, a Rebrickable pull; a pull's label counts every line, #489)
       if (!answer) counts.remaining++;
       else if (answer === 'skipped') counts.skipped++;
       else if (r.missing > 0) counts.missing++;
@@ -19,7 +19,7 @@
   // line is a part line, or a figure line; only part lines have pieces. The same lines as progress().
   function summary(state) {
     const counts = progress(state), answers = state.session?.answers || {};
-    const marked = r => state.session ? answers[r.token] === 'answered' : (r.checked || r.missing > 0);
+    const marked = r => state.session ? answers[r.token] === 'answered' : (r.checked || r.missing > 0 || !!state.copy?.checked_by);
     const walked = state.session?.scope === 'missing' ? new Set(state.session.members || state.session.order) : null;
     let pieces = 0, total = 0;
     for (const r of state.rows) {

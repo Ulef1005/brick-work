@@ -8,6 +8,14 @@ const make=()=>({rows:[{token:'p:1',kind:'part',quantity:4,missing:0},{token:'p:
 const plain=x=>JSON.parse(JSON.stringify(x));
 const state=make();
 assert.deepEqual(plain(progress(state)),{found:0,missing:0,skipped:0,remaining:3});
+{ // #489 (Argon review): a copy a pull labelled counts every line as checked before any session, as its bars do
+  const labelled=make();labelled.session=null;labelled.copy={checked_by:'rebrickable'};   // the landing screen: no session yet
+  assert.deepEqual(plain(progress(labelled)),{found:3,missing:0,skipped:0,remaining:0});
+  assert.equal(summary(labelled).pieces,summary(labelled).total);
+  const figure=make();figure.session=null;figure.copy={checked_by:'rebrickable'};figure.figure={id:'f1'};   // a figure's parts check: the label covers the set's list, never a figure's components
+  assert.deepEqual(plain(progress(figure)),{found:0,missing:0,skipped:0,remaining:3});
+  assert.equal(summary(figure).pieces,0);
+}
 apply(state,{action:'answer',token:'p:1',found:3});
 assert.equal(state.rows[0].missing,1);assert.equal(state.session.cursor,1);
 apply(state,{action:'skip',token:'p:2'});

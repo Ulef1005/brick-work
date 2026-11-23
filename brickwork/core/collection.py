@@ -764,6 +764,12 @@ def detail(db, item_id, *, colour=None, copy_id=None, stock_id=None, wish_id=Non
                           else part_groups.group_of(entry.get('category'), row['part_list_grouping'], moved))
         if entry['group']:
             grouped[entry['group']].append(entry)
+    # #489: a copy a pull labelled (copy.checked_by) counts every line as checked, as its bars and the sets list do (_copy_bars): the label covers the
+    # whole list, the pull marks only the lines with lost parts. Display only; the stored lines are untouched (Argon review, 23.11.).
+    if selected and selected.get('entity') == 'copy' and selected.get('checked_by'):
+        for entry in consists:
+            if entry.get('missing') is not None and not entry.get('checked'):
+                entry['checked'] = 1
     row['part_groups'] = []
     for name in part_groups.order(grouped, row['part_list_grouping']):
         parts = grouped[name]

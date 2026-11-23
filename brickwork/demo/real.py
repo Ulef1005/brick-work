@@ -154,6 +154,7 @@ class Layer(showcase.Layer):
                     self.illustrate(db)
                 self.clear_picture_queue(db)
                 self.rename_shops(db)
+                self.spread_dates(db)
         finally:
             clock.thaw_clock(patched)
 
@@ -283,6 +284,22 @@ class Layer(showcase.Layer):
                             db.execute(f'UPDATE "{table}" SET "{column}" = REPLACE("{column}", ?, ?) WHERE "{column}" LIKE ?', (old, new, f'%{old}%'))
                         except sqlite3.IntegrityError:
                             pass   # the history tables are append-only: what happened stays as it was written
+
+    def spread_dates(self, db):
+        """The world is built under one frozen clock, so every row reads 12 Oct. Each row that carries exactly that stamp moves back by a fixed number of
+        days from its own row number (0 to 119), the same for every column of the row, so created never comes after updated and nothing reads the real clock."""
+        with transaction(db):
+            for table, in db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").fetchall():
+                info = db.execute(f'PRAGMA table_info("{table}")').fetchall()
+                stamped = [c[1] for c in info if c[1] in ('created_at', 'updated_at', 'fetched_at', 'at', 'checked_at', 'purchased_at')]
+                if not stamped:
+                    continue
+                for column in stamped:
+                    try:
+                        db.execute(f'''UPDATE "{table}" SET "{column}" = strftime('%Y-%m-%dT%H:%M:%S.000Z', datetime(substr("{column}", 1, 19), '-' || ((rowid * 37) % 120) || ' days'))
+                                       WHERE "{column}" = ?''', (dataset.STAMP,))
+                    except sqlite3.Error:
+                        pass   # append-only history tables, and tables without a rowid, keep what was written
 
     def clear_picture_queue(self, db):
         """Adding the stock queued a picture job for each item that had none while the world was built; a static demo has no worker, so the Jobs page would

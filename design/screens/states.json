@@ -1043,7 +1043,25 @@
    "section": "7f",
    "state": "not-found",
    "world": "demo",
-   "path": "/nothing-here",
+   "path": "/nothing-here?variant=A",
+   "built": true,
+   "approved": false
+  },
+  {
+   "screen": "51-System-pages",
+   "section": "7f",
+   "state": "not-found-drawer",
+   "world": "demo",
+   "path": "/nothing-here?variant=B",
+   "built": true,
+   "approved": false
+  },
+  {
+   "screen": "51-System-pages",
+   "section": "7f",
+   "state": "not-found-everywhere",
+   "world": "demo",
+   "path": "/nothing-here?variant=C",
    "built": true,
    "approved": false
   },

@@ -246,7 +246,8 @@ class Element {
  {const steps=()=>history.querySelectorAll('[data-action]').filter(b=>b.dataset.action==='set_count');const [less,more]=steps();
   assert.deepEqual([less.textContent,less.dataset.delta,less['aria-label'].startsWith('One fewer found'),less.disabled],['−','1',true,false]);
   assert.deepEqual([more.textContent,more.dataset.delta,more['aria-label'].startsWith('One more found'),more.disabled],['+','-1',true,false]);
-  const mid=history.querySelectorAll('SPAN').find(n=>n.className==='chk-found-n');assert.equal(mid.text.replace(/\s+/g,' ').trim(),'3 found');
+  const mid=history.querySelectorAll('SPAN').find(n=>n.className==='chk-found-n');assert.equal(mid.textContent,'3');assert.equal(mid.children[0].textContent,' found');   // the real DOM reads "3 found", with the space
+ assert.equal(mid.text.replace(/\s+/g,' ').trim(),'3 found');
   root.handlers.click({target:less});await new Promise(resolve=>setImmediate(resolve));assert.equal(server.rows[0].missing,2);   // one fewer found = one more missing
   assert.equal(history.querySelectorAll('SPAN').find(n=>n.className==='chk-found-n').text.replace(/\s+/g,' ').trim(),'2 found');
   root.handlers.click({target:steps()[1]});await new Promise(resolve=>setImmediate(resolve));assert.equal(server.rows[0].missing,1);   // and back

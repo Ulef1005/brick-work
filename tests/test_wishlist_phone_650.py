@@ -23,3 +23,15 @@ def test_a_wish_without_a_max_says_so_in_body_text():
     assert '<span class="bp-max-none">Not recorded</span>' in template and '<strong class="mono">Not recorded</strong>' not in template
     css = (ROOT / 'static' / 'web' / 'toni' / 'bw-planning-b.css').read_text()
     assert '#bw-planning:not(#_):not(#_):not(#_) .bp-max-none {font:400 14px/20px var(--tw-font);color:var(--tw-text-2)}' in css
+
+
+def test_the_wish_detail_cards_keep_their_gap_and_the_single_price_point_reads_plainly():
+    """#655: the aside is a column at every width, so its 10px gap separates Wish details from Prices on a phone; a closed disclosure card
+    has no hairline strip; the status row keeps 8px from the links; a single price point is said once, in plain words."""
+    css = (ROOT / 'static' / 'web' / 'toni' / 'bw-detail-b.css').read_text()
+    scope = '#bw-collection[data-b-detail]:not(#_):not(#_)'
+    assert f'{scope} .bc-detail-aside {{display:flex;flex-direction:column}}' in css
+    assert f'{scope} .bc-detail-aside>details.bc-module:not([open])>summary {{border-bottom:0}}' in css
+    assert f'{scope} .bc-hero-heading+.bc-hero-status {{margin-top:8px}}' in css
+    modules = (ROOT / 'templates' / 'web' / 'toni' / 'brickwork' / 'collection_modules.html').read_text()
+    assert 'a line needs two dates' not in modules and 'The trend starts with the second date.' in modules

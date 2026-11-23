@@ -33,7 +33,10 @@
     + '@media (prefers-color-scheme:dark){:root:not(.tw-light) #bw-demo-banner{--bn-bg:#262A29;--bn-fg:#E3E6E2;--bn-line:#3E4442;--bn-btn:#A98BF0;--bn-on:#14171A}}'
     + 'html.tw-dark #bw-demo-banner{--bn-bg:#262A29;--bn-fg:#E3E6E2;--bn-line:#3E4442;--bn-btn:#A98BF0;--bn-on:#14171A}'
     + '#bw-demo-banner a{color:inherit}#bw-demo-banner .bw-demo-install{display:inline-block;margin-left:8px;padding:2px 12px;border-radius:999px;background:var(--bn-btn);color:var(--bn-on);font-weight:600;text-decoration:none;white-space:nowrap}'
-    + '#bw-demo-banner small{display:block;margin-top:2px;font:400 11px/15px var(--tw-font),system-ui,sans-serif;opacity:.8}';
+    + '#bw-demo-banner small{display:block;margin-top:2px;font:400 11px/15px var(--tw-font),system-ui,sans-serif;opacity:.8}'
+    + '#bw-demo-start{--bn-bg:#FFFFFF;--bn-fg:#1A1E1E;--bn-line:#C9CDC8;margin:0;padding:10px 16px;background:var(--bn-bg);color:var(--bn-fg);border-bottom:1px solid var(--bn-line);font:400 14px/20px var(--tw-font),system-ui,sans-serif;text-align:center}'
+    + '@media (prefers-color-scheme:dark){:root:not(.tw-light) #bw-demo-start{--bn-bg:#1F2322;--bn-fg:#E3E6E2;--bn-line:#3E4442}}html.tw-dark #bw-demo-start{--bn-bg:#1F2322;--bn-fg:#E3E6E2;--bn-line:#3E4442}'
+    + '#bw-demo-start a{color:inherit;font-weight:600;white-space:nowrap}';
   document.addEventListener('DOMContentLoaded', () => {
     const style = document.createElement('style');
     style.textContent = BANNER_STYLE;
@@ -53,6 +56,19 @@
     // Under the site's top bar when the page has one (scripts/site_nav.py adds it to the built demo), else first.
     const top = document.querySelector('[data-bw-topbar]');
     if (top) top.after(bar); else document.body.prepend(bar);
+    // The first screen says what the app is for and where to start (the Sets list is where every demo visit begins).
+    if (keyOf(location.href) === '/collection/sets') {
+      const start = document.createElement('p');
+      start.id = 'bw-demo-start';
+      start.append('Free, self-hosted app for your brick collection and its missing parts. Try: ');
+      [['Set Inspector', 'workbench/check-parts/'], ['Build Scout', 'workbench/build-scout/'], ['Lot Sorter', 'workbench/lot-sorter/'], ['Order missing parts', 'planning/order-missing-parts/']].forEach(([name, path], index) => {
+        const link = document.createElement('a');
+        link.href = base + path; link.textContent = name;
+        start.append(index ? ' · ' : '', link);
+      });
+      start.append('.');
+      bar.after(start);
+    }
   });
 
   const realFetch = window.fetch.bind(window);

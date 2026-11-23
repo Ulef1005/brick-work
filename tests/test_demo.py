@@ -96,6 +96,9 @@ def test_shim_answers_writes_and_carries_the_manifest(site):
     assert 'target' not in banner
     assert "document.querySelector('[data-bw-topbar]')" in banner and 'top.after(bar)' in banner and 'document.body.prepend(bar)' in banner   # under the site's top bar when there is one
     assert 'html.tw-dark #bw-demo-banner' in banner and 'prefers-color-scheme:dark' in banner   # the banner follows the dark theme
+    assert "keyOf(location.href) === '/collection/sets'" in banner and 'bw-demo-start' in banner   # the first screen says what the app is for and where to start
+    for path in ('workbench/check-parts/', 'workbench/build-scout/', 'workbench/lot-sorter/', 'planning/order-missing-parts/'):
+        assert path in banner, path
     # The demo draws no sentence where a picture is missing.
     assert 'Loads from BrickLink' not in shim and 'Loads from Rebrickable or BrickLink' not in shim
 

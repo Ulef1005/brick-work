@@ -14,6 +14,7 @@ import itertools
 import json
 import random
 import shutil
+import sqlite3
 import struct
 from pathlib import Path
 
@@ -41,6 +42,8 @@ STATUS = {'complete': ['built'], 'gaps': ['built', 'needs-check'], 'progress': [
 CHECKED_SETS = ('7938-1', '10210-1', '7213-1')        # the copies the loose stock can finish: a finished check is behind them
 # Parts whose picture is also stored without a colour: the Change variant screen shows an item with no colour chosen, and looks for (item, NULL) before (item, colour).
 COLOURLESS = {('32039', '0'), ('42135', '0')}
+# The shop names the shared showcase world uses read like placeholders; the real-sets world renames them (the ids, made from the old names, stay unseen)
+SHOPS = {'Sample Bricks Store': 'Marlow Parts & Plates', 'Example Parts Depot': 'Hollis Brick Supply', 'Demo Brick Outlet': 'Norden Brick Outlet'}
 # Build Scout: sets whose parts sit loose in a drawer, with the share of their pieces the loose stock covers (the screen lists sets from 60 %)
 SCOUT_STOCK = {'10254-1': 0.72, '21028-1': 0.8, '8043-1': 0.66}   # none of the three the finishing stock works on, so the Matchmaker's numbers stay as they were
 FINISHING = {'7938-1': 1.0, '10210-1': 1.0, '7213-1': 0.5}
@@ -90,6 +93,10 @@ class Layer(showcase.Layer):
             checked, missing, damaged = mark(counted, rng, state)
             for rows in figure_lines.values():
                 mark([r for r in rows if not r['spare']], rng, 'complete' if state in ('complete', 'gaps') else state)
+            if state == 'complete':   # Complete is about parts and damage is its own fact (#638), but a demo set that reads Complete and damaged looks like a contradiction (product, 2026-11-23)
+                for row in counted + [r for rows in figure_lines.values() for r in rows]:
+                    row['damaged'] = 0
+                damaged = 0
             pieces = sum(r['quantity'] for r in counted)
             summary = {'rows': len(counted), 'pieces': pieces, 'rows_checked': len(counted) if state == 'complete' else (checked if state in ('gaps', 'progress') else 0),
                        'pieces_missing': missing, 'pieces_damaged': damaged, 'minifigures': len(entry['minifigures'])}
@@ -146,6 +153,7 @@ class Layer(showcase.Layer):
                 if self.pictures:
                     self.illustrate(db)
                 self.clear_picture_queue(db)
+                self.rename_shops(db)
         finally:
             clock.thaw_clock(patched)
 
@@ -262,6 +270,19 @@ class Layer(showcase.Layer):
             pull_list.set_found(db, LOT, best, dataset.item_by(db, 'parts', row['part']), dataset.colour_by(db, row['color']['id']), row['quantity'])
 
     # ---------- the pictures ----------
+
+    def rename_shops(self, db):
+        """Every text column that holds one of the placeholder shop names (places, orders, notes) gets the real-sounding one."""
+        with transaction(db):
+            for table, in db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").fetchall():
+                for column, kind in [(c[1], c[2]) for c in db.execute(f'PRAGMA table_info("{table}")')]:
+                    if kind.upper() not in ('TEXT', ''):
+                        continue
+                    for old, new in SHOPS.items():
+                        try:
+                            db.execute(f'UPDATE "{table}" SET "{column}" = REPLACE("{column}", ?, ?) WHERE "{column}" LIKE ?', (old, new, f'%{old}%'))
+                        except sqlite3.IntegrityError:
+                            pass   # the history tables are append-only: what happened stays as it was written
 
     def clear_picture_queue(self, db):
         """Adding the stock queued a picture job for each item that had none while the world was built; a static demo has no worker, so the Jobs page would

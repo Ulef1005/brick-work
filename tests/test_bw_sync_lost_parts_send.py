@@ -2,6 +2,7 @@
 
 Invented data against the `store` fixture and a fake client; no network."""
 
+import json
 import pytest
 
 from brickwork.core.sync import adapters, lost_parts_send
@@ -352,12 +353,20 @@ def test_marks_of_two_copies_add_up_and_a_matching_remote_plans_nothing(store):
     )
     (row,) = planned['rows']
     assert row['after'] == 5 and {c['id']: c['missing'] for c in row['copies']} == {first: 3, second: 2}
-    assert row['tickable'] is False and row['ticked'] is False
-    assert row['reason'] == 'The copies together miss more than the set holds'
+    assert row['tickable'] is True and row['ticked'] is True and not row.get('reason')
     client = FakeClient()
-    assert lost_parts_send.apply(store, client, planned, None, via='test', actor='tester')['sent'] == []
-    forced = lost_parts_send.apply(store, client, planned, [row['key']], via='test', actor='tester')
-    assert client.calls == [] and forced['sent'] == [] and len(forced['failed']) == 1
+    assert [r['after'] for r in lost_parts_send.apply(store, client, planned, None, via='test', actor='tester')['sent']] == [5]
+    assert client.calls == [('add', 801, 5)]
+
+
+def test_set_parts_cache_reads_a_list_of_pages_and_the_newest_fetch(store):
+    page = {'results': [{'part': {'part_num': '3001'}, 'color': {'id': 4}, 'is_spare': False, 'inv_part_id': 555}]}
+    store.execute("INSERT INTO main.source_record(source, kind, key, payload, digest, bytes, fetched_at, status) "
+                  "VALUES('rebrickable', 'set_parts', '9999-1', ?, 'd1', 1, '2026-01-01T00:00:00.000Z', 'ok')", (json.dumps([page, {'results': []}]),))
+    store.execute("INSERT INTO main.source_record(source, kind, key, payload, digest, bytes, fetched_at, status) "
+                  "VALUES('rebrickable', 'set_parts', '9999-1', ?, 'd2', 1, '2025-01-01T00:00:00.000Z', 'ok')", (json.dumps({'results': []}),))
+    store.commit()
+    assert lost_parts_send._set_parts_map(store, '9999-1') == {('3001', 4, False): 555}
 
 
 def test_no_removal_planned_when_live_copy_has_no_part_list(store):

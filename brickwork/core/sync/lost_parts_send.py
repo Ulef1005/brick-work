@@ -100,12 +100,17 @@ def _set_parts_map(db, set_no):
     index = {}
     try:
         row = db.execute(
-            "SELECT payload FROM main.source_record WHERE source='rebrickable' AND kind='set_parts' AND key=? ORDER BY id DESC LIMIT 1",
+            "SELECT payload FROM main.source_record WHERE source='rebrickable' AND kind='set_parts' AND key=? ORDER BY fetched_at DESC, id DESC LIMIT 1",
             (set_no,),
         ).fetchone()
         if row and row[0]:
             loaded = json.loads(row[0])
-            entries = loaded.get('results') if isinstance(loaded, dict) else loaded if isinstance(loaded, list) else None
+            if isinstance(loaded, dict):
+                entries = loaded.get('results')
+            elif isinstance(loaded, list):   # a list of pages (each with `results`) or of entries
+                entries = [e for page in loaded for e in (page.get('results') or () if isinstance(page, dict) and 'results' in page else (page,))]
+            else:
+                entries = None
             for entry in entries or ():
                 if not isinstance(entry, dict):
                     continue
@@ -198,7 +203,7 @@ def _collect_set_lines(db, set_no, held):
                 continue
             key = (part_nos[0], parsed_colour, spare)
             present_keys.add(key)
-            line_quantities[key] = max(line_quantities.get(key, 0), line_qty)
+            line_quantities[key] = line_quantities.get(key, 0) + line_qty   # what all the copies' lines together hold
             if capped > 0:
                 bucket = aggregated.setdefault(key, dict(missing=0, copies={}, inv_part_id=None))
                 bucket['missing'] += capped

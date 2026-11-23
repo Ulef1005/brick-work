@@ -2,8 +2,8 @@
 
 Candidate sets are the live copies' sets that have a Rebrickable set number. Missing counts on live set lines
 (`copy_figure_id IS NULL AND retired_at IS NULL`) are capped per copy at the line's quantity, summed across all live copies of each
-candidate set, and translated to Rebrickable `(set_no, part_no, color_id, is_spare)` coordinates through `lost_parts._copies`,
-`lost_parts._lines` and `lost_parts.copy_label`, so a copy on a BrickLink part list is translated through confirmed Rebrickable links.
+candidate set, and translated to Rebrickable `(set_no, part_no, color_id, is_spare)` coordinates through `lost_parts._copies` and
+`lost_parts.copy_label`, so a copy on a BrickLink part list is translated through confirmed Rebrickable links.
 
 Rule mapping (`RULES`, mirroring `lost_parts.RULES` in the send direction):
 - `add_only`: adds parts missing locally that are not on Rebrickable (`add`), and increases counts where the local missing sum exceeds
@@ -18,8 +18,9 @@ Rule mapping (`RULES`, mirroring `lost_parts.RULES` in the send direction):
 Limits:
 The plan is recomputed by the caller just before `apply` (`apply` sends the plan's numbers as planned). The inventory part id of a new
 Lost Part comes from the cached set parts (`RebrickableUser.lost_parts()` returns none for parts not yet on Rebrickable). The endpoint
-shapes are assumed from Rebrickable's documentation and must be tried with a real user token before the switch is offered. Candidate sets
-are the sets of all live copies that have a Rebrickable number, not only the sets on a linked list.
+shapes are assumed from Rebrickable's documentation; a DELETE with an empty reply cannot be told from an empty-bodied error, and the live
+behaviour of POST and DELETE (including whether POST creates a second row or updates an existing one) must be tried with a real user token
+before the switch is offered. Candidate sets are the sets of all live copies that have a Rebrickable number, not only the sets on a linked list.
 """
 import json
 import sqlite3
@@ -76,21 +77,57 @@ def _candidate_set_numbers(db, remote_rows):
     return numbers
 
 
-def _lookup_inv_part_id(db, set_no, part_no, color_id, is_spare, remote_inv_parts):
+def _parse_colour_id(value):
+    if type(value) is int:
+        return value
+    if isinstance(value, str):
+        text = value.strip()
+        if text and text.isascii() and (text.isdecimal() or (text[0] == '-' and len(text) > 1 and text[1:].isdecimal())):
+            return int(text)
+    return None
+
+
+def _colour_sort_key(value):
+    parsed = _parse_colour_id(value)
+    return (0, parsed) if parsed is not None else (1, str(value))
+
+
+def _set_parts_map(db, set_no):
+    index = {}
+    try:
+        row = db.execute(
+            "SELECT payload FROM main.source_record WHERE kind='rebrickable_set_parts' AND key=? ORDER BY id DESC LIMIT 1",
+            (set_no,),
+        ).fetchone()
+        if row and row[0]:
+            for entry in json.loads(row[0]).get('results') or ():
+                if not isinstance(entry, dict):
+                    continue
+                part = (entry.get('part') or {}).get('part_num')
+                colour = _parse_colour_id((entry.get('color') or {}).get('id'))
+                if part is None or colour is None:
+                    continue
+                key = (str(part), colour, bool(entry.get('is_spare')))
+                if key not in index:
+                    inv_id = entry.get('inv_part_id') or entry.get('id')
+                    if inv_id is not None:
+                        index[key] = inv_id
+    except (sqlite3.Error, ValueError, TypeError, AttributeError):
+        pass
+    return index
+
+
+def _lookup_inv_part_id(db, set_no, part_no, color_id, is_spare, remote_inv_parts, cache=None):
     direct = remote_inv_parts.get((set_no, str(part_no), int(color_id), bool(is_spare)))
     if direct is not None:
         return direct
-    try:
-        row = db.execute("SELECT payload FROM main.source_record WHERE kind='rebrickable_set_parts' AND key=?", (set_no,)).fetchone()
-        if row and row[0]:
-            for entry in json.loads(row[0]).get('results', ()):
-                part = (entry.get('part') or {}).get('part_num')
-                colour = (entry.get('color') or {}).get('id')
-                if part == str(part_no) and colour == int(color_id) and bool(entry.get('is_spare')) is bool(is_spare):
-                    return entry.get('inv_part_id') or entry.get('id')
-    except (sqlite3.Error, ValueError, TypeError, AttributeError):
-        pass
-    return None
+    if cache is None:
+        parts_map = _set_parts_map(db, set_no)
+    else:
+        if set_no not in cache:
+            cache[set_no] = _set_parts_map(db, set_no)
+        parts_map = cache[set_no]
+    return parts_map.get((str(part_no), int(color_id), bool(is_spare)))
 
 
 def _collect_set_lines(db, set_no, held):
@@ -111,10 +148,9 @@ def _collect_set_lines(db, set_no, held):
             continue
         numbers = wishlists._rebrickable_numbers(db, {l['item_id'] for l in lines})
         colours = wishlists._rebrickable_colours(db, {l['color_id'] for l in lines})
-        _, _ = lost_parts._lines(db, copy['id'], lines)
         for line in lines:
             part_nos = sorted(numbers.get(line['item_id'], ()))
-            colour_ids = sorted(colours.get(line['color_id'], ()), key=lambda c: int(c) if str(c).isdigit() else str(c))
+            colour_ids = sorted(colours.get(line['color_id'], ()), key=_colour_sort_key)
             spare = bool(line['is_spare'])
             capped = min(line['missing'], max(0, line['quantity']))
             if len(part_nos) != 1 or len(colour_ids) != 1:
@@ -125,7 +161,14 @@ def _collect_set_lines(db, set_no, held):
                     unmatched.append(dict(set_no=set_no, copy_id=copy['id'], copy_label=label, item_id=line['item_id'],
                                           color_id=line['color_id'], is_spare=spare, missing=capped, reason=reason))
                 continue
-            key = (part_nos[0], int(colour_ids[0]), spare)
+            parsed_colour = _parse_colour_id(colour_ids[0])
+            if parsed_colour is None:
+                if capped > 0:
+                    unmatched.append(dict(set_no=set_no, copy_id=copy['id'], copy_label=label, item_id=line['item_id'],
+                                          color_id=line['color_id'], is_spare=spare, missing=capped,
+                                          reason='Rebrickable colour number is not an integer'))
+                continue
+            key = (part_nos[0], parsed_colour, spare)
             present_keys.add(key)
             if capped > 0:
                 bucket = aggregated.setdefault(key, dict(missing=0, copies={}, inv_part_id=None))
@@ -161,6 +204,7 @@ def plan(db, remote, translate, *, rule=None, on=True):
     numbers = _candidate_set_numbers(db, remote_rows)
     mapping = translate(db, numbers)
     copies_by_item = lost_parts._copies(db, [i for i in mapping.values() if i])
+    set_parts_cache = {}
 
     for set_no in sorted(numbers):
         item_id = mapping.get(set_no)
@@ -203,7 +247,7 @@ def plan(db, remote, translate, *, rule=None, on=True):
                 if local_qty < remote_qty:
                     if how == 'add_only':
                         continue
-                    if not out['clearing'] or unmatched or missing_part_list:
+                    if unmatched or missing_part_list:
                         if missing_part_list and not noted_missing_list:
                             out['unmatched'].append(dict(
                                 set_no=set_no,
@@ -221,7 +265,7 @@ def plan(db, remote, translate, *, rule=None, on=True):
                     continue
                 if how == 'per_set' and not has_local_marks:
                     continue
-                if not out['clearing'] or unmatched or missing_part_list:
+                if unmatched or missing_part_list:
                     if missing_part_list and not noted_missing_list:
                         out['unmatched'].append(dict(
                             set_no=set_no,
@@ -233,8 +277,11 @@ def plan(db, remote, translate, *, rule=None, on=True):
                     continue
                 state = 'remove'
 
-            inv_part_id = (remote_entry.get('inv_part_id') if remote_entry else None) or _lookup_inv_part_id(
-                db, set_no, part_no, color_id, is_spare, remote_inv_parts)
+            if state in ('add', 'change'):
+                inv_part_id = (remote_entry.get('inv_part_id') if remote_entry else None) or _lookup_inv_part_id(
+                    db, set_no, part_no, color_id, is_spare, remote_inv_parts, set_parts_cache)
+            else:
+                inv_part_id = remote_entry.get('inv_part_id') if remote_entry else None
             ids = list(remote_entry.get('ids') or ()) if remote_entry else []
             ids_complete = (bool(remote_entry.get('ids_complete', bool(ids))) and bool(ids)) if remote_entry else True
             reason = None
@@ -249,7 +296,7 @@ def plan(db, remote, translate, *, rule=None, on=True):
                 reason = 'Rebrickable inventory part id unknown'
             else:
                 tickable = True
-                ticked = state != 'remove'
+                ticked = state == 'add'
             copies = (list(local_entry['copies'].values()) if local_entry else
                       [dict(id=c['id'], label=lost_parts.copy_label(c), missing=0) for c in held])
             row = dict(
@@ -294,6 +341,14 @@ def _matches_tick(row, selected):
 
 def _is_pos_int(value):
     return type(value) is int and value >= 1
+
+
+def _reply_lost_part_id(reply):
+    if isinstance(reply, dict):
+        lost_id = reply.get('lost_part_id')
+        if _is_pos_int(lost_id):
+            return lost_id
+    return None
 
 
 def _validate_row(row, plan_rule):
@@ -362,12 +417,15 @@ def apply(db, client, planned, ticked=None, *, via='web', actor='user'):
         state = row['state']
         add_only_change = state == 'change' and (row.get('rule') or plan_rule) == 'add_only'
         added = bool(row.get('added'))
+        added_id = row.get('added_id') if _is_pos_int(row.get('added_id')) else None
         removed = bool(row.get('removed'))
         removed_ids = list(row.get('removed_ids') or ())
 
         def _save_progress():
             if state in ('add', 'change'):
                 row['added'] = added
+                if added_id is not None:
+                    row['added_id'] = added_id
             if state == 'remove' or (state == 'change' and not add_only_change):
                 row['removed'] = removed
                 if removed_ids:
@@ -376,16 +434,29 @@ def apply(db, client, planned, ticked=None, *, via='web', actor='user'):
         try:
             if state == 'add':
                 if not added:
-                    client.lost_part_add(row['inv_part_id'], row['after'])
+                    reply = client.lost_part_add(row['inv_part_id'], row['after'])
                     added = True
+                    added_id = _reply_lost_part_id(reply)
             elif state == 'change':
                 if not added:
                     qty = (row['after'] - row['before']) if add_only_change else row['after']
-                    client.lost_part_add(row['inv_part_id'], qty)
+                    reply = client.lost_part_add(row['inv_part_id'], qty)
                     added = True
-                if not add_only_change and not removed:
+                    added_id = _reply_lost_part_id(reply)
+                if add_only_change:
+                    if added_id is not None and added_id in (row.get('ids') or ()):
+                        _save_progress()
+                        row['ticked'] = True
+                        failed.append(dict(row, reason='Rebrickable updated the existing Lost Part instead of adding to it'))
+                        continue
+                elif not removed:
+                    if added_id is None:
+                        _save_progress()
+                        row['ticked'] = True
+                        failed.append(dict(row, reason='Rebrickable did not confirm the new Lost Part; the old rows were kept'))
+                        continue
                     for lost_id in row.get('ids') or ():
-                        if lost_id in removed_ids:
+                        if lost_id in removed_ids or lost_id == added_id:
                             continue
                         client.lost_part_remove(lost_id)
                         removed_ids.append(lost_id)
@@ -411,10 +482,13 @@ def apply(db, client, planned, ticked=None, *, via='web', actor='user'):
             remaining.append(row)
             _partition_tail(chosen[idx + 1:])
             break
-        except adapters.SourceError as exc:
+        except Exception as exc:
             _save_progress()
+            row['ticked'] = True
             failed.append(dict(row, reason=str(exc) or 'Rebrickable API unsuccessful'))
             continue
         _save_progress()
+        if row.get('reason') is not None:
+            row['reason'] = None
         sent.append(row)
     return dict(sent=sent, failed=failed, remaining=remaining, note=UNDO_NOTE)

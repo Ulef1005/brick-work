@@ -197,7 +197,8 @@ class RebrickableUser(Rebrickable):
         """Remove one Lost Parts row on Rebrickable.
 
         ASSUMED SHAPE (Rebrickable's documentation; not checked live because the test instance has no user token):
-        `DELETE /users/{token}/lost_parts/{id}/`."""
+        `DELETE /users/{token}/lost_parts/{id}/`. An empty reply is treated as success because 204 has no body, so it cannot be told from
+        an empty-bodied error; live behaviour of POST and DELETE must be tried with a real user token before sending is offered."""
         reply = self.user_call(f'/lost_parts/{int(lost_part_id)}/', method='DELETE')
         if reply is not True:
             raise SourceError('Rebrickable refused the Lost Part removal')

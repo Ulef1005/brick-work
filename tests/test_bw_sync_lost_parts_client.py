@@ -132,3 +132,12 @@ def test_lost_part_add_accepts_2xx_without_integer_id(store, reply):
     client = adapters.RebrickableUser(store, http=remote)
     assert client.lost_part_add(501, 3) == reply
     assert len(remote.writes) == 1
+
+
+def test_lost_part_add_returns_reply_id_and_remove_accepts_empty_bytes(store):
+    remote = rebrickable_ready(store, WriteRemote())
+    client = adapters.RebrickableUser(store, http=remote)
+    assert client.lost_part_add(501, 3) == {'lost_part_id': 99, 'lost_quantity': 3}
+    remote_bytes = rebrickable_ready(store, WriteRemote(reply=b''))
+    client_bytes = adapters.RebrickableUser(store, http=remote_bytes)
+    assert client_bytes.lost_part_remove(77) is True

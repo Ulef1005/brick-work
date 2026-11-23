@@ -1,6 +1,9 @@
 """Sending Lost Parts to Rebrickable (#469 part B): pure planner and remote apply.
 
 Invented data against the `store` fixture and a fake client; no network."""
+import json
+import sqlite3
+
 import pytest
 
 from brickwork.core.sync import adapters, lost_parts_send
@@ -29,11 +32,13 @@ def translate(db, numbers):
 class FakeClient:
     """Small in-memory client recording `lost_part_add` and `lost_part_remove` calls without network."""
 
-    def __init__(self, *, budget_after=None, budget_error=None, reject=False):
+    def __init__(self, *, budget_after=None, budget_error=None, reject=False, next_id=1000, add_reply=None):
         self.calls = []
         self.budget_after = budget_after
         self.budget_error = budget_error
         self.reject = reject
+        self.next_id = next_id
+        self.add_reply = add_reply
 
     def _step(self, call):
         if self.reject:
@@ -44,9 +49,15 @@ class FakeClient:
 
     def lost_part_add(self, inv_part_id, quantity):
         self._step(('add', inv_part_id, quantity))
+        if self.add_reply is not None:
+            return self.add_reply(inv_part_id, quantity) if callable(self.add_reply) else self.add_reply
+        lost_id = self.next_id
+        self.next_id += 1
+        return {'lost_part_id': lost_id, 'lost_quantity': quantity}
 
     def lost_part_remove(self, lost_part_id):
         self._step(('remove', lost_part_id))
+        return True
 
 
 def test_add_change_and_remove_unticked(store):
@@ -66,7 +77,7 @@ def test_add_change_and_remove_unticked(store):
 
     changed = by_key[('3001', 4, False)]
     assert changed['state'] == 'change' and changed['before'] == 1 and changed['after'] == 3
-    assert changed['tickable'] and changed['ticked'] is True and changed['ids'] == [11, 12]
+    assert changed['tickable'] and changed['ticked'] is False and changed['ids'] == [11, 12]
 
     removed = by_key[('3023', 15, False)]
     assert removed['state'] == 'remove' and removed['before'] == 2 and removed['after'] == 0
@@ -189,13 +200,20 @@ def test_apply_sends_only_ticked_and_fails_missing_inv_part_id(store):
     events_before = store.execute('SELECT count(*) FROM event').fetchone()[0]
 
     client = FakeClient()
-    # Default ticked (None) sends the ticked add/change rows and leaves the unticked remove row alone.
+    # Default ticked (None) sends only ticked add rows; change and remove are unticked and spare add lacks inv_part_id.
     report = lost_parts_send.apply(store, client, planned, None, via='test', actor='tester')
-    assert client.calls == [('add', 501, 3), ('remove', 41), ('remove', 42)]
-    assert [r['part_no'] for r in report['sent']] == ['3001']
+    assert client.calls == [] and report['sent'] == []
     assert report['failed'] == []  # spare add without inv_part_id is not tickable
     assert 'Undo cannot reverse' in report['note']
     assert store.execute('SELECT count(*) FROM event').fetchone()[0] == events_before
+
+    # Explicitly ticking the change row sends its POST then DELETEs.
+    change_key = next(r['key'] for r in planned['rows'] if r['state'] == 'change')
+    client_change = FakeClient()
+    report_change = lost_parts_send.apply(store, client_change, planned, [change_key], via='test', actor='tester')
+    assert client_change.calls == [('add', 501, 3), ('remove', 41), ('remove', 42)]
+    assert [r['part_no'] for r in report_change['sent']] == ['3001']
+    assert report_change['failed'] == []
 
     # Explicitly ticking the remove row sends its removal only.
     remove_key = next(r['key'] for r in planned['rows'] if r['state'] == 'remove')
@@ -275,9 +293,11 @@ def test_change_row_keeps_removed_progress_on_budget_and_error_retries(store):
 
         def lost_part_add(self, inv_part_id, quantity):
             self.calls.append(('add', inv_part_id, quantity))
+            return {'lost_part_id': 999, 'lost_quantity': quantity}
 
+    change_keys = [r['key'] for r in planned['rows']]
     budget_client = StatefulClient([41, 42], fail_remove=adapters.RemoteBudgetExceeded())
-    first = lost_parts_send.apply(store, budget_client, planned, None, via='test', actor='tester')
+    first = lost_parts_send.apply(store, budget_client, planned, change_keys, via='test', actor='tester')
     assert first['sent'] == [] and first['failed'] == [] and len(first['remaining']) == 1
     assert first['remaining'][0]['added'] is True and first['remaining'][0]['removed'] is False
     budget_client.fail_remove = None
@@ -286,7 +306,7 @@ def test_change_row_keeps_removed_progress_on_budget_and_error_retries(store):
     assert budget_client.calls == [('add', 501, 3), ('remove', 41), ('remove', 42)]
 
     err_client = StatefulClient([41, 42], fail_remove=adapters.SourceError('Rebrickable refused the Lost Part removal'))
-    failed = lost_parts_send.apply(store, err_client, planned, None, via='test', actor='tester')
+    failed = lost_parts_send.apply(store, err_client, planned, change_keys, via='test', actor='tester')
     assert failed['sent'] == [] and len(failed['failed']) == 1 and failed['failed'][0]['added'] is True
     err_client.fail_remove = None
     retry_err = lost_parts_send.apply(store, err_client, dict(rows=failed['failed']), None, via='test', actor='tester')
@@ -353,15 +373,15 @@ def test_change_adds_before_removing_and_add_only_posts_difference(store):
     remote_up = remote_read([dict(remote_row('1000-1', '3001', 4, 1, ids=[], inv_part_id=501), ids_complete=False)])
     add_only_plan = lost_parts_send.plan(store, remote_up, translate, rule='add_only', on=True)
     (row,) = add_only_plan['rows']
-    assert row['state'] == 'change' and row['tickable'] is True and row['ticked'] is True
+    assert row['state'] == 'change' and row['tickable'] is True and row['ticked'] is False
     client = FakeClient()
-    report = lost_parts_send.apply(store, client, add_only_plan, None, via='test', actor='tester')
+    report = lost_parts_send.apply(store, client, add_only_plan, [row['key']], via='test', actor='tester')
     assert client.calls == [('add', 501, 2)] and len(report['sent']) == 1 and report['failed'] == []
 
     remote_down = remote_read([remote_row('1000-1', '3001', 4, 5, ids=[61, 62], inv_part_id=501)])
     down_plan = lost_parts_send.plan(store, remote_down, translate, rule='per_part', on=True)
     client_down = FakeClient()
-    report_down = lost_parts_send.apply(store, client_down, down_plan, None, via='test', actor='tester')
+    report_down = lost_parts_send.apply(store, client_down, down_plan, [r['key'] for r in down_plan['rows']], via='test', actor='tester')
     assert client_down.calls == [('add', 501, 3), ('remove', 61), ('remove', 62)]
     assert len(report_down['sent']) == 1 and report_down['sent'][0]['added'] is True
 
@@ -451,6 +471,7 @@ def test_key_rejected_attaches_partial_report_with_progress(store):
 
         def lost_part_add(self, inv_part_id, quantity):
             self.calls.append(('add', inv_part_id, quantity))
+            return {'lost_part_id': 999, 'lost_quantity': quantity}
 
         def lost_part_remove(self, lost_id):
             if lost_id == 42:
@@ -486,3 +507,152 @@ def test_apply_validates_ticked_and_row_ids_and_quantities(store):
     assert client.calls == [] and report['sent'] == [] and report['remaining'] == []
     assert len(report['failed']) == len(bad_rows)
     assert all(r.get('reason') for r in report['failed'])
+
+
+def test_default_ticked_sends_only_add_rows(store):
+    copy_of(store, '1000-1', marks=[('3001', '4', 3), ('3023', '4', 1, True)])
+    remote = remote_read(
+        [remote_row('1000-1', '3001', 4, 1, ids=[41], inv_part_id=501),
+         remote_row('1000-1', '3023', 15, 2, ids=[42], inv_part_id=502)],
+        inv_parts={('1000-1', '3023', 4, True): 503},
+    )
+    planned = lost_parts_send.plan(store, remote, translate, rule='per_set', on=True)
+    assert {r['state']: r['ticked'] for r in planned['rows']} == {'add': True, 'change': False, 'remove': False}
+    client = FakeClient()
+    report = lost_parts_send.apply(store, client, planned, None, via='test', actor='tester')
+    assert client.calls == [('add', 503, 1)]
+    assert [r['state'] for r in report['sent']] == ['add'] and report['failed'] == []
+
+
+@pytest.mark.parametrize('bad_reply', [{}, {'lost_part_id': '99'}, {'lost_part_id': 0}, {'lost_part_id': True}, []])
+def test_change_fails_without_confirmed_id_and_keeps_old_rows(store, bad_reply):
+    copy_of(store, '1000-1', marks=[('3001', '4', 3)])
+    remote = remote_read([remote_row('1000-1', '3001', 4, 1, ids=[41, 42], inv_part_id=501)])
+    planned = lost_parts_send.plan(store, remote, translate, rule='per_part', on=True)
+    keys = [r['key'] for r in planned['rows']]
+
+    client = FakeClient(add_reply=bad_reply)
+    report = lost_parts_send.apply(store, client, planned, keys, via='test', actor='tester')
+    assert client.calls == [('add', 501, 3)]
+    assert report['sent'] == [] and len(report['failed']) == 1
+    assert report['failed'][0]['added'] is True
+    assert report['failed'][0]['reason'] == 'Rebrickable did not confirm the new Lost Part; the old rows were kept'
+
+    retry = lost_parts_send.apply(store, client, dict(rows=report['failed']), None, via='test', actor='tester')
+    assert client.calls == [('add', 501, 3)]
+    assert retry['sent'] == [] and len(retry['failed']) == 1
+    assert retry['failed'][0]['reason'] == 'Rebrickable did not confirm the new Lost Part; the old rows were kept'
+
+
+def test_change_upsert_skips_returned_id_and_add_only_fails_on_upsert(store):
+    copy_of(store, '1000-1', marks=[('3001', '4', 3)])
+    remote = remote_read([remote_row('1000-1', '3001', 4, 1, ids=[41, 42], inv_part_id=501)])
+
+    planned = lost_parts_send.plan(store, remote, translate, rule='per_part', on=True)
+    upsert_client = FakeClient(add_reply={'lost_part_id': 41, 'lost_quantity': 3})
+    report = lost_parts_send.apply(store, upsert_client, planned, [r['key'] for r in planned['rows']], via='test', actor='tester')
+    assert upsert_client.calls == [('add', 501, 3), ('remove', 42)]
+    assert len(report['sent']) == 1 and report['failed'] == []
+
+    add_only_plan = lost_parts_send.plan(store, remote, translate, rule='add_only', on=True)
+    add_only_client = FakeClient(add_reply={'lost_part_id': 41, 'lost_quantity': 2})
+    add_only_report = lost_parts_send.apply(
+        store, add_only_client, add_only_plan, [r['key'] for r in add_only_plan['rows']], via='test', actor='tester'
+    )
+    assert add_only_client.calls == [('add', 501, 2)]
+    assert add_only_report['sent'] == [] and len(add_only_report['failed']) == 1
+    assert add_only_report['failed'][0]['added'] is True
+    assert add_only_report['failed'][0]['reason'] == 'Rebrickable updated the existing Lost Part instead of adding to it'
+
+    retry = lost_parts_send.apply(store, add_only_client, dict(rows=add_only_report['failed']), None, via='test', actor='tester')
+    assert add_only_client.calls == [('add', 501, 2)]
+    assert retry['sent'] == [] and len(retry['failed']) == 1
+
+
+def test_apply_catches_unexpected_client_exception_and_retry_never_reposts(store):
+    rows = [
+        dict(key='r1', state='change', rule='per_part', inv_part_id=501, before=1, after=3,
+             ids=[41, 42], ids_complete=True, tickable=True, ticked=False),
+        dict(key='r2', state='add', rule='per_part', inv_part_id=502, before=0, after=1,
+             ids=[], ids_complete=True, tickable=True, ticked=True),
+    ]
+
+    class FlakyClient:
+        def __init__(self):
+            self.calls = []
+            self.boom = True
+
+        def lost_part_add(self, inv_part_id, quantity):
+            self.calls.append(('add', inv_part_id, quantity))
+            return {'lost_part_id': 999, 'lost_quantity': quantity}
+
+        def lost_part_remove(self, lost_id):
+            if self.boom and lost_id == 42:
+                raise RuntimeError('network drop')
+            self.calls.append(('remove', lost_id))
+            return True
+
+    client = FlakyClient()
+    report = lost_parts_send.apply(store, client, dict(rule='per_part', rows=rows), ['r1', 'r2'], via='test', actor='tester')
+    assert [r['key'] for r in report['sent']] == ['r2']
+    assert len(report['failed']) == 1
+    failed_row = report['failed'][0]
+    assert failed_row['key'] == 'r1' and failed_row['added'] is True and failed_row['removed_ids'] == [41]
+    assert failed_row['reason'] == 'network drop'
+
+    client.boom = False
+    retry = lost_parts_send.apply(store, client, dict(rule='per_part', rows=report['failed']), None, via='test', actor='tester')
+    assert [r['key'] for r in retry['sent']] == ['r1'] and retry['failed'] == []
+    assert client.calls == [('add', 501, 3), ('remove', 41), ('add', 502, 1), ('remove', 42)]
+
+
+def test_lookup_inv_part_id_uses_newest_record_caches_payload_and_skips_remove(store, monkeypatch):
+    mem = sqlite3.connect(':memory:')
+    mem.execute('CREATE TABLE source_record(id INTEGER PRIMARY KEY, kind TEXT, key TEXT, payload TEXT)')
+    old_payload = json.dumps({'results': [{'part': {'part_num': '3001'}, 'color': {'id': 4}, 'is_spare': False, 'inv_part_id': 111}]})
+    new_payload = json.dumps({'results': [
+        {'part': {'part_num': '3001'}, 'color': {'id': 4}, 'is_spare': False, 'inv_part_id': 222},
+        {'part': {'part_num': '3023'}, 'color': {'id': 4}, 'is_spare': True, 'inv_part_id': 333},
+    ]})
+    mem.execute("INSERT INTO source_record(id, kind, key, payload) VALUES(1, 'rebrickable_set_parts', '1000-1', ?)", (old_payload,))
+    mem.execute("INSERT INTO source_record(id, kind, key, payload) VALUES(2, 'rebrickable_set_parts', '1000-1', ?)", (new_payload,))
+
+    parses = []
+    real_loads = lost_parts_send.json.loads
+    monkeypatch.setattr(lost_parts_send.json, 'loads', lambda text: (parses.append(text), real_loads(text))[1])
+    cache = {}
+    assert lost_parts_send._lookup_inv_part_id(mem, '1000-1', '3001', 4, False, {}, cache) == 222
+    assert lost_parts_send._lookup_inv_part_id(mem, '1000-1', '3023', 4, True, {}, cache) == 333
+    assert len(parses) == 1
+    mem.close()
+
+    copy_of(store, '1000-1', marks=[('3001', '4', 2), ('3023', '4', 1, True)])
+    copy_of(store, '1000-2')
+    remote = remote_read([remote_row('1000-2', '3001', 4, 1, ids=[88], inv_part_id=None)])
+    seen_sets = []
+    monkeypatch.setattr(
+        lost_parts_send,
+        '_set_parts_map',
+        lambda db, set_no: (seen_sets.append(set_no), {('3001', 4, False): 222, ('3023', 4, True): 333})[1],
+    )
+    planned = lost_parts_send.plan(store, remote, translate, rule='everything', on=True)
+    assert seen_sets == ['1000-1']
+    by_part = {(r['set_no'], r['part_no'], r['is_spare']): r for r in planned['rows']}
+    assert by_part[('1000-1', '3001', False)]['inv_part_id'] == 222
+    assert by_part[('1000-1', '3023', True)]['inv_part_id'] == 333
+    assert by_part[('1000-2', '3001', False)]['state'] == 'remove'
+
+
+def test_colour_handling_sorts_mixed_and_negative_and_unmatches_non_integer(store, monkeypatch):
+    assert sorted(['abc', '10', '-1', '4'], key=lost_parts_send._colour_sort_key) == ['-1', '4', '10', 'abc']
+    copy_of(store, '1000-1', marks=[('3001', '4', 2)])
+
+    monkeypatch.setattr(lost_parts_send.wishlists, '_rebrickable_colours', lambda db, ids: {cid: {'blue'} for cid in ids})
+    bad_colour = lost_parts_send.plan(store, remote_read(), translate, rule='per_part', on=True)
+    assert bad_colour['rows'] == [] and len(bad_colour['unmatched']) == 1
+    assert 'not an integer' in bad_colour['unmatched'][0]['reason']
+
+    monkeypatch.setattr(lost_parts_send.wishlists, '_rebrickable_colours', lambda db, ids: {cid: {'-1', 'blue'} for cid in ids})
+    mixed = lost_parts_send.plan(store, remote_read(), translate, rule='per_part', on=True)
+    assert mixed['rows'] == [] and len(mixed['unmatched']) == 1
+    assert 'Several Rebrickable numbers' in mixed['unmatched'][0]['reason']

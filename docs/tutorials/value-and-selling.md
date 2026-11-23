@@ -5,6 +5,8 @@ verified: 1.0
 
 # Keep it or part it out
 
+**Try it first:** open a copy's **Sell this copy** card in [the demo](https://brick-work.app/demo/collection/item/1/). It is the same card on invented prices, and nothing is saved.
+
 You own a used set and wonder whether it is worth more intact or as loose parts. In this tutorial you read what the set is worth and compare that with its part-out value. Then you let the Sell card suggest an asking price and write the listing text.
 
 It takes about 15 minutes. You need a Brick Work install with a set you own, preferably one you have already [checked part by part](first-set.md). You also need a BrickLink key under **Tools & Admin → Settings → Keys and sources**. Prices come from BrickLink, so without the key you only see prices already stored. Your own numbers and names will differ from the examples.

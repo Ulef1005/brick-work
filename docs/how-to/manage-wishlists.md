@@ -23,6 +23,11 @@ Each wish answers one question: can you buy this set now at a price you accept. 
 | **Not comparable** (dashed) | The max and the price are in different currencies and no exchange rate covers them, or a currency is not recorded. |
 | **No price** (dashed) | The wish has a max, but there is no sale or listing for the condition you want yet. |
 
+<picture data-bw-screens><source media="(max-width: 600px)" srcset="../img/tutorials/tut-wishlist-states-phone-390-light.png"><img src="../img/tutorials/tut-wishlist-states-desktop-1024-light.png#only-light" alt="Wishlist tiles: each shows its state tag, here Buy now, beside the number, then what you want, your max, the price now and the gap to your max."></picture>
+<picture data-bw-screens><source media="(max-width: 600px)" srcset="../img/tutorials/tut-wishlist-states-phone-390-dark.png"><img src="../img/tutorials/tut-wishlist-states-desktop-1024-dark.png#only-dark" alt="Wishlist tiles: each shows its state tag, here Buy now, beside the number, then what you want, your max, the price now and the gap to your max."></picture>
+
+The picture shows where the tag sits on a tile; these wishes are all under their max. The table above lists all five tags.
+
 The **State** chips under the condition chips filter by these tags and show how many wishes each holds. The list is sorted **Buy now first** until you pick another sort under **Sort**. Press the wish to open its page. The answer comes first. Then come **Your wish** (condition, how many are filled, list, max and max with box, with **Edit**) and **Prices**. **Prices** has one strip from the lowest to the highest sale and a mark at the average. A condition with no sales says **No sales**. With a single price, the page says so instead of drawing a trend line.
 
 The heading counts wishes, never pieces. A list of sets says "2 of 5 wanted sets are under your max" and **5 sets wanted**. A list that also holds parts says "wanted items" and **14 wanted**, however many pieces each part wish asks for. To change the condition you want (New, Used or Any), the max or the max with box, press **Edit** on the wish's page.

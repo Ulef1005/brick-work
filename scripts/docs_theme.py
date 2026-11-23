@@ -5,8 +5,8 @@
 
 The docs CSS is the served tokens (static/web/toni/tokens-v2.css, itself built from design/tokens/ by scripts/tokens_base.py)
 with their light and dark classes moved onto Zensical's colour schemes (`default` and `slate`), then the mapping of those
-tokens onto Zensical's own variables and a few rules of the brickwork-design skill (paper header with an ink hairline, clay
-for links and the active tab, no shadows, IBM Plex Sans and Plex Mono (B′, #492), status colours on the admonitions). No colour is written
+tokens onto Zensical's own variables and a few rules of the brickwork-design skill (paper header with an ink hairline, the
+accent (B′ violet) for links and the active tab, no shadows, IBM Plex Sans and Plex Mono (B′, #492), status colours on the admonitions). No colour is written
 here by hand: every value is a var(--tw-*). The fonts are the app's own files, so the documentation pages make no external requests.
 
 Zensical puts the scheme on <body>, so the tokens' OS-preference block still sets <html> from the system setting; the body's

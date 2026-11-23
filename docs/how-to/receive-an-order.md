@@ -1,6 +1,6 @@
 ---
 audience: user
-verified: 0.8
+verified: 1.2
 ---
 
 # Receive a parts order

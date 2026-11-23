@@ -254,3 +254,15 @@ def test_choosing_manual_completeness_clears_the_label(store):
     made = labelled_copy(store)
     collection.save(store, 'copy', [made], dict(completeness_source='manual'))
     assert column(store, made)[0] is None
+
+
+def test_a_labelled_copy_counts_every_line_as_checked_on_its_page(store):
+    """The label covers the whole list, as the bars count it (_copy_bars): the copy's progress and its part groups read every line checked,
+    not "0 checked" with every group still to check (Argon review, 23.11.). The stored lines are not touched."""
+    made = labelled_copy(store)
+    item = store.execute('SELECT item_id FROM copy WHERE id=?', (made,)).fetchone()[0]
+    stored = store.execute('SELECT sum(checked) FROM copy_part WHERE copy_id=?', (made,)).fetchone()[0]
+    detail = collection.detail(store, item, copy_id=made)
+    assert detail['progress']['checked_lines'] == detail['progress']['lines'] > 0
+    assert all(group['todo'] == 0 for group in detail['part_groups'])
+    assert store.execute('SELECT sum(checked) FROM copy_part WHERE copy_id=?', (made,)).fetchone()[0] == stored

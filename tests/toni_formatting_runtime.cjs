@@ -25,7 +25,7 @@ console.log('Shared name-tail formatting passed in all five bundles');
 const displayContext = {window: {}};
 vm.runInNewContext(shared, displayContext);
 const {partName, nowrapTail} = displayContext.window.BrickFormatting;
-assert.equal(nowrapTail(partName('Bracket 1 x 2 - 1 x 2 Inverted')), 'Bracket 1 x 2 · 1 x 2\u00a0Inverted');
+assert.equal(nowrapTail(partName('Bracket 1 x 2 - 1 x 2 Inverted')), 'Bracket 1 × 2 · 1 × 2\u00a0Inverted');
 assert.equal(partName('Plate - Modified'), 'Plate - Modified');
 assert.equal(partName('600-2'), '600-2');
 assert.equal(partName(null), '');

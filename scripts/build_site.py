@@ -111,17 +111,21 @@ GTM = """<script>
         var f=d.getElementsByTagName(s)[0], j=d.createElement(s);j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i;f.parentNode.insertBefore(j,f);
     })(window,document,'script','dataLayer','GTM-PKVSLMMS');
 </script>"""
-HOME_TITLE = 'Brick Work: self-hosted brick collection and parts manager'     # the home page's <title> and share title (the other pages end in ' · Brick Work')
-HOME_DESCRIPTION = ('Brick Work is a free, open-source, self-hosted workbench for your brick collection: check a set\'s parts, pull missing ones from loose stock '
-                    'and see which sets it can complete.')
-MD_DESCRIPTIONS = {'use-cases': 'Eight moments a collector knows, and how Brick Work helps with each: rebuilding used sets, sorted bulk, minifigures, bought collections and orders.',
+HOME_TITLE = 'Brick Work: free, self-hosted app for your brick collection'     # the home page's <title> and share title (the other pages end in ' · Brick Work')
+HOME_DESCRIPTION = ('Free, open-source, self-hosted app for your brick collection and its missing parts. Check sets, pull parts from loose stock, '
+                    'see what you can finish.')
+MD_DESCRIPTIONS = {'use-cases': 'Nine moments a collector knows, and how Brick Work helps with each: rebuilding used sets, sorted bulk, minifigures, bought collections and orders.',
                    'impressum': 'Impressum of the Brick Work website: who is responsible for it, in Linz, Austria.', 'privacy': 'What the Brick Work website loads and what it does not: which analytics it uses and which cookies it sets.'}
 DEFAULT_DESCRIPTION = 'Brick Work: the workbench for your brick collection: self-hosted, with a REST API and an MCP server.'
 DEMO_DESCRIPTION = 'Try the real Brick Work interface in your browser on an invented collection around seven real sets; nothing is saved.'
 
 
-# The browser bar's colours: the page background in light and dark (static/web/toni/tokens-v2.css as brick-work.css sets it).
-THEME_LIGHT, THEME_DARK = '#fbf8f2', '#1d1a17'
+# The walkthrough video: one source for the home page's tour card and /llms.txt, set when the video is reshot (#526; brick-work-marketing
+# sends the length). Filled as {tour_url} and {tour_length}.
+TOUR_URL, TOUR_LENGTH = 'https://www.youtube.com/watch?v=R5Q_6GUB1OQ', '1:36'
+
+# The browser bar's colours: the B′ app bar surface, --tw-surface, in light and dark (#526, W-Q7; design/BRAND.md § 3).
+THEME_LIGHT, THEME_DARK = '#F8F8F6', '#1F2322'
 
 
 def seo_head(title, description, path, canonical=True):
@@ -151,7 +155,7 @@ def page(title, body, depth, *, current, head='', main='doc', absolute=False, pa
     col = lambda heading, links: (f'<div><b>{heading}</b><ul>' + ''.join(f'<li><a href="{href}">{label}</a></li>' for label, href in links)
                                   + '</ul></div>')
     footer_cols = ''.join((
-        col('Product', (('Install', f'{up}install/'), ('Demo', f'{up}demo/'), ('Use cases', f'{up}use-cases/'), ('Workflows', f'{up}workflows/'))),
+        col('Product', (('Install', f'{up}install/'), ('Demo', f'{up}demo/'), ('Use cases', f'{up}use-cases/'), ('Questions', f'{up}questions/'), ('Workflows', f'{up}workflows/'))),
         col('Learn', (('Docs', f'{up}docs/'), ('Changelog', f'{up}changelog/'), ('API', f'{up}docs/developer/api-v2-reference/'),
                       ('MCP', f'{up}docs/brickwork/mcp/'), ('For AI assistants', f'{up}llms.txt'))),
         col('Project', (('About', f'{up}about/'), ('GitHub', f'https://github.com/{repo}'), ('Show and tell', f'https://github.com/{repo}/discussions'),
@@ -170,8 +174,8 @@ def page(title, body, depth, *, current, head='', main='doc', absolute=False, pa
 <link rel="icon" href="{up}assets/favicon-16.png" sizes="16x16" type="image/png">
 <link rel="icon" href="{up}assets/favicon.ico" sizes="48x48">
 <link rel="apple-touch-icon" href="{up}assets/apple-touch-icon.png">
-<link rel="preload" href="{up}assets/fonts/inter-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="{up}assets/fonts/inter-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="{up}assets/fonts/IBMPlexSans-Regular.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="{up}assets/fonts/IBMPlexSans-SemiBold.woff2" as="font" type="font/woff2" crossorigin>
 <meta name="theme-color" content="{THEME_LIGHT}" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="{THEME_DARK}" media="(prefers-color-scheme: dark)">
 <link rel="stylesheet" href="{up}assets/tokens-v2.css">
@@ -257,7 +261,7 @@ def fill(text, up):
     from brickwork.version import __version__
     version, schema, date, summary = latest_release()
     values = {'repository': repository(), 'up': up, 'version': __version__, 'release_version': version, 'release_date': date,
-              'release_summary': html.escape(summary), 'release_schema': schema}
+              'release_summary': html.escape(summary), 'release_schema': schema, 'tour_url': html.escape(TOUR_URL), 'tour_length': html.escape(TOUR_LENGTH)}
     values['count_adr'] = str(len(list((ROOT / 'docs/adr').glob('[0-9]*.md'))))
     for section in ('tutorials', 'how-to', 'concepts', 'reference'):
         values['count_' + section.replace('-', '_')] = str(docs_count(section))
@@ -277,6 +281,32 @@ def home(up):
     return fill((SITE / 'landing.html').read_text(), up)
 
 
+def questions_markup(meta, body):
+    """The question pages and their hub (#544): the 'Home / Questions' label becomes real links, and the page carries BreadcrumbList structured data
+    (the hub also an ItemList of the seven, a question page a HowTo from its numbered steps). Returns the body and the extra head markup."""
+    import json
+    path = meta['path']
+    if not path.startswith('questions/'):
+        return body, ''
+    root, name = origin() + site_base(), html.unescape(meta['title'])
+    crumbs = [('Home', root), ('Questions', root + 'questions/')] + ([] if path == 'questions/' else [(name, root + path)])
+    data = [{'@context': 'https://schema.org', '@type': 'BreadcrumbList', 'itemListElement': [
+        {'@type': 'ListItem', 'position': n, 'name': label, 'item': url} for n, (label, url) in enumerate(crumbs, 1)]}]
+    if path == 'questions/':
+        links = re.findall(r'<a href="\{up\}(questions/[^"]+)"><span><b>(.+?)</b>', body)
+        data.append({'@context': 'https://schema.org', '@type': 'ItemList', 'itemListElement': [
+            {'@type': 'ListItem', 'position': n, 'name': html.unescape(label), 'url': root + href} for n, (href, label) in enumerate(links, 1)]})
+        body = body.replace('<span class="label">Home / Questions</span>', '<span class="label"><a href="{up}">Home</a> / Questions</span>', 1)
+    else:
+        steps = re.findall(r'<li><span class="n">\d+</span><div><b>(.+?)</b><span class="d">(.+?)</span>', body)
+        strip = lambda text: html.unescape(re.sub(r'<[^>]+>', '', text)).strip()
+        if steps:
+            data.append({'@context': 'https://schema.org', '@type': 'HowTo', 'name': name, 'step': [
+                {'@type': 'HowToStep', 'name': strip(step), 'text': strip(text)} for step, text in steps]})
+        body = body.replace('<span class="label">Home / Questions</span>', '<span class="label"><a href="{up}">Home</a> / <a href="{up}questions/">Questions</a></span>', 1)
+    return body, ''.join('<script type="application/ld+json">' + json.dumps(item, ensure_ascii=False).replace('</', '<\\/') + '</script>' for item in data)
+
+
 def build_pages(out):
     """Every scripts/site/pages/*.html is one page: a header of `key: value` lines (title, path, current), a line `---`, then the body.
     `path` is the folder from the site root (`install/`, `coming-from/rebrickable/`); `current` names the top-bar item to mark."""
@@ -286,8 +316,9 @@ def build_pages(out):
         depth = len(Path(meta['path']).parts)
         folder = out / meta['path']
         folder.mkdir(parents=True, exist_ok=True)
+        body, head = questions_markup(meta, body)
         (folder / 'index.html').write_text(page(meta['title'], fill(body, '../' * depth), depth, current=meta.get('current') or None, main='home',
-                                                path=meta['path'], description=meta.get('description')))
+                                                path=meta['path'], description=meta.get('description'), head=head))
 
 
 def json_ld():
@@ -303,11 +334,23 @@ def json_ld():
     return '<script type="application/ld+json">' + json.dumps(data, ensure_ascii=False).replace('</', '<\\/') + '</script>'
 
 
+# The folders whose pages sit one level down (coming-from/<tool>/, questions/<slug>/) and go into the sitemap.
+SECOND_LEVEL = ('coming-from', 'questions')
+
+
 def site_urls(out):
     """The marketing pages that go into sitemap-pages.xml: every folder with an index.html outside docs/ and demo/, plus the demo's entry."""
     folders = sorted(p.parent.relative_to(out).as_posix() for p in out.glob('*/index.html')) + sorted(
-        p.parent.relative_to(out).as_posix() for p in out.glob('*/*/index.html') if p.parts[-3] in ('coming-from',))
+        p.parent.relative_to(out).as_posix() for p in out.glob('*/*/index.html') if p.parts[-3] in SECOND_LEVEL)
     return [''] + [f + '/' for f in folders if f.split('/')[0] not in ('docs', 'demo', 'api', 'mcp')] + ['demo/']
+
+
+def page_source(path):
+    """The scripts/site/pages file whose `path:` header is this folder (the question pages are question-<N>-<slug>.html for questions/<slug>/), or None."""
+    for source in sorted((SITE / 'pages').glob('*.html')):
+        if f'\npath: {path}\n' in '\n' + source.read_text().partition('\n---\n')[0] + '\n':
+            return source
+    return None
 
 
 def lastmod(path):
@@ -318,8 +361,8 @@ def lastmod(path):
     if path in ('demo/', 'docs/'):
         return None
     name = path.strip('/').replace('/', '-') if path else 'landing'
-    sources = [SITE / f'{name}.md', SITE / f'{name}.html', SITE / 'pages' / f'{name}.html']
-    source = next((f for f in sources if f.exists()), None)
+    sources = [SITE / f'{name}.md', SITE / f'{name}.html', SITE / 'pages' / f'{name}.html', page_source(path)]
+    source = next((f for f in sources if f and f.exists()), None)
     if source is None:
         return None
     try:
@@ -454,7 +497,7 @@ def llms_txt():
     """/llms.txt (llmstxt.org) from scripts/site/llms.md: the facts an AI assistant is most often asked, with the release's version
     filled in and every repository link turned into the raw Markdown file on GitHub, which an assistant reads best."""
     from brickwork.version import __version__
-    text = (SITE / 'llms.md').read_text().replace('{version}', __version__).replace('{repository}', repository()).replace('{site}', origin() + site_base())
+    text = (SITE / 'llms.md').read_text().replace('{version}', __version__).replace('{repository}', repository()).replace('{site}', origin() + site_base()).replace('{tour_url}', TOUR_URL).replace('{tour_length}', TOUR_LENGTH)
     raw = f'https://raw.githubusercontent.com/{repository()}/main/'
     return re.sub(r'\]\((?!https?://|#)([^)\s]+)\)', lambda m: f']({raw}{m[1]})', text)
 
@@ -469,7 +512,7 @@ def llms_full():
     raw = f'https://raw.githubusercontent.com/{repository()}/main/'
     source = (SITE / 'llms.md').read_text()
     paths = []
-    for link in re.findall(r'\]\((?!https?://|#|\{site\})([^)\s]+)\)', source.split('\n## Optional')[0]):
+    for link in re.findall(r'\]\((?!https?://|#|\{site\}|\{tour_url\})([^)\s]+)\)', source.split('\n## Optional')[0]):
         if link.endswith('.md') and link not in paths:
             paths.append(link)
     parts = [llms_txt().split('\n## Try it')[0].rstrip() + '\n']
@@ -564,8 +607,9 @@ def build(out):
     (out / 'mcp').mkdir()
     static = ROOT / 'static'
     shutil.copy(static / 'web/toni/tokens-v2.css', out / 'assets/tokens-v2.css')
-    for font in (static / 'web/toni/fonts').glob('*'):
-        shutil.copy(font, out / 'assets/fonts' / font.name)
+    for font in (static / 'brickwork/fonts').glob('*'):   # IBM Plex, B′ (#526); generated from design/fonts by scripts/brand_assets.py
+        if font.name != 'README.md':
+            shutil.copy(font, out / 'assets/fonts' / font.name)
     for name in ('app-icon.svg', 'favicon.svg', 'favicon.ico', 'favicon-16.png', 'favicon-32.png',
                  'lockup-horizontal-light.png', 'lockup-horizontal-dark.png'):
         shutil.copy(static / 'brickwork' / name, out / 'assets' / name)

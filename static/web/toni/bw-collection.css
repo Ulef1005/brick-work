@@ -535,6 +535,7 @@ html[data-web-ui="toni"] #bw-collection .bc-source-details summary { padding-inl
 .bc-wish-max { display:flex;flex-direction:column;gap:2px; }
 .bc-wish-max-label { font:500 10px/12px var(--tw-font);letter-spacing:.1em;text-transform:uppercase;color:var(--tw-text-muted); }
 .bc-wish-max strong { font:600 20px/26px var(--tw-mono); }
+.bc-wish-max-none { font:400 14px/20px var(--tw-font);color:var(--tw-text-2); }
 
 /* Design v1.3: figures stay visible as individual lines in every state. */
 #bw-collection .bc-figure-heading h3 { margin:8px 0 4px;font:600 22px/28px var(--tw-font);letter-spacing:-.2px; }
@@ -700,8 +701,8 @@ html[data-web-ui="toni"] #bw-collection .bc-source-details summary { padding-inl
 #bw-collection .bc-switch { position:relative;flex:none;width:52px;height:44px;padding:0;border:0;background:transparent; }
 #bw-collection .bc-switch::before { content:"";position:absolute;inset:6px 0;border-radius:16px;background:var(--tw-divider-strong); }
 #bw-collection .bc-switch[aria-checked=true]::before { background:var(--tw-accent); }
-#bw-collection .bc-switch-knob { position:absolute;left:3px;top:9px;width:26px;height:26px;border-radius:50%;background:#fff; }
-#bw-collection .bc-switch[aria-checked=true] .bc-switch-knob { transform:translateX(20px); }
+#bw-collection .bc-switch-knob { position:absolute;left:3px;top:9px;width:26px;height:26px;border-radius:50%;background:var(--tw-surface); }
+#bw-collection .bc-switch[aria-checked=true] .bc-switch-knob { transform:translateX(20px);background:var(--tw-on-accent); }   /* #512: tokens, so the knob reads on the dark track and on dark violet */
 @media(prefers-reduced-motion:no-preference) { #bw-collection .bc-switch-knob { transition:transform 160ms; } }
 #bw-collection .bc-cell-missing { font:400 12px/16px var(--tw-mono);color:var(--tw-text-2); }
 #bw-collection .bc-flat-switch { display:flex;flex:none;margin-right:8px; }

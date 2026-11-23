@@ -1,0 +1,46 @@
+/* Get started in B′ (#501 T7: the first-run steps without keys, frame 26; Bring your collection in; How the inventory works). Tokens only:
+   the steps, the cards, the key cards and every control stay; they take the components of R3-01 and R3-04 as Add does: the ruled heading
+   with its eyebrow, surface cards with a hairline and radius 8 (no shadow), the step number in a ring (the current one violet), outlined ink
+   buttons and the violet primary (dashed while it cannot be used), the key state as an ink tag (dashed while not set), an error as the
+   danger word. `#bw-collection.bw-get-started` is not a `.b-prime` root, so every rule carries `:not(#_)`. Colours only from the tokens. */
+
+#bw-collection.bw-get-started:not(#_):not(#_) {font:400 15px/1.45 var(--tw-font),system-ui,sans-serif;color:var(--tw-text)}
+
+/* Heading: eyebrow, title, line, the 1.5 px rule; the back link violet */
+#bw-collection.bw-get-started:not(#_):not(#_) .bc-heading {padding:0 0 12px;border-bottom:1.5px solid var(--tw-rule)}
+#bw-collection.bw-get-started:not(#_):not(#_) .bc-eyebrow {margin:0 0 6px;font:600 12px/14px var(--tw-font-label);letter-spacing:.14em;text-transform:uppercase;color:var(--tw-text-muted)}
+#bw-collection.bw-get-started:not(#_):not(#_) .bc-heading h1 {margin:0;font:600 34px/1.15 var(--tw-font);letter-spacing:-.015em;color:var(--tw-text)}
+#bw-collection.bw-get-started:not(#_):not(#_) .bc-heading p {margin:4px 0 0;font:400 15px/1.45 var(--tw-font);color:var(--tw-text-2)}
+#bw-collection.bw-get-started:not(#_):not(#_) .fr-back a {font:600 14px var(--tw-font);color:var(--tw-accent-text)}
+#bw-collection.bw-get-started:not(#_):not(#_) .fr-head h2 {font:600 24px/1.25 var(--tw-font);letter-spacing:-.01em}
+
+/* Cards: surface, hairline, radius 8, no shadow */
+#bw-collection.bw-get-started:not(#_):not(#_) :is(.fr-step,.fr-choice,.fr-summary-card,.bk-card) {border:1px solid var(--tw-divider);border-radius:var(--tw-r-2);background:var(--tw-surface);box-shadow:none}
+#bw-collection.bw-get-started:not(#_):not(#_) .fr-keys .bk-card {background:var(--tw-bg)}
+#bw-collection.bw-get-started:not(#_):not(#_) .fr-text p,#bw-collection.bw-get-started:not(#_):not(#_) :is(.fr-choice,.fr-note) p {color:var(--tw-text-2)}
+#bw-collection.bw-get-started:not(#_):not(#_) .fr-note {color:var(--tw-text-2)}
+
+/* The step number: a ring; the current step violet, a done step filled ink */
+#bw-collection.bw-get-started:not(#_):not(#_) .fr-num {background:transparent;box-shadow:inset 0 0 0 1.5px var(--tw-text-muted);color:var(--tw-text-2)}
+#bw-collection.bw-get-started:not(#_):not(#_) .fr-step[data-state=current] .fr-num {background:var(--tw-accent);box-shadow:none;color:var(--tw-on-accent)}
+#bw-collection.bw-get-started:not(#_):not(#_) .fr-step[data-state=done] .fr-num {background:var(--tw-text);box-shadow:none;color:var(--tw-bg)}
+#bw-collection.bw-get-started:not(#_):not(#_) .fr-done {font:600 11px var(--tw-font-label);letter-spacing:.08em;text-transform:uppercase;color:var(--tw-text);padding:0 7px;height:22px;display:inline-flex;align-items:center;border:1.5px solid var(--tw-text);border-radius:3px}
+
+/* Buttons: outlined ink, violet primary, dashed when it cannot be used */
+#bw-collection.bw-get-started:not(#_):not(#_) :is(.fr-btn,.bk-btn):not(.primary,.bk-primary) {height:38px;min-height:38px;padding:0 14px;border:0;border-radius:var(--tw-r-1);background:transparent;box-shadow:inset 0 0 0 1.5px var(--tw-text);color:var(--tw-text);font:600 14px var(--tw-font)}
+#bw-collection.bw-get-started:not(#_):not(#_) :is(.fr-btn.primary,.bk-btn.bk-primary) {height:38px;min-height:38px;padding:0 16px;border:0;border-radius:var(--tw-r-1);background:var(--tw-accent);box-shadow:none;color:var(--tw-on-accent);font:600 14px var(--tw-font)}
+#bw-collection.bw-get-started:not(#_):not(#_) :is(.fr-btn,.bk-btn):disabled {background:transparent;box-shadow:none;color:var(--tw-text-muted);outline:1.5px dashed var(--tw-text-muted);outline-offset:-1.5px;opacity:1}
+#bw-collection.bw-get-started:not(#_):not(#_) .fr-skip {font:600 13px var(--tw-font);color:var(--tw-accent-text)}
+
+/* Key cards: the field, the state as an ink tag (dashed while not set), an error as the danger word */
+#bw-collection.bw-get-started:not(#_):not(#_) .bk-card :is(input:not([type=checkbox],[type=radio],[type=hidden]),select) {border:1px solid var(--tw-text-muted);border-radius:var(--tw-r-1);background:var(--tw-field);box-shadow:none;color:var(--tw-text)}
+#bw-collection.bw-get-started:not(#_):not(#_) .bk-pill {display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 7px;border:1.5px solid var(--tw-text);border-radius:3px;background:transparent;color:var(--tw-text);font:600 11px var(--tw-font-label);letter-spacing:.08em;text-transform:uppercase}
+#bw-collection.bw-get-started:not(#_):not(#_) .bk-pill>.bk-dot {display:none}
+#bw-collection.bw-get-started:not(#_):not(#_) .bk-pill:is(.bk-unknown,.bk-warning,.bk-info) {border-style:dashed}
+#bw-collection.bw-get-started:not(#_):not(#_) .bk-pill.bk-unknown {border-color:var(--tw-text-muted);color:var(--tw-text-2)}
+#bw-collection.bw-get-started:not(#_):not(#_) .bk-pill.bk-danger {border-color:var(--tw-danger);color:var(--tw-danger)}
+#bw-collection.bw-get-started:not(#_):not(#_) .bk-error-box {background:transparent;border:1.5px solid var(--tw-danger);border-radius:var(--tw-r-1);color:var(--tw-danger)}
+
+@media(max-width:767.98px) {
+  #bw-collection.bw-get-started:not(#_):not(#_) .bc-heading h1 {font-size:26px}
+}

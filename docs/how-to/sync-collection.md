@@ -7,7 +7,7 @@ verified: 1.0
 
 *Since 0.6.0.*
 
-Do this to bring the sets you already keep on Rebrickable or Brickset into Brick Work, or to send what you hold here back to the site. Pull never deletes anything here; send always shows the changes first and asks before it removes anything there. Open **Manage → Tools & Admin → Collection sync**.
+Do this to bring the sets you already keep on Rebrickable or Brickset into Brick Work, or to send what you hold here back to the site. Pull never deletes anything here; send always shows the changes first and asks before it removes anything there. Open **Workbench → Sync**, then **Open** on the site. The old page under Tools & Admin sends you there.
 
 ## Connect a site
 

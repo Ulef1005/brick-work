@@ -41,7 +41,7 @@ def soup(response):
 
 
 def token(client):
-    client.get('/manage/sync')
+    client.get('/workbench/sync')
     with client.session_transaction() as session:
         return session['bw_add_csrf']
 
@@ -52,12 +52,13 @@ def count(pair, number, table='copy'):
 
 
 def test_sources_page_cards_and_hub_row(client, remote):
-    page = soup(client.get('/manage/sync'))
-    cards = {c['data-sync-source']: c for c in page.select('[data-sync-source]')}
-    assert cards['rebrickable'].select_one('.bk-pill').get_text(strip=True) == 'Not linked'
-    assert cards['rebrickable'].select_one('a.bk-primary').get_text(strip=True) == 'Link a collection'
-    assert cards['brickset'].select_one('[data-needs-key=brickset]').strong.text == 'Needs a Brickset key'
-    assert 'Nothing pulled or sent yet.' in page.get_text()
+    rb = soup(client.get('/workbench/sync/rebrickable'))
+    card = rb.select_one('[data-sync-source=rebrickable]')
+    assert card.select_one('.bk-pill').get_text(strip=True) == 'Not linked'
+    assert card.select_one('a.bk-primary').get_text(strip=True) == 'Link a collection'
+    assert 'Nothing pulled or sent yet.' in rb.get_text()
+    bs = soup(client.get('/workbench/sync/brickset'))
+    assert bs.select_one('[data-sync-source=brickset] [data-needs-key=brickset]').strong.text == 'Needs a Brickset key'
     assert soup(client.get('/manage/tools')).find('a', href='/manage/sync')
 
 
@@ -90,7 +91,7 @@ def test_connect_link_pull_apply_undo(client, remote, pair):
     assert count(pair, '1000-1') == 2
     client.post('/manage/sync/rebrickable/undo', data={'csrf_token': csrf, 'event': event})
     assert count(pair, '1000-1') == 0
-    assert 'Undone' in soup(client.get('/manage/sync')).select_one('.sy-log').get_text()
+    assert 'Undone' in soup(client.get('/workbench/sync')).select_one('.sy-log').get_text()
 
 
 def test_pulled_gear_is_loose_stock_and_the_log_says_so(client, remote, pair):
@@ -107,7 +108,7 @@ def test_pulled_gear_is_loose_stock_and_the_log_says_so(client, remote, pair):
     plan_id = plan.select_one('input[name=plan_id]')['value']
     client.post('/manage/sync/rebrickable/apply', data={'csrf_token': csrf, 'plan_id': plan_id, 'tick': gear})
     assert count(pair, GEAR, 'stock') == 1
-    assert '1 loose added' in soup(client.get('/manage/sync')).get_text()
+    assert '1 loose added' in soup(client.get('/workbench/sync')).get_text()
 
 
 def test_send_review_untick_removal_and_result(client, remote):
@@ -144,7 +145,7 @@ def test_the_pages_before_setup_show_the_notice(app4, tmp_path, monkeypatch):
     """#68: no database is not a 500 (moved here from test_bw_small_68_sync.py)."""
     from tests.web_fixtures import logged_in
     monkeypatch.setenv('BW_DB_PATH', str(tmp_path / 'not-set-up' / 'brickwork.db'))
-    for path in ('/manage/sync', '/manage/sync/rebrickable/link'):
+    for path in ('/workbench/sync', '/workbench/sync/rebrickable', '/manage/sync/rebrickable/link'):
         response = logged_in(app4).get(path)
         assert response.status_code == 503
         assert 'database is not available' in response.get_data(as_text=True)

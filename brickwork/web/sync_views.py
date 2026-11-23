@@ -111,24 +111,112 @@ def _page(template, **context):
     return response
 
 
-@web_page.get('/manage/sync')
+_SITE_DESCRIPTIONS = {
+    'rebrickable': 'Set lists, wishlist, part lists and Lost Parts; minifigures as a check',
+    'brickset': 'Sets with counts, notes, rating and flags; minifigures',
+    'bricklink': 'Store inventory, orders, price guide; wanted lists by file',
+    'brickowl': 'Collection lots, wishlists, inventory, orders; a daily budget per kind',
+}
+
+
+def _account_name(status):
+    """Linked account name if status carries one, else 'none'."""
+    user_cred = (status.get('credentials') or {}).get('user') or {}
+    link = status.get('link') or {}
+    for value in (status.get('account'), status.get('username'),
+                  user_cred.get('account'), user_cred.get('username'), user_cred.get('name'),
+                  link.get('account'), link.get('username'), link.get('name')):
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return 'none'
+
+
+def _last_sync(status):
+    """Newest pull or send time formatted with stamp, or 'Never'."""
+    times = [t for t in ((status.get('last_pull') or {}).get('at'), (status.get('last_send') or {}).get('at')) if t]
+    return stamp(max(times)) if times else 'Never'
+
+
+def _state_tag(status, connected):
+    """Second tag for a connected site when status carries a waiting count."""
+    if not connected or 'waiting' not in status or status['waiting'] is None:
+        return None
+    waiting = status['waiting']
+    if waiting:
+        return dict(text=f"{waiting} {'change' if waiting == 1 else 'changes'} waiting", dashed=True)
+    if status.get('last_pull') or status.get('last_send'):
+        return dict(text='In sync', dashed=False)
+    return None
+
+
+def _last_import(db):
+    """Newest file-import receipt time formatted with stamp, or 'Never'."""
+    row = db.execute(
+        "SELECT at FROM event WHERE (field='receipt' AND entity_kind IN ('import', 'file_import', 'import_legacy', 'legacy_import')) "
+        "OR (entity_kind='import' AND field='applied') ORDER BY id DESC LIMIT 1"
+    ).fetchone()
+    return stamp(row['at']) if row and row['at'] else 'Never'
+
+
+@web_page.get('/workbench/sync')
 @login_required
 @_unavailable
-def bw_sync():
+def bw_sync_hub():
+    from flask import current_app
+    from ..core import sync
+    with _db() as db:
+        sites = []
+        for source in ('rebrickable', 'brickset'):
+            status = sync.status(db, source)
+            connected = bool(status['credentials']['user']['configured'])
+            sites.append(dict(
+                key=source, label=sync.LABELS[source], description=_SITE_DESCRIPTIONS[source],
+                connected=connected, state_tag=_state_tag(status, connected),
+                account=_account_name(status), last_sync=_last_sync(status),
+                action_label='Open' if connected else 'Connect',
+                url=url_for('web.bw_sync_site', source=source) if connected else url_for('web.bw_sync_link', source=source),
+            ))
+        keys_url = url_for('web.bw_admin', page='catalogues')
+        for key, label in (('bricklink', 'BrickLink'), ('brickowl', 'Brick Owl')):
+            sites.append(dict(
+                key=key, label=label, description=_SITE_DESCRIPTIONS[key],
+                connected=False, state_tag=None, account='none', last_sync='Never',
+                action_label='Connect', url=keys_url,
+            ))
+        import_url = url_for('web.bw_import_legacy') if 'web.bw_import_legacy' in current_app.view_functions else url_for('web.bw_add', mode='file')
+        import_export = dict(last_import=_last_import(db), last_export='Never', url=import_url)
+        log = _log(db)
+    return _page('web/toni/web/bw_sync_hub.html', title='Sync', sites=sites, import_export=import_export, log=log)
+
+
+@web_page.get('/workbench/sync/<source>')
+@login_required
+@_unavailable
+def bw_sync_site(source):
     from ..core import sync
     from ..core.sync import lost_parts
     from .setup_state import key_missing
+    _source(source)
     with _db() as db:
-        cards = []
-        for source in SOURCES:
-            status = sync.status(db, source)
-            cards.append(dict(status, key_gap=key_missing(source), user=status['credentials']['user']['configured'],
-                              lost_on=sync.lost_parts_on(db, source)))
+        status = sync.status(db, source)
+        cards = [dict(status, key_gap=key_missing(source), user=status['credentials']['user']['configured'],
+                      lost_on=sync.lost_parts_on(db, source))]
         rule = lost_parts.rule(db)
-        log = _log(db)
+        log = [r for r in _log(db) if not r['source'] or r['source'] == source]
         result = lost_result(db, request.args.get('pulled', ''))
-    return _page('web/toni/web/bw_sync.html', screen='sources', title='Collection sync', cards=cards, log=log, lost_result=result, rule_labels=lost_parts.RULE_LABELS,
+    subtitle = f"Bring your collection in from {sync.LABELS[source]}, work on it here, then send changes back."
+    return _page('web/toni/web/bw_sync.html', screen='sources', title=sync.LABELS[source], subtitle=subtitle, source=source,
+                 cards=cards, log=log, lost_result=result, rule_labels=lost_parts.RULE_LABELS,
                  lost_rule=dict(value=rule, label=lost_parts.RULE_LABELS[rule], note=lost_parts.RULE_NOTES[rule]))
+
+
+@web_page.get('/manage/sync')
+@login_required
+def bw_sync():
+    pulled = request.args.get('pulled')
+    if pulled:
+        return redirect(url_for('web.bw_sync_site', source='rebrickable', pulled=pulled))
+    return redirect(url_for('web.bw_sync_hub'))
 
 
 @web_page.get('/manage/sync/<source>/link')
@@ -164,7 +252,7 @@ def bw_sync_plan(source, plan_id):
             plan = sync.load_plan(db, plan_id)
         except Exception as exc:
             flash(_message(exc, source), 'warning')
-            return redirect(url_for('web.bw_sync'))
+            return redirect(url_for('web.bw_sync_site', source=source))
         if plan['source'] != source:
             abort(404)
         budget = _budget(db, source)
@@ -239,11 +327,11 @@ def bw_sync_write(source, action):
                 c = result['counts']
                 if result.get('already_applied'):
                     flash('This plan was already pulled; nothing was added again.', 'info')
-                    return redirect(url_for('web.bw_sync', pulled=result['event_id']))
+                    return redirect(url_for('web.bw_sync_site', source=source, pulled=result['event_id']))
                 flash(f"Pulled · {c['copies']} {'copy' if c['copies'] == 1 else 'copies'}"
                       + (f", {c['stock']} loose" if c.get('stock') else '') + f" and {c['wishes_added'] + c['wishes_changed']} "
                       f"{'wish' if c['wishes_added'] + c['wishes_changed'] == 1 else 'wishes'} added here." + (' ' + _lost_words(c) + '.' if c.get('lost_sets') else ''), 'success')
-                return redirect(url_for('web.bw_sync', pulled=result['event_id']))
+                return redirect(url_for('web.bw_sync_site', source=source, pulled=result['event_id']))
             elif action == 'send_apply':
                 plan_id = form.get('plan_id', '')
                 sync.apply_send(db, plan_id, form.getlist('tick'))
@@ -254,7 +342,7 @@ def bw_sync_write(source, action):
                     abort(400)
                 sync.undo(db, int(event))
                 flash('Pull undone.', 'success')
-                return redirect(url_for('web.bw_sync'))
+                return redirect(url_for('web.bw_sync_site', source=source))
             else:
                 abort(404)
     except (ValueError, sqlite3.Error) as exc:
@@ -262,5 +350,5 @@ def bw_sync_write(source, action):
         if action in ('apply', 'send_apply') and form.get('plan_id'):
             return redirect(url_for('web.bw_sync_plan', source=source, plan_id=form['plan_id']))
         if action == 'undo':
-            return redirect(url_for('web.bw_sync'))
+            return redirect(url_for('web.bw_sync_site', source=source))
     return redirect(back)

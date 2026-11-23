@@ -23,6 +23,7 @@ WCSS = '''
 .wl .quiet{color:var(--tw-text-muted)}
 .wl a{color:var(--tw-accent-text);font-weight:600}
 .tag.fill{background:var(--tw-text);color:var(--tw-bg)}
+.cbx{position:absolute;left:10px;top:10px;width:22px;height:22px;border:1.5px solid var(--tw-text-muted);border-radius:3px;background:var(--tw-surface)}
 .fchips{display:flex;gap:8px;flex-wrap:wrap}
 .fchip{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;border:1.5px solid var(--tw-divider);border-radius:3px;font:500 13.5px var(--tw-font);color:var(--tw-text-2);white-space:nowrap}
 .fchip.on{border-color:var(--tw-accent);background:var(--tw-accent-soft);color:var(--tw-accent-text)}
@@ -68,7 +69,7 @@ def wl_block(w):
 def wtile(w, width=None, img_h=112, lists=False, stack=False):
     wd = f'width:{width}px;' if width else ''
     meta = w['meta'] + (f' · {w["lst"]}' if lists else '')
-    return (f'<div class="stile" style="{wd}gap:0">{pic(w["img"], img_h)}<div class="num" style="{"flex-direction:column;align-items:flex-start;gap:5px" if stack else ""}"><span style="font-size:16px">{w["n"]}</span>{stag(w["state"])}</div>'
+    return (f'<div class="stile" style="{wd}gap:0"><div style="position:relative">{pic(w["img"], img_h)}<span class="cbx"></span></div><div class="num" style="{"flex-direction:column;align-items:flex-start;gap:5px" if stack else ""}"><span style="font-size:16px">{w["n"]}</span>{stag(w["state"])}</div>'
             f'<div class="nm">{w["name"]}</div><div class="meta">{meta}</div>{wl_block(w)}</div>')
 
 
@@ -85,25 +86,33 @@ def viewseg(tiles):
 
 
 def head(phone, h1, sub, extra=''):
-    btns = ('' if phone else '<div style="margin-left:auto;display:flex;gap:10px;align-items:center"><span class="btn sec sm">Select</span><span class="btn sec sm">Upload CSV</span>'
-            f'<span class="btn sm">{ic("plus", 16)}Add to wishlist</span></div>')
-    return (f'<div class="head"><div><div class="lbl">Planning · Wishlist</div><h1>{h1}</h1><p>{sub}</p></div>{btns}</div>')
+    return f'<div class="head"><div><div class="lbl">Planning · Wishlist</div><h1>{h1}</h1><p>{sub}</p></div></div>'
 
 
 def controls(phone, scope=0, tiles=True, lists=True):
-    seg = ('<div class="seg"><span class="on">All lists</span><span>Wanted sets</span><span>Gifts</span></div>' if scope == 0
-           else '<div class="seg"><span>All lists</span><span class="on">Wanted sets</span><span>Gifts</span></div>')
+    """The shipped toolbar: list tabs with Manage lists, Export, Print and Download CSV; search with Filters and Sort; condition tabs; the state chips (new);
+    the count with the tile and list switch. A tile carries its own select checkbox (the shipped select mode)."""
     if scope == 0:
-        cond = chips([('All', 5), ('Used', 3), ('New', 1), ('Not yet filled', 5)])
+        ltabs = [('All lists', 5, True), ('Wanted sets', 3, False), ('Gifts', 2, False)]
+        cond = [('All', 5), ('Used', None), ('New', None), ('Not yet filled', 5)]
         price = chips([('All', 5), ('Buy now', 1), ('Wait', 1), ('No max', 1), ('Not comparable', 1), ('No price', 1)])
+        count = '5 sets'
     else:
-        cond = chips([('All', 3), ('Used', 2), ('New', 1), ('Not yet filled', 3)])
+        ltabs = [('All lists', 5, False), ('Wanted sets', 3, True), ('Gifts', 2, False)]
+        cond = [('All', 3), ('Used', None), ('New', None), ('Not yet filled', 3)]
         price = chips([('All', 3), ('Buy now', 1), ('Wait', 1), ('No max', 0), ('Not comparable', 0), ('No price', 1)])
-    sort = '<span class="btn sec sm">Sort: buy now first</span>'
-    row3 = (f'<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">{sort}<span style="margin-left:auto">{viewseg(tiles)}</span></div>')
-    return (f'<div style="display:flex;flex-direction:column;gap:12px"><div style="overflow:hidden">{seg}</div>'
-            f'<div><div class="lbl" style="margin-bottom:6px">Condition</div>{cond}</div>'
-            f'<div><div class="lbl" style="margin-bottom:6px">State</div>{price}</div>{row3}</div>')
+        count = '3 sets'
+    tabs = '<div class="stabs">' + ''.join(f'<span class="{"on" if on else ""}">{t} <span class="mono" style="color:var(--tw-text-muted);padding:0;border:0">{n}</span></span>' for t, n, on in ltabs) + '</div>'
+    ctabs = '<div class="stabs">' + ''.join(f'<span class="{"on" if i == 0 else ""}">{t}{"" if n is None else f" <span class=mono style=color:var(--tw-text-muted);padding:0;border:0>{n}</span>"}</span>' for i, (t, n) in enumerate(cond)) + '</div>'
+    acts = ''.join(f'<span class="btn sec sm">{t}</span>' for t in ('Manage lists', 'Export', 'Print', 'Download CSV'))
+    search = (f'<div style="display:flex;gap:8px;align-items:center"><span class="input" style="flex:1;{"" if phone else "max-width:340px;"}color:var(--tw-text-muted)">Number or name</span>'
+              + (f'<span class="btn sec sm" style="width:44px;padding:0">{ic("sliders", 18)}</span><span class="btn sec sm" style="width:44px;padding:0">{ic("sliders", 18)}</span>' if phone
+                 else f'<span class="btn sec sm">{ic("sliders", 16)}Filters</span><span class="btn sec sm">{ic("sliders", 16)}Sort</span>') + '</div>')
+    top = (f'<div style="overflow:hidden">{tabs}</div><div style="display:flex;gap:10px;flex-wrap:wrap">{acts}</div>' if phone
+           else f'<div style="display:flex;align-items:flex-end;gap:16px"><div style="flex:1;min-width:0">{tabs}</div><div style="display:flex;gap:10px;padding-bottom:6px">{acts}</div></div>')
+    return (f'<div style="display:flex;flex-direction:column;gap:12px">{top}{search}<div style="overflow:hidden">{ctabs}</div>'
+            f'<div><div class="lbl" style="margin-bottom:6px">State</div>{price}</div>'
+            f'<div style="display:flex;align-items:center"><span class="mono" style="font-size:13px;color:var(--tw-text-2)">{count}</span><span style="margin-left:auto">{viewseg(tiles)}</span></div></div>')
 
 
 def wishlist(phone):
@@ -146,10 +155,8 @@ def wlist(phone):
 def empty(phone):
     body = (f'<div style="padding:{"28px 16px" if phone else "40px 32px"};display:flex;flex-direction:column;gap:{"18px" if phone else "22px"};max-width:760px">'
             f'<div class="lbl">Planning · Wishlist</div><h1 style="font:600 {"26px/32px" if phone else "34px/40px"} var(--tw-font);margin:0">Nothing is on your wishlist yet</h1>'
-            '<p style="font:400 15px/1.5 var(--tw-font);color:var(--tw-text-2);margin:0;max-width:52ch">Add a set you want and a price you would pay. Brick Work then tells you when it is under your max. '
-            'Your collection, your parts and the other Planning pages work as before.</p>'
-            '<div style="display:flex;gap:10px;flex-wrap:wrap"><span class="btn">Add to wishlist</span><span class="btn sec">Upload CSV</span></div>'
-            '<p style="font-size:13px;color:var(--tw-text-muted);margin:0">A CSV is a BrickLink or Rebrickable wanted list.</p></div>')
+            '<p style="font:400 15px/1.5 var(--tw-font);color:var(--tw-text-2);margin:0;max-width:52ch">Use Add in the top bar to put a set you want on your wishlist, with the price you would pay. '
+            'Brick Work then tells you when it is under your max. Your collection, your parts and the other Planning pages work as before.</p></div>')
     return (bf.phone_shell if phone else bf.desk_shell)('Planning', 'Wishlist', body)
 
 
@@ -175,21 +182,29 @@ def detail_cards():
 
 def detail(phone):
     w = WISHES[0]
+    links = f'<span class="ext" style="height:32px">BrickLink {ic("ext", 14)}</span><span class="ext" style="height:32px">Brickset {ic("ext", 14)}</span>'
     hero = (f'<div style="font:600 13px var(--tw-font);color:var(--tw-accent-text);display:flex;align-items:center;gap:4px">{ic("back", 16)}Wishlist</div>'
             f'<div style="display:flex;gap:20px;align-items:{"flex-start" if phone else "center"}"><div style="width:{110 if phone else 200}px;flex:none">{pic(w["img"], 84 if phone else 150, 8)}</div>'
             f'<div style="flex:1;min-width:0"><div class="mono" style="font-size:13px;color:var(--tw-text-muted)">{w["n"]} · 2010 · Pirates II</div>'
             f'<h1 style="font:600 {22 if phone else 34}px/1.15 var(--tw-font);letter-spacing:-.015em;margin:3px 0 10px">{w["name"]}</h1>'
-            f'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="tag">Wants used</span>{stag("buy")}</div></div></div>')
+            f'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="tag">Wants used</span>{stag("buy")}'
+            + ('' if phone else f'<span style="margin-left:12px;display:flex;gap:8px">{links}</span>') + '</div></div></div>'
+            + (f'<div style="display:flex;gap:8px">{links}</div>' if phone else ''))
     answer = ('<div style="border-top:1.5px solid var(--tw-rule);padding-top:12px"><div style="font:600 18px var(--tw-font)">€10.86 under your max</div>'
               '<div class="mono" style="font-size:12.5px;color:var(--tw-text-2);margin-top:3px">Used avg €79.14 · BrickLink · your max €90.00</div></div>')
     wish, prices = detail_cards()
-    cards = (f'<div style="display:flex;flex-direction:column;gap:14px">{wish}{prices}</div>' if phone
-             else f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start">{wish}{prices}</div>')
+    inv = ('<div class="card" style="padding:14px;display:flex;flex-direction:column;gap:10px"><span class="lbl" style="color:var(--tw-text)">Consists of</span>'
+           '<div class="stabs"><span class="on">Parts <span class="mono" style="color:var(--tw-text-muted);padding:0;border:0">0</span></span><span>Minifigures</span><span>Instructions &amp; Box</span></div>'
+           '<div style="font-size:14px;color:var(--tw-text-2);padding:6px 0 4px">No inventory recorded.</div></div>')
+    if phone:
+        cards = f'<div style="display:flex;flex-direction:column;gap:14px">{wish}{prices}{inv}</div>'
+    else:
+        cards = f'<div style="display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:20px;align-items:start"><div>{inv}</div><div style="display:flex;flex-direction:column;gap:14px">{wish}{prices}</div></div>'
     body = f'<div style="padding:{"16px 16px" if phone else "22px 32px"} 0;display:flex;flex-direction:column;gap:14px;max-width:1240px">{hero}{answer}{cards}</div>'
     return (bf.phone_shell if phone else bf.desk_shell)('Planning', 'Wishlist', body)
 
 
-FRAMES = [('59-wishlist', wishlist, (860, 1720)), ('60-wishlist-list', wlist, (760, 1250)), ('61-wishlist-empty', empty, (700, 844)), ('62-wishlist-detail', detail, (900, 1000))]
+FRAMES = [('59-wishlist', wishlist, (940, 1900)), ('60-wishlist-list', wlist, (760, 1250)), ('61-wishlist-empty', empty, (700, 844)), ('62-wishlist-detail', detail, (1250, 1250))]
 
 
 def sources():

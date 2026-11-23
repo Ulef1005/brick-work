@@ -1215,7 +1215,7 @@
    "world": "showcase",
    "path": "/workbench/storage?labels=select-none",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "34-Storage",
@@ -1224,7 +1224,7 @@
    "world": "showcase",
    "path": "/workbench/storage?labels=select-three",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "34-Storage",
@@ -1233,7 +1233,7 @@
    "world": "edge",
    "path": "/workbench/storage?labels=ready",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "34-Storage",
@@ -1242,7 +1242,7 @@
    "world": "showcase",
    "path": "/workbench/storage?labels=warning",
    "built": true,
-   "approved": true
+   "approved": false
   },
   {
    "screen": "34-Storage",

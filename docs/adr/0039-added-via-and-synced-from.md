@@ -21,9 +21,9 @@ Recommendation: option 1, with the lookup table.
 ## Decision
 
 - Schema 4.7 → 4.8, additive (`brickwork/store4/added_via.sql`).
-- `origin(id, kind)`: `hand`; the sites `rebrickable`, `brickset`, `bricklink`, `brickowl`; the files `bricklink_xml`, `rebrickable_csv`, `brickset_csv`, `brickowl_xml`, `brickwork_export`; and the one import from another app (its value names that app, as the importer module does).
+- `origin(id, kind)`: `hand`; the sites `rebrickable`, `brickset`, `bricklink`, `brickowl`; the files `bricklink_xml`, `rebrickable_csv`, `brickset_csv`, `brickowl_xml`, `brickwork_export`; the channels `api`, `cli`, `mcp`; and the one import from another app (its value names that app, as the importer module does).
 - `copy.added_via`, `stock.added_via`, `wish.added_via` reference it. NULL is a row older than 4.8 and reads **Before this release**. A trigger refuses any change, so the value is fixed from creation. A kind move (set ↔ box and the like) carries the value to the new row.
-- Every route writes `origins.current()`: `hand` (the app, the API, MCP and the CLI), or the origin a sync run, file import or the import from another app opens with `origins.adding(...)` around its writes. A test fails when a new `INSERT` of one of these rows leaves the column out.
+- Every route writes `origins.current()`: `hand` (the web app), the writer's channel (`api`, `cli` or `mcp`, set by `audit_origin` and, for MCP, by the `X-Brickwork-Channel: mcp` header its client sends), or the origin a sync run, file import or the import from another app opens with `origins.adding(...)` around its writes, which wins over the channel. The decision on the channels is Ulf's, 2026-11-23: "Separate labels for API, CLI and MCP". A test fails when a new `INSERT` of one of these rows leaves the column out.
 - `synced_from(copy_id | stock_id | wish_id, site, list_key, list_name, synced_at)`: exactly one row reference, one row per site and list (`list_key` '' for the site's collection as a whole). A pull touches every live copy, set-like stock row and wish of the linked list whose item the site holds, made by this pull or not; its receipt keeps a compact entry per touched row and its Undo takes them back, leaving a row a later run touched again.
 - API v2 serves both read only as `source` on `Copy`, `Stock` and `Wish` (`RowSource`); MCP reads the same bodies.
 
@@ -34,6 +34,20 @@ Recommendation: option 1, with the lookup table.
 - #531 fills `list_key` and `list_name` from the Rebrickable set lists, and renames them with `origins.rename_list`.
 - A sync that matches thousands of rows writes as many `synced_from` updates and receipt entries (about 60 bytes each).
 - Reversible: drop the three columns, the triggers, `synced_from` and `origin`, and nothing else reads them.
+
+## Known limits
+
+Found in the review of 2026-11-23 and left as they are, each a decision or a cost of the design.
+
+- **Migrated rows read "Before this release".** Rows from the 3.3 migration keep NULL, with no origin of their own for the old tracker. The trigger also refuses NULL to a value, so a later relabel needs its own schema step. The issue asks for the migration label; this differs from it and waits for the owner's confirmation.
+- **Rows written before the channels existed read "By hand" or "Before this release",** and, in the web app, order receipts and builds from stock read "By hand" (through the API, CLI or MCP they read the channel). A store created by an earlier build of this unreleased 4.8 (the first draft pull requests) has no channel rows: rebuild it, there is no 4.9 step for it. The channel header is set by the caller, so an API client can claim `mcp`.
+- **Unticked rows get no new "last synced" date,** and that skips the rows of that item that already match (the site holds 3, the collection 1, the row is unticked: the existing copy is not stamped).
+- **Undoing pulls out of order** leaves the older pull's date on rows both pulls matched: undo pull 1 while pull 2 is live, then undo pull 2, and the row shows pull 1's date with nothing left to undo it. A later run that changed a line again is left to that run (`untouch` returns False).
+- **An item merge with a twin row,** and a merge of stock rows, leave the Last synced from lines on the archived loser; the survivor gets none.
+- **`_mark_synced` stamps every live copy** of an item the site holds, also when the site holds fewer than the collection.
+- **The invariant "every writer writes Added via" rests on a test of the source, not on the database** (no NOT NULL, no insert trigger). Demo worlds mix NULL with "By hand" rows.
+- **Kind move of a stock row of quantity N:** copy 1 keeps the original Last synced from line, copies 2 to N get new lines that no pull receipt knows. Undoing the pull afterwards clears copy 1's line and leaves the others; the kind move's own Undo is then refused.
+- **A pull writes one receipt entry per matched row,** also when nothing changes: about 5,000 sets are about 350 KB of event data per pull, with no cap.
 
 ## Links
 

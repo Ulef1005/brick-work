@@ -487,7 +487,6 @@ def move_kind_in(db, item_id, new_kind, *, via, actor=None, operation_key=None):
     db.execute('PRAGMA defer_foreign_keys=ON')
     log = RowLog(db)
     stock_rows = wish_rows = plan = None
-    synced_rows = {}
     stamp = now()
     # 1. the rows of the old kind go (the guards refuse a kind change, and a row of the new kind, while they exist)
     if old == 'set':
@@ -497,9 +496,6 @@ def move_kind_in(db, item_id, new_kind, *, via, actor=None, operation_key=None):
         for row, photos, flags in plan:
             for photo in photos:
                 log.update('photo', photo, stock_id=None)             # re-attached below, to the first copy
-            synced_rows[row['id']] = log.select('synced_from', 'stock_id=?', (row['id'],))
-            for synced in synced_rows[row['id']]:                     # #551: made again below, on the first copy
-                log.delete('synced_from', synced)
             log.delete('stock', row)
     else:
         stock_rows = log.select('stock', 'item_id=?', (item_id,))
@@ -524,6 +520,7 @@ def move_kind_in(db, item_id, new_kind, *, via, actor=None, operation_key=None):
         _insert_stock(log, item_id, new_kind, plan)
     elif new_kind == 'set':
         for row, photos, flags in plan:
+            synced_rows = log.select('synced_from', 'stock_id=? ORDER BY id', (row['id'],))  # #551: Last synced from follows every copy
             for number in range(row['quantity']):
                 copy_id = str(uuid.uuid4())
                 log.insert('copy', id=copy_id, item_id=item_id, inventory_source='none', inventory_version=None, fetched_inventory_id=None,
@@ -535,11 +532,14 @@ def move_kind_in(db, item_id, new_kind, *, via, actor=None, operation_key=None):
                 for flag in flags:
                     log.insert('copy_flag', copy_id=copy_id, flag_id=flag['flag_id'])
                 if number == 0:
-                    for synced in synced_rows.get(row['id'], []):
-                        log.insert('synced_from', copy_id=copy_id, stock_id=None, wish_id=None, site=synced['site'], list_key=synced['list_key'],
-                                   list_name=synced['list_name'], synced_at=synced['synced_at'])
+                    for synced in synced_rows:
+                        log.update('synced_from', synced, copy_id=copy_id, stock_id=None)
                     for photo in log.select('photo', 'id IN (%s)' % ','.join('?' * len(photos)) if photos else '0', [p['id'] for p in photos]):
                         log.update('photo', photo, copy_id=copy_id)
+                else:
+                    for synced in synced_rows:
+                        log.insert('synced_from', copy_id=copy_id, stock_id=None, wish_id=None, site=synced['site'],
+                                   list_key=synced['list_key'], list_name=synced['list_name'], synced_at=synced['synced_at'])
     else:
         for row in stock_rows:
             log.insert('stock', **{**{c: row[c] for c in log.cols('stock')}, 'kind': new_kind})
@@ -559,7 +559,8 @@ def move_kind_in(db, item_id, new_kind, *, via, actor=None, operation_key=None):
 
 def _refuse_later_sync(db, changes):
     """#551: a sync that matched a row the kind move made (a Last synced from line the move did not write) would dangle once the row goes."""
-    made = {(c['t'], c['a']['id']) for c in changes if c['b'] is None and c['t'] in ('copy', 'stock', 'wish')}
+    deleted = {(c['t'], c['b']['id']) for c in changes if c['a'] is None and c['t'] in ('copy', 'stock', 'wish')}
+    made = {(c['t'], c['a']['id']) for c in changes if c['b'] is None and c['t'] in ('copy', 'stock', 'wish')} - deleted
     own = {c['a'].get('id', c['a'].get('_rowid')) for c in changes if c['a'] is not None and c['t'] == 'synced_from'}
     for table, row_id in sorted(made):
         for (sid,) in db.execute(f'SELECT id FROM main.synced_from WHERE {table}_id=?', (row_id,)).fetchall():

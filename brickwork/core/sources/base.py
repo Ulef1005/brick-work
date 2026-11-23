@@ -42,11 +42,13 @@ def audit_origin(via, actor=None):
     """Keep app-initiated source writes audited as app, including workers."""
     if via not in ('app', 'cli', 'api', 'import', 'migration'):
         raise ValueError('invalid audit origin')
+    from ...store4 import origins
     token = AUDIT_ORIGIN.set(via)
     actor_token = AUDIT_ACTOR.set(actor if via == 'api' else None)
     explicit_token = AUDIT_EXPLICIT.set(True)
     try:
-        yield
+        with origins.channel(via if via in ('api', 'cli') else None):
+            yield
     finally:
         AUDIT_ORIGIN.reset(token)
         AUDIT_ACTOR.reset(actor_token)

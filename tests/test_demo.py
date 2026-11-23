@@ -2,6 +2,7 @@
 import json
 import re
 import sqlite3
+from pathlib import Path
 
 import pytest
 
@@ -97,6 +98,13 @@ def test_shim_answers_writes_and_carries_the_manifest(site):
     assert "document.querySelector('[data-bw-topbar]')" in banner and 'top.after(bar)' in banner and 'document.body.prepend(bar)' in banner   # under the site's top bar when there is one
     # Missing-picture tiles say where the app gets pictures (checked against the pipeline's pictures step).
     assert 'Loads from BrickLink when you add the set' in shim and 'Loads from Rebrickable or BrickLink with Refresh pictures' in shim
+
+
+def test_the_shim_orders_a_query_by_name_then_value_like_the_export():
+    """Continue in the Part Runner picker sends the copies in the page's checkbox order; the export keys them by name and value (key_of), so the
+    shim must sort the same way or the picking view is 'Not part of the demo'."""
+    shim = (Path(__file__).resolve().parents[1] / 'brickwork/demo/shim.js').read_text()
+    assert '.sort(([a, x], [b, y]) => a < b ? -1 : a > b ? 1 : x < y ? -1 : x > y ? 1 : 0)' in shim
 
 
 def test_keys_and_files():

@@ -74,11 +74,12 @@ def digest(name):
 # Refreshed for schema 4.7 (#489): `copy.checked_by` is a new NULL column and a check receipt names it; compared table by table with main at 4.6, only `meta`, `copy` and `event` differ in each world, catalogue.db not at all.
 # Refreshed for schema 4.8 (#551): `added_via` on copy, stock and wish ('hand' for every row the worlds make through the app's routes), the
 # `origin` and `synced_from` tables, and receipts that carry the column; compared table by table with main at 4.7, only `meta`, `copy`, `stock`,
-# `wish`, `event`, `origin` and `synced_from` differ in each world, catalogue.db not at all.
+# `wish`, `event`, `origin` and `synced_from` differ in each world, catalogue.db not at all. Refreshed again when the channels (`api`, `cli`,
+# `mcp`) joined `origin`: only the three `origin` rows are new.
 BEFORE = {
-    'demo': 'f3d8a2a7941d27321b51a0196dc83ac4593450edc551f6e5ae597a77653aaca7',
-    'showcase': '030641071715acb326c994ca2f17f3335d69b0fc2caa6bafd4c05854efbd410b',
-    'extras': '88bffea37696a265715f158ec22e3635d81615fb3ec1dd644d39edc815c479ed',
+    'demo': 'dcdf03efaf77ecebe120d710d083a028521bcff7483c192978c55ec0fedf76e1',
+    'showcase': '71b7cc89746b400372dcfb50be975f07c0c1622a7c9a05a3738c47a43c4586ef',
+    'extras': 'bc3aafc33610d317208746ad33d780508f469deaf1162a7e854557ec01f05d14',
 }
 
 

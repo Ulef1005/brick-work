@@ -7623,11 +7623,14 @@ components:
           - brickowl_xml
           - brickwork_export
           - bricktracker
+          - api
+          - cli
+          - mcp
           - null
           description: How the row arrived. null for a row made before schema 4.8 ("Before this release").
         added_via_label:
           type: string
-          description: The words the app shows, such as `By hand`, `Rebrickable sync` or `Before this release`.
+          description: The words the app shows, such as `By hand`, `Rebrickable sync`, `Via the API` or `Before this release`.
         last_synced_from:
           type: array
           items:

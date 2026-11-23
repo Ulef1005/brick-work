@@ -1,8 +1,8 @@
 """Where a row came from (#551, schema 4.8; ADR 0039): Added via and Last synced from.
 
 **Added via** is one fixed value on every copy, loose-stock row and wish, written when the row is made and never changed (a trigger refuses
-it). Every route that makes a row writes `current()`: "hand" unless the caller is inside `adding(<origin>)`, which a sync run, a file
-import or the import from another app opens around its writes. A row older than 4.8 keeps NULL and reads "Before this release".
+it). Every route that makes a row writes `current()`: "hand" unless the caller is inside `adding(<origin>)` (which a sync run, a file
+import or the import from another app opens around its writes) or a channel (`api`, `cli`, `mcp`) is set. A row older than 4.8 keeps NULL and reads "Before this release".
 
 **Last synced from** (`synced_from`) is a separate fact: a row added by hand can be matched by a later sync. One row per site and list
 (list_key '' is the site's collection as a whole); `touch` writes or refreshes one and returns what Undo needs, `untouch` takes it back.
@@ -16,13 +16,16 @@ HAND = 'hand'
 # id -> kind; the same rows as `origin` in added_via.sql (tests/test_origins.py pins the two together)
 ORIGINS = {
     'hand': 'hand',
+    'api': 'channel', 'cli': 'channel', 'mcp': 'channel',
     'rebrickable': 'site', 'brickset': 'site', 'bricklink': 'site', 'brickowl': 'site',
     'bricklink_xml': 'file', 'rebrickable_csv': 'file', 'brickset_csv': 'file', 'brickowl_xml': 'file', 'brickwork_export': 'file',
     'bricktracker': 'import',
 }
 SITES = tuple(o for o, kind in ORIGINS.items() if kind == 'site')
+CHANNELS = tuple(o for o, kind in ORIGINS.items() if kind == 'channel')
 LABELS = {
     'hand': 'By hand',
+    'api': 'Via the API', 'cli': 'Via the CLI', 'mcp': 'Via MCP',
     'rebrickable': 'Rebrickable sync', 'brickset': 'Brickset sync', 'bricklink': 'BrickLink sync', 'brickowl': 'Brick Owl sync',
     'bricklink_xml': 'BrickLink file', 'rebrickable_csv': 'Rebrickable file', 'brickset_csv': 'Brickset file', 'brickowl_xml': 'Brick Owl file',
     'brickwork_export': 'Brick Work export',
@@ -31,12 +34,13 @@ LABELS = {
 }
 TABLES = {'copy': 'copy_id', 'stock': 'stock_id', 'wish': 'wish_id'}
 
-_current = ContextVar('brickwork_added_via', default=HAND)
+_current = ContextVar('brickwork_added_via', default=None)
+_channel = ContextVar('brickwork_channel', default=None)
 
 
 def current():
-    """The Added via value for a row made now: the innermost `adding(...)`, else "hand"."""
-    return _current.get()
+    """The Added via value for a row made now: the innermost `adding(...)`, else the channel when set, else "hand"."""
+    return _current.get() or _channel.get() or HAND
 
 
 @contextmanager
@@ -49,6 +53,18 @@ def adding(origin):
         yield origin
     finally:
         _current.reset(token)
+
+
+@contextmanager
+def channel(name):
+    """Set the writer's channel (`api`, `cli`, `mcp`, or None to clear it) for rows made outside `adding(...)`."""
+    if name is not None and name not in CHANNELS:
+        raise Store4Error(f'{name!r} is not a channel')
+    token = _channel.set(name)
+    try:
+        yield name
+    finally:
+        _channel.reset(token)
 
 
 def label(origin):

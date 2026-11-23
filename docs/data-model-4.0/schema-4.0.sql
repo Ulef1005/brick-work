@@ -1090,11 +1090,12 @@ ALTER TABLE copy ADD COLUMN checked_by TEXT CHECK(checked_by IS NULL OR checked_
 
 -- Where a row came from, schema 4.8 (#551). `origin` names every way a copy, a loose-stock row or a wish can arrive; a later way is one
 -- INSERT in a later step (a lookup table, so no CHECK has to be rebuilt). NULL added_via: the row is older than 4.8 ("Before this release").
-CREATE TABLE origin(id TEXT PRIMARY KEY NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('hand','site','file','import'))) STRICT;
+CREATE TABLE origin(id TEXT PRIMARY KEY NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('hand','site','file','import','channel'))) STRICT;
 INSERT INTO origin(id, kind) VALUES('hand','hand'),
  ('rebrickable','site'),('brickset','site'),('bricklink','site'),('brickowl','site'),
  ('bricklink_xml','file'),('rebrickable_csv','file'),('brickset_csv','file'),('brickowl_xml','file'),('brickwork_export','file'),
- ('bricktracker','import');
+ ('bricktracker','import'),
+ ('api','channel'),('cli','channel'),('mcp','channel');
 ALTER TABLE copy ADD COLUMN added_via TEXT REFERENCES origin(id);
 ALTER TABLE stock ADD COLUMN added_via TEXT REFERENCES origin(id);
 ALTER TABLE wish ADD COLUMN added_via TEXT REFERENCES origin(id);

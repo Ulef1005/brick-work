@@ -69,6 +69,7 @@ nav:
   - User guide:
       - Tutorials:
           - tutorials/index.md
+          - tutorials/take-the-demo-tour.md
           - tutorials/first-set.md
           - tutorials/finish-a-half-built-set.md
           - tutorials/build-from-your-bulk.md

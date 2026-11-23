@@ -120,3 +120,15 @@
   /* the frame draws no status on a phone; it stays for screen readers (visually hidden, not display:none) */
   #bw-ledger.bw-orders[data-b] [data-order-panel=count] .order-count-state {position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0!important}
 }
+/* Review allocation: each line's identity as the count panel's (the name over the colour tag and the part number), and on a phone the counts
+   "n available · n allocated" on their own line below them, in mono 13 px, muted (Ulf's #503 comment, 23.11.; design's corrected phone state). */
+#bw-ledger.bw-orders[data-b] [data-order-panel=allocation] .order-alloc-head>.bw-identity {display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;gap:3px 8px;min-width:0}
+#bw-ledger.bw-orders[data-b] [data-order-panel=allocation] .order-alloc-head>.bw-identity>strong {order:1;flex:1 0 100%;font:600 14px/1.45 var(--tw-font)}
+#bw-ledger.bw-orders[data-b] [data-order-panel=allocation] .order-alloc-head>.bw-identity>.bw-colour {order:2;flex:none}
+#bw-ledger.bw-orders[data-b] [data-order-panel=allocation] .order-alloc-head>.bw-identity>.mono {order:3;flex:none;font:400 12px/1.45 var(--tw-mono);color:var(--tw-text-2)}
+@media(max-width:767.98px) {
+  #bw-ledger.bw-orders[data-b] [data-order-panel=allocation] .order-alloc-head {display:grid;grid-template-columns:44px minmax(0,1fr);grid-template-rows:auto auto;column-gap:12px;row-gap:4px;align-items:start}
+  #bw-ledger.bw-orders[data-b] [data-order-panel=allocation] .order-alloc-head>.bw-picture {grid-column:1;grid-row:1/3}
+  #bw-ledger.bw-orders[data-b] [data-order-panel=allocation] .order-alloc-head>.bw-identity {grid-column:2;grid-row:1}
+  #bw-ledger.bw-orders[data-b] [data-order-panel=allocation] .order-alloc-head>p {grid-column:2;grid-row:2;margin:0;font:400 13px/1.45 var(--tw-mono);color:var(--tw-text-muted)}
+}

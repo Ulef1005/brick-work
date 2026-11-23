@@ -93,7 +93,7 @@ def line(phone=True):
             + li('Plate 2 x 8', 'White', '3034', 6, 6) + li('Brick Sloped 33 3 x 1', 'Red', '4286', 4, 4) + '</div>')
     return bf.phone_shell('Workbench', 'Orders', body)
 
-WITH_OFFLINE = False   # the offline frame (53) lands with its APPROVALS line once the wiki-agent confirms Ulf's words
+WITH_OFFLINE = True
 NAMES = {'A': '50-404-missing-piece', 'B': '50-404-drawer', 'C': '50-404-everywhere'}
 SIZES = ((False, 1440, 1000), (True, 390, 844))
 

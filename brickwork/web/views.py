@@ -1259,7 +1259,10 @@ def bw_build_scout_page(item_id):
     try:
         with database(brickwork_path(), read_only=True) as db:
             if item_id is None:
-                shown = scout_page.context(db, params, int(request.args['set']) if request.args.get('set', '').isdigit() else None)
+                if params['scan']:
+                    shown = scout_page.context(db, params, int(request.args['set']) if request.args.get('set', '').isdigit() else None)
+                else:
+                    shown = scout_page.idle(db, params)      # opening Build Scout starts nothing; the Scan button does (#668)
             else:
                 panel = scout_page.detail(db, params, item_id)
                 if panel is None:

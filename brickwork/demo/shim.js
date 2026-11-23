@@ -141,10 +141,10 @@
     for (let node = walker.nextNode(); node; node = walker.nextNode()) calmNode(node);
   }
   document.addEventListener('DOMContentLoaded', () => {
+    calmTree(document.body);   // the text the server rendered (the footer) is rewritten once, before the observer takes over
     new MutationObserver(records => records.forEach(r => {
       if (r.type === 'characterData') calmNode(r.target);
       else r.addedNodes.forEach(n => { if (n.nodeType === 3) calmNode(n); else if (n.nodeType === 1) calmTree(n); });
-      if (r.type === 'childList' && r.target.nodeType === 1) calmTree(r.target);
     })).observe(document.body, {childList: true, subtree: true, characterData: true});
   });
 

@@ -146,5 +146,5 @@ def test_the_real_demo_reaches_lot_sorter_build_scout_and_order_missing_parts(tm
     lots = list((out / 'collection' / 'lots').glob('*/_detect-1/index.html'))
     assert lots and 'candidate sets' in lots[0].read_text() and 'Pull list' in lots[0].read_text()
     assert list(lots[0].parent.parent.glob('pull/*/index.html'))
-    assert re.search(r'Order list \d+ lines', text('planning/order-missing-parts'))
+    assert re.search(r'Order list [1-9]\d* lines', text('planning/order-missing-parts'))
     assert manifest['skipped'] == {}

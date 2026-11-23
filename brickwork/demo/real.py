@@ -42,7 +42,7 @@ CHECKED_SETS = ('7938-1', '10210-1', '7213-1')        # the copies the loose sto
 # Parts whose picture is also stored without a colour: the Change variant screen shows an item with no colour chosen, and looks for (item, NULL) before (item, colour).
 COLOURLESS = {('32039', '0'), ('42135', '0')}
 # Build Scout: sets whose parts sit loose in a drawer, with the share of their pieces the loose stock covers (the screen lists sets from 60 %)
-SCOUT_STOCK = {'7213-1': 0.9, '21028-1': 0.8, '8043-1': 0.66}
+SCOUT_STOCK = {'10254-1': 0.72, '21028-1': 0.8, '8043-1': 0.66}   # none of the three the finishing stock works on, so the Matchmaker's numbers stay as they were
 FINISHING = {'7938-1': 1.0, '10210-1': 1.0, '7213-1': 0.5}
 STICKER_SETS = ('7938-1', '8043-1', '7213-1')          # the sets that hold a sticker sheet (a part of the category Stickers)
 LOT = uid('lot', 'flea-market-bag')

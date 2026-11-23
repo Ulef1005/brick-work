@@ -100,6 +100,23 @@ def test_shim_answers_writes_and_carries_the_manifest(site):
     assert 'Loads from BrickLink' not in shim and 'Loads from Rebrickable or BrickLink' not in shim
 
 
+def test_the_shim_rewrites_the_footer_and_the_error_texts():
+    """The REWRITE table of shim.js (run in Node) turns the server-rendered footer and the refused-write texts into the demo's own wording."""
+    import subprocess
+    from tests import rendered
+    node = rendered.need_node()
+    shim = (Path(__file__).resolve().parents[1] / 'brickwork/demo/shim.js').read_text()
+    table = shim[shim.index('  const REWRITE = ['):shim.index('  function calmNode')]
+    samples = ['Authentication disabled', 'Set and part data from Rebrickable · 14 ms', 'Set and part data from Rebrickable · 9ms',
+               'Not saved · waiting for network · The answer could not be saved. Retry.', 'Search unavailable. Try again.', 'Sets']
+    program = table + "\nconst say = text => { for (const [pattern, to] of REWRITE) if (pattern.test(text)) return text.replace(pattern, to); return text; };\n" \
+        + f"console.log(JSON.stringify({json.dumps(samples)}.map(say)));"
+    shown = json.loads(subprocess.run([node, '-e', program], capture_output=True, text=True, check=True).stdout)
+    assert shown == ['Demo: nothing is saved', 'Set and part data from Rebrickable', 'Set and part data from Rebrickable', 'Demo: this answer is shown here and not saved',
+                     'Search is not part of the demo', 'Sets']
+    assert 'calmTree(document.body)' in shim   # the footer is server-rendered, so it is rewritten once at load
+
+
 def test_the_shim_keys_a_url_like_the_export_does():
     """keyOf in shim.js (run in Node) and export.key_of give the same route for the same URL, query order and repeated names included: Continue in the
     Part Runner picker sends the copies in checkbox order and the export keys them by name and value."""

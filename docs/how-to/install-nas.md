@@ -16,7 +16,7 @@ For a Synology NAS (Container Manager) or any Docker host you manage with Portai
 ```yaml
 services:
   brickwork:
-    image: ghcr.io/ulef1005/brick-work:1.1.1
+    image: ghcr.io/ulef1005/brick-work:1.2.0
     container_name: brickwork
     restart: unless-stopped
     ports:

@@ -136,7 +136,7 @@ Pick your platform, none of these needs Git:
 With Git and Docker Compose:
 
 ```sh
-git clone --branch v1.1.1 https://github.com/Ulef1005/brick-work.git
+git clone --branch v1.2.0 https://github.com/Ulef1005/brick-work.git
 cd brick-work
 mkdir -p data
 sudo chown 1000:1000 data    # the container runs as uid 1000

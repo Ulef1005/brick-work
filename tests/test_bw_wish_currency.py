@@ -395,3 +395,20 @@ def test_a_figure_wish_page_offers_no_edit_in_status_when_the_figure_is_also_in_
     status = BeautifulSoup(client.get(f'/collection/wishes/{wish}').data, 'html.parser').select_one('[data-module=status]')
     assert status and 'in sets' in status.get_text()
     assert not status.select('button[data-bw-open=bc-edit]') and not status.select('a[title="Edit in set copy"]')
+
+
+def test_edit_wish_hides_the_currency_status_and_owners_and_keeps_their_values(coll, wish, client):
+    """#670: the currency fields show only for a wish stored in another currency than Settings; Status and Owners are not on Edit wish,
+    and the wish's status and owner flags ride along hidden, so a save keeps them; Tags stay."""
+    coll.setting('bricklink_currency', 'EUR')
+    owner, status, tag = coll.flag('Alex', 'owner'), coll.flag('Sell', 'status'), coll.flag('Gift', 'tag')
+    for f in (owner, status):
+        coll.sql('INSERT INTO wish_flag(wish_id, flag_id) VALUES (?, ?)', (wish, f))
+    soup = BeautifulSoup(client.get(f'/collection/wishes/{wish}').data, 'html.parser')
+    form = soup.select_one('#bc-edit-form')
+    assert form.select_one('input[name=max_price_currency]') is None and form.select_one('input[name=max_price_boxed_currency]') is None
+    assert form.select_one('#bc-owners') is None and form.select_one('#bc-status-flags') is None and form.select_one('#bc-tags-label')
+    assert sorted(i['value'] for i in form.select('input[type=hidden][name=flags]')) == sorted([owner, status])
+    coll.sql("UPDATE wish SET max_price_currency='USD' WHERE id=?", (wish,))
+    soup = BeautifulSoup(client.get(f'/collection/wishes/{wish}').data, 'html.parser')
+    assert soup.select_one('#bc-edit-form input[name=max_price_currency]')['value'] == 'USD'      # another currency shows, so Not comparable is explainable

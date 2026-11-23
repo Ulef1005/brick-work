@@ -23,7 +23,7 @@
   fold();
 
   // a filter number is as wide as its text, as the frame draws "0 %" and "any – any" (a number field has no content sizing of its own)
-  function fit(input) { input.style.width = input.value ? (input.value.length + 0.4) + 'ch' : ((input.placeholder || '').length * 0.9) + 'ch'; }
+  function fit(input) { input.style.width = input.value ? (Math.max(input.value.length, 1) + 1) + 'ch' : (Math.max((input.placeholder || '').length, 1) + 0.5) + 'ch'; }   // #669: a digit of the label font is a little wider than 1ch
   root.querySelectorAll('.bs-input-wrap input[type=number]').forEach(function (input) { fit(input); input.addEventListener('input', function () { fit(input); }); });
 
   // one pop-over open at a time

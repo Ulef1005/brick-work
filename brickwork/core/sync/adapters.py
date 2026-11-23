@@ -204,7 +204,8 @@ class RebrickableUser(Rebrickable):
                 target[number] = target.get(number, 0) + quantity
                 per_list.setdefault(str(list_id), {})[number] = quantity
         names = {str(r['id']): r['name'] for r in lists if r['id'] in owned_ids or r['id'] == wish}   # #531: each linked list's name as read now
-        return dict(owned=owned, wanted=wanted, per_list=per_list, owned_lists=owned_ids, names=names)
+        all_list_ids = [str(r['id']) for r in lists]
+        return dict(owned=owned, wanted=wanted, per_list=per_list, owned_lists=owned_ids, names=names, all_list_ids=all_list_ids)
 
     def send(self, row, link, state):
         """Set the count of one set on the target list: POST (new), PUT (count) or DELETE (0)."""

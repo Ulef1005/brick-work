@@ -320,23 +320,36 @@ def keep_list_names_on(db, source):
     return source == 'rebrickable' and _setting(db, source, 'link', {}).get('keep_list_names', True) is not False
 
 
-LIST_ACTIONS = {'renamed': ('rename', 'keep'), 'removed': ('drop', 'keep'), 'unchanged': ('skip',)}
+LIST_ACTIONS = {'renamed': ('rename', 'keep'), 'removed': ('drop', 'keep'), 'unlinked': ('keep', 'drop'), 'unchanged': ('skip',)}
 
 
 def _plan_lists(db, plan, remote, switch):
     """#531: the plan keeps the linked lists (key, name, the set numbers in each) and, per row, the names of the lists its set is in; and one
-    preview line per list this collection recorded before: renamed, removed or unchanged at Rebrickable, with the number of sets whose
-    source detail it carries and the default choice (Rename it, Drop the name, Skip). A list name follows its list on every set that carries
+    preview line per list this collection recorded before: renamed, removed, unlinked or unchanged at Rebrickable, with the number of sets whose
+    source detail it carries and the default choice (Rename it, Drop the name, Keep, Skip). A list name follows its list on every set that carries
     it, picked or not; nothing else on a copy changes."""
     if switch is not None and switch != keep_list_names_on(db, 'rebrickable'):
         link(db, 'rebrickable', {'keep_list_names': bool(switch)})
+    keep = keep_list_names_on(db, 'rebrickable')
+    if not keep:
+        plan['lists'] = dict(keep=False, names={}, members={}, preview=[])
+        for row in plan['rows']:
+            row['lists'] = []
+        return
     names = {k: v for k, v in (remote.get('names') or {}).items()}
-    members = {k: sorted(v) for k, v in remote['per_list'].items() if k in names}
-    plan['lists'] = dict(keep=keep_list_names_on(db, 'rebrickable'), names=names, members=members, preview=[])
+    members = {k: sorted(n for n, q in v.items() if q > 0) for k, v in remote['per_list'].items() if k in names}
+    plan['lists'] = dict(keep=True, names=names, members=members, preview=[])
+    wish = str(plan['link'].get('wishlist') or '')
     for row in plan['rows']:
-        row['lists'] = [names[k] for k in sorted(members) if row.get('remote_no') in members[k]]
+        want = row['kind'] == 'wanted'
+        row['lists'] = [names[k] for k in sorted(members) if (k == wish) == want and row.get('remote_no') in members[k]]
+    all_ids = {str(i) for i in remote.get('all_list_ids', names)}
+    mixed = origins.mixed_lists(db, 'rebrickable')
     for key, (old, count) in origins.lists_of(db, 'rebrickable').items():
-        state = 'unchanged' if names.get(key) == old else 'renamed' if key in names else 'removed'
+        if key in names:
+            state = 'unchanged' if names[key] == old and key not in mixed else 'renamed'
+        else:
+            state = 'unlinked' if key in all_ids else 'removed'
         plan['lists']['preview'].append(dict(key=key, old_name=old, name=names.get(key), state=state, sets=count, action=LIST_ACTIONS[state][0],
                                              choices=list(LIST_ACTIONS[state])))
 
@@ -403,6 +416,7 @@ def plan_pull(db, source, *, http=None, lost_parts_switch=None, keep_list_names=
                 summary=_summary(out, unmatched, rows))
     if source == 'rebrickable' and remote.get('per_list') is not None:
         _plan_lists(db, plan, remote, keep_list_names)
+        plan['link'] = _setting(db, source, 'link', {})
     if section is not None:
         plan['lost'] = section
     return _save_plan(db, plan)
@@ -512,7 +526,7 @@ def apply_pull(db, plan_id, ticked=None, *, lost=None, picks=None, lists=None, v
         if section and section.get('on'):
             receipt['lost'] = _lost_report(section, lost_parts.apply(db, section, lost, picks, new_copies=set(receipt['copies']),
                                                                     translate=translate, flag_name='imported from ' + LABELS[source]))
-        receipt['lists'] = _apply_lists(db, plan, list_choices)
+        receipt['lists'] = _apply_lists(db, plan, list_choices) if (plan.get('lists') or {}).get('keep') else dict(renamed=[], dropped=[])
         receipt['synced'] = _mark_synced(db, plan, wish_list, stamp, list_choices, left={(r['kind'], r['item_id']) for r in plan['rows'] if r['tickable']} - {(r['kind'], r['item_id']) for r in rows})
         receipt['jobs'] = queue_new_items(db, touched)
         receipt['baseline_before'] = _setting(db, source, 'baseline')
@@ -580,7 +594,7 @@ def _mark_synced_by_list(db, plan, wish_list, stamp, mapping, lists, choices, le
         items = json.dumps(sorted({mapping[n] for n in lists['members'][key] if mapping.get(n) and (kind, mapping[n]) not in left}))
         if kind == 'owned':
             targets = [('copy', 'SELECT id FROM main.copy WHERE archived_at IS NULL AND item_id IN (SELECT value FROM json_each(?)) ORDER BY id', (items,)),
-                       ('stock', f'SELECT id FROM main.stock WHERE archived_at IS NULL AND kind IN ({_KINDS_SQL}) AND item_id IN (SELECT value FROM json_each(?)) ORDER BY id', (items,))]
+                       ('stock', f'SELECT id FROM main.stock WHERE archived_at IS NULL AND quantity>0 AND kind IN ({_KINDS_SQL}) AND item_id IN (SELECT value FROM json_each(?)) ORDER BY id', (items,))]
         else:
             targets = [('wish', f'SELECT id FROM main.wish WHERE archived_at IS NULL AND wishlist_id=? AND kind IN ({_KINDS_SQL}) '
                                 'AND item_id IN (SELECT value FROM json_each(?)) ORDER BY id', (wish_list, items))]

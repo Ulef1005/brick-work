@@ -192,6 +192,7 @@ def main(argv=None):
                 if not path.is_file():
                     raise ValueError("Run 'brickwork setup' first")
                 with closing(connect(path, read_only=True)) as db:
+                    db.execute('BEGIN')
                     make = dict(csv=collection_export.to_csv, bricklink=collection_export.to_xml, rebrickable=collection_export.to_rebrickable_csv)[args['format']]
                     result = make(db, args['kind'], args['ids'])
             content = result['content']

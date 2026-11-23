@@ -50,7 +50,7 @@ docker compose exec brickwork brickwork export part --format rebrickable
 
 The file goes to standard output; add `> sets.csv` after the command to keep it in a file on your computer.
 
-`csv` is Brick Work's own columns, one row per copy or loose stock row. `bricklink` (inventory XML) adds up rows of the same item, colour and condition. `rebrickable` (CSV) adds up rows of the same item and colour. Both leave out a row that has no number on that site. The command prints how many rows it wrote and left out. Add a BrickLink or Rebrickable file again through **Add**, **File** to get the same sets and parts. Brick Work's own CSV is for reading, not for adding back. The API serves the same files at `GET /export/collection.csv`, `/export/collection.xml` and `/export/collection.rebrickable.csv`. See the [CLI reference](../reference/cli.md#export).
+`csv` is Brick Work's own columns, one row per copy or loose stock row. `bricklink` (wanted-list XML) adds up rows of the same item, colour and condition. `rebrickable` (CSV) adds up rows of the same item and colour. Both leave out a row that has no number on that site. The command prints how many rows it wrote and left out. Add a BrickLink or Rebrickable file again through **Add**, **File** to get the same sets and parts. Brick Work's own CSV is for reading, not for adding back. The API serves the same files at `GET /export/collection.csv`, `/export/collection.xml` and `/export/collection.rebrickable.csv`. See the [CLI reference](../reference/cli.md#export).
 
 ## Back up the media folder
 

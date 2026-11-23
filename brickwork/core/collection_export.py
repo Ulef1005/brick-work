@@ -9,7 +9,7 @@ from .secrets import secret_values
 from .sources.base import redact
 
 KINDS = ('set', 'part', 'minifigure')
-MAX_IDS = 2000
+MAX_IDS = 200
 OWN_COLUMNS = (
     'Kind', 'Item number', 'Name', 'Colour', 'Colour id', 'Quantity', 'Condition',
     'Completeness', 'Storage', 'Place', 'Price paid', 'Price paid currency',

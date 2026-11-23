@@ -138,7 +138,7 @@ brickwork export KIND [--format csv|bricklink|rebrickable] [--id ID ...]
 | Argument | Meaning |
 |---|---|
 | `KIND` | `set`, `part` or `minifigure`. |
-| `--format` | `csv` (Brick Work's own columns, the default), `bricklink` (inventory XML) or `rebrickable` (CSV). |
+| `--format` | `csv` (Brick Work's own columns, the default), `bricklink` (wanted-list XML) or `rebrickable` (CSV). |
 | `--id` | Export only this copy or stock row id. Repeat it for more. |
 
 The BrickLink file adds up rows of the same item, colour and condition; the Rebrickable file rows of the same item and colour. A row with no number on the target site is left out. A summary (`exported`, `skipped`) goes to standard error. The same files come from `GET /export/collection.csv`, `/export/collection.xml` and `/export/collection.rebrickable.csv`.

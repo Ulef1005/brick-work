@@ -422,7 +422,7 @@ def plan_pull(db, source, *, http=None, lost_parts_switch=None, keep_list_names=
                 summary=_summary(out, unmatched, rows))
     if source == 'rebrickable' and remote.get('per_list') is not None:
         _plan_lists(db, plan, remote, keep_list_names)
-        plan['link'] = _setting(db, source, 'link', {})
+        plan['link'] = dict(link_value, keep_list_names=keep_list_names_on(db, source))
     if section is not None:
         plan['lost'] = section
     return _save_plan(db, plan)

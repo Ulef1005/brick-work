@@ -42,6 +42,8 @@ If you keep your sets in several Rebrickable set lists, each set keeps the names
 
 **A list removed at Rebrickable.** One line, *Removed at Rebrickable; the source detail of 2 sets changes*, with **Drop the name** chosen. The name goes from every set that carries it; the sets, their copies and counts stay. **Keep** leaves the name.
 
+**A list you unlinked at Rebrickable.** One line, *Unlinked at Rebrickable; its names stay*, with **Keep** chosen. The list still exists there, so nothing is dropped.
+
 **An unchanged list.** One line, *Unchanged*, with **Skip**.
 
 A rename or a removal changes only the list name: copies, counts and every other field stay as they are, on sets you pick and sets you do not. **Undo this pull** puts the names back as they were before the pull.

@@ -1,11 +1,22 @@
 """Standalone application initialization."""
 import logging
+import random
 import time
 from flask import Flask, g, render_template, request
 from werkzeug.middleware.proxy_fix import ProxyFix
 from . import settings
 from .web.auth import LoginManager
 from .version import __version__
+
+NOT_FOUND_VARIANTS = ('A', 'B', 'C')   # the three approved 404 pages (#503 review artifact version 4): the missing piece, the empty drawer, everywhere
+
+
+def not_found_variant(app):
+    """The 404 page for this response, picked at random each time (Ulf, 23.11.: "rotate them in the app"; no state kept). The screen gate's app
+    alone may name one with `?variant=` (SYSTEM_VARIANT_FROM_QUERY), so each version has a fixed capture."""
+    if app.config.get('SYSTEM_VARIANT_FROM_QUERY') and request.args.get('variant') in NOT_FOUND_VARIANTS:
+        return request.args['variant']
+    return random.choice(NOT_FOUND_VARIANTS)
 
 
 def setup_app(app: Flask) -> None:
@@ -46,7 +57,7 @@ def setup_app(app: Flask) -> None:
     app.add_url_rule('/sw.js', 'web.shell_worker', shell_worker)
     @app.errorhandler(404)
     def missing(error):
-        return render_template('web/toni/error.html', error='Page not found', status=404), 404
+        return render_template('web/toni/error.html', error='Page not found', status=404, variant=not_found_variant(app)), 404
 
     @app.errorhandler(500)
     def failed(error):

@@ -24,5 +24,8 @@ The approved frames of commission U, built by `../sources/b/b_frames.py` (`build
 | `44-source-chip/` | N2-20 Set detail with the source of a copy: Added via, Last synced from, Checked on Rebrickable (#551, #489); early landing for U, the rest of N round 2 is on `design/sync-n` | N round 2 |
 | `48-sets-pulled-copy/` | N2-24 Sets with the label of a pulled copy, "Checked on Rebrickable" (#489); early landing for U | N round 2 |
 | `49-storage-select-mode/` | N2-25 Storage, Select mode: a checkbox beside each copy's bar, "2 copies picked" with Move to another storage (#500) | N round 2 |
+| `50-404-missing-piece/`, `50-404-drawer/`, `50-404-everywhere/` | System pages: three funny 404 pages (A, B, C) the app rotates, light and dark, 1440 and 390 (#503, Ulf 23.11.) | #503 |
+| `51-500-drawer-stuck/` | The 500 page in the drawer tone ("This drawer is stuck") | #503 |
+| `52-order-allocation-line/` | Review allocation, an item line on the phone: "6 available · 0 allocated" on its own line below the name and colour | #503 |
 
 These frames replace the v1.3 frames in `../screens/` screen by screen as each is approved; `../screens/` and its manifest stay the record of what is built today until the app is rebuilt (milestone U). Set pictures are empty white tiles with their alt text, because this public repo carries no catalogue pictures; the review showed the real pictures (https://claude.ai/artifact/FX8PAj3J9cgVkY42oPGc8a, version 3).

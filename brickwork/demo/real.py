@@ -41,6 +41,8 @@ STATUS = {'complete': ['built'], 'gaps': ['built', 'needs-check'], 'progress': [
 CHECKED_SETS = ('7938-1', '10210-1', '7213-1')        # the copies the loose stock can finish: a finished check is behind them
 # Parts whose picture is also stored without a colour: the Change variant screen shows an item with no colour chosen, and looks for (item, NULL) before (item, colour).
 COLOURLESS = {('32039', '0'), ('42135', '0')}
+# Build Scout: sets whose parts sit loose in a drawer, with the share of their pieces the loose stock covers (the screen lists sets from 60 %)
+SCOUT_STOCK = {'7213-1': 0.9, '21028-1': 0.8, '8043-1': 0.66}
 FINISHING = {'7938-1': 1.0, '10210-1': 1.0, '7213-1': 0.5}
 STICKER_SETS = ('7938-1', '8043-1', '7213-1')          # the sets that hold a sticker sheet (a part of the category Stickers)
 LOT = uid('lot', 'flea-market-bag')
@@ -133,6 +135,7 @@ class Layer(showcase.Layer):
                 self.loose_parts(db)
                 self.loose_figures(db, ids)
                 self.finishing_stock(db)
+                self.scout_stock(db)
                 self.finished_checks(db)
                 self.prices(db)
                 self.damaged_prices(db)
@@ -160,6 +163,21 @@ class Layer(showcase.Layer):
                 for row in rows[:max(1, round(len(rows) * share))]:
                     stock.add_loose(db, item_id=dataset.item_by(db, 'parts', row['part']), color_id=dataset.colour_by(db, row['color']['id']),
                                     quantity=row['missing'] + row['damaged'], condition='used', storage_id='storage-drawer-8', via='cli')
+
+    def scout_stock(self, db):
+        """Loose parts in the parts drawer that make three sets buildable or nearly buildable, so Build Scout has something to list. Whole part lines,
+        the biggest first, until the share of the set's pieces is reached."""
+        with transaction(db):
+            for number, share in SCOUT_STOCK.items():
+                rows = sorted((r for r in self.inventories[number]['parts'] if not r['spare'] and r['category'] != 'Stickers'), key=lambda r: (-r['quantity'], r['part']))
+                total = sum(r['quantity'] for r in rows)
+                held = 0
+                for row in rows:
+                    if held >= share * total:
+                        break
+                    stock.add_loose(db, item_id=dataset.item_by(db, 'parts', row['part']), color_id=dataset.colour_by(db, row['color']['id']),
+                                    quantity=row['quantity'], condition='used', storage_id='storage-parts-drawer-unit', via='cli')
+                    held += row['quantity']
 
     def finished_checks(self, db):
         """The copies the loose stock can finish have a finished check behind them (the status 'Set is checked', completeness worked out by the app), as

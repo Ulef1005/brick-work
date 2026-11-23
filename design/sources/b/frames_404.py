@@ -23,7 +23,7 @@ def bricks(n=5, gap=2):
             + ''.join(out) + '</svg>')
 
 def drawer(label='404 · EMPTY'):
-    return ('<svg viewBox="0 0 260 120" width="260" height="120" role="img" aria-label="An empty drawer labelled 404"><defs><pattern id="h404b" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="1.5" height="5" fill="var(--tw-text)"/></pattern></defs>'
+    return (f'<svg viewBox="0 0 260 120" width="260" height="120" role="img" aria-label="An empty drawer labelled {label}"><defs><pattern id="h404b" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="1.5" height="5" fill="var(--tw-text)"/></pattern></defs>'
             '<rect x="10" y="8" width="240" height="30" rx="3" fill="var(--tw-surface)" stroke="var(--tw-text)" stroke-width="1.5"/>'
             '<rect x="10" y="38" width="240" height="72" rx="3" fill="var(--tw-surface)" stroke="var(--tw-text)" stroke-width="1.5"/>'
             '<rect x="22" y="48" width="216" height="52" rx="2" fill="url(#h404b)" opacity=".18"/>'

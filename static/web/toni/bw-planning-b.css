@@ -111,9 +111,9 @@
 #bw-planning:not(#_):not(#_):not(#_) .bp-gap {margin:2px 0 0;padding-top:6px;border-top:1px solid var(--tw-divider);font:600 13px/1.4 var(--tw-font);color:var(--tw-text)}
 #bw-planning:not(#_):not(#_):not(#_) .bp-list-head {display:none}
 /* List view (frame 60): the row is a grid of columns; the identity and values wrappers dissolve into it and the tag sits at the right */
-#bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-list-head {display:grid;grid-template-columns:24px 56px minmax(0,1.6fr) 150px 92px minmax(0,1fr) minmax(0,1.1fr) 120px;gap:14px;padding:0 0 8px;border-bottom:1.5px solid var(--tw-rule);font:600 12px var(--tw-font-label);letter-spacing:.12em;text-transform:uppercase;color:var(--tw-text-muted)}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-list-head {display:grid;grid-template-columns:24px 56px minmax(0,1.6fr) minmax(120px,1.1fr) minmax(96px,.8fr) minmax(88px,.8fr) minmax(0,1.1fr) 120px;gap:14px;padding:0 0 8px;border-bottom:1.5px solid var(--tw-rule);font:600 12px var(--tw-font-label);letter-spacing:.12em;text-transform:uppercase;color:var(--tw-text-muted)}
 #bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-list-head>:nth-child(2) {grid-column:2/span 2}
-#bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-row {position:relative;display:grid;grid-template-columns:24px 56px minmax(0,1.6fr) 150px 92px minmax(0,1fr) minmax(0,1.1fr) 120px;gap:14px;align-items:center;padding:10px 0;min-height:0;border:0;border-bottom:1px solid var(--tw-divider);border-radius:0;background:none}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-row {position:relative;display:grid;grid-template-columns:24px 56px minmax(0,1.6fr) minmax(120px,1.1fr) minmax(96px,.8fr) minmax(88px,.8fr) minmax(0,1.1fr) 120px;gap:14px;align-items:center;padding:10px 0;min-height:0;border:0;border-bottom:1px solid var(--tw-divider);border-radius:0;background:none}
 #bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-identity,#bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-values {display:contents}
 #bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-select {position:static;grid-column:1;grid-row:1}
 #bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-identity .bc-picture {grid-column:2;grid-row:1;width:56px;height:56px}
@@ -131,18 +131,20 @@
 #bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-gap {grid-column:7;grid-row:1;margin:0;padding:0;border:0}
 #bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-wl-r {margin:0}
 #bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-wl-max>span:first-child:not(.bp-max-none),#bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-wl-quiet {display:none}
-#bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-wl-want {justify-content:flex-start;white-space:nowrap}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-wl-want {justify-content:flex-start;flex-wrap:wrap}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-wl-max {flex-wrap:wrap;justify-content:flex-start}
+#bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-list-head[hidden] {display:none}
 @media(max-width:767.98px) {
   #bw-planning:not(#_):not(#_):not(#_) .bp-wishlist .bp-identity .bc-picture {height:92px}
   #bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-list-head {display:none}
   #bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-row {grid-template-columns:24px 56px minmax(0,1fr);gap:4px 12px;align-items:start;padding:12px 0}
   #bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-identity .bc-picture {grid-row:1/span 5}
   #bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-select {grid-row:1/span 5}
-  #bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-identity>div:last-child {padding-right:112px}
-  #bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-state {left:auto;right:0;top:12px;transform:none}
+  #bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-state {position:static;transform:none}   /* in the flow after the number: it cannot lie over a long title */
   #bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bc-identity {display:flex;flex-wrap:wrap;gap:2px 8px}
   #bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bc-identity>strong {flex-basis:100%}
   #bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] :is(.bp-wl-want,.bp-wl-max,.bp-wl-price,.bp-gap) {grid-column:3;grid-row:auto}
   #bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-wl-price {flex-direction:row;align-items:baseline;gap:6px}
   #bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-wl-max>span:first-child:not(.bp-max-none) {display:inline}
 }
+#bw-planning:not(#_):not(#_):not(#_) .bp-conversion {display:block;margin-top:2px;font:400 11.5px/16px var(--tw-mono);color:var(--tw-text-2)}

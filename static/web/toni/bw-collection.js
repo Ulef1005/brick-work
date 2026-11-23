@@ -782,6 +782,8 @@ document.addEventListener?.('click',async event=>{
     }
     const card=scope?.closest('[data-module="prices"]') || document.querySelector('[data-module="prices"]');
     card?.replaceWith(fresh);
+    // A wish's page opens with the answer and a state tag that come from the same prices: they follow the card (#654).
+    for(const selector of ['[data-wish-answer]','.bc-hero-status']){const next=doc.querySelector(selector),current=document.querySelector(selector);if(next&&current)current.replaceWith(next);}
     button.disabled=false;button.textContent=label;
   }catch(error){button.disabled=false;button.textContent=label;if(status){status.textContent=error.message;status.dataset.state='error';}}
   finally{scope?.setAttribute('aria-busy','false');}

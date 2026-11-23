@@ -315,3 +315,54 @@ def test_an_empty_wishlist_says_so_and_drops_the_controls(coll, wish, client):
     assert soup.select_one('.bp-subtitle').text.endswith('work as before.')
     assert not soup.select('[data-bp-search], .bp-price-filter, [data-bp-row]') and soup.select_one('[data-bp-empty]').has_attr('hidden')
     assert soup.select_one('.wl-lists')                                                          # the lists stay: a list can still be made
+
+
+def test_a_converted_price_is_shown_marked_on_the_tile_and_the_wish_page(coll, wish, client):
+    """currency.py's rule: a converted figure is always shown with the sign, the rate and its date (review of #654)."""
+    from brickwork.core import currency
+    coll.sql('UPDATE wish SET max_price=?,max_price_currency=?,condition=? WHERE id=?', ('5.00', 'USD', 'used', wish))
+    coll.price(coll.db.execute('SELECT item_id FROM wish WHERE id=?', (wish,)).fetchone()[0], '4.00', region='eu', currency='EUR', observed=planning.now().isoformat())
+    currency.set_rate(coll.db, 'USD', '1.17')
+    tile = wish_page(client).select_one('[data-bp-row] .bp-gap')
+    assert tile.select_one('.bp-conversion').text.startswith('Price ≈ $4.68 at 1.17')
+    assert tile.text.startswith('$0.32 under your max')
+    page = BeautifulSoup(client.get(f'/collection/wishes/{wish}').data, 'html.parser')
+    assert page.select_one('[data-wish-answer] .bc-wish-conversion').text.startswith('Price ≈ $4.68 at 1.17')
+
+
+def test_only_a_set_wish_has_a_max_with_box_and_a_figure_wish_has_the_wish_card(coll, client):
+    figure = coll.item('minifigs', 'fig-000004')
+    wish = coll.add_wish(figure, condition='used', max_price='9.00', currency='EUR')
+    soup = BeautifulSoup(client.get(f'/collection/wishes/{wish}').data, 'html.parser')
+    card = soup.select_one('[data-module=wanted]')
+    assert card.h2.text == 'Your wish' and card.select_one('.bc-wanted-edit').text.strip() == 'Edit'
+    assert [dt.text for dt in card.select('dl.bc-wish-kv dt')] == ['Wants', 'Filled', 'List', 'Your max'] and 'Max with box' not in soup.select_one('#bc-edit').text
+    assert [t.text for t in soup.select('.bc-hero-status .bc-status')] == ['Wants used', 'No price'] and soup.select_one('[data-wish-answer]')
+    assert 'Not recorded' not in card.select_one('dl.bc-wish-kv').text and 'On the wishlist' not in soup.text
+    set_wish = coll.add_wish(coll.item('sets', '1000-1'), condition='used')
+    assert 'Max with box' in BeautifulSoup(client.get(f'/collection/wishes/{set_wish}').data, 'html.parser').select_one('[data-module=wanted]').text
+
+
+def test_the_error_state_shows_only_the_error(coll, wish, client, monkeypatch):
+    monkeypatch.setattr(planning, 'wishes', lambda db: (_ for _ in ()).throw(ValueError('boom')))
+    soup = wish_page(client)
+    assert soup.h1.text == 'Wishlist' and 'Nothing is on your wishlist' not in soup.text and soup.select_one('[role=alert]')
+    assert not soup.select_one('.bp-subtitle').text
+
+
+def test_the_list_view_heads_hide_with_no_rows_and_the_tag_is_in_the_flow_on_a_phone():
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[1]
+    css = (root / 'static/web/toni/bw-planning-b.css').read_text()
+    scope = '#bw-planning:not(#_):not(#_):not(#_)'
+    assert f'{scope} .bp-wishlist[data-view=list] .bp-list-head[hidden] {{display:none}}' in css
+    assert 'minmax(120px,1.1fr) minmax(96px,.8fr) minmax(88px,.8fr)' in css and 'white-space:nowrap}' not in css.split('.bp-wl-want {')[1].split('\n')[0]
+    phone = css.split('@media(max-width:767.98px) {')[-1]
+    assert f'{scope} .bp-wishlist[data-view=list] .bp-state {{position:static;transform:none}}' in phone and 'padding-right:112px' not in phone
+    assert "head.hidden=visible.length===0" in (root / 'static/web/toni/bw-planning.js').read_text()
+    assert wish_page_head_is_hidden_without_rows(root)
+
+
+def wish_page_head_is_hidden_without_rows(root):
+    template = (root / 'templates/web/toni/web/bw_planning.html').read_text()
+    return '<div class="bp-list-head" aria-hidden="true"{% if not total %} hidden{% endif %}>' in template

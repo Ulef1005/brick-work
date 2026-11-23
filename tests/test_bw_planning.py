@@ -853,10 +853,10 @@ def test_47c_wanted_card_and_existing_condition_save_undo(coll, world, client, c
     card = soup.select_one('[data-module=wanted]')
     assert card.h2.text == 'Your wish'                                                          # #655, frame 62
     facts = {dt.text: dd for dt, dd in zip(card.select('dl.bc-wish-kv dt'), card.select('dl.bc-wish-kv dd'))}
-    assert list(facts) == ['Wants', 'Filled', 'List', 'Your max', 'Max with box']
+    assert list(facts) == ['Wants', 'Filled', 'List', 'Your max']                                # a part wish has no max with box: the edit sheet has no such field there
     assert facts['Your max'].text == '€82.39'  # 4.8b: the limit takes the configured currency
     assert facts['Wants'].text == {'new': 'New', 'used': 'Used', 'any': 'Any', None: 'Not recorded'}[condition]
-    assert facts['Max with box'].text == 'Not set' and 'Tags' not in card.text
+    assert 'Max with box' not in facts and 'Tags' not in card.text
     assert 'Keep every wish fact' in soup.select_one('.bc-wish-facts').text
     assert 'Max in EUR' in soup.select_one('.bc-wish-facts').text
     form = soup.select_one('#bc-edit form[data-bc-action=save]')

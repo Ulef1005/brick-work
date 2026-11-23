@@ -79,6 +79,8 @@ const states=[{type:'S',number:'1',name:'A',colour:'',under:'noprice',state:4},{
 assert.deepEqual(api.filter(states,'',{under:'noprice'},'state').map(r=>r.number),['1']);
 assert.deepEqual(api.filter(states,'',{under:'nomax'},'state').map(r=>r.number),['4']);
 assert.deepEqual(api.filter(states,'',{},'state').map(r=>r.number),['3','6','2','4','5','1']);
+const filledRows=states.map(r=>({...r,filled:r.number==='3'?'true':'false'}));
+assert.deepEqual(api.filter(filledRows,'',{},'state').map(r=>r.number),['6','2','4','5','1','3']);   // a filled wish goes last, then the state, then the number
 assert.equal(api.filter(rows,'',{},'cost')[0].number,'20');
 (async()=>{
  assert.equal(count.textContent,'2 results');

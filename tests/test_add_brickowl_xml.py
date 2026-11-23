@@ -48,7 +48,7 @@ def test_file_rows_reads_set_and_marks_non_set_unresolved():
             'note': None,
         },
         {
-            'unresolved': '1 lots without a set number in their name (LEGO Red Brick 2 x 4)',
+            'unresolved': '1 lot without a set number in their name (LEGO Red Brick 2 x 4)',
             'reason': 'A Brick Owl backup has no BrickLink or Rebrickable numbers, so only sets are read',
         },
     ]
@@ -101,7 +101,7 @@ def test_file_rows_maps_conditions_variant_quantity_note_and_lot_id_fallback():
             'note': None,
         },
         {
-            'unresolved': '1 lots without a set number in their name (100012)',
+            'unresolved': '1 lot without a set number in their name (100012)',
             'reason': 'A Brick Owl backup has no BrickLink or Rebrickable numbers, so only sets are read',
         },
     ]
@@ -158,3 +158,9 @@ def test_brickowl_origin_and_confirm_stamps_added_via(app4, client, csrf, read):
     assert row['added_via'] == 'brickowl_xml'
     assert row['condition'] == 'new'
     assert row['note'] == 'Brick Owl backup'
+
+
+def test_one_lot_with_an_odd_quantity_does_not_stop_the_file():
+    rows = add.file_rows(_backup(_lot(name='LEGO Castle Keep Set 1000'), _lot(name='LEGO Duplo Set 2070', quantity='0')), 'b.xml', 'set')
+    assert [r.get('number') for r in rows] == ['1000-1', None]
+    assert rows[1] == {'unresolved': 'LEGO Duplo Set 2070', 'reason': 'Quantity must be between 1 and 9999'}

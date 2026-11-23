@@ -411,16 +411,21 @@ def _brickowl_rows(root):
             others.append(name or (entry.findtext('lot_id') or '').strip() or 'lot')
             continue
         number = match[1] if '-' in match[1] else f'{match[1]}-1'
+        try:
+            count = quantity((entry.findtext('quantity') or '').strip() or '1')
+        except ValueError:
+            result.append(dict(unresolved=name, reason='Quantity must be between 1 and 9999'))
+            continue
         result.append(dict(
             kind='set',
             number=number,
-            quantity=quantity((entry.findtext('quantity') or '').strip() or '1'),
+            quantity=count,
             condition=_brickowl_condition(entry.findtext('condition')),
             note=(entry.findtext('personal_note') or '').strip() or None,
         ))
     if others:
         shown = ', '.join(others[:3]) + (f' and {len(others) - 3} more' if len(others) > 3 else '')
-        result.append(dict(unresolved=f'{len(others)} lots without a set number in their name ({shown})', reason='A Brick Owl backup has no BrickLink or Rebrickable numbers, so only sets are read'))
+        result.append(dict(unresolved=f"{len(others)} {'lot' if len(others) == 1 else 'lots'} without a set number in their name ({shown})", reason='A Brick Owl backup has no BrickLink or Rebrickable numbers, so only sets are read'))
     return result
 
 

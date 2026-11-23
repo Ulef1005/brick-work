@@ -53,10 +53,10 @@
 {% if error %}<p class="notice" role="status">{{ error }}</p>{% endif %}
 {% if shown %}
 {% set a = shown.answer %}{% set f = params.filters %}{% set opts = shown.options %}
-<form class="bs-filters" method="get" action="{{ url_for('web.bw_build_scout') }}">
+<form class="bs-filters" id="bs-filters" method="get" action="{{ url_for('web.bw_build_scout') }}"><input type="hidden" name="scan" value="1">
 <details class="bs-more" open data-bs-wide><summary class="btn sec sm bs-more-summary">Filters · 7</summary>
 <div class="bs-fields">
-<div class="field bs-f-src"><span>Parts from</span><details class="bs-pop"><summary class="input bs-pop-summary">{{ a.source.text }}</summary>
+<div class="field bs-f-src"><span>Parts from</span><details class="bs-pop"><summary class="input bs-pop-summary">{{ a.source.text if a else shown.source_text }}</summary>
 <div class="bs-popbody"><fieldset><legend>Count the parts in</legend>
 <label class="bs-check"><input type="checkbox" name="loose" value="1" {% if params.loose %}checked{% endif %}> Loose stock <span class="muted">not in a lot or storage</span></label>
 {% if opts.lots %}<p class="lbl">Lots</p><div class="bs-choices">{% for lot in opts.lots %}<label class="bs-check"><input type="checkbox" name="lot" value="{{ lot.id }}" {% if lot.id in params.lots %}checked{% endif %}> {{ lot.name }}</label>{% endfor %}</div>{% endif %}
@@ -70,9 +70,11 @@
 <div class="field bs-f-size"><span>Size</span><span class="input bs-input-wrap bs-range"><input type="number" name="size_from" min="0" value="{{ f.size_from or '' }}" placeholder="any" aria-label="Fewest parts"><span class="muted">–</span><input type="number" name="size_to" min="0" value="{{ f.size_to or '' }}" placeholder="any" aria-label="Most parts"></span></div>
 <div class="field bs-f-sort"><span>Sort</span><span class="input bs-sort">% available</span></div>
 <button class="btn sec sm" type="submit">Apply</button>
-<p class="cap2">{{ number(a.total) }} of {{ number(a.catalogue.sets) }} sets · {{ number(a.input.pieces) }} loose pieces counted · figures shown separately · swaps listed in the set, never in the %</p>
+{% if a %}<p class="cap2">{{ number(a.total) }} of {{ number(a.catalogue.sets) }} sets · {{ number(a.input.pieces) }} loose pieces counted · figures shown separately · swaps listed in the set, never in the %</p>{% endif %}
 </div></details>
 </form>
+{% if shown.idle %}<div class="bs-start" data-bs-start><p>Build Scout compares the parts you hold loose with every set in the catalogue and ranks the sets you can build. Start the scan here, or choose the stock and the filters and press Apply.</p><a class="btn bs-scan" href="{{ url_for('web.bw_build_scout') }}?{{ query(params, scan=1) }}" data-bs-scan>Scan</a></div>
+{% else %}
 <div class="bs-main">
 <div class="bs-list">
 {% if not shown.has_stock %}<p class="bs-empty">No loose parts to count yet. Add parts with Part Spotter or Add, then come back.</p>
@@ -89,6 +91,7 @@
 </div>
 {% if sel %}{{ panel(sel, true) }}{% endif %}
 </div>
+{% endif %}
 {% endif %}
 {% endif %}
 </div>

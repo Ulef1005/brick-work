@@ -5,6 +5,8 @@ verified: 1.0
 
 # Your first set, start to finish
 
+**Try it first:** [the Sets list in the demo](https://brick-work.app/demo/collection/sets/) shows a collection of seven real sets, three of them incomplete, before you install anything.
+
 Do this once, on a new install. You load the catalogue, add one set, check its parts and see where the gaps show up. It takes about half an hour, most of it counting parts. Every picture comes from an invented collection, so your own set numbers and names will differ.
 
 ## Before you start

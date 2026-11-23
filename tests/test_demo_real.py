@@ -142,7 +142,8 @@ def test_the_real_demo_reaches_lot_sorter_build_scout_and_order_missing_parts(tm
 
     def text(path):
         return re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', ' ', re.sub(r'<(script|style)[^>]*>.*?</\1>', '', (out / path / 'index.html').read_text(), flags=re.S)))
-    assert re.search(r'[1-9] of 7 sets', text('workbench/build-scout')) and 'No set reaches' not in text('workbench/build-scout')
+    assert 'Scan' in text('workbench/build-scout') and 'of 7 sets' not in text('workbench/build-scout')      # opening starts nothing (#668)
+    assert re.search(r'[1-9] of 7 sets', text('workbench/build-scout/_scan-1')) and 'No set reaches' not in text('workbench/build-scout/_scan-1')
     lots = list((out / 'collection' / 'lots').glob('*/_detect-1/index.html'))
     assert lots and 'candidate sets' in lots[0].read_text() and 'Pull list' in lots[0].read_text()
     assert list(lots[0].parent.parent.glob('pull/*/index.html'))

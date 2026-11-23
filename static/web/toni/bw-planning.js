@@ -2,18 +2,21 @@
   'use strict';
   function filter(rows, query, filters, sort, descending=sort==='partout') {
     const text=query.trim().toLocaleLowerCase();
-    const numeric=new Set(['rank','gap','cost','max','undermax','partout']);
+    const numeric=new Set(['state','rank','gap','cost','max','undermax','partout']);
     return rows.filter(r=>(!text || [r.number,r.also,r.name,r.colour].join(' ').toLocaleLowerCase().includes(text)) && Object.entries(filters).every(([k,v])=>!v || (k==='pinned'?String(r[k])===(v==='true'?'1':'0'):Array.isArray(r[k])?r[k].includes(v):String(r[k])===v))).sort((a,b)=>{
       if(sort==='rank' && a.pinned!==b.pinned)return Number(b.pinned)-Number(a.pinned);
+      if(sort==='state' && a.filled!==b.filled)return a.filled==='true'?1:-1;   // a filled wish drops to the bottom, as planning.wishes lists them (#35)
       const missing=x=>x==null || x==='' || x==='None';
       if(numeric.has(sort) && missing(a[sort])!==missing(b[sort]))return missing(a[sort])?1:-1;
       const diff=numeric.has(sort)?Number(a[sort])-Number(b[sort]):String(a[sort]||'').localeCompare(String(b[sort]||''),undefined,{numeric:true});
       return diff*(descending?-1:1) || String(a.number).localeCompare(String(b.number),undefined,{numeric:true});
     });
   }
+  // #654: the Wishlist's default sort, buy now first; the order of the state chips.
+  const STATES=['under','over','nomax','differs','noprice'];
   window.BrickPlanning={filter};
   const root=document.querySelector('#bw-planning');if(!root)return;
-  const nodes=[...root.querySelectorAll('[data-bp-row]')],records=nodes.map(node=>({...JSON.parse(node.dataset.record),node}));
+  const nodes=[...root.querySelectorAll('[data-bp-row]')],records=nodes.map(node=>{const r=JSON.parse(node.dataset.record);return {...r,state:STATES.indexOf(r.under),node};});
   const search=root.querySelector('[data-bp-search]'),sort=root.querySelector('[data-bp-sort]'),order=root.querySelector('[data-bp-order]'),controls=[...root.querySelectorAll('[data-bp-filter]')],panel=root.querySelector('#bp-filters'),message=root.querySelector('[data-bp-message]'),undo=root.querySelector('[data-bp-undo]');
   let previousSort=sort?.value, previousOrder=order?.value || 'asc';
   if(sort && order && root.dataset.screen==='complete-sets' && new URLSearchParams(location.search).get('sort')==='partout'){sort.value='partout';order.value='desc';previousSort='partout';}
@@ -45,6 +48,7 @@
     const matching=new Set(visible.map(r=>r.node));
     nodes.forEach(n=>{n.hidden=!matching.has(n);const wish=n.querySelector('[data-wl-selected]');if(wish && n.hidden && wish.checked){wish.checked=false;wish.dispatchEvent?.(new Event('change',{bubbles:true}));}const selected=n.querySelector('[data-bp-selected]');if(selected && n.hidden)selected.checked=false;});
     syncExport();
+    const head=root.querySelector('.bp-list-head');if(head)head.hidden=visible.length===0;   // the list view's column heads need a row under them
     const container=root.querySelector('[data-bp-rows]');visible.forEach(r=>{r.node.hidden=false;container.append(r.node);});
     root.querySelector('[data-bp-count]').textContent=window.BrickFormatting.resultCount(visible.length,...(root.dataset.screen==='wishlist'?(records.length && records.every(r=>r.type==='S')?['sets','set']:['items','item']):['results']));root.querySelector('[data-bp-empty]').hidden=visible.length>0;
     const chips=root.querySelector('[data-bp-chips]');chips.replaceChildren();

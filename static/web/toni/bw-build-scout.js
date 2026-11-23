@@ -10,8 +10,10 @@
   var scan = root.querySelector('[data-bs-scan]');
   var form = root.querySelector('form.bs-filters');
   if (scan && form) scan.addEventListener('click', function (event) {
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button) return;      // a new tab keeps the plain link
     var changed = [].some.call(form.elements, function (field) {
       if (field.type === 'checkbox' || field.type === 'radio') return field.checked !== field.defaultChecked;
+      if (field.options) return [].some.call(field.options, function (option) { return option.selected !== option.defaultSelected; });
       return field.type !== 'hidden' && 'defaultValue' in field && field.value !== field.defaultValue;
     });
     if (!changed) return;
@@ -19,7 +21,7 @@
     if (form.requestSubmit) form.requestSubmit(); else form.submit();
   });
   if (!scan && form && window.location.search && window.history && history.replaceState) {
-    history.replaceState(history.state, '', window.location.pathname);      // the list page only: a set's own page has no filter form
+    history.replaceState(history.state, '', window.location.pathname + window.location.hash);      // the list page only: a set's own page has no filter form
   }
   var narrow = window.matchMedia('(max-width: 767px)');
 
@@ -75,7 +77,7 @@
       undo.addEventListener('click', function () {
         undo.disabled = true;
         send(root.dataset.undoUrl, {event_id: eventId}).then(function (result) {
-          if (result.ok) window.location.href = scanned; else { box.textContent = result.data.message || 'Nothing was undone'; }
+          if (result.ok) { if (window.location.href === scanned) window.location.reload(); else window.location.href = scanned; } else { box.textContent = result.data.message || 'Nothing was undone'; }
         });
       });
       box.appendChild(undo);

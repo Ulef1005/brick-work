@@ -9,8 +9,10 @@
   selectors.forEach(selector => { selector.value = window.adminTheme.mode; });
   segments.forEach(button => button.setAttribute('aria-pressed', String(button.dataset.themeMode === window.adminTheme.mode)));
  };
- segments.forEach(button => button.addEventListener('click', () => { window.adminTheme.apply(button.dataset.themeMode, true); syncTheme(); }));
- document.addEventListener('admin-theme', syncTheme); syncTheme();
+ if (window.adminTheme) {      // theme.js runs in the head; without it the shell below must still work
+  segments.forEach(button => button.addEventListener('click', () => { window.adminTheme.apply(button.dataset.themeMode, true); syncTheme(); }));
+  document.addEventListener('admin-theme', syncTheme); syncTheme();
+ }
  selectors.forEach(selector => {
   selector.value = window.adminTheme.mode;
   selector.addEventListener('change', () => {

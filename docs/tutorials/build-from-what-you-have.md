@@ -14,8 +14,9 @@ It takes about 15 minutes. You need a Brick Work install with the catalogue load
 ## 1. Rank the catalogue by your stock
 
 1. Open **Workbench → Build Scout**.
-2. Each row is a set, best first. The bar and the percentage say how much of its parts your loose stock covers. On the right are the missing parts, the missing minifigures and an approximate cost to complete.
-3. Narrow the list: **Parts from** chooses which stock counts (loose stock, lots, storages), **Min** is the least percentage, and **Theme**, **Years** and **Size** keep matching sets only.
+2. Press **Scan**. Build Scout does not start on its own.
+3. Each row is a set, best first. The bar and the percentage say how much of its parts your loose stock covers. On the right are the missing parts, the missing minifigures and an approximate cost to complete.
+4. Narrow the list: **Parts from** chooses which stock counts (loose stock, lots, storages), **Min** is the least percentage, and **Theme**, **Years** and **Size** keep matching sets only.
 
 <picture data-bw-screens><source media="(max-width: 600px)" srcset="../img/tutorials/tut-scout-list-phone-390-light.png"><img src="../img/tutorials/tut-scout-list-desktop-1024-light.png#only-light" alt="Build Scout: catalogue sets ranked by the percentage of their parts the loose stock makes, with call-out 1 on the score bar of the best set and, on a wide screen, call-out 2 on its cost."></picture>
 <picture data-bw-screens><source media="(max-width: 600px)" srcset="../img/tutorials/tut-scout-list-phone-390-dark.png"><img src="../img/tutorials/tut-scout-list-desktop-1024-dark.png#only-dark" alt="Build Scout: catalogue sets ranked by the percentage of their parts the loose stock makes, with call-out 1 on the score bar of the best set and, on a wide screen, call-out 2 on its cost."></picture>

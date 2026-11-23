@@ -160,10 +160,10 @@ def test_a_wishs_card_offers_both_maxima_as_buttons(coll, wish, client):
     for field, label in (('max_price', 'Your max'), ('max_price_boxed', 'Max with box')):
         button = limits[field].find_previous_sibling('dt').select_one('button[data-bw-open=bc-edit]')
         assert button.text == label and button['data-bc-focus'] == field
-        assert soup.select_one(f'#bc-edit input[name={field}]') and soup.select_one(f'#bc-edit input[name={field}_currency]')
+        assert soup.select_one(f'#bc-edit input[name={field}]') and not soup.select_one(f'#bc-edit input[name={field}_currency]')   # #670: same currency as Settings
     assert '€100.00' in limits['max_price'].text and 'Not set' in limits['max_price_boxed'].text
     labels = [l.contents[0].strip() for l in soup.select('#bc-edit label') if l.select_one('input[name^=max_price]')]
-    assert labels == ['Your max price', 'Max price currency', 'Max price with box', 'Max with box currency']
+    assert labels == ['Your max price', 'Max price with box']
 
 
 def test_a_wishs_max_with_box_saves_from_the_sheet_and_shows_on_the_card(coll, wish, client):

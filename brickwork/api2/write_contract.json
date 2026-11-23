@@ -1361,6 +1361,63 @@
       "undo_nullable": true
     },
     {
+      "endpoint": "post_sync_rebrickable_parts_plan",
+      "event_nullable": true,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/sync/rebrickable/parts/plan",
+      "piece": "M.11d",
+      "query": [],
+      "required": false,
+      "schema": null,
+      "statuses": [
+        201
+      ],
+      "undo_nullable": true
+    },
+    {
+      "endpoint": "post_sync_rebrickable_parts_apply",
+      "event_nullable": true,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/sync/rebrickable/parts/apply",
+      "piece": "M.11d",
+      "query": [],
+      "required": false,
+      "schema": {
+        "additionalProperties": false,
+        "properties": {
+          "lots": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Row key to lot id: puts a row into another live lot than its list's own.",
+            "type": "object"
+          },
+          "plan_id": {
+            "type": "string"
+          },
+          "ticked": {
+            "description": "Row keys to apply. Left out: every row that adds.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "plan_id"
+        ],
+        "type": "object"
+      },
+      "statuses": [
+        200
+      ],
+      "undo_nullable": true
+    },
+    {
       "endpoint": "post_sync_by_source_pull_plan",
       "event_nullable": true,
       "if_match": false,

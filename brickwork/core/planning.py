@@ -322,18 +322,20 @@ def max_limit(row, price):
 def max_comparison(row, rates=None, price=None, *, conversion='max_conversion'):
     """Compare a quote on a wish (by default the price shown, `display_price`) with the max it is held against (`max_limit`).
 
-    State is 'under' (price at or below the max), 'over', 'differs' (both currencies known and
-    different and no rate for them) or None (no max, no price or a max without a recorded currency).
+    State is 'under' (price at or below the max), 'over', 'differs' (a currency is not recorded, or both are known and
+    different and no rate covers them), 'noprice' (a max is set and there is no price to compare, #654) or None (no max).
     margin = max minus price, only for a real comparison; a converted price is kept on the row under `conversion`.
     """
     price = row.get('display_price') if price is None else price
     maximum, limit_currency = max_limit(row, price)
     limit_currency = (limit_currency or '').upper()
-    if maximum is None or not price or price.get('price') is None or not limit_currency:
+    if maximum is None:
         return None, None
+    if not price or price.get('price') is None:
+        return 'noprice', None
     price_currency = (price.get('currency') or '').upper()
-    if not price_currency:
-        return None, None
+    if not limit_currency or not price_currency:
+        return 'differs', None
     if price_currency != limit_currency:
         # #39: with rates for both currencies, compare the price converted into the max's currency
         # and keep the conversion for the "≈" mark; without them it stays 'differs'.
@@ -357,6 +359,16 @@ def compare_maxima(row, rates=None):
     return row
 
 
+# The Wishlist's one question, "can I buy this set now at a price I accept" (#654): a wish is in exactly one state, shown as a tag. The keys are
+# `max_state` values ('nomax' is a wish with no max); the order is the default sort, buy now first.
+WISH_STATES = ('under', 'over', 'nomax', 'differs', 'noprice')
+WISH_STATE_LABELS = {'under': 'Buy now', 'over': 'Wait', 'nomax': 'No max', 'differs': 'Not comparable', 'noprice': 'No price'}
+
+
+def wish_state(row):
+    return row.get('max_state') or 'nomax'
+
+
 def wishes(db):
     """The live wishes of every active list, as Collection lists them, with the price shown, the comparison with the max, how much is
     filled and the retail line of a set. Filled lines drop to the bottom (#35); the order within each part stays as listed."""
@@ -365,11 +377,13 @@ def wishes(db):
     table = currency.rates(db)
     for row in rows:
         compare_maxima(row, table)
+        row['wish_state'] = wish_state(row)
+        row['state_rank'] = WISH_STATES.index(row['wish_state'])
     wish_progress.annotate(db, rows)
     info = retail.lookup(db, [r['item_id'] for r in rows if r['kind'] == 'set'])
     for r in rows:
         r['retail'] = info.get(r['item_id']) if r['kind'] == 'set' else None
-    return sorted(rows, key=lambda r: r['filled'])
+    return sorted(rows, key=lambda r: (r['filled'], r['state_rank']))
 
 
 def quote(quotes, condition, config, stamp, *, allow_old=False):

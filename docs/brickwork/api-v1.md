@@ -1036,7 +1036,7 @@ including referenced and nested objects; explicitly declared free maps stay open
 | Item detail | `counts.owned` counts live copies plus live loose quantity; `counts.wished` is the same boolean wish check as `add.decorate` for the uncoloured item identity. Both fields are required. Adds `inventory` (catalogue inventory lines) and `matches` (identity matches). `prices` is an array of `PriceCurrent`. |
 | Catalogue item | Adds `category`; `owned` is an integer count, replacing its boolean schema. |
 | Copies, stock, wishes, minifigures | Adds `image_id`, mapped from the browser picture selection. |
-| Wishes | `max_state` maps to `under_max`: true for under/equal, false for over, null when incomparable or missing. The selected quote's amount becomes `current_price`. `max_margin` is a difference, so it does not supply `current_price` and is omitted. |
+| Wishes | `max_state` maps to `under_max`: true for under/equal, false for over, null when incomparable, missing, or a max with no price (the Wishlist page's No price state, #654, has no API value of its own). The selected quote's amount becomes `current_price`. `max_margin` is a difference, so it does not supply `current_price` and is omitted. |
 | Prices | Flat current-price rows become `PriceCurrent {observation, age_days, stale}`. `observation_id` becomes the nested observation's `id`; `age_days` is elapsed whole days or null. Item-price `observations` becomes `records`. |
 | Stale prices | Adds `source_table` (`copies`, `loose_stock`, `wishlist`). The cursor identity includes item type, number, colour, condition and source table. |
 | Sources | `used_today` uses the same durable budget counter as enforcement and the web, including repeated attempts of one job. |

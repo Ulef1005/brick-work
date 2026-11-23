@@ -99,7 +99,7 @@
     if(r.unresolved)identity.append(el('span','status',r.number?'To check':'Unidentified'));
     link.append(identity);row.append(link);
     if(r.unresolved){const unresolved=el('a','','Unresolved items');unresolved.href=config.unresolvedUrl;row.append(unresolved);}
-    if(r.entity==='wish'){const max=el('div','bc-wish-max');max.append(el('span','bc-wish-max-label','Your max price'),el('strong','mono',r.max_price||'Not recorded'));row.append(max);}
+    if(r.entity==='wish'){const max=el('div','bc-wish-max');max.append(el('span','bc-wish-max-label','Your max price'),(r.max_price?el('strong','mono',r.max_price):el('span','bc-wish-max-none','No max set')));row.append(max);}
     const foot=el('div','bc-card-foot');
     if(r.entity==='wish'){
       foot.append(el('span','mono',r.defects||r.quantity+' wanted'));
@@ -782,6 +782,8 @@ document.addEventListener?.('click',async event=>{
     }
     const card=scope?.closest('[data-module="prices"]') || document.querySelector('[data-module="prices"]');
     card?.replaceWith(fresh);
+    // A wish's page opens with the answer and a state tag that come from the same prices: they follow the card (#654).
+    for(const selector of ['[data-wish-answer]','.bc-hero-status']){const next=doc.querySelector(selector),current=document.querySelector(selector);if(next&&current)current.replaceWith(next);}
     button.disabled=false;button.textContent=label;
   }catch(error){button.disabled=false;button.textContent=label;if(status){status.textContent=error.message;status.dataset.state='error';}}
   finally{scope?.setAttribute('aria-busy','false');}

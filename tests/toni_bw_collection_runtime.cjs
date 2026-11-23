@@ -97,7 +97,7 @@ for(const type of ['S','wish','P']){
 { // 4.9d w6: a wish card shows its recorded maximum, or says it is not recorded.
  const withMax=api.buildRow({...records[1],entity:'wish',quantity:3,missing:0,defects:'3 wanted',max_price:'€48.00',lot_links:[]},root.dataset,false,()=>{});
  const without=api.buildRow({...records[1],entity:'wish',quantity:3,missing:0,defects:'3 wanted',lot_links:[]},root.dataset,false,()=>{});
- assert.ok(texts(withMax).includes('Your max price')&&texts(withMax).includes('€48.00'));assert.ok(texts(without).includes('Not recorded'));
+ assert.ok(texts(withMax).includes('Your max price')&&texts(withMax).includes('€48.00'));assert.ok(texts(without).includes('No max set')&&!texts(without).includes('Not recorded'));
  const plain=api.buildRow({...records[1],max_price:'€48.00',lot_links:[]},root.dataset,false,()=>{});assert.ok(!texts(plain).includes('Your max price'));
 }
 const priced=api.buildRow({...records[1],price:['EUR','12.5144','2026-10-08',true,'€12.51','8 Oct'],lot_links:[]},root.dataset,false,()=>{});

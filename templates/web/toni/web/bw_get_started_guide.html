@@ -1,8 +1,8 @@
 {% extends 'web/toni/base.html' %}
 {# #87: step 4 of Get started, how Brick Work thinks about a collection. Each card links to the screens it explains. Texts reviewed by Ulf on 3 Nov; the bold marks are literals of this template, rendered unescaped. #}
-{% block title %} · {{ title }}{% endblock %}{% block page_assets %}<link rel="stylesheet" href="{{ bw_static('web/toni/bw-collection.css') }}">{% endblock %}
+{% block title %} · {{ title }}{% endblock %}{% block page_assets %}<link rel="stylesheet" href="{{ bw_static('web/toni/bw-collection.css') }}"><link rel="stylesheet" href="{{ bw_static('web/toni/bw-first-run-b.css') }}">{% endblock %}
 {% block main %}<div id="bw-collection" class="bw-get-started"><p class="fr-back"><a href="{{ url_for('web.bw_get_started') }}">‹ Get started</a></p>
-<header class="bc-heading"><div><h1>How the inventory works</h1><p class="secondary">Five short cards. Each opens the screen it explains.</p></div></header>
+<header class="bc-heading"><div><div class="bc-eyebrow">Manage · Get started</div><h1>How the inventory works</h1><p class="secondary">Five short cards. Each opens the screen it explains.</p></div></header>
 <div class="fr-choices" data-guide>
 {% for key, title, text, links in [
   ('copies', 'Sets and copies', 'A <strong>set</strong> is the catalogue\'s entry, such as 10497-1. A <strong>copy</strong> is one box of it that you own. Two boxes of the same set are <strong>two copies</strong>, and each has its own <strong>condition, completeness, storage and part list</strong>.', [('Sets', url_for('web.bw_sets'))]),

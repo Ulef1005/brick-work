@@ -56,6 +56,6 @@
  .sy-log-head{display:none}
  .sy-log-row{grid-template-columns:minmax(0,1fr) auto;padding:8px 0}.sy-log-row span:nth-child(2),.sy-log-row span:nth-child(3){display:none}
  .sy-row{grid-template-columns:minmax(0,1fr) auto}.sy-state{grid-column:1}.sy-do{grid-column:2;grid-row:1 / span 2}
- .sy-footer{bottom:calc(64px + env(safe-area-inset-bottom))}
+ .sy-footer{bottom:calc(var(--bw-bottom) + 15px)}
  .bk-fields{grid-template-columns:minmax(0,1fr)}
 }

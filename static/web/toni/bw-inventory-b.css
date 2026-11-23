@@ -1,0 +1,179 @@
+body:has(#bw-inventory) .layout>main {padding:0}
+/* Part Spotter, B′ frame. Restyled on b-prime kit primitives and --tw-* tokens. */
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) {padding:22px 32px;max-width:none;display:flex;flex-direction:column;gap:16px}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) [hidden] {display:none!important}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-stack {display:flex;flex-direction:column;gap:12px;min-width:0}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-grow {flex:1;min-width:0;display:flex;flex-direction:column}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-split {display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-note {font:400 11.5px/1.4 var(--tw-mono);color:var(--tw-text-muted)}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .secondary {font-size:14px;color:var(--tw-text-2)}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-name {font:600 13.5px/1.35 var(--tw-font);overflow-wrap:anywhere;min-width:0}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-value {font:600 14px/1.35 var(--tw-font);color:var(--tw-text)}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-visually-hidden {position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip-path:inset(50%);border:0;min-height:0}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) [data-unresolved]:empty {display:none}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) [data-unresolved] a {color:var(--tw-accent-text);font:600 13px var(--tw-font);text-decoration:underline}
+/* Header */
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-head {border-bottom:1px solid var(--tw-text);padding-bottom:12px}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-hint {margin-left:auto;max-width:520px;font-size:13px;color:var(--tw-text-2)}
+/* Notice: message and Undo */
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-notice {display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 14px;border-radius:var(--tw-r-2);border:1px solid var(--tw-divider);background:var(--tw-info-soft,var(--tw-surface));min-height:44px}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-notice[data-kind=success] {background:var(--tw-success-soft,var(--tw-surface))}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-notice[data-kind=error] {background:var(--tw-warning-soft,var(--tw-accent-soft))}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-notice p {font:500 14px/20px var(--tw-font);color:var(--tw-text)}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-notice button {border:0;background:transparent;color:var(--tw-accent-text);font:600 14px var(--tw-font);min-height:36px;padding:0 4px}
+/* Tabs (phone and tablet only) */
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-tabs {display:none}
+/* 3-column desktop layout */
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-grid {display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-col-1 {width:380px;flex:none;display:flex;flex-direction:column;gap:12px}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-col-2 {width:340px;flex:none;display:flex;flex-direction:column;gap:18px}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-col-3 {flex:1 1 420px;min-width:min(420px,100%)}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-source,#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-capture,#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-queue,#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-review,#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-results {display:flex;flex-direction:column;gap:12px;min-width:0;margin:0}
+/* Camera row, picker lists, segments */
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-seg-row {display:flex;gap:16px;flex-wrap:wrap}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .seg button[aria-pressed=true],#bw-inventory:not(#_):not(#_):not(#_):not(#_) .seg button.on {background:var(--tw-text);color:var(--tw-bg)}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .seg button:disabled {color:var(--tw-text-muted);cursor:default}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-picker {position:relative}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-select {width:100%;height:40px;padding:0 12px;border:1px solid var(--tw-text-muted);border-radius:var(--tw-r-1);background:var(--tw-field);color:var(--tw-text);font:400 15px var(--tw-font);display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-select .inv-grow {overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-row-two {height:auto;min-height:52px;padding:6px 12px}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-row-two .inv-grow {display:flex;flex-direction:column;white-space:normal}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-glyph-chevron {flex:none;width:18px;height:18px;color:var(--tw-text-muted);position:relative}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-glyph-chevron::before {content:"";position:absolute;left:5px;top:4px;width:7px;height:7px;border:solid currentColor;border-width:0 1.6px 1.6px 0;transform:rotate(45deg)}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-list {display:flex;flex-direction:column;margin-top:4px;border:1px solid var(--tw-divider);border-radius:var(--tw-r-2);background:var(--tw-sheet-bg,var(--tw-surface));max-height:240px;overflow:auto}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-list button {min-height:40px;padding:8px 12px;justify-content:flex-start;text-align:left;border:0;border-bottom:1px solid var(--tw-divider);border-radius:0;background:transparent;font:500 14px var(--tw-font);color:var(--tw-text)}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-list button:last-child {border-bottom:0}
+/* Viewfinder and actions */
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .viewfinder {position:relative;height:250px;background:var(--tw-field);border:1.5px solid var(--tw-text);border-radius:var(--tw-r-2);overflow:hidden}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .viewfinder video {position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:transparent}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .guide {position:absolute;inset:18px;border:1.5px dashed var(--tw-text-2);border-radius:3px;pointer-events:none}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-slot {position:absolute;left:10px;top:10px}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .scan-drop {outline:2px dashed var(--tw-accent);outline-offset:2px}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-primary {width:100%;height:52px}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .btn:disabled {background:var(--tw-surface-2);color:var(--tw-text-muted);cursor:default}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-link {display:inline-flex;align-items:center;min-height:32px;padding:0;border:0;background:transparent;color:var(--tw-accent-text);font:600 13px var(--tw-font);text-decoration:none;cursor:pointer}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-link:focus-within {outline:var(--tw-focus-width) solid var(--tw-focus-color);outline-offset:var(--tw-focus-offset)}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-link-muted {color:var(--tw-text-2)}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-footer a {display:inline-flex;align-items:center;min-height:36px;font:600 14px var(--tw-font);color:var(--tw-text-2)}
+/* Queue and Results */
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-toolbar {display:flex;flex-direction:column;gap:6px}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-search {width:100%;height:36px;padding:0 10px;border:1px solid var(--tw-text-muted);border-radius:var(--tw-r-1);background:var(--tw-field);color:var(--tw-text);font:400 13.5px var(--tw-font)}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-toolbar .inv-split {gap:6px}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-toolbar .seg button {padding:4px 7px;font-size:11px;white-space:nowrap}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-chips {display:flex;gap:6px;flex-wrap:wrap}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-chips:empty {display:none}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-chips button {display:inline-flex;align-items:center;height:24px;padding:0 8px;border-radius:var(--tw-r-1);background:var(--tw-accent-soft);color:var(--tw-accent-text);font:600 12px var(--tw-font)}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-queue-row {display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--tw-divider)}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .scan-row {flex:1;min-width:0;width:100%;display:flex;align-items:center;gap:10px;padding:8px 0;border:0;background:transparent;text-align:left;font:inherit;color:inherit}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-results .scan-row {border-bottom:1px solid var(--tw-divider)}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .scan-row > .tile {width:44px;height:44px;flex:none;padding:3px;font-size:10px}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .scan-row .identity {flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;align-items:flex-start;overflow-wrap:anywhere}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-being-read {font-size:12px;color:var(--tw-text-muted)}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-result-meta-row {display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:2px}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-result-meta {font-size:12px;color:var(--tw-text-2)}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .chip.inv-chip {box-shadow:inset 0 0 0 1px var(--tw-divider)}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-tag-danger {color:var(--tw-danger,var(--tw-text-2));border-color:var(--tw-danger,var(--tw-text-2))}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-delete {flex:none;position:relative;width:28px;height:28px;padding:0;border:0;background:transparent;color:var(--tw-text-muted)}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-delete::before,#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-delete::after {content:"";position:absolute;left:7px;top:13px;width:14px;height:1.5px;background:currentColor;transform:rotate(45deg)}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-delete::after {transform:rotate(-45deg)}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-actions-row {display:flex;gap:14px;align-items:center;margin-top:4px}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-results-btn {width:100%}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-empty {padding:16px;border-radius:var(--tw-r-2);background:var(--tw-surface);border:1px solid var(--tw-divider);color:var(--tw-text-2);font:400 14px/20px var(--tw-font);text-align:center}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-banner {padding:10px 14px;border-radius:var(--tw-r-2);background:var(--tw-warning-soft,var(--tw-accent-soft));border:1px solid var(--tw-divider);font:500 14px/20px var(--tw-font);color:var(--tw-text)}
+/* Tiles */
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .tile.inv-no-image {font:400 11px var(--tw-font);text-align:center;padding:4px}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-big {width:100%;max-width:240px;height:180px;font-size:16px}
+/* Review card */
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-review-card {padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-review-head {display:flex;align-items:baseline;gap:4px 10px;flex-wrap:wrap}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-review-head h2 {font:600 20px/1.3 var(--tw-font);white-space:nowrap}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-review-sub {font-size:13px;color:var(--tw-text-2)}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .scan-reference {display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-best,#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-photo {display:flex;flex-direction:column;gap:6px;min-width:0}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .scan-reference .tile {height:150px;width:100%;padding:10px}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-photo .tile {background:var(--tw-surface-2);padding:0}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-part-meta h3 {font:600 16px/1.35 var(--tw-font);overflow-wrap:anywhere}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-part-sub {font-size:12.5px;color:var(--tw-text-2);margin-top:2px}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-owned {font-size:13px;line-height:1.45;color:var(--tw-text-2);border-top:1px solid var(--tw-divider);padding-top:8px}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-owned-need {color:var(--tw-accent-text);font-weight:600}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-swatch-row,#bw-inventory:not(#_):not(#_):not(#_):not(#_) .scan-colours {display:flex;flex-wrap:wrap;gap:6px}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .scan-colours {max-height:232px;overflow:auto;padding:2px}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-swatch {display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 10px;border-radius:3px;font:500 13px var(--tw-font);color:var(--tw-text);background:var(--tw-field);box-shadow:inset 0 0 0 1px var(--tw-divider)}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-swatch i {width:16px;height:16px;border-radius:2px;flex:none;box-shadow:inset 0 0 0 1px var(--tw-divider-strong,var(--tw-text-muted))}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-swatch[aria-pressed=true] {box-shadow:inset 0 0 0 2px var(--tw-accent);background:var(--tw-accent-soft);color:var(--tw-accent-text);font-weight:600}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-qty-row {display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .step.inv-qty {height:44px;display:inline-flex;align-items:center;border:1.5px solid var(--tw-text);border-radius:3px}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .step.inv-qty button {width:44px;height:100%;display:flex;align-items:center;justify-content:center;font:600 20px var(--tw-font);color:var(--tw-text);background:transparent;border:0;padding:0}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .step.inv-qty input {width:52px;min-width:52px;height:100%;border:0;border-left:1.5px solid var(--tw-text);border-right:1.5px solid var(--tw-text);border-radius:0;background:transparent;text-align:center;font:600 18px var(--tw-mono);color:var(--tw-text);padding:0;-moz-appearance:textfield}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .step.inv-qty input::-webkit-outer-spin-button,#bw-inventory:not(#_):not(#_):not(#_):not(#_) .step.inv-qty input::-webkit-inner-spin-button {appearance:none;margin:0}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-switch-row {display:inline-flex;align-items:center;gap:8px;font-size:14px;color:var(--tw-text);cursor:pointer;min-height:44px}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .sw input {position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .sw:has(input:focus-visible) {outline:var(--tw-focus-width) solid var(--tw-focus-color);outline-offset:var(--tw-focus-offset)}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-options {display:flex;flex-direction:column}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .scan-alternative {width:100%;display:flex;align-items:center;justify-content:flex-start;gap:12px;min-height:56px;padding:8px 0;border:0;border-bottom:1px solid var(--tw-divider);background:transparent;text-align:left;font:inherit}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .scan-alternative > .tile {width:44px;height:44px;flex:none;padding:3px;font-size:10px}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-score {font:500 12px/16px var(--tw-mono);color:var(--tw-text-2);flex:none}
+/* Batch sheet */
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) dialog.inv-sheet {box-sizing:border-box;margin:auto;width:min(560px,calc(100% - 40px));max-height:90dvh;overflow:auto;background:var(--tw-sheet-bg,var(--tw-bg));color:var(--tw-text);border:1px solid var(--tw-divider);border-radius:var(--tw-r-3);padding:24px;transition:opacity 240ms var(--tw-ease,ease)}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) dialog.inv-sheet::backdrop {background:var(--tw-scrim,rgba(26,30,30,.38))}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-sheet h2 {font:600 17px/24px var(--tw-font)}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-sheet .scan-row {cursor:default;border-bottom:1px solid var(--tw-divider)}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-sheet .seg button {flex:1}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-textarea {height:auto;min-height:80px;padding:10px 12px;resize:vertical;display:block;width:100%}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-check {display:flex;align-items:center;gap:10px;min-height:36px;font-size:14px}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-check input {width:18px;height:18px;min-height:0;accent-color:var(--tw-accent)}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-grabber {display:none;align-self:center;width:36px;height:4px;border-radius:2px;background:var(--tw-divider-strong,var(--tw-divider))}
+@media(max-width:1023px){
+ #bw-inventory:not(#_):not(#_):not(#_):not(#_) {padding:14px 16px;gap:12px}
+ #bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-head h1 {font-size:24px;line-height:30px}
+ #bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-hint {display:none}
+ #bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-tabs {display:flex;align-self:stretch}
+ #bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-tabs button {flex:1;min-width:0;min-height:0;padding:4px 10px;display:inline-flex;align-items:center;justify-content:center;gap:6px;font:600 12px/1.45 var(--tw-font-label);letter-spacing:.08em;text-transform:uppercase;text-align:center;white-space:nowrap}
+ #bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-tabs button[aria-pressed=true],#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-tabs button.on {background:var(--tw-text);color:var(--tw-bg)}
+ #bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-grid {flex-direction:column;gap:12px;align-items:stretch}
+ #bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-col-1,#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-col-2,#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-col-3 {display:contents}
+ #bw-inventory:not(#_):not(#_):not(#_):not(#_)[data-view=capture] .inv-queue,#bw-inventory:not(#_):not(#_):not(#_):not(#_)[data-view=capture] .inv-review,#bw-inventory:not(#_):not(#_):not(#_):not(#_)[data-view=capture] .inv-results,
+ #bw-inventory:not(#_):not(#_):not(#_):not(#_)[data-view=queue] .inv-source,#bw-inventory:not(#_):not(#_):not(#_):not(#_)[data-view=queue] .inv-capture,#bw-inventory:not(#_):not(#_):not(#_):not(#_)[data-view=queue] .inv-review,#bw-inventory:not(#_):not(#_):not(#_):not(#_)[data-view=queue] .inv-results,
+ #bw-inventory:not(#_):not(#_):not(#_):not(#_)[data-view=review] .inv-source,#bw-inventory:not(#_):not(#_):not(#_):not(#_)[data-view=review] .inv-capture,#bw-inventory:not(#_):not(#_):not(#_):not(#_)[data-view=review] .inv-queue,#bw-inventory:not(#_):not(#_):not(#_):not(#_)[data-view=review] .inv-results,
+ #bw-inventory:not(#_):not(#_):not(#_):not(#_)[data-view=results] .inv-source,#bw-inventory:not(#_):not(#_):not(#_):not(#_)[data-view=results] .inv-capture,#bw-inventory:not(#_):not(#_):not(#_):not(#_)[data-view=results] .inv-queue,#bw-inventory:not(#_):not(#_):not(#_):not(#_)[data-view=results] .inv-review {display:none}
+ #bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-footer {order:10}
+ #bw-inventory:not(#_):not(#_):not(#_):not(#_) .scan-reference .tile {height:104px}
+}
+@media(max-width:500px){
+ #bw-inventory:not(#_):not(#_):not(#_):not(#_) dialog.inv-sheet {margin:auto 0 0;width:100%;max-width:100%;padding:12px 20px calc(20px + env(safe-area-inset-bottom));border-radius:var(--tw-r-3) var(--tw-r-3) 0 0}
+ #bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-grabber {display:block}
+}
+@media(prefers-reduced-motion:reduce){#bw-inventory:not(#_):not(#_):not(#_):not(#_) dialog.inv-sheet {transition:none}}
+
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .seg button {font:inherit;letter-spacing:inherit;text-transform:inherit;color:inherit;border:0;border-radius:0;background:transparent;min-height:0;cursor:pointer}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .seg button.on,#bw-inventory:not(#_):not(#_):not(#_):not(#_) .seg button[aria-pressed=true] {background:var(--tw-text);color:var(--tw-bg)}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .seg button:disabled {color:var(--tw-text-muted);cursor:default}
+
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-tabs button {position:relative}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-tabs button::after {content:"";position:absolute;inset:-8px 0}   /* the frame draws the bar 29 px high; the touch target stays 44 */
+@media(max-width:1023px){#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-head h1 {padding-top:3px}#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-head .secondary {padding-top:3px}}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-more-colours {min-height:0}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-note:empty {display:none}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-name,#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-note {line-height:1.45}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .scan-row .identity {gap:0}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .scan-row .identity .chip {margin-top:0}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-more-colours {font-size:12px}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-tabs button {font:600 12px/1.45 var(--tw-font-label)}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-queue,#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-results {gap:0}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-actions-row {margin-top:10px}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-results-btn {margin-top:18px}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-source {gap:10px}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-seg-row {gap:16px}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-tabs button span {padding:0}   /* the kit's .seg span padding is for segment spans, not the count */
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-part-meta {gap:0}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-part-meta h3 {line-height:1.45}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-part-sub {margin-top:0;line-height:1.45}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-swatch-row {gap:6px}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-part-meta h3 {line-height:normal}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-name {line-height:normal}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .scan-row .identity .chip {margin-top:2px}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .saved-photo {min-height:0}
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-being-read {display:block;margin-top:2px;line-height:21.75px}
+/* The user's own photo is never blended onto the tile (#512, approved dark round: catalogue pictures blend in dark, own photos never);
+   b-prime.css blends every .tile img in dark. */
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .tile.inv-own img {mix-blend-mode:normal}

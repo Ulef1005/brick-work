@@ -718,7 +718,6 @@ def settings_summaries(data):
              + (f'{min(days)} to {max(days)} days' if min(days) != max(days) else f"{days[0]} day{'' if days[0] == 1 else 's'}")
              for i, (kind, days) in enumerate(sorted(spans.items(), key=lambda kv: (('prices', 'metadata', 'pictures').index(kv[0]) if kv[0] in ('prices', 'metadata', 'pictures') else 9, kv[0])))]
     summary['freshness'] = ' · '.join(parts) or 'No expiry set'
-    summary['instruction-downloads'] = f"Up to {data.get('official_download_limit_mb', 500)} MB per file"
     return summary
 
 

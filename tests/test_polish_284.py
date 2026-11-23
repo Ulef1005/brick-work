@@ -1,4 +1,4 @@
-"""#284: Build Scout has its own icon in the rail and the phone strip, and the "No image" text fits a small thumbnail tile."""
+"""#284: Build Scout has its own icon, and the "No image" text fits a small thumbnail tile."""
 import json
 from pathlib import Path
 import re
@@ -37,21 +37,17 @@ def test_the_scout_icon_differs_from_sets_and_search():
     assert (ROOT / 'static/brickwork/icons-ui/scout.svg').read_bytes() != (ROOT / 'static/brickwork/icons-ui/search.svg').read_bytes()
 
 
-def test_build_scout_uses_its_own_icon_in_the_rail_and_the_phone_strip(client, world):
-    soup = BeautifulSoup(client.get('/sets').data, 'html.parser')
-    scout = icon_paths('scout')
-    for selector in ('.rail', '.group-items'):
-        link = soup.select_one(f'{selector} a[href$="/workbench/build-scout"]') or next(
-            (a for a in soup.select(f'{selector} a') if a.get('title') == 'Build Scout'), None)
-        assert link is not None, selector
-        shape = [e.get('d') or e.get('x') or e.get('cx') for e in link.select('svg path, svg rect, svg circle')]
-        assert shape == scout, selector
-    sets = next(a for a in soup.select('.rail a') if a.get('title') == 'Sets')
-    assert [e.get('d') or e.get('x') or e.get('cx') for e in sets.select('svg path, svg rect, svg circle')] == icon_paths('sets')
+def test_build_scout_keeps_its_own_icon_name(app4, client, world):
+    """The shell draws no icon beside an entry since #492, but the entries still name theirs (the icons stay for the pages that draw them)."""
+    with app4.test_request_context('/sets'):
+        from brickwork.web.ui import navigation
+        icons = {link['title']: link['icon'] for _, links in navigation() for link in links}
+    assert icons['Build Scout'] == 'scout' and icons['Sets'] == 'sets'
+    assert icon_paths(icons['Build Scout']) and icon_paths(icons['Build Scout']) != icon_paths(icons['Sets'])
 
 
 def test_the_small_tile_rule_is_shared_in_the_global_stylesheet():
-    shell = (ROOT / 'static/web/toni/shell.css').read_text()
+    shell = (ROOT / 'static/web/toni/shell.css').read_text().replace(':where(:not(.b-prime,.b-prime *))', '')
     assert '.bc-picture,.bw-picture,.check-picture,.scan-tile { container-type:inline-size; }' in shell
     assert '@container (max-width:80px)' in shell
 
@@ -59,12 +55,12 @@ def test_the_small_tile_rule_is_shared_in_the_global_stylesheet():
 @rendered.group
 @pytest.mark.parametrize('wrap', ['{}', '<label class="bw-copy">{}</label>', '<div class="bw-copy-summary">{}</div>',
                                   '<div id="bw-check-choices"><a class="check-copy">{}</a></div>'])
-@pytest.mark.parametrize('tile', ['bc-picture', 'bw-picture', 'check-picture', 'scan-tile'])
+@pytest.mark.parametrize('tile', ['bc-picture', 'bw-picture', 'check-picture'])   # Part Spotter's tile (scan-tile) is the kit's one-line 'Part picture' tile since #508, no number line
 def test_a_56_px_no_image_tile_holds_the_number_on_one_line_and_the_note_inside(tile, wrap, tmp_path):
     """The shared tiles of the lists and the workbench, drawn with the shipped stylesheets, in the pinned Chrome."""
     chrome = rendered.chrome()
     css = ''.join((ROOT / 'static/web/toni' / name).read_text() for name in
-                  ('tokens-v2.css', 'toni.css', 'bw-collection.css', 'bw-workbench.css', 'bw-checker.css', 'bw-inventory.css', 'bw-planning.css', 'shell.css'))
+                  ('tokens-v2.css', 'toni.css', 'bw-collection.css', 'bw-workbench.css', 'bw-checker.css', 'bw-inventory-b.css', 'bw-planning.css', 'shell.css'))
     numbers = ['1592-1', '40567-1', '75192-1']
     tiles = ''.join(f'<div class="{tile}" style="width:56px;height:56px"><span class="mono">{n}</span><span>No image</span></div>' for n in numbers)
     if tile == 'bc-picture':   # Complete sets draws it as the first cell of a row

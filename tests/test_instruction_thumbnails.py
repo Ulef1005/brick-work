@@ -152,7 +152,7 @@ def test_upgrade_45_is_idempotent_and_matches_fresh(tmp_path):
         db.executescript((HERE / 'brickwork.sql').read_text().split('-- Instruction thumbnails, schema 4.6')[0])
         db.execute("INSERT INTO meta(key,value) VALUES('schema_version','4.5')")
         db.commit()
-    assert upgrade(path) == upgrade(path) == '4.6'
+    assert upgrade(path) == upgrade(path) == '4.7'
     with closing(connect(path, tmp_path / 'catalogue.db')) as old, closing(connect(tmp_path / 'new.db', tmp_path / 'catalogue.db')) as new:
         assert list(old.execute('PRAGMA table_info(instruction_file)')) == list(new.execute('PRAGMA table_info(instruction_file)'))
         assert dict(old.execute('SELECT key,value FROM meta'))['upgraded_to_4.6']

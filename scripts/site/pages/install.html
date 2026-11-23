@@ -26,8 +26,8 @@ docker compose up -d</pre>
 
 <div class="sec"><div class="inner">
 <div class="grid g2">
-<div class="card"><h3>Unraid</h3><p class="small">Run the same image and set the user to <span class="mono">99:100</span>, the ids Unraid gives a shared folder.</p></div>
-<div class="card"><h3>NAS</h3><p class="small">If the shared folder is not owned by uid 1000, set the user to the folder owner's ids instead of changing ownership. Put the pictures on the NAS with <span class="mono">BW_MEDIA_PATH</span> and keep the database on fast local storage.</p><a class="link" href="https://github.com/{repository}#readme">Read the notes in the README</a></div>
+<div class="card"><h3>Unraid</h3><p class="small">Find Brick Work in Community Applications and fill in the port, the data folder and a password. The template sets the user to <span class="mono">99:100</span>, the ids Unraid gives a shared folder.</p><a class="link" href="{up}docs/how-to/install-unraid/">Unraid guide</a></div>
+<div class="card"><h3>NAS and Portainer</h3><p class="small">Paste one compose file into Synology Container Manager or a Portainer stack and set a password. No Git, no ownership change. To keep the data in a shared folder, set the user to the folder owner's ids. Put the pictures on the NAS with <span class="mono">BW_MEDIA_PATH</span> and keep the database on fast local storage.</p><a class="link" href="{up}docs/how-to/install-nas/">NAS and Portainer guide</a></div>
 </div>
 </div></div>
 

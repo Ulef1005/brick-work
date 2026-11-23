@@ -93,10 +93,11 @@ def test_sets_list_filter_mapping_toolbar_and_subtitle(coll, client):
     coll.add_copy('1000-1')
     coll.price(keep, '12', condition='used', observed='2026-10-08')
     soup = soup_of(client, '/collection/sets')
-    assert soup.select_one('.bc-heading>.button.primary').get_text(strip=True) == 'Add'
-    assert 'prices are used averages from BrickLink' in soup.select_one('.bc-heading').get_text()
-    toolbar = soup.select_one('.bc-toolbar')
-    assert toolbar.select_one('[data-bc-search]') and toolbar.select_one('[data-bc-count]') and toolbar.select_one('.bc-view-switch')
+    assert soup.select_one('.head .btn').get_text(strip=True) in ('Filter', 'Drawers') and soup.select_one('.head a.btn').get_text(strip=True) == 'Add set'
+    assert 'prices are used averages from BrickLink' in soup.select_one('.head').get_text()
+    find = soup.select_one('.bp-find')   # R3-01 (#494): Search and Sort beside the tabs; Drawers and Ledger name the grid and list switch
+    assert find.select_one('[data-bc-search]') and find.select_one('[data-bc-sort-open]')
+    assert [b.get_text(strip=True) for b in soup.select('.bp-head-actions [data-bc-view]')] == ['Drawers', 'Ledger']
     panel = soup.select_one('[data-bc-panel]')
     assert [h.get_text() for h in panel.select('h4')] == ['Status', 'Condition', 'Copies', 'Tags', 'Has', 'View']
     for key in ['type', 'condition', 'status', 'colour', 'problem', 'flags', 'storage', 'place', 'lot', 'duplicates', 'stock', 'category', 'theme', 'year']:
@@ -335,7 +336,7 @@ def test_detail_navigation_and_identity(coll, client, kind):
     assert back.span.get_text() == parent
     assert back.select_one('svg path')['d'] == 'M15 6l-6 6 6 6'
     assert back['href'] == '/collection/' + letter
-    assert soup.select_one('.header .shell-add .icon')
+    assert soup.select_one('.bp-shell .shell-add svg')
     hero = soup.select_one('.bc-detail-hero')
     assert not hero.select('[data-bw-open=bc-edit], [data-bw-open=bc-delete]')
     if kind == 'set':
@@ -402,7 +403,9 @@ def test_missing_inventory_projection_and_no_invented_progress(coll, client, rea
         assert not any(r['deficit'] for r in d['consists'])
     soup = item_page(client, keep, copy=cid)
     progress = soup.select_one('[aria-label="Copy progress"]')
-    assert 'primary' in progress.select_one('a.button')['class']
+    # #507 (frame 12): the progress and its buttons sit in the copy head under the hero, outside the Parts tab.
+    assert progress.find_parent(attrs={'data-bc-copy-head': True}) and not progress.find_parent(attrs={'data-module': 'consists'})
+    assert 'primary' in soup.select_one('[data-bc-copy-head] .bc-check-actions a.button')['class']
     assert not soup.select_one('[data-module=consists]>.actions a.button.primary')
     if state in ('unchecked', 'empty'):
         assert progress.h3.get_text() == 'Parts not checked'
@@ -446,11 +449,11 @@ def test_consists_text_and_reading_order(coll, client, read, checked):
     d = detail(read, keep, copy_id=cid)
     soup = item_page(client, keep, copy=cid)
     module = soup.select_one('[data-module=consists]')
-    progress = module.select_one('[aria-label="Copy progress"]')
+    progress = soup.select_one('[data-bc-copy-head] [aria-label="Copy progress"]')   # #507: the copy head, outside the Parts tab
     p = d['progress']
     assert p['can_take'] == 0
     assert progress.h3.get_text() == f"{p['missing']} parts missing, 0 in loose stock"
-    assert progress.select_one('.bc-progress-present').get_text() == f"{p['total'] - p['missing']} of {p['total']} parts present"
+    assert progress.select_one('.bc-progress-present').get_text() == f"{p['total'] - p['missing']}/{p['total']}"   # frame 12: "365/375 · 10 missing"
     assert progress.select_one('.bc-progress-subline').get_text() == f"{p['different']} different parts · " + ('all checked' if checked else '0 checked')
     assert [n.get_text() for n in progress.select_one('.bc-progress-stats').select('span')] == [f"{p['missing']} missing"]
     stats = ' '.join(n.get_text() for n in progress.select_one('.bc-progress-stats').select('span'))
@@ -474,7 +477,9 @@ def test_consists_text_and_reading_order(coll, client, read, checked):
             assert meta.find_all(recursive=False)[0]['class'] == ['bc-colour']
             if part.get('rgb'):
                 assert meta.select_one('.bc-colour')['style'] == f"background:#{part['rgb']};color:{part['ink']}"
-        assert meta.find_all(recursive=False)[-1]['class'] == ['mono']
+        kids = meta.find_all(recursive=False)
+        assert kids[-2]['class'] == ['mono'] and kids[-1]['class'] == ['bc-missing-need']    # #507: on a set copy the meta line ends "· needs n · n missing"
+        assert kids[-1].get_text() == card.select_one('.bc-missing-count').get_text()
         count = card.select_one('.bc-missing-count')
         assert count.get_text().startswith('needs ')
         assert ' missing' in count.get_text() and '−' not in count.get_text()
@@ -622,6 +627,23 @@ def test_required_card_counts_agree(coll, client, read, context):
     assert sum('bc-missing-card' in c.get('class', []) for c in part_cards) == expected == len(part_cards)
 
 
+def test_figures_tab_counts_the_figures(coll, client):
+    """The Minifigures tab carries the copy's figure count, as frame 12 draws it ("Minifigures 4"; #507): the figures the tab lists."""
+    keep = coll.item('sets', '1000-1')
+    cid = coll.add_copy('1000-1')
+    def count(soup):
+        tag = soup.select_one('[data-bc-tab=figures] .bc-tab-count')
+        return int(tag.get_text()) if tag else 0
+    def listed(soup):   # figures, as the Parts tab counts pieces: each listed figure line's quantity
+        return sum(int(json.loads(a['data-record'])['quantity'] or 0) for a in soup.select('article.bc-figure-row'))
+    soup = item_page(client, keep, copy=cid)
+    before = listed(soup)
+    assert count(soup) == before
+    add_figure(coll, cid, coll.local('minifigure', 'Bl figure', born_key='bl-figure'))
+    soup = item_page(client, keep, copy=cid)
+    assert count(soup) == listed(soup) > before
+
+
 @pytest.mark.parametrize('missing,stock', [(0, 0), (2, 0), (2, 1), (2, 20)])
 def test_inventory_counts_and_coverage(coll, client, read, missing, stock):
     """The progress counts of a copy, and what loose stock could cover of the gap (`.bc-coverage`, 'can be taken', 'to order'; M.8e)."""
@@ -633,7 +655,7 @@ def test_inventory_counts_and_coverage(coll, client, read, missing, stock):
     p = detail(read, keep, copy_id=cid)['progress']
     soup = item_page(client, keep, copy=cid)
     assert soup.select_one('[data-bc-tab=parts] .bc-tab-count').get_text() == str(p['total']) == '6'
-    assert not soup.select_one('[data-bc-tab=figures] .bc-tab-count')
+    assert soup.select_one('[data-bc-tab=figures] .bc-tab-count').get_text() == str(sum(int(json.loads(a['data-record'])['quantity'] or 0) for a in soup.select('article.bc-figure-row')))   # the tab counts the figures it lists (#507)
     take = min(stock, missing)                                              # only the red 3001 line is in stock; it is missing `missing`
     assert p['missing'] == missing * 2 and p['can_take'] == take
     if p['missing']:
@@ -656,7 +678,7 @@ def test_copy_chips(coll, client, count):
     assert len(chips) == (count if count > 1 else 0)
     assert 'Choose copy' not in soup.get_text()
     if chips:
-        assert [c.get_text() for c in chips] == [f'Set {n}' for n in range(1, count + 1)]
+        assert [c.get_text() for c in chips] == [f'Copy {n}' for n in range(1, count + 1)]   # frame 12: the switcher reads Copy n (#507)
         assert len(soup.select('.bc-copy-chip[aria-current=page]')) == 1
         other = next(c for c in chips if not c.has_attr('aria-current'))
         switched = soup_of(client, other['href'])
@@ -706,7 +728,7 @@ def test_phone_identity_width_from_css_and_real_dom(coll, client):
     assert basis, 'identity must have a nonshrinking basis within the phone media rule'
     reserved_width = 390 - 2 * 20 - 2 * 20 - int(basis[1])
     for name in ['Tire Smooth Small Dually', 'Brick 2 x 4 without Cross Support']:
-        identity = next(n for n in soup.select('.bc-inventory-row > a:first-of-type .bc-identity') if name in n.get_text().replace('\xa0', ' '))
+        identity = next(n for n in soup.select('.bc-inventory-row > a:first-of-type .bc-identity') if name in n.get_text().replace('\xa0', ' ').replace('×', 'x'))   # names show x as ×
         assert reserved_width >= 150, (name, reserved_width)
         chip = identity.select_one('.bc-colour')
         assert chip and chip.get_text(strip=True) in ['Black', 'Pastel Blue']
@@ -754,7 +776,7 @@ def test_matching_headline_counts_copies_once(rows, expected):
 def test_part_names_display_only_on_detail_and_cards(coll, client, read):
     from brickwork.web.formatting import nowrap_tail, part_name
     name = 'Bracket 1 x 2 - 1 x 2 Inverted'
-    expected = 'Bracket 1 x 2 · 1 x 2 Inverted'
+    expected = 'Bracket 1 × 2 · 1 × 2 Inverted'   # shown with the times sign (#501)
     assert nowrap_tail(part_name(name)) == expected
     assert part_name('600-2') == '600-2'
     assert part_name('Plate - Modified') == 'Plate - Modified'
@@ -838,7 +860,7 @@ def test_collection_style_contract():
 
     def rule(selector):
         return re.search(re.escape(selector) + r'\s*\{([^}]+)', text).group(1)
-    assert 'display:none' in rule('body:has(#bw-collection[data-bc-collection-list]) .shell-add')
+    assert '.shell-add' not in text      # the frames keep Add in the top bar on every page (#492)
     assert '.bc-heading>.button { display:none' not in text
     assert 'width:89px' in rule('#bw-collection .bc-heading>.button')
     assert 'var(--tw-accent-soft)' in rule('#bw-collection .bc-view-switch button[aria-pressed=true]')
@@ -869,8 +891,7 @@ def test_price_css_contract():
 
 def test_navigation_css_contract():
     text = css()
-    shell = Path('static/web/toni/shell.css').read_text()
-    assert '.header .shell-add { width:44px;min-height:44px;background:transparent;border-color:transparent;color:var(--tw-accent-text)' in shell
+    shell = Path('static/web/toni/shell.css').read_text().replace(':where(:not(.b-prime,.b-prime *))', '')
     assert '.bc-detail-back { display:flex;align-items:center;gap:2px;min-height:44px;text-decoration:none' in text
     assert 'body:has(.bc-detail-hero) .layout>main { padding-top:0' in text
     # Beat the earlier body:has(#bw-collection) selector (one ID), not just source order.
@@ -906,7 +927,7 @@ def test_consists_css_contract():
 
 
 def test_disclosure_marker_has_standalone_shape_and_open_rotation():
-    remaining = Path('static/web/toni/remaining.css').read_text()
+    remaining = Path('static/web/toni/remaining.css').read_text().replace(':where(:not(.b-prime,.b-prime *))', '')
     selector = 'html[data-web-ui="toni"] details.kit-disclosure'
     closed = re.search(re.escape(selector + '>summary::before') + r'\{([^}]+)\}', remaining)[1]
     opened = re.search(re.escape(selector + '[open]>summary::before') + r'\{([^}]+)\}', remaining)[1]

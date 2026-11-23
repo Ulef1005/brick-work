@@ -24,6 +24,41 @@ def region_for(db):
     return row[0] if row and row[0] else 'DE'
 
 
+REGION_LABELS = {'AT': 'Austria · English', 'DE': 'Germany · German', 'UK': 'United Kingdom · English', 'GB': 'United Kingdom · English',
+                 'US': 'United States · English', 'FR': 'France · French', 'CA': 'Canada · English', 'AU': 'Australia · English'}
+
+
+def usable_region(db, region=None):
+    """The region the Find instructions screen shows: the one asked for, else the retail country, else the default (the same fallback as `links_for`)."""
+    from .instruction_links import DEFAULT_REGION
+    region = region or region_for(db)
+    return region if region in LOCALES else DEFAULT_REGION
+
+
+def sets_without_booklet(db, region):
+    """The sets in the collection that have no PDF, in number order, each with its picture, theme, year and the link-out pair for `region` (#484).
+
+    A PDF belongs to a set, so a set counts as covered when its own item or a booklet item with its number has a file. A set whose number cannot
+    be linked (a malformed one) is skipped rather than failing the page. No network, no write."""
+    from .instruction_links import instruction_links
+    rows = db.execute("""SELECT i.id, i.born_key, i.name, i.year, i.theme_name,
+                                (SELECT p.id FROM main.picture p WHERE p.item_id=i.id ORDER BY p.fetched_at, p.id LIMIT 1) AS picture
+                         FROM main.item i
+                         WHERE i.kind='set' AND i.merged_into IS NULL AND i.born_key IS NOT NULL
+                           AND EXISTS (SELECT 1 FROM main.copy c WHERE c.item_id=i.id AND c.archived_at IS NULL)
+                           AND NOT EXISTS (SELECT 1 FROM main.instruction_file f JOIN main.item b ON b.id=f.item_id
+                                           WHERE f.archived_at IS NULL AND (b.id=i.id OR (b.kind='instructions' AND b.born_key=i.born_key)))""").fetchall()
+    out = []
+    for r in rows:
+        try:
+            links = instruction_links(r['born_key'], region)
+        except ValueError:
+            continue
+        out.append(dict(item_id=r['id'], number=r['born_key'], name=r['name'], year=r['year'], theme=r['theme_name'], picture=r['picture'], links=links))
+    out.sort(key=lambda row: (int(re.match(r'\d+', row['number']).group()) if re.match(r'\d+', row['number']) else 10 ** 12, row['number']))
+    return out
+
+
 def links_for(db, identifier, region=None):
     """`{set_no, region, links}` for a set (or a booklet, which shares its set's number), from the stored number and the retail country: no network,
     no write (the catalogue's row serves a set not yet in the collection). A stored country that LEGO has no locale for falls back to the

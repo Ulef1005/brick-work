@@ -36,26 +36,22 @@ def steps(page):
 
 
 def test_first_run_needs_no_key_to_load_the_catalogue(client):
-    page = soup(client, '/collection/sets')
-    assert page.h1.get_text(strip=True) == 'Sets'
-    assert '0 sets' in page.select_one('.bc-heading .secondary').get_text()
-    assert page.select_one('[data-first-run] h2').get_text() == 'Nothing here yet.'
+    page = soup(client, '/manage/get-started')
+    assert page.h1.get_text(strip=True) == 'Get started'
     found = steps(page)
     # #83: the catalogue comes first and needs no key; keys are optional; bringing the collection in waits for the catalogue
     assert [(found[k]['data-key'], found[k]['data-state']) for k in '123'] == [('catalogue', 'current'), ('keys', 'open'), ('collection', 'waiting')]
     assert found['1']['aria-current'] == 'step' and not found['2'].has_attr('aria-current')
     assert found['1'].select_one('.fr-actions form')['action'] == '/manage/first-run/catalogue' and found['1'].select_one('.fr-actions button').get_text(strip=True) == 'Activate the catalogue'      # the fixture pair has the file; test_m12_onboarding covers an empty folder
-    keys_link = found['2'].select_one('.fr-actions a')
-    assert keys_link.get_text(strip=True) == 'Set up keys' and keys_link['href'] == '/manage/get-started#keys'      # #84: the keys step of the flow
+    assert found['2'].select_one('[data-flow-keys]')      # #84: on the flow page the keys step holds the key cards itself (the Sets page's empty state only links here)
     button = found['3'].select_one('.fr-actions button')
     assert button.has_attr('disabled') and not found['3'].select('.fr-actions a') and 'load the catalogue first' in button.get_text()
     assert 'without keys' in page.select_one('.fr-note').get_text()
-    assert page.select_one('[data-bc-list]').has_attr('hidden')
 
 
 def test_first_run_marks_the_keys_step_done_once_a_key_is_stored(client, monkeypatch):
     monkeypatch.setenv('BW_REBRICKABLE_API_KEY', fake())
-    found = steps(soup(client, '/collection/sets'))
+    found = steps(soup(client, '/manage/get-started'))
     assert [found[k]['data-state'] for k in '123'] == ['current', 'done', 'waiting']
     assert found['1'].select_one('.fr-actions form') and found['3'].select_one('.fr-actions button').has_attr('disabled')
 
@@ -63,14 +59,14 @@ def test_first_run_marks_the_keys_step_done_once_a_key_is_stored(client, monkeyp
 def test_a_key_in_the_encrypted_store_counts_like_one_in_the_environment(client, coll):
     from brickwork.core import keys
     keys.save(coll.db, 'rebrickable', {'key': fake()})
-    found = steps(soup(client, '/collection/sets'))
+    found = steps(soup(client, '/manage/get-started'))
     assert [found[k]['data-state'] for k in '123'] == ['current', 'done', 'waiting']
 
 
 def test_first_run_unlocks_bringing_the_collection_in_once_the_catalogue_is_loaded(client, monkeypatch):
     monkeypatch.setenv('BW_REBRICKABLE_API_KEY', fake())
     monkeypatch.setattr('brickwork.web.setup_state.catalogue_loaded', lambda: True)
-    found = steps(soup(client, '/collection/sets'))
+    found = steps(soup(client, '/manage/get-started'))
     assert [found[k]['data-state'] for k in '123'] == ['done', 'done', 'current']
     assert [a['href'] for a in found['3'].select('.fr-actions a')] == ['/manage/get-started/collection', '/manage/add']      # #86: the choice screen
 
@@ -78,7 +74,7 @@ def test_first_run_unlocks_bringing_the_collection_in_once_the_catalogue_is_load
 def test_first_run_never_shows_a_key_value(client, monkeypatch):
     secret = fake()
     monkeypatch.setenv('BW_REBRICKABLE_API_KEY', secret)
-    assert secret not in client.get('/collection/sets').get_data(as_text=True)
+    assert secret not in client.get('/manage/get-started').get_data(as_text=True)
 
 
 def test_collection_with_sets_has_no_first_run(world, client):
@@ -119,3 +115,11 @@ def test_the_update_price_button_queues_a_job_for_the_item_it_names(world, clien
     job = response.get_json()['jobs'][0]
     assert coll.db.execute('SELECT item_id, state FROM job WHERE id=?', (job,)).fetchone()[:] == (world.keep, 'queued')
     assert [r[0] for r in coll.db.execute('SELECT name FROM job_step WHERE job_id=?', (job,))] == ['market_price']
+
+
+def test_the_empty_sets_page_leaves_the_catalogue_sentence_out_on_a_fresh_install(client):
+    page = soup(client, '/collection/sets')      # R3-04, #497: "The catalogue is loaded" only once the step is done
+    assert page.select_one('.bp-empty-box h2').get_text() == 'Your shelves are empty'
+    assert 'catalogue is loaded' not in page.select_one('.bp-empty-box').get_text() and not page.select('[data-first-run]')
+    assert page.select_one('a.bp-empty-start')['href'] == '/manage/get-started' and page.select_one('.bp-empty-start .tape').get_text(' ', strip=True) == 'Get started 0 of 4 done'
+    assert page.select_one('[data-bc-message]') and page.select_one('[data-bc-undo]')      # the status and Undo region of every collection page

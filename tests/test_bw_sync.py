@@ -509,7 +509,7 @@ def test_a_pull_queues_no_picture_step_for_an_item_with_its_picture_and_an_old_j
 
 
 def test_a_wish_is_not_offered_for_sending_without_a_linked_wishlist(store):
-    """#514: on lego-test 184 wishes were offered with no Rebrickable wishlist linked, and every one failed."""
+    """#514: on the test instance 184 wishes were offered with no Rebrickable wishlist linked, and every one failed."""
     remote = rebrickable_ready(store)
     sync.link(store, 'rebrickable', {'wishlist': None})
     coll = Coll(store)

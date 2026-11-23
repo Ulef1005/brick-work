@@ -212,10 +212,13 @@ def navigation():
             ('Order missing parts', 'web.bw_planning_order', 'cart', (), {})]),
         ('Manage', [
             ('Add', 'web.bw_add', 'add', ('HIDE_ADD_SET',), {}),
-            ('Tools & Admin', 'web.bw_tools', 'tools', (), {})])]
+            ('Tools & Admin', 'web.bw_tools', 'tools', (), {}),
+            ('Appearance', 'web.bw_admin', 'sun', (), {'page': 'appearance'})])]   # the theme switch is a page of Manage (#492; it was a button in the rail)
     endpoint = request.endpoint or ''
     area = endpoint.split('.')[0]
-    if endpoint in ('web.bw_planning_order','web.bw_planning_order_file'):
+    if endpoint == 'web.bw_admin' and (request.view_args or {}).get('page') == 'appearance':
+        current = 'Appearance'
+    elif endpoint in ('web.bw_planning_order','web.bw_planning_order_file'):
         current='Order missing parts'
     elif endpoint=='web.bw_planning':
         current={'wishlist':'Wishlist','prices':'Prices','complete-sets':'Complete sets'}.get((request.view_args or {}).get('screen'),'Wishlist')

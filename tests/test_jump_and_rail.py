@@ -44,7 +44,7 @@ def test_rail_destinations_and_current_state(app4, client, world, path, current)
 
 def test_tools_page_links_are_live(client, world):
     html = client.get('/manage/tools').get_data(as_text=True)
-    assert 'id="global-jump"' in html and 'class="mobile-bottom"' in html
+    assert 'id="global-jump"' in html and 'class="tabbar"' in html
     assert 'bootstrap' not in html.lower()
     hrefs = {a['href'] for a in BeautifulSoup(html, 'html.parser').select('main a[href^="/"]')}
     assert hrefs

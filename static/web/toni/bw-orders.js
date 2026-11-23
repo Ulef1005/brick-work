@@ -48,9 +48,10 @@
       const chip = input.closest?.('.order-count-row')?.querySelector('.order-count-state'); if (!chip) return;
       const ordered = Number(chip.dataset.ordered), got = Number(input.value) || 0;
       chip.textContent = got >= ordered ? 'Complete' : got === 0 ? 'Not counted' : `${ordered - got} short`;
+      chip.dataset.state = got >= ordered ? 'complete' : got === 0 ? 'none' : 'short';
     });
     const progress = root.querySelector('[data-progress]'), bar = root.querySelector('[data-bar]');
-    if (progress) {const total = Number(progress.dataset.ordered); progress.textContent = `${counted} of ${total} pieces counted`; if (bar) bar.style.width = `${total ? Math.round(100 * counted / total) : 0}%`;}
+    if (progress) {const total = Number(progress.dataset.ordered); progress.textContent = `${counted} of ${total} pieces counted${total > counted ? ` · ${total - counted} still to count` : ''}`; if (bar) bar.style.width = `${total ? Math.round(100 * counted / total) : 0}%`;}
   };
   const stepper = (input, delta) => {input.value = String(Math.max(Number(input.min || 0), Math.min(Number(input.max), (Number(input.value) || 0) + delta))); refreshCount();};
   root.querySelectorAll('.order-stepper').forEach(label => {

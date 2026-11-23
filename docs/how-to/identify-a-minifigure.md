@@ -36,7 +36,7 @@ Brick Work shows only matches it finds in the local BrickLink catalogue. If noth
 
 1. Open **Workbench → Part Spotter** and set **Identify** to **Figures**.
 2. Take a picture of each figure (up to 6 in the queue).
-3. For each one, check **Reference · best match**, or pick one of the **Other possibilities** (keys 1 to 9). Choose a colour and press **Confirm**.
+3. For each one, check **Reference · best match**, or pick one of the **Other possibilities** (keys 1 to 9). Choose a colour and press **Confirm**. The colour row shows the common colours and the ones you already hold; **More colours** opens the full list. On a phone the page shows one panel at a time: **Capture**, **Queue**, **Review** and **Results**.
 4. On **Results**, press **Review inventory batch**, choose **Add to**, **Condition** and **Keep photos**, and save the batch.
 
 The notice after saving offers **Undo**, which takes the figures out of stock and archives their identifications.

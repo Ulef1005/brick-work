@@ -40,7 +40,7 @@ let browser=null;
   if(deterministic){   // and from an empty browser: no cache, no stored data of the origin, nothing a capture earlier in the session left (#267)
    await call('Page.navigate',{url:'about:blank'});
    await call('Network.clearBrowserCache');
-   await call('Storage.clearDataForOrigin',{origin:new URL(job.url).origin,storageTypes:'all'});
+   if(!job.url.startsWith('file:'))await call('Storage.clearDataForOrigin',{origin:new URL(job.url).origin,storageTypes:'all'});   // a file: page (a design frame, scripts/frame_check.py) has no origin to clear
   }
   const width=job.width,height=job.height||(width<600?844:width<1100?1024:900),max=job.max||3000;
   const scale=job.scale||(width<600?2:1);

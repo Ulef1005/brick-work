@@ -59,8 +59,9 @@ def test_skipping_a_step_moves_the_flow_on_and_taking_it_back_restores_it(client
 
 def test_the_sets_page_skip_comes_back_to_the_sets_page(client, monkeypatch):
     monkeypatch.setattr('brickwork.web.setup_state.catalogue_loaded', lambda: False)
-    assert skip(client, 'catalogue', back='sets').location.endswith('/collection/sets')
-    page = soup(client, '/collection/sets')
+    assert skip(client, 'catalogue', back='sets').location.endswith('/collection/sets')   # the back link of a skip stays honoured; the empty Sets page (#497) only links to the flow
+    assert soup(client, '/collection/sets').select_one('a.bp-empty-start')['href'] == '/manage/get-started'
+    page = soup(client, '/manage/get-started')
     assert states(page) == dict(catalogue='skipped', keys='current', collection='waiting', guide='open')      # skipping the catalogue does not open step 3
 
 
@@ -121,7 +122,7 @@ def test_the_catalogue_step_says_what_the_catalogue_holds_and_when_it_is_done_wh
 
 def test_before_the_catalogue_the_step_explains_it_and_has_no_summary(client, monkeypatch):
     monkeypatch.setattr('brickwork.web.setup_state.catalogue_loaded', lambda: False)
-    step = soup(client, '/collection/sets').select_one('[data-key=catalogue]')
+    step = soup(client, '/manage/get-started').select_one('[data-key=catalogue]')
     assert step.select_one('[data-catalogue-explainer]') and not step.select('[data-catalogue-summary]')
 
 

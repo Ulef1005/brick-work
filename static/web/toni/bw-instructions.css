@@ -1,7 +1,7 @@
 #bw-instructions {max-width:1200px;margin:auto}
 .if-steps {display:flex;gap:24px;padding:16px 24px;border-bottom:.5px solid var(--tw-divider)}
 .if-layout {display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:32px}
-.if-summary {background:var(--tw-surface);border-radius:16px;padding:20px;position:sticky;top:16px;align-self:start}
+.if-summary {background:var(--tw-surface);border-radius:16px;padding:20px;position:sticky;top:calc(var(--bw-bars) + 16px);align-self:start}
 .if-summary p {margin:16px 0}
 .if-summary button {width:100%;min-height:44px;margin:8px 0}
 .if-group {border-top:.5px solid var(--tw-divider-strong);padding:12px 0}

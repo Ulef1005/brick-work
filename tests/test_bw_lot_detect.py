@@ -31,12 +31,12 @@ def names(soup):
 def test_the_section_states_the_score_is_not_a_probability_and_lists_the_candidates(client, world):
     soup, _ = page(client, world.lot, '?min_score=0')
     detect = section(soup)
-    assert detect.select_one('h2').text == 'Which sets are in this lot?' and detect.select_one('.bd-eyebrow').text == 'Set detection'
+    assert detect.select_one('h2').text == 'Which sets are in this lot?' and detect.select_one('.bd-eyebrow').text == 'Set detection' + detect.select_one('.bd-count').text
     assert 'It is not a probability.' in detect.select_one('.bd-lead').text
     first = detect.select_one('.bd-cand')
     assert first.select_one('details').has_attr('open'), 'the best candidate is open'
-    assert first.select_one('.bd-pct').text == '100%' and first.select_one('.bd-best').text == 'best match'
-    assert first.select_one('.bd-bar b')['style'] == 'width:100%'
+    assert first.select_one('.bd-pct').text == '100 %' and first.select_one('.bd-best').text == 'best match'
+    assert first.select_one('.bd-bar i')['style'] == 'width:100%'
     assert 'Stk Set 9403' in first.select_one('.bd-name').text, 'the rare part decides'
     assert 'distinctive parts found' not in first.select_one('.bd-reasons').text or 'part lines of the set are in the lot' in first.select_one('.bd-reasons').text
     assert not detect.select('.bd-cand')[1].select_one('details').has_attr('open')
@@ -152,7 +152,7 @@ def test_a_flagged_line_shows_its_sticker_tag_and_the_link_that_opens_the_choose
     world.flag()
     soup, _ = page(client, world.lot)
     tag = soup.select_one('.bd-stk')
-    assert tag.text == 'Sticker · not chosen' and 'with a sticker' in soup.select_one('.bc-module p').text
+    assert tag.text == 'Sticker · not chosen' and 'with a sticker' in soup.select_one('#lot-b .head p').text
     link = soup.select_one('.bd-stk-link')
     assert link.text == 'Which sticker?' and link['href'] == f'/collection/lots/{world.lot}/sticker/{world.line}#sticker-chooser'
     stickers.confirm(world.coll.db, world.lot, world.line, world.set('9401-1'), world.sheet('sheet-a'))

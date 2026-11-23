@@ -33,7 +33,8 @@ def checked(db, copies):
         return set()
     flagged = {r[0] for r in db.execute("""SELECT x.copy_id FROM copy_flag x JOIN flag f ON f.id=x.flag_id
         WHERE f.name=? AND f.kind='status' AND f.archived_at IS NULL AND x.copy_id IN (SELECT value FROM json_each(?))""", (CHECKED, json.dumps(ids)))}
-    return flagged | {c['id'] for c in copies if c.get('completeness') == 'sealed'}
+    labelled = {r[0] for r in db.execute('SELECT id FROM copy WHERE checked_by IS NOT NULL AND id IN (SELECT value FROM json_each(?))', (json.dumps(ids),))}   # #489
+    return flagged | labelled | {c['id'] for c in copies if c.get('completeness') == 'sealed'}
 
 
 def lines(db, copy_ids, stamp):

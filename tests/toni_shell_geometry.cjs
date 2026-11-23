@@ -1,4 +1,4 @@
-/* 4.9f shell geometry: phone bottom bar and Jump sheet against an offline page; no screenshots. */
+/* Shell geometry (#492): the B′ bars at 390 and 1440, the Jump sheet and the fixed bars' clearance against an offline page; no screenshots. */
 const fs=require('node:fs'),path=require('node:path'),{spawn}=require('node:child_process'),assert=require('node:assert/strict');
 const [chrome,dir]=process.argv.slice(2);
 const {launch}=require('../scripts/chrome_launch.cjs');   // starts Chrome and retries a failed start (#293)
@@ -17,64 +17,38 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
  const settled=async expression=>{for(let i=0;i<40;i++){if(await evaluate(expression)===true)return true;await delay(50);}return evaluate(expression);};   // focus moves after the event is handled: wait up to 2 s, never longer
  await call('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:false});
  await call('Page.navigate',{url:'file://'+path.join(dir,'shell.html')});
- for(let i=0;i<100;i++){if(await evaluate("document.readyState==='complete' && !!document.querySelector('.mobile-bottom')"))break;await delay(20);}
+ for(let i=0;i<100;i++){if(await evaluate("document.readyState==='complete' && !!document.querySelector('.tabbar')"))break;await delay(20);}
+ // Phone (390): lockup bar 56, sub row 40, tab bar 78 fixed to the bottom, no desktop bars, nothing scrolls the page sideways.
  const m=await evaluate(`(()=>{
-  const bar=document.querySelector('.mobile-bottom'),a=bar.querySelector('a'),span=a.querySelector('span'),cs=getComputedStyle(span);
-  const bs=document.body.appendChild(Object.assign(document.createElement('div'),{className:'savebar'})),ts=document.body.appendChild(Object.assign(document.createElement('div'),{className:'toast-live'}));const jump=document.getElementById('global-jump');jump.showModal();jump.getAnimations().forEach(a=>a.finish());const r=jump.getBoundingClientRect();
-  return {save:bs&&getComputedStyle(bs).bottom,toast:ts&&getComputedStyle(ts).bottom,bar:bar.getBoundingClientRect().height,label:cs.lineHeight,size:cs.fontSize,link:a.getBoundingClientRect().height,
-   jump:[r.left,r.top,r.width,r.height],message:getComputedStyle(document.getElementById('jump-message')).display,
-   add:!!document.getElementById('jump-add'),text:jump.textContent};
+  const h=s=>document.querySelector(s).getBoundingClientRect(),bar=document.querySelector('.tabbar'),a=bar.querySelector('a'),span=a.querySelector('span');
+  const bs=document.body.appendChild(Object.assign(document.createElement('div'),{className:'savebar'})),ts=document.body.appendChild(Object.assign(document.createElement('div'),{className:'toast-live'}));
+  const jump=document.getElementById('global-jump');jump.showModal();jump.getAnimations().forEach(x=>x.finish());const r=jump.getBoundingClientRect();
+  const out={save:getComputedStyle(bs).bottom,toast:getComputedStyle(ts).bottom,bar:[h('.tabbar').height,h('.tabbar').bottom,innerHeight],link:a.getBoundingClientRect().height,
+   ptop:h('.ptop').height,psub:h('.psub').height,top:getComputedStyle(document.querySelector('.top')).display,sub:getComputedStyle(document.querySelector('.sub')).display,
+   pos:getComputedStyle(bar).position,jump:[r.left,r.top,r.width,r.height],message:getComputedStyle(document.getElementById('jump-message')).display,
+   add:!!document.getElementById('jump-add'),text:jump.textContent,scrollX:document.documentElement.scrollWidth-innerWidth};
+  jump.close();return out;
  })()`);
- assert.equal(m.bar,49);assert.equal(m.save,'49px');assert.equal(m.toast,'65px');assert.equal(m.label,'12px');assert.equal(m.size,'11px');
- assert.ok(m.link>=48&&m.link<=49,'link '+m.link);
+ assert.deepEqual(m.bar,[78,844,844]);assert.equal(m.pos,'fixed');assert.equal(m.save,'78px');assert.equal(m.toast,'94px');
+ assert.ok(m.link>=44,'link '+m.link);
+ assert.equal(m.ptop,56);assert.ok(m.psub>=37&&m.psub<=41,'psub '+m.psub);   // content height (padding, a 13 px label, a 3 px rule): 40 with the shipped fonts, 39 with this offline page's fallback font on a Mac, 38 with the Ubuntu runner's (the push run on main is the only CI run that has Chrome: a pull request sets BW_NO_CHROME)
+ assert.equal(m.top,'none');assert.equal(m.sub,'none');assert.ok(m.scrollX<=0,'page scrolls sideways');
  assert.deepEqual(m.jump,[0,0,390,844]);
  assert.equal(m.message,'none');assert.equal(m.add,false);
  assert.ok(!/Enter opens copy|Search owned and wanted/.test(m.text));
- await evaluate("document.getElementById('global-jump').close()");
+ // The sub row strip scrolls inside itself, never the page.
+ assert.equal(await evaluate("getComputedStyle(document.querySelector('.psub')).overflowX"),'auto');
  // #245: content clears the bar with no inset (browser toolbar) and with a 34px home-indicator inset (installed app).
- for(const [inset,bar] of [[0,49],[34,83]]){
-  const c=await evaluate(`(()=>{document.documentElement.style.setProperty('--tw-safe-bottom','${inset}px');const b=document.querySelector('.mobile-bottom');window.scrollTo(0,document.documentElement.scrollHeight);
-   const end=(document.querySelector('.footer')||document.querySelector('main')).getBoundingClientRect().bottom;return {bar:b.getBoundingClientRect().height,pad:parseFloat(getComputedStyle(document.body).paddingBottom),top:b.getBoundingClientRect().top,end,inner:parseFloat(getComputedStyle(b).paddingBottom)};})()`);
-  assert.equal(c.bar,bar,'bar at inset '+inset);assert.equal(c.pad,bar,'body clearance at inset '+inset);assert.equal(c.inner,inset);assert.ok(c.end<=c.top+.5,'last row hidden at inset '+inset+': '+JSON.stringify(c));
+ for(const [inset,bar] of [[0,78],[34,112]]){
+  const c=await evaluate(`(()=>{document.documentElement.style.setProperty('--tw-safe-bottom','${inset}px');const b=document.querySelector('.tabbar');window.scrollTo(0,document.documentElement.scrollHeight);
+   const f=document.querySelector('.footer'),last=[...f.children].pop().getBoundingClientRect();return {bar:b.getBoundingClientRect().height,top:b.getBoundingClientRect().top,end:last.bottom,inner:parseFloat(getComputedStyle(b).paddingBottom)};})()`);
+  assert.equal(c.bar,bar,'bar at inset '+inset);assert.equal(c.inner,inset);assert.ok(c.end<=c.top+.5,'last row hidden at inset '+inset+': '+JSON.stringify(c));
  }
  await evaluate("document.documentElement.style.removeProperty('--tw-safe-bottom')");
- // Real touch opens must focus the sheet; both keyboard activation keys focus a tile.
- await call('Emulation.setTouchEmulationEnabled',{enabled:true});
- for (const height of [844,480]) {
-  await call('Emulation.setDeviceMetricsOverride',{width:390,height,deviceScaleFactor:1,mobile:true});
-  for (let group=0;group<4;group++) {
-   const point=await evaluate(`(()=>{const r=document.querySelectorAll('[data-nav-group]')[${group}].getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+20};})()`);
-   await call('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[point]});
-   await call('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
-   assert.equal(await settled(`document.activeElement===document.querySelectorAll('[data-nav-sheet]')[${group}]`),true);
-   assert.equal(await evaluate("getComputedStyle(document.activeElement).outlineStyle"),'none');
-   for (const key of ['Enter',' ']) {
-    await call('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape'});
-    await call('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape'});
-    assert.equal(await settled(`document.activeElement===document.querySelectorAll('[data-nav-group]')[${group}]`),true);
-    await call('Input.dispatchKeyEvent',{type:'keyDown',key,code:key===' '?'Space':'Enter'});
-    await call('Input.dispatchKeyEvent',{type:'keyUp',key,code:key===' '?'Space':'Enter'});
-    assert.equal(await settled(`document.activeElement===document.querySelectorAll('[data-nav-sheet]')[${group}].querySelector('.workbench-grid a, .workbench-grid button')`),true);
-    const failures=await evaluate(`(()=>{
-     const sheet=document.querySelectorAll('[data-nav-sheet]')[${group}];sheet.getAnimations().forEach(a=>a.finish());
-     const grid=sheet.querySelector('.workbench-grid'),failures=[];
-     for(const tile of grid.children){
-      tile.focus();
-      const r=tile.getBoundingClientRect(),s=getComputedStyle(tile),out=parseFloat(s.outlineWidth)+parseFloat(s.outlineOffset);
-      if(!tile.matches(':focus-visible') || out<4)failures.push('missing keyboard ring');
-      if(r.height<44 || r.width<44)failures.push('small target');
-      for(let p=tile.parentElement;p;p=p.parentElement){
-       const c=getComputedStyle(p),b=p.getBoundingClientRect();
-       if(/auto|scroll|hidden|clip/.test(c.overflowX) && (r.left-out<b.left+p.clientLeft-.5 || r.right+out>b.left+p.clientLeft+p.clientWidth+.5))failures.push('horizontal clip: '+p.className);
-       if(/auto|scroll|hidden|clip/.test(c.overflowY) && (r.top-out<b.top+p.clientTop-.5 || r.bottom+out>b.top+p.clientTop+p.clientHeight+.5))failures.push('vertical clip: '+p.className);
-      }
-     }
-     return failures;
-    })()`);
-    assert.deepEqual(failures,[],`group ${group}, height ${height}, key ${key}`);
-   }
-   await evaluate(`document.querySelectorAll('[data-nav-sheet]')[${group}].close()`);
-  }
- }
+ // Desktop (1440): top bar 60, sub row 44, no phone bars and no tab bar; the page does not scroll sideways.
+ await call('Emulation.setDeviceMetricsOverride',{width:1440,height:900,deviceScaleFactor:1,mobile:false});
+ const d=await evaluate(`(()=>{const h=s=>document.querySelector(s).getBoundingClientRect(),cs=s=>getComputedStyle(document.querySelector(s));
+  return {top:h('.top').height,sub:h('.sub').height,ptop:cs('.ptop').display,psub:cs('.psub').display,tabbar:cs('.tabbar').display,scrollX:document.documentElement.scrollWidth-innerWidth,overflow:cs('.sub').overflowX};})()`);
+ assert.equal(d.top,60);assert.equal(d.sub,44);assert.equal(d.ptop,'none');assert.equal(d.psub,'none');assert.equal(d.tabbar,'none');assert.ok(d.scrollX<=0);assert.equal(d.overflow,'auto');
  socket.close();child?.kill();process.exit(0);
 })().catch(error=>{console.error(error);child?.kill();process.exit(1);});

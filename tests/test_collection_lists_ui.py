@@ -36,7 +36,7 @@ def test_list_records_carry_subtheme_and_tags_only_as_display_fields(coll, world
     coll.prop(world.keep, 'subtheme', 'Lion Knights')
     with read() as db:
         rows = collection.listing(db, 'S')
-    assert FIELDS[-9:] == ['subtheme', 'tags', 'item_id', 'also', 'source', 'added', 'in_sets_missing', 'in_sets_damaged', 'in_sets_defects']
+    assert FIELDS[-10:] == ['subtheme', 'tags', 'item_id', 'also', 'source', 'added', 'in_sets_missing', 'in_sets_damaged', 'in_sets_defects', 'bars']
     data = json.loads(payload(rows))
     index = {name: i for i, name in enumerate(data['fields'])}
     castle = next(r for r in data['rows'] if r.get(str(index['item_id'])) == world.keep and r.get(str(index['number'])) == '1000-1')
@@ -209,20 +209,15 @@ def test_lists_runtime_harness():
     assert 'lists runtime ok' in done.stdout
 
 
-def rail_count(soup, letter):
-    label = soup.select_one(f'.rail a[href$="/collection/{letter}"]')['aria-label']
-    return int(label.rsplit(', ', 1)[1].replace(',', ''))
-
-
 @pytest.mark.parametrize('letter', ['P', 'M'])
-def test_parts_and_minifigures_open_on_loose_stock_and_the_headline_is_the_rail_count(world, client, letter):
-    """#20 option A: the default view lists what you own loose, and its headline says the number the rail shows."""
+def test_parts_and_minifigures_open_on_loose_stock_and_the_headline_says_how_many(world, client, letter):
+    """#20 option A: the default view lists what you own loose, and its headline says how many that is (the navigation carries no counts since #492)."""
     soup = page(client, '/collection/' + letter)
     data = records(soup)
     index = {name: i for i, name in enumerate(data['fields'])}
     loose = sum(r.get(str(index['quantity']), 0) for r in data['rows'])
     held = sum(r.get(str(index['in_sets']), 0) for r in data['rows'])
-    assert loose == rail_count(soup, letter) and held > 0
+    assert loose > 0 and held > 0
     stock = soup.select_one('select[data-bc-filter=stock]')
     assert stock['data-bc-default'] == 'loose' and [o['value'] for o in stock.select('option')] == ['loose', 'sets']
     assert stock.select_one('option[selected]')['value'] == 'loose'

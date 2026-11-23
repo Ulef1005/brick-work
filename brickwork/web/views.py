@@ -166,7 +166,7 @@ def identity_undo_offer(text):
     return identifier if found else None
 
 
-SETTINGS_ROWS = ('retail-country', 'part-list-grouping', 'part-lists', 'pictures', 'picture-priority', 'source-priority', 'freshness', 'instruction-downloads', 'sync')
+SETTINGS_ROWS = ('retail-country', 'part-list-grouping', 'part-lists', 'pictures', 'picture-priority', 'source-priority', 'freshness', 'sync')
 
 
 def settings_undo_offer(db, text):
@@ -474,7 +474,7 @@ def bw_first_run_catalogue():
         catalogue_jobs.start(admin_ops.store4_paths(), kind)
     except Store4Error as exc:
         flash(catalogue_jobs.KINDS[kind] + ' · ' + str(exc), 'error')
-    return redirect(url_for('web.bw_sets'))
+    return redirect(url_for('web.bw_get_started'))      # the job's progress and failure show on the flow page (the empty Sets page only links to it, #497)
 
 
 @web_page.get('/manage/get-started')
@@ -1219,12 +1219,16 @@ def bw_workbench_page(mode):
             rows = workbench.picker(db, selected, ranking, all_gaps=all_gaps) if mode == 'picker' else workbench.matches(db, all_gaps=all_gaps)
             if mode == 'picker':
                 rank_keys = workbench.picker_keys(rows)
+                places = workbench.picker_places(db, rows)
+                for row in rows:   # where each part sits (the next-parts list of the run); additive, the rows the print list reads are unchanged
+                    row['places'] = places.get((row['item_id'], row['color_id']), [])
             if mode == 'matcher':
                 match_groups = workbench.group_matches(db, rows, all_gaps)
             history = workbench.history(db)
     except (ValueError, sqlite3.Error, OSError):
         error = 'Brick Work database is not available. Check BW_DB_PATH and try again.'
-    response = current_app.make_response(render_template('web/toni/web/bw_workbench.html', mode=mode,
+    start = min(max(request.args.get('part', 1, type=int) - 1, 0), max(len(rows) - 1, 0)) if mode == 'picker' else 0   # ?part=7 puts the run on its 7th part (a reload, a link)
+    response = current_app.make_response(render_template('web/toni/web/bw_workbench.html', mode=mode, start=start,
         rows=rows, ranking=ranking, rank_keys=rank_keys, picking=request.args.get('pick') == '1', match_groups=match_groups, copies=copies,
         selected=selected, history=history, error=error, csrf_token=bw_add_token()))
     response.headers['Cache-Control'] = 'no-store'
@@ -1766,6 +1770,7 @@ def bw_collection(kind):
         error = public(exc, 'Brick Work database is not available. Check BW_DB_PATH and try again.')
     response = current_app.make_response(render_template('web/toni/web/bw_collection.html',
         title='Lot Sorter' if request.endpoint == 'web.bw_lot_sorter' else collection.TYPES[kind], kind=kind, rows=rows, records=ui.bw_collection_records(rows), choices=choices, error=error,
+        storage_index=collection.storage_index(rows, choices['storages']) if kind == 'S' else [],
         lot_total=ui.lot_total(rows) if kind == 'P' else 0,
         csrf_token=bw_add_token(), can_edit=bw_collection_editable(), detail=None,
         first_run=setup_state.first_run(bw_collection_editable()) if kind == 'S' and not rows and not error else None))
@@ -2823,20 +2828,34 @@ def bw_item_supersets(item_id):
 @web_page.get('/manage/instructions/find')
 @login_required
 def bw_instruction_find():
-    from ..core import instructions, instruction_sources
+    """Find instructions links out (ADR 0035, #484): the sets in the collection that have no PDF, each with its LEGO and Rebrickable pages, and a set
+    number lookup. Brick Work fetches nothing here; the PDF is uploaded afterwards (the Instruction files page)."""
+    from ..core import instructions
+    from ..core.instruction_links import instruction_links
     try:
-        job_ids = _instruction_ids(request.args.get('jobs', ''))
+        _instruction_ids(request.args.get('jobs', ''))   # a link from the old download flow (?jobs=1,2) still has to be a valid list
     except (ValueError, TypeError):
         abort(400, 'Choose a valid instruction job')
+    number = request.args.get('set', '').strip()
     with _add_database(read_only=True) as db:
-        region = instructions.region_for(db)
-        groups = instructions.candidates(db, job_ids)
-        official_limit = instructions.download_limit(db, 'official')
-    return render_template('web/toni/web/bw_instruction_find.html', csrf_token=bw_add_token(),
-                           can_edit=bw_collection_editable(), region=region, groups=groups,
-                           configured=bool(instruction_sources.registry.adapters), official_limit=official_limit,
-                           source_notices=[a.unavailable for a in instruction_sources.registry.adapters.values() if getattr(a, 'unavailable', None)],
-                           initial_item=request.args.get('item', ''), initial_jobs=request.args.get('jobs', ''))
+        region = instructions.usable_region(db, request.args.get('region') or None)
+        missing = instructions.sets_without_booklet(db, region)
+    looked_up, problem = None, None
+    item = request.args.get('item', '').strip()
+    if item.isdecimal() and not number:   # the Instructions & Box tab of a set or booklet links here with ?item=<id>: look that set up
+        try:
+            with _add_database(read_only=True) as db:
+                number = instructions.links_for(db, int(item), region)['set_no']
+        except ValueError as error:
+            problem = str(error)
+    if number:
+        full = number if re.search(r'-[0-9]+$', number) else number + '-1'   # the upload form takes the Rebrickable number, which carries the suffix
+        try:
+            looked_up = dict(number=full, links=instruction_links(number, region))
+        except ValueError as error:
+            problem = str(error)
+    return render_template('web/toni/web/bw_instruction_find.html', can_edit=bw_collection_editable(), region=region,
+                           regions=instructions.REGION_LABELS, missing=missing, number=number, looked_up=looked_up, problem=problem)
 
 
 def _instruction_ids(value):

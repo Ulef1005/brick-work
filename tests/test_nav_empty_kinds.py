@@ -14,15 +14,17 @@ def shell(client, path):
 @pytest.mark.parametrize('path,title', [('/collection/B', 'Books'), ('/collection/C', 'Catalogs')])
 def test_an_empty_kind_page_marks_its_entry_and_the_collection_group(world, client, path, title):
     page = shell(client, path)                         # the world holds gear but no books or catalogues
-    entries = page.select(f'a[title="{title}"]')
-    assert entries and all(a.get('aria-current') == 'page' for a in entries)                  # sidebar and the group strip
-    assert page.select_one('a[data-nav-group="Collection"]')['aria-current'] == 'true'        # phone bottom bar
-    assert page.select_one('a[data-nav-group="Manage"]')['aria-current'] == 'false'
-    assert not page.select_one('[data-group-panel="Collection"]').has_attr('hidden')
-    assert page.select_one('[data-group-panel="Manage"]').has_attr('hidden')
+    for row in ('nav.sub', 'nav.psub'):                                                       # desktop sub row and phone strip
+        entries = [a for a in page.select(f'{row} a') if a.select_one('.nav-title').text == title]
+        assert len(entries) == 1 and entries[0].get('aria-current') == 'page' and 'on' in entries[0]['class']
+    assert page.select_one('a[data-nav-group="Collection"]')['aria-current'] == 'true'        # phone tab bar
+    assert not page.select_one('a[data-nav-group="Manage"]').has_attr('aria-current')
+    assert [t.text for t in page.select('nav.tabs a.tab[aria-current="true"]')] == ['Collection']
 
 
 def test_an_empty_kind_stays_hidden_on_other_pages(world, client):
     page = shell(client, '/collection/S')
-    assert not page.select('a[title="Books"]') and not page.select('a[title="Catalogs"]')
-    assert page.select('a[title="Gear"]')                                                     # held, so shown
+    for row in ('nav.sub', 'nav.psub'):
+        titles = [a.select_one('.nav-title').text for a in page.select(f'{row} a')]
+        assert 'Books' not in titles and 'Catalogs' not in titles
+        assert 'Gear' in titles                                                               # held, so shown

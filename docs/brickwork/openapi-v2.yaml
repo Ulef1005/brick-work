@@ -8387,6 +8387,14 @@ components:
           - null
         checked:
           type: boolean
+        checked_by:
+          type:
+          - string
+          - 'null'
+          enum:
+          - rebrickable
+          - null
+          description: Who checked the copy (#489, read only). `rebrickable` after a Rebrickable pull read its Lost Parts; null when Brick Work did or nobody has. A check or mark by hand sets it back to null.
         missing:
           type: integer
         damaged:
@@ -12317,6 +12325,14 @@ components:
           - manual
           - derived
           - null
+        checked_by:
+          type:
+          - string
+          - 'null'
+          enum:
+          - rebrickable
+          - null
+          description: Who checked the copy (#489, read only). `rebrickable` after a Rebrickable pull read its Lost Parts; null when Brick Work did or nobody has. A check or mark by hand sets it back to null.
         storage_id:
           type:
           - string

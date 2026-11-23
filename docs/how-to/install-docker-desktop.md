@@ -77,6 +77,8 @@ Brick Work keeps running while Docker Desktop runs. To stop it, type `docker com
 
 ## With Git, or on a NAS
 
+On Unraid, a Synology NAS or Portainer you need no Git: see [Install on Unraid](install-unraid.md) and [Install on a NAS or with Portainer](install-nas.md).
+
 With Git and Docker Compose installed, the [README](https://github.com/Ulef1005/brick-work#install) has the short install: clone the release tag, make `data/.env` and start it.
 
 The clone is still needed there: it holds `compose.yaml` and `.env.sample`. `docker compose pull` fetches the published image `ghcr.io/ulef1005/brick-work:VERSION`, built for amd64 and arm64. `docker compose build` builds the same image from the source you cloned instead. [Upgrade Brick Work](upgrade.md#move-to-the-new-version) shows how to check the image's provenance and its SBOM. Releases up to 0.9.0 build from source: their `compose.yaml` does not pull.

@@ -498,3 +498,23 @@ def test_a_header_total_without_a_currency_stores_neither_and_imports_the_lines(
     order = orders.get(coll.db, result['order_id'])
     assert (order['cost'], order['currency'], order['bricklink_order_id']) == (None, None, '556')
     assert result['placed'] == 1
+
+
+def test_a_pre_47_allocation_receipt_without_checked_by_still_undoes(world, coll):
+    """#489: the guard copy row of an older receipt lacks `checked_by`; the copy is unchanged, so Undo goes through."""
+    db = coll.db
+    coll.mark(world.copy_a, '3001', '4', missing=3)
+    oid, did, lid = saved(db)
+    orders.received(db, oid, {lid: 3})
+    gap = gap_of(db, oid, lid, world.copy_a)
+    allocated = orders.allocate(db, oid, [dict(line_id=lid, target_type='copy', copy_id=gap['copy_id'], target=gap['target'], target_id=gap['target_id'], quantity=2)])
+    db.execute('DROP TRIGGER event_no_update')                                            # the test rewrites a receipt as 4.6 wrote it
+    for field in ('old_value', 'new_value'):
+        body = json.loads(db.execute(f'SELECT {field} FROM event WHERE id=?', (allocated,)).fetchone()[0])
+        for entry in body:
+            if entry['table'] == 'guard':
+                for guard in entry['rows']:
+                    guard['copy'].pop('checked_by', None)
+        db.execute(f'UPDATE event SET {field}=? WHERE id=?', (json.dumps(body), allocated))
+    orders.undo(db, allocated)
+    assert {r[0] for r in db.execute('SELECT state FROM allocation WHERE order_id=?', (oid,))} == {'undone'}

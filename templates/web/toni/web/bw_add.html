@@ -1,13 +1,13 @@
 {% extends 'web/toni/base.html' %}
 {% block title %} · Add{% endblock %}
 {% block page_assets %}
-<link rel="stylesheet" href="{{ bw_static('web/toni/bw-add.css') }}">
+<link rel="stylesheet" href="{{ bw_static('web/toni/bw-add.css') }}"><link rel="stylesheet" href="{{ bw_static('web/toni/bw-add-b.css') }}">
 <script src="{{ bw_static('web/toni/import-progress.js') }}" defer></script>
 <script src="{{ bw_static('web/toni/bw-add.js') }}" defer></script>
 {% endblock %}
 {% block main %}
 <div id="bw-add" class="stack" data-url="{{ url_for('web.bw_add') }}" data-csrf="{{ csrf_token }}" data-colours="{{ colours|tojson|forceescape }}" data-wishlists="{{ wishlists|tojson|forceescape }}">
-  <header><h1>Add</h1><p class="secondary">Find what you have, select it, review the details, then add it. Nothing is saved before the last step, except the pictures fetched to show you.</p></header>
+  <header><div class="bc-eyebrow">Manage · Add</div><h1>Add</h1><p class="secondary">Find what you have, select it, review the details, then add it. Nothing is saved before the last step, except the pictures fetched to show you.</p></header>
   <ol class="bw-add-steps" aria-label="Steps"><li data-step="find" aria-current="step">Find and select</li><li data-step="review">Review and add</li><li data-step="added">Added</li></ol>
   {% if error %}<p class="notice" role="alert">{{ error }}</p>{% endif %}
   {% set initial_type = initial_kind %}
@@ -37,7 +37,7 @@
     <h2>Review and add</h2><p class="secondary">Set the quantity and details. Nothing is saved until you tap Add.</p><div class="actions" data-review-tools><label>Search review<input data-review-search type="search"></label><label>Filter<select data-review-filter><option value="">All items</option><option value="duplicates">Already owned or wished</option>{% for key,name in kinds.items() %}<option value="{{ key }}">{{ name }}</option>{% endfor %}</select></label><label>Sort<select data-review-sort><option value="number">Number</option><option value="name">Name</option></select></label><button data-review-clear type="button">Clear filters</button></div><div data-review-chips class="actions"></div><p data-review-count class="mono" data-review-tools></p>
     <div class="bw-add-table"><table><thead><tr><th>Item</th><th>Type</th><th>Quantity</th><th>Where</th><th>Condition</th><th>Completeness</th><th>Choice</th></tr></thead><tbody data-review-rows></tbody></table></div>
     <p class="secondary">Owned sets become copies with the part list Brick Work prefers. Other owned items go to loose stock. Completeness you choose is manual; leave it unknown to derive it from checks.</p>
-    <label class="check-field bw-add-instruction-switch"><input data-find-instructions type="checkbox" role="switch"{% if not instruction_sources_ready %} disabled{% endif %}><span>Fetch instructions<small>Looks for PDFs and asks before downloading anything.{% if not instruction_sources_ready %} {{ instruction_source_reason }}.{% endif %}</small></span></label>
+    <label class="check-field bw-add-instruction-switch" hidden><input data-find-instructions type="checkbox" role="switch"{% if not instruction_sources_ready %} disabled{% endif %}><span>Fetch instructions<small>Looks for PDFs and asks before downloading anything.{% if not instruction_sources_ready %} {{ instruction_source_reason }}.{% endif %}</small></span></label>
     <div class="bw-add-bar"><button data-back type="button">Back</button><button data-confirm type="button" class="button primary">Add 0 items</button></div>
   </section>
   <section data-jobs hidden class="stack"><h2>Importing</h2><p data-instruction-result hidden aria-live="polite"></p><div data-overall hidden>{% include 'web/toni/components/import_progress.html' %}</div><div data-job-list class="stack"></div><div class="actions"><button data-undo type="button">Undo</button><a href="{{ url_for('web.bw_admin',page='jobs') }}">Jobs</a><button data-again type="button">Add more</button></div><p class="secondary">You can leave this page while imports run. Jobs keeps their progress and Retry.</p></section>

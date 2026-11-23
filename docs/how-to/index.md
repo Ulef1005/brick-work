@@ -28,6 +28,7 @@ One task per page, for someone who already knows the app.
 
 - [Receive a parts order](receive-an-order.md)
 - [Manage wishlists](manage-wishlists.md)
+- [Browse your sets](browse-your-sets.md)
 - [Know where things are](storage.md)
 - [Pictures, prices and where they come from](pictures-and-prices.md)
 - [Make an insurance report](insurance-report.md)
@@ -43,9 +44,11 @@ One task per page, for someone who already knows the app.
 ## Running Brick Work
 
 - [Install on your computer with Docker Desktop](install-docker-desktop.md)
+- [Install on Unraid](install-unraid.md)
+- [Install on a NAS or with Portainer](install-nas.md)
 - [Settings and maintenance](settings-and-maintenance.md)
 - [Back up and restore](back-up-and-restore.md)
 - [Upgrade Brick Work](upgrade.md)
 - [Connect an assistant](connect-an-assistant.md)
 
-Find and download PDFs in [Find and download instructions](add-a-box-or-instructions.md#find-and-download-instructions).
+Find a set's instructions pages in [Find the instructions for a set](add-a-box-or-instructions.md#find-the-instructions-for-a-set).

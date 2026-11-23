@@ -6,17 +6,27 @@
   </picture>
 </p>
 
-<p align="center"><strong>The workbench for your brick collection.</strong></p>
+<p align="center"><strong>Free, self-hosted app for your brick collection and its missing parts.</strong></p>
 
 <p align="center">
-  <a href="https://brick-work.app/">Website</a> ·
+  <a href="https://github.com/Ulef1005/brick-work/releases/latest"><img src="https://img.shields.io/github/v/release/Ulef1005/brick-work?label=release" alt="Latest release"></a>
+  <a href="https://github.com/Ulef1005/brick-work/releases/latest"><img src="https://img.shields.io/github/release-date/Ulef1005/brick-work?label=released" alt="Release date"></a>
+  <a href="https://github.com/Ulef1005/brick-work/pkgs/container/brick-work"><img src="https://img.shields.io/badge/image-ghcr.io-blue" alt="Container image on GHCR"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/Ulef1005/brick-work" alt="MIT licence"></a>
+  <a href="https://github.com/Ulef1005/brick-work/actions/workflows/check.yml"><img src="https://github.com/Ulef1005/brick-work/actions/workflows/check.yml/badge.svg" alt="Checks"></a>
+</p>
+
+<p align="center">
   <a href="https://brick-work.app/demo/">Demo</a> ·
+  <a href="#install">Install</a> ·
+  <a href="CHANGELOG.md">Changelog</a> ·
+  <a href="https://github.com/Ulef1005/brick-work/milestones">Roadmap</a> ·
+  <a href="https://brick-work.app/">Website</a> ·
   <a href="https://www.youtube.com/watch?v=R5Q_6GUB1OQ">Video</a> ·
   <a href="https://brick-work.app/docs/">Docs</a> ·
   <a href="https://brick-work.app/workflows/">Workflows</a> ·
   <a href="https://brick-work.app/docs/developer/api-v2-reference/">API</a> ·
-  <a href="https://brick-work.app/docs/brickwork/mcp/">MCP</a> ·
-  <a href="https://github.com/Ulef1005/brick-work/milestones">Roadmap</a>
+  <a href="https://brick-work.app/docs/brickwork/mcp/">MCP</a>
 </p>
 
 <p align="center">
@@ -37,7 +47,7 @@
 
 # Brick Work
 
-**Don't just manage your collection. Work with it.** Brick Work is a free, open-source (MIT) web app for your own computer or NAS. It helps you finish your sets, not only list them. Built with Claude Code and reviewed by its maintainer, who uses it daily for about 200 set copies.
+**Don't just manage your collection. Work with it.** Brick Work is a free, open-source (MIT) web app for your own computer or NAS. It helps you finish your sets, not only list them. Built with Claude Code; I review it and use it daily. I use it for my collection of about 200 sets.
 
 **[Try the demo](https://brick-work.app/demo/)** (the real interface on an invented collection, nothing saved) or **[watch the tour](https://www.youtube.com/watch?v=R5Q_6GUB1OQ)** (1:36).
 
@@ -113,7 +123,13 @@ Release 1.1 (schema 4.6). The schema is stable, upgrades are tested, and you ins
 
 ## Install
 
-On Windows or a Mac with no Git: [install with Docker Desktop](docs/how-to/install-docker-desktop.md), about 15 minutes. With Git and Docker Compose:
+Pick your platform, none of these needs Git:
+
+- **Unraid:** find **Brick Work** in Community Applications. [Unraid guide](docs/how-to/install-unraid.md).
+- **Synology, other NAS and Portainer:** paste one compose file. [NAS and Portainer guide](docs/how-to/install-nas.md).
+- **Windows or a Mac:** [install with Docker Desktop](docs/how-to/install-docker-desktop.md), about 15 minutes.
+
+With Git and Docker Compose:
 
 ```sh
 git clone --branch v1.1.1 https://github.com/Ulef1005/brick-work.git

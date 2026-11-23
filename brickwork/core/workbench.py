@@ -187,6 +187,7 @@ def completion_context(db, all_gaps):
             counts[gap['copy_id']][identity(gap)] += 1
     identifier = flag(db, 'Set is checked')
     checked = {r[0] for r in db.execute('SELECT copy_id FROM main.copy_flag WHERE flag_id=?', (identifier,))} if identifier else set()
+    checked |= {r[0] for r in db.execute('SELECT id FROM main.copy WHERE checked_by IS NOT NULL AND archived_at IS NULL')}      # #489: a Rebrickable pull checked it
     return counts, checked
 
 
@@ -297,6 +298,29 @@ def picker(db, selected, ranking=None, *, all_gaps=None):
         g['rank_set'] = min(r['copy']['set_no'] for r in g['needs'])
         g['rank_storage'] = ' · '.join(sorted(storage_names[identity(g)]))
     return order_picker(list(grouped.values()), ranking, part_groups.overrides(db))
+
+
+def picker_places(db, rows):
+    """Where each part of a picker snapshot sits: `{(item_id, color_id): [{code, root, leaf}]}`, the usable loose lots' storages in the order the picker ranks them by
+    (by name). `leaf` is the storage the lot is in (a drawer), `root` the top storage that holds it (a shelf) and `code` its label code."""
+    storages = {r['id']: dict(r) for r in db.execute('SELECT id,name,short_id,parent_id FROM main.storage WHERE archived_at IS NULL')}
+    wanted = {(r['item_id'], r['color_id']) for r in rows}
+    defective = defective_figures(db)
+    found = defaultdict(dict)
+    for raw in db.execute('''SELECT s.*,t.name AS storage_name FROM main.stock s JOIN main.storage t ON t.id=s.storage_id
+                             WHERE s.kind='part' AND s.archived_at IS NULL AND t.archived_at IS NULL AND t.name IS NOT NULL'''):
+        source = dict(raw)
+        key = (source['item_id'], source['color_id'])
+        if key in wanted and available(db, source, defective=defective):
+            leaf = storages.get(source['storage_id'])
+            if leaf is None:      # a lot whose storage is gone from the list: no location rather than an error
+                continue
+            top, seen = leaf, set()
+            while top['parent_id'] in storages and top['id'] not in seen:
+                seen.add(top['id'])
+                top = storages[top['parent_id']]
+            found[key][source['storage_id']] = dict(code=top['short_id'], root=top['name'], leaf=leaf['name'])
+    return {key: sorted(places.values(), key=lambda p: p['leaf']) for key, places in found.items()}
 
 
 def picker_keys(rows):

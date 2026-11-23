@@ -53,6 +53,14 @@ Nothing is cleared when Brick Work could not read the whole list. If Rebrickable
 
 **Parts that cannot be matched.** A lost part is matched to a line of the copy by part and colour. Brick Work uses the numbers it knows for Rebrickable, so a copy on BrickLink's part list matches too. A spare part matches a spare line. Four cases are listed with the reason, never dropped. They are a part with no matching line, a count above the line's quantity and a set that is not in Brick Work. The fourth is a set with no copy here that this pull does not bring in. A set with a part that cannot be matched is not cleared, because the line it names may be one you marked.
 
+**Checked on Rebrickable.** A copy that gets its Lost Parts from a pull shows the line **Checked on Rebrickable**. It sits under its bar on the Sets page and in the Info card of the set. The Lost Parts are its missing parts, and every other part counts as found.
+
+A pulled copy of a set with no Lost Parts on Rebrickable gets the same line, and it shows as complete. That needs the whole Lost Parts list to have been read. It also needs a set with exactly one copy. The copy must carry the tag *imported from Rebrickable* and have no check or mark of yours.
+
+The line goes only on the copy that received the pull: the single copy, or the copy you picked. Other copies of the same set are not touched. A sealed copy, or a copy whose completeness you chose yourself, gets no line.
+
+When you check the copy or mark a part yourself, the line goes. A copy you checked is yours, so it carries no label. Undo of the pull puts the earlier state back.
+
 **Undo.** **Undo this pull** takes the Lost Parts marks back with the copies, stock and wishes of the same pull, in one step. Each marked copy also keeps its own entry in its history. Undo is refused when a mark was changed after the pull (**Something from this sync has changed since**).
 
 ## Send

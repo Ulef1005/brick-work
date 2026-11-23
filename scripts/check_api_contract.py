@@ -139,4 +139,7 @@ def main():
 
 
 if __name__ == '__main__':
+    sys.path.insert(0, str(ROOT / 'scripts'))
+    import venv_python
+    venv_python.ensure()   # the app's venv, as check.sh picks it
     sys.exit(main())

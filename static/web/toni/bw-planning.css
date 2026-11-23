@@ -275,7 +275,7 @@
 .oo-bar .primary { flex:1.5; }
 @media(min-width:1024px) {
   #bw-planning[data-screen=order] { display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,380px);gap:var(--oo-gap);align-items:start; }
-  .oo-review { position:sticky;top:16px;padding:18px 20px;border-radius:16px;background:var(--tw-surface); }
+  .oo-review { position:sticky;top:calc(var(--bw-bars) + 16px);padding:18px 20px;border-radius:16px;background:var(--tw-surface); }
   .oo-label { display:block; }
 }
 @media(min-width:1280px) { #bw-planning[data-screen=order] { grid-template-columns:minmax(0,1fr) 520px; } }

@@ -1,6 +1,6 @@
 {% extends 'web/toni/base.html' %}
 {% block title %} · {{ title }}{% endblock %}
-{% block page_assets %}<link rel="stylesheet" href="{{ bw_static('web/toni/bw-collection.css') }}"><link rel="stylesheet" href="{{ bw_static('web/toni/bw-planning.css') }}"><link rel="stylesheet" href="{{ bw_static('web/toni/bw-part-sections.css') }}"><script src="{{ bw_static('web/toni/bw-part-sections.js') }}" defer></script><script src="{{ bw_static('web/toni/bw-planning-order.js') }}" defer></script>{% endblock %}
+{% block page_assets %}<link rel="stylesheet" href="{{ bw_static('web/toni/bw-collection.css') }}"><link rel="stylesheet" href="{{ bw_static('web/toni/bw-planning.css') }}"><link rel="stylesheet" href="{{ bw_static('web/toni/bw-order-b.css') }}"><link rel="stylesheet" href="{{ bw_static('web/toni/bw-part-sections.css') }}"><script src="{{ bw_static('web/toni/bw-part-sections.js') }}" defer></script><script src="{{ bw_static('web/toni/bw-planning-order.js') }}" defer></script>{% endblock %}
 {# #225: one server-rendered page. Every choice is in the query (a link), the ticks are a GET form, the file is a link: nothing here needs a script. #}
 {% macro amount(value,currency='') %}{{ toni_money(value,currency,fixed=true) }}{% endmacro %}
 {% macro piece(n,word) %}{{ n }} {{ word }}{{ '' if n==1 else 's' }}{% endmacro %}
@@ -11,7 +11,7 @@
 <div id="bw-planning" class="oo" data-screen="order" data-step="{{ choice.step }}">
 {% if error %}<h1>{{ title }}</h1><p role="alert">{{ error }}</p><a href="{{ url_for('web.bw_admin',page='database') }}">Open Tools &amp; Admin</a>{% else %}
 <section class="oo-choose" aria-label="Choose sets">
-<a class="oo-crumb" href="{{ url_for('web.bw_planning',screen='complete-sets') }}">Planning · Complete sets</a>
+<a class="oo-crumb" href="{{ url_for('web.bw_planning',screen='complete-sets') }}" aria-label="Back to Complete sets">Planning · {{ title }}</a>
 <h1>{{ title }}</h1>
 <p class="bp-subtitle" data-oo-summary>{{ rows|length }} {{ 'set has' if rows|length==1 else 'sets have' }} gaps · {{ ticked }} in the list</p>
 {% if not rows %}<p>No set has a gap. Mark missing parts on a copy first.</p>{% else %}
@@ -39,17 +39,18 @@
 <input type="checkbox" name="copy" value="{{ r.id }}" {% if r.id in page.ticked %}checked{% endif %} data-oo-copy><span class="oo-box" aria-hidden="true"></span>
 <span class="bc-picture" data-item-no="{{ r.item_no }}">{% if r.image %}<img {{ bw_picture_attrs(r.image) }} alt="" loading="lazy">{% else %}<span class="mono">{{ r.number_text or r.name }}</span>{% endif %}</span>
 <span class="oo-who"><span class="oo-name"><span class="mono">{{ r.number_text or r.item_no }}{% if r.show_label %} · {{ r.label }}{% endif %}</span> <strong>{{ toni_nowrap_tail(r.name or r.item_no) }}</strong></span>
-<span class="oo-meta">{{ r.theme or r.category or '' }}{% if (r.theme or r.category) and r.year %} · {% endif %}{{ r.year or '' }}{% if r.checking %} <span class="bc-status incomplete">Check in progress</span>{% endif %}{% if why %} <span class="bc-status unknown">{{ why }}</span>{% if left %} left out{% endif %}{% endif %}</span></span>
+<span class="oo-meta">{{ r.theme or r.category or '' }}{% if (r.theme or r.category) and r.year %} · {% endif %}{{ r.year or '' }}{% if r.checking %} <span class="bc-status incomplete">Check in progress</span>{% endif %}{% if why %} <span class="bc-status unknown">{{ why }}</span>{% if left %} left out{% endif %}{% endif %}</span>
+{% if r.size %}{% set pct=100*r.parts/r.size if r.parts else 0 %}<span class="oo-bar-scale" aria-hidden="true"><i class="oo-found" style="flex:1"></i>{% if r.parts or r.figures %}<i class="oo-gone" style="width:{{ [pct,1.5]|max|round(1) }}%"></i>{% endif %}</span>{% endif %}
 <span class="oo-num"><span class="mono">{% if r.parts or not r.figures %}<span class="oo-gap"><b>{{ r.parts }}</b> {{ 'part' if r.parts==1 else 'parts' }} missing</span>{% endif %}{% if r.figures %}<span class="oo-gap"><b>{{ r.figures }}</b> {{ 'figure' if r.figures==1 else 'figures' }} missing</span>{% endif %}</span>
-<span class="oo-sub mono">{% if left %}not in the list{% elif r.gain %}gain +{{ amount(r.gain,settings.bricklink_currency) }}{% endif %}</span></span>
+<span class="oo-sub mono">{% if left %}not in the list{% elif r.gain %}gain +{{ amount(r.gain,settings.bricklink_currency) }}{% endif %}</span></span></span>
 </label></li>{% else %}<li class="oo-none">No set matches. Clear a filter to see the rest.</li>{% endfor %}
 </ul>
 </form>{% endif %}
 </section>
 <section class="oo-review" aria-label="Order list">
 <a class="oo-crumb oo-back" href="{{ page.back_url }}">‹ {{ title }}</a>
-<p class="lab oo-label">Order list</p>
-<h2 data-oo-total>{{ piece(lines|length,'line') }} · {{ piece(order.pieces,'piece') }}<span class="oo-from"> from {{ piece(ticked,'set') }}</span></h2>
+<div class="oo-tape"><p class="lab oo-label">Order list</p>
+<h2 data-oo-total>{{ piece(lines|length,'line') }} · {{ piece(order.pieces,'piece') }}<span class="oo-from"> from {{ piece(ticked,'set') }}</span></h2></div>
 <p class="bp-subtitle oo-sub-top"><span class="oo-from-sub">From {{ piece(ticked,'set') }}. </span>Same part, colour and condition are combined. Each line goes to one source. {% if settings.repair_use_loose_stock %}Loose stock is already taken off.{% else %}Loose stock is not counted (Repair settings).{% endif %}</p>
 {% set sp=order.split %}{% set tabbed=lines if not choice.tab else lines|selectattr('source','equalto',choice.tab)|list %}
 {% if lines %}<a class="oo-prefer" role="switch" aria-checked="{{ 'true' if choice.prefer else 'false' }}" href="{{ page.prefer_url }}"><span class="oo-prefer-text"><strong>Prefer Pick a Brick where a line has an element id</strong><span>{{ 'On: lines with an element id start on Pick a Brick.' if choice.prefer else 'Off: lines start on BrickLink. Change a single line with its chips.' }}</span></span><span class="bk-track" aria-hidden="true"></span></a>

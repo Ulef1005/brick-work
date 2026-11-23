@@ -21,7 +21,7 @@ assert.equal(declarations(desktopCSS,'.bp-ratio-track i').background,'var(--tw-a
 const collectionCSS=fs.readFileSync('static/web/toni/bw-collection.css','utf8');
 assert.match(collectionCSS,/grid-template-columns:minmax\(0,1fr\) 44px 44px/);
 assert.match(collectionCSS,/:is\(#bw-collection,#bw-planning,#bw-check-choices\) \.bc-toolbar button/);
-const sharedCSS=fs.readFileSync('static/web/toni/toni.css','utf8');
+const sharedCSS=fs.readFileSync('static/web/toni/toni.css','utf8').split(':where(:not(.b-prime,.b-prime *))').join('');
 const primary=declarations(sharedCSS,'button.bw-primary');
 assert.equal(primary.background,'var(--tw-accent)');assert.equal(primary.color,'var(--bw-action-ink)');assert.equal(primary['min-height'],'var(--tw-hit-lg)');
 class Node {

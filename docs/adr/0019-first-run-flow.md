@@ -20,7 +20,7 @@ Recommendation: 3.
 
 - **Four steps, in order:** **Load the catalogue**, **Set up your keys** (optional), **Bring your collection in**, **See how the inventory works**. Bringing the collection in waits for the catalogue; the keys never wait.
 - **Done comes from the data,** so the flow can never claim a step that did not happen, and work done elsewhere (a sync, an import, a key stored on Catalogues & keys) counts. Only **Skip for now** and the guide's **Got it** are stored, in `onboarding.json` beside the collection file. That file works before the collection file exists and travels with the data folder.
-- **The flow resumes at the first open step,** on the empty Sets page and on **Tools & Admin › Get started**, which stays available after the first run.
+- **The flow resumes at the first open step,** on **Tools & Admin › Get started**, which stays available after the first run. The empty Sets page (frame 08, #497) shows a card that links there, while set-up is open; the steps themselves no longer sit on the Sets page.
 - **Each step runs the existing screen's code:** the catalogue job, the key cards of Catalogues & keys (one shared macro), Add, Collection sync and the import. Step 3's choice screen sends you there, and those pages offer the way back.
 - **Design:** built on 12j's step cards and 12b's import hub with the existing tokens. The gaps were reported, not drawn: 12j has keys first and no skip control, and there are no frames for the choice screen or the guide.
 

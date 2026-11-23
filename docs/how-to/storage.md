@@ -35,7 +35,7 @@ If the edit gives a loose item the same item, colour, condition, lot and storage
 
 On any **Collection** list:
 
-1. Turn on **Select mode**.
+1. Turn on **Select mode**. On **Sets** it is in the **Filter** sheet.
 2. Tick the items.
 3. In the bar that appears, under **Change**, choose **Storage**, then the storage under **Value**.
 4. Press **Save**.
@@ -45,7 +45,7 @@ When you put selected loose stock into a new lot, the **Put selected stock in a 
 ## Move things between storages
 
 1. Open **Workbench → Storage** and select the storage that holds them.
-2. Press **Select** and tick the sets, minifigures, part lots or other items to move.
+2. Press **Select** and tick the sets, minifigures, part lots or other items to move. A set tile with several copies has a box beside each copy's bar, so you move one copy or all.
 3. Press **Move to another storage**.
 4. Under **Move to**, choose the new storage, or **Not stored**.
 5. Press **Move selected items**.
@@ -54,7 +54,7 @@ A lot takes its parts with it: loose parts filed in that lot and in the same sto
 
 ## See what's in a storage
 
-Select a storage in the list on **Workbench → Storage**. It shows its type, where it sits, its note, and its contents grouped as **Sets**, **Minifigures**, **Part lots** and **Other** (instructions, boxes and the like), with a search and filters. **Not stored** in the same list shows everything without a place. The name of a set, minifigure, part or other item opens its page; a lot has no page of its own, so its name is plain text. In select mode, choosing a name selects the row instead.
+The list on **Workbench → Storage** gives each storage its label code (S-0002), name and type, then how many sets, figures and part lots it holds. Select one. A violet bar shows its code and name. Under it the sets appear as tiles with the set number, price and name, and one bar for each copy. The bar is to scale: the parts you hold in violet, the missing ones hatched, the ones still to check dashed. Below the tiles come the **Minifigures**, **Part lots** and **Other** items (instructions, boxes and the like). A storage with only a few items shows no search or filter; a longer one does. **Not stored** in the same list shows everything without a place. The name of a set, minifigure, part or other item opens its page; a lot has no page of its own, so its name is plain text. In select mode, choosing a name selects the row instead.
 
 On the **Collection** lists you can also filter by **Storage** or group by it.
 

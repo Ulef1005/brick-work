@@ -47,3 +47,12 @@ def test_a_wrapped_state_tag_stays_inside_its_border_and_no_max_is_plain_text_on
     script = (ROOT / 'static' / 'web' / 'toni' / 'bw-collection.js').read_text()
     assert "el('span','bc-wish-max-none','No max set')" in script and "r.max_price||'Not recorded'" not in script
     assert '.bc-wish-max-none { font:400 14px/20px var(--tw-font);color:var(--tw-text-2); }' in (ROOT / 'static' / 'web' / 'toni' / 'bw-collection.css').read_text()
+
+
+def test_a_wish_page_on_a_phone_has_its_picture_beside_the_title():
+    """Product, 23.11. (#654): on a phone a wish's picture is 110px beside the title, as on Set detail, so the answer is on the first screen."""
+    template = (ROOT / 'templates' / 'web' / 'toni' / 'web' / 'bw_collection_detail.html').read_text()
+    assert '{% if detail.wish %} data-b-wish{% endif %}' in template
+    css = (ROOT / 'static' / 'web' / 'toni' / 'bw-detail-b.css').read_text()
+    phone = css.split('#bw-collection[data-b-detail][data-b-wish]', 1)[0].rsplit('@media(max-width:1023.98px) {', 1)[1] + css.split('@media(max-width:1023.98px) {')[-1]
+    assert '.bc-detail-hero {grid-template-columns:110px minmax(0,1fr)' in phone and '.bc-hero-picture {width:110px;height:84px' in phone

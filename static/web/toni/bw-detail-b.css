@@ -80,3 +80,8 @@
 #bw-collection[data-b-detail]:not(#_):not(#_) :is(.bp-state-nomax,.bp-state-differs,.bp-state-noprice) {border-style:dashed}
 #bw-collection[data-b-detail]:not(#_):not(#_) .bc-wish-kv dt .bc-wish-limit {all:unset;box-sizing:border-box;cursor:pointer;color:var(--tw-text-2);font:400 14px/20px var(--tw-font);text-decoration:underline dotted;text-underline-offset:3px}
 #bw-collection[data-b-detail]:not(#_):not(#_) .bc-wish-kv dt .bc-wish-limit:focus-visible {outline:2px solid var(--tw-accent);outline-offset:2px}
+/* A wish on a phone (product, 23.11.): the picture is 110px beside the title, as on Set detail, so the answer stays on the first screen */
+@media(max-width:1023.98px) {
+  #bw-collection[data-b-detail][data-b-wish]:not(#_):not(#_) .bc-detail-hero {grid-template-columns:110px minmax(0,1fr);column-gap:16px;align-items:start}
+  #bw-collection[data-b-detail][data-b-wish]:not(#_):not(#_) .bc-hero-picture {width:110px;height:84px;min-height:0;aspect-ratio:auto;padding:4px;box-sizing:border-box}
+}

@@ -37,7 +37,7 @@ Decisions that bind future work are recorded as ADRs in [`docs/adr/`](https://gi
 ## Instruction previews
 
 Schema 4.6 adds nullable thumbnail path and state columns to `instruction_file` through an additive upgrade.
-Schema 4.7 adds the copy's `checked_by`, which records that a copy got its Lost Parts from a Rebrickable pull (#489), through an in-place upgrade at the first read/write start. It is one way: an older version refuses a 4.7 file.
+Schema 4.7 adds one nullable column, `copy.checked_by`: empty means Brick Work or nobody, `rebrickable` means a Rebrickable pull set the copy's checked state (#489), and a check or a mark by hand clears it. The upgrade is additive and runs in place at the first read/write start of the 1.2 image; existing copies stay empty. It is one way: a 1.1.x image refuses the upgraded file, so the way back is the backup taken before.
 The file row owns the derived preview, so the existing file merge transfers it without another item keyed table.
 
 Attachment queues an `instruction_thumbnail` job. The embedded drainer and worker run it through the existing pipeline ownership and recovery rules.

@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- **Export what you own as a file** (#470). `brickwork export set|part|minifigure` and `GET /export/collection.csv`, `.xml` and `.rebrickable.csv` write your sets, loose parts or minifigures as Brick Work's own CSV, BrickLink inventory XML or Rebrickable CSV, for the rows you name or all of them. A row with no number on the other site is left out and counted. The files read back through **Add**, **From a file**.
+- **Export what you own as a file** (#470). `brickwork export set|part|minifigure` and `GET /export/collection.csv`, `.xml` and `.rebrickable.csv` write your sets, loose parts or minifigures as Brick Work's own CSV, BrickLink inventory XML or Rebrickable CSV, for the rows you name or all of them. A row with no number on the other site is left out and counted. The BrickLink and Rebrickable files read back through **Add**, **File**.
 
 ## Brick Work 1.2.0 (schema 4.7) · 2026-11-23
 

@@ -43,12 +43,14 @@ If known credentials would still be in the copy, the API refuses with `409` inst
 To open your collection in a spreadsheet or another tool, export it as a file. The database export above is complete but needs tools to read.
 
 ```bash
-docker compose exec brickwork brickwork export set > sets.csv
-docker compose exec brickwork brickwork export part --format bricklink > parts.xml
-docker compose exec brickwork brickwork export part --format rebrickable > parts-rebrickable.csv
+docker compose exec brickwork brickwork export set
+docker compose exec brickwork brickwork export part --format bricklink
+docker compose exec brickwork brickwork export part --format rebrickable
 ```
 
-`csv` is Brick Work's own columns, one row per copy or loose stock row. `bricklink` (inventory XML) and `rebrickable` (CSV) add up rows of the same item, colour and condition, and leave out a row that has no number on that site. The command prints how many rows it wrote and left out. Add the file again through **Add**, **From a file**, to get the same sets and parts. The API serves the same files at `GET /export/collection.csv`, `/export/collection.xml` and `/export/collection.rebrickable.csv`; see the [CLI reference](../reference/cli.md#export).
+The file goes to standard output; add `> sets.csv` after the command to keep it in a file on your computer.
+
+`csv` is Brick Work's own columns, one row per copy or loose stock row. `bricklink` (inventory XML) adds up rows of the same item, colour and condition, and `rebrickable` (CSV) rows of the same item and colour; both leave out a row that has no number on that site. The command prints how many rows it wrote and left out. Add a BrickLink or Rebrickable file again through **Add**, **File** to get the same sets and parts. Brick Work's own CSV is for reading, not for adding back. The API serves the same files at `GET /export/collection.csv`, `/export/collection.xml` and `/export/collection.rebrickable.csv`; see the [CLI reference](../reference/cli.md#export).
 
 ## Back up the media folder
 

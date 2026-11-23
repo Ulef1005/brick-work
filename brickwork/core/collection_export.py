@@ -5,6 +5,8 @@ import json
 
 from ..store4.connect import has_catalogue
 from . import collection, csv_safe, errors, gaps, items
+from .secrets import secret_values
+from .sources.base import redact
 
 KINDS = ('set', 'part', 'minifigure')
 MAX_IDS = 2000
@@ -87,11 +89,13 @@ def to_csv(db, kind, ids=None):
     for r in rows:
         color_id = r.get('color_id')
         lbl = lbls.get((r['item_id'], color_id))
-        number = lbl.text if lbl is not None else (r.get('number_text') or r.get('item_no') or '')
+        number = r.get('item_no') or r.get('number_text') or ''
         name = lbl.name if lbl is not None else (r.get('name') or '')
         colour = _named(r, 'color_name', 'colour', 'color_id', colours) if color_id is not None else ''
         price = '' if r.get('purchase_price') is None else r['purchase_price']
-        owners = _names(r.get('owners') or r.get('owner_names') or r.get('owner'))
+        flags = r.get('flags') or []
+        owners = _names([f for f in flags if isinstance(f, dict) and f.get('kind') == 'owner'])
+        others = [f for f in flags if not (isinstance(f, dict) and f.get('kind') == 'owner')]
         out.writerow([
             kind,
             number,
@@ -107,10 +111,10 @@ def to_csv(db, kind, ids=None):
             r.get('purchase_currency') or '',
             r.get('purchase_date') or '',
             owners,
-            _names(r.get('flags')),
+            _names(others),
             r.get('note') or '',
         ])
-    return dict(content=stream.getvalue(), rows=len(rows), skipped=[])
+    return dict(content=redact(stream.getvalue(), secret_values()), rows=len(rows), skipped=[])
 
 
 def to_xml(db, kind, ids=None):

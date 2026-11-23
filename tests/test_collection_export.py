@@ -173,3 +173,13 @@ def test_the_export_command_prints_the_file_and_the_counts(app4, world, capsys):
     assert capsys.readouterr().out.lstrip().startswith('<?xml')
     assert main(['export', 'part', '--format', 'rebrickable', '--id', 'nope']) == 1
     assert 'Export error' in capsys.readouterr().err
+
+
+def test_owners_have_their_own_column_and_the_item_number_is_the_number(app4, coll, world, read_headers):
+    coll.tag('copy', world.copy_a, coll.flag('Alex', 'owner'))
+    coll.tag('copy', world.copy_a, coll.flag('Gift', 'tag'))
+    got = app4.test_client().get('/api/v2/export/collection.csv?kind=set', headers=read_headers)
+    rows = [dict(zip(table(got.get_data(as_text=True))[0], r)) for r in table(got.get_data(as_text=True))[1:]]
+    mine = [r for r in rows if r['Owners'] == 'Alex']
+    assert mine and 'Alex' not in mine[0]['Tags/flags'] and 'Gift' in mine[0]['Tags/flags']
+    assert all(' · ' not in r['Item number'] and r['Item number'] for r in rows)

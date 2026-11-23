@@ -187,12 +187,13 @@ def main(argv=None):
         from ..core import collection_export
         from ..core.connect import connect
         try:
-            path = admin_ops.brickwork_path()
-            if not path.is_file():
-                raise ValueError("Run 'brickwork setup' first")
-            with closing(connect(path, read_only=True)) as db:
-                make = dict(csv=collection_export.to_csv, bricklink=collection_export.to_xml, rebrickable=collection_export.to_rebrickable_csv)[args['format']]
-                result = make(db, args['kind'], args['ids'])
+            with application_context(operation):
+                path = admin_ops.brickwork_path()
+                if not path.is_file():
+                    raise ValueError("Run 'brickwork setup' first")
+                with closing(connect(path, read_only=True)) as db:
+                    make = dict(csv=collection_export.to_csv, bricklink=collection_export.to_xml, rebrickable=collection_export.to_rebrickable_csv)[args['format']]
+                    result = make(db, args['kind'], args['ids'])
             content = result['content']
             sys.stdout.write(content.decode('utf-8') if isinstance(content, bytes) else content)
             print(json.dumps(dict(exported=result['rows'], skipped=len(result['skipped']))), file=sys.stderr)

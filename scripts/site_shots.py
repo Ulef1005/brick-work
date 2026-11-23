@@ -138,7 +138,6 @@ SITE_PICTURES = {
     '3a-matcher-phone-390': ('/workbench/match', 390, 844, None, (SITE,)),
     '3e-start-phone-390': ('/workbench/check-parts/' + R_FRESH, 390, 844, None, (SITE,)),
     '3e-part-phone-390': ('/workbench/check-parts/%s?run=1' % R_STARTED, 390, 844, None, (SITE,)),
-    'part-spotter-phone-390': ('/workbench/part-to-inventory', 390, 844, None, (SITE,)),   # the website's Part Spotter tile (#526): its start screen; a result needs a photo and Brickognize
     '3e-part-desktop-1440': ('/workbench/check-parts/%s?run=1' % R_STARTED, 1440, 900, NO_FOUND_ROWS, (README,)),   # README and social previews (#502)
     '3c-picker-sets-phone-390': ('/workbench/part-picker', 390, 844, None, (SITE,)),
     '3c-picker-pick-phone-390': (R_PICKED + '&pick=1', 390, 950, "document.querySelectorAll('.psub').forEach(e => { e.style.display = 'none'; });\n", (SITE, README)),   # also the README's and the social previews' (#502)
@@ -275,6 +274,9 @@ TUTORIAL_SHOTS = {
         layout: (width, ['h1', '[data-shot-area]'],
                  [('a.button[aria-current=page]', 1), ('[data-wl-open=bw-manage-wishlists]', 2), ('[data-wl-open=bw-export-wishlist]', 3), ('[data-shot-print]', 4)],
                  tag_text('a.button', 'Download CSV') + tag_text('a.button', 'Print', 'data-shot-print'))
+        for layout, width in (('desktop', 1024), ('phone', 390))}),
+    'wishlist-states': ('/planning/wishlist', None, {   # the first four wishes with their state tag, for manage-wishlists.md (#663): only the parts have pictures, and they all read Buy now; the other states sit on the five vintage wished sets, which have none
+        layout: (width, ['.bp-list > article.bp-row:nth-of-type(-n+4)'], [], '')
         for layout, width in (('desktop', 1024), ('phone', 390))}),
     'order-count': ('/workbench/orders/2?view=count', None, {
         layout: (width, ['[data-order-panel=count] h2', '[data-shot-area]'], [('[data-order-panel=count] h2', 1), ('.order-count-row', 2)],

@@ -5,7 +5,7 @@ verified: 1.0
 
 # Build from what you have, and order the rest
 
-**Try it first:** [Build Scout in the demo](https://brick-work.app/demo/workbench/build-scout/) ranks three sets by the loose parts the demo collection holds.
+**Try it first:** [Build Scout in the demo](https://brick-work.app/demo/workbench/build-scout/): press **Scan** and it ranks three sets by the loose parts the demo collection holds.
 
 Your loose parts may already make a set you do not own, or a set you own may only lack a handful of parts. In this tutorial you let Build Scout rank the catalogue by how much of each set your stock covers, and turn the best one into a copy. Then you collect the missing parts of several sets into one BrickLink wanted list.
 

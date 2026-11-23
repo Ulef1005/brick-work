@@ -21,7 +21,7 @@ On the demo's Sets page the line under the top bar links the four screens this t
 
 ## 3. Find what your loose parts build
 
-1. Open [Build Scout](https://brick-work.app/demo/workbench/build-scout/). It ranks the sets by how much of each your loose parts cover, such as **498 of 598**.
+1. Open [Build Scout](https://brick-work.app/demo/workbench/build-scout/) and press **Scan**. It ranks the sets by how much of each your loose parts cover, such as **498 of 598**.
 2. Select a set. The panel lists the parts you still need, and a price for the lines that have one.
 
 ## 4. Find the sets in a bulk lot

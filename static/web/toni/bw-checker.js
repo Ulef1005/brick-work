@@ -253,7 +253,7 @@
       else tile.append(el('span',r.kind==='figure'?'Figure picture':'Part picture','chk-alt'));
       return wrap;
     }
-    const nameBlock=(r,extra)=>{const n=el('div',undefined,'chk-mname');paint(n,r);n.append(el('div',(r.name||'').trim()||r.item_no,'chk-mn1'));
+    const nameBlock=(r,extra)=>{const n=el('div',undefined,'chk-mname');paint(n,r);n.append(el('div',nowrapTail((r.name||'').trim()||r.item_no),'chk-mn1'));
       const line=el('div',undefined,'chk-mn2');if(r.kind!=='figure')line.append(el('span',r.color_name+' · '));line.append(el('span',r.item_no,'mono'));if(extra)line.append(el('span',extra));n.append(line);return n;};
     function missCard(r) {
       const card=el('div',undefined,'card chk-miss'),n=nameBlock(r,' · need '+(r.quantity??'?')),step=el('div',undefined,'step'),gap=r.missing||0;
@@ -267,7 +267,7 @@
     function foundRow(r) {
       const n=el('div',undefined,'chk-found-row'),text=el('div',undefined,'chk-ft'),sub=el('div',undefined,'chk-fs');
       if(r.kind!=='figure')sub.append(el('span',r.color_name+' · '));sub.append(el('span',r.item_no,'mono'));
-      text.append(el('div',(r.name||'').trim()||r.item_no,'chk-fn'),sub);n.append(pic(r,'chk-sm44'),text,el('span',(r.quantity??'?')+' of '+(r.quantity??'?'),'mono chk-of'));return n;
+      text.append(el('div',nowrapTail((r.name||'').trim()||r.item_no),'chk-fn'),sub);n.append(pic(r,'chk-sm44'),text,el('span',(r.quantity??'?')+' of '+(r.quantity??'?'),'mono chk-of'));return n;
     }
     // "Checked so far": the lines with a missing count first, as larger cards with a stepper so the count stays editable (O10b), then the found lines, newest first.
     const RECENT=4;let allChecked=false;   // the frame draws the last four answers; the rest is one button away
@@ -388,7 +388,7 @@
       head.append(title,el('span','keys 1 to 9 count','chk-keys-note'));card.append(head,pic(r,'chk-bigpic'));
       const need=el('div',undefined,'cnt'),k=el('div',undefined,'k'),v=el('div',undefined,'v');
       k.append(el('div','Need','lbl'),el('div',r.quantity===null?'?':String(r.quantity),'chk-need'));
-      const name=(r.name||'').trim()||r.item_no;paint(v,r);v.append(el('div',name,'chk-nm'));
+      const name=nowrapTail((r.name||'').trim()||r.item_no);paint(v,r);v.append(el('div',name,'chk-nm'));   // shown as every name: the times sign, the tail kept together (#630)
       const sub=el('div',undefined,'chk-sub');if(r.kind!=='figure')sub.append(el('span',r.color_name,'chk-colour'));sub.append(el('span',r.item_no,'mono chk-no'));v.append(sub);need.append(k,v);card.append(need);
       const stepper=el('div',undefined,'chk-stepper'),minus=btn('−','decrease',null,'btn sec chk-sq'),found=btn('Found ×'+(count??'?'),'answer',r.token,'btn chk-found'),plus=btn('+','increase',null,'btn sec chk-sq');
       minus.setAttribute('aria-label','Found count, '+count+', decrease');plus.setAttribute('aria-label','Found count, '+count+', increase');

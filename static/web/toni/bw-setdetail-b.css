@@ -262,7 +262,7 @@
 #bw-collection[data-b-copy] .bc-part-group .bc-inventory-row:not(.bc-missing-card) {display:flex;flex-wrap:nowrap;align-items:center;gap:12px;padding:8px 0;margin:0;border:0;border-bottom:1px solid var(--tw-divider);border-radius:0;background:none;box-shadow:none;min-height:0}
 #bw-collection[data-b-copy] .bc-part-group .bc-inventory-row:not(.bc-missing-card)>.bc-picture {width:44px;height:44px;flex:none;aspect-ratio:auto;padding:3px}
 #bw-collection[data-b-copy] .bc-part-group .bc-inventory-row:not(.bc-missing-card)>a {flex:1 1 auto;min-width:0;color:var(--tw-text);text-decoration:none}
-#bw-collection[data-b-copy] .bc-part-group .bc-inventory-row .bc-identity {display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-start;text-align:left;gap:2px 8px}
+#bw-collection[data-b-copy] .bc-part-group .bc-inventory-row .bc-identity {display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:flex-start;text-align:left;gap:2px 8px}
 #bw-collection[data-b-copy] .bc-part-group .bc-inventory-row .bc-identity strong {order:-1;flex:1 0 100%;font:500 14px/1.35 var(--tw-font);color:var(--tw-text)}
 #bw-collection[data-b-copy] .bc-part-group .bc-inventory-row .bc-identity .secondary {display:none}
 #bw-collection[data-b-copy] .bc-part-group .bc-inventory-row .bc-identity .mono {font-size:12px;color:var(--tw-text-2)}

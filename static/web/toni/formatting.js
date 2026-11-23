@@ -6,7 +6,7 @@
   const dimensions = new RegExp(`(^|\\s)(${number}\\s*[x×]\\s*${number}(?:\\s*[x×]\\s*${number})?)$`, 'i');
   const partName = value => (value == null ? '' : String(value)).replace(/ - (?=[0-9])/g, ' · ');
   const nowrapTail = value => {
-    const text = value == null ? '' : String(value);
+    const text = (value == null ? '' : String(value)).replace(/([0-9]) x (?=[0-9])/g, '$1 × ');   // a dimension's " x " is shown as the times sign (frame 15, #501)
     const match = text.match(dimensions);
     return match ? text.slice(0, match.index) + match[1] + match[2].replace(/\s/g, '\u00a0')
       : text.replace(/ ([^ ]*)$/, '\u00a0$1');

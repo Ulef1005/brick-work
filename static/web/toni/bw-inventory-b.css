@@ -174,3 +174,6 @@ body:has(#bw-inventory) .layout>main {padding:0}
 #bw-inventory:not(#_):not(#_):not(#_):not(#_) .scan-row .identity .chip {margin-top:2px}
 #bw-inventory:not(#_):not(#_):not(#_):not(#_) .saved-photo {min-height:0}
 #bw-inventory:not(#_):not(#_):not(#_):not(#_) .inv-being-read {display:block;margin-top:2px;line-height:21.75px}
+/* The user's own photo is never blended onto the tile (#512, approved dark round: catalogue pictures blend in dark, own photos never);
+   b-prime.css blends every .tile img in dark. */
+#bw-inventory:not(#_):not(#_):not(#_):not(#_) .tile.inv-own img {mix-blend-mode:normal}

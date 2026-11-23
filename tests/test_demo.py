@@ -92,19 +92,28 @@ def test_shim_answers_writes_and_carries_the_manifest(site):
     assert '/*MANIFEST*/null' not in shim and json.dumps(manifest['base']) in shim
     assert export.NOTE in shim and "method !== 'GET'" in shim and 'serviceWorker' in shim
     banner = shim.split('// The banner:', 1)[1].split('const realFetch', 1)[0]
-    assert "website.href = 'https://ulef1005.github.io/brick-work/'; website.textContent = 'Website'; website.style.color = 'inherit';" in banner
-    assert banner.index('bar.append(link);') < banner.index("bar.append(' · ', website);")
+    assert "install.href = base.replace(/demo\\/$/, 'install/')" in banner
     assert 'target' not in banner
     assert "document.querySelector('[data-bw-topbar]')" in banner and 'top.after(bar)' in banner and 'document.body.prepend(bar)' in banner   # under the site's top bar when there is one
-    # Missing-picture tiles say where the app gets pictures (checked against the pipeline's pictures step).
-    assert 'Loads from BrickLink when you add the set' in shim and 'Loads from Rebrickable or BrickLink with Refresh pictures' in shim
+    assert 'html.tw-dark #bw-demo-banner' in banner and 'prefers-color-scheme:dark' in banner   # the banner follows the dark theme
+    # The demo draws no sentence where a picture is missing.
+    assert 'Loads from BrickLink' not in shim and 'Loads from Rebrickable or BrickLink' not in shim
 
 
-def test_the_shim_orders_a_query_by_name_then_value_like_the_export():
-    """Continue in the Part Runner picker sends the copies in the page's checkbox order; the export keys them by name and value (key_of), so the
-    shim must sort the same way or the picking view is 'Not part of the demo'."""
+def test_the_shim_keys_a_url_like_the_export_does():
+    """keyOf in shim.js (run in Node) and export.key_of give the same route for the same URL, query order and repeated names included: Continue in the
+    Part Runner picker sends the copies in checkbox order and the export keys them by name and value."""
+    import shutil
+    import subprocess
+    if shutil.which('node') is None:
+        pytest.skip('Node is not installed')
     shim = (Path(__file__).resolve().parents[1] / 'brickwork/demo/shim.js').read_text()
-    assert '.sort(([a, x], [b, y]) => a < b ? -1 : a > b ? 1 : x < y ? -1 : x > y ? 1 : 0)' in shim
+    key_js = shim[shim.index('  const keyOf = href => {'):shim.index('  const isPage')]
+    urls = ['collection/item/P/3001?colour=4', 'workbench/part-picker?copy=b&copy=a&copy=c', 'workbench/part-picker?copy=zz-2&copy=aa-9&x=1', 'collection/sets/', 'collection/item/P/3001?colour=4&colour=1']
+    program = ("const base = '/demo/'; const location = {href: 'https://demo.test/demo/', origin: 'https://demo.test'};\n" + key_js
+               + "\nconsole.log(JSON.stringify(" + json.dumps(urls) + ".map(u => keyOf('https://demo.test/demo/' + u))));")
+    shown = json.loads(subprocess.run(['node', '-e', program], capture_output=True, text=True, check=True).stdout)
+    assert shown == [export.key_of('/demo/' + u.replace('&', '&amp;'), '/demo/') for u in urls]   # the export reads HTML attributes, where & is written &amp;
 
 
 def test_keys_and_files():

@@ -28,18 +28,28 @@
     clearTimeout(toastTimer); toastTimer = setTimeout(() => { box.hidden = true; }, 3200);
   }
 
-  // The banner: always visible, so nobody mistakes the demo for a live install.
+  // The banner: always visible, so nobody mistakes the demo for a live install; one line with the way to the install, the disclaimer under it.
+  const BANNER_STYLE = '#bw-demo-banner{--bn-bg:#F1F1EE;--bn-fg:#1A1E1E;--bn-line:#C9CDC8;--bn-btn:#6D3FD1;--bn-on:#FFFFFF;margin:0;padding:8px 16px;background:var(--bn-bg);color:var(--bn-fg);border-bottom:1px solid var(--bn-line);font:500 13px/18px var(--tw-font),system-ui,sans-serif;text-align:center}'
+    + '@media (prefers-color-scheme:dark){:root:not(.tw-light) #bw-demo-banner{--bn-bg:#262A29;--bn-fg:#E3E6E2;--bn-line:#3E4442;--bn-btn:#A98BF0;--bn-on:#14171A}}'
+    + 'html.tw-dark #bw-demo-banner{--bn-bg:#262A29;--bn-fg:#E3E6E2;--bn-line:#3E4442;--bn-btn:#A98BF0;--bn-on:#14171A}'
+    + '#bw-demo-banner a{color:inherit}#bw-demo-banner .bw-demo-install{display:inline-block;margin-left:8px;padding:2px 12px;border-radius:999px;background:var(--bn-btn);color:var(--bn-on);font-weight:600;text-decoration:none;white-space:nowrap}'
+    + '#bw-demo-banner small{display:block;margin-top:2px;font:400 11px/15px var(--tw-font),system-ui,sans-serif;opacity:.8}';
   document.addEventListener('DOMContentLoaded', () => {
+    const style = document.createElement('style');
+    style.textContent = BANNER_STYLE;
+    document.head.append(style);
     const bar = document.createElement('p');
     bar.id = 'bw-demo-banner';
-    bar.style.cssText = 'margin:0;padding:8px 16px;background:var(--tw-surface-2);color:var(--tw-text);font:500 13px/18px var(--tw-font),system-ui,sans-serif;text-align:center';
-    bar.append('Demo with sample data · changes are not saved · Set pictures: Rebrickable · LEGO® is a trademark of the LEGO Group of companies, which does not sponsor, authorize or endorse this site · ');
+    bar.append('Demo with sample data, changes are not saved.');
+    const install = document.createElement('a');
+    install.className = 'bw-demo-install'; install.href = base.replace(/demo\/$/, 'install/'); install.textContent = 'Install it in 15 minutes';
+    bar.append(install);
+    const fine = document.createElement('small');
+    fine.append('Set pictures: Rebrickable · LEGO® is a trademark of the LEGO Group of companies, which does not sponsor, authorize or endorse this site · ');
     const link = document.createElement('a');
-    link.href = 'https://github.com/Ulef1005/brick-work'; link.textContent = 'Brick Work on GitHub'; link.style.color = 'inherit';
-    bar.append(link);
-    const website = document.createElement('a');
-    website.href = 'https://ulef1005.github.io/brick-work/'; website.textContent = 'Website'; website.style.color = 'inherit';
-    bar.append(' · ', website);
+    link.href = 'https://github.com/Ulef1005/brick-work'; link.textContent = 'Brick Work on GitHub';
+    fine.append(link);
+    bar.append(fine);
     // Under the site's top bar when the page has one (scripts/site_nav.py adds it to the built demo), else first.
     const top = document.querySelector('[data-bw-topbar]');
     if (top) top.after(bar); else document.body.prepend(bar);
@@ -118,46 +128,5 @@
     navigator.serviceWorker.register = () => Promise.resolve({unregister: () => Promise.resolve(true)});
     navigator.serviceWorker.getRegistrations?.().then(list => list.forEach(r => r.unregister())).catch(() => {});
   }
-  // Missing-picture tiles: the demo has no pictures (they belong to others), so each tile says where the
-  // app gets them. Verified in the app: adding a set loads the set's picture (BrickLink, then Rebrickable);
-  // part and minifigure pictures load with Tools & Admin > Refresh pictures (Rebrickable, then BrickLink).
-  const PICTURE_NOTE = {
-    set: 'Loads from BrickLink when you add the set',
-    other: 'Loads from Rebrickable or BrickLink with Refresh pictures',
-  };
-  const setNumber = /^\d+[A-Za-z]?-\d+$/;
-  const NOTE_MIN_WIDTH = 120;
-  const NOTE_BOXES = '.bc-picture,.bw-picture,.check-picture,.scan-tile';
-  function pictureNote(span) {
-    const tile = span.closest('[data-item-no],[data-kind],.bc-picture,.bw-picture,.check-picture,.scan-tile') || span.parentElement;
-    const kind = tile && tile.dataset ? tile.dataset.kind : null;
-    const number = (tile && tile.dataset && tile.dataset.itemNo) || (tile && tile.querySelector('.mono')?.textContent) || '';
-    const isSet = kind ? kind === 'S' : setNumber.test(number.trim());
-    // #197: the sentence needs room, so it goes only into a picture box the pages draw large (a card's or a detail page's picture)
-    // that is at least 120 px wide. Anything else, such as a list row's 56 px thumbnail, keeps the app's short "No image".
-    const box = span.closest(NOTE_BOXES);
-    if (!box || box.getBoundingClientRect().width < NOTE_MIN_WIDTH) return;
-    span.textContent = isSet ? PICTURE_NOTE.set : PICTURE_NOTE.other;
-    span.classList.add('bw-demo-picture-note');
-  }
-  function notePictures(root) {
-    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-    const found = [];
-    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-      if (node.nodeValue.trim() === 'No image' && node.parentElement) found.push(node.parentElement);
-    }
-    found.forEach(pictureNote);
-  }
-  document.addEventListener('DOMContentLoaded', () => {
-    const style = document.createElement('style');
-    style.textContent = '.bw-demo-picture-note{font-size:11px;line-height:14px;text-align:center;padding:0 6px;color:var(--tw-text-muted,#6b6660)}';
-    document.head.append(style);
-    notePictures(document.body);
-    new MutationObserver(records => records.forEach(r => r.addedNodes.forEach(n => {
-      if (n.nodeType === 1) notePictures(n);
-      else if (n.nodeType === 3 && n.nodeValue.trim() === 'No image' && n.parentElement) pictureNote(n.parentElement);
-    }))).observe(document.body, {childList: true, subtree: true});
-  });
-
   window.BrickWorkDemo = {keyOf, toast, note: demo.note};
 })();

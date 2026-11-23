@@ -155,7 +155,7 @@ def page(title, body, depth, *, current, head='', main='doc', absolute=False, pa
     col = lambda heading, links: (f'<div><b>{heading}</b><ul>' + ''.join(f'<li><a href="{href}">{label}</a></li>' for label, href in links)
                                   + '</ul></div>')
     footer_cols = ''.join((
-        col('Product', (('Install', f'{up}install/'), ('Demo', f'{up}demo/'), ('Use cases', f'{up}use-cases/'), ('Workflows', f'{up}workflows/'))),
+        col('Product', (('Install', f'{up}install/'), ('Demo', f'{up}demo/'), ('Use cases', f'{up}use-cases/'), ('Questions', f'{up}questions/'), ('Workflows', f'{up}workflows/'))),
         col('Learn', (('Docs', f'{up}docs/'), ('Changelog', f'{up}changelog/'), ('API', f'{up}docs/developer/api-v2-reference/'),
                       ('MCP', f'{up}docs/brickwork/mcp/'), ('For AI assistants', f'{up}llms.txt'))),
         col('Project', (('About', f'{up}about/'), ('GitHub', f'https://github.com/{repo}'), ('Show and tell', f'https://github.com/{repo}/discussions'),

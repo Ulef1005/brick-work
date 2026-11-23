@@ -566,7 +566,7 @@ def test_every_sitemap_page_but_the_demo_has_a_lastmod_on_a_full_clone(site):
     entries = {e.find(ns + 'loc').text: e.find(ns + 'lastmod') for e in ET.fromstring((site / 'sitemap-pages.xml').read_text())}
     missing = [loc for loc, mod in entries.items() if mod is None and not loc.endswith('/demo/')]
     assert missing == []
-    assert len([loc for loc in entries if '/questions/' in loc]) == len(QUESTION_SLUGS)
+    assert len([loc for loc in entries if '/questions/' in loc and not loc.endswith('/questions/')]) == len(QUESTION_SLUGS)
 
 
 def test_no_page_names_the_pages_address_on_the_apex_build(site):

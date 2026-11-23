@@ -116,9 +116,9 @@ def pair(tmp_path):
 
 
 @pytest.mark.parametrize('name,expected', [
-    ('Brick 1 x 2', 'Brick 1\u00a0x\u00a02'),
-    ('Brick 2 x 4', 'Brick 2\u00a0x\u00a04'),
-    ('Brick 1 x 1 x 3', 'Brick 1\u00a0x\u00a01\u00a0x\u00a03'),
+    ('Brick 1 x 2', 'Brick 1\u00a0×\u00a02'),   # shown with the times sign (frame typography, #501)
+    ('Brick 2 x 4', 'Brick 2\u00a0×\u00a04'),
+    ('Brick 1 x 1 x 3', 'Brick 1\u00a0×\u00a01\u00a0×\u00a03'),
 ])
 def test_dimension_names(coll, client, name, expected):
     coll.add_copy('1000-1')

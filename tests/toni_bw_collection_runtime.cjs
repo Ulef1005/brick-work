@@ -448,7 +448,7 @@ for(const name of ['Brick 1 x 2','Brick 2 x 4','Brick 1 x 1 x 3','Brick 1']){
  assert.ok(texts(row).includes(api.nowrapTail(name)));
  assert.equal(name.includes('\u00a0'),false);
 }
-assert.equal(api.nowrapTail('Brick 1 x 2'),'Brick 1\u00a0x\u00a02');
+assert.equal(api.nowrapTail('Brick 1 x 2'),'Brick 1\u00a0×\u00a02');   // shown with the times sign; the record and search keep the catalogue's x
 const dimensional=[{name:'Brick 1 x 6',number:'6'},{name:'Brick 1 x 2',number:'2'}];
 assert.equal(api.filterRows(dimensional,'Brick 1 x 2')[0].number,'2');
 assert.deepEqual(api.filterRows(dimensional,'',{},'name').map(r=>r.number),['2','6']);
@@ -484,7 +484,7 @@ assert.deepEqual(api.filterRows([{number:'expensive',price:['EUR','100']},{numbe
 
 for(const direction of ['asc','desc'])assert.equal(api.filterRows([{number:'none'},{number:'zero',price:['EUR','0']},{number:'priced',price:['EUR','2']}],'',{},'used_price',direction).at(-1).number,'none');
 const dimensionPart={...records[1],name:'Bracket 1 x 2 - 1 x 2 Inverted',lot_links:[]};
-assert.ok(texts(api.buildRow(dimensionPart,root.dataset,false,()=>{})).includes('Bracket 1 x 2 · 1 x 2\u00a0Inverted'));
+assert.ok(texts(api.buildRow(dimensionPart,root.dataset,false,()=>{})).includes('Bracket 1 × 2 · 1 × 2\u00a0Inverted'));
 assert.equal(dimensionPart.name,'Bracket 1 x 2 - 1 x 2 Inverted');
 // The search box renders once per pause (120 ms), not once per key.
 {

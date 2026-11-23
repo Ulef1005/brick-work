@@ -728,7 +728,7 @@ def test_phone_identity_width_from_css_and_real_dom(coll, client):
     assert basis, 'identity must have a nonshrinking basis within the phone media rule'
     reserved_width = 390 - 2 * 20 - 2 * 20 - int(basis[1])
     for name in ['Tire Smooth Small Dually', 'Brick 2 x 4 without Cross Support']:
-        identity = next(n for n in soup.select('.bc-inventory-row > a:first-of-type .bc-identity') if name in n.get_text().replace('\xa0', ' '))
+        identity = next(n for n in soup.select('.bc-inventory-row > a:first-of-type .bc-identity') if name in n.get_text().replace('\xa0', ' ').replace('×', 'x'))   # names show x as ×
         assert reserved_width >= 150, (name, reserved_width)
         chip = identity.select_one('.bc-colour')
         assert chip and chip.get_text(strip=True) in ['Black', 'Pastel Blue']
@@ -776,7 +776,7 @@ def test_matching_headline_counts_copies_once(rows, expected):
 def test_part_names_display_only_on_detail_and_cards(coll, client, read):
     from brickwork.web.formatting import nowrap_tail, part_name
     name = 'Bracket 1 x 2 - 1 x 2 Inverted'
-    expected = 'Bracket 1 x 2 · 1 x 2 Inverted'
+    expected = 'Bracket 1 × 2 · 1 × 2 Inverted'   # shown with the times sign (#501)
     assert nowrap_tail(part_name(name)) == expected
     assert part_name('600-2') == '600-2'
     assert part_name('Plate - Modified') == 'Plate - Modified'

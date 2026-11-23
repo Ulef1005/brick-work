@@ -6,8 +6,10 @@ import json
 
 import pytest
 
-from brickwork.core import errors, sync
-from tests.test_bw_sync import Rebrickable, live_copies, rebrickable_ready, store  # noqa: F401
+from brickwork.core import errors, stock, sync
+from brickwork.core.transaction import transaction
+from brickwork.store4 import merge, origins
+from tests.test_bw_sync import GEAR, Rebrickable, key, live_copies, rebrickable_ready, store  # noqa: F401
 from tests.test_bw_sync import pair  # noqa: F401
 
 
@@ -121,3 +123,89 @@ def test_the_api_takes_the_list_choices(store):
     receipt_id = sync.apply_pull(store, plan['id'], [], lists={'1': 'rename'})['event_id']
     receipt = json.loads(store.execute('SELECT new_value FROM event WHERE id=?', (receipt_id,)).fetchone()[0])
     assert len(receipt['lists']['renamed']) == 3 and receipt['lists']['dropped'] == []
+
+
+def test_undo_of_a_dropped_list_skips_a_row_removed_by_a_kind_move(store):
+    remote = rebrickable_ready(store, Named())
+    pulled(store, remote)
+    sync.link(store, 'rebrickable', {'owned': [1]})
+    del remote.lists[2], remote.names[2]
+    _, dropped = pulled(store, remote, ticked=[])
+    gear = key(store, GEAR)
+    with transaction(store):
+        store.execute("UPDATE main.job SET state='done'")   # the pulls queue catalogue jobs; a kind move waits for them
+        merge.move_kind_in(store, gear, 'set', via='app')
+    sync.undo(store, dropped['event_id'])
+    assert set(names_of(store, '2070-1')) == {'Bought 2026'}
+
+
+def test_an_unlinked_list_is_not_treated_as_removed(store):
+    remote = rebrickable_ready(store, Named())
+    pulled(store, remote)
+    sync.link(store, 'rebrickable', {'owned': [1]})
+    plan = sync.plan_pull(store, 'rebrickable', http=remote)
+    line = next(l for l in plan['lists']['preview'] if l['key'] == '2')
+    assert (line['state'], line['action']) == ('unlinked', 'keep')
+    sync.apply_pull(store, plan['id'])
+    assert set(names_of(store, '2070-1')) == {'Bought 2026'}
+
+
+def test_switching_off_keep_list_names_leaves_recorded_names_unchanged(store):
+    remote = rebrickable_ready(store, Named())
+    pulled(store, remote)
+    before = [tuple(r) for r in store.execute(
+        "SELECT copy_id, stock_id, wish_id, list_key, list_name FROM synced_from WHERE list_key!='' ORDER BY id")]
+    remote.names[1] = 'Home collection'
+    sync.link(store, 'rebrickable', {'owned': [1]})
+    del remote.lists[2], remote.names[2]
+    plan = sync.plan_pull(store, 'rebrickable', http=remote, keep_list_names=False)
+    assert plan['lists']['keep'] is False and plan['lists']['preview'] == []
+    assert plan['rows'] and all(r['lists'] == [] for r in plan['rows'])
+    assert plan['link'].get('keep_list_names') is False
+    sync.apply_pull(store, plan['id'])
+    after = [tuple(r) for r in store.execute(
+        "SELECT copy_id, stock_id, wish_id, list_key, list_name FROM synced_from WHERE list_key!='' ORDER BY id")]
+    assert after == before
+
+
+def test_zero_quantity_stock_and_remote_entries_get_no_synced_from_line(store):
+    remote = rebrickable_ready(store, Named())
+    with transaction(store):
+        zero = stock.add_loose(store, item_id=key(store, GEAR), quantity=1, condition='new')
+        store.execute('UPDATE stock SET quantity=0 WHERE id=?', (zero['id'],))
+    remote.lists[2]['2070-1'] = 0
+    plan, _ = pulled(store, remote)
+    row = next(r for r in plan['rows'] if r['number'] == '2070-1')
+    assert row['lists'] == []
+    assert not store.execute('SELECT 1 FROM synced_from WHERE stock_id=?', (zero['id'],)).fetchone()
+    assert names_of(store, '2070-1') == []
+
+
+def test_archived_rows_do_not_keep_a_list_alive_and_mixed_names_are_renamed(store):
+    remote = rebrickable_ready(store, Named())
+    pulled(store, remote)
+    store.execute("UPDATE copy SET archived_at='2026-11-23T00:00:00.000Z' WHERE item_id=?", (key(store, '2070-1'),))
+    store.execute("UPDATE stock SET archived_at='2026-11-23T00:00:00.000Z'")
+    store.execute("UPDATE synced_from SET list_name='Old name' WHERE list_key='1' AND copy_id=(SELECT id FROM copy WHERE item_id=? AND archived_at IS NULL)",
+                  (key(store, '1000-2'),))
+    store.commit()
+    sync.link(store, 'rebrickable', {'owned': [1]})
+    del remote.lists[2], remote.names[2]
+    assert '2' not in origins.lists_of(store, 'rebrickable')
+    assert origins.lists_of(store, 'rebrickable')['1'] == ('Main collection', 2)
+    assert origins.mixed_lists(store, 'rebrickable') == {'1'}
+    plan = sync.plan_pull(store, 'rebrickable', http=remote)
+    lines = {l['key']: l for l in plan['lists']['preview']}
+    assert '2' not in lines and lines['1']['state'] == 'renamed' and lines['1']['action'] == 'rename'
+    sync.apply_pull(store, plan['id'], [])
+    assert set(names_of(store, '1000-1')) == {'Main collection'} and set(names_of(store, '1000-2')) == {'Main collection'}
+    assert origins.mixed_lists(store, 'rebrickable') == set()
+
+
+def test_plan_row_lists_follow_row_kind(store):
+    remote = rebrickable_ready(store, Named())
+    remote.lists[9]['1000-1'] = 1
+    plan = sync.plan_pull(store, 'rebrickable', http=remote)
+    by_kind = {r['kind']: r for r in plan['rows'] if r['number'] == '1000-1'}
+    assert by_kind['owned']['lists'] == ['Main collection']
+    assert by_kind['wanted']['lists'] == ['Wanted']

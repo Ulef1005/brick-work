@@ -125,9 +125,11 @@ def drop_list(db, site, list_key):
 
 
 def restore(db, rows):
-    """Put back rows `drop_list` removed, unless a later run made a row for the same row, site and list meanwhile."""
+    """Put back rows `drop_list` removed, unless the parent row is gone or a later run made a row for the same row, site and list meanwhile."""
     for row in rows:
-        column = next(c for c in TABLES.values() if row[c] is not None)
+        table, column = next((t, c) for t, c in TABLES.items() if row[c] is not None)
+        if not db.execute(f'SELECT 1 FROM main.{table} WHERE id=?', (row[column],)).fetchone():
+            continue
         if db.execute(f'SELECT 1 FROM main.synced_from WHERE {column}=? AND site=? AND list_key=?',
                       (row[column], row['site'], row['list_key'])).fetchone():
             continue
@@ -135,12 +137,33 @@ def restore(db, rows):
                    (row['id'], row['copy_id'], row['stock_id'], row['wish_id'], row['site'], row['list_key'], row['list_name'], row['synced_at']))
 
 
+def _live_lists(db, site):
+    """Per recorded list_key of `site`: `(counts per list_name across live rows, set of live item ids)`."""
+    counts, items = {}, {}
+    for r in db.execute(
+        '''SELECT f.list_key, f.list_name, coalesce(c.item_id, s.item_id, w.item_id) AS item_id FROM main.synced_from f
+           LEFT JOIN main.copy c ON c.id=f.copy_id AND c.archived_at IS NULL
+           LEFT JOIN main.stock s ON s.id=f.stock_id AND s.archived_at IS NULL AND s.quantity>0
+           LEFT JOIN main.wish w ON w.id=f.wish_id AND w.archived_at IS NULL
+           WHERE f.site=? AND f.list_key!='' AND coalesce(c.item_id, s.item_id, w.item_id) IS NOT NULL
+           ORDER BY f.list_key''', (site,)):
+        by_name = counts.setdefault(r['list_key'], {})
+        by_name[r['list_name']] = by_name.get(r['list_name'], 0) + 1
+        items.setdefault(r['list_key'], set()).add(r['item_id'])
+    return counts, items
+
+
 def lists_of(db, site):
-    """`{list_key: (list_name, number of items carrying it)}` for the site's named lists as this collection last recorded them."""
-    return {r['list_key']: (r['name'], r['n']) for r in db.execute(
-        '''SELECT f.list_key, max(f.list_name) AS name, count(DISTINCT coalesce(c.item_id, s.item_id, w.item_id)) AS n FROM main.synced_from f
-           LEFT JOIN main.copy c ON c.id=f.copy_id LEFT JOIN main.stock s ON s.id=f.stock_id LEFT JOIN main.wish w ON w.id=f.wish_id
-           WHERE f.site=? AND f.list_key!='' GROUP BY f.list_key ORDER BY f.list_key''', (site,))}
+    """`{list_key: (list_name, number of live items carrying it)}` for the site's named lists as this collection last recorded them."""
+    counts, items = _live_lists(db, site)
+    return {key: (min(by_name, key=lambda n: (-by_name[n], n is None, n or '')), len(items[key]))
+            for key, by_name in counts.items()}
+
+
+def mixed_lists(db, site):
+    """List keys of `site` whose live rows carry more than one recorded list name."""
+    counts, _ = _live_lists(db, site)
+    return {key for key, by_name in counts.items() if len(by_name) > 1}
 
 
 def sources_of(db, table, ids):

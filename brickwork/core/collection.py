@@ -21,7 +21,7 @@ from .currency import configured_currency, display_currency
 from .admin import SYSTEM_FLAGS, audit, origin
 from .completeness import derived_state
 from .sources.base import now
-from ..store4 import copies as store_copies, identity, part_list_read
+from ..store4 import copies as store_copies, identity, origins, part_list_read
 from ..store4.connect import as_current, has_catalogue, now as stamp_now
 
 TYPES = {'S': 'Sets', 'M': 'Minifigures', 'P': 'Parts', 'I': 'Instructions',
@@ -1693,8 +1693,8 @@ def want(db, item_id, colour=None):
             raise errors.Conflict('Already on the wishlist')
         stamp = stamp_now()
         identifier = uuid4().hex
-        db.execute('''INSERT INTO main.wish(id,wishlist_id,kind,item_id,color_id,quantity,condition,added_at,updated_at) VALUES(?,?,?,?,?,1,'any',?,?)''',
-                   (identifier, 'default', item['kind'], item['id'], colour, stamp, stamp))
+        db.execute('''INSERT INTO main.wish(id,wishlist_id,kind,item_id,color_id,quantity,condition,added_at,updated_at,added_via) VALUES(?,?,?,?,?,1,'any',?,?,?)''',
+                   (identifier, 'default', item['kind'], item['id'], colour, stamp, stamp, origins.current()))
         return receipt(db, [('wish', [], snapshot(db, 'wish', [identifier]))], 'save')
 
 

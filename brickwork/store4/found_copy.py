@@ -21,7 +21,7 @@ line of the copy or more than the line needs, a set with no catalogue part list.
 import json
 import uuid
 
-from . import copies, merge as moves
+from . import copies, merge as moves, origins
 from .connect import now
 from .errors import MergeRefused, Store4Error
 from .rowlog import RowLog
@@ -90,7 +90,7 @@ def make_copy_in(db, set_item_id, takes, *, via, actor=None, operation_key=None,
     log_copy = log.insert('copy', id=copy_id, item_id=set_item_id, inventory_source=target.source, inventory_version=target.version,
                           fetched_inventory_id=target.fetched_inventory_id, inventory_digest=target.digest, materialised_at=stamp, inventory_pending=None,
                           pending_job_id=None, condition='used', completeness='incomplete', completeness_source='manual', note=note,
-                          created_at=stamp, updated_at=stamp)
+                          created_at=stamp, updated_at=stamp, added_via=origins.current())
     missing_figures = 0
     for fig in target.figures:
         missing = fig.quantity - taken_figs[fig.item_id]

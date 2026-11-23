@@ -30,6 +30,8 @@ A set becomes one **copy** per missing unit, with the part list the set has. Its
 
 **Undo this pull** (shown on the sync page right after a pull) archives the copies, takes the stock and wish quantities back and removes the tag. It is refused once you have changed any of them (**Something from this sync has changed since**).
 
+**Where each row came from.** Every copy, loose-stock row and wish records how it arrived: **By hand**, **Rebrickable sync**, **Brickset sync**, a file or an import from another app. A row made through the API, the CLI or MCP reads **Via the API**, **Via the CLI** or **Via MCP**. That value never changes. A pull also records, on each copy, stock row and wish whose set the site holds, that it was **last synced from** that site, with the date. This holds for rows you added by hand too. Rows from before version 4.8 of the data read **Before this release**. Undo of a pull takes its "last synced from" dates back as well. The API returns both as `source` on a copy, a stock row and a wish.
+
 ## Lost Parts from Rebrickable
 
 Rebrickable keeps a list of the parts you lost. A Rebrickable pull can bring it in and mark those parts as missing on the matching copy. On the **Rebrickable** card, the switch **Bring in Lost Parts** sits beside **Pull**. It is on by default, and Brick Work remembers your choice. Under the switch, one line says what it does and which rule applies. It links to **Settings**, where you choose the rule. With the switch off, Brick Work does not read your Lost Parts at all.

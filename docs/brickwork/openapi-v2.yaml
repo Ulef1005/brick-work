@@ -7590,6 +7590,64 @@ components:
           schema:
             $ref: '#/components/schemas/Problem'
   schemas:
+    RowSource:
+      type: object
+      description: Where the row came from (#551, read only). Added via never changes; Last synced from lists each site and list a sync matched the row to, newest first.
+      properties:
+        added_via:
+          type:
+          - string
+          - 'null'
+          enum:
+          - hand
+          - rebrickable
+          - brickset
+          - bricklink
+          - brickowl
+          - bricklink_xml
+          - rebrickable_csv
+          - brickset_csv
+          - brickowl_xml
+          - brickwork_export
+          - bricktracker
+          - api
+          - cli
+          - mcp
+          - null
+          description: How the row arrived. null for a row made before schema 4.8 ("Before this release").
+        added_via_label:
+          type: string
+          description: The words the app shows, such as `By hand`, `Rebrickable sync`, `Via the API` or `Before this release`.
+        last_synced_from:
+          type: array
+          items:
+            type: object
+            properties:
+              site:
+                type: string
+                enum:
+                - rebrickable
+                - brickset
+                - bricklink
+                - brickowl
+              list_key:
+                type: string
+                description: The site's id of the list; empty for the site's collection as a whole.
+              list_name:
+                type:
+                - string
+                - 'null'
+              synced_at:
+                type: string
+            required:
+            - site
+            - list_key
+            - list_name
+            - synced_at
+      required:
+      - added_via
+      - added_via_label
+      - last_synced_from
     InstructionFind:
       type: object
       additionalProperties: false
@@ -8738,6 +8796,8 @@ components:
     Stock:
       type: object
       properties:
+        source:
+          $ref: '#/components/schemas/RowSource'
         id:
           type: string
         item:
@@ -9407,6 +9467,8 @@ components:
     Wish:
       type: object
       properties:
+        source:
+          $ref: '#/components/schemas/RowSource'
         qty_filled:
           type: integer
           description: 'How many of the wished quantity you have (#35): qty_filled_manual when set, else derived from owned stock.'
@@ -12262,6 +12324,8 @@ components:
     Copy:
       type: object
       properties:
+        source:
+          $ref: '#/components/schemas/RowSource'
         partout:
           type:
           - object

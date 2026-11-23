@@ -96,6 +96,30 @@ def test_the_404_rotation_reaches_every_version(app4):
     app4.config['SYSTEM_VARIANT_FROM_QUERY'] = False
 
 
+def test_a_503_keeps_its_own_code_and_message(app4, client):
+    """The database-unavailable views render the error page with status 503: the drawer, the code line and the variant name that
+    status, and the message says what is wrong (review of #635)."""
+    from flask import render_template
+    @app4.route('/db-gone')
+    def db_gone():
+        return render_template('web/toni/error.html', error='Brick Work database is not available. Check BW_DB_PATH and try again.', status=503), 503
+    response = client.get('/db-gone')
+    assert response.status_code == 503
+    page = BeautifulSoup(response.get_data(as_text=True), 'html.parser').select_one('.system-page.sys-page')
+    assert page['data-system-variant'] == '503'
+    assert page.select_one('.sys-code').get_text() == 'Brick Work database is not available. Check BW_DB_PATH and try again. · 503'
+    assert '503 · JAMMED' in page.select_one('.sys-art').get_text()
+
+
+def test_an_unknown_404_variant_falls_back_to_the_first(app4, client):
+    from flask import render_template
+    @app4.route('/odd-variant')
+    def odd_variant():
+        return render_template('web/toni/error.html', error='Page not found', status=404, variant=None), 404
+    html = client.get('/odd-variant').get_data(as_text=True)
+    assert HEADINGS['A'] in html and 'data-system-variant="A"' in html
+
+
 def test_p6_error_system_page_and_exception_details(app4, client):
     @app4.route('/boom')
     def boom():

@@ -24,7 +24,7 @@ ROOT = Path(__file__).resolve().parents[2]
 NOTE = 'Demo with sample data: changes are not saved'
 SEEDS = ['/collection/sets', '/collection/M', '/collection/P', '/collection/G', '/collection/B', '/collection/C', '/collection/purchase-places',
          '/workbench/check-parts', '/workbench/part-picker', '/workbench/part-to-inventory', '/workbench/match', '/workbench/orders',
-         '/workbench/what-is-this', '/workbench/storage',
+         '/workbench/what-is-this', '/workbench/storage', '/workbench/lot-sorter', '/workbench/build-scout', '/planning/order-missing-parts',
          '/planning/wishlist', '/planning/prices', '/planning/complete-sets',
          '/manage/add', '/manage/tools', '/manage/statistics', '/manage/sync', '/manage/catalogues', '/manage/tokens', '/manage/jobs',
          '/manage/refresh', '/manage/appearance', '/manage/history', '/manage/values']
@@ -38,6 +38,11 @@ FOLLOW = [re.compile(p) for p in (
     r'^/workbench/orders(/[1-9][0-9]*)?$',
     r'^/planning/(wishlist|prices|complete-sets)$',
     r'^/workbench/storage(/[^/?]+)?$',
+    r'^/workbench/lot-sorter$',
+    r'^/collection/lots/[0-9a-f-]{36}(\?detect=1)?$',
+    r'^/collection/lots/[0-9a-f-]{36}/pull/[1-9][0-9]*$',
+    r'^/workbench/build-scout(/[1-9][0-9]*)?$',
+    r'^/planning/order-missing-parts(\?sel=all(&step=review)?)?$',
     r'^/manage/(add|tools|statistics|sync|catalogues|tokens|jobs|refresh|appearance|history|values)$',
 )]
 LIMIT = 3000   # a safety stop, never a silent cut: reaching it raises (the whole demo is about 1,300 pages)
@@ -148,7 +153,8 @@ def item_pages(store):
         other = ['/collection/item/%d' % r[0] for kind, limit in (('minifigure', 6), ('gear', 5), ('book', 4), ('catalog', 3))
                  for r in db.execute('SELECT DISTINCT item_id FROM stock WHERE kind=? AND archived_at IS NULL ORDER BY item_id LIMIT ?', (kind, limit))]
         parts = db.execute("SELECT item_id, color_id FROM stock WHERE kind='part' AND archived_at IS NULL ORDER BY item_id, color_id LIMIT 4").fetchall()
-    return sets + other + ['/collection/item/%d?colour=%d' % tuple(part) for part in parts]
+        lots = ['/collection/lots/%s?detect=1' % r[0] for r in db.execute('SELECT id FROM lot WHERE archived_at IS NULL AND id IN (SELECT lot_id FROM stock WHERE archived_at IS NULL) ORDER BY id')]   # the lot page with its set detection shown
+    return sets + other + ['/collection/item/%d?colour=%d' % tuple(part) for part in parts] + lots
 
 
 def render(client, base, data, store):

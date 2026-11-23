@@ -160,3 +160,19 @@ def test_about_carries_the_notices(client, world):
         "but is not endorsed or certified by LEGO BrickLink, Inc.")
     assert soup.select_one('[data-about-lego]').get_text().startswith('LEGO® is a trademark of the LEGO Group of companies')
     assert soup.select_one('a[href="https://github.com/Ulef1005/brick-work"]')
+
+
+def test_the_offline_page_is_frame_53_and_needs_only_precached_files():
+    """The service worker's offline fallback (static/web/toni/offline.html) in B′ (frame 53, approved 23.11.): the OFFLINE drawer, the
+    heading, Try again and the code line; every stylesheet it links is precached, so it renders without a connection."""
+    import re
+    from pathlib import Path
+    root = Path(__file__).resolve().parent.parent
+    page = BeautifulSoup((root / 'static/web/toni/offline.html').read_text(), 'html.parser')
+    assert page.select_one('.sys-page h1').get_text() == 'Your drawers are out of reach'
+    assert [a.get_text() for a in page.select('.sys-actions a')] == ['Try again']
+    assert page.select_one('.sys-code').get_text() == 'No connection · offline'
+    assert 'OFFLINE' in page.select_one('.sys-art').get_text()
+    precached = set(re.findall(r'"(/static/[^"]+)"', (root / 'static/web/toni/sw.js').read_text()))
+    linked = {link['href'] for link in page.select('link[rel=stylesheet]')} | {s['src'] for s in page.select('script[src]')}
+    assert linked <= precached, linked - precached

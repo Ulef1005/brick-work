@@ -65,6 +65,8 @@
 :is(#bw-planning,#bw-figures):not(#_):not(#_):not(#_) :is(.bc-status,.bf-phone-pill) {display:inline-flex;align-items:center;gap:6px;height:22px;min-height:0;padding:0 7px;border:1.5px solid var(--tw-text);border-radius:3px;background:transparent;box-shadow:none;color:var(--tw-text);font:600 11px var(--tw-font-label);letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
 :is(#bw-planning,#bw-figures):not(#_):not(#_):not(#_) .bc-status::before {content:none}
 #bw-planning:not(#_):not(#_):not(#_) .bp-verdict.differs {border-style:dashed}
+/* #653: a wish with no max says so in body text; the 20px mono stays for an amount */
+#bw-planning:not(#_):not(#_):not(#_) .bp-max-none {font:400 14px/20px var(--tw-font);color:var(--tw-text-2)}
 #bw-planning:not(#_):not(#_):not(#_) .bp-max-dot {display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--tw-text);border:1.5px solid var(--tw-text);box-sizing:border-box}
 #bw-planning:not(#_):not(#_):not(#_) .bp-max-dot:is(.over,.differs) {background:transparent}
 #bw-planning:not(#_):not(#_):not(#_) .bp-max-dot.differs {border-style:dashed}

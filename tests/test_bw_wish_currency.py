@@ -385,3 +385,13 @@ def test_the_phone_list_view_identity_is_a_row_of_wrapped_items():
     from pathlib import Path
     css = (Path(__file__).resolve().parents[1] / 'static/web/toni/bw-planning-b.css').read_text()
     assert '.bp-wishlist[data-view=list] .bc-identity {display:flex;flex-direction:row;flex-wrap:wrap;align-items:baseline;gap:2px 8px}' in css
+
+
+def test_a_figure_wish_page_offers_no_edit_in_status_when_the_figure_is_also_in_a_set(world, coll, client):
+    """Round 3 (#654): fig-000004 is owned loose and in set 1000-1 (world). On its wish page the Status card shows what is owned and offers no
+    Edit at all: neither the wish's sheet nor a jump to the set copy."""
+    figure = coll.item('minifigs', 'fig-000004')
+    wish = coll.add_wish(figure, condition='used', max_price='9.00', currency='EUR')
+    status = BeautifulSoup(client.get(f'/collection/wishes/{wish}').data, 'html.parser').select_one('[data-module=status]')
+    assert status and 'in sets' in status.get_text()
+    assert not status.select('button[data-bw-open=bc-edit]') and not status.select('a[title="Edit in set copy"]')

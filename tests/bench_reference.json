@@ -27,7 +27,7 @@
  "web export wishlist bl xml": "c7be5933f1a80c9d4deb092e0d1bbbd5045a222ff0e4c69e49cf899412f80c11",
  "web export wishlist csv": "2a3ae09ff7d434fd4ca66d515dee9af81b72def14e72ac4e4043ae498d10cb99",
  "web item page (set copy)": "e7415c0b0bea93a16428cbf43702f21c1fa27fd310f8a12b7b30b7ae5cc73b9c",
- "web lot page": "c37f715ff122285518b465ca2ce10ca4bb17850233af6d830bf1385e4fba39be",
+ "web lot page": "996aea821e782c658fe1946ef3b80974b334d7c6190156000b9f608db06fd2b6",
  "web planning complete sets": "e8e5cc8a12581fd2d2ad1043fd7e43fa84a4d67987707a714435799633ed3732",
  "web planning price records": "a3671b7af8729733b16d8856bba19571c52f5f90c47dc818df59899e0f9f2345",
  "web planning prices": "c5af835b3ce81442127ad60c4c7e62df4ff412d119d4f892dbbabcc4acc788c3",
@@ -36,7 +36,7 @@
  "web search jump (copy id)": "87326e864d4a68b79e46fddebdf9a73fb34f231327ec429ab0a07752a61a933c",
  "web search jump (number)": "bdcadebdf6dbb80593c0b37f7d7f1b14b914dca04a6390acb0b2e6d19d6888f7",
  "web wish page": "f75a4c94f6e35aa75896ac95b4a592c64f1d577d76b41401197eb89b1b70b022",
- "web workbench check parts": "ac427d66660049e28d1e2ffdaef2ad9dfe451c0ee479f4d1ad3e2d9857ff6e1a",
- "web workbench matcher": "4add47fc0cb167d7c0ac15857f3189cbf4aca6a7dac0854b3b4af02b009671ce",
- "web workbench storage": "bfd8f14314d382ca2a4790b6122ddae7d5a15ddb7043af2f0ab4cce1ab27ab32"
+ "web workbench check parts": "4653a9a3f62d321a2a199c3f1bc0451268104336e62d3399ff4ff71b61aa20ab",
+ "web workbench matcher": "323f44b3ca0ac00b38e8254055c96ca89abbd2b0ffa0136ac34a8740b80e6a98",
+ "web workbench storage": "02d2b8a94d91b1c8a1c5532dfa3bf1dc842e3ff4538d2e5b5d48e67071fbd669"
 }

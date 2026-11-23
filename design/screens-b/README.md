@@ -54,6 +54,11 @@ The approved frames of commission U, built by `../sources/b/b_frames.py` (`build
 | `51-500-drawer-stuck/` | The 500 page in the drawer tone ("This drawer is stuck") | #503 |
 | `52-order-allocation-line/` | Review allocation, an item line on the phone: "6 available · 0 allocated" on its own line below the name and colour | #503 |
 | `53-offline/` | The offline page in the drawer tone: "Your drawers are out of reach" with a Try again button (#503) | #503 |
+| `54-sync-rate-limit/` | R3-01 A site asks us to wait: the run pauses and goes on by itself | N round 3 |
+| `55-sync-budget-used/` | R3-02 The day's budget is used up: what is done, what waits, when the budget is back | N round 3 |
+| `56-sync-conflicts-waiting/` | R3-03 Rows that differ on both sides wait for your choice | N round 3 |
+| `57-sync-long-run/` | R3-04 A long run: close the page, it goes on from the last saved step | N round 3 |
+| `58-sync-nothing-to-sync/` | R3-05 Nothing to sync: both sides match, what was compared and when | N round 3 |
 
 Commission N (Sync and files, #517) adds `17` to `24` (round 1), built by `../sources/n/n_frames.py` (`build`, `check`, `narrow`), which imports `b_frames.py`, and `25` to `36` and `41` to `48` (round 2: Brickset, BrickLink, Brick Owl, Import & export, the complete export, the source of a row and the list names as its detail, #551 and #531, and the label of a pulled copy, #489; `37` to `40` were the first form of the list names, as tags on the copy, replaced by `44` to `47` on 2026-11-20), built by `../sources/n/n2_frames.py` (same commands, default folder `screens-b`); its review artifact is https://claude.ai/artifact/1sWRRsfiYxkEgHXxKxrsUn. Round 1 also changed approved frames: Sync is the last Workbench entry in `06`, `07`, `09`, `10`, `11`, `13`, `14` and `16` (C-01), Tools & Admin drops Collection sync (C-02, `01`) and Settings points to Sync (C-03, `02`). Its new components NC-01 to NC-06 (step bar, radio row, select field, filter chip, three-way choice, info box) are drawn inside the frames; `BUILD-NOTES.md` describes them.
 

@@ -20,6 +20,7 @@ import json
 import re
 import sqlite3
 import uuid
+from contextlib import nullcontext
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from xml.etree import ElementTree as ET
@@ -426,6 +427,35 @@ def file_rows(data, filename, kind, where='owned'):
         result.append(dict(kind=rb_kind, number=number, quantity=quantity(entry.get('quantity') or '1'),
                            rb_color=entry.get('color_id') or entry.get('color') or None))
     return result
+
+
+def file_origin(data, filename):
+    """The provenance origin id for an uploaded Add file, by the same detection `file_rows` uses: BrickLink XML -> 'bricklink_xml',
+    Brickset CSV -> 'brickset_csv', Rebrickable CSV -> 'rebrickable_csv', anything unknown -> None (so 'hand' is kept)."""
+    name = (filename or '').lower()
+    if not isinstance(data, (bytes, bytearray)):
+        return None
+    try:
+        text = data.decode('utf-8-sig')
+    except UnicodeError:
+        return None
+    if name.endswith('.xml'):
+        if '<!DOCTYPE' in text.upper() or '<!ENTITY' in text.upper():
+            return None
+        try:
+            root = ET.fromstring(text)
+        except ET.ParseError:
+            return None
+        return 'bricklink_xml' if root.tag in ('INVENTORY', 'WANTEDLIST') else None
+    if not name.endswith('.csv'):
+        return None
+    header = next(csv.reader(io.StringIO(text)), [])
+    if ('SetID' in header and 'Number' in header) or 'MinifigNumber' in header:
+        return 'brickset_csv'
+    columns = {c.strip().lower().replace(' ', '_') for c in header if c}
+    if columns & {'part_num', 'part', 'set_num', 'set_number', 'minifig_num'}:
+        return 'rebrickable_csv'
+    return None
 
 
 # ---------- resolving rows to items ----------
@@ -846,32 +876,34 @@ def _add_wish(db, row, receipt, via, actor):
     receipt['wish'] = dict(id=wish_id, created=before is None, before=before, after=after)
 
 
-def confirm(db, rows, *, batch, via=None, actor=None, photo=None, keep_photo=False, find_instructions=False):
+def confirm(db, rows, *, batch, via=None, actor=None, photo=None, keep_photo=False, find_instructions=False, origin=None):
     """Write the reviewed rows, one transaction each, and return their receipts (a row already saved under this batch returns its
     saved receipt, so a lost response never doubles a row). A row that fails stops the batch; rows before it stay saved.
     `photo` is the picture a photo-mode Add recognised; it is kept as the new item's own photo only with `keep_photo`."""
     if via is None:
-        via, actor = origin()
+        from .admin import origin as _origin
+        via, actor = _origin()
     require_catalogue(db)
     pipeline, result = Pipeline(db), []
-    try:
-        for index, row in enumerate(rows):
-            if row['decision'] == 'skip':
-                continue
-            with transaction(db):
-                saved = next((r for r in receipts(db, batch) if r['index'] == index), None)
-                if saved:
-                    result.append(saved)
+    with origins.adding(origin) if origin is not None else nullcontext():
+        try:
+            for index, row in enumerate(rows):
+                if row['decision'] == 'skip':
                     continue
-                try:
-                    result.append(_confirm_row(db, pipeline, row, batch, index, via, actor, photo if keep_photo else None, find_instructions))
-                except Store4Error as error:
-                    raise errors.ValidationFailed(str(error)) from None
-    finally:
-        # #217: the pictures the new copies' parts and figures lack, also for the rows saved before one that failed. On the web this
-        # runs after each row committed; the API's `writes.execute` holds one transaction around the call, so there it is part of it
-        # (a dry run or a later error rolls the jobs back with the rows).
-        pictures.queue_for_copies(db, [c for r in result for c in r.get('copies') or []], via=via, actor=actor)
+                with transaction(db):
+                    saved = next((r for r in receipts(db, batch) if r['index'] == index), None)
+                    if saved:
+                        result.append(saved)
+                        continue
+                    try:
+                        result.append(_confirm_row(db, pipeline, row, batch, index, via, actor, photo if keep_photo else None, find_instructions))
+                    except Store4Error as error:
+                        raise errors.ValidationFailed(str(error)) from None
+        finally:
+            # #217: the pictures the new copies' parts and figures lack, also for the rows saved before one that failed. On the web this
+            # runs after each row committed; the API's `writes.execute` holds one transaction around the call, so there it is part of it
+            # (a dry run or a later error rolls the jobs back with the rows).
+            pictures.queue_for_copies(db, [c for r in result for c in r.get('copies') or []], via=via, actor=actor)
     return result
 
 

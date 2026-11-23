@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Check an export file before importing it** (#524, second part). `brickwork import-file FILE` reads a file made by `export-all` and counts, per table, what an import would add, what is already here, what differs and what it cannot place. It writes nothing yet; applying the import with a preview and Undo follows.
+
 - **Brick Work's own export file** (#524, first part). `brickwork export-all --output FILE` and `GET /export/brickwork.zip` write your places and storage, flags, lots, copies with their part-line marks, loose stock and wishlists as one zip of readable JSON Lines with a manifest. Items and colours are named by provider and number, so another install can find them. Orders, part checks, market prices, photos, secrets and history are not in it, though the prices you paid and the values you recorded are. The file cannot be imported yet.
 
 - **Where a row came from** (#551). Every new copy, loose-stock row and wish records how it arrived (by hand, a sync with Rebrickable or Brickset, a file, an import from another app, or the API, the CLI or MCP), and the value never changes. A Rebrickable or Brickset pull also records which rows it matched and when, as "last synced from", and its Undo takes that back. Rows already in your collection read "Before this release". The API and MCP return both as `source` on a copy, stock row and wish; the chip and the filter on the pages come with the new sync pages. The schema moves from 4.7 to 4.8 in place at the first read/write start, so back up before you upgrade. See [ADR 0039](docs/adr/0039-added-via-and-synced-from.md).

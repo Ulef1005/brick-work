@@ -14,8 +14,8 @@ SETTING_KEYS = ('bricklink_region', 'bricklink_currency', 'incomplete_discount_p
 
 
 def build_parser():
-    def parser(parent, name, operation=None):
-        sub = parent.add_parser(name)
+    def parser(parent, name, operation=None, **kwargs):
+        sub = parent.add_parser(name, **kwargs)
         sub.add_argument('--json', action='store_true', default=argparse.SUPPRESS,
                          help='print the service result as JSON')
         if operation:
@@ -113,6 +113,11 @@ def build_parser():
     sub = parser(commands, 'export-all', 'collection_export_all')
     sub.add_argument('--sections', help='comma-separated sections: places, flags, collection, wishes')
     sub.add_argument('--output', help='output zip file path')
+    sub = parser(commands, 'import-file', 'collection_import_file',
+                 help='Shows what an import would do; it writes nothing yet.',
+                 description='Shows what an import would do; it writes nothing yet.')
+    sub.add_argument('file', help='Brick Work export zip file')
+    sub.add_argument('--sections', help='comma-separated sections: places, flags, collection, wishes')
     return root
 
 
@@ -167,6 +172,19 @@ def _print_check(result):
             print(f"         {c['message']}")
 
 
+def _print_import_plan(result):
+    for table, counts in result['counts'].items():
+        parts = [f"{counts[k]} {k}" for k in ('new', 'here', 'difference', 'unresolved')]
+        if counts.get('lines_unmatched'):
+            parts.append(f"{counts['lines_unmatched']} lines_unmatched")
+        print(f"{table}: {', '.join(parts)}")
+    issues = [(table, row) for table, rows in result['rows'].items()
+              for row in rows if row['status'] in ('unresolved', 'difference')]
+    for table, row in issues[:20]:
+        detail = row['reason'] if row['status'] == 'unresolved' else 'differs: ' + ', '.join(row['differs'])
+        print(f"  {row['status']} {table} {row['name'] or row['id']}: {detail}")
+
+
 def main(argv=None):
     parser = build_parser()
     args = vars(parser.parse_args(argv))
@@ -203,6 +221,31 @@ def main(argv=None):
             return 0
         except Exception as error:
             print('Export error: ' + _safe_error(error), file=sys.stderr)
+            return 1
+    if operation == 'collection_import_file':
+        from contextlib import closing
+        from pathlib import Path
+        from ..core import own_import
+        from ..core.connect import connect
+        try:
+            with application_context(operation):
+                path = admin_ops.brickwork_path()
+                if not path.is_file():
+                    raise ValueError("Run 'brickwork setup' first")
+                source = Path(args['file'])
+                if not source.is_file():
+                    raise ValueError(f'File not found: {source}')
+                content = source.read_bytes()
+                with closing(connect(path, read_only=True)) as db:
+                    db.execute('BEGIN')
+                    result = own_import.plan(db, content, sections=args.get('sections'), store=False)
+                if as_json:
+                    print(json.dumps({k: v for k, v in result.items() if k != 'tables'}, indent=2))
+                else:
+                    _print_import_plan(result)
+            return 0
+        except Exception as error:
+            print('Import error: ' + _safe_error(error), file=sys.stderr)
             return 1
     if operation.startswith('wishlist_'):
         from contextlib import closing

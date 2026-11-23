@@ -144,11 +144,11 @@ SITE_PICTURES = {
     '3e-part-desktop-1440': ('/workbench/check-parts/%s?run=1' % R_STARTED, 1440, 900, NO_FOUND_ROWS, (README,)),   # README and social previews (#502)
     '3c-picker-sets-phone-390': ('/workbench/part-picker', 390, 844, None, (SITE,)),
     '3c-picker-pick-phone-390': (R_PICKED + '&pick=1', 390, 950, None, (SITE, README)),   # also the README's and the social previews' (#502)
-    '12b-count-what-arrived-desktop-1440': ('/workbench/orders/2', 1440, 1050, None, (SITE,)),
-    '12c-list-and-detail-desktop-1440': ('/workbench/storage/storage-shelf-b', 1440, 900, None, (SITE,)),
-    'scout-list-desktop-1440': ('/workbench/build-scout?min_percent=10', 1440, 900, HIDE_PANEL, (SITE,)),
-    'lot-detect-desktop-1440': (R_LOT_PAGE + '?detect=1&ignore_common=1#set-detection', 1440, 900, SHOW_DETECTION + COLLAPSE_CANDIDATES, (SITE,)),
-    'lot-pull-confirm-phone-390': (first_pull(R_LOT_PAGE, '/make-copy'), 390, 844, None, (SITE,)),
+    '12b-count-what-arrived-desktop-1440': ('/workbench/orders/2', 1024, 768, None, (SITE,)),   # 1024 wide, cut at 768 high: the 4:3 tile shows the top left at a readable size (design, 2026-11-23)
+    '12c-list-and-detail-desktop-1440': ('/workbench/storage/storage-shelf-b', 1024, 768, None, (SITE,)),
+    'scout-list-desktop-1440': ('/workbench/build-scout?min_percent=10', 1024, 768, HIDE_PANEL, (SITE,)),
+    'lot-detect-desktop-1440': (R_LOT_PAGE + '?detect=1&ignore_common=1#set-detection', 1024, 768, SHOW_DETECTION + COLLAPSE_CANDIDATES, (SITE,)),
+    'lot-pull-confirm-phone-390': (first_pull(R_LOT_PAGE), 390, 844, None, (SITE,)),   # the pull list before the confirm sheet opens: the sheet dims the screen and reads as disabled (design, 2026-11-23)
 }
 
 

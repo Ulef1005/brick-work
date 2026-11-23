@@ -85,15 +85,16 @@ def _storage_rows(db, secrets):
     remaining = sorted(by_id)
     while remaining:
         ready = [i for i in remaining if by_id[i]['parent_id'] not in by_id or by_id[i]['parent_id'] in done]
-        if not ready:
-            ready = [remaining[0]]
+        looped = not ready
+        if looped:
+            ready = [remaining[0]]                       # a parent loop: the first row of it is written without its parent
         for i in ready:
             r = by_id[i]
             ordered.append({
                 'id': r['id'],
                 'name': r['name'],
                 'type': r['type'],
-                'parent_id': r['parent_id'],
+                'parent_id': None if looped else r['parent_id'],
                 'note': _note(r['note'], secrets),
                 'created_at': r['created_at'],
             })
@@ -289,9 +290,9 @@ def _drop_dangling(tables):
     """A parent that is archived, or in a section left out, is not in the file: its id names nothing there, so it is written as null."""
     rows = dict(tables)
     for table, column, parent in REFERENCES:
-        if table not in rows or parent not in rows:
+        if table not in rows:
             continue
-        known = {r['id'] for r in rows[parent]}
+        known = {r['id'] for r in rows[parent]} if parent in rows else set()
         for r in rows[table]:
             if r.get(column) is not None and r[column] not in known:
                 r[column] = None
@@ -333,6 +334,9 @@ def build(db, sections=None):
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, 'w', compression=zipfile.ZIP_DEFLATED) as archive:
         archive.writestr('manifest.json', json.dumps(manifest, sort_keys=True, ensure_ascii=False, indent=2) + '\n')
-        for name, rows in tables:
-            archive.writestr(f'data/{name}.jsonl', _jsonl(rows))
+        while tables:
+            name, rows = tables.pop(0)                   # one table at a time, each freed once written
+            with archive.open(f'data/{name}.jsonl', 'w') as member:
+                for row in rows:
+                    member.write((json.dumps(row, sort_keys=True, ensure_ascii=False) + '\n').encode('utf-8'))
     return {'content': buf.getvalue(), 'counts': counts, 'sections': chosen}

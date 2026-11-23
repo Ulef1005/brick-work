@@ -130,3 +130,15 @@ def test_a_reference_to_an_archived_parent_is_written_as_null_and_the_wishlist_h
     wishes = own_export.build(coll.db, 'wishes')
     with zipfile.ZipFile(io.BytesIO(wishes['content'])) as zf:
         assert all('bricklink_id' not in r for r in _jsonl(zf, 'data/wishlist.jsonl'))
+
+
+def test_a_section_left_out_leaves_no_dangling_ids_and_a_parent_loop_is_cut(app4, coll, world):
+    data = own_export.build(coll.db, 'collection')
+    with zipfile.ZipFile(io.BytesIO(data['content'])) as zf:
+        assert all(r.get('storage_id') is None and r.get('place_id') is None for r in _jsonl(zf, 'data/copy.jsonl'))
+        assert all(r.get('storage_id') is None and r.get('place_id') is None for r in _jsonl(zf, 'data/stock.jsonl'))
+    coll.sql('UPDATE storage SET parent_id=? WHERE id=?', (world.shelf, world.shelf))
+    again = own_export.build(coll.db, 'places')
+    with zipfile.ZipFile(io.BytesIO(again['content'])) as zf:
+        rows = {r['id']: r for r in _jsonl(zf, 'data/storage.jsonl')}
+    assert rows[world.shelf]['parent_id'] is None

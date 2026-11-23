@@ -229,12 +229,12 @@ def tag_nth(selector, n, attr='data-shot-area', closest=None):
 # `tut-<name>-<layout>-<width>-<theme>.png`; a mark is a (selector, number) pair.
 REAL = {'real': lambda number: uid('copy', number, 'a')}['real']
 REAL_STARTED, REAL_GAPS = REAL('8043-1'), REAL('7938-1')   # a check about 40 % answered; a check answered to the end, with gaps
-# The pull list shows every part of the set and most parts have no render yet: keep the Bricks section's first eleven lines that have one (since the part lists are grouped by category, #400, the lines without a render are dropped first) and drop the rest.
+# The pull list shows every part of the set and most parts have no render yet: keep the Bricks section's first ten lines that have one and the first line still to find (with the folder's pictures nearly every line has a render, and the first lines are the ones already found) (since the part lists are grouped by category, #400, the lines without a render are dropped first) and drop the rest.
 PULL_WINDOW = ("{ const sec = [...document.querySelectorAll('details.bw-sec')].find(d => /^Bricks/.test(d.dataset.bwSection || '')); if (!sec) throw new Error('PULL_WINDOW: no Bricks section'); sec.open = true; "
                "document.querySelectorAll('.bp-grp').forEach(e => e.remove()); "
                "[...document.querySelectorAll('details.bw-sec')].forEach(d => { if (d !== sec) d.remove(); }); "
                "[...document.querySelectorAll('[data-line]')].forEach(l => { if (!sec.contains(l)) l.remove(); }); "
-               "[...sec.querySelectorAll('[data-line]')].filter(l => !l.querySelector('img')).forEach(e => e.remove()); [...sec.querySelectorAll('[data-line]')].slice(11).forEach(e => e.remove()); "
+               "[...sec.querySelectorAll('[data-line]')].filter(l => !l.querySelector('img')).forEach(e => e.remove()); { const all = [...sec.querySelectorAll('[data-line]')], first = all.find(l => /(^|\\D)0 of \\d+/.test(l.textContent)), keep = all.slice(0, 10); if (first && !keep.includes(first)) keep.push(first); all.forEach(l => { if (!keep.includes(l)) l.remove(); }); } "
                "const open = [...document.querySelectorAll('[data-line]')].find(l => /(^|\\D)0 of \\d+/.test(l.textContent)); if (!open) throw new Error('PULL_WINDOW: no line left to find'); open.setAttribute('data-shot-open', ''); "
                "document.querySelectorAll('.bp-more, .bp-bar, .bw-sec-tools, .bw-sec-count').forEach(e => e.remove()); }\n")
 # Order missing parts lists every missing line, most of them without a render (the page groups by category since #400): keep the first six lines that have one,

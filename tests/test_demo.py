@@ -115,6 +115,13 @@ def test_the_shim_keys_a_url_like_the_export_does():
     assert shown == [export.key_of('/demo/' + u.replace('&', '&amp;'), '/demo/') for u in urls]   # the export reads HTML attributes, where & is written &amp;
 
 
+def test_the_shim_orders_a_query_by_name_then_value_like_the_export():
+    """Continue in the Part Runner picker sends the copies in the page's checkbox order; the export keys them by name and value (key_of), so the
+    shim must sort the same way or the picking view is 'Not part of the demo'."""
+    shim = (Path(__file__).resolve().parents[1] / 'brickwork/demo/shim.js').read_text()
+    assert '.sort(([a, x], [b, y]) => a < b ? -1 : a > b ? 1 : x < y ? -1 : x > y ? 1 : 0)' in shim
+
+
 def test_keys_and_files():
     assert export.key_of(BASE + 'collection/item/P/3001?colour=4', BASE) == '/collection/item/P/3001?colour=4'
     assert export.key_of(BASE + 'workbench/part-picker?copy=b&amp;copy=a', BASE) == '/workbench/part-picker?copy=a&copy=b'

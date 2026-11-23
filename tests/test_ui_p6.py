@@ -63,14 +63,37 @@ def test_p6_settings_controls(client, world):
     assert not soup.select('.bw-seg input[name=source]')                                # a refresh follows the source order: no source to pick
 
 
-def test_p6_missing_page_system_page(client):
+HEADINGS = {'A': 'This page is the missing piece', 'B': 'Drawer 404 is empty', 'C': 'We looked everywhere'}   # the approved 404 pages (#503, 23.11.)
+
+
+@pytest.mark.parametrize('variant', ['A', 'B', 'C'])
+def test_each_404_version_renders(client, monkeypatch, variant):
+    """Every version keeps the shell, Back to sets and the code line; only the heading, the lead and the picture change."""
+    import brickwork.app as application
+    monkeypatch.setattr(application.random, 'choice', lambda options: variant)
     response = client.get('/missing')
     assert response.status_code == 404
     soup = BeautifulSoup(response.get_data(as_text=True), 'html.parser')
-    assert soup.select_one('.system-page h1').get_text() == 'That page is not here'
-    assert 'Back to sets' in soup.select_one('.system-page .button.primary').get_text()
-    assert 'Page not found' in soup.select_one('.system-code').get_text()
+    page = soup.select_one('.system-page.sys-page')
+    assert page['data-system-variant'] == variant
+    assert page.select_one('h1').get_text() == HEADINGS[variant]
+    assert page.select_one('.sys-lead').get_text()
+    assert [a.get_text() for a in page.select('.sys-actions a')] == ['Back to sets']
+    assert page.select_one('.sys-code').get_text() == 'Page not found · 404'
+    assert page.select_one('.sys-art svg, .sys-art .sys-checklist')
     assert not soup.select('.breadcrumb')
+
+
+def test_the_404_rotation_reaches_every_version(app4):
+    """The page is picked at random per response, so over many responses each version comes up; `?variant=` is honoured only by the
+    screen gate's app (SYSTEM_VARIANT_FROM_QUERY)."""
+    from brickwork.app import not_found_variant, NOT_FOUND_VARIANTS
+    with app4.test_request_context('/missing?variant=C'):
+        seen = {not_found_variant(app4) for _ in range(300)}
+        assert seen == set(NOT_FOUND_VARIANTS)
+        app4.config['SYSTEM_VARIANT_FROM_QUERY'] = True
+        assert {not_found_variant(app4) for _ in range(20)} == {'C'}
+    app4.config['SYSTEM_VARIANT_FROM_QUERY'] = False
 
 
 def test_p6_error_system_page_and_exception_details(app4, client):
@@ -80,14 +103,18 @@ def test_p6_error_system_page_and_exception_details(app4, client):
     app4.config['TESTING'] = False
     app4.config['PROPAGATE_EXCEPTIONS'] = False
     soup = BeautifulSoup(client.get('/boom').get_data(as_text=True), 'html.parser')
-    assert soup.select_one('.system-page h1').get_text() == 'Something went wrong'
-    assert soup.select_one('.system-code').get_text() == 'server · 500'
+    page = soup.select_one('.system-page.sys-page')
+    assert page.select_one('h1').get_text() == 'This drawer is stuck'
+    assert page.select_one('.sys-lead').get_text() == 'Your data is safe. Try again.'
+    assert [a.get_text() for a in page.select('.sys-actions a')] == ['Try again', 'Back to sets']
+    assert page.select_one('.sys-code').get_text() == 'Something went wrong · 500'
+    assert '500 · JAMMED' in page.select_one('.sys-art').get_text()
     assert not soup.select('.system-trace') and 'KeyError' not in str(soup)
     app4.config['DEBUG'] = True
     response = client.get('/boom')
     soup = BeautifulSoup(response.get_data(as_text=True), 'html.parser')
     assert response.status_code == 500
-    assert 'KeyError' in soup.select_one('.system-code').get_text()
+    assert 'KeyError' in soup.select_one('.sys-code').get_text()
     assert 'Traceback' in soup.select_one('.system-trace').get_text()
 
 

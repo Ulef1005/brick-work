@@ -157,6 +157,7 @@ def world(name: str, warm_up: list[str] = ()):
         if name.startswith('edge'):
             app.config['BW_READ_ONLY'] = name == 'edge-read-only'
         app.config['GATE_SHOWN_VERSION'] = GATE_VERSION   # the footer shows a constant, so a release never changes a baseline (#257)
+        app.config['SYSTEM_VARIANT_FROM_QUERY'] = True   # a state names its 404 version with ?variant= (the app picks one at random otherwise)
         client = app.test_client()
         for path in warm_up:
             client.get(path)

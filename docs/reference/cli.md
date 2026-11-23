@@ -127,6 +127,22 @@ brickwork wishlist undo EVENT_ID
 
 `export` prints the file to standard output and a summary (exported and omitted lines) to standard error.
 
+## export
+
+Writes the owned collection to standard output as a file other tools open. Run `brickwork setup` first. It reads only, so it works on a read-only instance.
+
+```text
+brickwork export KIND [--format csv|bricklink|rebrickable] [--id ID ...]
+```
+
+| Argument | Meaning |
+|---|---|
+| `KIND` | `set`, `part` or `minifigure`. |
+| `--format` | `csv` (Brick Work's own columns, the default), `bricklink` (inventory XML) or `rebrickable` (CSV). |
+| `--id` | Export only this copy or stock row id. Repeat it for more. |
+
+The BrickLink and Rebrickable files add up rows of the same item, colour and condition. A row with no number on the target site is left out. A summary (`exported`, `skipped`) goes to standard error. The same files come from `GET /export/collection.csv`, `/export/collection.xml` and `/export/collection.rebrickable.csv`.
+
 ## migrate4
 
 *Since 0.6.0.*

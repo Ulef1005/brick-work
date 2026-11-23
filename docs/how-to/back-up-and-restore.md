@@ -38,6 +38,18 @@ curl -H "Authorization: Bearer YOUR_ADMIN_TOKEN" -o brickwork.db \
 
 If known credentials would still be in the copy, the API refuses with `409` instead of sending it.
 
+## Export what you own as a file
+
+To open your collection in a spreadsheet or another tool, export it as a file. The database export above is complete but needs tools to read.
+
+```bash
+docker compose exec brickwork brickwork export set > sets.csv
+docker compose exec brickwork brickwork export part --format bricklink > parts.xml
+docker compose exec brickwork brickwork export part --format rebrickable > parts-rebrickable.csv
+```
+
+`csv` is Brick Work's own columns, one row per copy or loose stock row. `bricklink` (inventory XML) and `rebrickable` (CSV) add up rows of the same item, colour and condition, and leave out a row that has no number on that site. The command prints how many rows it wrote and left out. Add the file again through **Add**, **From a file**, to get the same sets and parts. The API serves the same files at `GET /export/collection.csv`, `/export/collection.xml` and `/export/collection.rebrickable.csv`; see the [CLI reference](../reference/cli.md#export).
+
 ## Back up the media folder
 
 Media lives in a `data/` folder under the media root: `data/images`, `data/thumbs`, `data/instructions` and `data/identifications` (your own photos are under `data/images/own`). The media root is `BW_MEDIA_PATH` if you set it, otherwise the folder that holds the database (`BW_DB_PATH`).

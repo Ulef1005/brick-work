@@ -4364,6 +4364,156 @@ paths:
           $ref: '#/components/responses/Problem'
       x-v1: get_export_missing_xml
       x-piece: M.11b
+  /export/collection.csv:
+    get:
+      operationId: get_export_collection_csv
+      summary: "The owned collection as CSV in Brick Work's own columns (#470): one row per copy or stock row."
+      security:
+      - bearerAuth:
+        - read
+      parameters:
+      - name: kind
+        in: query
+        required: true
+        description: What to export.
+        schema:
+          type: string
+          enum:
+          - set
+          - part
+          - minifigure
+      - name: id
+        in: query
+        description: Repeated copy or stock row IDs; only these rows are exported (1 to 2000 unique, live rows).
+        style: form
+        explode: true
+        schema:
+          type: array
+          items:
+            type: string
+          maxItems: 2000
+          uniqueItems: true
+      responses:
+        '200':
+          description: 'CSV with Kind, Item number, Name, Colour, Colour id, Quantity, Condition, Completeness, Storage, Place, Price paid, Price paid currency, Purchase date, Owners, Flags and Note.'
+          headers:
+            X-Brickwork-Exported:
+              description: Rows written.
+              schema:
+                type: integer
+            X-Brickwork-Skipped:
+              description: Rows left out because they have no number on the target site.
+              schema:
+                type: integer
+          content:
+            text/csv:
+              schema:
+                type: string
+        '422':
+          $ref: '#/components/responses/Invalid'
+        default:
+          $ref: '#/components/responses/Problem'
+      x-piece: M.11b
+  /export/collection.xml:
+    get:
+      operationId: get_export_collection_xml
+      summary: 'The owned collection as BrickLink inventory XML (#470): rows summed per item, colour and condition.'
+      security:
+      - bearerAuth:
+        - read
+      parameters:
+      - name: kind
+        in: query
+        required: true
+        description: What to export.
+        schema:
+          type: string
+          enum:
+          - set
+          - part
+          - minifigure
+      - name: id
+        in: query
+        description: Repeated copy or stock row IDs; only these rows are exported (1 to 2000 unique, live rows).
+        style: form
+        explode: true
+        schema:
+          type: array
+          items:
+            type: string
+          maxItems: 2000
+          uniqueItems: true
+      responses:
+        '200':
+          description: 'BrickLink INVENTORY XML; rows with no BrickLink number are left out and counted in X-Brickwork-Skipped.'
+          headers:
+            X-Brickwork-Exported:
+              description: Rows written.
+              schema:
+                type: integer
+            X-Brickwork-Skipped:
+              description: Rows left out because they have no number on the target site.
+              schema:
+                type: integer
+          content:
+            application/xml:
+              schema:
+                type: string
+        '422':
+          $ref: '#/components/responses/Invalid'
+        default:
+          $ref: '#/components/responses/Problem'
+      x-piece: M.11b
+  /export/collection.rebrickable.csv:
+    get:
+      operationId: get_export_collection_rebrickable_csv
+      summary: 'The owned collection as Rebrickable CSV (#470): part_num, set_num or minifig_num with quantity.'
+      security:
+      - bearerAuth:
+        - read
+      parameters:
+      - name: kind
+        in: query
+        required: true
+        description: What to export.
+        schema:
+          type: string
+          enum:
+          - set
+          - part
+          - minifigure
+      - name: id
+        in: query
+        description: Repeated copy or stock row IDs; only these rows are exported (1 to 2000 unique, live rows).
+        style: form
+        explode: true
+        schema:
+          type: array
+          items:
+            type: string
+          maxItems: 2000
+          uniqueItems: true
+      responses:
+        '200':
+          description: 'Rebrickable CSV; rows with no Rebrickable number are left out and counted in X-Brickwork-Skipped.'
+          headers:
+            X-Brickwork-Exported:
+              description: Rows written.
+              schema:
+                type: integer
+            X-Brickwork-Skipped:
+              description: Rows left out because they have no number on the target site.
+              schema:
+                type: integer
+          content:
+            text/csv:
+              schema:
+                type: string
+        '422':
+          $ref: '#/components/responses/Invalid'
+        default:
+          $ref: '#/components/responses/Problem'
+      x-piece: M.11b
   /orders:
     get:
       operationId: get_orders

@@ -785,13 +785,13 @@ def orders_body(phone):
     olist = ''.join(o(*r, on=(i == 1)) for i, r in enumerate(ORDERS))
     left = (f'<div style="width:330px;flex:none;display:flex;flex-direction:column;gap:12px"><div class="head"><div><div class="lbl">Workbench · Orders</div><h1>Orders</h1>'
             f'<p>3 imported · 1 to count</p></div></div><span class="input" style="height:38px;color:var(--tw-text-muted)">{ic("search", 16)}&nbsp; Number or name</span>'
-            f'<div>{olist}</div><span class="btn sec sm" style="align-self:flex-start">{ic("plus", 16)}Import an order</span></div>')
+            f'<div style="display:flex;gap:8px"><span class="btn sec sm">Filters</span><span class="btn sec sm">Sort</span></div><div>{olist}</div><span class="btn sec sm" style="align-self:flex-start">{ic("plus", 16)}Import an order</span></div>')
     ordered = sum(c[3] for c in COUNT)
     got = sum(c[4] for c in COUNT)
 
     def c(name, col, num, need, have):
         short = need - have
-        st = ('<span class="tag">Complete</span>' if not short else
+        st = ('<span class="tag dash">Not counted</span>' if not have else '<span class="tag">Complete</span>' if not short else
               f'<span class="tag" style="border-style:solid;background:{HATCH.replace("var(--tw-text)", "rgba(26,30,30,.18)")}">{short} short</span>')
         stp = f'<div class="step" style="height:44px"><b style="width:44px">−</b><span style="min-width:52px;font-size:18px">{have}</span><b style="width:44px">+</b></div>'
         return (f'<div style="display:flex;gap:12px;align-items:center;padding:9px 0;border-bottom:1px solid var(--tw-divider)"><span class="ptile">{num}</span>'
@@ -813,7 +813,7 @@ def orders_body(phone):
              '<span class="mono">today, 08:00</span>Received counts saved<span class="btn sec sm" style="margin-left:auto">Undo</span></div></div>')
     main = (f'<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:14px">{ohead}{tabs}'
             f'<div style="font:600 18px var(--tw-font)">Count what arrived</div>{prog}'
-            f'<span class="input" style="height:38px;color:var(--tw-text-muted)">{ic("search", 16)}&nbsp; Number or name</span><div>{th}{rows}</div>{acts}{audit}</div>')
+            f'<span class="input" style="height:38px;color:var(--tw-text-muted)">{ic("search", 16)}&nbsp; Number or name</span><div style="display:flex;gap:8px"><span class="btn sec sm">Filters</span><span class="btn sec sm">Sort</span></div><div>{th}{rows}</div>{acts}{audit}</div>')
     if phone:
         return (f'<div style="padding:12px 16px 0;display:flex;flex-direction:column;gap:12px"><div class="mono" style="font-size:13px;color:var(--tw-accent-text)">‹ Orders</div>'
                 f'{main.replace("<div class=\"stabs\">", "<div class=\"stabs\" style=\"overflow:hidden\">")}</div>')
@@ -1022,7 +1022,8 @@ def setdetail_body(phone):
                 f'<div style="flex:1;min-width:0;border-radius:3px;padding:6px 9px;{colour_fill(COL[col])}"><div style="font:600 14px var(--tw-font)">{name}</div>'
                 f'<div style="font-size:12.5px">{col} · <span class="mono">{num}</span> · needs {need} · {nmiss} missing</div></div>'
                 f'<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end"><span class="mono" style="font-size:12px;color:var(--tw-text-2)">{stock} in loose stock</span>'
-                f'<span class="btn sec sm" style="height:34px">Take {stock}</span></div></div>')
+                f'<div style="display:flex;gap:10px;align-items:center;justify-content:flex-end;flex-wrap:wrap"><span style="font:600 12.5px var(--tw-font);color:var(--tw-text-2)">Found 1</span>'
+                f'<span style="font:600 12.5px var(--tw-font);color:var(--tw-text-2)">Found all</span><span class="btn sec sm" style="height:34px">Take {stock}</span></div></div></div>')
 
     def prow(img, name, col, num, q):
         return (f'<div style="display:flex;gap:12px;align-items:center;padding:8px 0;border-bottom:1px solid var(--tw-divider)"><div style="width:44px;flex:none">{pic(img, 44, 3)}</div>'

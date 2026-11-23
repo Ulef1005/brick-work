@@ -42,7 +42,7 @@
    }
    const panel = text('section', '', 'jump-result');
    const head = text('div', '', 'jump-result-head');
-   const tile = text('div', 'No image', 'jump-image tw-light');
+   const tile = text('div', 'No image', 'jump-image');
    if (item.image) {
     const img = document.createElement('img');
     // Accept only web/local image URLs; reject executable or arbitrary schemes.

@@ -130,3 +130,11 @@ body:has(#bw-build-scout) .layout>main { padding: 0; }
 #bw-build-scout:not(#_):not(#_):not(#_):not(#_) .bs-fields > .cap2 { flex: 1 0 100%; margin-top: 4px; }
 #bw-build-scout:not(#_):not(#_):not(#_):not(#_) .bs-phone-line { display: none; }
 #bw-build-scout:not(#_):not(#_):not(#_):not(#_) .bs-input-wrap input::placeholder { color: var(--tw-text); opacity: 1; }
+/* #668: before a scan, a line on what the scan does and the Scan button (the ink primary) */
+#bw-build-scout:not(#_):not(#_):not(#_):not(#_) .bs-start{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;margin:20px 0;padding:20px;border:1px solid var(--tw-divider);border-radius:var(--tw-r-2)}
+#bw-build-scout:not(#_):not(#_):not(#_):not(#_) .bs-start p{flex:1 1 280px;margin:0;color:var(--tw-text-2)}
+#bw-build-scout:not(#_):not(#_):not(#_):not(#_) .bs-scan{text-decoration:none;display:inline-flex;align-items:center;min-height:44px;padding:0 24px}
+/* #669: Safari and Chrome draw a number field's spin buttons over the digits even with appearance:textfield, so they go; the field keeps
+   the arrow keys, and fit() leaves room for the whole value */
+#bw-build-scout:not(#_):not(#_):not(#_):not(#_) .bs-input-wrap input::-webkit-inner-spin-button,
+#bw-build-scout:not(#_):not(#_):not(#_):not(#_) .bs-input-wrap input::-webkit-outer-spin-button { -webkit-appearance: none; appearance: none; margin: 0; }

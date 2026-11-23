@@ -5,6 +5,8 @@ verified: 1.0
 
 # Your first set, start to finish
 
+**Try it first:** [the Sets list in the demo](https://brick-work.app/demo/collection/sets/) shows a collection of seven real sets, three of them incomplete, before you install anything.
+
 Do this once, on a new install. You load the catalogue, add one set, check its parts and see where the gaps show up. It takes about half an hour, most of it counting parts. Every picture comes from an invented collection, so your own set numbers and names will differ.
 
 ## Before you start
@@ -51,7 +53,7 @@ The page now reads **Added 1 item** and shows a progress bar while the copy is m
 ## 5. Open the set
 
 1. Open **Collection → Sets** and select your set.
-2. Find **Consists of** and its **Parts** tab. It says **Parts not checked** and offers **Check parts**. Brick Work knows the part list but not yet what you hold.
+2. Under the set's name it says **Parts not checked** and offers **Check parts**. Brick Work knows the part list but not yet what you hold.
 
 ## 6. Check its parts
 
@@ -79,7 +81,7 @@ All the buttons, the keyboard keys and the variants are in [Check a set's parts]
 
 ## 7. See what is missing and where it shows up
 
-1. Go back to your set under **Collection → Sets**. Under **Consists of**, the **Parts** tab now has a line such as **12 parts missing, 1 in loose stock**. It also has a bar with **1396 of 1408 parts present** and each missing part as a card with **Found 1**. (The numbers are from the invented demo.)
+1. Go back to your set under **Collection → Sets**. Under the set's name there is now a line such as **12 parts missing, 1 in loose stock**, with a bar and **1396/1408 · 12 missing**. On the **Parts** tab each missing part is a card in its own colour, with **Found 1**, **Found all** and, for a part you hold loose, **Take 1**. (The numbers are from the invented demo.)
 2. Open **Planning → Complete sets**. It lists every copy with recorded gaps, here yours. It ranks them by what a repair is worth and offers the missing parts as a BrickLink XML export or a printable list. This is the page for deciding what to buy or fix first.
 
 <picture data-bw-screens><source media="(max-width: 600px)" srcset="../img/tutorials/tut-complete-sets-phone-390-light.png"><img src="../img/tutorials/tut-complete-sets-desktop-1024-light.png#only-light" alt="Planning, Complete sets with three call-outs on the first copy: 1 is the copy, 2 its Pin button, 3 its repair details."></picture>

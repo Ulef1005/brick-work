@@ -97,7 +97,7 @@ for(const type of ['S','wish','P']){
 { // 4.9d w6: a wish card shows its recorded maximum, or says it is not recorded.
  const withMax=api.buildRow({...records[1],entity:'wish',quantity:3,missing:0,defects:'3 wanted',max_price:'€48.00',lot_links:[]},root.dataset,false,()=>{});
  const without=api.buildRow({...records[1],entity:'wish',quantity:3,missing:0,defects:'3 wanted',lot_links:[]},root.dataset,false,()=>{});
- assert.ok(texts(withMax).includes('Your max price')&&texts(withMax).includes('€48.00'));assert.ok(texts(without).includes('Not recorded'));
+ assert.ok(texts(withMax).includes('Your max price')&&texts(withMax).includes('€48.00'));assert.ok(texts(without).includes('No max set')&&!texts(without).includes('Not recorded'));
  const plain=api.buildRow({...records[1],max_price:'€48.00',lot_links:[]},root.dataset,false,()=>{});assert.ok(!texts(plain).includes('Your max price'));
 }
 const priced=api.buildRow({...records[1],price:['EUR','12.5144','2026-10-08',true,'€12.51','8 Oct'],lot_links:[]},root.dataset,false,()=>{});
@@ -448,7 +448,7 @@ for(const name of ['Brick 1 x 2','Brick 2 x 4','Brick 1 x 1 x 3','Brick 1']){
  assert.ok(texts(row).includes(api.nowrapTail(name)));
  assert.equal(name.includes('\u00a0'),false);
 }
-assert.equal(api.nowrapTail('Brick 1 x 2'),'Brick 1\u00a0x\u00a02');
+assert.equal(api.nowrapTail('Brick 1 x 2'),'Brick 1\u00a0×\u00a02');   // shown with the times sign; the record and search keep the catalogue's x
 const dimensional=[{name:'Brick 1 x 6',number:'6'},{name:'Brick 1 x 2',number:'2'}];
 assert.equal(api.filterRows(dimensional,'Brick 1 x 2')[0].number,'2');
 assert.deepEqual(api.filterRows(dimensional,'',{},'name').map(r=>r.number),['2','6']);
@@ -484,7 +484,7 @@ assert.deepEqual(api.filterRows([{number:'expensive',price:['EUR','100']},{numbe
 
 for(const direction of ['asc','desc'])assert.equal(api.filterRows([{number:'none'},{number:'zero',price:['EUR','0']},{number:'priced',price:['EUR','2']}],'',{},'used_price',direction).at(-1).number,'none');
 const dimensionPart={...records[1],name:'Bracket 1 x 2 - 1 x 2 Inverted',lot_links:[]};
-assert.ok(texts(api.buildRow(dimensionPart,root.dataset,false,()=>{})).includes('Bracket 1 x 2 · 1 x 2\u00a0Inverted'));
+assert.ok(texts(api.buildRow(dimensionPart,root.dataset,false,()=>{})).includes('Bracket 1 × 2 · 1 × 2\u00a0Inverted'));
 assert.equal(dimensionPart.name,'Bracket 1 x 2 - 1 x 2 Inverted');
 // The search box renders once per pause (120 ms), not once per key.
 {

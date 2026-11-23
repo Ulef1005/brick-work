@@ -1,14 +1,14 @@
 {% extends 'web/toni/base.html' %}
 {% from 'web/toni/brickwork/collection_modules.html' import list_controls with context %}
 {% block title %} · {{ title }}{% endblock %}
-{% block page_assets %}<link rel="stylesheet" href="{{ bw_static('web/toni/bw-collection.css') }}"><link rel="stylesheet" href="{{ bw_static('web/toni/bw-planning.css') }}"><script src="{{ bw_static('web/toni/bw-prices.js') }}" defer></script>{% endblock %}
+{% block page_assets %}<link rel="stylesheet" href="{{ bw_static('web/toni/bw-collection.css') }}"><link rel="stylesheet" href="{{ bw_static('web/toni/bw-planning.css') }}"><link rel="stylesheet" href="{{ bw_static('web/toni/bw-list-b.css') }}"><link rel="stylesheet" href="{{ bw_static('web/toni/bw-planning-b.css') }}"><script src="{{ bw_static('web/toni/bw-prices.js') }}" defer></script>{% endblock %}
 {# The rows are not rendered here. bw-prices.js loads the compact records once, shows 15 rows per page, and loads a row's observations when its Details opens. #}
 {% block main %}
 <div id="bw-planning" data-screen="prices" data-csrf="{{ csrf_token }}" data-editable="{{ 'true' if can_edit else 'false' }}" data-kind="{{ kind or '' }}"
  data-save-url="{{ url_for('web.bw_planning_write',action='ACTION') }}" data-collection-url="{{ url_for('web.bw_collection_write',action='ACTION') }}" data-records-url="{{ url_for('web.bw_prices_records') }}" data-details-url="{{ url_for('web.bw_prices_details') }}"
  data-item-base="{{ url_for('web.bw_collection_item',item_id=0) }}" data-image-base="{{ url_for('web.bw_image',image_id=0) }}" data-unresolved-url="{{ url_for('web.bw_admin',page='unresolved') }}"
  data-types='{{ types|tojson }}'>
-<h1 data-bp-title>{{ title }}</h1><p class="bp-subtitle" data-bp-subtitle>Retail and market prices, shown separately</p>
+<div class="bc-eyebrow">Planning · {{ title }}</div><h1 data-bp-title>{{ title }}</h1><p class="bp-subtitle" data-bp-subtitle>Retail and market prices, shown separately</p>
 <p role="status" aria-live="polite" data-bp-message></p><button type="button" data-bp-undo hidden>Undo</button>
 {% if error %}<p role="alert">{{ error }}</p><a href="{{ url_for('web.bw_admin',page='database') }}">Open Tools &amp; Admin</a>{% else %}
 <form data-bp-lookup class="bp-lookup"><label><span class="bc-visually-hidden">Look up any number</span>{{ toni_icon("search") }}<input type="search" data-bp-lookup-query placeholder="Look up any number" aria-label="Look up any number" required></label><button class="bp-lookup-action">Look up</button></form>

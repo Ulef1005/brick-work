@@ -63,14 +63,61 @@ def test_p6_settings_controls(client, world):
     assert not soup.select('.bw-seg input[name=source]')                                # a refresh follows the source order: no source to pick
 
 
-def test_p6_missing_page_system_page(client):
+HEADINGS = {'A': 'This page is the missing piece', 'B': 'Drawer 404 is empty', 'C': 'We looked everywhere'}   # the approved 404 pages (#503, 23.11.)
+
+
+@pytest.mark.parametrize('variant', ['A', 'B', 'C'])
+def test_each_404_version_renders(client, monkeypatch, variant):
+    """Every version keeps the shell, Back to sets and the code line; only the heading, the lead and the picture change."""
+    import brickwork.app as application
+    monkeypatch.setattr(application.random, 'choice', lambda options: variant)
     response = client.get('/missing')
     assert response.status_code == 404
     soup = BeautifulSoup(response.get_data(as_text=True), 'html.parser')
-    assert soup.select_one('.system-page h1').get_text() == 'That page is not here'
-    assert 'Back to sets' in soup.select_one('.system-page .button.primary').get_text()
-    assert 'Page not found' in soup.select_one('.system-code').get_text()
+    page = soup.select_one('.system-page.sys-page')
+    assert page['data-system-variant'] == variant
+    assert page.select_one('h1').get_text() == HEADINGS[variant]
+    assert page.select_one('.sys-lead').get_text()
+    assert [a.get_text() for a in page.select('.sys-actions a')] == ['Back to sets']
+    assert page.select_one('.sys-code').get_text() == 'Page not found · 404'
+    assert page.select_one('.sys-art svg, .sys-art .sys-checklist')
     assert not soup.select('.breadcrumb')
+
+
+def test_the_404_rotation_reaches_every_version(app4):
+    """The page is picked at random per response, so over many responses each version comes up; `?variant=` is honoured only by the
+    screen gate's app (SYSTEM_VARIANT_FROM_QUERY)."""
+    from brickwork.app import not_found_variant, NOT_FOUND_VARIANTS
+    with app4.test_request_context('/missing?variant=C'):
+        seen = {not_found_variant(app4) for _ in range(300)}
+        assert seen == set(NOT_FOUND_VARIANTS)
+        app4.config['SYSTEM_VARIANT_FROM_QUERY'] = True
+        assert {not_found_variant(app4) for _ in range(20)} == {'C'}
+    app4.config['SYSTEM_VARIANT_FROM_QUERY'] = False
+
+
+def test_a_503_keeps_its_own_code_and_message(app4, client):
+    """The database-unavailable views render the error page with status 503: the drawer, the code line and the variant name that
+    status, and the message says what is wrong (review of #635)."""
+    from flask import render_template
+    @app4.route('/db-gone')
+    def db_gone():
+        return render_template('web/toni/error.html', error='Brick Work database is not available. Check BW_DB_PATH and try again.', status=503), 503
+    response = client.get('/db-gone')
+    assert response.status_code == 503
+    page = BeautifulSoup(response.get_data(as_text=True), 'html.parser').select_one('.system-page.sys-page')
+    assert page['data-system-variant'] == '503'
+    assert page.select_one('.sys-code').get_text() == 'Brick Work database is not available. Check BW_DB_PATH and try again. · 503'
+    assert '503 · JAMMED' in page.select_one('.sys-art').get_text()
+
+
+def test_an_unknown_404_variant_falls_back_to_the_first(app4, client):
+    from flask import render_template
+    @app4.route('/odd-variant')
+    def odd_variant():
+        return render_template('web/toni/error.html', error='Page not found', status=404, variant=None), 404
+    html = client.get('/odd-variant').get_data(as_text=True)
+    assert HEADINGS['A'] in html and 'data-system-variant="A"' in html
 
 
 def test_p6_error_system_page_and_exception_details(app4, client):
@@ -80,14 +127,18 @@ def test_p6_error_system_page_and_exception_details(app4, client):
     app4.config['TESTING'] = False
     app4.config['PROPAGATE_EXCEPTIONS'] = False
     soup = BeautifulSoup(client.get('/boom').get_data(as_text=True), 'html.parser')
-    assert soup.select_one('.system-page h1').get_text() == 'Something went wrong'
-    assert soup.select_one('.system-code').get_text() == 'server · 500'
+    page = soup.select_one('.system-page.sys-page')
+    assert page.select_one('h1').get_text() == 'This drawer is stuck'
+    assert page.select_one('.sys-lead').get_text() == 'Your data is safe. Try again.'
+    assert [a.get_text() for a in page.select('.sys-actions a')] == ['Try again', 'Back to sets']
+    assert page.select_one('.sys-code').get_text() == 'Something went wrong · 500'
+    assert '500 · JAMMED' in page.select_one('.sys-art').get_text()
     assert not soup.select('.system-trace') and 'KeyError' not in str(soup)
     app4.config['DEBUG'] = True
     response = client.get('/boom')
     soup = BeautifulSoup(response.get_data(as_text=True), 'html.parser')
     assert response.status_code == 500
-    assert 'KeyError' in soup.select_one('.system-code').get_text()
+    assert 'KeyError' in soup.select_one('.sys-code').get_text()
     assert 'Traceback' in soup.select_one('.system-trace').get_text()
 
 
@@ -109,3 +160,19 @@ def test_about_carries_the_notices(client, world):
         "but is not endorsed or certified by LEGO BrickLink, Inc.")
     assert soup.select_one('[data-about-lego]').get_text().startswith('LEGO® is a trademark of the LEGO Group of companies')
     assert soup.select_one('a[href="https://github.com/Ulef1005/brick-work"]')
+
+
+def test_the_offline_page_is_frame_53_and_needs_only_precached_files():
+    """The service worker's offline fallback (static/web/toni/offline.html) in B′ (frame 53, approved 23.11.): the OFFLINE drawer, the
+    heading, Try again and the code line; every stylesheet it links is precached, so it renders without a connection."""
+    import re
+    from pathlib import Path
+    root = Path(__file__).resolve().parent.parent
+    page = BeautifulSoup((root / 'static/web/toni/offline.html').read_text(), 'html.parser')
+    assert page.select_one('.sys-page h1').get_text() == 'Your drawers are out of reach'
+    assert [a.get_text() for a in page.select('.sys-actions a')] == ['Try again']
+    assert page.select_one('.sys-code').get_text() == 'No connection · offline'
+    assert 'OFFLINE' in page.select_one('.sys-art').get_text()
+    precached = set(re.findall(r'"(/static/[^"]+)"', (root / 'static/web/toni/sw.js').read_text()))
+    linked = {link['href'] for link in page.select('link[rel=stylesheet]')} | {s['src'] for s in page.select('script[src]')}
+    assert linked <= precached, linked - precached

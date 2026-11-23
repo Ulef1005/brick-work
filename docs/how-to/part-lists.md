@@ -11,7 +11,7 @@ Do this when a set has more than one part list to build a copy from: several Reb
 
 ## See which list a copy uses
 
-Open the copy (**Collection → Sets**, then the set and its **Set 1**, **Set 2**…). The **Part list** card says where its lines come from: "Rebrickable · version 2 of 3" (with **latest** when it is) or "BrickLink's list." It also says how many lines and minifigures it has. Each minifigure line says where its own parts came from, because a figure's parts always come from the figure's own Rebrickable list, even in a copy built from BrickLink's.
+Open the copy (**Collection → Sets**, then the set and its **Copy 1**, **Copy 2**…). The **Part list** card says where its lines come from: "Rebrickable · version 2 of 3" (with **latest** when it is) or "BrickLink's list." It also says how many lines and minifigures it has. Each minifigure line says where its own parts came from, because a figure's parts always come from the figure's own Rebrickable list, even in a copy built from BrickLink's.
 
 The card shows **Switch** only when there is something to switch to.
 

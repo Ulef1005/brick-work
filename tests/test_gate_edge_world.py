@@ -72,6 +72,8 @@ def digest(name):
 # Verified against the previous fingerprints after removing those empty tables and restoring the version to 4.3.
 # Refreshed for schema 4.6 (#25 slice 2): the 4.6 step adds two nullable columns to instruction_file; compared table by table with main at 4.5, only `meta` (the version row) differs in each world.
 # Refreshed for schema 4.7 (#489): `copy.checked_by` is a new NULL column and a check receipt names it; compared table by table with main at 4.6, only `meta`, `copy` and `event` differ in each world, catalogue.db not at all.
+# Refreshed for #503 (23.11.): the extras world seeds a new collection's freshness rules (admin.seed_freshness) so a price can be stale; with that call
+# switched off the digest is the 4.7 value below unchanged, so the 15 source_freshness rows are the only difference.
 # Refreshed for schema 4.8 (#551): `added_via` on copy, stock and wish ('hand' for every row the worlds make through the app's routes), the
 # `origin` and `synced_from` tables, and receipts that carry the column; compared table by table with main at 4.7, only `meta`, `copy`, `stock`,
 # `wish`, `event`, `origin` and `synced_from` differ in each world, catalogue.db not at all. Refreshed again when the channels (`api`, `cli`,
@@ -79,7 +81,7 @@ def digest(name):
 BEFORE = {
     'demo': 'dcdf03efaf77ecebe120d710d083a028521bcff7483c192978c55ec0fedf76e1',
     'showcase': '71b7cc89746b400372dcfb50be975f07c0c1622a7c9a05a3738c47a43c4586ef',
-    'extras': 'bc3aafc33610d317208746ad33d780508f469deaf1162a7e854557ec01f05d14',
+    'extras': '7cd511a81c4cabade01c67bd053bb4d2ab67123c4a440cc434f1421e6f0893ce',
 }
 
 

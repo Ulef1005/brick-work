@@ -16,7 +16,7 @@ import sqlite3
 
 import uuid
 
-from ..core import checker, items, stock
+from ..core import admin, checker, items, stock
 from ..core.transaction import transaction
 from . import clock, dataset, showcase
 
@@ -67,6 +67,7 @@ class Layer(showcase.Layer):
             db.execute('''INSERT INTO wish(id, wishlist_id, kind, item_id, color_id, quantity, condition, max_price, max_price_currency, added_at, updated_at)
                           VALUES('wish-usd-pier', 'wl-birthday', 'set', ?, NULL, 1, 'new', '550.00', 'USD', ?, ?)''', (wish, dataset.STAMP, dataset.STAMP))
             dataset.price(db, wish, None, 'N', 612.0, 9, '2026-10-12T06:00:00.000Z', low=540.0, high=690.0)
+        admin.seed_freshness(db)   # a new collection's freshness rules (prices 30 days): without them no price is ever stale (16-Module-states [stale], #503)
         self.checks(db)
 
     def checks(self, db):

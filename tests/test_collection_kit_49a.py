@@ -101,7 +101,7 @@ def test_c11_c12_progress_dom_keeps_one_block(coll, client):
     assert [c.get('class')[-1] for c in block.find_all(recursive=False)][:2] == ['bc-progress', 'bc-progress-stats']
     first = block.select_one('.bc-progress-stats')
     assert first.find_all(recursive=False)[0]['class'] == ['bc-progress-present'] and first.find_all(recursive=False)[1].get_text().endswith(' missing')
-    assert first.find_all(recursive=False)[0].get_text() == '5 of 6 parts present'
+    assert first.find_all(recursive=False)[0].get_text() == '5/6'      # #507 (frame 12): "365/375 · 10 missing"; the bar's label keeps the words
     assert first.find_all(recursive=False)[1].get_text() == '1 missing'
 
 

@@ -57,7 +57,7 @@ const B = pure();
   const picture = B.rowHtml(cfg, B.decode({fields: FIELDS, rows: [record({image: 42, name: 'Boat', colour: 'Red'})]})[0]);
   assert.match(picture, /<a href="\/manage\/images\/42"><img src="\/manage\/images\/42\?w=320" srcset="\/manage\/images\/42\?w=320 320w, \/manage\/images\/42\?w=640 640w" sizes="160px" data-full="\/manage\/images\/42" alt="Boat · Red" loading="lazy"><\/a>/);
   // Names keep a non-breaking last word.
-  assert.match(B.rowHtml(cfg, B.decode({fields: FIELDS, rows: [record({name: 'Plate 2 x 4'})]})[0]), /<strong>Plate 2 x 4<\/strong>|<strong>Plate 2 x 4<\/strong>|<strong>Plate 2 x 4<\/strong>|<strong>Plate 2 x 4<\/strong>/);
+  assert.match(B.rowHtml(cfg, B.decode({fields: FIELDS, rows: [record({name: 'Plate 2 x 4'})]})[0]), /<strong>Plate 2[ \u00a0]×[ \u00a0]4<\/strong>/);
   const detail = B.detailsHtml(cfg, rows[0], {context: 'Castle · 2001', selected: 'Used · avg · €12.00', conditions: ['Used · €12.00 · 8 Oct'], empty: false,
     groups: [{label: 'Market · BrickLink', quotes: [{label: 'Used', head: '€12.00 · avg', meta: '8 Oct · bricklink', range: 25, min: '€5.00', max: '€20.00', aria: 'Minimum €5.00'}]}]});
   assert.match(detail, /^<p class="bp-selected-quote">Selected price · Used · avg · €12\.00<\/p><p>Castle · 2001 · Sets · Owned<\/p>/);

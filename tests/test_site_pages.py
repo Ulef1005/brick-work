@@ -330,6 +330,7 @@ def test_every_image_the_readme_and_the_pages_show_exists_and_is_a_built_capture
         sys.path.remove(sys_path)
     stems, site_stems = set(site_shots.PICTURES), set(site_shots.SITE_PICTURES)   # the README's captures are the showcase world's, plus the real-world shots site_shots also writes to the README; the site's are the real-sets world's
     stems |= {stem for stem, spec in site_shots.SITE_PICTURES.items() if site_shots.README in spec[-1]}   # a real-world shot written to the README too (#502, #622)
+    site_stems |= {'part-spotter-photo'}   # the Part Spotter tile is Ulf's own photo of a 2 x 2 brick (part-spotter/own-photos/test/3003, no overlay), not a capture (Ulf, 2026-11-23)
     shown = set()
     for source in ('README.md', 'scripts/site/landing.html', 'scripts/site/use-cases.md', 'scripts/site/pages/workflows.html'):
         text = (ROOT / source).read_text()

@@ -86,3 +86,34 @@ def test_throttled_and_rejected_replies_on_writes(store, kind, reply, expected):
         else:
             client.lost_part_remove(77)
     assert len(remote.writes) == 1
+
+
+def test_lost_parts_tracks_ids_complete_across_merged_rows(store):
+    rebrickable_ready(store)
+    complete = raw('1000-1', '3001', 4, 1, number=11)
+    missing_id = raw('1000-1', '3001', 4, 2, number=12)
+    missing_id['lost_part_id'] = None
+    other = raw('1000-1', '3023', 15, 1, number=13)
+    found = adapters.RebrickableUser(store, http=Remote([complete, missing_id, other])).lost_parts()
+    by_part = {r['part_no']: r for r in found['rows']}
+    assert by_part['3001']['ids'] == [11] and by_part['3001']['ids_complete'] is False
+    assert by_part['3023']['ids'] == [13] and by_part['3023']['ids_complete'] is True
+
+
+@pytest.mark.parametrize('kind,reply', [
+    ('add', {'inv_part_id': ['Invalid pk']}),
+    ('add', {'lost_part_id': '99'}),
+    ('add', {}),
+    ('remove', {'non_field_errors': ['nope']}),
+    ('remove', []),
+])
+def test_lost_part_add_and_remove_reject_error_bodies(store, kind, reply):
+    remote = rebrickable_ready(store, WriteRemote(reply=reply))
+    client = adapters.RebrickableUser(store, http=remote)
+    with pytest.raises(adapters.SourceError) as exc:
+        if kind == 'add':
+            client.lost_part_add(501, 1)
+        else:
+            client.lost_part_remove(77)
+    if kind == 'add':
+        assert str(exc.value) == 'Rebrickable refused the Lost Part'

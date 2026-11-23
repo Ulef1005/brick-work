@@ -160,12 +160,12 @@ def test_unreadable_or_failed_read_plans_no_removals(store):
         inv_parts={('1000-1', '3001', 4, False): 602},
     )
     planned = lost_parts_send.plan(store, remote, translate, rule='everything', on=True)
-    assert not planned['clearing'] and 'no removals' in planned['message']
-    assert [r['state'] for r in planned['rows']] == ['add']
+    assert planned['status'] == 'unavailable' and not planned['clearing'] and 'could not be read' in planned['message']
+    assert planned['rows'] == [] and planned['unreadable'] == 1
 
     failed = lost_parts_send.plan(store, ' paused ', translate, rule='everything', on=True)
-    assert failed['status'] == 'failed' and not failed['clearing'] and 'No removals' in failed['message']
-    assert all(r['state'] != 'remove' for r in failed['rows'])
+    assert failed['status'] == 'unavailable' and not failed['clearing'] and 'were not read' in failed['message']
+    assert failed['rows'] == []
 
 
 def test_switch_off_returns_off_and_setting_default_is_off(store):
@@ -193,7 +193,7 @@ def test_apply_sends_only_ticked_and_fails_missing_inv_part_id(store):
     report = lost_parts_send.apply(store, client, planned, None, via='test', actor='tester')
     assert client.calls == [('remove', 41), ('remove', 42), ('add', 501, 3)]
     assert [r['part_no'] for r in report['sent']] == ['3001']
-    assert [r['part_no'] for r in report['failed']] == ['3023']  # spare add had no inv_part_id
+    assert report['failed'] == []  # spare add without inv_part_id is not tickable
     assert 'Undo cannot reverse' in report['note']
     assert store.execute('SELECT count(*) FROM event').fetchone()[0] == events_before
 
@@ -228,3 +228,121 @@ def test_budget_stop_reports_remaining_and_key_rejected_propagates(store):
     rejecting = FakeClient(reject=True)
     with pytest.raises(adapters.KeyRejected):
         lost_parts_send.apply(store, rejecting, planned, ticked, via='test', actor='tester')
+
+
+def test_unavailable_plan_sends_nothing_on_apply(store):
+    copy_of(store, '1000-1', marks=[('3001', '4', 2)])
+    for bad_remote in ('throttled', remote_read(unreadable=2, inv_parts={('1000-1', '3001', 4, False): 602})):
+        planned = lost_parts_send.plan(store, bad_remote, translate, rule='everything', on=True)
+        assert planned['status'] == 'unavailable' and planned['rows'] == [] and planned['message']
+        client = FakeClient()
+        report = lost_parts_send.apply(store, client, planned, None, via='test', actor='tester')
+        assert client.calls == [] and report['sent'] == [] and report['failed'] == []
+
+
+def test_incomplete_ids_rows_are_untickable_and_never_sent(store):
+    copy_of(store, '1000-1', marks=[('3001', '4', 3)])
+    remote = remote_read([
+        dict(remote_row('1000-1', '3001', 4, 1, ids=[11], inv_part_id=701), ids_complete=False),
+        dict(remote_row('1000-1', '3023', 15, 2, ids=[13], inv_part_id=702), ids_complete=False),
+    ])
+    planned = lost_parts_send.plan(store, remote, translate, rule='per_set', on=True)
+    assert {r['state'] for r in planned['rows']} == {'change', 'remove'}
+    assert all(not r['tickable'] and not r['ticked'] and r['reason'] for r in planned['rows'])
+    client = FakeClient()
+    report = lost_parts_send.apply(store, client, planned, [r['key'] for r in planned['rows']], via='test', actor='tester')
+    assert client.calls == [] and report['sent'] == [] and len(report['failed']) == 2
+
+
+def test_change_row_keeps_removed_progress_on_budget_and_error_retries(store):
+    copy_of(store, '1000-1', marks=[('3001', '4', 3)])
+    remote = remote_read([remote_row('1000-1', '3001', 4, 1, ids=[41, 42], inv_part_id=501)])
+    planned = lost_parts_send.plan(store, remote, translate, rule='per_part', on=True)
+
+    class StatefulClient:
+        def __init__(self, ids, *, fail_add=None):
+            self.present = set(ids)
+            self.fail_add = fail_add
+            self.calls = []
+
+        def lost_part_remove(self, lost_id):
+            if lost_id not in self.present:
+                raise adapters.SourceError('404 Not Found')
+            self.present.remove(lost_id)
+            self.calls.append(('remove', lost_id))
+
+        def lost_part_add(self, inv_part_id, quantity):
+            if self.fail_add is not None:
+                raise self.fail_add
+            self.calls.append(('add', inv_part_id, quantity))
+
+    budget_client = StatefulClient([41, 42], fail_add=adapters.RemoteBudgetExceeded())
+    first = lost_parts_send.apply(store, budget_client, planned, None, via='test', actor='tester')
+    assert first['sent'] == [] and first['failed'] == [] and len(first['remaining']) == 1
+    assert first['remaining'][0]['removed'] is True
+    budget_client.fail_add = None
+    retry = lost_parts_send.apply(store, budget_client, dict(rows=first['remaining']), None, via='test', actor='tester')
+    assert len(retry['sent']) == 1 and retry['failed'] == [] and retry['remaining'] == []
+    assert budget_client.calls == [('remove', 41), ('remove', 42), ('add', 501, 3)]
+
+    err_client = StatefulClient([41, 42], fail_add=adapters.SourceError('Rebrickable refused the Lost Part'))
+    failed = lost_parts_send.apply(store, err_client, planned, None, via='test', actor='tester')
+    assert failed['sent'] == [] and len(failed['failed']) == 1 and failed['failed'][0]['removed'] is True
+    err_client.fail_add = None
+    retry_err = lost_parts_send.apply(store, err_client, dict(rows=failed['failed']), None, via='test', actor='tester')
+    assert len(retry_err['sent']) == 1 and retry_err['failed'] == []
+    assert err_client.calls == [('remove', 41), ('remove', 42), ('add', 501, 3)]
+
+
+def test_add_without_inv_part_id_is_untickable_with_reason(store):
+    copy_of(store, '1000-1', marks=[('3001', '4', 2)])
+    planned = lost_parts_send.plan(store, remote_read(), translate, rule='per_part', on=True)
+    (row,) = planned['rows']
+    assert row['state'] == 'add' and row['tickable'] is False and row['ticked'] is False
+    assert row['reason'] == 'Rebrickable inventory part id unknown'
+    client = FakeClient()
+    report = lost_parts_send.apply(store, client, planned, None, via='test', actor='tester')
+    assert client.calls == [] and report['sent'] == [] and report['failed'] == []
+
+
+def test_marks_of_two_copies_add_up_and_a_matching_remote_plans_nothing(store):
+    """A copy's `missing` is capped at the line quantity by the schema (CHECK missing<=quantity), so the sum of several copies is the only
+    way to exceed one line; a remote that holds that sum plans no change."""
+    first = copy_of(store, '1000-1', marks=[('3001', '4', 3)])
+    second = copy_of(store, '1000-1', marks=[('3001', '4', 2)])
+    same = lost_parts_send.plan(
+        store,
+        remote_read([remote_row('1000-1', '3001', 4, 5, ids=[81], inv_part_id=801)]),
+        translate,
+        rule='per_part',
+        on=True,
+    )
+    assert same['rows'] == []
+    planned = lost_parts_send.plan(
+        store,
+        remote_read(inv_parts={('1000-1', '3001', 4, False): 801}),
+        translate,
+        rule='per_part',
+        on=True,
+    )
+    (row,) = planned['rows']
+    assert row['after'] == 5 and {c['id']: c['missing'] for c in row['copies']} == {first: 3, second: 2}
+
+
+def test_no_removal_planned_when_live_copy_has_no_part_list(store):
+    none_copy = copy_of(store, '1000-2')
+    empty_copy = copy_of(store, '1000-1')
+    store.execute("UPDATE copy SET inventory_source='none', inventory_version=NULL WHERE id=?", (none_copy,))
+    store.execute("UPDATE copy_part SET retired_at='2026-01-01' WHERE copy_id=?", (empty_copy,))
+    store.commit()
+    remote = remote_read([
+        remote_row('1000-2', '3001', 4, 1, ids=[91], inv_part_id=901),
+        remote_row('1000-1', '3001', 4, 1, ids=[92], inv_part_id=902),
+    ])
+    for rule in ('everything', 'per_set'):
+        planned = lost_parts_send.plan(store, remote, translate, rule=rule, on=True)
+        assert planned['rows'] == []
+        assert {(u['set_no'], u['reason']) for u in planned['unmatched']} == {
+            ('1000-1', 'The set has no part list yet'),
+            ('1000-2', 'The set has no part list yet'),
+        }

@@ -97,7 +97,10 @@ class RebrickableUser(Rebrickable):
         self.token = None
         send = self.http
         # DELETE answers 204 with an empty body; the recorded transport expects JSON.
-        self.http = lambda request: send(request) or '{}'
+        def wrapped(request):
+            reply = send(request)
+            return '{}' if reply in ('', b'', None) else reply
+        self.http = wrapped
 
     def user_token(self):
         if self.token is None:
@@ -163,10 +166,14 @@ class RebrickableUser(Rebrickable):
                 merged[key]['quantity'] += row['quantity']
                 if row['lost_part_id'] is not None:
                     merged[key]['ids'].append(row['lost_part_id'])
+                else:
+                    merged[key]['ids_complete'] = False
                 if merged[key]['inv_part_id'] is None and row['inv_part_id'] is not None:
                     merged[key]['inv_part_id'] = row['inv_part_id']
             else:
-                row['ids'] = [row['lost_part_id']] if row['lost_part_id'] is not None else []
+                has_id = row['lost_part_id'] is not None
+                row['ids'] = [row['lost_part_id']] if has_id else []
+                row['ids_complete'] = has_id
                 merged[key] = row
         return dict(rows=list(merged.values()), unreadable=unreadable)
 
@@ -175,15 +182,22 @@ class RebrickableUser(Rebrickable):
 
         ASSUMED SHAPE (Rebrickable's documentation; not checked live because the test instance has no user token):
         `POST /users/{token}/lost_parts/` with form fields `inv_part_id` and `lost_quantity`."""
-        return self.user_call('/lost_parts/', method='POST',
-                              data={'inv_part_id': int(inv_part_id), 'lost_quantity': int(quantity)})
+        reply = self.user_call('/lost_parts/', method='POST',
+                               data={'inv_part_id': int(inv_part_id), 'lost_quantity': int(quantity)})
+        lost_id = reply.get('lost_part_id') if isinstance(reply, dict) else None
+        if type(lost_id) is not int or lost_id < 1:
+            raise SourceError('Rebrickable refused the Lost Part')
+        return reply
 
     def lost_part_remove(self, lost_part_id):
         """Remove one Lost Parts row on Rebrickable.
 
         ASSUMED SHAPE (Rebrickable's documentation; not checked live because the test instance has no user token):
         `DELETE /users/{token}/lost_parts/{id}/`."""
-        return self.user_call(f'/lost_parts/{int(lost_part_id)}/', method='DELETE')
+        reply = self.user_call(f'/lost_parts/{int(lost_part_id)}/', method='DELETE')
+        if reply is not True:
+            raise SourceError('Rebrickable refused the Lost Part removal')
+        return True
 
     # The adapter surface used by the sync service.
     def connect(self, username, password):

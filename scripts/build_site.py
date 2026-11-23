@@ -307,11 +307,23 @@ def json_ld():
     return '<script type="application/ld+json">' + json.dumps(data, ensure_ascii=False).replace('</', '<\\/') + '</script>'
 
 
+# The folders whose pages sit one level down (coming-from/<tool>/, questions/<slug>/) and go into the sitemap.
+SECOND_LEVEL = ('coming-from', 'questions')
+
+
 def site_urls(out):
     """The marketing pages that go into sitemap-pages.xml: every folder with an index.html outside docs/ and demo/, plus the demo's entry."""
     folders = sorted(p.parent.relative_to(out).as_posix() for p in out.glob('*/index.html')) + sorted(
-        p.parent.relative_to(out).as_posix() for p in out.glob('*/*/index.html') if p.parts[-3] in ('coming-from',))
+        p.parent.relative_to(out).as_posix() for p in out.glob('*/*/index.html') if p.parts[-3] in SECOND_LEVEL)
     return [''] + [f + '/' for f in folders if f.split('/')[0] not in ('docs', 'demo', 'api', 'mcp')] + ['demo/']
+
+
+def page_source(path):
+    """The scripts/site/pages file whose `path:` header is this folder (the question pages are question-<N>-<slug>.html for questions/<slug>/), or None."""
+    for source in sorted((SITE / 'pages').glob('*.html')):
+        if f'\npath: {path}\n' in '\n' + source.read_text().partition('\n---\n')[0] + '\n':
+            return source
+    return None
 
 
 def lastmod(path):
@@ -322,8 +334,8 @@ def lastmod(path):
     if path in ('demo/', 'docs/'):
         return None
     name = path.strip('/').replace('/', '-') if path else 'landing'
-    sources = [SITE / f'{name}.md', SITE / f'{name}.html', SITE / 'pages' / f'{name}.html']
-    source = next((f for f in sources if f.exists()), None)
+    sources = [SITE / f'{name}.md', SITE / f'{name}.html', SITE / 'pages' / f'{name}.html', page_source(path)]
+    source = next((f for f in sources if f and f.exists()), None)
     if source is None:
         return None
     try:

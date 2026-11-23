@@ -555,6 +555,19 @@ def test_robots_and_sitemaps_point_at_this_sites_address(site):
     assert (site / 'docs/sitemap.xml').is_file()
 
 
+def test_every_sitemap_page_but_the_demo_has_a_lastmod_on_a_full_clone(site):
+    import subprocess
+    import xml.etree.ElementTree as ET
+    from scripts.build_site import ROOT
+    if subprocess.run(['git', 'rev-parse', '--is-shallow-repository'], cwd=ROOT, capture_output=True, text=True).stdout.strip() != 'false':
+        pytest.skip('lastmod is left out on a shallow clone')
+    ns = '{http://www.sitemaps.org/schemas/sitemap/0.9}'
+    entries = {e.find(ns + 'loc').text: e.find(ns + 'lastmod') for e in ET.fromstring((site / 'sitemap-pages.xml').read_text())}
+    missing = [loc for loc, mod in entries.items() if mod is None and not loc.endswith('/demo/')]
+    assert missing == []
+    assert len([loc for loc in entries if '/questions/' in loc]) == len(QUESTION_SLUGS)
+
+
 def test_no_page_names_the_pages_address_on_the_apex_build(site):
     from scripts.build_site import site_base
     if site_base() != '/':
@@ -679,6 +692,112 @@ def test_feed_summary_of_a_release_that_opens_with_entries(tmp_path, monkeypatch
     monkeypatch.setattr(build_site, 'ROOT', tmp_path)
     feed = build_site.atom_feed()
     assert '<summary>One pull marks the Lost Parts.</summary>' in feed and '**' not in feed
+
+
+# The question pages (#544) may name LEGO® under the trademark rules (LEGO Fair Play; Ulf, 2026-11-20: "Titles and text"): as an adjective with
+# the ® on every use, or as "the LEGO Group" in the disclaimer; never "LEGOs", "LEGO®s", a bare "LEGO" or another casing, and never in a site path.
+NAME_ALLOWED = re.compile(r'LEGO® (?=\w)|(?<=\b[Tt]he )LEGO(?= Group\b)')
+NAME_ANY = re.compile(r'lego', re.I)
+DISCLAIMER = 'LEGO® is a trademark of the LEGO Group of companies, which does not sponsor, authorize or endorse this project.'
+TITLE_SUFFIX = ' · Brick Work'
+# The seven pages in the launch kit's order (marketing, § Question pages; Ulf, 2026-11-20: "All seven as ranked").
+QUESTION_SLUGS = ('missing-parts-used-set', 'used-set-worth', 'sets-in-a-bulk-lot', 'buy-missing-parts', 'store-and-label-parts',
+                  'build-from-loose-parts', 'track-your-collection')
+
+
+class Readable(HTMLParser):
+    """The words a reader or a search engine reads (text, title, description, alt and label attributes) and the page's link targets."""
+    READ = ('content', 'alt', 'title', 'aria-label')
+    LINKS = ('href', 'src', 'action')
+
+    def __init__(self, text):
+        super().__init__(convert_charrefs=True)
+        self.words, self.links, self.skip = [], [], 0
+        self.feed(text)
+
+    def handle_starttag(self, tag, attrs):
+        if tag in ('script', 'style'):
+            self.skip += 1
+        for key, value in attrs:
+            if value and key in self.READ:
+                self.words.append(value)
+            elif value and key in self.LINKS:
+                self.links.append(value)
+
+    def handle_endtag(self, tag):
+        if tag in ('script', 'style'):
+            self.skip -= 1
+
+    def handle_data(self, data):
+        if not self.skip:
+            self.words.append(data)
+
+
+def name_use_errors(text):
+    """Each wrong use of the name in a built page: the snippet of words around it, or the site link that carries it."""
+    found = Readable(text)
+    errors = []
+    for words in found.words:
+        allowed = {m.start() for m in NAME_ALLOWED.finditer(words)}
+        errors += [words[max(0, m.start() - 20):m.end() + 20] for m in NAME_ANY.finditer(words) if m.start() not in allowed]
+    own = [link for link in found.links if not re.match(r'^[a-z][a-z0-9+.-]*:|^//', link)]   # relative or rooted: the site's own paths
+    errors += [link for link in own if NAME_ANY.search(unquote(link))]
+    return errors
+
+
+@pytest.mark.parametrize('words', [
+    'Which parts is my used LEGO® set missing?', 'Most LEGO® sets come with a parts list.',
+    'not affiliated with the LEGO Group, Rebrickable', 'The LEGO Group sells single parts.', DISCLAIMER])
+def test_the_name_rule_allows_the_adjective_and_the_group(words):
+    assert name_use_errors(f'<p>{words}</p>') == []
+
+
+@pytest.mark.parametrize('words', [
+    'My LEGOs are in a box.', 'Sort your LEGO®s.', 'I like LEGO.', 'A LEGO set', 'Lego sets', 'lego parts', 'LEGO®', 'LEGO® .', 'the LEGO shop'])
+def test_the_name_rule_fails_every_other_use(words):
+    assert name_use_errors(f'<p>{words}</p>')
+
+
+def test_the_name_rule_reads_titles_descriptions_and_alt_text_but_allows_external_links():
+    assert name_use_errors('<title>LEGO sets</title>')
+    assert name_use_errors('<meta name="description" content="Your Lego collection">')
+    assert name_use_errors('<img src="a.png" alt="A LEGO brick">')
+    assert name_use_errors('<a href="../questions/lego-parts/">Parts</a>') == ['../questions/lego-parts/']
+    assert name_use_errors('<a href="/brick-work/questions/LEGO-sets/">Sets</a>')
+    assert name_use_errors('<a href="https://www.lego.com/en-gb/pick-and-build/pick-a-brick">Pick a Brick</a>') == []
+    assert name_use_errors('<script>const lego = 1</script>') == []
+
+
+def test_a_question_page_rendered_by_the_site_passes_the_name_rule_and_carries_the_disclaimer():
+    from scripts.build_site import page
+    title = 'Which parts is my used LEGO® set missing?'
+    text = page(title, '<h1>Which parts is my used LEGO® set missing?</h1><p>Check each part against the LEGO® parts list.</p>', 2,
+                current=None, path='questions/missing-parts-used-set/', description='How to check a used LEGO® set for missing parts.')
+    assert name_use_errors(text) == []
+    assert DISCLAIMER in text.split('<footer', 1)[1]
+
+
+def test_question_pages_name_the_brand_correctly_and_carry_the_disclaimer(site):
+    from scripts.build_site import site_urls
+    pages = sorted(site.glob('questions/*/index.html'))
+    assert [file.parent.name for file in pages] == sorted(QUESTION_SLUGS)
+    llms = (site / 'llms.txt').read_text()
+    for file in pages:
+        slug = file.parent.name
+        text = file.read_text()
+        assert name_use_errors(text) == [], slug
+        assert not NAME_ANY.search(slug), slug
+        assert DISCLAIMER in text.split('<footer', 1)[1], slug
+        title = html.unescape(re.search(r'<title>(.+?)</title>', text)[1])
+        h1 = html.unescape(re.sub(r'<[^>]+>', '', re.search(r'<h1[^>]*>(.+?)</h1>', text, re.S)[1])).strip()
+        assert title.endswith(TITLE_SUFFIX) and len(title) - len(TITLE_SUFFIX) <= 47 and title.removesuffix(TITLE_SUFFIX) == h1, slug
+        assert f'questions/{slug}/' in site_urls(site) and f'questions/{slug}/)' in llms, slug
+        # The last step is the demo or, where the demo cannot show the feature, the docs; never the install (#544).
+        last = re.findall(r'<a class="btn primary" href="([^"]+)"', text)[-1]
+        assert re.match(r'(\.\./)+(demo|docs)/', last), (slug, last)
+    # The footer every site page shares passes the rule too, so the disclaimer's own wording is allowed where it stands.
+    footer = (site / 'about/index.html').read_text().split('<footer', 1)[1]
+    assert name_use_errors(footer) == []
 
 
 def test_the_use_cases_heading_and_description_count_the_cards_alike():

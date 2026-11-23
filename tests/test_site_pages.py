@@ -169,7 +169,7 @@ def test_site_pages_show_the_real_world_pictures_and_no_placeholder(site):
     (scripts/site_shots.py, rendered with no_tiles); every picture they name is in the build, and no page carries a capture of the old drawings."""
     for name, wanted in (('index.html', ('1c-sets-desktop-1440', '3a-matcher-phone-390', '3e-start-phone-390', '3c-picker-sets-phone-390', '12b-count-what-arrived-desktop-1440')),
                          ('workflows/index.html', ('3e-start-phone-390', '3e-part-phone-390', '3c-picker-sets-phone-390', '3c-picker-pick-phone-390', '3a-matcher-phone-390', '12b-count-what-arrived-desktop-1440',
-                                                  '12c-list-and-detail-desktop-1440', 'scout-list-desktop-1440', 'lot-pull-confirm-phone-390', 'lot-detect-desktop-1440'))):
+                                                  '12c-list-and-detail-desktop-1440', 'scout-list-desktop-1440', 'lot-pull-confirm-phone-390'))):   # Set detection has no tile in v1.2 (#526)
         text = (site / name).read_text()
         for stem in wanted:
             assert f'{stem}-light.png' in text and f'{stem}-dark.png' in text, (name, stem)

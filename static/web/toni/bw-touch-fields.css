@@ -1,0 +1,7 @@
+/* Fields on a touch screen (#648). iOS Safari zooms the page in when it focuses a field whose text is smaller than 16px, and every field
+   of Brick Work is 14px: tapping Price paid on the Edit set sheet magnified the sheet and pushed Date, Place and Estimate off the right
+   edge, with the caret drawn away from the digits. On a touch screen every text field, choice and note is 16px, so there is no zoom; a
+   mouse and a desktop keep the frames' 14px; the count steppers of Part Spotter and Orders are 18px already and keep it. Loaded on every page (base.html), legacy and B′ alike, so the rule wins over both. */
+@media (hover:none) and (pointer:coarse) {
+  input:not([type=checkbox],[type=radio],[type=range],[type=color],[type=file],[type=hidden],[type=button],[type=submit],[type=reset],[type=image]):not(.inv-qty *,.order-stepper *),select,textarea {font-size:16px!important}
+}

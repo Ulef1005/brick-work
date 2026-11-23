@@ -50,3 +50,9 @@
 
 /* Row lists inside a card (consists of, used in sets): hairline rows */
 #bw-collection[data-b-detail]:not(#_):not(#_) .bc-module .bc-row {border-radius:0;box-shadow:none}
+/* #655 (Ulf's check on a phone): the aside cards keep their 10px gap at every width (the aside was a block on a phone, so the gap did not
+   apply and Wish details sat on Prices); a closed disclosure card has no hairline under its summary, so no empty strip; the status row
+   (Wanted · 1) keeps 8px from the links above it when it wraps under them. */
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-detail-aside {display:flex;flex-direction:column}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-detail-aside>details.bc-module:not([open])>summary {border-bottom:0}
+#bw-collection[data-b-detail]:not(#_):not(#_) .bc-hero-heading+.bc-hero-status {margin-top:8px}

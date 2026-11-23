@@ -7,13 +7,19 @@ from collections import defaultdict
 import json
 
 from ..core import collection, currency, planning, wish_progress
-from ..store4 import copies as copies_store
+from ..store4 import copies as copies_store, origins
 from ..store4.connect import has_catalogue
 from .read import bodies, etags
 
 
 def flag_ids(flags):
     return [f['id'] for f in flags]
+
+
+def sources(db, table, rows):
+    """`{row id: Source}` (#551): Added via (read only, never changes) and every Last synced from, newest first."""
+    synced = origins.sources_of(db, table, [r['id'] for r in rows])
+    return {r['id']: origins.body(r.get('added_via'), synced[r['id']]) for r in rows}
 
 
 # ---------- copies ----------
@@ -42,6 +48,7 @@ def copy_bodies(db, rows, *, single=False):
     ids = [r['id'] for r in rows]
     tags = etags(db, 'copy', ids)
     state = inventories(db, rows)
+    source = sources(db, 'copy', rows)
     from ..core import partout
     values = partout.values(db, ids) if single else {}
     unpriced = [u for v in values.values() for u in v['unpriced']]
@@ -53,7 +60,7 @@ def copy_bodies(db, rows, *, single=False):
                 'purchase_date': r['purchase_date'], 'purchase_price': r['purchase_price'], 'purchase_currency': r['purchase_currency'], 'note': r['note'],
                 'current_value': r['current_value'], 'current_value_currency': r['current_value_currency'], 'pinned': bool(r['pinned']),
                 'flags': flag_ids(r['flags']), 'missing': r['missing'], 'damaged': r['damaged'], 'updated_at': r['updated_at'],
-                'archived_at': r['archived_at'], 'etag': tags.get(r['id']), 'image_id': r['image'], 'inventory': state[r['id']]}
+                'archived_at': r['archived_at'], 'etag': tags.get(r['id']), 'image_id': r['image'], 'inventory': state[r['id']], 'source': source[r['id']]}
         if single:
             value = values.get(r['id'])
             body['partout'] = None if value is None else {
@@ -72,11 +79,13 @@ def stock_bodies(db, rows):
         return []
     book = bodies(db, items=[r['item_id'] for r in rows], colors=[r['color_id'] for r in rows])
     tags = etags(db, 'stock', [r['id'] for r in rows])
+    source = sources(db, 'stock', rows)
     return [{'id': r['id'], 'item': book.item(r['item_id']), 'name': r['name'], 'color': book.color(r['color_id']), 'quantity': r['quantity'],
              'condition': r['condition'], 'storage_id': r['storage_id'], 'lot_id': r['lot_id'], 'purchase_location_id': r['place_id'],
              'purchase_date': r['purchase_date'], 'purchase_price': r['purchase_price'], 'purchase_currency': r['purchase_currency'], 'note': r['note'],
              'created_at': r['created_at'], 'updated_at': r['updated_at'], 'archived_at': r['archived_at'], 'missing': r['missing'],
-             'damaged': r['damaged'], 'flags': flag_ids(r['flags']), 'merged_ids': [], 'etag': tags.get(r['id']), 'image_id': r['image']}
+             'damaged': r['damaged'], 'flags': flag_ids(r['flags']), 'merged_ids': [], 'etag': tags.get(r['id']), 'image_id': r['image'],
+             'source': source[r['id']]}
             for r in rows]
 
 
@@ -108,6 +117,7 @@ def wish_bodies(db, rows):
         return []
     book = bodies(db, items=[r['item_id'] for r in rows], colors=[r['color_id'] for r in rows])
     tags = etags(db, 'wish', [r['id'] for r in rows])
+    source = sources(db, 'wish', rows)
     out = []
     for r in rows:
         shown = r.get('display_price') or {}
@@ -118,5 +128,5 @@ def wish_bodies(db, rows):
                     'note': r['note'], 'added_at': r['added_at'], 'updated_at': r['updated_at'], 'archived_at': r['archived_at'],
                     'under_max': {'under': True, 'over': False}.get(r['max_state']), 'current_price': shown.get('price'),
                     'under_max_boxed': {'under': True, 'over': False}.get(r['max_boxed_state']),
-                    'flags': flag_ids(r['flags']), 'etag': tags.get(r['id']), 'image_id': r['image']})
+                    'flags': flag_ids(r['flags']), 'etag': tags.get(r['id']), 'image_id': r['image'], 'source': source[r['id']]})
     return out

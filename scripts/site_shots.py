@@ -116,8 +116,6 @@ await new Promise(r => setTimeout(r, 150));
 
 # stem: (path, width, max CSS height, script, destination)
 PICTURES = {
-    '1c-sets-desktop-1440': ('/collection/sets', 1440, 1020, None, (README,)),
-    '3c-picker-pick-390': (PICKED + '&pick=1', 390, 950, None, (README,)),
     # The tutorials' pictures are the tut-* ones generated below (real world, call-outs); the old invented-world pictures were removed (#290, Ulf 2026-11-16)
     'scout-set-desktop-1440': (scout_set(SECOND), 1440, 900, None, (TUTORIALS,)),
 }
@@ -136,19 +134,18 @@ R_LOT_PAGE = '/collection/lots/' + real.LOT
 NO_FOUND_ROWS = ("for (let i = 0; i < 100 && !document.querySelector('.chk-found-row'); i++) await new Promise(r => setTimeout(r, 50));\n"
                  "document.querySelectorAll('.chk-hist .chk-found-row, .chk-hist .chk-gl2').forEach(e => e.remove());\n")
 SITE_PICTURES = {
-    '1c-sets-desktop-1440': ('/collection/sets', 1440, 1020, None, (SITE,)),
+    '1c-sets-desktop-1440': ('/collection/sets', 1440, 1020, None, (SITE, README)),   # also the README's sets list (#502)
     '3a-matcher-phone-390': ('/workbench/match', 390, 844, None, (SITE,)),
     '3e-start-phone-390': ('/workbench/check-parts/' + R_FRESH, 390, 844, None, (SITE,)),
     '3e-part-phone-390': ('/workbench/check-parts/%s?run=1' % R_STARTED, 390, 844, None, (SITE,)),
-    'part-spotter-phone-390': ('/workbench/part-to-inventory', 390, 844, None, (SITE,)),   # the website's Part Spotter tile (#526): its start screen; a result needs a photo and Brickognize
     '3e-part-desktop-1440': ('/workbench/check-parts/%s?run=1' % R_STARTED, 1440, 900, NO_FOUND_ROWS, (README,)),   # README and social previews (#502)
     '3c-picker-sets-phone-390': ('/workbench/part-picker', 390, 844, None, (SITE,)),
-    '3c-picker-pick-phone-390': (R_PICKED + '&pick=1', 390, 950, None, (SITE, README)),   # also the README's and the social previews' (#502)
-    '12b-count-what-arrived-desktop-1440': ('/workbench/orders/2', 1440, 1050, None, (SITE,)),
-    '12c-list-and-detail-desktop-1440': ('/workbench/storage/storage-shelf-b', 1440, 900, None, (SITE,)),
-    'scout-list-desktop-1440': ('/workbench/build-scout?min_percent=10', 1440, 900, HIDE_PANEL, (SITE,)),
-    'lot-detect-desktop-1440': (R_LOT_PAGE + '?detect=1&ignore_common=1#set-detection', 1440, 900, SHOW_DETECTION + COLLAPSE_CANDIDATES, (SITE,)),
-    'lot-pull-confirm-phone-390': (first_pull(R_LOT_PAGE, '/make-copy'), 390, 844, None, (SITE,)),
+    '3c-picker-pick-phone-390': (R_PICKED + '&pick=1', 390, 950, "document.querySelectorAll('.psub').forEach(e => { e.style.display = 'none'; });\n", (SITE, README)),   # also the README's and the social previews' (#502)
+    '12b-count-what-arrived-desktop-1440': ('/workbench/orders/2', 1024, 768, None, (SITE,)),   # 1024 wide, cut at 768 high: the 4:3 tile shows the top left at a readable size (design, 2026-11-23)
+    '12c-list-and-detail-desktop-1440': ('/workbench/storage/storage-shelf-b', 1024, 768, None, (SITE,)),
+    'scout-list-desktop-1440': ('/workbench/build-scout?min_percent=10', 1024, 768, HIDE_PANEL, (SITE,)),
+    'lot-detect-desktop-1440': (R_LOT_PAGE + '?detect=1&ignore_common=1#set-detection', 1024, 768, SHOW_DETECTION + COLLAPSE_CANDIDATES, (SITE,)),
+    'lot-pull-confirm-phone-390': (first_pull(R_LOT_PAGE), 390, 844, None, (SITE,)),   # the pull list before the confirm sheet opens: the sheet dims the screen and reads as disabled (design, 2026-11-23)
 }
 
 
@@ -231,12 +228,12 @@ def tag_nth(selector, n, attr='data-shot-area', closest=None):
 # `tut-<name>-<layout>-<width>-<theme>.png`; a mark is a (selector, number) pair.
 REAL = {'real': lambda number: uid('copy', number, 'a')}['real']
 REAL_STARTED, REAL_GAPS = REAL('8043-1'), REAL('7938-1')   # a check about 40 % answered; a check answered to the end, with gaps
-# The pull list shows every part of the set and most parts have no render yet: keep the Bricks section's first eleven lines that have one (since the part lists are grouped by category, #400, the lines without a render are dropped first) and drop the rest.
+# The pull list shows every part of the set and most parts have no render yet: keep the Bricks section's first ten lines that have one and the first line still to find (with the folder's pictures nearly every line has a render, and the first lines are the ones already found) (since the part lists are grouped by category, #400, the lines without a render are dropped first) and drop the rest.
 PULL_WINDOW = ("{ const sec = [...document.querySelectorAll('details.bw-sec')].find(d => /^Bricks/.test(d.dataset.bwSection || '')); if (!sec) throw new Error('PULL_WINDOW: no Bricks section'); sec.open = true; "
                "document.querySelectorAll('.bp-grp').forEach(e => e.remove()); "
                "[...document.querySelectorAll('details.bw-sec')].forEach(d => { if (d !== sec) d.remove(); }); "
                "[...document.querySelectorAll('[data-line]')].forEach(l => { if (!sec.contains(l)) l.remove(); }); "
-               "[...sec.querySelectorAll('[data-line]')].filter(l => !l.querySelector('img')).forEach(e => e.remove()); [...sec.querySelectorAll('[data-line]')].slice(11).forEach(e => e.remove()); "
+               "[...sec.querySelectorAll('[data-line]')].filter(l => !l.querySelector('img')).forEach(e => e.remove()); { const all = [...sec.querySelectorAll('[data-line]')], first = all.find(l => /(^|\\D)0 of \\d+/.test(l.textContent)), keep = all.slice(0, 10); if (first && !keep.includes(first)) keep.push(first); all.forEach(l => { if (!keep.includes(l)) l.remove(); }); } "
                "const open = [...document.querySelectorAll('[data-line]')].find(l => /(^|\\D)0 of \\d+/.test(l.textContent)); if (!open) throw new Error('PULL_WINDOW: no line left to find'); open.setAttribute('data-shot-open', ''); "
                "document.querySelectorAll('.bp-more, .bp-bar, .bw-sec-tools, .bw-sec-count').forEach(e => e.remove()); }\n")
 # Order missing parts lists every missing line, most of them without a render (the page groups by category since #400): keep the first six lines that have one,
@@ -277,6 +274,9 @@ TUTORIAL_SHOTS = {
         layout: (width, ['h1', '[data-shot-area]'],
                  [('a.button[aria-current=page]', 1), ('[data-wl-open=bw-manage-wishlists]', 2), ('[data-wl-open=bw-export-wishlist]', 3), ('[data-shot-print]', 4)],
                  tag_text('a.button', 'Download CSV') + tag_text('a.button', 'Print', 'data-shot-print'))
+        for layout, width in (('desktop', 1024), ('phone', 390))}),
+    'wishlist-states': ('/planning/wishlist', None, {   # the first four wishes with their state tag, for manage-wishlists.md (#663): only the parts have pictures, and they all read Buy now; the other states sit on the five vintage wished sets, which have none
+        layout: (width, ['.bp-list > article.bp-row:nth-of-type(-n+4)'], [], '')
         for layout, width in (('desktop', 1024), ('phone', 390))}),
     'order-count': ('/workbench/orders/2?view=count', None, {
         layout: (width, ['[data-order-panel=count] h2', '[data-shot-area]'], [('[data-order-panel=count] h2', 1), ('.order-count-row', 2)],

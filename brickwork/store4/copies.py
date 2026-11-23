@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 import json
 import uuid
 
-from . import identity, jobs
+from . import identity, jobs, origins
 from .connect import check_compatible
 from .audit import Events, need_catalogue, transaction
 from .connect import has_catalogue, now
@@ -269,10 +269,10 @@ def create_copy_in(db, set_item_id, choice, *, via, actor=None, condition=None, 
         pending = {'source': 'bricklink', 'job_id': job, 'job_reused': not created}
     db.execute('''INSERT INTO main.copy(id, item_id, inventory_source, inventory_version, fetched_inventory_id, inventory_digest,
                   materialised_at, inventory_pending, pending_job_id, condition, completeness, completeness_source, note,
-                  created_at, updated_at) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                  created_at, updated_at, added_via) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
                (copy_id, set_item_id, target.source, target.version, target.fetched_inventory_id, target.digest, stamp,
                 pending and 'bricklink', pending and pending['job_id'], condition,
-                completeness, 'manual' if completeness else None, note, stamp, stamp))
+                completeness, 'manual' if completeness else None, note, stamp, stamp, origins.current()))
     figure_rows = []
     figure_ids = {}
     for fig in target.figures:

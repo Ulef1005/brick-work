@@ -5,7 +5,7 @@
 .layout:where(:not(.b-prime,.b-prime *)){display:block;min-height:calc(100dvh - var(--bw-bars))}
 .layout>main:where(:not(.b-prime,.b-prime *)){min-width:0;padding:32px;max-width:none;width:100%}
 .theme-segments:where(:not(.b-prime,.b-prime *)){display:flex;gap:2px;padding:2px;background:var(--tw-surface);border-radius:10px}
-.theme-segments button:where(:not(.b-prime,.b-prime *)){flex:1;min-width:44px;min-height:44px;border:0;background:transparent;color:var(--tw-text-2);display:grid;place-items:center;border-radius:8px}
+.theme-segments button:where(:not(.b-prime,.b-prime *)){flex:1;min-width:44px;min-height:44px;border:0;background:transparent;color:var(--tw-text-2);display:grid;grid-auto-flow:column;gap:6px;place-items:center;justify-content:center;border-radius:8px}
 .theme-segments button[aria-pressed=true]:where(:not(.b-prime,.b-prime *)){background:var(--tw-accent-soft);color:var(--tw-text)}
 dialog:where(:not(.b-prime,.b-prime *)){background:var(--tw-sheet-bg);border:var(--tw-sheet-edge);box-shadow:none;animation:shell-sheet 240ms var(--tw-ease)}
 dialog:where(:not(.b-prime,.b-prime *))::backdrop{background:var(--tw-scrim)}

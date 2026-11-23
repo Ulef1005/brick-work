@@ -21,7 +21,7 @@ from .currency import configured_currency, display_currency
 from .admin import SYSTEM_FLAGS, audit, origin
 from .completeness import derived_state
 from .sources.base import now
-from ..store4 import copies as store_copies, identity, part_list_read
+from ..store4 import copies as store_copies, identity, origins, part_list_read
 from ..store4.connect import as_current, has_catalogue, now as stamp_now
 
 TYPES = {'S': 'Sets', 'M': 'Minifigures', 'P': 'Parts', 'I': 'Instructions',
@@ -714,6 +714,19 @@ def detail(db, item_id, *, colour=None, copy_id=None, stock_id=None, wish_id=Non
     estimate = collection_prices.choose([p for p in row['price_records'] if p['guide'] in ('valuation', 'manual') and p.get('slot') != 'boxed'],
                                         kind, price_priority)
     row['valuation_prices'] = [p for p in (collection_prices.with_box(row['price_records'], kind, price_priority), estimate) if p]
+    if wish:
+        # #655: the answer the wish page opens with, the price shown against the max exactly as the Wishlist tile does it (planning.wishes).
+        from . import currency, planning, wish_progress
+        condition = wish.get('condition') if wish.get('condition') in ('new', 'used') else None
+        shown = collection_prices.choose(row['condition_prices'], kind, price_priority, condition) or collection_prices.choose(
+            [p for p in row['prices'] if p['guide'] in ('sold', 'stock') and p.get('slot') != 'boxed'], kind, price_priority, condition)
+        probe = dict(wish, display_price=shown)
+        probe['max_state'], probe['max_margin'] = planning.max_comparison(probe, currency.rates(db))
+        wish_progress.annotate(db, [probe])
+        wish.update({k: probe[k] for k in ('qty_filled', 'qty_filled_source', 'filled')})
+        row['wish_verdict'] = dict(state=planning.wish_state(probe), margin=probe['max_margin'], price=shown, conversion=probe.get('max_conversion'))
+        found = db.execute('SELECT name FROM wishlist WHERE id=?', (wish['list_id'],)).fetchone()
+        wish['list_name'] = found[0] if found else None
     row['retail'] = retail(db, item_id) if kind == 'set' else None
     row['retail_saving'] = None
     if row['retail'] and selected and selected['entity'] == 'copy':
@@ -1680,8 +1693,8 @@ def want(db, item_id, colour=None):
             raise errors.Conflict('Already on the wishlist')
         stamp = stamp_now()
         identifier = uuid4().hex
-        db.execute('''INSERT INTO main.wish(id,wishlist_id,kind,item_id,color_id,quantity,condition,added_at,updated_at) VALUES(?,?,?,?,?,1,'any',?,?)''',
-                   (identifier, 'default', item['kind'], item['id'], colour, stamp, stamp))
+        db.execute('''INSERT INTO main.wish(id,wishlist_id,kind,item_id,color_id,quantity,condition,added_at,updated_at,added_via) VALUES(?,?,?,?,?,1,'any',?,?,?)''',
+                   (identifier, 'default', item['kind'], item['id'], colour, stamp, stamp, origins.current()))
         return receipt(db, [('wish', [], snapshot(db, 'wish', [identifier]))], 'save')
 
 

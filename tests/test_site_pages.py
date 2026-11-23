@@ -330,6 +330,7 @@ def test_every_image_the_readme_and_the_pages_show_exists_and_is_a_built_capture
         sys.path.remove(sys_path)
     stems, site_stems = set(site_shots.PICTURES), set(site_shots.SITE_PICTURES)   # the README's captures are the showcase world's, plus the real-world shots site_shots also writes to the README; the site's are the real-sets world's
     stems |= {stem for stem, spec in site_shots.SITE_PICTURES.items() if site_shots.README in spec[-1]}   # a real-world shot written to the README too (#502, #622)
+    site_stems |= {'part-spotter-photo'}   # the Part Spotter tile is Ulf's own photo of a 2 x 2 brick (part-spotter/own-photos/test/3003, no overlay), not a capture (Ulf, 2026-11-23)
     shown = set()
     for source in ('README.md', 'scripts/site/landing.html', 'scripts/site/use-cases.md', 'scripts/site/pages/workflows.html'):
         text = (ROOT / source).read_text()
@@ -565,7 +566,7 @@ def test_every_sitemap_page_but_the_demo_has_a_lastmod_on_a_full_clone(site):
     entries = {e.find(ns + 'loc').text: e.find(ns + 'lastmod') for e in ET.fromstring((site / 'sitemap-pages.xml').read_text())}
     missing = [loc for loc, mod in entries.items() if mod is None and not loc.endswith('/demo/')]
     assert missing == []
-    assert len([loc for loc in entries if '/questions/' in loc]) == len(QUESTION_SLUGS)
+    assert len([loc for loc in entries if '/questions/' in loc and not loc.endswith('/questions/')]) == len(QUESTION_SLUGS)
 
 
 def test_no_page_names_the_pages_address_on_the_apex_build(site):
@@ -808,3 +809,22 @@ def test_the_use_cases_heading_and_description_count_the_cards_alike():
     count = len(re.findall(r'<h3 class="layout-39">', source))
     heading = re.search(r'<h1[^>]*>(\w+) moments', source).group(1).lower()
     assert heading == words[count] and build_site.MD_DESCRIPTIONS['use-cases'].lower().startswith(f'{words[count]} moments')
+
+
+def test_the_questions_hub_lists_every_page_passes_the_lego_rule_and_the_structured_data_matches(site):
+    """Review of #679 and the SEO review (23.11.): the hub is checked like the pages it lists; breadcrumbs are links; BreadcrumbList, ItemList and HowTo parse."""
+    import json
+    hub = (site / 'questions/index.html').read_text()
+    assert name_use_errors(hub) == []
+    assert DISCLAIMER in hub.split('<footer', 1)[1]
+    assert [href for href in re.findall(r'<a href="\.\./questions/([^"]+)/"><span><b>', hub)] == list(QUESTION_SLUGS)
+    ld = lambda text: [json.loads(block) for block in re.findall(r'<script type="application/ld\+json">(.+?)</script>', text)]
+    assert [item['@type'] for item in ld(hub)] == ['BreadcrumbList', 'ItemList']
+    assert [e['url'].rsplit('/', 2)[-2] for e in ld(hub)[1]['itemListElement']] == list(QUESTION_SLUGS)
+    for slug in QUESTION_SLUGS:
+        text = (site / f'questions/{slug}/index.html').read_text()
+        types = [item['@type'] for item in ld(text)]
+        assert types[0] == 'BreadcrumbList' and 'HowTo' in types, slug
+        assert '<a href="../../">Home</a> / <a href="../../questions/">Questions</a>' in text, slug
+        assert len(ld(text)[types.index('HowTo')]['step']) >= 2, slug
+        assert name_use_errors(text) == [], slug

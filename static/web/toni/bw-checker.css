@@ -234,6 +234,9 @@ body:has(#bw-checker[data-bp-checker]) .layout>main.bp-flush { padding:0; }
 .bp-chk:not(#_):not(#_):not(#_):not(#_) .chk-mn3 { margin-top:6px;font:600 12px var(--tw-font); }
 .bp-chk:not(#_):not(#_):not(#_):not(#_) .step b button { width:100%;height:100%;font:inherit;color:inherit;background:none;border:0;cursor:pointer;min-height:0; }
 .bp-chk:not(#_):not(#_):not(#_):not(#_) .step b button:disabled { opacity:.35;cursor:default; }
+/* #649: the stepper of a missing line counts what was found: the number large, the word "found" small beside it */
+.bp-chk:not(#_):not(#_):not(#_):not(#_) .chk-miss .step span.chk-found-n { gap:6px;padding:0 12px;white-space:nowrap; }
+.bp-chk:not(#_):not(#_):not(#_):not(#_) .chk-miss .step .chk-found-word { font:600 12px/1 var(--tw-font-label);letter-spacing:.08em;text-transform:uppercase;color:var(--tw-text-2); }
 .bp-chk:not(#_):not(#_):not(#_):not(#_) .chk-found-row { display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--tw-divider); }
 .bp-chk:not(#_):not(#_):not(#_):not(#_) .chk-ft { flex:1;min-width:0; }
 .bp-chk:not(#_):not(#_):not(#_):not(#_) .chk-fn { font:500 14px var(--tw-font);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }

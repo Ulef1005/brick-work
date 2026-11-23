@@ -535,6 +535,7 @@ html[data-web-ui="toni"] #bw-collection .bc-source-details summary { padding-inl
 .bc-wish-max { display:flex;flex-direction:column;gap:2px; }
 .bc-wish-max-label { font:500 10px/12px var(--tw-font);letter-spacing:.1em;text-transform:uppercase;color:var(--tw-text-muted); }
 .bc-wish-max strong { font:600 20px/26px var(--tw-mono); }
+.bc-wish-max-none { font:400 14px/20px var(--tw-font);color:var(--tw-text-2); }
 
 /* Design v1.3: figures stay visible as individual lines in every state. */
 #bw-collection .bc-figure-heading h3 { margin:8px 0 4px;font:600 22px/28px var(--tw-font);letter-spacing:-.2px; }

@@ -141,7 +141,7 @@
   #bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-identity .bc-picture {grid-row:1/span 5}
   #bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-select {grid-row:1/span 5}
   #bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-state {position:static;transform:none}   /* in the flow after the number: it cannot lie over a long title */
-  #bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bc-identity {display:flex;flex-wrap:wrap;gap:2px 8px}
+  #bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bc-identity {display:flex;flex-direction:row;flex-wrap:wrap;align-items:baseline;gap:2px 8px}
   #bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bc-identity>strong {flex-basis:100%}
   #bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] :is(.bp-wl-want,.bp-wl-max,.bp-wl-price,.bp-gap) {grid-column:3;grid-row:auto}
   #bw-planning:not(#_):not(#_):not(#_) .bp-wishlist[data-view=list] .bp-wl-price {flex-direction:row;align-items:baseline;gap:6px}

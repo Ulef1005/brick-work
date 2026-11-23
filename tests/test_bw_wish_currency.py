@@ -366,3 +366,22 @@ def test_the_list_view_heads_hide_with_no_rows_and_the_tag_is_in_the_flow_on_a_p
 def wish_page_head_is_hidden_without_rows(root):
     template = (root / 'templates/web/toni/web/bw_planning.html').read_text()
     return '<div class="bp-list-head" aria-hidden="true"{% if not total %} hidden{% endif %}>' in template
+
+
+def test_a_figure_wish_page_has_the_answer_then_your_wish_then_prices_and_no_wish_edit_in_status(coll, client):
+    figure = coll.item('minifigs', 'fig-000004')
+    wish = coll.add_wish(figure, condition='used', max_price='9.00', currency='EUR')
+    soup = BeautifulSoup(client.get(f'/collection/wishes/{wish}').data, 'html.parser')
+    answer, card, prices = (soup.select_one(s) for s in ('[data-wish-answer]', '[data-module=wanted]', '[data-module=prices]'))
+    order = [str(n) for n in soup.find_all(True)]                                     # document order of the three blocks
+    positions = [order.index(str(n)) for n in (answer, card, prices)]
+    assert positions == sorted(positions) and card.find_previous_sibling(attrs={'data-module': True}) is None
+    status = soup.select_one('[data-module=status]')
+    assert status and not status.select('button[data-bw-open=bc-edit]')               # Status → Edit would open the wish's sheet
+    assert len(soup.select('[data-module=wanted] button.bc-wanted-edit')) == 1
+
+
+def test_the_phone_list_view_identity_is_a_row_of_wrapped_items():
+    from pathlib import Path
+    css = (Path(__file__).resolve().parents[1] / 'static/web/toni/bw-planning-b.css').read_text()
+    assert '.bp-wishlist[data-view=list] .bc-identity {display:flex;flex-direction:row;flex-wrap:wrap;align-items:baseline;gap:2px 8px}' in css

@@ -145,7 +145,7 @@ def _live_lists(db, site):
            LEFT JOIN main.copy c ON c.id=f.copy_id AND c.archived_at IS NULL
            LEFT JOIN main.stock s ON s.id=f.stock_id AND s.archived_at IS NULL AND s.quantity>0
            LEFT JOIN main.wish w ON w.id=f.wish_id AND w.archived_at IS NULL
-           WHERE f.site=? AND f.list_key!='' AND coalesce(c.item_id, s.item_id, w.item_id) IS NOT NULL
+           WHERE f.site=? AND f.list_key!='' AND f.list_key NOT GLOB 'part:*' AND coalesce(c.item_id, s.item_id, w.item_id) IS NOT NULL
            ORDER BY f.list_key''', (site,)):
         by_name = counts.setdefault(r['list_key'], {})
         by_name[r['list_name']] = by_name.get(r['list_name'], 0) + 1

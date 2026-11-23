@@ -120,3 +120,77 @@ def test_the_row_parser_refuses_what_it_cannot_read():
     assert adapters.parse_part_list_row({'quantity': '3', 'part': {'part_num': '3001'}, 'color': {'id': '4'}}) == dict(part_no='3001', color_id=4, quantity=3)
     for bad in ({}, {'quantity': 0, 'part': {'part_num': '3001'}, 'color': {'id': 4}}, {'quantity': 1, 'part': {'part_num': '3001'}, 'color': {'id': 'red'}}):
         assert adapters.parse_part_list_row(bad) is None
+
+
+def test_a_set_pull_keeps_part_list_synced_from_lines(store):
+    remote = ready(store)
+    part_lists.apply(store, part_lists.plan(store, http=remote)['id'])
+    before = {tuple(r) for r in store.execute("SELECT stock_id, list_key, list_name FROM synced_from WHERE stock_id IS NOT NULL")}
+    assert before and {r[1:] for r in before} == {('part:31', 'Bin A')}
+    assert 'part:31' not in sync.origins.lists_of(store, 'rebrickable')
+    set_plan = sync.plan_pull(store, 'rebrickable', http=remote)
+    assert not any(line['key'].startswith('part:') for line in set_plan['lists']['preview'])
+    sync.apply_pull(store, set_plan['id'])
+    after = {tuple(r) for r in store.execute("SELECT stock_id, list_key, list_name FROM synced_from WHERE list_key='part:31'")}
+    assert after == before
+
+
+def test_undoing_one_pull_keeps_another_pulls_lot(store):
+    remote = ready(store, (31,))
+    first = part_lists.apply(store, part_lists.plan(store, http=remote)['id'])
+    sync.link(store, 'rebrickable', {'part_lists': [31, 32]})
+    part_lists.apply(store, part_lists.plan(store, http=remote)['id'])
+    lots_before = dict(sync._setting(store, 'rebrickable', 'link')['part_list_lots'])
+    assert set(lots_before) == {'31', '32'}
+    sync.undo(store, first['event_id'])
+    assert sync._setting(store, 'rebrickable', 'link')['part_list_lots'] == {'32': lots_before['32']}
+    assert lot_rows(store, 'Bin B') == {('3001', '15'): 3}
+    assert not store.execute("SELECT 1 FROM lot WHERE id=? AND archived_at IS NULL", (lots_before['31'],)).fetchone()
+
+
+def test_rebrickable_colour_zero_keeps_color_no_zero(store):
+    remote = ready(store)
+    part_lists.apply(store, part_lists.plan(store, http=remote)['id'])
+    lot_id = sync._setting(store, 'rebrickable', 'link')['part_list_lots']['31']
+    item_id = store.execute("SELECT id FROM main.item WHERE born_key='3001'").fetchone()[0]
+    black = store.execute("SELECT id FROM main.color WHERE born_provider='rebrickable' AND born_key='0'").fetchone()
+    if black:
+        black_id = black[0]
+    else:
+        sample = dict(store.execute("SELECT * FROM main.color WHERE born_provider='rebrickable' LIMIT 1").fetchone())
+        sample['id'], sample['born_key'] = 990000, '0'
+        if 'name' in sample:
+            sample['name'] = 'Black (syn)'
+        black_id = sample['id']
+        with transaction(store):
+            store.execute(f"INSERT INTO main.color({', '.join(sample)}) VALUES({','.join('?' * len(sample))})", tuple(sample.values()))
+    with transaction(store):
+        stock.add_loose(store, item_id=item_id, color_id=black_id, quantity=2, condition=None, lot_id=lot_id, via='cli', actor=None)
+    row = next(r for r in part_lists.plan(store, http=remote)['rows'] if r['color_id'] == black_id)
+    assert row['state'] == 'only_here' and row['color_no'] == 0
+
+
+def test_row_parser_rejects_double_minus_colour_and_null_part_num():
+    assert adapters.parse_part_list_row({'quantity': 1, 'part': {'part_num': '3001'}, 'color': {'id': '--4'}}) is None
+    assert adapters.parse_part_list_row({'quantity': 1, 'part': {'part_num': None}, 'color': {'id': 4}}) is None
+    assert adapters.parse_part_list_row({'quantity': 1, 'part': {'part_num': ''}, 'color': {'id': 4}}) is None
+
+
+def test_link_rejects_falsy_non_list_part_lists(store):
+    rebrickable_ready(store, WithParts())
+    for bad in (False, 0, '', {}):
+        with pytest.raises(errors.ValidationFailed):
+            sync.link(store, 'rebrickable', {'part_lists': bad})
+    sync.link(store, 'rebrickable', {'part_lists': None})
+    assert part_lists.chosen(store) == []
+
+
+def test_redirected_row_does_not_reappear_on_next_plan(store):
+    remote = ready(store)
+    plan = part_lists.plan(store, http=remote)
+    keys = {r['part_no']: r['key'] for r in plan['rows']}
+    with transaction(store):
+        store.execute("INSERT INTO lot(id, name, created_at, updated_at) VALUES('mine', 'My drawer', 'x', 'x')")
+    part_lists.apply(store, plan['id'], lots={keys['3001']: 'mine'})
+    assert lot_rows(store, 'My drawer') == {('3001', '4'): 5} and lot_rows(store, 'Bin A') == {('3023', '15'): 2}
+    assert part_lists.plan(store, http=remote)['rows'] == []

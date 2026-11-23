@@ -82,15 +82,15 @@ def parse_part_list_row(row):
 
     ASSUMED SHAPE (Rebrickable's documentation, not checked live): `{quantity, part: {part_num, ...}, color: {id, ...}, element_id}`."""
     try:
-        quantity, colour = row['quantity'], row['color']['id']
+        quantity, colour, part_no = row['quantity'], row['color']['id'], row['part']['part_num']
         if type(quantity) is str and quantity.isdecimal():
             quantity = int(quantity)
-        if type(colour) is str and colour.lstrip('-').isdecimal():
+        if type(colour) is str and re.fullmatch(r'-?\d+', colour):
             colour = int(colour)
-        if type(quantity) is not int or quantity < 1 or type(colour) is not int:
+        if type(quantity) is not int or quantity < 1 or type(colour) is not int or not isinstance(part_no, str) or not part_no:
             return None
-        return dict(part_no=_number(str(row['part']['part_num'])), color_id=colour, quantity=quantity)
-    except (KeyError, TypeError, AttributeError, SourceError):
+        return dict(part_no=_number(part_no), color_id=colour, quantity=quantity)
+    except (KeyError, TypeError, AttributeError, ValueError, SourceError):
         return None
 
 

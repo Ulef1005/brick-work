@@ -133,8 +133,8 @@ def link(db, source, options):
         raise errors.ValidationFailed('lost_parts is true or false')
     if 'keep_list_names' in value and type(value['keep_list_names']) is not bool:
         raise errors.ValidationFailed('keep_list_names is true or false')
-    parts = value.get('part_lists') or []
-    if not isinstance(parts, list) or any(type(i) is not int or i <= 0 for i in parts) or len(set(parts)) != len(parts):
+    parts = value.get('part_lists')
+    if parts is not None and (not isinstance(parts, list) or any(type(i) is not int or i <= 0 for i in parts) or len(set(parts)) != len(parts)):
         raise errors.ValidationFailed('Choose part lists by id, once each')
     wishlists.require(db, value.get('wish_list') or 'default')
     with transaction(db):
@@ -350,6 +350,8 @@ def _plan_lists(db, plan, remote, switch):
     all_ids = {str(i) for i in remote.get('all_list_ids', names)}
     mixed = origins.mixed_lists(db, 'rebrickable')
     for key, (old, count) in origins.lists_of(db, 'rebrickable').items():
+        if key.startswith('part:'):   # a part list's lines (#471) belong to the part-list pull, not to a set list
+            continue
         if key in names:
             state = 'unchanged' if names[key] == old and key not in mixed else 'renamed'
         else:

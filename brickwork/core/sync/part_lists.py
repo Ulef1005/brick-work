@@ -63,9 +63,14 @@ def _numbers(db, item, colour):
     """(Rebrickable part number, Rebrickable colour id) of a row only here, for the preview's words."""
     found = [None, None]
     for store in ('main', 'catalogue') if db.execute("SELECT 1 FROM pragma_database_list WHERE name='catalogue'").fetchone() else ('main',):
-        part = db.execute(f'SELECT born_key FROM {store}.item WHERE id=?', (item,)).fetchone()
-        shade = db.execute(f"SELECT born_key FROM {store}.color WHERE id=? AND born_provider='rebrickable'", (colour,)).fetchone()
-        found = [found[0] or (part and part[0]), found[1] or (shade and int(shade[0]))]
+        if found[0] is None:
+            part = db.execute(f'SELECT born_key FROM {store}.item WHERE id=?', (item,)).fetchone()
+            if part is not None and part[0] is not None:
+                found[0] = part[0]
+        if found[1] is None and colour is not None:
+            shade = db.execute(f"SELECT born_key FROM {store}.color WHERE id=? AND born_provider='rebrickable'", (colour,)).fetchone()
+            if shade is not None and shade[0] is not None:
+                found[1] = int(shade[0])
     return found
 
 
@@ -97,10 +102,14 @@ def plan(db, *, http=None):
             entry = there.setdefault((item, colour), [0, raw['part_no'], raw['color_id']])
             entry[0] += raw['quantity']
         here = {}
-        if lot:
-            for r in db.execute("SELECT item_id, color_id, sum(quantity) FROM main.stock WHERE kind='part' AND archived_at IS NULL AND lot_id=? GROUP BY item_id, color_id", (lot,)):
-                here[(r[0], r[1])] = r[2]
-        for (item, colour) in sorted(set(there) | set(here)):
+        for r in db.execute(
+            "SELECT s.item_id, s.color_id, sum(s.quantity) FROM main.stock s "
+            "WHERE s.kind='part' AND s.archived_at IS NULL AND ("
+            "(? IS NOT NULL AND s.lot_id=?) OR "
+            "EXISTS (SELECT 1 FROM main.synced_from f WHERE f.stock_id=s.id AND f.site='rebrickable' AND f.list_key=?)"
+            ") GROUP BY s.item_id, s.color_id", (lot, lot, f'part:{list_id}')):
+            here[(r[0], r[1])] = r[2]
+        for (item, colour) in sorted(set(there) | set(here), key=lambda k: (k[0], -1 if k[1] is None else k[1])):
             r, part_no, color_no = there.get((item, colour)) or [0, *_numbers(db, item, colour)]
             h = here.get((item, colour), 0)
             if r == h:
@@ -134,7 +143,7 @@ def apply(db, plan_id, ticked=None, *, lots=None, via=None, actor=None):
     if via is None:
         via, actor = origin()
     stamp = store_now()
-    receipt = dict(plan=plan_id, stock=[], stock_flags=[], lots_made=[], link_before=None, flag=None, flag_created=None, synced=[])
+    receipt = dict(plan=plan_id, stock=[], stock_flags=[], lots_made={}, link_before=None, flag=None, flag_created=None, synced=[])
     with transaction(db), origins.adding('rebrickable'):
         done = plans.applied(db, 'sync', plan_id)
         if done:
@@ -153,7 +162,7 @@ def apply(db, plan_id, ticked=None, *, lots=None, via=None, actor=None):
                 db.execute('INSERT INTO main.lot(id, name, note, created_at, updated_at) VALUES(?, ?, ?, ?, ?)',
                            (lot_id, entry['name'] or f'Rebrickable part list {entry["id"]}', 'From Rebrickable', stamp, stamp))
                 audit(db, 'lot:' + lot_id, 'created', None, dict(db.execute('SELECT * FROM main.lot WHERE id=?', (lot_id,)).fetchone()), via=via, actor=actor)
-                receipt['lots_made'].append(lot_id)
+                receipt['lots_made'][str(entry['id'])] = lot_id
                 own[str(entry['id'])] = lot_id
         names = {e['id']: e['name'] for e in value['lists']}
         for row in rows:
@@ -192,15 +201,34 @@ def _undo(db, event, via, actor):
         if [change['id'], r['flag']] in r['stock_flags']:
             db.execute('DELETE FROM main.stock_flag WHERE stock_id=? AND flag_id=?', (change['id'], r['flag']))
     stamp = store_now()
-    for lot_id in r['lots_made']:
-        if not db.execute('SELECT 1 FROM main.stock WHERE lot_id=? AND archived_at IS NULL', (lot_id,)).fetchone():
-            db.execute('UPDATE main.lot SET archived_at=?, updated_at=? WHERE id=?', (stamp, stamp, lot_id))
+    lots_made = r['lots_made']
+    made_items = lots_made.items() if isinstance(lots_made, dict) else [(None, lid) for lid in lots_made]
+    archived = set()
+    for _, lot_id in made_items:
+        if _live_lot(db, lot_id) and not db.execute('SELECT 1 FROM main.stock WHERE lot_id=? AND archived_at IS NULL', (lot_id,)).fetchone():
+            db.execute('UPDATE main.lot SET archived_at=?, updated_at=? WHERE id=? AND archived_at IS NULL', (stamp, stamp, lot_id))
             audit(db, 'lot:' + lot_id, 'archived_at', None, stamp, via=via, actor=actor)
+            archived.add(lot_id)
     if r.get('flag_created') and not any(db.execute(f'SELECT 1 FROM main.{t} WHERE flag_id=? LIMIT 1', (r['flag'],)).fetchone()
                                          for t in ('copy_flag', 'stock_flag', 'wish_flag')):
         db.execute('DELETE FROM main.flag WHERE id=?', (r['flag_created'],))
     current = sync._setting(db, 'rebrickable', 'link', {})
-    sync._put(db, 'rebrickable', 'link', dict(current, part_list_lots=(r['link_before'] or {}).get('part_list_lots') or {}))
+    after_lots = dict(current.get('part_list_lots') or {})
+    changed = False
+    for key, lot_id in made_items:
+        if lot_id not in archived:
+            continue
+        if key is not None:
+            if after_lots.get(key) == lot_id:
+                after_lots.pop(key, None)
+                changed = True
+        else:
+            for k, v in list(after_lots.items()):
+                if v == lot_id:
+                    after_lots.pop(k, None)
+                    changed = True
+    if changed:
+        sync._put(db, 'rebrickable', 'link', dict(current, part_list_lots=after_lots))
     audit(db, 'sync:' + r['plan'], 'undo', None, {'undoes': event['id']}, via=via, actor=actor)
     undo_id = db.execute('SELECT last_insert_rowid()').fetchone()[0]
     db.execute('INSERT INTO main.event_undo(event_id, undo_event_id) VALUES(?, ?)', (event['id'], undo_id))

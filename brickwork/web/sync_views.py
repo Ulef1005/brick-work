@@ -211,6 +211,7 @@ def bw_sync_site(source):
 
 @web_page.get('/manage/sync')
 @login_required
+@_unavailable
 def bw_sync():
     pulled = request.args.get('pulled')
     if pulled:

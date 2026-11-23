@@ -30,7 +30,7 @@ A set becomes one **copy** per missing unit, with the part list the set has. Its
 
 **Undo this pull** (shown on the sync page right after a pull) archives the copies, takes the stock and wish quantities back and removes the tag. It is refused once you have changed any of them (**Something from this sync has changed since**).
 
-**Where each row came from.** Every copy, loose-stock row and wish records how it arrived: **By hand**, **Rebrickable sync**, **Brickset sync**, a file or an import from another app. That value never changes. A pull also records, on each copy, stock row and wish whose set the site holds, that it was **last synced from** that site, with the date. This holds for rows you added by hand too. Rows from before version 4.8 of the data read **Before this release**. Undo of a pull takes its "last synced from" dates back as well. The API returns both as `source` on a copy, a stock row and a wish.
+**Where each row came from.** Every copy, loose-stock row and wish records how it arrived: **By hand**, **Rebrickable sync**, **Brickset sync**, a file, an import from another app, or the channel it came through (**Via the API**, **Via the CLI**, **Via MCP**). That value never changes. A pull also records, on each copy, stock row and wish whose set the site holds, that it was **last synced from** that site, with the date. This holds for rows you added by hand too. Rows from before version 4.8 of the data read **Before this release**. Undo of a pull takes its "last synced from" dates back as well. The API returns both as `source` on a copy, a stock row and a wish.
 
 ## Lost Parts from Rebrickable
 

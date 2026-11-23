@@ -1323,6 +1323,10 @@
       "schema": {
         "additionalProperties": false,
         "properties": {
+          "keep_list_names": {
+            "description": "Rebrickable only: the remembered switch \"Keep each set's Rebrickable list names as its source detail\" (#531). On when never set.",
+            "type": "boolean"
+          },
           "lost_parts": {
             "description": "Rebrickable only: the remembered switch \"Bring in Lost Parts\" of a pull (#457). On when never set.",
             "type": "boolean"
@@ -1390,6 +1394,19 @@
               "type": "string"
             },
             "description": "Lost Parts: the copy to use for a set with several copies, `{set number: copy id}`. A set without a pick is left out and listed.",
+            "type": "object"
+          },
+          "list_choices": {
+            "additionalProperties": {
+              "enum": [
+                "rename",
+                "keep",
+                "drop",
+                "skip"
+              ],
+              "type": "string"
+            },
+            "description": "Rebrickable list names (#531): the choice per preview line of `lists.preview`, `{list id: rename | keep | drop | skip}`. Left out: each line's default (Rename it, Drop the name, Skip).",
             "type": "object"
           },
           "lost_ticked": {

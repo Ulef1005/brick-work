@@ -125,7 +125,7 @@ def test_a_pull_adds_via_the_site_records_what_it_matched_and_undo_takes_both_ba
     assert set(added_via(store, 'stock').values()) == {'rebrickable'} and set(added_via(store, 'wish').values()) == {'rebrickable'}
     matched = {r[0] for r in store.execute('SELECT copy_id FROM synced_from WHERE copy_id IS NOT NULL')}
     assert matched == new | old_copies                                                   # 2070-1 was here by hand and is on the site too
-    assert synced(store).count(('stock', 'rebrickable', '')) == 1 and synced(store).count(('wish', 'rebrickable', '')) == 1
+    assert synced(store).count(('stock', 'rebrickable', '2')) == 1 and synced(store).count(('wish', 'rebrickable', '9')) == 1   # by list (#531)
     receipt = json.loads(store.execute('SELECT new_value FROM event WHERE id=?', (result['event_id'],)).fetchone()[0])
     assert sum(len(v) for v in receipt['synced'].values()) == len(synced(store))
     sync.undo(store, result['event_id'])

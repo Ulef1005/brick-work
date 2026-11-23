@@ -63,7 +63,8 @@ def plan_of(db, body, source, direction):
 @write
 def post_sync_by_source_pull_apply(db, body, source):
     plan_of(db, body, known(source), 'pull')
-    return Done(sync.apply_pull(db, body['plan_id'], body.get('ticked'), lost=body.get('lost_ticked'), picks=body.get('copy_picks')))
+    return Done(sync.apply_pull(db, body['plan_id'], body.get('ticked'), lost=body.get('lost_ticked'), picks=body.get('copy_picks'),
+                                lists=body.get('list_choices')))
 
 
 @route('/sync/<source>/send/apply', 'POST')

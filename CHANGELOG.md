@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Rebrickable list names** (#531). A Rebrickable pull keeps, for each set, the names of the set lists it is in, as the detail of its source ("Last synced from Rebrickable: Main collection"). A set in two lists keeps both. A list renamed or removed at Rebrickable shows one line in the preview, and **Rename it** or **Drop the name** changes the name on every set that carries it; nothing else on a copy changes, and Undo puts the names back. On by default; the switch is remembered. The API takes `keep_list_names` on the link and `list_choices` on apply. See [Rebrickable list names](docs/how-to/sync-collection.md#rebrickable-list-names).
 - **Where a row came from** (#551). Every new copy, loose-stock row and wish records how it arrived (by hand, a sync with Rebrickable or Brickset, a file, an import from another app, or the API, the CLI or MCP), and the value never changes. A Rebrickable or Brickset pull also records which rows it matched and when, as "last synced from", and its Undo takes that back. Rows already in your collection read "Before this release". The API and MCP return both as `source` on a copy, stock row and wish; the chip and the filter on the pages come with the new sync pages. The schema moves from 4.7 to 4.8 in place at the first read/write start, so back up before you upgrade. See [ADR 0039](docs/adr/0039-added-via-and-synced-from.md).
 
 ## Brick Work 1.2.0 (schema 4.7) · 2026-11-23

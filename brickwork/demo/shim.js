@@ -10,7 +10,7 @@
     try { url = new URL(href, location.href); } catch (_) { return null; }
     if (url.origin !== location.origin || !url.pathname.startsWith(base)) return null;
     const path = '/' + url.pathname.slice(base.length).replace(/\/(index\.html)?$/, '');
-    const query = [...url.searchParams].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([k, v]) => encodeURIComponent(k) + '=' + encodeURIComponent(v)).join('&');
+    const query = [...url.searchParams].sort(([a, x], [b, y]) => a < b ? -1 : a > b ? 1 : x < y ? -1 : x > y ? 1 : 0).map(([k, v]) => encodeURIComponent(k) + '=' + encodeURIComponent(v)).join('&');
     return (path === '' ? '/' : path) + (query ? '?' + query : '');
   };
   const isPage = href => { try { const u = new URL(href, location.href); return Object.values(demo.pages).some(p => u.pathname === base + p); } catch (_) { return false; } };

@@ -117,7 +117,7 @@ def test_refresh_on_a_read_only_install_is_switched_off(app4, client, world, mon
 
 def test_every_old_hub_entry_is_in_exactly_one_group(client, world):
     soup = hub(client)
-    old = {'Statistics': '/manage/statistics', 'Sync': '/manage/sync', 'Jobs': '/manage/jobs', 'Unresolved items': '/manage/unresolved',
+    old = {'Statistics': '/manage/statistics', 'Sync': '/workbench/sync', 'Jobs': '/manage/jobs', 'Unresolved items': '/manage/unresolved',
            'Instruction files': '/manage/instructions', 'Owners, tags and places': '/manage/values', 'Keys and sources': '/manage/catalogues',
            'Appearance': '/manage/appearance', 'Catalogue': '/manage/catalogue', 'BrickLink item lists': '/manage/catalogue-lists',
            'Mappings and coverage': '/manage/catalogue-mappings', 'Backup and database check': '/manage/database', 'API tokens': '/manage/tokens',

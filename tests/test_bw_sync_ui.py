@@ -59,7 +59,7 @@ def test_sources_page_cards_and_hub_row(client, remote):
     assert 'Nothing pulled or sent yet.' in rb.get_text()
     bs = soup(client.get('/workbench/sync/brickset'))
     assert bs.select_one('[data-sync-source=brickset] [data-needs-key=brickset]').strong.text == 'Needs a Brickset key'
-    assert soup(client.get('/manage/tools')).find('a', href='/manage/sync')
+    assert soup(client.get('/manage/tools')).find('a', href='/workbench/sync')
 
 
 def test_connect_link_pull_apply_undo(client, remote, pair):

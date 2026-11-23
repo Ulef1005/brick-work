@@ -48,11 +48,11 @@ def _budget(db, source):
         return None
 
 
-def _log(db, limit=20):
+def _log(db, limit=20, source=None):
     """Sync log rows from the receipts, their undos and the send records, newest first."""
     rows = []
     for r in db.execute("""SELECT e.id, e.entity_id, e.field, e.new_value, e.at, EXISTS(SELECT 1 FROM event_undo u WHERE u.event_id=e.id) AS undone
-            FROM event e WHERE e.entity_kind='sync' AND e.field IN ('receipt', 'undo', 'send') ORDER BY e.id DESC LIMIT ?""", (limit,)):
+            FROM event e WHERE e.entity_kind='sync' AND e.field IN ('receipt', 'undo', 'send') ORDER BY e.id DESC LIMIT ?""", (limit if source is None else 500,)):
         value = json.loads(r['new_value']) if r['new_value'] else None
         if r['field'] == 'receipt':
             c = value.get('counts', {})
@@ -72,7 +72,9 @@ def _log(db, limit=20):
             what = f"{sent} {'change' if sent == 1 else 'changes'} sent" + ''.join(f" · {v} {k.replace('_', ' ')}" for k, v in problems.items())
             state = 'Done' if not problems else 'Waiting for you'
             rows.append(dict(at=r['at'], source=r['entity_id'], direction='Sent', what=what, state=state, event=None))
-    return rows
+    if source is not None:
+        rows = [r for r in rows if not r['source'] or r['source'] == source]
+    return rows[:limit]
 
 
 def _lost_words(c):
@@ -151,10 +153,7 @@ def _state_tag(status, connected):
 
 def _last_import(db):
     """Newest file-import receipt time formatted with stamp, or 'Never'."""
-    row = db.execute(
-        "SELECT at FROM event WHERE (field='receipt' AND entity_kind IN ('import', 'file_import', 'import_legacy', 'legacy_import')) "
-        "OR (entity_kind='import' AND field='applied') ORDER BY id DESC LIMIT 1"
-    ).fetchone()
+    row = db.execute("SELECT at FROM event WHERE field='receipt' AND entity_kind IN ('import', 'add') ORDER BY id DESC LIMIT 1").fetchone()
     return stamp(row['at']) if row and row['at'] else 'Never'
 
 
@@ -172,7 +171,7 @@ def bw_sync_hub():
             sites.append(dict(
                 key=source, label=sync.LABELS[source], description=_SITE_DESCRIPTIONS[source],
                 connected=connected, state_tag=_state_tag(status, connected),
-                account=_account_name(status), last_sync=_last_sync(status),
+                account='Linked' if connected else 'none', last_sync=_last_sync(status),
                 action_label='Open' if connected else 'Connect',
                 url=url_for('web.bw_sync_site', source=source) if connected else url_for('web.bw_sync_link', source=source),
             ))
@@ -202,7 +201,7 @@ def bw_sync_site(source):
         cards = [dict(status, key_gap=key_missing(source), user=status['credentials']['user']['configured'],
                       lost_on=sync.lost_parts_on(db, source))]
         rule = lost_parts.rule(db)
-        log = [r for r in _log(db) if not r['source'] or r['source'] == source]
+        log = _log(db, source=source)
         result = lost_result(db, request.args.get('pulled', ''))
     subtitle = f"Bring your collection in from {sync.LABELS[source]}, work on it here, then send changes back."
     return _page('web/toni/web/bw_sync.html', screen='sources', title=sync.LABELS[source], subtitle=subtitle, source=source,
@@ -215,7 +214,13 @@ def bw_sync_site(source):
 def bw_sync():
     pulled = request.args.get('pulled')
     if pulled:
-        return redirect(url_for('web.bw_sync_site', source='rebrickable', pulled=pulled))
+        source = 'rebrickable'
+        with _db() as db:
+            row = db.execute("SELECT new_value FROM event WHERE id=? AND entity_kind='sync' AND field='receipt'", (int(pulled) if pulled.isdigit() else 0,)).fetchone()
+        if row and row['new_value']:
+            found = json.loads(row['new_value']).get('source')
+            source = found if found in SOURCES else source
+        return redirect(url_for('web.bw_sync_site', source=source, pulled=pulled))
     return redirect(url_for('web.bw_sync_hub'))
 
 

@@ -26,7 +26,7 @@ SEEDS = ['/collection/sets', '/collection/M', '/collection/P', '/collection/G', 
          '/workbench/check-parts', '/workbench/part-picker', '/workbench/part-to-inventory', '/workbench/match', '/workbench/orders',
          '/workbench/what-is-this', '/workbench/storage', '/workbench/lot-sorter', '/workbench/build-scout', '/planning/order-missing-parts',
          '/planning/wishlist', '/planning/prices', '/planning/complete-sets',
-         '/manage/add', '/manage/tools', '/manage/statistics', '/manage/sync', '/manage/catalogues', '/manage/tokens', '/manage/jobs',
+         '/manage/add', '/manage/tools', '/manage/statistics', '/workbench/sync', '/manage/catalogues', '/manage/tokens', '/manage/jobs',
          '/manage/refresh', '/manage/appearance', '/manage/history', '/manage/values']
 # Routes the crawl may follow from a seed (the agreed demo routes and their own sub-pages).
 FOLLOW = [re.compile(p) for p in (
@@ -43,7 +43,8 @@ FOLLOW = [re.compile(p) for p in (
     r'^/collection/lots/[0-9a-f-]{36}/pull/[1-9][0-9]*$',
     r'^/workbench/build-scout(/[1-9][0-9]*)?$',
     r'^/planning/order-missing-parts(\?sel=all(&step=review)?)?$',
-    r'^/manage/(add|tools|statistics|sync|catalogues|tokens|jobs|refresh|appearance|history|values)$',
+    r'^/workbench/sync$',
+    r'^/manage/(add|tools|statistics|catalogues|tokens|jobs|refresh|appearance|history|values)$',
 )]
 LIMIT = 3000   # a safety stop, never a silent cut: reaching it raises (the whole demo is about 1,300 pages)
 HOST_PATH = re.compile(r'/var/folders|/private/var|/private/tmp|/tmp/|/home/[a-z]|/Users/[A-Za-z]|\btmp[a-z0-9_]{8}\b')

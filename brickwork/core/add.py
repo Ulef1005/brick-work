@@ -386,17 +386,51 @@ def brickset_minifig_rows(text, kind, where):
     return result
 
 
+BRICKOWL_SET = re.compile(r'\bSet\s+([0-9]{3,6}(?:-[0-9]+)?)(?![A-Za-z0-9-])')
+
+
+def _brickowl_condition(code):
+    code = (code or '').strip().lower()
+    if code.startswith('new'):
+        return 'new'
+    if code.startswith('used'):
+        return 'used'
+    return 'any'
+
+
+def _brickowl_rows(root):
+    """Sets from a Brick Owl inventory XML backup. Lots without Set <number> in their name are unresolved."""
+    result = []
+    for entry in root.findall('lot'):
+        name = (entry.findtext('name') or '').strip()
+        match = BRICKOWL_SET.search(name)
+        if not match:
+            lot_id = (entry.findtext('lot_id') or '').strip()
+            result.append(dict(unresolved=name or lot_id or 'lot', reason='Brick Owl lot with no set number in its name'))
+            continue
+        number = match[1] if '-' in match[1] else f'{match[1]}-1'
+        result.append(dict(
+            kind='set',
+            number=number,
+            quantity=quantity((entry.findtext('quantity') or '').strip() or '1'),
+            condition=_brickowl_condition(entry.findtext('condition')),
+            note=(entry.findtext('personal_note') or '').strip() or None,
+            brickowl_boid=(entry.findtext('boid') or '').strip() or None,
+        ))
+    return result
+
+
 def file_rows(data, filename, kind, where='owned'):
-    """Rows of a BrickLink wanted list or inventory (XML: BrickLink numbers and colour numbers), a Rebrickable CSV (Rebrickable
-    numbers and colour ids), a Brickset My Sets CSV (set numbers; `where` picks its owned or its wanted sets) or Brickset's minifigure
-    CSV (minifigure numbers: the loose ones or the wanted ones). Nothing is looked up here."""
+    """Rows of a BrickLink XML, Brick Owl XML inventory, Rebrickable CSV or Brickset CSV. Nothing is looked up here."""
     text = data.decode('utf-8-sig')
     if filename.lower().endswith('.xml'):
         if '<!DOCTYPE' in text.upper() or '<!ENTITY' in text.upper():
             raise ValueError('Choose XML without document declarations')
         root = ET.fromstring(text)
+        if root.tag == 'inventory':
+            return _brickowl_rows(root)
         if root.tag not in ('INVENTORY', 'WANTEDLIST'):
-            raise ValueError('Choose a BrickLink wanted list or inventory')
+            raise ValueError('Choose a BrickLink wanted list or inventory, or a Brick Owl inventory')
         result = []
         for entry in root.findall('ITEM'):
             letter = entry.findtext('ITEMTYPE') or ''
@@ -430,8 +464,7 @@ def file_rows(data, filename, kind, where='owned'):
 
 
 def file_origin(data, filename):
-    """The provenance origin id for an uploaded Add file, by the same detection `file_rows` uses: BrickLink XML -> 'bricklink_xml',
-    Brickset CSV -> 'brickset_csv', Rebrickable CSV -> 'rebrickable_csv', anything unknown -> None (so 'hand' is kept)."""
+    """Origin id for an uploaded Add file: BrickLink XML, Brick Owl XML, Brickset CSV or Rebrickable CSV. Returns None when unknown."""
     name = (filename or '').lower()
     if not isinstance(data, (bytes, bytearray)):
         return None
@@ -446,7 +479,11 @@ def file_origin(data, filename):
             root = ET.fromstring(text)
         except ET.ParseError:
             return None
-        return 'bricklink_xml' if root.tag in ('INVENTORY', 'WANTEDLIST') else None
+        if root.tag in ('INVENTORY', 'WANTEDLIST'):
+            return 'bricklink_xml'
+        if root.tag == 'inventory':
+            return 'brickowl_xml'
+        return None
     if not name.endswith('.csv'):
         return None
     header = next(csv.reader(io.StringIO(text)), [])

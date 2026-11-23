@@ -31,9 +31,10 @@ Choose **Import app.db** and upload BrickTracker's `app.db`, any version. See [I
 
 ## Another app's file
 
-Many collection apps can export one of two formats that Brick Work reads. Check your app's export menu for one of them:
+Many collection apps can export one of three formats that Brick Work reads. Check your app's export menu for one of them:
 
 - **BrickLink XML**: an inventory or wanted list, as above.
+- **Brick Owl XML**: the inventory backup from Brick Owl. It carries no BrickLink or Rebrickable numbers, so Brick Work reads the set number from each lot's name, such as "Set 75292". A lot with no set number in its name is listed and left out.
 - **Rebrickable CSV**: a set list or part list with the columns `set_num`, `part_num` or `minifig_num`, plus `quantity` and `color_id`.
 
 Choose **Choose a file**, which opens **Add** with **File** selected. A file can be up to 2 MB, and one review shows up to 500 rows. Lines Brick Work cannot match are listed and left out. Copies added from a file get no **imported from** tag.

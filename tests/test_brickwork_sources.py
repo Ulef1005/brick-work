@@ -344,7 +344,8 @@ def test_store_inventory_crud_verbs_records_and_statuses(coll, monkeypatch):
               {'meta': {'code': 201}, 'data': {'inventory_id': 99, **lot}},
               {'meta': {'code': 200}, 'data': {'inventory_id': 99, 'quantity': 6}},
               {'meta': {'code': 200}, 'data': {}})
-    client = BrickLink(coll.db, http=net)
+    clock = Clock()
+    client = BrickLink(coll.db, http=net, sleep=clock.sleep, clock=clock)
     assert client.store_lots(item_type='PART,SET', status='Y,-R', color_id=5, category_id=11) == [{'inventory_id': 99}]
     assert 'item_type=PART%2CSET' in net.urls[0] and 'status=Y%2C-R' in net.urls[0]
     assert 'color_id=5' in net.urls[0] and 'category_id=11' in net.urls[0]
@@ -372,6 +373,9 @@ def test_inventory_unlisted_paths_and_verbs_are_refused(coll, monkeypatch):
                          ('PUT', '/inventories'), ('DELETE', '/inventories'), ('PATCH', '/inventories/1'), ('POST', '/orders')):
         with pytest.raises(ValueError, match='unsupported BrickLink endpoint'):
             client.call(path, method=method)
+    for method, path, body in (('POST', '/inventories', None), ('PUT', '/inventories/1', None), ('GET', '/inventories', {'a': 1}), ('DELETE', '/inventories/1', {'a': 1})):
+        with pytest.raises(ValueError, match='unsupported BrickLink endpoint'):          # a write needs its body, a read and a delete have none
+            client.call(path, method=method, body=body)
     assert net.requests == []
 
 

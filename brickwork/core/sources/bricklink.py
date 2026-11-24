@@ -191,7 +191,7 @@ class BrickLink(Source):
             'DELETE': r'/inventories/[0-9]+',
         }
         pattern = allowed.get(method)
-        if not pattern or not re.fullmatch(pattern, path):
+        if not pattern or not re.fullmatch(pattern, path) or (body is not None) != (method in ('POST', 'PUT')):
             raise ValueError('unsupported BrickLink endpoint')
         self.ready()
 
@@ -208,11 +208,11 @@ class BrickLink(Source):
             data = None if method == 'DELETE' else reply['data']
             return normalize(data) if normalize else data
         query = params or {}
-        key_parts = [method, path, json.dumps(query, sort_keys=True)]
-        if body is not None:
-            key_parts.append(hashlib.sha256(json.dumps(body, sort_keys=True).encode()).hexdigest())
+        key = json.dumps(query, sort_keys=True)                      # a read keeps its key as before
+        if method != 'GET':
+            key = ' '.join([method, path, key] + ([hashlib.sha256(json.dumps(body, sort_keys=True).encode()).hexdigest()] if body is not None else []))
         request = signed_request(path, query, self.credential_values(), method=method, body=body)
-        return self.request(path, ' '.join(key_parts), request, consume, job_id=job_id)
+        return self.request(path, key, request, consume, job_id=job_id)
 
     def check_key(self):
         """Cheapest authenticated read; proves the four values without changing data."""
@@ -334,10 +334,12 @@ class BrickLink(Source):
         return self.call(f'/inventories/{inventory_id}')
 
     def create_store_lot(self, lot):
+        """Create one lot. Not idempotent: after a `SourceError` the reply may have been lost, so read the lots back before any retry."""
         validate_create_lot(lot)
         return self.call('/inventories', method='POST', body=lot)
 
     def update_store_lot(self, inventory_id, changes):
+        """Change one lot. A quantity is a signed change (`+2`), never a total, so a repeat after a lost reply applies it twice: read back first."""
         validate_digits(inventory_id, 'inventory id')
         validate_update_lot(changes)
         return self.call(f'/inventories/{inventory_id}', method='PUT', body=changes)

@@ -1180,6 +1180,22 @@ def test_a_data_folder_that_stays_unwritable_after_the_send_is_a_message_not_a_5
     assert 'could not write down this run' in landing and '/secret/path' not in landing
 
 
+def test_a_database_that_cannot_be_written_during_a_run_is_not_reported_as_rebrickable_unreachable(client, remote, pair, monkeypatch, caplog):
+    import sqlite3
+    csrf = connected(client, pair)
+    run_id = start(client, csrf)
+
+    def locked(*args, **kwargs):
+        raise sqlite3.OperationalError('database or disk is full: /secret/db')
+    for name in ('apply', 'retry_send'):
+        monkeypatch.setattr(sync_run, name, locked)
+        response = client.post(f'/workbench/sync/rebrickable/run/{run_id}/{"run" if name == "apply" else "retry"}', data={'csrf_token': csrf})
+        assert response.status_code == 302 and response.location.endswith('/workbench/sync/rebrickable')
+        landing = client.get('/workbench/sync/rebrickable').get_data(as_text=True)
+        assert 'could not write down this run' in landing and 'could not be reached' not in landing and '/secret/db' not in landing
+    assert 'OperationalError hidden from the response' in caplog.text
+
+
 def test_step_2_keeps_the_side_whose_lists_could_not_be_read(client, remote, pair):
     csrf = connected(client, pair)
     choose(client, csrf, start='0', parts_dir='into', part_list=['31'])

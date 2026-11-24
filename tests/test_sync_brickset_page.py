@@ -521,3 +521,18 @@ def test_the_account_name_is_what_you_typed_at_connect_and_goes_with_the_hash(cl
     assert facts()[:2] == ['Account', 'brickfan']
     assert client.post('/manage/sync/brickset/remove', data={'csrf_token': csrf, 'next': 'connect'}).status_code == 302
     assert 'Account' not in facts()
+
+
+def test_the_preview_counts_the_calls_the_run_makes_one_per_set(client, remote, pair):
+    csrf = connected(client, pair)
+    with db_of(pair) as db:
+        coll = Coll(db)
+        coll.add_copy('1000-3')
+        coll.add_wish(coll.item('sets', '1000-3'), quantity=2)       # the same set owned and wanted: one call, two rows
+    run_id = start(client, csrf, owned_dir='to', wishlist_dir='to')
+    page = preview_of(client, run_id)
+    shown = int(re.search(r'Requests[^0-9]*([0-9]+)', page.get_text(' ', strip=True))[1])
+    before = len(remote.calls)
+    apply_run(client, csrf, run_id, page)
+    made = len([1 for m, _ in remote.calls[before:] if m == 'setCollection'])
+    assert made >= 1 and shown == made

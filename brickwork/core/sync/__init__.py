@@ -322,11 +322,16 @@ def _compare(db, source, link_value, remote):
     return rows, unmatched, mapping
 
 
-def _changed_both(row):
+def _changed_both(row, presence_only=False):
     if row['baseline_remote'] is None and row['baseline_here'] is None:
         return False
-    return (row['remote'] != (row['baseline_remote'] or 0) and row['here'] != (row['baseline_here'] or 0)
-            and row['remote'] != row['here'])
+    if presence_only:
+        r, h = bool(row['remote']), bool(row['here'])
+        br, bh = bool(row['baseline_remote']), bool(row['baseline_here'])
+    else:
+        r, h = row['remote'], row['here']
+        br, bh = row['baseline_remote'] or 0, row['baseline_here'] or 0
+    return r != br and h != bh and r != h
 
 
 def lost_parts_on(db, source):
@@ -432,7 +437,7 @@ def plan_pull(db, source, *, http=None, lost_parts_switch=None, keep_list_names=
         r, h = row['remote'], row['here']
         if r == h:
             continue
-        if _changed_both(row):
+        if _changed_both(row, presence_only=(source == 'brickset' and row['kind'] == 'wanted')):
             state, action, count = 'conflict', None, max(0, r - h)
         elif r > h:
             state, action, count = 'add', 'add', r - h
@@ -721,11 +726,13 @@ def undo(db, event_id):
     return undoing.undo_event(db, event_id)
 
 
-def plan_send(db, source, *, http=None):
+def plan_send(db, source, *, http=None, kinds=None):
     """The remote calls a send would make: one row per set whose count differs. Removals unticked."""
     _source(source)
     client, link_value, remote = _fetch(db, source, http)
     rows, unmatched, mapping = _compare(db, source, link_value, remote)
+    if kinds is not None:
+        rows = [r for r in rows if r['kind'] in kinds]
     targets = reverse(db, [r['item_id'] for r in rows if r['remote_no'] is None])
     out = []
     for row in rows:
@@ -741,7 +748,8 @@ def plan_send(db, source, *, http=None):
                 continue
         else:
             send = h
-        state = 'conflict' if _changed_both(row) else 'remove' if h == 0 else 'add' if r == 0 else 'change'
+        state = ('conflict' if _changed_both(row, presence_only=(source == 'brickset' and row['kind'] == 'wanted'))
+                 else 'remove' if h == 0 else 'add' if r == 0 else 'change')
         unmatched_here = remote_no is None
         out.append(dict(row, remote_no=remote_no, send=send, state='unmatched' if unmatched_here else state,
                         action='send' if state in ('add', 'change') and not unmatched_here else None,

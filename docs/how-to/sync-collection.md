@@ -7,7 +7,7 @@ verified: 1.0
 
 *Since 0.6.0.*
 
-Do this to bring the sets you already keep on Rebrickable or Brickset into Brick Work, or to send what you hold here back to the site. Pull never deletes anything here; send always shows the changes first and asks before it removes anything there. Open **Workbench → Sync**, then **Open** on the site. The old page under Tools & Admin sends you there. Rebrickable has its own page with six steps, described next; Brickset keeps the single page the rest of this article describes.
+Do this to bring the sets you already keep on Rebrickable or Brickset into Brick Work, or to send what you hold here back to the site. Pull never deletes anything here; send always shows the changes first and asks before it removes anything there. Open **Workbench → Sync**, then **Open** on the site. The old page under Tools & Admin sends you there. Rebrickable and Brickset each have their own page with six steps, described next; the sections after them describe the rules both share.
 
 ## A Rebrickable run
 
@@ -21,13 +21,27 @@ The **Rebrickable** page shows your account (API key, speed, today's budget, wit
 
 A run is applied in one request, so there is no progress page; the **Run** button says it is running. A run is kept for 24 hours; after that start a new one.
 
+## A Brickset run
+
+The **Brickset** page works like the Rebrickable one and has the same six steps. Brickset's side holds owned and wanted sets with counts, and that is all this page syncs. Notes, ratings, flags, wanted priority, new and used counts and loose minifigures are not synced yet. Purchase date and price never leave Brick Work: Brickset has no field for them.
+
+The page shows your account (API key and today's budget, with **Test**, **Change** and **Remove**), the last runs with **Undo this run** and a table of **What syncs**. It reads nothing from Brickset until you start a run. The account name is not shown, because Brick Work keeps only the hash Brickset returns.
+
+1. **Connect.** The API key and your account. Enter your Brickset **Username** and password and choose **Connect**, or open **Paste a user hash instead**. The password goes to Brickset once and is never stored. **Save and test** keeps a key you paste; a key from the environment can only be changed there. The keys step of **Get started** and the **Needs a Brickset key** line lead to this step.
+2. **Choose what.** A direction for **Owned sets** and one for **Wanted sets**: **Into Brick Work**, **Both ways**, **To Brickset** or **Off**. **Wishlist here** is the Brick Work wishlist that takes the wanted sets. **When both sides differ** is fixed: the preview asks each time.
+3. **Pick sets.** The sets the run could touch, **All linked**, **By theme**, **By year** or **One by one** (Brickset has no lists to pick by). A set you do not pick stays as it is on both sides.
+4. **Preview.** The same rows and choices as on the Rebrickable page: **Add here**, **Add there**, a quantity that differs, and **Changed in both places** with **Keep**, **Take** and **Send**. Brickset marks a set as wanted or not and has no quantity for it. A wish of two here and a wanted set there are the same, so they are not listed. **Before you send** names the number of changes and today's budget. A run reads your sets from Brickset once for each direction it covers, so a run **Both ways** uses several of the day's calls.
+5. **Result.** What changed here, with **Undo this run**, and what happened on Brickset, with a **Retry** for a row that failed. A change sent to Brickset cannot be undone here.
+
+Brickset allows 100 `getSets` calls a day unless it raises the limit for your key; the page shows how many are used.
+
 ## Connect a site
 
-Each site needs its API key and your own account credential. Rebrickable: step 1 of its page holds both, and **Connect** on the hub opens it. Brickset: the key is in **Catalogues & keys**, and on the site's card you choose **Link a collection** (the screen is titled **Link Brickset**). Either enter **Username or email** and your password and choose **Connect**, or open **Paste a user token instead** (Brickset: **user hash**) and save what you generated on the site. The password goes to the site once and is never stored: only the token (Rebrickable) or hash (Brickset) is kept, encrypted like the API keys. **Test** asks the site whether it still accepts it; **Remove** forgets it; you connect again to use the site. At most 10 logins per site per day.
+Each site needs its API key and your own account credential. Rebrickable: step 1 of its page holds both, and **Connect** on the hub opens it. Brickset: step 1 of its page holds both, and **Connect** on the hub opens it. On Rebrickable, enter **Username or email** and your password and choose **Connect**. Or open **Paste a user token instead** and save what you generated on the site. On Brickset the fields are **Username** and **Paste a user hash instead**. The password goes to the site once and is never stored: only the token (Rebrickable) or hash (Brickset) is kept, encrypted like the API keys. **Test** asks the site whether it still accepts it; **Remove** forgets it; you connect again to use the site. At most 10 logins per site per day.
 
 ## Link the lists
 
-For Rebrickable this is step 2, **Choose what**, of the page. Choose which of your set lists hold what you own, which one is your wishlist, and which owned list receives what you send. Both sites: choose the Brick Work wishlist that pulls and sends wishes (**Wishlist here**). The Rebrickable choices are labelled **Owned sets**, **Wanted sets · go to the wishlist** and **Send changes to**. On Brickset **Link and preview pull** saves the link and runs a pull preview straight away. A collection moved from 3.3 keeps its link. The first sync after the move compares everything, with no history to tell who changed what.
+For both sites this is step 2, **Choose what**, of the page. Choose which of your set lists hold what you own, which one is your wishlist, and which owned list receives what you send. Both sites: choose the Brick Work wishlist that pulls and sends wishes (**Wishlist here**). The Rebrickable choices are labelled **Owned sets**, **Wanted sets · go to the wishlist** and **Send changes to**. A collection moved from 3.3 keeps its link. The first sync after the move compares everything, with no history to tell who changed what.
 
 ## Pull
 
@@ -113,7 +127,7 @@ When you check the copy or mark a part yourself, the line goes. A copy you check
 
 ## Send
 
-On the Rebrickable page the send is part of a run: the preview lists the sets to add there and the quantities to change. This section describes the single screen that Brickset keeps; on both sites the same rules hold. **Review and send** on the site's card lists the remote changes first; **Send** on that screen sends them: sets to add there, counts to change and removals. Removals stay unticked until you tick them. An item with no number yet (a local item added without one) cannot be named to a site. It is listed as *Not on Rebrickable* and cannot be ticked. Link a number in **Unresolved items** first. Wishes are sent only to a linked Rebrickable wishlist: with none linked, they are listed as *Link a Rebrickable wishlist to send wishes to* and cannot be ticked. A row that fails shows the reason next to it. A daily budget that runs out pauses the rest of the send, and a rejected token stops it; **Retry** sends only what was not sent. **Brick Work's Undo cannot reverse a change made at a site.**
+On a site's page the send is part of a run: the preview lists the sets to add there and the quantities to change. **Review and send**, the single screen the page's **Retry** opens, lists the remote changes first; **Send** on that screen sends them: sets to add there, counts to change and removals. Removals stay unticked until you tick them. An item with no number yet (a local item added without one) cannot be named to a site. It is listed as *Not on Rebrickable* and cannot be ticked. Link a number in **Unresolved items** first. Wishes are sent only to a linked Rebrickable wishlist: with none linked, they are listed as *Link a Rebrickable wishlist to send wishes to* and cannot be ticked. A row that fails shows the reason next to it. A daily budget that runs out pauses the rest of the send, and a rejected token stops it; **Retry** sends only what was not sent. **Brick Work's Undo cannot reverse a change made at a site.**
 
 Condition, completeness, box, instructions and storage never leave Brick Work.
 

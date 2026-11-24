@@ -1,7 +1,8 @@
-"""The Rebrickable sync page and its six steps (#519): connect, choose what, pick sets, preview, run, result.
+"""The Rebrickable and Brickset sync pages and their six steps (#519, #520): connect, choose what, pick sets, preview, run, result.
 
 The views only read and write through `core.sync` and `core.sync.run`; the plans, the applies and the choices are theirs. The run record is a plan
-file (24 hours), so the pick, preview, run and result pages take its id in the path."""
+file (24 hours), so the pick, preview, run and result pages take its id in the path. One view body serves both sites: each step is registered
+under `/workbench/sync/<site>/...` and the endpoints `web.bw_sync_rb_<step>` and `web.bw_sync_bs_<step>`, and the site is the view's `source`."""
 import json
 import re
 import sqlite3
@@ -14,12 +15,37 @@ from .views import web_page, bw_add_csrf, bw_collection_editable
 from .sync_views import _db, _event_id, _log, _message, _page, _receipt_source, _unavailable, lost_result
 
 SOURCE = 'rebrickable'
+PREFIX = {'rebrickable': 'rb', 'brickset': 'bs'}
+LABEL = {'rebrickable': 'Rebrickable', 'brickset': 'Brickset'}
+TEMPLATE = 'web/toni/web/bw_sync_rb.html'
 STEPS = ('Connect', 'Choose what', 'Pick sets', 'Preview', 'Run', 'Result')
 KEY_FIELD = 'key:key'
 # A local write failure: the database (sqlite3.Error) or a file (OSError), but never what the source layer reports (SourceError, BrickWorkError).
 LOCAL = (sqlite3.Error, OSError)
 UNSAVED = ('Brick Work could not write down this run: the data folder may be full or read-only. What Rebrickable already took stays there; '
            'check the sync log and Rebrickable before you start a new run.')
+STEPS_LIST = []
+
+
+def _to(source, step, **values):
+    """The URL of one step of a site's page."""
+    return url_for(f'web.bw_sync_{PREFIX[source]}_{step}', **values)
+
+
+def _unsaved(source):
+    return UNSAVED.replace('Rebrickable', LABEL[source])
+
+
+def _route(method, path, unavailable):
+    """Register a step for both sites: login first, the not-available notice for a page that reads (before setup there is no database)."""
+    def register(view):
+        STEPS_LIST.append((method, path, unavailable, view))
+        return view
+    return register
+
+
+def _render(source, **context):
+    return _page(TEMPLATE, source=source, label=LABEL[source], pre=PREFIX[source], **context)
 
 
 def _guard():
@@ -44,56 +70,53 @@ def _day(value):
         return None
 
 
-def _runs(db):
+def _runs(db, source):
     """The last runs for the page at rest, newest first, from the sync log; Undo only on the newest pull that was not undone."""
-    rows = _log(db, limit=5, source=SOURCE)
+    rows = _log(db, limit=5, source=source)
     undo = next((r['id'] for r in rows if r['direction'] == 'Pulled' and r['state'] == 'Done' and r.get('event')), None)
     return [dict(r, undoable=r['id'] == undo, retry=r['direction'] == 'Sent' and r['state'] != 'Done' and not r.get('lost'), title=('Undo' if r['direction'] == 'Undone' else 'Run')) for r in rows]
 
 
-def site_page():
-    """Frame 18: the account, the last runs and what syncs, from what is stored (no call to Rebrickable)."""
+def site_page(source):
+    """Frames 18 and 25: the account, the last runs and what syncs, from what is stored (no call to the site)."""
     from ..core import sync
     from ..core.sync import run as sync_run
     from .setup_state import key_missing
     with _db() as db:
-        status = sync.status(db, SOURCE)
+        status = sync.status(db, source)
         connected = bool(status['credentials']['user']['configured'])
-        key_gap = key_missing(SOURCE)
-        budget = sync_run.budget(db)
-        what = sync_run.what_syncs(db)
-        runs = _runs(db)
+        key_gap = key_missing(source)
+        budget = sync_run.budget(db, source)
+        what = sync_run.what_syncs(db, source)
+        runs = _runs(db, source)
         pulled = request.args.get('pulled', '')
-        if _receipt_source(db, pulled) != SOURCE:
+        if _receipt_source(db, pulled) != source:
             pulled = ''
         result = lost_result(db, pulled)
         from ..core.sync import lost_parts
     last = status.get('last_pull') or status.get('last_send')
     stamps = [t for t in ((status.get('last_pull') or {}).get('at'), (status.get('last_send') or {}).get('at')) if t]
     from .sync_views import _last_sync
-    return _page('web/toni/web/bw_sync_rb.html', screen='site', title='Rebrickable', subtitle='Last run ' + _last_sync(status) if last else 'Not run yet',
+    return _render(source, screen='site', title=LABEL[source], subtitle='Last run ' + _last_sync(status) if last else 'Not run yet',
                  connected=connected, key_gap=key_gap, key=status['credentials']['key'], budget=budget, what=what, runs=runs,
                  waiting=status.get('waiting') or 0, pulled=pulled, lost_result=result, rule_labels=lost_parts.RULE_LABELS, stamps=stamps,
-                 key_day=_day((budget or {}).get('last_success')), source=SOURCE)
+                 key_day=_day((budget or {}).get('last_success')))
 
 
-@web_page.get('/workbench/sync/rebrickable/connect')
-@login_required
-@_unavailable
-def bw_sync_rb_connect():
+@_route('get', '/connect', True)
+def step_connect(source):
     from ..core import sync
     from .setup_state import key_missing
     with _db() as db:
-        status = sync.status(db, SOURCE)
-    return _page('web/toni/web/bw_sync_rb.html', screen='connect', title='Rebrickable', subtitle='Connect your account, choose what to sync, then run the sync.',
-                 connected=bool(status['credentials']['user']['configured']), key_gap=key_missing(SOURCE), key=status['credentials']['key'], source=SOURCE,
+        status = sync.status(db, source)
+    return _render(source, screen='connect', title=LABEL[source], subtitle='Connect your account, choose what to sync, then run the sync.',
+                 connected=bool(status['credentials']['user']['configured']), key_gap=key_missing(source), key=status['credentials']['key'],
                  **_steps(1))
 
 
-@web_page.post('/workbench/sync/rebrickable/key')
-@login_required
-def bw_sync_rb_key():
-    """Save, test or remove the Rebrickable API key from step 1: the same operations as Catalogues & keys, which stays their one implementation."""
+@_route('post', '/key', False)
+def step_key(source):
+    """Save, test or remove the site's API key from step 1: the same operations as Catalogues & keys, which stays their one implementation."""
     from ..core import errors
     from ..core.sources.base import KeyRejected, SourceError, redact
     from . import admin_ops
@@ -101,25 +124,25 @@ def bw_sync_rb_key():
     action = request.form.get('action')
     try:
         if action == 'save':
-            outcome = admin_ops.tools_write('key_test_save', source=SOURCE, values={'key': request.form.get(KEY_FIELD, '')})
+            outcome = admin_ops.tools_write('key_test_save', source=source, values={'key': request.form.get(KEY_FIELD, '')})
             flash('Saved · The key works' if outcome['tested'] else 'Saved · Not tested: ' + outcome['reason'], 'success')
         elif action == 'test':
-            admin_ops.tools_write('key_test', source=SOURCE)
-            flash('Rebrickable accepted the API key.', 'success')
+            admin_ops.tools_write('key_test', source=source)
+            flash(LABEL[source] + ' accepted the API key.', 'success')
         elif action == 'remove':
-            admin_ops.tools_write('key_remove', source=SOURCE)
+            admin_ops.tools_write('key_remove', source=source)
             flash('Removed the stored API key.', 'success')
         else:
             abort(400)
     except KeyRejected as exc:
-        flash('Rebrickable rejected the key · ' + redact(exc), 'warning')
+        flash(LABEL[source] + ' rejected the key · ' + redact(exc), 'warning')
     except (errors.BrickWorkError, SourceError) as exc:
         flash(redact(exc), 'warning')
-    return redirect(url_for('web.bw_sync_rb_connect'))
+    return redirect(_to(source, 'connect'))
 
 
 def _lists(db):
-    """The set lists and the part lists of the account, each with the reason it could not be read (None when it could): `(sets, sets_error, parts, parts_error)`."""
+    """Rebrickable: the set lists and the part lists of the account, each with the reason it could not be read (None when it could): `(sets, sets_error, parts, parts_error)`."""
     from ..core import sync
     from ..core.sync import adapters
     from ..core.sources.base import SourceError
@@ -135,21 +158,23 @@ def _lists(db):
     return sets, sets_error, parts, parts_error
 
 
-@web_page.get('/workbench/sync/rebrickable/choose')
-@login_required
-@_unavailable
-def bw_sync_rb_choose():
+@_route('get', '/choose', True)
+def step_choose(source):
     from ..core import sync, wishlists
     from ..core.sync import lost_parts, lost_parts_send
     from ..core.sync import run as sync_run
     with _db() as db:
-        status = sync.status(db, SOURCE)
+        status = sync.status(db, source)
         if not status['credentials']['user']['configured']:
-            flash('Connect your Rebrickable account first.', 'warning')
-            return redirect(url_for('web.bw_sync_rb_connect'))
+            flash('Connect your ' + LABEL[source] + ' account first.', 'warning')
+            return redirect(_to(source, 'connect'))
+        if source == 'brickset':       # owned and wanted sets with counts: two directions and the wishlist here that takes the wanted sets
+            return _render(source, screen='choose', title=LABEL[source], subtitle='Choose what to sync, and in which direction. You can change it later.',
+                           link=status['link'], directions=sync_run.directions(db, source), segments=sync_run.SEGMENTS, segment_labels=sync_run.SEGMENT_LABELS_BY[source],
+                           wish_lists=wishlists.listing(db), **_steps(2))
         lists, sets_error, part_lists, parts_error = _lists(db)
-        return _page('web/toni/web/bw_sync_rb.html', screen='choose', title='Rebrickable', subtitle='Choose what to sync, and in which direction. You can change it later.',
-                     source=SOURCE, link=status['link'], directions=sync_run.directions(db), segments=sync_run.SEGMENTS, segment_labels=sync_run.SEGMENT_LABELS,
+        return _render(source, screen='choose', title=LABEL[source], subtitle='Choose what to sync, and in which direction. You can change it later.',
+                     link=status['link'], directions=sync_run.directions(db), segments=sync_run.SEGMENTS, segment_labels=sync_run.SEGMENT_LABELS,
                      lists=lists, part_lists=part_lists, set_error=sets_error, parts_error=parts_error, wish_lists=wishlists.listing(db), keep_names=sync.keep_list_names_on(db, SOURCE),
                      lost_rules=lost_parts.RULES, lost_rule=lost_parts.rule(db), send_rules=lost_parts_send.RULES, send_rule=lost_parts_send.send_rule(db),
                      **_steps(2))
@@ -160,14 +185,32 @@ def _ids(values):
     return [int(v) for v in values if re.fullmatch(r'[0-9]{1,18}', v)]
 
 
-@web_page.post('/workbench/sync/rebrickable/choose')
-@login_required
-def bw_sync_rb_choose_save():
+@_route('post', '/choose', False)
+def step_choose_save(source):
     from ..core import errors
     from ..core.sources.base import audit_origin
     from ..core.sync import run as sync_run
     _guard()
     form = request.form
+    if source == 'brickset':
+        values = dict(owned_dir=form.get('owned_dir'), wishlist_dir=form.get('wishlist_dir'), wish_list=form.get('wish_list') or 'default')
+    else:
+        values = _rebrickable_values(form)
+    try:
+        with _db() as db, audit_origin('app'):
+            sync_run.save_choices(db, values, source)
+            if form.get('start') == '0':
+                flash('Saved.', 'success')
+                return redirect(url_for('web.bw_sync_site', source=source))
+            plan = sync_run.start(db, source=source)
+    except (errors.BrickWorkError, ValueError, sqlite3.Error, *sync_run.FAILURES) as exc:
+        flash(_message(exc, source), 'warning')
+        return redirect(_to(source, 'choose'))
+    return redirect(_to(source, 'pick', run_id=plan['id']))
+
+
+def _rebrickable_values(form):
+    """The checked values of step 2 of the Rebrickable page."""
     one = lambda name: _event_id(form.get(name))   # noqa: E731  (the same ASCII-digit rule)
     names = {k.removeprefix('list_name:'): v[:80] for k, v in form.items() if k.startswith('list_name:')}
     owned = _ids(form.getlist('owned'))
@@ -176,63 +219,54 @@ def bw_sync_rb_choose_save():
                   wish_list=form.get('wish_list') or 'default', part_lists=_ids(form.getlist('part_list')), lost_rule=form.get('lost_rule', ''),
                   send_rule=form.get('send_rule', ''), keep_list_names=form.get('keep_list_names') != '0', names=names,
                   keep_set_links=form.get('set_lists_read') == '0', keep_part_links=form.get('part_lists_read') == '0')
-    try:
-        with _db() as db, audit_origin('app'):
-            sync_run.save_choices(db, values)
-            if form.get('start') == '0':
-                flash('Saved.', 'success')
-                return redirect(url_for('web.bw_sync_site', source=SOURCE))
-            plan = sync_run.start(db)
-    except (errors.BrickWorkError, ValueError, sqlite3.Error, *sync_run.FAILURES) as exc:
-        flash(_message(exc, SOURCE), 'warning')
-        return redirect(url_for('web.bw_sync_rb_choose'))
-    return redirect(url_for('web.bw_sync_rb_pick', run_id=plan['id']))
+    return values
 
 
-@web_page.post('/workbench/sync/rebrickable/start')
-@login_required
-def bw_sync_rb_start():
-    """Start a sync with the choices already saved (the page at rest): read Rebrickable and go to the pick step."""
+@_route('post', '/start', False)
+def step_start(source):
+    """Start a sync with the choices already saved (the page at rest): read the site and go to the pick step."""
     from ..core.sources.base import audit_origin
     from ..core.sync import run as sync_run
     _guard()
     try:
         with _db() as db, audit_origin('app'):
-            plan = sync_run.start(db)
+            plan = sync_run.start(db, source=source)
     except sync_run.FAILURES as exc:
-        flash(_message(exc, SOURCE), 'warning')
-        return redirect(url_for('web.bw_sync_site', source=SOURCE))
-    return redirect(url_for('web.bw_sync_rb_pick', run_id=plan['id']))
+        flash(_message(exc, source), 'warning')
+        return redirect(url_for('web.bw_sync_site', source=source))
+    return redirect(_to(source, 'pick', run_id=plan['id']))
 
 
-def _load(db, run_id):
+def _load(db, run_id, source):
+    """`(run, plans)`; `(None, None)` for a run that is gone, expired or belongs to the other site (a run id of one site opens nothing on the other)."""
     from ..core import errors
     from ..core.sync import run as sync_run
     try:
-        return sync_run.load(db, run_id)
+        run, plans = sync_run.load(db, run_id)
     except errors.BrickWorkError as exc:
         flash(str(exc), 'warning')
         return None, None
+    if run.get('source', SOURCE) != source:
+        abort(404)
+    return run, plans
 
 
-def _gone():
-    return redirect(url_for('web.bw_sync_site', source=SOURCE))
+def _gone(source):
+    return redirect(url_for('web.bw_sync_site', source=source))
 
 
-@web_page.get('/workbench/sync/rebrickable/run/<run_id>/pick')
-@login_required
-@_unavailable
-def bw_sync_rb_pick(run_id):
+@_route('get', '/run/<run_id>/pick', True)
+def step_pick(source, run_id):
     from ..core.sync import run as sync_run
     mode = request.args.get('by', 'all')
-    if mode not in sync_run.MODES:
+    if mode not in [m for m, _ in sync_run.MODE_LABELS_BY[source]]:
         abort(404)
     with _db() as db:
-        run, plans = _load(db, run_id)
+        run, plans = _load(db, run_id, source)
         if run is None:
-            return _gone()
+            return _gone(source)
     if run.get('applied') or run.get('applying'):
-        return redirect(url_for('web.bw_sync_rb_result', run_id=run_id))
+        return redirect(_to(source, 'result', run_id=run_id))
     picked = sync_run.picked_ids(run)
     candidates = run['candidates']
     keys = {'list': lambda c: c['lists'], 'theme': lambda c: [c['theme']] if c['theme'] else [], 'year': lambda c: [str(c['year'])] if c['year'] else []}
@@ -243,9 +277,9 @@ def bw_sync_rb_pick(run_id):
                 chips[k] = chips.get(k, 0) + 1
     chips = sorted(chips.items(), key=lambda kv: (kv[0] if mode != 'year' else -int(kv[0]) if kv[0].isdigit() else 0, kv[0]))
     lists = (plans['pull'] or {}).get('lists') or {}
-    return _page('web/toni/web/bw_sync_rb.html', screen='pick', title='Rebrickable', subtitle=(
+    return _render(source, screen='pick', title=LABEL[source], subtitle=(
         'Pick the sets this run covers. A set you do not pick keeps its copies, counts and fields; only its list names follow their lists.' if mode == 'list' and lists.get('keep')
-        else 'Pick the sets this run covers. Sets you do not pick stay as they are on both sides.'), source=SOURCE, run=run, mode=mode, modes=sync_run.MODE_LABELS,
+        else 'Pick the sets this run covers. Sets you do not pick stay as they are on both sides.'), run=run, mode=mode, modes=sync_run.MODE_LABELS_BY[source],
         candidates=candidates, picked=picked, chips=chips, group=mode, keep_names=bool(lists.get('keep')), list_names=sorted((lists.get('names') or {}).values()),
         loose=_loose_names(run, plans), lost_on=run['directions']['lost'] != 'off', **_steps(3))
 
@@ -254,9 +288,8 @@ def _loose_names(run, plans):
     return [entry['name'] for entry in (plans['parts'] or {}).get('lists', ())]
 
 
-@web_page.post('/workbench/sync/rebrickable/run/<run_id>/pick')
-@login_required
-def bw_sync_rb_pick_save(run_id):
+@_route('post', '/run/<run_id>/pick', False)
+def step_pick_save(source, run_id):
     from ..core import errors
     from ..core.sources.base import audit_origin
     from ..core.sync import run as sync_run
@@ -265,37 +298,47 @@ def bw_sync_rb_pick_save(run_id):
     keep = None if 'keep_present' not in request.form else request.form.getlist('keep_list_names')[-1:] == ['1']   # the hidden 0 comes first: the last value wins
     try:
         with _db() as db, audit_origin('app'):
+            _same_site(db, run_id, source)
             sync_run.save_pick(db, run_id, ids, keep)
     except (errors.BrickWorkError, *sync_run.FAILURES) as exc:
-        flash(_message(exc, SOURCE), 'warning')
-        return redirect(url_for('web.bw_sync_rb_pick', run_id=run_id))
-    return redirect(url_for('web.bw_sync_rb_preview', run_id=run_id))
+        flash(_message(exc, source), 'warning')
+        return redirect(_to(source, 'pick', run_id=run_id))
+    return redirect(_to(source, 'preview', run_id=run_id))
+
+
+def _same_site(db, run_id, source):
+    """A run id of the other site opens nothing here (404). An id that is not a run, or has expired, is left to the write that follows, which says so."""
+    from ..core import errors, sync
+    try:
+        run = sync.load_plan(db, run_id, 'run')
+    except errors.BrickWorkError:
+        return
+    if run.get('source', SOURCE) != source:
+        abort(404)
 
 
 def _lots(db):
     return [dict(r) for r in db.execute('SELECT id, name FROM main.lot WHERE archived_at IS NULL ORDER BY name, id')]
 
 
-@web_page.get('/workbench/sync/rebrickable/run/<run_id>/preview')
-@login_required
-@_unavailable
-def bw_sync_rb_preview(run_id):
+@_route('get', '/run/<run_id>/preview', True)
+def step_preview(source, run_id):
     from ..core import sync
     from ..core.sync import lost_parts, lost_parts_send
     from ..core.sync import run as sync_run
     with _db() as db:
-        run, plans = _load(db, run_id)
+        run, plans = _load(db, run_id, source)
         if run is None:
-            return _gone()
+            return _gone(source)
         if run.get('applied'):
-            return redirect(url_for('web.bw_sync_rb_result', run_id=run_id))
+            return redirect(_to(source, 'result', run_id=run_id))
         if run.get('applying'):
             flash('This run is already running, or was interrupted. Check the sync log, then start a new one.', 'warning')
-            return redirect(url_for('web.bw_sync_site', source=SOURCE))
+            return redirect(url_for('web.bw_sync_site', source=source))
         rows = sync_run.rows(db, run, plans)
-        budget = sync_run.budget(db)
+        budget = sync_run.budget(db, source)
         lots = _lots(db)
-        status = sync.status(db, SOURCE)
+        status = sync.status(db, source)
     lost_in = sync_run.lost_in(run, plans)
     lost_out = sync_run.lost_out(run)
     parts = sync_run.part_rows(plans)
@@ -311,7 +354,7 @@ def bw_sync_rb_preview(run_id):
         + sum(1 for r in lost_send_rows if r.get('tickable')) + len(parts) + sum(1 for line in changed_lines if set(line['choices']) - {'keep', 'skip'})
     send_requests = sum(1 for r in rows for o in r['options'] if o['id'] in ('send', 'remove') and o['id'] == r['default']) + sum(1 for r in lost_send_rows if r.get('ticked'))
     last = ((status.get('last_pull') or {}).get('at') or (status.get('last_send') or {}).get('at'))
-    return _page('web/toni/web/bw_sync_rb.html', screen='preview', title='Rebrickable', source=SOURCE, run=run, rows=main, conflicts=conflicts, counts=counts,
+    return _render(source, screen='preview', title=LABEL[source], run=run, rows=main, conflicts=conflicts, counts=counts,
                  lost_in=lost_in, lost_out=lost_out, parts=parts, parts_unmatched=(plans['parts'] or {}).get('unmatched', ()), parts_lists=(plans['parts'] or {}).get('lists', ()), lots=lots, lines=changed_lines,
                  list_words=sync_run.LIST_WORDS, budget=budget, choosable=choosable, requests=send_requests, rule_labels=lost_parts.RULE_LABELS,
                  send_rule_labels={v: l for v, l, _ in lost_parts_send.RULES}, last_run=last, compared=len(run['candidates']),
@@ -319,9 +362,8 @@ def bw_sync_rb_preview(run_id):
                  **_steps(4))
 
 
-@web_page.post('/workbench/sync/rebrickable/run/<run_id>/run')
-@login_required
-def bw_sync_rb_apply(run_id):
+@_route('post', '/run/<run_id>/run', False)
+def step_apply(source, run_id):
     from werkzeug.datastructures import MultiDict
     from ..core import errors
     from ..core.sources.base import audit_origin
@@ -333,35 +375,34 @@ def bw_sync_rb_apply(run_id):
             form['lot:' + key] = form['lot_all']
     try:
         with _db() as db, audit_origin('app'):
+            _same_site(db, run_id, source)
             run = sync_run.apply(db, run_id, form)
     except LOCAL as exc:   # the database or the run file could not be written, possibly after Rebrickable took changes: say so, never a 500
-        flash(public(exc, UNSAVED), 'warning')
-        return redirect(url_for('web.bw_sync_site', source=SOURCE))
+        flash(public(exc, _unsaved(source)), 'warning')
+        return redirect(url_for('web.bw_sync_site', source=source))
     except (errors.BrickWorkError, *sync_run.FAILURES) as exc:
-        flash(_message(exc, SOURCE), 'warning')
-        return redirect(url_for('web.bw_sync_rb_preview', run_id=run_id))
+        flash(_message(exc, source), 'warning')
+        return redirect(_to(source, 'preview', run_id=run_id))
     if not run.get('applied'):         # claimed by another request that has not finished, or one that was interrupted
         flash('This run is already running, or was interrupted. Check the sync log, then start a new one.', 'warning')
-        return redirect(url_for('web.bw_sync_site', source=SOURCE))
-    return redirect(url_for('web.bw_sync_rb_result', run_id=run_id))
+        return redirect(url_for('web.bw_sync_site', source=source))
+    return redirect(_to(source, 'result', run_id=run_id))
 
 
-@web_page.get('/workbench/sync/rebrickable/run/<run_id>/result')
-@login_required
-@_unavailable
-def bw_sync_rb_result(run_id):
+@_route('get', '/run/<run_id>/result', True)
+def step_result(source, run_id):
     from ..core.sync import lost_parts
     from ..core.sync import run as sync_run
     with _db() as db:
-        run, plans = _load(db, run_id)
+        run, plans = _load(db, run_id, source)
         if run is None:
-            return _gone()
+            return _gone(source)
         if not run.get('applied'):
             if run.get('applying'):
                 flash('This run is already running, or was interrupted. Check the sync log, then start a new one.', 'warning')
-                return redirect(url_for('web.bw_sync_site', source=SOURCE))
-            return redirect(url_for('web.bw_sync_rb_preview', run_id=run_id))
-        budget = sync_run.budget(db)
+                return redirect(url_for('web.bw_sync_site', source=source))
+            return redirect(_to(source, 'preview', run_id=run_id))
+        budget = sync_run.budget(db, source)
         rows = {r['key']: r for r in sync_run.rows(db, run, plans)}
         undone = False
         events = run['applied']['events']
@@ -383,15 +424,14 @@ def bw_sync_rb_result(run_id):
     changed = pull.get('counts') or {}
     here = (changed.get('copies', 0) + changed.get('stock', 0) + changed.get('wishes_added', 0) + changed.get('wishes_changed', 0) + changed.get('lost_added', 0)
             + changed.get('lost_replaced', 0) + changed.get('lost_cleared', 0) + (parts.get('counts') or {}).get('rows', 0) + list_changes)
-    return _page('web/toni/web/bw_sync_rb.html', screen='result', title='Rebrickable', source=SOURCE, run=run, stages=stages, undone=undone, failed_rows=failed_rows,
+    return _render(source, screen='result', title=LABEL[source], run=run, stages=stages, undone=undone, failed_rows=failed_rows,
                  here=here, sent_total=sent_total, failed_total=failed_total, waiting_total=waiting_total, list_changes=list_changes, lost_in=lost_in,
                  rule_labels=lost_parts.RULE_LABELS, budget=budget, finished=run['applied']['at'], **_steps(6))
 
 
-@web_page.post('/workbench/sync/rebrickable/undo')
-@login_required
-def bw_sync_rb_undo():
-    """Undo this run: the pull and the part-list pull of one run in one step. Only a Rebrickable pull can be undone here."""
+@_route('post', '/undo', False)
+def step_undo(source):
+    """Undo this run: the pull and the part-list pull of one run in one step. Only a pull of this site can be undone here."""
     from ..core import errors
     from ..core.sources.base import audit_origin
     from ..core.sync import run as sync_run
@@ -401,18 +441,17 @@ def bw_sync_rb_undo():
         abort(400)
     try:
         with _db() as db, audit_origin('app'):
-            if _receipt_source(db, event) != SOURCE:
+            if _receipt_source(db, event) != source:
                 abort(404)
             sync_run.undo_run(db, event)
         flash('Run undone.', 'success')
     except (errors.BrickWorkError, ValueError, sqlite3.Error) as exc:
-        flash(str(exc) if isinstance(exc, ValueError) else _message(exc, SOURCE), 'warning')
-    return redirect(url_for('web.bw_sync_site', source=SOURCE))
+        flash(str(exc) if isinstance(exc, ValueError) else _message(exc, source), 'warning')
+    return redirect(url_for('web.bw_sync_site', source=source))
 
 
-@web_page.post('/workbench/sync/rebrickable/run/<run_id>/retry')
-@login_required
-def bw_sync_rb_retry(run_id):
+@_route('post', '/run/<run_id>/retry', False)
+def step_retry(source, run_id):
     """Retry the sends of a run that did not go through (a failed row, a budget pause); only rows not sent are tried again."""
     from ..core import errors
     from ..core.sources.base import audit_origin
@@ -420,10 +459,27 @@ def bw_sync_rb_retry(run_id):
     _guard()
     try:
         with _db() as db, audit_origin('app'):
+            _same_site(db, run_id, source)
             sync_run.retry_send(db, run_id)
     except LOCAL as exc:
-        flash(public(exc, UNSAVED), 'warning')
-        return redirect(url_for('web.bw_sync_site', source=SOURCE))
+        flash(public(exc, _unsaved(source)), 'warning')
+        return redirect(url_for('web.bw_sync_site', source=source))
     except (errors.BrickWorkError, *sync_run.FAILURES) as exc:
-        flash(_message(exc, SOURCE), 'warning')
-    return redirect(url_for('web.bw_sync_rb_result', run_id=run_id))
+        flash(_message(exc, source), 'warning')
+    return redirect(_to(source, 'result', run_id=run_id))
+
+
+def _register():
+    """Both sites get every step: the same view body under its own URL, endpoint and `source`."""
+    for source in PREFIX:
+        for method, path, unavailable, view in STEPS_LIST:
+            def bound(view=view, source=source, **values):
+                return view(source, **values)
+            bound.__name__ = f'bw_sync_{PREFIX[source]}_{view.__name__.removeprefix("step_")}'
+            if unavailable:
+                bound = _unavailable(bound)
+            bound = login_required(bound)
+            web_page.add_url_rule(f'/workbench/sync/{source}{path}', endpoint=bound.__name__, view_func=bound, methods=[method.upper()])
+
+
+_register()

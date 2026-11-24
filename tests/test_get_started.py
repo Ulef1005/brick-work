@@ -190,7 +190,9 @@ def test_the_rebrickable_key_step_of_the_flow_opens_the_connect_step(client):
     assert not card.select('form, input')
     link = card.select_one('a.bk-btn')
     assert link.get_text(strip=True) == 'Add a key' and link['href'].endswith('/workbench/sync/rebrickable/connect')
-    assert soup(client).select_one('[data-flow-keys] [data-key-card=brickset] form[data-key-form]')          # the other sites keep their form
+    brickset = soup(client).select_one('[data-flow-keys] [data-key-card=brickset]')                             # #520: Brickset's key is added on its own page too
+    assert not brickset.select('form, input') and brickset.select_one('a.bk-btn')['href'].endswith('/workbench/sync/brickset/connect')
+    assert soup(client).select_one('[data-flow-keys] [data-key-card=bricklink] form[data-key-form]')          # the other sites keep their form
 
 
 def test_without_the_flow_marker_a_key_action_stays_on_catalogues_and_keys(client, monkeypatch):

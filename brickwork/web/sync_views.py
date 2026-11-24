@@ -152,7 +152,7 @@ def _page(template, **context):
 
 _SITE_DESCRIPTIONS = {
     'rebrickable': 'Set lists, wishlist, part lists and Lost Parts; minifigures as a check',
-    'brickset': 'Sets with counts, notes, rating and flags; minifigures',
+    'brickset': 'Owned and wanted sets with their counts',
     'bricklink': 'Store inventory, orders, price guide; wanted lists by file',
     'brickowl': 'Collection lots, wishlists, inventory, orders; a daily budget per kind',
 }
@@ -208,7 +208,7 @@ def bw_sync_hub():
                 connected=connected, state_tag=_state_tag(status, connected),
                 account='Linked' if connected else 'none', last_sync=_last_sync(status),
                 action_label='Open' if connected else 'Connect',
-                url=url_for('web.bw_sync_site', source=source) if connected else url_for('web.bw_sync_rb_connect') if source == 'rebrickable' else url_for('web.bw_sync_link', source=source),
+                url=url_for('web.bw_sync_site', source=source) if connected else url_for('web.bw_sync_rb_connect' if source == 'rebrickable' else 'web.bw_sync_bs_connect'),
             ))
         keys_url = url_for('web.bw_admin', page='catalogues')
         for key, label in (('bricklink', 'BrickLink'), ('brickowl', 'Brick Owl')):
@@ -227,27 +227,9 @@ def bw_sync_hub():
 @login_required
 @_unavailable
 def bw_sync_site(source):
-    from ..core import sync
-    from ..core.sync import lost_parts
-    from .setup_state import key_missing
+    from .sync_site import site_page
     _source(source)
-    if source == 'rebrickable':
-        from .sync_rebrickable import site_page
-        return site_page()
-    with _db() as db:
-        status = sync.status(db, source)
-        cards = [dict(status, key_gap=key_missing(source), user=status['credentials']['user']['configured'],
-                      lost_on=sync.lost_parts_on(db, source))]
-        rule = lost_parts.rule(db)
-        log = _log(db, source=source)
-        pulled = request.args.get('pulled', '')
-        if _receipt_source(db, pulled) != source:   # a receipt of another site (or none): no result card and no Undo on this page
-            pulled = ''
-        result = lost_result(db, pulled)
-    subtitle = f"Bring your collection in from {sync.LABELS[source]}, work on it here, then send changes back."
-    return _page('web/toni/web/bw_sync.html', screen='sources', title=sync.LABELS[source], subtitle=subtitle, source=source,
-                 cards=cards, log=log, lost_result=result, pulled=pulled, rule_labels=lost_parts.RULE_LABELS,
-                 lost_rule=dict(value=rule, label=lost_parts.RULE_LABELS[rule], note=lost_parts.RULE_NOTES[rule]))
+    return site_page(source)   # both sites have the six-step pages of web/sync_site.py (#519, #520)
 
 
 @web_page.get('/manage/sync')
@@ -270,24 +252,8 @@ def bw_sync():
 @login_required
 @_unavailable
 def bw_sync_link(source):
-    from ..core import sync, wishlists
-    from .setup_state import key_missing
     _source(source)
-    if source == 'rebrickable':   # its account and its choices are steps 1 and 2 of the Rebrickable page (#519)
-        return redirect(url_for('web.bw_sync_rb_connect'))
-    lists, list_error = [], None
-    with _db() as db:
-        status = sync.status(db, source)
-        user = status['credentials']['user']['configured']
-        if user and source == 'rebrickable' and not key_missing(source):
-            try:
-                lists = sync.lists(db, source)
-            except Exception as exc:  # shown on the page; the key or token may be refused
-                list_error = _message(exc, source)
-        wish_lists = wishlists.listing(db)
-    return _page('web/toni/web/bw_sync.html', screen='link', title='Link ' + sync.LABELS[source], source=source,
-                 label=sync.LABELS[source], status=status, user=user, key_gap=key_missing(source), lists=lists,
-                 list_error=list_error, wish_lists=wish_lists)
+    return redirect(url_for('web.bw_sync_rb_connect' if source == 'rebrickable' else 'web.bw_sync_bs_connect'))   # the account and the choices are steps 1 and 2 of the site's page (#519, #520)
 
 
 @web_page.get('/manage/sync/<source>/plan/<plan_id>')
@@ -338,8 +304,9 @@ def bw_sync_write(source, action):
         abort(403, 'Changes are switched off on this instance')
     form = request.form
     back = url_for('web.bw_sync_link', source=source)
-    if source == 'rebrickable' and form.get('next') in ('site', 'connect'):   # the Rebrickable page and its connect step keep their own account buttons (#519)
-        back = url_for('web.bw_sync_site' if form['next'] == 'site' else 'web.bw_sync_rb_connect', **({} if form['next'] == 'connect' else {'source': source}))
+    if form.get('next') in ('site', 'connect'):   # a site's page and its connect step keep their own account buttons (#519, #520)
+        back = url_for('web.bw_sync_site' if form['next'] == 'site' else 'web.bw_sync_rb_connect' if source == 'rebrickable' else 'web.bw_sync_bs_connect',
+                       **({} if form['next'] == 'connect' else {'source': source}))
     try:
         with _db() as db, audit_origin('app'):
             if action == 'connect':

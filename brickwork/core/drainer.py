@@ -71,7 +71,7 @@ def drain_once(path):
         fetched = jobs.drain(db)
         # #217: a copy that switched to its BrickLink list by itself has new lines; queue the pictures they lack
         switched = [s['copy_id'] for r in fetched for s in r.get('settled') or () if s.get('outcome') == 'switched']
-        ran = fetched + run_job.drain(db) + pipeline.drain(db) + instructions.Downloads(db).drain() + instruction_thumbnails.Thumbnails(db).drain()
+        ran = fetched + pipeline.drain(db) + instructions.Downloads(db).drain() + instruction_thumbnails.Thumbnails(db).drain() + run_job.drain(db)    # a sync run takes minutes: after the quick runners
         reconcile_job.drain(db)
         add.settle_fetches(db)
         pictures.queue_for_copies(db, switched)

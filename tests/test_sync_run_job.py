@@ -135,8 +135,15 @@ def test_stop_after_this_one_leaves_the_rest_unsent(three_sends, monkeypatch):
     assert tuple(job) == ('done', 'Stopped at your request')
 
 
-def test_a_stage_that_was_started_is_never_run_again_after_a_takeover(three_sends, monkeypatch):
+def test_a_stage_that_was_started_is_never_run_again_after_a_takeover_but_can_be_retried(three_sends, monkeypatch):
     pair, run_id, keys = three_sends
+    real, gate = adapters.RebrickableUser.send, {'open': False}
+
+    def guarded(self, row, link, state):
+        assert gate['open'], 'a send ran again'
+        return real(self, row, link, state)
+
+    monkeypatch.setattr(adapters.RebrickableUser, 'send', guarded)
     with db_of(pair) as db:
         job_id = run_job.queue(db, run_id, form_for(db, run_id))
         run = sync_run.load(db, run_id)[0]
@@ -145,11 +152,39 @@ def test_a_stage_that_was_started_is_never_run_again_after_a_takeover(three_send
         db.execute("UPDATE job SET state='running' WHERE id=?", (job_id,))
         db.execute('INSERT INTO job_owner(job_id, pid, claimed_at) VALUES(?, 999999999, ?)', (job_id, '2026-01-01T00:00:00.000Z'))
         db.commit()
-        monkeypatch.setattr(adapters.RebrickableUser, 'send', lambda *a, **k: pytest.fail('a send ran again'))
         run_job.drain(db)
         run = sync_run.load(db, run_id)[0]
-    assert run['stages']['send'] == {'status': 'failed', 'message': run_job.INTERRUPTED_MESSAGE}
-    assert run['applied']
+        stage = run['stages']['send']
+        assert stage['status'] == 'failed' and stage['message'] == run_job.INTERRUPTED_MESSAGE and run['applied']
+        assert {r['key'] for r in stage['results']} == set(sends(db, run_id)) and {r['result'] for r in stage['results']} == {'failed'}
+        gate['open'] = True
+        retried = sync_run.retry_send(db, run_id)
+        assert retried['stages']['send']['status'] == 'done'
+
+
+def test_the_synchronous_paths_leave_a_queued_run_alone(three_sends, monkeypatch):
+    pair, run_id, keys = three_sends
+    monkeypatch.setattr(adapters.RebrickableUser, 'send', lambda *a, **k: pytest.fail('a send ran'))
+    with db_of(pair) as db:
+        job_id = run_job.queue(db, run_id, form_for(db, run_id))
+        assert sync_run.apply(db, run_id, form_for(db, run_id))['job'] == job_id
+        with pytest.raises(errors.ValidationFailed, match='already run'):
+            sync_run.save_pick(db, run_id, [])
+        with pytest.raises(errors.ValidationFailed, match='still running'):
+            sync_run.retry_send(db, run_id)
+
+
+def test_stop_reaches_a_job_waiting_for_the_budget(three_sends, monkeypatch):
+    pair, run_id, keys = three_sends
+    monkeypatch.setattr(adapters.RebrickableUser, 'send', lambda *a, **k: (_ for _ in ()).throw(WaitingForBudget('rebrickable', '2099-01-01T00:00:00+00:00')))
+    with db_of(pair) as db:
+        job_id = run_job.queue(db, run_id, form_for(db, run_id))
+        run_job.drain(db)
+        assert db.execute('SELECT state FROM job WHERE id=?', (job_id,)).fetchone()[0] == 'waiting_for_budget'
+        assert run_job.request_stop(db, run_id)
+        run_job.drain(db)
+        job = db.execute('SELECT state, error FROM job WHERE id=?', (job_id,)).fetchone()
+        assert tuple(job) == ('done', 'Stopped at your request') and sync_run.load(db, run_id)[0]['applied']
 
 
 def test_a_budget_wait_ends_the_job_waiting_and_a_later_drain_resumes_unsent_rows(three_sends, monkeypatch):
@@ -198,7 +233,31 @@ def test_the_embedded_drainer_runs_a_queued_run_and_the_job_body_names_a_dead_ow
 def test_the_plan_does_not_expire_while_the_job_works(three_sends):
     pair, run_id, keys = three_sends
     with db_of(pair) as db:
-        before = sync_run.load(db, run_id)[0]['created_at']
+        run = sync_run.load(db, run_id)[0]
+        run['created_at'] = '2026-11-24T00:00:00+00:00'
+        sync._store_plan(db, run)
         run_job.queue(db, run_id, form_for(db, run_id))
         run_job.drain(db)
-        assert sync_run.load(db, run_id)[0]['created_at'] >= before
+        assert sync_run.load(db, run_id)[0]['created_at'] > '2026-11-24T00:00:00+00:00'
+
+
+def test_the_job_sends_lost_parts_out_one_call_with_one_audit_entry(client, remote, pair):  # noqa: F811
+    from brickwork.core.sync import lost_parts_send
+    from tests.test_bw_sync_lost_parts import copy_of, raw
+    csrf = connected(client, pair)
+    with db_of(pair) as db:
+        copy_of(db, '1000-1', marks=[('3001', '4', 3)])
+    remote.lists[1] = {'1000-1': 1}
+    remote.lost = [raw('1000-1', '3001', 4, 1, number=1)]
+    run_id = start(client, csrf, lost_dir='to', owned_dir='off', wishlist_dir='off', send_rule='add_only')
+    key = lost_parts_send.row_key('1000-1', '3001', 4, False)
+    with db_of(pair) as db:
+        job_id = run_job.queue(db, run_id, MultiDict([('lostsend', key)]))
+        assert [s['name'] for s in db.execute('SELECT name FROM job_step WHERE job_id=?', (job_id,))] == ['lost_out']
+        run_job.drain(db)
+        stage = sync_run.load(db, run_id)[0]['stages']['lost_out']
+        assert stage['status'] == 'done' and stage['counts'] == dict(sent=1, failed=0, waiting=0)
+        step = db.execute('SELECT count, total, state FROM job_step WHERE job_id=?', (job_id,)).fetchone()
+        assert tuple(step) == (1, 1, 'done')
+        assert len(db.execute("SELECT 1 FROM event WHERE entity_kind='sync' AND field='send'").fetchall()) == 1
+    assert [(m, d) for m, p, d in remote.lost_writes] == [('POST', 'inv_part_id=1&lost_quantity=2')]

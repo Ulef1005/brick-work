@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 import json
 import logging
 import os
+import sqlite3
 
 from ...store4 import jobs
 from .. import errors, sync
@@ -46,6 +47,21 @@ def _stage_total(run, plans, form_data, name):
     return 0
 
 
+def _interrupted(db, plans, form_data, name):
+    """A stage a dead owner left `started`: failed, never run again. For the send stage the rows get the result the send plan kept, and a row
+    with none counts as failed, so `run.retry_send` can send them again once the user has checked what went out."""
+    stage = {'status': 'failed', 'message': INTERRUPTED_MESSAGE}
+    if name == 'send' and plans.get('send'):
+        kept = sync.load_plan(db, plans['send']['id'], 'send').get('results') or {}
+        wanted = [k for k, v in form_data['chosen'].items() if v in ('send', 'remove')]
+        rows = [dict(key=k, **(kept[k] if k in kept else dict(result='failed', detail=INTERRUPTED_MESSAGE))) for k in wanted]
+        counts = {}
+        for row in rows:
+            counts[row['result']] = counts.get(row['result'], 0) + 1
+        stage.update(counts=counts, rows=len(rows), results=rows)
+    return stage
+
+
 def _has_plan(run, plans, name):
     return bool(sync_run.lost_out(run)) if name == 'lost_out' else bool(plans.get(name))
 
@@ -79,6 +95,7 @@ def queue(db, run_id, form, *, via='app', actor=None):
                 )
         run['job_form'] = form_data
         run['job'] = job_id
+        run['applying'] = t.isoformat()
         run['queued'] = t.isoformat()
         sync._store_plan(db, run)
         return job_id
@@ -102,6 +119,7 @@ def request_stop(db, run_id):
     stamp = jobs._stamp(now())
     with transaction(db):
         db.execute("UPDATE job SET payload=json_set(coalesce(payload, '{}'), '$.stop', 1), updated_at=? WHERE id=?", (stamp, job_id))
+        db.execute("UPDATE job SET retry_at=? WHERE id=? AND state='waiting_for_budget'", (stamp, job_id))     # a waiting job is claimed at once, to stop
     return True
 
 
@@ -193,7 +211,8 @@ def _finish_stopped(db, job, run, plans, form_data, start_idx):
             run['stages'][name] = dict(status='none')
         else:
             run['stages'][name] = dict(status='stopped')
-            _set_step(db, job['id'], name, 'done', error='Stopped at your request')
+            with transaction(db):
+                _set_step(db, job['id'], name, 'done', error='Stopped at your request')
     _settle_done(db, job, run, error='Stopped at your request')
 
 
@@ -202,23 +221,24 @@ def _settle_done(db, job, run, *, error=None):
     t = now()
     stamp = jobs._stamp(t)
     source = run.get('source', sync_run.SOURCE)
+    if error is None and any(st.get('status') in ('failed', 'partial') or (st.get('counts') or {}).get('key_rejected') for st in run['stages'].values()):
+        error = 'Some changes were not made; see the result'
+    run['applied'] = dict(at=t.isoformat(), events=events)       # the run first: a crash between the two leaves a done run, which a takeover settles
+    run.pop('applying', None)
+    if 'job_progress' in run:
+        run['job_progress']['now'] = None
+    _refresh_plans(db, run, t)
     with transaction(db):
         audit(db, 'sync:' + source, 'run', None, dict(run=run['id'], events=events), via=job['via'], actor=job['actor'])
         db.execute("UPDATE job SET state='done', error=?, error_code=NULL, retry_at=NULL, updated_at=? WHERE id=?",
                    (error, stamp, job['id']))
         db.execute('DELETE FROM job_owner WHERE job_id=?', (job['id'],))
-    run['applied'] = dict(at=t.isoformat(), events=events)
-    run.pop('applying', None)
-    if 'job_progress' in run:
-        run['job_progress']['now'] = None
-    _refresh_plans(db, run, t)
 
 
 def _settle_budget(db, job, run, stage_name, stage_msg, retry_at):
     t = now()
     stamp = jobs._stamp(t)
     retry_stamp = _retry_stamp(retry_at, t)
-    run.pop('applying', None)
     if 'job_progress' in run:
         run['job_progress']['now'] = None
     _refresh_plans(db, run, t)
@@ -232,10 +252,16 @@ def _settle_budget(db, job, run, stage_name, stage_msg, retry_at):
 def _run_one(db, job, http):
     job_id = job['id']
     run_id = json.loads(job['payload'])['run']
-    run, plans = sync_run.load(db, run_id)
+    with sync_run._Claim(db, run_id):        # `queue` stores the form under this lock, after it commits the job
+        run, plans = sync_run.load(db, run_id)
     form_data = run.get('job_form')
     if form_data is None:
         raise ValueError('Run has no job_form')
+    if run.get('applied'):                   # settled in the run, the process stopped before the job: close the job only
+        with transaction(db):
+            db.execute("UPDATE job SET state='done', updated_at=? WHERE id=?", (jobs._stamp(now()), job_id))
+            db.execute('DELETE FROM job_owner WHERE job_id=?', (job_id,))
+        return
     run['applying'] = now().isoformat()
     prog = run.setdefault('job_progress', {})
     prog.setdefault('started_at', now().isoformat())
@@ -248,7 +274,7 @@ def _run_one(db, job, http):
         if existing and existing.get('status') in ('done', 'none', 'failed', 'stopped'):
             continue
         if existing and existing.get('status') == 'started':
-            run['stages'][name] = {'status': 'failed', 'message': INTERRUPTED_MESSAGE}
+            run['stages'][name] = _interrupted(db, plans, form_data, name)
             _refresh_plans(db, run)
             with transaction(db):
                 _set_step(db, job_id, name, 'failed', error=INTERRUPTED_MESSAGE)
@@ -277,7 +303,6 @@ def _run_one(db, job, http):
             _done['count'] = count
             if event == 'before':
                 prog['now'] = _call_label(_name, run, plans, key)
-                _refresh_plans(db, run)
             elif event == 'after':
                 ts = now().timestamp()
                 prog['calls'] = [c for c in prog.get('calls', []) if c >= ts - 60.0] + [ts]
@@ -364,14 +389,18 @@ def drain(db, http=None):
     ran = []
     path = jobs._path(db)
     for job_id in ids:
-        job = _claim(db, job_id, now())
+        try:
+            job = _claim(db, job_id, now())
+        except sqlite3.OperationalError as exc:          # the collection is busy: this pass leaves the job, the next one takes it
+            LOG.warning('sync_run job %s not claimed: %s', job_id, type(exc).__name__)
+            continue
         if job is None:
             continue
         try:
             _run_one(db, job, http)
             ran.append(dict(db.execute('SELECT * FROM job WHERE id=?', (job_id,)).fetchone()))
-        except Exception:
-            LOG.warning('sync_run job %s failed unexpectedly', job_id)
+        except Exception as exc:
+            LOG.warning('sync_run job %s failed unexpectedly: %s', job_id, type(exc).__name__)
             _fail_unexpected(db, job_id)
         except BaseException:
             if db.in_transaction:

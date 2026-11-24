@@ -16,11 +16,12 @@ import fcntl
 import json
 import logging
 import sqlite3
+from datetime import timedelta
 from uuid import uuid4
 
 from .. import errors, wishlists
 from ..admin import audit
-from ..sources.base import KeyRejected, SourceError, WaitingForBudget, now
+from ..sources.base import KeyRejected, RemoteBudgetExceeded, SourceError, WaitingForBudget, now
 from ..transaction import transaction
 from .. import sync
 from . import adapters, lost_parts, lost_parts_send, part_lists
@@ -301,7 +302,7 @@ def save_pick(db, run_id, ids, keep_names=None, *, http=None):
     which list names the preview offers. Returns the run."""
     with _Claim(db, run_id):
         run = sync.load_plan(db, run_id, 'run')
-        if run.get('applied') or run.get('applying'):
+        if run.get('applied') or run.get('applying') or run.get('job'):
             raise errors.ValidationFailed('This run has already run')
         ids = set(ids)
         if ids - {c['item_id'] for c in run['candidates']}:
@@ -537,7 +538,7 @@ def apply(db, run_id, form, *, http=None, via=None, actor=None):
     first call to Rebrickable), so a second request for it, at once or later, changes nothing and gets the run as it is. Returns the run, saved."""
     with _Claim(db, run_id):
         run, plans = load(db, run_id)
-        if run.get('applied') or run.get('applying'):
+        if run.get('applied') or run.get('applying') or (run.get('job') and not run.get('applied')):
             return run
         chosen = validate_choices(db, run, plans, form)
         run['applying'] = now().isoformat()
@@ -622,29 +623,41 @@ def stage_send(db, run, plans, form_data, *, http=None, per_key=False, should_st
     plan_id = plans['send']['id']
     send_plan = sync.load_plan(db, plan_id, 'send')
     existing = send_plan.get('results') or {}
-    done_count = sum(1 for k in wanted if existing.get(k, {}).get('result') in ('sent', 'unchanged'))
+    went = ('sent', 'unchanged')
+    if source == 'brickset':      # one call per set number, as `apply_send` makes it: a set's owned and wanted rows go together
+        by_key = {r['key']: r for r in send_plan['rows']}
+        grouped = {}
+        for key in wanted:
+            grouped.setdefault(by_key[key]['remote_no'], []).append(key)
+        units = list(grouped.values())
+    else:
+        units = [[key] for key in wanted]
+    done_count = sum(1 for k in wanted if existing.get(k, {}).get('result') in went)
     stopped, paused_retry_at, paused_exc, stopped_keys = False, None, None, {}
-    for idx, key in enumerate(wanted):
-        if existing.get(key, {}).get('result') in ('sent', 'unchanged'):
+    for idx, unit in enumerate(units):
+        key = unit[0]
+        later = [k for u in units[idx + 1:] for k in u]
+        if all(existing.get(k, {}).get('result') in went for k in unit):
             continue
         if should_stop and should_stop():
             stopped = True
-            for rem in wanted[idx:]:
-                if existing.get(rem, {}).get('result') not in ('sent', 'unchanged'):
+            for rem in [k for u in units[idx:] for k in u]:
+                if existing.get(rem, {}).get('result') not in went:
                     stopped_keys[rem] = dict(result='stopped', detail='Stopped at your request')
             break
         if on_call:
             on_call('before', key, done_count)
         try:
-            reply = sync.apply_send(db, plan_id, [key], http=http)
+            reply = sync.apply_send(db, plan_id, unit, http=http)
         except WaitingForBudget as exc:
             paused_exc = exc
             paused_retry_at = exc.retry_at
             send_plan = sync.load_plan(db, plan_id, 'send')
             res_map = send_plan.setdefault('results', {})
-            res_map[key] = dict(result='paused', detail=_message(exc, source), retry_at=exc.retry_at)
-            for rem in wanted[idx + 1:]:
-                if res_map.get(rem, {}).get('result') not in ('sent', 'unchanged'):
+            for k in unit:
+                res_map[k] = dict(result='paused', detail=_message(exc, source), retry_at=exc.retry_at)
+            for rem in later:
+                if res_map.get(rem, {}).get('result') not in went:
                     res_map[rem] = dict(result='paused', detail=None)
             sync._store_plan(db, send_plan)
             if on_call:
@@ -654,13 +667,13 @@ def stage_send(db, run, plans, form_data, *, http=None, per_key=False, should_st
             stages['send'] = dict(status='failed', message=_message(exc, source))
             sync._store_plan(db, run)
             return stages['send']
-        row_res = next((r for r in reply['rows'] if r['key'] == key), {'key': key, 'result': 'failed'})
-        if row_res['result'] in ('paused', 'key_rejected'):
+        row_res = next((r for r in reply['rows'] if r['key'] in unit and r['result'] in ('paused', 'key_rejected')), None)
+        if row_res:
             stop_kind = row_res['result']
             send_plan = sync.load_plan(db, plan_id, 'send')
             res_map = send_plan.setdefault('results', {})
-            for rem in wanted[idx + 1:]:
-                if res_map.get(rem, {}).get('result') not in ('sent', 'unchanged'):
+            for rem in later:
+                if res_map.get(rem, {}).get('result') not in went:
                     res_map[rem] = dict(result=stop_kind, detail=None)
             sync._store_plan(db, send_plan)
             if stop_kind == 'paused':
@@ -672,7 +685,7 @@ def stage_send(db, run, plans, form_data, *, http=None, per_key=False, should_st
                 if on_call:
                     on_call('after', key, done_count)
             break
-        done_count += 1
+        done_count += len(unit)
         if on_call:
             on_call('after', key, done_count)
 
@@ -815,11 +828,20 @@ class _Recorder:
             LOG.warning('Lost Parts progress could not be written to the run: %s', type(exc).__name__)
             self.run['progress_unsaved'] = True
 
+    @staticmethod
+    def _after(exc):
+        """The time a per-second throttle says to wait (None: until the next UTC midnight, as a budget wait)."""
+        seconds = getattr(exc, 'retry_seconds', None)
+        return (now() + timedelta(seconds=seconds)).isoformat() if seconds is not None else None
+
     def lost_part_add(self, inv_part_id, quantity):
         try:
             reply = self.client.lost_part_add(inv_part_id, quantity)
         except WaitingForBudget as exc:
             self.retry_at = exc.retry_at
+            raise
+        except RemoteBudgetExceeded as exc:
+            self.retry_at = self._after(exc)
             raise
         self._note(['add', inv_part_id, quantity])
         return reply
@@ -829,6 +851,9 @@ class _Recorder:
             reply = self.client.lost_part_remove(lost_part_id)
         except WaitingForBudget as exc:
             self.retry_at = exc.retry_at
+            raise
+        except RemoteBudgetExceeded as exc:
+            self.retry_at = self._after(exc)
             raise
         self._note(['remove', lost_part_id])
         return reply
@@ -907,6 +932,8 @@ def retry_send(db, run_id, *, http=None):
         run, plans = load(db, run_id)
         send = plans['send']
         stage = (run.get('stages') or {}).get('send')
+        if run.get('job') and not run.get('applied'):
+            raise errors.ValidationFailed('This run is still running')
         if not send or not stage or not stage.get('results'):
             raise errors.ValidationFailed('This run sent nothing that can be retried')
         again = [r['key'] for r in stage['results'] if r['result'] not in ('sent', 'unchanged')]

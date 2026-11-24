@@ -994,7 +994,7 @@ def test_a_conflict_that_was_kept_comes_back_unticked(client, remote, pair):
     page = preview_of(client, start(client, csrf))
     row = rows_of(page)['1000-1']
     assert not page.select('[data-rb-conflicts]')                         # the pull reset the baseline: it is a plain row again
-    assert not row.select_one('input[name="choice:owned:1"]').has_attr('checked') and 'left as it was at the last run' in row.get_text()
+    assert not row.select_one('input[name="choice:owned:1"]').has_attr('checked') and 'not taken at the last run' in row.get_text()
     assert 'choice:owned:1' not in run_data(page)                         # Apply all cannot overwrite it
 
 
@@ -1079,7 +1079,7 @@ def test_a_kept_difference_with_a_missing_baseline_side_comes_back_unticked(clie
     apply_run(client, csrf, run_id, page)                                # something else comes in, the baseline is reset, 1000-2 kept at 0 here
     page = preview_of(client, start(client, csrf))
     row = rows_of(page)['1000-2']
-    assert not row.select_one('input[name="choice:owned:2"]').has_attr('checked') and 'left as it was at the last run' in row.get_text()
+    assert not row.select_one('input[name="choice:owned:2"]').has_attr('checked') and 'not taken at the last run' in row.get_text()
     assert 'choice:owned:2' not in run_data(page)
     # a set only on Rebrickable that was left unticked (no baseline here for it) comes back unticked as well
     remote.lists[2]['1000-3'] = 1
@@ -1093,7 +1093,7 @@ def test_a_kept_difference_with_a_missing_baseline_side_comes_back_unticked(clie
     assert copies(pair, '1000-4') == 2
     page = preview_of(client, start(client, csrf))
     row = rows_of(page)['1000-3']
-    assert not row.select_one('input[type=checkbox]').has_attr('checked') and 'left as it was at the last run' in row.get_text()
+    assert not row.select_one('input[type=checkbox]').has_attr('checked') and 'not taken at the last run' in row.get_text()
 
 
 def test_a_refused_key_makes_what_was_not_tried_failed_not_waiting(client, remote, pair, monkeypatch):
@@ -1155,6 +1155,29 @@ def test_a_local_write_failure_after_a_sent_part_keeps_the_result_and_says_so(cl
     page = soup(client.get(f'/workbench/sync/rebrickable/run/{run_id}/result'))
     assert 'could not write down how far the Lost Parts send got' in page.select_one('[data-rb-there]').get_text()
     assert '/secret/path' not in page.decode()
+
+
+def test_a_data_folder_that_stays_unwritable_after_the_send_is_a_message_not_a_500(client, remote, pair, monkeypatch):
+    csrf = connected(client, pair)
+    with db_of(pair) as db:
+        copy_of(db, '1000-1', marks=[('3001', '4', 3)])
+    remote.lists[1] = {'1000-1': 1}
+    remote.lost = [raw('1000-1', '3001', 4, 1, number=1)]
+    run_id = start(client, csrf, lost_dir='to', owned_dir='off', wishlist_dir='off', send_rule='per_part')
+    real = sync._store_plan
+
+    def full(db, plan):
+        if plan.get('lost_calls'):
+            raise OSError('/secret/path/disk full')
+        return real(db, plan)
+    monkeypatch.setattr(sync, '_store_plan', full)
+    page = preview_of(client, run_id)
+    response = client.post(f'/workbench/sync/rebrickable/run/{run_id}/run',
+                           data={'csrf_token': csrf, **run_data(page), 'lostsend': lost_parts_send.row_key('1000-1', '3001', 4, False)})
+    assert response.status_code == 302 and response.location.endswith('/workbench/sync/rebrickable')
+    assert [w[0] for w in remote.lost_writes] == ['POST', 'DELETE']
+    landing = client.get('/workbench/sync/rebrickable').get_data(as_text=True)
+    assert 'could not write down this run' in landing and '/secret/path' not in landing
 
 
 def test_step_2_keeps_the_side_whose_lists_could_not_be_read(client, remote, pair):

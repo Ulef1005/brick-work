@@ -15,6 +15,8 @@ from .sync_views import _db, _event_id, _log, _message, _page, _receipt_source, 
 SOURCE = 'rebrickable'
 STEPS = ('Connect', 'Choose what', 'Pick sets', 'Preview', 'Run', 'Result')
 KEY_FIELD = 'key:key'
+UNSAVED = ('Brick Work could not write down this run: the data folder may be full or read-only. What Rebrickable already took stays there; '
+           'check the sync log and Rebrickable before you start a new run.')
 
 
 def _guard():
@@ -329,6 +331,9 @@ def bw_sync_rb_apply(run_id):
     try:
         with _db() as db, audit_origin('app'):
             run = sync_run.apply(db, run_id, form)
+    except OSError:    # the run file could not be written after Rebrickable took changes: say so, never a 500 (what Rebrickable took stays there)
+        flash(UNSAVED, 'warning')
+        return redirect(url_for('web.bw_sync_site', source=SOURCE))
     except (errors.BrickWorkError, *sync_run.FAILURES) as exc:
         flash(_message(exc, SOURCE), 'warning')
         return redirect(url_for('web.bw_sync_rb_preview', run_id=run_id))
@@ -413,6 +418,9 @@ def bw_sync_rb_retry(run_id):
     try:
         with _db() as db, audit_origin('app'):
             sync_run.retry_send(db, run_id)
+    except OSError:
+        flash(UNSAVED, 'warning')
+        return redirect(url_for('web.bw_sync_site', source=SOURCE))
     except (errors.BrickWorkError, *sync_run.FAILURES) as exc:
         flash(_message(exc, SOURCE), 'warning')
     return redirect(url_for('web.bw_sync_rb_result', run_id=run_id))

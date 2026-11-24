@@ -809,3 +809,22 @@ def test_the_use_cases_heading_and_description_count_the_cards_alike():
     count = len(re.findall(r'<h3 class="layout-39">', source))
     heading = re.search(r'<h1[^>]*>(\w+) moments', source).group(1).lower()
     assert heading == words[count] and build_site.MD_DESCRIPTIONS['use-cases'].lower().startswith(f'{words[count]} moments')
+
+
+def test_the_questions_hub_lists_every_page_passes_the_lego_rule_and_the_structured_data_matches(site):
+    """Review of #679 and the SEO review (23.11.): the hub is checked like the pages it lists; breadcrumbs are links; BreadcrumbList, ItemList and HowTo parse."""
+    import json
+    hub = (site / 'questions/index.html').read_text()
+    assert name_use_errors(hub) == []
+    assert DISCLAIMER in hub.split('<footer', 1)[1]
+    assert [href for href in re.findall(r'<a href="\.\./questions/([^"]+)/"><span><b>', hub)] == list(QUESTION_SLUGS)
+    ld = lambda text: [json.loads(block) for block in re.findall(r'<script type="application/ld\+json">(.+?)</script>', text)]
+    assert [item['@type'] for item in ld(hub)] == ['BreadcrumbList', 'ItemList']
+    assert [e['url'].rsplit('/', 2)[-2] for e in ld(hub)[1]['itemListElement']] == list(QUESTION_SLUGS)
+    for slug in QUESTION_SLUGS:
+        text = (site / f'questions/{slug}/index.html').read_text()
+        types = [item['@type'] for item in ld(text)]
+        assert types[0] == 'BreadcrumbList' and 'HowTo' in types, slug
+        assert '<a href="../../">Home</a> / <a href="../../questions/">Questions</a>' in text, slug
+        assert len(ld(text)[types.index('HowTo')]['step']) >= 2, slug
+        assert name_use_errors(text) == [], slug

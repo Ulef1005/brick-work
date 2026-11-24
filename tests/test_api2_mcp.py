@@ -50,7 +50,7 @@ def test_the_tool_surface_is_generated_from_the_v2_contract():
     marked = {op['x-mcp-tool']: (method.upper(), path) for path, methods in CONTRACT['paths'].items()
               for method, op in methods.items() if isinstance(op, dict) and 'x-mcp-tool' in op}
     assert {n: (m, p) for n, (m, p, _) in DEFINITIONS.items()} == marked
-    assert len(READS) + len(WRITES) == 80
+    assert len(READS) + len(WRITES) == 82
     for name, (method, path, op) in DEFINITIONS.items():
         assert op['security'] == [{'bearerAuth': ['read' if method == 'GET' else 'write']}], name   # admin work is never a tool
         assert op['summary'], name
@@ -305,6 +305,7 @@ def write_arguments(w, pair, v2):
         'move_to_storage': {'id': w.shelf, 'selections': [{'entity': 'copy', 'id': w.copy_b}]},
         'plan_sync_pull': {'source': 'rebrickable'}, 'apply_sync_pull': {'source': 'rebrickable', 'plan_id': 'absent'},
         'plan_sync_send': {'source': 'rebrickable'},
+        'plan_sync_rebrickable_parts': {}, 'apply_sync_rebrickable_parts': {'plan_id': 'absent'},
         'import_order': {'source': 'xml', 'text': '<INVENTORY><ITEM><ITEMTYPE>S</ITEMTYPE><ITEMID>1000-1</ITEMID><QTY>1</QTY><CONDITION>U</CONDITION></ITEM></INVENTORY>'},
         'confirm_sticker': {'id': w.bag, 'stock_id': w.stock_brick, 'set_item_id': 1, 'sheet_item_id': 2}, 'clear_sticker': {'id': w.bag, 'stock_id': w.stock_brick},
         'make_copy_from_lot': {'id': w.bag, 'kind': 'set', 'no': '1000-1'},
@@ -315,6 +316,7 @@ def write_arguments(w, pair, v2):
 # What the API itself answers for the writes whose set-up is another module's business (a connected source, a failed job, an event with no Undo):
 # a problem with its own code, never a gate, a placeholder or a crash. The writes are tested for real in tests/test_api2_write_*.py.
 API_REFUSALS = {'download_instructions': 'validation_failed', 'plan_sync_pull': 'source_not_configured', 'plan_sync_send': 'source_not_configured', 'apply_sync_pull': 'validation_failed',
+                'plan_sync_rebrickable_parts': 'validation_failed', 'apply_sync_rebrickable_parts': 'validation_failed',
                 'retry_job': 'not_found', 'undo_event': 'not_undoable', 'confirm_sticker': 'conflict'}
 
 

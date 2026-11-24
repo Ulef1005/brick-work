@@ -78,7 +78,7 @@ A set becomes one **copy** per missing unit, with the part list the set has. Its
 
 Open a copy and look under its tags: the **Source** row says how it got here and when a site last met it.
 
-- **Added via** is one fixed value that never changes. It reads *By hand*, *Via the API*, *Via the CLI* or *Via MCP*. It can also name a site (*Rebrickable sync*, *Brickset sync*, *BrickLink sync*, *Brick Owl sync*), a file (*BrickLink file*, *Rebrickable file*, *Brickset file*, *Brick Owl file*, *Brick Work export*) or an import from the earlier app this one grew out of. Rows that exist from before this release read *Before this release*.
+- **Added via** is one fixed value that never changes. It reads *By hand*, *Via the API*, *Via the CLI* or *Via MCP*. It can also name a site (*Rebrickable sync*, *Brickset sync*, *BrickLink sync* or *Brick Owl sync*). It can name a file (*BrickLink file*, *Rebrickable file*, *Brickset file*, *Brick Owl file* or *Brick Work export*). A row can also come from an import of the earlier app this one grew out of. Rows that exist from before this release read *Before this release*.
 - **Last synced from** is a separate line per site and list, such as *Last synced from Rebrickable: Main collection · 18 Nov, 21:40*. It changes with every sync that matches the row. A set you added by hand can show it too: a later sync matched it to a set on the site, which does not change how it was added. A set in two Rebrickable lists shows one line for each.
 
 Undo of a sync run uses these records to take back exactly what the run did.

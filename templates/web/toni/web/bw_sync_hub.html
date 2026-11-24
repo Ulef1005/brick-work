@@ -27,11 +27,11 @@
           {% endif %}
         </div>
       </div>
-      <p class="bk-text sh-site-desc">{{ site.description }}</p>
       <dl class="sh-meta">
-        <div><dt>Account</dt><dd class="mono">{{ site.account }}</dd></div>
-        <div><dt>Last sync</dt><dd class="mono">{{ site.last_sync }}</dd></div>
+        <div><dt>Account</dt><dd>{{ site.account }}</dd></div>
+        <div><dt>Last sync</dt><dd>{{ site.last_sync }}</dd></div>
       </dl>
+      <p class="bk-text sh-site-desc">{{ site.description }}</p>
       <div class="bk-actions">
         <a class="bk-btn {{ 'bk-primary' if site.connected else 'bk-outline' }}" href="{{ site.url }}">{{ site.action_label }}</a>
       </div>
@@ -44,8 +44,8 @@
       <p class="bk-text sh-site-desc">Every file format in and out, and your own complete export</p>
     </div>
     <dl class="sh-import-meta">
-      <div><dt>Last import</dt><dd class="mono">{{ import_export.last_import }}</dd></div>
-      <div><dt>Last export</dt><dd class="mono">{{ import_export.last_export }}</dd></div>
+      <div><dt>Last import</dt><dd>{{ import_export.last_import }}</dd></div>
+      <div><dt>Last export</dt><dd>{{ import_export.last_export }}</dd></div>
     </dl>
     <div class="bk-actions sh-import-actions">
       <a class="bk-btn bk-outline" href="{{ import_export.url }}">Open</a>

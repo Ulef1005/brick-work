@@ -1,4 +1,12 @@
 /* Workbench Sync hub layout and cards; colours inherit from app theme tokens. */
+/* The page is capped at 1180px like every B′ frame (.page), as bw-admin.css does for the Tools & Admin hub. */
+.bw-admin-page.bw-sync-hub-page {
+  box-sizing: border-box;
+  max-width: 1180px;
+  margin-left: 0;
+  margin-right: auto;
+}
+
 .sh-wrap {
   display: flex;
   flex-direction: column;
@@ -80,6 +88,7 @@
 .sh-meta dd,
 .sh-import-meta dd {
   margin: 0;
+  font-weight: 500;
   min-width: 0;
   overflow-wrap: anywhere;
 }
@@ -107,6 +116,7 @@
   grid-area: meta;
   display: grid;
   grid-template-columns: auto auto;
+  justify-content: start;
   gap: 4px 14px;
   margin: 0;
   font-size: 0.875rem;
@@ -123,7 +133,7 @@
 
 .bw-sync-hub-page .sy-log {
   margin: 0;
-  padding: 20px 24px;
+  padding: 20px;
   background: var(--tw-surface, var(--bk-surface, transparent));
   border: 1px solid var(--tw-divider, currentColor);
   border-radius: 4px;
@@ -142,6 +152,10 @@
 .bw-sync-hub-page .sy-how {
   max-width: none;
   width: 100%;
+}
+
+.bw-sync-hub-page .sy-how .bk-text {
+  max-width: none;
 }
 
 @media (max-width: 1080px) {

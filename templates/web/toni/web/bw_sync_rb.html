@@ -47,7 +47,7 @@
 <section class="sr-card" data-rb-account><h2>Your {{ label }} account {{ tag('Connected') if connected else tag('Not connected', true) }}</h2>
 <dl class="sr-kv">
 {% if account %}<dt>Account</dt><dd>{{ account }}</dd>{% endif %}
-<dt>API key</dt><dd>{% if key_gap %}Not set{% elif key.origin == 'env' %}Set in the environment{% else %}Set{% if key_day %} · last used {{ key_day }}{% endif %}{% endif %}</dd>
+<dt>API key</dt><dd>{% if key_gap %}Not set{% elif key.origin == 'env' %}Set in the environment{% else %}Set{% if key_day %} · checked {{ key_day }}{% endif %}{% endif %}</dd>
 {% if source == 'rebrickable' %}<dt>Speed</dt><dd>About 1 request a second</dd>
 {% endif %}{% if budget and source == 'brickset' %}<dt>Today’s budget</dt><dd class="mono">{{ budget.used }} of {{ budget.budget }} calls</dd>
 {% elif budget %}<dt>Budget today</dt><dd class="mono">{{ '{:,}'.format(budget.used) }} / {{ '{:,}'.format(budget.budget) }}</dd>{% endif %}

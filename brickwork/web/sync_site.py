@@ -70,6 +70,24 @@ def _day(value):
         return None
 
 
+def _key_checked_day(key, last_success):
+    """The day the key last worked (#686): the newest successful call of the source, shown only when it is not older than the key's save time,
+    so a replaced key does not inherit the old key's day. None when there is no call yet."""
+    from datetime import datetime, timezone
+
+    def moment(value):
+        try:
+            when = datetime.fromisoformat(str(value).replace('Z', '+00:00'))
+        except ValueError:
+            return None
+        return when if when.tzinfo else when.replace(tzinfo=timezone.utc)
+    seen, saved_at = moment(last_success), (key or {}).get('saved_at')
+    saved = moment(saved_at) if saved_at else None
+    if seen is None or (saved_at and (saved is None or seen < saved)):        # a save time that cannot be read hides the day, never shows an old key's
+        return None
+    return _day(last_success)
+
+
 def _runs(db, source):
     """The last runs for the page at rest, newest first, from the sync log; Undo only on the newest pull that was not undone."""
     rows = _log(db, limit=5, source=source)
@@ -100,7 +118,7 @@ def site_page(source):
     return _render(source, screen='site', title=LABEL[source], subtitle='Last run ' + _last_sync(status) if last else 'Not run yet',
                  connected=connected, account=status.get('account'), key_gap=key_gap, key=status['credentials']['key'], budget=budget, what=what, runs=runs,
                  waiting=status.get('waiting') or 0, pulled=pulled, lost_result=result, rule_labels=lost_parts.RULE_LABELS, stamps=stamps,
-                 key_day=_day((budget or {}).get('last_success')))
+                 key_day=_key_checked_day(status['credentials']['key'], (budget or {}).get('last_success')))
 
 
 @_route('get', '/connect', True)

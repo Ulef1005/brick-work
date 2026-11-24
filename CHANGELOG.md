@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **The Sync hub shows your account name, and the key says when it last worked** (#686). A connected Rebrickable or Brickset card shows the username you typed instead of "Linked". The API key line reads "checked 18 Nov", the day of its newest successful call; a replaced key shows no day until it is used. No schema change.
+
 - **A conflict you kept comes back as the same card** (#686). When you choose Keep on a set that changed in both places, the next Rebrickable or Brickset run shows it again as "Changed in both places", with Take and Send offered, until either count changes. Before, it came back as a plain row, and a pull with no ticks through the API could add it. No schema change.
 
 - **`docs/brickwork/pipeline.md` re-checked against the 1.2 code** (#677). Seven corrections, and the page now says what was checked and when.

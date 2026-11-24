@@ -30,7 +30,7 @@
 <div class="sr-grid">
 <section class="sr-card" data-rb-account><h2>Your BrickLink account {{ tag('Connected') if connected else tag('Not connected', true) }}</h2>
 <dl class="sr-kv">
-<dt>Key</dt><dd>{% if not connected %}Not set{% elif key.origin == 'env' %}Set in the environment{% else %}Set{% if key_day %} · last used {{ key_day }}{% endif %}{% endif %}</dd>
+<dt>Key</dt><dd>{% if not connected %}Not set{% elif key.origin == 'env' %}Set in the environment{% else %}Set{% if key_day %} · checked {{ key_day }}{% endif %}{% endif %}</dd>
 {% if budget %}<dt>Today's budget</dt><dd class="mono">{{ budget.used }} of {{ budget.budget }} calls</dd>{% endif %}
 </dl>
 <div class="sr-actions">{% if connected and can_edit %}<form method="post" action="{{ url_for('web.bw_sync_bl_key') }}">{{ csrf() }}<input type="hidden" name="action" value="test"><input type="hidden" name="next" value="site"><button class="bk-btn bk-outline">Test</button></form>{% endif %}

@@ -212,7 +212,7 @@ def bw_sync_hub():
             sites.append(dict(
                 key=source, label=sync.LABELS[source], description=_SITE_DESCRIPTIONS[source],
                 connected=connected, state_tag=_state_tag(status, connected),
-                account='Linked' if connected else 'none', last_sync=_last_sync(status),
+                account=(status.get('account') or 'Linked') if connected else 'none', last_sync=_last_sync(status),      # #686: the account name when it is known
                 action_label='Open' if connected else 'Connect',
                 url=url_for('web.bw_sync_site', source=source) if connected else url_for('web.bw_sync_rb_connect' if source == 'rebrickable' else 'web.bw_sync_bs_connect'),
             ))

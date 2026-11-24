@@ -5,6 +5,7 @@ import json
 import pytest
 
 from brickwork.core import undo
+from brickwork.core.admin import audit
 from brickwork.core.connect import connect
 from brickwork.core.sync import set_fields
 from tests.app4 import Coll
@@ -47,6 +48,21 @@ def _wish_tags(db, wish_id):
     return db.execute(
         "SELECT f.id, f.name FROM wish_flag wf JOIN flag f ON f.id=wf.flag_id WHERE wf.wish_id=? ORDER BY f.id",
         (wish_id,),
+    ).fetchall()
+
+
+def _copy_ratings(db, number):
+    return db.execute(
+        'SELECT c.id, c.rating FROM copy c JOIN item i ON i.id=c.item_id WHERE i.born_key=? AND c.archived_at IS NULL ORDER BY c.id',
+        (number,),
+    ).fetchall()
+
+
+def _wish_priorities(db, number, wish_list='default'):
+    return db.execute(
+        'SELECT w.id, w.priority FROM wish w JOIN item i ON i.id=w.item_id '
+        'WHERE w.wishlist_id=? AND i.born_key=? AND w.color_key=0 AND w.archived_at IS NULL ORDER BY w.id',
+        (wish_list, number),
     ).fetchall()
 
 
@@ -103,7 +119,7 @@ def test_wanted_only_set_uses_wish_and_untargeted_set_counts_in_not_kept(pair):
             '9999-1': {'notes': 'unknown set', 'flags': [1]},
         }, {3: 'Wanted'})
         assert p['unmatched'] == ['9999-1']
-        assert p['not_kept'] == {'notes': 1, 'flags': 2}
+        assert p['not_kept'] == {'notes': 1, 'flags': 2, 'ratings': 0, 'priorities': 0}
         assert [r['table'] for r in p['rows']] == ['wish', 'wish']
         res = set_fields.apply(db, p['id'])
         assert res['counts'] == {'notes': 1, 'flags': 1, 'tags_created': 1, 'renamed': 0}
@@ -425,3 +441,223 @@ def test_the_plan_promises_no_rename_that_a_tag_it_creates_would_block(pair):
         assert later['renames'] == [] and later['summary']['renames'] == 0
         res = set_fields.apply(db, later['id'])
         assert res['counts']['renamed'] == 0 and res['counts']['tags_created'] == 1
+
+
+def test_rating_add_on_two_copies_and_equal_rating_gives_no_row(pair):
+    with db_of(pair) as db:
+        coll = Coll(db)
+        coll.add_copy('1000-1')
+        coll.add_copy('1000-1')
+        coll.add_copy('2070-1')
+        c_eq = _copy_ratings(db, '2070-1')[0][0]
+        db.execute('UPDATE copy SET rating=? WHERE id=?', (4, c_eq))
+        db.commit()
+        p = set_fields.plan(db, {'1000-1': {'notes': '', 'flags': [], 'rating': 5}, '2070-1': {'notes': '', 'flags': [], 'rating': 4}}, {})
+        assert len(p['rows']) == 2
+        assert all(r['kind'] == 'rating' and r['table'] == 'copy' and r['state'] == 'add' and r['tickable'] and r['here'] is None and r['remote'] == 5 for r in p['rows'])
+        assert p['summary'] == {'add': 2, 'conflict': 0, 'notes': 0, 'flags': 0, 'ratings': 2, 'priorities': 0, 'unmatched': 0, 'renames': 0}
+        res = set_fields.apply(db, p['id'])
+        assert res['counts'] == {'notes': 0, 'flags': 0, 'tags_created': 0, 'renamed': 0, 'ratings': 2}
+        assert [r[1] for r in _copy_ratings(db, '1000-1')] == [5, 5]
+        assert _copy_ratings(db, '2070-1')[0][1] == 4
+
+
+def test_rating_conflict_keeps_by_default_and_takes_when_chosen(pair):
+    with db_of(pair) as db:
+        Coll(db).add_copy('1000-1')
+        c1 = _copy_ratings(db, '1000-1')[0][0]
+        db.execute('UPDATE copy SET rating=? WHERE id=?', (2, c1))
+        db.commit()
+        remote = {'1000-1': {'notes': '', 'flags': [], 'rating': 5}}
+        p = set_fields.plan(db, remote, {})
+        assert len(p['rows']) == 1
+        row = p['rows'][0]
+        assert row['key'] == f'rating:copy:{c1}' and row['kind'] == 'rating' and row['table'] == 'copy'
+        assert row['state'] == 'conflict' and row['options'] == ['keep', 'take'] and row['default'] == 'keep' and row['tickable'] is False
+        assert row['here'] == 2 and row['remote'] == 5
+        res1 = set_fields.apply(db, p['id'])
+        assert res1['counts'] == {'notes': 0, 'flags': 0, 'tags_created': 0, 'renamed': 0}
+        assert _copy_ratings(db, '1000-1')[0][1] == 2
+        p2 = set_fields.plan(db, remote, {})
+        res2 = set_fields.apply(db, p2['id'], choices={row['key']: 'take'})
+        assert res2['counts'] == {'notes': 0, 'flags': 0, 'tags_created': 0, 'renamed': 0, 'ratings': 1}
+        assert _copy_ratings(db, '1000-1')[0][1] == 5
+
+
+def test_rating_without_copy_counts_in_not_kept_including_wanted_only_set(pair):
+    with db_of(pair) as db:
+        coll = Coll(db)
+        coll.add_wish(coll.item('sets', '1000-2'), quantity=1)
+        p = set_fields.plan(db, {'1000-2': {'notes': '', 'flags': [], 'rating': 4}, '1000-3': {'notes': '', 'flags': [], 'rating': 3}}, {})
+        assert p['rows'] == []
+        assert p['not_kept'] == {'notes': 0, 'flags': 0, 'ratings': 2, 'priorities': 0}
+
+
+def test_priority_one_gives_no_row_and_seven_adds_to_null_wish_and_missing_wish_counts(pair):
+    with db_of(pair) as db:
+        coll = Coll(db)
+        coll.add_wish(coll.item('sets', '1000-1'), quantity=1)
+        coll.add_wish(coll.item('sets', '1000-2'), quantity=1)
+        coll.add_copy('1000-3')
+        w2 = _wish_priorities(db, '1000-2')[0][0]
+        p = set_fields.plan(db, {
+            '1000-1': {'notes': '', 'flags': [], 'priority': 1},
+            '1000-2': {'notes': '', 'flags': [], 'priority': 7},
+            '1000-3': {'notes': '', 'flags': [], 'priority': 7},
+        }, {})
+        assert len(p['rows']) == 1
+        row = p['rows'][0]
+        assert row['key'] == f'priority:wish:{w2}' and row['kind'] == 'priority' and row['table'] == 'wish'
+        assert row['state'] == 'add' and row['tickable'] is True and row['here'] is None and row['remote'] == 7
+        assert p['not_kept'] == {'notes': 0, 'flags': 0, 'ratings': 0, 'priorities': 1}
+        assert p['summary']['priorities'] == 1
+        res = set_fields.apply(db, p['id'])
+        assert res['counts'] == {'notes': 0, 'flags': 0, 'tags_created': 0, 'renamed': 0, 'priorities': 1}
+        assert _wish_priorities(db, '1000-2')[0][1] == 7
+        assert _wish_priorities(db, '1000-1')[0][1] is None
+
+
+def test_priority_conflict_keeps_by_default_and_takes_when_chosen(pair):
+    with db_of(pair) as db:
+        coll = Coll(db)
+        coll.add_copy('1000-1')
+        coll.add_wish(coll.item('sets', '1000-1'), quantity=1)
+        w1 = _wish_priorities(db, '1000-1')[0][0]
+        db.execute('UPDATE wish SET priority=? WHERE id=?', (3, w1))
+        db.commit()
+        remote = {'1000-1': {'notes': '', 'flags': [], 'priority': 7}}
+        p = set_fields.plan(db, remote, {})
+        assert len(p['rows']) == 1
+        row = p['rows'][0]
+        assert row['key'] == f'priority:wish:{w1}' and row['state'] == 'conflict'
+        assert row['options'] == ['keep', 'take'] and row['default'] == 'keep' and row['tickable'] is False
+        assert row['here'] == 3 and row['remote'] == 7
+        res1 = set_fields.apply(db, p['id'])
+        assert res1['counts'] == {'notes': 0, 'flags': 0, 'tags_created': 0, 'renamed': 0}
+        assert _wish_priorities(db, '1000-1')[0][1] == 3
+        p2 = set_fields.plan(db, remote, {})
+        res2 = set_fields.apply(db, p2['id'], choices={row['key']: 'take'})
+        assert res2['counts'] == {'notes': 0, 'flags': 0, 'tags_created': 0, 'renamed': 0, 'priorities': 1}
+        assert _wish_priorities(db, '1000-1')[0][1] == 7
+
+
+def test_apply_writes_ratings_and_priorities_idempotently_and_undo_restores_and_blocks(pair):
+    with db_of(pair) as db:
+        coll = Coll(db)
+        coll.add_copy('1000-1')
+        coll.add_copy('2070-1')
+        coll.add_wish(coll.item('sets', '1000-2'), quantity=1)
+        c1 = _copy_ratings(db, '1000-1')[0][0]
+        c2 = _copy_ratings(db, '2070-1')[0][0]
+        w2 = _wish_priorities(db, '1000-2')[0][0]
+        db.execute('UPDATE copy SET rating=? WHERE id=?', (2, c2))
+        db.commit()
+        p = set_fields.plan(db, {
+            '1000-1': {'notes': '', 'flags': [], 'rating': 5},
+            '2070-1': {'notes': '', 'flags': [], 'rating': 4},
+            '1000-2': {'notes': '', 'flags': [], 'priority': 7},
+        }, {})
+        res = set_fields.apply(db, p['id'], choices={f'rating:copy:{c2}': 'take'})
+        assert res['already_applied'] is False
+        assert res['counts'] == {'notes': 0, 'flags': 0, 'tags_created': 0, 'renamed': 0, 'ratings': 2, 'priorities': 1}
+        ev = db.execute('SELECT new_value FROM event WHERE id=?', (res['event_id'],)).fetchone()
+        receipt = json.loads(ev[0])
+        assert receipt['ratings'] == [{'id': c1, 'before': None, 'after': 5}, {'id': c2, 'before': 2, 'after': 4}]
+        assert receipt['priorities'] == [{'id': w2, 'before': None, 'after': 7}]
+        assert set_fields.apply(db, p['id']) == {'event_id': res['event_id'], 'already_applied': True, 'counts': res['counts']}
+
+        undo.undo_event(db, res['event_id'])
+        assert _copy_ratings(db, '1000-1')[0][1] is None
+        assert _copy_ratings(db, '2070-1')[0][1] == 2
+        assert _wish_priorities(db, '1000-2')[0][1] is None
+
+        p2 = set_fields.plan(db, {
+            '1000-1': {'notes': '', 'flags': [], 'rating': 5},
+            '1000-2': {'notes': '', 'flags': [], 'priority': 7},
+        }, {})
+        res2 = set_fields.apply(db, p2['id'])
+        db.execute('UPDATE copy SET rating=? WHERE id=?', (1, c1))
+        db.commit()
+        with pytest.raises(ValueError, match='changed since'):
+            undo.undo_event(db, res2['event_id'])
+        assert _copy_ratings(db, '1000-1')[0][1] == 1
+        assert _wish_priorities(db, '1000-2')[0][1] == 7
+
+
+def test_rating_or_priority_changed_after_plan_is_skipped_and_counted(pair):
+    with db_of(pair) as db:
+        coll = Coll(db)
+        coll.add_copy('1000-1')
+        coll.add_wish(coll.item('sets', '1000-2'), quantity=1)
+        c1 = _copy_ratings(db, '1000-1')[0][0]
+        w2 = _wish_priorities(db, '1000-2')[0][0]
+        p = set_fields.plan(db, {'1000-1': {'notes': '', 'flags': [], 'rating': 5}, '1000-2': {'notes': '', 'flags': [], 'priority': 7}}, {})
+        db.execute('UPDATE copy SET rating=? WHERE id=?', (3, c1))
+        db.execute('UPDATE wish SET priority=? WHERE id=?', (2, w2))
+        db.commit()
+        res = set_fields.apply(db, p['id'])
+        assert res['counts'] == {'notes': 0, 'flags': 0, 'tags_created': 0, 'renamed': 0, 'skipped': 2}
+        assert _copy_ratings(db, '1000-1')[0][1] == 3
+        assert _wish_priorities(db, '1000-2')[0][1] == 2
+
+
+def test_older_receipt_without_ratings_and_priorities_keys_still_undoes(pair):
+    with db_of(pair) as db:
+        Coll(db).add_copy('1000-1')
+        p = set_fields.plan(db, {'1000-1': {'notes': 'old note', 'flags': []}}, {})
+        res = set_fields.apply(db, p['id'])
+        ev = db.execute('SELECT id, new_value FROM event WHERE id=?', (res['event_id'],)).fetchone()
+        receipt = json.loads(ev[1])
+        receipt.pop('ratings', None)
+        receipt.pop('priorities', None)
+        audit(db, 'sync:' + p['id'], set_fields.FIELD, None, receipt, via='app', actor=None)    # events are append-only: a second event with the older shape
+        older = db.execute('SELECT last_insert_rowid()').fetchone()[0]
+        db.commit()
+        undo.undo_event(db, older)
+        assert _copies(db, '1000-1')[0][1] is None
+
+
+def test_values_outside_the_stores_ranges_are_not_planned_and_do_not_crash(pair):
+    with db_of(pair) as db:
+        coll = Coll(db)
+        coll.add_copy('1000-1')
+        coll.add_wish(coll.item('sets', '1000-2'), quantity=1)
+        for rating, priority in ((9, 10 ** 6), ('x', 'y'), (True, True), (0, 1), (2.5, 7.0)):
+            p = set_fields.plan(db, {'1000-1': {'notes': '', 'flags': [], 'rating': rating, 'priority': priority},
+                                     '1000-2': {'notes': '', 'flags': [], 'rating': rating, 'priority': priority}}, {})
+            assert [r for r in p['rows'] if r['kind'] in ('rating', 'priority')] == [], (rating, priority)
+            assert p['not_kept']['ratings'] == 0 and p['not_kept']['priorities'] == 0
+
+
+def test_undo_skips_a_target_archived_since_and_still_restores_the_rest(pair):
+    with db_of(pair) as db:
+        coll = Coll(db)
+        coll.add_copy('1000-1')
+        coll.add_copy('2070-1')
+        a, b = _copies(db, '1000-1')[0][0], _copies(db, '2070-1')[0][0]
+        res = set_fields.apply(db, set_fields.plan(db, {'1000-1': {'notes': 'one', 'flags': [], 'rating': 4},
+                                                         '2070-1': {'notes': 'two', 'flags': [], 'rating': 3}}, {})['id'])
+        assert res['counts']['notes'] == 2 and res['counts']['ratings'] == 2
+        db.execute("UPDATE copy SET archived_at='2026-11-24T00:00:00Z' WHERE id=?", (b,))
+        db.commit()
+        undo.undo_event(db, res['event_id'])
+        assert tuple(db.execute('SELECT note, rating FROM copy WHERE id=?', (a,)).fetchone()) == (None, None)
+        assert tuple(db.execute('SELECT note, rating FROM copy WHERE id=?', (b,)).fetchone()) == ('two', 3)      # the archived copy is left as it is
+
+
+def test_undo_records_how_many_archived_targets_it_left_and_handles_a_wish(pair):
+    with db_of(pair) as db:
+        coll = Coll(db)
+        coll.add_copy('1000-1')
+        coll.add_wish(coll.item('sets', '1000-2'), quantity=1)
+        wish = _wishes(db, '1000-2')[0][0]
+        res = set_fields.apply(db, set_fields.plan(db, {'1000-1': {'notes': '', 'flags': [], 'rating': 4},
+                                                         '1000-2': {'notes': 'wish note', 'flags': [], 'priority': 7}}, {})['id'])
+        assert res['counts']['ratings'] == 1 and res['counts']['priorities'] == 1
+        db.execute("UPDATE wish SET archived_at='2026-11-24T00:00:00Z' WHERE id=?", (wish,))
+        db.commit()
+        undone = undo.undo_event(db, res['event_id'])
+        assert tuple(db.execute('SELECT rating FROM copy WHERE archived_at IS NULL').fetchone()) == (None,)
+        assert tuple(db.execute('SELECT note, priority FROM wish WHERE id=?', (wish,)).fetchone()) == ('wish note', 7)
+        payload = json.loads(db.execute('SELECT new_value FROM event WHERE id=?', (undone['undo_event_id'],)).fetchone()[0])
+        assert payload == {'undoes': res['event_id'], 'skipped': 2}                                  # the wish's note and priority

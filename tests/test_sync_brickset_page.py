@@ -569,12 +569,16 @@ def test_the_read_carries_the_notes_the_flags_that_are_on_and_the_flag_labels(cl
     connected(client, pair)
     remote.notes['1000-1'] = 'bought at the fair'
     remote.flags['1000-1'] = {2, 5}
+    remote.ratings['1000-1'] = 4
+    remote.priorities['1000-1'] = 5          # owned only: a leftover priority that must not count
+    remote.priorities['1000-2'] = 7          # wanted: counts
     remote.labels = [{'flagNo': 2, 'label': 'Display'}]
     with db_of(pair) as db:
         reader = adapters.adapter(db, 'brickset', remote)
         fields = reader.fetch({})['fields']
-        assert fields['1000-1'] == dict(notes='bought at the fair', flags=[2, 5])
-        assert fields['1000-4'] == dict(notes='', flags=[])
+        assert fields['1000-1'] == dict(notes='bought at the fair', flags=[2, 5], rating=4, priority=None)     # owned only: no priority counts
+        assert fields['1000-4'] == dict(notes='', flags=[], rating=None, priority=None)                          # rating 0 is no rating
+        assert fields['1000-2']['priority'] == 7 and fields['1000-2']['rating'] is None                          # wanted: the priority counts
         assert reader.flag_labels() == {2: 'Display'}
 
 
@@ -606,3 +610,26 @@ def test_the_flag_labels_read_survives_odd_entries(client, remote, pair):
     remote.labels = [None, {'flagNo': 'x', 'label': 'bad'}, {'label': 'no number'}, {'flagNo': 3, 'label': ' Shelf '}, {'flagNo': 4, 'label': ''}, {'flagNo': 6, 'label': '   '}]
     with db_of(pair) as db:
         assert adapters.adapter(db, 'brickset', remote).flag_labels() == {3: 'Shelf'}
+
+
+def test_the_read_takes_a_rating_and_a_priority_only_inside_their_ranges(client, remote, pair, monkeypatch):
+    connected(client, pair)
+    cases = [(5, 999, 5, 999), (0, 1, None, 1), (6, 1000, None, None), ('3', '12', 3, 12), (None, None, None, None), ('x', '9' * 5000, None, None), (-1, 0, None, None)]
+    for rating, priority, want_rating, want_priority in cases:
+        row = {'number': '1000', 'numberVariant': 1, 'setID': 1001, 'collection': {'qtyOwned': 1, 'rating': rating, 'wantedPriority': priority}}
+        monkeypatch.setattr(adapters.BricksetUser, '_sets', lambda self, filters, row=row: [row] if filters.get('wanted') else [])
+        with db_of(pair) as db:
+            fields = adapters.adapter(db, 'brickset', remote).fetch({})['fields']['1000-1']
+        assert (fields['rating'], fields['priority']) == (want_rating, want_priority), (rating, priority)
+
+
+def test_a_set_that_is_owned_and_wanted_carries_its_note_rating_and_priority_once(client, remote, pair):
+    connected(client, pair)
+    remote.wanted['1000-1'] = 1001           # 1000-1 is owned in the fake: now it is wanted too
+    remote.ratings['1000-1'] = 3
+    remote.priorities['1000-1'] = 9
+    remote.notes['1000-1'] = 'both lists'
+    with db_of(pair) as db:
+        fetched = adapters.adapter(db, 'brickset', remote).fetch({})
+    assert fetched['fields']['1000-1'] == dict(notes='both lists', flags=[], rating=3, priority=9)
+    assert fetched['owned']['1000-1'] == 1 and fetched['wanted']['1000-1'] == 1

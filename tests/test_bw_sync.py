@@ -81,6 +81,8 @@ class Brickset:
         self.notes = {}                           # number -> the user's note at Brickset
         self.flags = {}                           # number -> the flag numbers that are on
         self.labels = []                          # what getUserFlagLabels answers: [{'flagNo': 1, 'label': 'Display'}]
+        self.ratings = {}                         # number -> the user's rating; a set without an entry has 0 (none)
+        self.priorities = {}                      # number -> wantedPriority; a set without an entry has 1, Brickset's default
         self.ids = {'1000-1': 1001, '1000-2': 1002, '2070-1': 1003, '1000-3': 1004, '1000-4': 1005}
         self.calls = []
 
@@ -103,7 +105,8 @@ class Brickset:
 
             def row(number, set_id, qty=None, wanted_qty=None):
                 n, v = number.rsplit('-', 1)
-                collection = {'qtyOwned': qty or 0, 'notes': self.notes.get(number, ''),
+                collection = {'qtyOwned': qty or 0, 'notes': self.notes.get(number, ''), 'rating': self.ratings.get(number, 0),
+                              'wantedPriority': self.priorities.get(number, 1),
                               'flags': [{'flagNo': f, 'value': f in self.flags.get(number, ())} for f in range(1, 9)] if number in self.flags else []}
                 if wanted_qty is not None:
                     collection['qtyWanted'] = wanted_qty

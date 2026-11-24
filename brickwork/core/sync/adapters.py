@@ -315,6 +315,12 @@ def _flag_number(value):
     return int(text) if text.isdecimal() and len(text) <= 2 and 1 <= int(text) <= 8 else None
 
 
+def _whole(value, low, high):
+    """A whole number from low to high out of whatever a reply holds, else None (0 for \"none\" is below `low`, so it reads as None): never an exception."""
+    text = str(value).strip()
+    return int(text) if text.isdecimal() and len(text) <= 4 and low <= int(text) <= high else None
+
+
 class BricksetUser(Brickset):
     """Brickset collection methods: login, checkUserHash, getSets (owned/wanted), setCollection."""
     USER_METHODS = ('login', 'checkUserHash', 'getSets', 'setCollection', 'getUserFlagLabels')
@@ -393,12 +399,17 @@ class BricksetUser(Brickset):
         the same two calls, so it costs nothing extra."""
         owned, wanted, ids, fields = {}, {}, {}, {}
 
-        def note(number, collection):
+        def note(number, collection, wanted=False):
             # `flags` is a list of {flagNo, value} (documented, and an empty list on the live account checked 24.11.); anything else reads as no flags
             listed = collection.get('flags')
             on = [_flag_number(f.get('flagNo')) for f in (listed if isinstance(listed, list) else ())
                   if isinstance(f, dict) and str(f.get('value')).lower() in ('true', '1') and _flag_number(f.get('flagNo'))]
-            fields.setdefault(number, dict(notes=str(collection.get('notes') or ''), flags=sorted(on)))
+            # `rating` (0 = none) and `wantedPriority` (1 = Brickset's default) are ints in `collection`, checked live 24.11.; Brickset keeps a
+            # wantedPriority on every set, so it counts only for a set that is wanted
+            entry = fields.setdefault(number, dict(notes=str(collection.get('notes') or ''), flags=sorted(on),
+                                                   rating=_whole(collection.get('rating'), 1, 5), priority=None))
+            if wanted:
+                entry['priority'] = _whole(collection.get('wantedPriority'), 1, 999)
         for row in self._sets({'owned': 1}):
             number = _number(f"{row['number']}-{row['numberVariant']}")
             collection = row.get('collection') or {}
@@ -410,7 +421,7 @@ class BricksetUser(Brickset):
             collection = row.get('collection') or {}
             wanted[number] = int(collection.get('qtyWanted') or 1)
             ids[number] = int(row['setID'])
-            note(number, collection)
+            note(number, collection, wanted=True)
         return dict(owned=owned, wanted=wanted, ids=ids, names={}, fields=fields)
 
     def flag_labels(self):

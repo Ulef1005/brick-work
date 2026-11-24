@@ -77,6 +77,8 @@ class Layer(showcase.Layer):
 
     It reuses the showcase layer's storage, loose-stock and order steps (which draw from `stockpool`) and replaces everything that names a set."""
 
+    element_ids = True      # the real sets' lines carry Rebrickable's element ids (#676); `dataset.write_dump` writes them
+
     def __init__(self, folder=FOLDER, pictures=True, demo=False):   # does not call the showcase's __init__: its sets are invented ones
         # `demo`: the exported public demo only. The screen gate's frames worlds and the site's pictures build on this layer and pin its numbers, so the demo's own
         # touches (Build Scout stock, no damage on Complete copies, no queued picture job) stay out of them.

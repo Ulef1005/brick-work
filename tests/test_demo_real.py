@@ -149,3 +149,29 @@ def test_the_real_demo_reaches_lot_sorter_build_scout_and_order_missing_parts(tm
     assert list(lots[0].parent.parent.glob('pull/*/index.html'))
     assert re.search(r'Order list [1-9]\d* lines', text('planning/order-missing-parts'))
     assert manifest['skipped'] == {}
+
+
+def test_the_real_sets_carry_rebrickables_element_ids_and_the_demo_still_builds_from_the_repo_alone(tmp_path):
+    """#676: the element ids of the seven sets' part lines (elements.csv, ids only) reach the demo's catalogue; nothing else of that file does."""
+    _, db, catalogue = build(tmp_path)
+    data = json.loads((real.FOLDER / 'sets.json').read_text())
+    lines = [l for e in data['sets'] for l in e['parts_list'] + [x for ls in e['minifigure_parts'].values() for x in ls]]
+    wanted = {str(l['element']) for l in lines if l['element']}
+    assert len(wanted) > 1000
+    stored = {str(r[0]) for r in catalogue.execute('SELECT element_id FROM element')} if catalogue.execute(
+        "SELECT 1 FROM sqlite_master WHERE name='element'").fetchone() else set()
+    assert stored == wanted
+    parts = {str(l['element']): l['part'] for l in lines if l['element']}
+    kept = {r[0]: (r[1], r[2]) for r in catalogue.execute(
+        "SELECT e.element_id, i.born_key, e.design_id FROM element e JOIN item i ON i.id = e.item_id")}
+    assert {k: v[0] for k, v in kept.items()} == parts                       # each element id belongs to its part
+    assert {v[1] for v in kept.values()} == {None}                             # ids only: no design id comes with them
+
+
+def test_the_invented_worlds_keep_an_empty_element_table(tmp_path):
+    (tmp_path / 'plain').mkdir()
+    sets = dataset.load('sets.json', dataset.DATA)
+    assert any(r.get('element') for inventory in dataset.inventories_of(sets).values() for r in inventory['parts'])     # the fixtures do carry ids, so this test can fail
+    dataset.build(tmp_path / 'plain' / 'x.db')
+    catalogue = sqlite3.connect(tmp_path / 'plain' / 'catalogue.db')
+    assert catalogue.execute('SELECT count(*) FROM element').fetchone()[0] == 0

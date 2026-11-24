@@ -19,7 +19,7 @@ Keys come from the environment first (all of a source's variables), then from th
 - Rebrickable: `BW_REBRICKABLE_API_KEY`; Brickset: `BW_BRICKSET_API_KEY`; Brick Owl: `BW_BRICKOWL_API_KEY`
 
 Daily budgets: BrickLink `BW_BRICKLINK_DAILY_BUDGET` (default 4,400, a margin under the account's 5,000), Rebrickable
-`BW_REBRICKABLE_DAILY_BUDGET` (1,000), Brick Owl `BW_BRICKOWL_DAILY_BUDGET` (2,000, the daily quota of its collection and wishlist reads; it can only be lowered), Brickset 100 (only `getSets` is charged; `checkKey` and `getKeyUsageStats` are not). BrickLink and
+`BW_REBRICKABLE_DAILY_BUDGET` (1,000), Brickset 100 (only `getSets` is charged; `checkKey` and `getKeyUsageStats` are not). Brick Owl `BW_BRICKOWL_DAILY_BUDGET` is 2,000, the quota of its collection and wishlist reads. It can only be lowered. BrickLink and
 Rebrickable calls are at least one second apart. The counters are the rows of `source_budget` (source, UTC day, `used`, `blocked_until`,
 `last_attempt_at`), shared with `store4.jobs`, which counts its own calls on the same rows. The Rebrickable catalogue pictures are plain
 downloads and count against nothing. The Brickset `metadata` step batches. One `getSets` call (counted once) asks for up to 500 sets: the job in hand and the other queued or waiting jobs whose next step is Brickset `metadata`. It ends each of those jobs' step with its own result.

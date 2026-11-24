@@ -14,18 +14,19 @@ from brickwork.core.sources.base import Reply
 BRICKLINK_KEYS = ('BW_BRICKLINK_CONSUMER_KEY', 'BW_BRICKLINK_CONSUMER_SECRET', 'BW_BRICKLINK_TOKEN_VALUE', 'BW_BRICKLINK_TOKEN_SECRET')
 REBRICKABLE_KEY = 'BW_REBRICKABLE_API_KEY'
 BRICKSET_KEY = 'BW_BRICKSET_API_KEY'
+BRICKOWL_KEY = 'BW_BRICKOWL_API_KEY'
 
 
 def keyed(monkeypatch, *sources):
-    """Put invented keys of the named sources (`bricklink`, `rebrickable`, `brickset`) in the environment."""
-    names = {'bricklink': BRICKLINK_KEYS, 'rebrickable': (REBRICKABLE_KEY,), 'brickset': (BRICKSET_KEY,)}
+    """Put invented keys of the named sources (`bricklink`, `rebrickable`, `brickset`, `brickowl`) in the environment."""
+    names = {'bricklink': BRICKLINK_KEYS, 'rebrickable': (REBRICKABLE_KEY,), 'brickset': (BRICKSET_KEY,), 'brickowl': (BRICKOWL_KEY,)}
     for source in sources:
         for name in names[source]:
             monkeypatch.setenv(name, 'synthetic-' + name.lower())
 
 
 def unkeyed(monkeypatch):
-    for name in (*BRICKLINK_KEYS, REBRICKABLE_KEY, BRICKSET_KEY, 'BW_SECRET_KEY'):
+    for name in (*BRICKLINK_KEYS, REBRICKABLE_KEY, BRICKSET_KEY, BRICKOWL_KEY, 'BW_SECRET_KEY'):
         monkeypatch.delenv(name, raising=False)
 
 

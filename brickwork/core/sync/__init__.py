@@ -14,6 +14,8 @@ State per source lives in `sync_state` (link, baseline, last pull, last send; th
 after the cutover shows a full comparison and `_changed_both` has nothing to compare against). Plans are JSON files under data/sync/ and
 expire after 24 hours; whether a plan was applied is the `plan` table's (`core/plans.py`)."""
 import json
+import os
+import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
 from uuid import uuid4
@@ -240,8 +242,30 @@ def _save_plan(db, plan):
                 old.unlink()
         except (OSError, ValueError, KeyError):
             old.unlink(missing_ok=True)
-    (root / (plan['id'] + '.json')).write_text(json.dumps(plan))
+    for stray in root.glob('*.tmp'):                      # a write that a crash cut short
+        try:
+            if stray.stat().st_mtime < (now() - timedelta(hours=1)).timestamp():
+                stray.unlink()
+        except OSError:
+            pass
+    for lock in root.glob('*.lock'):                      # a run's lock file (core/sync/run.py) goes with its plan file
+        if not (root / (lock.stem + '.json')).exists():
+            lock.unlink(missing_ok=True)
+    _write_plan(root, plan)
     return plan
+
+
+def _write_plan(root, plan):
+    """Write a plan file whole or not at all: a temporary file in the same folder, then `os.replace`, so a reader or a crash never sees half of it."""
+    text = json.dumps(plan)
+    fd, name = tempfile.mkstemp(dir=root, prefix=plan['id'] + '.', suffix='.tmp')
+    try:
+        with os.fdopen(fd, 'w') as handle:
+            handle.write(text)
+        os.replace(name, root / (plan['id'] + '.json'))
+    except BaseException:
+        Path(name).unlink(missing_ok=True)
+        raise
 
 
 def load_plan(db, plan_id, direction=None):
@@ -259,7 +283,7 @@ def load_plan(db, plan_id, direction=None):
 
 
 def _store_plan(db, plan):
-    (_root(db) / (plan['id'] + '.json')).write_text(json.dumps(plan))
+    _write_plan(_root(db), plan)
 
 
 def _fetch(db, source, http):

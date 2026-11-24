@@ -105,9 +105,9 @@
 {{ head(subtitle) }}
 {{ stepbar() }}
 {{ flashes() }}
-{% if list_error %}<p class="bk-banner bk-warning" role="alert">{{ list_error }}</p>{% endif %}
+{% if set_error %}<p class="bk-banner bk-warning" role="alert">{{ set_error }}</p>{% endif %}{% if parts_error and parts_error != set_error %}<p class="bk-banner bk-warning" role="alert">{{ parts_error }}</p>{% endif %}
 {% set owned = link.get('owned') or [] %}{% set chosen_parts = link.get('part_lists') or [] %}
-<form method="post" class="sr-choose" action="{{ url_for('web.bw_sync_rb_choose_save') }}" data-sy-busy>{{ csrf() }}<input type="hidden" name="keep_list_names" value="{{ '1' if keep_names else '0' }}"><input type="hidden" name="lists_read" value="{{ '0' if list_error else '1' }}">
+<form method="post" class="sr-choose" action="{{ url_for('web.bw_sync_rb_choose_save') }}" data-sy-busy>{{ csrf() }}<input type="hidden" name="keep_list_names" value="{{ '1' if keep_names else '0' }}"><input type="hidden" name="set_lists_read" value="{{ '0' if set_error else '1' }}"><input type="hidden" name="part_lists_read" value="{{ '0' if parts_error else '1' }}">
 <div class="sr-cols">
 <div class="sr-col">
 <section class="sr-card" data-rb-owned><h2>Owned sets</h2>{{ segment('owned_dir', 'owned', directions.owned) }}
@@ -183,7 +183,7 @@
 <div class="sr-rowid">{{ tile(r.number) }}<span><b>{{ r.name or 'Name not recorded' }}</b><span>{{ r.number }} · {{ 'Wishlist' if r.kind == 'wanted' else 'Owned' }}{% if r.kept %} · left as it was at the last run{% endif %}</span></span></div>
 <div class="sr-rowdo">{{ tag(r.tag, r.tone in ('dash', 'warning', 'unknown'), r.tone == 'danger') }}<span>{% if r.options %}{{ r.options[0].label }}{% elif r.reason %}{{ r.reason }}{% else %}Keep here{% endif %}</span>{% if r.options and r.reason %}<span class="sr-reason">Not sent: {{ r.reason }}</span>{% endif %}</div>
 {% endif %}</div>{% else %}<p class="bk-text">Nothing differs between the sets picked.</p>{% endfor %}</div></section>
-{% if lost_in or parts %}<div class="sr-cols">
+{% if lost_in or parts or parts_unmatched %}<div class="sr-cols">
 {% if lost_in %}{% set lost = lost_in %}<section class="sr-card sy-lost" data-rb-lost-in data-sy-card aria-labelledby="sy-lost-title"><h2 id="sy-lost-title">Lost Parts <span class="sr-count">{{ lost.sets|length + (lost.unmatched_sets|length if lost.status == 'read' else 0) }}</span></h2>
 {% if lost.status == 'off' %}<p class="sr-lede">Lost Parts are switched off for this run.</p>
 {% elif lost.status == 'failed' %}<p class="bk-banner bk-warning" role="alert">{{ lost.message }}</p>
@@ -257,6 +257,7 @@
 {% if run.applied.events and can_edit and not undone %}<form method="post" action="{{ url_for('web.bw_sync_rb_undo') }}">{{ csrf() }}<input type="hidden" name="event" value="{{ run.applied.events[0] }}"><button class="bk-btn bk-outline">Undo this run</button></form>
 <p class="sr-note">Undo takes back everything this run changed here, in one step. It cannot change what was sent to Rebrickable.</p>{% elif undone %}<p class="sr-note">This run was undone.</p>{% endif %}</section>
 <section class="sr-card" data-rb-there><h2>On Rebrickable {% if sent_total %}{{ tag((sent_total|string) ~ ' sent') }}{% endif %}{% if waiting_total %}{{ tag((waiting_total|string) ~ ' waiting', true) }}{% endif %}{% if failed_total %}{{ tag((failed_total|string) ~ ' failed', true, true) }}{% endif %}{% if not sent_total and not waiting_total and not failed_total %}{{ tag('Nothing sent', true) }}{% endif %}</h2>
+{% if lost_stage.get('unsaved') %}<p class="bk-banner bk-warning" role="alert">Brick Work could not write down how far the Lost Parts send got. Check the Lost Parts on Rebrickable before you send again.</p>{% endif %}
 {% for s in (send, lost_stage) %}{% if s.status == 'failed' %}<p class="bk-banner bk-warning" role="alert">{{ s.message }}</p>{% elif s.get('message') %}<p class="bk-banner bk-warning" role="alert">{{ s.message }}</p>{% endif %}{% endfor %}
 {% for r in failed_rows %}<div class="sr-prow"><div class="sr-rowid">{{ tile(r.number) }}<span><b>{{ r.name or 'Name not recorded' }}</b><span>{{ r.number }}{% if r.options %} · {{ r.options[-1].label|lower }}{% endif %} · {{ r.result.detail or {'paused': 'waiting for the daily budget', 'key_rejected': 'Rebrickable refused the key', 'failed': 'Rebrickable did not answer'}.get(r.result.result, r.result.result) }}</span></span></div>
 {% if can_edit %}<form method="post" action="{{ url_for('web.bw_sync_rb_retry', run_id=run.id) }}" data-sy-busy>{{ csrf() }}<button class="bk-btn bk-outline" data-busy-label="Sending">Retry</button></form>{% endif %}</div>{% endfor %}

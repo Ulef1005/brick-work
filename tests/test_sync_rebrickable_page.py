@@ -2,13 +2,14 @@
 and the Lost Parts rule's move out of Settings. Invented data against fakes of Rebrickable; no network."""
 from contextlib import closing
 import json
+import os
 import re
 
 from bs4 import BeautifulSoup
 from cryptography.fernet import Fernet
 import pytest
 
-from brickwork.core import admin, sync
+from brickwork.core import admin, errors, sync
 from brickwork.core.connect import connect
 from brickwork.core.sources import base
 from brickwork.core.sync import adapters, lost_parts_send
@@ -371,7 +372,7 @@ def test_picking_sets_narrows_the_preview_and_the_run(client, remote, pair):
     assert [a.get_text(strip=True) for a in page.select('.sr-foot a')] == ['Open sync log', 'Done']
     with db_of(pair) as db:
         assert sync_run.picked_ids(sync_run.load(db, run_id)[0]) == {1, 4}
-    assert client.post(f'/workbench/sync/rebrickable/run/{run_id}/pick', data={'csrf_token': csrf, 'item': ['99']}).location.endswith('/result')      # an applied run is not picked again
+    assert client.post(f'/workbench/sync/rebrickable/run/{run_id}/pick', data={'csrf_token': csrf, 'item': ['99']}).location.endswith('/pick')      # an applied run is not picked again
     assert client.get(f'/workbench/sync/rebrickable/run/{run_id}/pick').location.endswith('/result')
 
 
@@ -807,7 +808,7 @@ def test_a_run_that_is_applying_or_was_interrupted_is_not_applied_again(client, 
     for url in ('/preview', '/result'):
         assert client.get(f'/workbench/sync/rebrickable/run/{run_id}' + url).location.endswith('/workbench/sync/rebrickable')
     assert client.get(f'/workbench/sync/rebrickable/run/{run_id}/pick').location.endswith('/result')
-    assert client.post(f'/workbench/sync/rebrickable/run/{run_id}/pick', data={'csrf_token': csrf, 'item': ['1']}).location.endswith('/result')
+    assert client.post(f'/workbench/sync/rebrickable/run/{run_id}/pick', data={'csrf_token': csrf, 'item': ['1']}).location.endswith('/pick')
 
 
 def test_a_lost_parts_send_writes_each_call_into_the_run(client, remote, pair, monkeypatch):
@@ -845,8 +846,8 @@ def test_saving_step_2_after_a_failed_read_of_the_lists_keeps_the_links(client, 
         page = soup(client.get('/workbench/sync/rebrickable/choose'))
     finally:
         adapters.transport = kept_transport
-    assert page.select_one('input[name=lists_read]')['value'] == '0'
-    data = {'csrf_token': csrf, 'lists_read': '0', 'owned_dir': 'into', 'wishlist_dir': 'off', 'parts_dir': 'into', 'lost_dir': 'off', 'wish_list': 'default',
+    assert page.select_one('input[name=set_lists_read]')['value'] == '0'
+    data = {'csrf_token': csrf, 'set_lists_read': '0', 'part_lists_read': '0', 'owned_dir': 'into', 'wishlist_dir': 'off', 'parts_dir': 'into', 'lost_dir': 'off', 'wish_list': 'default',
             'lost_rule': 'everything', 'send_rule': 'per_set', 'start': '0'}               # the form carried no list, no name
     assert client.post('/workbench/sync/rebrickable/choose', data=data).location.endswith('/workbench/sync/rebrickable')
     with db_of(pair) as db:
@@ -854,7 +855,7 @@ def test_saving_step_2_after_a_failed_read_of_the_lists_keeps_the_links(client, 
         assert (kept['owned'], kept['wishlist'], kept['send_to'], kept['part_lists']) == ([1, 2], 9, 1, [31])
         assert sync_run.directions(db) == dict(owned='into', wishlist='off', parts='into', lost='off')
         assert sync_run._saved_names(db) == names and admin.settings(db)['rebrickable_lost_parts_rule'] == 'everything'
-    data['lists_read'] = '1'                                                             # a form that did read them and ticked none clears them
+    data.update(set_lists_read='1', part_lists_read='1')                                 # a form that did read them and ticked none clears them
     client.post('/workbench/sync/rebrickable/choose', data=data)
     with db_of(pair) as db:
         assert sync.status(db, 'rebrickable')['link']['owned'] == []
@@ -995,3 +996,207 @@ def test_a_conflict_that_was_kept_comes_back_unticked(client, remote, pair):
     assert not page.select('[data-rb-conflicts]')                         # the pull reset the baseline: it is a plain row again
     assert not row.select_one('input[name="choice:owned:1"]').has_attr('checked') and 'left as it was at the last run' in row.get_text()
     assert 'choice:owned:1' not in run_data(page)                         # Apply all cannot overwrite it
+
+
+# --- review round 3 ---------------------------------------------------------------------------------------------------
+
+def test_the_needs_key_line_keeps_its_text_and_points_a_rebrickable_key_to_step_1(app4):
+    with app4.test_request_context('/'):
+        template = app4.jinja_env.from_string("{% from 'web/toni/web/bw_first_run.html' import needs_key %}{{ needs_key(source, 'Name') }}")
+        bricklink = BeautifulSoup(template.render(source='bricklink'), 'html.parser').a
+        rebrickable = BeautifulSoup(template.render(source='rebrickable'), 'html.parser').a
+    assert bricklink.get_text(strip=True) == 'Catalogues & keys' and '&amp;' not in bricklink.get_text() and bricklink['href'].endswith('/manage/catalogues')
+    assert rebrickable.get_text(strip=True) == 'Add it on the Rebrickable page' and rebrickable['href'].endswith('/workbench/sync/rebrickable/connect')
+
+
+def test_a_bad_run_id_makes_no_lock_file_and_no_500(client, remote, pair):
+    csrf = connected(client, pair)
+    run_id = start(client, csrf)
+    with db_of(pair) as db:
+        root = sync._root(db)
+    before = sorted(p.name for p in root.iterdir())
+    for bad in ('x', 'a' * 31, 'a' * 33, '%C2%B2' * 16, '..' + 'b' * 30):
+        for path in ('run', 'pick', 'retry'):
+            response = client.post(f'/workbench/sync/rebrickable/run/{bad}/{path}', data={'csrf_token': csrf, 'item': ['1']})
+            assert response.status_code in (302, 404), (bad, path, response.status_code)
+        assert client.get(f'/workbench/sync/rebrickable/run/{bad}/preview').status_code in (302, 404)
+    assert sorted(p.name for p in root.iterdir()) == before
+    with db_of(pair) as db:
+        for call in (lambda: sync_run.apply(db, 'x', None), lambda: sync_run.save_pick(db, 'x', []), lambda: sync_run.retry_send(db, 'x')):
+            with pytest.raises(errors.ValidationFailed, match='Unknown sync plan'):
+                call()
+    assert run_id in ''.join(before)
+
+
+def test_a_pick_cannot_overwrite_a_run_that_is_applying_or_applied(client, remote, pair):
+    csrf = connected(client, pair)
+    run_id = start(client, csrf)
+    with db_of(pair) as db:
+        sync_run.save_pick(db, run_id, [1])
+        run = sync_run.load(db, run_id)[0]
+        run['applying'] = '2026-11-24T08:00:00+00:00'
+        sync._store_plan(db, run)
+        with pytest.raises(errors.ValidationFailed, match='already run'):
+            sync_run.save_pick(db, run_id, [1, 2])
+        assert sync_run.load(db, run_id)[0]['picked'] == [1]
+    response = client.post(f'/workbench/sync/rebrickable/run/{run_id}/pick', data={'csrf_token': csrf, 'item': ['1', '2']})
+    assert response.status_code == 302 and soup(client.get(response.location, follow_redirects=True)).select_one('.bk-banner')
+    with db_of(pair) as db:
+        assert sync_run.load(db, run_id)[0]['picked'] == [1]
+
+
+def test_a_plan_file_is_written_whole_and_old_lock_files_are_pruned(client, remote, pair):
+    csrf = connected(client, pair)
+    run_id = start(client, csrf)
+    with db_of(pair) as db:
+        root = sync._root(db)
+        before = (root / (run_id + '.json')).read_text()
+        with pytest.raises(TypeError):
+            sync._store_plan(db, {'id': run_id, 'broken': object()})            # json.dumps fails: the old file stays, no temporary file is left
+        assert (root / (run_id + '.json')).read_text() == before and not list(root.glob('*.tmp'))
+        stray = root / ('c' * 32 + '.tmp')
+        stray.write_text('half')
+        os.utime(stray, (0, 0))
+        orphan = root / ('d' * 32 + '.lock')
+        orphan.write_text('')
+        kept = root / (run_id + '.lock')
+        kept.write_text('')
+        sync._save_plan(db, dict(id='e' * 32, created_at=base.now().isoformat(), direction='pull', source='rebrickable'))
+        assert not orphan.exists() and not stray.exists() and kept.exists() and (root / (run_id + '.json')).exists()
+
+
+def test_a_kept_difference_with_a_missing_baseline_side_comes_back_unticked(client, remote, pair):
+    csrf = connected(client, pair)
+    apply_run(client, csrf, start(client, csrf))                         # baseline: 1000-1 twice, 1000-2 once
+    with db_of(pair) as db:                                              # 1000-2 goes from here (baseline here 1, now none)...
+        db.execute("UPDATE copy SET archived_at='2026-11-20T10:00:00.000Z' WHERE item_id=(SELECT id FROM item WHERE born_key='1000-2')")
+        db.commit()
+    remote.lists[1]['1000-2'] = 4                                        # ...while Rebrickable raised it: changed in both places, here is 0
+    remote.lists[2]['1000-4'] = 1
+    run_id = start(client, csrf)
+    page = preview_of(client, run_id)
+    assert page.select_one('[data-rb-conflicts] input[checked]')['value'] == 'keep'
+    apply_run(client, csrf, run_id, page)                                # something else comes in, the baseline is reset, 1000-2 kept at 0 here
+    page = preview_of(client, start(client, csrf))
+    row = rows_of(page)['1000-2']
+    assert not row.select_one('input[name="choice:owned:2"]').has_attr('checked') and 'left as it was at the last run' in row.get_text()
+    assert 'choice:owned:2' not in run_data(page)
+    # a set only on Rebrickable that was left unticked (no baseline here for it) comes back unticked as well
+    remote.lists[2]['1000-3'] = 1
+    remote.lists[2]['1000-4'] = 2                                         # another set has more there: the pull has something to apply, 1000-3 is left out
+    run_id = start(client, csrf)
+    page = preview_of(client, run_id)
+    assert rows_of(page)['1000-3'].select_one('input[type=checkbox]').has_attr('checked')              # new: ticked
+    data = run_data(page)
+    data.pop('choice:owned:3')
+    client.post(f'/workbench/sync/rebrickable/run/{run_id}/run', data={'csrf_token': csrf, **data})
+    assert copies(pair, '1000-4') == 2
+    page = preview_of(client, start(client, csrf))
+    row = rows_of(page)['1000-3']
+    assert not row.select_one('input[type=checkbox]').has_attr('checked') and 'left as it was at the last run' in row.get_text()
+
+
+def test_a_refused_key_makes_what_was_not_tried_failed_not_waiting(client, remote, pair, monkeypatch):
+    csrf = connected(client, pair)
+    with db_of(pair) as db:
+        copy_of(db, '1000-1', marks=[('3001', '4', 3), ('3023', '15', 2)])
+    remote.lists[1] = {'1000-1': 1}
+    remote.lost = [raw('1000-1', '3001', 4, 1, number=1), raw('1000-1', '3023', 15, 1, number=2)]
+    run_id = start(client, csrf, lost_dir='to', owned_dir='off', wishlist_dir='off')
+
+    def refuse(self, inv, quantity):
+        raise base.KeyRejected('Rebrickable refused the user token')
+    monkeypatch.setattr(adapters.RebrickableUser, 'lost_part_add', refuse)
+    keys = [lost_parts_send.row_key('1000-1', '3001', 4, False), lost_parts_send.row_key('1000-1', '3023', 15, False)]
+    apply_run(client, csrf, run_id, lostsend=keys)
+    with db_of(pair) as db:
+        stage = sync_run.load(db, run_id)[0]['stages']['lost_out']
+    assert stage['counts'] == dict(sent=0, failed=2, waiting=0) and 'rejected the key' in stage['message']
+    page = soup(client.get(f'/workbench/sync/rebrickable/run/{run_id}/result'))
+    assert [t.get_text(strip=True) for t in page.select('[data-rb-there] .sr-tag')] == ['2 failed'] and 'waiting' not in page.select_one('.sr-head p').get_text()
+
+
+def test_the_loose_stock_card_shows_for_unmatched_rows_alone_and_the_into_tab_counts_what_it_shows(client, remote, pair):
+    csrf = connected(client, pair)
+    remote.part_lists[33] = ('Odd bin', [('99999', 4, 1)])
+    page = preview_of(client, start(client, csrf, parts_dir='into', part_list=['33'], owned_dir='off', wishlist_dir='off'))
+    card = page.select_one('[data-rb-parts]')
+    assert card and 'No part with this number here' in card.get_text() and not card.select('input[name=part]')
+    with db_of(pair) as db:
+        copy_of(db, '1000-1')
+    remote.lost = [raw('1000-1', '3001', 4, 1, number=1)]
+    remote.lists[1] = {'1000-1': 1}
+    page = preview_of(client, start(client, csrf, parts_dir='into', part_list=['31'], lost_dir='into', owned_dir='into', wishlist_dir='off'))
+    tabs = {b['data-sy-tab']: b.select_one('.mono').get_text() for b in page.select('.sr-tabs button')}
+    rows = [r for r in page.select('[data-sy-row]') if r['data-state'] == 'into' or 'into' in r.get('data-also', '').split()]
+    assert tabs['into'] == str(len(rows)) and int(tabs['into']) >= 3        # the set rows, the Lost Parts coming in and the two loose rows
+
+
+def test_a_local_write_failure_after_a_sent_part_keeps_the_result_and_says_so(client, remote, pair, monkeypatch):
+    csrf = connected(client, pair)
+    with db_of(pair) as db:
+        copy_of(db, '1000-1', marks=[('3001', '4', 3)])
+    remote.lists[1] = {'1000-1': 1}
+    remote.lost = [raw('1000-1', '3001', 4, 1, number=1)]
+    run_id = start(client, csrf, lost_dir='to', owned_dir='off', wishlist_dir='off', send_rule='per_part')
+    real, state = sync._store_plan, {'failed': False}
+
+    def flaky(db, plan):
+        if plan.get('lost_calls') and not state['failed']:
+            state['failed'] = True
+            raise OSError('/secret/path/disk full')
+        return real(db, plan)
+    monkeypatch.setattr(sync, '_store_plan', flaky)
+    apply_run(client, csrf, run_id, lostsend=[lost_parts_send.row_key('1000-1', '3001', 4, False)])
+    assert state['failed'] and [w[0] for w in remote.lost_writes] == ['POST', 'DELETE']       # the replaced row was still removed after the failed write
+    with db_of(pair) as db:
+        stage = sync_run.load(db, run_id)[0]['stages']['lost_out']
+    assert stage['counts'] == dict(sent=1, failed=0, waiting=0) and stage['unsaved'] is True
+    page = soup(client.get(f'/workbench/sync/rebrickable/run/{run_id}/result'))
+    assert 'could not write down how far the Lost Parts send got' in page.select_one('[data-rb-there]').get_text()
+    assert '/secret/path' not in page.decode()
+
+
+def test_step_2_keeps_the_side_whose_lists_could_not_be_read(client, remote, pair):
+    csrf = connected(client, pair)
+    choose(client, csrf, start='0', parts_dir='into', part_list=['31'])
+    page_ok = soup(client.get('/workbench/sync/rebrickable/choose'))
+    assert [page_ok.select_one(f'input[name={n}]')['value'] for n in ('set_lists_read', 'part_lists_read')] == ['1', '1']
+    kept = adapters.transport
+
+    def parts_down(request):
+        if '/partlists/' in request.full_url:
+            raise OSError('offline')
+        return kept(request)
+    adapters.transport = parts_down
+    try:
+        page = soup(client.get('/workbench/sync/rebrickable/choose'))
+    finally:
+        adapters.transport = kept
+    assert [page.select_one(f'input[name={n}]')['value'] for n in ('set_lists_read', 'part_lists_read')] == ['1', '0']
+    data = {'csrf_token': csrf, 'set_lists_read': '1', 'part_lists_read': '0', 'owned_dir': 'both', 'wishlist_dir': 'both', 'parts_dir': 'into', 'lost_dir': 'off',
+            'wish_list': 'default', 'lost_rule': 'per_part', 'send_rule': 'add_only', 'owned': ['1'], 'wishlist': '9', 'send_to': '1', 'list_name:set:1': 'Main collection',
+            'start': '0'}
+    client.post('/workbench/sync/rebrickable/choose', data=data)
+    with db_of(pair) as db:
+        link = sync.status(db, 'rebrickable')['link']
+        assert link['owned'] == [1] and link['part_lists'] == [31]               # the set lists were read: saved as ticked; the part lists were not: kept
+        assert sync_run._saved_names(db).get('part:31') == 'Bulk bin'
+    data.update(set_lists_read='0', part_lists_read='1')
+    data.pop('owned')
+    client.post('/workbench/sync/rebrickable/choose', data=data)
+    with db_of(pair) as db:
+        link = sync.status(db, 'rebrickable')['link']
+        assert link['owned'] == [1] and link['part_lists'] == []                 # now the part lists were read (none ticked), the set lists were not
+
+
+def test_the_result_counts_each_renamed_list_once(client, remote, pair):
+    csrf = connected(client, pair)
+    apply_run(client, csrf, start(client, csrf))                      # list 1 holds two sets: two rows carry its name
+    remote.names = {1: 'Home collection', 2: 'Garage'}
+    run_id = start(client, csrf)
+    apply_run(client, csrf, run_id)
+    text = soup(client.get(f'/workbench/sync/rebrickable/run/{run_id}/result')).select_one('[data-rb-here]').get_text(' ', strip=True)
+    assert '2 list names changed' in text and 'list names changed' in text
+
+

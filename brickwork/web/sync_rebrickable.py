@@ -114,17 +114,20 @@ def bw_sync_rb_key():
 
 
 def _lists(db):
-    """The set lists and part lists of the account, or the reason they could not be read."""
+    """The set lists and the part lists of the account, each with the reason it could not be read (None when it could): `(sets, sets_error, parts, parts_error)`."""
     from ..core import sync
     from ..core.sync import adapters
     from ..core.sources.base import SourceError
-    owned, parts, error = [], [], None
+    sets, parts, sets_error, parts_error = [], [], None, None
     try:
-        owned = sync.lists(db, SOURCE)
+        sets = sync.lists(db, SOURCE)
+    except (SourceError, ValueError, sqlite3.Error) as exc:
+        sets_error = _message(exc, SOURCE)
+    try:
         parts = adapters.adapter(db, SOURCE).part_lists()
     except (SourceError, ValueError, sqlite3.Error) as exc:
-        error = _message(exc, SOURCE)
-    return owned, parts, error
+        parts_error = _message(exc, SOURCE)
+    return sets, sets_error, parts, parts_error
 
 
 @web_page.get('/workbench/sync/rebrickable/choose')
@@ -139,10 +142,10 @@ def bw_sync_rb_choose():
         if not status['credentials']['user']['configured']:
             flash('Connect your Rebrickable account first.', 'warning')
             return redirect(url_for('web.bw_sync_rb_connect'))
-        lists, part_lists, error = _lists(db)
+        lists, sets_error, part_lists, parts_error = _lists(db)
         return _page('web/toni/web/bw_sync_rb.html', screen='choose', title='Rebrickable', subtitle='Choose what to sync, and in which direction. You can change it later.',
                      source=SOURCE, link=status['link'], directions=sync_run.directions(db), segments=sync_run.SEGMENTS, segment_labels=sync_run.SEGMENT_LABELS,
-                     lists=lists, part_lists=part_lists, list_error=error, wish_lists=wishlists.listing(db), keep_names=sync.keep_list_names_on(db, SOURCE),
+                     lists=lists, part_lists=part_lists, set_error=sets_error, parts_error=parts_error, wish_lists=wishlists.listing(db), keep_names=sync.keep_list_names_on(db, SOURCE),
                      lost_rules=lost_parts.RULES, lost_rule=lost_parts.rule(db), send_rules=lost_parts_send.RULES, send_rule=lost_parts_send.send_rule(db),
                      **_steps(2))
 
@@ -167,7 +170,7 @@ def bw_sync_rb_choose_save():
                   owned=owned, wishlist=one('wishlist'), send_to=one('send_to') or (owned[0] if len(owned) == 1 else None),
                   wish_list=form.get('wish_list') or 'default', part_lists=_ids(form.getlist('part_list')), lost_rule=form.get('lost_rule', ''),
                   send_rule=form.get('send_rule', ''), keep_list_names=form.get('keep_list_names') != '0', names=names,
-                  keep_links=form.get('lists_read') == '0')
+                  keep_set_links=form.get('set_lists_read') == '0', keep_part_links=form.get('part_lists_read') == '0')
     try:
         with _db() as db, audit_origin('app'):
             sync_run.save_choices(db, values)
@@ -257,10 +260,7 @@ def bw_sync_rb_pick_save(run_id):
     keep = None if 'keep_present' not in request.form else request.form.getlist('keep_list_names')[-1:] == ['1']   # the hidden 0 comes first: the last value wins
     try:
         with _db() as db, audit_origin('app'):
-            run, _ = sync_run.load(db, run_id)
-            if run.get('applied') or run.get('applying'):
-                return redirect(url_for('web.bw_sync_rb_result', run_id=run_id))
-            sync_run.save_pick(db, run, ids, keep)
+            sync_run.save_pick(db, run_id, ids, keep)
     except (errors.BrickWorkError, *sync_run.FAILURES) as exc:
         flash(_message(exc, SOURCE), 'warning')
         return redirect(url_for('web.bw_sync_rb_pick', run_id=run_id))
@@ -300,7 +300,7 @@ def bw_sync_rb_preview(run_id):
     main = [r for r in rows if r['state'] != 'conflict']
     lost_rows = (len((lost_in or {}).get('sets', ())) + len((lost_in or {}).get('unmatched_sets', ()))) if lost_in and lost_in.get('status') == 'read' else 0
     lost_send_rows = [r for r in (lost_out or {}).get('rows', ())]
-    counts = dict(all=len(rows) + lost_rows + len(lost_send_rows) + len(parts), into=sum(1 for r in rows if r['group'] == 'into'), to=sum(1 for r in rows if r['group'] == 'to') + len(lost_send_rows),
+    counts = dict(all=len(rows) + lost_rows + len(lost_send_rows) + len(parts), into=sum(1 for r in rows if r['group'] == 'into') + lost_rows + len(parts), to=sum(1 for r in rows if r['group'] == 'to') + len(lost_send_rows),
                   both=len(conflicts), lost=lost_rows + len(lost_send_rows), parts=len(parts))
     choosable = sum(1 for r in rows if r['options']) + sum(1 for e in (lost_in or {}).get('sets', ()) if e['state'] == 'pick' or e['preview']['added'] or e['preview']['replaced'] or e['preview']['cleared']) \
         + sum(1 for r in lost_send_rows if r.get('tickable')) + len(parts) + sum(1 for line in changed_lines if set(line['choices']) - {'keep', 'skip'})
@@ -360,12 +360,8 @@ def bw_sync_rb_result(run_id):
         if events:
             undone = bool(db.execute('SELECT 1 FROM event_undo WHERE event_id=?', (events[0],)).fetchone())
         pull = (run['stages'].get('pull') or {})
-        lost_in, list_changes = None, 0
-        if pull.get('event'):
-            lost_in = lost_result(db, pull['event'])
-            row = db.execute("SELECT new_value FROM event WHERE id=? AND entity_kind='sync' AND field='receipt'", (pull['event'],)).fetchone()
-            named = (json.loads(row['new_value']) if row and row['new_value'] else {}).get('lists') or {}
-            list_changes = len(named.get('renamed', ())) + len(named.get('dropped', ()))
+        lost_in = lost_result(db, pull['event']) if pull.get('event') else None
+        list_changes = pull.get('lists_changed', 0)                   # distinct lists renamed or dropped, as the preview names them
     stages = run['stages']
     send = stages.get('send') or {}
     failed_rows = [dict(rows.get(r['key'], {}), result=r) for r in send.get('results', ()) if r['result'] not in ('sent', 'unchanged')]

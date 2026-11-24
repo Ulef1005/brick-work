@@ -25,8 +25,7 @@ def offline(monkeypatch):
 
 @pytest.fixture
 def brickowl_source(coll):
-    # The brickowl source row is not in the schema yet; a later step adds it.
-    coll.sql("INSERT OR IGNORE INTO source VALUES('brickowl','Brick Owl','api',1)")
+    # The brickowl source row comes with the 4.9 step.
     return coll
 
 

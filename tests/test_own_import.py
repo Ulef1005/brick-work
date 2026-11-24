@@ -183,7 +183,7 @@ def test_cli_import_file_reads_without_writing(app4, coll, world, pair, tmp_path
     target.write_bytes(own_export.build(coll.db)['content'])
     before = {t: coll.db.execute(f'SELECT count(*) FROM main.{t}').fetchone()[0] for t in ('copy', 'stock', 'storage')}
     help_text = build_parser().format_help()
-    assert 'Shows what an import would do; it writes nothing yet.' in help_text
+    assert 'with --apply it adds the new rows' in ' '.join(help_text.split())
 
     assert main(['import-file', str(target)]) == 0
     out = capsys.readouterr().out

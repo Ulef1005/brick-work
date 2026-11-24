@@ -1821,6 +1821,54 @@
       "undo_nullable": true
     },
     {
+      "endpoint": "post_imports_brickwork_plan",
+      "event_nullable": true,
+      "if_match": false,
+      "method": "POST",
+      "multipart": true,
+      "path": "/imports/brickwork/plan",
+      "piece": "M.11d",
+      "query": [],
+      "required": false,
+      "schema": {
+        "additionalProperties": false,
+        "properties": {
+          "file": {
+            "format": "binary",
+            "type": "string"
+          },
+          "sections": {
+            "description": "Comma-separated sections to import (places, flags, collection, wishes). All the file holds when absent.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "type": "object"
+      },
+      "statuses": [
+        201
+      ],
+      "undo_nullable": true
+    },
+    {
+      "endpoint": "post_imports_brickwork_by_plan_id_apply",
+      "event_nullable": true,
+      "if_match": false,
+      "method": "POST",
+      "multipart": false,
+      "path": "/imports/brickwork/{plan_id}/apply",
+      "piece": "M.11d",
+      "query": [],
+      "required": false,
+      "schema": null,
+      "statuses": [
+        200
+      ],
+      "undo_nullable": true
+    },
+    {
       "endpoint": "post_identifications",
       "event_nullable": true,
       "if_match": false,

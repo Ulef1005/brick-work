@@ -118,9 +118,10 @@ def build_parser():
     sub.add_argument('--sections', help='comma-separated sections: places, flags, collection, wishes')
     sub.add_argument('--output', help='output zip file path')
     sub = parser(commands, 'import-file', 'collection_import_file',
-                 help='Shows what an import would do; it writes nothing yet.',
-                 description='Shows what an import would do; it writes nothing yet.')
+                 help='Shows what an import would do; with --apply it adds the new rows.',
+                 description='Shows what an import would do and writes nothing. With --apply it adds the rows that are new; Undo takes them back.')
     sub.add_argument('file', help='Brick Work export zip file')
+    sub.add_argument('--apply', action='store_true', help='add the new rows (as one undoable event)')
     sub.add_argument('--sections', help='comma-separated sections: places, flags, collection, wishes')
     return root
 
@@ -262,6 +263,21 @@ def main(argv=None):
                 if source.stat().st_size > own_import.MAX_ZIP_BYTES:
                     raise ValueError('Export file is larger than 50 MB')
                 content = source.read_bytes()
+                if args.get('apply'):
+                    from ..api import read_only
+                    from ..core.sources.base import audit_origin
+                    if read_only():
+                        raise ValueError('Read only instance')
+                    with closing(connect(path)) as db, audit_origin('cli'):
+                        planned = own_import.plan(db, content, sections=args.get('sections'))
+                        done = own_import.apply(db, planned['id'])
+                    summary = dict(event_id=done['event_id'], counts=done['counts'])
+                    if as_json:
+                        print(json.dumps(summary, indent=2))
+                    else:
+                        print(', '.join(f'{v} {k}' for k, v in done['counts'].items() if v) or 'nothing new')
+                        print(f"Undo with POST /events/{done['event_id']}/undo or the Events page.", file=sys.stderr)
+                    return 0
                 with closing(connect(path, read_only=True)) as db:
                     db.execute('BEGIN')
                     result = own_import.plan(db, content, sections=args.get('sections'), store=False)

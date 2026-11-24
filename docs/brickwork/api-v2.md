@@ -217,7 +217,7 @@ What the 60 read operations (M.11b) and the 67 write operations (M.11c, further 
 
 ### 3.1 Summary
 
-213 operations in all (including instruction discovery, confirmed downloads and the instruction links); v1 had 179 operations.
+215 operations in all (including instruction discovery, confirmed downloads and the instruction links); v1 had 179 operations.
 
 | Group | Operations | Pieces |
 |---|---|---|
@@ -243,7 +243,7 @@ What the 60 read operations (M.11b) and the 67 write operations (M.11c, further 
 | Jobs | 7 | M.11d 7 |
 | Sources | 6 | M.11d 6 |
 | Settings | 5 | M.11c 2, M.11d 3 |
-| Admin | 10 | M.11b 1, M.11d 9 |
+| Admin | 12 | M.11b 1, M.11d 11 |
 | Matching | 2 | M.11b 2 |
 | Tokens | 3 | M.11d 3 |
 
@@ -562,6 +562,8 @@ The find tool follows the item convention: provider, kind and key, resolved thro
 | `GET /identifications/{id}` | Identification result. | read | M.11d | same |
 | `GET /identifications/{id}/thumb` | Thumbnail bytes. | read | M.11d | same |
 | `POST /imports/bricktracker` | Upload a BrickTracker app.db (any upstream version, up to 200 MB) and get an import plan. A copy is upgraded with upstream's migrations and compared with this collection; nothing is written to the collection. | admin | M.11d | same |
+| `POST /imports/brickwork/plan` | Upload a Brick Work export zip (up to 50 MB) and get an import plan; nothing is written to the collection. | admin | M.11d | new |
+| `POST /imports/brickwork/{plan_id}/apply` | Apply a Brick Work import plan: rows marked new are written in one transaction. Undo with POST /events/{id}/undo (`admin`). | admin | M.11d | new |
 | `POST /imports/{id}/apply` | Apply an import plan: rows marked add are written in one transaction; locked rows (already imported, duplicate wishes) are always skipped. Undo with POST /events/{id}/undo (`admin`). | admin | M.11d | same |
 | `GET /statistics` | Counts by completeness, theme, storage, place. | read | M.11b | same |
 
@@ -673,6 +675,8 @@ Operations by piece: M.11a 9, M.11b 64, M.11c 71, M.11d 57 (201 in all). The two
 | `GET /api/v2/identifications/{id}/thumb` | M.11d | `brickwork.api2.identifications.get_identifications_by_id_thumb` |
 | `GET /api/v2/images/{id}/content` | M.11b | `brickwork.api2.item_views.get_images_by_id_content` |
 | `POST /api/v2/imports/bricktracker` | M.11d | `brickwork.api2.sync.post_imports_bricktracker` |
+| `POST /api/v2/imports/brickwork/plan` | M.11d | `brickwork.api2.sync.post_imports_brickwork_plan` |
+| `POST /api/v2/imports/brickwork/{plan_id}/apply` | M.11d | `brickwork.api2.sync.post_imports_brickwork_by_plan_id_apply` |
 | `POST /api/v2/imports/{id}/apply` | M.11d | `brickwork.api2.sync.post_imports_by_id_apply` |
 | `GET /api/v2/instruction-files` | M.11b | `brickwork.api2.instructions.get_instruction_files` |
 | `POST /api/v2/instruction-files` | M.11c | `brickwork.api2.write_where.post_instruction_files` |

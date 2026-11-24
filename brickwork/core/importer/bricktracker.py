@@ -34,6 +34,7 @@ from ..currency import configured_currency
 from ..sources.base import now
 from ..transaction import transaction
 from . import bricktracker_upgrade
+from .shared import flag_ids, line_digest, mark_lines, norm, used  # noqa: F401 — shared with the own-file import
 
 PLAN_TTL = timedelta(hours=24)
 KINDS = ('copy', 'stock', 'lot', 'wish')
@@ -246,10 +247,6 @@ def _cleanup(root):
             shutil.rmtree(work, ignore_errors=True)
 
 
-def _norm(text):
-    return ' '.join(str(text or '').casefold().split())
-
-
 def _imported(db):
     """BrickTracker ids an earlier, not undone import into this collection placed."""
     found = set()
@@ -264,7 +261,7 @@ def _plan_rows(db, data):
     done = _imported(db)
     live_copies = {r[0] for r in db.execute('SELECT DISTINCT item_id FROM main.copy WHERE archived_at IS NULL')}
     live_stock = {(r['item_id'], r['color_id']) for r in db.execute('SELECT item_id, color_id FROM main.stock WHERE archived_at IS NULL')}
-    live_lots = {_norm(r[0]) for r in db.execute('SELECT name FROM main.lot WHERE archived_at IS NULL')}
+    live_lots = {norm(r[0]) for r in db.execute('SELECT name FROM main.lot WHERE archived_at IS NULL')}
     live_wishes = {(r['item_id'], r['color_id']) for r in db.execute("SELECT item_id, color_id FROM main.wish WHERE archived_at IS NULL AND wishlist_id='default'")}
     rows, kinds = [], data['kinds']
 
@@ -280,7 +277,7 @@ def _plan_rows(db, data):
         state = 'imported' if s['id'] in done else 'duplicate' if (s['item'], s['colour']) in live_stock else 'new'
         add(s['id'], 'stock', described['name'], described['born_key'], state, quantity=s['quantity'], color_id=s['colour'])
     for lot in data['lots']:
-        state = 'imported' if lot['id'] in done else 'duplicate' if _norm(lot['name']) in live_lots else 'new'
+        state = 'imported' if lot['id'] in done else 'duplicate' if norm(lot['name']) in live_lots else 'new'
         add(lot['id'], 'lot', lot['name'] or lot['id'], None, state)
     for w in data['wishes']:
         described = kinds[w['item']]
@@ -292,13 +289,13 @@ def _plan_rows(db, data):
 
 def _summary(data, rows, db):
     def live(table):
-        return {_norm(r[0]) for r in db.execute(f'SELECT name FROM main.{table} WHERE archived_at IS NULL')}
+        return {norm(r[0]) for r in db.execute(f'SELECT name FROM main.{table} WHERE archived_at IS NULL')}
     out = {kind: {state: sum(1 for r in rows if r['kind'] == kind and r['state'] == state) for state in ('new', 'duplicate', 'imported')} for kind in KINDS}
     for name, wanted, table in (('storages', data['storages'], 'storage'), ('purchase_locations', data['places'], 'place')):
         known = live(table)
-        out[name] = dict(new=sum(_norm(n) not in known for n in wanted), reused=sum(_norm(n) in known for n in wanted))
-    known = {(_norm(r['name']), r['kind']) for r in db.execute('SELECT name, kind FROM main.flag WHERE archived_at IS NULL')}
-    out['flags'] = dict(new=sum((_norm(n), k) not in known for k, n, _ in data['flags']), reused=sum((_norm(n), k) in known for k, n, _ in data['flags']))
+        out[name] = dict(new=sum(norm(n) not in known for n in wanted), reused=sum(norm(n) in known for n in wanted))
+    known = {(norm(r['name']), r['kind']) for r in db.execute('SELECT name, kind FROM main.flag WHERE archived_at IS NULL')}
+    out['flags'] = dict(new=sum((norm(n), k) not in known for k, n, _ in data['flags']), reused=sum((norm(n), k) in known for k, n, _ in data['flags']))
     out['marks'] = sum(len(c['marks']) for c in data['copies']) + sum(len(s.get('marks') or ()) for s in data['stock'])
     out['unplaced'] = len(data['unplaced'])
     return out
@@ -361,11 +358,11 @@ def _decide(meta, decisions):
 
 def _named(db, table, names, kind, receipt, field, stamp, **extra):
     """The id per name: the live row of that name (and kind) is reused, else one is made (and recorded for Undo)."""
-    known = {(_norm(r['name']), r['kind'] if kind else None): r['id'] for r in
+    known = {(norm(r['name']), r['kind'] if kind else None): r['id'] for r in
              db.execute(f'SELECT id, name{", kind" if kind else ""} FROM main.{table} WHERE archived_at IS NULL')}
     out = {}
     for name in names:
-        key = (_norm(name), kind)
+        key = (norm(name), kind)
         if key not in known:
             identifier = uuid4().hex
             columns = dict(id=identifier, name=name, created_at=stamp, **({'kind': kind} if kind else {}), **extra)
@@ -375,35 +372,6 @@ def _named(db, table, names, kind, receipt, field, stamp, **extra):
             known[key] = identifier
         out[name] = known[key]
     return out
-
-
-def _mark(db, table, owner, marks):
-    """Put BrickTracker's marks on the lines they name (a copy's, or a loose figure's). Returns the marks with no such line."""
-    lost = []
-    for m in marks:
-        if table == 'copy_part':
-            scope = 'AND copy_figure_id IS NULL' if m['figure'] is None else 'AND copy_figure_id=(SELECT id FROM main.copy_figure WHERE copy_id=? AND item_id=? AND retired_at IS NULL)'
-            args = (owner, m['part'], m['colour'], m['spare']) + (() if m['figure'] is None else (owner, m['figure']))
-            row = db.execute(f'SELECT id, quantity FROM main.copy_part WHERE copy_id=? AND item_id=? AND color_id=? AND is_spare=? AND retired_at IS NULL {scope}', args).fetchone()
-        else:
-            row = db.execute('SELECT id, quantity FROM main.stock_part WHERE stock_id=? AND item_id=? AND color_id=? AND is_spare=? AND retired_at IS NULL',
-                             (owner, m['part'], m['colour'], m['spare'])).fetchone()
-        if row is None:
-            lost.append(m)
-            continue
-        db.execute(f'UPDATE main.{table} SET missing=?, damaged=?, checked=? WHERE id=?',
-                   (min(m['missing'], row['quantity']), min(m['damaged'], row['quantity']), m['checked'], row['id']))
-    return lost
-
-
-def _line_digest(db, copy_id):
-    rows = [list(r) for r in db.execute('SELECT id, missing, damaged, checked, retired_at FROM main.copy_part WHERE copy_id=? ORDER BY id', (copy_id,))]
-    rows += [list(r) for r in db.execute('SELECT id, missing, retired_at FROM main.copy_figure WHERE copy_id=? ORDER BY id', (copy_id,))]
-    return json.dumps(rows)
-
-
-def _flag_ids(db, copy_id):
-    return sorted(r[0] for r in db.execute('SELECT flag_id FROM main.copy_flag WHERE copy_id=?', (copy_id,)))
 
 
 def _finish_stock(db, change, entry, places, currency):
@@ -449,7 +417,7 @@ def apply(db, plan_id, decisions=None, *, queue=True):
         for kind, name, shown in data['flags']:
             flags[kind, name] = _named(db, 'flag', [name], kind, receipt, 'flags', stamp, shown_on_grid=int(bool(shown)))[name]
         lot_map = {}
-        live_lots = {_norm(r['name']): r['id'] for r in db.execute('SELECT id, name FROM main.lot WHERE archived_at IS NULL')}
+        live_lots = {norm(r['name']): r['id'] for r in db.execute('SELECT id, name FROM main.lot WHERE archived_at IS NULL')}
         for lot in data['lots']:
             if actions.get('lot:' + lot['id']) == 'add':
                 identifier = uuid4().hex
@@ -461,8 +429,8 @@ def apply(db, plan_id, decisions=None, *, queue=True):
                 receipt['lots'].append(identifier)
                 receipt['origin'][lot['id']] = identifier
                 lot_map[lot['id']] = identifier
-            elif _norm(lot['name']) in live_lots:
-                lot_map[lot['id']] = live_lots[_norm(lot['name'])]
+            elif norm(lot['name']) in live_lots:
+                lot_map[lot['id']] = live_lots[norm(lot['name'])]
         touched = set()
 
         def flag_rows(table, column, row_id, names):
@@ -490,7 +458,7 @@ def apply(db, plan_id, decisions=None, *, queue=True):
                        (storages.get(entry['storage']), places.get(entry['place']), entry['date'], entry['price'],
                         currency if entry['price'] is not None else None, copy_id))
             flag_rows('copy_flag', 'copy_id', copy_id, entry['flags'])
-            for m in _mark(db, 'copy_part', copy_id, entry['marks']):
+            for m in mark_lines(db, 'copy_part', copy_id, entry['marks']):
                 receipt['unplaced_marks'].append(dict(of=entry['id'], part=m['part'], colour=m['colour'], reason="The copy's part list has no such line"))
             if any(name == CHECKED for _, name in entry['flags']) or any(m['missing'] or m['damaged'] for m in entry['marks']):
                 db.execute("UPDATE main.copy SET completeness_source='derived' WHERE id=? AND completeness_source IS NULL", (copy_id,))
@@ -500,7 +468,7 @@ def apply(db, plan_id, decisions=None, *, queue=True):
             receipt['copies'].append(copy_id)
             receipt['origin'][entry['id']] = copy_id
             receipt['guards'][copy_id] = dict(row=dict(db.execute('SELECT * FROM main.copy WHERE id=?', (copy_id,)).fetchone()),
-                                              lines=_line_digest(db, copy_id), flags=_flag_ids(db, copy_id))
+                                              lines=line_digest(db, copy_id), flags=flag_ids(db, copy_id))
             if waiting:
                 receipt['pending'].append(dict(waiting, copy_id=copy_id))
         for entry in data['stock']:
@@ -513,7 +481,7 @@ def apply(db, plan_id, decisions=None, *, queue=True):
             _finish_stock(db, change, entry, places, currency)
             flag_rows('stock_flag', 'stock_id', change['id'], entry['flags'])
             if change['created'] and entry.get('marks'):
-                for m in _mark(db, 'stock_part', change['id'], entry['marks']):
+                for m in mark_lines(db, 'stock_part', change['id'], entry['marks']):
                     receipt['unplaced_marks'].append(dict(of=entry['id'], part=m['part'], colour=m['colour'], reason="The figure's part list has no such line"))
                 summary = db.execute('SELECT sum(missing), sum(damaged), min(checked) FROM main.stock_part WHERE stock_id=? AND retired_at IS NULL', (change['id'],)).fetchone()
                 db.execute('UPDATE main.stock SET missing=?, damaged=?, checked=? WHERE id=?', (*summary, change['id']))
@@ -551,14 +519,13 @@ def apply(db, plan_id, decisions=None, *, queue=True):
 
 # ---------- undo ----------
 
-def _used(db, sql, ident):
-    return db.execute(sql, (ident,)).fetchone() is not None
-
-
 def _undo_import(db, event, via, actor):
     """Reverse one import exactly: archive the copies, stock, wishes, lots, places and flags it made (taking quantities back off merged
     stock). Refused whole when anything it made changed since (undo the later change first)."""
     r = json.loads(event['new_value'])
+    if r.get('source') == 'brickwork_export':
+        from .. import own_import
+        return own_import.undo_receipt(db, event, via, actor)
     stamp = store_now()
     changed = 'Something from this import has changed since · undo the later change first'
     for entry in r['wishes']:
@@ -570,7 +537,7 @@ def _undo_import(db, event, via, actor):
         row = db.execute('SELECT * FROM main.copy WHERE id=?', (copy_id,)).fetchone()
         if row is None:
             raise ValueError(changed)
-        if row['archived_at'] is None and (dict(row) != as_current('copy', guard['row']) or _line_digest(db, copy_id) != guard['lines'] or _flag_ids(db, copy_id) != guard['flags']
+        if row['archived_at'] is None and (dict(row) != as_current('copy', guard['row']) or line_digest(db, copy_id) != guard['lines'] or flag_ids(db, copy_id) != guard['flags']
                                            or any(db.execute(sql, (copy_id,)).fetchone() for sql in (
                                                'SELECT 1 FROM main.part_check WHERE copy_id=? LIMIT 1', 'SELECT 1 FROM main.stock_transfer WHERE copy_id=? LIMIT 1',
                                                'SELECT 1 FROM main.photo WHERE copy_id=? AND archived_at IS NULL LIMIT 1', 'SELECT 1 FROM main.allocation WHERE copy_id=? LIMIT 1'))):
@@ -596,14 +563,14 @@ def _undo_import(db, event, via, actor):
         db.execute('UPDATE main.copy SET archived_at=?, updated_at=? WHERE id=?', (stamp, stamp, copy_id))
         audit(db, 'copy:' + copy_id, 'archived_at', None, stamp, via=via, actor=actor)
     for lot in r['lots']:
-        if not _used(db, 'SELECT 1 FROM main.stock WHERE lot_id=? AND archived_at IS NULL LIMIT 1', lot):
+        if not used(db, 'SELECT 1 FROM main.stock WHERE lot_id=? AND archived_at IS NULL LIMIT 1', lot):
             db.execute('UPDATE main.lot SET archived_at=?, updated_at=? WHERE id=?', (stamp, stamp, lot))
     for table, ids in (('storage', r['storages']), ('place', r['places'])):
         for ident in ids:
-            if not any(_used(db, f'SELECT 1 FROM main.{t} WHERE {table}_id=? AND archived_at IS NULL LIMIT 1', ident) for t in ('copy', 'stock', 'lot')):
+            if not any(used(db, f'SELECT 1 FROM main.{t} WHERE {table}_id=? AND archived_at IS NULL LIMIT 1', ident) for t in ('copy', 'stock', 'lot')):
                 db.execute(f'UPDATE main.{table} SET archived_at=? WHERE id=?', (stamp, ident))
     for ident in r['flags']:
-        if not any(_used(db, sql, ident) for sql in (
+        if not any(used(db, sql, ident) for sql in (
                 'SELECT 1 FROM main.copy_flag f JOIN main.copy c ON c.id=f.copy_id WHERE f.flag_id=? AND c.archived_at IS NULL LIMIT 1',
                 'SELECT 1 FROM main.stock_flag f JOIN main.stock c ON c.id=f.stock_id WHERE f.flag_id=? AND c.archived_at IS NULL LIMIT 1',
                 'SELECT 1 FROM main.wish_flag f JOIN main.wish c ON c.id=f.wish_id WHERE f.flag_id=? AND c.archived_at IS NULL LIMIT 1')):

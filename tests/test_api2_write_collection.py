@@ -584,3 +584,17 @@ def test_a_create_that_fails_on_a_later_field_adds_nothing(v2, world, pair):
     wish = write(v2, '/wishes', body={'item': {'kind': 'set', 'key': '1000-1'}, 'max_price_currency': 'USD', 'decision': 'another'})
     assert wish.status_code == 422 and 'price' in wish.json['detail']
     assert digest(pair) == before and len(events(pair)) == count
+
+
+def test_a_rating_and_a_priority_are_written_read_and_checked(v2, world):
+    copy_path, wish_path = f'/copies/{world.copy_a}', f'/wishes/{world.wish_part}'
+    saved = write(v2, copy_path, 'patch', {'rating': 4})
+    validate(saved, 'patch_copies_by_id')
+    assert saved.json['data']['rating'] == 4 and call(v2, copy_path).json['data']['rating'] == 4
+    saved = write(v2, wish_path, 'patch', {'priority': 2})
+    validate(saved, 'patch_wishes_by_id')
+    assert saved.json['data']['priority'] == 2
+    assert write(v2, copy_path, 'patch', {'rating': None}).json['data']['rating'] is None
+    for bad in (0, 6, 'high', True):
+        assert write(v2, copy_path, 'patch', {'rating': bad}).status_code == 422
+        assert write(v2, wish_path, 'patch', {'priority': bad}).status_code == 422

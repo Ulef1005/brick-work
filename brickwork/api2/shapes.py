@@ -56,7 +56,7 @@ def copy_bodies(db, rows, *, single=False):
     out = []
     for r in rows:
         body = {'id': r['id'], 'item': book.item(r['item_id']), 'name': r['name'], 'condition': r['condition'], 'completeness': r['completeness'],
-                'completeness_source': r['completeness_source'], 'checked_by': r['checked_by'], 'storage_id': r['storage_id'], 'purchase_location_id': r['place_id'],
+                'completeness_source': r['completeness_source'], 'checked_by': r['checked_by'], 'rating': r['rating'], 'storage_id': r['storage_id'], 'purchase_location_id': r['place_id'],
                 'purchase_date': r['purchase_date'], 'purchase_price': r['purchase_price'], 'purchase_currency': r['purchase_currency'], 'note': r['note'],
                 'current_value': r['current_value'], 'current_value_currency': r['current_value_currency'], 'pinned': bool(r['pinned']),
                 'flags': flag_ids(r['flags']), 'missing': r['missing'], 'damaged': r['damaged'], 'updated_at': r['updated_at'],
@@ -125,6 +125,7 @@ def wish_bodies(db, rows):
                     'list_id': r['list_id'], 'id': r['id'], 'item': book.item(r['item_id']), 'name': r['name'], 'color': book.color(r['color_id']),
                     'quantity': r['quantity'], 'max_price': r['max_price'], 'max_price_currency': r['max_price_currency'],
                     'max_price_boxed': r['max_price_boxed'], 'max_price_boxed_currency': r['max_price_boxed_currency'], 'condition': r['condition'],
+                    'priority': r['priority'],
                     'note': r['note'], 'added_at': r['added_at'], 'updated_at': r['updated_at'], 'archived_at': r['archived_at'],
                     'under_max': {'under': True, 'over': False}.get(r['max_state']), 'current_price': shown.get('price'),
                     'under_max_boxed': {'under': True, 'over': False}.get(r['max_boxed_state']),

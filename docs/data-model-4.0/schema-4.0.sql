@@ -222,7 +222,7 @@ CREATE VIRTUAL TABLE item_fts USING fts5(item_id UNINDEXED, kind UNINDEXED, name
 -- =====================================================================
 
 CREATE TABLE meta(key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL) STRICT;
--- keys: schema_version='4.8' (4.0 before #131, 4.1 before #167/#155, 4.2 before #31, 4.3 before #25, 4.5 before the instruction thumbnails, 4.6 before copy.checked_by (#489), 4.7 before added_via and synced_from (#551); connect() upgrades an older file in place); install_id; catalogue_id (bound at the first build; connect()
+-- keys: schema_version='4.9' (4.0 before #131, 4.1 before #167/#155, 4.2 before #31, 4.3 before #25, 4.5 before the instruction thumbnails, 4.6 before copy.checked_by (#489), 4.7 before added_via and synced_from (#551), 4.8 before copy.rating and wish.priority (#690); connect() upgrades an older file in place); install_id; catalogue_id (bound at the first build; connect()
 -- refuses a catalogue whose catalogue_id differs); catalogue_item_high_water and
 -- catalogue_color_high_water (copied at every activation: a rebuild from scratch mints above
 -- them); migrated_from (3.3 file name, sha256, migration report digest) after the migration.
@@ -1122,3 +1122,7 @@ CREATE INDEX synced_from_copy ON synced_from(copy_id);
 CREATE INDEX synced_from_stock ON synced_from(stock_id);
 CREATE INDEX synced_from_wish ON synced_from(wish_id);
 CREATE INDEX synced_from_site ON synced_from(site, list_key);
+
+-- Your own rating and priority, schema 4.9 (#690): a copy's stars (1 to 5) and a wish's priority (1 highest). NULL: not set; every row older than 4.9 stays NULL.
+ALTER TABLE copy ADD COLUMN rating INTEGER CHECK(rating IS NULL OR rating BETWEEN 1 AND 5);
+ALTER TABLE wish ADD COLUMN priority INTEGER CHECK(priority IS NULL OR priority BETWEEN 1 AND 5);

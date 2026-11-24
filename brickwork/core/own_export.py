@@ -181,7 +181,7 @@ def _copy_rows(db, items, colors, secrets):
         group.sort(key=lambda r: (_item_key(r['figure']), _item_key(r['item']), _color_key(r['color']), r['spare']))
     rows = db.execute('''SELECT id, item_id, inventory_source, condition, completeness, completeness_source,
                                 storage_id, place_id, purchase_date, purchase_price, purchase_currency, note,
-                                current_value, current_value_currency, pinned, added_via, checked_by, created_at, updated_at
+                                current_value, current_value_currency, pinned, added_via, checked_by, rating, created_at, updated_at
                          FROM main.copy WHERE archived_at IS NULL ORDER BY id''')
     return [
         {
@@ -192,7 +192,7 @@ def _copy_rows(db, items, colors, secrets):
             'purchase_date': r['purchase_date'], 'purchase_price': r['purchase_price'],
             'purchase_currency': r['purchase_currency'], 'note': _note(r['note'], secrets),
             'current_value': r['current_value'], 'current_value_currency': r['current_value_currency'],
-            'pinned': bool(r['pinned']), 'added_via': r['added_via'], 'checked_by': r['checked_by'],
+            'pinned': bool(r['pinned']), 'added_via': r['added_via'], 'checked_by': r['checked_by'], 'rating': r['rating'],
             'created_at': r['created_at'], 'updated_at': r['updated_at'],
             'flags': flags.get(r['id'], []),
             'lines': {'figures': figures.get(r['id'], []), 'parts': parts.get(r['id'], [])},
@@ -253,7 +253,7 @@ def _wish_rows(db, items, colors, secrets):
     flags = _flag_links(db, 'wish_flag', 'wish_id')
     rows = db.execute('''SELECT w.id, w.wishlist_id, w.kind, w.item_id, w.color_id, w.quantity, w.condition,
                                 w.max_price, w.max_price_currency, w.qty_filled_manual, w.note,
-                                w.max_price_boxed, w.max_price_boxed_currency, w.added_via, w.added_at, w.updated_at
+                                w.max_price_boxed, w.max_price_boxed_currency, w.priority, w.added_via, w.added_at, w.updated_at
                          FROM main.wish w
                          JOIN main.wishlist wl ON wl.id=w.wishlist_id
                          WHERE w.archived_at IS NULL AND wl.archived_at IS NULL
@@ -267,7 +267,7 @@ def _wish_rows(db, items, colors, secrets):
             'max_price': r['max_price'], 'max_price_currency': r['max_price_currency'],
             'qty_filled_manual': r['qty_filled_manual'], 'note': _note(r['note'], secrets),
             'max_price_boxed': r['max_price_boxed'],
-            'max_price_boxed_currency': r['max_price_boxed_currency'],
+            'max_price_boxed_currency': r['max_price_boxed_currency'], 'priority': r['priority'],
             'added_via': r['added_via'], 'added_at': r['added_at'], 'updated_at': r['updated_at'],
             'flags': flags.get(r['id'], []),
         }

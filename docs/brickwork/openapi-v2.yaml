@@ -8736,6 +8736,13 @@ components:
           - string
           - 'null'
           pattern: ^[A-Z]{3,8}$
+        rating:
+          type:
+          - integer
+          - 'null'
+          minimum: 1
+          maximum: 5
+          description: Your own stars for the copy, 1 to 5 (#690); null when not rated.
         note:
           type:
           - string
@@ -9829,6 +9836,13 @@ components:
           type:
           - integer
           - 'null'
+        priority:
+          type:
+          - integer
+          - 'null'
+          minimum: 1
+          maximum: 5
+          description: How much you want the wish, 1 is highest (#690); null when not set.
         list_id:
           type: string
           description: Target wishlist id; defaults to default on create.
@@ -9994,6 +10008,13 @@ components:
           - integer
           - 'null'
           description: Override the filled quantity; null goes back to the derived count.
+        priority:
+          type:
+          - integer
+          - 'null'
+          minimum: 1
+          maximum: 5
+          description: How much you want the wish, 1 is highest (#690); null when not set.
         list_id:
           type: string
           description: Target wishlist id; defaults to default on create.
@@ -12111,6 +12132,13 @@ components:
           - string
           - 'null'
           pattern: ^[A-Z]{3,8}$
+        rating:
+          type:
+          - integer
+          - 'null'
+          minimum: 1
+          maximum: 5
+          description: Your own stars for the copy, 1 to 5 (#690); null when not rated.
         pinned:
           type: boolean
         missing:
@@ -12876,6 +12904,13 @@ components:
           - string
           - 'null'
           pattern: ^[A-Z]{3,8}$
+        rating:
+          type:
+          - integer
+          - 'null'
+          minimum: 1
+          maximum: 5
+          description: Your own stars for the copy, 1 to 5 (#690); null when not rated.
         pinned:
           type: boolean
         flags:

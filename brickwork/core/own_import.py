@@ -43,12 +43,12 @@ PLAIN_FIELDS = {
     'wishlist': ('name', 'note', 'sort'),
     'copy': ('condition', 'completeness', 'completeness_source', 'storage_id', 'place_id',
              'purchase_date', 'purchase_price', 'purchase_currency', 'note',
-             'current_value', 'current_value_currency', 'pinned'),
+             'current_value', 'current_value_currency', 'pinned', 'rating'),
     'stock': ('kind', 'quantity', 'condition', 'storage_id', 'lot_id', 'place_id',
               'purchase_date', 'purchase_price', 'purchase_currency', 'note',
               'missing', 'damaged', 'checked'),
     'wish': ('wishlist_id', 'kind', 'quantity', 'condition', 'max_price', 'max_price_currency',
-             'qty_filled_manual', 'note', 'max_price_boxed', 'max_price_boxed_currency'),
+             'qty_filled_manual', 'note', 'max_price_boxed', 'max_price_boxed_currency', 'priority'),
 }
 BOOL_FIELDS = frozenset({'shown_on_grid', 'system', 'pinned'})
 PARENTS = {
@@ -315,6 +315,10 @@ def _value_problem(table, row):
     conditions = {'copy': ('new', 'used'), 'stock': ('new', 'used', 'damaged'), 'wish': ('new', 'used', 'any')}
     if table in conditions and row.get('condition') not in (None, *conditions[table]):
         return 'This condition is not one this install knows'
+    for field, name in (('rating', 'Rating'), ('priority', 'Priority')):
+        if field in row and table == {'rating': 'copy', 'priority': 'wish'}[field] and row[field] is not None \
+                and not (type(row[field]) is int and 1 <= row[field] <= 5):
+            return f'{name} must be 1 to 5'
     if table in ('copy', 'stock') and row.get('purchase_price') is not None and not row.get('purchase_currency'):
         return 'A price needs its currency'
     return None
@@ -638,7 +642,7 @@ def _write_copy(db, entry, receipt, flag_rows, find_item, find_color, via, actor
         'storage_id': row.get('storage_id'), 'place_id': row.get('place_id'),
         'purchase_date': row.get('purchase_date'), 'purchase_price': p_price, 'purchase_currency': p_curr,
         'current_value': c_val, 'current_value_currency': c_curr,
-        'pinned': int(bool(row.get('pinned'))), 'note': row.get('note'), 'checked_by': row.get('checked_by'),
+        'pinned': int(bool(row.get('pinned'))), 'note': row.get('note'), 'checked_by': row.get('checked_by'), 'rating': row.get('rating'),
     }
     if row.get('completeness') is None:
         updates['completeness'] = None
@@ -717,7 +721,7 @@ def _finish_wish(db, wish_entry, row):
     b_price, b_curr = _price_pair(row.get('max_price_boxed'), row.get('max_price_boxed_currency'))
     updates = {
         'max_price': m_price, 'max_price_currency': m_curr, 'note': row.get('note'),
-        'max_price_boxed': b_price, 'max_price_boxed_currency': b_curr,
+        'max_price_boxed': b_price, 'max_price_boxed_currency': b_curr, 'priority': row.get('priority'),
     }
     if row.get('qty_filled_manual') is not None:
         updates['qty_filled_manual'] = row['qty_filled_manual']

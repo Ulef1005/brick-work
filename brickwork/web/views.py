@@ -166,7 +166,7 @@ def identity_undo_offer(text):
     return identifier if found else None
 
 
-SETTINGS_ROWS = ('retail-country', 'part-list-grouping', 'part-lists', 'pictures', 'picture-priority', 'source-priority', 'freshness', 'sync')
+SETTINGS_ROWS = ('retail-country', 'part-list-grouping', 'part-lists', 'pictures', 'picture-priority', 'source-priority', 'freshness')
 
 
 def settings_undo_offer(db, text):
@@ -348,8 +348,7 @@ def bw_admin_write(page):
                 moves = {k.removeprefix('group_of:'): v for k, v in request.form.items() if k.startswith('group_of:')}
             saved = admin_ops.tools_write('settings', country=request.form['retail_country'], priority=priority, freshness=freshness,
                                           part_list_grouping=request.form.get('part_list_grouping'), part_group_overrides=moves,
-                                          official_download_limit_mb=request.form.get('official_download_limit_mb'),
-                                          rebrickable_lost_parts_rule=request.form.get('rebrickable_lost_parts_rule') or None)
+                                          official_download_limit_mb=request.form.get('official_download_limit_mb'))
         elif page == 'refresh':
             admin_ops.tools_write('refresh')
             bw_start_worker()
@@ -2804,6 +2803,7 @@ def bw_wishlists_export(identifier,format):
         return jsonify(message=public(exc, 'Nothing was saved · review the values and try again')),400
 
 from . import sync_views  # noqa: E402,F401 — 12n Collection sync pages
+from . import sync_rebrickable  # noqa: E402,F401 — the Rebrickable sync page and its steps (#519)
 
 from . import import_views  # noqa: E402,F401 — Import from BrickTracker (#11)
 

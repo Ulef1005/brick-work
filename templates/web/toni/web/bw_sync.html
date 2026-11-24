@@ -40,7 +40,7 @@
 <dl class="sy-dates"><div><dt>Last pulled</dt><dd class="mono">{{ stamp(c.last_pull.at) if c.last_pull else 'Never' }}</dd></div><div><dt>Last sent</dt><dd class="mono">{{ stamp(c.last_send.at) if c.last_send else 'Never' }}</dd></div></dl>
 {% if c.waiting %}<p class="bk-text">{{ c.waiting }} {{ 'row' if c.waiting == 1 else 'rows' }} from the last send still waiting</p>{% endif %}
 {% if can_edit %}<div class="bk-actions sy-actions"><form method="post" class="sy-pull" action="{{ url_for('web.bw_sync_write', source=c.source, action='pull') }}" data-sy-busy>{{ csrf() }}<button class="bk-btn bk-primary" data-busy-label="Checking {{ c.label }}">Pull</button>{% if c.source == 'rebrickable' %}<label class="sy-lost-switch" for="sy-lost-parts"><span>Bring in Lost Parts</span><span class="bk-switch"><input type="hidden" name="lost_parts" value="0"><input type="checkbox" id="sy-lost-parts" role="switch" name="lost_parts" value="1" {% if c.lost_on %}checked{% endif %} aria-describedby="sy-lost-note"><span class="bk-track"></span></span></label>{% endif %}</form><form method="post" action="{{ url_for('web.bw_sync_write', source=c.source, action='send') }}" data-sy-busy>{{ csrf() }}<button class="bk-btn bk-outline" data-busy-label="Checking {{ c.label }}">Review and send</button></form><a class="bk-btn bk-quiet" href="{{ url_for('web.bw_sync_link', source=c.source) }}">Link</a></div>
-{% if c.source == 'rebrickable' %}<p class="bk-text sy-lost-note" id="sy-lost-note">Marks the parts on your Lost Parts list as missing on the matching copy. Rule: {{ lost_rule.label }}. <a href="{{ url_for('web.bw_admin', page='settings') }}#sync">Change the rule in Settings</a>.</p>{% endif %}{% endif %}
+{% if c.source == 'rebrickable' %}<p class="bk-text sy-lost-note" id="sy-lost-note">Marks the parts on your Lost Parts list as missing on the matching copy. Rule: {{ lost_rule.label }}. <a href="{{ url_for('web.bw_sync_rb_choose') }}">Change the rule on the Rebrickable page</a>.</p>{% endif %}{% endif %}
 {% endif %}
 </section>
 {% endfor %}
@@ -123,7 +123,7 @@
 {% if lost %}<section class="bk-card sy-lost" aria-labelledby="sy-lost-title"><h2 class="bk-eyebrow" id="sy-lost-title">Lost Parts from Rebrickable</h2>
 {% if lost.status == 'off' %}<p class="bk-text">Lost Parts are switched off for this pull.</p>
 {% elif lost.status == 'failed' %}<p class="bk-banner bk-warning" role="alert">{{ lost.message }}</p>
-{% else %}<p class="bk-text">Rule: {{ rule_labels[lost.rule] }}. <a href="{{ url_for('web.bw_admin', page='settings') }}#sync">Change the rule in Settings</a>.</p>
+{% else %}<p class="bk-text">Rule: {{ rule_labels[lost.rule] }}. <a href="{{ url_for('web.bw_sync_rb_choose') }}">Change the rule on the Rebrickable page</a>.</p>
 {% if lost.message %}<p class="bk-banner bk-warning" role="status">{{ lost.message }}</p>{% endif %}
 {% set sm = lost.summary %}
 <p class="bk-text mono sy-lost-summary">{{ sm.added }} added · {{ sm.replaced }} replaced · {{ sm.cleared }} cleared · {{ sm.unmatched }} not matched{% if sm.pick %} · {{ sm.pick }} {{ 'set needs' if sm.pick == 1 else 'sets need' }} a copy{% endif %}</p>

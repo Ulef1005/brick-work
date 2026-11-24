@@ -23,4 +23,4 @@
 {% if first_run.job and first_run.job.state == 'running' %}<link rel="stylesheet" href="{{ bw_static('web/toni/bw-catalogue.css') }}"><script src="{{ bw_static('web/toni/bw-catalogue.js') }}" defer></script>{% endif %}
 <p class="fr-note">You can add a set without keys. It keeps its number until names load.</p></section>{% endmacro %}
 
-{% macro needs_key(source, label) %}{% if label %}<p class="key-need" data-needs-key="{{ source }}"><strong>Needs a {{ label }} key</strong><a href="{{ url_for('web.bw_admin', page='catalogues') }}">{{ toni_icon('chevron-right') }}Catalogues &amp; keys</a></p>{% endif %}{% endmacro %}
+{% macro needs_key(source, label) %}{% if label %}<p class="key-need" data-needs-key="{{ source }}"><strong>Needs a {{ label }} key</strong><a href="{{ url_for('web.bw_sync_rb_connect') if source == 'rebrickable' else url_for('web.bw_admin', page='catalogues') }}">{{ toni_icon('chevron-right') }}{% if source == 'rebrickable' %}Add it on the Rebrickable page{% else %}Catalogues &amp; keys{% endif %}</a></p>{% endif %}{% endmacro %}

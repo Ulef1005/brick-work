@@ -72,7 +72,7 @@ def test_rebrickable_shows_connect_before_token_and_open_after(client, remote):
     before = soup(client.get('/workbench/sync')).select_one('[data-sync-site=rebrickable]')
     assert before.select_one('.sh-tag.sh-tag-dash').get_text(strip=True) == 'Not connected'
     assert before.select_one('a.bk-btn').get_text(strip=True) == 'Connect'
-    assert before.select_one('a.bk-btn')['href'].endswith('/manage/sync/rebrickable/link')
+    assert before.select_one('a.bk-btn')['href'].endswith('/workbench/sync/rebrickable/connect')
 
     csrf = csrf_token(client)
     response = client.post('/manage/sync/rebrickable/paste', data={'csrf_token': csrf, 'value': TOKEN})
@@ -94,7 +94,7 @@ def test_legacy_manage_sync_redirects(client, remote):
 
 def test_site_page_restricts_source_has_back_link_and_404s_unknown(client, remote):
     rb = soup(client.get('/workbench/sync/rebrickable'))
-    assert [c['data-sync-source'] for c in rb.select('[data-sync-source]')] == ['rebrickable']
+    assert [c.name for c in rb.select('[data-rb-account], [data-rb-runs], [data-rb-what]')] == ['section'] * 3
     assert rb.select_one('h1').get_text(strip=True) == 'Rebrickable'
     back = rb.select_one('a.bw-back')
     assert back['href'].endswith('/workbench/sync') and back.get_text(strip=True) == 'Sync'
@@ -105,7 +105,7 @@ def test_site_page_restricts_source_has_back_link_and_404s_unknown(client, remot
 def test_workbench_nav_lists_sync_and_marks_it_current(app4, client, remote):
     page = soup(client.get('/workbench/sync'))
     assert page.find('a', href='/workbench/sync')
-    for path in ('/workbench/sync', '/workbench/sync/rebrickable', '/manage/sync/rebrickable/link'):
+    for path in ('/workbench/sync', '/workbench/sync/rebrickable', '/workbench/sync/rebrickable/connect', '/manage/sync/brickset/link'):
         with app4.test_request_context(path):
             groups = dict(ui.navigation())
             workbench = groups['Workbench']

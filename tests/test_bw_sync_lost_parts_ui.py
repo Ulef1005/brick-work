@@ -45,27 +45,24 @@ def linked(client):
     return csrf
 
 
-def pull_form(page):
-    return page.select_one('[data-sync-source=rebrickable] form.sy-pull')
+def choose_page(client):
+    return soup(client.get('/workbench/sync/rebrickable/choose'))
 
 
-def test_the_switch_is_on_by_default_beside_pull_with_the_rule_in_words(client, remote, pair):
+def test_the_lost_parts_direction_is_on_by_default_with_the_rule_on_the_choose_page(client, remote, pair):
+    """#457, #519: the switch is the Into Brick Work end of the Lost Parts segment and the rule is its radio rows, both on step 2 of the Rebrickable page."""
     linked(client)
-    page = soup(client.get('/workbench/sync/rebrickable'))
-    form = pull_form(page)
-    box = form.select_one('input[type=checkbox][name=lost_parts]')
-    assert box['value'] == '1' and box.has_attr('checked') and box['role'] == 'switch'
-    assert form.select_one('input[type=hidden][name=lost_parts]')['value'] == '0'
-    assert form.select_one('.sy-lost-switch').get_text(strip=True) == 'Bring in Lost Parts'
-    assert form.select_one('button.bk-primary').get_text(strip=True) == 'Pull'
-    note = page.select_one('#sy-lost-note')
-    assert box['aria-describedby'] == 'sy-lost-note'
-    assert 'Rule: Rebrickable wins per part.' in note.get_text(' ', strip=True).replace(' .', '.')
-    assert note.a['href'].endswith('/manage/tools/settings#sync') or note.a['href'].endswith('#sync')
+    page = choose_page(client)
+    card = page.select_one('[data-rb-lost]')
+    assert card.select_one('input[name=lost_dir][checked]')['value'] == 'into'
+    assert [i['value'] for i in card.select('input[name=lost_dir]')] == ['into', 'both', 'to', 'off']
+    assert [i['value'] for i in card.select('input[name=lost_rule]')] == ['add_only', 'per_part', 'per_set', 'everything']
+    assert card.select_one('input[name=lost_rule][checked]')['value'] == 'per_part'
+    assert 'Rebrickable wins per part' in card.get_text()
     assert page.select_one('[data-sync-source=brickset] input[name=lost_parts]') is None
     with closing(connect(pair)) as db:
         admin.patch_settings(db, {'rebrickable_lost_parts_rule': 'everything'})
-    assert 'Rebrickable wins everywhere' in soup(client.get('/workbench/sync/rebrickable')).select_one('#sy-lost-note').get_text()
+    assert choose_page(client).select_one('input[name=lost_rule][checked]')['value'] == 'everything'
 
 
 def test_switching_off_is_remembered_and_makes_no_call(client, remote):
@@ -75,12 +72,12 @@ def test_switching_off_is_remembered_and_makes_no_call(client, remote):
     assert response.status_code == 302 and len(remote.lost_calls()) == made
     plan = soup(client.get(response.location))
     assert 'Lost Parts are switched off for this pull.' in plan.get_text()
-    assert not pull_form(soup(client.get('/workbench/sync/rebrickable'))).select_one('input[type=checkbox]').has_attr('checked')
+    assert choose_page(client).select_one('input[name=lost_dir][checked]')['value'] == 'off'
     client.post('/manage/sync/rebrickable/pull', data={'csrf_token': csrf})                      # no field: the remembered value
     assert len(remote.lost_calls()) == made
     client.post('/manage/sync/rebrickable/pull', data={'csrf_token': csrf, 'lost_parts': ['0', '1']})
     assert len(remote.lost_calls()) == made + 1
-    assert pull_form(soup(client.get('/workbench/sync/rebrickable'))).select_one('input[type=checkbox]').has_attr('checked')
+    assert choose_page(client).select_one('input[name=lost_dir][checked]')['value'] == 'into'
 
 
 def test_the_plan_shows_the_clearing_the_chooser_and_the_result(client, remote, pair):
@@ -111,7 +108,7 @@ def test_the_plan_shows_the_clearing_the_chooser_and_the_result(client, remote, 
     result = page.select_one('.sy-lost-result')
     assert '2 parts marked on 2 sets' in result.get_text() and '1 mark cleared' in result.get_text()
     assert 'Rule: Rebrickable wins per set' in result.get_text() and 'not matched' in result.get_text() and '1000-4' in result.get_text()
-    assert 'Lost Parts: 2 parts marked on 2 sets, 1 cleared' in page.select_one('.sy-log').get_text()
+    assert 'Lost Parts: 2 parts marked on 2 sets, 1 cleared' in page.select_one('[data-rb-runs]').get_text()
     with closing(connect(pair, read_only=True)) as db:
         assert marks(db, one) == {('3001', '4', False): 1} and marks(db, copies[1]) and not marks(db, copies[0])
     client.post('/manage/sync/rebrickable/undo', data={'csrf_token': csrf, 'event': re.search(r'pulled=(\d+)', response.location)[1]})

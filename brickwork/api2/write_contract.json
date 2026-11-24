@@ -3519,6 +3519,22 @@
           ],
           "type": "string"
         },
+        "rebrickable_lost_parts_send": {
+          "default": false,
+          "description": "Whether Brick Work may send your missing parts to Rebrickable's Lost Parts list (#469). Off until you turn it on; a send is always shown first and Brick Work's Undo cannot take it back.",
+          "type": "boolean"
+        },
+        "rebrickable_lost_parts_send_rule": {
+          "default": "add_only",
+          "description": "Which count wins when Brick Work sends Lost Parts (#469). `add_only` only adds parts and raises counts. `per_part` also lowers a count and offers a part for removal. `per_set` makes a set with a missing part here exactly your list. `everything` does that for every synced set.",
+          "enum": [
+            "add_only",
+            "per_part",
+            "per_set",
+            "everything"
+          ],
+          "type": "string"
+        },
         "repair": {},
         "retail_country": {
           "enum": [

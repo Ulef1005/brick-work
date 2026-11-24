@@ -169,7 +169,7 @@ def test_a_transport_failure_has_a_fixed_text_and_is_charged_once(coll, monkeypa
 
 def test_endpoint_allowlist(coll, monkeypatch):
     keyed(monkeypatch, 'bricklink')
-    for path in ('/items/SET/6081-1/subsets', '/inventories', '/items/SET/../price', '/colors'):
+    for path in ('/items/SET/6081-1/subsets', '/inventories/abc', '/items/SET/../price', '/colors'):
         with pytest.raises(ValueError, match='unsupported BrickLink endpoint'):
             BrickLink(coll.db, http=Net({})).call(path)
     with pytest.raises(ValueError, match='unsupported Brickset endpoint'):
@@ -315,6 +315,139 @@ def test_the_order_endpoints_stay_with_the_client(coll, monkeypatch):
         client.order_items('7/../x')
     with pytest.raises(ValueError):
         client.list_orders('yes')
+
+
+# ---------- BrickLink store inventory ----------
+
+def test_signed_request_differs_by_method_and_ignores_json_body():
+    creds = ['ck', 'cs', 'tv', 'ts']
+    get_req = signed_request('/inventories', {}, creds, timestamp=123, nonce='abc')
+    post_a = signed_request('/inventories', {}, creds, timestamp=123, nonce='abc', method='POST', body={'a': 1})
+    post_b = signed_request('/inventories', {}, creds, timestamp=123, nonce='abc', method='POST', body={'b': 2})
+    put_req = signed_request('/inventories/9', {}, creds, timestamp=123, nonce='abc', method='PUT', body={'quantity': '+1'})
+    del_req = signed_request('/inventories/9', {}, creds, timestamp=123, nonce='abc', method='DELETE')
+    assert get_req.get_method() == 'GET' and get_req.data is None and not get_req.has_header('Content-type')
+    assert post_a.get_header('Authorization') == post_b.get_header('Authorization')
+    assert post_a.get_header('Authorization') != get_req.get_header('Authorization')
+    assert put_req.get_header('Authorization') != del_req.get_header('Authorization')
+    assert post_a.get_method() == 'POST' and post_a.get_header('Content-type') == 'application/json' and post_a.data == b'{"a": 1}'
+    assert del_req.get_method() == 'DELETE' and del_req.data is None and not del_req.has_header('Content-type')
+
+
+def test_store_inventory_crud_verbs_records_and_statuses(coll, monkeypatch):
+    import hashlib
+    keyed(monkeypatch, 'bricklink')
+    lot = {'item': {'no': '3001', 'type': 'PART'}, 'color_id': 5, 'quantity': 4, 'unit_price': '0.1500',
+           'new_or_used': 'N', 'remarks': 'secret-drawer', 'is_retain': True, 'is_stock_room': True, 'stock_room_id': 'A'}
+    net = Net({'meta': {'code': 200}, 'data': [{'inventory_id': 99}]},
+              {'meta': {'code': 200}, 'data': {'inventory_id': 99}},
+              {'meta': {'code': 201}, 'data': {'inventory_id': 99, **lot}},
+              {'meta': {'code': 200}, 'data': {'inventory_id': 99, 'quantity': 6}},
+              {'meta': {'code': 200}, 'data': {}})
+    client = BrickLink(coll.db, http=net)
+    assert client.store_lots(item_type='PART,SET', status='Y,-R', color_id=5, category_id=11) == [{'inventory_id': 99}]
+    assert 'item_type=PART%2CSET' in net.urls[0] and 'status=Y%2C-R' in net.urls[0]
+    assert 'color_id=5' in net.urls[0] and 'category_id=11' in net.urls[0]
+    assert client.store_lot(99) == {'inventory_id': 99} and net.urls[1].endswith('/inventories/99')
+    created = client.create_store_lot(lot)
+    assert created['inventory_id'] == 99 and net.requests[2].get_method() == 'POST'
+    assert net.requests[2].get_header('Content-type') == 'application/json' and json.loads(net.requests[2].data) == lot
+    updated = client.update_store_lot(99, {'quantity': '+2', 'unit_price': '0.20'})
+    assert updated['quantity'] == 6 and net.requests[3].get_method() == 'PUT'
+    assert net.requests[3].get_header('Content-type') == 'application/json'
+    assert client.delete_store_lot(99) is None and net.requests[4].get_method() == 'DELETE'
+    assert net.requests[4].data is None
+    post_key = coll.db.execute("SELECT key FROM source_record WHERE kind='/inventories' AND key LIKE 'POST %'").fetchone()[0]
+    expected_digest = hashlib.sha256(json.dumps(lot, sort_keys=True).encode()).hexdigest()
+    assert expected_digest in post_key and 'secret-drawer' not in post_key
+    with pytest.raises(base.NotFoundAtSource):
+        BrickLink(coll.db, http=Net({'meta': {'code': 404, 'message': 'RESOURCE_NOT_FOUND'}})).store_lot(999)
+
+
+def test_inventory_unlisted_paths_and_verbs_are_refused(coll, monkeypatch):
+    keyed(monkeypatch, 'bricklink')
+    net = Net({})
+    client = BrickLink(coll.db, http=net)
+    for method, path in (('GET', '/inventories/abc'), ('GET', '/inventories/1/extra'), ('POST', '/inventories/1'),
+                         ('PUT', '/inventories'), ('DELETE', '/inventories'), ('PATCH', '/inventories/1'), ('POST', '/orders')):
+        with pytest.raises(ValueError, match='unsupported BrickLink endpoint'):
+            client.call(path, method=method)
+    assert net.requests == []
+
+
+def test_inventory_validation_refuses_bad_inputs_before_any_call(coll, monkeypatch):
+    keyed(monkeypatch, 'bricklink')
+    net = Net({})
+    client = BrickLink(coll.db, http=net)
+    base_lot = {'item': {'no': '3001', 'type': 'PART'}, 'color_id': 5, 'quantity': 2, 'unit_price': '1.25', 'new_or_used': 'N'}
+    for bad_id in ('abc', '-1', True, '1/../2', '', 1.5):
+        with pytest.raises(ValueError):
+            client.store_lot(bad_id)
+        with pytest.raises(ValueError):
+            client.update_store_lot(bad_id, {'quantity': '+1'})
+        with pytest.raises(ValueError):
+            client.delete_store_lot(bad_id)
+        with pytest.raises(ValueError):
+            client.store_lots(category_id=bad_id)
+    for kwargs in ({'item_type': 'BAD'}, {'item_type': ''}, {'item_type': 1}, {'status': 'X'}, {'status': '--Y'},
+                   {'color_id': -1}, {'color_id': True}, {'color_id': '5'}):
+        with pytest.raises(ValueError):
+            client.store_lots(**kwargs)
+    bad_creates = [
+        [],
+        {k: v for k, v in base_lot.items() if k != 'unit_price'},
+        {**base_lot, 'extra': 1},
+        {**base_lot, 'item': '3001'},
+        {**base_lot, 'item': {'no': '', 'type': 'PART'}},
+        {**base_lot, 'item': {'no': '3001', 'type': 'PART', 'extra': 1}},
+        {**base_lot, 'item': {'no': '3001', 'type': 'UNKNOWN'}},
+        {**base_lot, 'color_id': -1},
+        {**base_lot, 'color_id': True},
+        {**base_lot, 'quantity': 0},
+        {**base_lot, 'quantity': True},
+        {**base_lot, 'quantity': '+1'},
+        {**base_lot, 'unit_price': '0'},
+        {**base_lot, 'unit_price': '0.0000'},
+        {**base_lot, 'unit_price': '-1'},
+        {**base_lot, 'unit_price': '1.23456'},
+        {**base_lot, 'unit_price': 'NaN'},
+        {**base_lot, 'unit_price': 1.5},
+        {**base_lot, 'new_or_used': 'new'},
+        {**base_lot, 'completeness': 'C'},
+        {**base_lot, 'item': {'no': '6081-1', 'type': 'SET'}, 'completeness': 'X'},
+        {**base_lot, 'bulk': 0},
+        {**base_lot, 'bulk': True},
+        {**base_lot, 'is_retain': 1},
+        {**base_lot, 'is_stock_room': 'yes'},
+        {**base_lot, 'stock_room_id': 'A'},
+        {**base_lot, 'is_stock_room': False, 'stock_room_id': 'A'},
+        {**base_lot, 'is_stock_room': True, 'stock_room_id': 'D'},
+        {**base_lot, 'remarks': 123},
+    ]
+    for bad_lot in bad_creates:
+        with pytest.raises(ValueError):
+            client.create_store_lot(bad_lot)
+    for bare_qty in (5, '5', True):
+        with pytest.raises(ValueError, match=r'quantity must be a change with a \+ or - sign'):
+            client.update_store_lot(1, {'quantity': bare_qty})
+    bad_updates = [
+        [],
+        {},
+        {'item': {'no': '3001', 'type': 'PART'}},
+        {'color_id': -1},
+        {'color_id': False},
+        {'unit_price': '1.12345'},
+        {'new_or_used': 'U2'},
+        {'completeness': 'Z'},
+        {'bulk': False},
+        {'is_retain': 0},
+        {'stock_room_id': 'A'},
+        {'is_stock_room': False, 'stock_room_id': 'A'},
+    ]
+    for bad_changes in bad_updates:
+        with pytest.raises(ValueError):
+            client.update_store_lot(1, bad_changes)
+    assert net.requests == []
 
 
 # ---------- the base writers ----------

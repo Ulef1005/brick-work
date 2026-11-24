@@ -597,4 +597,5 @@ def test_a_rating_and_a_priority_are_written_read_and_checked(v2, world):
     assert write(v2, copy_path, 'patch', {'rating': None}).json['data']['rating'] is None
     for bad in (0, 6, 'high', True):
         assert write(v2, copy_path, 'patch', {'rating': bad}).status_code == 422
-        assert write(v2, wish_path, 'patch', {'priority': bad}).status_code == 422
+        assert write(v2, wish_path, 'patch', {'priority': bad}).status_code == (200 if bad == 6 else 422)   # a priority goes to 999
+    assert write(v2, wish_path, 'patch', {'priority': 1000}).status_code == 422

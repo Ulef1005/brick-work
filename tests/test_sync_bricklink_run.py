@@ -6,6 +6,7 @@ import sqlite3
 import pytest
 
 from brickwork.core import errors, orders, price_settings, sync
+from brickwork.core import undo as undoing
 from brickwork.core.connect import connect
 from brickwork.core.sources.base import SourceError
 from brickwork.core.sync import bricklink_run, run as sync_run
@@ -375,3 +376,33 @@ def test_undone_order_can_be_pulled_again(pair, world):
         assert '1001' in bricklink_run._imported_ids(db)
         assert [r[0] for r in db.execute('SELECT bricklink_order_id FROM main.purchase_order')] == ['1001']
         assert [r[0] for r in db.execute('SELECT phase FROM main.order_document ORDER BY id')] == ['draft']
+
+
+def test_undone_order_with_changed_items_can_be_pulled_again(pair, world):
+    headers = [_header(1001, date_ordered='2026-11-17T10:00:00.000Z')]
+    fake = FakeBrickLink(headers, {'1001': _items(qty=3)})
+    with db_of(pair) as db:
+        first = bricklink_run.start(db, client=fake)
+        applied = bricklink_run.apply(db, first['id'], {'order:1001': 'pull'}, client=fake)
+        event = applied['stages']['1001']['event']
+        assert sync_run.undo_run(db, event) == [event]
+        fake.items_by_order['1001'] = _items(qty=5)
+        second = bricklink_run.start(db, client=fake)
+        reapplied = bricklink_run.apply(db, second['id'], {'order:1001': 'pull'}, client=fake)
+        assert reapplied['stages']['1001']['status'] == 'done'
+        assert [r[0] for r in db.execute('SELECT bricklink_order_id FROM main.purchase_order')] == ['1001']
+        assert [r[0] for r in db.execute('SELECT phase FROM main.order_document ORDER BY id')] == ['undone', 'draft']
+
+
+def test_undone_xml_order_can_be_pulled_through_run(pair, world):
+    headers = [_header(1001, date_ordered='2026-11-17T10:00:00.000Z')]
+    fake = FakeBrickLink(headers, {'1001': _items(qty=3)})
+    xml = '<INVENTORY><ITEM><ITEMTYPE>P</ITEMTYPE><ITEMID>3001</ITEMID><COLOR>5</COLOR><QTY>3</QTY><CONDITION>U</CONDITION><PRICE>0.12</PRICE></ITEM></INVENTORY>'
+    with db_of(pair) as db:
+        imported = orders.import_document(db, 'xml', text=xml, number='1001')
+        undoing.undo_event(db, imported['event_id'])
+        run = bricklink_run.start(db, client=fake)
+        applied = bricklink_run.apply(db, run['id'], {'order:1001': 'pull'}, client=fake)
+        assert applied['stages']['1001']['status'] == 'done'
+        assert [r[0] for r in db.execute('SELECT bricklink_order_id FROM main.purchase_order')] == ['1001']
+        assert [r[0] for r in db.execute('SELECT phase FROM main.order_document ORDER BY id')] == ['undone', 'draft']

@@ -255,7 +255,8 @@ def apply(db, run_id, form, *, client=None, via=None, actor=None):
         for order_no in wanted:
             try:
                 prepared = orders.api_data(db, order_no, client=client, headers=headers)
-                result = orders.import_document(db, 'api', number=order_no, prepared=prepared)
+                row = db.execute('SELECT id FROM main.purchase_order WHERE bricklink_order_id=?', (order_no,)).fetchone()
+                result = orders.import_document(db, 'api', number=order_no, prepared=prepared, choice=str(row[0]) if row else 'new')
             except REMOTE_FAILURES as exc:
                 run['stages'][order_no] = dict(status='failed', message=_message(exc))
             else:

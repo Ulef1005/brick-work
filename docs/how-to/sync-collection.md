@@ -43,7 +43,7 @@ The page shows your account (key and today's budget, with **Test**, **Change** a
 
 1. **Connect.** BrickLink asks for four values: the consumer key and secret, and the token value and secret. Paste them and choose **Save**; Brick Work tests the key once with one call. BrickLink binds the token to one IP address that you registered with it, so register the address of the machine that runs Brick Work. A key from the environment can only be changed there.
 2. **Choose what.** **Orders**: **Into Brick Work** or **Off**, with an optional **Orders since** date and **Orders to pull**, either **Received and paid** or **All orders**. **Price guide**: the region that prices are read for. An installation can lock the region (`BW_PRICE_SETTINGS_LOCK`, on by default); the control then shows the region and cannot change it.
-3. **Pick lots.** The orders the run could pull, newest first. Ticked orders come in; an order you already imported is marked **Imported** and stays as it is.
+3. **Pick lots.** The orders the run could pull, newest first. Ticked orders come in; an order you already imported is marked **Imported** and stays as it is. After **Undo this run**, its orders are no longer marked and you can pull them again.
 4. **Preview.** One row for each picked order. **Pull in** brings an order into Orders as a draft, with its lines placed on your items. Nothing changes until you run.
 5. **Result.** What each order did, with a link to it, and **Undo this run**. One Undo takes back every order the run pulled.
 

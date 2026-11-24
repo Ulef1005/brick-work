@@ -94,6 +94,8 @@ KEY_HELP = {
                       where='Get a BrickLink key', url='https://www.bricklink.com/v2/api/register_consumer.page'),
     'brickset': dict(gives='Set data such as retail prices, and set pictures.', where='Get a Brickset key',
                      url='https://brickset.com/tools/webservices/requestkey'),
+    'brickowl': dict(gives='Your Brick Owl collection and wishlists, for the Brick Owl sync.', where='Get a Brick Owl key',
+                     url='https://www.brickowl.com/api_docs'),
 }
 
 

@@ -14,6 +14,7 @@ from .. import errors, keys, secrets
 from ..sources.base import KeyRejected, RemoteBudgetExceeded, SourceError, WaitingForBudget, now, transport, USER_AGENT
 from ..sources.brickset import Brickset, BASE as BRICKSET
 from ..sources.rebrickable import Rebrickable
+from .brickowl_run import BrickOwlUser
 
 REBRICKABLE_USERS = 'https://rebrickable.com/api/v3/users'
 NUMBER = re.compile(r'[A-Za-z0-9][A-Za-z0-9.-]{0,63}')
@@ -451,7 +452,7 @@ class BricksetUser(Brickset):
         return self.send_set([row], link, state)
 
 
-ADAPTERS = {'rebrickable': RebrickableUser, 'brickset': BricksetUser}
+ADAPTERS = {'rebrickable': RebrickableUser, 'brickset': BricksetUser, 'brickowl': BrickOwlUser}
 
 
 def adapter(db, source, http=None):

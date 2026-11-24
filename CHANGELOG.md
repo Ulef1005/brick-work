@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **A Brick Owl key** (#522). The keys step takes a Brick Owl API key (collection, wishlist and orders permissions), and the first Brick Owl code reads your sets and wishlists. The Brick Owl sync page follows.
+
 - **Rate a copy and rank a wish** (#690). A copy takes a rating from 1 to 5 stars and a wish a priority from 1 to 999 (1 is the highest). Both are optional, change through the API like any field, undo with the edit and travel in Brick Work's own export file and its import. The own CSV of your sets has a `Rating` column. The schema moves from 4.8 to 4.9 in place at the first read/write start; every row stays unrated. The Brickset sync uses them next. See [ADR 0041](docs/adr/0041-rating-and-priority.md).
 
 - **Brickset: the wanted quantity, fewer calls, the account name** (#690, first part). A wanted set now has a quantity on both sides: Brickset keeps one (`qtyWanted`), and the page used to treat a wanted set as a yes or no. A set that changes in more than one way, for example owned and wanted, is sent in one call. A run reads your owned and wanted sets once for both directions, and every call to Brickset now counts against the day's 100, as Brickset now counts them. The Brickset and Rebrickable pages show your account name, the username you typed when you connected. The first run after this change may list a wanted set with a quantity above one as changed in both places, because the old runs remembered a wanted set as one; Keep leaves both sides as they are. See [A Brickset run](docs/how-to/sync-collection.md#a-brickset-run).

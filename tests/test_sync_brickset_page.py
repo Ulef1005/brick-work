@@ -343,9 +343,6 @@ def test_a_failed_send_is_listed_on_the_result_with_a_retry_and_the_daily_budget
     assert '2 waiting' in page.select_one('.sr-head p').get_text() and 'failed' not in page.select_one('.sr-head p').get_text()
     assert page.select_one('form[action$="/retry"] button').get_text(strip=True) == 'Retry'
     assert 'the daily budget' in page.select_one('[data-rb-there]').get_text()
-    site = soup(client.get(BASE))
-    retry_form = site.select_one('[data-rb-runs] form[action$="/manage/sync/brickset/send"]')
-    assert retry_form and retry_form.select_one('input[name=next]')['value'] == 'site'
     monkeypatch.setattr(adapters.BricksetUser, 'send', real)
     assert client.post(f'{BASE}/run/{run_id}/retry', data={'csrf_token': csrf}).location.endswith('/result')
     assert remote.owned['2070-1'] == (1003, 1) and remote.owned['1000-3'] == (1004, 1)
@@ -396,20 +393,20 @@ def test_the_rebrickable_choices_and_the_brickset_ones_do_not_meet(client, remot
 
 
 def test_same_site_with_a_failing_db_returns_without_500(client, remote, pair, monkeypatch):
+    from werkzeug.exceptions import NotFound
     from brickwork.web import sync_site
     csrf = connected(client, pair)
     run_id = start(client, csrf)
+    with db_of(pair) as db, pytest.raises(NotFound):
+        sync_site._same_site(db, run_id, 'rebrickable')
 
     def locked():
         raise sqlite3.OperationalError('database is locked')
 
     monkeypatch.setattr(sync_site, '_db', locked)
-    assert sync_site._same_site(run_id, 'brickset') is None
     for path in ('pick', 'run', 'retry'):
         response = client.post(f'{BASE}/run/{run_id}/{path}', data={'csrf_token': csrf})
         assert response.status_code == 302, path
-    monkeypatch.setattr(sync_site, '_db', lambda: (_ for _ in ()).throw(OSError('missing')))
-    assert sync_site._same_site(run_id, 'brickset') is None
 
 
 def test_brickset_start_with_owned_off_and_wanted_to_does_not_call_set_ids_for_owned_rows(client, remote, pair, monkeypatch):

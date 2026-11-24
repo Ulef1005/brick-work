@@ -294,11 +294,11 @@ def step_pick_save(source, run_id):
     from ..core.sources.base import audit_origin
     from ..core.sync import run as sync_run
     _guard()
-    _same_site(run_id, source)
     ids = _ids(request.form.getlist('item'))
     keep = None if 'keep_present' not in request.form else request.form.getlist('keep_list_names')[-1:] == ['1']   # the hidden 0 comes first: the last value wins
     try:
         with _db() as db, audit_origin('app'):
+            _same_site(db, run_id, source)
             sync_run.save_pick(db, run_id, ids, keep)
     except (errors.BrickWorkError, *sync_run.FAILURES) as exc:
         flash(_message(exc, source), 'warning')
@@ -306,13 +306,12 @@ def step_pick_save(source, run_id):
     return redirect(_to(source, 'preview', run_id=run_id))
 
 
-def _same_site(run_id, source):
+def _same_site(db, run_id, source):
     """A run id of the other site opens nothing here (404). An id that is not a run, or has expired, is left to the write that follows, which says so."""
     from ..core import errors, sync
     try:
-        with _db() as db:
-            run = sync.load_plan(db, run_id, 'run')
-    except (errors.BrickWorkError, sqlite3.Error, OSError):
+        run = sync.load_plan(db, run_id, 'run')
+    except errors.BrickWorkError:
         return
     if run.get('source', SOURCE) != source:
         abort(404)
@@ -374,9 +373,9 @@ def step_apply(source, run_id):
     if form.get('lot_all'):    # one lot for every loose row ticked, the section's "Put in"
         for key in form.getlist('part'):
             form['lot:' + key] = form['lot_all']
-    _same_site(run_id, source)
     try:
         with _db() as db, audit_origin('app'):
+            _same_site(db, run_id, source)
             run = sync_run.apply(db, run_id, form)
     except LOCAL as exc:   # the database or the run file could not be written, possibly after Rebrickable took changes: say so, never a 500
         flash(public(exc, _unsaved(source)), 'warning')
@@ -458,9 +457,9 @@ def step_retry(source, run_id):
     from ..core.sources.base import audit_origin
     from ..core.sync import run as sync_run
     _guard()
-    _same_site(run_id, source)
     try:
         with _db() as db, audit_origin('app'):
+            _same_site(db, run_id, source)
             sync_run.retry_send(db, run_id)
     except LOCAL as exc:
         flash(public(exc, _unsaved(source)), 'warning')

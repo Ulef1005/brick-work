@@ -643,3 +643,21 @@ def test_undo_skips_a_target_archived_since_and_still_restores_the_rest(pair):
         undo.undo_event(db, res['event_id'])
         assert tuple(db.execute('SELECT note, rating FROM copy WHERE id=?', (a,)).fetchone()) == (None, None)
         assert tuple(db.execute('SELECT note, rating FROM copy WHERE id=?', (b,)).fetchone()) == ('two', 3)      # the archived copy is left as it is
+
+
+def test_undo_records_how_many_archived_targets_it_left_and_handles_a_wish(pair):
+    with db_of(pair) as db:
+        coll = Coll(db)
+        coll.add_copy('1000-1')
+        coll.add_wish(coll.item('sets', '1000-2'), quantity=1)
+        wish = _wishes(db, '1000-2')[0][0]
+        res = set_fields.apply(db, set_fields.plan(db, {'1000-1': {'notes': '', 'flags': [], 'rating': 4},
+                                                         '1000-2': {'notes': 'wish note', 'flags': [], 'priority': 7}}, {})['id'])
+        assert res['counts']['ratings'] == 1 and res['counts']['priorities'] == 1
+        db.execute("UPDATE wish SET archived_at='2026-11-24T00:00:00Z' WHERE id=?", (wish,))
+        db.commit()
+        undone = undo.undo_event(db, res['event_id'])
+        assert tuple(db.execute('SELECT rating FROM copy WHERE archived_at IS NULL').fetchone()) == (None,)
+        assert tuple(db.execute('SELECT note, priority FROM wish WHERE id=?', (wish,)).fetchone()) == ('wish note', 7)
+        payload = json.loads(db.execute('SELECT new_value FROM event WHERE id=?', (undone['undo_event_id'],)).fetchone()[0])
+        assert payload == {'undoes': res['event_id'], 'skipped': 2}                                  # the wish's note and priority

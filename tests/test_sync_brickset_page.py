@@ -621,3 +621,15 @@ def test_the_read_takes_a_rating_and_a_priority_only_inside_their_ranges(client,
         with db_of(pair) as db:
             fields = adapters.adapter(db, 'brickset', remote).fetch({})['fields']['1000-1']
         assert (fields['rating'], fields['priority']) == (want_rating, want_priority), (rating, priority)
+
+
+def test_a_set_that_is_owned_and_wanted_carries_its_note_rating_and_priority_once(client, remote, pair):
+    connected(client, pair)
+    remote.wanted['1000-1'] = 1001           # 1000-1 is owned in the fake: now it is wanted too
+    remote.ratings['1000-1'] = 3
+    remote.priorities['1000-1'] = 9
+    remote.notes['1000-1'] = 'both lists'
+    with db_of(pair) as db:
+        fetched = adapters.adapter(db, 'brickset', remote).fetch({})
+    assert fetched['fields']['1000-1'] == dict(notes='both lists', flags=[], rating=3, priority=9)
+    assert fetched['owned']['1000-1'] == 1 and fetched['wanted']['1000-1'] == 1

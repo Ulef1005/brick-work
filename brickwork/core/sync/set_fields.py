@@ -326,12 +326,14 @@ def _undo(db, event, via, actor):
     r = json.loads(event['new_value'])
     stamp = store_now()
     undo_fields = (('notes', None, 'note'), ('ratings', 'main.copy', 'rating'), ('priorities', 'main.wish', 'priority'))
+    left = 0                                               # archived targets: nothing to restore on them
     for key, fixed_tbl, col in undo_fields:
         for entry in r.get(key) or ():
             tbl = fixed_tbl or ('main.copy' if entry['table'] == 'copy' else 'main.wish')
             row = db.execute(f'SELECT {col} FROM {tbl} WHERE id=? AND archived_at IS NULL', (entry['id'],)).fetchone()
             if row is None:
-                continue                                   # archived since: nothing to restore, and no reason to refuse the rest
+                left += 1                                  # archived since: its values stay as they are, and that is no reason to refuse the rest
+                continue
             if row[0] != entry['after']:
                 raise ValueError('Something from this sync has changed since · undo the later change first')
     for entry in r['renamed']:
@@ -344,7 +346,7 @@ def _undo(db, event, via, actor):
         for entry in reversed(r.get(key) or ()):
             tbl = fixed_tbl or ('main.copy' if entry['table'] == 'copy' else 'main.wish')
             db.execute(f'UPDATE {tbl} SET {col}=?, updated_at=? WHERE id=? AND archived_at IS NULL', (entry['before'], stamp, entry['id']))
-    for link in reversed(r['links']):
+    for link in reversed(r['links']):                      # links go even from an archived copy, so a tag this pull made can be removed
         link_tbl, col = ('main.copy_flag', 'copy_id') if link['table'] == 'copy' else ('main.wish_flag', 'wish_id')
         db.execute(f'DELETE FROM {link_tbl} WHERE {col}=? AND flag_id=?', (link['id'], link['flag_id']))
     for entry in reversed(r['renamed']):
@@ -372,7 +374,7 @@ def _undo(db, event, via, actor):
             restored[k] = v
     if restored != current_map:
         _put_map(db, restored)
-    audit(db, 'sync:' + r['plan'], 'undo', None, {'undoes': event['id']}, via=via, actor=actor)
+    audit(db, 'sync:' + r['plan'], 'undo', None, dict({'undoes': event['id']}, **({'skipped': left} if left else {})), via=via, actor=actor)
     undo_id = db.execute('SELECT last_insert_rowid()').fetchone()[0]
     db.execute('INSERT INTO main.event_undo(event_id, undo_event_id) VALUES(?, ?)', (event['id'], undo_id))
     return {'event_id': undo_id}

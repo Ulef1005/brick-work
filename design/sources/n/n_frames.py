@@ -75,7 +75,7 @@ def tag(text, kind=''):
 
 
 def phone_shell(main):
-    subs = ''.join(f'<span class="{"on" if s == "Sync" else ""}">{s}</span>' for s in ['Sync', 'Orders', 'Storage'])
+    subs = ''.join(f'<span class="{"on" if s == "Sync" else ""}">{s}</span>' for s in B.GROUPS['Workbench'])
     tb = ''.join(f'<div class="{"on" if g == "Workbench" else ""}">{ic(i, 22)}<span>{g}</span>{"<b></b>" if g == "Workbench" else ""}</div>'
                  for g, i in (('Collection', 'sets'), ('Workbench', 'sliders'), ('Planning', 'tag'), ('Manage', 'wrench')))
     return (f'<div style="position:relative;height:100%"><div class="ptop">{B.lockup()}<span style="margin-left:auto;color:var(--tw-text-2)">{ic("search", 22)}</span>'
@@ -213,7 +213,7 @@ def rest(ph):
         what = ('<table class="ntbl"><tr><th>What</th><th>Direction</th><th>Linked to</th></tr>'
                 + ''.join(f'<tr><td><b>{a}</b></td><td>{tag(b)}</td><td>{c}</td></tr>' for a, b, c in WHAT) + '</table>')
     acct = (f'<div class="ncard"><h2>Your Rebrickable account {tag("Connected")}</h2>'
-            + kv([('Account', 'brickfan'), ('API key', 'Set · checked 18 Nov'), ('Speed', 'About 1 request a second'), ('Budget today', '<span class="mono">140 / 2,000</span>')])
+            + kv([('Account', 'brickfan'), ('API key', 'Set · checked 18 Nov'), ('Speed', 'About 1 request a second'), ('Budget today', '<span class="mono">140 / 1,000</span>')])
             + '<div style="display:flex;gap:10px;flex-wrap:wrap"><span class="btn sec sm">Test</span><span class="btn q sm">Change</span><span class="btn q sm">Remove</span></div></div>')
     sets = f'<div class="ncard"><h2>What syncs</h2>{what}<span class="btn sec sm" style="align-self:flex-start">Change what syncs</span></div>'
     last = ('<div class="ncard"><h2>Last runs</h2>'
@@ -321,7 +321,7 @@ def preview(ph):
                        for n, p, c, q in (('Brick 2 × 4', '3001', 'Red', 24), ('Plate 1 × 2', '3023', 'Light Bluish Gray', 40)))
              + f'<div style="max-width:320px">{field("Put in", "Lot · Bulk bin")}</div></div>')
     before = ('<div class="ninfo"><b>Before you send.</b> Brick Work’s Undo cannot take a sent change back. Removals are unticked until you tick them.'
-              f'<div style="margin-top:8px">{kv([("Requests", "about <span class=mono>9</span>"), ("Time", "about <span class=mono>10</span> seconds at 1 request a second"), ("Budget today", "<span class=mono>140 / 2,000</span>")])}</div></div>')
+              f'<div style="margin-top:8px">{kv([("Requests", "about <span class=mono>9</span>"), ("Time", "about <span class=mono>10</span> seconds at 1 request a second"), ("Budget today", "<span class=mono>140 / 1,000</span>")])}</div></div>')
     n = RUN_INTO + RUN_OUT
     ft = foot(btn('‹ Back', 'q'), btn(f'Run {n} changes', 'lg'), f'<span class="mono" style="font-size:13px;color:var(--tw-text-2)">{n} of 9 chosen</span>')
     lead = '<p class="n" style="font-size:14px;color:var(--tw-text-2)">Nothing in Brick Work is deleted unless you choose. Choose what happens to each difference, then run.</p>'
@@ -343,7 +343,7 @@ def run(ph):
               '<p class="n">Starts when everything here is done.</p></div>')
     return (head('Rebrickable', f'Running {total} changes', ph) + steps('Run', ph)
             + f'<div class="ncard"><h2>{done} of {total} done</h2>{prog(done, total)}'
-            '<p class="mono" style="font-size:13px;color:var(--tw-text-2)">about 3 s left · about 1 request a second · budget today 144 / 2,000</p>'
+            '<p class="mono" style="font-size:13px;color:var(--tw-text-2)">about 3 s left · about 1 request a second · budget today 144 / 1,000</p>'
             '<p class="n">You can leave this page. The run goes on and shows in Jobs.</p><span class="btn sec sm" style="align-self:flex-start">Stop after this one</span></div>'
             + (blocks if ph else f'<div class="ngrid g2">{blocks}</div>'))
 

@@ -217,17 +217,17 @@ def _spin(text):
 def run_applying(ph):
     into = card('Into Brick Work', _spin('Applying the pull') + '<p class="n">Sets, wishes, loose stock and part lists are applied together, so there is no count for this part. If it fails, nothing here changed.</p>')
     out = card('To Rebrickable', f'<p class="mono" style="{small}">0 of 2 sent</p>{N.prog(0, 2)}<p class="n">Sends and Lost Parts start when the pull is applied, one request each.</p>')
-    top = card('Running 6 changes', f'<p class="mono" style="{small}">about 1 request a second for the sends · budget today 144 / 2,000</p>'
+    top = card('Running 6 changes', f'<p class="mono" style="{small}">about 1 request a second for the sends · budget today 144 / 1,000</p>'
                '<p class="n">You can leave this page. The run goes on and shows in Jobs. The pull is applied in one step, so it cannot be stopped halfway; Stop after this one works on the sends.</p>'
                '<span class="btn sec sm" style="align-self:flex-start;opacity:.55">Stop after this one</span>')
     return head('Rebrickable', 'Running 6 changes', ph) + N.steps('Run', ph) + top + (into + out if ph else f'<div class="ngrid g2">{into}{out}</div>')
 
 
 def long_applying(ph):
-    top = card('Sending 1,120 of 1,500', f'{N.prog(1120, 1500)}<p class="mono" style="{small}">about 6 min left · 1 request a second · budget today 1,310 / 2,000</p>'
+    top = card('Sending 640 of 800', f'{N.prog(640, 800)}<p class="mono" style="{small}">about 3 min left · 1 request a second · budget today 810 / 1,000</p>'
                '<div class="ninfo">You can close this page, the browser or the tablet. The run keeps going on the server and shows in Jobs. If the server restarts it goes on from the last sent change.</div>'
                f'<div style="display:flex;gap:10px;flex-wrap:wrap">{btn("Stop after this one", "sec sm")}{btn("Open Jobs", "q sm")}</div>')
-    done = card(f'Pull applied {tag("Done")}', '<p class="n">2,500 changes applied here, in one step. Undo for the run stays on the result page.</p>')
+    done = card(f'Pull applied {tag("Done")}', '<p class="n">3,200 changes applied here, in one step. Undo for the run stays on the result page.</p>')
     return head('Rebrickable', 'Running 4,000 changes, started 19 Nov, 15:02', ph) + N.steps('Run', ph) + done + top
 
 

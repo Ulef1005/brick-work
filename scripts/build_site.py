@@ -289,7 +289,7 @@ def questions_markup(meta, body):
 
     def swap(text, old, new):
         if old not in text:
-            raise SystemExit(f'{path}: the breadcrumb label {old!r} is missing, so the page would ship without its links')
+            raise RuntimeError(f'{path}: the breadcrumb label {old!r} is missing, so the page would ship without its links')
         return text.replace(old, new, 1)
     if not path.startswith('questions/'):
         return body, ''
@@ -305,6 +305,9 @@ def questions_markup(meta, body):
     else:
         steps = re.findall(r'<li><span class="n">\d+</span><div><b>(.+?)</b><span class="d">(.+?)</span></div></li>', body, re.S)
         strip = lambda text: html.unescape(re.sub(r'<[^>]+>', '', text)).strip()
+        items = body.count('<li><span class="n">')
+        if len(steps) != items:
+            raise RuntimeError(f'{path}: {len(steps)} steps read for {items} step items, so the HowTo data would be wrong')
         if steps:
             data.append({'@context': 'https://schema.org', '@type': 'HowTo', 'name': name, 'step': [
                 {'@type': 'HowToStep', 'name': strip(step), 'text': strip(text)} for step, text in steps]})

@@ -200,7 +200,7 @@ def test_the_choice_screen_offers_every_source_with_its_path(client):
     choices = {c['data-choice']: c for c in page.select('[data-collection-choices] [data-choice]')}
     assert list(choices) == ['rebrickable', 'brickset', 'bricklink', 'bricktracker', 'file', 'hand']
     assert {k: c.find('a', class_='fr-btn')['href'] for k, c in choices.items()} == {
-        'rebrickable': '/manage/sync', 'brickset': '/manage/sync', 'bricklink': '/manage/add?mode=file',
+        'rebrickable': '/workbench/sync', 'brickset': '/workbench/sync', 'bricklink': '/manage/add?mode=file',
         'bricktracker': '/manage/import-legacy', 'file': '/manage/add?mode=file', 'hand': '/manage/add'}
     assert choices['brickset'].select_one('[data-choice-file]')['href'] == '/manage/add?mode=file'      # Brickset's My Sets CSV (#12 step 2)
     for key in ('rebrickable', 'brickset'):                                          # no keys in this fixture: each sync says so
@@ -218,7 +218,7 @@ def test_without_the_catalogue_the_choices_wait_for_it(client, monkeypatch):
 def test_the_pages_a_choice_opens_offer_the_way_back_and_others_do_not(client):
     assert not soup(client, '/manage/add').select('[data-flow-return]')            # not sent by the flow yet
     soup(client, '/manage/get-started/collection')
-    for route in ('/manage/add?mode=file', '/manage/import-legacy', '/manage/sync'):
+    for route in ('/manage/add?mode=file', '/manage/import-legacy', '/workbench/sync'):
         back = soup(client, route).select_one('[data-flow-return] a')
         assert back['href'] == '/manage/get-started/collection', route
     assert not soup(client, '/collection/sets').select('[data-flow-return]')

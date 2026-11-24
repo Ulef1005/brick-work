@@ -113,3 +113,34 @@ def test_workbench_nav_lists_sync_and_marks_it_current(app4, client, remote):
             assert titles.index('Sync') == titles.index('Storage') + 1
             sync_link = next(link for link in workbench if link['title'] == 'Sync')
             assert sync_link['active'] is True and sync_link['url'].endswith('/workbench/sync')
+
+
+def _event(db, field, entity_id, value, at='2026-11-20T10:00:00Z'):
+    import json
+    cur = db.execute("INSERT INTO event(at, via, entity_kind, entity_id, field, new_value) VALUES (?, 'app', 'sync', ?, ?, ?)",
+                     (at, entity_id, field, json.dumps(value)))
+    return cur.lastrowid
+
+
+def test_site_log_keeps_its_own_rows_and_undos_past_other_sites_traffic(pair):
+    from brickwork.web.sync_views import _log
+    with closing(connect(pair)) as db:
+        pull = _event(db, 'receipt', '1', {'source': 'rebrickable', 'counts': {'copies': 2}})
+        _event(db, 'undo', str(pull), {'undoes': pull})
+        for _ in range(30):   # more of Brickset's traffic than one page of the log
+            _event(db, 'send', 'brickset', {'counts': {'sent': 1}})
+        db.commit()
+        rebrickable = _log(db, source='rebrickable')
+        assert [(r['direction'], r['source']) for r in rebrickable] == [('Undone', 'rebrickable'), ('Pulled', 'rebrickable')]
+        brickset = _log(db, source='brickset')
+        assert len(brickset) == 20 and {r['source'] for r in brickset} == {'brickset'}
+        assert _log(db)[-1]['source'] == 'brickset'   # the hub's log is the newest 20 of every site
+
+
+def test_site_page_ignores_a_pull_of_another_site(client, remote, pair):
+    with closing(connect(pair)) as db:
+        pull = _event(db, 'receipt', '1', {'source': 'rebrickable', 'counts': {}})
+        db.commit()
+    assert soup(client.get(f'/workbench/sync/rebrickable?pulled={pull}')).select_one('form.sy-undo')
+    assert soup(client.get(f'/workbench/sync/brickset?pulled={pull}')).select_one('form.sy-undo') is None
+    assert soup(client.get('/workbench/sync/rebrickable?pulled=999999')).select_one('form.sy-undo') is None

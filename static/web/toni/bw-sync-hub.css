@@ -60,7 +60,7 @@
 
 .sh-tag-dash {
   border-style: dashed;
-  color: var(--text-2, var(--muted, var(--ink-2, inherit)));
+  color: var(--tw-text-2);
   opacity: 0.85;
 }
 
@@ -82,7 +82,7 @@
 
 .sh-meta dt,
 .sh-import-meta dt {
-  color: var(--text-2, var(--muted, var(--ink-2, inherit)));
+  color: var(--tw-text-2);
 }
 
 .sh-meta dd,

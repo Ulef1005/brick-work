@@ -49,11 +49,17 @@ def _budget(db, source):
 
 
 def _log(db, limit=20, source=None):
-    """Sync log rows from the receipts, their undos and the send records, newest first."""
+    """Sync log rows from the receipts, their undos and the send records, newest first.
+    With a source, only that site's rows (an undo counts for the site of the pull it undid), read until `limit` of them are found."""
     rows = []
     for r in db.execute("""SELECT e.id, e.entity_id, e.field, e.new_value, e.at, EXISTS(SELECT 1 FROM event_undo u WHERE u.event_id=e.id) AS undone
-            FROM event e WHERE e.entity_kind='sync' AND e.field IN ('receipt', 'undo', 'send') ORDER BY e.id DESC LIMIT ?""", (limit if source is None else 500,)):
+            FROM event e WHERE e.entity_kind='sync' AND e.field IN ('receipt', 'undo', 'send') ORDER BY e.id DESC""" + (' LIMIT ?' if source is None else ''),
+                        (limit,) if source is None else ()):
+        if source is not None and len(rows) >= limit:
+            break
         value = json.loads(r['new_value']) if r['new_value'] else None
+        if source is not None and _row_source(db, r, value) != source:
+            continue
         if r['field'] == 'receipt':
             c = value.get('counts', {})
             what = ' · '.join(p for p in (
@@ -64,7 +70,7 @@ def _log(db, limit=20, source=None):
                 _lost_words(c)) if p) or 'Nothing new'
             rows.append(dict(at=r['at'], source=value['source'], direction='Pulled', what=what, state='Undone' if r['undone'] else 'Done', event=r['id']))
         elif r['field'] == 'undo':
-            rows.append(dict(at=r['at'], source='', direction='Undone', what='Pull ' + str(value['undoes']) + ' undone', state='Done', event=None))
+            rows.append(dict(at=r['at'], source=_row_source(db, r, value), direction='Undone', what='Pull ' + str(value['undoes']) + ' undone', state='Done', event=None))
         else:
             counts = (value or {}).get('counts', {})
             sent = counts.get('sent', 0) + counts.get('unchanged', 0)
@@ -72,9 +78,24 @@ def _log(db, limit=20, source=None):
             what = f"{sent} {'change' if sent == 1 else 'changes'} sent" + ''.join(f" · {v} {k.replace('_', ' ')}" for k, v in problems.items())
             state = 'Done' if not problems else 'Waiting for you'
             rows.append(dict(at=r['at'], source=r['entity_id'], direction='Sent', what=what, state=state, event=None))
-    if source is not None:
-        rows = [r for r in rows if not r['source'] or r['source'] == source]
     return rows[:limit]
+
+
+def _receipt_source(db, event_id):
+    """The site of one pull receipt ('' when the id names no receipt)."""
+    if not str(event_id).isdigit():
+        return ''
+    row = db.execute("SELECT new_value FROM event WHERE id=? AND entity_kind='sync' AND field='receipt'", (int(event_id),)).fetchone()
+    return ((json.loads(row['new_value']) if row and row['new_value'] else {}) or {}).get('source', '')
+
+
+def _row_source(db, r, value):
+    """The site a log event belongs to: a receipt names it, a send keeps it as its entity id, an undo takes it from the pull it undid."""
+    if r['field'] == 'receipt':
+        return (value or {}).get('source', '')
+    if r['field'] == 'undo':
+        return _receipt_source(db, (value or {}).get('undoes'))
+    return r['entity_id']
 
 
 def _lost_words(c):
@@ -121,22 +142,17 @@ _SITE_DESCRIPTIONS = {
 }
 
 
-def _account_name(status):
-    """Linked account name if status carries one, else 'none'."""
-    user_cred = (status.get('credentials') or {}).get('user') or {}
-    link = status.get('link') or {}
-    for value in (status.get('account'), status.get('username'),
-                  user_cred.get('account'), user_cred.get('username'), user_cred.get('name'),
-                  link.get('account'), link.get('username'), link.get('name')):
-        if isinstance(value, str) and value.strip():
-            return value.strip()
-    return 'none'
-
-
 def _last_sync(status):
-    """Newest pull or send time formatted with stamp, or 'Never'."""
+    """Newest pull or send time formatted with stamp, or 'Never'. Compared as instants: a pull is stamped '…Z', a send '…+00:00'."""
+    from datetime import datetime
+
+    def instant(value):   # both are stored in UTC, so the naive instant orders them
+        try:
+            return datetime.fromisoformat(str(value).replace('Z', '+00:00')).replace(tzinfo=None)
+        except ValueError:
+            return datetime.min
     times = [t for t in ((status.get('last_pull') or {}).get('at'), (status.get('last_send') or {}).get('at')) if t]
-    return stamp(max(times)) if times else 'Never'
+    return stamp(max(times, key=instant)) if times else 'Never'
 
 
 def _state_tag(status, connected):
@@ -202,10 +218,13 @@ def bw_sync_site(source):
                       lost_on=sync.lost_parts_on(db, source))]
         rule = lost_parts.rule(db)
         log = _log(db, source=source)
-        result = lost_result(db, request.args.get('pulled', ''))
+        pulled = request.args.get('pulled', '')
+        if _receipt_source(db, pulled) != source:   # a receipt of another site (or none): no result card and no Undo on this page
+            pulled = ''
+        result = lost_result(db, pulled)
     subtitle = f"Bring your collection in from {sync.LABELS[source]}, work on it here, then send changes back."
     return _page('web/toni/web/bw_sync.html', screen='sources', title=sync.LABELS[source], subtitle=subtitle, source=source,
-                 cards=cards, log=log, lost_result=result, rule_labels=lost_parts.RULE_LABELS,
+                 cards=cards, log=log, lost_result=result, pulled=pulled, rule_labels=lost_parts.RULE_LABELS,
                  lost_rule=dict(value=rule, label=lost_parts.RULE_LABELS[rule], note=lost_parts.RULE_NOTES[rule]))
 
 

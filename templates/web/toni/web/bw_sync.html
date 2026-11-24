@@ -16,7 +16,7 @@
 {% if screen == 'sources' %}
 <header class="bw-page-head"><a class="bw-back" href="{{ url_for('web.bw_sync_hub') }}">{{ toni_icon('chevron-left') }}Sync</a><h1>{{ title }}</h1><p>{{ subtitle or 'Bring a collection in from Rebrickable or Brickset, work on it here, then send the changes back.' }}</p></header>
 {{ flashes() }}
-{% if request.args.get('pulled') and can_edit %}<form method="post" class="sy-undo" action="{{ url_for('web.bw_sync_write', source=source or 'rebrickable', action='undo') }}">{{ csrf() }}<input type="hidden" name="event" value="{{ request.args.get('pulled') }}"><button class="bk-btn bk-quiet">Undo this pull</button></form>{% endif %}
+{% if pulled and can_edit %}<form method="post" class="sy-undo" action="{{ url_for('web.bw_sync_write', source=source or 'rebrickable', action='undo') }}">{{ csrf() }}<input type="hidden" name="event" value="{{ pulled }}"><button class="bk-btn bk-quiet">Undo this pull</button></form>{% endif %}
 {% if lost_result %}{% set lr = lost_result %}
 <section class="bk-card sy-lost-result" aria-labelledby="sy-lost-result-title"><h2 class="bk-eyebrow" id="sy-lost-result-title">Lost Parts from Rebrickable</h2>
 {% if lr.status == 'failed' %}<p class="bk-banner bk-warning" role="status">{{ lr.message }}</p>

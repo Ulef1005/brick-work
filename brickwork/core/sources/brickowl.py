@@ -1,7 +1,4 @@
-"""Brick Owl API v1 client (read-only slice, #522).
-
-Returns parsed JSON replies unchanged without indexing into them.
-"""
+"""Brick Owl API v1 client (#522)."""
 from datetime import datetime, timezone
 import math
 import os
@@ -13,9 +10,14 @@ from . import base
 from .base import KeyRejected, Source, SourceError
 
 BASE = 'https://api.brickowl.com/v1'
-_ENDPOINTS = re.compile(
-    r'(?:user/details|collection/lots|wishlist/(?:lists|lots)|order/(?:list|view|items)|catalog/id_lookup)'
-)
+_ENDPOINTS = {
+    'GET': re.compile(
+        r'(?:user/details|collection/lots|wishlist/(?:lists|lots)|order/(?:list|view|items)|catalog/id_lookup)'
+    ),
+    'POST': re.compile(
+        r'(?:collection/(?:create_lot|update|delete_lot)|wishlist/(?:create_lot|update|delete_lot))'
+    ),
+}
 _ID_TYPES = ('item_no', 'design_id', 'bl_item_no', 'set_number')
 _TEXT_PATTERN = re.compile(r'[A-Za-z0-9_-]{1,64}')
 _INT_PATTERN = re.compile(r'[0-9]+')
@@ -25,6 +27,35 @@ def _validate_id(value, pattern, message):
     if value is None or isinstance(value, bool) or not pattern.fullmatch(str(value)):
         raise ValueError(message)
     return str(value)
+
+
+def _validate_positive_int(value, message):
+    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+        raise ValueError(message)
+    return value
+
+
+def _error_text(reply):
+    if not isinstance(reply, dict) or not reply.get('error'):
+        return ''
+    error = reply['error']
+    if isinstance(error, dict):
+        return ' '.join(str(v) for v in error.values() if isinstance(v, (str, int)) and not isinstance(v, bool))
+    return str(error)
+
+
+def _succeeded(reply):
+    if not isinstance(reply, dict) or reply.get('status') != 'Success':
+        raise SourceError('Brick Owl did not confirm the change')
+    return reply
+
+
+def _created_lot(reply):
+    _succeeded(reply)
+    lot_id = reply.get('lot_id') if isinstance(reply, dict) else None
+    if lot_id is None or isinstance(lot_id, bool) or not isinstance(lot_id, (str, int)) or not str(lot_id).strip():
+        raise SourceError('Brick Owl did not return a lot')
+    return str(lot_id).strip()
 
 
 def _unix_timestamp(since):
@@ -48,7 +79,7 @@ def _unix_timestamp(since):
 
 
 class BrickOwl(Source):
-    """Read-only Brick Owl API v1 client."""
+    """Brick Owl API v1 client."""
 
     label = 'Brick Owl'
     source = 'brickowl'
@@ -65,24 +96,32 @@ class BrickOwl(Source):
 
     def key_refused(self, reply):
         """True only when an error reply reports access denied or invalid key."""
-        if not isinstance(reply, dict) or not reply.get('error'):
-            return False
-        return bool(re.search(r'access\s+denied|invalid.*key|key.*invalid', str(reply['error']), re.IGNORECASE))
+        text = _error_text(reply)
+        return bool(text and re.search(r'access\s+denied|invalid.*key|key.*invalid', text, re.IGNORECASE))
 
-    def call(self, path, params=None, *, normalize=None, job_id=None):
-        """Send one GET request to an allow-listed Brick Owl endpoint."""
-        if not isinstance(path, str) or not _ENDPOINTS.fullmatch(path):
+    def call(self, path, params=None, *, method='GET', normalize=None, job_id=None):
+        """Send one GET or POST request to an allow-listed Brick Owl endpoint."""
+        allowed = _ENDPOINTS.get(method)
+        if not allowed or not isinstance(path, str) or not allowed.fullmatch(path):
             raise ValueError('unsupported Brick Owl endpoint')
         self.ready()
         api_key = self.credential_values()[0]
         clean = {k: v for k, v in (params or {}).items() if v is not None and k != 'key'}
         record_key = f'{path}?{urlencode(sorted(clean.items()))}' if clean else path
-        url = f"{BASE}/{path}?{urlencode({'key': api_key, **clean})}"
-        request = Request(url, headers={'User-Agent': base.USER_AGENT})
+        payload = urlencode({'key': api_key, **clean})
+        if method == 'POST':
+            request = Request(
+                f'{BASE}/{path}',
+                data=payload.encode(),
+                method='POST',
+                headers={'User-Agent': base.USER_AGENT, 'Content-Type': 'application/x-www-form-urlencoded'},
+            )
+        else:
+            request = Request(f'{BASE}/{path}?{payload}', headers={'User-Agent': base.USER_AGENT})
 
         def consume(reply):
-            if isinstance(reply, dict) and reply.get('error'):
-                text = str(reply['error'])
+            text = _error_text(reply)
+            if text:
                 if re.search(r'quota\s+exceeded|rate\s+limit|too\s+many\s+requests', text, re.IGNORECASE):
                     raise base.RemoteBudgetExceeded()
                 if re.search(r'access\s+denied|invalid\s+(?:api\s+)?key|(?:api\s+)?key\s+(?:is\s+)?invalid', text, re.IGNORECASE):
@@ -144,3 +183,46 @@ class BrickOwl(Source):
         if id_type is not None:
             params['id_type'] = id_type
         return self.call('catalog/id_lookup', params)
+
+    def create_collection_lot(self, boid, color_id=None):
+        """Create a collection lot and return its lot id."""
+        params = {'boid': _validate_id(boid, _TEXT_PATTERN, 'invalid boid')}
+        if color_id is not None:
+            params['color_id'] = _validate_id(color_id, _INT_PATTERN, 'invalid color id')
+        return self.call('collection/create_lot', params, method='POST', normalize=_created_lot)
+
+    def update_collection_lot(self, lot_id, quantity=None, condition=None):
+        """Update quantity or condition of one collection lot."""
+        lid = _validate_id(lot_id, _TEXT_PATTERN, 'invalid lot id')
+        if quantity is None and condition is None:
+            raise ValueError('nothing to update')
+        params = {'lot_id': lid}
+        if quantity is not None:
+            params['quantity'] = _validate_positive_int(quantity, 'invalid quantity')
+        if condition is not None:
+            params['condition'] = _validate_id(condition, _TEXT_PATTERN, 'invalid condition')
+        return self.call('collection/update', params, method='POST', normalize=_succeeded)
+
+    def delete_collection_lot(self, lot_id):
+        """Delete one collection lot."""
+        lid = _validate_id(lot_id, _TEXT_PATTERN, 'invalid lot id')
+        return self.call('collection/delete_lot', {'lot_id': lid}, method='POST', normalize=_succeeded)
+
+    def create_wishlist_lot(self, wishlist_id, boid):
+        """Create a wishlist lot and return its lot id."""
+        wid = _validate_id(wishlist_id, _TEXT_PATTERN, 'invalid wishlist id')
+        bid = _validate_id(boid, _TEXT_PATTERN, 'invalid boid')
+        return self.call('wishlist/create_lot', {'wishlist_id': wid, 'boid': bid}, method='POST', normalize=_created_lot)
+
+    def update_wishlist_lot(self, wishlist_id, lot_id, minimum_quantity):
+        """Update minimum quantity of one wishlist lot."""
+        wid = _validate_id(wishlist_id, _TEXT_PATTERN, 'invalid wishlist id')
+        lid = _validate_id(lot_id, _TEXT_PATTERN, 'invalid lot id')
+        qty = _validate_positive_int(minimum_quantity, 'invalid quantity')
+        return self.call('wishlist/update', {'wishlist_id': wid, 'lot_id': lid, 'minimum_quantity': qty}, method='POST', normalize=_succeeded)
+
+    def delete_wishlist_lot(self, wishlist_id, lot_id):
+        """Delete one wishlist lot."""
+        wid = _validate_id(wishlist_id, _TEXT_PATTERN, 'invalid wishlist id')
+        lid = _validate_id(lot_id, _TEXT_PATTERN, 'invalid lot id')
+        return self.call('wishlist/delete_lot', {'wishlist_id': wid, 'lot_id': lid}, method='POST', normalize=_succeeded)

@@ -153,7 +153,7 @@ def _brickset_what_syncs(db):
         rows.append(dict(what='Owned sets', direction=labels[d['owned']], linked='Quantity owned'))
     if d['wishlist'] != 'off':
         rows.append(dict(what='Wanted sets', direction=labels[d['wishlist']],
-                         linked='Wanted, as a flag, ↔ wishlist ' + wish_lists.get(link.get('wish_list') or 'default', 'Wanted')))
+                         linked='Quantity wanted ↔ wishlist ' +wish_lists.get(link.get('wish_list') or 'default', 'Wanted')))
     return rows
 
 

@@ -46,6 +46,7 @@
 <div class="sr-grid">
 <section class="sr-card" data-rb-account><h2>Your {{ label }} account {{ tag('Connected') if connected else tag('Not connected', true) }}</h2>
 <dl class="sr-kv">
+{% if account %}<dt>Account</dt><dd>{{ account }}</dd>{% endif %}
 <dt>API key</dt><dd>{% if key_gap %}Not set{% elif key.origin == 'env' %}Set in the environment{% else %}Set{% if key_day %} · last used {{ key_day }}{% endif %}{% endif %}</dd>
 {% if source == 'rebrickable' %}<dt>Speed</dt><dd>About 1 request a second</dd>
 {% endif %}{% if budget and source == 'brickset' %}<dt>Today’s budget</dt><dd class="mono">{{ budget.used }} of {{ budget.budget }} calls</dd>
@@ -88,7 +89,8 @@
 {% if key.origin == 'env' %}<p class="sr-note">This key comes from the environment. Change it there.</p>{% endif %}{% endif %}
 {% endif %}</section>
 <section class="sr-card" data-rb-account><h2>2 · Your {{ label }} account {{ tag('Connected') if connected else tag('Not connected', true) }}</h2>
-{% if connected %}<p class="sr-lede">A {{ 'user hash' if source == 'brickset' else 'user token' }} is stored encrypted. It is never shown again.</p>
+{% if connected %}{% if account %}<p class="sr-lede">Connected as {{ account }}.</p>{% endif %}
+<p class="sr-lede">A {{ 'user hash' if source == 'brickset' else 'user token' }} is stored encrypted. It is never shown again.</p>
 {% if can_edit %}<div class="sr-actions"><form method="post" action="{{ url_for('web.bw_sync_write', source=source, action='test') }}">{{ csrf() }}<input type="hidden" name="next" value="connect"><button class="bk-btn bk-outline">Test</button></form>
 <form method="post" action="{{ url_for('web.bw_sync_write', source=source, action='remove') }}">{{ csrf() }}<input type="hidden" name="next" value="connect"><button class="bk-btn bk-quiet">Remove</button></form></div>{% endif %}
 {% else %}

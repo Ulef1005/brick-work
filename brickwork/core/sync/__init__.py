@@ -62,6 +62,24 @@ def _root(db):
 
 # Credentials -------------------------------------------------------------------------------
 
+def _account_key(source):
+    return f'{source}_account_name'
+
+
+def account_name(db, source):
+    _source(source)
+    row = db.execute('SELECT value FROM main.setting WHERE key=?', (_account_key(source),)).fetchone()
+    return row[0] if row and row[0] else None
+
+
+def _set_account_name(db, source, name):
+    with transaction(db):
+        if name is None:
+            db.execute('DELETE FROM main.setting WHERE key=?', (_account_key(source),))
+        else:
+            db.execute('INSERT OR REPLACE INTO main.setting(key, value) VALUES(?, ?)', (_account_key(source), name))
+
+
 def connect(db, source, username, password, *, http=None):
     """Exchange username + password at the site for its token/hash and store only that, encrypted.
 
@@ -76,6 +94,7 @@ def connect(db, source, username, password, *, http=None):
     token = adapters.adapter(db, source, http).connect(username.strip(), password)
     field = keys.fields(USER[source])[0]
     keys.save(db, USER[source], {field: token})
+    _set_account_name(db, source, username.strip())
     return credential_state(db, source)
 
 
@@ -83,12 +102,14 @@ def paste(db, source, value):
     """Store a token/hash the user generated on the site (write-only)."""
     _source(source)
     keys.save(db, USER[source], {keys.fields(USER[source])[0]: value})
+    _set_account_name(db, source, None)
     return credential_state(db, source)
 
 
 def remove(db, source):
     _source(source)
     keys.archive(db, USER[source])
+    _set_account_name(db, source, None)
     return credential_state(db, source)
 
 
@@ -154,7 +175,7 @@ def status(db, source):
     _source(source)
     last_send = _setting(db, source, 'last_send')
     waiting = [r for r in (last_send or {}).get('rows', []) if r['result'] in ('failed', 'paused', 'key_rejected')]
-    return dict(source=source, label=LABELS[source], credentials=credential_state(db, source),
+    return dict(source=source, label=LABELS[source], account=account_name(db, source), credentials=credential_state(db, source),
                 link=_setting(db, source, 'link', {}), last_pull=_setting(db, source, 'last_pull'),
                 last_send=None if last_send is None else {k: v for k, v in last_send.items() if k != 'rows'},
                 waiting=len(waiting))

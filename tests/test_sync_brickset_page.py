@@ -134,10 +134,10 @@ def test_the_page_at_rest_shows_account_budget_runs_and_what_syncs_without_a_cal
     assert remote.calls == []                                            # the page at rest reads nothing from Brickset
     assert page.select_one('[data-rb-account] .sr-tag').get_text(strip=True) == 'Connected'
     kv = [t.get_text(' ', strip=True) for t in page.select('[data-rb-account] .sr-kv dt, [data-rb-account] .sr-kv dd')]
-    assert kv == ['API key', 'Set in the environment', 'Today’s budget', '0 of 100 calls']      # the account name is not stored; no request speed is claimed
+    assert kv == ['API key', 'Set in the environment', 'Today’s budget', '0 of 100 calls']      # a pasted hash has no account name; no request speed is claimed
     assert [b.get_text(strip=True) for b in page.select('[data-rb-account] .sr-actions .bk-btn')] == ['Test', 'Change', 'Remove']
     table = [[c.get_text(' ', strip=True) for c in tr.select('td')] for tr in page.select('[data-rb-what] tbody tr')]
-    assert table == [['Owned sets', 'Into Brick Work', 'Quantity owned'], ['Wanted sets', 'To Brickset', 'Wanted, as a flag, ↔ wishlist Wishlist']]
+    assert table == [['Owned sets', 'Into Brick Work', 'Quantity owned'], ['Wanted sets', 'To Brickset', 'Quantity wanted ↔ wishlist Wishlist']]
     assert page.select_one('form[action$="/workbench/sync/brickset/start"] button').get_text(strip=True) == 'Start a sync'
     assert page.select_one('[data-rb-what] a.bk-btn')['href'].endswith(BASE + '/choose')
     assert 'Purchase date and price never leave Brick Work' in page.get_text()
@@ -502,3 +502,22 @@ def test_a_wanted_quantity_at_brickset_is_pulled_as_the_quantity_of_the_wish(cli
     assert '1000-2' in rows_of(page)
     apply_run(client, csrf, run_id, page)
     assert wishes(pair, '1000-2') == 3
+
+
+def test_the_account_name_is_what_you_typed_at_connect_and_goes_with_the_hash(client, remote, pair):
+    from tests.test_bw_sync import PASSWORD
+    csrf = token(client)
+    connect = {'csrf_token': csrf, 'username': 'brickfan', 'password': PASSWORD, 'next': 'connect'}
+    assert client.post('/manage/sync/brickset/connect', data=connect).status_code == 302
+
+    def facts():
+        page = soup(client.get(BASE))
+        return [t.get_text(' ', strip=True) for t in page.select('[data-rb-account] .sr-kv dt, [data-rb-account] .sr-kv dd')]
+    assert facts()[:2] == ['Account', 'brickfan']
+    assert 'Connected as brickfan' in client.get(BASE + '/connect').get_data(as_text=True)
+    assert client.post('/manage/sync/brickset/paste', data={'csrf_token': csrf, 'value': HASH}).status_code == 302
+    assert 'Account' not in facts() and 'Connected as' not in client.get(BASE + '/connect').get_data(as_text=True)
+    assert client.post('/manage/sync/brickset/connect', data=connect).status_code == 302
+    assert facts()[:2] == ['Account', 'brickfan']
+    assert client.post('/manage/sync/brickset/remove', data={'csrf_token': csrf, 'next': 'connect'}).status_code == 302
+    assert 'Account' not in facts()

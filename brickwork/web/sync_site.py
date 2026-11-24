@@ -98,7 +98,7 @@ def site_page(source):
     stamps = [t for t in ((status.get('last_pull') or {}).get('at'), (status.get('last_send') or {}).get('at')) if t]
     from .sync_views import _last_sync
     return _render(source, screen='site', title=LABEL[source], subtitle='Last run ' + _last_sync(status) if last else 'Not run yet',
-                 connected=connected, key_gap=key_gap, key=status['credentials']['key'], budget=budget, what=what, runs=runs,
+                 connected=connected, account=status.get('account'), key_gap=key_gap, key=status['credentials']['key'], budget=budget, what=what, runs=runs,
                  waiting=status.get('waiting') or 0, pulled=pulled, lost_result=result, rule_labels=lost_parts.RULE_LABELS, stamps=stamps,
                  key_day=_day((budget or {}).get('last_success')))
 
@@ -110,7 +110,7 @@ def step_connect(source):
     with _db() as db:
         status = sync.status(db, source)
     return _render(source, screen='connect', title=LABEL[source], subtitle='Connect your account, choose what to sync, then run the sync.',
-                 connected=bool(status['credentials']['user']['configured']), key_gap=key_missing(source), key=status['credentials']['key'],
+                 connected=bool(status['credentials']['user']['configured']), account=status.get('account'), key_gap=key_missing(source), key=status['credentials']['key'],
                  **_steps(1))
 
 

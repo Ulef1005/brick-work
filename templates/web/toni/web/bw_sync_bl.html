@@ -1,0 +1,148 @@
+{% extends 'web/toni/base.html' %}
+{% block title %} · {{ title }}{% endblock %}{% block content_class %}standard bw-admin-page bw-sync-page bw-sync-rb-page{% endblock %}
+{% block page_assets %}
+<link rel="stylesheet" href="{{ bw_static('web/toni/bw-admin.css') }}">
+<link rel="stylesheet" href="{{ bw_static('web/toni/bw-sync.css') }}">
+<link rel="stylesheet" href="{{ bw_static('web/toni/bw-admin-b.css') }}">
+<link rel="stylesheet" href="{{ bw_static('web/toni/bw-sync-rb.css') }}">
+<script src="{{ bw_static('web/toni/bw-sync.js') }}" defer></script>
+<script src="{{ bw_static('web/toni/bw-sync-rb.js') }}" defer></script>
+{% endblock %}
+{% macro csrf() %}<input type="hidden" name="csrf_token" value="{{ csrf_token }}">{% endmacro %}
+{% macro flashes() %}{% for tone, text in messages %}<p class="bk-banner bk-{{ 'warning' if tone == 'warning' else 'success' }}" role="{{ 'alert' if tone == 'warning' else 'status' }}">{{ text }}</p>{% endfor %}{% endmacro %}
+{% macro tag(text, dash=false, hatch=false) %}<span class="sr-tag{{ ' sr-dash' if dash }}{{ ' sr-hatch' if hatch }}">{{ text }}</span>{% endmacro %}
+{% macro head(sub) %}
+<header class="bw-page-head sr-head"><a class="bw-back" href="{{ url_for('web.bw_sync_hub') }}">{{ toni_icon('chevron-left') }}Sync</a>
+<div class="sr-headrow"><div><span class="sr-kicker">Workbench · Sync</span><h1>{{ label }}</h1><p>{{ sub }}</p></div></div></header>
+{% endmacro %}
+{% macro stepbar() %}
+<ol class="sr-steps" aria-label="Steps">{% for name in steps %}{% set n = loop.index %}<li class="{{ 'sr-done' if n < step else 'sr-now' if n == step else '' }}"{% if n == step %} aria-current="step"{% endif %}><span class="sr-stepname">{% if n < step %}<svg class="sr-tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg>{% else %}{{ n }} {% endif %}{{ name }}</span></li>{% endfor %}</ol>
+<p class="sr-stepline">Step {{ step }} of 6 · {{ steps[step - 1] }}{% if step < 6 %} · next: {{ steps[step] }}{% endif %}</p>
+{% endmacro %}
+{% block main %}
+
+{% if screen == 'site' %}
+<header class="bw-page-head sr-head"><a class="bw-back" href="{{ url_for('web.bw_sync_hub') }}">{{ toni_icon('chevron-left') }}Sync</a>
+<div class="sr-headrow"><div><span class="sr-kicker">Workbench · Sync</span><h1>{{ label }}</h1><p>{{ subtitle }}</p></div>
+{% if can_edit %}{% if connected %}<form method="post" action="{{ url_for('web.bw_sync_bl_start') }}" data-sy-busy>{{ csrf() }}<button class="bk-btn bk-primary bk-lg" data-busy-label="Checking {{ label }}"{% if not orders_on %} disabled{% endif %}>Start a sync</button></form>
+{% else %}<a class="bk-btn bk-primary bk-lg" href="{{ url_for('web.bw_sync_bl_connect') }}">Connect</a>{% endif %}{% endif %}</div></header>
+{{ flashes() }}
+<div class="sr-grid">
+<section class="sr-card" data-rb-account><h2>Your BrickLink account {{ tag('Connected') if connected else tag('Not connected', true) }}</h2>
+<dl class="sr-kv">
+<dt>Key</dt><dd>{% if not connected %}Not set{% elif key.origin == 'env' %}Set in the environment{% else %}Set{% if key_day %} · last used {{ key_day }}{% endif %}{% endif %}</dd>
+{% if budget %}<dt>Today's budget</dt><dd class="mono">{{ budget.used }} of {{ budget.budget }} calls</dd>{% endif %}
+</dl>
+<div class="sr-actions">{% if connected and can_edit %}<form method="post" action="{{ url_for('web.bw_sync_bl_key') }}">{{ csrf() }}<input type="hidden" name="action" value="test"><input type="hidden" name="next" value="site"><button class="bk-btn bk-outline">Test</button></form>{% endif %}
+<a class="bk-btn bk-quiet" href="{{ url_for('web.bw_sync_bl_connect') }}">{{ 'Change' if connected else 'Connect' }}</a>
+{% if connected and can_edit and key.origin != 'env' %}<form method="post" action="{{ url_for('web.bw_sync_bl_key') }}">{{ csrf() }}<input type="hidden" name="action" value="remove"><input type="hidden" name="next" value="site"><button class="bk-btn bk-quiet">Remove</button></form>{% endif %}</div></section>
+<section class="sr-card" data-rb-runs><h2>Last runs</h2>
+{% for r in runs %}<div class="sr-run"><div class="sr-runid"><b>Run · {{ stamp(r.at) }}</b><span>{{ r.what }}</span></div>
+{{ tag('Done') }}
+{% if can_edit and r.undoable %}<span class="sr-runact"><form method="post" action="{{ url_for('web.bw_sync_bl_undo') }}">{{ csrf() }}<input type="hidden" name="event" value="{{ r.event }}"><button class="bk-btn bk-quiet">Undo this run</button></form></span>{% endif %}</div>
+{% else %}<p class="bk-text">Nothing has run yet.</p>{% endfor %}</section>
+</div>
+<section class="sr-card" data-rb-what><h2>What syncs</h2>
+{% if what %}<table class="sr-table"><thead><tr><th>What</th><th>Direction</th><th>Linked to</th></tr></thead><tbody>
+{% for w in what %}<tr><td><b>{{ w.what }}</b></td><td>{{ tag(w.direction) }}</td><td>{{ w.linked }}</td></tr>{% endfor %}</tbody></table>
+{% else %}<p class="bk-text">Nothing is chosen yet. Choose what to sync, and in which direction.</p>{% endif %}
+{% if connected %}<div class="sr-actions"><a class="bk-btn bk-outline" href="{{ url_for('web.bw_sync_bl_choose') }}">Change what syncs</a></div>{% endif %}</section>
+
+{% elif screen == 'connect' %}
+{{ head(subtitle) }}
+{{ stepbar() }}
+{{ flashes() }}
+<section class="sr-card" data-rb-key><h2>Your BrickLink key {{ tag('Set') if connected else tag('Not set', true) }}</h2>
+<p class="sr-lede">BrickLink binds the token to one IP address you registered with it. Requests from another address are refused, so register the address of the machine that runs Brick Work.</p>
+{% if key.origin == 'env' %}
+<div class="bk-field"><span>API key</span><input class="sr-masked" value="••••••••••••" readonly aria-label="BrickLink key, set"></div>
+{% if can_edit %}<div class="sr-actions"><form method="post" action="{{ url_for('web.bw_sync_bl_key') }}">{{ csrf() }}<input type="hidden" name="action" value="test"><button class="bk-btn bk-outline">Test</button></form></div>{% endif %}
+<p class="sr-note">This key comes from the environment. Change it there.</p>
+{% else %}
+{% if connected %}
+<div class="bk-field"><span>API key</span><input class="sr-masked" value="••••••••••••" readonly aria-label="BrickLink key, set"></div>
+{% if can_edit %}<div class="sr-actions"><form method="post" action="{{ url_for('web.bw_sync_bl_key') }}">{{ csrf() }}<input type="hidden" name="action" value="test"><button class="bk-btn bk-outline">Test</button></form>
+<form method="post" action="{{ url_for('web.bw_sync_bl_key') }}">{{ csrf() }}<input type="hidden" name="action" value="remove"><button class="bk-btn bk-quiet">Remove</button></form></div>{% endif %}
+{% endif %}
+{% if can_edit %}<form method="post" action="{{ url_for('web.bw_sync_bl_key') }}" autocomplete="off">{{ csrf() }}<input type="hidden" name="action" value="save">
+<div class="sr-two">{% for field, field_label in key_fields %}<label class="bk-field">{{ field_label }}<input name="key:{{ field }}" type="password" autocomplete="off" required></label>{% endfor %}</div>
+<div class="sr-actions"><button class="bk-btn bk-primary">Save</button></div></form>{% endif %}
+{% endif %}</section>
+<div class="sr-foot"><a class="sr-link" href="{{ url_for('web.bw_sync_bl_site') }}">Cancel</a>
+{% if connected %}<a class="bk-btn bk-outline" href="{{ url_for('web.bw_sync_bl_choose') }}">Next: choose what</a>{% else %}<span class="bk-btn" aria-disabled="true">Next: choose what</span>{% endif %}</div>
+
+{% elif screen == 'choose' %}
+{{ head(subtitle) }}
+{{ stepbar() }}
+{{ flashes() }}
+<form method="post" class="sr-choose" action="{{ url_for('web.bw_sync_bl_choose_save') }}" data-sy-busy>{{ csrf() }}
+<div class="sr-cols">
+<div class="sr-col">
+<section class="sr-card" data-bl-orders><h2>Orders</h2>
+<div class="sr-seg" role="radiogroup" aria-label="Direction">
+<label><input type="radio" name="orders_dir" value="into" {{ 'checked' if choices.orders == 'into' }}><span>Into Brick Work</span></label>
+<label><input type="radio" name="orders_dir" value="off" {{ 'checked' if choices.orders == 'off' }}><span>Off</span></label>
+</div>
+<label class="sr-check"><input type="checkbox" name="since_on" value="1" {{ 'checked' if choices.since_on }}><span>Orders since</span></label>
+<label class="bk-field"><span class="bc-visually-hidden">Orders since date</span><input type="date" name="since" value="{{ choices.since or '' }}"></label>
+<label class="bk-field">Orders to pull<select name="status">{% for value, text, _ in statuses %}<option value="{{ value }}" {{ 'selected' if choices.status == value }}>{{ text }}</option>{% endfor %}</select></label></section>
+</div>
+<div class="sr-col">
+<section class="sr-card" data-bl-price><h2>Price guide</h2>
+<label class="bk-field">Region<select name="region">{% for value, text in regions %}<option value="{{ value }}" {{ 'selected' if region == value }}>{{ text }}</option>{% endfor %}</select></label>
+<p class="sr-note">The price guide is read when prices are asked for.</p></section>
+<p class="sr-info">BrickLink's API offers no wanted lists and no personal collection, so neither is synced.</p>
+</div></div>
+<div class="sr-foot"><a class="sr-link" href="{{ url_for('web.bw_sync_bl_connect') }}">‹ Back</a><span class="sr-foot-actions">{% if can_edit %}<button class="bk-btn bk-quiet" name="start" value="0">Save</button><button class="bk-btn bk-outline" data-busy-label="Checking {{ label }}">Next: pick lots</button>{% endif %}</span></div>
+</form>
+
+{% elif screen == 'pick' %}
+{{ head(subtitle) }}
+{{ stepbar() }}
+{{ flashes() }}
+<form method="post" class="sr-pick" action="{{ url_for('web.bw_sync_bl_pick_save', run_id=run.id) }}" data-sr-pick data-sr-group="all" data-sy-busy>{{ csrf() }}
+<section class="sr-card"><h2>Orders to pull</h2>
+<p class="sr-lede">{{ pick_lede }}</p>
+<div class="sr-rows">{% for r in items %}
+<label class="sr-pickrow" data-sr-row data-name="{{ r.label }} {{ r.detail }}" data-keys="">
+<input type="checkbox" name="item" value="{{ r.id }}" {{ 'checked' if r.checked }} data-sr-item>
+<span class="sr-pickid"><b>{{ r.label }}</b>{% if r.detail %}<span>{{ r.detail }}</span>{% endif %}</span>
+{% if r.state == 'same' %}{{ tag('Imported', true) }}{% endif %}</label>
+{% else %}<p class="bk-text">No matching orders found on BrickLink.</p>{% endfor %}</div></section>
+<p class="sr-info" data-sr-count role="status"><b data-sr-picked>{{ picked_count }}</b> of {{ items|length }} {{ 'order' if items|length == 1 else 'orders' }} picked</p>
+<div class="sr-foot"><a class="sr-link" href="{{ url_for('web.bw_sync_bl_choose') }}">‹ Back</a>{% if can_edit %}<button class="bk-btn bk-outline" data-busy-label="Preparing preview">Next: preview</button>{% endif %}</div>
+</form>
+
+{% elif screen == 'preview' %}
+{{ head(subtitle) }}
+{{ stepbar() }}
+{{ flashes() }}
+<form method="post" class="sr-preview" data-sy-plan data-sy-direction="run" action="{{ url_for('web.bw_sync_bl_apply', run_id=run.id) }}" data-sy-busy>{{ csrf() }}
+<section class="sr-card" data-rb-changes><h2>{{ new_count }} {{ 'difference' if new_count == 1 else 'differences' }}</h2>
+<div class="sr-rows">{% for r in rows %}
+<div class="sr-prow" data-sy-row data-state="into" data-name="{{ r.label }} {{ r.detail }}">
+{% if r.state == 'new' %}<label class="sr-tickbox"><input type="checkbox" name="{{ r.key }}" value="pull" {{ 'checked' if r.default == 'pull' }} data-sy-tick><span class="bc-visually-hidden">Pull in</span></label>
+{% else %}<span class="sr-tickbox"></span>{% endif %}
+<div class="sr-rowid"><span><b>{{ r.label }}</b>{% if r.detail %}<span>{{ r.detail }}</span>{% endif %}</span></div>
+<div class="sr-rowdo">{% if r.state == 'new' %}{{ tag('New at BrickLink') }}<span>Pull in</span>{% else %}{{ tag('Imported', true) }}<span>Already in Orders</span>{% endif %}</div></div>
+{% else %}<p class="bk-text">No orders picked.</p>{% endfor %}</div></section>
+<p class="sr-info">One Undo for the whole run.</p>
+<div class="sr-foot sy-footer"><a class="sr-link" href="{{ url_for('web.bw_sync_bl_pick', run_id=run.id) }}">‹ Back</a><p class="mono sy-total" data-sy-total data-sy-of="{{ new_count }}" role="status" aria-live="polite"></p>
+{% if can_edit %}<button class="bk-btn bk-primary bk-lg" data-sy-submit data-sy-verb="Next: run" data-busy-label="Running changes">Next: run</button>{% endif %}</div>
+</form>
+
+{% elif screen == 'result' %}
+{{ head(subtitle) }}
+{{ stepbar() }}
+{{ flashes() }}
+<section class="sr-card" data-rb-here><h2>Here in Brick Work {{ tag((pulled_count|string) ~ ' pulled') }}</h2>
+<p class="sr-lede">{{ summary }}</p>
+<div class="sr-rows">{% for r in results %}<div class="sr-prow">
+<div class="sr-rowid"><span><b>{{ r.label }}</b>{% if r.status == 'done' %}<span>Pulled into Orders ({{ r.placed }} {{ 'line' if r.placed == 1 else 'lines' }} placed, {{ r.unplaced }} to match)</span>{% else %}<span>{{ r.message or 'This order could not be imported.' }}</span>{% endif %}</span></div>
+<div class="sr-rowdo">{% if r.status == 'done' %}{{ tag('Done') }}{% if r.order_url %}<a class="sr-link" href="{{ r.order_url }}">Open order</a>{% endif %}{% else %}{{ tag('Failed', true, true) }}{% endif %}</div></div>
+{% endfor %}</div>
+{% if undo_event and can_edit and not undone %}<div class="sr-actions"><form method="post" action="{{ url_for('web.bw_sync_bl_undo') }}">{{ csrf() }}<input type="hidden" name="event" value="{{ undo_event }}"><button class="bk-btn bk-outline">Undo this run</button></form></div>
+<p class="sr-note">One Undo takes back every order this run pulled into Orders.</p>{% elif undone %}<p class="sr-note">This run was undone.</p>{% endif %}</section>
+<div class="sr-foot"><a class="sr-link" href="{{ url_for('web.bw_sync_hub') }}#sy-log-title">Open sync log</a><a class="bk-btn bk-outline" href="{{ url_for('web.bw_sync_bl_site') }}">Back to BrickLink</a></div>
+{% endif %}
+{% endblock %}

@@ -549,3 +549,17 @@ def test_the_two_rows_of_one_set_share_a_send_key_so_the_page_counts_one_request
     keys = [box['data-sy-set'] for row in page.select('[data-sy-row]') if row.get('data-name', '').startswith('1000-3')
             for box in row.select('input[data-sy-send]')]
     assert len(keys) == 2 and len(set(keys)) == 1
+
+
+def test_every_send_control_of_a_brickset_preview_carries_its_set_key_conflict_rows_too(client, remote, pair):
+    csrf = connected(client, pair)
+    run_id = start(client, csrf, owned_dir='both', wishlist_dir='off')
+    apply_run(client, csrf, run_id)
+    with db_of(pair) as db:
+        Coll(db).add_copy('1000-1')
+    remote.owned['1000-1'] = (1001, 4)                   # changed in both places: a conflict row with radio buttons
+    run_id = start(client, csrf, owned_dir='both', wishlist_dir='off')
+    page = preview_of(client, run_id)
+    sends = page.select('input[data-sy-send]')
+    assert sends and all(box.get('data-sy-set') for box in sends)
+    assert page.select_one('[data-rb-conflicts] input[type=radio][data-sy-send]')['data-sy-set'] == '1000-1'

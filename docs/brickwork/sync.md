@@ -77,4 +77,4 @@ One `sync_state` row per source: `link_json` (carried by the migration), `baseli
 
 - Rebrickable user tokens: Rebrickable documents no expiry; a refused token surfaces as `key_rejected`.
 - Brickset `setCollection` and `login` limits are not published; the local caps listed earlier are Brick Work's own.
-- Brickset wanted sets carry no quantity in the API; wishes send as wanted yes/no.
+- Brickset keeps a wanted quantity (`qtyWanted`); a wish sends its quantity.

@@ -113,7 +113,7 @@
 <section class="sr-card" data-rb-owned><h2>Owned sets</h2>{{ segment('owned_dir', 'owned', directions.owned) }}
 <p class="sr-lede">Brickset keeps the quantity you own of a set; Brick Work keeps one copy for each. The quantities are compared, and a difference is a choice in the preview.</p></section>
 <section class="sr-card" data-rb-wishlist><h2>Wanted sets</h2>{{ segment('wishlist_dir', 'wishlist', directions.wishlist) }}
-<p class="sr-lede">Brickset marks a set as wanted or not: it has no quantity for it. The wanted sets go to the wishlist you choose here.</p>
+<p class="sr-lede">The wanted sets, with their quantity, go to the wishlist you choose here.</p>
 <label class="bk-field">Wishlist here<select name="wish_list">{% for w in wish_lists %}<option value="{{ w.id }}" {{ 'selected' if (link.get('wish_list') or 'default') == w.id }}>{{ w.name }}</option>{% endfor %}</select></label></section>
 </div>
 <div class="sr-col">

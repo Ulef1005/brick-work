@@ -19,7 +19,6 @@ REBRICKABLE_USERS = 'https://rebrickable.com/api/v3/users'
 NUMBER = re.compile(r'[A-Za-z0-9][A-Za-z0-9.-]{0,63}')
 # Local ceilings for calls the sites do not count against the key.
 LOGIN_PER_DAY = 10
-BRICKSET_WRITES_PER_DAY = 500
 
 
 class ConnectRefused(errors.ValidationFailed):
@@ -363,7 +362,7 @@ class BricksetUser(Brickset):
         raise ConnectRefused('Brickset did not accept that username and password')
 
     def check_user(self):
-        self.user_call('checkUserHash', {}, payload={}, charged=False)
+        self.user_call('checkUserHash', {}, payload={}, charged=True)
         return True
 
     def lists(self):
@@ -390,7 +389,7 @@ class BricksetUser(Brickset):
             ids[number] = int(row['setID'])
         for row in self._sets({'wanted': 1}):
             number = _number(f"{row['number']}-{row['numberVariant']}")
-            wanted[number] = 1
+            wanted[number] = int((row.get('collection') or {}).get('qtyWanted') or 1)
             ids[number] = int(row['setID'])
         return dict(owned=owned, wanted=wanted, ids=ids, names={})
 
@@ -406,18 +405,24 @@ class BricksetUser(Brickset):
                 found[_number(f"{row['number']}-{row['numberVariant']}")] = int(row['setID'])
         return found
 
-    def send(self, row, link, state):
-        set_id = state['ids'].get(row['remote_no'])
+    def send_set(self, rows, link, state):
+        """Write all rows of one set (owned and wanted) in a single setCollection call."""
+        set_id = state['ids'].get(rows[0]['remote_no'])
         if set_id is None:
             raise errors.ValidationFailed('Brickset does not know this set number')
-        _day_counter(self.db, 'brickset', 'write', BRICKSET_WRITES_PER_DAY)
-        if row['kind'] == 'wanted':
-            params = {'want': 1 if row['send'] else 0}
-        else:
-            params = {'own': 1, 'qtyOwned': row['send']} if row['send'] else {'own': 0}
+        params = {}
+        for row in rows:
+            n = row['send']
+            if row['kind'] == 'wanted':
+                params.update({'qtyWanted': n} if n > 0 else {'want': 0})
+            else:
+                params.update({'own': 1, 'qtyOwned': n} if n > 0 else {'own': 0})
         self.user_call('setCollection', {'SetID': set_id, 'params': json.dumps(params)},
-                       payload=dict(SetID=set_id, **params), charged=False)
+                       payload=dict(SetID=set_id, **params), charged=True)
         return 'sent'
+
+    def send(self, row, link, state):
+        return self.send_set([row], link, state)
 
 
 ADAPTERS = {'rebrickable': RebrickableUser, 'brickset': BricksetUser}

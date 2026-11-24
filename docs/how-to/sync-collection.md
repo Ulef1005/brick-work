@@ -30,10 +30,10 @@ The page shows your account (API key and today's budget, with **Test**, **Change
 1. **Connect.** The API key and your account. Enter your Brickset **Username** and password and choose **Connect**, or open **Paste a user hash instead**. The password goes to Brickset once and is never stored. **Save and test** keeps a key you paste; a key from the environment can only be changed there. The keys step of **Get started** and the **Needs a Brickset key** line lead to this step.
 2. **Choose what.** A direction for **Owned sets** and one for **Wanted sets**: **Into Brick Work**, **Both ways**, **To Brickset** or **Off**. **Wishlist here** is the Brick Work wishlist that takes the wanted sets. **When both sides differ** is fixed: the preview asks each time.
 3. **Pick sets.** The sets the run could touch, **All linked**, **By theme**, **By year** or **One by one** (Brickset has no lists to pick by). A set you do not pick stays as it is on both sides.
-4. **Preview.** The same rows and choices as on the Rebrickable page: **Add here**, **Add there**, a quantity that differs, and **Changed in both places** with **Keep**, **Take** and **Send**. Brickset marks a set as wanted or not and has no quantity for it. A wish of two here and a wanted set there are the same, so they are not listed. **Before you send** names the number of changes and today's budget. A run reads your sets from Brickset once for each direction it covers, so a run **Both ways** uses several of the day's calls.
+4. **Preview.** The same rows and choices as on the Rebrickable page: **Add here**, **Add there**, a quantity that differs, and **Changed in both places** with **Keep**, **Take** and **Send**. A wanted set has a quantity on both sides. **Before you send** names the number of changes and today's budget. A run reads your owned and wanted sets once, for both directions. A set that changes in more than one way is sent in one call.
 5. **Result.** What changed here, with **Undo this run**, and what happened on Brickset, with a **Retry** for a row that failed. A change sent to Brickset cannot be undone here.
 
-Brickset allows 100 `getSets` calls a day unless it raises the limit for your key; the page shows how many are used.
+Brickset allows 100 calls a day unless it raises the limit for your key. Since 19 November 2026 every call counts, not only `getSets`. The page shows how many are used.
 
 ## A BrickLink run
 

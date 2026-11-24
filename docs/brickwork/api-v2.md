@@ -562,6 +562,8 @@ The find tool follows the item convention: provider, kind and key, resolved thro
 | `GET /identifications/{id}` | Identification result. | read | M.11d | same |
 | `GET /identifications/{id}/thumb` | Thumbnail bytes. | read | M.11d | same |
 | `POST /imports/bricktracker` | Upload a BrickTracker app.db (any upstream version, up to 200 MB) and get an import plan. A copy is upgraded with upstream's migrations and compared with this collection; nothing is written to the collection. | admin | M.11d | same |
+| `POST /imports/brickwork/plan` | Upload a Brick Work export zip (up to 50 MB) and get an import plan; nothing is written to the collection. | admin | M.11d | new |
+| `POST /imports/brickwork/{plan_id}/apply` | Apply a Brick Work import plan: rows marked new are written in one transaction. Undo with POST /events/{id}/undo (`admin`). | admin | M.11d | new |
 | `POST /imports/{id}/apply` | Apply an import plan: rows marked add are written in one transaction; locked rows (already imported, duplicate wishes) are always skipped. Undo with POST /events/{id}/undo (`admin`). | admin | M.11d | same |
 | `GET /statistics` | Counts by completeness, theme, storage, place. | read | M.11b | same |
 

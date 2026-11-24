@@ -194,3 +194,22 @@ def test_cli_import_file_apply_adds_the_new_copy_and_prints_the_undo(app4, coll,
 
     assert main(['import-file', str(target), '--apply']) == 0
     assert 'copies' not in capsys.readouterr().out
+
+
+def test_a_zero_stock_row_is_unresolved_and_a_wish_already_wished_is_skipped(coll, world, tmp_path):
+    from tests.test_own_import import _repack
+    content = own_export.build(coll.db)['content']
+    assert own_import._value_problem('stock', {'kind': 'part', 'quantity': 0, 'color': {'key': 1}}) == 'Quantity must be a whole number'
+
+    def fresh_ids(name, data):
+        if name != 'data/wish.jsonl':
+            return data
+        return b'\n'.join(json.dumps(dict(json.loads(l), id=f'ffffffff-0000-4000-8000-0000000000{i:02d}')).encode()
+                          for i, l in enumerate(data.splitlines())) + b'\n'
+    again = _repack(content, mutate=fresh_ids)
+    before = coll.db.execute('SELECT count(*), sum(quantity) FROM main.wish WHERE archived_at IS NULL').fetchone()
+    assert before[0] > 0
+    planned = own_import.plan(coll.db, again)
+    done = own_import.apply(coll.db, planned['id'], via='cli', actor='test')
+    after = coll.db.execute('SELECT count(*), sum(quantity) FROM main.wish WHERE archived_at IS NULL').fetchone()
+    assert tuple(after) == tuple(before) and done['counts']['wishes'] == 0

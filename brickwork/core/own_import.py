@@ -301,7 +301,7 @@ def _value_problem(table, row):
             ('part', 'minifigure', 'instructions', 'box', 'gear', 'book', 'catalog')
         if row.get('kind') not in kinds:
             return 'This kind of row cannot be imported here'
-        if not whole('quantity', 1 if table == 'wish' else 0):
+        if not whole('quantity', 1):
             return 'Quantity must be a whole number'
         if (row.get('kind') == 'part') != (row.get('color') is not None):
             return 'Only a part has a colour'
@@ -774,6 +774,10 @@ def apply(db, plan_id, *, via=None, actor=None, queue=True):
             raw_wl = row.get('wishlist_id')
             list_id = 'default' if raw_wl == 'default' else wishlist_map.get(raw_wl, raw_wl)
             kind = row.get('kind') or db.execute('SELECT kind FROM main.item WHERE id=?', (item_id,)).fetchone()['kind']
+            if db.execute('SELECT 1 FROM main.wish WHERE wishlist_id=? AND item_id=? AND color_id IS ? AND archived_at IS NULL',
+                          (list_id, item_id, color_id)).fetchone():
+                extra_skipped += 1                                 # the store would merge it into that wish and change it
+                continue
             scratch = {}
             add._add_wish(
                 db,

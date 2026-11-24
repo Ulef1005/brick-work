@@ -66,10 +66,13 @@ def _collect_sets(reply, ids, unreadable=None):
             if unreadable is not None:
                 unreadable.append(lot.get('lot_id'))
             continue
-        counts[number] = counts.get(number, 0) + qty
         raw_id = lot.get('lot_id')
-        if isinstance(raw_id, (str, int)) and not isinstance(raw_id, bool) and str(raw_id).strip():
-            lots.setdefault(number, []).append(dict(lot_id=str(raw_id).strip(), qty=qty))
+        if not isinstance(raw_id, (str, int)) or isinstance(raw_id, bool) or not str(raw_id).strip():
+            if unreadable is not None:
+                unreadable.append(raw_id)
+            continue
+        counts[number] = counts.get(number, 0) + qty
+        lots.setdefault(number, []).append(dict(lot_id=str(raw_id).strip(), qty=qty))
         boid = lot.get('boid')
         if isinstance(boid, (str, int)) and not isinstance(boid, bool) and str(boid).strip():
             ids[number] = str(boid).strip()
@@ -156,7 +159,7 @@ class BrickOwlUser(BrickOwl):
         for number in sorted(set(numbers)):
             reply = self.id_lookup(number, 'Set', id_type='set_number')
             boids = reply.get('boids') if isinstance(reply, dict) else None
-            if isinstance(boids, list) and boids:
+            if isinstance(boids, list) and len(boids) == 1:           # two catalogue ids for one number: not guessed
                 first = boids[0]
                 if isinstance(first, (str, int)) and not isinstance(first, bool) and str(first).strip():
                     found[number] = str(first).strip()
@@ -183,6 +186,7 @@ class BrickOwlUser(BrickOwl):
         return boid
 
     def _apply_changes(self, kind, number, target, link, lots_by_kind, state):
+        """Perform the lot calls that take one set to `target`; returns how many calls changed something."""
         if kind == 'wanted':
             wid = link.get('wishlist_id') if isinstance(link, dict) else None
             if wid is None or isinstance(wid, bool) or not str(wid).strip():
@@ -197,7 +201,8 @@ class BrickOwlUser(BrickOwl):
             delete = self.delete_collection_lot
         else:
             raise ValueError('invalid row kind')
-        for step in lot_changes(lots_by_kind.get(kind, {}).get(number, []), target):
+        steps = lot_changes(lots_by_kind.get(kind, {}).get(number, []), target)
+        for step in steps:
             if step[0] == 'delete':
                 delete(step[1])
             elif step[0] == 'update':
@@ -206,15 +211,15 @@ class BrickOwlUser(BrickOwl):
                 new_id = create(self._set_boid(number, state))
                 if step[2] > 1:
                     update(new_id, step[2])
+        return len(steps)
 
     def send_set(self, rows, link, state):
         """Send all owned and wanted plan rows for one set."""
         if not rows:
-            return 'sent'
+            return 'unchanged'
         lots_by_kind = self._state_lots(link, state)
-        for row in rows:
-            self._apply_changes(row['kind'], row['remote_no'], row['send'], link, lots_by_kind, state)
-        return 'sent'
+        changed = sum(self._apply_changes(row['kind'], row['remote_no'], row['send'], link, lots_by_kind, state) for row in rows)
+        return 'sent' if changed else 'unchanged'
 
     def send(self, row, link, state):
         """Send one plan row for a set."""

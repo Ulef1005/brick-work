@@ -40,11 +40,18 @@ def _error_text(reply):
         return ''
     error = reply['error']
     if isinstance(error, dict):
-        error = error.get('status') or error
+        return ' '.join(str(v) for v in error.values() if isinstance(v, (str, int)) and not isinstance(v, bool))
     return str(error)
 
 
+def _succeeded(reply):
+    if not isinstance(reply, dict) or reply.get('status') != 'Success':
+        raise SourceError('Brick Owl did not confirm the change')
+    return reply
+
+
 def _created_lot(reply):
+    _succeeded(reply)
     lot_id = reply.get('lot_id') if isinstance(reply, dict) else None
     if lot_id is None or isinstance(lot_id, bool) or not isinstance(lot_id, (str, int)) or not str(lot_id).strip():
         raise SourceError('Brick Owl did not return a lot')
@@ -194,12 +201,12 @@ class BrickOwl(Source):
             params['quantity'] = _validate_positive_int(quantity, 'invalid quantity')
         if condition is not None:
             params['condition'] = _validate_id(condition, _TEXT_PATTERN, 'invalid condition')
-        return self.call('collection/update', params, method='POST')
+        return self.call('collection/update', params, method='POST', normalize=_succeeded)
 
     def delete_collection_lot(self, lot_id):
         """Delete one collection lot."""
         lid = _validate_id(lot_id, _TEXT_PATTERN, 'invalid lot id')
-        return self.call('collection/delete_lot', {'lot_id': lid}, method='POST')
+        return self.call('collection/delete_lot', {'lot_id': lid}, method='POST', normalize=_succeeded)
 
     def create_wishlist_lot(self, wishlist_id, boid):
         """Create a wishlist lot and return its lot id."""
@@ -212,10 +219,10 @@ class BrickOwl(Source):
         wid = _validate_id(wishlist_id, _TEXT_PATTERN, 'invalid wishlist id')
         lid = _validate_id(lot_id, _TEXT_PATTERN, 'invalid lot id')
         qty = _validate_positive_int(minimum_quantity, 'invalid quantity')
-        return self.call('wishlist/update', {'wishlist_id': wid, 'lot_id': lid, 'minimum_quantity': qty}, method='POST')
+        return self.call('wishlist/update', {'wishlist_id': wid, 'lot_id': lid, 'minimum_quantity': qty}, method='POST', normalize=_succeeded)
 
     def delete_wishlist_lot(self, wishlist_id, lot_id):
         """Delete one wishlist lot."""
         wid = _validate_id(wishlist_id, _TEXT_PATTERN, 'invalid wishlist id')
         lid = _validate_id(lot_id, _TEXT_PATTERN, 'invalid lot id')
-        return self.call('wishlist/delete_lot', {'wishlist_id': wid, 'lot_id': lid}, method='POST')
+        return self.call('wishlist/delete_lot', {'wishlist_id': wid, 'lot_id': lid}, method='POST', normalize=_succeeded)

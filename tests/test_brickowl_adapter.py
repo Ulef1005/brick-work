@@ -164,12 +164,12 @@ def test_lot_changes_cases():
 
 def test_set_ids_looks_up_sets_and_skips_unknown(brickowl_source, monkeypatch):
     keyed(monkeypatch, 'brickowl')
-    net = Net({'boids': ['849212', '999999']}, {'boids': []})
-    result = BrickOwlUser(brickowl_source.db, http=net).set_ids(['75192-1', '99999-1', '75192-1'])
-    assert result == {'75192-1': '849212'}
-    assert len(net.requests) == 2
+    net = Net({'boids': ['849212']}, {'boids': []}, {'boids': ['1', '2']})
+    result = BrickOwlUser(brickowl_source.db, http=net).set_ids(['75192-1', '99999-1', '75192-1', '88888-1'])
+    assert result == {'75192-1': '849212'}                                    # no boid and two boids are both left out
+    assert len(net.requests) == 3
     assert 'id=75192-1' in net.urls[0] and 'type=Set' in net.urls[0] and 'id_type=set_number' in net.urls[0]
-    assert 'id=99999-1' in net.urls[1]
+    assert 'id=88888-1' in net.urls[1] and 'id=99999-1' in net.urls[2]
 
 
 def test_send_set_owned_create_update_delete(brickowl_source, monkeypatch):

@@ -244,3 +244,16 @@ def test_thin_write_methods_and_validation(brickowl_source, monkeypatch):
                 lambda: client.update_wishlist_lot('8101', '12', 0), lambda: client.delete_collection_lot(True)):
         with pytest.raises(ValueError):
             bad()
+
+
+@pytest.mark.parametrize('reply', [{}, {'status': 'Failed'}, 'OK'])
+def test_a_write_needs_the_success_status(brickowl_source, monkeypatch, reply):
+    keyed(monkeypatch, 'brickowl')
+    with pytest.raises(base.SourceError):
+        BrickOwl(brickowl_source.db, http=Net(reply)).delete_collection_lot('4516243')
+
+
+def test_an_object_error_is_read_from_all_its_text_fields(brickowl_source, monkeypatch):
+    keyed(monkeypatch, 'brickowl')
+    with pytest.raises(base.WaitingForBudget):
+        BrickOwl(brickowl_source.db, http=Net({'error': {'status': 'Error', 'message': 'Rate limit exceeded'}})).collection_lots()

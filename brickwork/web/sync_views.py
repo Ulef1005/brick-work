@@ -153,7 +153,7 @@ def _page(template, **context):
 _SITE_DESCRIPTIONS = {
     'rebrickable': 'Set lists, wishlist, part lists and Lost Parts; minifigures as a check',
     'brickset': 'Owned and wanted sets with their counts',
-    'bricklink': 'Store inventory, orders, price guide; wanted lists by file',
+    'bricklink': 'Orders into Orders, the price guide; store inventory and wanted lists by file follow',
     'brickowl': 'Collection lots, wishlists, inventory, orders; a daily budget per kind',
 }
 
@@ -192,6 +192,12 @@ def _last_import(db):
     return stamp(row['at']) if row and row['at'] else 'Never'
 
 
+def _last_bricklink_sync(db):
+    """Newest BrickLink run time formatted with stamp, or 'Never'."""
+    row = db.execute("SELECT at FROM main.event WHERE entity_kind='sync' AND entity_id='bricklink' AND field='run' ORDER BY id DESC LIMIT 1").fetchone()
+    return stamp(row['at']) if row and row['at'] else 'Never'
+
+
 @web_page.get('/workbench/sync')
 @login_required
 @_unavailable
@@ -210,13 +216,21 @@ def bw_sync_hub():
                 action_label='Open' if connected else 'Connect',
                 url=url_for('web.bw_sync_site', source=source) if connected else url_for('web.bw_sync_rb_connect' if source == 'rebrickable' else 'web.bw_sync_bs_connect'),
             ))
+        from ..core import keys
+        bl_connected = bool(keys.state(db, 'bricklink')['configured'])
+        sites.append(dict(
+            key='bricklink', label='BrickLink', description=_SITE_DESCRIPTIONS['bricklink'],
+            connected=bl_connected, state_tag=None,
+            account='Linked' if bl_connected else 'none', last_sync=_last_bricklink_sync(db),
+            action_label='Open' if bl_connected else 'Connect',
+            url=url_for('web.bw_sync_bl_site') if bl_connected else url_for('web.bw_sync_bl_connect'),
+        ))
         keys_url = url_for('web.bw_admin', page='catalogues')
-        for key, label in (('bricklink', 'BrickLink'), ('brickowl', 'Brick Owl')):
-            sites.append(dict(
-                key=key, label=label, description=_SITE_DESCRIPTIONS[key],
-                connected=False, state_tag=None, account='none', last_sync='Never',
-                action_label='Connect', url=keys_url,
-            ))
+        sites.append(dict(
+            key='brickowl', label='Brick Owl', description=_SITE_DESCRIPTIONS['brickowl'],
+            connected=False, state_tag=None, account='none', last_sync='Never',
+            action_label='Connect', url=keys_url,
+        ))
         import_url = url_for('web.bw_import_legacy') if 'web.bw_import_legacy' in current_app.view_functions else url_for('web.bw_add', mode='file')
         import_export = dict(last_import=_last_import(db), last_export='Never', url=import_url)
         log = _log(db)

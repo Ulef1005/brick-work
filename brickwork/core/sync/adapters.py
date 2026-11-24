@@ -315,6 +315,12 @@ def _flag_number(value):
     return int(text) if text.isdecimal() and len(text) <= 2 and 1 <= int(text) <= 8 else None
 
 
+def _whole(value, low, high):
+    """A whole number from low to high out of whatever a reply holds, else None (0 for \"none\" is below `low`, so it reads as None): never an exception."""
+    text = str(value).strip()
+    return int(text) if text.isdecimal() and len(text) <= 4 and low <= int(text) <= high else None
+
+
 class BricksetUser(Brickset):
     """Brickset collection methods: login, checkUserHash, getSets (owned/wanted), setCollection."""
     USER_METHODS = ('login', 'checkUserHash', 'getSets', 'setCollection', 'getUserFlagLabels')
@@ -398,7 +404,8 @@ class BricksetUser(Brickset):
             listed = collection.get('flags')
             on = [_flag_number(f.get('flagNo')) for f in (listed if isinstance(listed, list) else ())
                   if isinstance(f, dict) and str(f.get('value')).lower() in ('true', '1') and _flag_number(f.get('flagNo'))]
-            fields.setdefault(number, dict(notes=str(collection.get('notes') or ''), flags=sorted(on)))
+            fields.setdefault(number, dict(notes=str(collection.get('notes') or ''), flags=sorted(on),
+                                           rating=_whole(collection.get('rating'), 1, 5), priority=_whole(collection.get('wantedPriority'), 1, 999)))
         for row in self._sets({'owned': 1}):
             number = _number(f"{row['number']}-{row['numberVariant']}")
             collection = row.get('collection') or {}

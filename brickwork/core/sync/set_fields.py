@@ -50,16 +50,39 @@ def _tag_name(n, labels):
     return _label_for(labels, n) or FALLBACK.format(n=n)
 
 
-def _targets(db, item_id, wish_list):
-    """Live copies of `item_id`, or else its live wish in `wish_list`."""
-    copies = db.execute('SELECT id, note FROM main.copy WHERE item_id=? AND archived_at IS NULL ORDER BY id', (item_id,)).fetchall()
-    if copies:
-        return [('copy', r[0], r[1]) for r in copies]
-    wishes = db.execute(
-        'SELECT id, note FROM main.wish WHERE wishlist_id=? AND item_id=? AND color_key=0 AND archived_at IS NULL ORDER BY id',
+def _live_copies(db, item_id):
+    return db.execute(
+        'SELECT id, note, rating FROM main.copy WHERE item_id=? AND archived_at IS NULL ORDER BY id',
+        (item_id,),
+    ).fetchall()
+
+
+def _live_wishes(db, item_id, wish_list):
+    return db.execute(
+        'SELECT id, note, priority FROM main.wish WHERE wishlist_id=? AND item_id=? AND color_key=0 AND archived_at IS NULL ORDER BY id',
         (wish_list, item_id),
     ).fetchall()
-    return [('wish', r[0], r[1]) for r in wishes]
+
+
+def _field_row(kind, table, target_id, item_id, number, name, remote, here):
+    is_add = here is None
+    return dict(
+        key=f'{kind}:{table}:{target_id}', kind=kind, table=table, target_id=target_id,
+        item_id=item_id, number=number, name=name, flag=None, remote=remote,
+        here=here, state='add' if is_add else 'conflict',
+        options=[] if is_add else ['keep', 'take'],
+        default=None if is_add else 'keep', tickable=is_add,
+    )
+
+
+def _plan_scalar(rows, not_kept, not_kept_key, kind, table, targets, item_id, number, name, remote):
+    if not targets:
+        not_kept[not_kept_key] += 1
+        return
+    for target_id, _, local_val in targets:
+        if local_val == remote:
+            continue
+        rows.append(_field_row(kind, table, target_id, item_id, number, name, remote, local_val))
 
 
 def _find_tag(db, flag_map, n, tag_name):
@@ -120,7 +143,7 @@ def plan(db, remote_fields, labels, *, wish_list='default'):
     flag_map = _get_map(db)
     rows, unmatched = [], []
     new_names = set()
-    not_kept = dict(notes=0, flags=0)
+    not_kept = dict(notes=0, flags=0, ratings=0, priorities=0)
     for number in numbers:
         item_id = translated.get(number)
         if item_id is None:
@@ -129,7 +152,9 @@ def plan(db, remote_fields, labels, *, wish_list='default'):
         entry = remote_fields[number] or {}
         remote_note = entry.get('notes') or ''
         remote_flags = sorted(set(entry.get('flags') or ()))
-        targets = _targets(db, item_id, wish_list)
+        copies = _live_copies(db, item_id)
+        wishes = _live_wishes(db, item_id, wish_list)
+        targets = [('copy', r[0], r[1]) for r in copies] if copies else [('wish', r[0], r[1]) for r in wishes]
         _, name = names.get(item_id, (number, ''))
         if remote_note:
             if not targets:
@@ -138,14 +163,7 @@ def plan(db, remote_fields, labels, *, wish_list='default'):
                 for table, target_id, local_note in targets:
                     if local_note == remote_note:
                         continue
-                    is_add = local_note is None or local_note == ''
-                    rows.append(dict(
-                        key=f'note:{table}:{target_id}', kind='note', table=table, target_id=target_id,
-                        item_id=item_id, number=number, name=name, flag=None, remote=remote_note,
-                        here=local_note or None, state='add' if is_add else 'conflict',
-                        options=[] if is_add else ['keep', 'take'],
-                        default=None if is_add else 'keep', tickable=is_add,
-                    ))
+                    rows.append(_field_row('note', table, target_id, item_id, number, name, remote_note, local_note or None))
         for n in remote_flags:
             if not targets:
                 not_kept['flags'] += 1
@@ -166,6 +184,12 @@ def plan(db, remote_fields, labels, *, wish_list='default'):
                     item_id=item_id, number=number, name=name, flag=n, remote=shown,
                     here=None, state='add', options=[], default=None, tickable=True,
                 ))
+        remote_rating = entry.get('rating')
+        if remote_rating:
+            _plan_scalar(rows, not_kept, 'ratings', 'rating', 'copy', copies, item_id, number, name, remote_rating)
+        remote_priority = entry.get('priority')
+        if remote_priority is not None and remote_priority > 1:
+            _plan_scalar(rows, not_kept, 'priorities', 'priority', 'wish', wishes, item_id, number, name, remote_priority)
     plan_labels = {str(n): lbl for n, lbl in (labels or {}).items() if lbl}
     renames = []                                            # a tag still named `Brickset flag N` whose flag has a label now: apply renames it, whatever is ticked
     for str_n, label in sorted(plan_labels.items()):
@@ -181,6 +205,8 @@ def plan(db, remote_fields, labels, *, wish_list='default'):
             conflict=sum(1 for r in rows if r['state'] == 'conflict'),
             notes=sum(1 for r in rows if r['kind'] == 'note'),
             flags=sum(1 for r in rows if r['kind'] == 'flag'),
+            ratings=sum(1 for r in rows if r['kind'] == 'rating'),
+            priorities=sum(1 for r in rows if r['kind'] == 'priority'),
             unmatched=len(unmatched), renames=len(renames),
         ),
     )
@@ -224,7 +250,7 @@ def apply(db, plan_id, ticked=None, *, choices=None, via=None, actor=None):
     if via is None:
         via, actor = origin()
     stamp = store_now()
-    receipt = dict(plan=plan_id, notes=[], links=[], tags_created=[], renamed=[], skipped=[], map_before=None)
+    receipt = dict(plan=plan_id, notes=[], ratings=[], priorities=[], links=[], tags_created=[], renamed=[], skipped=[], map_before=None)
     with transaction(db):
         done = plans.applied(db, 'sync', plan_id)
         if done:
@@ -233,18 +259,28 @@ def apply(db, plan_id, ticked=None, *, choices=None, via=None, actor=None):
         receipt['map_before'] = map_before
         flag_map = dict(map_before)
         for r in rows:
-            if r['kind'] == 'note':
+            if r['kind'] in ('note', 'rating', 'priority'):
                 tbl = 'main.copy' if r['table'] == 'copy' else 'main.wish'
-                cur = db.execute(f'SELECT note FROM {tbl} WHERE id=? AND archived_at IS NULL', (r['target_id'],)).fetchone()
+                col = r['kind']
+                cur = db.execute(f'SELECT {col} FROM {tbl} WHERE id=? AND archived_at IS NULL', (r['target_id'],)).fetchone()
                 if cur is None:                                       # archived since the plan
                     receipt['skipped'].append(dict(table=r['table'], id=r['target_id']))
                     continue
-                if (cur[0] or None) != (r['here'] or None):          # changed since the plan: never overwrite what the person wrote meanwhile
+                cur_val = (cur[0] or None) if col == 'note' else cur[0]
+                here_val = (r['here'] or None) if col == 'note' else r['here']
+                if cur_val != here_val:                              # changed since the plan: never overwrite what the person wrote meanwhile
                     receipt['skipped'].append(dict(table=r['table'], id=r['target_id']))
                     continue
                 if cur[0] != r['remote']:
-                    db.execute(f'UPDATE {tbl} SET note=?, updated_at=? WHERE id=?', (r['remote'], stamp, r['target_id']))
-                    receipt['notes'].append(dict(table=r['table'], id=r['target_id'], before=cur[0], after=r['remote']))
+                    db.execute(f'UPDATE {tbl} SET {col}=?, updated_at=? WHERE id=?', (r['remote'], stamp, r['target_id']))
+                    entry = dict(id=r['target_id'], before=cur[0], after=r['remote'])
+                    if col == 'note':
+                        entry['table'] = r['table']
+                        receipt['notes'].append(entry)
+                    elif col == 'rating':
+                        receipt['ratings'].append(entry)
+                    else:
+                        receipt['priorities'].append(entry)
             else:
                 tbl = 'main.copy' if r['table'] == 'copy' else 'main.wish'
                 if db.execute(f'SELECT 1 FROM {tbl} WHERE id=? AND archived_at IS NULL', (r['target_id'],)).fetchone() is None:
@@ -270,6 +306,10 @@ def apply(db, plan_id, ticked=None, *, choices=None, via=None, actor=None):
             _put_map(db, flag_map)
         counts = dict(notes=len(receipt['notes']), flags=len(receipt['links']),
                       tags_created=len(receipt['tags_created']), renamed=len(receipt['renamed']))
+        if receipt['ratings']:
+            counts['ratings'] = len(receipt['ratings'])
+        if receipt['priorities']:
+            counts['priorities'] = len(receipt['priorities'])
         if receipt['skipped']:
             counts['skipped'] = len(receipt['skipped'])      # rows whose note changed, or whose copy or wish was archived, after the plan: left as they are
         receipt['counts'] = counts
@@ -285,20 +325,23 @@ def _undo(db, event, via, actor):
     """Reverse one set-fields pull: restore notes when unchanged since, remove added links, unused created tags, renames, and map."""
     r = json.loads(event['new_value'])
     stamp = store_now()
-    for entry in r['notes']:
-        tbl = 'main.copy' if entry['table'] == 'copy' else 'main.wish'
-        row = db.execute(f'SELECT note FROM {tbl} WHERE id=? AND archived_at IS NULL', (entry['id'],)).fetchone()
-        if row is None or row[0] != entry['after']:
-            raise ValueError('Something from this sync has changed since · undo the later change first')
+    undo_fields = (('notes', None, 'note'), ('ratings', 'main.copy', 'rating'), ('priorities', 'main.wish', 'priority'))
+    for key, fixed_tbl, col in undo_fields:
+        for entry in r.get(key) or ():
+            tbl = fixed_tbl or ('main.copy' if entry['table'] == 'copy' else 'main.wish')
+            row = db.execute(f'SELECT {col} FROM {tbl} WHERE id=? AND archived_at IS NULL', (entry['id'],)).fetchone()
+            if row is None or row[0] != entry['after']:
+                raise ValueError('Something from this sync has changed since · undo the later change first')
     for entry in r['renamed']:
         row = db.execute('SELECT name FROM main.flag WHERE id=?', (entry['flag_id'],)).fetchone()
         if row is None:
             continue                                       # the tag is gone: nothing to restore
         if (entry.get('after') is not None and row[0] != entry['after']) or db.execute("SELECT 1 FROM main.flag WHERE kind='tag' AND archived_at IS NULL AND lower(name)=lower(?) AND id<>?", (entry['before'], entry['flag_id'])).fetchone():
             raise ValueError('Something from this sync has changed since · undo the later change first')
-    for entry in reversed(r['notes']):
-        tbl = 'main.copy' if entry['table'] == 'copy' else 'main.wish'
-        db.execute(f'UPDATE {tbl} SET note=?, updated_at=? WHERE id=?', (entry['before'], stamp, entry['id']))
+    for key, fixed_tbl, col in undo_fields:
+        for entry in reversed(r.get(key) or ()):
+            tbl = fixed_tbl or ('main.copy' if entry['table'] == 'copy' else 'main.wish')
+            db.execute(f'UPDATE {tbl} SET {col}=?, updated_at=? WHERE id=?', (entry['before'], stamp, entry['id']))
     for link in reversed(r['links']):
         link_tbl, col = ('main.copy_flag', 'copy_id') if link['table'] == 'copy' else ('main.wish_flag', 'wish_id')
         db.execute(f'DELETE FROM {link_tbl} WHERE {col}=? AND flag_id=?', (link['id'], link['flag_id']))

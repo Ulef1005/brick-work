@@ -494,3 +494,10 @@ Gap list: `~/Workspace/_exports/design-brief-n/frame-gaps-n.md`. Requested by br
 - **`94-rebrickable-run-applying`, `95-sync-long-run-applying` (#685; brick-work-product, 2026-11-24):** frames 23 and 57 redrawn. The pull and the part lists apply in one transaction and cannot report "N of M", so they read "Applying the pull" with a spinner, no count and no ETA, and the pull cannot be stopped halfway. Sends and Lost Parts out keep "N of M" per call. In 95 the long run is 2,500 changes applied here plus 1,500 sends (1,120 sent, about 6 min left, budget today 1,310 / 2,000), which also makes F-01's contradiction go away. 23 and 57 stay approved until Ulf approves 94 and 95.
 - **Keys (brick-work-product, 2026-11-24):** "Keys are not included." on the database export (87) and the re-import result (93): keys, tokens and the Brickset password hash are never in an export; sync settings are. The approved complete export (35) already says "Settings · never includes keys"; the approved re-import preview (36) has no such line and is not changed.
 
+## Inconsistencies in approved frames, fixed (Ulf, 2026-11-24, F-01 to F-04: "All a, going with your recommendations")
+
+- **F-01 (`57-sync-long-run`):** "about 48 min left · budget today 1,310 / 5,000" (2,880 changes at one a second). The frame is a Rebrickable page, whose other frames use a budget of 2,000 and BrickLink's is 4,400 (frame 70); the 5,000 is option A as chosen and needs product's confirmation. Frame 95 replaces 57 with numbers that agree.
+- **F-02 (`56-sync-conflicts-waiting`):** the head reads "137 of 140 done, 3 wait for you".
+- **F-03 (`48-sets-pulled-copy`):** the phone frame carries "Checked on Rebrickable" on the first tile (7213-1, copy 1).
+- **F-04 (all Sync frames, phone):** the phone sub row is the full Workbench row, as on the U frames, Sync first. Replaces the three-entry row of round 5.
+

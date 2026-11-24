@@ -394,6 +394,10 @@ def sets_pulled(ph):
                  ('>Not checked <span class="mono" style="color:var(--tw-text-muted);padding:0;border:0">2<', '>Not checked <span class="mono" style="color:var(--tw-text-muted);padding:0;border:0">0<'),
                  ('>Complete <span class="mono" style="color:var(--tw-text-muted);padding:0;border:0">1<', '>Complete <span class="mono" style="color:var(--tw-text-muted);padding:0;border:0">2<')]:
         body = body.replace(a, b)
+    if ph:   # F-03 (Ulf, 24.11., "All a"): the phone frame carries the label too, on the first tile (7213-1, copy 1)
+        old = '#1 365/375<br>10 missing</div>'
+        assert old in body
+        body = body.replace(old, old + lab.replace('margin-top:2px', 'margin:2px 0 8px'), 1)
     return body
 
 

@@ -75,7 +75,7 @@ def tag(text, kind=''):
 
 
 def phone_shell(main):
-    subs = ''.join(f'<span class="{"on" if s == "Sync" else ""}">{s}</span>' for s in ['Sync', 'Orders', 'Storage'])
+    subs = ''.join(f'<span class="{"on" if s == "Sync" else ""}">{s}</span>' for s in B.GROUPS['Workbench'])
     tb = ''.join(f'<div class="{"on" if g == "Workbench" else ""}">{ic(i, 22)}<span>{g}</span>{"<b></b>" if g == "Workbench" else ""}</div>'
                  for g, i in (('Collection', 'sets'), ('Workbench', 'sliders'), ('Planning', 'tag'), ('Manage', 'wrench')))
     return (f'<div style="position:relative;height:100%"><div class="ptop">{B.lockup()}<span style="margin-left:auto;color:var(--tw-text-2)">{ic("search", 22)}</span>'

@@ -269,7 +269,10 @@ def _run_one(db, job, http):
     prog['now'] = None
     _refresh_plans(db, run)
 
-    if not run['stages'] and not _stop_requested(db, job_id):        # the first pass only: a resume would write the Keep choices of an older preview over newer ones
+    if not run['stages']:        # the first pass only: a resume would write the Keep choices of an older preview over newer ones
+        if _stop_requested(db, job_id):      # stopped before it started: nothing is done, not even the Keep choices
+            _finish_stopped(db, job, run, plans, form_data, 0)
+            return
         sync_run.remember_choices(db, run, plans, form_data)
     for idx, name in enumerate(STAGES):
         existing = run['stages'].get(name)

@@ -33,6 +33,7 @@ SOURCES = ('rebrickable', 'brickset')
 LABELS = {'rebrickable': 'Rebrickable', 'brickset': 'Brickset'}
 USER = {'rebrickable': 'rebrickable_user', 'brickset': 'brickset_user'}
 PLAN_TTL = timedelta(hours=24)
+KINDS = ('owned', 'wanted')      # the two kinds of row a comparison has
 COLUMNS = {'link': 'link_json', 'baseline': 'baseline_json', 'last_pull': 'last_pull_json', 'last_send': 'last_send_json'}
 SETLIKE = tuple(kind for kind in items.KINDS if kind not in ('part', 'minifigure'))   # what a site's set list can hold
 _KINDS_SQL = ','.join(repr(k) for k in SETLIKE)
@@ -526,7 +527,7 @@ def _placed_wish(db, wish_list, item_id, kind, count, via, actor):
     return scratch['wish']
 
 
-def apply_pull(db, plan_id, ticked=None, *, lost=None, picks=None, lists=None, kept=None, via=None, actor=None):
+def apply_pull(db, plan_id, ticked=None, *, lost=None, picks=None, lists=None, kept=None, kept_covered=KINDS, kept_scope=None, via=None, actor=None):
     """Place one copy per missing unit of a set (design 4.3's preselection; flagged, condition and completeness unset), loose stock of the
     other kinds, and the missing wishes, in one transaction with one receipt. Never deletes or lowers a set, stock or wish count here.
 
@@ -586,7 +587,7 @@ def apply_pull(db, plan_id, ticked=None, *, lost=None, picks=None, lists=None, k
         receipt['synced'] = _mark_synced(db, plan, wish_list, stamp, list_choices, left={(r['kind'], r['item_id']) for r in plan['rows'] if r['tickable']} - {(r['kind'], r['item_id']) for r in rows})
         receipt['jobs'] = queue_new_items(db, touched)
         receipt['baseline_before'] = _setting(db, source, 'baseline')
-        _put(db, source, 'baseline', _baseline(db, plan, wish_list, kept, [r['key'] for r in rows], (receipt['baseline_before'] or {}).get('kept')))
+        _put(db, source, 'baseline', _baseline(db, plan, wish_list, kept, [r['key'] for r in rows], (receipt['baseline_before'] or {}).get('kept'), kept_covered, kept_scope))
         counts = dict(copies=len(receipt['copies']), stock=sum(c['quantity'] for c in receipt['stock']),
                       wishes_added=sum(1 for w in receipt['wishes'] if w['created']),
                       wishes_changed=sum(1 for w in receipt['wishes'] if not w['created']))
@@ -669,37 +670,35 @@ def _lost_report(section, report):
                 unmatched_sets=section['unmatched_sets'])
 
 
-KINDS = ('owned', 'wanted')
-
-
-def kept_rows(rows, keys, resolved=(), existing=None, covered=KINDS):
+def kept_rows(rows, keys, resolved=(), existing=None, covered=KINDS, scope=None):
     """`{kind: {item id as text: [remote, here]}}`: the Keep choices still standing after a run (#686). A conflict row of `rows` is kept when it
     is named in `keys` (the run's choice Keep) or was already kept, unless this run resolved it (`resolved`: the row keys it took or sent). Rows
-    of a kind in `covered` are all seen, so an entry of that kind whose row is no longer a conflict (the counts met, or the set is gone) is
-    dropped. The entries of a kind this run does not cover stay as they are. A stale pair ends itself too: it counts only while both counts
-    still equal it."""
+    of a kind in `covered` and a set in `scope` (None: every set; else the item ids the run covers) are seen, so an entry whose row is no longer a
+    conflict (the counts met, or the set is gone) is dropped. The entries of a kind or a set this run does not cover stay as they are. A stale
+    pair ends itself too: it counts only while both counts still equal it."""
     keys, resolved = set(keys or ()), set(resolved or ())
     out = {}
     for kind, items in (existing or {}).items():
-        if kind not in covered and items:
-            out[kind] = dict(items)
+        left = {item: pair for item, pair in items.items() if kind not in covered or (scope is not None and int(item) not in scope)}
+        if left:
+            out[kind] = left
     for row in rows:
         if row['key'] not in resolved and row.get('state') == 'conflict' and (row['key'] in keys or row.get('kept')):
             out.setdefault(row['kind'], {})[str(row['item_id'])] = [row['remote'], row['here']]
     return out
 
 
-def remember_kept(db, source, rows, keys, covered=KINDS):
+def remember_kept(db, source, rows, keys, covered=KINDS, scope=None):
     """A run's Keep choices are written before its stages run (#686), whatever the stages do: only the `kept` map of the baseline changes (no
     receipt, nothing to undo). `rows` are the rows the person saw, `covered` the kinds the run shows."""
     with transaction(db):
         baseline = _setting(db, source, 'baseline', {'remote': {'owned': {}, 'wanted': {}}, 'here': {'owned': {}, 'wanted': {}}})
-        kept = kept_rows(rows, keys, existing=baseline.get('kept'), covered=covered)
+        kept = kept_rows(rows, keys, existing=baseline.get('kept'), covered=covered, scope=scope)
         if (baseline.get('kept') or {}) != kept:
             _put(db, source, 'baseline', dict(baseline, kept=kept) if kept else {k: v for k, v in baseline.items() if k != 'kept'})
 
 
-def _baseline(db, plan, wish_list, kept=None, resolved=(), existing=None):
+def _baseline(db, plan, wish_list, kept=None, resolved=(), existing=None, covered=KINDS, scope=None):
     """Remote counts as last seen and here counts now, per item id (as text: JSON keys), and the Keep choices still standing (#686)."""
     mapping = translate(db, set(plan['remote']['owned']) | set(plan['remote']['wanted']))
     remote = {}
@@ -711,7 +710,7 @@ def _baseline(db, plan, wish_list, kept=None, resolved=(), existing=None):
                 remote[kind][key] = remote[kind].get(key, 0) + quantity
     here = _here(db, wish_list)
     out = dict(at=now().isoformat(), remote=remote, here={k: {str(i): n for i, n in v.items()} for k, v in here.items()})
-    held = kept_rows(plan['rows'], kept, resolved, existing)
+    held = kept_rows(plan['rows'], kept, resolved, existing, covered, scope)
     if held:
         out['kept'] = held
     return out
@@ -887,7 +886,7 @@ def apply_send(db, plan_id, ticked=None, *, http=None):
             baseline.setdefault('here', {}).setdefault(row['kind'], {})[str(row['item_id'])] = row['here']
             (baseline.get('kept') or {}).get(row['kind'], {}).pop(str(row['item_id']), None)      # sent: no longer a kept conflict (#686)
         if 'kept' in baseline:
-            baseline['kept'] = {k: v for k, v in baseline['kept'].items() if v}
+            baseline['kept'] = {k: v for k, v in (baseline['kept'] or {}).items() if v}
             if not baseline['kept']:
                 del baseline['kept']
         _put(db, source, 'baseline', baseline)

@@ -1367,3 +1367,32 @@ def test_sending_a_kept_conflict_ends_its_keep_without_an_empty_map(client, remo
     apply_run(client, csrf, start(client, csrf), **{'choice:owned:' + item: 'send'})
     with db_of(pair) as db:
         assert 'kept' not in sync._setting(db, 'rebrickable', 'baseline', {})
+
+
+def test_a_run_that_picks_other_sets_leaves_a_keep_alone(client, remote, pair):
+    csrf = make_a_conflict(client, remote, pair)
+    apply_run(client, csrf, start(client, csrf))                          # the Keep on 1000-1 stands
+    item = str(db_item(pair, '1000-1'))
+    remote.lists[2]['1000-3'] = 1                                         # another set the run could touch
+    run_id = start(client, csrf)
+    with db_of(pair) as db:
+        candidates = {c['item_id'] for c in sync_run.load(db, run_id)[0]['candidates']}
+        other = next(i for i in candidates if i != int(item))
+        sync_run.save_pick(db, run_id, {other})                           # a run that covers another set only
+    apply_run(client, csrf, run_id)
+    with db_of(pair) as db:
+        assert sync._setting(db, 'rebrickable', 'baseline', {})['kept']['owned'][item] == [5, 1]
+
+
+def test_a_keep_only_job_stopped_before_it_starts_writes_nothing(client, remote, pair):
+    from werkzeug.datastructures import MultiDict
+    from brickwork.core.sync import run_job
+    csrf = make_a_conflict(client, remote, pair, also_pull=False)
+    run_id = start(client, csrf)
+    item = str(db_item(pair, '1000-1'))
+    with db_of(pair) as db:
+        run_job.queue(db, run_id, MultiDict([('choice:owned:' + item, 'keep')]))
+        run_job.request_stop(db, run_id)
+        run_job.drain(db)
+        assert 'kept' not in sync._setting(db, 'rebrickable', 'baseline', {})
+        assert tuple(db.execute("SELECT state, error FROM job WHERE kind='sync_run'").fetchone()) == ('done', 'Stopped at your request')

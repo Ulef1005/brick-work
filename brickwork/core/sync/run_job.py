@@ -353,37 +353,46 @@ def _run_one(db, job, http):
 
 
 def _fail_unexpected(db, job_id):
+    """An unexpected error in the worker. The job ends failed (done, when the run was already settled). A run that had begun shows its stages as
+    they stand, with the run's audit entry, so the result page, undo and `retry_send` work; a run that never began is released to be queued again."""
     if db.in_transaction:
         db.rollback()
-    msg = jobs._safe('Sync run failed unexpectedly')
     stamp = jobs._stamp(now())
+    job = run = plans = None
     try:
-        row = db.execute('SELECT payload FROM job WHERE id=?', (job_id,)).fetchone()
-        if sync.load_plan(db, json.loads(row['payload'])['run'], 'run').get('applied'):
-            msg = 'The result was recorded, but the last step of the job failed'      # the run is done; the job says so, not "failed"
-    except Exception:
-        pass
+        job = db.execute('SELECT * FROM job WHERE id=?', (job_id,)).fetchone()
+        run, plans = sync_run.load(db, json.loads(job['payload'])['run'])
+    except Exception as exc:
+        LOG.warning('sync_run job %s: its run could not be read: %s', job_id, type(exc).__name__)
+    settled = bool(run and run.get('applied'))
+    began = bool(run and run.get('stages'))
+    msg = 'The result was recorded, but the last step of the job failed' if settled else jobs._safe('Sync run failed unexpectedly')
     with transaction(db):
-        db.execute("UPDATE job SET state='failed', error_code='source_error', error=?, retry_at=NULL, updated_at=? WHERE id=?",
-                   (msg, stamp, job_id))
-        db.execute("UPDATE job_step SET state='failed', error_code='source_error', error=?, updated_at=? WHERE job_id=? AND state='running'",
+        db.execute("UPDATE job SET state=?, error_code=?, error=?, retry_at=NULL, updated_at=? WHERE id=?",
+                   ('done' if settled else 'failed', None if settled else 'source_error', msg, stamp, job_id))
+        db.execute("UPDATE job_step SET state='failed', error_code='source_error', error=?, updated_at=? WHERE job_id=? AND state IN ('running', 'queued')",
                    (msg, stamp, job_id))
         db.execute('DELETE FROM job_owner WHERE job_id=?', (job_id,))
+    if run is None:
+        return
     try:
-        row = db.execute('SELECT payload FROM job WHERE id=?', (job_id,)).fetchone()
-        run_id = json.loads(row['payload'])['run']
-        run, plans = sync_run.load(db, run_id)
         run.pop('applying', None)
-        for name, stage in run['stages'].items():
-            if stage.get('status') == 'started':
-                run['stages'][name] = _interrupted(db, plans, run['job_form'], name)
-        if not run.get('applied'):         # the stages as they stand are the result: the page shows it and retry_send reads the send rows
-            run['applied'] = dict(at=now().isoformat(), events=[s['event'] for s in run['stages'].values() if s.get('event') is not None])
         if 'job_progress' in run:
             run['job_progress']['now'] = None
+        if not began and not settled:      # nothing ran: the run can be queued again
+            run.pop('job', None)
+            run.pop('job_form', None)
+        elif not settled:
+            for name, stage in run['stages'].items():
+                if stage.get('status') == 'started':
+                    run['stages'][name] = _interrupted(db, plans, run['job_form'], name)
+            events = [st['event'] for st in run['stages'].values() if st.get('event') is not None]
+            run['applied'] = dict(at=now().isoformat(), events=events)
+            with transaction(db):
+                audit(db, 'sync:' + run.get('source', sync_run.SOURCE), 'run', None, dict(run=run['id'], events=events), via=job['via'], actor=job['actor'])
         sync._store_plan(db, run)
-    except Exception:
-        pass
+    except Exception as exc:
+        LOG.warning('sync_run job %s: the failed run could not be stored: %s', job_id, type(exc).__name__)
 
 
 def drain(db, http=None):

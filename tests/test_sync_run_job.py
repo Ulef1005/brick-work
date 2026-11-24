@@ -244,15 +244,13 @@ def test_the_plan_does_not_expire_while_the_job_works(three_sends, monkeypatch):
         assert sync_run.load(db, run_id)[0]['created_at'] > old
 
 
-def test_stop_on_a_waiting_job_keeps_the_rows_for_retry_and_a_failed_job_still_shows_a_result(three_sends, monkeypatch):
+def test_stop_on_a_waiting_job_keeps_the_rows_for_retry(three_sends, monkeypatch):
     pair, run_id, keys = three_sends
     real, state = adapters.RebrickableUser.send, {'sent': 0, 'mode': 'wait'}
 
     def send(self, row, link, st):
         if state['sent'] >= 1 and state['mode'] == 'wait':
             raise WaitingForBudget('rebrickable', '2099-01-01T00:00:00+00:00')
-        if state['mode'] == 'crash':
-            raise RuntimeError('boom')
         state['sent'] += 1
         return real(self, row, link, st)
 
@@ -287,6 +285,7 @@ def test_an_unexpected_error_fails_the_job_and_the_run_still_shows_what_happened
         assert tuple(job) == ('failed', 'source_error')
         run = sync_run.load(db, run_id)[0]
         assert run['applied'] and 'applying' not in run and run['stages']['send']['status'] == 'failed'
+        assert db.execute("SELECT count(*) FROM event WHERE entity_kind='sync' AND field='run'").fetchone()[0] == 1       # undo finds the run
         state['crash'] = False
         assert sync_run.retry_send(db, run_id)['stages']['send']['status'] == 'done'
 
@@ -312,3 +311,36 @@ def test_the_job_sends_lost_parts_out_one_call_with_one_audit_entry(client, remo
         assert tuple(step) == (1, 1, 'done')
         assert len(db.execute("SELECT 1 FROM event WHERE entity_kind='sync' AND field='send'").fetchall()) == 1
     assert [(m, d) for m, p, d in remote.lost_writes] == [('POST', 'inv_part_id=1&lost_quantity=2')]
+
+
+def test_a_run_that_never_began_is_released_when_the_job_fails_at_once(three_sends, monkeypatch):
+    pair, run_id, keys = three_sends
+    monkeypatch.setattr(run_job, '_run_one', lambda *a, **k: (_ for _ in ()).throw(RuntimeError('boom')))
+    with db_of(pair) as db:
+        job_id = run_job.queue(db, run_id, form_for(db, run_id))
+        run_job.drain(db)
+        assert db.execute('SELECT state FROM job WHERE id=?', (job_id,)).fetchone()[0] == 'failed'
+        assert {r[0] for r in db.execute('SELECT state FROM job_step WHERE job_id=?', (job_id,))} == {'failed'}
+        run = sync_run.load(db, run_id)[0]
+        assert not run.get('applied') and not run.get('job') and 'applying' not in run
+        assert run_job.queue(db, run_id, form_for(db, run_id)) != job_id
+
+
+def test_a_failing_send_unit_keeps_the_rows_the_plan_holds(three_sends, monkeypatch):
+    import sqlite3
+    pair, run_id, keys = three_sends
+    real, state = adapters.RebrickableUser.send, {'n': 0}
+
+    def send(self, row, link, st):
+        state['n'] += 1
+        if state['n'] == 2:
+            raise sqlite3.OperationalError('database is locked')
+        return real(self, row, link, st)
+
+    monkeypatch.setattr(adapters.RebrickableUser, 'send', send)
+    with db_of(pair) as db:
+        run_job.queue(db, run_id, form_for(db, run_id))
+        run_job.drain(db)
+        stage = sync_run.load(db, run_id)[0]['stages']['send']
+        assert stage['status'] == 'failed' and len(stage['results']) == len(keys)
+        assert stage['counts'].get('failed') and sync_run.retry_send(db, run_id)['stages']['send']['status'] == 'done'

@@ -5,6 +5,8 @@ network and runs outside any transaction (`write(detached=True)`), writes nothin
 is one undoable write; a send apply makes the ticked remote calls (admin; remote changes are not undone). The BrickTracker import
 (`core/importer/bricktracker.py`) takes an uploaded `app.db`, streamed to a private file that is deleted whatever happens, and answers a plan;
 applying it writes the ticked rows in one transaction that Undo reverses (admin)."""
+import sqlite3
+
 from flask import jsonify
 
 from ..core import errors, sync
@@ -129,4 +131,7 @@ def post_imports_brickwork_plan(db, body, content):
 @write
 def post_imports_brickwork_by_plan_id_apply(db, body, plan_id):
     """Write the rows the plan marks new, in one transaction; rows that differ are left alone. Undo with POST /events/{id}/undo (admin)."""
-    return Done(own_import.apply(db, plan_id))
+    try:
+        return Done(own_import.apply(db, plan_id))
+    except sqlite3.IntegrityError:
+        raise errors.ValidationFailed('The file holds a value this install does not accept') from None

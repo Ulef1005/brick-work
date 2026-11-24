@@ -243,7 +243,7 @@ What the 60 read operations (M.11b) and the 67 write operations (M.11c, further 
 | Jobs | 7 | M.11d 7 |
 | Sources | 6 | M.11d 6 |
 | Settings | 5 | M.11c 2, M.11d 3 |
-| Admin | 10 | M.11b 1, M.11d 9 |
+| Admin | 12 | M.11b 1, M.11d 11 |
 | Matching | 2 | M.11b 2 |
 | Tokens | 3 | M.11d 3 |
 

@@ -214,3 +214,21 @@ def test_a_zero_stock_row_is_unresolved_and_a_wish_already_wished_is_skipped(col
     done = own_import.apply(coll.db, planned['id'], via='cli', actor='test')
     after = coll.db.execute('SELECT count(*), sum(quantity) FROM main.wish WHERE archived_at IS NULL').fetchone()
     assert tuple(after) == tuple(before) and done['counts']['wishes'] == 0
+
+
+def test_a_stock_row_with_a_pile_already_here_is_here_and_apply_leaves_the_pile(coll, world):
+    from tests.test_own_import import _repack
+
+    def fresh_ids(name, data):
+        if name != 'data/stock.jsonl':
+            return data
+        return b'\n'.join(json.dumps(dict(json.loads(l), id=f'ffffffff-0000-4000-8000-0000000001{i:02d}')).encode()
+                          for i, l in enumerate(data.splitlines())) + b'\n'
+    again = _repack(own_export.build(coll.db)['content'], mutate=fresh_ids)
+    before = coll.db.execute('SELECT count(*), sum(quantity) FROM main.stock WHERE archived_at IS NULL AND kind!=\'minifigure\'').fetchone()
+    assert before[0] > 0
+    planned = own_import.plan(coll.db, again)
+    assert planned['counts']['stock']['new'] == 1                  # the minifigure row: the store keeps no merge key for it
+    own_import.apply(coll.db, planned['id'], via='cli', actor='test')
+    after = coll.db.execute('SELECT count(*), sum(quantity) FROM main.stock WHERE archived_at IS NULL AND kind!=\'minifigure\'').fetchone()
+    assert tuple(after) == tuple(before)

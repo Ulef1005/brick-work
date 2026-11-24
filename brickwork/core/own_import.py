@@ -430,6 +430,12 @@ def _classify(db, parsed_tables, chosen):
             if reason is not None:
                 record(row, 'unresolved', reason=reason)
                 continue
+            if table == 'stock' and row.get('kind') != 'minifigure' and db.execute(
+                    'SELECT 1 FROM main.stock WHERE item_id=? AND color_id IS ? AND condition IS ? AND lot_id IS ? AND storage_id IS ? '
+                    'AND kind!=? AND archived_at IS NULL',
+                    (item_id, color_id, row.get('condition'), row.get('lot_id'), row.get('storage_id'), 'minifigure')).fetchone():
+                record(row, 'here')                                # the store keeps one live pile per item, colour, condition, lot and storage
+                continue
             if table == 'wish' and db.execute(
                     'SELECT 1 FROM main.wish WHERE wishlist_id=? AND item_id=? AND color_id IS ? AND archived_at IS NULL',
                     (row.get('wishlist_id'), item_id, color_id)).fetchone():
@@ -760,6 +766,12 @@ def apply(db, plan_id, *, via=None, actor=None, queue=True):
             lines_unmatched += _write_copy(db, entry, receipt, flag_rows, find_item, find_color, via, actor)
         for entry in new_rows.get('stock', ()):
             row, item_id, color_id = entry['row'], entry['item_id'], entry['color_id']
+            if row.get('kind') != 'minifigure' and db.execute(
+                    'SELECT 1 FROM main.stock WHERE item_id=? AND color_id IS ? AND condition IS ? AND lot_id IS ? AND storage_id IS ? '
+                    'AND kind!=? AND archived_at IS NULL',
+                    (item_id, color_id, row.get('condition'), row.get('lot_id'), row.get('storage_id'), 'minifigure')).fetchone():
+                extra_skipped += 1                                 # the store would merge it into that pile and change it
+                continue
             items.ensure(db, item_id)
             touched.add(item_id)
             change = stock.add_loose(
@@ -770,7 +782,7 @@ def apply(db, plan_id, *, via=None, actor=None, queue=True):
             flag_rows('stock_flag', 'stock_id', change['id'], row.get('flags'))
             receipt['stock'].append(change)
             receipt['origin'][row['id']] = change['id']
-        if new_rows.get('wish'):
+        if any(e['row'].get('wishlist_id') == 'default' for e in new_rows.get('wish', ())):
             wishlists.require(db, 'default')
         for entry in new_rows.get('wish', ()):
             row, item_id, color_id = entry['row'], entry['item_id'], entry['color_id']

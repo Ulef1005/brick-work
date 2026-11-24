@@ -501,3 +501,9 @@ Gap list: `~/Workspace/_exports/design-brief-n/frame-gaps-n.md`. Requested by br
 - **F-03 (`48-sets-pulled-copy`):** the phone frame carries "Checked on Rebrickable" on the first tile (7213-1, copy 1).
 - **F-04 (all Sync frames, phone):** the phone sub row is the full Workbench row, as on the U frames, Sync first. Replaces the three-entry row of round 5.
 
+## Commission N round 6 (draft, pending Ulf): the interrupted run (#685, built in #707)
+
+- **Copy, `95-sync-long-run-applying` and `57-sync-long-run`:** "If the server restarts, the run stops safely and shows what went out. Finished steps stay done." replaces "goes on from the last saved step / last sent change" (brick-work-product, 2026-11-24, from brick-work-n's build): after a restart finished stages stay done and a send in flight is never repeated, because a send is not safe to repeat.
+- **`96-sync-run-interrupted`:** the run after a restart: Pull applied (Done, stays done); Sending (Interrupted) with the rows that went out (Sent), the row that was in flight (Not known) and the count (640 of 800 sent, 1 not known, 159 not sent); a note that a send is never repeated by itself; Send again and Open Jobs. Design's wording, for Ulf's check: every sentence on the frame.
+- **Budget:** frames 57 and 95 show the same run with the Rebrickable budget of 1,000 (product, from the code), already on main with #705.
+

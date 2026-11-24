@@ -1,5 +1,5 @@
 """Commission N (Sync and files, #517), round 5 (draft): every frame still missing for milestone N (Ulf, 24.11., via brick-work-product:
-"ask design to write all missing frames"; gap list ~/Workspace/_exports/design-brief-n/frame-gaps-n.md). Folders 78 to 95.
+"ask design to write all missing frames"; gap list ~/Workspace/_exports/design-brief-n/frame-gaps-n.md). Folders 78 to 96.
 
 G2/G3 (#551): the added-via chip and filter on loose-stock lots (78) and on wishes (79). G4 (#521): BrickLink's price guide, preview and result
 (80, 81). G5 (#523): one choose-file frame for each import format still undrawn (82 to 86). G6 (#523, #470): one choose frame for each export
@@ -225,10 +225,26 @@ def run_applying(ph):
 
 def long_applying(ph):
     top = card('Sending 640 of 800', f'{N.prog(640, 800)}<p class="mono" style="{small}">about 3 min left · 1 request a second · budget today 810 / 1,000</p>'
-               '<div class="ninfo">You can close this page, the browser or the tablet. The run keeps going on the server and shows in Jobs. If the server restarts it goes on from the last sent change.</div>'
+               '<div class="ninfo">You can close this page, the browser or the tablet. The run keeps going on the server and shows in Jobs. If the server restarts, the run stops safely and shows what went out. Finished steps stay done.</div>'
                f'<div style="display:flex;gap:10px;flex-wrap:wrap">{btn("Stop after this one", "sec sm")}{btn("Open Jobs", "q sm")}</div>')
     done = card(f'Pull applied {tag("Done")}', '<p class="n">3,200 changes applied here, in one step. Undo for the run stays on the result page.</p>')
     return head('Rebrickable', 'Running 4,000 changes, started 19 Nov, 15:02', ph) + N.steps('Run', ph) + done + top
+
+
+# ---- 96 an interrupted run (#685, brick-work-n's build, 24.11.) ----------------------------------------------------------
+# After a restart, finished stages stay done and a send in flight is never repeated (a send is not safe to repeat). The run shows as interrupted with
+# the rows that went out; Send again resends only after the person has checked.
+def interrupted(ph):
+    done = card(f'Pull applied {tag("Done")}', '<p class="n">3,200 changes applied here, in one step. They stay done.</p>')
+    sent = ''.join(f'<div class="nrow"><div class="id"><b>{a}</b><span>{b}</span></div>{"" if ph else tag(c, k)}</div>' if not ph else
+                   f'<div class="nrow"><div class="id"><b>{a}</b><span>{b}</span><div style="margin-top:6px">{tag(c, k)}</div></div></div>'
+                   for a, b, c, k in (('7213-1 · Off-Road Fire Truck & Fireboat', 'Quantity 2 sent to Rebrickable', 'Sent', ''),
+                                      ('7938-1 · Passenger Train', 'Lost Parts: 2 parts removed', 'Sent', ''),
+                                      ('10254-1 · Winter Holiday Train', 'Add 1 to Main collection · the server restarted while this was going out', 'Not known', 'hatch')))
+    out = card(f'Sending {tag("Interrupted", "hatch")}', f'<p class="mono" style="{small}">640 of 800 sent · 1 not known · 159 not sent</p>' + sent
+               + '<div class="ninfo">A send is never repeated by itself, because sending twice can change a list twice. Check the row marked Not known on Rebrickable, then send the rest again.</div>'
+               f'<div style="display:flex;gap:10px;flex-wrap:wrap">{btn("Send again", "sec sm")}{btn("Open Jobs", "q sm")}</div>')
+    return head('Rebrickable', 'Interrupted 19 Nov, 15:31 · the server restarted', ph) + N.steps('Run', ph) + done + out
 
 
 N.FRAMES = [('N7-01', '78-stock-added-via', N2._shell('Collection', 'Parts', stock_source)), ('N7-02', '79-wishes-added-via', N2._shell('Planning', 'Wishlist', wish_source)),
@@ -238,7 +254,8 @@ N.FRAMES = [('N7-01', '78-stock-added-via', N2._shell('Collection', 'Parts', sto
             ('N7-10', '87-export-database', exp_db), ('N7-11', '88-export-insurance', exp_insurance), ('N7-12', '89-export-missing-parts', exp_missing),
             ('N7-13', '90-export-order-files', exp_orderfiles), ('N7-14', '91-export-brickwork-csv', exp_bw_csv), ('N7-15', '92-export-other-formats', exp_other),
             ('N7-16', '93-re-import-result', reimport_result),
-            ('N7-17', '94-rebrickable-run-applying', run_applying), ('N7-18', '95-sync-long-run-applying', long_applying)]
+            ('N7-17', '94-rebrickable-run-applying', run_applying), ('N7-18', '95-sync-long-run-applying', long_applying),
+            ('N7-19', '96-sync-run-interrupted', interrupted)]
 N.DRAFTS = []
 
 if __name__ == '__main__':

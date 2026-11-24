@@ -164,15 +164,21 @@ def plan(db, remote_fields, labels, *, wish_list='default'):
                     here=None, state='add', options=[], default=None, tickable=True,
                 ))
     plan_labels = {str(n): lbl for n, lbl in (labels or {}).items() if lbl}
+    renames = []                                            # a tag still named `Brickset flag N` whose flag has a label now: apply renames it, whatever is ticked
+    for str_n, label in sorted(plan_labels.items()):
+        fid = flag_map.get(str_n)
+        row = db.execute("SELECT name FROM main.flag WHERE id=? AND kind='tag' AND archived_at IS NULL", (fid,)).fetchone() if fid else None
+        if row and row[0] == FALLBACK.format(n=int(str_n)) and label != row[0] and not db.execute("SELECT 1 FROM main.flag WHERE kind='tag' AND archived_at IS NULL AND lower(name)=lower(?) AND id<>?", (label, fid)).fetchone():
+            renames.append(dict(flag=int(str_n), flag_id=fid, before=row[0], after=label))
     value = dict(
         id=uuid4().hex, created_at=sync.now().isoformat(), direction='fields', source='brickset',
-        rows=rows, unmatched=unmatched, not_kept=not_kept, labels=plan_labels,
+        rows=rows, unmatched=unmatched, not_kept=not_kept, labels=plan_labels, renames=renames,
         summary=dict(
             add=sum(1 for r in rows if r['state'] == 'add'),
             conflict=sum(1 for r in rows if r['state'] == 'conflict'),
             notes=sum(1 for r in rows if r['kind'] == 'note'),
             flags=sum(1 for r in rows if r['kind'] == 'flag'),
-            unmatched=len(unmatched),
+            unmatched=len(unmatched), renames=len(renames),
         ),
     )
     return sync._save_plan(db, value)
@@ -255,6 +261,7 @@ def apply(db, plan_id, ticked=None, *, choices=None, via=None, actor=None):
                 renamed_entry = _rename_if_fallback(db, flag_map[str_n], label, int(str_n))
                 if renamed_entry is not None and renamed_entry not in receipt['renamed']:
                     receipt['renamed'].append(renamed_entry)
+        receipt['map_added'] = sorted(k for k in flag_map if k not in map_before)
         if flag_map != map_before:
             _put_map(db, flag_map)
         counts = dict(notes=len(receipt['notes']), flags=len(receipt['links']),
@@ -281,7 +288,9 @@ def _undo(db, event, via, actor):
             raise ValueError('Something from this sync has changed since · undo the later change first')
     for entry in r['renamed']:
         row = db.execute('SELECT name FROM main.flag WHERE id=?', (entry['flag_id'],)).fetchone()
-        if row is None or (entry.get('after') is not None and row[0] != entry['after']):
+        if row is None:
+            continue                                       # the tag is gone: nothing to restore
+        if (entry.get('after') is not None and row[0] != entry['after']) or db.execute("SELECT 1 FROM main.flag WHERE kind='tag' AND archived_at IS NULL AND lower(name)=lower(?) AND id<>?", (entry['before'], entry['flag_id'])).fetchone():
             raise ValueError('Something from this sync has changed since · undo the later change first')
     for entry in reversed(r['notes']):
         tbl = 'main.copy' if entry['table'] == 'copy' else 'main.wish'
@@ -302,6 +311,8 @@ def _undo(db, event, via, actor):
     for k, v in list(restored.items()):
         if v in deleted_tags:
             restored.pop(k, None)
+    for k in r.get('map_added') or ():
+        restored.pop(k, None)
     for k, v in (r['map_before'] or {}).items():
         if k not in restored:
             restored[k] = v

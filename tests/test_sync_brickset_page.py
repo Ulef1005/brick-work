@@ -592,7 +592,8 @@ def test_the_read_ignores_flags_it_cannot_understand_instead_of_failing_the_run(
 def test_the_read_takes_a_flag_that_is_on_as_true_one_or_the_word_and_survives_odd_shapes(client, remote, pair, monkeypatch):
     connected(client, pair)
     cases = [([{'flagNo': 5, 'value': 'true'}], [5]), ([{'flagNo': 6, 'value': 1}], [6]), ([{'flagNo': 7, 'value': 'True'}], [7]),
-             (1, []), (True, []), ('on', []), ([{'flagNo': '²', 'value': True}], []), ([None, 3, {'flagNo': 2, 'value': True}], [2])]
+             (1, []), (True, []), ('on', []), ([{'flagNo': '²', 'value': True}], []), ([None, 3, {'flagNo': 2, 'value': True}], [2]),
+             ([{'flagNo': '9' * 5000, 'value': True}], []), ([{'flagNo': 9, 'value': True}], []), ([{'flagNo': 0, 'value': True}], [])]
     for flags, expected in cases:
         row = {'number': '1000', 'numberVariant': 1, 'setID': 1001, 'collection': {'qtyOwned': 1, 'flags': flags}}
         monkeypatch.setattr(adapters.BricksetUser, '_sets', lambda self, filters, row=row: [row] if filters.get('owned') else [])

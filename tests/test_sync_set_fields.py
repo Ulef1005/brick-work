@@ -323,3 +323,59 @@ def test_a_tag_is_found_whatever_the_case_of_its_name(pair):
         db.commit()
         res = set_fields.apply(db, set_fields.plan(db, {'1000-1': {'notes': '', 'flags': [2]}}, {2: 'Display'})['id'])
         assert res['counts']['tags_created'] == 0 and [t[1] for t in _live_tags(db)] == ['display']
+
+
+def test_undo_does_not_rename_a_tag_back_onto_a_name_another_live_tag_has_now(pair):
+    with db_of(pair) as db:
+        Coll(db).add_copy('1000-1')
+        set_fields.apply(db, set_fields.plan(db, {'1000-1': {'notes': '', 'flags': [2]}}, {})['id'])
+        res = set_fields.apply(db, set_fields.plan(db, {'1000-1': {'notes': '', 'flags': [2]}}, {2: 'Display'})['id'], ticked=[])
+        assert res['counts']['renamed'] == 1
+        db.execute("INSERT INTO flag(id, name, kind, shown_on_grid, created_at) VALUES('later', 'Brickset flag 2', 'tag', 0, '2026-11-24T00:00:00Z')")
+        db.commit()
+        with pytest.raises(ValueError, match='changed since'):
+            undo.undo_event(db, res['event_id'])
+        assert sorted(t[1] for t in _live_tags(db)) == ['Brickset flag 2', 'Display']
+
+
+def test_undo_takes_back_the_map_entries_the_pull_added_even_for_a_reused_tag(pair):
+    with db_of(pair) as db:
+        coll = Coll(db)
+        coll.add_copy('1000-1')
+        coll.add_copy('2070-1')
+        db.execute("INSERT INTO flag(id, name, kind, shown_on_grid, created_at) VALUES('mine', 'display', 'tag', 0, '2026-11-24T00:00:00Z')")
+        db.commit()
+        first = set_fields.apply(db, set_fields.plan(db, {'1000-1': {'notes': '', 'flags': [2]}}, {2: 'Display'})['id'])
+        assert first['counts']['tags_created'] == 0
+        undo.undo_event(db, first['event_id'])
+        assert db.execute('SELECT 1 FROM setting WHERE key=?', (set_fields.MAP_KEY,)).fetchone() is None
+        db.execute("UPDATE flag SET name='Shelf' WHERE id='mine'")
+        db.commit()
+        set_fields.apply(db, set_fields.plan(db, {'2070-1': {'notes': '', 'flags': [2]}}, {2: 'Display'})['id'])
+        cid = _copies(db, '2070-1')[0][0]
+        assert [t[1] for t in _copy_tags(db, cid)] == ['Display']
+
+
+def test_the_plan_lists_the_renames_apply_will_make(pair):
+    with db_of(pair) as db:
+        Coll(db).add_copy('1000-1')
+        set_fields.apply(db, set_fields.plan(db, {'1000-1': {'notes': '', 'flags': [2]}}, {})['id'])
+        later = set_fields.plan(db, {'1000-1': {'notes': '', 'flags': [2]}}, {2: 'Display'})
+        assert later['rows'] == [] and later['summary']['renames'] == 1
+        assert [(r['flag'], r['before'], r['after']) for r in later['renames']] == [(2, 'Brickset flag 2', 'Display')]
+        db.execute("INSERT INTO flag(id, name, kind, shown_on_grid, created_at) VALUES('mine', 'Display', 'tag', 0, '2026-11-24T00:00:00Z')")
+        db.commit()
+        taken = set_fields.plan(db, {'1000-1': {'notes': '', 'flags': [2]}}, {2: 'Display'})
+        assert taken['renames'] == [] and taken['summary']['renames'] == 0       # the name is taken: no rename is promised
+
+
+def test_an_archived_only_target_makes_no_tag_and_is_counted(pair):
+    with db_of(pair) as db:
+        Coll(db).add_copy('1000-1')
+        cid = _copies(db, '1000-1')[0][0]
+        p = set_fields.plan(db, {'1000-1': {'notes': '', 'flags': [2]}}, {})
+        db.execute("UPDATE copy SET archived_at='2026-11-24T00:00:00Z' WHERE id=?", (cid,))
+        db.commit()
+        res = set_fields.apply(db, p['id'])
+        assert res['counts'] == {'notes': 0, 'flags': 0, 'tags_created': 0, 'renamed': 0, 'skipped': 1}
+        assert _live_tags(db) == []

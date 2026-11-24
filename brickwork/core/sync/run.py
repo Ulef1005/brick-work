@@ -356,6 +356,7 @@ def rows(db, run, plans):
         if d['owned' if r['kind'] == 'owned' else 'wishlist'] not in ('to', 'both'):
             continue
         row = row_of(r)
+        row['send_no'] = r.get('remote_no')          # the number a send goes to: Brickset gets one call per set number, whatever kind the row is
         if r['state'] == 'conflict':
             row['state'] = 'conflict'
             if r['tickable']:

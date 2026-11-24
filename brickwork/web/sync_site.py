@@ -353,7 +353,7 @@ def step_preview(source, run_id):
     choosable = sum(1 for r in rows if r['options']) + sum(1 for e in (lost_in or {}).get('sets', ()) if e['state'] == 'pick' or e['preview']['added'] or e['preview']['replaced'] or e['preview']['cleared']) \
         + sum(1 for r in lost_send_rows if r.get('tickable')) + len(parts) + sum(1 for line in changed_lines if set(line['choices']) - {'keep', 'skip'})
     sending = [r for r in rows for o in r['options'] if o['id'] in ('send', 'remove') and o['id'] == r['default']]
-    sets_sent = len({r['item_id'] for r in sending}) if source == 'brickset' else len(sending)      # Brickset gets one call per set, whatever changes in it
+    sets_sent = len({r.get('send_no') or r['item_id'] for r in sending}) if source == 'brickset' else len(sending)      # Brickset gets one call per set, whatever changes in it
     send_requests = sets_sent + sum(1 for r in lost_send_rows if r.get('ticked'))
     last = ((status.get('last_pull') or {}).get('at') or (status.get('last_send') or {}).get('at'))
     return _render(source, screen='preview', title=LABEL[source], run=run, rows=main, conflicts=conflicts, counts=counts,

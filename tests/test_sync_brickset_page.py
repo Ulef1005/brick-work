@@ -536,3 +536,16 @@ def test_the_preview_counts_the_calls_the_run_makes_one_per_set(client, remote, 
     apply_run(client, csrf, run_id, page)
     made = len([1 for m, _ in remote.calls[before:] if m == 'setCollection'])
     assert made >= 1 and shown == made
+
+
+def test_the_two_rows_of_one_set_share_a_send_key_so_the_page_counts_one_request(client, remote, pair):
+    csrf = connected(client, pair)
+    with db_of(pair) as db:
+        coll = Coll(db)
+        coll.add_copy('1000-3')
+        coll.add_wish(coll.item('sets', '1000-3'), quantity=2)
+    run_id = start(client, csrf, owned_dir='to', wishlist_dir='to')
+    page = preview_of(client, run_id)
+    keys = [box['data-sy-set'] for row in page.select('[data-sy-row]') if row.get('data-name', '').startswith('1000-3')
+            for box in row.select('input[data-sy-send]')]
+    assert len(keys) == 2 and len(set(keys)) == 1

@@ -62,7 +62,7 @@
 {% if r.undoable %}<form method="post" action="{{ url_for('web.bw_sync_' ~ pre ~ '_undo') }}">{{ csrf() }}<input type="hidden" name="event" value="{{ r.event }}"><button class="bk-btn bk-quiet">Undo this run</button></form>{% endif %}</span>{% endif %}</div>
 {% else %}<p class="bk-text">Nothing has run yet.</p>{% endfor %}
 {% if waiting %}<p class="bk-text">{{ waiting }} {{ 'row' if waiting == 1 else 'rows' }} to {{ label }} still waiting.</p>{% endif %}
-{% if source == 'brickset' %}<p class="sr-note">Purchase date and price never leave Brick Work: Brickset has no field for them. Each read of your sets counts against Brickset’s daily limit for your key.</p>
+{% if source == 'brickset' %}<p class="sr-note">Purchase date and price never leave Brick Work: Brickset has no field for them. Each call to Brickset counts against its daily limit for your key: a read of your sets, a send, and a check of your user hash.</p>
 {% else %}<p class="sr-note">Rebrickable keeps its own link to your account. Each run counts against Brick Work’s daily budget for Rebrickable.</p>{% endif %}</section>
 </div>
 <section class="sr-card" data-rb-what><h2>What syncs</h2>
@@ -94,7 +94,7 @@
 {% if can_edit %}<div class="sr-actions"><form method="post" action="{{ url_for('web.bw_sync_write', source=source, action='test') }}">{{ csrf() }}<input type="hidden" name="next" value="connect"><button class="bk-btn bk-outline">Test</button></form>
 <form method="post" action="{{ url_for('web.bw_sync_write', source=source, action='remove') }}">{{ csrf() }}<input type="hidden" name="next" value="connect"><button class="bk-btn bk-quiet">Remove</button></form></div>{% endif %}
 {% else %}
-<p class="sr-lede">Your username and password go straight to {{ label }} once. Brick Work keeps only the {{ 'hash' if source == 'brickset' else 'token' }} {{ label }} returns, never the password.</p>
+<p class="sr-lede">Your username and password go straight to {{ label }} once. Brick Work keeps only the {{ 'hash' if source == 'brickset' else 'token' }} {{ label }} returns and the username you type, never the password.</p>
 {% if can_edit %}<form method="post" action="{{ url_for('web.bw_sync_write', source=source, action='connect') }}" autocomplete="off">{{ csrf() }}<input type="hidden" name="next" value="connect">
 <div class="sr-two"><label class="bk-field">{{ 'Username' if source == 'brickset' else 'Username or email' }}<input name="username" autocomplete="username" required></label><label class="bk-field">Password<input name="password" type="password" autocomplete="current-password" required></label></div>
 <div class="sr-actions"><button class="bk-btn bk-primary">Connect</button></div></form>
@@ -203,7 +203,7 @@
 {% if r.options|length > 1 %}<div class="sr-rowid">{{ tile(r.number) }}<span><b>{{ r.name or 'Name not recorded' }}</b><span>{{ r.number }} · {{ 'Wishlist' if r.kind == 'wanted' else 'Owned' }}</span></span></div>
 <div class="sr-choice" role="radiogroup" aria-label="{{ r.name }}">{% for o in r.options %}<label><input type="radio" name="choice:{{ r.key }}" value="{{ o.id }}" {{ 'checked' if o.id == (r.default or 'keep') }} {% if o.id != 'keep' %}data-sy-tick{% endif %}{% if o.id in ('send', 'remove') %} data-sy-send{% endif %}><span><b>{{ o.label }}</b>{% if o.note %}<span class="mono">{{ o.note }}</span>{% endif %}</span></label>{% endfor %}</div>
 {% else %}
-{% if r.options %}{% set o = r.options[0] %}<label class="sr-tickbox"><input type="checkbox" name="choice:{{ r.key }}" value="{{ o.id }}" {{ 'checked' if r.default == o.id }} data-sy-tick{% if o.id in ('send', 'remove') %} data-sy-send{% endif %}><span class="bc-visually-hidden">{{ o.label }}</span></label>{% else %}<span class="sr-tickbox"></span>{% endif %}
+{% if r.options %}{% set o = r.options[0] %}<label class="sr-tickbox"><input type="checkbox" name="choice:{{ r.key }}" value="{{ o.id }}" {{ 'checked' if r.default == o.id }} data-sy-tick{% if o.id in ('send', 'remove') %} data-sy-send{% if source == 'brickset' %} data-sy-set="{{ r.send_no or r.item_id }}"{% endif %}{% endif %}><span class="bc-visually-hidden">{{ o.label }}</span></label>{% else %}<span class="sr-tickbox"></span>{% endif %}
 <div class="sr-rowid">{{ tile(r.number) }}<span><b>{{ r.name or 'Name not recorded' }}</b><span>{{ r.number }} · {{ 'Wishlist' if r.kind == 'wanted' else 'Owned' }}{% if r.kept %} · not taken at the last run{% endif %}</span></span></div>
 <div class="sr-rowdo">{{ tag(r.tag, r.tone in ('dash', 'warning', 'unknown'), r.tone == 'danger') }}<span>{% if r.options %}{{ r.options[0].label }}{% elif r.reason %}{{ r.reason }}{% else %}Keep here{% endif %}</span>{% if r.options and r.reason %}<span class="sr-reason">Not sent: {{ r.reason }}</span>{% endif %}</div>
 {% endif %}</div>{% else %}<p class="bk-text">Nothing differs between the sets picked.</p>{% endfor %}</div></section>

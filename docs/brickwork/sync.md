@@ -11,9 +11,9 @@ Issue #10, backend; on the 4.0 store since M.8j (issue #110). Owned sets and wan
 
 Both sites need their API key (Catalogues & keys) and a per-user credential:
 
-- **Connect** (`POST /api/v2/sources/{source}/user/connect`, `brickwork sync <source> connect --username NAME`): the username and password go straight to the site, once. Rebrickable: `POST https://rebrickable.com/api/v3/users/_token/` (form `username`, `password`, header `Authorization: key <api key>`) returns `user_token`. Brickset: `POST https://brickset.com/api/v3.asmx/login` (`apiKey`, `username`, `password`) returns `hash`. Only the token or hash is stored, encrypted like the API keys (`source_key` rows `rebrickable_user`, `brickset_user`), and the username as typed, in the setting `<source>_account_name`, for the page to show (a pasted token or hash, and a removal, clear it). The password is not recorded: the connect call bypasses the recorded transport, the API replay check stores a keyed fingerprint, and the command-line tool asks for it without echo. At most 10 logins per site per UTC day (counted from the day's `sync` events of that kind: an attempt writes one, with no credential in it).
+- **Connect** (`POST /api/v2/sources/{source}/user/connect`, `brickwork sync <source> connect --username NAME`): the username and password go straight to the site, once. Rebrickable: `POST https://rebrickable.com/api/v3/users/_token/` (form `username`, `password`, header `Authorization: key <api key>`) returns `user_token`. Brickset: `POST https://brickset.com/api/v3.asmx/login` (`apiKey`, `username`, `password`) returns `hash`. Only the token or hash is stored, encrypted like the API keys (`source_key` rows `rebrickable_user`, `brickset_user`). The username as typed is kept too, in the setting `<source>_account_name`, for the page to show. A pasted token or hash, and a removal, clear it. The password is not recorded: the connect call bypasses the recorded transport, the API replay check stores a keyed fingerprint, and the command-line tool asks for it without echo. At most 10 logins per site per UTC day (counted from the day's `sync` events of that kind: an attempt writes one, with no credential in it).
 - **Paste** (`PUT /api/v2/sources/{source}/user`, `brickwork sync <source> paste`): a token or hash generated on the site.
-- **Remove** (`DELETE …/user`, Undo restores it) and **Test** (`POST …/user/test`: Rebrickable `GET /users/{token}/setlists/?page_size=1`, Brickset `checkUserHash`).
+- **Remove** (`DELETE …/user`, Undo restores the credential but not the account name the page shows) and **Test** (`POST …/user/test`: Rebrickable `GET /users/{token}/setlists/?page_size=1`, Brickset `checkUserHash`).
 - Environment overrides: `BW_REBRICKABLE_USER_TOKEN`, `BW_BRICKSET_USER_HASH`.
 
 ## Link
@@ -76,5 +76,5 @@ One `sync_state` row per source: `link_json` (carried by the migration), `baseli
 ## Open facts
 
 - Rebrickable user tokens: Rebrickable documents no expiry; a refused token surfaces as `key_rejected`.
-- Brickset counts every call against the key (100 a day to start; since 19.11.2026 not only `getSets`). `login` has a local cap of 10 a day.
+- Brickset counts every call against the key, not only `getSets` (100 a day to start; the change came in November 2026). Brick Work counts `getSets`, `setCollection` and `checkUserHash`. Brickset also counts key checks and logins, so its own number can be a few higher. `login` has a local cap of 10 a day.
 - Brickset keeps a wanted quantity (`qtyWanted`); a wish sends its quantity.

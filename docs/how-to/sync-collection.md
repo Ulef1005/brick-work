@@ -33,7 +33,7 @@ The page shows your account (API key and today's budget, with **Test**, **Change
 4. **Preview.** The same rows and choices as on the Rebrickable page: **Add here**, **Add there**, a quantity that differs, and **Changed in both places** with **Keep**, **Take** and **Send**. A wanted set has a quantity on both sides. **Before you send** names the number of changes and today's budget. A run reads your owned and wanted sets once, for both directions. A set that changes in more than one way is sent in one call.
 5. **Result.** What changed here, with **Undo this run**, and what happened on Brickset, with a **Retry** for a row that failed. A change sent to Brickset cannot be undone here.
 
-Brickset allows 100 calls a day unless it raises the limit for your key. Since 19 November 2026 every call counts, not only `getSets`. The page shows how many are used.
+Brickset allows 100 calls a day unless it raises the limit for your key. Brickset now counts every call, not only `getSets`. The page counts reads, sends and the check of your user hash. Brickset also counts key checks and logins, so its own number can be a few higher.
 
 ## A BrickLink run
 
@@ -53,7 +53,7 @@ BrickLink's daily limit depends on your key. The page shows how many calls are u
 
 ## Connect a site
 
-Each site needs its API key and your own account credential. Rebrickable: step 1 of its page holds both, and **Connect** on the hub opens it. Brickset: step 1 of its page holds both, and **Connect** on the hub opens it. On Rebrickable, enter **Username or email** and your password and choose **Connect**. Or open **Paste a user token instead** and save what you generated on the site. On Brickset the fields are **Username** and **Paste a user hash instead**. The password goes to the site once and is never stored: only the token (Rebrickable) or hash (Brickset) is kept, encrypted like the API keys. **Test** asks the site whether it still accepts it; **Remove** forgets it; you connect again to use the site. At most 10 logins per site per day.
+Each site needs its API key and your own account credential. Rebrickable: step 1 of its page holds both, and **Connect** on the hub opens it. Brickset: step 1 of its page holds both, and **Connect** on the hub opens it. On Rebrickable, enter **Username or email** and your password and choose **Connect**. Or open **Paste a user token instead** and save what you generated on the site. On Brickset the fields are **Username** and **Paste a user hash instead**. The password goes to the site once and is never stored. Only the token (Rebrickable) or hash (Brickset) is kept, encrypted like the API keys. The username you type is kept as well, to show on the page. **Test** asks the site whether it still accepts it; **Remove** forgets it; you connect again to use the site. At most 10 logins per site per day.
 
 ## Link the lists
 

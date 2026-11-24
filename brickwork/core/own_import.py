@@ -519,13 +519,13 @@ def _write_plain_tables(db, new_rows, receipt, stamp, via, actor):
         _insert_row(db, 'place', columns, via, actor)
         receipt['places'].append(row['id'])
     existing_flags = {
-        (bricktracker._norm(r['name']), r['kind']): r['id']
+        (bricktracker.norm(r['name']), r['kind']): r['id']
         for r in db.execute('SELECT id, name, kind FROM main.flag WHERE archived_at IS NULL')
     }
     extra_skipped = 0
     for entry in new_rows.get('flag', ()):
         row = entry['row']
-        key = (bricktracker._norm(row['name']), row.get('kind'))
+        key = (bricktracker.norm(row['name']), row.get('kind'))
         if key in existing_flags:
             extra_skipped += 1
             continue
@@ -600,7 +600,7 @@ def _apply_copy_marks(db, copy_id, lines, find_item, find_color):
             damaged=max(int(part.get('damaged') or 0), 0),
             checked=int(bool(part.get('checked'))),
         ))
-    unmatched += len(bricktracker._mark(db, 'copy_part', copy_id, marks))
+    unmatched += len(bricktracker.mark_lines(db, 'copy_part', copy_id, marks))
     return unmatched
 
 
@@ -637,8 +637,8 @@ def _write_copy(db, entry, receipt, flag_rows, find_item, find_color, via, actor
     receipt['origin'][row['id']] = copy_id
     receipt['guards'][copy_id] = dict(
         row=dict(db.execute('SELECT * FROM main.copy WHERE id=?', (copy_id,)).fetchone()),
-        lines=bricktracker._line_digest(db, copy_id),
-        flags=bricktracker._flag_ids(db, copy_id),
+        lines=bricktracker.line_digest(db, copy_id),
+        flags=bricktracker.flag_ids(db, copy_id),
     )
     if waiting:
         receipt['pending'].append(dict(waiting, copy_id=copy_id))
@@ -673,7 +673,7 @@ def _finish_stock(db, change, row, find_item, find_color):
                     damaged=max(int(part.get('damaged') or 0), 0),
                     checked=int(bool(part.get('checked'))),
                 ))
-            unmatched += len(bricktracker._mark(db, 'stock_part', change['id'], marks))
+            unmatched += len(bricktracker.mark_lines(db, 'stock_part', change['id'], marks))
             if db.execute('SELECT 1 FROM main.stock_part WHERE stock_id=? AND retired_at IS NULL LIMIT 1', (change['id'],)).fetchone():
                 summary = db.execute(
                     'SELECT sum(missing), sum(damaged), min(checked) FROM main.stock_part WHERE stock_id=? AND retired_at IS NULL',
@@ -738,13 +738,13 @@ def apply(db, plan_id, *, via=None, actor=None, queue=True):
         flag_by_name, flag_by_norm = {}, {}
         for r in db.execute('SELECT id, name FROM main.flag WHERE archived_at IS NULL ORDER BY id'):
             flag_by_name.setdefault(r['name'], r['id'])
-            flag_by_norm.setdefault(bricktracker._norm(r['name']), r['id'])
+            flag_by_norm.setdefault(bricktracker.norm(r['name']), r['id'])
 
         def flag_rows(table, column, row_id, names):
             for name in names or ():
                 if not isinstance(name, str):
                     continue
-                target = flag_by_name.get(name) or flag_by_norm.get(bricktracker._norm(name))
+                target = flag_by_name.get(name) or flag_by_norm.get(bricktracker.norm(name))
                 if target and not db.execute(f'SELECT 1 FROM main.{table} WHERE {column}=? AND flag_id=?', (row_id, target)).fetchone():
                     db.execute(f'INSERT INTO main.{table}({column}, flag_id) VALUES(?, ?)', (row_id, target))
                     receipt[table + 's'].append([row_id, target])
@@ -831,8 +831,8 @@ def _check_undo_guards(db, r):
             raise ValueError(CHANGED_ERROR)
         if row['archived_at'] is None and (
             dict(row) != as_current('copy', guard['row'])
-            or bricktracker._line_digest(db, copy_id) != guard['lines']
-            or bricktracker._flag_ids(db, copy_id) != guard['flags']
+            or bricktracker.line_digest(db, copy_id) != guard['lines']
+            or bricktracker.flag_ids(db, copy_id) != guard['flags']
             or any(db.execute(sql, (copy_id,)).fetchone() for sql in (
                 'SELECT 1 FROM main.part_check WHERE copy_id=? LIMIT 1',
                 'SELECT 1 FROM main.stock_transfer WHERE copy_id=? LIMIT 1',
@@ -843,7 +843,7 @@ def _check_undo_guards(db, r):
             raise ValueError(CHANGED_ERROR)
 
 
-def _undo(db, event, via, actor):
+def undo_receipt(db, event, via, actor):
     """Reverse one own-file import; refuses whole when any imported row changed since."""
     r = json.loads(event['new_value'])
     stamp = store_now()
@@ -873,17 +873,17 @@ def _undo(db, event, via, actor):
         db.execute('UPDATE main.copy SET archived_at=?, updated_at=? WHERE id=?', (stamp, stamp, copy_id))
         audit(db, 'copy:' + copy_id, 'archived_at', None, stamp, via=via, actor=actor)
     for lot in r['lots']:
-        if not bricktracker._used(db, 'SELECT 1 FROM main.stock WHERE lot_id=? AND archived_at IS NULL LIMIT 1', lot):
+        if not bricktracker.used(db, 'SELECT 1 FROM main.stock WHERE lot_id=? AND archived_at IS NULL LIMIT 1', lot):
             db.execute('UPDATE main.lot SET archived_at=?, updated_at=? WHERE id=?', (stamp, stamp, lot))
     for wl in r.get('wishlists', ()):
-        if not bricktracker._used(db, 'SELECT 1 FROM main.wish WHERE wishlist_id=? AND archived_at IS NULL LIMIT 1', wl):
+        if not bricktracker.used(db, 'SELECT 1 FROM main.wish WHERE wishlist_id=? AND archived_at IS NULL LIMIT 1', wl):
             db.execute('UPDATE main.wishlist SET archived_at=? WHERE id=?', (stamp, wl))
     for ident in r['places']:
-        if not any(bricktracker._used(db, f'SELECT 1 FROM main.{t} WHERE place_id=? AND archived_at IS NULL LIMIT 1', ident)
+        if not any(bricktracker.used(db, f'SELECT 1 FROM main.{t} WHERE place_id=? AND archived_at IS NULL LIMIT 1', ident)
                    for t in ('copy', 'stock', 'lot')):
             db.execute('UPDATE main.place SET archived_at=? WHERE id=?', (stamp, ident))
     for ident in reversed(r['storages']):
-        if not any(bricktracker._used(db, sql, ident) for sql in (
+        if not any(bricktracker.used(db, sql, ident) for sql in (
             'SELECT 1 FROM main.copy WHERE storage_id=? AND archived_at IS NULL LIMIT 1',
             'SELECT 1 FROM main.stock WHERE storage_id=? AND archived_at IS NULL LIMIT 1',
             'SELECT 1 FROM main.lot WHERE storage_id=? AND archived_at IS NULL LIMIT 1',
@@ -891,7 +891,7 @@ def _undo(db, event, via, actor):
         )):
             db.execute('UPDATE main.storage SET archived_at=? WHERE id=?', (stamp, ident))
     for ident in r['flags']:
-        if not any(bricktracker._used(db, sql, ident) for sql in (
+        if not any(bricktracker.used(db, sql, ident) for sql in (
             'SELECT 1 FROM main.copy_flag f JOIN main.copy c ON c.id=f.copy_id WHERE f.flag_id=? AND c.archived_at IS NULL LIMIT 1',
             'SELECT 1 FROM main.stock_flag f JOIN main.stock c ON c.id=f.stock_id WHERE f.flag_id=? AND c.archived_at IS NULL LIMIT 1',
             'SELECT 1 FROM main.wish_flag f JOIN main.wish c ON c.id=f.wish_id WHERE f.flag_id=? AND c.archived_at IS NULL LIMIT 1',

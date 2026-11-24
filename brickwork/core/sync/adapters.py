@@ -416,8 +416,8 @@ class BricksetUser(Brickset):
         """The names the person gave the eight flags at Brickset, `{flag number: label}`; a flag without a name is missing. One charged call."""
         reply = self.user_call('getUserFlagLabels', {}, payload={}, charged=True)
         listed = reply.get('flags')
-        return {_flag_number(f.get('flagNo')): str(f['label']) for f in (listed if isinstance(listed, list) else ())
-                if isinstance(f, dict) and f.get('label') and _flag_number(f.get('flagNo'))}
+        return {_flag_number(f.get('flagNo')): str(f['label']).strip() for f in (listed if isinstance(listed, list) else ())
+                if isinstance(f, dict) and f.get('label') and str(f['label']).strip() and _flag_number(f.get('flagNo'))}
 
     def set_ids(self, numbers):
         """Brickset setIDs for set numbers, one charged getSets per 500 numbers."""

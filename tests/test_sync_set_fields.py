@@ -379,3 +379,49 @@ def test_an_archived_only_target_makes_no_tag_and_is_counted(pair):
         res = set_fields.apply(db, p['id'])
         assert res['counts'] == {'notes': 0, 'flags': 0, 'tags_created': 0, 'renamed': 0, 'skipped': 1}
         assert _live_tags(db) == []
+
+
+def test_undo_keeps_the_map_entry_of_a_tag_the_pull_made_when_it_is_still_in_use(pair):
+    with db_of(pair) as db:
+        coll = Coll(db)
+        coll.add_copy('1000-1')
+        coll.add_copy('2070-1')
+        coll.add_copy('1000-3')
+        first = set_fields.apply(db, set_fields.plan(db, {'1000-1': {'notes': '', 'flags': [2]}}, {})['id'])
+        tag = _live_tags(db)[0][0]
+        other = _copies(db, '2070-1')[0][0]
+        db.execute('INSERT INTO copy_flag(copy_id, flag_id) VALUES(?, ?)', (other, tag))   # the tag is in use elsewhere
+        db.commit()
+        undo.undo_event(db, first['event_id'])
+        assert [t[0] for t in _live_tags(db)] == [tag]
+        set_fields.apply(db, set_fields.plan(db, {'1000-3': {'notes': '', 'flags': [2]}}, {2: 'Display'})['id'])
+        assert [t[1] for t in _live_tags(db)] == ['Display']          # the surviving tag was found through its map entry and renamed
+
+
+def test_undo_puts_back_a_map_entry_the_pull_re_pointed(pair):
+    with db_of(pair) as db:
+        coll = Coll(db)
+        coll.add_copy('1000-1')
+        coll.add_copy('2070-1')
+        first = set_fields.apply(db, set_fields.plan(db, {'1000-1': {'notes': '', 'flags': [2]}}, {})['id'])
+        old = _live_tags(db)[0][0]
+        db.execute("UPDATE flag SET archived_at='2026-11-24T00:00:00Z' WHERE id=?", (old,))
+        db.execute("INSERT INTO flag(id, name, kind, shown_on_grid, created_at) VALUES('mine', 'Display', 'tag', 0, '2026-11-24T00:00:00Z')")
+        db.commit()
+        second = set_fields.apply(db, set_fields.plan(db, {'2070-1': {'notes': '', 'flags': [2]}}, {2: 'Display'})['id'])
+        assert json.loads(db.execute('SELECT value FROM setting WHERE key=?', (set_fields.MAP_KEY,)).fetchone()[0]) == {'2': 'mine'}
+        undo.undo_event(db, second['event_id'])
+        assert json.loads(db.execute('SELECT value FROM setting WHERE key=?', (set_fields.MAP_KEY,)).fetchone()[0]) == {'2': old}
+        assert first['event_id']
+
+
+def test_the_plan_promises_no_rename_that_a_tag_it_creates_would_block(pair):
+    with db_of(pair) as db:
+        coll = Coll(db)
+        coll.add_copy('1000-1')
+        coll.add_copy('2070-1')
+        set_fields.apply(db, set_fields.plan(db, {'1000-1': {'notes': '', 'flags': [2]}}, {})['id'])
+        later = set_fields.plan(db, {'2070-1': {'notes': '', 'flags': [5]}}, {2: 'Display', 5: 'Display'})
+        assert later['renames'] == [] and later['summary']['renames'] == 0
+        res = set_fields.apply(db, later['id'])
+        assert res['counts']['renamed'] == 0 and res['counts']['tags_created'] == 1

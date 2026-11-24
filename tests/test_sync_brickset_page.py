@@ -603,6 +603,6 @@ def test_the_read_takes_a_flag_that_is_on_as_true_one_or_the_word_and_survives_o
 
 def test_the_flag_labels_read_survives_odd_entries(client, remote, pair):
     connected(client, pair)
-    remote.labels = [None, {'flagNo': 'x', 'label': 'bad'}, {'label': 'no number'}, {'flagNo': 3, 'label': 'Shelf'}, {'flagNo': 4, 'label': ''}]
+    remote.labels = [None, {'flagNo': 'x', 'label': 'bad'}, {'label': 'no number'}, {'flagNo': 3, 'label': ' Shelf '}, {'flagNo': 4, 'label': ''}, {'flagNo': 6, 'label': '   '}]
     with db_of(pair) as db:
         assert adapters.adapter(db, 'brickset', remote).flag_labels() == {3: 'Shelf'}

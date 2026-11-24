@@ -119,6 +119,7 @@ def plan(db, remote_fields, labels, *, wish_list='default'):
     names = sync._names(db, item_ids) if item_ids else {}
     flag_map = _get_map(db)
     rows, unmatched = [], []
+    new_names = set()
     not_kept = dict(notes=0, flags=0)
     for number in numbers:
         item_id = translated.get(number)
@@ -151,6 +152,8 @@ def plan(db, remote_fields, labels, *, wish_list='default'):
                 continue
             tag_name = _tag_name(n, labels)
             existing_fid = _find_tag(db, flag_map, n, tag_name)
+            if existing_fid is None:
+                new_names.add(tag_name.lower())                   # apply creates this tag, so no rename may take its name
             shown = tag_name
             if existing_fid is not None:                    # apply links this tag, so the preview names it, whatever the label is now
                 got = db.execute('SELECT name FROM main.flag WHERE id=?', (existing_fid,)).fetchone()
@@ -168,7 +171,7 @@ def plan(db, remote_fields, labels, *, wish_list='default'):
     for str_n, label in sorted(plan_labels.items()):
         fid = flag_map.get(str_n)
         row = db.execute("SELECT name FROM main.flag WHERE id=? AND kind='tag' AND archived_at IS NULL", (fid,)).fetchone() if fid else None
-        if row and row[0] == FALLBACK.format(n=int(str_n)) and label != row[0] and not db.execute("SELECT 1 FROM main.flag WHERE kind='tag' AND archived_at IS NULL AND lower(name)=lower(?) AND id<>?", (label, fid)).fetchone():
+        if row and row[0] == FALLBACK.format(n=int(str_n)) and label != row[0] and label.lower() not in new_names and not db.execute("SELECT 1 FROM main.flag WHERE kind='tag' AND archived_at IS NULL AND lower(name)=lower(?) AND id<>?", (label, fid)).fetchone():
             renames.append(dict(flag=int(str_n), flag_id=fid, before=row[0], after=label))
     value = dict(
         id=uuid4().hex, created_at=sync.now().isoformat(), direction='fields', source='brickset',
@@ -262,6 +265,7 @@ def apply(db, plan_id, ticked=None, *, choices=None, via=None, actor=None):
                 if renamed_entry is not None and renamed_entry not in receipt['renamed']:
                     receipt['renamed'].append(renamed_entry)
         receipt['map_added'] = sorted(k for k in flag_map if k not in map_before)
+        receipt['map_changed'] = {k: v for k, v in map_before.items() if flag_map.get(k) != v}
         if flag_map != map_before:
             _put_map(db, flag_map)
         counts = dict(notes=len(receipt['notes']), flags=len(receipt['links']),
@@ -311,8 +315,13 @@ def _undo(db, event, via, actor):
     for k, v in list(restored.items()):
         if v in deleted_tags:
             restored.pop(k, None)
+    surviving = set(r.get('tags_created') or ()) - deleted_tags
     for k in r.get('map_added') or ():
-        restored.pop(k, None)
+        if restored.get(k) not in surviving:             # a reused tag of the person's: the entry goes; a tag this pull made and that is in use keeps its entry
+            restored.pop(k, None)
+    for k, v in (r.get('map_changed') or {}).items():
+        if restored.get(k) not in surviving:
+            restored[k] = v
     for k, v in (r['map_before'] or {}).items():
         if k not in restored:
             restored[k] = v

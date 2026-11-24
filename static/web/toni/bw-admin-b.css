@@ -66,11 +66,12 @@
 #content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) .bk-banner.bk-danger,#content:has(>.bw-tokens) .bw-tk-error {background:transparent;border:1.5px solid var(--tw-danger);border-radius:var(--tw-r-1);color:var(--tw-danger)}
 
 /* Appearance: the theme picker as the ink segment (R3-01 .seg, R4-03), the chosen mode filled ink */
-#content.bw-admin-page .theme-segments {display:inline-flex;gap:0;padding:0;border:1.5px solid var(--tw-text);border-radius:3px;background:none;box-shadow:none;overflow:hidden}
-#content.bw-admin-page .theme-segments>button {display:inline-flex;align-items:center;justify-content:center;width:56px;height:38px;min-height:0;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none;color:var(--tw-text)}
+#content.bw-admin-page .theme-segments {justify-self:start;align-self:start;max-width:100%;display:inline-flex;gap:0;padding:0;border:1.5px solid var(--tw-text);border-radius:3px;background:none;box-shadow:none;overflow:hidden}
+#content.bw-admin-page .theme-segments>button {flex:none;gap:8px;font:600 12px var(--tw-font-label);letter-spacing:.08em;text-transform:uppercase;display:inline-flex;align-items:center;justify-content:center;width:auto;height:38px;min-height:0;padding:0 14px;border:0;border-radius:0;background:transparent;box-shadow:none;color:var(--tw-text)}
 #content.bw-admin-page .theme-segments>button+button {border-left:1.5px solid var(--tw-text)}
 #content.bw-admin-page .theme-segments>button[aria-pressed=true] {background:var(--tw-text);color:var(--tw-bg)}
-#content.bw-admin-page .theme-segments>button svg {width:18px;height:18px}
+#content.bw-admin-page .theme-segments>button svg {width:18px;height:18px;flex:none}
+/* #674: #content is a grid, so the bar was blockified and stretched (about 458 px a part at 1440); justify-self:start makes it hug its three labelled parts */
 
 /* Statistics (T8, BRAND § 10): bars from zero on one scale, in ink; the completeness breakdown in the status shapes (complete violet, incomplete
    hatched, not checked dashed); the folded tail one outlined row */
@@ -87,4 +88,6 @@
   #content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) nav.bw-chips {flex-wrap:nowrap;overflow-x:auto;gap:20px}   /* as the phone's sub row: one scrolling row */
   #content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) nav.bw-chips a.button {flex:none}
   #content.bw-admin-page:not(:has(.bw-hub,.bw-set-groups)) header.bw-page-head>h1 {font-size:24px;line-height:30px}
+  #content.bw-admin-page .theme-segments {display:flex;justify-self:stretch}   /* #674: a phone's bar spans the width in three equal parts */
+  #content.bw-admin-page .theme-segments>button {flex:1 1 0;min-width:0;padding:0 8px}
 }

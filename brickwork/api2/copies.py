@@ -5,6 +5,7 @@ left it) is no line (design 4.4). Gaps and matches are the Workbench's (`core/wo
 from collections import defaultdict
 
 from ..core import checker, collection, completeness, errors, workbench
+from ..store4 import origins
 from . import route
 from .read import (also, arguments, bodies, etag as etag_of, identity_filter, key_text, narrow, page, reading, record, respond, used_prices)
 from .shapes import copy_bodies
@@ -25,6 +26,11 @@ def require_live(db, copy_id):
     return row
 
 
+def list_names(db, copy_ids):
+    """`{copy id: [list name, ...]}` (#531): the names of the site lists each copy was synced from, for the `list` filter."""
+    return {i: sorted({e['list_name'] for e in entries if e['list_name']}) for i, entries in origins.sources_of(db, 'copy', copy_ids).items()}
+
+
 # ---------- the copy ----------
 
 @route('/copies')
@@ -34,6 +40,7 @@ def get_copies(db):
     archived = args.get('archived', '')
     rows = collection.instances(db, 'set', include_archived=archived in ('true', 'include', 'only'))
     items, color = identity_filter(db, args)
+    names = list_names(db, [r['id'] for r in rows])
     live_count = defaultdict(int)
     for r in rows:
         if not r['archived_at']:
@@ -42,7 +49,7 @@ def get_copies(db):
                       condition=r['condition'] or '', storage=r['storage_id'] or 'null', place=r['place_id'] or 'null', lot='null',
                       flags=[f['name'] for f in r['flags']], flag_ids=[f['id'] for f in r['flags']], theme=r['theme'] or '', category=r['category'] or '',
                       year=r['year'], duplicates=live_count[r['item_id']] > 1, missing=r['missing'], damaged=r['damaged'], quantity=1,
-                      archived_at=r['archived_at'], item_id=r['item_id'], color_id=None, added=r['created_at'], _row=r) for r in rows]
+                      archived_at=r['archived_at'], item_id=r['item_id'], color_id=None, added=r['created_at'], list=names[r['id']], _row=r) for r in rows]
     records = narrow(records, items, color)
     if args.get('sort') == 'used_price':
         used_prices(db, records)

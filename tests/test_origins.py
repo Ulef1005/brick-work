@@ -45,7 +45,7 @@ def test_a_47_store_upgrades_with_every_row_null_and_matches_a_fresh_one(tmp_pat
                    "VALUES(1, 'catalogue', 'set', 'namespace', 'rebrickable', 'sets', '1-1', 'Old set', 'x', 'x')")
         db.execute("INSERT INTO copy(id, item_id, inventory_source, created_at, updated_at) VALUES('old', 1, 'none', 'x', 'x')")
         db.commit()
-    assert upgrade(old) == upgrade(old) == SCHEMA_VERSION == '4.8'
+    assert upgrade(old) == upgrade(old) == SCHEMA_VERSION == '4.9'
     with closing(connect(old, tmp_path / 'catalogue.db')) as upgraded, closing(connect(tmp_path / 'new.db', tmp_path / 'catalogue.db')) as fresh:
         assert dict(upgraded.execute('SELECT key,value FROM meta'))['upgraded_to_4.8'].endswith('Z')
         for name in ('copy', 'stock', 'wish', 'origin', 'synced_from', 'copy_added_via_fixed', 'synced_from_key'):

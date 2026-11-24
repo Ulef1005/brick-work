@@ -13,7 +13,7 @@ MAX_IDS = 200
 OWN_COLUMNS = (
     'Kind', 'Item number', 'Name', 'Colour', 'Colour id', 'Quantity', 'Condition',
     'Completeness', 'Storage', 'Place', 'Price paid', 'Price paid currency',
-    'Purchase date', 'Owners', 'Tags/flags', 'Note',
+    'Purchase date', 'Owners', 'Tags/flags', 'Note', 'Rating',
 )
 REBRICKABLE_COLUMNS = {
     'part': ('part_num', 'color_id', 'quantity'),
@@ -113,6 +113,7 @@ def to_csv(db, kind, ids=None):
             owners,
             _names(others),
             r.get('note') or '',
+            '' if kind != 'set' or r.get('rating') is None else r['rating'],
         ])
     return dict(content=redact(stream.getvalue(), secret_values()), rows=len(rows), skipped=[])
 

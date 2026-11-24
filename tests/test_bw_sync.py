@@ -78,6 +78,11 @@ class Brickset:
         self.owned = {'1000-1': (1001, 1), '1000-4': (1005, 3)}
         self.wanted = {'1000-2': 1002}
         self.qty_wanted = {}                      # number -> qtyWanted; a wanted set without an entry has 1
+        self.notes = {}                           # number -> the user's note at Brickset
+        self.flags = {}                           # number -> the flag numbers that are on
+        self.labels = []                          # what getUserFlagLabels answers: [{'flagNo': 1, 'label': 'Display'}]
+        self.ratings = {}                         # number -> the user's rating; a set without an entry has 0 (none)
+        self.priorities = {}                      # number -> wantedPriority; a set without an entry has 1, Brickset's default
         self.ids = {'1000-1': 1001, '1000-2': 1002, '2070-1': 1003, '1000-3': 1004, '1000-4': 1005}
         self.calls = []
 
@@ -93,12 +98,16 @@ class Brickset:
             return {'status': 'error', 'message': 'Invalid user hash'}
         if method == 'checkUserHash':
             return {'status': 'success'}
+        if method == 'getUserFlagLabels':
+            return {'status': 'success', 'matches': len(self.labels), 'flags': self.labels}
         if method == 'getSets':
             params = json.loads(body['params'])
 
             def row(number, set_id, qty=None, wanted_qty=None):
                 n, v = number.rsplit('-', 1)
-                collection = {'qtyOwned': qty or 0}
+                collection = {'qtyOwned': qty or 0, 'notes': self.notes.get(number, ''), 'rating': self.ratings.get(number, 0),
+                              'wantedPriority': self.priorities.get(number, 1),
+                              'flags': [{'flagNo': f, 'value': f in self.flags.get(number, ())} for f in range(1, 9)] if number in self.flags else []}
                 if wanted_qty is not None:
                     collection['qtyWanted'] = wanted_qty
                 return {'setID': set_id, 'number': n, 'numberVariant': int(v), 'collection': collection}
@@ -126,6 +135,11 @@ class Brickset:
                 else:
                     self.wanted.pop(number, None)
                     self.qty_wanted.pop(number, None)
+            if 'notes' in params:
+                self.notes[number] = params['notes']
+            for key, value in params.items():
+                if key.startswith('flag'):
+                    (self.flags.setdefault(number, set()).add if value else self.flags.setdefault(number, set()).discard)(int(key[4:]))
             return {'status': 'success'}
         raise AssertionError(method)
 

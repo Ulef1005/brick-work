@@ -394,3 +394,15 @@ def test_a_booklet_or_box_number_finds_the_gaps_and_matches_of_its_set(v2, coll,
         found = data(call(v2, f'/gaps?kind={kind}&number=1000-1'))
         assert found and {g['target'] for g in found} == {kind} and {g['copy_id'] for g in found} == {world.copy_a, world.copy_b}
     assert {m['target'] for m in data(call(v2, '/matches?kind=instructions&number=1000-1'))} == {'instructions'}
+
+
+def test_copies_are_filtered_by_the_site_list_they_were_synced_from(v2, coll, world):
+    """#531: `list` keeps the copies synced from the named set list; a copy synced from two lists answers to both; no copy answers to a made-up name."""
+    from brickwork.store4 import origins
+    origins.touch(coll.db, 'copy', world.copy_a, 'rebrickable', at=fresh(), list_key='101', list_name='Castles')
+    origins.touch(coll.db, 'copy', world.copy_a, 'rebrickable', at=fresh(), list_key='102', list_name='Wishful')
+    origins.touch(coll.db, 'copy', world.copy_b, 'rebrickable', at=fresh(), list_key='102', list_name='Wishful')
+    coll.db.commit()
+    assert ids(call(v2, '/copies?' + urlencode({'list': 'Castles'}))) == [world.copy_a]
+    assert sorted(ids(call(v2, '/copies?' + urlencode({'list': 'Wishful'})))) == sorted([world.copy_a, world.copy_b])
+    assert ids(call(v2, '/copies?' + urlencode({'list': 'Made up'}))) == []

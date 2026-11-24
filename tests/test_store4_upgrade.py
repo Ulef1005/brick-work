@@ -268,3 +268,18 @@ def test_a_failed_later_step_leaves_the_file_at_the_earlier_version_and_it_finis
     with closing(connect(path, tmp_path / 'catalogue.db')) as db:
         assert db.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()[0] == '4.9'
         assert db.execute('PRAGMA integrity_check').fetchone()[0] == 'ok'
+
+
+def test_an_upgraded_file_has_the_same_sources_as_a_fresh_one_and_keeps_a_switched_off_source(tmp_path):
+    """#522: the `brickowl` source row comes with the 4.9 step (INSERT OR IGNORE); a person's `enabled=0` survives a repeat."""
+    old = make_42(tmp_path / 'old.db')
+    rows = 'SELECT * FROM source ORDER BY id'
+    with closing(connect(old, tmp_path / 'catalogue.db')) as upgraded, \
+            closing(connect(tmp_path / 'fresh.db', tmp_path / 'catalogue.db')) as fresh:
+        assert upgraded.execute(rows).fetchall() == fresh.execute(rows).fetchall()
+        assert tuple(upgraded.execute("SELECT name, kind FROM source WHERE id='brickowl'").fetchone()) == ('Brick Owl', 'api')
+        upgraded.execute("UPDATE source SET enabled=0 WHERE id='brickowl'")
+        upgraded.commit()
+        for statement in (s for s in UPGRADES['4.8'][1] if 'brickowl' in s):
+            upgraded.execute(statement)
+        assert upgraded.execute("SELECT enabled FROM source WHERE id='brickowl'").fetchone()[0] == 0

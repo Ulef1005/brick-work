@@ -1,6 +1,5 @@
 """#690 schema 4.9: copy.rating and wish.priority. Invented data."""
 from contextlib import closing
-import sqlite3
 
 import pytest
 
@@ -9,14 +8,15 @@ from brickwork.core.connect import connect
 from tests.app4 import app4, coll, make_pair, pair, world  # noqa: F401
 
 
-def test_the_columns_start_empty_and_the_checks_hold(coll, world):
+def test_the_columns_start_empty_and_the_write_path_holds_the_range(coll, world):
     assert coll.db.execute('SELECT rating FROM main.copy WHERE id=?', (world.copy_a,)).fetchone()[0] is None
     assert coll.db.execute('SELECT priority FROM main.wish WHERE id=?', (world.wish_set,)).fetchone()[0] is None
-    for bad in (0, 6):
-        with pytest.raises(sqlite3.IntegrityError):
-            coll.db.execute('UPDATE main.copy SET rating=? WHERE id=?', (bad, world.copy_a))
-        with pytest.raises(sqlite3.IntegrityError):
-            coll.db.execute('UPDATE main.wish SET priority=? WHERE id=?', (bad, world.wish_set))
+    for bad in (0, 6):                                  # no CHECK in the store (ADR 0041): the write path refuses
+        with pytest.raises(ValueError):
+            collection.save(coll.db, 'copy', [world.copy_a], dict(rating=bad))
+    with pytest.raises(ValueError):
+        collection.save(coll.db, 'wish', [world.wish_set], dict(priority=0))
+    collection.save(coll.db, 'wish', [world.wish_set], dict(priority=9))      # Brickset's top value is unknown: no upper limit
 
 
 def test_a_rating_and_a_priority_save_clear_and_undo(coll, world):
@@ -34,8 +34,9 @@ def test_a_rating_and_a_priority_save_clear_and_undo(coll, world):
 def test_a_value_outside_one_to_five_is_refused(coll, world, value):
     with pytest.raises(ValueError):
         collection.save(coll.db, 'copy', [world.copy_a], dict(rating=value))
-    with pytest.raises(ValueError):
-        collection.save(coll.db, 'wish', [world.wish_set], dict(priority=value))
+    if value != 6:
+        with pytest.raises(ValueError):
+            collection.save(coll.db, 'wish', [world.wish_set], dict(priority=value))
 
 
 def test_the_own_file_round_trips_both_values(coll, world, tmp_path):
@@ -53,7 +54,7 @@ def test_the_own_file_round_trips_both_values(coll, world, tmp_path):
 
 def test_the_import_plan_refuses_a_rating_out_of_range():
     assert own_import._value_problem('copy', {'rating': 6}) == 'Rating must be 1 to 5'
-    assert own_import._value_problem('wish', {'kind': 'set', 'quantity': 1, 'priority': 0}) == 'Priority must be 1 to 5'
+    assert own_import._value_problem('wish', {'kind': 'set', 'quantity': 1, 'priority': 0}) == 'Priority must be 1 or more'
     assert own_import._value_problem('copy', {'rating': 3}) is None
 
 

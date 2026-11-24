@@ -1266,9 +1266,10 @@ def save(db, entity, ids, data, *, archive=False, create_system_flags=False):
             if not 0 <= filled <= 99999:
                 raise ValueError('Enter how many you have as a whole number')
             edits['qty_filled_manual'] = filled
-        for key, what in (('rating', 'rating'), ('priority', 'priority')):
-            if edits.get(key) is not None and (type(edits[key]) is not int or not 1 <= edits[key] <= 5):
-                raise ValueError(f'Choose a {what} from 1 to 5')
+        if edits.get('rating') is not None and (type(edits['rating']) is not int or not 1 <= edits['rating'] <= 5):
+            raise ValueError('Choose a rating from 1 to 5')
+        if edits.get('priority') is not None and (type(edits['priority']) is not int or edits['priority'] < 1):
+            raise ValueError('Choose a priority of 1 or more')
         if 'purchase_date' in edits and edits['purchase_date'] and any(r['purchase_date'] != edits['purchase_date'] for r in old):
             try:
                 datetime.fromisoformat(edits['purchase_date'].replace('Z', '+00:00'))

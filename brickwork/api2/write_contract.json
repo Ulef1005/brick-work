@@ -4085,7 +4085,6 @@
         },
         "priority": {
           "description": "How much you want the wish, 1 is highest (#690); null when not set.",
-          "maximum": 5,
           "minimum": 1,
           "type": [
             "integer",

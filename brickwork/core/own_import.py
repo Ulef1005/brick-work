@@ -315,10 +315,10 @@ def _value_problem(table, row):
     conditions = {'copy': ('new', 'used'), 'stock': ('new', 'used', 'damaged'), 'wish': ('new', 'used', 'any')}
     if table in conditions and row.get('condition') not in (None, *conditions[table]):
         return 'This condition is not one this install knows'
-    for field, name in (('rating', 'Rating'), ('priority', 'Priority')):
-        if field in row and table == {'rating': 'copy', 'priority': 'wish'}[field] and row[field] is not None \
-                and not (type(row[field]) is int and 1 <= row[field] <= 5):
-            return f'{name} must be 1 to 5'
+    if table == 'copy' and row.get('rating') is not None and not (type(row['rating']) is int and 1 <= row['rating'] <= 5):
+        return 'Rating must be 1 to 5'
+    if table == 'wish' and row.get('priority') is not None and not (type(row['priority']) is int and row['priority'] >= 1):
+        return 'Priority must be 1 or more'
     if table in ('copy', 'stock') and row.get('purchase_price') is not None and not row.get('purchase_currency'):
         return 'A price needs its currency'
     return None

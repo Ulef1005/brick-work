@@ -172,16 +172,25 @@ def test_a_stored_key_shows_configured_with_test_and_the_step_done(client, coll)
 def test_a_rejected_key_comes_back_to_the_flow_with_the_sites_reason(client, monkeypatch):
     from brickwork.core.sources.base import KeyRejected
     def refuse(action, **kwargs):
-        raise KeyRejected('Rebrickable says: invalid key')
+        raise KeyRejected('Brickset says: invalid key')
     monkeypatch.setattr('brickwork.web.admin_ops.tools_write', refuse)
     value = token_source.token_hex(14)
-    response = client.post('/manage/catalogues', data={'csrf_token': csrf(client), 'action': 'key_test_save', 'source': 'rebrickable',
+    response = client.post('/manage/catalogues', data={'csrf_token': csrf(client), 'action': 'key_test_save', 'source': 'brickset',
                                                        'key:key': value, 'back': 'flow'})
-    assert response.status_code == 302 and response.location.endswith('/manage/get-started#key-rebrickable')
-    card = soup(client).select_one('[data-flow-keys] [data-key-card=rebrickable]')
+    assert response.status_code == 302 and response.location.endswith('/manage/get-started#key-brickset')
+    card = soup(client).select_one('[data-flow-keys] [data-key-card=brickset]')
     assert card.select_one('[data-key-pill]').get_text(strip=True) == 'Rejected'
     assert 'invalid key' in card.select_one('[role=alert]').get_text()
     assert value not in client.get('/manage/get-started').get_data(as_text=True)
+
+
+def test_the_rebrickable_key_step_of_the_flow_opens_the_connect_step(client):
+    """#519 (product, 24.11.): the Rebrickable key is added on step 1 of the Rebrickable sync page, not on a form of Catalogues & keys."""
+    card = soup(client).select_one('[data-flow-keys] [data-key-card=rebrickable]')
+    assert not card.select('form, input')
+    link = card.select_one('a.bk-btn')
+    assert link.get_text(strip=True) == 'Add a key' and link['href'].endswith('/workbench/sync/rebrickable/connect')
+    assert soup(client).select_one('[data-flow-keys] [data-key-card=brickset] form[data-key-form]')          # the other sites keep their form
 
 
 def test_without_the_flow_marker_a_key_action_stays_on_catalogues_and_keys(client, monkeypatch):

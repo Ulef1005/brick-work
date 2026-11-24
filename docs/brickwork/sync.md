@@ -70,6 +70,21 @@ The rule is the setting `rebrickable_lost_parts_rule` (`add_only`, `per_part` (d
 
 Condition, completeness, box, instructions, and storage never leave Brick Work.
 
+## A run as a job
+
+A run of the Rebrickable or Brickset page has five steps: choose, pick, preview, run, and result. A short run is applied in one request. A long run is a durable job (`core.sync.run_job`, #685, [ADR 0042](https://github.com/Ulef1005/brick-work/blob/main/docs/adr/0042-sync-run-as-a-job.md)).
+
+`run_job.queue` freezes the validated choices into the run record. It adds one `job` row of kind `sync_run`, with one `job_step` for each stage that has work: `pull`, `parts`, `send` and `lost_out`. The embedded drainer, or `brickwork worker`, runs it. It survives a restart and shows in Jobs. In `GET /jobs`, a step's `count` and `total` are the changes done and chosen.
+
+Runs start from the web page only. The API has no start or stop endpoint. Jobs lists the job, but retry and resume answer `404`, because they are for pipeline jobs. `POST /jobs/drain` does not run it either. The drainer takes it up by itself, and Send again is `run.retry_send`.
+
+- **Progress is what Brick Work knows.** The pull and the part-list stages are one transaction, with one undo event for the whole run. They go from 0 to done. The send and Lost Parts out stages go one call at a time (Brickset: one call per set number). Their count is the rows done, and it advances after each call.
+- **Stop after this one** (`run_job.request_stop`) takes effect between calls and between stages, never halfway through a call. What was done stays done. The unfinished stages are `stopped` in the run's result. Their job steps end `done`, and the job ends `done` with the note *Stopped at your request*. A job that waits for the budget is stopped at once.
+- **A restart never repeats a send.** A stage recorded as started when its worker died is not run again. It becomes `failed` ("Interrupted") with the rows of the send plan. Send again (`run.retry_send`) can then send what did not go out, once the person has checked. The pull, part-list and Lost Parts stages are not retried from the result. A new run offers their rows again.
+- **Budget.** A paused call ends the job `waiting_for_budget` with the retry time of the source. The job resumes by itself and sends only the rows not yet sent. A plan lasts 24 hours from the last write of the job. A job that waits or is down for longer has lost its run, and a new run offers the rows again.
+- **An unexpected error** ends the job `failed` and settles the run as it stands, with its audit entry. Undo of the run is then one step. If the closing write failed as well, the run has no audit entry, and Undo reverts one event at a time. A run that never began is released and can be queued again.
+- The synchronous `run.apply`, `save_pick` and `retry_send` leave a run with an unfinished job alone.
+
 ## State
 
 One `sync_state` row per source: `link_json` (carried by the migration), `baseline_json` (remote and here counts per item id at the last pull or send, for conflict detection), `last_pull_json` and `last_send_json`. Each row of the last send keeps its `result` and its `detail`, the reason a row failed (#514). The baseline and the last pull and send start empty. `GET /sync/{source}` returns them with the credential states (never the values) and the number of rows waiting from the last send.

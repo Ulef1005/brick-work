@@ -48,3 +48,4 @@ One file per decision that binds future work: the API contract, the data model, 
 | [0038](0038-checked-by.md) | A copy records who checked it: a nullable `copy.checked_by`, schema 4.7 | accepted | 2026-11-20 |
 | [0039](0039-added-via-and-synced-from.md) | Where a row came from: `added_via` on copy, stock and wish, and `synced_from`, schema 4.8 | proposed | 2026-11-22 |
 | [0041](0041-rating-and-priority.md) | Your rating and priority: `copy.rating` and `wish.priority`, schema 4.9 | proposed | 2026-11-24 |
+| [0042](0042-sync-run-as-a-job.md) | A sync run is a durable job in the shared job table, no schema change | accepted | 2026-11-24 |

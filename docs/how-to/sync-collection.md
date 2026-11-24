@@ -32,6 +32,38 @@ A set becomes one **copy** per missing unit, with the part list the set has. Its
 
 **Where each row came from.** Every copy, loose-stock row and wish records how it arrived: **By hand**, **Rebrickable sync**, **Brickset sync**, a file or an import from another app. A row made through the API, the CLI or MCP reads **Via the API**, **Via the CLI** or **Via MCP**. That value never changes. A pull also records, on each copy, stock row and wish whose set the site holds, that it was **last synced from** that site, with the date. This holds for rows you added by hand too. Rows from before version 4.8 of the data read **Before this release**. Undo of a pull takes its "last synced from" dates back as well. The API returns both as `source` on a copy, a stock row and a wish.
 
+## Rebrickable list names
+
+If you keep your sets in several Rebrickable set lists, each set keeps the names of the lists it is in. They are the detail of its source: *Last synced from Rebrickable: Main collection, Bought 2026*. The names are not tags, and your own tags are never touched.
+
+**What is kept.** The switch **Keep each set's Rebrickable list names as its source detail** is on unless you turn it off; the pull remembers your choice. With it on, a pull records each linked list that holds a set on every copy of that set, and on loose stock and wishes the same way. A set in two lists carries two names, and a set in no list carries none. A set you leave unticked in the preview gets no new date. With the switch off, a pull records only the site and the date.
+
+**A list renamed at Rebrickable.** The next pull shows one line for it: *Renamed at Rebrickable to Home collection; the source detail of 5 sets changes*. **Rename it** is chosen. It puts the new name on every set that carries the list, picked or not. **Keep** leaves the old name, also on the sets this pull matches.
+
+**A list removed at Rebrickable.** One line, *Removed at Rebrickable; the source detail of 2 sets changes*, with **Drop the name** chosen. The name goes from every set that carries it; the sets, their copies and counts stay. **Keep** leaves the name.
+
+**A list you unlinked at Rebrickable.** One line, *Unlinked at Rebrickable; its names stay*, with **Keep** chosen. The list still exists there, so nothing is dropped.
+
+**An unchanged list.** One line, *Unchanged*, with **Skip**.
+
+A rename or a removal changes only the list name: copies, counts and every other field stay as they are, on sets you pick and sets you do not. **Undo this pull** puts the names back as they were before the pull.
+
+## Loose parts from Rebrickable part lists
+
+Brick Work can bring your Rebrickable part lists in as loose parts. It only reads them: nothing goes back to Rebrickable.
+
+**Choose the lists.** None is chosen until you choose. Each chosen list lands in a lot of its own, made at the first pull and named after the list. The lot is remembered, so the next pull compares with it.
+
+**The preview** compares each list with the loose parts in its lot, by part and colour:
+
+- **New there**: Rebrickable lists more. The row is ticked with the difference.
+- **Different**: you hold more here. **Only here**: the list has none. Nothing is pulled for either.
+- **Not matched**: a part number or colour that Brick Work does not know, with the reason. It is never guessed.
+
+A row can go into another lot of yours instead. A second pull with nothing changed lists nothing.
+
+**Apply** adds the ticked rows in one step. Each new row reads *Added via Rebrickable sync*, carries the tag *imported from Rebrickable* and is *last synced from* its list. **Undo** takes the parts back off the stock, removes the tag and archives a lot the pull made once it is empty. Undo is refused once you have changed one of those rows.
+
 ## Lost Parts from Rebrickable
 
 Rebrickable keeps a list of the parts you lost. A Rebrickable pull can bring it in and mark those parts as missing on the matching copy. On the **Rebrickable** card, the switch **Bring in Lost Parts** sits beside **Pull**. It is on by default, and Brick Work remembers your choice. Under the switch, one line says what it does and which rule applies. It links to **Settings**, where you choose the rule. With the switch off, Brick Work does not read your Lost Parts at all.

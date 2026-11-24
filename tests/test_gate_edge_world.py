@@ -78,10 +78,13 @@ def digest(name):
 # `origin` and `synced_from` tables, and receipts that carry the column; compared table by table with main at 4.7, only `meta`, `copy`, `stock`,
 # `wish`, `event`, `origin` and `synced_from` differ in each world, catalogue.db not at all. Refreshed again when the channels (`api`, `cli`,
 # `mcp`) joined `origin`: only the three `origin` rows are new.
+# Refreshed for schema 4.9 (#690): `copy.rating` and `wish.priority` are new NULL columns; compared table by table with main at 4.8, only `meta`,
+# `copy` and `wish` differ in each world, catalogue.db not at all. Refreshed again when the 4.9 step added the `brickowl` source row (#522): with that
+# one row left out of the `source` table the digests are the ones above, so the row is the only difference.
 BEFORE = {
-    'demo': 'dcdf03efaf77ecebe120d710d083a028521bcff7483c192978c55ec0fedf76e1',
-    'showcase': '71b7cc89746b400372dcfb50be975f07c0c1622a7c9a05a3738c47a43c4586ef',
-    'extras': '7cd511a81c4cabade01c67bd053bb4d2ab67123c4a440cc434f1421e6f0893ce',
+    'demo': '564493d0482053793c1fcf78047c97fe5d948ce123fa3629be5fed5c30d1916e',
+    'showcase': '04c55ccce1e361e39987f1ee2f8cfda110e4d3dce77cdec466230c64ea8b1b9e',
+    'extras': '6de448bb30bfefb04434e154cfd86b76fd34a1c1668219800148fa2498ae48e1',
 }
 
 

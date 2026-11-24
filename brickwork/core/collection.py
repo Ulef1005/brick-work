@@ -1145,10 +1145,10 @@ INTEGER_IDS = {'instruction_file', 'copy_part', 'copy_figure', 'stock_part'}
 RESTORABLE = {'copy', 'stock', 'wish', 'lot', 'wishlist', 'flag', 'storage', 'place', 'instruction_file', 'photo'}
 FIELDS = {
     'copy': {'condition', 'storage_id', 'place_id', 'purchase_date', 'purchase_price', 'purchase_currency', 'note', 'completeness',
-             'completeness_source', 'current_value', 'current_value_currency'},
+             'completeness_source', 'current_value', 'current_value_currency', 'rating'},
     'stock': {'condition', 'storage_id', 'place_id', 'purchase_date', 'purchase_price', 'purchase_currency', 'note', 'lot_id'},
     'wish': {'quantity', 'color_id', 'condition', 'max_price', 'max_price_currency', 'max_price_boxed', 'max_price_boxed_currency', 'note',
-             'wishlist_id', 'qty_filled_manual'},
+             'wishlist_id', 'qty_filled_manual', 'priority'},
     'lot': {'name', 'note', 'storage_id', 'place_id', 'purchase_date', 'purchase_price', 'purchase_currency'},
 }
 CONDITIONS = {'copy': (None, 'new', 'used'), 'stock': (None, 'new', 'used', 'damaged'), 'wish': (None, 'new', 'used', 'any'), 'lot': (None,)}
@@ -1266,6 +1266,10 @@ def save(db, entity, ids, data, *, archive=False, create_system_flags=False):
             if not 0 <= filled <= 99999:
                 raise ValueError('Enter how many you have as a whole number')
             edits['qty_filled_manual'] = filled
+        if edits.get('rating') is not None and (type(edits['rating']) is not int or not 1 <= edits['rating'] <= 5):
+            raise ValueError('Choose a rating from 1 to 5')
+        if edits.get('priority') is not None and (type(edits['priority']) is not int or not 1 <= edits['priority'] <= 999):
+            raise ValueError('Choose a priority from 1 to 999')
         if 'purchase_date' in edits and edits['purchase_date'] and any(r['purchase_date'] != edits['purchase_date'] for r in old):
             try:
                 datetime.fromisoformat(edits['purchase_date'].replace('Z', '+00:00'))

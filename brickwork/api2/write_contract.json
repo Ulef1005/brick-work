@@ -2606,6 +2606,15 @@
             "null"
           ]
         },
+        "rating": {
+          "description": "Your own stars for the copy, 1 to 5 (#690); null when not rated.",
+          "maximum": 5,
+          "minimum": 1,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
         "storage_id": {
           "type": [
             "string",
@@ -4071,6 +4080,15 @@
         "note": {
           "type": [
             "string",
+            "null"
+          ]
+        },
+        "priority": {
+          "description": "How much you want the wish, 1 is highest (#690); null when not set.",
+          "maximum": 999,
+          "minimum": 1,
+          "type": [
+            "integer",
             "null"
           ]
         },

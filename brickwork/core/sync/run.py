@@ -573,7 +573,6 @@ def stage_pull(db, run, plans, form_data, *, via=None, actor=None, raise_budget=
         except FAILURES as exc:
             stages['pull'] = dict(status='failed', message=_message(exc, source))
     else:
-        sync.remember_kept(db, pull, kept)
         stages['pull'] = dict(status='none')
     sync._store_plan(db, run)
     return stages['pull']
@@ -608,8 +607,6 @@ def stage_send(db, run, plans, form_data, *, http=None, per_key=False, should_st
         return None
     stages, source = run['stages'], run.get('source', SOURCE)
     wanted = [k for k, v in form_data['chosen'].items() if v in ('send', 'remove')]
-    if not plans['pull']:        # a run that only sends has no pull to carry the Keep choices (#686)
-        sync.remember_kept(db, plans['send'], [k for k, v in form_data['chosen'].items() if v == 'keep'])
     if not wanted:
         stages['send'] = dict(status='none')
         sync._store_plan(db, run)
@@ -805,8 +802,20 @@ def stage_lost_out(db, run, form_data, *, http=None, per_key=False, should_stop=
     return stages['lost_out']
 
 
+def remember_choices(db, plans, form_data):
+    """The conflicts the person chose to Keep are remembered (#686) before any stage runs, so a stage with nothing to do (or one that fails) cannot
+    lose them. Not fatal: a Keep that could not be written is only forgotten."""
+    plan = plans['pull'] or plans['send']
+    if plan:
+        try:
+            sync.remember_kept(db, plan, [k for k, v in form_data['chosen'].items() if v == 'keep'])
+        except FAILURES as exc:
+            LOG.warning('The Keep choices of a run could not be written: %s', type(exc).__name__)
+
+
 def _stages(db, run, plans, form, chosen, http, via, actor):
     form_data = _extract_form(run, plans, form, chosen)
+    remember_choices(db, plans, form_data)
     stage_pull(db, run, plans, form_data, via=via, actor=actor)
     stage_parts(db, run, plans, form_data, via=via, actor=actor)
     stage_send(db, run, plans, form_data, http=http)

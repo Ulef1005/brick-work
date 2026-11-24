@@ -586,7 +586,7 @@ def apply_pull(db, plan_id, ticked=None, *, lost=None, picks=None, lists=None, k
         receipt['synced'] = _mark_synced(db, plan, wish_list, stamp, list_choices, left={(r['kind'], r['item_id']) for r in plan['rows'] if r['tickable']} - {(r['kind'], r['item_id']) for r in rows})
         receipt['jobs'] = queue_new_items(db, touched)
         receipt['baseline_before'] = _setting(db, source, 'baseline')
-        _put(db, source, 'baseline', _baseline(db, plan, wish_list, kept))
+        _put(db, source, 'baseline', _baseline(db, plan, wish_list, kept, [r['key'] for r in rows], (receipt['baseline_before'] or {}).get('kept')))
         counts = dict(copies=len(receipt['copies']), stock=sum(c['quantity'] for c in receipt['stock']),
                       wishes_added=sum(1 for w in receipt['wishes'] if w['created']),
                       wishes_changed=sum(1 for w in receipt['wishes'] if not w['created']))
@@ -669,30 +669,36 @@ def _lost_report(section, report):
                 unmatched_sets=section['unmatched_sets'])
 
 
-def kept_rows(plan, keys):
-    """`{kind: {item id as text: [remote, here]}}` for the conflict rows of `plan` that are kept: the ones named in `keys` (the run's choice
-    Keep) and the ones already kept whose counts have not moved (#686). Nothing else is remembered, so a Keep is forgotten the moment either side
-    changes, with no clean-up."""
-    keys, out = set(keys or ()), {}
+def kept_rows(plan, keys, resolved=(), existing=None):
+    """`{kind: {item id as text: [remote, here]}}`: the Keep choices still standing after a run (#686). A conflict row of `plan` is kept when it is
+    named in `keys` (the run's choice Keep) or was already kept, unless this run resolved it (`resolved`: the row keys it took or sent). The
+    entries of `existing` for rows this plan does not show stay as they are. A stale pair ends itself: it counts only while both counts still
+    equal it, so nothing needs cleaning."""
+    keys, resolved = set(keys or ()), set(resolved or ())
+    seen = {(r['kind'], str(r['item_id'])) for r in plan['rows']}
+    out = {}
+    for kind, items in (existing or {}).items():
+        for item, pair in items.items():
+            if (kind, item) not in seen:
+                out.setdefault(kind, {})[item] = pair
     for row in plan['rows']:
-        if row.get('state') == 'conflict' and (row['key'] in keys or row.get('kept')):
+        if row['key'] not in resolved and row.get('state') == 'conflict' and (row['key'] in keys or row.get('kept')):
             out.setdefault(row['kind'], {})[str(row['item_id'])] = [row['remote'], row['here']]
     return out
 
 
 def remember_kept(db, plan, keys):
-    """A run that applies no pull still remembers its Keep choices: only the `kept` map of the baseline changes (no receipt, nothing to undo; the
-    map ends itself when a count moves)."""
+    """A run's Keep choices are written before its stages run (#686), whatever the stages do: only the `kept` map of the baseline changes (no
+    receipt, nothing to undo)."""
     source = plan['source']
-    baseline = _setting(db, source, 'baseline', {'remote': {'owned': {}, 'wanted': {}}, 'here': {'owned': {}, 'wanted': {}}})
-    kept = kept_rows(plan, keys)
-    if (baseline.get('kept') or {}) == kept:
-        return
     with transaction(db):
-        _put(db, source, 'baseline', dict(baseline, kept=kept) if kept else {k: v for k, v in baseline.items() if k != 'kept'})
+        baseline = _setting(db, source, 'baseline', {'remote': {'owned': {}, 'wanted': {}}, 'here': {'owned': {}, 'wanted': {}}})
+        kept = kept_rows(plan, keys, existing=baseline.get('kept'))
+        if (baseline.get('kept') or {}) != kept:
+            _put(db, source, 'baseline', dict(baseline, kept=kept) if kept else {k: v for k, v in baseline.items() if k != 'kept'})
 
 
-def _baseline(db, plan, wish_list, kept=None):
+def _baseline(db, plan, wish_list, kept=None, resolved=(), existing=None):
     """Remote counts as last seen and here counts now, per item id (as text: JSON keys), and the Keep choices still standing (#686)."""
     mapping = translate(db, set(plan['remote']['owned']) | set(plan['remote']['wanted']))
     remote = {}
@@ -704,7 +710,7 @@ def _baseline(db, plan, wish_list, kept=None):
                 remote[kind][key] = remote[kind].get(key, 0) + quantity
     here = _here(db, wish_list)
     out = dict(at=now().isoformat(), remote=remote, here={k: {str(i): n for i, n in v.items()} for k, v in here.items()})
-    held = kept_rows(plan, kept)
+    held = kept_rows(plan, kept, resolved, existing)
     if held:
         out['kept'] = held
     return out
@@ -878,6 +884,7 @@ def apply_send(db, plan_id, ticked=None, *, http=None):
         for row in sent:
             baseline.setdefault('remote', {}).setdefault(row['kind'], {})[str(row['item_id'])] = row['send']
             baseline.setdefault('here', {}).setdefault(row['kind'], {})[str(row['item_id'])] = row['here']
+            (baseline.get('kept') or {}).get(row['kind'], {}).pop(str(row['item_id']), None)      # sent: no longer a kept conflict (#686)
         _put(db, source, 'baseline', baseline)
         _put(db, source, 'last_send', report)
         # A record, not an undoable receipt: remote changes cannot be taken back from here.

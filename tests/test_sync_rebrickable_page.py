@@ -1296,7 +1296,7 @@ def test_the_api_does_not_add_a_kept_set_with_no_ticks(client, remote, pair):
     assert copies(pair, '1000-1') == before
 
 
-def test_the_kept_map_is_plain_json_and_an_undo_of_the_pull_restores_the_baseline_as_it_was(client, remote, pair):
+def test_the_kept_map_is_plain_json_and_an_undo_of_the_pull_restores_the_counts_and_keeps_the_keep(client, remote, pair):
     """The baseline JSON carries `kept`: it round-trips as JSON (the database file is the export), and the pull's Undo puts the baseline back."""
     csrf = make_a_conflict(client, remote, pair)
     with db_of(pair) as db:
@@ -1307,4 +1307,40 @@ def test_the_kept_map_is_plain_json_and_an_undo_of_the_pull_restores_the_baselin
         baseline = sync._setting(db, 'rebrickable', 'baseline', {})
         assert baseline['kept'] and json.loads(json.dumps(baseline)) == baseline
         sync_run.undo_run(db, sync_run.load(db, run_id)[0]['applied']['events'][0])
-        assert sync._setting(db, 'rebrickable', 'baseline', {}) == before
+        restored = sync._setting(db, 'rebrickable', 'baseline', {})
+        assert {k: v for k, v in restored.items() if k != 'kept'} == before          # the counts are back as they were
+        assert restored['kept'] == baseline['kept']                                   # the Keep was written before the pull: the Undo does not forget it
+
+
+def test_taking_or_sending_a_kept_conflict_ends_its_keep_and_a_send_only_run_leaves_the_other_kind(client, remote, pair):
+    csrf = make_a_conflict(client, remote, pair)
+    apply_run(client, csrf, start(client, csrf))                          # the Keep stands after the pull
+    item = str(db_item(pair, '1000-1'))
+    with db_of(pair) as db:
+        assert sync._setting(db, 'rebrickable', 'baseline', {})['kept']['owned'][item] == [5, 1]
+    run_id = start(client, csrf)
+    apply_run(client, csrf, run_id, **{'choice:owned:' + item: 'take'})   # resolved by Take: here becomes 5
+    with db_of(pair) as db:
+        assert 'kept' not in sync._setting(db, 'rebrickable', 'baseline', {}) or item not in sync._setting(db, 'rebrickable', 'baseline', {})['kept'].get('owned', {})
+    # a Keep of the other kind is left alone by a run that only sends owned sets
+    with db_of(pair) as db:
+        baseline = sync._setting(db, 'rebrickable', 'baseline', {})
+        sync._put(db, 'rebrickable', 'baseline', dict(baseline, kept={'wanted': {'999': [4, 1]}}))
+        db.commit()
+    start(client, csrf, owned_dir='to', wishlist_dir='off', lost_dir='off')
+    run_id = start(client, csrf, owned_dir='to', wishlist_dir='off', lost_dir='off')
+    apply_run(client, csrf, run_id)
+    with db_of(pair) as db:
+        assert sync._setting(db, 'rebrickable', 'baseline', {})['kept']['wanted'] == {'999': [4, 1]}
+
+
+def test_a_job_run_remembers_the_keep_even_when_its_pull_has_nothing_to_do(client, remote, pair):
+    from werkzeug.datastructures import MultiDict
+    from brickwork.core.sync import run_job
+    csrf = make_a_conflict(client, remote, pair, also_pull=False)
+    run_id = start(client, csrf)
+    item = str(db_item(pair, '1000-1'))
+    with db_of(pair) as db:
+        run_job.queue(db, run_id, MultiDict([('choice:owned:' + item, 'keep')]))
+        run_job.drain(db)
+        assert sync._setting(db, 'rebrickable', 'baseline', {}).get('kept') == {'owned': {item: [5, 1]}}

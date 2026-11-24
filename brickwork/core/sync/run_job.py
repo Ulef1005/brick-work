@@ -269,6 +269,8 @@ def _run_one(db, job, http):
     prog['now'] = None
     _refresh_plans(db, run)
 
+    if not run['stages']:        # the first pass only: a resume would write the Keep choices of an older preview over newer ones
+        sync_run.remember_choices(db, plans, form_data)
     for idx, name in enumerate(STAGES):
         existing = run['stages'].get(name)
         if existing and existing.get('status') in ('done', 'none', 'failed', 'stopped'):

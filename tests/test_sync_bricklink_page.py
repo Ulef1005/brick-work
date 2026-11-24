@@ -9,7 +9,7 @@ from bs4 import BeautifulSoup
 from cryptography.fernet import Fernet
 import pytest
 
-from brickwork.core import orders, price_settings, sync
+from brickwork.core import orders, price_settings, sync, undo as undoing
 from brickwork.core.connect import connect
 from brickwork.core.sources import base
 from brickwork.core.sources.base import SourceError
@@ -411,7 +411,7 @@ def test_choose_page_locked_region_and_unlock(client, remote, pair, monkeypatch)
 
     page = soup(client.get(BASE + '/choose'))
     assert page.select_one('select[name=region]').has_attr('disabled')
-    assert 'The region is locked by this installation. It is set in Settings.' in page.select_one('[data-bl-price]').get_text()
+    assert 'The region is locked by this installation. Whoever runs Brick Work can change it with BW_PRICE_SETTINGS_LOCK.' in page.select_one('[data-bl-price]').get_text()
 
     csrf = token(client)
     saved = client.post(BASE + '/choose', data={
@@ -466,3 +466,61 @@ def test_apply_sqlite_error_flashes_unsaved_and_redirects_to_site(client, remote
     with db_of(pair) as db:
         stored = bricklink_run.load(db, run_id)
         assert '1001' not in stored['stages']
+
+
+def test_partial_undo_keeps_run_undoable_until_every_event_is_undone(client, remote, pair, monkeypatch):
+    set_keys(monkeypatch)
+    remote.items_by_order['1002'] = [
+        dict(_items(qty=5)[0], item=dict(no='3002-other', type='PART', name='Other brick'), new_or_used='N'),
+    ]
+    csrf = token(client)
+    run_id = start_run(client, csrf)
+    response = client.post(f'{BASE}/run/{run_id}/run', data={'csrf_token': csrf, 'order:1001': 'pull', 'order:1002': 'pull'})
+    assert response.status_code == 302 and response.location.endswith(f'/run/{run_id}/result')
+
+    with db_of(pair) as db:
+        audit_row = db.execute(
+            "SELECT new_value FROM main.event WHERE entity_kind='sync' AND entity_id='bricklink' AND field='run' ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+        events = json.loads(audit_row['new_value'])['events']
+        assert len(events) == 2
+        undoing.undo_event(db, events[0])
+
+    site_partial = soup(client.get(BASE))
+    undo_input = site_partial.select_one('[data-rb-runs] form[action$="/undo"] input[name=event]')
+    assert undo_input is not None and undo_input['value'] == str(events[0])
+
+    result_partial = soup(client.get(f'{BASE}/run/{run_id}/result'))
+    assert 'This run was undone.' not in result_partial.get_text()
+    result_undo = result_partial.select_one('form[action$="/undo"] input[name=event]')
+    assert result_undo is not None and result_undo['value'] == str(events[0])
+
+    with db_of(pair) as db:
+        undoing.undo_event(db, events[1])
+
+    site_done = soup(client.get(BASE))
+    assert site_done.select_one('[data-rb-runs] .sr-run') and not site_done.select_one('[data-rb-runs] form[action$="/undo"]')
+
+    result_done = soup(client.get(f'{BASE}/run/{run_id}/result'))
+    assert 'This run was undone.' in result_done.get_text()
+    assert not result_done.select_one('form[action$="/undo"]')
+
+
+def test_start_and_save_pick_oserror_flash_unsaved(client, remote, pair, monkeypatch):
+    from brickwork.web import sync_bricklink
+    set_keys(monkeypatch)
+    csrf = token(client)
+    run_id = start_run(client, csrf)
+
+    def fail_plan(*args, **kwargs):
+        raise OSError('read-only data folder')
+
+    monkeypatch.setattr(sync, '_save_plan', fail_plan)
+    start_resp = client.post(BASE + '/start', data={'csrf_token': csrf})
+    assert start_resp.status_code == 302 and start_resp.location.endswith(BASE + '/choose')
+    assert sync_bricklink.UNSAVED in soup(client.get(start_resp.location)).select_one('.bk-banner').get_text()
+
+    monkeypatch.setattr(sync, '_store_plan', fail_plan)
+    pick_resp = client.post(f'{BASE}/run/{run_id}/pick', data={'csrf_token': csrf, 'item': ['1001']})
+    assert pick_resp.status_code == 302 and pick_resp.location.endswith(f'/run/{run_id}/pick')
+    assert sync_bricklink.UNSAVED in soup(client.get(pick_resp.location)).select_one('.bk-banner').get_text()

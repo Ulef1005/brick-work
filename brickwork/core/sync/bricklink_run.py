@@ -21,8 +21,8 @@ SOURCE = 'bricklink'
 CHOICES_KEY = 'bricklink_sync_choices'
 STATUSES = (('received_paid', 'Received and paid', {'RECEIVED', 'PAID'}), ('all', 'All orders', None))
 ORDERS_DIRS = ('into', 'off')
-FAILURES = (errors.BrickWorkError, ValueError, SourceError, KeyRejected, WaitingForBudget, sqlite3.Error)
-REMOTE_FAILURES = tuple(e for e in FAILURES if e is not sqlite3.Error)
+REMOTE_FAILURES = (errors.BrickWorkError, ValueError, SourceError, KeyRejected, WaitingForBudget)
+FAILURES = REMOTE_FAILURES + (sqlite3.Error, OSError)
 _MONTHS = ('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec')
 _STATUS_SETS = {key: allowed for key, _, allowed in STATUSES}
 
@@ -129,7 +129,14 @@ def budget(db, client=None):
 
 
 def _imported_ids(db):
-    return {str(r[0]) for r in db.execute('SELECT bricklink_order_id FROM main.purchase_order WHERE bricklink_order_id IS NOT NULL')}
+    return {
+        str(r[0]) for r in db.execute(
+            "SELECT po.bricklink_order_id FROM main.purchase_order po "
+            "WHERE po.bricklink_order_id IS NOT NULL "
+            "AND NOT (EXISTS (SELECT 1 FROM main.order_document d WHERE d.order_id=po.id) "
+            "AND NOT EXISTS (SELECT 1 FROM main.order_document d WHERE d.order_id=po.id AND d.phase!='undone'))"
+        )
+    }
 
 
 def start(db, *, client=None):
@@ -174,15 +181,16 @@ def load(db, run_id):
 
 
 def save_pick(db, run_id, ids):
-    run = load(db, run_id)
-    if run.get('applied'):
-        raise errors.ValidationFailed('This run has already run')
-    ids = set(ids)
-    if ids - {c['id'] for c in run['candidates']}:
-        raise errors.ValidationFailed('Pick orders from the list')
-    run['picked'] = sorted(ids)
-    sync._store_plan(db, run)
-    return run
+    with sync_run._Claim(db, run_id):
+        run = load(db, run_id)
+        if run.get('applied'):
+            raise errors.ValidationFailed('This run has already run')
+        ids = set(ids)
+        if ids - {c['id'] for c in run['candidates']}:
+            raise errors.ValidationFailed('Pick orders from the list')
+        run['picked'] = sorted(ids)
+        sync._store_plan(db, run)
+        return run
 
 
 def _short_date(day):
@@ -244,7 +252,6 @@ def apply(db, run_id, form, *, client=None, via=None, actor=None):
         if wanted and client is None:
             client = BrickLink(db)
         headers = run.get('headers')
-        events = []
         for order_no in wanted:
             try:
                 prepared = orders.api_data(db, order_no, client=client, headers=headers)
@@ -253,10 +260,11 @@ def apply(db, run_id, form, *, client=None, via=None, actor=None):
                 run['stages'][order_no] = dict(status='failed', message=_message(exc))
             else:
                 run['stages'][order_no] = dict(status='done', order_id=result['order_id'], placed=result['placed'],
-                                               unplaced=result['unplaced'], event=result['event_id'])
-                if not result['duplicate'] and result['event_id'] is not None:
-                    events.append(result['event_id'])
+                                               unplaced=result['unplaced'], event=None if result['duplicate'] else result['event_id'])
             sync._store_plan(db, run)
+        events = list(dict.fromkeys(
+            s['event'] for s in run['stages'].values() if s.get('status') == 'done' and s.get('event')
+        ))
         with transaction(db):
             audit(db, 'sync:' + SOURCE, 'run', None, dict(run=run['id'], events=events), via=via, actor=actor)
         run['applied'] = True

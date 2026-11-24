@@ -90,7 +90,7 @@
 <div class="sr-col">
 <section class="sr-card" data-bl-price><h2>Price guide</h2>
 <label class="bk-field">Region<select name="region"{% if region_locked %} disabled{% endif %}>{% for value, text in regions %}<option value="{{ value }}" {{ 'selected' if region == value }}>{{ text }}</option>{% endfor %}</select></label>
-{% if region_locked %}<p class="sr-note">The region is locked by this installation. It is set in Settings.</p>{% endif %}
+{% if region_locked %}<p class="sr-note">The region is locked by this installation. Whoever runs Brick Work can change it with BW_PRICE_SETTINGS_LOCK.</p>{% endif %}
 <p class="sr-note">The price guide is read when prices are asked for.</p></section>
 <p class="sr-info">BrickLink's API offers no wanted lists and no personal collection, so neither is synced.</p>
 </div></div>

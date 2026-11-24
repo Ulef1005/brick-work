@@ -116,9 +116,10 @@ def step_result(run_id):
         if not run.get('applied'):
             return redirect(url_for('web.bw_sync_bl_preview', run_id=run['id']))
         _, events, _ = _run_audit(db, run['id'])
-        undone = bool(events and db.execute(
-            'SELECT 1 FROM event_undo WHERE event_id=?', (events[0],),
-        ).fetchone())
+        undone = bool(events) and all(
+            db.execute('SELECT 1 FROM event_undo WHERE event_id=?', (e,)).fetchone()
+            for e in events
+        )
     stages = run.get('stages') or {}
     results = []
     for candidate in run.get('candidates') or ():

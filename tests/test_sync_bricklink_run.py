@@ -271,3 +271,107 @@ def test_apply_propagates_sqlite_error_without_marking_stage_failed(pair, world,
         stored = bricklink_run.load(db, run['id'])
         assert '1001' not in stored['stages']
         assert not stored.get('applied')
+
+
+def test_save_pick_takes_run_claim(pair, world, monkeypatch):
+    headers = [_header(1001, date_ordered='2026-11-17T10:00:00.000Z')]
+    fake = FakeBrickLink(headers, {'1001': _items(qty=3)})
+    claims = []
+    active = []
+    seen_active = []
+
+    class RecordingClaim:
+        def __init__(self, db, run_id):
+            self.run_id = run_id
+
+        def __enter__(self):
+            claims.append(('enter', self.run_id))
+            active.append(self.run_id)
+            return self
+
+        def __exit__(self, *exc):
+            active.pop()
+            claims.append(('exit', self.run_id))
+
+    real_store = sync._store_plan
+
+    def wrapped_store(*args, **kwargs):
+        seen_active.append(list(active))
+        return real_store(*args, **kwargs)
+
+    with db_of(pair) as db:
+        run = bricklink_run.start(db, client=fake)
+        monkeypatch.setattr(sync_run, '_Claim', RecordingClaim)
+        monkeypatch.setattr(sync, '_store_plan', wrapped_store)
+        picked = bricklink_run.save_pick(db, run['id'], {'1001'})
+        assert picked['picked'] == ['1001']
+        assert claims == [('enter', run['id']), ('exit', run['id'])]
+        assert seen_active == [[run['id']]]
+
+
+def test_resumed_apply_audits_all_events_and_undoes_both_orders(pair, world, monkeypatch):
+    headers = [
+        _header(1001, date_ordered='2026-11-17T10:00:00.000Z'),
+        _header(1002, date_ordered='2026-11-16T10:00:00.000Z'),
+    ]
+    fake = FakeBrickLink(headers, {'1001': _items(qty=3), '1002': _items(qty=5)})
+    real_import = orders.import_document
+    raised_once = []
+
+    def flaky_import(*args, **kwargs):
+        if kwargs.get('number') == '1002' and not raised_once:
+            raised_once.append(True)
+            raise sqlite3.OperationalError('database is locked')
+        return real_import(*args, **kwargs)
+
+    monkeypatch.setattr(orders, 'import_document', flaky_import)
+    with db_of(pair) as db:
+        run = bricklink_run.start(db, client=fake)
+        form = {'order:1001': 'pull', 'order:1002': 'pull'}
+        with pytest.raises(sqlite3.OperationalError, match='database is locked'):
+            bricklink_run.apply(db, run['id'], form, client=fake)
+        partial = bricklink_run.load(db, run['id'])
+        assert partial['stages']['1001']['status'] == 'done'
+        assert '1002' not in partial['stages']
+        assert not partial.get('applied')
+
+        resumed = bricklink_run.apply(db, run['id'], form, client=fake)
+        assert resumed['applied'] is True
+        assert set(resumed['stages']) == {'1001', '1002'}
+        expected_events = [resumed['stages']['1001']['event'], resumed['stages']['1002']['event']]
+        assert all(event is not None for event in expected_events)
+        audit_row = db.execute(
+            "SELECT new_value FROM main.event WHERE entity_kind='sync' AND entity_id='bricklink' AND field='run' ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+        assert json.loads(audit_row['new_value']) == dict(run=run['id'], events=expected_events)
+
+        undone = sync_run.undo_run(db, expected_events[0])
+        assert undone == expected_events
+        phases = [r[0] for r in db.execute('SELECT phase FROM main.order_document ORDER BY id')]
+        assert phases == ['undone', 'undone']
+
+
+def test_undone_order_can_be_pulled_again(pair, world):
+    headers = [_header(1001, date_ordered='2026-11-17T10:00:00.000Z')]
+    fake = FakeBrickLink(headers, {'1001': _items(qty=3)})
+    with db_of(pair) as db:
+        first = bricklink_run.start(db, client=fake)
+        applied = bricklink_run.apply(db, first['id'], {'order:1001': 'pull'}, client=fake)
+        assert '1001' in bricklink_run._imported_ids(db)
+        event = applied['stages']['1001']['event']
+        assert sync_run.undo_run(db, event) == [event]
+        assert '1001' not in bricklink_run._imported_ids(db)
+        assert [r[0] for r in db.execute('SELECT phase FROM main.order_document ORDER BY id')] == ['undone']
+
+        second = bricklink_run.start(db, client=fake)
+        assert second['candidates'][0]['id'] == '1001' and second['candidates'][0]['imported'] is False
+        preview = bricklink_run.rows(db, second)
+        assert len(preview) == 1 and preview[0]['state'] == 'new'
+
+        reapplied = bricklink_run.apply(db, second['id'], {'order:1001': 'pull'}, client=fake)
+        assert reapplied['applied'] is True
+        assert reapplied['stages']['1001']['status'] == 'done'
+        assert reapplied['stages']['1001']['event'] is not None
+        assert '1001' in bricklink_run._imported_ids(db)
+        assert [r[0] for r in db.execute('SELECT bricklink_order_id FROM main.purchase_order')] == ['1001']
+        assert [r[0] for r in db.execute('SELECT phase FROM main.order_document ORDER BY id')] == ['draft']

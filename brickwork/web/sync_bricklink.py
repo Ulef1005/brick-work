@@ -110,7 +110,7 @@ def _load(db, run_id):
 
 
 def _runs(db, limit=5):
-    """Newest BrickLink runs from `main.event`; Undo on every run whose first event is not in `event_undo`."""
+    """Newest BrickLink runs from `main.event`; Undo on every run that still has an event not in `event_undo`."""
     rows = []
     for r in db.execute(
         "SELECT id, at, new_value FROM main.event WHERE entity_kind='sync' AND entity_id=? AND field='run' ORDER BY id DESC LIMIT ?",
@@ -124,10 +124,11 @@ def _runs(db, limit=5):
         events = events if isinstance(events, list) else []
         n = len(events)
         event = events[0] if events else None
-        undone = bool(event is not None and db.execute(
-            'SELECT 1 FROM event_undo WHERE event_id=?', (event,),
-        ).fetchone())
-        undoable = event is not None and not undone
+        undone = bool(events) and all(
+            db.execute('SELECT 1 FROM event_undo WHERE event_id=?', (e,)).fetchone()
+            for e in events
+        )
+        undoable = bool(events) and not undone
         rows.append(dict(id=r['id'], at=r['at'], what=f"{n} {'order' if n == 1 else 'orders'} pulled",
                          event=event, undoable=undoable))
     return rows

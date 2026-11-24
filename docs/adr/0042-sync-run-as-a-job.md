@@ -25,4 +25,4 @@ A sync run applied in one web request cannot show progress, cannot be left while
 ## Consequences
 
 - A sync run shows in Jobs, and `JobStep` carries `count` and `total` for every job kind.
-- Known limits, on the failure path only: a settled run whose closing write failed has no run audit entry; a stale write over a concurrent retry shows old counts; a job resumed after more than 24 hours has lost its run.
+- Known limits (the first two on the failure path only): a settled run whose closing write failed has no run audit entry; a stale write over a concurrent retry shows old counts; a job that waits or is down for more than 24 hours has lost its run (a plan lasts 24 hours from the job's last write).

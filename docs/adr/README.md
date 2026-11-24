@@ -47,3 +47,4 @@ One file per decision that binds future work: the API contract, the data model, 
 | [0037](0037-b-prime-shell-and-scoping.md) | The B′ shell: scoped component CSS, guarded legacy rules, four groups on top | accepted; builds on 0036 | 2026-11-20 |
 | [0038](0038-checked-by.md) | A copy records who checked it: a nullable `copy.checked_by`, schema 4.7 | accepted | 2026-11-20 |
 | [0039](0039-added-via-and-synced-from.md) | Where a row came from: `added_via` on copy, stock and wish, and `synced_from`, schema 4.8 | proposed | 2026-11-22 |
+| [0041](0041-rating-and-priority.md) | Your rating and priority: `copy.rating` and `wish.priority`, schema 4.9 | proposed | 2026-11-24 |

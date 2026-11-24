@@ -25,15 +25,15 @@ A run is applied in one request, so there is no progress page; the **Run** butto
 
 The **Brickset** page works like the Rebrickable one and has the same six steps. Brickset's side holds owned and wanted sets with counts, and that is all this page syncs. Notes, ratings, flags, wanted priority, new and used counts and loose minifigures are not synced yet. Purchase date and price never leave Brick Work: Brickset has no field for them.
 
-The page shows your account (API key and today's budget, with **Test**, **Change** and **Remove**), the last runs with **Undo this run** and a table of **What syncs**. It reads nothing from Brickset until you start a run. The account name is not shown, because Brick Work keeps only the hash Brickset returns.
+The page shows your account (API key and today's budget, with **Test**, **Change** and **Remove**), the last runs with **Undo this run** and a table of **What syncs**. It reads nothing from Brickset until you start a run. The account name is the username you typed when you connected; Brickset does not return it, so a pasted hash has none.
 
 1. **Connect.** The API key and your account. Enter your Brickset **Username** and password and choose **Connect**, or open **Paste a user hash instead**. The password goes to Brickset once and is never stored. **Save and test** keeps a key you paste; a key from the environment can only be changed there. The keys step of **Get started** and the **Needs a Brickset key** line lead to this step.
 2. **Choose what.** A direction for **Owned sets** and one for **Wanted sets**: **Into Brick Work**, **Both ways**, **To Brickset** or **Off**. **Wishlist here** is the Brick Work wishlist that takes the wanted sets. **When both sides differ** is fixed: the preview asks each time.
 3. **Pick sets.** The sets the run could touch, **All linked**, **By theme**, **By year** or **One by one** (Brickset has no lists to pick by). A set you do not pick stays as it is on both sides.
-4. **Preview.** The same rows and choices as on the Rebrickable page: **Add here**, **Add there**, a quantity that differs, and **Changed in both places** with **Keep**, **Take** and **Send**. Brickset marks a set as wanted or not and has no quantity for it. A wish of two here and a wanted set there are the same, so they are not listed. **Before you send** names the number of changes and today's budget. A run reads your sets from Brickset once for each direction it covers, so a run **Both ways** uses several of the day's calls.
+4. **Preview.** The same rows and choices as on the Rebrickable page: **Add here**, **Add there**, a quantity that differs, and **Changed in both places** with **Keep**, **Take** and **Send**. A wanted set has a quantity on both sides. **Before you send** names the number of changes and today's budget. A run reads your owned and wanted sets once, for both directions. A set that changes in more than one way is sent in one call.
 5. **Result.** What changed here, with **Undo this run**, and what happened on Brickset, with a **Retry** for a row that failed. A change sent to Brickset cannot be undone here.
 
-Brickset allows 100 `getSets` calls a day unless it raises the limit for your key; the page shows how many are used.
+Brickset allows 100 calls a day unless it raises the limit for your key. Brickset now counts every call, not only `getSets`. The page counts reads, sends and the check of your user hash. Brickset also counts key checks and logins, so its own number can be a few higher.
 
 ## A BrickLink run
 
@@ -53,7 +53,7 @@ BrickLink's daily limit depends on your key. The page shows how many calls are u
 
 ## Connect a site
 
-Each site needs its API key and your own account credential. Rebrickable: step 1 of its page holds both, and **Connect** on the hub opens it. Brickset: step 1 of its page holds both, and **Connect** on the hub opens it. On Rebrickable, enter **Username or email** and your password and choose **Connect**. Or open **Paste a user token instead** and save what you generated on the site. On Brickset the fields are **Username** and **Paste a user hash instead**. The password goes to the site once and is never stored: only the token (Rebrickable) or hash (Brickset) is kept, encrypted like the API keys. **Test** asks the site whether it still accepts it; **Remove** forgets it; you connect again to use the site. At most 10 logins per site per day.
+Each site needs its API key and your own account credential. Rebrickable: step 1 of its page holds both, and **Connect** on the hub opens it. Brickset: step 1 of its page holds both, and **Connect** on the hub opens it. On Rebrickable, enter **Username or email** and your password and choose **Connect**. Or open **Paste a user token instead** and save what you generated on the site. On Brickset the fields are **Username** and **Paste a user hash instead**. The password goes to the site once and is never stored. Only the token (Rebrickable) or hash (Brickset) is kept, encrypted like the API keys. The username you type is kept as well, to show on the page. **Test** asks the site whether it still accepts it; **Remove** forgets it; you connect again to use the site. At most 10 logins per site per day.
 
 ## Link the lists
 

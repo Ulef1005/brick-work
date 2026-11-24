@@ -134,10 +134,10 @@ def test_the_page_at_rest_shows_account_budget_runs_and_what_syncs_without_a_cal
     assert remote.calls == []                                            # the page at rest reads nothing from Brickset
     assert page.select_one('[data-rb-account] .sr-tag').get_text(strip=True) == 'Connected'
     kv = [t.get_text(' ', strip=True) for t in page.select('[data-rb-account] .sr-kv dt, [data-rb-account] .sr-kv dd')]
-    assert kv == ['API key', 'Set in the environment', 'Today’s budget', '0 of 100 calls']      # the account name is not stored; no request speed is claimed
+    assert kv == ['API key', 'Set in the environment', 'Today’s budget', '0 of 100 calls']      # a pasted hash has no account name; no request speed is claimed
     assert [b.get_text(strip=True) for b in page.select('[data-rb-account] .sr-actions .bk-btn')] == ['Test', 'Change', 'Remove']
     table = [[c.get_text(' ', strip=True) for c in tr.select('td')] for tr in page.select('[data-rb-what] tbody tr')]
-    assert table == [['Owned sets', 'Into Brick Work', 'Quantity owned'], ['Wanted sets', 'To Brickset', 'Wanted, as a flag, ↔ wishlist Wishlist']]
+    assert table == [['Owned sets', 'Into Brick Work', 'Quantity owned'], ['Wanted sets', 'To Brickset', 'Quantity wanted ↔ wishlist Wishlist']]
     assert page.select_one('form[action$="/workbench/sync/brickset/start"] button').get_text(strip=True) == 'Start a sync'
     assert page.select_one('[data-rb-what] a.bk-btn')['href'].endswith(BASE + '/choose')
     assert 'Purchase date and price never leave Brick Work' in page.get_text()
@@ -301,18 +301,17 @@ def _item(pair, number):
         return sync.translate(db, [number])[number]
 
 
-def test_a_wish_of_two_here_and_a_wanted_flag_there_is_not_a_difference(client, remote, pair):
+def test_a_wish_of_two_here_and_a_wanted_quantity_of_one_there_is_a_difference_and_a_send_writes_the_quantity(client, remote, pair):
     csrf = connected(client, pair)
     with db_of(pair) as db:
         coll = Coll(db)
         coll.add_wish(coll.item('sets', '1000-2'), quantity=2)
-    run_id = start(client, csrf, owned_dir='off')
-    with db_of(pair) as db:
-        run, plans = sync_run.load(db, run_id)
-        assert [c['number'] for c in run['candidates']] == []
-        assert sync_run.rows(db, run, plans) == []
+    run_id = start(client, csrf, owned_dir='off', wishlist_dir='to')
     page = preview_of(client, run_id)
-    assert not rows_of(page) and 'Nothing differs' in page.get_text()
+    row = rows_of(page)['1000-2']
+    assert 'Quantity 1 to 2' in row.get_text()
+    apply_run(client, csrf, run_id, page)
+    assert remote.qty_wanted['1000-2'] == 2 and '1000-2' in remote.wanted
 
 
 def test_a_wish_removed_here_is_offered_for_the_flag_there_and_a_flag_goes_off_only_when_chosen(client, remote, pair):
@@ -333,11 +332,11 @@ def test_a_failed_send_is_listed_on_the_result_with_a_retry_and_the_daily_budget
     with db_of(pair) as db:
         Coll(db).add_copy('1000-3')
     run_id = start(client, csrf, owned_dir='to', wishlist_dir='off')
-    real = adapters.BricksetUser.send
+    real = adapters.BricksetUser.send_set
 
-    def pause(self, row, link, state):
+    def pause(self, rows, link, state):
         raise base.WaitingForBudget(None, '2026-11-25T00:00:00+00:00')
-    monkeypatch.setattr(adapters.BricksetUser, 'send', pause)
+    monkeypatch.setattr(adapters.BricksetUser, 'send_set', pause)
     apply_run(client, csrf, run_id)
     page = soup(client.get(f'{BASE}/run/{run_id}/result'))
     assert '2 waiting' in page.select_one('.sr-head p').get_text() and 'failed' not in page.select_one('.sr-head p').get_text()
@@ -346,7 +345,7 @@ def test_a_failed_send_is_listed_on_the_result_with_a_retry_and_the_daily_budget
     site = soup(client.get(BASE))
     retry_form = site.select_one('[data-rb-runs] form[action$="/manage/sync/brickset/send"]')
     assert retry_form and retry_form.select_one('input[name=next]')['value'] == 'site'     # on a failed re-plan the user stays on the site page
-    monkeypatch.setattr(adapters.BricksetUser, 'send', real)
+    monkeypatch.setattr(adapters.BricksetUser, 'send_set', real)
     assert client.post(f'{BASE}/run/{run_id}/retry', data={'csrf_token': csrf}).location.endswith('/result')
     assert remote.owned['2070-1'] == (1003, 1) and remote.owned['1000-3'] == (1004, 1)
 
@@ -431,7 +430,7 @@ def test_brickset_start_with_owned_off_and_wanted_to_does_not_call_set_ids_for_o
     assert seen == [['1000-3']]
 
 
-def test_a_wish_lowered_here_and_cleared_there_is_not_a_conflict_on_brickset(client, remote, pair):
+def test_a_wish_lowered_here_and_cleared_there_is_a_conflict_on_brickset(client, remote, pair):
     csrf = connected(client, pair)
     with db_of(pair) as db:
         coll = Coll(db)
@@ -451,8 +450,116 @@ def test_a_wish_lowered_here_and_cleared_there_is_not_a_conflict_on_brickset(cli
         run, plans = sync_run.load(db, run_id)
         pull_row = next(r for r in plans['pull']['rows'] if r['key'] == f'wanted:{item_id}')
         send_row = next(r for r in plans['send']['rows'] if r['key'] == f'wanted:{item_id}')
-        assert pull_row['baseline_here'] == 2 and pull_row['baseline_remote'] == 1
-        assert pull_row['state'] != 'conflict' and send_row['state'] != 'conflict'
+        assert pull_row['state'] == 'conflict' and send_row['state'] == 'conflict'
         merged = sync_run.rows(db, run, plans)
-        assert len(merged) == 1 and merged[0]['state'] != 'conflict'
-    assert not preview_of(client, run_id).select_one('[data-rb-conflicts]')
+        assert len(merged) == 1 and merged[0]['state'] == 'conflict'
+    assert preview_of(client, run_id).select_one('[data-rb-conflicts]')
+
+
+def test_a_set_that_is_owned_and_wanted_is_sent_in_one_call_with_both_fields(client, remote, pair):
+    csrf = connected(client, pair)
+    with db_of(pair) as db:
+        coll = Coll(db)
+        coll.add_copy('1000-3')
+        coll.add_wish(coll.item('sets', '1000-3'), quantity=2)
+    run_id = start(client, csrf, owned_dir='to', wishlist_dir='to')
+    before = len(remote.calls)
+    apply_run(client, csrf, run_id)
+    sends = [(m, b) for m, b in remote.calls[before:] if m == 'setCollection' and b['SetID'] == '1004']
+    assert len(sends) == 1
+    assert json.loads(sends[0][1]['params']) == dict(own=1, qtyOwned=1, qtyWanted=2)
+    assert remote.owned['1000-3'] == (1004, 1) and remote.qty_wanted['1000-3'] == 2
+
+
+def test_every_call_to_brickset_is_counted_against_the_day(client, remote, pair):
+    csrf = connected(client, pair)
+    with db_of(pair) as db:
+        Coll(db).add_copy('1000-3')
+    run_id = start(client, csrf, owned_dir='to', wishlist_dir='off')
+    with db_of(pair) as db:
+        used = sync_run.budget(db, 'brickset')['used']
+    before = len(remote.calls)
+    apply_run(client, csrf, run_id)
+    sent = len([1 for m, _ in remote.calls[before:] if m == 'setCollection'])
+    assert sent >= 1
+    with db_of(pair) as db:
+        assert sync_run.budget(db, 'brickset')['used'] - used == sent
+
+
+def test_a_run_both_ways_reads_each_list_once(client, remote, pair):
+    csrf = connected(client, pair)
+    before = len(remote.calls)
+    start(client, csrf, owned_dir='both', wishlist_dir='both')
+    reads = [json.loads(b['params']) for m, b in remote.calls[before:] if m == 'getSets']
+    assert len([p for p in reads if p.get('owned')]) == 1 and len([p for p in reads if p.get('wanted')]) == 1
+
+
+def test_a_wanted_quantity_at_brickset_is_pulled_as_the_quantity_of_the_wish(client, remote, pair):
+    csrf = connected(client, pair)
+    remote.qty_wanted['1000-2'] = 3
+    run_id = start(client, csrf, owned_dir='off', wishlist_dir='into')
+    page = preview_of(client, run_id)
+    assert '1000-2' in rows_of(page)
+    apply_run(client, csrf, run_id, page)
+    assert wishes(pair, '1000-2') == 3
+
+
+def test_the_account_name_is_what_you_typed_at_connect_and_goes_with_the_hash(client, remote, pair):
+    from tests.test_bw_sync import PASSWORD
+    csrf = token(client)
+    connect = {'csrf_token': csrf, 'username': 'brickfan', 'password': PASSWORD, 'next': 'connect'}
+    assert client.post('/manage/sync/brickset/connect', data=connect).status_code == 302
+
+    def facts():
+        page = soup(client.get(BASE))
+        return [t.get_text(' ', strip=True) for t in page.select('[data-rb-account] .sr-kv dt, [data-rb-account] .sr-kv dd')]
+    assert facts()[:2] == ['Account', 'brickfan']
+    assert 'Connected as brickfan' in client.get(BASE + '/connect').get_data(as_text=True)
+    assert client.post('/manage/sync/brickset/paste', data={'csrf_token': csrf, 'value': HASH}).status_code == 302
+    assert 'Account' not in facts() and 'Connected as' not in client.get(BASE + '/connect').get_data(as_text=True)
+    assert client.post('/manage/sync/brickset/connect', data=connect).status_code == 302
+    assert facts()[:2] == ['Account', 'brickfan']
+    assert client.post('/manage/sync/brickset/remove', data={'csrf_token': csrf, 'next': 'connect'}).status_code == 302
+    assert 'Account' not in facts()
+
+
+def test_the_preview_counts_the_calls_the_run_makes_one_per_set(client, remote, pair):
+    csrf = connected(client, pair)
+    with db_of(pair) as db:
+        coll = Coll(db)
+        coll.add_copy('1000-3')
+        coll.add_wish(coll.item('sets', '1000-3'), quantity=2)       # the same set owned and wanted: one call, two rows
+    run_id = start(client, csrf, owned_dir='to', wishlist_dir='to')
+    page = preview_of(client, run_id)
+    shown = int(re.search(r'Requests[^0-9]*([0-9]+)', page.get_text(' ', strip=True))[1])
+    before = len(remote.calls)
+    apply_run(client, csrf, run_id, page)
+    made = len([1 for m, _ in remote.calls[before:] if m == 'setCollection'])
+    assert made >= 1 and shown == made
+
+
+def test_the_two_rows_of_one_set_share_a_send_key_so_the_page_counts_one_request(client, remote, pair):
+    csrf = connected(client, pair)
+    with db_of(pair) as db:
+        coll = Coll(db)
+        coll.add_copy('1000-3')
+        coll.add_wish(coll.item('sets', '1000-3'), quantity=2)
+    run_id = start(client, csrf, owned_dir='to', wishlist_dir='to')
+    page = preview_of(client, run_id)
+    keys = [box['data-sy-set'] for row in page.select('[data-sy-row]') if row.get('data-name', '').startswith('1000-3')
+            for box in row.select('input[data-sy-send]')]
+    assert len(keys) == 2 and len(set(keys)) == 1
+
+
+def test_every_send_control_of_a_brickset_preview_carries_its_set_key_conflict_rows_too(client, remote, pair):
+    csrf = connected(client, pair)
+    run_id = start(client, csrf, owned_dir='both', wishlist_dir='off')
+    apply_run(client, csrf, run_id)
+    with db_of(pair) as db:
+        Coll(db).add_copy('1000-1')
+    remote.owned['1000-1'] = (1001, 4)                   # changed in both places: a conflict row with radio buttons
+    run_id = start(client, csrf, owned_dir='both', wishlist_dir='off')
+    page = preview_of(client, run_id)
+    sends = page.select('input[data-sy-send]')
+    assert sends and all(box.get('data-sy-set') for box in sends)
+    assert page.select_one('[data-rb-conflicts] input[type=radio][data-sy-send]')['data-sy-set'] == '1000-1'

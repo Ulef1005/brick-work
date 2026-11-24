@@ -147,7 +147,8 @@ def test_the_pages_before_setup_show_the_notice(app4, tmp_path, monkeypatch):
     from tests.web_fixtures import logged_in
     monkeypatch.setenv('BW_DB_PATH', str(tmp_path / 'not-set-up' / 'brickwork.db'))
     for path in ('/workbench/sync', '/workbench/sync/rebrickable', '/workbench/sync/rebrickable/connect', '/workbench/sync/rebrickable/choose',
-                 '/workbench/sync/brickset', '/workbench/sync/brickset/connect', '/workbench/sync/brickset/choose'):
+                 '/workbench/sync/brickset', '/workbench/sync/brickset/connect', '/workbench/sync/brickset/choose',
+                 '/workbench/sync/bricklink', '/workbench/sync/bricklink/connect', '/workbench/sync/bricklink/choose'):
         response = logged_in(app4).get(path)
         assert response.status_code == 503
         assert 'database is not available' in response.get_data(as_text=True)

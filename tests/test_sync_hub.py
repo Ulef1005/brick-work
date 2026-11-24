@@ -57,8 +57,8 @@ def test_hub_renders_four_site_cards_in_order_and_sections(client, remote):
         assert 'Never' in card.select_one('.sh-meta').get_text()
         btn = card.select_one('a.bk-btn')
         assert btn.get_text(strip=True) == 'Connect'
-        assert btn['href'].endswith('/manage/catalogues')
-    imp = page.select_one('[data-sync-import]')
+        assert btn['href'].endswith('/workbench/sync/bricklink/connect' if key == 'bricklink' else '/manage/catalogues')   # BrickLink has its page (#521), Brick Owl not yet
+    imp =page.select_one('[data-sync-import]')
     assert imp.select_one('.sh-name').get_text(strip=True) == 'Import & export'
     assert imp.select_one('a.bk-btn').get_text(strip=True) == 'Open'
     assert imp.select_one('a.bk-btn')['href'].endswith('/manage/import-legacy')
@@ -98,7 +98,8 @@ def test_site_page_restricts_source_has_back_link_and_404s_unknown(client, remot
     assert rb.select_one('h1').get_text(strip=True) == 'Rebrickable'
     back = rb.select_one('a.bw-back')
     assert back['href'].endswith('/workbench/sync') and back.get_text(strip=True) == 'Sync'
-    assert client.get('/workbench/sync/bricklink').status_code == 404
+    assert client.get('/workbench/sync/bricklink').status_code == 200      # its own page since #521
+    assert client.get('/workbench/sync/brickowl').status_code == 404
     assert client.get('/workbench/sync/unknown').status_code == 404
 
 

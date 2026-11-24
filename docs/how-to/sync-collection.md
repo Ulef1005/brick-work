@@ -35,6 +35,22 @@ The page shows your account (API key and today's budget, with **Test**, **Change
 
 Brickset allows 100 `getSets` calls a day unless it raises the limit for your key; the page shows how many are used.
 
+## A BrickLink run
+
+The **BrickLink** page has the same six steps, but its data is different: BrickLink's API has no personal collection and no wanted lists. This page pulls your **orders** into Orders. The price guide it reads is the one that already prices your sets and parts.
+
+The page shows your account (key and today's budget, with **Test**, **Change** and **Remove**), the last runs with **Undo this run** and a table of **What syncs**. It reads nothing from BrickLink until you start a run.
+
+1. **Connect.** BrickLink asks for four values: the consumer key and secret, and the token value and secret. Paste them and choose **Save**; Brick Work tests the key once with one call. BrickLink binds the token to one IP address that you registered with it, so register the address of the machine that runs Brick Work. A key from the environment can only be changed there.
+2. **Choose what.** **Orders**: **Into Brick Work** or **Off**, with an optional **Orders since** date and **Orders to pull**, either **Received and paid** or **All orders**. **Price guide**: the region that prices are read for. An installation can lock the region (`BW_PRICE_SETTINGS_LOCK`, on by default); the control then shows the region and cannot change it.
+3. **Pick lots.** The orders the run could pull, newest first. Ticked orders come in; an order you already imported is marked **Imported** and stays as it is. After **Undo this run**, its orders are no longer marked on this page and you can pull them again here.
+4. **Preview.** One row for each picked order. **Pull in** brings an order into Orders as a draft, with its lines placed on your items. Nothing changes until you run.
+5. **Result.** What each order did, with a link to it, and **Undo this run**. One Undo takes back every order the run pulled.
+
+Loose stock on BrickLink and the wanted-list file follow on this page. Until then, build a wanted-list file from a wishlist with **Export**.
+
+BrickLink's daily limit depends on your key. The page shows how many calls are used.
+
 ## Connect a site
 
 Each site needs its API key and your own account credential. Rebrickable: step 1 of its page holds both, and **Connect** on the hub opens it. Brickset: step 1 of its page holds both, and **Connect** on the hub opens it. On Rebrickable, enter **Username or email** and your password and choose **Connect**. Or open **Paste a user token instead** and save what you generated on the site. On Brickset the fields are **Username** and **Paste a user hash instead**. The password goes to the site once and is never stored: only the token (Rebrickable) or hash (Brickset) is kept, encrypted like the API keys. **Test** asks the site whether it still accepts it; **Remove** forgets it; you connect again to use the site. At most 10 logins per site per day.

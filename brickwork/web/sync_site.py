@@ -98,7 +98,7 @@ def site_page(source):
     stamps = [t for t in ((status.get('last_pull') or {}).get('at'), (status.get('last_send') or {}).get('at')) if t]
     from .sync_views import _last_sync
     return _render(source, screen='site', title=LABEL[source], subtitle='Last run ' + _last_sync(status) if last else 'Not run yet',
-                 connected=connected, key_gap=key_gap, key=status['credentials']['key'], budget=budget, what=what, runs=runs,
+                 connected=connected, account=status.get('account'), key_gap=key_gap, key=status['credentials']['key'], budget=budget, what=what, runs=runs,
                  waiting=status.get('waiting') or 0, pulled=pulled, lost_result=result, rule_labels=lost_parts.RULE_LABELS, stamps=stamps,
                  key_day=_day((budget or {}).get('last_success')))
 
@@ -110,7 +110,7 @@ def step_connect(source):
     with _db() as db:
         status = sync.status(db, source)
     return _render(source, screen='connect', title=LABEL[source], subtitle='Connect your account, choose what to sync, then run the sync.',
-                 connected=bool(status['credentials']['user']['configured']), key_gap=key_missing(source), key=status['credentials']['key'],
+                 connected=bool(status['credentials']['user']['configured']), account=status.get('account'), key_gap=key_missing(source), key=status['credentials']['key'],
                  **_steps(1))
 
 
@@ -352,7 +352,9 @@ def step_preview(source, run_id):
                   both=len(conflicts), lost=lost_rows + len(lost_send_rows), parts=len(parts))
     choosable = sum(1 for r in rows if r['options']) + sum(1 for e in (lost_in or {}).get('sets', ()) if e['state'] == 'pick' or e['preview']['added'] or e['preview']['replaced'] or e['preview']['cleared']) \
         + sum(1 for r in lost_send_rows if r.get('tickable')) + len(parts) + sum(1 for line in changed_lines if set(line['choices']) - {'keep', 'skip'})
-    send_requests = sum(1 for r in rows for o in r['options'] if o['id'] in ('send', 'remove') and o['id'] == r['default']) + sum(1 for r in lost_send_rows if r.get('ticked'))
+    sending = [r for r in rows for o in r['options'] if o['id'] in ('send', 'remove') and o['id'] == r['default']]
+    sets_sent = len({r.get('send_no') or r['item_id'] for r in sending}) if source == 'brickset' else len(sending)      # Brickset gets one call per set, whatever changes in it
+    send_requests = sets_sent + sum(1 for r in lost_send_rows if r.get('ticked'))
     last = ((status.get('last_pull') or {}).get('at') or (status.get('last_send') or {}).get('at'))
     return _render(source, screen='preview', title=LABEL[source], run=run, rows=main, conflicts=conflicts, counts=counts,
                  lost_in=lost_in, lost_out=lost_out, parts=parts, parts_unmatched=(plans['parts'] or {}).get('unmatched', ()), parts_lists=(plans['parts'] or {}).get('lists', ()), lots=lots, lines=changed_lines,

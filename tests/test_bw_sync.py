@@ -77,6 +77,7 @@ class Brickset:
     def __init__(self):
         self.owned = {'1000-1': (1001, 1), '1000-4': (1005, 3)}
         self.wanted = {'1000-2': 1002}
+        self.qty_wanted = {}                      # number -> qtyWanted; a wanted set without an entry has 1
         self.ids = {'1000-1': 1001, '1000-2': 1002, '2070-1': 1003, '1000-3': 1004, '1000-4': 1005}
         self.calls = []
 
@@ -95,13 +96,16 @@ class Brickset:
         if method == 'getSets':
             params = json.loads(body['params'])
 
-            def row(number, set_id, qty=None):
+            def row(number, set_id, qty=None, wanted_qty=None):
                 n, v = number.rsplit('-', 1)
-                return {'setID': set_id, 'number': n, 'numberVariant': int(v), 'collection': {'qtyOwned': qty or 0}}
+                collection = {'qtyOwned': qty or 0}
+                if wanted_qty is not None:
+                    collection['qtyWanted'] = wanted_qty
+                return {'setID': set_id, 'number': n, 'numberVariant': int(v), 'collection': collection}
             if params.get('owned'):
                 rows = [row(n, i, q) for n, (i, q) in self.owned.items()]
             elif params.get('wanted'):
-                rows = [row(n, i) for n, i in self.wanted.items()]
+                rows = [row(n, i, wanted_qty=self.qty_wanted.get(n, 1)) for n, i in self.wanted.items()]
             else:
                 rows = [row(n, self.ids[n]) for n in params['setNumber'].split(',') if n in self.ids]
             return {'status': 'success', 'matches': len(rows), 'sets': rows}
@@ -113,11 +117,15 @@ class Brickset:
                     self.owned[number] = (int(body['SetID']), params['qtyOwned'])
                 else:
                     self.owned.pop(number, None)
+            if params.get('qtyWanted'):
+                self.wanted[number] = int(body['SetID'])
+                self.qty_wanted[number] = params['qtyWanted']
             if 'want' in params:
                 if params['want']:
                     self.wanted[number] = int(body['SetID'])
                 else:
                     self.wanted.pop(number, None)
+                    self.qty_wanted.pop(number, None)
             return {'status': 'success'}
         raise AssertionError(method)
 

@@ -62,6 +62,24 @@ def _root(db):
 
 # Credentials -------------------------------------------------------------------------------
 
+def _account_key(source):
+    return f'{source}_account_name'
+
+
+def account_name(db, source):
+    _source(source)
+    row = db.execute('SELECT value FROM main.setting WHERE key=?', (_account_key(source),)).fetchone()
+    return row[0] if row and row[0] else None
+
+
+def _set_account_name(db, source, name):
+    with transaction(db):
+        if name is None:
+            db.execute('DELETE FROM main.setting WHERE key=?', (_account_key(source),))
+        else:
+            db.execute('INSERT OR REPLACE INTO main.setting(key, value) VALUES(?, ?)', (_account_key(source), name))
+
+
 def connect(db, source, username, password, *, http=None):
     """Exchange username + password at the site for its token/hash and store only that, encrypted.
 
@@ -76,6 +94,7 @@ def connect(db, source, username, password, *, http=None):
     token = adapters.adapter(db, source, http).connect(username.strip(), password)
     field = keys.fields(USER[source])[0]
     keys.save(db, USER[source], {field: token})
+    _set_account_name(db, source, username.strip())
     return credential_state(db, source)
 
 
@@ -83,12 +102,14 @@ def paste(db, source, value):
     """Store a token/hash the user generated on the site (write-only)."""
     _source(source)
     keys.save(db, USER[source], {keys.fields(USER[source])[0]: value})
+    _set_account_name(db, source, None)
     return credential_state(db, source)
 
 
 def remove(db, source):
     _source(source)
     keys.archive(db, USER[source])
+    _set_account_name(db, source, None)
     return credential_state(db, source)
 
 
@@ -154,7 +175,7 @@ def status(db, source):
     _source(source)
     last_send = _setting(db, source, 'last_send')
     waiting = [r for r in (last_send or {}).get('rows', []) if r['result'] in ('failed', 'paused', 'key_rejected')]
-    return dict(source=source, label=LABELS[source], credentials=credential_state(db, source),
+    return dict(source=source, label=LABELS[source], account=account_name(db, source), credentials=credential_state(db, source),
                 link=_setting(db, source, 'link', {}), last_pull=_setting(db, source, 'last_pull'),
                 last_send=None if last_send is None else {k: v for k, v in last_send.items() if k != 'rows'},
                 waiting=len(waiting))
@@ -322,15 +343,11 @@ def _compare(db, source, link_value, remote):
     return rows, unmatched, mapping
 
 
-def _changed_both(row, presence_only=False):
+def _changed_both(row):
     if row['baseline_remote'] is None and row['baseline_here'] is None:
         return False
-    if presence_only:
-        r, h = bool(row['remote']), bool(row['here'])
-        br, bh = bool(row['baseline_remote']), bool(row['baseline_here'])
-    else:
-        r, h = row['remote'], row['here']
-        br, bh = row['baseline_remote'] or 0, row['baseline_here'] or 0
+    r, h = row['remote'], row['here']
+    br, bh = row['baseline_remote'] or 0, row['baseline_here'] or 0
     return r != br and h != bh and r != h
 
 
@@ -405,7 +422,7 @@ def _list_choices(plan, chosen):
     return {key: chosen.get(key, line['action']) for key, line in lines.items()}
 
 
-def plan_pull(db, source, *, http=None, lost_parts_switch=None, keep_list_names=None):
+def plan_pull(db, source, *, http=None, lost_parts_switch=None, keep_list_names=None, fetched=None):
     """What the site has that Brick Work lacks. Writes nothing to the collection. A Rebrickable plan also holds the Lost Parts section
     (`plan['lost']`, `lost_parts.plan_section`) unless the switch is off: `lost_parts_switch` (true or false) sets and remembers the switch,
     None keeps the remembered one. A Lost Parts list that cannot be read never stops the set comparison. `keep_list_names` sets and
@@ -413,7 +430,7 @@ def plan_pull(db, source, *, http=None, lost_parts_switch=None, keep_list_names=
     _source(source)
     if lost_parts_switch is not None and source == 'rebrickable' and lost_parts_switch != lost_parts_on(db, source):
         link(db, source, {'lost_parts': bool(lost_parts_switch)})
-    client, link_value, remote = _fetch(db, source, http)
+    client, link_value, remote = _fetch(db, source, http) if fetched is None else fetched
     rows, unmatched, _ = _compare(db, source, link_value, remote)
     section = None
     if source == 'rebrickable':
@@ -427,7 +444,7 @@ def plan_pull(db, source, *, http=None, lost_parts_switch=None, keep_list_names=
         for row in rows:
             if row['kind'] == 'owned' and row['remote'] > row['here'] and not _changed_both(row):
                 adds[row['item_id']] = adds.get(row['item_id'], 0) + row['remote'] - row['here']
-        section = lost_parts.plan_section(db, read, remote['owned'], translate, how=lost_parts.rule(db), on=on, adds=adds)
+        section = lost_parts.plan_section(db, read, dict(remote['owned']), translate, how=lost_parts.rule(db), on=on, adds=adds)
         names = _names(db, [e['item_id'] for e in section['sets']])
         for entry in section['sets']:
             entry['number'], entry['name'] = names.get(entry['item_id'], (None, None))
@@ -437,7 +454,7 @@ def plan_pull(db, source, *, http=None, lost_parts_switch=None, keep_list_names=
         r, h = row['remote'], row['here']
         if r == h:
             continue
-        if _changed_both(row, presence_only=(source == 'brickset' and row['kind'] == 'wanted')):
+        if _changed_both(row):
             state, action, count = 'conflict', None, max(0, r - h)
         elif r > h:
             state, action, count = 'add', 'add', r - h
@@ -447,7 +464,7 @@ def plan_pull(db, source, *, http=None, lost_parts_switch=None, keep_list_names=
             state, action, count = 'differs', None, 0
         out.append(dict(row, state=state, action=action, count=count, tickable=count > 0))
     plan = dict(id=uuid4().hex, created_at=now().isoformat(), direction='pull', source=source, link=link_value,
-                remote=dict(owned=remote['owned'], wanted=remote['wanted']), rows=out, unmatched=unmatched,
+                remote=dict(owned=dict(remote['owned']), wanted=dict(remote['wanted'])), rows=out, unmatched=unmatched,
                 summary=_summary(out, unmatched, rows))
     if source == 'rebrickable' and remote.get('per_list') is not None:
         _plan_lists(db, plan, remote, keep_list_names)
@@ -726,10 +743,10 @@ def undo(db, event_id):
     return undoing.undo_event(db, event_id)
 
 
-def plan_send(db, source, *, http=None, kinds=None):
+def plan_send(db, source, *, http=None, kinds=None, fetched=None):
     """The remote calls a send would make: one row per set whose count differs. Removals unticked."""
     _source(source)
-    client, link_value, remote = _fetch(db, source, http)
+    client, link_value, remote = _fetch(db, source, http) if fetched is None else fetched
     rows, unmatched, mapping = _compare(db, source, link_value, remote)
     if kinds is not None:
         rows = [r for r in rows if r['kind'] in kinds]
@@ -741,15 +758,12 @@ def plan_send(db, source, *, http=None, kinds=None):
             continue
         remote_no = row['remote_no'] or targets.get(row['item_id'])
         if row['kind'] == 'wanted':
-            send = 1 if h else 0
-            if source == 'rebrickable':
-                send = h
-            if send == r or (source == 'brickset' and bool(h) == bool(r)):
+            send = h
+            if send == r:
                 continue
         else:
             send = h
-        state = ('conflict' if _changed_both(row, presence_only=(source == 'brickset' and row['kind'] == 'wanted'))
-                 else 'remove' if h == 0 else 'add' if r == 0 else 'change')
+        state = 'conflict' if _changed_both(row) else 'remove' if h == 0 else 'add' if r == 0 else 'change'
         unmatched_here = remote_no is None
         out.append(dict(row, remote_no=remote_no, send=send, state='unmatched' if unmatched_here else state,
                         action='send' if state in ('add', 'change') and not unmatched_here else None,
@@ -766,7 +780,7 @@ def plan_send(db, source, *, http=None, kinds=None):
                 row.update(state='unmatched', action=None, tickable=False, reason='Brickset does not know this set number')
         extra['ids'] = {k: v for k, v in known.items()}
     else:
-        extra['per_list'] = remote['per_list']
+        extra['per_list'] = {k: dict(v) for k, v in remote['per_list'].items()}
         owned_lists = remote.get('owned_lists') or []
         extra['send_to'] = link_value.get('send_to') or (owned_lists[0] if len(owned_lists) == 1 else None)
         if extra['send_to'] is None:
@@ -778,7 +792,7 @@ def plan_send(db, source, *, http=None, kinds=None):
                 if row['kind'] == 'wanted' and row['tickable']:
                     row.update(action=None, tickable=False, reason='Link a Rebrickable wishlist to send wishes to')
     plan = dict(id=uuid4().hex, created_at=now().isoformat(), direction='send', source=source, link=link_value,
-                remote=dict(owned=remote['owned'], wanted=remote['wanted']), state=extra, rows=out, unmatched=unmatched,
+                remote=dict(owned=dict(remote['owned']), wanted=dict(remote['wanted'])), state=extra, rows=out, unmatched=unmatched,
                 summary=_summary(out, unmatched, rows),
                 note='Sending changes ' + LABELS[source] + '. Brick Work\'s Undo cannot reverse a remote change.')
     return _save_plan(db, plan)
@@ -793,23 +807,33 @@ def apply_send(db, plan_id, ticked=None, *, http=None):
     rows = _ticked(plan, ticked)
     results = plan.setdefault('results', {})
     client = adapters.adapter(db, source, http)
+    pending_rows = [r for r in rows if results.get(r['key'], {}).get('result') not in ('sent', 'unchanged')]
+    if source == 'brickset':
+        grouped = {}
+        for row in pending_rows:
+            grouped.setdefault(row['remote_no'], []).append(row)
+        units = list(grouped.values())
+    else:
+        units = [[row] for row in pending_rows]
     stop = None
-    for row in rows:
-        if results.get(row['key'], {}).get('result') in ('sent', 'unchanged'):
-            continue
+    for group in units:
         if stop:
-            results[row['key']] = dict(result=stop, detail=None)
+            for row in group:
+                results[row['key']] = dict(result=stop, detail=None)
             continue
         try:
-            results[row['key']] = dict(result=client.send(row, plan['link'], plan['state']), detail=None, at=now().isoformat())
+            result = client.send_set(group, plan['link'], plan['state']) if source == 'brickset' else client.send(group[0], plan['link'], plan['state'])
+            outcome = dict(result=result, detail=None, at=now().isoformat())
         except WaitingForBudget as paused:
             stop = 'paused'
-            results[row['key']] = dict(result='paused', detail='Waiting for the daily budget', retry_at=paused.retry_at)
+            outcome = dict(result='paused', detail='Waiting for the daily budget', retry_at=paused.retry_at)
         except KeyRejected:
             stop = 'key_rejected'
-            results[row['key']] = dict(result='key_rejected', detail=LABELS[source] + ' refused the key or user token')
+            outcome = dict(result='key_rejected', detail=LABELS[source] + ' refused the key or user token')
         except (SourceError, errors.BrickWorkError, ValueError) as failure:
-            results[row['key']] = dict(result='failed', detail=str(failure))
+            outcome = dict(result='failed', detail=str(failure))
+        for row in group:
+            results[row['key']] = dict(outcome)
         _store_plan(db, plan)
     sent = [r for r in rows if results.get(r['key'], {}).get('result') in ('sent', 'unchanged')]
     stamp = now().isoformat()

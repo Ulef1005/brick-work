@@ -285,3 +285,41 @@ def test_a_malformed_ticked_list_is_a_validation_error(pair):
         for bad in ([{'a': 1}], [['k']], 'note:copy:x', 5):
             with pytest.raises(errors.ValidationFailed):
                 set_fields.apply(db, p['id'], ticked=bad)
+
+
+def test_undo_is_refused_when_a_renamed_tag_was_renamed_again_since(pair):
+    with db_of(pair) as db:
+        Coll(db).add_copy('1000-1')
+        set_fields.apply(db, set_fields.plan(db, {'1000-1': {'notes': '', 'flags': [2]}}, {})['id'])
+        later = set_fields.plan(db, {'1000-1': {'notes': '', 'flags': [2]}}, {2: 'Display'})
+        res = set_fields.apply(db, later['id'], ticked=[])
+        assert res['counts']['renamed'] == 1
+        tag = _live_tags(db)[0][0]
+        db.execute('UPDATE flag SET name=? WHERE id=?', ('Shelf', tag))
+        db.commit()
+        with pytest.raises(ValueError, match='changed since'):
+            undo.undo_event(db, res['event_id'])
+        assert [t[1] for t in _live_tags(db)] == ['Shelf']
+
+
+def test_a_copy_archived_after_the_plan_is_skipped_and_the_rest_still_applies(pair):
+    with db_of(pair) as db:
+        coll = Coll(db)
+        coll.add_copy('1000-1')
+        coll.add_copy('2070-1')
+        gone = _copies(db, '2070-1')[0][0]
+        p = set_fields.plan(db, {'1000-1': {'notes': 'kept', 'flags': [2]}, '2070-1': {'notes': 'lost', 'flags': [2]}}, {})
+        db.execute("UPDATE copy SET archived_at='2026-11-24T00:00:00Z' WHERE id=?", (gone,))
+        db.commit()
+        res = set_fields.apply(db, p['id'])
+        assert res['counts'] == {'notes': 1, 'flags': 1, 'tags_created': 1, 'renamed': 0, 'skipped': 2}
+        assert _copies(db, '1000-1')[0][1] == 'kept'
+
+
+def test_a_tag_is_found_whatever_the_case_of_its_name(pair):
+    with db_of(pair) as db:
+        Coll(db).add_copy('1000-1')
+        db.execute("INSERT INTO flag(id, name, kind, shown_on_grid, created_at) VALUES('mine', 'display', 'tag', 0, '2026-11-24T00:00:00Z')")
+        db.commit()
+        res = set_fields.apply(db, set_fields.plan(db, {'1000-1': {'notes': '', 'flags': [2]}}, {2: 'Display'})['id'])
+        assert res['counts']['tags_created'] == 0 and [t[1] for t in _live_tags(db)] == ['display']

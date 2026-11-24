@@ -69,7 +69,7 @@ def _find_tag(db, flag_map, n, tag_name):
         row = db.execute("SELECT id FROM main.flag WHERE id=? AND kind='tag' AND archived_at IS NULL", (mapped,)).fetchone()
         if row is not None:
             return row[0]
-    row = db.execute("SELECT id FROM main.flag WHERE name=? AND kind='tag' AND archived_at IS NULL", (tag_name,)).fetchone()
+    row = db.execute("SELECT id FROM main.flag WHERE lower(name)=lower(?) AND kind='tag' AND archived_at IS NULL", (tag_name,)).fetchone()
     return row[0] if row is not None else None
 
 
@@ -88,7 +88,7 @@ def _rename_if_fallback(db, flag_id, new_name, n):
         if db.execute("SELECT 1 FROM main.flag WHERE kind='tag' AND archived_at IS NULL AND lower(name)=lower(?) AND id<>?", (new_name, flag_id)).fetchone():
             return None                                    # another live tag already has that name: keep the fallback rather than make two
         db.execute('UPDATE main.flag SET name=? WHERE id=?', (new_name, flag_id))
-        return dict(flag_id=flag_id, before=row[0])
+        return dict(flag_id=flag_id, before=row[0], after=new_name)
     return None
 
 
@@ -100,7 +100,7 @@ def _ensure_tag(db, flag_map, n, tag_name):
         row = db.execute("SELECT id FROM main.flag WHERE id=? AND kind='tag' AND archived_at IS NULL", (mapped,)).fetchone()
         if row is not None:
             return row[0], False, _rename_if_fallback(db, row[0], tag_name, n)
-    row = db.execute("SELECT id FROM main.flag WHERE name=? AND kind='tag' AND archived_at IS NULL", (tag_name,)).fetchone()
+    row = db.execute("SELECT id FROM main.flag WHERE lower(name)=lower(?) AND kind='tag' AND archived_at IS NULL", (tag_name,)).fetchone()
     if row is not None:
         flag_map[key] = row[0]
         return row[0], False, None
@@ -227,8 +227,9 @@ def apply(db, plan_id, ticked=None, *, choices=None, via=None, actor=None):
             if r['kind'] == 'note':
                 tbl = 'main.copy' if r['table'] == 'copy' else 'main.wish'
                 cur = db.execute(f'SELECT note FROM {tbl} WHERE id=? AND archived_at IS NULL', (r['target_id'],)).fetchone()
-                if cur is None:
-                    raise errors.ValidationFailed('Target no longer exists')
+                if cur is None:                                       # archived since the plan
+                    receipt['skipped'].append(dict(table=r['table'], id=r['target_id']))
+                    continue
                 if (cur[0] or None) != (r['here'] or None):          # changed since the plan: never overwrite what the person wrote meanwhile
                     receipt['skipped'].append(dict(table=r['table'], id=r['target_id']))
                     continue
@@ -236,14 +237,15 @@ def apply(db, plan_id, ticked=None, *, choices=None, via=None, actor=None):
                     db.execute(f'UPDATE {tbl} SET note=?, updated_at=? WHERE id=?', (r['remote'], stamp, r['target_id']))
                     receipt['notes'].append(dict(table=r['table'], id=r['target_id'], before=cur[0], after=r['remote']))
             else:
+                tbl = 'main.copy' if r['table'] == 'copy' else 'main.wish'
+                if db.execute(f'SELECT 1 FROM {tbl} WHERE id=? AND archived_at IS NULL', (r['target_id'],)).fetchone() is None:
+                    receipt['skipped'].append(dict(table=r['table'], id=r['target_id']))      # archived since the plan
+                    continue
                 fid, created, renamed_entry = _ensure_tag(db, flag_map, r['flag'], r['remote'])
                 if created:
                     receipt['tags_created'].append(fid)
                 if renamed_entry is not None:
                     receipt['renamed'].append(renamed_entry)
-                tbl = 'main.copy' if r['table'] == 'copy' else 'main.wish'
-                if db.execute(f'SELECT 1 FROM {tbl} WHERE id=? AND archived_at IS NULL', (r['target_id'],)).fetchone() is None:
-                    raise errors.ValidationFailed('Target no longer exists')
                 link_tbl, col = ('main.copy_flag', 'copy_id') if r['table'] == 'copy' else ('main.wish_flag', 'wish_id')
                 if db.execute(f'SELECT 1 FROM {link_tbl} WHERE {col}=? AND flag_id=?', (r['target_id'], fid)).fetchone() is None:
                     db.execute(f'INSERT INTO {link_tbl}({col}, flag_id) VALUES(?, ?)', (r['target_id'], fid))
@@ -258,7 +260,7 @@ def apply(db, plan_id, ticked=None, *, choices=None, via=None, actor=None):
         counts = dict(notes=len(receipt['notes']), flags=len(receipt['links']),
                       tags_created=len(receipt['tags_created']), renamed=len(receipt['renamed']))
         if receipt['skipped']:
-            counts['skipped'] = len(receipt['skipped'])      # rows whose note changed after the plan: left as they are
+            counts['skipped'] = len(receipt['skipped'])      # rows whose note changed, or whose copy or wish was archived, after the plan: left as they are
         receipt['counts'] = counts
         audit(db, 'sync:' + plan_id, FIELD, None, receipt, via=via, actor=actor)
         event = db.execute('SELECT last_insert_rowid()').fetchone()[0]
@@ -276,6 +278,10 @@ def _undo(db, event, via, actor):
         tbl = 'main.copy' if entry['table'] == 'copy' else 'main.wish'
         row = db.execute(f'SELECT note FROM {tbl} WHERE id=? AND archived_at IS NULL', (entry['id'],)).fetchone()
         if row is None or row[0] != entry['after']:
+            raise ValueError('Something from this sync has changed since · undo the later change first')
+    for entry in r['renamed']:
+        row = db.execute('SELECT name FROM main.flag WHERE id=?', (entry['flag_id'],)).fetchone()
+        if row is None or (entry.get('after') is not None and row[0] != entry['after']):
             raise ValueError('Something from this sync has changed since · undo the later change first')
     for entry in reversed(r['notes']):
         tbl = 'main.copy' if entry['table'] == 'copy' else 'main.wish'

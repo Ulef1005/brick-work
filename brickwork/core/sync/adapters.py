@@ -388,7 +388,9 @@ class BricksetUser(Brickset):
 
         def note(number, collection):
             # `flags` is a list of {flagNo, value} (documented, and an empty list on the live account checked 24.11.); anything else reads as no flags
-            on = [int(f['flagNo']) for f in collection.get('flags') or () if isinstance(f, dict) and f.get('value') is True and str(f.get('flagNo', '')).isdigit()]
+            listed = collection.get('flags')
+            on = [int(f['flagNo']) for f in (listed if isinstance(listed, list) else ())
+                  if isinstance(f, dict) and str(f.get('value')).lower() in ('true', '1') and str(f.get('flagNo', '')).isdecimal()]
             fields.setdefault(number, dict(notes=str(collection.get('notes') or ''), flags=sorted(on)))
         for row in self._sets({'owned': 1}):
             number = _number(f"{row['number']}-{row['numberVariant']}")
@@ -407,7 +409,9 @@ class BricksetUser(Brickset):
     def flag_labels(self):
         """The names the person gave the eight flags at Brickset, `{flag number: label}`; a flag without a name is missing. One charged call."""
         reply = self.user_call('getUserFlagLabels', {}, payload={}, charged=True)
-        return {int(f['flagNo']): str(f['label']) for f in reply.get('flags') or () if f.get('label')}
+        listed = reply.get('flags')
+        return {int(f['flagNo']): str(f['label']) for f in (listed if isinstance(listed, list) else ())
+                if isinstance(f, dict) and f.get('label') and str(f.get('flagNo', '')).isdecimal()}
 
     def set_ids(self, numbers):
         """Brickset setIDs for set numbers, one charged getSets per 500 numbers."""

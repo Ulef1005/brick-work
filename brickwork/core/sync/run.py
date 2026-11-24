@@ -559,10 +559,10 @@ def stage_pull(db, run, plans, form_data, *, via=None, actor=None, raise_budget=
     lost, picks, lists = form_data['lost'], form_data['copies'], form_data['lists']
     lines = {line['key']: line for line in (pull.get('lists') or {}).get('preview', ())}
     kept = [k for k, v in form_data['chosen'].items() if v == 'keep']       # the conflicts the person chose to Keep: remembered (#686)
-    kept_covered, kept_scope = keep_scope(run)
+    kept_covered, kept_skipped = keep_scope(run)
     if wanted or lost or picks or any(v not in ('keep', 'skip') for v in lists.values()):
         try:
-            result = sync.apply_pull(db, pull['id'], wanted, lost=lost, picks=picks or None, lists=lists or None, kept=kept, kept_covered=kept_covered, kept_scope=kept_scope, via=via, actor=actor)
+            result = sync.apply_pull(db, pull['id'], wanted, lost=lost, picks=picks or None, lists=lists or None, kept=kept, kept_covered=kept_covered, kept_skipped=kept_skipped, via=via, actor=actor)
             effective = {k: lists.get(k, line['action']) for k, line in lines.items()}
             stages['pull'] = dict(status='done', event=result['event_id'], counts=result['counts'], rows=len(wanted),
                                   lists_changed=sum(1 for k, v in effective.items() if v in ('rename', 'drop') and lines[k]['sets']))
@@ -804,9 +804,11 @@ def stage_lost_out(db, run, form_data, *, http=None, per_key=False, should_stop=
 
 
 def keep_scope(run):
-    """What the run's preview covers, for the Keep memory (#686): the kinds whose direction is not Off, and the picked sets (None: all)."""
-    d = run['directions']
-    return tuple(kind for kind, direction in (('owned', 'owned'), ('wanted', 'wishlist')) if d[direction] != 'off'), picked_ids(run)
+    """What the run's preview covers, for the Keep memory (#686): the kinds whose direction is not Off, and the sets it skips (the ones it could
+    touch that were not picked)."""
+    d, picked = run['directions'], picked_ids(run)
+    skipped = set() if picked is None else {c['item_id'] for c in run['candidates']} - picked
+    return tuple(kind for kind, direction in (('owned', 'owned'), ('wanted', 'wishlist')) if d[direction] != 'off'), skipped
 
 
 def remember_choices(db, run, plans, form_data):
@@ -815,9 +817,9 @@ def remember_choices(db, run, plans, form_data):
     written is only forgotten."""
     if not (plans['pull'] or plans['send']):
         return
-    covered, scope = keep_scope(run)
+    covered, skipped = keep_scope(run)
     try:
-        sync.remember_kept(db, run.get('source', SOURCE), rows(db, run, plans), [k for k, v in form_data['chosen'].items() if v == 'keep'], covered, scope)
+        sync.remember_kept(db, run.get('source', SOURCE), rows(db, run, plans), [k for k, v in form_data['chosen'].items() if v == 'keep'], covered, skipped)
     except FAILURES as exc:
         LOG.warning('The Keep choices of a run could not be written: %s', type(exc).__name__)
 

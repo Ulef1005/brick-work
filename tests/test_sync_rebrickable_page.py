@@ -1396,3 +1396,18 @@ def test_a_keep_only_job_stopped_before_it_starts_writes_nothing(client, remote,
         run_job.drain(db)
         assert 'kept' not in sync._setting(db, 'rebrickable', 'baseline', {})
         assert tuple(db.execute("SELECT state, error FROM job WHERE kind='sync_run'").fetchone()) == ('done', 'Stopped at your request')
+
+
+def test_kept_rows_covers_only_what_the_run_covers():
+    """#686: the Keep map after a run: rows it covers are rewritten, the kinds and sets it skips stay as they were."""
+    def row(kind, item, remote, here, *, kept=False):
+        return dict(key=f'{kind}:{item}', kind=kind, item_id=item, state='conflict', remote=remote, here=here, kept=kept)
+    existing = {'owned': {'1': [6, 2], '3': [9, 1]}, 'wanted': {'7': [4, 0]}}
+    rows = [row('owned', 1, 5, 1, kept=True), row('owned', 2, 3, 1), row('wanted', 7, 4, 0, kept=True)]
+    # the run skips set 1 and does not cover wanted: an old preview's row for either cannot overwrite what is stored
+    out = sync.kept_rows(rows, ['owned:2'], existing=existing, covered=('owned',), skipped={1})
+    assert out == {'owned': {'1': [6, 2], '2': [3, 1]}, 'wanted': {'7': [4, 0]}}                 # 3 is covered and no longer a conflict: dropped
+    # a covered set whose counts met is not in the rows at all: its entry ends
+    assert sync.kept_rows([], [], existing={'owned': {'1': [5, 1]}}, covered=('owned', 'wanted'), skipped=set()) == {}
+    # resolved by this run: the entry ends
+    assert sync.kept_rows(rows[:1], [], resolved=['owned:1'], existing={'owned': {'1': [5, 1]}}) == {}
